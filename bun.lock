@@ -1,0 +1,28 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "spectant",
+    },
+    "core": {
+      "name": "@spectant/core",
+      "version": "0.1.0",
+    },
+    "server": {
+      "name": "@spectant/server",
+      "version": "0.1.0",
+    },
+    "web": {
+      "name": "@spectant/web",
+      "version": "0.1.0",
+    },
+  },
+  "packages": {
+    "@spectant/core": ["@spectant/core@workspace:core"],
+
+    "@spectant/server": ["@spectant/server@workspace:server"],
+
+    "@spectant/web": ["@spectant/web@workspace:web"],
+  }
+}

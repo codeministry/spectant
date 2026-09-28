@@ -17,3 +17,13 @@ dist/
 
 # Spec: translations, derived pages and gate marks never leave this machine (SpecTranslate.ts)
 specs/*/.gates/
+
+# derived by the old Spec skill for its badge switcher
+specs/specs.js
+
+# agent worktrees
+.claude/worktrees/
+
+# per-round build log and gate marks, derived by the Spec skill
+specs/*/rounds.jsonl
+specs/*/.gates/

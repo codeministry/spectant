@@ -1,0 +1,63 @@
+# core/ — the spec format, parsed once
+
+Lane `core`: paths `core/` and `FORMAT.md`. Load `FORMAT.md` and this file before working here.
+
+**Lane probe: `bun test core/`**
+
+## Purpose
+
+`core/` is the only parser and model of the spec format: frontmatter, claim lines with stable IDs and
+`(after: …)` edges, the Test Strategy columns `isc | type | check | threshold | tool | anchors_to | severity`,
+`.gates/` marks, `rounds.jsonl`, `tldr.md`, stages and the next-command rules.
+
+- The app (`server/`) and the later plugin both import `core/`; neither parses a spec file itself. Reason: two
+  parsers drift, and a drifted stage or claim count is a wrong dashboard nobody notices.
+- `scripts/check-single-core.ts` (`bun run check:single-core`) fails on a frontmatter, claim or stage parser
+  anywhere outside `core/`. Reason: the one-parser rule is enforced, not remembered.
+
+## Module map (planned, `core/src/`)
+
+| Module | Holds |
+|--------|-------|
+| `frontmatter.ts` | frontmatter keys and values |
+| `claims.ts` | claim lines, stable IDs, `(after: …)` edges, Test Strategy rows |
+| `status.ts` | claim partition and drift classes |
+| `stage.ts` | stage per spec and the next command |
+| `gates.ts` | review and code-review marks; worktree hash computed in memory |
+| `takeable.ts` | the takeable task set |
+| `diagrams.ts` | the diagram verdict |
+| `tldr.ts` | TL;DR staleness |
+| `markdown.ts` | the markdown renderer for the Brief |
+| `archive.ts` | the archive listing |
+| `dashboard.ts` | assembles the dashboard model: the seam to `server/` and `web/` |
+
+One module per ported source of the old Spec skill. Reason: a port that maps one to one can be diffed against its
+origin when parity breaks.
+
+## Read-only invariant
+
+- Nothing in `core/` writes into a repository it reads: no `git write-tree`, no index, no lock files, no temp files
+  inside the tree. Reason: a registered repository stays byte-identical, `.git/` included (ISC-15).
+- `gates.ts` hashes the worktree in memory and never writes a git object. Reason: `git write-tree` stores objects in
+  the registered repository's `.git/`.
+
+## Fixtures
+
+- `core/fixtures/<name>/` is a synthetic spec tree with fixed dates, never a copy of a real repository. Reason: the
+  repository is public and real trees carry private names; fixed dates keep snapshots and visual baselines stable.
+- Each fixture has a golden snapshot `core/fixtures/<name>.golden.json`, which doubles as stub-API data for the web
+  e2e and visual suites. Reason: the UI tests render exactly what `core/` produces.
+- One fixture carries a three-digit/three-digit master fraction. Reason: it is the widest number the layout must hold.
+- `core/tests/fixtures.test.ts` is the golden test (ISC-6). A snapshot changes only together with the parser change
+  that explains it.
+- `core/tests/stage-parity.test.ts` compares stages against local trees listed in `SPECTANT_PARITY_TREES` and fails
+  on zero comparisons (ISC-14). Reason: a parity test that compared nothing is not green.
+
+## Conventions
+
+- Pure TypeScript. Reason: the same code runs in the server, the plugin and, for types, the browser.
+- `markdown.ts` and the types in `dashboard.ts` use no Bun-only API. Reason: the web app imports them into a
+  browser bundle.
+- No dependency unless a Decision in the spec names it. Reason: `core/` is shared and every dependency ships twice.
+- `FORMAT.md` at the repository root is the written contract. A parser change updates `FORMAT.md` in the same task.
+  Reason: the contract and the code must never disagree.

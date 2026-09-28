@@ -2,7 +2,7 @@
 spec: 001-app-skeleton
 created: 2026-09-28T09:40:00Z
 updated: 2026-09-28T12:45:00Z
-rounds: 3
+rounds: 4
 ---
 
 <!-- CONTEXT LOG — a record, not an authority. Nothing here gates anything and nothing
@@ -87,3 +87,9 @@ plan.md § Risks. The full record is in `.evidence/review-2026-09-28.md`.
 
 ## Still open
 None: the spec has no fog after Round 3.
+
+## Round 4 — build, 2026-09-28
+- second look: off (default). Forge unavailable as builder or reader in this run (codex: no credentials, 401); builder is Engineer on every lane.
+- Round 1 dispatched T1 (ISC-8), T2, T3, T4 (ISC-5.1) in worktrees on commit 29115a4; all four returned results, patches applied, no claim closed yet (ISC-5.1 waits for T5, ISC-8 for T6–T11).
+- Marks from round 1: T1 — `bunfig.toml` `[test] pathIgnorePatterns = ["web/src/**"]` proven with throwaway probes (no `scripts/test.ts` wrapper needed); `test:visual`, `test:browser`, `e2e` forward to `bun run --cwd web <name>`, so T7/T31 must define exactly those names in `web/package.json`; `verify:quick` is red until T8 and the first tests; bun pinned at 1.3.12 from the environment. T2 — added the rule "pin every dependency and tool version" (XC-09) beyond the brief; constitution rows resting on `ISA.md` can now be re-pointed at `CLAUDE.md`. T4 — noted that ISC-7 says "registry, notes and pins" while plan § Data Model says "registry and settings" (resolved below). All workers skipped voice notifications (voice is off).
+- Lock handling: `SpecRun.ts plan` holds every task whose claim is locked, my own session included, so locks are taken per round at dispatch and released after the round's write order; a claim that did not close is unlocked between rounds.

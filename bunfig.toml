@@ -1,0 +1,7 @@
+# Root `bun test` runs the pure TypeScript suites: core/**, server/**, tests/**, web/tests/**.
+# Angular component and browser specs under web/src/** run through Angular's Vitest builder
+# (`bun run --cwd web test`, `bun run test:browser`), because `bun test` cannot compile
+# TestBed specs (plan 001 § Stack Decisions, FE-TST-01).
+[test]
+root = "."
+pathIgnorePatterns = ["web/src/**"]

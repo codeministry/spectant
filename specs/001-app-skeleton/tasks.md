@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-28
+updated: 2026-09-28T13:20:00Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -18,10 +18,10 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 
 ### ① Skeleton
 
-- [ ] T1 · ISC-8 · [P] · repo — root `package.json` with bun workspaces `core`, `server`, `web`, pinned bun, the script names from the plan, `bunfig.toml` excluding `web/src` from root `bun test` · `package.json`
-- [ ] T2 · ISC-5.1 · [P] · repo — root `CLAUDE.md` (only what applies everywhere) and the `README.md` skeleton · `CLAUDE.md`
-- [ ] T3 · ISC-5.1 · [P] · core — `core/CLAUDE.md`: lane probe, the one-parser rule, fixture conventions · `core/CLAUDE.md`
-- [ ] T4 · ISC-5.1 · [P] · server — `server/CLAUDE.md`: lane probe, loopback rule, no writes into repos · `server/CLAUDE.md`
+- [x] T1 · ISC-8 · [P] · repo — root `package.json` with bun workspaces `core`, `server`, `web`, pinned bun, the script names from the plan, `bunfig.toml` excluding `web/src` from root `bun test` · `package.json`
+- [x] T2 · ISC-5.1 · [P] · repo — root `CLAUDE.md` (only what applies everywhere) and the `README.md` skeleton · `CLAUDE.md`
+- [x] T3 · ISC-5.1 · [P] · core — `core/CLAUDE.md`: lane probe, the one-parser rule, fixture conventions · `core/CLAUDE.md`
+- [x] T4 · ISC-5.1 · [P] · server — `server/CLAUDE.md`: lane probe, loopback rule, no writes into repos · `server/CLAUDE.md`
 - [ ] T5 · ISC-5.1 · [P] · web — `web/CLAUDE.md`: lane probe, house FRONTEND/DESIGN pointers, container tiers, token rules · `web/CLAUDE.md`
 - [ ] T6 · ISC-8 · [seam] · server — build contract: the web output folder, base href, the embed manifest type and content-type map the server reads (after: T1) · `server/src/assets.contract.ts`
 - [ ] T7 · ISC-8 · web — Angular 22 zoneless standalone workspace with one hello route, Vitest builder, output where T6 says (after: T6) · `web/`
