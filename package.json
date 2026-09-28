@@ -24,7 +24,7 @@
     "check:leak": "bun scripts/check-leak.ts",
     "check:single-core": "bun scripts/check-single-core.ts",
     "check:version": "bun scripts/check-version.ts",
-    "test:binary": "bun test tests/binary.test.ts",
+    "test:binary": "bun scripts/build.ts --host-only && SPECTANT_TEST_BINARY=1 bun test tests/binary.test.ts",
     "test:install:linux": "bun tests/install/run.ts",
     "test:readonly": "bun test tests/readonly.test.ts",
     "test:offline:server": "bun tests/offline-server.ts",

@@ -77,9 +77,17 @@ describe("run", () => {
     expect(VERSION).toBe(pkg.version);
   });
 
-  test("--version and -v print `spectant <VERSION>` and return 0", async () => {
+  test("--version, -v and -V print `spectant <VERSION>` and return 0", async () => {
     expect(await run(["--version"], manifest)).toBe(0);
     expect(await run(["-v"], manifest)).toBe(0);
+    expect(await run(["-V"], manifest)).toBe(0);
+    expect(out).toEqual([`spectant ${VERSION}`, `spectant ${VERSION}`, `spectant ${VERSION}`]);
+    expect(err).toEqual([]);
+  });
+
+  test("--version wins over --no-browser in either order", async () => {
+    expect(await run(["--no-browser", "--version"], manifest)).toBe(0);
+    expect(await run(["-V", "--no-browser"], manifest)).toBe(0);
     expect(out).toEqual([`spectant ${VERSION}`, `spectant ${VERSION}`]);
     expect(err).toEqual([]);
   });
@@ -90,6 +98,8 @@ describe("run", () => {
     expect(text).toContain("Usage: spectant");
     expect(text).toContain("serve");
     expect(text).toContain("--port");
+    expect(text).toContain("--no-browser");
+    expect(text).toContain("-V");
     expect(err).toEqual([]);
   });
 
@@ -107,6 +117,21 @@ describe("run", () => {
     expect(await run(["--port=70000"], manifest)).toBe(2);
     expect(err.filter((line) => line.includes("--port"))).toHaveLength(3);
     expect(out).toEqual([]);
+  });
+
+  test("--no-browser is accepted (a no-op until T50), not a usage error", async () => {
+    const blocker = Bun.serve({ hostname: "127.0.0.1", port: 0, reusePort: false, fetch: () => new Response("") });
+    const port = blocker.port ?? 0;
+    try {
+      // The busy port makes serve return 1 at once; a rejected flag would have returned 2 before binding.
+      expect(await run(["--no-browser", "--port", String(port)], manifest)).toBe(1);
+      expect(await run(["serve", "--port", String(port), "--no-browser"], manifest)).toBe(1);
+      expect(err).toHaveLength(2);
+      expect(err.join("\n")).not.toContain("unknown option");
+      expect(out).toEqual([]);
+    } finally {
+      await blocker.stop(true);
+    }
   });
 
   test("a busy port surfaces as a one-line error and returns 1", async () => {

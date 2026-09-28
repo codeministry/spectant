@@ -1,6 +1,10 @@
 /**
- * The `spectant` command line (T11, ISC-8). Minimal on purpose: T13 owns `--version` checks, T44 the workspace
- * commands (`add`, `list`, `remove`), T50 the port fall-forward and opening the browser.
+ * The `spectant` command line (T11, ISC-8). Minimal on purpose: T44 adds the workspace commands (`add`, `list`,
+ * `remove`), T50 the port fall-forward and opening the browser.
+ *
+ * `--version` (also `-v`, `-V`; T13, ISC-9) prints exactly `spectant <VERSION>` and a newline on stdout and nothing
+ * else, so `scripts/check-version.ts` can compare the binary byte for byte with `package.json`. It short-circuits
+ * the rest of the command line. `--no-browser` is accepted and ignored for now; opening the browser arrives with T50.
  *
  * `run` returns the process exit code: 0 on success, 1 when serving fails, 2 on a usage error. For `serve` it resolves
  * only once the server has stopped on SIGINT or SIGTERM. The manifest is passed in, because only `main.ts` may import
@@ -19,7 +23,9 @@ Commands:
 
 Options:
   --port <n>       port to listen on (default ${DEFAULT_PORT}; 0 picks a free port)
-  -v, --version    print the version and exit
+  --no-browser     do not open the browser (accepted; opening the browser arrives with T50)
+  -v, -V, --version
+                   print the version and exit
   -h, --help       print this help and exit`;
 
 class UsageError extends Error {}
@@ -38,8 +44,9 @@ function parse(argv: string[]): Command {
   let command: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] ?? "";
-    if (arg === "--version" || arg === "-v") return { kind: "version" };
+    if (arg === "--version" || arg === "-v" || arg === "-V") return { kind: "version" };
     if (arg === "--help" || arg === "-h") return { kind: "help" };
+    if (arg === "--no-browser") continue; // a no-op until T50 opens the browser
     if (arg === "--port") port = parsePort(argv[++i]);
     else if (arg.startsWith("--port=")) port = parsePort(arg.slice("--port=".length));
     else if (arg.startsWith("-")) throw new UsageError(`unknown option ${arg}`);

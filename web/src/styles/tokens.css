@@ -1,0 +1,87 @@
+/*
+ * Derived tokens (ISC-65). A derived token is a value the design system adds beside the inherited palette in
+ * `styles.css` because the inherited value fails a measured rule. The rules are WCAG 2.x contrast: text reaches
+ * 4.5:1 and non-text marks (ring track, meters, pending stage segments, legend dots) reach 3:1, each against the card
+ * (`--color-base-100`) and the page (`--color-base-200`) of the same theme. Every value names its ratios as
+ * "card / page"; `web/tests/tokens.test.ts` recomputes them and fails below the line.
+ *
+ * Inherited accents keep their values for edges, glows, fills and dots. Text in an accent colour uses its `-ink`
+ * token; secondary text uses `--muted-ink`, while `--muted` stays inherited for non-text use. Where the inherited
+ * value already passes, the token aliases it with `var()`, so it follows the palette; a derived value is the nearest
+ * darker OKLCH shade of the accent (same hue, chroma kept unless the gamut forces it down) that clears 4.55:1 on both
+ * surfaces, 0.05 of headroom above the line so 8-bit rounding of a painted pixel cannot drop it below.
+ *
+ * Colours are OKLCH with the hex in a comment, as in `styles.css`. Tokens are set per theme on the `data-theme`
+ * element (daisyUI applies a theme by that attribute), so a `var()` here resolves against the same theme's slots.
+ */
+
+/* Container tiers (design.md, "One responsive system"; `web/CLAUDE.md` names the same tiers): compact < 640 px,
+ * medium 640 to 1119 px, wide from 1120 px, queried on the shell container. These constants exist for JS and for
+ * documentation only: custom properties do not work in `@container` conditions, so every query repeats the number
+ * literally. */
+:root {
+  --tier-compact-max: 639px;
+  --tier-medium-max: 1119px;
+}
+
+/* Theme-independent helpers; declared on each theme element so a `var()` resolves against that theme. */
+[data-theme] {
+  /* Focus (ISC-64): 2 px outline in the primary accent, 2 px offset, a 4 px halo in the page colour. */
+  --focus-ring: var(--color-primary);
+  --focus-halo: var(--color-base-200);
+
+  /* Badge text on `--badge-fill`: 6.19:1 on the dark fill, 4.57:1 on the derived light fill. */
+  --badge-ink: oklch(99.1% 0.003 106.4); /* #fcfcfa */
+}
+
+[data-theme="spec-light"] {
+  /* Mark: unfilled ring, meters, pending stage segments. Card 3.52 / page 3.26. */
+  --track: oklch(62% 0.01 331); /* #8a8489 */
+
+  /* Secondary text: the inherited `--muted` (#706b6e) passes. Card 5.03 / page 4.67. */
+  --muted-ink: var(--muted);
+
+  /* Accent text. Inherited #1c8ca8 3.77 / 3.49 fails; derived card 4.93 / page 4.57. */
+  --disp-ink: oklch(53% 0.096 219.9); /* #027892 */
+
+  /* Inherited #7058be passes. Card 5.28 / page 4.90. */
+  --ques-ink: var(--color-secondary);
+
+  /* Inherited #4c8a13 4.08 / 3.79 fails; derived (chroma 0.157 → 0.151 at the gamut edge) card 4.92 / page 4.56. */
+  --clos-ink: oklch(52.5% 0.151 134.4); /* #417c02 */
+
+  /* Inherited #269d69 3.31 / 3.07 fails; derived (chroma 0.13 → 0.12 at the gamut edge) card 4.93 / page 4.57. */
+  --done-ink: oklch(52.4% 0.12 159.2); /* #007e50 */
+
+  /* Inherited #cc7a0a 3.18 / 2.95 fails; derived (chroma 0.145 → 0.123 at the gamut edge) card 4.91 / page 4.55. */
+  --conc-ink: oklch(54.6% 0.123 64.3); /* #a15e01 */
+
+  /* Inherited #ad560c passes. Card 4.92 / page 4.56. */
+  --hover-ink: var(--color-warning);
+
+  /* Inherited #e14775 3.77 / 3.50 fails; derived card 4.91 / page 4.56. */
+  --fail-ink: oklch(56.3% 0.192 6.6); /* #ca3063 */
+
+  /* Badge fill for text: `#fcfcfa` on the inherited #1c8ca8 is 3.81:1 and fails; derived fill gives 4.57:1. */
+  --badge-fill: oklch(55% 0.1 219.9); /* #007e9a */
+}
+
+[data-theme="spec-dark"] {
+  /* Mark: the inherited `--line` (#4a474c) measures 1.55:1, so the track is new. Card 3.47 / page 4.00. */
+  --track: oklch(59.2% 0.005 314.8); /* #7f7d80 */
+
+  /* Secondary text: the inherited `--muted` (#939293) passes. Card 4.57 / page 5.26. */
+  --muted-ink: var(--muted);
+
+  /* Every dark accent passes as text, so each ink aliases its accent. */
+  --disp-ink: var(--color-primary); /* card 8.91 / page 10.26 */
+  --ques-ink: var(--color-secondary); /* card 5.96 / page 6.87 */
+  --clos-ink: var(--color-accent); /* card 9.13 / page 10.52 */
+  --done-ink: var(--color-success); /* card 9.04 / page 10.41 */
+  --conc-ink: var(--conc); /* card 10.30 / page 11.86 */
+  --hover-ink: var(--color-warning); /* card 6.63 / page 7.63 */
+  --fail-ink: var(--color-error); /* card 4.94 / page 5.69 */
+
+  /* Badge fill: the inherited teal #1d6878 passes, 6.19:1 under `--badge-ink`. */
+  --badge-fill: var(--color-neutral);
+}
