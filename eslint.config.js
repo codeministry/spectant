@@ -10,7 +10,7 @@ import tseslint from 'typescript-eslint';
 export default defineConfig(
   {
     // Build output, caches and generated fixture trees are not source.
-    ignores: ['**/dist/**', '**/coverage/**', 'web/.angular/**', 'web/public/**', 'specs/**', '**/.vendor/**', '**/*.gen.ts'],
+    ignores: ['**/dist/**', '**/coverage/**', 'web/.angular/**', 'web/public/**', 'specs/**', '**/.vendor/**', '**/*.gen.ts', '.claude/**'],
   },
 
   // Plain JavaScript (this file and any config next to it): the core recommended set, no type information.
@@ -69,8 +69,8 @@ export default defineConfig(
     extends: [angular.configs.tsRecommended],
     processor: angular.processInlineTemplates,
     rules: {
-      '@angular-eslint/component-selector': ['error', { type: 'element', prefix: 'app', style: 'kebab-case' }],
-      '@angular-eslint/directive-selector': ['error', { type: 'attribute', prefix: 'app', style: 'camelCase' }],
+      '@angular-eslint/component-selector': ['error', { type: 'element', prefix: ['app', 'ui'], style: 'kebab-case' }], // ui-* are the shared primitives (design.md § Components)
+      '@angular-eslint/directive-selector': ['error', { type: 'attribute', prefix: ['app', 'ui'], style: 'camelCase' }],
       // Standalone only: an NgModule brings back a second way to declare and import (FE-FW, web/CLAUDE.md).
       '@angular-eslint/prefer-standalone': 'error',
       // OnPush everywhere: zoneless rendering is driven by signals and marked views, never by a global sweep.

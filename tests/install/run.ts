@@ -12,9 +12,12 @@
  *  3. builds `tests/install/Dockerfile` (Ubuntu, curl, a user `tester`, no bun, no node) for that platform;
  *  4. runs the container with the release binaries and `install.sh` bind-mounted read-only under `/release`, and
  *     inside it: pipes the script into `sh` the way the one-liner does, with `SPECTANT_RELEASE_URL=file:///release`,
- *     checks where the binary landed, applies the printed PATH line in a clean environment and runs
- *     `spectant --version`, checks that no shell rc file changed, then starts `spectant --port 0` and asks for `/`,
- *     one `main-*.js` and the deep link `/w/x`;
+ *     checks where the binary landed (and that no copy landed anywhere else), that the PATH hint names that
+ *     directory, applies the printed PATH line in a clean environment and runs `spectant --version`, checks that no
+ *     shell rc file changed, then starts `spectant --port 0` and asks for `/`, one `main-*.js` and the deep link
+ *     `/w/x`. Without INSTALL_DIR it also proves the fallback: a write into `/usr/local/bin` is refused, so the
+ *     binary must be in `~/.local/bin`. With INSTALL_DIR it checks the directory did not exist before, so the
+ *     installer created it (the image gives `tester` a writable `/opt/x` for the probe path `/opt/x/bin`);
  *  5. prints a table of the checks and exits 1 with the container output on any failure.
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -137,7 +140,10 @@ check() {
 verdict() { if [ "$1" = 0 ]; then echo ok; else echo fail; fi; }
 
 clean_path=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+override=${"${INSTALL_DIR:-}"}
 expect_dir=${"${INSTALL_DIR:-$HOME/.local/bin}"}
+# The installer shortens the default fallback to a literal $HOME/.local/bin in the PATH line; an override is shown as is.
+if [ -n "$override" ]; then shown_dir=$override; else shown_dir='$HOME/.local/bin'; fi
 rc_state() {
   for f in "$HOME/.profile" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.bash_login" "$HOME/.zshrc" \
            "$HOME/.zprofile" "$HOME/.config/fish/config.fish"; do
@@ -146,7 +152,23 @@ rc_state() {
 }
 
 if [ "$(id -u)" != 0 ]; then check "runs as non-root" ok "$(id -un)"; else check "runs as non-root" fail "uid 0"; fi
-if [ -w /usr/local/bin ]; then check "/usr/local/bin not writable" fail "writable"; else check "/usr/local/bin not writable" ok "root-owned"; fi
+# The precondition of the ~/.local/bin fallback, proven by an actual write attempt and not only by the -w test the
+# installer itself uses.
+if [ -w /usr/local/bin ]; then
+  check "/usr/local/bin not writable" fail "-w says writable"
+elif touch /usr/local/bin/.spectant-write-probe 2>/dev/null; then
+  rm -f /usr/local/bin/.spectant-write-probe
+  check "/usr/local/bin not writable" fail "a write succeeded"
+else
+  check "/usr/local/bin not writable" ok "root-owned, write refused"
+fi
+if [ -n "$override" ]; then
+  if [ -e "$override" ]; then
+    check "INSTALL_DIR absent before" fail "$override already exists"
+  else
+    check "INSTALL_DIR absent before" ok "$override does not exist yet"
+  fi
+fi
 if command -v spectant >/dev/null 2>&1 || command -v bun >/dev/null 2>&1 || command -v node >/dev/null 2>&1; then
   check "clean machine" fail "spectant, bun or node already on PATH"
 else
@@ -162,10 +184,45 @@ echo "-----------------------------"
 check "install.sh exit 0" "$(verdict "$code")" "exit $code"
 
 if [ -x "$expect_dir/spectant" ]; then check "binary in install dir" ok "$expect_dir/spectant"; else check "binary in install dir" fail "no executable $expect_dir/spectant"; fi
+if [ -f "$expect_dir/spectant" ] && [ ! -L "$expect_dir/spectant" ] \
+   && grep -Fqx "Installed spectant $EXPECTED_VERSION to $expect_dir/spectant" /tmp/install.out; then
+  check "installed exactly at target" ok "regular file, 'Installed ... to $expect_dir/spectant'"
+else
+  check "installed exactly at target" fail "not a regular file, or no 'Installed spectant $EXPECTED_VERSION to $expect_dir/spectant' line"
+fi
+elsewhere=
+for other in /usr/local/bin/spectant "$HOME/.local/bin/spectant"; do
+  if [ "$other" != "$expect_dir/spectant" ] && [ -e "$other" ]; then elsewhere="$elsewhere $other"; fi
+done
+if [ -z "$elsewhere" ]; then
+  check "no copy elsewhere" ok "nothing in /usr/local/bin or ~/.local/bin besides the target"
+else
+  check "no copy elsewhere" fail "also found:$elsewhere"
+fi
+if [ -z "$override" ]; then
+  if [ -x "$HOME/.local/bin/spectant" ] && [ ! -e /usr/local/bin/spectant ]; then
+    check "fallback to ~/.local/bin" ok "/usr/local/bin refused the write, binary in ~/.local/bin"
+  else
+    check "fallback to ~/.local/bin" fail "binary not in ~/.local/bin, or a copy in /usr/local/bin"
+  fi
+fi
+direct=$("$expect_dir/spectant" --version 2>&1)
+code=$?
+if [ "$code" = 0 ] && [ "$direct" = "spectant $EXPECTED_VERSION" ]; then
+  check "--version from install dir" ok "$expect_dir/spectant: $direct"
+else
+  check "--version from install dir" fail "exit $code, output '$direct'"
+fi
 if [ "$(rc_state)" = "$rc_before" ]; then check "no rc file edited" ok "profile, bashrc, zshrc, fish unchanged"; else check "no rc file edited" fail "an rc file changed"; fi
 
 line=$(grep -E '^[[:space:]]*export PATH=' /tmp/install.out | head -n 1 | sed 's/^[[:space:]]*//')
 if [ -n "$line" ]; then check "PATH line printed" ok "$line"; else check "PATH line printed" fail "no 'export PATH=' line in the output"; fi
+# The install dir is not on the container's PATH, so the hint must name exactly that directory.
+if grep -Fq "$expect_dir is not on your PATH" /tmp/install.out && [ "$line" = "export PATH=\"$shown_dir:\$PATH\"" ]; then
+  check "PATH hint names install dir" ok "$shown_dir"
+else
+  check "PATH hint names install dir" fail "expected '$expect_dir is not on your PATH' and 'export PATH=\"$shown_dir:\$PATH\"', got '$line'"
+fi
 
 # A clean, login-like environment with only the printed line applied: nothing inherited from this shell.
 out=$(env -i HOME="$HOME" USER="$(id -un)" PATH="$clean_path" sh -c "$line"'

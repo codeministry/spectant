@@ -1,0 +1,103 @@
+/*
+ * Motion tokens (design.md § "Type, colour, focus, motion", DS-APP-41; ISC-66).
+ *
+ * The only file allowed to spell a literal duration: stylelint's `declaration-property-value-disallowed-list` forbids
+ * one in any other `transition` / `animation` declaration, and `web/tests/motion.test.ts` mirrors that rule. Everything
+ * else writes `var(--motion-duration-*)` and `var(--motion-ease-*)`, so the reduced-motion block below is the one
+ * switch that stops motion everywhere. Nothing moves on hover; glow intensifies under `(hover: hover)` only.
+ */
+
+:root {
+  --motion-duration-instant: 80ms; /* hover and press colour */
+  --motion-duration-fast: 160ms; /* popover in and out, row selection, copy → check swap */
+  --motion-duration-base: 240ms; /* palette and dialog entry, sheet, inspector swap, disclosure */
+  --motion-duration-slow: 400ms; /* ring and meter value morph, refresh turn, the ring's first draw on load only */
+  --motion-duration-highlight: 1200ms; /* changed-value tint fade after a refresh */
+  --motion-duration-skeleton: 1600ms; /* skeleton sweep, one pass */
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1); /* default for anything that moves or morphs in place */
+  --motion-ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1); /* entries: palette, dialog, sheet, popover in */
+  --motion-ease-exit: cubic-bezier(0.3, 0, 1, 1); /* exits: dialog, sheet, popover out */
+}
+
+/*
+ * Reduced motion (ISC-66): every duration token is 0ms, and a global safety net zeroes whatever a token does not
+ * reach (a third-party style, a component default). What stays is state, never movement:
+ * - the skeleton keeps its static tint, the sweep is gone;
+ * - the changed-value tint becomes the static 4 px dot (the refresh service, T68, picks the dot);
+ * - same-document view transitions are skipped: the router's view-transition hook (T59) calls
+ *   `transition.skipTransition()` when `prefersReducedMotion()` from `src/app/core/motion.ts` is true, and the
+ *   `::view-transition-*` rule below keeps a transition that still starts from animating.
+ * The browser spec (T31, `bun run test:browser -- motion`) measures this on rendered pages.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-instant: 0ms;
+    --motion-duration-fast: 0ms;
+    --motion-duration-base: 0ms;
+    --motion-duration-slow: 0ms;
+    --motion-duration-highlight: 0ms;
+    --motion-duration-skeleton: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* View-transition pseudo-elements hang off the root, outside `*`; they need their own switch. */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+
+  /* The sweep stops; the skeleton's static tint (its background colour) stays, so the placeholder still reads. */
+  .ui-skeleton {
+    animation: none;
+  }
+}
+
+/*
+ * Skeleton sweep. The consumer paints `background: linear-gradient(90deg, transparent 40%, <highlight> 50%,
+ * transparent 60%) <tint>; background-size: 200% 100%; background-position: 150% 0;` and runs
+ * `animation: ui-shimmer var(--motion-duration-skeleton) linear infinite`. At both keyframes the band sits outside
+ * the box, so the resting (reduced-motion) skeleton shows the plain tint.
+ */
+@keyframes ui-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+
+  to {
+    background-position: -50% 0;
+  }
+}
+
+/* Refresh icon, one full turn: `animation: ui-spin var(--motion-duration-slow) var(--motion-ease-standard)`. */
+@keyframes ui-spin {
+  from {
+    transform: rotate(0turn);
+  }
+
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/*
+ * Changed value after a refresh: a `--disp-t`-style tint (the primary accent mixed into transparency, so it follows
+ * the theme) that fades out: `animation: ui-tint-fade var(--motion-duration-highlight) var(--motion-ease-standard)`.
+ */
+@keyframes ui-tint-fade {
+  from {
+    background-color: color-mix(in oklch, var(--color-primary) 18%, transparent);
+  }
+
+  to {
+    background-color: transparent;
+  }
+}

@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-28T12:41:22Z
+updated: 2026-09-28T12:50:06Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -37,17 +37,17 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T12 · ISC-8.1 · [P] · server — binary smoke: copy the host binary to an empty temp dir, `--no-browser --port 0`, three routes; `test:binary` (after: T11) · `tests/binary.test.ts`
 - [x] T13 · ISC-9 · [P] · server — `--version` from the inlined build version, `check:version` (after: T11) · `server/src/cli.ts`
 - [x] T14 · ISC-10 · [P] · server — `install.sh` (OS/arch, `SPECTANT_RELEASE_URL`, `/usr/local/bin` when writable else `~/.local/bin`, PATH hint, never edits an rc file) plus the non-root Ubuntu container run against a local release dir that also runs the binary smoke; `test:install:linux` (after: T11) · `install.sh`
-- [ ] T15 · ISC-12 · [P] · server — `INSTALL_DIR` override plus the "`/usr/local/bin` not writable → `~/.local/bin`" container case (after: T11) · `install.sh`
+- [x] T15 · ISC-12 · [P] · server — `INSTALL_DIR` override plus the "`/usr/local/bin` not writable → `~/.local/bin`" container case (after: T11) · `install.sh`
 - [ ] T16 · ISC-11 · operator — macOS arm64 install on a throwaway user account, transcript into `.evidence/` (after: T11) · `tests/install/run-macos.md`
 
 ### ② Design system and baseline
 
 - [x] T17 · ISC-18 · [P] · web — themes `spec-light` / `spec-dark` from the old token blocks (OKLCH, hex in comments), daisyUI `themes: false`, `--depth: 0`, `--noise: 0`, plus the colour guard `web/tests/theme-colors.test.ts` (ΔE ≤ 0.5 round-trip, both themes) · `web/src/styles.css`
 - [x] T18 · ISC-65 · [P] · web — derived tokens `--muted`, `--track`, `--*-ink` and the container tier names, values from design.md · `web/src/styles/tokens.css`
-- [ ] T19 · ISC-67 · [P] · web — Inter Variable and JetBrains Mono as local woff2 with `@font-face`, plus the "local" guard · `web/tests/fonts.test.ts`
+- [x] T19 · ISC-67 · [P] · web — Inter Variable and JetBrains Mono as local woff2 with `@font-face`, plus the "local" guard · `web/tests/fonts.test.ts`
 - [ ] T20 · ISC-67.1 · [P] · web — the "external font URL" guard · `web/tests/fonts.test.ts`
-- [ ] T21 · ISC-66 · [P] · web — motion tokens and the `prefers-reduced-motion` override to `0ms`, skeleton static, view transitions skipped · `web/src/styles/motion.css`
-- [ ] T22 · ISC-18.2 · [P] · web — icon module: only used icons from the pinned `lucide-static` version, plus the guard `web/tests/icons.test.ts` · `web/src/app/shared/icons/`
+- [x] T21 · ISC-66 · [P] · web — motion tokens and the `prefers-reduced-motion` override to `0ms`, skeleton static, view transitions skipped · `web/src/styles/motion.css`
+- [x] T22 · ISC-18.2 · [P] · web — icon module: only used icons from the pinned `lucide-static` version, plus the guard `web/tests/icons.test.ts` · `web/src/app/shared/icons/`
 - [ ] T23 · ISC-22 · [P] · web — Transloco with EN and DE catalogues (German formal), language from settings, plus the parity guard `web/tests/i18n-parity.test.ts` · `web/src/i18n/`
 - [ ] T24 · ISC-64 · [P] · web — `ui-button`, `ui-icon-button`, `ui-button-group` with the global `:focus-visible` ring and the coarse-pointer hit area · `web/src/app/shared/ui/button/`
 - [ ] T25 · ISC-17 · [P] · web — display primitives: `ui-card`, `ui-kpi-tile`, `ui-ring`, `ui-meter`, `ui-stage-track`, `ui-chip`, `ui-id-chip`, `ui-filter-chips`, `ui-segmented`, `ui-section-header`, `ui-kbd`, `ui-skeleton`, `ui-empty-state`, `ui-notice`, `ui-live-region`, `ui-relative-time`, `ui-command-chip` · `web/src/app/shared/ui/`

@@ -1,0 +1,40 @@
+/*
+ * Local fonts only (ISC-67): no font request leaves the machine. Both faces are variable woff2 files under
+ * `web/public/fonts/`, which Angular copies to the build root, so they are served from `/fonts/…` by the app itself;
+ * `web/src/index.html` preloads them. Each file ships with its SIL OFL-1.1 text beside it.
+ *
+ * - Inter Variable 4.1 (rsms/inter release v4.1, `web/InterVariable.woff2`, unchanged).
+ * - JetBrains Mono 2.304 (JetBrains/JetBrainsMono release v2.304, `fonts/variable/JetBrainsMono[wght].ttf`,
+ *   encoded to woff2 with Google's reference encoder because the release ships no variable woff2).
+ *
+ * Upright only: no italic face ships, so an italic is synthesised by the browser where one is ever asked for.
+ * `web/tests/fonts.test.ts` guards the files, these two rules and the preloads.
+ */
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-variable.woff2") format("woff2");
+}
+
+/* Unlayered, so these win over the Tailwind theme layer; the `font-sans` / `font-mono` utilities follow them. */
+:root {
+  --font-sans: "Inter Variable", system-ui, -apple-system, "Segoe UI", roboto, "Helvetica Neue", arial, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", menlo, consolas, "Liberation Mono", monospace;
+}
+
+/* Every number is tabular (ISC-62.1): live values never shift layout. Mono is for IDs, commands and ports only. */
+body {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}

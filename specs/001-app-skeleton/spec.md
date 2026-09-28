@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F1
 constitution: ../constitution.md
 phase: scoping
-progress: 9/47
+progress: 12/47
 started: 2026-09-28T09:40:00Z
-updated: 2026-09-28T12:41:22Z
+updated: 2026-09-28T12:50:06Z
 context_sufficient: true
 interview_invoked: true
 context_log: context.md
@@ -161,7 +161,7 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [x] ISC-9: The host binary's `--version` prints the version in `package.json`. (after: ISC-8)
 - [x] ISC-10: In a clean Ubuntu x64 container, the install script pointed at a local release directory puts `spectant` on PATH and `spectant --version` exits 0. (after: ISC-8)
 - [ ] ISC-11: For a fresh user on macOS arm64, the install one-liner puts `spectant` on PATH and `spectant --version` exits 0. (after: ISC-8)
-- [ ] ISC-12: The install script writes the binary to `INSTALL_DIR` when that variable is set. (after: ISC-10)
+- [x] ISC-12: The install script writes the binary to `INSTALL_DIR` when that variable is set. (after: ISC-10)
 - [ ] ISC-13: `spectant add <repo>`, `spectant list` and `spectant remove <repo>` round-trip a workspace through the registry.
 - [ ] ISC-14: For copies of the principal's real spec trees, every spec's stage on the dashboard equals the stage the old skill derives, and the probe fails when no tree was compared.
 - [ ] ISC-15: Anti: adding a workspace or opening any page changes a byte inside the registered repository, `.git/` included.
@@ -173,7 +173,7 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [x] ISC-18: Antecedent: the daisyUI themes `spec-light` and `spec-dark` carry the old pages' light and dark colour values as their tokens, so the look is inherited rather than re-invented.
 - [ ] ISC-18.1: In the default system mode the theme follows `prefers-color-scheme`, also when it changes while the page is open.
 - [ ] ISC-18.3: A chosen light or dark mode, stored server-side, is still applied after a reload on a different port.
-- [ ] ISC-18.2: Antecedent: every icon the app renders comes from the old pages' pinned Lucide set.
+- [x] ISC-18.2: Antecedent: every icon the app renders comes from the old pages' pinned Lucide set.
 - [ ] ISC-19: The dashboard renders and navigates inside the cmux web view.
 - [ ] ISC-19.1: Playwright's WebKit project renders `/` and `/w/:ws` with zero console errors.
 - [ ] ISC-20: `spectant` without arguments listens on 7717 or the next free port, prints the URL, and opens the browser unless `--no-browser` is given.
@@ -192,7 +192,7 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [ ] ISC-64: Every interactive element shows the brand focus ring under keyboard focus, in both themes.
 - [ ] ISC-65: Text reaches 4.5:1 and marks (ring track, bars, legend dots) 3:1 against their surface, in both themes.
 - [ ] ISC-66: Anti: under `prefers-reduced-motion: reduce` any animation or transition longer than 0 ms runs.
-- [ ] ISC-67: Antecedent: the app ships Inter Variable plus JetBrains Mono as local assets.
+- [x] ISC-67: Antecedent: the app ships Inter Variable plus JetBrains Mono as local assets.
 - [ ] ISC-67.1: Anti: a stylesheet declares a font URL outside the app's own origin.
 
 ## Decisions
@@ -225,6 +225,12 @@ Why: the first time the author types `spectant` and sees two real repositories o
   needs their pages (ISC-2 covers "every write" once spec 002 adds writes).
 
 ## Verification
+
+- ISC-18.2: bun-test — bun test web/tests/icons.test.ts → exit 0, 11 pass (lucide-static pinned 1.48.0, icons.ts byte-identical to regeneration, no foreign name or raw svg under web/src; red on a hand-edited path, a 'rocket' name and a raw svg), round 8, T22
+
+- ISC-67: bun-test — bun test web/tests/fonts.test.ts -t "local" → exit 0 (Inter Variable 4.1 352 KB + JetBrains Mono 2.304 114 KB as woff2 under web/public/fonts, OFL texts beside them, @font-face local, copied into web/dist/browser/fonts), round 8, T19
+
+- ISC-12: bash — bun run test:install:linux -- INSTALL_DIR=/opt/x/bin → exit 0, 19 checks on linux/amd64 (binary exactly at /opt/x/bin/spectant, nothing elsewhere, PATH hint names it; red with INSTALL_DIR ignored), round 8, T15
 
 - ISC-9: bash — bun run check:version → exit 0, 'check:version: ok 0.1.0' (root and web package.json agree; host binary prints exactly 'spectant 0.1.0\n'; red on a 0.1.1 mismatch), round 7, T13
 
