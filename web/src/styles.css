@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* No stock daisyUI theme ships: the inherited look is the only colour source. */
+@plugin "daisyui" {
+  themes: false;
+}
+
+/* T18 adds the `@plugin "daisyui/theme"` blocks `spec-light` and `spec-dark` here. */

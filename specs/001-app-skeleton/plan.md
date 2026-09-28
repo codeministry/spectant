@@ -180,6 +180,7 @@ Nothing a repository says is stored here. Deleting the file loses the registry a
 | cmux's WebKit lacks anchor positioning / view transitions | popover placement, transitions | ISC-19.1 red or the manual check | fallbacks listed in design.md; native `popover` (WebKit 17) is the floor |
 | ⌘K captured by the terminal host | palette unreachable | manual cmux check | `/` and Ctrl+K aliases, a visible search control |
 | Leak into the public repo via fixtures or baselines | public repository | `check:leak` on every verify | fixtures synthetic; baselines show fixture content only |
+| The Angular CLI needs a real Node (≥ 22.22.3); Bun's Node compatibility reports 24.3.0 and is refused, so `ng` runs on the system Node at build time (found in round 4) | `bun run build`, CI | `bunx --bun @angular/cli` refuses; `ng build` fails where Node is missing | `scripts/build.ts` and the CI image carry a pinned Node beside bun; the binary itself never needs Node; `engines.node` in `web/package.json` |
 
 ## Open Points
 

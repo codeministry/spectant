@@ -3,5 +3,42 @@
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "type": "module"
+  "type": "module",
+  "engines": {
+    "node": ">=22.22.3"
+  },
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build --configuration production",
+    "test": "ng test",
+    "lint": "echo 'lint: ESLint is not configured yet (owed by T8)' >&2; exit 1",
+    "lint:css": "echo 'lint:css: Stylelint is not configured yet (owed by T8)' >&2; exit 1",
+    "typecheck": "echo 'typecheck: tsc --noEmit is not configured yet (owed by T8)' >&2; exit 1",
+    "test:browser": "echo 'test:browser: the real-Chromium browser tier is not configured yet (owed by T31)' >&2; exit 1",
+    "e2e": "echo 'e2e: Playwright is not configured yet (owed by T31)' >&2; exit 1",
+    "test:visual": "echo 'test:visual: Playwright visual baselines are not configured yet (owed by T31)' >&2; exit 1"
+  },
+  "dependencies": {
+    "@angular/common": "22.2.0",
+    "@angular/compiler": "22.2.0",
+    "@angular/core": "22.2.0",
+    "@angular/forms": "22.2.0",
+    "@angular/platform-browser": "22.2.0",
+    "@angular/router": "22.2.0",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1"
+  },
+  "devDependencies": {
+    "@angular/build": "22.2.0",
+    "@angular/cli": "22.2.0",
+    "@angular/compiler-cli": "22.2.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "daisyui": "5.7.46",
+    "jsdom": "30.1.1",
+    "postcss": "8.5.28",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "vitest": "5.0.2"
+  }
 }

@@ -27,3 +27,9 @@ specs/specs.js
 # per-round build log and gate marks, derived by the Spec skill
 specs/*/rounds.jsonl
 specs/*/.gates/
+
+# generated at build time by scripts/embed.ts from the web output (T6 seam)
+server/embedded.gen.ts
+
+# Angular CLI cache
+.angular/
