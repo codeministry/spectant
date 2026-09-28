@@ -2,6 +2,7 @@
 @import "./styles/tokens.css";
 @import "./styles/fonts.css";
 @import "./styles/motion.css";
+@import "./styles/primitives.css";
 
 /* No stock daisyUI theme ships: the inherited look is the only colour source. */
 @plugin "daisyui" {

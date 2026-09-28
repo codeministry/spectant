@@ -1,0 +1,106 @@
+/*
+ * Shared by `ui-button` and `ui-icon-button`, on top of daisyUI's layered `btn` rules (these are unlayered, so they
+ * win). Deliberately no `outline` or `box-shadow` here: the focus ring is global (styles/primitives.css, ISC-64).
+ */
+:host {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+
+  /* Colour only, at the instant token; daisyUI's transform and shadow transitions are dropped. */
+  transition-property: color, background-color, border-color;
+  transition-duration: var(--motion-duration-instant);
+  transition-timing-function: var(--motion-ease-standard);
+}
+
+:host(.ui-button) {
+  min-inline-size: 40px;
+}
+
+/* Nothing moves: daisyUI nudges a pressed button down half a pixel. */
+:host(:active) {
+  translate: none;
+}
+
+/* Secondary: the card surface with a hairline, raised to surface-2 on hover like the ghost variants. */
+:host([data-variant="secondary"]) {
+  --btn-color: var(--color-base-100);
+  --btn-fg: var(--color-base-content);
+
+  border-color: var(--line);
+}
+
+@media (hover: hover) {
+  :host([data-variant="secondary"]:not([aria-disabled="true"]):hover),
+  :host([data-variant="ghost"]:not([data-tone], [aria-disabled="true"]):hover) {
+    --btn-bg: var(--color-base-300);
+  }
+}
+
+/* Tone text uses the contrast-safe ink tokens (ISC-65), not the raw accent. */
+:host([data-tone="warning"]) {
+  --ui-tone-ink: var(--hover-ink);
+}
+
+:host([data-tone="danger"]) {
+  --ui-tone-ink: var(--fail-ink);
+}
+
+:host([data-tone]) {
+  --btn-rest-fg: var(--ui-tone-ink);
+}
+
+:host([data-variant="secondary"][data-tone]) {
+  --btn-fg: var(--ui-tone-ink);
+}
+
+/*
+ * Disabled is `aria-disabled` at 50 % opacity (disabled.ts swallows the click). daisyUI's disabled rule blanks the
+ * colours and sets `pointer-events: none`; both are undone so the control keeps its look, its cursor and, on links,
+ * its hit testing.
+ */
+:host([aria-disabled="true"]) {
+  --btn-bg: var(--btn-color, var(--color-base-200));
+  --btn-border: var(--btn-color, var(--color-base-200));
+
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: auto;
+  color: var(--btn-fg);
+  background-color: var(--btn-bg);
+}
+
+:host([aria-disabled="true"]:is([data-variant="ghost"], [data-variant="outline"])) {
+  --btn-bg: transparent;
+
+  color: var(--btn-rest-fg, var(--btn-color, var(--color-base-content)));
+}
+
+:host([aria-disabled="true"][data-variant="ghost"]) {
+  --btn-border: transparent;
+}
+
+:host([aria-disabled="true"][data-variant="outline"]) {
+  --btn-border: var(--btn-color, var(--color-base-content));
+}
+
+/*
+ * WCAG 2.5.8 (target size): a 32 px control is below the 44 px touch target, so under a coarse pointer an invisible
+ * `::before` grows the hit area to at least 44 × 44 around the visual box, which itself stays 32 / 40 px. Fine
+ * pointers keep the visual box as the target. In a joined group the pseudo keeps the segment's width
+ * (button-group.css) so neighbouring segments never overlap.
+ */
+@media (pointer: coarse) {
+  :host {
+    position: relative;
+  }
+
+  :host::before {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    translate: -50% -50%;
+    inline-size: max(100%, 44px);
+    block-size: max(100%, 44px);
+  }
+}

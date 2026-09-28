@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F1
 constitution: ../constitution.md
 phase: scoping
-progress: 12/47
+progress: 14/47
 started: 2026-09-28T09:40:00Z
-updated: 2026-09-28T12:50:06Z
+updated: 2026-09-28T13:02:35Z
 context_sufficient: true
 interview_invoked: true
 context_log: context.md
@@ -178,7 +178,7 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [ ] ISC-19.1: Playwright's WebKit project renders `/` and `/w/:ws` with zero console errors.
 - [ ] ISC-20: `spectant` without arguments listens on 7717 or the next free port, prints the URL, and opens the browser unless `--no-browser` is given.
 - [x] ISC-21: The data directory is `$XDG_DATA_HOME/spectant` when that variable is set and `~/.spectant/` otherwise.
-- [ ] ISC-22: Every UI string key exists in both the English and the German catalogue.
+- [x] ISC-22: Every UI string key exists in both the English and the German catalogue.
 - [ ] ISC-60: ⌘K / Ctrl+K opens a command palette listing every workspace plus every spec.
 - [ ] ISC-60.1: Typing in the palette narrows the list to matching entries. (after: ISC-60)
 - [ ] ISC-60.2: Enter in the palette navigates to the highlighted entry. (after: ISC-60)
@@ -193,7 +193,7 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [ ] ISC-65: Text reaches 4.5:1 and marks (ring track, bars, legend dots) 3:1 against their surface, in both themes.
 - [ ] ISC-66: Anti: under `prefers-reduced-motion: reduce` any animation or transition longer than 0 ms runs.
 - [x] ISC-67: Antecedent: the app ships Inter Variable plus JetBrains Mono as local assets.
-- [ ] ISC-67.1: Anti: a stylesheet declares a font URL outside the app's own origin.
+- [x] ISC-67.1: Anti: a stylesheet declares a font URL outside the app's own origin.
 
 ## Decisions
 
@@ -225,6 +225,10 @@ Why: the first time the author types `spectant` and sees two real repositories o
   needs their pages (ISC-2 covers "every write" once spec 002 adds writes).
 
 ## Verification
+
+- ISC-22: bun-test — bun test web/tests/i18n-parity.test.ts → exit 0, 17 pass (174 keys in en.json and de.json, 0 missing, 0 informal German, 0 param mismatches; Transloco 8.4.0 with a bundled loader; red on a dropped key, a dropped param and 'deinen'), round 9, T23
+
+- ISC-67.1: bun-test — bun test web/tests/fonts.test.ts -t "external" → exit 0, 13 pass (no external font/stylesheet URL under web/src or the build; red on a throwaway Google Fonts @import and on 13 synthetic offenders), round 9, T20
 
 - ISC-18.2: bun-test — bun test web/tests/icons.test.ts → exit 0, 11 pass (lucide-static pinned 1.48.0, icons.ts byte-identical to regeneration, no foreign name or raw svg under web/src; red on a hand-edited path, a 'rocket' name and a raw svg), round 8, T22
 

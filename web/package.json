@@ -15,7 +15,7 @@
     "lint": "eslint src --max-warnings 0",
     "lint:css": "stylelint \"src/**/*.css\" --max-warnings 0",
     "icons:generate": "bun src/app/shared/icons/generate-icons.ts",
-    "typecheck":"tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.spec.json",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.spec.json",
     "test:browser": "echo 'test:browser: the real-Chromium browser tier is not configured yet (owed by T31)' >&2; exit 1",
     "e2e": "echo 'e2e: Playwright is not configured yet (owed by T31)' >&2; exit 1",
     "test:visual": "echo 'test:visual: Playwright visual baselines are not configured yet (owed by T31)' >&2; exit 1"
@@ -27,6 +27,7 @@
     "@angular/forms": "22.2.0",
     "@angular/platform-browser": "22.2.0",
     "@angular/router": "22.2.0",
+    "@jsverse/transloco": "8.4.0",
     "rxjs": "7.8.2",
     "tslib": "2.8.1"
   },

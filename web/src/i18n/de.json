@@ -1,0 +1,258 @@
+{
+  "common": {
+    "appName": "Spectant",
+    "close": "Schließen",
+    "retry": "Erneut versuchen",
+    "back": "Zurück",
+    "loading": "Wird geladen …",
+    "copyCommand": "Befehl kopieren",
+    "copied": "{{command}} kopiert",
+    "copyFallback": "Drücken Sie ⌘C zum Kopieren",
+    "takeable": "nehmbar {{claim}}",
+    "claimsClosed": "{{closed}} von {{total}} Claims geschlossen",
+    "noValue": "—"
+  },
+  "hello": {
+    "greeting": "hallo, spectant"
+  },
+  "header": {
+    "skipToSpecs": "Zu den Specs springen",
+    "titlePrefix": "Specs",
+    "eyebrow": {
+      "dashboard": "Dashboard · {{count}} Specs",
+      "workspace": "{{workspace}} · {{count}} Specs"
+    },
+    "search": {
+      "short": "Specs durchsuchen …",
+      "wide": "Zu Spec, Workspace oder Befehl springen",
+      "label": "Befehlspalette öffnen"
+    },
+    "settings": "Einstellungen",
+    "shortcuts": "Tastenkürzel",
+    "switcher": {
+      "label": "Workspace oder Spec wechseln",
+      "allWorkspaces": "Alle Workspaces · {{count}}",
+      "workspaces": "Workspaces",
+      "specsIn": "Specs in {{workspace}}",
+      "hint": "⌘K durchsucht alles"
+    },
+    "live": {
+      "updated": "Aktualisiert {{time}}",
+      "status": {
+        "live": "Live",
+        "refreshing": "Wird aktualisiert",
+        "unreachable": "Nicht erreichbar"
+      },
+      "refresh": "Jetzt aktualisieren",
+      "interval": {
+        "label": "Aktualisierungsintervall",
+        "off": "Aus",
+        "seconds": "{{seconds}} s"
+      },
+      "services": {
+        "title": "Dev-Services",
+        "empty": "Kein Dienst lauscht",
+        "open": "localhost:{{port}} öffnen"
+      },
+      "newSpecs": {
+        "one": "{{count}} neue Spec · anzeigen",
+        "other": "{{count}} neue Specs · anzeigen"
+      },
+      "announce": "Dashboard aktualisiert"
+    }
+  },
+  "kpi": {
+    "masterClaims": "Master-Claims",
+    "specClaims": "Spec-Claims",
+    "open": "{{count}} offen",
+    "closedCaption": "{{percent}} % geschlossen · {{open}} offen",
+    "specs": "Specs",
+    "takeable": "Nehmbar",
+    "takeableNow": "Jetzt nehmbar",
+    "attention": "Handlungsbedarf",
+    "attentionDetail": "{{warnings}} Warnungen · {{fog}} offener Fog",
+    "attentionCompact": "{{warnings}} · {{fog}} Fog",
+    "archive": "Archiv"
+  },
+  "brief": {
+    "title": "Kurzfassung",
+    "label": "TL;DR",
+    "asOf": "Stand {{date}}",
+    "stale": "veraltet"
+  },
+  "specs": {
+    "title": "Specs",
+    "eyebrow": "Specs",
+    "count": {
+      "one": "{{count}} Spec",
+      "other": "{{count}} Specs"
+    },
+    "meta": "{{active}} aktiv · {{archived}} archiviert",
+    "metaShort": "{{active}} · {{archived}} archiviert",
+    "typeMeta": "{{count}} {{type}} · {{archived}} archiviert",
+    "filter": {
+      "label": "Nach Phase filtern",
+      "typeLabel": "Nach Typ filtern",
+      "all": "Alle",
+      "fog": "fog"
+    },
+    "sort": {
+      "label": "Sortieren",
+      "stage": "Nach Stufe",
+      "next": "Als Nächstes",
+      "id": "ID",
+      "progress": "Fortschritt"
+    },
+    "columns": {
+      "id": "ID",
+      "title": "Titel",
+      "stage": "Stufe",
+      "phase": "Phase",
+      "claims": "Claims"
+    },
+    "archived": {
+      "one": "{{count}} archivierte Spec",
+      "other": "{{count}} archivierte Specs"
+    },
+    "warningBadge": {
+      "one": "{{count}} Warnung",
+      "other": "{{count}} Warnungen"
+    },
+    "parseError": "Lesefehler",
+    "changed": "Seit der letzten Aktualisierung geändert",
+    "empty": "Noch keine Specs",
+    "noMatch": "Keine Spec in {{phase}}",
+    "clearFilter": "Filter zurücksetzen",
+    "inspector": {
+      "label": "Spec-Details",
+      "claims": "Claims",
+      "percent": "{{percent}} %",
+      "nextCommand": "Nächster Befehl",
+      "takeableClaims": "Nehmbare Claims",
+      "warnings": "Warnungen",
+      "fog": {
+        "one": "{{count}} offener Fog-Eintrag",
+        "other": "{{count}} offene Fog-Einträge"
+      },
+      "previous": "Vorherige Spec",
+      "next": "Nächste Spec"
+    }
+  },
+  "nextUp": {
+    "title": "Als Nächstes",
+    "showAll": "Alle {{count}} anzeigen",
+    "empty": "Nichts bereit zum Bauen",
+    "waitOnFog": {
+      "one": "{{count}} Spec wartet auf Fog",
+      "other": "{{count}} Specs warten auf Fog"
+    }
+  },
+  "warnings": {
+    "title": "Warnungen",
+    "count": {
+      "one": "{{count}} Warnung",
+      "other": "{{count}} Warnungen"
+    },
+    "inSpecs": {
+      "one": "in {{count}} Spec",
+      "other": "in {{count}} Specs"
+    },
+    "openFog": "Offener Fog · {{count}}",
+    "empty": "Keine Warnungen",
+    "icon": "Warnung"
+  },
+  "overview": {
+    "title": "Alle Workspaces",
+    "eyebrow": "Spectant · {{workspaces}} Workspaces · {{specs}} Specs",
+    "showAllIn": "Alle {{count}} in {{workspace}} anzeigen →",
+    "open": "{{workspace}} öffnen →",
+    "empty": {
+      "title": "Fügen Sie Ihren ersten Workspace hinzu",
+      "command": "spectant add <pfad-zum-repo>",
+      "hint": "Er erscheint hier bei der nächsten Aktualisierung"
+    },
+    "unreadable": "Dieser Workspace kann nicht gelesen werden"
+  },
+  "palette": {
+    "label": "Befehlspalette",
+    "placeholder": "Specs, Workspaces und Befehle durchsuchen",
+    "results": "Ergebnisse",
+    "groups": {
+      "recent": "Zuletzt verwendet",
+      "nextUp": "Als Nächstes",
+      "workspaces": "Workspaces",
+      "specs": "Specs",
+      "services": "Dienste",
+      "actions": "Aktionen",
+      "archived": "Archiviert"
+    },
+    "actions": {
+      "allWorkspaces": "Zu allen Workspaces",
+      "goTo": "Zu {{workspace}}",
+      "copyNext": "Nächsten Befehl für {{spec}} kopieren",
+      "refresh": "Jetzt aktualisieren",
+      "theme": "Farbschema",
+      "language": "Sprache",
+      "shortcuts": "Tastenkürzel anzeigen",
+      "openPort": "localhost:{{port}} öffnen"
+    },
+    "noMatch": "Kein Treffer für „{{query}}“ · versuchen Sie eine Spec-ID wie {{example}}"
+  },
+  "shortcuts": {
+    "title": "Tastenkürzel",
+    "columns": {
+      "key": "Taste",
+      "action": "Aktion"
+    },
+    "actions": {
+      "palette": "Befehlspalette öffnen",
+      "sheet": "Diese Übersicht der Tastenkürzel anzeigen",
+      "move": "Auswahl in der fokussierten Liste bewegen",
+      "columns": "Zwischen Workspace-Spalten wechseln",
+      "open": "Ausgewählte Spec öffnen",
+      "close": "Palette, Sheet, Popover oder Inspektor schließen",
+      "copy": "Nächsten Befehl der ausgewählten Spec kopieren",
+      "refresh": "Jetzt aktualisieren",
+      "step": "Vorherige oder nächste Spec, während eine Spec geöffnet ist",
+      "goAll": "Zu allen Workspaces",
+      "goSpecs": "Zu den Specs",
+      "goNextUp": "Zu „Als Nächstes“",
+      "goWarnings": "Zu den Warnungen",
+      "phaseFilter": "Phasenfilter: Alle, building, scoping"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "theme": {
+      "label": "Farbschema",
+      "system": "System",
+      "light": "Hell",
+      "dark": "Dunkel"
+    },
+    "language": {
+      "label": "Sprache",
+      "en": "English",
+      "de": "Deutsch"
+    },
+    "singleKey": "Einzeltasten-Kürzel"
+  },
+  "states": {
+    "unreachable": "Spectant ist auf {{host}} nicht erreichbar",
+    "staleData": "Daten von {{time}}",
+    "retryIn": "Neuer Versuch in {{seconds}} s"
+  },
+  "stages": {
+    "plan": "Plan",
+    "tasks": "Tasks",
+    "review": "Review",
+    "build": "Bauen",
+    "close": "Abschluss",
+    "position": "Stufe {{index}} von {{total}}: {{stage}}"
+  },
+  "phases": {
+    "scoping": "scoping",
+    "building": "building",
+    "climbing": "climbing",
+    "complete": "complete"
+  }
+}

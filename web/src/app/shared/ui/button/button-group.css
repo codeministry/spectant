@@ -1,0 +1,36 @@
+/*
+ * Unencapsulated (button-group.ts): every selector is rooted at `ui-button-group`. The join is written here instead
+ * of daisyUI's `join`, whose corner rules sit in `@scope`, which WebKit only has from 17.4 (floor: WebKit 17).
+ */
+ui-button-group {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+ui-button-group[data-layout="gap"] {
+  gap: 8px;
+}
+
+/* Joined: one shared hairline between segments, only the outer corners round. */
+ui-button-group[data-layout="joined"] > :not(:first-child) {
+  margin-inline-start: calc(var(--border, 1px) * -1);
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+ui-button-group[data-layout="joined"] > :not(:last-child) {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+/* The focused or hovered segment paints its border and focus ring above the overlapping neighbour. */
+ui-button-group[data-layout="joined"] > :is(:hover, :focus-visible) {
+  z-index: 1;
+}
+
+/* WCAG 2.5.8 in a joined group: the hit area grows to 44 px vertically only, never into the next segment. */
+@media (pointer: coarse) {
+  ui-button-group[data-layout="joined"] > :is(.ui-button, .ui-icon-button)::before {
+    inline-size: 100%;
+  }
+}

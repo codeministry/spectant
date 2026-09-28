@@ -99,6 +99,8 @@ export default defineConfig(
       // Bans `*ngIf`, `*ngFor` and `[ngSwitch]`: `@if` / `@for` / `@switch` need no import, type-narrow, and keep
       // one idiom per concern.
       '@angular-eslint/template/prefer-control-flow': 'error',
+      // `<button ui-icon-button label="…">` gets its accessible name from `label` (→ aria-label); the rule cannot know that.
+      '@angular-eslint/template/elements-content': ['error', { allowList: ['label'] }],
       '@angular-eslint/template/prefer-self-closing-tags': 'error',
       'no-restricted-syntax': [
         'error',

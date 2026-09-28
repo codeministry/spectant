@@ -1,0 +1,30 @@
+/*
+ * Global rules the shared primitives rely on (web/src/app/shared/ui/). One owner per file: T25's rules go elsewhere.
+ *
+ * Focus ring (ISC-64; design.md § "Type, colour, focus, motion", Focus): every interactive element shows the same
+ * brand ring under keyboard focus in both themes, a 2 px outline in the primary accent (`--focus-ring`), 2 px
+ * offset, plus a 4 px halo in the page colour (`--focus-halo`) that separates the ring from teal badges and fills.
+ * Both tokens are set per theme in styles/tokens.css. The rule is unlayered and zero-specificity (`:where`), so it
+ * beats daisyUI's layered `btn` outline while any component can still override it deliberately.
+ * Measured on real Chromium and WebKit by the browser spec (T29, `bun run test:browser -- focus`).
+ */
+:where(a, button, [role="button"], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--focus-halo);
+}
+
+/*
+ * Inset variant for rows and anything inside a scroll container, where an outer ring and halo would be clipped:
+ * `data-focus="inset"` draws the same ring inside the box and drops the halo.
+ */
+[data-focus="inset"]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+/* Pointer focus shows no ring; only `:focus-visible` (keyboard, programmatic after a key) does. */
+:focus:not(:focus-visible) {
+  outline: none;
+}

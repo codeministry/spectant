@@ -1,0 +1,258 @@
+{
+  "common": {
+    "appName": "Spectant",
+    "close": "Close",
+    "retry": "Retry",
+    "back": "Back",
+    "loading": "Loading…",
+    "copyCommand": "Copy command",
+    "copied": "Copied {{command}}",
+    "copyFallback": "Press ⌘C to copy",
+    "takeable": "takeable {{claim}}",
+    "claimsClosed": "{{closed}} of {{total}} claims closed",
+    "noValue": "—"
+  },
+  "hello": {
+    "greeting": "hello, spectant"
+  },
+  "header": {
+    "skipToSpecs": "Skip to specs",
+    "titlePrefix": "Specs",
+    "eyebrow": {
+      "dashboard": "Dashboard · {{count}} specs",
+      "workspace": "{{workspace}} · {{count}} specs"
+    },
+    "search": {
+      "short": "Search specs…",
+      "wide": "Jump to spec, workspace, command",
+      "label": "Open the command palette"
+    },
+    "settings": "Settings",
+    "shortcuts": "Keyboard shortcuts",
+    "switcher": {
+      "label": "Switch workspace or spec",
+      "allWorkspaces": "All workspaces · {{count}}",
+      "workspaces": "Workspaces",
+      "specsIn": "Specs in {{workspace}}",
+      "hint": "⌘K searches everything"
+    },
+    "live": {
+      "updated": "Updated {{time}}",
+      "status": {
+        "live": "Live",
+        "refreshing": "Refreshing",
+        "unreachable": "Unreachable"
+      },
+      "refresh": "Refresh now",
+      "interval": {
+        "label": "Refresh interval",
+        "off": "Off",
+        "seconds": "{{seconds}} s"
+      },
+      "services": {
+        "title": "Dev services",
+        "empty": "Nothing listening",
+        "open": "Open localhost:{{port}}"
+      },
+      "newSpecs": {
+        "one": "{{count}} new spec · show",
+        "other": "{{count}} new specs · show"
+      },
+      "announce": "Dashboard updated"
+    }
+  },
+  "kpi": {
+    "masterClaims": "Master claims",
+    "specClaims": "Spec claims",
+    "open": "{{count}} open",
+    "closedCaption": "{{percent}} % closed · {{open}} open",
+    "specs": "Specs",
+    "takeable": "Takeable",
+    "takeableNow": "Takeable now",
+    "attention": "Attention",
+    "attentionDetail": "{{warnings}} warnings · {{fog}} open fog",
+    "attentionCompact": "{{warnings}} · {{fog}} fog",
+    "archive": "Archive"
+  },
+  "brief": {
+    "title": "Brief",
+    "label": "TL;DR",
+    "asOf": "as of {{date}}",
+    "stale": "stale"
+  },
+  "specs": {
+    "title": "Specs",
+    "eyebrow": "Specs",
+    "count": {
+      "one": "{{count}} spec",
+      "other": "{{count}} specs"
+    },
+    "meta": "{{active}} active · {{archived}} archived",
+    "metaShort": "{{active}} · {{archived}} archived",
+    "typeMeta": "{{count}} {{type}} · {{archived}} archived",
+    "filter": {
+      "label": "Filter by phase",
+      "typeLabel": "Filter by type",
+      "all": "All",
+      "fog": "fog"
+    },
+    "sort": {
+      "label": "Sort",
+      "stage": "Stage order",
+      "next": "Next up",
+      "id": "ID",
+      "progress": "Progress"
+    },
+    "columns": {
+      "id": "ID",
+      "title": "Title",
+      "stage": "Stage",
+      "phase": "Phase",
+      "claims": "Claims"
+    },
+    "archived": {
+      "one": "{{count}} archived spec",
+      "other": "{{count}} archived specs"
+    },
+    "warningBadge": {
+      "one": "{{count}} warning",
+      "other": "{{count}} warnings"
+    },
+    "parseError": "parse error",
+    "changed": "Changed since the last refresh",
+    "empty": "No specs yet",
+    "noMatch": "No spec in {{phase}}",
+    "clearFilter": "Clear filter",
+    "inspector": {
+      "label": "Spec details",
+      "claims": "Claims",
+      "percent": "{{percent}} %",
+      "nextCommand": "Next command",
+      "takeableClaims": "Takeable claims",
+      "warnings": "Warnings",
+      "fog": {
+        "one": "{{count}} open fog item",
+        "other": "{{count}} open fog items"
+      },
+      "previous": "Previous spec",
+      "next": "Next spec"
+    }
+  },
+  "nextUp": {
+    "title": "Next up",
+    "showAll": "Show all {{count}}",
+    "empty": "Nothing ready to build",
+    "waitOnFog": {
+      "one": "{{count}} spec waits on fog",
+      "other": "{{count}} specs wait on fog"
+    }
+  },
+  "warnings": {
+    "title": "Warnings",
+    "count": {
+      "one": "{{count}} warning",
+      "other": "{{count}} warnings"
+    },
+    "inSpecs": {
+      "one": "in {{count}} spec",
+      "other": "in {{count}} specs"
+    },
+    "openFog": "Open fog · {{count}}",
+    "empty": "No warnings",
+    "icon": "Warning"
+  },
+  "overview": {
+    "title": "All workspaces",
+    "eyebrow": "Spectant · {{workspaces}} workspaces · {{specs}} specs",
+    "showAllIn": "Show all {{count}} in {{workspace}} →",
+    "open": "Open {{workspace}} →",
+    "empty": {
+      "title": "Add your first workspace",
+      "command": "spectant add <path-to-repo>",
+      "hint": "It appears here on the next refresh"
+    },
+    "unreadable": "This workspace cannot be read"
+  },
+  "palette": {
+    "label": "Command palette",
+    "placeholder": "Search specs, workspaces and commands",
+    "results": "Results",
+    "groups": {
+      "recent": "Recent",
+      "nextUp": "Next up",
+      "workspaces": "Workspaces",
+      "specs": "Specs",
+      "services": "Services",
+      "actions": "Actions",
+      "archived": "Archived"
+    },
+    "actions": {
+      "allWorkspaces": "Go to all workspaces",
+      "goTo": "Go to {{workspace}}",
+      "copyNext": "Copy next command for {{spec}}",
+      "refresh": "Refresh now",
+      "theme": "Theme",
+      "language": "Language",
+      "shortcuts": "Show shortcuts",
+      "openPort": "Open localhost:{{port}}"
+    },
+    "noMatch": "No match for “{{query}}” · try a spec ID like {{example}}"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "columns": {
+      "key": "Key",
+      "action": "Action"
+    },
+    "actions": {
+      "palette": "Open the command palette",
+      "sheet": "Show this shortcut sheet",
+      "move": "Move the selection in the focused list",
+      "columns": "Move between workspace columns",
+      "open": "Open the selected spec",
+      "close": "Close the palette, sheet, popover or inspector",
+      "copy": "Copy the selected spec's next command",
+      "refresh": "Refresh now",
+      "step": "Previous or next spec while a spec is open",
+      "goAll": "Go to all workspaces",
+      "goSpecs": "Go to Specs",
+      "goNextUp": "Go to Next up",
+      "goWarnings": "Go to Warnings",
+      "phaseFilter": "Phase filter: All, building, scoping"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "theme": {
+      "label": "Theme",
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "language": {
+      "label": "Language",
+      "en": "English",
+      "de": "Deutsch"
+    },
+    "singleKey": "Single-key shortcuts"
+  },
+  "states": {
+    "unreachable": "Can't reach spectant on {{host}}",
+    "staleData": "showing data from {{time}}",
+    "retryIn": "Retrying in {{seconds}} s"
+  },
+  "stages": {
+    "plan": "Plan",
+    "tasks": "Tasks",
+    "review": "Review",
+    "build": "Build",
+    "close": "Close",
+    "position": "Stage {{index}} of {{total}}: {{stage}}"
+  },
+  "phases": {
+    "scoping": "scoping",
+    "building": "building",
+    "climbing": "climbing",
+    "complete": "complete"
+  }
+}
