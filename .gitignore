@@ -1,0 +1,19 @@
+# the master holds the German goal verbatim and names private repositories (ISA Decisions 2026-09-28)
+ISA.md
+
+# derived by the old Spec skill; the app replaces them
+specs/**/*.html
+specs/**/*.version.js
+specs/**/.vendor/
+specs/**/.i18n/
+specs/**/.design/
+specs/**/.evidence/
+
+# agent activity, written by the plugin hooks
+.spectant/
+
+node_modules/
+dist/
+
+# Spec: translations, derived pages and gate marks never leave this machine (SpecTranslate.ts)
+specs/*/.gates/

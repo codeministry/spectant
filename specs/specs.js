@@ -1,0 +1,1 @@
+window.__specIndex = [{"no":"001","slug":"001-app-skeleton","title":"Install spectant with one line and see two workspaces on the dashboard","type":"feature","phase":"scoping","closed":0,"total":47,"review":true,"report":true}];
