@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-28T13:20:00Z
+updated: 2026-09-28T10:39:35Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -22,7 +22,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T2 · ISC-5.1 · [P] · repo — root `CLAUDE.md` (only what applies everywhere) and the `README.md` skeleton · `CLAUDE.md`
 - [x] T3 · ISC-5.1 · [P] · core — `core/CLAUDE.md`: lane probe, the one-parser rule, fixture conventions · `core/CLAUDE.md`
 - [x] T4 · ISC-5.1 · [P] · server — `server/CLAUDE.md`: lane probe, loopback rule, no writes into repos · `server/CLAUDE.md`
-- [ ] T5 · ISC-5.1 · [P] · web — `web/CLAUDE.md`: lane probe, house FRONTEND/DESIGN pointers, container tiers, token rules · `web/CLAUDE.md`
+- [x] T5 · ISC-5.1 · [P] · web — `web/CLAUDE.md`: lane probe, house FRONTEND/DESIGN pointers, container tiers, token rules · `web/CLAUDE.md`
 - [ ] T6 · ISC-8 · [seam] · server — build contract: the web output folder, base href, the embed manifest type and content-type map the server reads (after: T1) · `server/src/assets.contract.ts`
 - [ ] T7 · ISC-8 · web — Angular 22 zoneless standalone workspace with one hello route, Vitest builder, output where T6 says (after: T6) · `web/`
 - [ ] T8 · ISC-5.2 · web — ESLint (Angular rules, template a11y), Stylelint (`color-no-hex`, no literal durations outside `motion.css`), `check:static` wired (after: T7) · `eslint.config.js`
@@ -58,7 +58,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 
 ### ③ Core and API
 
-- [ ] T35 · ISC-6 · [P] · core — synthetic fixture spec trees with fixed dates: `.gates/`, `rounds.jsonl`, `tldr.md`, an archive, every warning class, a three-digit/three-digit master fraction; none copied from a real repository · `core/fixtures/`
+- [x] T35 · ISC-6 · [P] · core — synthetic fixture spec trees with fixed dates: `.gates/`, `rounds.jsonl`, `tldr.md`, an archive, every warning class, a three-digit/three-digit master fraction; none copied from a real repository · `core/fixtures/`
 - [ ] T36 · ISC-6 · core — `FORMAT.md`: the file contract as far as the dashboard reads it (after: T35) · `FORMAT.md`
 - [ ] T37 · ISC-6 · core — frontmatter and claim parser (after: T36) · `core/src/frontmatter.ts`
 - [ ] T38 · ISC-6 · core — claim partition and drift classes, ported from the old status tool (after: T37) · `core/src/status.ts`
@@ -68,8 +68,8 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T42 · ISC-6 · core — golden snapshot test over every fixture (after: T40, T41) · `core/tests/fixtures.test.ts`
 - [ ] T43 · ISC-14 · core — parity test over `SPECTANT_PARITY_TREES`, failing on zero comparisons (after: T40) · `core/tests/stage-parity.test.ts`
 - [ ] T44 · ISC-16 · [seam] · core — dashboard model type: the JSON the server returns and the web app renders, assembled from T37–T41 (after: T40, T41) · `core/src/dashboard.ts`
-- [ ] T45 · ISC-5 · [P] · server — `check:single-core`: fails on a frontmatter, claim or stage parser outside `core/` · `scripts/check-single-core.ts`
-- [ ] T46 · ISC-21 · [P] · server — data directory resolution · `server/src/paths.ts`
+- [x] T45 · ISC-5 · [P] · server — `check:single-core`: fails on a frontmatter, claim or stage parser outside `core/` · `scripts/check-single-core.ts`
+- [x] T46 · ISC-21 · [P] · server — data directory resolution · `server/src/paths.ts`
 - [ ] T47 · ISC-13 · server — SQLite workspace registry with slug deduplication (after: T46) · `server/src/registry.ts`
 - [ ] T48 · ISC-18.3 · server — settings table and `/api/settings` GET + PUT (after: T47) · `server/src/settings.ts`
 - [ ] T49 · ISC-13 · server — CLI `add`, `list`, `remove` (after: T13, T47) · `server/src/cli.ts`

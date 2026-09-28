@@ -1,0 +1,6 @@
+# The root .gitignore keeps the repository's own master ISA.md untracked. The fixture masters are synthetic and
+# must be tracked, so they are re-included here.
+!ISA.md
+
+# State files an editor hook may drop beside an ISA.md it takes for a live one; they carry machine paths.
+.checkpoint-state.json

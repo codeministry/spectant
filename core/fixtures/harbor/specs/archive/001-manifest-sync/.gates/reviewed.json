@@ -1,0 +1,9 @@
+{
+  "gate": "reviewed",
+  "at": "2026-03-02T11:00:00Z",
+  "files": {
+    "spec.md": "184f1149bbb27efa4496b6a1b656e1cb79a45b35e2c76505019169380de0bf04",
+    "plan.md": "6ee6693665ffb8c25071c6922086eb4d8a723c7260c1b9b8fb98760c729ce8e1",
+    "tasks.md": "7a60752835af0f0f5b82c493f244040620d807b55eed11ffe3f997acee8ed3c3"
+  }
+}

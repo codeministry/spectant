@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F1
 constitution: ../constitution.md
 phase: scoping
-progress: 0/47
+progress: 3/47
 started: 2026-09-28T09:40:00Z
-updated: 2026-09-28T09:40:00Z
+updated: 2026-09-28T10:39:35Z
 context_sufficient: true
 interview_invoked: true
 context_log: context.md
@@ -147,10 +147,10 @@ Why: what would sink the project whichever slice slipped — data leaving the ma
 - [ ] ISC-2: Anti: with no AI feature switched on, starting the app, adding a workspace, browsing every page and performing every write makes an outbound network request.
 - [ ] ISC-3: Anti: a tracked file contains a customer name, an absolute home path or personal data (generic leak classes plus a private word list kept outside the repo).
 - [ ] ISC-4: The repository root holds the Apache-2.0 `LICENSE` and a `THIRD_PARTY_NOTICES.md` naming the bundled assets and the LifeOS (MIT) origin of the ISA format.
-- [ ] ISC-5: Anti: the repository holds more than one implementation of frontmatter, claim or stage parsing; the app and the plugin both import `core/`.
+- [x] ISC-5: Anti: the repository holds more than one implementation of frontmatter, claim or stage parsing; the app and the plugin both import `core/`.
 - [ ] ISC-6: Every fixture under `core/fixtures/` parses without error to its golden JSON snapshot.
 - [ ] ISC-7: Deleting the data directory loses only the workspace registry, notes and pins; after re-adding a workspace its specs view equals the view before deletion.
-- [ ] ISC-5.1: A `CLAUDE.md` exists at the root plus in `core/`, `server/`, `web/`, each lane file naming its probe (root: only what applies everywhere).
+- [x] ISC-5.1: A `CLAUDE.md` exists at the root plus in `core/`, `server/`, `web/`, each lane file naming its probe (root: only what applies everywhere).
 - [ ] ISC-5.2: `bun run check:static` runs ESLint with the Angular rules, Stylelint with `color-no-hex` and `tsc --noEmit`, all at zero warnings.
 
 ### F1 · App skeleton and dashboard
@@ -177,7 +177,7 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [ ] ISC-19: The dashboard renders and navigates inside the cmux web view.
 - [ ] ISC-19.1: Playwright's WebKit project renders `/` and `/w/:ws` with zero console errors.
 - [ ] ISC-20: `spectant` without arguments listens on 7717 or the next free port, prints the URL, and opens the browser unless `--no-browser` is given.
-- [ ] ISC-21: The data directory is `$XDG_DATA_HOME/spectant` when that variable is set and `~/.spectant/` otherwise.
+- [x] ISC-21: The data directory is `$XDG_DATA_HOME/spectant` when that variable is set and `~/.spectant/` otherwise.
 - [ ] ISC-22: Every UI string key exists in both the English and the German catalogue.
 - [ ] ISC-60: ⌘K / Ctrl+K opens a command palette listing every workspace plus every spec.
 - [ ] ISC-60.1: Typing in the palette narrows the list to matching entries. (after: ISC-60)
@@ -225,3 +225,9 @@ Why: the first time the author types `spectant` and sees two real repositories o
   needs their pages (ISC-2 covers "every write" once spec 002 adds writes).
 
 ## Verification
+
+- ISC-5: bash — bun run check:single-core → exit 0, 0 hits (red on a throwaway split("---") under server/), round 2, T45
+
+- ISC-21: bun-test — bun test tests/cli.test.ts -t "data dir" → 3 pass, 0 fail (round 2, T46)
+
+- ISC-5.1: bash — test -f CLAUDE.md -a -f core/CLAUDE.md -a -f server/CLAUDE.md -a -f web/CLAUDE.md → exit 0 (round 2, T2–T5)

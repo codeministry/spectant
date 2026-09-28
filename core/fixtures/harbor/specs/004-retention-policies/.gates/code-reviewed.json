@@ -1,0 +1,10 @@
+{
+  "gate": "code-reviewed",
+  "at": "2026-03-08T11:00:00Z",
+  "tree": "0f0b75edd68fe6549744de66e4500c4f95b538bf",
+  "head": "da3b7bf10406c1facaabffd3c7acd7853204a65d",
+  "branch": "feature/004-retention-policies",
+  "code": 0,
+  "security": 0,
+  "note": "one finding fixed; tree changed since"
+}

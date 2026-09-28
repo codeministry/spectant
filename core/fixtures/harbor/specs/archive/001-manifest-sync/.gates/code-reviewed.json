@@ -1,0 +1,10 @@
+{
+  "gate": "code-reviewed",
+  "at": "2026-03-05T14:30:00Z",
+  "tree": "d0690c5d5e03cce3cbaca3866817e0f33b8fcb30",
+  "head": "77aec258732bfe1eba92326b66feba9e3572a147",
+  "branch": "feature/001-manifest-sync",
+  "code": 0,
+  "security": 0,
+  "note": "clean"
+}
