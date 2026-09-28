@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-28T12:13:05Z
+updated: 2026-09-28T12:24:27Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -33,7 +33,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T8 · ISC-5.2 · [P] · repo — ESLint (Angular rules, template a11y), Stylelint (`color-no-hex` with the two theme files exempt, no literal durations outside `motion.css`), `tsc --noEmit`; `check:static`, `lint`, `lint:css`, `typecheck` become real · `eslint.config.js`
 - [x] T9 · ISC-8 · [P] · server — embed generator writing `server/embedded.gen.ts` from the web output through `embeddedAssetFor()` of the contract · `scripts/embed.ts`
 - [x] T10 · ISC-8 · [P] · server — loopback server taking the manifest as a parameter: embedded assets, content types, cache headers, SPA fallback, a `serve` entry · `server/src/http.ts`
-- [ ] T11 · ISC-8 · [seam] · server — build script: Angular build (system Node ≥ 22.22.3 for the Angular CLI), embed, `bun build --compile` for the four targets (`-baseline` for linux-x64, `codesign -s -` on macOS), version inlined with `--define` (after: T9, T10) · `scripts/build.ts`
+- [x] T11 · ISC-8 · [seam] · server — build script: Angular build (system Node ≥ 22.22.3 for the Angular CLI), embed, `bun build --compile` for the four targets (`-baseline` for linux-x64, `codesign -s -` on macOS), version inlined with `--define` (after: T9, T10) · `scripts/build.ts`
 - [ ] T12 · ISC-8.1 · [P] · server — binary smoke: copy the host binary to an empty temp dir, `--no-browser --port 0`, three routes; `test:binary` (after: T11) · `tests/binary.test.ts`
 - [ ] T13 · ISC-9 · [P] · server — `--version` from the inlined build version, `check:version` (after: T11) · `server/src/cli.ts`
 - [ ] T14 · ISC-10 · [P] · server — `install.sh` (OS/arch, `SPECTANT_RELEASE_URL`, `/usr/local/bin` when writable else `~/.local/bin`, PATH hint, never edits an rc file) plus the non-root Ubuntu container run against a local release dir that also runs the binary smoke; `test:install:linux` (after: T11) · `install.sh`
