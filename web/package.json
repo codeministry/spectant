@@ -12,9 +12,9 @@
     "start": "ng serve",
     "build": "ng build --configuration production",
     "test": "ng test",
-    "lint": "echo 'lint: ESLint is not configured yet (owed by T8)' >&2; exit 1",
-    "lint:css": "echo 'lint:css: Stylelint is not configured yet (owed by T8)' >&2; exit 1",
-    "typecheck": "echo 'typecheck: tsc --noEmit is not configured yet (owed by T8)' >&2; exit 1",
+    "lint": "eslint src --max-warnings 0",
+    "lint:css": "stylelint \"src/**/*.css\" --max-warnings 0",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.spec.json",
     "test:browser": "echo 'test:browser: the real-Chromium browser tier is not configured yet (owed by T31)' >&2; exit 1",
     "e2e": "echo 'e2e: Playwright is not configured yet (owed by T31)' >&2; exit 1",
     "test:visual": "echo 'test:visual: Playwright visual baselines are not configured yet (owed by T31)' >&2; exit 1"

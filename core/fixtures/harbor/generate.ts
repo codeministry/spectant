@@ -82,6 +82,13 @@ interface Feature { key: string; name: string; why: string; claims: Claim[] }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+/** `xs[i]`, failing loudly instead of yielding `undefined` when `i` is out of range. */
+function nth<T>(xs: readonly T[], i: number): T {
+    const x = xs[i];
+    if (x === undefined) throw new Error(`index ${i} out of range`);
+    return x;
+}
+
 function claimLine(c: Claim): string {
     return `- [${c.closed ? "x" : " "}] ${c.id}: ${c.text}${c.after ? ` (after: ${c.after})` : ""}`;
 }
@@ -97,7 +104,7 @@ const STRATEGY_HEAD = "| isc | type | check | threshold | tool | anchors_to | se
 const F0: Feature = {
     key: "F0", name: "Cross-cutting",
     why: "what would sink Harbor whichever feature slipped — a half-written manifest, a silent failure or a leaked credential.",
-    claims: [
+    claims: ([
         {id: "ISC-1", text: "Anti: a failed push leaves a partial manifest visible in the target registry.",
             probe: {type: "bun-test", check: "target registry after an interrupted push", threshold: "0 partial manifests", tool: "`bun test tests/push.test.ts -t \"interrupted\"`", anchors: "derived: atomic-push", severity: "high"}},
         {id: "ISC-2", text: "Every command exits non-zero when any repository in the run failed.",
@@ -106,7 +113,7 @@ const F0: Feature = {
             probe: {type: "bun-test", check: "credential canaries in every output channel", threshold: "0 hits", tool: "`bun test tests/redaction.test.ts`", anchors: "derived: no-leak", severity: "high"}},
         {id: "ISC-4", text: "The API and the web console bind to loopback unless `--listen` names another address.",
             probe: {type: "bun-test", check: "listen address without and with `--listen`", threshold: "2 cases", tool: "`bun test tests/listen.test.ts`", anchors: "derived: local-first", severity: ""}},
-    ].map((c) => ({...c, feature: "F0", closed: false})),
+    ] satisfies Array<Omit<Claim, "feature" | "closed">>).map((c) => ({...c, feature: "F0", closed: false})),
 };
 
 function buildF1(): Feature {
@@ -122,13 +129,13 @@ function buildF1(): Feature {
     ];
     const claims: Claim[] = [];
     for (let i = 0; i < 46; i++) {
-        const n = 5 + i, s = subjects[i % subjects.length], k = Math.floor(i / subjects.length) % preds.length;
+        const n = 5 + i, s = nth(subjects, i % subjects.length), k = Math.floor(i / subjects.length) % preds.length;
         const types: ProbeType[] = ["bun-test", "bash", "bun-test", "bun-test"];
         claims.push({
-            id: `ISC-${n}`, feature: "F1", text: preds[k](s), closed: true,
+            id: `ISC-${n}`, feature: "F1", text: nth(preds, k)(s), closed: true,
             after: i % 5 === 1 ? `ISC-${n - 1}` : undefined,
-            probe: {type: types[k], check: `${["digest equality", "dry-run writes", "bytes uploaded on re-run", "log line fields"][k]} for case ${i % subjects.length + 1}`,
-                threshold: ["equal", "0 writes", "0 bytes", "source and target named"][k],
+            probe: {type: nth(types, k), check: `${nth(["digest equality", "dry-run writes", "bytes uploaded on re-run", "log line fields"], k)} for case ${i % subjects.length + 1}`,
+                threshold: nth(["equal", "0 writes", "0 bytes", "source and target named"], k),
                 tool: k === 1 ? `\`bun run cli -- sync --dry-run --case ${i % subjects.length + 1} \\| rg -c PUSH\`` : `\`bun test tests/sync.test.ts -t "case ${n}"\``,
                 anchors: k === 2 ? "derived: idempotent-sync" : "literal", severity: i % 9 === 0 ? "high" : ""},
         });
@@ -152,12 +159,12 @@ function buildF2(): Feature {
     const open = new Set(["ISC-74", "ISC-75", "ISC-76", "ISC-77", "ISC-78"]);
     const edges: Record<string, string> = {"ISC-60.1": "ISC-60", "ISC-60.2": "ISC-60", "ISC-66": "ISC-65", "ISC-78": "ISC-77"};
     const claims = ids.map((id, i): Claim => {
-        const s = subjects[i % subjects.length], k = Math.floor(i / subjects.length);
+        const s = nth(subjects, i % subjects.length), k = Math.floor(i / subjects.length);
         const slug = s.replace(/^the /, "").replace(/ /g, "-");
-        let text = preds[k](s);
+        let text = nth(preds, k)(s);
         if (id === "ISC-60.1") text = "The theme switch follows the system colour scheme until a mode is chosen.";
         if (id === "ISC-60.2") text = "A chosen colour mode survives a reload of the console.";
-        const type: ProbeType = id === "ISC-77" ? "manual" : (["e2e", "e2e", "browser"] as ProbeType[])[k];
+        const type: ProbeType = id === "ISC-77" ? "manual" : nth<ProbeType>(["e2e", "e2e", "browser"], k);
         if (id === "ISC-60.1" || id === "ISC-60.2") {
             const sys = id === "ISC-60.1";
             return {id, feature: "F2", text, closed: true, after: edges[id],
@@ -167,9 +174,9 @@ function buildF2(): Feature {
         return {
             id, feature: "F2", text, closed: !open.has(id), after: edges[id],
             probe: {type,
-                check: type === "manual" ? "screen-reader pass over the sync history" : `${slug}: ${["renders", "no overflow at 390 px", "keyboard reach and focus ring"][k]}`,
-                threshold: type === "manual" ? "no blocker" : ["0 console errors", "scrollWidth == clientWidth", "all reachable"][k],
-                tool: type === "manual" ? "transcript in `.evidence/`" : k === 2 ? `\`bun run test:browser -- ${slug}\`` : `\`bun run e2e -- ${slug} -g ${["render", "narrow"][k]}\``,
+                check: type === "manual" ? "screen-reader pass over the sync history" : `${slug}: ${nth(["renders", "no overflow at 390 px", "keyboard reach and focus ring"], k)}`,
+                threshold: type === "manual" ? "no blocker" : nth(["0 console errors", "scrollWidth == clientWidth", "all reachable"], k),
+                tool: type === "manual" ? "transcript in `.evidence/`" : k === 2 ? `\`bun run test:browser -- ${slug}\`` : `\`bun run e2e -- ${slug} -g ${nth(["render", "narrow"], k)}\``,
                 anchors: k === 1 ? "derived: small-screens" : "derived: console-usable", severity: id === "ISC-51" ? "high" : ""},
         };
     });
@@ -183,7 +190,7 @@ function buildF3(): Feature {
         "a missing file", "an unknown key", "a duplicated key"];
     const claims: Claim[] = [];
     for (let i = 0; i < 14; i++) {
-        const n = 81 + i, s = subjects[Math.floor(i / 2)], anti = i % 2 === 1;
+        const n = 81 + i, s = nth(subjects, Math.floor(i / 2)), anti = i % 2 === 1;
         let text = anti ? `Anti: ${s} produces a different effective config than before the rewrite.` : `The loader reads ${s} through one code path.`;
         let after = anti ? `ISC-${n - 1}` : undefined;
         if (n === 94) { text = "Antecedent: the config format for version 2 is chosen and recorded as a decision."; after = undefined; }
@@ -210,11 +217,11 @@ function buildF4(): Feature {
     ];
     const claims: Claim[] = [];
     for (let i = 0; i < 30; i++) {
-        const n = 95 + i, s = subjects[i % subjects.length], k = Math.floor(i / subjects.length);
-        claims.push({id: `ISC-${n}`, feature: "F4", text: preds[k](s), closed: true,
+        const n = 95 + i, s = nth(subjects, i % subjects.length), k = Math.floor(i / subjects.length);
+        claims.push({id: `ISC-${n}`, feature: "F4", text: nth(preds, k)(s), closed: true,
             after: k === 2 ? `ISC-${n - 20}` : undefined,
-            probe: {type: k === 2 ? "e2e" : "bun-test", check: `${["verdict log", "referenced manifests deleted", "preview shown"][k]} for ${s}`,
-                threshold: ["one line per manifest", "0", "before delete"][k],
+            probe: {type: k === 2 ? "e2e" : "bun-test", check: `${nth(["verdict log", "referenced manifests deleted", "preview shown"], k)} for ${s}`,
+                threshold: nth(["one line per manifest", "0", "before delete"], k),
                 tool: k === 2 ? `\`bun run e2e -- retention -g "preview ${i % subjects.length + 1}"\`` : `\`bun test tests/retention.test.ts -t "${s}"\``,
                 anchors: k === 1 ? "derived: never-lose-a-referenced-manifest" : "literal", severity: k === 1 ? "high" : ""}});
     }
@@ -227,6 +234,7 @@ const FEATURES: Feature[] = [F0, buildF1(), buildF2(), buildF3(), buildF4()];
 const ALL: Claim[] = FEATURES.flatMap((f) => f.claims);
 const byId = new Map(ALL.map((c) => [c.id, c]));
 const claim = (id: string) => { const c = byId.get(id); if (!c) throw new Error(`no claim ${id}`); return c; };
+const feature = (key: string) => { const f = FEATURES.find((x) => x.key === key); if (!f) throw new Error(`no feature ${key}`); return f; };
 const range = (from: number, to: number) => Array.from({length: to - from + 1}, (_, i) => claim(`ISC-${from + i}`));
 const progress = (cs: Claim[]) => `${cs.filter((c) => c.closed).length}/${cs.length}`;
 
@@ -322,7 +330,7 @@ ${f.claims.map(claimLine).join("\n")}`).join("\n\n")}
 
 ## Verification
 
-${ALL.filter((c) => c.closed).map((c) => verificationStub(c, closedDates[c.feature])).join("\n")}
+${ALL.filter((c) => c.closed).map((c) => verificationStub(c, closedDates[c.feature] ?? "")).join("\n")}
 
 ## Remaining Work
 
@@ -352,7 +360,7 @@ interface SpecDef {
 }
 
 function specMd(d: SpecDef): string {
-    const f = FEATURES.find((x) => x.key === d.feature)!;
+    const f = feature(d.feature);
     const claimBlock = d.grouped
         ? `## Features\n\n### ${f.key} · ${f.name}\nWhy: ${f.why}\n\n${d.claims.map(claimLine).join("\n")}`
         : `## Claims\n\n${d.claims.map(claimLine).join("\n")}`;
@@ -488,12 +496,13 @@ ${[...byClaim].map(([id, ts]) => `| ${ts.map((t) => t.id).join(", ")} | ${id} | 
 function tasksFor(claims: Claim[], lane: (c: Claim, i: number) => string, path: (c: Claim, i: number) => string,
     verb: (c: Claim) => string, seam?: {lane: string; path: string; text: string}): Task[] {
     const out: Task[] = [];
-    if (seam) out.push({id: "T1", claim: claims[0], lane: seam.lane, text: seam.text, path: seam.path, seam: true, done: claims[0].closed});
+    if (seam) out.push({id: "T1", claim: nth(claims, 0), lane: seam.lane, text: seam.text, path: seam.path, seam: true, done: nth(claims, 0).closed});
     const idOf = new Map<string, string>();
     claims.forEach((c, i) => {
         const id = `T${out.length + 1}`;
         idOf.set(c.id, id);
-        const after = [...(seam ? ["T1"] : []), ...(c.after && idOf.has(c.after) ? [idOf.get(c.after)!] : [])];
+        const prev = c.after ? idOf.get(c.after) : undefined;
+        const after = [...(seam ? ["T1"] : []), ...(prev ? [prev] : [])];
         out.push({id, claim: c, lane: lane(c, i), text: verb(c), path: path(c, i), after, parallel: !c.after, done: c.closed});
     });
     // [P] only when no claim edge holds the task and no other task names the same file (SpecFormat § tasks.md, rule 4)
@@ -505,13 +514,11 @@ function tasksFor(claims: Claim[], lane: (c: Claim, i: number) => string, path: 
 
 // ── the six specs ──────────────────────────────────────────────────────────────────────────────────────
 
-const F = Object.fromEntries(FEATURES.map((f) => [f.key, f]));
-
 const S001: SpecDef = {
     dir: "archive/001-manifest-sync", slug: "001-manifest-sync", title: "Manifest sync",
     task: "Mirror every listed manifest into the team registry with one command", type: "feature", feature: "F1",
     phase: "complete", started: "2026-03-02T09:00:00Z", updated: "2026-03-05T15:00:00Z", archived: "2026-03-05",
-    claims: F.F1.claims, grouped: true, verifiedOn: "2026-03-05",
+    claims: feature("F1").claims, grouped: true, verifiedOn: "2026-03-05",
     decisions: ["2026-03-02: sync compares digests, never tags, so a moved upstream tag is copied again.",
         "2026-03-05: closed; every claim green on its probe."],
     body: () => `## Problem
@@ -546,7 +553,7 @@ const S002: SpecDef = {
     dir: "002-web-console", slug: "002-web-console", title: "Web console",
     task: "Show every sync run and its failures in a small web console", type: "feature", feature: "F2",
     phase: "building", started: "2026-03-03T10:00:00Z", updated: "2026-03-08T16:45:00Z",
-    claims: F.F2.claims, grouped: true, verifiedOn: "2026-03-08",
+    claims: feature("F2").claims, grouped: true, verifiedOn: "2026-03-08",
     decisions: ["2026-03-03: the console reads the API only; it never opens the history file itself.",
         "2026-03-07: refined: the colour mode is a stored setting (ISC-60.1, ISC-60.2)."],
     body: () => `## Problem
@@ -605,7 +612,7 @@ const S004: SpecDef = {
     dir: "004-retention-policies", slug: "004-retention-policies", title: "Retention policies",
     task: "Delete old manifests on a written schedule without touching referenced ones", type: "feature", feature: "F4",
     phase: "building", started: "2026-03-04T08:30:00Z", updated: "2026-03-08T12:00:00Z",
-    claims: F.F4.claims, grouped: true, verifiedOn: "2026-03-08",
+    claims: feature("F4").claims, grouped: true, verifiedOn: "2026-03-08",
     decisions: ["2026-03-04: a manifest referenced by any tag is never a deletion candidate, whatever the policy says."],
     body: () => `## Problem
 
@@ -689,7 +696,9 @@ function roundsFor(tasks: Task[], claims: Claim[]): string {
         const lastRound = r === cuts.length - 1;
         const dispatched = tasks.filter((t) => thisRound.includes(t.claim.id) && !before.has(t.claim.id) && (t.id !== "T1" || r === 0))
             .map((t) => t.id);
-        if (lastRound) dispatched.push(tasks.find((t) => t.claim.id === "ISC-74")!.id);
+        const t74 = tasks.find((t) => t.claim.id === "ISC-74");
+        if (!t74) throw new Error("no task for ISC-74");
+        if (lastRound) dispatched.push(t74.id);
         const line = {
             v: 1, round: r + 1, ts: times[r], mode: "agent", width: 10, dispatched,
             tasks: tasks.map((t) => {
@@ -802,8 +811,9 @@ function generate() {
     for (const d of SPECS) {
         const md = specMd(d);
         write(`specs/${d.dir}/spec.md`, md);
-        goals[d.slug] = /^## Goal\n\n([^\n]+(?:\n[^\n#][^\n]*)*)/m.exec(md)?.[1] ?? d.task;
-        write(`specs/${d.dir}/context.md`, contextMd(d, goals[d.slug]));
+        const goal = /^## Goal\n\n([^\n]+(?:\n[^\n#][^\n]*)*)/m.exec(md)?.[1] ?? d.task;
+        goals[d.slug] = goal;
+        write(`specs/${d.dir}/context.md`, contextMd(d, goal));
     }
 
     // plans
@@ -834,7 +844,7 @@ function generate() {
         (c) => `make ${c.id} pass: ${c.probe.check}`);
     write(`specs/${S001.dir}/tasks.md`, tasksMd(S001.slug, S001.title, "2026-03-05T15:00:00Z", t001));
     const t002 = tasksFor(S002.claims, (c) => (c.probe.type === "manual" ? "operator" : "web"),
-        (c) => c.probe.type === "manual" ? "tests/manual/screen-reader.md" : `web/src/app/${c.probe.check.split(":")[0]}/`,
+        (c) => c.probe.type === "manual" ? "tests/manual/screen-reader.md" : `web/src/app/${nth(c.probe.check.split(":"), 0)}/`,
         (c) => `${c.probe.check} (${c.id})`,
         {lane: "api", path: "api/src/history.contract.ts", text: "history endpoint contract: run, repository, digest, failure"});
     write(`specs/${S002.dir}/tasks.md`, tasksMd(S002.slug, S002.title, "2026-03-08T16:45:00Z", t002));

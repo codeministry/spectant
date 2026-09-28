@@ -1,0 +1,61 @@
+{
+  "extends": [
+    "stylelint-config-standard"
+  ],
+  "rules": {
+    "at-rule-no-unknown": [
+      true,
+      {
+        "ignoreAtRules": [
+          "plugin",
+          "theme",
+          "utility",
+          "variant",
+          "custom-variant",
+          "source",
+          "apply",
+          "reference"
+        ]
+      }
+    ],
+    "import-notation": "string",
+    "custom-property-pattern": [
+      "^([a-z][a-z0-9]*)(-[a-z0-9]+)*(-\\*)?$",
+      {
+        "message": "Expected custom property name \"%s\" to be kebab-case (a trailing -* resets a Tailwind namespace)"
+      }
+    ],
+    "color-no-hex": true,
+    "declaration-property-value-disallowed-list": [
+      {
+        "/^(-[a-z]+-)?(transition|animation)/": [
+          "/(?<![\\w-])\\d*\\.?\\d+m?s\\b/"
+        ]
+      },
+      {
+        "message": "Literal durations live in web/src/styles/motion.css only; use a motion token (ISC-66, reduced motion)."
+      }
+    ],
+    "hue-degree-notation": "number",
+    "alpha-value-notation": "number"
+  },
+  "overrides": [
+    {
+      "files": [
+        "web/src/styles.css",
+        "web/src/styles/tokens.css"
+      ],
+      "rules": {
+        "color-no-hex": null
+      }
+    },
+    {
+      "files": [
+        "web/src/styles/motion.css"
+      ],
+      "rules": {
+        "declaration-property-value-disallowed-list": null
+      }
+    }
+  ]
+}

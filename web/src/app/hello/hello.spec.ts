@@ -7,7 +7,7 @@ describe('HelloComponent', () => {
     await fixture.whenStable();
     const host = fixture.nativeElement as HTMLElement;
 
-    expect(host.querySelector('h1')?.textContent?.trim()).toBe('Spectant');
+    expect(host.querySelector('h1')?.textContent.trim()).toBe('Spectant');
     expect(host.textContent).toContain('hello, spectant');
   });
 });

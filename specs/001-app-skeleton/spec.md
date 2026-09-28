@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F1
 constitution: ../constitution.md
 phase: scoping
-progress: 3/47
+progress: 5/47
 started: 2026-09-28T09:40:00Z
-updated: 2026-09-28T10:39:35Z
+updated: 2026-09-28T12:13:05Z
 context_sufficient: true
 interview_invoked: true
 context_log: context.md
@@ -151,7 +151,7 @@ Why: what would sink the project whichever slice slipped — data leaving the ma
 - [ ] ISC-6: Every fixture under `core/fixtures/` parses without error to its golden JSON snapshot.
 - [ ] ISC-7: Deleting the data directory loses only the workspace registry, notes and pins; after re-adding a workspace its specs view equals the view before deletion.
 - [x] ISC-5.1: A `CLAUDE.md` exists at the root plus in `core/`, `server/`, `web/`, each lane file naming its probe (root: only what applies everywhere).
-- [ ] ISC-5.2: `bun run check:static` runs ESLint with the Angular rules, Stylelint with `color-no-hex` and `tsc --noEmit`, all at zero warnings.
+- [x] ISC-5.2: `bun run check:static` runs ESLint with the Angular rules, Stylelint with `color-no-hex` and `tsc --noEmit`, all at zero warnings.
 
 ### F1 · App skeleton and dashboard
 Why: the first time the author types `spectant` and sees two real repositories on one page in the look they know — the smallest thing that already replaces a per-repo HTML file.
@@ -170,7 +170,7 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [ ] ISC-16.2: The same baseline passes in the dark theme.
 - [ ] ISC-17: The dashboard's committed visual baseline (Playwright `toHaveScreenshot`, light theme, 390/820/1440) passes on Linux CI with pinned Chromium.
 - [ ] ISC-17.1: The same baseline passes in the dark theme.
-- [ ] ISC-18: Antecedent: the daisyUI themes `spec-light` and `spec-dark` carry the old pages' light and dark colour values as their tokens, so the look is inherited rather than re-invented.
+- [x] ISC-18: Antecedent: the daisyUI themes `spec-light` and `spec-dark` carry the old pages' light and dark colour values as their tokens, so the look is inherited rather than re-invented.
 - [ ] ISC-18.1: In the default system mode the theme follows `prefers-color-scheme`, also when it changes while the page is open.
 - [ ] ISC-18.3: A chosen light or dark mode, stored server-side, is still applied after a reload on a different port.
 - [ ] ISC-18.2: Antecedent: every icon the app renders comes from the old pages' pinned Lucide set.
@@ -225,6 +225,10 @@ Why: the first time the author types `spectant` and sees two real repositories o
   needs their pages (ISC-2 covers "every write" once spec 002 adds writes).
 
 ## Verification
+
+- ISC-5.2: bash — bun run check:static → exit 0 (eslint 9.39.5 + angular-eslint 22.5.0 + typescript-eslint 8.70.1, stylelint 17.15.0, tsc 6.0.3; red on a throwaway @Input/*ngIf/| async/hex/literal-duration proof), round 5, T8
+
+- ISC-18: bun-test — bun test web/tests/theme-colors.test.ts → 12 pass, 0 fail (ΔE_OK×100 ≤ 0.5 for 23 tokens per theme; red on the placeholder, red on a 0.01 chroma nudge), round 5, T17
 
 - ISC-5: bash — bun run check:single-core → exit 0, 0 hits (red on a throwaway split("---") under server/), round 2, T45
 

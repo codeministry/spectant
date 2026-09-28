@@ -56,7 +56,7 @@ describe("contentTypeFor", () => {
   });
 
   test("the extension match ignores case", () => {
-    expect(contentTypeFor("/LOGO.SVG")).toBe(CONTENT_TYPES[".svg"]);
+    expect(contentTypeFor("/LOGO.SVG")).toBe(CONTENT_TYPES[".svg"] ?? "");
   });
 
   test("an unknown or missing extension falls back to application/octet-stream", () => {

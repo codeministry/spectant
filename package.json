@@ -15,9 +15,9 @@
   ],
   "scripts": {
     "build": "bun scripts/build.ts",
-    "lint": "echo 'lint: ESLint is not configured yet (owed by T8)' >&2; exit 1",
-    "lint:css": "echo 'lint:css: Stylelint is not configured yet (owed by T8)' >&2; exit 1",
-    "typecheck": "echo 'typecheck: tsc --noEmit is not configured yet (owed by T8)' >&2; exit 1",
+    "lint": "eslint . --max-warnings 0",
+    "lint:css": "stylelint \"web/src/**/*.css\" --max-warnings 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json && bun run --cwd web typecheck",
     "check:static": "bun run lint && bun run lint:css && bun run typecheck",
     "verify:quick": "bun run check:static && bun test",
     "verify": "bun run verify:quick && bun run test:browser && bun run e2e && bun run test:visual && bun run build",
@@ -31,5 +31,15 @@
     "test:visual": "bun run --cwd web test:visual",
     "test:browser": "bun run --cwd web test:browser",
     "e2e": "bun run --cwd web e2e"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "angular-eslint": "22.5.0",
+    "bun-types": "1.3.12",
+    "eslint": "9.39.5",
+    "stylelint": "17.15.0",
+    "stylelint-config-standard": "40.0.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.1"
   }
 }

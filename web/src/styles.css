@@ -5,4 +5,128 @@
   themes: false;
 }
 
-/* T18 adds the `@plugin "daisyui/theme"` blocks `spec-light` and `spec-dark` here. */
+/*
+ * The two themes carry the old Spec pages' light and dark token blocks (ISC-18). Every colour is OKLCH, converted
+ * from the inherited value in the trailing comment; `web/tests/theme-colors.test.ts` round-trips each one back
+ * within ΔE_OK×100 0.5. Inherited tokens without a daisyUI slot stay custom properties under their old names.
+ * Derived contrast tokens (`--track`, `--*-ink`, the corrected `--muted`) live in `styles/tokens.css`, not here.
+ * No `prefers-color-scheme` block: the pre-paint script sets `data-theme`; `prefersdark` is only the CSS default.
+ */
+
+@plugin "daisyui/theme" {
+  name: "spec-light";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+  /* Surfaces and text */
+  --color-base-100: oklch(98.7% 0.003 39.5); /* #fdfaf9 surface: cards */
+  --color-base-200: oklch(96.1% 0.006 43.3); /* #f6f1ef bg: page */
+  --color-base-300: oklch(93.2% 0.007 39.5); /* #ede7e5 surface-2: raised, hover */
+  --color-base-content: oklch(26.8% 0.013 320.6); /* #29242a ink */
+
+  /* Accents; light-theme content is the card surface, which reads on every saturated accent */
+  --color-primary: oklch(59.4% 0.102 219.9); /* #1c8ca8 disp: cyan accent, links, IDs */
+  --color-primary-content: oklch(98.7% 0.003 39.5); /* #fdfaf9 surface on disp */
+  --color-secondary: oklch(53.5% 0.154 291.1); /* #7058be ques: violet, scoping, fog */
+  --color-secondary-content: oklch(98.7% 0.003 39.5); /* #fdfaf9 surface on ques */
+  --color-accent: oklch(56.9% 0.157 134.4); /* #4c8a13 clos: lime, closed */
+  --color-accent-content: oklch(98.7% 0.003 39.5); /* #fdfaf9 surface on clos */
+  --color-neutral: oklch(59.4% 0.102 219.9); /* #1c8ca8 badge: teal badge fill */
+  --color-neutral-content: oklch(99.1% 0.003 106.4); /* #fcfcfa badge text (design.md), as in dark */
+
+  /* States */
+  --color-info: oklch(59.4% 0.102 219.9); /* #1c8ca8 disp */
+  --color-info-content: oklch(98.7% 0.003 39.5); /* #fdfaf9 surface on disp */
+  --color-success: oklch(61.9% 0.13 159.2); /* #269d69 done: green */
+  --color-success-content: oklch(98.7% 0.003 39.5); /* #fdfaf9 surface on done */
+  --color-warning: oklch(55% 0.136 52.4); /* #ad560c hover: orange, warnings */
+  --color-warning-content: oklch(98.7% 0.003 39.5); /* #fdfaf9 surface on hover */
+  --color-error: oklch(62.7% 0.192 6.6); /* #e14775 fail: red-pink */
+  --color-error-content: oklch(98.7% 0.003 39.5); /* #fdfaf9 surface on fail */
+
+  /* Shape: 12 px cards, flat (no bevel, no grain) */
+  --radius-selector: 999px;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+
+  /* Inherited tokens without a daisyUI slot */
+  --lane: oklch(97.3% 0.005 34.3); /* #f9f5f4 list lane */
+  --line: oklch(87.8% 0.008 36.6); /* #dcd5d3 borders */
+  --muted: oklch(53.3% 0.008 340.6); /* #706b6e secondary text */
+  --held: oklch(62% 0.01 331); /* #8a8489 grey held state */
+  --held-t: oklch(93.7% 0.005 34.3); /* #ede9e8 */
+  --disp-t: oklch(94.2% 0.021 211.8); /* #ddf0f4 */
+  --ques-t: oklch(93.2% 0.026 300.3); /* #ebe5f8 */
+  --conc: oklch(65.4% 0.145 64.3); /* #cc7a0a yellow, building */
+  --conc-t: oklch(95.1% 0.036 82.2); /* #fbedd4 */
+  --fail-t: oklch(93.7% 0.028 358); /* #fbe3ea */
+  --done-t: oklch(94.5% 0.027 164.4); /* #ddf3e8 */
+  --clos-t: oklch(93.8% 0.037 128.9); /* #e3f0d6 */
+  --badge: oklch(59.4% 0.102 219.9); /* #1c8ca8 teal badge fill */
+  --shadow: 0 1px 2px oklch(26.8% 0.013 320.6 / 0.06), 0 1px 3px oklch(26.8% 0.013 320.6 / 0.08); /* rgba(41,36,42,.06), rgba(41,36,42,.08) */
+}
+
+@plugin "daisyui/theme" {
+  name: "spec-dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+
+  /* Surfaces and text */
+  --color-base-100: oklch(29% 0.008 317.7); /* #2d2a2e surface: cards */
+  --color-base-200: oklch(24.4% 0.007 325.8); /* #221f22 bg: page */
+  --color-base-300: oklch(36.7% 0.006 314.8); /* #403e41 surface-2: raised, hover */
+  --color-base-content: oklch(99.1% 0.003 106.4); /* #fcfcfa ink */
+
+  /* Accents; dark-theme content is the page bg, since every accent here is a light pastel */
+  --color-primary: oklch(83.8% 0.095 205.7); /* #78dce8 disp: cyan accent, links, IDs */
+  --color-primary-content: oklch(24.4% 0.007 325.8); /* #221f22 bg on disp */
+  --color-secondary: oklch(74.1% 0.121 290.7); /* #ab9df2 ques: violet, scoping, fog */
+  --color-secondary-content: oklch(24.4% 0.007 325.8); /* #221f22 bg on ques */
+  --color-accent: oklch(84.1% 0.204 127.3); /* #a6e22e clos: lime, closed */
+  --color-accent-content: oklch(24.4% 0.007 325.8); /* #221f22 bg on clos */
+  --color-neutral: oklch(48% 0.075 215.3); /* #1d6878 badge: teal badge fill */
+  --color-neutral-content: oklch(99.1% 0.003 106.4); /* #fcfcfa badge text, 6.19:1 on teal (design.md) */
+
+  /* States */
+  --color-info: oklch(83.8% 0.095 205.7); /* #78dce8 disp */
+  --color-info-content: oklch(24.4% 0.007 325.8); /* #221f22 bg on disp */
+  --color-success: oklch(84.3% 0.102 139.4); /* #a9dc9c done: green */
+  --color-success-content: oklch(24.4% 0.007 325.8); /* #221f22 bg on done */
+  --color-warning: oklch(77.4% 0.136 46.2); /* #fc9867 hover: orange, warnings */
+  --color-warning-content: oklch(24.4% 0.007 325.8); /* #221f22 bg on hover */
+  --color-error: oklch(70.6% 0.194 8.5); /* #ff6188 fail: red-pink */
+  --color-error-content: oklch(24.4% 0.007 325.8); /* #221f22 bg on fail */
+
+  /* Shape: 12 px cards, flat (no bevel, no grain) */
+  --radius-selector: 999px;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+
+  /* Inherited tokens without a daisyUI slot */
+  --lane: oklch(27.2% 0.006 314.7); /* #282629 list lane */
+  --line: oklch(40.3% 0.009 312.2); /* #4a474c borders */
+  --muted: oklch(66.1% 0.002 325.6); /* #939293 secondary text */
+  --held: oklch(66.1% 0.002 325.6); /* #939293 grey held state */
+  --held-t: oklch(34.1% 0.008 317.7); /* #3a373b */
+  --disp-t: oklch(31.9% 0.024 213); /* #24363a */
+  --ques-t: oklch(31.9% 0.027 294); /* #33303f */
+  --conc: oklch(89.4% 0.139 90.5); /* #ffd866 yellow, building */
+  --conc-t: oklch(34.2% 0.031 91.8); /* #3e3826 */
+  --fail-t: oklch(31.7% 0.038 355.3); /* #422a33 */
+  --done-t: oklch(33% 0.031 150.1); /* #2a3a2d */
+  --clos-t: oklch(33.2% 0.04 129.9); /* #2f3a24 */
+  --badge: oklch(48% 0.075 215.3); /* #1d6878 teal badge fill */
+  --shadow: 0 1px 2px oklch(0% 0 0 / 0.4); /* rgba(0,0,0,.4) */
+}

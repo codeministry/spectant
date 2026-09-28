@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-28T14:10:00Z
+updated: 2026-09-28T12:13:05Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -30,9 +30,9 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T5 · ISC-5.1 · [P] · web — `web/CLAUDE.md`: lane probe, framework and design rules written out, container tiers, token rules · `web/CLAUDE.md`
 - [x] T6 · ISC-8 · [seam] · server — build contract: the web output folder, base href, the embed manifest type and content-type map the server reads · `server/src/assets.contract.ts`
 - [x] T7 · ISC-8 · [P] · web — Angular 22 zoneless standalone workspace with one hello route, Vitest builder, Tailwind 4 + daisyUI 5 wired, output where T6 says · `web/`
-- [ ] T8 · ISC-5.2 · [P] · repo — ESLint (Angular rules, template a11y), Stylelint (`color-no-hex` with the two theme files exempt, no literal durations outside `motion.css`), `tsc --noEmit`; `check:static`, `lint`, `lint:css`, `typecheck` become real · `eslint.config.js`
-- [ ] T9 · ISC-8 · [P] · server — embed generator writing `server/embedded.gen.ts` from the web output through `embeddedAssetFor()` of the contract · `scripts/embed.ts`
-- [ ] T10 · ISC-8 · [P] · server — loopback server taking the manifest as a parameter: embedded assets, content types, cache headers, SPA fallback, a `serve` entry · `server/src/http.ts`
+- [x] T8 · ISC-5.2 · [P] · repo — ESLint (Angular rules, template a11y), Stylelint (`color-no-hex` with the two theme files exempt, no literal durations outside `motion.css`), `tsc --noEmit`; `check:static`, `lint`, `lint:css`, `typecheck` become real · `eslint.config.js`
+- [x] T9 · ISC-8 · [P] · server — embed generator writing `server/embedded.gen.ts` from the web output through `embeddedAssetFor()` of the contract · `scripts/embed.ts`
+- [x] T10 · ISC-8 · [P] · server — loopback server taking the manifest as a parameter: embedded assets, content types, cache headers, SPA fallback, a `serve` entry · `server/src/http.ts`
 - [ ] T11 · ISC-8 · [seam] · server — build script: Angular build (system Node ≥ 22.22.3 for the Angular CLI), embed, `bun build --compile` for the four targets (`-baseline` for linux-x64, `codesign -s -` on macOS), version inlined with `--define` (after: T9, T10) · `scripts/build.ts`
 - [ ] T12 · ISC-8.1 · [P] · server — binary smoke: copy the host binary to an empty temp dir, `--no-browser --port 0`, three routes; `test:binary` (after: T11) · `tests/binary.test.ts`
 - [ ] T13 · ISC-9 · [P] · server — `--version` from the inlined build version, `check:version` (after: T11) · `server/src/cli.ts`
@@ -42,7 +42,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 
 ### ② Design system and baseline
 
-- [ ] T17 · ISC-18 · [P] · web — themes `spec-light` / `spec-dark` from the old token blocks (OKLCH, hex in comments), daisyUI `themes: false`, `--depth: 0`, `--noise: 0`, plus the colour guard `web/tests/theme-colors.test.ts` (ΔE ≤ 0.5 round-trip, both themes) · `web/src/styles.css`
+- [x] T17 · ISC-18 · [P] · web — themes `spec-light` / `spec-dark` from the old token blocks (OKLCH, hex in comments), daisyUI `themes: false`, `--depth: 0`, `--noise: 0`, plus the colour guard `web/tests/theme-colors.test.ts` (ΔE ≤ 0.5 round-trip, both themes) · `web/src/styles.css`
 - [ ] T18 · ISC-65 · [P] · web — derived tokens `--muted`, `--track`, `--*-ink` and the container tier names, values from design.md · `web/src/styles/tokens.css`
 - [ ] T19 · ISC-67 · [P] · web — Inter Variable and JetBrains Mono as local woff2 with `@font-face`, plus the "local" guard · `web/tests/fonts.test.ts`
 - [ ] T20 · ISC-67.1 · [P] · web — the "external font URL" guard · `web/tests/fonts.test.ts`

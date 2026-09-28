@@ -97,8 +97,8 @@ function* walk(dir: string): Generator<string> {
 /** Pattern sources on a line: regex literal bodies and RegExp constructor strings (unescaped once). */
 function patternsOf(line: string): string[] {
   const found: string[] = [];
-  for (const m of line.matchAll(REGEX_LITERAL)) found.push(m[1]);
-  for (const m of line.matchAll(REGEXP_CTOR)) found.push(m[2].replace(/\\\\/g, "\\"));
+  for (const m of line.matchAll(REGEX_LITERAL)) found.push(m[1] ?? "");
+  for (const m of line.matchAll(REGEXP_CTOR)) found.push((m[2] ?? "").replace(/\\\\/g, "\\"));
   return found;
 }
 
@@ -114,15 +114,15 @@ function reasonsFor(line: string, mdContext: boolean): string[] {
   }
 
   for (const m of line.matchAll(STRING_CALL)) {
-    const [, method, , arg] = m;
+    const [, method = "", , arg = ""] = m;
     if (arg.includes("---")) reasons.add(`frontmatter: .${method}() on the \`---\` delimiter`); // single-core: allow — detector pattern
     if (CHECKBOX_STRING.test(arg)) reasons.add(`claim-line: .${method}() on a checkbox string`);
     if (TEST_STRATEGY.test(arg)) reasons.add(`test-strategy: .${method}() locates the Test Strategy table`);
     if (method === "split" && arg === "|" && mdContext) reasons.add("test-strategy: .split() on `|` in a markdown context");
   }
-  if (mdContext && /\.split\(/.test(line)) {
+  if (mdContext && line.includes(".split(")) {
     for (const m of line.matchAll(/\.split\(\s*\/((?:\\.|[^/\\\n])+)\//g)) {
-      if (PIPE_PATTERN.test(m[1])) reasons.add("test-strategy: .split() on `|` in a markdown context");
+      if (PIPE_PATTERN.test(m[1] ?? "")) reasons.add("test-strategy: .split() on `|` in a markdown context");
     }
   }
 
@@ -160,12 +160,12 @@ function scanFile(file: string, root: string, hits: Hit[]): number {
       return;
     }
 
-    const allow = raw.match(ALLOW_MARK);
+    const allow = ALLOW_MARK.exec(raw);
     const code = allow ? raw.slice(0, allow.index) : raw;
     const reasons = reasonsFor(code, mdContext);
     if (reasons.length === 0) return;
 
-    if (allow && ALLOW_REASON.test(allow[1])) {
+    if (allow && ALLOW_REASON.test(allow[1] ?? "")) {
       allowed += reasons.length;
       return;
     }
