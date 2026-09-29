@@ -241,48 +241,6 @@
   line-height: 20px;
 }
 
-.card-list {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.frame-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  inline-size: 100%;
-  min-block-size: 44px;
-  padding: 4px 8px;
-  border: 0;
-  border-radius: var(--radius-field);
-  background: none;
-  color: var(--color-base-content);
-  text-align: start;
-  cursor: pointer;
-}
-
-.frame-row:hover {
-  background: var(--color-base-200);
-}
-
-.mono {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.list-text {
-  flex: 1;
-  min-inline-size: 0;
-  overflow: hidden;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .lane-filter {
   display: grid;
   gap: 4px;
@@ -306,37 +264,6 @@
 .legend-sheet {
   flex-wrap: wrap;
   overflow: visible;
-}
-
-.detail {
-  --ui-dialog-size: 640px;
-}
-
-.detail-body {
-  display: grid;
-  gap: 16px;
-  justify-items: start;
-}
-
-.detail-text {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.detail-body dl {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: 8px 16px;
-  margin: 0;
-}
-
-.detail-body dt {
-  color: var(--muted-ink);
-}
-
-.detail-body dd {
-  margin: 0;
-  overflow-wrap: anywhere;
 }
 
 @container shell (width < 640px) {
@@ -376,10 +303,6 @@
     inline-size: 44px;
     block-size: 44px;
     min-block-size: 44px;
-  }
-
-  .detail {
-    --ui-dialog-size: 100vw;
   }
 }
 

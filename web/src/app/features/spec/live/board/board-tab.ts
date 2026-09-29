@@ -13,13 +13,13 @@ import { UiChip } from '../../../../shared/ui/chip/chip';
 import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
 import { glyphSpec, stateKey } from '../../../../shared/ui/glyph/states';
 import { type MeterSegment, UiMeter } from '../../../../shared/ui/meter/meter';
-import { UiDialog } from '../../../../shared/ui/overlay/dialog';
 import { UiDisclosure } from '../../../../shared/ui/overlay/disclosure';
 import { UiSheet } from '../../../../shared/ui/overlay/sheet';
 import { UiScrubber } from '../../../../shared/ui/scrubber/scrubber';
 import { type SegmentedOption, UiSegmented } from '../../../../shared/ui/segmented/segmented';
-import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
 import { toneMark } from '../../../../shared/ui/tone';
+import { CardDetail } from '../card/card-detail';
+import { cardHistory } from '../card/card-history';
 import { FlowView } from '../flow/flow-view';
 import { agentOfCard, type CardAgent } from '../live-frame';
 import { AgentChip } from '../this-frame/agent-chip';
@@ -59,14 +59,18 @@ const PLAY_STEP_MS = 1200;
  *
  * Lanes come in constitution order (the spec model's `lanes`), then lanes only the cards name, `operator` last. Each
  * lane holds four sections (Needs you, In flight with the lock's session, Waiting grouped by reason, Landed). At wide
- * the operator lane is "Your steps", rendered with "This frame" and "Needs you" under the lanes until the rail task
- * gives them their home in the rail; at compact a sticky bottom bar steps frames and opens both lists in a sheet.
+ * the operator lane is "Your steps", rendered with "This frame" and "Needs you" in the shell rail (T88); below wide
+ * and in zen a sticky bottom bar steps frames and opens both lists in a sheet.
+ *
+ * Each card owns its detail dialog, opened from its id button (T83, `card/card.ts`). The board opens the same
+ * `app-card-detail` only for a row of This frame or Needs you, which are rows and not cards.
  */
 @Component({
   selector: 'app-board-tab',
   imports: [
     AgentChip,
     BoardCard,
+    CardDetail,
     FlowView,
     FrameBar,
     NeedsYou,
@@ -75,7 +79,6 @@ const PLAY_STEP_MS = 1200;
     TranslocoPipe,
     YourSteps,
     UiChip,
-    UiDialog,
     UiDisclosure,
     UiGlyph,
     UiIcon,
@@ -83,7 +86,6 @@ const PLAY_STEP_MS = 1200;
     UiScrubber,
     UiSegmented,
     UiSheet,
-    UiStateChip,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'board', '[attr.data-tier]': 'tier()' },
@@ -151,7 +153,7 @@ export class BoardTab {
   });
   protected readonly filtered = computed(() => this.shownCards().length !== this.allCards().length);
   protected readonly lanes = computed(() => buildLanes(this.order(), this.shownCards()));
-  /** The lanes in the grid: at wide the operator lane is "Your steps" under the lanes (the rail's, later). */
+  /** The lanes in the grid: at wide the operator lane is "Your steps" in the rail. */
   protected readonly gridLanes = computed(() => (this.wide() ? this.lanes().filter((l) => l.name !== OPERATOR_LANE) : this.lanes()));
   protected readonly operatorLane = computed(() => (this.wide() ? (this.lanes().find((l) => l.name === OPERATOR_LANE) ?? null) : null));
 
@@ -206,8 +208,12 @@ export class BoardTab {
   protected readonly searchOpen = signal(false);
   protected readonly barOpen = signal(false);
   protected readonly barTab = signal<BarTab>('frame');
-  protected readonly detailOpen = signal(false);
+  /** The card a This frame or Needs you row opened, shown in the card detail until it closes. */
   protected readonly selected = signal<FrameCard | null>(null);
+  protected readonly selectedHistory = computed(() => {
+    const card = this.selected();
+    return card === null ? null : cardHistory(this.frames(), card);
+  });
   /** Disclosures the viewer toggled, by key; untouched ones take their tier default. */
   private readonly toggled = signal<ReadonlyMap<string, boolean>>(new Map());
   private readonly collapsedLanes = signal<ReadonlySet<string>>(new Set());
@@ -299,10 +305,14 @@ export class BoardTab {
     });
   }
 
+  /** A row of This frame or Needs you: close the sheet and show the card detail. */
   protected openCard(card: FrameCard): void {
-    this.selected.set(card);
     this.barOpen.set(false);
-    this.detailOpen.set(true);
+    this.selected.set(card);
+  }
+
+  protected closeDetail(open: boolean): void {
+    if (!open) this.selected.set(null);
   }
 
   protected setBarTab(tab: string | undefined): void {
@@ -330,10 +340,6 @@ export class BoardTab {
 
   protected stateColor(state: CardState): string {
     return toneMark(glyphSpec(state, 'card').tone);
-  }
-
-  protected liveStale(card: FrameCard): boolean {
-    return 'stale' in card && card.stale === true;
   }
 
   private setQuery(patch: Record<string, string | null>, replaceUrl = false): void {

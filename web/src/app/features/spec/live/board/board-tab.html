@@ -85,7 +85,7 @@
     </div>
 
     @if (view() === 'flow') {
-      <app-flow-view [lanes]="lanes()" [frame]="index()" [density]="density()" [tier]="tier()" (opened)="openCard($event)" />
+      <app-flow-view [lanes]="lanes()" [frame]="index()" [density]="density()" [tier]="tier()" />
     } @else {
       <div class="lanes" data-lanes>
         @for (lane of gridLanes(); track lane.name) {
@@ -102,7 +102,7 @@
       <app-this-frame [frame]="f" [events]="events()" (opened)="openCard($event)" />
       <app-needs-you [frame]="f" [cards]="needsYou()" (opened)="openCard($event)" />
       @if (view() === 'lanes' && operatorLane()) {
-        <app-your-steps [cards]="operatorCards()" (opened)="openCard($event)" />
+        <app-your-steps [cards]="operatorCards()" />
       }
     </ng-template>
     <ng-template #frameBar>
@@ -148,44 +148,10 @@
       </ui-sheet>
     }
 
-    <ui-dialog class="detail" [open]="detailOpen()" [heading]="selected() ? ('board.detail.heading' | transloco: { task: selected()?.task, claim: selected()?.claim }) : ''" (openChange)="detailOpen.set($event)">
-      @if (selected(); as c) {
-        <div class="detail-body" data-card-detail>
-          <ui-state-chip [state]="c.state" family="card" />
-          <p class="detail-text">{{ c.text }}</p>
-          <dl>
-            <dt>{{ 'board.detail.lane' | transloco }}</dt>
-            <dd>{{ c.lane }}</dd>
-            @if (c.builder) {
-              <dt>{{ 'board.detail.builder' | transloco }}</dt>
-              <dd>{{ c.builder }}</dd>
-            }
-            @if (c.reader) {
-              <dt>{{ 'board.detail.reader' | transloco }}</dt>
-              <dd>{{ c.reader }}</dd>
-            }
-            @if (c.verdict) {
-              <dt>{{ 'board.detail.verdict' | transloco }}</dt>
-              <dd>{{ c.verdict }}</dd>
-            }
-            <dt>{{ 'board.detail.tries' | transloco }}</dt>
-            <dd class="num">{{ c.tries }}</dd>
-            @if (c.reason) {
-              <dt>{{ 'board.detail.reason' | transloco }}</dt>
-              <dd>{{ c.reason }}</dd>
-            }
-            @if (c.lock; as lock) {
-              <dt>{{ 'board.detail.session' | transloco }}</dt>
-              <dd class="mono">{{ lock.session }}@if (liveStale(c)) { · {{ 'board.card.stale' | transloco }}}</dd>
-            }
-            @if (c.note) {
-              <dt>{{ 'board.detail.note' | transloco }}</dt>
-              <dd>{{ c.note }}</dd>
-            }
-          </dl>
-        </div>
-      }
-    </ui-dialog>
+    <!-- A row of This frame or Needs you opens the same card detail the card opens from its id. -->
+    @if (selected(); as c) {
+      <app-card-detail [card]="c" [history]="selectedHistory()" [open]="true" (openChange)="closeDetail($event)" />
+    }
   } @else if (failed()) {
     <p class="empty" data-failed>{{ 'board.failed' | transloco }}</p>
   } @else {
@@ -200,25 +166,6 @@
       {{ stateWord(item.state) | transloco }}
       <span class="count">{{ item.count }}</span>
     </button>
-  }
-</ng-template>
-
-<ng-template #cardList let-cards let-empty="empty">
-  @if (cards.length > 0) {
-    <ul class="card-list">
-      @for (c of cards; track c.task) {
-        <li>
-          <button type="button" class="frame-row" [attr.data-list-card]="c.task" (click)="openCard(c)">
-            <ui-glyph [state]="c.state" family="card" [size]="14" />
-            <span class="mono">{{ c.task }}</span>
-            <span class="list-text">{{ c.text }}</span>
-            <ui-state-chip [state]="c.state" family="card" />
-          </button>
-        </li>
-      }
-    </ul>
-  } @else {
-    <p class="empty">{{ empty | transloco }}</p>
   }
 </ng-template>
 
@@ -245,7 +192,7 @@
           <div class="section" data-section="needsYou">
             <h4>{{ 'board.section.needsYou' | transloco }} <span class="count">{{ lane.needsYou.length }}</span></h4>
             @for (c of lane.needsYou; track c.task) {
-              <app-board-card [card]="c" [density]="density()" (opened)="openCard($event)" />
+              <app-board-card [card]="c" [density]="density()" />
             }
           </div>
         }
@@ -253,7 +200,7 @@
           <div class="section" data-section="inFlight">
             <h4>{{ 'board.section.inFlight' | transloco }} <span class="count">{{ lane.inFlight.length }}</span></h4>
             @for (c of lane.inFlight; track c.task) {
-              <app-board-card [card]="c" [density]="density()" (opened)="openCard($event)" />
+              <app-board-card [card]="c" [density]="density()" />
               @if (agentOf(c); as agent) {
                 <app-agent-chip class="in-flight-agent" [attr.data-agent-of]="c.task" [session]="agent.session" [since]="agent.since" [stale]="agent.stale" />
               }
@@ -275,7 +222,7 @@
                 <span uiDisclosureSummary class="reason">{{ group.reason ?? ('board.section.noReason' | transloco) }}</span>
                 <div class="group-cards">
                   @for (c of group.cards; track c.task) {
-                    <app-board-card [card]="c" [density]="density()" (opened)="openCard($event)" />
+                    <app-board-card [card]="c" [density]="density()" />
                   }
                 </div>
               </ui-disclosure>
@@ -293,7 +240,7 @@
             <span uiDisclosureSummary class="reason">{{ 'board.section.landed' | transloco }}</span>
             <div class="group-cards">
               @for (c of lane.landed; track c.task) {
-                <app-board-card [card]="c" [density]="density()" (opened)="openCard($event)" />
+                <app-board-card [card]="c" [density]="density()" />
               }
             </div>
           </ui-disclosure>

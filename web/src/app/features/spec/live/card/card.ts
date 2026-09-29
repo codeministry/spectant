@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, resource, signal } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { FrameCard, LiveCard } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
@@ -25,7 +25,7 @@ export type CardDensity = 'comfortable' | 'compact';
  *   move into the detail.
  *
  * The id is the button that opens the card detail (`card-detail.ts`), owned by the card: the frames for its state
- * history load only while it is open. `opened` is kept for the board's existing binding and is not emitted.
+ * history load only while it is open.
  */
 @Component({
   selector: 'app-board-card',
@@ -86,8 +86,6 @@ export class BoardCard {
 
   readonly card = input.required<FrameCard | LiveCard>();
   readonly density = input<CardDensity>('comfortable');
-  /** Kept for the board's `(opened)` binding; the card opens its own detail and does not emit it. */
-  readonly opened = output<FrameCard | LiveCard>();
 
   protected readonly detailOpen = signal(false);
   protected readonly spec = computed(() => glyphSpec(this.card().state, 'card'));

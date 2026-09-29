@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T18:45:06Z
+updated: 2026-09-29T19:05:03Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -129,7 +129,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T87 · ISC-92 · web — Matrix tab: sticky first column, frame columns, glyph cells, cell click jumps the scrubber (after: T81) · `web/src/app/features/spec/live/matrix/`
 - [x] T88 · ISC-87 · web — This frame and Needs you: rail blocks at wide, the bottom bar and sheet below wide merged with the zen footer · Mobile, Tablet (after: T81) · `web/src/app/features/spec/live/this-frame/`
 - [x] T89 · ISC-87 · web — e2e board: scrubbing changes frames and no file (`git status --porcelain` empty) (after: T81, T82) · `web/e2e/board.spec.ts`
-- [ ] T90 · ISC-88 · web — e2e board states: all eleven card states on the harbor 002 fixture (after: T83) · `web/e2e/board-states.spec.ts`
+- [x] T90 · ISC-88 · web — e2e board states: all eleven card states on the harbor 002 fixture (after: T83) · `web/e2e/board-states.spec.ts`
 - [x] T91 · ISC-89 · web — e2e waiting: shown cards equal the frame's tasks (after: T84) · `web/e2e/board-waiting.spec.ts`
 - [ ] T92 · ISC-92 · web — e2e matrix cell jump (after: T87) · `web/e2e/board-matrix.spec.ts`
 - [x] T93 · ISC-93 · web — e2e narrow board at 600 px: no horizontal overflow, no lane scroller (after: T81) · `web/e2e/narrow-board.spec.ts`

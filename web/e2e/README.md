@@ -31,8 +31,10 @@ bun run test:browser -- contrast
 ```
 
 Every test runs with the clock pinned (`FIXED_NOW`, opt out with `test.use({ clockAt: null })`), `timezoneId`
-Europe/Berlin, `locale` en, service workers blocked, and waits on `awaitReady(page)` (`<body data-ready="true">`),
-never on a timeout. Visual runs add `reducedMotion: 'reduce'`, `animations: 'disabled'` and `caret: 'hide'`. Set
+Europe/Berlin, `locale` en, service workers blocked, and waits on its own render assertions (a locator with an
+expected count or text, e.g. `await expect(page.locator(CARDS)).toHaveCount(n)`), never on a timeout. The app sets
+`data-ready` on no real route; only the dev UI gallery (`/__ui`) sets it, so `awaitReady(page)` is for the `browser/` runs
+against the gallery. Visual runs add `reducedMotion: 'reduce'`, `animations: 'disabled'` and `caret: 'hide'`. Set
 the viewport per test with `test.use(atWidth(390 | 820 | 1440 | 600))`.
 
 The config builds the app and serves it on `http://127.0.0.1:4173`; set `E2E_BASE_URL` to test an app that is

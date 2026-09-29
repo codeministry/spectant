@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, resource } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, resource } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { FrameCard } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
@@ -50,7 +50,7 @@ type TaskRow = NonNullable<TasksBody>['tasks'][number];
                   [attr.aria-label]="'board.rail.stepCheck' | transloco: { task: c.task }"
                   (change)="onChange(c.task, $event)"
                 />
-                <app-board-card [card]="c" density="compact" (opened)="opened.emit($event)" />
+                <app-board-card [card]="c" density="compact" />
                 @if (state.kind === 'saving') {
                   <p class="note" data-step-note="saving"><span class="loading loading-spinner loading-xs" aria-hidden="true"></span> {{ 'board.rail.stepSaving' | transloco }}</p>
                 } @else if (state.kind === 'locked') {
@@ -76,7 +76,6 @@ export class YourSteps {
 
   /** The operator lane's cards of the frame on screen, board order. */
   readonly cards = input.required<readonly FrameCard[]>();
-  readonly opened = output<FrameCard>();
 
   private readonly tasks = resource({
     params: () => {

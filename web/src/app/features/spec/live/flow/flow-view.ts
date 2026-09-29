@@ -1,8 +1,7 @@
-import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, ElementRef, inject, input, output } from '@angular/core';
+import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, ElementRef, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { FrameCard } from '../../../../../../../core/src/files';
 import { prefersReducedMotion } from '../../../../core/motion';
 import type { Tier } from '../../../../layout/shell/tier';
 import { type SegmentedOption, UiSegmented } from '../../../../shared/ui/segmented/segmented';
@@ -35,7 +34,6 @@ export class FlowView {
   readonly frame = input.required<number>();
   readonly density = input<'comfortable' | 'compact'>('comfortable');
   readonly tier = input<Tier>('wide');
-  readonly opened = output<FrameCard>();
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly router = inject(Router);
