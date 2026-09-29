@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-29T10:57:16Z
+updated: 2026-09-29T18:12:20Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -95,7 +95,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 
 - [x] T57 · ISC-17 · [P] · web — stub API serving the fixtures' golden JSON for e2e and visual runs (after: T28, T39) · `web/e2e/stub-api.ts`
 - [x] T58 · ISC-18.1 · [P] · web — pre-paint `data-theme` script, theme service (system / light / dark, live `matchMedia`), settings service · `web/src/app/core/theme.service.ts`
-- [ ] T59 · ISC-16 · operator — prerequisite from spec 002: its shell seam (002-T35: container tiers, routes `/`, `/w/:ws`, `/w/:ws/s/:id`, tab-bar slot, API client) has landed in the main tree — tick when it has; every task below that carried `(after: T59)` waits on it (re-cut 2026-09-29, the shell moved to spec 002) · `specs/002-shell-and-spec-page/tasks.md`
+- [x] T59 · ISC-16 · operator — prerequisite from spec 002: its shell seam (002-T35: container tiers, routes `/`, `/w/:ws`, `/w/:ws/s/:id`, tab-bar slot, API client) has landed in the main tree — tick when it has; every task below that carried `(after: T59)` waits on it (re-cut 2026-09-29, the shell moved to spec 002) · `specs/002-shell-and-spec-page/tasks.md`
 - ~~T60 · ISC-16 · web — header: eyebrow + title, `ui-badge-switcher` (two levels), palette trigger, `ui-live-indicator`, gear, `?`~~ — struck 2026-09-29: the header is spec 002's T36 (ISC-73), built to the prototype
 - [ ] T61 · ISC-17 · [P] · web — `kpi-band` in its three container forms, tiles as links (after: T59) · `web/src/app/features/dashboard/kpi-band/`
 - [ ] T62 · ISC-17 · [P] · web — Brief disclosure (TL;DR markdown, stale chip, command chip) (after: T59) · `web/src/app/features/dashboard/brief/`
