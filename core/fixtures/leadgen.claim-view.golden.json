@@ -1,0 +1,893 @@
+{
+  "specs/012-pwa-install": {
+    "claims": [
+      {
+        "id": "ISC-327",
+        "text": "A web app manifest linked from `index.html` names the app, sets `start_url` and `scope` to `/` and `display` to `standalone`, and takes `theme_color` and `background_color` from the dark theme's surface, so an installed window opens on the app's own colour before the first paint.",
+        "feature": "F40",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-327",
+          "type": "bun-test",
+          "check": "a spec parses `public/manifest.webmanifest` and reads the `<link rel=\"manifest\">` and `theme-color` in `index.html`",
+          "threshold": "`start_url` and `scope` `/`, `display` `standalone`, colours equal to the dark theme's `--color-base-100` hex twin; the link present",
+          "tool": "Vitest",
+          "anchorsTo": "`manifest.spec.ts`, `theme-colors.spec.ts`",
+          "severity": ""
+        },
+        "verification": "· 2026-09-24 · `manifest.spec.ts` + `theme-colors.spec.ts` 23/23 (red first: missing export); manifest standalone, scope `/`, both colours the dark surface held to its oklch; link and theme-color in `index.html` · second look Max: pass (icons arrive with ISC-328)",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 88
+      },
+      {
+        "id": "ISC-328",
+        "text": "Every icon the manifest names is rendered from `brand/mark.svg` by `build-favicon.sh` and nothing else: 192 and 512 any-purpose icons on the round plate, a 512 maskable icon whose mark stays inside the safe zone of a square plate, and a 180 square opaque `apple-touch-icon`; a second run leaves `git diff` empty, and a test holds every named icon to an existing file of the stated size.",
+        "feature": "F40",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-327"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-328",
+          "type": "bun-test",
+          "check": "run `build-favicon.sh` twice; a spec reads each icon the manifest names and its PNG header",
+          "threshold": "`git diff --exit-code public/` empty; every icon exists at the stated size; the maskable one has an opaque square plate",
+          "tool": "Vitest, bash",
+          "anchorsTo": "`manifest.spec.ts`, `build-favicon.sh`",
+          "severity": ""
+        },
+        "verification": "· 2026-09-24 · `manifest.spec.ts` 21/21: every named icon at its size, 8-bit, plate by colour type and corner, mark inside the safe zone (red at 228.9 px, green at 197.6 of 204.8 at 512; 68.8 of 72 at 180), two script runs byte-identical, favicon set unchanged · second look Max: fail on the safe zone, fixed and remeasured independently",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 89
+      },
+      {
+        "id": "ISC-329",
+        "text": "A service worker, registered in production builds only, caches the app shell — the index, the bundles, the styles, the fonts, the icons, the i18n catalogs and the help assets — and nothing under `/api/`, so no data response is ever served from cache.",
+        "feature": "F40",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-327"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-329",
+          "type": "bun-test",
+          "check": "a spec over `ngsw-config.json` and the worker provider",
+          "threshold": "asset groups cover index, bundles, styles, fonts, icons, i18n and help; no data group; no `/api/` pattern; `enabled` is `!isDevMode()`",
+          "tool": "Vitest, rg",
+          "anchorsTo": "`ngsw-config.spec.ts`, `app.config.ts`",
+          "severity": ""
+        },
+        "verification": "· 2026-09-24 · `ngsw-config.spec.ts` 15/15 (red first on the missing file, then on the /api navigation rule): app group prefetch, i18n prefetch, help and fonts lazy, no data group, `/api` only as `!/api/**` in navigationUrls, `enabled: !isDevMode()`; production build emits ngsw.json with the negative /api regex; @angular/service-worker 22.1.4 like core · second look Max: concerns, five findings adopted",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 90
+      },
+      {
+        "id": "ISC-330",
+        "text": "With the shell cached and no network, the installed app opens on its shell and the screens show their existing error state instead of a blank page or the browser's offline page.",
+        "feature": "F40",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-329"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-330",
+          "type": "manual",
+          "check": "build, serve the compose stack, install, set the network offline in devtools, reopen the installed window",
+          "threshold": "the shell renders; a screen shows its error state; no browser offline page",
+          "tool": "Interceptor",
+          "anchorsTo": "`ngsw-config.json`",
+          "severity": ""
+        },
+        "verification": "· 2026-09-24 · manual: prod image served locally, worker `activated` and controlling, server stopped (curl 000), reload renders the shell with header and nav and each screen its error state, no browser offline page (`~/Downloads/interceptor-capture-20260924-174836-12644.png`); operator, verbatim: \"Ja, schließen\"",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 91
+      },
+      {
+        "id": "ISC-331",
+        "text": "When the worker has a new version ready, a toast from the feedback system offers to reload; activating it activates the update and reloads, dismissing it leaves the running version, and the toast appears once per version.",
+        "feature": "F40",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-329"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-331",
+          "type": "bun-test",
+          "check": "feed a faked `versionUpdates` stream a `VERSION_READY`; activate the action; dismiss on a second run",
+          "threshold": "one toast with the reload action; `activateUpdate` then reload called once; nothing on dismiss; one toast per version",
+          "tool": "Vitest",
+          "anchorsTo": "`update.store.spec.ts`, `toast.store.spec.ts`",
+          "severity": ""
+        },
+        "verification": "· 2026-09-24 · `update.store.spec.ts`, `toast.store.spec.ts`, `toast-stack.spec.ts`, i18n parity 79/79 (red first): one update toast per version, a newer one replaces it, the action activates then reloads (bounded at 10 s), dismissing does nothing, `unrecoverable` reloads at once, a disabled worker subscribes to nothing · second look Max: pass, two findings adopted",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 92
+      },
+      {
+        "id": "ISC-332",
+        "text": "nginx serves `index.html`, `ngsw.json` and the manifest with `Cache-Control: no-cache` and the hashed bundles as immutable, so a deploy is picked up on the worker's next check and never held by a stale shell.",
+        "feature": "F40",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-329"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-332",
+          "type": "bash",
+          "check": "`rg -n 'Cache-Control' frontend/nginx.conf`; `curl -sI` against the compose web port for `/`, `/ngsw.json`, `/manifest.webmanifest` and one hashed bundle",
+          "threshold": "`no-cache` on the three; `immutable` on the bundle",
+          "tool": "rg, curl",
+          "anchorsTo": "`nginx.conf`",
+          "severity": ""
+        },
+        "verification": "· 2026-09-24 · curl against the built web image: `/`, SPA routes, `/index.html`, `/ngsw.json`, `/manifest.webmanifest` (application/manifest+json) and both worker scripts `no-cache` with 304 on revalidation; hashed bundles and fonts `immutable`; icons, i18n, help without a policy (red first: no header anywhere); the chart ConfigMap mirrors the blocks, `helm template` + `nginx -t` green, rollout pending · second look Max: pass, two findings adopted",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 93
+      },
+      {
+        "id": "ISC-333",
+        "text": "The browser's `theme-color` follows the active app theme: the inline theme script writes it before the first paint and the theme store updates it when the preference changes, so an installed window's title bar matches the surface in both themes.",
+        "feature": "F40",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-327"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-333",
+          "type": "bun-test",
+          "check": "render with `lg-dark`, switch to light, read `meta[name=theme-color]`; `rg -n 'theme-color' src/index.html`",
+          "threshold": "the meta follows each switch; the inline script writes it before first paint",
+          "tool": "Vitest, rg",
+          "anchorsTo": "`theme.store.spec.ts`, `index.html`",
+          "severity": ""
+        },
+        "verification": "· 2026-09-24 · `theme.store.spec.ts` + `manifest.spec.ts` 27/27; the inline script executed for dark, light, system × OS, unset and garbage (4 red with the meta write removed, green after); the store follows each switch · second look Max: pass, one finding adopted (a comment-satisfiable assertion replaced by the executing test)",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 94
+      },
+      {
+        "id": "ISC-334",
+        "text": "Under `security.auth: oidc` the sign-in redirect completes inside the installed window and returns to the app; the window is never left on the identity provider's page.",
+        "feature": "F40",
+        "state": "takeable",
+        "kind": "normal",
+        "edges": [
+          "ISC-329"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-334",
+          "type": "manual",
+          "check": "install from the compose stack under `security.auth: oidc` on desktop Chrome and one phone OS; sign out and open the installed window",
+          "threshold": "the redirect and the return both stay inside the installed window",
+          "tool": "Interceptor, a device",
+          "anchorsTo": "`auth.service.ts`",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 95
+      },
+      {
+        "id": "ISC-335",
+        "text": "the worker caches a response from `/api/`, or the manifest, an icon or the worker configuration names a configured value such as a portal, a sender or a model.",
+        "feature": "F40",
+        "state": "closed",
+        "kind": "anti",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-335",
+          "type": "bash",
+          "check": "`rg -n '\"/api' frontend/ngsw-config.json` (a pattern that would cache or serve `/api/`; the negated navigation entry `!/api/**` is the fix, not a hit); `rg -n -i` over the manifest and the worker configuration for the values `.env` and `config/` hold",
+          "threshold": "0 hits each",
+          "tool": "rg",
+          "anchorsTo": "`ngsw-config.json`, `manifest.webmanifest`",
+          "severity": ""
+        },
+        "verification": "· 2026-09-24 · `rg` for `\"/api` in `ngsw-config.json`: 0 hits; manifest and worker config against 18 `.env` values, the `config/` hosts and the model names: 0 hits beyond the public product name and the `html` extension; no URL, no address · probe only, no second look",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 96
+      },
+      {
+        "id": "ISC-336",
+        "text": "`docs/decisions/frontend-design-system.md` records the manifest, the icon set, the caching policy and the update flow, `CHANGELOG.md` § Unreleased names the installable app, `README.md` says how to install it, and `WorkingNotesStaySmallTest` stays green.",
+        "feature": "F40",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-331"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-336",
+          "type": "bun-test",
+          "check": "`WorkingNotesStaySmallTest`; `rg -n -i 'manifest|service worker|install' docs/decisions/frontend-design-system.md CHANGELOG.md README.md`",
+          "threshold": "green; ≥ 1 hit in each file",
+          "tool": "JUnit, rg",
+          "anchorsTo": "`frontend-design-system.md`, `CHANGELOG.md`, `README.md`",
+          "severity": ""
+        },
+        "verification": "· 2026-09-24 · `WorkingNotesStaySmallTest` 3/3 (budgets 17,261/18,000 and 11,769/12,000); `rg` hits in the decision record, CHANGELOG and README went from 0/unrelated/0 to 15/10/3; `check:static` clean · second look Max: pass, four text findings adopted (ngsw failure mode, unmeasured mime claim, Safari/Firefox, block count)",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 97
+      }
+    ],
+    "features": [
+      {
+        "id": "F40",
+        "title": "Installable as a PWA",
+        "why": null,
+        "claims": [
+          "ISC-327",
+          "ISC-328",
+          "ISC-329",
+          "ISC-330",
+          "ISC-331",
+          "ISC-332",
+          "ISC-333",
+          "ISC-334",
+          "ISC-335",
+          "ISC-336"
+        ]
+      }
+    ],
+    "fog": [
+      {
+        "text": "whether an installed window on iOS keeps the sign-in redirect in scope or hands it to the browser. Resolves on the device in ISC-334; if it does not, the claim narrows to desktop and Android and the iOS case becomes remaining work.",
+        "resolves": null,
+        "sinceRound": null,
+        "marks": [],
+        "line": 101
+      }
+    ],
+    "counts": {
+      "all": 10,
+      "open": 1,
+      "takeable": 1,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 9,
+      "dropped": 0,
+      "normal": 9,
+      "anti": 1,
+      "antecedent": 0
+    }
+  },
+  "specs/022-chat-turn-status-and-bulk-delete": {
+    "claims": [
+      {
+        "id": "ISC-473",
+        "text": "A turn that ends `INCOMPLETE` stores its reason — `MODEL`, `BUDGET` or `ROUNDS` — in a nullable `chat_turn.end_reason` added by an expand-only `V36`, every other ending stores null, and `TurnView` carries it as `endReason`, so a reloaded incomplete turn names the same reason its live `error` event did and a turn stored before `V36` names none.",
+        "feature": "F50",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-473",
+          "type": "bun-test",
+          "check": "end a stubbed turn with each of MODEL, BUDGET and ROUNDS, one with DONE and one with STOPPED; read `chat_turn.end_reason` and `GET /conversations/{id}`; run Flyway over a copy with pre-`V36` turns",
+          "threshold": "the three reasons stored and returned as `endReason`, null for DONE and STOPPED and for the old turns; `V36` only adds",
+          "tool": "JUnit, Testcontainers",
+          "anchorsTo": "`ChatConversationTest`, `V36`",
+          "severity": ""
+        },
+        "verification": "bun-test — `ChatConversationTest.anIncompleteTurnKeepsItsReasonAndEveryOtherEndingNamesNone` (MODEL, ROUNDS, BUDGET stored and reloaded as `endReason`, DONE and STOPPED null, a pre-V36 INCOMPLETE row null, `finishedAt` on every reload), class 14/14, `ChatTurnHardeningTest` 19/19, spotlessCheck green; red first: bad SQL grammar on `end_reason` before V36; second look: off (default) (spec 022, 2026-09-28)",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 110
+      },
+      {
+        "id": "ISC-474",
+        "text": "Hover or keyboard focus on an answer's glyph plays the living mark's turn and opens a status popover beside it naming the turn's state — done, working, writing, incomplete with its reason (model, budget, tool rounds, or no reason stored) or stopped — with the tool steps' count, the duration from start to finish where both are known and the model where known, the same for a streaming turn and a reloaded one; moving away or Escape closes it.",
+        "feature": "F50",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-473"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-474",
+          "type": "bun-test",
+          "check": "for a stubbed DONE, a streaming turn with a running step, a streaming turn writing, INCOMPLETE with each reason and none, and STOPPED, hover then focus the glyph; read the popover; press Escape",
+          "threshold": "a popover per case naming the state and the reason; steps count, duration and model shown where the stub carries them; the mark's turn animation running on open; closed after Escape and after leaving",
+          "tool": "Vitest browser mode",
+          "anchorsTo": "`chat-panel.browser.spec.ts`",
+          "severity": ""
+        },
+        "verification": "bun-test — `chat-panel.browser.spec.ts` § the status popovers: six stored endings (Done, Incomplete per MODEL/BUDGET/ROUNDS and without a reason, Stopped) each with steps 2, 4.2 s and the model, beside the ring and closed after leaving; a live turn Working then Writing, the mark's turn animating while open, closed by Escape; file 7/7, chat units 107/107, chat browser + contrast 127/127; red by mutation (reason dropped, turn removed, status never asked): 3 of 4 new rows red; second look: off (default) (spec 022, 2026-09-28)",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 111
+      },
+      {
+        "id": "ISC-475",
+        "text": "The glyph is a focusable control whose accessible name states the turn's state, the popover's words come only from the i18n catalogs with `i18n-parity.spec.ts` green in both languages, and under `prefers-reduced-motion` the popover still opens while the mark does not turn.",
+        "feature": "F50",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-474"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-475",
+          "type": "bun-test",
+          "check": "tab to a glyph and read its accessible name; `i18n-parity.spec.ts`; emulate reduced motion and open the popover",
+          "threshold": "a name stating the state; parity green; popover open and no animation on the mark",
+          "tool": "Vitest browser mode",
+          "anchorsTo": "`chat-panel.browser.spec.ts`, `i18n-parity.spec.ts`",
+          "severity": ""
+        },
+        "verification": "bun-test — `chat-panel.browser.spec.ts` § opens on keyboard focus (aria-label 'Answer status: Incomplete', aria-describedby the popover, open on focus, closed on blur, no animation on the mark under emulated reduced motion) and `i18n-parity.spec.ts` 3/3 with `chat.status.*` in both catalogs; second look: off (default) (spec 022, 2026-09-28)",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 112
+      },
+      {
+        "id": "ISC-476",
+        "text": "Hover or keyboard focus on the empty chat's plate mark plays the same turn and opens a popover with the chat's own status — the chat model in force, today's model calls against the daily ceiling, and the tool-round bound — read from a read-only `GET /api/v1/chat/status` when the popover opens, and the endpoint answers 404 where no chat model is configured, as the rest of the chat does.",
+        "feature": "F50",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-476",
+          "type": "bun-test",
+          "check": "open the empty chat, hover the plate; `GET /api/v1/chat/status` with and without a chat model",
+          "threshold": "the popover names the model, calls used of the ceiling and the round bound from the response; 200 with the three values, 404 without a model",
+          "tool": "Vitest browser mode, JUnit",
+          "anchorsTo": "`chat-panel.browser.spec.ts`, `ChatControllerTest`",
+          "severity": ""
+        },
+        "verification": "bun-test — `chat-panel.browser.spec.ts` § the empty chat's plate (named 'Chat status', nothing asked before it opens, one GET /api/v1/chat/status on hover, model, '12 of 200' and 6 shown) and `ChatControllerTest` status rows (200 with model, callsUsed, callsLimit, toolRounds; 404 without a chat model); red by mutation: the plate row and the 404 row red; second look: off (default) (spec 022, 2026-09-28)",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 113
+      },
+      {
+        "id": "ISC-477",
+        "text": "One request deletes an explicit list of conversation ids: every streaming turn in them is stopped first, as the single delete does, the conversations go in one transaction, the answer names the ids deleted, an unknown id is skipped rather than failing the rest, and an empty or missing list is a 400 — there is no path that deletes conversations without naming them.",
+        "feature": "F50",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-477",
+          "type": "bun-test",
+          "check": "bulk-delete three ids of five, one of them streaming; then a list with an unknown id; then an empty list and no body",
+          "threshold": "the three gone and two left, the streaming turn stopped before its rows went; the known ids deleted and named, the unknown skipped; 400 for both empty cases",
+          "tool": "JUnit, MockMvc",
+          "anchorsTo": "`ChatControllerTest`",
+          "severity": ""
+        },
+        "verification": "bun-test — `ChatConversationTest.aBulkDeleteTakesExactlyTheNamedConversationsAndStopsTheOneStreaming` (three of five over HTTP, the streaming one ends STOPPED with the stub's connection closed, two left, zero turns, the unknown id not named) and `ChatControllerTest` bulk rows (stopAll per id before deleteAll, deleted names three of four, 400 for [], {} and no body with nothing deleted), 13/13 and 15/15; red by mutation: without the stop and the 404 path 3 rows red; second look: off (default) (spec 022, 2026-09-28)",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 114
+      },
+      {
+        "id": "ISC-478",
+        "text": "The conversation list has a select mode: a control in the list's head turns it on, each row shows a checkbox, `Select all` selects exactly the rows shown (with a search active, the hits), a count follows the selection, and `Delete N` opens one confirmation naming N with Cancel focused first; confirming sends one request, the rows leave the list, an open conversation among them leaves the thread for a new one, and the mode ends.",
+        "feature": "F50",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-477"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-478",
+          "type": "bun-test",
+          "check": "turn select mode on, pick three rows, confirm; search, select all, read the dialog; delete the open conversation among them",
+          "threshold": "one request with the three ids, three rows gone, mode off; select all takes only the hits and the dialog names their count, Cancel focused; the thread shows a new conversation",
+          "tool": "Vitest browser mode",
+          "anchorsTo": "`chat-history.browser.spec.ts`",
+          "severity": ""
+        },
+        "verification": "bun-test — `chat-history.browser.spec.ts` § deleting several conversations 3/3 (three of five picked: one POST with {ids:[9,7,5]}, rows gone, mode off, no DELETE; select all under a 'kafka' search takes the two hits, dialog 'Delete 2 conversations?' with Cancel focused, nothing sent on cancel, {ids:[9,7]} on confirm; the open conversation among them lands on ?chat=new), file 6/6, chat units + parity 120/120, `check:static` green; red first: 3/3 with no select control; second look: off (default) (spec 022, 2026-09-28)",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 115
+      },
+      {
+        "id": "ISC-479",
+        "text": "Opening an offer from a chat citation onto the shortlist leaves its marked row fully inside the list pane when the row is in the loaded page, by scrolling the pane alone and never the document; a row outside the loaded page scrolls nothing and the detail still opens.",
+        "feature": "F50",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-479",
+          "type": "bun-test",
+          "check": "at 2560 with the chat docked (both columns beside it) click a citation to an offer whose row sits below the pane's fold; at 1440 with the chat docked (one column) click it, then close the chat; then cite one not in the loaded page",
+          "threshold": "the row's box inside the pane's box and the document's scrollTop unchanged, at 2560 at once and at 1440 once the chat is closed; for the absent one no scroll and the detail open",
+          "tool": "Vitest browser mode",
+          "anchorsTo": "`shortlist.browser.spec.ts`",
+          "severity": ""
+        },
+        "verification": "bun-test — `shortlist.browser.spec.ts` § the cited row in view 3/3 (2560 docked: row 35 inside the pane, pane scrolled, document at 0; 1440 docked then chat closed: row 35 inside the pane; offer 99 outside the loaded page: pane at 0, detail open), file 14/14 over two runs, shortlist units 106/106, `check:static` green; red first: 2/3 with row 35 outside the pane; second look: off (default) (spec 022, 2026-09-28)",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 116
+      },
+      {
+        "id": "ISC-480",
+        "text": "the single delete, the ⋯ menu, rename and search behave as before; the catalogs keep parity; the bulk request's record has a hint in `LeadGenRuntimeHints` where binding reaches it by reflection; `docs/DATA-MODEL.md` names `end_reason`, `docs/decisions/chat.md` records the status popovers, the status endpoint and the bulk delete, `CHANGELOG.md` § Unreleased names all three and the row scroll, and `WorkingNotesStaySmallTest` stays green.",
+        "feature": "F50",
+        "state": "closed",
+        "kind": "anti",
+        "edges": [
+          "ISC-474",
+          "ISC-476",
+          "ISC-478",
+          "ISC-479"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-480",
+          "type": "bun-test",
+          "check": "the existing chat-history, chat-panel and ChatControllerTest delete, rename and search rows; `i18n-parity.spec.ts`; `LeadGenRuntimeHintsTest`; `rg -n end_reason docs/DATA-MODEL.md`; `rg -n -i 'bulk delete",
+          "threshold": "status popover' docs/decisions/chat.md CHANGELOG.md`; `WorkingNotesStaySmallTest`",
+          "tool": "green unchanged; green; green; a hit; a hit in each; green",
+          "anchorsTo": "Vitest, JUnit, rg",
+          "severity": "`chat-history.spec.ts`, `docs/decisions/chat.md`, `CHANGELOG.md`"
+        },
+        "verification": "bun-test — full `./gradlew check` green in a copy of the working tree (7 m 54 s, 135 backend result files, frontend unit and 244 browser tests, lint, stylelint, tsc, spotless) with the single-delete, rename and search rows of chat-history, chat-panel and ChatControllerTest unchanged and green, `i18n-parity.spec.ts` 3/3, `LeadGenRuntimeHintsTest` 3/3 (red first: BulkDelete has no type hint), `WorkingNotesStaySmallTest` 3/3, `rg end_reason docs/DATA-MODEL.md` and `rg -i 'bulk delete|status popover'` a hit in chat.md and CHANGELOG.md; the tree unchanged against the gated copy; second look: off (default) (spec 022, 2026-09-28)",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 117
+      }
+    ],
+    "features": [
+      {
+        "id": "F50",
+        "title": "Chat turn status, bulk delete, and the cited row in view",
+        "why": null,
+        "claims": [
+          "ISC-473",
+          "ISC-474",
+          "ISC-475",
+          "ISC-476",
+          "ISC-477",
+          "ISC-478",
+          "ISC-479",
+          "ISC-480"
+        ]
+      }
+    ],
+    "fog": [],
+    "counts": {
+      "all": 8,
+      "open": 0,
+      "takeable": 0,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 8,
+      "dropped": 0,
+      "normal": 7,
+      "anti": 1,
+      "antecedent": 0
+    }
+  },
+  "specs/archive/013-tech-debt": {
+    "claims": [
+      {
+        "id": "ISC-337",
+        "text": "Each of the three working-notes files stands at or under 85 % of its `WorkingNotesStaySmallTest` budget, every paragraph moved out lands in the `docs/decisions/` file the root table names for that topic, and each rule it argued keeps one line with a pointer in the notes.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-337",
+          "type": "bash",
+          "check": "`wc -c CLAUDE.md backend/CLAUDE.md frontend/CLAUDE.md`; `WorkingNotesStaySmallTest`",
+          "threshold": "≤ 15,300 / 10,200 / 10,200 characters; green",
+          "tool": "wc, JUnit",
+          "anchorsTo": "`CLAUDE.md`, `backend/CLAUDE.md`, `frontend/CLAUDE.md`, `docs/decisions/`",
+          "severity": ""
+        },
+        "verification": "2026-09-24. bash + JUnit — `wc -c` 15,064 / 9,188 / 10,060 (was 17,261 / 12,010 / 11,769; thresholds 15,300 / 10,200 / 10,200); 16 paragraphs moved whole into docs/decisions/, one-line rule with pointer left; `WorkingNotesStaySmallTest` 3/3 green in the main tree; second look (Max) concerns adopted: lost measurement restored in configuration.md, two table topics renamed, root cut for headroom, Interceptor and accessibility-tree wording restored",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 81
+      },
+      {
+        "id": "ISC-338",
+        "text": "No tracked file says Spotless is switched off: `README.md` § What does not work yet no longer lists the formatting gate, `docs/DEVELOPMENT.md` and the `release.yml` comment describe the gate that runs, and `CLAUDE.md` and `.dockerignore` name `config/` where they named `config/local/`.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-338",
+          "type": "bash",
+          "check": "`rg -n -i 'spotless' README.md docs/DEVELOPMENT.md .github/workflows/release.yml`; `rg -n 'config/local' CLAUDE.md .dockerignore`",
+          "threshold": "no hit says off or disabled; 0 hits",
+          "tool": "rg",
+          "anchorsTo": "`README.md`, `docs/DEVELOPMENT.md`, `release.yml`, `.dockerignore`",
+          "severity": ""
+        },
+        "verification": "2026-09-24. bash — `rg -n -i spotless README.md docs/DEVELOPMENT.md .github/workflows/release.yml` filtered for off/disabled: 0 hits; `rg -n config/local CLAUDE.md .dockerignore`: 0 hits (was README:169-173, DEVELOPMENT.md:27, release.yml:32, .dockerignore:10, CLAUDE.md:18); second look (Max) pass, `/config` anchored and the formatter set named",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 82
+      },
+      {
+        "id": "ISC-339",
+        "text": "`.env.example` carries a line for every `${…}` placeholder the shipped defaults, `application.yaml`, `docker-compose.yml` and `frontend/proxy.conf.js` read and none for a name nothing reads, the four operator-config keys excepted only while `docs/CONFIGURATION.md` names them; `EnvExampleTest` compares the sets and fails in either direction.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-339",
+          "type": "bun-test",
+          "check": "`EnvExampleTest`: the `${…}` names read from `resources/leadgen/*.yaml`, `application.yaml` and `docker-compose.yml` against the keys in `.env.example`",
+          "threshold": "both differences empty; red on a removed line and on an added stray key",
+          "tool": "JUnit",
+          "anchorsTo": "`EnvExampleTest`, `.env.example`",
+          "severity": ""
+        },
+        "verification": "2026-09-24. JUnit — `EnvExampleTest` red on [LEADGEN_CONFIG_MOUNT, RETRIEVAL_TOPIC_FLOOR] missing and [SEARCHAGENT_FOLDER] stray, green 3/3 after `.env.example` gained the two keys and lost the stray one; `everyOperatorConfigKeyIsDocumented` binds the four exempt keys to docs/CONFIGURATION.md; `.env.example`, `docker-compose.yml`, `frontend/proxy.conf.js` are Gradle test inputs; second look (Max) concerns adopted",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 83
+      },
+      {
+        "id": "ISC-340",
+        "text": "`docker-compose.yml` gives `api` and `web` a healthcheck, `web` waits for `api` to be healthy as `api` already waits for `postgres`, and every service carries `restart: unless-stopped`; `docker compose ps` on a fresh stack reports all three services healthy.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-340",
+          "type": "bash",
+          "check": "`docker compose config` counted for `healthcheck:`; `docker compose up -d --wait`, then `docker compose ps --format json`",
+          "threshold": "3; every service `healthy`",
+          "tool": "docker",
+          "anchorsTo": "`docker-compose.yml`",
+          "severity": ""
+        },
+        "verification": "2026-09-24. docker — `docker compose config | rg -c healthcheck:` 3 (was 1); `up -d --wait` exit 0 on a clean HEAD export with `SERVER_PORT=9999` in .env: api/postgres/web all `running healthy`, restart=unless-stopped on all three, `$SERVER_PORT` inside api 8080 (pinned in `environment` after Max's major finding), torn down with `down -v`",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 84
+      },
+      {
+        "id": "ISC-341",
+        "text": "The frontend image's build stage names the bun version `packageManager` pins, its runtime stage serves as a non-root user, and the backend image's dependency warm-up fails the build when Gradle fails; both images build.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-341",
+          "type": "bash",
+          "check": "`rg -n '^FROM|^USER||| true' backend/Dockerfile frontend/Dockerfile`; `docker build` of both; `docker compose up -d --wait` then `docker compose exec web id -u`",
+          "threshold": "bun tag equals `packageManager`; the nginx stage is the unprivileged image on 8080, no `|| true`; both builds exit 0; `web` healthy on its 8080 and the uid is not 0",
+          "tool": "rg, docker",
+          "anchorsTo": "`backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx.conf`, `docker-compose.yml`",
+          "severity": ""
+        },
+        "verification": "2026-09-24. rg + docker — build stage `node:22.23.3-alpine` with `COPY --from=oven/bun:1.3.12-alpine` (bun 1.3.12's node shim is below the Angular CLI's floor; the floating tag only built because it resolves to 1.4.x), runtime `nginxinc/nginx-unprivileged:1.27-alpine` on 8080 with `nginx.conf` and compose moved along, `|| true` gone; probe on a clean stack: both images built, api/postgres/web healthy, web uid 101, `GET /` and `GET /api/v1/status` 200 through the proxy, torn down; second look (Max) pass, minors adopted: `BunPinTest` holds the four bun pins to one version, a Renovate rule groups the tag with `packageManager`, the Node-floor note in the Dockerfile, the nginx comment; the office chart's port follows (master § Remaining Work)",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 85
+      },
+      {
+        "id": "ISC-342",
+        "text": "The jar carries the Gradle version through Spring Boot's build info, `leadgen.version` defaults to it and `LEADGEN_VERSION` from the image tag still wins when set, the HTTP user agent names the running version, and no file under `backend/src` spells the version as a literal.",
+        "feature": null,
+        "state": "dropped",
+        "kind": "normal",
+        "edges": [
+          "ISC-348"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-342",
+          "type": "bun-test",
+          "check": "`StatusControllerTest` with and without `LEADGEN_VERSION`; `RobotsPolicyTest` reads the user agent; `rg -n '0\\.5\\.0' backend/src`",
+          "threshold": "the build version, then the override; the version in the agent; 0 hits",
+          "tool": "JUnit, rg",
+          "anchorsTo": "`StatusController`, `AdFetcher`, `build.gradle.kts`",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": {
+          "note": "see Decisions 2026-09-24"
+        },
+        "noteCount": 0,
+        "line": 86
+      },
+      {
+        "id": "ISC-343",
+        "text": "`ShortlistPage` removes its media-query listener when destroyed and the ask panel's request is torn down with the component; a spec that destroys each and then fires the event or answers the request observes no write.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-343",
+          "type": "bun-test",
+          "check": "destroy `ShortlistPage`, fire the media query, read `bothColumns`; destroy the ask panel with a request in flight",
+          "threshold": "the listener set empty and the signal unchanged; the request `cancelled` (a cancelled `TestRequest` cannot be flushed)",
+          "tool": "Vitest",
+          "anchorsTo": "`shortlist-page.spec.ts`, `ask-panel.spec.ts`",
+          "severity": ""
+        },
+        "verification": "2026-09-24. Vitest — new teardown specs red on the unchanged components (listener count 1 after destroy; request not cancelled), green after `DestroyRef.onDestroy` removes the media-query listener and `takeUntilDestroyed` ends the ask request; second look (Max) pass, finding adopted: the spec now also reads `bothColumns` after the fire; main tree `check:static` 0, `bun run test` 553/553, `bun run build` 0",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 87
+      },
+      {
+        "id": "ISC-344",
+        "text": "Route titles and the document title resolve through a `TitleStrategy` from the catalogs plus one brand constant, the manual store's fallback sentences are catalog keys, and the parity spec fails on a catalog key no source file references.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-344",
+          "type": "bun-test",
+          "check": "`i18n-parity.spec.ts` extended with the unused-key check; `title.strategy.spec.ts` pins every English title; `rg -n \"Lead Generation'\" frontend/src/app/app.routes.ts`; `rg -n \"failed\\((serverMessage\\(error, )?'[A-Z]\" frontend/src/app/core/store/manual.store.ts`",
+          "threshold": "green, red on an unreferenced key; titles byte-identical; 0 hits; 0 hits",
+          "tool": "Vitest, rg",
+          "anchorsTo": "`i18n-parity.spec.ts`, `title.strategy.spec.ts`, `app.routes.ts`, `manual.store.ts`",
+          "severity": ""
+        },
+        "verification": "2026-09-24. Vitest + rg — `CatalogTitleStrategy` (selectTranslate, BRAND 'Lead Generation') provided beside the router, route titles as `title.*` keys, manual fallbacks as `error.manual*` keys; `i18n-parity.spec.ts` unused-key check red on six dead keys, then two more after the second look (Max, major) made the match token-bounded over comment-stripped source; all eight removed from both catalogs; `title.strategy.spec.ts` pins every English title byte-identical; i18n specs 7/7, main tree `check:static` 0, `bun run test` 553/553; `rg \"Lead Generation'\" app.routes.ts` and the sentence probe on manual.store.ts 0 hits",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 88
+      },
+      {
+        "id": "ISC-345",
+        "text": "`angular.json` declares the `lg` prefix, `experimentalDecorators` is off, and `bun run check:static`, `bun run test` and `bun run build` stay green; `@angular/forms` stays declared, because `@angular/cdk` 22 lists it as a required peer.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-345",
+          "type": "bash",
+          "check": "`rg -n '\"prefix\"' frontend/angular.json`; `rg -n 'experimentalDecorators' frontend/tsconfig.json`; `bun run check:static && bun run test && bun run build`",
+          "threshold": "`lg`; 0 hits; exit 0",
+          "tool": "rg, bun",
+          "anchorsTo": "`angular.json`, `tsconfig.json`, `package.json`",
+          "severity": ""
+        },
+        "verification": "2026-09-24. bash + bun — `angular.json` prefix `lg` (was `app`); `experimentalDecorators` 0 hits (was 1); `@angular/forms` kept as a required peer of `@angular/cdk` 22.1.7 (claim refined); main tree `check:static` 0, `bun run test` 553/553 (65 files), `bun run build` 0 with the pre-existing initial-bundle budget warning; second look skipped for cause (two configuration lines, three green probes)",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 89
+      },
+      {
+        "id": "ISC-346",
+        "text": "Every backend class whose constructor did nothing but assign its fields carries `@RequiredArgsConstructor` and declares no constructor, the `JdbcClient` Boot configures is injected where a constructor built one from a `DataSource`, `IngestService` looks a connector up in its injected list rather than building a map in its constructor, at most 31 `this.<field> = <param>;` assignments remain under `backend/src/main` (from 171, counted binary-safe), each in a constructor that does work, has a sibling constructor, calls `super`, or is hand-built by a test, and the suite is green with no test file changed.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-348"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-346",
+          "type": "bash",
+          "check": "`rg -a -c '^\\s+this\\.\\w+ = \\w+;' backend/src/main --glob '*.java'` summed (`-a`, because a raw NUL byte once hid a whole file from the count); `./gradlew :backend:test`; `git diff --stat -- backend/src/test`",
+          "threshold": "≤ 31; green; empty",
+          "tool": "rg, Gradle, git",
+          "anchorsTo": "`backend/src/main/java`, `IngestService`",
+          "severity": ""
+        },
+        "verification": "2026-09-24. rg -a + Gradle + git — assignments 171 → 31 (binary-safe; the blind count read 165 → 32): 57 classes on `@RequiredArgsConstructor` (27 assignment-only, 26 that take Boot's `JdbcClient` instead of building one from a `DataSource`, 3 nested enums, `QueryEmbedder` after its raw NUL byte became `'\\0'`), `IngestService` keeps its connector list with a lookup helper and a `@PostConstruct` guard for duplicate types; `JdbcClient.create` 33 → 7; every remaining assignment is in a constructor that does work, has a sibling, calls `super`, or is hand-built by a test; full backend suite green in an rsync copy (860 tests, 0 failures, 0 errors), `spotlessCheck` green, `git diff --stat -- backend/src/test` empty of this spec's changes; second look (Max) concerns adopted",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 90
+      },
+      {
+        "id": "ISC-347",
+        "text": "`IngestReport` is assembled through a Lombok builder at one site in `IngestService`, no `new IngestReport(` remains under `backend/src/main`, and its JSON shape is unchanged, so `IngestControllerTest` and `LastRunQueryServiceTest` pass without a change.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-347",
+          "type": "bash",
+          "check": "`rg -c 'new IngestReport\\(' backend/src/main`; `./gradlew :backend:test --tests '*IngestControllerTest' --tests '*LastRunQueryServiceTest'`",
+          "threshold": "0; green",
+          "tool": "rg, Gradle",
+          "anchorsTo": "`IngestReport`, `IngestService`",
+          "severity": ""
+        },
+        "verification": "2026-09-24. rg + Gradle — `new IngestReport(` under backend/src/main 2 → 0 (the four test constructions stay); `@Builder` on the record, one builder site after the try in `IngestService.runOnce`, the catch stores the failure and the failure branch still rethrows `StageFailed` before `record`; main tree: `IngestControllerTest` 8/8, `LastRunQueryServiceTest` 13/13, `spotlessCheck` green; second look (Max) concerns: only the missing test artifact, produced by this run",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 91
+      },
+      {
+        "id": "ISC-348",
+        "text": "The `leadgen.*` keys `@Value` reads today (`version`, `ingest-cron`, `security.allow-open-bind`) and the two poll intervals bind on the existing `ConfigProperties` record, `@Value` appears nowhere under `backend/src/main`, `StatusController` loses its hand-written constructor, and `StatusControllerTest`, `SecurityConfigTest` and `ScheduledPassTest` pass unchanged.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-348",
+          "type": "bash",
+          "check": "`rg -c '@Value\\(' backend/src/main`; `./gradlew :backend:test --tests '*StatusControllerTest' --tests '*SecurityConfigTest' --tests '*ScheduledPassTest'`",
+          "threshold": "0; green",
+          "tool": "rg, Gradle",
+          "anchorsTo": "`ConfigProperties`, `StatusController`, `SecurityConfig`, `ScheduledPass`",
+          "severity": ""
+        },
+        "verification": "2026-09-24. rg + Gradle — `@Value(` under backend/src/main 5 → 0; `version`, `ingestCron`, both poll intervals and `security.allowOpenBind` bind on `ConfigProperties` with `@DefaultValue` from one constant per default; `@EnableConfigurationProperties(ConfigProperties.class)` on the application class replaces the scan; `StatusController` on `@RequiredArgsConstructor`; main tree: StatusControllerTest 1/1, SecurityConfigTest 5+1+5, ScheduledPassTest 1+1, OperatorConfigTest 1/1, ConfigurationBannerTest 10/10, LeadGenRuntimeHintsTest 1/1, ConfigFixturesTest 4/4, all unchanged; second look (Max) failed the first patch on `@NotBlank version` vs the empty `LEADGEN_VERSION=` of `.env.example`, adopted; the redispatched look passed, minors adopted (defaults hoisted, unreachable `@NotNull`s dropped)",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 92
+      },
+      {
+        "id": "ISC-349",
+        "text": "One `ModelChoice` in `llm/` answers \"the first scoring choice, or none without a model\" for the classifier, the field extractor, both judges and the LLM extractor; `scoringChoices()` is read from that one place, and `ScoringWithoutAModelTest` stays green.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-349",
+          "type": "bash",
+          "check": "`rg -n 'scoringChoices\\(\\)' backend/src/main`; `./gradlew :backend:test --tests '*ScoringWithoutAModelTest'`",
+          "threshold": "the declaration and `ModelChoice` only; green",
+          "tool": "rg, Gradle",
+          "anchorsTo": "`llm/ModelChoice`, `Judges`, `Classifiers`, `FieldExtractors`, `LlmExtractors`",
+          "severity": ""
+        },
+        "verification": "2026-09-24. rg + Gradle — `scoringChoices()` under backend/src/main: the declaration in `PipelineConfig`, one call and one Javadoc mention in `llm/ModelChoice` (was six readers in four files); main tree: `ScoringWithoutAModelTest` 15/15, `JudgesTest` 7/7, `ContentClassifierWireFormatTest` 9/9, `FieldExtractorWireFormatTest` 12/12, `LlmStrategyTest` 3/3, `LlmExtractorsTest` 4/4, `LlmExtractorWireFormatTest` 14/14; second look (Max) concerns: the missing artifact (produced by this run) and `AdvertAskService.model()` answering by its own rule, recorded as fog",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 93
+      },
+      {
+        "id": "ISC-350",
+        "text": "a request mapping under `/api/v1`, a response field, a migration file, the meaning of a configuration key, or the AOT and native-image compatibility of the service changes — transitively, through every claim of F41; the controller tests pass unchanged, `git diff --stat` under `db/migration` is empty, `processAot` runs green, `LeadGenRuntimeHintsTest` is green, and `backend/smoke/smoke.sh` passes against the built image.",
+        "feature": null,
+        "state": "closed",
+        "kind": "anti",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-350",
+          "type": "bash",
+          "check": "`git diff --stat main -- backend/src/main/resources/db/migration`; `git diff main -- 'backend/src/main/java/**/web/*.java'` filtered to `Mapping(` lines; `./gradlew :backend:test --tests '*ControllerTest' --tests '*LeadGenRuntimeHintsTest'`; `./gradlew :backend:processAot`; `docker build` the api image, then `SMOKE_IMAGE=<tag> backend/smoke/smoke.sh`",
+          "threshold": "empty; 0 lines; green; green; every smoke step passes",
+          "tool": "git, rg, Gradle, smoke.sh",
+          "anchorsTo": "`db/migration`, `web/`, `LeadGenRuntimeHints`, `backend/smoke/smoke.sh`",
+          "severity": ""
+        },
+        "verification": "2026-09-24. git + Gradle + docker — migrations byte-identical to `origin/main`; no `Mapping(` line changed under `web/`; all eight `*ControllerTest` classes, `LeadGenRuntimeHintsTest` and `WorkingNotesStaySmallTest` green; `processAot` regenerated the AOT sources on the final tree; `leadgen-api:spec013` built from the final tree (`processAot` inside the image build) and `backend/smoke/smoke.sh` passed all 23 checks, boot 9.3 s; the one failed smoke in between was Docker's disk full of build cache, pruned",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 94
+      },
+      {
+        "id": "ISC-351",
+        "text": "`CHANGELOG.md` § Unreleased names the paid-down debt, `docs/decisions/configuration.md` records where the version comes from and what `.env.example` is held to, and `WorkingNotesStaySmallTest` stays green.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-337",
+          "ISC-346"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-351",
+          "type": "bash",
+          "check": "`rg -n -i 'debt|lombok|working notes' CHANGELOG.md`; `rg -n -i 'build info|env.example' docs/decisions/configuration.md`; `WorkingNotesStaySmallTest`",
+          "threshold": "≥ 1 hit under Unreleased; ≥ 1 hit each; green",
+          "tool": "rg, JUnit",
+          "anchorsTo": "`CHANGELOG.md`, `docs/decisions/configuration.md`",
+          "severity": ""
+        },
+        "verification": "2026-09-24. rg + JUnit — `CHANGELOG.md` § Unreleased carries the spec's changes (non-root web image on 8080 with the chart note, compose health, `.env.example` held by `EnvExampleTest`, `ConfigProperties`, the Lombok sweep, the working-notes trim, the frontend items); `docs/decisions/configuration.md` gains the `.env.example` contract, why the version mechanism stays, the record-and-slice wiring and the bun pins; `WorkingNotesStaySmallTest` green, backend notes at 9,484 of 12,000 with the NUL-byte trap added",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 95
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 15,
+      "open": 0,
+      "takeable": 0,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 14,
+      "dropped": 1,
+      "normal": 14,
+      "anti": 1,
+      "antecedent": 0
+    }
+  }
+}

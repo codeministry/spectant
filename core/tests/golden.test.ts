@@ -29,9 +29,11 @@ import { FILE_KINDS, specFilePath } from '../src/files.ts';
 import type { FileKind, SpecFiles, SpecPageModel, TimelineEntry } from '../src/files.ts';
 import { listSpecs, resolveSpec } from '../src/resolve.ts';
 import type { SpecRef } from '../src/resolve.ts';
+import { buildClaimViews } from '../src/claim-view.ts';
 import { buildFrames } from '../src/frames.ts';
 import { buildSpecPage } from '../src/spec.ts';
 import { buildTimeline } from '../src/timeline.ts';
+import { docsModel } from './helpers/docs-model.ts';
 import { DASHBOARD_FAMILY, expectGolden, goldenFiles, goldenMismatch, goldenPath, goldenText, goldenTrees } from './helpers/golden.ts';
 import { FIXTURES, fixtureTrees, folders, readTreeAt } from './helpers/read-tree.ts';
 
@@ -117,7 +119,9 @@ const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
   specs: specsModel,
   timeline: timelineModel,
   spec: specPageModel,
+  docs: docsModel,
   frames: (root) => ((texts) => Object.fromEntries(listSpecs(root).map((ref) => [rel(root, ref.dir), buildFrames(texts.get(rel(root, ref.dir)) as SpecFiles)])))(folderTexts(root)),
+  'claim-view': (root) => ((texts) => Object.fromEntries(listSpecs(root).map((ref) => [rel(root, ref.dir), buildClaimViews({ files: texts.get(rel(root, ref.dir)) as SpecFiles })])))(folderTexts(root)),
 };
 
 /** Every string in a JSON value, keys included. */

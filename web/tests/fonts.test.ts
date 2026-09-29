@@ -1,8 +1,10 @@
-// Font guard for ISC-67 (T19): the app ships Inter Variable and JetBrains Mono as local woff2 assets. The files live
-// in `web/public/fonts/` (Angular copies `public/` into the build root, so they are served from `/fonts/…`), each
-// with its SIL OFL-1.1 text beside it; `web/src/styles/fonts.css` declares exactly one `@font-face` per file, and
-// `web/src/index.html` preloads both. When a build exists, the embedded output must carry the same bytes.
-// The "external" block (ISC-67.1, T20) guards the other side: no stylesheet names a font URL off the app's origin.
+// Font guard for ISC-74 (T32, T33), superseding the Inter face of ISC-67: the app ships Manrope, Sora and JetBrains
+// Mono as local variable woff2 assets. The files live in `web/public/fonts/` (Angular copies `public/` into the build
+// root, so they are served from `/fonts/…`), each with its SIL OFL-1.1 text beside it and nothing else there;
+// `web/src/styles/fonts.css` declares exactly one `@font-face` per file, and `web/src/index.html` preloads all three.
+// When a build exists, the embedded output must carry the same bytes.
+// The "external" block (ISC-67.1, kept by ISC-74) guards the other side: no stylesheet names a font URL off the
+// app's origin.
 import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -12,13 +14,39 @@ const PUBLIC_FONTS = join(WEB, "public", "fonts");
 const DIST_FONTS = join(WEB, "dist", "browser", "fonts");
 const read = (...path: string[]) => readFileSync(join(WEB, ...path), "utf8");
 
-const MIN_BYTES = 50 * 1024;
+// The latin subsets of Manrope and Sora are 24 KB and 33 KB; a file under 16 KB is a stub or an error page.
+const MIN_BYTES = 16 * 1024;
 const MAX_BYTES = 600 * 1024;
 const WOFF2_MAGIC = "wOF2";
 
+// The `latin` range Google Fonts cuts both subset files to (ASCII, Latin-1 with the German letters, general
+// punctuation, €, ™, − and a few more); code points outside it fall through to the next family in the stack.
+const LATIN_RANGE =
+  "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, " +
+  "U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD";
+
 const FACES = [
-  { family: "Inter Variable", file: "inter-variable.woff2", license: "LICENSE-Inter.txt" },
-  { family: "JetBrains Mono Variable", file: "jetbrains-mono-variable.woff2", license: "LICENSE-JetBrainsMono.txt" },
+  {
+    family: "Manrope Variable",
+    file: "manrope-variable.woff2",
+    license: "LICENSE-Manrope.txt",
+    weight: "200 800",
+    range: LATIN_RANGE,
+  },
+  {
+    family: "Sora Variable",
+    file: "sora-variable.woff2",
+    license: "LICENSE-Sora.txt",
+    weight: "100 800",
+    range: LATIN_RANGE,
+  },
+  {
+    family: "JetBrains Mono Variable",
+    file: "jetbrains-mono-variable.woff2",
+    license: "LICENSE-JetBrainsMono.txt",
+    weight: "100 900",
+    range: undefined,
+  },
 ] as const;
 
 /** The body of every `@font-face { … }` rule, comments stripped first so a commented-out rule does not count. */
@@ -51,7 +79,12 @@ describe("local", () => {
     });
   }
 
-  test("fonts.css declares exactly two @font-face rules, one per local file", () => {
+  test("web/public/fonts holds exactly the three faces and their licence texts (Inter is gone)", () => {
+    const expected = FACES.flatMap((face) => [face.file, face.license]).sort();
+    expect(readdirSync(PUBLIC_FONTS).sort()).toEqual(expected);
+  });
+
+  test("fonts.css declares exactly three @font-face rules, one per local file", () => {
     const faces = fontFaces(read("src", "styles", "fonts.css"));
     expect(faces).toHaveLength(FACES.length);
 
@@ -60,24 +93,34 @@ describe("local", () => {
       expect(body, `@font-face for "${face.family}"`).toBeDefined();
       const rule = body ?? "";
       expect(declaration(rule, "src")).toBe(`url("/fonts/${face.file}") format("woff2")`);
-      expect(declaration(rule, "font-weight")).toBe("100 900");
+      expect(declaration(rule, "font-style")).toBe("normal");
+      expect(declaration(rule, "font-weight")).toBe(face.weight);
       expect(declaration(rule, "font-display")).toBe("swap");
+      expect(declaration(rule, "unicode-range")?.replace(/\s+/g, " ")).toBe(face.range);
     }
   });
 
-  test("fonts.css sets the sans and mono stacks and tabular numbers on the body", () => {
+  test("fonts.css sets the text, display and mono stacks and tabular numbers on the body", () => {
     const css = read("src", "styles", "fonts.css");
-    expect(css).toMatch(/--font-sans:\s*"Inter Variable",/);
+    expect(css).toMatch(/--font-sans:\s*"Manrope Variable",/);
+    expect(css).toMatch(/--font-display:\s*"Sora Variable",/);
     expect(css).toMatch(/--font-mono:\s*"JetBrains Mono Variable",/);
     expect(css).toMatch(/body\s*\{[^}]*font-family:\s*var\(--font-sans\)/);
     expect(css).toMatch(/body\s*\{[^}]*font-variant-numeric:\s*tabular-nums/);
+    expect(css).toMatch(/h1\s*\{[^}]*font-family:\s*var\(--font-display\)/);
+  });
+
+  test("no face outside the three is named: Inter is neither declared, stacked nor preloaded", () => {
+    const code = read("src", "styles", "fonts.css").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(code).not.toMatch(/\bInter\b/);
+    expect(read("src", "index.html")).not.toMatch(/inter-variable/i);
   });
 
   test("styles.css imports fonts.css", () => {
     expect(read("src", "styles.css")).toMatch(/^@import "\.\/styles\/fonts\.css";$/m);
   });
 
-  test("index.html preloads both faces as crossorigin woff2", () => {
+  test("index.html preloads all three faces as crossorigin woff2", () => {
     const html = read("src", "index.html");
     for (const face of FACES) {
       const link = new RegExp(`<link[^>]*href="/fonts/${face.file.replace(/\./g, "\\.")}"[^>]*>`).exec(html)?.[0];
@@ -91,7 +134,7 @@ describe("local", () => {
 
   // Skipped when there is no build (a fresh checkout); `bun run --cwd web build` produces `web/dist/browser/`.
   const noBuild = !existsSync(DIST_FONTS);
-  test.skipIf(noBuild)("the built output carries both files byte-for-byte (skipped without a build)", () => {
+  test.skipIf(noBuild)("the built output carries all three files byte-for-byte (skipped without a build)", () => {
     for (const face of FACES) {
       const built = join(DIST_FONTS, face.file);
       expect(existsSync(built)).toBe(true);
@@ -207,7 +250,7 @@ describe("external", () => {
       '@import "./styles/fonts.css";',
       "@import url(tokens.css);",
       '@plugin "daisyui";',
-      '@font-face { font-family: "Inter Variable"; src: url("/fonts/inter-variable.woff2") format("woff2"); }',
+      '@font-face { font-family: "Manrope Variable"; src: url("/fonts/manrope-variable.woff2") format("woff2"); }',
       '@font-face { font-family: "Mono"; src: local("Mono"), url(../fonts/mono.woff2) format("woff2"); }',
       '/* @import url("https://fonts.googleapis.com/css2?family=Inter"); */',
       'body { background: url("https://example.com/not-a-font.png"); }',
@@ -227,10 +270,10 @@ describe("external", () => {
 
     const clean = [
       '<link rel="icon" type="image/x-icon" href="favicon.ico">',
-      '<link rel="preload" href="/fonts/inter-variable.woff2" as="font" type="font/woff2" crossorigin>',
+      '<link rel="preload" href="/fonts/manrope-variable.woff2" as="font" type="font/woff2" crossorigin>',
       '<link rel="stylesheet" href="styles-ABC123.css">',
       '<!-- <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter"> -->',
-      '<style>@font-face{font-family:"Inter Variable";src:url(/fonts/inter-variable.woff2) format("woff2")}</style>',
+      '<style>@font-face{font-family:"Manrope Variable";src:url(/fonts/manrope-variable.woff2) format("woff2")}</style>',
     ].join("\n");
     expect(externalHtmlUrls(clean)).toEqual([]);
   });

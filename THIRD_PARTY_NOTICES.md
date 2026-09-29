@@ -6,7 +6,7 @@ third-party material listed below, each under its own licence. Versions are the 
 
 A `spectant` binary contains the Bun runtime and the production web build. The web build contains the compiled
 runtime dependencies of `web/`, the generated stylesheet (Tailwind CSS and daisyUI), the inlined Lucide icons and the
-two font files with their licence texts. `core/` and `server/` have no third-party runtime dependency; they use only
+three font files with their licence texts. `core/` and `server/` have no third-party runtime dependency; they use only
 Bun and Node built-ins (`bun:sqlite`, `node:fs`, `node:path`, `node:os`, `node:crypto`).
 
 The notice texts below are copied verbatim from the licence files of the installed packages.
@@ -259,19 +259,40 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## Inter
+## Manrope
 
-- **Font:** Inter Variable, upright
-- **Version:** 4.1 (release v4.1, `web/InterVariable.woff2`, unchanged)
+- **Font:** Manrope Variable, upright, weight axis 200 to 800, `latin` subset
+- **Version:** 4.504 (googlefonts/manrope at commit `6f81ebecdf65e4463b798cc07b16a4f8d5216917`, the source Google
+  Fonts builds from)
 - **Licence:** SIL Open Font License, Version 1.1
-- **Upstream:** https://github.com/rsms/inter
-- **How it is bundled:** the local file `web/public/fonts/inter-variable.woff2`, served by the app from `/fonts/`
-  inside the binary, never fetched from a font host. The full licence text ships beside it as
-  `web/public/fonts/LICENSE-Inter.txt` and is copied into the web build with the font.
+- **Upstream:** https://github.com/googlefonts/manrope
+- **How it is bundled:** the local file `web/public/fonts/manrope-variable.woff2`, served by the app from `/fonts/`
+  inside the binary, never fetched from a font host. It is the `latin` subset of the variable face as Google Fonts
+  serves it, downloaded once on 2026-09-29 and unchanged. The full licence text ships beside it as
+  `web/public/fonts/LICENSE-Manrope.txt` and is copied into the web build with the font.
 - **Reserved Font Name:** none is declared in the copyright statement.
 
 ```text
-Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter)
+Copyright 2018 The Manrope Project Authors (https://github.com/sharanda/manrope)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+```
+
+## Sora
+
+- **Font:** Sora Variable, upright, weight axis 100 to 800, `latin` subset
+- **Version:** 2.000 (sora-xor/sora-font at commit `7f9a9c5d0ccd1c099cfac420aa27133df1c5fdc4`, the source Google
+  Fonts builds from)
+- **Licence:** SIL Open Font License, Version 1.1
+- **Upstream:** https://github.com/sora-xor/sora-font
+- **How it is bundled:** the local file `web/public/fonts/sora-variable.woff2`, served by the app from `/fonts/`
+  inside the binary, never fetched from a font host. It is the `latin` subset of the variable face as Google Fonts
+  serves it, downloaded once on 2026-09-29 and unchanged. The full licence text ships beside it as
+  `web/public/fonts/LICENSE-Sora.txt` and is copied into the web build with the font.
+- **Reserved Font Name:** none is declared in the copyright statement.
+
+```text
+Copyright 2019 The Sora Project Authors (https://github.com/sora-xor/sora-font)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 ```

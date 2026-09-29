@@ -1,0 +1,650 @@
+{
+  "constitution": {
+    "frontmatter": {
+      "repo": "spectant",
+      "derived": "2026-09-28",
+      "standards_version": "1.0.0",
+      "design_track": "app",
+      "viewports": "[390, 820, 1440]",
+      "dev_services": "7717=Spectant, 4200=Web dev",
+      "stack": "[bun, typescript, angular, daisyui]"
+    },
+    "html": "<h1 id=\"constitution-spectant\">Constitution — spectant</h1>\n<blockquote><p>Derived on 2026-09-28 from the sources listed below. The rules live in those sources; this file says which of them bind spec work, where to read them, and what proves them.</p></blockquote>\n<h2 id=\"what-a-spec-may-contain\">What a spec may contain</h2>\n<p>This repository is public from its first commit, so three rules hold for everything under <code>specs/</code>.</p>\n<p><strong>Everything under <code>specs/</code> is English.</strong> Slugs, branch names, prose, claims, decisions. The house default of German prose for private repositories does not reach a public one.</p>\n<p><strong>A spec names no person, customer, machine or private repository.</strong> Where a claim needs one, it says &quot;a registered workspace&quot; or &quot;the principal&#39;s installation&quot; and stops there. The concrete words live in a private deny-list outside this repository; the public leak check covers the generic classes.</p>\n<p><strong>A spec carries its claim text, not only its claim ID.</strong> The master <code>ISA.md</code> is untracked, so an ID alone is an address into a private register. Whatever cannot be written this way stays in the master.</p>\n<h2 id=\"binding-sources\">Binding sources</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Source</th><th>Kind</th><th>Governs</th></tr></thead><tbody><tr><td><code>~/.claude/LIFEOS/USER/ENGINEERING/</code> — <code>STANDARDS.md</code>, <code>FRONTEND.md</code>, <code>DESIGN.md</code> (app track), <code>VERIFICATION.md</code>, <code>DELIVERY.md</code> § Continuous delivery</td><td>house</td><td>cross-cutting rules, the Angular frontend, the app design track, the three-tier ladder, CI</td></tr><tr><td><code>ISA.md</code> § Principles, § Constraints</td><td>repo, <strong>untracked</strong></td><td>files are the truth, skill works alone, every step is a transition, local by design, inherited look in light and dark, LifeOS optional, binary targets, loopback only, write rules</td></tr><tr><td><code>FORMAT.md</code> and <code>core/fixtures/</code> (owed by spec 001)</td><td>repo</td><td>the file contract between skill and app: frontmatter, claims, stages, events, activity</td></tr><tr><td>The old Spec skill&#39;s pages in their light and dark theme</td><td>reference</td><td>the design source: palette in both themes, card anatomy, icon set. Never a measurement target; visual regression runs against the app&#39;s own baseline (<code>ISA.md</code> Decisions 2026-09-28, review before implement)</td></tr><tr><td>Claude Code plugin reference (<code>code.claude.com/docs/en/plugins-reference</code>)</td><td>external</td><td>plugin and marketplace manifest shape, hooks, <code>bin/</code> on PATH</td></tr><tr><td><code>github.com/danielmiessler/LifeOS</code> (MIT)</td><td>external, upstream</td><td>origin of the ISA format that <code>FORMAT.md</code> descends from</td></tr></tbody></table></div>\n<p><code>BACKEND.md</code> does not govern this repository: the server is Bun, not Spring Boot. <code>DELIVERY.md</code> § Images, § Charts and GitOps and § Cluster-level concerns do not govern it either: the product is a binary and a plugin, with no image and no cluster.</p>\n<p><strong><code>ISA.md</code> is in <code>.gitignore</code> and stays there</strong> (ISA Decisions, 2026-09-28). A row below may rest on the master alone only until a tracked source carries the same rule; spec 001 owes <code>README.md</code>, a root <code>CLAUDE.md</code> and <code>FORMAT.md</code>, and when they land every row that names only <code>ISA.md</code> is re-pointed and this file is re-derived.</p>\n<p><strong>Design track <code>app</code>,</strong> derived from the chosen stack (Angular zoneless with an app shell, live state, write actions) and confirmed by the principal&#39;s choice of the house frontend on 2026-09-28. The repository has no source yet, so the evidence is the decision, not the code.</p>\n<h2 id=\"non-negotiables\">Non-negotiables</h2>\n<p>Every rule in <code>STANDARDS.md</code> § Cross-cutting rules, <code>FRONTEND.md</code>, the app track of <code>DESIGN.md</code>, <code>VERIFICATION.md</code> § The ladder and <code>DELIVERY.md</code> § Continuous delivery binds, except what stands under <code>## Adaptations</code> and <code>## Conformance baseline</code>. Named individually are the rules this repository particularly rests on or whose probe resolves here.</p>\n<div class=\"mdtable\"><table><thead><tr><th>Rule</th><th>Source</th><th>Verdict</th><th>Probe</th></tr></thead><tbody><tr><td>XC-01 bun, never npm</td><td>house + <code>ISA.md</code> § Constraints</td><td>binding</td><td><code>bun run check:static</code> (owed)</td></tr><tr><td>XC-02 TypeScript only</td><td>house + <code>ISA.md</code> § Constraints</td><td>binding</td><td>review</td></tr><tr><td>XC-03 never commit</td><td>house + <code>ISA.md</code> § Constraints</td><td>binding</td><td>review</td></tr><tr><td>XC-07 a convention that can be a test, is a test</td><td>house</td><td>binding</td><td><code>bun run verify:quick</code> (owed)</td></tr><tr><td>XC-09 pin everything</td><td>house</td><td>binding</td><td>review: bun, Angular, daisyUI and Tailwind versions pinned</td></tr><tr><td>XC-10 nothing individual in a committed file</td><td>house + <code>ISA.md</code> § Constraints</td><td>binding</td><td><code>bun run check:leak</code> (owed)</td></tr><tr><td>XC-11 no default pointing at a real external host</td><td>house + <code>ISA.md</code> § Principles (local by design)</td><td>binding</td><td><code>bun test tests/offline.test.ts</code> (owed)</td></tr><tr><td>XC-12 visual verification with Interceptor</td><td>house</td><td>binding</td><td>review</td></tr><tr><td>XC-13 lazy-senior-dev ladder</td><td>house</td><td>binding</td><td>review</td></tr><tr><td>FE-FW-01…07 Angular 22 zoneless, standalone, OnPush, signals</td><td>house</td><td>binding</td><td><code>bun run lint</code> (owed)</td></tr><tr><td>DS-APP-04 no hex outside the theme files</td><td>house</td><td>binding</td><td><code>bun run lint:css</code> (owed)</td></tr><tr><td>DS-APP-05 colour guard spec</td><td>house + <code>ISA.md</code> ISC-18</td><td>binding</td><td><code>bun test web/src/theme-colors.spec.ts</code> (owed)</td></tr><tr><td>DS-APP-11 Tailwind 4 CSS-first</td><td>house</td><td>binding</td><td>review</td></tr><tr><td>DS-APP-32/33 contrast for text and marks, both themes</td><td>house + <code>ISA.md</code> ISC-65</td><td>binding</td><td><code>bun run test:browser -- contrast</code> (owed)</td></tr><tr><td>DS-APP-38 focus ring</td><td>house + <code>ISA.md</code> ISC-64</td><td>binding</td><td><code>bun run test:browser -- focus</code> (owed)</td></tr><tr><td>DS-APP-42 reduced motion</td><td>house + <code>ISA.md</code> ISC-66</td><td>binding</td><td><code>bun run test:browser -- motion</code> (owed)</td></tr><tr><td>FE-TST-01/02/03 Vitest unit tier, real-Chromium browser tier, Playwright e2e</td><td>house</td><td>binding</td><td><code>bun run test</code>, <code>bun run test:browser</code>, <code>bun run e2e</code> (owed)</td></tr></tbody></table></div>\n<h2 id=\"adaptations\">Adaptations</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Rule</th><th>House default</th><th>This repo does</th><th>Recorded in</th><th>Why</th></tr></thead><tbody><tr><td>XC-04 user-facing strings German</td><td>UI strings in German</td><td>UI strings in English and German from two catalogues, English default</td><td><code>ISA.md</code> Decisions 2026-09-28 (grill Q10)</td><td>a public product for an international audience; the German catalogue keeps XC-05</td></tr><tr><td>DS-APP-01, DS-APP-03 brand palette</td><td>colours derived from the frozen brand hex</td><td>colours derived from the old Spec pages&#39; light and dark values</td><td><code>ISA.md</code> § Principles, ISC-18</td><td>the inherited look is the specification; there is no separate brand</td></tr><tr><td>DS-APP-06 asymmetric light and dark</td><td>light tints the page, dark makes the page darkest</td><td>whatever the old pages do in each theme</td><td><code>ISA.md</code> § Principles</td><td>inheriting the look wins over the house default where they differ</td></tr><tr><td>DS-APP-08 tokens from one shared package</td><td>consume the shared token package</td><td>own two themes <code>spec-light</code>, <code>spec-dark</code></td><td><code>ISA.md</code> ISC-18</td><td>the palette is not the house palette; nothing to share</td></tr><tr><td>FE-I18N-01 route prefixes</td><td><code>/de</code> and <code>/en</code> prefixes, German default</td><td>language is a persisted setting in the gear panel, English default; Transloco stays</td><td><code>ISA.md</code> Decisions 2026-09-28 (review before implement)</td><td>a local single-user tool has no URL to share and an international audience; a prefix would only lengthen deep links into cmux</td></tr></tbody></table></div>\n<h2 id=\"conformance-baseline\">Conformance baseline</h2>\n<blockquote><p>Measured 2026-09-28 by <code>ls</code> on an empty repository: no source, no <code>package.json</code>, no CI. Nothing here was changed to improve the measurement.</p></blockquote>\n<div class=\"mdtable\"><table><thead><tr><th>Rule</th><th>Status</th><th>Measured</th><th>Note</th></tr></thead><tbody><tr><td>every tier of the ladder</td><td>grandfathered</td><td>2026-09-28</td><td>no <code>package.json</code>; spec 001 creates <code>check:static</code>, <code>verify:quick</code>, <code>verify</code> and clears this row</td></tr><tr><td>XC-10 leak check</td><td>not measured</td><td>2026-09-28</td><td><code>check:leak</code> owed by spec 001</td></tr><tr><td>FE-FW-*, DS-APP-*</td><td>not measured</td><td>2026-09-28</td><td>no Angular workspace yet</td></tr></tbody></table></div>\n<h2 id=\"gates\">Gates</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Tier</th><th>Command</th><th>Runs when</th></tr></thead><tbody><tr><td>static</td><td>— (not defined; see Conformance baseline) · target <code>bun run check:static</code></td><td>before every claim closes</td></tr><tr><td>quick</td><td>— (not defined; see Conformance baseline) · target <code>bun run verify:quick</code></td><td>at every implementation stop</td></tr><tr><td>full</td><td>— (not defined; see Conformance baseline) · target <code>bun run verify</code> (adds the browser tier <code>test:browser</code>, the Playwright suites <code>e2e</code> and <code>test:visual</code> in both themes, and the four-target build)</td><td>before a spec is marked complete</td></tr></tbody></table></div>\n<h2 id=\"lanes\">Lanes</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Lane</th><th>Path prefixes</th><th>Context a worker loads</th><th>Lane probe</th></tr></thead><tbody><tr><td>core</td><td><code>core/</code>, <code>FORMAT.md</code></td><td><code>FORMAT.md</code>, <code>core/CLAUDE.md</code></td><td><code>bun test core/</code></td></tr><tr><td>server</td><td><code>server/</code>, <code>scripts/</code>, <code>tests/</code>, <code>install.sh</code></td><td><code>server/CLAUDE.md</code></td><td><code>bun test tests/</code></td></tr><tr><td>web</td><td><code>web/</code></td><td><code>web/CLAUDE.md</code>, house <code>FRONTEND.md</code>, <code>DESIGN.md</code> app track</td><td><code>bun run --cwd web test</code></td></tr><tr><td>plugin</td><td><code>plugin/</code>, <code>.claude-plugin/</code></td><td><code>plugin/CLAUDE.md</code></td><td><code>bun test plugin/</code></td></tr><tr><td>repo</td><td>root files (<code>package.json</code>, <code>LICENSE</code>, <code>THIRD_PARTY_NOTICES.md</code>, <code>README.md</code>, <code>CLAUDE.md</code>), <code>.github/</code></td><td>root <code>CLAUDE.md</code></td><td><code>bun run check:static</code></td></tr></tbody></table></div>\n<h2 id=\"how-specs-are-held-to-it\">How specs are held to it</h2>\n<p>Every new spec is read against <code>## What a spec may contain</code> and <code>## Non-negotiables</code> before its claims are minted. A plan that departs from a <code>binding</code> row names the rule in <code>## Stack Decisions</code> with the reason, and the deviation lands in the master&#39;s Decisions before any code does. A visual claim is held in both themes or it is not a visual claim. A row in <code>## Conformance baseline</code> is cleared by the spec that creates its probe, and that spec says so in <code>## Conformance Impact</code>.</p>",
+    "toc": [
+      {
+        "level": 2,
+        "text": "What a spec may contain",
+        "anchor": "what-a-spec-may-contain"
+      },
+      {
+        "level": 2,
+        "text": "Binding sources",
+        "anchor": "binding-sources"
+      },
+      {
+        "level": 2,
+        "text": "Non-negotiables",
+        "anchor": "non-negotiables"
+      },
+      {
+        "level": 2,
+        "text": "Adaptations",
+        "anchor": "adaptations"
+      },
+      {
+        "level": 2,
+        "text": "Conformance baseline",
+        "anchor": "conformance-baseline"
+      },
+      {
+        "level": 2,
+        "text": "Gates",
+        "anchor": "gates"
+      },
+      {
+        "level": 2,
+        "text": "Lanes",
+        "anchor": "lanes"
+      },
+      {
+        "level": 2,
+        "text": "How specs are held to it",
+        "anchor": "how-specs-are-held-to-it"
+      }
+    ],
+    "figures": [],
+    "sections": [
+      {
+        "id": "constitution-spectant",
+        "heading": "Constitution — spectant",
+        "level": 1
+      },
+      {
+        "id": "what-a-spec-may-contain",
+        "heading": "What a spec may contain",
+        "level": 2
+      },
+      {
+        "id": "binding-sources",
+        "heading": "Binding sources",
+        "level": 2
+      },
+      {
+        "id": "non-negotiables",
+        "heading": "Non-negotiables",
+        "level": 2
+      },
+      {
+        "id": "adaptations",
+        "heading": "Adaptations",
+        "level": 2
+      },
+      {
+        "id": "conformance-baseline",
+        "heading": "Conformance baseline",
+        "level": 2
+      },
+      {
+        "id": "gates",
+        "heading": "Gates",
+        "level": 2
+      },
+      {
+        "id": "lanes",
+        "heading": "Lanes",
+        "level": 2
+      },
+      {
+        "id": "how-specs-are-held-to-it",
+        "heading": "How specs are held to it",
+        "level": 2
+      }
+    ],
+    "wordCount": 1293
+  },
+  "specs": {
+    "specs/001-app-skeleton": {
+      "plan": {
+        "frontmatter": {
+          "spec": "001-app-skeleton",
+          "type": "feature",
+          "status": "draft",
+          "updated": "2026-09-28"
+        },
+        "html": "<h1 id=\"plan-001-app-skeleton-and-dashboard\">Plan 001 — App skeleton and dashboard</h1>\n<p><strong>Purpose:</strong> how the claims in <code>spec.md</code> get built. The what lives there; this file holds no acceptance criterion.</p>\n<h2 id=\"approach\">Approach</h2>\n<p>Build a thin end-to-end skeleton first, then the design system with its own visual baseline, then the data path, then the two views until every claim&#39;s probe is green. The obvious order would be contract first (parser, server, UI, binary last). It layers most cleanly, but it proves the two riskiest seams last: embedding an Angular build in a <code>bun build --compile</code> binary, and installing that binary with one line on a machine that has never seen the repo. Walking the whole path with a hello page on day one turns both into known quantities before any real UI exists (ISC-8.1 is the probe that keeps that seam honest from then on). The design system comes second because every later screen is built from its primitives and measured against its own Playwright baseline; the old dashboard is the design source, never a measurement target (Decisions 2026-09-28), so no reference render of the old skill is needed and the harness has no dependency outside this repository.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n    subgraph S1[&quot;① skeleton&quot;]\n        A1[bun workspaces + lane notes] --&gt; A2[Angular hello page] --&gt; A3[embed dist in server] --&gt; A4[compile 4 targets] --&gt; A5[binary smoke + install.sh in a non-root Ubuntu container]\n    end\n    subgraph S2[&quot;② design system + baseline&quot;]\n        B1[themes spec-light / spec-dark, tokens, fonts, motion] --&gt; B2[ui primitives] --&gt; B3[Playwright: e2e · webkit · visual, pinned Chromium in a Linux container]\n    end\n    subgraph S3[&quot;③ core + API&quot;]\n        C1[FORMAT.md + fixtures] --&gt; C2[core/: frontmatter, claims, stage, gates, drift, next command, dashboard model] --&gt; C3[SQLite registry + settings] --&gt; C4[CLI add / list / remove] --&gt; C5[loopback HTTP API]\n    end\n    subgraph S4[&quot;④ views&quot;]\n        D1[&quot;/w/:ws: header, KPI band, Brief, Next up, Specs panel, warnings&quot;] --&gt; D2[&quot;/w/:ws/s/:id inspector · sheet&quot;] --&gt; D3[&quot;/ overview, workspace columns&quot;] --&gt; D4[palette, keyboard, live refresh, states]\n    end\n    S1 --&gt; S2 --&gt; S3 --&gt; S4</pre><figcaption>Approach</figcaption></figure>\n<p>The runtime shape the four stages add up to:</p>\n<figure class=\"mermaid-figure\" data-figure=\"2\"><pre class=\"mermaid\">flowchart TB\n    subgraph bin[&quot;spectant binary&quot;]\n        CLI[&quot;cli.ts&lt;br/&gt;add · list · remove · serve · --version&quot;]\n        SRV[&quot;server/&lt;br/&gt;Bun.serve on 127.0.0.1&quot;]\n        EMB[&quot;embedded web/dist&lt;br/&gt;(generated manifest)&quot;]\n        CORE[&quot;core/&lt;br/&gt;parse · stage · gates · drift · next · model&quot;]\n        DB[(&quot;bun:sqlite&lt;br/&gt;workspace · settings&quot;)]\n    end\n    FS[&quot;registered repos&lt;br/&gt;ISA.md · specs/** · .gates/&quot;]\n    WEB[&quot;Angular app&lt;br/&gt;/ · /w/:ws · /w/:ws/s/:id&quot;]\n    CLI --&gt; DB\n    CLI --&gt; SRV\n    SRV --&gt; EMB\n    SRV -- &quot;GET /api/…&quot; --&gt; CORE\n    CORE -- &quot;read only (no git object writes)&quot; --&gt; FS\n    SRV --&gt; DB\n    WEB -- &quot;fetch, ETag, polling&quot; --&gt; SRV</pre><figcaption>Approach</figcaption></figure>\n<p><strong>Server and UI split.</strong> The server stays thin: it resolves workspaces from the registry, asks <code>core/</code> for a dashboard model per workspace, serves settings, and returns JSON. Everything visual lives in Angular. The web app can run against a stub <code>/api</code> fed from the fixtures&#39; golden JSON, which is how the visual baselines and most e2e specs run without the binary.</p>\n<p><strong>Embedding.</strong> A build step writes <code>server/embedded.gen.ts</code>, which imports every file in <code>web/dist/browser</code> with <code>with { type: &quot;file&quot; }</code>, so <code>bun build --compile</code> bundles them; the manifest is keyed on the imported path, and a content-type map covers html, js, css, woff2, svg, json. The server serves them with an SPA fallback to <code>index.html</code> for <code>/w/…</code> deep links. The version string is inlined at build time (<code>--define</code>), because a compiled binary has no <code>package.json</code> beside it.</p>\n<p><strong>Porting from the old skill.</strong> <code>core/</code> takes over, module by module and each with golden cases: frontmatter and claim parsing (<code>SpecLib</code>, <code>IsaFrontier</code> claim parser), the claim partition and drift classes (<code>SpecStatus</code>), the stage and next-command rules (<code>SpecDashboard.stageOf</code> / <code>nextCommand</code>), the review and code-review marks (<code>SpecGate</code>, re-implemented to hash the worktree <strong>in memory</strong> so no object is ever written into a registered repository&#39;s <code>.git/</code>; ISC-15), the takeable set (<code>SpecRun.plan</code>), the diagram verdict, the TL;DR staleness (<code>SpecTldr</code>), the markdown renderer for the Brief (<code>SpecMarkdown</code>), the archive listing and the local-listener probe (<code>SpecServices</code>, loopback only). The old page&#39;s CSS is not ported; its token values become the two daisyUI themes.</p>\n<p><strong>Design decisions carried in</strong> (design.md § Viewport-übergreifend): container tiers compact &lt; 640 / medium / wide ≥ 1120 on the shell container; routes <code>/</code>, <code>/w/:ws</code>, <code>/w/:ws/s/:id</code> with the redirect when one workspace is registered; filters and sort as query state; the badge chevron as the only switcher; the shared section disposition; the live indicator replacing the refresh trio; settings server-side; the keyboard map and the single-key switch; motion tokens with the reduced-motion override; derived contrast tokens; the WebKit fallback list.</p>\n<p><strong>Determinism for the baselines.</strong> Visual and e2e suites run inside the pinned Playwright Linux container both in CI and locally (<code>bun run test:visual</code> starts it), so the committed baselines match CI byte for byte. Each run pins the clock (<code>page.clock.setFixedTime</code>), disables animations, waits for <code>data-ready</code>, runs against the stub API with fixture data (fixed dates, one fixture with a three-digit/three-digit master fraction) and never has a dev service listening.</p>\n<h2 id=\"stack-decisions\">Stack Decisions</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Rule</th><th>Chosen</th><th>Alternatives</th><th>Why · measurement · price · probe that stays green</th><th>Recorded in</th></tr></thead><tbody><tr><td>FE-I18N-01 route prefixes</td><td>language as a server-side setting, English default, Transloco unchanged</td><td><code>/de</code> and <code>/en</code> prefixes</td><td>a local single-user tool has no URL to share and an international audience; price: a language switch re-renders in place instead of navigating; probe: <code>web/tests/i18n-parity.test.ts</code> (ISC-22) unchanged</td><td>constitution § Adaptations; <code>ISA.md</code> Decisions 2026-09-28</td></tr><tr><td>FE-TST-01 unit runner</td><td>Angular&#39;s Vitest builder for component specs; pure TS guards (<code>web/tests/*.test.ts</code>) under root <code>bun test</code> with <code>web/src</code> excluded via <code>bunfig.toml</code></td><td>everything under <code>bun test</code></td><td><code>bun test</code> cannot compile Angular TestBed specs; price: two runners in one lane, split by folder; probes: <code>bun run --cwd web test</code>, <code>bun test web/tests</code></td><td>this plan</td></tr></tbody></table></div>\n<h2 id=\"affected-files-and-modules\">Affected Files and Modules</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Path</th><th>Change</th><th>Claim</th></tr></thead><tbody><tr><td><code>package.json</code>, <code>bun.lock</code>, <code>bunfig.toml</code></td><td>new: bun workspaces <code>core</code>, <code>server</code>, <code>web</code>; pinned bun; scripts <code>build</code>, <code>check:static</code>, <code>verify:quick</code>, <code>verify</code>, <code>check:leak</code>, <code>check:single-core</code>, <code>check:version</code>, <code>test:binary</code>, <code>test:install:linux</code>, <code>test:readonly</code>, <code>test:offline:server</code>, <code>test:visual</code>, <code>test:browser</code>, <code>e2e</code>; <code>web/src</code> excluded from root <code>bun test</code></td><td>ISC-3, ISC-5, ISC-5.2, ISC-8, ISC-9</td></tr><tr><td><code>CLAUDE.md</code>, <code>core/CLAUDE.md</code>, <code>server/CLAUDE.md</code>, <code>web/CLAUDE.md</code>, <code>README.md</code> (skeleton)</td><td>new: lane working notes (what a worker loads, the lane probe, conventions); root holds only what applies everywhere</td><td>ISC-5.1</td></tr><tr><td><code>LICENSE</code>, <code>THIRD_PARTY_NOTICES.md</code></td><td>new: Apache-2.0; Lucide (ISC), daisyUI, Tailwind, Angular, Inter, JetBrains Mono (OFL), LifeOS ISA format origin (MIT)</td><td>ISC-4</td></tr><tr><td><code>eslint.config.js</code>, <code>.stylelintrc.json</code>, <code>web/tsconfig.*.json</code></td><td>new: Angular rules (standalone, OnPush, signals, template a11y), <code>color-no-hex</code> with the two theme files exempt, no literal durations outside <code>motion.css</code>, <code>tsc --noEmit</code></td><td>ISC-5.2</td></tr><tr><td><code>.github/workflows/ci.yml</code></td><td>new: <code>bun run verify</code> on push inside the pinned Playwright container</td><td>constitution § Gates (ISC-59 closes it in the release spec)</td></tr><tr><td><code>FORMAT.md</code></td><td>new: the file contract as far as the dashboard reads it (frontmatter keys, claim lines, Test Strategy columns, <code>.gates/</code>, <code>rounds.jsonl</code>, <code>tldr.md</code>, stages, next-command rules)</td><td>ISC-6</td></tr><tr><td><code>core/src/frontmatter.ts</code>, <code>claims.ts</code>, <code>status.ts</code>, <code>stage.ts</code>, <code>gates.ts</code>, <code>takeable.ts</code>, <code>diagrams.ts</code>, <code>tldr.ts</code>, <code>markdown.ts</code>, <code>archive.ts</code>, <code>dashboard.ts</code></td><td>new: the port, one module per old source, <code>dashboard.ts</code> assembles the model</td><td>ISC-5, ISC-6, ISC-14</td></tr><tr><td><code>core/fixtures/**</code>, <code>core/fixtures/*.golden.json</code></td><td>new: synthetic spec trees with fixed dates (including <code>.gates/</code>, <code>rounds.jsonl</code>, <code>tldr.md</code>, an archive, warnings of every class, a three-digit/three-digit master fraction); golden snapshots double as stub-API data</td><td>ISC-6, ISC-17</td></tr><tr><td><code>core/tests/fixtures.test.ts</code>, <code>core/tests/stage-parity.test.ts</code></td><td>new; parity fails when no tree was compared</td><td>ISC-6, ISC-14</td></tr><tr><td><code>server/src/cli.ts</code></td><td>new: <code>add</code>, <code>list</code>, <code>remove</code>, <code>--version</code> (inlined), default command serves</td><td>ISC-9, ISC-13, ISC-20</td></tr><tr><td><code>server/src/registry.ts</code>, <code>server/src/settings.ts</code></td><td>new: SQLite workspace registry (slug deduplicated with a numeric suffix) and settings</td><td>ISC-7, ISC-13, ISC-18.3</td></tr><tr><td><code>server/src/paths.ts</code></td><td>new: data directory resolution</td><td>ISC-21</td></tr><tr><td><code>server/src/http.ts</code>, <code>server/src/api.ts</code></td><td>new: <code>Bun.serve</code> on loopback, port 7717 with fallback, ETag; routes below; static and SPA fallback</td><td>ISC-1, ISC-8.1, ISC-15, ISC-16, ISC-20</td></tr><tr><td><code>server/src/open-browser.ts</code></td><td>new: <code>open</code> / <code>xdg-open</code> unless <code>--no-browser</code></td><td>ISC-20</td></tr><tr><td><code>server/src/services.ts</code></td><td>new: local listeners for the live indicator (<code>lsof</code>, loopback probe; empty when <code>lsof</code> is missing)</td><td>ISC-2, design.md header</td></tr><tr><td><code>server/src/assets.contract.ts</code>, <code>server/embedded.gen.ts</code>, <code>scripts/embed.ts</code></td><td>new: the build contract and the generated import manifest of <code>web/dist</code></td><td>ISC-8</td></tr><tr><td><code>scripts/build.ts</code></td><td>new: Angular build, embed, <code>bun build --compile</code> for darwin-arm64, darwin-x64, linux-arm64, linux-x64 (<code>-baseline</code> variant for linux-x64), <code>codesign -s -</code> for darwin targets when built on macOS</td><td>ISC-8</td></tr><tr><td><code>install.sh</code></td><td>new: POSIX sh; OS/arch detection, <code>SPECTANT_RELEASE_URL</code> (default GitHub releases), <code>INSTALL_DIR</code> (default <code>/usr/local/bin</code> when writable, else <code>~/.local/bin</code>), prints the PATH line when the directory is not on PATH, never edits an rc file</td><td>ISC-10, ISC-11, ISC-12</td></tr><tr><td><code>tests/install/Dockerfile</code>, <code>tests/install/run.ts</code>, <code>tests/install/run-macos.md</code></td><td>new: clean Ubuntu x64 container as a <strong>non-root</strong> user, local release directory served from the host, one case with <code>/usr/local/bin</code> not writable; the macOS procedure uses a throwaway user account</td><td>ISC-10, ISC-11, ISC-12</td></tr><tr><td><code>tests/binary.test.ts</code></td><td>new: compiled binary from an empty temp directory, <code>--port 0</code>, three routes</td><td>ISC-8.1</td></tr><tr><td><code>tests/server.test.ts</code>, <code>tests/cli.test.ts</code>, <code>tests/workspaces.test.ts</code>, <code>tests/settings.test.ts</code>, <code>tests/rebuild.test.ts</code>, <code>tests/dashboard.test.ts</code>, <code>tests/readonly.test.ts</code> (recursive hash incl. <code>.git/</code>), <code>tests/offline-server.ts</code> (<code>docker run --network none</code>)</td><td>new</td><td>ISC-1, ISC-2, ISC-7, ISC-13, ISC-15, ISC-16, ISC-18.3, ISC-20, ISC-21</td></tr><tr><td><code>web/</code> (Angular 22 workspace, Vitest builder, <code>test-browser</code> target)</td><td>new: zoneless standalone app, routes <code>/</code>, <code>/w/:ws</code>, <code>/w/:ws/s/:id</code>, Transloco</td><td>ISC-16, ISC-19</td></tr><tr><td><code>web/src/styles.css</code>, <code>web/src/styles/tokens.css</code>, <code>motion.css</code>, <code>primitives.css</code></td><td>new: Tailwind 4 CSS-first, daisyUI 5 (<code>themes: false</code>, <code>--depth: 0</code>, <code>--noise: 0</code>), themes <code>spec-light</code> / <code>spec-dark</code> (OKLCH, old hex in comments, derived <code>--muted</code>, <code>--track</code>, <code>--*-ink</code>), container tier names, motion tokens</td><td>ISC-18, ISC-65, ISC-66</td></tr><tr><td><code>web/src/index.html</code>, <code>web/src/app/core/theme.service.ts</code>, <code>settings.service.ts</code></td><td>new: pre-paint <code>data-theme</code> script; system / light / dark with a live <code>matchMedia</code> listener; settings from <code>/api/settings</code></td><td>ISC-18.1, ISC-18.3</td></tr><tr><td><code>web/public/fonts/</code>, <code>web/src/styles/fonts.css</code></td><td>new: Inter Variable and JetBrains Mono woff2, <code>@font-face</code> local only</td><td>ISC-67, ISC-67.1</td></tr><tr><td><code>web/src/app/shared/ui/**</code></td><td>new: the primitives listed in design.md § Components, including <code>ui-button</code> with the coarse-pointer hit area, <code>ui-popover</code> with the anchor-positioning fallback, <code>ui-sheet</code>/<code>ui-dialog</code>, <code>ui-command-chip</code> with clipboard fallback, <code>uiRovingList</code></td><td>ISC-17, ISC-64, design.md</td></tr><tr><td><code>web/src/app/shared/icons/**</code></td><td>new: only used icons from the pinned <code>lucide-static</code> version</td><td>ISC-18.2</td></tr><tr><td><code>web/src/app/layout/{shell,header,badge-switcher,live-indicator,command-palette,shortcut-sheet,settings-popover}/**</code></td><td>new</td><td>ISC-16, ISC-18.1, ISC-60, ISC-60.1, ISC-60.2, ISC-61.2</td></tr><tr><td><code>web/src/app/features/dashboard/{kpi-band,brief,spec-table,spec-row,next-up-list,warnings-panel,context-rail,spec-inspector}/**</code></td><td>new: <code>/w/:ws</code> and <code>/w/:ws/s/:id</code></td><td>ISC-17, ISC-17.1, ISC-61, ISC-61.1, ISC-63</td></tr><tr><td><code>web/src/app/features/overview/{workspace-column,kpi-strip}/**</code></td><td>new: <code>/</code>, empty and error states</td><td>ISC-16, ISC-16.1, ISC-16.2, ISC-63.1</td></tr><tr><td><code>web/src/app/core/{api.service,refresh.service,keyboard.service,live-region.service}.ts</code></td><td>new: ETag polling, in-place diff, &quot;n new&quot; pill, keyboard map with the single-key switch</td><td>ISC-62, ISC-62.1, ISC-61</td></tr><tr><td><code>web/src/i18n/en.json</code>, <code>web/src/i18n/de.json</code></td><td>new: both catalogues, German formal</td><td>ISC-22</td></tr><tr><td><code>web/tests/theme-colors.test.ts</code>, <code>icons.test.ts</code>, <code>i18n-parity.test.ts</code>, <code>fonts.test.ts</code></td><td>new: pure TS guards under root <code>bun test</code></td><td>ISC-18, ISC-18.2, ISC-22, ISC-67, ISC-67.1</td></tr><tr><td><code>web/src/**/*.browser.spec.ts</code> (<code>focus</code>, <code>contrast</code>, <code>motion</code>)</td><td>new: real-Chromium browser tier</td><td>ISC-64, ISC-65, ISC-66</td></tr><tr><td><code>web/e2e/playwright.config.ts</code>, <code>web/e2e/{theme,palette,keyboard,refresh,narrow,offline,smoke}.spec.ts</code>, <code>web/e2e/visual.spec.ts</code>, <code>web/e2e/__screenshots__/**</code>, <code>web/e2e/stub-api.ts</code></td><td>new: Playwright projects chromium + webkit; the stub API from golden JSON; committed baselines</td><td>ISC-2, ISC-16.1, ISC-16.2, ISC-17, ISC-17.1, ISC-18.1, ISC-18.3, ISC-19.1, ISC-60…63.1</td></tr><tr><td><code>scripts/check-leak.ts</code>, <code>scripts/check-single-core.ts</code>, <code>scripts/check-version.ts</code></td><td>new</td><td>ISC-3, ISC-5, ISC-9</td></tr><tr><td><code>tests/visual/cmux-check.md</code></td><td>new: the recorded manual cmux check with the WebKit version</td><td>ISC-19</td></tr></tbody></table></div>\n<h2 id=\"interfaces\">Interfaces</h2>\n<p><strong>CLI</strong> (new): <code>spectant [--port N] [--no-browser]</code> serves; <code>spectant add &lt;path&gt;</code>, <code>spectant list</code>, <code>spectant remove &lt;path|slug&gt;</code>, <code>spectant --version</code>. Called by the user and by <code>install.sh</code>&#39;s closing hint.</p>\n<p><strong>HTTP</strong> (new, loopback only, consumed by the Angular app; every JSON route sends an ETag):</p>\n<div class=\"mdtable\"><table><thead><tr><th>Route</th><th>Returns</th></tr></thead><tbody><tr><td><code>GET /api/workspaces</code></td><td><code>[{slug, name, pathTail, readable, error?, counts}]</code> in registry order</td></tr><tr><td><code>GET /api/workspaces/:slug/dashboard</code></td><td>the dashboard model: KPI numbers, stage counts, per-spec rows (id, title, type, stage, progress, next command, takeable claims, warnings, gates), warnings grouped, fog count, archive list, brief (markdown + stale flag), services</td></tr><tr><td><code>GET /api/settings</code> · <code>PUT /api/settings</code></td><td><code>{theme: &quot;system&quot;|&quot;light&quot;|&quot;dark&quot;, language: &quot;en&quot;|&quot;de&quot;, refreshSeconds, singleKeyShortcuts}</code></td></tr><tr><td><code>GET /*</code></td><td>embedded web assets, SPA fallback to <code>index.html</code></td></tr></tbody></table></div>\n<p>The model never carries an absolute path; <code>pathTail</code> is the last segment. The dashboard model type lives in <code>core/src/dashboard.ts</code> and is the seam between server and web.</p>\n<h2 id=\"data-model\">Data Model</h2>\n<p>New SQLite database <code>spectant.db</code> in the data directory:</p>\n<div class=\"mdtable\"><table><thead><tr><th>Table</th><th>Columns</th><th>Holds</th></tr></thead><tbody><tr><td><code>workspace</code></td><td><code>slug TEXT PK</code>, <code>path TEXT UNIQUE</code>, <code>name TEXT</code>, <code>added_at TEXT</code>, <code>position INTEGER</code></td><td>the registry, in overview order; <code>slug</code> is the path&#39;s basename, deduplicated with <code>-2</code>, <code>-3</code></td></tr><tr><td><code>setting</code></td><td><code>key TEXT PK</code>, <code>value TEXT</code></td><td>theme, language, refresh interval, single-key shortcuts, schema version</td></tr></tbody></table></div>\n<p>Nothing a repository says is stored here. Deleting the file loses the registry and the settings only.</p>\n<h2 id=\"risks\">Risks</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Risk</th><th>Blast radius</th><th>Early warning</th><th>Mitigation</th></tr></thead><tbody><tr><td><code>bun build --compile</code> cannot embed the Angular output cleanly (hashed names, MIME types, SPA fallback)</td><td>the distribution model</td><td>stage ① fails before any real UI exists; ISC-8.1 stays red</td><td>manifest keyed on imported paths; fallback: one tarball asset extracted to the data directory on first run</td></tr><tr><td>Cross-compiled darwin binaries are unsigned or the x64 build needs AVX2 the container cannot emulate</td><td>install tests, releases</td><td>&quot;Illegal instruction&quot; in the container; &quot;killed&quot; on macOS</td><td><code>-baseline</code> variant for linux-x64, native x64 runner in CI later; darwin targets built on macOS or <code>codesign -s -</code>; the macOS check on a throwaway user account</td></tr><tr><td>Baselines drift between machines (fonts, antialiasing)</td><td>ISC-16.1 … ISC-17.1</td><td>first CI run after a local baseline update is red</td><td>baselines are only taken inside the pinned Playwright Linux container, locally and in CI; fonts are bundled</td></tr><tr><td><code>core/</code> port is larger than it looks (gates, drift, takeable, tldr, markdown)</td><td>stage ③ duration</td><td>golden cases for a module still red after its first sitting</td><td>one module per old source, each with its own golden cases; <code>dashboard.ts</code> last</td></tr><tr><td>Gate logic writes into a registered repo&#39;s <code>.git/</code> (the old <code>write-tree</code> approach)</td><td>ISC-15, user trust</td><td><code>test:readonly</code> checksum differs</td><td>in-memory tree hashing; never shell out to git for writes</td></tr><tr><td>Stage parity needs real spec trees that carry private names</td><td>ISC-14</td><td>—</td><td>trees come from <code>SPECTANT_PARITY_TREES</code> (a local path list); the probe fails on zero comparisons; committed fixtures are synthetic</td></tr><tr><td>cmux&#39;s WebKit lacks anchor positioning / view transitions</td><td>popover placement, transitions</td><td>ISC-19.1 red or the manual check</td><td>fallbacks listed in design.md; native <code>popover</code> (WebKit 17) is the floor</td></tr><tr><td>⌘K captured by the terminal host</td><td>palette unreachable</td><td>manual cmux check</td><td><code>/</code> and Ctrl+K aliases, a visible search control</td></tr><tr><td>Leak into the public repo via fixtures or baselines</td><td>public repository</td><td><code>check:leak</code> on every verify</td><td>fixtures synthetic; baselines show fixture content only</td></tr><tr><td>The Angular CLI needs a real Node (≥ 22.22.3); Bun&#39;s Node compatibility reports 24.3.0 and is refused, so <code>ng</code> runs on the system Node at build time (found in round 4)</td><td><code>bun run build</code>, CI</td><td><code>bunx --bun @angular/cli</code> refuses; <code>ng build</code> fails where Node is missing</td><td><code>scripts/build.ts</code> and the CI image carry a pinned Node beside bun; the binary itself never needs Node; <code>engines.node</code> in <code>web/package.json</code></td></tr></tbody></table></div>\n<h2 id=\"open-points\">Open Points</h2>\n<p>None: the spec has no fog after the review before implement.</p>\n<h2 id=\"conformance-impact\">Conformance Impact</h2>\n<ul><li><strong>Every tier of the ladder (grandfathered):</strong> cleared. This spec creates <code>check:static</code>, <code>verify:quick</code> and <code>verify</code>; the constitution&#39;s <code>## Gates</code> rows are re-pointed at them.</li><li><strong>XC-10 leak check (not measured):</strong> cleared by <code>check:leak</code>.</li><li><strong>FE-FW-*, DS-APP-* (not measured):</strong> become measurable with the Angular workspace, ESLint and Stylelint configuration (ISC-5.2) and the browser tier (ISC-64 … ISC-66).</li></ul>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Approach",
+            "anchor": "approach"
+          },
+          {
+            "level": 2,
+            "text": "Stack Decisions",
+            "anchor": "stack-decisions"
+          },
+          {
+            "level": 2,
+            "text": "Affected Files and Modules",
+            "anchor": "affected-files-and-modules"
+          },
+          {
+            "level": 2,
+            "text": "Interfaces",
+            "anchor": "interfaces"
+          },
+          {
+            "level": 2,
+            "text": "Data Model",
+            "anchor": "data-model"
+          },
+          {
+            "level": 2,
+            "text": "Risks",
+            "anchor": "risks"
+          },
+          {
+            "level": 2,
+            "text": "Open Points",
+            "anchor": "open-points"
+          },
+          {
+            "level": 2,
+            "text": "Conformance Impact",
+            "anchor": "conformance-impact"
+          }
+        ],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n    subgraph S1[\"① skeleton\"]\n        A1[bun workspaces + lane notes] --> A2[Angular hello page] --> A3[embed dist in server] --> A4[compile 4 targets] --> A5[binary smoke + install.sh in a non-root Ubuntu container]\n    end\n    subgraph S2[\"② design system + baseline\"]\n        B1[themes spec-light / spec-dark, tokens, fonts, motion] --> B2[ui primitives] --> B3[Playwright: e2e · webkit · visual, pinned Chromium in a Linux container]\n    end\n    subgraph S3[\"③ core + API\"]\n        C1[FORMAT.md + fixtures] --> C2[core/: frontmatter, claims, stage, gates, drift, next command, dashboard model] --> C3[SQLite registry + settings] --> C4[CLI add / list / remove] --> C5[loopback HTTP API]\n    end\n    subgraph S4[\"④ views\"]\n        D1[\"/w/:ws: header, KPI band, Brief, Next up, Specs panel, warnings\"] --> D2[\"/w/:ws/s/:id inspector · sheet\"] --> D3[\"/ overview, workspace columns\"] --> D4[palette, keyboard, live refresh, states]\n    end\n    S1 --> S2 --> S3 --> S4",
+            "caption": "Approach"
+          },
+          {
+            "index": 2,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart TB\n    subgraph bin[\"spectant binary\"]\n        CLI[\"cli.ts<br/>add · list · remove · serve · --version\"]\n        SRV[\"server/<br/>Bun.serve on 127.0.0.1\"]\n        EMB[\"embedded web/dist<br/>(generated manifest)\"]\n        CORE[\"core/<br/>parse · stage · gates · drift · next · model\"]\n        DB[(\"bun:sqlite<br/>workspace · settings\")]\n    end\n    FS[\"registered repos<br/>ISA.md · specs/** · .gates/\"]\n    WEB[\"Angular app<br/>/ · /w/:ws · /w/:ws/s/:id\"]\n    CLI --> DB\n    CLI --> SRV\n    SRV --> EMB\n    SRV -- \"GET /api/…\" --> CORE\n    CORE -- \"read only (no git object writes)\" --> FS\n    SRV --> DB\n    WEB -- \"fetch, ETag, polling\" --> SRV",
+            "caption": "Approach"
+          }
+        ],
+        "sections": [
+          {
+            "id": "plan-001-app-skeleton-and-dashboard",
+            "heading": "Plan 001 — App skeleton and dashboard",
+            "level": 1
+          },
+          {
+            "id": "approach",
+            "heading": "Approach",
+            "level": 2
+          },
+          {
+            "id": "stack-decisions",
+            "heading": "Stack Decisions",
+            "level": 2
+          },
+          {
+            "id": "affected-files-and-modules",
+            "heading": "Affected Files and Modules",
+            "level": 2
+          },
+          {
+            "id": "interfaces",
+            "heading": "Interfaces",
+            "level": 2
+          },
+          {
+            "id": "data-model",
+            "heading": "Data Model",
+            "level": 2
+          },
+          {
+            "id": "risks",
+            "heading": "Risks",
+            "level": 2
+          },
+          {
+            "id": "open-points",
+            "heading": "Open Points",
+            "level": 2
+          },
+          {
+            "id": "conformance-impact",
+            "heading": "Conformance Impact",
+            "level": 2
+          }
+        ],
+        "wordCount": 2457
+      },
+      "design": {
+        "frontmatter": {
+          "spec": "001-app-skeleton",
+          "type": "feature",
+          "design_track": "app",
+          "viewports": "[390, 820, 1440]",
+          "updated": "2026-09-28T12:40:00Z"
+        },
+        "html": "<h1 id=\"design-001-app-skeleton-and-dashboard\">Design 001 — App skeleton and dashboard</h1>\n<p><strong>Direction.</strong> Keep the identity of the old Spec dashboard: the Monokai-Pro palette in light and dark, the card anatomy (12 px radius, 1 px border, 3 px accent top edge, corner glow), ring, bars, chips, the eyebrow-plus-title header, the pinned Lucide icon family and the density. Rebuild layout, interaction and motion as a developer tool built this year: the page answers <em>where do things stand → what do I run next → which spec</em> without scrolling at 1440 × 900, and it works with a keyboard at every width.</p>\n<p>The &quot;Ist&quot; below is the old static <code>dashboard.html</code> for one real repository (six specs), captured full-page in the dark theme at the three widths, plus the old Specs table tab (<code>.design/desktop-specs-ist.png</code>, <code>.design/mobile-specs-ist.png</code>). The light theme was not captured; its values come from the old stylesheet.</p>\n<p><strong>Decisions taken in the merge</strong> (principal, 2026-09-28): a spec opens on the route <code>/w/:ws/s/:id</code> (rail inspector at wide, side sheet at medium, full-screen sheet at compact); &quot;Next up&quot; is its own surface <em>and</em> every spec row carries its stage and next command; the TL;DR bar stays as a collapsed &quot;Brief&quot;; the overview grid is <code>repeat(auto-fit, minmax(min(100%, 360px), 1fr))</code> capped at three columns. Mechanical conflicts between the three designers (container tiers, motion tokens, contrast tokens, icon set, dev-services placement) were resolved by the parent and are recorded under <code>## Viewport-übergreifend</code>.</p>\n<h2 id=\"mobile-390\">Mobile (390)</h2>\n<h3 id=\"ist\">Ist</h3>\n<figure class=\"image-figure missing\" data-figure=\"1\" data-missing><div class=\"figure-missing\" role=\"img\" aria-label=\"mobile-ist.png\"><code>.design/mobile-ist.png</code></div><figcaption>mobile-ist.png</figcaption></figure>\n<p>Full page 390 × 4577 px. Header: teal split badge (<code>SPECS</code> over <code>6</code>, chevron fused), title &quot;<strong>Specs</strong> · lead-generation&quot; breaking at its hyphen, gear plus a joined refresh / timer / chevron group at about 30 px. Tab row: three icon tabs (grid active, layers, book), a divider, &quot;Kennzahlen&quot; (also active) and &quot;Mehr ▾&quot;. Kennzahlen: seven full-width cards on a 12 px gutter (hero with a 106 px ring, &quot;474 /477&quot;, the right half empty; spec claims; specs with split bar; takeable; warnings; fog; archive). TL;DR bar, Dev-Services pills indented 22 px, Specs (Phasen, Typen, Alle Specs with three of six rows and a &quot;Zur Tabelle&quot; link, Build-Aktivität). Then headings over empty bodies: Als Nächstes (about 930 px empty), Archiv (an empty dashed box under a KPI of 15), Warnungen (empty under a KPI of 5), Doku, Letzte Änderungen; footer &quot;Gerendert 28.09.2026, 03:13&quot;.</p>\n<p>Observations: the first spec title sits at y ≈ 1850, more than two screens down; about 42 % of the page is headings over nothing; the bar track <code>#4A474C</code> on <code>#2D2A2E</code> measures 1.55:1; nothing names the next command; a second workspace has no place.</p>\n<h3 id=\"soll\">Soll</h3>\n<p>390 px is the <strong>compact tier</strong> of one responsive page, not a phone app: spectant listens on loopback, so a 390 px viewer is a narrowed browser or the cmux side panel on the same machine, with a keyboard. Touch sizing applies under <code>pointer: coarse</code> only. Goal: within the first 400 px the developer knows where the workspace stands and what to run next; the fixture page is about 1,400 px tall instead of 4,577.</p>\n<ul><li><strong>Header (56 px, sticky):</strong> <code>ui-badge-switcher</code> (40 px; the only switcher, two levels), then the eyebrow &quot;DASHBOARD · 6 SPECS&quot; over the workspace name (17/24, one line, ellipsis, full name in <code>title</code>), then a search button (opens the palette; <code>/</code> and Ctrl+K work when cmux claims ⌘K), the <code>ui-live-indicator</code> and the gear. Blur background with a solid fallback; the hairline appears on scroll (IntersectionObserver sentinel).</li><li><strong>KPI band, compact form (<code>kpi-band</code>, about 248 px):</strong> row 1: 72 px <code>ui-ring</code> beside &quot;MASTER CLAIMS&quot;, the fraction &quot;474 /477&quot; (display numeral, nowrap, tabular) and &quot;3 open&quot;; row 2: &quot;SPEC CLAIMS 70/73&quot; with a 6 px <code>ui-meter</code>; then three stat cells (Specs with a split meter → scrolls to the list; Takeable → Next up; Attention &quot;5 · 2 fog&quot; → warnings).</li><li><strong>Brief:</strong> the <code>ui-disclosure</code> &quot;TL;DR&quot; collapsed (48 px), see Viewport-übergreifend.</li><li><strong>Next up (<code>next-up-list</code>, card with a cyan edge):</strong> up to three rows of 72 px (ID, one-line title, then <code>ui-command-chip</code> with copy), &quot;Show all n&quot; as a disclosure.</li><li><strong>Warnings (<code>warnings-panel</code> as a <code>&lt;details&gt;</code> callout, orange edge):</strong> rendered only when the count is above 0, collapsed, summary &quot;5 warnings in 4 specs&quot;.</li><li><strong>Specs (<code>spec-list</code>):</strong> header &quot;SPECS · 6 active · 15 archived&quot;; a horizontally scrolling <code>ui-filter-chips</code> row (All, building, scoping, fog; <code>scroll-snap</code>, edge fade masks, the page never scrolls sideways); a sort icon button (sheet: Stage, ID, Progress); rows of at least 64 px (<code>4ch 1fr auto</code>: mono ID, title clamped to two lines, phase chip over <code>n/m</code> and a 32 px micro meter); the second line with stage track and command wraps under the title. The <code>archive-fold</code> <code>&lt;details&gt;</code> &quot;15 archived specs&quot; closes the list.</li><li><strong>Spec open:</strong> Enter or tap navigates to <code>/w/:ws/s/:id</code>, rendered as a full-screen <code>ui-sheet</code>; Esc returns and focuses the row.</li><li><strong>Popovers become sheets:</strong> at compact every popover (switcher, sort, gear, interval) renders through the one <code>ui-sheet</code> primitive (bottom sheet; the palette as a top sheet, 8 px inset, <code>max-height: calc(100dvh - 16px)</code>). No anchor positioning is needed at this tier.</li><li><strong>All workspaces (<code>/</code>):</strong> the columns stack (one column below 360 × 2 + gap); each <code>workspace-column</code> has a sticky 48 px header (name, path tail, 32 px ring), the compact pulse line, the first Next-up row, the top five spec rows in dense mode and &quot;Show all n in &lt;workspace&gt; →&quot;. The eyebrow reads &quot;SPECTANT · 2 WORKSPACES · 7 SPECS&quot;.</li><li><strong>Estimated fixture height:</strong> about 1,400 px; the first actionable row at y ≈ 330 (Ist: 1,850).</li></ul>\n<h2 id=\"tablet-820\">Tablet (820)</h2>\n<h3 id=\"ist-2\">Ist</h3>\n<figure class=\"image-figure missing\" data-figure=\"2\" data-missing><div class=\"figure-missing\" role=\"img\" aria-label=\"tablet-ist.png\"><code>.design/tablet-ist.png</code></div><figcaption>tablet-ist.png</figcaption></figure>\n<p>Full page 820 × 2988 px. Header as at 390 with an eyebrow &quot;LEAD-GENERATION · DASHBOARD · 6 SPECS&quot; and a one-line title. The tab row already overflows into &quot;Mehr ▾&quot; (Warnungen, Doku, Letzte Änderungen hidden) and marks two tabs active. Kennzahlen: a full-width hero (55 % empty) over a 3 × 2 grid of 253 px cards. TL;DR bar; Dev-Services pills 20 px inside the gutter; Specs as four stacked full-width cards (Phasen, Typen with one chip in a 100 px card, Alle Specs with three rows, Build-Aktivität). Als Nächstes: a two-column grid of six cards, each with an ID chip, a two-to-three-line title, a five-step stage meter with all labels (current cyan, done lime, rest grey), a mono command chip with copy and, on three cards, &quot;nehmbar : ISC-334&quot;; meters of neighbouring cards sit at different heights. Archiv: an empty dashed box. Warnungen: a heading and about 740 px of empty page; Doku and Letzte Änderungen do not appear.</p>\n<p>Observations: the developer scrolls about 1,530 px to reach the next command; the same six specs appear three times with signals that disagree (SCOPING chips in Alle Specs, &quot;Abschluss&quot; and <code>/spec-complete</code> in Als Nächstes); controls of about 30 px on an iPad-portrait width.</p>\n<h3 id=\"soll-2\">Soll</h3>\n<p>820 px is the <strong>medium tier</strong> (640–1119 px): iPad-portrait WebKit with <code>pointer: coarse</code> and often a hardware keyboard, and the upper end of the cmux side-panel band. Gutter 24 px, content 772 px.</p>\n<ul><li><strong>Header (64 px, sticky):</strong> <code>ui-badge-switcher</code> (48 px), eyebrow &quot;LEAD-GENERATION · 6 SPECS&quot; over the title &quot;Specs · lead-generation&quot; (20/28, second part muted, one line); on the right a palette trigger (40 px, at least 200 px wide, &quot;Search specs…&quot; + <code>ui-kbd</code> ⌘K; collapses to an icon button below a 720 px header container), the <code>ui-live-indicator</code> (status dot, &quot;Updated 12 s ago&quot;, refresh, interval, dev services in its popover) and the gear (theme System / Light / Dark as <code>ui-segmented</code>, language, single-key shortcuts on/off). Controls are 40 px visual with 44 × 44 hit areas under <code>pointer: coarse</code>, never overlapping.</li><li><strong>KPI band, medium form:</strong> a 3-column bento of about 288 px: row 1 (144 px) master claims spanning two columns (96 px ring, eyebrow, &quot;474&quot; at 40/48 with &quot;/477&quot; at 20/28, caption) beside spec claims (28/32 + bar); row 2 (128 px) Specs (split bar with legend), Takeable (cyan edge; applies <code>?sort=next&amp;takeable=1</code>), Attention (orange edge; &quot;5 warnings · 2 open fog&quot;; jumps to the warnings heading and moves focus there).</li><li><strong>Brief</strong> collapsed under the band.</li><li><strong>Next up:</strong> the same <code>next-up-list</code> card as at compact, three entries plus &quot;Show all&quot;, directly under the Brief.</li><li><strong>Specs:</strong> <code>ui-section-header</code> (eyebrow &quot;SPECS&quot;, &quot;6 specs&quot;, meta &quot;6 feature · 15 archived&quot;); a sticky toolbar at <code>top: 64px</code> with <code>PhaseFilter</code> as a <code>ui-segmented</code> radio group (dots per phase), <code>TypeFilter</code> only with two or more types, <code>SortMenu</code> (Next up default, ID, Progress); an 8 px <code>ui-split-bar</code> under the toolbar replaces the Phasen card. Rows of at least 72 px inside one card with hairlines: line 1 = <code>ui-id-chip</code>, title (15/24 semibold, clamp 2, <code>-webkit-line-clamp</code>), phase chip and <code>ui-warning-badge</code>; line 2 = <code>ui-stage-track</code> (five 24 × 8 segments, only the current label printed, accessible name &quot;Stage 4 of 5: Build&quot;), claims <code>n/m</code>, <code>ui-command-chip</code> with copy, &quot;takeable ISC-334&quot; muted. Stage tracks align across rows by construction. Foot: <code>ui-disclosure</code> &quot;15 archived specs&quot;, rows loaded when opened.</li><li><strong>Warnings (<code>warnings-panel</code>, <code>#warnings</code>):</strong> &quot;Warnings · 5 in 4 specs&quot;, grouped by spec, plus &quot;Open fog · 2&quot;; with no warnings a single 48 px line &quot;No warnings&quot; with a check icon.</li><li><strong>Spec open:</strong> <code>/w/:ws/s/:id</code> as a 480 px <code>ui-sheet</code> from the right (dialog, focus trap, Esc returns to the row).</li><li><strong>All workspaces (<code>/</code>):</strong> two columns of about 374 px side by side (registry order); each <code>workspace-column</code> with a 56 px header link, a 96 px <code>KpiStrip</code> (56 px ring + three stat cells), the dense spec list (48 px single-line rows with a 40 px mini stage track) and &quot;Open &lt;workspace&gt; →&quot;. <code>/</code> → <code>/w/:ws</code> runs a same-document view transition on the workspace title (feature-detected).</li><li><strong>Filter and sort live in the query string</strong> (<code>?phase=building&amp;sort=id</code>), never in memory.</li></ul>\n<h2 id=\"desktop-1440\">Desktop (1440)</h2>\n<h3 id=\"ist-3\">Ist</h3>\n<figure class=\"image-figure missing\" data-figure=\"3\" data-missing><div class=\"figure-missing\" role=\"img\" aria-label=\"desktop-ist.png\"><code>.design/desktop-ist.png</code></div><figcaption>desktop-ist.png</figcaption></figure>\n<p>Full page 1440 × 2622 px. Header and tab-row hairline run from x 16 to 1424; the body has a left table of contents (x 16–236) and a content column x 260–1109, leaving about 315 px empty on the right for the whole page. Navigation: four icon buttons (sidebar, grid active, layers = the Specs table tab, book), a rule, eight text tabs; the TOC repeats the same eight entries. Kennzahlen: a 280 × 320 hero (ring, &quot;MASTER-CLAIMS&quot; hyphenated, &quot;474/4&quot; + &quot;77&quot; wrapped) and six 177 × 152 cards; &quot;JETZT NEHMBAR&quot; fades into its glow. TL;DR bar; Dev-Services pills 22 px off the edge; Specs (Phasen and Typen cards, Alle Specs with three rows and the &quot;Zur Tabelle&quot; link, Build-Aktivität 60 % empty). Als Nächstes: six cards in two columns with the five-segment stage track and command chips, sitting at y ≈ 1200. Archiv: a dashed &quot;▶ 15 archivierte Specs&quot;. Warnungen: an empty heading; no Doku, no Letzte Änderungen; about 790 px of empty page at the end.</p>\n<p>The old Specs table tab (<code>.design/desktop-specs-ist.png</code>) holds the full table: filter chips, sortable headers, gate badges (R/C), next-step copy buttons, a notes column and archived rows. It is the source for the Specs panel&#39;s filter, sort and row content.</p>\n<h3 id=\"soll-3\">Soll</h3>\n<p>1440 px is the <strong>wide tier</strong> (≥ 1120 px). Shell padding 32, content 1376 px, <code>max-inline-size: 1680px</code> centred. <code>/w/:ws</code> uses <code>grid-template-columns: minmax(0, 1fr) 352px; column-gap: 32px</code> (main 992 px, rail 352 px). The rail is sticky (<code>inset-block-start: 80px</code>, own scroll). No tab row, no TOC: the KPI tiles, the palette and the <code>g</code> sequences are the navigation.</p>\n<ul><li><strong>Header (64 px, sticky, glass):</strong> <code>ui-badge-switcher</code> (popover 320 wide: &quot;All workspaces · 2&quot;, the workspaces with counts and <code>aria-current</code>, a rule, the specs of the current workspace, footer hint &quot;⌘K searches everything&quot;); eyebrow + title (20/28, nowrap, ellipsis); a centred palette trigger (320 × 40, &quot;Jump to spec, workspace, command&quot;<ul><li><code>ui-kbd</code>); <code>ui-live-indicator</code> (6 px dot + &quot;Updated 12 s ago&quot;, <code>rotate-cw</code> refresh with one 400 ms turn, <code>timer</code></li></ul></li></ul>\n<p>&quot;30 s&quot; with Off / 10 / 30 / 60 s, dev services in the popover); gear; a 32 px <code>?</code> button.</p>\n<ul><li><strong>Main column, KPI band (<code>kpi-band</code>, <code>container: kpi</code>):</strong> at ≥ 880 px <code>352px repeat(3, minmax(0, 1fr))</code>, gap 16, two rows of 120 → 256 px. Hero spanning both rows: 112 px <code>ui-ring</code> (10 px stroke, lime→cyan), &quot;MASTER CLAIMS&quot; with <code>hyphens: none</code>, &quot;474&quot; at 40/48 + &quot;/477&quot; at 20/28 muted (nowrap, tabular, stepping down past six digits), caption &quot;99 % closed · 3 open&quot;. Tiles (120 px): Spec claims (meter), Specs (split meter + legend dots), Takeable now, Attention (warnings + fog, <code>--hover</code> edge), Archive count, and one reserved slot for the activity sparkline of the state-machine spec. Tiles with a destination are links (the whole tile; hover raises the glow from 14 % to 22 %, no lift). The corner glow is a <code>::before</code> behind the content; labels never fade, they ellipsize with a <code>title</code>.</li><li><strong>Brief (<code>ui-disclosure</code>, 48 px collapsed):</strong> violet 3 px left edge, rotated <code>chevron-down</code>, &quot;TL;DR&quot; in mono <code>--ques</code>, &quot;as of &lt;date&gt;&quot; muted, a <code>ui-chip</code> &quot;stale&quot; when the file is older than the newest spec change, a <code>ui-command-chip</code> <code>/spec-tldr</code> with copy. Open: prose at 15/24, <code>max-inline-size: 72ch</code>, animated <code>grid-template-rows: 0fr → 1fr</code>.</li><li><strong>Specs panel (<code>spec-table</code>, a <code>ui-card</code> with 24 padding, <code>container: specs</code>):</strong> header row (48 px): H2 &quot;Specs&quot;, meta &quot;6 · 15 archived&quot;, <code>ui-filter-chips</code> (All 6, building 2, scoping 4 with 8 px phase dots, <code>aria-pressed</code>), a sort button (<code>arrow-up-down</code>: Stage order default, ID, Progress). An 8 px phase strip under the header. Rows (48 px, <code>&lt;a href=&quot;/w/:ws/s/:id&quot;&gt;</code> with roving tabindex): <code>64px</code> mono ID | <code>minmax(0,1fr)</code> title (one line, ellipsis) | <code>120px</code> <code>ui-stage-track size=mini</code> | <code>104px</code> phase chip | <code>128px</code> meter 64 × 4 + <code>n/m</code> right-aligned; the open row carries <code>aria-current=&quot;true&quot;</code>, a 3 px cyan left edge and the <code>--disp-t</code> background. Footer row (40 px): &quot;15 archived specs&quot; (muted, not interactive in 001).</li><li><strong>Right rail (<code>context-rail</code>, 352 px), default mode:</strong> 1 · <strong>Next up</strong> (<code>next-up-list</code>): compact <code>ui-card</code>s with the cyan edge, ID chip + title (clamp 2), a labelled <code>ui-stage-track</code> (60 px segments so &quot;Abschluss&quot; fits), the <code>ui-command-chip</code> with copy (icon swaps copy → check for 1200 ms, polite announcement &quot;Copied /spec-implement 012&quot;) and a &quot;takeable ISC-334&quot; chip. 2 · <strong>Warnings</strong> (<code>warnings-panel</code>): rows of <code>triangle-alert</code>, mono ID and message (clamp 2), grouped by spec; empty state &quot;No warnings&quot; with <code>circle-check</code>. 3 · nothing else: dev services live in the header indicator at every width.</li><li><strong>Inspector mode (<code>/w/:ws/s/:id</code>):</strong> the rail swaps to <code>spec-inspector</code> through a 240 ms crossfade view transition: &quot;Back&quot; text button with <code>ui-kbd</code> Esc; ID and full title (20/28); phase and type chips; labelled stage track; claims meter with <code>n/m</code> and percentage; the next-command chip; takeable-claim chips; this spec&#39;s warnings; fog count; <code>[</code> / <code>]</code> step through the list in its current order; Esc returns to <code>/w/:ws</code> and focuses the row.</li><li><strong>All workspaces (<code>/</code>):</strong> no rail; body <code>repeat(auto-fit, minmax(min(100%, 360px), 1fr))</code>, gap 32, capped at three columns (<code>max-inline-size</code> on the grid); two workspaces give two columns of 672 px. <code>workspace-column</code> as at 820, with four <code>ui-kpi-tile size=sm</code> (156 × 96) in the strip. Navigating into a workspace morphs the column title into the page title (<code>view-transition-name: ws-title-&lt;slug&gt;</code>).</li></ul>\n<h2 id=\"viewport-übergreifend\">Viewport-übergreifend</h2>\n<h3 id=\"one-responsive-system\">One responsive system</h3>\n<ul><li><strong>Container tiers, named once</strong> (<code>src/styles/tokens.css</code>, queried on the shell container <code>container: shell / inline-size</code>, never on the viewport): <strong>compact</strong> &lt; 640 px (includes the 600 px cmux panel, ISC-63), <strong>medium</strong> 640–1119 px, <strong>wide</strong> ≥ 1120 px (rail). Components query their own container: <code>kpi</code> (880 / 560), <code>specs</code> (720 / 480 for the row columns), <code>ws-col</code> (560 for the KPI strip), <code>header</code> (720 / 960 for the palette trigger). The old 460 / 720 / 820 / 900 / 1100 viewport breakpoints are void.</li><li><strong>Grid rules:</strong> <code>/w/:ws</code> = one column below wide, main + 352 px rail at wide. <code>/</code> = <code>repeat(auto-fit, minmax(min(100%, 360px), 1fr))</code>, gap 24 (medium) / 32 (wide), at most three columns; the <code>min()</code> guard is what keeps 390 and 600 px from overflowing. No rail on <code>/</code> at any width.</li><li><strong>Spacing:</strong> 8 px scale (4 / 8 / 16 / 24 / 32 / 48). Gutter 16 (compact) / 24 (medium) / 32 (wide). 16 inside cards and between cards, 32 between sections. The inherited 3 px accent edge is the one sub-scale exception.</li><li><strong>Section disposition (identical at every width; only the arrangement changes):</strong></li></ul>\n<div class=\"mdtable\"><table><thead><tr><th>Old section</th><th>001</th><th>Where</th></tr></thead><tbody><tr><td>Kennzahlen (7 cards)</td><td>keep, redesigned</td><td><code>kpi-band</code>: master claims, spec claims, specs, takeable, attention (warnings + fog), archive count; one tier-specific form each</td></tr><tr><td>TL;DR bar</td><td>keep</td><td><code>ui-disclosure</code> &quot;Brief&quot;, collapsed, under the band</td></tr><tr><td>Dev-Services</td><td>move</td><td><code>ui-live-indicator</code> popover in the header + palette group &quot;Services&quot;; pills are links; &quot;Nothing listening&quot; when empty</td></tr><tr><td>Specs · Phasen, Typen</td><td>merge</td><td>filter chips + phase strip in the Specs panel toolbar; type chips only with ≥ 2 types</td></tr><tr><td>Specs · Alle Specs + the old Specs table tab</td><td>keep, promote</td><td><code>spec-list</code> / <code>spec-table</code>: every spec, filter, sort, gate badges from the model, next command per row</td></tr><tr><td>&quot;Zur Tabelle&quot; link</td><td>drop</td><td>the list is the table</td></tr><tr><td>Specs · Build-Aktivität</td><td>drop for 001</td><td>activity comes with the state-machine spec; a sparkline tile slot is reserved</td></tr><tr><td>Als Nächstes</td><td>keep, promote</td><td><code>next-up-list</code> (rail at wide, card under the Brief below wide) <strong>and</strong> stage track + command in every row</td></tr><tr><td>Archiv</td><td>merge</td><td>list footer / <code>archive-fold</code>, archive tile at wide, palette group &quot;Archived&quot;</td></tr><tr><td>Warnungen</td><td>keep</td><td><code>warnings-panel</code> (rail at wide, collapsible callout below wide), the Attention tile, per-row badge</td></tr><tr><td>Doku, Letzte Änderungen</td><td>drop for 001</td><td>tech page is F5; &quot;changed since you looked&quot; markers from live refresh replace the change list</td></tr><tr><td>Section tabs, left TOC, icon rail</td><td>drop</td><td>palette, KPI tiles as links, <code>g</code> sequences; one page in 001</td></tr><tr><td>Footer &quot;Gerendert …&quot;</td><td>drop</td><td>&quot;Updated n s ago&quot; in the header</td></tr></tbody></table></div>\n<h3 id=\"routes-and-state\">Routes and state</h3>\n<ul><li><code>/</code> all workspaces (redirects to <code>/w/:ws</code> when exactly one is registered) · <code>/w/:ws</code> dashboard · <code>/w/:ws/s/:id</code> spec open (inspector at wide, 480 px side sheet at medium, full-screen sheet at compact; Esc returns and focuses the row; <code>[</code> / <code>]</code> step through the current list order). F2&#39;s review page attaches to this route.</li><li>Filter, sort and takeable flags are query state (<code>?phase=building&amp;type=feature&amp;sort=next&amp;takeable=1</code>), never in-memory, so reload, back and the cmux web view hold them.</li><li>The badge chevron is the <strong>only switcher widget</strong> (two levels: workspaces, then the specs of the current one). The palette also lists workspaces and specs, but it is a search surface, not a persistent switcher: no sidebar list, no workspace tabs at any width.</li><li>Settings (theme mode, language, refresh interval, single-key shortcuts) are stored server-side (<code>/api/settings</code>) so they survive a port change (ISC-18.3); &quot;recent&quot; palette entries are a per-viewer convenience in <code>localStorage</code> wrapped in try/catch.</li></ul>\n<h3 id=\"header-and-live-indicator\">Header and live indicator</h3>\n<p>One <code>layout/header</code> at every width: badge switcher · eyebrow + title · palette trigger (full field ≥ 960 px header container, icon button below) · <code>ui-live-indicator</code> · gear · <code>?</code>. The live indicator replaces the old refresh / timer / chevron trio: a 6 px status dot (<code>--done</code> live, <code>--conc</code> refreshing, <code>--fail</code> unreachable), &quot;Updated 12 s ago&quot; (<code>ui-relative-time</code>, not announced), a refresh button, the interval (Off / 10 / 30 / 60 s) and the dev services in its popover. The page also refreshes when the tab becomes visible again; requests use ETag.</p>\n<h3 id=\"command-palette-and-keyboard\">Command palette and keyboard</h3>\n<ul><li><code>layout/command-palette</code> on <code>ui-dialog</code> (<code>showModal()</code>, 96 px from the top, <code>min(640px, 100% - 32px)</code>, backdrop 40 % black + <code>blur(4px)</code>; a top sheet at compact). Input row 56 px as a combobox driving a listbox through <code>aria-activedescendant</code>. Groups: Recent (empty query), Next up, Workspaces, Specs (current workspace first: mono ID, title, phase chip, workspace tail), Services, Actions (Go to all workspaces, Go to &lt;workspace&gt;, Copy next command for &lt;spec&gt;, Refresh now, Theme, Language, Show shortcuts, Open localhost:&lt;port&gt;), Archived. Ranking: exact ID &gt; ID prefix &gt; title word prefix &gt; subsequence; matches as <code>&lt;mark&gt;</code>. &quot;No match for “xyz” · try a spec ID like 022&quot;. Enter navigates to <code>/w/:ws/s/:id</code>; focus returns to the trigger on close.</li><li><strong>Keyboard map</strong> (identical at every width, shown in the <code>?</code> sheet):</li></ul>\n<div class=\"mdtable\"><table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td>⌘K / Ctrl+K / <code>/</code></td><td>palette (<code>/</code> and Ctrl+K because cmux may claim ⌘K; a visible search control stays in the header)</td></tr><tr><td><code>?</code></td><td>shortcut sheet</td></tr><tr><td>↓ ↑ · j k · Home End</td><td>move the selection in the focused list (roving tabindex, no wrap)</td></tr><tr><td>← → · h l</td><td>move between workspace columns on <code>/</code>, keeping the row index</td></tr><tr><td>Enter</td><td>open the selected spec (<code>/w/:ws/s/:id</code>)</td></tr><tr><td>Esc</td><td>close palette, sheet, popover or inspector; focus returns to the trigger or the row</td></tr><tr><td><code>c</code></td><td>copy the selected spec&#39;s next command</td></tr><tr><td><code>r</code></td><td>refresh now</td></tr><tr><td><code>[</code> <code>]</code></td><td>previous / next spec while a spec is open</td></tr><tr><td><code>g a</code> · <code>g s</code> · <code>g n</code> · <code>g w</code></td><td>all workspaces · Specs · Next up · Warnings (focus lands on the section heading, DS-APP-35)</td></tr><tr><td><code>1</code>–<code>3</code></td><td>phase filter All / building / scoping while the list has focus</td></tr></tbody></table></div>\n<p>Single-key shortcuts never fire inside inputs or with a modifier held; a switch in the gear panel turns them off (WCAG 2.1.4). <code>g</code> sequences time out after 1000 ms. &quot;Skip to specs&quot; is the first tab stop; tab order is header → main → rail.</p>\n<h3 id=\"states\">States</h3>\n<ul><li><strong>First load:</strong> <code>ui-skeleton</code> at the final geometry, shown only after 150 ms; 1600 ms shimmer, static under reduced motion.</li><li><strong>Zero workspaces:</strong> centred <code>ui-empty-state</code> (560 max): &quot;Add your first workspace&quot;, <code>ui-command-chip</code> <code>spectant add &lt;path-to-repo&gt;</code>, &quot;It appears here on the next refresh&quot; (the registry is polled too).</li><li><strong>Workspace without specs:</strong> the Specs panel shows &quot;No specs yet&quot; with <code>/spec-idea</code>; the ring shows &quot;—&quot;.</li><li><strong>Nothing takeable:</strong> &quot;Nothing ready to build · 2 specs wait on fog&quot; with a link to the fog filter. <strong>Filter matches nothing:</strong> &quot;No spec in scoping&quot; + &quot;Clear filter&quot;.</li><li><strong>Unreadable workspace:</strong> its column or page stays, with <code>ui-notice tone=hover</code> (orange edge, <code>triangle-alert</code>, path tail, message, Retry); a spec that fails to parse stays in the list with a &quot;parse error&quot; chip.</li><li><strong>Server unreachable:</strong> a sticky <code>ui-notice</code> under the header (&quot;Can&#39;t reach spectant on 127.0.0.1:7717 · showing data from 14:02&quot;, Retry; automatic retries at 5, 10, 30 s); data stays readable, not dimmed.</li><li><strong>Live update (ISC-62, 62.1):</strong> diff by stable keys; values swap in place inside fixed-width tabular boxes; ring and meters animate <code>stroke-dashoffset</code> / <code>transform</code> only; a changed value gets a <code>--disp-t</code> tint fading over <code>--motion-duration-highlight</code>; changed rows keep a 4 px cyan dot until hovered or focused; <strong>new or removed specs never reflow under the reader</strong>: a &quot;1 new spec · show&quot; pill applies them on user input; no reorder while focus is inside a list; one polite <code>ui-live-region</code> message per refresh, only when something changed; focus and scroll never move.</li></ul>\n<h3 id=\"type-colour-focus-motion\">Type, colour, focus, motion</h3>\n<ul><li><strong>Type:</strong> local Inter Variable + JetBrains Mono (woff2, preloaded, <code>font-display: swap</code>; ISC-67). Scale: 11/16 eyebrow (600, caps, .08em) · 12/16 meta · 13/20 small body and mono · 14/20 UI · 15/24 row title · 16/24 input and section heads · 20/28 page title · 28/32 KPI (medium) · 32/40 tile value · 40/48 hero value. Every number is <code>tabular-nums</code>; mono is for IDs, commands and ports only. German is the long case for layout (&quot;Als Nächstes&quot;, &quot;Jetzt nehmbar&quot;, &quot;Abschluss&quot;).</li><li><strong>Tokens:</strong> the old values as OKLCH with the hex in a comment (ISC-18 covers these inherited tokens). Dark: <code>--bg #221f22</code>, <code>--surface #2d2a2e</code>, <code>--surface-2 #403e41</code>, <code>--line #4a474c</code>, <code>--disp #78dce8</code>, <code>--ques #ab9df2</code>, <code>--clos #a6e22e</code>, <code>--hover #fc9867</code>, <code>--fail #ff6188</code>, <code>--conc #ffd866</code>, <code>--badge #1d6878</code>; light from the old light block. daisyUI: <code>themes: false</code>, <code>--depth: 0</code>, <code>--noise: 0</code>; tokens without a daisyUI slot stay custom properties in the same theme block. No <code>@media (prefers-color-scheme)</code> block: the pre-paint script and the theme service set <code>data-theme</code> (system / light / dark; system follows <code>matchMedia</code> changes live, ISC-18.1).</li><li><strong>Contrast (ISC-65), derived tokens, both themes, settled by the browser contrast spec:</strong> <code>--muted</code> = <code>#939293</code> (4.57:1 on the card; the sampled <code>#8e8d8e</code> fails at 4.28:1); a new <code>--track</code> (≈ <code>#7f7d80</code>, 3.47:1) for the unfilled ring, meters and pending stage segments (the old <code>#4a474c</code> measures 1.55:1); in <code>spec-light</code> the accents fail as text (<code>--disp</code> 3.77, <code>--clos</code> 4.08, <code>--fail</code> 3.77, <code>--conc</code> 3.18), so <code>--disp-ink</code>, <code>--clos-ink</code>, <code>--fail-ink</code>, <code>--done-ink</code>, <code>--conc-ink</code> alias darker values there and the accent itself in dark; accents keep their values for edges, glows, fills and dots. Badge text stays <code>#fcfcfa</code> (6.19:1 on teal). This is recorded in spec.md Decisions because it applies everywhere.</li><li><strong>Focus (ISC-64):</strong> global <code>:focus-visible</code> = <code>outline: 2px solid var(--disp); outline-offset: 2px</code> plus <code>box-shadow: 0 0 0 4px var(--bg)</code> so it separates from the teal badge and glows; <code>outline-offset: -2px</code> inside scroll containers and rows.</li><li><strong>Motion tokens (<code>src/styles/motion.css</code>, DS-APP-41; stylelint forbids literal durations elsewhere):</strong> <code>--motion-duration-instant</code> 80 ms (hover, press) · <code>-fast</code> 160 ms (popover, row selection, copy → check) · <code>-base</code> 240 ms (palette, dialog, sheet, inspector swap, disclosure) · <code>-slow</code> 400 ms (ring and meter morph, refresh turn, the ring&#39;s first draw on load only) · <code>-highlight</code> 1200 ms (changed-value tint) · <code>-skeleton</code> 1600 ms; <code>--motion-ease-standard cubic-bezier(.2,0,0,1)</code>, <code>-emphasized cubic-bezier(.05,.7,.1,1)</code>, <code>-exit cubic-bezier(.3,0,1,1)</code>. Under <code>prefers-reduced-motion: reduce</code> every duration is <code>0ms</code>, the skeleton is static, view transitions are skipped (<code>skipTransition()</code>), and the change tint becomes the static dot (ISC-66). Nothing moves on hover; glow intensifies under <code>(hover: hover)</code> only.</li><li><strong>Forced colours:</strong> glows, gradients and edges drop; the ring keeps its value as DOM text; meters get a border fallback (DS-APP-39).</li><li><strong>Icons (ISC-18.2):</strong> the same pinned <code>lucide-static</code> version as the old pages. The old pages used: activity, arrow-up-down, book-open, check, chevron-down, circle-check, cloud-fog, copy, file-text, filter, gauge, history, layers, layout-dashboard, list-checks, maximize-2, minimize-2, moon, notebook-pen, panel-left-close, panel-left-open, rotate-cw, scale, settings, shapes, square-kanban, sun, sun-moon, table, target, timer, triangle-alert, zap. The app adds from the same pinned version only what the new surfaces need (search, x, chevron-right, folder-plus, archive, keyboard); only used icons are inlined.</li><li><strong>Hit areas:</strong> controls are 40 px visual (32 px for the <code>?</code> and inline icon buttons); under <code>pointer: coarse</code> the shared <code>ui-button</code> / <code>ui-icon-button</code> primitive adds a transparent 44 × 44 <code>::before</code> hit area; in joined groups the hit area extends vertically to 44 px and horizontally to the segment width, with at least 24 px between neighbours (WCAG 2.5.8).</li></ul>\n<h3 id=\"components-web-src-app-shared-ui-each-with-at-least-two-consumers\">Components (<code>web/src/app/shared/ui/</code>, each with at least two consumers)</h3>\n<p><code>ui-card</code> · <code>ui-kpi-tile</code> (hero / default / sm) · <code>ui-ring</code> · <code>ui-meter</code> (single / split) · <code>ui-stage-track</code> (mini / labelled) · <code>ui-chip</code> (tone, dot) · <code>ui-id-chip</code> · <code>ui-filter-chips</code> · <code>ui-segmented</code> · <code>ui-command-chip</code> (copy with clipboard fallback) · <code>ui-button</code> / <code>ui-icon-button</code> / <code>ui-button-group</code> · <code>ui-badge-switcher</code> · <code>ui-popover</code> · <code>ui-sheet</code> · <code>ui-dialog</code> · <code>ui-kbd</code> · <code>ui-disclosure</code> · <code>ui-skeleton</code> · <code>ui-empty-state</code> · <code>ui-notice</code> · <code>ui-live-indicator</code> · <code>ui-live-region</code> · <code>ui-relative-time</code> · <code>ui-section-header</code> · <code>ui-icon</code> (raw pinned Lucide nodes) · <code>uiRovingList</code> directive (j/k, arrows, Home/End). Feature components: <code>layout/{shell, header, command-palette, shortcut-sheet, settings-popover}</code>, <code>features/dashboard/{kpi-band, spec-table, spec-row, next-up-list, warnings-panel, context-rail, spec-inspector}</code>, <code>features/overview/{workspace-column, kpi-strip}</code>.</p>\n<h3 id=\"webkit-cmux-web-view-ipad-safari-assumed-floor-webkit-17\">WebKit (cmux web view, iPad Safari) — assumed floor WebKit 17</h3>\n<ul><li><strong>Needs a guard or fallback:</strong> CSS anchor positioning (Safari 26; <code>@supports not (anchor-name: --a)</code> → JS placement in <code>ui-popover</code>); same-document View Transitions (18+; feature-detected, instant otherwise); <code>@starting-style</code> + <code>transition-behavior: allow-discrete</code> (17.4+; elements appear without animation otherwise); <code>dialog closedby</code>, invoker <code>commandfor</code> / <code>command</code>, <code>popover=&quot;hint&quot;</code> (not relied on; <code>showPopover()</code>, <code>showModal()</code>, Esc and backdrop click handled in the primitives); <code>calc-size()</code> / <code>interpolate-size</code> (absent; the <code>grid-template-rows</code> technique animates disclosures); <code>backdrop-filter</code> (ship <code>-webkit-backdrop-filter</code> plus an opaque fallback); <code>line-clamp</code> (<code>-webkit-line-clamp</code> with <code>display: -webkit-box</code>); <code>navigator.clipboard.writeText</code> (may be refused in WKWebView; fall back to a hidden textarea, then to selecting the text and &quot;Press ⌘C&quot;); scroll-driven animations (not used; IntersectionObserver instead).</li><li><strong>Safe without a guard:</strong> container queries, <code>:has()</code>, <code>oklch()</code>, <code>color-mix()</code>, <code>dvh</code>, <code>inert</code>, native <code>popover</code> (the hard floor for ISC-19). <code>text-wrap: pretty</code> and <code>content-visibility: auto</code> are harmless enhancements.</li><li>The ISC-19 manual check records the cmux WebKit version.</li></ul>\n<h3 id=\"baselines\">Baselines</h3>\n<p>The visual baselines (ISC-17 / 17.1 / 16.1 / 16.2) are taken with a pinned fixture clock (&quot;Updated n s ago&quot;, the Brief&#39;s &quot;stale&quot; chip), skeletons disabled, animations disabled, a <code>data-ready</code> attribute awaited, no dev services listening, and a fixture with a three-digit/three-digit master fraction; the rail&#39;s presence at 1440 and absence at 820 and 390 are part of the baselines.</p>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Mobile (390)",
+            "anchor": "mobile-390"
+          },
+          {
+            "level": 3,
+            "text": "Ist",
+            "anchor": "ist"
+          },
+          {
+            "level": 3,
+            "text": "Soll",
+            "anchor": "soll"
+          },
+          {
+            "level": 2,
+            "text": "Tablet (820)",
+            "anchor": "tablet-820"
+          },
+          {
+            "level": 3,
+            "text": "Ist",
+            "anchor": "ist-2"
+          },
+          {
+            "level": 3,
+            "text": "Soll",
+            "anchor": "soll-2"
+          },
+          {
+            "level": 2,
+            "text": "Desktop (1440)",
+            "anchor": "desktop-1440"
+          },
+          {
+            "level": 3,
+            "text": "Ist",
+            "anchor": "ist-3"
+          },
+          {
+            "level": 3,
+            "text": "Soll",
+            "anchor": "soll-3"
+          },
+          {
+            "level": 2,
+            "text": "Viewport-übergreifend",
+            "anchor": "viewport-übergreifend"
+          },
+          {
+            "level": 3,
+            "text": "One responsive system",
+            "anchor": "one-responsive-system"
+          },
+          {
+            "level": 3,
+            "text": "Routes and state",
+            "anchor": "routes-and-state"
+          },
+          {
+            "level": 3,
+            "text": "Header and live indicator",
+            "anchor": "header-and-live-indicator"
+          },
+          {
+            "level": 3,
+            "text": "Command palette and keyboard",
+            "anchor": "command-palette-and-keyboard"
+          },
+          {
+            "level": 3,
+            "text": "States",
+            "anchor": "states"
+          },
+          {
+            "level": 3,
+            "text": "Type, colour, focus, motion",
+            "anchor": "type-colour-focus-motion"
+          },
+          {
+            "level": 3,
+            "text": "Components (web/src/app/shared/ui/, each with at least two consumers)",
+            "anchor": "components-web-src-app-shared-ui-each-with-at-least-two-consumers"
+          },
+          {
+            "level": 3,
+            "text": "WebKit (cmux web view, iPad Safari) — assumed floor WebKit 17",
+            "anchor": "webkit-cmux-web-view-ipad-safari-assumed-floor-webkit-17"
+          },
+          {
+            "level": 3,
+            "text": "Baselines",
+            "anchor": "baselines"
+          }
+        ],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "image",
+            "src": ".design/mobile-ist.png",
+            "alt": "",
+            "caption": "mobile-ist.png",
+            "missing": true
+          },
+          {
+            "index": 2,
+            "kind": "image",
+            "src": ".design/tablet-ist.png",
+            "alt": "",
+            "caption": "tablet-ist.png",
+            "missing": true
+          },
+          {
+            "index": 3,
+            "kind": "image",
+            "src": ".design/desktop-ist.png",
+            "alt": "",
+            "caption": "desktop-ist.png",
+            "missing": true
+          }
+        ],
+        "sections": [
+          {
+            "id": "design-001-app-skeleton-and-dashboard",
+            "heading": "Design 001 — App skeleton and dashboard",
+            "level": 1
+          },
+          {
+            "id": "mobile-390",
+            "heading": "Mobile (390)",
+            "level": 2
+          },
+          {
+            "id": "ist",
+            "heading": "Ist",
+            "level": 3
+          },
+          {
+            "id": "soll",
+            "heading": "Soll",
+            "level": 3
+          },
+          {
+            "id": "tablet-820",
+            "heading": "Tablet (820)",
+            "level": 2
+          },
+          {
+            "id": "ist-2",
+            "heading": "Ist",
+            "level": 3
+          },
+          {
+            "id": "soll-2",
+            "heading": "Soll",
+            "level": 3
+          },
+          {
+            "id": "desktop-1440",
+            "heading": "Desktop (1440)",
+            "level": 2
+          },
+          {
+            "id": "ist-3",
+            "heading": "Ist",
+            "level": 3
+          },
+          {
+            "id": "soll-3",
+            "heading": "Soll",
+            "level": 3
+          },
+          {
+            "id": "viewport-übergreifend",
+            "heading": "Viewport-übergreifend",
+            "level": 2
+          },
+          {
+            "id": "one-responsive-system",
+            "heading": "One responsive system",
+            "level": 3
+          },
+          {
+            "id": "routes-and-state",
+            "heading": "Routes and state",
+            "level": 3
+          },
+          {
+            "id": "header-and-live-indicator",
+            "heading": "Header and live indicator",
+            "level": 3
+          },
+          {
+            "id": "command-palette-and-keyboard",
+            "heading": "Command palette and keyboard",
+            "level": 3
+          },
+          {
+            "id": "states",
+            "heading": "States",
+            "level": 3
+          },
+          {
+            "id": "type-colour-focus-motion",
+            "heading": "Type, colour, focus, motion",
+            "level": 3
+          },
+          {
+            "id": "components-web-src-app-shared-ui-each-with-at-least-two-consumers",
+            "heading": "Components (web/src/app/shared/ui/, each with at least two consumers)",
+            "level": 3
+          },
+          {
+            "id": "webkit-cmux-web-view-ipad-safari-assumed-floor-webkit-17",
+            "heading": "WebKit (cmux web view, iPad Safari) — assumed floor WebKit 17",
+            "level": 3
+          },
+          {
+            "id": "baselines",
+            "heading": "Baselines",
+            "level": 3
+          }
+        ],
+        "wordCount": 4511
+      },
+      "decisions": {
+        "frontmatter": {
+          "spec": "001-app-skeleton",
+          "created": "2026-09-28T09:40:00Z",
+          "updated": "2026-09-28T12:45:00Z",
+          "rounds": "4"
+        },
+        "html": "<h1 id=\"context-001-app-skeleton-and-dashboard\">Context 001 — App skeleton and dashboard</h1>\n<h2 id=\"goal-confirmed-2026-09-28t09-40-00z\">Goal — confirmed 2026-09-28T09:40:00Z</h2>\n<p>A fresh macOS or Linux user installs spectant with one line, registers two workspaces and sees their specs side by side on a read-only dashboard that looks like the old Spec dashboard in its light and its dark theme, with nothing leaving the machine and nothing written into either repository.</p>\n<p>Principal&#39;s words, verbatim: see <code>principal_stated_goal</code> in the master <code>ISA.md</code> (untracked; German, kept out of the public tree by the constitution).</p>\n<h2 id=\"round-0-shaping-the-idea-2026-09-28t07-30-00z\">Round 0 — shaping the idea, 2026-09-28T07:30:00Z</h2>\n<ul><li>Shapes offered: cut the skill first inside another repository (narrow) | companion app plus skill cut (obvious, recommended) | companion as an MCP service (different). Chosen: companion app plus skill cut.</li></ul>\n<h3 id=\"q1-where-does-the-app-live\">Q1 · Where does the app live?</h3>\n<ul><li>Offered: own repository, the other plugin project slims down (recommended) | everything in the plugin repository | own repository, the other project paused</li><li>Chosen: own repository (later refined: the skill moves here too, the other project is abandoned)</li><li>Landed in: master § Constraints, Decisions</li></ul>\n<h3 id=\"q2-which-stack-does-the-app-run-on\">Q2 · Which stack does the app run on?</h3>\n<ul><li>Offered: Bun + TypeScript single binary (recommended) | Go like radar | Spring Boot + Angular</li><li>Chosen: Bun + TypeScript single binary</li><li>Landed in: master § Constraints; ISC-8, ISC-9</li></ul>\n<h3 id=\"q3-what-may-the-app-write-into-repositories\">Q3 · What may the app write into repositories?</h3>\n<ul><li>Offered: reads Markdown, writes only its database (recommended) | light writes too | the app drives the skill</li><li>Chosen: light writes too (review mark, task checkboxes) with conflict detection</li><li>Landed in: master F2 (not this spec); ISC-15 holds this spec read-only</li></ul>\n<h3 id=\"q4-name\">Q4 · Name</h3>\n<ul><li>Offered: Sextant (recommended) | Plumb | Keel | later — rejected; second round: Spectant | Specmate | Specora | Specwright | Specular | Speculo | Spekta | Specto</li><li>Chosen: Spectant, the principal&#39;s own coinage</li><li>Landed in: master § Constraints; ISC-57 (name search, release slice)</li></ul>\n<h2 id=\"round-1-before-the-spec-2026-09-28t09-40-00z\">Round 1 — before the spec, 2026-09-28T09:40:00Z</h2>\n<p>The grill before the master (ten questions plus two interjections) and the frontend decision during the constitution settled everything this spec&#39;s claims depend on: standalone app with LifeOS optional (ISC-5 lives in <code>core/</code>), files as the only interface, Angular 22 zoneless with daisyUI 5, the old pages as the visual specification in both themes (ISC-17, ISC-17.1, ISC-18, ISC-18.1, ISC-18.2), loopback only (ISC-1), no outbound traffic (ISC-2).</p>\n<h3 id=\"q1-which-goal-does-spec-001-have\">Q1 · Which goal does spec 001 have?</h3>\n<ul><li>Offered: install plus dashboard over two workspaces (recommended) | narrower: locally built, one workspace | wider: plus a read-only review page</li><li>Chosen: install plus dashboard over two workspaces</li><li>Landed in: § Goal; F0 and F1 projected</li></ul>\n<p>No further gaps the repository could not close; the screenshot threshold is fog to be measured, not a question.</p>\n<h2 id=\"round-2-before-the-plan-2026-09-28t10-55-00z\">Round 2 — before the plan, 2026-09-28T10:55:00Z</h2>\n<h3 id=\"q1-in-which-order-do-we-build-001\">Q1 · In which order do we build 001?</h3>\n<ul><li>Offered: end-to-end skeleton first, then parity harness, core and API, dashboard (recommended) | contract first, binary and installer last | UI parity first against mock JSON</li><li>Chosen: end-to-end skeleton first</li><li>Landed in: plan.md § Approach</li></ul>\n<p>No further questions: the repo and design.md answered the rest (Playwright is the house e2e tool, FE-TST-03; no binding row is departed from).</p>\n<h2 id=\"round-3-review-before-implement-2026-09-28t12-00-00z\">Round 3 — review before implement, 2026-09-28T12:00:00Z</h2>\n<p>The principal asked for the plan and design to be improved further and added: &quot;ich möchte, dass die App modern, best-practice, state-of-the-art und wirklich fancy ist … so dass das DIE Spec-Compagnion für Devs werden kann!&quot;</p>\n<h3 id=\"q1-pixel-parity-to-the-old-dashboard-or-a-modern-surface\">Q1 · Pixel parity to the old dashboard or a modern surface?</h3>\n<ul><li>Offered: keep the identity, drop pixel parity (recommended) | 001 pixel-identical, fancy from 002 | parity first, redesign later</li><li>Chosen: keep the identity, drop pixel parity</li><li>Landed in: § Vision, § Constraints, § Goal, ISC-17/17.1 re-worded, ISC-60 … ISC-67.1 added, the threshold fog line died; a second design pass ran with full-page captures</li></ul>\n<h3 id=\"q2-how-does-a-spec-open-enter-in-the-list-or-the-palette\">Q2 · How does a spec open (Enter in the list or the palette)?</h3>\n<ul><li>Offered: route <code>/w/:ws/s/:id</code> with rail inspector / side sheet / full-screen sheet (recommended) | in-place row expansion via <code>?spec=</code> | route at wide, expansion at compact</li><li>Chosen: route with inspector / sheet</li><li>Landed in: design.md § Routes and state; Decisions</li></ul>\n<h3 id=\"q3-where-does-next-up-live-and-does-the-tl-dr-bar-stay\">Q3 · Where does &quot;Next up&quot; live, and does the TL;DR bar stay?</h3>\n<ul><li>Offered: own surface plus stage and command in every row, TL;DR kept as a collapsed Brief (recommended) | only in the rows, TL;DR dropped | only an own surface</li><li>Chosen: own surface plus rows, Brief kept</li><li>Landed in: design.md § Section disposition</li></ul>\n<h3 id=\"q4-minimum-width-of-a-workspace-column-in-the-overview\">Q4 · Minimum width of a workspace column in the overview?</h3>\n<ul><li>Offered: 360 px capped at three columns (recommended) | 560 px</li><li>Chosen: 360 px, three columns max</li><li>Landed in: design.md § Grid rules; ISC-16.1 states</li></ul>\n<p>A same-vendor second look (Forge without Codex credentials) added eleven findings; the ones still valid after Q1 landed in ISC-2, ISC-8, ISC-14, ISC-15, ISC-18.1, ISC-18.3, ISC-5.1, ISC-5.2, ISC-8.1, ISC-16.1/16.2, ISC-19.1 and in plan.md § Risks. The full record is in <code>.evidence/review-2026-09-28.md</code>.</p>\n<h2 id=\"still-open\">Still open</h2>\n<p>None: the spec has no fog after Round 3.</p>\n<h2 id=\"round-4-build-2026-09-28\">Round 4 — build, 2026-09-28</h2>\n<ul><li>second look: off (default). Forge unavailable as builder or reader in this run (codex: no credentials, 401); builder is Engineer on every lane.</li><li>Round 1 dispatched T1 (ISC-8), T2, T3, T4 (ISC-5.1) in worktrees on commit 29115a4; all four returned results, patches applied, no claim closed yet (ISC-5.1 waits for T5, ISC-8 for T6–T11).</li><li>Marks from round 1: T1 — <code>bunfig.toml</code> <code>[test] pathIgnorePatterns = [&quot;web/src/**&quot;]</code> proven with throwaway probes (no <code>scripts/test.ts</code> wrapper needed); <code>test:visual</code>, <code>test:browser</code>, <code>e2e</code> forward to <code>bun run --cwd web &lt;name&gt;</code>, so T7/T31 must define exactly those names in <code>web/package.json</code>; <code>verify:quick</code> is red until T8 and the first tests; bun pinned at 1.3.12 from the environment. T2 — added the rule &quot;pin every dependency and tool version&quot; (XC-09) beyond the brief; constitution rows resting on <code>ISA.md</code> can now be re-pointed at <code>CLAUDE.md</code>. T4 — noted that ISC-7 says &quot;registry, notes and pins&quot; while plan § Data Model says &quot;registry and settings&quot; (resolved below). All workers skipped voice notifications (voice is off).</li><li>Round 2 (commit a4555d2): T5, T35, T45, T46 returned results; closed ISC-5.1, ISC-21, ISC-5 on their probes; ISC-6 waits for the golden test (T42). Marks: T5 — the constitution&#39;s web lane row names the private house standards as worker context, which a public file cannot point at; the rules are written out in <code>web/CLAUDE.md</code> instead (constitution row to re-point). T35 — gate marks are <code>.gates/reviewed.json</code> / <code>code-reviewed.json</code> (the real shape), fixture <code>code-reviewed</code> marks omit the <code>root</code> field (an absolute path in the real tool); a refactor&#39;s missing mermaid is a silent <code>warn</code> in the old skill, so the diagrams warning is carried by 004 (feature); <code>core/fixtures/.gitignore</code> re-includes the fixture masters that the root <code>ISA.md</code> ignore would hide; <code>generate.ts</code> carries its own copy of the review-digest normalization until <code>core/src/gates.ts</code> exists (T39 should switch it to an import). T45 — <code>*.gen.*</code> files are skipped, an allow comment without a reason does not suppress. T46 — <code>ensureDataDir</code> also <code>chmod 0700</code>s an existing directory; empty <code>XDG_DATA_HOME</code> counts as unset.</li><li>Round 3 (commit e660dc9): T6 build contract landed with 21 tests; <code>server/embedded.gen.ts</code> is generated and gitignored; <code>http.ts</code> must take the manifest as a parameter; hashed-name regex is Angular&#39;s 8-char base32; <code>isSpaRoute</code> excludes only known extensions so <code>/w/example.com</code> still loads the app.</li><li>Round 4 (commit e660dc9, T7 alone): Angular 22.2.0 zoneless workspace, Vitest 5 via the Angular builder, Tailwind 4.3.3, daisyUI 5.7.46, everything pinned; <code>bun run --cwd web build</code> writes <code>web/dist/browser/{index.html, main-*.js, styles-*.css}</code>. Finding: the Angular CLI refuses Bun&#39;s Node shim and runs on the system Node ≥ 22.22.3 (plan § Risks). Decision (principal): tasks.md re-cut with five seams and <code>[P]</code> everywhere else, because SpecRun runs every non-<code>[P]</code> task alone and the first cut would have taken ~60 rounds; costs one <code>/spec-review</code>.</li><li>Round 5 (commit f28deea): T8, T9, T10, T17 returned results; closed ISC-5.2 and ISC-18; ISC-8 waits for T11. Findings: Bun defaults <code>SO_REUSEPORT</code> on, so <code>http.ts</code> sets <code>reusePort: false</code> and a test pins that a busy port throws (T50&#39;s fallback depends on it); an unsigned bun-compiled binary is SIGKILLed on macOS until <code>codesign -s -</code>, so T11 must sign darwin outputs unconditionally; the weak ETag mixes in <code>generatedAt</code> because a new build&#39;s <code>index.html</code> keeps its size; angular-eslint 22 treats OnPush as the default and flags only an opt-out; ESLint is pinned to 9.39.5 as briefed although 10.x exists. Parent fixes after the merge (the round&#39;s own files were written before the lint existed): ESLint ignores <code>specs/**</code>, <code>.vendor/**</code>, <code>*.gen.ts</code>; <code>non-nullable-type-assertion-style</code> off because it conflicts with <code>no-non-null-assertion</code>; sixteen <code>!</code> sites replaced by narrowing or a <code>must()</code> helper; stylelint hue and alpha in number notation so the colour guard&#39;s parser keeps working. T8 touched four files outside its lane for tsc under <code>noUncheckedIndexedAccess</code> (harbor <code>generate.ts</code>, <code>check-single-core.ts</code>, <code>assets.contract.test.ts</code>, <code>hello.spec.ts</code>), behaviour unchanged, fixture regeneration byte-identical.</li><li>Round 6 (commit 5fcf738, T11 alone): closed ISC-8 — four binaries (darwin arm64/x64 ad-hoc signed, linux arm64, linux x64 from the baseline target), host binary serves the embedded app from an empty directory. Findings: <code>--compile --sourcemap=none</code> still writes a stray map with bun 1.3.12, so the flag is omitted; the generated manifest needs <code>// @ts-nocheck</code> because bun-types cannot type <code>with { type: &quot;file&quot; }</code> imports of html/css/ico (T9&#39;s generator amended, the contract&#39;s doc example updated by the parent); an ambient <code>*/embedded.gen.ts</code> module declaration keeps tsc green on a fresh checkout; <code>cli.ts</code> rejects <code>--no-browser</code> until T50 adds it, so T12&#39;s probe depends on T50 landing first or on using <code>--port 0</code> alone.</li><li>Round 7 (commit 7aaae5b): closed ISC-8.1 (binary smoke), ISC-9 (<code>check:version</code>), ISC-10 (install in a non-root Ubuntu x64 container under emulation, 14 checks); T18 landed the derived contrast tokens with a guard, ISC-65 waits for the browser spec. Marks: <code>test:binary</code> builds the host target first and gates the suite behind <code>SPECTANT_TEST_BINARY=1</code> so the lane probe stays green on a checkout without <code>dist/</code>; <code>--no-browser</code> is accepted as a no-op since T13 (T12&#39;s spawn still passes only <code>--port 0</code> — T50 flips it to <code>--no-browser --port 0</code>); ISC-12&#39;s literal <code>INSTALL_DIR=/opt/x/bin</code> needs a writable <code>/opt/x</code> for the non-root tester (T15); the light badge fill <code>#1c8ca8</code> gives only 3.81:1 for off-white text, so <code>--badge-fill</code> (light <code>#007e9a</code>, 4.57:1) is the derived fill the badge component paints, and light <code>--done</code> also needed an ink variant; the token <code>@import</code> sits right under <code>@import &quot;tailwindcss&quot;</code> because stylelint rejects an import after <code>@plugin</code>; derived tokens are undefined without <code>data-theme</code>, so the pre-paint script (T58) must always set it; <code>web/CLAUDE.md</code> should list <code>--muted-ink</code>, <code>--badge-fill</code>, <code>--badge-ink</code>, <code>--focus-*</code> (drift, not fixed).</li><li>Round 8 (commit d012446): closed ISC-12 (<code>INSTALL_DIR</code>, 19 container checks), ISC-67 (local fonts), ISC-18.2 (icon module, generator, byte-identity guard); T21 landed the motion tokens, ISC-66 waits for the browser spec. Marks: JetBrains Mono 2.304 ships no variable woff2, so the official variable TTF was re-encoded once with the reference woff2 encoder (provenance in <code>fonts.css</code>); <code>THIRD_PARTY_NOTICES.md</code> (T55) must list Inter 4.1 and JetBrains Mono 2.304 under OFL-1.1; the JetBrains Mono preload may log &quot;preloaded but not used&quot; until mono text renders on first paint (T30/T31 to check); the reduced-motion block also neutralises <code>::view-transition-*</code> pseudo-elements; <code>.ui-skeleton</code> shimmer animates <code>background-position</code>; <code>generate-icons.ts</code> is excluded from the app tsconfig and checked through the root program; <code>strictTemplates</code> is not set, so dynamic <code>[name]</code> bindings on <code>ui-icon</code> are not type-checked. Parent fixes after the merge: fonts and motion both added an <code>@import</code> to <code>styles.css</code> (merged by hand), ESLint now ignores <code>.claude/**</code> (it had linted a live worktree), and the component/directive selector prefix is <code>[&#39;app&#39;, &#39;ui&#39;]</code> so the <code>ui-*</code> primitives need no per-file disable (the disable in <code>icon.ts</code> was removed).</li><li>Round 9 (commit afed26f): closed ISC-67.1 (external font URL guard) and ISC-22 (Transloco 8.4.0, 174 keys, bundled loader); T24 landed the button primitives with the global focus ring (ISC-64 waits for T29) and T25 all 17 display primitives (ISC-17 waits for T79); web lane 21 spec files / 33 tests. Marks: Transloco pinned 8.4.0 (current) instead of 7.x, same API; plurals as <code>.one</code>/<code>.other</code> sub-keys without messageformat; phase values verbatim in both languages (format vocabulary); <code>LanguageService.current</code> is computed over Transloco&#39;s active lang, <code>set()</code> also sets <code>&lt;html lang&gt;</code>, persistence is T58; the button group joins by its own CSS because daisyUI&#39;s <code>join</code> uses <code>@scope</code> (WebKit 17.4+); <code>disabled</code> keeps the button focusable with <code>aria-disabled</code> and a capture-phase click guard; secondary buttons are plain <code>btn</code> on base-100, not daisyUI&#39;s violet <code>btn-secondary</code>; in a <code>gap</code> group of 32 px buttons the 44 px hit areas overlap by 4 px (WCAG 2.5.8 still met); T25&#39;s filter chips, segmented and command chip use plain <code>&lt;button&gt;</code> with <code>btn</code> classes (TODO swap to <code>ui-button</code>); tone map: building maps to warning until a <code>conc</code> tone is added; <code>ui-notice</code> info uses <code>triangle-alert</code> (no info icon in the pinned set); chip/notice text-on-tint contrast is not measured yet (T30); <code>ui-ring</code> gradient is <code>url(#ui-ring-N)</code> (check in WebKit, ISC-19); nothing renders the primitives yet, so the build tree-shakes them and the style budget is untested until T59+. Parent fixes: ESLint <code>elements-content</code> allow-lists <code>label</code> (icon buttons), README adjusted.</li><li>Session hand-off 2026-09-28 (after round 9): the principal restarts Claude from the repo directory; state and the round protocol are in the LifeOS memory note <code>spectant-implement-run</code>; helper <code>close-claims.ts</code> and the round plans live under <code>~/.claude/LIFEOS/MEMORY/WORK/spectant/tools/</code>. Next: commit round 9, then round 10 = T26 (overlay primitives), T27 (roving list), T32 (FORMAT.md), T42 (registry). </li><li>Lock handling: <code>SpecRun.ts plan</code> holds every task whose claim is locked, my own session included, so locks are taken per round at dispatch and released after the round&#39;s write order; a claim that did not close is unlocked between rounds.</li></ul>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Goal — confirmed 2026-09-28T09:40:00Z",
+            "anchor": "goal-confirmed-2026-09-28t09-40-00z"
+          },
+          {
+            "level": 2,
+            "text": "Round 0 — shaping the idea, 2026-09-28T07:30:00Z",
+            "anchor": "round-0-shaping-the-idea-2026-09-28t07-30-00z"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · Where does the app live?",
+            "anchor": "q1-where-does-the-app-live"
+          },
+          {
+            "level": 3,
+            "text": "Q2 · Which stack does the app run on?",
+            "anchor": "q2-which-stack-does-the-app-run-on"
+          },
+          {
+            "level": 3,
+            "text": "Q3 · What may the app write into repositories?",
+            "anchor": "q3-what-may-the-app-write-into-repositories"
+          },
+          {
+            "level": 3,
+            "text": "Q4 · Name",
+            "anchor": "q4-name"
+          },
+          {
+            "level": 2,
+            "text": "Round 1 — before the spec, 2026-09-28T09:40:00Z",
+            "anchor": "round-1-before-the-spec-2026-09-28t09-40-00z"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · Which goal does spec 001 have?",
+            "anchor": "q1-which-goal-does-spec-001-have"
+          },
+          {
+            "level": 2,
+            "text": "Round 2 — before the plan, 2026-09-28T10:55:00Z",
+            "anchor": "round-2-before-the-plan-2026-09-28t10-55-00z"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · In which order do we build 001?",
+            "anchor": "q1-in-which-order-do-we-build-001"
+          },
+          {
+            "level": 2,
+            "text": "Round 3 — review before implement, 2026-09-28T12:00:00Z",
+            "anchor": "round-3-review-before-implement-2026-09-28t12-00-00z"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · Pixel parity to the old dashboard or a modern surface?",
+            "anchor": "q1-pixel-parity-to-the-old-dashboard-or-a-modern-surface"
+          },
+          {
+            "level": 3,
+            "text": "Q2 · How does a spec open (Enter in the list or the palette)?",
+            "anchor": "q2-how-does-a-spec-open-enter-in-the-list-or-the-palette"
+          },
+          {
+            "level": 3,
+            "text": "Q3 · Where does \"Next up\" live, and does the TL;DR bar stay?",
+            "anchor": "q3-where-does-next-up-live-and-does-the-tl-dr-bar-stay"
+          },
+          {
+            "level": 3,
+            "text": "Q4 · Minimum width of a workspace column in the overview?",
+            "anchor": "q4-minimum-width-of-a-workspace-column-in-the-overview"
+          },
+          {
+            "level": 2,
+            "text": "Still open",
+            "anchor": "still-open"
+          },
+          {
+            "level": 2,
+            "text": "Round 4 — build, 2026-09-28",
+            "anchor": "round-4-build-2026-09-28"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "context-001-app-skeleton-and-dashboard",
+            "heading": "Context 001 — App skeleton and dashboard",
+            "level": 1
+          },
+          {
+            "id": "goal-confirmed-2026-09-28t09-40-00z",
+            "heading": "Goal — confirmed 2026-09-28T09:40:00Z",
+            "level": 2
+          },
+          {
+            "id": "round-0-shaping-the-idea-2026-09-28t07-30-00z",
+            "heading": "Round 0 — shaping the idea, 2026-09-28T07:30:00Z",
+            "level": 2
+          },
+          {
+            "id": "q1-where-does-the-app-live",
+            "heading": "Q1 · Where does the app live?",
+            "level": 3
+          },
+          {
+            "id": "q2-which-stack-does-the-app-run-on",
+            "heading": "Q2 · Which stack does the app run on?",
+            "level": 3
+          },
+          {
+            "id": "q3-what-may-the-app-write-into-repositories",
+            "heading": "Q3 · What may the app write into repositories?",
+            "level": 3
+          },
+          {
+            "id": "q4-name",
+            "heading": "Q4 · Name",
+            "level": 3
+          },
+          {
+            "id": "round-1-before-the-spec-2026-09-28t09-40-00z",
+            "heading": "Round 1 — before the spec, 2026-09-28T09:40:00Z",
+            "level": 2
+          },
+          {
+            "id": "q1-which-goal-does-spec-001-have",
+            "heading": "Q1 · Which goal does spec 001 have?",
+            "level": 3
+          },
+          {
+            "id": "round-2-before-the-plan-2026-09-28t10-55-00z",
+            "heading": "Round 2 — before the plan, 2026-09-28T10:55:00Z",
+            "level": 2
+          },
+          {
+            "id": "q1-in-which-order-do-we-build-001",
+            "heading": "Q1 · In which order do we build 001?",
+            "level": 3
+          },
+          {
+            "id": "round-3-review-before-implement-2026-09-28t12-00-00z",
+            "heading": "Round 3 — review before implement, 2026-09-28T12:00:00Z",
+            "level": 2
+          },
+          {
+            "id": "q1-pixel-parity-to-the-old-dashboard-or-a-modern-surface",
+            "heading": "Q1 · Pixel parity to the old dashboard or a modern surface?",
+            "level": 3
+          },
+          {
+            "id": "q2-how-does-a-spec-open-enter-in-the-list-or-the-palette",
+            "heading": "Q2 · How does a spec open (Enter in the list or the palette)?",
+            "level": 3
+          },
+          {
+            "id": "q3-where-does-next-up-live-and-does-the-tl-dr-bar-stay",
+            "heading": "Q3 · Where does \"Next up\" live, and does the TL;DR bar stay?",
+            "level": 3
+          },
+          {
+            "id": "q4-minimum-width-of-a-workspace-column-in-the-overview",
+            "heading": "Q4 · Minimum width of a workspace column in the overview?",
+            "level": 3
+          },
+          {
+            "id": "still-open",
+            "heading": "Still open",
+            "level": 2
+          },
+          {
+            "id": "round-4-build-2026-09-28",
+            "heading": "Round 4 — build, 2026-09-28",
+            "level": 2
+          }
+        ],
+        "wordCount": 2306
+      }
+    }
+  }
+}

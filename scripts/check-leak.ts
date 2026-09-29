@@ -43,6 +43,31 @@ export type LineHit = { cls: LeakClass; match: string };
 export type Hit = LineHit & { path: string; line: number; note?: string };
 export type Allowed = { path: string; line: number; reason: string };
 
+/**
+ * A golden snapshot under `core/fixtures/` (`<tree>.golden.json`, `<tree>.<family>.golden.json`) is derived text: the
+ * parser's rendering of the tree beside it. A generic hit in it is allowed when the same matched text sits on an
+ * allow-marked line of that tree — the marker cannot travel into JSON, so the derivation inherits it (ISC-3).
+ */
+const DERIVED_GOLDEN = /^core\/fixtures\/([^/]+?)(?:\.[a-z-]+)?\.golden\.json$/;
+
+export function derivedGoldenTree(path: string): string | null {
+  return DERIVED_GOLDEN.exec(path)?.[1] ?? null;
+}
+
+/** Moves golden hits whose match appears on an allowed line of the golden's own fixture tree into `allowed`. */
+export function inheritFixtureAllows(hits: Hit[], allowed: Allowed[], allowedText: ReadonlyMap<string, readonly string[]>): Hit[] {
+  const kept: Hit[] = [];
+  for (const h of hits) {
+    const tree = h.cls === "private-word" ? null : derivedGoldenTree(h.path);
+    if (tree !== null && allowedText.get(tree)?.some((line) => line.includes(h.match))) {
+      allowed.push({ path: h.path, line: h.line, reason: `derived from an allowed line of core/fixtures/${tree}` });
+      continue;
+    }
+    kept.push(h);
+  }
+  return kept;
+}
+
 const BINARY_EXT =
   /\.(?:png|jpe?g|gif|webp|avif|ico|bmp|tiff?|woff2?|ttf|otf|eot|pdf|zip|gz|tgz|bz2|xz|7z|br|zst|wasm|mp3|mp4|webm|ogg|wav|mov|lockb|db|sqlite|jar|class|exe|dll|so|dylib|bin)$/i;
 const SNIFF_BYTES = 8192;
@@ -301,8 +326,10 @@ export function main(argv: string[], env: Record<string, string | undefined>): n
     wordLine = `private word list: ${plural(list.length, "word")} (SPECTANT_LEAK_WORDS)`;
   }
 
-  const hits: Hit[] = [];
+  let hits: Hit[] = [];
   const allowed: Allowed[] = [];
+  /** Text of every allow-marked line per fixture tree, so a derived golden can inherit the allowance. */
+  const allowedText = new Map<string, string[]>();
   let scanned = 0;
   let binary = 0;
   for (const path of files) {
@@ -319,7 +346,15 @@ export function main(argv: string[], env: Record<string, string | undefined>): n
     const result = scanText(path, text, words);
     hits.push(...result.hits);
     allowed.push(...result.allowed);
+    const tree = /^core\/fixtures\/([^/]+)\//.exec(path)?.[1];
+    if (tree !== undefined && result.allowed.length > 0) {
+      const rows = text.split("\n");
+      const list = allowedText.get(tree) ?? [];
+      for (const a of result.allowed) list.push(rows[a.line - 1] ?? "");
+      allowedText.set(tree, list);
+    }
   }
+  hits = inheritFixtureAllows(hits, allowed, allowedText);
 
   console.log(wordLine);
   const byReason = new Map<string, number[]>();

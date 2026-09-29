@@ -422,30 +422,62 @@ the `review` warning, and one gate entry per mark on the timeline (with files, h
 
 ## `artifacts` — `artifacts/`
 
-Files the tasks produced, grouped by claim. Listed, never parsed: each file with its path relative to the spec folder,
-its media type and size, and the claim ID its path names (else no group). The listing is confined to the spec folder;
-a file outside it is never served (ISC-83). The lister is spec 002's T24 (`evidence.ts`, a stub).
+Versioned task results, shown as "Results" on the Evidence tab. Listed, never parsed (`evidence.ts`, T24), recursively,
+dotfiles skipped, sorted by path. Each file carries its path relative to the spec folder, its name, its size in bytes,
+its media type from the extension (`md`, `json`, `har`, `png`, `jpg`, `webp`, `log`, `txt`, `html`; anything else is
+`application/octet-stream`), the task id when the name starts with `T<n>` followed by `-`, `_`, `.` or nothing, and
+its claim:
 
-**No fixture yet.** No fixture tree carries an `artifacts/` folder; the layout below is illustrative.
+1. a claim ID of `spec.md` that a path segment is or starts with (`ISC-61/shot.png`, `ISC-61-shot.png`; the longest
+   ID wins, so `ISC-60.1-notes.txt` is ISC-60.1);
+2. else the first `## Verification` line that names the file by its path relative to the spec folder or by its bare
+   name, as a whole token;
+3. else none: the file is ungrouped.
 
-```text
-specs/002-web-console/artifacts/
-└── ISC-61/
-    └── tag-table-390.png
+No modification time is listed: it moves with every checkout. A symlink is listed and flagged; one that does not
+resolve inside `artifacts/` or `.evidence/` is listed as refused (size 0, a warning), never followed, and a symlinked
+folder is never descended. A group folder that is itself a symlink is not listed. Serving goes through
+`resolveEvidencePath` and nothing outside the two folders of the spec's own folder is ever served (ISC-83).
+
+From `core/fixtures/harbor/specs/002-web-console/spec.md`, two verification lines naming a result and a raw file:
+
+```markdown
+- ISC-60.2: `bun run e2e -- theme-switch -g persist` passed, 2026-03-08; routes in `artifacts/T13-routes.md`
+- ISC-61: `bun run e2e -- tag-table -g narrow` passed, 2026-03-08; screenshot `.evidence/kpi-band-390.png`
+```
+
+From `core/fixtures/harbor/specs/002-web-console/artifacts/T13-routes.md`, a task result (task T13, claim ISC-60.2):
+
+```markdown
+# T13 — routes
+
+Recorded 2026-03-06, round 2.
 ```
 
 ## `evidence` — `.evidence/`
 
-Probe output that closed a claim, grouped by claim; listed like `artifacts/`, with image and Markdown previews on the
-Evidence tab. A Test Strategy row may point at it as its tool (`transcript in \`.evidence/\``).
+Raw probe output (HAR files, screenshots, logs), shown as "Raw evidence" on the Evidence tab with thumbnails for
+images. Listed exactly like `artifacts/`, with the same claim rules. A Test Strategy row may point at it as its tool
+(`transcript in \`.evidence/\``). Harbor 002 holds `bun-test-r3.log` (claim ISC-72: its verification line names the
+bare file name), `dashboard.har` (named by no line: ungrouped) and `kpi-band-390.png` (ISC-61), a 4 × 2 PNG the
+generator builds byte by byte.
 
-**No fixture yet.** No fixture tree carries an `.evidence/` folder; the layout below is illustrative.
+From `core/fixtures/harbor/specs/002-web-console/.evidence/bun-test-r3.log`:
 
 ```text
-specs/002-web-console/.evidence/
-└── ISC-77/
-    └── screen-reader-transcript.md
+2026-03-08T11:18:00Z round 3 · bun test api/
+api/tests/history.test.ts:
+(pass) history > pages by 20
 ```
+
+A requested evidence path resolves (`resolveEvidencePath`) only when all of these hold; anything else is refused:
+
+- percent-encoding is decoded exactly once; a malformed sequence or a second layer (`%252e`) is `outside`;
+- no NUL or other control character, no backslash, no leading `/`, no drive letter, no `..` segment: else `outside`;
+- the first segment is `artifacts` or `.evidence`, with a file below it: else `outside` (`plan.md` is outside);
+- the real path, after every symlink, lies under the real spec folder's `artifacts/` or `.evidence/`: else
+  `symlink-escape` (also for a dangling link whose target would lie outside);
+- it exists (`not-found`) and is a regular file (`not-a-file`).
 
 ## `master` — `../../ISA.md`
 

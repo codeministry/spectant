@@ -1,0 +1,907 @@
+{
+  "constitution": {
+    "frontmatter": {
+      "repo": "lead-generation",
+      "derived": "2026-09-20",
+      "standards_version": "1.0.0",
+      "design_track": "app",
+      "stack": "[spring-boot, angular]"
+    },
+    "html": "<h1 id=\"constitution-lead-generation\">Constitution — lead-generation</h1>\n<blockquote><p>Derived on 2026-09-20 from the sources listed below. The rules live in those sources; this file says which of them bind spec work, where to read them, and what proves them.</p></blockquote>\n<h2 id=\"what-a-spec-may-contain-and-in-which-language\">What a spec may contain, and in which language</h2>\n<p>Two rules, both of them consequences of this repository being public rather than of anybody&#39;s taste.</p>\n<p><strong>Everything under <code>specs/</code> is English.</strong> Not only the slugs and the branch names but the prose as well: goal, claims, plan, tasks, decisions. <code>CLAUDE.md § Language</code> says it for the repository and <code>specs/</code> is part of the repository, so no exception is carried here. The German that legitimately exists in this project is <em>content</em> — the adverts the tool reads, the letters it writes, the pitches in the profile — and it lives in <code>config/</code> and in the i18n catalogs, never in a spec.</p>\n<p><strong>A spec names no value that <code>.env</code> and <code>config/</code> exist to hold.</strong> No portal, no newsletter sender, no mail provider, no model name, no rate floor, no city list, no matching profile. This is the repo-wide &quot;nothing is wired in&quot; invariant applied to prose instead of to configuration, and it bites harder here, because a spec describes the intention behind a value and an intention is often more revealing than the value. Anonymized forms (<code>&lt;newsletter-sender&gt;</code>, <code>portal-a</code>) are available and are the answer when a spec genuinely has to talk about a source.</p>\n<p><strong>Where a thing goes that cannot be written that way.</strong> If a piece of work can only be specified with real portals, real senders or real numbers, it does not get a folder under <code>specs/</code>. It stays in the master <code>ISA.md</code>, which is untracked, or in <code>Plans/</code>, which is untracked too and carries no authority. Choosing the private lane is a normal outcome, not a failure; what is not allowed is writing the personal datum into the public one.</p>\n<h2 id=\"binding-sources\">Binding sources</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Source</th><th>Kind</th><th>Governs</th></tr></thead><tbody><tr><td><code>~/.claude/LIFEOS/USER/ENGINEERING/</code></td><td>house</td><td>default stack, architecture, design (app track), delivery, verification</td></tr><tr><td><code>CLAUDE.md</code>, <code>backend/CLAUDE.md</code>, <code>frontend/CLAUDE.md</code></td><td>repo</td><td>invariants, commands, the traps already paid for, order of work</td></tr><tr><td><code>docs/decisions/</code> (11 files)</td><td>repo</td><td>technology decisions per pipeline stage, read side, frontend design system</td></tr><tr><td><code>docs/ARCHITECTURE.md</code>, <code>docs/CONFIGURATION.md</code>, <code>docs/WRITING-RULES.md</code></td><td>repo</td><td>structure, configuration layers, text rules</td></tr><tr><td><code>build.gradle.kts</code>, <code>gradle/libs.versions.toml</code>, <code>.editorconfig</code>, <code>.github/workflows/</code></td><td>repo</td><td>toolchain, pins, formatting and the gates that actually run</td></tr><tr><td><code>ISA.md § Principles</code>, <code>§ Constraints</code></td><td>repo, <strong>untracked</strong></td><td>substrate-independent truths and the constraints that do not move</td></tr></tbody></table></div>\n<p><strong><code>ISA.md</code> is in <code>.gitignore</code> and stays there.</strong> It names the operator throughout and its measurements give away where he lives, and the comment at <code>.gitignore:78</code> calls it a working document rather than project documentation in as many words. One rule follows for this file: <strong>no row under <code>## Non-negotiables</code> rests on the master alone.</strong> Each also names the tracked file that carries the same rule, so a reader of the public repository can look every row up. What exists only in the master binds the operator and does not appear here.</p>\n<p><strong>What that means for specs.</strong> <code>specs/</code> is versioned and reviewed in the pull request; the master is not. Claim IDs are still minted in the master first, and a <code>spec.md</code> carries the claim <em>text</em> rather than only its number, so the ID is an address into a private register and the public spec still reads on its own.</p>\n<p><strong>Design track <code>app</code>,</strong> derived from: <code>@ngrx/signals</code> with nine stores under <code>frontend/src/app/core/store/</code>, <code>src/app/layout/</code> as the app shell, no SSG configuration, no SEO service. No marketing track.</p>\n<h2 id=\"non-negotiables\">Non-negotiables</h2>\n<p>Every rule from <code>BACKEND.md</code>, <code>FRONTEND.md</code>, <code>DELIVERY.md</code> and <code>DESIGN.md</code> (app track) binds, except what stands under <code>## Adaptations</code> and <code>## Conformance baseline</code>. Named individually are only the rules whose probe has its own resolution here, or that this repository particularly rests on.</p>\n<div class=\"mdtable\"><table><thead><tr><th>Rule</th><th>Source</th><th>Verdict</th><th>Probe</th></tr></thead><tbody><tr><td>BE-BLD-01 Java 25 through the toolchain</td><td>house + <code>backend/build.gradle.kts</code></td><td>binding</td><td><code>./gradlew check</code></td></tr><tr><td>BE-BLD-07 one Gradle entry point for both languages</td><td>house + <code>frontend/build.gradle.kts</code></td><td>binding</td><td><code>./gradlew check</code></td></tr><tr><td>BE-DB-02 Flyway owns the schema</td><td>house + <code>backend/CLAUDE.md</code> (&quot;JDBC, not JPA&quot;)</td><td>binding</td><td><code>./gradlew check</code></td></tr><tr><td>BE-DB-04 <code>JdbcClient</code> rather than JPA</td><td>house + <code>docs/decisions/read-side.md</code></td><td>binding</td><td><code>./gradlew check</code></td></tr><tr><td>BE-QUA-04 an SPDX header in every <code>.java</code></td><td>house + <code>.github/workflows/ci.yml</code></td><td>binding</td><td>CI step &quot;Every Java file carries its SPDX header&quot;</td></tr><tr><td>BE-DB-03 migrations byte-identical</td><td>house + <code>.editorconfig</code> + <code>.github/workflows/ci.yml</code></td><td>binding</td><td>CI step against changed migrations</td></tr><tr><td>BE-TST-07 test inputs declared as Gradle <code>inputs.files</code></td><td>house + <code>backend/build.gradle.kts</code></td><td>binding</td><td><code>./gradlew check</code></td></tr><tr><td>FE-LAYER-01..04 layering through aliases</td><td>house + <code>frontend/eslint.config.mjs</code></td><td>binding</td><td><code>bun run check:static</code></td></tr><tr><td>FE-FW-04/05 OnPush and signals as lint errors</td><td>house + <code>frontend/eslint.config.mjs</code></td><td>binding</td><td><code>bun run check:static</code></td></tr><tr><td>FE-STATE-01 <code>@ngrx/signals</code>, events dialect</td><td>house + <code>frontend/CLAUDE.md</code> (NgRx line)</td><td>binding</td><td>review</td></tr><tr><td>FE-TOOL-01 bun, one lockfile, <code>packageManager</code> agrees</td><td>house + <code>CLAUDE.md</code> § Commands + <code>frontend/package.json</code></td><td>binding</td><td><code>bun install --frozen-lockfile</code></td></tr><tr><td>DS-APP-04 <code>color-no-hex</code></td><td>house + <code>frontend/.stylelintrc.json</code></td><td>binding</td><td><code>bun run lint:css</code></td></tr><tr><td>XC-03 never commit</td><td>house + <code>CLAUDE.md</code> § Repo-wide invariants</td><td>binding</td><td>review</td></tr><tr><td>XC-04 everything English, no exceptions</td><td><code>CLAUDE.md</code> § Language</td><td>adapted</td><td>review</td></tr><tr><td>XC-08 working notes stay small</td><td>house + <code>backend/build.gradle.kts</code></td><td>binding</td><td><code>WorkingNotesStaySmallTest</code></td></tr><tr><td>OPS-CHART-01 chart published as OCI</td><td>house</td><td>waived</td><td>— (<code>CLAUDE.md</code>: Docker Compose is the supported way to run this)</td></tr></tbody></table></div>\n<h2 id=\"adaptations\">Adaptations</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Rule</th><th>House default</th><th>This repo does</th><th>Recorded in</th><th>Why</th></tr></thead><tbody><tr><td>XC-04</td><td>code English, UI strings German</td><td>everything English, the log output included; the German content lives as data in <code>config/</code></td><td><code>CLAUDE.md</code> § Language</td><td>the repository is going public. Content is configuration, not surface</td></tr><tr><td>BE-QUA-02</td><td>Spotless active is <code>deliberate-absence</code></td><td>identical, plus a CI grep standing in for the licence header</td><td><code>backend/build.gradle.kts</code>, comment block</td><td>the switch-off is argued here <strong>and</strong> the replacement is built. The house standard does not know about the replacement</td></tr><tr><td>OPS-CHART-01</td><td>chart published as an OCI artifact</td><td>no chart; Docker Compose is the supported way</td><td><code>CLAUDE.md</code></td><td>single operation on one machine, no cluster target</td></tr><tr><td>BE-API-03</td><td>path <code>/&lt;service&gt;/v1/...</code></td><td><code>/api/v1/...</code>: the version was pulled in, the service name was not</td><td>this entry</td><td><code>&lt;service&gt;</code> pays off once several services sit behind one gateway. Exactly one sits behind this one, and <code>/api</code> is wired into nginx and the dev proxy. The version is the part of the rule that buys something: a breaking change now has somewhere to go</td></tr></tbody></table></div>\n<h2 id=\"conformance-baseline\">Conformance baseline</h2>\n<blockquote><p>Measured on 2026-09-20. <code>./gradlew check --no-daemon</code> ran through unchanged: <strong>BUILD SUCCESSFUL in 2m 51s</strong>, exit 0, nine tasks. This section describes what holds today, not what binds.</p></blockquote>\n<div class=\"mdtable\"><table><thead><tr><th>Rule</th><th>Status</th><th>Measured</th><th>Note</th></tr></thead><tbody><tr><td>backend tiers quick and static</td><td><strong>met</strong></td><td>2026-09-20, <code>./gradlew check</code> exit 0 in 2m 51s</td><td>covers compilation, JUnit with Testcontainers against a real PostgreSQL, <code>ddl-auto: validate</code>, JaCoCo <strong>and</strong> the whole frontend static and unit tier</td></tr><tr><td>G-FE-03 ladder script names</td><td><strong>cleared</strong></td><td>2026-09-20, <code>bun run check:static</code> runs green</td><td><code>verify:quick</code> and <code>verify</code> added the same day. All three tier names now exist on the bun side too</td></tr><tr><td>G-FE-01 browser tier and contrast</td><td><strong>cleared</strong></td><td>2026-09-24, <code>bun run test:browser</code> green: 13 tests in headless Chromium, the text and object pair tables of both themes among them</td><td>spec <code>003-visual-renovation</code>, ISC-228: <code>test-browser</code> target on <code>@angular/build:unit-test</code>, <code>testBrowser</code> Exec task in <code>check</code>, a Playwright install step in CI. DS-APP-32/33 are probed by <code>contrast.browser.spec.ts</code>, FE-TST-02 by the script name</td></tr><tr><td>G-FE-02 i18n parity</td><td>grandfathered</td><td>2026-09-20, Transloco present, no parity spec</td><td>FE-I18N-03 unproven. XC-05 is moot as long as everything is English</td></tr><tr><td>FE-TST-05 coverage as a ratchet</td><td>grandfathered</td><td>2026-09-20, v8 coverage runs, no threshold in <code>angular.json</code></td><td>the report exists and is uploaded in CI; the ratchet is missing</td></tr><tr><td>BE-DB-03 migration immutability</td><td><strong>cleared</strong></td><td>2026-09-20, CI step added and the diff logic checked against a fixture branch</td><td>the step runs on pull requests only, because &quot;changed against the base&quot; has an answer only there</td></tr><tr><td>BE-ARCH-01..03 vertical slices</td><td>not measured</td><td>—</td><td>not checkable without ArchUnit. Gap G-BE-01, verdict &quot;defer&quot;</td></tr><tr><td>BE-API-03 path versioning</td><td><strong>cleared</strong></td><td>2026-09-20, <code>./gradlew check</code> exit 0 after the rewrite</td><td>157 replacements across 33 files plus 24 in 11 template literals and doc comments, and <code>SECURITY.md</code>. nginx and the dev proxy needed nothing: <code>location /api/</code> matches <code>/api/v1/</code> and rewrites correctly</td></tr></tbody></table></div>\n<h2 id=\"decided-on-2026-09-20\">Decided on 2026-09-20</h2>\n<ol><li><strong>Java version.</strong> <code>ISA.md § Constraints</code> said Java 21, the toolchain pins 25. The ISA line had been left standing and is corrected. Note: <code>ISA.md</code> is in this repository&#39;s <code>.gitignore</code>, so the correction is local and is not versioned along with the rest.</li><li><strong>API versioning.</strong> Pulled in straight away rather than deferred, see <code>## Adaptations</code> and the cleared baseline row. The rewrite is a breaking change and belongs in <code>CHANGELOG.md</code>, which was in open work at the time of the change and was therefore left alone.</li></ol>\n<h2 id=\"decided-on-2026-09-21\">Decided on 2026-09-21</h2>\n<ol><li><strong>The master stays untracked, and this file stops resting on it.</strong> Five rows under <code>## Non-negotiables</code> and one under <code>## Adaptations</code> named <code>ISA.md § Constraints</code> as their source, a file a reader of the public repository cannot open. Every one of those rules is written down in a tracked file as well, and that is what the rows name now. The alternative was to track <code>ISA.md</code>; what argues against it is what the file contains, not how it is written.</li><li><strong><code>specs/</code> stays tracked, under a content rule and in English.</strong> The reason the master is excluded is its content, not its kind, and a spec carries none of that content: it says what is being built and why, for the same readers as <code>docs/decisions/</code>. Making the tree untracked would turn it into a second <code>Plans/</code> and remove the only reason the specs are in the repository at all. So the tree stays, <code>## What a spec may contain</code> says what may not be written into it, and the language is English like the rest of the repository. The German-prose default this principal&#39;s tooling carries for spec work is a private-project default and does not reach a public repository.</li></ol>\n<h2 id=\"decided-on-2026-09-24\">Decided on 2026-09-24</h2>\n<ol><li><strong><code>rounds.jsonl</code> and <code>report.html</code> are gitignored, not tracked with the rest of <code>specs/</code>.</strong> <code>/Spec implement</code>&#39;s per-round log and the lane-board it renders are unlike the rest of a spec folder: they are output, derived wholesale from <code>spec.md</code>, <code>tasks.md</code> and the master&#39;s locks, and they change on every implementation round whether or not the spec&#39;s own content changed. Tracking them would put a regenerable diff in every PR that runs <code>implement</code>, for a file that carries no decision anyone reviews — the noise reasoning <code>target/</code>/<code>build/</code> already use, not the content-sensitivity reasoning <code>ISA.md</code> uses. The two lines were added to <code>.gitignore</code> directly; <code>## What a spec may contain</code> is unchanged, because the rule there is about what a spec&#39;s <em>authored</em> content may say, and neither file is authored.</li></ol>\n<h2 id=\"gates\">Gates</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Tier</th><th>Command</th><th>Runs when</th></tr></thead><tbody><tr><td>static</td><td><code>./gradlew :frontend:lint</code></td><td>before a claim closes</td></tr><tr><td>quick</td><td><code>./gradlew check</code></td><td>at every implementation stop</td></tr><tr><td>full</td><td><code>./gradlew build</code></td><td>before a spec goes to <code>complete</code></td></tr></tbody></table></div>\n<p>The same three names have existed on the bun side since 2026-09-20 (<code>check:static</code>, <code>verify:quick</code>, <code>verify</code>); the Gradle column stays the resolution, because only it covers both stacks.</p>\n<p>The Gradle column is the resolution here because <code>frontend/build.gradle.kts</code> hangs the bun scripts in as <code>Exec</code> tasks and <code>check</code> depends on <code>lint</code>, <code>test</code> and <code>testBrowser</code>. The browser tier (<code>bun run test:browser</code>, headless Chromium) is inside the quick step since 2026-09-24; G-FE-01 is cleared.</p>\n<h2 id=\"how-specs-are-held-to-it\">How specs are held to it</h2>\n<p>Every new spec is read against <code>## Non-negotiables</code>. A draft that goes against a <code>binding</code> row marks that inline as <code>⟨?: deviates from &lt;RULE-ID&gt; — …⟩</code> and resolves it in <code>plan.md § Stack Decisions</code>, with the rule ID, the failure mode and a probe that stays green. If one of the three is missing, the row is not written but asked about.</p>\n<p>A spec whose work touches a row under <code>## Conformance baseline</code> carries <code>plan.md § Conformance Impact</code> and says, per row, whether it clears it, extends it or leaves it alone. A gate that goes red through the work is repaired, never entered here afterwards.</p>",
+    "toc": [
+      {
+        "level": 2,
+        "text": "What a spec may contain, and in which language",
+        "anchor": "what-a-spec-may-contain-and-in-which-language"
+      },
+      {
+        "level": 2,
+        "text": "Binding sources",
+        "anchor": "binding-sources"
+      },
+      {
+        "level": 2,
+        "text": "Non-negotiables",
+        "anchor": "non-negotiables"
+      },
+      {
+        "level": 2,
+        "text": "Adaptations",
+        "anchor": "adaptations"
+      },
+      {
+        "level": 2,
+        "text": "Conformance baseline",
+        "anchor": "conformance-baseline"
+      },
+      {
+        "level": 2,
+        "text": "Decided on 2026-09-20",
+        "anchor": "decided-on-2026-09-20"
+      },
+      {
+        "level": 2,
+        "text": "Decided on 2026-09-21",
+        "anchor": "decided-on-2026-09-21"
+      },
+      {
+        "level": 2,
+        "text": "Decided on 2026-09-24",
+        "anchor": "decided-on-2026-09-24"
+      },
+      {
+        "level": 2,
+        "text": "Gates",
+        "anchor": "gates"
+      },
+      {
+        "level": 2,
+        "text": "How specs are held to it",
+        "anchor": "how-specs-are-held-to-it"
+      }
+    ],
+    "figures": [],
+    "sections": [
+      {
+        "id": "constitution-lead-generation",
+        "heading": "Constitution — lead-generation",
+        "level": 1
+      },
+      {
+        "id": "what-a-spec-may-contain-and-in-which-language",
+        "heading": "What a spec may contain, and in which language",
+        "level": 2
+      },
+      {
+        "id": "binding-sources",
+        "heading": "Binding sources",
+        "level": 2
+      },
+      {
+        "id": "non-negotiables",
+        "heading": "Non-negotiables",
+        "level": 2
+      },
+      {
+        "id": "adaptations",
+        "heading": "Adaptations",
+        "level": 2
+      },
+      {
+        "id": "conformance-baseline",
+        "heading": "Conformance baseline",
+        "level": 2
+      },
+      {
+        "id": "decided-on-2026-09-20",
+        "heading": "Decided on 2026-09-20",
+        "level": 2
+      },
+      {
+        "id": "decided-on-2026-09-21",
+        "heading": "Decided on 2026-09-21",
+        "level": 2
+      },
+      {
+        "id": "decided-on-2026-09-24",
+        "heading": "Decided on 2026-09-24",
+        "level": 2
+      },
+      {
+        "id": "gates",
+        "heading": "Gates",
+        "level": 2
+      },
+      {
+        "id": "how-specs-are-held-to-it",
+        "heading": "How specs are held to it",
+        "level": 2
+      }
+    ],
+    "wordCount": 1986
+  },
+  "specs": {
+    "specs/012-pwa-install": {
+      "plan": {
+        "frontmatter": {
+          "spec": "012-pwa-install",
+          "type": "feature",
+          "status": "draft",
+          "updated": "2026-09-24"
+        },
+        "html": "<h1 id=\"plan-012-installable-as-a-pwa\">Plan 012 — Installable as a PWA</h1>\n<p><strong>Purpose:</strong> how the claims in <code>spec.md</code> get built. The what lives there; this file holds no acceptance criterion.</p>\n<h2 id=\"approach\">Approach</h2>\n<p>Angular&#39;s own service worker (<code>@angular/service-worker</code>, <code>ngsw</code>) over a hand-written one, in four steps: the manifest and the icon set first, because they are what makes the app installable and they touch nothing that runs; then the worker with its <code>ngsw-config.json</code>, an <code>update</code> store that listens to <code>SwUpdate.versionUpdates</code> and raises the reload toast; then the cache headers in the repository&#39;s <code>nginx.conf</code> and, by the operator&#39;s hand, in the chart&#39;s own copy of that file; last the two manual probes on a real install. The obvious path in this house is a hand-written <code>src/sw.js</code> stamped at postbuild (FE-PWA-01), and it is not taken: that rule is written for a product used offline in the field, where a chunk never fetched must still exist and the precache therefore needs two halves. This app is used online; the worker exists so an installed window opens on its shell instead of the browser&#39;s offline page and so a deploy reaches an open window. <code>ngsw</code> expresses that in a JSON file a spec can read, ships the update channel the toast needs, and needs no build step of its own. The departure is recorded below with its probe.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n    A[&quot;Manifest and icon set&quot;] --&gt; B[&quot;Service worker with ngsw-config.json&quot;]\n    B --&gt; C[&quot;Update store: SwUpdate to reload toast&quot;]\n    C --&gt; D[&quot;Cache headers in nginx.conf and the chart&quot;]\n    D --&gt; E[&quot;Manual install probes&quot;]</pre><figcaption>Approach</figcaption></figure>\n<h2 id=\"stack-decisions\">Stack Decisions</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Rule</th><th>Chosen</th><th>Alternatives</th><th>Why, and what stays green</th><th>Recorded in</th></tr></thead><tbody><tr><td>FE-PWA-01 hand-written <code>src/sw.js</code> stamped at postbuild</td><td><code>@angular/service-worker</code> with <code>ngsw-config.json</code></td><td>a hand-written worker plus a bun postbuild stamper</td><td>The failure the rule prevents is a precache list that drifts from the real hashed chunk names, so a chunk is missing offline. <code>ngsw.json</code> is generated from the build output by the same build, so the list cannot drift; drift is not possible rather than avoided. The probe that stays green is the ISC-329 row of <code>spec.md</code> § Test Strategy.</td><td>this row; <code>docs/decisions/frontend-design-system.md</code> via ISC-336</td></tr><tr><td>FE-PWA-02 two precache halves, bundles individually with <code>catch</code></td><td>one <code>app</code> asset group in <code>prefetch</code> mode for the shell, <code>lazy</code> groups for i18n and help</td><td>the two halves</td><td>The failure is one missing bundle aborting the whole install. <code>ngsw</code> treats a failed prefetch of one file as a failed <em>version</em>, keeps the previous one for windows already open and retries on the next check; a window opened fresh in that state goes to the network and, offline, gets no shell. That behaviour is the library&#39;s, not this repo&#39;s; it is read in <code>ngsw</code> and not probed here. <code>unenforced</code> from here, and this is the price: a broken deploy shows as &quot;no update&quot; rather than as a red probe, which ISC-331&#39;s toast makes visible on the next good deploy.</td><td>this row</td></tr><tr><td>FE-PWA-04 the worker unregistered on localhost</td><td>registration keyed on build mode: <code>enabled: !isDevMode()</code>, never on hostname</td><td>hostname check</td><td>The failure is a stale cached build during development that nothing can clear. The dev server on <code>:4200</code> is a development build and registers nothing. The compose stack on localhost is the production artifact, and the two manual probes (ISC-330, ISC-334) install from it, so a hostname rule would make them impossible. A stale compose image is cleared by the update toast (ISC-331) or by a rebuild. Probe: the <code>enabled</code> clause of the ISC-329 row.</td><td>this row</td></tr></tbody></table></div>\n<p><code>FE-PWA-03</code> and <code>FE-PWA-05</code>…<code>08</code> are about offline exports and replication; nothing here replicates or exports, so they do not apply and no row is written for them.</p>\n<h2 id=\"affected-files-and-modules\">Affected Files and Modules</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Path</th><th>Change</th><th>Claim</th></tr></thead><tbody><tr><td><code>frontend/public/manifest.webmanifest</code></td><td>new: name, <code>start_url</code>, <code>scope</code>, <code>display</code>, colours, the icon list</td><td>ISC-327, ISC-335</td></tr><tr><td><code>frontend/src/index.html</code></td><td><code>&lt;link rel=&quot;manifest&quot;&gt;</code>, a <code>theme-color</code> meta the inline script sets from the same default as <code>data-theme</code>, the touch icon repointed to the 180 square</td><td>ISC-327, ISC-333</td></tr><tr><td><code>frontend/tools/build-favicon.sh</code></td><td>renders 192 and 512 on the round plate, a 512 maskable on a rounded square plate at 80 % mark width, a 180 square opaque touch icon; the existing favicon and 256 stay</td><td>ISC-328</td></tr><tr><td><code>frontend/public/icon-192.png</code>, <code>icon-512.png</code>, <code>icon-512-maskable.png</code>, <code>apple-touch-icon.png</code></td><td>new, generated, committed</td><td>ISC-328</td></tr><tr><td><code>frontend/src/app/core/pwa/manifest.spec.ts</code></td><td>new: reads the manifest, the link in <code>index.html</code>, each icon&#39;s PNG header</td><td>ISC-327, ISC-328</td></tr><tr><td><code>frontend/package.json</code>, <code>frontend/bun.lock</code></td><td><code>@angular/service-worker</code> pinned like its siblings</td><td>ISC-329</td></tr><tr><td><code>frontend/ngsw-config.json</code></td><td>new: <code>app</code> group prefetch (index, bundles, styles, fonts, icons), <code>assets</code> groups lazy with prefetch updates (i18n, help); no data groups</td><td>ISC-329, ISC-335</td></tr><tr><td><code>frontend/angular.json</code></td><td><code>serviceWorker: &quot;ngsw-config.json&quot;</code> on the production build configuration only</td><td>ISC-329</td></tr><tr><td><code>frontend/src/app/app.config.ts</code></td><td><code>provideServiceWorker(&#39;ngsw-worker.js&#39;, {enabled: !isDevMode(), registrationStrategy: &#39;registerWhenStable:30000&#39;})</code></td><td>ISC-329</td></tr><tr><td><code>frontend/src/app/core/pwa/ngsw-config.spec.ts</code></td><td>new: the config&#39;s groups and patterns, the provider&#39;s <code>enabled</code> clause</td><td>ISC-329, ISC-335</td></tr><tr><td><code>frontend/src/app/core/pwa/update.events.ts</code>, <code>update.store.ts</code>, <code>update.store.spec.ts</code></td><td>new: subscribes <code>SwUpdate.versionUpdates</code>, raises one <code>versionReady</code> event per version hash, an <code>activate</code> handler that calls <code>activateUpdate</code> then reloads, an hourly <code>checkForUpdate</code> while the document is visible</td><td>ISC-331</td></tr><tr><td><code>frontend/src/app/core/toast/toast.model.ts</code>, <code>toast.store.ts</code>, <code>toast.events.ts</code></td><td>an optional <code>action</code> on a toast (catalog key plus the event it dispatches); the update toast is raised from <code>versionReady</code>, tone <code>info</code>, once per hash, and does not expire on the timer</td><td>ISC-331</td></tr><tr><td><code>frontend/src/app/layout/toast-stack/toast-stack.html</code>, <code>.ts</code>, <code>.css</code>, <code>.spec.ts</code></td><td>renders the action as a button when present</td><td>ISC-331</td></tr><tr><td><code>frontend/public/i18n/en.json</code>, <code>de.json</code></td><td><code>toast.update.ready</code>, <code>toast.update.reload</code> in both catalogs</td><td>ISC-331</td></tr><tr><td><code>frontend/src/app/core/theme/theme.store.ts</code>, <code>theme.store.spec.ts</code></td><td>the effect also writes <code>meta[name=theme-color]</code> from the resolved theme&#39;s surface</td><td>ISC-333</td></tr><tr><td><code>frontend/src/app/core/theme/theme.model.ts</code></td><td>the two surface hex twins as constants, held to the stylesheet by <code>theme-colors.spec.ts</code></td><td>ISC-327, ISC-333</td></tr><tr><td><code>frontend/nginx.conf</code></td><td><code>Cache-Control: no-cache</code> on <code>/index.html</code>, <code>/ngsw.json</code>, <code>/manifest.webmanifest</code>; <code>immutable, max-age=31536000</code> on hashed <code>.js</code> and <code>.css</code>; <code>webmanifest</code> mime type if the image&#39;s <code>mime.types</code> lacks it</td><td>ISC-332</td></tr><tr><td><code>~/Development/codeministry/devops/projects/office/leadgen/templates/web/configmap-nginx.yaml</code></td><td>the same header blocks, by the operator: the chart replaces <code>default.conf</code> wholesale, so the repository file never reaches the cluster</td><td>ISC-332 (operator lane)</td></tr><tr><td><code>docs/decisions/frontend-design-system.md</code></td><td>a section &quot;Installable (spec 012)&quot;: the manifest, the icon set, the caching policy, the update flow, the FE-PWA departure</td><td>ISC-336</td></tr><tr><td><code>CHANGELOG.md</code></td><td>§ Unreleased, Added: installable, offline shell, update toast</td><td>ISC-336</td></tr><tr><td><code>README.md</code></td><td>one paragraph under &quot;Try it in one command&quot; or &quot;The screens&quot;: install from the browser</td><td>ISC-336</td></tr><tr><td><code>frontend/CLAUDE.md</code></td><td>one trap line: the dev server registers no worker, a stale shell on the compose stack is the update toast&#39;s job</td><td>ISC-336</td></tr></tbody></table></div>\n<h2 id=\"data-model\">Data Model</h2>\n<p>Nothing persisted changes. The worker&#39;s caches live in the browser and are named by <code>ngsw</code>; <code>localStorage</code> gains no key.</p>\n<h2 id=\"interfaces\">Interfaces</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Contract</th><th>Before</th><th>After</th><th>Who calls it</th></tr></thead><tbody><tr><td><code>Toast</code></td><td><code>id</code>, <code>tone</code>, <code>key</code>, <code>params?</code>, <code>link?</code></td><td>plus <code>action?: {key: string; event: EventInstance}</code> (the instance, so the stack dispatches what it was handed and never learns a payload); a toast with an action does not expire on the timer</td><td><code>toast.store.ts</code> raises it, <code>toast-stack</code> renders it, <code>update.store.ts</code> is the first producer</td></tr><tr><td><code>theme.store.ts</code> effect</td><td>writes <code>data-theme</code> and <code>localStorage</code></td><td>also writes <code>meta[name=theme-color]</code></td><td>nothing new; the DOM</td></tr><tr><td>nginx</td><td>no cache headers</td><td>three <code>no-cache</code> paths, one <code>immutable</code> rule</td><td>the browser, the worker</td></tr></tbody></table></div>\n<h2 id=\"risks\">Risks</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Risk</th><th>Blast radius</th><th>Early warning</th><th>Mitigation</th></tr></thead><tbody><tr><td>A stale shell after a deploy because a proxy or the chart&#39;s nginx caches <code>ngsw.json</code></td><td>every installed window keeps the old bundle until its cache is cleared by hand</td><td><code>curl -sI</code> on the deployed host shows no <code>no-cache</code> on <code>/ngsw.json</code> (ISC-332&#39;s check, run against the cluster)</td><td>the chart change goes out in the same rollout as the image; the operator runs the curl before calling it deployed</td></tr><tr><td>The worker serves an old <code>index.html</code> whose bundle names no longer exist after a rollout with two web pods</td><td>a white page until the worker&#39;s next check</td><td><code>ngsw</code> logs a version mismatch in the console</td><td>single replica today; if replicas grow, the image tag pins both pods to one build</td></tr><tr><td><code>@angular/service-worker</code> 22.1 and <code>@angular/build</code> disagree on a peer</td><td><code>bun install --frozen-lockfile</code> red</td><td>the install step</td><td>pin to the same minor as <code>@angular/core</code>; <code>bun add @angular/service-worker@~22.1.0</code></td></tr><tr><td>The <code>initial</code> bundle budget (500 kB warn, 1 MB error)</td><td>a red production build</td><td><code>bun run build</code></td><td>the worker script is a separate file and the update store is small; if the budget warns, the budget is the thing to read, not to raise</td></tr><tr><td>A toast that does not expire stays forever if the reload never comes</td><td>one line at the corner of the screen</td><td>the toast stack shows it</td><td>the close button dismisses it; <code>TOAST_CAP</code> still drops it when three newer arrive</td></tr><tr><td><code>frontend/CLAUDE.md</code> is 627 characters under its budget</td><td><code>WorkingNotesStaySmallTest</code> red</td><td>the test</td><td>the trap is one line; the reasoning goes to <code>docs/decisions/</code></td></tr><tr><td>iOS keeps the sign-in redirect in the installed window only from 16.4 on, and older builds hand it to Safari</td><td>ISC-334 red on an old phone</td><td>the manual probe</td><td>the fog line; if red, the claim narrows to desktop and Android and iOS becomes remaining work</td></tr><tr><td>The maskable icon&#39;s safe zone is misjudged and Android crops the ring</td><td>a clipped icon on one launcher</td><td>the manual install on a phone (ISC-330&#39;s setup)</td><td>the mark sits at 80 % of the width, the documented safe zone; the PNG header check in ISC-328 does not see this, only the eye does</td></tr></tbody></table></div>\n<h2 id=\"open-points\">Open Points</h2>\n<ul><li>fog (spec): whether an installed window on iOS keeps the sign-in redirect in scope. Resolves on the device in ISC-334; step 4 of the approach.</li><li>The chart-side nginx copy was fog when the spec was written and is resolved: the chart replaces <code>default.conf</code> wholesale, so the header change is made twice, and the second time by the operator. It is an operator-lane task in <code>tasks.md</code>, not fog.</li></ul>\n<h2 id=\"conformance-impact\">Conformance Impact</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Baseline entry</th><th>Effect</th></tr></thead><tbody><tr><td>FE-TST-05 coverage as a ratchet</td><td>leaves it: the new specs raise the report, no threshold is added</td></tr><tr><td>G-FE-02 i18n parity</td><td>leaves it, and does not worsen it: the two new <code>toast.update.*</code> keys land in both catalogs and <code>i18n-parity.spec.ts</code> sees them</td></tr></tbody></table></div>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Approach",
+            "anchor": "approach"
+          },
+          {
+            "level": 2,
+            "text": "Stack Decisions",
+            "anchor": "stack-decisions"
+          },
+          {
+            "level": 2,
+            "text": "Affected Files and Modules",
+            "anchor": "affected-files-and-modules"
+          },
+          {
+            "level": 2,
+            "text": "Data Model",
+            "anchor": "data-model"
+          },
+          {
+            "level": 2,
+            "text": "Interfaces",
+            "anchor": "interfaces"
+          },
+          {
+            "level": 2,
+            "text": "Risks",
+            "anchor": "risks"
+          },
+          {
+            "level": 2,
+            "text": "Open Points",
+            "anchor": "open-points"
+          },
+          {
+            "level": 2,
+            "text": "Conformance Impact",
+            "anchor": "conformance-impact"
+          }
+        ],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n    A[\"Manifest and icon set\"] --> B[\"Service worker with ngsw-config.json\"]\n    B --> C[\"Update store: SwUpdate to reload toast\"]\n    C --> D[\"Cache headers in nginx.conf and the chart\"]\n    D --> E[\"Manual install probes\"]",
+            "caption": "Approach"
+          }
+        ],
+        "sections": [
+          {
+            "id": "plan-012-installable-as-a-pwa",
+            "heading": "Plan 012 — Installable as a PWA",
+            "level": 1
+          },
+          {
+            "id": "approach",
+            "heading": "Approach",
+            "level": 2
+          },
+          {
+            "id": "stack-decisions",
+            "heading": "Stack Decisions",
+            "level": 2
+          },
+          {
+            "id": "affected-files-and-modules",
+            "heading": "Affected Files and Modules",
+            "level": 2
+          },
+          {
+            "id": "data-model",
+            "heading": "Data Model",
+            "level": 2
+          },
+          {
+            "id": "interfaces",
+            "heading": "Interfaces",
+            "level": 2
+          },
+          {
+            "id": "risks",
+            "heading": "Risks",
+            "level": 2
+          },
+          {
+            "id": "open-points",
+            "heading": "Open Points",
+            "level": 2
+          },
+          {
+            "id": "conformance-impact",
+            "heading": "Conformance Impact",
+            "level": 2
+          }
+        ],
+        "wordCount": 1707
+      },
+      "design": null,
+      "decisions": {
+        "frontmatter": {
+          "spec": "012-pwa-install",
+          "created": "2026-09-24T16:40:00Z",
+          "updated": "2026-09-24T17:40:00Z",
+          "rounds": "3"
+        },
+        "html": "<h1 id=\"context-012-installable-as-a-pwa\">Context 012 — Installable as a PWA</h1>\n<h2 id=\"goal-confirmed-2026-09-24t16-40-00z\">Goal — confirmed 2026-09-24T16:40:00Z</h2>\n<p>The app can be installed on a desktop, a tablet or a phone and opens in its own window with the lead-ring icon and the app&#39;s own colours; a service worker keeps the app shell available without a network, a toast offers to reload when a deploy has landed, and data still comes from the API only.</p>\n<p>Principal&#39;s words, verbatim: &quot;App als echte PWA ready machen, so dass der User sie auf dem Desktop oder Tablet/Mobile  installieren kann. mit logo, farben, etc. &quot;</p>\n<h2 id=\"round-1-before-the-spec-2026-09-24\">Round 1 — before the spec, 2026-09-24</h2>\n<h3 id=\"q1-which-sentence-is-the-goal-the-goal-lock\">Q1 · Which sentence is the goal? (the goal lock)</h3>\n<ul><li>Offered: installable with the brand, the app shell offline (recommended) | installable only, no service worker | installable plus the shortlist readable offline</li><li>Chosen: installable with the brand, the app shell offline</li><li>Landed in: <code>## Goal</code>, ISC-327, ISC-328, ISC-329, ISC-330</li></ul>\n<h3 id=\"q2-what-happens-when-the-service-worker-finds-a-new-version-after-a-deploy\">Q2 · What happens when the service worker finds a new version after a deploy?</h3>\n<ul><li>Offered: a toast with a reload action (recommended) | silently on the next start | reload at once</li><li>Chosen: a toast with a reload action</li><li>Landed in: ISC-331</li></ul>\n<h3 id=\"q3-how-does-the-user-get-to-the-installation\">Q3 · How does the user get to the installation?</h3>\n<ul><li>Offered: an &quot;install&quot; entry in the app&#39;s settings popover (recommended) | the browser&#39;s own UI only</li><li>Chosen: the browser&#39;s own UI only. No in-app install prompt, no iOS instructions; <code>## Out of Scope</code> says so.</li><li>Landed in: <code>## Out of Scope</code></li></ul>\n<p>Read from the repo, not asked:</p>\n<ul><li>There is no manifest and no service worker today. <code>index.html</code> links <code>favicon.ico</code> and a 256px <code>apple-touch-icon</code>, both rendered from <code>brand/mark.svg</code> by <code>frontend/tools/build-favicon.sh</code> on a round plate in the dark theme&#39;s surface (spec 003, ISC-239).</li><li>The dark theme is the default; its surface and primary are the plate and ring colours the favicon script already names. The manifest colours follow from that.</li><li><code>@angular/build</code> 22 lists <code>@angular/service-worker</code> as an optional peer; nothing else is needed for <code>ngsw</code>.</li><li>The frontend is served by <code>frontend/nginx.conf</code> inside the compose stack (<code>try_files … /index.html</code>, <code>/api/</code> proxied). No cache headers are set today.</li><li>The feedback system of spec 002 (<code>core/toast/</code>) raises one toast per answer event; the update toast joins it.</li><li>Under <code>security.auth: oidc</code> the browser signs in with Authorization Code and PKCE before the first route renders and returns to <code>window.location.origin + &#39;/&#39;</code> (F28, ISC-184).</li></ul>\n<p>Default taken without a question: <code>theme-color</code> follows the active app theme rather than the operating system, because the app&#39;s default is dark whatever the OS says (spec 003).</p>\n<h2 id=\"round-2-before-the-plan-2026-09-24\">Round 2 — before the plan, 2026-09-24</h2>\n<h3 id=\"q1-how-is-the-service-worker-built-the-approach-lock\">Q1 · How is the service worker built? (the approach lock)</h3>\n<ul><li>Offered: <code>ngsw</code> with the departure from FE-PWA-01 recorded (recommended) | a hand-written <code>sw.js</code> stamped at postbuild, as FE-PWA-01/02 ask | manifest and icons first, the worker in a second round</li><li>Chosen: <code>ngsw</code>, departure recorded</li><li>Landed in: <code>plan.md</code> § Approach, § Stack Decisions (FE-PWA-01, FE-PWA-02, FE-PWA-04); spec § Decisions</li></ul>\n<p>Read from the repo, not asked:</p>\n<ul><li>The chart for the deployed instance lives in a separate devops repository and carries its own <code>templates/web/configmap-nginx.yaml</code>, which replaces the image&#39;s <code>default.conf</code> wholesale. The first fog line resolves: ISC-332&#39;s headers are set twice, the second time by the operator. Landed in: spec § Decisions, <code>plan.md</code> § Affected Files.</li><li>The house standards&#39; PWA section (<code>FRONTEND.md</code> § PWA and offline) asks for a hand-written worker; that is what made the approach question worth asking.</li><li><code>frontend/CLAUDE.md</code> stands 627 characters under its budget, so the trap line is one line.</li></ul>\n<h2 id=\"still-open\">Still open</h2>\n<ul><li>fog: whether an installed window on iOS keeps the sign-in redirect in scope or hands it to the browser. Resolves on the device in ISC-334.</li></ul>\n<h2 id=\"round-3-during-build-2026-09-24\">Round 3 — during build, 2026-09-24</h2>\n<ul><li>Operator, verbatim: &quot;ImplementSpec and open report&quot;. Agent-tool path, one worktree per claim, builders on the top rung, Max as reader. The report was opened in a cmux split at the operator&#39;s request.</li><li>Round 1 dispatched ISC-327 alone (T1 and T2 in one worker, same claim). Max: pass, with one finding worth carrying: the image&#39;s nginx has no <code>webmanifest</code> mime type, so T12&#39;s conditional is a certainty.</li><li>Round 2 runs ISC-328, ISC-333 and ISC-329 in parallel although their tasks carry no <code>[P]</code>: the marker was derived when the claims were still blocked, and the three touch disjoint files. The one shared file, <code>index.html</code>, goes to the ISC-333 worker alone, which also repoints the touch icon, so T3 does not edit it.</li><li>Workers start on HEAD, which lacks the uncommitted round-1 patch; each applies it and stages it before building, so its own diff holds only its work.</li><li>The master&#39;s declared progress counted thirteen tombstones as claims (321/346); it is 321/333, the count <code>SpecStatus.ts</code> makes.</li><li>Rounds 2 and 3: every claim but ISC-334 closed. Max failed ISC-328 once (the maskable mark&#39;s outer dot sat outside the safe zone; fixed to 11/16 and measured by the spec) and raised concerns on ISC-329 (the package download is a navigation under <code>/api/</code> and fell to ngsw&#39;s index fallback; <code>!/api/**</code> added). T13, the operator&#39;s chart mirror, was done by the DA on the operator&#39;s instruction &quot;mach weiter bis alle claims zu sind&quot;: edited, rendered with <code>helm template</code>, <code>nginx -t</code> green; not committed, not deployed.</li></ul>\n<h3 id=\"q-isc-330-closes-on-the-operator-s-word\">Q · ISC-330 closes on the operator&#39;s word</h3>\n<ul><li>Offered: close on the Interceptor offline evidence (recommended) | test it installed first</li><li>Chosen, verbatim: &quot;Ja, schließen&quot;. Landed in: spec § Verification, master § Verification.</li></ul>\n<h3 id=\"q-isc-334-the-sign-in-inside-the-installed-window\">Q · ISC-334, the sign-in inside the installed window</h3>\n<ul><li>First answer &quot;Ich habe es schon getestet&quot;, asked again because nothing was deployed yet; then: &quot;Noch nicht, nach Deploy&quot;.</li><li>Operator, verbatim, same turn: &quot;OICD kann aber direkt jetzt umgesetzt werden. die neue version kann ich gleich deployen&quot;. No code change: the redirect returns to <code>/</code>, inside the manifest scope. ISC-334 closes on the operator&#39;s report after the deploy.</li></ul>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Goal — confirmed 2026-09-24T16:40:00Z",
+            "anchor": "goal-confirmed-2026-09-24t16-40-00z"
+          },
+          {
+            "level": 2,
+            "text": "Round 1 — before the spec, 2026-09-24",
+            "anchor": "round-1-before-the-spec-2026-09-24"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · Which sentence is the goal? (the goal lock)",
+            "anchor": "q1-which-sentence-is-the-goal-the-goal-lock"
+          },
+          {
+            "level": 3,
+            "text": "Q2 · What happens when the service worker finds a new version after a deploy?",
+            "anchor": "q2-what-happens-when-the-service-worker-finds-a-new-version-after-a-deploy"
+          },
+          {
+            "level": 3,
+            "text": "Q3 · How does the user get to the installation?",
+            "anchor": "q3-how-does-the-user-get-to-the-installation"
+          },
+          {
+            "level": 2,
+            "text": "Round 2 — before the plan, 2026-09-24",
+            "anchor": "round-2-before-the-plan-2026-09-24"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · How is the service worker built? (the approach lock)",
+            "anchor": "q1-how-is-the-service-worker-built-the-approach-lock"
+          },
+          {
+            "level": 2,
+            "text": "Still open",
+            "anchor": "still-open"
+          },
+          {
+            "level": 2,
+            "text": "Round 3 — during build, 2026-09-24",
+            "anchor": "round-3-during-build-2026-09-24"
+          },
+          {
+            "level": 3,
+            "text": "Q · ISC-330 closes on the operator's word",
+            "anchor": "q-isc-330-closes-on-the-operator-s-word"
+          },
+          {
+            "level": 3,
+            "text": "Q · ISC-334, the sign-in inside the installed window",
+            "anchor": "q-isc-334-the-sign-in-inside-the-installed-window"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "context-012-installable-as-a-pwa",
+            "heading": "Context 012 — Installable as a PWA",
+            "level": 1
+          },
+          {
+            "id": "goal-confirmed-2026-09-24t16-40-00z",
+            "heading": "Goal — confirmed 2026-09-24T16:40:00Z",
+            "level": 2
+          },
+          {
+            "id": "round-1-before-the-spec-2026-09-24",
+            "heading": "Round 1 — before the spec, 2026-09-24",
+            "level": 2
+          },
+          {
+            "id": "q1-which-sentence-is-the-goal-the-goal-lock",
+            "heading": "Q1 · Which sentence is the goal? (the goal lock)",
+            "level": 3
+          },
+          {
+            "id": "q2-what-happens-when-the-service-worker-finds-a-new-version-after-a-deploy",
+            "heading": "Q2 · What happens when the service worker finds a new version after a deploy?",
+            "level": 3
+          },
+          {
+            "id": "q3-how-does-the-user-get-to-the-installation",
+            "heading": "Q3 · How does the user get to the installation?",
+            "level": 3
+          },
+          {
+            "id": "round-2-before-the-plan-2026-09-24",
+            "heading": "Round 2 — before the plan, 2026-09-24",
+            "level": 2
+          },
+          {
+            "id": "q1-how-is-the-service-worker-built-the-approach-lock",
+            "heading": "Q1 · How is the service worker built? (the approach lock)",
+            "level": 3
+          },
+          {
+            "id": "still-open",
+            "heading": "Still open",
+            "level": 2
+          },
+          {
+            "id": "round-3-during-build-2026-09-24",
+            "heading": "Round 3 — during build, 2026-09-24",
+            "level": 2
+          },
+          {
+            "id": "q-isc-330-closes-on-the-operator-s-word",
+            "heading": "Q · ISC-330 closes on the operator's word",
+            "level": 3
+          },
+          {
+            "id": "q-isc-334-the-sign-in-inside-the-installed-window",
+            "heading": "Q · ISC-334, the sign-in inside the installed window",
+            "level": 3
+          }
+        ],
+        "wordCount": 958
+      }
+    },
+    "specs/022-chat-turn-status-and-bulk-delete": {
+      "plan": {
+        "frontmatter": {
+          "spec": "022-chat-turn-status-and-bulk-delete",
+          "type": "feature",
+          "status": "approved",
+          "updated": "2026-09-28"
+        },
+        "html": "<h1 id=\"plan-022-chat-turn-status-bulk-delete-and-the-cited-row-in-view\">Plan 022 — Chat turn status, bulk delete, and the cited row in view</h1>\n<p><strong>Purpose:</strong> how the claims in <code>spec.md</code> get built. The what lives there; this file holds no acceptance criterion.</p>\n<h2 id=\"approach\">Approach</h2>\n<p>Three vertical slices, each carried from the database to the screen before it counts, so each one can ship on its own: <strong>(A) the cited row in view</strong> (ISC-479, frontend only, the smallest), <strong>(B) the status popovers</strong> (ISC-473 to ISC-476: <code>V36</code>, the turn&#39;s end reason and finish time on <code>TurnView</code>, <code>GET /api/v1/chat/status</code>, one popover component for the answer glyph and the plate), and <strong>(C) bulk delete</strong> (ISC-477, ISC-478: the endpoint, a store event, the list&#39;s select mode). ISC-480 closes last, over all three. The slices touch disjoint files except the two i18n catalogs and <code>docs/decisions/chat.md</code>, so they can be built side by side as long as the catalog and doc edits land one after the other. The obvious alternative, backend first and then the frontend layer by layer, was not taken: nothing would be visible until everything stood, and the three parts share no code worth sequencing for.</p>\n<p>Slice A reuses what the shortlist already has rather than adding a scroll path. Today the pane lands a card only when the selection came from a key press (<code>focusWanted</code> → <code>landCard</code>); a selection that arrives by URL, which is what a chat citation does through <code>navigateByUrl([&#39;/shortlist&#39;, id])</code>, marks the row and moves nothing. The change is a second trigger for the same <code>landCard</code> call — a selection the list did not make itself — without taking focus, because focus belongs to the chat that was clicked.</p>\n<p>Slice B stores the reason where the turn already ends: every <code>INCOMPLETE</code> goes through <code>ChatTurnService.Turn.end(reason, …)</code> or the two cut-off paths in <code>ConversationRepository</code> (stale-turn sweep, cancelled stream), so <code>finish(...)</code> gains the reason as a parameter rather than a second update. The popover is one <code>features/chat</code> component, <code>chat-status-popover</code>, hosted twice (glyph, plate), positioned with <code>shared/popover/anchor-for.ts</code> like the list&#39;s ⋯ menu, opened on <code>pointerenter</code> and <code>focus</code> and closed on <code>pointerleave</code>, <code>blur</code> and Escape; the turn animation is the host setting <code>--lg-living-mark-turn</code>, which <code>dcc8369</code> introduced.</p>\n<p>Slice C names every id it deletes (<code>spec.md</code> § Constraints), so the endpoint takes a list and the store sends exactly the ids the list shows as selected; the server loops the single delete&#39;s stop-then-delete per id inside one transaction for the rows.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart TB\n    subgraph A[&quot;Slice A · ISC-479&quot;]\n        a1[&quot;chat-answer: citation navigateByUrl /shortlist/:id&quot;] --&gt; a2[&quot;shortlist-page: selection not from a key press&quot;]\n        a2 --&gt; a3[&quot;landCard(pane, card) without focus&quot;]\n    end\n    subgraph B[&quot;Slice B · ISC-473…476&quot;]\n        b1[&quot;V36 chat_turn.end_reason&quot;] --&gt; b2[&quot;ConversationRepository.finish(reason)&quot;]\n        b2 --&gt; b3[&quot;TurnView endReason, finishedAt&quot;]\n        b4[&quot;GET /chat/status&quot;] --&gt; b6\n        b3 --&gt; b5[&quot;ChatStore turns&quot;] --&gt; b6[&quot;chat-status-popover&quot;]\n        b6 --&gt; b7[&quot;glyph host · plate host · --lg-living-mark-turn&quot;]\n    end\n    subgraph C[&quot;Slice C · ISC-477, 478&quot;]\n        c1[&quot;POST /chat/conversations/bulk-delete&quot;] --&gt; c2[&quot;ChatApi.deleteMany&quot;]\n        c2 --&gt; c3[&quot;chatEvents.bulkDeleteRequested / bulkDeleted&quot;]\n        c3 --&gt; c4[&quot;chat-history select mode + one dialog&quot;]\n    end\n    A --&gt; D[&quot;ISC-480 · docs, CHANGELOG, hints, parity&quot;]\n    B --&gt; D\n    C --&gt; D</pre><figcaption>Approach</figcaption></figure>\n<h2 id=\"affected-files-and-modules\">Affected Files and Modules</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Path</th><th>Change</th><th>Claim</th></tr></thead><tbody><tr><td><code>frontend/src/app/features/shortlist/shortlist-page.ts</code></td><td>land the selected card in the pane when the selection arrives from outside the list, focus untouched</td><td>ISC-479</td></tr><tr><td><code>frontend/src/app/features/shortlist/shortlist.browser.spec.ts</code></td><td>the row-below-the-fold and the row-not-loaded cases</td><td>ISC-479</td></tr><tr><td><code>backend/src/main/resources/db/migration/V36__chat_turn_end_reason.sql</code></td><td>new: nullable <code>end_reason</code> with a check on the three reasons</td><td>ISC-473</td></tr><tr><td><code>backend/src/main/java/de/codeministry/leadgen/chat/ConversationRepository.java</code></td><td><code>finish(…, reason)</code>; the two sweep updates write <code>MODEL</code>; read <code>end_reason</code> and <code>finished_at</code> into <code>TurnView</code></td><td>ISC-473</td></tr><tr><td><code>backend/src/main/java/de/codeministry/leadgen/chat/ChatTurnService.java</code></td><td>pass the reason from <code>end(...)</code> and the cut-off paths to <code>finish</code></td><td>ISC-473</td></tr><tr><td><code>backend/src/main/java/de/codeministry/leadgen/chat/TurnView.java</code></td><td><code>endReason</code>, <code>finishedAt</code></td><td>ISC-473, ISC-474</td></tr><tr><td><code>backend/src/main/java/de/codeministry/leadgen/chat/ChatStatusView.java</code></td><td>new record: model, calls used, calls limit, tool rounds</td><td>ISC-476</td></tr><tr><td><code>backend/src/main/java/de/codeministry/leadgen/chat/ChatBudget.java</code></td><td>expose the resolved limit and round bound for the status read</td><td>ISC-476</td></tr><tr><td><code>backend/src/main/java/de/codeministry/leadgen/web/ChatController.java</code></td><td><code>GET /status</code>; <code>POST /conversations/bulk-delete</code></td><td>ISC-476, ISC-477</td></tr><tr><td><code>backend/src/main/java/de/codeministry/leadgen/chat/BulkDelete.java</code>, <code>BulkDeleted.java</code></td><td>new request and answer records</td><td>ISC-477</td></tr><tr><td><code>backend/src/main/java/de/codeministry/leadgen/LeadGenRuntimeHints.java</code></td><td>hints for the new request and view records</td><td>ISC-480</td></tr><tr><td><code>backend/src/test/java/de/codeministry/leadgen/chat/ChatConversationTest.java</code></td><td>stored reason per ending, old turns null</td><td>ISC-473</td></tr><tr><td><code>backend/src/test/java/de/codeministry/leadgen/web/ChatControllerTest.java</code></td><td>status 200/404; bulk delete, streaming stop, unknown id, 400s</td><td>ISC-476, ISC-477</td></tr><tr><td><code>frontend/src/app/core/model/chat.ts</code></td><td><code>TurnView.endReason</code>, <code>finishedAt</code>; <code>ChatStatus</code>; bulk types</td><td>ISC-473, ISC-476, ISC-477</td></tr><tr><td><code>frontend/src/app/core/api/chat.api.ts</code> (+ <code>chat-stub.ts</code>)</td><td><code>status()</code>, <code>deleteMany(ids)</code></td><td>ISC-476, ISC-477</td></tr><tr><td><code>frontend/src/app/core/store/chat.events.ts</code>, <code>chat.store.ts</code></td><td>the live turn keeps its end reason; <code>bulkDeleteRequested</code> / <code>bulkDeleted</code> / <code>bulkDeleteFailed</code>, an open conversation among them leaves for a new one</td><td>ISC-474, ISC-478</td></tr><tr><td><code>frontend/src/app/features/chat/chat-status-popover/</code></td><td>new component: state line, reason, steps, duration, model; or the chat&#39;s status</td><td>ISC-474, ISC-475, ISC-476</td></tr><tr><td><code>frontend/src/app/features/chat/chat-panel/chat-panel.html</code>, <code>.ts</code>, <code>.css</code></td><td>the glyph and the plate become focusable hosts of the popover and set the turn</td><td>ISC-474, ISC-475, ISC-476</td></tr><tr><td><code>frontend/src/app/features/chat/chat-history/chat-history.html</code>, <code>.ts</code>, <code>.css</code></td><td>select mode, checkboxes, select all shown, <code>Delete N</code></td><td>ISC-478</td></tr><tr><td><code>frontend/src/app/features/chat/chat-history/chat-delete-dialog.html</code>, <code>.ts</code></td><td>a count variant of the one dialog, Cancel still first</td><td>ISC-478</td></tr><tr><td><code>frontend/src/app/features/chat/chat-panel/chat-panel.browser.spec.ts</code>, <code>chat-history/chat-history.browser.spec.ts</code></td><td>the popover and select-mode cases</td><td>ISC-474 to ISC-478</td></tr><tr><td><code>frontend/public/i18n/en.json</code>, <code>de.json</code></td><td><code>chat.status.*</code>, <code>chat.select.*</code>, <code>chat.delete.many*</code></td><td>ISC-475, ISC-478</td></tr><tr><td><code>docs/DATA-MODEL.md</code>, <code>docs/decisions/chat.md</code>, <code>CHANGELOG.md</code></td><td><code>end_reason</code>; the popovers, the status endpoint, bulk delete; § Unreleased</td><td>ISC-480</td></tr></tbody></table></div>\n<h2 id=\"data-model\">Data Model</h2>\n<p><code>chat_turn</code> before: <code>state</code>, <code>model</code>, <code>created_at</code>, <code>finished_at</code>, no reason. After: <code>+ end_reason TEXT NULL CHECK (end_reason IN (&#39;MODEL&#39;, &#39;BUDGET&#39;, &#39;ROUNDS&#39;))</code>, written only together with <code>state = &#39;INCOMPLETE&#39;</code>.</p>\n<figure class=\"mermaid-figure\" data-figure=\"2\"><pre class=\"mermaid\">erDiagram\n    chat_conversation ||--o{ chat_turn : holds\n    chat_turn {\n        bigint id\n        text state &quot;STREAMING DONE INCOMPLETE STOPPED&quot;\n        text end_reason &quot;new, null unless INCOMPLETE&quot;\n        text model\n        timestamptz created_at\n        timestamptz finished_at &quot;now also on TurnView&quot;\n    }</pre><figcaption>Data Model</figcaption></figure>\n<p><code>TurnView</code> (server and client) gains <code>endReason: MODEL | BUDGET | ROUNDS | null</code> and <code>finishedAt: Instant | null</code>.</p>\n<h2 id=\"interfaces\">Interfaces</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Contract</th><th>Before</th><th>After</th><th>Called by</th></tr></thead><tbody><tr><td><code>GET /api/v1/chat/conversations/{id}</code></td><td>turns without reason or finish</td><td>each turn also <code>endReason</code>, <code>finishedAt</code></td><td>the chat store; additive, the MCP server ignores unknown fields</td></tr><tr><td><code>GET /api/v1/chat/status</code></td><td>—</td><td><code>{ model, callsUsed, callsLimit, toolRounds }</code>; 404 without a chat model</td><td>the plate&#39;s popover, on open</td></tr><tr><td><code>POST /api/v1/chat/conversations/bulk-delete</code></td><td>—</td><td>body <code>{ ids: long[] }</code> (1..500); answer <code>{ deleted: long[] }</code>; 400 on an empty or missing list</td><td>the list&#39;s select mode</td></tr><tr><td><code>DELETE /api/v1/chat/conversations/{id}</code></td><td>unchanged</td><td>unchanged</td><td>the ⋯ menu, the head&#39;s ⋯</td></tr></tbody></table></div>\n<h2 id=\"migration-and-rollback\">Migration and Rollback</h2>\n<p>Expand only. <code>V36</code> adds one nullable column and a check; no existing row changes, no read of the previous image breaks (it selects its columns by name). It is written once in slice B&#39;s first task and never edited afterwards — the Flyway checksum trap in the root <code>CLAUDE.md</code>.</p>\n<p>Rollback to the previous image needs nothing: it ignores the column. Removing the column is <code>ALTER TABLE chat_turn DROP COLUMN end_reason;</code> plus <code>DELETE FROM flyway_schema_history WHERE version = &#39;36&#39;;</code>, run by hand against the instance; it loses every stored reason, never a turn or a conversation.</p>\n<h2 id=\"risks\">Risks</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Risk</th><th>Blast radius</th><th>Early warning</th><th>Mitigation</th></tr></thead><tbody><tr><td>A popover opened on hover flickers or traps a pointer that crosses it on the way to the answer</td><td>every answer in the thread</td><td>the browser spec&#39;s leave-and-close case; manual pass at 1440</td><td>open after a short hover intent, close on leave of glyph and popover together, never on a click</td></tr><tr><td>The glyph turns into a tab stop per answer and a long thread becomes a long tab walk</td><td>keyboard readers of long threads</td><td>tab order read in the panel spec</td><td>each glyph is one stop, beside the copy and regenerate actions every answer already has; the popover itself holds no focusable element, so it adds nothing to the walk</td></tr><tr><td>Bulk delete of the open conversation while it streams leaves the thread on a dead id</td><td>the open thread</td><td>the store spec&#39;s &quot;open among the deleted&quot; case</td><td>the store routes to a new conversation after <code>bulkDeleted</code> names the open id, as the single delete does</td></tr><tr><td>Landing the card scrolls the document on narrow widths where the list runs in the page</td><td>390–1024 px</td><td>the spec measures the document&#39;s scrollTop</td><td>land only while the pane is a scroller, the existing <code>paneScrolls</code> guard</td></tr><tr><td>Both catalogs edited by two slices at once</td><td>a lost key, parity red</td><td><code>i18n-parity.spec.ts</code></td><td>catalog edits serialised, one slice after the other</td></tr><tr><td><code>V36</code> edited after it ran somewhere</td><td>every deployed database refuses to start</td><td>CI&#39;s byte-identical migration step</td><td>written whole once, never touched again</td></tr></tbody></table></div>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Approach",
+            "anchor": "approach"
+          },
+          {
+            "level": 2,
+            "text": "Affected Files and Modules",
+            "anchor": "affected-files-and-modules"
+          },
+          {
+            "level": 2,
+            "text": "Data Model",
+            "anchor": "data-model"
+          },
+          {
+            "level": 2,
+            "text": "Interfaces",
+            "anchor": "interfaces"
+          },
+          {
+            "level": 2,
+            "text": "Migration and Rollback",
+            "anchor": "migration-and-rollback"
+          },
+          {
+            "level": 2,
+            "text": "Risks",
+            "anchor": "risks"
+          }
+        ],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart TB\n    subgraph A[\"Slice A · ISC-479\"]\n        a1[\"chat-answer: citation navigateByUrl /shortlist/:id\"] --> a2[\"shortlist-page: selection not from a key press\"]\n        a2 --> a3[\"landCard(pane, card) without focus\"]\n    end\n    subgraph B[\"Slice B · ISC-473…476\"]\n        b1[\"V36 chat_turn.end_reason\"] --> b2[\"ConversationRepository.finish(reason)\"]\n        b2 --> b3[\"TurnView endReason, finishedAt\"]\n        b4[\"GET /chat/status\"] --> b6\n        b3 --> b5[\"ChatStore turns\"] --> b6[\"chat-status-popover\"]\n        b6 --> b7[\"glyph host · plate host · --lg-living-mark-turn\"]\n    end\n    subgraph C[\"Slice C · ISC-477, 478\"]\n        c1[\"POST /chat/conversations/bulk-delete\"] --> c2[\"ChatApi.deleteMany\"]\n        c2 --> c3[\"chatEvents.bulkDeleteRequested / bulkDeleted\"]\n        c3 --> c4[\"chat-history select mode + one dialog\"]\n    end\n    A --> D[\"ISC-480 · docs, CHANGELOG, hints, parity\"]\n    B --> D\n    C --> D",
+            "caption": "Approach"
+          },
+          {
+            "index": 2,
+            "kind": "mermaid",
+            "diagram": "erDiagram",
+            "source": "erDiagram\n    chat_conversation ||--o{ chat_turn : holds\n    chat_turn {\n        bigint id\n        text state \"STREAMING DONE INCOMPLETE STOPPED\"\n        text end_reason \"new, null unless INCOMPLETE\"\n        text model\n        timestamptz created_at\n        timestamptz finished_at \"now also on TurnView\"\n    }",
+            "caption": "Data Model"
+          }
+        ],
+        "sections": [
+          {
+            "id": "plan-022-chat-turn-status-bulk-delete-and-the-cited-row-in-view",
+            "heading": "Plan 022 — Chat turn status, bulk delete, and the cited row in view",
+            "level": 1
+          },
+          {
+            "id": "approach",
+            "heading": "Approach",
+            "level": 2
+          },
+          {
+            "id": "affected-files-and-modules",
+            "heading": "Affected Files and Modules",
+            "level": 2
+          },
+          {
+            "id": "data-model",
+            "heading": "Data Model",
+            "level": 2
+          },
+          {
+            "id": "interfaces",
+            "heading": "Interfaces",
+            "level": 2
+          },
+          {
+            "id": "migration-and-rollback",
+            "heading": "Migration and Rollback",
+            "level": 2
+          },
+          {
+            "id": "risks",
+            "heading": "Risks",
+            "level": 2
+          }
+        ],
+        "wordCount": 1362
+      },
+      "design": null,
+      "decisions": {
+        "frontmatter": {
+          "spec": "022-chat-turn-status-and-bulk-delete",
+          "created": "2026-09-27T21:48:13Z",
+          "updated": "2026-09-27T23:33:05Z",
+          "rounds": "3"
+        },
+        "html": "<h1 id=\"context-022-chat-turn-status-bulk-delete-and-the-cited-row-in-view\">Context 022 — Chat turn status, bulk delete, and the cited row in view</h1>\n<h2 id=\"goal-confirmed-2026-09-27t21-48-13z\">Goal — confirmed 2026-09-27T21:48:13Z</h2>\n<p>Hovering or focusing the ring beside an answer plays its turn and opens a popover with that turn&#39;s state, the reason when it ended incomplete, its steps, duration and model, the same live and after a reload; the empty chat&#39;s ring does the same with the chat&#39;s own status (model, today&#39;s calls against the ceiling, the tool-round bound); the conversation list deletes the selected or all shown conversations with one confirmation and one request; and an offer opened from a chat citation has its marked shortlist row scrolled into the list pane.</p>\n<p>Principal&#39;s words, verbatim: &quot;ich chat sollte der kreis auch einen hover haben, mit animation und popover mit kurzer info zum status - auch bei unvollständigen. ich will in der chatliste auch mehrere oder alle chats auf einmal löschen. und bei auswahl eines objekt im chat, sollte das außerhalb auch fokusiert und ggfs. markiert werden. bsp. ich klick im chat auf ein offer, danach geht in der short list das offer detail auf. aber es sollte auch in der liste in den fokus gescrollt werden und gehovert bzw. markiert sein&quot;</p>\n<h2 id=\"round-0-shaping-the-idea-2026-09-27\">Round 0 — shaping the idea, 2026-09-27</h2>\n<ul><li>Shapes offered: all three in one spec (recommended) | frontend only, the glyph popover and the row scroll, bulk delete as its own spec later | a wider history manager (select, select all, delete older than N days) with the popover and scroll as small additions</li><li>Chosen: all three in one spec</li></ul>\n<h3 id=\"q1-should-the-popover-name-an-incomplete-turn-s-reason-after-a-reload-too\">Q1 · Should the popover name an incomplete turn&#39;s reason after a reload too?</h3>\n<ul><li>Offered: store the reason, an expand-only <code>V36</code> adds <code>chat_turn.end_reason</code> (recommended) | live only, no migration</li><li>Chosen: store the reason</li><li>Landed in: ISC-473, ISC-474</li></ul>\n<h3 id=\"q2-what-does-select-all-delete-while-a-search-is-active\">Q2 · What does &quot;select all&quot; delete while a search is active?</h3>\n<ul><li>Offered: only the shown hits, the client sends explicit ids (recommended) | really everything, an id-less server path</li><li>Chosen: only the shown hits</li><li>Landed in: ISC-477, ISC-478</li></ul>\n<h2 id=\"round-1-before-the-spec-2026-09-27t21-48-13z\">Round 1 — before the spec, 2026-09-27T21:48:13Z</h2>\n<h3 id=\"q1-which-sentence-is-the-goal-the-goal-lock\">Q1 · Which sentence is the goal? (the goal lock)</h3>\n<ul><li>Offered: all three as shaped (recommended) | without the stored reason | all three plus the empty chat&#39;s plate ring with a chat status popover</li><li>Chosen: all three plus the plate ring</li><li>Landed in: <code>## Goal</code>, ISC-476; the fog line about the plate resolved with it</li></ul>\n<p>No further gap the repo could not close: the turn states and error reasons (<code>ChatTurnState</code>, <code>ChatErrorReason</code>), the stored columns of <code>chat_turn</code> (<code>model</code>, <code>created_at</code>, <code>finished_at</code>, no reason), the single delete&#39;s stop-before-delete, the capability view (<code>present</code> only) and the budget&#39;s read (<code>ChatBudget.used()</code>), and the shortlist&#39;s pane-only scroll (<code>landCard</code>) were read from the code.</p>\n<h2 id=\"still-open\">Still open</h2>\n<ul><li>none</li></ul>\n<h2 id=\"round-2-before-the-plan-2026-09-27t22-17-46z\">Round 2 — before the plan, 2026-09-27T22:17:46Z</h2>\n<h3 id=\"q1-how-do-we-build-it-the-approach-lock\">Q1 · How do we build it? (the approach lock)</h3>\n<ul><li>Offered: three vertical slices, each end-to-end and shippable alone — row scroll, status popovers, bulk delete — side by side, catalogs serialised (recommended) | layer by layer, backend then frontend | UI first against stubs, backend after</li><li>Chosen: three vertical slices</li><li>Landed in: plan.md § Approach, § Affected Files and Modules</li></ul>\n<p>No further question: the endpoints&#39; paths, the reason&#39;s write points (<code>Turn.end</code> and the two cut-off updates) and the popover&#39;s positioning helper (<code>shared/popover/anchor-for.ts</code>) were read from the code.</p>\n<h2 id=\"round-3-during-build-2026-09-27t23-33-05z\">Round 3 — during build, 2026-09-27T23:33:05Z</h2>\n<ul><li>Solo run: the parent builds the tasks itself in the main tree, serially, no dispatch and no worktrees; the lock protocol does not apply to a solo run.</li><li>second look: off (default)</li></ul>\n<h3 id=\"q1-when-should-the-cited-row-scroll-into-view-given-that-the-shortlist-is-one-co\">Q1 · When should the cited row scroll into view, given that the shortlist is one column beside the docked chat below about 2300px?</h3>\n<ul><li>From: T1 (ISC-479), lane <code>web</code></li><li>Offered: as soon as the list is on screen beside the detail — at once on a wide screen, else when the chat closes (recommended) | only while it is on screen at the click | fold the chat&#39;s rail on a citation click instead (a new claim)</li><li>Chosen: as soon as the list is on screen</li><li>Landed in: ISC-479&#39;s Test Strategy row (refined master-first), master and spec <code>## Decisions</code> 2026-09-28</li></ul>\n<h2 id=\"code-review-deferred-findings-2026-09-28\">Code review — deferred findings (2026-09-28)</h2>\n<p>Three <code>/spec-code-review 022</code> rounds over <code>cbe9b5e^..</code> and the working tree. Round 1 (10) and round 2 (6) were fixed in full; of round 3 the operator took 1, 2, 4, 5, 6 and 8 and deferred these four, verbatim from the review, to be carried into the master&#39;s <code>## Remaining Work</code> when the spec completes:</p>\n<ul><li>The status popover is placed once beside its ring and never clamped to the viewport or moved while open: on a 375px phone it can run past the right edge, and a scrolled thread strands it.</li><li><code>keyedId</code> holds one value, so an auto-repeated arrow key can land a card twice (key path and citation path together).</li><li>The start sweep and the turn deadline both store <code>end_reason = MODEL</code>, so a restart or a timeout reads &quot;The model stopped before it finished&quot;.</li><li>A duration just under a minute reads &quot;60.0 s&quot;: the unit is chosen before rounding.</li></ul>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Goal — confirmed 2026-09-27T21:48:13Z",
+            "anchor": "goal-confirmed-2026-09-27t21-48-13z"
+          },
+          {
+            "level": 2,
+            "text": "Round 0 — shaping the idea, 2026-09-27",
+            "anchor": "round-0-shaping-the-idea-2026-09-27"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · Should the popover name an incomplete turn's reason after a reload too?",
+            "anchor": "q1-should-the-popover-name-an-incomplete-turn-s-reason-after-a-reload-too"
+          },
+          {
+            "level": 3,
+            "text": "Q2 · What does \"select all\" delete while a search is active?",
+            "anchor": "q2-what-does-select-all-delete-while-a-search-is-active"
+          },
+          {
+            "level": 2,
+            "text": "Round 1 — before the spec, 2026-09-27T21:48:13Z",
+            "anchor": "round-1-before-the-spec-2026-09-27t21-48-13z"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · Which sentence is the goal? (the goal lock)",
+            "anchor": "q1-which-sentence-is-the-goal-the-goal-lock"
+          },
+          {
+            "level": 2,
+            "text": "Still open",
+            "anchor": "still-open"
+          },
+          {
+            "level": 2,
+            "text": "Round 2 — before the plan, 2026-09-27T22:17:46Z",
+            "anchor": "round-2-before-the-plan-2026-09-27t22-17-46z"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · How do we build it? (the approach lock)",
+            "anchor": "q1-how-do-we-build-it-the-approach-lock"
+          },
+          {
+            "level": 2,
+            "text": "Round 3 — during build, 2026-09-27T23:33:05Z",
+            "anchor": "round-3-during-build-2026-09-27t23-33-05z"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · When should the cited row scroll into view, given that the shortlist is one column beside the docked chat below about 2300px?",
+            "anchor": "q1-when-should-the-cited-row-scroll-into-view-given-that-the-shortlist-is-one-co"
+          },
+          {
+            "level": 2,
+            "text": "Code review — deferred findings (2026-09-28)",
+            "anchor": "code-review-deferred-findings-2026-09-28"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "context-022-chat-turn-status-bulk-delete-and-the-cited-row-in-view",
+            "heading": "Context 022 — Chat turn status, bulk delete, and the cited row in view",
+            "level": 1
+          },
+          {
+            "id": "goal-confirmed-2026-09-27t21-48-13z",
+            "heading": "Goal — confirmed 2026-09-27T21:48:13Z",
+            "level": 2
+          },
+          {
+            "id": "round-0-shaping-the-idea-2026-09-27",
+            "heading": "Round 0 — shaping the idea, 2026-09-27",
+            "level": 2
+          },
+          {
+            "id": "q1-should-the-popover-name-an-incomplete-turn-s-reason-after-a-reload-too",
+            "heading": "Q1 · Should the popover name an incomplete turn's reason after a reload too?",
+            "level": 3
+          },
+          {
+            "id": "q2-what-does-select-all-delete-while-a-search-is-active",
+            "heading": "Q2 · What does \"select all\" delete while a search is active?",
+            "level": 3
+          },
+          {
+            "id": "round-1-before-the-spec-2026-09-27t21-48-13z",
+            "heading": "Round 1 — before the spec, 2026-09-27T21:48:13Z",
+            "level": 2
+          },
+          {
+            "id": "q1-which-sentence-is-the-goal-the-goal-lock",
+            "heading": "Q1 · Which sentence is the goal? (the goal lock)",
+            "level": 3
+          },
+          {
+            "id": "still-open",
+            "heading": "Still open",
+            "level": 2
+          },
+          {
+            "id": "round-2-before-the-plan-2026-09-27t22-17-46z",
+            "heading": "Round 2 — before the plan, 2026-09-27T22:17:46Z",
+            "level": 2
+          },
+          {
+            "id": "q1-how-do-we-build-it-the-approach-lock",
+            "heading": "Q1 · How do we build it? (the approach lock)",
+            "level": 3
+          },
+          {
+            "id": "round-3-during-build-2026-09-27t23-33-05z",
+            "heading": "Round 3 — during build, 2026-09-27T23:33:05Z",
+            "level": 2
+          },
+          {
+            "id": "q1-when-should-the-cited-row-scroll-into-view-given-that-the-shortlist-is-one-co",
+            "heading": "Q1 · When should the cited row scroll into view, given that the shortlist is one column beside the docked chat below about 2300px?",
+            "level": 3
+          },
+          {
+            "id": "code-review-deferred-findings-2026-09-28",
+            "heading": "Code review — deferred findings (2026-09-28)",
+            "level": 2
+          }
+        ],
+        "wordCount": 831
+      }
+    },
+    "specs/archive/013-tech-debt": {
+      "plan": {
+        "frontmatter": {
+          "spec": "013-tech-debt",
+          "type": "refactor",
+          "status": "draft",
+          "updated": "2026-09-24"
+        },
+        "html": "<h1 id=\"plan-013-the-debt-behind-v0-5-0-is-paid-down-without-a-change-in-behaviour\">Plan 013 — The debt behind v0.5.0 is paid down without a change in behaviour</h1>\n<p><strong>Purpose:</strong> how the claims in <code>spec.md</code> get built. The what lives there; this file holds no acceptance criterion. A refactor does not owe a plan; this one exists on the operator&#39;s ask, because fifteen small items across four lanes still need an order.</p>\n<h2 id=\"approach\">Approach</h2>\n<p>Three sittings, each a commit the operator can review on its own. The first is prose and configuration and touches no Java or TypeScript that runs: the working-notes trim, the documentation corrections, <code>.env.example</code> with its test, compose health, the Dockerfile pins. The second is the backend, in the one order the claims impose: the <code>@Value</code> keys onto <code>ConfigProperties</code> first (ISC-348), because <code>StatusController</code> cannot take <code>@RequiredArgsConstructor</code> while its parameters carry <code>@Value</code>; then the <code>SourceConnectors</code> bean and the Lombok sweep as one mechanical commit after <code>spotlessApply</code> (ISC-346), with the builder (ISC-347) and <code>ModelChoice</code> (ISC-349) beside it. The third is the frontend: the two teardowns, the <code>TitleStrategy</code>, the catalog keys, the three config lines. The record (ISC-351) closes each sitting&#39;s part as it lands, not at the end.</p>\n<p>One constraint runs through all three sittings and is the operator&#39;s: the service stays AOT-compatible for GraalVM, transitively. Nothing here touches the version mechanism (<code>LEADGEN_VERSION</code> over a literal default, no build info in the jar), and every backend change is of a kind AOT already handles — Lombok is compile-time, a constructor-bound record binds at build time, a bean is a bean. The anti claim ISC-350 runs <code>processAot</code>, the hints test and the image smoke at the end of each backend sitting, not only at the end.</p>\n<p>The obvious alternative was one branch, one commit, everything at once. It was set aside because the Lombok sweep touches 64 files and the reviewer needs to see that diff alone: a rename hidden in a 90-file commit is exactly how a hand-written constructor that did work gets replaced by one that does not. The sweep is mechanical only when it is the only thing in its commit.</p>\n<h2 id=\"stack-decisions\">Stack Decisions</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Rule</th><th>Chosen</th><th>Alternatives</th><th>Why</th><th>Probe</th><th>Recorded in</th></tr></thead><tbody><tr><td>BE-QUA-02 (Spotless)</td><td>the sweep commit runs <code>spotlessApply</code> first, then the annotation edits, then <code>spotlessApply</code> again, so the diff is the annotations alone</td><td>edit then format once (formatting churn lands in the same diff)</td><td>a formatter bump or a stale index has produced a &quot;green locally, red in CI&quot; before (house memory); two passes keep the reviewable diff to the intent</td><td><code>./gradlew check</code> (quick tier)</td><td>this row</td></tr></tbody></table></div>\n<p>No <code>binding</code> row of the constitution is departed from. <code>XC-08</code> (working notes stay small) is the rule ISC-337 exists to keep with headroom.</p>\n<h2 id=\"affected-files-and-modules\">Affected Files and Modules</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Path</th><th>Change</th><th>Claim</th></tr></thead><tbody><tr><td><code>CLAUDE.md</code>, <code>backend/CLAUDE.md</code>, <code>frontend/CLAUDE.md</code></td><td>the four longest trap paragraphs per file move out; one line with a pointer stays</td><td>ISC-337</td></tr><tr><td><code>docs/decisions/pipeline-ingest.md</code>, <code>pipeline-enrich-content.md</code>, <code>retrieval.md</code>, <code>configuration.md</code>, <code>frontend-design-system.md</code>, <code>frontend-split-views.md</code></td><td>receive the moved paragraphs under the topic that owns them</td><td>ISC-337</td></tr><tr><td><code>README.md</code> § What does not work yet, <code>docs/DEVELOPMENT.md:27</code>, <code>.github/workflows/release.yml:32</code></td><td>the Spotless sentences say what runs</td><td>ISC-338</td></tr><tr><td><code>CLAUDE.md:18</code>, <code>.dockerignore:10</code></td><td><code>config/local/</code> → <code>config/</code></td><td>ISC-338</td></tr><tr><td><code>.env.example</code></td><td><code>RETRIEVAL_TOPIC_FLOOR</code> and <code>LEADGEN_CONFIG_MOUNT</code> added with a comment each; the unread key removed</td><td>ISC-339</td></tr><tr><td><code>backend/src/test/java/de/codeministry/leadgen/config/EnvExampleTest.java</code> (new)</td><td>reads the placeholders out of the five defaults, <code>application.yaml</code> and <code>docker-compose.yml</code>; compares with <code>.env.example</code>; declared as a Gradle input</td><td>ISC-339</td></tr><tr><td><code>backend/build.gradle.kts</code></td><td><code>.env.example</code> and <code>docker-compose.yml</code> as <code>inputs.files</code> of <code>test</code></td><td>ISC-339</td></tr><tr><td><code>docker-compose.yml</code></td><td>healthchecks on <code>api</code> (<code>/actuator/health</code>) and <code>web</code> (<code>/</code>), <code>web</code> <code>depends_on: api: condition: service_healthy</code>, <code>restart: unless-stopped</code> on all three</td><td>ISC-340</td></tr><tr><td><code>frontend/Dockerfile</code></td><td><code>oven/bun:1.3.12-alpine</code>; nginx stage as non-root <mark class=\"open-mark\">⟨?: <code>nginxinc/nginx-unprivileged:1.27-alpine</code> on port 8080 with the compose port mapping following, rather than a hand-rolled <code>USER</code> plus writable <code>pid</code> and cache paths on the stock image — unsure which the operator prefers; the unprivileged image is the smaller diff⟩</mark></td><td>ISC-341</td></tr><tr><td><code>backend/Dockerfile</code></td><td>the <code>|| true</code> on the dependency warm-up goes</td><td>ISC-341</td></tr><tr><td><code>backend/src/main/resources/application.yaml</code></td><td>unchanged: <code>leadgen.version: ${LEADGEN_VERSION:0.5.0}</code> stays, the record binds what is there</td><td>ISC-348</td></tr><tr><td><code>backend/src/main/java/de/codeministry/leadgen/config/ConfigProperties.java</code></td><td>gains <code>version</code>, <code>ingestCron</code>, <code>configPollInterval</code>, <code>scoreBatchPollInterval</code>, nested <code>security.allowOpenBind</code>, with the defaults <code>@Value</code> carried, as <code>@DefaultValue</code> on the record components</td><td>ISC-348</td></tr><tr><td><code>web/StatusController.java</code>, <code>security/SecurityConfig.java</code>, <code>ingest/ScheduledPass.java</code>, <code>config/ConfigWatcher.java</code>, <code>ingest/ScoreBatchCollector.java</code></td><td>read the record; <code>@Value</code> gone; <code>StatusController</code> on <code>@RequiredArgsConstructor</code></td><td>ISC-348</td></tr><tr><td><code>ingest/SourceConnectors.java</code> (new), <code>ingest/IngestService.java</code></td><td>the connector map as a bean; <code>IngestService</code> on <code>@RequiredArgsConstructor</code></td><td>ISC-346</td></tr><tr><td>63 further classes under <code>backend/src/main/java</code> (the survey&#39;s list; <code>ShortlistSort</code>, <code>OfferController</code>, <code>ScoringService</code>, <code>ChatClientJudge</code>, <code>PackagingService</code>, <code>ConfigController</code>, <code>ScoreBatchService</code>, <code>LlmExtractor</code>, <code>OfferRefetch</code>, <code>AdFetcher</code>, <code>ContentService</code> carry the most)</td><td>hand-written assignment constructor → <code>@RequiredArgsConstructor</code>; classes whose constructor does work (<code>ConfigRegistry</code>, <code>ConfigLoader</code>) stay as they are</td><td>ISC-346</td></tr><tr><td><code>ingest/IngestReport.java</code>, <code>ingest/IngestService.java:379,404</code></td><td><code>@Builder</code> on the record; the two constructions become one builder call</td><td>ISC-347</td></tr><tr><td><code>llm/ModelChoice.java</code> (new), <code>score/Judges.java:67,115</code>, <code>content/Classifiers.java:63</code>, <code>fields/FieldExtractors.java:69</code>, <code>ingest/extract/LlmExtractors.java:131</code></td><td>the five copies call the one</td><td>ISC-349</td></tr><tr><td><code>frontend/src/app/features/shortlist/shortlist-page.ts:366</code>, <code>features/offer-detail/ask-panel/ask-panel.ts:62</code> and their specs</td><td><code>DestroyRef</code> removes the listener; <code>takeUntilDestroyed</code> on the request</td><td>ISC-343</td></tr><tr><td><code>frontend/src/app/app.routes.ts</code>, <code>frontend/src/app/core/i18n/title.strategy.ts</code> (new), <code>app.config.ts</code>, <code>core/store/manual.store.ts</code>, <code>public/i18n/en.json</code>, <code>de.json</code>, <code>core/i18n/i18n-parity.spec.ts</code></td><td>route <code>title</code> becomes a catalog key; a <code>TitleStrategy</code> joins it with the brand constant; the three fallbacks become <code>error.*</code> keys; the parity spec gains the unused-key check</td><td>ISC-344</td></tr><tr><td><code>frontend/angular.json:15</code>, <code>frontend/tsconfig.json:35</code>, <code>frontend/package.json:28</code>, <code>bun.lock</code></td><td><code>prefix: lg</code>; <code>experimentalDecorators</code> removed; <code>@angular/forms</code> removed</td><td>ISC-345</td></tr><tr><td><code>CHANGELOG.md</code> § Unreleased, <code>docs/decisions/configuration.md</code></td><td>the record</td><td>ISC-351</td></tr></tbody></table></div>\n<h2 id=\"interfaces\">Interfaces</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Contract</th><th>Before</th><th>After</th><th>Callers</th></tr></thead><tbody><tr><td><code>GET /api/v1/status</code></td><td><code>version</code> is the literal default or <code>LEADGEN_VERSION</code>, read through <code>@Value</code></td><td>the same value, read through <code>ConfigProperties</code>; field, path and default unchanged</td><td>the header, the MCP status tool</td></tr><tr><td><code>IngestReport</code> canonical constructor</td><td>13 components</td><td>unchanged; a builder is added beside it</td><td>the four test classes that construct one keep doing so</td></tr></tbody></table></div>\n<h2 id=\"risks\">Risks</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Risk</th><th>Blast radius</th><th>Early warning</th><th>Mitigation</th></tr></thead><tbody><tr><td>a hand-written constructor that did work is swept along and replaced by one that does not</td><td>that class&#39;s bean, at startup</td><td>context refuses to start; the suite&#39;s 36 <code>@SpringBootTest</code>s</td><td>the sweep&#39;s rule is mechanical (assignments only); <code>ConfigRegistry</code>, <code>ConfigLoader</code>, <code>IngestService</code> before its bean are the named exceptions; one commit, reviewed alone</td></tr><tr><td>Lombok on a <code>@Component</code> with a second constructor</td><td>every context (194 failures once, per <code>backend/CLAUDE.md</code>)</td><td>the same</td><td>a class keeps zero hand-written constructors after the sweep, never one</td></tr><tr><td>a backend change breaks <code>processAot</code> or the native image while the JVM suite stays green</td><td>the Docker image&#39;s startup, or one stage returning empty</td><td><code>processAot</code> red; <code>LeadGenRuntimeHintsTest</code>; a smoke step asserting on an empty result</td><td>ISC-350 runs all three after each backend sitting; nothing in F41 adds a runtime-computed name, a reflective call or a resource</td></tr><tr><td>the non-root nginx cannot bind port 80</td><td>the web container</td><td>the container exits at start</td><td>the unprivileged image listens on 8080 and compose maps it; the mark above</td></tr><tr><td>a moved working-notes paragraph loses its rule</td><td>a future session repeats a paid-for mistake</td><td>review</td><td>each rule keeps its one line with the pointer; the paragraph moves whole, never summarised</td></tr><tr><td>the parity spec&#39;s unused-key check flags keys read through a dynamic prefix</td><td>the frontend suite</td><td>red on a key the code builds at runtime</td><td>the check allows a prefix list, the same shape Tailwind&#39;s lookup maps use</td></tr></tbody></table></div>\n<h2 id=\"open-points\">Open Points</h2>\n<ul><li>fog: the non-root nginx mechanism. Resolves at the ISC-341 mark.</li><li>fog: the version literals and the stale <code>user_agent</code> default (spec § Not yet specified). Resolves in a Decisions row; the mechanism is not touched.</li></ul>\n<h2 id=\"conformance-impact\">Conformance Impact</h2>\n<ul><li><code>FE-TST-05 coverage as a ratchet</code> (grandfathered): left alone; the coverage floor is Phase 2 fog.</li><li><code>G-FE-02 i18n parity</code> (grandfathered): extended — ISC-344 adds the unused-key check to the parity spec that spec 002 introduced; the row&#39;s note can move to cleared once ISC-344 closes.</li><li><code>BE-ARCH-01..03 vertical slices</code> (not measured): left alone; the package cycles are Phase 3 fog.</li></ul>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Approach",
+            "anchor": "approach"
+          },
+          {
+            "level": 2,
+            "text": "Stack Decisions",
+            "anchor": "stack-decisions"
+          },
+          {
+            "level": 2,
+            "text": "Affected Files and Modules",
+            "anchor": "affected-files-and-modules"
+          },
+          {
+            "level": 2,
+            "text": "Interfaces",
+            "anchor": "interfaces"
+          },
+          {
+            "level": 2,
+            "text": "Risks",
+            "anchor": "risks"
+          },
+          {
+            "level": 2,
+            "text": "Open Points",
+            "anchor": "open-points"
+          },
+          {
+            "level": 2,
+            "text": "Conformance Impact",
+            "anchor": "conformance-impact"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "plan-013-the-debt-behind-v0-5-0-is-paid-down-without-a-change-in-behaviour",
+            "heading": "Plan 013 — The debt behind v0.5.0 is paid down without a change in behaviour",
+            "level": 1
+          },
+          {
+            "id": "approach",
+            "heading": "Approach",
+            "level": 2
+          },
+          {
+            "id": "stack-decisions",
+            "heading": "Stack Decisions",
+            "level": 2
+          },
+          {
+            "id": "affected-files-and-modules",
+            "heading": "Affected Files and Modules",
+            "level": 2
+          },
+          {
+            "id": "interfaces",
+            "heading": "Interfaces",
+            "level": 2
+          },
+          {
+            "id": "risks",
+            "heading": "Risks",
+            "level": 2
+          },
+          {
+            "id": "open-points",
+            "heading": "Open Points",
+            "level": 2
+          },
+          {
+            "id": "conformance-impact",
+            "heading": "Conformance Impact",
+            "level": 2
+          }
+        ],
+        "wordCount": 1377
+      },
+      "design": null,
+      "decisions": {
+        "frontmatter": {
+          "spec": "013-tech-debt",
+          "created": "2026-09-24T15:40:00Z",
+          "updated": "2026-09-24T15:55:00Z",
+          "rounds": "3"
+        },
+        "html": "<h1 id=\"context-013-the-debt-behind-v0-5-0-is-paid-down-without-a-change-in-behaviour\">Context 013 — The debt behind v0.5.0 is paid down without a change in behaviour</h1>\n<h2 id=\"goal-confirmed-2026-09-24t15-45-00z\">Goal — confirmed 2026-09-24T15:45:00Z</h2>\n<p>The afternoon-sized debt is paid — working-notes budgets, stale documentation, <code>.env.example</code> held to the placeholders by a test, compose health, the Dockerfile pins, one version source reaching the status endpoint and the user agent, two listener leaks, the catalog literals, the frontend hygiene, and the Lombok sweep — with every request mapping, response field, migration and configuration key meaning what it meant before.</p>\n<p>Principal&#39;s words, verbatim: &quot;lombok muss auch integriert werden, damit der code schlanker wird. weiter ideen?&quot;</p>\n<p>The words are his reply to the tech-debt audit (<code>/engineering:tech-debt</code>, 2026-09-24), which ran as a plan-mode audit first: three read-only surveys (backend, frontend, infra/docs/config), the top findings re-verified by hand, 33 items scored with <code>(Impact + Risk) × (6 − Effort)</code>, then a slimming section of 10 items after this reply. He then asked for the plan as a spec (&quot;writePlan&quot; → &quot;Als Spec anlegen&quot;).</p>\n<h2 id=\"round-1-before-the-spec-2026-09-24\">Round 1 — before the spec, 2026-09-24</h2>\n<h3 id=\"q1-goal-lock-which-sentence-is-the-goal\">Q1 · Goal lock: which sentence is the goal?</h3>\n<ul><li>Offered: Phase 0 + Phase 1 + Lombok starters L1, L2, L6, L7, L9 (~20 claims, recommended) | Phase 0 + Lombok only (~12 claims) | everything scored (~45 claims)</li><li>Chosen: Phase 0 + Lombok only</li><li>Landed in: <code>## Goal</code>, ISC-337…ISC-351; Phase 1 and later as <code>## Not yet specified</code></li></ul>\n<h3 id=\"q2-the-27-catch-ioexception-throw-new-uncheckedioexception-wrappers-l3-part-of-t\">Q2 · The 27 <code>catch (IOException) { throw new UncheckedIOException }</code> wrappers (L3): part of the Lombok sweep?</h3>\n<ul><li>Offered: out, stays fog (recommended) | in, with <code>@SneakyThrows</code> on private helpers | in, with a functional <code>Io.unchecked</code> helper</li><li>Chosen: out, stays fog</li><li>Landed in: <code>## Not yet specified</code>, <code>## Decisions</code></li></ul>\n<p>No third question spent. Everything else a wrong answer could change is a mark in <code>spec.md</code> or <code>plan.md</code> (the user-agent shape, the non-root nginx mechanism, the working-notes trim target).</p>\n<p><code>context_sufficient: true</code> · <code>interview_invoked: false</code></p>\n<h2 id=\"round-2-before-the-plan-2026-09-24\">Round 2 — before the plan, 2026-09-24</h2>\n<p>No approach question spent: the plan&#39;s order follows the edges the claims already carry (<code>ISC-348</code> before <code>ISC-346</code>; <code>ISC-337</code> and <code>ISC-346</code> before <code>ISC-351</code>), and every item is small enough that the obvious path is the only one. The <code>plan.md</code> exists on the operator&#39;s ask (&quot;writePlan&quot;), although the refactor type does not owe one.</p>\n<h2 id=\"round-3-after-the-spec-2026-09-24\">Round 3 — after the spec, 2026-09-24</h2>\n<h3 id=\"q1-the-operator-unprompted-nicht-ändern-damit-der-spring-boot-service-weiterhin-\">Q1 · (the operator, unprompted) &quot;nicht ändern, damit der spring boot service weiterhin AOT-kompatibel für graalvm bleibt&quot; — then &quot;transitiv, heißt das oder?&quot;</h3>\n<ul><li>Offered: nothing; a direction, not a question</li><li>Chosen: the version mechanism stays as it is (ISC-342 dropped), and AOT compatibility binds every remaining claim transitively</li><li>Landed in: ISC-350 (the anti claim now runs <code>processAot</code>, <code>LeadGenRuntimeHintsTest</code> and the image smoke), <code>spec.md</code> § Out of Scope and § Decisions, <code>plan.md</code> § Approach and § Risks; T8 removed, T16 extended</li></ul>\n<h2 id=\"round-4-during-build-2026-09-24\">Round 4 — during build, 2026-09-24</h2>\n<h3 id=\"q1-from-t15-isc-345-lane-web-angular-cdk-22-1-7-requires-angular-forms-as-a-peer\">Q1 · (from T15, ISC-345, lane web) <code>@angular/cdk</code> 22.1.7 requires <code>@angular/forms</code> as a peer; should the dependency stay and the claim drop its forms clause?</h3>\n<ul><li>Offered: A keep it, refine the claim (recommended) | B remove it and accept an unmet peer | C replace the cdk usage</li><li>Chosen: A, by the parent — removing a required peer contradicts FE-TOOL-01 (one lockfile, peers met) for one line of <code>package.json</code></li><li>Landed in: ISC-345 refined master-first, <code>spec.md</code> § Decisions</li></ul>\n<h3 id=\"q2-from-t7-isc-348-lane-server-the-webmvctest-slice-does-not-register-configprop\">Q2 · (from T7, ISC-348, lane server) the <code>@WebMvcTest</code> slice does not register <code>ConfigProperties</code>; how does the record reach <code>StatusController</code> without a test edit?</h3>\n<ul><li>Offered: A <code>@EnableConfigurationProperties(ConfigProperties.class)</code> on the controller (recommended, already applied) | B a main-code configuration class the slice would not load | C an <code>@Import</code> in the test</li><li>Chosen: A, by the parent — the only option that keeps all three test classes unchanged and green; a no-op in the full context, AOT-neutral</li><li>Landed in: nowhere beyond the code — implementation detail; the second look on T7 checks it</li></ul>\n<h3 id=\"q3-from-the-parent-before-t6-isc-341-lane-infra-a-non-root-nginx-cannot-bind-80-\">Q3 · (from the parent before T6, ISC-341, lane infra) a non-root nginx cannot bind :80, and the office chart wires <code>containerPort</code> from <code>web.ports.service</code> with its own <code>listen 80</code> ConfigMap; how should T6 handle it?</h3>\n<ul><li>Offered: drop the non-root clause and keep :80 (recommended) | non-root on 8080 and the chart follows | non-root on :80 via <code>setcap</code></li><li>Chosen: non-root on 8080, the chart follows — the operator&#39;s call</li><li>Landed in: ISC-341&#39;s Test Strategy row (the web port), <code>spec.md</code> § Decisions, the master&#39;s § Remaining Work (the chart&#39;s <code>web.ports.service</code> and ConfigMap move to 8080 before the next office deploy)</li></ul>\n<h2 id=\"round-5-during-build-2026-09-24\">Round 5 — during build, 2026-09-24</h2>\n<h3 id=\"q1-from-t6-isc-341-lane-infra-the-seed-s-notblank-on-version-stopped-the-api-in-\">Q1 · (from T6, ISC-341, lane infra) the seed&#39;s <code>@NotBlank</code> on <code>version</code> stopped the api in the compose probe and the worker&#39;s fix was denied by the permission layer; how should the probe proceed?</h3>\n<ul><li>Offered: A the parent fixes the worktree copy (recommended) | B probe with <code>LEADGEN_VERSION=0.5.0</code> in the throwaway <code>.env</code> | C accept build-green only</li><li>Chosen: A — the parent staged the main tree&#39;s fixed backend files into the worktree; the probe then ran green against the same code the main tree carries</li><li>Landed in: nowhere beyond the round; the defect itself is ISC-348&#39;s Decisions row</li></ul>\n<h3 id=\"q2-parent-from-t6-s-mark-pinning-oven-bun-1-3-12-alpine-breaks-the-image-build-b\">Q2 · (parent, from T6&#39;s mark) pinning <code>oven/bun:1.3.12-alpine</code> breaks the image build because the Angular CLI refuses bun&#39;s node shim; the worker had added an unpinned Alpine <code>nodejs</code></h3>\n<ul><li>Offered: unpinned <code>apk add nodejs</code> | a pinned <code>node:22.23.3-alpine</code> base with the pinned bun binary copied onto it | bump bun to 1.4.x everywhere</li><li>Chosen: the pinned Node base — two exact tags, no package manager call, <code>packageManager</code> untouched</li><li>Landed in: <code>frontend/Dockerfile</code>; <code>BunPinTest</code> and the Renovate <code>bun</code> group from the second look</li></ul>\n<h2 id=\"round-6-during-build-2026-09-24\">Round 6 — during build, 2026-09-24</h2>\n<h3 id=\"q1-from-t9-t10-isc-346-lane-server-the-strict-rule-leaves-104-assignments-not-25\">Q1 · (from T9+T10, ISC-346, lane server) the strict rule leaves 104 assignments, not 25, and a <code>SourceConnectors</code> parameter breaks <code>IngestOrderTest</code>; how to proceed?</h3>\n<ul><li>Offered: A inject the <code>JdbcClient</code> bean and let <code>IngestService</code> look its connector up in the list (recommended) | B keep the rule, edit the one test line, threshold ~85 | C record 104</li><li>Chosen: A, by the parent — reaches the number without a test edit and pays the audit&#39;s item 22 (33 <code>create</code> calls → one bean)</li><li>Landed in: ISC-346 refined master-first; <code>spec.md</code> § Decisions</li></ul>\n<h3 id=\"q2-from-the-same-worker-second-return-the-rule-leaves-32-all-excluded-move-the-t\">Q2 · (from the same worker, second return) the rule leaves 32, all excluded; move the threshold or widen the rule?</h3>\n<ul><li>Offered: threshold 32 | widen to make the four remaining builders beans</li><li>Chosen: threshold 32, then 31 after the second look (Max) found a class hidden by a raw NUL byte and five constructors outside the candidate list; the builders-to-beans idea is Phase 2 fog</li><li>Landed in: ISC-346 and its Test Strategy row (<code>rg -a</code>), <code>spec.md</code> § Decisions</li></ul>\n<h3 id=\"second-looks-skipped\">Second looks skipped</h3>\n<ul><li>T15 (ISC-345): skipped for cause — two configuration lines (<code>prefix</code>, <code>experimentalDecorators</code>), three green probes in the worktree and again in the main tree. A reader would have read two lines.</li></ul>\n<h2 id=\"still-open\">Still open</h2>\n<ul><li>fog: model calls inside <code>@Transactional</code> — a Phase 1 spec</li><li>fog: the open run row in <code>ScoreBatchCollector.poll</code> — with it</li><li>fog: the mixed Testcontainers classpath, and the 39 per-class container declarations — a dependency spec</li><li>fog: the enrichment silences — a Phase 1 spec</li><li>fog: stale-language computeds and the unhashed catalogs — with F40&#39;s cache policy</li><li>fog: the <code>UncheckedIOException</code> wrappers — a Decisions row before any claim</li><li>fog: Phase 2 and Phase 3 of the audit — one spec per lane, each a decision first</li></ul>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Goal — confirmed 2026-09-24T15:45:00Z",
+            "anchor": "goal-confirmed-2026-09-24t15-45-00z"
+          },
+          {
+            "level": 2,
+            "text": "Round 1 — before the spec, 2026-09-24",
+            "anchor": "round-1-before-the-spec-2026-09-24"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · Goal lock: which sentence is the goal?",
+            "anchor": "q1-goal-lock-which-sentence-is-the-goal"
+          },
+          {
+            "level": 3,
+            "text": "Q2 · The 27 catch (IOException) { throw new UncheckedIOException } wrappers (L3): part of the Lombok sweep?",
+            "anchor": "q2-the-27-catch-ioexception-throw-new-uncheckedioexception-wrappers-l3-part-of-t"
+          },
+          {
+            "level": 2,
+            "text": "Round 2 — before the plan, 2026-09-24",
+            "anchor": "round-2-before-the-plan-2026-09-24"
+          },
+          {
+            "level": 2,
+            "text": "Round 3 — after the spec, 2026-09-24",
+            "anchor": "round-3-after-the-spec-2026-09-24"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · (the operator, unprompted) \"nicht ändern, damit der spring boot service weiterhin AOT-kompatibel für graalvm bleibt\" — then \"transitiv, heißt das oder?\"",
+            "anchor": "q1-the-operator-unprompted-nicht-ändern-damit-der-spring-boot-service-weiterhin-"
+          },
+          {
+            "level": 2,
+            "text": "Round 4 — during build, 2026-09-24",
+            "anchor": "round-4-during-build-2026-09-24"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · (from T15, ISC-345, lane web) @angular/cdk 22.1.7 requires @angular/forms as a peer; should the dependency stay and the claim drop its forms clause?",
+            "anchor": "q1-from-t15-isc-345-lane-web-angular-cdk-22-1-7-requires-angular-forms-as-a-peer"
+          },
+          {
+            "level": 3,
+            "text": "Q2 · (from T7, ISC-348, lane server) the @WebMvcTest slice does not register ConfigProperties; how does the record reach StatusController without a test edit?",
+            "anchor": "q2-from-t7-isc-348-lane-server-the-webmvctest-slice-does-not-register-configprop"
+          },
+          {
+            "level": 3,
+            "text": "Q3 · (from the parent before T6, ISC-341, lane infra) a non-root nginx cannot bind :80, and the office chart wires containerPort from web.ports.service with its own listen 80 ConfigMap; how should T6 handle it?",
+            "anchor": "q3-from-the-parent-before-t6-isc-341-lane-infra-a-non-root-nginx-cannot-bind-80-"
+          },
+          {
+            "level": 2,
+            "text": "Round 5 — during build, 2026-09-24",
+            "anchor": "round-5-during-build-2026-09-24"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · (from T6, ISC-341, lane infra) the seed's @NotBlank on version stopped the api in the compose probe and the worker's fix was denied by the permission layer; how should the probe proceed?",
+            "anchor": "q1-from-t6-isc-341-lane-infra-the-seed-s-notblank-on-version-stopped-the-api-in-"
+          },
+          {
+            "level": 3,
+            "text": "Q2 · (parent, from T6's mark) pinning oven/bun:1.3.12-alpine breaks the image build because the Angular CLI refuses bun's node shim; the worker had added an unpinned Alpine nodejs",
+            "anchor": "q2-parent-from-t6-s-mark-pinning-oven-bun-1-3-12-alpine-breaks-the-image-build-b"
+          },
+          {
+            "level": 2,
+            "text": "Round 6 — during build, 2026-09-24",
+            "anchor": "round-6-during-build-2026-09-24"
+          },
+          {
+            "level": 3,
+            "text": "Q1 · (from T9+T10, ISC-346, lane server) the strict rule leaves 104 assignments, not 25, and a SourceConnectors parameter breaks IngestOrderTest; how to proceed?",
+            "anchor": "q1-from-t9-t10-isc-346-lane-server-the-strict-rule-leaves-104-assignments-not-25"
+          },
+          {
+            "level": 3,
+            "text": "Q2 · (from the same worker, second return) the rule leaves 32, all excluded; move the threshold or widen the rule?",
+            "anchor": "q2-from-the-same-worker-second-return-the-rule-leaves-32-all-excluded-move-the-t"
+          },
+          {
+            "level": 3,
+            "text": "Second looks skipped",
+            "anchor": "second-looks-skipped"
+          },
+          {
+            "level": 2,
+            "text": "Still open",
+            "anchor": "still-open"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "context-013-the-debt-behind-v0-5-0-is-paid-down-without-a-change-in-behaviour",
+            "heading": "Context 013 — The debt behind v0.5.0 is paid down without a change in behaviour",
+            "level": 1
+          },
+          {
+            "id": "goal-confirmed-2026-09-24t15-45-00z",
+            "heading": "Goal — confirmed 2026-09-24T15:45:00Z",
+            "level": 2
+          },
+          {
+            "id": "round-1-before-the-spec-2026-09-24",
+            "heading": "Round 1 — before the spec, 2026-09-24",
+            "level": 2
+          },
+          {
+            "id": "q1-goal-lock-which-sentence-is-the-goal",
+            "heading": "Q1 · Goal lock: which sentence is the goal?",
+            "level": 3
+          },
+          {
+            "id": "q2-the-27-catch-ioexception-throw-new-uncheckedioexception-wrappers-l3-part-of-t",
+            "heading": "Q2 · The 27 catch (IOException) { throw new UncheckedIOException } wrappers (L3): part of the Lombok sweep?",
+            "level": 3
+          },
+          {
+            "id": "round-2-before-the-plan-2026-09-24",
+            "heading": "Round 2 — before the plan, 2026-09-24",
+            "level": 2
+          },
+          {
+            "id": "round-3-after-the-spec-2026-09-24",
+            "heading": "Round 3 — after the spec, 2026-09-24",
+            "level": 2
+          },
+          {
+            "id": "q1-the-operator-unprompted-nicht-ändern-damit-der-spring-boot-service-weiterhin-",
+            "heading": "Q1 · (the operator, unprompted) \"nicht ändern, damit der spring boot service weiterhin AOT-kompatibel für graalvm bleibt\" — then \"transitiv, heißt das oder?\"",
+            "level": 3
+          },
+          {
+            "id": "round-4-during-build-2026-09-24",
+            "heading": "Round 4 — during build, 2026-09-24",
+            "level": 2
+          },
+          {
+            "id": "q1-from-t15-isc-345-lane-web-angular-cdk-22-1-7-requires-angular-forms-as-a-peer",
+            "heading": "Q1 · (from T15, ISC-345, lane web) @angular/cdk 22.1.7 requires @angular/forms as a peer; should the dependency stay and the claim drop its forms clause?",
+            "level": 3
+          },
+          {
+            "id": "q2-from-t7-isc-348-lane-server-the-webmvctest-slice-does-not-register-configprop",
+            "heading": "Q2 · (from T7, ISC-348, lane server) the @WebMvcTest slice does not register ConfigProperties; how does the record reach StatusController without a test edit?",
+            "level": 3
+          },
+          {
+            "id": "q3-from-the-parent-before-t6-isc-341-lane-infra-a-non-root-nginx-cannot-bind-80-",
+            "heading": "Q3 · (from the parent before T6, ISC-341, lane infra) a non-root nginx cannot bind :80, and the office chart wires containerPort from web.ports.service with its own listen 80 ConfigMap; how should T6 handle it?",
+            "level": 3
+          },
+          {
+            "id": "round-5-during-build-2026-09-24",
+            "heading": "Round 5 — during build, 2026-09-24",
+            "level": 2
+          },
+          {
+            "id": "q1-from-t6-isc-341-lane-infra-the-seed-s-notblank-on-version-stopped-the-api-in-",
+            "heading": "Q1 · (from T6, ISC-341, lane infra) the seed's @NotBlank on version stopped the api in the compose probe and the worker's fix was denied by the permission layer; how should the probe proceed?",
+            "level": 3
+          },
+          {
+            "id": "q2-parent-from-t6-s-mark-pinning-oven-bun-1-3-12-alpine-breaks-the-image-build-b",
+            "heading": "Q2 · (parent, from T6's mark) pinning oven/bun:1.3.12-alpine breaks the image build because the Angular CLI refuses bun's node shim; the worker had added an unpinned Alpine nodejs",
+            "level": 3
+          },
+          {
+            "id": "round-6-during-build-2026-09-24",
+            "heading": "Round 6 — during build, 2026-09-24",
+            "level": 2
+          },
+          {
+            "id": "q1-from-t9-t10-isc-346-lane-server-the-strict-rule-leaves-104-assignments-not-25",
+            "heading": "Q1 · (from T9+T10, ISC-346, lane server) the strict rule leaves 104 assignments, not 25, and a SourceConnectors parameter breaks IngestOrderTest; how to proceed?",
+            "level": 3
+          },
+          {
+            "id": "q2-from-the-same-worker-second-return-the-rule-leaves-32-all-excluded-move-the-t",
+            "heading": "Q2 · (from the same worker, second return) the rule leaves 32, all excluded; move the threshold or widen the rule?",
+            "level": 3
+          },
+          {
+            "id": "second-looks-skipped",
+            "heading": "Second looks skipped",
+            "level": 3
+          },
+          {
+            "id": "still-open",
+            "heading": "Still open",
+            "level": 2
+          }
+        ],
+        "wordCount": 1180
+      }
+    }
+  }
+}

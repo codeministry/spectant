@@ -610,10 +610,73 @@ export interface ClaimView {
   readonly kind: ClaimKind;
   /** Claim IDs from `(after: …)`. */
   readonly edges: readonly string[];
+  /**
+   * The edges still unresolved (open, or an ID the file does not hold), in edge order; non-empty exactly when the
+   * state is `blocked`. Empty for a closed or dropped claim.
+   */
+  readonly blockedBy: readonly string[];
   readonly probe: ProbeRow | null;
   /** The claim's line under `## Verification`, when it has one. */
   readonly verification: string | null;
+  /** The lock holding a `taken` claim; null in every other state. `since` is ISO 8601, elapsed time is the web's. */
+  readonly lock: { readonly source: AgentLockSource; readonly session: string; readonly since: string } | null;
+  /** A `[DROPPED …]` tombstone and its words (`see Decisions 2026-09-24`); null unless the state is `dropped`. */
+  readonly dropped: { readonly note: string | null } | null;
   readonly noteCount: number;
+  /** 1-based line in spec.md. */
+  readonly line: number;
+}
+
+/** A feature heading the Claims tab groups cards under. */
+export interface ClaimFeatureView {
+  /** `F2`. */
+  readonly id: string;
+  /** The heading after `F2 ·`. */
+  readonly title: string;
+  /** The `Why:` line, without the prefix; null when the block has none. */
+  readonly why: string | null;
+  /** Claim IDs in the block, in file order. */
+  readonly claims: readonly string[];
+}
+
+/** One `- fog: <question> — <what must resolve it>` line under `## Not yet specified`. */
+export interface FogView {
+  /** The question: the text before the first spaced em or en dash, or the whole line without one. */
+  readonly text: string;
+  /** What must resolve it: the text after that dash; null without one. */
+  readonly resolves: string | null;
+  /** The round named by `since round N` (or `since RN`) in the line; null when the line names none. */
+  readonly sinceRound: number | null;
+  /** Trailing marks as written. */
+  readonly marks: readonly string[];
+  /** 1-based line in spec.md. */
+  readonly line: number;
+}
+
+/**
+ * The Claims tab's counts: one per glyph state (the filter row), `all` over every card, `open` as the aggregate of
+ * takeable, taken and blocked, and one per kind. Equal to the dashboard row: `closed` is `progress.closed`,
+ * `all - dropped` is `progress.total`, `takeable` is `takeable.length` (ISC-72).
+ */
+export interface ClaimViewCounts {
+  readonly all: number;
+  readonly open: number;
+  readonly takeable: number;
+  readonly taken: number;
+  readonly blocked: number;
+  readonly closed: number;
+  readonly dropped: number;
+  readonly normal: number;
+  readonly anti: number;
+  readonly antecedent: number;
+}
+
+/** The Claims tab (ISC-81): cards in file order, the feature headings, the fog list and the filter counts. */
+export interface ClaimViewModel {
+  readonly claims: readonly ClaimView[];
+  readonly features: readonly ClaimFeatureView[];
+  readonly fog: readonly FogView[];
+  readonly counts: ClaimViewCounts;
 }
 
 export interface ClaimViewInput {
@@ -661,16 +724,59 @@ export interface TaskParseInput {
 
 // ─── Evidence (evidence.ts) ──────────────────────────────────────────────────────────────────────────────────────
 
+/** The two listed folders: `artifacts/` (task results) and `.evidence/` (raw probe output), by file kind name. */
+export type EvidenceGroup = Extract<FileKind, 'artifacts' | 'evidence'>;
+
+/** Why a requested evidence path does not resolve. `outside` and `symlink-escape` are refusals; the rest are absences. */
+export type EvidenceRefusal = 'outside' | 'not-found' | 'not-a-file' | 'symlink-escape';
+
 export interface EvidenceFile {
-  /** The claim ID the file belongs to; null when its path names no claim. */
-  readonly group: string | null;
-  readonly dir: 'artifacts' | 'evidence';
-  /** Relative to the spec folder, POSIX separators, never absolute. */
+  readonly group: EvidenceGroup;
+  /** Relative to the spec folder, POSIX separators, never absolute: `artifacts/T12-dashboard-model.md`. */
   readonly path: string;
+  /** The last path segment. */
+  readonly name: string;
+  /** Size of the file, or of a symlink's confined target; 0 for a refused symlink. */
+  readonly bytes: number;
+  /** From the extension; `application/octet-stream` when unknown. */
   readonly mediaType: string;
-  /** Bytes. */
-  readonly size: number;
+  /** `T<n>` when the file name starts with it (`T12-dashboard-model.md`); else null. */
+  readonly task: string | null;
+  /**
+   * The claim the file belongs to: a claim ID of the spec that a path segment is, or starts with (`ISC-61/…`,
+   * `ISC-61-shot.png`, the longest ID wins); else the first `## Verification` line naming the file by its path or bare
+   * name. Null when neither does.
+   */
+  readonly claim: string | null;
+  /** Set on a symbolic link; it is never followed out of `artifacts/` or `.evidence/`. */
+  readonly symlink?: true;
+  /** Set on a symlink that does not resolve inside the two folders; such a file is listed, never served. */
+  readonly refused?: EvidenceRefusal;
 }
+
+/** The Evidence tab's model (evidence.ts `listEvidence`). No mtime: dates would make the golden move with a checkout. */
+export interface EvidenceListing {
+  /** `artifacts/`, sorted by path. */
+  readonly results: readonly EvidenceFile[];
+  /** `.evidence/`, sorted by path. */
+  readonly raw: readonly EvidenceFile[];
+  /** Files with a claim, keyed by claim ID in the spec's claim order; results before raw, each by path. */
+  readonly byClaim: Readonly<Record<string, readonly EvidenceFile[]>>;
+  /** Files without a claim, results before raw. */
+  readonly ungrouped: readonly EvidenceFile[];
+  /** A folder or symlink that was not listed or not followed. Never an absolute path. */
+  readonly diagnostics: readonly Diagnostic[];
+}
+
+export interface EvidenceOptions {
+  /** `spec.md` as the caller already read it; absent means `listEvidence` reads it from the spec folder. */
+  readonly specText?: string;
+}
+
+/** `resolveEvidencePath`: the real path to serve, and the normalised request, or why nothing is served. */
+export type EvidencePathResult =
+  | { readonly ok: true; readonly absolute: string; readonly path: string }
+  | { readonly ok: false; readonly reason: EvidenceRefusal };
 
 // ─── Docs markdown (markdown-docs.ts) ────────────────────────────────────────────────────────────────────────────
 
@@ -680,7 +786,70 @@ export interface TocEntry {
   readonly anchor: string;
 }
 
-export interface DocsPage {
+/**
+ * A numbered figure of a rendered document; `index` is its `data-figure` attribute, 1-based in document order.
+ * A mermaid figure carries its source for the web app to draw client-side; nothing is rendered in core.
+ */
+export interface MermaidFigure {
+  readonly index: number;
+  readonly kind: 'mermaid';
+  /** The diagram keyword on the first content line: `flowchart`, `erDiagram`, `sequenceDiagram`, … */
+  readonly diagram: string;
+  /** The fence body verbatim (unescaped). */
+  readonly source: string;
+  /** The mermaid `title:`, else the heading the figure sits under, else the diagram keyword. */
+  readonly caption: string;
+}
+
+/** A standalone image paragraph. The file is never read: the caller only says whether it exists. */
+export interface ImageFigure {
+  readonly index: number;
+  readonly kind: 'image';
+  /** As written: relative to the document's folder, or an address off the machine (`remote`). */
+  readonly src: string;
+  readonly alt: string;
+  /** The alt text, else the file name. */
+  readonly caption: string;
+  /** The caller said the file does not exist: no `<img>` is emitted. Absent when present or not asked. */
+  readonly missing?: true;
+  /** The source is not a relative path: never loaded, only linked. */
+  readonly remote?: true;
+}
+
+export type DocsFigure = MermaidFigure | ImageFigure;
+
+/** Every heading of a document, in order, every level. */
+export interface DocsSection {
+  readonly id: string;
+  readonly heading: string;
+  readonly level: number;
+}
+
+/** What the one renderer (`markdown.ts`) returns: sanitised HTML, every heading, and the figures it numbered. */
+export interface RenderedMarkdown {
   readonly html: string;
+  /** Every heading, every level (the Brief shows them all). */
   readonly toc: readonly TocEntry[];
+  /** Empty unless rendered in document mode. */
+  readonly figures: readonly DocsFigure[];
+}
+
+/** One Docs tab page (`markdown-docs.ts`). */
+export interface DocsPage {
+  /** Sanitised: every text escaped, raw HTML never passed through, only the renderer's own tags. */
+  readonly html: string;
+  /** h2 and h3 only, ids unique within the page. */
+  readonly toc: readonly TocEntry[];
+  /** The flat `key: value` frontmatter, values unquoted, in file order; null when the file has none. */
+  readonly frontmatter: Readonly<Record<string, string>> | null;
+  readonly figures: readonly DocsFigure[];
+  readonly sections: readonly DocsSection[];
+  /** Words of prose: code blocks and diagram sources not counted. */
+  readonly wordCount: number;
+}
+
+/** Whether a Docs tab belongs to a spec type's workflow, and the command that writes its file (no spec number). */
+export interface DocAvailability {
+  readonly applies: boolean;
+  readonly command: string | null;
 }

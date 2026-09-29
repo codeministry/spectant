@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T11:35:29Z
+updated: 2026-09-29T11:53:15Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -49,10 +49,10 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T19 · ISC-92 · core — matrix cells: tasks × frames with state glyph keys, absent and re-cut columns (after: T17) · `core/src/matrix.ts`
 - [x] T20 · ISC-37 · [P] · core — lock sources: frontier lock files under a given LifeOS state directory, `.spectant/activity.jsonl` claim/release lines, `none` when neither exists · `core/src/locks.ts`
 - [ ] T21 · ISC-90 · core — live frame from tasks.md plus the lock sources; a locked task in flight with its session name (after: T17, T20) · `core/src/live.ts`
-- [ ] T22 · ISC-81 · [P] · core — claim view model: glyph state (open, takeable, taken, blocked, closed, dropped), kind, dependency edges, probe row, verification line (after: T1) · `core/src/claim-view.ts`
+- [x] T22 · ISC-81 · [P] · core — claim view model: glyph state (open, takeable, taken, blocked, closed, dropped), kind, dependency edges, probe row, verification line (after: T1) · `core/src/claim-view.ts`
 - [ ] T23 · ISC-82 · [P] · core — task line grammar in full: flags, lane from the constitution's lane table, state, edges, paths, plus the probe mapping table (after: T1) · `core/src/tasks.ts`
-- [ ] T24 · ISC-83 · [P] · core — evidence listing of `artifacts/` and `.evidence/` grouped by claim with media type; path confinement to the spec folder (after: T1) · `core/src/evidence.ts`
-- [ ] T25 · ISC-84 · [P] · core — markdown for docs: tables, code blocks, mermaid fences as figures, TOC extraction · `core/src/markdown-docs.ts`
+- [x] T24 · ISC-83 · [P] · core — evidence listing of `artifacts/` and `.evidence/` grouped by claim with media type; path confinement to the spec folder (after: T1) · `core/src/evidence.ts`
+- [x] T25 · ISC-84 · [P] · core — markdown for docs: tables, code blocks, mermaid fences as figures, TOC extraction · `core/src/markdown-docs.ts`
 - [ ] T26 · ISC-80 · core — timeline tests: sources merged in order, one entry per event (after: T14, T15) · `core/tests/timeline.test.ts`
 - [ ] T27 · ISC-87 · core — frames tests including the re-cut and matrix cases on spec 001's own `rounds.jsonl` and harbor 002 (after: T17, T18, T19) · `core/tests/frames.test.ts`
 - [ ] T28 · ISC-90 · core — live frame tests: frontier source, activity source, none (after: T21) · `core/tests/live.test.ts`
@@ -62,8 +62,8 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 ### ② Shell
 
 - [ ] T31 · ISC-98 · operator — strike T32, T59 and T60 in spec 001's tasks.md with a note naming this spec, then run `/spec-review 001` so 001's reviewed mark is fresh again · `specs/001-app-skeleton/tasks.md`
-- [ ] T32 · ISC-74 · [P] · web — fonts: Manrope, Sora and JetBrains Mono as local variable woff2, Inter removed, `fonts.css` rewritten · `web/src/styles/fonts.css`
-- [ ] T33 · ISC-74 · web — fonts test rewritten for the three faces and the no-external-URL guard (after: T32) · `web/tests/fonts.test.ts`
+- [x] T32 · ISC-74 · [P] · web — fonts: Manrope, Sora and JetBrains Mono as local variable woff2, Inter removed, `fonts.css` rewritten · `web/src/styles/fonts.css`
+- [x] T33 · ISC-74 · web — fonts test rewritten for the three faces and the no-external-URL guard (after: T32) · `web/tests/fonts.test.ts`
 - [ ] T34 · ISC-74 · [P] · web — tokens: the prototype's hex converted to OKLCH theme slots with the hex in comments, `-ink` aliases for accent text, the two narrow dark values guarded, no glow · `web/src/styles/tokens.css`
 - [ ] T35 · ISC-73 · [seam] · web — shell: `container: shell` with the three tiers, the grid with the 352 px rail at wide, the tab-bar slot per tier (header row 2 at compact, under the spec head above), the `LockSource` signal, the area routes `/w/:ws/s/:id/:tab` (after: T32, T34) · `web/src/app/layout/shell/`
 - [ ] T36 · ISC-73 · web — header: wordmark with living ring, workspace picker, spec picker (name, id at compact), area-menu trigger, palette trigger (field from a 1280 px header container), live indicator, zen, settings with help; the collapse order; two rows at compact · Mobile, one row above · Tablet, Desktop (after: T35) · `web/src/app/layout/header/`

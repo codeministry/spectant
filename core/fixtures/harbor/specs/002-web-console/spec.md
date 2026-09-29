@@ -139,18 +139,18 @@ Why: a teammate who never touches the CLI can see what was mirrored, when, and w
 - ISC-58: `bun run e2e -- empty-state -g render` passed, 2026-03-08
 - ISC-59: `bun run e2e -- error-banner -g render` passed, 2026-03-08
 - ISC-60: `bun run e2e -- theme-switch -g render` passed, 2026-03-08
-- ISC-60.1: `bun run e2e -- theme-switch -g system` passed, 2026-03-08
-- ISC-60.2: `bun run e2e -- theme-switch -g persist` passed, 2026-03-08
-- ISC-61: `bun run e2e -- tag-table -g narrow` passed, 2026-03-08
+- ISC-60.1: `bun run e2e -- theme-switch -g system` passed, 2026-03-08; model in `artifacts/T12-dashboard-model.md`
+- ISC-60.2: `bun run e2e -- theme-switch -g persist` passed, 2026-03-08; routes in `artifacts/T13-routes.md`
+- ISC-61: `bun run e2e -- tag-table -g narrow` passed, 2026-03-08; screenshot `.evidence/kpi-band-390.png`
 - ISC-62: `bun run e2e -- digest-detail-panel -g narrow` passed, 2026-03-08
 - ISC-63: `bun run e2e -- sync-history -g narrow` passed, 2026-03-08
 - ISC-64: `bun run e2e -- settings-page -g narrow` passed, 2026-03-08
-- ISC-65: `bun run e2e -- search-box -g narrow` passed, 2026-03-08
+- ISC-65: `bun run e2e -- search-box -g narrow` passed, 2026-03-08; report in `artifacts/T18-e2e-report.md`
 - ISC-66: `bun run e2e -- empty-state -g narrow` passed, 2026-03-08
 - ISC-67: `bun run e2e -- error-banner -g narrow` passed, 2026-03-08
 - ISC-68: `bun run e2e -- theme-switch -g narrow` passed, 2026-03-08
 - ISC-69: `bun run test:browser -- registry-list` passed, 2026-03-08
 - ISC-70: `bun run test:browser -- repository-view` passed, 2026-03-08
 - ISC-71: `bun run test:browser -- tag-table` passed, 2026-03-08
-- ISC-72: `bun run test:browser -- digest-detail-panel` passed, 2026-03-08
+- ISC-72: `bun run test:browser -- digest-detail-panel` passed, 2026-03-08; run log bun-test-r3.log
 - ISC-73: `bun run test:browser -- sync-history` passed, 2026-03-08

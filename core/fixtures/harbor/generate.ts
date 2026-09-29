@@ -15,7 +15,9 @@
  *   master ISA.md    124 claims in F0–F4, 101 closed: the three-digit/three-digit master fraction
  *   001  feature     complete, archived under specs/archive/, reviewed and code-reviewed marks
  *   002  feature     building, reviewed mark current, rounds.jsonl with three rounds and a re-cut holding every card
- *                    state, .spectant/activity.jsonl with one open claim, operator tasks open and ticked
+ *                    state, .spectant/activity.jsonl with one open claim, operator tasks open and ticked,
+ *                    artifacts/ with three task results and .evidence/ with a PNG, a HAR and a log (T24), four of
+ *                    the six named by a verification line, the HAR by none
  *   003  refactor    scoping, no reviewed mark, plan.md and spec.md without a mermaid fence, no tasks.md
  *   004  feature     building with every claim [x], plan.md without a mermaid fence, code-reviewed mark stale
  *   005  spike       scoping, two fog lines, no reviewed mark
@@ -247,6 +249,13 @@ function write(rel: string, content: string) {
     written.push(rel);
 }
 
+function writeBytes(rel: string, content: Uint8Array) {
+    const p = join(ROOT, rel);
+    mkdirSync(dirname(p), {recursive: true});
+    writeFileSync(p, content);
+    written.push(rel);
+}
+
 const verificationStub = (c: Claim, date: string) => `- ${c.id}: ${c.probe.tool.replace(/\\\|/g, "|")} passed, ${date}`;
 
 // ── master ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -348,6 +357,7 @@ interface SpecDef {
     after?: string;                      // sections between ## Test Strategy and ## Decisions (claims block)
     decisions: string[];
     verifiedOn: string;
+    verificationNotes?: Readonly<Record<string, string>>; // appended to a closed claim's verification line
     grouped: boolean;                    // claims under ## Features (### block) or flat ## Claims
 }
 
@@ -356,7 +366,10 @@ function specMd(d: SpecDef): string {
     const claimBlock = d.grouped
         ? `## Features\n\n### ${f.key} · ${f.name}\nWhy: ${f.why}\n\n${d.claims.map(claimLine).join("\n")}`
         : `## Claims\n\n${d.claims.map(claimLine).join("\n")}`;
-    const verification = d.claims.filter((c) => c.closed).map((c) => verificationStub(c, d.verifiedOn)).join("\n");
+    const verification = d.claims.filter((c) => c.closed).map((c) => {
+        const note = d.verificationNotes?.[c.id];
+        return verificationStub(c, d.verifiedOn) + (note ? `; ${note}` : "");
+    }).join("\n");
     return `---
 task: "${d.task}"
 slug: ${d.slug}
@@ -546,6 +559,15 @@ const S002: SpecDef = {
     task: "Show every sync run and its failures in a small web console", type: "feature", feature: "F2",
     phase: "building", started: "2026-03-03T10:00:00Z", updated: "2026-03-08T16:45:00Z",
     claims: feature("F2").claims, grouped: true, verifiedOn: "2026-03-08",
+    // The evidence listing (T24) groups a file under the claim whose verification line names it: by its path relative
+    // to the spec folder, or by its bare file name (ISC-72). `.evidence/dashboard.har` is named by none: ungrouped.
+    verificationNotes: {
+        "ISC-60.1": "model in `artifacts/T12-dashboard-model.md`",
+        "ISC-60.2": "routes in `artifacts/T13-routes.md`",
+        "ISC-61": "screenshot `.evidence/kpi-band-390.png`",
+        "ISC-65": "report in `artifacts/T18-e2e-report.md`",
+        "ISC-72": "run log bun-test-r3.log",
+    },
     decisions: ["2026-03-03: the console reads the API only; it never opens the history file itself.",
         "2026-03-07: refined: the colour mode is a stored setting (ISC-60.1, ISC-60.2).",
         "2026-03-07: tasks re-cut after round 2: T27 (registry-list focus order) struck, covered by T22's keyboard probe; T28–T33 renumbered to T27–T32."],
@@ -820,6 +842,114 @@ const ACTIVITY_002 = [
     {ts: "2026-03-08T15:52:00Z", event: "release", claim: "ISC-72", session: "spec-002-ISC-72"},
 ].map((line) => JSON.stringify(line)).join("\n") + "\n";
 
+// ── spec 002: artifacts/ and .evidence/ (T24) ──────────────────────────────────────────────────────────
+
+/** Task results, one Markdown file per task, named `T<n>-<what>.md`. */
+const ARTIFACTS_002: Record<string, string> = {
+    "T12-dashboard-model.md": `# T12 — dashboard model
+
+Recorded 2026-03-06, round 2.
+
+The console reads the colour mode once at start: the stored setting when there is one, else the system scheme.
+
+| field | holds |
+|-------|-------|
+| \`mode\` | \`light\`, \`dark\` or \`system\` as stored |
+| \`resolved\` | \`light\` or \`dark\` after the system scheme is applied |
+| \`source\` | \`setting\` or \`system\` |
+`,
+    "T13-routes.md": `# T13 — routes
+
+Recorded 2026-03-06, round 2.
+
+| path | view |
+|------|------|
+| \`/\` | registry list |
+| \`/r/:registry\` | repository view |
+| \`/r/:registry/:repo\` | tag table |
+| \`/history\` | sync history |
+| \`/settings\` | settings page |
+
+The colour mode is part of the settings, not of the route, so a reload keeps it.
+`,
+    "T18-e2e-report.md": `# T18 — e2e report
+
+Recorded 2026-03-08, round 3.
+
+- \`bun run e2e -- search-box -g narrow\`: 2 passed, 0 failed.
+- Viewport 390 × 844: \`scrollWidth\` 390, \`clientWidth\` 390.
+- The search box wraps its hint under the field below 420 px.
+`,
+};
+
+/** A minimal HAR 1.2 log of one history request, fixed timestamps, loopback only. */
+const HAR_002 = JSON.stringify({
+    log: {
+        version: "1.2",
+        creator: {name: "harbor-e2e", version: "0.3.0"},
+        pages: [{startedDateTime: "2026-03-08T11:20:00.000Z", id: "page_1", title: "Sync history", pageTimings: {onLoad: 180}}],
+        entries: [{
+            pageref: "page_1",
+            startedDateTime: "2026-03-08T11:20:00.120Z",
+            time: 14,
+            request: {method: "GET", url: "http://127.0.0.1:8080/api/history?limit=20", httpVersion: "HTTP/1.1",
+                cookies: [], headers: [], queryString: [{name: "limit", value: "20"}], headersSize: -1, bodySize: 0},
+            response: {status: 200, statusText: "OK", httpVersion: "HTTP/1.1", cookies: [],
+                headers: [{name: "Content-Type", value: "application/json"}],
+                content: {size: 2, mimeType: "application/json", text: "[]"}, redirectURL: "", headersSize: -1, bodySize: 2},
+            cache: {},
+            timings: {send: 0, wait: 13, receive: 1},
+        }],
+    },
+}, null, 2) + "\n";
+
+const LOG_002 = `2026-03-08T11:18:00Z round 3 · bun test api/
+api/tests/history.test.ts:
+(pass) history > pages by 20
+(pass) history > keeps failed runs with their reason
+(pass) history > an empty history is an empty list
+api/tests/health.test.ts:
+(pass) health > answers on loopback only
+
+ 4 pass
+ 0 fail
+Ran 4 tests across 2 files.
+`;
+
+/** CRC-32 (IEEE), the PNG chunk checksum. */
+function crc32(bytes: Uint8Array): number {
+    let c = 0xffffffff;
+    for (const b of bytes) {
+        c ^= b;
+        for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+    }
+    return (c ^ 0xffffffff) >>> 0;
+}
+
+/**
+ * A 4 × 2 RGB PNG: a green band over a grey one, the KPI band as a thumbnail. Built byte by byte (a zlib stream with
+ * one stored block, so no compressor version can change it): deterministic, under 100 bytes, no image copied.
+ */
+function kpiBandPng(): Uint8Array {
+    const width = 4, height = 2;
+    const rows = [[0x2e, 0x9e, 0x5b], [0xd9, 0xdc, 0xe1]];
+    const raw: number[] = [];
+    for (let y = 0; y < height; y++) raw.push(0, ...Array.from({length: width}, () => nth(rows, y)).flat());
+    let a = 1, b = 0;
+    for (const x of raw) { a = (a + x) % 65521; b = (b + a) % 65521; }
+    const n = raw.length;
+    const zlib = [0x78, 0x01, 0x01, n & 0xff, n >> 8, ~n & 0xff, (~n >> 8) & 0xff, ...raw, b >> 8, b & 0xff, a >> 8, a & 0xff];
+    const u32 = (v: number) => [v >>> 24, (v >>> 16) & 0xff, (v >>> 8) & 0xff, v & 0xff];
+    const chunk = (type: string, data: number[]) => {
+        const body = new Uint8Array(Array.from(type, (ch) => ch.charCodeAt(0)).concat(data));
+        return [...u32(data.length), ...body, ...u32(crc32(body))];
+    };
+    return new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+        ...chunk("IHDR", [...u32(width), ...u32(height), 8, 2, 0, 0, 0]),
+        ...chunk("IDAT", zlib),
+        ...chunk("IEND", [])]);
+}
+
 // ── repo-level files ───────────────────────────────────────────────────────────────────────────────────
 
 const CONSTITUTION = `---
@@ -955,6 +1085,10 @@ function generate() {
 
     write(`specs/${S002.dir}/rounds.jsonl`, rounds002(t002));
     write(".spectant/activity.jsonl", ACTIVITY_002);
+    for (const [name, text] of Object.entries(ARTIFACTS_002)) write(`specs/${S002.dir}/artifacts/${name}`, text);
+    writeBytes(`specs/${S002.dir}/.evidence/kpi-band-390.png`, kpiBandPng());
+    write(`specs/${S002.dir}/.evidence/dashboard.har`, HAR_002);
+    write(`specs/${S002.dir}/.evidence/bun-test-r3.log`, LOG_002);
 
     // gate marks — after every spec, plan and tasks file is written, since the reviewed digest covers them
     const g = (d: SpecDef, name: string, body: string) => write(`specs/${d.dir}/.gates/${name}.json`, body);

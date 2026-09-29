@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { allowMarker, compileWords, parseWordList, redact, scanLine, scanText } from "../scripts/check-leak.ts";
+import { allowMarker, compileWords, derivedGoldenTree, inheritFixtureAllows, parseWordList, redact, scanLine, scanText } from "../scripts/check-leak.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "scripts", "check-leak.ts");
 const NO_WORDS = null;
@@ -258,5 +258,32 @@ describe("run over a git repository", () => {
     const r = run(["--help"]);
     expect(r.code).toBe(0);
     expect(r.out).toContain("Usage");
+  });
+});
+
+describe("derived goldens inherit fixture allows", () => {
+  test("recognises the golden file names of a fixture tree", () => {
+    expect(derivedGoldenTree("core/fixtures/harbor.golden.json")).toBe("harbor");
+    expect(derivedGoldenTree("core/fixtures/spectant-001.docs.golden.json")).toBe("spectant-001");
+    expect(derivedGoldenTree("core/fixtures/harbor/specs/tldr.md")).toBeNull();
+    expect(derivedGoldenTree("server/src/api.ts")).toBeNull();
+  });
+
+  test("a golden hit whose match sits on an allowed line of its own tree is allowed; others stay", () => {
+    const match = "~/.example/state/file";
+    const hits = [
+      { cls: "machine-path" as const, match, path: "core/fixtures/harbor.docs.golden.json", line: 12 },
+      { cls: "machine-path" as const, match, path: "core/fixtures/lantern.docs.golden.json", line: 3 },
+      { cls: "machine-path" as const, match, path: "server/src/api.ts", line: 8 },
+      { cls: "private-word" as const, match: "Acme", path: "core/fixtures/harbor.docs.golden.json", line: 20 },
+    ];
+    const allowed: Array<{ path: string; line: number; reason: string }> = [];
+    const kept = inheritFixtureAllows(hits, allowed, new Map([["harbor", [`- note ${match} <!-- leak:allow synthetic -->`]]]));
+    expect(kept.map((h) => `${h.path}:${h.line}`)).toEqual([
+      "core/fixtures/lantern.docs.golden.json:3",
+      "server/src/api.ts:8",
+      "core/fixtures/harbor.docs.golden.json:20",
+    ]);
+    expect(allowed).toEqual([{ path: "core/fixtures/harbor.docs.golden.json", line: 12, reason: "derived from an allowed line of core/fixtures/harbor" }]);
   });
 });

@@ -48,7 +48,7 @@ Reason: reshaping or re-parsing the model here makes a second parser (ISC-5); an
 - Container tiers on the shell container (`container: shell / inline-size`): compact < 640, medium 640–1119, wide
   ≥ 1120, never a viewport media query; spacing on the 8 px scale (4 / 8 / 16 / 24 / 32 / 48). Reason: the app runs
   in a 600 px cmux panel as often as full-window (ISC-63).
-- Inter Variable and JetBrains Mono as local woff2 only; `tabular-nums` on every number; mono for IDs, commands and
+- Manrope (text), Sora (wordmark and page title) and JetBrains Mono as local woff2 only (ISC-74); `tabular-nums` on every number; mono for IDs, commands and
   ports. Reason: no font request leaves the machine (ISC-67, 67.1); live numbers never shift layout (ISC-62.1).
 - Icons only from the pinned `lucide-static` version, only used icons inlined, rendered through `ui-icon`. Reason:
   ISC-18.2 checks every name against that version, and unused icons are dead weight.

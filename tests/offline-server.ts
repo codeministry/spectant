@@ -271,7 +271,8 @@ async function session(): Promise<number> {
   const serverOut = { text: "" };
   const serverErr = { text: "" };
   const drained = Promise.all([collect(server.stdout, serverOut), collect(server.stderr, serverErr)]);
-  const listening = `listening on http://127.0.0.1:${PORT}`;
+  // The start-up line the CLI prints since T50 (also matched by tests/binary.test.ts and tests/install/run.ts).
+  const listening = `spectant · http://127.0.0.1:${PORT}`;
   const deadline = Date.now() + START_TIMEOUT_MS;
   while (!serverOut.text.includes(listening) && server.exitCode === null && Date.now() < deadline) await sleep(100);
   const up = serverOut.text.includes(listening);
@@ -329,6 +330,13 @@ async function session(): Promise<number> {
   const hits = outboundHits(stderr);
   check("no outbound error in stderr", hits.length === 0, hits.length === 0 ? "clean" : hits.join(" / "));
   if (stderr.trim() !== "") console.log(`----- spectant stderr -----\n${stderr.trim()}\n---------------------------`);
+  // The session runs as the container's root (the DNS trap binds port 53). Open up what it wrote to /data so the
+  // host side, which is a plain user on Linux runners, can remove its temporary data directory afterwards.
+  try {
+    Bun.spawnSync(["chmod", "-R", "a+rwX", "/data"], { stdout: "ignore", stderr: "ignore" });
+  } catch {
+    // best effort; the host prints a notice when the removal still fails
+  }
   return failures.length > 0 ? EXIT_FAILED : EXIT_PASSED;
 }
 

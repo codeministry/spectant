@@ -1,0 +1,296 @@
+{
+  "specs/001-reading-list": {
+    "claims": [
+      {
+        "id": "ISC-3",
+        "text": "A link is saved from the address bar in one step.",
+        "feature": "F1",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-3",
+          "type": "e2e",
+          "check": "save a link from the address bar",
+          "threshold": "1 step",
+          "tool": "`bun run e2e -- save -g \"one step\"`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun run e2e -- save -g \"one step\"` passed, 2026-03-05",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 67
+      },
+      {
+        "id": "ISC-4",
+        "text": "A saved link is still listed after a reload.",
+        "feature": "F1",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-3"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-4",
+          "type": "e2e",
+          "check": "saved link listed after reload",
+          "threshold": "listed",
+          "tool": "`bun run e2e -- save -g reload`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun run e2e -- save -g reload` passed, 2026-03-05",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 68
+      },
+      {
+        "id": "ISC-5",
+        "text": "A saved link gets the page title fetched at save time.",
+        "feature": "F1",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-3"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-5",
+          "type": "bun-test",
+          "check": "title fetched for a saved link",
+          "threshold": "title set",
+          "tool": "`bun test tests/title.test.ts`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun test tests/title.test.ts` passed, 2026-03-05",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 69
+      },
+      {
+        "id": "ISC-6",
+        "text": "Tags are stored with a link and restored with it.",
+        "feature": "F1",
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-6",
+          "type": "bun-test",
+          "check": "tags stored with a link",
+          "threshold": "round-trip",
+          "tool": "`bun test tests/tags.test.ts`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun test tests/tags.test.ts` passed, 2026-03-06",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 70
+      },
+      {
+        "id": "ISC-7",
+        "text": "Typing in the search box narrows the list to titles that match.",
+        "feature": "F1",
+        "state": "takeable",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-7",
+          "type": "e2e",
+          "check": "search by title narrows the list",
+          "threshold": "only matches",
+          "tool": "`bun run e2e -- search -g title`",
+          "anchorsTo": "derived: find-again",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 71
+      },
+      {
+        "id": "ISC-8",
+        "text": "Typing a tag narrows the list to links carrying it.",
+        "feature": "F1",
+        "state": "blocked",
+        "kind": "normal",
+        "edges": [
+          "ISC-7"
+        ],
+        "blockedBy": [
+          "ISC-7"
+        ],
+        "probe": {
+          "isc": "ISC-8",
+          "type": "e2e",
+          "check": "search by tag narrows the list",
+          "threshold": "only matches",
+          "tool": "`bun run e2e -- search -g tag`",
+          "anchorsTo": "derived: find-again",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 72
+      },
+      {
+        "id": "ISC-9",
+        "text": "A saved article's text is readable with the network switched off.",
+        "feature": "F1",
+        "state": "takeable",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-9",
+          "type": "e2e",
+          "check": "saved article readable offline",
+          "threshold": "text shown",
+          "tool": "`bun run e2e -- offline -g read`",
+          "anchorsTo": "derived: read-offline",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 73
+      },
+      {
+        "id": "ISC-10",
+        "text": "The reading view has no horizontal overflow at 390 px.",
+        "feature": "F1",
+        "state": "blocked",
+        "kind": "normal",
+        "edges": [
+          "ISC-9"
+        ],
+        "blockedBy": [
+          "ISC-9"
+        ],
+        "probe": {
+          "isc": "ISC-10",
+          "type": "browser",
+          "check": "reading view at 390 px",
+          "threshold": "no horizontal overflow",
+          "tool": "`bun run test:browser -- reading`",
+          "anchorsTo": "derived: read-offline",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 74
+      }
+    ],
+    "features": [
+      {
+        "id": "F1",
+        "title": "Reading list",
+        "why": "a link saved once is found again later and can be read without a connection.",
+        "claims": [
+          "ISC-3",
+          "ISC-4",
+          "ISC-5",
+          "ISC-6",
+          "ISC-7",
+          "ISC-8",
+          "ISC-9",
+          "ISC-10"
+        ]
+      }
+    ],
+    "fog": [],
+    "counts": {
+      "all": 8,
+      "open": 4,
+      "takeable": 2,
+      "taken": 0,
+      "blocked": 2,
+      "closed": 4,
+      "dropped": 0,
+      "normal": 8,
+      "anti": 0,
+      "antecedent": 0
+    }
+  },
+  "specs/002-duplicate-links": {
+    "claims": [
+      {
+        "id": "ISC-11",
+        "text": "saving the same link twice creates a second entry.",
+        "feature": null,
+        "state": "takeable",
+        "kind": "anti",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-11",
+          "type": "bun-test",
+          "check": "saving the same link twice",
+          "threshold": "1 entry",
+          "tool": "`bun test tests/save.test.ts -t duplicate`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 33
+      },
+      {
+        "id": "ISC-12",
+        "text": "a tag with a trailing space is stored as a second, different tag.",
+        "feature": null,
+        "state": "takeable",
+        "kind": "anti",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-12",
+          "type": "e2e",
+          "check": "tag with a trailing space",
+          "threshold": "1 tag",
+          "tool": "`bun run e2e -- tags -g trim`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 34
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 2,
+      "open": 2,
+      "takeable": 2,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 0,
+      "dropped": 0,
+      "normal": 0,
+      "anti": 2,
+      "antecedent": 0
+    }
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "constitution": {
+    "frontmatter": {
+      "repo": "lantern",
+      "derived": "2026-03-03T08:00:00Z",
+      "standards_version": "1.0.0",
+      "design_track": "app",
+      "viewports": "[390, 820, 1440]",
+      "stack": "[bun, typescript, angular]"
+    },
+    "html": "<h1 id=\"constitution-lantern\">Constitution — lantern</h1>\n<blockquote><p>Derived on 2026-03-03 from the sources listed below. The rules live in those sources; this file says which of them bind spec work, where to read them, and what proves them.</p></blockquote>\n<h2 id=\"binding-sources\">Binding sources</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Source</th><th>Kind</th><th>Governs</th></tr></thead><tbody><tr><td><code>CLAUDE.md</code></td><td>repo</td><td>the offline rule, the one lane</td></tr><tr><td><code>ISA.md</code> § Principles, § Constraints</td><td>repo</td><td>the reader owns the list, single-page app</td></tr></tbody></table></div>\n<h2 id=\"non-negotiables\">Non-negotiables</h2>\n<p>Every rule in the binding sources applies.</p>\n<div class=\"mdtable\"><table><thead><tr><th>Rule</th><th>Source</th><th>Verdict</th><th>Probe</th></tr></thead><tbody><tr><td>XC-01 bun, never npm</td><td>repo <code>CLAUDE.md</code></td><td>binding</td><td><code>bun run check:static</code></td></tr></tbody></table></div>\n<h2 id=\"gates\">Gates</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Tier</th><th>Command</th><th>Runs when</th></tr></thead><tbody><tr><td>static</td><td><code>bun run check:static</code></td><td>before every claim closes</td></tr><tr><td>quick</td><td><code>bun run verify:quick</code></td><td>at every implementation stop</td></tr><tr><td>full</td><td><code>bun run verify</code></td><td>before a spec is marked complete</td></tr></tbody></table></div>\n<h2 id=\"lanes\">Lanes</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Lane</th><th>Path prefixes</th><th>Context a worker loads</th><th>Lane probe</th></tr></thead><tbody><tr><td>web</td><td><code>src/</code>, <code>tests/</code></td><td><code>CLAUDE.md</code></td><td><code>bun test</code></td></tr></tbody></table></div>\n<h2 id=\"how-specs-are-held-to-it\">How specs are held to it</h2>\n<p>Every new spec is read against <code>## Non-negotiables</code> before its claims are minted.</p>",
+    "toc": [
+      {
+        "level": 2,
+        "text": "Binding sources",
+        "anchor": "binding-sources"
+      },
+      {
+        "level": 2,
+        "text": "Non-negotiables",
+        "anchor": "non-negotiables"
+      },
+      {
+        "level": 2,
+        "text": "Gates",
+        "anchor": "gates"
+      },
+      {
+        "level": 2,
+        "text": "Lanes",
+        "anchor": "lanes"
+      },
+      {
+        "level": 2,
+        "text": "How specs are held to it",
+        "anchor": "how-specs-are-held-to-it"
+      }
+    ],
+    "figures": [],
+    "sections": [
+      {
+        "id": "constitution-lantern",
+        "heading": "Constitution — lantern",
+        "level": 1
+      },
+      {
+        "id": "binding-sources",
+        "heading": "Binding sources",
+        "level": 2
+      },
+      {
+        "id": "non-negotiables",
+        "heading": "Non-negotiables",
+        "level": 2
+      },
+      {
+        "id": "gates",
+        "heading": "Gates",
+        "level": 2
+      },
+      {
+        "id": "lanes",
+        "heading": "Lanes",
+        "level": 2
+      },
+      {
+        "id": "how-specs-are-held-to-it",
+        "heading": "How specs are held to it",
+        "level": 2
+      }
+    ],
+    "wordCount": 151
+  },
+  "specs": {
+    "specs/001-reading-list": {
+      "plan": {
+        "frontmatter": {
+          "spec": "001-reading-list",
+          "type": "feature",
+          "status": "approved",
+          "updated": "2026-03-03"
+        },
+        "html": "<h1 id=\"plan-001-reading-list\">Plan 001 — Reading list</h1>\n<p><strong>Purpose:</strong> how the claims in <code>spec.md</code> get built. The what lives there; this file holds no acceptance criterion.</p>\n<h2 id=\"approach\">Approach</h2>\n<p>Store each saved link with its fetched text in IndexedDB at save time, so reading offline is a read from the same store the list uses. Fetching the text only when the reader opens an article would fail exactly when there is no connection.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n    S[save] --&gt; F[fetch title and text]\n    F --&gt; DB[(IndexedDB)]\n    DB --&gt; L[list and search]\n    DB --&gt; R[reading view]</pre><figcaption>Approach</figcaption></figure>\n<h2 id=\"affected-files-and-modules\">Affected Files and Modules</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Path</th><th>Change</th><th>Claim</th></tr></thead><tbody><tr><td><code>src/app/save/</code></td><td>new: the save action</td><td>ISC-3</td></tr><tr><td><code>src/app/store.ts</code></td><td>new: the IndexedDB store</td><td>ISC-4</td></tr><tr><td><code>src/app/search/</code></td><td>new: title and tag search</td><td>ISC-7</td></tr><tr><td><code>src/app/reader/</code></td><td>new: the reading view</td><td>ISC-9</td></tr></tbody></table></div>\n<h2 id=\"risks\">Risks</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Risk</th><th>Blast radius</th><th>Early warning</th><th>Mitigation</th></tr></thead><tbody><tr><td>a page blocks text extraction</td><td>one article</td><td>empty text at save</td><td>keep the link, mark the entry &quot;online only&quot;</td></tr></tbody></table></div>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Approach",
+            "anchor": "approach"
+          },
+          {
+            "level": 2,
+            "text": "Affected Files and Modules",
+            "anchor": "affected-files-and-modules"
+          },
+          {
+            "level": 2,
+            "text": "Risks",
+            "anchor": "risks"
+          }
+        ],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n    S[save] --> F[fetch title and text]\n    F --> DB[(IndexedDB)]\n    DB --> L[list and search]\n    DB --> R[reading view]",
+            "caption": "Approach"
+          }
+        ],
+        "sections": [
+          {
+            "id": "plan-001-reading-list",
+            "heading": "Plan 001 — Reading list",
+            "level": 1
+          },
+          {
+            "id": "approach",
+            "heading": "Approach",
+            "level": 2
+          },
+          {
+            "id": "affected-files-and-modules",
+            "heading": "Affected Files and Modules",
+            "level": 2
+          },
+          {
+            "id": "risks",
+            "heading": "Risks",
+            "level": 2
+          }
+        ],
+        "wordCount": 135
+      },
+      "design": null,
+      "decisions": {
+        "frontmatter": {
+          "spec": "001-reading-list",
+          "created": "2026-03-03T09:00:00Z",
+          "updated": "2026-03-03T09:30:00Z",
+          "rounds": "1"
+        },
+        "html": "<h1 id=\"context-001-reading-list\">Context 001 — Reading list</h1>\n<h2 id=\"goal-confirmed-2026-03-03t09-30-00z\">Goal — confirmed 2026-03-03T09:30:00Z</h2>\n<p>A reader saves a link in one step, finds it again by title or tag, and reads it offline.</p>\n<h2 id=\"round-1-no-gaps-the-repo-could-not-close-2026-03-03t09-30-00z\">Round 1 — no gaps the repo could not close, 2026-03-03T09:30:00Z</h2>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Goal — confirmed 2026-03-03T09:30:00Z",
+            "anchor": "goal-confirmed-2026-03-03t09-30-00z"
+          },
+          {
+            "level": 2,
+            "text": "Round 1 — no gaps the repo could not close, 2026-03-03T09:30:00Z",
+            "anchor": "round-1-no-gaps-the-repo-could-not-close-2026-03-03t09-30-00z"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "context-001-reading-list",
+            "heading": "Context 001 — Reading list",
+            "level": 1
+          },
+          {
+            "id": "goal-confirmed-2026-03-03t09-30-00z",
+            "heading": "Goal — confirmed 2026-03-03T09:30:00Z",
+            "level": 2
+          },
+          {
+            "id": "round-1-no-gaps-the-repo-could-not-close-2026-03-03t09-30-00z",
+            "heading": "Round 1 — no gaps the repo could not close, 2026-03-03T09:30:00Z",
+            "level": 2
+          }
+        ],
+        "wordCount": 40
+      }
+    },
+    "specs/002-duplicate-links": {
+      "plan": null,
+      "design": null,
+      "decisions": {
+        "frontmatter": {
+          "spec": "002-duplicate-links",
+          "created": "2026-03-06T10:00:00Z",
+          "updated": "2026-03-06T10:20:00Z",
+          "rounds": "1"
+        },
+        "html": "<h1 id=\"context-002-duplicate-links-and-tags\">Context 002 — Duplicate links and tags</h1>\n<h2 id=\"goal-confirmed-2026-03-06t10-20-00z\">Goal — confirmed 2026-03-06T10:20:00Z</h2>\n<p>Saving a known link or a known tag again changes nothing in the list.</p>\n<h2 id=\"round-1-no-gaps-the-repo-could-not-close-2026-03-06t10-20-00z\">Round 1 — no gaps the repo could not close, 2026-03-06T10:20:00Z</h2>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Goal — confirmed 2026-03-06T10:20:00Z",
+            "anchor": "goal-confirmed-2026-03-06t10-20-00z"
+          },
+          {
+            "level": 2,
+            "text": "Round 1 — no gaps the repo could not close, 2026-03-06T10:20:00Z",
+            "anchor": "round-1-no-gaps-the-repo-could-not-close-2026-03-06t10-20-00z"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "context-002-duplicate-links-and-tags",
+            "heading": "Context 002 — Duplicate links and tags",
+            "level": 1
+          },
+          {
+            "id": "goal-confirmed-2026-03-06t10-20-00z",
+            "heading": "Goal — confirmed 2026-03-06T10:20:00Z",
+            "level": 2
+          },
+          {
+            "id": "round-1-no-gaps-the-repo-could-not-close-2026-03-06t10-20-00z",
+            "heading": "Round 1 — no gaps the repo could not close, 2026-03-06T10:20:00Z",
+            "level": 2
+          }
+        ],
+        "wordCount": 37
+      }
+    }
+  }
+}

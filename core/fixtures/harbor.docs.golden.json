@@ -1,0 +1,553 @@
+{
+  "constitution": {
+    "frontmatter": {
+      "repo": "harbor",
+      "derived": "2026-03-02T08:00:00Z",
+      "standards_version": "1.0.0",
+      "design_track": "app",
+      "viewports": "[390, 820, 1440]",
+      "dev_services": "4200=Web dev, 8080=API",
+      "stack": "[bun, typescript, angular]"
+    },
+    "html": "<h1 id=\"constitution-harbor\">Constitution — harbor</h1>\n<blockquote><p>Derived on 2026-03-02 from the sources listed below. The rules live in those sources; this file says which of them bind spec work, where to read them, and what proves them.</p></blockquote>\n<h2 id=\"binding-sources\">Binding sources</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Source</th><th>Kind</th><th>Governs</th></tr></thead><tbody><tr><td><code>CLAUDE.md</code> (root and nested)</td><td>repo</td><td>lanes, the loopback rule, redaction</td></tr><tr><td><code>ISA.md</code> § Principles, § Constraints</td><td>repo</td><td>atomic push, registry as the truth, no credential in any output</td></tr></tbody></table></div>\n<h2 id=\"non-negotiables\">Non-negotiables</h2>\n<p>Every rule in the binding sources applies, except what stands under <code>## Adaptations</code>.</p>\n<div class=\"mdtable\"><table><thead><tr><th>Rule</th><th>Source</th><th>Verdict</th><th>Probe</th></tr></thead><tbody><tr><td>XC-01 bun, never npm</td><td>repo <code>CLAUDE.md</code></td><td>binding</td><td><code>bun run check:static</code></td></tr><tr><td>XC-10 nothing individual in a committed file</td><td>repo <code>CLAUDE.md</code></td><td>binding</td><td><code>bun run check:leak</code></td></tr></tbody></table></div>\n<h2 id=\"gates\">Gates</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Tier</th><th>Command</th><th>Runs when</th></tr></thead><tbody><tr><td>static</td><td><code>bun run check:static</code></td><td>before every claim closes</td></tr><tr><td>quick</td><td><code>bun run verify:quick</code></td><td>at every implementation stop</td></tr><tr><td>full</td><td><code>bun run verify</code></td><td>before a spec is marked complete</td></tr></tbody></table></div>\n<h2 id=\"lanes\">Lanes</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Lane</th><th>Path prefixes</th><th>Context a worker loads</th><th>Lane probe</th></tr></thead><tbody><tr><td>cli</td><td><code>cli/</code></td><td><code>cli/CLAUDE.md</code></td><td><code>bun test cli/</code></td></tr><tr><td>api</td><td><code>api/</code>, <code>tests/</code></td><td><code>api/CLAUDE.md</code></td><td><code>bun test api/</code></td></tr><tr><td>web</td><td><code>web/</code></td><td><code>web/CLAUDE.md</code></td><td><code>bun run --cwd web test</code></td></tr></tbody></table></div>\n<h2 id=\"how-specs-are-held-to-it\">How specs are held to it</h2>\n<p>Every new spec is read against <code>## Non-negotiables</code> before its claims are minted. A plan that departs from a binding row names the rule in <code>## Stack Decisions</code> with the reason.</p>",
+    "toc": [
+      {
+        "level": 2,
+        "text": "Binding sources",
+        "anchor": "binding-sources"
+      },
+      {
+        "level": 2,
+        "text": "Non-negotiables",
+        "anchor": "non-negotiables"
+      },
+      {
+        "level": 2,
+        "text": "Gates",
+        "anchor": "gates"
+      },
+      {
+        "level": 2,
+        "text": "Lanes",
+        "anchor": "lanes"
+      },
+      {
+        "level": 2,
+        "text": "How specs are held to it",
+        "anchor": "how-specs-are-held-to-it"
+      }
+    ],
+    "figures": [],
+    "sections": [
+      {
+        "id": "constitution-harbor",
+        "heading": "Constitution — harbor",
+        "level": 1
+      },
+      {
+        "id": "binding-sources",
+        "heading": "Binding sources",
+        "level": 2
+      },
+      {
+        "id": "non-negotiables",
+        "heading": "Non-negotiables",
+        "level": 2
+      },
+      {
+        "id": "gates",
+        "heading": "Gates",
+        "level": 2
+      },
+      {
+        "id": "lanes",
+        "heading": "Lanes",
+        "level": 2
+      },
+      {
+        "id": "how-specs-are-held-to-it",
+        "heading": "How specs are held to it",
+        "level": 2
+      }
+    ],
+    "wordCount": 214
+  },
+  "specs": {
+    "specs/002-web-console": {
+      "plan": {
+        "frontmatter": {
+          "spec": "002-web-console",
+          "type": "feature",
+          "status": "approved",
+          "updated": "2026-03-03"
+        },
+        "html": "<h1 id=\"plan-002-web-console\">Plan 002 — Web console</h1>\n<p><strong>Purpose:</strong> how the claims in <code>spec.md</code> get built. The what lives there; this file holds no acceptance criterion.</p>\n<h2 id=\"approach\">Approach</h2>\n<p>Serve a static Angular build from the API and read everything through one history endpoint. A separate console server would be one more process to run and secure.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n    subgraph api\n        H[history endpoint] --&gt; S[static files]\n    end\n    subgraph web\n        L[registry list] --&gt; V[repository view]\n    end\n    V --&gt; H</pre><figcaption>Approach</figcaption></figure>\n<h2 id=\"affected-files-and-modules\">Affected Files and Modules</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Path</th><th>Change</th><th>Claim</th></tr></thead><tbody><tr><td><code>api/src/history.ts</code></td><td>new: history endpoint</td><td>ISC-55</td></tr><tr><td><code>web/src/app/</code></td><td>new: the console</td><td>ISC-51</td></tr></tbody></table></div>\n<h2 id=\"risks\">Risks</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Risk</th><th>Blast radius</th><th>Early warning</th><th>Mitigation</th></tr></thead><tbody><tr><td>history file grows large</td><td>console load time</td><td>p95 over 300 ms</td><td>paginate the endpoint</td></tr></tbody></table></div>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Approach",
+            "anchor": "approach"
+          },
+          {
+            "level": 2,
+            "text": "Affected Files and Modules",
+            "anchor": "affected-files-and-modules"
+          },
+          {
+            "level": 2,
+            "text": "Risks",
+            "anchor": "risks"
+          }
+        ],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n    subgraph api\n        H[history endpoint] --> S[static files]\n    end\n    subgraph web\n        L[registry list] --> V[repository view]\n    end\n    V --> H",
+            "caption": "Approach"
+          }
+        ],
+        "sections": [
+          {
+            "id": "plan-002-web-console",
+            "heading": "Plan 002 — Web console",
+            "level": 1
+          },
+          {
+            "id": "approach",
+            "heading": "Approach",
+            "level": 2
+          },
+          {
+            "id": "affected-files-and-modules",
+            "heading": "Affected Files and Modules",
+            "level": 2
+          },
+          {
+            "id": "risks",
+            "heading": "Risks",
+            "level": 2
+          }
+        ],
+        "wordCount": 95
+      },
+      "design": null,
+      "decisions": {
+        "frontmatter": {
+          "spec": "002-web-console",
+          "created": "2026-03-03T10:00:00Z",
+          "updated": "2026-03-08T16:45:00Z",
+          "rounds": "1"
+        },
+        "html": "<h1 id=\"context-002-web-console\">Context 002 — Web console</h1>\n<h2 id=\"goal-confirmed-2026-03-03t10-00-00z\">Goal — confirmed 2026-03-03T10:00:00Z</h2>\n<p>A teammate opens the console, finds any mirrored repository in two steps, and sees each sync run with its failures, on a phone-sized screen and with the keyboard alone.</p>\n<h2 id=\"round-1-no-gaps-the-repo-could-not-close-2026-03-03t10-00-00z\">Round 1 — no gaps the repo could not close, 2026-03-03T10:00:00Z</h2>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Goal — confirmed 2026-03-03T10:00:00Z",
+            "anchor": "goal-confirmed-2026-03-03t10-00-00z"
+          },
+          {
+            "level": 2,
+            "text": "Round 1 — no gaps the repo could not close, 2026-03-03T10:00:00Z",
+            "anchor": "round-1-no-gaps-the-repo-could-not-close-2026-03-03t10-00-00z"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "context-002-web-console",
+            "heading": "Context 002 — Web console",
+            "level": 1
+          },
+          {
+            "id": "goal-confirmed-2026-03-03t10-00-00z",
+            "heading": "Goal — confirmed 2026-03-03T10:00:00Z",
+            "level": 2
+          },
+          {
+            "id": "round-1-no-gaps-the-repo-could-not-close-2026-03-03t10-00-00z",
+            "heading": "Round 1 — no gaps the repo could not close, 2026-03-03T10:00:00Z",
+            "level": 2
+          }
+        ],
+        "wordCount": 50
+      }
+    },
+    "specs/003-config-loader": {
+      "plan": {
+        "frontmatter": {
+          "spec": "003-config-loader",
+          "type": "refactor",
+          "status": "draft",
+          "updated": "2026-03-06"
+        },
+        "html": "<h1 id=\"plan-003-config-loader-rewrite\">Plan 003 — Config loader rewrite</h1>\n<p><strong>Purpose:</strong> how the claims in <code>spec.md</code> get built. The what lives there; this file holds no acceptance criterion.</p>\n<h2 id=\"approach\">Approach</h2>\n<p>Snapshot the effective config for every case first, then move each package onto the shared loader one at a time. Rewriting all three at once would leave no working reference to compare against.</p>\n<h2 id=\"affected-files-and-modules\">Affected Files and Modules</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Path</th><th>Change</th><th>Claim</th></tr></thead><tbody><tr><td><code>cli/src/config.ts</code></td><td>becomes the shared loader</td><td>ISC-81</td></tr><tr><td><code>api/src/config.ts</code></td><td>removed; imports the shared loader</td><td>ISC-83</td></tr></tbody></table></div>\n<h2 id=\"risks\">Risks</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Risk</th><th>Blast radius</th><th>Early warning</th><th>Mitigation</th></tr></thead><tbody><tr><td>a package reads a key the snapshot never covered</td><td>one package</td><td>parity test gap</td><td>grep for every key before the move</td></tr></tbody></table></div>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Approach",
+            "anchor": "approach"
+          },
+          {
+            "level": 2,
+            "text": "Affected Files and Modules",
+            "anchor": "affected-files-and-modules"
+          },
+          {
+            "level": 2,
+            "text": "Risks",
+            "anchor": "risks"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "plan-003-config-loader-rewrite",
+            "heading": "Plan 003 — Config loader rewrite",
+            "level": 1
+          },
+          {
+            "id": "approach",
+            "heading": "Approach",
+            "level": 2
+          },
+          {
+            "id": "affected-files-and-modules",
+            "heading": "Affected Files and Modules",
+            "level": 2
+          },
+          {
+            "id": "risks",
+            "heading": "Risks",
+            "level": 2
+          }
+        ],
+        "wordCount": 112
+      },
+      "design": null,
+      "decisions": {
+        "frontmatter": {
+          "spec": "003-config-loader",
+          "created": "2026-03-06T09:00:00Z",
+          "updated": "2026-03-09T17:30:00Z",
+          "rounds": "1"
+        },
+        "html": "<h1 id=\"context-003-config-loader-rewrite\">Context 003 — Config loader rewrite</h1>\n<h2 id=\"goal-confirmed-2026-03-06t09-00-00z\">Goal — confirmed 2026-03-06T09:00:00Z</h2>\n<p>The CLI, the API and the console read their configuration through one loader, and the effective config for every case in the snapshot corpus is unchanged.</p>\n<h2 id=\"round-1-no-gaps-the-repo-could-not-close-2026-03-06t09-00-00z\">Round 1 — no gaps the repo could not close, 2026-03-06T09:00:00Z</h2>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Goal — confirmed 2026-03-06T09:00:00Z",
+            "anchor": "goal-confirmed-2026-03-06t09-00-00z"
+          },
+          {
+            "level": 2,
+            "text": "Round 1 — no gaps the repo could not close, 2026-03-06T09:00:00Z",
+            "anchor": "round-1-no-gaps-the-repo-could-not-close-2026-03-06t09-00-00z"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "context-003-config-loader-rewrite",
+            "heading": "Context 003 — Config loader rewrite",
+            "level": 1
+          },
+          {
+            "id": "goal-confirmed-2026-03-06t09-00-00z",
+            "heading": "Goal — confirmed 2026-03-06T09:00:00Z",
+            "level": 2
+          },
+          {
+            "id": "round-1-no-gaps-the-repo-could-not-close-2026-03-06t09-00-00z",
+            "heading": "Round 1 — no gaps the repo could not close, 2026-03-06T09:00:00Z",
+            "level": 2
+          }
+        ],
+        "wordCount": 48
+      }
+    },
+    "specs/004-retention-policies": {
+      "plan": {
+        "frontmatter": {
+          "spec": "004-retention-policies",
+          "type": "feature",
+          "status": "approved",
+          "updated": "2026-03-04"
+        },
+        "html": "<h1 id=\"plan-004-retention-policies\">Plan 004 — Retention policies</h1>\n<p><strong>Purpose:</strong> how the claims in <code>spec.md</code> get built. The what lives there; this file holds no acceptance criterion.</p>\n<h2 id=\"approach\">Approach</h2>\n<p>Evaluate policies into a preview first and delete only from a confirmed preview. Deleting inline while evaluating would make the preview a guess.</p>\n<h2 id=\"affected-files-and-modules\">Affected Files and Modules</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Path</th><th>Change</th><th>Claim</th></tr></thead><tbody><tr><td><code>api/src/retention.ts</code></td><td>new: policy evaluation and preview</td><td>ISC-95</td></tr><tr><td><code>web/src/app/retention/</code></td><td>new: the preview view</td><td>ISC-115</td></tr></tbody></table></div>\n<h2 id=\"risks\">Risks</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Risk</th><th>Blast radius</th><th>Early warning</th><th>Mitigation</th></tr></thead><tbody><tr><td>a tag moves between preview and run</td><td>one manifest</td><td>digest mismatch at delete</td><td>re-check references at delete time</td></tr></tbody></table></div>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Approach",
+            "anchor": "approach"
+          },
+          {
+            "level": 2,
+            "text": "Affected Files and Modules",
+            "anchor": "affected-files-and-modules"
+          },
+          {
+            "level": 2,
+            "text": "Risks",
+            "anchor": "risks"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "plan-004-retention-policies",
+            "heading": "Plan 004 — Retention policies",
+            "level": 1
+          },
+          {
+            "id": "approach",
+            "heading": "Approach",
+            "level": 2
+          },
+          {
+            "id": "affected-files-and-modules",
+            "heading": "Affected Files and Modules",
+            "level": 2
+          },
+          {
+            "id": "risks",
+            "heading": "Risks",
+            "level": 2
+          }
+        ],
+        "wordCount": 98
+      },
+      "design": null,
+      "decisions": {
+        "frontmatter": {
+          "spec": "004-retention-policies",
+          "created": "2026-03-04T08:30:00Z",
+          "updated": "2026-03-08T12:00:00Z",
+          "rounds": "1"
+        },
+        "html": "<h1 id=\"context-004-retention-policies\">Context 004 — Retention policies</h1>\n<h2 id=\"goal-confirmed-2026-03-04t08-30-00z\">Goal — confirmed 2026-03-04T08:30:00Z</h2>\n<p>A team writes its retention policy once, sees its effect before anything goes, and no manifest that a tag still references is ever deleted.</p>\n<h2 id=\"round-1-no-gaps-the-repo-could-not-close-2026-03-04t08-30-00z\">Round 1 — no gaps the repo could not close, 2026-03-04T08:30:00Z</h2>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Goal — confirmed 2026-03-04T08:30:00Z",
+            "anchor": "goal-confirmed-2026-03-04t08-30-00z"
+          },
+          {
+            "level": 2,
+            "text": "Round 1 — no gaps the repo could not close, 2026-03-04T08:30:00Z",
+            "anchor": "round-1-no-gaps-the-repo-could-not-close-2026-03-04t08-30-00z"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "context-004-retention-policies",
+            "heading": "Context 004 — Retention policies",
+            "level": 1
+          },
+          {
+            "id": "goal-confirmed-2026-03-04t08-30-00z",
+            "heading": "Goal — confirmed 2026-03-04T08:30:00Z",
+            "level": 2
+          },
+          {
+            "id": "round-1-no-gaps-the-repo-could-not-close-2026-03-04t08-30-00z",
+            "heading": "Round 1 — no gaps the repo could not close, 2026-03-04T08:30:00Z",
+            "level": 2
+          }
+        ],
+        "wordCount": 45
+      }
+    },
+    "specs/005-config-format-choice": {
+      "plan": null,
+      "design": null,
+      "decisions": {
+        "frontmatter": {
+          "spec": "005-config-format-choice",
+          "created": "2026-03-07T13:00:00Z",
+          "updated": "2026-03-07T14:00:00Z",
+          "rounds": "1"
+        },
+        "html": "<h1 id=\"context-005-config-format-choice\">Context 005 — Config format choice</h1>\n<h2 id=\"goal-confirmed-2026-03-07t13-00-00z\">Goal — confirmed 2026-03-07T13:00:00Z</h2>\n<p>A recorded decision names the config format for version 2 and the one trade-off that decided it.</p>\n<h2 id=\"round-1-no-gaps-the-repo-could-not-close-2026-03-07t13-00-00z\">Round 1 — no gaps the repo could not close, 2026-03-07T13:00:00Z</h2>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Goal — confirmed 2026-03-07T13:00:00Z",
+            "anchor": "goal-confirmed-2026-03-07t13-00-00z"
+          },
+          {
+            "level": 2,
+            "text": "Round 1 — no gaps the repo could not close, 2026-03-07T13:00:00Z",
+            "anchor": "round-1-no-gaps-the-repo-could-not-close-2026-03-07t13-00-00z"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "context-005-config-format-choice",
+            "heading": "Context 005 — Config format choice",
+            "level": 1
+          },
+          {
+            "id": "goal-confirmed-2026-03-07t13-00-00z",
+            "heading": "Goal — confirmed 2026-03-07T13:00:00Z",
+            "level": 2
+          },
+          {
+            "id": "round-1-no-gaps-the-repo-could-not-close-2026-03-07t13-00-00z",
+            "heading": "Round 1 — no gaps the repo could not close, 2026-03-07T13:00:00Z",
+            "level": 2
+          }
+        ],
+        "wordCount": 39
+      }
+    },
+    "specs/006-partial-push": {
+      "plan": null,
+      "design": null,
+      "decisions": {
+        "frontmatter": {
+          "spec": "006-partial-push",
+          "created": "2026-03-08T09:00:00Z",
+          "updated": "2026-03-09T10:15:00Z",
+          "rounds": "1"
+        },
+        "html": "<h1 id=\"context-006-partial-push-after-a-timeout\">Context 006 — Partial push after a timeout</h1>\n<h2 id=\"goal-confirmed-2026-03-08t09-00-00z\">Goal — confirmed 2026-03-08T09:00:00Z</h2>\n<p>A push interrupted at any point leaves the target registry exactly as it was before the push started.</p>\n<h2 id=\"round-1-no-gaps-the-repo-could-not-close-2026-03-08t09-00-00z\">Round 1 — no gaps the repo could not close, 2026-03-08T09:00:00Z</h2>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Goal — confirmed 2026-03-08T09:00:00Z",
+            "anchor": "goal-confirmed-2026-03-08t09-00-00z"
+          },
+          {
+            "level": 2,
+            "text": "Round 1 — no gaps the repo could not close, 2026-03-08T09:00:00Z",
+            "anchor": "round-1-no-gaps-the-repo-could-not-close-2026-03-08t09-00-00z"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "context-006-partial-push-after-a-timeout",
+            "heading": "Context 006 — Partial push after a timeout",
+            "level": 1
+          },
+          {
+            "id": "goal-confirmed-2026-03-08t09-00-00z",
+            "heading": "Goal — confirmed 2026-03-08T09:00:00Z",
+            "level": 2
+          },
+          {
+            "id": "round-1-no-gaps-the-repo-could-not-close-2026-03-08t09-00-00z",
+            "heading": "Round 1 — no gaps the repo could not close, 2026-03-08T09:00:00Z",
+            "level": 2
+          }
+        ],
+        "wordCount": 42
+      }
+    },
+    "specs/archive/001-manifest-sync": {
+      "plan": {
+        "frontmatter": {
+          "spec": "001-manifest-sync",
+          "type": "feature",
+          "status": "approved",
+          "updated": "2026-03-02"
+        },
+        "html": "<h1 id=\"plan-001-manifest-sync\">Plan 001 — Manifest sync</h1>\n<p><strong>Purpose:</strong> how the claims in <code>spec.md</code> get built. The what lives there; this file holds no acceptance criterion.</p>\n<h2 id=\"approach\">Approach</h2>\n<p>Copy blobs first and the manifest last, keyed on digest, so an interrupted run leaves nothing half-written. The obvious tag-keyed copy would re-upload whenever an upstream tag moved.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n    A[read config] --&gt; B[resolve digests]\n    B --&gt; C[copy missing blobs]\n    C --&gt; D[push manifest]\n    D --&gt; E[append history]</pre><figcaption>Approach</figcaption></figure>\n<h2 id=\"affected-files-and-modules\">Affected Files and Modules</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Path</th><th>Change</th><th>Claim</th></tr></thead><tbody><tr><td><code>cli/src/sync.ts</code></td><td>new: the sync command</td><td>ISC-5</td></tr><tr><td><code>cli/src/registry.ts</code></td><td>new: registry client with retry</td><td>ISC-14</td></tr></tbody></table></div>\n<h2 id=\"risks\">Risks</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Risk</th><th>Blast radius</th><th>Early warning</th><th>Mitigation</th></tr></thead><tbody><tr><td>rate limits on the source</td><td>one run</td><td>429 in the log</td><td>back off and resume</td></tr></tbody></table></div>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Approach",
+            "anchor": "approach"
+          },
+          {
+            "level": 2,
+            "text": "Affected Files and Modules",
+            "anchor": "affected-files-and-modules"
+          },
+          {
+            "level": 2,
+            "text": "Risks",
+            "anchor": "risks"
+          }
+        ],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "mermaid",
+            "diagram": "flowchart",
+            "source": "flowchart LR\n    A[read config] --> B[resolve digests]\n    B --> C[copy missing blobs]\n    C --> D[push manifest]\n    D --> E[append history]",
+            "caption": "Approach"
+          }
+        ],
+        "sections": [
+          {
+            "id": "plan-001-manifest-sync",
+            "heading": "Plan 001 — Manifest sync",
+            "level": 1
+          },
+          {
+            "id": "approach",
+            "heading": "Approach",
+            "level": 2
+          },
+          {
+            "id": "affected-files-and-modules",
+            "heading": "Affected Files and Modules",
+            "level": 2
+          },
+          {
+            "id": "risks",
+            "heading": "Risks",
+            "level": 2
+          }
+        ],
+        "wordCount": 100
+      },
+      "design": null,
+      "decisions": {
+        "frontmatter": {
+          "spec": "001-manifest-sync",
+          "created": "2026-03-02T09:00:00Z",
+          "updated": "2026-03-05T15:00:00Z",
+          "rounds": "1"
+        },
+        "html": "<h1 id=\"context-001-manifest-sync\">Context 001 — Manifest sync</h1>\n<h2 id=\"goal-confirmed-2026-03-02t09-00-00z\">Goal — confirmed 2026-03-02T09:00:00Z</h2>\n<p><code>harbor sync</code> mirrors every listed manifest with an identical digest, and a second run uploads nothing.</p>\n<h2 id=\"round-1-no-gaps-the-repo-could-not-close-2026-03-02t09-00-00z\">Round 1 — no gaps the repo could not close, 2026-03-02T09:00:00Z</h2>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Goal — confirmed 2026-03-02T09:00:00Z",
+            "anchor": "goal-confirmed-2026-03-02t09-00-00z"
+          },
+          {
+            "level": 2,
+            "text": "Round 1 — no gaps the repo could not close, 2026-03-02T09:00:00Z",
+            "anchor": "round-1-no-gaps-the-repo-could-not-close-2026-03-02t09-00-00z"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "context-001-manifest-sync",
+            "heading": "Context 001 — Manifest sync",
+            "level": 1
+          },
+          {
+            "id": "goal-confirmed-2026-03-02t09-00-00z",
+            "heading": "Goal — confirmed 2026-03-02T09:00:00Z",
+            "level": 2
+          },
+          {
+            "id": "round-1-no-gaps-the-repo-could-not-close-2026-03-02t09-00-00z",
+            "heading": "Round 1 — no gaps the repo could not close, 2026-03-02T09:00:00Z",
+            "level": 2
+          }
+        ],
+        "wordCount": 37
+      }
+    }
+  }
+}

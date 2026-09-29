@@ -27,7 +27,8 @@ Lane `core`: paths `core/` and `FORMAT.md`. Load `FORMAT.md` and this file befor
 | `takeable.ts` | the takeable task set |
 | `diagrams.ts` | the diagram verdict |
 | `tldr.ts` | TL;DR staleness |
-| `markdown.ts` | the markdown renderer for the Brief |
+| `markdown.ts` | the markdown renderer: Brief mode and, for the docs tabs, document mode with figures and TOC |
+| `markdown-docs.ts` | the document layer on `markdown.ts`: frontmatter, sections, mermaid and image figures, `docsFor(type)` |
 | `archive.ts` | the archive listing |
 | `dashboard.ts` | assembles the dashboard model: the seam to `server/` and `web/` |
 

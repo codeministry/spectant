@@ -13,7 +13,9 @@
         "tasks",
         "context",
         "rounds",
-        "gateReviewed"
+        "gateReviewed",
+        "artifacts",
+        "evidence"
       ],
       "resolves": {
         "id": "specs/002-web-console",

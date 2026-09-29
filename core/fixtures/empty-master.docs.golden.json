@@ -1,0 +1,64 @@
+{
+  "constitution": {
+    "frontmatter": {
+      "repo": "quill",
+      "derived": "2026-03-04T08:30:00Z",
+      "standards_version": "none",
+      "design_track": "none",
+      "stack": "[bun, typescript]"
+    },
+    "html": "<h1 id=\"constitution-quill\">Constitution — quill</h1>\n<blockquote><p>Derived on 2026-03-04 from the sources listed below. The rules live in those sources; this file says which of them bind spec work, where to read them, and what proves them.</p></blockquote>\n<h2 id=\"binding-sources\">Binding sources</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Source</th><th>Kind</th><th>Governs</th></tr></thead><tbody><tr><td><code>ISA.md</code> § Features F0</td><td>repo</td><td>notes never leave the machine</td></tr></tbody></table></div>\n<h2 id=\"non-negotiables\">Non-negotiables</h2>\n<p>Every rule in the binding sources applies.</p>\n<div class=\"mdtable\"><table><thead><tr><th>Rule</th><th>Source</th><th>Verdict</th><th>Probe</th></tr></thead><tbody><tr><td>XC-01 bun, never npm</td><td>repo <code>ISA.md</code></td><td>binding</td><td>review</td></tr></tbody></table></div>\n<h2 id=\"gates\">Gates</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Tier</th><th>Command</th><th>Runs when</th></tr></thead><tbody><tr><td>static</td><td>— (not defined; no source yet)</td><td>before every claim closes</td></tr><tr><td>quick</td><td><code>bun test</code></td><td>at every implementation stop</td></tr><tr><td>full</td><td>— (not defined; no source yet)</td><td>before a spec is marked complete</td></tr></tbody></table></div>\n<h2 id=\"how-specs-are-held-to-it\">How specs are held to it</h2>\n<p>Every new spec is read against <code>## Non-negotiables</code> before its claims are minted.</p>",
+    "toc": [
+      {
+        "level": 2,
+        "text": "Binding sources",
+        "anchor": "binding-sources"
+      },
+      {
+        "level": 2,
+        "text": "Non-negotiables",
+        "anchor": "non-negotiables"
+      },
+      {
+        "level": 2,
+        "text": "Gates",
+        "anchor": "gates"
+      },
+      {
+        "level": 2,
+        "text": "How specs are held to it",
+        "anchor": "how-specs-are-held-to-it"
+      }
+    ],
+    "figures": [],
+    "sections": [
+      {
+        "id": "constitution-quill",
+        "heading": "Constitution — quill",
+        "level": 1
+      },
+      {
+        "id": "binding-sources",
+        "heading": "Binding sources",
+        "level": 2
+      },
+      {
+        "id": "non-negotiables",
+        "heading": "Non-negotiables",
+        "level": 2
+      },
+      {
+        "id": "gates",
+        "heading": "Gates",
+        "level": 2
+      },
+      {
+        "id": "how-specs-are-held-to-it",
+        "heading": "How specs are held to it",
+        "level": 2
+      }
+    ],
+    "wordCount": 121
+  },
+  "specs": {}
+}

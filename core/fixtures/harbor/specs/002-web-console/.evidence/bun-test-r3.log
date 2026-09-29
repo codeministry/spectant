@@ -1,0 +1,11 @@
+2026-03-08T11:18:00Z round 3 · bun test api/
+api/tests/history.test.ts:
+(pass) history > pages by 20
+(pass) history > keeps failed runs with their reason
+(pass) history > an empty history is an empty list
+api/tests/health.test.ts:
+(pass) health > answers on loopback only
+
+ 4 pass
+ 0 fail
+Ran 4 tests across 2 files.
