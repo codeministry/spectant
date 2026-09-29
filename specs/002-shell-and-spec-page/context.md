@@ -251,3 +251,14 @@ sources while `live` is built with the activity reading (ISC-72 consistency — 
 families); the two write routes answer 405 until T67/T69, which need the read-only carve-out T111 names; no `lock`
 icon in the icon set; `ui-filter-chips` has no multi-select. CI: `offline` green, `verify` red on the T46 repo
 integration test (`source: none` on the runner — diagnostic now surfaced), `leak` can drop `continue-on-error`.
+Round 10 landed T36 as commit 19dfa7a (2026-09-29): the header per design at the three tiers — living ring, workspace
+and spec pickers as popover at wide and bottom sheet at compact, live states with text for screen readers, palette
+field from 1280 px; the overlay primitives gained `data-autofocus` and a safe focus return (**ISC-73 stays open** for
+T37/T38, which share it). Shell e2e 39 passed on the main tree. Header CSS is under budget again; the initial bundle
+is still ~20 kB over (both i18n catalogues eager, eager page routes, `contract`/`files.ts` in main). Operator tasks of
+spec 001 stay with the principal: T59 (shell prerequisite, now met by T35/T36) awaits his tick, T16 the first release,
+T83 T78/T65.
+Round 11 dispatched (2026-09-29): T37 area menu and tab bar (ISC-76), then five parent overrides whose files overlap
+nothing else in flight — T53 spec dashboard (ISC-78), T58 evidence tab (ISC-83.1), T60 primitives glyph/state-chip/
+scrubber/disclosure/toast (ISC-88), T114 review-gate rule in core (ISC-99), T50 timeline route tests (ISC-36). T38 zen
+is held one round because it edits the same shell files as T37.
