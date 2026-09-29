@@ -107,6 +107,31 @@
       "actor": "Engineer"
     },
     {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "tasks → review",
+      "body": "- Undated: tasks.md exists; no `created:` and no context.md round \"before the tasks\"",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": "tasks",
+      "to": "review",
+      "undated": true
+    },
+    {
+      "ts": "2026-09-28T10:55:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "plan → tasks",
+      "body": "- Derived from: context.md `## Round 2 — before the plan`",
+      "ref": "tasks",
+      "id": "stage-tasks",
+      "actor": null,
+      "from": "plan",
+      "to": "tasks"
+    },
+    {
       "ts": "2026-09-28T10:55:00Z",
       "kind": "decision",
       "derived": false,
@@ -134,6 +159,18 @@
       "ref": "1",
       "id": "round-1",
       "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-28T09:40:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → plan",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": null,
+      "from": null,
+      "to": "plan"
     },
     {
       "ts": "2026-09-28T09:40:00Z",

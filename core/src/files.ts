@@ -9,6 +9,8 @@
 // Names are stable: the server's route contract (T44) and the web client import them. FORMAT.md (T2) has one section
 // per kind below, and scripts/check-format-doc.ts (T3) compares the two.
 
+import type { Diagnostic } from './diagnostics.ts';
+
 // ─── File kinds ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Every file kind the app reads for a spec, keyed by a stable name. */
@@ -179,14 +181,77 @@ export interface SpecHead {
   readonly id: string;
   /** `NNN-slug`, the folder name. */
   readonly slug: string;
-  /** The H1 without its `NNN —` prefix. */
+  /** The H1 without its `NNN —` prefix; the dashboard row's title when the file has no H1. */
   readonly title: string;
-  readonly type: SpecType;
+  /** Null when `spec_type:` is absent or unknown (the dashboard row's type). */
+  readonly type: SpecType | null;
   readonly stage: StageName;
   /** The next command, e.g. `/spec-implement 002`; null when the spec is done. */
   readonly nextCommand: string | null;
   /** Why that command is next, one sentence. */
   readonly nextReason: string;
+  /** Frontmatter `phase:` as written: a tooltip only, the stage is derived. */
+  readonly phase: string | null;
+  /** Frontmatter `started:` and `updated:` as written (ISO 8601). */
+  readonly started: string | null;
+  readonly updated: string | null;
+  /** The highest round number in rounds.jsonl; null without rounds. */
+  readonly round: number | null;
+  /** ISO 8601 of the newest rounds.jsonl line; null without rounds. */
+  readonly lastRound: string | null;
+  /** Uncommitted files in the spec folder: a git fact only the server has, so always null from `core/`. */
+  readonly uncommittedFiles: number | null;
+}
+
+/** Where the idea quote came from: the first sentence of `## Goal`, or frontmatter `task:`. */
+export type IdeaSource = 'goal' | 'task';
+
+/** The "Next step" card: the command, why, and since when the spec stands where it stands. */
+export interface SpecNextStep {
+  /** Equal to `head.nextCommand`. */
+  readonly command: string | null;
+  /**
+   * At most three: the stage rule's reason first (equal to `head.nextReason`), then facts the stage table already
+   * implies (the reviewed mark is fresh past the review row) and how many items wait on the principal.
+   */
+  readonly reasons: readonly string[];
+  /** ISO 8601 of the newest events.jsonl line into the current stage; null without one. */
+  readonly since: string | null;
+  /** That line's `command`; null without one. */
+  readonly via: string | null;
+}
+
+/** The area tiles under "Inside this spec", in this order. */
+export type SpecAreaName = 'status' | 'live' | 'data' | 'docs' | 'notes' | 'board';
+
+export const SPEC_AREAS: readonly SpecAreaName[] = ['status', 'live', 'data', 'docs', 'notes', 'board'];
+
+/** The facts each area tile shows under its name. */
+export interface SpecAreas {
+  /** Timeline entries (decisions, rounds, gate marks, the commits passed in) and the spec's warnings. */
+  readonly status: { readonly timelineEntries: number; readonly warnings: number };
+  /** The lock source read, the sessions holding a claim of this spec, and the newest such lock. */
+  readonly live: { readonly lockSource: LockSource; readonly agentsWorking: number; readonly lock: ClaimLock | null };
+  /** Claims closed over live claims; tasks landed over total, null without tasks.md. */
+  readonly data: {
+    readonly claims: { readonly closed: number; readonly total: number };
+    readonly tasks: { readonly landed: number; readonly total: number } | null;
+  };
+  /** Which docs exist; decisions are the context.md decision entries of the timeline. */
+  readonly docs: { readonly plan: boolean; readonly design: boolean; readonly constitution: boolean; readonly decisions: number };
+  /** Notes live in the server's notes table: always null from `core/`. */
+  readonly notes: { readonly count: number | null };
+  /** Rounds recorded, and the newest round's stop reason when it stopped early. */
+  readonly board: { readonly rounds: number; readonly stop: string | null };
+}
+
+/** This spec's slice of `specs/tldr.md`. */
+export interface SpecTldr {
+  /** The `per-spec` items that name this spec's number, as markdown; null when none does. */
+  readonly brief: string | null;
+  readonly generated: string | null;
+  /** This spec's `updated:` or newest round is later than `generated:` (tldr.ts `tldrState` over this spec alone). */
+  readonly stale: boolean;
 }
 
 export interface KeyNumbers {
@@ -250,16 +315,37 @@ export interface SpecPageModel {
   readonly keyNumbers: KeyNumbers;
   /** First sentence of `## Goal`, falling back to frontmatter `task:`; null when neither exists. */
   readonly ideaQuote: string | null;
+  /** Which of the two the quote came from; null with the quote. `principal_stated_goal` is never a source. */
+  readonly ideaSource: IdeaSource | null;
+  readonly next: SpecNextStep;
+  /** One row per constitution lane in its table order, lanes only tasks.md names next, `operator` last; empty without tasks.md. */
   readonly lanes: readonly LaneProgress[];
   readonly gates: SpecGates;
+  /** The dashboard row's warnings, same kinds and order. */
   readonly warnings: readonly SpecWarning[];
+  /** Open operator tasks, open claims with a `manual` probe, then the newest round's questions. */
   readonly waitingOnYou: readonly WaitingItem[];
+  readonly areas: SpecAreas;
+  /** Null when the workspace has no `specs/tldr.md`. */
+  readonly tldr: SpecTldr | null;
 }
 
 export interface SpecPageInput {
+  /** The spec folder; `texts.master` and `texts.constitution` are read when present. */
   readonly files: SpecFiles;
   /** Lock sources for `agentsWorking`; absent means none were read. */
   readonly locks?: LockReading;
+  /**
+   * Every other spec folder of the workspace, active and archived: drift's claims held elsewhere, as the dashboard
+   * row sees them. Absent means none.
+   */
+  readonly others?: readonly SpecFiles[];
+  /** `specs/tldr.md`; absent or null when the workspace has none. */
+  readonly tldr?: string | null;
+  /** The worktree tree id for the code-reviewed mark, as the dashboard gets it; absent or null when not computed. */
+  readonly worktreeTree?: string | null;
+  /** Commits touching the spec folder, for the Status tile's timeline count; absent means none were read. */
+  readonly commits?: readonly CommitRecord[];
 }
 
 // ─── Timeline (timeline.ts, derived-stages.ts, events.ts) ────────────────────────────────────────────────────────
@@ -267,7 +353,7 @@ export interface SpecPageInput {
 export type TimelineKind = 'decision' | 'round' | 'gate' | 'commit' | 'stage';
 
 export interface TimelineEntry {
-  /** ISO 8601. */
+  /** ISO 8601 as the source wrote it (a date alone is allowed); empty on an undated derived stage transition. */
   readonly ts: string;
   readonly kind: TimelineKind;
   /** True for a stage transition inferred from the files; false for anything recorded. */
@@ -284,15 +370,34 @@ export interface TimelineEntry {
    * `round-3`, `gate-reviewed`, `commit-<sha>`; a repeated id gets `-2`, `-3`, … in list order.
    */
   readonly id?: string;
-  /** Who the event came from, when the source records it: a decision's `- From:` line, a round's builders. */
-  readonly actor?: string;
+  /**
+   * Who the event came from, when the source records it: a decision's `- From:` line, a round's builders, an
+   * events.jsonl line's `actor`. Null on a derived stage transition: nobody recorded it.
+   */
+  readonly actor?: string | null;
   /** True on the one decision entry built from context.md's `## Goal — confirmed <ts>` block. */
   readonly goalLock?: boolean;
+  /** Stage entries: the stage before the transition; null on the first derived one, the spec's creation. */
+  readonly from?: StageName | null;
+  /** Stage entries: the stage the transition enters. */
+  readonly to?: StageName;
+  /** Stage entries from events.jsonl: the command that made the transition. */
+  readonly command?: string;
+  /**
+   * Derived stage entries whose date the files do not give: `ts` is empty and the entry sorts right after the dated
+   * transition before it (derived-stages.ts).
+   */
+  readonly undated?: boolean;
 }
 
 export interface TimelineInput {
   readonly files: SpecFiles;
   readonly commits: readonly CommitRecord[];
+  /**
+   * The validated lines of the spec's events.jsonl (T16's validator), in file order. Present and non-empty, they are
+   * the stage entries and nothing is derived; absent or empty, the stage transitions are derived from the files.
+   */
+  readonly events?: readonly EventLine[];
 }
 
 /** One line of `events.jsonl`. */
@@ -344,18 +449,28 @@ export interface ClaimLock {
 export interface LockReading {
   /** The source the page names: frontier when present, else activity, else none. */
   readonly source: LockSource;
-  /** Every source that was present and read. */
+  /** Every source that was present and read, frontier first. Empty when `source` is `none`. */
   readonly sources: readonly AgentLockSource[];
+  /**
+   * The held claims, one entry per source that holds them: activity entries first, then frontier entries, each in
+   * claim-ID order. A claim held in both sources appears twice; a consumer keyed by claim with last-wins (status.ts
+   * `partitionClaims`) therefore takes the frontier lock, as the page names frontier before activity.
+   */
   readonly locks: readonly ClaimLock[];
+  /**
+   * What could not be read: a malformed lock file or activity line, a release without a claim, a stale frontier lock.
+   * Never a throw. Optional so a hand-built reading (tests, other models) may omit it; `readLockSources` always sets it.
+   */
+  readonly diagnostics?: readonly Diagnostic[];
 }
 
 export interface LockReadInput {
-  /** The spec folder on disk. */
-  readonly specDir: string;
-  /** `NNN-slug`, matched against lock entries. */
-  readonly folder: string;
+  /** The repository root: `<repoRoot>/ISA.md` keys the frontier locks, `<repoRoot>/.spectant/activity.jsonl` is read. */
+  readonly repoRoot: string;
   /** The LifeOS state directory when LifeOS is present; null or absent means no LifeOS path is read (ISC-37). */
   readonly lifeosStateDir?: string | null;
+  /** The clock for frontier staleness; defaults to the current time. */
+  readonly now?: Date;
 }
 
 export interface FrameCard {

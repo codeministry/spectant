@@ -12,6 +12,18 @@
     },
     {
       "ts": "2026-03-07T15:30:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
+    {
+      "ts": "2026-03-07T15:30:00Z",
       "kind": "gate",
       "derived": false,
       "title": "Reviewed",
@@ -40,6 +52,44 @@
       "actor": "Engineer"
     },
     {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "tasks → review",
+      "body": "- Undated: tasks.md exists; no `created:` and no context.md round \"before the tasks\"",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": "tasks",
+      "to": "review",
+      "undated": true
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "plan → tasks",
+      "body": "- Undated: plan.md exists; no `created:` and no context.md round \"before the plan\"",
+      "ref": "tasks",
+      "id": "stage-tasks",
+      "actor": null,
+      "from": "plan",
+      "to": "tasks",
+      "undated": true
+    },
+    {
+      "ts": "2026-03-03T10:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → plan",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": null,
+      "from": null,
+      "to": "plan"
+    },
+    {
       "ts": "2026-03-03T10:00:00Z",
       "kind": "decision",
       "derived": false,
@@ -51,6 +101,18 @@
     }
   ],
   "specs/003-config-loader": [
+    {
+      "ts": "2026-03-06T09:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → tasks",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "tasks",
+      "id": "stage-tasks",
+      "actor": null,
+      "from": null,
+      "to": "tasks"
+    },
     {
       "ts": "2026-03-06T09:00:00Z",
       "kind": "decision",
@@ -65,12 +127,49 @@
   "specs/004-retention-policies": [
     {
       "ts": "2026-03-08T11:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "code-review → close",
+      "body": "- Derived from: .gates/code-reviewed.json `at`",
+      "ref": "close",
+      "id": "stage-close",
+      "actor": null,
+      "from": "code-review",
+      "to": "close"
+    },
+    {
+      "ts": "2026-03-08T11:00:00Z",
       "kind": "gate",
       "derived": false,
       "title": "Code reviewed",
       "body": "- Head: `da3b7bf10406c1facaabffd3c7acd7853204a65d`\n- Branch: `feature/004-retention-policies`\n- Note: one finding fixed; tree changed since",
       "ref": "code-reviewed",
       "id": "gate-code-reviewed"
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "build → code-review",
+      "body": "- Undated: every claim closed; implied by .gates/code-reviewed.json, the files give no date",
+      "ref": "code-review",
+      "id": "stage-code-review",
+      "actor": null,
+      "from": "build",
+      "to": "code-review",
+      "undated": true
+    },
+    {
+      "ts": "2026-03-04T10:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
     },
     {
       "ts": "2026-03-04T10:00:00Z",
@@ -80,6 +179,44 @@
       "body": "- Files: spec.md, plan.md, tasks.md",
       "ref": "reviewed",
       "id": "gate-reviewed"
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "tasks → review",
+      "body": "- Undated: tasks.md exists; no `created:` and no context.md round \"before the tasks\"",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": "tasks",
+      "to": "review",
+      "undated": true
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "plan → tasks",
+      "body": "- Undated: plan.md exists; no `created:` and no context.md round \"before the plan\"",
+      "ref": "tasks",
+      "id": "stage-tasks",
+      "actor": null,
+      "from": "plan",
+      "to": "tasks",
+      "undated": true
+    },
+    {
+      "ts": "2026-03-04T08:30:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → plan",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": null,
+      "from": null,
+      "to": "plan"
     },
     {
       "ts": "2026-03-04T08:30:00Z",
@@ -95,6 +232,18 @@
   "specs/005-config-format-choice": [
     {
       "ts": "2026-03-07T13:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → review",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": null,
+      "to": "review"
+    },
+    {
+      "ts": "2026-03-07T13:00:00Z",
       "kind": "decision",
       "derived": false,
       "title": "Goal confirmed",
@@ -107,12 +256,36 @@
   "specs/006-partial-push": [
     {
       "ts": "2026-03-08T12:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
+    {
+      "ts": "2026-03-08T12:00:00Z",
       "kind": "gate",
       "derived": false,
       "title": "Reviewed",
       "body": "- Files: spec.md, plan.md, tasks.md",
       "ref": "reviewed",
       "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-08T09:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → review",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": null,
+      "to": "review"
     },
     {
       "ts": "2026-03-08T09:00:00Z",
@@ -127,6 +300,30 @@
   ],
   "specs/archive/001-manifest-sync": [
     {
+      "ts": "2026-03-05T15:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "close → done",
+      "body": "- Derived from: `phase: complete`, spec.md `updated:`",
+      "ref": "done",
+      "id": "stage-done",
+      "actor": null,
+      "from": "close",
+      "to": "done"
+    },
+    {
+      "ts": "2026-03-05T14:30:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "code-review → close",
+      "body": "- Derived from: .gates/code-reviewed.json `at`",
+      "ref": "close",
+      "id": "stage-close",
+      "actor": null,
+      "from": "code-review",
+      "to": "close"
+    },
+    {
       "ts": "2026-03-05T14:30:00Z",
       "kind": "gate",
       "derived": false,
@@ -136,6 +333,31 @@
       "id": "gate-code-reviewed"
     },
     {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "build → code-review",
+      "body": "- Undated: every claim closed; implied by .gates/code-reviewed.json, the files give no date",
+      "ref": "code-review",
+      "id": "stage-code-review",
+      "actor": null,
+      "from": "build",
+      "to": "code-review",
+      "undated": true
+    },
+    {
+      "ts": "2026-03-02T11:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
+    {
       "ts": "2026-03-02T11:00:00Z",
       "kind": "gate",
       "derived": false,
@@ -143,6 +365,44 @@
       "body": "- Files: spec.md, plan.md, tasks.md",
       "ref": "reviewed",
       "id": "gate-reviewed"
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "tasks → review",
+      "body": "- Undated: tasks.md exists; no `created:` and no context.md round \"before the tasks\"",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": "tasks",
+      "to": "review",
+      "undated": true
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "plan → tasks",
+      "body": "- Undated: plan.md exists; no `created:` and no context.md round \"before the plan\"",
+      "ref": "tasks",
+      "id": "stage-tasks",
+      "actor": null,
+      "from": "plan",
+      "to": "tasks",
+      "undated": true
+    },
+    {
+      "ts": "2026-03-02T09:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → plan",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": null,
+      "from": null,
+      "to": "plan"
     },
     {
       "ts": "2026-03-02T09:00:00Z",

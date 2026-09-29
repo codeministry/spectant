@@ -2,18 +2,22 @@
 // in, one entry per source event, time-ordered.
 //
 // Pure over text the caller read: no `node:*`, no subprocess, so the web bundle may import the types beside it.
-// Stage entries (`kind: 'stage'`, derived transitions and events.jsonl) are not built here; derived-stages.ts (T15)
-// adds them.
+// Stage entries (`kind: 'stage'`) come from derived-stages.ts (T15, ISC-36): the input's events when it carries any,
+// else the transitions derived from the files, marked `derived`.
 //
-// Order: newest first by the instant each `ts` names, then by source (decision < round < gate < commit), then by
-// position in the source. Instants are compared as `Date.parse` epochs, not as strings: `git log --format=%cI`
-// prints the committer's offset (`08:00:00+02:00`), and mixed precision (`…29Z` vs `…29.277Z`) breaks a lexical
-// compare as well. A `ts` that does not parse sorts after every one that does, lexically among its peers.
+// Order: newest first by the instant each `ts` names, then by source (stage < decision < round < gate < commit), then
+// by position in the source. A stage entry sorts at the instant `stageInstants` gives it (an undated one right after
+// the dated transition before it) and above every other entry of that instant: the transition is what the gate mark
+// or decision beside it caused. Stage entries of one instant list the later transition first. Instants are compared
+// as `Date.parse` epochs, not as strings: `git log --format=%cI` prints the committer's offset (`08:00:00+02:00`), and
+// mixed precision (`…29Z` vs `…29.277Z`) breaks a lexical compare as well. A `ts` that does not parse sorts after
+// every one that does, lexically among its peers.
+import { deriveStages, GOAL_HEADER, ROUND_HEADER, stageInstants } from './derived-stages.ts';
 import type { CommitRecord, SpecFiles, TimelineEntry, TimelineInput, TimelineKind } from './files.ts';
 
 type RecordedKind = Exclude<TimelineKind, 'stage'>;
 
-const SOURCE_RANK: Readonly<Record<RecordedKind, number>> = { decision: 0, round: 1, gate: 2, commit: 3 };
+const SOURCE_RANK: Readonly<Record<TimelineKind, number>> = { stage: -1, decision: 0, round: 1, gate: 2, commit: 3 };
 
 /** An entry before ordering, with its id base (made unique after sorting). */
 interface Draft {
@@ -26,6 +30,13 @@ interface Draft {
   readonly goalLock?: true;
 }
 
+/** An entry placed for sorting: the instant it sorts at, its source rank and its position within the source. */
+interface Placed {
+  readonly entry: TimelineEntry;
+  readonly at: number;
+  readonly seq: number;
+}
+
 export function buildTimeline(input: TimelineInput): TimelineEntry[] {
   const drafts: Draft[] = [
     ...decisionsOf(input.files.texts.context),
@@ -33,27 +44,56 @@ export function buildTimeline(input: TimelineInput): TimelineEntry[] {
     ...gatesOf(input.files),
     ...commitsOf(input.commits),
   ];
-  const ordered = drafts
-    .map((draft, seq) => ({ draft, seq, at: Date.parse(draft.ts) }))
-    .sort((a, b) => compareInstant(a.at, b.at, a.draft.ts, b.draft.ts) || SOURCE_RANK[a.draft.kind] - SOURCE_RANK[b.draft.kind] || a.seq - b.seq);
+  const stages = deriveStages(input.files, input.events);
+  const instants = stageInstants(stages);
+  const placed: Placed[] = [
+    ...drafts.map((draft, seq) => ({ entry: recordedEntry(draft), at: Date.parse(draft.ts), seq })),
+    // Oldest first from deriveStages; the negative position lists the later transition first within an instant.
+    ...stages.map((entry, i) => ({ entry, at: instants[i] ?? Number.NaN, seq: -i })),
+  ];
+  const ordered = placed.sort(
+    (a, b) => compareInstant(a.at, b.at, a.entry.ts, b.entry.ts) || SOURCE_RANK[a.entry.kind] - SOURCE_RANK[b.entry.kind] || a.seq - b.seq,
+  );
 
   const seen = new Map<string, number>();
-  return ordered.map(({ draft }) => {
-    const base = `${draft.kind}-${fragmentSafe(draft.ref)}`;
+  return ordered.map(({ entry }) => {
+    const base = `${entry.kind}-${fragmentSafe(entry.ref ?? '')}`;
     const n = (seen.get(base) ?? 0) + 1;
     seen.set(base, n);
-    return {
-      ts: draft.ts,
-      kind: draft.kind,
-      derived: false,
-      title: draft.title,
-      ...(draft.body === undefined ? {} : { body: draft.body }),
-      ref: draft.ref,
-      id: n === 1 ? base : `${base}-${n}`,
-      ...(draft.actor === undefined ? {} : { actor: draft.actor }),
-      ...(draft.goalLock ? { goalLock: true } : {}),
-    };
+    return withId(entry, n === 1 ? base : `${base}-${n}`);
   });
+}
+
+function recordedEntry(draft: Draft): TimelineEntry {
+  return {
+    ts: draft.ts,
+    kind: draft.kind,
+    derived: false,
+    title: draft.title,
+    ...(draft.body === undefined ? {} : { body: draft.body }),
+    ref: draft.ref,
+    ...(draft.actor === undefined ? {} : { actor: draft.actor }),
+    ...(draft.goalLock ? { goalLock: true } : {}),
+  };
+}
+
+/** The entry with its id, keys in one fixed order for every kind (the golden snapshots compare bytes). */
+function withId(entry: TimelineEntry, id: string): TimelineEntry {
+  const { ts, kind, derived, title, body, ref, actor, goalLock, from, to, command, undated } = entry;
+  return {
+    ts,
+    kind,
+    derived,
+    title,
+    ...(body === undefined ? {} : { body }),
+    ...(ref === undefined ? {} : { ref }),
+    id,
+    ...(actor === undefined ? {} : { actor }),
+    ...(goalLock ? { goalLock: true } : {}),
+    ...(to === undefined ? {} : { from: from ?? null, to }),
+    ...(command === undefined ? {} : { command }),
+    ...(undated ? { undated: true } : {}),
+  };
 }
 
 /** Newest first; a parsed instant before an unparsed one; unparsed ones newest-first by string. */
@@ -75,9 +115,7 @@ function oneLine(text: string): string {
 
 // ─── context.md ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-const GOAL_HEADER = /^## Goal\s+[—–-]+\s+confirmed\s+(\S+)\s*$/;
-/** `## Round N — <title>, <ts>`: the time is the last comma-separated token and must start with a date. */
-const ROUND_HEADER = /^## Round (\d+)\b.*,\s*(\d{4}-\d{2}-\d{2}\S*)\s*$/;
+// GOAL_HEADER and ROUND_HEADER live in derived-stages.ts, which dates the creation from the same headers.
 /** `### Qn · <question>`; the number is optional (`### Q · …` in build rounds). */
 const QUESTION_HEADER = /^### Q(\d*)\s*·\s*(.+?)\s*$/;
 const FROM_LINE = /^-\s+From:\s*(.+?)\s*$/;

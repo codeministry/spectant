@@ -25,12 +25,13 @@ import { homedir, tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 
 import { FILE_KINDS, specFilePath } from '../src/files.ts';
-import type { FileKind, SpecFiles, TimelineEntry } from '../src/files.ts';
+import type { FileKind, SpecFiles, SpecPageModel, TimelineEntry } from '../src/files.ts';
 import { listSpecs, resolveSpec } from '../src/resolve.ts';
 import type { SpecRef } from '../src/resolve.ts';
+import { buildSpecPage } from '../src/spec.ts';
 import { buildTimeline } from '../src/timeline.ts';
 import { DASHBOARD_FAMILY, expectGolden, goldenFiles, goldenMismatch, goldenPath, goldenText, goldenTrees } from './helpers/golden.ts';
-import { FIXTURES, fixtureTrees, folders } from './helpers/read-tree.ts';
+import { FIXTURES, fixtureTrees, folders, readTreeAt } from './helpers/read-tree.ts';
 
 const UPDATE_COMMAND = 'bun test core/tests/golden.test.ts';
 
@@ -91,10 +92,29 @@ function timelineModel(root: string): Record<string, TimelineEntry[]> {
   return out;
 }
 
+/**
+ * The `spec` family (`<tree>.spec.golden.json`, T12): `buildSpecPage` per spec folder in `listSpecs` order, keyed by
+ * `specs/…` path, with the tree's master, constitution and TL;DR and every other folder as siblings; no locks (lock
+ * sources are T20), no commits, no worktree tree.
+ */
+function specPageModel(root: string): Record<string, SpecPageModel> {
+  const tree = readTreeAt(root);
+  const texts = folderTexts(root);
+  const out: Record<string, SpecPageModel> = {};
+  for (const ref of listSpecs(root)) {
+    const folder = rel(root, ref.dir);
+    const files = texts.get(folder) as SpecFiles;
+    const own = { ...files.texts, ...(tree.master === null ? {} : { master: tree.master }), ...(tree.constitution === null ? {} : { constitution: tree.constitution }) };
+    out[folder] = buildSpecPage({ files: { folder: files.folder, texts: own }, others: [...texts.values()].filter((f) => f !== files), tldr: tree.tldr });
+  }
+  return out;
+}
+
 /** Spec 002's model families, each a function of a tree root. A later task adds its model here. */
 const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
   specs: specsModel,
   timeline: timelineModel,
+  spec: specPageModel,
 };
 
 /** Every string in a JSON value, keys included. */
@@ -154,7 +174,7 @@ describe('golden snapshots', () => {
 
   test('the timelines are not empty: the fixtures carry decisions, rounds and gate marks', () => {
     const kinds = new Set(trees.flatMap((tree) => Object.values(timelineModel(join(FIXTURES, tree))).flat().map((e) => e.kind)));
-    expect([...kinds].sort()).toEqual(['decision', 'gate', 'round']);
+    expect([...kinds].sort()).toEqual(['decision', 'gate', 'round', 'stage']);
   });
 });
 

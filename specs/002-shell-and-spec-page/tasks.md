@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T11:13:45Z
+updated: 2026-09-29T11:29:43Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -37,17 +37,17 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T7 · ISC-69 · [P] · core — fixture rule narrowed to "never a copy of a private repository", refresh rule for `spectant-001` (named commit, on `/spec-complete 001`) in the lane notes and the fixtures README · `core/CLAUDE.md`
 - [x] T8 · ISC-88 · [P] · core — harbor 002 `rounds.jsonl` and `tasks.md` extended so one fixture holds every one of the eleven card states, a retry with `retry with:`, a question, concerns, a fail, a `stop` reason and a re-cut between rounds · `core/fixtures/harbor/specs/002-web-console/rounds.jsonl`
 - [x] T9 · ISC-68 · core — golden test over every fixture, snapshots regenerated only together with the parser change (after: T1, T4, T5, T8) · `core/tests/golden.test.ts`
-- [ ] T10 · ISC-70 · [P] · core — private corpus test: every spec under `SPECTANT_PRIVATE_CORPUS` parses with zero diagnostics; skipped, never passed, when unset · `core/tests/private-corpus.test.ts`
+- [x] T10 · ISC-70 · [P] · core — private corpus test: every spec under `SPECTANT_PRIVATE_CORPUS` parses with zero diagnostics; skipped, never passed, when unset · `core/tests/private-corpus.test.ts`
 - [ ] T11 · ISC-79 · core — stage table as data, next command with its reason, applied to every fixture spec (after: T2) · `core/src/stage.ts`
-- [ ] T12 · ISC-78 · [P] · core — spec page model: head, key numbers, idea quote (first sentence of § Goal, fallback `task:`), lanes, gates, warnings, waiting on you (after: T1) · `core/src/spec.ts`
+- [x] T12 · ISC-78 · [P] · core — spec page model: head, key numbers, idea quote (first sentence of § Goal, fallback `task:`), lanes, gates, warnings, waiting on you (after: T1) · `core/src/spec.ts`
 - [x] T13 · ISC-71 · [P] · core — resolution of workspace slug and spec id returns not-found, never a fallback spec · `core/src/resolve.ts`
 - [x] T14 · ISC-80 · [P] · core — timeline merge of context.md decisions, rounds, gate marks and the commits the server passes in, one entry per source event, time-ordered (after: T1) · `core/src/timeline.ts`
-- [ ] T15 · ISC-36 · [P] · core — derived stage transitions marked `derived`; `events.jsonl` transitions replace them when present · `core/src/derived-stages.ts`
+- [x] T15 · ISC-36 · [P] · core — derived stage transitions marked `derived`; `events.jsonl` transitions replace them when present · `core/src/derived-stages.ts`
 - [ ] T16 · ISC-32 · [P] · core — `events.jsonl` line validator against `{ts, from, to, command, actor}` · `core/src/events.ts`
 - [ ] T17 · ISC-87 · [P] · core — frames from rounds: dispatch and result frames, worst state per frame, task states carried forward (after: T1) · `core/src/frames.ts`
 - [ ] T18 · ISC-91 · core — re-cut detection between rounds (ids and texts compared), struck tasks as absent, no state attributed to a renumbered id (after: T17) · `core/src/recut.ts`
 - [ ] T19 · ISC-92 · core — matrix cells: tasks × frames with state glyph keys, absent and re-cut columns (after: T17) · `core/src/matrix.ts`
-- [ ] T20 · ISC-37 · [P] · core — lock sources: frontier lock files under a given LifeOS state directory, `.spectant/activity.jsonl` claim/release lines, `none` when neither exists · `core/src/locks.ts`
+- [x] T20 · ISC-37 · [P] · core — lock sources: frontier lock files under a given LifeOS state directory, `.spectant/activity.jsonl` claim/release lines, `none` when neither exists · `core/src/locks.ts`
 - [ ] T21 · ISC-90 · core — live frame from tasks.md plus the lock sources; a locked task in flight with its session name (after: T17, T20) · `core/src/live.ts`
 - [ ] T22 · ISC-81 · [P] · core — claim view model: glyph state (open, takeable, taken, blocked, closed, dropped), kind, dependency edges, probe row, verification line (after: T1) · `core/src/claim-view.ts`
 - [ ] T23 · ISC-82 · [P] · core — task line grammar in full: flags, lane from the constitution's lane table, state, edges, paths, plus the probe mapping table (after: T1) · `core/src/tasks.ts`

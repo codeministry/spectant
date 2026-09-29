@@ -1,0 +1,404 @@
+{
+  "specs/012-pwa-install": {
+    "head": {
+      "id": "012",
+      "slug": "012-pwa-install",
+      "title": "Installable as a PWA",
+      "type": "feature",
+      "stage": "build",
+      "nextCommand": "/spec-implement 012",
+      "nextReason": "ISC-334 is takeable",
+      "phase": "building",
+      "started": "2026-09-24T16:40:00Z",
+      "updated": "2026-09-24T15:56:51Z",
+      "round": 5,
+      "lastRound": "2026-09-28T01:13:09.164Z",
+      "uncommittedFiles": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 9,
+        "total": 10,
+        "open": 1,
+        "takeable": 1
+      },
+      "tasks": {
+        "landed": 16,
+        "total": 17
+      },
+      "rounds": {
+        "count": 5,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 3,
+        "total": 4
+      },
+      "waiting": 2
+    },
+    "ideaQuote": "The app can be installed on a desktop, a tablet or a phone and opens in its own window with the lead-ring icon and the app's own colours; a service worker keeps the app shell available without a network, a toast offers to reload when a deploy has landed, and data still comes from the API only.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-implement 012",
+      "reasons": [
+        "ISC-334 is takeable",
+        "the reviewed mark is fresh",
+        "2 items wait on you"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [
+      {
+        "name": "web",
+        "landed": 14,
+        "total": 14
+      },
+      {
+        "name": "test",
+        "landed": 1,
+        "total": 1
+      },
+      {
+        "name": "operator",
+        "landed": 1,
+        "total": 2
+      }
+    ],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md, plan.md, tasks.md",
+        "at": "2026-09-28T01:07:18.427Z",
+        "files": [
+          "spec.md",
+          "plan.md",
+          "tasks.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "ok",
+        "detail": "mermaid diagram present"
+      }
+    },
+    "warnings": [
+      {
+        "kind": "fog",
+        "text": "1 open fog line"
+      }
+    ],
+    "waitingOnYou": [
+      {
+        "kind": "operator",
+        "ref": "T16",
+        "title": "install under `security.auth: oidc` on desktop Chrome and one phone; sign out, reopen, sign in; on the phone also judge the maskable icon's crop (after: T13, T15) · (probe only, a device)",
+        "checked": false
+      },
+      {
+        "kind": "manual",
+        "ref": "ISC-334",
+        "title": "Under `security.auth: oidc` the sign-in redirect completes inside the installed window and returns to the app; the window is never left on the identity provider's page."
+      }
+    ],
+    "areas": {
+      "status": {
+        "timelineEntries": 17,
+        "warnings": 1
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 9,
+          "total": 10
+        },
+        "tasks": {
+          "landed": 16,
+          "total": 17
+        }
+      },
+      "docs": {
+        "plan": true,
+        "design": false,
+        "constitution": true,
+        "decisions": 7
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 5,
+        "stop": "manual probe: ISC-334 waits on OIDC live on microk8s (parts 2 and 3) and the operator's device test"
+      }
+    },
+    "tldr": null
+  },
+  "specs/022-chat-turn-status-and-bulk-delete": {
+    "head": {
+      "id": "022",
+      "slug": "022-chat-turn-status-and-bulk-delete",
+      "title": "Chat turn status, bulk delete, and the cited row in view",
+      "type": "feature",
+      "stage": "done",
+      "nextCommand": null,
+      "nextReason": "phase: complete",
+      "phase": "complete",
+      "started": "2026-09-27T21:48:13Z",
+      "updated": "2026-09-28T12:46:09Z",
+      "round": 5,
+      "lastRound": "2026-09-28T00:13:28.033Z",
+      "uncommittedFiles": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 8,
+        "total": 8,
+        "open": 0,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 32,
+        "total": 32
+      },
+      "rounds": {
+        "count": 5,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "Hovering or focusing the ring beside an answer plays its turn and opens a popover with that turn's state, the reason when it ended incomplete, its steps, duration and model, the same live and after a reload; the empty chat's ring does the same with the chat's own status (model, today's calls against the ceiling, the tool-round bound); the conversation list deletes the selected or all shown conversations with one confirmation and one request; and an offer opened from a chat citation has its marked shortlist row scrolled into the list pane.",
+    "ideaSource": "goal",
+    "next": {
+      "command": null,
+      "reasons": [
+        "phase: complete"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [
+      {
+        "name": "web",
+        "landed": 20,
+        "total": 20
+      },
+      {
+        "name": "server",
+        "landed": 12,
+        "total": 12
+      },
+      {
+        "name": "operator",
+        "landed": 0,
+        "total": 0
+      }
+    ],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md, plan.md, tasks.md",
+        "at": "2026-09-28T12:01:46.215Z",
+        "files": [
+          "spec.md",
+          "plan.md",
+          "tasks.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "stale",
+        "detail": "worktree tree id unavailable",
+        "at": "2026-09-28T12:36:29.267Z"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 20,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 8,
+          "total": 8
+        },
+        "tasks": {
+          "landed": 32,
+          "total": 32
+        }
+      },
+      "docs": {
+        "plan": true,
+        "design": false,
+        "constitution": true,
+        "decisions": 6
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 5,
+        "stop": "every claim closed"
+      }
+    },
+    "tldr": null
+  },
+  "specs/archive/013-tech-debt": {
+    "head": {
+      "id": "013",
+      "slug": "013-tech-debt",
+      "title": "The debt behind v0.5.0 is paid down without a change in behaviour",
+      "type": "refactor",
+      "stage": "done",
+      "nextCommand": null,
+      "nextReason": "phase: complete",
+      "phase": "complete",
+      "started": "2026-09-24T15:40:00Z",
+      "updated": "2026-09-24T17:25:53Z",
+      "round": 4,
+      "lastRound": "2026-09-24T19:30:00Z",
+      "uncommittedFiles": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 14,
+        "total": 14,
+        "open": 0,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 16,
+        "total": 16
+      },
+      "rounds": {
+        "count": 4,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 1,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "The afternoon-sized debt is paid: the three working-notes files sit at or under 85 % of their budget with the reasoning moved to `docs/decisions/`, no document claims a gap the build has closed, `.env.example` and the placeholders are held equal by a test, the compose stack reports three healthy services, the two leaks are closed, the catalog literals are keys, and every backend class whose constructor only assigned its fields carries `@RequiredArgsConstructor` — with every request mapping, response field, migration and configuration key meaning exactly what it meant before, and the service as AOT-compatible for GraalVM as it is today.",
+    "ideaSource": "goal",
+    "next": {
+      "command": null,
+      "reasons": [
+        "phase: complete"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [
+      {
+        "name": "docs",
+        "landed": 3,
+        "total": 3
+      },
+      {
+        "name": "server",
+        "landed": 7,
+        "total": 7
+      },
+      {
+        "name": "infra",
+        "landed": 3,
+        "total": 3
+      },
+      {
+        "name": "web",
+        "landed": 3,
+        "total": 3
+      },
+      {
+        "name": "operator",
+        "landed": 0,
+        "total": 0
+      }
+    ],
+    "gates": {
+      "reviewed": {
+        "state": "missing",
+        "detail": "no reviewed mark"
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 18,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 14,
+          "total": 14
+        },
+        "tasks": {
+          "landed": 16,
+          "total": 16
+        }
+      },
+      "docs": {
+        "plan": true,
+        "design": false,
+        "constitution": true,
+        "decisions": 11
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 4,
+        "stop": "every claim closed"
+      }
+    },
+    "tldr": null
+  }
+}

@@ -345,6 +345,19 @@ from the stage table.
 {"ts":"2026-03-07T15:30:00Z","from":"review","to":"build","command":"/spec-review 002","actor":"principal"}
 ```
 
+**Derived transitions** (`derived-stages.ts`, T15). Without events the timeline replays the stage table over the
+files, one `stage` entry per change of stage, `derived: true`, `actor: null`, `from`/`to` in the stage table's names
+(the first `from` is null): the creation enters the first stage the type needs (`plan`, `tasks` or `review`) at
+spec.md `created:`, else `started:`, else the earliest timed context.md header; plan.md and tasks.md each move it on
+at their own `created:`, else at the context.md round titled "before the plan" or "before the tasks" (a file's
+`updated:` is its last edit and never dates a transition); `review → build` at the reviewed mark's `at`;
+`build → code-review` (always undated) and `code-review → close` at the code-reviewed mark's `at`; `→ done` with
+`phase: complete` at `completed:`, else `updated:`. The first round changes no stage (`build` before and after) and is
+its own round entry. A transition the files do not date carries `ts: ""` and `undated: true` and sorts right after the
+dated transition before it, as does a date without a time that falls on that transition's day. When the caller passes
+the validated events.jsonl lines, they are the stage entries (`derived: false`, with their `actor` and `command`) and
+nothing is derived. The module header maps these names to ISC-24's `specified → planned → tasked → reviewed` wording.
+
 ## `gateReviewed` — `.gates/reviewed.json`
 
 The reviewed mark: `{gate: "reviewed", at, files: {"spec.md", "plan.md", "tasks.md"}}`, each file a sha256 hex of its
@@ -513,7 +526,7 @@ applicable".
 
 ## Activity and lock lines
 
-Read when present, never written by the app (spec 002, T20, `locks.ts` a stub). Two sources can hold a claim:
+Read when present, never written by the app (spec 002, T20, `locks.ts`). Two sources can hold a claim:
 
 - **LifeOS frontier locks**, lock files under the LifeOS state directory, read only when LifeOS is present; without
   LifeOS no LifeOS path is read (ISC-37).
@@ -528,6 +541,18 @@ From `core/fixtures/harbor/.spectant/activity.jsonl`:
 ```json
 {"ts":"2026-03-08T14:06:00Z","event":"claim","claim":"ISC-74","task":"T27","session":"spec-002-ISC-74","worktree":"wt-7"}
 {"ts":"2026-03-08T15:52:00Z","event":"release","claim":"ISC-72","session":"spec-002-ISC-72"}
+```
+
+A frontier lock is one file per held claim, `<state>/isa-locks/<hash>/<claim-id>.lock`, where `<state>` is the LifeOS
+state directory the caller passes and `<hash>` is the first 16 hex digits of sha1 over the real path of the
+repository's `ISA.md`; only that one directory is read. The file is a JSON object with `session` and `ts` required and
+`isa` (the ISA path the session used) optional; a lock whose `isa` resolves to another file, whose content is not that
+object, or whose `ts` is more than two hours old (LifeOS's stale TTL) is not counted and becomes a diagnostic, as do an
+activity line that is not a claim or release object, a release of a claim nobody holds and a release by a session that
+does not hold it. A claim held in both sources is listed once per source, activity first; the frontier entry wins.
+
+```json
+{"session":"spec-002-ISC-75","ts":"2026-03-08T15:30:00.000Z","isa":"/srv/repo/ISA.md"}
 ```
 
 ## The archive rule

@@ -1,0 +1,167 @@
+{
+  "specs/001-app-skeleton": {
+    "head": {
+      "id": "001",
+      "slug": "001-app-skeleton",
+      "title": "App skeleton and dashboard",
+      "type": "feature",
+      "stage": "review",
+      "nextCommand": "/spec-review 001",
+      "nextReason": "the reviewed mark is missing",
+      "phase": "scoping",
+      "started": "2026-09-28T09:40:00Z",
+      "updated": "2026-09-28T13:02:35Z",
+      "round": 9,
+      "lastRound": "2026-09-28T13:06:30.452Z",
+      "uncommittedFiles": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 14,
+        "total": 47,
+        "open": 33,
+        "takeable": 29
+      },
+      "tasks": {
+        "landed": 27,
+        "total": 83
+      },
+      "rounds": {
+        "count": 9,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 4
+    },
+    "ideaQuote": "A fresh macOS or Linux user installs spectant with one line, registers two workspaces and sees their specs side by side on a read-only dashboard that inherits the old Spec dashboard's look in its light and its dark theme and works like a current developer tool (command palette, keyboard navigation, in-place refresh), with nothing leaving the machine and nothing written into either repository.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-review 001",
+      "reasons": [
+        "the reviewed mark is missing",
+        "4 items wait on you"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [
+      {
+        "name": "core",
+        "landed": 2,
+        "total": 11
+      },
+      {
+        "name": "server",
+        "landed": 11,
+        "total": 22
+      },
+      {
+        "name": "web",
+        "landed": 11,
+        "total": 43
+      },
+      {
+        "name": "plugin",
+        "landed": 0,
+        "total": 0
+      },
+      {
+        "name": "repo",
+        "landed": 3,
+        "total": 5
+      },
+      {
+        "name": "operator",
+        "landed": 0,
+        "total": 2
+      }
+    ],
+    "gates": {
+      "reviewed": {
+        "state": "missing",
+        "detail": "no reviewed mark"
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "ok",
+        "detail": "mermaid diagram present"
+      }
+    },
+    "warnings": [
+      {
+        "kind": "review",
+        "text": "no reviewed mark yet",
+        "command": "/spec-review 001"
+      }
+    ],
+    "waitingOnYou": [
+      {
+        "kind": "operator",
+        "ref": "T16",
+        "title": "macOS arm64 install on a throwaway user account, transcript into `.evidence/`",
+        "checked": false
+      },
+      {
+        "kind": "operator",
+        "ref": "T83",
+        "title": "cmux web view check with Interceptor, WebKit version recorded",
+        "checked": false
+      },
+      {
+        "kind": "manual",
+        "ref": "ISC-11",
+        "title": "For a fresh user on macOS arm64, the install one-liner puts `spectant` on PATH and `spectant --version` exits 0."
+      },
+      {
+        "kind": "manual",
+        "ref": "ISC-19",
+        "title": "The dashboard renders and navigates inside the cmux web view."
+      }
+    ],
+    "areas": {
+      "status": {
+        "timelineEntries": 23,
+        "warnings": 1
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 14,
+          "total": 47
+        },
+        "tasks": {
+          "landed": 27,
+          "total": 83
+        }
+      },
+      "docs": {
+        "plan": true,
+        "design": true,
+        "constitution": true,
+        "decisions": 11
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 9,
+        "stop": null
+      }
+    },
+    "tldr": null
+  }
+}

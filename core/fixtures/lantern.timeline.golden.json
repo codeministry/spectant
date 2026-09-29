@@ -2,6 +2,18 @@
   "specs/001-reading-list": [
     {
       "ts": "2026-03-04T10:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
+    {
+      "ts": "2026-03-04T10:00:00Z",
       "kind": "gate",
       "derived": false,
       "title": "Reviewed",
@@ -18,9 +30,59 @@
       "ref": "goal",
       "id": "decision-goal",
       "goalLock": true
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "tasks → review",
+      "body": "- Undated: tasks.md exists; no `created:` and no context.md round \"before the tasks\"",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": "tasks",
+      "to": "review",
+      "undated": true
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "plan → tasks",
+      "body": "- Undated: plan.md exists; no `created:` and no context.md round \"before the plan\"",
+      "ref": "tasks",
+      "id": "stage-tasks",
+      "actor": null,
+      "from": "plan",
+      "to": "tasks",
+      "undated": true
+    },
+    {
+      "ts": "2026-03-03T09:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → plan",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": null,
+      "from": null,
+      "to": "plan"
     }
   ],
   "specs/002-duplicate-links": [
+    {
+      "ts": "2026-03-06T10:30:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
     {
       "ts": "2026-03-06T10:30:00Z",
       "kind": "gate",
@@ -39,6 +101,18 @@
       "ref": "goal",
       "id": "decision-goal",
       "goalLock": true
+    },
+    {
+      "ts": "2026-03-06T10:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → review",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": null,
+      "to": "review"
     }
   ]
 }

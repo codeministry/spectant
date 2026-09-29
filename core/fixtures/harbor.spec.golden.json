@@ -1,0 +1,798 @@
+{
+  "specs/002-web-console": {
+    "head": {
+      "id": "002",
+      "slug": "002-web-console",
+      "title": "Web console",
+      "type": "feature",
+      "stage": "build",
+      "nextCommand": "/spec-implement 002",
+      "nextReason": "ISC-74, ISC-75 and 2 more are takeable",
+      "phase": "building",
+      "started": "2026-03-03T10:00:00Z",
+      "updated": "2026-03-08T16:45:00Z",
+      "round": 3,
+      "lastRound": "2026-03-08T16:30:00Z",
+      "uncommittedFiles": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 25,
+        "total": 30,
+        "open": 5,
+        "takeable": 4
+      },
+      "tasks": {
+        "landed": 27,
+        "total": 32
+      },
+      "rounds": {
+        "count": 3,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 3,
+        "total": 4
+      },
+      "waiting": 3
+    },
+    "ideaQuote": "A teammate opens the console, finds any mirrored repository in two steps, and sees each sync run with its failures, on a phone-sized screen and with the keyboard alone.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-implement 002",
+      "reasons": [
+        "ISC-74, ISC-75 and 2 more are takeable",
+        "the reviewed mark is fresh",
+        "3 items wait on you"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [
+      {
+        "name": "cli",
+        "landed": 0,
+        "total": 0
+      },
+      {
+        "name": "api",
+        "landed": 1,
+        "total": 1
+      },
+      {
+        "name": "web",
+        "landed": 25,
+        "total": 29
+      },
+      {
+        "name": "operator",
+        "landed": 1,
+        "total": 2
+      }
+    ],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md, plan.md, tasks.md",
+        "at": "2026-03-07T15:30:00Z",
+        "files": [
+          "spec.md",
+          "plan.md",
+          "tasks.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "ok",
+        "detail": "mermaid diagram present"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [
+      {
+        "kind": "operator",
+        "ref": "T31",
+        "title": "screen-reader pass over the sync history (ISC-77)",
+        "checked": false
+      },
+      {
+        "kind": "manual",
+        "ref": "ISC-77",
+        "title": "Every interactive element in the error banner is reachable by keyboard and shows a focus ring."
+      },
+      {
+        "kind": "question",
+        "ref": "T29",
+        "title": "should the empty state link to the sync docs or to the settings page?"
+      }
+    ],
+    "areas": {
+      "status": {
+        "timelineEntries": 9,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 25,
+          "total": 30
+        },
+        "tasks": {
+          "landed": 27,
+          "total": 32
+        }
+      },
+      "docs": {
+        "plan": true,
+        "design": false,
+        "constitution": true,
+        "decisions": 1
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 3,
+        "stop": "a decision only the principal can make"
+      }
+    },
+    "tldr": {
+      "brief": "- **002** Web console: 25 of 30 closed; one question open about the empty state.",
+      "generated": "2026-03-07T18:00:00Z",
+      "stale": true
+    }
+  },
+  "specs/003-config-loader": {
+    "head": {
+      "id": "003",
+      "slug": "003-config-loader",
+      "title": "Config loader rewrite",
+      "type": "refactor",
+      "stage": "tasks",
+      "nextCommand": "/spec-tasks 003",
+      "nextReason": "13 claims and no tasks.md",
+      "phase": "scoping",
+      "started": "2026-03-06T09:00:00Z",
+      "updated": "2026-03-09T17:30:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 0,
+        "total": 13,
+        "open": 13,
+        "takeable": 7
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 1,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "The CLI, the API and the console read their configuration through one loader, and the effective config for every case in the snapshot corpus is unchanged.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-tasks 003",
+      "reasons": [
+        "13 claims and no tasks.md"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "missing",
+        "detail": "no reviewed mark"
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "warn",
+        "detail": "no mermaid diagram in spec.md",
+        "files": [
+          "spec.md"
+        ]
+      }
+    },
+    "warnings": [
+      {
+        "kind": "review",
+        "text": "no reviewed mark yet",
+        "command": "/spec-review 003"
+      }
+    ],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 2,
+        "warnings": 1
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 0,
+          "total": 13
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": true,
+        "design": false,
+        "constitution": true,
+        "decisions": 1
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": {
+      "brief": "- **003** Config loader rewrite: claims written, tasks not yet.",
+      "generated": "2026-03-07T18:00:00Z",
+      "stale": true
+    }
+  },
+  "specs/004-retention-policies": {
+    "head": {
+      "id": "004",
+      "slug": "004-retention-policies",
+      "title": "Retention policies",
+      "type": "feature",
+      "stage": "code-review",
+      "nextCommand": "/spec-code-review 004",
+      "nextReason": "every claim is closed and the code-reviewed mark is stale",
+      "phase": "building",
+      "started": "2026-03-04T08:30:00Z",
+      "updated": "2026-03-08T12:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 30,
+        "total": 30,
+        "open": 0,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 30,
+        "total": 30
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "A team writes its retention policy once, sees its effect before anything goes, and no manifest that a tag still references is ever deleted.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-code-review 004",
+      "reasons": [
+        "every claim is closed and the code-reviewed mark is stale",
+        "the reviewed mark is fresh"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [
+      {
+        "name": "cli",
+        "landed": 0,
+        "total": 0
+      },
+      {
+        "name": "api",
+        "landed": 20,
+        "total": 20
+      },
+      {
+        "name": "web",
+        "landed": 10,
+        "total": 10
+      },
+      {
+        "name": "operator",
+        "landed": 0,
+        "total": 0
+      }
+    ],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md, plan.md, tasks.md",
+        "at": "2026-03-04T10:00:00Z",
+        "files": [
+          "spec.md",
+          "plan.md",
+          "tasks.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "stale",
+        "detail": "worktree tree id unavailable",
+        "at": "2026-03-08T11:00:00Z"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "warn",
+        "detail": "no mermaid diagram in plan.md",
+        "files": [
+          "plan.md"
+        ]
+      }
+    },
+    "warnings": [
+      {
+        "kind": "diagrams",
+        "text": "diagram missing in plan.md",
+        "ref": "plan.md"
+      },
+      {
+        "kind": "closed",
+        "text": "every claim closed, phase not complete"
+      }
+    ],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 9,
+        "warnings": 2
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 30,
+          "total": 30
+        },
+        "tasks": {
+          "landed": 30,
+          "total": 30
+        }
+      },
+      "docs": {
+        "plan": true,
+        "design": false,
+        "constitution": true,
+        "decisions": 1
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": {
+      "brief": "- **004** Retention policies: all 30 closed; the plan still lacks its diagram.",
+      "generated": "2026-03-07T18:00:00Z",
+      "stale": true
+    }
+  },
+  "specs/005-config-format-choice": {
+    "head": {
+      "id": "005",
+      "slug": "005-config-format-choice",
+      "title": "Config format choice",
+      "type": "spike",
+      "stage": "review",
+      "nextCommand": "/spec-review 005",
+      "nextReason": "the reviewed mark is missing",
+      "phase": "scoping",
+      "started": "2026-03-07T13:00:00Z",
+      "updated": "2026-03-07T14:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 0,
+        "total": 1,
+        "open": 1,
+        "takeable": 1
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 1,
+        "total": 4
+      },
+      "waiting": 1
+    },
+    "ideaQuote": "A recorded decision names the config format for version 2 and the one trade-off that decided it.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-review 005",
+      "reasons": [
+        "the reviewed mark is missing",
+        "1 item waits on you"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "missing",
+        "detail": "no reviewed mark"
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [
+      {
+        "kind": "review",
+        "text": "no reviewed mark yet",
+        "command": "/spec-review 005"
+      },
+      {
+        "kind": "fog",
+        "text": "2 open fog lines"
+      }
+    ],
+    "waitingOnYou": [
+      {
+        "kind": "manual",
+        "ref": "ISC-94",
+        "title": "the config format for version 2 is chosen and recorded as a decision."
+      }
+    ],
+    "areas": {
+      "status": {
+        "timelineEntries": 2,
+        "warnings": 2
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 0,
+          "total": 1
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 1
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": {
+      "brief": "- **005** Config format choice: two fog lines to resolve before the decision.",
+      "generated": "2026-03-07T18:00:00Z",
+      "stale": false
+    }
+  },
+  "specs/006-partial-push": {
+    "head": {
+      "id": "006",
+      "slug": "006-partial-push",
+      "title": "Partial push after a timeout",
+      "type": "bug",
+      "stage": "review",
+      "nextCommand": "/spec-review 006",
+      "nextReason": "the reviewed mark is stale",
+      "phase": "scoping",
+      "started": "2026-03-08T09:00:00Z",
+      "updated": "2026-03-09T10:15:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 0,
+        "total": 4,
+        "open": 4,
+        "takeable": 4
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 0,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "A push interrupted at any point leaves the target registry exactly as it was before the push started.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-review 006",
+      "reasons": [
+        "the reviewed mark is stale"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "stale",
+        "detail": "changed since the review: spec.md",
+        "at": "2026-03-08T12:00:00Z",
+        "files": [
+          "spec.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "warn",
+        "detail": "drift: unknown_to_master, missing_in_spec"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [
+      {
+        "kind": "drift",
+        "text": "drift to the master: unknown_to_master, missing_in_spec",
+        "command": "/spec-sync 006"
+      },
+      {
+        "kind": "review",
+        "text": "reviewed mark is stale (spec.md)",
+        "command": "/spec-review 006"
+      }
+    ],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 4,
+        "warnings": 2
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 0,
+          "total": 4
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 1
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": {
+      "brief": null,
+      "generated": "2026-03-07T18:00:00Z",
+      "stale": true
+    }
+  },
+  "specs/archive/001-manifest-sync": {
+    "head": {
+      "id": "001",
+      "slug": "001-manifest-sync",
+      "title": "Manifest sync",
+      "type": "feature",
+      "stage": "done",
+      "nextCommand": null,
+      "nextReason": "phase: complete",
+      "phase": "complete",
+      "started": "2026-03-02T09:00:00Z",
+      "updated": "2026-03-05T15:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 46,
+        "total": 46,
+        "open": 0,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 46,
+        "total": 46
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "`harbor sync` mirrors every listed manifest with an identical digest, and a second run uploads nothing.",
+    "ideaSource": "goal",
+    "next": {
+      "command": null,
+      "reasons": [
+        "phase: complete"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [
+      {
+        "name": "cli",
+        "landed": 46,
+        "total": 46
+      },
+      {
+        "name": "api",
+        "landed": 0,
+        "total": 0
+      },
+      {
+        "name": "web",
+        "landed": 0,
+        "total": 0
+      },
+      {
+        "name": "operator",
+        "landed": 0,
+        "total": 0
+      }
+    ],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md, plan.md, tasks.md",
+        "at": "2026-03-02T11:00:00Z",
+        "files": [
+          "spec.md",
+          "plan.md",
+          "tasks.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "stale",
+        "detail": "worktree tree id unavailable",
+        "at": "2026-03-05T14:30:00Z"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 10,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 46,
+          "total": 46
+        },
+        "tasks": {
+          "landed": 46,
+          "total": 46
+        }
+      },
+      "docs": {
+        "plan": true,
+        "design": false,
+        "constitution": true,
+        "decisions": 1
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": {
+      "brief": null,
+      "generated": "2026-03-07T18:00:00Z",
+      "stale": false
+    }
+  }
+}

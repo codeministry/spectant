@@ -11,6 +11,18 @@
     },
     {
       "ts": "2026-09-28T01:07:18.427Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
+    {
+      "ts": "2026-09-28T01:07:18.427Z",
       "kind": "gate",
       "derived": false,
       "title": "Reviewed",
@@ -26,6 +38,43 @@
       "body": "- Dispatched: none\n- Closed this round: none\n- Held: 1\n- Stop: manual probe: ISC-334 closes on the operator's report of the sign-in inside the installed window, which needs security.auth: oidc live (Keycloak client + chart)",
       "ref": "4",
       "id": "round-4"
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "tasks → review",
+      "body": "- Undated: tasks.md exists; no `created:` and no context.md round \"before the tasks\"",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": "tasks",
+      "to": "review",
+      "undated": true
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "stage",
+      "derived": true,
+      "title": "plan → tasks",
+      "body": "- Derived from: context.md `## Round 2 — before the plan`",
+      "ref": "tasks",
+      "id": "stage-tasks",
+      "actor": null,
+      "from": "plan",
+      "to": "tasks"
+    },
+    {
+      "ts": "2026-09-24T16:40:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → plan",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": null,
+      "from": null,
+      "to": "plan"
     },
     {
       "ts": "2026-09-24T16:40:00Z",
@@ -124,6 +173,30 @@
   ],
   "specs/022-chat-turn-status-and-bulk-delete": [
     {
+      "ts": "2026-09-28T12:46:09Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "close → done",
+      "body": "- Derived from: `phase: complete`, spec.md `updated:`",
+      "ref": "done",
+      "id": "stage-done",
+      "actor": null,
+      "from": "close",
+      "to": "done"
+    },
+    {
+      "ts": "2026-09-28T12:36:29.267Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "code-review → close",
+      "body": "- Derived from: .gates/code-reviewed.json `at`",
+      "ref": "close",
+      "id": "stage-close",
+      "actor": null,
+      "from": "code-review",
+      "to": "close"
+    },
+    {
       "ts": "2026-09-28T12:36:29.267Z",
       "kind": "gate",
       "derived": false,
@@ -131,6 +204,31 @@
       "body": "- Head: `87762110bef43379e136a586ea84ef98dca5dd27`\n- Branch: `feature/roadmap`\n- Note: accepted (deferred to Remaining Work, listed in context.md): popover not clamped to the viewport; key auto-repeat can land twice; restart/deadline stored as end_reason MODEL; '60.0 s' just under a minute. Scope reviewed: cbe9b5e^ plus the working tree, three full rounds and one delta round; security four rounds, clean.",
       "ref": "code-reviewed",
       "id": "gate-code-reviewed"
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "build → code-review",
+      "body": "- Undated: every claim closed; implied by .gates/code-reviewed.json, the files give no date",
+      "ref": "code-review",
+      "id": "stage-code-review",
+      "actor": null,
+      "from": "build",
+      "to": "code-review",
+      "undated": true
+    },
+    {
+      "ts": "2026-09-28T12:01:46.215Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
     },
     {
       "ts": "2026-09-28T12:01:46.215Z",
@@ -202,6 +300,31 @@
       "actor": "T1 (ISC-479), lane `web`"
     },
     {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "tasks → review",
+      "body": "- Undated: tasks.md exists; no `created:` and no context.md round \"before the tasks\"",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": "tasks",
+      "to": "review",
+      "undated": true
+    },
+    {
+      "ts": "2026-09-27T22:17:46Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "plan → tasks",
+      "body": "- Derived from: context.md `## Round 2 — before the plan`",
+      "ref": "tasks",
+      "id": "stage-tasks",
+      "actor": null,
+      "from": "plan",
+      "to": "tasks"
+    },
+    {
       "ts": "2026-09-27T22:17:46Z",
       "kind": "decision",
       "derived": false,
@@ -209,6 +332,18 @@
       "body": "- Offered: three vertical slices, each end-to-end and shippable alone — row scroll, status popovers, bulk delete — side by side, catalogs serialised (recommended) | layer by layer, backend then frontend | UI first against stubs, backend after\n- Chosen: three vertical slices\n- Landed in: plan.md § Approach, § Affected Files and Modules\n\nNo further question: the endpoints' paths, the reason's write points (`Turn.end` and the two\ncut-off updates) and the popover's positioning helper (`shared/popover/anchor-for.ts`) were read\nfrom the code.",
       "ref": "R2.Q1",
       "id": "decision-R2.Q1"
+    },
+    {
+      "ts": "2026-09-27T21:48:13Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → plan",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": null,
+      "from": null,
+      "to": "plan"
     },
     {
       "ts": "2026-09-27T21:48:13Z",
@@ -270,6 +405,18 @@
       "actor": "Engineer"
     },
     {
+      "ts": "2026-09-24T17:25:53Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → done",
+      "body": "- Derived from: `phase: complete`, spec.md `updated:`",
+      "ref": "done",
+      "id": "stage-done",
+      "actor": null,
+      "from": "review",
+      "to": "done"
+    },
+    {
       "ts": "2026-09-24T17:20:00Z",
       "kind": "round",
       "derived": false,
@@ -298,6 +445,31 @@
       "ref": "goal",
       "id": "decision-goal",
       "goalLock": true
+    },
+    {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "tasks → review",
+      "body": "- Undated: tasks.md exists; no `created:` and no context.md round \"before the tasks\"",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": "tasks",
+      "to": "review",
+      "undated": true
+    },
+    {
+      "ts": "2026-09-24T15:40:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → tasks",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "tasks",
+      "id": "stage-tasks",
+      "actor": null,
+      "from": null,
+      "to": "tasks"
     },
     {
       "ts": "2026-09-24",

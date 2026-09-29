@@ -1,0 +1,230 @@
+{
+  "specs/001-reading-list": {
+    "head": {
+      "id": "001",
+      "slug": "001-reading-list",
+      "title": "Reading list",
+      "type": "feature",
+      "stage": "build",
+      "nextCommand": "/spec-implement 001",
+      "nextReason": "ISC-7 and ISC-9 are takeable",
+      "phase": "building",
+      "started": "2026-03-03T09:00:00Z",
+      "updated": "2026-03-06T15:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 4,
+        "total": 8,
+        "open": 4,
+        "takeable": 2
+      },
+      "tasks": {
+        "landed": 4,
+        "total": 8
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 3,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "A reader saves a link in one step, finds it again by title or tag, and reads it offline.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-implement 001",
+      "reasons": [
+        "ISC-7 and ISC-9 are takeable",
+        "the reviewed mark is fresh"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [
+      {
+        "name": "web",
+        "landed": 4,
+        "total": 8
+      },
+      {
+        "name": "operator",
+        "landed": 0,
+        "total": 0
+      }
+    ],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md, plan.md, tasks.md",
+        "at": "2026-03-04T10:00:00Z",
+        "files": [
+          "spec.md",
+          "plan.md",
+          "tasks.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "ok",
+        "detail": "mermaid diagram present"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 6,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 4,
+          "total": 8
+        },
+        "tasks": {
+          "landed": 4,
+          "total": 8
+        }
+      },
+      "docs": {
+        "plan": true,
+        "design": false,
+        "constitution": true,
+        "decisions": 1
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": null
+  },
+  "specs/002-duplicate-links": {
+    "head": {
+      "id": "002",
+      "slug": "002-duplicate-links",
+      "title": "Duplicate links and tags",
+      "type": "bug",
+      "stage": "build",
+      "nextCommand": "/spec-implement 002",
+      "nextReason": "ISC-11 and ISC-12 are takeable",
+      "phase": "scoping",
+      "started": "2026-03-06T10:00:00Z",
+      "updated": "2026-03-06T11:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 0,
+        "total": 2,
+        "open": 2,
+        "takeable": 2
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "Saving a known link or a known tag again changes nothing in the list.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-implement 002",
+      "reasons": [
+        "ISC-11 and ISC-12 are takeable",
+        "the reviewed mark is fresh"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md",
+        "at": "2026-03-06T10:30:00Z",
+        "files": [
+          "spec.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 4,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 0,
+          "total": 2
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 1
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": null
+  }
+}

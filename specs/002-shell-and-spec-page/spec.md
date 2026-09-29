@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 2/48
+progress: 3/48
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T11:13:45Z
+updated: 2026-09-29T11:29:43Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -176,7 +176,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [x] ISC-68: Every fixture repository under `core/fixtures/` parses into the golden JSON committed beside it, byte for byte.
 - [ ] ISC-68.1: `FORMAT.md` documents every file kind the app reads (spec.md frontmatter and claims, plan.md, tasks.md line grammar, context.md rounds, design.md, constitution.md, rounds.jsonl, `.gates/*.json`, artifacts/, .evidence/, the master) with one real example each. (after: ISC-68)
 - [x] ISC-69: The fixture corpus holds Spectant's own spec 001 frozen at a named commit, at least three leadgen specs of at least two types with their licence note, and the synthetic harbor, lantern and empty-master trees.
-- [ ] ISC-70: With `SPECTANT_PRIVATE_CORPUS` pointing at a directory of spec trees, the parser reads every spec in it with zero diagnostics; when the variable is unset the test reports skipped, never passed.
+- [x] ISC-70: With `SPECTANT_PRIVATE_CORPUS` pointing at a directory of spec trees, the parser reads every spec in it with zero diagnostics; when the variable is unset the test reports skipped, never passed.
 - [ ] ISC-71: An unknown spec id or workspace slug yields 404 from the API and a "not found" page; no fallback spec is ever rendered.
 - [ ] ISC-72: Anti: a counter on the spec dashboard or on any of its tabs disagrees with the parser's golden JSON for the same fixture.
 
@@ -280,6 +280,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-70: bun-test — bun test core/tests/private-corpus.test.ts with SPECTANT_PRIVATE_CORPUS = one local customer corpus (4 spec folders) → 10 pass, 0 fail (tree + every spec: zero error diagnostics, timeline builds newest first); unset → 1 skip, never passed; set to an empty dir → 1 fail naming how many entries were seen; output shows spec numbers and basenames only; spec 002 round 6
 
 - ISC-68: bun-test — bun test core/tests/golden.test.ts → 16 pass: two new golden families for all five trees (<tree>.specs.golden.json = listSpecs/resolve listing, <tree>.timeline.golden.json = buildTimeline per spec folder with commits pinned to []), byte-equal via the shared helper core/tests/helpers/golden.ts that fixtures.test.ts now uses too; inventory tree↔golden both ways, two-space + trailing newline, no path-shaped strings, non-vacuity by in-memory mutation; core lane 480 pass; spec 002 round 4
 
