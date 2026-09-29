@@ -56,11 +56,17 @@ Reason: reshaping or re-parsing the model here makes a second parser (ISC-5); an
   ISC-18.2 checks every name against that version, and unused icons are dead weight.
 - Shared primitives live in `src/app/shared/ui/`, and each exists because it has two consumers. Reason: a primitive
   with one consumer is an abstraction without a job; it stays in its feature until the second arrives.
+- Spec 002 adds `ui-glyph` (eleven card states and six claim states, each its own shape and tone pair, `aria-hidden`),
+  `ui-state-chip` (glyph plus the visible state word from `states.*`), `ui-scrubber` (a real `<input type="range">` with
+  `aria-valuetext` and typed ticks), `ui-toast` (the app's single toast, mounted once by the shell) and a `count` on
+  `ui-disclosure`. A state word is never a tooltip. Reason: touch has no hover (ISC-88, DS-APP-25).
 
 ## Shell
 
 - Every route but `/__ui` renders in `app-shell` (`layout/shell/`); `ShellState` holds tier, zen, rail and the route (`ws`, `specId`, `area`, `tab`), `ShellData` the workspace list, dashboard and spec as `resource()`s over `ApiClient`.
-- The tab bar is one `app-tab-bar` rendered by `app-tab-bar-slot`: `placement="header"` (row 2) at compact, `placement="main"` under the spec head at medium and wide. Reason: exactly one bar exists per tier.
+- Tiers are measured on the shell container (`container: shell / inline-size`) by `ShellState` through a ResizeObserver and exposed as `data-tier="compact|medium|wide"`: compact < 640 stacks everything and turns popovers into bottom sheets, medium keeps one column with the tab bar under the spec head, wide adds the 352 px rail. Reason: the same app runs in a 600 px cmux panel and full-window (ISC-63), and a viewport query would lie inside a panel.
+- The tab bar is one `app-tab-bar` rendered by `app-tab-bar-slot`: `placement="header"` (row 2, horizontally scrolling with a trailing fade) at compact, `placement="main"` under the spec head, sticky at `top: 64px`, at medium and wide. It shows only the current area's tabs with the counts the spec model carries (claims closed/total, tasks landed/total). Reason: exactly one bar exists per tier, and a count the model does not hold is not invented here (ISC-72).
+- The area menu is `app-area-menu` (`layout/area-menu/`), a native popover at medium and wide and a bottom sheet at compact, listing the six areas with `aria-current="page"` on the current one and no `role="menu"`; areas whose views are not built render as disabled entries with the reason as visible text. Reason: ISC-76, and a menu role would take over arrow-key handling the browser already provides.
 - Areas and tabs come only from `SPEC_AREAS` (`layout/shell/areas.ts`); a feature registers its view in `VIEW_LOADERS` (`features/spec/spec-area.routes.ts`) keyed by tab id (or `dashboard`); an unregistered key renders `app-area-placeholder`.
 - `ShellData` feeds `LockSourceService.connect()` with the spec payload's `areas.live`; `source` stays `none` until the spec route answers `ok`.
 - Header controls carry `data-control="brand|workspace|spec|area|palette|live|zen|settings"`; T36 to T38 replace them in place, never add a second `<header>`.

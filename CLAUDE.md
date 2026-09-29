@@ -35,8 +35,14 @@ administration. The skill targets Claude Code first and is meant to work with ot
   private repository or absolute home path appears in any tracked file.
 - **Loopback only; nothing leaves the machine.** The server binds 127.0.0.1 or ::1, and no code path calls an
   external host.
-- **Files in registered repositories are read-only for the app, `.git/` included.** The app reads specs; it never
-  writes, not even git objects.
+- **Files in registered repositories are read-only for the app, `.git/` included**, with exactly two exceptions the
+  user triggers in the app (spec 002): the reviewed mark (`specs/NNN-slug/.gates/reviewed.json` plus one line in
+  `events.jsonl`) and a task checkbox (one line of `tasks.md`). Both go through `server/src/writes.ts`: the file is
+  read, its sha256 compared with the one the client rendered (409 on a mismatch, the file byte-identical), lock sources
+  consulted (423 while a session holds the claim), then the target written in place with an fsync — no temp file, no
+  git object, nothing else in the tree. The guard is `tests/readonly.test.ts`: it hashes a registered repository,
+  `.git/` included, before and after every read route and every refused write, and only those two files may differ
+  after an accepted one.
 - **One parser for the spec format, in `core/`.** Every other lane imports it; a second implementation is a defect.
 - **Pin every dependency and tool version.** Reproducible builds and baselines depend on it.
 
