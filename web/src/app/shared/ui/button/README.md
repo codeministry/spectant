@@ -1,9 +1,4 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../../../../../docs/logo.svg">
-  <img src="../../../../../../docs/logo-light.svg" alt="spectant" width="96">
-</picture>
-
-# Buttons (`ui-button`, `ui-icon-button`, `ui-button-group`)
+# <picture><source media="(prefers-color-scheme: dark)" srcset="../../../../../../docs/logo.svg"><img src="../../../../../../docs/logo-light.svg" alt="" height="28" align="absmiddle"></picture> Buttons (`ui-button`, `ui-icon-button`, `ui-button-group`)
 
 - Text: `<button ui-button variant="primary" size="sm" (click)="save()">{{ 'save' | transloco }}</button>`; also on `<a ui-button routerLink="…">`. Variants `primary | secondary (default) | ghost | outline`, `size="sm|md"` (32 / 40 px), `tone="warning|danger"`, `type` defaults to `button`.
 - Icon only: `<button ui-icon-button icon="settings" [label]="'settings' | transloco"></button>`; `label` is required and becomes `aria-label` and `title`. The template lint rule `elements-content` allow-lists `label` in `eslint.config.js`, so no per-line disable is needed.

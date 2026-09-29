@@ -1,9 +1,4 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../../../../docs/logo.svg">
-  <img src="../../../../../docs/logo-light.svg" alt="spectant" width="96">
-</picture>
-
-# Shared UI primitives
+# <picture><source media="(prefers-color-scheme: dark)" srcset="../../../../../docs/logo.svg"><img src="../../../../../docs/logo-light.svg" alt="" height="28" align="absmiddle"></picture> Shared UI primitives
 
 The `ui-*` display primitives from design.md § Components. Each lives in its own folder (`<name>/<name>.ts` with an
 inline template and styles, plus `<name>.spec.ts`) and is exported from `index.ts`.

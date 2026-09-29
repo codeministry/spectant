@@ -1,9 +1,4 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../docs/logo.svg">
-  <img src="../../docs/logo-light.svg" alt="spectant" width="96">
-</picture>
-
-# Ideas
+# <picture><source media="(prefers-color-scheme: dark)" srcset="../../docs/logo.svg"><img src="../../docs/logo-light.svg" alt="" height="28" align="absmiddle"></picture> Ideas
 
 Shaped ideas that are not specs yet. Each file is a filled `/spec` feature prompt: the shape was chosen and the
 shaping questions were answered, but no number is allocated and no claim is minted. Starting one runs CreateSpec with
