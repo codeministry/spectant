@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T14:06:29Z
+updated: 2026-09-29T15:59:40Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -78,11 +78,11 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 ### ③ Read-only areas
 
 - [x] T44 · ISC-78 · [seam] · server — spec routes contract: paths and response types for spec, timeline, claims, tasks, evidence, docs, frames and live, shared with the web client (after: T1) · `server/src/spec-routes.contract.ts`
-- [ ] T45 · ISC-71 · server — spec routes with ETag; 404 `{error: "not-found"}` for an unknown workspace or spec (after: T44, T13) · `server/src/spec-routes.ts`
+- [x] T45 · ISC-71 · server — spec routes with ETag; 404 `{error: "not-found"}` for an unknown workspace or spec (after: T44, T13) · `server/src/spec-routes.ts`
 - [x] T46 · ISC-80 · [P] · server — read-only `git log` for the commits touching a spec folder, limited and cached per ETag (after: T44) · `server/src/git.ts`
-- [ ] T47 · ISC-83 · server — evidence file serving with media types, 403 for any path outside the spec folder (after: T44, T24) · `server/src/evidence.ts`
-- [ ] T48 · ISC-71 · server — routes test: unknown spec and workspace → 404, no fallback body (after: T45) · `tests/routes.test.ts`
-- [ ] T49 · ISC-83 · server — traversal test: `..`, absolute and symlinked paths refused with 403 (after: T47) · `tests/evidence.test.ts`
+- [x] T47 · ISC-83 · server — evidence file serving with media types, 403 for any path outside the spec folder (after: T44, T24) · `server/src/evidence.ts`
+- [x] T48 · ISC-71 · server — routes test: unknown spec and workspace → 404, no fallback body (after: T45) · `tests/routes.test.ts`
+- [x] T49 · ISC-83 · server — traversal test: `..`, absolute and symlinked paths refused with 403 (after: T47) · `tests/evidence.test.ts`
 - [ ] T50 · ISC-36 · server — timeline route tests: derived marker without `events.jsonl`, recorded transitions with it (after: T45, T46) · `tests/timeline.test.ts`
 - [x] T51 · ISC-37 · server — optional LifeOS detection: state directory present or not, nothing read when absent, `GET /api/lifeos` (after: T20) · `server/src/lifeos.ts`
 - [x] T52 · ISC-78 · [seam] · web — stub API extended: every spec route from the golden JSON, lock fixtures (frontier, activity, none), scripted 409 and 423 for the writes (after: T44) · `web/e2e/stub-api.ts`

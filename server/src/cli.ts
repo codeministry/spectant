@@ -9,9 +9,9 @@
  * `serve` (T50, ISC-20) listens on `DEFAULT_PORT` (7717) or `--port N`, falling forward to the next free port when it
  * is taken (`serveWithFallback`), unless `--strict-port` pins it. Once listening it prints exactly one line on stdout,
  * `spectant · http://127.0.0.1:<port>`, and opens that URL in the browser unless `--no-browser` is given. It serves
- * the settings API (`/api/settings`, T43) and the workspace routes (`/api/workspaces`, T47, `api.ts`) from
- * `spectant.db` in the data directory, and `/api/lifeos` (T51, `lifeos.ts`) from `SPECTANT_LIFEOS_STATE_DIR` in the
- * environment, detected once at start.
+ * the settings API (`/api/settings`, T43), the workspace routes (`/api/workspaces`, T47, `api.ts`) and the spec
+ * routes (`/api/workspaces/:ws/specs/:id…`, T45, `spec-routes.ts`) from `spectant.db` in the data directory, and
+ * `/api/lifeos` (T51, `lifeos.ts`) from `SPECTANT_LIFEOS_STATE_DIR` in the environment, detected once at start.
  *
  * The workspace commands work on the registry in the data directory from `paths.ts` (`$XDG_DATA_HOME/spectant` or
  * `~/.spectant`). They print a workspace by its slug and its path tail only, never its absolute path (ISC-3), and they
@@ -29,11 +29,13 @@ import { composeApi, dashboardApi } from "./api.ts";
 import type { EmbeddedManifest } from "./assets.contract.ts";
 import { openDatabase } from "./db.ts";
 import { DEFAULT_PORT, LOOPBACK_HOST, PORT_ATTEMPTS, type RunningServer, serveWithFallback } from "./http.ts";
+import { CommitCache } from "./git.ts";
 import { detectLifeos, lifeosApi } from "./lifeos.ts";
 import { type CommandRunner, openBrowser, spawnRunner } from "./open-browser.ts";
 import { dataDir } from "./paths.ts";
 import { openRegistry, type Registry, RegistryError, type Workspace } from "./registry.ts";
 import { openSettings, settingsApi } from "./settings.ts";
+import { specRoutesApi } from "./spec-routes.ts";
 import { VERSION } from "./version.ts";
 
 const USAGE = `Usage: spectant [command] [options]
@@ -150,7 +152,9 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
   let server: RunningServer;
   try {
     const lifeos = detectLifeos(options.env ?? process.env);
-    const api = composeApi(settingsApi(openSettings(db)), lifeosApi(lifeos), dashboardApi({ registry, lifeos }));
+    // One commit cache for the process (T46): the timeline and the spec page skip `git log` while HEAD is unchanged.
+    const specs = specRoutesApi({ registry, lifeos, commitCache: new CommitCache() });
+    const api = composeApi(settingsApi(openSettings(db)), lifeosApi(lifeos), dashboardApi({ registry, lifeos }), specs);
     server = serveWithFallback({ manifest, port: command.port, strict: command.strictPort, api });
   } catch (error) {
     registry.close();

@@ -24,7 +24,7 @@ import { FILE_KINDS } from "../../core/src/files.ts";
 import type { SpecFiles, TextFileKind } from "../../core/src/files.ts";
 import { type TreeEntry, type TreeEntryMode, treeIdOf } from "../../core/src/gates.ts";
 import { readLockSources } from "../../core/src/locks.ts";
-import { listSpecs } from "../../core/src/resolve.ts";
+import { type SpecRef, listSpecs } from "../../core/src/resolve.ts";
 
 /** Why a workspace cannot be read. Stable codes: the web app maps them to its own words. */
 export type UnreadableCode = "missing" | "not-a-directory" | "permission-denied" | "unreadable";
@@ -64,7 +64,7 @@ function codeOf(error: unknown): UnreadableCode {
 }
 
 /** The file's text, or null when it does not exist. Any other failure (permission, a directory) propagates. */
-function readIfExists(path: string): string | null {
+export function readIfExists(path: string): string | null {
   try {
     return readFileSync(path, "utf8");
   } catch (error) {
@@ -80,6 +80,43 @@ function specFiles(dir: string, folder: string): SpecFiles {
     if (text !== null) texts[kind] = text;
   }
   return { folder, texts };
+}
+
+// ── one spec folder (spec routes, T45) ─────────────────────────────────────────────────────────────
+
+/**
+ * The texts of one spec folder, as `readWorkspaceInput` reads each folder: `folder` is the folder name (`NNN-slug`),
+ * the constitution and the master are not included. A missing file is an absent key; any other read failure throws,
+ * and `unreadableCode` turns it into the workspace's code.
+ */
+export function readSpecFiles(ref: Pick<SpecRef, "dir" | "slug">): SpecFiles {
+  return specFiles(ref.dir, ref.slug);
+}
+
+/** A file's raw bytes, or null when it does not exist; any other failure throws. For hashes over exact bytes. */
+export function readBytesIfExists(path: string): Buffer | null {
+  try {
+    return readFileSync(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+/** The code of a workspace that cannot be read at `root`, or null when it is a readable directory. */
+export function workspaceUnreadable(root: string): UnreadableCode | null {
+  try {
+    if (!statSync(root).isDirectory()) return "not-a-directory";
+    readdirSync(root);
+    return null;
+  } catch (error) {
+    return codeOf(error);
+  }
+}
+
+/** The stable code of a read failure (ENOENT, EACCES, …), never the OS message, which names the path (ISC-3). */
+export function unreadableCode(error: unknown): UnreadableCode {
+  return codeOf(error);
 }
 
 /**

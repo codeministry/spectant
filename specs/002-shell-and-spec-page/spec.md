@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 8/49
+progress: 10/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T14:06:29Z
+updated: 2026-09-29T15:59:40Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -181,7 +181,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [ ] ISC-68.1: `FORMAT.md` documents every file kind the app reads (spec.md frontmatter and claims, plan.md, tasks.md line grammar, context.md rounds, design.md, constitution.md, rounds.jsonl, `.gates/*.json`, artifacts/, .evidence/, the master) with one real example each. (after: ISC-68)
 - [x] ISC-69: The fixture corpus holds Spectant's own spec 001 frozen at a named commit, at least three leadgen specs of at least two types with their licence note, and the synthetic harbor, lantern and empty-master trees.
 - [x] ISC-70: With `SPECTANT_PRIVATE_CORPUS` pointing at a directory of spec trees, the parser reads every spec in it with zero diagnostics; when the variable is unset the test reports skipped, never passed.
-- [ ] ISC-71: An unknown spec id or workspace slug yields 404 from the API and a "not found" page; no fallback spec is ever rendered.
+- [x] ISC-71: An unknown spec id or workspace slug yields 404 from the API and a "not found" page; no fallback spec is ever rendered.
 - [ ] ISC-72: Anti: a counter on the spec dashboard or on any of its tabs disagrees with the parser's golden JSON for the same fixture.
 
 **The shell**
@@ -207,7 +207,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 
 - [ ] ISC-81: The Claims tab renders every claim with its state glyph (open, takeable, taken, blocked, closed, dropped), kind, dependency edges, probe row and verification line, filterable by state and kind, with counts equal to the golden JSON.
 - [ ] ISC-82: The Tasks tab renders every task line with lane, flags, state, edges and paths, filterable by lane and state, plus the probe mapping table, with counts equal to the golden JSON.
-- [ ] ISC-83: Anti: the evidence endpoint serves a file outside the spec's own folder.
+- [x] ISC-83: Anti: the evidence endpoint serves a file outside the spec's own folder.
 - [ ] ISC-83.1: The Evidence tab lists artifacts/ and .evidence/ files grouped by claim with image and markdown preview.
 - [x] ISC-84: The Plan, Design, Decisions and Constitution tabs render their Markdown with headings, tables, code and mermaid fences as figures; a file the spec type does not have shows a type-aware empty state. ⟨?: mermaid is rendered client-side from the pinned package the old skill already vendors — assuming no server-side SVG step⟩
 
@@ -285,6 +285,10 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-83: bun-test — bun test tests/evidence.test.ts -t traversal → 3 pass (core + server): ../spec.md, double encoding, absolute path, a symlink out of the folder and plan.md inside the spec but outside artifacts/ and .evidence/ answer 403 Forbidden with nothing served and no path in the body; valid .md/.png/.har/.log/.html serve with media type, nosniff, CSP sandbox and inline/attachment; repo copy byte-identical before and after; spec 002 round 9
+
+- ISC-71: bun-test — bun test tests/routes.test.ts -t "not found" → 3 pass: unknown workspace slug, unknown spec id, ambiguous id (duplicate number in a temp copy) and unknown doc name answer 404 {error: "not-found"} with no other spec's body; the shell's not-found page renders for an unlisted id and a served 404 (web/e2e/shell.spec.ts, 30 passed) and never a fallback spec; spec 002 round 9
 
 - ISC-84: e2e — bun run e2e -- docs → 4 passed (plan: headings, TOC links jump and focus, a mermaid svg drawn client-side from the pinned mermaid 11.17.2 lazy chunk; decisions and constitution render with frontmatter chips and table regions; a refactor's design tab shows the type-aware empty state with the command chip; at 390 tables scroll inside their region and the page never overflows); core markdown-docs 31 tests, lazy-chunk guard 3 pass; spec 002 round 10
 
