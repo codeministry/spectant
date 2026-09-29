@@ -1,0 +1,122 @@
+@if (model(); as model) {
+  @if (groups().length === 0) {
+    <ui-empty-state [heading]="'evidence.empty.heading' | transloco" [body]="'evidence.empty.body' | transloco" icon="archive" />
+  } @else {
+    <div class="evidence-groups">
+      @for (group of groups(); track group.key) {
+        <details class="collapse collapse-arrow evidence-group" open [attr.data-claim-group]="group.key">
+          <summary class="collapse-title evidence-summary">
+            <span class="evidence-claim">{{ group.claim ?? ('evidence.ungrouped' | transloco) }}</span>
+            <span class="evidence-count">{{ 'evidence.count' | transloco: { count: group.count } }}</span>
+          </summary>
+          <div class="collapse-content evidence-content">
+            @if (group.images.length > 0) {
+              <ul class="evidence-thumbs">
+                @for (file of group.images; track file.path) {
+                  <li>
+                    @if (errorOf(file); as error) {
+                      <div class="evidence-row evidence-error" role="alert" [attr.data-file]="file.path" [attr.data-error]="error">
+                        <ui-icon name="triangle-alert" />
+                        <span class="evidence-name">{{ file.path }}</span>
+                        <span class="evidence-reason">{{ 'evidence.error.' + error | transloco }}</span>
+                      </div>
+                    } @else {
+                      <button
+                        type="button"
+                        class="evidence-thumb"
+                        data-thumb
+                        [attr.data-file]="file.path"
+                        [attr.aria-label]="'evidence.open' | transloco: { path: file.path }"
+                        (click)="openImage(file)"
+                      >
+                        <img [src]="fileUrl(file)" alt="" loading="lazy" decoding="async" (error)="imageFailed(file)" />
+                        <span class="evidence-name">{{ file.name }}</span>
+                      </button>
+                    }
+                  </li>
+                }
+              </ul>
+            }
+            @if (group.files.length > 0) {
+              <ul class="evidence-rows">
+                @for (file of group.files; track file.path) {
+                  <li>
+                    @if (errorOf(file); as error) {
+                      <div class="evidence-row evidence-error" role="alert" [attr.data-file]="file.path" [attr.data-error]="error">
+                        <ui-icon name="triangle-alert" />
+                        <span class="evidence-name">{{ file.path }}</span>
+                        <span class="evidence-reason">{{ 'evidence.error.' + error | transloco }}</span>
+                      </div>
+                    } @else if (previewKind(file) === 'none') {
+                      <a class="evidence-row" [href]="fileUrl(file)" [attr.download]="file.name" [attr.data-file]="file.path">
+                        <ui-icon [name]="icon.none" />
+                        <span class="evidence-name">{{ file.path }}</span>
+                        <span class="evidence-size">{{ size(file.bytes) }}</span>
+                      </a>
+                    } @else {
+                      <button
+                        type="button"
+                        class="evidence-row"
+                        [attr.data-file]="file.path"
+                        [attr.aria-busy]="isLoading(file)"
+                        [attr.aria-label]="'evidence.open' | transloco: { path: file.path }"
+                        (click)="openText(file)"
+                      >
+                        <ui-icon [name]="icon[previewKind(file)]" />
+                        <span class="evidence-name">{{ file.path }}</span>
+                        <span class="evidence-size">{{ size(file.bytes) }}</span>
+                      </button>
+                    }
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        </details>
+      }
+    </div>
+  }
+} @else if (failed()) {
+  <ui-empty-state [heading]="'evidence.error.listing' | transloco" icon="triangle-alert" />
+} @else {
+  <p class="evidence-muted" role="status">{{ 'evidence.loading' | transloco }}</p>
+}
+
+<dialog
+  #dialog
+  class="evidence-preview"
+  data-preview
+  tabindex="-1"
+  aria-labelledby="evidence-preview-path"
+  (keydown.escape)="modal.escape($event)"
+  (pointerdown)="modal.pointerDown($event)"
+  (click)="modal.click($event)"
+  (close)="modal.closed()"
+>
+  @if (preview(); as shown) {
+    <header class="evidence-preview-head">
+      <h2 id="evidence-preview-path" class="evidence-preview-path" data-preview-path>{{ shown.file.path }}</h2>
+      <button
+        ui-icon-button
+        icon="x"
+        class="evidence-preview-close"
+        data-preview-close
+        [label]="'common.close' | transloco"
+        (click)="close()"
+      ></button>
+    </header>
+    <div class="evidence-preview-body" data-preview-body>
+      @switch (shown.kind) {
+        @case ('image') {
+          <img [src]="shown.url" [alt]="'evidence.imageAlt' | transloco: { name: shown.file.name }" />
+        }
+        @case ('markdown') {
+          <div class="evidence-prose" [innerHTML]="shown.html"></div>
+        }
+        @case ('text') {
+          <pre class="evidence-text">{{ shown.text }}</pre>
+        }
+      }
+    </div>
+  }
+</dialog>

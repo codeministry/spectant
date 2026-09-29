@@ -1,0 +1,244 @@
+/* Not encapsulated (the markdown preview is [innerHTML]): every selector starts with app-evidence-tab. */
+app-evidence-tab {
+  display: grid;
+  gap: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+app-evidence-tab .evidence-groups {
+  display: grid;
+  gap: 16px;
+}
+
+app-evidence-tab .evidence-group {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+}
+
+app-evidence-tab .evidence-summary {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-block-size: 48px;
+}
+
+app-evidence-tab .evidence-claim {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+app-evidence-tab .evidence-count,
+app-evidence-tab .evidence-muted,
+app-evidence-tab .evidence-size {
+  color: var(--muted-ink);
+  font-size: 12px;
+}
+
+app-evidence-tab .evidence-content {
+  display: grid;
+  gap: 16px;
+}
+
+app-evidence-tab .evidence-thumbs,
+app-evidence-tab .evidence-rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Compact: two ~171 px squares across; wider tiers auto-fill (design.md, Tablet 180 px, Desktop 200 px). */
+app-evidence-tab .evidence-thumbs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+app-evidence-tab .evidence-thumb {
+  display: grid;
+  gap: 4px;
+  inline-size: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+  cursor: zoom-in;
+}
+
+app-evidence-tab .evidence-thumb img {
+  inline-size: 100%;
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--lane);
+  object-fit: contain;
+}
+
+app-evidence-tab .evidence-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: 56px;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius-field);
+  background: none;
+  color: inherit;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+app-evidence-tab button.evidence-row:hover,
+app-evidence-tab a.evidence-row:hover {
+  background: var(--hover-t);
+}
+
+app-evidence-tab .evidence-row[aria-busy='true'] {
+  cursor: progress;
+}
+
+app-evidence-tab .evidence-name {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+app-evidence-tab .evidence-error {
+  background: var(--fail-t);
+  color: var(--fail-ink);
+  cursor: default;
+}
+
+app-evidence-tab .evidence-reason {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* The preview: full screen, the content fitted to width in one readable column. */
+app-evidence-tab .evidence-preview {
+  inline-size: 100%;
+  max-inline-size: none;
+  block-size: 100dvh;
+  max-block-size: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+}
+
+app-evidence-tab .evidence-preview[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+app-evidence-tab .evidence-preview::backdrop {
+  background: var(--scrim);
+}
+
+app-evidence-tab .evidence-preview-head {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-block-end: 1px solid var(--line);
+}
+
+app-evidence-tab .evidence-preview-path {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+app-evidence-tab .evidence-preview-close {
+  flex: none;
+  inline-size: 44px;
+  block-size: 44px;
+}
+
+app-evidence-tab .evidence-preview-body {
+  flex: 1;
+  inline-size: 100%;
+  max-inline-size: 960px;
+  margin-inline: auto;
+  padding: 16px;
+  overflow: auto;
+}
+
+app-evidence-tab .evidence-preview-body img {
+  display: block;
+  max-inline-size: 100%;
+  block-size: auto;
+  margin-inline: auto;
+  background: var(--lane);
+}
+
+app-evidence-tab .evidence-text {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+app-evidence-tab .evidence-prose {
+  font-size: 15px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+app-evidence-tab .evidence-prose :is(h1, h2, h3, h4) {
+  margin: 24px 0 8px;
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+app-evidence-tab .evidence-prose h1 {
+  margin-block-start: 0;
+  font-size: 22px;
+  line-height: 32px;
+}
+
+app-evidence-tab .evidence-prose h2 {
+  font-size: 18px;
+  line-height: 24px;
+}
+
+app-evidence-tab .evidence-prose :is(p, ul, ol) {
+  margin: 0 0 16px;
+}
+
+app-evidence-tab .evidence-prose code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+app-evidence-tab .evidence-prose pre {
+  padding: 16px;
+  border-radius: var(--radius-field);
+  background: var(--color-base-200);
+  overflow-x: auto;
+}
+
+@container shell (width >= 640px) {
+  app-evidence-tab .evidence-thumbs {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
+@container shell (width >= 1120px) {
+  app-evidence-tab .evidence-thumbs {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}

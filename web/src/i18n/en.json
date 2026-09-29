@@ -552,5 +552,26 @@
     },
     "loading": "Loading tasks…",
     "error": "The tasks could not be loaded."
+  },
+  "evidence": {
+    "loading": "Loading evidence",
+    "ungrouped": "No claim",
+    "count": "{{count}} files",
+    "open": "Open {{path}}",
+    "imageAlt": "Evidence image {{name}}",
+    "size": {
+      "b": "{{value}} B",
+      "kb": "{{value}} KB",
+      "mb": "{{value}} MB"
+    },
+    "empty": {
+      "heading": "No evidence yet",
+      "body": "This spec has no files in artifacts/ or .evidence/."
+    },
+    "error": {
+      "refused": "Refused: outside the evidence folders",
+      "failed": "Could not be loaded",
+      "listing": "The evidence could not be loaded."
+    }
   }
 }

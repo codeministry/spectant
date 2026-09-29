@@ -62,7 +62,13 @@ export const dashboardUrl = (ws: string): string => `${SPEC_API_ROOT}/${encodeUR
 /** `GET …/docs/:name`: the page, or the typed 404 saying which doc is absent and whether the spec type has it. */
 export type DocsResult = ApiResult<DocsPage> | { readonly kind: 'doc-missing'; readonly body: DocMissing };
 
-const isDocMissing = (body: unknown): body is DocMissing =>
+/** `GET …/evidence/file?path=` read as text: the body, a refusal (403), or any other failure. */
+export type EvidenceTextResult =
+  | { readonly kind: 'ok'; readonly text: string }
+  | { readonly kind: 'refused' }
+  | { readonly kind: 'error'; readonly status: number };
+
+const isDocMissing =(body: unknown): body is DocMissing =>
   typeof body === 'object' && body !== null && (body as Partial<DocMissing>).error === 'not-found' &&
   typeof (body as Partial<DocMissing>).doc === 'string' && typeof (body as Partial<DocMissing>).availability === 'object';
 
@@ -118,6 +124,26 @@ export class ApiClient {
   /** The Claims tab (ISC-81): core's `ClaimViewModel`, served as it is. */
   claims(ws: string, id: string): Promise<ApiResult<SpecRouteResponses['claims']>> {
     return this.get(specRoutes.claims(ws, id));
+  }
+
+  /** The Evidence tab (ISC-83.1): core's `EvidenceListing`, served as it is. */
+  evidence(ws: string, id: string): Promise<ApiResult<SpecRouteResponses['evidence']>> {
+    return this.get(specRoutes.evidence(ws, id));
+  }
+
+  /**
+   * One evidence file as text (markdown, plain text, JSON) for the preview. The `path` is the listing's
+   * `EvidenceFile.path`, encoded once by the contract's builder and never decoded here (ISC-83). A 403 answers
+   * `refused`: the file is shown as an error row, never as a fallback preview.
+   */
+  async evidenceText(ws: string, id: string, path: string): Promise<EvidenceTextResult> {
+    try {
+      const text = await firstValueFrom(this.http.get(specRoutes.evidenceFile(ws, id, path), { responseType: 'text' }));
+      return { kind: 'ok', text };
+    } catch (failure: unknown) {
+      const status = failure instanceof HttpErrorResponse ? failure.status : 0;
+      return status === 403 ? { kind: 'refused' } : { kind: 'error', status };
+    }
   }
 
   /**

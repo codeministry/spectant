@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 14/49
+progress: 15/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T16:24:32Z
+updated: 2026-09-29T16:27:26Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -208,7 +208,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [x] ISC-81: The Claims tab renders every claim with its state glyph (open, takeable, taken, blocked, closed, dropped), kind, dependency edges, probe row and verification line, filterable by state and kind, with counts equal to the golden JSON.
 - [x] ISC-82: The Tasks tab renders every task line with lane, flags, state, edges and paths, filterable by lane and state, plus the probe mapping table, with counts equal to the golden JSON.
 - [x] ISC-83: Anti: the evidence endpoint serves a file outside the spec's own folder.
-- [ ] ISC-83.1: The Evidence tab lists artifacts/ and .evidence/ files grouped by claim with image and markdown preview.
+- [x] ISC-83.1: The Evidence tab lists artifacts/ and .evidence/ files grouped by claim with image and markdown preview.
 - [x] ISC-84: The Plan, Design, Decisions and Constitution tabs render their Markdown with headings, tables, code and mermaid fences as figures; a file the spec type does not have shows a type-aware empty state. ⟨?: mermaid is rendered client-side from the pinned package the old skill already vendors — assuming no server-side SVG step⟩
 
 **The two writes**
@@ -285,6 +285,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-83.1: e2e — `bun run e2e -- data -g evidence` 4 passed: every file the stub lists (harbor's real artifacts/ and .evidence/, 6 files in 5 claim groups plus ungrouped) is a row under its claim group, an image thumbnail opens the dialog with path and loaded img, a markdown file opens rendered through core's renderMarkdown, a refused path (403) renders the error row with the dialog closed (T58; 2026-09-29)
 
 - ISC-99: bun-test — `bun test core/tests/status.test.ts -t "review gate"` 5 pass: harbor 003 (no mark) 0 takeable and 7 gated open with the status-review-gate diagnostic, 006 (stale) 0, 002 (fresh) 4 unchanged; one rule in partitionClaims(claims, locks, reviewed) with no default, takeableSet holds gated tasks as `spec not reviewed`, goldens regenerated (harbor KPI takeable 16 → 4, spectant-001 29 → 0) (T114; 2026-09-29)
 

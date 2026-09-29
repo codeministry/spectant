@@ -552,5 +552,26 @@
     },
     "loading": "Tasks werden geladen …",
     "error": "Die Tasks konnten nicht geladen werden."
+  },
+  "evidence": {
+    "loading": "Nachweise werden geladen",
+    "ungrouped": "Ohne Claim",
+    "count": "{{count}} Dateien",
+    "open": "{{path}} öffnen",
+    "imageAlt": "Nachweisbild {{name}}",
+    "size": {
+      "b": "{{value}} B",
+      "kb": "{{value}} KB",
+      "mb": "{{value}} MB"
+    },
+    "empty": {
+      "heading": "Noch keine Nachweise",
+      "body": "Diese Spec hat keine Dateien in artifacts/ oder .evidence/."
+    },
+    "error": {
+      "refused": "Abgelehnt: außerhalb der Nachweisordner",
+      "failed": "Konnte nicht geladen werden",
+      "listing": "Die Nachweise konnten nicht geladen werden."
+    }
   }
 }
