@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T12:24:22Z
+updated: 2026-09-29T12:35:16Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -53,7 +53,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T23 · ISC-82 · [P] · core — task line grammar in full: flags, lane from the constitution's lane table, state, edges, paths, plus the probe mapping table (after: T1) · `core/src/tasks.ts`
 - [x] T24 · ISC-83 · [P] · core — evidence listing of `artifacts/` and `.evidence/` grouped by claim with media type; path confinement to the spec folder (after: T1) · `core/src/evidence.ts`
 - [x] T25 · ISC-84 · [P] · core — markdown for docs: tables, code blocks, mermaid fences as figures, TOC extraction · `core/src/markdown-docs.ts`
-- [ ] T26 · ISC-80 · core — timeline tests: sources merged in order, one entry per event (after: T14, T15) · `core/tests/timeline.test.ts`
+- [x] T26 · ISC-80 · core — timeline tests: sources merged in order, one entry per event (after: T14, T15) · `core/tests/timeline.test.ts`
 - [ ] T27 · ISC-87 · core — frames tests including the re-cut and matrix cases on spec 001's own `rounds.jsonl` and harbor 002 (after: T17, T18, T19) · `core/tests/frames.test.ts`
 - [x] T28 · ISC-90 · core — live frame tests: frontier source, activity source, none (after: T21) · `core/tests/live.test.ts`
 - [ ] T29 · ISC-79 · core — stage tests row by row against `FORMAT.md` (after: T11) · `core/tests/stage.test.ts`
@@ -79,7 +79,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 
 - [x] T44 · ISC-78 · [seam] · server — spec routes contract: paths and response types for spec, timeline, claims, tasks, evidence, docs, frames and live, shared with the web client (after: T1) · `server/src/spec-routes.contract.ts`
 - [ ] T45 · ISC-71 · server — spec routes with ETag; 404 `{error: "not_found"}` for an unknown workspace or spec (after: T44, T13) · `server/src/spec-routes.ts`
-- [ ] T46 · ISC-80 · [P] · server — read-only `git log` for the commits touching a spec folder, limited and cached per ETag (after: T44) · `server/src/git.ts`
+- [x] T46 · ISC-80 · [P] · server — read-only `git log` for the commits touching a spec folder, limited and cached per ETag (after: T44) · `server/src/git.ts`
 - [ ] T47 · ISC-83 · server — evidence file serving with media types, 403 for any path outside the spec folder (after: T44, T24) · `server/src/evidence.ts`
 - [ ] T48 · ISC-71 · server — routes test: unknown spec and workspace → 404, no fallback body (after: T45) · `tests/routes.test.ts`
 - [ ] T49 · ISC-83 · server — traversal test: `..`, absolute and symlinked paths refused with 403 (after: T47) · `tests/evidence.test.ts`

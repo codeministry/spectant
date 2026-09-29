@@ -3,12 +3,15 @@
 // T15 (ISC-36): stage entries join it — derived from the files and marked `derived` without events.jsonl, replaced by
 // the recorded events when the caller passes them. The `sources` block reads only the four recorded kinds (no
 // spec.md), so it sees no stage entries; the `stage transitions` block reads whole folders.
+// T26 (ISC-80): the `sources merged in order` block proves the merge over whole folders: per-kind counts taken from
+// the raw files, commits interleaved between rounds, the order property on every fixture spec, one entry per event
+// when sources share an instant, events beside commits, and harbor 002's exact list as the regression anchor.
 // The fixture files are read here with node:fs; timeline.ts itself stays pure over the text.
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 
-import { deriveStages } from '../src/derived-stages.ts';
+import { deriveStages, stageInstants } from '../src/derived-stages.ts';
 import {
   FILE_KINDS,
   type CommitRecord,
@@ -383,5 +386,283 @@ describe('stage transitions (T15, ISC-36)', () => {
     expect(last(HARBOR_001)).toBe('done');
     expect(last(SPECTANT_001)).toBe('review'); // no reviewed mark: rounds alone do not move a spec out of review
     expect(last('leadgen/specs/archive/013-tech-debt')).toBe('done');
+  });
+});
+
+// ─── T26 · ISC-80: sources merged in order, one entry per source event ───────────────────────────────────────────
+
+type SourceKind = 'decision' | 'round' | 'gate' | 'stage';
+
+/**
+ * The source events of one spec folder, counted from its raw files without timeline.ts, by FORMAT.md's reading:
+ * context.md's goal lock and its `### Q` blocks under a timed `## Round` (fences skipped), every rounds.jsonl line
+ * with a `round` number and a string `ts`, every `.gates/*.json` mark with a string `at`. Stage transitions come
+ * from `deriveStages`, the one module that derives them.
+ */
+function sourceRefs(relDir: string): Record<SourceKind, string[]> {
+  const dir = join(FIXTURES, relDir);
+  const read = (rel: string): string => (existsSync(join(dir, rel)) ? readFileSync(join(dir, rel), 'utf8') : '');
+
+  const decision: string[] = [];
+  let round: { n: string; ordinal: number } | null = null;
+  let fenced = false;
+  for (const line of read('context.md').split(/\r?\n/)) {
+    if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
+    if (fenced) continue;
+    if (line.startsWith('## ')) {
+      if (/^## Goal\s+[—–-]+\s+confirmed\s+\d{4}-\d{2}-\d{2}\S*\s*$/.test(line)) decision.push('goal');
+      const timed = /^## Round (\d+)\b.*,\s*\d{4}-\d{2}-\d{2}\S*\s*$/.exec(line);
+      round = timed?.[1] === undefined ? null : { n: timed[1], ordinal: 0 };
+      continue;
+    }
+    const q = /^### Q(\d*)\s*·/.exec(line);
+    if (q && round) {
+      round.ordinal += 1;
+      const n = q[1] === undefined || q[1] === '' ? String(round.ordinal) : q[1]; // `### Q ·` counts by position
+      decision.push(`R${round.n}.Q${n}`);
+    }
+  }
+
+  const rounds: string[] = [];
+  for (const raw of read('rounds.jsonl').split('\n')) {
+    if (raw.trim() === '') continue;
+    let line: unknown;
+    try {
+      line = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+    const rec = line as { round?: unknown; ts?: unknown } | null;
+    if (rec && typeof rec.round === 'number' && typeof rec.ts === 'string') rounds.push(String(rec.round));
+  }
+
+  const gate: string[] = [];
+  const gatesDir = join(dir, '.gates');
+  if (existsSync(gatesDir)) {
+    for (const name of readdirSync(gatesDir).filter((n) => n.endsWith('.json'))) {
+      const mark = JSON.parse(readFileSync(join(gatesDir, name), 'utf8')) as { at?: unknown };
+      if (typeof mark.at === 'string') gate.push(name.replace(/\.json$/, ''));
+    }
+  }
+
+  const stage = deriveStages(readFolder(relDir)).map((e) => e.to ?? '?');
+  return { decision, round: rounds, gate, stage };
+}
+
+/** A commit touching the spec folder as T46's reader passes it; `files` rides along beside today's CommitRecord. */
+type SyntheticCommit = CommitRecord & { readonly files: readonly string[] };
+
+const refsOf = (entries: readonly TimelineEntry[], kind: string): string[] =>
+  entries
+    .filter((e) => e.kind === kind)
+    .map((e) => e.ref ?? '?')
+    .sort();
+
+/** Per-kind counts, stage entries included. */
+const kindCounts = (entries: readonly TimelineEntry[]): Record<string, number> => ({
+  ...countByKind(entries),
+  stage: entries.filter((e) => e.kind === 'stage').length,
+});
+
+// Harbor 002's source events: goal 03-03T10:00Z, round 1 03-06T09:10Z, round 2 03-07T11:20Z, reviewed mark (and its
+// review → build) 03-07T15:30Z, round 3 03-08T16:30Z. Three commits between them, passed in shuffled order; the middle
+// one names the reviewed mark's instant with a +02:00 offset (17:30+02:00 = 15:30Z).
+const C_BETWEEN_1_2: SyntheticCommit = {
+  sha: '3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a',
+  ts: '2026-03-06T18:00:00Z',
+  subject: 'fix(002): round 1 findings\n\nbody lines stay out of the title',
+  files: ['specs/002-web-console/tasks.md'],
+};
+const C_AT_GATE: SyntheticCommit = {
+  sha: '4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b',
+  ts: '2026-03-07T17:30:00+02:00',
+  subject: 'chore(002): record the review mark',
+  files: ['specs/002-web-console/.gates/reviewed.json'],
+};
+const C_AFTER_3: SyntheticCommit = {
+  sha: '5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c',
+  ts: '2026-03-08T17:05:00Z',
+  subject: 'feat(002): round 3',
+  files: ['specs/002-web-console/rounds.jsonl', 'specs/002-web-console/tasks.md'],
+};
+const THREE_COMMITS: readonly SyntheticCommit[] = [C_AT_GATE, C_AFTER_3, C_BETWEEN_1_2];
+
+const LEADGEN_022 = 'leadgen/specs/022-chat-turn-status-and-bulk-delete';
+
+/** The instant each stage entry sorts at, by its `to`, as `stageInstants` gives it. */
+function stageSortInstants(files: SpecFiles): Map<string, number> {
+  const stages = deriveStages(files);
+  const at = stageInstants(stages);
+  return new Map(stages.map((e, i) => [e.to ?? '?', at[i] ?? Number.NaN]));
+}
+
+describe('sources merged in order, one entry per source event (T26, ISC-80)', () => {
+  // Per kind, counted from the raw files, plus the one synthetic commit each test passes.
+  const PINNED: ReadonlyArray<readonly [string, Readonly<Record<string, number>>]> = [
+    [HARBOR_002, { decision: 1, round: 3, gate: 1, commit: 1, stage: 4 }],
+    [SPECTANT_001, { decision: 11, round: 9, gate: 0, commit: 1, stage: 3 }],
+    [LEADGEN_022, { decision: 6, round: 5, gate: 2, commit: 1, stage: 7 }],
+  ];
+  const ONE_COMMIT: CommitRecord = { sha: 'c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00', ts: '2026-01-01T00:00:00Z', subject: 'x' };
+
+  for (const [relDir, pinned] of PINNED) {
+    test(`${relDir}: exactly one entry per source event, counted from the raw files`, () => {
+      const raw = sourceRefs(relDir);
+      const entries = buildTimeline({ files: readFolder(relDir), commits: [ONE_COMMIT] });
+
+      // The independent count is the pinned one, and the timeline holds exactly those events, ref for ref.
+      const rawCounts: Record<string, number> = {
+        decision: raw.decision.length,
+        round: raw.round.length,
+        gate: raw.gate.length,
+        commit: 1,
+        stage: raw.stage.length,
+      };
+      expect(rawCounts).toEqual({ ...pinned });
+      expect(kindCounts(entries)).toEqual({ ...pinned });
+      for (const kind of ['decision', 'round', 'gate', 'stage'] as const) expect(refsOf(entries, kind)).toEqual([...raw[kind]].sort());
+      expect(refsOf(entries, 'commit')).toEqual([ONE_COMMIT.sha]);
+
+      const total = Object.values(pinned).reduce((a, b) => a + b, 0);
+      expect(entries).toHaveLength(total);
+      expect(new Set(entries.map((e) => e.id)).size).toBe(total);
+    });
+  }
+
+  test('three commits interleaved between harbor 002 rounds land at their instants, newest first, ids commit-<sha>', () => {
+    const entries = buildTimeline({ files: readFolder(HARBOR_002), commits: THREE_COMMITS });
+    expect(entries.map((e) => e.id)).toEqual([
+      `commit-${C_AFTER_3.sha}`,
+      'round-3',
+      'stage-build',
+      'gate-reviewed',
+      `commit-${C_AT_GATE.sha}`, // the mark's instant in another offset: the commit sorts after the gate (rank rule)
+      'round-2',
+      `commit-${C_BETWEEN_1_2.sha}`,
+      'round-1',
+      'stage-review',
+      'stage-tasks',
+      'stage-plan',
+      'decision-goal',
+    ]);
+
+    const commits = entries.filter((e) => e.kind === 'commit');
+    expect(commits).toHaveLength(3);
+    for (const c of THREE_COMMITS) {
+      expect(commits.find((e) => e.ref === c.sha)).toEqual({
+        ts: c.ts, // as the source wrote it, offset included
+        kind: 'commit',
+        derived: false,
+        title: c.subject.split('\n')[0] ?? '',
+        ref: c.sha,
+        id: `commit-${c.sha}`,
+      });
+    }
+    // The input order does not matter.
+    const reversed = buildTimeline({ files: readFolder(HARBOR_002), commits: [...THREE_COMMITS].reverse() });
+    expect(reversed.map((e) => e.id)).toEqual(entries.map((e) => e.id));
+  });
+
+  test('every fixture spec: ts non-increasing, rank order at equal instants, rule-placed stages right after their predecessor', () => {
+    const RANK: Readonly<Record<string, number>> = { stage: -1, ...SOURCE_RANK };
+    let placedByRule = 0;
+    let checked = 0;
+    for (const relDir of everyFixtureFolder()) {
+      const files = readFolder(relDir);
+      const entries = buildTimeline({ files, commits: COMMITS_HARBOR });
+      const instants = stageSortInstants(files);
+
+      // T15's rule: an undated stage, or a date-only one on its predecessor's day, sorts at its predecessor's instant.
+      const byRule = (e: TimelineEntry): boolean =>
+        e.kind === 'stage' && (e.undated === true || instants.get(e.to ?? '?') !== Date.parse(e.ts));
+
+      const timed = entries.filter((e) => !byRule(e));
+      for (let i = 1; i < timed.length; i++) {
+        const a = timed[i - 1];
+        const b = timed[i];
+        if (!a || !b) throw new Error('unreachable');
+        const ta = Date.parse(a.ts);
+        const tb = Date.parse(b.ts);
+        const where = [relDir, a.id, b.id];
+        expect([...where, Number.isFinite(ta) && Number.isFinite(tb)]).toEqual([...where, true]);
+        expect([...where, ta >= tb]).toEqual([...where, true]);
+        if (ta === tb) expect([...where, (RANK[a.kind] ?? 9) <= (RANK[b.kind] ?? 9)]).toEqual([...where, true]);
+      }
+
+      entries.forEach((e, i) => {
+        if (!byRule(e)) return;
+        placedByRule += 1;
+        // Right after (in time) the transition it follows: the next, older entry in the list is that stage entry.
+        const next = entries[i + 1];
+        const placement: unknown[] = [relDir, e.id, next?.kind, next?.to];
+        expect(placement).toEqual([relDir, e.id, 'stage', e.from]);
+      });
+      checked += 1;
+    }
+    expect(checked).toBeGreaterThanOrEqual(10);
+    expect(placedByRule).toBeGreaterThan(0);
+  });
+
+  test('two sources at the same moment stay two entries: reviewed mark and review → build, round and decision', () => {
+    const harbor = buildTimeline({ files: readFolder(HARBOR_002), commits: [] });
+    expect(harbor.filter((e) => e.ts === '2026-03-07T15:30:00Z').map((e) => [e.kind, e.ref, e.derived])).toEqual([
+      ['stage', 'build', true],
+      ['gate', 'reviewed', false],
+    ]);
+
+    // A synthetic folder where two decisions, a round, a gate mark and a commit share one instant, and a round number
+    // is recorded twice: every event is its own entry, the repeated ref gets `-2`; blank, malformed and round-less
+    // lines are no events.
+    const at = '2026-05-01T10:00:00Z';
+    const files: SpecFiles = {
+      folder: '099-same-moment',
+      texts: {
+        context: `## Round 1 — during build, ${at}\n\n### Q1 · Same moment?\n\n- Chosen: yes\n\n### Q2 · Still?\n`,
+        rounds: [
+          JSON.stringify({ round: 1, ts: at }),
+          '',
+          'not json',
+          JSON.stringify({ round: 1, ts: '2026-05-01T11:00:00Z' }),
+          JSON.stringify({ ts: at }),
+        ].join('\n'),
+        gateReviewed: JSON.stringify({ gate: 'reviewed', at }),
+      },
+    };
+    const entries = buildTimeline({ files, commits: [{ sha: 'abc1234', ts: at, subject: 'same moment' }] });
+    expect(entries.map((e) => e.id)).toEqual([
+      'round-1', // the 11:00 line, newest
+      'decision-R1.Q1',
+      'decision-R1.Q2',
+      'round-1-2',
+      'gate-reviewed',
+      'commit-abc1234',
+    ]);
+    expect(entries.slice(1).every((e) => e.ts === at)).toBe(true);
+  });
+
+  test('events and commits together: both kinds present, recorded stages only, nothing derived', () => {
+    const entries = buildTimeline({ files: readFolder(HARBOR_002), commits: THREE_COMMITS, events: EVENTS_002 });
+    expect(kindCounts(entries)).toEqual({ decision: 1, round: 3, gate: 1, commit: 3, stage: EVENTS_002.length });
+    expect(entries.some((e) => e.derived)).toBe(false);
+    expect(entries.filter((e) => e.kind === 'stage').every((e) => e.actor === 'principal' && e.command !== undefined)).toBe(true);
+    // At the mark's instant: the recorded transition, then the mark, then the commit.
+    const i = entries.findIndex((e) => e.id === 'stage-build');
+    expect(entries.slice(i, i + 3).map((e) => e.id)).toEqual(['stage-build', 'gate-reviewed', `commit-${C_AT_GATE.sha}`]);
+    expect(new Set(entries.map((e) => e.id)).size).toBe(entries.length);
+  });
+
+  test('harbor 002 anchor: the exact merged list, kind, ref and ts in order', () => {
+    const entries = buildTimeline({ files: readFolder(HARBOR_002), commits: [] });
+    expect(entries.map((e) => [e.kind, e.ref, e.ts])).toEqual([
+      ['round', '3', '2026-03-08T16:30:00Z'],
+      ['stage', 'build', '2026-03-07T15:30:00Z'],
+      ['gate', 'reviewed', '2026-03-07T15:30:00Z'],
+      ['round', '2', '2026-03-07T11:20:00Z'],
+      ['round', '1', '2026-03-06T09:10:00Z'],
+      ['stage', 'review', ''],
+      ['stage', 'tasks', ''],
+      ['stage', 'plan', '2026-03-03T10:00:00Z'],
+      ['decision', 'goal', '2026-03-03T10:00:00Z'],
+    ]);
   });
 });

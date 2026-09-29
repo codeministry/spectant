@@ -79,3 +79,8 @@ as every existing route answers (plan 002's `not_found` is superseded). `tests/s
   once at start; no default location is derived or probed (`server/src/lifeos.ts`, ISC-37).
 - Absent means no LifeOS path is read: the dashboard reads only the repository's own `.spectant/activity.jsonl`.
   Present adds the frontier locks through `core/`'s `readLockSources`. `GET /api/lifeos` answers `{present}`, never the path.
+
+## Git reads
+
+- `server/src/git.ts` `commitsFor(root, folder, {limit 200, timeoutMs 3000, files?, cache?})` runs only `rev-parse HEAD` and `git log -- <folder>` (optional locks off, literal pathspecs, discovery stops at the root), never throws: no repo, no git, failure or deadline → `source: 'none'` + `diagnostic`.
+- A `CommitCache` keyed by root and folder skips `git log` while `HEAD` is unchanged; the returned `head` belongs in the timeline route's ETag. No other git command is added without a read-only proof in `tests/git.test.ts` (ISC-15).
