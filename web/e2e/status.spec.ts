@@ -157,7 +157,8 @@ test.describe('status tab', () => {
       await expect(button).toHaveAttribute('data-state', 'paused');
       await expect(button).toBeDisabled();
       await expect(button).toContainText(/spec-002-ISC-\d+/u); // single-core: allow — asserts the session text on the paused button, no parsing
-      await expect(page.locator('app-status-tab [data-writes-paused]')).toBeVisible();
+      // The agent banner moved to the spec head, above every area (T78).
+      await expect(page.locator('app-spec-head [data-writes-paused]')).toBeVisible();
     });
   });
 });

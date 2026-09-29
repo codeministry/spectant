@@ -37,41 +37,7 @@
           }
         </ul>
 
-        @switch (action()) {
-          @case ('paused') {
-            <button type="button" class="btn gate-button" data-gate-action data-state="paused" disabled>
-              <ui-icon name="lock" [size]="16" />
-              <span>{{ 'status.gate.paused' | transloco: { session: lock()?.session ?? '' } }}</span>
-            </button>
-          }
-          @case ('done') {
-            <p class="gate-button done" data-gate-action data-state="done">
-              <ui-icon name="circle-check" [size]="16" />
-              <span>{{ 'status.gate.done' | transloco: { time: time(m.gates.reviewed.at) } }}</span>
-            </p>
-          }
-          @case ('stale') {
-            <button type="button" class="btn btn-outline gate-button stale" data-gate-action data-state="stale" (click)="openDialog()">
-              {{ 'status.gate.stale' | transloco }}
-            </button>
-            @if (m.gates.reviewed.files?.length) {
-              <p class="changed-label">{{ 'status.gate.changed' | transloco }}</p>
-              <ul class="files" data-changed-files>
-                @for (file of m.gates.reviewed.files; track file) {
-                  <li><code>@for (segment of segments(file); track $index) { <span>{{ segment }}</span><wbr /> }</code></li>
-                }
-              </ul>
-            }
-          }
-          @default {
-            <button type="button" class="btn btn-primary gate-button" data-gate-action data-state="ready" (click)="openDialog()">
-              {{ 'status.gate.ready' | transloco }}
-            </button>
-          }
-        }
-        @if (written(); as at) {
-          <ui-notice tone="info" icon="circle-check" data-gate-written>{{ 'status.gate.written' | transloco: { time: time(at) } }}</ui-notice>
-        }
+        <app-gate-button />
       </ng-template>
 
       <ng-template #warningBlock>
@@ -93,20 +59,6 @@
       </ng-template>
 
       <div class="page">
-        @if (lock(); as held) {
-          <div class="banner" data-section="agent">
-            <p class="banner-line">
-              <span class="banner-dot" aria-hidden="true"></span>
-              <code class="session">{{ held.session }}</code>
-              <span>{{ 'status.agent.on' | transloco: { claim: held.claim, time: time(held.since) } }}</span>
-            </p>
-            <span class="paused-chip" data-writes-paused>
-              <ui-icon name="lock" [size]="14" />
-              {{ 'status.agent.paused' | transloco }}
-            </span>
-          </div>
-        }
-
         <section class="card where" data-section="where">
           <ui-section-header [heading]="(tier() === 'wide' ? 'status.why.heading' : 'status.where.heading') | transloco" />
           <div class="where-body">
@@ -308,65 +260,6 @@
           }
         </section>
       </div>
-
-      <ui-sheet [(open)]="dialogOpen" [tier]="tier()" [heading]="'status.dialog.heading' | transloco">
-        <div class="dialog-body" data-gate-dialog>
-          <p class="intro">{{ 'status.dialog.intro' | transloco }}</p>
-          <ul class="hashed">
-            @for (file of hashFiles; track file) {
-              <li data-hashed-file [attr.data-file]="file">
-                <code class="file">{{ hashFileNames[file] }}</code>
-                <code class="hash">{{ short(file) ?? ('status.dialog.absent' | transloco) }}</code>
-              </li>
-            }
-          </ul>
-          @if (hashes() === null) {
-            <p class="muted">{{ 'status.dialog.noHashes' | transloco }}</p>
-          }
-          @if (m.areas.live.lockSource === 'none') {
-            <ui-notice tone="info" icon="activity" data-no-agent-source>{{ 'status.dialog.noAgentSource' | transloco }}</ui-notice>
-          }
-          @switch (write().kind) {
-            @case ('conflict') {
-              <ui-notice tone="error" data-write-conflict>
-                {{ 'status.dialog.conflict' | transloco }}
-                <button action type="button" class="btn btn-sm" data-reload (click)="reloadSpec()">
-                  <ui-icon name="rotate-cw" [size]="16" />
-                  {{ 'status.dialog.reload' | transloco }}
-                </button>
-              </ui-notice>
-            }
-            @case ('locked') {
-              @if (write(); as w) {
-                @if (w.kind === 'locked') {
-                  <ui-notice tone="warning" icon="lock" data-write-locked>
-                    {{ 'status.dialog.locked' | transloco: { session: w.session, claim: w.claim } }}
-                  </ui-notice>
-                }
-              }
-            }
-            @case ('error') {
-              @if (write(); as w) {
-                @if (w.kind === 'error') {
-                  <ui-notice tone="error" data-write-error>{{ 'status.dialog.error' | transloco: { status: w.status } }}</ui-notice>
-                }
-              }
-            }
-          }
-          <div class="confirm-bar">
-            <button
-              type="button"
-              class="btn btn-primary btn-block"
-              data-confirm
-              data-autofocus
-              [disabled]="hashes() === null || write().kind === 'sending'"
-              (click)="confirm()"
-            >
-              {{ (write().kind === 'sending' ? 'status.dialog.sending' : 'status.dialog.confirm') | transloco }}
-            </button>
-          </div>
-        </div>
-      </ui-sheet>
     }
   }
 }

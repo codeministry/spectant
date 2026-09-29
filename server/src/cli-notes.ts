@@ -63,7 +63,7 @@ type WorkspaceRef = { readonly slug: string; readonly path: string };
 type Mapped = { readonly ok: true; readonly note: Note } | { readonly ok: false; readonly reason: string };
 
 const SPEC_NUMBER = /^(\d{3})(?:-|$)/;
-const CLAIM_REF = /^ISC-[\w.-]+$/;
+const CLAIM_REF = /^ISC-[\w.-]+$/; // single-core: allow — maps an old note's ref to an anchor kind, no spec file is parsed
 const TASK_REF = /^T\d+$/;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);

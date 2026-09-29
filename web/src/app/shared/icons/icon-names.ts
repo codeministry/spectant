@@ -48,4 +48,5 @@ export const ICON_NAMES = [
   'keyboard',
   'folder-git-2',
   'layout-grid',
+  'arrow-left',
 ] as const;

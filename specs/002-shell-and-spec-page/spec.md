@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 31/49
+progress: 32/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T17:48:58Z
+updated: 2026-09-29T17:55:22Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -218,7 +218,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [x] ISC-26: A write whose sha256 no longer matches the rendered file returns 409 and leaves the file byte-identical.
 - [x] ISC-27: Anti: the app writes to a spec while `.spectant/activity.jsonl` shows an open claim on it.
 - [x] ISC-37: With LifeOS present the board also shows LifeOS frontier locks; without LifeOS the board works and no LifeOS path is read.
-- [ ] ISC-85: The gate button shows ready, stale (naming the changed files), done or paused from `.gates/reviewed.json` and the lock sources; its dialog lists the three hashed files. (after: ISC-24)
+- [x] ISC-85: The gate button shows ready, stale (naming the changed files), done or paused from `.gates/reviewed.json` and the lock sources; its dialog lists the three hashed files. (after: ISC-24)
 - [x] ISC-86: A write is refused with 423 while a LifeOS frontier lock exists for the claim; when no lock source is available the page shows "no agent source" and the write proceeds under the hash check. (after: ISC-26, ISC-37)
 
 **Live — the round board**
@@ -286,6 +286,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-85: e2e — `bun run e2e -- gate` 18 passed (whole suite 408 passed, 8 skipped): at 390 and 1440 harbor 003 ready, 006 stale naming exactly gates.reviewed.files, 002 done with the time, 002 under a frontier lock paused and disabled with the session visible and the agent banner showing writes paused, no-source state shows the No agent source line; the dialog lists spec.md, plan.md, tasks.md with their hashes and confirms to done; scripted 409 gives the inline alert with Reload, 423 names the lock's session; one app-gate-button implementation serves the spec head and the Status tab (T78, T79; 2026-09-29)
 
 - ISC-53: bun-test — `bun test tests/notes.test.ts -t "import"` 6 pass: `spectant import-notes` over the three-note fixture in the old notes page's localStorage shape ({v:1, notes}) gives imported 3, skipped 0 and 3 rows, a rerun imported 0, skipped 3 (deterministic UUID from the old id); export-notes round-trips losslessly into a fresh data directory; `db rollback 2 --yes` reverses migration 3 (T98, T99; 2026-09-29)
 

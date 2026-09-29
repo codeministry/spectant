@@ -1,0 +1,260 @@
+/*
+ * The spec head (design.md § Spec head, every spec area). Medium and wide: breadcrumb, then id + title + chips on one
+ * baseline with the action cluster on the right (it wraps below when it does not fit), description, meta, then the
+ * agent banner or the no-source line. Compact (≤ 240 px target): no breadcrumb, title clamped to two lines, one
+ * wrapping chip row, description clamped with "more", meta at 12/16, the command chip at full width.
+ */
+:host {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+  margin-block-end: 16px;
+}
+
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+  list-style: none;
+}
+
+.crumbs li + li::before {
+  margin-inline-end: 8px;
+  content: '/';
+}
+
+.crumbs a {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+.crumbs a:hover {
+  text-decoration: underline;
+}
+
+.crumbs [aria-current] {
+  color: var(--color-base-content);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title-line {
+  display: flex;
+  flex: 1 1 320px;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  min-inline-size: 0;
+}
+
+h1 {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+.spec-id {
+  flex: none;
+  color: var(--disp-ink);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.spec-title {
+  overflow: hidden;
+  min-inline-size: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chips,
+.actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.notes-pill {
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+
+/* "more" sits beside the clamped text, so the disclosure costs no row of its own. */
+.desc-block {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.desc {
+  max-inline-size: 80ch;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.desc.clamped {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.more {
+  flex: none;
+  padding-inline: 0;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+.meta span + span::before {
+  margin-inline-end: 8px;
+  content: '·';
+}
+
+/* Agent banner: 40 px, the warning edge, the lock text left and "writes paused" right (ISC-90). */
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: center;
+  justify-content: space-between;
+  min-block-size: 40px;
+  padding: 4px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+  box-shadow: inset 3px 0 0 var(--color-warning);
+}
+
+.banner-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.banner-dot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 999px;
+  background: var(--color-warning);
+}
+
+.paused-chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--hover-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+/* No lock source: a 32 px muted line (ISC-86). */
+.no-source {
+  display: flex;
+  align-items: center;
+  min-block-size: 32px;
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+:host([data-tier='compact']) {
+  margin-block-end: 8px;
+}
+
+:host([data-tier='compact']) .title-line {
+  display: grid;
+  flex-basis: 100%;
+  gap: 8px;
+}
+
+:host([data-tier='compact']) h1 {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 20px;
+  line-height: 28px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+:host([data-tier='compact']) .spec-id {
+  margin-inline-end: 8px;
+}
+
+:host([data-tier='compact']) .spec-title {
+  white-space: normal;
+}
+
+:host([data-tier='compact']) .meta {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+:host([data-tier='compact']) .command {
+  display: flex;
+  inline-size: 100%;
+}
+
+:host([data-tier='compact']) .banner {
+  display: grid;
+  justify-items: start;
+  padding: 8px 16px;
+}
+
+:host([data-tier='compact']) .no-source {
+  min-block-size: 24px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+@media (forced-colors: active) {
+  .banner-dot {
+    background: CanvasText;
+  }
+}

@@ -175,7 +175,8 @@ export class KeyboardService {
     const view = this.document.defaultView;
     if (!view) return;
     view.requestAnimationFrame(() => {
-      const section = this.document.querySelector<HTMLElement>('main h2');
+      // A dialog's heading (the gate sheet in the spec head) is never a section heading.
+      const section = this.document.querySelector<HTMLElement>('main h2:not(dialog h2)');
       if (section === null && frames < HEADING_FRAMES) {
         this.focusHeading(frames + 1);
         return;

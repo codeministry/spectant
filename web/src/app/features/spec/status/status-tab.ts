@@ -1,20 +1,19 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, ElementRef, inject, resource, signal } from '@angular/core';
+import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, ElementRef, inject, resource } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { GateState, SpecPageModel, WaitingItem } from '../../../../../../core/src/files';
-import { REVIEWED_HASH_FILES, type ReviewedHashFile } from '../../../../../../server/src/spec-routes.contract';
 import { ApiClient } from '../../../core/api.service';
 import { specLink } from '../../../layout/shell/areas';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
+import { GateButton } from '../../../layout/spec-head/gate-button';
+import { type GateAction, gateAction, pathSegments } from '../../../layout/spec-head/spec-head-model';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
 import { UiEmptyState } from '../../../shared/ui/empty-state/empty-state';
 import { UiMeter } from '../../../shared/ui/meter/meter';
-import { UiNotice } from '../../../shared/ui/notice/notice';
-import { UiSheet } from '../../../shared/ui/overlay/sheet';
 import { UiRing } from '../../../shared/ui/ring/ring';
 import { UiSectionHeader } from '../../../shared/ui/section-header/section-header';
 import { UiSkeleton } from '../../../shared/ui/skeleton/skeleton';
@@ -23,35 +22,27 @@ import { UiStateChip } from '../../../shared/ui/state-chip/state-chip';
 import type { Tone } from '../../../shared/ui/tone';
 import { AreaPlaceholder } from '../area-placeholder';
 import { GATE_NAMES, GATE_TONE, stageIndex, TRACK_STAGES } from '../dashboard/dashboard-model';
-import { type GateAction, gateAction, openClaims, pathSegments, shortHash } from './status-model';
+import { openClaims } from './status-model';
 
 /** The section headings a hash anchor lands on (the dashboard's Waiting and Gates tiles link there). */
 const ANCHORS = ['waiting', 'gates'] as const;
 /** Timeline entries shown under Activity; the Timeline tab holds the rest. */
 const ACTIVITY_LIMIT = 5;
-const HASH_FILES = Object.keys(REVIEWED_HASH_FILES) as ReviewedHashFile[];
-
-/** Where the gate write stands inside the dialog; a 200 closes the dialog and shows `written` instead. */
-type WriteState =
-  | { readonly kind: 'idle' }
-  | { readonly kind: 'sending' }
-  | { readonly kind: 'conflict' }
-  | { readonly kind: 'locked'; readonly session: string; readonly claim: string }
-  | { readonly kind: 'error'; readonly status: number };
 
 /**
  * T54 · ISC-79 · ISC-85: the Status tab. It renders the spec payload the shell already loads (`ShellData.spec`) as it
  * is: the stage (`head.stage`), the next command (`next.command`) and its reasons (`next.reasons`) are never derived
- * here. Compact stacks agent banner → Where it stands → Waiting on you → Gates → Warnings → What is open → Activity;
+ * here. Compact stacks Where it stands → Waiting on you → Gates → Warnings → What is open → Activity;
  * medium keeps Where it stands · Waiting on you · What is open · Activity with the gates and warnings inside the first
  * card (two columns from 900); wide is the bento (Why this next step and Progress by lane beside Gates and What is
- * open, Activity across both), the rail holding Waiting on you and Warnings. The gate button posts the reviewed mark
- * with the hashes the spec response carried and answers 200 / 409 / 423 in its dialog.
+ * open, Activity across both), the rail holding Waiting on you and Warnings. The gate button and its dialog are the shared
+ * `app-gate-button` (T78); the agent banner lives in the spec head above every area.
  */
 @Component({
   selector: 'app-status-tab',
   imports: [
     AreaPlaceholder,
+    GateButton,
     NgTemplateOutlet,
     RouterLink,
     TranslocoPipe,
@@ -59,10 +50,8 @@ type WriteState =
     UiEmptyState,
     UiIcon,
     UiMeter,
-    UiNotice,
     UiRing,
     UiSectionHeader,
-    UiSheet,
     UiSkeleton,
     UiStageTrack,
     UiStateChip,
@@ -85,8 +74,6 @@ export class StatusTab {
 
   protected readonly tier = this.state.tier;
   protected readonly gateNames = GATE_NAMES;
-  protected readonly hashFiles = HASH_FILES;
-  protected readonly hashFileNames = REVIEWED_HASH_FILES;
   protected readonly segments = pathSegments;
 
   readonly model = computed<SpecPageModel | null>(() => {
@@ -151,21 +138,6 @@ export class StatusTab {
     return model ? gateAction(model.gates.reviewed, this.lock()) : null;
   });
 
-  /** The hashes `GET …/:id` carried; re-read whenever the spec answers again (a reload after a 409). */
-  protected readonly hashes = computed(() => {
-    this.data.spec.value();
-    const params = this.params();
-    return params ? this.api.reviewedHashes(params.ws, params.id) : null;
-  });
-  protected short(file: ReviewedHashFile): string | null {
-    return shortHash(this.hashes()?.[file] ?? null);
-  }
-
-  protected readonly dialogOpen = signal(false);
-  protected readonly write = signal<WriteState>({ kind: 'idle' });
-  /** The `at` of the mark this page wrote, shown as the success line until the tab is left. */
-  protected readonly written = signal<string | null>(null);
-
   private readonly timeFormat = computed(() => new Intl.DateTimeFormat(this.lang(), { dateStyle: 'medium', timeStyle: 'short' }));
   protected time(iso: string | null | undefined): string {
     if (!iso) return '';
@@ -179,41 +151,6 @@ export class StatusTab {
 
   protected waitingKey(item: WaitingItem): string {
     return `${item.kind}-${item.ref}`;
-  }
-
-  protected openDialog(): void {
-    this.write.set({ kind: 'idle' });
-    this.dialogOpen.set(true);
-  }
-
-  protected async confirm(): Promise<void> {
-    const params = this.params();
-    const hashes = this.hashes();
-    if (!params || !hashes || this.write().kind === 'sending') return;
-    this.write.set({ kind: 'sending' });
-    const result = await this.api.gateReviewed(params.ws, params.id, hashes);
-    switch (result.kind) {
-      case 'ok':
-        this.written.set(result.body.at);
-        this.write.set({ kind: 'idle' });
-        this.dialogOpen.set(false);
-        this.data.spec.reload();
-        return;
-      case 'conflict':
-        this.write.set({ kind: 'conflict' });
-        return;
-      case 'locked':
-        this.write.set({ kind: 'locked', session: result.lock.session, claim: result.lock.claim });
-        return;
-      case 'error':
-        this.write.set({ kind: 'error', status: result.status });
-    }
-  }
-
-  /** The 409's Reload: read the spec again (new hashes, new gate state) and let the reviewer confirm afresh. */
-  protected reloadSpec(): void {
-    this.write.set({ kind: 'idle' });
-    this.data.spec.reload();
   }
 
   protected reload(): void {

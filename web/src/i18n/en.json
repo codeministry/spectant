@@ -736,10 +736,6 @@
       "body": "The spec did not answer. Try again.",
       "retry": "Try again"
     },
-    "agent": {
-      "on": "on {{claim}} · since {{time}}",
-      "paused": "writes paused"
-    },
     "where": {
       "heading": "Where it stands",
       "claimsClosed": "{{closed}}/{{total}} claims closed",
@@ -834,5 +830,20 @@
       "tasks": "Tasks landed",
       "none": "No lanes: the spec has no tasks.md."
     }
+  },
+  "specHead": {
+    "breadcrumb": "Breadcrumb",
+    "more": "more",
+    "less": "less",
+    "notes": "Notes",
+    "notesCount": "{{count}} notes",
+    "updated": "updated {{time}}",
+    "round": "round {{round}}",
+    "uncommitted": "{{count}} files uncommitted",
+    "agent": {
+      "on": "on {{claim}} · {{time}}",
+      "paused": "writes paused"
+    },
+    "noSource": "No agent source · writes check the file hash only"
   }
 }

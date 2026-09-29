@@ -736,10 +736,6 @@
       "body": "Die Spec hat nicht geantwortet. Bitte versuchen Sie es erneut.",
       "retry": "Erneut versuchen"
     },
-    "agent": {
-      "on": "an {{claim}} · seit {{time}}",
-      "paused": "Schreiben pausiert"
-    },
     "where": {
       "heading": "Wo es steht",
       "claimsClosed": "{{closed}}/{{total}} Claims geschlossen",
@@ -834,5 +830,20 @@
       "tasks": "Aufgaben gelandet",
       "none": "Keine Lanes: Die Spec hat keine tasks.md."
     }
+  },
+  "specHead": {
+    "breadcrumb": "Pfad",
+    "more": "mehr",
+    "less": "weniger",
+    "notes": "Notizen",
+    "notesCount": "{{count}} Notizen",
+    "updated": "aktualisiert {{time}}",
+    "round": "Runde {{round}}",
+    "uncommitted": "{{count}} Dateien nicht committet",
+    "agent": {
+      "on": "an {{claim}} · {{time}}",
+      "paused": "Schreiben pausiert"
+    },
+    "noSource": "Keine Agentenquelle · Schreibvorgänge prüfen nur den Datei-Hash"
   }
 }

@@ -1,5 +1,5 @@
 /*
- * The Status tab (design.md § Status, three tiers on the shell container). Compact stacks agent banner, Where it
+ * The Status tab (design.md § Status, three tiers on the shell container). Compact stacks Where it
  * stands, Waiting on you, Gates, Warnings, What is open, Activity. Medium keeps one column with the gates and warnings
  * inside Where it stands, two columns from 900. Wide is the bento: Why this next step and Progress by lane on the left,
  * Gates and What is open on the right, Activity across both. Colours are tokens only.
@@ -68,36 +68,9 @@ code {
   line-height: 16px;
 }
 
-/* Agent banner: one dense row with the orange edge, the writes-paused chip under it. */
-.banner {
-  display: grid;
-  gap: 8px;
-  justify-items: start;
-  padding: 8px 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-box);
-  background: var(--color-base-100);
-  box-shadow: inset 3px 0 0 var(--color-warning);
-}
 
-.banner-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  align-items: center;
-  margin: 0;
-  font-size: 14px;
-  line-height: 20px;
-}
 
-.banner-dot {
-  inline-size: 8px;
-  block-size: 8px;
-  border-radius: 999px;
-  background: var(--color-warning);
-}
 
-.paused-chip,
 .locked {
   display: inline-flex;
   gap: 4px;
@@ -307,40 +280,10 @@ code {
   word-break: normal;
 }
 
-.changed-label {
-  margin: 0;
-  color: var(--hover-ink);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 16px;
-}
 
-.gate-button {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: center;
-  inline-size: 100%;
-  min-block-size: 48px;
-  margin: 0;
-}
 
-.gate-button.stale {
-  border-color: var(--color-warning);
-  color: var(--hover-ink);
-}
 
-.gate-button.done {
-  padding: 8px 16px;
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-field);
-  color: var(--clos-ink);
-  font-weight: 600;
-}
 
-.gate-button[data-state='paused'] {
-  color: var(--color-base-content);
-}
 
 /* Progress by lane (wide) */
 .tasks-meter,
@@ -374,44 +317,11 @@ code {
   text-align: end;
 }
 
-/* The gate dialog: the three hashed files, the notes, a sticky Confirm. */
-.dialog-body {
-  display: grid;
-  gap: 16px;
-  padding: 16px 16px 0;
-}
 
-.intro {
-  margin: 0;
-  font-size: 14px;
-  line-height: 20px;
-}
 
-.hashed {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
 
-.hashed li {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  justify-content: space-between;
-}
 
-.hash {
-  color: var(--muted-ink);
-}
 
-.confirm-bar {
-  position: sticky;
-  inset-block-end: 0;
-  padding: 16px 0;
-  background: var(--color-base-100);
-}
 
 /* Medium: one column at 820, the fixed order Where it stands, Waiting on you, What is open, Activity. */
 @container shell (width >= 640px) {
@@ -426,20 +336,15 @@ code {
   :host([data-tier='medium']) .page {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  :host([data-tier='medium']) .banner {
-    grid-column: 1 / -1;
-  }
 }
 
 /* Wide: the bento. */
 @container shell (width >= 1120px) {
   .page {
-    grid-template-areas: 'agent agent' 'where gates' 'lanes open' 'activity activity';
+    grid-template-areas: 'where gates' 'lanes open' 'activity activity';
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .banner { grid-area: agent; }
   .where { grid-area: where; }
   .gates { grid-area: gates; }
   .lanes { grid-area: lanes; }
@@ -465,8 +370,7 @@ code {
 }
 
 @media (forced-colors: active) {
-  .gate-dot,
-  .banner-dot {
+  .gate-dot {
     background: CanvasText;
   }
 }
