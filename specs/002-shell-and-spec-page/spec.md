@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 12/49
+progress: 13/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T16:09:16Z
+updated: 2026-09-29T16:21:54Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -200,7 +200,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [ ] ISC-78: `/w/:ws/s/:id` shows the spec's key numbers (claims, tasks, rounds, gates, waiting), its idea quote, the next command with its reason, one bar per lane and the area tiles, all from the fixture files. ⟨?: the idea quote is the first sentence of `## Goal`, falling back to `task:` — assuming no spec carries a dedicated idea field⟩
 - [ ] ISC-79: The stage and the next command `core/` derives for every fixture spec equal the stage table in `FORMAT.md`, row by row. (after: ISC-68.1)
 - [x] ISC-80: A spec's timeline merges the decisions of context.md, the rounds of rounds.jsonl, the gate marks and the commits touching the spec folder into one time-ordered list with one entry per source event.
-- [ ] ISC-36: A spec's timeline lists its events in order; a spec without `events.jsonl` shows its derived stage marked as derived.
+- [x] ISC-36: A spec's timeline lists its events in order; a spec without `events.jsonl` shows its derived stage marked as derived.
 - [x] ISC-32: Every line of `events.jsonl` validates against the schema `{ts, from, to, command, actor}`.
 
 **Data and Docs**
@@ -285,6 +285,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-36: bun-test — `bun test core/tests/timeline.test.ts` 27 pass (derived marker without events.jsonl, recorded transitions replace it); `bun test tests/timeline.test.ts` 5 pass through the route: derived entries flagged, events.jsonl transitions in order, invalid lines dropped, ETag changes and 304 holds (T15, T26, T50; 2026-09-29)
 
 - ISC-81: e2e — bun run e2e -- data -g claims → 4 passed, 1 skipped (one card per golden claim, filter chip counts equal counts, takeable narrows to counts.takeable, #claim-ISC-… deep link scrolls and focuses; the taken-card case skips until the stub overlays locks on the claims route); component spec 16 pass incl. a synthetic taken claim; harbor 002: 30 cards, open 5 · takeable 4 · blocked 1 · closed 25; spec 002 round 10
 
