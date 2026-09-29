@@ -384,6 +384,8 @@ describe("this repository (integration)", () => {
       expect(c.subject.length).toBeGreaterThan(0);
       expect(c.subject).not.toContain("\n");
     }
-    expect(result.commits.some((c) => /round \d+/.test(c.subject))).toBe(true);
+    // A depth-1 checkout shows only the tip commit, whatever its subject; the round-commit subjects are proven on the
+    // temp repositories above, so here only a full clone may expect one.
+    if (result.commits.length > 1) expect(result.commits.some((c) => /round \d+/.test(c.subject))).toBe(true);
   });
 });
