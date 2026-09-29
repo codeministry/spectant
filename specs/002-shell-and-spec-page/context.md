@@ -302,3 +302,19 @@ own title (two goldens, decide one); server answers 409 before 423 when both app
 workspace and a malformed note id is 404; the rail at wide is still the placeholder, so Waiting on you and Warnings
 are not visible at wide and `#waiting` finds no heading there (T54 finding); the gate's `done` state is not clickable;
 no 423 e2e for the gate; the ▾ marker uses CSS alt-text syntax (older WebKit shows none); initial bundle 570 kB.
+Round 14 landed (2026-09-29, commits 091a201 … the board): T61 counts e2e (**ISC-72 closed**, decisions rows fixme:
+the Docs tab has no per-decision hook), T115 `taken` on the dashboard row from the one lock reading (ISC-90 open),
+T97–T99 notes persist with `pinned` as migration 3, `import-notes`/`export-notes`, `db rollback` (**ISC-52, ISC-53
+closed**), T78/T79 spec head with the shared gate button (**ISC-85 closed**; the head's description is `ideaQuote`,
+the Status tab lost its own banner), T100 Notes area (ISC-95 open until the claim-card badge T101), T81 Board Lanes
+view (**ISC-89 closed**; ISC-87 waits for Flow and the scrub-changes-no-file e2e, ISC-88 for the fixture gap below,
+ISC-90 for T85's agent chips, ISC-93 for the probe's `narrow` file). T39 skipped: spec 001 has no views to move.
+Whole e2e suite 426 passed, 8 skipped; initial bundle 609 kB against the 500 kB budget.
+Marks: harbor 002 holds 10 of the 11 card states — `absent` appears in no harbor frame (T33 is struck without a
+card), only in leadgen's goldens, so ISC-88's threshold needs a fixture edit or a re-read; the Live area's `built`
+flag is still false (the board is reachable through the tab bar, `g l` and the status link, the area menu shows it
+disabled); `?frame` absent means live on the board but 0 in the keyboard service; the operator lane renders cards, not
+the guarded checkbox; This frame / Needs you / Your steps render inline under the lanes until the rail task; the
+compact scrubber buttons are 32 px; `notes.contract.ts` `parseFields` destructures for the web tsconfig; a pinned
+marker is not in the notes rows; the Edit/Preview choice is component state; the worker's e2e cleanup (`pkill` on
+`serve-dist.ts`) can kill sibling servers — brief the next round to kill by pid.
