@@ -302,26 +302,28 @@
     {
       "ts": "2026-03-05T15:00:00Z",
       "kind": "stage",
-      "derived": true,
+      "derived": false,
       "title": "close → done",
-      "body": "- Derived from: `phase: complete`, spec.md `updated:`",
+      "body": "- Command: /spec-complete 001",
       "ref": "done",
       "id": "stage-done",
-      "actor": null,
+      "actor": "principal",
       "from": "close",
-      "to": "done"
+      "to": "done",
+      "command": "/spec-complete 001"
     },
     {
       "ts": "2026-03-05T14:30:00Z",
       "kind": "stage",
-      "derived": true,
+      "derived": false,
       "title": "code-review → close",
-      "body": "- Derived from: .gates/code-reviewed.json `at`",
+      "body": "- Command: /spec-code-review 001",
       "ref": "close",
       "id": "stage-close",
-      "actor": null,
+      "actor": "principal",
       "from": "code-review",
-      "to": "close"
+      "to": "close",
+      "command": "/spec-code-review 001"
     },
     {
       "ts": "2026-03-05T14:30:00Z",
@@ -333,29 +335,30 @@
       "id": "gate-code-reviewed"
     },
     {
-      "ts": "",
+      "ts": "2026-03-05T12:10:00Z",
       "kind": "stage",
-      "derived": true,
+      "derived": false,
       "title": "build → code-review",
-      "body": "- Undated: every claim closed; implied by .gates/code-reviewed.json, the files give no date",
+      "body": "- Command: /spec-implement 001",
       "ref": "code-review",
       "id": "stage-code-review",
-      "actor": null,
+      "actor": "agent",
       "from": "build",
       "to": "code-review",
-      "undated": true
+      "command": "/spec-implement 001"
     },
     {
       "ts": "2026-03-02T11:00:00Z",
       "kind": "stage",
-      "derived": true,
+      "derived": false,
       "title": "review → build",
-      "body": "- Derived from: .gates/reviewed.json `at`",
+      "body": "- Command: /spec-review 001",
       "ref": "build",
       "id": "stage-build",
-      "actor": null,
+      "actor": "principal",
       "from": "review",
-      "to": "build"
+      "to": "build",
+      "command": "/spec-review 001"
     },
     {
       "ts": "2026-03-02T11:00:00Z",
@@ -367,42 +370,43 @@
       "id": "gate-reviewed"
     },
     {
-      "ts": "",
+      "ts": "2026-03-02T10:20:00Z",
       "kind": "stage",
-      "derived": true,
+      "derived": false,
       "title": "tasks → review",
-      "body": "- Undated: tasks.md exists; no `created:` and no context.md round \"before the tasks\"",
+      "body": "- Command: /spec-tasks 001",
       "ref": "review",
       "id": "stage-review",
-      "actor": null,
+      "actor": "principal",
       "from": "tasks",
       "to": "review",
-      "undated": true
+      "command": "/spec-tasks 001"
     },
     {
-      "ts": "",
+      "ts": "2026-03-02T09:40:00Z",
       "kind": "stage",
-      "derived": true,
+      "derived": false,
       "title": "plan → tasks",
-      "body": "- Undated: plan.md exists; no `created:` and no context.md round \"before the plan\"",
+      "body": "- Command: /spec-plan 001",
       "ref": "tasks",
       "id": "stage-tasks",
-      "actor": null,
+      "actor": "principal",
       "from": "plan",
       "to": "tasks",
-      "undated": true
+      "command": "/spec-plan 001"
     },
     {
       "ts": "2026-03-02T09:00:00Z",
       "kind": "stage",
-      "derived": true,
+      "derived": false,
       "title": "created → plan",
-      "body": "- Derived from: spec.md `started:`",
+      "body": "- Command: /spec-feature manifest-sync",
       "ref": "plan",
       "id": "stage-plan",
-      "actor": null,
+      "actor": "principal",
       "from": null,
-      "to": "plan"
+      "to": "plan",
+      "command": "/spec-feature manifest-sync"
     },
     {
       "ts": "2026-03-02T09:00:00Z",

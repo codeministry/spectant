@@ -400,18 +400,28 @@ export interface TimelineInput {
   readonly events?: readonly EventLine[];
 }
 
-/** One line of `events.jsonl`. */
+/**
+ * One validated line of `events.jsonl` (events.ts, T16), keys in schema order. `from` and `to` are stage-table names
+ * (stage.ts), an older lifecycle word already normalised; `from` is null only on the creation, the file's first event.
+ */
 export interface EventLine {
+  /** ISO 8601 date-time with a zone (`Z` or an offset). */
   readonly ts: string;
-  readonly from: StageName;
+  readonly from: StageName | null;
   readonly to: StageName;
+  /** The command that made the transition, e.g. `/spec-review 002`; never empty. */
   readonly command: string;
+  /** Who ran it, e.g. `principal`; never empty. */
   readonly actor: string;
 }
 
+/**
+ * One line checked: the normalised event with the warnings its old words raised, or the one diagnostic that rejects
+ * it (`event-…`; severity `warning` only for an old-word line that normalises to no transition).
+ */
 export type EventValidation =
-  | { readonly ok: true; readonly event: EventLine }
-  | { readonly ok: false; readonly error: string };
+  | { readonly ok: true; readonly event: EventLine; readonly warnings: readonly Diagnostic[] }
+  | { readonly ok: false; readonly diagnostic: Diagnostic };
 
 // ─── Frames, re-cut, matrix, live (frames.ts, recut.ts, matrix.ts, live.ts) ──────────────────────────────────────
 

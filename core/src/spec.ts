@@ -18,6 +18,7 @@
 // Pure: text in, model out. No file system, no Bun API, no clock; deterministic over its input.
 import { goalOf } from './archive.ts';
 import { parseClaims } from './claims.ts';
+import { parseEvents } from './events.ts';
 import { buildDashboard } from './dashboard.ts';
 import type { DashboardSpecRow } from './dashboard.ts';
 import type {
@@ -129,11 +130,12 @@ function questionsOf(round: Record<string, unknown> | null): WaitingItem[] {
     });
 }
 
-/** The newest events.jsonl line (file order) whose `to` is the current stage. */
+/** The newest valid events.jsonl line (file order, T16's validator: old words normalised, bad lines dropped) whose `to` is the current stage. */
 function sinceOf(events: string | undefined, stage: string): { since: string | null; via: string | null } {
-  const into = jsonLines(events).filter((e) => e.to === stage && typeof e.ts === 'string' && typeof e.command === 'string');
+  if (events === undefined) return { since: null, via: null };
+  const into = parseEvents(events).events.filter((e) => e.to === stage);
   const last = into[into.length - 1];
-  return last === undefined ? { since: null, via: null } : { since: last.ts as string, via: last.command as string };
+  return last === undefined ? { since: null, via: null } : { since: last.ts, via: last.command };
 }
 
 // ── spec.md ───────────────────────────────────────────────────────────────────────────────────────────────────────

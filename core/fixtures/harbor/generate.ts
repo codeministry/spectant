@@ -13,7 +13,8 @@
  *
  * What the tree exercises (see ../README.md):
  *   master ISA.md    124 claims in F0–F4, 101 closed: the three-digit/three-digit master fraction
- *   001  feature     complete, archived under specs/archive/, reviewed and code-reviewed marks
+ *   001  feature     complete, archived under specs/archive/, reviewed and code-reviewed marks, events.jsonl with
+ *                    its whole chain from the creation to done in the stage table's vocabulary (T16)
  *   002  feature     building, reviewed mark current, rounds.jsonl with three rounds and a re-cut holding every card
  *                    state, .spectant/activity.jsonl with one open claim, operator tasks open and ticked,
  *                    artifacts/ with three task results and .evidence/ with a PNG, a HAR and a log (T24), four of
@@ -842,6 +843,22 @@ const ACTIVITY_002 = [
     {ts: "2026-03-08T15:52:00Z", event: "release", claim: "ISC-72", session: "spec-002-ISC-72"},
 ].map((line) => JSON.stringify(line)).join("\n") + "\n";
 
+// ── spec 001: events.jsonl (T16) ───────────────────────────────────────────────────────────────────────
+// Every recorded stage transition of the archived spec, in the stage table's names (one vocabulary for timeline and
+// stage). The chain is the one the files derive (created → plan … close → done); the recording dates the two steps the
+// files cannot (plan and tasks written the morning of 03-02, the last claim closed 03-05 at noon) and matches the
+// dated ones: `started:`, both gate marks' `at` and `updated:`. The creation is the only null `from`.
+
+const EVENTS_001 = [
+    {ts: "2026-03-02T09:00:00Z", from: null, to: "plan", command: "/spec-feature manifest-sync", actor: "principal"},
+    {ts: "2026-03-02T09:40:00Z", from: "plan", to: "tasks", command: "/spec-plan 001", actor: "principal"},
+    {ts: "2026-03-02T10:20:00Z", from: "tasks", to: "review", command: "/spec-tasks 001", actor: "principal"},
+    {ts: "2026-03-02T11:00:00Z", from: "review", to: "build", command: "/spec-review 001", actor: "principal"},
+    {ts: "2026-03-05T12:10:00Z", from: "build", to: "code-review", command: "/spec-implement 001", actor: "agent"},
+    {ts: "2026-03-05T14:30:00Z", from: "code-review", to: "close", command: "/spec-code-review 001", actor: "principal"},
+    {ts: "2026-03-05T15:00:00Z", from: "close", to: "done", command: "/spec-complete 001", actor: "principal"},
+].map((e) => JSON.stringify(e)).join("\n") + "\n";
+
 // ── spec 002: artifacts/ and .evidence/ (T24) ──────────────────────────────────────────────────────────
 
 /** Task results, one Markdown file per task, named `T<n>-<what>.md`. */
@@ -1089,6 +1106,8 @@ function generate() {
     writeBytes(`specs/${S002.dir}/.evidence/kpi-band-390.png`, kpiBandPng());
     write(`specs/${S002.dir}/.evidence/dashboard.har`, HAR_002);
     write(`specs/${S002.dir}/.evidence/bun-test-r3.log`, LOG_002);
+
+    write(`specs/${S001.dir}/events.jsonl`, EVENTS_001);
 
     // gate marks — after every spec, plan and tasks file is written, since the reviewed digest covers them
     const g = (d: SpecDef, name: string, body: string) => write(`specs/${d.dir}/.gates/${name}.json`, body);

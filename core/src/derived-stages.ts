@@ -11,8 +11,9 @@
 // through `plan` and the three-claim threshold for `tasks` holds. Every derived entry carries `derived: true` and
 // `actor: null`; the first one has `from: null` (the spec did not exist before).
 //
-// The two vocabularies (ISC-24 writes the lifecycle one; FORMAT.md's open question asks spec 002 to pick one before
-// T16), and the date each derived transition takes, first source that gives one:
+// The two vocabularies (the stage table is the one events.jsonl speaks, principal decision 2026-09-29; events.ts reads
+// the older lifecycle words through EVENT_VOCABULARY_ALIASES), and the date each derived transition takes, first
+// source that gives one:
 //
 // | lifecycle (ISC-24)           | stage table (from → to)            | date source                                          |
 // |------------------------------|------------------------------------|------------------------------------------------------|
@@ -130,7 +131,7 @@ function fromEvent(event: EventLine): TimelineEntry {
     ts: event.ts,
     kind: 'stage',
     derived: false,
-    title: `${event.from} → ${event.to}`,
+    title: `${event.from ?? 'created'} → ${event.to}`,
     body: `- Command: ${event.command}`,
     ref: event.to,
     actor: event.actor,

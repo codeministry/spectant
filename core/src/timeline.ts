@@ -3,7 +3,9 @@
 //
 // Pure over text the caller read: no `node:*`, no subprocess, so the web bundle may import the types beside it.
 // Stage entries (`kind: 'stage'`) come from derived-stages.ts (T15, ISC-36): the input's events when it carries any,
-// else the transitions derived from the files, marked `derived`.
+// else the transitions derived from the files, marked `derived`. Without `input.events` the spec's own events.jsonl
+// is read through events.ts (T16, ISC-32): its valid lines are the recorded transitions, its rejected lines are
+// dropped here (the timeline carries no diagnostics), and a file with no valid line derives as if it were absent.
 //
 // Order: newest first by the instant each `ts` names, then by source (stage < decision < round < gate < commit), then
 // by position in the source. A stage entry sorts at the instant `stageInstants` gives it (an undated one right after
@@ -13,6 +15,7 @@
 // mixed precision (`…29Z` vs `…29.277Z`) breaks a lexical compare as well. A `ts` that does not parse sorts after
 // every one that does, lexically among its peers.
 import { deriveStages, GOAL_HEADER, ROUND_HEADER, stageInstants } from './derived-stages.ts';
+import { parseEvents } from './events.ts';
 import type { CommitRecord, SpecFiles, TimelineEntry, TimelineInput, TimelineKind } from './files.ts';
 
 type RecordedKind = Exclude<TimelineKind, 'stage'>;
@@ -44,7 +47,9 @@ export function buildTimeline(input: TimelineInput): TimelineEntry[] {
     ...gatesOf(input.files),
     ...commitsOf(input.commits),
   ];
-  const stages = deriveStages(input.files, input.events);
+  const recorded = input.files.texts.events;
+  const events = input.events ?? (recorded === undefined ? undefined : parseEvents(recorded).events);
+  const stages = deriveStages(input.files, events);
   const instants = stageInstants(stages);
   const placed: Placed[] = [
     ...drafts.map((draft, seq) => ({ entry: recordedEntry(draft), at: Date.parse(draft.ts), seq })),

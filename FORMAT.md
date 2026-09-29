@@ -352,14 +352,52 @@ From `core/fixtures/harbor/specs/002-web-console/rounds.jsonl`, the end of round
 
 One JSON object per line, one line per recorded stage transition: `{ts, from, to, command, actor}`, every field a
 string, `ts` ISO 8601. When the file exists its transitions win in the timeline; without it the timeline shows the
-stage derived from the files, marked as derived (ISC-36). The validator is spec 002's T16 (`events.ts`, a stub).
+stage derived from the files, marked as derived (ISC-36). `from` and `to` are the stage table's names (below, one
+vocabulary for timeline and stage); `from` is null only on the creation, the file's first line.
 
-**No fixture yet.** No fixture tree carries an `events.jsonl`; the line below shows the schema only, with stage names
-from the stage table.
+From `core/fixtures/harbor/specs/archive/001-manifest-sync/events.jsonl`, the whole chain of a complete spec:
+
+```json
+{"ts":"2026-03-02T09:00:00Z","from":null,"to":"plan","command":"/spec-feature manifest-sync","actor":"principal"}
+{"ts":"2026-03-02T09:40:00Z","from":"plan","to":"tasks","command":"/spec-plan 001","actor":"principal"}
+{"ts":"2026-03-02T10:20:00Z","from":"tasks","to":"review","command":"/spec-tasks 001","actor":"principal"}
+{"ts":"2026-03-02T11:00:00Z","from":"review","to":"build","command":"/spec-review 001","actor":"principal"}
+{"ts":"2026-03-05T12:10:00Z","from":"build","to":"code-review","command":"/spec-implement 001","actor":"agent"}
+{"ts":"2026-03-05T14:30:00Z","from":"code-review","to":"close","command":"/spec-code-review 001","actor":"principal"}
+{"ts":"2026-03-05T15:00:00Z","from":"close","to":"done","command":"/spec-complete 001","actor":"principal"}
+```
+
+A single line in the schema, the transition "Mark reviewed" records (ISC-24):
 
 ```json
 {"ts":"2026-03-07T15:30:00Z","from":"review","to":"build","command":"/spec-review 002","actor":"principal"}
 ```
+
+**Validated** (`events.ts`, T16, ISC-32). `parseEvents` reads the file line by line, skips blank lines and keeps file
+order; `validateEventLine` checks one line and never throws. A line is rejected with one diagnostic (severity
+`error`, its line number, the first rule it breaks) and is not an event: `event-json` (not JSON), `event-not-object`,
+`event-missing-key` and `event-extra-key` (exactly the five keys), `event-type` (every value a string, `from` also
+null, `to` never), `event-ts` (an ISO 8601 date-time with `Z` or `±hh:mm` on a real calendar day; a date alone is
+not an event time), `event-empty` (blank `command` or `actor`), `event-stage` (`from` or `to` is neither a stage name
+nor an old word below), `event-same-stage` (`from` equals `to`), `event-null-from` (a null `from` after the first
+event). The valid lines are the recorded transitions; a file with no valid line counts as absent.
+
+The older lifecycle words (ISC-24's wording, written by the old skill) are read and normalised to the stage names,
+each with a `warning` diagnostic `event-alias` naming the old word, so everything downstream sees one vocabulary
+(`EVENT_VOCABULARY_ALIASES`). A stage names what the spec waits for, so a word naming what just happened maps to the
+stage after it. A line that the mapping alone makes `build → build` (`reviewed → implementing`) is skipped with a
+`warning`, not an error.
+
+| Old word | Stage |
+|----------|-------|
+| `idea` | null (the creation) |
+| `specified` | `plan` |
+| `planned` | `tasks` |
+| `tasked` | `review` |
+| `reviewed` | `build` |
+| `implementing` | `build` |
+| `code-reviewed` | `close` |
+| `done` | `done` (the same word) |
 
 **Derived transitions** (`derived-stages.ts`, T15). Without events the timeline replays the stage table over the
 files, one `stage` entry per change of stage, `derived: true`, `actor: null`, `from`/`to` in the stage table's names
@@ -372,7 +410,9 @@ at their own `created:`, else at the context.md round titled "before the plan" o
 its own round entry. A transition the files do not date carries `ts: ""` and `undated: true` and sorts right after the
 dated transition before it, as does a date without a time that falls on that transition's day. When the caller passes
 the validated events.jsonl lines, they are the stage entries (`derived: false`, with their `actor` and `command`) and
-nothing is derived. The module header maps these names to ISC-24's `specified → planned → tasked → reviewed` wording.
+nothing is derived; without them `buildTimeline` reads the spec's own events.jsonl through `parseEvents`, so a folder
+with the file shows its recorded transitions and a folder without it derives. The table above maps these names to
+ISC-24's `specified → planned → tasked → reviewed` wording.
 
 ## `gateReviewed` — `.gates/reviewed.json`
 
@@ -668,12 +708,10 @@ parser.
 - ⟨?: The task grammar above is the fixtures' convention; `tasks.ts` (T23) is still a stub, today only the boxes are
   counted. No fixture carries a struck task line, and a task text may itself contain ` · ` or code spans, so "paths
   after the last ` · `" needs a rule outside code spans.⟩
-- ⟨?: `events.jsonl` `from`/`to` vocabulary: ISC-24 names a `tasked → reviewed` event, but the stage table's names are
-  `tasks`, `review`, `build`, …; spec 002 must pick one vocabulary before T16.⟩
 - ⟨?: How a path in `artifacts/` or `.evidence/` names its claim (a folder per ID, or the ID anywhere in the path) is
   not fixed yet (T24).⟩
 - ⟨?: The frontier lock file's shape and location are not written down in this repository (T20).⟩
 - ⟨?: ISC-68.1's threshold says 11 kinds; `files.ts` has 13 (the gate marks are two kinds, and `events` joined).
-  Three of them (`events`, `artifacts`, `evidence`) have no fixture yet, so "one real example each" holds for ten.⟩
+  All 13 now quote a fixture file verbatim, so "one real example each" holds for every kind.⟩
 - ⟨?: `rounds.jsonl` `v` is not checked, and the timeline accepts a `ts` that does not parse while the dashboard
   skips it with a diagnostic.⟩

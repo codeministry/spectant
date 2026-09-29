@@ -99,6 +99,7 @@
         "plan",
         "tasks",
         "context",
+        "events",
         "gateReviewed",
         "gateCodeReviewed"
       ],

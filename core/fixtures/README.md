@@ -29,7 +29,7 @@ snapshot changes only together with the parser change that explains it.
 
 | Spec | Type · phase | Carries | Expected (as the old Spec skill derives it) |
 |------|--------------|---------|---------------------------------------------|
-| `archive/001-manifest-sync` | feature · complete | `archived:` date, all 46 claims `[x]`, reviewed and code-reviewed marks | archived, stage done, no warning |
+| `archive/001-manifest-sync` | feature · complete | `archived:` date, all 46 claims `[x]`, reviewed and code-reviewed marks, `events.jsonl` with the whole chain from the creation to done in the stage table's names | archived, stage done, no warning; the timeline shows the seven recorded transitions, none derived |
 | `002-web-console` | feature · building | reviewed mark renewed after the re-cut, `rounds.jsonl` with three rounds, 25 of 30 claims closed and 27 of 32 tasks `[x]`, one claim blocked by an edge, dotted IDs `ISC-60.1`/`ISC-60.2`; every card state of the round board (see below) | stage build, no warning; R1 9/30, R2 15/30, R3 25/30 with `stop` "a decision only the principal can make" |
 | `003-config-loader` | refactor · scoping | no reviewed mark, no `tasks.md`, no mermaid fence in `spec.md` or `plan.md` | stage tasks, warning review (missing); diagram verdict `warn`, which the dashboard does not list for a refactor |
 | `004-retention-policies` | feature · building | every claim `[x]`, `plan.md` without a mermaid fence, current reviewed mark, stale code-reviewed mark | stage code-review, warnings diagrams (`plan.md`) and closed |

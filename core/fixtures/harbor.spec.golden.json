@@ -703,8 +703,8 @@
       "reasons": [
         "phase: complete"
       ],
-      "since": null,
-      "via": null
+      "since": "2026-03-05T15:00:00Z",
+      "via": "/spec-complete 001"
     },
     "lanes": [
       {

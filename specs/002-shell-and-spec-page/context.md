@@ -218,3 +218,10 @@ Principal clarification (2026-09-29, during round 9): Spectant ships **with** it
 the developer starts spec work from the AI chat and the app runs alongside for control and administration. Written for
 Claude Code first, expected to work with other agents that understand skills (a later portability claim). Recorded as a
 master Decisions row; README and the root CLAUDE.md reworded from "a plugin follows later".
+
+Review 2026-09-29 (mid-run, principal): mark renewed on the unchanged text ("Sofort freigeben"); the textual
+amendments stay pending for the next edit — probe paths `core/tests/…` (ISC-36, 68, 70, 79, 80, 83, 87, 90, 91),
+ISC-68.1 threshold 13, ISC-98 probe without the skill's install path (the two leak hits), `not-found` in T45, the
+skill+app framing in the Vision, the lock-session field on the dashboard row. Two decisions taken: events.jsonl uses the
+stage table's names (T16 unblocked; ISC-24 → `tasks → review`), and takeable is gated on a fresh reviewed mark (claims
+show `open` before it) — a core task to mint at the next edit, because it moves `status.ts`/`stage.ts` and the goldens.

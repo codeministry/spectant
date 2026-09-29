@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T12:59:07Z
+updated: 2026-09-29T13:35:35Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -43,7 +43,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T13 · ISC-71 · [P] · core — resolution of workspace slug and spec id returns not-found, never a fallback spec · `core/src/resolve.ts`
 - [x] T14 · ISC-80 · [P] · core — timeline merge of context.md decisions, rounds, gate marks and the commits the server passes in, one entry per source event, time-ordered (after: T1) · `core/src/timeline.ts`
 - [x] T15 · ISC-36 · [P] · core — derived stage transitions marked `derived`; `events.jsonl` transitions replace them when present · `core/src/derived-stages.ts`
-- [ ] T16 · ISC-32 · [P] · core — `events.jsonl` line validator against `{ts, from, to, command, actor}` · `core/src/events.ts`
+- [x] T16 · ISC-32 · [P] · core — `events.jsonl` line validator against `{ts, from, to, command, actor}` · `core/src/events.ts`
 - [x] T17 · ISC-87 · [P] · core — frames from rounds: dispatch and result frames, worst state per frame, task states carried forward (after: T1) · `core/src/frames.ts`
 - [ ] T18 · ISC-91 · core — re-cut detection between rounds (ids and texts compared), struck tasks as absent, no state attributed to a renumbered id (after: T17) · `core/src/recut.ts`
 - [ ] T19 · ISC-92 · core — matrix cells: tasks × frames with state glyph keys, absent and re-cut columns (after: T17) · `core/src/matrix.ts`
@@ -57,7 +57,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T27 · ISC-87 · core — frames tests including the re-cut and matrix cases on spec 001's own `rounds.jsonl` and harbor 002 (after: T17, T18, T19) · `core/tests/frames.test.ts`
 - [x] T28 · ISC-90 · core — live frame tests: frontier source, activity source, none (after: T21) · `core/tests/live.test.ts`
 - [ ] T29 · ISC-79 · core — stage tests row by row against `FORMAT.md` (after: T11) · `core/tests/stage.test.ts`
-- [ ] T30 · ISC-32 · core — events validator tests (after: T16) · `core/tests/events.test.ts`
+- [x] T30 · ISC-32 · core — events validator tests (after: T16) · `core/tests/events.test.ts`
 
 ### ② Shell
 

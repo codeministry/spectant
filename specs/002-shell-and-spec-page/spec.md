@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 5/48
+progress: 6/48
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T12:59:07Z
+updated: 2026-09-29T13:35:35Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -196,7 +196,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [ ] ISC-79: The stage and the next command `core/` derives for every fixture spec equal the stage table in `FORMAT.md`, row by row. (after: ISC-68.1)
 - [ ] ISC-80: A spec's timeline merges the decisions of context.md, the rounds of rounds.jsonl, the gate marks and the commits touching the spec folder into one time-ordered list with one entry per source event.
 - [ ] ISC-36: A spec's timeline lists its events in order; a spec without `events.jsonl` shows its derived stage marked as derived.
-- [ ] ISC-32: Every line of `events.jsonl` validates against the schema `{ts, from, to, command, actor}`.
+- [x] ISC-32: Every line of `events.jsonl` validates against the schema `{ts, from, to, command, actor}`.
 
 **Data and Docs**
 
@@ -280,6 +280,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-32: bun-test — bun test core/tests/events.test.ts → 39 pass: every line of the fixture events.jsonl (harbor archive/001, seven transitions in the stage table's names) validates; nine rejection codes (json, not-object, missing/extra key, type, ts, empty, stage, same-stage, null-from) each proven; the old wording (idea/specified/planned/tasked/reviewed/implementing/code-reviewed) is normalised with an event-alias warning; buildTimeline and the spec page read the validated lines, so 001's chain shows recorded transitions with actor and command; FORMAT.md quotes the file (13 of 13 kinds from fixtures); spec 002 round 9
 
 - ISC-74: bun-test — bun test web/tests/fonts.test.ts → 27 pass: Manrope (200–800) and Sora (100–800) as local latin variable woff2 from the Google Fonts CSS endpoint with the OFL texts of the pinned upstream commits, JetBrains Mono kept, Inter removed from fonts, preloads and notices; no font URL off the app's origin in any stylesheet or the built output; Sora on the wordmark/h1 per design.md; tokens: every accent has an -ink (light --held-ink derived), --hover-t/--scrim/--page-glass added, the two narrow dark values pinned (#939293 4.57, #7f7d80 3.47), no-glow guard with ui-card's inherited corner glow pinned as the one known exception; ISC-18's round-trip guard untouched and green; browser tier 10 passed; spec 002 round 8
 
