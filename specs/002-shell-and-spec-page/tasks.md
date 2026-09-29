@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T18:05:37Z
+updated: 2026-09-29T18:06:02Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -56,7 +56,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T26 · ISC-80 · core — timeline tests: sources merged in order, one entry per event (after: T14, T15) · `core/tests/timeline.test.ts`
 - [ ] T27 · ISC-87 · core — frames tests including the re-cut and matrix cases on spec 001's own `rounds.jsonl` and harbor 002 (after: T17, T18, T19) · `core/tests/frames.test.ts`
 - [x] T28 · ISC-90 · core — live frame tests: frontier source, activity source, none (after: T21) · `core/tests/live.test.ts`
-- [ ] T29 · ISC-79 · core — stage tests row by row against `FORMAT.md` (after: T11) · `core/tests/stage.test.ts`
+- [x] T29 · ISC-79 · core — stage tests row by row against `FORMAT.md` (after: T11) · `core/tests/stage.test.ts`
 - [x] T30 · ISC-32 · core — events validator tests (after: T16) · `core/tests/events.test.ts`
 
 ### ② Shell
@@ -71,8 +71,8 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T38 · ISC-75 · web — zen: tools and rail hidden, navigation sticky, footer status bar; rail collapse toggle at wide with its state through `/api/settings` (after: T35) · `web/src/app/layout/zen/`
 - [ ] T39 · ISC-77 · web — spec 001's dashboard, overview, inspector and palette rendered inside the shell; their routes unchanged (after: T35, T36) · `web/src/app/features/dashboard/`
 - [x] T40 · ISC-73 · web — e2e shell: exactly one header with the seven controls at 390 and 1440 (after: T36) · `web/e2e/shell.spec.ts`
-- [ ] T41 · ISC-75 · web — e2e zen and rail persistence (after: T38) · `web/e2e/shell-zen.spec.ts`
-- [ ] T42 · ISC-76 · web — e2e deep link selects area and tab (after: T37) · `web/e2e/spec-deeplink.spec.ts`
+- [x] T41 · ISC-75 · web — e2e zen and rail persistence (after: T38) · `web/e2e/shell-zen.spec.ts`
+- [x] T42 · ISC-76 · web — e2e deep link selects area and tab (after: T37) · `web/e2e/spec-deeplink.spec.ts`
 - [ ] T43 · ISC-77 · web — 001's e2e suites run on the new shell; 001's dashboard and overview baselines re-recorded once (after: T39) · `web/e2e/__screenshots__/`
 
 ### ③ Read-only areas
@@ -95,27 +95,27 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T59 · ISC-84 · web — Docs tabs: rendered markdown with TOC, figures, tables in their own scroll region · Mobile, type-aware empty state (after: T35, T52) · `web/src/app/features/spec/docs/`
 - [x] T60 · ISC-88 · web — primitives this spec adds beside 001's: `ui-glyph` (eleven card states, six claim states), `ui-state-chip`, `ui-scrubber`, `ui-disclosure`, `ui-toast` (after: T34) · `web/src/app/shared/ui/glyph/`
 - [x] T61 · ISC-72 · web — e2e counts: every counter on the spec dashboard and its tabs equals the golden JSON (after: T53, T54, T55, T56, T57, T58, T59) · `web/e2e/counts.spec.ts`
-- [ ] T62 · ISC-78 · web — e2e spec dashboard (after: T53) · `web/e2e/spec.spec.ts`
+- [x] T62 · ISC-78 · web — e2e spec dashboard (after: T53) · `web/e2e/spec.spec.ts`
 - [x] T63 · ISC-81 · web — e2e claims tab (after: T56) · `web/e2e/data-claims.spec.ts`
 - [x] T64 · ISC-82 · web — e2e tasks tab (after: T57) · `web/e2e/data-tasks.spec.ts`
-- [ ] T65 · ISC-83.1 · web — e2e evidence tab (after: T58) · `web/e2e/data-evidence.spec.ts`
+- [x] T65 · ISC-83.1 · web — e2e evidence tab (after: T58) · `web/e2e/data-evidence.spec.ts`
 - [x] T66 · ISC-84 · web — e2e docs tabs including the empty state for a refactor (after: T59) · `web/e2e/docs.spec.ts`
 
 ### ④ The two writes
 
 - [x] T67 · ISC-26 · [seam] · server — writes contract: request bodies with the client's sha256, the 200 / 409 / 423 response shapes, the event line (after: T44) · `server/src/writes.contract.ts`
 - [x] T68 · ISC-26 · server — `writes.ts`: read, compare sha256, write the target file with fsync, byte-identical on mismatch (after: T67) · `server/src/writes.ts`
-- [ ] T69 · ISC-24 · server — gate route: `.gates/reviewed.json` in the old skill's format plus exactly one `review → build` event line (after: T68, T16) · `server/src/gate-route.ts`
+- [x] T69 · ISC-24 · server — gate route: `.gates/reviewed.json` in the old skill's format plus exactly one `review → build` event line (after: T68, T16) · `server/src/gate-route.ts`
 - [x] T70 · ISC-25 · server — checkbox route: exactly one task line changed in `tasks.md` (after: T68) · `server/src/checkbox-route.ts`
-- [ ] T71 · ISC-27 · server — lock guard: refuse a write while `.spectant/activity.jsonl` shows an open claim on the spec (after: T68, T20) · `server/src/lock-guard.ts`
-- [ ] T72 · ISC-86 · server — lock guard: frontier lock → 423 with the session name; no source available → proceed with source `none` (after: T71, T51) · `server/src/lock-guard.ts`
-- [ ] T73 · ISC-26 · server — writes test "cas": 409 and byte-identical file (after: T68) · `tests/writes.test.ts`
-- [ ] T74 · ISC-24 · server — writes test "reviewed": gate file plus one event (after: T69) · `tests/writes.test.ts`
+- [x] T71 · ISC-27 · server — lock guard: refuse a write while `.spectant/activity.jsonl` shows an open claim on the spec (after: T68, T20) · `server/src/lock-guard.ts`
+- [x] T72 · ISC-86 · server — lock guard: frontier lock → 423 with the session name; no source available → proceed with source `none` (after: T71, T51) · `server/src/lock-guard.ts`
+- [x] T73 · ISC-26 · server — writes test "cas": 409 and byte-identical file (after: T68) · `tests/writes.test.ts`
+- [x] T74 · ISC-24 · server — writes test "reviewed": gate file plus one event (after: T69) · `tests/writes.test.ts`
 - [x] T75 · ISC-25 · server — writes test "checkbox": one line changed (after: T70) · `tests/writes.test.ts`
-- [ ] T76 · ISC-27 · server — writes test "claim lock": refused under an activity line (after: T71) · `tests/writes.test.ts`
-- [ ] T77 · ISC-86 · server — writes test "frontier": 423 under a frontier lock, proceed with `none` (after: T72) · `tests/writes.test.ts`
-- [ ] T78 · ISC-85 · web — gate button in the spec head with ready, stale (changed files named), done, paused; the release dialog listing the three hashed files; the agent banner variants (after: T54, T67) · `web/src/app/layout/spec-head/`
-- [ ] T79 · ISC-85 · web — e2e gate: the four states, the dialog, scripted 409 and 423 (after: T78, T52) · `web/e2e/gate.spec.ts`
+- [x] T76 · ISC-27 · server — writes test "claim lock": refused under an activity line (after: T71) · `tests/writes.test.ts`
+- [x] T77 · ISC-86 · server — writes test "frontier": 423 under a frontier lock, proceed with `none` (after: T72) · `tests/writes.test.ts`
+- [x] T78 · ISC-85 · web — gate button in the spec head with ready, stale (changed files named), done, paused; the release dialog listing the three hashed files; the agent banner variants (after: T54, T67) · `web/src/app/layout/spec-head/`
+- [x] T79 · ISC-85 · web — e2e gate: the four states, the dialog, scripted 409 and 423 (after: T78, T52) · `web/e2e/gate.spec.ts`
 - [x] T80 · ISC-25 · web — checkbox write wiring in the Tasks tab: saving, locked with session name, conflict with Reload, operator rows tickable (after: T57, T67) · `web/src/app/features/spec/data/tasks/checkbox.ts`
 
 ### ⑤ Live and Notes
@@ -123,29 +123,29 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T81 · ISC-87 · web — board: toolbar, scrubber with frame kinds and labels, Lanes view with sections and lane order from the constitution, frame chip and progress line (after: T35, T52, T60) · `web/src/app/features/spec/live/board/`
 - [ ] T82 · ISC-87 · web — Flow view: four columns with band headers, FLIP moves, segmented control at compact · Mobile (after: T81) · `web/src/app/features/spec/live/flow/`
 - [ ] T83 · ISC-88 · web — card anatomy in both densities and the card detail dialog, every state with glyph, chip text and colour (after: T81) · `web/src/app/features/spec/live/card/`
-- [ ] T84 · ISC-89 · web — waiting groups by reason, collapsible, no card hidden (after: T81) · `web/src/app/features/spec/live/waiting/`
+- [x] T84 · ISC-89 · web — waiting groups by reason, collapsible, no card hidden (after: T81) · `web/src/app/features/spec/live/waiting/`
 - [ ] T85 · ISC-90 · web — live frame rendering: agent chips with elapsed time, stale marker, lock source name, probe status (after: T81) · `web/src/app/features/spec/live/live-frame.ts`
 - [ ] T86 · ISC-91 · web — re-cut marker on the scrubber and absent cards (after: T81) · `web/src/app/features/spec/live/recut.ts`
 - [ ] T87 · ISC-92 · web — Matrix tab: sticky first column, frame columns, glyph cells, cell click jumps the scrubber (after: T81) · `web/src/app/features/spec/live/matrix/`
 - [ ] T88 · ISC-87 · web — This frame and Needs you: rail blocks at wide, the bottom bar and sheet below wide merged with the zen footer · Mobile, Tablet (after: T81) · `web/src/app/features/spec/live/this-frame/`
 - [ ] T89 · ISC-87 · web — e2e board: scrubbing changes frames and no file (`git status --porcelain` empty) (after: T81, T82) · `web/e2e/board.spec.ts`
 - [ ] T90 · ISC-88 · web — e2e board states: all eleven card states on the harbor 002 fixture (after: T83) · `web/e2e/board-states.spec.ts`
-- [ ] T91 · ISC-89 · web — e2e waiting: shown cards equal the frame's tasks (after: T84) · `web/e2e/board-waiting.spec.ts`
+- [x] T91 · ISC-89 · web — e2e waiting: shown cards equal the frame's tasks (after: T84) · `web/e2e/board-waiting.spec.ts`
 - [ ] T92 · ISC-92 · web — e2e matrix cell jump (after: T87) · `web/e2e/board-matrix.spec.ts`
 - [ ] T93 · ISC-93 · web — e2e narrow board at 600 px: no horizontal overflow, no lane scroller (after: T81) · `web/e2e/narrow-board.spec.ts`
 - [x] T94 · ISC-94 · [seam] · server — notes contract: the note shape with workspace and at most one anchor, the CRUD routes, migration 2 with `schema_version` 2 · `server/src/notes.contract.ts`
 - [x] T95 · ISC-94 · server — `note` table migration and CRUD; orphaning on workspace removal (after: T94) · `server/src/notes.ts`
 - [x] T96 · ISC-94 · server — notes test "store": row present, repository tree unchanged (after: T95) · `tests/notes.test.ts`
-- [ ] T97 · ISC-52 · server — notes test "persist": create, edit, pin, restart, unchanged (after: T95) · `tests/notes.test.ts`
-- [ ] T98 · ISC-53 · server — CLI `import-notes <file>` from the old notes page's JSON, `export-notes <file>`, `db rollback 2` (after: T95) · `server/src/cli-notes.ts`
-- [ ] T99 · ISC-53 · server — notes test "import": count equal (after: T98) · `tests/notes.test.ts`
+- [x] T97 · ISC-52 · server — notes test "persist": create, edit, pin, restart, unchanged (after: T95) · `tests/notes.test.ts`
+- [x] T98 · ISC-53 · server — CLI `import-notes <file>` from the old notes page's JSON, `export-notes <file>`, `db rollback 2` (after: T95) · `server/src/cli-notes.ts`
+- [x] T99 · ISC-53 · server — notes test "import": count equal (after: T98) · `tests/notes.test.ts`
 - [x] T100 · ISC-95 · web — Notes area: list and editor routes, anchor picker, import notice, stacked below wide · Mobile, Tablet, two panes at wide · Desktop (after: T35, T94, T52) · `web/src/app/features/spec/notes/`
 - [ ] T101 · ISC-95 · web — note count on claim cards and e2e notes (after: T100, T56) · `web/e2e/notes.spec.ts`
 
 ### ⑥ Cross-cutting
 
 - [x] T102 · ISC-97 · web — keyboard service: `g` sequences for areas and tabs, `[` `]`, `v`, `◂ ▸`, `m`, `n`, `f`; shortcut sheet lists them; hints hidden on coarse pointers (after: T35) · `web/src/app/core/keyboard.service.ts`
-- [ ] T103 · ISC-97 · web — e2e keyboard on spec pages (after: T102) · `web/e2e/keyboard-spec.spec.ts`
+- [x] T103 · ISC-97 · web — e2e keyboard on spec pages (after: T102) · `web/e2e/keyboard-spec.spec.ts`
 - [ ] T104 · ISC-2 · web — offline e2e extended to every new route in both themes (after: T53, T54, T55, T56, T57, T58, T59, T81, T100) · `web/e2e/offline.spec.ts`
 - [ ] T105 · ISC-23 · web — visual baseline: spec page (Status, Claims, Tasks), light, three widths (after: T54, T56, T57) · `web/e2e/visual-spec.spec.ts`
 - [ ] T106 · ISC-23.1 · web — visual baseline: spec page, dark (after: T105) · `web/e2e/visual-spec.spec.ts`
