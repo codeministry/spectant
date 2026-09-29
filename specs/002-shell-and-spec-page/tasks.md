@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T17:19:36Z
+updated: 2026-09-29T17:20:24Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -134,8 +134,8 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T92 · ISC-92 · web — e2e matrix cell jump (after: T87) · `web/e2e/board-matrix.spec.ts`
 - [ ] T93 · ISC-93 · web — e2e narrow board at 600 px: no horizontal overflow, no lane scroller (after: T81) · `web/e2e/narrow-board.spec.ts`
 - [x] T94 · ISC-94 · [seam] · server — notes contract: the note shape with workspace and at most one anchor, the CRUD routes, migration 2 with `schema_version` 2 · `server/src/notes.contract.ts`
-- [ ] T95 · ISC-94 · server — `note` table migration and CRUD; orphaning on workspace removal (after: T94) · `server/src/notes.ts`
-- [ ] T96 · ISC-94 · server — notes test "store": row present, repository tree unchanged (after: T95) · `tests/notes.test.ts`
+- [x] T95 · ISC-94 · server — `note` table migration and CRUD; orphaning on workspace removal (after: T94) · `server/src/notes.ts`
+- [x] T96 · ISC-94 · server — notes test "store": row present, repository tree unchanged (after: T95) · `tests/notes.test.ts`
 - [ ] T97 · ISC-52 · server — notes test "persist": create, edit, pin, restart, unchanged (after: T95) · `tests/notes.test.ts`
 - [ ] T98 · ISC-53 · server — CLI `import-notes <file>` from the old notes page's JSON, `export-notes <file>`, `db rollback 2` (after: T95) · `server/src/cli-notes.ts`
 - [ ] T99 · ISC-53 · server — notes test "import": count equal (after: T98) · `tests/notes.test.ts`

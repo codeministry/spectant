@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 21/49
+progress: 22/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T17:19:05Z
+updated: 2026-09-29T17:20:24Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -233,7 +233,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 
 **Notes**
 
-- [ ] ISC-94: A note is stored in the data directory with its workspace and at most one anchor (spec, claim or task), and the repository tree stays unchanged.
+- [x] ISC-94: A note is stored in the data directory with its workspace and at most one anchor (spec, claim or task), and the repository tree stays unchanged.
 - [ ] ISC-95: The Notes area lists the spec's anchored notes with a Markdown editor and preview, and a claim card shows its note count. (after: ISC-94)
 - [ ] ISC-52: A note created, edited and pinned in the app is unchanged after the app restarts.
 - [ ] ISC-53: `spectant import-notes <file>` imports a JSON export from the old notes page with the same number of notes.
@@ -286,6 +286,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-94: bun-test — `bun test tests/notes.test.ts -t "store"` 10 pass (193 expect): a note with no anchor and one per kind is stored in the data directory with its workspace, a second anchor is refused 400 multiple-anchors, list filters, PUT replaces the draft, counts per anchor, DELETE 204 then 404, orphaning through registry.remove keeps rows with workspace null; the harbor copy hashes identical before and after every call, .git/ included, git status clean; end to end through the served CLI (T94, T95, T96; 2026-09-29)
 
 - ISC-73: e2e — `bun run e2e -- shell -g header` 41 passed (shell suite 54): on /, /w/harbor, /w/harbor/s/002, /w/harbor/s/002/claims and an unknown path at 390 and 1440 exactly one app-shell, one shell header and one role=banner, the eight data-control slots once each, the spec picker with mono id at compact and the name at wide, the count otherwise, palette as icon at compact and field at wide, settings reaching help; read as one banner: overlay sheets and dialogs render their own sectioning <header class=head> inside the top layer (T36, T37, T40; 2026-09-29)
 

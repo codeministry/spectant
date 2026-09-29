@@ -31,6 +31,7 @@ import { openDatabase } from "./db.ts";
 import { DEFAULT_PORT, LOOPBACK_HOST, PORT_ATTEMPTS, type RunningServer, serveWithFallback } from "./http.ts";
 import { CommitCache } from "./git.ts";
 import { detectLifeos, lifeosApi } from "./lifeos.ts";
+import { notesApi, openNotes } from "./notes.ts";
 import { type CommandRunner, openBrowser, spawnRunner } from "./open-browser.ts";
 import { dataDir } from "./paths.ts";
 import { openRegistry, type Registry, RegistryError, type Workspace } from "./registry.ts";
@@ -154,7 +155,7 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
     const lifeos = detectLifeos(options.env ?? process.env);
     // One commit cache for the process (T46): the timeline and the spec page skip `git log` while HEAD is unchanged.
     const specs = specRoutesApi({ registry, lifeos, commitCache: new CommitCache() });
-    const api = composeApi(settingsApi(openSettings(db)), lifeosApi(lifeos), dashboardApi({ registry, lifeos }), specs);
+    const api = composeApi(settingsApi(openSettings(db)), lifeosApi(lifeos), dashboardApi({ registry, lifeos }), notesApi({ store: openNotes(db), registry }), specs);
     server = serveWithFallback({ manifest, port: command.port, strict: command.strictPort, api });
   } catch (error) {
     registry.close();
