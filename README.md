@@ -8,6 +8,19 @@ machine.
 
 > **Status:** pre-release, spec 001 in progress. Nothing below is released yet.
 
+## Preview
+
+Desktop screens of the design prototype the app is being built against (spec 002, dark theme, fixture data). The
+running app does not render these pages yet.
+
+![Spec dashboard: key numbers, the idea, next step with reason, lanes, area tiles](docs/preview/spec-dashboard.png)
+
+| Status area | Live board |
+|---|---|
+| ![Status area: why this next step, progress and gates, where it stands](docs/preview/spec-status.png) | ![Live board: one lane per column, in flight, waiting and landed, needs-you rail](docs/preview/live-board.png) |
+| **Tasks** | **Notes** |
+| ![Tasks tab: checkbox states, lane and state chips, probe mapping](docs/preview/tasks.png) | ![Notes: workspace notepad with anchors to spec, claim or task](docs/preview/notes.png) |
+
 ## Install
 
 ```sh
