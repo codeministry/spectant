@@ -215,7 +215,26 @@
       "goSpecs": "Go to Specs",
       "goNextUp": "Go to Next up",
       "goWarnings": "Go to Warnings",
-      "phaseFilter": "Phase filter: All, building, scoping"
+      "phaseFilter": "Phase filter: All, building, scoping",
+      "goTo": "Go to {{target}}",
+      "prevSpec": "Previous spec in the workspace",
+      "nextSpec": "Next spec in the workspace",
+      "notes": "Open notes",
+      "markReviewed": "Mark as reviewed",
+      "leaveSpec": "Back to the workspace",
+      "view": "Switch between Lanes and Flow",
+      "prevFrame": "Previous frame",
+      "nextFrame": "Next frame",
+      "zen": "Turn zen mode on or off",
+      "search": "Focus the search field"
+    },
+    "off": "Single-key shortcuts are off in the settings; only Esc works.",
+    "later": "Marking as reviewed comes with a later task.",
+    "groups": {
+      "navigate": "Go to",
+      "spec": "This spec",
+      "board": "Board",
+      "general": "Everywhere"
     }
   },
   "settings": {

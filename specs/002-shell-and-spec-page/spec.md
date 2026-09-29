@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 19/49
+progress: 20/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T17:08:30Z
+updated: 2026-09-29T17:10:05Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -191,7 +191,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [x] ISC-75: Zen mode hides the header tools and the context rail and keeps the sticky navigation; the collapsed state of the rail survives a reload.
 - [x] ISC-76: The area menu offers Dashboard · Status · Live · Data · Docs · Notes for an open spec, the tab bar shows only the current area's tabs, and a deep link `/w/:ws/s/:id/<tab>` selects area and tab. ⟨?: Live and Notes render as disabled entries with "comes with this spec's later tasks" while their tabs are unbuilt, rather than hidden — assuming a stable menu beats a growing one⟩
 - [ ] ISC-77: Spec 001's dashboard, overview, inspector and palette render inside the new shell and 001's e2e suites stay green. (after: ISC-73)
-- [ ] ISC-97: `g` sequences reach every area and tab, `[` `]` step between specs, `v` toggles Lanes and Flow, `z` toggles zen, `◂ ▸` step frames, and every binding is listed in the shortcut sheet.
+- [x] ISC-97: `g` sequences reach every area and tab, `[` `]` step between specs, `v` toggles Lanes and Flow, `z` toggles zen, `◂ ▸` step frames, and every binding is listed in the shortcut sheet.
 - [ ] ISC-98: Spec 001's tasks.md carries no shell task after the re-cut (T59 and T60 moved to this spec) and 001's reviewed mark is fresh again.
 - [x] ISC-99: A claim is takeable only while the spec's reviewed mark is fresh; before that every open claim shows as `open` on the dashboard row, the Claims tab and the takeable set, and no task of it is dispatched.
 
@@ -286,6 +286,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-97: e2e — `bun run e2e -- keyboard` 10 passed (whole e2e suite 88 passed, 2 skipped): g sequences reach every area and tab with focus on the heading, [ ] step between harbor specs, v toggles ?view=lanes|flow, z sets data-zen, ◂ ▸ step ?frame=, f, m, n, Esc; typing in a field is never a shortcut; ? opens the sheet whose rows equal the exported SHORTCUTS table; kbd hints hidden on a coarse pointer (T102, e2e in keyboard.spec.ts so T103 ticks with it; 2026-09-29)
 
 - ISC-75: e2e — `bun run e2e -- shell -g zen` 3 passed (shell suite 42): at 1440 zen hides palette, live, settings, the spec head and the rail, keeps the sticky tab bar and shows the 40 px footer with id, stage, claims 25/30, command chip and notes pill; at 390 the footer replaces the spec head; the rail collapse toggle stores railCollapsed through PUT /api/settings and a reload shows the strip (T38; 2026-09-29)
 

@@ -1,6 +1,7 @@
 import { afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { KeyboardService } from '../../core/keyboard.service';
 import { RailToggle } from '../zen/rail-toggle';
 import { ZenFooter } from '../zen/zen-footer';
 import { RailSlot } from './rail-slot';
@@ -34,6 +35,7 @@ import { tierFor } from './tier';
 export class ShellComponent {
   protected readonly state = inject(ShellState);
   protected readonly data = inject(ShellData);
+  private readonly keyboard = inject(KeyboardService);
 
   /** The rail belongs to an open, existing spec; T54 fills its content, T38 adds the collapse toggle. */
   protected readonly showRail = computed(
@@ -57,6 +59,6 @@ export class ShellComponent {
   }
 
   protected onKeydown(event: KeyboardEvent): void {
-    this.state.handleKey(event, this.data.specOrder());
+    this.keyboard.handle(event);
   }
 }

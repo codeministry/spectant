@@ -58,7 +58,7 @@ Reason: reshaping or re-parsing the model here makes a second parser (ISC-5); an
   with one consumer is an abstraction without a job; it stays in its feature until the second arrives.
 - Spec 002 adds `ui-glyph` (eleven card states and six claim states, each its own shape and tone pair, `aria-hidden`),
   `ui-state-chip` (glyph plus the visible state word from `states.*`), `ui-scrubber` (a real `<input type="range">` with
-  `aria-valuetext` and typed ticks), `ui-toast` (the app's single toast, mounted once by the shell) and a `count` on
+  `aria-valuetext` and typed ticks), `ui-toast` (the app's single toast, mounted once in the app root) and a `count` on
   `ui-disclosure`. A state word is never a tooltip. Reason: touch has no hover (ISC-88, DS-APP-25).
 
 ## Shell

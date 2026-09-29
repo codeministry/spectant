@@ -215,7 +215,26 @@
       "goSpecs": "Zu den Specs",
       "goNextUp": "Zu „Als Nächstes“",
       "goWarnings": "Zu den Warnungen",
-      "phaseFilter": "Phasenfilter: Alle, building, scoping"
+      "phaseFilter": "Phasenfilter: Alle, building, scoping",
+      "goTo": "Zu {{target}} wechseln",
+      "prevSpec": "Vorherige Spec im Workspace",
+      "nextSpec": "Nächste Spec im Workspace",
+      "notes": "Notizen öffnen",
+      "markReviewed": "Als geprüft markieren",
+      "leaveSpec": "Zurück zum Workspace",
+      "view": "Zwischen Lanes und Flow wechseln",
+      "prevFrame": "Vorheriger Frame",
+      "nextFrame": "Nächster Frame",
+      "zen": "Zen-Modus ein- oder ausschalten",
+      "search": "Suchfeld fokussieren"
+    },
+    "off": "Einzeltasten-Kürzel sind in den Einstellungen ausgeschaltet; nur Esc funktioniert.",
+    "later": "Das Markieren als geprüft folgt mit einer späteren Aufgabe.",
+    "groups": {
+      "navigate": "Wechseln zu",
+      "spec": "Diese Spec",
+      "board": "Board",
+      "general": "Überall"
     }
   },
   "settings": {

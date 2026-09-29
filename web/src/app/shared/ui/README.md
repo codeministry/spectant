@@ -24,6 +24,6 @@ inline template and styles, plus `<name>.spec.ts`) and is exported from `index.t
 | `ui-state-chip` | `state-chip/` | `state`, `family?` | `ui-chip` in the state tone with the 14 px glyph and the visible word from `states.card.*` / `states.claim.*`. |
 | `ui-scrubber` | `scrubber/` | `frames` (`{ kind, label, tone? }`, kinds `dispatch` / `result` / `recut` / `live`), `value` and `playing` as `model()`s, `ariaLabel?` | 32 px ◂ ▶ ▸ buttons, a real `<input type="range">` with `aria-valuetext` = frame label; arrow, Page, Home and End keys as a native range; ticks hollow / filled in the tone mark / hatched / lime ring; the fill morphs on `--motion-duration-slow`. |
 | `ui-disclosure` | `overlay/` | `open` (`model()`), `count?` | Spec 001's disclosure, reused: spec 002 adds the optional count in the summary row ("Probe", "Contents", claim groups). |
-| `ui-toast` + `ToastService` | `toast/` | `show(text)`, `dismiss()`, `message` | The app's single toast (DS-APP-25), mounted once by the shell; auto-dismiss after `TOAST_MS` (4 s); the host owns the page's one polite `ui-live-region`, the visible toast is `aria-hidden`. |
+| `ui-toast` + `ToastService` | `toast/` | `show(text)`, `dismiss()`, `message` | The app's single toast (DS-APP-25), mounted once in the app root; auto-dismiss after `TOAST_MS` (4 s); the host owns the page's one polite `ui-live-region`, the visible toast is `aria-hidden`. |
 
 `tone.ts` gained `concern` (the yellow `--conc`, its `-t` tint and `-ink`) for the concerns state.
