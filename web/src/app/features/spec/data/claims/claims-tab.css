@@ -1,0 +1,267 @@
+:host {
+  display: grid;
+  gap: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.toolbar {
+  display: grid;
+  gap: 8px;
+}
+
+.row-2 {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 16px;
+  align-items: center;
+}
+
+.search {
+  inline-size: 100%;
+  min-block-size: 32px;
+}
+
+.result {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.clear {
+  justify-self: start;
+}
+
+.groups {
+  display: grid;
+  gap: 32px;
+}
+
+.group {
+  display: grid;
+  gap: 8px;
+}
+
+.why {
+  margin: 0 0 8px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--color-base-100);
+  scroll-margin-block: 96px;
+  transition: background-color var(--motion-duration-highlight) var(--motion-ease-standard);
+}
+
+.card.is-target {
+  border-color: var(--color-primary);
+  background: var(--disp-t);
+}
+
+.card[data-state='dropped'] .text {
+  color: var(--muted-ink);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.glyph {
+  display: inline-grid;
+  inline-size: 16px;
+  place-items: center;
+  font-size: 16px;
+  line-height: 20px;
+}
+
+.card[data-state='takeable'] .glyph,
+.card[data-state='taken'] .glyph {
+  color: var(--disp-ink);
+}
+
+.card[data-state='closed'] .glyph {
+  color: var(--done-ink);
+}
+
+.card[data-state='blocked'] .glyph {
+  color: var(--fail-ink);
+}
+
+.session {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.mono,
+.probe,
+.edge {
+  font-family: var(--font-mono);
+}
+
+.notes {
+  display: inline-flex;
+  align-items: center;
+  block-size: 20px;
+  margin-inline-start: auto;
+  padding-inline: 8px;
+  border-radius: 999px;
+  background: var(--ques-t);
+  color: var(--ques-ink);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.text-row {
+  margin: 0;
+  font-size: 15px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.edges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.edge {
+  display: inline-flex;
+  align-items: center;
+  block-size: 24px;
+  padding-inline: 8px;
+  border-radius: 999px;
+  background: var(--held-t);
+  color: var(--color-base-content);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.edge.is-blocking {
+  background: var(--fail-t);
+  color: var(--fail-ink);
+}
+
+.probe {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.probe dt,
+.probe dd {
+  margin: 0;
+}
+
+.probe dd {
+  overflow-wrap: anywhere;
+}
+
+.sep {
+  padding-inline: 4px;
+  color: var(--muted-ink);
+}
+
+.severity {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.dot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+}
+
+.verification {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.verification .label {
+  margin-inline-end: 8px;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.link {
+  margin-inline-start: 8px;
+  color: var(--disp-ink);
+}
+
+.verification .link {
+  margin-inline-start: 0;
+}
+
+.muted {
+  color: var(--muted-ink);
+}
+
+.fog ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fog li {
+  padding: 8px 16px;
+  border-inline-start: 3px solid var(--color-secondary);
+  border-radius: 4px;
+  background: var(--ques-t);
+}
+
+.fog p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.fog .since {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+@container shell (width < 640px) {
+  .row-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card {
+    padding: 16px 8px;
+  }
+}
+
+@media (forced-colors: active) {
+  .dot {
+    background: CanvasText;
+  }
+}

@@ -1,0 +1,185 @@
+@if (model(); as model) {
+  <div class="toolbar">
+    <ui-filter-chips
+      data-filter="state"
+      [options]="stateOptions()"
+      [value]="state()"
+      (valueChange)="setState($event)"
+      [label]="'claims.filters.state' | transloco"
+    />
+    <div class="row-2">
+      <ui-filter-chips
+        data-filter="kind"
+        [options]="kindOptions()"
+        [value]="kind()"
+        (valueChange)="setKind($event)"
+        [label]="'claims.filters.kind' | transloco"
+      />
+      <input
+        type="search"
+        class="input input-sm search"
+        [value]="search()"
+        [placeholder]="'claims.search.placeholder' | transloco"
+        [attr.aria-label]="'claims.search.label' | transloco"
+        (input)="setSearch($event)"
+      />
+    </div>
+    <p class="result" data-result aria-live="polite">
+      {{ 'claims.result' | transloco: { shown: visible().length, total: model.counts.all } }}
+    </p>
+  </div>
+
+  @if (groups().length === 0) {
+    <ui-empty-state [heading]="'claims.empty.heading' | transloco" [body]="'claims.empty.body' | transloco" icon="filter" />
+    <button type="button" class="btn btn-sm btn-ghost clear" (click)="clear()">{{ 'claims.clear' | transloco }}</button>
+  }
+
+  <div class="groups" uiRovingList>
+    @for (group of groups(); track group.key) {
+      <section class="group" [attr.data-feature]="group.key" [attr.aria-labelledby]="'feature-' + group.key">
+        <ui-section-header
+          [level]="3"
+          [headingId]="'feature-' + group.key"
+          [heading]="group.id === null ? ('claims.ungrouped' | transloco) : group.id + ' · ' + group.title"
+        >
+          <span meta>{{ group.claims.length }}</span>
+        </ui-section-header>
+        @if (group.why) {
+          <p class="why">{{ 'claims.why' | transloco }} {{ group.why }}</p>
+        }
+        @for (claim of group.claims; track claim.id) {
+          <article
+            class="card"
+            uiRovingItem
+            [id]="'claim-' + claim.id"
+            [attr.data-claim]="claim.id"
+            [attr.data-state]="claim.state"
+            [attr.data-kind]="claim.kind"
+            [class.is-target]="target() === claim.id"
+            [attr.aria-labelledby]="'claim-' + claim.id + '-id'"
+          >
+            <div class="head">
+              <span class="glyph" role="img" [attr.aria-label]="'claims.states.' + claim.state | transloco">{{
+                glyph[claim.state]
+              }}</span>
+              <ui-id-chip [id]="'claim-' + claim.id + '-id'">{{ claim.id }}</ui-id-chip>
+              @if (claim.kind !== 'normal') {
+                <ui-chip data-chip="kind" tone="secondary">{{ 'claims.kinds.' + claim.kind | transloco }}</ui-chip>
+              }
+              @if (claim.state === 'blocked') {
+                <ui-chip data-chip="blocked" tone="error">{{ 'claims.states.blocked' | transloco }}</ui-chip>
+              }
+              @if (claim.lock; as lock) {
+                <ui-chip data-chip="lock" tone="primary" [dot]="true">{{ 'claims.states.taken' | transloco }}</ui-chip>
+                <span class="session" data-session>
+                  <span class="mono">{{ lock.session }}</span>
+                  <span class="muted">·</span>
+                  <ui-relative-time [date]="lock.since" [format]="elapsed" />
+                </span>
+              }
+              @if (claim.noteCount > 0) {
+                <a
+                  class="notes"
+                  data-link="notes"
+                  [routerLink]="base() + '/notes'"
+                  [attr.aria-label]="'claims.notes' | transloco: { count: claim.noteCount }"
+                  >{{ claim.noteCount }}</a
+                >
+              }
+            </div>
+
+            @if (claim.state === 'dropped') {
+              <p class="text-row">
+                <s class="text">{{ claim.text }}</s>
+                @if (claim.dropped?.note; as note) {
+                  <span class="muted"> — {{ note }}</span>
+                }
+                <a class="link" data-link="decisions" [routerLink]="base() + '/decisions'">{{ 'claims.dropped.see' | transloco }}</a>
+              </p>
+            } @else {
+              <p class="text-row"><span class="text">{{ claim.text }}</span></p>
+            }
+
+            @if (claim.edges.length > 0) {
+              <ul class="edges">
+                @for (edge of claim.edges; track edge) {
+                  <li>
+                    <a
+                      class="edge"
+                      [class.is-blocking]="claim.blockedBy.includes(edge)"
+                      [attr.data-edge]="edge"
+                      [routerLink]="claimsPath()"
+                      [fragment]="'claim-' + edge"
+                      queryParamsHandling="preserve"
+                      >{{ (claim.blockedBy.includes(edge) ? 'claims.edges.blockedBy' : 'claims.edges.after') | transloco: { id: edge } }}</a
+                    >
+                  </li>
+                }
+              </ul>
+            }
+
+            @if (claim.probe; as probe) {
+              <dl class="probe" [attr.aria-label]="'claims.probe.label' | transloco">
+                <dt><ui-chip>{{ probe.type }}</ui-chip></dt>
+                <dd>
+                  <span>{{ probe.check }}</span>
+                  @if (probe.threshold) {
+                    <span class="sep">·</span><span>{{ probe.threshold }}</span>
+                  }
+                  @if (probe.tool) {
+                    <span class="sep">·</span><span class="tool">{{ plain(probe.tool) }}</span>
+                  }
+                  @if (severityColor(probe.severity); as color) {
+                    <span class="sep">·</span>
+                    <span class="severity"
+                      ><span class="dot" aria-hidden="true" [style.background]="color"></span
+                      >{{ 'claims.probe.severity' | transloco: { severity: probe.severity } }}</span
+                    >
+                  }
+                </dd>
+              </dl>
+            }
+
+            @if (claim.verification; as verification) {
+              <p class="verification">
+                <span class="label">{{ 'claims.verification' | transloco }}</span>
+                @if (evidenceFile(verification); as file) {
+                  <a class="link" data-link="evidence" [routerLink]="base() + '/evidence'" [fragment]="file">{{
+                    plain(verification)
+                  }}</a>
+                } @else {
+                  <span>{{ plain(verification) }}</span>
+                }
+              </p>
+            }
+          </article>
+        }
+      </section>
+    }
+  </div>
+
+  @if (model.fog.length > 0) {
+    <section class="fog" data-fog aria-labelledby="claims-fog">
+      <ui-section-header [level]="3" headingId="claims-fog" [heading]="'claims.fog.heading' | transloco">
+        <span meta>{{ model.fog.length }}</span>
+      </ui-section-header>
+      <ul>
+        @for (item of model.fog; track item.line) {
+          <li>
+            <p class="text">{{ item.text }}</p>
+            @if (item.resolves) {
+              <p class="muted">{{ 'claims.fog.resolves' | transloco: { text: item.resolves } }}</p>
+            }
+            @if (item.sinceRound !== null) {
+              <p class="muted since">{{ 'claims.fog.since' | transloco: { round: item.sinceRound } }}</p>
+            }
+          </li>
+        }
+      </ul>
+    </section>
+  }
+} @else if (failed()) {
+  <ui-empty-state [heading]="'claims.error' | transloco" icon="triangle-alert" />
+} @else {
+  <p class="muted" role="status">{{ 'claims.loading' | transloco }}</p>
+}

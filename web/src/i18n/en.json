@@ -373,5 +373,67 @@
       "body": "The server answered with an error.",
       "retry": "Try again"
     }
+  },
+  "claims": {
+    "filters": {
+      "state": "Filter claims by state",
+      "kind": "Filter claims by kind"
+    },
+    "states": {
+      "all": "All",
+      "open": "open",
+      "takeable": "takeable",
+      "taken": "taken",
+      "blocked": "blocked",
+      "closed": "closed",
+      "dropped": "dropped"
+    },
+    "kinds": {
+      "all": "All kinds",
+      "normal": "Normal",
+      "anti": "Anti",
+      "antecedent": "Antecedent"
+    },
+    "search": {
+      "label": "Search claims by ID or text",
+      "placeholder": "Search ID or text"
+    },
+    "result": "{{shown}} of {{total}}",
+    "why": "Why:",
+    "ungrouped": "Outside a feature",
+    "edges": {
+      "after": "after {{id}}",
+      "blockedBy": "blocked by {{id}}"
+    },
+    "probe": {
+      "label": "Probe",
+      "severity": "severity {{severity}}"
+    },
+    "verification": "Verified",
+    "dropped": {
+      "see": "see Decisions"
+    },
+    "taken": {
+      "elapsed": "{{value}} {{unit}}"
+    },
+    "units": {
+      "s": "s",
+      "min": "min",
+      "h": "h",
+      "d": "d"
+    },
+    "notes": "{{count}} notes on this claim",
+    "fog": {
+      "heading": "Not yet specified",
+      "resolves": "Resolved by: {{text}}",
+      "since": "since Round {{round}}"
+    },
+    "empty": {
+      "heading": "No claim matches",
+      "body": "Change the filters or the search to see more claims."
+    },
+    "clear": "Clear filters",
+    "error": "The claims could not be loaded.",
+    "loading": "Loading claims…"
   }
 }

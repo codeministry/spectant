@@ -98,6 +98,11 @@ export class ApiClient {
     return this.get(specRoutes.timeline(ws, id));
   }
 
+  /** The Claims tab (ISC-81): core's `ClaimViewModel`, served as it is. */
+  claims(ws: string, id: string): Promise<ApiResult<SpecRouteResponses['claims']>> {
+    return this.get(specRoutes.claims(ws, id));
+  }
+
   private answer<T>(failure: unknown, cached: { readonly etag: string; readonly body: unknown } | undefined): ApiResult<T> {
     if (!(failure instanceof HttpErrorResponse)) return { kind: 'error', status: 0 };
     const status = failure.status;

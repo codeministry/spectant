@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T13:56:24Z
+updated: 2026-09-29T14:00:17Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -89,7 +89,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T53 · ISC-78 · web — spec dashboard: KPI band, idea quote, next step with reason, lanes, five area tiles, Brief reuse; layouts per `design.md` · Mobile, Tablet, Desktop (after: T35, T52) · `web/src/app/features/spec/dashboard/`
 - [ ] T54 · ISC-79 · web — Status tab: where it stands, progress and gates, what is open, activity; rail content at the top below wide · Mobile, Tablet (after: T35, T52) · `web/src/app/features/spec/status/`
 - [x] T55 · ISC-80 · web — Timeline tab: one strand, source filters, day headers, round entries expanding, `derived` chip (after: T35, T52) · `web/src/app/features/spec/status/timeline/`
-- [ ] T56 · ISC-81 · web — Claims tab: six glyphs, kind, edges, probe row, verification line, filters, note count pill slot (after: T35, T52) · `web/src/app/features/spec/data/claims/`
+- [x] T56 · ISC-81 · web — Claims tab: six glyphs, kind, edges, probe row, verification line, filters, note count pill slot (after: T35, T52) · `web/src/app/features/spec/data/claims/`
 - [ ] T57 · ISC-82 · web — Tasks tab: rows with lane, flags, state, edges, paths, probe mapping, filters; stacked rows below wide · Mobile, Tablet (after: T35, T52) · `web/src/app/features/spec/data/tasks/`
 - [ ] T58 · ISC-83.1 · web — Evidence tab: groups by claim, image and markdown preview in the dialog primitive (after: T35, T52) · `web/src/app/features/spec/data/evidence/`
 - [ ] T59 · ISC-84 · web — Docs tabs: rendered markdown with TOC, figures, tables in their own scroll region · Mobile, type-aware empty state (after: T35, T52) · `web/src/app/features/spec/docs/`

@@ -373,5 +373,67 @@
       "body": "Der Server hat mit einem Fehler geantwortet.",
       "retry": "Erneut versuchen"
     }
+  },
+  "claims": {
+    "filters": {
+      "state": "Claims nach Status filtern",
+      "kind": "Claims nach Art filtern"
+    },
+    "states": {
+      "all": "Alle",
+      "open": "offen",
+      "takeable": "übernehmbar",
+      "taken": "vergeben",
+      "blocked": "blockiert",
+      "closed": "geschlossen",
+      "dropped": "verworfen"
+    },
+    "kinds": {
+      "all": "Alle Arten",
+      "normal": "Normal",
+      "anti": "Anti",
+      "antecedent": "Vorbedingung"
+    },
+    "search": {
+      "label": "Claims nach ID oder Text durchsuchen",
+      "placeholder": "ID oder Text suchen"
+    },
+    "result": "{{shown}} von {{total}}",
+    "why": "Warum:",
+    "ungrouped": "Außerhalb eines Features",
+    "edges": {
+      "after": "nach {{id}}",
+      "blockedBy": "blockiert durch {{id}}"
+    },
+    "probe": {
+      "label": "Prüfung",
+      "severity": "Schweregrad {{severity}}"
+    },
+    "verification": "Verifiziert",
+    "dropped": {
+      "see": "siehe Entscheidungen"
+    },
+    "taken": {
+      "elapsed": "{{value}} {{unit}}"
+    },
+    "units": {
+      "s": "s",
+      "min": "min",
+      "h": "h",
+      "d": "d"
+    },
+    "notes": "{{count}} Notizen zu diesem Claim",
+    "fog": {
+      "heading": "Noch nicht spezifiziert",
+      "resolves": "Geklärt durch: {{text}}",
+      "since": "seit Runde {{round}}"
+    },
+    "empty": {
+      "heading": "Kein Claim passt",
+      "body": "Ändern Sie die Filter oder die Suche, um weitere Claims zu sehen."
+    },
+    "clear": "Filter zurücksetzen",
+    "error": "Die Claims konnten nicht geladen werden.",
+    "loading": "Claims werden geladen …"
   }
 }
