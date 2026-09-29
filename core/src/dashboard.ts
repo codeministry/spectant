@@ -22,7 +22,7 @@ import { specFilePath } from './files.ts';
 import type { ClaimLock, FileKind, GateView, LockReading, SpecFiles, SpecGates, SpecType, SpecWarning, WarningKind } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import type { Progress } from './frontmatter.ts';
-import { gateState, readGateMark } from './gates.ts';
+import { gateState, readGateMark, reviewedGate } from './gates.ts';
 import type { GateCheck, GateMarkReading, GateName, ReviewedFile } from './gates.ts';
 import { nextCommandWithReason } from './stage.ts';
 import type { Stage } from './stage.ts';
@@ -308,17 +308,16 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
   const plan = f.texts.plan ?? null;
   const fm = parseFrontmatter(spec);
   const doc = parseClaims(spec);
-  const partition = partitionClaims(doc.claims, ctx.locks);
-  note('spec', [...fm.diagnostics, ...doc.diagnostics, ...partition.diagnostics]);
+  // The review gate first: the partition takes the reviewed mark's state (ISC-99), so every count below follows it.
+  const { reading: reviewedMark, check: reviewed } = reviewedGate(f.texts);
+  const partition = partitionClaims(doc.claims, ctx.locks, reviewed.state);
+  // The gate's own diagnostic is not a file warning: the row's stage and reason already name the mark (`review`).
+  const partitionWarnings = partition.diagnostics.filter((d) => d.code !== 'status-review-gate');
+  note('spec', [...fm.diagnostics, ...doc.diagnostics, ...partitionWarnings]);
 
-  const reviewedMark = readMark('reviewed', f.texts.gateReviewed);
   const codeMark = readMark('code-reviewed', f.texts.gateCodeReviewed);
   note('gateReviewed', reviewedMark?.diagnostics ?? []);
   note('gateCodeReviewed', codeMark?.diagnostics ?? []);
-  const texts: Partial<Record<ReviewedFile, string>> = { 'spec.md': spec };
-  if (plan !== null) texts['plan.md'] = plan;
-  if (f.texts.tasks !== undefined) texts['tasks.md'] = f.texts.tasks;
-  const reviewed = gateState('reviewed', reviewedMark?.mark ?? null, { texts });
   const codeReviewed = gateState('code-reviewed', codeMark?.mark ?? null, { worktreeTree: ctx.worktreeTree });
 
   const { specType: type, phase } = fm.data;

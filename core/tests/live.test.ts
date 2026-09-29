@@ -8,6 +8,7 @@ import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 
 import type { ClaimLock, LiveFrame, LockReading, SpecFiles } from '../src/files.ts';
+import { hashForGate } from '../src/gates.ts';
 import { buildFrames } from '../src/frames.ts';
 import { buildLiveFrame, LIVE_STALE_MS } from '../src/live.ts';
 import { readLockSources } from '../src/locks.ts';
@@ -30,6 +31,14 @@ function harbor002(): SpecFiles {
 /** `files` with one text replaced by `edit` of it. */
 function edited(files: SpecFiles, kind: 'tasks' | 'spec', edit: (text: string) => string): SpecFiles {
   return { folder: files.folder, texts: { ...files.texts, [kind]: edit(files.texts[kind] ?? '') } };
+}
+
+/** The folder with a reviewed mark fresh over its current texts: an edit that a review has since accepted (ISC-99). */
+function remarked(files: SpecFiles): SpecFiles {
+  const t = files.texts;
+  const hash = (f: 'spec.md' | 'plan.md' | 'tasks.md', text: string | undefined) => (text === undefined ? null : hashForGate(f, text));
+  const mark = { gate: 'reviewed', at: '2026-03-09T09:00:00Z', files: { 'spec.md': hash('spec.md', t.spec), 'plan.md': hash('plan.md', t.plan), 'tasks.md': hash('tasks.md', t.tasks) } };
+  return { folder: files.folder, texts: { ...t, gateReviewed: JSON.stringify(mark) } };
 }
 
 const NONE: LockReading = { source: 'none', sources: [], locks: [] };
@@ -240,7 +249,9 @@ describe('tasks.md overlays the last round', () => {
         .replace('search-box: keyboard reach and focus ring (ISC-75)', 'search-box: keyboard reach, focus ring and skip link (ISC-75)')
         .replace(/^(- \[ \] T32 .*)$/m, '$1\n- [ ] T33 · ISC-75 · web — search-box: contrast check (after: T28) · `web/src/app/search-box/`'),
     );
-    const live = buildLiveFrame({ files: added, locks: NONE, now: at(30) });
+    // The added line makes the reviewed mark stale: until a review accepts it, the gate is the reason (ISC-99).
+    expect(card(buildLiveFrame({ files: added, locks: NONE, now: at(30) }), 'T33')).toMatchObject({ state: 'waiting', reason: 'spec not reviewed — the reviewed mark is stale' });
+    const live = buildLiveFrame({ files: remarked(added), locks: NONE, now: at(30) });
     expect(card(live, 'T33')).toMatchObject({ state: 'waiting', tries: 0, reason: 'after T28 still open' });
     expect(card(live, 'T33').text).toBe('search-box: contrast check');
     // T28 was held for width in round 3 under its old text: renumbered or reworded, it starts fresh.

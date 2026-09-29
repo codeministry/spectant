@@ -388,7 +388,7 @@ describe('gates.ts writes nothing', () => {
     expect(imports).toEqual([
       ['value', 'createHash', 'node:crypto'],
       ['type', 'Diagnostic', './diagnostics.ts'],
-      ['type', 'GateState', './files.ts'],
+      ['type', 'GateState, TextFileKind', './files.ts'],
     ]);
     expect(source.match(/^import\b/gm)?.length).toBe(3);
   });

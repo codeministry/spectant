@@ -92,7 +92,7 @@ describe('spectant-001 round 1 parity', () => {
   );
   // Round 1 started with every claim open: the frozen spec.md's claims and edges, every box unchecked.
   const claims = parseClaims(read(`${dir}/spec.md`)).claims.map((c) => ({ ...c, checked: false }));
-  const plan = takeableSet({ specType: 'feature', claims, tasks: model(tasks), width: line.width });
+  const plan = takeableSet({ reviewed: 'fresh', specType: 'feature', claims, tasks: model(tasks), width: line.width });
 
   test('dispatches what rounds.jsonl line 1 dispatched: T1–T4', () => {
     expect(line.dispatched).toEqual(['T1', 'T2', 'T3', 'T4']);
@@ -120,9 +120,9 @@ describe('the frozen spectant-001 claims', () => {
     const spec = read('spectant-001/specs/001-app-skeleton/spec.md');
     const claims = parseClaims(spec).claims;
     const type = parseFrontmatter(spec).data.specType;
-    expect(takeableSet({ specType: type, claims, tasks: null }).width).toBe(4);
-    for (const t of ['bug', 'spike', 'infra'] as const) expect(takeableSet({ specType: t, claims, tasks: null }).width).toBe(1);
-    expect(takeableSet({ specType: 'feature', claims, tasks: null, width: 2 }).width).toBe(2);
+    expect(takeableSet({ reviewed: 'fresh', specType: type, claims, tasks: null }).width).toBe(4);
+    for (const t of ['bug', 'spike', 'infra'] as const) expect(takeableSet({ reviewed: 'fresh', specType: t, claims, tasks: null }).width).toBe(1);
+    expect(takeableSet({ reviewed: 'fresh', specType: 'feature', claims, tasks: null, width: 2 }).width).toBe(2);
   });
 });
 
@@ -130,7 +130,7 @@ describe('without tasks.md the open claims are the units', () => {
   test('lantern 002 (bug, no tasks.md): one claim unit per round, C-numbered', () => {
     const claims = parseClaims(read('lantern/specs/002-duplicate-links/spec.md')).claims;
     const open = claims.filter((c) => !c.checked && !c.dropped);
-    const plan = takeableSet({ specType: 'bug', claims, tasks: null });
+    const plan = takeableSet({ reviewed: 'fresh', specType: 'bug', claims, tasks: null });
     expect(plan.width).toBe(1);
     expect(plan.tasks.total).toBe(open.length);
     expect(plan.dispatch).toHaveLength(Math.min(1, plan.claims.length));
@@ -139,7 +139,7 @@ describe('without tasks.md the open claims are the units', () => {
   });
 
   test('every claim closed: nothing left, exhausted', () => {
-    const plan = takeableSet({ specType: 'bug', claims: [claim('ISC-1', { checked: true })], tasks: null });
+    const plan = takeableSet({ reviewed: 'fresh', specType: 'bug', claims: [claim('ISC-1', { checked: true })], tasks: null });
     expect(plan.dispatch).toEqual([]);
     expect(plan.held).toEqual([]);
     expect(plan.tasks).toEqual({ landed: 0, total: 0 });
@@ -149,7 +149,7 @@ describe('without tasks.md the open claims are the units', () => {
 
 describe('the hold vocabulary', () => {
   test('a seam runs alone before its fan-out; the rest wait for next round', () => {
-    const plan = takeableSet({
+    const plan = takeableSet({ reviewed: 'fresh',
       specType: 'feature',
       claims: [claim('ISC-1')],
       tasks: model([
@@ -166,7 +166,7 @@ describe('the hold vocabulary', () => {
   });
 
   test('a task without [P] owns the round; a later one without [P] runs alone next round', () => {
-    const plan = takeableSet({
+    const plan = takeableSet({ reviewed: 'fresh',
       specType: 'feature',
       claims: [claim('ISC-1')],
       tasks: model([
@@ -181,7 +181,7 @@ describe('the hold vocabulary', () => {
 
   test('same file, closed claim, blocked claim, locked claim, operator lane, open edge, struck and done tasks', () => {
     const locks: ClaimLock[] = [{ source: 'activity', claim: 'ISC-4', session: 'wt-7', since: '2026-03-08T10:00:00Z' }];
-    const plan = takeableSet({
+    const plan = takeableSet({ reviewed: 'fresh',
       specType: 'feature',
       claims: [claim('ISC-1'), claim('ISC-2', { checked: true }), claim('ISC-3', { after: ['ISC-1'] }), claim('ISC-4')],
       locks,
@@ -216,13 +216,13 @@ describe('the hold vocabulary', () => {
 
   test('a width reached holds the rest', () => {
     const tasks = ['T1', 'T2', 'T3'].map((id, i) => task({ id, claim: 'ISC-1', flags: { parallel: true, seam: false } }, i + 1));
-    const plan = takeableSet({ specType: 'feature', claims: [claim('ISC-1')], tasks: model(tasks), width: 2 });
+    const plan = takeableSet({ reviewed: 'fresh', specType: 'feature', claims: [claim('ISC-1')], tasks: model(tasks), width: 2 });
     expect(plan.dispatch.map((d) => d.task)).toEqual(['T1', 'T2']);
     expect(plan.held).toEqual([{ task: 'T3', claim: 'ISC-1', reason: 'width 2 reached' }]);
   });
 
   test('only operator and blocked work left: exhausted, a round cannot change it', () => {
-    const plan = takeableSet({
+    const plan = takeableSet({ reviewed: 'fresh',
       specType: 'feature',
       claims: [claim('ISC-1'), claim('ISC-2', { after: ['ISC-1'] })],
       tasks: model([
@@ -232,5 +232,39 @@ describe('the hold vocabulary', () => {
     });
     expect(plan.dispatch).toEqual([]);
     expect(plan.exhausted).toBe(true);
+  });
+});
+
+// ISC-99: a spec without a fresh reviewed mark dispatches nothing; every task of a would-be-takeable claim is held
+// with the gate's reason, and a round cannot change that (the principal reviews first).
+describe('review gate', () => {
+  const claims = [claim('ISC-1'), claim('ISC-2'), claim('ISC-3', { after: ['ISC-1'] })];
+  const tasks = model([
+    task({ id: 'T1', claim: 'ISC-1', flags: { parallel: true, seam: false } }, 1),
+    task({ id: 'T2', claim: 'ISC-2', flags: { parallel: true, seam: false } }, 2),
+    task({ id: 'T3', claim: 'ISC-3' }, 3),
+  ]);
+
+  test('no mark: nothing dispatched, every task held, "spec not reviewed"', () => {
+    const plan = takeableSet({ reviewed: 'missing', specType: 'feature', claims, tasks });
+    expect(plan.dispatch).toEqual([]);
+    expect(plan.claims).toEqual([]);
+    expect(plan.held).toEqual([
+      { task: 'T1', claim: 'ISC-1', reason: 'spec not reviewed — the reviewed mark is missing' },
+      { task: 'T2', claim: 'ISC-2', reason: 'spec not reviewed — the reviewed mark is missing' },
+      { task: 'T3', claim: 'ISC-3', reason: 'claim blocked by ISC-1' },
+    ]);
+    expect(plan.exhausted).toBe(true);
+  });
+
+  test('stale mark: the stale wording', () => {
+    const plan = takeableSet({ reviewed: 'stale', specType: 'feature', claims, tasks });
+    expect(plan.dispatch).toEqual([]);
+    expect(plan.held.slice(0, 2).map((h) => h.reason)).toEqual(['spec not reviewed — the reviewed mark is stale', 'spec not reviewed — the reviewed mark is stale']);
+  });
+
+  test('fresh mark: the round as before', () => {
+    const plan = takeableSet({ reviewed: 'fresh', specType: 'feature', claims, tasks });
+    expect(plan.dispatch.map((d) => d.task)).toEqual(['T1', 'T2']);
   });
 });

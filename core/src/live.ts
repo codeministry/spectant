@@ -7,7 +7,8 @@
 //                       (`operatorDone` in the operator lane), keeping builder, tries and note;
 //                     - a task not on the last board (new, or renumbered / reworded: no state is carried, ISC-91)
 //                       gets a fresh card: landed when its box is checked, else `waiting` (`operatorOpen` in the
-//                       operator lane) with the reason takeable.ts gives it, when spec.md is there to compute one;
+//                       operator lane) with the reason takeable.ts gives it, when spec.md is there to compute one
+//                       (without a fresh reviewed mark that reason is `spec not reviewed`, ISC-99);
 //                     - a struck task still on the last board is `absent` with its strike note; any other struck task
 //                       and any task gone from tasks.md has no card. Without task lines the carried cards stand.
 //   3. locks          every card not landed, not absent and outside the operator lane whose claim a session holds is
@@ -19,12 +20,15 @@
 // (question, concerns, open operator steps). Claims progress comes from spec.md's boxes, tasks progress from the cards.
 //
 // Pure: texts, frames, a lock reading and the clock in, the frame out. No file system, no clock of its own, no Bun or
-// node API; the server reads the lock sources (locks.ts) and passes `now`.
+// node API of its own (the reviewed mark's digest is gates.ts's `node:crypto` hash); the server reads the lock
+// sources (locks.ts) and passes `now`.
 import type { Claim } from './claims.ts';
 import { countProgress, parseClaims } from './claims.ts';
 import type { AgentLockSource, CardState, ClaimLock, FrameCard, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, TaskRow } from './files.ts';
 import { buildFrames, worstState } from './frames.ts';
 import { parseFrontmatter } from './frontmatter.ts';
+import { reviewedGate } from './gates.ts';
+import type { MarkState } from './gates.ts';
 import { takeableSet } from './takeable.ts';
 import { parseTaskLines } from './tasks.ts';
 
@@ -56,7 +60,7 @@ export function buildLiveFrame(input: LiveFrameInput): LiveFrame {
   for (const lock of reading.locks) if (ours.has(lock.claim)) held.set(lock.claim, lock);
   const locks = [...held.values()].sort((a, b) => byClaim(a.claim, b.claim));
 
-  const overlaid = rows.length === 0 ? [...base] : overlayTasks(base, rows, claims, locks, spec);
+  const overlaid = rows.length === 0 ? [...base] : overlayTasks(base, rows, claims, locks, spec, reviewedGate(files.texts).check.state);
   const cards: LiveCard[] = overlaid.map((card) => {
     const lock = held.get(card.claim);
     if (lock === undefined || LANDED.has(card.state) || card.state === 'absent' || card.lane === OPERATOR) return card;
@@ -89,11 +93,11 @@ export function buildLiveFrame(input: LiveFrameInput): LiveFrame {
 }
 
 /** Layer 2: tasks.md's lines over the carried cards. */
-function overlayTasks(base: readonly FrameCard[], rows: readonly TaskRow[], claims: readonly Claim[], locks: readonly ClaimLock[], spec: string | undefined): FrameCard[] {
+function overlayTasks(base: readonly FrameCard[], rows: readonly TaskRow[], claims: readonly Claim[], locks: readonly ClaimLock[], spec: string | undefined, reviewed: MarkState): FrameCard[] {
   const carried = new Map(base.map((c) => [c.task, c]));
   const sameText = boardTexts(base);
   const checked = new Set(claims.filter((c) => c.checked).map((c) => c.id));
-  const reasons = spec === undefined ? new Map<string, string>() : takeableReasons(spec, claims, rows, locks);
+  const reasons = spec === undefined ? new Map<string, string>() : takeableReasons(spec, claims, rows, locks, reviewed);
   const landedState = (row: TaskRow): CardState => (row.lane === OPERATOR ? 'operatorDone' : checked.has(row.claim) ? 'closed' : 'done');
 
   return rows.flatMap((row): FrameCard[] => {
@@ -123,8 +127,9 @@ function boardTexts(cards: readonly FrameCard[]): Map<string, string> {
 }
 
 /** takeable.ts's dispatch or hold reason per open task, as the next round would plan it now. */
-function takeableReasons(spec: string, claims: readonly Claim[], rows: readonly TaskRow[], locks: readonly ClaimLock[]): Map<string, string> {
+function takeableReasons(spec: string, claims: readonly Claim[], rows: readonly TaskRow[], locks: readonly ClaimLock[], reviewed: MarkState): Map<string, string> {
   const plan = takeableSet({
+    reviewed,
     specType: parseFrontmatter(spec).data.specType,
     claims,
     tasks: { tasks: rows, probeMapping: [] },

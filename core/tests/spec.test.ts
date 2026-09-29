@@ -196,7 +196,7 @@ describe('harbor: the other active specs', () => {
     const p = page('harbor', '005-config-format-choice');
     expect(p.head.stage).toBe('review');
     expect(p.keyNumbers).toEqual({
-      claims: { closed: 0, total: 1, open: 1, takeable: 1 },
+      claims: { closed: 0, total: 1, open: 1, takeable: 0 },
       tasks: { landed: 0, total: 0 },
       rounds: { count: 0, agentsWorking: 0 },
       gates: { ok: 1, total: 4 },
@@ -214,7 +214,7 @@ describe('harbor: the other active specs', () => {
   test('006: drift to the master, the reviewed mark stale, no gate passes', () => {
     const p = page('harbor', '006-partial-push');
     expect(p.head.stage).toBe('review');
-    expect(p.keyNumbers.claims).toEqual({ closed: 0, total: 4, open: 4, takeable: 4 });
+    expect(p.keyNumbers.claims).toEqual({ closed: 0, total: 4, open: 4, takeable: 0 });
     expect(p.keyNumbers.gates).toEqual({ ok: 0, total: 4 });
     expect(p.gates.drift.state).toBe('warn');
     expect(p.warnings.map((w) => w.kind)).toEqual(['drift', 'review']);
@@ -228,7 +228,7 @@ describe('harbor: the other active specs', () => {
     const p = page('harbor', '003-config-loader');
     expect(p.head).toMatchObject({ stage: 'tasks', nextCommand: '/spec-tasks 003', title: 'Config loader rewrite' });
     expect(p.keyNumbers).toEqual({
-      claims: { closed: 0, total: 13, open: 13, takeable: 7 },
+      claims: { closed: 0, total: 13, open: 13, takeable: 0 },
       tasks: { landed: 0, total: 0 },
       rounds: { count: 0, agentsWorking: 0 },
       gates: { ok: 1, total: 4 },
@@ -244,7 +244,7 @@ describe('spectant-001: the frozen real spec', () => {
   test('head and key numbers', () => {
     expect(p.head).toMatchObject({ id: '001', title: 'App skeleton and dashboard', stage: 'review', round: 9 });
     expect(p.keyNumbers).toMatchObject({
-      claims: { closed: 14, total: 47, open: 33, takeable: 29 },
+      claims: { closed: 14, total: 47, open: 33, takeable: 0 },
       tasks: { landed: 27, total: 83 },
       rounds: { count: 9, agentsWorking: 0 },
     });

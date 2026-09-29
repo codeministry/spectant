@@ -230,7 +230,8 @@ From `core/fixtures/harbor/specs/002-web-console/tasks.md`:
 ```
 
 **Derived:** the task fraction, the lanes on the spec page, the takeable set of the next round (`takeable.ts`: claim
-takeable, task edges done, no file shared within the round, width 1 for bug, spike and infra, else 4) and the cards of
+takeable, which needs a fresh reviewed mark, task edges done, no file shared within the round, width 1 for bug, spike
+and infra, else 4) and the cards of
 the live frame.
 
 ## `context` — `context.md`
@@ -591,9 +592,18 @@ the three-claim threshold counts every claim line, tombstones included; "every c
 | 7 | `close` | every claim is closed and the code-reviewed mark is fresh | `/spec-complete NNN` |
 | 8 | `blocked` | anything else: open claims none of which is takeable, or no claims yet | `/spec-status NNN` |
 
-A claim is **takeable** when it is open, every claim in its `(after: …)` is closed or dropped, and no lock holds it; an
-open claim is **blocked** while an edge is unresolved (an edge to an unknown ID counts as unresolved) and **taken**
-while a lock holds it. The dashboard lists specs in action order: `close`, `code-review`, `review`, `build`,
+A claim is **takeable** when it is open, every claim in its `(after: …)` is closed or dropped, no lock holds it, and the
+spec's reviewed mark is fresh; an open claim is **blocked** while an edge is unresolved (an edge to an unknown ID counts
+as unresolved) and **taken** while a lock holds it.
+
+**The review gate** (ISC-99, `status.ts` `partitionClaims`): while the reviewed mark is missing or stale, every claim
+that would be takeable is **open** instead (not blocked, not taken), and the partition carries one
+`status-review-gate` diagnostic naming the mark's state. The rule lives in the partition only, and every count reads
+that partition: the dashboard row's `takeable` (0 before a fresh mark), the Claims tab's states and counts (the glyph
+`open`), the takeable set (nothing dispatched; each such task held as `spec not reviewed — the reviewed mark is
+missing` or `… is stale`, a reason no round can clear) and the live frame's waiting reasons. Blocked and taken claims
+keep their state. The dashboard does not list the gate diagnostic as a file warning: the row's `review` stage and its
+reason already name the mark. The dashboard lists specs in action order: `close`, `code-review`, `review`, `build`,
 `blocked`, `tasks`, `plan`, `done`.
 
 ## The drift classes

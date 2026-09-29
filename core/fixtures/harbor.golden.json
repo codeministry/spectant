@@ -15,7 +15,7 @@
       "landed": 57,
       "total": 62
     },
-    "takeable": 16,
+    "takeable": 4,
     "warnings": 7,
     "fog": 4,
     "attention": 11,
@@ -108,9 +108,7 @@
       "tasks": null,
       "nextCommand": "/spec-review 005",
       "nextReason": "the reviewed mark is missing",
-      "takeable": [
-        "ISC-94"
-      ],
+      "takeable": [],
       "warnings": [
         {
           "kind": "review",
@@ -159,12 +157,7 @@
       "tasks": null,
       "nextCommand": "/spec-review 006",
       "nextReason": "the reviewed mark is stale",
-      "takeable": [
-        "ISC-1",
-        "ISC-2",
-        "ISC-3",
-        "ISC-125"
-      ],
+      "takeable": [],
       "warnings": [
         {
           "kind": "drift",
@@ -271,15 +264,7 @@
       "tasks": null,
       "nextCommand": "/spec-tasks 003",
       "nextReason": "13 claims and no tasks.md",
-      "takeable": [
-        "ISC-81",
-        "ISC-83",
-        "ISC-85",
-        "ISC-87",
-        "ISC-89",
-        "ISC-91",
-        "ISC-93"
-      ],
+      "takeable": [],
       "warnings": [
         {
           "kind": "review",

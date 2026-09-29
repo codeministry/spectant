@@ -13,10 +13,16 @@ import type { Claim, ClaimsDocument } from './claims.ts';
 import type { Diagnostic } from './diagnostics.ts';
 import type { ClaimLock } from './files.ts';
 import type { FrontmatterResult } from './frontmatter.ts';
+import type { MarkState } from './gates.ts';
 
 /**
  * Where each claim stands, as the old frontier computed it. `closed` holds checked and dropped claims (resolved);
  * an open claim is `blocked` while a claim it is `after` is unresolved, `taken` while a lock holds it, else `takeable`.
+ *
+ * The review gate (ISC-99): `takeable` needs a fresh reviewed mark. Without one every claim that would be takeable is
+ * `gated` instead: open, neither blocked nor taken, and not takeable, with one `status-review-gate` diagnostic naming
+ * the reason. Every layer above (dashboard row, Claims tab, takeable set, live frame) reads this partition, so the gate
+ * is decided here once.
  */
 export interface ClaimPartition {
   readonly closed: readonly string[];
@@ -27,7 +33,14 @@ export interface ClaimPartition {
   readonly open: readonly string[];
   /** The tombstoned claims, in file order; a subset of `closed` (resolved, not achieved). */
   readonly dropped: readonly string[];
-  /** `status-edge-unknown`: an `after` edge names an ID the file does not hold; the edge counts as unmet. */
+  /** Open claims that would be takeable but wait for a fresh reviewed mark, in file order; empty while it is fresh. */
+  readonly gated: readonly string[];
+  /** The reviewed mark the partition was gated on. */
+  readonly reviewed: MarkState;
+  /**
+   * `status-edge-unknown`: an `after` edge names an ID the file does not hold; the edge counts as unmet.
+   * `status-review-gate`: the reviewed mark is missing or stale, so the would-be-takeable claims are gated.
+   */
   readonly diagnostics: readonly Diagnostic[];
 }
 
@@ -75,7 +88,11 @@ function stateOf(claim: Claim): ClaimState {
   return claim.dropped ? 'dropped' : claim.checked ? 'closed' : 'open';
 }
 
-export function partitionClaims(claims: readonly Claim[], locks: readonly ClaimLock[] = []): ClaimPartition {
+/**
+ * The partition of `claims` under `locks`, gated on the spec's `reviewed` mark. The gate state is required, not
+ * defaulted: a caller that could skip it would show takeable claims on an unreviewed spec.
+ */
+export function partitionClaims(claims: readonly Claim[], locks: readonly ClaimLock[], reviewed: MarkState): ClaimPartition {
   const known = new Set(claims.map((c) => c.id));
   const resolved = new Set(claims.filter((c) => c.checked || c.dropped).map((c) => c.id));
   // Later locks win, as the old Map over the lock list did.
@@ -87,6 +104,7 @@ export function partitionClaims(claims: readonly Claim[], locks: readonly ClaimL
   const taken: Array<{ id: string; session: string; since: string }> = [];
   const open: string[] = [];
   const dropped: string[] = [];
+  const gated: string[] = [];
   const diagnostics: Diagnostic[] = [];
 
   for (const c of claims) {
@@ -113,9 +131,17 @@ export function partitionClaims(claims: readonly Claim[], locks: readonly ClaimL
     }
     const lock = lockOf.get(c.id);
     if (lock) taken.push({ id: c.id, session: lock.session, since: lock.since });
-    else takeable.push(c.id);
+    else if (reviewed === 'fresh') takeable.push(c.id);
+    else gated.push(c.id);
   }
-  return { closed, takeable, blocked, taken, open, dropped, diagnostics };
+  if (gated.length > 0) {
+    diagnostics.push({
+      severity: 'warning',
+      code: 'status-review-gate',
+      message: `The reviewed mark is ${reviewed}: ${gated.length} ${gated.length === 1 ? 'claim stays' : 'claims stay'} open, not takeable, until /spec-review records a fresh mark.`,
+    });
+  }
+  return { closed, takeable, blocked, taken, open, dropped, gated, reviewed, diagnostics };
 }
 
 /** Declared `progress:` against the recount of `doc`; null when they agree. A missing or unreadable key disagrees. */

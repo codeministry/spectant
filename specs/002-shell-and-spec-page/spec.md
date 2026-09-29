@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 13/49
+progress: 14/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T16:21:54Z
+updated: 2026-09-29T16:24:32Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -193,7 +193,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [ ] ISC-77: Spec 001's dashboard, overview, inspector and palette render inside the new shell and 001's e2e suites stay green. (after: ISC-73)
 - [ ] ISC-97: `g` sequences reach every area and tab, `[` `]` step between specs, `v` toggles Lanes and Flow, `z` toggles zen, `◂ ▸` step frames, and every binding is listed in the shortcut sheet.
 - [ ] ISC-98: Spec 001's tasks.md carries no shell task after the re-cut (T59 and T60 moved to this spec) and 001's reviewed mark is fresh again.
-- [ ] ISC-99: A claim is takeable only while the spec's reviewed mark is fresh; before that every open claim shows as `open` on the dashboard row, the Claims tab and the takeable set, and no task of it is dispatched.
+- [x] ISC-99: A claim is takeable only while the spec's reviewed mark is fresh; before that every open claim shows as `open` on the dashboard row, the Claims tab and the takeable set, and no task of it is dispatched.
 
 **Spec dashboard and Status**
 
@@ -285,6 +285,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-99: bun-test — `bun test core/tests/status.test.ts -t "review gate"` 5 pass: harbor 003 (no mark) 0 takeable and 7 gated open with the status-review-gate diagnostic, 006 (stale) 0, 002 (fresh) 4 unchanged; one rule in partitionClaims(claims, locks, reviewed) with no default, takeableSet holds gated tasks as `spec not reviewed`, goldens regenerated (harbor KPI takeable 16 → 4, spectant-001 29 → 0) (T114; 2026-09-29)
 
 - ISC-36: bun-test — `bun test core/tests/timeline.test.ts` 27 pass (derived marker without events.jsonl, recorded transitions replace it); `bun test tests/timeline.test.ts` 5 pass through the route: derived entries flagged, events.jsonl transitions in order, invalid lines dropped, ETag changes and 304 holds (T15, T26, T50; 2026-09-29)
 

@@ -3,15 +3,16 @@
 //
 // States come from status.ts `partitionClaims`, the same partition the dashboard row counts, so the tab and the row
 // agree by construction (ISC-72): closed is a checked claim, dropped a tombstone (checked or not), and an open claim is
-// blocked while an edge is unresolved, taken while a lock holds it, else takeable. `open` is not emitted by these rules:
-// it stays in the glyph set for an unresolved claim no rule classifies, and `counts.open` is the aggregate of the three
-// open states (the spec page's "open").
+// blocked while an edge is unresolved, taken while a lock holds it, else takeable once the spec's reviewed mark is
+// fresh. `open` is the claim the review gate holds (ISC-99: no fresh reviewed mark, so not takeable yet) and any
+// unresolved claim no rule classifies; `counts.open` is the aggregate of the four open states (the spec page's "open").
 //
 // Pure: spec.md's text and the lock reading in, model out. No file system, no Bun API, no clock; elapsed time since a
 // lock is the web's to compute from `since`.
 import { parseClaims } from './claims.ts';
 import type { FogLine } from './claims.ts';
 import type { ClaimGlyphState, ClaimView, ClaimViewCounts, ClaimViewInput, ClaimViewModel, FogView, ProbeRow } from './files.ts';
+import { reviewedGate } from './gates.ts';
 import { partitionClaims } from './status.ts';
 
 // `<question> — <what must resolve it>`: the first spaced em or en dash splits the two.
@@ -35,7 +36,8 @@ function fogView(fog: FogLine): FogView {
 export function buildClaimViews(input: ClaimViewInput): ClaimViewModel {
   const doc = parseClaims(input.files.texts.spec ?? '');
   const locks = input.locks?.locks ?? [];
-  const partition = partitionClaims(doc.claims, locks);
+  // The review gate from the folder's own texts: without a fresh reviewed mark no claim is takeable (ISC-99).
+  const partition = partitionClaims(doc.claims, locks, reviewedGate(input.files.texts).check.state);
 
   const state = new Map<string, ClaimGlyphState>();
   for (const id of partition.takeable) state.set(id, 'takeable');

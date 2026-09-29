@@ -8,7 +8,7 @@
 // (`index.ts`) re-exports its types only, so the browser bundle never pulls `node:crypto` in.
 import { createHash } from 'node:crypto';
 import type { Diagnostic } from './diagnostics.ts';
-import type { GateState } from './files.ts';
+import type { GateState, TextFileKind } from './files.ts';
 
 export type GateName = 'reviewed' | 'code-reviewed';
 
@@ -168,6 +168,26 @@ export function gateState(gate: GateName, mark: GateMark | null, current: GateCu
   const tree = current.worktreeTree ?? null;
   if (tree === null) return { gate, state: 'stale', at, changed: [], detail: 'worktree tree id unavailable' };
   return { gate, state: tree === mark.tree ? 'fresh' : 'stale', at, changed: [] };
+}
+
+/** The reviewed mark of one spec folder: its reading (null without the file) and its state against the folder's texts. */
+export interface ReviewedGate {
+  readonly reading: GateMarkReading | null;
+  readonly check: GateCheck;
+}
+
+/**
+ * The reviewed mark of one spec folder from its texts (`gateReviewed`, `spec`, `plan`, `tasks`), the one reading the
+ * claim partition's review gate is fed from (ISC-99): the dashboard row, the Claims tab and the live frame all call it,
+ * so they cannot disagree on whether a spec is reviewed.
+ */
+export function reviewedGate(texts: Readonly<Partial<Record<TextFileKind, string>>>): ReviewedGate {
+  const reading = texts.gateReviewed === undefined ? null : readGateMark('reviewed', texts.gateReviewed);
+  const current: Partial<Record<ReviewedFile, string>> = {};
+  if (texts.spec !== undefined) current['spec.md'] = texts.spec;
+  if (texts.plan !== undefined) current['plan.md'] = texts.plan;
+  if (texts.tasks !== undefined) current['tasks.md'] = texts.tasks;
+  return { reading, check: gateState('reviewed', reading?.mark ?? null, { texts: current }) };
 }
 
 // ── the reviewed digest ───────────────────────────────────────────────────────────────────────────────

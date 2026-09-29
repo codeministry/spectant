@@ -174,7 +174,7 @@
         "closed": 0,
         "total": 13,
         "open": 13,
-        "takeable": 7
+        "takeable": 0
       },
       "tasks": {
         "landed": 0,
@@ -438,7 +438,7 @@
         "closed": 0,
         "total": 1,
         "open": 1,
-        "takeable": 1
+        "takeable": 0
       },
       "tasks": {
         "landed": 0,
@@ -560,7 +560,7 @@
         "closed": 0,
         "total": 4,
         "open": 4,
-        "takeable": 4
+        "takeable": 0
       },
       "tasks": {
         "landed": 0,

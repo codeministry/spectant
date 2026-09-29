@@ -186,7 +186,7 @@ describe('harbor 002: states from its three rounds', () => {
 
   test('takeable.ts plans over the parsed model as over its own', () => {
     const spec = read(`${dir}/spec.md`);
-    const plan = takeableSet({ specType: parseFrontmatter(spec).data.specType, claims: parseClaims(spec).claims, tasks: model });
+    const plan = takeableSet({ reviewed: 'fresh', specType: parseFrontmatter(spec).data.specType, claims: parseClaims(spec).claims, tasks: model });
     expect(plan.tasks).toEqual({ landed: 27, total: 32 });
     const held = new Map(plan.held.map((h) => [h.task, h.reason]));
     expect(held.get('T31')).toStartWith('operator lane');

@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T16:21:54Z
+updated: 2026-09-29T16:24:32Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -156,7 +156,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T111 · ISC-68.1 · repo — root `CLAUDE.md`: the read-only rule names its two exceptions (reviewed gate, task checkbox) and the guard (after: T2) · `CLAUDE.md`
 - [ ] T112 · ISC-68.1 · server — `server/CLAUDE.md`: the write path, the lock sources, the spec routes (after: T2) · `server/CLAUDE.md`
 - [ ] T113 · ISC-68.1 · web — `web/CLAUDE.md`: the shell tiers, the tab-bar slot, the area routes, the new primitives (after: T35) · `web/CLAUDE.md`
-- [ ] T114 · ISC-99 · core — takeable gated on a fresh reviewed mark: rule in `status.ts`/`stage.ts`, dashboard row, claims tab counts and `takeableSet` follow, goldens regenerated (after: T1) · `core/src/status.ts`
+- [x] T114 · ISC-99 · core — takeable gated on a fresh reviewed mark: rule in `status.ts`/`stage.ts`, dashboard row, claims tab counts and `takeableSet` follow, goldens regenerated (after: T1) · `core/src/status.ts`
 - [ ] T115 · ISC-90 · [P] · core — `DashboardSpecRow.taken: {id, session, since}[]` and lock diagnostics surfaced as row warnings, so the board can name the session (after: T20) · `core/src/dashboard.ts`
 
 ## Probe Mapping

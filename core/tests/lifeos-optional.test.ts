@@ -225,7 +225,7 @@ describe('both sources', () => {
       ['frontier', 'ISC-76', 'spec-002-ISC-76'],
     ]);
 
-    const p = partitionClaims(parseClaims(readFileSync(HARBOR_002_SPEC, 'utf8')).claims, r.locks);
+    const p = partitionClaims(parseClaims(readFileSync(HARBOR_002_SPEC, 'utf8')).claims, r.locks, 'fresh');
     const taken = new Map(p.taken.map((t) => [t.id, t.session]));
     expect(taken.get('ISC-76')).toBe('spec-002-ISC-76');
     expect(taken.get('ISC-74')).toBe('spec-002-ISC-74');
@@ -235,7 +235,7 @@ describe('both sources', () => {
 describe('the reading feeds the claim partition', () => {
   test('harbor 002 with the activity reading: ISC-74 is taken, not takeable', async () => {
     const r = await readLockSources({ repoRoot: HARBOR });
-    const p = partitionClaims(parseClaims(readFileSync(HARBOR_002_SPEC, 'utf8')).claims, r.locks);
+    const p = partitionClaims(parseClaims(readFileSync(HARBOR_002_SPEC, 'utf8')).claims, r.locks, 'fresh');
     expect(p.taken).toEqual([{ id: 'ISC-74', session: 'spec-002-ISC-74', since: '2026-03-08T14:06:00Z' }]);
     expect(p.takeable).not.toContain('ISC-74');
     expect([p.closed.length, p.takeable.length, p.blocked.length, p.taken.length]).toEqual([25, 3, 1, 1]);

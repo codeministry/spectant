@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { buildClaimViews } from '../src/claim-view.ts';
 import { buildDashboard } from '../src/dashboard.ts';
 import type { ClaimGlyphState, ClaimLock, ClaimView, ClaimViewModel, LockReading, SpecFiles } from '../src/files.ts';
+import { hashForGate } from '../src/gates.ts';
 import { readLockSources } from '../src/locks.ts';
 import { buildSpecPage } from '../src/spec.ts';
 import { FIXTURES, fixtureTrees, folders, readTree } from './helpers/read-tree.ts';
@@ -112,16 +113,18 @@ describe('harbor 002, the richest spec', () => {
 describe('kinds, tombstones and fog in the other fixtures', () => {
   test('Anti claims in harbor 003 are blocked on their open twin', () => {
     const model = buildClaimViews({ files: specFiles('harbor', '003-config-loader') });
-    expect(model.counts).toEqual({ all: 13, open: 13, takeable: 7, taken: 0, blocked: 6, closed: 0, dropped: 0, normal: 7, anti: 6, antecedent: 0 });
+    expect(model.counts).toEqual({ all: 13, open: 13, takeable: 0, taken: 0, blocked: 6, closed: 0, dropped: 0, normal: 7, anti: 6, antecedent: 0 });
     expect(byId(model, 'ISC-82')).toMatchObject({ kind: 'anti', state: 'blocked', blockedBy: ['ISC-81'], feature: null });
+    // No reviewed mark: the seven claims that would be takeable are open (ISC-99).
+    expect(model.claims.filter((c) => c.state === 'open')).toHaveLength(7);
     expect(byId(model, 'ISC-82').text).toBe('the project file produces a different effective config than before the rewrite.');
     expect(model.features).toEqual([]);
   });
 
   test('an Antecedent claim and two fog lines in harbor 005', () => {
     const model = buildClaimViews({ files: specFiles('harbor', '005-config-format-choice') });
-    expect(byId(model, 'ISC-94')).toMatchObject({ kind: 'antecedent', state: 'takeable', text: 'the config format for version 2 is chosen and recorded as a decision.' });
-    expect(model.counts).toMatchObject({ antecedent: 1, anti: 0, normal: 0, takeable: 1 });
+    expect(byId(model, 'ISC-94')).toMatchObject({ kind: 'antecedent', state: 'open', text: 'the config format for version 2 is chosen and recorded as a decision.' });
+    expect(model.counts).toMatchObject({ antecedent: 1, anti: 0, normal: 0, takeable: 0, open: 1 });
     expect(model.fog).toEqual([
       {
         text: 'whether includes are resolved relative to the including file or to the working directory',
@@ -200,7 +203,10 @@ Why: a reason.
 - ISC-2 (partial): evidence for an open claim
 `;
 
-const synthetic = (): SpecFiles => ({ folder: '900-synthetic', texts: { spec: SYNTHETIC } });
+// A fresh reviewed mark over SYNTHETIC, so its claims are takeable; `unreviewed` is the same folder without it.
+const FRESH_MARK = JSON.stringify({ gate: 'reviewed', at: '2026-01-03T09:00:00Z', files: { 'spec.md': hashForGate('spec.md', SYNTHETIC), 'plan.md': null, 'tasks.md': null } });
+const synthetic = (): SpecFiles => ({ folder: '900-synthetic', texts: { spec: SYNTHETIC, gateReviewed: FRESH_MARK } });
+const unreviewed = (): SpecFiles => ({ folder: '900-synthetic', texts: { spec: SYNTHETIC } });
 const lock = (claim: string, session: string, source: 'activity' | 'frontier' = 'activity'): ClaimLock => ({ source, claim, session, since: '2026-01-03T10:00:00Z' });
 
 describe('a synthetic spec: the edge cases in one file', () => {
@@ -216,6 +222,20 @@ describe('a synthetic spec: the edge cases in one file', () => {
       ['ISC-6', 'blocked'],
     ]);
     expect(model.counts).toEqual({ all: 7, open: 4, takeable: 2, taken: 0, blocked: 2, closed: 1, dropped: 2, normal: 5, anti: 1, antecedent: 1 });
+  });
+
+  test('without a fresh reviewed mark every would-be-takeable claim is open, the rest unchanged (ISC-99)', () => {
+    const model = buildClaimViews({ files: unreviewed() });
+    expect(model.claims.map((c) => [c.id, c.state])).toEqual([
+      ['ISC-0', 'open'],
+      ['ISC-1', 'closed'],
+      ['ISC-2', 'open'],
+      ['ISC-3', 'blocked'],
+      ['ISC-4', 'dropped'],
+      ['ISC-5', 'dropped'],
+      ['ISC-6', 'blocked'],
+    ]);
+    expect(model.counts).toMatchObject({ open: 4, takeable: 0, taken: 0, blocked: 2 });
   });
 
   test('an edge to an unknown ID blocks; a tombstone blocks nothing and carries its note or null', () => {
@@ -292,7 +312,7 @@ describe('the counts equal the dashboard row (ISC-72)', () => {
         open: model.counts.open,
         takeable: idsIn(model, 'takeable'),
         fog: model.fog.length,
-        sum: model.counts.takeable + model.counts.taken + model.counts.blocked + model.counts.closed + model.counts.dropped,
+        sum: model.claims.filter((c) => c.state === 'open').length + model.counts.takeable + model.counts.taken + model.counts.blocked + model.counts.closed + model.counts.dropped,
       };
       expect(got).toEqual({
         spec: row.slug,

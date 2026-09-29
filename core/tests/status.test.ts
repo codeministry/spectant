@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { parseClaims, type Claim, type ClaimsDocument } from '../src/claims.ts';
 import type { ClaimLock } from '../src/files.ts';
 import { parseFrontmatter, type FrontmatterResult } from '../src/frontmatter.ts';
+import { reviewedGate } from '../src/gates.ts';
 import {
   driftReport,
   hasDrift,
@@ -87,7 +88,7 @@ const HARBOR_002 = join('specs', '002-web-console');
 
 describe('partitionClaims', () => {
   test('harbor 002: 25 of 30 closed, one claim blocked by an edge, the rest takeable', () => {
-    const p = partitionClaims(load(join('harbor', HARBOR_002, 'spec.md')).doc.claims);
+    const p = partitionClaims(load(join('harbor', HARBOR_002, 'spec.md')).doc.claims, [], 'fresh');
     expect(p.closed.length).toBe(25);
     expect(p.takeable.length).toBe(4);
     expect(p.blocked).toEqual([{ id: 'ISC-78', openBlockers: ['ISC-77'] }]);
@@ -100,14 +101,14 @@ describe('partitionClaims', () => {
   test('harbor 002 with the activity lock: ISC-74 is taken, not takeable', () => {
     const locks = activityLocks(join('harbor', '.spectant', 'activity.jsonl'));
     expect(locks.map((l) => l.claim)).toEqual(['ISC-74']);
-    const p = partitionClaims(load(join('harbor', HARBOR_002, 'spec.md')).doc.claims, locks);
+    const p = partitionClaims(load(join('harbor', HARBOR_002, 'spec.md')).doc.claims, locks, 'fresh');
     expect(p.taken).toEqual([{ id: 'ISC-74', session: 'spec-002-ISC-74', since: '2026-03-08T14:06:00Z' }]);
     expect(p.takeable).not.toContain('ISC-74');
     expect([p.closed.length, p.takeable.length, p.blocked.length, p.taken.length]).toEqual([25, 3, 1, 1]);
   });
 
   test('spectant-001: 14 closed, 29 takeable, 4 blocked (the old tool on 2026-09-29)', () => {
-    const p = partitionClaims(load(join('spectant-001', 'specs', '001-app-skeleton', 'spec.md')).doc.claims);
+    const p = partitionClaims(load(join('spectant-001', 'specs', '001-app-skeleton', 'spec.md')).doc.claims, [], 'fresh');
     expect([p.closed.length, p.takeable.length, p.blocked.length, p.taken.length]).toEqual([14, 29, 4, 0]);
     expect(p.blocked.map((b) => `${b.id}<${b.openBlockers.join(',')}`)).toEqual([
       'ISC-60.1<ISC-60',
@@ -134,7 +135,7 @@ describe('partitionClaims', () => {
   };
   for (const [rel, expected] of Object.entries(FRONTIER)) {
     test(`parity with the old frontier: ${rel}`, () => {
-      const p = partitionClaims(load(rel).doc.claims);
+      const p = partitionClaims(load(rel).doc.claims, [], 'fresh');
       expect([p.closed.length, p.takeable.length, p.blocked.length]).toEqual(expected);
       expect(p.closed.length + p.open.length).toBe(load(rel).doc.claims.length);
     });
@@ -143,7 +144,7 @@ describe('partitionClaims', () => {
   test('a tombstone is closed and listed as dropped; a dropped blocker frees its dependant', () => {
     const base = load(join('harbor', HARBOR_002, 'spec.md')).doc.claims;
     const claims: Claim[] = base.map((c) => (c.id === 'ISC-77' ? { ...c, dropped: true } : c));
-    const p = partitionClaims(claims);
+    const p = partitionClaims(claims, [], 'fresh');
     expect(p.dropped).toEqual(['ISC-77']);
     expect(p.closed).toContain('ISC-77');
     expect(p.open).not.toContain('ISC-77');
@@ -154,7 +155,7 @@ describe('partitionClaims', () => {
   test('an edge to an unknown ID stays unmet and is reported as a diagnostic', () => {
     const base = load(join('harbor', HARBOR_002, 'spec.md')).doc.claims;
     const claims: Claim[] = base.map((c) => (c.id === 'ISC-74' ? { ...c, after: ['ISC-999'] } : c));
-    const p = partitionClaims(claims);
+    const p = partitionClaims(claims, [], 'fresh');
     expect(p.blocked).toContainEqual({ id: 'ISC-74', openBlockers: ['ISC-999'] });
     expect(p.diagnostics).toHaveLength(1);
     expect(p.diagnostics[0]).toMatchObject({ severity: 'warning', code: 'status-edge-unknown', line: claims.find((c) => c.id === 'ISC-74')?.line });
@@ -168,15 +169,15 @@ describe('partitionClaims', () => {
       { source: 'frontier', claim: 'ISC-78', session: 's1', since: '2026-03-08T10:00:00Z' },
       { source: 'frontier', claim: closedId, session: 's2', since: '2026-03-08T10:00:00Z' },
     ];
-    const p = partitionClaims(claims, locks);
+    const p = partitionClaims(claims, locks, 'fresh');
     expect(p.blocked.map((b) => b.id)).toEqual(['ISC-78']);
     expect(p.taken).toEqual([]);
     expect(p.closed).toContain(closedId);
   });
 
   test('no claims: an empty partition', () => {
-    const p = partitionClaims([]);
-    expect(p).toEqual({ closed: [], takeable: [], blocked: [], taken: [], open: [], dropped: [], diagnostics: [] });
+    const p = partitionClaims([], [], 'fresh');
+    expect(p).toEqual({ closed: [], takeable: [], blocked: [], taken: [], open: [], dropped: [], gated: [], reviewed: 'fresh', diagnostics: [] });
   });
 });
 
@@ -360,5 +361,61 @@ describe('hasDrift', () => {
       { ...CLEAN, anchors_missing_at_complete: 1 },
     ];
     expect(dirty.map(hasDrift)).toEqual([true, true, true, true, true, true, true]);
+  });
+});
+
+// ISC-99: a claim is takeable only while the spec's reviewed mark is fresh; before that every would-be-takeable claim
+// is `open`, held by the gate, with one diagnostic naming the reason. Blocked and taken claims keep their state.
+describe('review gate', () => {
+  const HARBOR_003 = join('harbor', 'specs', '003-config-loader');
+  const folderTexts = (rel: string): Record<string, string> => {
+    const read = (name: string) => (existsSync(join(FIXTURES, rel, name)) ? readFileSync(join(FIXTURES, rel, name), 'utf8') : undefined);
+    const texts = { spec: read('spec.md'), plan: read('plan.md'), tasks: read('tasks.md'), gateReviewed: read(join('.gates', 'reviewed.json')) };
+    return Object.fromEntries(Object.entries(texts).filter((e): e is [string, string] => e[1] !== undefined));
+  };
+
+  test('no mark: 0 takeable, every would-be-takeable claim open and gated, with the diagnostic', () => {
+    const claims = load(join(HARBOR_003, 'spec.md')).doc.claims;
+    const before = partitionClaims(claims, [], 'fresh');
+    const p = partitionClaims(claims, [], 'missing');
+    expect(before.takeable.length).toBe(7);
+    expect(p.takeable).toEqual([]);
+    expect(p.gated).toEqual(before.takeable);
+    expect(p.reviewed).toBe('missing');
+    expect([p.open, p.blocked, p.taken, p.closed, p.dropped]).toEqual([before.open, before.blocked, before.taken, before.closed, before.dropped]);
+    const gate = p.diagnostics.filter((d) => d.code === 'status-review-gate');
+    expect(gate).toHaveLength(1);
+    expect(gate[0]?.message).toContain('reviewed mark is missing');
+    expect(gate[0]?.message).toContain('7 claims');
+  });
+
+  test('stale mark: the same hold, with the stale wording', () => {
+    const claims = load(join(HARBOR_003, 'spec.md')).doc.claims;
+    const p = partitionClaims(claims, [], 'stale');
+    expect(p.takeable).toEqual([]);
+    expect(p.gated).toHaveLength(7);
+    const gate = p.diagnostics.find((d) => d.code === 'status-review-gate');
+    expect(gate?.message).toContain('reviewed mark is stale');
+  });
+
+  test('fresh mark: the partition is the one computed before the gate existed', () => {
+    const p = partitionClaims(load(join('harbor', HARBOR_002, 'spec.md')).doc.claims, [], 'fresh');
+    expect([p.closed.length, p.takeable.length, p.blocked.length, p.taken.length, p.open.length]).toEqual([25, 4, 1, 0, 5]);
+    expect(p.gated).toEqual([]);
+    expect(p.diagnostics).toEqual([]);
+  });
+
+  test('a gated spec with nothing takeable carries no gate diagnostic', () => {
+    const claims = load(join('harbor', HARBOR_002, 'spec.md')).doc.claims.map((c) => ({ ...c, checked: true }));
+    expect(partitionClaims(claims, [], 'missing').diagnostics).toEqual([]);
+  });
+
+  test('read from the folders: harbor 003 (no mark) has 0 takeable, harbor 002 (fresh mark) is unchanged', () => {
+    const g003 = reviewedGate(folderTexts(HARBOR_003));
+    const g002 = reviewedGate(folderTexts(join('harbor', HARBOR_002)));
+    expect(g003.check.state).toBe('missing');
+    expect(g002.check.state).toBe('fresh');
+    expect(partitionClaims(load(join(HARBOR_003, 'spec.md')).doc.claims, [], g003.check.state).takeable).toHaveLength(0);
+    expect(partitionClaims(load(join('harbor', HARBOR_002, 'spec.md')).doc.claims, [], g002.check.state).takeable).toHaveLength(4);
   });
 });
