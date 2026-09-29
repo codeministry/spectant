@@ -189,9 +189,10 @@ describe("ISC-7: the data directory deleted, the view rebuilt by a re-add", () =
     for (const name of NAMES) expect((JSON.parse(before.dashboards[name]) as { specs: unknown[] }).specs.length).toBeGreaterThan(0);
     expect(await server.stop()).toBe(0);
 
-    // The data directory holds the database and its WAL companions, and the database only these two tables.
+    // The data directory holds the database and its WAL companions, and the database only these three tables: the
+    // registry, the settings and the developer's own notes (migration 2, ISC-94), which no read ever fills.
     expect(readdirSync(dir).every((file) => file.startsWith("spectant.db"))).toBe(true);
-    expect(tables(dir)).toEqual(["setting", "workspace"]);
+    expect(tables(dir)).toEqual(["note", "setting", "workspace"]);
 
     // (2) The user's action: delete the data directory.
     rmSync(dir, { recursive: true });

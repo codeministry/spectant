@@ -59,7 +59,7 @@ line of `tasks.md`, line endings kept).
 - Never write into a registered repository beyond the two writes above: no other file, no `.git/` object, no index,
   no lock, and no shelling out to git for anything that writes. `tests/readonly.test.ts` hashes the fixture repo, `.git/` included, before and after
   (ISC-15).
-- The database holds only the registry and settings, never anything a repository says. Deleting it must lose nothing
+- The database holds only the registry, the settings and the notes (spec 002, `note` table from migration 2: a note belongs to a workspace and carries at most one anchor — spec, claim or task — enforced by the schema's CHECK; removing a workspace orphans its notes), never anything a repository says. Deleting it must lose nothing
   a re-add cannot rebuild (ISC-7).
 - The API never returns an absolute path. It returns only `pathTail`, the last path segment, because the model reaches
   the browser and screenshots (ISC-3).
