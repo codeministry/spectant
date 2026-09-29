@@ -38,7 +38,7 @@ const ANCHORS: readonly NoteAnchor[] = [
 ];
 
 function note(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-  return { id: ID, workspace: "leadgen", anchor: null, title: "", body: "Remember the index.", created: NOW, updated: NOW, ...overrides };
+  return { id: ID, workspace: "leadgen", anchor: null, title: "", body: "Remember the index.", pinned: false, created: NOW, updated: NOW, ...overrides };
 }
 
 function codeOf(check: { ok: boolean; error?: string }): string | undefined {
@@ -112,7 +112,7 @@ describe("the note shape", () => {
   test("a note carries no path: the only keys are the contract's, so nothing points into a repository", () => {
     const check = validateNote(note({ anchor: ANCHORS[1] }));
     expect(check.ok).toBe(true);
-    if (check.ok) expect(Object.keys(check.value).sort()).toEqual(["anchor", "body", "created", "id", "title", "updated", "workspace"]);
+    if (check.ok) expect(Object.keys(check.value).sort()).toEqual(["anchor", "body", "created", "id", "pinned", "title", "updated", "workspace"]);
     expect(codeOf(validateNote(note({ path: "/repo/specs/002" })))).toBe("invalid-body");
   });
 });
@@ -264,6 +264,6 @@ test("the module stays browser-safe: its only import is the spec routes contract
   const source = readFileSync(join(import.meta.dir, "../server/src/notes.contract.ts"), "utf8");
   const imports = [...source.matchAll(/^import .* from ['"](.+)['"];$/gm)].map((match) => match[1]);
   expect(imports).toEqual(["./spec-routes.contract.ts"]);
-  const typed: Note = { id: ID, workspace: "leadgen", anchor: null, title: "", body: "x", created: NOW, updated: NOW };
+  const typed: Note = { id: ID, workspace: "leadgen", anchor: null, title: "", body: "x", pinned: false, created: NOW, updated: NOW };
   expect(validateNote(typed).ok).toBe(true);
 });

@@ -2,6 +2,8 @@
  * The `spectant` command line (T11, ISC-8): `serve` (the default), the workspace commands `add`, `list` and `remove`
  * (T44, ISC-13) and `--version`.
  *
+ * `import-notes`, `export-notes` and `db rollback` (T98, ISC-53) live in `cli-notes.ts`; this file parses them.
+ *
  * `--version` (also `-v`, `-V`; T13, ISC-9) prints exactly `spectant <VERSION>` and a newline on stdout and nothing
  * else, so `scripts/check-version.ts` can compare the binary byte for byte with `package.json`. It short-circuits
  * the rest of the command line.
@@ -27,7 +29,8 @@ import { realpathSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { composeApi, dashboardApi } from "./api.ts";
 import type { EmbeddedManifest } from "./assets.contract.ts";
-import { openDatabase } from "./db.ts";
+import { exportNotesCommand, importNotesCommand, rollbackCommand } from "./cli-notes.ts";
+import { SCHEMA_VERSION, openDatabase } from "./db.ts";
 import { DEFAULT_PORT, LOOPBACK_HOST, PORT_ATTEMPTS, type RunningServer, serveWithFallback } from "./http.ts";
 import { CommitCache } from "./git.ts";
 import { detectLifeos, lifeosApi } from "./lifeos.ts";
@@ -47,12 +50,20 @@ Commands:
   list             list the registered repositories
   remove <path|slug>
                    unregister a repository (its files are never touched)
+  import-notes <file>
+                   import the old notes page's JSON export (a second run skips what is there)
+  export-notes <file>
+                   write every note to <file> in the same JSON shape
+  db rollback <version> --yes
+                   undo the newer schema migrations (1 to ${SCHEMA_VERSION - 1}); without --yes it only says
+                   what would be lost
 
 Options:
   --port <n>       port to listen on (default ${DEFAULT_PORT}; 0 picks a free port); a busy port falls
                    forward to the next free one, up to ${PORT_ATTEMPTS} ports in all
   --strict-port    fail instead of falling forward when the port is busy
   --no-browser     do not open the browser
+  --yes            confirm db rollback
   -v, -V, --version
                    print the version and exit
   -h, --help       print this help and exit`;
@@ -65,7 +76,9 @@ type Command =
   | { kind: "serve"; port: number; strictPort: boolean; openBrowser: boolean }
   | { kind: "add"; path: string }
   | { kind: "list" }
-  | { kind: "remove"; ref: string };
+  | { kind: "remove"; ref: string }
+  | { kind: "import-notes" | "export-notes"; file: string }
+  | { kind: "db-rollback"; target: number; yes: boolean };
 
 export type RunOptions = {
   /**
@@ -92,12 +105,14 @@ function parse(argv: string[]): Command {
   let port: number | undefined;
   let strictPort = false;
   let browser = true;
+  let yes = false;
   const positional: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] ?? "";
     if (arg === "--version" || arg === "-v" || arg === "-V") return { kind: "version" };
     if (arg === "--help" || arg === "-h") return { kind: "help" };
     if (arg === "--no-browser") browser = false;
+    else if (arg === "--yes") yes = true;
     else if (arg === "--strict-port") strictPort = true;
     else if (arg === "--port") port = parsePort(argv[++i]);
     else if (arg.startsWith("--port=")) port = parsePort(arg.slice("--port=".length));
@@ -109,6 +124,7 @@ function parse(argv: string[]): Command {
     if (port !== undefined) throw new UsageError(`--port only applies to serve, not to ${command}`);
     if (strictPort) throw new UsageError(`--strict-port only applies to serve, not to ${command}`);
   }
+  if (yes && command !== "db") throw new UsageError(`--yes only applies to db rollback, not to ${command ?? "serve"}`);
   const arity = (count: number, what: string): string[] => {
     if (rest.length < count) throw new UsageError(`${command ?? "serve"} needs ${what}`);
     if (rest.length > count) throw new UsageError(`unexpected argument ${rest[count] ?? ""}`);
@@ -126,6 +142,18 @@ function parse(argv: string[]): Command {
       return { kind: "list" };
     case "remove":
       return { kind: "remove", ref: arity(1, "a path or a slug")[0] ?? "" };
+    case "import-notes":
+    case "export-notes":
+      return { kind: command, file: arity(1, "a file")[0] ?? "" };
+    case "db": {
+      const [sub, version] = arity(2, "rollback and a schema version");
+      if (sub !== "rollback") throw new UsageError(`unknown db command ${sub ?? ""}`);
+      const target = /^\d{1,3}$/.test(version ?? "") ? Number(version) : Number.NaN;
+      if (!(target >= 1 && target < SCHEMA_VERSION)) {
+        throw new UsageError(`db rollback needs a schema version from 1 to ${SCHEMA_VERSION - 1}, got ${JSON.stringify(version)}`);
+      }
+      return { kind: "db-rollback", target, yes };
+    }
     default:
       throw new UsageError(`unknown command ${command}`);
   }
@@ -274,5 +302,11 @@ export async function run(argv: string[], manifest: EmbeddedManifest, options: R
     case "list":
     case "remove":
       return workspaceCommand(command, options);
+    case "import-notes":
+      return importNotesCommand(dataDir(options.env ?? process.env), resolve(options.cwd ?? process.cwd(), command.file), command.file);
+    case "export-notes":
+      return exportNotesCommand(dataDir(options.env ?? process.env), resolve(options.cwd ?? process.cwd(), command.file), command.file);
+    case "db-rollback":
+      return rollbackCommand(dataDir(options.env ?? process.env), command.target, command.yes);
   }
 }

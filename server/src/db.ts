@@ -12,23 +12,40 @@
  * one anchor, and a CHECK admits exactly the contract's three forms (none; a spec; a claim or task with its id).
  * `workspace` references `workspace(slug)` ON DELETE SET NULL: removing a workspace orphans its notes instead of
  * deleting them. Both statements say IF NOT EXISTS, so a re-run over a half-applied database adopts what is there.
- * No down migration runs. Reversing it by hand is `DROP INDEX note_workspace_anchor; DROP TABLE note;` plus
- * `schema_version` back to 1, which loses every note not exported first (plan 002 § Data Model, rollback).
+ *
+ * Migration 3 (T97, ISC-52) is expand-only too: it adds `pinned INTEGER NOT NULL DEFAULT 0` (0 or 1) to `note`, so
+ * every existing note starts unpinned. It reads `pragma_table_info` first, because SQLite has no ADD COLUMN IF NOT
+ * EXISTS and a half-applied run must be adopted like migration 2's.
+ *
+ * No down migration runs on open. The documented reversals are `REVERSALS`, applied only by `rollback` (the CLI's
+ * `spectant db rollback <version> --yes`, T98), newest first: 3 → 2 is `ALTER TABLE note DROP COLUMN pinned` (loses
+ * every pin), 2 → 1 is `DROP INDEX note_workspace_anchor; DROP TABLE note;` (loses every note not exported first with
+ * `spectant export-notes`; plan 002 § Data Model, rollback). The next `openDatabase` migrates forward again, so a
+ * rollback is only for handing the file to an older build.
  */
 import { Database } from "bun:sqlite";
 import { dbPath, ensureDataDir } from "./paths.ts";
 
 /** The schema version this build writes. A database from a newer build is refused rather than downgraded. */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /** Opens (creating on first use) `spectant.db` in `dir`, in WAL mode with foreign keys on, migrated to the latest schema. */
 export function openDatabase(dir: string): Database {
+  return open(dir, true);
+}
+
+/** Opens `spectant.db` in `dir` like `openDatabase` but leaves the schema as it is: for `rollback` and its checks. */
+export function openDatabaseUnmigrated(dir: string): Database {
+  return open(dir, false);
+}
+
+function open(dir: string, forward: boolean): Database {
   const db = new Database(dbPath(ensureDataDir(dir)), { create: true, strict: true });
   try {
     db.run("PRAGMA journal_mode = WAL");
     db.run("PRAGMA foreign_keys = ON");
     db.run("PRAGMA busy_timeout = 5000"); // a second CLI process waits for the lock instead of failing at once
-    migrate(db);
+    if (forward) migrate(db);
     return db;
   } catch (error) {
     db.close();
@@ -36,7 +53,8 @@ export function openDatabase(dir: string): Database {
   }
 }
 
-function currentVersion(db: Database): number {
+/** The `schema_version` row; 0 for a database no migration has touched yet. */
+export function schemaVersion(db: Database): number {
   const table = db.query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'setting'").get();
   if (!table) return 0;
   const row = db.query<{ value: string }, []>("SELECT value FROM setting WHERE key = 'schema_version'").get();
@@ -46,7 +64,7 @@ function currentVersion(db: Database): number {
 /** Brings the schema up to `SCHEMA_VERSION`, one version per step, all in one immediate transaction. */
 export function migrate(db: Database): void {
   db.transaction(() => {
-    let version = currentVersion(db);
+    let version = schemaVersion(db);
     if (!Number.isInteger(version) || version > SCHEMA_VERSION) {
       throw new Error(`spectant.db has schema version ${String(version)}; this build knows up to ${SCHEMA_VERSION}`);
     }
@@ -84,6 +102,11 @@ export function migrate(db: Database): void {
           // The list filters and the Claims tab's per-anchor counts read by workspace, then spec, kind and id.
           db.run("CREATE INDEX IF NOT EXISTS note_workspace_anchor ON note (workspace, anchor_spec, anchor_kind, anchor_id)");
           break;
+        case 2:
+          if (!db.query("SELECT 1 FROM pragma_table_info('note') WHERE name = 'pinned'").get()) {
+            db.run("ALTER TABLE note ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0 CHECK (pinned IN (0, 1))");
+          }
+          break;
       }
       version++;
       db.run("INSERT INTO setting (key, value) VALUES ('schema_version', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [
@@ -91,4 +114,33 @@ export function migrate(db: Database): void {
       ]);
     }
   }).immediate();
+}
+
+/** Each migration's documented reversal, keyed by the version it undoes. Every statement drops what that step made. */
+const REVERSALS: Readonly<Record<number, readonly string[]>> = {
+  3: ["ALTER TABLE note DROP COLUMN pinned"],
+  2: ["DROP INDEX IF EXISTS note_workspace_anchor", "DROP TABLE IF EXISTS note"],
+};
+
+/**
+ * Walks the schema back to `target` (1 to `SCHEMA_VERSION - 1`), applying `REVERSALS` newest first in one immediate
+ * transaction. A database already at or below `target` is left alone (`from === to`). Throws on any other target.
+ */
+export function rollback(db: Database, target: number): { from: number; to: number } {
+  if (!Number.isInteger(target) || target < 1 || target >= SCHEMA_VERSION) {
+    throw new RangeError(`rollback target must be a schema version from 1 to ${SCHEMA_VERSION - 1}, got ${String(target)}`);
+  }
+  return db
+    .transaction(() => {
+      const from = schemaVersion(db);
+      if (!Number.isInteger(from) || from > SCHEMA_VERSION) {
+        throw new Error(`spectant.db has schema version ${String(from)}; this build knows up to ${SCHEMA_VERSION}`);
+      }
+      for (let version = from; version > target; version--) {
+        for (const statement of REVERSALS[version] ?? []) db.run(statement);
+        db.run("UPDATE setting SET value = ? WHERE key = 'schema_version'", [String(version - 1)]);
+      }
+      return { from, to: Math.min(from, target) };
+    })
+    .immediate();
 }

@@ -1,5 +1,5 @@
-// Schema migrations (T94, ISC-94, ISC-7, ISC-21): a fresh data directory migrates to schema_version 2 with the `note`
-// table and its workspace+anchor index; a version-1 database moves to 2 without touching its settings or registry
+// Schema migrations (T94, ISC-94, ISC-7, ISC-21): a fresh data directory migrates to schema_version 3 with the `note`
+// table, its workspace+anchor index and its `pinned` column; a version-1 database moves to 3 without touching its settings or registry
 // rows; running `migrate` again is a no-op; the schema itself holds a note to at most one anchor and orphans a note
 // when its workspace is removed. Every test runs against a fresh temp data directory, never the real `~/.spectant`.
 import { Database } from "bun:sqlite";
@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { SCHEMA_VERSION, migrate, openDatabase } from "../server/src/db.ts";
+import { SCHEMA_VERSION, migrate, openDatabase, openDatabaseUnmigrated, rollback, schemaVersion } from "../server/src/db.ts";
 import { dbPath } from "../server/src/paths.ts";
 
 let root: string;
@@ -65,18 +65,18 @@ function insertNote(db: Database, id: string, workspace: string | null, kind: st
 }
 
 describe("migration 2", () => {
-  test("a fresh data directory migrates to schema_version 2 with the note table and its index", () => {
-    expect(SCHEMA_VERSION).toBe(2);
+  test("a fresh data directory migrates to schema_version 3 with the note table, its index and the pinned column", () => {
+    expect(SCHEMA_VERSION).toBe(3);
     const db = track(openDatabase(data));
-    expect(version(db)).toBe("2");
+    expect(version(db)).toBe("3");
     expect(schemaObjects(db)).toEqual(["index:note_workspace_anchor", "table:note", "table:setting", "table:workspace"]);
     const columns = db.query<{ name: string }, []>("SELECT name FROM pragma_table_info('note') ORDER BY cid").all();
-    expect(columns.map((c) => c.name)).toEqual(["id", "workspace", "anchor_kind", "anchor_spec", "anchor_id", "title", "body", "created_at", "updated_at"]);
+    expect(columns.map((c) => c.name)).toEqual(["id", "workspace", "anchor_kind", "anchor_spec", "anchor_id", "title", "body", "created_at", "updated_at", "pinned"]);
     const indexed = db.query<{ name: string }, []>("SELECT name FROM pragma_index_info('note_workspace_anchor') ORDER BY seqno").all();
     expect(indexed.map((c) => c.name)).toEqual(["workspace", "anchor_spec", "anchor_kind", "anchor_id"]);
   });
 
-  test("a version-1 database moves to 2 without touching its settings or registry rows", () => {
+  test("a version-1 database moves to 3 without touching its settings or registry rows", () => {
     const old = versionOneDatabase();
     const settingsBefore = old.query("SELECT key, value FROM setting WHERE key <> 'schema_version' ORDER BY key").all();
     const workspacesBefore = old.query("SELECT * FROM workspace").all();
@@ -84,7 +84,7 @@ describe("migration 2", () => {
     open.splice(0);
 
     const db = track(openDatabase(data));
-    expect(version(db)).toBe("2");
+    expect(version(db)).toBe("3");
     expect(db.query("SELECT key, value FROM setting WHERE key <> 'schema_version' ORDER BY key").all()).toEqual(settingsBefore);
     expect(db.query("SELECT * FROM workspace").all()).toEqual(workspacesBefore);
     expect(db.query<{ n: number }, []>("SELECT count(*) AS n FROM note").get()?.n).toBe(0);
@@ -96,7 +96,7 @@ describe("migration 2", () => {
     const before = { schema: db.query("SELECT sql FROM sqlite_master ORDER BY name").all(), notes: db.query("SELECT * FROM note").all() };
     migrate(db);
     migrate(db);
-    expect(version(db)).toBe("2");
+    expect(version(db)).toBe("3");
     expect({ schema: db.query("SELECT sql FROM sqlite_master ORDER BY name").all(), notes: db.query("SELECT * FROM note").all() }).toEqual(before);
     expect(db.query<{ n: number }, []>("SELECT count(*) AS n FROM setting WHERE key = 'schema_version'").get()?.n).toBe(1);
   });
@@ -109,17 +109,17 @@ describe("migration 2", () => {
     first.close();
     open.splice(0);
     const db = track(openDatabase(data));
-    expect(version(db)).toBe("2");
+    expect(version(db)).toBe("3");
     expect(schemaObjects(db)).toContain("index:note_workspace_anchor");
     expect(db.query("SELECT id, anchor_spec FROM note").all()).toEqual([{ id: "kept", anchor_spec: "002" }]);
   });
 
   test("a database from a newer build is refused, not downgraded", () => {
     const old = versionOneDatabase();
-    old.run("UPDATE setting SET value = '3' WHERE key = 'schema_version'");
+    old.run("UPDATE setting SET value = '4' WHERE key = 'schema_version'");
     old.close();
     open.splice(0);
-    expect(() => openDatabase(data)).toThrow(/schema version 3/);
+    expect(() => openDatabase(data)).toThrow(/schema version 4/);
   });
 });
 
@@ -149,5 +149,79 @@ describe("the note table holds a note to at most one anchor", () => {
     insertNote(db, "n1", "alpha", "claim", "002", "ISC-94");
     db.run("DELETE FROM workspace WHERE slug = 'alpha'");
     expect(db.query("SELECT id, workspace, anchor_id FROM note").all()).toEqual([{ id: "n1", workspace: null, anchor_id: "ISC-94" }]);
+  });
+});
+
+// Migration 3 (T97, ISC-52): `pinned` is a 0/1 column, default 0, added without touching a row. The reversals (T98,
+// `spectant db rollback`) walk back one migration at a time, newest first.
+const columnsOf = (db: Database): string[] =>
+  db
+    .query<{ name: string }, []>("SELECT name FROM pragma_table_info('note') ORDER BY cid")
+    .all()
+    .map((c) => c.name);
+
+describe("migration 3", () => {
+  test("a version-2 database gains pinned = 0 on every note, the rows otherwise unchanged", () => {
+    const first = track(openDatabase(data));
+    insertNote(first, "n1", null, "claim", "002", "ISC-52");
+    rollback(first, 2);
+    expect(version(first)).toBe("2");
+    expect(columnsOf(first)).not.toContain("pinned");
+    const before = first.query<Record<string, unknown>, []>("SELECT * FROM note").all();
+    first.close();
+    open.splice(0);
+    const db = track(openDatabase(data));
+    expect(version(db)).toBe("3");
+    expect(db.query("SELECT * FROM note").all()).toEqual(before.map((row) => ({ ...row, pinned: 0 })));
+  });
+
+  test("a half-applied migration 3 (pinned present, version still 2) is adopted", () => {
+    const first = track(openDatabase(data));
+    first.run("UPDATE setting SET value = '2' WHERE key = 'schema_version'");
+    first.close();
+    open.splice(0);
+    const db = track(openDatabase(data));
+    expect(version(db)).toBe("3");
+    expect(columnsOf(db).filter((c) => c === "pinned")).toEqual(["pinned"]);
+  });
+
+  test("pinned admits only 0 and 1", () => {
+    const db = track(openDatabase(data));
+    insertNote(db, "n1", null, null, null, null);
+    expect(() => db.run("UPDATE note SET pinned = 2 WHERE id = 'n1'")).toThrow(/CHECK/);
+    db.run("UPDATE note SET pinned = 1 WHERE id = 'n1'");
+    expect(db.query("SELECT pinned FROM note").all()).toEqual([{ pinned: 1 }]);
+  });
+});
+
+describe("rollback", () => {
+  test("rollback to 2 drops pinned, to 1 drops the note table and its index, each moving schema_version", () => {
+    const db = track(openDatabase(data));
+    insertNote(db, "n1", null, null, null, null);
+    expect(rollback(db, 2)).toEqual({ from: 3, to: 2 });
+    expect(schemaVersion(db)).toBe(2);
+    expect(columnsOf(db)).toEqual(["id", "workspace", "anchor_kind", "anchor_spec", "anchor_id", "title", "body", "created_at", "updated_at"]);
+    expect(rollback(db, 1)).toEqual({ from: 2, to: 1 });
+    expect(version(db)).toBe("1");
+    expect(schemaObjects(db)).toEqual(["table:setting", "table:workspace"]);
+    expect(rollback(db, 1)).toEqual({ from: 1, to: 1 });
+  });
+
+  test("rollback from 3 straight to 1 reverses both migrations; the next open migrates forward again", () => {
+    const db = track(openDatabase(data));
+    expect(rollback(db, 1)).toEqual({ from: 3, to: 1 });
+    db.close();
+    open.splice(0);
+    const raw = track(openDatabaseUnmigrated(data));
+    expect(schemaVersion(raw)).toBe(1);
+    raw.close();
+    open.splice(0);
+    expect(version(track(openDatabase(data)))).toBe("3");
+  });
+
+  test("a target outside 1 to SCHEMA_VERSION - 1 is refused and nothing changes", () => {
+    const db = track(openDatabase(data));
+    for (const target of [0, 3, 4, -1, 1.5]) expect(() => rollback(db, target)).toThrow(/rollback target/);
+    expect(version(db)).toBe("3");
   });
 });

@@ -15,7 +15,8 @@
  * Shape decisions against plan 002's sketch: the anchor is `{kind, spec, id?}`, not one `ref` string, because claim and
  * task ids repeat across specs (every spec has an `ISC-1`); updates are `PUT` (the draft is replaced whole), not
  * `PATCH`; `workspace` is `null` only for an orphan whose workspace was removed (ON DELETE SET NULL). `title` stays from
- * the plan and design.md (list rows show a title and the body's first line); `pinned` from the design is not in v1.
+ * the plan and design.md (list rows show a title and the body's first line); `pinned` from the design is a boolean
+ * (migration 3, T97, ISC-52): a `POST` without it creates an unpinned note, a `PUT` without it keeps the pin.
  *
  * Error spelling follows `spec-routes.contract.ts`: kebab-case `{error: "…"}`. Every 400 names one code of
  * `NOTE_VALIDATION_ERRORS`; the route codes are the API's own. Browser-safe: the only import is that contract.
@@ -42,6 +43,8 @@ export interface Note {
   readonly title: string;
   /** Markdown, never blank. */
   readonly body: string;
+  /** Pinned to the top of the Notes list; false unless a draft set it. */
+  readonly pinned: boolean;
   /** ISO 8601 UTC, `new Date().toISOString()`. */
   readonly created: string;
   readonly updated: string;
@@ -52,6 +55,8 @@ export interface NoteDraft {
   readonly anchor: NoteAnchor | null;
   readonly title: string;
   readonly body: string;
+  /** Absent: `POST` stores false, `PUT` keeps the stored pin, so a client that never shows pins cannot drop one. */
+  readonly pinned?: boolean;
 }
 
 /** A draft bound to the workspace in the path: what `POST` inserts. */
@@ -64,6 +69,7 @@ export interface NoteRequest {
   readonly anchor?: NoteAnchor | null;
   readonly title?: string;
   readonly body: string;
+  readonly pinned?: boolean;
 }
 
 /** The per-anchor counts of one spec: the head's "n notes" pill (`total`) and the Claims tab's badge (ISC-95). */
@@ -178,14 +184,17 @@ function parseFields(value: Record<string, unknown>): NoteCheck<NoteDraft> {
   if (!title.ok) return title;
   const body = parseBody(value.body);
   if (!body.ok) return body;
-  return ok({ anchor: anchor.value, title: title.value, body: body.value });
+  const { pinned } = value;
+  if (pinned !== undefined && typeof pinned !== 'boolean') return fail('invalid-body');
+  const draft = { anchor: anchor.value, title: title.value, body: body.value };
+  return ok(pinned === undefined ? draft : { ...draft, pinned });
 }
 
 /** A `POST` or `PUT` body. A second anchor (`anchors`) is `multiple-anchors`; any other extra key is `invalid-body`. */
 export function parseNoteDraft(value: unknown): NoteCheck<NoteDraft> {
   if (!isPlainObject(value)) return fail('invalid-body');
   if (Object.hasOwn(value, 'anchors')) return fail('multiple-anchors');
-  if (!onlyKeys(value, ['anchor', 'title', 'body'])) return fail('invalid-body');
+  if (!onlyKeys(value, ['anchor', 'title', 'body', 'pinned'])) return fail('invalid-body');
   return parseFields(value);
 }
 
@@ -196,21 +205,21 @@ export function parseNewNote(workspace: unknown, value: unknown): NoteCheck<NewN
   return draft.ok ? ok({ workspace, ...draft.value }) : draft;
 }
 
-const NOTE_KEYS = ['id', 'workspace', 'anchor', 'title', 'body', 'created', 'updated'] as const;
+const NOTE_KEYS = ['id', 'workspace', 'anchor', 'title', 'body', 'pinned', 'created', 'updated'] as const;
 
 /** A whole stored or answered note. `workspace` must be present: a slug, or null for an orphan. */
 export function validateNote(value: unknown): NoteCheck<Note> {
   if (!isPlainObject(value)) return fail('invalid-body');
   if (Object.hasOwn(value, 'anchors')) return fail('multiple-anchors');
   if (!onlyKeys(value, NOTE_KEYS)) return fail('invalid-body');
-  const { id, workspace, created, updated } = value;
+  const { id, workspace, pinned, created, updated } = value;
   if (!isNoteId(id)) return fail('invalid-id');
   if (!Object.hasOwn(value, 'workspace') || (workspace !== null && !isWorkspaceSlug(workspace))) return fail('invalid-workspace');
   if (!Object.hasOwn(value, 'anchor')) return fail('invalid-anchor');
   const fields = parseFields(value);
   if (!fields.ok) return fields;
-  if (!isTimestamp(created) || !isTimestamp(updated)) return fail('invalid-body');
-  return ok({ id, workspace, anchor: fields.value.anchor, title: fields.value.title, body: fields.value.body, created, updated });
+  if (typeof pinned !== 'boolean' || !isTimestamp(created) || !isTimestamp(updated)) return fail('invalid-body');
+  return ok({ id, workspace, anchor: fields.value.anchor, title: fields.value.title, body: fields.value.body, pinned, created, updated });
 }
 
 const QUERY_KEYS = ['spec', 'claim', 'task', 'unanchored', 'orphans'] as const;
@@ -263,6 +272,8 @@ export interface NoteRow {
   readonly body: string;
   readonly created_at: string;
   readonly updated_at: string;
+  /** 0 or 1 (migration 3). */
+  readonly pinned: number;
 }
 
 export type AnchorColumns = Pick<NoteRow, 'anchor_kind' | 'anchor_spec' | 'anchor_id'>;
@@ -287,6 +298,7 @@ export function noteFromRow(row: NoteRow): Note {
     anchor: anchorFromColumns(row.anchor_kind, row.anchor_spec, row.anchor_id),
     title: row.title,
     body: row.body,
+    pinned: row.pinned === 1,
     created: row.created_at,
     updated: row.updated_at,
   };

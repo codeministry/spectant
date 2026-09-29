@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
 import { run } from "../server/src/cli.ts";
-import { openDatabase } from "../server/src/db.ts";
+import { openDatabase, openDatabaseUnmigrated, schemaVersion } from "../server/src/db.ts";
 import type { ApiHandler } from "../server/src/http.ts";
 import { type Note, type NoteCounts, type NoteRow, noteRoutes, validateNote } from "../server/src/notes.contract.ts";
 import { type NoteStore, notesApi, openNotes } from "../server/src/notes.ts";
@@ -313,3 +313,222 @@ describe("notes store", () => {
     expect(treeHash(repo)).toBe(baseline);
   });
 });
+
+// ─── The CLI over a data directory of its own (T97, T98, T99) ────────────────────────────────────────────────────
+
+type Env = { XDG_DATA_HOME: string };
+type CliRun = { code: number; out: string[]; err: string[] };
+
+function testManifest(): EmbeddedManifest {
+  const index = join(root, "index.html");
+  writeFileSync(index, "<!doctype html><title>spectant</title>");
+  return { generatedAt: "2026-09-29T10:00:00.000Z", assets: [{ ...embeddedAssetFor("index.html"), file: index }], index };
+}
+
+const freshEnv = (tag: string): Env => ({ XDG_DATA_HOME: mkdtempSync(join(root, `xdg-${tag}-`)) });
+
+/** One CLI command that returns at once (not `serve`), with stdout and stderr captured line by line. */
+async function cli(argv: string[], env: Env): Promise<CliRun> {
+  const out: string[] = [];
+  const err: string[] = [];
+  const log = spyOn(console, "log").mockImplementation((...args: unknown[]) => void out.push(args.join(" ")));
+  const error = spyOn(console, "error").mockImplementation((...args: unknown[]) => void err.push(args.join(" ")));
+  try {
+    return { code: await run(argv, testManifest(), { env, cwd: root }), out, err };
+  } finally {
+    log.mockRestore();
+    error.mockRestore();
+  }
+}
+
+/** `spectant --port 0 --no-browser` on `env`'s data directory until `stop()`, which resolves once the server is down. */
+async function serve(env: Env): Promise<{ url: string; stop: () => Promise<number> }> {
+  const lines: string[] = [];
+  const log = spyOn(console, "log").mockImplementation((...args: unknown[]) => void lines.push(args.join(" ")));
+  const abort = new AbortController();
+  const done = run(["--port", "0", "--no-browser"], testManifest(), { env, signal: abort.signal });
+  try {
+    const deadline = Date.now() + 5_000;
+    for (;;) {
+      const url = /^spectant · (http:\/\/127\.0\.0\.1:\d+)$/.exec(lines.find((l) => l.startsWith("spectant · ")) ?? "")?.[1];
+      if (url !== undefined) return { url, stop: () => (abort.abort(), done) };
+      if (Date.now() > deadline) throw new Error(`no URL line: ${lines.join(" | ")}`);
+      await Bun.sleep(5);
+    }
+  } finally {
+    log.mockRestore();
+  }
+}
+
+/** Every note in `env`'s data directory, orphans included, read straight from `spectant.db`. */
+function notesIn(env: Env): Note[] {
+  const database = openDatabase(join(env.XDG_DATA_HOME, "spectant"));
+  try {
+    return openNotes(database).all();
+  } finally {
+    database.close();
+  }
+}
+
+const send = (url: string, method: string, body: unknown): Promise<Response> =>
+  fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+describe("notes persist", () => {
+  test("persist: a note created, edited and pinned in the app is unchanged after the app restarts", async () => {
+    const env = freshEnv("persist");
+    expect((await cli(["add", repo], env)).code).toBe(0);
+    const anchor = { kind: "claim", spec: "002", id: "ISC-52" };
+    const first = await serve(env);
+    let before = "";
+    let id = "";
+    try {
+      const created = await send(`${first.url}${noteRoutes.create(WS)}`, "POST", { anchor, title: "Persist", body: "first draft" });
+      expect(created.status).toBe(201);
+      const note = (await created.json()) as Note;
+      expect(note.pinned).toBe(false);
+      id = note.id;
+      const edited = await send(`${first.url}${noteRoutes.update(WS, id)}`, "PUT", { anchor, title: "Persist", body: "edited draft" });
+      expect(edited.status).toBe(200);
+      const pinned = await send(`${first.url}${noteRoutes.update(WS, id)}`, "PUT", { anchor, title: "Persist", body: "edited draft", pinned: true });
+      expect(pinned.status).toBe(200);
+      expect((await pinned.json()) as Note).toMatchObject({ id, body: "edited draft", pinned: true, created: note.created });
+      expect((await send(`${first.url}${noteRoutes.create(WS)}`, "POST", { body: "left unpinned" })).status).toBe(201);
+      before = await (await fetch(`${first.url}${noteRoutes.list(WS)}`)).text();
+    } finally {
+      expect(await first.stop()).toBe(0);
+    }
+    const listed = JSON.parse(before) as Note[];
+    expect(listed.map((n) => [n.body, n.pinned])).toEqual([
+      ["left unpinned", false],
+      ["edited draft", true],
+    ]);
+    expect(listed.every((n) => validateNote(n).ok)).toBe(true);
+
+    const second = await serve(env);
+    try {
+      expect(await (await fetch(`${second.url}${noteRoutes.list(WS)}`)).text()).toBe(before);
+      // A PUT that leaves `pinned` out keeps the pin; a non-boolean pin is refused before the database is touched.
+      const kept = await send(`${second.url}${noteRoutes.update(WS, id)}`, "PUT", { anchor, title: "Persist", body: "edited again" });
+      expect(((await kept.json()) as Note).pinned).toBe(true);
+      const bad = await send(`${second.url}${noteRoutes.update(WS, id)}`, "PUT", { body: "x", pinned: "yes" });
+      expect({ status: bad.status, body: await bad.json() }).toEqual({ status: 400, body: { error: "invalid-body" } });
+    } finally {
+      expect(await second.stop()).toBe(0);
+    }
+    expect(treeHash(repo)).toBe(baseline);
+  });
+});
+
+const EXPORT_FIXTURE = join(import.meta.dir, "fixtures", "notes-export.json");
+type OldNote = { id: string; body: string; title?: string; created?: string; updated?: string };
+
+describe("notes import", () => {
+  const env = {} as Env;
+  const oldNotes = (JSON.parse(readFileSync(EXPORT_FIXTURE, "utf8")) as { notes: OldNote[] }).notes;
+  const byBody = (body: string): Note | undefined => notesIn(env).find((n) => n.body === body);
+
+  beforeAll(async () => {
+    Object.assign(env, freshEnv("import"));
+    expect((await cli(["add", repo], env)).code).toBe(0);
+  });
+
+  test("import: import-notes imports the old notes page's export with the same number of notes", async () => {
+    expect(await cli(["import-notes", EXPORT_FIXTURE], env)).toEqual({ code: 0, out: ["imported 3, skipped 0"], err: [] });
+    expect(notesIn(env).length).toBe(oldNotes.length);
+  });
+
+  test("import: repo, spec, ref and pinned map to workspace, anchor and pin; title and times are kept", () => {
+    const [index, loose, probe] = oldNotes.map((old) => byBody(old.body));
+    expect(index).toMatchObject({ workspace: WS, anchor: { kind: "spec", spec: "002" }, title: "Covering index", pinned: false });
+    expect(index).toMatchObject({ created: oldNotes[0]?.created, updated: oldNotes[0]?.updated });
+    expect(loose).toMatchObject({ workspace: null, anchor: null, title: "", pinned: false });
+    expect(probe).toMatchObject({ workspace: null, anchor: { kind: "claim", spec: "002", id: "ISC-52" }, pinned: true });
+    expect(notesIn(env).every((n) => validateNote(n).ok)).toBe(true);
+  });
+
+  test("import: a second run skips every note by its old id", async () => {
+    expect(await cli(["import-notes", EXPORT_FIXTURE], env)).toMatchObject({ code: 0, out: ["imported 0, skipped 3"] });
+    expect(notesIn(env).length).toBe(oldNotes.length);
+  });
+
+  test("import: a bare array, the repo's specs folder as repo, a task ref, an unknown ref and a blank body", async () => {
+    const file = join(env.XDG_DATA_HOME, "array.json");
+    const at = "2026-09-06T12:00:00.000Z";
+    writeFileSync(
+      file,
+      JSON.stringify([
+        { id: "old-task", title: "Task", body: "on a task", repo: join(repo, "specs"), spec: "002-notes", ref: "T97", created: at, updated: at },
+        { id: "old-blank", title: "Blank", body: "   ", repo: null, spec: null, created: at, updated: at },
+        { id: "old-odd", title: "", body: "odd ref", repo, spec: "notes", ref: "whatever", created: at, updated: at },
+      ]),
+    );
+    const res = await cli(["import-notes", file], env);
+    expect(res).toMatchObject({ code: 0, out: ["imported 2, skipped 1"] });
+    expect(res.err.join("\n")).toContain("old-blank");
+    expect(byBody("on a task")).toMatchObject({ workspace: WS, anchor: { kind: "task", spec: "002", id: "T97" } });
+    expect(byBody("odd ref")).toMatchObject({ workspace: WS, anchor: null });
+  });
+
+  test("import: export-notes writes the old shape without a path, and importing it into a fresh data directory is lossless", async () => {
+    const file = join(env.XDG_DATA_HOME, "export.json");
+    const all = notesIn(env);
+    expect(await cli(["export-notes", file], env)).toMatchObject({ code: 0, out: [`exported ${all.length}`] });
+    const text = readFileSync(file, "utf8");
+    expect(text).not.toContain(root);
+    const exported = JSON.parse(text) as { v: number; notes: Array<Record<string, unknown>> };
+    expect(exported.v).toBe(1);
+    expect(exported.notes.map((n) => n.id).sort()).toEqual(all.map((n) => n.id).sort());
+    for (const key of ["id", "title", "body", "repo", "spec", "created", "updated"]) expect(exported.notes.every((n) => key in n)).toBe(true);
+
+    const copy = freshEnv("import-copy");
+    expect((await cli(["add", repo], copy)).code).toBe(0);
+    expect(await cli(["import-notes", file], copy)).toMatchObject({ code: 0, out: [`imported ${all.length}, skipped 0`] });
+    expect(notesIn(copy)).toEqual(all);
+  });
+
+  test("import: usage errors exit 2; a missing or foreign file exits 1 and imports nothing", async () => {
+    const before = notesIn(env).length;
+    expect((await cli(["import-notes"], env)).code).toBe(2);
+    expect((await cli(["export-notes"], env)).code).toBe(2);
+    expect((await cli(["import-notes", "a.json", "b.json"], env)).code).toBe(2);
+    expect((await cli(["import-notes", "--yes", EXPORT_FIXTURE], env)).code).toBe(2);
+    expect((await cli(["import-notes", join(env.XDG_DATA_HOME, "missing.json")], env)).code).toBe(1);
+    for (const [name, content] of [["object.json", "{}"], ["newer.json", '{"v":2,"notes":[]}'], ["broken.json", "{not json"]] as const) {
+      const file = join(env.XDG_DATA_HOME, name);
+      writeFileSync(file, content);
+      const res = await cli(["import-notes", file], env);
+      expect(res.code).toBe(1);
+      expect(res.err.length).toBeGreaterThan(0);
+    }
+    expect(notesIn(env).length).toBe(before);
+  });
+});
+
+describe("notes db rollback", () => {
+  test("rollback: db rollback needs --yes, reverses the newest migrations and exits 2 on an unknown target", async () => {
+    const env = freshEnv("rollback");
+    expect(await cli(["import-notes", EXPORT_FIXTURE], env)).toMatchObject({ code: 0 });
+    const refused = await cli(["db", "rollback", "2"], env);
+    expect(refused.code).toBe(1);
+    expect(refused.err.join("\n")).toContain("--yes");
+    expect(schemaVersion(openDatabaseUnmigratedFor(env))).toBe(3);
+    for (const argv of [["db"], ["db", "rollback"], ["db", "rollback", "0"], ["db", "rollback", "3"], ["db", "rollback", "x", "--yes"], ["db", "migrate"], ["list", "--yes"]]) {
+      expect((await cli(argv, env)).code).toBe(2);
+    }
+    expect(await cli(["db", "rollback", "2", "--yes"], env)).toMatchObject({ code: 0, out: ["schema version 3 → 2"] });
+    expect(schemaVersion(openDatabaseUnmigratedFor(env))).toBe(2);
+    expect(await cli(["db", "rollback", "1", "--yes"], env)).toMatchObject({ code: 0, out: ["schema version 2 → 1"] });
+    expect(schemaVersion(openDatabaseUnmigratedFor(env))).toBe(1);
+  });
+});
+
+const unmigrated: Database[] = [];
+afterAll(() => {
+  for (const database of unmigrated.splice(0)) database.close();
+});
+
+function openDatabaseUnmigratedFor(env: Env): Database {
+  const database = openDatabaseUnmigrated(join(env.XDG_DATA_HOME, "spectant"));
+  unmigrated.push(database);
+  return database;
+}

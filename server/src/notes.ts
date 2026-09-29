@@ -8,7 +8,10 @@
  *
  * Store:
  * - `create` inserts a `NewNote` with `id = crypto.randomUUID()` and `created = updated = now`.
- * - `update` replaces the draft whole (anchor, title, body) and moves `updated`; id, workspace and created stay.
+ * - `update` replaces the draft whole (anchor, title, body) and moves `updated`; id, workspace and created stay. A draft
+ *   without `pinned` keeps the stored pin (migration 3, T97).
+ * - `restore` inserts a whole `Note` as it is (id and times included) unless its id is taken: `import-notes` (T98).
+ * - `all` lists every note, orphans included, oldest `created` first: `export-notes` (T98).
  * - `list` answers a `NotesQuery`, newest `updated` first. Orphans (`workspace IS NULL`, left by ON DELETE SET NULL when
  *   the registry removes their workspace) are listed under any registered workspace with `?orphans=1`.
  * - `update` and `remove` reach a note of the path's workspace or an orphan, so an orphan can still be edited and
@@ -50,6 +53,10 @@ export type NoteStore = {
   remove(workspace: string, id: string): boolean;
   list(workspace: string, query: NotesQuery): Note[];
   counts(workspace: string, spec: string): NoteCounts;
+  /** Inserts `note` as it is; false (and nothing written) when a note with its id exists. */
+  restore(note: Note): boolean;
+  /** Every note, orphans included, oldest `created` first. */
+  all(): Note[];
 };
 
 export type NoteStoreOptions = {
@@ -57,7 +64,7 @@ export type NoteStoreOptions = {
   now?: () => Date;
 };
 
-const COLUMNS = "id, workspace, anchor_kind, anchor_spec, anchor_id, title, body, created_at, updated_at";
+const COLUMNS = "id, workspace, anchor_kind, anchor_spec, anchor_id, title, body, created_at, updated_at, pinned";
 const ORDER = "ORDER BY updated_at DESC, created_at DESC, id";
 /** The notes an update or remove may reach from a workspace path: its own and the orphans. */
 const REACHABLE = "id = $id AND (workspace = $workspace OR workspace IS NULL)";
@@ -78,12 +85,12 @@ function filterOf(workspace: string, query: NotesQuery): Filter {
 /** Notes over an open, migrated `spectant.db` connection (foreign keys on). The caller owns the connection. */
 export function openNotes(db: Database, options: NoteStoreOptions = {}): NoteStore {
   const now = (): string => (options.now?.() ?? new Date()).toISOString();
-  const insert = db.query<null, Record<string, string | null>>(
-    `INSERT INTO note (${COLUMNS}) VALUES ($id, $workspace, $anchor_kind, $anchor_spec, $anchor_id, $title, $body, $created_at, $updated_at)`,
-  );
-  const replace = db.query<NoteRow, Record<string, string | null>>(
+  const values = "$id, $workspace, $anchor_kind, $anchor_spec, $anchor_id, $title, $body, $created_at, $updated_at, $pinned";
+  const insert = db.query<null, Record<string, string | number | null>>(`INSERT INTO note (${COLUMNS}) VALUES (${values})`);
+  const insertNew = db.query<null, Record<string, string | number | null>>(`INSERT INTO note (${COLUMNS}) VALUES (${values}) ON CONFLICT (id) DO NOTHING`);
+  const replace = db.query<NoteRow, Record<string, string | number | null>>(
     `UPDATE note SET anchor_kind = $anchor_kind, anchor_spec = $anchor_spec, anchor_id = $anchor_id, title = $title, body = $body,
-       updated_at = $updated_at WHERE ${REACHABLE} RETURNING ${COLUMNS}`,
+       pinned = coalesce($pinned, pinned), updated_at = $updated_at WHERE ${REACHABLE} RETURNING ${COLUMNS}`,
   );
   const drop = db.query<null, Record<string, string>>(`DELETE FROM note WHERE ${REACHABLE}`);
   const grouped = db.query<{ anchor_kind: string; anchor_id: string | null; n: number }, Record<string, string>>(
@@ -101,12 +108,14 @@ export function openNotes(db: Database, options: NoteStoreOptions = {}): NoteSto
         body: note.body,
         created_at: stamp,
         updated_at: stamp,
+        pinned: note.pinned === true ? 1 : 0,
       };
       insert.run({ ...row });
       return noteFromRow(row);
     },
     update(workspace, id, draft) {
-      const row = replace.get({ id, workspace, ...anchorColumns(draft.anchor), title: draft.title, body: draft.body, updated_at: now() });
+      const pinned = draft.pinned === undefined ? null : Number(draft.pinned);
+      const row = replace.get({ id, workspace, ...anchorColumns(draft.anchor), title: draft.title, body: draft.body, pinned, updated_at: now() });
       return row === null ? undefined : noteFromRow(row);
     },
     remove(workspace, id) {
@@ -127,6 +136,14 @@ export function openNotes(db: Database, options: NoteStoreOptions = {}): NoteSto
         else if (id !== null) (kind === "claim" ? claims : tasks)[id] = n;
       }
       return { spec, total, onSpec, claims, tasks };
+    },
+    restore(note) {
+      const { id, workspace, title, body, created, updated } = note;
+      const row = { id, workspace, ...anchorColumns(note.anchor), title, body, created_at: created, updated_at: updated, pinned: Number(note.pinned) };
+      return insertNew.run(row).changes > 0;
+    },
+    all() {
+      return db.query<NoteRow, []>(`SELECT ${COLUMNS} FROM note ORDER BY created_at, id`).all().map(noteFromRow);
     },
   };
 }

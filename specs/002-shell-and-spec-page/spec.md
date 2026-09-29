@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 29/49
+progress: 31/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T17:44:58Z
+updated: 2026-09-29T17:48:58Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -235,8 +235,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 
 - [x] ISC-94: A note is stored in the data directory with its workspace and at most one anchor (spec, claim or task), and the repository tree stays unchanged.
 - [ ] ISC-95: The Notes area lists the spec's anchored notes with a Markdown editor and preview, and a claim card shows its note count. (after: ISC-94)
-- [ ] ISC-52: A note created, edited and pinned in the app is unchanged after the app restarts.
-- [ ] ISC-53: `spectant import-notes <file>` imports a JSON export from the old notes page with the same number of notes.
+- [x] ISC-52: A note created, edited and pinned in the app is unchanged after the app restarts.
+- [x] ISC-53: `spectant import-notes <file>` imports a JSON export from the old notes page with the same number of notes.
 
 **Cross-cutting**
 
@@ -286,6 +286,10 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-53: bun-test — `bun test tests/notes.test.ts -t "import"` 6 pass: `spectant import-notes` over the three-note fixture in the old notes page's localStorage shape ({v:1, notes}) gives imported 3, skipped 0 and 3 rows, a rerun imported 0, skipped 3 (deterministic UUID from the old id); export-notes round-trips losslessly into a fresh data directory; `db rollback 2 --yes` reverses migration 3 (T98, T99; 2026-09-29)
+
+- ISC-52: bun-test — `bun test tests/notes.test.ts -t "persist"` 1 pass: a note created, edited and pinned over the served app is byte-equal in the list after the server stops and a new instance starts on the same data directory; pinned is migration 3 (`pinned INTEGER NOT NULL DEFAULT 0`), schema_version 3 (T97; 2026-09-29)
 
 - ISC-72: e2e — `bun run e2e -- counts` 278 passed, 6 fixme (decisions rows: the Docs tab renders decisions.md as one block without a per-decision hook), 0 mismatches: every counter on the spec dashboard KPI band, lanes, tiles, tab bar, Status, Claims, Tasks, Evidence and Timeline tabs of harbor 002, 003 and 006 at 390 and 1440 equals its golden field (T61; 2026-09-29)
 

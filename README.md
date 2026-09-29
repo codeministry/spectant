@@ -42,10 +42,13 @@ your shell configuration.
 ## Usage
 
 ```sh
-spectant add <repo>      # register a repository
-spectant list            # show registered repositories
-spectant remove <repo>   # unregister one
-spectant                 # start the dashboard and open it in the browser
+spectant add <repo>                   # register a repository
+spectant list                         # show registered repositories
+spectant remove <repo>                # unregister one
+spectant import-notes <file>          # import the old notes page's JSON export (a rerun skips what is there)
+spectant export-notes <file>          # write every note to <file> in that same JSON shape
+spectant db rollback <version> --yes  # undo newer schema migrations before running an older build
+spectant                              # start the dashboard and open it in the browser
 ```
 
 `spectant` listens on `127.0.0.1:7717` (or the next free port) and prints the URL. Pass `--no-browser` to skip

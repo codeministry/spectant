@@ -1,0 +1,39 @@
+{
+  "v": 1,
+  "notes": [
+    {
+      "id": "mf2k9q7a1x",
+      "title": "Covering index",
+      "body": "Try a covering index for the notes list.",
+      "repo": "harbor",
+      "spec": "002-notes",
+      "taken": false,
+      "handoff": null,
+      "created": "2026-09-01T08:00:00.000Z",
+      "updated": "2026-09-02T09:30:00.000Z"
+    },
+    {
+      "id": "mf2k9q7b2y",
+      "title": "",
+      "body": "A loose thought that belongs to no repository.",
+      "repo": null,
+      "spec": null,
+      "taken": true,
+      "handoff": { "type": "idea", "at": "2026-09-03T10:00:00.000Z" },
+      "created": "2026-09-03T09:00:00.000Z",
+      "updated": "2026-09-03T10:00:00.000Z"
+    },
+    {
+      "id": "mf2k9q7c3z",
+      "title": "Probe follow-up",
+      "body": "Check the probe of this claim once the migration lands.",
+      "repo": "elsewhere",
+      "spec": "002-notes",
+      "ref": "ISC-52",
+      "pinned": true,
+      "taken": false,
+      "created": "2026-09-04T07:15:00.000Z",
+      "updated": "2026-09-05T18:45:00.000Z"
+    }
+  ]
+}
