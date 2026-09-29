@@ -1,0 +1,281 @@
+{
+  "specs/001-reading-list": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-3",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "src/app/save/"
+        ],
+        "text": "save action from the address bar",
+        "line": 19,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-4",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "src/app/store.ts"
+        ],
+        "text": "IndexedDB store, list reads it on start",
+        "line": 20,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-5",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "src/app/save/title.ts"
+        ],
+        "text": "fetch the page title at save time",
+        "line": 21,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T4",
+        "claim": "ISC-6",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "src/app/tags.ts"
+        ],
+        "text": "tags stored with the link",
+        "line": 22,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T5",
+        "claim": "ISC-7",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "src/app/search/"
+        ],
+        "text": "title search",
+        "line": 23,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T6",
+        "claim": "ISC-8",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "src/app/search/tag.ts"
+        ],
+        "text": "tag search",
+        "line": 24,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T5"
+        ]
+      },
+      {
+        "id": "T7",
+        "claim": "ISC-9",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "src/app/reader/"
+        ],
+        "text": "store the article text and render it offline",
+        "line": 25,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T8",
+        "claim": "ISC-10",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "src/app/reader/reader.css"
+        ],
+        "text": "reading view at 390 px",
+        "line": 26,
+        "status": "open",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T7"
+        ]
+      }
+    ],
+    "probeMapping": [
+      {
+        "tasks": [
+          "T1"
+        ],
+        "claim": "ISC-3",
+        "probe": "`bun run e2e -- save -g \"one step\"`",
+        "line": 32
+      },
+      {
+        "tasks": [
+          "T2"
+        ],
+        "claim": "ISC-4",
+        "probe": "`bun run e2e -- save -g reload`",
+        "line": 33
+      },
+      {
+        "tasks": [
+          "T3"
+        ],
+        "claim": "ISC-5",
+        "probe": "`bun test tests/title.test.ts`",
+        "line": 34
+      },
+      {
+        "tasks": [
+          "T4"
+        ],
+        "claim": "ISC-6",
+        "probe": "`bun test tests/tags.test.ts`",
+        "line": 35
+      },
+      {
+        "tasks": [
+          "T5"
+        ],
+        "claim": "ISC-7",
+        "probe": "`bun run e2e -- search -g title`",
+        "line": 36
+      },
+      {
+        "tasks": [
+          "T6"
+        ],
+        "claim": "ISC-8",
+        "probe": "`bun run e2e -- search -g tag`",
+        "line": 37
+      },
+      {
+        "tasks": [
+          "T7"
+        ],
+        "claim": "ISC-9",
+        "probe": "`bun run e2e -- offline -g read`",
+        "line": 38
+      },
+      {
+        "tasks": [
+          "T8"
+        ],
+        "claim": "ISC-10",
+        "probe": "`bun run test:browser -- reading`",
+        "line": 39
+      }
+    ],
+    "counts": {
+      "rows": 8,
+      "boxes": {
+        "landed": 4,
+        "total": 8
+      },
+      "byLane": [
+        {
+          "name": "web",
+          "count": 8
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "open",
+          "count": 4
+        },
+        {
+          "name": "done",
+          "count": 4
+        }
+      ]
+    },
+    "diagnostics": []
+  },
+  "specs/002-duplicate-links": null
+}

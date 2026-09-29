@@ -8,9 +8,8 @@
 // Nothing the row holds is recounted here, so the page and the row cannot disagree.
 //
 // What the row does not hold is read here, small and local:
-//   - the task lines' checkbox, id, lane token and title (`- [ ] T<n> · <claim> · [flags · ] <lane> — <title>`).
-//     INTERIM until T23 lands `tasks.ts` with the full grammar; this reader is deliberately no task parser (no flags,
-//     edges, paths or struck lines) and counts exactly the boxes archive.ts counts;
+//   - the task lines' checkbox, id, lane token and text, from tasks.ts's `parseTaskLines` (T23); struck bullets carry
+//     no box, so the lanes count exactly the boxes archive.ts counts;
 //   - the constitution's `## Lanes` table, first column, for the lane order;
 //   - the newest rounds.jsonl line's `question` tasks, and its `stop`;
 //   - events.jsonl's newest line into the current stage, for since/via. INTERIM until T16 lands `events.ts`.
@@ -35,6 +34,7 @@ import type {
   WaitingItem,
 } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
+import { parseTaskLines } from './tasks.ts';
 import { buildTimeline } from './timeline.ts';
 import { parseTldr, tldrState } from './tldr.ts';
 
@@ -66,7 +66,7 @@ function jsonLines(text: string | undefined): Array<Record<string, unknown>> {
   return out;
 }
 
-// ── tasks.md (interim reader) ─────────────────────────────────────────────────────────────────────────────────────
+// ── tasks.md (tasks.ts) ───────────────────────────────────────────────────────────────────────────────────────────
 
 interface TaskBox {
   readonly id: string;
@@ -75,27 +75,11 @@ interface TaskBox {
   readonly title: string;
 }
 
-/** The same boxes archive.ts counts: `- [ ] T<n>` / `- [x] T<n>`, indent allowed. */
-const TASK_LINE = /^\s*- \[([ xX])\]\s*(T\d+)\b(.*)$/;
-const TRAILING_AFTER = /\s*\(after:[^)]*\)\s*$/;
-
+/** The checkbox task lines of tasks.ts's grammar (struck bullets have no box): the same boxes archive.ts counts. */
 function taskBoxes(text: string | undefined): TaskBox[] {
-  const out: TaskBox[] = [];
-  for (const line of (text ?? '').split(/\r?\n/)) {
-    const m = TASK_LINE.exec(line);
-    if (!m) continue;
-    const rest = m[3] ?? '';
-    const dash = rest.indexOf(' — ');
-    const segments = (dash < 0 ? '' : rest.slice(0, dash)).split(' · ').map((s) => s.trim()).filter((s) => s !== '');
-    // Segments: claim ID, flags, lane; the lane is the last one and never a `[flag]`.
-    const last = segments[segments.length - 1];
-    const lane = segments.length >= 2 && last !== undefined && /^[\w-]+$/.test(last) ? last : UNKNOWN_LANE;
-    let title = dash < 0 ? rest.replace(/^\s*·\s*/, '') : rest.slice(dash + 3);
-    const paths = title.lastIndexOf(' · `');
-    if (paths >= 0) title = title.slice(0, paths);
-    out.push({ id: m[2] ?? '', landed: m[1] !== ' ', lane, title: title.replace(TRAILING_AFTER, '').trim() });
-  }
-  return out;
+  return parseTaskLines({ tasks: text ?? '' })
+    .tasks.filter((t) => t.state !== 'struck')
+    .map((t) => ({ id: t.id, landed: t.state === 'done', lane: t.lane === '' ? UNKNOWN_LANE : t.lane, title: t.text }));
 }
 
 /** The first column of the constitution's `## Lanes` table, in table order. */

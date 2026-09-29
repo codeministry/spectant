@@ -99,7 +99,7 @@
       {
         "kind": "operator",
         "ref": "T16",
-        "title": "install under `security.auth: oidc` on desktop Chrome and one phone; sign out, reopen, sign in; on the phone also judge the maskable icon's crop (after: T13, T15) · (probe only, a device)",
+        "title": "install under `security.auth: oidc` on desktop Chrome and one phone; sign out, reopen, sign in; on the phone also judge the maskable icon's crop",
         "checked": false
       },
       {

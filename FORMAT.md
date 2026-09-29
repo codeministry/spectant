@@ -183,19 +183,35 @@ flowchart LR
 
 ## `tasks` — `tasks.md`
 
-Atomic task lines, each anchored to one claim, plus the probe mapping. **Implemented today:** a line
-`- [ ] T<n>` or `- [x] T<n>` (indent allowed) counts as a task, checked as landed; this is the task fraction on the
-dashboard and in the archive listing. **The full grammar is spec 002's T23** (`tasks.ts`, a stub until then); the
-fixtures write it as:
+Atomic task lines, each anchored to one claim, plus the probe mapping. A line `- [ ] T<n>`, `- [x] T<n>` or
+`- [X] T<n>` (indent allowed, outside code fences) is a task, checked as landed; this is the task fraction on the
+dashboard and in the archive listing. `tasks.ts` (`parseTaskLines`) reads the full grammar:
 
 `- [ ] T<n> · <claim ID> · [flags · ] <lane> — <text> [(after: T<a>, T<b>)] · <paths>`
 
-- flags `[P]` (may share a round) and `[seam]` (the contract between two lanes; runs alone, its fan-out waits);
-- the lane is derived from the paths through the constitution's `## Lanes`; `operator` is the principal's own step
-  and is never dispatched;
-- `(after: …)` names tasks, not claims; `<paths>` are code spans, comma separated, after the last ` · `;
-- a struck task is a plain bullet, `- ~~T<n> · …~~ — struck <date>: <reason>`; it is no checkbox and counts nowhere;
-- `## Probe Mapping` is a table `Task | Claim | Probe`, the first cell listing one or more task IDs.
+- the head, up to the first ` — ` outside code spans, is the claim ID (every form `claims.ts` takes: `ISC-60.1`,
+  `H-AVAIL`, `C4`), the flags, then the lane token;
+- flags `[P]` (may share a round) and `[seam]` (the contract between two lanes; runs alone, its fan-out waits), in
+  either order;
+- the lane is the token as written, checked against the first column of the constitution's `## Lanes` table; a token
+  outside the table is kept with a warning; `operator` is always valid, is the principal's own step and is never
+  dispatched;
+- `(after: …)` names tasks, not claims (`T3–T5` ranges expand), may stand anywhere in the text and is removed from it;
+- the text runs to the last ` · ` outside code spans and may itself hold ` · `, inside or outside code spans;
+- `<paths>` follow that last ` · `, split on `, ` outside code spans and parentheses: a code span (or a bare token with
+  a `/` or `.`) is one path; a parenthesised item such as `(probe only)` is a path note, not a path; a tail with
+  anything else is no path column and stays in the text;
+- a struck task is a plain bullet, `- ~~T<n> · …~~ — struck <date>: <reason>`; it is no checkbox and counts in no
+  fraction; the Tasks tab shows it as `struck` with its note;
+- a malformed task line stays a task (the box count holds) and carries a warning; headers, prose, table rows and
+  bullets without a `T<n>` are no tasks;
+- `## Probe Mapping` is a table `Task | Claim | Probe`, the first cell listing one or more task IDs or ranges; `\|`
+  in a cell is a pipe. Warnings: a mapped id no task line carries, a struck task mapped, a claim that differs from the
+  task line's, a task without a row.
+
+The Tasks tab's state per task is the newest `rounds.jsonl` result card of the same task (same id and text): open,
+dispatched, held, question, concerns, fail, done or closed; without one the checkbox decides, and a checked box
+outranks a round that left the task unfinished.
 
 The frontmatter is not read; the reviewed hash ignores checkbox states and `~~`.
 

@@ -32,6 +32,7 @@ import type { SpecRef } from '../src/resolve.ts';
 import { buildClaimViews } from '../src/claim-view.ts';
 import { buildFrames } from '../src/frames.ts';
 import { buildSpecPage } from '../src/spec.ts';
+import { parseTaskLines } from '../src/tasks.ts';
 import { buildTimeline } from '../src/timeline.ts';
 import { docsModel } from './helpers/docs-model.ts';
 import { DASHBOARD_FAMILY, expectGolden, goldenFiles, goldenMismatch, goldenPath, goldenText, goldenTrees } from './helpers/golden.ts';
@@ -122,6 +123,7 @@ const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
   docs: docsModel,
   frames: (root) => ((texts) => Object.fromEntries(listSpecs(root).map((ref) => [rel(root, ref.dir), buildFrames(texts.get(rel(root, ref.dir)) as SpecFiles)])))(folderTexts(root)),
   'claim-view': (root) => ((texts) => Object.fromEntries(listSpecs(root).map((ref) => [rel(root, ref.dir), buildClaimViews({ files: texts.get(rel(root, ref.dir)) as SpecFiles })])))(folderTexts(root)),
+  tasks: (root) => ((texts, constitution) => Object.fromEntries(listSpecs(root).map((ref) => ((t) => [rel(root, ref.dir), t.tasks === undefined ? null : parseTaskLines({ tasks: t.tasks, ...(constitution === null ? {} : { constitution }), ...(t.rounds === undefined ? {} : { rounds: t.rounds }) })])((texts.get(rel(root, ref.dir)) as SpecFiles).texts))))(folderTexts(root), readTreeAt(root).constitution),
 };
 
 /** Every string in a JSON value, keys included. */

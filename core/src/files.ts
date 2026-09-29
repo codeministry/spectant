@@ -706,20 +706,71 @@ export interface TaskView {
 
 /** One row of tasks.md § Probe Mapping. */
 export interface ProbeMappingRow {
+  /** The first cell's task ids, ranges (`T3–T8`) expanded. */
   readonly tasks: readonly string[];
   readonly claim: string;
+  /** The probe cell as written, `\|` unescaped. */
   readonly probe: string;
+  /** 1-based line in tasks.md. */
+  readonly line: number;
 }
 
+/** What `takeable.ts` reads: the task lines and the probe mapping. `parseTaskLines` returns the richer `TasksTab`. */
 export interface TasksModel {
   readonly tasks: readonly TaskView[];
   readonly probeMapping: readonly ProbeMappingRow[];
+}
+
+/**
+ * A task's state on the Tasks tab (ISC-82): the newest rounds.jsonl result card of the same task (same id, same
+ * text) where one exists, else the checkbox (`open` / `done`); `struck` for a struck bullet. A checked box outranks a
+ * round that left the task unfinished (the box was ticked after it); an operator task the round held is `open`.
+ */
+export type TaskStatus = 'open' | 'dispatched' | 'held' | 'question' | 'concerns' | 'fail' | 'done' | 'closed' | 'struck';
+
+/** One task line as the Tasks tab renders it: the grammar fields of `TaskView` plus the round state. */
+export interface TaskRow extends TaskView {
+  readonly status: TaskStatus;
+  /** The round whose result card decided `status`; null when the checkbox or the strike decided it. */
+  readonly round: number | null;
+  /** The builder the deciding round card names. */
+  readonly builder: string | null;
+  /** The deciding round card's reason (a hold, fail or question reason). */
+  readonly reason: string | null;
+  /** A struck task's note after `~~ — `, e.g. `struck 2026-09-29: …`. */
+  readonly note: string | null;
+  /** A path column that names no file, e.g. `probe only, Interceptor` from `· (probe only, Interceptor)`. */
+  readonly pathNote: string | null;
+}
+
+/** A filter chip: a lane or status and how many rows carry it. */
+export interface TaskCount {
+  readonly name: string;
+  readonly count: number;
+}
+
+export interface TasksTab extends TasksModel {
+  readonly tasks: readonly TaskRow[];
+  readonly counts: {
+    /** Every row, struck ones included. */
+    readonly rows: number;
+    /** The checkbox lines only (struck bullets are none): the fraction archive.ts and the dashboard count. */
+    readonly boxes: { readonly landed: number; readonly total: number };
+    /** Constitution lanes in table order, then lanes only tasks.md names (first seen), `operator` last; only lanes with rows. */
+    readonly byLane: readonly TaskCount[];
+    /** `TaskStatus` order, only statuses with rows. */
+    readonly byStatus: readonly TaskCount[];
+  };
+  /** Malformed lines, unknown lanes, dangling edges and probe-mapping gaps; the parser never throws. */
+  readonly diagnostics: readonly Diagnostic[];
 }
 
 export interface TaskParseInput {
   readonly tasks: string;
   /** The constitution's text, for the lane table; absent means the lane is taken from the line as written. */
   readonly constitution?: string;
+  /** rounds.jsonl, for the round state of each task; absent means the checkboxes decide. */
+  readonly rounds?: string;
 }
 
 // ─── Evidence (evidence.ts) ──────────────────────────────────────────────────────────────────────────────────────

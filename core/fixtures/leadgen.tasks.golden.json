@@ -1,0 +1,2021 @@
+{
+  "specs/012-pwa-install": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-327",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/core/theme/theme.model.ts",
+          "frontend/public/manifest.webmanifest"
+        ],
+        "text": "the two surface hex twins as constants, and the manifest: name, short name, `start_url`, `scope`, `display`, colours from the dark surface, the icon list",
+        "line": 21,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-327",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/index.html",
+          "frontend/src/app/core/pwa/manifest.spec.ts"
+        ],
+        "text": "`<link rel=\"manifest\">` and a static `theme-color` meta in the head; the manifest spec for fields, colours and the link",
+        "line": 22,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-328",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/tools/build-favicon.sh",
+          "frontend/public/icon-*.png",
+          "frontend/public/apple-touch-icon.png"
+        ],
+        "text": "the script renders 192 and 512 on the round plate, 512 maskable on a rounded square at 80 %, 180 square opaque touch icon; run it twice, commit the PNGs",
+        "line": 23,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T4",
+        "claim": "ISC-328",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/core/pwa/manifest.spec.ts"
+        ],
+        "text": "the manifest spec reads every named icon's PNG header and size",
+        "line": 24,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T2",
+          "T3"
+        ]
+      },
+      {
+        "id": "T5",
+        "claim": "ISC-333",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/core/theme/theme.store.ts",
+          "frontend/src/app/core/theme/theme.store.spec.ts"
+        ],
+        "text": "the theme store's effect writes `meta[name=theme-color]` from the resolved theme's surface; spec switches dark → light",
+        "line": 25,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T6",
+        "claim": "ISC-333",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/index.html"
+        ],
+        "text": "the inline theme script writes the same meta before first paint, in step with the store's default; repoint the touch icon to the 180 file, since this task owns `index.html` this round",
+        "line": 26,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T2"
+        ]
+      },
+      {
+        "id": "T7",
+        "claim": "ISC-329",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/package.json",
+          "frontend/bun.lock",
+          "frontend/ngsw-config.json",
+          "frontend/angular.json"
+        ],
+        "text": "`bun add @angular/service-worker@~22.1.0`; `ngsw-config.json` with the `app` prefetch group and lazy `i18n` and `help` groups, no data group; `serviceWorker` on the production configuration",
+        "line": 27,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T8",
+        "claim": "ISC-329",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/app.config.ts",
+          "frontend/src/app/core/pwa/ngsw-config.spec.ts"
+        ],
+        "text": "`provideServiceWorker` with `enabled: !isDevMode()` and `registerWhenStable:30000`; the config spec over groups, patterns and the `enabled` clause",
+        "line": 28,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T7"
+        ]
+      },
+      {
+        "id": "T9",
+        "claim": "ISC-331",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/core/toast/toast.model.ts",
+          "frontend/src/app/core/toast/toast.store.ts",
+          "frontend/src/app/core/toast/toast.store.spec.ts"
+        ],
+        "text": "the toast gains an optional `action` (catalog key plus event); a toast with an action is exempt from the lifetime timer",
+        "line": 29,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T8"
+        ]
+      },
+      {
+        "id": "T10",
+        "claim": "ISC-331",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/layout/toast-stack/*"
+        ],
+        "text": "the stack renders the action as a button that dispatches its event",
+        "line": 30,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T9"
+        ]
+      },
+      {
+        "id": "T11",
+        "claim": "ISC-331",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/core/pwa/update.events.ts",
+          "frontend/src/app/core/pwa/update.store.ts",
+          "frontend/src/app/core/pwa/update.store.spec.ts",
+          "frontend/src/app/core/toast/toast.events.ts",
+          "frontend/public/i18n/en.json",
+          "frontend/public/i18n/de.json"
+        ],
+        "text": "the update store: `versionReady` once per hash from `SwUpdate.versionUpdates`, `activate` then reload, hourly `checkForUpdate` while visible; the toast raised from it; both catalog keys",
+        "line": 31,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T9"
+        ]
+      },
+      {
+        "id": "T12",
+        "claim": "ISC-332",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/nginx.conf"
+        ],
+        "text": "`no-cache` on `/index.html`, `/ngsw.json`, `/manifest.webmanifest`; `immutable` on hashed `.js` and `.css`; the `webmanifest` mime type if missing; curl against the compose web port",
+        "line": 32,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T7"
+        ]
+      },
+      {
+        "id": "T13",
+        "claim": "ISC-332",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "operator",
+        "state": "done",
+        "paths": [
+          "~/Development/codeministry/devops/projects/office/leadgen/templates/web/configmap-nginx.yaml"
+        ],
+        "text": "the same header blocks in the chart's web ConfigMap, in the rollout that ships the image; curl against the deployed host",
+        "line": 33,
+        "status": "done",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T12"
+        ]
+      },
+      {
+        "id": "T14",
+        "claim": "ISC-335",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [],
+        "text": "the anti search over the worker config, the manifest and the icons' names",
+        "line": 34,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": "probe only",
+        "edges": [
+          "T3",
+          "T8"
+        ]
+      },
+      {
+        "id": "T15",
+        "claim": "ISC-330",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "test",
+        "state": "done",
+        "paths": [],
+        "text": "build the compose stack, install in desktop Chrome, go offline, reopen the window; one screen's error state captured",
+        "line": 35,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": "probe only, Interceptor",
+        "edges": [
+          "T8",
+          "T12"
+        ]
+      },
+      {
+        "id": "T16",
+        "claim": "ISC-334",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "operator",
+        "state": "open",
+        "paths": [],
+        "text": "install under `security.auth: oidc` on desktop Chrome and one phone; sign out, reopen, sign in; on the phone also judge the maskable icon's crop",
+        "line": 36,
+        "status": "open",
+        "round": 5,
+        "builder": null,
+        "reason": "operator lane — the principal's own action, never auto-dispatched",
+        "note": null,
+        "pathNote": "probe only, a device",
+        "edges": [
+          "T13",
+          "T15"
+        ]
+      },
+      {
+        "id": "T17",
+        "claim": "ISC-336",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "docs/decisions/frontend-design-system.md",
+          "CHANGELOG.md",
+          "README.md",
+          "frontend/CLAUDE.md",
+          "CLAUDE.md",
+          "frontend/src/index.html"
+        ],
+        "text": "the record: a section in the design-system decision, the changelog line, the README paragraph, one trap line in the frontend notes; the stale icon lines in the root `CLAUDE.md` inventory and the `index.html` head comment",
+        "line": 37,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T11"
+        ]
+      }
+    ],
+    "probeMapping": [
+      {
+        "tasks": [
+          "T1",
+          "T2"
+        ],
+        "claim": "ISC-327",
+        "probe": "a spec parses the manifest and reads the manifest link and `theme-color` in `index.html`",
+        "line": 43
+      },
+      {
+        "tasks": [
+          "T3",
+          "T4"
+        ],
+        "claim": "ISC-328",
+        "probe": "run `build-favicon.sh` twice; a spec reads each named icon and its PNG header",
+        "line": 44
+      },
+      {
+        "tasks": [
+          "T7",
+          "T8"
+        ],
+        "claim": "ISC-329",
+        "probe": "a spec over `ngsw-config.json` and the worker provider",
+        "line": 45
+      },
+      {
+        "tasks": [
+          "T15"
+        ],
+        "claim": "ISC-330",
+        "probe": "build, serve the compose stack, install, go offline, reopen the installed window",
+        "line": 46
+      },
+      {
+        "tasks": [
+          "T9",
+          "T10",
+          "T11"
+        ],
+        "claim": "ISC-331",
+        "probe": "a faked `versionUpdates` stream with `VERSION_READY`; activate; dismiss on a second run",
+        "line": 47
+      },
+      {
+        "tasks": [
+          "T12",
+          "T13"
+        ],
+        "claim": "ISC-332",
+        "probe": "`rg` over `nginx.conf`; `curl -sI` for `/`, `/ngsw.json`, `/manifest.webmanifest` and one hashed bundle",
+        "line": 48
+      },
+      {
+        "tasks": [
+          "T5",
+          "T6"
+        ],
+        "claim": "ISC-333",
+        "probe": "render with `lg-dark`, switch to light, read the meta; `rg` over `index.html`",
+        "line": 49
+      },
+      {
+        "tasks": [
+          "T16"
+        ],
+        "claim": "ISC-334",
+        "probe": "install under `oidc` on desktop Chrome and one phone OS; sign out and reopen",
+        "line": 50
+      },
+      {
+        "tasks": [
+          "T14"
+        ],
+        "claim": "ISC-335",
+        "probe": "`rg` for `/api` in the worker config; `rg -i` for configured values over manifest and config",
+        "line": 51
+      },
+      {
+        "tasks": [
+          "T17"
+        ],
+        "claim": "ISC-336",
+        "probe": "`WorkingNotesStaySmallTest`; `rg` over the decision record, changelog and README",
+        "line": 52
+      }
+    ],
+    "counts": {
+      "rows": 17,
+      "boxes": {
+        "landed": 16,
+        "total": 17
+      },
+      "byLane": [
+        {
+          "name": "web",
+          "count": 14
+        },
+        {
+          "name": "test",
+          "count": 1
+        },
+        {
+          "name": "operator",
+          "count": 2
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "open",
+          "count": 1
+        },
+        {
+          "name": "done",
+          "count": 1
+        },
+        {
+          "name": "closed",
+          "count": 15
+        }
+      ]
+    },
+    "diagnostics": []
+  },
+  "specs/022-chat-turn-status-and-bulk-delete": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-479",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/features/shortlist/shortlist-page.ts"
+        ],
+        "text": "a selection that arrives from outside the list (a URL, not a key press) lands its card in the pane through the existing `landCard`, only while the pane scrolls, without moving focus; a card not rendered in the loaded page is left alone",
+        "line": 25,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-479",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/features/shortlist/shortlist.browser.spec.ts"
+        ],
+        "text": "red then green: at 1440 with the chat docked, a citation to an offer whose row sits below the pane's fold, then one outside the loaded page; pane and row rects, the document's scrollTop, the detail open",
+        "line": 26,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-473",
+        "flags": {
+          "parallel": false,
+          "seam": true
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/main/java/de/codeministry/leadgen/chat/TurnView.java"
+        ],
+        "text": "`TurnView` gains `endReason` (`ChatErrorReason`, nullable) and `finishedAt` (`Instant`, nullable), the shape `plan.md` § Interfaces fixes",
+        "line": 30,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T4",
+        "claim": "ISC-473",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/core/model/chat.ts"
+        ],
+        "text": "the client `TurnView` gains `endReason` and `finishedAt` to match",
+        "line": 31,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T3"
+        ]
+      },
+      {
+        "id": "T5",
+        "claim": "ISC-473",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/main/resources/db/migration/V36__chat_turn_end_reason.sql"
+        ],
+        "text": "`V36`: a nullable `end_reason` with a check on `MODEL`, `BUDGET`, `ROUNDS`; written whole once and never edited after",
+        "line": 32,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T3"
+        ]
+      },
+      {
+        "id": "T6",
+        "claim": "ISC-473",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/main/java/de/codeministry/leadgen/chat/ConversationRepository.java"
+        ],
+        "text": "`finish(…, reason)` writes the reason with `INCOMPLETE` and null otherwise; the stale-turn sweep and the cancelled-stream update write `MODEL`; the turn read maps `end_reason` and `finished_at` into `TurnView`",
+        "line": 33,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T5"
+        ]
+      },
+      {
+        "id": "T7",
+        "claim": "ISC-473",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/main/java/de/codeministry/leadgen/chat/ChatTurnService.java"
+        ],
+        "text": "`Turn.end(reason, …)` and the two cut-off paths hand their reason to `finish`; DONE and STOPPED pass null",
+        "line": 34,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T6"
+        ]
+      },
+      {
+        "id": "T8",
+        "claim": "ISC-473",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/test/java/de/codeministry/leadgen/chat/ChatConversationTest.java"
+        ],
+        "text": "red then green: each of MODEL, BUDGET, ROUNDS stored and returned, null for DONE and STOPPED, a pre-`V36` turn reading null",
+        "line": 35,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T7"
+        ]
+      },
+      {
+        "id": "T9",
+        "claim": "ISC-474",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/core/store/chat.store.ts"
+        ],
+        "text": "the store keeps a live turn's end reason from its `error` event and its start and finish times, and a reloaded turn's `endReason` and `finishedAt`, so both read the same",
+        "line": 36,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T4"
+        ]
+      },
+      {
+        "id": "T10",
+        "claim": "ISC-474",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/features/chat/chat-status-popover/chat-status-popover.ts",
+          "frontend/src/app/features/chat/chat-status-popover/chat-status-popover.html",
+          "frontend/src/app/features/chat/chat-status-popover/chat-status-popover.css"
+        ],
+        "text": "`chat-status-popover` in turn mode: the state line (done, working, writing, incomplete with its reason or none, stopped), the steps count, the duration where start and finish are known, the model where known; placed with `shared/popover/anchor-for.ts`, no focusable element inside",
+        "line": 37,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T9"
+        ]
+      },
+      {
+        "id": "T11",
+        "claim": "ISC-474",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/features/chat/chat-panel/chat-panel.ts",
+          "frontend/src/app/features/chat/chat-panel/chat-panel.html",
+          "frontend/src/app/features/chat/chat-panel/chat-panel.css"
+        ],
+        "text": "the glyph becomes a focusable host: opens the popover on hover intent and on focus, closes on leaving glyph and popover and on Escape, sets `--lg-living-mark-turn` while open",
+        "line": 38,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T10"
+        ]
+      },
+      {
+        "id": "T12",
+        "claim": "ISC-475",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/public/i18n/en.json",
+          "frontend/public/i18n/de.json"
+        ],
+        "text": "`chat.status.*` in both catalogs: the five state words, the three reasons and \"no reason stored\", steps, duration, model, the glyph's accessible name per state",
+        "line": 39,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T10"
+        ]
+      },
+      {
+        "id": "T13",
+        "claim": "ISC-474",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/features/chat/chat-panel/chat-panel.browser.spec.ts"
+        ],
+        "text": "red then green: hover then focus on a DONE, a working, a writing, an INCOMPLETE per reason and without one, and a STOPPED glyph; the popover's words, steps, duration, model; the turn animation running while open; closed after Escape and after leaving",
+        "line": 40,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T11",
+          "T12"
+        ]
+      },
+      {
+        "id": "T14",
+        "claim": "ISC-475",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/features/chat/chat-panel/chat-panel.browser.spec.ts"
+        ],
+        "text": "red then green: the glyph's accessible name by state through tab order, and under emulated reduced motion the popover opening with no animation on the mark",
+        "line": 41,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T13"
+        ]
+      },
+      {
+        "id": "T15",
+        "claim": "ISC-476",
+        "flags": {
+          "parallel": false,
+          "seam": true
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/main/java/de/codeministry/leadgen/chat/ChatStatusView.java"
+        ],
+        "text": "`ChatStatusView` (model, callsUsed, callsLimit, toolRounds) and the `GET /api/v1/chat/status` signature, the shape `plan.md` § Interfaces fixes",
+        "line": 42,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T16",
+        "claim": "ISC-476",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/main/java/de/codeministry/leadgen/chat/ChatBudget.java",
+          "backend/src/main/java/de/codeministry/leadgen/web/ChatController.java"
+        ],
+        "text": "`ChatBudget` hands out the resolved daily limit and round bound; the controller answers `GET /status` from it and the configured chat model, 404 where the capability is absent",
+        "line": 43,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T15"
+        ]
+      },
+      {
+        "id": "T17",
+        "claim": "ISC-476",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/test/java/de/codeministry/leadgen/web/ChatControllerTest.java"
+        ],
+        "text": "red then green: 200 with the three values and the model, 404 without a chat model",
+        "line": 44,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T16"
+        ]
+      },
+      {
+        "id": "T18",
+        "claim": "ISC-476",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/core/model/chat.ts",
+          "frontend/src/app/core/api/chat.api.ts",
+          "frontend/src/app/core/api/chat-stub.ts"
+        ],
+        "text": "the client `ChatStatus` type, `ChatApi.status()` and its stub",
+        "line": 45,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T15"
+        ]
+      },
+      {
+        "id": "T19",
+        "claim": "ISC-476",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/features/chat/chat-status-popover/chat-status-popover.ts",
+          "frontend/src/app/features/chat/chat-panel/chat-panel.html"
+        ],
+        "text": "the popover's chat mode, asked on open; the plate mark becomes a focusable host like the glyph",
+        "line": 46,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T18",
+          "T11"
+        ]
+      },
+      {
+        "id": "T20",
+        "claim": "ISC-476",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/features/chat/chat-panel/chat-panel.browser.spec.ts"
+        ],
+        "text": "red then green: the empty chat's plate on hover names model, calls used of the ceiling and the round bound from a stubbed status",
+        "line": 47,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T19",
+          "T14"
+        ]
+      },
+      {
+        "id": "T21",
+        "claim": "ISC-477",
+        "flags": {
+          "parallel": false,
+          "seam": true
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/main/java/de/codeministry/leadgen/chat/BulkDelete.java",
+          "backend/src/main/java/de/codeministry/leadgen/chat/BulkDeleted.java"
+        ],
+        "text": "`BulkDelete` (`ids`, 1..500) and `BulkDeleted` (`deleted`) records and the `POST /api/v1/chat/conversations/bulk-delete` signature, the shape `plan.md` § Interfaces fixes",
+        "line": 51,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T22",
+        "claim": "ISC-477",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/main/java/de/codeministry/leadgen/web/ChatController.java",
+          "backend/src/main/java/de/codeministry/leadgen/chat/ConversationRepository.java"
+        ],
+        "text": "the endpoint: stop every streaming turn in the named conversations as the single delete does, delete the known ones in one transaction, skip unknown ids, 400 on an empty or missing list",
+        "line": 52,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T21",
+          "T16"
+        ]
+      },
+      {
+        "id": "T23",
+        "claim": "ISC-477",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/test/java/de/codeministry/leadgen/web/ChatControllerTest.java"
+        ],
+        "text": "red then green: three of five with one streaming, an unknown id among known ones, the two 400 cases",
+        "line": 53,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T22",
+          "T17"
+        ]
+      },
+      {
+        "id": "T24",
+        "claim": "ISC-478",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/core/model/chat.ts",
+          "frontend/src/app/core/api/chat.api.ts",
+          "frontend/src/app/core/api/chat-stub.ts"
+        ],
+        "text": "the client bulk types, `ChatApi.deleteMany(ids)` and its stub",
+        "line": 54,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T21",
+          "T18"
+        ]
+      },
+      {
+        "id": "T25",
+        "claim": "ISC-478",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/core/store/chat.events.ts",
+          "frontend/src/app/core/store/chat.store.ts"
+        ],
+        "text": "`bulkDeleteRequested` / `bulkDeleted` / `bulkDeleteFailed`: the rows leave the list, an open conversation among them leaves the thread for a new one",
+        "line": 55,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": "after T24 still open",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T24",
+          "T9"
+        ]
+      },
+      {
+        "id": "T26",
+        "claim": "ISC-478",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/features/chat/chat-history/chat-history.ts",
+          "frontend/src/app/features/chat/chat-history/chat-history.html",
+          "frontend/src/app/features/chat/chat-history/chat-history.css"
+        ],
+        "text": "select mode in the list: the head control, a checkbox per row, `Select all` over the rows shown (the hits while a search is active), the count, `Delete N`, Done and Escape end the mode",
+        "line": 56,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": "after T25 still open",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T25"
+        ]
+      },
+      {
+        "id": "T27",
+        "claim": "ISC-478",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/features/chat/chat-history/chat-delete-dialog.ts",
+          "frontend/src/app/features/chat/chat-history/chat-delete-dialog.html"
+        ],
+        "text": "the one dialog asks for N as well as for one, Cancel still focused first, confirming dispatches one bulk request",
+        "line": 57,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": "after T26 still open",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T26"
+        ]
+      },
+      {
+        "id": "T28",
+        "claim": "ISC-478",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/public/i18n/en.json",
+          "frontend/public/i18n/de.json"
+        ],
+        "text": "`chat.select.*` and `chat.delete.many*` in both catalogs",
+        "line": 58,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": "after T26 still open",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T12",
+          "T26"
+        ]
+      },
+      {
+        "id": "T29",
+        "claim": "ISC-478",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/features/chat/chat-history/chat-history.browser.spec.ts"
+        ],
+        "text": "red then green: three picked and confirmed is one request and three rows gone with the mode off; select all under a search takes only the hits and the dialog names their count with Cancel focused; the open conversation among them leaves for a new one",
+        "line": 59,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": "after T27, T28 still open",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T27",
+          "T28"
+        ]
+      },
+      {
+        "id": "T30",
+        "claim": "ISC-480",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/main/java/de/codeministry/leadgen/LeadGenRuntimeHints.java"
+        ],
+        "text": "hints for `BulkDelete`, `BulkDeleted` and `ChatStatusView` where binding reaches them by reflection, and `LeadGenRuntimeHintsTest` green",
+        "line": 63,
+        "status": "closed",
+        "round": 5,
+        "builder": "parent",
+        "reason": "claim blocked by ISC-478",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T22",
+          "T16"
+        ]
+      },
+      {
+        "id": "T31",
+        "claim": "ISC-480",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "docs/DATA-MODEL.md",
+          "docs/decisions/chat.md",
+          "CHANGELOG.md"
+        ],
+        "text": "`docs/DATA-MODEL.md` names `end_reason`; `docs/decisions/chat.md` records the status popovers, the status endpoint and bulk delete; `CHANGELOG.md` § Unreleased names all three and the row scroll",
+        "line": 64,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": "claim blocked by ISC-478",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T2",
+          "T8",
+          "T14",
+          "T20",
+          "T29"
+        ]
+      },
+      {
+        "id": "T32",
+        "claim": "ISC-480",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/features/chat/chat-history/chat-history.spec.ts"
+        ],
+        "text": "the regression run: the existing delete, rename and search rows of the chat-history, chat-panel and controller specs unchanged and green, `i18n-parity.spec.ts`, `WorkingNotesStaySmallTest`",
+        "line": 65,
+        "status": "closed",
+        "round": 5,
+        "builder": null,
+        "reason": "claim blocked by ISC-478",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T30",
+          "T31"
+        ]
+      }
+    ],
+    "probeMapping": [
+      {
+        "tasks": [
+          "T1",
+          "T2"
+        ],
+        "claim": "ISC-479",
+        "probe": "at 1440 with the chat docked, cite an offer whose row sits below the pane's fold and click the citation; then one not in the loaded page — `shortlist.browser.spec.ts`",
+        "line": 71
+      },
+      {
+        "tasks": [
+          "T3",
+          "T4",
+          "T5",
+          "T6",
+          "T7",
+          "T8"
+        ],
+        "claim": "ISC-473",
+        "probe": "end a stubbed turn with each of MODEL, BUDGET and ROUNDS, one DONE, one STOPPED; read `end_reason` and `GET /conversations/{id}`; Flyway over pre-`V36` turns — `ChatConversationTest`, `V36`",
+        "line": 72
+      },
+      {
+        "tasks": [
+          "T9",
+          "T10",
+          "T11",
+          "T13"
+        ],
+        "claim": "ISC-474",
+        "probe": "hover then focus each turn kind's glyph; read the popover; Escape — `chat-panel.browser.spec.ts`",
+        "line": 73
+      },
+      {
+        "tasks": [
+          "T12",
+          "T14"
+        ],
+        "claim": "ISC-475",
+        "probe": "tab to a glyph for its name; `i18n-parity.spec.ts`; reduced motion — `chat-panel.browser.spec.ts`, `i18n-parity.spec.ts`",
+        "line": 74
+      },
+      {
+        "tasks": [
+          "T15",
+          "T16",
+          "T17",
+          "T18",
+          "T19",
+          "T20"
+        ],
+        "claim": "ISC-476",
+        "probe": "hover the plate; `GET /api/v1/chat/status` with and without a model — `chat-panel.browser.spec.ts`, `ChatControllerTest`",
+        "line": 75
+      },
+      {
+        "tasks": [
+          "T21",
+          "T22",
+          "T23"
+        ],
+        "claim": "ISC-477",
+        "probe": "bulk-delete three of five with one streaming; an unknown id; empty list and no body — `ChatControllerTest`",
+        "line": 76
+      },
+      {
+        "tasks": [
+          "T24",
+          "T25",
+          "T26",
+          "T27",
+          "T28",
+          "T29"
+        ],
+        "claim": "ISC-478",
+        "probe": "select mode, pick three, confirm; search and select all; the open conversation among them — `chat-history.browser.spec.ts`",
+        "line": 77
+      },
+      {
+        "tasks": [
+          "T30",
+          "T31",
+          "T32"
+        ],
+        "claim": "ISC-480",
+        "probe": "the existing chat specs, `i18n-parity.spec.ts`, `LeadGenRuntimeHintsTest`, the `rg` over the docs, `WorkingNotesStaySmallTest` — `chat-history.spec.ts`, `docs/decisions/chat.md`, `CHANGELOG.md`",
+        "line": 78
+      }
+    ],
+    "counts": {
+      "rows": 32,
+      "boxes": {
+        "landed": 32,
+        "total": 32
+      },
+      "byLane": [
+        {
+          "name": "web",
+          "count": 20
+        },
+        {
+          "name": "server",
+          "count": 12
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "closed",
+          "count": 32
+        }
+      ]
+    },
+    "diagnostics": []
+  },
+  "specs/archive/013-tech-debt": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-337",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "docs",
+        "state": "done",
+        "paths": [
+          "CLAUDE.md",
+          "backend/CLAUDE.md",
+          "frontend/CLAUDE.md",
+          "docs/decisions/*.md"
+        ],
+        "text": "move the four longest trap paragraphs of each working-notes file into the decisions file its table row names; leave one line with a pointer",
+        "line": 25,
+        "status": "closed",
+        "round": 4,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-338",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "docs",
+        "state": "done",
+        "paths": [
+          "README.md",
+          "docs/DEVELOPMENT.md",
+          ".github/workflows/release.yml",
+          ".dockerignore"
+        ],
+        "text": "the Spotless sentences say what runs; `config/local/` → `config/`",
+        "line": 26,
+        "status": "closed",
+        "round": 4,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-339",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/test/java/de/codeministry/leadgen/config/EnvExampleTest.java",
+          "backend/build.gradle.kts"
+        ],
+        "text": "`EnvExampleTest`: placeholders read from the defaults, `application.yaml` and compose against `.env.example`; both files as Gradle inputs",
+        "line": 27,
+        "status": "closed",
+        "round": 4,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T4",
+        "claim": "ISC-339",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "infra",
+        "state": "done",
+        "paths": [
+          ".env.example"
+        ],
+        "text": "`.env.example` gains the two missing keys with a comment each and loses the unread one",
+        "line": 28,
+        "status": "closed",
+        "round": 4,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T3"
+        ]
+      },
+      {
+        "id": "T5",
+        "claim": "ISC-340",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "infra",
+        "state": "done",
+        "paths": [
+          "docker-compose.yml"
+        ],
+        "text": "healthchecks on `api` and `web`, `web` waits on `api`, `restart: unless-stopped` on all three",
+        "line": 29,
+        "status": "closed",
+        "round": 4,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T6",
+        "claim": "ISC-341",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "infra",
+        "state": "done",
+        "paths": [
+          "frontend/Dockerfile",
+          "backend/Dockerfile"
+        ],
+        "text": "bun tag pinned to `packageManager`, nginx stage non-root, the `\\|\\| true` gone",
+        "line": 30,
+        "status": "closed",
+        "round": 4,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T5"
+        ]
+      },
+      {
+        "id": "T7",
+        "claim": "ISC-348",
+        "flags": {
+          "parallel": false,
+          "seam": true
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/main/java/de/codeministry/leadgen/config/ConfigProperties.java",
+          "web/StatusController.java",
+          "security/SecurityConfig.java",
+          "ingest/ScheduledPass.java",
+          "config/ConfigWatcher.java",
+          "ingest/ScoreBatchCollector.java"
+        ],
+        "text": "`ConfigProperties` gains `version`, `ingestCron`, the two poll intervals and `security.allowOpenBind`; the five `@Value` sites read it; `StatusController` on `@RequiredArgsConstructor`",
+        "line": 31,
+        "status": "closed",
+        "round": 4,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T9",
+        "claim": "ISC-346",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/main/java/de/codeministry/leadgen/ingest/IngestService.java"
+        ],
+        "text": "`IngestService` keeps its connector list and looks a type up through a private helper, so its constructor only assigns; no new bean",
+        "line": 32,
+        "status": "closed",
+        "round": 4,
+        "builder": "Engineer",
+        "reason": "[P], claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T7"
+        ]
+      },
+      {
+        "id": "T10",
+        "claim": "ISC-346",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [],
+        "text": "the sweep: `spotlessApply`, then `@RequiredArgsConstructor` on every class whose constructor only assigned, then `spotlessApply` again; one commit, no test file · `backend/src/main/java/**` (64 classes)",
+        "line": 33,
+        "status": "closed",
+        "round": 4,
+        "builder": "Engineer",
+        "reason": "[P], claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T9"
+        ]
+      },
+      {
+        "id": "T11",
+        "claim": "ISC-347",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/main/java/de/codeministry/leadgen/ingest/IngestReport.java",
+          "ingest/IngestService.java"
+        ],
+        "text": "`@Builder` on `IngestReport`; the two constructions in `runOnce` become one builder call",
+        "line": 34,
+        "status": "closed",
+        "round": 4,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T7"
+        ]
+      },
+      {
+        "id": "T12",
+        "claim": "ISC-349",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "backend/src/main/java/de/codeministry/leadgen/llm/ModelChoice.java",
+          "score/Judges.java",
+          "content/Classifiers.java",
+          "fields/FieldExtractors.java",
+          "ingest/extract/LlmExtractors.java"
+        ],
+        "text": "`ModelChoice` in `llm/`; the five copies call it",
+        "line": 35,
+        "status": "closed",
+        "round": 4,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T7"
+        ]
+      },
+      {
+        "id": "T13",
+        "claim": "ISC-343",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/features/shortlist/shortlist-page.ts",
+          "shortlist-page.spec.ts",
+          "frontend/src/app/features/offer-detail/ask-panel/ask-panel.ts",
+          "ask-panel.spec.ts"
+        ],
+        "text": "`DestroyRef` removes the media-query listener; `takeUntilDestroyed` on the ask request; a spec per teardown",
+        "line": 36,
+        "status": "closed",
+        "round": 4,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T14",
+        "claim": "ISC-344",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/src/app/app.routes.ts",
+          "frontend/src/app/core/i18n/title.strategy.ts",
+          "frontend/src/app/app.config.ts",
+          "frontend/src/app/core/store/manual.store.ts",
+          "frontend/public/i18n/en.json",
+          "frontend/public/i18n/de.json",
+          "frontend/src/app/core/i18n/i18n-parity.spec.ts"
+        ],
+        "text": "route titles as catalog keys through a `TitleStrategy` with the brand constant; the manual store's three fallbacks as `error.*` keys; the parity spec's unused-key check",
+        "line": 37,
+        "status": "closed",
+        "round": 4,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T15",
+        "claim": "ISC-345",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "frontend/angular.json",
+          "frontend/tsconfig.json",
+          "frontend/package.json",
+          "frontend/bun.lock"
+        ],
+        "text": "`prefix: lg`, `experimentalDecorators` removed, `@angular/forms` removed",
+        "line": 38,
+        "status": "closed",
+        "round": 4,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T16",
+        "claim": "ISC-350",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [],
+        "text": "the anti probe: migrations byte-identical to `main`, no `Mapping(` line in the web diff, every `*ControllerTest` and `LeadGenRuntimeHintsTest` green, `processAot` green, the api image built and smoked",
+        "line": 39,
+        "status": "closed",
+        "round": 4,
+        "builder": null,
+        "reason": "[P], claim takeable, edges closed",
+        "note": null,
+        "pathNote": "probe only",
+        "edges": [
+          "T7",
+          "T10",
+          "T11",
+          "T12"
+        ]
+      },
+      {
+        "id": "T17",
+        "claim": "ISC-351",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "docs",
+        "state": "done",
+        "paths": [
+          "CHANGELOG.md",
+          "docs/decisions/configuration.md"
+        ],
+        "text": "the record: `CHANGELOG.md` § Unreleased, `docs/decisions/configuration.md` on the `.env.example` contract and on why the version mechanism stays",
+        "line": 40,
+        "status": "closed",
+        "round": 4,
+        "builder": null,
+        "reason": "[P], claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1",
+          "T4",
+          "T10"
+        ]
+      }
+    ],
+    "probeMapping": [
+      {
+        "tasks": [
+          "T1"
+        ],
+        "claim": "ISC-337",
+        "probe": "`wc -c` on the three files; `WorkingNotesStaySmallTest`",
+        "line": 46
+      },
+      {
+        "tasks": [
+          "T2"
+        ],
+        "claim": "ISC-338",
+        "probe": "`rg` for Spotless sentences and `config/local`",
+        "line": 47
+      },
+      {
+        "tasks": [
+          "T3",
+          "T4"
+        ],
+        "claim": "ISC-339",
+        "probe": "`EnvExampleTest`, red on a removed line and on a stray key",
+        "line": 48
+      },
+      {
+        "tasks": [
+          "T5"
+        ],
+        "claim": "ISC-340",
+        "probe": "`docker compose config`; `up -d --wait`; `ps` all healthy",
+        "line": 49
+      },
+      {
+        "tasks": [
+          "T6"
+        ],
+        "claim": "ISC-341",
+        "probe": "`rg` on both Dockerfiles; both `docker build`s",
+        "line": 50
+      },
+      {
+        "tasks": [
+          "T7"
+        ],
+        "claim": "ISC-348",
+        "probe": "`rg -c '@Value('` = 0; the three named tests",
+        "line": 51
+      },
+      {
+        "tasks": [
+          "T9",
+          "T10"
+        ],
+        "claim": "ISC-346",
+        "probe": "assignment count ≤ 25; `:backend:test` green; test tree diff empty",
+        "line": 52
+      },
+      {
+        "tasks": [
+          "T11"
+        ],
+        "claim": "ISC-347",
+        "probe": "`rg -c 'new IngestReport('` = 0 in main; the two named tests",
+        "line": 53
+      },
+      {
+        "tasks": [
+          "T12"
+        ],
+        "claim": "ISC-349",
+        "probe": "`rg 'scoringChoices()'` two sites; `ScoringWithoutAModelTest`",
+        "line": 54
+      },
+      {
+        "tasks": [
+          "T13"
+        ],
+        "claim": "ISC-343",
+        "probe": "the two teardown specs",
+        "line": 55
+      },
+      {
+        "tasks": [
+          "T14"
+        ],
+        "claim": "ISC-344",
+        "probe": "the parity spec; `rg` on routes and the manual store",
+        "line": 56
+      },
+      {
+        "tasks": [
+          "T15"
+        ],
+        "claim": "ISC-345",
+        "probe": "`rg` on the three files; `check:static` and `test`",
+        "line": 57
+      },
+      {
+        "tasks": [
+          "T16"
+        ],
+        "claim": "ISC-350",
+        "probe": "the migration diff; the web diff filtered to `Mapping(`; every controller test and the hints test; `processAot`; the image smoke",
+        "line": 58
+      },
+      {
+        "tasks": [
+          "T17"
+        ],
+        "claim": "ISC-351",
+        "probe": "`rg` on the changelog and the decisions file; `WorkingNotesStaySmallTest`",
+        "line": 59
+      }
+    ],
+    "counts": {
+      "rows": 16,
+      "boxes": {
+        "landed": 16,
+        "total": 16
+      },
+      "byLane": [
+        {
+          "name": "docs",
+          "count": 3
+        },
+        {
+          "name": "server",
+          "count": 7
+        },
+        {
+          "name": "infra",
+          "count": 3
+        },
+        {
+          "name": "web",
+          "count": 3
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "closed",
+          "count": 16
+        }
+      ]
+    },
+    "diagnostics": []
+  }
+}

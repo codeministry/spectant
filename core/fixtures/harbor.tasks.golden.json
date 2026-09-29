@@ -1,0 +1,3444 @@
+{
+  "specs/002-web-console": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-51",
+        "flags": {
+          "parallel": false,
+          "seam": true
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/history.contract.ts"
+        ],
+        "text": "history endpoint contract: run, repository, digest, failure",
+        "line": 19,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "seam — runs alone before its fan-out",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-51",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/registry-list/"
+        ],
+        "text": "registry-list: renders (ISC-51)",
+        "line": 20,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-52",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/repository-view/"
+        ],
+        "text": "repository-view: renders (ISC-52)",
+        "line": 21,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T4",
+        "claim": "ISC-53",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/tag-table/"
+        ],
+        "text": "tag-table: renders (ISC-53)",
+        "line": 22,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T5",
+        "claim": "ISC-54",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/digest-detail-panel/"
+        ],
+        "text": "digest-detail-panel: renders (ISC-54)",
+        "line": 23,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T6",
+        "claim": "ISC-55",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/sync-history/"
+        ],
+        "text": "sync-history: renders (ISC-55)",
+        "line": 24,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T7",
+        "claim": "ISC-56",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/settings-page/"
+        ],
+        "text": "settings-page: renders (ISC-56)",
+        "line": 25,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T8",
+        "claim": "ISC-57",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/search-box/"
+        ],
+        "text": "search-box: renders (ISC-57)",
+        "line": 26,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T9",
+        "claim": "ISC-58",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/empty-state/"
+        ],
+        "text": "empty-state: renders (ISC-58)",
+        "line": 27,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T10",
+        "claim": "ISC-59",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/error-banner/"
+        ],
+        "text": "error-banner: renders (ISC-59)",
+        "line": 28,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T11",
+        "claim": "ISC-60",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/theme-switch/"
+        ],
+        "text": "theme-switch: renders (ISC-60)",
+        "line": 29,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T12",
+        "claim": "ISC-60.1",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/theme-switch/"
+        ],
+        "text": "theme-switch: follows the system scheme (ISC-60.1)",
+        "line": 30,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1",
+          "T11"
+        ]
+      },
+      {
+        "id": "T13",
+        "claim": "ISC-60.2",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/theme-switch/"
+        ],
+        "text": "theme-switch: mode survives reload (ISC-60.2)",
+        "line": 31,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1",
+          "T11"
+        ]
+      },
+      {
+        "id": "T14",
+        "claim": "ISC-61",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/tag-table/"
+        ],
+        "text": "tag-table: no overflow at 390 px (ISC-61)",
+        "line": 32,
+        "status": "closed",
+        "round": 3,
+        "builder": "Anvil",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T15",
+        "claim": "ISC-62",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/digest-detail-panel/"
+        ],
+        "text": "digest-detail-panel: no overflow at 390 px (ISC-62)",
+        "line": 33,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T16",
+        "claim": "ISC-63",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/sync-history/"
+        ],
+        "text": "sync-history: no overflow at 390 px (ISC-63)",
+        "line": 34,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T17",
+        "claim": "ISC-64",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/settings-page/"
+        ],
+        "text": "settings-page: no overflow at 390 px (ISC-64)",
+        "line": 35,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T18",
+        "claim": "ISC-65",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/search-box/"
+        ],
+        "text": "search-box: no overflow at 390 px (ISC-65)",
+        "line": 36,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T19",
+        "claim": "ISC-66",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/empty-state/"
+        ],
+        "text": "empty-state: no overflow at 390 px (ISC-66)",
+        "line": 37,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1",
+          "T18"
+        ]
+      },
+      {
+        "id": "T20",
+        "claim": "ISC-67",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/error-banner/"
+        ],
+        "text": "error-banner: no overflow at 390 px (ISC-67)",
+        "line": 38,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T21",
+        "claim": "ISC-68",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/theme-switch/"
+        ],
+        "text": "theme-switch: no overflow at 390 px (ISC-68)",
+        "line": 39,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T22",
+        "claim": "ISC-69",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/registry-list/"
+        ],
+        "text": "registry-list: keyboard reach and focus ring (ISC-69)",
+        "line": 40,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T23",
+        "claim": "ISC-70",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/repository-view/"
+        ],
+        "text": "repository-view: keyboard reach and focus ring (ISC-70)",
+        "line": 41,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T24",
+        "claim": "ISC-71",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/tag-table/"
+        ],
+        "text": "tag-table: keyboard reach and focus ring (ISC-71)",
+        "line": 42,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T25",
+        "claim": "ISC-72",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/digest-detail-panel/"
+        ],
+        "text": "digest-detail-panel: keyboard reach and focus ring (ISC-72)",
+        "line": 43,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T26",
+        "claim": "ISC-73",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/sync-history/"
+        ],
+        "text": "sync-history: keyboard reach and focus ring (ISC-73)",
+        "line": 44,
+        "status": "closed",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T27",
+        "claim": "ISC-74",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/settings-page/"
+        ],
+        "text": "settings-page: keyboard reach and focus ring (ISC-74)",
+        "line": 45,
+        "status": "dispatched",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T28",
+        "claim": "ISC-75",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/search-box/"
+        ],
+        "text": "search-box: keyboard reach and focus ring (ISC-75)",
+        "line": 46,
+        "status": "held",
+        "round": 3,
+        "builder": null,
+        "reason": "width 10 reached",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T29",
+        "claim": "ISC-76",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/empty-state/"
+        ],
+        "text": "empty-state: keyboard reach and focus ring (ISC-76)",
+        "line": 47,
+        "status": "question",
+        "round": 3,
+        "builder": "Engineer",
+        "reason": "claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T30",
+        "claim": "ISC-77",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "operator",
+        "state": "done",
+        "paths": [
+          "tests/manual/screen-reader-setup.md"
+        ],
+        "text": "set up the screen-reader profile on the test device",
+        "line": 48,
+        "status": "done",
+        "round": 3,
+        "builder": null,
+        "reason": "operator lane — the principal's own action, never auto-dispatched",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T31",
+        "claim": "ISC-77",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "operator",
+        "state": "open",
+        "paths": [
+          "tests/manual/screen-reader.md"
+        ],
+        "text": "screen-reader pass over the sync history (ISC-77)",
+        "line": 49,
+        "status": "open",
+        "round": 3,
+        "builder": null,
+        "reason": "operator lane — the principal's own action, never auto-dispatched",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1",
+          "T30"
+        ]
+      },
+      {
+        "id": "T32",
+        "claim": "ISC-78",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/theme-switch/"
+        ],
+        "text": "theme-switch: keyboard reach and focus ring (ISC-78)",
+        "line": 50,
+        "status": "held",
+        "round": 3,
+        "builder": null,
+        "reason": "after T31 still open",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1",
+          "T31"
+        ]
+      }
+    ],
+    "probeMapping": [
+      {
+        "tasks": [
+          "T1",
+          "T2"
+        ],
+        "claim": "ISC-51",
+        "probe": "`bun run e2e -- registry-list -g render`",
+        "line": 56
+      },
+      {
+        "tasks": [
+          "T3"
+        ],
+        "claim": "ISC-52",
+        "probe": "`bun run e2e -- repository-view -g render`",
+        "line": 57
+      },
+      {
+        "tasks": [
+          "T4"
+        ],
+        "claim": "ISC-53",
+        "probe": "`bun run e2e -- tag-table -g render`",
+        "line": 58
+      },
+      {
+        "tasks": [
+          "T5"
+        ],
+        "claim": "ISC-54",
+        "probe": "`bun run e2e -- digest-detail-panel -g render`",
+        "line": 59
+      },
+      {
+        "tasks": [
+          "T6"
+        ],
+        "claim": "ISC-55",
+        "probe": "`bun run e2e -- sync-history -g render`",
+        "line": 60
+      },
+      {
+        "tasks": [
+          "T7"
+        ],
+        "claim": "ISC-56",
+        "probe": "`bun run e2e -- settings-page -g render`",
+        "line": 61
+      },
+      {
+        "tasks": [
+          "T8"
+        ],
+        "claim": "ISC-57",
+        "probe": "`bun run e2e -- search-box -g render`",
+        "line": 62
+      },
+      {
+        "tasks": [
+          "T9"
+        ],
+        "claim": "ISC-58",
+        "probe": "`bun run e2e -- empty-state -g render`",
+        "line": 63
+      },
+      {
+        "tasks": [
+          "T10"
+        ],
+        "claim": "ISC-59",
+        "probe": "`bun run e2e -- error-banner -g render`",
+        "line": 64
+      },
+      {
+        "tasks": [
+          "T11"
+        ],
+        "claim": "ISC-60",
+        "probe": "`bun run e2e -- theme-switch -g render`",
+        "line": 65
+      },
+      {
+        "tasks": [
+          "T12"
+        ],
+        "claim": "ISC-60.1",
+        "probe": "`bun run e2e -- theme-switch -g system`",
+        "line": 66
+      },
+      {
+        "tasks": [
+          "T13"
+        ],
+        "claim": "ISC-60.2",
+        "probe": "`bun run e2e -- theme-switch -g persist`",
+        "line": 67
+      },
+      {
+        "tasks": [
+          "T14"
+        ],
+        "claim": "ISC-61",
+        "probe": "`bun run e2e -- tag-table -g narrow`",
+        "line": 68
+      },
+      {
+        "tasks": [
+          "T15"
+        ],
+        "claim": "ISC-62",
+        "probe": "`bun run e2e -- digest-detail-panel -g narrow`",
+        "line": 69
+      },
+      {
+        "tasks": [
+          "T16"
+        ],
+        "claim": "ISC-63",
+        "probe": "`bun run e2e -- sync-history -g narrow`",
+        "line": 70
+      },
+      {
+        "tasks": [
+          "T17"
+        ],
+        "claim": "ISC-64",
+        "probe": "`bun run e2e -- settings-page -g narrow`",
+        "line": 71
+      },
+      {
+        "tasks": [
+          "T18"
+        ],
+        "claim": "ISC-65",
+        "probe": "`bun run e2e -- search-box -g narrow`",
+        "line": 72
+      },
+      {
+        "tasks": [
+          "T19"
+        ],
+        "claim": "ISC-66",
+        "probe": "`bun run e2e -- empty-state -g narrow`",
+        "line": 73
+      },
+      {
+        "tasks": [
+          "T20"
+        ],
+        "claim": "ISC-67",
+        "probe": "`bun run e2e -- error-banner -g narrow`",
+        "line": 74
+      },
+      {
+        "tasks": [
+          "T21"
+        ],
+        "claim": "ISC-68",
+        "probe": "`bun run e2e -- theme-switch -g narrow`",
+        "line": 75
+      },
+      {
+        "tasks": [
+          "T22"
+        ],
+        "claim": "ISC-69",
+        "probe": "`bun run test:browser -- registry-list`",
+        "line": 76
+      },
+      {
+        "tasks": [
+          "T23"
+        ],
+        "claim": "ISC-70",
+        "probe": "`bun run test:browser -- repository-view`",
+        "line": 77
+      },
+      {
+        "tasks": [
+          "T24"
+        ],
+        "claim": "ISC-71",
+        "probe": "`bun run test:browser -- tag-table`",
+        "line": 78
+      },
+      {
+        "tasks": [
+          "T25"
+        ],
+        "claim": "ISC-72",
+        "probe": "`bun run test:browser -- digest-detail-panel`",
+        "line": 79
+      },
+      {
+        "tasks": [
+          "T26"
+        ],
+        "claim": "ISC-73",
+        "probe": "`bun run test:browser -- sync-history`",
+        "line": 80
+      },
+      {
+        "tasks": [
+          "T27"
+        ],
+        "claim": "ISC-74",
+        "probe": "`bun run test:browser -- settings-page`",
+        "line": 81
+      },
+      {
+        "tasks": [
+          "T28"
+        ],
+        "claim": "ISC-75",
+        "probe": "`bun run test:browser -- search-box`",
+        "line": 82
+      },
+      {
+        "tasks": [
+          "T29"
+        ],
+        "claim": "ISC-76",
+        "probe": "`bun run test:browser -- empty-state`",
+        "line": 83
+      },
+      {
+        "tasks": [
+          "T30",
+          "T31"
+        ],
+        "claim": "ISC-77",
+        "probe": "transcript in `.evidence/`",
+        "line": 84
+      },
+      {
+        "tasks": [
+          "T32"
+        ],
+        "claim": "ISC-78",
+        "probe": "`bun run test:browser -- theme-switch`",
+        "line": 85
+      }
+    ],
+    "counts": {
+      "rows": 32,
+      "boxes": {
+        "landed": 27,
+        "total": 32
+      },
+      "byLane": [
+        {
+          "name": "api",
+          "count": 1
+        },
+        {
+          "name": "web",
+          "count": 29
+        },
+        {
+          "name": "operator",
+          "count": 2
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "open",
+          "count": 1
+        },
+        {
+          "name": "dispatched",
+          "count": 1
+        },
+        {
+          "name": "held",
+          "count": 2
+        },
+        {
+          "name": "question",
+          "count": 1
+        },
+        {
+          "name": "done",
+          "count": 1
+        },
+        {
+          "name": "closed",
+          "count": 26
+        }
+      ]
+    },
+    "diagnostics": []
+  },
+  "specs/003-config-loader": null,
+  "specs/004-retention-policies": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-95",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "verdict log for keep-last-N (ISC-95)",
+        "line": 19,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-96",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "verdict log for keep-newer-than (ISC-96)",
+        "line": 20,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-97",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "verdict log for keep-by-tag-pattern (ISC-97)",
+        "line": 21,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T4",
+        "claim": "ISC-98",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "verdict log for a protected tag (ISC-98)",
+        "line": 22,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T5",
+        "claim": "ISC-99",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "verdict log for an untagged manifest (ISC-99)",
+        "line": 23,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T6",
+        "claim": "ISC-100",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "verdict log for a policy preview (ISC-100)",
+        "line": 24,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T7",
+        "claim": "ISC-101",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "verdict log for a policy conflict (ISC-101)",
+        "line": 25,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T8",
+        "claim": "ISC-102",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "verdict log for a scheduled run (ISC-102)",
+        "line": 26,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T9",
+        "claim": "ISC-103",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "verdict log for a manual run (ISC-103)",
+        "line": 27,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T10",
+        "claim": "ISC-104",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "verdict log for a policy file with comments (ISC-104)",
+        "line": 28,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T11",
+        "claim": "ISC-105",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "referenced manifests deleted for keep-last-N (ISC-105)",
+        "line": 29,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T12",
+        "claim": "ISC-106",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "referenced manifests deleted for keep-newer-than (ISC-106)",
+        "line": 30,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T13",
+        "claim": "ISC-107",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "referenced manifests deleted for keep-by-tag-pattern (ISC-107)",
+        "line": 31,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T14",
+        "claim": "ISC-108",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "referenced manifests deleted for a protected tag (ISC-108)",
+        "line": 32,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T15",
+        "claim": "ISC-109",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "referenced manifests deleted for an untagged manifest (ISC-109)",
+        "line": 33,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T16",
+        "claim": "ISC-110",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "referenced manifests deleted for a policy preview (ISC-110)",
+        "line": 34,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T17",
+        "claim": "ISC-111",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "referenced manifests deleted for a policy conflict (ISC-111)",
+        "line": 35,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T18",
+        "claim": "ISC-112",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "referenced manifests deleted for a scheduled run (ISC-112)",
+        "line": 36,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T19",
+        "claim": "ISC-113",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "referenced manifests deleted for a manual run (ISC-113)",
+        "line": 37,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T20",
+        "claim": "ISC-114",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "api",
+        "state": "done",
+        "paths": [
+          "api/src/retention.ts"
+        ],
+        "text": "referenced manifests deleted for a policy file with comments (ISC-114)",
+        "line": 38,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T21",
+        "claim": "ISC-115",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/retention/"
+        ],
+        "text": "preview shown for keep-last-N (ISC-115)",
+        "line": 39,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T22",
+        "claim": "ISC-116",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/retention/"
+        ],
+        "text": "preview shown for keep-newer-than (ISC-116)",
+        "line": 40,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T2"
+        ]
+      },
+      {
+        "id": "T23",
+        "claim": "ISC-117",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/retention/"
+        ],
+        "text": "preview shown for keep-by-tag-pattern (ISC-117)",
+        "line": 41,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T3"
+        ]
+      },
+      {
+        "id": "T24",
+        "claim": "ISC-118",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/retention/"
+        ],
+        "text": "preview shown for a protected tag (ISC-118)",
+        "line": 42,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T4"
+        ]
+      },
+      {
+        "id": "T25",
+        "claim": "ISC-119",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/retention/"
+        ],
+        "text": "preview shown for an untagged manifest (ISC-119)",
+        "line": 43,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T5"
+        ]
+      },
+      {
+        "id": "T26",
+        "claim": "ISC-120",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/retention/"
+        ],
+        "text": "preview shown for a policy preview (ISC-120)",
+        "line": 44,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T6"
+        ]
+      },
+      {
+        "id": "T27",
+        "claim": "ISC-121",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/retention/"
+        ],
+        "text": "preview shown for a policy conflict (ISC-121)",
+        "line": 45,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T7"
+        ]
+      },
+      {
+        "id": "T28",
+        "claim": "ISC-122",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/retention/"
+        ],
+        "text": "preview shown for a scheduled run (ISC-122)",
+        "line": 46,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T8"
+        ]
+      },
+      {
+        "id": "T29",
+        "claim": "ISC-123",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/retention/"
+        ],
+        "text": "preview shown for a manual run (ISC-123)",
+        "line": 47,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T9"
+        ]
+      },
+      {
+        "id": "T30",
+        "claim": "ISC-124",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/retention/"
+        ],
+        "text": "preview shown for a policy file with comments (ISC-124)",
+        "line": 48,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T10"
+        ]
+      }
+    ],
+    "probeMapping": [
+      {
+        "tasks": [
+          "T1"
+        ],
+        "claim": "ISC-95",
+        "probe": "`bun test tests/retention.test.ts -t \"keep-last-N\"`",
+        "line": 54
+      },
+      {
+        "tasks": [
+          "T2"
+        ],
+        "claim": "ISC-96",
+        "probe": "`bun test tests/retention.test.ts -t \"keep-newer-than\"`",
+        "line": 55
+      },
+      {
+        "tasks": [
+          "T3"
+        ],
+        "claim": "ISC-97",
+        "probe": "`bun test tests/retention.test.ts -t \"keep-by-tag-pattern\"`",
+        "line": 56
+      },
+      {
+        "tasks": [
+          "T4"
+        ],
+        "claim": "ISC-98",
+        "probe": "`bun test tests/retention.test.ts -t \"a protected tag\"`",
+        "line": 57
+      },
+      {
+        "tasks": [
+          "T5"
+        ],
+        "claim": "ISC-99",
+        "probe": "`bun test tests/retention.test.ts -t \"an untagged manifest\"`",
+        "line": 58
+      },
+      {
+        "tasks": [
+          "T6"
+        ],
+        "claim": "ISC-100",
+        "probe": "`bun test tests/retention.test.ts -t \"a policy preview\"`",
+        "line": 59
+      },
+      {
+        "tasks": [
+          "T7"
+        ],
+        "claim": "ISC-101",
+        "probe": "`bun test tests/retention.test.ts -t \"a policy conflict\"`",
+        "line": 60
+      },
+      {
+        "tasks": [
+          "T8"
+        ],
+        "claim": "ISC-102",
+        "probe": "`bun test tests/retention.test.ts -t \"a scheduled run\"`",
+        "line": 61
+      },
+      {
+        "tasks": [
+          "T9"
+        ],
+        "claim": "ISC-103",
+        "probe": "`bun test tests/retention.test.ts -t \"a manual run\"`",
+        "line": 62
+      },
+      {
+        "tasks": [
+          "T10"
+        ],
+        "claim": "ISC-104",
+        "probe": "`bun test tests/retention.test.ts -t \"a policy file with comments\"`",
+        "line": 63
+      },
+      {
+        "tasks": [
+          "T11"
+        ],
+        "claim": "ISC-105",
+        "probe": "`bun test tests/retention.test.ts -t \"keep-last-N\"`",
+        "line": 64
+      },
+      {
+        "tasks": [
+          "T12"
+        ],
+        "claim": "ISC-106",
+        "probe": "`bun test tests/retention.test.ts -t \"keep-newer-than\"`",
+        "line": 65
+      },
+      {
+        "tasks": [
+          "T13"
+        ],
+        "claim": "ISC-107",
+        "probe": "`bun test tests/retention.test.ts -t \"keep-by-tag-pattern\"`",
+        "line": 66
+      },
+      {
+        "tasks": [
+          "T14"
+        ],
+        "claim": "ISC-108",
+        "probe": "`bun test tests/retention.test.ts -t \"a protected tag\"`",
+        "line": 67
+      },
+      {
+        "tasks": [
+          "T15"
+        ],
+        "claim": "ISC-109",
+        "probe": "`bun test tests/retention.test.ts -t \"an untagged manifest\"`",
+        "line": 68
+      },
+      {
+        "tasks": [
+          "T16"
+        ],
+        "claim": "ISC-110",
+        "probe": "`bun test tests/retention.test.ts -t \"a policy preview\"`",
+        "line": 69
+      },
+      {
+        "tasks": [
+          "T17"
+        ],
+        "claim": "ISC-111",
+        "probe": "`bun test tests/retention.test.ts -t \"a policy conflict\"`",
+        "line": 70
+      },
+      {
+        "tasks": [
+          "T18"
+        ],
+        "claim": "ISC-112",
+        "probe": "`bun test tests/retention.test.ts -t \"a scheduled run\"`",
+        "line": 71
+      },
+      {
+        "tasks": [
+          "T19"
+        ],
+        "claim": "ISC-113",
+        "probe": "`bun test tests/retention.test.ts -t \"a manual run\"`",
+        "line": 72
+      },
+      {
+        "tasks": [
+          "T20"
+        ],
+        "claim": "ISC-114",
+        "probe": "`bun test tests/retention.test.ts -t \"a policy file with comments\"`",
+        "line": 73
+      },
+      {
+        "tasks": [
+          "T21"
+        ],
+        "claim": "ISC-115",
+        "probe": "`bun run e2e -- retention -g \"preview 1\"`",
+        "line": 74
+      },
+      {
+        "tasks": [
+          "T22"
+        ],
+        "claim": "ISC-116",
+        "probe": "`bun run e2e -- retention -g \"preview 2\"`",
+        "line": 75
+      },
+      {
+        "tasks": [
+          "T23"
+        ],
+        "claim": "ISC-117",
+        "probe": "`bun run e2e -- retention -g \"preview 3\"`",
+        "line": 76
+      },
+      {
+        "tasks": [
+          "T24"
+        ],
+        "claim": "ISC-118",
+        "probe": "`bun run e2e -- retention -g \"preview 4\"`",
+        "line": 77
+      },
+      {
+        "tasks": [
+          "T25"
+        ],
+        "claim": "ISC-119",
+        "probe": "`bun run e2e -- retention -g \"preview 5\"`",
+        "line": 78
+      },
+      {
+        "tasks": [
+          "T26"
+        ],
+        "claim": "ISC-120",
+        "probe": "`bun run e2e -- retention -g \"preview 6\"`",
+        "line": 79
+      },
+      {
+        "tasks": [
+          "T27"
+        ],
+        "claim": "ISC-121",
+        "probe": "`bun run e2e -- retention -g \"preview 7\"`",
+        "line": 80
+      },
+      {
+        "tasks": [
+          "T28"
+        ],
+        "claim": "ISC-122",
+        "probe": "`bun run e2e -- retention -g \"preview 8\"`",
+        "line": 81
+      },
+      {
+        "tasks": [
+          "T29"
+        ],
+        "claim": "ISC-123",
+        "probe": "`bun run e2e -- retention -g \"preview 9\"`",
+        "line": 82
+      },
+      {
+        "tasks": [
+          "T30"
+        ],
+        "claim": "ISC-124",
+        "probe": "`bun run e2e -- retention -g \"preview 10\"`",
+        "line": 83
+      }
+    ],
+    "counts": {
+      "rows": 30,
+      "boxes": {
+        "landed": 30,
+        "total": 30
+      },
+      "byLane": [
+        {
+          "name": "api",
+          "count": 20
+        },
+        {
+          "name": "web",
+          "count": 10
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "done",
+          "count": 30
+        }
+      ]
+    },
+    "diagnostics": []
+  },
+  "specs/005-config-format-choice": null,
+  "specs/006-partial-push": null,
+  "specs/archive/001-manifest-sync": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-5",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-5 pass: digest equality for case 1",
+        "line": 19,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-6",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-6 pass: digest equality for case 2",
+        "line": 20,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T1"
+        ]
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-7",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-7 pass: digest equality for case 3",
+        "line": 21,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T4",
+        "claim": "ISC-8",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-8 pass: digest equality for case 4",
+        "line": 22,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T5",
+        "claim": "ISC-9",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-9 pass: digest equality for case 5",
+        "line": 23,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T6",
+        "claim": "ISC-10",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-10 pass: digest equality for case 6",
+        "line": 24,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T7",
+        "claim": "ISC-11",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-11 pass: digest equality for case 7",
+        "line": 25,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T6"
+        ]
+      },
+      {
+        "id": "T8",
+        "claim": "ISC-12",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-12 pass: digest equality for case 8",
+        "line": 26,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T9",
+        "claim": "ISC-13",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-13 pass: digest equality for case 9",
+        "line": 27,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T10",
+        "claim": "ISC-14",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-14 pass: digest equality for case 10",
+        "line": 28,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T11",
+        "claim": "ISC-15",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-15 pass: digest equality for case 11",
+        "line": 29,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T12",
+        "claim": "ISC-16",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-16 pass: digest equality for case 12",
+        "line": 30,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T11"
+        ]
+      },
+      {
+        "id": "T13",
+        "claim": "ISC-17",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/dry-run.ts"
+        ],
+        "text": "make ISC-17 pass: dry-run writes for case 1",
+        "line": 31,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T14",
+        "claim": "ISC-18",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/dry-run.ts"
+        ],
+        "text": "make ISC-18 pass: dry-run writes for case 2",
+        "line": 32,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T15",
+        "claim": "ISC-19",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/dry-run.ts"
+        ],
+        "text": "make ISC-19 pass: dry-run writes for case 3",
+        "line": 33,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T16",
+        "claim": "ISC-20",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/dry-run.ts"
+        ],
+        "text": "make ISC-20 pass: dry-run writes for case 4",
+        "line": 34,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T17",
+        "claim": "ISC-21",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/dry-run.ts"
+        ],
+        "text": "make ISC-21 pass: dry-run writes for case 5",
+        "line": 35,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T16"
+        ]
+      },
+      {
+        "id": "T18",
+        "claim": "ISC-22",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/dry-run.ts"
+        ],
+        "text": "make ISC-22 pass: dry-run writes for case 6",
+        "line": 36,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T19",
+        "claim": "ISC-23",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/dry-run.ts"
+        ],
+        "text": "make ISC-23 pass: dry-run writes for case 7",
+        "line": 37,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T20",
+        "claim": "ISC-24",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/dry-run.ts"
+        ],
+        "text": "make ISC-24 pass: dry-run writes for case 8",
+        "line": 38,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T21",
+        "claim": "ISC-25",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/dry-run.ts"
+        ],
+        "text": "make ISC-25 pass: dry-run writes for case 9",
+        "line": 39,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T22",
+        "claim": "ISC-26",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/dry-run.ts"
+        ],
+        "text": "make ISC-26 pass: dry-run writes for case 10",
+        "line": 40,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T21"
+        ]
+      },
+      {
+        "id": "T23",
+        "claim": "ISC-27",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/dry-run.ts"
+        ],
+        "text": "make ISC-27 pass: dry-run writes for case 11",
+        "line": 41,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T24",
+        "claim": "ISC-28",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/dry-run.ts"
+        ],
+        "text": "make ISC-28 pass: dry-run writes for case 12",
+        "line": 42,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T25",
+        "claim": "ISC-29",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-29 pass: bytes uploaded on re-run for case 1",
+        "line": 43,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T26",
+        "claim": "ISC-30",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-30 pass: bytes uploaded on re-run for case 2",
+        "line": 44,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T27",
+        "claim": "ISC-31",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-31 pass: bytes uploaded on re-run for case 3",
+        "line": 45,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T26"
+        ]
+      },
+      {
+        "id": "T28",
+        "claim": "ISC-32",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-32 pass: bytes uploaded on re-run for case 4",
+        "line": 46,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T29",
+        "claim": "ISC-33",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-33 pass: bytes uploaded on re-run for case 5",
+        "line": 47,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T30",
+        "claim": "ISC-34",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-34 pass: bytes uploaded on re-run for case 6",
+        "line": 48,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T31",
+        "claim": "ISC-35",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-35 pass: bytes uploaded on re-run for case 7",
+        "line": 49,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T32",
+        "claim": "ISC-36",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-36 pass: bytes uploaded on re-run for case 8",
+        "line": 50,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T31"
+        ]
+      },
+      {
+        "id": "T33",
+        "claim": "ISC-37",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-37 pass: bytes uploaded on re-run for case 9",
+        "line": 51,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T34",
+        "claim": "ISC-38",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-38 pass: bytes uploaded on re-run for case 10",
+        "line": 52,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T35",
+        "claim": "ISC-39",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-39 pass: bytes uploaded on re-run for case 11",
+        "line": 53,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T36",
+        "claim": "ISC-40",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-40 pass: bytes uploaded on re-run for case 12",
+        "line": 54,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T37",
+        "claim": "ISC-41",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-41 pass: log line fields for case 1",
+        "line": 55,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T36"
+        ]
+      },
+      {
+        "id": "T38",
+        "claim": "ISC-42",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-42 pass: log line fields for case 2",
+        "line": 56,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T39",
+        "claim": "ISC-43",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-43 pass: log line fields for case 3",
+        "line": 57,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T40",
+        "claim": "ISC-44",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-44 pass: log line fields for case 4",
+        "line": 58,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T41",
+        "claim": "ISC-45",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-45 pass: log line fields for case 5",
+        "line": 59,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T42",
+        "claim": "ISC-46",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-46 pass: log line fields for case 6",
+        "line": 60,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T41"
+        ]
+      },
+      {
+        "id": "T43",
+        "claim": "ISC-47",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-47 pass: log line fields for case 7",
+        "line": 61,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T44",
+        "claim": "ISC-48",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-48 pass: log line fields for case 8",
+        "line": 62,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T45",
+        "claim": "ISC-49",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-49 pass: log line fields for case 9",
+        "line": 63,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T46",
+        "claim": "ISC-50",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "cli",
+        "state": "done",
+        "paths": [
+          "cli/src/sync.ts"
+        ],
+        "text": "make ISC-50 pass: log line fields for case 10",
+        "line": 64,
+        "status": "done",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      }
+    ],
+    "probeMapping": [
+      {
+        "tasks": [
+          "T1"
+        ],
+        "claim": "ISC-5",
+        "probe": "`bun test tests/sync.test.ts -t \"case 5\"`",
+        "line": 70
+      },
+      {
+        "tasks": [
+          "T2"
+        ],
+        "claim": "ISC-6",
+        "probe": "`bun test tests/sync.test.ts -t \"case 6\"`",
+        "line": 71
+      },
+      {
+        "tasks": [
+          "T3"
+        ],
+        "claim": "ISC-7",
+        "probe": "`bun test tests/sync.test.ts -t \"case 7\"`",
+        "line": 72
+      },
+      {
+        "tasks": [
+          "T4"
+        ],
+        "claim": "ISC-8",
+        "probe": "`bun test tests/sync.test.ts -t \"case 8\"`",
+        "line": 73
+      },
+      {
+        "tasks": [
+          "T5"
+        ],
+        "claim": "ISC-9",
+        "probe": "`bun test tests/sync.test.ts -t \"case 9\"`",
+        "line": 74
+      },
+      {
+        "tasks": [
+          "T6"
+        ],
+        "claim": "ISC-10",
+        "probe": "`bun test tests/sync.test.ts -t \"case 10\"`",
+        "line": 75
+      },
+      {
+        "tasks": [
+          "T7"
+        ],
+        "claim": "ISC-11",
+        "probe": "`bun test tests/sync.test.ts -t \"case 11\"`",
+        "line": 76
+      },
+      {
+        "tasks": [
+          "T8"
+        ],
+        "claim": "ISC-12",
+        "probe": "`bun test tests/sync.test.ts -t \"case 12\"`",
+        "line": 77
+      },
+      {
+        "tasks": [
+          "T9"
+        ],
+        "claim": "ISC-13",
+        "probe": "`bun test tests/sync.test.ts -t \"case 13\"`",
+        "line": 78
+      },
+      {
+        "tasks": [
+          "T10"
+        ],
+        "claim": "ISC-14",
+        "probe": "`bun test tests/sync.test.ts -t \"case 14\"`",
+        "line": 79
+      },
+      {
+        "tasks": [
+          "T11"
+        ],
+        "claim": "ISC-15",
+        "probe": "`bun test tests/sync.test.ts -t \"case 15\"`",
+        "line": 80
+      },
+      {
+        "tasks": [
+          "T12"
+        ],
+        "claim": "ISC-16",
+        "probe": "`bun test tests/sync.test.ts -t \"case 16\"`",
+        "line": 81
+      },
+      {
+        "tasks": [
+          "T13"
+        ],
+        "claim": "ISC-17",
+        "probe": "`bun run cli -- sync --dry-run --case 1 | rg -c PUSH`",
+        "line": 82
+      },
+      {
+        "tasks": [
+          "T14"
+        ],
+        "claim": "ISC-18",
+        "probe": "`bun run cli -- sync --dry-run --case 2 | rg -c PUSH`",
+        "line": 83
+      },
+      {
+        "tasks": [
+          "T15"
+        ],
+        "claim": "ISC-19",
+        "probe": "`bun run cli -- sync --dry-run --case 3 | rg -c PUSH`",
+        "line": 84
+      },
+      {
+        "tasks": [
+          "T16"
+        ],
+        "claim": "ISC-20",
+        "probe": "`bun run cli -- sync --dry-run --case 4 | rg -c PUSH`",
+        "line": 85
+      },
+      {
+        "tasks": [
+          "T17"
+        ],
+        "claim": "ISC-21",
+        "probe": "`bun run cli -- sync --dry-run --case 5 | rg -c PUSH`",
+        "line": 86
+      },
+      {
+        "tasks": [
+          "T18"
+        ],
+        "claim": "ISC-22",
+        "probe": "`bun run cli -- sync --dry-run --case 6 | rg -c PUSH`",
+        "line": 87
+      },
+      {
+        "tasks": [
+          "T19"
+        ],
+        "claim": "ISC-23",
+        "probe": "`bun run cli -- sync --dry-run --case 7 | rg -c PUSH`",
+        "line": 88
+      },
+      {
+        "tasks": [
+          "T20"
+        ],
+        "claim": "ISC-24",
+        "probe": "`bun run cli -- sync --dry-run --case 8 | rg -c PUSH`",
+        "line": 89
+      },
+      {
+        "tasks": [
+          "T21"
+        ],
+        "claim": "ISC-25",
+        "probe": "`bun run cli -- sync --dry-run --case 9 | rg -c PUSH`",
+        "line": 90
+      },
+      {
+        "tasks": [
+          "T22"
+        ],
+        "claim": "ISC-26",
+        "probe": "`bun run cli -- sync --dry-run --case 10 | rg -c PUSH`",
+        "line": 91
+      },
+      {
+        "tasks": [
+          "T23"
+        ],
+        "claim": "ISC-27",
+        "probe": "`bun run cli -- sync --dry-run --case 11 | rg -c PUSH`",
+        "line": 92
+      },
+      {
+        "tasks": [
+          "T24"
+        ],
+        "claim": "ISC-28",
+        "probe": "`bun run cli -- sync --dry-run --case 12 | rg -c PUSH`",
+        "line": 93
+      },
+      {
+        "tasks": [
+          "T25"
+        ],
+        "claim": "ISC-29",
+        "probe": "`bun test tests/sync.test.ts -t \"case 29\"`",
+        "line": 94
+      },
+      {
+        "tasks": [
+          "T26"
+        ],
+        "claim": "ISC-30",
+        "probe": "`bun test tests/sync.test.ts -t \"case 30\"`",
+        "line": 95
+      },
+      {
+        "tasks": [
+          "T27"
+        ],
+        "claim": "ISC-31",
+        "probe": "`bun test tests/sync.test.ts -t \"case 31\"`",
+        "line": 96
+      },
+      {
+        "tasks": [
+          "T28"
+        ],
+        "claim": "ISC-32",
+        "probe": "`bun test tests/sync.test.ts -t \"case 32\"`",
+        "line": 97
+      },
+      {
+        "tasks": [
+          "T29"
+        ],
+        "claim": "ISC-33",
+        "probe": "`bun test tests/sync.test.ts -t \"case 33\"`",
+        "line": 98
+      },
+      {
+        "tasks": [
+          "T30"
+        ],
+        "claim": "ISC-34",
+        "probe": "`bun test tests/sync.test.ts -t \"case 34\"`",
+        "line": 99
+      },
+      {
+        "tasks": [
+          "T31"
+        ],
+        "claim": "ISC-35",
+        "probe": "`bun test tests/sync.test.ts -t \"case 35\"`",
+        "line": 100
+      },
+      {
+        "tasks": [
+          "T32"
+        ],
+        "claim": "ISC-36",
+        "probe": "`bun test tests/sync.test.ts -t \"case 36\"`",
+        "line": 101
+      },
+      {
+        "tasks": [
+          "T33"
+        ],
+        "claim": "ISC-37",
+        "probe": "`bun test tests/sync.test.ts -t \"case 37\"`",
+        "line": 102
+      },
+      {
+        "tasks": [
+          "T34"
+        ],
+        "claim": "ISC-38",
+        "probe": "`bun test tests/sync.test.ts -t \"case 38\"`",
+        "line": 103
+      },
+      {
+        "tasks": [
+          "T35"
+        ],
+        "claim": "ISC-39",
+        "probe": "`bun test tests/sync.test.ts -t \"case 39\"`",
+        "line": 104
+      },
+      {
+        "tasks": [
+          "T36"
+        ],
+        "claim": "ISC-40",
+        "probe": "`bun test tests/sync.test.ts -t \"case 40\"`",
+        "line": 105
+      },
+      {
+        "tasks": [
+          "T37"
+        ],
+        "claim": "ISC-41",
+        "probe": "`bun test tests/sync.test.ts -t \"case 41\"`",
+        "line": 106
+      },
+      {
+        "tasks": [
+          "T38"
+        ],
+        "claim": "ISC-42",
+        "probe": "`bun test tests/sync.test.ts -t \"case 42\"`",
+        "line": 107
+      },
+      {
+        "tasks": [
+          "T39"
+        ],
+        "claim": "ISC-43",
+        "probe": "`bun test tests/sync.test.ts -t \"case 43\"`",
+        "line": 108
+      },
+      {
+        "tasks": [
+          "T40"
+        ],
+        "claim": "ISC-44",
+        "probe": "`bun test tests/sync.test.ts -t \"case 44\"`",
+        "line": 109
+      },
+      {
+        "tasks": [
+          "T41"
+        ],
+        "claim": "ISC-45",
+        "probe": "`bun test tests/sync.test.ts -t \"case 45\"`",
+        "line": 110
+      },
+      {
+        "tasks": [
+          "T42"
+        ],
+        "claim": "ISC-46",
+        "probe": "`bun test tests/sync.test.ts -t \"case 46\"`",
+        "line": 111
+      },
+      {
+        "tasks": [
+          "T43"
+        ],
+        "claim": "ISC-47",
+        "probe": "`bun test tests/sync.test.ts -t \"case 47\"`",
+        "line": 112
+      },
+      {
+        "tasks": [
+          "T44"
+        ],
+        "claim": "ISC-48",
+        "probe": "`bun test tests/sync.test.ts -t \"case 48\"`",
+        "line": 113
+      },
+      {
+        "tasks": [
+          "T45"
+        ],
+        "claim": "ISC-49",
+        "probe": "`bun test tests/sync.test.ts -t \"case 49\"`",
+        "line": 114
+      },
+      {
+        "tasks": [
+          "T46"
+        ],
+        "claim": "ISC-50",
+        "probe": "`bun test tests/sync.test.ts -t \"case 50\"`",
+        "line": 115
+      }
+    ],
+    "counts": {
+      "rows": 46,
+      "boxes": {
+        "landed": 46,
+        "total": 46
+      },
+      "byLane": [
+        {
+          "name": "cli",
+          "count": 46
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "done",
+          "count": 46
+        }
+      ]
+    },
+    "diagnostics": []
+  }
+}

@@ -1,0 +1,2406 @@
+{
+  "specs/001-app-skeleton": {
+    "tasks": [
+      {
+        "id": "T1",
+        "claim": "ISC-8",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "repo",
+        "state": "done",
+        "paths": [
+          "package.json"
+        ],
+        "text": "root `package.json` with bun workspaces `core`, `server`, `web`, pinned bun, the script names from the plan, `bunfig.toml` excluding `web/src` from root `bun test`",
+        "line": 26,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T2",
+        "claim": "ISC-5.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "repo",
+        "state": "done",
+        "paths": [
+          "CLAUDE.md"
+        ],
+        "text": "root `CLAUDE.md` (only what applies everywhere) and the `README.md` skeleton",
+        "line": 27,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T3",
+        "claim": "ISC-5.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "core",
+        "state": "done",
+        "paths": [
+          "core/CLAUDE.md"
+        ],
+        "text": "`core/CLAUDE.md`: lane probe, the one-parser rule, fixture conventions",
+        "line": 28,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T4",
+        "claim": "ISC-5.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "server/CLAUDE.md"
+        ],
+        "text": "`server/CLAUDE.md`: lane probe, loopback rule, no writes into repos",
+        "line": 29,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T5",
+        "claim": "ISC-5.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/CLAUDE.md"
+        ],
+        "text": "`web/CLAUDE.md`: lane probe, framework and design rules written out, container tiers, token rules",
+        "line": 30,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T6",
+        "claim": "ISC-8",
+        "flags": {
+          "parallel": false,
+          "seam": true
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "server/src/assets.contract.ts"
+        ],
+        "text": "build contract: the web output folder, base href, the embed manifest type and content-type map the server reads",
+        "line": 31,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T7",
+        "claim": "ISC-8",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/"
+        ],
+        "text": "Angular 22 zoneless standalone workspace with one hello route, Vitest builder, Tailwind 4 + daisyUI 5 wired, output where T6 says",
+        "line": 32,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T8",
+        "claim": "ISC-5.2",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "repo",
+        "state": "done",
+        "paths": [
+          "eslint.config.js"
+        ],
+        "text": "ESLint (Angular rules, template a11y), Stylelint (`color-no-hex` with the two theme files exempt, no literal durations outside `motion.css`), `tsc --noEmit`; `check:static`, `lint`, `lint:css`, `typecheck` become real",
+        "line": 33,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T9",
+        "claim": "ISC-8",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "scripts/embed.ts"
+        ],
+        "text": "embed generator writing `server/embedded.gen.ts` from the web output through `embeddedAssetFor()` of the contract",
+        "line": 34,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T10",
+        "claim": "ISC-8",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "server/src/http.ts"
+        ],
+        "text": "loopback server taking the manifest as a parameter: embedded assets, content types, cache headers, SPA fallback, a `serve` entry",
+        "line": 35,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T11",
+        "claim": "ISC-8",
+        "flags": {
+          "parallel": false,
+          "seam": true
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "scripts/build.ts"
+        ],
+        "text": "build script: Angular build (system Node ≥ 22.22.3 for the Angular CLI), embed, `bun build --compile` for the four targets (`-baseline` for linux-x64, `codesign -s -` on macOS), version inlined with `--define`",
+        "line": 36,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T9",
+          "T10"
+        ]
+      },
+      {
+        "id": "T12",
+        "claim": "ISC-8.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "tests/binary.test.ts"
+        ],
+        "text": "binary smoke: copy the host binary to an empty temp dir, `--no-browser --port 0`, three routes; `test:binary`",
+        "line": 37,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T11"
+        ]
+      },
+      {
+        "id": "T13",
+        "claim": "ISC-9",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "server/src/cli.ts"
+        ],
+        "text": "`--version` from the inlined build version, `check:version`",
+        "line": 38,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T11"
+        ]
+      },
+      {
+        "id": "T14",
+        "claim": "ISC-10",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "install.sh"
+        ],
+        "text": "`install.sh` (OS/arch, `SPECTANT_RELEASE_URL`, `/usr/local/bin` when writable else `~/.local/bin`, PATH hint, never edits an rc file) plus the non-root Ubuntu container run against a local release dir that also runs the binary smoke; `test:install:linux`",
+        "line": 39,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T11"
+        ]
+      },
+      {
+        "id": "T15",
+        "claim": "ISC-12",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "install.sh"
+        ],
+        "text": "`INSTALL_DIR` override plus the \"`/usr/local/bin` not writable → `~/.local/bin`\" container case",
+        "line": 40,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T11"
+        ]
+      },
+      {
+        "id": "T16",
+        "claim": "ISC-11",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "operator",
+        "state": "open",
+        "paths": [
+          "tests/install/run-macos.md"
+        ],
+        "text": "macOS arm64 install on a throwaway user account, transcript into `.evidence/`",
+        "line": 41,
+        "status": "open",
+        "round": 9,
+        "builder": null,
+        "reason": "operator lane — the principal's own action, never auto-dispatched",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T11"
+        ]
+      },
+      {
+        "id": "T17",
+        "claim": "ISC-18",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/styles.css"
+        ],
+        "text": "themes `spec-light` / `spec-dark` from the old token blocks (OKLCH, hex in comments), daisyUI `themes: false`, `--depth: 0`, `--noise: 0`, plus the colour guard `web/tests/theme-colors.test.ts` (ΔE ≤ 0.5 round-trip, both themes)",
+        "line": 45,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T18",
+        "claim": "ISC-65",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/styles/tokens.css"
+        ],
+        "text": "derived tokens `--muted`, `--track`, `--*-ink` and the container tier names, values from design.md",
+        "line": 46,
+        "status": "done",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T19",
+        "claim": "ISC-67",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/tests/fonts.test.ts"
+        ],
+        "text": "Inter Variable and JetBrains Mono as local woff2 with `@font-face`, plus the \"local\" guard",
+        "line": 47,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T20",
+        "claim": "ISC-67.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/tests/fonts.test.ts"
+        ],
+        "text": "the \"external font URL\" guard",
+        "line": 48,
+        "status": "closed",
+        "round": 9,
+        "builder": "Engineer",
+        "reason": "[P], claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T21",
+        "claim": "ISC-66",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/styles/motion.css"
+        ],
+        "text": "motion tokens and the `prefers-reduced-motion` override to `0ms`, skeleton static, view transitions skipped",
+        "line": 49,
+        "status": "done",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T22",
+        "claim": "ISC-18.2",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/shared/icons/"
+        ],
+        "text": "icon module: only used icons from the pinned `lucide-static` version, plus the guard `web/tests/icons.test.ts`",
+        "line": 50,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T23",
+        "claim": "ISC-22",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/i18n/"
+        ],
+        "text": "Transloco with EN and DE catalogues (German formal), language from settings, plus the parity guard `web/tests/i18n-parity.test.ts`",
+        "line": 51,
+        "status": "closed",
+        "round": 9,
+        "builder": "Engineer",
+        "reason": "[P], claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T24",
+        "claim": "ISC-64",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/shared/ui/button/"
+        ],
+        "text": "`ui-button`, `ui-icon-button`, `ui-button-group` with the global `:focus-visible` ring and the coarse-pointer hit area",
+        "line": 52,
+        "status": "done",
+        "round": 9,
+        "builder": "Engineer",
+        "reason": "[P], claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T25",
+        "claim": "ISC-17",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "done",
+        "paths": [
+          "web/src/app/shared/ui/"
+        ],
+        "text": "display primitives: `ui-card`, `ui-kpi-tile`, `ui-ring`, `ui-meter`, `ui-stage-track`, `ui-chip`, `ui-id-chip`, `ui-filter-chips`, `ui-segmented`, `ui-section-header`, `ui-kbd`, `ui-skeleton`, `ui-empty-state`, `ui-notice`, `ui-live-region`, `ui-relative-time`, `ui-command-chip`",
+        "line": 53,
+        "status": "done",
+        "round": 9,
+        "builder": "Engineer",
+        "reason": "[P], claim takeable, edges closed",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T26",
+        "claim": "ISC-17",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/shared/ui/overlay/"
+        ],
+        "text": "overlay primitives: `ui-popover` (anchor positioning with the `@supports` fallback), `ui-sheet`, `ui-dialog`, `ui-disclosure` (`grid-template-rows` animation)",
+        "line": 54,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "width 4 reached",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T27",
+        "claim": "ISC-61",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/shared/ui/roving-list.directive.ts"
+        ],
+        "text": "`uiRovingList` directive (arrows, j/k, Home/End, no wrap)",
+        "line": 55,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "width 4 reached",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T28",
+        "claim": "ISC-17",
+        "flags": {
+          "parallel": false,
+          "seam": true
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/e2e/playwright.config.ts"
+        ],
+        "text": "Playwright config: chromium + webkit projects, the pinned Linux container runner behind `test:visual`, `e2e`, `test:browser`; clock pinned, animations disabled, `data-ready` awaited; the `web/e2e/` layout every later spec follows",
+        "line": 56,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "after T24, T25, T26, T27 still open",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T24",
+          "T25",
+          "T26",
+          "T27"
+        ]
+      },
+      {
+        "id": "T29",
+        "claim": "ISC-64",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/shared/ui/focus.browser.spec.ts"
+        ],
+        "text": "browser spec: focus ring on every interactive element, both themes",
+        "line": 57,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T28",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T28"
+        ]
+      },
+      {
+        "id": "T30",
+        "claim": "ISC-65",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/shared/ui/contrast.browser.spec.ts"
+        ],
+        "text": "browser spec: contrast of text and marks, both themes",
+        "line": 58,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T28",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T28"
+        ]
+      },
+      {
+        "id": "T31",
+        "claim": "ISC-66",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/shared/ui/motion.browser.spec.ts"
+        ],
+        "text": "browser spec: no animation or transition runs under reduced motion",
+        "line": 59,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T28",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T28"
+        ]
+      },
+      {
+        "id": "T35",
+        "claim": "ISC-6",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "core",
+        "state": "done",
+        "paths": [
+          "core/fixtures/"
+        ],
+        "text": "synthetic fixture spec trees with fixed dates: `.gates/`, `rounds.jsonl`, `tldr.md`, an archive, every warning class, a three-digit/three-digit master fraction; none copied from a real repository",
+        "line": 63,
+        "status": "done",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T32",
+        "claim": "ISC-6",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "core",
+        "state": "open",
+        "paths": [
+          "FORMAT.md"
+        ],
+        "text": "`FORMAT.md`: the file contract as far as the dashboard reads it",
+        "line": 64,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "width 4 reached",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T33",
+        "claim": "ISC-6",
+        "flags": {
+          "parallel": false,
+          "seam": true
+        },
+        "lane": "core",
+        "state": "open",
+        "paths": [
+          "core/src/"
+        ],
+        "text": "frontmatter and claim parser plus the core module skeleton: exported types and function signatures (stubs) for status, gates, stage, takeable, diagrams, tldr, markdown, archive and dashboard, so the fill-ins can be built in parallel",
+        "line": 65,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "after T32 still open",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T32"
+        ]
+      },
+      {
+        "id": "T34",
+        "claim": "ISC-6",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "core",
+        "state": "open",
+        "paths": [
+          "core/src/status.ts"
+        ],
+        "text": "status: claim partition and drift classes, ported from the old status tool",
+        "line": 66,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T33",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T33"
+        ]
+      },
+      {
+        "id": "T36",
+        "claim": "ISC-15",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "core",
+        "state": "open",
+        "paths": [
+          "core/src/gates.ts"
+        ],
+        "text": "review and code-review marks with in-memory worktree hashing, no git object writes; `generate.ts` in the fixtures switches to this import",
+        "line": 67,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T33",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T33"
+        ]
+      },
+      {
+        "id": "T37",
+        "claim": "ISC-14",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "core",
+        "state": "open",
+        "paths": [
+          "core/src/stage.ts"
+        ],
+        "text": "stage derivation and next-command rules, ported from the old dashboard tool",
+        "line": 68,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T33",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T33"
+        ]
+      },
+      {
+        "id": "T38",
+        "claim": "ISC-16",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "core",
+        "state": "open",
+        "paths": [
+          "core/src/{takeable,diagrams,tldr,markdown,archive}.ts"
+        ],
+        "text": "takeable set, diagram verdict, TL;DR staleness, markdown renderer, archive listing",
+        "line": 69,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T33",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T33"
+        ]
+      },
+      {
+        "id": "T39",
+        "claim": "ISC-16",
+        "flags": {
+          "parallel": false,
+          "seam": true
+        },
+        "lane": "core",
+        "state": "open",
+        "paths": [
+          "core/src/dashboard.ts"
+        ],
+        "text": "dashboard model assembly: the JSON the server returns and the web app renders",
+        "line": 70,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "after T34, T36, T37, T38 still open",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T34",
+          "T36",
+          "T37",
+          "T38"
+        ]
+      },
+      {
+        "id": "T40",
+        "claim": "ISC-6",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "core",
+        "state": "open",
+        "paths": [
+          "core/tests/fixtures.test.ts"
+        ],
+        "text": "golden snapshot test writing and checking `core/fixtures/<name>.golden.json`",
+        "line": 71,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T39",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T39"
+        ]
+      },
+      {
+        "id": "T41",
+        "claim": "ISC-14",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "core",
+        "state": "open",
+        "paths": [
+          "core/tests/stage-parity.test.ts"
+        ],
+        "text": "parity test over `SPECTANT_PARITY_TREES`, failing on zero comparisons",
+        "line": 72,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T39",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T39"
+        ]
+      },
+      {
+        "id": "T45",
+        "claim": "ISC-5",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "scripts/check-single-core.ts"
+        ],
+        "text": "`check:single-core`: fails on a frontmatter, claim or stage parser outside `core/`",
+        "line": 73,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T46",
+        "claim": "ISC-21",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "done",
+        "paths": [
+          "server/src/paths.ts"
+        ],
+        "text": "data directory resolution with its tests",
+        "line": 74,
+        "status": "closed",
+        "round": 9,
+        "builder": null,
+        "reason": null,
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T42",
+        "claim": "ISC-13",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "open",
+        "paths": [
+          "server/src/registry.ts"
+        ],
+        "text": "SQLite workspace registry with slug deduplication",
+        "line": 75,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "width 4 reached",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T43",
+        "claim": "ISC-18.3",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "open",
+        "paths": [
+          "server/src/settings.ts"
+        ],
+        "text": "settings table and the `/api/settings` GET + PUT handlers, with `tests/settings.test.ts` across a port change",
+        "line": 76,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "width 4 reached",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T44",
+        "claim": "ISC-13",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "open",
+        "paths": [
+          "server/src/cli.ts"
+        ],
+        "text": "CLI `add`, `list`, `remove` with `tests/workspaces.test.ts`",
+        "line": 77,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "after T42 still open",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T42"
+        ]
+      },
+      {
+        "id": "T47",
+        "claim": "ISC-16",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "open",
+        "paths": [
+          "server/src/api.ts"
+        ],
+        "text": "`/api/workspaces` and `/api/workspaces/:slug/dashboard` with ETag, plus the two-workspace `tests/dashboard.test.ts`",
+        "line": 78,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T39",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T39"
+        ]
+      },
+      {
+        "id": "T48",
+        "claim": "ISC-16",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "open",
+        "paths": [
+          "server/src/services.ts"
+        ],
+        "text": "local listeners for the live indicator, empty when `lsof` is missing",
+        "line": 79,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "width 4 reached",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T49",
+        "claim": "ISC-1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "open",
+        "paths": [
+          "tests/server.test.ts"
+        ],
+        "text": "loopback-only bind test",
+        "line": 80,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "width 4 reached",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T50",
+        "claim": "ISC-20",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "open",
+        "paths": [
+          "server/src/cli.ts"
+        ],
+        "text": "port 7717 with fallback, URL printed, browser opened unless `--no-browser`, plus the start-up cases in `tests/cli.test.ts`",
+        "line": 81,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "width 4 reached",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T51",
+        "claim": "ISC-7",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "open",
+        "paths": [
+          "tests/rebuild.test.ts"
+        ],
+        "text": "rebuild test: delete the data directory, re-add, view equal",
+        "line": 82,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T39",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T39"
+        ]
+      },
+      {
+        "id": "T52",
+        "claim": "ISC-15",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "open",
+        "paths": [
+          "tests/readonly.test.ts"
+        ],
+        "text": "read-only test: recursive hash of the fixture repo incl. `.git/` before and after add + browse; `test:readonly`",
+        "line": 83,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T39",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T39"
+        ]
+      },
+      {
+        "id": "T53",
+        "claim": "ISC-2",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "open",
+        "paths": [
+          "tests/offline-server.ts"
+        ],
+        "text": "server-side offline run: the binary in `docker run --network none` through a scripted session; `test:offline:server`",
+        "line": 84,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "width 4 reached",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T11"
+        ]
+      },
+      {
+        "id": "T54",
+        "claim": "ISC-3",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "server",
+        "state": "open",
+        "paths": [
+          "scripts/check-leak.ts"
+        ],
+        "text": "`check:leak`: generic classes plus an optional private word list outside the repo",
+        "line": 85,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "width 4 reached",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T55",
+        "claim": "ISC-4",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "repo",
+        "state": "open",
+        "paths": [
+          "LICENSE"
+        ],
+        "text": "Apache-2.0 `LICENSE` and `THIRD_PARTY_NOTICES.md`",
+        "line": 86,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "width 4 reached",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T56",
+        "claim": "ISC-5.2",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "repo",
+        "state": "open",
+        "paths": [
+          ".github/workflows/ci.yml"
+        ],
+        "text": "`.github/workflows/ci.yml` running `bun run verify` in the pinned Playwright container with Node ≥ 22.22.3",
+        "line": 87,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "claim already closed — task should be [x]; strike or check it",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T57",
+        "claim": "ISC-17",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/e2e/stub-api.ts"
+        ],
+        "text": "stub API serving the fixtures' golden JSON for e2e and visual runs",
+        "line": 91,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T28, T39",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T28",
+          "T39"
+        ]
+      },
+      {
+        "id": "T58",
+        "claim": "ISC-18.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/core/theme.service.ts"
+        ],
+        "text": "pre-paint `data-theme` script, theme service (system / light / dark, live `matchMedia`), settings service",
+        "line": 92,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "width 4 reached",
+        "note": null,
+        "pathNote": null,
+        "edges": []
+      },
+      {
+        "id": "T59",
+        "claim": "ISC-16",
+        "flags": {
+          "parallel": false,
+          "seam": true
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/layout/shell/"
+        ],
+        "text": "shell with container tiers, routes `/`, `/w/:ws`, `/w/:ws/s/:id`, the redirect, query-state filters, the API client with ETag",
+        "line": 93,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T39",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T24",
+          "T25",
+          "T26",
+          "T27",
+          "T39",
+          "T58"
+        ]
+      },
+      {
+        "id": "T60",
+        "claim": "ISC-16",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/layout/header/"
+        ],
+        "text": "header: eyebrow + title, `ui-badge-switcher` (two levels), palette trigger, `ui-live-indicator` (status, refresh, interval, services), gear with the settings popover, `?`",
+        "line": 94,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T61",
+        "claim": "ISC-17",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/features/dashboard/kpi-band/"
+        ],
+        "text": "`kpi-band` in its three container forms, tiles as links",
+        "line": 95,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T62",
+        "claim": "ISC-17",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/features/dashboard/brief/"
+        ],
+        "text": "Brief disclosure (TL;DR markdown, stale chip, command chip)",
+        "line": 96,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T63",
+        "claim": "ISC-61",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/features/dashboard/spec-table/"
+        ],
+        "text": "Specs panel: toolbar (phase / type filters, sort, phase strip), `spec-row` in normal, compact and dense forms, archive fold, roving list, plus e2e `keyboard.spec.ts` \"move\"",
+        "line": 97,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T64",
+        "claim": "ISC-17",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/features/dashboard/next-up-list/"
+        ],
+        "text": "`next-up-list`, `warnings-panel`, `context-rail` (rail at wide, cards below wide)",
+        "line": 98,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T65",
+        "claim": "ISC-16",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/features/overview/"
+        ],
+        "text": "overview `/`: `workspace-column` with `kpi-strip`, dense list, auto-fit grid capped at three, empty and unreadable states",
+        "line": 99,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T66",
+        "claim": "ISC-60",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/layout/command-palette/"
+        ],
+        "text": "command palette: dialog, combobox, groups, ranking, actions; ⌘K / Ctrl+K / `/`, plus e2e `palette.spec.ts` \"open\"",
+        "line": 100,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T67",
+        "claim": "ISC-61.2",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/layout/shortcut-sheet/"
+        ],
+        "text": "shortcut sheet and the keyboard service (`c`, `r`, `g` sequences, `1`–`3`, single-key switch), plus e2e `keyboard.spec.ts` \"help\"",
+        "line": 101,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T68",
+        "claim": "ISC-62",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/core/refresh.service.ts"
+        ],
+        "text": "refresh service: ETag polling, refresh on visibility, in-place diff, changed-value tint, changed-row dot, \"n new\" pill, one polite announcement, plus e2e `refresh.spec.ts` \"in-place\"",
+        "line": 102,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T69",
+        "claim": "ISC-61.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/features/dashboard/spec-inspector/"
+        ],
+        "text": "spec open: `spec-inspector` in the rail (wide), `ui-sheet` side (medium) and full-screen (compact), Esc returns focus, `[` `]`, plus e2e `keyboard.spec.ts` \"enter\"",
+        "line": 103,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "claim blocked by ISC-61",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T70",
+        "claim": "ISC-60.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/layout/command-palette/filter.ts"
+        ],
+        "text": "palette filtering plus e2e `palette.spec.ts` \"filter\"",
+        "line": 104,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "claim blocked by ISC-60",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T71",
+        "claim": "ISC-60.2",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/src/app/layout/command-palette/navigate.ts"
+        ],
+        "text": "palette Enter navigation plus e2e `palette.spec.ts` \"enter\"",
+        "line": 105,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "claim blocked by ISC-60",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T72",
+        "claim": "ISC-62.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/e2e/refresh.spec.ts"
+        ],
+        "text": "e2e `refresh.spec.ts` \"cls\": layout shift 0 during a refresh",
+        "line": 106,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "claim blocked by ISC-62",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T73",
+        "claim": "ISC-63",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/e2e/narrow.spec.ts"
+        ],
+        "text": "narrow container behaviour of the dashboard at 600 px plus e2e `narrow.spec.ts` \"dashboard\"",
+        "line": 107,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T74",
+        "claim": "ISC-63.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/e2e/narrow.spec.ts"
+        ],
+        "text": "e2e `narrow.spec.ts` \"column\": workspace column at 600 px",
+        "line": 108,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T75",
+        "claim": "ISC-18.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/e2e/theme.spec.ts"
+        ],
+        "text": "e2e `theme.spec.ts` \"system\": follows `emulateMedia` live",
+        "line": 109,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T76",
+        "claim": "ISC-18.3",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/e2e/theme.spec.ts"
+        ],
+        "text": "e2e `theme.spec.ts` \"persist\": chosen mode survives reload on another port",
+        "line": 110,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T77",
+        "claim": "ISC-2",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/e2e/offline.spec.ts"
+        ],
+        "text": "e2e `offline.spec.ts`: `route('**')` fails every non-loopback host across every route in both themes",
+        "line": 111,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T78",
+        "claim": "ISC-19.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/e2e/smoke.spec.ts"
+        ],
+        "text": "e2e `smoke.spec.ts` on the webkit project: `/` and `/w/:ws`, zero console errors",
+        "line": 112,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T79",
+        "claim": "ISC-17",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/e2e/visual.spec.ts"
+        ],
+        "text": "visual baseline: dashboard, light, three widths, committed under `web/e2e/__screenshots__/`",
+        "line": 113,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T80",
+        "claim": "ISC-17.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/e2e/visual.spec.ts"
+        ],
+        "text": "visual baseline: dashboard, dark",
+        "line": 114,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T81",
+        "claim": "ISC-16.1",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/e2e/visual.spec.ts"
+        ],
+        "text": "visual baseline: overview, light, three states",
+        "line": 115,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T82",
+        "claim": "ISC-16.2",
+        "flags": {
+          "parallel": true,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "open",
+        "paths": [
+          "web/e2e/visual.spec.ts"
+        ],
+        "text": "visual baseline: overview, dark",
+        "line": 116,
+        "status": "held",
+        "round": 9,
+        "builder": null,
+        "reason": "behind open seam T59",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T59"
+        ]
+      },
+      {
+        "id": "T83",
+        "claim": "ISC-19",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "operator",
+        "state": "open",
+        "paths": [
+          "tests/visual/cmux-check.md"
+        ],
+        "text": "cmux web view check with Interceptor, WebKit version recorded",
+        "line": 117,
+        "status": "open",
+        "round": 9,
+        "builder": null,
+        "reason": "operator lane — the principal's own action, never auto-dispatched",
+        "note": null,
+        "pathNote": null,
+        "edges": [
+          "T11",
+          "T78"
+        ]
+      }
+    ],
+    "probeMapping": [
+      {
+        "tasks": [
+          "T1",
+          "T6",
+          "T7",
+          "T9",
+          "T10",
+          "T11"
+        ],
+        "claim": "ISC-8",
+        "probe": "`bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4`",
+        "line": 123
+      },
+      {
+        "tasks": [
+          "T2",
+          "T3",
+          "T4",
+          "T5"
+        ],
+        "claim": "ISC-5.1",
+        "probe": "`test -f CLAUDE.md -a -f core/CLAUDE.md -a -f server/CLAUDE.md -a -f web/CLAUDE.md`",
+        "line": 124
+      },
+      {
+        "tasks": [
+          "T8",
+          "T56"
+        ],
+        "claim": "ISC-5.2",
+        "probe": "`bun run check:static`",
+        "line": 125
+      },
+      {
+        "tasks": [
+          "T12"
+        ],
+        "claim": "ISC-8.1",
+        "probe": "`bun run test:binary`",
+        "line": 126
+      },
+      {
+        "tasks": [
+          "T13"
+        ],
+        "claim": "ISC-9",
+        "probe": "`bun run check:version`",
+        "line": 127
+      },
+      {
+        "tasks": [
+          "T14"
+        ],
+        "claim": "ISC-10",
+        "probe": "`bun run test:install:linux`",
+        "line": 128
+      },
+      {
+        "tasks": [
+          "T15"
+        ],
+        "claim": "ISC-12",
+        "probe": "`bun run test:install:linux -- INSTALL_DIR=/opt/x/bin`",
+        "line": 129
+      },
+      {
+        "tasks": [
+          "T16"
+        ],
+        "claim": "ISC-11",
+        "probe": "transcript with a throwaway user account (manual)",
+        "line": 130
+      },
+      {
+        "tasks": [
+          "T17"
+        ],
+        "claim": "ISC-18",
+        "probe": "`bun test web/tests/theme-colors.test.ts`",
+        "line": 131
+      },
+      {
+        "tasks": [
+          "T18",
+          "T30"
+        ],
+        "claim": "ISC-65",
+        "probe": "`bun run test:browser -- contrast`",
+        "line": 132
+      },
+      {
+        "tasks": [
+          "T19"
+        ],
+        "claim": "ISC-67",
+        "probe": "`bun test web/tests/fonts.test.ts -t \"local\"`",
+        "line": 133
+      },
+      {
+        "tasks": [
+          "T20"
+        ],
+        "claim": "ISC-67.1",
+        "probe": "`bun test web/tests/fonts.test.ts -t \"external\"`",
+        "line": 134
+      },
+      {
+        "tasks": [
+          "T21",
+          "T31"
+        ],
+        "claim": "ISC-66",
+        "probe": "`bun run test:browser -- motion`",
+        "line": 135
+      },
+      {
+        "tasks": [
+          "T22"
+        ],
+        "claim": "ISC-18.2",
+        "probe": "`bun test web/tests/icons.test.ts`",
+        "line": 136
+      },
+      {
+        "tasks": [
+          "T23"
+        ],
+        "claim": "ISC-22",
+        "probe": "`bun test web/tests/i18n-parity.test.ts`",
+        "line": 137
+      },
+      {
+        "tasks": [
+          "T24",
+          "T29"
+        ],
+        "claim": "ISC-64",
+        "probe": "`bun run test:browser -- focus`",
+        "line": 138
+      },
+      {
+        "tasks": [
+          "T25",
+          "T26",
+          "T28",
+          "T57",
+          "T61",
+          "T62",
+          "T64",
+          "T79"
+        ],
+        "claim": "ISC-17",
+        "probe": "`bun run test:visual -- dashboard`",
+        "line": 139
+      },
+      {
+        "tasks": [
+          "T80"
+        ],
+        "claim": "ISC-17.1",
+        "probe": "`bun run test:visual -- dashboard --theme dark`",
+        "line": 140
+      },
+      {
+        "tasks": [
+          "T27",
+          "T63"
+        ],
+        "claim": "ISC-61",
+        "probe": "`bun run e2e -- keyboard -g move`",
+        "line": 141
+      },
+      {
+        "tasks": [
+          "T32",
+          "T33",
+          "T34",
+          "T35",
+          "T40"
+        ],
+        "claim": "ISC-6",
+        "probe": "`bun test core/`",
+        "line": 142
+      },
+      {
+        "tasks": [
+          "T36",
+          "T52"
+        ],
+        "claim": "ISC-15",
+        "probe": "`bun run test:readonly`",
+        "line": 143
+      },
+      {
+        "tasks": [
+          "T37",
+          "T41"
+        ],
+        "claim": "ISC-14",
+        "probe": "`bun test core/tests/stage-parity.test.ts`",
+        "line": 144
+      },
+      {
+        "tasks": [
+          "T38",
+          "T39",
+          "T47",
+          "T48",
+          "T59",
+          "T60",
+          "T65"
+        ],
+        "claim": "ISC-16",
+        "probe": "`bun test tests/dashboard.test.ts -t \"multi-workspace\"`",
+        "line": 145
+      },
+      {
+        "tasks": [
+          "T42",
+          "T44"
+        ],
+        "claim": "ISC-13",
+        "probe": "`bun test tests/workspaces.test.ts`",
+        "line": 146
+      },
+      {
+        "tasks": [
+          "T43",
+          "T76"
+        ],
+        "claim": "ISC-18.3",
+        "probe": "`bun run e2e -- theme -g persist`",
+        "line": 147
+      },
+      {
+        "tasks": [
+          "T45"
+        ],
+        "claim": "ISC-5",
+        "probe": "`bun run check:single-core`",
+        "line": 148
+      },
+      {
+        "tasks": [
+          "T46"
+        ],
+        "claim": "ISC-21",
+        "probe": "`bun test tests/cli.test.ts -t \"data dir\"`",
+        "line": 149
+      },
+      {
+        "tasks": [
+          "T49"
+        ],
+        "claim": "ISC-1",
+        "probe": "`bun test tests/server.test.ts -t \"loopback\"`",
+        "line": 150
+      },
+      {
+        "tasks": [
+          "T50"
+        ],
+        "claim": "ISC-20",
+        "probe": "`bun test tests/cli.test.ts -t \"start\"`",
+        "line": 151
+      },
+      {
+        "tasks": [
+          "T51"
+        ],
+        "claim": "ISC-7",
+        "probe": "`bun test tests/rebuild.test.ts`",
+        "line": 152
+      },
+      {
+        "tasks": [
+          "T53",
+          "T77"
+        ],
+        "claim": "ISC-2",
+        "probe": "`bun run e2e -- offline` plus `bun run test:offline:server`",
+        "line": 153
+      },
+      {
+        "tasks": [
+          "T54"
+        ],
+        "claim": "ISC-3",
+        "probe": "`bun run check:leak`",
+        "line": 154
+      },
+      {
+        "tasks": [
+          "T55"
+        ],
+        "claim": "ISC-4",
+        "probe": "`test -f LICENSE && rg -q 'Apache License' LICENSE && test -f THIRD_PARTY_NOTICES.md`",
+        "line": 155
+      },
+      {
+        "tasks": [
+          "T58",
+          "T75"
+        ],
+        "claim": "ISC-18.1",
+        "probe": "`bun run e2e -- theme -g system`",
+        "line": 156
+      },
+      {
+        "tasks": [
+          "T66"
+        ],
+        "claim": "ISC-60",
+        "probe": "`bun run e2e -- palette -g open`",
+        "line": 157
+      },
+      {
+        "tasks": [
+          "T70"
+        ],
+        "claim": "ISC-60.1",
+        "probe": "`bun run e2e -- palette -g filter`",
+        "line": 158
+      },
+      {
+        "tasks": [
+          "T71"
+        ],
+        "claim": "ISC-60.2",
+        "probe": "`bun run e2e -- palette -g enter`",
+        "line": 159
+      },
+      {
+        "tasks": [
+          "T67"
+        ],
+        "claim": "ISC-61.2",
+        "probe": "`bun run e2e -- keyboard -g help`",
+        "line": 160
+      },
+      {
+        "tasks": [
+          "T69"
+        ],
+        "claim": "ISC-61.1",
+        "probe": "`bun run e2e -- keyboard -g enter`",
+        "line": 161
+      },
+      {
+        "tasks": [
+          "T68"
+        ],
+        "claim": "ISC-62",
+        "probe": "`bun run e2e -- refresh -g in-place`",
+        "line": 162
+      },
+      {
+        "tasks": [
+          "T72"
+        ],
+        "claim": "ISC-62.1",
+        "probe": "`bun run e2e -- refresh -g cls`",
+        "line": 163
+      },
+      {
+        "tasks": [
+          "T73"
+        ],
+        "claim": "ISC-63",
+        "probe": "`bun run e2e -- narrow -g dashboard`",
+        "line": 164
+      },
+      {
+        "tasks": [
+          "T74"
+        ],
+        "claim": "ISC-63.1",
+        "probe": "`bun run e2e -- narrow -g column`",
+        "line": 165
+      },
+      {
+        "tasks": [
+          "T78"
+        ],
+        "claim": "ISC-19.1",
+        "probe": "`bun run e2e -- --project webkit smoke`",
+        "line": 166
+      },
+      {
+        "tasks": [
+          "T81"
+        ],
+        "claim": "ISC-16.1",
+        "probe": "`bun run test:visual -- overview`",
+        "line": 167
+      },
+      {
+        "tasks": [
+          "T82"
+        ],
+        "claim": "ISC-16.2",
+        "probe": "`bun run test:visual -- overview --theme dark`",
+        "line": 168
+      },
+      {
+        "tasks": [
+          "T83"
+        ],
+        "claim": "ISC-19",
+        "probe": "Interceptor / cmux screenshot (manual)",
+        "line": 169
+      }
+    ],
+    "counts": {
+      "rows": 83,
+      "boxes": {
+        "landed": 27,
+        "total": 83
+      },
+      "byLane": [
+        {
+          "name": "core",
+          "count": 11
+        },
+        {
+          "name": "server",
+          "count": 22
+        },
+        {
+          "name": "web",
+          "count": 43
+        },
+        {
+          "name": "repo",
+          "count": 5
+        },
+        {
+          "name": "operator",
+          "count": 2
+        }
+      ],
+      "byStatus": [
+        {
+          "name": "open",
+          "count": 2
+        },
+        {
+          "name": "held",
+          "count": 54
+        },
+        {
+          "name": "done",
+          "count": 5
+        },
+        {
+          "name": "closed",
+          "count": 22
+        }
+      ]
+    },
+    "diagnostics": []
+  }
+}

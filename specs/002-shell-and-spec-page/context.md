@@ -164,3 +164,30 @@ FORMAT.md gaps T17 listed (task state `skipped`, operator open/done rule, note p
 not read by frames); state-dir discovery for locks (`SPECTANT_LIFEOS_STATE_DIR` proposed); T47's loader must pass
 `locks` (also into T21's live frame and the ISC-86 write guard). Round 7 plan: T22 claim view, T23 task grammar, T24
 evidence, T25 markdown docs, T32 fonts; T16 still held.
+
+Round 7 landed (2026-09-29, commits 9d0a125 + next): T22 (`claim-view.ts`: states from `partitionClaims`, kinds,
+edges/blockedBy, probe row, verification line, lock on taken, features with `Why:`, fog list, counts; row-equality with
+the dashboard for every fixture spec; golden family `claim-view`), T23 (`tasks.ts`: the full task grammar — box, id,
+claim, `[P]`/`[seam]`, lane validated against the constitution's `## Lanes`, text up to the last ` · ` outside code
+spans, paths and `(…)` path notes, `(after: …)` with ranges, struck bullets, Probe Mapping with four warning kinds,
+status from the newest frames card; `spec.ts` now uses it instead of its interim reader; parity with the old SpecRun
+reader except one code-span path the old reader split; golden family `tasks`), T24 (`evidence.ts`: listing of
+`artifacts/` and `.evidence/` with media types, claim grouping by id-in-path then verification line, symlinks flagged,
+`resolveEvidencePath` with six confinement rules — the core half of ISC-83's probe; harbor 002 gained generated
+artifacts and evidence files plus five verification notes, so FORMAT.md now quotes real examples for 12 of 13 kinds),
+T25 (`markdown.ts` grew a document mode — mermaid and image figures, hard breaks, open marks, checkboxes, two Brief
+bugs fixed; `markdown-docs.ts` = frontmatter, TOC, sections, `docsFor(type)`; browser-safe, guarded by a static-import
+test; golden family `docs`), T32+T33 (Manrope, Sora, JetBrains Mono as local latin woff2 from the Google Fonts CSS
+endpoint, OFL texts from the pinned upstream commits, Inter removed, fonts guard rewritten; Sora on h1 only per
+design.md § tokens). Parent work: the offline container check expected the pre-T50 start-up line (CI's first run was
+green on `verify`, red on `offline` for that reason) — fixed plus a permission reset inside the container; `check-leak`
+gained the derived-golden rule (a hit in `core/fixtures/<tree>.*.golden.json` is allowed when the same text sits on an
+allow-marked line of that tree); three hand merges in `golden.test.ts`; claim-view pin and golden followed T24's
+verification notes. Whole tree 1044 pass, static green. Marks for the review: glyph state `open` never emitted (the
+row counts takeable regardless of stage — decide whether the stage table gates takeable before the reviewed mark);
+design.md contradicts itself on Sora for section titles; `spec.ts` still has its own `constitutionLanes()` (use
+`lanesOf`); the claim-ID regex is copied into `tasks.ts` (export it from `claims.ts`); fog grammar and first-wins rules
+for FORMAT.md § spec; evidence route contract (403 outside/symlink-escape, 404 not-found, nosniff, html as attachment);
+frozen spectant-001 has 83 tasks (the live 001 has 81 + 2 struck) and the live-file test needs updating on a re-cut.
+Round 8 plan: T16 (held, vocabulary) and T34 tokens; parent adds T21 live frame (non-[P], different lane, no file
+overlap with T34).
