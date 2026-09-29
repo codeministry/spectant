@@ -1,26 +1,35 @@
 /**
  * The `spectant` command line (T11, ISC-8): `serve` (the default), the workspace commands `add`, `list` and `remove`
- * (T44, ISC-13) and `--version`. T50 adds the port fall-forward and opening the browser.
+ * (T44, ISC-13) and `--version`.
  *
  * `--version` (also `-v`, `-V`; T13, ISC-9) prints exactly `spectant <VERSION>` and a newline on stdout and nothing
  * else, so `scripts/check-version.ts` can compare the binary byte for byte with `package.json`. It short-circuits
- * the rest of the command line. `--no-browser` is accepted and ignored for now; opening the browser arrives with T50.
+ * the rest of the command line.
+ *
+ * `serve` (T50, ISC-20) listens on `DEFAULT_PORT` (7717) or `--port N`, falling forward to the next free port when it
+ * is taken (`serveWithFallback`), unless `--strict-port` pins it. Once listening it prints exactly one line on stdout,
+ * `spectant · http://127.0.0.1:<port>`, and opens that URL in the browser unless `--no-browser` is given. It serves
+ * the settings API (`/api/settings`, T43) from `spectant.db` in the data directory.
  *
  * The workspace commands work on the registry in the data directory from `paths.ts` (`$XDG_DATA_HOME/spectant` or
  * `~/.spectant`). They print a workspace by its slug and its path tail only, never its absolute path (ISC-3), and they
  * never write into the repository itself (ISC-15). A relative path resolves against the working directory.
  *
  * `run` returns the process exit code: 0 on success, 1 when serving or a workspace command fails, 2 on a usage error.
- * For `serve` it resolves only once the server has stopped on SIGINT or SIGTERM. The manifest is passed in, because
+ * For `serve` it resolves only once the server has stopped on SIGINT, SIGTERM or `options.signal`. The manifest is passed in, because
  * only `main.ts` may import the generated `server/embedded.gen.ts`. `options` lets tests pin the environment (for the
- * data directory) and the working directory; both default to the process's own.
+ * data directory), the working directory and the browser runner, and stop `serve` with a signal; all default to the
+ * process's own.
  */
 import { realpathSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import type { EmbeddedManifest } from "./assets.contract.ts";
-import { DEFAULT_PORT, LOOPBACK_HOST, serve } from "./http.ts";
+import { openDatabase } from "./db.ts";
+import { DEFAULT_PORT, LOOPBACK_HOST, PORT_ATTEMPTS, type RunningServer, serveWithFallback } from "./http.ts";
+import { type CommandRunner, openBrowser, spawnRunner } from "./open-browser.ts";
 import { dataDir } from "./paths.ts";
 import { openRegistry, type Registry, RegistryError, type Workspace } from "./registry.ts";
+import { openSettings, settingsApi } from "./settings.ts";
 import { VERSION } from "./version.ts";
 
 const USAGE = `Usage: spectant [command] [options]
@@ -33,8 +42,10 @@ Commands:
                    unregister a repository (its files are never touched)
 
 Options:
-  --port <n>       port to listen on (default ${DEFAULT_PORT}; 0 picks a free port)
-  --no-browser     do not open the browser (accepted; opening the browser arrives with T50)
+  --port <n>       port to listen on (default ${DEFAULT_PORT}; 0 picks a free port); a busy port falls
+                   forward to the next free one, up to ${PORT_ATTEMPTS} ports in all
+  --strict-port    fail instead of falling forward when the port is busy
+  --no-browser     do not open the browser
   -v, -V, --version
                    print the version and exit
   -h, --help       print this help and exit`;
@@ -44,7 +55,7 @@ class UsageError extends Error {}
 type Command =
   | { kind: "version" }
   | { kind: "help" }
-  | { kind: "serve"; port: number }
+  | { kind: "serve"; port: number; strictPort: boolean; openBrowser: boolean }
   | { kind: "add"; path: string }
   | { kind: "list" }
   | { kind: "remove"; ref: string };
@@ -54,6 +65,10 @@ export type RunOptions = {
   env?: Record<string, string | undefined>;
   /** The directory a relative `add` or `remove` path resolves against. Defaults to `process.cwd()`. */
   cwd?: string;
+  /** Runs the browser opener (`open` / `xdg-open`). Defaults to spawning it; tests record the call instead. */
+  browserRunner?: CommandRunner;
+  /** Stops `serve` like SIGINT does when aborted, so tests and embedders can end the run. */
+  signal?: AbortSignal;
 };
 
 function parsePort(value: string | undefined): number {
@@ -65,20 +80,24 @@ function parsePort(value: string | undefined): number {
 
 function parse(argv: string[]): Command {
   let port: number | undefined;
+  let strictPort = false;
+  let browser = true;
   const positional: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] ?? "";
     if (arg === "--version" || arg === "-v" || arg === "-V") return { kind: "version" };
     if (arg === "--help" || arg === "-h") return { kind: "help" };
-    if (arg === "--no-browser") continue; // a no-op until T50 opens the browser
-    if (arg === "--port") port = parsePort(argv[++i]);
+    if (arg === "--no-browser") browser = false;
+    else if (arg === "--strict-port") strictPort = true;
+    else if (arg === "--port") port = parsePort(argv[++i]);
     else if (arg.startsWith("--port=")) port = parsePort(arg.slice("--port=".length));
     else if (arg.startsWith("-")) throw new UsageError(`unknown option ${arg}`);
     else positional.push(arg);
   }
   const [command, ...rest] = positional;
-  if (command !== undefined && command !== "serve" && port !== undefined) {
-    throw new UsageError(`--port only applies to serve, not to ${command}`);
+  if (command !== undefined && command !== "serve") {
+    if (port !== undefined) throw new UsageError(`--port only applies to serve, not to ${command}`);
+    if (strictPort) throw new UsageError(`--strict-port only applies to serve, not to ${command}`);
   }
   const arity = (count: number, what: string): string[] => {
     if (rest.length < count) throw new UsageError(`${command ?? "serve"} needs ${what}`);
@@ -89,7 +108,7 @@ function parse(argv: string[]): Command {
     case undefined:
     case "serve":
       arity(0, "");
-      return { kind: "serve", port: port ?? DEFAULT_PORT };
+      return { kind: "serve", port: port ?? DEFAULT_PORT, strictPort, openBrowser: browser };
     case "add":
       return { kind: "add", path: arity(1, "a path")[0] ?? "" };
     case "list":
@@ -102,26 +121,48 @@ function parse(argv: string[]): Command {
   }
 }
 
-/** Serves until SIGINT or SIGTERM, then stops the server and resolves 0. A bind failure resolves 1 at once. */
-function serveUntilSignal(manifest: EmbeddedManifest, port: number): Promise<number> {
-  let server: ReturnType<typeof serve>;
+function reason(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Serves until SIGINT, SIGTERM or `options.signal`, then stops the server, closes the database and resolves 0. A
+ * database or bind failure resolves 1 at once, with one line on stderr.
+ */
+function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind: "serve" }, options: RunOptions): Promise<number> {
+  let db: ReturnType<typeof openDatabase>;
   try {
-    server = serve({ manifest, port });
+    db = openDatabase(dataDir(options.env ?? process.env));
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    console.error(`spectant: cannot listen on ${LOOPBACK_HOST}:${port}: ${reason}`);
+    console.error(`spectant: cannot open the data directory: ${reason(error)}`);
     return Promise.resolve(1);
   }
-  console.log(`spectant listening on http://${LOOPBACK_HOST}:${server.port}`);
+  let server: RunningServer;
+  try {
+    const api = settingsApi(openSettings(db));
+    server = serveWithFallback({ manifest, port: command.port, strict: command.strictPort, api });
+  } catch (error) {
+    db.close();
+    const tried = command.strictPort || command.port === 0 ? "" : ` or the ${PORT_ATTEMPTS - 1} ports above it`;
+    console.error(`spectant: cannot listen on ${LOOPBACK_HOST}:${command.port}${tried}: ${reason(error)}`);
+    return Promise.resolve(1);
+  }
+  const url = `http://${LOOPBACK_HOST}:${server.port}`;
+  console.log(`spectant · ${url}`);
+  if (command.openBrowser) void openBrowser(url, { platform: process.platform, run: options.browserRunner ?? spawnRunner });
   return new Promise((resolve) => {
     const stop = () => {
       process.off("SIGINT", stop);
       process.off("SIGTERM", stop);
+      options.signal?.removeEventListener("abort", stop);
       server.stop();
+      db.close();
       resolve(0);
     };
     process.on("SIGINT", stop);
     process.on("SIGTERM", stop);
+    if (options.signal?.aborted) stop();
+    else options.signal?.addEventListener("abort", stop, { once: true });
   });
 }
 
@@ -210,7 +251,7 @@ export async function run(argv: string[], manifest: EmbeddedManifest, options: R
       console.log(USAGE);
       return 0;
     case "serve":
-      return serveUntilSignal(manifest, command.port);
+      return serveUntilSignal(manifest, command, options);
     case "add":
     case "list":
     case "remove":

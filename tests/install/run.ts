@@ -240,12 +240,12 @@ fi
 
 # Binary smoke: serve on a free loopback port, fetch the index, one hashed bundle and a deep link.
 log=/tmp/serve.log
-"$expect_dir/spectant" --port 0 >"$log" 2>&1 &
+"$expect_dir/spectant" --port 0 --no-browser >"$log" 2>&1 &
 pid=$!
 port=
 i=0
 while [ "$i" -lt 150 ]; do
-  port=$(sed -n 's|.*listening on http://127\.0\.0\.1:\([0-9][0-9]*\).*|\1|p' "$log" | head -n 1)
+  port=$(sed -n 's|.*spectant · http://127\.0\.0\.1:\([0-9][0-9]*\).*|\1|p' "$log" | head -n 1)
   if [ -n "$port" ] || ! kill -0 "$pid" 2>/dev/null; then break; fi
   sleep 0.2
   i=$((i + 1))
@@ -260,7 +260,7 @@ if [ -n "$port" ]; then
     if [ "$status" = 200 ]; then check "HEAD $p" ok "$status"; else check "HEAD $p" fail "$status"; fi
   done
 else
-  check "serve --port 0" fail "no 'listening on' line: $(tr '\n' ' ' <"$log")"
+  check "serve --port 0" fail "no 'spectant · http://' line: $(tr '\n' ' ' <"$log")"
 fi
 kill "$pid" 2>/dev/null
 wait "$pid" 2>/dev/null

@@ -28,8 +28,11 @@ import {
 /** The only address the server binds (ISC-1). Never `0.0.0.0` or `::`: Spectant is a local single-user tool. */
 export const LOOPBACK_HOST = "127.0.0.1";
 
-/** The default port. Falling forward to the next free port is the CLI's job (T50), not this module's. */
+/** The default port. `serveWithFallback` falls forward from it when it is taken (T50, ISC-20). */
 export const DEFAULT_PORT = 7717;
+
+/** How many ports `serveWithFallback` tries, the requested one included, before it gives up. */
+export const PORT_ATTEMPTS = 20;
 
 /** Answers an `/api/` request, or returns `null` when it does not handle the path. */
 export type ApiHandler = (req: Request, url: URL) => Response | Promise<Response> | null;
@@ -105,7 +108,7 @@ function notFoundText(): Response {
 }
 
 /**
- * Starts the server on `LOOPBACK_HOST`. Throws when the port is taken; the CLI (T50) catches that and falls
+ * Starts the server on `LOOPBACK_HOST`. Throws when the port is taken; `serveWithFallback` catches that and falls
  * forward. Every manifest file is sized once here, so a request never touches anything the manifest did not name.
  */
 export function serve(opts: ServeOptions): RunningServer {
@@ -155,4 +158,31 @@ export function serve(opts: ServeOptions): RunningServer {
     url: `http://${LOOPBACK_HOST}:${port}/`,
     stop: () => void server.stop(true),
   };
+}
+
+export interface FallbackOptions {
+  /** Only the requested port, no fall-forward: a busy port throws at once (`--strict-port`). */
+  strict?: boolean;
+}
+
+function isAddressInUse(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "EADDRINUSE";
+}
+
+/**
+ * `serve` with the fall-forward (T50, ISC-20): when the requested port is taken, it tries the next ports upward on
+ * the same loopback host, `PORT_ATTEMPTS` in all, so a second instance still starts. Port `0` already means "any
+ * free port" and is tried once, and so is any port under `strict`. Only `EADDRINUSE` falls forward; any other bind
+ * error, or the last attempt's, is thrown unchanged.
+ */
+export function serveWithFallback(opts: ServeOptions & FallbackOptions): RunningServer {
+  const first = opts.port ?? DEFAULT_PORT;
+  const last = first === 0 || opts.strict ? first : Math.min(first + PORT_ATTEMPTS - 1, 65535);
+  for (let port = first; ; port++) {
+    try {
+      return serve({ manifest: opts.manifest, api: opts.api, port });
+    } catch (error) {
+      if (port >= last || !isAddressInUse(error)) throw error;
+    }
+  }
 }

@@ -17,7 +17,7 @@ const LOOPBACK = "127.0.0.1";
 const START_TIMEOUT_MS = 20_000;
 const STOP_TIMEOUT_MS = 5_000;
 const FETCH_TIMEOUT_MS = 5_000;
-const LISTENING = /spectant listening on http:\/\/127\.0\.0\.1:(\d+)/;
+const LISTENING = /spectant · http:\/\/127\.0\.0\.1:(\d+)/;
 
 /** `dist/spectant-<os>-<arch>` for this machine, as `scripts/build.ts` names it; `undefined` off the release matrix. */
 function hostBinaryName(): string | undefined {
@@ -74,7 +74,7 @@ describe.skipIf(!ENABLED)("compiled host binary from an empty directory (ISC-8.1
 
     // TODO(T50): `--no-browser` does not exist yet and `cli.ts` rejects it as an unknown option. Once T50 adds it
     // (with the browser open on start), this spawn MUST pass `--no-browser` too, or every run opens a browser tab.
-    const child = Bun.spawn([binary, "--port", "0"], {
+    const child = Bun.spawn([binary, "--port", "0", "--no-browser"], {
       cwd: runDir,
       env: { PATH: process.env.PATH ?? "/usr/bin:/bin", HOME: homeDir, XDG_DATA_HOME: join(homeDir, "data") },
       stdin: "ignore",

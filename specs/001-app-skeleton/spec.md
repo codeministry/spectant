@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F1
 constitution: ../constitution.md
 phase: scoping
-progress: 16/47
+progress: 19/47
 started: 2026-09-28T09:40:00Z
-updated: 2026-09-29T08:31:13Z
+updated: 2026-09-29T08:58:27Z
 context_sufficient: true
 interview_invoked: true
 context_log: context.md
@@ -143,7 +143,7 @@ machine and nothing written into either repository.
 ### F0 · Cross-cutting
 Why: what would sink the project whichever slice slipped — data leaving the machine, a private detail going public, the app and the skill disagreeing about the format, or the database quietly becoming a second truth.
 
-- [ ] ISC-1: Anti: the app's HTTP server listens on any address other than 127.0.0.1 or ::1.
+- [x] ISC-1: Anti: the app's HTTP server listens on any address other than 127.0.0.1 or ::1.
 - [ ] ISC-2: Anti: with no AI feature switched on, starting the app, adding a workspace, browsing every page and performing every write makes an outbound network request.
 - [ ] ISC-3: Anti: a tracked file contains a customer name, an absolute home path or personal data (generic leak classes plus a private word list kept outside the repo).
 - [ ] ISC-4: The repository root holds the Apache-2.0 `LICENSE` and a `THIRD_PARTY_NOTICES.md` naming the bundled assets and the LifeOS (MIT) origin of the ISA format.
@@ -176,7 +176,7 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [x] ISC-18.2: Antecedent: every icon the app renders comes from the old pages' pinned Lucide set.
 - [ ] ISC-19: The dashboard renders and navigates inside the cmux web view.
 - [ ] ISC-19.1: Playwright's WebKit project renders `/` and `/w/:ws` with zero console errors.
-- [ ] ISC-20: `spectant` without arguments listens on 7717 or the next free port, prints the URL, and opens the browser unless `--no-browser` is given.
+- [x] ISC-20: `spectant` without arguments listens on 7717 or the next free port, prints the URL, and opens the browser unless `--no-browser` is given.
 - [x] ISC-21: The data directory is `$XDG_DATA_HOME/spectant` when that variable is set and `~/.spectant/` otherwise.
 - [x] ISC-22: Every UI string key exists in both the English and the German catalogue.
 - [ ] ISC-60: ⌘K / Ctrl+K opens a command palette listing every workspace plus every spec.
@@ -191,7 +191,7 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [ ] ISC-63.1: At the same width a workspace column in the overview has no horizontal overflow.
 - [x] ISC-64: Every interactive element shows the brand focus ring under keyboard focus, in both themes.
 - [ ] ISC-65: Text reaches 4.5:1 and marks (ring track, bars, legend dots) 3:1 against their surface, in both themes.
-- [ ] ISC-66: Anti: under `prefers-reduced-motion: reduce` any animation or transition longer than 0 ms runs.
+- [x] ISC-66: Anti: under `prefers-reduced-motion: reduce` any animation or transition longer than 0 ms runs.
 - [x] ISC-67: Antecedent: the app ships Inter Variable plus JetBrains Mono as local assets.
 - [x] ISC-67.1: Anti: a stylesheet declares a font URL outside the app's own origin.
 
@@ -225,6 +225,12 @@ Why: the first time the author types `spectant` and sees two real repositories o
   needs their pages (ISC-2 covers "every write" once spec 002 adds writes).
 
 ## Verification
+
+- ISC-66: browser — bun run test:browser -- motion → 4 passed (reduce in light and dark: 23 interactions, 0 running animations or transitions; control under no-preference shows 200+ transitions, so the emulation reaches the page; red when the reduced-motion block is disabled); spec 001 round 15
+
+- ISC-20: bun-test — bun test tests/cli.test.ts -t "start" → 5 pass (default 7717 or the next free port, fall-forward on EADDRINUSE, URL line `spectant · http://127.0.0.1:<port>`, browser runner called unless --no-browser, /api/settings served by the CLI-started server), red before T50; spec 001 round 15
+
+- ISC-1: bun-test — bun test tests/server.test.ts -t "loopback" → 4 pass (kernel socket address 127.0.0.1/::1 only, non-loopback connects refused on three interfaces, source guard over http.ts and cli.ts; red under 0.0.0.0 mutations of LOOPBACK_HOST and of Bun.serve hostname); spec 001 round 15
 
 - ISC-13: bun-test — bun test tests/workspaces.test.ts → 7 pass (CLI add/list/remove round-trip through the registry, stdout never carries the absolute path, repo hash unchanged), red before T44 (unknown command), server lane 74 pass; spec 001 round 14
 

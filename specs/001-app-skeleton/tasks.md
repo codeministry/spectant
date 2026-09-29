@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-29T08:31:13Z
+updated: 2026-09-29T08:58:27Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -61,7 +61,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T28 · ISC-17 · [seam] · web — Playwright config: chromium + webkit projects, the pinned Linux container runner behind `test:visual`, `e2e`, `test:browser`; clock pinned, animations disabled, `data-ready` awaited; the `web/e2e/` layout every later spec follows (after: T24, T25, T26, T27) · `web/e2e/playwright.config.ts`
 - [x] T29 · ISC-64 · [P] · web — browser spec: focus ring on every interactive element, both themes (after: T28) · `web/src/app/shared/ui/focus.browser.spec.ts`
 - [ ] T30 · ISC-65 · [P] · web — browser spec: contrast of text and marks, both themes (after: T28) · `web/src/app/shared/ui/contrast.browser.spec.ts`
-- [ ] T31 · ISC-66 · [P] · web — browser spec: no animation or transition runs under reduced motion (after: T28) · `web/src/app/shared/ui/motion.browser.spec.ts`
+- [x] T31 · ISC-66 · [P] · web — browser spec: no animation or transition runs under reduced motion (after: T28) · `web/src/app/shared/ui/motion.browser.spec.ts`
 
 ### ③ Core and API
 
@@ -82,12 +82,12 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T44 · ISC-13 · [P] · server — CLI `add`, `list`, `remove` with `tests/workspaces.test.ts` (after: T42) · `server/src/cli.ts`
 - [ ] T47 · ISC-16 · [P] · server — `/api/workspaces` and `/api/workspaces/:slug/dashboard` with ETag, plus the two-workspace `tests/dashboard.test.ts` (after: T39) · `server/src/api.ts`
 - [x] T48 · ISC-16 · [P] · server — local listeners for the live indicator, empty when `lsof` is missing · `server/src/services.ts`
-- [ ] T49 · ISC-1 · [P] · server — loopback-only bind test · `tests/server.test.ts`
-- [ ] T50 · ISC-20 · [P] · server — port 7717 with fallback, URL printed, browser opened unless `--no-browser`, plus the start-up cases in `tests/cli.test.ts` · `server/src/cli.ts`
+- [x] T49 · ISC-1 · [P] · server — loopback-only bind test · `tests/server.test.ts`
+- [x] T50 · ISC-20 · [P] · server — port 7717 with fallback, URL printed, browser opened unless `--no-browser`, plus the start-up cases in `tests/cli.test.ts` · `server/src/cli.ts`
 - [ ] T51 · ISC-7 · [P] · server — rebuild test: delete the data directory, re-add, view equal (after: T39) · `tests/rebuild.test.ts`
 - [ ] T52 · ISC-15 · [P] · server — read-only test: recursive hash of the fixture repo incl. `.git/` before and after add + browse; `test:readonly` (after: T39) · `tests/readonly.test.ts`
-- [ ] T53 · ISC-2 · [P] · server — server-side offline run: the binary in `docker run --network none` through a scripted session; `test:offline:server` (after: T11) · `tests/offline-server.ts`
-- [ ] T54 · ISC-3 · [P] · server — `check:leak`: generic classes plus an optional private word list outside the repo · `scripts/check-leak.ts`
+- [x] T53 · ISC-2 · [P] · server — server-side offline run: the binary in `docker run --network none` through a scripted session; `test:offline:server` (after: T11) · `tests/offline-server.ts`
+- [x] T54 · ISC-3 · [P] · server — `check:leak`: generic classes plus an optional private word list outside the repo · `scripts/check-leak.ts`
 - [ ] T55 · ISC-4 · [P] · repo — Apache-2.0 `LICENSE` and `THIRD_PARTY_NOTICES.md` · `LICENSE`
 - [ ] T56 · ISC-5.2 · [P] · repo — `.github/workflows/ci.yml` running `bun run verify` in the pinned Playwright container with Node ≥ 22.22.3 · `.github/workflows/ci.yml`
 
