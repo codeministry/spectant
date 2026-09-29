@@ -213,3 +213,8 @@ badge #007e9a vs inherited #1c8ca8, `needsYou` order (brief: question/concerns/o
 under "Your steps"), probe paths `core/tests/live.test.ts` and `core/tests/lifeos-optional.test.ts`, `http.ts` fallback
 spelling. Round 9 plan: T16 still held (vocabulary); T46 timeline route; parent adds the seams T35 (shell) and T52
 (stub) plus T45/T47 (routes) where files do not overlap.
+
+Principal clarification (2026-09-29, during round 9): Spectant ships **with** its Spec skill (the Claude Code plugin);
+the developer starts spec work from the AI chat and the app runs alongside for control and administration. Written for
+Claude Code first, expected to work with other agents that understand skills (a later portability claim). Recorded as a
+master Decisions row; README and the root CLAUDE.md reworded from "a plugin follows later".

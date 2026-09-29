@@ -48,7 +48,10 @@ opening a browser, `--port N` to choose the port.
 - It keeps only a workspace registry and your settings in SQLite, in `$XDG_DATA_HOME/spectant` or `~/.spectant/`.
   Deleting that directory loses nothing a repository says.
 - The server listens on loopback only; the web UI, fonts and icons are embedded in the binary.
-- A Claude Code plugin that shares the same spec parser ships later.
+- Spectant ships with its Spec skill, a Claude Code plugin that shares the same spec parser. You start spec work
+  from the AI chat with the skill; the app runs alongside as the place to see, steer and administer it. The skill is
+  written for Claude Code first and is meant to work with other agents that understand skills. The plugin lands with
+  its own spec.
 
 ## Development
 

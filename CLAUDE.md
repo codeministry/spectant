@@ -8,7 +8,9 @@ belongs to one lane lives in that lane's own `CLAUDE.md`.
 Spectant is a local spec companion for developers: one binary, installed with one line on macOS or Linux, that reads
 the Markdown specs of several registered repositories and shows them on one dashboard in the browser. The files in
 those repositories are the only source of truth; Spectant keeps nothing but a small registry and its settings in
-SQLite. Everything runs on the developer's machine, and a Claude Code plugin sharing the same parser follows later.
+SQLite. Everything runs on the developer's machine. The app ships with its Spec skill, a Claude Code plugin sharing
+the same parser: spec work starts from the AI chat with the skill, and the app runs alongside for control and
+administration. The skill targets Claude Code first and is meant to work with other agents that understand skills.
 
 ## Repository layout
 
@@ -17,7 +19,7 @@ SQLite. Everything runs on the developer's machine, and a Claude Code plugin sha
 | `core/` | the one parser for the spec format (frontmatter, claims, stages, gates) and the dashboard model |
 | `server/` | the CLI and the loopback HTTP server that embeds the web build into the binary |
 | `web/` | the Angular app (the dashboard UI) |
-| `plugin/` | the Claude Code plugin (later spec; not present yet) |
+| `plugin/` | the Claude Code plugin with the Spec skill — part of the product, built by its own spec; not present yet |
 | `specs/` | the spec-driven work: `constitution.md` and one folder per spec, `specs/NNN-slug/` |
 | `scripts/` | build, embed and repository checks |
 | `tests/` | cross-lane tests: server, CLI, binary, install, read-only and offline checks |
