@@ -1,0 +1,41 @@
+{
+  "kpis": {
+    "specs": 0,
+    "building": 0,
+    "scoping": 0,
+    "master": {
+      "closed": 0,
+      "total": 3
+    },
+    "claims": {
+      "closed": 0,
+      "total": 0
+    },
+    "tasks": {
+      "landed": 0,
+      "total": 0
+    },
+    "takeable": 0,
+    "warnings": 0,
+    "fog": 0,
+    "attention": 0,
+    "archived": 0
+  },
+  "stageCounts": {
+    "plan": 0,
+    "tasks": 0,
+    "review": 0,
+    "build": 0,
+    "blocked": 0,
+    "code-review": 0,
+    "close": 0,
+    "done": 0
+  },
+  "specs": [],
+  "nextUp": [],
+  "warningGroups": [],
+  "archive": [],
+  "brief": null,
+  "services": [],
+  "diagnostics": []
+}

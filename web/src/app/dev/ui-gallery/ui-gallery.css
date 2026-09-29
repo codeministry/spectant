@@ -1,4 +1,8 @@
-/* The gallery's own layout only; every colour comes from the theme tokens, spacing from the 8 px scale. */
+/*
+ * The gallery's own layout only; every colour comes from the theme tokens, spacing from the 8 px scale. Every class
+ * carries the `gallery-` prefix: daisyUI ships global component classes (`stack`, `list`, `list-row`, `label`, …) that
+ * would otherwise restyle the layout (`.stack` sets its children to 70 % opacity) and skew the contrast spec.
+ */
 :host {
   display: block;
   min-block-size: 100dvh;
@@ -14,42 +18,42 @@
   padding: 32px 16px 48px;
 }
 
-.title {
+.gallery-title {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
 }
 
-.group {
+.gallery-group {
   display: grid;
   gap: 16px;
 }
 
-.group h2 {
+.gallery-group h2 {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
 }
 
-.row {
+.gallery-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 16px;
   align-items: center;
 }
 
-.stack {
+.gallery-stack {
   display: grid;
   gap: 8px;
 }
 
-.grid {
+.gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
 }
 
-.list {
+.gallery-list {
   display: grid;
   margin: 0;
   padding: 0;
@@ -59,7 +63,7 @@
   list-style: none;
 }
 
-.list-row {
+.gallery-list-row {
   inline-size: 100%;
   padding: 8px 16px;
   border: 0;
@@ -69,15 +73,15 @@
   text-align: start;
 }
 
-.copy {
+.gallery-copy {
   margin: 0;
 }
 
 /* Room below the open popover so it covers nothing else the contrast spec measures. */
-.overlays {
+.gallery-overlays {
   padding-block-end: 160px;
 }
 
-.anchor {
+.gallery-anchor {
   display: inline-flex;
 }

@@ -37,6 +37,27 @@
   }
 }
 
+/*
+ * Fills come from the contrast-safe fill pairs in styles/tokens.css (ISC-65), not daisyUI's `--color-*` slots: the
+ * light primary #1c8ca8 under its content is 3.77:1. The tone rule outranks the variant rule by specificity, so a
+ * toned primary fills with its tone whatever order Tailwind emits `btn-primary` and `btn-error` in. On ghost and
+ * outline the fill shows on hover and press, the border in outline.
+ */
+:host([data-variant="primary"]) {
+  --btn-color: var(--primary-fill);
+  --btn-fg: var(--primary-fill-ink);
+}
+
+:host([data-tone="warning"]:not([data-variant="secondary"])) {
+  --btn-color: var(--warning-fill);
+  --btn-fg: var(--warning-fill-ink);
+}
+
+:host([data-tone="danger"]:not([data-variant="secondary"])) {
+  --btn-color: var(--danger-fill);
+  --btn-fg: var(--danger-fill-ink);
+}
+
 /* Tone text uses the contrast-safe ink tokens (ISC-65), not the raw accent. */
 :host([data-tone="warning"]) {
   --ui-tone-ink: var(--hover-ink);

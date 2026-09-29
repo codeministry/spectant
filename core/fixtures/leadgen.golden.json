@@ -1,0 +1,188 @@
+{
+  "kpis": {
+    "specs": 2,
+    "building": 1,
+    "scoping": 0,
+    "master": {
+      "closed": 31,
+      "total": 32
+    },
+    "claims": {
+      "closed": 9,
+      "total": 10
+    },
+    "tasks": {
+      "landed": 16,
+      "total": 17
+    },
+    "takeable": 1,
+    "warnings": 1,
+    "fog": 1,
+    "attention": 2,
+    "archived": 1
+  },
+  "stageCounts": {
+    "plan": 0,
+    "tasks": 0,
+    "review": 0,
+    "build": 1,
+    "blocked": 0,
+    "code-review": 0,
+    "close": 0,
+    "done": 1
+  },
+  "specs": [
+    {
+      "id": "012",
+      "slug": "012-pwa-install",
+      "title": "Installable as a PWA: manifest, icons, colours, an offline shell and an update toast",
+      "type": "feature",
+      "phase": "building",
+      "stage": "build",
+      "progress": {
+        "closed": 9,
+        "total": 10
+      },
+      "tasks": {
+        "landed": 16,
+        "total": 17
+      },
+      "nextCommand": "/spec-implement 012",
+      "nextReason": "ISC-334 is takeable",
+      "takeable": [
+        "ISC-334"
+      ],
+      "warnings": [
+        {
+          "kind": "fog",
+          "text": "1 open fog line"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md, plan.md, tasks.md",
+          "at": "2026-09-28T01:07:18.427Z",
+          "files": [
+            "spec.md",
+            "plan.md",
+            "tasks.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "ok",
+          "detail": "mermaid diagram present"
+        }
+      },
+      "fog": 1,
+      "updated": "2026-09-24T15:56:51Z",
+      "lastRound": "2026-09-28T01:13:09.164Z",
+      "goal": "The app can be installed on a desktop, a tablet or a phone and opens in its own window with the lead-ring icon and the app's own colours; a service worker keeps the app shell available without a network, a toast offers to reload when a deploy has landed, and data still comes from the API only."
+    },
+    {
+      "id": "022",
+      "slug": "022-chat-turn-status-and-bulk-delete",
+      "title": "The chat says what happened to a turn, deletes many conversations at once, and brings a cited row into view",
+      "type": "feature",
+      "phase": "complete",
+      "stage": "done",
+      "progress": {
+        "closed": 8,
+        "total": 8
+      },
+      "tasks": {
+        "landed": 32,
+        "total": 32
+      },
+      "nextCommand": null,
+      "nextReason": "phase: complete",
+      "takeable": [],
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md, plan.md, tasks.md",
+          "at": "2026-09-28T12:01:46.215Z",
+          "files": [
+            "spec.md",
+            "plan.md",
+            "tasks.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "stale",
+          "detail": "worktree tree id unavailable",
+          "at": "2026-09-28T12:36:29.267Z"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-09-28T12:46:09Z",
+      "lastRound": "2026-09-28T00:13:28.033Z",
+      "goal": "Hovering or focusing the ring beside an answer plays its turn and opens a popover with that turn's state, the reason when it ended incomplete, its steps, duration and model, the same live and after a reload; the empty chat's ring does the same with the chat's own status (model, today's calls against the ceiling, the tool-round bound); the conversation list deletes the selected or all shown conversations with one confirmation and one request; and an offer opened from a chat citation has its marked shortlist row scrolled into the list pane."
+    }
+  ],
+  "nextUp": [
+    "012"
+  ],
+  "warningGroups": [
+    {
+      "kind": "fog",
+      "items": [
+        {
+          "spec": "012",
+          "warning": {
+            "kind": "fog",
+            "text": "1 open fog line"
+          }
+        }
+      ]
+    }
+  ],
+  "archive": [
+    {
+      "id": "013",
+      "slug": "013-tech-debt",
+      "title": "The debt behind v0.5.0 is paid down without a change in behaviour: notes, docs, compose, version, leaks, and the Lombok sweep",
+      "type": "refactor",
+      "archived": "2026-09-27",
+      "archivedReason": null,
+      "claims": {
+        "closed": 14,
+        "total": 14
+      },
+      "tasks": {
+        "landed": 16,
+        "total": 16
+      },
+      "goal": "The afternoon-sized debt is paid: the three working-notes files sit at or under 85 % of their budget with the reasoning moved to `docs/decisions/`, no document claims a gap the build has closed, `.env.example` and the placeholders are held equal by a test, the compose stack reports three healthy services, the two leaks are closed, the catalog literals are keys, and every backend class whose constructor only assigned its fields carries `@RequiredArgsConstructor` — with every request mapping, response field, migration and configuration key meaning exactly what it meant before, and the service as AOT-compatible for GraalVM as it is today."
+    }
+  ],
+  "brief": null,
+  "services": [],
+  "diagnostics": [
+    {
+      "file": "ISA.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "master-progress-mismatch",
+        "message": "progress 31/33 disagrees with the recount 31/32."
+      }
+    }
+  ]
+}

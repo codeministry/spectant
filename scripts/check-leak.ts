@@ -66,7 +66,7 @@ function isPlaceholderUser(name: string): boolean {
 const MACHINE_PATH = /(?:~|\$HOME|\$\{HOME\})\/\.claude\/|\bLIFEOS\/USER\b/gi;
 // The house engineering standards live at one documented, tilde-relative location that every public constitution of
 // this house cites as a binding source (spectant and leadgen alike). Naming it reveals a convention, not a machine;
-// every other Claude-home or LIFEOS/USER path stays a machine-path hit. Decided 2026-09-29 (spec 001, round 15).
+// every other Claude-home or LifeOS user-tree path stays a machine-path hit. Decided 2026-09-29 (spec 001, round 15).
 const HOUSE_STANDARDS_PREFIX = /(?:~|\$HOME|\$\{HOME\})\/\.claude\/LIFEOS\/USER\/ENGINEERING\//gi;
 
 function stripHouseStandards(line: string): string {

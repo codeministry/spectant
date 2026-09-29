@@ -84,7 +84,7 @@ describe("outboundHits", () => {
       "spectant listening on http://127.0.0.1:7717",
       "error: getaddrinfo ENOTFOUND registry.example.com",
       "Error: getaddrinfo EAI_AGAIN fonts.googleapis.com",
-      "connect ENETUNREACH 1.2.3.4:443",
+      "connect ENETUNREACH 1.2.3.4:443", // leak:allow synthetic test input
       "connect EHOSTUNREACH 10.0.0.1:80",
       "TypeError: fetch failed",
       "error: Unable to connect. Is the computer able to access the url?",
@@ -93,7 +93,7 @@ describe("outboundHits", () => {
     expect(outboundHits(stderr)).toEqual([
       "error: getaddrinfo ENOTFOUND registry.example.com",
       "Error: getaddrinfo EAI_AGAIN fonts.googleapis.com",
-      "connect ENETUNREACH 1.2.3.4:443",
+      "connect ENETUNREACH 1.2.3.4:443", // leak:allow synthetic test input
       "connect EHOSTUNREACH 10.0.0.1:80",
       "TypeError: fetch failed",
       "error: Unable to connect. Is the computer able to access the url?",

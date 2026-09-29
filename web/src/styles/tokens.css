@@ -9,7 +9,8 @@
  * token; secondary text uses `--muted-ink`, while `--muted` stays inherited for non-text use. Where the inherited
  * value already passes, the token aliases it with `var()`, so it follows the palette; a derived value is the nearest
  * darker OKLCH shade of the accent (same hue, chroma kept unless the gamut forces it down) that clears 4.55:1 on both
- * surfaces, 0.05 of headroom above the line so 8-bit rounding of a painted pixel cannot drop it below.
+ * surfaces and on its own `-t` tint, 0.05 of headroom above the line so 8-bit rounding of a painted pixel cannot drop
+ * it below.
  *
  * Colours are OKLCH with the hex in a comment, as in `styles.css`. Tokens are set per theme on the `data-theme`
  * element (daisyUI applies a theme by that attribute), so a `var()` here resolves against the same theme's slots.
@@ -41,26 +42,54 @@
   /* Secondary text: the inherited `--muted` (#706b6e) passes. Card 5.03 / page 4.67. */
   --muted-ink: var(--muted);
 
-  /* Accent text. Inherited #1c8ca8 3.77 / 3.49 fails; derived card 4.93 / page 4.57. */
-  --disp-ink: oklch(53% 0.096 219.9); /* #027892 */
+  /*
+   * Accent text. An ink is read on the card, the page and its own `-t` tint (chips, notices, the selected filter
+   * chip). Derived against card and page alone, the inks fell short on their tints (disp 4.35, ques 4.47, clos 4.31,
+   * done 4.40, hover 3.97, fail 4.20), so each is the nearest darker shade that clears 4.55:1 on all three.
+   * Ratios read "card / page / tint".
+   */
 
-  /* Inherited #7058be passes. Card 5.28 / page 4.90. */
-  --ques-ink: var(--color-secondary);
+  /* Inherited #1c8ca8 3.77 / 3.49 fails; derived (chroma 0.102 → 0.094 at the gamut edge) 5.18 / 4.81 / 4.57 on #ddf0f4. */
+  --disp-ink: oklch(51.8% 0.094 219.9); /* #01748d */
 
-  /* Inherited #4c8a13 4.08 / 3.79 fails; derived (chroma 0.157 → 0.151 at the gamut edge) card 4.92 / page 4.56. */
-  --clos-ink: oklch(52.5% 0.151 134.4); /* #417c02 */
+  /* Inherited #7058be passes card and page but gives 4.47 on its tint; derived 5.40 / 5.01 / 4.56 on #ebe5f8. */
+  --ques-ink: oklch(53% 0.154 291.1); /* #6f56bc */
 
-  /* Inherited #269d69 3.31 / 3.07 fails; derived (chroma 0.13 → 0.12 at the gamut edge) card 4.93 / page 4.57. */
-  --done-ink: oklch(52.4% 0.12 159.2); /* #007e50 */
+  /* Inherited #4c8a13 4.08 / 3.79 fails; derived (chroma 0.157 → 0.147 at the gamut edge) 5.23 / 4.85 / 4.58 on #e3f0d6. */
+  --clos-ink: oklch(51.1% 0.147 134.4); /* #3f7701 */
 
-  /* Inherited #cc7a0a 3.18 / 2.95 fails; derived (chroma 0.145 → 0.123 at the gamut edge) card 4.91 / page 4.55. */
-  --conc-ink: oklch(54.6% 0.123 64.3); /* #a15e01 */
+  /* Inherited #269d69 3.31 / 3.07 fails; derived (chroma 0.13 → 0.118 at the gamut edge) 5.10 / 4.73 / 4.56 on #ddf3e8. */
+  --done-ink: oklch(51.5% 0.118 159.2); /* #007b4e */
 
-  /* Inherited #ad560c passes. Card 4.92 / page 4.56. */
-  --hover-ink: var(--color-warning);
+  /* Inherited #cc7a0a 3.18 / 2.95 fails; derived (chroma 0.145 → 0.121 at the gamut edge) 5.08 / 4.71 / 4.56 on #fbedd4. */
+  --conc-ink: oklch(53.8% 0.121 64.3); /* #9d5c01 */
 
-  /* Inherited #e14775 3.77 / 3.50 fails; derived card 4.91 / page 4.56. */
-  --fail-ink: oklch(56.3% 0.192 6.6); /* #ca3063 */
+  /*
+   * Inherited #ad560c passes card and page but gives 3.97 on its mixed tint (#f3dfd7, `tone.ts`); derived (chroma
+   * 0.136 → 0.132 at the gamut edge) 5.64 / 5.23 / 4.56.
+   */
+  --hover-ink: oklch(51.7% 0.132 52.4); /* #a14d01 */
+
+  /* Inherited #e14775 3.77 / 3.50 fails; derived 5.35 / 4.96 / 4.57 on #fbe3ea. */
+  --fail-ink: oklch(54.3% 0.192 6.6); /* #c3285d */
+
+  /*
+   * Mark: the success dot on its tint. The inherited #269d69 gives 2.96:1 on #ddf3e8; the nearest darker shade clears
+   * 3.05:1 there (card 3.43 / page 3.18 / tint 3.06). Every other accent dot passes on its tint and keeps its accent.
+   */
+  --done-mark: oklch(61% 0.13 159.2); /* #219a66 */
+
+  /*
+   * Filled buttons: the fill and the text on it. The inherited primary #1c8ca8 under its #fdfaf9 content is 3.77:1,
+   * so the primary button takes the badge pair (4.57:1). Danger fills with the error ink (#fdfaf9 on it 5.35:1; the
+   * inherited #e14775 gives 3.77:1). Warning keeps the inherited #ad560c (4.92:1 under #fdfaf9).
+   */
+  --primary-fill: var(--badge-fill);
+  --primary-fill-ink: var(--badge-ink);
+  --danger-fill: var(--fail-ink);
+  --danger-fill-ink: var(--color-error-content);
+  --warning-fill: var(--color-warning);
+  --warning-fill-ink: var(--color-warning-content);
 
   /* Badge fill for text: `#fcfcfa` on the inherited #1c8ca8 is 3.81:1 and fails; derived fill gives 4.57:1. */
   --badge-fill: oklch(55% 0.1 219.9); /* #007e9a */
@@ -81,6 +110,17 @@
   --conc-ink: var(--conc); /* card 10.30 / page 11.86 */
   --hover-ink: var(--color-warning); /* card 6.63 / page 7.63 */
   --fail-ink: var(--color-error); /* card 4.94 / page 5.69 */
+
+  /* The success dot passes on its tint (#a9dc9c on #2a3a2d). */
+  --done-mark: var(--color-success);
+
+  /* Filled buttons keep the inherited accents under the page colour: primary 10.26, danger 5.69, warning 7.63. */
+  --primary-fill: var(--color-primary);
+  --primary-fill-ink: var(--color-primary-content);
+  --danger-fill: var(--color-error);
+  --danger-fill-ink: var(--color-error-content);
+  --warning-fill: var(--color-warning);
+  --warning-fill-ink: var(--color-warning-content);
 
   /* Badge fill: the inherited teal #1d6878 passes, 6.19:1 under `--badge-ink`. */
   --badge-fill: var(--color-neutral);

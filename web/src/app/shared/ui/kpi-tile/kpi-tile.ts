@@ -24,7 +24,7 @@ import type { Tone } from '../tone';
     :host([data-variant='hero']) .tile { padding: 24px; }
     .body { display: grid; flex: 1; gap: 4px; align-content: center; min-inline-size: 0; }
     .eyebrow { display: flex; gap: 8px; align-items: center; min-inline-size: 0; color: var(--muted-ink); font-size: 11px; font-weight: 600; line-height: 16px; letter-spacing: 0.08em; text-transform: uppercase; hyphens: none; }
-    .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .eyebrow-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .figure { font-variant-numeric: tabular-nums; white-space: nowrap; }
     .value { font-size: 32px; font-weight: 600; line-height: 40px; }
     .den, .meta { color: var(--muted-ink); }
@@ -52,7 +52,7 @@ import type { Tone } from '../tone';
           @if (icon(); as name) {
             <ui-icon [name]="name" [size]="14" />
           }
-          <span class="label">{{ label() }}</span>
+          <span class="eyebrow-text">{{ label() }}</span>
         </span>
         <span class="figure" [class.long]="long()">
           <span class="value">{{ value() }}</span>

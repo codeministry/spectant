@@ -1,11 +1,11 @@
 <!-- gallery: dev-only strings (see ui-gallery.ts). Every primitive carries data-gallery="<primitive>[-<state>]". -->
 <main class="gallery" data-ui="gallery">
-  <h1 class="title">UI primitives</h1>
+  <h1 class="gallery-title">UI primitives</h1>
 
-  <section class="group" aria-labelledby="g-buttons">
+  <section class="gallery-group" aria-labelledby="g-buttons">
     <h2 id="g-buttons">Buttons</h2>
     @for (variant of variants; track variant) {
-      <div class="row">
+      <div class="gallery-row">
         @for (tone of buttonTones; track $index) {
           <button ui-button [variant]="variant" [tone]="tone" [attr.data-gallery]="buttonName(variant, tone)">
             {{ variant }} {{ tone ?? '' }}
@@ -15,13 +15,13 @@
         <button ui-button [variant]="variant" disabled [attr.data-gallery]="'button-' + variant + '-disabled'">disabled</button>
       </div>
     }
-    <div class="row">
+    <div class="gallery-row">
       <a ui-button variant="outline" routerLink="/__ui" data-gallery="button-link">link button</a>
       <button ui-icon-button icon="settings" label="Settings" data-gallery="icon-button"></button>
       <button ui-icon-button icon="rotate-cw" label="Refresh" size="sm" data-gallery="icon-button-sm"></button>
       <button ui-icon-button icon="x" label="Close" disabled data-gallery="icon-button-disabled"></button>
     </div>
-    <div class="row">
+    <div class="gallery-row">
       <ui-button-group label="Joined group" data-gallery="button-group-joined">
         <button ui-button data-gallery="button-group-joined-0">Day</button>
         <button ui-button data-gallery="button-group-joined-1">Week</button>
@@ -34,39 +34,39 @@
     </div>
   </section>
 
-  <section class="group" aria-labelledby="g-chips">
+  <section class="gallery-group" aria-labelledby="g-chips">
     <h2 id="g-chips">Chips, IDs, keys, time</h2>
-    <div class="row">
+    <div class="gallery-row">
       @for (tone of tones; track tone) {
         <ui-chip [tone]="tone" [attr.data-gallery]="'chip-' + tone">{{ tone }}</ui-chip>
         <ui-chip [tone]="tone" [dot]="true" [attr.data-gallery]="'chip-' + tone + '-dot'">{{ tone }} dot</ui-chip>
       }
     </div>
-    <div class="row">
+    <div class="gallery-row">
       <ui-id-chip data-gallery="id-chip">ISC-334</ui-id-chip>
       <ui-kbd data-gallery="kbd">⌘K</ui-kbd>
       <ui-kbd data-gallery="kbd-esc">Esc</ui-kbd>
       <ui-relative-time [date]="updatedAt" data-gallery="relative-time" />
       <ui-command-chip command="/spec-implement 012" data-gallery="command-chip" />
     </div>
-    <div class="row">
+    <div class="gallery-row">
       <ui-filter-chips [options]="filters" [(value)]="filter" label="Filter by phase" data-gallery="filter-chips" />
     </div>
-    <div class="row">
+    <div class="gallery-row">
       <ui-segmented [options]="segments" [(value)]="segment" label="Theme" data-gallery="segmented" />
     </div>
   </section>
 
-  <section class="group" aria-labelledby="g-cards">
+  <section class="gallery-group" aria-labelledby="g-cards">
     <h2 id="g-cards">Cards and KPI tiles</h2>
-    <div class="grid">
+    <div class="gallery-grid">
       <ui-card data-gallery="card">plain card</ui-card>
       @for (tone of tones; track tone) {
         <ui-card [accent]="tone" [attr.data-gallery]="'card-' + tone">{{ tone }} accent</ui-card>
       }
       <ui-card accent="primary" [interactive]="true" data-gallery="card-interactive">interactive card</ui-card>
     </div>
-    <div class="grid">
+    <div class="gallery-grid">
       <ui-kpi-tile variant="hero" label="Master claims" [value]="42" [denominator]="64" meta="66 % closed · 22 open" accent="accent" data-gallery="kpi-tile-hero">
         <ui-ring visual [value]="66" [size]="112" [stroke]="10" data-gallery="ring-66" />
       </ui-kpi-tile>
@@ -76,28 +76,28 @@
       <ui-kpi-tile variant="sm" label="Takeable" [value]="3" icon="target" href="/__ui" accent="primary" data-gallery="kpi-tile-link" />
       <ui-kpi-tile variant="sm" label="Spec claims" [value]="1234567" [denominator]="2345678" data-gallery="kpi-tile-long" />
     </div>
-    <div class="row">
+    <div class="gallery-row">
       <ui-ring [value]="null" [size]="40" [stroke]="6" data-gallery="ring-empty" />
       <ui-ring [value]="0" [size]="52" [stroke]="6" data-gallery="ring-0" />
       <ui-ring [value]="100" [size]="72" data-gallery="ring-100" />
     </div>
-    <div class="stack">
+    <div class="gallery-stack">
       <ui-meter [value]="40" label="Default meter" data-gallery="meter" />
       @for (tone of tones; track tone) {
         <ui-meter [value]="70" [tone]="tone" [label]="tone + ' meter'" [attr.data-gallery]="'meter-' + tone" />
       }
       <ui-meter [value]="25" [mini]="true" label="Mini meter" data-gallery="meter-mini" />
     </div>
-    <div class="stack">
+    <div class="gallery-stack">
       <ui-stage-track [labels]="stages" [current]="2" data-gallery="stage-track-mini" />
       <ui-stage-track [labels]="stages" [current]="3" size="labelled" data-gallery="stage-track-labelled" />
       <ui-stage-track [labels]="stages" [current]="5" size="labelled" data-gallery="stage-track-done" />
     </div>
   </section>
 
-  <section class="group" aria-labelledby="g-states">
+  <section class="gallery-group" aria-labelledby="g-states">
     <h2 id="g-states">Notices, empty and loading states</h2>
-    <div class="stack">
+    <div class="gallery-stack">
       <ui-notice tone="warning" data-gallery="notice-warning">This workspace cannot be read.</ui-notice>
       <ui-notice tone="error" icon="triangle-alert" data-gallery="notice-error">
         Can't reach spectant on 127.0.0.1:7717.
@@ -108,23 +108,23 @@
     <ui-empty-state heading="Add your first workspace" body="It appears here on the next refresh." data-gallery="empty-state">
       <ui-command-chip command="spectant add <path-to-repo>" data-gallery="empty-state-command" />
     </ui-empty-state>
-    <div class="stack">
+    <div class="gallery-stack">
       <ui-skeleton width="60%" data-gallery="skeleton" />
       <ui-skeleton height="48px" data-gallery="skeleton-block" />
     </div>
     <ui-live-region data-gallery="live-region" />
   </section>
 
-  <section class="group" aria-labelledby="g-lists">
+  <section class="gallery-group" aria-labelledby="g-lists">
     <h2 id="g-lists">Headers, lists, disclosures</h2>
     <ui-section-header heading="Specs" eyebrow="Dashboard · 6 specs" data-gallery="section-header">
       <span meta>6 · 15 archived</span>
       <button ui-button actions size="sm" variant="ghost" data-gallery="section-header-action">Clear filter</button>
     </ui-section-header>
-    <ul class="list" uiRovingList aria-label="Specs" data-gallery="roving-list">
+    <ul class="gallery-list" uiRovingList aria-label="Specs" data-gallery="roving-list">
       @for (row of rows; track row) {
         <li>
-          <button type="button" class="list-row" uiRovingItem data-focus="inset" [attr.data-gallery]="'roving-row-' + $index">
+          <button type="button" class="gallery-list-row" uiRovingItem data-focus="inset" [attr.data-gallery]="'roving-row-' + $index">
             {{ row }}
           </button>
         </li>
@@ -133,23 +133,23 @@
     <ui-disclosure [open]="true" data-gallery="disclosure-open">
       <span uiDisclosureSummary>TL;DR (open)</span>
       <ui-command-chip uiDisclosureActions command="/spec-status" data-gallery="disclosure-open-action" />
-      <p class="copy">The brief reads as of today. <button ui-button size="sm" variant="outline" data-gallery="disclosure-open-content">Details</button></p>
+      <p class="gallery-copy">The brief reads as of today. <button ui-button size="sm" variant="outline" data-gallery="disclosure-open-content">Details</button></p>
     </ui-disclosure>
     <ui-disclosure data-gallery="disclosure-closed">
       <span uiDisclosureSummary>15 archived specs (closed)</span>
-      <p class="copy">Hidden content. <button ui-button size="sm" data-gallery="disclosure-closed-content">Hidden</button></p>
+      <p class="gallery-copy">Hidden content. <button ui-button size="sm" data-gallery="disclosure-closed-content">Hidden</button></p>
     </ui-disclosure>
   </section>
 
-  <section class="group overlays" aria-labelledby="g-overlays">
+  <section class="gallery-group gallery-overlays" aria-labelledby="g-overlays">
     <h2 id="g-overlays">Overlays</h2>
-    <div class="row">
+    <div class="gallery-row">
       <button ui-button variant="primary" data-gallery="dialog-trigger" (click)="dialogOpen.set(true)">Open dialog</button>
       <button ui-button data-gallery="sheet-trigger" (click)="sheetOpen.set(true)">Open sheet</button>
-      <span class="anchor">
+      <span class="gallery-anchor">
         <button #popoverTrigger ui-icon-button icon="settings" label="Settings" data-gallery="popover-trigger" [uiPopoverTrigger]="popover"></button>
         <ui-popover #popover label="Settings" data-gallery="popover">
-          <div class="stack">
+          <div class="gallery-stack">
             <button ui-button variant="ghost" size="sm" data-gallery="popover-item-0">Theme</button>
             <button ui-button variant="ghost" size="sm" data-gallery="popover-item-1">Language</button>
           </div>
@@ -157,11 +157,11 @@
       </span>
     </div>
     <ui-dialog [(open)]="dialogOpen" heading="Keyboard shortcuts" data-gallery="dialog">
-      <p class="copy">Press <ui-kbd>?</ui-kbd> to show this sheet.</p>
+      <p class="gallery-copy">Press <ui-kbd>?</ui-kbd> to show this sheet.</p>
       <button ui-button variant="primary" data-gallery="dialog-action" (click)="dialogOpen.set(false)">Done</button>
     </ui-dialog>
     <ui-sheet [(open)]="sheetOpen" heading="Spec details" data-gallery="sheet">
-      <p class="copy">012 · Command palette</p>
+      <p class="gallery-copy">012 · Command palette</p>
       <button ui-button data-gallery="sheet-action" (click)="sheetOpen.set(false)">Done</button>
     </ui-sheet>
   </section>

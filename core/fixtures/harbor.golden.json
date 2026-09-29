@@ -1,0 +1,436 @@
+{
+  "kpis": {
+    "specs": 5,
+    "building": 2,
+    "scoping": 3,
+    "master": {
+      "closed": 101,
+      "total": 124
+    },
+    "claims": {
+      "closed": 55,
+      "total": 78
+    },
+    "tasks": {
+      "landed": 57,
+      "total": 62
+    },
+    "takeable": 16,
+    "warnings": 7,
+    "fog": 4,
+    "attention": 11,
+    "archived": 1
+  },
+  "stageCounts": {
+    "plan": 0,
+    "tasks": 1,
+    "review": 2,
+    "build": 1,
+    "blocked": 0,
+    "code-review": 1,
+    "close": 0,
+    "done": 0
+  },
+  "specs": [
+    {
+      "id": "004",
+      "slug": "004-retention-policies",
+      "title": "Delete old manifests on a written schedule without touching referenced ones",
+      "type": "feature",
+      "phase": "building",
+      "stage": "code-review",
+      "progress": {
+        "closed": 30,
+        "total": 30
+      },
+      "tasks": {
+        "landed": 30,
+        "total": 30
+      },
+      "nextCommand": "/spec-code-review 004",
+      "nextReason": "every claim is closed and the code-reviewed mark is stale",
+      "takeable": [],
+      "warnings": [
+        {
+          "kind": "diagrams",
+          "text": "diagram missing in plan.md",
+          "ref": "plan.md"
+        },
+        {
+          "kind": "closed",
+          "text": "every claim closed, phase not complete"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md, plan.md, tasks.md",
+          "at": "2026-03-04T10:00:00Z",
+          "files": [
+            "spec.md",
+            "plan.md",
+            "tasks.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "stale",
+          "detail": "worktree tree id unavailable",
+          "at": "2026-03-08T11:00:00Z"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "warn",
+          "detail": "no mermaid diagram in plan.md",
+          "files": [
+            "plan.md"
+          ]
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-08T12:00:00Z",
+      "lastRound": null,
+      "goal": "A team writes its retention policy once, sees its effect before anything goes, and no manifest that a tag still references is ever deleted."
+    },
+    {
+      "id": "005",
+      "slug": "005-config-format-choice",
+      "title": "Decide which config format version 2 uses",
+      "type": "spike",
+      "phase": "scoping",
+      "stage": "review",
+      "progress": {
+        "closed": 0,
+        "total": 1
+      },
+      "tasks": null,
+      "nextCommand": "/spec-review 005",
+      "nextReason": "the reviewed mark is missing",
+      "takeable": [
+        "ISC-94"
+      ],
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "no reviewed mark yet",
+          "command": "/spec-review 005"
+        },
+        {
+          "kind": "fog",
+          "text": "2 open fog lines"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "missing",
+          "detail": "no reviewed mark"
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 2,
+      "updated": "2026-03-07T14:00:00Z",
+      "lastRound": null,
+      "goal": "A recorded decision names the config format for version 2 and the one trade-off that decided it."
+    },
+    {
+      "id": "006",
+      "slug": "006-partial-push",
+      "title": "Stop a timed-out push from leaving a half-written manifest behind",
+      "type": "bug",
+      "phase": "scoping",
+      "stage": "review",
+      "progress": {
+        "closed": 0,
+        "total": 4
+      },
+      "tasks": null,
+      "nextCommand": "/spec-review 006",
+      "nextReason": "the reviewed mark is stale",
+      "takeable": [
+        "ISC-1",
+        "ISC-2",
+        "ISC-3",
+        "ISC-125"
+      ],
+      "warnings": [
+        {
+          "kind": "drift",
+          "text": "drift to the master: unknown_to_master, missing_in_spec",
+          "command": "/spec-sync 006"
+        },
+        {
+          "kind": "review",
+          "text": "reviewed mark is stale (spec.md)",
+          "command": "/spec-review 006"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "stale",
+          "detail": "changed since the review: spec.md",
+          "at": "2026-03-08T12:00:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "warn",
+          "detail": "drift: unknown_to_master, missing_in_spec"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-09T10:15:00Z",
+      "lastRound": null,
+      "goal": "A push interrupted at any point leaves the target registry exactly as it was before the push started."
+    },
+    {
+      "id": "002",
+      "slug": "002-web-console",
+      "title": "Show every sync run and its failures in a small web console",
+      "type": "feature",
+      "phase": "building",
+      "stage": "build",
+      "progress": {
+        "closed": 25,
+        "total": 30
+      },
+      "tasks": {
+        "landed": 27,
+        "total": 32
+      },
+      "nextCommand": "/spec-implement 002",
+      "nextReason": "ISC-74, ISC-75 and 2 more are takeable",
+      "takeable": [
+        "ISC-74",
+        "ISC-75",
+        "ISC-76",
+        "ISC-77"
+      ],
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md, plan.md, tasks.md",
+          "at": "2026-03-07T15:30:00Z",
+          "files": [
+            "spec.md",
+            "plan.md",
+            "tasks.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "ok",
+          "detail": "mermaid diagram present"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-08T16:45:00Z",
+      "lastRound": "2026-03-08T16:30:00Z",
+      "goal": "A teammate opens the console, finds any mirrored repository in two steps, and sees each sync run with its failures, on a phone-sized screen and with the keyboard alone."
+    },
+    {
+      "id": "003",
+      "slug": "003-config-loader",
+      "title": "Read the config through one loader in the CLI, the API and the console",
+      "type": "refactor",
+      "phase": "scoping",
+      "stage": "tasks",
+      "progress": {
+        "closed": 0,
+        "total": 13
+      },
+      "tasks": null,
+      "nextCommand": "/spec-tasks 003",
+      "nextReason": "13 claims and no tasks.md",
+      "takeable": [
+        "ISC-81",
+        "ISC-83",
+        "ISC-85",
+        "ISC-87",
+        "ISC-89",
+        "ISC-91",
+        "ISC-93"
+      ],
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "no reviewed mark yet",
+          "command": "/spec-review 003"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "missing",
+          "detail": "no reviewed mark"
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "warn",
+          "detail": "no mermaid diagram in spec.md",
+          "files": [
+            "spec.md"
+          ]
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-09T17:30:00Z",
+      "lastRound": null,
+      "goal": "The CLI, the API and the console read their configuration through one loader, and the effective config for every case in the snapshot corpus is unchanged."
+    }
+  ],
+  "nextUp": [
+    "004",
+    "005",
+    "006"
+  ],
+  "warningGroups": [
+    {
+      "kind": "drift",
+      "items": [
+        {
+          "spec": "006",
+          "warning": {
+            "kind": "drift",
+            "text": "drift to the master: unknown_to_master, missing_in_spec",
+            "command": "/spec-sync 006"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "review",
+      "items": [
+        {
+          "spec": "005",
+          "warning": {
+            "kind": "review",
+            "text": "no reviewed mark yet",
+            "command": "/spec-review 005"
+          }
+        },
+        {
+          "spec": "006",
+          "warning": {
+            "kind": "review",
+            "text": "reviewed mark is stale (spec.md)",
+            "command": "/spec-review 006"
+          }
+        },
+        {
+          "spec": "003",
+          "warning": {
+            "kind": "review",
+            "text": "no reviewed mark yet",
+            "command": "/spec-review 003"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "diagrams",
+      "items": [
+        {
+          "spec": "004",
+          "warning": {
+            "kind": "diagrams",
+            "text": "diagram missing in plan.md",
+            "ref": "plan.md"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "closed",
+      "items": [
+        {
+          "spec": "004",
+          "warning": {
+            "kind": "closed",
+            "text": "every claim closed, phase not complete"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "fog",
+      "items": [
+        {
+          "spec": "005",
+          "warning": {
+            "kind": "fog",
+            "text": "2 open fog lines"
+          }
+        }
+      ]
+    }
+  ],
+  "archive": [
+    {
+      "id": "001",
+      "slug": "001-manifest-sync",
+      "title": "Mirror every listed manifest into the team registry with one command",
+      "type": "feature",
+      "archived": "2026-03-05",
+      "archivedReason": null,
+      "claims": {
+        "closed": 46,
+        "total": 46
+      },
+      "tasks": {
+        "landed": 46,
+        "total": 46
+      },
+      "goal": "`harbor sync` mirrors every listed manifest with an identical digest, and a second run uploads nothing."
+    }
+  ],
+  "brief": {
+    "markdown": "# TL;DR — harbor\n\n<!-- section: overview -->\nSync is done and archived (001). The console (002) is in its last round with five claims open, retention (004) has\nevery claim closed and waits for its code review, and three specs opened this week are still being scoped.\n\n<!-- section: try -->\nRun `harbor sync --dry-run` against the sample config, then open the console on port 4200 and walk the sync history.\n\n<!-- section: per-spec -->\n- **002** Web console: 25 of 30 closed; one question open about the empty state.\n- **003** Config loader rewrite: claims written, tasks not yet.\n- **004** Retention policies: all 30 closed; the plan still lacks its diagram.\n- **005** Config format choice: two fog lines to resolve before the decision.\n\n<!-- section: risks -->\nThe config loader rewrite touches every package at once; its parity snapshots are the only guard.\n\n<!-- section: next -->\nAnswer the empty-state question in 002, then run the code review for 004.",
+    "generated": "2026-03-07T18:00:00Z",
+    "stale": true,
+    "sections": {
+      "overview": "Sync is done and archived (001). The console (002) is in its last round with five claims open, retention (004) has\nevery claim closed and waits for its code review, and three specs opened this week are still being scoped.",
+      "try": "Run `harbor sync --dry-run` against the sample config, then open the console on port 4200 and walk the sync history.",
+      "per-spec": "- **002** Web console: 25 of 30 closed; one question open about the empty state.\n- **003** Config loader rewrite: claims written, tasks not yet.\n- **004** Retention policies: all 30 closed; the plan still lacks its diagram.\n- **005** Config format choice: two fog lines to resolve before the decision.",
+      "risks": "The config loader rewrite touches every package at once; its parity snapshots are the only guard.",
+      "next": "Answer the empty-state question in 002, then run the code review for 004."
+    }
+  },
+  "services": [],
+  "diagnostics": []
+}

@@ -37,6 +37,11 @@ const INK: Record<Tone, string> = {
   error: 'var(--fail-ink)',
 };
 
+// Dots: a mark that must reach 3:1 on the tint it sits on (ISC-65). Every accent passes there except light success,
+// which takes the derived `--done-mark` (the accent itself in dark).
+const MARK: Record<Tone, string> = { ...COLOR, success: 'var(--done-mark)' };
+
 export const toneColor = (tone: Tone): string => COLOR[tone];
+export const toneMark = (tone: Tone): string => MARK[tone];
 export const toneTint = (tone: Tone): string => TINT[tone];
 export const toneInk = (tone: Tone): string => INK[tone];

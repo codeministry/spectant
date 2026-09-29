@@ -22,8 +22,8 @@ export type StageState = 'done' | 'current' | 'pending';
     [data-state='current'] > .bar, .bar[data-state='current'] { background: var(--color-primary); }
     ol { display: grid; grid-auto-columns: minmax(60px, 1fr); grid-auto-flow: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
     li { display: grid; gap: 4px; min-inline-size: 0; }
-    .label { overflow: hidden; color: var(--muted-ink); font-size: 11px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
-    [data-state='current'] > .label { color: var(--color-base-content); font-weight: 700; }
+    .seg-label { overflow: hidden; color: var(--muted-ink); font-size: 11px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+    [data-state='current'] > .seg-label { color: var(--color-base-content); font-weight: 700; }
     @media (forced-colors: active) {
       .bar { border: 1px solid CanvasText; }
       [data-state='done'] > .bar, .bar[data-state='done'], [data-state='current'] > .bar, .bar[data-state='current'] { background: CanvasText; }
@@ -41,7 +41,7 @@ export type StageState = 'done' | 'current' | 'pending';
         @for (label of labels(); track $index) {
           <li [attr.data-state]="state($index)" [attr.aria-current]="$index === current() ? 'step' : null">
             <span class="bar"></span>
-            <span class="label">{{ label }}</span>
+            <span class="seg-label">{{ label }}</span>
           </li>
         }
       </ol>

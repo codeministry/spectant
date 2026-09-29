@@ -1,0 +1,136 @@
+{
+  "kpis": {
+    "specs": 1,
+    "building": 0,
+    "scoping": 1,
+    "master": {
+      "closed": 14,
+      "total": 47
+    },
+    "claims": {
+      "closed": 14,
+      "total": 47
+    },
+    "tasks": {
+      "landed": 27,
+      "total": 83
+    },
+    "takeable": 29,
+    "warnings": 1,
+    "fog": 0,
+    "attention": 1,
+    "archived": 0
+  },
+  "stageCounts": {
+    "plan": 0,
+    "tasks": 0,
+    "review": 1,
+    "build": 0,
+    "blocked": 0,
+    "code-review": 0,
+    "close": 0,
+    "done": 0
+  },
+  "specs": [
+    {
+      "id": "001",
+      "slug": "001-app-skeleton",
+      "title": "Install spectant with one line and see two workspaces on the dashboard",
+      "type": "feature",
+      "phase": "scoping",
+      "stage": "review",
+      "progress": {
+        "closed": 14,
+        "total": 47
+      },
+      "tasks": {
+        "landed": 27,
+        "total": 83
+      },
+      "nextCommand": "/spec-review 001",
+      "nextReason": "the reviewed mark is missing",
+      "takeable": [
+        "ISC-1",
+        "ISC-2",
+        "ISC-3",
+        "ISC-4",
+        "ISC-6",
+        "ISC-7",
+        "ISC-11",
+        "ISC-13",
+        "ISC-14",
+        "ISC-15",
+        "ISC-16",
+        "ISC-16.1",
+        "ISC-16.2",
+        "ISC-17",
+        "ISC-17.1",
+        "ISC-18.1",
+        "ISC-18.3",
+        "ISC-19",
+        "ISC-19.1",
+        "ISC-20",
+        "ISC-60",
+        "ISC-61",
+        "ISC-61.2",
+        "ISC-62",
+        "ISC-63",
+        "ISC-63.1",
+        "ISC-64",
+        "ISC-65",
+        "ISC-66"
+      ],
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "no reviewed mark yet",
+          "command": "/spec-review 001"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "missing",
+          "detail": "no reviewed mark"
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "ok",
+          "detail": "mermaid diagram present"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-09-28T13:02:35Z",
+      "lastRound": "2026-09-28T13:06:30.452Z",
+      "goal": "A fresh macOS or Linux user installs spectant with one line, registers two workspaces and sees their specs side by side on a read-only dashboard that inherits the old Spec dashboard's look in its light and its dark theme and works like a current developer tool (command palette, keyboard navigation, in-place refresh), with nothing leaving the machine and nothing written into either repository."
+    }
+  ],
+  "nextUp": [
+    "001"
+  ],
+  "warningGroups": [
+    {
+      "kind": "review",
+      "items": [
+        {
+          "spec": "001",
+          "warning": {
+            "kind": "review",
+            "text": "no reviewed mark yet",
+            "command": "/spec-review 001"
+          }
+        }
+      ]
+    }
+  ],
+  "archive": [],
+  "brief": null,
+  "services": [],
+  "diagnostics": []
+}

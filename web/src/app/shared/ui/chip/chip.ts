@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { type Tone, toneColor, toneInk, toneTint } from '../tone';
+import { type Tone, toneInk, toneMark, toneTint } from '../tone';
 
 /** A 24 px pill (phase, type, "stale", "takeable ISC-334"): tinted background, ink text, optional accent dot. */
 @Component({
@@ -32,6 +32,6 @@ export class UiChip {
 
   protected readonly colors = computed(() => {
     const tone = this.tone();
-    return { color: toneColor(tone), tint: toneTint(tone), ink: toneInk(tone) };
+    return { color: toneMark(tone), tint: toneTint(tone), ink: toneInk(tone) };
   });
 }

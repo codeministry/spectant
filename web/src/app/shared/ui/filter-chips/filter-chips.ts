@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, input, model } from '@angular/core';
-import { type Tone, toneColor } from '../tone';
+import { type Tone, toneMark } from '../tone';
 
 export interface FilterOption {
   readonly key: string;
@@ -26,6 +26,8 @@ export interface FilterOption {
     .chip[aria-pressed='true'] { --btn-bg: var(--disp-t); --btn-fg: var(--disp-ink); --btn-border: var(--color-primary); }
     .dot { inline-size: 8px; block-size: 8px; border-radius: 50%; }
     .count { color: var(--muted-ink); font-variant-numeric: tabular-nums; }
+    /* On the selected chip's tint the muted count falls below 4.5:1 (4.44 light, 4.07 dark); it takes the chip's ink. */
+    .chip[aria-pressed='true'] .count { color: var(--disp-ink); }
     @container shell (width < 640px) {
       .row { mask-image: linear-gradient(90deg, transparent, black 16px, black calc(100% - 16px), transparent); padding-inline: 16px; }
     }
@@ -60,5 +62,5 @@ export class UiFilterChips {
   /** Accessible name of the group (translated). */
   readonly label = input<string>();
 
-  protected readonly color = toneColor;
+  protected readonly color = toneMark;
 }

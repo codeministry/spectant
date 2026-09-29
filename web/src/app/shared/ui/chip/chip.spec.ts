@@ -13,4 +13,14 @@ describe('UiChip', () => {
     expect(host.style.getPropertyValue('--chip-ink')).toBe('var(--ques-ink)');
     expect(host.querySelector('.dot')).not.toBeNull();
   });
+
+  it('paints the dot in the tone mark, the contrast-safe success mark on success (ISC-65)', async () => {
+    const fixture = TestBed.createComponent(UiChip);
+    fixture.componentRef.setInput('tone', 'success');
+    fixture.componentRef.setInput('dot', true);
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.style.getPropertyValue('--chip-color')).toBe('var(--done-mark)');
+  });
 });

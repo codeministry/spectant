@@ -18,4 +18,12 @@ describe('UiFilterChips', () => {
     expect(fixture.componentInstance.value()).toBe('building');
     expect(buttons[1].getAttribute('aria-pressed')).toBe('true');
   });
+
+  it('paints a success dot in the contrast-safe success mark (ISC-65)', async () => {
+    const fixture = TestBed.createComponent(UiFilterChips);
+    fixture.componentRef.setInput('options', [{ key: 'done', label: 'done', count: 1, tone: 'success' }]);
+    await fixture.whenStable();
+    const dot = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.dot');
+    expect(dot?.style.background).toBe('var(--done-mark)');
+  });
 });

@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-29T08:58:27Z
+updated: 2026-09-29T10:11:34Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -60,7 +60,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T27 · ISC-61 · [P] · web — `uiRovingList` directive (arrows, j/k, Home/End, no wrap) · `web/src/app/shared/ui/roving-list.directive.ts`
 - [x] T28 · ISC-17 · [seam] · web — Playwright config: chromium + webkit projects, the pinned Linux container runner behind `test:visual`, `e2e`, `test:browser`; clock pinned, animations disabled, `data-ready` awaited; the `web/e2e/` layout every later spec follows (after: T24, T25, T26, T27) · `web/e2e/playwright.config.ts`
 - [x] T29 · ISC-64 · [P] · web — browser spec: focus ring on every interactive element, both themes (after: T28) · `web/src/app/shared/ui/focus.browser.spec.ts`
-- [ ] T30 · ISC-65 · [P] · web — browser spec: contrast of text and marks, both themes (after: T28) · `web/src/app/shared/ui/contrast.browser.spec.ts`
+- [x] T30 · ISC-65 · [P] · web — browser spec: contrast of text and marks, both themes (after: T28) · `web/src/app/shared/ui/contrast.browser.spec.ts`
 - [x] T31 · ISC-66 · [P] · web — browser spec: no animation or transition runs under reduced motion (after: T28) · `web/src/app/shared/ui/motion.browser.spec.ts`
 
 ### ③ Core and API
@@ -72,7 +72,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T36 · ISC-15 · [P] · core — review and code-review marks with in-memory worktree hashing, no git object writes; `generate.ts` in the fixtures switches to this import (after: T33) · `core/src/gates.ts`
 - [x] T37 · ISC-14 · [P] · core — stage derivation and next-command rules, ported from the old dashboard tool (after: T33) · `core/src/stage.ts`
 - [x] T38 · ISC-16 · [P] · core — takeable set, diagram verdict, TL;DR staleness, markdown renderer, archive listing (after: T33) · `core/src/{takeable,diagrams,tldr,markdown,archive}.ts`
-- [ ] T39 · ISC-16 · [seam] · core — dashboard model assembly: the JSON the server returns and the web app renders (after: T34, T36, T37, T38) · `core/src/dashboard.ts`
+- [x] T39 · ISC-16 · [seam] · core — dashboard model assembly: the JSON the server returns and the web app renders (after: T34, T36, T37, T38) · `core/src/dashboard.ts`
 - [ ] T40 · ISC-6 · [P] · core — golden snapshot test writing and checking `core/fixtures/<name>.golden.json` (after: T39) · `core/tests/fixtures.test.ts`
 - [ ] T41 · ISC-14 · [P] · core — parity test over `SPECTANT_PARITY_TREES`, failing on zero comparisons (after: T39) · `core/tests/stage-parity.test.ts`
 - [x] T45 · ISC-5 · [P] · server — `check:single-core`: fails on a frontmatter, claim or stage parser outside `core/` · `scripts/check-single-core.ts`

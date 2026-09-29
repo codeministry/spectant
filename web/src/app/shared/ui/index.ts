@@ -22,4 +22,4 @@ export { UiSectionHeader } from './section-header/section-header';
 export { type SegmentedOption, UiSegmented } from './segmented/segmented';
 export { UiSkeleton } from './skeleton/skeleton';
 export { type StageState, UiStageTrack } from './stage-track/stage-track';
-export { type Tone, toneColor, toneInk, toneTint } from './tone';
+export { type Tone, toneColor, toneInk, toneMark, toneTint } from './tone';

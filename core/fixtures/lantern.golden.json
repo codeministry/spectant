@@ -1,0 +1,142 @@
+{
+  "kpis": {
+    "specs": 2,
+    "building": 2,
+    "scoping": 0,
+    "master": {
+      "closed": 4,
+      "total": 12
+    },
+    "claims": {
+      "closed": 4,
+      "total": 10
+    },
+    "tasks": {
+      "landed": 4,
+      "total": 8
+    },
+    "takeable": 4,
+    "warnings": 0,
+    "fog": 0,
+    "attention": 0,
+    "archived": 0
+  },
+  "stageCounts": {
+    "plan": 0,
+    "tasks": 0,
+    "review": 0,
+    "build": 2,
+    "blocked": 0,
+    "code-review": 0,
+    "close": 0,
+    "done": 0
+  },
+  "specs": [
+    {
+      "id": "001",
+      "slug": "001-reading-list",
+      "title": "Save a link once and find it again, online or offline",
+      "type": "feature",
+      "phase": "building",
+      "stage": "build",
+      "progress": {
+        "closed": 4,
+        "total": 8
+      },
+      "tasks": {
+        "landed": 4,
+        "total": 8
+      },
+      "nextCommand": "/spec-implement 001",
+      "nextReason": "ISC-7 and ISC-9 are takeable",
+      "takeable": [
+        "ISC-7",
+        "ISC-9"
+      ],
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md, plan.md, tasks.md",
+          "at": "2026-03-04T10:00:00Z",
+          "files": [
+            "spec.md",
+            "plan.md",
+            "tasks.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "ok",
+          "detail": "mermaid diagram present"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-06T15:00:00Z",
+      "lastRound": null,
+      "goal": "A reader saves a link in one step, finds it again by title or tag, and reads it offline."
+    },
+    {
+      "id": "002",
+      "slug": "002-duplicate-links",
+      "title": "Stop duplicate links and duplicate tags from entering the list",
+      "type": "bug",
+      "phase": "scoping",
+      "stage": "build",
+      "progress": {
+        "closed": 0,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": "/spec-implement 002",
+      "nextReason": "ISC-11 and ISC-12 are takeable",
+      "takeable": [
+        "ISC-11",
+        "ISC-12"
+      ],
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-06T10:30:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-06T11:00:00Z",
+      "lastRound": null,
+      "goal": "Saving a known link or a known tag again changes nothing in the list."
+    }
+  ],
+  "nextUp": [
+    "001",
+    "002"
+  ],
+  "warningGroups": [],
+  "archive": [],
+  "brief": null,
+  "services": [],
+  "diagnostics": []
+}

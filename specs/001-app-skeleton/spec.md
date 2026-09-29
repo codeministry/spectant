@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F1
 constitution: ../constitution.md
 phase: scoping
-progress: 19/47
+progress: 20/47
 started: 2026-09-28T09:40:00Z
-updated: 2026-09-29T08:58:27Z
+updated: 2026-09-29T10:11:34Z
 context_sufficient: true
 interview_invoked: true
 context_log: context.md
@@ -190,7 +190,7 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [ ] ISC-63: At a 600 px wide container (the cmux side panel) the dashboard has no horizontal overflow: `scrollWidth` equals `clientWidth`.
 - [ ] ISC-63.1: At the same width a workspace column in the overview has no horizontal overflow.
 - [x] ISC-64: Every interactive element shows the brand focus ring under keyboard focus, in both themes.
-- [ ] ISC-65: Text reaches 4.5:1 and marks (ring track, bars, legend dots) 3:1 against their surface, in both themes.
+- [x] ISC-65: Text reaches 4.5:1 and marks (ring track, bars, legend dots) 3:1 against their surface, in both themes.
 - [x] ISC-66: Anti: under `prefers-reduced-motion: reduce` any animation or transition longer than 0 ms runs.
 - [x] ISC-67: Antecedent: the app ships Inter Variable plus JetBrains Mono as local assets.
 - [x] ISC-67.1: Anti: a stylesheet declares a font URL outside the app's own origin.
@@ -225,6 +225,8 @@ Why: the first time the author types `spectant` and sees two real repositories o
   needs their pages (ISC-2 covers "every write" once spec 002 adds writes).
 
 ## Verification
+
+- ISC-65: browser — bun run test:browser -- contrast → 4 passed (117 text and 55 mark samples per theme against /__ui; first run red with six real defects: gallery and primitive classes colliding with daisyUI .stack/.label, light primary button 3.77, light inks on tints, muted on selected chip, success dot; fixed via class renames, tint-aware light inks, --primary-fill/--done-mark tokens; focus and motion probes still green); spec 001 round 16
 
 - ISC-66: browser — bun run test:browser -- motion → 4 passed (reduce in light and dark: 23 interactions, 0 running animations or transitions; control under no-preference shows 200+ transitions, so the emulation reaches the page; red when the reduced-motion block is disabled); spec 001 round 15
 
