@@ -362,9 +362,11 @@ describe("this repository (integration)", () => {
 
   test.skipIf(!hasGit)("spec 001's folder has its round commits", async () => {
     const result = await commitsFor(self, "specs/001-app-skeleton");
-    expect(result.source).toBe("git");
+    // A failed read carries its reason; surface it, because on CI the checkout may be shallow, foreign-owned or without git.
+    if (result.source !== "git") throw new Error(`commitsFor on this repository answered none: ${result.diagnostic ?? "(no diagnostic)"}`);
     expect(result.head).toMatch(/^[0-9a-f]{40,64}$/);
-    expect(result.commits.length).toBeGreaterThan(5);
+    // At least one: a shallow clone (actions/checkout defaults to depth 1) carries only the tip commit.
+    expect(result.commits.length).toBeGreaterThanOrEqual(1);
     for (const c of result.commits) {
       expect(c.sha).toMatch(/^[0-9a-f]{40,64}$/);
       expect(Number.isNaN(Date.parse(c.ts))).toBe(false);

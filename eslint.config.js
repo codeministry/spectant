@@ -10,7 +10,7 @@ import tseslint from 'typescript-eslint';
 export default defineConfig(
   {
     // Build output, caches and generated fixture trees are not source.
-    ignores: ['**/dist/**', '**/coverage/**', 'web/.angular/**', 'web/public/**', 'specs/**', '**/.vendor/**', '**/*.gen.ts', '.claude/**'],
+    ignores: ['**/dist/**', '**/coverage/**', 'web/e2e/.report/**', 'web/e2e/.results/**', 'web/.angular/**', 'web/public/**', 'specs/**', '**/.vendor/**', '**/*.gen.ts', '.claude/**'],
   },
 
   // Plain JavaScript (this file and any config next to it): the core recommended set, no type information.
