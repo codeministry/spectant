@@ -291,3 +291,14 @@ Marks: `ShellState.handleKey` is dead code since the service owns Esc and `[` `]
 `showHints`; no `termHints` setting exists; the settings menu/help entry (T40/T41) must call `keyboard.openSheet()`;
 the initial bundle is 560 kB against the 500 kB budget (mermaid notices aside), `spec-dashboard.css` and
 `tasks-tab.css` are over their 4 kB budgets; the shell host became a flex column (visual baselines unverified).
+Round 13 landed (2026-09-29, commits e92c4ef … the Status tab): T40 header e2e (**ISC-73 closed**, read as one banner;
+on landing the overlay sheet/dialog heads and the evidence preview head became `<div>`s so the literal "no second
+header" holds too), T11 stage table as data with reason templates and a 12-spec fixture walk, T54 Status tab
+(**ISC-79 closed**), T68–T77 the two writes with their five probes (**ISC-24, ISC-26, ISC-27, ISC-86 closed**), T80
+checkbox wiring (**ISC-25 closed**), T95/T96 notes store (**ISC-94 closed**). Progress 28/49, master 53/123.
+Marks: the header's spec picker shows the dashboard row title while the spec head and the zen footer show the spec's
+own title (two goldens, decide one); server answers 409 before 423 when both apply, the stub the reverse; the stub's
+409 carries no `files`; read-compare-write is atomic only within the process; orphaned notes stay editable from any
+workspace and a malformed note id is 404; the rail at wide is still the placeholder, so Waiting on you and Warnings
+are not visible at wide and `#waiting` finds no heading there (T54 finding); the gate's `done` state is not clickable;
+no 423 e2e for the gate; the ▾ marker uses CSS alt-text syntax (older WebKit shows none); initial bundle 570 kB.
