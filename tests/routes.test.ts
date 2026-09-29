@@ -191,7 +191,7 @@ describe("every read route of harbor 002", () => {
     }
   });
 
-  test("405 with Allow for a method the route does not take; the writes answer 405 until T67", async () => {
+  test("405 with Allow for a method the route does not take; the writes take POST only", async () => {
     for (const { route, path } of readRoutes()) {
       for (const method of ["POST", "PUT", "DELETE", "PATCH"]) {
         const res = await call(path, { method });
@@ -204,9 +204,14 @@ describe("every read route of harbor 002", () => {
     for (const path of [specRoutes.gateReviewed("harbor", "002"), specRoutes.taskCheck("harbor", "002", "T1")]) {
       const get = await call(path);
       expect([get.status, get.headers.get("allow")]).toEqual([405, "POST"]);
+      for (const method of ["PUT", "DELETE", "PATCH"]) {
+        const res = await call(path, { method });
+        expect([res.status, res.headers.get("allow")]).toEqual([405, "POST"]);
+      }
+      // A POST is answered (tests/writes.test.ts covers the writes); one without a body is the contract's 400.
       const post = await call(path, { method: "POST" });
-      expect(post.status).toBe(405);
-      expect(await post.json()).toEqual({ error: "method-not-allowed" });
+      expect(post.status).toBe(400);
+      expect(await post.json()).toEqual({ error: "invalid-body" });
     }
   });
 

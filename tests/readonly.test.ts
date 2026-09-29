@@ -1,5 +1,7 @@
 // The read-only invariant (T52, ISC-15): adding a workspace and opening every page leaves the registered repository
-// byte-identical, `.git/` included.
+// byte-identical, `.git/` included. Since spec 002 it also guards the two writes (last describe): every read route and
+// every refused write (400, 404, 409, 423) leaves it byte-identical, an accepted reviewed mark changes exactly
+// `.gates/reviewed.json` and `events.jsonl`, an accepted tick exactly `tasks.md`, and `.git/` never changes.
 //
 // The fixture `core/fixtures/harbor` has no `.git`, so the test builds a real repository from a copy of it and plants
 // the state a careless implementation would disturb: a commit, a staged-but-uncommitted file (index differs from HEAD),
@@ -35,6 +37,10 @@ import { join } from "node:path";
 import type { DashboardModel } from "../core/src/dashboard.ts";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
 import { run } from "../server/src/cli.ts";
+import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
+import { openRegistry } from "../server/src/registry.ts";
+import { REVIEWED_HASHES_HEADER, type ReviewedHashes, TASKS_HASH_HEADER, parseReviewedHashes, specRoutes } from "../server/src/spec-routes.contract.ts";
+import { specRoutesApi } from "../server/src/spec-routes.ts";
 
 const FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "harbor");
 const SLUG = "harbor";
@@ -273,5 +279,68 @@ describe("ISC-15: add + browse leaves the registered repository byte-identical, 
     expect(underGit(after)).toEqual(underGit(before));
     expect(readFileSync(join(repo, ".git", "index")).equals(indexBefore)).toBe(true);
     expect(lstatSync(join(repo, ".git", "index")).mtimeMs).toBe(indexMtimeBefore);
+  });
+});
+
+// The two writes (spec 002, ISC-24 to ISC-27): the read-only rule's carve-out, proven on the same planted repository.
+// A copy of it (`.git/` included) is registered, so this block never depends on the order of the one above. harbor's
+// activity log holds ISC-74 of spec 002; spec 004 is free.
+describe("ISC-15 with the writes: refused writes change nothing, an accepted one only its own files, .git/ never", () => {
+  test("readonly: reads and every refused write leave the copy byte-identical; the mark and the tick touch only their targets", async () => {
+    const copy = join(mkdtempSync(join(root, "writes-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    const registry = openRegistry(mkdtempSync(join(root, "data-writes-")));
+    registry.add(copy);
+    const api = specRoutesApi({ registry, lifeos: LIFEOS_ABSENT });
+    const call = async (path: string, method = "GET", body?: unknown): Promise<Response> => {
+      const url = new URL(`http://127.0.0.1:7717${path}`);
+      const init = body === undefined ? {} : { body: typeof body === "string" ? body : JSON.stringify(body) };
+      const res = await api(new Request(url.href, { method, headers: { Host: "127.0.0.1:7717" }, ...init }), url);
+      if (res === null) throw new Error(`the spec routes declined ${path}`);
+      return res;
+    };
+    const retention = `specs/${MARKED_SPEC}`;
+    const gitChanges = (a: Snapshot, b: Snapshot): string[] => changed(a, b, { mtime: true }).filter((p) => p === ".git" || p.startsWith(".git/"));
+    const hashes = async (id: string): Promise<ReviewedHashes | null> =>
+      parseReviewedHashes((await call(specRoutes.spec(SLUG, id))).headers.get(REVIEWED_HASHES_HEADER));
+    const tasksHash = async (id: string): Promise<string> => (await call(specRoutes.tasks(SLUG, id))).headers.get(TASKS_HASH_HEADER) ?? "";
+
+    try {
+      const before = snapshot(copy);
+      for (const id of ["002", "004"]) {
+        for (const path of [specRoutes.spec, specRoutes.timeline, specRoutes.claims, specRoutes.tasks, specRoutes.evidence, specRoutes.frames, specRoutes.live]) {
+          expect((await call(path(SLUG, id))).status).toBe(200);
+        }
+      }
+
+      // Refused: 423 (ISC-74 held), 409 (stale hashes), 404 (no such task), 400 (no request).
+      const refused: Array<[string, unknown, number]> = [
+        [specRoutes.gateReviewed(SLUG, "002"), { hashes: await hashes("002") }, 423],
+        [specRoutes.taskCheck(SLUG, "002", "T27"), { checked: true, hash: await tasksHash("002") }, 423],
+        [specRoutes.gateReviewed(SLUG, "004"), { hashes: { spec: "0".repeat(64), plan: null, tasks: null } }, 409],
+        [specRoutes.taskCheck(SLUG, "004", "T1"), { checked: false, hash: "0".repeat(64) }, 409],
+        [specRoutes.taskCheck(SLUG, "004", "T999"), { checked: true, hash: await tasksHash("004") }, 404],
+        [specRoutes.taskCheck(SLUG, "004", "T1"), "not json", 400],
+      ];
+      for (const [path, body, status] of refused) expect({ path, status: (await call(path, "POST", body)).status }).toEqual({ path, status });
+      const afterRefused = snapshot(copy);
+      expect(changed(before, afterRefused, { mtime: true })).toEqual([]);
+      expect(afterRefused.checksum).toBe(before.checksum);
+
+      // Accepted: the reviewed mark of 004 changes its mark and its events.jsonl, nothing else.
+      expect((await call(specRoutes.gateReviewed(SLUG, "004"), "POST", { hashes: await hashes("004") })).status).toBe(200);
+      const afterMark = snapshot(copy);
+      expect(changed(before, afterMark)).toEqual([`${retention}/.gates/reviewed.json`, `${retention}/events.jsonl`]);
+      expect(gitChanges(before, afterMark)).toEqual([]);
+
+      // Accepted: unticking T1 of 004 changes tasks.md, nothing else.
+      expect((await call(specRoutes.taskCheck(SLUG, "004", "T1"), "POST", { checked: false, hash: await tasksHash("004") })).status).toBe(200);
+      const afterTick = snapshot(copy);
+      expect(changed(afterMark, afterTick)).toEqual([`${retention}/tasks.md`]);
+      expect(gitChanges(before, afterTick)).toEqual([]);
+      expect(underGit(afterTick)).toEqual(underGit(before));
+    } finally {
+      registry.close();
+    }
   });
 });

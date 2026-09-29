@@ -27,7 +27,7 @@ const OPERATOR = 'operator';
 
 /** The claim ID forms of claims.ts: ISC-N (dotted splits included), domain-prefixed (H-AVAIL), short (C1, EQ-12). */
 const CLAIM_ID = /^(?:ISC-[\w.-]+|[A-Z]{1,6}-[A-Z0-9][\w.-]*|[A-Z]{1,4}-?\d+(?:\.\d+)*)$/;
-const BOX_LINE = /^\s*- \[([ xX])\]\s*(T\d+)\b(.*)$/;
+export const BOX_LINE = /^\s*- \[([ xX])\]\s*(T\d+)\b(.*)$/;
 /** A struck bullet: `- ~~T<n> …~~`, then an optional ` — <note>`. The closing `~~` is the one before the note. */
 const STRUCK_LINE = /^\s*- ~~(T\d+)\b(.*?)~~(?:\s*[—–-]\s*(.*?))?\s*$/;
 const FENCE = /^\s*(```|~~~)/;

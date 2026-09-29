@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 22/49
+progress: 26/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T17:20:24Z
+updated: 2026-09-29T17:24:11Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -213,13 +213,13 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 
 **The two writes**
 
-- [ ] ISC-24: "Mark reviewed" writes `.gates/reviewed` in the format the old skill writes and appends exactly one `review → build` event (the stage table names what the spec waits for next, as `core/src/derived-stages.ts` derives it; decided 2026-09-29). (after: ISC-32)
+- [x] ISC-24: "Mark reviewed" writes `.gates/reviewed` in the format the old skill writes and appends exactly one `review → build` event (the stage table names what the spec waits for next, as `core/src/derived-stages.ts` derives it; decided 2026-09-29). (after: ISC-32)
 - [ ] ISC-25: Ticking a task in the app changes exactly that task's checkbox line in `tasks.md` and nothing else.
-- [ ] ISC-26: A write whose sha256 no longer matches the rendered file returns 409 and leaves the file byte-identical.
-- [ ] ISC-27: Anti: the app writes to a spec while `.spectant/activity.jsonl` shows an open claim on it.
+- [x] ISC-26: A write whose sha256 no longer matches the rendered file returns 409 and leaves the file byte-identical.
+- [x] ISC-27: Anti: the app writes to a spec while `.spectant/activity.jsonl` shows an open claim on it.
 - [x] ISC-37: With LifeOS present the board also shows LifeOS frontier locks; without LifeOS the board works and no LifeOS path is read.
 - [ ] ISC-85: The gate button shows ready, stale (naming the changed files), done or paused from `.gates/reviewed.json` and the lock sources; its dialog lists the three hashed files. (after: ISC-24)
-- [ ] ISC-86: A write is refused with 423 while a LifeOS frontier lock exists for the claim; when no lock source is available the page shows "no agent source" and the write proceeds under the hash check. (after: ISC-26, ISC-37)
+- [x] ISC-86: A write is refused with 423 while a LifeOS frontier lock exists for the claim; when no lock source is available the page shows "no agent source" and the write proceeds under the hash check. (after: ISC-26, ISC-37)
 
 **Live — the round board**
 
@@ -286,6 +286,14 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-86: bun-test — `bun test tests/writes.test.ts -t "frontier"` 4 pass: a synthetic LifeOS state directory with a frontier lock on ISC-96 gives 423 source frontier for the tick and the gate on 004, the task's own claim named first, frontier winning over activity; with no source both writes answer 200 with lockSource none (no agent source) and a stale hash is still 409; a state directory without a lock on the spec still counts as a source (T72, T77; 2026-09-29)
+
+- ISC-27: bun-test — `bun test tests/writes.test.ts -t "claim lock"` 3 pass: with harbor's .spectant/activity.jsonl a tick of T27 (ISC-74) and any write on 002 answer 423 with the ISC-74 lock and the tree stays identical; a claim on another spec does not block 004; after a release line the tick succeeds (T71, T76; 2026-09-29)
+
+- ISC-26: bun-test — `bun test tests/writes.test.ts -t "cas"` 3 pass: plan.md edited after render → 409 hash-mismatch with files ['plan.md'] and the fresh hashes, tree identical; tasks.md changed after render → 409 with expected.tasks, bytes identical; an accepted write keeps inode and mode (T67, T68, T73; 2026-09-29)
+
+- ISC-24: bun-test — `bun test tests/writes.test.ts -t "reviewed"` 4 pass: POST gate/reviewed on harbor 002 writes .gates/reviewed.json byte-equal to reviewedMarkText (readGateMark parses it, reviewedGate reads fresh) and appends exactly one valid review → build line with actor app; an events.jsonl without trailing newline gets one clean line; only .gates/reviewed.json and events.jsonl change (T16, T69, T74; 2026-09-29)
 
 - ISC-94: bun-test — `bun test tests/notes.test.ts -t "store"` 10 pass (193 expect): a note with no anchor and one per kind is stored in the data directory with its workspace, a second anchor is refused 400 multiple-anchors, list filters, PUT replaces the draft, counts per anchor, DELETE 204 then 404, orphaning through registry.remove keeps rows with workspace null; the harbor copy hashes identical before and after every call, .git/ included, git status clean; end to end through the served CLI (T94, T95, T96; 2026-09-29)
 

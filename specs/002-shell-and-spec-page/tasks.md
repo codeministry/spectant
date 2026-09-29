@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T17:20:24Z
+updated: 2026-09-29T17:24:11Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -104,14 +104,14 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 ### ④ The two writes
 
 - [x] T67 · ISC-26 · [seam] · server — writes contract: request bodies with the client's sha256, the 200 / 409 / 423 response shapes, the event line (after: T44) · `server/src/writes.contract.ts`
-- [ ] T68 · ISC-26 · server — `writes.ts`: read, compare sha256, write the target file with fsync, byte-identical on mismatch (after: T67) · `server/src/writes.ts`
+- [x] T68 · ISC-26 · server — `writes.ts`: read, compare sha256, write the target file with fsync, byte-identical on mismatch (after: T67) · `server/src/writes.ts`
 - [ ] T69 · ISC-24 · server — gate route: `.gates/reviewed.json` in the old skill's format plus exactly one `review → build` event line (after: T68, T16) · `server/src/gate-route.ts`
-- [ ] T70 · ISC-25 · server — checkbox route: exactly one task line changed in `tasks.md` (after: T68) · `server/src/checkbox-route.ts`
+- [x] T70 · ISC-25 · server — checkbox route: exactly one task line changed in `tasks.md` (after: T68) · `server/src/checkbox-route.ts`
 - [ ] T71 · ISC-27 · server — lock guard: refuse a write while `.spectant/activity.jsonl` shows an open claim on the spec (after: T68, T20) · `server/src/lock-guard.ts`
 - [ ] T72 · ISC-86 · server — lock guard: frontier lock → 423 with the session name; no source available → proceed with source `none` (after: T71, T51) · `server/src/lock-guard.ts`
 - [ ] T73 · ISC-26 · server — writes test "cas": 409 and byte-identical file (after: T68) · `tests/writes.test.ts`
 - [ ] T74 · ISC-24 · server — writes test "reviewed": gate file plus one event (after: T69) · `tests/writes.test.ts`
-- [ ] T75 · ISC-25 · server — writes test "checkbox": one line changed (after: T70) · `tests/writes.test.ts`
+- [x] T75 · ISC-25 · server — writes test "checkbox": one line changed (after: T70) · `tests/writes.test.ts`
 - [ ] T76 · ISC-27 · server — writes test "claim lock": refused under an activity line (after: T71) · `tests/writes.test.ts`
 - [ ] T77 · ISC-86 · server — writes test "frontier": 423 under a frontier lock, proceed with `none` (after: T72) · `tests/writes.test.ts`
 - [ ] T78 · ISC-85 · web — gate button in the spec head with ready, stale (changed files named), done, paused; the release dialog listing the three hashed files; the agent banner variants (after: T54, T67) · `web/src/app/layout/spec-head/`

@@ -25,8 +25,9 @@
  * constitution for the spec page. Locks come from `core/`'s `readLockSources`: the repository's
  * `.spectant/activity.jsonl`, and the LifeOS frontier locks only when `options.lifeos` is present (ISC-37).
  *
- * The two writes (`POST …/gate/reviewed`, `POST …/tasks/:tid/check`) answer 405 until T67 implements them with the
- * hash check and the lock check. No absolute path leaves this module (ISC-3): bodies are core models over texts, and
+ * The two writes (`POST …/gate/reviewed`, `POST …/tasks/:tid/check`): the body through `parseWriteBody` (400), then
+ * `gate-route.ts` / `checkbox-route.ts` over `writes.ts` (404 unknown task, 409 hash mismatch, 423 lock, 200 written),
+ * the answers typed by `writes.contract.ts`. No absolute path leaves this module (ISC-3): bodies are core models over texts, and
  * a workspace is its slug, its name and `pathTail`.
  */
 import { existsSync } from "node:fs";
@@ -37,7 +38,6 @@ import { DOC_FILES, specFilePath } from "../../core/src/files.ts";
 import type { DocName, LockReading, SpecFiles } from "../../core/src/files.ts";
 import { buildFrames } from "../../core/src/frames.ts";
 import { parseFrontmatter } from "../../core/src/frontmatter.ts";
-import { type ReviewedFile, hashForGate } from "../../core/src/gates.ts";
 import { buildLiveFrame } from "../../core/src/live.ts";
 import { readLockSources } from "../../core/src/locks.ts";
 import { docsFor, renderDocsMarkdown } from "../../core/src/markdown-docs.ts";
@@ -46,7 +46,9 @@ import { buildSpecPage } from "../../core/src/spec.ts";
 import { parseTaskLines } from "../../core/src/tasks.ts";
 import { buildTimeline } from "../../core/src/timeline.ts";
 import { json } from "./api.ts";
+import { writeTaskCheck } from "./checkbox-route.ts";
 import { evidenceFileResponse } from "./evidence.ts";
+import { writeGateReviewed } from "./gate-route.ts";
 import { CommitCache, type CommitsResult, commitsFor } from "./git.ts";
 import type { ApiHandler } from "./http.ts";
 import type { LifeosDetection } from "./lifeos.ts";
@@ -56,7 +58,6 @@ import {
   type DocMissing,
   type NotFound,
   REVIEWED_HASHES_HEADER,
-  type ReviewedHashes,
   SPEC_API_ROOT,
   type SpecRouteMatch,
   TASKS_HASH_HEADER,
@@ -75,6 +76,8 @@ import {
   unreadableCode,
   workspaceUnreadable,
 } from "./workspace-loader.ts";
+import { parseWriteBody } from "./writes.contract.ts";
+import { gateHashes } from "./writes.ts";
 
 export type SpecRoutesOptions = {
   registry: Pick<Registry, "get">;
@@ -159,13 +162,8 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
       commits: (await commitsOf(root, ref)).commits,
       ...(input.locks ? { locks: input.locks } : {}),
     });
-    const hash = (file: ReviewedFile, text: string | undefined): string | null => (text === undefined ? null : hashForGate(file, text));
-    const hashes: ReviewedHashes = {
-      spec: hash("spec.md", files.texts.spec),
-      plan: hash("plan.md", files.texts.plan),
-      tasks: hash("tasks.md", files.texts.tasks),
-    };
-    return json(req, 200, page, { [REVIEWED_HASHES_HEADER]: formatReviewedHashes(hashes) });
+    // The same hashes the gate write recomputes (`writes.ts`), so a render and its write can only differ by the files.
+    return json(req, 200, page, { [REVIEWED_HASHES_HEADER]: formatReviewedHashes(gateHashes(files.texts)) });
   }
 
   function docs(req: Request, root: string, ref: SpecRef, files: SpecFiles, name: DocName): Response {
@@ -233,10 +231,19 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         const now = clock();
         return json(req, 200, buildLiveFrame({ files: withConstitution(files, constitution()), locks: await locksOf(root, now), now }));
       }
-      case "gateReviewed":
-      case "taskCheck":
-        // The writes (T67): hash check against the rendered hashes, lock check (423), then one write. Not yet.
-        return json(req, 405, { error: "method-not-allowed" }, { Allow: "" });
+      case "gateReviewed": {
+        const parsed = parseWriteBody("gateReviewed", await req.text());
+        if (!parsed.ok) return json(req, 400, parsed.error);
+        const result = await writeGateReviewed({ root, ref, stateDir, now: clock(), body: parsed.body, constitution: constitution() });
+        return json(req, result.status, result.body);
+      }
+      case "taskCheck": {
+        const parsed = parseWriteBody("taskCheck", await req.text());
+        if (!parsed.ok) return json(req, 400, parsed.error);
+        const { tid } = match.params;
+        const result = await writeTaskCheck({ root, ref, stateDir, now: clock(), tid, body: parsed.body, constitution: constitution() });
+        return json(req, result.status, result.body);
+      }
     }
   }
 
