@@ -8,7 +8,7 @@ constitution: ../constitution.md
 phase: scoping
 progress: 17/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T16:37:26Z
+updated: 2026-09-29T17:04:08Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -213,7 +213,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 
 **The two writes**
 
-- [ ] ISC-24: "Mark reviewed" writes `.gates/reviewed` in the format the old skill writes and appends exactly one `tasks → review` event (the stage table's names, decided 2026-09-29). (after: ISC-32)
+- [ ] ISC-24: "Mark reviewed" writes `.gates/reviewed` in the format the old skill writes and appends exactly one `review → build` event (the stage table names what the spec waits for next, as `core/src/derived-stages.ts` derives it; decided 2026-09-29). (after: ISC-32)
 - [ ] ISC-25: Ticking a task in the app changes exactly that task's checkbox line in `tasks.md` and nothing else.
 - [ ] ISC-26: A write whose sha256 no longer matches the rendered file returns 409 and leaves the file byte-identical.
 - [ ] ISC-27: Anti: the app writes to a spec while `.spectant/activity.jsonl` shows an open claim on it.
@@ -277,6 +277,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - 2026-09-28: the Lovable export moved from `specs/tmp/` to `specs/001-app-skeleton/.design/prototype/` (gitignored)
   during shaping; it is the visual reference for this spec's design pass.
 - 2026-09-29 (design and plan passes, applied at review): ISC-73 accepts the spec id as the compact label ("name, or
+- 2026-09-29 (round 12, correction): the reviewed event is `review → build`, not `tasks → review` — the stage table names what the spec waits for next, and `derived-stages.ts` already derives the reviewed mark as `review → build`; the earlier wording was a transcription slip of the same decision. ISC-24, T69 and `writes.contract.ts` follow.
   its id at compact"); ISC-97 gains `z` for zen; the Vision counts five area tiles, since a Dashboard tile would link
   to itself. Fog closed: the leadgen fixture freezes one spec per type present there, its reduced master carries only
   their feature blocks and IDs keep their numbers because fixtures never share a master (ISC-69); Live and Notes stay
