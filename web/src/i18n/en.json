@@ -976,7 +976,10 @@
       "tries": "Tries",
       "reason": "Reason",
       "session": "Session",
-      "note": "Note"
+      "note": "Note",
+      "claim": "Claim",
+      "history": "State across frames",
+      "historyEmpty": "No frame holds this task yet."
     },
     "rail": {
       "thisFrameCount": "This frame {{count}}",

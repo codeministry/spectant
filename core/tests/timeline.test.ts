@@ -145,7 +145,7 @@ describe('sources', () => {
     expect(r3?.title).toContain('a decision only the principal can make');
     expect(r3?.body).toContain('T12, T13, T14, T17, T19, T21, T24, T25, T26, T27');
     expect(r3?.body).toContain('ISC-60.1, ISC-60.2, ISC-61, ISC-64, ISC-66, ISC-68');
-    expect(r3?.body).toContain('Held: 3');
+    expect(r3?.body).toContain('Held: 4');
     expect(r3?.body).toContain('Stop: a decision only the principal can make');
     expect(r3?.actor).toBe('Engineer, Anvil');
 

@@ -401,6 +401,17 @@
         "state": "waiting",
         "tries": 0,
         "reason": "after T31 still open"
+      },
+      {
+        "task": "T34",
+        "claim": "ISC-78",
+        "lane": "web",
+        "text": "theme-switch: focus ring visible in forced-colours mode (ISC-78)",
+        "parallel": false,
+        "seam": false,
+        "state": "absent",
+        "tries": 0,
+        "note": "struck 2026-03-08: covered by T32's keyboard probe"
       }
     ],
     "progress": {

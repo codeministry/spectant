@@ -976,7 +976,10 @@
       "tries": "Versuche",
       "reason": "Grund",
       "session": "Sitzung",
-      "note": "Notiz"
+      "note": "Notiz",
+      "claim": "Claim",
+      "history": "Zustand über die Frames",
+      "historyEmpty": "Noch kein Frame enthält diese Aufgabe."
     },
     "rail": {
       "thisFrameCount": "Dieser Frame {{count}}",

@@ -72,3 +72,13 @@
   font-weight: 600;
   line-height: 1.75rem;
 }
+
+/* Full screen on request: a consumer sets `data-fullscreen` on the host (the board card detail at the compact tier). */
+:host([data-fullscreen]) .dialog {
+  inline-size: 100%;
+  block-size: 100dvh;
+  max-block-size: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}

@@ -460,16 +460,18 @@ ${p.risks.map((r) => `| ${r.join(" | ")} |`).join("\n")}
 `;
 }
 
-interface Task { id: string; claim: Claim; lane: string; text: string; path: string; seam?: boolean; parallel?: boolean; after?: string[]; done: boolean }
+/** A task line; `struck` makes it a struck bullet (no box, no fraction, no probe mapping row) with that note. */
+interface Task { id: string; claim: Claim; lane: string; text: string; path: string; seam?: boolean; parallel?: boolean; after?: string[]; done: boolean; struck?: string }
 
 function taskLine(t: Task): string {
     const marks = [t.seam ? "[seam]" : null, t.parallel ? "[P]" : null].filter(Boolean);
-    return `- [${t.done ? "x" : " "}] ${t.id} · ${t.claim.id} · ${marks.length ? marks.join(" · ") + " · " : ""}${t.lane} — ${t.text}${t.after?.length ? ` (after: ${t.after.join(", ")})` : ""} · \`${t.path}\``;
+    const body = `${t.id} · ${t.claim.id} · ${marks.length ? marks.join(" · ") + " · " : ""}${t.lane} — ${t.text}${t.after?.length ? ` (after: ${t.after.join(", ")})` : ""} · \`${t.path}\``;
+    return t.struck === undefined ? `- [${t.done ? "x" : " "}] ${body}` : `- ~~${body}~~ — ${t.struck}`;
 }
 
 function tasksMd(slug: string, title: string, updated: string, tasks: Task[]): string {
     const byClaim = new Map<string, Task[]>();
-    for (const t of tasks) byClaim.set(t.claim.id, [...(byClaim.get(t.claim.id) ?? []), t]);
+    for (const t of tasks.filter((t) => t.struck === undefined)) byClaim.set(t.claim.id, [...(byClaim.get(t.claim.id) ?? []), t]);
     return `---
 spec: ${slug}
 plan: plan.md
@@ -706,7 +708,11 @@ const SPECS = [S001, S002, S003, S004, S005, S006];
 //
 // Between rounds 2 and 3 the tasks were re-cut: T27 (registry-list focus order) was struck as covered by T22's
 // keyboard probe, and T28–T33 were renumbered to T27–T32. Rounds 1–2 carry the ids before the re-cut, round 3 and
-// tasks.md the ids after it: T33 is absent from then on, and T27–T32 name other tasks than they did before.
+// tasks.md the ids after it: T33 is gone from then on, and T27–T32 name other tasks than they did before.
+//
+// The re-cut also added T34 (a new id past the old T33, so no id of rounds 1–2 is reused for it), a second ISC-78 task
+// held in round 3 behind the open operator pass T31. After round 3 it was struck as covered by T32's probe: a struck
+// task still on the last board, so the live frame shows it `absent` (ISC-88) while the rounds record it waiting.
 
 const WIDTH_002 = 10;
 const OPERATOR_REASON = "operator lane — the principal's own action, never auto-dispatched";
@@ -728,7 +734,9 @@ function tasks002(): {before: Task[]; after: Task[]} {
     const struck: Task = {id: "T27", claim: claim("ISC-69"), lane: "web", text: "registry-list: focus order follows the list rows (ISC-69)",
         path: "web/src/app/registry-list/", after: ["T1"], done: false};
     const renumbered = kept.slice(26).map((t) => ({...t, id: `T${Number(t.id.slice(1)) + 1}`}));
-    return {before: [...kept.slice(0, 26), struck, ...renumbered, ...tail(31)], after: [...kept, ...tail(30)]};
+    const dropped: Task = {id: "T34", claim: claim("ISC-78"), lane: "web", text: "theme-switch: focus ring visible in forced-colours mode (ISC-78)",
+        path: "web/src/app/theme-switch/", after: ["T1", "T31"], done: false, struck: "struck 2026-03-08: covered by T32's keyboard probe"};
+    return {before: [...kept.slice(0, 26), struck, ...renumbered, ...tail(31)], after: [...kept, ...tail(30), dropped]};
 }
 
 type RoundState = "held" | "dispatched" | "question" | "concerns" | "fail" | "done" | "closed";

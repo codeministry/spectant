@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T18:30:14Z
+updated: 2026-09-29T18:39:22Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -54,7 +54,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T24 · ISC-83 · [P] · core — evidence listing of `artifacts/` and `.evidence/` grouped by claim with media type; path confinement to the spec folder (after: T1) · `core/src/evidence.ts`
 - [x] T25 · ISC-84 · [P] · core — markdown for docs: tables, code blocks, mermaid fences as figures, TOC extraction · `core/src/markdown-docs.ts`
 - [x] T26 · ISC-80 · core — timeline tests: sources merged in order, one entry per event (after: T14, T15) · `core/tests/timeline.test.ts`
-- [ ] T27 · ISC-87 · core — frames tests including the re-cut and matrix cases on spec 001's own `rounds.jsonl` and harbor 002 (after: T17, T18, T19) · `core/tests/frames.test.ts`
+- [x] T27 · ISC-87 · core — frames tests including the re-cut and matrix cases on spec 001's own `rounds.jsonl` and harbor 002 (after: T17, T18, T19) · `core/tests/frames.test.ts`
 - [x] T28 · ISC-90 · core — live frame tests: frontier source, activity source, none (after: T21) · `core/tests/live.test.ts`
 - [x] T29 · ISC-79 · core — stage tests row by row against `FORMAT.md` (after: T11) · `core/tests/stage.test.ts`
 - [x] T30 · ISC-32 · core — events validator tests (after: T16) · `core/tests/events.test.ts`
@@ -122,7 +122,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 
 - [x] T81 · ISC-87 · web — board: toolbar, scrubber with frame kinds and labels, Lanes view with sections and lane order from the constitution, frame chip and progress line (after: T35, T52, T60) · `web/src/app/features/spec/live/board/`
 - [x] T82 · ISC-87 · web — Flow view: four columns with band headers, FLIP moves, segmented control at compact · Mobile (after: T81) · `web/src/app/features/spec/live/flow/`
-- [ ] T83 · ISC-88 · web — card anatomy in both densities and the card detail dialog, every state with glyph, chip text and colour (after: T81) · `web/src/app/features/spec/live/card/`
+- [x] T83 · ISC-88 · web — card anatomy in both densities and the card detail dialog, every state with glyph, chip text and colour (after: T81) · `web/src/app/features/spec/live/card/`
 - [x] T84 · ISC-89 · web — waiting groups by reason, collapsible, no card hidden (after: T81) · `web/src/app/features/spec/live/waiting/`
 - [ ] T85 · ISC-90 · web — live frame rendering: agent chips with elapsed time, stale marker, lock source name, probe status (after: T81) · `web/src/app/features/spec/live/live-frame.ts`
 - [ ] T86 · ISC-91 · web — re-cut marker on the scrubber and absent cards (after: T81) · `web/src/app/features/spec/live/recut.ts`

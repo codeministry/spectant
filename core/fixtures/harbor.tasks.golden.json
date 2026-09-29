@@ -769,6 +769,31 @@
           "T1",
           "T31"
         ]
+      },
+      {
+        "id": "T34",
+        "claim": "ISC-78",
+        "flags": {
+          "parallel": false,
+          "seam": false
+        },
+        "lane": "web",
+        "state": "struck",
+        "paths": [
+          "web/src/app/theme-switch/"
+        ],
+        "text": "theme-switch: focus ring visible in forced-colours mode (ISC-78)",
+        "line": 51,
+        "status": "struck",
+        "round": null,
+        "builder": null,
+        "reason": null,
+        "note": "struck 2026-03-08: covered by T32's keyboard probe",
+        "pathNote": null,
+        "edges": [
+          "T1",
+          "T31"
+        ]
       }
     ],
     "probeMapping": [
@@ -779,7 +804,7 @@
         ],
         "claim": "ISC-51",
         "probe": "`bun run e2e -- registry-list -g render`",
-        "line": 56
+        "line": 57
       },
       {
         "tasks": [
@@ -787,7 +812,7 @@
         ],
         "claim": "ISC-52",
         "probe": "`bun run e2e -- repository-view -g render`",
-        "line": 57
+        "line": 58
       },
       {
         "tasks": [
@@ -795,7 +820,7 @@
         ],
         "claim": "ISC-53",
         "probe": "`bun run e2e -- tag-table -g render`",
-        "line": 58
+        "line": 59
       },
       {
         "tasks": [
@@ -803,7 +828,7 @@
         ],
         "claim": "ISC-54",
         "probe": "`bun run e2e -- digest-detail-panel -g render`",
-        "line": 59
+        "line": 60
       },
       {
         "tasks": [
@@ -811,7 +836,7 @@
         ],
         "claim": "ISC-55",
         "probe": "`bun run e2e -- sync-history -g render`",
-        "line": 60
+        "line": 61
       },
       {
         "tasks": [
@@ -819,7 +844,7 @@
         ],
         "claim": "ISC-56",
         "probe": "`bun run e2e -- settings-page -g render`",
-        "line": 61
+        "line": 62
       },
       {
         "tasks": [
@@ -827,7 +852,7 @@
         ],
         "claim": "ISC-57",
         "probe": "`bun run e2e -- search-box -g render`",
-        "line": 62
+        "line": 63
       },
       {
         "tasks": [
@@ -835,7 +860,7 @@
         ],
         "claim": "ISC-58",
         "probe": "`bun run e2e -- empty-state -g render`",
-        "line": 63
+        "line": 64
       },
       {
         "tasks": [
@@ -843,7 +868,7 @@
         ],
         "claim": "ISC-59",
         "probe": "`bun run e2e -- error-banner -g render`",
-        "line": 64
+        "line": 65
       },
       {
         "tasks": [
@@ -851,7 +876,7 @@
         ],
         "claim": "ISC-60",
         "probe": "`bun run e2e -- theme-switch -g render`",
-        "line": 65
+        "line": 66
       },
       {
         "tasks": [
@@ -859,7 +884,7 @@
         ],
         "claim": "ISC-60.1",
         "probe": "`bun run e2e -- theme-switch -g system`",
-        "line": 66
+        "line": 67
       },
       {
         "tasks": [
@@ -867,7 +892,7 @@
         ],
         "claim": "ISC-60.2",
         "probe": "`bun run e2e -- theme-switch -g persist`",
-        "line": 67
+        "line": 68
       },
       {
         "tasks": [
@@ -875,7 +900,7 @@
         ],
         "claim": "ISC-61",
         "probe": "`bun run e2e -- tag-table -g narrow`",
-        "line": 68
+        "line": 69
       },
       {
         "tasks": [
@@ -883,7 +908,7 @@
         ],
         "claim": "ISC-62",
         "probe": "`bun run e2e -- digest-detail-panel -g narrow`",
-        "line": 69
+        "line": 70
       },
       {
         "tasks": [
@@ -891,7 +916,7 @@
         ],
         "claim": "ISC-63",
         "probe": "`bun run e2e -- sync-history -g narrow`",
-        "line": 70
+        "line": 71
       },
       {
         "tasks": [
@@ -899,7 +924,7 @@
         ],
         "claim": "ISC-64",
         "probe": "`bun run e2e -- settings-page -g narrow`",
-        "line": 71
+        "line": 72
       },
       {
         "tasks": [
@@ -907,7 +932,7 @@
         ],
         "claim": "ISC-65",
         "probe": "`bun run e2e -- search-box -g narrow`",
-        "line": 72
+        "line": 73
       },
       {
         "tasks": [
@@ -915,7 +940,7 @@
         ],
         "claim": "ISC-66",
         "probe": "`bun run e2e -- empty-state -g narrow`",
-        "line": 73
+        "line": 74
       },
       {
         "tasks": [
@@ -923,7 +948,7 @@
         ],
         "claim": "ISC-67",
         "probe": "`bun run e2e -- error-banner -g narrow`",
-        "line": 74
+        "line": 75
       },
       {
         "tasks": [
@@ -931,7 +956,7 @@
         ],
         "claim": "ISC-68",
         "probe": "`bun run e2e -- theme-switch -g narrow`",
-        "line": 75
+        "line": 76
       },
       {
         "tasks": [
@@ -939,7 +964,7 @@
         ],
         "claim": "ISC-69",
         "probe": "`bun run test:browser -- registry-list`",
-        "line": 76
+        "line": 77
       },
       {
         "tasks": [
@@ -947,7 +972,7 @@
         ],
         "claim": "ISC-70",
         "probe": "`bun run test:browser -- repository-view`",
-        "line": 77
+        "line": 78
       },
       {
         "tasks": [
@@ -955,7 +980,7 @@
         ],
         "claim": "ISC-71",
         "probe": "`bun run test:browser -- tag-table`",
-        "line": 78
+        "line": 79
       },
       {
         "tasks": [
@@ -963,7 +988,7 @@
         ],
         "claim": "ISC-72",
         "probe": "`bun run test:browser -- digest-detail-panel`",
-        "line": 79
+        "line": 80
       },
       {
         "tasks": [
@@ -971,7 +996,7 @@
         ],
         "claim": "ISC-73",
         "probe": "`bun run test:browser -- sync-history`",
-        "line": 80
+        "line": 81
       },
       {
         "tasks": [
@@ -979,7 +1004,7 @@
         ],
         "claim": "ISC-74",
         "probe": "`bun run test:browser -- settings-page`",
-        "line": 81
+        "line": 82
       },
       {
         "tasks": [
@@ -987,7 +1012,7 @@
         ],
         "claim": "ISC-75",
         "probe": "`bun run test:browser -- search-box`",
-        "line": 82
+        "line": 83
       },
       {
         "tasks": [
@@ -995,7 +1020,7 @@
         ],
         "claim": "ISC-76",
         "probe": "`bun run test:browser -- empty-state`",
-        "line": 83
+        "line": 84
       },
       {
         "tasks": [
@@ -1004,7 +1029,7 @@
         ],
         "claim": "ISC-77",
         "probe": "transcript in `.evidence/`",
-        "line": 84
+        "line": 85
       },
       {
         "tasks": [
@@ -1012,11 +1037,11 @@
         ],
         "claim": "ISC-78",
         "probe": "`bun run test:browser -- theme-switch`",
-        "line": 85
+        "line": 86
       }
     ],
     "counts": {
-      "rows": 32,
+      "rows": 33,
       "boxes": {
         "landed": 27,
         "total": 32
@@ -1028,7 +1053,7 @@
         },
         {
           "name": "web",
-          "count": 29
+          "count": 30
         },
         {
           "name": "operator",
@@ -1059,6 +1084,10 @@
         {
           "name": "closed",
           "count": 26
+        },
+        {
+          "name": "struck",
+          "count": 1
         }
       ]
     },

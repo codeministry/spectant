@@ -738,8 +738,8 @@ parser.
   the `constitution` and `master` kinds one level too shallow (`specs/archive/constitution.md`, `specs/ISA.md`), and the
   harbor fixture keeps `isa_master: ../../ISA.md` in its archived spec while leadgen's says `../../../ISA.md`.⟩
 - ⟨?: The task grammar above is the fixtures' convention; `tasks.ts` (T23) is still a stub, today only the boxes are
-  counted. No fixture carries a struck task line, and a task text may itself contain ` · ` or code spans, so "paths
-  after the last ` · `" needs a rule outside code spans.⟩
+  counted. One fixture carries a struck task line (harbor 002, T34), and a task text may itself contain ` · ` or code
+  spans, so "paths after the last ` · `" needs a rule outside code spans.⟩
 - ⟨?: How a path in `artifacts/` or `.evidence/` names its claim (a folder per ID, or the ID anywhere in the path) is
   not fixed yet (T24).⟩
 - ⟨?: The frontier lock file's shape and location are not written down in this repository (T20).⟩

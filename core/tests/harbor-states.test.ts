@@ -1,11 +1,19 @@
 // Harbor 002 holds every card state of the round board (ISC-88, spec 002 T8). The web e2e renders this fixture and
 // expects all eleven states; this test proves the fixture carries them before any renderer exists.
 //
-// Reads fixture files only and parses nothing through `core/`: the regexes below are test helpers for the few fields
-// this check needs, not a parser of the spec format.
+// The fixture checks read fixture files only: the regexes below are test helpers for the few fields this check needs,
+// not a parser of the spec format. The last case reads the frames the way the board does, through `core/`
+// (`buildFrames`, then `buildLiveFrame` with the tree's lock reading at the golden clock), and asserts that the
+// union of their card states is exactly the eleven.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
+import type { CardState } from "../src/files.ts";
+import { buildFrames } from "../src/frames.ts";
+import { buildLiveFrame } from "../src/live.ts";
+import { readLockSources } from "../src/locks.ts";
+import { FIXTURES, folders, readTreeAt } from "./helpers/read-tree.ts";
 
 const HARBOR = join(import.meta.dir, "..", "fixtures", "harbor");
 const SPEC_DIR = join(HARBOR, "specs", "002-web-console");
@@ -74,20 +82,27 @@ function testOnlyTaskLines(text: string): Array<{ id: string; checked: boolean; 
   return out;
 }
 
+/** Test helper: struck bullets `- ~~T<n> · …~~ — <note>` of tasks.md as id and note. */
+function testOnlyStruckLines(text: string): Array<{ id: string; note: string }> {
+  return [...text.matchAll(/^- ~~(T\d+) · .*~~ — (.*)$/gm)].map((match) => ({ id: match[1] ?? "", note: match[2] ?? "" }));
+}
+
 const rounds = jsonLines<Round>(join(SPEC_DIR, "rounds.jsonl"));
 const activity = jsonLines<Activity>(join(HARBOR, ".spectant", "activity.jsonl"));
-const tasksMd = testOnlyTaskLines(readFileSync(join(SPEC_DIR, "tasks.md"), "utf8"));
+const tasksText = readFileSync(join(SPEC_DIR, "tasks.md"), "utf8");
+const tasksMd = testOnlyTaskLines(tasksText);
+const struckMd = testOnlyStruckLines(tasksText);
 const specMd = readFileSync(join(SPEC_DIR, "spec.md"), "utf8");
 const last = rounds.at(-1);
 const allTasks = rounds.flatMap((round) => round.tasks);
 
 describe("harbor 002 card states", () => {
-  test("three rounds, dated in March 2026, the last one carrying the tasks.md ids", () => {
+  test("three rounds, dated in March 2026, the last one carrying the tasks.md ids, struck ones included", () => {
     expect(rounds.map((round) => round.round)).toEqual([1, 2, 3]);
     for (const stamp of [...rounds.map((round) => round.ts), ...activity.map((line) => line.ts)]) {
       expect(stamp).toMatch(/^2026-03-\d\dT\d\d:\d\d:\d\dZ$/);
     }
-    expect(last?.tasks.map((task) => task.id)).toEqual(tasksMd.map((task) => task.id));
+    expect(last?.tasks.map((task) => task.id)).toEqual([...tasksMd, ...struckMd].map((task) => task.id));
   });
 
   test("all eleven states occur across the rounds and the live layer", () => {
@@ -99,10 +114,9 @@ describe("harbor 002 card states", () => {
     const inFlight = new Set(last?.tasks.filter((task) => task.state === "dispatched").map((task) => task.id));
     if (open.some((line) => line.task !== undefined && inFlight.has(line.task))) found.add("running");
 
-    // absent: an id of rounds 1–2 that tasks.md no longer has (struck in a re-cut)
-    const current = new Set(tasksMd.map((task) => task.id));
-    const earlier = rounds.slice(0, -1).flatMap((round) => round.tasks.map((task) => task.id));
-    if (earlier.some((id) => !current.has(id))) found.add("absent");
+    // absent: a task on the last round's board that tasks.md now strikes (T34, struck after R3)
+    const struck = new Set(struckMd.map((task) => task.id));
+    if (last?.tasks.some((task) => struck.has(task.id))) found.add("absent");
 
     for (const task of tasksMd.filter((line) => line.lane === "operator")) {
       found.add(task.checked ? "operator done" : "operator open");
@@ -155,5 +169,25 @@ describe("harbor 002 card states", () => {
     const ticked = [...specMd.matchAll(/^- \[x\] (ISC-[\d.]+):/gm)].map((match) => match[1] ?? "");
     expect(last?.claims.closed).toEqual(ticked);
     expect(last?.progress).toBe(`${ticked.length}/${ticked.length + (last?.claims.open.length ?? 0)}`);
+  });
+});
+
+describe("harbor 002 frames through core", () => {
+  const EVERY: readonly CardState[] = ["waiting", "dispatched", "running", "question", "concerns", "fail", "done", "closed", "absent", "operatorOpen", "operatorDone"];
+
+  test("the six round frames and the live frame hold exactly the eleven card states", async () => {
+    const files = folders(join(HARBOR, "specs")).find((f) => f.folder === "002-web-console");
+    if (!files) throw new Error("harbor 002 missing");
+    const constitution = readTreeAt(join(FIXTURES, "harbor")).constitution;
+    const locks = await readLockSources({ repoRoot: HARBOR });
+    const frames = buildFrames(files);
+    const live = buildLiveFrame({ files: { ...files, texts: { ...files.texts, ...(constitution === null ? {} : { constitution }) } }, locks, frames, now: new Date("2026-03-08T15:00:00Z") });
+    const found = new Set([...frames, live].flatMap((frame) => frame.cards.map((card) => card.state)));
+    expect([...found].sort()).toEqual([...EVERY].sort());
+    // the two the rounds cannot hold come from the live layer: the lock and the strike
+    expect(live.cards.filter((card) => card.state === "running" || card.state === "absent").map((card) => [card.task, card.state])).toEqual([
+      ["T27", "running"],
+      ["T34", "absent"],
+    ]);
   });
 });

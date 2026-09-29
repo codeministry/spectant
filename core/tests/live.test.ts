@@ -174,10 +174,12 @@ describe('no source', () => {
     expect(live.agents).toEqual([]);
     expect(live.locks).toEqual([]);
     expect(live.cards.some((c) => c.state === 'running')).toBe(false);
-    // tasks.md matches round 3's board box for box (T27 still open and dispatched), so nothing moves.
+    // tasks.md matches round 3's board box for box (T27 still open and dispatched), so nothing moves but T34, held in
+    // round 3 and struck since: it stays on the board as absent, with its strike note in place of the hold reason.
     const last = buildFrames(files).at(-1);
     expect(last?.kind).toBe('result');
-    expect(live.cards).toEqual(last?.cards ?? []);
+    const struck = { state: 'absent' as const, note: "struck 2026-03-08: covered by T32's keyboard probe" };
+    expect(live.cards).toEqual((last?.cards ?? []).map(({ reason, ...c }) => (c.task === 'T34' ? { ...c, ...struck } : { ...c, ...(reason === undefined ? {} : { reason }) })));
   });
 
   test('without rounds every open task waits with its hold reason, every checked box is landed', () => {
@@ -258,7 +260,7 @@ describe('tasks.md overlays the last round', () => {
     expect(card(live, 'T28')).toMatchObject({ state: 'waiting', tries: 0, text: 'search-box: keyboard reach, focus ring and skip link (ISC-75)' });
     expect(card(live, 'T28').reason).not.toBe('width 10 reached');
     // Board order is tasks.md order.
-    expect(live.cards.map((c) => c.task).slice(-3)).toEqual(['T31', 'T32', 'T33']);
+    expect(live.cards.map((c) => c.task).slice(-4)).toEqual(['T31', 'T32', 'T33', 'T34']);
   });
 });
 

@@ -30,7 +30,7 @@ snapshot changes only together with the parser change that explains it.
 | Spec | Type · phase | Carries | Expected (as the old Spec skill derives it) |
 |------|--------------|---------|---------------------------------------------|
 | `archive/001-manifest-sync` | feature · complete | `archived:` date, all 46 claims `[x]`, reviewed and code-reviewed marks, `events.jsonl` with the whole chain from the creation to done in the stage table's names | archived, stage done, no warning; the timeline shows the seven recorded transitions, none derived |
-| `002-web-console` | feature · building | reviewed mark renewed after the re-cut, `rounds.jsonl` with three rounds, 25 of 30 claims closed and 27 of 32 tasks `[x]`, one claim blocked by an edge, dotted IDs `ISC-60.1`/`ISC-60.2`; every card state of the round board (see below) | stage build, no warning; R1 9/30, R2 15/30, R3 25/30 with `stop` "a decision only the principal can make" |
+| `002-web-console` | feature · building | reviewed mark renewed after the re-cut, `rounds.jsonl` with three rounds, 25 of 30 claims closed and 27 of 32 tasks `[x]` plus one struck task (T34), one claim blocked by an edge, dotted IDs `ISC-60.1`/`ISC-60.2`; every card state of the round board (see below) | stage build, no warning; R1 9/30, R2 15/30, R3 25/30 with `stop` "a decision only the principal can make" |
 | `003-config-loader` | refactor · scoping | no reviewed mark, no `tasks.md`, no mermaid fence in `spec.md` or `plan.md` | stage tasks, warning review (missing); diagram verdict `warn`, which the dashboard does not list for a refactor |
 | `004-retention-policies` | feature · building | every claim `[x]`, `plan.md` without a mermaid fence, current reviewed mark, stale code-reviewed mark | stage code-review, warnings diagrams (`plan.md`) and closed |
 | `005-config-format-choice` | spike · scoping | one claim, two `- fog:` lines, no reviewed mark | stage review, warnings review (missing) and fog |
@@ -45,9 +45,12 @@ snapshot changes only together with the parser change that explains it.
   T14 and T17 with a `retry with:` note, keeps the question open (now T29), leaves T27 `dispatched` and stops.
 - running comes from `harbor/.spectant/activity.jsonl`: a `claim` line for T27 (ISC-74, `spec-002-ISC-74`, `wt-7`)
   without a release, beside one claimed-and-released pair for T25.
-- absent comes from the re-cut between R2 and R3: T27 (registry-list focus order) was struck and T28–T33 renumbered to
-  T27–T32, so T33 is gone from R3 and `tasks.md`, and the ids T27–T32 name other tasks than they did in R1–R2. The
-  question recorded on T30 in R2 belongs to T29 in R3; T30 is now an operator step. No state may follow the bare id.
+- absent comes from a struck task still on the last board. The re-cut between R2 and R3 struck T27 (registry-list
+  focus order), renumbered T28–T33 to T27–T32 and added T34 (theme-switch in forced-colours mode, ISC-78), held in R3
+  behind the operator pass T31. After R3, `tasks.md` strikes T34 as covered by T32's probe, so the live frame shows
+  it `absent` with its strike note while R3 records it waiting. T33 is gone from R3 and `tasks.md` and has no card; the
+  ids T27–T32 name other tasks than they did in R1–R2. The question recorded on T30 in R2 belongs to T29 in R3; T30
+  is now an operator step. No state may follow the bare id.
 - operator open and operator done come from `tasks.md`: T31 `[ ]` and T30 `[x]`, both on ISC-77.
 
 `.spectant/` is ignored at the repository root; `core/fixtures/.gitignore` re-includes it for the fixtures.

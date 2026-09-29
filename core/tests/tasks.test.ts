@@ -141,12 +141,12 @@ describe('harbor 002: states from its three rounds', () => {
   const model = parseTaskLines({ tasks: text, constitution, rounds: read(`${dir}/rounds.jsonl`) });
   const rows = byId(model);
 
-  test('32 tasks, 27 boxes checked, counts per lane', () => {
+  test('32 boxes, 27 checked, one struck bullet (T34) beside them, counts per lane', () => {
     expect(model.counts.boxes).toEqual({ landed: 27, total: 32 });
     expect(model.counts.boxes).toEqual(archiveBoxes(text));
     expect(model.counts.byLane).toEqual([
       { name: 'api', count: 1 },
-      { name: 'web', count: 29 },
+      { name: 'web', count: 30 },
       { name: 'operator', count: 2 },
     ]);
   });
@@ -159,7 +159,9 @@ describe('harbor 002: states from its three rounds', () => {
       { name: 'question', count: 1 },
       { name: 'done', count: 1 },
       { name: 'closed', count: 26 },
+      { name: 'struck', count: 1 },
     ]);
+    expect(rows.get('T34')).toMatchObject({ status: 'struck', state: 'struck', round: null, note: "struck 2026-03-08: covered by T32's keyboard probe" });
     expect(ids(model.tasks.filter((t) => t.status === 'closed'))).toEqual(range(1, 26));
     expect(rows.get('T27')).toMatchObject({ status: 'dispatched', round: 3, state: 'open' });
     expect(ids(model.tasks.filter((t) => t.status === 'held'))).toEqual(['T28', 'T32']);
@@ -174,6 +176,7 @@ describe('harbor 002: states from its three rounds', () => {
     expect(plain.counts.byStatus).toEqual([
       { name: 'open', count: 5 },
       { name: 'done', count: 27 },
+      { name: 'struck', count: 1 },
     ]);
     expect(plain.tasks.every((t) => t.round === null && t.builder === null)).toBe(true);
   });

@@ -5,7 +5,7 @@
       "kind": "round",
       "derived": false,
       "title": "Round 3 · 10 dispatched · 10 closed · stopped: a decision only the principal can make",
-      "body": "- Dispatched: T12, T13, T14, T17, T19, T21, T24, T25, T26, T27\n- Closed this round: ISC-60.1, ISC-60.2, ISC-61, ISC-64, ISC-66, ISC-68, ISC-69, ISC-71, ISC-72, ISC-73\n- Held: 3\n- Stop: a decision only the principal can make",
+      "body": "- Dispatched: T12, T13, T14, T17, T19, T21, T24, T25, T26, T27\n- Closed this round: ISC-60.1, ISC-60.2, ISC-61, ISC-64, ISC-66, ISC-68, ISC-69, ISC-71, ISC-72, ISC-73\n- Held: 4\n- Stop: a decision only the principal can make",
       "ref": "3",
       "id": "round-3",
       "actor": "Engineer, Anvil"

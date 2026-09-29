@@ -2008,6 +2008,17 @@
           "state": "waiting",
           "tries": 0,
           "reason": "after T31 still open"
+        },
+        {
+          "task": "T34",
+          "claim": "ISC-78",
+          "lane": "web",
+          "text": "theme-switch: focus ring visible in forced-colours mode (ISC-78)",
+          "parallel": false,
+          "seam": false,
+          "state": "waiting",
+          "tries": 0,
+          "reason": "after T31 still open"
         }
       ],
       "progress": {
@@ -2017,7 +2028,7 @@
         },
         "tasks": {
           "landed": 18,
-          "total": 32
+          "total": 33
         }
       },
       "closedClaims": [],
@@ -2026,7 +2037,9 @@
         "struck": [
           "T33"
         ],
-        "added": [],
+        "added": [
+          "T34"
+        ],
         "changed": [
           "T27",
           "T28",
@@ -2433,6 +2446,17 @@
           "state": "waiting",
           "tries": 0,
           "reason": "after T31 still open"
+        },
+        {
+          "task": "T34",
+          "claim": "ISC-78",
+          "lane": "web",
+          "text": "theme-switch: focus ring visible in forced-colours mode (ISC-78)",
+          "parallel": false,
+          "seam": false,
+          "state": "waiting",
+          "tries": 0,
+          "reason": "after T31 still open"
         }
       ],
       "progress": {
@@ -2442,7 +2466,7 @@
         },
         "tasks": {
           "landed": 27,
-          "total": 32
+          "total": 33
         }
       },
       "closedClaims": [

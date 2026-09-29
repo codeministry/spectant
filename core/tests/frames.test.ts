@@ -2,13 +2,25 @@
 // task states carried forward, and the re-cut hook T18 (ISC-91) and T19 (ISC-92) build on.
 //
 // The exact states below are counted by hand from `core/fixtures/harbor/specs/002-web-console/rounds.jsonl` (three
-// rounds, a re-cut between R2 and R3 that strikes T33 and renumbers T27–T32). The live frame (T21) is not built here.
+// rounds, a re-cut between R2 and R3 that strikes T33, renumbers T27–T32 and adds T34, which tasks.md strikes after
+// R3). The live frame (T21) is built only where the eleven states are counted (T27): the rounds hold nine, the live
+// frame adds running and absent. Spec 001's own rounds.jsonl (`spectant-001/`) is compared with its golden.
+//
+// T18 (`detectRecut`) and T19 (`buildMatrix`) are stubs today: their cases stand below as `test.todo` with the
+// assertions written, run with `bun test --todo core/tests/frames.test.ts`; the task that fills a stub turns its
+// cases into plain tests.
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { CardState, Frame, FrameCard, SpecFiles } from '../src/files.ts';
 import { buildFrames, CARD_SEVERITY, worstState } from '../src/frames.ts';
-import { FIXTURES, folders } from './helpers/read-tree.ts';
+import { buildLiveFrame } from '../src/live.ts';
+import { readLockSources } from '../src/locks.ts';
+import { buildMatrix } from '../src/matrix.ts';
+import { detectRecut } from '../src/recut.ts';
+import { goldenPath } from './helpers/golden.ts';
+import { FIXTURES, folders, readTreeAt } from './helpers/read-tree.ts';
 
 function specFiles(tree: string, folder: string): SpecFiles {
   const files = folders(join(FIXTURES, tree, 'specs')).find((f) => f.folder === folder);
@@ -120,7 +132,7 @@ describe('harbor 002: exact card states per frame', () => {
       closed: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T15', 'T16', 'T18', 'T20', 'T23'],
       dispatched: ['T12', 'T13', 'T14', 'T17', 'T19', 'T21', 'T24', 'T25', 'T26', 'T27'],
       done: ['T22'],
-      waiting: ['T28', 'T32'],
+      waiting: ['T28', 'T32', 'T34'],
       question: ['T29'],
       operatorDone: ['T30'],
       operatorOpen: ['T31'],
@@ -131,7 +143,7 @@ describe('harbor 002: exact card states per frame', () => {
     expect(byState(frames[5])).toEqual({
       closed: ids(1, 26),
       dispatched: ['T27'],
-      waiting: ['T28', 'T32'],
+      waiting: ['T28', 'T32', 'T34'],
       question: ['T29'],
       operatorDone: ['T30'],
       operatorOpen: ['T31'],
@@ -211,8 +223,8 @@ describe('progress and closed claims', () => {
       [9, 30, 10, 33],
       [9, 30, 10, 33],
       [15, 30, 17, 33],
-      [15, 30, 18, 32],
-      [25, 30, 27, 32],
+      [15, 30, 18, 33],
+      [25, 30, 27, 33],
     ]);
   });
 
@@ -223,9 +235,9 @@ describe('progress and closed claims', () => {
 });
 
 describe('recut hook (ISC-91, completed by T18)', () => {
-  test('harbor: the R3 dispatch frame carries the re-cut: T33 struck, T27–T32 renumbered', () => {
+  test('harbor: the R3 dispatch frame carries the re-cut: T33 struck, T34 added, T27–T32 renumbered', () => {
     expect(frames.map((f) => f.recut !== undefined)).toEqual([false, false, false, false, true, false]);
-    expect(frames[4]?.recut).toEqual({ struck: ['T33'], added: [], changed: ['T27', 'T28', 'T29', 'T30', 'T31', 'T32'] });
+    expect(frames[4]?.recut).toEqual({ struck: ['T33'], added: ['T34'], changed: ['T27', 'T28', 'T29', 'T30', 'T31', 'T32'] });
   });
 
   test('harbor: no state attributed to a renumbered id', () => {
@@ -326,5 +338,146 @@ describe('purity', () => {
     expect(a).not.toBe(b);
     expect(JSON.stringify(harbor)).toBe(snapshot);
     expect(harbor.texts).toEqual(texts);
+  });
+});
+
+// ── T27: the live frame on harbor 002, spec 001's own rounds against the golden, re-cut and matrix cases ──────────
+
+const LIVE_NOW = new Date('2026-03-08T15:00:00Z');
+const harborConstitution = readTreeAt(join(FIXTURES, 'harbor')).constitution;
+const harborLive = buildLiveFrame({
+  files: { ...harbor, texts: { ...harbor.texts, ...(harborConstitution === null ? {} : { constitution: harborConstitution }) } },
+  locks: await readLockSources({ repoRoot: join(FIXTURES, 'harbor') }),
+  frames,
+  now: LIVE_NOW,
+});
+const spectantFrames = buildFrames(spectant);
+
+/** The golden frames of one spec folder, as the golden test wrote them. */
+function goldenFrames(tree: string, folder: string): unknown {
+  const all = JSON.parse(readFileSync(goldenPath(tree, 'frames'), 'utf8')) as Record<string, unknown>;
+  return all[`specs/${folder}`];
+}
+
+describe('harbor 002: the live frame completes the eleven states (T21 over T17)', () => {
+  test('the first frame each state appears in: nine from the rounds, running and absent from the live frame', () => {
+    const first = new Map<CardState, number>();
+    for (const f of [...frames, harborLive]) for (const c of f.cards) if (!first.has(c.state)) first.set(c.state, f.index);
+    expect(Object.fromEntries([...first].sort(([a], [b]) => a.localeCompare(b)))).toEqual({
+      absent: 6,
+      closed: 1,
+      concerns: 3,
+      dispatched: 0,
+      done: 3,
+      fail: 3,
+      operatorDone: 4,
+      operatorOpen: 0,
+      question: 3,
+      running: 6,
+      waiting: 0,
+    });
+    expect([...first.keys()].sort()).toEqual([...CARD_SEVERITY].sort());
+  });
+
+  test('T34, held in R3 and struck after it, is absent live with its strike note; T33 of the re-cut has no card', () => {
+    expect(card(frames[5], 'T34')).toMatchObject({ state: 'waiting', reason: 'after T31 still open', tries: 0 });
+    expect(card(harborLive, 'T34')).toMatchObject({ state: 'absent', tries: 0, note: "struck 2026-03-08: covered by T32's keyboard probe" });
+    expect(card(harborLive, 'T34')?.reason).toBeUndefined();
+    expect(card(harborLive, 'T33')).toBeUndefined();
+  });
+
+  test('T27 runs under its session; the released T25 does not', () => {
+    expect(card(harborLive, 'T27')).toMatchObject({ state: 'running', lock: { source: 'activity', session: 'spec-002-ISC-74' } });
+    expect(card(harborLive, 'T25')?.state).toBe('closed');
+  });
+
+  test('worst state per frame, the live frame included: absent counts least', () => {
+    expect([...frames, harborLive].map((f) => f.worst)).toEqual(['waiting', 'waiting', 'waiting', 'fail', 'question', 'question', 'question']);
+    expect(harborLive.worst).toBe(worstState(harborLive.cards.map((c) => c.state)));
+    // nothing outstanding: a frame of landed and struck cards reads closed, as one without cards does
+    expect(worstState(['absent', 'closed'])).toBe('closed');
+    expect(worstState(['absent'])).toBe('closed');
+  });
+
+  test('the live frame keeps the absent card on the board but out of the task progress', () => {
+    expect(harborLive.index).toBe(frames.length);
+    expect(harborLive.cards.length).toBe(33);
+    expect(harborLive.progress.tasks.total).toBe(32);
+  });
+
+  test('harbor 002 frames equal the golden', () => {
+    expect(JSON.parse(JSON.stringify(frames))).toEqual(goldenFrames('harbor', '002-web-console') as Frame[]);
+  });
+});
+
+describe("spectant-001: this repository's own rounds.jsonl", () => {
+  test('the frames equal the golden', () => {
+    expect(JSON.parse(JSON.stringify(spectantFrames))).toEqual(goldenFrames('spectant-001', '001-app-skeleton') as Frame[]);
+  });
+
+  test('the ids struck in the R5 re-cut have a card up to R4 and none from R5 on', () => {
+    for (const id of ids(84, 97)) {
+      expect(spectantFrames.slice(0, 8).every((f) => card(f, id) !== undefined)).toBe(true);
+      expect(spectantFrames.slice(8).some((f) => card(f, id) !== undefined)).toBe(false);
+    }
+  });
+
+  test('a renumbered id of the R5 re-cut carries no try count across it', () => {
+    const changed = spectantFrames[8]?.recut?.changed ?? [];
+    expect(changed.length).toBeGreaterThan(0);
+    for (const id of changed) {
+      const after = card(spectantFrames[8], id);
+      expect(after?.tries).toBe(after?.state === 'dispatched' ? 1 : 0);
+    }
+  });
+});
+
+describe('re-cut markers (T18, detectRecut: stub today)', () => {
+  test.todo('harbor: one marker before frame 4, R2 → R3, T33 struck, T34 added, T27–T32 changed', () => {
+    expect(detectRecut(frames)).toEqual([{ beforeFrame: 4, fromRound: 2, toRound: 3, struck: ['T33'], added: ['T34'], changed: ids(27, 32) }]);
+  });
+
+  test.todo('spectant-001: one marker before frame 8, R4 → R5, T84–T97 struck', () => {
+    const markers = detectRecut(spectantFrames);
+    expect(markers.map((m) => [m.beforeFrame, m.fromRound, m.toRound])).toEqual([[8, 4, 5]]);
+    expect(markers[0]?.struck).toEqual(ids(84, 97));
+    expect(markers[0]?.changed).toEqual(spectantFrames[8]?.recut?.changed ?? []);
+  });
+});
+
+describe('matrix cells (T19, buildMatrix: stub today)', () => {
+  /** Every frame column's cell holds that frame's card state for the row's task, null where the task has no card. */
+  function expectCellsFollowFrames(built: readonly Frame[]): void {
+    const matrix = buildMatrix(built, detectRecut(built));
+    matrix.rows.forEach((task, r) => {
+      matrix.columns.forEach((column, c) => {
+        const cell = matrix.cells[r]?.[c];
+        expect(cell?.task).toBe(task);
+        expect(cell?.frame).toBe(column.frame);
+        if (column.kind !== 'recut') expect(cell?.state).toBe(card(built[column.frame ?? -1], task)?.state ?? null);
+      });
+    });
+  }
+
+  test.todo('spectant-001: one column per frame in scrubber order, plus one re-cut column before R5', () => {
+    const matrix = buildMatrix(spectantFrames, detectRecut(spectantFrames));
+    const frameColumns = matrix.columns.filter((c) => c.kind !== 'recut');
+    expect(frameColumns.map((c) => c.frame)).toEqual(spectantFrames.map((f) => f.index));
+    expect(frameColumns.map((c) => c.label)).toEqual(spectantFrames.map((f) => f.label));
+    expect(matrix.columns.findIndex((c) => c.kind === 'recut')).toBe(8);
+    expectCellsFollowFrames(spectantFrames);
+  });
+
+  test.todo('spectant-001: a struck task is dashed (null) in every column after the re-cut', () => {
+    const matrix = buildMatrix(spectantFrames, detectRecut(spectantFrames));
+    const row = matrix.rows.indexOf('T97');
+    const after = matrix.columns.flatMap((c, i) => (c.frame !== null && c.frame >= 8 ? [i] : []));
+    expect(after.map((i) => matrix.cells[row]?.[i]?.state)).toEqual(after.map(() => null));
+  });
+
+  test.todo('harbor 002: cells follow the frames, the re-cut column sits before R3 dispatch', () => {
+    const matrix = buildMatrix(frames, detectRecut(frames));
+    expect(matrix.columns.map((c) => c.kind)).toEqual(['dispatch', 'result', 'dispatch', 'result', 'recut', 'dispatch', 'result']);
+    expectCellsFollowFrames(frames);
   });
 });

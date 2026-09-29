@@ -48,6 +48,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T30 · ISC-77 · [P] · operator — set up the screen-reader profile on the test device · `tests/manual/screen-reader-setup.md`
 - [ ] T31 · ISC-77 · operator — screen-reader pass over the sync history (ISC-77) (after: T1, T30) · `tests/manual/screen-reader.md`
 - [ ] T32 · ISC-78 · web — theme-switch: keyboard reach and focus ring (ISC-78) (after: T1, T31) · `web/src/app/theme-switch/`
+- ~~T34 · ISC-78 · web — theme-switch: focus ring visible in forced-colours mode (ISC-78) (after: T1, T31) · `web/src/app/theme-switch/`~~ — struck 2026-03-08: covered by T32's keyboard probe
 
 ## Probe Mapping
 
