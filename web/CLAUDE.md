@@ -57,6 +57,15 @@ Reason: reshaping or re-parsing the model here makes a second parser (ISC-5); an
 - Shared primitives live in `src/app/shared/ui/`, and each exists because it has two consumers. Reason: a primitive
   with one consumer is an abstraction without a job; it stays in its feature until the second arrives.
 
+## Shell
+
+- Every route but `/__ui` renders in `app-shell` (`layout/shell/`); `ShellState` holds tier, zen, rail and the route (`ws`, `specId`, `area`, `tab`), `ShellData` the workspace list, dashboard and spec as `resource()`s over `ApiClient`.
+- The tab bar is one `app-tab-bar` rendered by `app-tab-bar-slot`: `placement="header"` (row 2) at compact, `placement="main"` under the spec head at medium and wide. Reason: exactly one bar exists per tier.
+- Areas and tabs come only from `SPEC_AREAS` (`layout/shell/areas.ts`); a feature registers its view in `VIEW_LOADERS` (`features/spec/spec-area.routes.ts`) keyed by tab id (or `dashboard`); an unregistered key renders `app-area-placeholder`.
+- `ShellData` feeds `LockSourceService.connect()` with the spec payload's `areas.live`; `source` stays `none` until the spec route answers `ok`.
+- Header controls carry `data-control="brand|workspace|spec|area|palette|live|zen|settings"`; T36 to T38 replace them in place, never add a second `<header>`.
+- An unknown path, workspace, spec or tab renders `app-not-found` (ISC-71); a catch-all 404 (`served: false`) renders the placeholder instead.
+
 ## i18n
 
 - Transloco, English default, German formal (Sie); every key in both `src/i18n/en.json` and `src/i18n/de.json`.

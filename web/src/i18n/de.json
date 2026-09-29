@@ -12,9 +12,6 @@
     "claimsClosed": "{{closed}} von {{total}} Claims geschlossen",
     "noValue": "—"
   },
-  "hello": {
-    "greeting": "hallo, spectant"
-  },
   "header": {
     "skipToSpecs": "Zu den Specs springen",
     "titlePrefix": "Specs",
@@ -247,7 +244,10 @@
     "review": "Review",
     "build": "Bauen",
     "close": "Abschluss",
-    "position": "Stufe {{index}} von {{total}}: {{stage}}"
+    "position": "Stufe {{index}} von {{total}}: {{stage}}",
+    "blocked": "Blockiert",
+    "code-review": "Code-Review",
+    "done": "Fertig"
   },
   "phases": {
     "scoping": "scoping",
@@ -264,7 +264,8 @@
     "workspace": {
       "label": "Workspace: {{name}}",
       "all": "Alle Workspaces",
-      "menu": "Workspaces"
+      "menu": "Workspaces",
+      "countLabel": "Workspaces: {{count}}"
     },
     "spec": {
       "label": "Spec: {{id}} {{title}}",
@@ -276,7 +277,8 @@
       "label": "Bereich: {{area}}",
       "menu": "Bereiche",
       "needsSpec": "Öffnen Sie eine Spec, um den Bereich zu wechseln",
-      "unbuilt": "Kommt mit späteren Tasks dieser Spec"
+      "unbuilt": "Kommt mit späteren Tasks dieser Spec",
+      "pending": "Das Bereichsmenü kommt mit einem späteren Task"
     },
     "areas": {
       "dashboard": "Dashboard",
@@ -302,7 +304,9 @@
     },
     "tabBar": "Tabs: {{area}}",
     "palette": {
-      "pending": "Die Befehlspalette kommt mit einem späteren Task"
+      "pending": "Die Befehlspalette kommt mit einem späteren Task",
+      "trigger": "Zu Spec, Workspace oder Befehl springen",
+      "key": "⌘K"
     },
     "live": {
       "source": {
@@ -324,11 +328,13 @@
       "workspaceSpecs": "Specs in {{workspace}}"
     },
     "unavailable": "Dieser Workspace kann nicht gelesen werden",
-    "error": "Der Server hat nicht geantwortet"
+    "error": "Der Server hat nicht geantwortet",
+    "settings": "Einstellungen und Hilfe"
   },
   "notFound": {
     "title": "Nicht gefunden",
     "body": "Unter diesem Namen ist kein Workspace, keine Spec und kein Tab registriert.",
-    "back": "Zu allen Workspaces"
+    "back": "Zu allen Workspaces",
+    "backWorkspace": "Zurück zu {{workspace}}"
   }
 }

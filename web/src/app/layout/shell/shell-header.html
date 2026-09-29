@@ -1,0 +1,105 @@
+<header role="banner" class="shell-header">
+  <a class="brand" routerLink="/" data-control="brand" [attr.aria-label]="'shell.brand' | transloco">
+    <svg data-icon-exempt class="mark" viewBox="0 0 28 28" width="28" height="28" aria-hidden="true" focusable="false">
+      <circle class="mark-track" cx="14" cy="14" r="10" />
+      <path class="mark-arc" d="M14 4a10 10 0 0 1 10 10" />
+      <circle class="mark-dot" cx="24" cy="14" r="3" />
+    </svg>
+    <span class="wordmark" aria-hidden="true">
+      <span>{{ 'shell.wordmark.lead' | transloco }}</span><span class="wordmark-tail">{{ 'shell.wordmark.tail' | transloco }}</span>
+    </span>
+  </a>
+
+  <div class="pickers">
+    <button
+      type="button"
+      class="pick"
+      data-control="workspace"
+      [attr.aria-label]="
+        workspaceName() === null
+          ? ('shell.workspace.countLabel' | transloco: { count: workspaceCount() })
+          : ('shell.workspace.label' | transloco: { name: workspaceName() })
+      "
+      (click)="openWorkspace()"
+    >
+      <ui-icon name="folder-git-2" />
+      <span class="pick-text">{{ workspaceName() ?? workspaceCount() }}</span>
+    </button>
+    <span class="divider" aria-hidden="true"></span>
+    <button
+      type="button"
+      class="pick"
+      data-control="spec"
+      [attr.aria-disabled]="state.ws() === null ? 'true' : null"
+      [attr.title]="state.ws() === null ? ('shell.spec.none' | transloco) : null"
+      [attr.aria-label]="
+        specOpen()
+          ? ('shell.spec.label' | transloco: { id: state.specId(), title: row()?.title ?? '' })
+          : ('shell.spec.countLabel' | transloco: { count: specCount() })
+      "
+      (click)="openSpec()"
+    >
+      <ui-icon name="file-text" />
+      @if (specOpen()) {
+        <span class="pick-id">{{ state.specId() }}</span>
+        @if (row(); as row) {
+          <span class="pick-text spec-title">{{ row.title }}</span>
+        }
+      } @else {
+        <span class="pick-text">{{ specCount() }}</span>
+      }
+    </button>
+  </div>
+
+  <button
+    type="button"
+    class="pick area"
+    data-control="area"
+    aria-disabled="true"
+    [attr.title]="(specOpen() ? 'shell.area.pending' : 'shell.area.needsSpec') | transloco"
+    [attr.aria-label]="specOpen() ? ('shell.area.label' | transloco: { area: (areaKey() | transloco) }) : ('shell.area.menu' | transloco)"
+  >
+    <ui-icon name="layout-grid" />
+    <span class="pick-text">{{ (specOpen() ? areaKey() : 'shell.area.menu') | transloco }}</span>
+    <ui-icon name="chevron-down" [size]="14" />
+  </button>
+
+  <app-tab-bar-slot class="tabs" placement="header" />
+
+  <button
+    type="button"
+    class="palette tool"
+    data-control="palette"
+    aria-disabled="true"
+    [attr.aria-label]="'shell.palette.trigger' | transloco"
+    [attr.title]="'shell.palette.pending' | transloco"
+  >
+    <ui-icon name="search" />
+    <span class="palette-text" aria-hidden="true">{{ 'shell.palette.trigger' | transloco }}</span>
+    <ui-kbd class="palette-key" aria-hidden="true">{{ 'shell.palette.key' | transloco }}</ui-kbd>
+  </button>
+
+  <span class="live tool" data-control="live" [attr.data-source]="source()" [attr.title]="liveKey() | transloco">
+    <span class="live-dot" aria-hidden="true"></span>
+    <span class="visually-hidden">{{ liveKey() | transloco }}</span>
+  </span>
+
+  <button
+    ui-icon-button
+    class="zen"
+    data-control="zen"
+    [icon]="state.zen() ? 'minimize-2' : 'maximize-2'"
+    [label]="'shell.zen' | transloco"
+    [attr.aria-pressed]="state.zen()"
+    (click)="state.toggleZen()"
+  ></button>
+
+  <button
+    ui-icon-button
+    class="settings tool"
+    data-control="settings"
+    icon="settings"
+    [label]="'shell.settings' | transloco"
+    [disabled]="true"
+  ></button>
+</header>

@@ -1,0 +1,288 @@
+/*
+ * The shell header (design.md § Header, ISC-73): 64 px, sticky, the page glass under a 12 px blur. The host is the
+ * `header` size container: the palette trigger becomes a 240 px field from a 1280 px header, and the compact tier
+ * (< 640) splits the header into two rows (48 + 44) with the area menu, the tab-bar slot and zen in row 2.
+ */
+:host {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 20;
+  display: block;
+  container: header / inline-size;
+}
+
+.shell-header {
+  display: grid;
+  grid-template-areas: "brand pickers area . palette live zen settings";
+  grid-template-columns: auto minmax(0, auto) minmax(0, auto) minmax(0, 1fr) auto auto auto auto;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 64px;
+  padding-block-start: env(safe-area-inset-top);
+  padding-inline: 16px;
+  border-block-end: 1px solid var(--line);
+  background: var(--page-glass);
+  /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.brand {
+  display: inline-flex;
+  grid-area: brand;
+  justify-self: start;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 44px;
+  min-inline-size: 44px;
+  color: var(--color-base-content);
+  text-decoration: none;
+}
+
+/* Not `.ring`: Tailwind scans templates and would emit its `ring` box-shadow utility for that class. */
+.mark {
+  flex-shrink: 0;
+}
+
+.mark-track,
+.mark-arc {
+  fill: none;
+  stroke-width: 3;
+}
+
+.mark-track {
+  stroke: var(--track);
+}
+
+.mark-arc {
+  stroke: var(--color-primary);
+  stroke-linecap: round;
+}
+
+.mark-dot {
+  fill: var(--color-secondary);
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.wordmark-tail {
+  color: var(--clos-ink);
+}
+
+.pickers {
+  display: flex;
+  grid-area: pickers;
+  align-items: center;
+  min-inline-size: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
+}
+
+.divider {
+  flex-shrink: 0;
+  inline-size: 1px;
+  block-size: 24px;
+  background: var(--line);
+}
+
+.pick {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+  block-size: 40px;
+  padding-inline: 12px;
+  border: 0;
+  border-radius: var(--radius-field);
+  background: transparent;
+  color: var(--color-base-content);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.pick[aria-disabled="true"] {
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .pick:not([aria-disabled="true"]):hover {
+    background: var(--color-base-200);
+  }
+}
+
+.pick-text {
+  overflow: hidden;
+  max-inline-size: 200px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spec-title {
+  max-inline-size: 240px;
+}
+
+.pick-id {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.area {
+  grid-area: area;
+  border: 1px solid var(--line);
+  background: var(--color-base-100);
+  color: var(--disp-ink);
+}
+
+.tabs {
+  display: none;
+  grid-area: tabs;
+  min-inline-size: 0;
+}
+
+.palette {
+  display: inline-flex;
+  grid-area: palette;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  inline-size: 40px;
+  block-size: 40px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
+  color: var(--muted-ink);
+  font: inherit;
+  font-size: 14px;
+  cursor: default;
+}
+
+.palette-text,
+.palette-key {
+  display: none;
+}
+
+@container header (width >= 1280px) {
+  .palette {
+    justify-content: flex-start;
+    inline-size: 240px;
+    padding-inline: 12px;
+  }
+
+  .palette-text {
+    display: inline;
+    overflow: hidden;
+    flex: 1;
+    text-align: start;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .palette-key {
+    display: inline-flex;
+  }
+}
+
+.live {
+  display: inline-flex;
+  grid-area: live;
+  align-items: center;
+  justify-content: center;
+  inline-size: 40px;
+  block-size: 40px;
+}
+
+.live-dot {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background: var(--track);
+}
+
+.live[data-source="frontier"] .live-dot {
+  background: var(--color-accent);
+}
+
+.live[data-source="activity"] .live-dot {
+  background: var(--color-primary);
+}
+
+.zen {
+  grid-area: zen;
+}
+
+.settings {
+  grid-area: settings;
+}
+
+.visually-hidden {
+  position: absolute;
+  overflow: hidden;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (pointer: coarse) {
+  .pick,
+  .palette,
+  .live {
+    min-block-size: 44px;
+  }
+
+  .palette,
+  .live {
+    min-inline-size: 44px;
+  }
+}
+
+/* Compact: two rows, 48 + 44 (design.md § Mobile). The wordmark and the spec title yield; the area menu never does. */
+@container header (width < 640px) {
+  .shell-header {
+    grid-template:
+      "brand pickers pickers palette live settings" 48px
+      "area area tabs tabs tabs zen" 44px / 44px auto minmax(0, 1fr) auto auto auto;
+    row-gap: 0;
+    padding-inline: 16px;
+  }
+
+  .wordmark,
+  .spec-title {
+    display: none;
+  }
+
+  .pick {
+    padding-inline: 8px;
+  }
+
+  .pick-text {
+    max-inline-size: 104px;
+  }
+
+  .area {
+    block-size: 36px;
+  }
+
+  .tabs {
+    display: block;
+  }
+}
+
+/* Zen (ISC-75): the tools go; brand, pickers, area menu and the pressed zen button stay. */
+:host([data-zen]) .tool {
+  display: none;
+}

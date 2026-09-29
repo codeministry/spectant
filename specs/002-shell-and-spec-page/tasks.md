@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T12:42:35Z
+updated: 2026-09-29T12:59:07Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -65,7 +65,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T32 · ISC-74 · [P] · web — fonts: Manrope, Sora and JetBrains Mono as local variable woff2, Inter removed, `fonts.css` rewritten · `web/src/styles/fonts.css`
 - [x] T33 · ISC-74 · web — fonts test rewritten for the three faces and the no-external-URL guard (after: T32) · `web/tests/fonts.test.ts`
 - [x] T34 · ISC-74 · [P] · web — tokens: the prototype's hex converted to OKLCH theme slots with the hex in comments, `-ink` aliases for accent text, the two narrow dark values guarded, no glow · `web/src/styles/tokens.css`
-- [ ] T35 · ISC-73 · [seam] · web — shell: `container: shell` with the three tiers, the grid with the 352 px rail at wide, the tab-bar slot per tier (header row 2 at compact, under the spec head above), the `LockSource` signal, the area routes `/w/:ws/s/:id/:tab` (after: T32, T34) · `web/src/app/layout/shell/`
+- [x] T35 · ISC-73 · [seam] · web — shell: `container: shell` with the three tiers, the grid with the 352 px rail at wide, the tab-bar slot per tier (header row 2 at compact, under the spec head above), the `LockSource` signal, the area routes `/w/:ws/s/:id/:tab` (after: T32, T34) · `web/src/app/layout/shell/`
 - [ ] T36 · ISC-73 · web — header: wordmark with living ring, workspace picker, spec picker (name, id at compact), area-menu trigger, palette trigger (field from a 1280 px header container), live indicator, zen, settings with help; the collapse order; two rows at compact · Mobile, one row above · Tablet, Desktop (after: T35) · `web/src/app/layout/header/`
 - [ ] T37 · ISC-76 · web — area menu as native popover with `aria-current`, Live and Notes as disabled entries with their reason while unbuilt; tab bar showing only the current area's tabs with counts; deep link selects area and tab (after: T35) · `web/src/app/layout/area-menu/`
 - [ ] T38 · ISC-75 · web — zen: tools and rail hidden, navigation sticky, footer status bar; rail collapse toggle at wide with its state through `/api/settings` (after: T35) · `web/src/app/layout/zen/`

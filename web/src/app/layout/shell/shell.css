@@ -1,0 +1,61 @@
+/*
+ * The shell grid (design.md, T35). Tiers are container queries on this host (`container: shell`), never viewport
+ * media queries: compact < 640, medium 640 to 1119, wide from 1120 (`tier.ts` holds the same numbers for JS).
+ */
+:host {
+  display: block;
+  container: shell / inline-size;
+  min-block-size: 100dvh;
+  background: var(--color-base-200);
+  color: var(--color-base-content);
+}
+
+.shell-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  padding: 16px 16px 48px;
+}
+
+.shell-main {
+  min-inline-size: 0;
+}
+
+/* Compact: one column; the rail's content lives at the top of Status there (design.md § Mobile). */
+@container shell (width < 640px) {
+  .shell-rail {
+    display: none;
+  }
+}
+
+/* Medium: one column, the rail's content stacked below main. */
+@container shell (width >= 640px) {
+  .shell-body {
+    padding-inline: 24px;
+  }
+}
+
+/* Wide: main plus the 352 px rail. */
+@container shell (width >= 1120px) {
+  .shell-body {
+    grid-template-columns: minmax(0, 1fr) 352px;
+    align-items: start;
+    padding-inline: 32px;
+  }
+
+  .shell-rail {
+    position: sticky;
+    inset-block-start: 88px;
+  }
+}
+
+/* Zen (ISC-75, T38 adds the footer bar) and the collapsed rail (T38 adds the 48 px strip): the rail goes. */
+:host([data-zen]) .shell-rail,
+:host([data-rail-collapsed]) .shell-rail {
+  display: none;
+}
+
+:host([data-zen]) .shell-body,
+:host([data-rail-collapsed]) .shell-body {
+  grid-template-columns: minmax(0, 1fr);
+}

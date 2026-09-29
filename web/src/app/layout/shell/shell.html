@@ -1,0 +1,11 @@
+<app-shell-header />
+<div class="shell-body">
+  <main id="main" class="shell-main">
+    <router-outlet />
+  </main>
+  @if (showRail()) {
+    <aside class="shell-rail" [attr.aria-label]="'shell.rail.label' | transloco">
+      <app-rail-slot />
+    </aside>
+  }
+</div>

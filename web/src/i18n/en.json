@@ -12,9 +12,6 @@
     "claimsClosed": "{{closed}} of {{total}} claims closed",
     "noValue": "—"
   },
-  "hello": {
-    "greeting": "hello, spectant"
-  },
   "header": {
     "skipToSpecs": "Skip to specs",
     "titlePrefix": "Specs",
@@ -247,7 +244,10 @@
     "review": "Review",
     "build": "Build",
     "close": "Close",
-    "position": "Stage {{index}} of {{total}}: {{stage}}"
+    "position": "Stage {{index}} of {{total}}: {{stage}}",
+    "blocked": "Blocked",
+    "code-review": "Code review",
+    "done": "Done"
   },
   "phases": {
     "scoping": "scoping",
@@ -264,7 +264,8 @@
     "workspace": {
       "label": "Workspace: {{name}}",
       "all": "All workspaces",
-      "menu": "Workspaces"
+      "menu": "Workspaces",
+      "countLabel": "Workspaces: {{count}}"
     },
     "spec": {
       "label": "Spec: {{id}} {{title}}",
@@ -276,7 +277,8 @@
       "label": "Area: {{area}}",
       "menu": "Areas",
       "needsSpec": "Open a spec to switch areas",
-      "unbuilt": "Comes with this spec's later tasks"
+      "unbuilt": "Comes with this spec's later tasks",
+      "pending": "The area menu comes with a later task"
     },
     "areas": {
       "dashboard": "Dashboard",
@@ -302,7 +304,9 @@
     },
     "tabBar": "{{area}} tabs",
     "palette": {
-      "pending": "The command palette comes with a later task"
+      "pending": "The command palette comes with a later task",
+      "trigger": "Jump to spec, workspace, command",
+      "key": "⌘K"
     },
     "live": {
       "source": {
@@ -324,11 +328,13 @@
       "workspaceSpecs": "Specs in {{workspace}}"
     },
     "unavailable": "This workspace cannot be read",
-    "error": "The server did not answer"
+    "error": "The server did not answer",
+    "settings": "Settings and help"
   },
   "notFound": {
     "title": "Not found",
     "body": "No registered workspace, spec or tab goes by that name.",
-    "back": "Go to all workspaces"
+    "back": "Go to all workspaces",
+    "backWorkspace": "Back to {{workspace}}"
   }
 }

@@ -43,4 +43,6 @@ export const ICON_NAMES = [
   'folder-plus',
   'archive',
   'keyboard',
+  'folder-git-2',
+  'layout-grid',
 ] as const;
