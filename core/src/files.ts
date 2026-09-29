@@ -513,6 +513,23 @@ export interface Frame {
   };
   /** The round's stop reason, when it stopped early. */
   readonly stop?: string;
+  /** The claims this frame closed: a result frame's `closed_this_round`; empty on a dispatch frame. */
+  readonly closedClaims?: readonly string[];
+  /**
+   * Set on the dispatch frame of the first round after tasks.md changed between two rounds: ids and texts of the
+   * previous line compared with this one. The hook `detectRecut` (T18, ISC-91) turns into scrubber markers.
+   */
+  readonly recut?: FrameRecut;
+}
+
+/** A tasks.md change seen between two consecutive rounds.jsonl lines, by task id. */
+export interface FrameRecut {
+  /** Ids on the previous line and gone from this one, in the previous line's order. */
+  readonly struck: readonly string[];
+  /** Ids new on this line, in its order. */
+  readonly added: readonly string[];
+  /** Ids on both lines whose text differs: renumbered or reworded, so no state carries over. In this line's order. */
+  readonly changed: readonly string[];
 }
 
 export interface RecutMarker {

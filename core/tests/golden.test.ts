@@ -9,6 +9,7 @@
 //                                            present file kinds from files.ts, and what `resolveSpec` answers for the
 //                                            folder's id, full name and bare slug. Tree-level master and constitution.
 //   <tree>.timeline.golden.json  timeline    `buildTimeline` per spec folder, keyed by `specs/…` path, no commits.
+//   <tree>.frames.golden.json    frames      `buildFrames` per spec folder (T17), keyed by `specs/…` path.
 //
 // The next families join FAMILIES below, not a second harness: the spec page model (T12, spec.ts), the tasks and
 // claim views (T13, tasks.ts / claim-view.ts), the derived stage entries (T15, derived-stages.ts), frames and the live
@@ -28,6 +29,7 @@ import { FILE_KINDS, specFilePath } from '../src/files.ts';
 import type { FileKind, SpecFiles, SpecPageModel, TimelineEntry } from '../src/files.ts';
 import { listSpecs, resolveSpec } from '../src/resolve.ts';
 import type { SpecRef } from '../src/resolve.ts';
+import { buildFrames } from '../src/frames.ts';
 import { buildSpecPage } from '../src/spec.ts';
 import { buildTimeline } from '../src/timeline.ts';
 import { DASHBOARD_FAMILY, expectGolden, goldenFiles, goldenMismatch, goldenPath, goldenText, goldenTrees } from './helpers/golden.ts';
@@ -115,6 +117,7 @@ const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
   specs: specsModel,
   timeline: timelineModel,
   spec: specPageModel,
+  frames: (root) => ((texts) => Object.fromEntries(listSpecs(root).map((ref) => [rel(root, ref.dir), buildFrames(texts.get(rel(root, ref.dir)) as SpecFiles)])))(folderTexts(root)),
 };
 
 /** Every string in a JSON value, keys included. */

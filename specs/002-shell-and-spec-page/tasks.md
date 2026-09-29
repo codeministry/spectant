@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T11:29:43Z
+updated: 2026-09-29T11:35:29Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -44,7 +44,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T14 · ISC-80 · [P] · core — timeline merge of context.md decisions, rounds, gate marks and the commits the server passes in, one entry per source event, time-ordered (after: T1) · `core/src/timeline.ts`
 - [x] T15 · ISC-36 · [P] · core — derived stage transitions marked `derived`; `events.jsonl` transitions replace them when present · `core/src/derived-stages.ts`
 - [ ] T16 · ISC-32 · [P] · core — `events.jsonl` line validator against `{ts, from, to, command, actor}` · `core/src/events.ts`
-- [ ] T17 · ISC-87 · [P] · core — frames from rounds: dispatch and result frames, worst state per frame, task states carried forward (after: T1) · `core/src/frames.ts`
+- [x] T17 · ISC-87 · [P] · core — frames from rounds: dispatch and result frames, worst state per frame, task states carried forward (after: T1) · `core/src/frames.ts`
 - [ ] T18 · ISC-91 · core — re-cut detection between rounds (ids and texts compared), struck tasks as absent, no state attributed to a renumbered id (after: T17) · `core/src/recut.ts`
 - [ ] T19 · ISC-92 · core — matrix cells: tasks × frames with state glyph keys, absent and re-cut columns (after: T17) · `core/src/matrix.ts`
 - [x] T20 · ISC-37 · [P] · core — lock sources: frontier lock files under a given LifeOS state directory, `.spectant/activity.jsonl` claim/release lines, `none` when neither exists · `core/src/locks.ts`

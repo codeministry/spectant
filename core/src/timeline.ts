@@ -195,10 +195,16 @@ function strings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
 }
 
-/** One round entry per parseable line with a `round` number and a `ts`; blank and malformed lines are skipped. */
-function roundsOf(text: string | undefined): Draft[] {
+/** A rounds.jsonl line that carries a `round` number and a string `ts`; every other field unchecked. */
+export type RoundLine = Record<string, unknown> & { readonly round: number; readonly ts: string };
+
+/**
+ * The line reader of rounds.jsonl, shared with frames.ts: every parseable object line with a `round` number and a
+ * string `ts`, in file order. Blank and malformed lines are skipped.
+ */
+export function roundLines(text: string | undefined): RoundLine[] {
   if (text === undefined) return [];
-  const out: Draft[] = [];
+  const out: RoundLine[] = [];
   for (const raw of text.split(/\r?\n/)) {
     if (raw.trim() === '') continue;
     let line: unknown;
@@ -207,8 +213,15 @@ function roundsOf(text: string | undefined): Draft[] {
     } catch {
       continue;
     }
-    if (!isRecord(line) || typeof line.round !== 'number' || typeof line.ts !== 'string') continue;
+    if (isRecord(line) && typeof line.round === 'number' && typeof line.ts === 'string') out.push(line as RoundLine);
+  }
+  return out;
+}
 
+/** One round entry per parseable line with a `round` number and a `ts`; blank and malformed lines are skipped. */
+function roundsOf(text: string | undefined): Draft[] {
+  const out: Draft[] = [];
+  for (const line of roundLines(text)) {
     const dispatched = strings(line.dispatched);
     const closed = strings(isRecord(line.claims) ? line.claims.closed_this_round : undefined);
     const tasks = Array.isArray(line.tasks) ? (line.tasks as unknown[]).filter(isRecord) : [];

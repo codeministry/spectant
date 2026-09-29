@@ -142,3 +142,25 @@ aliases `## Goal`; the reviewed hash strips only the first `## Decisions` / `## 
 vocabulary must be decided before T16 (ISC-24 says `tasked → reviewed`, the stage table says `tasks`/`review`; ISC-24
 writes `.gates/reviewed` without `.json`); evidence-to-claim naming (T24) and frontier lock shape/location (T20) are not
 written anywhere; `rounds.jsonl` `v` is never checked. Whole tree 809 pass / 9 skip, static green.
+
+Round 6 landed (2026-09-29, commits 1b0a0ff + next): T10 (**ISC-70 closed**, 3/48; private corpus behind
+`SPECTANT_PRIVATE_CORPUS`, 10 pass on the local customer corpus, skipped when unset, fail on an empty dir; output
+shows spec numbers and basenames only), T12 (`spec.ts` spec page model: head, keyNumbers, ideaQuote/ideaSource, next
+with reasons, lanes in constitution order, four gates, warnings, waitingOnYou, six area tiles, tldr; row-equality
+with `buildDashboard` for all ten active fixture specs = the ISC-72 guard; golden family `spec`), T15 (`derived-stages.ts`:
+derived stage transitions in `stage.ts` names, dated from `created:`/`started:`/context rounds/gate marks, undated ones
+flagged; events replace them when given; timeline goldens +543 lines of stage entries, spec goldens' timeline counts
+followed), T17 (`frames.ts`: dispatch/result frames per round, severity fail > question > concerns > waiting >
+operatorOpen > dispatched > running > done > operatorDone > closed > absent, carry-forward guarded by same text,
+`recut` hook for T18; golden family `frames`, spectant-001's is 626 kB because every card sits in every frame), T20
+(`locks.ts`: frontier locks read from the one hashed `isa-locks/<sha1(realpath ISA.md)[0..16]>/` dir, stale > 2 h and
+foreign ones as diagnostics; activity.jsonl replay; `none` proven to touch nothing outside the repo; frontier wins on a
+shared claim because `partitionClaims` is last-wins). T16 skipped: the events vocabulary (stage.ts names vs ISC-24's
+`tasked → reviewed`) is the principal's call. Parent merges: T15's types/inventory/FORMAT paragraph by hand over
+T12, T17's golden.test.ts import and FAMILIES line by hand over T12; spec-test timeline pins 5→9 and 3→9. Core lane
+592 pass, whole tree green, static green. Marks for the review: probe paths `core/tests/…` (ISC-36, 37, 68, 70, 87);
+five vs six area tiles (design.md says five, model has six incl. Board); `specFilePath` depth under `specs/archive/`;
+FORMAT.md gaps T17 listed (task state `skipped`, operator open/done rule, note prefixes, `claims.*` arrays, `mode`/`width`
+not read by frames); state-dir discovery for locks (`SPECTANT_LIFEOS_STATE_DIR` proposed); T47's loader must pass
+`locks` (also into T21's live frame and the ISC-86 write guard). Round 7 plan: T22 claim view, T23 task grammar, T24
+evidence, T25 markdown docs, T32 fonts; T16 still held.
