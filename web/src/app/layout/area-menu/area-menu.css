@@ -1,0 +1,117 @@
+/*
+ * The area menu's list (ISC-76): a `ui-popover` at medium and wide, a `ui-sheet` bottom sheet at compact. The host
+ * takes no box; the panels live in the top layer. Dot colours per design.md (Status orange, Live lime, Data cyan,
+ * Docs violet, Notes yellow; the dashboard neutral), the same as the trigger's in shell-nav.css.
+ */
+:host {
+  display: contents;
+}
+
+.area-popover {
+  --ui-popover-width: 320px;
+}
+
+.area-menu ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One entry: dot, name and key on the first line; the subline under the name. */
+.entry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: 8px;
+  align-items: center;
+  min-block-size: 44px;
+  padding: 8px 12px;
+  border-radius: var(--radius-field);
+  color: var(--color-base-content);
+  font-size: 14px;
+  line-height: 20px;
+  text-decoration: none;
+  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.entry[aria-current] {
+  background: var(--color-base-200);
+  color: var(--disp-ink);
+  font-weight: 600;
+}
+
+.entry[aria-disabled="true"] {
+  color: var(--muted-ink);
+  cursor: default;
+}
+
+@media (hover: hover) {
+  a.entry:hover {
+    background: var(--color-base-200);
+  }
+}
+
+.dot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--held-ink);
+}
+
+.dot[data-dot="status"] {
+  background: var(--color-warning);
+}
+
+.dot[data-dot="live"] {
+  background: var(--color-accent);
+}
+
+.dot[data-dot="data"] {
+  background: var(--color-primary);
+}
+
+.dot[data-dot="docs"] {
+  background: var(--color-secondary);
+}
+
+.dot[data-dot="notes"] {
+  background: var(--conc-ink);
+}
+
+.entry-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sub {
+  grid-column: 2 / -1;
+  overflow: hidden;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-list > span + span::before {
+  content: " · ";
+}
+
+/* `g`-key hints only where a keyboard is likely (design.md: any-hover and a fine pointer); never in the sheet. */
+.area-key {
+  display: none;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .area-menu:not([data-tier="compact"]) .area-key {
+    display: inline-flex;
+  }
+}
+
+/* Compact: the bottom sheet's 56 px rows (dot, name, tab list as subline). */
+.area-menu[data-tier="compact"] .entry {
+  min-block-size: 56px;
+}

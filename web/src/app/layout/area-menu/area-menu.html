@@ -1,0 +1,64 @@
+<ng-template #menu>
+  <nav class="area-menu" [attr.data-tier]="state.tier()" [attr.aria-label]="'shell.area.menu' | transloco">
+    <ul uiRovingList [singleKeys]="singleKeys()">
+      @for (area of areas; track area.id) {
+        @let link = areaLink(area);
+        @let current = currentArea() === area.id ? 'page' : null;
+        <ng-template #body>
+          <span class="dot" aria-hidden="true" [attr.data-dot]="area.id"></span>
+          <span class="entry-name">{{ 'shell.areas.' + area.id | transloco }}</span>
+          @if (area.goKey; as key) {
+            <ui-kbd class="area-key" aria-hidden="true">{{ 'shell.area.goKey' | transloco: { key } }}</ui-kbd>
+          }
+          @if (!area.built) {
+            <span class="sub area-reason">{{ 'shell.area.unbuilt' | transloco }}</span>
+          } @else if (compact() && area.tabs.length > 0) {
+            <span class="sub tab-list">
+              @for (tab of area.tabs; track tab) {
+                <span>{{ 'shell.tabs.' + tab | transloco }}</span>
+              }
+            </span>
+          } @else {
+            <span class="sub">{{ 'shell.area.summary.' + area.id | transloco }}</span>
+          }
+        </ng-template>
+        <li>
+          @if (area.built && link !== null) {
+            <a
+              uiRovingItem
+              class="entry"
+              [attr.data-area]="area.id"
+              [routerLink]="link"
+              [attr.aria-current]="current"
+              [attr.data-autofocus]="current ? '' : null"
+              (click)="close()"
+            >
+              <ng-container [ngTemplateOutlet]="body" />
+            </a>
+          } @else {
+            <span
+              uiRovingItem
+              class="entry"
+              aria-disabled="true"
+              [attr.data-area]="area.id"
+              [attr.aria-current]="current"
+              [attr.data-autofocus]="current ? '' : null"
+            >
+              <ng-container [ngTemplateOutlet]="body" />
+            </span>
+          }
+        </li>
+      }
+    </ul>
+  </nav>
+</ng-template>
+
+@if (compact()) {
+  <ui-sheet tier="compact" [(open)]="sheetOpen" [label]="'shell.area.menu' | transloco">
+    <ng-container [ngTemplateOutlet]="menu" />
+  </ui-sheet>
+} @else {
+  <ui-popover #popover class="area-popover" placement="start" [label]="'shell.area.menu' | transloco">
+    <ng-container [ngTemplateOutlet]="menu" />
+  </ui-popover>
+}

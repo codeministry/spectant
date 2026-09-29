@@ -10,6 +10,7 @@ import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult } from '../../core/api.service';
 import { LockSourceService } from '../../core/lock-source.service';
 import { navigatesNatively } from './shell-nav';
+import { AREA_IDS } from './areas';
 import { tierFor } from './tier';
 
 /** Stands in for the browser's ResizeObserver: the test decides the shell container's width. */
@@ -301,7 +302,15 @@ describe('ShellComponent', () => {
           expect(disabled.getAttribute('aria-disabled')).toBe('true');
           expect(disabled.textContent).toContain("Comes with this spec's later tasks");
         }
-        expect(entries.every((entry) => entry.querySelector('ui-icon') !== null)).toBe(true);
+        expect(entries.map((entry) => entry.querySelector('.dot')?.getAttribute('data-dot'))).toEqual([...AREA_IDS]);
+        expect(texts(nav?.querySelectorAll('[data-area] .sub') as NodeListOf<Element>)).toEqual([
+          'Where the spec stands at a glance',
+          'Stage, gates and timeline',
+          "Comes with this spec's later tasks",
+          'Claims, tasks and evidence',
+          'Plan, design, decisions, constitution',
+          "Comes with this spec's later tasks",
+        ]);
         expect(texts(nav?.querySelectorAll('[data-area] .entry-name') as NodeListOf<Element>)).toEqual([
           'Dashboard',
           'Status',
@@ -484,8 +493,9 @@ describe('ShellComponent', () => {
     it('opens the pickers as bottom sheets at compact, focused on the current entry', async () => {
       setUp(TWO);
       const { root, harness } = await open('/w/harbor/s/002', 390);
-      expect(root.querySelectorAll('ui-sheet')).toHaveLength(2);
-      expect(root.querySelectorAll('ui-popover.picker-popover')).toHaveLength(0);
+      // The workspace and spec pickers, and the area menu (T37): all three are bottom sheets at compact.
+      expect(root.querySelectorAll('ui-sheet')).toHaveLength(3);
+      expect(root.querySelectorAll('ui-popover.picker-popover, ui-popover.area-popover')).toHaveLength(0);
       expect(root.querySelectorAll('header')).toHaveLength(1);
 
       const picker = control(root, 'spec');

@@ -18,7 +18,7 @@ import { TabBar, tabbedArea } from './tab-bar';
   `,
   template: `
     @if (show()) {
-      <app-tab-bar />
+      <app-tab-bar [placement]="placement()" />
     }
   `,
 })

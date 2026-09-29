@@ -1,4 +1,4 @@
-/* The pickers' and the area menu's lists. The host takes no grid cell: its panels live in the top layer. */
+/* The pickers' lists (the area menu's are area-menu.css). The host takes no grid cell: its panels live in the top layer. */
 :host {
   position: absolute;
   inline-size: 0;
@@ -7,10 +7,6 @@
 
 .picker-popover {
   --ui-popover-width: 320px;
-}
-
-.area-popover {
-  --ui-popover-width: 280px;
 }
 
 .picker ul {
@@ -41,10 +37,6 @@
   font-weight: 600;
 }
 
-.area-entry[aria-current] {
-  color: var(--disp-ink);
-}
-
 .entry[aria-disabled="true"] {
   color: var(--muted-ink);
   cursor: default;
@@ -62,15 +54,11 @@
   white-space: nowrap;
 }
 
-.entry-meta,
-.area-reason {
+.entry-meta {
   color: var(--muted-ink);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   line-height: 16px;
-}
-
-.entry-meta {
   white-space: nowrap;
 }
 
@@ -78,10 +66,6 @@
   font-family: var(--font-mono);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-}
-
-.area-reason {
-  grid-column: 2 / -1;
 }
 
 .picker-footer {
@@ -95,17 +79,6 @@
 @media (hover: hover) {
   a.entry:hover {
     background: var(--color-base-200);
-  }
-}
-
-/* `g`-key hints only where a keyboard is likely (design.md: any-hover and a fine pointer). */
-.area-key {
-  display: none;
-}
-
-@media (any-hover: hover) and (any-pointer: fine) {
-  .area-key {
-    display: inline-flex;
   }
 }
 

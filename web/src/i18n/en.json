@@ -309,6 +309,14 @@
       "goKey": "g {{key}}",
       "menu": "Areas",
       "needsSpec": "Open a spec to switch areas",
+      "summary": {
+        "dashboard": "Where the spec stands at a glance",
+        "status": "Stage, gates and timeline",
+        "live": "Agents at work, board and matrix",
+        "data": "Claims, tasks and evidence",
+        "docs": "Plan, design, decisions, constitution",
+        "notes": "Your notes on this spec"
+      },
       "unbuilt": "Comes with this spec's later tasks"
     },
     "areas": {

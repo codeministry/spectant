@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 15/49
+progress: 16/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T16:27:26Z
+updated: 2026-09-29T16:30:11Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -189,7 +189,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [ ] ISC-73: Every route renders inside one shell whose header carries the workspace picker, the spec picker (name when a spec is open, or its id at compact; count otherwise), the area menu, the palette trigger, the live indicator, zen and settings with help; no second header exists in the DOM.
 - [x] ISC-74: The app ships Manrope, Sora and JetBrains Mono as local assets and declares no font URL outside its own origin; this supersedes the Inter face of ISC-67.
 - [ ] ISC-75: Zen mode hides the header tools and the context rail and keeps the sticky navigation; the collapsed state of the rail survives a reload.
-- [ ] ISC-76: The area menu offers Dashboard · Status · Live · Data · Docs · Notes for an open spec, the tab bar shows only the current area's tabs, and a deep link `/w/:ws/s/:id/<tab>` selects area and tab. ⟨?: Live and Notes render as disabled entries with "comes with this spec's later tasks" while their tabs are unbuilt, rather than hidden — assuming a stable menu beats a growing one⟩
+- [x] ISC-76: The area menu offers Dashboard · Status · Live · Data · Docs · Notes for an open spec, the tab bar shows only the current area's tabs, and a deep link `/w/:ws/s/:id/<tab>` selects area and tab. ⟨?: Live and Notes render as disabled entries with "comes with this spec's later tasks" while their tabs are unbuilt, rather than hidden — assuming a stable menu beats a growing one⟩
 - [ ] ISC-77: Spec 001's dashboard, overview, inspector and palette render inside the new shell and 001's e2e suites stay green. (after: ISC-73)
 - [ ] ISC-97: `g` sequences reach every area and tab, `[` `]` step between specs, `v` toggles Lanes and Flow, `z` toggles zen, `◂ ▸` step frames, and every binding is listed in the shortcut sheet.
 - [ ] ISC-98: Spec 001's tasks.md carries no shell task after the re-cut (T59 and T60 moved to this spec) and 001's reviewed mark is fresh again.
@@ -285,6 +285,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-76: e2e — `bun run e2e -- spec -g "deep link"` 3 passed (390/820/1440): /w/harbor/s/002/claims selects the Data area with aria-current on its entry and the tab bar shows only Claims · Tasks · Evidence with closed/total and landed/total counts; Live and Notes are disabled entries with their reason; switching a tab changes the URL; shell e2e 39 passed (T37; 2026-09-29)
 
 - ISC-83.1: e2e — `bun run e2e -- data -g evidence` 4 passed: every file the stub lists (harbor's real artifacts/ and .evidence/, 6 files in 5 claim groups plus ungrouped) is a row under its claim group, an image thumbnail opens the dialog with path and loaded img, a markdown file opens rendered through core's renderMarkdown, a refused path (403) renders the error row with the dialog closed (T58; 2026-09-29)
 

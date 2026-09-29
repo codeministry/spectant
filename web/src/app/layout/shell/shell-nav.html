@@ -72,7 +72,7 @@
     (pointerdown)="press('area')"
     (click)="toggle($event, 'area')"
   >
-    <ui-icon name="layout-grid" />
+    <span class="area-dot" aria-hidden="true" [attr.data-dot]="state.area() ?? 'dashboard'"></span>
     <span class="pick-text">{{ areaKey() | transloco }}</span>
     <ui-icon class="chevron" name="chevron-down" [size]="14" />
   </button>

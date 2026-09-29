@@ -309,6 +309,14 @@
       "goKey": "g {{key}}",
       "menu": "Bereiche",
       "needsSpec": "Öffnen Sie eine Spec, um den Bereich zu wechseln",
+      "summary": {
+        "dashboard": "Der Stand der Spec auf einen Blick",
+        "status": "Phase, Gates und Zeitleiste",
+        "live": "Arbeitende Agenten, Board und Matrix",
+        "data": "Claims, Tasks und Belege",
+        "docs": "Plan, Design, Entscheidungen, Verfassung",
+        "notes": "Ihre Notizen zu dieser Spec"
+      },
       "unbuilt": "Kommt mit späteren Tasks dieser Spec"
     },
     "areas": {

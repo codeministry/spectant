@@ -22,7 +22,7 @@ import { UiChip } from '../../shared/ui/chip/chip';
     .spec-id { color: var(--disp-ink); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
     .spec-title { min-inline-size: 0; overflow-wrap: anywhere; }
     .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-    app-tab-bar-slot { margin-block-end: 24px; border-block-end: 1px solid var(--line); }
+    app-tab-bar-slot { position: sticky; inset-block-start: 64px; z-index: 1; margin-block-end: 24px; border-block-end: 1px solid var(--line); background: var(--color-base-100); }
     app-tab-bar-slot:empty { display: none; }
     @container shell (width < 640px) { h1 { font-size: 20px; line-height: 28px; } }
   `,

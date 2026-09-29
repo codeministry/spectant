@@ -5,11 +5,11 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import { SettingsService } from '../../core/settings.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiChip } from '../../shared/ui/chip/chip';
-import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiRovingItem, UiRovingList } from '../../shared/ui/roving-list.directive';
-import { areaPath, SPEC_AREAS, type SpecArea, specLink } from './areas';
+import { AreaMenu } from '../area-menu/area-menu';
+import { specLink } from './areas';
 import { ShellData } from './shell-data.service';
 import { ShellState } from './shell-state.service';
 
@@ -41,14 +41,13 @@ const specCountOf = (counts: unknown): number | null => {
  *   (or "cannot be read"), the current one marked, and "Manage workspaces" → `/settings`.
  * - **Spec picker**: "All specs in …", then the workspace's specs (id, title, stage chip), the open one marked.
  * - Both are a `ui-popover` at medium and wide and a bottom `ui-sheet` at compact; focus lands on the current entry.
- * - **Area menu**: a `ui-popover` on every tier with the six areas in `SPEC_AREAS` order, a `g`-key hint per area (visual
- *   only; T102 binds them), unbuilt areas disabled with their reason, focus on the current area.
+ * - **Area menu**: `app-area-menu` (`layout/area-menu/`, T37): a popover at medium and wide, a bottom sheet at compact.
  *
  * The host is taken out of the header grid (`position: absolute`); the panels live in the top layer.
  */
 @Component({
   selector: 'app-shell-menus',
-  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiIcon, UiChip, UiKbd, UiPopover, UiSheet, UiRovingItem, UiRovingList],
+  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiIcon, UiChip, UiPopover, UiSheet, UiRovingItem, UiRovingList, AreaMenu],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell-menus.html',
   styleUrl: './shell-menus.css',
@@ -58,7 +57,6 @@ export class ShellMenus {
   protected readonly data = inject(ShellData);
   private readonly settings = inject(SettingsService);
 
-  protected readonly areas = SPEC_AREAS;
   protected readonly compact = computed(() => this.state.tier() === 'compact');
   protected readonly singleKeys = computed(() => this.settings.settings().singleKeyShortcuts);
   protected readonly specOpen = computed(() => this.state.specId() !== null && !this.data.specMissing());
@@ -83,12 +81,12 @@ export class ShellMenus {
   private openAtPress: boolean | null = null;
   private readonly workspacePopover = viewChild<UiPopover>('workspacePopover');
   private readonly specPopover = viewChild<UiPopover>('specPopover');
-  private readonly areaPopover = viewChild<UiPopover>('areaPopover');
+  private readonly areaMenu = viewChild(AreaMenu);
 
   readonly expanded = computed<Record<MenuKind, boolean>>(() => ({
     workspace: this.sheet() === 'workspace' || (this.workspacePopover()?.open() ?? false),
     spec: this.sheet() === 'spec' || (this.specPopover()?.open() ?? false),
-    area: this.areaPopover()?.open() ?? false,
+    area: this.areaMenu()?.expanded() ?? false,
   }));
 
   /**
@@ -109,11 +107,16 @@ export class ShellMenus {
     }
     // WebKit does not focus a clicked link; the popover and the sheet return focus to whatever had it on open.
     trigger.focus();
-    if (this.compact() && kind !== 'area') this.sheet.set(kind);
+    if (kind === 'area') this.areaMenu()?.show(trigger);
+    else if (this.compact()) this.sheet.set(kind);
     else this.popover(kind)?.show(trigger);
   }
 
   protected close(kind: MenuKind): void {
+    if (kind === 'area') {
+      this.areaMenu()?.close();
+      return;
+    }
     if (this.sheet() === kind) this.sheet.set(null);
     this.popover(kind)?.close();
   }
@@ -122,18 +125,11 @@ export class ShellMenus {
     if (!open && this.sheet() === kind) this.sheet.set(null);
   }
 
-  /** `/w/:ws/s/:id/<first tab>` for an area of the open spec (the dashboard is the spec itself); null without one. */
-  protected areaLink(area: SpecArea): string[] | null {
-    const ws = this.state.ws();
-    const id = this.state.specId();
-    return ws === null || id === null || !this.specOpen() ? null : specLink(ws, id, areaPath(area));
-  }
-
   protected specEntryLink(id: string): string[] {
     return specLink(this.state.ws() ?? '', id);
   }
 
-  private popover(kind: MenuKind): UiPopover | undefined {
-    return { workspace: this.workspacePopover, spec: this.specPopover, area: this.areaPopover }[kind]();
+  private popover(kind: Exclude<MenuKind, 'area'>): UiPopover | undefined {
+    return { workspace: this.workspacePopover, spec: this.specPopover }[kind]();
   }
 }

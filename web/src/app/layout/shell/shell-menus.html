@@ -113,49 +113,5 @@
 }
 
 @if (specOpen()) {
-  <ui-popover #areaPopover class="area-popover" placement="start" [label]="'shell.area.menu' | transloco">
-    <nav class="picker" [attr.aria-label]="'shell.area.menu' | transloco">
-      <ul uiRovingList [singleKeys]="singleKeys()">
-        @for (area of areas; track area.id) {
-          @let link = areaLink(area);
-          @let current = state.area() === area.id ? 'page' : null;
-          <li>
-            @if (area.built && link !== null) {
-              <a
-                uiRovingItem
-                class="entry area-entry"
-                [attr.data-area]="area.id"
-                [routerLink]="link"
-                [attr.aria-current]="current"
-                [attr.data-autofocus]="current ? '' : null"
-                (click)="close('area')"
-              >
-                <ui-icon [name]="area.icon" />
-                <span class="entry-name">{{ 'shell.areas.' + area.id | transloco }}</span>
-                @if (area.goKey; as key) {
-                  <ui-kbd class="area-key" aria-hidden="true">{{ 'shell.area.goKey' | transloco: { key } }}</ui-kbd>
-                }
-              </a>
-            } @else {
-              <span
-                uiRovingItem
-                class="entry area-entry"
-                aria-disabled="true"
-                [attr.data-area]="area.id"
-                [attr.aria-current]="current"
-                [attr.data-autofocus]="current ? '' : null"
-              >
-                <ui-icon [name]="area.icon" />
-                <span class="entry-name">{{ 'shell.areas.' + area.id | transloco }}</span>
-                @if (area.goKey; as key) {
-                  <ui-kbd class="area-key" aria-hidden="true">{{ 'shell.area.goKey' | transloco: { key } }}</ui-kbd>
-                }
-                <span class="area-reason">{{ 'shell.area.unbuilt' | transloco }}</span>
-              </span>
-            }
-          </li>
-        }
-      </ul>
-    </nav>
-  </ui-popover>
+  <app-area-menu />
 }

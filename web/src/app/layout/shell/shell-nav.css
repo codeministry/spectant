@@ -168,3 +168,32 @@
     block-size: 36px;
   }
 }
+
+/* The area trigger's dot (ISC-76): the current area's colour, as in area-menu.css. */
+.area-dot {
+  flex-shrink: 0;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--held-ink);
+}
+
+.area-dot[data-dot="status"] {
+  background: var(--color-warning);
+}
+
+.area-dot[data-dot="live"] {
+  background: var(--color-accent);
+}
+
+.area-dot[data-dot="data"] {
+  background: var(--color-primary);
+}
+
+.area-dot[data-dot="docs"] {
+  background: var(--color-secondary);
+}
+
+.area-dot[data-dot="notes"] {
+  background: var(--conc-ink);
+}
