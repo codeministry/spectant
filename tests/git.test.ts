@@ -351,6 +351,17 @@ describe("read-only (ISC-15)", () => {
 
 describe("this repository (integration)", () => {
   const self = join(import.meta.dir, "..");
+  // The file's empty global config also drops any safe.directory the runner set, and a CI job container runs as
+  // root over a checkout another uid owns, so git refuses it as "dubious ownership". Trust this one path, only here.
+  let trustedConfig: string;
+  beforeAll(() => {
+    trustedConfig = join(root, "gitconfig-self");
+    writeFileSync(trustedConfig, `[safe]\n\tdirectory = ${self}\n`);
+    process.env.GIT_CONFIG_GLOBAL = trustedConfig;
+  });
+  afterAll(() => {
+    process.env.GIT_CONFIG_GLOBAL = join(root, "gitconfig");
+  });
   const hasGit = ((): boolean => {
     try {
       lstatSync(join(self, ".git"));
