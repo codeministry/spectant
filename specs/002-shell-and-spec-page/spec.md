@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 6/48
+progress: 7/48
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T13:35:35Z
+updated: 2026-09-29T13:56:24Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -194,7 +194,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 
 - [ ] ISC-78: `/w/:ws/s/:id` shows the spec's key numbers (claims, tasks, rounds, gates, waiting), its idea quote, the next command with its reason, one bar per lane and the area tiles, all from the fixture files. ⟨?: the idea quote is the first sentence of `## Goal`, falling back to `task:` — assuming no spec carries a dedicated idea field⟩
 - [ ] ISC-79: The stage and the next command `core/` derives for every fixture spec equal the stage table in `FORMAT.md`, row by row. (after: ISC-68.1)
-- [ ] ISC-80: A spec's timeline merges the decisions of context.md, the rounds of rounds.jsonl, the gate marks and the commits touching the spec folder into one time-ordered list with one entry per source event.
+- [x] ISC-80: A spec's timeline merges the decisions of context.md, the rounds of rounds.jsonl, the gate marks and the commits touching the spec folder into one time-ordered list with one entry per source event.
 - [ ] ISC-36: A spec's timeline lists its events in order; a spec without `events.jsonl` shows its derived stage marked as derived.
 - [x] ISC-32: Every line of `events.jsonl` validates against the schema `{ts, from, to, command, actor}`.
 
@@ -280,6 +280,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-80: bun-test — bun test core/tests/timeline.test.ts -t sources → 17 pass (independent per-source counts for harbor 002 / spectant-001 / leadgen 022, commit interleaving, one entry per event, rank order at equal instants); server/src/git.ts reads the folder's commits read-only with head cache (tests/git.test.ts 19 pass); Timeline tab renders the golden strand with source filters in the URL, day groups, expanding rounds, derived chip and #t/<id> deep links — e2e status -g timeline 4 passed; spec 002 round 10
 
 - ISC-32: bun-test — bun test core/tests/events.test.ts → 39 pass: every line of the fixture events.jsonl (harbor archive/001, seven transitions in the stage table's names) validates; nine rejection codes (json, not-object, missing/extra key, type, ts, empty, stage, same-stage, null-from) each proven; the old wording (idea/specified/planned/tasked/reviewed/implementing/code-reviewed) is normalised with an event-alias warning; buildTimeline and the spec page read the validated lines, so 001's chain shows recorded transitions with actor and command; FORMAT.md quotes the file (13 of 13 kinds from fixtures); spec 002 round 9
 

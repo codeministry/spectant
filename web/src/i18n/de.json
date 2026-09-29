@@ -340,5 +340,38 @@
     "body": "Unter diesem Namen ist kein Workspace, keine Spec und kein Tab registriert.",
     "back": "Zu allen Workspaces",
     "backWorkspace": "Zurück zu {{workspace}}"
+  },
+  "timeline": {
+    "filterLabel": "Nach Quelle filtern",
+    "listLabel": "Zeitleiste, neueste zuerst",
+    "loading": "Zeitleiste wird geladen",
+    "kinds": {
+      "stage": "Stufe",
+      "decision": "Entscheidung",
+      "round": "Runde",
+      "gate": "Gate",
+      "commit": "Commit"
+    },
+    "derived": "abgeleitet",
+    "dateUnknown": "Datum unbekannt",
+    "openBoard": "Board öffnen →",
+    "empty": {
+      "heading": "Noch keine Ereignisse",
+      "body": "Die Stufe wird aus den Dateien abgeleitet."
+    },
+    "filtered": {
+      "heading": "Keine Einträge aus diesen Quellen",
+      "body": "Setzen Sie die Filter zurück, um alle Einträge zu sehen.",
+      "clear": "Filter zurücksetzen"
+    },
+    "unserved": {
+      "heading": "Zeitleiste noch nicht verfügbar",
+      "body": "Dieser Server beantwortet die Zeitleisten-Route noch nicht."
+    },
+    "error": {
+      "heading": "Die Zeitleiste konnte nicht geladen werden",
+      "body": "Der Server hat mit einem Fehler geantwortet.",
+      "retry": "Erneut versuchen"
+    }
   }
 }

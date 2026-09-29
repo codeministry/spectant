@@ -1,0 +1,122 @@
+<div class="filters" role="group" [attr.aria-label]="'timeline.filterLabel' | transloco">
+  @for (kind of kinds; track kind) {
+    <button
+      ui-button
+      variant="ghost"
+      size="sm"
+      class="filter"
+      [attr.data-filter]="kind"
+      [attr.aria-pressed]="isPressed(kind)"
+      (click)="toggleKind(kind)"
+    >
+      <span class="dot" aria-hidden="true" [style.background]="markerColor(kind)"></span>
+      {{ 'timeline.kinds.' + kind | transloco }}
+      <span class="count">{{ counts()[kind] }}</span>
+    </button>
+  }
+</div>
+
+@switch (view()) {
+  @case ('loading') {
+    <div class="skeleton" [attr.aria-label]="'timeline.loading' | transloco" role="status">
+      @for (row of [0, 1, 2, 3]; track row) {
+        <div class="skeleton-row">
+          <ui-skeleton width="48px" height="16px" />
+          <ui-skeleton width="12px" height="12px" />
+          <ui-skeleton height="16px" />
+        </div>
+      }
+    </div>
+  }
+  @case ('empty') {
+    <ui-empty-state icon="file-text" [heading]="'timeline.empty.heading' | transloco" [body]="'timeline.empty.body' | transloco" />
+  }
+  @case ('unserved') {
+    <ui-empty-state icon="file-text" [heading]="'timeline.unserved.heading' | transloco" [body]="'timeline.unserved.body' | transloco" />
+  }
+  @case ('error') {
+    <ui-empty-state icon="triangle-alert" [heading]="'timeline.error.heading' | transloco" [body]="'timeline.error.body' | transloco">
+      <button ui-button size="sm" (click)="reload()">{{ 'timeline.error.retry' | transloco }}</button>
+    </ui-empty-state>
+  }
+  @case ('ok') {
+    @if (days().length === 0) {
+      <ui-empty-state icon="file-text" [heading]="'timeline.filtered.heading' | transloco" [body]="'timeline.filtered.body' | transloco">
+        <button ui-button size="sm" (click)="clearKinds()">{{ 'timeline.filtered.clear' | transloco }}</button>
+      </ui-empty-state>
+    } @else {
+      <ol class="strand" uiRovingList [attr.aria-label]="'timeline.listLabel' | transloco">
+        @for (day of days(); track day.key) {
+          <li class="day" [attr.data-day]="day.key">
+            <h3 class="day-label">{{ dayLabel(day) ?? ('timeline.dateUnknown' | transloco) }}</h3>
+            <ol class="entries">
+              @for (row of day.rows; track row.key) {
+                <li
+                  uiRovingItem
+                  tabindex="-1"
+                  class="entry"
+                  data-entry
+                  [attr.data-id]="row.key"
+                  [attr.id]="'t-' + row.key"
+                  [attr.data-kind]="row.entry.kind"
+                  [attr.data-highlighted]="target() === row.key ? '' : null"
+                  (keydown)="onEntryKey($event, row)"
+                >
+                  <span class="time">
+                    @if (row.time === null) {
+                      {{ 'timeline.dateUnknown' | transloco }}
+                    } @else {
+                      <time [attr.datetime]="row.entry.ts">{{ row.time }}</time>
+                    }
+                  </span>
+                  <span
+                    class="marker"
+                    aria-hidden="true"
+                    [attr.data-derived]="row.entry.derived ? '' : null"
+                    [style.--marker]="markerColor(row.entry.kind)"
+                  ></span>
+                  <div class="main">
+                    <ng-template #head>
+                      <span class="title">{{ row.entry.title }}</span>
+                      <span class="meta">
+                        {{ 'timeline.kinds.' + row.entry.kind | transloco }}
+                        @if (row.entry.command) {
+                          · <span class="mono">{{ row.entry.command }}</span>
+                        }
+                        @if (row.entry.actor) {
+                          · {{ row.entry.actor }}
+                        }
+                        @if (row.entry.derived) {
+                          <ui-chip data-derived-chip>{{ 'timeline.derived' | transloco }}</ui-chip>
+                        }
+                      </span>
+                    </ng-template>
+                    @if (row.entry.body; as body) {
+                      <ui-disclosure [open]="isOpen(row.key)" (openChange)="setOpen(row.key, $event)">
+                        <span uiDisclosureSummary class="head">
+                          <ng-container [ngTemplateOutlet]="head" />
+                        </span>
+                        <div class="body">
+                          @for (line of lines(body); track $index) {
+                            <span class="body-line">{{ line }}</span>
+                          }
+                          @if (row.entry.kind === 'round') {
+                            <a class="board-link" data-open-board [routerLink]="boardLink()">{{ 'timeline.openBoard' | transloco }}</a>
+                          }
+                        </div>
+                      </ui-disclosure>
+                    } @else {
+                      <div class="head">
+                        <ng-container [ngTemplateOutlet]="head" />
+                      </div>
+                    }
+                  </div>
+                </li>
+              }
+            </ol>
+          </li>
+        }
+      </ol>
+    }
+  }
+}

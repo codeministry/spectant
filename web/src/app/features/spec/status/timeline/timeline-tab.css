@@ -1,0 +1,234 @@
+/*
+ * The Timeline tab (design.md § Status): one strand, newest first. Each entry sits on the grid
+ * `time | rail | entry`; the rail is a 2 px line with a 12 px source marker, dashed when the transition is derived.
+ * Day labels stick under the header and tab bar. Colours come from the theme tokens, durations from motion.css.
+ */
+:host {
+  --time-col: 56px;
+  --rail-col: 24px;
+  --sticky-top: 108px;
+
+  display: block;
+  max-inline-size: 992px;
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+  margin-block-end: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filter {
+  flex-shrink: 0;
+  gap: 8px;
+  border-radius: 999px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.filter[aria-pressed='true'] {
+  --btn-bg: var(--disp-t);
+  --btn-fg: var(--disp-ink);
+  --btn-border: var(--color-primary);
+}
+
+.dot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+}
+
+.count {
+  color: var(--muted-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.filter[aria-pressed='true'] .count {
+  color: var(--disp-ink);
+}
+
+.skeleton {
+  display: grid;
+  gap: 16px;
+}
+
+.skeleton-row {
+  display: grid;
+  grid-template-columns: var(--time-col) var(--rail-col) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.strand,
+.entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.day + .day {
+  margin-block-start: 16px;
+}
+
+.day-label {
+  position: sticky;
+  z-index: 1;
+  inset-block-start: var(--sticky-top);
+  margin: 0;
+  padding-block: 8px;
+  background: var(--color-base-100);
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.entry {
+  display: grid;
+  position: relative;
+  grid-template-columns: var(--time-col) var(--rail-col) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  min-block-size: 48px;
+  border-radius: 8px;
+  outline-offset: 2px;
+  transition: background-color var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+/* The rail: a 2 px line through the marker column, continuous from entry to entry. */
+.entry::before {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(var(--time-col) + 8px + var(--rail-col) / 2 - 1px);
+  inline-size: 2px;
+  background: var(--line);
+  content: '';
+}
+
+.entry[data-highlighted] {
+  background: var(--disp-t);
+}
+
+.time {
+  padding-block-start: 14px;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  text-align: end;
+}
+
+.marker {
+  position: relative;
+  z-index: 1;
+  justify-self: center;
+  inline-size: 12px;
+  block-size: 12px;
+  margin-block-start: 18px;
+  border: 2px solid var(--marker);
+  border-radius: 50%;
+  background: var(--marker);
+}
+
+.marker[data-derived] {
+  border-style: dashed;
+  background: var(--color-base-100);
+}
+
+.main {
+  min-inline-size: 0;
+}
+
+.head {
+  display: grid;
+  gap: 2px;
+  min-inline-size: 0;
+  padding-block: 12px;
+}
+
+ui-disclosure .head {
+  padding-block: 0;
+}
+
+.title {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.body {
+  display: grid;
+  gap: 4px;
+  padding-block: 4px 12px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.body-line {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.board-link {
+  justify-self: start;
+  margin-block-start: 4px;
+  color: var(--disp-ink);
+  font-weight: 500;
+}
+
+@container shell (width < 640px) {
+  :host {
+    --time-col: 44px;
+    --sticky-top: 96px;
+  }
+
+  .filters {
+    mask-image: linear-gradient(90deg, transparent, black 16px, black calc(100% - 16px), transparent);
+  }
+
+  .title {
+    white-space: normal;
+  }
+}
+
+@media (pointer: coarse) {
+  .board-link {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 44px;
+  }
+}
+
+@media (forced-colors: active) {
+  .dot,
+  .marker {
+    border-color: CanvasText;
+    background: CanvasText;
+  }
+
+  .marker[data-derived] {
+    background: Canvas;
+  }
+}

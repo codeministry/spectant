@@ -340,5 +340,38 @@
     "body": "No registered workspace, spec or tab goes by that name.",
     "back": "Go to all workspaces",
     "backWorkspace": "Back to {{workspace}}"
+  },
+  "timeline": {
+    "filterLabel": "Filter by source",
+    "listLabel": "Timeline, newest first",
+    "loading": "Loading the timeline",
+    "kinds": {
+      "stage": "Stage",
+      "decision": "Decision",
+      "round": "Round",
+      "gate": "Gate",
+      "commit": "Commit"
+    },
+    "derived": "derived",
+    "dateUnknown": "date unknown",
+    "openBoard": "Open board →",
+    "empty": {
+      "heading": "No events yet",
+      "body": "The stage is derived from the files."
+    },
+    "filtered": {
+      "heading": "No entries from these sources",
+      "body": "Clear the filters to see every entry.",
+      "clear": "Clear filters"
+    },
+    "unserved": {
+      "heading": "Timeline not served yet",
+      "body": "This server does not answer the timeline route yet."
+    },
+    "error": {
+      "heading": "The timeline could not be loaded",
+      "body": "The server answered with an error.",
+      "retry": "Try again"
+    }
   }
 }

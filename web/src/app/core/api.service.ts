@@ -93,6 +93,11 @@ export class ApiClient {
     return this.get(specRoutes.spec(ws, id));
   }
 
+  /** T55: the spec's timeline, newest first (`TimelineEntry[]`, ISC-80). */
+  timeline(ws: string, id: string): Promise<ApiResult<SpecRouteResponses['timeline']>> {
+    return this.get(specRoutes.timeline(ws, id));
+  }
+
   private answer<T>(failure: unknown, cached: { readonly etag: string; readonly body: unknown } | undefined): ApiResult<T> {
     if (!(failure instanceof HttpErrorResponse)) return { kind: 'error', status: 0 };
     const status = failure.status;

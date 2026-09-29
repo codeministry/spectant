@@ -10,7 +10,9 @@ import { AreaPlaceholder } from './area-placeholder';
  *
  *   status: () => import('./status/status-tab').then((m) => m.StatusTab),
  */
-export const VIEW_LOADERS: Partial<Record<TabId | 'dashboard', () => Promise<Type<unknown>>>> = {};
+export const VIEW_LOADERS: Partial<Record<TabId | 'dashboard', () => Promise<Type<unknown>>>> = {
+  timeline: () => import('./status/timeline/timeline-tab').then((m) => m.TimelineTab),
+};
 
 const view = (key: TabId | 'dashboard') => {
   const load = VIEW_LOADERS[key];
