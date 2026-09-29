@@ -1,0 +1,41 @@
+<div class="flow" data-flow>
+  @if (compact()) {
+    <ui-segmented
+      class="picker"
+      data-flow-columns
+      [options]="segments()"
+      [value]="column()"
+      [label]="'board.flow.label' | transloco"
+      (valueChange)="setColumn($event)"
+    />
+  } @else {
+    <div class="heads" aria-hidden="true">
+      @for (col of allColumns; track col) {
+        <div class="head" data-column-head [attr.data-head]="col">
+          {{ 'board.flow.columns.' + col | transloco }} <span class="count">{{ counts()[col] }}</span>
+        </div>
+      }
+    </div>
+  }
+
+  @for (band of shownBands(); track band.name) {
+    <section class="band" [attr.data-band]="band.name" [attr.aria-labelledby]="'flow-band-' + band.name">
+      <div class="band-head" data-band-head>
+        <span class="band-dot" aria-hidden="true"></span>
+        <h3 class="band-name" [id]="'flow-band-' + band.name">{{ band.name }}</h3>
+        <span class="band-count" data-band-count>{{ 'board.flow.counts' | transloco: { landed: band.landedCount, total: band.total } }}</span>
+      </div>
+      <div class="cols">
+        @for (col of columns(); track col) {
+          <div class="col" role="group" [attr.data-column]="col" [attr.aria-label]="'board.flow.columns.' + col | transloco">
+            @for (c of band.columns[col]; track c.task) {
+              <app-board-card [attr.data-flow-card]="c.task" [card]="c" [density]="density()" (opened)="opened.emit($event)" />
+            }
+          </div>
+        }
+      </div>
+    </section>
+  } @empty {
+    <p class="empty" data-empty>{{ 'board.flow.empty' | transloco }}</p>
+  }
+</div>

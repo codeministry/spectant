@@ -1,0 +1,167 @@
+/*
+ * The Flow view (design.md § Live "Flow view", § Tablet, § Mobile "Flow at compact"; T82, ISC-87). Wide and medium:
+ * a sticky row of four column heads under the board controls, then one band per lane whose 32 px head sticks under
+ * it and spans the four `minmax(0, 1fr)` columns. Compact: a segmented control picks one column and the bands stack
+ * beneath it with their head sticky under the header. Cards move with a FLIP on the motion tokens; under reduced
+ * motion the durations are 0ms (motion.css) and a moved card only keeps its highlight.
+ */
+:host {
+  /* Under the board's sticky controls (`--board-sticky-top` plus their 104 px block and 8 px of air). */
+  --flow-sticky-top: calc(var(--board-sticky-top, 108px) + 112px);
+
+  display: block;
+  min-inline-size: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.flow {
+  display: grid;
+  gap: 16px;
+  min-inline-size: 0;
+}
+
+.heads,
+.cols {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  min-inline-size: 0;
+}
+
+.heads {
+  position: sticky;
+  z-index: 1;
+  inset-block-start: var(--flow-sticky-top);
+  padding-block: 4px;
+  background: var(--color-base-200);
+}
+
+.head {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-inline-size: 0;
+  padding-inline: 8px;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.count {
+  color: var(--muted-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.band {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+  padding: 0 8px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  background: var(--color-base-200);
+}
+
+.band-head {
+  position: sticky;
+  z-index: 1;
+  inset-block-start: calc(var(--flow-sticky-top) + 32px);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+  min-block-size: 32px;
+  margin-inline: -8px;
+  padding-inline: 8px;
+  border-radius: var(--radius-box) var(--radius-box) 0 0;
+  background: var(--color-base-200);
+}
+
+.band-dot {
+  flex: none;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--color-primary);
+}
+
+.band[data-band='operator'] .band-dot {
+  background: var(--color-secondary);
+}
+
+.band-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.band-count {
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.col {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+.col > app-board-card {
+  transition: transform var(--motion-duration-base) var(--motion-ease-standard);
+}
+
+/* The inverted first frame of a FLIP: placed back without a transition, then released. */
+.col > app-board-card[data-flip] {
+  transition: none;
+}
+
+/* A card that changed column in this frame; under reduced motion this is all that marks the move. */
+.col > app-board-card[data-moved] {
+  border-radius: var(--radius-field);
+  outline: 2px dashed var(--color-primary);
+  outline-offset: 2px;
+}
+
+.empty {
+  margin: 0;
+  padding: 24px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-box);
+  color: var(--muted-ink);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.picker {
+  display: flex;
+  max-inline-size: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+/* Compact: one column under the segmented control, the band head sticky under the header (as the Lanes view). */
+@container shell (width < 640px) {
+  .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .band-head {
+    inset-block-start: 96px;
+  }
+}
+
+@media (forced-colors: active) {
+  .band-dot {
+    background: CanvasText;
+  }
+
+  .col > app-board-card[data-moved] {
+    outline-color: Highlight;
+  }
+}

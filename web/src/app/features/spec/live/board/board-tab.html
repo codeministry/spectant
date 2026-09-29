@@ -85,9 +85,7 @@
     </div>
 
     @if (view() === 'flow') {
-      <div class="flow-later" data-flow-placeholder>
-        <p>{{ 'board.flow.later' | transloco }}</p>
-      </div>
+      <app-flow-view [lanes]="lanes()" [frame]="index()" [density]="density()" [tier]="tier()" (opened)="openCard($event)" />
     } @else {
       <div class="lanes" data-lanes>
         @for (lane of gridLanes(); track lane.name) {

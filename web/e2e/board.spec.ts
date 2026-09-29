@@ -7,9 +7,14 @@
  *   goldens hold.
  * - `bun run e2e -- board -g waiting` (ISC-89): waiting cards sit in their reason's group and the rendered cards equal
  *   the frame's cards, at 390 and 1440.
- * - The scrubber steps `?frame` and the frame chip follows; `?view=flow` shows the board's own later-task note; under
- *   the `frontier` lock fixture the locked task is in flight with its session (ISC-90); no horizontal overflow and no
- *   lane scrolling on its own at 390 and 600 (ISC-93).
+ * - The scrubber steps `?frame` and the frame chip follows; under the `frontier` lock fixture the locked task is in flight
+ *   with its session (ISC-90); no horizontal overflow and no lane scrolling on its own at 390 and 600 (ISC-93).
+ * - `bun run e2e -- board -g flow` (T82, ISC-87): the Flow view's four columns hold every card of the frame once, the
+ *   band headers name the lanes in constitution order with n/m, scrubbing moves a card between columns, and at 390 the
+ *   segmented control shows the four counts and switches the group.
+ * - `bun run e2e -- board -g 'scrub changes no file'` (T89, ISC-87): scrubbing every frame in both views sends no
+ *   request but GET and HEAD, so the web cannot write a file. The git half of the claim (`git status --porcelain` empty
+ *   after scrubbing) is core's, in `core/tests/frames.test.ts`; an e2e against the stub has no tree to inspect.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -93,12 +98,6 @@ test.describe('states', () => {
     await expect(page.locator('[data-frame-chip="live"]')).toBeVisible();
   });
 
-  test('?view=flow shows the board with its later-task note, not the area placeholder', async ({ page }) => {
-    await page.goto(`${BOARD}?view=flow`);
-    await expect(page.locator('app-board-tab [data-flow-placeholder]')).toContainText('comes with a later task');
-    await expect(page.locator('[data-page="placeholder"]')).toHaveCount(0);
-    await expect(page.locator('app-board-tab ui-segmented [aria-checked="true"]')).toHaveText('Flow');
-  });
 });
 
 for (const width of [390, 1440] as const) {
@@ -162,3 +161,152 @@ for (const width of [390, 600] as const) {
     });
   });
 }
+
+/** The Flow view's four columns in design order and the section each card state sits in (board-model's rule). */
+const COLUMNS = ['waiting', 'inFlight', 'needsYou', 'landed'] as const;
+type Column = (typeof COLUMNS)[number];
+const COLUMN_OF: Readonly<Record<CardState, Column>> = {
+  question: 'needsYou',
+  concerns: 'needsYou',
+  fail: 'needsYou',
+  operatorOpen: 'needsYou',
+  dispatched: 'inFlight',
+  running: 'inFlight',
+  waiting: 'waiting',
+  done: 'landed',
+  closed: 'landed',
+  operatorDone: 'landed',
+  absent: 'landed',
+};
+const COLUMN_WORDS = ['Waiting', 'In flight', 'Needs you', 'Landed'];
+const LANDED = new Set<CardState>(['done', 'closed', 'operatorDone']);
+const SPEC_LANES = (read('harbor.spec.golden.json') as { lanes: ReadonlyArray<{ name: string }> }).lanes.map((l) => l.name);
+const FLOW = `${BOARD}?view=flow`;
+const FLOW_CARDS = 'app-flow-view article[data-card]';
+const RANGE = 'ui-scrubber input[type="range"]';
+
+/** Constitution order, then lanes only the cards name, `operator` last, as the goldens give them. */
+const bandOrder = (cards: ReadonlyArray<{ lane: string }>): string[] => {
+  const present = [...new Set(cards.map((c) => c.lane))];
+  const known = SPEC_LANES.filter((lane) => lane !== 'operator' && present.includes(lane));
+  const extra = present.filter((lane) => lane !== 'operator' && !known.includes(lane));
+  return [...known, ...extra, ...(present.includes('operator') ? ['operator'] : [])];
+};
+
+test.describe('flow', () => {
+  test.use(atWidth(1440));
+
+  test('flow: ?view=flow shows four columns, every card of the live frame once, band headers in constitution order with n/m', async ({ page }) => {
+    await page.goto(FLOW);
+    await expect(page.locator('app-board-tab ui-segmented[data-control="view"] [aria-checked="true"]')).toHaveText('Flow');
+    await expect(page.locator('[data-page="placeholder"]')).toHaveCount(0);
+    await expect(page.locator('app-flow-view [data-column-head]')).toHaveText(COLUMN_WORDS.map((w) => new RegExp(`^\\s*${w}\\D*\\d+\\s*$`)));
+    await expect(page.locator(FLOW_CARDS)).toHaveCount(LIVE.cards.length);
+    const rendered = await page.locator(FLOW_CARDS).evaluateAll((cards) => cards.map((c) => c.getAttribute('data-card') ?? ''));
+    expect(rendered.sort()).toEqual(LIVE.cards.map((c) => c.task).sort());
+    for (const c of LIVE.cards) {
+      await expect(page.locator(`app-flow-view [data-band="${c.lane}"] [data-column="${COLUMN_OF[c.state]}"] article[data-card="${c.task}"]`)).toHaveCount(1);
+    }
+
+    const order = bandOrder(LIVE.cards);
+    expect(await page.locator('app-flow-view [data-band]').evaluateAll((els) => els.map((el) => el.getAttribute('data-band')))).toEqual(order);
+    for (const lane of order) {
+      const cards = LIVE.cards.filter((c) => c.lane === lane);
+      const head = page.locator(`app-flow-view [data-band="${lane}"] [data-band-head]`);
+      await expect(head.locator('h3')).toHaveText(lane);
+      await expect(head.locator('[data-band-count]')).toHaveText(`${String(cards.filter((c) => LANDED.has(c.state)).length)}/${String(cards.length)}`);
+    }
+  });
+
+  test('flow: scrubbing moves a card between columns, as the frames golden says', async ({ page }) => {
+    const movedIn = (f: Frame) => f.cards.find((c) => LIVE.cards.some((l) => l.task === c.task && COLUMN_OF[l.state] !== COLUMN_OF[c.state]));
+    const frame = FRAMES.find((f) => movedIn(f) !== undefined);
+    const then = frame ? movedIn(frame) : undefined;
+    const now = LIVE.cards.find((l) => l.task === then?.task);
+    if (!frame || !then || !now) throw new Error('no card changes column between a history frame and live');
+
+    await page.goto(FLOW);
+    const card = (column: Column) => page.locator(`app-flow-view [data-column="${column}"] article[data-card="${now.task}"]`);
+    await expect(card(COLUMN_OF[now.state])).toHaveCount(1);
+
+    await page.locator(RANGE).focus();
+    await page.keyboard.press('Home');
+    for (let i = 0; i < frame.index; i += 1) await page.keyboard.press('ArrowRight');
+    await expect(page).toHaveURL(new RegExp(`[?&]frame=${String(frame.index)}(&|$)`));
+    await expect(page).toHaveURL(/[?&]view=flow(&|$)/);
+    await expect(card(COLUMN_OF[then.state])).toHaveCount(1);
+    await expect(card(COLUMN_OF[now.state])).toHaveCount(0);
+    await expect(page.locator(FLOW_CARDS)).toHaveCount(frame.cards.length);
+
+    await page.locator('[data-back-to-live]').click();
+    await expect(card(COLUMN_OF[now.state])).toHaveCount(1);
+  });
+
+  test('flow: v and the view control switch between Lanes and Flow over the same cards', async ({ page }) => {
+    await page.goto(BOARD);
+    await expect(page.locator('app-board-tab [data-lanes]')).toBeVisible();
+    await page.locator('app-board-tab ui-segmented[data-control="view"] [role="radio"]', { hasText: 'Flow' }).click();
+    await expect(page).toHaveURL(/[?&]view=flow(&|$)/);
+    await expect(page.locator(FLOW_CARDS)).toHaveCount(LIVE.cards.length);
+    await page.keyboard.press('v');
+    await expect(page).toHaveURL(/[?&]view=lanes(&|$)/);
+    await expect(page.locator('app-flow-view')).toHaveCount(0);
+  });
+});
+
+test.describe('flow at 390', () => {
+  test.use(atWidth(390));
+
+  test('flow: at 390 the segmented control shows the four counts and switching it shows that group', async ({ page }) => {
+    await page.goto(FLOW);
+    const segments = page.locator('app-flow-view ui-segmented[data-flow-columns] [role="radio"]');
+    const counts = COLUMNS.map((col) => LIVE.cards.filter((c) => COLUMN_OF[c.state] === col).length);
+    await expect(segments).toHaveText(COLUMN_WORDS.map((w, i) => new RegExp(`^\\s*${w}\\D*${String(counts[i])}\\s*$`)));
+
+    // Last to first, so every click is a switch (the default column is the first one holding cards).
+    for (const [i, column] of [...COLUMNS.entries()].reverse()) {
+      const count = counts[i] ?? 0;
+      await segments.nth(i).click();
+      await expect(page).toHaveURL(new RegExp(`[?&]flow=${column}(&|$)`));
+      await expect(segments.nth(i)).toHaveAttribute('aria-checked', 'true');
+      await expect(page.locator(FLOW_CARDS)).toHaveCount(count);
+      await expect(page.locator(`app-flow-view [data-column="${column}"] article[data-card]`)).toHaveCount(count);
+    }
+    const root = await page.evaluate(() => {
+      const el = document.scrollingElement ?? document.documentElement;
+      return { scroll: el.scrollWidth, client: el.clientWidth };
+    });
+    expect(root.scroll).toBeLessThanOrEqual(root.client);
+  });
+});
+
+test.describe('scrub changes no file', () => {
+  test.use(atWidth(1440));
+
+  test('scrub changes no file: scrubbing every frame in Lanes and Flow sends no request but GET and HEAD', async ({ page }) => {
+    const writes: string[] = [];
+    await page.route('**/*', async (route) => {
+      const request = route.request();
+      if (request.method() === 'GET' || request.method() === 'HEAD') return route.fallback();
+      writes.push(`${request.method()} ${request.url()}`);
+      return route.abort();
+    });
+
+    for (const [view, cards] of [
+      ['lanes', CARDS],
+      ['flow', FLOW_CARDS],
+    ] as const) {
+      await page.goto(`${BOARD}?view=${view}`);
+      await expect(page.locator(cards)).toHaveCount(LIVE.cards.length);
+      await page.locator(RANGE).focus();
+      await page.keyboard.press('Home');
+      for (const frame of [...FRAMES, LIVE]) {
+        if (frame.kind === 'live') await expect(page).not.toHaveURL(/[?&]frame=/);
+        else await expect(page).toHaveURL(new RegExp(`[?&]frame=${String(frame.index)}(&|$)`));
+        await expect(page.locator(cards)).toHaveCount(frame.cards.length);
+        await page.keyboard.press('ArrowRight');
+      }
+    }
+    expect(writes).toEqual([]);
+  });
+});

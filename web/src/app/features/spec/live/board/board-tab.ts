@@ -19,6 +19,7 @@ import { UiScrubber } from '../../../../shared/ui/scrubber/scrubber';
 import { type SegmentedOption, UiSegmented } from '../../../../shared/ui/segmented/segmented';
 import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
 import { toneMark } from '../../../../shared/ui/tone';
+import { FlowView } from '../flow/flow-view';
 import { BoardCard } from './board-card';
 import {
   buildLanes,
@@ -44,7 +45,8 @@ const PLAY_STEP_MS = 1200;
 
 /**
  * The Board tab (T81, ISC-87 to ISC-93): core's frames (`…/frames`) and live frame (`…/live`) behind the scrubber,
- * shown as the Lanes view; the Flow view (T82) and the Matrix (T88) are later tasks. The web never reads rounds.jsonl
+ * shown as the Lanes view or the Flow view (T82, `app-flow-view` over the same lanes and cards); the Matrix (T88) is a
+ * later task. The web never reads rounds.jsonl
  * and scrubbing writes no file: every control is a query param (`?view`, `?frame`, `?q`, `?hide`, `?lanes`,
  * `?density`), so reload and back land on the same board (the keyboard service writes `?view` and `?frame` too).
  *
@@ -57,6 +59,7 @@ const PLAY_STEP_MS = 1200;
   selector: 'app-board-tab',
   imports: [
     BoardCard,
+    FlowView,
     NgTemplateOutlet,
     TranslocoPipe,
     UiChip,

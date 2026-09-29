@@ -989,7 +989,16 @@
       "heading": "Frame lists"
     },
     "flow": {
-      "later": "The Flow view comes with a later task."
+      "label": "Flow column",
+      "columns": {
+        "waiting": "Waiting",
+        "inFlight": "In flight",
+        "needsYou": "Needs you",
+        "landed": "Landed"
+      },
+      "segment": "{{label}} {{count}}",
+      "counts": "{{landed}}/{{total}}",
+      "empty": "No card matches the filter."
     },
     "empty": "No card matches the filter.",
     "failed": "The board could not be read."

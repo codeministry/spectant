@@ -989,7 +989,16 @@
       "heading": "Frame-Listen"
     },
     "flow": {
-      "later": "Die Fluss-Ansicht folgt mit einer späteren Aufgabe."
+      "label": "Fluss-Spalte",
+      "columns": {
+        "waiting": "Wartend",
+        "inFlight": "In Arbeit",
+        "needsYou": "Wartet auf Sie",
+        "landed": "Gelandet"
+      },
+      "segment": "{{label}} {{count}}",
+      "counts": "{{landed}}/{{total}}",
+      "empty": "Keine Karte passt zum Filter."
     },
     "empty": "Keine Karte passt zum Filter.",
     "failed": "Das Board konnte nicht gelesen werden."

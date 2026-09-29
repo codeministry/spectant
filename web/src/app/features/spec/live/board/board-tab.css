@@ -136,7 +136,7 @@
   color: var(--disp-ink);
 }
 
-.flow-later, .empty {
+.empty {
   margin: 0;
   padding: 24px;
   border: 1px dashed var(--line);
