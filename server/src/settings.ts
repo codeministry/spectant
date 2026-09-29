@@ -119,7 +119,7 @@ const ALLOW = "GET, HEAD, PUT";
 const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
 /** True for a loopback `host[:port]`. The server binds loopback only; a foreign name here means DNS rebinding. */
-function isLoopbackHost(host: string | null): boolean {
+export function isLoopbackHost(host: string | null): boolean {
   if (host === null) return false;
   try {
     return LOOPBACK_HOSTNAMES.has(new URL(`http://${host}`).hostname);
@@ -129,7 +129,7 @@ function isLoopbackHost(host: string | null): boolean {
 }
 
 /** A browser sends `Origin` on a cross-origin request; it must be a loopback page too. Absent means a non-browser client. */
-function isLoopbackOrigin(origin: string | null): boolean {
+export function isLoopbackOrigin(origin: string | null): boolean {
   if (origin === null) return true;
   try {
     const url = new URL(origin);

@@ -9,7 +9,8 @@
  * `serve` (T50, ISC-20) listens on `DEFAULT_PORT` (7717) or `--port N`, falling forward to the next free port when it
  * is taken (`serveWithFallback`), unless `--strict-port` pins it. Once listening it prints exactly one line on stdout,
  * `spectant · http://127.0.0.1:<port>`, and opens that URL in the browser unless `--no-browser` is given. It serves
- * the settings API (`/api/settings`, T43) from `spectant.db` in the data directory.
+ * the settings API (`/api/settings`, T43) and the workspace routes (`/api/workspaces`, T47, `api.ts`) from
+ * `spectant.db` in the data directory.
  *
  * The workspace commands work on the registry in the data directory from `paths.ts` (`$XDG_DATA_HOME/spectant` or
  * `~/.spectant`). They print a workspace by its slug and its path tail only, never its absolute path (ISC-3), and they
@@ -23,6 +24,7 @@
  */
 import { realpathSync } from "node:fs";
 import { basename, resolve } from "node:path";
+import { composeApi, dashboardApi } from "./api.ts";
 import type { EmbeddedManifest } from "./assets.contract.ts";
 import { openDatabase } from "./db.ts";
 import { DEFAULT_PORT, LOOPBACK_HOST, PORT_ATTEMPTS, type RunningServer, serveWithFallback } from "./http.ts";
@@ -131,17 +133,21 @@ function reason(error: unknown): string {
  */
 function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind: "serve" }, options: RunOptions): Promise<number> {
   let db: ReturnType<typeof openDatabase>;
+  let registry: Registry;
   try {
-    db = openDatabase(dataDir(options.env ?? process.env));
+    const dir = dataDir(options.env ?? process.env);
+    db = openDatabase(dir);
+    registry = openRegistry(dir);
   } catch (error) {
     console.error(`spectant: cannot open the data directory: ${reason(error)}`);
     return Promise.resolve(1);
   }
   let server: RunningServer;
   try {
-    const api = settingsApi(openSettings(db));
+    const api = composeApi(settingsApi(openSettings(db)), dashboardApi({ registry }));
     server = serveWithFallback({ manifest, port: command.port, strict: command.strictPort, api });
   } catch (error) {
+    registry.close();
     db.close();
     const tried = command.strictPort || command.port === 0 ? "" : ` or the ${PORT_ATTEMPTS - 1} ports above it`;
     console.error(`spectant: cannot listen on ${LOOPBACK_HOST}:${command.port}${tried}: ${reason(error)}`);
@@ -156,6 +162,7 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
       process.off("SIGTERM", stop);
       options.signal?.removeEventListener("abort", stop);
       server.stop();
+      registry.close();
       db.close();
       resolve(0);
     };

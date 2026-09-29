@@ -33,3 +33,6 @@ server/embedded.gen.ts
 
 # Angular CLI cache
 .angular/
+
+# TL;DR in German for the principal, written by /spec-tldr (public repo keeps specs/ English)
+specs/tldr.md

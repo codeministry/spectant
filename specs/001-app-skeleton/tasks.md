@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-29T10:11:34Z
+updated: 2026-09-29T10:28:35Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -73,14 +73,14 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T37 · ISC-14 · [P] · core — stage derivation and next-command rules, ported from the old dashboard tool (after: T33) · `core/src/stage.ts`
 - [x] T38 · ISC-16 · [P] · core — takeable set, diagram verdict, TL;DR staleness, markdown renderer, archive listing (after: T33) · `core/src/{takeable,diagrams,tldr,markdown,archive}.ts`
 - [x] T39 · ISC-16 · [seam] · core — dashboard model assembly: the JSON the server returns and the web app renders (after: T34, T36, T37, T38) · `core/src/dashboard.ts`
-- [ ] T40 · ISC-6 · [P] · core — golden snapshot test writing and checking `core/fixtures/<name>.golden.json` (after: T39) · `core/tests/fixtures.test.ts`
-- [ ] T41 · ISC-14 · [P] · core — parity test over `SPECTANT_PARITY_TREES`, failing on zero comparisons (after: T39) · `core/tests/stage-parity.test.ts`
+- [x] T40 · ISC-6 · [P] · core — golden snapshot test writing and checking `core/fixtures/<name>.golden.json` (after: T39) · `core/tests/fixtures.test.ts`
+- [x] T41 · ISC-14 · [P] · core — parity test over `SPECTANT_PARITY_TREES`, failing on zero comparisons (after: T39) · `core/tests/stage-parity.test.ts`
 - [x] T45 · ISC-5 · [P] · server — `check:single-core`: fails on a frontmatter, claim or stage parser outside `core/` · `scripts/check-single-core.ts`
 - [x] T46 · ISC-21 · [P] · server — data directory resolution with its tests · `server/src/paths.ts`
 - [x] T42 · ISC-13 · [P] · server — SQLite workspace registry with slug deduplication · `server/src/registry.ts`
 - [x] T43 · ISC-18.3 · [P] · server — settings table and the `/api/settings` GET + PUT handlers, with `tests/settings.test.ts` across a port change · `server/src/settings.ts`
 - [x] T44 · ISC-13 · [P] · server — CLI `add`, `list`, `remove` with `tests/workspaces.test.ts` (after: T42) · `server/src/cli.ts`
-- [ ] T47 · ISC-16 · [P] · server — `/api/workspaces` and `/api/workspaces/:slug/dashboard` with ETag, plus the two-workspace `tests/dashboard.test.ts` (after: T39) · `server/src/api.ts`
+- [x] T47 · ISC-16 · [P] · server — `/api/workspaces` and `/api/workspaces/:slug/dashboard` with ETag, plus the two-workspace `tests/dashboard.test.ts` (after: T39) · `server/src/api.ts`
 - [x] T48 · ISC-16 · [P] · server — local listeners for the live indicator, empty when `lsof` is missing · `server/src/services.ts`
 - [x] T49 · ISC-1 · [P] · server — loopback-only bind test · `tests/server.test.ts`
 - [x] T50 · ISC-20 · [P] · server — port 7717 with fallback, URL printed, browser opened unless `--no-browser`, plus the start-up cases in `tests/cli.test.ts` · `server/src/cli.ts`
@@ -88,7 +88,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T52 · ISC-15 · [P] · server — read-only test: recursive hash of the fixture repo incl. `.git/` before and after add + browse; `test:readonly` (after: T39) · `tests/readonly.test.ts`
 - [x] T53 · ISC-2 · [P] · server — server-side offline run: the binary in `docker run --network none` through a scripted session; `test:offline:server` (after: T11) · `tests/offline-server.ts`
 - [x] T54 · ISC-3 · [P] · server — `check:leak`: generic classes plus an optional private word list outside the repo · `scripts/check-leak.ts`
-- [ ] T55 · ISC-4 · [P] · repo — Apache-2.0 `LICENSE` and `THIRD_PARTY_NOTICES.md` · `LICENSE`
+- [x] T55 · ISC-4 · [P] · repo — Apache-2.0 `LICENSE` and `THIRD_PARTY_NOTICES.md` · `LICENSE`
 - [ ] T56 · ISC-5.2 · [P] · repo — `.github/workflows/ci.yml` running `bun run verify` in the pinned Playwright container with Node ≥ 22.22.3 · `.github/workflows/ci.yml`
 
 ### ④ Views

@@ -1,62 +1,15 @@
 // The dashboard model (spec 001 T39, ISC-16): `buildDashboard` over the fixture trees, the README's Expected column
-// asserted per harbor spec, and the golden snapshots `core/fixtures/<name>.golden.json` that the server returns and the
-// web e2e and visual suites render as stub-API data.
+// asserted per harbor spec, and the per-spec model assertions. The golden snapshots `core/fixtures/<name>.golden.json`
+// are checked once, in the golden test `core/tests/fixtures.test.ts` (ISC-6).
 //
-// Goldens: `UPDATE_GOLDEN=1 bun test core/tests/dashboard.test.ts` writes them; every other run compares byte-equal.
-// A snapshot changes only together with the parser change that explains it (core/CLAUDE.md § Fixtures).
-//
-// The files are read here, in the test, as the server reads them; `buildDashboard` stays pure over the text.
+// The files are read by the test helper `helpers/read-tree.ts`, as the server reads them; `buildDashboard` stays pure
+// over the text.
 import { describe, expect, test } from 'bun:test';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
 
 import { buildDashboard, devServiceLabels, toLocalService } from '../src/dashboard.ts';
-import type { DashboardInput, DashboardModel, DashboardSpecRow } from '../src/dashboard.ts';
-import { FILE_KINDS } from '../src/files.ts';
-import type { SpecFiles, TextFileKind } from '../src/files.ts';
-
-const FIXTURES = join(import.meta.dir, '..', 'fixtures');
-const GOLDEN_TREES = ['harbor', 'lantern', 'empty-master', 'spectant-001', 'leadgen'] as const;
-
-/** The per-folder file kinds (everything inside `specs/NNN-slug/`); master and constitution come in once per tree. */
-const FOLDER_KINDS = (Object.keys(FILE_KINDS) as Array<keyof typeof FILE_KINDS>).filter(
-  (kind): kind is TextFileKind => !FILE_KINDS[kind].directory && !FILE_KINDS[kind].path.startsWith('..'),
-);
-
-function readIfExists(path: string): string | null {
-  return existsSync(path) ? readFileSync(path, 'utf8') : null;
-}
-
-/** Every spec folder directly under `dir` (`NNN-slug`), in name order, with the texts of the files it holds. */
-function folders(dir: string): SpecFiles[] {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isDirectory() && /^\d{3}-/.test(e.name))
-    .map((e) => e.name)
-    .sort()
-    .map((folder) => {
-      const texts: Partial<Record<TextFileKind, string>> = {};
-      for (const kind of FOLDER_KINDS) {
-        const text = readIfExists(join(dir, folder, FILE_KINDS[kind].path));
-        if (text !== null) texts[kind] = text;
-      }
-      return { folder, texts };
-    });
-}
-
-/** A fixture tree read into the model's input, as the server reads a registered workspace. */
-function readTree(name: string): DashboardInput {
-  const root = join(FIXTURES, name);
-  return {
-    master: readIfExists(join(root, 'ISA.md')),
-    constitution: readIfExists(join(root, 'specs', 'constitution.md')),
-    tldr: readIfExists(join(root, 'specs', 'tldr.md')),
-    specs: folders(join(root, 'specs')),
-    archived: folders(join(root, 'specs', 'archive')),
-    worktreeTree: null,
-  };
-}
+import type { DashboardModel, DashboardSpecRow } from '../src/dashboard.ts';
+import { FIXTURES, fixtureTrees, readTree } from './helpers/read-tree.ts';
 
 const model = (name: string): DashboardModel => buildDashboard(readTree(name));
 
@@ -79,19 +32,6 @@ function strings(value: unknown, out: string[] = []): string[] {
     }
   }
   return out;
-}
-
-/** The golden text: two-space JSON with a trailing newline. Field order is the model's construction order. */
-const golden = (m: DashboardModel): string => `${JSON.stringify(m, null, 2)}\n`;
-
-/** The first line where two texts part, with two lines of context, for a readable failure. */
-function firstDifference(expected: string, actual: string): string {
-  const a = expected.split('\n');
-  const b = actual.split('\n');
-  const at = a.findIndex((line, i) => line !== b[i]);
-  const i = at < 0 ? Math.min(a.length, b.length) : at;
-  const around = (lines: string[]) => lines.slice(Math.max(0, i - 2), i + 3).join('\n');
-  return `golden differs at line ${i + 1}\n--- golden\n${around(a)}\n+++ built\n${around(b)}`;
 }
 
 describe('harbor: the README Expected column', () => {
@@ -219,7 +159,7 @@ describe('lantern, empty-master and the frozen corpora', () => {
 });
 
 describe('ISC-3: no absolute path in the model', () => {
-  test.each([...GOLDEN_TREES])('%s', (name) => {
+  test.each(fixtureTrees())('%s', (name) => {
     const all = strings(model(name));
     const leaks = all.filter((s) => s.includes(FIXTURES) || s.includes(homedir()) || /^[A-Za-z]:\\/.test(s));
     expect(leaks).toEqual([]);
@@ -279,19 +219,6 @@ describe('multi-workspace', () => {
     expect(harbor.kpis.master).toEqual({ closed: 101, total: 124 });
     expect(lantern.kpis.master?.total).toBe(12);
     // pure: building one never changes the other
-    expect(golden(model('harbor'))).toBe(golden(harbor));
-  });
-});
-
-describe('golden snapshots', () => {
-  const update = process.env.UPDATE_GOLDEN === '1';
-  test.each([...GOLDEN_TREES])('%s.golden.json', (name) => {
-    const built = golden(model(name));
-    const path = join(FIXTURES, `${name}.golden.json`);
-    if (update) writeFileSync(path, built);
-    const stored = readIfExists(path);
-    if (stored === null) throw new Error(`${name}.golden.json is missing; run UPDATE_GOLDEN=1 bun test core/tests/dashboard.test.ts`);
-    if (stored !== built) throw new Error(firstDifference(stored, built));
-    expect(stored).toBe(built);
+    expect(JSON.stringify(model('harbor'))).toBe(JSON.stringify(harbor));
   });
 });

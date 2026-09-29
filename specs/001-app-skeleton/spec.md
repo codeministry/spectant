@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F1
 constitution: ../constitution.md
 phase: scoping
-progress: 20/47
+progress: 23/47
 started: 2026-09-28T09:40:00Z
-updated: 2026-09-29T10:11:34Z
+updated: 2026-09-29T10:28:35Z
 context_sufficient: true
 interview_invoked: true
 context_log: context.md
@@ -146,9 +146,9 @@ Why: what would sink the project whichever slice slipped — data leaving the ma
 - [x] ISC-1: Anti: the app's HTTP server listens on any address other than 127.0.0.1 or ::1.
 - [ ] ISC-2: Anti: with no AI feature switched on, starting the app, adding a workspace, browsing every page and performing every write makes an outbound network request.
 - [ ] ISC-3: Anti: a tracked file contains a customer name, an absolute home path or personal data (generic leak classes plus a private word list kept outside the repo).
-- [ ] ISC-4: The repository root holds the Apache-2.0 `LICENSE` and a `THIRD_PARTY_NOTICES.md` naming the bundled assets and the LifeOS (MIT) origin of the ISA format.
+- [x] ISC-4: The repository root holds the Apache-2.0 `LICENSE` and a `THIRD_PARTY_NOTICES.md` naming the bundled assets and the LifeOS (MIT) origin of the ISA format.
 - [x] ISC-5: Anti: the repository holds more than one implementation of frontmatter, claim or stage parsing; the app and the plugin both import `core/`.
-- [ ] ISC-6: Every fixture under `core/fixtures/` parses without error to its golden JSON snapshot.
+- [x] ISC-6: Every fixture under `core/fixtures/` parses without error to its golden JSON snapshot.
 - [ ] ISC-7: Deleting the data directory loses only the workspace registry, notes and pins; after re-adding a workspace its specs view equals the view before deletion.
 - [x] ISC-5.1: A `CLAUDE.md` exists at the root plus in `core/`, `server/`, `web/`, each lane file naming its probe (root: only what applies everywhere).
 - [x] ISC-5.2: `bun run check:static` runs ESLint with the Angular rules, Stylelint with `color-no-hex` and `tsc --noEmit`, all at zero warnings.
@@ -163,7 +163,7 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [ ] ISC-11: For a fresh user on macOS arm64, the install one-liner puts `spectant` on PATH and `spectant --version` exits 0. (after: ISC-8)
 - [x] ISC-12: The install script writes the binary to `INSTALL_DIR` when that variable is set. (after: ISC-10)
 - [x] ISC-13: `spectant add <repo>`, `spectant list` and `spectant remove <repo>` round-trip a workspace through the registry.
-- [ ] ISC-14: For copies of the principal's real spec trees, every spec's stage on the dashboard equals the stage the old skill derives, and the probe fails when no tree was compared.
+- [x] ISC-14: For copies of the principal's real spec trees, every spec's stage on the dashboard equals the stage the old skill derives, and the probe fails when no tree was compared.
 - [ ] ISC-15: Anti: adding a workspace or opening any page changes a byte inside the registered repository, `.git/` included.
 - [ ] ISC-16: One dashboard lists the specs of two registered workspaces side by side.
 - [ ] ISC-16.1: The overview's committed visual baseline (light, three widths, states: two workspaces, empty, unreadable workspace) passes on Linux CI.
@@ -225,6 +225,12 @@ Why: the first time the author types `spectant` and sees two real repositories o
   needs their pages (ISC-2 covers "every write" once spec 002 adds writes).
 
 ## Verification
+
+- ISC-4: bash — test -f LICENSE && rg -q 'Apache License' LICENSE && test -f THIRD_PARTY_NOTICES.md → exit 0; LICENSE is the canonical Apache-2.0 text with the appendix line filled in, THIRD_PARTY_NOTICES.md covers Angular, Transloco, RxJS, tslib, Tailwind, daisyUI, Lucide (incl. Feather notice), Inter and JetBrains Mono (OFL), the Bun runtime, the frozen leadgen fixture and the LifeOS (MIT) origin of the ISA format, plus a dev-dependency table; spec 001 round 17
+
+- ISC-14: bun-test — bun test core/tests/stage-parity.test.ts with SPECTANT_PARITY_TREES = three local trees (13 spec folders: this repo, the public leadgen repo, one private customer corpus) and SPECTANT_SPEC_SKILL_DIR = the old skill → 14 pass, 0 fail (13 stages equal + count > 0); unset → 1 skip, listed but nothing compared → 1 fail; spec 001 round 17
+
+- ISC-6: bun-test — bun test core/ → 464 pass, 0 fail; golden check lives in core/tests/fixtures.test.ts only (five trees ↔ five *.golden.json, byte-equal to buildDashboard, UPDATE_GOLDEN=1 the only rewrite path), every fixture parses with zero error diagnostics and its warning set pinned (leadgen's real master-progress-mismatch), non-vacuity proven by a spec-less folder; spec 001 round 17
 
 - ISC-65: browser — bun run test:browser -- contrast → 4 passed (117 text and 55 mark samples per theme against /__ui; first run red with six real defects: gallery and primitive classes colliding with daisyUI .stack/.label, light primary button 3.77, light inks on tints, muted on selected chip, success dot; fixed via class renames, tint-aware light inks, --primary-fill/--done-mark tokens; focus and motion probes still green); spec 001 round 16
 

@@ -1,15 +1,23 @@
-// Fixture corpus (ISC-69, spec 002 T6): the trees `core/` is tested against are present and publishable.
-// `spectant-001/` is Spectant's own spec 001 frozen at a named commit, `leadgen/` holds real specs of more than one
-// type under their Apache licence, and `harbor/`, `lantern/` and `empty-master/` are the synthetic trees. The frozen
-// trees are copies of real repositories, so every file in them is checked for machine paths and personal names.
+// The fixture corpus and its golden test.
 //
-// This file reads fixture files only; it parses nothing through `core/`. The one frontmatter lookup below is a
-// test helper for a single key, not a parser of the format.
+// Corpus (ISC-69, spec 002 T6): the trees `core/` is tested against are present and publishable. `spectant-001/` is
+// Spectant's own spec 001 frozen at a named commit, `leadgen/` holds real specs of more than one type under their
+// Apache licence, and `harbor/`, `lantern/` and `empty-master/` are the synthetic trees. The frozen trees are copies
+// of real repositories, so every file in them is checked for machine paths and personal names. The corpus tests read
+// fixture files only; the one frontmatter lookup below is a test helper for a single key, not a parser of the format.
+//
+// Golden (ISC-6, spec 001 T40): every tree parses through `buildDashboard` without error to its snapshot
+// `core/fixtures/<name>.golden.json`. `UPDATE_GOLDEN=1 bun test core/tests/fixtures.test.ts` writes the snapshots;
+// every other run compares byte-equal. A snapshot changes only together with the parser change that explains it
+// (core/CLAUDE.md § Fixtures).
 import { describe, expect, test } from "bun:test";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 
-const FIXTURES = join(import.meta.dir, "..", "fixtures");
+import { buildDashboard } from "../src/dashboard.ts";
+import type { DashboardModel } from "../src/dashboard.ts";
+import { FIXTURES, fixtureTrees, readTree } from "./helpers/read-tree.ts";
+
 const SPECTANT_001 = join(FIXTURES, "spectant-001");
 const LEADGEN = join(FIXTURES, "leadgen");
 
@@ -110,4 +118,72 @@ describe("corpus", () => {
   });
 });
 
-// Golden snapshot tests (ISC-6, spec 001 T40) go below this line.
+/** The golden text: two-space JSON with a trailing newline. Field order is the model's construction order. */
+const golden = (m: DashboardModel): string => `${JSON.stringify(m, null, 2)}\n`;
+
+/** The first line where two texts part, with two lines of context, for a readable failure. */
+function firstDifference(expected: string, actual: string): string {
+  const a = expected.split("\n");
+  const b = actual.split("\n");
+  const at = a.findIndex((line, i) => line !== b[i]);
+  const i = at < 0 ? Math.min(a.length, b.length) : at;
+  const around = (lines: string[]) => lines.slice(Math.max(0, i - 2), i + 3).join("\n");
+  return `golden differs at line ${i + 1}\n--- golden\n${around(a)}\n+++ built\n${around(b)}`;
+}
+
+/** `file: code` for every diagnostic of the given severity in the model. */
+const diagnosticsOf = (m: DashboardModel, severity: "error" | "warning"): string[] =>
+  m.diagnostics.filter((d) => d.diagnostic.severity === severity).map((d) => `${d.file}: ${d.diagnostic.code}`);
+
+/**
+ * The warnings each tree is expected to carry, as `file: code`; no tree may carry an error. Harbor's planted findings
+ * (006's drift, the stale marks, 005's fog, 004's missing diagram) are dashboard warnings on the rows, not parse
+ * diagnostics, so harbor parses to zero diagnostics. The one warning is leadgen's: the frozen copy's own `ISA.md`
+ * declares `progress: 31/33` while the recount is 31/32. That is upstream text frozen at a named commit, not a parser
+ * fault, so it stays and is pinned here.
+ */
+const EXPECTED_WARNINGS: Record<string, string[]> = {
+  harbor: [],
+  lantern: [],
+  "empty-master": [],
+  "spectant-001": [],
+  leadgen: ["ISA.md: master-progress-mismatch"],
+};
+
+const UPDATE_HINT = "run UPDATE_GOLDEN=1 bun test core/tests/fixtures.test.ts";
+
+describe("golden snapshots", () => {
+  const trees = fixtureTrees();
+  const update = process.env.UPDATE_GOLDEN === "1";
+
+  test("every fixture tree has a golden snapshot, every snapshot a tree", () => {
+    const goldens = readdirSync(FIXTURES)
+      .filter((name) => name.endsWith(".golden.json"))
+      .map((name) => name.slice(0, -".golden.json".length))
+      .sort();
+    expect(trees.length).toBeGreaterThan(0);
+    expect(goldens).toEqual(trees);
+    expect(Object.keys(EXPECTED_WARNINGS).sort()).toEqual(trees);
+  });
+
+  test.each(trees)("%s parses without error", (name) => {
+    const m = buildDashboard(readTree(name));
+    expect(diagnosticsOf(m, "error")).toEqual([]);
+    expect(diagnosticsOf(m, "warning")).toEqual(EXPECTED_WARNINGS[name] ?? []);
+  });
+
+  test("the error check is not vacuous: a folder without spec.md is an error", () => {
+    const m = buildDashboard({ master: null, constitution: null, tldr: null, specs: [{ folder: "009-no-spec", texts: { plan: "# plan only\n" } }], archived: [] });
+    expect(diagnosticsOf(m, "error")).toEqual(["specs/009-no-spec/spec.md: spec-missing"]);
+  });
+
+  test.each(trees)("%s.golden.json", (name) => {
+    const built = golden(buildDashboard(readTree(name)));
+    const path = join(FIXTURES, `${name}.golden.json`);
+    if (update) writeFileSync(path, built);
+    if (!existsSync(path)) throw new Error(`${name}.golden.json is missing; ${UPDATE_HINT}`);
+    const stored = readFileSync(path, "utf8");
+    if (stored !== built) throw new Error(`${firstDifference(stored, built)}\nOnly a parser change explains a new snapshot; then ${UPDATE_HINT}`);
+    expect(stored).toBe(built);
+  });
+});

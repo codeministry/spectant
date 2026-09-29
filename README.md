@@ -50,7 +50,7 @@ Contributor and agent working notes live in `CLAUDE.md`; the rules specs are hel
 
 ## License
 
-Apache-2.0. See `LICENSE`.
+Apache-2.0. See `LICENSE`; third-party notices are in `THIRD_PARTY_NOTICES.md`.
 
 ## Acknowledgements
 
