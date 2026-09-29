@@ -94,7 +94,7 @@
   (close)="modal.closed()"
 >
   @if (preview(); as shown) {
-    <header class="evidence-preview-head">
+    <div class="evidence-preview-head">
       <h2 id="evidence-preview-path" class="evidence-preview-path" data-preview-path>{{ shown.file.path }}</h2>
       <button
         ui-icon-button
@@ -104,7 +104,7 @@
         [label]="'common.close' | transloco"
         (click)="close()"
       ></button>
-    </header>
+    </div>
     <div class="evidence-preview-body" data-preview-body>
       @switch (shown.kind) {
         @case ('image') {

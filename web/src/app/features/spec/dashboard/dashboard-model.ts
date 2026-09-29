@@ -1,3 +1,6 @@
+import type { GateState, SpecGates } from '../../../../../../core/src/files';
+import type { Tone } from '../../../shared/ui/tone';
+
 /**
  * Pure display helpers for the spec dashboard (T53, ISC-78). Nothing here counts: every number the dashboard shows
  * is read from `SpecPageModel` as the parser built it (ISC-72); these helpers only place text and pick a segment.
@@ -39,3 +42,16 @@ export function stageIndex(stage: string): number {
       return Math.max(0, (TRACK_STAGES as readonly string[]).indexOf(stage));
   }
 }
+
+/** The gates in the model's order; `codeReviewed` reads as "Code reviewed". Shared with the Status tab (T54). */
+export const GATE_NAMES = ['reviewed', 'codeReviewed', 'drift', 'diagrams'] as const satisfies ReadonlyArray<keyof SpecGates>;
+
+/** One colour per gate state: passed in the accent, a stale or warning mark in warning, anything absent neutral. */
+export const GATE_TONE: Readonly<Record<GateState, Tone>> = {
+  ok: 'accent',
+  fresh: 'accent',
+  stale: 'warning',
+  warn: 'warning',
+  missing: 'neutral',
+  na: 'neutral',
+};

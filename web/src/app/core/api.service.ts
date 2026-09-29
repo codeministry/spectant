@@ -1,20 +1,35 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { DocName, DocsPage } from '../../../../core/src/files';
+import type { ClaimLock, DocName, DocsPage } from '../../../../core/src/files';
 import {
   type DocMissing,
+  type GateReviewedRequest,
+  type GateReviewedResponse,
   isUnavailable,
+  type Locked,
+  parseReviewedHashes,
+  REVIEWED_HASHES_HEADER,
+  type ReviewedHashes,
   SPEC_API_ROOT,
   specRoutes,
   type Conflict,
-  type Locked,
   type SpecRouteResponses,
   type TaskCheckRequest,
   type TaskCheckResponse,
   TASKS_HASH_HEADER,
   type Unavailable,
 } from '../../../../server/src/spec-routes.contract';
+
+/** What the gate write answers (T54, ISC-85): never a thrown exception, the gate dialog branches on `kind`. */
+export type GateWriteResult =
+  | { readonly kind: 'ok'; readonly body: GateReviewedResponse }
+  | { readonly kind: 'conflict' }
+  | { readonly kind: 'locked'; readonly lock: ClaimLock }
+  | { readonly kind: 'error'; readonly status: number };
+
+const isContractError = (body: unknown, error: string): boolean =>
+  typeof body === 'object' && body !== null && (body as { error?: unknown }).error === error;
 
 /**
  * One entry of `GET /api/workspaces`: the browser-side copy of `WorkspaceSummary` in `server/src/api.ts`. Duplicated
@@ -124,6 +139,7 @@ export class ApiClient {
   private readonly http = inject(HttpClient);
   private readonly cache = new Map<string, { readonly etag: string; readonly body: unknown }>();
   private readonly tasksHashes = new Map<string, string | null>();
+  private readonly specHashes = new Map<string, ReviewedHashes | null>();
 
   async get<T>(url: string, onHeaders?: (headers: HttpHeaders) => void): Promise<ApiResult<T>> {
     const cached = this.cache.get(url);
@@ -149,12 +165,41 @@ export class ApiClient {
   }
 
   spec(ws: string, id: string): Promise<ApiResult<SpecRouteResponses['spec']>> {
-    return this.get(specRoutes.spec(ws, id));
+    const url = specRoutes.spec(ws, id);
+    return this.get(url, (headers) => {
+      this.specHashes.set(url, parseReviewedHashes(headers.get(REVIEWED_HASHES_HEADER)));
+    });
   }
 
   /** T55: the spec's timeline, newest first (`TimelineEntry[]`, ISC-80). */
   timeline(ws: string, id: string): Promise<ApiResult<SpecRouteResponses['timeline']>> {
     return this.get(specRoutes.timeline(ws, id));
+  }
+
+  /**
+   * The hashes `X-Spectant-Reviewed-Hashes` carried on the last 200 of `GET …/:id` (a 304 keeps them: the bytes did
+   * not change); null before the spec was read or when the header is absent or malformed. The gate write sends them.
+   */
+  reviewedHashes(ws: string, id: string): ReviewedHashes | null {
+    return this.specHashes.get(specRoutes.spec(ws, id)) ?? null;
+  }
+
+  /**
+   * T54 · ISC-85: `POST …/gate/reviewed` with the hashes the page was rendered from. 409 `hash-mismatch` answers
+   * `conflict` (a file changed since), 423 answers `locked` with the lock that holds the spec (ISC-86).
+   */
+  async gateReviewed(ws: string, id: string, hashes: ReviewedHashes): Promise<GateWriteResult> {
+    try {
+      const request: GateReviewedRequest = { hashes };
+      const body = await firstValueFrom(this.http.post<GateReviewedResponse>(specRoutes.gateReviewed(ws, id), request));
+      return { kind: 'ok', body };
+    } catch (failure: unknown) {
+      if (!(failure instanceof HttpErrorResponse)) return { kind: 'error', status: 0 };
+      const error: unknown = failure.error;
+      if (failure.status === 409 && isContractError(error, 'hash-mismatch')) return { kind: 'conflict' };
+      if (failure.status === 423 && isContractError(error, 'locked')) return { kind: 'locked', lock: (error as Locked).lock };
+      return { kind: 'error', status: failure.status };
+    }
   }
 
   /** The Claims tab (ISC-81): core's `ClaimViewModel`, served as it is. */

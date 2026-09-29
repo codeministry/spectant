@@ -1,0 +1,372 @@
+@switch (view()) {
+  @case ('loading') {
+    <div class="page" role="status" [attr.aria-label]="'status.loading' | transloco">
+      <ui-skeleton height="160px" />
+      <ui-skeleton height="96px" />
+      <ui-skeleton height="160px" />
+    </div>
+  }
+  @case ('unserved') {
+    <app-area-placeholder />
+  }
+  @case ('error') {
+    <ui-empty-state icon="triangle-alert" [heading]="'status.error.heading' | transloco" [body]="'status.error.body' | transloco">
+      <button type="button" class="btn btn-sm" (click)="reload()">{{ 'status.error.retry' | transloco }}</button>
+    </ui-empty-state>
+  }
+  @case ('ok') {
+    @if (model(); as m) {
+      <ng-template #gateBlock>
+        <ul class="gate-list">
+          @for (name of gateNames; track name) {
+            <li class="gate" [attr.data-gate]="name" [attr.data-state]="m.gates[name].state" [attr.data-tone]="gateTone(m.gates[name].state)">
+              <span class="gate-head">
+                <span class="gate-dot" aria-hidden="true"></span>
+                <span class="gate-name">{{ 'status.gates.names.' + name | transloco }}</span>
+                <span class="gate-state">{{ 'status.gates.states.' + m.gates[name].state | transloco }}</span>
+              </span>
+              <span class="gate-detail">{{ m.gates[name].detail }}</span>
+              @if (tier() === 'wide' && name === 'reviewed' && action() !== 'stale' && m.gates.reviewed.files?.length) {
+                <ul class="files">
+                  @for (file of m.gates.reviewed.files; track file) {
+                    <li><code>@for (segment of segments(file); track $index) { <span>{{ segment }}</span><wbr /> }</code></li>
+                  }
+                </ul>
+              }
+            </li>
+          }
+        </ul>
+
+        @switch (action()) {
+          @case ('paused') {
+            <button type="button" class="btn gate-button" data-gate-action data-state="paused" disabled>
+              <ui-icon name="lock" [size]="16" />
+              <span>{{ 'status.gate.paused' | transloco: { session: lock()?.session ?? '' } }}</span>
+            </button>
+          }
+          @case ('done') {
+            <p class="gate-button done" data-gate-action data-state="done">
+              <ui-icon name="circle-check" [size]="16" />
+              <span>{{ 'status.gate.done' | transloco: { time: time(m.gates.reviewed.at) } }}</span>
+            </p>
+          }
+          @case ('stale') {
+            <button type="button" class="btn btn-outline gate-button stale" data-gate-action data-state="stale" (click)="openDialog()">
+              {{ 'status.gate.stale' | transloco }}
+            </button>
+            @if (m.gates.reviewed.files?.length) {
+              <p class="changed-label">{{ 'status.gate.changed' | transloco }}</p>
+              <ul class="files" data-changed-files>
+                @for (file of m.gates.reviewed.files; track file) {
+                  <li><code>@for (segment of segments(file); track $index) { <span>{{ segment }}</span><wbr /> }</code></li>
+                }
+              </ul>
+            }
+          }
+          @default {
+            <button type="button" class="btn btn-primary gate-button" data-gate-action data-state="ready" (click)="openDialog()">
+              {{ 'status.gate.ready' | transloco }}
+            </button>
+          }
+        }
+        @if (written(); as at) {
+          <ui-notice tone="info" icon="circle-check" data-gate-written>{{ 'status.gate.written' | transloco: { time: time(at) } }}</ui-notice>
+        }
+      </ng-template>
+
+      <ng-template #warningBlock>
+        @if (m.warnings.length === 0) {
+          <p class="muted">{{ 'status.warnings.none' | transloco }}</p>
+        } @else {
+          <ul class="rows">
+            @for (warning of m.warnings; track $index) {
+              <li class="warning-row" [attr.data-warning]="warning.kind">
+                <ui-icon class="warning-icon" name="triangle-alert" [size]="16" />
+                <span class="row-text">{{ warning.text }}</span>
+                @if (warning.command; as command) {
+                  <code class="ref">{{ command }}</code>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </ng-template>
+
+      <div class="page">
+        @if (lock(); as held) {
+          <div class="banner" data-section="agent">
+            <p class="banner-line">
+              <span class="banner-dot" aria-hidden="true"></span>
+              <code class="session">{{ held.session }}</code>
+              <span>{{ 'status.agent.on' | transloco: { claim: held.claim, time: time(held.since) } }}</span>
+            </p>
+            <span class="paused-chip" data-writes-paused>
+              <ui-icon name="lock" [size]="14" />
+              {{ 'status.agent.paused' | transloco }}
+            </span>
+          </div>
+        }
+
+        <section class="card where" data-section="where">
+          <ui-section-header [heading]="(tier() === 'wide' ? 'status.why.heading' : 'status.where.heading') | transloco" />
+          <div class="where-body">
+            @if (tier() !== 'wide') {
+              <div class="ring-block">
+                <ui-ring aria-hidden="true" [value]="claimsRatio()" [size]="96" [stroke]="10" />
+                <p class="ring-text" data-claims-closed>
+                  {{ 'status.where.claimsClosed' | transloco: { closed: m.keyNumbers.claims.closed, total: m.keyNumbers.claims.total } }}
+                </p>
+              </div>
+            }
+            <div class="where-main">
+              <ui-stage-track size="labelled" [marker]="true" [labels]="stageLabels()" [current]="stageCurrent()" [ariaLabel]="stageAria()" />
+              <p class="stage-line">
+                <span class="stage-chip" data-stage [attr.data-value]="m.head.stage">{{ 'stages.' + m.head.stage | transloco }}</span>
+                @if (m.next.since; as since) {
+                  <span class="caption">{{ 'status.where.since' | transloco: { time: time(since), via: m.next.via ?? '' } }}</span>
+                } @else {
+                  <span class="derived" data-derived>{{ 'status.where.derived' | transloco }}</span>
+                }
+              </p>
+              @if (tier() !== 'wide') {
+                @if (m.next.command; as command) {
+                  <ui-command-chip
+                    data-next-command
+                    [command]="command"
+                    [copyLabel]="'status.where.copy' | transloco"
+                    [copiedLabel]="'status.where.copied' | transloco"
+                    [manualHint]="'status.where.manual' | transloco"
+                  />
+                } @else {
+                  <p class="muted">{{ 'status.where.done' | transloco }}</p>
+                }
+              }
+              @if (m.next.reasons.length > 0) {
+                <ul class="reasons" data-reasons [attr.aria-label]="'status.where.reasons' | transloco">
+                  @for (reason of m.next.reasons; track $index) {
+                    <li data-reason>{{ reason }}</li>
+                  }
+                </ul>
+              }
+              <p class="takeable" data-takeable>
+                <span>{{ 'status.where.takeable' | transloco: { count: m.keyNumbers.claims.takeable } }}</span>
+                @if (lock(); as held) {
+                  <span class="locked"><ui-icon name="lock" [size]="14" />{{ 'status.where.locked' | transloco: { session: held.session } }}</span>
+                } @else {
+                  <span>{{ 'status.where.free' | transloco }}</span>
+                }
+              </p>
+              @if (tier() === 'medium') {
+                @if (m.warnings.length > 0) {
+                  <ng-container [ngTemplateOutlet]="warningBlock" />
+                }
+                <ui-section-header headingId="gates" [heading]="'status.gates.heading' | transloco" [level]="3" />
+                <ng-container [ngTemplateOutlet]="gateBlock" />
+              }
+            </div>
+          </div>
+        </section>
+
+        @if (tier() !== 'wide') {
+          <section class="card waiting" data-section="waiting">
+            <ui-section-header headingId="waiting" [heading]="'status.waiting.heading' | transloco">
+              <span meta>{{ m.keyNumbers.waiting }}</span>
+            </ui-section-header>
+            @if (m.waitingOnYou.length === 0) {
+              <p class="muted">{{ 'status.waiting.none' | transloco }}</p>
+            } @else {
+              <ul class="rows">
+                @for (item of m.waitingOnYou; track waitingKey(item)) {
+                  <li class="waiting-row" data-waiting-row [attr.data-kind]="item.kind">
+                    @if (item.kind === 'operator') {
+                      <input
+                        type="checkbox"
+                        class="checkbox checkbox-sm"
+                        disabled
+                        [checked]="item.checked ?? false"
+                        [attr.aria-label]="'status.waiting.checkLabel' | transloco: { ref: item.ref }"
+                      />
+                    }
+                    <span class="kind">{{ 'status.waiting.kinds.' + item.kind | transloco }}</span>
+                    <code class="ref">{{ item.ref }}</code>
+                    <span class="row-text">{{ item.title }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          </section>
+        }
+
+        @if (tier() !== 'medium') {
+          <section class="card gates" data-section="gates">
+            <ui-section-header headingId="gates" [heading]="'status.gates.heading' | transloco">
+              <span meta>{{ m.keyNumbers.gates.ok }}/{{ m.keyNumbers.gates.total }}</span>
+            </ui-section-header>
+            <ng-container [ngTemplateOutlet]="gateBlock" />
+          </section>
+        }
+
+        @if (tier() === 'compact') {
+          <section class="card warnings" data-section="warnings">
+            <ui-section-header [heading]="'status.warnings.heading' | transloco">
+              <span meta>{{ m.areas.status.warnings }}</span>
+            </ui-section-header>
+            <ng-container [ngTemplateOutlet]="warningBlock" />
+          </section>
+        }
+
+        @if (tier() === 'wide') {
+          <section class="card lanes" data-section="lanes">
+            <ui-section-header [heading]="'status.lanes.heading' | transloco" />
+            <div class="tasks-meter">
+              <span>{{ 'status.lanes.tasks' | transloco }}</span>
+              <ui-meter [value]="m.keyNumbers.tasks.landed" [max]="m.keyNumbers.tasks.total" [label]="'status.lanes.tasks' | transloco" />
+              <span class="count">{{ m.keyNumbers.tasks.landed }}/{{ m.keyNumbers.tasks.total }}</span>
+            </div>
+            @if (m.lanes.length === 0) {
+              <p class="muted">{{ 'status.lanes.none' | transloco }}</p>
+            } @else {
+              <ul class="lane-list">
+                @for (lane of m.lanes; track lane.name) {
+                  <li class="lane" [attr.data-lane]="lane.name">
+                    <span class="lane-name">{{ lane.name }}</span>
+                    <ui-meter [value]="lane.landed" [max]="lane.total" [label]="lane.name" />
+                    <span class="count">{{ lane.landed }}/{{ lane.total }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          </section>
+        }
+
+        <section class="card open" data-section="open">
+          <ui-section-header [heading]="'status.open.heading' | transloco">
+            <span meta>{{ m.keyNumbers.claims.open }}</span>
+          </ui-section-header>
+          @if (open(); as o) {
+            @if (o.claims.length === 0 && o.fog.length === 0) {
+              <p class="muted">{{ 'status.open.none' | transloco }}</p>
+            }
+            @if (o.claims.length > 0) {
+              <ul class="rows" [attr.aria-label]="'status.open.claims' | transloco">
+                @for (claim of o.claims; track claim.id) {
+                  <li class="open-row" data-open-claim [attr.data-state]="claim.state">
+                    <code class="ref">{{ claim.id }}</code>
+                    <ui-state-chip [state]="claim.state" family="claim" />
+                    <span class="row-text clamp">{{ claim.text }}</span>
+                  </li>
+                }
+              </ul>
+            }
+            @if (o.fog.length > 0) {
+              <p class="sub">{{ 'status.open.fog' | transloco }}</p>
+              <ul class="rows">
+                @for (fog of o.fog; track $index) {
+                  <li class="fog-row" data-fog>
+                    <ui-icon class="fog-icon" name="cloud-fog" [size]="16" />
+                    <span class="row-text">{{ fog.text }}</span>
+                    @if (fog.resolves; as resolves) {
+                      <span class="muted resolves">{{ resolves }}</span>
+                    }
+                  </li>
+                }
+              </ul>
+            }
+          } @else if (claims.isLoading()) {
+            <ui-skeleton height="96px" />
+          } @else {
+            <p class="muted">{{ 'status.open.error' | transloco }}</p>
+          }
+        </section>
+
+        <section class="card activity" data-section="activity">
+          <ui-section-header [heading]="'status.activity.heading' | transloco">
+            <a actions class="link link-hover" [routerLink]="link('timeline')">{{ 'status.activity.all' | transloco }}</a>
+          </ui-section-header>
+          @if (activity(); as entries) {
+            @if (entries.length === 0) {
+              <p class="muted">{{ 'status.activity.none' | transloco }}</p>
+            } @else {
+              <ul class="rows">
+                @for (entry of entries; track $index) {
+                  <li class="activity-row" data-activity [attr.data-kind]="entry.kind">
+                    <span class="kind">{{ 'status.activity.kinds.' + entry.kind | transloco }}</span>
+                    @if (entry.id; as id) {
+                      <a class="row-text link link-hover" [routerLink]="link('timeline')" [fragment]="'t/' + id">{{ entry.title }}</a>
+                    } @else {
+                      <span class="row-text">{{ entry.title }}</span>
+                    }
+                    <time class="when" [attr.datetime]="entry.ts || null">{{ time(entry.ts) }}</time>
+                  </li>
+                }
+              </ul>
+            }
+          } @else if (timeline.isLoading()) {
+            <ui-skeleton height="96px" />
+          } @else {
+            <p class="muted">{{ 'status.activity.error' | transloco }}</p>
+          }
+        </section>
+      </div>
+
+      <ui-sheet [(open)]="dialogOpen" [tier]="tier()" [heading]="'status.dialog.heading' | transloco">
+        <div class="dialog-body" data-gate-dialog>
+          <p class="intro">{{ 'status.dialog.intro' | transloco }}</p>
+          <ul class="hashed">
+            @for (file of hashFiles; track file) {
+              <li data-hashed-file [attr.data-file]="file">
+                <code class="file">{{ hashFileNames[file] }}</code>
+                <code class="hash">{{ short(file) ?? ('status.dialog.absent' | transloco) }}</code>
+              </li>
+            }
+          </ul>
+          @if (hashes() === null) {
+            <p class="muted">{{ 'status.dialog.noHashes' | transloco }}</p>
+          }
+          @if (m.areas.live.lockSource === 'none') {
+            <ui-notice tone="info" icon="activity" data-no-agent-source>{{ 'status.dialog.noAgentSource' | transloco }}</ui-notice>
+          }
+          @switch (write().kind) {
+            @case ('conflict') {
+              <ui-notice tone="error" data-write-conflict>
+                {{ 'status.dialog.conflict' | transloco }}
+                <button action type="button" class="btn btn-sm" data-reload (click)="reloadSpec()">
+                  <ui-icon name="rotate-cw" [size]="16" />
+                  {{ 'status.dialog.reload' | transloco }}
+                </button>
+              </ui-notice>
+            }
+            @case ('locked') {
+              @if (write(); as w) {
+                @if (w.kind === 'locked') {
+                  <ui-notice tone="warning" icon="lock" data-write-locked>
+                    {{ 'status.dialog.locked' | transloco: { session: w.session, claim: w.claim } }}
+                  </ui-notice>
+                }
+              }
+            }
+            @case ('error') {
+              @if (write(); as w) {
+                @if (w.kind === 'error') {
+                  <ui-notice tone="error" data-write-error>{{ 'status.dialog.error' | transloco: { status: w.status } }}</ui-notice>
+                }
+              }
+            }
+          }
+          <div class="confirm-bar">
+            <button
+              type="button"
+              class="btn btn-primary btn-block"
+              data-confirm
+              data-autofocus
+              [disabled]="hashes() === null || write().kind === 'sending'"
+              (click)="confirm()"
+            >
+              {{ (write().kind === 'sending' ? 'status.dialog.sending' : 'status.dialog.confirm') | transloco }}
+            </button>
+          </div>
+        </div>
+      </ui-sheet>
+    }
+  }
+}

@@ -34,10 +34,10 @@ import { modalDialog } from './modal';
     >
       <div class="body">
         @if (heading(); as heading) {
-          <header class="head">
+          <div class="head">
             <h2 class="title" [id]="headingId">{{ heading }}</h2>
             <button ui-icon-button icon="x" size="sm" [label]="'common.close' | transloco" (click)="open.set(false)"></button>
-          </header>
+          </div>
         }
         <ng-content />
       </div>

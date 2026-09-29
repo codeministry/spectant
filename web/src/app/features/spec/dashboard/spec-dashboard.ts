@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { GateState, SpecGates, SpecPageModel, WaitingItem } from '../../../../../../core/src/files';
+import type { GateState, SpecPageModel, WaitingItem } from '../../../../../../core/src/files';
 import { type AreaId, areaById, areaPath, specLink } from '../../../layout/shell/areas';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
@@ -18,20 +18,7 @@ import { UiSkeleton } from '../../../shared/ui/skeleton/skeleton';
 import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
 import type { Tone } from '../../../shared/ui/tone';
 import { AreaPlaceholder } from '../area-placeholder';
-import { quoteIdea, stageIndex, TRACK_STAGES } from './dashboard-model';
-
-/** The gates in the model's order; `codeReviewed` reads as "Code reviewed". */
-const GATE_NAMES = ['reviewed', 'codeReviewed', 'drift', 'diagrams'] as const satisfies ReadonlyArray<keyof SpecGates>;
-
-/** One colour per gate state: passed in the accent, a stale or warning mark in warning, anything absent neutral. */
-const GATE_TONE: Record<GateState, Tone> = {
-  ok: 'accent',
-  fresh: 'accent',
-  stale: 'warning',
-  warn: 'warning',
-  missing: 'neutral',
-  na: 'neutral',
-};
+import { GATE_NAMES, GATE_TONE, quoteIdea, stageIndex, TRACK_STAGES } from './dashboard-model';
 
 /** The five area tiles in menu order, each with its provisional `g` key (the sequences themselves arrive with T102). */
 const TILE_AREAS: ReadonlyArray<{ readonly id: Exclude<AreaId, 'dashboard'>; readonly key: string }> = [

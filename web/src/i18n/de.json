@@ -728,5 +728,111 @@
         "na": "nicht zutreffend"
       }
     }
+  },
+  "status": {
+    "loading": "Status wird geladen",
+    "error": {
+      "heading": "Der Status konnte nicht gelesen werden",
+      "body": "Die Spec hat nicht geantwortet. Bitte versuchen Sie es erneut.",
+      "retry": "Erneut versuchen"
+    },
+    "agent": {
+      "on": "an {{claim}} · seit {{time}}",
+      "paused": "Schreiben pausiert"
+    },
+    "where": {
+      "heading": "Wo es steht",
+      "claimsClosed": "{{closed}}/{{total}} Claims geschlossen",
+      "since": "seit {{time}} über {{via}}",
+      "derived": "abgeleitet",
+      "reasons": "Warum dieser Befehl als Nächstes kommt",
+      "done": "Nichts mehr auszuführen: Die Spec ist fertig.",
+      "copy": "Befehl kopieren",
+      "copied": "Kopiert",
+      "manual": "Markieren und ⌘C drücken",
+      "takeable": "{{count}} übernehmbar",
+      "locked": "gesperrt durch {{session}}",
+      "free": "keine Sperre aktiv"
+    },
+    "why": {
+      "heading": "Warum dieser nächste Schritt"
+    },
+    "waiting": {
+      "heading": "Wartet auf Sie",
+      "none": "Nichts wartet auf Sie.",
+      "checkLabel": "Operator-Aufgabe {{ref}}",
+      "kinds": {
+        "operator": "Operator-Aufgabe",
+        "manual": "Manueller Claim",
+        "question": "Frage"
+      }
+    },
+    "gates": {
+      "heading": "Gates",
+      "names": {
+        "reviewed": "Geprüft",
+        "codeReviewed": "Code geprüft",
+        "drift": "Drift",
+        "diagrams": "Diagramme"
+      },
+      "states": {
+        "ok": "ok",
+        "fresh": "aktuell",
+        "stale": "veraltet",
+        "missing": "fehlt",
+        "warn": "Warnung",
+        "na": "nicht zutreffend"
+      }
+    },
+    "gate": {
+      "ready": "Als geprüft markieren",
+      "stale": "Erneut prüfen",
+      "changed": "Seit der Prüfung geändert",
+      "done": "Geprüft {{time}}",
+      "paused": "Schreiben pausiert: {{session}} hält eine Sperre",
+      "written": "Prüfmarke geschrieben {{time}}."
+    },
+    "dialog": {
+      "heading": "Als geprüft markieren",
+      "intro": "Die Marke hält diese drei Dateien so fest, wie Sie sie gelesen haben.",
+      "absent": "fehlt",
+      "noHashes": "Diese Seite hat keine Datei-Hashes. Bitte laden Sie die Spec zuerst neu.",
+      "noAgentSource": "Keine Agentenquelle: Vor dem Schreiben wird keine Sperre geprüft.",
+      "conflict": "Eine Datei hat sich seit dem Laden dieser Seite geändert. Es wurde nichts geschrieben.",
+      "reload": "Neu laden",
+      "locked": "{{session}} hält {{claim}}. Es wurde nichts geschrieben.",
+      "error": "Die Marke konnte nicht geschrieben werden (Status {{status}}).",
+      "confirm": "Bestätigen",
+      "sending": "Wird geschrieben…"
+    },
+    "warnings": {
+      "heading": "Warnungen",
+      "none": "Keine Warnungen."
+    },
+    "open": {
+      "heading": "Was offen ist",
+      "claims": "Offene Claims",
+      "fog": "Nebel",
+      "none": "Nichts ist offen.",
+      "error": "Die offenen Claims konnten nicht gelesen werden."
+    },
+    "activity": {
+      "heading": "Aktivität",
+      "all": "Zeitleiste öffnen",
+      "none": "Noch keine Aktivität.",
+      "error": "Die Zeitleiste konnte nicht gelesen werden.",
+      "kinds": {
+        "decision": "Entscheidung",
+        "round": "Runde",
+        "gate": "Gate",
+        "commit": "Commit",
+        "stage": "Phase"
+      }
+    },
+    "lanes": {
+      "heading": "Fortschritt je Lane",
+      "tasks": "Aufgaben gelandet",
+      "none": "Keine Lanes: Die Spec hat keine tasks.md."
+    }
   }
 }

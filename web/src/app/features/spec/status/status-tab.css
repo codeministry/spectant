@@ -1,0 +1,472 @@
+/*
+ * The Status tab (design.md § Status, three tiers on the shell container). Compact stacks agent banner, Where it
+ * stands, Waiting on you, Gates, Warnings, What is open, Activity. Medium keeps one column with the gates and warnings
+ * inside Where it stands, two columns from 900. Wide is the bento: Why this next step and Progress by lane on the left,
+ * Gates and What is open on the right, Activity across both. Colours are tokens only.
+ */
+:host {
+  display: block;
+}
+
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.card {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-inline-size: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+}
+
+.muted {
+  margin: 0;
+  color: var(--muted-ink);
+}
+
+.rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ref,
+code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.row-text {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.clamp {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.kind,
+.sub {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* Agent banner: one dense row with the orange edge, the writes-paused chip under it. */
+.banner {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+  box-shadow: inset 3px 0 0 var(--color-warning);
+}
+
+.banner-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.banner-dot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 999px;
+  background: var(--color-warning);
+}
+
+.paused-chip,
+.locked {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--hover-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+/* Where it stands */
+.where-body {
+  display: grid;
+  gap: 16px;
+}
+
+.ring-block {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.ring-text {
+  margin: 0;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.where-main {
+  display: grid;
+  gap: 16px;
+  min-inline-size: 0;
+}
+
+.stage-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+}
+
+.stage-chip {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-selector);
+  color: var(--disp-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.caption,
+.derived {
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.derived {
+  padding: 0 8px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-selector);
+}
+
+.reasons {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-inline-start: 16px;
+  font-size: 14px;
+  line-height: 20px;
+  list-style: disc;
+}
+
+.takeable {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: center;
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+/* Waiting on you, warnings, open claims, fog, activity: one row each. */
+.waiting-row,
+.warning-row,
+.open-row,
+.fog-row,
+.activity-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  min-block-size: 24px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.warning-row {
+  color: var(--hover-ink);
+}
+
+.warning-icon,
+.fog-icon {
+  align-self: center;
+}
+
+.fog-icon {
+  color: var(--muted-ink);
+}
+
+.warning-row .row-text,
+.open-row .row-text,
+.fog-row .row-text,
+.activity-row .row-text {
+  flex: 1 1 200px;
+}
+
+.resolves {
+  flex-basis: 100%;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.when {
+  margin-inline-start: auto;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+}
+
+/* Gates: rows at compact and medium, 2x2 tiles with a 3 px state edge at wide. */
+.gate-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gate {
+  --gate-edge: var(--track);
+
+  display: grid;
+  gap: 4px;
+  min-inline-size: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.gate[data-tone='accent'] {
+  --gate-edge: var(--color-accent);
+}
+
+.gate[data-tone='warning'] {
+  --gate-edge: var(--color-warning);
+}
+
+.gate-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.gate-dot {
+  inline-size: 8px;
+  block-size: 8px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--gate-edge);
+}
+
+.gate-name {
+  font-weight: 600;
+}
+
+.gate-state {
+  margin-inline-start: auto;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.gate-detail {
+  color: var(--muted-ink);
+  overflow-wrap: anywhere;
+}
+
+.files {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.files code {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.changed-label {
+  margin: 0;
+  color: var(--hover-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.gate-button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  min-block-size: 48px;
+  margin: 0;
+}
+
+.gate-button.stale {
+  border-color: var(--color-warning);
+  color: var(--hover-ink);
+}
+
+.gate-button.done {
+  padding: 8px 16px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-field);
+  color: var(--clos-ink);
+  font-weight: 600;
+}
+
+.gate-button[data-state='paused'] {
+  color: var(--color-base-content);
+}
+
+/* Progress by lane (wide) */
+.tasks-meter,
+.lane {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 48px;
+  gap: 16px;
+  align-items: center;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.lane-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lane-name {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+/* The gate dialog: the three hashed files, the notes, a sticky Confirm. */
+.dialog-body {
+  display: grid;
+  gap: 16px;
+  padding: 16px 16px 0;
+}
+
+.intro {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.hashed {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hashed li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  justify-content: space-between;
+}
+
+.hash {
+  color: var(--muted-ink);
+}
+
+.confirm-bar {
+  position: sticky;
+  inset-block-end: 0;
+  padding: 16px 0;
+  background: var(--color-base-100);
+}
+
+/* Medium: one column at 820, the fixed order Where it stands, Waiting on you, What is open, Activity. */
+@container shell (width >= 640px) {
+  .where-body {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+/* Two columns from 900 (design.md § Tablet). */
+@container shell (width >= 900px) {
+  :host([data-tier='medium']) .page {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  :host([data-tier='medium']) .banner {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Wide: the bento. */
+@container shell (width >= 1120px) {
+  .page {
+    grid-template-areas: 'agent agent' 'where gates' 'lanes open' 'activity activity';
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .banner { grid-area: agent; }
+  .where { grid-area: where; }
+  .gates { grid-area: gates; }
+  .lanes { grid-area: lanes; }
+  .open { grid-area: open; }
+  .activity { grid-area: activity; }
+
+  .where-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gate-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .gate {
+    align-content: start;
+    padding: 8px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-field);
+    box-shadow: inset 3px 0 0 var(--gate-edge);
+  }
+}
+
+@media (forced-colors: active) {
+  .gate-dot,
+  .banner-dot {
+    background: CanvasText;
+  }
+}

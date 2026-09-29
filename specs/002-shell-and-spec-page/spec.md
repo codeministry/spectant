@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 27/49
+progress: 28/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T17:27:27Z
+updated: 2026-09-29T17:33:09Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -198,7 +198,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 **Spec dashboard and Status**
 
 - [x] ISC-78: `/w/:ws/s/:id` shows the spec's key numbers (claims, tasks, rounds, gates, waiting), its idea quote, the next command with its reason, one bar per lane and the area tiles, all from the fixture files. ⟨?: the idea quote is the first sentence of `## Goal`, falling back to `task:` — assuming no spec carries a dedicated idea field⟩
-- [ ] ISC-79: The stage and the next command `core/` derives for every fixture spec equal the stage table in `FORMAT.md`, row by row. (after: ISC-68.1)
+- [x] ISC-79: The stage and the next command `core/` derives for every fixture spec equal the stage table in `FORMAT.md`, row by row. (after: ISC-68.1)
 - [x] ISC-80: A spec's timeline merges the decisions of context.md, the rounds of rounds.jsonl, the gate marks and the commits touching the spec folder into one time-ordered list with one entry per source event.
 - [x] ISC-36: A spec's timeline lists its events in order; a spec without `events.jsonl` shows its derived stage marked as derived.
 - [x] ISC-32: Every line of `events.jsonl` validates against the schema `{ts, from, to, command, actor}`.
@@ -286,6 +286,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-79: bun-test — `bun test core/tests/stage.test.ts` 81 pass: every STAGE_RULES row renders as the FORMAT.md table row verbatim (stage, condition, next command, reason templates), and a fixture walk over harbor, lantern, leadgen, spectant-001 and empty-master (12 specs) pins each spec's stage, next command and reason to its row and to the README's Expected column; the Status tab renders head.stage, next.command and next.reasons from the model (`bun run e2e -- status` 11 passed, whole suite 112) (T11, T54; 2026-09-29)
 
 - ISC-25: bun-test — `bun test tests/writes.test.ts -t "checkbox"` 5 pass: ticking T28 of harbor 002 changes exactly one line (- [ ] → - [x]), CRLF endings kept, idempotent tick 200 without a write, unknown task 404; web: `bun run e2e -- data` 20 passed with the task checkbox describe — saving spinner, written row with the answer's hash (second tick no 409), stale → conflict alert with Reload, locked → visible session text, frontier lock disables the box, operator rows tickable (T70, T75, T80; 2026-09-29)
 

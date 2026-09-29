@@ -13,6 +13,7 @@ export type StageState = 'done' | 'current' | 'pending';
 @Component({
   selector: 'ui-stage-track',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[attr.data-marker]': "marker() && size() === 'labelled' ? '' : null" },
   styles: `
     :host { display: block; min-inline-size: 0; }
     .mini { display: inline-flex; gap: 2px; vertical-align: middle; }
@@ -24,6 +25,11 @@ export type StageState = 'done' | 'current' | 'pending';
     li { display: grid; gap: 4px; min-inline-size: 0; }
     .seg-label { overflow: hidden; color: var(--muted-ink); font-size: 11px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
     [data-state='current'] > .seg-label { color: var(--color-base-content); font-weight: 700; }
+    :host([data-marker]) li { grid-template-rows: 12px auto auto; }
+    :host([data-marker]) li::before { content: ''; color: var(--disp-ink); font-size: 12px; line-height: 12px; text-align: center; }
+    :host([data-marker]) li[aria-current='step']::before { content: '▾' / ''; }
+    :host([data-marker]) .seg-label { font-size: 12px; }
+    :host([data-marker]) [data-state='current'] > .seg-label { color: var(--disp-ink); font-weight: 600; }
     @media (forced-colors: active) {
       .bar { border: 1px solid CanvasText; }
       [data-state='done'] > .bar, .bar[data-state='done'], [data-state='current'] > .bar, .bar[data-state='current'] { background: CanvasText; }
@@ -54,6 +60,8 @@ export class UiStageTrack {
   readonly current = input.required<number>();
   readonly size = input<'mini' | 'labelled'>('mini');
   readonly ariaLabel = input<string>();
+  /** Labelled only: a ▾ above the current segment and its label in the primary ink, so the stage is not colour alone. */
+  readonly marker = input(false);
 
   protected readonly name = computed(() => {
     const labels = this.labels();

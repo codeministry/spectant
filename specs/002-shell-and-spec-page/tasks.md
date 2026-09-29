@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T17:27:27Z
+updated: 2026-09-29T17:33:09Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -87,7 +87,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T51 · ISC-37 · server — optional LifeOS detection: state directory present or not, nothing read when absent, `GET /api/lifeos` (after: T20) · `server/src/lifeos.ts`
 - [x] T52 · ISC-78 · [seam] · web — stub API extended: every spec route from the golden JSON, lock fixtures (frontier, activity, none), scripted 409 and 423 for the writes (after: T44) · `web/e2e/stub-api.ts`
 - [x] T53 · ISC-78 · web — spec dashboard: KPI band, idea quote, next step with reason, lanes, five area tiles, Brief reuse; layouts per `design.md` · Mobile, Tablet, Desktop (after: T35, T52) · `web/src/app/features/spec/dashboard/`
-- [ ] T54 · ISC-79 · web — Status tab: where it stands, progress and gates, what is open, activity; rail content at the top below wide · Mobile, Tablet (after: T35, T52) · `web/src/app/features/spec/status/`
+- [x] T54 · ISC-79 · web — Status tab: where it stands, progress and gates, what is open, activity; rail content at the top below wide · Mobile, Tablet (after: T35, T52) · `web/src/app/features/spec/status/`
 - [x] T55 · ISC-80 · web — Timeline tab: one strand, source filters, day headers, round entries expanding, `derived` chip (after: T35, T52) · `web/src/app/features/spec/status/timeline/`
 - [x] T56 · ISC-81 · web — Claims tab: six glyphs, kind, edges, probe row, verification line, filters, note count pill slot (after: T35, T52) · `web/src/app/features/spec/data/claims/`
 - [x] T57 · ISC-82 · web — Tasks tab: rows with lane, flags, state, edges, paths, probe mapping, filters; stacked rows below wide · Mobile, Tablet (after: T35, T52) · `web/src/app/features/spec/data/tasks/`

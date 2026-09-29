@@ -728,5 +728,111 @@
         "na": "not applicable"
       }
     }
+  },
+  "status": {
+    "loading": "Loading the status",
+    "error": {
+      "heading": "The status could not be read",
+      "body": "The spec did not answer. Try again.",
+      "retry": "Try again"
+    },
+    "agent": {
+      "on": "on {{claim}} · since {{time}}",
+      "paused": "writes paused"
+    },
+    "where": {
+      "heading": "Where it stands",
+      "claimsClosed": "{{closed}}/{{total}} claims closed",
+      "since": "since {{time}} via {{via}}",
+      "derived": "derived",
+      "reasons": "Why this command is next",
+      "done": "Nothing left to run: the spec is done.",
+      "copy": "Copy command",
+      "copied": "Copied",
+      "manual": "Select and press ⌘C",
+      "takeable": "{{count}} takeable",
+      "locked": "locked by {{session}}",
+      "free": "no lock held"
+    },
+    "why": {
+      "heading": "Why this next step"
+    },
+    "waiting": {
+      "heading": "Waiting on you",
+      "none": "Nothing waits on you.",
+      "checkLabel": "Operator task {{ref}}",
+      "kinds": {
+        "operator": "Operator task",
+        "manual": "Manual claim",
+        "question": "Question"
+      }
+    },
+    "gates": {
+      "heading": "Gates",
+      "names": {
+        "reviewed": "Reviewed",
+        "codeReviewed": "Code reviewed",
+        "drift": "Drift",
+        "diagrams": "Diagrams"
+      },
+      "states": {
+        "ok": "ok",
+        "fresh": "fresh",
+        "stale": "stale",
+        "missing": "missing",
+        "warn": "warning",
+        "na": "not applicable"
+      }
+    },
+    "gate": {
+      "ready": "Mark as reviewed",
+      "stale": "Review again",
+      "changed": "Changed since the review",
+      "done": "Reviewed {{time}}",
+      "paused": "Writes paused: {{session}} holds a lock",
+      "written": "Reviewed mark written {{time}}."
+    },
+    "dialog": {
+      "heading": "Mark as reviewed",
+      "intro": "The mark records these three files as you read them.",
+      "absent": "absent",
+      "noHashes": "This page holds no file hashes. Reload the spec first.",
+      "noAgentSource": "No agent source: no lock is checked before the write.",
+      "conflict": "A file changed since this page was rendered. Nothing was written.",
+      "reload": "Reload",
+      "locked": "{{session}} holds {{claim}}. Nothing was written.",
+      "error": "The mark could not be written (status {{status}}).",
+      "confirm": "Confirm",
+      "sending": "Writing…"
+    },
+    "warnings": {
+      "heading": "Warnings",
+      "none": "No warnings."
+    },
+    "open": {
+      "heading": "What is open",
+      "claims": "Open claims",
+      "fog": "Fog",
+      "none": "Nothing is open.",
+      "error": "The open claims could not be read."
+    },
+    "activity": {
+      "heading": "Activity",
+      "all": "Open the timeline",
+      "none": "No activity yet.",
+      "error": "The timeline could not be read.",
+      "kinds": {
+        "decision": "Decision",
+        "round": "Round",
+        "gate": "Gate",
+        "commit": "Commit",
+        "stage": "Stage"
+      }
+    },
+    "lanes": {
+      "heading": "Progress by lane",
+      "tasks": "Tasks landed",
+      "none": "No lanes: the spec has no tasks.md."
+    }
   }
 }
