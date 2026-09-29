@@ -232,3 +232,22 @@ ISC-98 probe names the Spec skill's gate tool without an install path (check:lea
 Vision names the skill+app framing; **ISC-99 minted in the master** (takeable only while the reviewed mark is fresh;
 claims show `open` before it) with T114 (core rule, goldens) and T115 (`DashboardSpecRow.taken` with session, lock
 diagnostics as row warnings). Progress 8/49, master 33/123.
+
+Round 9 landed (2026-09-29, commits 40c9faf … 158f01c): T35 in two parts (data layer: `ApiClient` with ETag cache and
+typed results, `LockSourceService`, the area/tab registry; then the shell: one header with eight `data-control` slots,
+tiers via ResizeObserver, 352 px rail at wide, tab-bar slot per tier, area routes with redirects, not-found page decided
+from the dashboard list, placeholders; shell e2e 24 → 30 passed after the anchors pass made every header control a real
+link and gave the area menu a popover), T45+T47 (`spec-routes.ts` + `evidence.ts`: every read route from the files with
+ETag/304, hash headers, git-backed timeline ETag folding HEAD, evidence confined — **ISC-71 and ISC-83 closed**; a
+session restart lost the first worker mid-way, its worktree diff was saved and a second worker finished it), T46
+(`git.ts` read-only commits with head cache), T52 (stub serves every contract route from the goldens with three lock
+states and scripted write outcomes), T26 (timeline source tests), T16+T30 (events validator — **ISC-32 closed**).
+Round 10 (parent override beside T36): T55 Timeline tab (**ISC-80 closed**), T56 Claims tab (**ISC-81 closed** on the
+e2e, taken-card case skipped until the stub overlays locks on claims), T57 Tasks tab (**ISC-82 closed**; no "+N more
+done" fold because design.md rules it out), T59 Docs tabs with mermaid 11.17.2 as a lazy chunk (**ISC-84 closed**).
+Marks: `data-ready` is never set on spec routes (docs e2e waits on the tab instead); the initial bundle is ~13 kB over
+budget and `shell-header.css` over its budget (T36); the `spec` and `claim-view` goldens are built without lock
+sources while `live` is built with the activity reading (ISC-72 consistency — decide one rule for all golden
+families); the two write routes answer 405 until T67/T69, which need the read-only carve-out T111 names; no `lock`
+icon in the icon set; `ui-filter-chips` has no multi-select. CI: `offline` green, `verify` red on the T46 repo
+integration test (`source: none` on the runner — diagnostic now surfaced), `leak` can drop `continue-on-error`.
