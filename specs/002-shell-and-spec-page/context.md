@@ -128,3 +128,17 @@ T13 tasks/claim views, T15 derived stages); the probe row still says `core/golde
 
 ## Still open
 - none. The three fog lines of Round 1 closed in Round 3 (spec.md § Decisions 2026-09-29).
+
+Round 5 landed (2026-09-29): T2 `FORMAT.md` (595 lines; 13 kind sections in `files.ts` order, 22 examples quoted verbatim
+from the fixtures and checked byte for byte by `scripts/check-format-doc.ts`, which T2 also delivered together with its
+9 tests and the `check:static` wiring — so **T3 is ticked as done by the same patch**). ISC-68.1 stays open: three kinds
+(`events`, `artifacts`, `evidence`) have no fixture anywhere, so "one real example each" holds for 10 of 13; closing it
+needs harbor's `generate.ts` to add those three (a `core/fixtures` task the review should mint or fold into T111–T113).
+Marks for the review: the ISC-68.1 threshold "11 kinds" is 13; `STAGE_RULES` runs done → plan → tasks → review → build →
+code-review → close → blocked (blocked is the fallback row; ISC-79/T29 compares that order); a `---` inside `## Features`
+hides every claim after it; `[DROPPED` anywhere in a claim drops it; claim IDs beyond `ISC-N` are accepted; `## Ziel`
+aliases `## Goal`; the reviewed hash strips only the first `## Decisions` / `## Not yet specified` / `## Verification`;
+`specFilePath` resolves constitution/master one level too shallow under `specs/archive/` (T9 saw it too); events
+vocabulary must be decided before T16 (ISC-24 says `tasked → reviewed`, the stage table says `tasks`/`review`; ISC-24
+writes `.gates/reviewed` without `.json`); evidence-to-claim naming (T24) and frontier lock shape/location (T20) are not
+written anywhere; `rounds.jsonl` `v` is never checked. Whole tree 809 pass / 9 skip, static green.

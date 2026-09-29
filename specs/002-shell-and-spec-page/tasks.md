@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T10:57:18Z
+updated: 2026-09-29T11:13:45Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -29,8 +29,8 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 ### ① Contract
 
 - [x] T1 · ISC-68 · [seam] · core — `files.ts`: the enumerated file kinds with their paths inside a spec folder, plus the exported model types and function stubs for spec, timeline, frames, live, evidence and locks, so the fill-ins build in parallel · `core/src/files.ts`
-- [ ] T2 · ISC-68.1 · core — `FORMAT.md`: one section per file kind with a real example from the fixtures, the stage table, the drift classes, the rounds line, the gate marks, the events line (after: T1) · `FORMAT.md`
-- [ ] T3 · ISC-68.1 · server — `check:format-doc`: section names of `FORMAT.md` against the kinds in `core/src/files.ts`, wired into `check:static` (after: T2) · `scripts/check-format-doc.ts`
+- [x] T2 · ISC-68.1 · core — `FORMAT.md`: one section per file kind with a real example from the fixtures, the stage table, the drift classes, the rounds line, the gate marks, the events line (after: T1) · `FORMAT.md`
+- [x] T3 · ISC-68.1 · server — `check:format-doc`: section names of `FORMAT.md` against the kinds in `core/src/files.ts`, wired into `check:static` (after: T2) · `scripts/check-format-doc.ts`
 - [x] T4 · ISC-69 · [P] · core — freeze this repository's spec 001 (spec, plan, tasks, context, design, rounds.jsonl, the F0/F1 master blocks, constitution) at a named commit with a `COMMIT` file · `core/fixtures/spectant-001/`
 - [x] T5 · ISC-69 · [P] · core — freeze three leadgen specs of two types with their constitution, a reduced master holding only their feature blocks, and `LICENSE-leadgen.txt` · `core/fixtures/leadgen/`
 - [x] T6 · ISC-69 · [P] · core — corpus test: the frozen trees, types, licence note and the synthetic trees are present · `core/tests/fixtures-corpus.test.ts`
