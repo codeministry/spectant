@@ -1,10 +1,14 @@
 # core/fixtures
 
-Synthetic spec trees that `core/` parses in its golden test (ISC-6). Each one is a small repository root: a master
-`ISA.md` and a `specs/` folder.
+Spec trees that `core/` parses in its golden test (ISC-6). Each one is a small repository root: a master `ISA.md`
+and a `specs/` folder.
 
-**Synthetic by rule.** Every product, spec title, claim and date here is invented. Nothing is copied from a real
-repository, and no fixture names a person, a customer, a machine or an absolute path. The repository is public.
+**Public or synthetic, never private.** The repository is public. A fixture is either synthetic (`harbor/`,
+`lantern/`, `empty-master/`: every product, spec title, claim and date invented) or a frozen copy of a public
+repository (see [Frozen corpora](#frozen-corpora)). Nothing is ever copied from a private repository. No fixture
+names a person, a customer, a machine, a private repository or an absolute home path; `bun run check:leak` holds
+every tree to that. Private spec trees are read only through `SPECTANT_PRIVATE_CORPUS` on the principal's machine,
+and the private corpus test reports skipped, never passed, when the variable is unset.
 
 **Dates are fixed** in March 2026 (frontmatter, gate marks, `rounds.jsonl`, `tldr.md`). Nothing reads the clock, so
 the golden snapshots and the visual baselines built on them stay stable.
@@ -39,6 +43,19 @@ name 006, which was opened after it, so the old skill's completeness check fails
 The code-reviewed marks hold fixed tree and head ids that match no working tree, so they read as stale wherever the
 tree hash is computed. They carry no `root` path, unlike the old skill's marks, because a machine path has no place
 in a public fixture. The archived spec keeps `isa_master: ../../ISA.md` unchanged, as the old archive tool leaves it.
+
+## Frozen corpora
+
+Copies of public repositories, frozen so their golden snapshots change only for a parser reason. A frozen tree is
+not edited after the freeze: a parse diagnostic on it is a finding for `FORMAT.md`, not a reason to change the copy.
+
+| Tree | Source | Licence | Frozen at | Refresh rule |
+|------|--------|---------|-----------|--------------|
+| `spectant-001/` | this repository, spec 001 | Apache-2.0, as this repository | the commit named in its `COMMIT` file | only on `/spec-complete 001` |
+| `leadgen/` | github.com/codeministry/leadgen | Apache-2.0 | the commit named in its `README.md` | only by a deliberate re-freeze, recorded in a Decisions row |
+
+A refresh rewrites the tree from the named source commit, updates the commit it names, and regenerates the golden
+snapshot through the golden test in the same change.
 
 ## Regenerating
 

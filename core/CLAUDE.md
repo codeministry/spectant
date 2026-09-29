@@ -43,8 +43,19 @@ origin when parity breaks.
 
 ## Fixtures
 
-- `core/fixtures/<name>/` is a synthetic spec tree with fixed dates, never a copy of a real repository. Reason: the
-  repository is public and real trees carry private names; fixed dates keep snapshots and visual baselines stable.
+- A synthetic fixture (`harbor/`, `lantern/`, `empty-master/`) stays synthetic, with fixed dates. Reason: fixed
+  dates keep snapshots and visual baselines stable.
+- A copy of a public repository is allowed when it is frozen at a named commit, carries its licence note and passes
+  `bun run check:leak` (no person, customer, machine, private repository or absolute home path). Reason: real trees
+  catch what invented ones miss, and a frozen, checked copy of public text leaks nothing.
+- A copy of a private repository is never allowed, not even in part. Reason: the repository is public and private
+  trees carry private names.
+- The two frozen corpora are `spectant-001/` (this repository's own spec 001, refreshed only on
+  `/spec-complete 001`) and `leadgen/` (github.com/codeministry/leadgen, Apache-2.0). Reason: a frozen copy moves
+  only when someone decides it should, so its golden snapshot fails for parser reasons only.
+- Private spec trees are read only through `SPECTANT_PRIVATE_CORPUS`, local to the principal's machine; the private
+  corpus test reports skipped, never passed, when the variable is unset (ISC-70). Reason: the private corpus proves
+  the parser on real customer specs without those specs ever entering the tree.
 - Each fixture has a golden snapshot `core/fixtures/<name>.golden.json`, which doubles as stub-API data for the web
   e2e and visual suites. Reason: the UI tests render exactly what `core/` produces.
 - One fixture carries a three-digit/three-digit master fraction. Reason: it is the widest number the layout must hold.

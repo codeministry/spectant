@@ -85,7 +85,6 @@ baseline`. Named individually are the rules this repository particularly rests o
 | DS-APP-06 asymmetric light and dark | light tints the page, dark makes the page darkest | whatever the old pages do in each theme | `ISA.md` § Principles | inheriting the look wins over the house default where they differ |
 | DS-APP-08 tokens from one shared package | consume the shared token package | own two themes `spec-light`, `spec-dark` | `ISA.md` ISC-18 | the palette is not the house palette; nothing to share |
 | FE-I18N-01 route prefixes | `/de` and `/en` prefixes, German default | language is a persisted setting in the gear panel, English default; Transloco stays | `ISA.md` Decisions 2026-09-28 (review before implement) | a local single-user tool has no URL to share and an international audience; a prefix would only lengthen deep links into cmux |
-| XC-10 nothing individual in a committed file | no person's name anywhere in a tracked file | a third-party licence attribution (`LICENSE-*.txt`, `THIRD_PARTY_NOTICES.md`) may carry the copyright holder's name as the licence requires; nothing else may | `ISA.md` Decisions 2026-09-29 (implement, round 2) | Apache-2.0 § 4(d) requires the NOTICE attribution on redistribution; the leak check exempts exactly these files |
 
 ## Conformance baseline
 

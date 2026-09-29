@@ -1,0 +1,13 @@
+{
+  "gate": "code-reviewed",
+  "at": "2026-09-28T12:36:29.267Z",
+  "root": "<leadgen-root>",
+  "tree": "e20cec3e1f2812d45ece09e35c00b8a4162dc1b6",
+  "head": "87762110bef43379e136a586ea84ef98dca5dd27",
+  "branch": "feature/roadmap",
+  "findings": {
+    "code": 4,
+    "security": 0
+  },
+  "note": "accepted (deferred to Remaining Work, listed in context.md): popover not clamped to the viewport; key auto-repeat can land twice; restart/deadline stored as end_reason MODEL; '60.0 s' just under a minute. Scope reviewed: cbe9b5e^ plus the working tree, three full rounds and one delta round; security four rounds, clean."
+}
