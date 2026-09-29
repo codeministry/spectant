@@ -332,3 +332,13 @@ card-detail dialog, `openCard` and the `#cardList` template are dead since the c
 stacked rail still shows the T54 placeholder; the board's compact scrubber buttons are 32 px; the e2e README's
 `data-ready` sentence is stale; the counts suite's fixme rows need a per-decision hook in the Docs tab; the initial
 bundle is 613 kB against 500 kB.
+Round 16, partial (2026-09-29 evening): T90 board-states e2e and the board-tab cleanup, T18/T86 re-cut detection as
+one rule, T19/T87/T92 matrix model and tab are on main with static, core (844, no todo left), server and web unit
+checks green. The browser tier could not be re-run for the last three landings: under a load average above 800 (five
+Playwright workers plus two container recordings while Docker Desktop updated itself) the user's launchd domain
+wedged — `launchctl print gui/501` answers "Reentrancy avoided", `dscl` eServerError, `id -un` prints the uid —
+and Chromium fails at launch. ISC-88, ISC-91 and ISC-92 close on their probes once the browser tier runs again.
+Visual baselines (T105–T110): both workers' partial states are saved as patches; 8 of 24 board PNGs recorded before
+Docker died; the `VISUAL` file pattern in `web/e2e/playwright.config.ts` must widen to `visual(-[a-z-]+)?.spec.ts`;
+the ISC-49/49.1 probe rows still say `-- report`; the e2e fixture's `awaitReady` promise is false for the real app.
+(Correction: round 15 ended at 38/49, not 39.)
