@@ -50,6 +50,7 @@
       "nextCommand": "/spec-code-review 004",
       "nextReason": "every claim is closed and the code-reviewed mark is stale",
       "takeable": [],
+      "taken": [],
       "warnings": [
         {
           "kind": "diagrams",
@@ -109,6 +110,7 @@
       "nextCommand": "/spec-review 005",
       "nextReason": "the reviewed mark is missing",
       "takeable": [],
+      "taken": [],
       "warnings": [
         {
           "kind": "review",
@@ -158,6 +160,7 @@
       "nextCommand": "/spec-review 006",
       "nextReason": "the reviewed mark is stale",
       "takeable": [],
+      "taken": [],
       "warnings": [
         {
           "kind": "drift",
@@ -220,6 +223,7 @@
         "ISC-76",
         "ISC-77"
       ],
+      "taken": [],
       "warnings": [],
       "gates": {
         "reviewed": {
@@ -265,6 +269,7 @@
       "nextCommand": "/spec-tasks 003",
       "nextReason": "13 claims and no tasks.md",
       "takeable": [],
+      "taken": [],
       "warnings": [
         {
           "kind": "review",

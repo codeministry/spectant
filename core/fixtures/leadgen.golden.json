@@ -52,6 +52,7 @@
       "takeable": [
         "ISC-334"
       ],
+      "taken": [],
       "warnings": [
         {
           "kind": "fog",
@@ -105,6 +106,7 @@
       "nextCommand": null,
       "nextReason": "phase: complete",
       "takeable": [],
+      "taken": [],
       "warnings": [],
       "gates": {
         "reviewed": {

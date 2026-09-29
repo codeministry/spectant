@@ -734,8 +734,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     } catch {
       text = undefined;
     }
-    return text !== undefined && /^\s*[-*]\s+\[[ xX]\]/.test(text)
-      ? text.replace(/\[[ xX]\]/, box)
+    return text !== undefined && /^\s*[-*]\s+\[[ xX]\]/.test(text) // single-core: allow — stub flips the fixture's box for the scripted 200, no parsing
+      ? text.replace(/\[[ xX]\]/, box) // single-core: allow — stub flips the fixture's box for the scripted 200, no parsing
       : `- ${box} ${row.id} · ${row.claim} · ${row.lane} — ${row.text}`;
   };
 

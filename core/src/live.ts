@@ -29,6 +29,7 @@ import { buildFrames, worstState } from './frames.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { reviewedGate } from './gates.ts';
 import type { MarkState } from './gates.ts';
+import { heldLocks } from './status.ts';
 import { takeableSet } from './takeable.ts';
 import { parseTaskLines } from './tasks.ts';
 
@@ -56,9 +57,8 @@ export function buildLiveFrame(input: LiveFrameInput): LiveFrame {
 
   // Only locks on this spec's claims; one per claim, the reading's last entry (frontier) winning.
   const ours = new Set([...claims.map((c) => c.id), ...rows.map((r) => r.claim), ...base.map((c) => c.claim)]);
-  const held = new Map<string, ClaimLock>();
-  for (const lock of reading.locks) if (ours.has(lock.claim)) held.set(lock.claim, lock);
-  const locks = [...held.values()].sort((a, b) => byClaim(a.claim, b.claim));
+  const locks = heldLocks(reading.locks, ours);
+  const held = new Map(locks.map((l) => [l.claim, l]));
 
   const overlaid = rows.length === 0 ? [...base] : overlayTasks(base, rows, claims, locks, spec, reviewedGate(files.texts).check.state);
   const cards: LiveCard[] = overlaid.map((card) => {

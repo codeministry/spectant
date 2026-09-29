@@ -89,6 +89,17 @@ function stateOf(claim: Claim): ClaimState {
 }
 
 /**
+ * The locks held on `claims`: one per claim, the reading's last entry winning (the frontier lock, since a reading lists
+ * activity first), in claim-ID order. The one selection the live frame (`running` cards, the agents rail) and the
+ * dashboard row (`taken`) both use, so the two never name different sessions for a claim (spec 002 T115, ISC-90).
+ */
+export function heldLocks(locks: readonly ClaimLock[], claims: ReadonlySet<string>): ClaimLock[] {
+  const held = new Map<string, ClaimLock>();
+  for (const lock of locks) if (claims.has(lock.claim)) held.set(lock.claim, lock);
+  return [...held.values()].sort((a, b) => a.claim.localeCompare(b.claim, 'en', { numeric: true }));
+}
+
+/**
  * The partition of `claims` under `locks`, gated on the spec's `reviewed` mark. The gate state is required, not
  * defaulted: a caller that could skip it would show takeable claims on an unreviewed spec.
  */

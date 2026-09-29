@@ -53,6 +53,7 @@
         "ISC-7",
         "ISC-9"
       ],
+      "taken": [],
       "warnings": [],
       "gates": {
         "reviewed": {
@@ -101,6 +102,7 @@
         "ISC-11",
         "ISC-12"
       ],
+      "taken": [],
       "warnings": [],
       "gates": {
         "reviewed": {

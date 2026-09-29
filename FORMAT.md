@@ -677,6 +677,15 @@ a release; a claim held in both sources shows the frontier lock. The frame names
 `activity`, `none`), lists the sessions holding locks here, and carries the Needs you cards (question, concerns, open
 operator steps). The clock is the caller's: the frame's `ts` is the time it was built.
 
+**Derived: the dashboard row's locks** (spec 002, T115, `dashboard.ts`), from the same reading and the same
+per-claim selection as the live frame, so the row and the board name the same session. `taken` lists every claim of the
+spec a lock holds, one entry per claim in claim-ID order, as `{id, session, since, source}` (`source` is `frontier` or
+`activity`; a claim held in both shows the frontier lock); without locks it is `[]`. Each diagnostic of the reading
+becomes a row warning of kind `locks` while the spec is open: on the row of the active claim it names (`ref` is that
+claim), else, for an unreadable source or a line that names no claim, on every open row (`ref` is
+`.spectant/activity.jsonl` when it came from there). The text leads with the source and line, e.g.
+`.spectant/activity.jsonl line 1: The line is not JSON; it is skipped.`
+
 ## The archive rule
 
 A closed spec moves to `specs/archive/NNN-slug/` and carries `archived: YYYY-MM-DD`. Its folder location is the fact:

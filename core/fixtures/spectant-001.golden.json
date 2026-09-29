@@ -50,6 +50,7 @@
       "nextCommand": "/spec-review 001",
       "nextReason": "the reviewed mark is missing",
       "takeable": [],
+      "taken": [],
       "warnings": [
         {
           "kind": "review",

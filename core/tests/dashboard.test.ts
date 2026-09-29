@@ -4,11 +4,16 @@
 //
 // The files are read by the test helper `helpers/read-tree.ts`, as the server reads them; `buildDashboard` stays pure
 // over the text.
-import { describe, expect, test } from 'bun:test';
-import { homedir } from 'node:os';
+import { afterAll, describe, expect, test } from 'bun:test';
+import { createHash } from 'node:crypto';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { buildDashboard, devServiceLabels, toLocalService } from '../src/dashboard.ts';
 import type { DashboardModel, DashboardSpecRow } from '../src/dashboard.ts';
+import type { LockReading } from '../src/files.ts';
+import { readLockSources } from '../src/locks.ts';
 import { FIXTURES, fixtureTrees, readTree } from './helpers/read-tree.ts';
 
 const model = (name: string): DashboardModel => buildDashboard(readTree(name));
@@ -220,5 +225,96 @@ describe('multi-workspace', () => {
     expect(lantern.kpis.master?.total).toBe(12);
     // pure: building one never changes the other
     expect(JSON.stringify(model('harbor'))).toBe(JSON.stringify(harbor));
+  });
+});
+
+// T115 (ISC-90): the row's `taken` comes from the same lock reading the live frame uses (readLockSources, read once),
+// one entry per claim of the spec a lock holds; lock-source diagnostics surface as row warnings of kind `locks`.
+describe('taken and lock warnings (spec 002 T115, ISC-90)', () => {
+  const HARBOR = join(FIXTURES, 'harbor');
+  const NOW = new Date('2026-03-08T16:00:00Z');
+  const temps: string[] = [];
+  afterAll(() => temps.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
+  const tempDir = (label: string): string => {
+    const dir = mkdtempSync(join(tmpdir(), `spectant-taken-${label}-`));
+    temps.push(dir);
+    return dir;
+  };
+  /** A repository holding harbor's ISA.md and, when given, these activity lines. */
+  const tempRepo = (activity?: readonly string[]): string => {
+    const repo = tempDir('repo');
+    writeFileSync(join(repo, 'ISA.md'), readFileSync(join(HARBOR, 'ISA.md'), 'utf8'));
+    if (activity !== undefined) {
+      mkdirSync(join(repo, '.spectant'));
+      writeFileSync(join(repo, '.spectant', 'activity.jsonl'), `${activity.join('\n')}\n`);
+    }
+    return repo;
+  };
+  /** A LifeOS state directory holding these frontier lock files for `repo`'s ISA. */
+  const stateWith = (repo: string, files: Record<string, object>): string => {
+    const state = tempDir('state');
+    const dir = join(state, 'isa-locks', createHash('sha1').update(realpathSync(join(repo, 'ISA.md'))).digest('hex').slice(0, 16));
+    mkdirSync(dir, { recursive: true });
+    for (const [claim, body] of Object.entries(files)) writeFileSync(join(dir, `${claim}.lock`), JSON.stringify(body));
+    return state;
+  };
+  const withLocks = async (reading: Promise<LockReading>): Promise<DashboardModel> => buildDashboard({ ...readTree('harbor'), locks: await reading });
+  const open = (m: DashboardModel): DashboardSpecRow[] => m.specs.filter((s) => s.phase !== 'complete');
+
+  test("harbor 002's row lists the ISC-74 activity lock with its session and since", async () => {
+    const m = await withLocks(readLockSources({ repoRoot: HARBOR, now: NOW }));
+    expect(row(m, '002').taken).toEqual([{ id: 'ISC-74', session: 'spec-002-ISC-74', since: '2026-03-08T14:06:00Z', source: 'activity' }]);
+    expect(kinds(row(m, '002'))).toEqual([]);
+    for (const r of m.specs.filter((s) => s.id !== '002')) expect(r.taken).toEqual([]);
+  });
+
+  test('a frontier lock is listed with source frontier and leaves the takeable list', async () => {
+    const repo = tempRepo();
+    const state = stateWith(repo, { 'ISC-75': { session: 'spec-002-ISC-75', ts: '2026-03-08T15:30:00.000Z' } });
+    const m = await withLocks(readLockSources({ repoRoot: repo, lifeosStateDir: state, now: NOW }));
+    expect(row(m, '002').taken).toEqual([{ id: 'ISC-75', session: 'spec-002-ISC-75', since: '2026-03-08T15:30:00.000Z', source: 'frontier' }]);
+    expect(row(m, '002').takeable).not.toContain('ISC-75');
+  });
+
+  test('a claim held in both sources is listed once, the frontier lock winning as on the live frame', async () => {
+    const repo = tempRepo(['{"ts":"2026-03-08T15:00:00Z","event":"claim","claim":"ISC-75","session":"act-75"}']);
+    const state = stateWith(repo, { 'ISC-75': { session: 'front-75', ts: '2026-03-08T15:30:00.000Z' } });
+    const m = await withLocks(readLockSources({ repoRoot: repo, lifeosStateDir: state, now: NOW }));
+    expect(row(m, '002').taken).toEqual([{ id: 'ISC-75', session: 'front-75', since: '2026-03-08T15:30:00.000Z', source: 'frontier' }]);
+  });
+
+  test('a malformed activity line is a row warning of kind locks on every open row, never a throw', async () => {
+    const repo = tempRepo(['not json', '{"ts":"2026-03-08T15:00:00Z","event":"claim","claim":"ISC-76","session":"s-76"}']);
+    const m = await withLocks(readLockSources({ repoRoot: repo, now: NOW }));
+    expect(row(m, '002').taken).toEqual([{ id: 'ISC-76', session: 's-76', since: '2026-03-08T15:00:00Z', source: 'activity' }]);
+    expect(open(m).length).toBeGreaterThan(0);
+    for (const r of open(m)) {
+      const locks = r.warnings.filter((w) => w.kind === 'locks');
+      expect(locks).toHaveLength(1);
+      expect(locks[0]?.text).toContain('.spectant/activity.jsonl line 1');
+      expect(locks[0]?.ref).toBe('.spectant/activity.jsonl');
+    }
+    expect(m.warningGroups.find((g) => g.kind === 'locks')?.items.length).toBe(open(m).length);
+  });
+
+  test("a diagnostic naming a claim lands on that claim's row only, with the claim as ref", async () => {
+    const repo = tempRepo(['{"ts":"2026-03-08T15:00:00Z","event":"release","claim":"ISC-75","session":"s-75"}']);
+    const m = await withLocks(readLockSources({ repoRoot: repo, now: NOW }));
+    const locks = row(m, '002').warnings.filter((w) => w.kind === 'locks');
+    expect(locks.map((w) => w.ref)).toEqual(['ISC-75']);
+    expect(locks[0]?.text).toContain('ISC-75 is released by s-75 but is not held');
+    for (const r of m.specs.filter((s) => s.id !== '002')) expect(kinds(r)).not.toContain('locks');
+  });
+
+  test('a stale frontier lock is a locks warning on its row and not taken', async () => {
+    const repo = tempRepo();
+    const state = stateWith(repo, { 'ISC-75': { session: 'old-75', ts: '2026-03-08T12:00:00.000Z' } });
+    const m = await withLocks(readLockSources({ repoRoot: repo, lifeosStateDir: state, now: NOW }));
+    expect(row(m, '002').taken).toEqual([]);
+    expect(row(m, '002').warnings.filter((w) => w.kind === 'locks').map((w) => w.ref)).toEqual(['ISC-75']);
+  });
+
+  test('a spec without locks, or a model without a reading, has taken []', () => {
+    for (const r of model('harbor').specs) expect(r.taken).toEqual([]);
   });
 });

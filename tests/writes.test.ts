@@ -194,8 +194,8 @@ describe("ISC-25 checkbox: exactly that task's line of tasks.md changes and noth
     const diff = a.map((line, i) => (line === b[i] ? -1 : i)).filter((i) => i >= 0);
     expect(diff).toHaveLength(1);
     const index = diff[0] ?? -1;
-    expect(a[index]?.startsWith("- [ ] T28 ")).toBe(true);
-    expect(b[index]).toBe(a[index]?.replace("- [ ] T28", "- [x] T28"));
+    expect(a[index]?.startsWith("- [ ] T28 ")).toBe(true); // single-core: allow — test fixture asserts the one flipped line, no parsing
+    expect(b[index]).toBe(a[index]?.replace("- [ ] T28", "- [x] T28")); // single-core: allow — test fixture asserts the one flipped line, no parsing
     expect(body).toMatchObject({ task: "T28", checked: true, hash: sha256(after), lockSource: "none", line: { number: index + 1, text: b[index] } });
     expect(await renderedTasksHash(api, "002")).toBe(body.hash);
     expect(changed(beforeTree, tree(repo))).toEqual([`${WEB}/tasks.md`]);
@@ -210,10 +210,10 @@ describe("ISC-25 checkbox: exactly that task's line of tasks.md changes and noth
     const res = await post(api, specRoutes.taskCheck("harbor", "004", "T1"), { checked: false, hash });
     expect(res.status).toBe(200);
     const after = readFileSync(file, "utf8");
-    expect(after).toBe(before.replace("- [x] T1 ·", "- [ ] T1 ·"));
+    expect(after).toBe(before.replace("- [x] T1 ·", "- [ ] T1 ·")); // single-core: allow — test fixture asserts the one flipped line, no parsing
     expect(after.split("\r\n")).toHaveLength(before.split("\r\n").length);
     const body = (await res.json()) as { line: { text: string } };
-    expect(body.line.text.startsWith("- [ ] T1 ·")).toBe(true);
+    expect(body.line.text.startsWith("- [ ] T1 ·")).toBe(true); // single-core: allow — test fixture asserts the one flipped line, no parsing
     expect(body.line.text.includes("\r")).toBe(false);
   });
 
@@ -228,7 +228,7 @@ describe("ISC-25 checkbox: exactly that task's line of tasks.md changes and noth
     const body = (await res.json()) as { hash: string; checked: boolean; line: { text: string } };
     expect(body.hash).toBe(hash);
     expect(body.checked).toBe(true);
-    expect(body.line.text.startsWith("- [x] T1 ")).toBe(true);
+    expect(body.line.text.startsWith("- [x] T1 ")).toBe(true); // single-core: allow — test fixture asserts the one flipped line, no parsing
     expect(readFileSync(file).equals(bytes)).toBe(true);
     expect(statSync(file).mtimeMs).toBe(mtime);
   });
@@ -268,7 +268,7 @@ describe("ISC-26 cas: a hash that no longer matches is 409 and the file stays by
     const { repo, api } = setup({ activity: false });
     const file = join(repo, WEB, "tasks.md");
     const rendered = await renderedTasksHash(api, "002");
-    writeFileSync(file, readFileSync(file, "utf8").replace("- [ ] T28 ", "- [x] T28 "));
+    writeFileSync(file, readFileSync(file, "utf8").replace("- [ ] T28 ", "- [x] T28 ")); // single-core: allow — test fixture asserts the one flipped line, no parsing
     const bytes = readFileSync(file);
     const before = tree(repo);
     const res = await post(api, specRoutes.taskCheck("harbor", "002", "T29"), { checked: true, hash: rendered });

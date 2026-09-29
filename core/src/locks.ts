@@ -25,8 +25,7 @@ import { createHash } from 'node:crypto';
 import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
-import type { Diagnostic } from './diagnostics.ts';
-import type { AgentLockSource, ClaimLock, LockReadInput, LockReading } from './files.ts';
+import type { AgentLockSource, ClaimLock, LockDiagnostic, LockReadInput, LockReading } from './files.ts';
 
 /** LifeOS's default stale TTL for a frontier lock: a session silent this long has died or moved on. */
 export const FRONTIER_STALE_MS = 2 * 60 * 60 * 1000;
@@ -43,15 +42,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function warning(code: string, message: string, line?: number): Diagnostic {
-  return line === undefined ? { severity: 'warning', code, message } : { severity: 'warning', code, message, line };
+/** A warning, with the activity line and the claim it concerns when it has them (the dashboard routes it by claim). */
+function warning(code: string, message: string, at: { readonly line?: number; readonly claim?: string } = {}): LockDiagnostic {
+  return { severity: 'warning', code, message, ...(at.line === undefined ? {} : { line: at.line }), ...(at.claim === undefined ? {} : { claim: at.claim }) };
 }
 
 interface SourceRead {
   /** False when the source does not exist; its locks and diagnostics are then empty. */
   readonly present: boolean;
   readonly locks: ClaimLock[];
-  readonly diagnostics: Diagnostic[];
+  readonly diagnostics: LockDiagnostic[];
 }
 
 const ABSENT: SourceRead = { present: false, locks: [], diagnostics: [] };
@@ -70,7 +70,7 @@ async function readFrontier(repoRoot: string, stateDir: string, now: number): Pr
   const real = await realpath(isa).catch(() => isa);
   const dir = join(stateDir, 'isa-locks', createHash('sha1').update(real).digest('hex').slice(0, 16));
   const locks: ClaimLock[] = [];
-  const diagnostics: Diagnostic[] = [];
+  const diagnostics: LockDiagnostic[] = [];
 
   let names: string[];
   try {
@@ -87,7 +87,7 @@ async function readFrontier(repoRoot: string, stateDir: string, now: number): Pr
     .map((n) => n.slice(0, -LOCK_SUFFIX.length))
     .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
   for (const claim of claims) {
-    const malformed = (why: string) => diagnostics.push(warning('locks-frontier-malformed', `The frontier lock for ${claim} ${why}; it is not counted.`));
+    const malformed = (why: string) => diagnostics.push(warning('locks-frontier-malformed', `The frontier lock for ${claim} ${why}; it is not counted.`, { claim }));
     let data: unknown;
     try {
       data = JSON.parse(await readFile(join(dir, `${claim}${LOCK_SUFFIX}`), 'utf8'));
@@ -111,17 +111,20 @@ async function readFrontier(repoRoot: string, stateDir: string, now: number): Pr
     }
     // LifeOS stores the path the session used, not the real one, so a differing string may still be this ISA.
     if (typeof data.isa === 'string' && data.isa !== isa && data.isa !== real && (await realpath(data.isa).catch(() => null)) !== real) {
-      diagnostics.push(warning('locks-frontier-foreign', `The frontier lock for ${claim} names another ISA file; it is not counted.`));
+      diagnostics.push(warning('locks-frontier-foreign', `The frontier lock for ${claim} names another ISA file; it is not counted.`, { claim }));
       continue;
     }
     if (now - since > FRONTIER_STALE_MS) {
-      diagnostics.push(warning('locks-frontier-stale', `The frontier lock for ${claim} (${session}, since ${ts}) is older than two hours; LifeOS treats it as stale, so it is not counted.`));
+      diagnostics.push(warning('locks-frontier-stale', `The frontier lock for ${claim} (${session}, since ${ts}) is older than two hours; LifeOS treats it as stale, so it is not counted.`, { claim }));
       continue;
     }
     locks.push({ source: 'frontier', claim, session, since: ts });
   }
   return { present: true, locks, diagnostics };
 }
+
+/** The claim a malformed activity entry still names, so its warning reaches that claim's row. */
+const claimOf = (entry: Record<string, unknown>): { claim?: string } => (typeof entry.claim === 'string' && entry.claim !== '' ? { claim: entry.claim } : {});
 
 async function readActivity(repoRoot: string): Promise<SourceRead> {
   let text: string;
@@ -133,7 +136,7 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
   }
 
   const held = new Map<string, ClaimLock>();
-  const diagnostics: Diagnostic[] = [];
+  const diagnostics: LockDiagnostic[] = [];
   text.split('\n').forEach((raw, index) => {
     const line = index + 1;
     if (raw.trim() === '') return;
@@ -141,36 +144,36 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
     try {
       entry = JSON.parse(raw);
     } catch {
-      diagnostics.push(warning('locks-activity-malformed', 'The line is not JSON; it is skipped.', line));
+      diagnostics.push(warning('locks-activity-malformed', 'The line is not JSON; it is skipped.', { line }));
       return;
     }
     if (!isRecord(entry)) {
-      diagnostics.push(warning('locks-activity-malformed', 'The line is not a JSON object; it is skipped.', line));
+      diagnostics.push(warning('locks-activity-malformed', 'The line is not a JSON object; it is skipped.', { line }));
       return;
     }
     const { ts, event, claim, session } = entry;
     if (event !== 'claim' && event !== 'release') {
-      diagnostics.push(warning('locks-activity-malformed', `The event is not "claim" or "release"; the line is skipped.`, line));
+      diagnostics.push(warning('locks-activity-malformed', `The event is not "claim" or "release"; the line is skipped.`, { line, ...claimOf(entry) }));
       return;
     }
     if (typeof claim !== 'string' || claim === '' || typeof session !== 'string' || session === '' || typeof ts !== 'string' || ts === '') {
-      diagnostics.push(warning('locks-activity-malformed', 'The line lacks a claim, a session or a ts; it is skipped.', line));
+      diagnostics.push(warning('locks-activity-malformed', 'The line lacks a claim, a session or a ts; it is skipped.', { line, ...claimOf(entry) }));
       return;
     }
     const holder = held.get(claim);
     if (event === 'claim') {
       if (holder?.session === session) return; // a repeated claim by the holder keeps the first `since`
       if (holder !== undefined) {
-        diagnostics.push(warning('locks-activity-takeover', `${claim} is claimed by ${session} while ${holder.session} holds it; the later claim holds it now.`, line));
+        diagnostics.push(warning('locks-activity-takeover', `${claim} is claimed by ${session} while ${holder.session} holds it; the later claim holds it now.`, { line, claim }));
         held.delete(claim);
       }
       held.set(claim, { source: 'activity', claim, session, since: ts });
       return;
     }
     if (holder === undefined) {
-      diagnostics.push(warning('locks-activity-release-unclaimed', `${claim} is released by ${session} but is not held.`, line));
+      diagnostics.push(warning('locks-activity-release-unclaimed', `${claim} is released by ${session} but is not held.`, { line, claim }));
     } else if (holder.session !== session) {
-      diagnostics.push(warning('locks-activity-release-foreign', `${claim} is released by ${session} but held by ${holder.session}; it stays held.`, line));
+      diagnostics.push(warning('locks-activity-release-foreign', `${claim} is released by ${session} but held by ${holder.session}; it stays held.`, { line, claim }));
     } else {
       held.delete(claim);
     }

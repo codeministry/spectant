@@ -290,7 +290,8 @@ export interface SpecGates {
   readonly diagrams: GateView;
 }
 
-export type WarningKind = 'review' | 'diagrams' | 'closed' | 'fog' | 'drift';
+/** `locks`: a lock source could not be read cleanly (spec 002 T115); see LockDiagnostic. */
+export type WarningKind = 'review' | 'diagrams' | 'closed' | 'fog' | 'drift' | 'locks';
 
 export interface SpecWarning {
   readonly kind: WarningKind;
@@ -471,7 +472,15 @@ export interface LockReading {
    * What could not be read: a malformed lock file or activity line, a release without a claim, a stale frontier lock.
    * Never a throw. Optional so a hand-built reading (tests, other models) may omit it; `readLockSources` always sets it.
    */
-  readonly diagnostics?: readonly Diagnostic[];
+  readonly diagnostics?: readonly LockDiagnostic[];
+}
+
+/**
+ * A lock-source diagnostic: a Diagnostic that names the claim it concerns when it concerns one (a malformed, foreign or
+ * stale lock file, an activity line with a claim), so the dashboard can put it on that claim's row (spec 002 T115).
+ */
+export interface LockDiagnostic extends Diagnostic {
+  readonly claim?: string;
 }
 
 export interface LockReadInput {

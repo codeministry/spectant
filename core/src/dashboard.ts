@@ -19,14 +19,14 @@ import type { Diagnostic } from './diagnostics.ts';
 import { diagramVerdict } from './diagrams.ts';
 import type { DiagramVerdict } from './diagrams.ts';
 import { specFilePath } from './files.ts';
-import type { ClaimLock, FileKind, GateView, LockReading, SpecFiles, SpecGates, SpecType, SpecWarning, WarningKind } from './files.ts';
+import type { AgentLockSource, ClaimLock, FileKind, GateView, LockDiagnostic, LockReading, SpecFiles, SpecGates, SpecType, SpecWarning, WarningKind } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import type { Progress } from './frontmatter.ts';
 import { gateState, readGateMark, reviewedGate } from './gates.ts';
 import type { GateCheck, GateMarkReading, GateName, ReviewedFile } from './gates.ts';
 import { nextCommandWithReason } from './stage.ts';
 import type { Stage } from './stage.ts';
-import { driftReport, hasDrift, masterProgressMismatch, partitionClaims } from './status.ts';
+import { driftReport, hasDrift, heldLocks, masterProgressMismatch, partitionClaims } from './status.ts';
 import type { DriftClass, DriftReport } from './status.ts';
 import { parseTldr, tldrState } from './tldr.ts';
 
@@ -56,6 +56,21 @@ export interface DashboardKpis {
   readonly archived: number;
 }
 
+/**
+ * A claim of the spec a session holds, as the live frame names it (spec 002 T115, ISC-90): from the same lock reading and
+ * the same selection (status.ts `heldLocks`), so the board and the row never disagree on the session.
+ */
+export interface DashboardTakenClaim {
+  /** The claim ID, `ISC-74`. */
+  readonly id: string;
+  /** The session name the lock carries. */
+  readonly session: string;
+  /** ISO 8601: when the lock was taken. */
+  readonly since: string;
+  /** Where the lock was read: a LifeOS frontier lock file or `.spectant/activity.jsonl`. */
+  readonly source: AgentLockSource;
+}
+
 /** One active spec, as a row of the Specs panel and an entry of Next up. */
 export interface DashboardSpecRow {
   /** `NNN`. */
@@ -78,6 +93,8 @@ export interface DashboardSpecRow {
   readonly nextReason: string;
   /** Claim IDs takeable now. */
   readonly takeable: readonly string[];
+  /** Claims of this spec a lock holds, one entry per claim, in claim-ID order; empty without locks. Additive (T115). */
+  readonly taken: readonly DashboardTakenClaim[];
   readonly warnings: readonly SpecWarning[];
   readonly gates: SpecGates;
   readonly fog: number;
@@ -165,7 +182,7 @@ export const ACTION_ORDER: readonly Stage[] = ['close', 'code-review', 'review',
 const BUILDING: ReadonlySet<Stage> = new Set<Stage>(['build', 'blocked', 'code-review']);
 
 /** Warning kinds in the order the old dashboard listed them on a row. */
-const WARNING_ORDER: readonly WarningKind[] = ['drift', 'review', 'diagrams', 'closed', 'fog'];
+const WARNING_ORDER: readonly WarningKind[] = ['drift', 'review', 'diagrams', 'closed', 'fog', 'locks'];
 
 const NEXT_UP = 3;
 
@@ -287,7 +304,24 @@ interface SpecContext {
   /** Claim IDs per folder, active and archived, for `missing_in_spec`. */
   readonly idsByFolder: ReadonlyMap<string, ReadonlySet<string>>;
   readonly locks: readonly ClaimLock[];
+  /** The lock reading's diagnostics, routed to rows as `locks` warnings. */
+  readonly lockDiagnostics: readonly LockDiagnostic[];
+  /** Claim IDs of the active folders: a lock diagnostic naming one of them lands on its row only. */
+  readonly activeIds: ReadonlySet<string>;
   readonly worktreeTree: string | null;
+}
+
+const ACTIVITY_FILE = '.spectant/activity.jsonl';
+
+/**
+ * A lock diagnostic as a row warning: the source file (and line) first, then the reader's sentence; `ref` is the claim
+ * it names, else the activity file when it came from there.
+ */
+function lockWarning(d: LockDiagnostic): SpecWarning {
+  const activity = d.code.startsWith('locks-activity');
+  const where = activity ? `${ACTIVITY_FILE}${d.line === undefined ? '' : ` line ${d.line}`}` : 'LifeOS frontier locks';
+  const ref = d.claim ?? (activity ? ACTIVITY_FILE : undefined);
+  return { kind: 'locks', text: `${where}: ${d.message}`, ...(ref === undefined ? {} : { ref }) };
 }
 
 function heldElsewhere(ctx: SpecContext, folder: string): Set<string> {
@@ -311,6 +345,8 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
   // The review gate first: the partition takes the reviewed mark's state (ISC-99), so every count below follows it.
   const { reading: reviewedMark, check: reviewed } = reviewedGate(f.texts);
   const partition = partitionClaims(doc.claims, ctx.locks, reviewed.state);
+  const ids = new Set(doc.claims.map((c) => c.id));
+  const taken = heldLocks(ctx.locks, ids).map((l): DashboardTakenClaim => ({ id: l.claim, session: l.session, since: l.since, source: l.source }));
   // The gate's own diagnostic is not a file warning: the row's stage and reason already name the mark (`review`).
   const partitionWarnings = partition.diagnostics.filter((d) => d.code !== 'status-review-gate');
   note('spec', [...fm.diagnostics, ...doc.diagnostics, ...partitionWarnings]);
@@ -364,6 +400,11 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
       warnings.push({ kind: 'closed', text: 'every claim closed, phase not complete' });
     }
     if (fog > 0) warnings.push({ kind: 'fog', text: plural(fog, 'open fog line') });
+    // A diagnostic naming an active claim concerns that claim's row; any other one (an unreadable source, a line without
+    // a claim) may hide a lock from every open spec, so each open row carries it.
+    for (const d of ctx.lockDiagnostics) {
+      if (d.claim === undefined || !ctx.activeIds.has(d.claim) || ids.has(d.claim)) warnings.push(lockWarning(d));
+    }
   }
 
   // The archive listing's summary of a folder (title fallback, task counts, goal) serves an active folder as well.
@@ -380,6 +421,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     nextCommand: next.command,
     nextReason: next.reason,
     takeable: partition.takeable,
+    taken,
     warnings,
     gates: {
       reviewed: reviewedView(reviewed, reviewedMark),
@@ -435,7 +477,15 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
   for (const f of [...active, ...archived]) {
     if (f.texts.spec !== undefined) idsByFolder.set(f.folder, new Set(parseClaims(f.texts.spec).claims.map((c) => c.id)));
   }
-  const ctx: SpecContext = { master, idsByFolder, locks: input.locks?.locks ?? [], worktreeTree: input.worktreeTree ?? null };
+  const activeIds = new Set(active.flatMap((f) => [...(idsByFolder.get(f.folder) ?? [])]));
+  const ctx: SpecContext = {
+    master,
+    idsByFolder,
+    locks: input.locks?.locks ?? [],
+    lockDiagnostics: input.locks?.diagnostics ?? [],
+    activeIds,
+    worktreeTree: input.worktreeTree ?? null,
+  };
 
   const rows = active.flatMap((f) => specRow(f, ctx, diagnostics) ?? []).sort(byAction);
   for (const f of archived) {

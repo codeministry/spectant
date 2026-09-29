@@ -636,7 +636,7 @@ describe('stub API: the writes, scripted via X-Spectant-Stub-Write', () => {
       line: 45,
     });
     // `TaskCheckWritten`: the line as it now stands, box ticked, the rest of the fixture line unchanged.
-    expect(answer.line.text).toMatch(/^- \[x\] T27 · ISC-74 · web — settings-page/);
+    expect(answer.line.text).toMatch(/^- \[x\] T27 · ISC-74 · web — settings-page/); // single-core: allow — asserts the stub's flipped line, no parsing
     expect(answer.hash).not.toBe(hash);
     expect(await tasksHash(session)).toBe(answer.hash);
     expect(await taskRow('T27', session)).toMatchObject({ state: 'done', status: 'done' });
