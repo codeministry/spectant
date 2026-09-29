@@ -41,7 +41,8 @@ if (updating && !inContainer) {
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const WEB = fileURLToPath(new URL('..', import.meta.url));
 
-const VISUAL = /visual\.spec\.ts$/;
+// `visual.spec.ts` and every `visual-<page>.spec.ts` (spec 002: `visual-spec`, `visual-spec-notes`, `visual-board`).
+const VISUAL = /visual(-[a-z-]+)?\.spec\.ts$/;
 const BROWSER = /browser\/.*\.spec\.ts$/;
 const SMOKE = /smoke\.spec\.ts$/;
 
