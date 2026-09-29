@@ -11,6 +11,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { ClaimGlyphState, ClaimView, ClaimViewModel } from '../../../../../../../core/src/files';
+import { type NoteCounts, noteCountFor } from '../../../../../../../server/src/notes.contract';
 import { ApiClient } from '../../../../core/api.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiChip } from '../../../../shared/ui/chip/chip';
@@ -117,6 +118,20 @@ export class ClaimsTab {
     loader: ({ params }) => this.api.claims(params.ws, params.id),
   });
 
+  /** One per-anchor count read per tab load (ISC-95), beside the claims read; the badges look their claim up in it. */
+  private readonly noteCounts = resource({
+    params: () => {
+      const ws = this.shell.ws();
+      const id = this.shell.specId();
+      return ws !== null && id !== null ? { ws, id } : undefined;
+    },
+    loader: ({ params }) => this.api.noteCounts(params.ws, params.id),
+  });
+  private readonly counts = computed<NoteCounts | null>(() => {
+    const result = this.noteCounts.hasValue() ? this.noteCounts.value() : undefined;
+    return result?.kind === 'ok' ? result.body : null;
+  });
+
   // `value()` throws while the resource is in its error state, so every read goes through `hasValue()` first.
   private readonly result = computed(() => (this.claims.hasValue() ? this.claims.value() : undefined));
   protected readonly model = computed<ClaimViewModel | null>(() => {
@@ -199,6 +214,12 @@ export class ClaimsTab {
       (card as Partial<HTMLElement>).scrollIntoView?.({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
       card.focus({ preventScroll: true });
     });
+  }
+
+  /** The notes anchored to `claim`, 0 until the counts answered or when they failed: no badge rather than a wrong one. */
+  protected noteCount(claim: string): number {
+    const counts = this.counts();
+    return counts === null ? 0 : noteCountFor(counts, { kind: 'claim', spec: counts.spec, id: claim });
   }
 
   protected severityColor(severity: string): string | null {

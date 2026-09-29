@@ -118,6 +118,7 @@
   block-size: 20px;
   margin-inline-start: auto;
   padding-inline: 8px;
+  border-color: transparent;
   border-radius: 999px;
   background: var(--ques-t);
   color: var(--ques-ink);

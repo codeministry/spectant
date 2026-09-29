@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 33/49
+progress: 35/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T18:05:37Z
+updated: 2026-09-29T18:20:37Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -229,12 +229,12 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [ ] ISC-90: The live frame is built from tasks.md, the master's frontier locks and, when present, `.spectant/activity.jsonl`; a task under a lock shows in flight with the lock's session name. (after: ISC-37)
 - [ ] ISC-91: A re-cut of tasks.md between rounds shows as a marker on the scrubber and struck tasks as absent; no state is attributed to a renumbered id. (after: ISC-87)
 - [ ] ISC-92: The Matrix tab shows tasks × frames with state glyphs, and clicking a cell jumps the scrubber to that frame. (after: ISC-87)
-- [ ] ISC-93: At a 600 px container the board has no horizontal page overflow and no lane scrolls on its own.
+- [x] ISC-93: At a 600 px container the board has no horizontal page overflow and no lane scrolls on its own.
 
 **Notes**
 
 - [x] ISC-94: A note is stored in the data directory with its workspace and at most one anchor (spec, claim or task), and the repository tree stays unchanged.
-- [ ] ISC-95: The Notes area lists the spec's anchored notes with a Markdown editor and preview, and a claim card shows its note count. (after: ISC-94)
+- [x] ISC-95: The Notes area lists the spec's anchored notes with a Markdown editor and preview, and a claim card shows its note count. (after: ISC-94)
 - [x] ISC-52: A note created, edited and pinned in the app is unchanged after the app restarts.
 - [x] ISC-53: `spectant import-notes <file>` imports a JSON export from the old notes page with the same number of notes.
 
@@ -286,6 +286,10 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-95: e2e — `bun run e2e -- notes` 11 passed: the Notes area lists every seeded note with its anchor chip, filters and search narrow the list, create POSTs and autosave PUTs the whole draft, preview renders markdown, the anchor picker sets a claim anchor, delete confirms, the import notice stays dismissed after a reload; the ISC-51 claim card shows the badge 1 note from one noteCounts read per tab load and a note anchored to ISC-52 in the same session shows 1 there too (T100, T101; 2026-09-29)
+
+- ISC-93: e2e — `bun run e2e -- narrow -g board` 6 passed: at 600 and 390, on the live frame and ?frame=3, document.scrollingElement.scrollWidth equals clientWidth, no lane section overflows or is a scroll container, every sticky lane head stays inside the viewport, also after scrolling to the last lane (T81, T93; 2026-09-29)
 
 - ISC-89: e2e — `bun run e2e -- board -g waiting` 2 passed (390 and 1440): every waiting card sits inside its lane's [data-reason-group] with the group's count, none hidden, and the rendered cards equal the live frame's tasks from the golden (T81, T84, T91; 2026-09-29)
 

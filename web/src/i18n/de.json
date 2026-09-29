@@ -491,7 +491,10 @@
       "h": "h",
       "d": "d"
     },
-    "notes": "{{count}} Notizen zu diesem Claim",
+    "notes": {
+      "one": "{{count}} Notiz",
+      "other": "{{count}} Notizen"
+    },
     "fog": {
       "heading": "Noch nicht spezifiziert",
       "resolves": "Geklärt durch: {{text}}",

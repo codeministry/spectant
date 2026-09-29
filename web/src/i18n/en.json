@@ -491,7 +491,10 @@
       "h": "h",
       "d": "d"
     },
-    "notes": "{{count}} notes on this claim",
+    "notes": {
+      "one": "{{count}} note",
+      "other": "{{count}} notes"
+    },
     "fog": {
       "heading": "Not yet specified",
       "resolves": "Resolved by: {{text}}",

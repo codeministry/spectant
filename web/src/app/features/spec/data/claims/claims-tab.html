@@ -77,13 +77,14 @@
                   <ui-relative-time [date]="lock.since" [format]="elapsed" />
                 </span>
               }
-              @if (claim.noteCount > 0) {
+              @let notes = noteCount(claim.id);
+              @if (notes > 0) {
                 <a
-                  class="notes"
+                  class="badge badge-sm notes"
                   data-link="notes"
                   [routerLink]="base() + '/notes'"
-                  [attr.aria-label]="'claims.notes' | transloco: { count: claim.noteCount }"
-                  >{{ claim.noteCount }}</a
+                  [attr.aria-label]="(notes === 1 ? 'claims.notes.one' : 'claims.notes.other') | transloco: { count: notes }"
+                  >{{ notes }}</a
                 >
               }
             </div>

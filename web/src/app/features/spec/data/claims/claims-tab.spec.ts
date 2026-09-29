@@ -7,6 +7,7 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import type { ClaimView, ClaimViewModel } from '../../../../../../../core/src/files';
 import golden from '../../../../../../../core/fixtures/harbor.claim-view.golden.json';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
+import type { NoteCounts } from '../../../../../../../server/src/notes.contract';
 import { ApiClient, type ApiResult } from '../../../../core/api.service';
 import { SPEC_AREA_ROUTES } from '../../spec-area.routes';
 
@@ -34,7 +35,7 @@ const SYNTHETIC: ClaimViewModel = {
       lock: { source: 'activity', session: 'spec-002-ISC-3', since: '2026-09-01T09:50:00Z' },
     }),
     claim({ id: 'ISC-4', state: 'blocked', feature: 'F1', edges: ['ISC-1', 'ISC-2'], blockedBy: ['ISC-1'], verification: null }),
-    claim({ id: 'ISC-5', state: 'closed', feature: 'F1', verification: 'screenshot `.evidence/isc-5/list.png` passed', noteCount: 2 }),
+    claim({ id: 'ISC-5', state: 'closed', feature: 'F1', verification: 'screenshot `.evidence/isc-5/list.png` passed' }),
     claim({ id: 'ISC-6', state: 'dropped', feature: null, verification: null, dropped: { note: 'see Decisions 2026-09-24' } }),
   ],
   features: [{ id: 'F1', title: 'Registry', why: 'a teammate sees what was mirrored.', claims: ['ISC-1', 'ISC-2', 'ISC-3', 'ISC-4', 'ISC-5'] }],
@@ -42,12 +43,23 @@ const SYNTHETIC: ClaimViewModel = {
   counts: { all: 6, open: 4, takeable: 1, taken: 1, blocked: 1, closed: 1, dropped: 1, normal: 4, anti: 1, antecedent: 1 },
 };
 
-function setUp(model: ClaimViewModel): void {
-  const api: Pick<ApiClient, 'workspaces' | 'dashboard' | 'spec' | 'claims'> = {
+/** The counts the note badge reads (ISC-95): two notes on ISC-5, none on any other claim. */
+const COUNTS: NoteCounts = { spec: '002', total: 3, onSpec: 1, claims: { 'ISC-5': 2 }, tasks: {} };
+
+/** Every `noteCounts` call of the current test, as `[ws, spec]`. */
+let countReads: Array<[string, string]> = [];
+
+function setUp(model: ClaimViewModel, counts: NoteCounts = COUNTS): void {
+  countReads = [];
+  const api: Pick<ApiClient, 'workspaces' | 'dashboard' | 'spec' | 'claims' | 'noteCounts'> = {
     workspaces: () => Promise.resolve(ok([])),
     dashboard: () => Promise.resolve({ kind: 'not-found', served: false }),
     spec: () => Promise.resolve({ kind: 'not-found', served: false }),
     claims: () => Promise.resolve(ok(model)),
+    noteCounts: (ws, spec) => {
+      countReads.push([ws, spec]);
+      return Promise.resolve(ok(counts));
+    },
   };
   TestBed.configureTestingModule({
     imports: [
@@ -208,12 +220,31 @@ describe('ClaimsTab (ISC-81)', () => {
       expect(dropped?.querySelector('a[data-link="decisions"]')?.getAttribute('href')).toBe('/w/harbor/s/002/decisions');
     });
 
-    it('links a verification line that names a file into Evidence, and shows the note count', async () => {
+    it('links a verification line that names a file into Evidence', async () => {
       const { root } = await open('/w/harbor/s/002/claims');
       const closed = card(root, 'ISC-5');
       expect(closed?.querySelector('a[data-link="evidence"]')?.getAttribute('href')).toBe('/w/harbor/s/002/evidence#isc-5/list.png');
-      expect(closed?.querySelector('a[data-link="notes"]')?.textContent).toContain('2');
-      expect(card(root, 'ISC-1')?.querySelector('a[data-link="notes"]')).toBeNull();
+    });
+
+    it('shows the note count from one noteCounts read as a badge in row 1, none at 0 (ISC-95)', async () => {
+      const { root } = await open('/w/harbor/s/002/claims');
+      const badge = card(root, 'ISC-5')?.querySelector<HTMLAnchorElement>('.head a[data-link="notes"]');
+      expect(badge?.textContent.trim()).toBe('2');
+      expect(badge?.classList.contains('badge')).toBe(true);
+      expect(badge?.getAttribute('aria-label')).toBe('2 notes');
+      expect(badge?.getAttribute('href')).toBe('/w/harbor/s/002/notes');
+      for (const id of ['ISC-1', 'ISC-2', 'ISC-3', 'ISC-4', 'ISC-6']) {
+        expect(card(root, id)?.querySelector('a[data-link="notes"]')).toBeNull();
+      }
+      expect(countReads).toEqual([['harbor', '002']]);
+    });
+
+    it('names a single note in the singular', async () => {
+      TestBed.resetTestingModule();
+      setUp(SYNTHETIC, { ...COUNTS, claims: { 'ISC-1': 1 } });
+      const { root } = await open('/w/harbor/s/002/claims');
+      expect(card(root, 'ISC-1')?.querySelector('a[data-link="notes"]')?.getAttribute('aria-label')).toBe('1 note');
+      expect(card(root, 'ISC-5')?.querySelector('a[data-link="notes"]')).toBeNull();
     });
 
     it('lists the claims outside every feature in their own group', async () => {

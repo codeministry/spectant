@@ -150,6 +150,54 @@ test.describe('at 1440', () => {
   });
 });
 
+test.describe('claim card badge', () => {
+  test.use(atWidth(1440));
+
+  const CLAIMS = '/w/harbor/s/002/claims';
+  const badges = (page: Page) => page.locator('app-claims-tab [data-claim] .head a[data-link="notes"]');
+  const badgeOf = (page: Page, claim: string) => page.locator(`app-claims-tab [data-claim="${claim}"] .head a[data-link="notes"]`);
+
+  test('the claim card badge shows the seeded note count on ISC-51 and on no other card', async ({ page }) => {
+    const seeded = note('claim');
+    expect(seeded.anchor).toEqual({ kind: 'claim', spec: '002', id: 'ISC-51' });
+    await page.goto(CLAIMS);
+    await expect(page.locator('app-claims-tab [data-claim]').first()).toBeVisible();
+    await expect(badgeOf(page, 'ISC-51')).toHaveText('1');
+    await expect(badgeOf(page, 'ISC-51')).toHaveAttribute('aria-label', '1 note');
+    await expect(badgeOf(page, 'ISC-51')).toHaveClass(/\bbadge\b/);
+    await expect(badges(page)).toHaveCount(1);
+
+    await badgeOf(page, 'ISC-51').click();
+    await expect(page).toHaveURL(new RegExp(`${BASE}$`));
+    await expect(rows(page)).toHaveCount(SEEDED.length);
+  });
+
+  test('the claim card badge counts a note anchored to ISC-52 in the Notes area', async ({ page }) => {
+    await page.goto(CLAIMS);
+    await expect(badges(page)).toHaveCount(1);
+    await expect(badgeOf(page, 'ISC-52')).toHaveCount(0);
+
+    await page.goto(BASE);
+    await area(page).locator('[data-notes-new]').click();
+    const posted = page.waitForRequest(isWrite('POST'));
+    await area(page).locator('[data-note-body]').fill('Check the badge on ISC-52');
+    await posted;
+    await expect(page).toHaveURL(/\/notes\/00000000-0000-4000-8000-\d{12}$/);
+    const put = page.waitForRequest(isWrite('PUT'));
+    await area(page).locator('[data-anchor-select]').selectOption('claim:002:ISC-52');
+    expect(((await put).postDataJSON() as { anchor: unknown }).anchor).toEqual({ kind: 'claim', spec: '002', id: 'ISC-52' });
+    await expect(area(page).locator('[data-save-state]')).toHaveText(/^saved · \d{2}:\d{2}$/);
+
+    const counted = page.waitForResponse((res) => new URL(res.url()).pathname === '/api/workspaces/harbor/note-counts');
+    await page.goto(CLAIMS);
+    await counted;
+    await expect(badgeOf(page, 'ISC-52')).toHaveText('1');
+    await expect(badgeOf(page, 'ISC-52')).toHaveAttribute('aria-label', '1 note');
+    await expect(badgeOf(page, 'ISC-51')).toHaveText('1');
+    await expect(badges(page)).toHaveCount(2);
+  });
+});
+
 test.describe('at 390', () => {
   test.use(atWidth(390));
 
