@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 35/49
+progress: 36/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T18:20:37Z
+updated: 2026-09-29T18:25:22Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -240,7 +240,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 
 **Cross-cutting**
 
-- [ ] ISC-2: Anti: with no AI feature switched on, starting the app, adding a workspace, browsing every page and performing every write makes an outbound network request.
+- [x] ISC-2: Anti: with no AI feature switched on, starting the app, adding a workspace, browsing every page and performing every write makes an outbound network request.
 - [ ] ISC-23: The review page's visual baseline (light, three widths) is committed and passes on Linux CI.
 - [ ] ISC-23.1: The same baseline passes in the dark theme.
 - [ ] ISC-49: The report page's visual baseline (light, three widths) is committed and passes on Linux CI.
@@ -286,6 +286,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-2: e2e — `bun run e2e -- offline` 2 passed (light and dark; 710 requests per theme, 0 blocked: every route incl. every spec tab, notes/:id and an unknown path, the area menu, pickers and shortcut sheet, gate confirm, task tick and untick, note create/edit/delete, rail collapse, import dismiss and a theme change all stay on loopback with fonts, scripts and stylesheets from the app's origin; negative control with a planted external fetch failed the guard) plus `bun run test:offline:server` 15 checks passed in docker --network none, 0 DNS queries (T104; 2026-09-29)
 
 - ISC-95: e2e — `bun run e2e -- notes` 11 passed: the Notes area lists every seeded note with its anchor chip, filters and search narrow the list, create POSTs and autosave PUTs the whole draft, preview renders markdown, the anchor picker sets a claim anchor, delete confirms, the import notice stays dismissed after a reload; the ISC-51 claim card shows the badge 1 note from one noteCounts read per tab load and a note anchored to ISC-52 in the same session shows 1 there too (T100, T101; 2026-09-29)
 

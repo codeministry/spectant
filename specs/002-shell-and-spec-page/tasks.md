@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T18:20:37Z
+updated: 2026-09-29T18:25:22Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -146,7 +146,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 
 - [x] T102 · ISC-97 · web — keyboard service: `g` sequences for areas and tabs, `[` `]`, `v`, `◂ ▸`, `m`, `n`, `f`; shortcut sheet lists them; hints hidden on coarse pointers (after: T35) · `web/src/app/core/keyboard.service.ts`
 - [x] T103 · ISC-97 · web — e2e keyboard on spec pages (after: T102) · `web/e2e/keyboard-spec.spec.ts`
-- [ ] T104 · ISC-2 · web — offline e2e extended to every new route in both themes (after: T53, T54, T55, T56, T57, T58, T59, T81, T100) · `web/e2e/offline.spec.ts`
+- [x] T104 · ISC-2 · web — offline e2e extended to every new route in both themes (after: T53, T54, T55, T56, T57, T58, T59, T81, T100) · `web/e2e/offline.spec.ts`
 - [ ] T105 · ISC-23 · web — visual baseline: spec page (Status, Claims, Tasks), light, three widths (after: T54, T56, T57) · `web/e2e/visual-spec.spec.ts`
 - [ ] T106 · ISC-23.1 · web — visual baseline: spec page, dark (after: T105) · `web/e2e/visual-spec.spec.ts`
 - [ ] T107 · ISC-49 · web — visual baseline: board Lanes and Flow, light, three widths (after: T81, T82) · `web/e2e/visual-board.spec.ts`
