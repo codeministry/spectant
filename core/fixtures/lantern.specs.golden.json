@@ -1,0 +1,40 @@
+{
+  "master": true,
+  "constitution": true,
+  "specs": [
+    {
+      "id": "001",
+      "slug": "001-reading-list",
+      "folder": "specs/001-reading-list",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "context",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/001-reading-list",
+        "folder": "specs/001-reading-list",
+        "slug": "specs/001-reading-list"
+      }
+    },
+    {
+      "id": "002",
+      "slug": "002-duplicate-links",
+      "folder": "specs/002-duplicate-links",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "context",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/002-duplicate-links",
+        "folder": "specs/002-duplicate-links",
+        "slug": "specs/002-duplicate-links"
+      }
+    }
+  ]
+}

@@ -1,0 +1,393 @@
+{
+  "specs/012-pwa-install": [
+    {
+      "ts": "2026-09-28T01:13:09.164Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 5 · 0 dispatched · 0 closed · stopped: manual probe: ISC-334 waits on OIDC live on microk8s (parts 2 and 3) and the operator's device test",
+      "body": "- Dispatched: none\n- Closed this round: none\n- Held: 1\n- Stop: manual probe: ISC-334 waits on OIDC live on microk8s (parts 2 and 3) and the operator's device test",
+      "ref": "5",
+      "id": "round-5"
+    },
+    {
+      "ts": "2026-09-28T01:07:18.427Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-09-28T00:41:51.843Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 4 · 0 dispatched · 0 closed · stopped: manual probe: ISC-334 closes on the operator's report of the sign-in inside the installed window, which needs security.auth: oidc live (Keycloak client + chart)",
+      "body": "- Dispatched: none\n- Closed this round: none\n- Held: 1\n- Stop: manual probe: ISC-334 closes on the operator's report of the sign-in inside the installed window, which needs security.auth: oidc live (Keycloak client + chart)",
+      "ref": "4",
+      "id": "round-4"
+    },
+    {
+      "ts": "2026-09-24T16:40:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal confirmed",
+      "body": "The app can be installed on a desktop, a tablet or a phone and opens in its own window with the\nlead-ring icon and the app's own colours; a service worker keeps the app shell available without a\nnetwork, a toast offers to reload when a deploy has landed, and data still comes from the API only.\n\nPrincipal's words, verbatim: \"App als echte PWA ready machen, so dass der User sie auf dem Desktop\noder Tablet/Mobile  installieren kann. mit logo, farben, etc. \"",
+      "ref": "goal",
+      "id": "decision-goal",
+      "goalLock": true
+    },
+    {
+      "ts": "2026-09-24T15:57:37.780Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 3 · 1 dispatched · 5 closed · stopped: frontier empty except ISC-334: a manual claim that needs the deployed instance under oidc and a phone",
+      "body": "- Dispatched: T9\n- Closed this round: ISC-330, ISC-331, ISC-332, ISC-335, ISC-336\n- Held: 1\n- Stop: frontier empty except ISC-334: a manual claim that needs the deployed instance under oidc and a phone",
+      "ref": "3",
+      "id": "round-3",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-24T15:26:17.459Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 2 · 3 dispatched · 3 closed",
+      "body": "- Dispatched: T3, T5, T7\n- Closed this round: ISC-328, ISC-329, ISC-333\n- Held: 9",
+      "ref": "2",
+      "id": "round-2",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-24T15:09:22.579Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 1 · 1 dispatched · 1 closed",
+      "body": "- Dispatched: T1\n- Closed this round: ISC-327\n- Held: 15",
+      "ref": "1",
+      "id": "round-1",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "Which sentence is the goal? (the goal lock)",
+      "body": "- Offered: installable with the brand, the app shell offline (recommended) | installable only, no service worker | installable plus the shortlist readable offline\n- Chosen: installable with the brand, the app shell offline\n- Landed in: `## Goal`, ISC-327, ISC-328, ISC-329, ISC-330",
+      "ref": "R1.Q1",
+      "id": "decision-R1.Q1"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "What happens when the service worker finds a new version after a deploy?",
+      "body": "- Offered: a toast with a reload action (recommended) | silently on the next start | reload at once\n- Chosen: a toast with a reload action\n- Landed in: ISC-331",
+      "ref": "R1.Q2",
+      "id": "decision-R1.Q2"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "How does the user get to the installation?",
+      "body": "- Offered: an \"install\" entry in the app's settings popover (recommended) | the browser's own UI only\n- Chosen: the browser's own UI only. No in-app install prompt, no iOS instructions; `## Out of Scope` says so.\n- Landed in: `## Out of Scope`\n\nRead from the repo, not asked:\n\n- There is no manifest and no service worker today. `index.html` links `favicon.ico` and a 256px `apple-touch-icon`, both rendered from `brand/mark.svg` by `frontend/tools/build-favicon.sh` on a round plate in the dark theme's surface (spec 003, ISC-239).\n- The dark theme is the default; its surface and primary are the plate and ring colours the favicon script already names. The manifest colours follow from that.\n- `@angular/build` 22 lists `@angular/service-worker` as an optional peer; nothing else is needed for `ngsw`.\n- The frontend is served by `frontend/nginx.conf` inside the compose stack (`try_files … /index.html`, `/api/` proxied). No cache headers are set today.\n- The feedback system of spec 002 (`core/toast/`) raises one toast per answer event; the update toast joins it.\n- Under `security.auth: oidc` the browser signs in with Authorization Code and PKCE before the first route renders and returns to `window.location.origin + '/'` (F28, ISC-184).\n\nDefault taken without a question: `theme-color` follows the active app theme rather than the\noperating system, because the app's default is dark whatever the OS says (spec 003).",
+      "ref": "R1.Q3",
+      "id": "decision-R1.Q3"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "How is the service worker built? (the approach lock)",
+      "body": "- Offered: `ngsw` with the departure from FE-PWA-01 recorded (recommended) | a hand-written `sw.js` stamped at postbuild, as FE-PWA-01/02 ask | manifest and icons first, the worker in a second round\n- Chosen: `ngsw`, departure recorded\n- Landed in: `plan.md` § Approach, § Stack Decisions (FE-PWA-01, FE-PWA-02, FE-PWA-04); spec § Decisions\n\nRead from the repo, not asked:\n\n- The chart for the deployed instance lives in a separate devops repository and carries its own `templates/web/configmap-nginx.yaml`, which replaces the image's `default.conf` wholesale. The first fog line resolves: ISC-332's headers are set twice, the second time by the operator. Landed in: spec § Decisions, `plan.md` § Affected Files.\n- The house standards' PWA section (`FRONTEND.md` § PWA and offline) asks for a hand-written worker; that is what made the approach question worth asking.\n- `frontend/CLAUDE.md` stands 627 characters under its budget, so the trap line is one line.",
+      "ref": "R2.Q1",
+      "id": "decision-R2.Q1"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "ISC-330 closes on the operator's word",
+      "body": "- Offered: close on the Interceptor offline evidence (recommended) | test it installed first\n- Chosen, verbatim: \"Ja, schließen\". Landed in: spec § Verification, master § Verification.",
+      "ref": "R3.Q1",
+      "id": "decision-R3.Q1"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "ISC-334, the sign-in inside the installed window",
+      "body": "- First answer \"Ich habe es schon getestet\", asked again because nothing was deployed yet; then: \"Noch nicht, nach Deploy\".\n- Operator, verbatim, same turn: \"OICD kann aber direkt jetzt umgesetzt werden. die neue version kann ich gleich deployen\". No code change: the redirect returns to `/`, inside the manifest scope. ISC-334 closes on the operator's report after the deploy.",
+      "ref": "R3.Q2",
+      "id": "decision-R3.Q2"
+    }
+  ],
+  "specs/022-chat-turn-status-and-bulk-delete": [
+    {
+      "ts": "2026-09-28T12:36:29.267Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Code reviewed",
+      "body": "- Head: `87762110bef43379e136a586ea84ef98dca5dd27`\n- Branch: `feature/roadmap`\n- Note: accepted (deferred to Remaining Work, listed in context.md): popover not clamped to the viewport; key auto-repeat can land twice; restart/deadline stored as end_reason MODEL; '60.0 s' just under a minute. Scope reviewed: cbe9b5e^ plus the working tree, three full rounds and one delta round; security four rounds, clean.",
+      "ref": "code-reviewed",
+      "id": "gate-code-reviewed"
+    },
+    {
+      "ts": "2026-09-28T12:01:46.215Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-09-28T00:13:28.033Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 5 · 2 dispatched · 2 closed · stopped: every claim closed",
+      "body": "- Dispatched: T24, T30\n- Closed this round: ISC-478, ISC-480\n- Held: 0\n- Stop: every claim closed",
+      "ref": "5",
+      "id": "round-5",
+      "actor": "parent"
+    },
+    {
+      "ts": "2026-09-28T00:03:43.688Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 4 · 1 dispatched · 1 closed",
+      "body": "- Dispatched: T24\n- Closed this round: ISC-478\n- Held: 3",
+      "ref": "4",
+      "id": "round-4",
+      "actor": "parent"
+    },
+    {
+      "ts": "2026-09-28T00:00:30.778Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 3 · 1 dispatched · 3 closed",
+      "body": "- Dispatched: T9\n- Closed this round: ISC-474, ISC-475, ISC-476\n- Held: 9",
+      "ref": "3",
+      "id": "round-3",
+      "actor": "parent"
+    },
+    {
+      "ts": "2026-09-27T23:53:25.562Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 2 · 1 dispatched · 1 closed",
+      "body": "- Dispatched: T9\n- Closed this round: ISC-477\n- Held: 20",
+      "ref": "2",
+      "id": "round-2",
+      "actor": "parent"
+    },
+    {
+      "ts": "2026-09-27T23:46:56.186Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 1 · 1 dispatched · 1 closed",
+      "body": "- Dispatched: T1\n- Closed this round: ISC-479\n- Held: 30",
+      "ref": "1",
+      "id": "round-1",
+      "actor": "parent"
+    },
+    {
+      "ts": "2026-09-27T23:33:05Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "When should the cited row scroll into view, given that the shortlist is one column beside the docked chat below about 2300px?",
+      "body": "- From: T1 (ISC-479), lane `web`\n- Offered: as soon as the list is on screen beside the detail — at once on a wide screen, else when the chat closes (recommended) | only while it is on screen at the click | fold the chat's rail on a citation click instead (a new claim)\n- Chosen: as soon as the list is on screen\n- Landed in: ISC-479's Test Strategy row (refined master-first), master and spec `## Decisions` 2026-09-28",
+      "ref": "R3.Q1",
+      "id": "decision-R3.Q1",
+      "actor": "T1 (ISC-479), lane `web`"
+    },
+    {
+      "ts": "2026-09-27T22:17:46Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "How do we build it? (the approach lock)",
+      "body": "- Offered: three vertical slices, each end-to-end and shippable alone — row scroll, status popovers, bulk delete — side by side, catalogs serialised (recommended) | layer by layer, backend then frontend | UI first against stubs, backend after\n- Chosen: three vertical slices\n- Landed in: plan.md § Approach, § Affected Files and Modules\n\nNo further question: the endpoints' paths, the reason's write points (`Turn.end` and the two\ncut-off updates) and the popover's positioning helper (`shared/popover/anchor-for.ts`) were read\nfrom the code.",
+      "ref": "R2.Q1",
+      "id": "decision-R2.Q1"
+    },
+    {
+      "ts": "2026-09-27T21:48:13Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal confirmed",
+      "body": "Hovering or focusing the ring beside an answer plays its turn and opens a popover with that turn's\nstate, the reason when it ended incomplete, its steps, duration and model, the same live and after a\nreload; the empty chat's ring does the same with the chat's own status (model, today's calls against\nthe ceiling, the tool-round bound); the conversation list deletes the selected or all shown\nconversations with one confirmation and one request; and an offer opened from a chat citation has its\nmarked shortlist row scrolled into the list pane.\n\nPrincipal's words, verbatim: \"ich chat sollte der kreis auch einen hover haben, mit animation und popover mit kurzer info zum status - auch bei unvollständigen. ich will in der chatliste auch mehrere oder alle chats auf einmal löschen. und bei auswahl eines objekt im chat, sollte das außerhalb auch fokusiert und ggfs. markiert werden. bsp. ich klick im chat auf ein offer, danach geht in der short list das offer detail auf. aber es sollte auch in der liste in den fokus gescrollt werden und gehovert bzw. markiert sein\"",
+      "ref": "goal",
+      "id": "decision-goal",
+      "goalLock": true
+    },
+    {
+      "ts": "2026-09-27T21:48:13Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Which sentence is the goal? (the goal lock)",
+      "body": "- Offered: all three as shaped (recommended) | without the stored reason | all three plus the empty chat's plate ring with a chat status popover\n- Chosen: all three plus the plate ring\n- Landed in: `## Goal`, ISC-476; the fog line about the plate resolved with it\n\nNo further gap the repo could not close: the turn states and error reasons (`ChatTurnState`,\n`ChatErrorReason`), the stored columns of `chat_turn` (`model`, `created_at`, `finished_at`, no\nreason), the single delete's stop-before-delete, the capability view (`present` only) and the\nbudget's read (`ChatBudget.used()`), and the shortlist's pane-only scroll (`landCard`) were read\nfrom the code.",
+      "ref": "R1.Q1",
+      "id": "decision-R1.Q1"
+    },
+    {
+      "ts": "2026-09-27",
+      "kind": "decision",
+      "derived": false,
+      "title": "Should the popover name an incomplete turn's reason after a reload too?",
+      "body": "- Offered: store the reason, an expand-only `V36` adds `chat_turn.end_reason` (recommended) | live only, no migration\n- Chosen: store the reason\n- Landed in: ISC-473, ISC-474",
+      "ref": "R0.Q1",
+      "id": "decision-R0.Q1"
+    },
+    {
+      "ts": "2026-09-27",
+      "kind": "decision",
+      "derived": false,
+      "title": "What does \"select all\" delete while a search is active?",
+      "body": "- Offered: only the shown hits, the client sends explicit ids (recommended) | really everything, an id-less server path\n- Chosen: only the shown hits\n- Landed in: ISC-477, ISC-478",
+      "ref": "R0.Q2",
+      "id": "decision-R0.Q2"
+    }
+  ],
+  "specs/archive/013-tech-debt": [
+    {
+      "ts": "2026-09-24T19:30:00Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 4 · 4 dispatched · 14 closed · stopped: every claim closed",
+      "body": "- Dispatched: T9, T10, T16, T17\n- Closed this round: ISC-337, ISC-338, ISC-339, ISC-340, ISC-341, ISC-343, ISC-344, ISC-345, ISC-346, ISC-347, ISC-348, ISC-349, ISC-350, ISC-351\n- Held: 0\n- Stop: every claim closed",
+      "ref": "4",
+      "id": "round-4",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-24T18:10:00Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 3 · 4 dispatched · 11 closed",
+      "body": "- Dispatched: T6, T7, T11, T12\n- Closed this round: ISC-337, ISC-338, ISC-339, ISC-340, ISC-341, ISC-343, ISC-344, ISC-345, ISC-347, ISC-348, ISC-349\n- Held: 4",
+      "ref": "3",
+      "id": "round-3",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-24T17:20:00Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 2 · 4 dispatched · 7 closed",
+      "body": "- Dispatched: T7, T13, T14, T15\n- Closed this round: ISC-337, ISC-338, ISC-339, ISC-340, ISC-343, ISC-344, ISC-345\n- Held: 7",
+      "ref": "2",
+      "id": "round-2",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-24T16:40:00Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 1 · 4 dispatched · 7 closed",
+      "body": "- Dispatched: T1, T2, T3, T5\n- Closed this round: ISC-337, ISC-338, ISC-339, ISC-340, ISC-343, ISC-344, ISC-345\n- Held: 8",
+      "ref": "1",
+      "id": "round-1",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-24T15:45:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal confirmed",
+      "body": "The afternoon-sized debt is paid — working-notes budgets, stale documentation, `.env.example`\nheld to the placeholders by a test, compose health, the Dockerfile pins, one version source\nreaching the status endpoint and the user agent, two listener leaks, the catalog literals, the\nfrontend hygiene, and the Lombok sweep — with every request mapping, response field, migration\nand configuration key meaning what it meant before.\n\nPrincipal's words, verbatim: \"lombok muss auch integriert werden, damit der code schlanker wird. weiter ideen?\"\n\nThe words are his reply to the tech-debt audit (`/engineering:tech-debt`, 2026-09-24), which\nran as a plan-mode audit first: three read-only surveys (backend, frontend, infra/docs/config),\nthe top findings re-verified by hand, 33 items scored with `(Impact + Risk) × (6 − Effort)`, then\na slimming section of 10 items after this reply. He then asked for the plan as a spec\n(\"writePlan\" → \"Als Spec anlegen\").",
+      "ref": "goal",
+      "id": "decision-goal",
+      "goalLock": true
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal lock: which sentence is the goal?",
+      "body": "- Offered: Phase 0 + Phase 1 + Lombok starters L1, L2, L6, L7, L9 (~20 claims, recommended) | Phase 0 + Lombok only (~12 claims) | everything scored (~45 claims)\n- Chosen: Phase 0 + Lombok only\n- Landed in: `## Goal`, ISC-337…ISC-351; Phase 1 and later as `## Not yet specified`",
+      "ref": "R1.Q1",
+      "id": "decision-R1.Q1"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "The 27 `catch (IOException) { throw new UncheckedIOException }` wrappers (L3): part of the Lombok sweep?",
+      "body": "- Offered: out, stays fog (recommended) | in, with `@SneakyThrows` on private helpers | in, with a functional `Io.unchecked` helper\n- Chosen: out, stays fog\n- Landed in: `## Not yet specified`, `## Decisions`\n\nNo third question spent. Everything else a wrong answer could change is a mark in\n`spec.md` or `plan.md` (the user-agent shape, the non-root nginx mechanism, the working-notes\ntrim target).\n\n`context_sufficient: true` · `interview_invoked: false`",
+      "ref": "R1.Q2",
+      "id": "decision-R1.Q2"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "(the operator, unprompted) \"nicht ändern, damit der spring boot service weiterhin AOT-kompatibel für graalvm bleibt\" — then \"transitiv, heißt das oder?\"",
+      "body": "- Offered: nothing; a direction, not a question\n- Chosen: the version mechanism stays as it is (ISC-342 dropped), and AOT compatibility binds every remaining claim transitively\n- Landed in: ISC-350 (the anti claim now runs `processAot`, `LeadGenRuntimeHintsTest` and the image smoke), `spec.md` § Out of Scope and § Decisions, `plan.md` § Approach and § Risks; T8 removed, T16 extended",
+      "ref": "R3.Q1",
+      "id": "decision-R3.Q1"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "(from T15, ISC-345, lane web) `@angular/cdk` 22.1.7 requires `@angular/forms` as a peer; should the dependency stay and the claim drop its forms clause?",
+      "body": "- Offered: A keep it, refine the claim (recommended) | B remove it and accept an unmet peer | C replace the cdk usage\n- Chosen: A, by the parent — removing a required peer contradicts FE-TOOL-01 (one lockfile, peers met) for one line of `package.json`\n- Landed in: ISC-345 refined master-first, `spec.md` § Decisions",
+      "ref": "R4.Q1",
+      "id": "decision-R4.Q1"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "(from T7, ISC-348, lane server) the `@WebMvcTest` slice does not register `ConfigProperties`; how does the record reach `StatusController` without a test edit?",
+      "body": "- Offered: A `@EnableConfigurationProperties(ConfigProperties.class)` on the controller (recommended, already applied) | B a main-code configuration class the slice would not load | C an `@Import` in the test\n- Chosen: A, by the parent — the only option that keeps all three test classes unchanged and green; a no-op in the full context, AOT-neutral\n- Landed in: nowhere beyond the code — implementation detail; the second look on T7 checks it",
+      "ref": "R4.Q2",
+      "id": "decision-R4.Q2"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "(from the parent before T6, ISC-341, lane infra) a non-root nginx cannot bind :80, and the office chart wires `containerPort` from `web.ports.service` with its own `listen 80` ConfigMap; how should T6 handle it?",
+      "body": "- Offered: drop the non-root clause and keep :80 (recommended) | non-root on 8080 and the chart follows | non-root on :80 via `setcap`\n- Chosen: non-root on 8080, the chart follows — the operator's call\n- Landed in: ISC-341's Test Strategy row (the web port), `spec.md` § Decisions, the master's § Remaining Work (the chart's `web.ports.service` and ConfigMap move to 8080 before the next office deploy)",
+      "ref": "R4.Q3",
+      "id": "decision-R4.Q3"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "(from T6, ISC-341, lane infra) the seed's `@NotBlank` on `version` stopped the api in the compose probe and the worker's fix was denied by the permission layer; how should the probe proceed?",
+      "body": "- Offered: A the parent fixes the worktree copy (recommended) | B probe with `LEADGEN_VERSION=0.5.0` in the throwaway `.env` | C accept build-green only\n- Chosen: A — the parent staged the main tree's fixed backend files into the worktree; the probe then ran green against the same code the main tree carries\n- Landed in: nowhere beyond the round; the defect itself is ISC-348's Decisions row",
+      "ref": "R5.Q1",
+      "id": "decision-R5.Q1"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "(parent, from T6's mark) pinning `oven/bun:1.3.12-alpine` breaks the image build because the Angular CLI refuses bun's node shim; the worker had added an unpinned Alpine `nodejs`",
+      "body": "- Offered: unpinned `apk add nodejs` | a pinned `node:22.23.3-alpine` base with the pinned bun binary copied onto it | bump bun to 1.4.x everywhere\n- Chosen: the pinned Node base — two exact tags, no package manager call, `packageManager` untouched\n- Landed in: `frontend/Dockerfile`; `BunPinTest` and the Renovate `bun` group from the second look",
+      "ref": "R5.Q2",
+      "id": "decision-R5.Q2"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "(from T9+T10, ISC-346, lane server) the strict rule leaves 104 assignments, not 25, and a `SourceConnectors` parameter breaks `IngestOrderTest`; how to proceed?",
+      "body": "- Offered: A inject the `JdbcClient` bean and let `IngestService` look its connector up in the list (recommended) | B keep the rule, edit the one test line, threshold ~85 | C record 104\n- Chosen: A, by the parent — reaches the number without a test edit and pays the audit's item 22 (33 `create` calls → one bean)\n- Landed in: ISC-346 refined master-first; `spec.md` § Decisions",
+      "ref": "R6.Q1",
+      "id": "decision-R6.Q1"
+    },
+    {
+      "ts": "2026-09-24",
+      "kind": "decision",
+      "derived": false,
+      "title": "(from the same worker, second return) the rule leaves 32, all excluded; move the threshold or widen the rule?",
+      "body": "- Offered: threshold 32 | widen to make the four remaining builders beans\n- Chosen: threshold 32, then 31 after the second look (Max) found a class hidden by a raw NUL byte and five constructors outside the candidate list; the builders-to-beans idea is Phase 2 fog\n- Landed in: ISC-346 and its Test Strategy row (`rg -a`), `spec.md` § Decisions",
+      "ref": "R6.Q2",
+      "id": "decision-R6.Q2"
+    }
+  ]
+}

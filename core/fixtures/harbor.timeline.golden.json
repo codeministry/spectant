@@ -1,0 +1,158 @@
+{
+  "specs/002-web-console": [
+    {
+      "ts": "2026-03-08T16:30:00Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 3 · 10 dispatched · 10 closed · stopped: a decision only the principal can make",
+      "body": "- Dispatched: T12, T13, T14, T17, T19, T21, T24, T25, T26, T27\n- Closed this round: ISC-60.1, ISC-60.2, ISC-61, ISC-64, ISC-66, ISC-68, ISC-69, ISC-71, ISC-72, ISC-73\n- Held: 3\n- Stop: a decision only the principal can make",
+      "ref": "3",
+      "id": "round-3",
+      "actor": "Engineer, Anvil"
+    },
+    {
+      "ts": "2026-03-07T15:30:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-07T11:20:00Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 2 · 10 dispatched · 6 closed",
+      "body": "- Dispatched: T11, T14, T15, T16, T17, T18, T20, T22, T23, T30\n- Closed this round: ISC-60, ISC-62, ISC-63, ISC-65, ISC-67, ISC-70\n- Held: 13",
+      "ref": "2",
+      "id": "round-2",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-03-06T09:10:00Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 1 · 10 dispatched · 9 closed",
+      "body": "- Dispatched: T1, T2, T3, T4, T5, T6, T7, T8, T9, T10\n- Closed this round: ISC-51, ISC-52, ISC-53, ISC-54, ISC-55, ISC-56, ISC-57, ISC-58, ISC-59\n- Held: 23",
+      "ref": "1",
+      "id": "round-1",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-03-03T10:00:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal confirmed",
+      "body": "A teammate opens the console, finds any mirrored repository in two steps, and sees each sync run with its failures,\non a phone-sized screen and with the keyboard alone.",
+      "ref": "goal",
+      "id": "decision-goal",
+      "goalLock": true
+    }
+  ],
+  "specs/003-config-loader": [
+    {
+      "ts": "2026-03-06T09:00:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal confirmed",
+      "body": "The CLI, the API and the console read their configuration through one loader, and the effective config for every\ncase in the snapshot corpus is unchanged.",
+      "ref": "goal",
+      "id": "decision-goal",
+      "goalLock": true
+    }
+  ],
+  "specs/004-retention-policies": [
+    {
+      "ts": "2026-03-08T11:00:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Code reviewed",
+      "body": "- Head: `da3b7bf10406c1facaabffd3c7acd7853204a65d`\n- Branch: `feature/004-retention-policies`\n- Note: one finding fixed; tree changed since",
+      "ref": "code-reviewed",
+      "id": "gate-code-reviewed"
+    },
+    {
+      "ts": "2026-03-04T10:00:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-04T08:30:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal confirmed",
+      "body": "A team writes its retention policy once, sees its effect before anything goes, and no manifest that a tag still\nreferences is ever deleted.",
+      "ref": "goal",
+      "id": "decision-goal",
+      "goalLock": true
+    }
+  ],
+  "specs/005-config-format-choice": [
+    {
+      "ts": "2026-03-07T13:00:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal confirmed",
+      "body": "A recorded decision names the config format for version 2 and the one trade-off that decided it.",
+      "ref": "goal",
+      "id": "decision-goal",
+      "goalLock": true
+    }
+  ],
+  "specs/006-partial-push": [
+    {
+      "ts": "2026-03-08T12:00:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-08T09:00:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal confirmed",
+      "body": "A push interrupted at any point leaves the target registry exactly as it was before the push started.",
+      "ref": "goal",
+      "id": "decision-goal",
+      "goalLock": true
+    }
+  ],
+  "specs/archive/001-manifest-sync": [
+    {
+      "ts": "2026-03-05T14:30:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Code reviewed",
+      "body": "- Head: `77aec258732bfe1eba92326b66feba9e3572a147`\n- Branch: `feature/001-manifest-sync`\n- Note: clean",
+      "ref": "code-reviewed",
+      "id": "gate-code-reviewed"
+    },
+    {
+      "ts": "2026-03-02T11:00:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-02T09:00:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal confirmed",
+      "body": "`harbor sync` mirrors every listed manifest with an identical digest, and a second run uploads nothing.",
+      "ref": "goal",
+      "id": "decision-goal",
+      "goalLock": true
+    }
+  ]
+}

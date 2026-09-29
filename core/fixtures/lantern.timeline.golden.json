@@ -1,0 +1,44 @@
+{
+  "specs/001-reading-list": [
+    {
+      "ts": "2026-03-04T10:00:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-03T09:30:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal confirmed",
+      "body": "A reader saves a link in one step, finds it again by title or tag, and reads it offline.",
+      "ref": "goal",
+      "id": "decision-goal",
+      "goalLock": true
+    }
+  ],
+  "specs/002-duplicate-links": [
+    {
+      "ts": "2026-03-06T10:30:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-06T10:20:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal confirmed",
+      "body": "Saving a known link or a known tag again changes nothing in the list.",
+      "ref": "goal",
+      "id": "decision-goal",
+      "goalLock": true
+    }
+  ]
+}

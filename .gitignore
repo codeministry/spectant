@@ -36,3 +36,7 @@ server/embedded.gen.ts
 
 # TL;DR in German for the principal, written by /spec-tldr (public repo keeps specs/ English)
 specs/tldr.md
+
+# Playwright output (web/e2e/playwright.config.ts)
+web/e2e/.report/
+web/e2e/.results/

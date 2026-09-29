@@ -1,0 +1,194 @@
+{
+  "specs/001-app-skeleton": [
+    {
+      "ts": "2026-09-28T13:06:30.452Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 9 · 4 dispatched · 2 closed",
+      "body": "- Dispatched: T20, T23, T24, T25\n- Closed this round: ISC-22, ISC-67.1\n- Held: 56",
+      "ref": "9",
+      "id": "round-9",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-28T12:50:06.278Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 8 · 4 dispatched · 3 closed",
+      "body": "- Dispatched: T15, T19, T21, T22\n- Closed this round: ISC-12, ISC-18.2, ISC-67\n- Held: 60",
+      "ref": "8",
+      "id": "round-8",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-28T12:41:22.792Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 7 · 4 dispatched · 3 closed",
+      "body": "- Dispatched: T12, T13, T14, T18\n- Closed this round: ISC-8.1, ISC-9, ISC-10\n- Held: 64",
+      "ref": "7",
+      "id": "round-7",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-28T12:24:28.099Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 6 · 1 dispatched · 1 closed",
+      "body": "- Dispatched: T11\n- Closed this round: ISC-8\n- Held: 68",
+      "ref": "6",
+      "id": "round-6",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-28T12:13:05.942Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 5 · 4 dispatched · 2 closed",
+      "body": "- Dispatched: T8, T9, T10, T17\n- Closed this round: ISC-5.2, ISC-18\n- Held: 69",
+      "ref": "5",
+      "id": "round-5",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-28T12:00:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Pixel parity to the old dashboard or a modern surface?",
+      "body": "- Offered: keep the identity, drop pixel parity (recommended) | 001 pixel-identical, fancy from 002 | parity first, redesign later\n- Chosen: keep the identity, drop pixel parity\n- Landed in: § Vision, § Constraints, § Goal, ISC-17/17.1 re-worded, ISC-60 … ISC-67.1 added, the threshold fog line died; a second design pass ran with full-page captures",
+      "ref": "R3.Q1",
+      "id": "decision-R3.Q1"
+    },
+    {
+      "ts": "2026-09-28T12:00:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "How does a spec open (Enter in the list or the palette)?",
+      "body": "- Offered: route `/w/:ws/s/:id` with rail inspector / side sheet / full-screen sheet (recommended) | in-place row expansion via `?spec=` | route at wide, expansion at compact\n- Chosen: route with inspector / sheet\n- Landed in: design.md § Routes and state; Decisions",
+      "ref": "R3.Q2",
+      "id": "decision-R3.Q2"
+    },
+    {
+      "ts": "2026-09-28T12:00:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Where does \"Next up\" live, and does the TL;DR bar stay?",
+      "body": "- Offered: own surface plus stage and command in every row, TL;DR kept as a collapsed Brief (recommended) | only in the rows, TL;DR dropped | only an own surface\n- Chosen: own surface plus rows, Brief kept\n- Landed in: design.md § Section disposition",
+      "ref": "R3.Q3",
+      "id": "decision-R3.Q3"
+    },
+    {
+      "ts": "2026-09-28T12:00:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Minimum width of a workspace column in the overview?",
+      "body": "- Offered: 360 px capped at three columns (recommended) | 560 px\n- Chosen: 360 px, three columns max\n- Landed in: design.md § Grid rules; ISC-16.1 states\n\nA same-vendor second look (Forge without Codex credentials) added eleven findings; the ones still valid after Q1\nlanded in ISC-2, ISC-8, ISC-14, ISC-15, ISC-18.1, ISC-18.3, ISC-5.1, ISC-5.2, ISC-8.1, ISC-16.1/16.2, ISC-19.1 and in\nplan.md § Risks. The full record is in `.evidence/review-2026-09-28.md`.",
+      "ref": "R3.Q4",
+      "id": "decision-R3.Q4"
+    },
+    {
+      "ts": "2026-09-28T11:52:47.185Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 4 · 1 dispatched · 0 closed",
+      "body": "- Dispatched: T7\n- Closed this round: none\n- Held: 87",
+      "ref": "4",
+      "id": "round-4",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-28T11:44:46.895Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 3 · 1 dispatched · 0 closed",
+      "body": "- Dispatched: T6\n- Closed this round: none\n- Held: 88",
+      "ref": "3",
+      "id": "round-3",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-28T10:55:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "In which order do we build 001?",
+      "body": "- Offered: end-to-end skeleton first, then parity harness, core and API, dashboard (recommended) | contract first, binary and installer last | UI parity first against mock JSON\n- Chosen: end-to-end skeleton first\n- Landed in: plan.md § Approach\n\nNo further questions: the repo and design.md answered the rest (Playwright is the house e2e tool, FE-TST-03; no binding row is departed from).",
+      "ref": "R2.Q1",
+      "id": "decision-R2.Q1"
+    },
+    {
+      "ts": "2026-09-28T10:48:24.607Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 2 · 4 dispatched · 3 closed",
+      "body": "- Dispatched: T5, T35, T45, T46\n- Closed this round: ISC-5, ISC-5.1, ISC-21\n- Held: 89",
+      "ref": "2",
+      "id": "round-2",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-28T10:19:29.277Z",
+      "kind": "round",
+      "derived": false,
+      "title": "Round 1 · 4 dispatched · 0 closed",
+      "body": "- Dispatched: T1, T2, T3, T4\n- Closed this round: none\n- Held: 93",
+      "ref": "1",
+      "id": "round-1",
+      "actor": "Engineer"
+    },
+    {
+      "ts": "2026-09-28T09:40:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal confirmed",
+      "body": "A fresh macOS or Linux user installs spectant with one line, registers two workspaces and sees their specs side by side on a read-only dashboard that looks like the old Spec dashboard in its light and its dark theme, with nothing leaving the machine and nothing written into either repository.\n\nPrincipal's words, verbatim: see `principal_stated_goal` in the master `ISA.md` (untracked; German, kept out of the public tree by the constitution).",
+      "ref": "goal",
+      "id": "decision-goal",
+      "goalLock": true
+    },
+    {
+      "ts": "2026-09-28T09:40:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Which goal does spec 001 have?",
+      "body": "- Offered: install plus dashboard over two workspaces (recommended) | narrower: locally built, one workspace | wider: plus a read-only review page\n- Chosen: install plus dashboard over two workspaces\n- Landed in: § Goal; F0 and F1 projected\n\nNo further gaps the repository could not close; the screenshot threshold is fog to be measured, not a question.",
+      "ref": "R1.Q1",
+      "id": "decision-R1.Q1"
+    },
+    {
+      "ts": "2026-09-28T07:30:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Where does the app live?",
+      "body": "- Offered: own repository, the other plugin project slims down (recommended) | everything in the plugin repository | own repository, the other project paused\n- Chosen: own repository (later refined: the skill moves here too, the other project is abandoned)\n- Landed in: master § Constraints, Decisions",
+      "ref": "R0.Q1",
+      "id": "decision-R0.Q1"
+    },
+    {
+      "ts": "2026-09-28T07:30:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Which stack does the app run on?",
+      "body": "- Offered: Bun + TypeScript single binary (recommended) | Go like radar | Spring Boot + Angular\n- Chosen: Bun + TypeScript single binary\n- Landed in: master § Constraints; ISC-8, ISC-9",
+      "ref": "R0.Q2",
+      "id": "decision-R0.Q2"
+    },
+    {
+      "ts": "2026-09-28T07:30:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "What may the app write into repositories?",
+      "body": "- Offered: reads Markdown, writes only its database (recommended) | light writes too | the app drives the skill\n- Chosen: light writes too (review mark, task checkboxes) with conflict detection\n- Landed in: master F2 (not this spec); ISC-15 holds this spec read-only",
+      "ref": "R0.Q3",
+      "id": "decision-R0.Q3"
+    },
+    {
+      "ts": "2026-09-28T07:30:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Name",
+      "body": "- Offered: Sextant (recommended) | Plumb | Keel | later — rejected; second round: Spectant | Specmate | Specora | Specwright | Specular | Speculo | Spekta | Specto\n- Chosen: Spectant, the principal's own coinage\n- Landed in: master § Constraints; ISC-57 (name search, release slice)",
+      "ref": "R0.Q4",
+      "id": "decision-R0.Q4"
+    }
+  ]
+}

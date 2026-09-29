@@ -117,5 +117,14 @@ recorded with T10, T12, T15 as `skipped` (held for 001). Round 4 plan proposes o
 001's parser and golden-test harness (T33, T40): **the run stops here** until 001's core rounds land — a decision only
 the principal can make (spec 001's ordering).
 
+Round 4 landed (2026-09-29, after 001 rounds 13–18): T9 `core/tests/golden.test.ts` — **ISC-68 closed** (2/48). Two new golden
+families for all five trees (`<tree>.specs.golden.json`: listSpecs/resolve listing; `<tree>.timeline.golden.json`:
+`buildTimeline` per spec folder, commits pinned to `[]` because the fixtures are not git repos), byte-equal via the shared
+`core/tests/helpers/golden.ts` that 001's `fixtures.test.ts` now uses too; inventory checks both ways, no path-shaped strings,
+non-vacuity by in-memory mutation. Marks: `specFilePath` lands one level too shallow for the constitution/master kinds of an
+archived folder (FORMAT.md or `files.ts` follow-up); next families join in the same task as their parser (T12 spec page,
+T13 tasks/claim views, T15 derived stages); the probe row still says `core/golden.test.ts` (review fix). Round 5 plan: T2
+`FORMAT.md` alone.
+
 ## Still open
 - none. The three fog lines of Round 1 closed in Round 3 (spec.md § Decisions 2026-09-29).

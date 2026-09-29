@@ -1,0 +1,89 @@
+# CI: the verification ladder (constitution § Gates; plan 001 § Files, T56, ISC-5.2).
+# `verify` runs inside the same Playwright image `web/e2e/Dockerfile` pins, so visual baselines recorded with
+# `bun run test:visual:ci -- -u` compare byte for byte here. Bumping Playwright means bumping the image tag and
+# digest below, the Dockerfile and the `@playwright/test` devDependency together.
+# Actions are pinned by commit SHA; the trailing comment names the release the SHA belongs to.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    container:
+      # Tag and digest equal `web/e2e/Dockerfile`. The image ships Node 24.20.0 (>= 22.22.3, the Angular CLI's
+      # floor, plan 001 § Risks) and the browsers under /ms-playwright; it runs linux/amd64 like the baselines.
+      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+      options: --ipc=host --init # as container.ts runs it: Chromium needs the host IPC namespace for shared memory
+    env:
+      SPECTANT_E2E_CONTAINER: "1" # what the Dockerfile sets; playwright.config.ts reads it
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # setup-bun extracts a zip through @actions/tool-cache, which needs `unzip`; the Playwright image has none.
+      - name: Install unzip
+        run: command -v unzip || (apt-get update && apt-get install -y --no-install-recommends unzip)
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.12 # equal to `packageManager` in package.json
+      - name: Show toolchain
+        run: node --version && bun --version
+      - run: bun install --frozen-lockfile
+      # static → quick → browser tier → e2e (stub API) → visual baselines → four-target build. Bun cross-compiles
+      # the darwin targets on Linux; they stay unsigned here (build.ts prints the notice), signing happens on macOS.
+      # Until the first visual spec lands (spec 001 T79/T81), `bun run verify` would fail on Playwright's "No tests
+      # found" in the visual tier; the ladder runs without that one tier so the run stays honest and green. Switch
+      # this step back to `bun run verify` in the same commit as `web/e2e/visual.spec.ts`.
+      - run: bun run verify:quick && bun run test:browser && bun run e2e && bun run build
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report
+          path: |
+            web/e2e/.report/
+            web/e2e/.results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  offline:
+    # Needs Docker (`docker run --network none`), so it runs on the runner itself, not in a job container.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.12 # equal to `packageManager` in package.json
+      # The linux-x64 build runs the Angular CLI, which refuses Bun's Node shim; same Node as the Playwright image.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.20.0
+      - run: bun install --frozen-lockfile
+      # Exit 2 (Docker unavailable) is a skip and fails the step on purpose: a skip is never a pass.
+      - run: bun run test:offline:server
+
+  leak:
+    # Not yet required: `check:leak` reports two known lines in specs/002-*, removed at spec 002's review.
+    # Drop `continue-on-error` once it is green on main.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.12 # equal to `packageManager` in package.json
+      # Scans `git ls-files`; imports only node: built-ins, so no install is needed.
+      - run: bun run check:leak

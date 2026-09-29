@@ -1,0 +1,25 @@
+{
+  "master": true,
+  "constitution": true,
+  "specs": [
+    {
+      "id": "001",
+      "slug": "001-app-skeleton",
+      "folder": "specs/001-app-skeleton",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "context",
+        "design",
+        "rounds"
+      ],
+      "resolves": {
+        "id": "specs/001-app-skeleton",
+        "folder": "specs/001-app-skeleton",
+        "slug": "specs/001-app-skeleton"
+      }
+    }
+  ]
+}

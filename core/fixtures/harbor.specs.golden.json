@@ -1,0 +1,110 @@
+{
+  "master": true,
+  "constitution": true,
+  "specs": [
+    {
+      "id": "002",
+      "slug": "002-web-console",
+      "folder": "specs/002-web-console",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "context",
+        "rounds",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/002-web-console",
+        "folder": "specs/002-web-console",
+        "slug": "specs/002-web-console"
+      }
+    },
+    {
+      "id": "003",
+      "slug": "003-config-loader",
+      "folder": "specs/003-config-loader",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan",
+        "context"
+      ],
+      "resolves": {
+        "id": "specs/003-config-loader",
+        "folder": "specs/003-config-loader",
+        "slug": "specs/003-config-loader"
+      }
+    },
+    {
+      "id": "004",
+      "slug": "004-retention-policies",
+      "folder": "specs/004-retention-policies",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "context",
+        "gateReviewed",
+        "gateCodeReviewed"
+      ],
+      "resolves": {
+        "id": "specs/004-retention-policies",
+        "folder": "specs/004-retention-policies",
+        "slug": "specs/004-retention-policies"
+      }
+    },
+    {
+      "id": "005",
+      "slug": "005-config-format-choice",
+      "folder": "specs/005-config-format-choice",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "context"
+      ],
+      "resolves": {
+        "id": "specs/005-config-format-choice",
+        "folder": "specs/005-config-format-choice",
+        "slug": "specs/005-config-format-choice"
+      }
+    },
+    {
+      "id": "006",
+      "slug": "006-partial-push",
+      "folder": "specs/006-partial-push",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "context",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/006-partial-push",
+        "folder": "specs/006-partial-push",
+        "slug": "specs/006-partial-push"
+      }
+    },
+    {
+      "id": "001",
+      "slug": "001-manifest-sync",
+      "folder": "specs/archive/001-manifest-sync",
+      "archived": true,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "context",
+        "gateReviewed",
+        "gateCodeReviewed"
+      ],
+      "resolves": {
+        "id": "specs/archive/001-manifest-sync",
+        "folder": "specs/archive/001-manifest-sync",
+        "slug": "specs/archive/001-manifest-sync"
+      }
+    }
+  ]
+}

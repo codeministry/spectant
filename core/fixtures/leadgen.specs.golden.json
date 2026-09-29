@@ -1,0 +1,63 @@
+{
+  "master": true,
+  "constitution": true,
+  "specs": [
+    {
+      "id": "012",
+      "slug": "012-pwa-install",
+      "folder": "specs/012-pwa-install",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "context",
+        "rounds",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/012-pwa-install",
+        "folder": "specs/012-pwa-install",
+        "slug": "specs/012-pwa-install"
+      }
+    },
+    {
+      "id": "022",
+      "slug": "022-chat-turn-status-and-bulk-delete",
+      "folder": "specs/022-chat-turn-status-and-bulk-delete",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "context",
+        "rounds",
+        "gateReviewed",
+        "gateCodeReviewed"
+      ],
+      "resolves": {
+        "id": "specs/022-chat-turn-status-and-bulk-delete",
+        "folder": "specs/022-chat-turn-status-and-bulk-delete",
+        "slug": "specs/022-chat-turn-status-and-bulk-delete"
+      }
+    },
+    {
+      "id": "013",
+      "slug": "013-tech-debt",
+      "folder": "specs/archive/013-tech-debt",
+      "archived": true,
+      "kinds": [
+        "spec",
+        "plan",
+        "tasks",
+        "context",
+        "rounds"
+      ],
+      "resolves": {
+        "id": "specs/archive/013-tech-debt",
+        "folder": "specs/archive/013-tech-debt",
+        "slug": "specs/archive/013-tech-debt"
+      }
+    }
+  ]
+}

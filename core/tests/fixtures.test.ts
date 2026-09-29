@@ -9,13 +9,15 @@
 // Golden (ISC-6, spec 001 T40): every tree parses through `buildDashboard` without error to its snapshot
 // `core/fixtures/<name>.golden.json`. `UPDATE_GOLDEN=1 bun test core/tests/fixtures.test.ts` writes the snapshots;
 // every other run compares byte-equal. A snapshot changes only together with the parser change that explains it
-// (core/CLAUDE.md § Fixtures).
+// (core/CLAUDE.md § Fixtures). The comparison is the shared harness in helpers/golden.ts, which golden.test.ts (spec
+// 002, ISC-68) uses for the other model families.
 import { describe, expect, test } from "bun:test";
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 
 import { buildDashboard } from "../src/dashboard.ts";
 import type { DashboardModel } from "../src/dashboard.ts";
+import { DASHBOARD_FAMILY, expectGolden, goldenPath, goldenText, goldenTrees } from "./helpers/golden.ts";
 import { FIXTURES, fixtureTrees, readTree } from "./helpers/read-tree.ts";
 
 const SPECTANT_001 = join(FIXTURES, "spectant-001");
@@ -118,19 +120,6 @@ describe("corpus", () => {
   });
 });
 
-/** The golden text: two-space JSON with a trailing newline. Field order is the model's construction order. */
-const golden = (m: DashboardModel): string => `${JSON.stringify(m, null, 2)}\n`;
-
-/** The first line where two texts part, with two lines of context, for a readable failure. */
-function firstDifference(expected: string, actual: string): string {
-  const a = expected.split("\n");
-  const b = actual.split("\n");
-  const at = a.findIndex((line, i) => line !== b[i]);
-  const i = at < 0 ? Math.min(a.length, b.length) : at;
-  const around = (lines: string[]) => lines.slice(Math.max(0, i - 2), i + 3).join("\n");
-  return `golden differs at line ${i + 1}\n--- golden\n${around(a)}\n+++ built\n${around(b)}`;
-}
-
 /** `file: code` for every diagnostic of the given severity in the model. */
 const diagnosticsOf = (m: DashboardModel, severity: "error" | "warning"): string[] =>
   m.diagnostics.filter((d) => d.diagnostic.severity === severity).map((d) => `${d.file}: ${d.diagnostic.code}`);
@@ -150,19 +139,14 @@ const EXPECTED_WARNINGS: Record<string, string[]> = {
   leadgen: ["ISA.md: master-progress-mismatch"],
 };
 
-const UPDATE_HINT = "run UPDATE_GOLDEN=1 bun test core/tests/fixtures.test.ts";
+const UPDATE_COMMAND = "bun test core/tests/fixtures.test.ts";
 
 describe("golden snapshots", () => {
   const trees = fixtureTrees();
-  const update = process.env.UPDATE_GOLDEN === "1";
 
   test("every fixture tree has a golden snapshot, every snapshot a tree", () => {
-    const goldens = readdirSync(FIXTURES)
-      .filter((name) => name.endsWith(".golden.json"))
-      .map((name) => name.slice(0, -".golden.json".length))
-      .sort();
     expect(trees.length).toBeGreaterThan(0);
-    expect(goldens).toEqual(trees);
+    expect(goldenTrees(DASHBOARD_FAMILY)).toEqual(trees);
     expect(Object.keys(EXPECTED_WARNINGS).sort()).toEqual(trees);
   });
 
@@ -178,12 +162,6 @@ describe("golden snapshots", () => {
   });
 
   test.each(trees)("%s.golden.json", (name) => {
-    const built = golden(buildDashboard(readTree(name)));
-    const path = join(FIXTURES, `${name}.golden.json`);
-    if (update) writeFileSync(path, built);
-    if (!existsSync(path)) throw new Error(`${name}.golden.json is missing; ${UPDATE_HINT}`);
-    const stored = readFileSync(path, "utf8");
-    if (stored !== built) throw new Error(`${firstDifference(stored, built)}\nOnly a parser change explains a new snapshot; then ${UPDATE_HINT}`);
-    expect(stored).toBe(built);
+    expectGolden(goldenPath(name, DASHBOARD_FAMILY), goldenText(buildDashboard(readTree(name))), UPDATE_COMMAND);
   });
 });

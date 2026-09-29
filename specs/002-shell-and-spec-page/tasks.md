@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T06:54:03Z
+updated: 2026-09-29T10:57:18Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -36,7 +36,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T6 · ISC-69 · [P] · core — corpus test: the frozen trees, types, licence note and the synthetic trees are present · `core/tests/fixtures-corpus.test.ts`
 - [x] T7 · ISC-69 · [P] · core — fixture rule narrowed to "never a copy of a private repository", refresh rule for `spectant-001` (named commit, on `/spec-complete 001`) in the lane notes and the fixtures README · `core/CLAUDE.md`
 - [x] T8 · ISC-88 · [P] · core — harbor 002 `rounds.jsonl` and `tasks.md` extended so one fixture holds every one of the eleven card states, a retry with `retry with:`, a question, concerns, a fail, a `stop` reason and a re-cut between rounds · `core/fixtures/harbor/specs/002-web-console/rounds.jsonl`
-- [ ] T9 · ISC-68 · core — golden test over every fixture, snapshots regenerated only together with the parser change (after: T1, T4, T5, T8) · `core/tests/golden.test.ts`
+- [x] T9 · ISC-68 · core — golden test over every fixture, snapshots regenerated only together with the parser change (after: T1, T4, T5, T8) · `core/tests/golden.test.ts`
 - [ ] T10 · ISC-70 · [P] · core — private corpus test: every spec under `SPECTANT_PRIVATE_CORPUS` parses with zero diagnostics; skipped, never passed, when unset · `core/tests/private-corpus.test.ts`
 - [ ] T11 · ISC-79 · core — stage table as data, next command with its reason, applied to every fixture spec (after: T2) · `core/src/stage.ts`
 - [ ] T12 · ISC-78 · [P] · core — spec page model: head, key numbers, idea quote (first sentence of § Goal, fallback `task:`), lanes, gates, warnings, waiting on you (after: T1) · `core/src/spec.ts`
