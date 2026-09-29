@@ -254,5 +254,81 @@
     "building": "building",
     "climbing": "climbing",
     "complete": "complete"
+  },
+  "shell": {
+    "wordmark": {
+      "lead": "spect",
+      "tail": "ant"
+    },
+    "brand": "Spectant, all workspaces",
+    "workspace": {
+      "label": "Workspace: {{name}}",
+      "all": "All workspaces",
+      "menu": "Workspaces"
+    },
+    "spec": {
+      "label": "Spec: {{id}} {{title}}",
+      "countLabel": "Specs: {{count}}",
+      "menu": "Specs",
+      "none": "Open a workspace to pick a spec"
+    },
+    "area": {
+      "label": "Area: {{area}}",
+      "menu": "Areas",
+      "needsSpec": "Open a spec to switch areas",
+      "unbuilt": "Comes with this spec's later tasks"
+    },
+    "areas": {
+      "dashboard": "Dashboard",
+      "status": "Status",
+      "live": "Live",
+      "data": "Data",
+      "docs": "Docs",
+      "notes": "Notes"
+    },
+    "tabs": {
+      "status": "Status",
+      "timeline": "Timeline",
+      "board": "Board",
+      "matrix": "Matrix",
+      "claims": "Claims",
+      "tasks": "Tasks",
+      "evidence": "Evidence",
+      "plan": "Plan",
+      "design": "Design",
+      "decisions": "Decisions",
+      "constitution": "Constitution",
+      "notes": "Notes"
+    },
+    "tabBar": "{{area}} tabs",
+    "palette": {
+      "pending": "The command palette comes with a later task"
+    },
+    "live": {
+      "source": {
+        "frontier": "Agent source: LifeOS frontier locks",
+        "activity": "Agent source: activity log",
+        "none": "No agent source"
+      }
+    },
+    "zen": "Zen mode",
+    "help": "Help & shortcuts",
+    "rail": {
+      "label": "Spec context",
+      "pending": "Where it stands, waiting on you and the gates come with a later task."
+    },
+    "placeholder": {
+      "area": "The {{area}} area comes with a later task of this spec.",
+      "tab": "The {{tab}} tab comes with a later task of this spec.",
+      "specRoute": "The spec page is not served yet; the name comes from the workspace dashboard.",
+      "workspaceSpecs": "Specs in {{workspace}}"
+    },
+    "unavailable": "This workspace cannot be read",
+    "error": "The server did not answer"
+  },
+  "notFound": {
+    "title": "Not found",
+    "body": "No registered workspace, spec or tab goes by that name.",
+    "back": "Go to all workspaces"
   }
 }

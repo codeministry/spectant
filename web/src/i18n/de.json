@@ -254,5 +254,81 @@
     "building": "building",
     "climbing": "climbing",
     "complete": "complete"
+  },
+  "shell": {
+    "wordmark": {
+      "lead": "spect",
+      "tail": "ant"
+    },
+    "brand": "Spectant, alle Workspaces",
+    "workspace": {
+      "label": "Workspace: {{name}}",
+      "all": "Alle Workspaces",
+      "menu": "Workspaces"
+    },
+    "spec": {
+      "label": "Spec: {{id}} {{title}}",
+      "countLabel": "Specs: {{count}}",
+      "menu": "Specs",
+      "none": "Öffnen Sie einen Workspace, um eine Spec zu wählen"
+    },
+    "area": {
+      "label": "Bereich: {{area}}",
+      "menu": "Bereiche",
+      "needsSpec": "Öffnen Sie eine Spec, um den Bereich zu wechseln",
+      "unbuilt": "Kommt mit späteren Tasks dieser Spec"
+    },
+    "areas": {
+      "dashboard": "Dashboard",
+      "status": "Status",
+      "live": "Live",
+      "data": "Daten",
+      "docs": "Doku",
+      "notes": "Notizen"
+    },
+    "tabs": {
+      "status": "Status",
+      "timeline": "Zeitleiste",
+      "board": "Board",
+      "matrix": "Matrix",
+      "claims": "Claims",
+      "tasks": "Tasks",
+      "evidence": "Belege",
+      "plan": "Plan",
+      "design": "Design",
+      "decisions": "Entscheidungen",
+      "constitution": "Verfassung",
+      "notes": "Notizen"
+    },
+    "tabBar": "Tabs: {{area}}",
+    "palette": {
+      "pending": "Die Befehlspalette kommt mit einem späteren Task"
+    },
+    "live": {
+      "source": {
+        "frontier": "Agentenquelle: LifeOS-Frontier-Locks",
+        "activity": "Agentenquelle: Aktivitätsprotokoll",
+        "none": "Keine Agentenquelle"
+      }
+    },
+    "zen": "Zen-Modus",
+    "help": "Hilfe und Tastenkürzel",
+    "rail": {
+      "label": "Spec-Kontext",
+      "pending": "Stand, Ihre offenen Punkte und die Gates kommen mit einem späteren Task."
+    },
+    "placeholder": {
+      "area": "Der Bereich {{area}} kommt mit einem späteren Task dieser Spec.",
+      "tab": "Der Tab {{tab}} kommt mit einem späteren Task dieser Spec.",
+      "specRoute": "Die Spec-Seite wird noch nicht ausgeliefert; der Name stammt aus dem Workspace-Dashboard.",
+      "workspaceSpecs": "Specs in {{workspace}}"
+    },
+    "unavailable": "Dieser Workspace kann nicht gelesen werden",
+    "error": "Der Server hat nicht geantwortet"
+  },
+  "notFound": {
+    "title": "Nicht gefunden",
+    "body": "Unter diesem Namen ist kein Workspace, keine Spec und kein Tab registriert.",
+    "back": "Zu allen Workspaces"
   }
 }
