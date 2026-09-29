@@ -1,0 +1,97 @@
+<div class="pickers">
+  <a
+    class="pick"
+    data-control="workspace"
+    aria-haspopup="dialog"
+    [attr.href]="workspaceHref()"
+    [attr.aria-expanded]="expanded().workspace"
+    [attr.aria-label]="
+      workspaceName() === null
+        ? ('shell.workspace.countLabel' | transloco: { count: workspaceCount() })
+        : ('shell.workspace.label' | transloco: { name: workspaceName() })
+    "
+    (pointerdown)="press('workspace')"
+    (click)="toggle($event, 'workspace')"
+  >
+    <ui-icon name="folder-git-2" />
+    <span class="pick-text ws-name">{{ workspaceName() ?? workspaceCount() }}</span>
+    <ui-icon class="chevron" name="chevron-down" [size]="14" />
+  </a>
+  <span class="divider" aria-hidden="true"></span>
+  <ng-template #specContent>
+    <ui-icon name="file-text" />
+    @if (specOpen()) {
+      <span class="pick-id">{{ state.specId() }}</span>
+      @if (row(); as row) {
+        <span class="pick-text spec-title">{{ row.title }}</span>
+      }
+    } @else {
+      <span class="pick-text">{{ specCount() }}</span>
+    }
+  </ng-template>
+  @if (specHref(); as href) {
+    <a
+      class="pick"
+      data-control="spec"
+      aria-haspopup="dialog"
+      [attr.href]="href"
+      [attr.aria-expanded]="expanded().spec"
+      [attr.aria-label]="
+        specOpen()
+          ? ('shell.spec.label' | transloco: { id: state.specId(), title: row()?.title ?? '' })
+          : ('shell.spec.countLabel' | transloco: { count: specCount() })
+      "
+      (pointerdown)="press('spec')"
+      (click)="toggle($event, 'spec')"
+    >
+      <ng-container [ngTemplateOutlet]="specContent" />
+      <ui-icon class="chevron" name="chevron-down" [size]="14" />
+    </a>
+  } @else {
+    <button
+      type="button"
+      class="pick"
+      data-control="spec"
+      aria-disabled="true"
+      [attr.title]="'shell.spec.none' | transloco"
+      [attr.aria-label]="'shell.spec.countLabel' | transloco: { count: specCount() }"
+    >
+      <ng-container [ngTemplateOutlet]="specContent" />
+    </button>
+  }
+</div>
+
+@if (specOpen()) {
+  <button
+    type="button"
+    class="pick area"
+    data-control="area"
+    aria-haspopup="dialog"
+    [attr.aria-expanded]="expanded().area"
+    [attr.aria-label]="'shell.area.label' | transloco: { area: (areaKey() | transloco) }"
+    (pointerdown)="press('area')"
+    (click)="toggle($event, 'area')"
+  >
+    <ui-icon name="layout-grid" />
+    <span class="pick-text">{{ areaKey() | transloco }}</span>
+    <ui-icon class="chevron" name="chevron-down" [size]="14" />
+  </button>
+} @else {
+  <button
+    type="button"
+    class="pick area"
+    data-control="area"
+    aria-disabled="true"
+    [attr.title]="'shell.area.needsSpec' | transloco"
+    [attr.aria-label]="'shell.area.menu' | transloco"
+  >
+    <ui-icon name="layout-grid" />
+    <span class="pick-text">{{ 'shell.area.menu' | transloco }}</span>
+    <ui-icon class="chevron" name="chevron-down" [size]="14" />
+  </button>
+}
+
+<!-- The lists, sheets and popovers load after first render; their overlay primitives stay out of the initial bundle. -->
+@defer (on immediate) {
+  <app-shell-menus #menus />
+}

@@ -45,11 +45,14 @@ for (const { width, tier, tabBar } of TIERS) {
     test('header controls lead where they say: workspace, spec, area menu, live, settings', async ({ page }) => {
       const control = (name: string) => page.locator(`header [data-control="${name}"]`);
 
+      // A plain click opens the picker; its entries are the links.
       await page.goto('/w/harbor/s/002');
       await control('workspace').click();
+      await page.locator('[data-picker="workspace"] [data-workspace="harbor"]').click();
       await expect(page).toHaveURL(/\/w\/harbor$/);
 
       await control('spec').click();
+      await page.locator('[data-picker="spec"] .picker-all').click();
       await expect(page).toHaveURL(/\/w\/harbor#specs$/);
       await expect(page.locator('#specs')).toBeFocused();
 
@@ -80,6 +83,71 @@ for (const { width, tier, tabBar } of TIERS) {
       await expect(page).toHaveURL(/\/settings$/);
       await expect(page.locator('[data-page="settings"] h1')).toBeVisible();
       await expect(page.locator('header')).toHaveCount(1);
+    });
+
+    test('header pickers open real lists: choose a workspace, then a spec (T36)', async ({ page }) => {
+      const control = (name: string) => page.locator(`header [data-control="${name}"]`);
+      await page.goto('/w/harbor/s/002');
+
+      const workspace = control('workspace');
+      await workspace.click();
+      await expect(workspace).toHaveAttribute('aria-expanded', 'true');
+      const workspaces = page.locator('[data-picker="workspace"]');
+      await expect(workspaces).toBeVisible();
+      await expect(workspaces.locator('[data-workspace]')).toHaveCount(2);
+      await expect(workspaces.locator('[aria-current="true"]')).toHaveAttribute('data-workspace', 'harbor');
+      await expect(workspaces.locator('[aria-current="true"]')).toBeFocused();
+      await expect(workspaces.locator('[data-picker-footer]')).toHaveAttribute('href', '/settings');
+      await workspaces.locator('[data-workspace="lantern"]').click();
+      await expect(page).toHaveURL(/\/w\/lantern$/);
+      await expect(workspaces).toBeHidden();
+
+      await page.goto('/w/harbor/s/002');
+      const spec = control('spec');
+      await spec.click();
+      const specs = page.locator('[data-picker="spec"]');
+      await expect(specs).toBeVisible();
+      await expect(specs.locator('[aria-current="true"]')).toHaveAttribute('data-spec', '002');
+      await expect(specs.locator('[aria-current="true"]')).toBeFocused();
+      const other = specs.locator('[data-spec]:not([aria-current])').first();
+      const otherId = await other.getAttribute('data-spec');
+      await expect(other.locator('ui-chip')).toBeVisible();
+      await other.click();
+      await expect(page).toHaveURL(new RegExp(`/w/harbor/s/${otherId ?? ''}$`));
+      await expect(specs).toBeHidden();
+    });
+
+    test('a modified click on a picker leaves the picker shut and keeps the href (T36)', async ({ page }) => {
+      await page.goto('/w/harbor/s/002');
+      const workspace = page.locator('header [data-control="workspace"]');
+      await expect(workspace).toHaveAttribute('href', '/w/harbor');
+      await page.locator('[data-picker="workspace"]').first().waitFor({ state: 'attached' });
+      await workspace.click({ button: 'middle' });
+      await expect(workspace).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('one header row at medium and wide, two at compact; the pill hugs its 40 px segments (T36)', async ({ page }) => {
+      await page.goto('/w/harbor/s/002/status');
+      const header = page.locator('header');
+      await expect(header).toHaveCount(1);
+      const box = async (selector: string) => (await page.locator(selector).first().boundingBox()) ?? { x: 0, y: 0, width: 0, height: 0 };
+      const head = await box('header');
+      const brand = await box('header [data-control="brand"]');
+      const area = await box('header [data-control="area"]');
+      const pickers = await box('header .pickers');
+      if (width < 640) {
+        expect(head.height).toBeGreaterThanOrEqual(92);
+        expect(head.height).toBeLessThanOrEqual(93);
+        expect(area.y).toBeGreaterThanOrEqual(brand.y + brand.height - 1);
+        expect(pickers.height).toBeLessThanOrEqual(42);
+      } else {
+        expect(head.height).toBeGreaterThanOrEqual(64);
+        expect(head.height).toBeLessThanOrEqual(65);
+        expect(Math.abs(area.y - brand.y)).toBeLessThan(12);
+      }
+      const palette = await box('header [data-control="palette"]');
+      expect(Math.round(palette.width)).toBe(width >= 1280 ? 240 : 40);
+      await expect(page.locator('header .palette-key')).toBeVisible({ visible: width >= 1280 });
     });
 
     test('placeholder, never not-found, for a tab whose view is not built yet', async ({ page }) => {

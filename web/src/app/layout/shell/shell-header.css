@@ -1,7 +1,8 @@
 /*
- * The shell header (design.md § Header, ISC-73): 64 px, sticky, the page glass under a 12 px blur. The host is the
- * `header` size container: the palette trigger becomes a 240 px field from a 1280 px header, and the compact tier
- * (< 640) splits the header into two rows (48 + 44) with the area menu, the tab-bar slot and zen in row 2.
+ * The shell header's grid (design.md § Header, ISC-73): 64 px, sticky, the page glass under a 12 px blur; the host is the
+ * `header` size container the parts query. Medium and wide: one row, brand · pickers · area on one bordered 40 px rail
+ * field, the tools right. Compact (< 640): two rows, 48 + 44: ring, pickers pill, palette, live, settings; then the area
+ * trigger, the tab strip and zen. The palette trigger is a 240 px field from a 1280 px header, an icon below.
  */
 :host {
   position: sticky;
@@ -19,7 +20,7 @@
   align-items: center;
   min-block-size: 64px;
   padding-block-start: env(safe-area-inset-top);
-  padding-inline: 16px;
+  padding-inline: 32px;
   border-block-end: 1px solid var(--line);
   background: var(--page-glass);
   /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
@@ -27,172 +28,20 @@
   backdrop-filter: blur(12px);
 }
 
-.brand {
-  display: inline-flex;
-  grid-area: brand;
-  justify-self: start;
-  gap: 8px;
-  align-items: center;
-  min-block-size: 44px;
-  min-inline-size: 44px;
-  color: var(--color-base-content);
-  text-decoration: none;
-}
-
-/* Not `.ring`: Tailwind scans templates and would emit its `ring` box-shadow utility for that class. */
-.mark {
-  flex-shrink: 0;
-}
-
-.mark-track,
-.mark-arc {
-  fill: none;
-  stroke-width: 3;
-}
-
-.mark-track {
-  stroke: var(--track);
-}
-
-.mark-arc {
-  stroke: var(--color-primary);
-  stroke-linecap: round;
-}
-
-.mark-dot {
-  fill: var(--color-secondary);
-}
-
-.wordmark {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 24px;
-}
-
-.wordmark-tail {
-  color: var(--clos-ink);
-}
-
-.pickers {
-  display: flex;
-  grid-area: pickers;
-  align-items: center;
-  min-inline-size: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-field);
-  background: var(--color-base-100);
-}
-
-.divider {
-  flex-shrink: 0;
-  inline-size: 1px;
-  block-size: 24px;
-  background: var(--line);
-}
-
-.pick {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  min-inline-size: 0;
+/* One bordered field behind the left group; the parts stack above it by `z-index`. */
+.rail-field {
+  z-index: 0;
+  grid-row: 1;
+  grid-column: brand-start / area-end;
   block-size: 40px;
-  padding-inline: 12px;
-  border: 0;
-  border-radius: var(--radius-field);
-  background: transparent;
-  color: var(--color-base-content);
-  font: inherit;
-  font-size: 14px;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
-}
-
-.pick[aria-disabled="true"] {
-  cursor: default;
-}
-
-@media (hover: hover) {
-  .pick:not([aria-disabled="true"]):hover {
-    background: var(--color-base-200);
-  }
-}
-
-.pick-text {
-  overflow: hidden;
-  max-inline-size: 200px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.spec-title {
-  max-inline-size: 240px;
-}
-
-.pick-id {
-  color: var(--muted-ink);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.area {
-  grid-area: area;
   border: 1px solid var(--line);
-  background: var(--color-base-100);
-  color: var(--disp-ink);
-}
-
-/* The area menu (ISC-76): a `ui-popover` below the trigger, one row per area in `SPEC_AREAS` order. */
-.area-popover {
-  --ui-popover-width: 280px;
-}
-
-.area-menu ul {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.area-entry {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: 8px;
-  align-items: center;
-  min-block-size: 40px;
-  padding: 8px 12px;
   border-radius: var(--radius-field);
-  color: var(--color-base-content);
-  font-size: 14px;
-  line-height: 20px;
-  text-decoration: none;
-  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
+  background: var(--color-base-100);
 }
 
-.area-entry[aria-current="page"] {
-  background: var(--color-base-200);
-  color: var(--disp-ink);
-  font-weight: 600;
-}
-
-.area-entry[aria-disabled="true"] {
-  color: var(--muted-ink);
-  cursor: default;
-}
-
-.area-reason {
-  grid-column: 2;
-  font-size: 12px;
-  line-height: 16px;
-}
-
-@media (hover: hover) {
-  a.area-entry:hover {
-    background: var(--color-base-200);
-  }
+.brand {
+  z-index: 1;
+  grid-area: brand;
 }
 
 .tabs {
@@ -209,7 +58,6 @@
   justify-content: center;
   inline-size: 40px;
   block-size: 40px;
-  padding: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-field);
   background: var(--color-base-100);
@@ -240,41 +88,23 @@
     white-space: nowrap;
   }
 
-  .palette-key {
-    display: inline-flex;
+  /* `⌘K` only in the field form, and only where a keyboard is likely. */
+  @media (any-hover: hover) and (any-pointer: fine) {
+    .palette-key {
+      display: inline-flex;
+    }
+  }
+}
+
+@media (pointer: coarse) {
+  .palette {
+    min-inline-size: 44px;
+    min-block-size: 44px;
   }
 }
 
 .live {
-  display: inline-flex;
   grid-area: live;
-  align-items: center;
-  justify-content: center;
-  inline-size: 40px;
-  block-size: 40px;
-  border-radius: var(--radius-field);
-  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
-}
-
-@media (hover: hover) {
-  a.live:hover {
-    background: var(--color-base-200);
-  }
-}
-
-.live-dot {
-  inline-size: 6px;
-  block-size: 6px;
-  border-radius: 50%;
-  background: var(--track);
-}
-
-.live[data-source="frontier"] .live-dot {
-  background: var(--color-accent);
-}
-
-.live[data-source="activity"] .live-dot {
-  background: var(--color-primary);
 }
 
 .zen {
@@ -290,31 +120,16 @@
   overflow: hidden;
   inline-size: 1px;
   block-size: 1px;
-  margin: -1px;
-  padding: 0;
-  border: 0;
   clip-path: inset(50%);
   white-space: nowrap;
 }
 
-@media (pointer: coarse) {
-  .pick,
-  .palette,
-  .live {
-    min-block-size: 44px;
-  }
-
-  .palette,
-  .live {
-    min-inline-size: 44px;
-  }
-
-  .area-entry {
-    min-block-size: 44px;
+@container header (width < 1120px) {
+  .shell-header {
+    padding-inline: 24px;
   }
 }
 
-/* Compact: two rows, 48 + 44 (design.md § Mobile). The wordmark and the spec title yield; the area menu never does. */
 @container header (width < 640px) {
   .shell-header {
     grid-template:
@@ -324,21 +139,9 @@
     padding-inline: 16px;
   }
 
-  .wordmark,
-  .spec-title {
+  /* The pill hugs its segments and carries its own border (ShellNav). */
+  .rail-field {
     display: none;
-  }
-
-  .pick {
-    padding-inline: 8px;
-  }
-
-  .pick-text {
-    max-inline-size: 104px;
-  }
-
-  .area {
-    block-size: 36px;
   }
 
   .tabs {
@@ -346,7 +149,7 @@
   }
 }
 
-/* Zen (ISC-75): the tools go; brand, pickers, area menu and the pressed zen button stay. */
+/* Zen (ISC-75): the tools go; brand, pickers, area trigger and the pressed zen button stay. */
 :host([data-zen]) .tool {
   display: none;
 }

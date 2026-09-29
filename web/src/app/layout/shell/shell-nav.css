@@ -1,0 +1,170 @@
+/*
+ * The pickers and the area trigger (design.md § Header, § Shell header). The host is `display: contents`: `.pickers` and
+ * `.area` are items of the header grid. Medium and wide draw them on the header's bordered rail field; compact makes
+ * the pickers one pill with a "/" between and puts the area trigger in row 2.
+ */
+:host {
+  display: contents;
+}
+
+.pickers,
+.area {
+  position: relative;
+  z-index: 1;
+}
+
+.pickers {
+  display: flex;
+  grid-area: pickers;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.area {
+  grid-area: area;
+  color: var(--disp-ink);
+}
+
+/* The rail's 1 px rules between brand · pickers · area, centred in the 8 px gap. */
+.pickers::before,
+.area::before {
+  position: absolute;
+  inset-block: 8px;
+  inset-inline-start: -5px;
+  inline-size: 1px;
+  background: var(--line);
+  content: "";
+}
+
+.divider {
+  flex-shrink: 0;
+  inline-size: 1px;
+  block-size: 24px;
+  background: var(--line);
+}
+
+.pick {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+  block-size: 40px;
+  padding-inline: 12px;
+  border: 0;
+  border-radius: var(--radius-field);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.pick[aria-disabled="true"] {
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .pick:not([aria-disabled="true"]):hover {
+    background: var(--color-base-200);
+  }
+}
+
+.pick-text {
+  overflow: hidden;
+  max-inline-size: 200px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spec-title {
+  max-inline-size: 240px;
+}
+
+.pick-id {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pick-id,
+.chevron {
+  flex-shrink: 0;
+  color: var(--muted-ink);
+}
+
+@media (pointer: coarse) {
+  .pick {
+    block-size: 44px;
+  }
+}
+
+/* Medium: tighter caps, then the collapse order (after the wordmark): workspace name < 720, spec title < 680. */
+@container header (width < 1120px) {
+  .ws-name {
+    max-inline-size: 120px;
+  }
+
+  .spec-title {
+    max-inline-size: 110px;
+  }
+}
+
+@container header (640px <= width < 720px) {
+  .ws-name {
+    display: none;
+  }
+}
+
+@container header (640px <= width < 680px) {
+  .spec-title {
+    display: none;
+  }
+}
+
+/* Compact: the pickers as one pill (workspace / spec id), the area trigger a bordered 36 px field in row 2. */
+@container header (width < 640px) {
+  .pickers,
+  .area {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-field);
+    background: var(--color-base-100);
+  }
+
+  .pickers {
+    justify-self: start;
+    max-inline-size: 100%;
+  }
+
+  .pickers::before,
+  .area::before,
+  .spec-title,
+  .pickers .chevron {
+    display: none;
+  }
+
+  .divider {
+    inline-size: auto;
+    block-size: auto;
+    background: none;
+    color: var(--muted-ink);
+  }
+
+  .divider::before {
+    content: "/";
+  }
+
+  .pick {
+    padding-inline: 8px;
+  }
+
+  .pick-text {
+    max-inline-size: 104px;
+  }
+
+  .area {
+    block-size: 36px;
+  }
+}

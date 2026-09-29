@@ -1,0 +1,90 @@
+/* The living ring and the wordmark (design.md § Wordmark, § Shell header): 28 px ring below wide, 24 px at wide. */
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+.brand {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 44px;
+  min-inline-size: 44px;
+  padding-inline: 8px 12px;
+  color: var(--color-base-content);
+  text-decoration: none;
+}
+
+.mark {
+  flex-shrink: 0;
+  inline-size: 28px;
+  block-size: 28px;
+  fill: none;
+  stroke-width: 3;
+}
+
+.mark-track {
+  stroke: var(--track);
+}
+
+.mark-arc {
+  stroke: var(--clos-ink);
+  stroke-dasharray: 80 20;
+  stroke-linecap: round;
+}
+
+.mark-dot {
+  fill: var(--ques-ink);
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+  white-space: nowrap;
+}
+
+.wordmark-tail {
+  color: var(--clos-ink);
+}
+
+/* The ring turns once and "ant" takes the violet on hover or keyboard focus; never under reduced motion. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .brand:is(:hover, :focus-visible) .mark {
+    animation: mark-spin var(--motion-duration-highlight) var(--motion-ease-emphasized) both;
+  }
+
+  .wordmark-tail {
+    transition: color var(--motion-duration-highlight) var(--motion-ease-emphasized);
+  }
+
+  .brand:is(:hover, :focus-visible) .wordmark-tail {
+    color: var(--ques-ink);
+  }
+}
+
+@keyframes mark-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@container header (width >= 1120px) {
+  .mark {
+    inline-size: 24px;
+    block-size: 24px;
+  }
+}
+
+/* Collapse order, step 1: the wordmark text goes first (below 800); compact shows the ring alone, centred. */
+@container header (width < 800px) {
+  .wordmark {
+    display: none;
+  }
+
+  .brand {
+    justify-content: center;
+    padding-inline: 0;
+  }
+}

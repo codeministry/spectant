@@ -26,7 +26,8 @@ const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabi
 /**
  * A non-modal panel on the native `popover="auto"` attribute (`showPopover()`): top layer, light dismiss and
  * closing its siblings come from the platform. Open it through a `[uiPopoverTrigger]` button (or `show(trigger)`);
- * `open` is a two-way model and `close()` hides it. On open, focus moves to the first focusable element inside; Esc
+ * `open` is a two-way model and `close()` hides it. On open, focus moves to the element marked `data-autofocus` inside (a
+ * menu's current entry; the `autofocus` attribute is linted out), else to the first focusable one; Esc
  * closes and returns focus to the trigger, and so does a light dismiss that left focus nowhere.
  *
  * Placement: below the trigger, aligned to its inline `start` or `end`, 8 px gap, via CSS anchor positioning
@@ -117,7 +118,7 @@ export class UiPopover {
     panel.showPopover();
     this.place(panel);
     this.track(true);
-    (panel.querySelector<HTMLElement>(FOCUSABLE) ?? panel).focus();
+    (panel.querySelector<HTMLElement>('[data-autofocus]') ?? panel.querySelector<HTMLElement>(FOCUSABLE) ?? panel).focus();
   }
 
   private conceal(panel: HTMLElement): void {

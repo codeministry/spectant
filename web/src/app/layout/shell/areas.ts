@@ -34,15 +34,20 @@ export interface SpecArea {
   readonly tabs: readonly TabId[];
   readonly icon: IconName;
   readonly built: boolean;
+  /**
+   * The second key of the area's `g` sequence (ISC-97, the prototype's shortcut sheet: `g s` `g l` `g d` `g o` `g n`), shown
+   * as a hint in the area menu. The binding is T102's; the dashboard has none yet (the prototype names none).
+   */
+  readonly goKey: string | null;
 }
 
 export const SPEC_AREAS: readonly SpecArea[] = [
-  { id: 'dashboard', tabs: [], icon: 'layout-dashboard', built: true },
-  { id: 'status', tabs: ['status', 'timeline'], icon: 'activity', built: true },
-  { id: 'live', tabs: ['board', 'matrix'], icon: 'square-kanban', built: false },
-  { id: 'data', tabs: ['claims', 'tasks', 'evidence'], icon: 'table', built: true },
-  { id: 'docs', tabs: ['plan', 'design', 'decisions', 'constitution'], icon: 'file-text', built: true },
-  { id: 'notes', tabs: ['notes'], icon: 'notebook-pen', built: false },
+  { id: 'dashboard', tabs: [], icon: 'layout-dashboard', built: true, goKey: null },
+  { id: 'status', tabs: ['status', 'timeline'], icon: 'activity', built: true, goKey: 's' },
+  { id: 'live', tabs: ['board', 'matrix'], icon: 'square-kanban', built: false, goKey: 'l' },
+  { id: 'data', tabs: ['claims', 'tasks', 'evidence'], icon: 'table', built: true, goKey: 'd' },
+  { id: 'docs', tabs: ['plan', 'design', 'decisions', 'constitution'], icon: 'file-text', built: true, goKey: 'o' },
+  { id: 'notes', tabs: ['notes'], icon: 'notebook-pen', built: false, goKey: 'n' },
 ];
 
 export const areaById = (id: AreaId): SpecArea => SPEC_AREAS.find((area) => area.id === id) ?? must(id);

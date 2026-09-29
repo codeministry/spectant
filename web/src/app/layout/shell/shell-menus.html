@@ -1,0 +1,161 @@
+<!-- Picker lists: one template each, in a popover at medium and wide, in a bottom sheet at compact. -->
+<ng-template #workspaceList>
+  <nav class="picker" data-picker="workspace" [attr.aria-label]="'shell.workspace.menu' | transloco">
+    <ul uiRovingList [singleKeys]="singleKeys()">
+      <li>
+        <a
+          uiRovingItem
+          class="entry picker-entry picker-all"
+          routerLink="/"
+          [attr.data-autofocus]="state.ws() === null ? '' : null"
+          (click)="close('workspace')"
+        >
+          <ui-icon name="layout-grid" />
+          <span class="entry-name">{{ 'shell.workspace.all' | transloco }}</span>
+        </a>
+      </li>
+      @for (entry of workspaceEntries(); track entry.slug) {
+        <li>
+          <a
+            uiRovingItem
+            class="entry picker-entry"
+            [attr.data-workspace]="entry.slug"
+            [routerLink]="['/w', entry.slug]"
+            [attr.aria-current]="entry.current ? 'true' : null"
+            [attr.data-autofocus]="entry.current ? '' : null"
+            (click)="close('workspace')"
+          >
+            <ui-icon name="folder-git-2" />
+            <span class="entry-name">{{ entry.name }}</span>
+            <span class="entry-meta">
+              @if (entry.specs !== null) {
+                {{ 'shell.workspace.specCount' | transloco: { count: entry.specs } }}
+              } @else if (!entry.readable) {
+                {{ 'shell.workspace.unreadable' | transloco }}
+              }
+            </span>
+            @if (entry.current) {
+              <ui-icon class="entry-check" name="check" [size]="16" />
+            }
+          </a>
+        </li>
+      }
+    </ul>
+    <a class="entry picker-footer" routerLink="/settings" data-picker-footer (click)="close('workspace')">
+      <ui-icon name="settings" [size]="16" />
+      <span>{{ 'shell.workspace.manage' | transloco }}</span>
+    </a>
+  </nav>
+</ng-template>
+
+<ng-template #specList>
+  <nav class="picker" data-picker="spec" [attr.aria-label]="'shell.spec.menu' | transloco">
+    <ul uiRovingList [singleKeys]="singleKeys()">
+      @if (state.ws(); as ws) {
+        <li>
+          <a
+            uiRovingItem
+            class="entry picker-entry picker-all"
+            fragment="specs"
+            [routerLink]="['/w', ws]"
+            [attr.data-autofocus]="specOpen() ? null : ''"
+            (click)="close('spec')"
+          >
+            <ui-icon name="list-checks" />
+            <span class="entry-name">{{ 'shell.spec.all' | transloco: { workspace: workspaceName() } }}</span>
+          </a>
+        </li>
+      }
+      @for (spec of data.specRows(); track spec.id) {
+        @let current = specOpen() && spec.id === state.specId();
+        <li>
+          <a
+            uiRovingItem
+            class="entry picker-entry"
+            [attr.data-spec]="spec.id"
+            [routerLink]="specEntryLink(spec.id)"
+            [attr.aria-current]="current ? 'true' : null"
+            [attr.data-autofocus]="current ? '' : null"
+            (click)="close('spec')"
+          >
+            <span class="entry-id">{{ spec.id }}</span>
+            <span class="entry-name">{{ spec.title }}</span>
+            <ui-chip tone="neutral">{{ 'stages.' + spec.stage | transloco }}</ui-chip>
+            @if (current) {
+              <ui-icon class="entry-check" name="check" [size]="16" />
+            }
+          </a>
+        </li>
+      }
+    </ul>
+  </nav>
+</ng-template>
+
+@if (compact()) {
+  <ui-sheet
+    tier="compact"
+    [label]="'shell.workspace.menu' | transloco"
+    [open]="sheet() === 'workspace'"
+    (openChange)="sheetOpenChange('workspace', $event)"
+  >
+    <ng-container [ngTemplateOutlet]="workspaceList" />
+  </ui-sheet>
+  <ui-sheet tier="compact" [label]="'shell.spec.menu' | transloco" [open]="sheet() === 'spec'" (openChange)="sheetOpenChange('spec', $event)">
+    <ng-container [ngTemplateOutlet]="specList" />
+  </ui-sheet>
+} @else {
+  <ui-popover #workspacePopover class="picker-popover" placement="start" [label]="'shell.workspace.menu' | transloco">
+    <ng-container [ngTemplateOutlet]="workspaceList" />
+  </ui-popover>
+  <ui-popover #specPopover class="picker-popover" placement="start" [label]="'shell.spec.menu' | transloco">
+    <ng-container [ngTemplateOutlet]="specList" />
+  </ui-popover>
+}
+
+@if (specOpen()) {
+  <ui-popover #areaPopover class="area-popover" placement="start" [label]="'shell.area.menu' | transloco">
+    <nav class="picker" [attr.aria-label]="'shell.area.menu' | transloco">
+      <ul uiRovingList [singleKeys]="singleKeys()">
+        @for (area of areas; track area.id) {
+          @let link = areaLink(area);
+          @let current = state.area() === area.id ? 'page' : null;
+          <li>
+            @if (area.built && link !== null) {
+              <a
+                uiRovingItem
+                class="entry area-entry"
+                [attr.data-area]="area.id"
+                [routerLink]="link"
+                [attr.aria-current]="current"
+                [attr.data-autofocus]="current ? '' : null"
+                (click)="close('area')"
+              >
+                <ui-icon [name]="area.icon" />
+                <span class="entry-name">{{ 'shell.areas.' + area.id | transloco }}</span>
+                @if (area.goKey; as key) {
+                  <ui-kbd class="area-key" aria-hidden="true">{{ 'shell.area.goKey' | transloco: { key } }}</ui-kbd>
+                }
+              </a>
+            } @else {
+              <span
+                uiRovingItem
+                class="entry area-entry"
+                aria-disabled="true"
+                [attr.data-area]="area.id"
+                [attr.aria-current]="current"
+                [attr.data-autofocus]="current ? '' : null"
+              >
+                <ui-icon [name]="area.icon" />
+                <span class="entry-name">{{ 'shell.areas.' + area.id | transloco }}</span>
+                @if (area.goKey; as key) {
+                  <ui-kbd class="area-key" aria-hidden="true">{{ 'shell.area.goKey' | transloco: { key } }}</ui-kbd>
+                }
+                <span class="area-reason">{{ 'shell.area.unbuilt' | transloco }}</span>
+              </span>
+            }
+          </li>
+        }
+      </ul>
+    </nav>
+  </ui-popover>
+}

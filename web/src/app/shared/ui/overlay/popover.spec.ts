@@ -19,6 +19,19 @@ import { UiPopover, UiPopoverTrigger } from './popover';
 })
 class Host {}
 
+@Component({
+  imports: [UiPopover, UiPopoverTrigger],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <button id="trigger" type="button" [uiPopoverTrigger]="pop">Open</button>
+    <ui-popover #pop label="Areas">
+      <a id="first" href="/a">First</a>
+      <a id="current" href="/b" data-autofocus>Current</a>
+    </ui-popover>
+  `,
+})
+class AutofocusHost {}
+
 interface Stubbed {
   showPopover: ReturnType<typeof vi.fn>;
   hidePopover: ReturnType<typeof vi.fn>;
@@ -79,6 +92,18 @@ describe('UiPopover', () => {
     expect(api.showPopover).toHaveBeenCalledTimes(1);
     expect(el('#trigger').getAttribute('aria-expanded')).toBe('true');
     expect(document.activeElement).toBe(el('#inside'));
+  });
+
+  it('moves focus to the entry marked data-autofocus (a menu\'s current entry) instead of the first one', async () => {
+    const fixture = TestBed.createComponent(AutofocusHost);
+    document.body.appendChild(fixture.nativeElement as HTMLElement);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    root.querySelector<HTMLElement>('#trigger')?.click();
+    await fixture.whenStable();
+
+    expect(api.showPopover).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(root.querySelector('#current'));
   });
 
   it('closes on Esc and returns focus to the trigger', async () => {

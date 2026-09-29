@@ -1,0 +1,52 @@
+/* The live indicator: 40 px, 44 px on touch; three dot states, the text alternative carries the meaning. */
+:host {
+  display: block;
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: var(--radius-field);
+  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+@media (hover: hover) {
+  a.live:hover {
+    background: var(--color-base-200);
+  }
+}
+
+@media (pointer: coarse) {
+  .live {
+    inline-size: 44px;
+    block-size: 44px;
+  }
+}
+
+.live-dot {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background: var(--track);
+}
+
+.live:not([data-source="none"]) .live-dot {
+  background: var(--clos-ink);
+}
+
+.live[data-source="frontier"] .live-dot {
+  outline: 2px solid color-mix(in oklch, var(--clos-ink) 40%, transparent);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  overflow: hidden;
+  inline-size: 1px;
+  block-size: 1px;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

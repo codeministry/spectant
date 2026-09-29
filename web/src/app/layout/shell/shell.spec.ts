@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -7,6 +8,8 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult } from '../../core/api.service';
+import { LockSourceService } from '../../core/lock-source.service';
+import { navigatesNatively } from './shell-nav';
 import { tierFor } from './tier';
 
 /** Stands in for the browser's ResizeObserver: the test decides the shell container's width. */
@@ -299,7 +302,7 @@ describe('ShellComponent', () => {
           expect(disabled.textContent).toContain("Comes with this spec's later tasks");
         }
         expect(entries.every((entry) => entry.querySelector('ui-icon') !== null)).toBe(true);
-        expect(texts(nav?.querySelectorAll('[data-area] .area-name') as NodeListOf<Element>)).toEqual([
+        expect(texts(nav?.querySelectorAll('[data-area] .entry-name') as NodeListOf<Element>)).toEqual([
           'Dashboard',
           'Status',
           'Live',
@@ -358,6 +361,174 @@ describe('ShellComponent', () => {
       const hintId = palette.getAttribute('aria-describedby') ?? '';
       expect(hintId).not.toBe('');
       expect(root.querySelector(`#${hintId}`)?.textContent).toContain('comes with a later task');
+    });
+  });
+
+  describe('header pickers, area menu focus and live states (T36)', () => {
+    const TWO = fakeApi({
+      workspaces: () =>
+        Promise.resolve(
+          ok([
+            { slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: { specs: 3 } },
+            { slug: 'lantern', name: 'lantern', pathTail: 'lantern', readable: false, error: 'missing', counts: null },
+          ]),
+        ),
+    });
+    const control = (root: HTMLElement, name: string): HTMLElement => {
+      const el = root.querySelector<HTMLElement>(`header [data-control="${name}"]`);
+      if (!el) throw new Error(`${name} missing`);
+      return el;
+    };
+    const click = (el: HTMLElement, init: MouseEventInit = {}): MouseEvent => {
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...init });
+      el.dispatchEvent(event);
+      return event;
+    };
+    const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+    const dialogProto = HTMLDialogElement.prototype as unknown as Record<string, unknown>;
+
+    beforeEach(() => {
+      proto['showPopover'] = vi.fn();
+      proto['hidePopover'] = vi.fn(function (this: HTMLElement) {
+        this.dispatchEvent(Object.assign(new Event('toggle'), { newState: 'closed', oldState: 'open' }));
+      });
+      dialogProto['showModal'] = vi.fn(function (this: HTMLDialogElement) {
+        this.setAttribute('open', '');
+      });
+      dialogProto['close'] = vi.fn(function (this: HTMLDialogElement) {
+        this.removeAttribute('open');
+        this.dispatchEvent(new Event('close'));
+      });
+    });
+    afterEach(() => {
+      delete proto['showPopover'];
+      delete proto['hidePopover'];
+      delete dialogProto['showModal'];
+      delete dialogProto['close'];
+    });
+
+    it('opens the workspace picker on a plain click: all workspaces, every workspace with its specs, the current marked', async () => {
+      setUp(TWO);
+      const { root, harness } = await open('/w/harbor/s/002/claims');
+      const picker = control(root, 'workspace');
+      expect(picker.getAttribute('aria-expanded')).toBe('false');
+      expect(picker.getAttribute('aria-haspopup')).toBe('dialog');
+
+      const event = click(picker);
+      await harness.fixture.whenStable();
+      expect(event.defaultPrevented).toBe(true);
+      expect(TestBed.inject(Router).url).toBe('/w/harbor/s/002/claims');
+      expect(picker.getAttribute('aria-expanded')).toBe('true');
+
+      const list = root.querySelector('nav[data-picker="workspace"]');
+      expect(list?.getAttribute('aria-label')).toBe('Workspaces');
+      const entries = [...(list?.querySelectorAll<HTMLAnchorElement>('.picker-entry') ?? [])];
+      expect(entries.map((entry) => entry.getAttribute('href'))).toEqual(['/', '/w/harbor', '/w/lantern']);
+      expect(texts(list?.querySelectorAll('.entry-name') as NodeListOf<Element>)).toEqual(['All workspaces', 'harbor', 'lantern']);
+      expect(texts(list?.querySelectorAll('.entry-meta') as NodeListOf<Element>)).toEqual(['Specs: 3', 'Cannot be read']);
+      expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual([null, 'true', null]);
+      expect(document.activeElement).toBe(entries[1]);
+      const footer = list?.querySelector('[data-picker-footer]');
+      expect(footer?.getAttribute('href')).toBe('/settings');
+      expect(footer?.textContent).toContain('Manage workspaces');
+
+      entries[2]?.click();
+      await harness.fixture.whenStable();
+      expect(TestBed.inject(Router).url).toBe('/w/lantern');
+      expect(picker.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('leaves a modified or non-primary click to the anchor, which keeps its href', async () => {
+      setUp(TWO);
+      const { root, harness } = await open('/w/harbor/s/002');
+      const picker = control(root, 'workspace');
+      for (const init of [{ metaKey: true }, { ctrlKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }]) {
+        const event = click(picker, init);
+        await harness.fixture.whenStable();
+        expect(event.defaultPrevented, JSON.stringify(init)).toBe(false);
+        expect(picker.getAttribute('aria-expanded'), JSON.stringify(init)).toBe('false');
+      }
+      expect(navigatesNatively(new MouseEvent('click', { button: 0 }))).toBe(false);
+      expect(navigatesNatively(new MouseEvent('click', { button: 0, metaKey: true }))).toBe(true);
+    });
+
+    it("opens the spec picker with the workspace's specs: id, title, stage chip, the open one marked", async () => {
+      setUp(TWO);
+      const { root, harness } = await open('/w/harbor/s/002/claims');
+      const picker = control(root, 'spec');
+      click(picker);
+      await harness.fixture.whenStable();
+      expect(picker.getAttribute('aria-expanded')).toBe('true');
+
+      const list = root.querySelector('nav[data-picker="spec"]');
+      expect(list?.getAttribute('aria-label')).toBe('Specs');
+      expect(list?.querySelector('.picker-all')?.getAttribute('href')).toBe('/w/harbor#specs');
+      expect(list?.querySelector('.picker-all')?.textContent).toContain('All specs in harbor');
+      const rows = [...(list?.querySelectorAll<HTMLAnchorElement>('[data-spec]') ?? [])];
+      expect(rows.map((row) => row.getAttribute('data-spec'))).toEqual(['004', '002', '003']);
+      expect(rows.map((row) => row.getAttribute('href'))).toEqual(['/w/harbor/s/004', '/w/harbor/s/002', '/w/harbor/s/003']);
+      expect(texts(list?.querySelectorAll('[data-spec] .entry-name') as NodeListOf<Element>)).toEqual([
+        'Retention policies',
+        'Web console',
+        'Config loader',
+      ]);
+      expect(texts(list?.querySelectorAll('[data-spec] ui-chip') as NodeListOf<Element>)).toEqual(['Code review', 'Build', 'Tasks']);
+      expect(rows.map((row) => row.getAttribute('aria-current'))).toEqual([null, 'true', null]);
+      expect(document.activeElement).toBe(rows[1]);
+
+      rows[2]?.click();
+      await harness.fixture.whenStable();
+      expect(TestBed.inject(Router).url).toBe('/w/harbor/s/003');
+    });
+
+    it('opens the pickers as bottom sheets at compact, focused on the current entry', async () => {
+      setUp(TWO);
+      const { root, harness } = await open('/w/harbor/s/002', 390);
+      expect(root.querySelectorAll('ui-sheet')).toHaveLength(2);
+      expect(root.querySelectorAll('ui-popover.picker-popover')).toHaveLength(0);
+      expect(root.querySelectorAll('header')).toHaveLength(1);
+
+      const picker = control(root, 'spec');
+      click(picker);
+      await harness.fixture.whenStable();
+      const sheet = root.querySelector('ui-sheet[data-tier="compact"] dialog[open]');
+      expect(sheet?.getAttribute('aria-label')).toBe('Specs');
+      expect(picker.getAttribute('aria-expanded')).toBe('true');
+      expect(document.activeElement?.getAttribute('data-spec')).toBe('002');
+
+      (sheet?.querySelector('[data-spec="004"]') as HTMLElement).click();
+      await harness.fixture.whenStable();
+      expect(TestBed.inject(Router).url).toBe('/w/harbor/s/004');
+      expect(root.querySelector('ui-sheet dialog[open]')).toBeNull();
+      expect(picker.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('opens the area menu on the current area, with a g-key hint per area that has one', async () => {
+      setUp();
+      const { root, harness } = await open('/w/harbor/s/002/claims');
+      control(root, 'area').click();
+      await harness.fixture.whenStable();
+      expect(document.activeElement?.getAttribute('data-area')).toBe('data');
+      const keys = [...root.querySelectorAll('header nav[aria-label="Areas"] [data-area]')].map(
+        (entry) => entry.querySelector('ui-kbd')?.textContent.trim() ?? null,
+      );
+      expect(keys).toEqual([null, 'g s', 'g l', 'g d', 'g o', 'g n']);
+      expect(root.querySelector('header nav[aria-label="Areas"] ui-kbd')?.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('shows the live indicator state per lock source, with a text alternative', async () => {
+      setUp();
+      const { root, harness } = await open('/w/harbor/s/002/status');
+      const lock = TestBed.inject(LockSourceService);
+      for (const source of ['none', 'activity', 'frontier'] as const) {
+        lock.connect(signal({ lockSource: source, lock: null, agentsWorking: 0 }));
+        await harness.fixture.whenStable();
+        const live = control(root, 'live');
+        expect(live.getAttribute('data-source'), source).toBe(source);
+        expect(live.querySelector('.visually-hidden')?.textContent, source).toContain(
+          { none: 'No agent source', activity: 'activity log', frontier: 'LifeOS frontier locks' }[source],
+        );
+      }
     });
   });
 

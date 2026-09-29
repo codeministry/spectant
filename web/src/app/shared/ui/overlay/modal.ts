@@ -17,7 +17,8 @@ export interface ModalHandlers {
  * layer, the inert page and the focus trap for free; what WebKit 17 lacks (`closedby`) is handled here, per
  * web/CLAUDE.md: Esc and a backdrop click set `open` to false, and the model is the one source of truth, so a
  * router-driven consumer (`/w/:ws/s/:id`) sees every dismissal through its `openChange`. Focus returns to the element
- * that had it when the dialog opened, also when the dialog is destroyed open (a route change).
+ * that had it when the dialog opened, also when the dialog is destroyed open (a route change). On open, focus goes to
+ * the element marked `data-autofocus` inside, if any, else where `showModal()` puts it.
  */
 export function modalDialog(open: ModelSignal<boolean>, dialog: Signal<ElementRef<HTMLDialogElement>>): ModalHandlers {
   const doc = inject(DOCUMENT);
@@ -38,6 +39,8 @@ export function modalDialog(open: ModelSignal<boolean>, dialog: Signal<ElementRe
     if (wanted) {
       returnTo = doc.activeElement instanceof HTMLElement ? doc.activeElement : null;
       element.showModal();
+      // A list opened on its current entry (a picker sheet) marks it; `autofocus` itself is linted out.
+      element.querySelector<HTMLElement>('[data-autofocus]')?.focus();
     } else {
       element.close();
     }
@@ -60,9 +63,13 @@ export function modalDialog(open: ModelSignal<boolean>, dialog: Signal<ElementRe
       if (pressedBackdrop && isBackdrop(event)) open.set(false);
       pressedBackdrop = false;
     },
+    // The `close` event arrives a task after `close()`: when something already took focus meanwhile (a sheet entry
+    // whose navigation focuses its target), that focus stands; otherwise focus goes back to the opener.
     closed: () => {
       open.set(false);
-      restoreFocus();
+      const active = doc.activeElement;
+      if (active === null || active === doc.body || dialog().nativeElement.contains(active)) restoreFocus();
+      else returnTo = null;
     },
   };
 }

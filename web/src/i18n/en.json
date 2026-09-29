@@ -265,16 +265,21 @@
       "label": "Workspace: {{name}}",
       "all": "All workspaces",
       "menu": "Workspaces",
-      "countLabel": "Workspaces: {{count}}"
+      "countLabel": "Workspaces: {{count}}",
+      "specCount": "Specs: {{count}}",
+      "unreadable": "Cannot be read",
+      "manage": "Manage workspaces"
     },
     "spec": {
       "label": "Spec: {{id}} {{title}}",
       "countLabel": "Specs: {{count}}",
+      "all": "All specs in {{workspace}}",
       "menu": "Specs",
       "none": "Open a workspace to pick a spec"
     },
     "area": {
       "label": "Area: {{area}}",
+      "goKey": "g {{key}}",
       "menu": "Areas",
       "needsSpec": "Open a spec to switch areas",
       "unbuilt": "Comes with this spec's later tasks"
