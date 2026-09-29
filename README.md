@@ -1,4 +1,4 @@
-# Spectant
+# spectant
 
 **The local spec companion for developers.** Spectant is a single binary for macOS and Linux that reads the Markdown
 specs in the repositories you register and shows them side by side on one dashboard in your browser, or in a
