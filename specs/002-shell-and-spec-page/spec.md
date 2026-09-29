@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 16/49
+progress: 17/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T16:30:11Z
+updated: 2026-09-29T16:37:26Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -197,7 +197,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 
 **Spec dashboard and Status**
 
-- [ ] ISC-78: `/w/:ws/s/:id` shows the spec's key numbers (claims, tasks, rounds, gates, waiting), its idea quote, the next command with its reason, one bar per lane and the area tiles, all from the fixture files. ⟨?: the idea quote is the first sentence of `## Goal`, falling back to `task:` — assuming no spec carries a dedicated idea field⟩
+- [x] ISC-78: `/w/:ws/s/:id` shows the spec's key numbers (claims, tasks, rounds, gates, waiting), its idea quote, the next command with its reason, one bar per lane and the area tiles, all from the fixture files. ⟨?: the idea quote is the first sentence of `## Goal`, falling back to `task:` — assuming no spec carries a dedicated idea field⟩
 - [ ] ISC-79: The stage and the next command `core/` derives for every fixture spec equal the stage table in `FORMAT.md`, row by row. (after: ISC-68.1)
 - [x] ISC-80: A spec's timeline merges the decisions of context.md, the rounds of rounds.jsonl, the gate marks and the commits touching the spec folder into one time-ordered list with one entry per source event.
 - [x] ISC-36: A spec's timeline lists its events in order; a spec without `events.jsonl` shows its derived stage marked as derived.
@@ -285,6 +285,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-78: e2e — `bun run e2e -- spec -g dashboard` 4 passed: claims and task fractions, idea quote, next command and reasons, lane rows in model order with operator last and the five area tile links equal core/fixtures/harbor.spec.golden.json (the ISC-72 check); layouts confirmed by full-page captures at 390/820/1440 after a compact cascade fix (hidden rail cards outranked by .card grew implicit columns) (T53; 2026-09-29)
 
 - ISC-76: e2e — `bun run e2e -- spec -g "deep link"` 3 passed (390/820/1440): /w/harbor/s/002/claims selects the Data area with aria-current on its entry and the tab bar shows only Claims · Tasks · Evidence with closed/total and landed/total counts; Live and Notes are disabled entries with their reason; switching a tab changes the URL; shell e2e 39 passed (T37; 2026-09-29)
 

@@ -1,0 +1,352 @@
+/*
+ * The spec dashboard (design.md § Spec dashboard, three tiers on the shell container). Compact: key numbers, next
+ * step, idea, lanes, tiles; the rail content (waiting, warnings, gates) lives on Status there. Medium: the idea above
+ * next step and waiting (side by side from 900), then lanes, a 6-track tile grid, warnings and gates. Wide: the
+ * 264 px hero beside four tiles, next step 7fr beside lanes 5fr, five tiles in a row. Colours are tokens only.
+ */
+:host {
+  display: block;
+}
+
+.page {
+  display: grid;
+  grid-template-areas: 'kpi' 'next' 'idea' 'lanes' 'tiles';
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+
+.next { grid-area: next; }
+.waiting { grid-area: waiting; }
+.lanes { grid-area: lanes; }
+.warnings { grid-area: warnings; }
+.gates { grid-area: gates; }
+
+/* Compact: the rail content lives on Status. `.page > .card` outranks `.card` below, which would otherwise
+   turn these back into grid items placed on areas the compact template does not name, growing implicit columns. */
+.page > .waiting,
+.page > .warnings,
+.page > .gates {
+  display: none;
+}
+
+.card {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-inline-size: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+}
+
+.muted {
+  margin: 0;
+  color: var(--muted-ink);
+}
+
+/* KPI band */
+.kpi {
+  grid-area: kpi;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.kpi .hero {
+  grid-column: 1 / -1;
+}
+
+/* The idea */
+.idea {
+  grid-area: idea;
+  gap: 8px;
+  border-inline-start: 3px solid var(--color-secondary);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+blockquote {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
+
+/* Next step */
+.reasons {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-inline-start: 20px;
+  list-style: disc;
+}
+
+/* Rows: waiting, warnings, gates */
+.rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.waiting-row,
+.warning-row,
+.gate-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: start;
+  min-block-size: 24px;
+}
+
+.kind,
+.gate-state {
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.ref,
+.lane-name,
+.tile-mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+.row-text {
+  flex: 1 1 12rem;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.warning-icon {
+  color: var(--hover-ink);
+}
+
+.gate-name {
+  font-weight: 600;
+}
+
+.gate-dot {
+  flex-shrink: 0;
+  inline-size: 8px;
+  block-size: 8px;
+  margin-block-start: 6px;
+  border-radius: 50%;
+  background: var(--held);
+}
+
+.gate-dot[data-tone='accent'] { background: var(--color-accent); }
+.gate-dot[data-tone='warning'] { background: var(--color-warning); }
+
+/* Lanes */
+.lane-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lane {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 48px;
+  gap: 16px;
+  align-items: center;
+  min-block-size: 44px;
+  border-radius: var(--radius-field);
+  color: inherit;
+  text-decoration: none;
+}
+
+.lane-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lane-count {
+  color: var(--muted-ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+@media (hover: hover) {
+  .lane:hover .lane-name,
+  .tile:hover .tile-name {
+    color: var(--disp-ink);
+  }
+}
+
+/* Area tiles */
+.tiles {
+  grid-area: tiles;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.tile {
+  position: relative;
+  gap: 4px;
+  align-content: start;
+  min-block-size: 96px;
+  padding-block-end: 32px;
+  text-decoration: none;
+}
+
+.tile:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.tile-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.tile-icon,
+.tile-arrow {
+  color: var(--muted-ink);
+}
+
+.tile-name {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 24px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile-line,
+.tile-mono {
+  overflow: hidden;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile-arrow {
+  position: absolute;
+  inset-block-end: 12px;
+  inset-inline-end: 12px;
+}
+
+.hint {
+  display: none;
+  padding-inline: 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+/* Medium: idea first, the rail content inline, 4-up KPI tiles, the 6-track tile grid. */
+@container shell (width >= 640px) {
+  .page {
+    grid-template-areas: 'kpi' 'idea' 'next' 'waiting' 'lanes' 'tiles' 'warnings' 'gates';
+  }
+
+  .page > .waiting,
+  .page > .warnings,
+  .page > .gates {
+    display: grid;
+  }
+
+  .kpi {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .tiles {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .tile,
+  .tile:last-child:nth-child(odd) {
+    grid-column: span 2;
+  }
+
+  .tile[data-area-tile='docs'],
+  .tile[data-area-tile='notes'] {
+    grid-column: span 3;
+  }
+
+  @media (any-hover: hover) and (any-pointer: fine) {
+    .hint {
+      display: inline-block;
+    }
+  }
+}
+
+/* The two-column split from 900 (design.md § Tablet). */
+@container shell (width >= 900px) {
+  .page {
+    grid-template-areas: 'kpi kpi' 'idea idea' 'next waiting' 'lanes lanes' 'tiles tiles' 'warnings gates';
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Wide: hero beside four tiles, next step beside lanes, five tiles in a row. */
+@container shell (width >= 1120px) {
+  .page {
+    grid-template-areas: 'kpi kpi' 'idea idea' 'next lanes' 'tiles tiles' 'waiting gates' 'warnings gates';
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+
+  .kpi {
+    grid-template-columns: 264px repeat(4, minmax(0, 1fr));
+  }
+
+  .kpi .hero {
+    grid-column: auto;
+  }
+
+  blockquote {
+    font-size: 19px;
+    line-height: 28px;
+  }
+
+  .tiles {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .tile,
+  .tile:last-child:nth-child(odd),
+  .tile[data-area-tile='docs'],
+  .tile[data-area-tile='notes'] {
+    grid-column: auto;
+    min-block-size: 136px;
+  }
+
+  .lane {
+    grid-template-columns: 72px minmax(0, 1fr) 56px;
+  }
+}

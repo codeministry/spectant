@@ -581,5 +581,114 @@
       "failed": "Konnte nicht geladen werden",
       "listing": "Die Nachweise konnten nicht geladen werden."
     }
+  },
+  "specDashboard": {
+    "loading": "Spec-Übersicht wird geladen",
+    "error": {
+      "heading": "Die Spec konnte nicht geladen werden",
+      "body": "Prüfen Sie, ob der Server läuft, und versuchen Sie es erneut.",
+      "retry": "Erneut versuchen"
+    },
+    "kpi": {
+      "label": "Kennzahlen",
+      "claims": "Claims geschlossen",
+      "claimsMeta": "{{open}} offen · {{takeable}} übernehmbar",
+      "tasks": "Tasks erledigt",
+      "round": "Runde",
+      "agentsWorking": "{{count}} Agenten arbeiten",
+      "noAgent": "Kein Agent arbeitet",
+      "gates": "Gates",
+      "waiting": "Wartet auf Sie"
+    },
+    "idea": {
+      "eyebrow": "Die Idee · spec.md § Goal",
+      "eyebrowTask": "Die Idee · spec.md task:",
+      "none": "Noch kein Goal-Satz und keine task-Zeile."
+    },
+    "next": {
+      "heading": "Nächster Schritt",
+      "eyebrow": "Was jetzt auszuführen ist",
+      "copy": "Befehl kopieren",
+      "copied": "Kopiert",
+      "manual": "Markieren und ⌘C drücken",
+      "done": "Nichts mehr auszuführen: Die Spec ist abgeschlossen.",
+      "reasons": "Warum dieser Schritt"
+    },
+    "waiting": {
+      "heading": "Wartet auf Sie",
+      "none": "Nichts wartet auf Sie.",
+      "checkLabel": "Operator-Task {{ref}}, später unter Status abzuhaken",
+      "kinds": {
+        "operator": "Operator-Task",
+        "manual": "Manueller Claim",
+        "question": "Frage"
+      }
+    },
+    "lanes": {
+      "heading": "Lanes",
+      "none": "Noch keine tasks.md, daher keine Lanes.",
+      "link": "Live, Lane {{lane}}: {{landed}} von {{total}} erledigt"
+    },
+    "tiles": {
+      "label": "In dieser Spec",
+      "status": {
+        "entries": "{{count}} Timeline-Einträge",
+        "warnings": "{{count}} Warnungen"
+      },
+      "live": {
+        "working": "{{count}} Agenten arbeiten",
+        "idle": "Kein Agent arbeitet",
+        "source": "Lock-Quelle: {{source}}"
+      },
+      "data": {
+        "claims": "{{closed}}/{{total}} Claims geschlossen",
+        "tasks": "{{landed}}/{{total}} Tasks erledigt",
+        "noTasks": "Noch keine tasks.md"
+      },
+      "docs": {
+        "present": "{{names}}",
+        "none": "Noch kein Plan, Design oder Constitution",
+        "decisions": "{{count}} Entscheidungen"
+      },
+      "notes": {
+        "later": "Notizen kommen mit einem späteren Task",
+        "count": "{{count}} Notizen",
+        "board": "{{count}} Runden auf dem Board"
+      }
+    },
+    "docNames": {
+      "plan": "Plan",
+      "design": "Design",
+      "constitution": "Constitution"
+    },
+    "areas": {
+      "status": "Status",
+      "live": "Live",
+      "data": "Daten",
+      "docs": "Dokumente",
+      "notes": "Notizen"
+    },
+    "warnings": {
+      "heading": "Warnungen",
+      "none": "Keine Warnungen."
+    },
+    "gates": {
+      "heading": "Gates",
+      "open": "Unter Status öffnen",
+      "names": {
+        "reviewed": "Reviewed",
+        "codeReviewed": "Code-Review",
+        "drift": "Drift",
+        "diagrams": "Diagramme"
+      },
+      "states": {
+        "ok": "ok",
+        "fresh": "aktuell",
+        "stale": "veraltet",
+        "missing": "fehlt",
+        "warn": "Warnung",
+        "na": "nicht zutreffend"
+      }
+    }
   }
 }

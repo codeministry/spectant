@@ -1,0 +1,216 @@
+@switch (view()) {
+  @case ('loading') {
+    <div class="page" role="status" [attr.aria-label]="'specDashboard.loading' | transloco">
+      <ui-skeleton class="skeleton-band" height="136px" />
+      <ui-skeleton height="96px" />
+      <ui-skeleton height="160px" />
+    </div>
+  }
+  @case ('unserved') {
+    <app-area-placeholder />
+  }
+  @case ('error') {
+    <ui-empty-state icon="triangle-alert" [heading]="'specDashboard.error.heading' | transloco" [body]="'specDashboard.error.body' | transloco">
+      <button type="button" class="btn btn-sm" (click)="reload()">{{ 'specDashboard.error.retry' | transloco }}</button>
+    </ui-empty-state>
+  }
+  @case ('ok') {
+    @if (model(); as m) {
+      <div class="page">
+        <section class="kpi" data-section="kpi" [attr.aria-label]="'specDashboard.kpi.label' | transloco">
+          <ui-kpi-tile
+            class="hero"
+            data-kpi="claims"
+            variant="hero"
+            [label]="'specDashboard.kpi.claims' | transloco"
+            [value]="m.keyNumbers.claims.closed"
+            [denominator]="m.keyNumbers.claims.total"
+            [meta]="'specDashboard.kpi.claimsMeta' | transloco: { open: m.keyNumbers.claims.open, takeable: m.keyNumbers.claims.takeable }"
+            [href]="href('claims')"
+          >
+            <ui-ring visual [value]="claimsRatio()" [size]="96" [stroke]="10" />
+          </ui-kpi-tile>
+          <ui-kpi-tile
+            data-kpi="tasks"
+            [label]="'specDashboard.kpi.tasks' | transloco"
+            [value]="m.keyNumbers.tasks.landed"
+            [denominator]="m.keyNumbers.tasks.total"
+            [href]="href('tasks')"
+          >
+            <ui-meter [value]="m.keyNumbers.tasks.landed" [max]="m.keyNumbers.tasks.total" [label]="'specDashboard.kpi.tasks' | transloco" />
+          </ui-kpi-tile>
+          <ui-kpi-tile
+            data-kpi="round"
+            [label]="'specDashboard.kpi.round' | transloco"
+            [value]="m.keyNumbers.rounds.count"
+            [meta]="
+              m.keyNumbers.rounds.agentsWorking > 0
+                ? ('specDashboard.kpi.agentsWorking' | transloco: { count: m.keyNumbers.rounds.agentsWorking })
+                : ('specDashboard.kpi.noAgent' | transloco)
+            "
+            [href]="href('board')"
+          />
+          <ui-kpi-tile
+            data-kpi="gates"
+            [label]="'specDashboard.kpi.gates' | transloco"
+            [value]="m.keyNumbers.gates.ok"
+            [denominator]="m.keyNumbers.gates.total"
+            [href]="href('status')"
+            fragment="gates"
+          >
+            <ui-meter [segments]="gateSegments()" [label]="'specDashboard.kpi.gates' | transloco" />
+          </ui-kpi-tile>
+          <ui-kpi-tile
+            data-kpi="waiting"
+            [label]="'specDashboard.kpi.waiting' | transloco"
+            [value]="m.keyNumbers.waiting"
+            [href]="href('status')"
+            fragment="waiting"
+          />
+        </section>
+
+        <section class="card idea" data-section="idea" aria-labelledby="spec-dashboard-idea">
+          <p class="eyebrow" id="spec-dashboard-idea">
+            {{ (m.ideaSource === 'task' ? 'specDashboard.idea.eyebrowTask' : 'specDashboard.idea.eyebrow') | transloco }}
+          </p>
+          @if (quote(); as text) {
+            <blockquote>{{ text }}</blockquote>
+          } @else {
+            <p class="muted">{{ 'specDashboard.idea.none' | transloco }}</p>
+          }
+        </section>
+
+        <section class="card next" data-section="next">
+          <ui-section-header [heading]="'specDashboard.next.heading' | transloco" [eyebrow]="'specDashboard.next.eyebrow' | transloco" />
+          @if (m.next.command; as command) {
+            <ui-command-chip
+              [command]="command"
+              [copyLabel]="'specDashboard.next.copy' | transloco"
+              [copiedLabel]="'specDashboard.next.copied' | transloco"
+              [manualHint]="'specDashboard.next.manual' | transloco"
+            />
+          } @else {
+            <p class="muted">{{ 'specDashboard.next.done' | transloco }}</p>
+          }
+          @if (reasons().length > 0) {
+            <ul class="reasons" [attr.aria-label]="'specDashboard.next.reasons' | transloco">
+              @for (reason of reasons(); track $index) {
+                <li data-reason>{{ reason }}</li>
+              }
+            </ul>
+          }
+          <ui-stage-track size="labelled" [labels]="stageLabels()" [current]="stageCurrent()" [ariaLabel]="stageAria()" />
+        </section>
+
+        <section class="card waiting" data-section="waiting">
+          <ui-section-header [heading]="'specDashboard.waiting.heading' | transloco">
+            <span meta>{{ m.keyNumbers.waiting }}</span>
+          </ui-section-header>
+          @if (m.waitingOnYou.length === 0) {
+            <p class="muted">{{ 'specDashboard.waiting.none' | transloco }}</p>
+          } @else {
+            <ul class="rows">
+              @for (item of m.waitingOnYou; track waitingKey(item)) {
+                <li class="waiting-row" [attr.data-kind]="item.kind">
+                  @if (item.kind === 'operator') {
+                    <input
+                      type="checkbox"
+                      class="checkbox checkbox-sm"
+                      disabled
+                      [checked]="item.checked ?? false"
+                      [attr.aria-label]="'specDashboard.waiting.checkLabel' | transloco: { ref: item.ref }"
+                    />
+                  }
+                  <span class="kind">{{ 'specDashboard.waiting.kinds.' + item.kind | transloco }}</span>
+                  <span class="ref">{{ item.ref }}</span>
+                  <span class="row-text">{{ item.title }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        <section class="card lanes" data-section="lanes">
+          <ui-section-header [heading]="'specDashboard.lanes.heading' | transloco" />
+          @if (m.lanes.length === 0) {
+            <p class="muted">{{ 'specDashboard.lanes.none' | transloco }}</p>
+          } @else {
+            <ul class="lane-list">
+              @for (lane of m.lanes; track lane.name) {
+                <li>
+                  <a
+                    class="lane"
+                    [attr.data-lane]="lane.name"
+                    [routerLink]="link('board')"
+                    [queryParams]="{ lane: lane.name }"
+                    [attr.aria-label]="'specDashboard.lanes.link' | transloco: { lane: lane.name, landed: lane.landed, total: lane.total }"
+                  >
+                    <span class="lane-name">{{ lane.name }}</span>
+                    <ui-meter [value]="lane.landed" [max]="lane.total" />
+                    <span class="lane-count">{{ lane.landed }}/{{ lane.total }}</span>
+                  </a>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        <nav class="tiles" data-section="tiles" [attr.aria-label]="'specDashboard.tiles.label' | transloco">
+          @for (tile of tiles(); track tile.id) {
+            <a class="card tile" [attr.data-area-tile]="tile.id" [routerLink]="tile.link">
+              <span class="tile-head">
+                <ui-icon class="tile-icon" [name]="tile.icon" [size]="16" />
+                <span class="tile-name">{{ 'specDashboard.areas.' + tile.id | transloco }}</span>
+                <kbd class="hint" aria-hidden="true">{{ tile.hint }}</kbd>
+              </span>
+              @if (tile.mono; as session) {
+                <code class="tile-mono" [title]="session">{{ session }}</code>
+              }
+              @for (line of tile.lines; track $index) {
+                <span class="tile-line">{{ line }}</span>
+              }
+              <ui-icon class="tile-arrow" name="chevron-right" [size]="16" />
+            </a>
+          }
+        </nav>
+
+        <section class="card warnings" data-section="warnings">
+          <ui-section-header [heading]="'specDashboard.warnings.heading' | transloco" [level]="3">
+            <span meta>{{ m.areas.status.warnings }}</span>
+          </ui-section-header>
+          @if (m.warnings.length === 0) {
+            <p class="muted">{{ 'specDashboard.warnings.none' | transloco }}</p>
+          } @else {
+            <ul class="rows">
+              @for (warning of m.warnings; track $index) {
+                <li class="warning-row" [attr.data-warning]="warning.kind">
+                  <ui-icon class="warning-icon" name="triangle-alert" [size]="16" />
+                  <span class="row-text">{{ warning.text }}</span>
+                  @if (warning.command; as command) {
+                    <code class="ref">{{ command }}</code>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        <section class="card gates" data-section="gates">
+          <ui-section-header [heading]="'specDashboard.gates.heading' | transloco" [level]="3">
+            <a actions class="link link-hover" [routerLink]="link('status')" fragment="gates">{{ 'specDashboard.gates.open' | transloco }}</a>
+          </ui-section-header>
+          <ul class="rows">
+            @for (name of gateNames; track name) {
+              <li class="gate-row" [attr.data-gate]="name" [attr.data-state]="m.gates[name].state">
+                <span class="gate-dot" aria-hidden="true" [attr.data-tone]="gateTone(m.gates[name].state)"></span>
+                <span class="gate-name">{{ 'specDashboard.gates.names.' + name | transloco }}</span>
+                <span class="gate-state">{{ 'specDashboard.gates.states.' + m.gates[name].state | transloco }}</span>
+                <span class="row-text muted">{{ m.gates[name].detail }}</span>
+              </li>
+            }
+          </ul>
+        </section>
+      </div>
+    }
+  }
+}

@@ -11,6 +11,7 @@ import { AreaPlaceholder } from './area-placeholder';
  *   status: () => import('./status/status-tab').then((m) => m.StatusTab),
  */
 export const VIEW_LOADERS: Partial<Record<TabId | 'dashboard', () => Promise<Type<unknown>>>> = {
+  dashboard: () => import('./dashboard/spec-dashboard').then((m) => m.SpecDashboard),
   timeline: () => import('./status/timeline/timeline-tab').then((m) => m.TimelineTab),
   claims: () => import('./data/claims/claims-tab').then((m) => m.ClaimsTab),
   evidence: () => import('./data/evidence/evidence-tab').then((m) => m.EvidenceTab),

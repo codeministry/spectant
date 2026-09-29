@@ -21,6 +21,7 @@ let nextId = 0;
     .text { grid-area: 1 / 1; font-size: 11px; font-variant-numeric: tabular-nums; font-weight: 600; line-height: 16px; }
     .unit { margin-inline-start: 0.1em; color: var(--muted-ink); font-size: 0.75em; }
     :host([data-size='112']) .text { font-size: 20px; line-height: 28px; }
+    :host([data-size='96']) .text { font-size: 17px; line-height: 24px; }
     :host([data-size='72']) .text { font-size: 15px; line-height: 20px; }
     :host([data-size='52']) .text { font-size: 13px; line-height: 16px; }
     @media (forced-colors: active) {
@@ -60,7 +61,7 @@ let nextId = 0;
 })
 export class UiRing {
   readonly value = input.required<number | null>();
-  readonly size = input<112 | 72 | 52 | 40>(72);
+  readonly size = input<112 | 96 | 72 | 52 | 40>(72);
   readonly stroke = input<10 | 8 | 6>(8);
 
   protected readonly gradientId = `ui-ring-${nextId++}`;

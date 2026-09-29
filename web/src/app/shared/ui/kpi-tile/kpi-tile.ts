@@ -40,7 +40,7 @@ import type { Tone } from '../tone';
   template: `
     <ui-card [accent]="accent()" [padding]="0" [interactive]="!!href()">
       @if (href(); as link) {
-        <a class="tile" [routerLink]="link"><ng-container [ngTemplateOutlet]="body" /></a>
+        <a class="tile" [routerLink]="link" [fragment]="fragment()"><ng-container [ngTemplateOutlet]="body" /></a>
       } @else {
         <div class="tile"><ng-container [ngTemplateOutlet]="body" /></div>
       }
@@ -76,6 +76,8 @@ export class UiKpiTile {
   readonly meta = input<string>();
   readonly icon = input<IconName>();
   readonly href = input<string>();
+  /** With `href`: the fragment the link lands on (`#waiting`). */
+  readonly fragment = input<string>();
   readonly accent = input<Tone>();
 
   /** More than six digits across value and denominator: the fraction steps down one size. */

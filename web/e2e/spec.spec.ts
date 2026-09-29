@@ -91,3 +91,61 @@ for (const { width, tier } of TIERS) {
     });
   });
 }
+
+// ── T53: the spec dashboard (ISC-78, ISC-72) ──────────────────────────────────────────────────────────
+
+const SPEC = HARBOR_002;
+const DASHBOARD_BASE = '/w/harbor/s/002';
+
+/** Each area tile and the route it opens (the first tab of its area). */
+const AREA_TILES = [
+  ['status', `${DASHBOARD_BASE}/status`],
+  ['live', `${DASHBOARD_BASE}/board`],
+  ['data', `${DASHBOARD_BASE}/claims`],
+  ['docs', `${DASHBOARD_BASE}/plan`],
+  ['notes', `${DASHBOARD_BASE}/notes`],
+] as const;
+
+test.describe('dashboard', () => {
+  test('dashboard key numbers equal the golden', async ({ page }) => {
+    await page.goto(DASHBOARD_BASE);
+    const band = page.locator('app-spec-dashboard [data-section="kpi"]');
+    const { claims, tasks, rounds, gates, waiting } = SPEC.keyNumbers;
+    await expect(band.locator('[data-kpi="claims"] .figure')).toHaveText(`${claims.closed}/${claims.total}`);
+    await expect(band.locator('[data-kpi="claims"] .meta')).toContainText(`${claims.open}`);
+    await expect(band.locator('[data-kpi="claims"] .meta')).toContainText(`${claims.takeable}`);
+    await expect(band.locator('[data-kpi="tasks"] .figure')).toHaveText(`${tasks.landed}/${tasks.total}`);
+    await expect(band.locator('[data-kpi="round"] .figure')).toHaveText(`${rounds.count}`);
+    await expect(band.locator('[data-kpi="gates"] .figure')).toHaveText(`${gates.ok}/${gates.total}`);
+    await expect(band.locator('[data-kpi="waiting"] .figure')).toHaveText(`${waiting}`);
+    await expect(band.locator('[data-kpi="waiting"] a')).toHaveAttribute('href', `${DASHBOARD_BASE}/status#waiting`);
+  });
+
+  test('dashboard idea quote and next command equal the golden', async ({ page }) => {
+    await page.goto(DASHBOARD_BASE);
+    const quote = page.locator('app-spec-dashboard [data-section="idea"] blockquote');
+    await expect(quote).toContainText(SPEC.ideaQuote ?? 'the golden has no idea quote');
+    const next = page.locator('app-spec-dashboard [data-section="next"]');
+    await expect(next.locator('ui-command-chip code')).toHaveText(SPEC.next.command ?? '');
+    await expect(next.locator('[data-reason]')).toHaveText(SPEC.next.reasons.slice(0, 3));
+  });
+
+  test('dashboard lanes keep the model order with their counts', async ({ page }) => {
+    await page.goto(DASHBOARD_BASE);
+    const rows = page.locator('app-spec-dashboard [data-lane]');
+    await expect(rows).toHaveCount(SPEC.lanes.length);
+    const names = await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-lane')));
+    expect(names).toEqual(SPEC.lanes.map((lane) => lane.name));
+    expect(names.at(-1)).toBe('operator');
+    await expect(rows.locator('.lane-count')).toHaveText(SPEC.lanes.map((lane) => `${lane.landed}/${lane.total}`));
+    await expect(rows.first()).toHaveAttribute('href', `${DASHBOARD_BASE}/board?lane=${SPEC.lanes[0]?.name ?? ''}`);
+  });
+
+  test('dashboard area tiles link to their routes', async ({ page }) => {
+    await page.goto(DASHBOARD_BASE);
+    await expect(page.locator('app-spec-dashboard [data-area-tile]')).toHaveCount(AREA_TILES.length);
+    for (const [area, href] of AREA_TILES) {
+      await expect(page.locator(`app-spec-dashboard [data-area-tile="${area}"]`)).toHaveAttribute('href', href);
+    }
+  });
+});

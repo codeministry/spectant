@@ -581,5 +581,114 @@
       "failed": "Could not be loaded",
       "listing": "The evidence could not be loaded."
     }
+  },
+  "specDashboard": {
+    "loading": "Loading the spec dashboard",
+    "error": {
+      "heading": "The spec could not be loaded",
+      "body": "Check that the server is running, then try again.",
+      "retry": "Try again"
+    },
+    "kpi": {
+      "label": "Key numbers",
+      "claims": "Claims closed",
+      "claimsMeta": "{{open}} open · {{takeable}} takeable",
+      "tasks": "Tasks landed",
+      "round": "Round",
+      "agentsWorking": "{{count}} agents working",
+      "noAgent": "No agent working",
+      "gates": "Gates",
+      "waiting": "Waiting on you"
+    },
+    "idea": {
+      "eyebrow": "The idea · spec.md § Goal",
+      "eyebrowTask": "The idea · spec.md task:",
+      "none": "No goal sentence and no task line yet."
+    },
+    "next": {
+      "heading": "Next step",
+      "eyebrow": "What to run now",
+      "copy": "Copy command",
+      "copied": "Copied",
+      "manual": "Select and press ⌘C",
+      "done": "Nothing left to run: the spec is done.",
+      "reasons": "Why this step"
+    },
+    "waiting": {
+      "heading": "Waiting on you",
+      "none": "Nothing waits on you.",
+      "checkLabel": "Operator task {{ref}}, ticked from Status later",
+      "kinds": {
+        "operator": "Operator task",
+        "manual": "Manual claim",
+        "question": "Question"
+      }
+    },
+    "lanes": {
+      "heading": "Lanes",
+      "none": "No tasks.md yet, so no lanes.",
+      "link": "Live, lane {{lane}}: {{landed}} of {{total}} landed"
+    },
+    "tiles": {
+      "label": "Inside this spec",
+      "status": {
+        "entries": "{{count}} timeline entries",
+        "warnings": "{{count}} warnings"
+      },
+      "live": {
+        "working": "{{count}} agents working",
+        "idle": "No agent working",
+        "source": "Lock source: {{source}}"
+      },
+      "data": {
+        "claims": "{{closed}}/{{total}} claims closed",
+        "tasks": "{{landed}}/{{total}} tasks landed",
+        "noTasks": "No tasks.md yet"
+      },
+      "docs": {
+        "present": "{{names}}",
+        "none": "No plan, design or constitution yet",
+        "decisions": "{{count}} decisions"
+      },
+      "notes": {
+        "later": "Notes arrive with a later task",
+        "count": "{{count}} notes",
+        "board": "{{count}} rounds on the board"
+      }
+    },
+    "docNames": {
+      "plan": "Plan",
+      "design": "Design",
+      "constitution": "Constitution"
+    },
+    "areas": {
+      "status": "Status",
+      "live": "Live",
+      "data": "Data",
+      "docs": "Docs",
+      "notes": "Notes"
+    },
+    "warnings": {
+      "heading": "Warnings",
+      "none": "No warnings."
+    },
+    "gates": {
+      "heading": "Gates",
+      "open": "Open in Status",
+      "names": {
+        "reviewed": "Reviewed",
+        "codeReviewed": "Code reviewed",
+        "drift": "Drift",
+        "diagrams": "Diagrams"
+      },
+      "states": {
+        "ok": "ok",
+        "fresh": "fresh",
+        "stale": "stale",
+        "missing": "missing",
+        "warn": "warning",
+        "na": "not applicable"
+      }
+    }
   }
 }
