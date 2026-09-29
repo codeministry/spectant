@@ -349,6 +349,15 @@ From `core/fixtures/harbor/specs/002-web-console/rounds.jsonl`, the end of round
 
 **Derived:** the round entries of the timeline, the row's last-round time, and the scrubber frames of the round board.
 
+**Derived: the re-cut** (spec 002, T18, `recut.ts`, ISC-91). A task is its id together with its text. Between two
+consecutive lines, an id with the same text is the same task and carries its card, tries and note; an id with another
+text is `changed`; an id gone is `struck`; a new id is `added`, also when it carries a text an old id had (a
+renumbering: the old id is struck or changed, and the new id inherits no tries, state or history). Any of the three
+sets the `recut` of the dispatch frame that follows (`struck` in the old line's order, `added` and `changed` in the
+new one's) and puts a re-cut marker on the scrubber before it, with both round numbers. A struck task has no card from
+then on; the live frame shows it `absent` with its strike note while `tasks.md` lists it struck and the last board
+held it.
+
 ## `events` — `events.jsonl`
 
 One JSON object per line, one line per recorded stage transition: `{ts, from, to, command, actor}`, every field a

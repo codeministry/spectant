@@ -8,6 +8,7 @@ import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
 import { glyphSpec, stateKey } from '../../../../shared/ui/glyph/states';
 import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
 import { toneMark } from '../../../../shared/ui/tone';
+import { absentNote } from '../recut';
 import { CardDetail } from './card-detail';
 import { cardHistory, type HistoryFrame } from './card-history';
 
@@ -20,7 +21,8 @@ export type CardDensity = 'comfortable' | 'compact';
  *
  * Two densities, from the board's `?density` param:
  * - comfortable, three rows: glyph, mono id, claim chip, state chip; the text clamped to two lines; builder tag, flags
- *   (parallel, seam, tries, note, stale) and the lock's session for work in flight (ISC-90);
+ *   (parallel, seam, tries, note, stale) and the lock's session for work in flight (ISC-90); an absent card shows its
+ *   strike note under the text instead of the note flag, in both densities (ISC-91, `live/recut.ts`);
  * - compact, two rows: glyph, id and state chip; the text clamped to two lines. Claim chip, builder, flags and session
  *   move into the detail.
  *
@@ -45,6 +47,7 @@ export type CardDensity = 'comfortable' | 'compact';
     .builder { font-weight: 600; }
     .session { font-family: var(--font-mono); overflow-wrap: anywhere; }
     .flag[data-flag='stale'] { color: var(--fail-ink); font-weight: 600; }
+    .strike-note { margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
     @media (forced-colors: active) {
       article { border-inline-start-color: CanvasText; }
     }
@@ -71,8 +74,13 @@ export type CardDensity = 'comfortable' | 'compact';
         <ui-state-chip class="state" [state]="c.state" family="card" />
       </div>
       <p class="text">{{ c.text }}</p>
+      @if (strikeNote(); as note) {
+        <p class="strike-note" data-strike-note>{{ note }}</p>
+      } @else if (strikeNote() === '') {
+        <p class="strike-note" data-strike-note>{{ 'board.card.struck' | transloco }}</p>
+      }
       @if (density() === 'comfortable') {
-        <div class="r3">@if (c.builder) {<span class="builder" data-builder>{{ c.builder }}</span>}@if (c.parallel) {<span class="flag" data-flag="parallel">{{ 'board.card.parallel' | transloco }}</span>}@if (c.seam) {<span class="flag" data-flag="seam">{{ 'board.card.seam' | transloco }}</span>}@if (c.tries > 1) {<span class="flag" data-flag="tries">{{ 'board.card.tries' | transloco: { tries: c.tries } }}</span>}@if (c.note) {<span class="flag" data-flag="note">{{ 'board.card.note' | transloco }}</span>}@if (stale()) {<span class="flag" data-flag="stale">{{ 'board.card.stale' | transloco }}</span>}@if (c.lock; as lock) {<span class="session" data-session>{{ 'board.card.session' | transloco: { session: lock.session } }}</span>}</div>
+        <div class="r3">@if (c.builder) {<span class="builder" data-builder>{{ c.builder }}</span>}@if (c.parallel) {<span class="flag" data-flag="parallel">{{ 'board.card.parallel' | transloco }}</span>}@if (c.seam) {<span class="flag" data-flag="seam">{{ 'board.card.seam' | transloco }}</span>}@if (c.tries > 1) {<span class="flag" data-flag="tries">{{ 'board.card.tries' | transloco: { tries: c.tries } }}</span>}@if (c.note && strikeNote() === null) {<span class="flag" data-flag="note">{{ 'board.card.note' | transloco }}</span>}@if (stale()) {<span class="flag" data-flag="stale">{{ 'board.card.stale' | transloco }}</span>}@if (c.lock; as lock) {<span class="session" data-session>{{ 'board.card.session' | transloco: { session: lock.session } }}</span>}</div>
       }
     </article>
     @if (detailOpen()) {
@@ -91,6 +99,8 @@ export class BoardCard {
   protected readonly spec = computed(() => glyphSpec(this.card().state, 'card'));
   protected readonly stateWord = computed(() => stateKey(this.card().state, 'card'));
   protected readonly edge = computed(() => toneMark(this.spec().tone));
+  /** An absent card's strike note, shown on its face in both densities (ISC-91); null for any other card. */
+  protected readonly strikeNote = computed(() => absentNote(this.card()));
   protected readonly stale = computed(() => {
     const c = this.card();
     return 'stale' in c && c.stale === true;

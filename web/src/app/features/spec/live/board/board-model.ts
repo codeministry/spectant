@@ -1,6 +1,6 @@
 import type { CardState, Frame, FrameCard, LiveFrame } from '../../../../../../../core/src/files';
 import { CARD_STATES, glyphSpec } from '../../../../shared/ui/glyph/states';
-import type { ScrubberFrame, ScrubberMarker } from '../../../../shared/ui/scrubber/scrubber';
+import type { ScrubberFrame } from '../../../../shared/ui/scrubber/scrubber';
 
 /**
  * The board's pure view helpers (T81, ISC-87 to ISC-93). The frames are core's (`Frame[]` from `…/frames`, the
@@ -135,10 +135,8 @@ export function scrubberStops(frames: readonly Frame[], compact: boolean): Scrub
   });
 }
 
-/** A hatched, labelled re-cut marker before each frame that carries a re-cut (ISC-91). */
-export function recutMarkers(frames: readonly Frame[], label: string): ScrubberMarker[] {
-  return frames.filter((f) => f.recut !== undefined).map((f) => ({ before: f.index, label }));
-}
+/** The re-cut markers (ISC-91) are `live/recut.ts`'s, the one web-side mapping of a frame's `recut`. */
+export { recutMarkers } from '../recut';
 
 /** "This frame": the cards new in this frame or in another state than in the previous one, board order. */
 export function frameEvents<C extends FrameCard>(previous: Frame | null, current: { readonly cards: readonly C[] }): C[] {

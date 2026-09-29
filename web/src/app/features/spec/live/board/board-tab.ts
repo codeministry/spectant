@@ -161,7 +161,7 @@ export class BoardTab {
   protected readonly stops = computed(() => scrubberStops(this.frames(), this.compact()));
   protected readonly markers = computed(() => {
     this.lang();
-    return recutMarkers(this.frames(), this.transloco.translate('board.frame.recut'));
+    return recutMarkers(this.frames(), this.transloco.translate('board.frame.recut'), (counts) => this.transloco.translate('board.frame.recutTitle', counts));
   });
   protected readonly events = computed(() => {
     const frame = this.frame();

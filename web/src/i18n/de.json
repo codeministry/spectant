@@ -942,6 +942,7 @@
       "history": "Verlauf · {{label}}",
       "backToLive": "Zurück zu Live",
       "recut": "Neuschnitt",
+      "recutTitle": "Neuschnitt vor {{frame}}: {{struck}} gestrichen, {{changed}} geändert, {{added}} hinzugefügt",
       "stop": "Runde angehalten: {{reason}}"
     },
     "progress": "Claims {{closed}}/{{claims}} · Tasks {{landed}}/{{tasks}}",
@@ -964,6 +965,7 @@
       "seam": "Naht",
       "tries": "Versuch {{tries}}",
       "note": "Notiz",
+      "struck": "gestrichen",
       "stale": "veraltet",
       "session": "Sitzung {{session}}"
     },

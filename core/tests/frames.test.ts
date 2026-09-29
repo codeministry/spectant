@@ -18,7 +18,7 @@ import { buildFrames, CARD_SEVERITY, worstState } from '../src/frames.ts';
 import { buildLiveFrame } from '../src/live.ts';
 import { readLockSources } from '../src/locks.ts';
 import { buildMatrix } from '../src/matrix.ts';
-import { detectRecut } from '../src/recut.ts';
+import { detectRecut, recutBetween, sameTask } from '../src/recut.ts';
 import { goldenPath } from './helpers/golden.ts';
 import { FIXTURES, folders, readTreeAt } from './helpers/read-tree.ts';
 
@@ -432,16 +432,68 @@ describe("spectant-001: this repository's own rounds.jsonl", () => {
   });
 });
 
-describe('re-cut markers (T18, detectRecut: stub today)', () => {
-  test.todo('harbor: one marker before frame 4, R2 → R3, T33 struck, T34 added, T27–T32 changed', () => {
+describe('re-cut markers (T18, detectRecut)', () => {
+  test('harbor: one marker before frame 4, R2 → R3, T33 struck, T34 added, T27–T32 changed', () => {
     expect(detectRecut(frames)).toEqual([{ beforeFrame: 4, fromRound: 2, toRound: 3, struck: ['T33'], added: ['T34'], changed: ids(27, 32) }]);
   });
 
-  test.todo('spectant-001: one marker before frame 8, R4 → R5, T84–T97 struck', () => {
+  test('spectant-001: one marker before frame 8, R4 → R5, T84–T97 struck', () => {
     const markers = detectRecut(spectantFrames);
     expect(markers.map((m) => [m.beforeFrame, m.fromRound, m.toRound])).toEqual([[8, 4, 5]]);
     expect(markers[0]?.struck).toEqual(ids(84, 97));
     expect(markers[0]?.changed).toEqual(spectantFrames[8]?.recut?.changed ?? []);
+  });
+
+  test('every marker equals the recut its frame carries: one rule, no second reading', () => {
+    for (const built of [frames, spectantFrames]) {
+      const markers = detectRecut(built);
+      expect(markers.map((m) => m.beforeFrame)).toEqual(built.filter((f) => f.recut).map((f) => f.index));
+      for (const m of markers) expect(built[m.beforeFrame]?.recut).toEqual({ struck: m.struck, added: m.added, changed: m.changed });
+    }
+    expect(detectRecut([])).toEqual([]);
+    expect(detectRecut([...frames, harborLive])).toEqual(detectRecut(frames));
+  });
+
+  test('spectant-001: a text that moved to another id in the R5 re-cut takes no state or try with it', () => {
+    const before = spectantFrames[7];
+    const after = spectantFrames[8];
+    const moved = (before?.cards ?? []).flatMap((old) => {
+      const now = after?.cards.find((c) => c.text === old.text && c.task !== old.task);
+      return now === undefined ? [] : [{ old, now }];
+    });
+    expect(moved.length).toBeGreaterThan(0);
+    for (const { old, now } of moved) {
+      // the old id is struck or changed, the new one added or changed: never the same task
+      expect([...(after?.recut?.struck ?? []), ...(after?.recut?.changed ?? [])]).toContain(old.task);
+      expect([...(after?.recut?.added ?? []), ...(after?.recut?.changed ?? [])]).toContain(now.task);
+      expect(now.tries).toBe(now.state === 'dispatched' ? 1 : 0);
+    }
+  });
+
+  test('recutBetween: the five cases of the one rule', () => {
+    const board = [
+      { id: 'T1', text: 'parse' },
+      { id: 'T2', text: 'render' },
+      { id: 'T3', text: 'ship' },
+    ];
+    expect(recutBetween(board, board)).toBeNull();
+    // same text under a new id: renumbered, the old id struck and the new one added
+    expect(recutBetween(board, [...board.slice(0, 2), { id: 'T4', text: 'ship' }])).toEqual({ struck: ['T3'], added: ['T4'], changed: [] });
+    // same id with another text: changed; a missing id: struck; a new id with a new text: added
+    expect(recutBetween(board, [{ id: 'T1', text: 'parse the header' }, { id: 'T3', text: 'ship' }, { id: 'T5', text: 'docs' }])).toEqual({
+      struck: ['T2'],
+      added: ['T5'],
+      changed: ['T1'],
+    });
+    expect(sameTask({ id: 'T1', text: 'parse' }, { id: 'T1', text: 'parse' })).toBe(true);
+    expect(sameTask({ id: 'T1', text: 'parse' }, { id: 'T9', text: 'parse' })).toBe(false);
+  });
+
+  test('synthetic: a renumbered text starts fresh under its new id', () => {
+    const built = buildFrames(synthetic(line(1, ['T1'], [['T1', 'parse', 'fail']]), line(2, [], [['T2', 'parse', 'held']])));
+    expect(built[2]?.recut).toEqual({ struck: ['T1'], added: ['T2'], changed: [] });
+    expect(card(built[2], 'T2')).toMatchObject({ state: 'waiting', tries: 0 });
+    expect(card(built[2], 'T1')).toBeUndefined();
   });
 });
 

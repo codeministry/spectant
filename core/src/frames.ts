@@ -10,14 +10,16 @@
 //
 // Identity is the id together with its text. A re-cut of tasks.md between two lines (an id struck, added, or kept
 // with a different text) sets `recut` on the dispatch frame that follows it, and breaks the chain for every changed
-// id: no state, try count or note of the old task is attributed to the renumbered id (ISC-91). T18 (`recut.ts`)
-// turns the flag into scrubber markers and struck-as-absent; T19 (`matrix.ts`) the matrix cells; T21 (`live.ts`)
-// appends the live frame. This module builds neither `running` (locks, T21) nor `absent` (re-cut, T18) cards.
+// id: no state, try count or note of the old task is attributed to the renumbered id (ISC-91). The rule is one,
+// recut.ts's `recutBetween` and `sameTask` (T18), which also turn the frames into scrubber markers; T19
+// (`matrix.ts`) builds the matrix cells; T21 (`live.ts`) appends the live frame. This module builds neither `running`
+// (locks) nor `absent` (a struck task on the last board) cards: both are the live frame's.
 //
 // Pure over the text the caller read: no `node:*`, no clock, no file system. Lines are read by timeline.ts's
 // `roundLines` (one reader for rounds.jsonl); a line whose `ts` does not parse is skipped, and lines are ordered by
 // their instant, file order among equals.
 import type { CardState, Frame, FrameCard, FrameRecut, SpecFiles } from './files.ts';
+import { recutBetween, sameTask } from './recut.ts';
 import { roundLines } from './timeline.ts';
 import type { RoundLine } from './timeline.ts';
 
@@ -93,10 +95,9 @@ interface CardBody {
   readonly note?: string;
 }
 
-/** The board of the previous line: text and result card per id. */
+/** The board of the previous line: its tasks in order and the result card per id. */
 interface Board {
-  readonly order: readonly string[];
-  readonly text: ReadonlyMap<string, string>;
+  readonly tasks: readonly LineTask[];
   readonly cards: ReadonlyMap<string, FrameCard>;
 }
 
@@ -112,11 +113,13 @@ export function buildFrames(files: SpecFiles): Frame[] {
   for (const line of lines) {
     const tasks = tasksOf(line);
     const dispatched = new Set(strings(line.dispatched));
-    const recut = previous === null ? null : recutBetween(previous, tasks);
+    const recut = previous === null ? null : recutBetween(previous.tasks, tasks);
 
     /** The previous result card of the same task: same id and same text, else none. */
-    const carried = (task: LineTask): FrameCard | undefined =>
-      previous?.text.get(task.id) === task.text ? previous.cards.get(task.id) : undefined;
+    const carried = (task: LineTask): FrameCard | undefined => {
+      const before = previous?.cards.get(task.id);
+      return before !== undefined && sameTask({ id: before.task, text: before.text }, task) ? before : undefined;
+    };
 
     const resultCards = tasks.map((task) => {
       const before = carried(task)?.tries ?? 0;
@@ -150,8 +153,7 @@ export function buildFrames(files: SpecFiles): Frame[] {
       frameOf(frames.length + 1, 'result', shared, resultCards, { closed: claims.closed, total: claims.total }, claims.closedThisRound, null),
     );
     previous = {
-      order: tasks.map((task) => task.id),
-      text: new Map(tasks.map((task) => [task.id, task.text])),
+      tasks,
       cards: new Map(resultCards.map((card) => [card.task, card])),
     };
   }
@@ -219,15 +221,6 @@ function recorded(task: LineTask): Omit<CardBody, 'tries'> {
     ...(reason === undefined ? {} : { reason }),
     ...(task.note === undefined ? {} : { note: task.note }),
   };
-}
-
-/** Struck, added and changed ids between the previous board and this line's tasks; null when tasks.md is unchanged. */
-function recutBetween(previous: Board, tasks: readonly LineTask[]): FrameRecut | null {
-  const current = new Set(tasks.map((task) => task.id));
-  const struck = previous.order.filter((id) => !current.has(id));
-  const added = tasks.filter((task) => !previous.text.has(task.id)).map((task) => task.id);
-  const changed = tasks.filter((task) => previous.text.has(task.id) && previous.text.get(task.id) !== task.text).map((task) => task.id);
-  return struck.length + added.length + changed.length === 0 ? null : { struck, added, changed };
 }
 
 /** Claims closed and total from `progress` ("M/N"), else from the claim lists; plus `closed_this_round`. */

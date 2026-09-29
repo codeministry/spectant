@@ -12,10 +12,12 @@ export interface ScrubberFrame {
   readonly caption?: string;
 }
 
-/** A re-cut marker (ISC-91): hatched, drawn between the stop before `before` and `before` itself, with a visible label. */
+/** A re-cut marker (ISC-91): hatched, drawn between the stop before `before` and `before` itself, with a visible label.
+ * `title`, when given, is the label's tooltip and accessible name (the frame and the struck, changed, added counts). */
 export interface ScrubberMarker {
   readonly before: number;
   readonly label: string;
+  readonly title?: string;
 }
 
 const STEP_KEYS: Readonly<Partial<Record<string, (value: number, max: number) => number>>> = {
@@ -99,7 +101,7 @@ const STEP_KEYS: Readonly<Partial<Record<string, (value: number, max: number) =>
           }
         }
         @for (marker of markers(); track marker.before) {
-          <span class="marker-label" data-recut-label [style.inset-inline-start.%]="position(marker.before - 0.5)">{{ marker.label }}</span>
+          <span class="marker-label" data-recut-label [attr.data-recut-before]="marker.before" [attr.title]="marker.title ?? null" [attr.aria-label]="marker.title ?? null" [style.inset-inline-start.%]="position(marker.before - 0.5)">{{ marker.label }}</span>
         }
       </div>
       <input

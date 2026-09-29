@@ -942,6 +942,7 @@
       "history": "History · {{label}}",
       "backToLive": "Back to live",
       "recut": "re-cut",
+      "recutTitle": "Re-cut before {{frame}}: {{struck}} struck, {{changed}} changed, {{added}} added",
       "stop": "Round stopped: {{reason}}"
     },
     "progress": "claims {{closed}}/{{claims}} · tasks {{landed}}/{{tasks}}",
@@ -964,6 +965,7 @@
       "seam": "seam",
       "tries": "try {{tries}}",
       "note": "note",
+      "struck": "struck",
       "stale": "stale",
       "session": "session {{session}}"
     },
