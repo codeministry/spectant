@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 28/49
+progress: 29/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T17:33:09Z
+updated: 2026-09-29T17:44:58Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -182,7 +182,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [x] ISC-69: The fixture corpus holds Spectant's own spec 001 frozen at a named commit, at least three leadgen specs of at least two types with their licence note, and the synthetic harbor, lantern and empty-master trees.
 - [x] ISC-70: With `SPECTANT_PRIVATE_CORPUS` pointing at a directory of spec trees, the parser reads every spec in it with zero diagnostics; when the variable is unset the test reports skipped, never passed.
 - [x] ISC-71: An unknown spec id or workspace slug yields 404 from the API and a "not found" page; no fallback spec is ever rendered.
-- [ ] ISC-72: Anti: a counter on the spec dashboard or on any of its tabs disagrees with the parser's golden JSON for the same fixture.
+- [x] ISC-72: Anti: a counter on the spec dashboard or on any of its tabs disagrees with the parser's golden JSON for the same fixture.
 
 **The shell**
 
@@ -286,6 +286,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-72: e2e — `bun run e2e -- counts` 278 passed, 6 fixme (decisions rows: the Docs tab renders decisions.md as one block without a per-decision hook), 0 mismatches: every counter on the spec dashboard KPI band, lanes, tiles, tab bar, Status, Claims, Tasks, Evidence and Timeline tabs of harbor 002, 003 and 006 at 390 and 1440 equals its golden field (T61; 2026-09-29)
 
 - ISC-79: bun-test — `bun test core/tests/stage.test.ts` 81 pass: every STAGE_RULES row renders as the FORMAT.md table row verbatim (stage, condition, next command, reason templates), and a fixture walk over harbor, lantern, leadgen, spectant-001 and empty-master (12 specs) pins each spec's stage, next command and reason to its row and to the README's Expected column; the Status tab renders head.stage, next.command and next.reasons from the model (`bun run e2e -- status` 11 passed, whole suite 112) (T11, T54; 2026-09-29)
 

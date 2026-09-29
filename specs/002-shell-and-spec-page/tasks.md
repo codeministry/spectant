@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T17:33:59Z
+updated: 2026-09-29T17:44:58Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -94,7 +94,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T58 · ISC-83.1 · web — Evidence tab: groups by claim, image and markdown preview in the dialog primitive (after: T35, T52) · `web/src/app/features/spec/data/evidence/`
 - [x] T59 · ISC-84 · web — Docs tabs: rendered markdown with TOC, figures, tables in their own scroll region · Mobile, type-aware empty state (after: T35, T52) · `web/src/app/features/spec/docs/`
 - [x] T60 · ISC-88 · web — primitives this spec adds beside 001's: `ui-glyph` (eleven card states, six claim states), `ui-state-chip`, `ui-scrubber`, `ui-disclosure`, `ui-toast` (after: T34) · `web/src/app/shared/ui/glyph/`
-- [ ] T61 · ISC-72 · web — e2e counts: every counter on the spec dashboard and its tabs equals the golden JSON (after: T53, T54, T55, T56, T57, T58, T59) · `web/e2e/counts.spec.ts`
+- [x] T61 · ISC-72 · web — e2e counts: every counter on the spec dashboard and its tabs equals the golden JSON (after: T53, T54, T55, T56, T57, T58, T59) · `web/e2e/counts.spec.ts`
 - [ ] T62 · ISC-78 · web — e2e spec dashboard (after: T53) · `web/e2e/spec.spec.ts`
 - [x] T63 · ISC-81 · web — e2e claims tab (after: T56) · `web/e2e/data-claims.spec.ts`
 - [x] T64 · ISC-82 · web — e2e tasks tab (after: T57) · `web/e2e/data-tasks.spec.ts`
