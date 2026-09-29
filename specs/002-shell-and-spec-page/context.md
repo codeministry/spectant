@@ -342,3 +342,9 @@ Visual baselines (T105–T110): both workers' partial states are saved as patche
 Docker died; the `VISUAL` file pattern in `web/e2e/playwright.config.ts` must widen to `visual(-[a-z-]+)?.spec.ts`;
 the ISC-49/49.1 probe rows still say `-- report`; the e2e fixture's `awaitReady` promise is false for the real app.
 (Correction: round 15 ended at 38/49, not 39.)
+Round 16, resumed (2026-09-29 night): launchd recovered and Chromium launches again; `board -g states` 6 pass,
+`board -g matrix|recut` 8 pass, `frames.test.ts -t recut` 7 pass — **ISC-88, ISC-91, ISC-92 closed**, T92 ticked,
+progress 41/49. The board visual-baseline partial state (T107/T108, `visual-board.spec.ts` and 8 PNGs) is lost: the
+patches lived in the previous session's scratchpad, which no longer exists; both tasks restart from nothing. T39/T43
+(ISC-77) have nothing to move: spec 001's views (its T61–T71: dashboard, overview, inspector, palette) have not been
+built, so ISC-77 waits on spec 001, not on this spec's frontier. Docker Desktop is down; T105–T110 wait on it.

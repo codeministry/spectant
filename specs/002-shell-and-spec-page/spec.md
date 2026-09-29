@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 38/49
+progress: 41/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T19:14:41Z
+updated: 2026-09-29T19:19:14Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -224,11 +224,11 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 **Live — the round board**
 
 - [x] ISC-87: The board turns rounds.jsonl into frames (dispatch, result, live) behind a scrubber with a Lanes view and a Flow view over the same cards; scrubbing changes no file.
-- [ ] ISC-88: All eleven task card states (waiting, dispatched, running, question, concerns, fail, done, closed, absent, operator open, operator done) render with glyph, chip text and colour from the fixture that holds every one of them.
+- [x] ISC-88: All eleven task card states (waiting, dispatched, running, question, concerns, fail, done, closed, absent, operator open, operator done) render with glyph, chip text and colour from the fixture that holds every one of them.
 - [x] ISC-89: Waiting tasks are grouped by their reason and none is hidden; the number of shown cards equals the frame's tasks.
 - [x] ISC-90: The live frame is built from tasks.md, the master's frontier locks and, when present, `.spectant/activity.jsonl`; a task under a lock shows in flight with the lock's session name. (after: ISC-37)
-- [ ] ISC-91: A re-cut of tasks.md between rounds shows as a marker on the scrubber and struck tasks as absent; no state is attributed to a renumbered id. (after: ISC-87)
-- [ ] ISC-92: The Matrix tab shows tasks × frames with state glyphs, and clicking a cell jumps the scrubber to that frame. (after: ISC-87)
+- [x] ISC-91: A re-cut of tasks.md between rounds shows as a marker on the scrubber and struck tasks as absent; no state is attributed to a renumbered id. (after: ISC-87)
+- [x] ISC-92: The Matrix tab shows tasks × frames with state glyphs, and clicking a cell jumps the scrubber to that frame. (after: ISC-87)
 - [x] ISC-93: At a 600 px container the board has no horizontal page overflow and no lane scrolls on its own.
 
 **Notes**
@@ -286,6 +286,12 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-88: e2e — `bun run e2e -- board -g states` 6 pass (board-states: every harbor 002 frame in both densities renders all eleven states with glyph, chip word, own shape and tone; card detail with state history) (T90; 2026-09-29, after launchd recovered)
+
+- ISC-91: bun-test — `bun test core/tests/frames.test.ts -t "recut"` 7 pass (detectRecut in core/src/recut.ts, spectant-001 rounds.jsonl); rendered: `bun run e2e -- board -g recut` 3 pass (marker with counts, absent card strike note, renumbered id carries no history) (T18, T86; 2026-09-29)
+
+- ISC-92: e2e — `bun run e2e -- board -g matrix` 5 pass (rows, columns and cells equal the goldens at 390 and 1440, R2 cell of T27 jumps the board to that frame, a live cell to live, horizontal scroll inside the region) (T19, T87, T92; 2026-09-29)
 
 - ISC-87: bun-test — `bun test core/tests/frames.test.ts` green (harbor 002 dispatch/result/live frames incl. the re-cut marker and every state's first frame, spectant-001's own rounds.jsonl equal to its golden; the detectRecut/buildMatrix cases are todos until T18/T19) and the tree unchanged; the board renders frames behind a scrubber with Lanes and Flow over the same cards, This frame / Needs you / Your steps as rail blocks at wide and a bottom bar below, one bar in zen; `bun run e2e -- board` 29 passed incl. scrub-changes-no-file (no request but GET/HEAD across every frame in both views) (T17, T27, T81, T82, T88, T89; 2026-09-29)
 
