@@ -8,6 +8,7 @@ import {
   SPEC_API_ROOT,
   specRoutes,
   type SpecRouteResponses,
+  TASKS_HASH_HEADER,
   type Unavailable,
 } from '../../../../server/src/spec-routes.contract';
 
@@ -49,6 +50,11 @@ export type ApiResult<T> =
   | { readonly kind: 'unavailable'; readonly body: Unavailable }
   | { readonly kind: 'error'; readonly status: number };
 
+/** The Tasks tab's read (T57): an `ok` carries tasks.md's raw hash, which the checkbox write (T68) sends back. */
+export type TasksResult =
+  | (Extract<ApiResult<SpecRouteResponses['tasks']>, { readonly kind: 'ok' }> & { readonly hash: string | null })
+  | Exclude<ApiResult<SpecRouteResponses['tasks']>, { readonly kind: 'ok' }>;
+
 /** Relative on purpose: the app talks only to the loopback server that served it, on whatever port (ISC-2). */
 export const WORKSPACES_URL = SPEC_API_ROOT;
 export const dashboardUrl = (ws: string): string => `${SPEC_API_ROOT}/${encodeURIComponent(ws)}/dashboard`;
@@ -75,13 +81,15 @@ const isContractNotFound = (body: unknown): boolean =>
 export class ApiClient {
   private readonly http = inject(HttpClient);
   private readonly cache = new Map<string, { readonly etag: string; readonly body: unknown }>();
+  private readonly tasksHashes = new Map<string, string | null>();
 
-  async get<T>(url: string): Promise<ApiResult<T>> {
+  async get<T>(url: string, onHeaders?: (headers: HttpHeaders) => void): Promise<ApiResult<T>> {
     const cached = this.cache.get(url);
     const headers = cached ? new HttpHeaders({ 'If-None-Match': cached.etag }) : undefined;
     try {
       const response = await firstValueFrom(this.http.get<T>(url, { observe: 'response', headers }));
       const etag = response.headers.get('ETag');
+      onHeaders?.(response.headers);
       if (etag === null) this.cache.delete(url);
       else this.cache.set(url, { etag, body: response.body });
       return { kind: 'ok', body: response.body as T, etag, notModified: false };
@@ -127,6 +135,18 @@ export class ApiClient {
       }
       return this.answer<DocsPage>(failure, undefined);
     }
+  }
+
+  /**
+   * The Tasks tab (T57); the body is null for a spec without tasks.md. `hash` is `X-Spectant-Tasks-Hash` from the last
+   * 200 of this URL (a 304 keeps it: the bytes did not change), null when the header is absent.
+   */
+  async tasks(ws: string, id: string): Promise<TasksResult> {
+    const url = specRoutes.tasks(ws, id);
+    const result = await this.get<SpecRouteResponses['tasks']>(url, (headers) => {
+      this.tasksHashes.set(url, headers.get(TASKS_HASH_HEADER));
+    });
+    return result.kind === 'ok' ? { ...result, hash: this.tasksHashes.get(url) ?? null } : result;
   }
 
   private answer<T>(failure: unknown, cached: { readonly etag: string; readonly body: unknown } | undefined): ApiResult<T> {

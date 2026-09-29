@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 10/49
+progress: 12/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T15:59:40Z
+updated: 2026-09-29T16:00:49Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -205,8 +205,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 
 **Data and Docs**
 
-- [ ] ISC-81: The Claims tab renders every claim with its state glyph (open, takeable, taken, blocked, closed, dropped), kind, dependency edges, probe row and verification line, filterable by state and kind, with counts equal to the golden JSON.
-- [ ] ISC-82: The Tasks tab renders every task line with lane, flags, state, edges and paths, filterable by lane and state, plus the probe mapping table, with counts equal to the golden JSON.
+- [x] ISC-81: The Claims tab renders every claim with its state glyph (open, takeable, taken, blocked, closed, dropped), kind, dependency edges, probe row and verification line, filterable by state and kind, with counts equal to the golden JSON.
+- [x] ISC-82: The Tasks tab renders every task line with lane, flags, state, edges and paths, filterable by lane and state, plus the probe mapping table, with counts equal to the golden JSON.
 - [x] ISC-83: Anti: the evidence endpoint serves a file outside the spec's own folder.
 - [ ] ISC-83.1: The Evidence tab lists artifacts/ and .evidence/ files grouped by claim with image and markdown preview.
 - [x] ISC-84: The Plan, Design, Decisions and Constitution tabs render their Markdown with headings, tables, code and mermaid fences as figures; a file the spec type does not have shows a type-aware empty state. ⟨?: mermaid is rendered client-side from the pinned package the old skill already vendors — assuming no server-side SVG step⟩
@@ -285,6 +285,10 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-81: e2e — bun run e2e -- data -g claims → 4 passed, 1 skipped (one card per golden claim, filter chip counts equal counts, takeable narrows to counts.takeable, #claim-ISC-… deep link scrolls and focuses; the taken-card case skips until the stub overlays locks on the claims route); component spec 16 pass incl. a synthetic taken claim; harbor 002: 30 cards, open 5 · takeable 4 · blocked 1 · closed 25; spec 002 round 10
+
+- ISC-82: e2e — bun run e2e -- data -g tasks → 7 passed (rows and probe mapping at 1440/820/390 equal the golden's counts.rows and mapping.length, lane chips carry the golden counts, the web filter narrows to byLane.web and survives a reload, status and hide-done from the URL, disabled checkboxes with the ISC-25 helper line, an after-T1 edge link focuses #task-T1); component spec 11 pass; harbor 002: 32 rows, 27/32 boxes, api 1 · web 29 · operator 2; spec 002 round 10
 
 - ISC-83: bun-test — bun test tests/evidence.test.ts -t traversal → 3 pass (core + server): ../spec.md, double encoding, absolute path, a symlink out of the folder and plan.md inside the spec but outside artifacts/ and .evidence/ answer 403 Forbidden with nothing served and no path in the body; valid .md/.png/.har/.log/.html serve with media type, nosniff, CSP sandbox and inline/attachment; repo copy byte-identical before and after; spec 002 round 9
 

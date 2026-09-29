@@ -1,0 +1,389 @@
+:host {
+  display: grid;
+  gap: 32px;
+  min-inline-size: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.tasks {
+  display: grid;
+  gap: 16px;
+  min-inline-size: 0;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: baseline;
+}
+
+.landed, .result {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.toolbar {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+.hide-done {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+/* Wide: 48 px rows on the design grid, checkbox · task · claim · title · lane · path · state · builder. */
+.columns, .row {
+  display: grid;
+  grid-template-columns: 40px 56px 104px minmax(0, 1fr) 96px 160px 120px 88px;
+  gap: 0 8px;
+  align-items: center;
+}
+
+.columns {
+  padding-inline: 8px;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.rows {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--line);
+}
+
+.row {
+  min-block-size: 48px;
+  padding: 4px 8px;
+  border-block-end: 1px solid var(--line);
+  scroll-margin-block-start: 120px;
+  transition: background-color var(--motion-duration-highlight) var(--motion-ease-standard);
+}
+.row.is-target { background: var(--disp-t); }
+
+.row:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.box {
+  display: grid;
+  place-items: center;
+  min-block-size: 40px;
+}
+
+.id {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.edges a {
+  color: var(--disp-ink);
+  font-family: var(--font-mono);
+}
+
+.claim a { text-decoration: none; }
+.claim a:hover { text-decoration: underline; }
+
+.title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.text {
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flag {
+  flex-shrink: 0;
+  padding-inline: 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.path {
+  display: flex;
+  gap: 4px;
+  min-inline-size: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.path-tail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: start;
+}
+
+.more, .path-note {
+  color: var(--muted-ink);
+  white-space: nowrap;
+}
+
+.path-note {
+  overflow: hidden;
+  font-family: var(--font-sans);
+  text-overflow: ellipsis;
+}
+
+.builder {
+  overflow: hidden;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  block-size: 24px;
+  padding-inline: 8px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.status[data-tone='closed'] {
+  background: var(--clos-t);
+  border-color: transparent;
+  color: var(--clos-ink);
+}
+
+.status[data-tone='done'] {
+  background: var(--done-t);
+  border-color: transparent;
+  color: var(--done-ink);
+}
+
+.status[data-tone='dispatched'] {
+  background: var(--disp-t);
+  border-color: transparent;
+  color: var(--disp-ink);
+}
+
+.status[data-tone='held'], .status[data-tone='struck'] {
+  background: var(--held-t);
+  border-color: transparent;
+  color: var(--held-ink);
+}
+
+.status[data-tone='fail'] {
+  background: var(--fail-t);
+  border-color: transparent;
+  color: var(--fail-ink);
+}
+
+.status[data-tone='concerns'] {
+  background: var(--conc-t);
+  border-color: transparent;
+  color: var(--conc-ink);
+}
+
+.status[data-tone='question'] {
+  background: var(--ques-t);
+  border-color: transparent;
+  color: var(--ques-ink);
+}
+
+/* The sub-line (edges, hold / question / operator / strike reason) spans title to builder. */
+.extra {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 4 / -1;
+  gap: 4px 16px;
+  padding-block-end: 4px;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.row[data-state='struck'] .text, .row[data-state='struck'] .id { color: var(--muted-ink); }
+
+.done-hidden {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.helper {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+  text-wrap: pretty;
+}
+.helper + .helper { margin-block-start: -12px; }
+
+.notice {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.mapping {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+  max-inline-size: 640px;
+}
+
+.scroll {
+  min-inline-size: 0;
+  overflow-x: auto;
+}
+
+table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+th {
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+  text-align: start;
+  text-transform: uppercase;
+}
+
+th, td {
+  block-size: 36px;
+  padding: 0 8px;
+  border-block-end: 1px solid var(--line);
+  vertical-align: middle;
+}
+th:first-child, td:first-child { inline-size: 96px; }
+th:nth-child(2), td:nth-child(2) { inline-size: 120px; }
+
+.mono, code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/*
+ * Below wide: stacked rows, never a sideways-scrolling table. Medium: line 1 checkbox · id · title · state, line 2
+ * claim · lane · path · builder, then the sub-line. Compact: the title moves to its own line under id and state.
+ */
+@container shell (width < 1120px) {
+  .columns { display: none; }
+
+  .row {
+    grid-template-columns: 40px auto auto minmax(0, max-content) minmax(0, 1fr) auto;
+    gap: 4px 8px;
+    align-items: center;
+    padding-block: 8px;
+  }
+
+  .box {
+    grid-row: 1 / span 3;
+    grid-column: 1;
+    align-self: start;
+    min-block-size: 44px;
+  }
+
+  .id {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .title {
+    grid-row: 1;
+    grid-column: 3 / 6;
+  }
+
+  .text {
+    display: -webkit-box;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .state {
+    grid-row: 1;
+    grid-column: 6;
+    justify-self: end;
+  }
+  .claim, .lane, .path, .builder { grid-row: 2; }
+  .claim { grid-column: 2; }
+  .lane { grid-column: 3; }
+  .path { grid-column: 4; }
+
+  .builder {
+    grid-column: 6;
+    justify-self: end;
+  }
+
+  .extra {
+    grid-row: 3;
+    grid-column: 2 / -1;
+  }
+}
+
+@container shell (width < 640px) {
+  .box { grid-row: 1 / span 4; }
+
+  .title {
+    grid-row: 2;
+    grid-column: 2 / -1;
+  }
+  .claim, .lane, .path, .builder { grid-row: 3; }
+  .extra { grid-row: 4; }
+}
+
+@media (forced-colors: active) {
+  .status { border: 1px solid CanvasText; }
+}

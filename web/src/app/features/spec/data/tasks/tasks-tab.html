@@ -1,0 +1,174 @@
+@if (body(); as body) {
+  <section class="tasks" aria-labelledby="tasks-heading">
+    <div class="head">
+      <h2 id="tasks-heading">{{ 'shell.tabs.tasks' | transloco }}</h2>
+      <p class="landed" data-tasks-landed>
+        {{ 'tasks.landed' | transloco: { landed: body.counts.boxes.landed, total: body.counts.boxes.total } }}
+      </p>
+    </div>
+
+    <div class="toolbar">
+      <ui-filter-chips
+        data-filter="lane"
+        [options]="laneOptions()"
+        [value]="lane()"
+        [label]="'tasks.filters.lane' | transloco"
+        (valueChange)="setQuery('lane', $event ?? 'all')"
+      />
+      <ui-filter-chips
+        data-filter="status"
+        [options]="statusOptions()"
+        [value]="status()"
+        [label]="'tasks.filters.status' | transloco"
+        (valueChange)="setQuery('status', $event ?? 'all')"
+      />
+      <label class="hide-done">
+        <input
+          type="checkbox"
+          class="checkbox checkbox-sm"
+          data-hide-done
+          [checked]="hideDone()"
+          (change)="setQuery('hideDone', hideDone() ? null : '1')"
+        />
+        {{ 'tasks.filters.hideDone' | transloco }}
+      </label>
+      <p class="result" aria-live="polite" data-tasks-result>
+        {{ 'tasks.result' | transloco: { shown: rows().length, total: body.counts.rows } }}
+      </p>
+    </div>
+
+    <div class="columns" aria-hidden="true">
+      <span></span>
+      <span>{{ 'tasks.columns.task' | transloco }}</span>
+      <span>{{ 'tasks.columns.claim' | transloco }}</span>
+      <span>{{ 'tasks.columns.title' | transloco }}</span>
+      <span>{{ 'tasks.columns.lane' | transloco }}</span>
+      <span>{{ 'tasks.columns.path' | transloco }}</span>
+      <span>{{ 'tasks.columns.state' | transloco }}</span>
+      <span>{{ 'tasks.columns.builder' | transloco }}</span>
+    </div>
+
+    <ul class="rows" uiRovingList [attr.aria-label]="'shell.tabs.tasks' | transloco">
+      @for (row of rows(); track row.id) {
+        <li
+          class="row"
+          data-task-row
+          uiRovingItem
+          [class.is-target]="target() === row.id"
+          [id]="'task-' + row.id"
+          [attr.data-state]="row.state"
+          [attr.data-status]="row.status"
+          [attr.data-lane-name]="row.lane"
+        >
+          <span class="box">
+            @if (row.state !== 'struck') {
+              <input
+                type="checkbox"
+                class="checkbox checkbox-sm"
+                disabled
+                [checked]="row.state === 'done'"
+                [attr.aria-label]="'tasks.checkbox' | transloco: { id: row.id }"
+                aria-describedby="tasks-helper tasks-writes-later"
+              />
+            }
+          </span>
+          <span class="id">{{ row.id }}</span>
+          <span class="claim">
+            <a data-claim [routerLink]="[...specLink(), 'claims']" [fragment]="'claim-' + row.claim"><ui-id-chip>{{ row.claim }}</ui-id-chip></a>
+          </span>
+          <span class="title">
+            @if (row.flags.parallel) {
+              <span class="flag" data-flag="parallel" [attr.title]="'tasks.flags.parallelLabel' | transloco">{{ 'tasks.flags.parallel' | transloco }}</span>
+            }
+            @if (row.flags.seam) {
+              <span class="flag" data-flag="seam" [attr.title]="'tasks.flags.seamLabel' | transloco">{{ 'tasks.flags.seam' | transloco }}</span>
+            }
+            @if (row.state === 'struck') {
+              <s class="text">{{ row.text }}</s>
+            } @else {
+              <span class="text" [attr.title]="row.text">{{ row.text }}</span>
+            }
+          </span>
+          <span class="lane"><ui-chip data-lane>{{ row.lane }}</ui-chip></span>
+          <span class="path">
+            @if (row.paths[0]; as first) {
+              <span class="path-tail" data-path [attr.title]="row.paths.join(', ')">{{ tail(first) }}</span>
+              @if (row.paths.length > 1) {
+                <span class="more">{{ 'tasks.morePaths' | transloco: { count: row.paths.length - 1 } }}</span>
+              }
+            } @else if (row.pathNote) {
+              <span class="path-note">{{ row.pathNote }}</span>
+            }
+          </span>
+          <span class="state"><span class="status" [attr.data-tone]="row.status">{{ 'tasks.status.' + row.status | transloco }}</span></span>
+          <span class="builder">
+            @if (row.builder) {
+              <span data-builder>{{ row.builder }}</span>
+            }
+          </span>
+          @if (row.edges.length > 0 || sub(row) !== null) {
+            <span class="extra">
+              @if (row.edges.length > 0) {
+                <span class="edges">
+                  {{ 'tasks.after' | transloco }}
+                  @for (edge of row.edges; track edge; let last = $last) {
+                    <a data-edge [routerLink]="[...specLink(), 'tasks']" [fragment]="'task-' + edge" queryParamsHandling="preserve">{{ edge }}</a>{{ last ? '' : ',' }}
+                  }
+                </span>
+              }
+              @if (sub(row); as sub) {
+                <span class="sub" data-sub>{{ sub.key | transloco: { text: sub.text } }}</span>
+              }
+            </span>
+          }
+        </li>
+      }
+    </ul>
+
+    @if (hidden(); as hidden) {
+      <p class="done-hidden" data-done-hidden>
+        {{ 'tasks.doneHidden' | transloco: hidden }}
+        <button type="button" class="btn btn-xs btn-ghost" (click)="setQuery('hideDone', null)">{{ 'tasks.show' | transloco }}</button>
+      </p>
+    }
+
+    <p class="helper" id="tasks-helper">{{ 'tasks.helper' | transloco }}</p>
+    <p class="helper" id="tasks-writes-later">{{ 'tasks.writesLater' | transloco }}</p>
+  </section>
+
+  @if (mapping().length > 0) {
+    <section class="mapping" aria-labelledby="tasks-mapping-heading">
+      <h2 id="tasks-mapping-heading">{{ 'tasks.mapping.title' | transloco }}</h2>
+      <div class="scroll" role="region" tabindex="0" [attr.aria-label]="'tasks.mapping.region' | transloco">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">{{ 'tasks.mapping.task' | transloco }}</th>
+              <th scope="col">{{ 'tasks.mapping.claim' | transloco }}</th>
+              <th scope="col">{{ 'tasks.mapping.probe' | transloco }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of mapping(); track entry.line) {
+              <tr data-mapping-row>
+                <td class="mono">{{ entry.taskIds }}</td>
+                <td class="mono">{{ entry.claim }}</td>
+                <td><code>{{ entry.probeText }}</code></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+} @else if (body() === null) {
+  <ui-empty-state
+    icon="list-checks"
+    [heading]="type() ? ('tasks.empty.typed' | transloco: { type: type() }) : ('tasks.empty.untyped' | transloco)"
+    [body]="'tasks.empty.body' | transloco"
+  />
+} @else if (failed()) {
+  <p class="notice" role="status">{{ (data.specRouteUnserved() ? 'shell.placeholder.specRoute' : 'tasks.error') | transloco }}</p>
+} @else {
+  <p class="notice" aria-busy="true">{{ 'tasks.loading' | transloco }}</p>
+}

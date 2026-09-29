@@ -455,5 +455,70 @@
     },
     "error": "This document could not be loaded.",
     "loading": "Loading document"
+  },
+  "tasks": {
+    "filters": {
+      "lane": "Filter by lane",
+      "status": "Filter by state",
+      "all": "all",
+      "hideDone": "hide done"
+    },
+    "landed": "{{landed}}/{{total}} boxes ticked",
+    "result": "{{shown}} of {{total}} tasks",
+    "columns": {
+      "task": "Task",
+      "claim": "Claim",
+      "title": "Title",
+      "lane": "Lane",
+      "path": "Path",
+      "state": "State",
+      "builder": "Builder"
+    },
+    "status": {
+      "open": "open",
+      "dispatched": "dispatched",
+      "held": "held",
+      "question": "question",
+      "concerns": "concerns",
+      "fail": "fail",
+      "done": "done",
+      "closed": "closed",
+      "struck": "struck"
+    },
+    "flags": {
+      "parallel": "P",
+      "parallelLabel": "Parallel: runs beside its siblings",
+      "seam": "seam",
+      "seamLabel": "Seam: runs alone before its fan-out"
+    },
+    "after": "after",
+    "morePaths": "+{{count}}",
+    "checkbox": "{{id}} done",
+    "sub": {
+      "held": "held · {{text}}",
+      "fail": "failed · {{text}}",
+      "concerns": "concerns · {{text}}",
+      "question": "question · {{text}}",
+      "operator": "your step · tick it when done",
+      "struck": "{{text}}"
+    },
+    "doneHidden": "{{count}} done hidden · {{ids}}",
+    "show": "Show",
+    "helper": "Ticking a task only writes the box in tasks.md — it never closes a claim. Writes pause while an agent holds a claim on this spec.",
+    "writesLater": "The checkboxes are read-only for now: writes come with a later task.",
+    "mapping": {
+      "title": "Probe mapping",
+      "task": "Task",
+      "claim": "Claim",
+      "probe": "Probe",
+      "region": "Probe mapping table"
+    },
+    "empty": {
+      "typed": "No tasks.md for a {{type}}",
+      "untyped": "No tasks.md for this spec",
+      "body": "This spec has no task list yet; /spec-tasks writes one."
+    },
+    "loading": "Loading tasks…",
+    "error": "The tasks could not be loaded."
   }
 }

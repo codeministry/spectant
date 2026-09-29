@@ -455,5 +455,70 @@
     },
     "error": "Dieses Dokument konnte nicht geladen werden.",
     "loading": "Dokument wird geladen"
+  },
+  "tasks": {
+    "filters": {
+      "lane": "Nach Lane filtern",
+      "status": "Nach Status filtern",
+      "all": "alle",
+      "hideDone": "Erledigte ausblenden"
+    },
+    "landed": "{{landed}}/{{total}} Kästchen abgehakt",
+    "result": "{{shown}} von {{total}} Tasks",
+    "columns": {
+      "task": "Task",
+      "claim": "Claim",
+      "title": "Titel",
+      "lane": "Lane",
+      "path": "Pfad",
+      "state": "Status",
+      "builder": "Builder"
+    },
+    "status": {
+      "open": "offen",
+      "dispatched": "vergeben",
+      "held": "zurückgehalten",
+      "question": "Frage",
+      "concerns": "Bedenken",
+      "fail": "fehlgeschlagen",
+      "done": "erledigt",
+      "closed": "geschlossen",
+      "struck": "gestrichen"
+    },
+    "flags": {
+      "parallel": "P",
+      "parallelLabel": "Parallel: läuft neben seinen Geschwistern",
+      "seam": "Naht",
+      "seamLabel": "Naht: läuft allein vor seiner Auffächerung"
+    },
+    "after": "nach",
+    "morePaths": "+{{count}}",
+    "checkbox": "{{id}} erledigt",
+    "sub": {
+      "held": "zurückgehalten · {{text}}",
+      "fail": "fehlgeschlagen · {{text}}",
+      "concerns": "Bedenken · {{text}}",
+      "question": "Frage · {{text}}",
+      "operator": "Ihr Schritt · haken Sie ihn ab, wenn er erledigt ist",
+      "struck": "{{text}}"
+    },
+    "doneHidden": "{{count}} erledigte ausgeblendet · {{ids}}",
+    "show": "Anzeigen",
+    "helper": "Ein Häkchen schreibt nur das Kästchen in tasks.md — es schließt nie einen Claim. Schreibvorgänge pausieren, solange ein Agent einen Claim dieser Spec hält.",
+    "writesLater": "Die Kästchen sind vorerst schreibgeschützt: Schreibvorgänge kommen mit einem späteren Task.",
+    "mapping": {
+      "title": "Probe-Zuordnung",
+      "task": "Task",
+      "claim": "Claim",
+      "probe": "Probe",
+      "region": "Tabelle der Probe-Zuordnung"
+    },
+    "empty": {
+      "typed": "Kein tasks.md für den Spec-Typ {{type}}",
+      "untyped": "Kein tasks.md für diese Spec",
+      "body": "Diese Spec hat noch keine Taskliste; /spec-tasks schreibt eine."
+    },
+    "loading": "Tasks werden geladen …",
+    "error": "Die Tasks konnten nicht geladen werden."
   }
 }
