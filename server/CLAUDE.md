@@ -56,8 +56,8 @@ line of `tasks.md`, line endings kept).
 - Bind to `127.0.0.1` or `::1` only, never `0.0.0.0`. The app is a local single-user tool (ISC-1).
 - Make no outbound request. Loopback is the only network, and the dev-services probe checks local listeners only
   (ISC-2).
-- Never write into a registered repository: no file, no `.git/` object, no index, no lock, and no shelling out to
-  git for anything that writes. `tests/readonly.test.ts` hashes the fixture repo, `.git/` included, before and after
+- Never write into a registered repository beyond the two writes above: no other file, no `.git/` object, no index,
+  no lock, and no shelling out to git for anything that writes. `tests/readonly.test.ts` hashes the fixture repo, `.git/` included, before and after
   (ISC-15).
 - The database holds only the registry and settings, never anything a repository says. Deleting it must lose nothing
   a re-add cannot rebuild (ISC-7).
