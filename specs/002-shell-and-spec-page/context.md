@@ -276,3 +276,18 @@ the ring prints a percent the model does not carry (decorative under a strict IS
 96 px, design says 88; `g`-key hints are provisional until T102; invalid `events.jsonl` lines vanish silently from the
 timeline (only `parseEvents` reports them). CI: the verify job's "dubious ownership" failure was the git integration
 test's own empty global config dropping the runner's safe.directory; the test now trusts its own path.
+Round 12 landed (2026-09-29, commits b4b0b02 … 92daff9): T111/T112/T113 lane notes by the parent (**ISC-68.1 closed** on
+`check:format-doc`), T67 writes contract (ISC-26 open until `writes.ts`; the reviewed event is `review → build`, the
+earlier `tasks → review` wording of ISC-24 was a transcription slip and is corrected in the master, the spec and T69
+with a Decisions row, mark renewed), T94 notes contract and migration 2 (ISC-94 open until `notes.ts`; note shape with
+title, nullable workspace on orphaning, split anchor `{kind, spec, id?}` instead of the plan's `ref` string because
+claim ids repeat across specs, PUT instead of PATCH, counts on their own `/note-counts` route — plan deviations to
+confirm at review), T38 zen and rail collapse (**ISC-75 closed**; `railCollapsed` became a real settings key in the
+server schema, the client service and the stub), T102 keyboard service (**ISC-97 closed**; T103 ticked with it since
+the e2e lives in `keyboard.spec.ts`). CI: the verify job now reads git (the test trusts its own path) and only the
+round-subject assertion failed on the depth-1 checkout; it is conditional on a full clone now (376f0dc).
+Marks: `ShellState.handleKey` is dead code since the service owns Esc and `[` `]`; `g h` for the dashboard is not in
+`SPEC_AREAS`; the existing hints in the area menu, palette and tiles use their own media queries instead of
+`showHints`; no `termHints` setting exists; the settings menu/help entry (T40/T41) must call `keyboard.openSheet()`;
+the initial bundle is 560 kB against the 500 kB budget (mermaid notices aside), `spec-dashboard.css` and
+`tasks-tab.css` are over their 4 kB budgets; the shell host became a flex column (visual baselines unverified).
