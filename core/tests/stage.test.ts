@@ -13,18 +13,23 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { parseClaims } from '../src/claims.ts';
+import { buildDashboard } from '../src/dashboard.ts';
 import { parseFrontmatter } from '../src/frontmatter.ts';
 import type { MarkState } from '../src/gates.ts';
 import {
   STAGE_RULES,
   TYPE_NEEDS,
+  fillReason,
   nextCommand,
   nextCommandWithReason,
   stageOf,
   type ClaimCounts,
   type Stage,
   type StageInput,
+  type StageRule,
 } from '../src/stage.ts';
+import { goldenPath } from './helpers/golden.ts';
+import { fixtureTrees, readTree } from './helpers/read-tree.ts';
 
 const FIXTURES = join(import.meta.dir, '..', 'fixtures');
 
@@ -322,6 +327,195 @@ describe('nextCommandWithReason', () => {
       expect(got.reason).toBe(reason);
       expect(got.stage).toBe(stageOf(input));
       expect(got.command).toBe(nextCommand(input));
+      // The reason is one the row names, not free text.
+      expect(namesReason(ruleFor(got.stage), got.reason)).toBe(true);
     });
   }
+});
+
+// ─── FORMAT.md's stage table is STAGE_RULES, row by row (spec 002 T11, ISC-79) ─────────────────────────────────────
+//
+// FORMAT.md is the written contract (core/CLAUDE.md). STAGE_RULES carries every column of its table as data: the
+// condition in words, the command with `NNN` for the number, and the reason templates. The test renders each rule as
+// the markdown row it must be and compares it verbatim with FORMAT.md, so either side changing alone fails here.
+
+const ROOT = join(import.meta.dir, '..', '..');
+
+/** The rows of the first table under `## The stage table` in FORMAT.md, header and rule line included, verbatim. */
+function formatStageTable(): string[] {
+  const lines = readFileSync(join(ROOT, 'FORMAT.md'), 'utf8').split('\n');
+  const heading = lines.indexOf('## The stage table');
+  expect(heading).toBeGreaterThan(-1);
+  const from = lines.findIndex((line, i) => i > heading && line.startsWith('|'));
+  const to = lines.findIndex((line, i) => i > from && !line.startsWith('|'));
+  return lines.slice(from, to < 0 ? undefined : to);
+}
+
+const code = (text: string): string => `\`${text}\``;
+
+const TABLE_HEAD = ['| # | Stage | Condition | Next command | Reason |', '|---|-------|-----------|--------------|--------|'];
+
+/** A rule as the markdown row FORMAT.md must hold for it. */
+function renderRow(rule: StageRule, index: number): string {
+  const next = rule.next === null ? '—' : code(`${rule.next} NNN`);
+  return `| ${index + 1} | ${code(rule.stage)} | ${rule.condition} | ${next} | ${rule.reasons.map(code).join(' or ')} |`;
+}
+
+const escapeRe = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Whether `reason` is one of the rule's templates with every `{placeholder}` filled by some non-empty text. */
+function namesReason(rule: StageRule, reason: string): boolean {
+  return rule.reasons.some((template) => new RegExp(`^${template.split(/\{[a-zA-Z]+\}/).map(escapeRe).join('.+')}$`).test(reason));
+}
+
+function ruleFor(stage: Stage): StageRule {
+  const rule = STAGE_RULES.find((r) => r.stage === stage);
+  if (!rule) throw new Error(`no stage row for ${stage}`);
+  return rule;
+}
+
+describe('FORMAT.md holds STAGE_RULES verbatim', () => {
+  const table = formatStageTable();
+
+  test('the header names the five columns', () => {
+    expect(table.slice(0, 2)).toEqual(TABLE_HEAD);
+  });
+
+  test('one markdown row per rule, no more, no fewer', () => {
+    expect(table.length - TABLE_HEAD.length).toBe(STAGE_RULES.length);
+  });
+
+  STAGE_RULES.forEach((rule, i) => {
+    test(`row ${i + 1}: ${rule.stage}`, () => {
+      expect(table[i + TABLE_HEAD.length]).toBe(renderRow(rule, i));
+    });
+  });
+
+  test('every placeholder a template uses is named in the legend under the table', () => {
+    const text = readFileSync(join(ROOT, 'FORMAT.md'), 'utf8');
+    const legend = text.slice(text.indexOf('## The stage table'), text.indexOf('## The drift classes'));
+    const names = new Set(STAGE_RULES.flatMap((r) => r.reasons.flatMap((t) => [...t.matchAll(/\{[a-zA-Z]+\}/g)].map((m) => m[0]))));
+    expect(names.size).toBeGreaterThan(0);
+    for (const name of names) expect(legend).toContain(`\`${name}\`:`);
+  });
+});
+
+describe('fillReason', () => {
+  test('fills every placeholder', () => {
+    expect(fillReason('{ids} {is} takeable', { ids: 'ISC-334', is: 'is' })).toBe('ISC-334 is takeable');
+  });
+
+  test('throws on a placeholder without a value, so no row can emit a half-filled reason', () => {
+    expect(() => fillReason('the reviewed mark is {state}', {})).toThrow('{state}');
+  });
+});
+
+// ─── Every fixture spec, through the real pipeline ─────────────────────────────────────────────────────────────────
+//
+// The dashboard row (dashboard.ts: gates, the ISC-99 partition, nextCommandWithReason) and the spec page's head and
+// first reason (spec.ts, from its golden, which golden.test.ts pins to the built model) for every spec folder of every
+// fixture tree, active and archived. Each must be the row of FORMAT.md's table its stage names: the command that row
+// names with the spec's number, and a reason that row names. A fixture tree added without rows here fails.
+
+type Walked = readonly [folder: string, stage: Stage, command: string | null, reason: string];
+
+const WALK: Readonly<Record<string, readonly Walked[]>> = {
+  'empty-master': [],
+  harbor: [
+    ['specs/002-web-console', 'build', '/spec-implement 002', 'ISC-74, ISC-75 and 2 more are takeable'],
+    ['specs/003-config-loader', 'tasks', '/spec-tasks 003', '13 claims and no tasks.md'],
+    ['specs/004-retention-policies', 'code-review', '/spec-code-review 004', 'every claim is closed and the code-reviewed mark is stale'],
+    ['specs/005-config-format-choice', 'review', '/spec-review 005', 'the reviewed mark is missing'],
+    ['specs/006-partial-push', 'review', '/spec-review 006', 'the reviewed mark is stale'],
+    ['specs/archive/001-manifest-sync', 'done', null, 'phase: complete'],
+  ],
+  lantern: [
+    ['specs/001-reading-list', 'build', '/spec-implement 001', 'ISC-7 and ISC-9 are takeable'],
+    ['specs/002-duplicate-links', 'build', '/spec-implement 002', 'ISC-11 and ISC-12 are takeable'],
+  ],
+  leadgen: [
+    ['specs/012-pwa-install', 'build', '/spec-implement 012', 'ISC-334 is takeable'],
+    ['specs/022-chat-turn-status-and-bulk-delete', 'done', null, 'phase: complete'],
+    ['specs/archive/013-tech-debt', 'done', null, 'phase: complete'],
+  ],
+  'spectant-001': [['specs/001-app-skeleton', 'review', '/spec-review 001', 'the reviewed mark is missing']],
+};
+
+interface SpecPageGolden {
+  readonly head: { readonly stage: Stage };
+  readonly next: { readonly command: string | null; readonly reasons: readonly string[] };
+}
+
+function specPages(tree: string): Record<string, SpecPageGolden> {
+  return JSON.parse(readFileSync(goldenPath(tree, 'spec'), 'utf8')) as Record<string, SpecPageGolden>;
+}
+
+/** The expectation of one walked spec: the table row its stage names, with the spec's number in the command. */
+function expectTableRow(folder: string, stage: Stage, command: string | null, reason: string): void {
+  const rule = ruleFor(stage);
+  const number = (folder.split('/').pop() ?? '').slice(0, 3);
+  expect(command).toBe(rule.next === null ? null : `${rule.next} ${number}`);
+  expect(namesReason(rule, reason)).toBe(true);
+}
+
+describe('every fixture spec derives the stage table row it names (ISC-79)', () => {
+  test('the walk covers every fixture tree', () => {
+    expect(fixtureTrees()).toEqual(Object.keys(WALK).sort());
+  });
+
+  let compared = 0;
+  for (const [tree, rows] of Object.entries(WALK)) {
+    test(`${tree}: ${rows.length} spec${rows.length === 1 ? '' : 's'}`, () => {
+      const model = buildDashboard(readTree(tree));
+      const pages = specPages(tree);
+      expect(Object.keys(pages).sort()).toEqual(rows.map((r) => r[0]).sort());
+      const active = rows.filter(([folder]) => !folder.startsWith('specs/archive/'));
+      expect(model.specs.map((s) => `specs/${s.slug}`).sort()).toEqual(active.map((r) => r[0]).sort());
+      expect(model.archive.map((a) => `specs/archive/${a.slug}`).sort()).toEqual(rows.filter((r) => !active.includes(r)).map((r) => r[0]).sort());
+
+      for (const [folder, stage, command, reason] of rows) {
+        expectTableRow(folder, stage, command, reason);
+        const page = pages[folder];
+        expect(page).toBeDefined();
+        expect([page?.head.stage, page?.next.command, page?.next.reasons[0]]).toEqual([stage, command, reason]);
+        const row = model.specs.find((s) => `specs/${s.slug}` === folder);
+        if (row) expect([row.stage, row.nextCommand, row.nextReason]).toEqual([stage, command, reason]);
+        compared += 1;
+      }
+    });
+  }
+
+  test('the walk compared every listed spec', () => {
+    expect(compared).toBe(12);
+  });
+});
+
+// ─── core/fixtures/README.md's Expected column ─────────────────────────────────────────────────────────────────────
+
+/** `tree/specs/folder → stage` from every README table with an Expected column; a table without a Tree column is harbor's. */
+function readmeExpected(): Map<string, string> {
+  const out = new Map<string, string>();
+  const lines = readFileSync(join(FIXTURES, 'README.md'), 'utf8').split('\n');
+  const cells = (line: string): string[] => line.split('|').slice(1, -1).map((c) => c.trim());
+  lines.forEach((line, i) => {
+    if (!line.startsWith('|') || lines[i - 1]?.startsWith('|')) return;
+    const head = cells(line);
+    const expected = head.findIndex((c) => c.startsWith('Expected'));
+    if (expected < 0) return;
+    const treeCol = head.indexOf('Tree');
+    const specCol = head.indexOf('Spec');
+    for (let j = i + 2; lines[j]?.startsWith('|'); j += 1) {
+      const row = cells(lines[j] ?? '');
+      const tree = treeCol < 0 ? 'harbor' : (row[treeCol] ?? '').replace(/`/g, '').replace(/\/$/, '');
+      const folder = (row[specCol] ?? '').replace(/`/g, '');
+      const stage = /\bstage ([a-z-]+)/.exec(row[expected] ?? '')?.[1];
+      if (stage) out.set(`${tree}/specs/${folder}`, stage);
+    }
+  });
+  return out;
+}
+
+test('core/fixtures/README.md states the walked stage for every fixture spec', () => {
+  const walked = Object.entries(WALK).flatMap(([tree, rows]) => rows.map(([folder, stage]): [string, string] => [`${tree}/${folder}`, stage]));
+  expect([...readmeExpected()].sort()).toEqual([...walked].sort());
 });

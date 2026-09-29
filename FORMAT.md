@@ -580,17 +580,30 @@ attention count.
 Stage and next command per spec (`stage.ts`, `STAGE_RULES`), derived from the files on every read. The rows are
 tried in order and the first match wins; `phase:` decides `done` and nothing else. "Closed" counts checked claims;
 the three-claim threshold counts every claim line, tombstones included; "every claim closed" means none is open.
+Every next command carries its reason, one phrase the matching row names in its Reason column, never free text; the
+dashboard row shows it and the spec page leads its reasons with it (spec 002, ISC-79). `STAGE_RULES` holds every
+column of this table as data, and `core/tests/stage.test.ts` compares each rule with its row here, verbatim.
 
-| # | Stage | Condition | Next command |
-|---|-------|-----------|--------------|
-| 1 | `done` | `phase: complete` | — |
-| 2 | `plan` | the type needs `plan.md` and it is missing | `/spec-plan NNN` |
-| 3 | `tasks` | the type needs `tasks.md`, the spec has three or more claims, and `tasks.md` is missing | `/spec-tasks NNN` |
-| 4 | `review` | the reviewed mark is not fresh | `/spec-review NNN` |
-| 5 | `build` | at least one claim is takeable | `/spec-implement NNN` |
-| 6 | `code-review` | every claim is closed and the code-reviewed mark is not fresh | `/spec-code-review NNN` |
-| 7 | `close` | every claim is closed and the code-reviewed mark is fresh | `/spec-complete NNN` |
-| 8 | `blocked` | anything else: open claims none of which is takeable, or no claims yet | `/spec-status NNN` |
+| # | Stage | Condition | Next command | Reason |
+|---|-------|-----------|--------------|--------|
+| 1 | `done` | `phase: complete` | — | `phase: complete` |
+| 2 | `plan` | the type needs `plan.md` and it is missing | `/spec-plan NNN` | `a {type} spec needs plan.md and it is missing` |
+| 3 | `tasks` | the type needs `tasks.md`, the spec has three or more claims, and `tasks.md` is missing | `/spec-tasks NNN` | `{claims} and no tasks.md` |
+| 4 | `review` | the reviewed mark is not fresh | `/spec-review NNN` | `the reviewed mark is {state}` |
+| 5 | `build` | at least one claim is takeable | `/spec-implement NNN` | `{ids} {is} takeable` |
+| 6 | `code-review` | every claim is closed and the code-reviewed mark is not fresh | `/spec-code-review NNN` | `every claim is closed and the code-reviewed mark is {state}` |
+| 7 | `close` | every claim is closed and the code-reviewed mark is fresh | `/spec-complete NNN` | `every claim is closed and code-reviewed` |
+| 8 | `blocked` | anything else: open claims none of which is takeable, or no claims yet | `/spec-status NNN` | `{open}, none takeable` or `no claims yet` |
+
+The placeholders of the Reason column:
+
+- `{type}`: the spec's `type:`, e.g. `feature`.
+- `{claims}`: every claim line counted, with its noun, e.g. `13 claims`.
+- `{state}`: the mark's state, `missing` or `stale` (the reviewed mark in row 4, the code-reviewed mark in row 6).
+- `{ids}`: the takeable claim IDs: one (`ISC-334`), two joined by "and" (`ISC-7 and ISC-9`), or the first two and the
+  rest as a count (`ISC-74, ISC-75 and 2 more`); a count with its noun (`2 claims`) when the caller passes no IDs.
+- `{is}`: `is` for one takeable claim, `are` for more.
+- `{open}`: the open claims counted, with their noun, e.g. `3 open claims`.
 
 A claim is **takeable** when it is open, every claim in its `(after: …)` is closed or dropped, no lock holds it, and the
 spec's reviewed mark is fresh; an open claim is **blocked** while an edge is unresolved (an edge to an unknown ID counts

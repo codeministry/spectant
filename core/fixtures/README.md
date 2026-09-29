@@ -60,6 +60,20 @@ The code-reviewed marks hold fixed tree and head ids that match no working tree,
 tree hash is computed. They carry no `root` path, unlike the old skill's marks, because a machine path has no place
 in a public fixture. The archived spec keeps `isa_master: ../../ISA.md` unchanged, as the old archive tool leaves it.
 
+### Stage per spec in the other trees
+
+`core/tests/stage.test.ts` walks every spec of every tree and checks the stage, the next command and its reason
+against `FORMAT.md`'s stage table and against the Expected column of both tables here. `empty-master/` has no spec.
+
+| Tree | Spec | Type · phase | Expected |
+|------|------|--------------|----------|
+| `lantern/` | `001-reading-list` | feature · building | stage build, `/spec-implement 001`, "ISC-7 and ISC-9 are takeable" |
+| `lantern/` | `002-duplicate-links` | bug · scoping | stage build, `/spec-implement 002`, "ISC-11 and ISC-12 are takeable" |
+| `leadgen/` | `012-pwa-install` | feature · building | stage build, `/spec-implement 012`, "ISC-334 is takeable" |
+| `leadgen/` | `022-chat-turn-status-and-bulk-delete` | feature · complete | stage done, no command, "phase: complete" |
+| `leadgen/` | `archive/013-tech-debt` | refactor · complete | archived, stage done, no command, "phase: complete" |
+| `spectant-001/` | `001-app-skeleton` | feature · scoping | stage review (the frozen copy carries no `.gates/`), `/spec-review 001`, "the reviewed mark is missing" |
+
 ## Frozen corpora
 
 Copies of public repositories, frozen so their golden snapshots change only for a parser reason. A frozen tree is

@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T17:19:05Z
+updated: 2026-09-29T17:19:36Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -38,7 +38,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T8 · ISC-88 · [P] · core — harbor 002 `rounds.jsonl` and `tasks.md` extended so one fixture holds every one of the eleven card states, a retry with `retry with:`, a question, concerns, a fail, a `stop` reason and a re-cut between rounds · `core/fixtures/harbor/specs/002-web-console/rounds.jsonl`
 - [x] T9 · ISC-68 · core — golden test over every fixture, snapshots regenerated only together with the parser change (after: T1, T4, T5, T8) · `core/tests/golden.test.ts`
 - [x] T10 · ISC-70 · [P] · core — private corpus test: every spec under `SPECTANT_PRIVATE_CORPUS` parses with zero diagnostics; skipped, never passed, when unset · `core/tests/private-corpus.test.ts`
-- [ ] T11 · ISC-79 · core — stage table as data, next command with its reason, applied to every fixture spec (after: T2) · `core/src/stage.ts`
+- [x] T11 · ISC-79 · core — stage table as data, next command with its reason, applied to every fixture spec (after: T2) · `core/src/stage.ts`
 - [x] T12 · ISC-78 · [P] · core — spec page model: head, key numbers, idea quote (first sentence of § Goal, fallback `task:`), lanes, gates, warnings, waiting on you (after: T1) · `core/src/spec.ts`
 - [x] T13 · ISC-71 · [P] · core — resolution of workspace slug and spec id returns not-found, never a fallback spec · `core/src/resolve.ts`
 - [x] T14 · ISC-80 · [P] · core — timeline merge of context.md decisions, rounds, gate marks and the commits the server passes in, one entry per source event, time-ordered (after: T1) · `core/src/timeline.ts`
