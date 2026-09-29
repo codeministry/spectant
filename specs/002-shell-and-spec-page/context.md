@@ -225,3 +225,10 @@ ISC-68.1 threshold 13, ISC-98 probe without the skill's install path (the two le
 skill+app framing in the Vision, the lock-session field on the dashboard row. Two decisions taken: events.jsonl uses the
 stage table's names (T16 unblocked; ISC-24 → `tasks → review`), and takeable is gated on a fresh reviewed mark (claims
 show `open` before it) — a core task to mint at the next edit, because it moves `status.ts`/`stage.ts` and the goldens.
+
+Review 2026-09-29 (second, amendments applied, mark renewed): probe paths under `core/tests/…`; ISC-68.1 threshold 13;
+ISC-98 probe names the Spec skill's gate tool without an install path (check:leak now 0 hits, so CI's leak job can drop
+`continue-on-error`); `not-found` in T45, plan.md and resolve.ts's comment; ISC-24 and T69 say `tasks → review`; the
+Vision names the skill+app framing; **ISC-99 minted in the master** (takeable only while the reviewed mark is fresh;
+claims show `open` before it) with T114 (core rule, goldens) and T115 (`DashboardSpecRow.taken` with session, lock
+diagnostics as row warnings). Progress 8/49, master 33/123.
