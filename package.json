@@ -29,6 +29,7 @@
     "test:readonly": "bun test tests/readonly.test.ts",
     "test:offline:server": "bun tests/offline-server.ts",
     "test:visual": "bun run --cwd web test:visual",
+    "test:visual:ci": "bun web/e2e/container.ts visual",
     "test:browser": "bun run --cwd web test:browser",
     "e2e": "bun run --cwd web e2e"
   },

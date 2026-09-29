@@ -1,0 +1,99 @@
+/*
+ * ui-sheet: a native modal pinned to an edge. No padding on the dialog itself, so a click that targets the
+ * `<dialog>` is a backdrop click (modal.ts). It slides in from its edge on the base token with the emphasized ease
+ * and out with the exit ease; without `@starting-style` (WebKit < 17.4) it appears instantly.
+ */
+:host {
+  display: contents;
+}
+
+.sheet {
+  --ui-sheet-from: 100% 0;
+
+  position: fixed;
+  inset: 0 0 0 auto;
+  inline-size: min(480px, 100%);
+  max-inline-size: none;
+  block-size: 100dvh;
+  max-block-size: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-inline-start: 1px solid var(--line);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  box-shadow: var(--shadow);
+  translate: var(--ui-sheet-from);
+  transition:
+    translate var(--motion-duration-base) var(--motion-ease-exit),
+    overlay var(--motion-duration-base) allow-discrete,
+    display var(--motion-duration-base) allow-discrete;
+}
+
+:host([data-tier="compact"]) .sheet {
+  --ui-sheet-from: 0 100%;
+
+  inset: auto 0 0;
+  inline-size: 100%;
+  block-size: auto;
+  max-block-size: 75dvh;
+  border: 0;
+  border-block-start: 1px solid var(--line);
+  border-start-start-radius: var(--radius-box);
+  border-start-end-radius: var(--radius-box);
+}
+
+.sheet[open] {
+  display: flex;
+  flex-direction: column;
+  translate: 0;
+  transition-timing-function: var(--motion-ease-emphasized);
+}
+
+@starting-style {
+  .sheet[open] {
+    translate: var(--ui-sheet-from);
+  }
+}
+
+.sheet::backdrop {
+  background: oklch(0% 0 0 / 0.4);
+}
+
+.grip {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: center;
+  padding-block: 8px 0;
+}
+
+.handle {
+  inline-size: 32px;
+  block-size: 4px;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+.head {
+  display: flex;
+  flex-shrink: 0;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 0 24px;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.75rem;
+}
+
+.body {
+  flex: 1;
+  min-block-size: 0;
+  padding: 16px 24px 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}

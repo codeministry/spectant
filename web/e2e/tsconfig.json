@@ -1,0 +1,21 @@
+{
+  // The Playwright layout under web/e2e/: specs, fixtures and the Bun helper scripts (serve-dist, run, container).
+  // Checked by `bun run --cwd web typecheck`; it also gives ESLint's project service a home for these files.
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext", "DOM"],
+    "types": ["bun-types"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["**/*.ts"],
+  "exclude": [".results/**", ".report/**"]
+}

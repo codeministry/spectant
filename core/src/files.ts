@@ -274,8 +274,20 @@ export interface TimelineEntry {
   readonly derived: boolean;
   readonly title: string;
   readonly body?: string;
-  /** A round number, commit sha, gate file or claim ID the entry points at. */
+  /**
+   * What the entry points at: a round number (`3`), a question id (`R1.Q2`, `goal` for the goal lock), a gate name
+   * (`reviewed`, `code-reviewed`), a commit sha or a claim ID.
+   */
   readonly ref?: string;
+  /**
+   * Stable id within the spec's timeline, safe in a URL fragment (`#t/<id>`): `<kind>-<ref>`, e.g. `decision-R1.Q2`,
+   * `round-3`, `gate-reviewed`, `commit-<sha>`; a repeated id gets `-2`, `-3`, … in list order.
+   */
+  readonly id?: string;
+  /** Who the event came from, when the source records it: a decision's `- From:` line, a round's builders. */
+  readonly actor?: string;
+  /** True on the one decision entry built from context.md's `## Goal — confirmed <ts>` block. */
+  readonly goalLock?: boolean;
 }
 
 export interface TimelineInput {

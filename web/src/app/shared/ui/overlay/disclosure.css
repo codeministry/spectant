@@ -1,0 +1,58 @@
+/*
+ * ui-disclosure. The region is a one-row grid whose track animates `0fr → 1fr`; the content child has
+ * `min-block-size: 0` and clips, so the rows morph from nothing to the content height. `visibility` rides the same
+ * transition: it is discrete and stays `visible` for the whole run in either direction, so the content shows at once
+ * on open and hides only after the rows have closed. Durations are motion tokens only (ISC-66).
+ */
+:host {
+  display: block;
+}
+
+.head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.summary {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+  min-block-size: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.chevron {
+  transition: rotate var(--motion-duration-base) var(--motion-ease-standard);
+}
+
+.summary[aria-expanded="true"] .chevron {
+  rotate: 180deg;
+}
+
+.region {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows var(--motion-duration-base) var(--motion-ease-standard),
+    visibility var(--motion-duration-base) var(--motion-ease-standard);
+}
+
+:host([data-open]) .region {
+  grid-template-rows: 1fr;
+  visibility: visible;
+}
+
+.content {
+  min-block-size: 0;
+  overflow: hidden;
+}

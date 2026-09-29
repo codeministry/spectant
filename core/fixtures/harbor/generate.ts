@@ -14,7 +14,8 @@
  * What the tree exercises (see ../README.md):
  *   master ISA.md    124 claims in F0–F4, 101 closed: the three-digit/three-digit master fraction
  *   001  feature     complete, archived under specs/archive/, reviewed and code-reviewed marks
- *   002  feature     building, reviewed mark current, rounds.jsonl with three rounds, tasks partly [x]
+ *   002  feature     building, reviewed mark current, rounds.jsonl with three rounds and a re-cut holding every card
+ *                    state, .spectant/activity.jsonl with one open claim, operator tasks open and ticked
  *   003  refactor    scoping, no reviewed mark, plan.md and spec.md without a mermaid fence, no tasks.md
  *   004  feature     building with every claim [x], plan.md without a mermaid fence, code-reviewed mark stale
  *   005  spike       scoping, two fog lines, no reviewed mark
@@ -555,7 +556,8 @@ const S002: SpecDef = {
     phase: "building", started: "2026-03-03T10:00:00Z", updated: "2026-03-08T16:45:00Z",
     claims: feature("F2").claims, grouped: true, verifiedOn: "2026-03-08",
     decisions: ["2026-03-03: the console reads the API only; it never opens the history file itself.",
-        "2026-03-07: refined: the colour mode is a stored setting (ISC-60.1, ISC-60.2)."],
+        "2026-03-07: refined: the colour mode is a stored setting (ISC-60.1, ISC-60.2).",
+        "2026-03-07: tasks re-cut after round 2: T27 (registry-list focus order) struck, covered by T22's keyboard probe; T28–T33 renumbered to T27–T32."],
     body: () => `## Problem
 
 The sync log is a text file on one machine. A teammate who does not run the CLI cannot see what was mirrored or
@@ -683,39 +685,149 @@ A push interrupted at any point leaves the target registry exactly as it was bef
 
 const SPECS = [S001, S002, S003, S004, S005, S006];
 
-// ── rounds.jsonl for 002 ───────────────────────────────────────────────────────────────────────────────
+// ── spec 002: the re-cut, rounds.jsonl and the live layer ──────────────────────────────────────────────
+// One fixture holds every card state of the round board (ISC-88): waiting (`held`), dispatched, question, concerns,
+// fail, done and closed in the rounds; running from `.spectant/activity.jsonl`; absent from the re-cut; operator open
+// and done from tasks.md.
+//
+// Between rounds 2 and 3 the tasks were re-cut: T27 (registry-list focus order) was struck as covered by T22's
+// keyboard probe, and T28–T33 were renumbered to T27–T32. Rounds 1–2 carry the ids before the re-cut, round 3 and
+// tasks.md the ids after it: T33 is absent from then on, and T27–T32 name other tasks than they did before.
 
-function roundsFor(tasks: Task[], claims: Claim[]): string {
-    const closedOrder = claims.filter((c) => c.closed).map((c) => c.id);
-    const cuts = [8, 17, closedOrder.length];
-    const times = ["2026-03-06T09:10:00Z", "2026-03-07T11:20:00Z", "2026-03-08T16:30:00Z"];
-    let before = new Set<string>();
-    return cuts.map((cut, r) => {
-        const closedNow = new Set(closedOrder.slice(0, cut));
-        const thisRound = closedOrder.slice(before.size, cut);
-        const lastRound = r === cuts.length - 1;
-        const dispatched = tasks.filter((t) => thisRound.includes(t.claim.id) && !before.has(t.claim.id) && (t.id !== "T1" || r === 0))
-            .map((t) => t.id);
-        const t74 = tasks.find((t) => t.claim.id === "ISC-74");
-        if (!t74) throw new Error("no task for ISC-74");
-        if (lastRound) dispatched.push(t74.id);
-        const line = {
-            v: 1, round: r + 1, ts: times[r], mode: "agent", width: 10, dispatched,
-            tasks: tasks.map((t) => {
-                const base = {id: t.id, claim: t.claim.id, lane: t.lane, seam: !!t.seam, parallel: !!t.parallel, text: t.text, paths: [t.path]};
-                if (closedNow.has(t.claim.id)) return {...base, state: "closed", reason: "[P], claim takeable, edges closed", builder: "Engineer"};
-                if (lastRound && t.claim.id === "ISC-74") return {...base, state: "question", reason: "[P], claim takeable, edges closed",
-                    note: "question: should the empty state link to the sync docs or to the settings page?", builder: "Engineer"};
-                return {...base, state: "held", reason: t.claim.after && !closedNow.has(t.claim.after) ? `after ${t.claim.after} still open` : "width 10 reached"};
-            }),
-            claims: {closed: [...closedNow], open: claims.filter((c) => !closedNow.has(c.id)).map((c) => c.id), closed_this_round: thisRound},
-            progress: `${closedNow.size}/${claims.length}`,
-            ...(lastRound ? {stop: "a question is open"} : {}),
+const WIDTH_002 = 10;
+const OPERATOR_REASON = "operator lane — the principal's own action, never auto-dispatched";
+
+/** The tasks of 002 as rounds 1–2 recorded them (`before`) and as tasks.md holds them after the re-cut (`after`). */
+function tasks002(): {before: Task[]; after: Task[]} {
+    const base = tasksFor(S002.claims, () => "web", (c) => `web/src/app/${nth(c.probe.check.split(":"), 0)}/`,
+        (c) => `${c.probe.check} (${c.id})`,
+        {lane: "api", path: "api/src/history.contract.ts", text: "history endpoint contract: run, repository, digest, failure"});
+    const kept = base.slice(0, 29); // T1 … T29, up to the task of ISC-76
+    const tail = (first: number): Task[] => [
+        {id: `T${first}`, claim: claim("ISC-77"), lane: "operator", text: "set up the screen-reader profile on the test device",
+            path: "tests/manual/screen-reader-setup.md", parallel: true, done: true},
+        {id: `T${first + 1}`, claim: claim("ISC-77"), lane: "operator", text: "screen-reader pass over the sync history (ISC-77)",
+            path: "tests/manual/screen-reader.md", after: ["T1", `T${first}`], done: false},
+        {id: `T${first + 2}`, claim: claim("ISC-78"), lane: "web", text: "theme-switch: keyboard reach and focus ring (ISC-78)",
+            path: "web/src/app/theme-switch/", after: ["T1", `T${first + 1}`], done: false},
+    ];
+    const struck: Task = {id: "T27", claim: claim("ISC-69"), lane: "web", text: "registry-list: focus order follows the list rows (ISC-69)",
+        path: "web/src/app/registry-list/", after: ["T1"], done: false};
+    const renumbered = kept.slice(26).map((t) => ({...t, id: `T${Number(t.id.slice(1)) + 1}`}));
+    return {before: [...kept.slice(0, 26), struck, ...renumbered, ...tail(31)], after: [...kept, ...tail(30)]};
+}
+
+type RoundState = "held" | "dispatched" | "question" | "concerns" | "fail" | "done" | "closed";
+
+interface TaskRecord { state: RoundState; reason: string; note?: string; builder?: string; reader?: string; verdict?: string }
+
+/** What came back for a task this round; a task in `outcomes` but not dispatched changed without an agent (a tick). */
+type Outcome = Omit<TaskRecord, "reason" | "state"> & {state: Exclude<RoundState, "held" | "closed">};
+
+interface RoundDef { ts: string; tasks: Task[]; dispatched: string[]; outcomes: Record<string, Outcome>; closes: string[]; stop?: string }
+
+/**
+ * One whole-board line per round, as the old skill appends them. A task's record follows its claim and text, not its
+ * id, so a renumbered task keeps its own history and a reused id inherits none (ISC-91). Landed tasks stay landed, and
+ * question, concerns and fail carry forward with their note until the task is redispatched.
+ */
+function roundsFor002(defs: RoundDef[], claims: Claim[]): string {
+    const history = new Map<string, TaskRecord>();
+    const closed = new Set<string>();
+    const key = (t: Task) => `${t.claim.id} ${t.text}`;
+    return defs.map((d, r) => {
+        const inRound = new Map(d.tasks.map((t) => [t.id, t]));
+        for (const id of [...d.dispatched, ...Object.keys(d.outcomes)]) if (!inRound.has(id)) throw new Error(`R${r + 1}: no task ${id}`);
+        if (d.dispatched.length > WIDTH_002) throw new Error(`R${r + 1}: ${d.dispatched.length} dispatched, width ${WIDTH_002}`);
+        const landed = (id: string) => {
+            const t = inRound.get(id);
+            const s = t ? history.get(key(t))?.state : undefined;
+            return s === "done" || s === "closed";
         };
-        before = closedNow;
+        // the plan's reason, as it stood before the round; the first round sends the seam out with its fan-out, as the
+        // rounds this fixture replaces did, so an edge on a seam dispatched in the same round holds nothing
+        const heldReason = (t: Task) => {
+            if (t.lane === "operator") return OPERATOR_REASON;
+            const open = (t.after ?? []).filter((a) => !landed(a) && !(inRound.get(a)?.seam && d.dispatched.includes(a)));
+            return open.length ? `after ${open.join(", ")} still open` : `width ${WIDTH_002} reached`;
+        };
+        const dispatchReason = (t: Task) => t.seam ? "seam — runs alone before its fan-out"
+            : t.parallel ? "[P], claim takeable, edges closed" : "claim takeable, edges closed";
+        for (const c of d.closes) closed.add(c);
+
+        const records = d.tasks.map((t): TaskRecord => {
+            const prev = history.get(key(t));
+            const out = d.outcomes[t.id];
+            let rec: TaskRecord;
+            if (d.dispatched.includes(t.id)) {
+                if (!out) throw new Error(`R${r + 1}: ${t.id} dispatched without an outcome`);
+                rec = {...out, reason: dispatchReason(t)};
+            } else if (out) rec = {...out, reason: prev?.reason ?? heldReason(t)};
+            else if (prev && prev.state !== "held") rec = {...prev};
+            else rec = {state: "held", reason: heldReason(t)};
+            if (rec.state === "done" && closed.has(t.claim.id)) rec.state = "closed";
+            return rec;
+        });
+        for (const c of d.closes) {
+            const open = d.tasks.filter((t, i) => t.claim.id === c && nth(records, i).state !== "closed");
+            if (open.length) throw new Error(`R${r + 1}: ${c} closes with ${open.map((t) => t.id).join(", ")} not landed`);
+        }
+        d.tasks.forEach((t, i) => history.set(key(t), nth(records, i)));
+
+        const line = {
+            v: 1, round: r + 1, ts: d.ts, mode: "agent", width: WIDTH_002, dispatched: d.dispatched,
+            tasks: d.tasks.map((t, i) => {
+                const {state, reason, note, builder, reader, verdict} = nth(records, i);
+                return {id: t.id, claim: t.claim.id, lane: t.lane, seam: !!t.seam, parallel: !!t.parallel, text: t.text, paths: [t.path],
+                    state, reason, ...(note ? {note} : {}), ...(builder ? {builder} : {}), ...(reader ? {reader} : {}), ...(verdict ? {verdict} : {})};
+            }),
+            claims: {closed: claims.filter((c) => closed.has(c.id)).map((c) => c.id), open: claims.filter((c) => !closed.has(c.id)).map((c) => c.id),
+                closed_this_round: claims.filter((c) => d.closes.includes(c.id)).map((c) => c.id)},
+            progress: `${closed.size}/${claims.length}`,
+            ...(d.stop ? {stop: d.stop} : {}),
+        };
         return JSON.stringify(line);
     }).join("\n") + "\n";
 }
+
+function rounds002(t: {before: Task[]; after: Task[]}): string {
+    const landed = (extra: Omit<Outcome, "state"> = {}): Outcome => ({state: "done", builder: "Engineer", ...extra});
+    const all = (ids: string[], o: () => Outcome) => Object.fromEntries(ids.map((id) => [id, o()]));
+    const r1 = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10"];
+    const r2 = ["T11", "T14", "T15", "T16", "T17", "T18", "T20", "T22", "T23", "T30"];
+    const r3 = ["T12", "T13", "T14", "T17", "T19", "T21", "T24", "T25", "T26", "T27"];
+    return roundsFor002([
+        {ts: "2026-03-06T09:10:00Z", tasks: t.before, dispatched: r1, outcomes: all(r1, landed),
+            closes: ["ISC-51", "ISC-52", "ISC-53", "ISC-54", "ISC-55", "ISC-56", "ISC-57", "ISC-58", "ISC-59"]},
+        {ts: "2026-03-07T11:20:00Z", tasks: t.before, dispatched: r2, outcomes: {
+            ...all(r2, landed),
+            T14: {state: "fail", builder: "Engineer",
+                note: "probe exit 1 — `bun run e2e -- tag-table -g narrow` · the digest column overflows at 390 px"},
+            T17: {state: "concerns", builder: "Engineer", reader: "Forge", verdict: "concerns",
+                note: "minor: the German labels push the save button past 390 px"},
+            T30: {state: "question", builder: "Engineer",
+                note: "question: should the empty state link to the sync docs or to the settings page?"},
+        }, closes: ["ISC-60", "ISC-62", "ISC-63", "ISC-65", "ISC-67", "ISC-70"]},
+        {ts: "2026-03-08T16:30:00Z", tasks: t.after, dispatched: r3, outcomes: {
+            ...all(r3, landed),
+            T14: landed({builder: "Anvil", reader: "Forge", verdict: "pass",
+                note: "retry with: probe exit 1 — wrap the digest column below 480 px"}),
+            T17: landed({reader: "Forge", verdict: "pass",
+                note: "retry with: concerns — let the settings form stack its labels at 390 px"}),
+            T24: landed({reader: "Forge", verdict: "skipped"}),
+            T27: {state: "dispatched", builder: "Engineer"},
+            T30: {state: "done"}, // ticked by the principal; ISC-77 stays open until the pass (T31)
+        }, closes: ["ISC-60.1", "ISC-60.2", "ISC-61", "ISC-64", "ISC-66", "ISC-68", "ISC-69", "ISC-71", "ISC-72", "ISC-73"],
+        stop: "a decision only the principal can make"},
+    ], S002.claims);
+}
+
+/** `.spectant/activity.jsonl` at the repository root: T27 of round 3 still out, T25 claimed and released. */
+const ACTIVITY_002 = [
+    {ts: "2026-03-08T14:05:00Z", event: "claim", claim: "ISC-72", task: "T25", session: "spec-002-ISC-72", worktree: "wt-6"},
+    {ts: "2026-03-08T14:06:00Z", event: "claim", claim: "ISC-74", task: "T27", session: "spec-002-ISC-74", worktree: "wt-7"},
+    {ts: "2026-03-08T15:52:00Z", event: "release", claim: "ISC-72", session: "spec-002-ISC-72"},
+].map((line) => JSON.stringify(line)).join("\n") + "\n";
 
 // ── repo-level files ───────────────────────────────────────────────────────────────────────────────────
 
@@ -843,23 +955,21 @@ function generate() {
     const t001 = tasksFor(S001.claims, () => "cli", (c) => lanePath("cli", c.probe.type === "bash" ? "dry-run.ts" : "sync.ts"),
         (c) => `make ${c.id} pass: ${c.probe.check}`);
     write(`specs/${S001.dir}/tasks.md`, tasksMd(S001.slug, S001.title, "2026-03-05T15:00:00Z", t001));
-    const t002 = tasksFor(S002.claims, (c) => (c.probe.type === "manual" ? "operator" : "web"),
-        (c) => c.probe.type === "manual" ? "tests/manual/screen-reader.md" : `web/src/app/${nth(c.probe.check.split(":"), 0)}/`,
-        (c) => `${c.probe.check} (${c.id})`,
-        {lane: "api", path: "api/src/history.contract.ts", text: "history endpoint contract: run, repository, digest, failure"});
-    write(`specs/${S002.dir}/tasks.md`, tasksMd(S002.slug, S002.title, "2026-03-08T16:45:00Z", t002));
+    const t002 = tasks002();
+    write(`specs/${S002.dir}/tasks.md`, tasksMd(S002.slug, S002.title, "2026-03-08T16:45:00Z", t002.after));
     const t004 = tasksFor(S004.claims, (c) => (c.probe.type === "e2e" ? "web" : "api"),
         (c) => c.probe.type === "e2e" ? "web/src/app/retention/" : "api/src/retention.ts",
         (c) => `${c.probe.check} (${c.id})`);
     write(`specs/${S004.dir}/tasks.md`, tasksMd(S004.slug, S004.title, "2026-03-08T12:00:00Z", t004));
 
-    write(`specs/${S002.dir}/rounds.jsonl`, roundsFor(t002, S002.claims));
+    write(`specs/${S002.dir}/rounds.jsonl`, rounds002(t002));
+    write(".spectant/activity.jsonl", ACTIVITY_002);
 
     // gate marks — after every spec, plan and tasks file is written, since the reviewed digest covers them
     const g = (d: SpecDef, name: string, body: string) => write(`specs/${d.dir}/.gates/${name}.json`, body);
     g(S001, "reviewed", reviewedMark(join(ROOT, "specs", S001.dir), "2026-03-02T11:00:00Z"));
     g(S001, "code-reviewed", codeReviewedMark("harbor 001", "2026-03-05T14:30:00Z", "feature/001-manifest-sync", "clean"));
-    g(S002, "reviewed", reviewedMark(join(ROOT, "specs", S002.dir), "2026-03-06T08:45:00Z"));
+    g(S002, "reviewed", reviewedMark(join(ROOT, "specs", S002.dir), "2026-03-07T15:30:00Z")); // renewed after the re-cut
     g(S004, "reviewed", reviewedMark(join(ROOT, "specs", S004.dir), "2026-03-04T10:00:00Z"));
     g(S004, "code-reviewed", codeReviewedMark("harbor 004", "2026-03-08T11:00:00Z", "feature/004-retention-policies", "one finding fixed; tree changed since"));
     g(S006, "reviewed", staleReviewedMark("harbor 006", "2026-03-08T12:00:00Z"));

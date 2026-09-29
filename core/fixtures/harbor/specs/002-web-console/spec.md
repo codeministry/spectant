@@ -125,6 +125,7 @@ Why: a teammate who never touches the CLI can see what was mirrored, when, and w
 
 - 2026-03-03: the console reads the API only; it never opens the history file itself.
 - 2026-03-07: refined: the colour mode is a stored setting (ISC-60.1, ISC-60.2).
+- 2026-03-07: tasks re-cut after round 2: T27 (registry-list focus order) struck, covered by T22's keyboard probe; T28–T33 renumbered to T27–T32.
 
 ## Verification
 

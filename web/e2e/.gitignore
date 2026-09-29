@@ -1,0 +1,4 @@
+# Playwright run output: failure screenshots, traces, diffs and the HTML report. Baselines in __screenshots__/ are
+# committed.
+.results/
+.report/

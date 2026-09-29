@@ -30,11 +30,27 @@ snapshot changes only together with the parser change that explains it.
 | Spec | Type · phase | Carries | Expected (as the old Spec skill derives it) |
 |------|--------------|---------|---------------------------------------------|
 | `archive/001-manifest-sync` | feature · complete | `archived:` date, all 46 claims `[x]`, reviewed and code-reviewed marks | archived, stage done, no warning |
-| `002-web-console` | feature · building | current reviewed mark, `rounds.jsonl` with three rounds, 25 of 30 claims and 26 of 31 tasks closed, one claim blocked by an edge, dotted IDs `ISC-60.1`/`ISC-60.2` | stage build, no warning |
+| `002-web-console` | feature · building | reviewed mark renewed after the re-cut, `rounds.jsonl` with three rounds, 25 of 30 claims closed and 27 of 32 tasks `[x]`, one claim blocked by an edge, dotted IDs `ISC-60.1`/`ISC-60.2`; every card state of the round board (see below) | stage build, no warning; R1 9/30, R2 15/30, R3 25/30 with `stop` "a decision only the principal can make" |
 | `003-config-loader` | refactor · scoping | no reviewed mark, no `tasks.md`, no mermaid fence in `spec.md` or `plan.md` | stage tasks, warning review (missing); diagram verdict `warn`, which the dashboard does not list for a refactor |
 | `004-retention-policies` | feature · building | every claim `[x]`, `plan.md` without a mermaid fence, current reviewed mark, stale code-reviewed mark | stage code-review, warnings diagrams (`plan.md`) and closed |
 | `005-config-format-choice` | spike · scoping | one claim, two `- fog:` lines, no reviewed mark | stage review, warnings review (missing) and fog |
 | `006-partial-push` | bug · scoping | stale reviewed mark, `ISC-125` unknown to the master, master claim `ISC-4` of F0 not projected | stage review, warnings drift (`unknown_to_master`, `missing_in_spec`) and review (stale) |
+
+**The round board in 002.** One fixture holds all eleven card states (ISC-88), checked by
+`core/tests/harbor-states.test.ts`:
+
+- waiting (`held`, with the plan's reasons: width, `after Tn still open`, operator lane), dispatched, question,
+  concerns, fail, done and closed come from the three rounds. R2 has T14 `fail` (`probe exit 1 — …`), T17 `concerns`
+  (reader Forge, verdict `concerns`), T22 `done` (its sibling on ISC-69 still out) and T30 `question`. R3 redispatches
+  T14 and T17 with a `retry with:` note, keeps the question open (now T29), leaves T27 `dispatched` and stops.
+- running comes from `harbor/.spectant/activity.jsonl`: a `claim` line for T27 (ISC-74, `spec-002-ISC-74`, `wt-7`)
+  without a release, beside one claimed-and-released pair for T25.
+- absent comes from the re-cut between R2 and R3: T27 (registry-list focus order) was struck and T28–T33 renumbered to
+  T27–T32, so T33 is gone from R3 and `tasks.md`, and the ids T27–T32 name other tasks than they did in R1–R2. The
+  question recorded on T30 in R2 belongs to T29 in R3; T30 is now an operator step. No state may follow the bare id.
+- operator open and operator done come from `tasks.md`: T31 `[ ]` and T30 `[x]`, both on ISC-77.
+
+`.spectant/` is ignored at the repository root; `core/fixtures/.gitignore` re-includes it for the fixtures.
 
 `specs/tldr.md` was generated on 2026-03-07, before the newest spec `updated:` (003, 2026-03-09): stale. It does not
 name 006, which was opened after it, so the old skill's completeness check fails on it too; that is deliberate.

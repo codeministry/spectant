@@ -45,8 +45,9 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T27 · ISC-74 · web — settings-page: keyboard reach and focus ring (ISC-74) (after: T1) · `web/src/app/settings-page/`
 - [ ] T28 · ISC-75 · web — search-box: keyboard reach and focus ring (ISC-75) (after: T1) · `web/src/app/search-box/`
 - [ ] T29 · ISC-76 · web — empty-state: keyboard reach and focus ring (ISC-76) (after: T1) · `web/src/app/empty-state/`
-- [ ] T30 · ISC-77 · [P] · operator — screen-reader pass over the sync history (ISC-77) (after: T1) · `tests/manual/screen-reader.md`
-- [ ] T31 · ISC-78 · web — theme-switch: keyboard reach and focus ring (ISC-78) (after: T1, T30) · `web/src/app/theme-switch/`
+- [x] T30 · ISC-77 · [P] · operator — set up the screen-reader profile on the test device · `tests/manual/screen-reader-setup.md`
+- [ ] T31 · ISC-77 · operator — screen-reader pass over the sync history (ISC-77) (after: T1, T30) · `tests/manual/screen-reader.md`
+- [ ] T32 · ISC-78 · web — theme-switch: keyboard reach and focus ring (ISC-78) (after: T1, T31) · `web/src/app/theme-switch/`
 
 ## Probe Mapping
 
@@ -80,5 +81,5 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 | T27 | ISC-74 | `bun run test:browser -- settings-page` |
 | T28 | ISC-75 | `bun run test:browser -- search-box` |
 | T29 | ISC-76 | `bun run test:browser -- empty-state` |
-| T30 | ISC-77 | transcript in `.evidence/` |
-| T31 | ISC-78 | `bun run test:browser -- theme-switch` |
+| T30, T31 | ISC-77 | transcript in `.evidence/` |
+| T32 | ISC-78 | `bun run test:browser -- theme-switch` |

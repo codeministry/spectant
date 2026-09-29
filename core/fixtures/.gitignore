@@ -4,3 +4,8 @@
 
 # State files an editor hook may drop beside an ISA.md it takes for a live one; they carry machine paths.
 .checkpoint-state.json
+
+# The root .gitignore keeps agent activity untracked. The fixture activity logs are synthetic live layers (spec 002
+# ISC-88, ISC-90) and must be tracked, so they are re-included here.
+!.spectant/
+!**/.spectant/activity.jsonl

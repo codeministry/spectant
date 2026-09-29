@@ -1,0 +1,74 @@
+/*
+ * ui-dialog: a centred native modal. Padding sits on `.body`, not on the dialog, so a click that targets the
+ * `<dialog>` element itself can only be a backdrop click (modal.ts). Entry and exit fade and rise 8 px on the base
+ * token; `@starting-style` and `allow-discrete` are WebKit 17.4+, older engines show and hide it instantly.
+ */
+:host {
+  display: contents;
+}
+
+.dialog {
+  inline-size: min(var(--ui-dialog-size, 480px), 100% - 32px);
+  max-inline-size: none;
+  max-block-size: calc(100dvh - 32px);
+  margin-block-start: var(--ui-dialog-top, auto);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  box-shadow: var(--shadow);
+  opacity: 0;
+  translate: 0 8px;
+  transition:
+    opacity var(--motion-duration-base) var(--motion-ease-exit),
+    translate var(--motion-duration-base) var(--motion-ease-exit),
+    overlay var(--motion-duration-base) allow-discrete,
+    display var(--motion-duration-base) allow-discrete;
+}
+
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
+  opacity: 1;
+  translate: 0;
+  transition-timing-function: var(--motion-ease-emphasized);
+}
+
+@starting-style {
+  .dialog[open] {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+/* 40 % black (design.md § Command palette); the scrim is the opaque fallback where `backdrop-filter` is missing. */
+.dialog::backdrop {
+  background: oklch(0% 0 0 / 0.4);
+  /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-block-size: 0;
+  padding: var(--ui-dialog-padding, 24px);
+  overflow: auto;
+}
+
+.head {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.75rem;
+}

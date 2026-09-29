@@ -1,0 +1,66 @@
+/*
+ * ui-popover: a native `popover="auto"` panel in the top layer. The UA centres popovers (`inset: 0; margin: auto`);
+ * both are reset and the panel is placed from its trigger. It fades and drops 4 px in on the fast token with the
+ * emphasized ease, out with the exit ease; without `@starting-style` (WebKit < 17.4) it appears instantly.
+ */
+:host {
+  display: contents;
+}
+
+.panel {
+  position: fixed;
+  inset: auto;
+  inline-size: var(--ui-popover-width, auto);
+  min-inline-size: 200px;
+  max-inline-size: calc(100vw - 16px);
+  max-block-size: calc(100dvh - 16px);
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  box-shadow: var(--shadow);
+  opacity: 0;
+  translate: 0 -4px;
+  transition:
+    opacity var(--motion-duration-fast) var(--motion-ease-exit),
+    translate var(--motion-duration-fast) var(--motion-ease-exit),
+    overlay var(--motion-duration-fast) allow-discrete,
+    display var(--motion-duration-fast) allow-discrete;
+}
+
+.panel:popover-open {
+  opacity: 1;
+  translate: 0;
+  transition-timing-function: var(--motion-ease-emphasized);
+}
+
+@starting-style {
+  .panel:popover-open {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+
+/* Anchored below the trigger, spanning from its start (or end) edge; flips when it does not fit. */
+@supports (anchor-name: --x) {
+  .panel {
+    position-area: block-end span-inline-end;
+    position-try-fallbacks: flip-block, flip-inline;
+    margin-block: 8px;
+  }
+
+  :host([data-placement="end"]) .panel {
+    position-area: block-end span-inline-start;
+  }
+}
+
+/* Fallback: popover.ts computes both from the trigger's `getBoundingClientRect()`, gap included. */
+@supports not (anchor-name: --x) {
+  .panel {
+    top: var(--ui-popover-top, 0);
+    left: var(--ui-popover-left, 0);
+  }
+}

@@ -1,7 +1,8 @@
 # Root `bun test` runs the pure TypeScript suites: core/**, server/**, tests/**, web/tests/**.
 # Angular component and browser specs under web/src/** run through Angular's Vitest builder
 # (`bun run --cwd web test`, `bun run test:browser`), because `bun test` cannot compile
-# TestBed specs (plan 001 § Stack Decisions, FE-TST-01).
+# TestBed specs (plan 001 § Stack Decisions, FE-TST-01). The Playwright specs under web/e2e/ run through
+# `bun run e2e` / `test:visual` / `test:browser` (T28); only their `*.test.ts` helpers run here.
 [test]
 root = "."
-pathIgnorePatterns = ["web/src/**"]
+pathIgnorePatterns = ["web/src/**", "web/e2e/**/*.spec.ts"]

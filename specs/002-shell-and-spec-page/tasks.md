@@ -35,13 +35,13 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T5 · ISC-69 · [P] · core — freeze three leadgen specs of two types with their constitution, a reduced master holding only their feature blocks, and `LICENSE-leadgen.txt` · `core/fixtures/leadgen/`
 - [x] T6 · ISC-69 · [P] · core — corpus test: the frozen trees, types, licence note and the synthetic trees are present · `core/tests/fixtures-corpus.test.ts`
 - [x] T7 · ISC-69 · [P] · core — fixture rule narrowed to "never a copy of a private repository", refresh rule for `spectant-001` (named commit, on `/spec-complete 001`) in the lane notes and the fixtures README · `core/CLAUDE.md`
-- [ ] T8 · ISC-88 · [P] · core — harbor 002 `rounds.jsonl` and `tasks.md` extended so one fixture holds every one of the eleven card states, a retry with `retry with:`, a question, concerns, a fail, a `stop` reason and a re-cut between rounds · `core/fixtures/harbor/specs/002-web-console/rounds.jsonl`
+- [x] T8 · ISC-88 · [P] · core — harbor 002 `rounds.jsonl` and `tasks.md` extended so one fixture holds every one of the eleven card states, a retry with `retry with:`, a question, concerns, a fail, a `stop` reason and a re-cut between rounds · `core/fixtures/harbor/specs/002-web-console/rounds.jsonl`
 - [ ] T9 · ISC-68 · core — golden test over every fixture, snapshots regenerated only together with the parser change (after: T1, T4, T5, T8) · `core/tests/golden.test.ts`
 - [ ] T10 · ISC-70 · [P] · core — private corpus test: every spec under `SPECTANT_PRIVATE_CORPUS` parses with zero diagnostics; skipped, never passed, when unset · `core/tests/private-corpus.test.ts`
 - [ ] T11 · ISC-79 · core — stage table as data, next command with its reason, applied to every fixture spec (after: T2) · `core/src/stage.ts`
 - [ ] T12 · ISC-78 · [P] · core — spec page model: head, key numbers, idea quote (first sentence of § Goal, fallback `task:`), lanes, gates, warnings, waiting on you (after: T1) · `core/src/spec.ts`
-- [ ] T13 · ISC-71 · [P] · core — resolution of workspace slug and spec id returns not-found, never a fallback spec · `core/src/resolve.ts`
-- [ ] T14 · ISC-80 · [P] · core — timeline merge of context.md decisions, rounds, gate marks and the commits the server passes in, one entry per source event, time-ordered (after: T1) · `core/src/timeline.ts`
+- [x] T13 · ISC-71 · [P] · core — resolution of workspace slug and spec id returns not-found, never a fallback spec · `core/src/resolve.ts`
+- [x] T14 · ISC-80 · [P] · core — timeline merge of context.md decisions, rounds, gate marks and the commits the server passes in, one entry per source event, time-ordered (after: T1) · `core/src/timeline.ts`
 - [ ] T15 · ISC-36 · [P] · core — derived stage transitions marked `derived`; `events.jsonl` transitions replace them when present · `core/src/derived-stages.ts`
 - [ ] T16 · ISC-32 · [P] · core — `events.jsonl` line validator against `{ts, from, to, command, actor}` · `core/src/events.ts`
 - [ ] T17 · ISC-87 · [P] · core — frames from rounds: dispatch and result frames, worst state per frame, task states carried forward (after: T1) · `core/src/frames.ts`

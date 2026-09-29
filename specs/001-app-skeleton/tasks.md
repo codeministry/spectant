@@ -14,6 +14,11 @@ SpecRun runs one per round. This cut names five seams (the contracts every later
 other task `[P]`; ordering inside a lane comes from the seams, from the same-file rule, and from task numbering (a
 test task is numbered after the feature it exercises). Done tasks keep their IDs; open tasks are renumbered.
 
+Re-cut after round 10 (2026-09-29, Decisions in the master): the shell and the header moved to spec 002 (its T35, T36)
+and `FORMAT.md` to spec 002 (ISC-68.1). T32 and T60 are struck; T33 lost its `(after: T32)` edge; T59 became an
+operator prerequisite ("002's shell has landed") so the `(after: T59)` edges of T61–T82 stay meaningful and hold until
+the principal ticks it. Only 002 builds the shell; 001 builds its views inside it.
+
 ## Legend
 
 `[P]` = parallelizable. `(after: T…)` = must run after that task. `· <lane>` = derived from the path column via the
@@ -51,9 +56,9 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T23 · ISC-22 · [P] · web — Transloco with EN and DE catalogues (German formal), language from settings, plus the parity guard `web/tests/i18n-parity.test.ts` · `web/src/i18n/`
 - [x] T24 · ISC-64 · [P] · web — `ui-button`, `ui-icon-button`, `ui-button-group` with the global `:focus-visible` ring and the coarse-pointer hit area · `web/src/app/shared/ui/button/`
 - [x] T25 · ISC-17 · [P] · web — display primitives: `ui-card`, `ui-kpi-tile`, `ui-ring`, `ui-meter`, `ui-stage-track`, `ui-chip`, `ui-id-chip`, `ui-filter-chips`, `ui-segmented`, `ui-section-header`, `ui-kbd`, `ui-skeleton`, `ui-empty-state`, `ui-notice`, `ui-live-region`, `ui-relative-time`, `ui-command-chip` · `web/src/app/shared/ui/`
-- [ ] T26 · ISC-17 · [P] · web — overlay primitives: `ui-popover` (anchor positioning with the `@supports` fallback), `ui-sheet`, `ui-dialog`, `ui-disclosure` (`grid-template-rows` animation) · `web/src/app/shared/ui/overlay/`
-- [ ] T27 · ISC-61 · [P] · web — `uiRovingList` directive (arrows, j/k, Home/End, no wrap) · `web/src/app/shared/ui/roving-list.directive.ts`
-- [ ] T28 · ISC-17 · [seam] · web — Playwright config: chromium + webkit projects, the pinned Linux container runner behind `test:visual`, `e2e`, `test:browser`; clock pinned, animations disabled, `data-ready` awaited; the `web/e2e/` layout every later spec follows (after: T24, T25, T26, T27) · `web/e2e/playwright.config.ts`
+- [x] T26 · ISC-17 · [P] · web — overlay primitives: `ui-popover` (anchor positioning with the `@supports` fallback), `ui-sheet`, `ui-dialog`, `ui-disclosure` (`grid-template-rows` animation) · `web/src/app/shared/ui/overlay/`
+- [x] T27 · ISC-61 · [P] · web — `uiRovingList` directive (arrows, j/k, Home/End, no wrap) · `web/src/app/shared/ui/roving-list.directive.ts`
+- [x] T28 · ISC-17 · [seam] · web — Playwright config: chromium + webkit projects, the pinned Linux container runner behind `test:visual`, `e2e`, `test:browser`; clock pinned, animations disabled, `data-ready` awaited; the `web/e2e/` layout every later spec follows (after: T24, T25, T26, T27) · `web/e2e/playwright.config.ts`
 - [ ] T29 · ISC-64 · [P] · web — browser spec: focus ring on every interactive element, both themes (after: T28) · `web/src/app/shared/ui/focus.browser.spec.ts`
 - [ ] T30 · ISC-65 · [P] · web — browser spec: contrast of text and marks, both themes (after: T28) · `web/src/app/shared/ui/contrast.browser.spec.ts`
 - [ ] T31 · ISC-66 · [P] · web — browser spec: no animation or transition runs under reduced motion (after: T28) · `web/src/app/shared/ui/motion.browser.spec.ts`
@@ -61,8 +66,8 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 ### ③ Core and API
 
 - [x] T35 · ISC-6 · [P] · core — synthetic fixture spec trees with fixed dates: `.gates/`, `rounds.jsonl`, `tldr.md`, an archive, every warning class, a three-digit/three-digit master fraction; none copied from a real repository · `core/fixtures/`
-- [ ] T32 · ISC-6 · [P] · core — `FORMAT.md`: the file contract as far as the dashboard reads it · `FORMAT.md`
-- [ ] T33 · ISC-6 · [seam] · core — frontmatter and claim parser plus the core module skeleton: exported types and function signatures (stubs) for status, gates, stage, takeable, diagrams, tldr, markdown, archive and dashboard, so the fill-ins can be built in parallel (after: T32) · `core/src/`
+- ~~T32 · ISC-6 · core — `FORMAT.md`: the file contract as far as the dashboard reads it~~ — struck 2026-09-29: `FORMAT.md` is owned by spec 002 (ISC-68.1, its T2); ISC-6 keeps its golden test here (T40)
+- [x] T33 · ISC-6 · [seam] · core — frontmatter and claim parser plus the core module skeleton: exported types and function signatures (stubs) for status, gates, stage, takeable, diagrams, tldr, markdown, archive and dashboard, so the fill-ins can be built in parallel · `core/src/` (its former edge to T32 was dropped 2026-09-29: FORMAT.md follows the parser and is written by spec 002)
 - [ ] T34 · ISC-6 · [P] · core — status: claim partition and drift classes, ported from the old status tool (after: T33) · `core/src/status.ts`
 - [ ] T36 · ISC-15 · [P] · core — review and code-review marks with in-memory worktree hashing, no git object writes; `generate.ts` in the fixtures switches to this import (after: T33) · `core/src/gates.ts`
 - [ ] T37 · ISC-14 · [P] · core — stage derivation and next-command rules, ported from the old dashboard tool (after: T33) · `core/src/stage.ts`
@@ -72,7 +77,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T41 · ISC-14 · [P] · core — parity test over `SPECTANT_PARITY_TREES`, failing on zero comparisons (after: T39) · `core/tests/stage-parity.test.ts`
 - [x] T45 · ISC-5 · [P] · server — `check:single-core`: fails on a frontmatter, claim or stage parser outside `core/` · `scripts/check-single-core.ts`
 - [x] T46 · ISC-21 · [P] · server — data directory resolution with its tests · `server/src/paths.ts`
-- [ ] T42 · ISC-13 · [P] · server — SQLite workspace registry with slug deduplication · `server/src/registry.ts`
+- [x] T42 · ISC-13 · [P] · server — SQLite workspace registry with slug deduplication · `server/src/registry.ts`
 - [ ] T43 · ISC-18.3 · [P] · server — settings table and the `/api/settings` GET + PUT handlers, with `tests/settings.test.ts` across a port change · `server/src/settings.ts`
 - [ ] T44 · ISC-13 · [P] · server — CLI `add`, `list`, `remove` with `tests/workspaces.test.ts` (after: T42) · `server/src/cli.ts`
 - [ ] T47 · ISC-16 · [P] · server — `/api/workspaces` and `/api/workspaces/:slug/dashboard` with ETag, plus the two-workspace `tests/dashboard.test.ts` (after: T39) · `server/src/api.ts`
@@ -90,8 +95,8 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 
 - [ ] T57 · ISC-17 · [P] · web — stub API serving the fixtures' golden JSON for e2e and visual runs (after: T28, T39) · `web/e2e/stub-api.ts`
 - [ ] T58 · ISC-18.1 · [P] · web — pre-paint `data-theme` script, theme service (system / light / dark, live `matchMedia`), settings service · `web/src/app/core/theme.service.ts`
-- [ ] T59 · ISC-16 · [seam] · web — shell with container tiers, routes `/`, `/w/:ws`, `/w/:ws/s/:id`, the redirect, query-state filters, the API client with ETag (after: T24, T25, T26, T27, T39, T58) · `web/src/app/layout/shell/`
-- [ ] T60 · ISC-16 · [P] · web — header: eyebrow + title, `ui-badge-switcher` (two levels), palette trigger, `ui-live-indicator` (status, refresh, interval, services), gear with the settings popover, `?` (after: T59) · `web/src/app/layout/header/`
+- [ ] T59 · ISC-16 · operator — prerequisite from spec 002: its shell seam (002-T35: container tiers, routes `/`, `/w/:ws`, `/w/:ws/s/:id`, tab-bar slot, API client) has landed in the main tree — tick when it has; every task below that carried `(after: T59)` waits on it (re-cut 2026-09-29, the shell moved to spec 002) · `specs/002-shell-and-spec-page/tasks.md`
+- ~~T60 · ISC-16 · web — header: eyebrow + title, `ui-badge-switcher` (two levels), palette trigger, `ui-live-indicator`, gear, `?`~~ — struck 2026-09-29: the header is spec 002's T36 (ISC-73), built to the prototype
 - [ ] T61 · ISC-17 · [P] · web — `kpi-band` in its three container forms, tiles as links (after: T59) · `web/src/app/features/dashboard/kpi-band/`
 - [ ] T62 · ISC-17 · [P] · web — Brief disclosure (TL;DR markdown, stale chip, command chip) (after: T59) · `web/src/app/features/dashboard/brief/`
 - [ ] T63 · ISC-61 · [P] · web — Specs panel: toolbar (phase / type filters, sort, phase strip), `spec-row` in normal, compact and dense forms, archive fold, roving list, plus e2e `keyboard.spec.ts` "move" (after: T59) · `web/src/app/features/dashboard/spec-table/`
