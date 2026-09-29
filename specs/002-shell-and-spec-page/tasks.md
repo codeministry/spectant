@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T14:05:56Z
+updated: 2026-09-29T14:06:29Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -99,7 +99,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T63 · ISC-81 · web — e2e claims tab (after: T56) · `web/e2e/data-claims.spec.ts`
 - [ ] T64 · ISC-82 · web — e2e tasks tab (after: T57) · `web/e2e/data-tasks.spec.ts`
 - [ ] T65 · ISC-83.1 · web — e2e evidence tab (after: T58) · `web/e2e/data-evidence.spec.ts`
-- [ ] T66 · ISC-84 · web — e2e docs tabs including the empty state for a refactor (after: T59) · `web/e2e/docs.spec.ts`
+- [x] T66 · ISC-84 · web — e2e docs tabs including the empty state for a refactor (after: T59) · `web/e2e/docs.spec.ts`
 
 ### ④ The two writes
 

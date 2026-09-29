@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 7/48
+progress: 8/48
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T14:05:56Z
+updated: 2026-09-29T14:06:29Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -204,7 +204,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [ ] ISC-82: The Tasks tab renders every task line with lane, flags, state, edges and paths, filterable by lane and state, plus the probe mapping table, with counts equal to the golden JSON.
 - [ ] ISC-83: Anti: the evidence endpoint serves a file outside the spec's own folder.
 - [ ] ISC-83.1: The Evidence tab lists artifacts/ and .evidence/ files grouped by claim with image and markdown preview.
-- [ ] ISC-84: The Plan, Design, Decisions and Constitution tabs render their Markdown with headings, tables, code and mermaid fences as figures; a file the spec type does not have shows a type-aware empty state. ⟨?: mermaid is rendered client-side from the pinned package the old skill already vendors — assuming no server-side SVG step⟩
+- [x] ISC-84: The Plan, Design, Decisions and Constitution tabs render their Markdown with headings, tables, code and mermaid fences as figures; a file the spec type does not have shows a type-aware empty state. ⟨?: mermaid is rendered client-side from the pinned package the old skill already vendors — assuming no server-side SVG step⟩
 
 **The two writes**
 
@@ -280,6 +280,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-84: e2e — bun run e2e -- docs → 4 passed (plan: headings, TOC links jump and focus, a mermaid svg drawn client-side from the pinned mermaid 11.17.2 lazy chunk; decisions and constitution render with frontmatter chips and table regions; a refactor's design tab shows the type-aware empty state with the command chip; at 390 tables scroll inside their region and the page never overflows); core markdown-docs 31 tests, lazy-chunk guard 3 pass; spec 002 round 10
 
 - ISC-80: bun-test — bun test core/tests/timeline.test.ts -t sources → 17 pass (independent per-source counts for harbor 002 / spectant-001 / leadgen 022, commit interleaving, one entry per event, rank order at equal instants); server/src/git.ts reads the folder's commits read-only with head cache (tests/git.test.ts 19 pass); Timeline tab renders the golden strand with source filters in the URL, day groups, expanding rounds, derived chip and #t/<id> deep links — e2e status -g timeline 4 passed; spec 002 round 10
 
