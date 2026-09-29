@@ -13,6 +13,10 @@ import { AreaPlaceholder } from './area-placeholder';
 export const VIEW_LOADERS: Partial<Record<TabId | 'dashboard', () => Promise<Type<unknown>>>> = {
   timeline: () => import('./status/timeline/timeline-tab').then((m) => m.TimelineTab),
   claims: () => import('./data/claims/claims-tab').then((m) => m.ClaimsTab),
+  plan: () => import('./docs/docs-tab').then((m) => m.DocsTab),
+  design: () => import('./docs/docs-tab').then((m) => m.DocsTab),
+  decisions: () => import('./docs/docs-tab').then((m) => m.DocsTab),
+  constitution: () => import('./docs/docs-tab').then((m) => m.DocsTab),
 };
 
 const view = (key: TabId | 'dashboard') => {

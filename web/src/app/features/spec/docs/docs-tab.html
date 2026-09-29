@@ -1,0 +1,72 @@
+@if (page(); as page) {
+  @if (metaChips().length > 0 || updated()) {
+    <div class="docs-meta" data-docs-meta>
+      @for (chip of metaChips(); track chip.label) {
+        <ui-chip [tone]="chip.tone" [dot]="name !== 'constitution'">{{ chip.label }}</ui-chip>
+      }
+      @if (updated(); as updated) {
+        <span class="docs-updated">{{ 'docs.updated' | transloco: { date: updated } }}</span>
+      }
+    </div>
+  }
+
+  @if (diagramMissing()) {
+    <ui-notice class="docs-warning" tone="warning" data-diagram-missing>
+      <strong>{{ 'docs.diagramMissing.title' | transloco }}</strong>
+      {{ 'docs.diagramMissing.body' | transloco }}
+    </ui-notice>
+  }
+
+  <div class="docs-layout">
+    @if (toc().length > 0 && state.tier() !== 'wide') {
+      <ui-disclosure class="docs-toc-fold">
+        <span uiDisclosureSummary>{{ 'docs.contents' | transloco }}</span>
+        <ng-container [ngTemplateOutlet]="tocList" />
+      </ui-disclosure>
+    }
+
+    <article class="docs-prose" #prose [innerHTML]="html()"></article>
+
+    @if (toc().length > 0 && state.tier() === 'wide') {
+      <nav class="docs-toc" [attr.aria-label]="'docs.contents' | transloco">
+        <p class="docs-toc-title">{{ 'docs.contents' | transloco }}</p>
+        <ng-container [ngTemplateOutlet]="tocList" />
+      </nav>
+    }
+  </div>
+} @else if (empty(); as empty) {
+  <ui-empty-state
+    data-docs-empty
+    icon="file-text"
+    [heading]="empty.key | transloco: empty.params"
+    [body]="empty.bodyKey | transloco"
+  >
+    @if (empty.command; as command) {
+      <ui-command-chip
+        [command]="command"
+        [copyLabel]="'common.copyCommand' | transloco"
+        [copiedLabel]="'common.copied' | transloco: { command }"
+        [manualHint]="'common.copyFallback' | transloco"
+      />
+    }
+  </ui-empty-state>
+} @else if (failed()) {
+  <ui-notice tone="error" data-docs-error>{{ 'docs.error' | transloco }}</ui-notice>
+} @else {
+  <div class="docs-loading" role="status" [attr.aria-label]="'docs.loading' | transloco">
+    <ui-skeleton width="40%" height="28px" />
+    <ui-skeleton height="16px" />
+    <ui-skeleton height="16px" />
+    <ui-skeleton width="70%" height="16px" />
+  </div>
+}
+
+<ng-template #tocList>
+  <ol class="docs-toc-list">
+    @for (entry of toc(); track entry.anchor) {
+      <li [attr.data-level]="entry.level">
+        <a [href]="'#' + entry.anchor" (click)="jump($event, entry.anchor)">{{ entry.text }}</a>
+      </li>
+    }
+  </ol>
+</ng-template>

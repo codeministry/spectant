@@ -39,7 +39,7 @@ const HARBOR = {
   archive: [{ id: '001', title: 'Manifest sync', type: 'feature' }],
 };
 
-type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'spec'>;
+type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'spec' | 'timeline' | 'claims' | 'docs'>;
 
 function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
   return {
@@ -48,6 +48,10 @@ function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
     dashboard: (ws) => Promise.resolve(ws === 'harbor' ? ok(HARBOR) : { kind: 'not-found', served: true }),
     // The stub today: no spec route, the server's catch-all 404.
     spec: () => Promise.resolve({ kind: 'not-found', served: false }),
+    // The area views land one by one; the shell specs need only the catch-all answer for each.
+    timeline: () => Promise.resolve({ kind: 'not-found', served: false }),
+    claims: () => Promise.resolve({ kind: 'not-found', served: false }),
+    docs: () => Promise.resolve({ kind: 'not-found', served: false }),
     ...overrides,
   };
 }

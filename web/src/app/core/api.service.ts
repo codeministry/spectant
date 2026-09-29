@@ -1,7 +1,9 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import type { DocName, DocsPage } from '../../../../core/src/files';
 import {
+  type DocMissing,
   isUnavailable,
   SPEC_API_ROOT,
   specRoutes,
@@ -50,6 +52,13 @@ export type ApiResult<T> =
 /** Relative on purpose: the app talks only to the loopback server that served it, on whatever port (ISC-2). */
 export const WORKSPACES_URL = SPEC_API_ROOT;
 export const dashboardUrl = (ws: string): string => `${SPEC_API_ROOT}/${encodeURIComponent(ws)}/dashboard`;
+
+/** `GET …/docs/:name`: the page, or the typed 404 saying which doc is absent and whether the spec type has it. */
+export type DocsResult = ApiResult<DocsPage> | { readonly kind: 'doc-missing'; readonly body: DocMissing };
+
+const isDocMissing = (body: unknown): body is DocMissing =>
+  typeof body === 'object' && body !== null && (body as Partial<DocMissing>).error === 'not-found' &&
+  typeof (body as Partial<DocMissing>).doc === 'string' && typeof (body as Partial<DocMissing>).availability === 'object';
 
 const isContractNotFound = (body: unknown): boolean =>
   typeof body === 'object' && body !== null && (body as { error?: unknown }).error === 'not-found';
@@ -101,6 +110,23 @@ export class ApiClient {
   /** The Claims tab (ISC-81): core's `ClaimViewModel`, served as it is. */
   claims(ws: string, id: string): Promise<ApiResult<SpecRouteResponses['claims']>> {
     return this.get(specRoutes.claims(ws, id));
+  }
+
+  /**
+   * A Docs tab page (T59). A 404 whose body is the contract's `DocMissing` answers `doc-missing` with that body, so the
+   * tab can say whether the spec's type has the file (`availability`); any other failure answers as `get` does.
+   */
+  async docs(ws: string, id: string, name: DocName): Promise<DocsResult> {
+    try {
+      const body = await firstValueFrom(this.http.get<DocsPage>(specRoutes.docs(ws, id, name)));
+      return { kind: 'ok', body, etag: null, notModified: false };
+    } catch (failure: unknown) {
+      const error: unknown = failure instanceof HttpErrorResponse ? failure.error : null;
+      if (failure instanceof HttpErrorResponse && failure.status === 404 && isDocMissing(error)) {
+        return { kind: 'doc-missing', body: error };
+      }
+      return this.answer<DocsPage>(failure, undefined);
+    }
   }
 
   private answer<T>(failure: unknown, cached: { readonly etag: string; readonly body: unknown } | undefined): ApiResult<T> {

@@ -435,5 +435,25 @@
     "clear": "Clear filters",
     "error": "The claims could not be loaded.",
     "loading": "Loading claims…"
+  },
+  "docs": {
+    "contents": "Contents",
+    "updated": "Updated {{date}}",
+    "tableRegion": "Table {{index}}, scrolls sideways",
+    "imageMissing": "Image not in this checkout",
+    "diagramMissing": {
+      "title": "This plan has no diagram.",
+      "body": "A mermaid figure of the approach shows its shape at a glance."
+    },
+    "empty": {
+      "notApplicable": "A {{type}} has no {{file}}",
+      "noType": "A spec without a type has no {{file}}",
+      "notApplicableBody": "This spec type does not use the file, so there is nothing to show here.",
+      "missing": "No {{file}} yet",
+      "missingBody": "Create it with this command:",
+      "missingNoCommand": "It is written as the spec’s question rounds are recorded."
+    },
+    "error": "This document could not be loaded.",
+    "loading": "Loading document"
   }
 }

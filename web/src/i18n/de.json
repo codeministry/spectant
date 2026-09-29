@@ -435,5 +435,25 @@
     "clear": "Filter zurücksetzen",
     "error": "Die Claims konnten nicht geladen werden.",
     "loading": "Claims werden geladen …"
+  },
+  "docs": {
+    "contents": "Inhalt",
+    "updated": "Aktualisiert {{date}}",
+    "tableRegion": "Tabelle {{index}}, seitlich scrollbar",
+    "imageMissing": "Bild ist in diesem Checkout nicht vorhanden",
+    "diagramMissing": {
+      "title": "Dieser Plan enthält kein Diagramm.",
+      "body": "Eine Mermaid-Abbildung des Ansatzes zeigt seine Struktur auf einen Blick."
+    },
+    "empty": {
+      "notApplicable": "Eine Spec vom Typ {{type}} hat keine {{file}}",
+      "noType": "Eine Spec ohne Typ hat keine {{file}}",
+      "notApplicableBody": "Dieser Spec-Typ verwendet die Datei nicht, daher gibt es hier nichts anzuzeigen.",
+      "missing": "Noch keine {{file}}",
+      "missingBody": "Legen Sie die Datei mit diesem Befehl an:",
+      "missingNoCommand": "Die Datei entsteht, sobald die Fragerunden der Spec festgehalten werden."
+    },
+    "error": "Dieses Dokument konnte nicht geladen werden.",
+    "loading": "Dokument wird geladen"
   }
 }
