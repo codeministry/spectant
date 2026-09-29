@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { OverviewPage } from './features/placeholders/overview-page';
+import { SettingsPage } from './features/placeholders/settings-page';
 import { WorkspacePage } from './features/placeholders/workspace-page';
 import { SPEC_AREA_ROUTES } from './features/spec/spec-area.routes';
 import { SpecPage } from './features/spec/spec-page';
@@ -19,6 +20,8 @@ export const routes: Routes = [
     component: ShellComponent,
     children: [
       { path: '', component: OverviewPage },
+      // The header's gear leads here until T40/T41 bring the settings popover and help.
+      { path: 'settings', component: SettingsPage },
       { path: 'w/:ws', component: WorkspacePage },
       { path: 'w/:ws/s/:id', component: SpecPage, children: SPEC_AREA_ROUTES },
       { path: '**', component: NotFound, data: notFound },

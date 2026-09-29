@@ -6,7 +6,7 @@
  */
 import { atWidth, expect, test } from './fixtures';
 
-const ROUTES = ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/999'] as const;
+const ROUTES = ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/999', '/settings'] as const;
 const CONTROLS = ['brand', 'workspace', 'spec', 'area', 'palette', 'live', 'zen', 'settings'] as const;
 const TIERS = [
   { width: 390, tier: 'compact', tabBar: 'header' },
@@ -40,6 +40,46 @@ for (const { width, tier, tabBar } of TIERS) {
       await page.goto('/w/harbor/s/999');
       await expect(page.locator('[data-page="not-found"]')).toBeVisible();
       await expect(page.locator('app-tab-bar')).toHaveCount(0);
+    });
+
+    test('header controls lead where they say: workspace, spec, area menu, live, settings', async ({ page }) => {
+      const control = (name: string) => page.locator(`header [data-control="${name}"]`);
+
+      await page.goto('/w/harbor/s/002');
+      await control('workspace').click();
+      await expect(page).toHaveURL(/\/w\/harbor$/);
+
+      await control('spec').click();
+      await expect(page).toHaveURL(/\/w\/harbor#specs$/);
+      await expect(page.locator('#specs')).toBeFocused();
+
+      await page.goto('/w/harbor/s/002/status');
+      const area = control('area');
+      await area.click();
+      const menu = page.getByRole('navigation', { name: 'Areas' });
+      await expect(menu).toBeVisible();
+      await expect(menu.locator('[data-area]')).toHaveCount(6);
+      await expect(menu.locator('[data-area][aria-disabled="true"]')).toHaveCount(2);
+      await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('data-area', 'status');
+      await menu.locator('[data-area="data"]').click();
+      await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/claims$/);
+      await expect(menu).toBeHidden();
+      await expect(area).toBeFocused();
+
+      await area.click();
+      await expect(menu).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(menu).toBeHidden();
+      await expect(area).toBeFocused();
+      await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/claims$/);
+
+      await control('live').click();
+      await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/board$/);
+
+      await control('settings').click();
+      await expect(page).toHaveURL(/\/settings$/);
+      await expect(page.locator('[data-page="settings"] h1')).toBeVisible();
+      await expect(page.locator('header')).toHaveCount(1);
     });
 
     test('placeholder, never not-found, for a tab whose view is not built yet', async ({ page }) => {

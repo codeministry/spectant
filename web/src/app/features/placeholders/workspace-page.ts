@@ -27,7 +27,8 @@ import { UiChip } from '../../shared/ui/chip/chip';
     } @else if (data.workspaceUnavailable()) {
       <p>{{ 'shell.unavailable' | transloco }}</p>
     } @else {
-      <h1>{{ 'shell.placeholder.workspaceSpecs' | transloco: { workspace: name() } }}</h1>
+      <!-- The header's spec picker links here as /w/:ws#specs; the router scrolls to it and focuses it (tabindex -1). -->
+      <h1 id="specs" tabindex="-1">{{ 'shell.placeholder.workspaceSpecs' | transloco: { workspace: name() } }}</h1>
       <ul>
         @for (row of data.specRows(); track row.id) {
           <li>

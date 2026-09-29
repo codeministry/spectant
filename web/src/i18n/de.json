@@ -277,8 +277,7 @@
       "label": "Bereich: {{area}}",
       "menu": "Bereiche",
       "needsSpec": "Öffnen Sie eine Spec, um den Bereich zu wechseln",
-      "unbuilt": "Kommt mit späteren Tasks dieser Spec",
-      "pending": "Das Bereichsmenü kommt mit einem späteren Task"
+      "unbuilt": "Kommt mit späteren Tasks dieser Spec"
     },
     "areas": {
       "dashboard": "Dashboard",
@@ -313,7 +312,8 @@
         "frontier": "Agentenquelle: LifeOS-Frontier-Locks",
         "activity": "Agentenquelle: Aktivitätsprotokoll",
         "none": "Keine Agentenquelle"
-      }
+      },
+      "open": "{{source}}, Live-Board öffnen"
     },
     "zen": "Zen-Modus",
     "help": "Hilfe und Tastenkürzel",
@@ -329,7 +329,11 @@
     },
     "unavailable": "Dieser Workspace kann nicht gelesen werden",
     "error": "Der Server hat nicht geantwortet",
-    "settings": "Einstellungen und Hilfe"
+    "settings": "Einstellungen und Hilfe",
+    "settingsPage": {
+      "pending": "Einstellungen, Workspaces und Hilfe kommen mit späteren Tasks dieser Spec.",
+      "back": "Zurück zu allen Workspaces"
+    }
   },
   "notFound": {
     "title": "Nicht gefunden",

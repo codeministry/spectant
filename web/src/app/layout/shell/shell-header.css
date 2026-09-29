@@ -104,6 +104,7 @@
   color: var(--color-base-content);
   font: inherit;
   font-size: 14px;
+  text-decoration: none;
   cursor: pointer;
   transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
 }
@@ -141,6 +142,57 @@
   border: 1px solid var(--line);
   background: var(--color-base-100);
   color: var(--disp-ink);
+}
+
+/* The area menu (ISC-76): a `ui-popover` below the trigger, one row per area in `SPEC_AREAS` order. */
+.area-popover {
+  --ui-popover-width: 280px;
+}
+
+.area-menu ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.area-entry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: center;
+  min-block-size: 40px;
+  padding: 8px 12px;
+  border-radius: var(--radius-field);
+  color: var(--color-base-content);
+  font-size: 14px;
+  line-height: 20px;
+  text-decoration: none;
+  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.area-entry[aria-current="page"] {
+  background: var(--color-base-200);
+  color: var(--disp-ink);
+  font-weight: 600;
+}
+
+.area-entry[aria-disabled="true"] {
+  color: var(--muted-ink);
+  cursor: default;
+}
+
+.area-reason {
+  grid-column: 2;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+@media (hover: hover) {
+  a.area-entry:hover {
+    background: var(--color-base-200);
+  }
 }
 
 .tabs {
@@ -200,6 +252,14 @@
   justify-content: center;
   inline-size: 40px;
   block-size: 40px;
+  border-radius: var(--radius-field);
+  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+@media (hover: hover) {
+  a.live:hover {
+    background: var(--color-base-200);
+  }
 }
 
 .live-dot {
@@ -247,6 +307,10 @@
   .palette,
   .live {
     min-inline-size: 44px;
+  }
+
+  .area-entry {
+    min-block-size: 44px;
   }
 }
 

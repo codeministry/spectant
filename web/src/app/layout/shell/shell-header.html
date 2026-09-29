@@ -11,34 +11,21 @@
   </a>
 
   <div class="pickers">
-    <button
-      type="button"
+    <a
       class="pick"
       data-control="workspace"
+      [routerLink]="workspaceLink()"
       [attr.aria-label]="
         workspaceName() === null
           ? ('shell.workspace.countLabel' | transloco: { count: workspaceCount() })
           : ('shell.workspace.label' | transloco: { name: workspaceName() })
       "
-      (click)="openWorkspace()"
     >
       <ui-icon name="folder-git-2" />
       <span class="pick-text">{{ workspaceName() ?? workspaceCount() }}</span>
-    </button>
+    </a>
     <span class="divider" aria-hidden="true"></span>
-    <button
-      type="button"
-      class="pick"
-      data-control="spec"
-      [attr.aria-disabled]="state.ws() === null ? 'true' : null"
-      [attr.title]="state.ws() === null ? ('shell.spec.none' | transloco) : null"
-      [attr.aria-label]="
-        specOpen()
-          ? ('shell.spec.label' | transloco: { id: state.specId(), title: row()?.title ?? '' })
-          : ('shell.spec.countLabel' | transloco: { count: specCount() })
-      "
-      (click)="openSpec()"
-    >
+    <ng-template #specContent>
       <ui-icon name="file-text" />
       @if (specOpen()) {
         <span class="pick-id">{{ state.specId() }}</span>
@@ -48,21 +35,93 @@
       } @else {
         <span class="pick-text">{{ specCount() }}</span>
       }
-    </button>
+    </ng-template>
+    @if (specTarget(); as target) {
+      <a
+        class="pick"
+        data-control="spec"
+        [routerLink]="target.link"
+        [fragment]="target.fragment"
+        [attr.aria-label]="
+          specOpen()
+            ? ('shell.spec.label' | transloco: { id: state.specId(), title: row()?.title ?? '' })
+            : ('shell.spec.countLabel' | transloco: { count: specCount() })
+        "
+      >
+        <ng-container [ngTemplateOutlet]="specContent" />
+      </a>
+    } @else {
+      <button
+        type="button"
+        class="pick"
+        data-control="spec"
+        aria-disabled="true"
+        [attr.title]="'shell.spec.none' | transloco"
+        [attr.aria-label]="'shell.spec.countLabel' | transloco: { count: specCount() }"
+      >
+        <ng-container [ngTemplateOutlet]="specContent" />
+      </button>
+    }
   </div>
 
-  <button
-    type="button"
-    class="pick area"
-    data-control="area"
-    aria-disabled="true"
-    [attr.title]="(specOpen() ? 'shell.area.pending' : 'shell.area.needsSpec') | transloco"
-    [attr.aria-label]="specOpen() ? ('shell.area.label' | transloco: { area: (areaKey() | transloco) }) : ('shell.area.menu' | transloco)"
-  >
-    <ui-icon name="layout-grid" />
-    <span class="pick-text">{{ (specOpen() ? areaKey() : 'shell.area.menu') | transloco }}</span>
-    <ui-icon name="chevron-down" [size]="14" />
-  </button>
+  @if (specOpen()) {
+    <button
+      type="button"
+      class="pick area"
+      data-control="area"
+      aria-haspopup="dialog"
+      [uiPopoverTrigger]="areaMenu"
+      [attr.aria-label]="'shell.area.label' | transloco: { area: (areaKey() | transloco) }"
+    >
+      <ui-icon name="layout-grid" />
+      <span class="pick-text">{{ areaKey() | transloco }}</span>
+      <ui-icon name="chevron-down" [size]="14" />
+    </button>
+    <ui-popover #areaMenu class="area-popover" placement="start" [label]="'shell.area.menu' | transloco">
+      <nav class="area-menu" [attr.aria-label]="'shell.area.menu' | transloco">
+        <ul uiRovingList [singleKeys]="singleKeys()">
+          @for (area of areas; track area.id) {
+            @let link = areaLink(area);
+            @let current = state.area() === area.id ? 'page' : null;
+            <li>
+              @if (area.built && link !== null) {
+                <a
+                  uiRovingItem
+                  class="area-entry"
+                  [attr.data-area]="area.id"
+                  [routerLink]="link"
+                  [attr.aria-current]="current"
+                  (click)="areaMenu.close()"
+                >
+                  <ui-icon [name]="area.icon" />
+                  <span class="area-name">{{ 'shell.areas.' + area.id | transloco }}</span>
+                </a>
+              } @else {
+                <span uiRovingItem class="area-entry" aria-disabled="true" [attr.data-area]="area.id" [attr.aria-current]="current">
+                  <ui-icon [name]="area.icon" />
+                  <span class="area-name">{{ 'shell.areas.' + area.id | transloco }}</span>
+                  <span class="area-reason">{{ 'shell.area.unbuilt' | transloco }}</span>
+                </span>
+              }
+            </li>
+          }
+        </ul>
+      </nav>
+    </ui-popover>
+  } @else {
+    <button
+      type="button"
+      class="pick area"
+      data-control="area"
+      aria-disabled="true"
+      [attr.title]="'shell.area.needsSpec' | transloco"
+      [attr.aria-label]="'shell.area.menu' | transloco"
+    >
+      <ui-icon name="layout-grid" />
+      <span class="pick-text">{{ 'shell.area.menu' | transloco }}</span>
+      <ui-icon name="chevron-down" [size]="14" />
+    </button>
+  }
 
   <app-tab-bar-slot class="tabs" placement="header" />
 
@@ -71,6 +130,7 @@
     class="palette tool"
     data-control="palette"
     aria-disabled="true"
+    aria-describedby="shell-palette-pending"
     [attr.aria-label]="'shell.palette.trigger' | transloco"
     [attr.title]="'shell.palette.pending' | transloco"
   >
@@ -78,11 +138,20 @@
     <span class="palette-text" aria-hidden="true">{{ 'shell.palette.trigger' | transloco }}</span>
     <ui-kbd class="palette-key" aria-hidden="true">{{ 'shell.palette.key' | transloco }}</ui-kbd>
   </button>
+  <span id="shell-palette-pending" class="visually-hidden">{{ 'shell.palette.pending' | transloco }}</span>
 
-  <span class="live tool" data-control="live" [attr.data-source]="source()" [attr.title]="liveKey() | transloco">
-    <span class="live-dot" aria-hidden="true"></span>
-    <span class="visually-hidden">{{ liveKey() | transloco }}</span>
-  </span>
+  @if (liveLink(); as link) {
+    @let liveTitle = 'shell.live.open' | transloco: { source: (liveKey() | transloco) };
+    <a class="live tool" data-control="live" [routerLink]="link" [attr.data-source]="source()" [attr.title]="liveTitle">
+      <span class="live-dot" aria-hidden="true"></span>
+      <span class="visually-hidden">{{ liveTitle }}</span>
+    </a>
+  } @else {
+    <span class="live tool" data-control="live" [attr.data-source]="source()" [attr.title]="liveKey() | transloco">
+      <span class="live-dot" aria-hidden="true"></span>
+      <span class="visually-hidden">{{ liveKey() | transloco }}</span>
+    </span>
+  }
 
   <button
     ui-icon-button
@@ -94,12 +163,17 @@
     (click)="state.toggleZen()"
   ></button>
 
-  <button
-    ui-icon-button
-    class="settings tool"
+  <a
+    ui-button
+    variant="ghost"
+    class="settings tool btn-square"
     data-control="settings"
-    icon="settings"
-    [label]="'shell.settings' | transloco"
-    [disabled]="true"
-  ></button>
+    routerLink="/settings"
+    routerLinkActive
+    ariaCurrentWhenActive="page"
+    [attr.aria-label]="'shell.settings' | transloco"
+    [attr.title]="'shell.settings' | transloco"
+  >
+    <ui-icon name="settings" [size]="16" />
+  </a>
 </header>

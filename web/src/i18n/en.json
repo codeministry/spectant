@@ -277,8 +277,7 @@
       "label": "Area: {{area}}",
       "menu": "Areas",
       "needsSpec": "Open a spec to switch areas",
-      "unbuilt": "Comes with this spec's later tasks",
-      "pending": "The area menu comes with a later task"
+      "unbuilt": "Comes with this spec's later tasks"
     },
     "areas": {
       "dashboard": "Dashboard",
@@ -313,7 +312,8 @@
         "frontier": "Agent source: LifeOS frontier locks",
         "activity": "Agent source: activity log",
         "none": "No agent source"
-      }
+      },
+      "open": "{{source}}, open the live board"
     },
     "zen": "Zen mode",
     "help": "Help & shortcuts",
@@ -329,7 +329,11 @@
     },
     "unavailable": "This workspace cannot be read",
     "error": "The server did not answer",
-    "settings": "Settings and help"
+    "settings": "Settings and help",
+    "settingsPage": {
+      "pending": "Settings, workspaces and help come with later tasks of this spec.",
+      "back": "Back to all workspaces"
+    }
   },
   "notFound": {
     "title": "Not found",

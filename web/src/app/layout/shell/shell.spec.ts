@@ -104,7 +104,7 @@ describe('ShellComponent', () => {
 
   it('renders exactly one header with the eight data-control slots on every route', async () => {
     setUp();
-    for (const url of ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/999', '/nope']) {
+    for (const url of ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/999', '/settings', '/nope']) {
       const { root } = await open(url);
       expect(root.querySelectorAll('header'), url).toHaveLength(1);
       const controls = [...root.querySelectorAll('header [data-control]')].map((el) => el.getAttribute('data-control'));
@@ -209,6 +209,152 @@ describe('ShellComponent', () => {
     await harness.fixture.whenStable();
     expect(root.querySelector('app-shell')?.hasAttribute('data-zen')).toBe(true);
     expect(zen?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  describe('header controls lead somewhere', () => {
+    const control = (root: HTMLElement, name: string): HTMLElement => {
+      const el = root.querySelector<HTMLElement>(`header [data-control="${name}"]`);
+      if (!el) throw new Error(`${name} missing`);
+      return el;
+    };
+
+    it('makes the workspace picker a link to the workspace, or to all workspaces without one', async () => {
+      setUp();
+      for (const [url, href] of [['/', '/'], ['/w/harbor', '/w/harbor'], ['/w/harbor/s/002/claims', '/w/harbor']] as const) {
+        const { root } = await open(url);
+        const picker = control(root, 'workspace');
+        expect(picker.tagName, url).toBe('A');
+        expect(picker.getAttribute('href'), url).toBe(href);
+        expect(picker.querySelector('ui-icon'), url).not.toBeNull();
+        expect(picker.getAttribute('aria-label'), url).toMatch(/^Workspace/);
+      }
+    });
+
+    it('makes the spec picker a link to the open spec, the workspace spec list, or a disabled placeholder', async () => {
+      setUp();
+      const { root: home } = await open('/');
+      const none = control(home, 'spec');
+      expect(none.tagName).toBe('BUTTON');
+      expect(none.getAttribute('aria-disabled')).toBe('true');
+      expect(none.getAttribute('title')).toBe('Open a workspace to pick a spec');
+
+      const { root: workspace } = await open('/w/harbor');
+      expect(control(workspace, 'spec').tagName).toBe('A');
+      expect(control(workspace, 'spec').getAttribute('href')).toBe('/w/harbor#specs');
+      expect(workspace.querySelector('[data-page="workspace"] h1')?.id).toBe('specs');
+
+      const { root: spec } = await open('/w/harbor/s/002/claims');
+      expect(control(spec, 'spec').tagName).toBe('A');
+      expect(control(spec, 'spec').getAttribute('href')).toBe('/w/harbor/s/002');
+      expect(control(spec, 'spec').textContent).toContain('Web console');
+    });
+
+    it('keeps the area menu disabled with its reason while no spec is open', async () => {
+      setUp();
+      const { root } = await open('/w/harbor');
+      const area = control(root, 'area');
+      expect(area.getAttribute('aria-disabled')).toBe('true');
+      expect(area.getAttribute('title')).toBe('Open a spec to switch areas');
+      expect(root.querySelector('header nav[aria-label="Areas"]')).toBeNull();
+    });
+
+    it('opens the area menu: six areas in registry order, two disabled, the current one marked, links to each area', async () => {
+      const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+      proto['showPopover'] = vi.fn();
+      proto['hidePopover'] = vi.fn(function (this: HTMLElement) {
+        this.dispatchEvent(Object.assign(new Event('toggle'), { newState: 'closed', oldState: 'open' }));
+      });
+      try {
+        setUp();
+        const { root, harness } = await open('/w/harbor/s/002/claims');
+        const trigger = control(root, 'area');
+        expect(trigger.getAttribute('aria-disabled')).toBeNull();
+        expect(trigger.getAttribute('aria-expanded')).toBe('false');
+        expect(trigger.textContent).toContain('Data');
+
+        trigger.click();
+        await harness.fixture.whenStable();
+        expect(trigger.getAttribute('aria-expanded')).toBe('true');
+
+        const nav = root.querySelector('header nav[aria-label="Areas"]');
+        expect(nav?.getAttribute('aria-label')).toBe('Areas');
+        const entries = [...(nav?.querySelectorAll('[data-area]') ?? [])];
+        expect(entries.map((entry) => entry.getAttribute('data-area'))).toEqual(['dashboard', 'status', 'live', 'data', 'docs', 'notes']);
+        expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A', 'SPAN', 'A', 'A', 'SPAN']);
+        expect(entries.map((entry) => entry.getAttribute('href'))).toEqual([
+          '/w/harbor/s/002',
+          '/w/harbor/s/002/status',
+          null,
+          '/w/harbor/s/002/claims',
+          '/w/harbor/s/002/plan',
+          null,
+        ]);
+        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual([null, null, null, 'page', null, null]);
+        for (const disabled of [entries[2], entries[5]]) {
+          expect(disabled.getAttribute('aria-disabled')).toBe('true');
+          expect(disabled.textContent).toContain("Comes with this spec's later tasks");
+        }
+        expect(entries.every((entry) => entry.querySelector('ui-icon') !== null)).toBe(true);
+        expect(texts(nav?.querySelectorAll('[data-area] .area-name') as NodeListOf<Element>)).toEqual([
+          'Dashboard',
+          'Status',
+          'Live',
+          'Data',
+          'Docs',
+          'Notes',
+        ]);
+
+        (entries[4] as HTMLElement).click();
+        await harness.fixture.whenStable();
+        expect(TestBed.inject(Router).url).toBe('/w/harbor/s/002/plan');
+        expect(trigger.getAttribute('aria-expanded')).toBe('false');
+      } finally {
+        delete proto['showPopover'];
+        delete proto['hidePopover'];
+      }
+    });
+
+    it('links the live indicator to the live board only while a spec is open', async () => {
+      setUp();
+      const { root: workspace } = await open('/w/harbor');
+      expect(control(workspace, 'live').tagName).toBe('SPAN');
+
+      const { root: spec } = await open('/w/harbor/s/002/status');
+      const live = control(spec, 'live');
+      expect(live.tagName).toBe('A');
+      expect(live.getAttribute('href')).toBe('/w/harbor/s/002/board');
+      expect(live.getAttribute('title')).toBe('No agent source, open the live board');
+      expect(live.getAttribute('data-source')).toBe('none');
+    });
+
+    it('links settings to the settings page, which renders inside the shell', async () => {
+      setUp();
+      const { root, harness } = await open('/w/harbor');
+      const settings = control(root, 'settings');
+      expect(settings.tagName).toBe('A');
+      expect(settings.getAttribute('href')).toBe('/settings');
+      expect(settings.getAttribute('aria-disabled')).toBeNull();
+      expect(settings.getAttribute('aria-label')).toBe('Settings and help');
+
+      settings.click();
+      await harness.fixture.whenStable();
+      expect(TestBed.inject(Router).url).toBe('/settings');
+      const page = root.querySelector('[data-page="settings"]');
+      expect(page?.querySelector('h1')?.textContent).toContain('Settings');
+      expect(page?.textContent).toContain('Settings, workspaces and help come with later tasks of this spec');
+      expect(page?.querySelector('a')?.getAttribute('href')).toBe('/');
+      expect(root.querySelectorAll('header')).toHaveLength(1);
+    });
+
+    it('describes the pending palette with a hidden hint', async () => {
+      setUp();
+      const { root } = await open('/w/harbor/s/002');
+      const palette = control(root, 'palette');
+      expect(palette.getAttribute('aria-disabled')).toBe('true');
+      const hintId = palette.getAttribute('aria-describedby') ?? '';
+      expect(hintId).not.toBe('');
+      expect(root.querySelector(`#${hintId}`)?.textContent).toContain('comes with a later task');
+    });
   });
 
   it('walks the dashboard row order with ] and [ and leaves the spec with Esc', async () => {

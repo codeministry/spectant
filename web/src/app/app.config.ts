@@ -9,7 +9,7 @@ import {
   provideZonelessChangeDetection,
 } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { provideTransloco, type Translation, type TranslocoLoader } from '@jsverse/transloco';
 import { CATALOGUES, isLang, LANGS } from '../i18n/catalogues';
 import { routes } from './app.routes';
@@ -45,7 +45,8 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     // Explicit on purpose: zoneless is the default in Angular 22, but the intent must not hang on a default.
     provideZonelessChangeDetection(),
-    provideRouter(routes),
+    // Anchor scrolling: the header's spec picker links to `/w/:ws#specs`, and the router scrolls to and focuses it.
+    provideRouter(routes, withInMemoryScrolling({ anchorScrolling: 'enabled' })),
     // The fetch backend is the default; the app only ever calls its own loopback `/api` with relative URLs (ISC-2).
     provideHttpClient(),
     // Language is a setting, not a route prefix (plan.md § Stack Decisions, FE-I18N-01 adapted); English by default.
