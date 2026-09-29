@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T17:10:05Z
+updated: 2026-09-29T17:19:05Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -70,7 +70,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T37 · ISC-76 · web — area menu as native popover with `aria-current`, Live and Notes as disabled entries with their reason while unbuilt; tab bar showing only the current area's tabs with counts; deep link selects area and tab (after: T35) · `web/src/app/layout/area-menu/`
 - [x] T38 · ISC-75 · web — zen: tools and rail hidden, navigation sticky, footer status bar; rail collapse toggle at wide with its state through `/api/settings` (after: T35) · `web/src/app/layout/zen/`
 - [ ] T39 · ISC-77 · web — spec 001's dashboard, overview, inspector and palette rendered inside the shell; their routes unchanged (after: T35, T36) · `web/src/app/features/dashboard/`
-- [ ] T40 · ISC-73 · web — e2e shell: exactly one header with the seven controls at 390 and 1440 (after: T36) · `web/e2e/shell.spec.ts`
+- [x] T40 · ISC-73 · web — e2e shell: exactly one header with the seven controls at 390 and 1440 (after: T36) · `web/e2e/shell.spec.ts`
 - [ ] T41 · ISC-75 · web — e2e zen and rail persistence (after: T38) · `web/e2e/shell-zen.spec.ts`
 - [ ] T42 · ISC-76 · web — e2e deep link selects area and tab (after: T37) · `web/e2e/spec-deeplink.spec.ts`
 - [ ] T43 · ISC-77 · web — 001's e2e suites run on the new shell; 001's dashboard and overview baselines re-recorded once (after: T39) · `web/e2e/__screenshots__/`

@@ -162,6 +162,81 @@ for (const { width, tier, tabBar } of TIERS) {
 }
 
 /**
+ * ISC-73 (T40): the claim's probe, `bun run e2e -- shell -g header`. Exactly one `<header>` and one `app-shell` on
+ * every route, a spec tab and an unknown path included, with the seven named controls (brand is the eighth slot); the
+ * spec picker shows the name at wide and the mono id at compact while a spec is open, the count otherwise; the palette
+ * is the field at wide and an icon button at compact; the settings control names help and leads to it. Where each
+ * control leads is "header controls lead where they say" above and is not repeated here.
+ */
+test.describe('header', () => {
+  const HEADER_ROUTES = ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/claims', '/no/such/path'] as const;
+  const SPEC_OPEN = new Set<string>(['/w/harbor/s/002', '/w/harbor/s/002/claims']);
+
+  for (const width of [390, 1440] as const) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+      const wide = width === 1440;
+
+      for (const route of HEADER_ROUTES) {
+        test(`one header with workspace, spec, area, palette, live, zen and settings on ${route} at ${String(width)}`, async ({ page }) => {
+          await page.goto(route);
+          const shell = page.locator('app-shell');
+          await expect(shell).toHaveAttribute('data-tier', wide ? 'wide' : 'compact');
+          await expect(shell).toHaveCount(1);
+          await expect(page.locator('app-shell app-shell')).toHaveCount(0);
+          await expect(page.locator('header')).toHaveCount(1);
+          await expect(page.locator('[role="banner"]')).toHaveCount(1);
+          const header = page.locator('header');
+          for (const control of CONTROLS) {
+            await expect(header.locator(`[data-control="${control}"]`), control).toHaveCount(1);
+            await expect(header.locator(`[data-control="${control}"]`), control).toBeVisible();
+          }
+
+          const spec = header.locator('[data-control="spec"]');
+          if (SPEC_OPEN.has(route)) {
+            const id = spec.locator('.pick-id');
+            await expect(id).toHaveText('002');
+            await expect(id).toBeVisible();
+            await expect(id).toHaveCSS('font-family', /mono/i);
+            await expect(spec.locator('.spec-title')).toBeVisible({ visible: wide });
+            // The name comes from the dashboard row (`ShellData.currentRow`), not from the spec head's title.
+            if (wide) await expect(spec.locator('.spec-title')).toHaveText(/^(?!002$)\S.*\S$/);
+            await expect(spec).toHaveAttribute('aria-label', /002/);
+          } else {
+            await expect(spec.locator('.pick-id')).toHaveCount(0);
+            await expect(spec.locator('.pick-text')).toHaveText(/^\d+$/);
+            await expect(spec.locator('.pick-text')).toBeVisible();
+          }
+
+          const palette = header.locator('[data-control="palette"]');
+          await expect(palette).toHaveAttribute('aria-label', /\S/);
+          await expect(palette.locator('ui-icon')).toBeVisible();
+          await expect(palette.locator('.palette-text')).toBeVisible({ visible: wide });
+          await expect(palette.locator('.palette-key')).toBeVisible({ visible: wide });
+
+          await expect(header.locator('[data-control="settings"]')).toHaveAttribute('aria-label', /help/i);
+        });
+      }
+
+      test(`header settings control reaches help at ${String(width)}`, async ({ page }) => {
+        await page.goto('/w/harbor/s/002');
+        await page.locator('header [data-control="settings"]').click();
+        await expect(page).toHaveURL(/\/settings$/);
+        const help = page.locator('[data-page="settings"] [data-action="shortcuts"]');
+        await expect(help).toBeVisible();
+        await help.click();
+        const sheet = page.locator('app-shortcut-sheet dialog');
+        await expect(sheet).toBeVisible();
+        await expect(sheet.locator('[data-binding]').first()).toBeVisible();
+        // The sheet's own title bar is a `<header>` inside the modal dialog (`ui-sheet`), not a second shell header.
+        await expect(page.locator('header:not(dialog header)')).toHaveCount(1);
+        await expect(page.locator('[role="banner"]')).toHaveCount(1);
+      });
+    });
+  }
+});
+
+/**
  * ISC-75 (T38): zen hides the header tools, the spec head and the rail, keeps the sticky tab bar and shows the footer
  * status bar; the rail's collapsed state is `railCollapsed` in `/api/settings` and survives a reload.
  * `bun run e2e -- shell -g zen`. Each block names its own stub session and resets it first, so a stored

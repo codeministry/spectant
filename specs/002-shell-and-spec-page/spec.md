@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 20/49
+progress: 21/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T17:10:05Z
+updated: 2026-09-29T17:19:05Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -186,7 +186,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 
 **The shell**
 
-- [ ] ISC-73: Every route renders inside one shell whose header carries the workspace picker, the spec picker (name when a spec is open, or its id at compact; count otherwise), the area menu, the palette trigger, the live indicator, zen and settings with help; no second header exists in the DOM.
+- [x] ISC-73: Every route renders inside one shell whose header carries the workspace picker, the spec picker (name when a spec is open, or its id at compact; count otherwise), the area menu, the palette trigger, the live indicator, zen and settings with help; no second header exists in the DOM.
 - [x] ISC-74: The app ships Manrope, Sora and JetBrains Mono as local assets and declares no font URL outside its own origin; this supersedes the Inter face of ISC-67.
 - [x] ISC-75: Zen mode hides the header tools and the context rail and keeps the sticky navigation; the collapsed state of the rail survives a reload.
 - [x] ISC-76: The area menu offers Dashboard · Status · Live · Data · Docs · Notes for an open spec, the tab bar shows only the current area's tabs, and a deep link `/w/:ws/s/:id/<tab>` selects area and tab. ⟨?: Live and Notes render as disabled entries with "comes with this spec's later tasks" while their tabs are unbuilt, rather than hidden — assuming a stable menu beats a growing one⟩
@@ -286,6 +286,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-73: e2e — `bun run e2e -- shell -g header` 41 passed (shell suite 54): on /, /w/harbor, /w/harbor/s/002, /w/harbor/s/002/claims and an unknown path at 390 and 1440 exactly one app-shell, one shell header and one role=banner, the eight data-control slots once each, the spec picker with mono id at compact and the name at wide, the count otherwise, palette as icon at compact and field at wide, settings reaching help; read as one banner: overlay sheets and dialogs render their own sectioning <header class=head> inside the top layer (T36, T37, T40; 2026-09-29)
 
 - ISC-97: e2e — `bun run e2e -- keyboard` 10 passed (whole e2e suite 88 passed, 2 skipped): g sequences reach every area and tab with focus on the heading, [ ] step between harbor specs, v toggles ?view=lanes|flow, z sets data-zen, ◂ ▸ step ?frame=, f, m, n, Esc; typing in a field is never a shortcut; ? opens the sheet whose rows equal the exported SHORTCUTS table; kbd hints hidden on a coarse pointer (T102, e2e in keyboard.spec.ts so T103 ticks with it; 2026-09-29)
 
