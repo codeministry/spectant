@@ -10,6 +10,8 @@
 //                                            folder's id, full name and bare slug. Tree-level master and constitution.
 //   <tree>.timeline.golden.json  timeline    `buildTimeline` per spec folder, keyed by `specs/…` path, no commits.
 //   <tree>.frames.golden.json    frames      `buildFrames` per spec folder (T17), keyed by `specs/…` path.
+//   <tree>.live.golden.json      live        `buildLiveFrame` per spec folder (T21) at 2026-03-08T15:00:00Z with the
+//                                            tree's `.spectant/activity.jsonl` reading (no LifeOS state directory).
 //
 // The next families join FAMILIES below, not a second harness: the spec page model (T12, spec.ts), the tasks and
 // claim views (T13, tasks.ts / claim-view.ts), the derived stage entries (T15, derived-stages.ts), frames and the live
@@ -26,11 +28,13 @@ import { homedir, tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 
 import { FILE_KINDS, specFilePath } from '../src/files.ts';
-import type { FileKind, SpecFiles, SpecPageModel, TimelineEntry } from '../src/files.ts';
+import type { FileKind, LockReading, SpecFiles, SpecPageModel, TimelineEntry } from '../src/files.ts';
 import { listSpecs, resolveSpec } from '../src/resolve.ts';
 import type { SpecRef } from '../src/resolve.ts';
 import { buildClaimViews } from '../src/claim-view.ts';
 import { buildFrames } from '../src/frames.ts';
+import { buildLiveFrame } from '../src/live.ts';
+import { readLockSources } from '../src/locks.ts';
 import { buildSpecPage } from '../src/spec.ts';
 import { parseTaskLines } from '../src/tasks.ts';
 import { buildTimeline } from '../src/timeline.ts';
@@ -115,6 +119,13 @@ function specPageModel(root: string): Record<string, SpecPageModel> {
   return out;
 }
 
+/**
+ * The `live` family (T21): a fixed clock, and each tree's lock reading from the real reader (`readLockSources`, read
+ * once up front since the families are synchronous) with no LifeOS state directory, so `activity` or `none`.
+ */
+const LIVE_NOW = new Date('2026-03-08T15:00:00Z');
+const LIVE_LOCKS = new Map(await Promise.all(fixtureTrees().map(async (tree) => [join(FIXTURES, tree), await readLockSources({ repoRoot: join(FIXTURES, tree) })] as const)));
+
 /** Spec 002's model families, each a function of a tree root. A later task adds its model here. */
 const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
   specs: specsModel,
@@ -124,6 +135,7 @@ const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
   frames: (root) => ((texts) => Object.fromEntries(listSpecs(root).map((ref) => [rel(root, ref.dir), buildFrames(texts.get(rel(root, ref.dir)) as SpecFiles)])))(folderTexts(root)),
   'claim-view': (root) => ((texts) => Object.fromEntries(listSpecs(root).map((ref) => [rel(root, ref.dir), buildClaimViews({ files: texts.get(rel(root, ref.dir)) as SpecFiles })])))(folderTexts(root)),
   tasks: (root) => ((texts, constitution) => Object.fromEntries(listSpecs(root).map((ref) => ((t) => [rel(root, ref.dir), t.tasks === undefined ? null : parseTaskLines({ tasks: t.tasks, ...(constitution === null ? {} : { constitution }), ...(t.rounds === undefined ? {} : { rounds: t.rounds }) })])((texts.get(rel(root, ref.dir)) as SpecFiles).texts))))(folderTexts(root), readTreeAt(root).constitution),
+  live: (root) => ((texts, constitution, locks) => Object.fromEntries(listSpecs(root).map((ref) => ((files) => [rel(root, ref.dir), buildLiveFrame({ files: { folder: files.folder, texts: { ...files.texts, ...(constitution === null ? {} : { constitution }) } }, locks, now: LIVE_NOW })])(texts.get(rel(root, ref.dir)) as SpecFiles))))(folderTexts(root), readTreeAt(root).constitution, LIVE_LOCKS.get(root) as LockReading),
 };
 
 /** Every string in a JSON value, keys included. */

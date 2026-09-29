@@ -1,0 +1,1353 @@
+{
+  "specs/002-web-console": {
+    "index": 6,
+    "kind": "live",
+    "round": 3,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "question",
+    "cards": [
+      {
+        "task": "T1",
+        "claim": "ISC-51",
+        "lane": "api",
+        "text": "history endpoint contract: run, repository, digest, failure",
+        "parallel": false,
+        "seam": true,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "seam — runs alone before its fan-out"
+      },
+      {
+        "task": "T2",
+        "claim": "ISC-51",
+        "lane": "web",
+        "text": "registry-list: renders (ISC-51)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-52",
+        "lane": "web",
+        "text": "repository-view: renders (ISC-52)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T4",
+        "claim": "ISC-53",
+        "lane": "web",
+        "text": "tag-table: renders (ISC-53)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T5",
+        "claim": "ISC-54",
+        "lane": "web",
+        "text": "digest-detail-panel: renders (ISC-54)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T6",
+        "claim": "ISC-55",
+        "lane": "web",
+        "text": "sync-history: renders (ISC-55)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T7",
+        "claim": "ISC-56",
+        "lane": "web",
+        "text": "settings-page: renders (ISC-56)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T8",
+        "claim": "ISC-57",
+        "lane": "web",
+        "text": "search-box: renders (ISC-57)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T9",
+        "claim": "ISC-58",
+        "lane": "web",
+        "text": "empty-state: renders (ISC-58)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T10",
+        "claim": "ISC-59",
+        "lane": "web",
+        "text": "error-banner: renders (ISC-59)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T11",
+        "claim": "ISC-60",
+        "lane": "web",
+        "text": "theme-switch: renders (ISC-60)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T12",
+        "claim": "ISC-60.1",
+        "lane": "web",
+        "text": "theme-switch: follows the system scheme (ISC-60.1)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T13",
+        "claim": "ISC-60.2",
+        "lane": "web",
+        "text": "theme-switch: mode survives reload (ISC-60.2)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T14",
+        "claim": "ISC-61",
+        "lane": "web",
+        "text": "tag-table: no overflow at 390 px (ISC-61)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Anvil",
+        "reader": "Forge",
+        "verdict": "pass",
+        "tries": 2,
+        "reason": "claim takeable, edges closed",
+        "note": "retry with: probe exit 1 — wrap the digest column below 480 px"
+      },
+      {
+        "task": "T15",
+        "claim": "ISC-62",
+        "lane": "web",
+        "text": "digest-detail-panel: no overflow at 390 px (ISC-62)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T16",
+        "claim": "ISC-63",
+        "lane": "web",
+        "text": "sync-history: no overflow at 390 px (ISC-63)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T17",
+        "claim": "ISC-64",
+        "lane": "web",
+        "text": "settings-page: no overflow at 390 px (ISC-64)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "reader": "Forge",
+        "verdict": "pass",
+        "tries": 2,
+        "reason": "claim takeable, edges closed",
+        "note": "retry with: concerns — let the settings form stack its labels at 390 px"
+      },
+      {
+        "task": "T18",
+        "claim": "ISC-65",
+        "lane": "web",
+        "text": "search-box: no overflow at 390 px (ISC-65)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T19",
+        "claim": "ISC-66",
+        "lane": "web",
+        "text": "empty-state: no overflow at 390 px (ISC-66)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T20",
+        "claim": "ISC-67",
+        "lane": "web",
+        "text": "error-banner: no overflow at 390 px (ISC-67)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T21",
+        "claim": "ISC-68",
+        "lane": "web",
+        "text": "theme-switch: no overflow at 390 px (ISC-68)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T22",
+        "claim": "ISC-69",
+        "lane": "web",
+        "text": "registry-list: keyboard reach and focus ring (ISC-69)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T23",
+        "claim": "ISC-70",
+        "lane": "web",
+        "text": "repository-view: keyboard reach and focus ring (ISC-70)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T24",
+        "claim": "ISC-71",
+        "lane": "web",
+        "text": "tag-table: keyboard reach and focus ring (ISC-71)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "reader": "Forge",
+        "verdict": "skipped",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T25",
+        "claim": "ISC-72",
+        "lane": "web",
+        "text": "digest-detail-panel: keyboard reach and focus ring (ISC-72)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T26",
+        "claim": "ISC-73",
+        "lane": "web",
+        "text": "sync-history: keyboard reach and focus ring (ISC-73)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "tries": 1,
+        "reason": "claim takeable, edges closed"
+      },
+      {
+        "task": "T27",
+        "claim": "ISC-74",
+        "lane": "web",
+        "text": "settings-page: keyboard reach and focus ring (ISC-74)",
+        "parallel": false,
+        "seam": false,
+        "state": "running",
+        "builder": "Engineer",
+        "tries": 1,
+        "lock": {
+          "source": "activity",
+          "session": "spec-002-ISC-74"
+        },
+        "since": "2026-03-08T14:06:00Z",
+        "elapsedMs": 3240000,
+        "stale": true
+      },
+      {
+        "task": "T28",
+        "claim": "ISC-75",
+        "lane": "web",
+        "text": "search-box: keyboard reach and focus ring (ISC-75)",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "width 10 reached"
+      },
+      {
+        "task": "T29",
+        "claim": "ISC-76",
+        "lane": "web",
+        "text": "empty-state: keyboard reach and focus ring (ISC-76)",
+        "parallel": false,
+        "seam": false,
+        "state": "question",
+        "builder": "Engineer",
+        "tries": 0,
+        "reason": "claim takeable, edges closed",
+        "note": "question: should the empty state link to the sync docs or to the settings page?"
+      },
+      {
+        "task": "T30",
+        "claim": "ISC-77",
+        "lane": "operator",
+        "text": "set up the screen-reader profile on the test device",
+        "parallel": true,
+        "seam": false,
+        "state": "operatorDone",
+        "tries": 0,
+        "reason": "operator lane — the principal's own action, never auto-dispatched"
+      },
+      {
+        "task": "T31",
+        "claim": "ISC-77",
+        "lane": "operator",
+        "text": "screen-reader pass over the sync history (ISC-77)",
+        "parallel": false,
+        "seam": false,
+        "state": "operatorOpen",
+        "tries": 0,
+        "reason": "operator lane — the principal's own action, never auto-dispatched"
+      },
+      {
+        "task": "T32",
+        "claim": "ISC-78",
+        "lane": "web",
+        "text": "theme-switch: keyboard reach and focus ring (ISC-78)",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "after T31 still open"
+      }
+    ],
+    "progress": {
+      "claims": {
+        "closed": 25,
+        "total": 30
+      },
+      "tasks": {
+        "landed": 27,
+        "total": 32
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [
+      {
+        "source": "activity",
+        "claim": "ISC-74",
+        "session": "spec-002-ISC-74",
+        "since": "2026-03-08T14:06:00Z"
+      }
+    ],
+    "agents": [
+      {
+        "session": "spec-002-ISC-74",
+        "source": "activity",
+        "claims": [
+          "ISC-74"
+        ],
+        "since": "2026-03-08T14:06:00Z",
+        "elapsedMs": 3240000,
+        "stale": true
+      }
+    ],
+    "needsYou": [
+      {
+        "task": "T29",
+        "claim": "ISC-76",
+        "lane": "web",
+        "text": "empty-state: keyboard reach and focus ring (ISC-76)",
+        "parallel": false,
+        "seam": false,
+        "state": "question",
+        "builder": "Engineer",
+        "tries": 0,
+        "reason": "claim takeable, edges closed",
+        "note": "question: should the empty state link to the sync docs or to the settings page?"
+      },
+      {
+        "task": "T31",
+        "claim": "ISC-77",
+        "lane": "operator",
+        "text": "screen-reader pass over the sync history (ISC-77)",
+        "parallel": false,
+        "seam": false,
+        "state": "operatorOpen",
+        "tries": 0,
+        "reason": "operator lane — the principal's own action, never auto-dispatched"
+      }
+    ],
+    "staleAfterMs": 2700000
+  },
+  "specs/003-config-loader": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 13
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000
+  },
+  "specs/004-retention-policies": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [
+      {
+        "task": "T1",
+        "claim": "ISC-95",
+        "lane": "api",
+        "text": "verdict log for keep-last-N (ISC-95)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T2",
+        "claim": "ISC-96",
+        "lane": "api",
+        "text": "verdict log for keep-newer-than (ISC-96)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-97",
+        "lane": "api",
+        "text": "verdict log for keep-by-tag-pattern (ISC-97)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T4",
+        "claim": "ISC-98",
+        "lane": "api",
+        "text": "verdict log for a protected tag (ISC-98)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T5",
+        "claim": "ISC-99",
+        "lane": "api",
+        "text": "verdict log for an untagged manifest (ISC-99)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T6",
+        "claim": "ISC-100",
+        "lane": "api",
+        "text": "verdict log for a policy preview (ISC-100)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T7",
+        "claim": "ISC-101",
+        "lane": "api",
+        "text": "verdict log for a policy conflict (ISC-101)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T8",
+        "claim": "ISC-102",
+        "lane": "api",
+        "text": "verdict log for a scheduled run (ISC-102)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T9",
+        "claim": "ISC-103",
+        "lane": "api",
+        "text": "verdict log for a manual run (ISC-103)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T10",
+        "claim": "ISC-104",
+        "lane": "api",
+        "text": "verdict log for a policy file with comments (ISC-104)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T11",
+        "claim": "ISC-105",
+        "lane": "api",
+        "text": "referenced manifests deleted for keep-last-N (ISC-105)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T12",
+        "claim": "ISC-106",
+        "lane": "api",
+        "text": "referenced manifests deleted for keep-newer-than (ISC-106)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T13",
+        "claim": "ISC-107",
+        "lane": "api",
+        "text": "referenced manifests deleted for keep-by-tag-pattern (ISC-107)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T14",
+        "claim": "ISC-108",
+        "lane": "api",
+        "text": "referenced manifests deleted for a protected tag (ISC-108)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T15",
+        "claim": "ISC-109",
+        "lane": "api",
+        "text": "referenced manifests deleted for an untagged manifest (ISC-109)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T16",
+        "claim": "ISC-110",
+        "lane": "api",
+        "text": "referenced manifests deleted for a policy preview (ISC-110)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T17",
+        "claim": "ISC-111",
+        "lane": "api",
+        "text": "referenced manifests deleted for a policy conflict (ISC-111)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T18",
+        "claim": "ISC-112",
+        "lane": "api",
+        "text": "referenced manifests deleted for a scheduled run (ISC-112)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T19",
+        "claim": "ISC-113",
+        "lane": "api",
+        "text": "referenced manifests deleted for a manual run (ISC-113)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T20",
+        "claim": "ISC-114",
+        "lane": "api",
+        "text": "referenced manifests deleted for a policy file with comments (ISC-114)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T21",
+        "claim": "ISC-115",
+        "lane": "web",
+        "text": "preview shown for keep-last-N (ISC-115)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T22",
+        "claim": "ISC-116",
+        "lane": "web",
+        "text": "preview shown for keep-newer-than (ISC-116)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T23",
+        "claim": "ISC-117",
+        "lane": "web",
+        "text": "preview shown for keep-by-tag-pattern (ISC-117)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T24",
+        "claim": "ISC-118",
+        "lane": "web",
+        "text": "preview shown for a protected tag (ISC-118)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T25",
+        "claim": "ISC-119",
+        "lane": "web",
+        "text": "preview shown for an untagged manifest (ISC-119)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T26",
+        "claim": "ISC-120",
+        "lane": "web",
+        "text": "preview shown for a policy preview (ISC-120)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T27",
+        "claim": "ISC-121",
+        "lane": "web",
+        "text": "preview shown for a policy conflict (ISC-121)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T28",
+        "claim": "ISC-122",
+        "lane": "web",
+        "text": "preview shown for a scheduled run (ISC-122)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T29",
+        "claim": "ISC-123",
+        "lane": "web",
+        "text": "preview shown for a manual run (ISC-123)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T30",
+        "claim": "ISC-124",
+        "lane": "web",
+        "text": "preview shown for a policy file with comments (ISC-124)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      }
+    ],
+    "progress": {
+      "claims": {
+        "closed": 30,
+        "total": 30
+      },
+      "tasks": {
+        "landed": 30,
+        "total": 30
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000
+  },
+  "specs/005-config-format-choice": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 1
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000
+  },
+  "specs/006-partial-push": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 4
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000
+  },
+  "specs/archive/001-manifest-sync": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [
+      {
+        "task": "T1",
+        "claim": "ISC-5",
+        "lane": "cli",
+        "text": "make ISC-5 pass: digest equality for case 1",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T2",
+        "claim": "ISC-6",
+        "lane": "cli",
+        "text": "make ISC-6 pass: digest equality for case 2",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-7",
+        "lane": "cli",
+        "text": "make ISC-7 pass: digest equality for case 3",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T4",
+        "claim": "ISC-8",
+        "lane": "cli",
+        "text": "make ISC-8 pass: digest equality for case 4",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T5",
+        "claim": "ISC-9",
+        "lane": "cli",
+        "text": "make ISC-9 pass: digest equality for case 5",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T6",
+        "claim": "ISC-10",
+        "lane": "cli",
+        "text": "make ISC-10 pass: digest equality for case 6",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T7",
+        "claim": "ISC-11",
+        "lane": "cli",
+        "text": "make ISC-11 pass: digest equality for case 7",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T8",
+        "claim": "ISC-12",
+        "lane": "cli",
+        "text": "make ISC-12 pass: digest equality for case 8",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T9",
+        "claim": "ISC-13",
+        "lane": "cli",
+        "text": "make ISC-13 pass: digest equality for case 9",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T10",
+        "claim": "ISC-14",
+        "lane": "cli",
+        "text": "make ISC-14 pass: digest equality for case 10",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T11",
+        "claim": "ISC-15",
+        "lane": "cli",
+        "text": "make ISC-15 pass: digest equality for case 11",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T12",
+        "claim": "ISC-16",
+        "lane": "cli",
+        "text": "make ISC-16 pass: digest equality for case 12",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T13",
+        "claim": "ISC-17",
+        "lane": "cli",
+        "text": "make ISC-17 pass: dry-run writes for case 1",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T14",
+        "claim": "ISC-18",
+        "lane": "cli",
+        "text": "make ISC-18 pass: dry-run writes for case 2",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T15",
+        "claim": "ISC-19",
+        "lane": "cli",
+        "text": "make ISC-19 pass: dry-run writes for case 3",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T16",
+        "claim": "ISC-20",
+        "lane": "cli",
+        "text": "make ISC-20 pass: dry-run writes for case 4",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T17",
+        "claim": "ISC-21",
+        "lane": "cli",
+        "text": "make ISC-21 pass: dry-run writes for case 5",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T18",
+        "claim": "ISC-22",
+        "lane": "cli",
+        "text": "make ISC-22 pass: dry-run writes for case 6",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T19",
+        "claim": "ISC-23",
+        "lane": "cli",
+        "text": "make ISC-23 pass: dry-run writes for case 7",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T20",
+        "claim": "ISC-24",
+        "lane": "cli",
+        "text": "make ISC-24 pass: dry-run writes for case 8",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T21",
+        "claim": "ISC-25",
+        "lane": "cli",
+        "text": "make ISC-25 pass: dry-run writes for case 9",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T22",
+        "claim": "ISC-26",
+        "lane": "cli",
+        "text": "make ISC-26 pass: dry-run writes for case 10",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T23",
+        "claim": "ISC-27",
+        "lane": "cli",
+        "text": "make ISC-27 pass: dry-run writes for case 11",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T24",
+        "claim": "ISC-28",
+        "lane": "cli",
+        "text": "make ISC-28 pass: dry-run writes for case 12",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T25",
+        "claim": "ISC-29",
+        "lane": "cli",
+        "text": "make ISC-29 pass: bytes uploaded on re-run for case 1",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T26",
+        "claim": "ISC-30",
+        "lane": "cli",
+        "text": "make ISC-30 pass: bytes uploaded on re-run for case 2",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T27",
+        "claim": "ISC-31",
+        "lane": "cli",
+        "text": "make ISC-31 pass: bytes uploaded on re-run for case 3",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T28",
+        "claim": "ISC-32",
+        "lane": "cli",
+        "text": "make ISC-32 pass: bytes uploaded on re-run for case 4",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T29",
+        "claim": "ISC-33",
+        "lane": "cli",
+        "text": "make ISC-33 pass: bytes uploaded on re-run for case 5",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T30",
+        "claim": "ISC-34",
+        "lane": "cli",
+        "text": "make ISC-34 pass: bytes uploaded on re-run for case 6",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T31",
+        "claim": "ISC-35",
+        "lane": "cli",
+        "text": "make ISC-35 pass: bytes uploaded on re-run for case 7",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T32",
+        "claim": "ISC-36",
+        "lane": "cli",
+        "text": "make ISC-36 pass: bytes uploaded on re-run for case 8",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T33",
+        "claim": "ISC-37",
+        "lane": "cli",
+        "text": "make ISC-37 pass: bytes uploaded on re-run for case 9",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T34",
+        "claim": "ISC-38",
+        "lane": "cli",
+        "text": "make ISC-38 pass: bytes uploaded on re-run for case 10",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T35",
+        "claim": "ISC-39",
+        "lane": "cli",
+        "text": "make ISC-39 pass: bytes uploaded on re-run for case 11",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T36",
+        "claim": "ISC-40",
+        "lane": "cli",
+        "text": "make ISC-40 pass: bytes uploaded on re-run for case 12",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T37",
+        "claim": "ISC-41",
+        "lane": "cli",
+        "text": "make ISC-41 pass: log line fields for case 1",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T38",
+        "claim": "ISC-42",
+        "lane": "cli",
+        "text": "make ISC-42 pass: log line fields for case 2",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T39",
+        "claim": "ISC-43",
+        "lane": "cli",
+        "text": "make ISC-43 pass: log line fields for case 3",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T40",
+        "claim": "ISC-44",
+        "lane": "cli",
+        "text": "make ISC-44 pass: log line fields for case 4",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T41",
+        "claim": "ISC-45",
+        "lane": "cli",
+        "text": "make ISC-45 pass: log line fields for case 5",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T42",
+        "claim": "ISC-46",
+        "lane": "cli",
+        "text": "make ISC-46 pass: log line fields for case 6",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T43",
+        "claim": "ISC-47",
+        "lane": "cli",
+        "text": "make ISC-47 pass: log line fields for case 7",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T44",
+        "claim": "ISC-48",
+        "lane": "cli",
+        "text": "make ISC-48 pass: log line fields for case 8",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T45",
+        "claim": "ISC-49",
+        "lane": "cli",
+        "text": "make ISC-49 pass: log line fields for case 9",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T46",
+        "claim": "ISC-50",
+        "lane": "cli",
+        "text": "make ISC-50 pass: log line fields for case 10",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      }
+    ],
+    "progress": {
+      "claims": {
+        "closed": 46,
+        "total": 46
+      },
+      "tasks": {
+        "landed": 46,
+        "total": 46
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000
+  }
+}

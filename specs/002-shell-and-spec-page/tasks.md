@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T12:16:09Z
+updated: 2026-09-29T12:24:22Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -48,14 +48,14 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T18 · ISC-91 · core — re-cut detection between rounds (ids and texts compared), struck tasks as absent, no state attributed to a renumbered id (after: T17) · `core/src/recut.ts`
 - [ ] T19 · ISC-92 · core — matrix cells: tasks × frames with state glyph keys, absent and re-cut columns (after: T17) · `core/src/matrix.ts`
 - [x] T20 · ISC-37 · [P] · core — lock sources: frontier lock files under a given LifeOS state directory, `.spectant/activity.jsonl` claim/release lines, `none` when neither exists · `core/src/locks.ts`
-- [ ] T21 · ISC-90 · core — live frame from tasks.md plus the lock sources; a locked task in flight with its session name (after: T17, T20) · `core/src/live.ts`
+- [x] T21 · ISC-90 · core — live frame from tasks.md plus the lock sources; a locked task in flight with its session name (after: T17, T20) · `core/src/live.ts`
 - [x] T22 · ISC-81 · [P] · core — claim view model: glyph state (open, takeable, taken, blocked, closed, dropped), kind, dependency edges, probe row, verification line (after: T1) · `core/src/claim-view.ts`
 - [x] T23 · ISC-82 · [P] · core — task line grammar in full: flags, lane from the constitution's lane table, state, edges, paths, plus the probe mapping table (after: T1) · `core/src/tasks.ts`
 - [x] T24 · ISC-83 · [P] · core — evidence listing of `artifacts/` and `.evidence/` grouped by claim with media type; path confinement to the spec folder (after: T1) · `core/src/evidence.ts`
 - [x] T25 · ISC-84 · [P] · core — markdown for docs: tables, code blocks, mermaid fences as figures, TOC extraction · `core/src/markdown-docs.ts`
 - [ ] T26 · ISC-80 · core — timeline tests: sources merged in order, one entry per event (after: T14, T15) · `core/tests/timeline.test.ts`
 - [ ] T27 · ISC-87 · core — frames tests including the re-cut and matrix cases on spec 001's own `rounds.jsonl` and harbor 002 (after: T17, T18, T19) · `core/tests/frames.test.ts`
-- [ ] T28 · ISC-90 · core — live frame tests: frontier source, activity source, none (after: T21) · `core/tests/live.test.ts`
+- [x] T28 · ISC-90 · core — live frame tests: frontier source, activity source, none (after: T21) · `core/tests/live.test.ts`
 - [ ] T29 · ISC-79 · core — stage tests row by row against `FORMAT.md` (after: T11) · `core/tests/stage.test.ts`
 - [ ] T30 · ISC-32 · core — events validator tests (after: T16) · `core/tests/events.test.ts`
 

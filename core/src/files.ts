@@ -498,9 +498,9 @@ export interface Frame {
   /** Position on the scrubber, 0-based. */
   readonly index: number;
   readonly kind: FrameKind;
-  /** The round number; null for the live frame. */
+  /** The round number; the live frame carries the last recorded round, null when rounds.jsonl has none. */
   readonly round: number | null;
-  /** ISO 8601; the live frame carries the newest file time the parser saw, never the clock. */
+  /** ISO 8601; the live frame carries the `now` its caller passed (core reads no clock). */
   readonly ts: string;
   /** Scrubber label, e.g. `R2` or `Live`. */
   readonly label: string;
@@ -571,16 +571,54 @@ export interface Matrix {
   readonly cells: ReadonlyArray<readonly MatrixCell[]>;
 }
 
+/** A card of the live frame: a `running` card also carries its lock's time and whether it went quiet too long. */
+export interface LiveCard extends FrameCard {
+  /** ISO 8601: when the lock was taken. Set on `running` cards only. */
+  readonly since?: string;
+  /** `now − since` in milliseconds, never negative. Set on `running` cards only. */
+  readonly elapsedMs?: number;
+  /** No release for longer than `staleAfterMs`: the agent may have died. Set on `running` cards only. */
+  readonly stale?: boolean;
+}
+
+/** One session holding locks on this spec's claims: an entry of the "This frame" rail. */
+export interface LiveAgent {
+  readonly session: string;
+  readonly source: AgentLockSource;
+  /** The claims the session holds here, in claim-ID order. */
+  readonly claims: readonly string[];
+  /** ISO 8601: the session's oldest lock here. */
+  readonly since: string;
+  readonly elapsedMs: number;
+  readonly stale: boolean;
+}
+
 export interface LiveFrame extends Frame {
   readonly kind: 'live';
+  readonly cards: readonly LiveCard[];
+  /** The source the reading names: `frontier`, `activity` or `none`. */
   readonly lockSource: LockSource;
+  /** The locks on this spec's claims, one per claim (the frontier entry wins over activity), in claim-ID order. */
   readonly locks: readonly ClaimLock[];
+  /** The sessions holding those locks, oldest lock first. */
+  readonly agents: readonly LiveAgent[];
+  /** The cards waiting on the principal: question, then concerns, then open operator steps; board order within each. */
+  readonly needsYou: readonly LiveCard[];
+  /** The threshold `stale` was computed with. */
+  readonly staleAfterMs: number;
 }
 
 export interface LiveFrameInput {
+  /** The spec folder's texts; `constitution` (for the lane table) is read when present. */
   readonly files: SpecFiles;
-  readonly frames: readonly Frame[];
+  /** `buildFrames(files)` when the caller already holds it; absent means the live frame builds it. */
+  readonly frames?: readonly Frame[];
+  /** The lock reading of the repository (`readLockSources`); locks on other specs' claims are ignored. */
   readonly locks: LockReading;
+  /** The clock: the frame's `ts` and every `elapsedMs` are measured against it. */
+  readonly now: Date;
+  /** A lock held longer than this without a release is stale; defaults to `LIVE_STALE_MS` (45 minutes). */
+  readonly staleAfterMs?: number;
 }
 
 // ─── Claims and tasks (claim-view.ts, tasks.ts) ──────────────────────────────────────────────────────────────────

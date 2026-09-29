@@ -1,0 +1,137 @@
+{
+  "specs/001-reading-list": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "waiting",
+    "cards": [
+      {
+        "task": "T1",
+        "claim": "ISC-3",
+        "lane": "web",
+        "text": "save action from the address bar",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T2",
+        "claim": "ISC-4",
+        "lane": "web",
+        "text": "IndexedDB store, list reads it on start",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-5",
+        "lane": "web",
+        "text": "fetch the page title at save time",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T4",
+        "claim": "ISC-6",
+        "lane": "web",
+        "text": "tags stored with the link",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 0
+      },
+      {
+        "task": "T5",
+        "claim": "ISC-7",
+        "lane": "web",
+        "text": "title search",
+        "parallel": true,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "[P], claim takeable, edges closed"
+      },
+      {
+        "task": "T6",
+        "claim": "ISC-8",
+        "lane": "web",
+        "text": "tag search",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "claim blocked by ISC-7"
+      },
+      {
+        "task": "T7",
+        "claim": "ISC-9",
+        "lane": "web",
+        "text": "store the article text and render it offline",
+        "parallel": true,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "[P], claim takeable, edges closed"
+      },
+      {
+        "task": "T8",
+        "claim": "ISC-10",
+        "lane": "web",
+        "text": "reading view at 390 px",
+        "parallel": false,
+        "seam": false,
+        "state": "waiting",
+        "tries": 0,
+        "reason": "claim blocked by ISC-9"
+      }
+    ],
+    "progress": {
+      "claims": {
+        "closed": 4,
+        "total": 8
+      },
+      "tasks": {
+        "landed": 4,
+        "total": 8
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "none",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000
+  },
+  "specs/002-duplicate-links": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 0,
+        "total": 2
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "none",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000
+  }
+}

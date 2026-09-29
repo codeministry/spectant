@@ -603,6 +603,17 @@ does not hold it. A claim held in both sources is listed once per source, activi
 {"session":"spec-002-ISC-75","ts":"2026-03-08T15:30:00.000Z","isa":"/srv/repo/ISA.md"}
 ```
 
+**Derived: the live frame** (spec 002, T21, `live.ts`), the last position on the scrubber, built in three layers. It
+starts from the last result frame of `rounds.jsonl`; `tasks.md` then decides which cards exist and in which order: a
+task with the same id and text keeps its card, and a box checked since that round turns it `done` (`closed` once
+`spec.md` checks the claim, `operator done` in the operator lane); a new, renumbered or reworded task starts fresh as
+`waiting` (or `operator open`) with the takeable set's reason; a struck task still on that board is `absent`, any other
+struck task has no card. Last, every card not landed and outside the operator lane whose claim a session holds on this
+spec is `running` with the lock's source, session name, `since` and elapsed time, and `stale` after 45 minutes without
+a release; a claim held in both sources shows the frontier lock. The frame names the reading's source (`frontier`,
+`activity`, `none`), lists the sessions holding locks here, and carries the Needs you cards (question, concerns, open
+operator steps). The clock is the caller's: the frame's `ts` is the time it was built.
+
 ## The archive rule
 
 A closed spec moves to `specs/archive/NNN-slug/` and carries `archived: YYYY-MM-DD`. Its folder location is the fact:

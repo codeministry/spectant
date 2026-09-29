@@ -1,0 +1,829 @@
+{
+  "specs/012-pwa-install": {
+    "index": 10,
+    "kind": "live",
+    "round": 5,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "operatorOpen",
+    "cards": [
+      {
+        "task": "T1",
+        "claim": "ISC-327",
+        "lane": "web",
+        "text": "the two surface hex twins as constants, and the manifest: name, short name, `start_url`, `scope`, `display`, colours from the dark surface, the icon list",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24 · `manifest.spec.ts` + `theme-colors.spec.ts` 23/23 (red first: missing export); manifest standalone, scope `/`, both colours the dark surface held to its oklch; link and theme-color in `index.html` · second look Max: pass (icons arrive with ISC-328)"
+      },
+      {
+        "task": "T2",
+        "claim": "ISC-327",
+        "lane": "web",
+        "text": "`<link rel=\"manifest\">` and a static `theme-color` meta in the head; the manifest spec for fields, colours and the link",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "2026-09-24 · `manifest.spec.ts` + `theme-colors.spec.ts` 23/23 (red first: missing export); manifest standalone, scope `/`, both colours the dark surface held to its oklch; link and theme-color in `index.html` · second look Max: pass (icons arrive with ISC-328)"
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-328",
+        "lane": "web",
+        "text": "the script renders 192 and 512 on the round plate, 512 maskable on a rounded square at 80 %, 180 square opaque touch icon; run it twice, commit the PNGs",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24 · `manifest.spec.ts` 21/21: every named icon at its size, 8-bit, plate by colour type and corner, mark inside the safe zone (red at 228.9 px, green at 197.6 of 204.8 at 512; 68.8 of 72 at 180), two script runs byte-identical, favicon set unchanged · second look Max: fail on the safe zone, fixed and remeasured independently"
+      },
+      {
+        "task": "T4",
+        "claim": "ISC-328",
+        "lane": "web",
+        "text": "the manifest spec reads every named icon's PNG header and size",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "2026-09-24 · `manifest.spec.ts` 21/21: every named icon at its size, 8-bit, plate by colour type and corner, mark inside the safe zone (red at 228.9 px, green at 197.6 of 204.8 at 512; 68.8 of 72 at 180), two script runs byte-identical, favicon set unchanged · second look Max: fail on the safe zone, fixed and remeasured independently"
+      },
+      {
+        "task": "T5",
+        "claim": "ISC-333",
+        "lane": "web",
+        "text": "the theme store's effect writes `meta[name=theme-color]` from the resolved theme's surface; spec switches dark → light",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24 · `theme.store.spec.ts` + `manifest.spec.ts` 27/27; the inline script executed for dark, light, system × OS, unset and garbage (4 red with the meta write removed, green after); the store follows each switch · second look Max: pass, one finding adopted (a comment-satisfiable assertion replaced by the executing test)"
+      },
+      {
+        "task": "T6",
+        "claim": "ISC-333",
+        "lane": "web",
+        "text": "the inline theme script writes the same meta before first paint, in step with the store's default; repoint the touch icon to the 180 file, since this task owns `index.html` this round",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "2026-09-24 · `theme.store.spec.ts` + `manifest.spec.ts` 27/27; the inline script executed for dark, light, system × OS, unset and garbage (4 red with the meta write removed, green after); the store follows each switch · second look Max: pass, one finding adopted (a comment-satisfiable assertion replaced by the executing test)"
+      },
+      {
+        "task": "T7",
+        "claim": "ISC-329",
+        "lane": "web",
+        "text": "`bun add @angular/service-worker@~22.1.0`; `ngsw-config.json` with the `app` prefetch group and lazy `i18n` and `help` groups, no data group; `serviceWorker` on the production configuration",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24 · `ngsw-config.spec.ts` 15/15 (red first on the missing file, then on the /api navigation rule): app group prefetch, i18n prefetch, help and fonts lazy, no data group, `/api` only as `!/api/**` in navigationUrls, `enabled: !isDevMode()`; production build emits ngsw.json with the negative /api regex; @angular/service-worker 22.1.4 like core · second look Max: concerns, five findings adopted"
+      },
+      {
+        "task": "T8",
+        "claim": "ISC-329",
+        "lane": "web",
+        "text": "`provideServiceWorker` with `enabled: !isDevMode()` and `registerWhenStable:30000`; the config spec over groups, patterns and the `enabled` clause",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "2026-09-24 · `ngsw-config.spec.ts` 15/15 (red first on the missing file, then on the /api navigation rule): app group prefetch, i18n prefetch, help and fonts lazy, no data group, `/api` only as `!/api/**` in navigationUrls, `enabled: !isDevMode()`; production build emits ngsw.json with the negative /api regex; @angular/service-worker 22.1.4 like core · second look Max: concerns, five findings adopted"
+      },
+      {
+        "task": "T9",
+        "claim": "ISC-331",
+        "lane": "web",
+        "text": "the toast gains an optional `action` (catalog key plus event); a toast with an action is exempt from the lifetime timer",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24 · `update.store.spec.ts`, `toast.store.spec.ts`, `toast-stack.spec.ts`, i18n parity 79/79 (red first): one update toast per version, a newer one replaces it, the action activates then reloads (bounded at 10 s), dismissing does nothing, `unrecoverable` reloads at once, a disabled worker subscribes to nothing · second look Max: pass, two findings adopted"
+      },
+      {
+        "task": "T10",
+        "claim": "ISC-331",
+        "lane": "web",
+        "text": "the stack renders the action as a button that dispatches its event",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "2026-09-24 · `update.store.spec.ts`, `toast.store.spec.ts`, `toast-stack.spec.ts`, i18n parity 79/79 (red first): one update toast per version, a newer one replaces it, the action activates then reloads (bounded at 10 s), dismissing does nothing, `unrecoverable` reloads at once, a disabled worker subscribes to nothing · second look Max: pass, two findings adopted"
+      },
+      {
+        "task": "T11",
+        "claim": "ISC-331",
+        "lane": "web",
+        "text": "the update store: `versionReady` once per hash from `SwUpdate.versionUpdates`, `activate` then reload, hourly `checkForUpdate` while visible; the toast raised from it; both catalog keys",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "2026-09-24 · `update.store.spec.ts`, `toast.store.spec.ts`, `toast-stack.spec.ts`, i18n parity 79/79 (red first): one update toast per version, a newer one replaces it, the action activates then reloads (bounded at 10 s), dismissing does nothing, `unrecoverable` reloads at once, a disabled worker subscribes to nothing · second look Max: pass, two findings adopted"
+      },
+      {
+        "task": "T12",
+        "claim": "ISC-332",
+        "lane": "web",
+        "text": "`no-cache` on `/index.html`, `/ngsw.json`, `/manifest.webmanifest`; `immutable` on hashed `.js` and `.css`; the `webmanifest` mime type if missing; curl against the compose web port",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "2026-09-24 · curl against the built web image: `/`, SPA routes, `/index.html`, `/ngsw.json`, `/manifest.webmanifest` (application/manifest+json) and both worker scripts `no-cache` with 304 on revalidation; hashed bundles and fonts `immutable`; icons, i18n, help without a policy (red first: no header anywhere); the chart ConfigMap mirrors the blocks, `helm template` + `nginx -t` green, rollout pending · second look Max: pass, two findings adopted"
+      },
+      {
+        "task": "T13",
+        "claim": "ISC-332",
+        "lane": "operator",
+        "text": "the same header blocks in the chart's web ConfigMap, in the rollout that ships the image; curl against the deployed host",
+        "parallel": false,
+        "seam": false,
+        "state": "operatorDone",
+        "tries": 0,
+        "note": "2026-09-24 · curl against the built web image: `/`, SPA routes, `/index.html`, `/ngsw.json`, `/manifest.webmanifest` (application/manifest+json) and both worker scripts `no-cache` with 304 on revalidation; hashed bundles and fonts `immutable`; icons, i18n, help without a policy (red first: no header anywhere); the chart ConfigMap mirrors the blocks, `helm template` + `nginx -t` green, rollout pending · second look Max: pass, two findings adopted"
+      },
+      {
+        "task": "T14",
+        "claim": "ISC-335",
+        "lane": "web",
+        "text": "the anti search over the worker config, the manifest and the icons' names (after: T3, T8) · (probe only)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "2026-09-24 · `rg` for `\"/api` in `ngsw-config.json`: 0 hits; manifest and worker config against 18 `.env` values, the `config/` hosts and the model names: 0 hits beyond the public product name and the `html` extension; no URL, no address · probe only, no second look"
+      },
+      {
+        "task": "T15",
+        "claim": "ISC-330",
+        "lane": "test",
+        "text": "build the compose stack, install in desktop Chrome, go offline, reopen the window; one screen's error state captured (after: T8, T12) · (probe only, Interceptor)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "2026-09-24 · manual: prod image served locally, worker `activated` and controlling, server stopped (curl 000), reload renders the shell with header and nav and each screen its error state, no browser offline page (`~/Downloads/interceptor-capture-20260924-174836-12644.png`); operator, verbatim: \"Ja, schließen\""
+      },
+      {
+        "task": "T16",
+        "claim": "ISC-334",
+        "lane": "operator",
+        "text": "install under `security.auth: oidc` on desktop Chrome and one phone; sign out, reopen, sign in; on the phone also judge the maskable icon's crop (after: T13, T15) · (probe only, a device)",
+        "parallel": false,
+        "seam": false,
+        "state": "operatorOpen",
+        "tries": 0,
+        "reason": "operator lane — the principal's own action, never auto-dispatched"
+      },
+      {
+        "task": "T17",
+        "claim": "ISC-336",
+        "lane": "web",
+        "text": "the record: a section in the design-system decision, the changelog line, the README paragraph, one trap line in the frontend notes; the stale icon lines in the root `CLAUDE.md` inventory and the `index.html` head comment",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "2026-09-24 · `WorkingNotesStaySmallTest` 3/3 (budgets 17,261/18,000 and 11,769/12,000); `rg` hits in the decision record, CHANGELOG and README went from 0/unrelated/0 to 15/10/3; `check:static` clean · second look Max: pass, four text findings adopted (ngsw failure mode, unmeasured mime claim, Safari/Firefox, block count)"
+      }
+    ],
+    "progress": {
+      "claims": {
+        "closed": 9,
+        "total": 10
+      },
+      "tasks": {
+        "landed": 16,
+        "total": 17
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "none",
+    "locks": [],
+    "agents": [],
+    "needsYou": [
+      {
+        "task": "T16",
+        "claim": "ISC-334",
+        "lane": "operator",
+        "text": "install under `security.auth: oidc` on desktop Chrome and one phone; sign out, reopen, sign in; on the phone also judge the maskable icon's crop (after: T13, T15) · (probe only, a device)",
+        "parallel": false,
+        "seam": false,
+        "state": "operatorOpen",
+        "tries": 0,
+        "reason": "operator lane — the principal's own action, never auto-dispatched"
+      }
+    ],
+    "staleAfterMs": 2700000
+  },
+  "specs/022-chat-turn-status-and-bulk-delete": {
+    "index": 10,
+    "kind": "live",
+    "round": 5,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [
+      {
+        "task": "T1",
+        "claim": "ISC-479",
+        "lane": "web",
+        "text": "a selection that arrives from outside the list (a URL, not a key press) lands its card in the pane through the existing `landCard`, only while the pane scrolls, without moving focus; a card not rendered in the loaded page is left alone",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "bun-test — `shortlist.browser.spec.ts` § the cited row in view 3/3 (2560 docked: row 35 inside the pane, pane scrolled, document at 0; 1440 docked then chat closed: row 35 inside the pane; offer 99 outside the loaded page: pane at 0, detail open), file 14/14 over two runs, shortlist units 106/106, `check:static` green; red first: 2/3 with row 35 outside the pane; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T2",
+        "claim": "ISC-479",
+        "lane": "web",
+        "text": "red then green: at 1440 with the chat docked, a citation to an offer whose row sits below the pane's fold, then one outside the loaded page; pane and row rects, the document's scrollTop, the detail open",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `shortlist.browser.spec.ts` § the cited row in view 3/3 (2560 docked: row 35 inside the pane, pane scrolled, document at 0; 1440 docked then chat closed: row 35 inside the pane; offer 99 outside the loaded page: pane at 0, detail open), file 14/14 over two runs, shortlist units 106/106, `check:static` green; red first: 2/3 with row 35 outside the pane; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-473",
+        "lane": "server",
+        "text": "`TurnView` gains `endReason` (`ChatErrorReason`, nullable) and `finishedAt` (`Instant`, nullable), the shape `plan.md` § Interfaces fixes",
+        "parallel": false,
+        "seam": true,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `ChatConversationTest.anIncompleteTurnKeepsItsReasonAndEveryOtherEndingNamesNone` (MODEL, ROUNDS, BUDGET stored and reloaded as `endReason`, DONE and STOPPED null, a pre-V36 INCOMPLETE row null, `finishedAt` on every reload), class 14/14, `ChatTurnHardeningTest` 19/19, spotlessCheck green; red first: bad SQL grammar on `end_reason` before V36; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T4",
+        "claim": "ISC-473",
+        "lane": "web",
+        "text": "the client `TurnView` gains `endReason` and `finishedAt` to match",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `ChatConversationTest.anIncompleteTurnKeepsItsReasonAndEveryOtherEndingNamesNone` (MODEL, ROUNDS, BUDGET stored and reloaded as `endReason`, DONE and STOPPED null, a pre-V36 INCOMPLETE row null, `finishedAt` on every reload), class 14/14, `ChatTurnHardeningTest` 19/19, spotlessCheck green; red first: bad SQL grammar on `end_reason` before V36; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T5",
+        "claim": "ISC-473",
+        "lane": "server",
+        "text": "`V36`: a nullable `end_reason` with a check on `MODEL`, `BUDGET`, `ROUNDS`; written whole once and never edited after",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `ChatConversationTest.anIncompleteTurnKeepsItsReasonAndEveryOtherEndingNamesNone` (MODEL, ROUNDS, BUDGET stored and reloaded as `endReason`, DONE and STOPPED null, a pre-V36 INCOMPLETE row null, `finishedAt` on every reload), class 14/14, `ChatTurnHardeningTest` 19/19, spotlessCheck green; red first: bad SQL grammar on `end_reason` before V36; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T6",
+        "claim": "ISC-473",
+        "lane": "server",
+        "text": "`finish(…, reason)` writes the reason with `INCOMPLETE` and null otherwise; the stale-turn sweep and the cancelled-stream update write `MODEL`; the turn read maps `end_reason` and `finished_at` into `TurnView`",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `ChatConversationTest.anIncompleteTurnKeepsItsReasonAndEveryOtherEndingNamesNone` (MODEL, ROUNDS, BUDGET stored and reloaded as `endReason`, DONE and STOPPED null, a pre-V36 INCOMPLETE row null, `finishedAt` on every reload), class 14/14, `ChatTurnHardeningTest` 19/19, spotlessCheck green; red first: bad SQL grammar on `end_reason` before V36; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T7",
+        "claim": "ISC-473",
+        "lane": "server",
+        "text": "`Turn.end(reason, …)` and the two cut-off paths hand their reason to `finish`; DONE and STOPPED pass null",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `ChatConversationTest.anIncompleteTurnKeepsItsReasonAndEveryOtherEndingNamesNone` (MODEL, ROUNDS, BUDGET stored and reloaded as `endReason`, DONE and STOPPED null, a pre-V36 INCOMPLETE row null, `finishedAt` on every reload), class 14/14, `ChatTurnHardeningTest` 19/19, spotlessCheck green; red first: bad SQL grammar on `end_reason` before V36; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T8",
+        "claim": "ISC-473",
+        "lane": "server",
+        "text": "red then green: each of MODEL, BUDGET, ROUNDS stored and returned, null for DONE and STOPPED, a pre-`V36` turn reading null",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `ChatConversationTest.anIncompleteTurnKeepsItsReasonAndEveryOtherEndingNamesNone` (MODEL, ROUNDS, BUDGET stored and reloaded as `endReason`, DONE and STOPPED null, a pre-V36 INCOMPLETE row null, `finishedAt` on every reload), class 14/14, `ChatTurnHardeningTest` 19/19, spotlessCheck green; red first: bad SQL grammar on `end_reason` before V36; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T9",
+        "claim": "ISC-474",
+        "lane": "web",
+        "text": "the store keeps a live turn's end reason from its `error` event and its start and finish times, and a reloaded turn's `endReason` and `finishedAt`, so both read the same",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 2,
+        "note": "bun-test — `chat-panel.browser.spec.ts` § the status popovers: six stored endings (Done, Incomplete per MODEL/BUDGET/ROUNDS and without a reason, Stopped) each with steps 2, 4.2 s and the model, beside the ring and closed after leaving; a live turn Working then Writing, the mark's turn animating while open, closed by Escape; file 7/7, chat units 107/107, chat browser + contrast 127/127; red by mutation (reason dropped, turn removed, status never asked): 3 of 4 new rows red; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T10",
+        "claim": "ISC-474",
+        "lane": "web",
+        "text": "`chat-status-popover` in turn mode: the state line (done, working, writing, incomplete with its reason or none, stopped), the steps count, the duration where start and finish are known, the model where known; placed with `shared/popover/anchor-for.ts`, no focusable element inside",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `chat-panel.browser.spec.ts` § the status popovers: six stored endings (Done, Incomplete per MODEL/BUDGET/ROUNDS and without a reason, Stopped) each with steps 2, 4.2 s and the model, beside the ring and closed after leaving; a live turn Working then Writing, the mark's turn animating while open, closed by Escape; file 7/7, chat units 107/107, chat browser + contrast 127/127; red by mutation (reason dropped, turn removed, status never asked): 3 of 4 new rows red; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T11",
+        "claim": "ISC-474",
+        "lane": "web",
+        "text": "the glyph becomes a focusable host: opens the popover on hover intent and on focus, closes on leaving glyph and popover and on Escape, sets `--lg-living-mark-turn` while open",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `chat-panel.browser.spec.ts` § the status popovers: six stored endings (Done, Incomplete per MODEL/BUDGET/ROUNDS and without a reason, Stopped) each with steps 2, 4.2 s and the model, beside the ring and closed after leaving; a live turn Working then Writing, the mark's turn animating while open, closed by Escape; file 7/7, chat units 107/107, chat browser + contrast 127/127; red by mutation (reason dropped, turn removed, status never asked): 3 of 4 new rows red; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T12",
+        "claim": "ISC-475",
+        "lane": "web",
+        "text": "`chat.status.*` in both catalogs: the five state words, the three reasons and \"no reason stored\", steps, duration, model, the glyph's accessible name per state",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `chat-panel.browser.spec.ts` § opens on keyboard focus (aria-label 'Answer status: Incomplete', aria-describedby the popover, open on focus, closed on blur, no animation on the mark under emulated reduced motion) and `i18n-parity.spec.ts` 3/3 with `chat.status.*` in both catalogs; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T13",
+        "claim": "ISC-474",
+        "lane": "web",
+        "text": "red then green: hover then focus on a DONE, a working, a writing, an INCOMPLETE per reason and without one, and a STOPPED glyph; the popover's words, steps, duration, model; the turn animation running while open; closed after Escape and after leaving",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `chat-panel.browser.spec.ts` § the status popovers: six stored endings (Done, Incomplete per MODEL/BUDGET/ROUNDS and without a reason, Stopped) each with steps 2, 4.2 s and the model, beside the ring and closed after leaving; a live turn Working then Writing, the mark's turn animating while open, closed by Escape; file 7/7, chat units 107/107, chat browser + contrast 127/127; red by mutation (reason dropped, turn removed, status never asked): 3 of 4 new rows red; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T14",
+        "claim": "ISC-475",
+        "lane": "web",
+        "text": "red then green: the glyph's accessible name by state through tab order, and under emulated reduced motion the popover opening with no animation on the mark",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `chat-panel.browser.spec.ts` § opens on keyboard focus (aria-label 'Answer status: Incomplete', aria-describedby the popover, open on focus, closed on blur, no animation on the mark under emulated reduced motion) and `i18n-parity.spec.ts` 3/3 with `chat.status.*` in both catalogs; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T15",
+        "claim": "ISC-476",
+        "lane": "server",
+        "text": "`ChatStatusView` (model, callsUsed, callsLimit, toolRounds) and the `GET /api/v1/chat/status` signature, the shape `plan.md` § Interfaces fixes",
+        "parallel": false,
+        "seam": true,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `chat-panel.browser.spec.ts` § the empty chat's plate (named 'Chat status', nothing asked before it opens, one GET /api/v1/chat/status on hover, model, '12 of 200' and 6 shown) and `ChatControllerTest` status rows (200 with model, callsUsed, callsLimit, toolRounds; 404 without a chat model); red by mutation: the plate row and the 404 row red; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T16",
+        "claim": "ISC-476",
+        "lane": "server",
+        "text": "`ChatBudget` hands out the resolved daily limit and round bound; the controller answers `GET /status` from it and the configured chat model, 404 where the capability is absent",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `chat-panel.browser.spec.ts` § the empty chat's plate (named 'Chat status', nothing asked before it opens, one GET /api/v1/chat/status on hover, model, '12 of 200' and 6 shown) and `ChatControllerTest` status rows (200 with model, callsUsed, callsLimit, toolRounds; 404 without a chat model); red by mutation: the plate row and the 404 row red; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T17",
+        "claim": "ISC-476",
+        "lane": "server",
+        "text": "red then green: 200 with the three values and the model, 404 without a chat model",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `chat-panel.browser.spec.ts` § the empty chat's plate (named 'Chat status', nothing asked before it opens, one GET /api/v1/chat/status on hover, model, '12 of 200' and 6 shown) and `ChatControllerTest` status rows (200 with model, callsUsed, callsLimit, toolRounds; 404 without a chat model); red by mutation: the plate row and the 404 row red; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T18",
+        "claim": "ISC-476",
+        "lane": "web",
+        "text": "the client `ChatStatus` type, `ChatApi.status()` and its stub",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `chat-panel.browser.spec.ts` § the empty chat's plate (named 'Chat status', nothing asked before it opens, one GET /api/v1/chat/status on hover, model, '12 of 200' and 6 shown) and `ChatControllerTest` status rows (200 with model, callsUsed, callsLimit, toolRounds; 404 without a chat model); red by mutation: the plate row and the 404 row red; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T19",
+        "claim": "ISC-476",
+        "lane": "web",
+        "text": "the popover's chat mode, asked on open; the plate mark becomes a focusable host like the glyph",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `chat-panel.browser.spec.ts` § the empty chat's plate (named 'Chat status', nothing asked before it opens, one GET /api/v1/chat/status on hover, model, '12 of 200' and 6 shown) and `ChatControllerTest` status rows (200 with model, callsUsed, callsLimit, toolRounds; 404 without a chat model); red by mutation: the plate row and the 404 row red; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T20",
+        "claim": "ISC-476",
+        "lane": "web",
+        "text": "red then green: the empty chat's plate on hover names model, calls used of the ceiling and the round bound from a stubbed status",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `chat-panel.browser.spec.ts` § the empty chat's plate (named 'Chat status', nothing asked before it opens, one GET /api/v1/chat/status on hover, model, '12 of 200' and 6 shown) and `ChatControllerTest` status rows (200 with model, callsUsed, callsLimit, toolRounds; 404 without a chat model); red by mutation: the plate row and the 404 row red; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T21",
+        "claim": "ISC-477",
+        "lane": "server",
+        "text": "`BulkDelete` (`ids`, 1..500) and `BulkDeleted` (`deleted`) records and the `POST /api/v1/chat/conversations/bulk-delete` signature, the shape `plan.md` § Interfaces fixes",
+        "parallel": false,
+        "seam": true,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `ChatConversationTest.aBulkDeleteTakesExactlyTheNamedConversationsAndStopsTheOneStreaming` (three of five over HTTP, the streaming one ends STOPPED with the stub's connection closed, two left, zero turns, the unknown id not named) and `ChatControllerTest` bulk rows (stopAll per id before deleteAll, deleted names three of four, 400 for [], {} and no body with nothing deleted), 13/13 and 15/15; red by mutation: without the stop and the 404 path 3 rows red; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T22",
+        "claim": "ISC-477",
+        "lane": "server",
+        "text": "the endpoint: stop every streaming turn in the named conversations as the single delete does, delete the known ones in one transaction, skip unknown ids, 400 on an empty or missing list",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `ChatConversationTest.aBulkDeleteTakesExactlyTheNamedConversationsAndStopsTheOneStreaming` (three of five over HTTP, the streaming one ends STOPPED with the stub's connection closed, two left, zero turns, the unknown id not named) and `ChatControllerTest` bulk rows (stopAll per id before deleteAll, deleted names three of four, 400 for [], {} and no body with nothing deleted), 13/13 and 15/15; red by mutation: without the stop and the 404 path 3 rows red; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T23",
+        "claim": "ISC-477",
+        "lane": "server",
+        "text": "red then green: three of five with one streaming, an unknown id among known ones, the two 400 cases",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "bun-test — `ChatConversationTest.aBulkDeleteTakesExactlyTheNamedConversationsAndStopsTheOneStreaming` (three of five over HTTP, the streaming one ends STOPPED with the stub's connection closed, two left, zero turns, the unknown id not named) and `ChatControllerTest` bulk rows (stopAll per id before deleteAll, deleted names three of four, 400 for [], {} and no body with nothing deleted), 13/13 and 15/15; red by mutation: without the stop and the 404 path 3 rows red; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T24",
+        "claim": "ISC-478",
+        "lane": "web",
+        "text": "the client bulk types, `ChatApi.deleteMany(ids)` and its stub",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 2,
+        "reason": "claim takeable, edges closed",
+        "note": "bun-test — `chat-history.browser.spec.ts` § deleting several conversations 3/3 (three of five picked: one POST with {ids:[9,7,5]}, rows gone, mode off, no DELETE; select all under a 'kafka' search takes the two hits, dialog 'Delete 2 conversations?' with Cancel focused, nothing sent on cancel, {ids:[9,7]} on confirm; the open conversation among them lands on ?chat=new), file 6/6, chat units + parity 120/120, `check:static` green; red first: 3/3 with no select control; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T25",
+        "claim": "ISC-478",
+        "lane": "web",
+        "text": "`bulkDeleteRequested` / `bulkDeleted` / `bulkDeleteFailed`: the rows leave the list, an open conversation among them leaves the thread for a new one",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "reason": "after T24 still open",
+        "note": "bun-test — `chat-history.browser.spec.ts` § deleting several conversations 3/3 (three of five picked: one POST with {ids:[9,7,5]}, rows gone, mode off, no DELETE; select all under a 'kafka' search takes the two hits, dialog 'Delete 2 conversations?' with Cancel focused, nothing sent on cancel, {ids:[9,7]} on confirm; the open conversation among them lands on ?chat=new), file 6/6, chat units + parity 120/120, `check:static` green; red first: 3/3 with no select control; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T26",
+        "claim": "ISC-478",
+        "lane": "web",
+        "text": "select mode in the list: the head control, a checkbox per row, `Select all` over the rows shown (the hits while a search is active), the count, `Delete N`, Done and Escape end the mode",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "reason": "after T25 still open",
+        "note": "bun-test — `chat-history.browser.spec.ts` § deleting several conversations 3/3 (three of five picked: one POST with {ids:[9,7,5]}, rows gone, mode off, no DELETE; select all under a 'kafka' search takes the two hits, dialog 'Delete 2 conversations?' with Cancel focused, nothing sent on cancel, {ids:[9,7]} on confirm; the open conversation among them lands on ?chat=new), file 6/6, chat units + parity 120/120, `check:static` green; red first: 3/3 with no select control; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T27",
+        "claim": "ISC-478",
+        "lane": "web",
+        "text": "the one dialog asks for N as well as for one, Cancel still focused first, confirming dispatches one bulk request",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "reason": "after T26 still open",
+        "note": "bun-test — `chat-history.browser.spec.ts` § deleting several conversations 3/3 (three of five picked: one POST with {ids:[9,7,5]}, rows gone, mode off, no DELETE; select all under a 'kafka' search takes the two hits, dialog 'Delete 2 conversations?' with Cancel focused, nothing sent on cancel, {ids:[9,7]} on confirm; the open conversation among them lands on ?chat=new), file 6/6, chat units + parity 120/120, `check:static` green; red first: 3/3 with no select control; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T28",
+        "claim": "ISC-478",
+        "lane": "web",
+        "text": "`chat.select.*` and `chat.delete.many*` in both catalogs",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "reason": "after T26 still open",
+        "note": "bun-test — `chat-history.browser.spec.ts` § deleting several conversations 3/3 (three of five picked: one POST with {ids:[9,7,5]}, rows gone, mode off, no DELETE; select all under a 'kafka' search takes the two hits, dialog 'Delete 2 conversations?' with Cancel focused, nothing sent on cancel, {ids:[9,7]} on confirm; the open conversation among them lands on ?chat=new), file 6/6, chat units + parity 120/120, `check:static` green; red first: 3/3 with no select control; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T29",
+        "claim": "ISC-478",
+        "lane": "web",
+        "text": "red then green: three picked and confirmed is one request and three rows gone with the mode off; select all under a search takes only the hits and the dialog names their count with Cancel focused; the open conversation among them leaves for a new one",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "reason": "after T27, T28 still open",
+        "note": "bun-test — `chat-history.browser.spec.ts` § deleting several conversations 3/3 (three of five picked: one POST with {ids:[9,7,5]}, rows gone, mode off, no DELETE; select all under a 'kafka' search takes the two hits, dialog 'Delete 2 conversations?' with Cancel focused, nothing sent on cancel, {ids:[9,7]} on confirm; the open conversation among them lands on ?chat=new), file 6/6, chat units + parity 120/120, `check:static` green; red first: 3/3 with no select control; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T30",
+        "claim": "ISC-480",
+        "lane": "server",
+        "text": "hints for `BulkDelete`, `BulkDeleted` and `ChatStatusView` where binding reaches them by reflection, and `LeadGenRuntimeHintsTest` green",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "parent",
+        "tries": 1,
+        "reason": "claim blocked by ISC-478",
+        "note": "bun-test — full `./gradlew check` green in a copy of the working tree (7 m 54 s, 135 backend result files, frontend unit and 244 browser tests, lint, stylelint, tsc, spotless) with the single-delete, rename and search rows of chat-history, chat-panel and ChatControllerTest unchanged and green, `i18n-parity.spec.ts` 3/3, `LeadGenRuntimeHintsTest` 3/3 (red first: BulkDelete has no type hint), `WorkingNotesStaySmallTest` 3/3, `rg end_reason docs/DATA-MODEL.md` and `rg -i 'bulk delete|status popover'` a hit in chat.md and CHANGELOG.md; the tree unchanged against the gated copy; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T31",
+        "claim": "ISC-480",
+        "lane": "web",
+        "text": "`docs/DATA-MODEL.md` names `end_reason`; `docs/decisions/chat.md` records the status popovers, the status endpoint and bulk delete; `CHANGELOG.md` § Unreleased names all three and the row scroll",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "reason": "claim blocked by ISC-478",
+        "note": "bun-test — full `./gradlew check` green in a copy of the working tree (7 m 54 s, 135 backend result files, frontend unit and 244 browser tests, lint, stylelint, tsc, spotless) with the single-delete, rename and search rows of chat-history, chat-panel and ChatControllerTest unchanged and green, `i18n-parity.spec.ts` 3/3, `LeadGenRuntimeHintsTest` 3/3 (red first: BulkDelete has no type hint), `WorkingNotesStaySmallTest` 3/3, `rg end_reason docs/DATA-MODEL.md` and `rg -i 'bulk delete|status popover'` a hit in chat.md and CHANGELOG.md; the tree unchanged against the gated copy; second look: off (default) (spec 022, 2026-09-28)"
+      },
+      {
+        "task": "T32",
+        "claim": "ISC-480",
+        "lane": "web",
+        "text": "the regression run: the existing delete, rename and search rows of the chat-history, chat-panel and controller specs unchanged and green, `i18n-parity.spec.ts`, `WorkingNotesStaySmallTest`",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "reason": "claim blocked by ISC-478",
+        "note": "bun-test — full `./gradlew check` green in a copy of the working tree (7 m 54 s, 135 backend result files, frontend unit and 244 browser tests, lint, stylelint, tsc, spotless) with the single-delete, rename and search rows of chat-history, chat-panel and ChatControllerTest unchanged and green, `i18n-parity.spec.ts` 3/3, `LeadGenRuntimeHintsTest` 3/3 (red first: BulkDelete has no type hint), `WorkingNotesStaySmallTest` 3/3, `rg end_reason docs/DATA-MODEL.md` and `rg -i 'bulk delete|status popover'` a hit in chat.md and CHANGELOG.md; the tree unchanged against the gated copy; second look: off (default) (spec 022, 2026-09-28)"
+      }
+    ],
+    "progress": {
+      "claims": {
+        "closed": 8,
+        "total": 8
+      },
+      "tasks": {
+        "landed": 32,
+        "total": 32
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "none",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000
+  },
+  "specs/archive/013-tech-debt": {
+    "index": 8,
+    "kind": "live",
+    "round": 4,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [
+      {
+        "task": "T1",
+        "claim": "ISC-337",
+        "lane": "docs",
+        "text": "move the four longest trap paragraphs of each working-notes file into the decisions file its table row names; leave one line with a pointer",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24. bash + JUnit — `wc -c` 15,064 / 9,188 / 10,060 (was 17,261 / 12,010 / 11,769; thresholds 15,300 / 10,200 / 10,200); 16 paragraphs moved whole into docs/decisions/, one-line rule with pointer left; `WorkingNotesStaySmallTest` 3/3 green in the main tree; second look (Max) concerns adopted: lost measurement restored in configuration.md, two table topics renamed, root cut for headroom, Interceptor and accessibility-tree wording restored"
+      },
+      {
+        "task": "T2",
+        "claim": "ISC-338",
+        "lane": "docs",
+        "text": "the Spotless sentences say what runs; `config/local/` → `config/`",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24. bash — `rg -n -i spotless README.md docs/DEVELOPMENT.md .github/workflows/release.yml` filtered for off/disabled: 0 hits; `rg -n config/local CLAUDE.md .dockerignore`: 0 hits (was README:169-173, DEVELOPMENT.md:27, release.yml:32, .dockerignore:10, CLAUDE.md:18); second look (Max) pass, `/config` anchored and the formatter set named"
+      },
+      {
+        "task": "T3",
+        "claim": "ISC-339",
+        "lane": "server",
+        "text": "`EnvExampleTest`: placeholders read from the defaults, `application.yaml` and compose against `.env.example`; both files as Gradle inputs",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24. JUnit — `EnvExampleTest` red on [LEADGEN_CONFIG_MOUNT, RETRIEVAL_TOPIC_FLOOR] missing and [SEARCHAGENT_FOLDER] stray, green 3/3 after `.env.example` gained the two keys and lost the stray one; `everyOperatorConfigKeyIsDocumented` binds the four exempt keys to docs/CONFIGURATION.md; `.env.example`, `docker-compose.yml`, `frontend/proxy.conf.js` are Gradle test inputs; second look (Max) concerns adopted"
+      },
+      {
+        "task": "T4",
+        "claim": "ISC-339",
+        "lane": "infra",
+        "text": "`.env.example` gains the two missing keys with a comment each and loses the unread one",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "tries": 0,
+        "note": "2026-09-24. JUnit — `EnvExampleTest` red on [LEADGEN_CONFIG_MOUNT, RETRIEVAL_TOPIC_FLOOR] missing and [SEARCHAGENT_FOLDER] stray, green 3/3 after `.env.example` gained the two keys and lost the stray one; `everyOperatorConfigKeyIsDocumented` binds the four exempt keys to docs/CONFIGURATION.md; `.env.example`, `docker-compose.yml`, `frontend/proxy.conf.js` are Gradle test inputs; second look (Max) concerns adopted"
+      },
+      {
+        "task": "T5",
+        "claim": "ISC-340",
+        "lane": "infra",
+        "text": "healthchecks on `api` and `web`, `web` waits on `api`, `restart: unless-stopped` on all three",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24. docker — `docker compose config | rg -c healthcheck:` 3 (was 1); `up -d --wait` exit 0 on a clean HEAD export with `SERVER_PORT=9999` in .env: api/postgres/web all `running healthy`, restart=unless-stopped on all three, `$SERVER_PORT` inside api 8080 (pinned in `environment` after Max's major finding), torn down with `down -v`"
+      },
+      {
+        "task": "T6",
+        "claim": "ISC-341",
+        "lane": "infra",
+        "text": "bun tag pinned to `packageManager`, nginx stage non-root, the `\\|\\| true` gone",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24. rg + docker — build stage `node:22.23.3-alpine` with `COPY --from=oven/bun:1.3.12-alpine` (bun 1.3.12's node shim is below the Angular CLI's floor; the floating tag only built because it resolves to 1.4.x), runtime `nginxinc/nginx-unprivileged:1.27-alpine` on 8080 with `nginx.conf` and compose moved along, `|| true` gone; probe on a clean stack: both images built, api/postgres/web healthy, web uid 101, `GET /` and `GET /api/v1/status` 200 through the proxy, torn down; second look (Max) pass, minors adopted: `BunPinTest` holds the four bun pins to one version, a Renovate rule groups the tag with `packageManager`, the Node-floor note in the Dockerfile, the nginx comment; the office chart's port follows (master § Remaining Work)"
+      },
+      {
+        "task": "T7",
+        "claim": "ISC-348",
+        "lane": "server",
+        "text": "`ConfigProperties` gains `version`, `ingestCron`, the two poll intervals and `security.allowOpenBind`; the five `@Value` sites read it; `StatusController` on `@RequiredArgsConstructor`",
+        "parallel": false,
+        "seam": true,
+        "state": "closed",
+        "tries": 2,
+        "note": "2026-09-24. rg + Gradle — `@Value(` under backend/src/main 5 → 0; `version`, `ingestCron`, both poll intervals and `security.allowOpenBind` bind on `ConfigProperties` with `@DefaultValue` from one constant per default; `@EnableConfigurationProperties(ConfigProperties.class)` on the application class replaces the scan; `StatusController` on `@RequiredArgsConstructor`; main tree: StatusControllerTest 1/1, SecurityConfigTest 5+1+5, ScheduledPassTest 1+1, OperatorConfigTest 1/1, ConfigurationBannerTest 10/10, LeadGenRuntimeHintsTest 1/1, ConfigFixturesTest 4/4, all unchanged; second look (Max) failed the first patch on `@NotBlank version` vs the empty `LEADGEN_VERSION=` of `.env.example`, adopted; the redispatched look passed, minors adopted (defaults hoisted, unreachable `@NotNull`s dropped)"
+      },
+      {
+        "task": "T9",
+        "claim": "ISC-346",
+        "lane": "server",
+        "text": "`IngestService` keeps its connector list and looks a type up through a private helper, so its constructor only assigns; no new bean",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "reader": "Max",
+        "verdict": "concerns",
+        "tries": 1,
+        "reason": "[P], claim takeable, edges closed",
+        "note": "question twice (JdbcClient, threshold); IngestService keeps its list + @PostConstruct duplicate-type guard; closed"
+      },
+      {
+        "task": "T10",
+        "claim": "ISC-346",
+        "lane": "server",
+        "text": "the sweep: `spotlessApply`, then `@RequiredArgsConstructor` on every class whose constructor only assigned, then `spotlessApply` again; one commit, no test file (after: T9) · `backend/src/main/java/**` (64 classes)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "builder": "Engineer",
+        "reader": "Max",
+        "verdict": "concerns",
+        "tries": 1,
+        "reason": "[P], claim takeable, edges closed",
+        "note": "Max: NUL byte hid QueryEmbedder, 5 JdbcClient ctors + Origin left; swept by parent; 171 → 31; suite 860/0; closed"
+      },
+      {
+        "task": "T11",
+        "claim": "ISC-347",
+        "lane": "server",
+        "text": "`@Builder` on `IngestReport`; the two constructions in `runOnce` become one builder call",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24. rg + Gradle — `new IngestReport(` under backend/src/main 2 → 0 (the four test constructions stay); `@Builder` on the record, one builder site after the try in `IngestService.runOnce`, the catch stores the failure and the failure branch still rethrows `StageFailed` before `record`; main tree: `IngestControllerTest` 8/8, `LastRunQueryServiceTest` 13/13, `spotlessCheck` green; second look (Max) concerns: only the missing test artifact, produced by this run"
+      },
+      {
+        "task": "T12",
+        "claim": "ISC-349",
+        "lane": "server",
+        "text": "`ModelChoice` in `llm/`; the five copies call it",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24. rg + Gradle — `scoringChoices()` under backend/src/main: the declaration in `PipelineConfig`, one call and one Javadoc mention in `llm/ModelChoice` (was six readers in four files); main tree: `ScoringWithoutAModelTest` 15/15, `JudgesTest` 7/7, `ContentClassifierWireFormatTest` 9/9, `FieldExtractorWireFormatTest` 12/12, `LlmStrategyTest` 3/3, `LlmExtractorsTest` 4/4, `LlmExtractorWireFormatTest` 14/14; second look (Max) concerns: the missing artifact (produced by this run) and `AdvertAskService.model()` answering by its own rule, recorded as fog"
+      },
+      {
+        "task": "T13",
+        "claim": "ISC-343",
+        "lane": "web",
+        "text": "`DestroyRef` removes the media-query listener; `takeUntilDestroyed` on the ask request; a spec per teardown",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24. Vitest — new teardown specs red on the unchanged components (listener count 1 after destroy; request not cancelled), green after `DestroyRef.onDestroy` removes the media-query listener and `takeUntilDestroyed` ends the ask request; second look (Max) pass, finding adopted: the spec now also reads `bothColumns` after the fire; main tree `check:static` 0, `bun run test` 553/553, `bun run build` 0"
+      },
+      {
+        "task": "T14",
+        "claim": "ISC-344",
+        "lane": "web",
+        "text": "route titles as catalog keys through a `TitleStrategy` with the brand constant; the manual store's three fallbacks as `error.*` keys; the parity spec's unused-key check",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24. Vitest + rg — `CatalogTitleStrategy` (selectTranslate, BRAND 'Lead Generation') provided beside the router, route titles as `title.*` keys, manual fallbacks as `error.manual*` keys; `i18n-parity.spec.ts` unused-key check red on six dead keys, then two more after the second look (Max, major) made the match token-bounded over comment-stripped source; all eight removed from both catalogs; `title.strategy.spec.ts` pins every English title byte-identical; i18n specs 7/7, main tree `check:static` 0, `bun run test` 553/553; `rg \"Lead Generation'\" app.routes.ts` and the sentence probe on manual.store.ts 0 hits"
+      },
+      {
+        "task": "T15",
+        "claim": "ISC-345",
+        "lane": "web",
+        "text": "`prefix: lg`, `experimentalDecorators` removed, `@angular/forms` removed",
+        "parallel": true,
+        "seam": false,
+        "state": "closed",
+        "tries": 1,
+        "note": "2026-09-24. bash + bun — `angular.json` prefix `lg` (was `app`); `experimentalDecorators` 0 hits (was 1); `@angular/forms` kept as a required peer of `@angular/cdk` 22.1.7 (claim refined); main tree `check:static` 0, `bun run test` 553/553 (65 files), `bun run build` 0 with the pre-existing initial-bundle budget warning; second look skipped for cause (two configuration lines, three green probes)"
+      },
+      {
+        "task": "T16",
+        "claim": "ISC-350",
+        "lane": "server",
+        "text": "the anti probe: migrations byte-identical to `main`, no `Mapping(` line in the web diff, every `*ControllerTest` and `LeadGenRuntimeHintsTest` green, `processAot` green, the api image built and smoked (after: T7, T10, T11, T12) · (probe only)",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "verdict": "pass",
+        "tries": 1,
+        "reason": "[P], claim takeable, edges closed",
+        "note": "migrations identical, no mapping changed, processAot green, image smoked 23/23; closed"
+      },
+      {
+        "task": "T17",
+        "claim": "ISC-351",
+        "lane": "docs",
+        "text": "the record: `CHANGELOG.md` § Unreleased, `docs/decisions/configuration.md` on the `.env.example` contract and on why the version mechanism stays",
+        "parallel": false,
+        "seam": false,
+        "state": "closed",
+        "verdict": "pass",
+        "tries": 1,
+        "reason": "[P], claim takeable, edges closed",
+        "note": "CHANGELOG § Unreleased + configuration.md; closed"
+      }
+    ],
+    "progress": {
+      "claims": {
+        "closed": 14,
+        "total": 14
+      },
+      "tasks": {
+        "landed": 16,
+        "total": 16
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "none",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000
+  }
+}

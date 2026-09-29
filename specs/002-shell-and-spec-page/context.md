@@ -191,3 +191,25 @@ for FORMAT.md § spec; evidence route contract (403 outside/symlink-escape, 404 
 frozen spectant-001 has 83 tasks (the live 001 has 81 + 2 struck) and the live-file test needs updating on a re-cut.
 Round 8 plan: T16 (held, vocabulary) and T34 tokens; parent adds T21 live frame (non-[P], different lane, no file
 overlap with T34).
+
+Round 8 landed (2026-09-29, commits 7a04ed1 + next): T34 (tokens: three prototype tokens the app lacked — `--hover-t`,
+`--scrim`, `--page-glass`; `--held-ink` derived; every accent asserted to have an `-ink`; the two narrow dark values
+pinned at their measured ratios; `no-glow.test.ts` with `ui-card`'s inherited corner glow pinned as the one known
+exception — **ISC-74 closed**, 5/48), T44 (`server/src/spec-routes.contract.ts`: builders, matcher, `SPEC_ROUTE_TABLE`,
+response and error types over the core types, golden family per route, `X-Spectant-Reviewed-Hashes` /
+`X-Spectant-Tasks-Hash` headers as the client's hash source, evidence file headers incl. CSP sandbox; error spelling
+fixed to kebab-case `not-found` — plan.md's `not_found` and T45's line are the outliers, plus `http.ts`'s `not found`
+fallback), T51 (`server/src/lifeos.ts`: present only via `SPECTANT_LIFEOS_STATE_DIR` naming an existing absolute dir,
+one stat at start; `GET /api/lifeos {present}`; locks wired into the dashboard loader and list so counts agree; a
+`node:fs` spy proves nothing outside the repo is read when absent — **ISC-37 closed**; `tests/dashboard.test.ts` now
+applies harbor's one activity lock to the golden), T21+T28 (`live.ts`: last result frame carried forward, tasks.md's
+boxes overlaid, locks overlaid as `running` with session/since/elapsed/stale (45 min default), `agents` rail, `needsYou`;
+operator-lane tasks never `running`; golden family `live` with a fixed now and each tree's activity reading). Parent
+overrides this round: T44 and T51 ran beside T34 (different lanes, no shared file); T21 followed once ISC-37 closed.
+Whole tree 1117 pass, static green. Review marks: `DashboardSpecRow` has no lock session field (the row shows a lock only
+as a claim leaving takeable; a `taken: {id, session, since}[]` field is the follow-up), lock diagnostics are dropped by
+`buildDashboard`, `ui-card` corner glow vs design.md's no-glow rule (decision + hover replacement), prototype light
+badge #007e9a vs inherited #1c8ca8, `needsYou` order (brief: question/concerns/operatorOpen; design.md: + fail, operator
+under "Your steps"), probe paths `core/tests/live.test.ts` and `core/tests/lifeos-optional.test.ts`, `http.ts` fallback
+spelling. Round 9 plan: T16 still held (vocabulary); T46 timeline route; parent adds the seams T35 (shell) and T52
+(stub) plus T45/T47 (routes) where files do not overlap.
