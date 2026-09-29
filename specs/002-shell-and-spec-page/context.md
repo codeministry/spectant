@@ -262,3 +262,17 @@ Round 11 dispatched (2026-09-29): T37 area menu and tab bar (ISC-76), then five 
 nothing else in flight — T53 spec dashboard (ISC-78), T58 evidence tab (ISC-83.1), T60 primitives glyph/state-chip/
 scrubber/disclosure/toast (ISC-88), T114 review-gate rule in core (ISC-99), T50 timeline route tests (ISC-36). T38 zen
 is held one round because it edits the same shell files as T37.
+Round 11 landed (2026-09-29, commits abf5268 … 9bd1ecc): T50 timeline route tests (**ISC-36 closed**), T114 review gate
+as one rule in `partitionClaims` with goldens regenerated (**ISC-99 closed**; harbor KPI takeable 16 → 4, spectant-001
+29 → 0 because the frozen copy's mark is stale), T60 primitives glyph / state-chip / scrubber / toast and a disclosure
+count (ISC-88 waits for the board), T58 Evidence tab (**ISC-83.1 closed**, T65 ticked with it), T37 area menu and tab
+bar (**ISC-76 closed**, T42 ticked with it), T53 spec dashboard (**ISC-78 closed**, T62 ticked with it; a compact
+cascade bug — hidden rail cards outranked by `.card`, growing implicit page columns — was fixed on landing after
+full-page captures at 390/820/1440). Worktrees are cut from origin/main, so three web workers had to fast-forward onto
+the local head mid-round; the parent applies every patch three-way and hand-merges i18n and shared e2e files.
+Marks: the shell must mount `<ui-toast>` exactly once; the new primitives are not on the `/__ui` gallery, so the
+contrast, focus and motion browser specs do not measure them; the Claims tab still carries its own Unicode glyph map;
+the ring prints a percent the model does not carry (decorative under a strict ISC-72 reading); the desktop ring is
+96 px, design says 88; `g`-key hints are provisional until T102; invalid `events.jsonl` lines vanish silently from the
+timeline (only `parseEvents` reports them). CI: the verify job's "dubious ownership" failure was the git integration
+test's own empty global config dropping the runner's safe.directory; the test now trusts its own path.
