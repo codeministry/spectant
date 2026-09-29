@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../../../../../docs/logo.svg">
+  <img src="../../../../../../docs/logo-light.svg" alt="spectant" width="96">
+</picture>
+
 # Buttons (`ui-button`, `ui-icon-button`, `ui-button-group`)
 
 - Text: `<button ui-button variant="primary" size="sm" (click)="save()">{{ 'save' | transloco }}</button>`; also on `<a ui-button routerLink="…">`. Variants `primary | secondary (default) | ghost | outline`, `size="sm|md"` (32 / 40 px), `tone="warning|danger"`, `type` defaults to `button`.

@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../docs/logo.svg">
+  <img src="../../docs/logo-light.svg" alt="spectant" width="96">
+</picture>
+
 # web/e2e — the Playwright layout
 
 Every browser suite of the web lane lives here and runs through one config, `playwright.config.ts` (T28). Import

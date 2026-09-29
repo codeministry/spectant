@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/logo.svg">
+  <img src="docs/logo-light.svg" alt="spectant" width="96">
+</picture>
+
 # spectant
 
 **The local spec companion for developers.** spectant is a single binary for macOS and Linux that reads the Markdown

@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../docs/logo.svg">
+  <img src="../../docs/logo-light.svg" alt="spectant" width="96">
+</picture>
+
 # core/fixtures
 
 Spec trees that `core/` parses in its golden test (ISC-6). Each one is a small repository root: a master `ISA.md`
