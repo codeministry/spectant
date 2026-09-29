@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 32/49
+progress: 33/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T17:55:22Z
+updated: 2026-09-29T18:05:37Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -225,7 +225,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 
 - [ ] ISC-87: The board turns rounds.jsonl into frames (dispatch, result, live) behind a scrubber with a Lanes view and a Flow view over the same cards; scrubbing changes no file.
 - [ ] ISC-88: All eleven task card states (waiting, dispatched, running, question, concerns, fail, done, closed, absent, operator open, operator done) render with glyph, chip text and colour from the fixture that holds every one of them.
-- [ ] ISC-89: Waiting tasks are grouped by their reason and none is hidden; the number of shown cards equals the frame's tasks.
+- [x] ISC-89: Waiting tasks are grouped by their reason and none is hidden; the number of shown cards equals the frame's tasks.
 - [ ] ISC-90: The live frame is built from tasks.md, the master's frontier locks and, when present, `.spectant/activity.jsonl`; a task under a lock shows in flight with the lock's session name. (after: ISC-37)
 - [ ] ISC-91: A re-cut of tasks.md between rounds shows as a marker on the scrubber and struck tasks as absent; no state is attributed to a renumbered id. (after: ISC-87)
 - [ ] ISC-92: The Matrix tab shows tasks × frames with state glyphs, and clicking a cell jumps the scrubber to that frame. (after: ISC-87)
@@ -286,6 +286,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-89: e2e — `bun run e2e -- board -g waiting` 2 passed (390 and 1440): every waiting card sits inside its lane's [data-reason-group] with the group's count, none hidden, and the rendered cards equal the live frame's tasks from the golden (T81, T84, T91; 2026-09-29)
 
 - ISC-85: e2e — `bun run e2e -- gate` 18 passed (whole suite 408 passed, 8 skipped): at 390 and 1440 harbor 003 ready, 006 stale naming exactly gates.reviewed.files, 002 done with the time, 002 under a frontier lock paused and disabled with the session visible and the agent banner showing writes paused, no-source state shows the No agent source line; the dialog lists spec.md, plan.md, tasks.md with their hashes and confirms to done; scripted 409 gives the inline alert with Reload, 423 names the lock's session; one app-gate-button implementation serves the spec head and the Status tab (T78, T79; 2026-09-29)
 

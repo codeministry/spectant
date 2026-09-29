@@ -32,7 +32,7 @@ export { type SheetTier, UiSheet } from './overlay/sheet';
 export { type RelativeFormat, type RelativeUnit, relativeParts, UiRelativeTime } from './relative-time/relative-time';
 export { UiRing } from './ring/ring';
 export { type RovingActive, UiRovingItem, UiRovingList } from './roving-list.directive';
-export { type ScrubberFrame, UiScrubber } from './scrubber/scrubber';
+export { type ScrubberFrame, type ScrubberMarker, UiScrubber } from './scrubber/scrubber';
 export { UiSectionHeader } from './section-header/section-header';
 export { type SegmentedOption, UiSegmented } from './segmented/segmented';
 export { UiSkeleton } from './skeleton/skeleton';

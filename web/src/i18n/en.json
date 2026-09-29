@@ -907,5 +907,88 @@
       "cancel": "Cancel",
       "confirm": "Delete note"
     }
+  },
+  "board": {
+    "toolbar": "Board tools",
+    "view": {
+      "label": "View",
+      "lanes": "Lanes",
+      "flow": "Flow"
+    },
+    "legend": "Card states",
+    "search": {
+      "label": "Search cards",
+      "placeholder": "Search id, claim, text",
+      "open": "Search"
+    },
+    "density": {
+      "label": "Card density",
+      "comfortable": "Comfortable",
+      "compact": "Compact"
+    },
+    "filter": {
+      "open": "Filter",
+      "heading": "Filter cards",
+      "lanes": "Lanes",
+      "clear": "Clear filters"
+    },
+    "filtered": "{{shown}} of {{total}} cards",
+    "frame": {
+      "scrubber": "Frame",
+      "live": "Live",
+      "history": "History · {{label}}",
+      "backToLive": "Back to live",
+      "recut": "re-cut",
+      "stop": "Round stopped: {{reason}}"
+    },
+    "progress": "claims {{closed}}/{{claims}} · tasks {{landed}}/{{tasks}}",
+    "lane": {
+      "counts": "{{landed}}/{{total}}",
+      "meter": "{{lane}}: cards by section",
+      "toggle": "Show or hide lane {{lane}}"
+    },
+    "section": {
+      "needsYou": "Needs you",
+      "inFlight": "In flight",
+      "waiting": "Waiting",
+      "landed": "Landed",
+      "noReason": "No reason given"
+    },
+    "card": {
+      "name": "{{task}}, {{claim}}, {{state}}, {{lane}}",
+      "open": "Open {{task}}",
+      "parallel": "parallel",
+      "seam": "seam",
+      "tries": "try {{tries}}",
+      "note": "note",
+      "stale": "stale",
+      "session": "session {{session}}"
+    },
+    "detail": {
+      "heading": "{{task}} · {{claim}}",
+      "lane": "Lane",
+      "builder": "Builder",
+      "reader": "Reader",
+      "verdict": "Verdict",
+      "tries": "Tries",
+      "reason": "Reason",
+      "session": "Session",
+      "note": "Note"
+    },
+    "rail": {
+      "thisFrameCount": "This frame {{count}}",
+      "needsYouCount": "Needs you {{count}}",
+      "yourSteps": "Your steps",
+      "emptyFrame": "Nothing changed in this frame.",
+      "emptyNeeds": "Nothing waits on you."
+    },
+    "bar": {
+      "heading": "Frame lists"
+    },
+    "flow": {
+      "later": "The Flow view comes with a later task."
+    },
+    "empty": "No card matches the filter.",
+    "failed": "The board could not be read."
   }
 }

@@ -907,5 +907,88 @@
       "cancel": "Abbrechen",
       "confirm": "Notiz löschen"
     }
+  },
+  "board": {
+    "toolbar": "Board-Werkzeuge",
+    "view": {
+      "label": "Ansicht",
+      "lanes": "Bahnen",
+      "flow": "Fluss"
+    },
+    "legend": "Kartenzustände",
+    "search": {
+      "label": "Karten durchsuchen",
+      "placeholder": "ID, Claim, Text suchen",
+      "open": "Suchen"
+    },
+    "density": {
+      "label": "Kartendichte",
+      "comfortable": "Luftig",
+      "compact": "Kompakt"
+    },
+    "filter": {
+      "open": "Filter",
+      "heading": "Karten filtern",
+      "lanes": "Bahnen",
+      "clear": "Filter zurücksetzen"
+    },
+    "filtered": "{{shown}} von {{total}} Karten",
+    "frame": {
+      "scrubber": "Frame",
+      "live": "Live",
+      "history": "Verlauf · {{label}}",
+      "backToLive": "Zurück zu Live",
+      "recut": "Neuschnitt",
+      "stop": "Runde angehalten: {{reason}}"
+    },
+    "progress": "Claims {{closed}}/{{claims}} · Tasks {{landed}}/{{tasks}}",
+    "lane": {
+      "counts": "{{landed}}/{{total}}",
+      "meter": "{{lane}}: Karten nach Abschnitt",
+      "toggle": "Bahn {{lane}} ein- oder ausblenden"
+    },
+    "section": {
+      "needsYou": "Wartet auf Sie",
+      "inFlight": "In Arbeit",
+      "waiting": "Wartend",
+      "landed": "Gelandet",
+      "noReason": "Kein Grund angegeben"
+    },
+    "card": {
+      "name": "{{task}}, {{claim}}, {{state}}, {{lane}}",
+      "open": "{{task}} öffnen",
+      "parallel": "parallel",
+      "seam": "Naht",
+      "tries": "Versuch {{tries}}",
+      "note": "Notiz",
+      "stale": "veraltet",
+      "session": "Sitzung {{session}}"
+    },
+    "detail": {
+      "heading": "{{task}} · {{claim}}",
+      "lane": "Bahn",
+      "builder": "Builder",
+      "reader": "Prüfer",
+      "verdict": "Urteil",
+      "tries": "Versuche",
+      "reason": "Grund",
+      "session": "Sitzung",
+      "note": "Notiz"
+    },
+    "rail": {
+      "thisFrameCount": "Dieser Frame {{count}}",
+      "needsYouCount": "Wartet auf Sie {{count}}",
+      "yourSteps": "Ihre Schritte",
+      "emptyFrame": "In diesem Frame hat sich nichts geändert.",
+      "emptyNeeds": "Nichts wartet auf Sie."
+    },
+    "bar": {
+      "heading": "Frame-Listen"
+    },
+    "flow": {
+      "later": "Die Fluss-Ansicht folgt mit einer späteren Aufgabe."
+    },
+    "empty": "Keine Karte passt zum Filter.",
+    "failed": "Das Board konnte nicht gelesen werden."
   }
 }

@@ -1,0 +1,309 @@
+<section class="board" aria-labelledby="board-heading" [attr.data-view]="view()">
+  <h2 id="board-heading" class="visually-hidden" tabindex="-1">{{ 'shell.tabs.board' | transloco }}</h2>
+
+  @if (frame(); as f) {
+    <div class="controls" data-board-controls>
+      <div class="toolbar" role="group" [attr.aria-label]="'board.toolbar' | transloco">
+        <ui-segmented data-control="view" [options]="viewOptions()" [value]="view()" [label]="'board.view.label' | transloco" (valueChange)="setView($event)" />
+
+        @if (compact()) {
+          <button type="button" class="btn btn-sm btn-ghost tool" data-open-filter [attr.aria-pressed]="filtered()" (click)="filterOpen.set(true)">
+            {{ 'board.filter.open' | transloco }}
+          </button>
+          <button type="button" class="btn btn-sm btn-ghost tool" data-open-search [attr.aria-expanded]="searchOpen() || search() !== ''" (click)="searchOpen.set(!searchOpen())">
+            {{ 'board.search.open' | transloco }}
+          </button>
+        } @else {
+          <div class="legend" role="group" data-legend [attr.aria-label]="'board.legend' | transloco">
+            <ng-container [ngTemplateOutlet]="legendChips" />
+          </div>
+          <input
+            type="search"
+            class="input input-sm search"
+            data-search
+            [value]="search()"
+            [attr.aria-label]="'board.search.label' | transloco"
+            [placeholder]="'board.search.placeholder' | transloco"
+            (input)="setSearch($event)"
+          />
+          @if (wide()) {
+            <select class="select select-sm density" data-density [attr.aria-label]="'board.density.label' | transloco" (change)="setDensity($event)">
+              <option value="comfortable" [selected]="density() === 'comfortable'">{{ 'board.density.comfortable' | transloco }}</option>
+              <option value="compact" [selected]="density() === 'compact'">{{ 'board.density.compact' | transloco }}</option>
+            </select>
+          }
+        }
+      </div>
+
+      @if (compact() && (searchOpen() || search() !== '')) {
+        <input
+          type="search"
+          class="input input-sm search-wide"
+          data-search
+          [value]="search()"
+          [attr.aria-label]="'board.search.label' | transloco"
+          [placeholder]="'board.search.placeholder' | transloco"
+          (input)="setSearch($event)"
+        />
+      }
+
+      @if (filtered()) {
+        <p class="filtered" data-filtered>
+          {{ 'board.filtered' | transloco: { shown: shownCards().length, total: allCards().length } }}
+          <button type="button" class="btn btn-xs btn-link" (click)="clearFilters()">{{ 'board.filter.clear' | transloco }}</button>
+        </p>
+      }
+
+      <div class="scrub">
+        <ui-scrubber
+          class="scrubber"
+          [frames]="stops()"
+          [markers]="markers()"
+          [value]="index()"
+          [playing]="playing()"
+          [ariaLabel]="'board.frame.scrubber' | transloco"
+          (valueChange)="setFrame($event)"
+          (playingChange)="playing.set($event)"
+        />
+        <div class="frame-meta">
+          @if (isLive()) {
+            <ui-chip tone="accent" [dot]="true" data-frame-chip="live">{{ 'board.frame.live' | transloco }}</ui-chip>
+          } @else {
+            <span class="history" data-frame-chip="history">
+              <ui-chip tone="warning">{{ 'board.frame.history' | transloco: { label: f.label } }}</ui-chip>
+              <button type="button" class="btn btn-xs btn-link back" data-back-to-live (click)="setFrame(lastIndex())">{{ 'board.frame.backToLive' | transloco }}</button>
+            </span>
+          }
+          <p class="progress-line" data-progress>
+            {{ 'board.progress' | transloco: { closed: f.progress.claims.closed, claims: f.progress.claims.total, landed: f.progress.tasks.landed, tasks: f.progress.tasks.total } }}
+          </p>
+        </div>
+      </div>
+      @if (f.stop; as stop) {
+        <p class="stop" data-stop>{{ 'board.frame.stop' | transloco: { reason: stop } }}</p>
+      }
+    </div>
+
+    @if (view() === 'flow') {
+      <div class="flow-later" data-flow-placeholder>
+        <p>{{ 'board.flow.later' | transloco }}</p>
+      </div>
+    } @else {
+      <div class="lanes" data-lanes>
+        @for (lane of gridLanes(); track lane.name) {
+          <ng-container [ngTemplateOutlet]="laneTpl" [ngTemplateOutletContext]="{ $implicit: lane }" />
+        } @empty {
+          <p class="empty" data-empty>{{ 'board.empty' | transloco }}</p>
+        }
+      </div>
+    }
+
+    @if (!compact()) {
+      <!-- The rail's "This frame", "Needs you" and "Your steps" (T81 renders them inline until the rail task). -->
+      <div class="aside" data-board-aside>
+        <section class="panel" data-this-frame aria-labelledby="board-this-frame">
+          <h3 id="board-this-frame">{{ 'board.rail.thisFrameCount' | transloco: { count: events().length } }}</h3>
+          <ng-container [ngTemplateOutlet]="cardList" [ngTemplateOutletContext]="{ $implicit: events(), empty: 'board.rail.emptyFrame' }" />
+        </section>
+        <section class="panel" data-needs-you aria-labelledby="board-needs-you">
+          <h3 id="board-needs-you">{{ 'board.rail.needsYouCount' | transloco: { count: needsYou().length } }}</h3>
+          <ng-container [ngTemplateOutlet]="cardList" [ngTemplateOutletContext]="{ $implicit: needsYou(), empty: 'board.rail.emptyNeeds' }" />
+        </section>
+        @if (view() === 'lanes' && operatorLane(); as steps) {
+          <section class="panel your-steps" data-your-steps aria-labelledby="board-your-steps">
+            <h3 id="board-your-steps">{{ 'board.rail.yourSteps' | transloco }}</h3>
+            <ng-container [ngTemplateOutlet]="laneTpl" [ngTemplateOutletContext]="{ $implicit: steps }" />
+          </section>
+        }
+      </div>
+    } @else {
+      <div class="bar" data-bottom-bar>
+        <button type="button" class="btn btn-ghost btn-square bar-step" data-bar-step="previous" [attr.aria-label]="'scrubber.previous' | transloco" [disabled]="index() <= 0" (click)="setFrame(index() - 1)">
+          <svg data-icon-exempt viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10.5 3.5 4.5 8l6 4.5z" /></svg>
+        </button>
+        <button type="button" class="bar-main" data-bar-open (click)="barOpen.set(true)">
+          <span class="bar-frame">{{ isLive() ? ('board.frame.live' | transloco) : f.label }}</span>
+          <span>{{ 'board.rail.thisFrameCount' | transloco: { count: events().length } }}</span>
+          <span>{{ 'board.rail.needsYouCount' | transloco: { count: needsYou().length } }}</span>
+        </button>
+        <button type="button" class="btn btn-ghost btn-square bar-step" data-bar-step="next" [attr.aria-label]="'scrubber.next' | transloco" [disabled]="index() >= lastIndex()" (click)="setFrame(index() + 1)">
+          <svg data-icon-exempt viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5.5 3.5 6 4.5-6 4.5z" /></svg>
+        </button>
+      </div>
+
+      <ui-sheet [open]="barOpen()" tier="compact" [heading]="'board.bar.heading' | transloco" (openChange)="barOpen.set($event)">
+        <ui-segmented [options]="barTabs()" [value]="barTab()" [label]="'board.bar.heading' | transloco" (valueChange)="setBarTab($event)" />
+        @if (barTab() === 'frame') {
+          <ng-container [ngTemplateOutlet]="cardList" [ngTemplateOutletContext]="{ $implicit: events(), empty: 'board.rail.emptyFrame' }" />
+        } @else {
+          <ng-container [ngTemplateOutlet]="cardList" [ngTemplateOutletContext]="{ $implicit: needsYou(), empty: 'board.rail.emptyNeeds' }" />
+        }
+      </ui-sheet>
+
+      <ui-sheet [open]="filterOpen()" tier="compact" [heading]="'board.filter.heading' | transloco" (openChange)="filterOpen.set($event)">
+        <fieldset class="lane-filter" data-lane-filter>
+          <legend>{{ 'board.filter.lanes' | transloco }}</legend>
+          @for (lane of order(); track lane) {
+            <label class="check">
+              <input type="checkbox" class="checkbox checkbox-sm" [checked]="!hiddenLanes().has(lane)" (change)="toggleLaneFilter(lane)" />
+              {{ lane }}
+            </label>
+          }
+        </fieldset>
+        <div class="legend legend-sheet" role="group" data-legend [attr.aria-label]="'board.legend' | transloco">
+          <ng-container [ngTemplateOutlet]="legendChips" />
+        </div>
+      </ui-sheet>
+    }
+
+    <ui-dialog class="detail" [open]="detailOpen()" [heading]="selected() ? ('board.detail.heading' | transloco: { task: selected()?.task, claim: selected()?.claim }) : ''" (openChange)="detailOpen.set($event)">
+      @if (selected(); as c) {
+        <div class="detail-body" data-card-detail>
+          <ui-state-chip [state]="c.state" family="card" />
+          <p class="detail-text">{{ c.text }}</p>
+          <dl>
+            <dt>{{ 'board.detail.lane' | transloco }}</dt>
+            <dd>{{ c.lane }}</dd>
+            @if (c.builder) {
+              <dt>{{ 'board.detail.builder' | transloco }}</dt>
+              <dd>{{ c.builder }}</dd>
+            }
+            @if (c.reader) {
+              <dt>{{ 'board.detail.reader' | transloco }}</dt>
+              <dd>{{ c.reader }}</dd>
+            }
+            @if (c.verdict) {
+              <dt>{{ 'board.detail.verdict' | transloco }}</dt>
+              <dd>{{ c.verdict }}</dd>
+            }
+            <dt>{{ 'board.detail.tries' | transloco }}</dt>
+            <dd class="num">{{ c.tries }}</dd>
+            @if (c.reason) {
+              <dt>{{ 'board.detail.reason' | transloco }}</dt>
+              <dd>{{ c.reason }}</dd>
+            }
+            @if (c.lock; as lock) {
+              <dt>{{ 'board.detail.session' | transloco }}</dt>
+              <dd class="mono">{{ lock.session }}@if (liveStale(c)) { · {{ 'board.card.stale' | transloco }}}</dd>
+            }
+            @if (c.note) {
+              <dt>{{ 'board.detail.note' | transloco }}</dt>
+              <dd>{{ c.note }}</dd>
+            }
+          </dl>
+        </div>
+      }
+    </ui-dialog>
+  } @else if (failed()) {
+    <p class="empty" data-failed>{{ 'board.failed' | transloco }}</p>
+  } @else {
+    <p class="empty" data-loading>{{ 'common.loading' | transloco }}</p>
+  }
+</section>
+
+<ng-template #legendChips>
+  @for (item of legend(); track item.state) {
+    <button type="button" class="btn btn-sm btn-ghost legend-chip" [attr.data-legend-state]="item.state" [attr.aria-pressed]="item.pressed" (click)="toggleState(item.state)">
+      <ui-glyph [state]="item.state" family="card" [size]="14" />
+      {{ stateWord(item.state) | transloco }}
+      <span class="count">{{ item.count }}</span>
+    </button>
+  }
+</ng-template>
+
+<ng-template #cardList let-cards let-empty="empty">
+  @if (cards.length > 0) {
+    <ul class="card-list">
+      @for (c of cards; track c.task) {
+        <li>
+          <button type="button" class="frame-row" [attr.data-list-card]="c.task" (click)="openCard(c)">
+            <ui-glyph [state]="c.state" family="card" [size]="14" />
+            <span class="mono">{{ c.task }}</span>
+            <span class="list-text">{{ c.text }}</span>
+            <ui-state-chip [state]="c.state" family="card" />
+          </button>
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="empty">{{ empty | transloco }}</p>
+  }
+</ng-template>
+
+<ng-template #laneTpl let-lane>
+  <section class="lane" [attr.data-lane]="lane.name" [attr.aria-labelledby]="'lane-' + lane.name">
+    <div class="lane-head">
+      <span class="lane-dot" aria-hidden="true"></span>
+      <h3 class="lane-name" [id]="'lane-' + lane.name">{{ lane.name }}</h3>
+      <span class="lane-count" data-lane-count>{{ 'board.lane.counts' | transloco: { landed: lane.landedCount, total: lane.total } }}</span>
+      <ui-meter class="lane-meter" [segments]="laneSegments(lane)" [mini]="true" [label]="'board.lane.meter' | transloco: { lane: lane.name }" />
+      <button
+        type="button"
+        class="btn btn-ghost btn-square lane-toggle"
+        [attr.aria-expanded]="!laneCollapsed(lane.name)"
+        [attr.aria-label]="'board.lane.toggle' | transloco: { lane: lane.name }"
+        (click)="toggleLane(lane.name)"
+      >
+        <ui-icon name="chevron-down" [size]="16" />
+      </button>
+    </div>
+    @if (!laneCollapsed(lane.name)) {
+      <div class="lane-body">
+        @if (lane.needsYou.length > 0) {
+          <div class="section" data-section="needsYou">
+            <h4>{{ 'board.section.needsYou' | transloco }} <span class="count">{{ lane.needsYou.length }}</span></h4>
+            @for (c of lane.needsYou; track c.task) {
+              <app-board-card [card]="c" [density]="density()" (opened)="openCard($event)" />
+            }
+          </div>
+        }
+        @if (lane.inFlight.length > 0) {
+          <div class="section" data-section="inFlight">
+            <h4>{{ 'board.section.inFlight' | transloco }} <span class="count">{{ lane.inFlight.length }}</span></h4>
+            @for (c of lane.inFlight; track c.task) {
+              <app-board-card [card]="c" [density]="density()" (opened)="openCard($event)" />
+            }
+          </div>
+        }
+        @if (lane.waiting.length > 0) {
+          <div class="section" data-section="waiting">
+            <h4>{{ 'board.section.waiting' | transloco }} <span class="count">{{ waitingCount(lane) }}</span></h4>
+            @for (group of lane.waiting; track group.reason) {
+              <ui-disclosure
+                class="group"
+                data-reason-group
+                [attr.data-reason]="group.reason ?? ''"
+                [count]="group.cards.length"
+                [open]="isOpen(lane.name + ':waiting:' + (group.reason ?? ''), true)"
+                (openChange)="setOpen(lane.name + ':waiting:' + (group.reason ?? ''), $event)"
+              >
+                <span uiDisclosureSummary class="reason">{{ group.reason ?? ('board.section.noReason' | transloco) }}</span>
+                <div class="group-cards">
+                  @for (c of group.cards; track c.task) {
+                    <app-board-card [card]="c" [density]="density()" (opened)="openCard($event)" />
+                  }
+                </div>
+              </ui-disclosure>
+            }
+          </div>
+        }
+        @if (lane.landed.length > 0) {
+          <ui-disclosure
+            class="section group"
+            data-section="landed"
+            [count]="lane.landed.length"
+            [open]="isOpen(lane.name + ':landed', !compact())"
+            (openChange)="setOpen(lane.name + ':landed', $event)"
+          >
+            <span uiDisclosureSummary class="reason">{{ 'board.section.landed' | transloco }}</span>
+            <div class="group-cards">
+              @for (c of lane.landed; track c.task) {
+                <app-board-card [card]="c" [density]="density()" (opened)="openCard($event)" />
+              }
+            </div>
+          </ui-disclosure>
+        }
+      </div>
+    }
+  </section>
+</ng-template>

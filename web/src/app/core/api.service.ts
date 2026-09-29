@@ -195,6 +195,16 @@ export class ApiClient {
     return this.get(specRoutes.timeline(ws, id));
   }
 
+  /** T81: the board's history, core's `Frame[]` (dispatch and result frames per round, ISC-87), served as it is. */
+  frames(ws: string, id: string): Promise<ApiResult<SpecRouteResponses['frames']>> {
+    return this.get(specRoutes.frames(ws, id));
+  }
+
+  /** T81: the board as it stands now, core's `LiveFrame` (carry-forward, tasks.md, locks; ISC-90). */
+  live(ws: string, id: string): Promise<ApiResult<SpecRouteResponses['live']>> {
+    return this.get(specRoutes.live(ws, id));
+  }
+
   /**
    * The hashes `X-Spectant-Reviewed-Hashes` carried on the last 200 of `GET …/:id` (a 304 keeps them: the bytes did
    * not change); null before the spec was read or when the header is absent or malformed. The gate write sends them.

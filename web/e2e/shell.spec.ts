@@ -152,9 +152,9 @@ for (const { width, tier, tabBar } of TIERS) {
 
     test('placeholder, never not-found, for a tab whose view is not built yet', async ({ page }) => {
       // The stub serves the spec route (T52), so the spec head renders and the tab shows the area placeholder.
-      await page.goto('/w/harbor/s/002/board');
+      await page.goto('/w/harbor/s/002/matrix');
       const placeholder = page.locator('[data-page="placeholder"]');
-      await expect(placeholder).toHaveAttribute('data-tab', 'board');
+      await expect(placeholder).toHaveAttribute('data-tab', 'matrix');
       await expect(placeholder).toContainText('comes with a later task');
       await expect(page.locator('[data-page="not-found"]')).toHaveCount(0);
     });

@@ -181,7 +181,7 @@ describe('ShellComponent', () => {
 
   it('marks unbuilt areas as coming with later tasks', async () => {
     setUp();
-    const { root } = await open('/w/harbor/s/002/board');
+    const { root } = await open('/w/harbor/s/002/matrix');
     expect(root.querySelector('[data-page="placeholder"]')?.textContent).toContain("Comes with this spec's later tasks");
   });
 

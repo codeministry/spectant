@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T18:01:19Z
+updated: 2026-09-29T18:05:37Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -120,7 +120,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 
 ### ⑤ Live and Notes
 
-- [ ] T81 · ISC-87 · web — board: toolbar, scrubber with frame kinds and labels, Lanes view with sections and lane order from the constitution, frame chip and progress line (after: T35, T52, T60) · `web/src/app/features/spec/live/board/`
+- [x] T81 · ISC-87 · web — board: toolbar, scrubber with frame kinds and labels, Lanes view with sections and lane order from the constitution, frame chip and progress line (after: T35, T52, T60) · `web/src/app/features/spec/live/board/`
 - [ ] T82 · ISC-87 · web — Flow view: four columns with band headers, FLIP moves, segmented control at compact · Mobile (after: T81) · `web/src/app/features/spec/live/flow/`
 - [ ] T83 · ISC-88 · web — card anatomy in both densities and the card detail dialog, every state with glyph, chip text and colour (after: T81) · `web/src/app/features/spec/live/card/`
 - [ ] T84 · ISC-89 · web — waiting groups by reason, collapsible, no card hidden (after: T81) · `web/src/app/features/spec/live/waiting/`
