@@ -1,10 +1,11 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, resource, signal, type TemplateRef, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { CardState, Frame, FrameCard, LiveFrame } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
+import { type RailBadge, RailContent } from '../../../../layout/shell/rail-content';
 import { ShellData } from '../../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../../shared/icons/icon';
@@ -20,6 +21,12 @@ import { type SegmentedOption, UiSegmented } from '../../../../shared/ui/segment
 import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
 import { toneMark } from '../../../../shared/ui/tone';
 import { FlowView } from '../flow/flow-view';
+import { agentOfCard, type CardAgent } from '../live-frame';
+import { AgentChip } from '../this-frame/agent-chip';
+import { FrameBar } from '../this-frame/frame-bar';
+import { NeedsYou } from '../this-frame/needs-you';
+import { ThisFrame } from '../this-frame/this-frame';
+import { YourSteps } from '../this-frame/your-steps';
 import { BoardCard } from './board-card';
 import {
   buildLanes,
@@ -58,10 +65,15 @@ const PLAY_STEP_MS = 1200;
 @Component({
   selector: 'app-board-tab',
   imports: [
+    AgentChip,
     BoardCard,
     FlowView,
+    FrameBar,
+    NeedsYou,
     NgTemplateOutlet,
+    ThisFrame,
     TranslocoPipe,
+    YourSteps,
     UiChip,
     UiDialog,
     UiDisclosure,
@@ -173,6 +185,22 @@ export class BoardTab {
     ];
   });
 
+  /** Your steps at wide (T88): the operator lane's cards of the frame, board order. */
+  protected readonly operatorCards = computed(() => this.allCards().filter((c) => c.lane === OPERATOR_LANE));
+  /** The rail blocks and the bottom bar, declared in this template and rendered by the shell (`RailContent`). */
+  private readonly railBlocks = viewChild<TemplateRef<unknown>>('railBlocks');
+  private readonly frameBar = viewChild<TemplateRef<unknown>>('frameBar');
+  /** The collapsed strip's two badges on the board: This frame and Needs you. */
+  private readonly railBadges = computed<readonly RailBadge[]>(() => {
+    this.lang();
+    const thisFrame = this.events().length;
+    const needsYou = this.needsYou().length;
+    return [
+      { key: 'thisFrame', count: thisFrame, label: this.transloco.translate('board.rail.badgeThisFrame', { count: thisFrame }) },
+      { key: 'needsYou', count: needsYou, label: this.transloco.translate('board.rail.badgeNeedsYou', { count: needsYou }) },
+    ];
+  });
+
   protected readonly playing = signal(false);
   protected readonly filterOpen = signal(false);
   protected readonly searchOpen = signal(false);
@@ -196,6 +224,21 @@ export class BoardTab {
       const timer = setTimeout(() => this.setFrame(index + 1), PLAY_STEP_MS);
       onCleanup(() => clearTimeout(timer));
     });
+
+    // T88: This frame, Needs you and Your steps go to the shell's rail at wide; the bar below wide and in zen.
+    inject(RailContent).register(
+      {
+        blocks: computed(() => (this.wide() ? (this.railBlocks() ?? null) : null)),
+        bar: computed(() => this.frameBar() ?? null),
+        badges: this.railBadges,
+      },
+      inject(DestroyRef),
+    );
+  }
+
+  /** The agent holding a card in flight (T85, ISC-90): session, since, stale. */
+  protected agentOf(card: FrameCard): CardAgent | null {
+    return agentOfCard(card);
   }
 
   protected setFrame(index: number): void {

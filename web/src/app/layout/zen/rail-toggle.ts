@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
+import { RailContent } from '../shell/rail-content';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 
@@ -31,21 +32,27 @@ import { ShellState } from '../shell/shell-state.service';
         [attr.title]="'shell.rail.expand' | transloco"
         (click)="state.toggleRail()"
       ></button>
-      @if (waiting(); as count) {
-        <span
-          class="badge badge-sm badge-ghost"
-          data-rail-count="waiting"
-          role="img"
-          [attr.aria-label]="'shell.rail.waiting' | transloco: { count }"
-        >{{ count }}</span>
-      }
-      @if (warnings(); as count) {
-        <span
-          class="badge badge-sm badge-ghost"
-          data-rail-count="warnings"
-          role="img"
-          [attr.aria-label]="'shell.rail.warnings' | transloco: { count }"
-        >{{ count }}</span>
+      @if (content.badges(); as badges) {
+        @for (badge of badges; track badge.key) {
+          <span class="badge badge-sm badge-ghost" role="img" [attr.data-rail-count]="badge.key" [attr.aria-label]="badge.label">{{ badge.count }}</span>
+        }
+      } @else {
+        @if (waiting(); as count) {
+          <span
+            class="badge badge-sm badge-ghost"
+            data-rail-count="waiting"
+            role="img"
+            [attr.aria-label]="'shell.rail.waiting' | transloco: { count }"
+          >{{ count }}</span>
+        }
+        @if (warnings(); as count) {
+          <span
+            class="badge badge-sm badge-ghost"
+            data-rail-count="warnings"
+            role="img"
+            [attr.aria-label]="'shell.rail.warnings' | transloco: { count }"
+          >{{ count }}</span>
+        }
       }
     } @else {
       <button
@@ -62,6 +69,8 @@ import { ShellState } from '../shell/shell-state.service';
 })
 export class RailToggle {
   protected readonly state = inject(ShellState);
+  /** A view's own strip badges (the board's This frame and Needs you counts, T88) replace the two defaults. */
+  protected readonly content = inject(RailContent);
   private readonly data = inject(ShellData);
 
   readonly collapsed = input(false);

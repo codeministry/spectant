@@ -35,7 +35,8 @@ const EN = JSON.parse(readFileSync(fileURLToPath(new URL('../src/i18n/en.json', 
 };
 
 const BOARD = '/w/harbor/s/002/board';
-const CARDS = 'app-board-tab article[data-card]';
+/** Every card of the board: the lanes, and at wide the operator steps in the shell rail's "Your steps" (T88). */
+const CARDS = ':is(app-board-tab, app-rail-slot) article[data-card]';
 const statesOf = (cards: ReadonlyArray<{ state: CardState }>): string[] => [...new Set(cards.map((c) => c.state))].sort();
 
 test.describe('states', () => {
@@ -131,7 +132,7 @@ test.describe('locks', () => {
       ['T27', 'spec-002-ISC-74'],
       ['T28', 'spec-002-ISC-75'],
     ] as const) {
-      const card = page.locator(`[data-section="inFlight"] ${CARDS.replace('app-board-tab ', '')}[data-card="${task}"]`);
+      const card = page.locator(`[data-section="inFlight"] article[data-card="${task}"]`);
       await expect(card).toHaveAttribute('data-state', 'running');
       await expect(card.locator('[data-session]')).toContainText(session);
     }
@@ -308,5 +309,146 @@ test.describe('scrub changes no file', () => {
       }
     }
     expect(writes).toEqual([]);
+  });
+});
+
+/**
+ * T88 (ISC-87): This frame, Needs you and Your steps. At wide they are the shell rail's blocks (and the collapsed
+ * strip's two badges); below wide the sticky bottom bar and its sheet; in zen the bar sits inside the zen footer, so
+ * the board route shows exactly one bottom bar. Every count is read from the goldens.
+ */
+const PREVIOUS = FRAMES.at(-1);
+if (!PREVIOUS) throw new Error('the frames golden is empty');
+const BEFORE = new Map(PREVIOUS.cards.map((c) => [c.task, c.state]));
+/** "This frame" of the live frame: the cards new in it or in another state than in the last history frame. */
+const EVENTS = LIVE.cards.filter((c) => BEFORE.get(c.task) !== c.state).map((c) => c.task);
+const OPERATOR = LIVE.cards.filter((c) => c.lane === 'operator');
+
+test.describe('rail', () => {
+  const SESSION = { 'X-Spectant-Stub-Session': 'board-rail' };
+  test.beforeEach(async ({ request }) => {
+    await request.post('/api/__stub/reset', { headers: SESSION });
+  });
+
+  test.describe('at 1440', () => {
+    test.use({ ...atWidth(1440), extraHTTPHeaders: SESSION });
+
+    test('rail: This frame, Needs you and Your steps are the rail blocks; a tick posts through the checkbox write', async ({ page }) => {
+      await page.goto(BOARD);
+      await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
+      const rail = page.locator('aside.shell-rail [data-rail-blocks]');
+      await expect(page.locator('[data-bottom-bar]')).toHaveCount(0);
+
+      const events = await rail.locator('app-this-frame [data-frame-event]').evaluateAll((rows) => rows.map((r) => r.getAttribute('data-frame-event')));
+      expect(events).toEqual(EVENTS);
+      await expect(rail.locator('app-needs-you [data-needs-count]')).toHaveText(String(LIVE.needsYou.length));
+      await expect(rail.locator('app-needs-you [data-needs-card]')).toHaveCount(LIVE.needsYou.length);
+      const edge = await rail.locator('app-needs-you [data-needs-card]').first().evaluate((el) => getComputedStyle(el).borderInlineStartWidth);
+      expect(edge).toBe('4px');
+
+      const steps = await rail.locator('app-your-steps [data-step]').evaluateAll((rows) => rows.map((r) => r.getAttribute('data-step')));
+      expect(steps).toEqual(OPERATOR.map((c) => c.task));
+      // The operator lane lives only in the rail at wide.
+      await expect(page.locator('[data-lanes] section[data-lane="operator"]')).toHaveCount(0);
+
+      const open = OPERATOR.find((c) => c.state === 'operatorOpen');
+      if (!open) throw new Error('the live golden holds no open operator step');
+      const row = rail.locator(`app-your-steps [data-step="${open.task}"]`);
+      const box = row.locator('input[type="checkbox"]');
+      await expect(box).toBeEnabled();
+      await expect(box).not.toBeChecked();
+      const written = page.waitForResponse((res) => res.request().method() === 'POST' && res.url().includes(`/${open.task}`));
+      await box.check();
+      expect((await written).status()).toBe(200);
+      await expect(row).toHaveAttribute('data-check', 'written');
+      await expect(box).toBeChecked();
+    });
+
+    test('rail: the collapsed strip shows the This frame and Needs you counts', async ({ page }) => {
+      await page.goto(BOARD);
+      await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
+      await page.locator('aside.shell-rail [data-control="rail-collapse"]').click();
+      await expect(page.locator('aside.shell-rail[data-rail-strip]')).toBeVisible();
+      await expect(page.locator('[data-rail-count="thisFrame"]')).toHaveText(String(EVENTS.length));
+      await expect(page.locator('[data-rail-count="needsYou"]')).toHaveText(String(LIVE.needsYou.length));
+      await expect(page.locator('[data-rail-count="waiting"]')).toHaveCount(0);
+      await page.locator('aside.shell-rail [data-control="rail-expand"]').click();
+      await expect(page.locator('aside.shell-rail [data-rail-blocks] app-this-frame')).toBeVisible();
+    });
+
+    test('rail: in zen the board route shows exactly one bottom bar, the zen footer holding the frame bar', async ({ page }) => {
+      await page.goto(BOARD);
+      await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
+      await page.locator('header [data-control="zen"]').click();
+      const footer = page.locator('[data-zen-footer]');
+      await expect(footer).toBeVisible();
+      await expect(page.locator('[data-bottom-bar]')).toHaveCount(1);
+      await expect(footer.locator('[data-bottom-bar]')).toHaveCount(1);
+      await expect(footer.locator('[data-zen-part="id"]')).toHaveText('002');
+      await expect(footer.locator('[data-bar-count="needsYou"]')).toHaveText(`Needs you ${String(LIVE.needsYou.length)}`);
+      expect((await footer.boundingBox())?.height).toBe(48);
+
+      await footer.locator('[data-bar-open]').click();
+      await expect(page.locator('ui-sheet dialog[open] app-this-frame [data-frame-event]')).toHaveCount(EVENTS.length);
+    });
+  });
+
+  test.describe('at 390', () => {
+    test.use({ ...atWidth(390), extraHTTPHeaders: SESSION });
+
+    test('rail: the bottom bar names both counts and opens the sheet with both lists', async ({ page }) => {
+      await page.goto(BOARD);
+      await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
+      await expect(page.locator('aside.shell-rail')).toBeHidden();
+      const bar = page.locator('[data-bottom-bar]');
+      await expect(bar).toHaveCount(1);
+      await expect(bar.locator('[data-bar-count="thisFrame"]')).toHaveText(`This frame ${String(EVENTS.length)}`);
+      await expect(bar.locator('[data-bar-count="needsYou"]')).toHaveText(`Needs you ${String(LIVE.needsYou.length)}`);
+
+      await bar.locator('[data-bar-open]').click();
+      const sheet = page.locator('ui-sheet dialog[open]');
+      await expect(sheet.locator('app-this-frame [data-frame-event]')).toHaveCount(EVENTS.length);
+      await sheet.locator('ui-segmented [aria-checked]').filter({ hasText: 'Needs you' }).click();
+      await expect(sheet.locator('app-needs-you [data-needs-card]')).toHaveCount(LIVE.needsYou.length);
+    });
+  });
+});
+
+/**
+ * T85 (ISC-90): agent chips. Under the `frontier` lock fixture each card in flight shows its lock's session and the
+ * time since the lock was taken (the clock pinned to the golden's `ts`, the stub's now), the stale marker where the
+ * model set it, the lock source name in This frame and the stale-agent alert in Needs you.
+ */
+test.describe('agents', () => {
+  test.use({ ...atWidth(1440), extraHTTPHeaders: { 'X-Spectant-Stub-Locks': 'frontier' }, clockAt: LIVE.ts });
+
+  const ago = (since: string): string => {
+    const minutes = Math.floor((Date.parse(LIVE.ts) - Date.parse(since)) / 60_000);
+    return new Intl.RelativeTimeFormat('en', { numeric: 'always' }).format(-minutes, 'minute');
+  };
+
+  test('agents: the in-flight card shows the agent chip with session and relative time, the source and the stale marker', async ({ page }) => {
+    const answer = page.waitForResponse((res) => /\/live(\?|$)/.test(res.url()));
+    await page.goto(BOARD);
+    const frame = (await (await answer).json()) as LiveFrame;
+    await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
+    const running = frame.cards.filter((c) => c.lock !== undefined);
+    expect(running.length).toBeGreaterThan(1);
+    expect(running.some((c) => c.stale === true)).toBe(true);
+
+    for (const card of running) {
+      const chip = page.locator(`[data-section="inFlight"] app-agent-chip[data-agent-of="${card.task}"]`);
+      await expect(chip.locator('[data-agent-session]')).toHaveText(card.lock?.session ?? '');
+      await expect(chip.locator('time[data-agent-elapsed]')).toHaveText(ago(card.since ?? ''));
+      await expect(chip.locator('[data-agent-stale]')).toHaveCount(card.stale === true ? 1 : 0);
+    }
+
+    const source = page.locator('aside.shell-rail app-this-frame [data-lock-source]');
+    await expect(source).toHaveAttribute('data-lock-source', 'frontier');
+    await expect(source).toContainText('frontier');
+    await expect(page.locator('aside.shell-rail app-this-frame [data-agents] app-agent-chip')).toHaveCount(frame.agents.length);
+    for (const agent of frame.agents.filter((a) => a.stale)) {
+      await expect(page.locator(`aside.shell-rail app-needs-you [data-stale-agent][data-session="${agent.session}"]`)).toBeVisible();
+    }
   });
 });

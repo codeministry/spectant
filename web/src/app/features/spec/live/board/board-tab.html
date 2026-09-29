@@ -96,48 +96,42 @@
       </div>
     }
 
-    @if (!compact()) {
-      <!-- The rail's "This frame", "Needs you" and "Your steps" (T81 renders them inline until the rail task). -->
-      <div class="aside" data-board-aside>
-        <section class="panel" data-this-frame aria-labelledby="board-this-frame">
-          <h3 id="board-this-frame">{{ 'board.rail.thisFrameCount' | transloco: { count: events().length } }}</h3>
-          <ng-container [ngTemplateOutlet]="cardList" [ngTemplateOutletContext]="{ $implicit: events(), empty: 'board.rail.emptyFrame' }" />
-        </section>
-        <section class="panel" data-needs-you aria-labelledby="board-needs-you">
-          <h3 id="board-needs-you">{{ 'board.rail.needsYouCount' | transloco: { count: needsYou().length } }}</h3>
-          <ng-container [ngTemplateOutlet]="cardList" [ngTemplateOutletContext]="{ $implicit: needsYou(), empty: 'board.rail.emptyNeeds' }" />
-        </section>
-        @if (view() === 'lanes' && operatorLane(); as steps) {
-          <section class="panel your-steps" data-your-steps aria-labelledby="board-your-steps">
-            <h3 id="board-your-steps">{{ 'board.rail.yourSteps' | transloco }}</h3>
-            <ng-container [ngTemplateOutlet]="laneTpl" [ngTemplateOutletContext]="{ $implicit: steps }" />
-          </section>
-        }
-      </div>
-    } @else {
-      <div class="bar" data-bottom-bar>
-        <button type="button" class="btn btn-ghost btn-square bar-step" data-bar-step="previous" [attr.aria-label]="'scrubber.previous' | transloco" [disabled]="index() <= 0" (click)="setFrame(index() - 1)">
-          <svg data-icon-exempt viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10.5 3.5 4.5 8l6 4.5z" /></svg>
-        </button>
-        <button type="button" class="bar-main" data-bar-open (click)="barOpen.set(true)">
-          <span class="bar-frame">{{ isLive() ? ('board.frame.live' | transloco) : f.label }}</span>
-          <span>{{ 'board.rail.thisFrameCount' | transloco: { count: events().length } }}</span>
-          <span>{{ 'board.rail.needsYouCount' | transloco: { count: needsYou().length } }}</span>
-        </button>
-        <button type="button" class="btn btn-ghost btn-square bar-step" data-bar-step="next" [attr.aria-label]="'scrubber.next' | transloco" [disabled]="index() >= lastIndex()" (click)="setFrame(index() + 1)">
-          <svg data-icon-exempt viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5.5 3.5 6 4.5-6 4.5z" /></svg>
-        </button>
-      </div>
-
+    <!-- This frame, Needs you and Your steps (T88): the shell's rail at wide (registered with RailContent); below wide
+         the bottom bar and its sheet; in zen the bar renders inside the zen footer, so there is one bar. -->
+    <ng-template #railBlocks>
+      <app-this-frame [frame]="f" [events]="events()" (opened)="openCard($event)" />
+      <app-needs-you [frame]="f" [cards]="needsYou()" (opened)="openCard($event)" />
+      @if (view() === 'lanes' && operatorLane()) {
+        <app-your-steps [cards]="operatorCards()" (opened)="openCard($event)" />
+      }
+    </ng-template>
+    <ng-template #frameBar>
+      <app-frame-bar
+        [label]="f.label"
+        [live]="isLive()"
+        [thisFrame]="events().length"
+        [needsYou]="needsYou().length"
+        [index]="index()"
+        [last]="lastIndex()"
+        (step)="setFrame($event)"
+        (opened)="barOpen.set(true)"
+      />
+    </ng-template>
+    @if (!wide() && !state.zen()) {
+      <ng-container [ngTemplateOutlet]="frameBar" />
+    }
+    @if (!wide() || state.zen()) {
       <ui-sheet [open]="barOpen()" tier="compact" [heading]="'board.bar.heading' | transloco" (openChange)="barOpen.set($event)">
         <ui-segmented [options]="barTabs()" [value]="barTab()" [label]="'board.bar.heading' | transloco" (valueChange)="setBarTab($event)" />
         @if (barTab() === 'frame') {
-          <ng-container [ngTemplateOutlet]="cardList" [ngTemplateOutletContext]="{ $implicit: events(), empty: 'board.rail.emptyFrame' }" />
+          <app-this-frame [frame]="f" [events]="events()" [collapsible]="false" (opened)="openCard($event)" />
         } @else {
-          <ng-container [ngTemplateOutlet]="cardList" [ngTemplateOutletContext]="{ $implicit: needsYou(), empty: 'board.rail.emptyNeeds' }" />
+          <app-needs-you [frame]="f" [cards]="needsYou()" [framed]="false" (opened)="openCard($event)" />
         }
       </ui-sheet>
+    }
 
+    @if (compact()) {
       <ui-sheet [open]="filterOpen()" tier="compact" [heading]="'board.filter.heading' | transloco" (openChange)="filterOpen.set($event)">
         <fieldset class="lane-filter" data-lane-filter>
           <legend>{{ 'board.filter.lanes' | transloco }}</legend>
@@ -260,6 +254,9 @@
             <h4>{{ 'board.section.inFlight' | transloco }} <span class="count">{{ lane.inFlight.length }}</span></h4>
             @for (c of lane.inFlight; track c.task) {
               <app-board-card [card]="c" [density]="density()" (opened)="openCard($event)" />
+              @if (agentOf(c); as agent) {
+                <app-agent-chip class="in-flight-agent" [attr.data-agent-of]="c.task" [session]="agent.session" [since]="agent.since" [stale]="agent.stale" />
+              }
             }
           </div>
         }

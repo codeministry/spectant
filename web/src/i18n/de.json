@@ -986,7 +986,17 @@
       "needsYouCount": "Wartet auf Sie {{count}}",
       "yourSteps": "Ihre Schritte",
       "emptyFrame": "In diesem Frame hat sich nichts geändert.",
-      "emptyNeeds": "Nichts wartet auf Sie."
+      "emptyNeeds": "Nichts wartet auf Sie.",
+      "thisFrame": "Dieser Frame",
+      "needsYou": "Wartet auf Sie",
+      "badgeThisFrame": "Dieser Frame: {{count}}",
+      "badgeNeedsYou": "Wartet auf Sie: {{count}}",
+      "stepCheck": "{{task}} als erledigt markieren",
+      "stepSaving": "Wird gespeichert",
+      "stepLocked": "Gesperrt durch Sitzung {{session}}",
+      "stepConflict": "tasks.md wurde auf der Platte geändert; nichts wurde geschrieben. Bitte laden Sie das Board neu.",
+      "stepFailed": "Das Schreiben ist fehlgeschlagen; setzen Sie den Haken erneut.",
+      "stepsEmpty": "Kein Operator-Schritt in diesem Frame."
     },
     "bar": {
       "heading": "Frame-Listen"
@@ -1004,6 +1014,12 @@
       "empty": "Keine Karte passt zum Filter."
     },
     "empty": "Keine Karte passt zum Filter.",
-    "failed": "Das Board konnte nicht gelesen werden."
+    "failed": "Das Board konnte nicht gelesen werden.",
+    "agent": {
+      "stale": "veraltet",
+      "source": "Sperrquelle: {{source}}",
+      "none": "Kein Agent hält eine Sperre.",
+      "staleAlert": "Keine Freigabe von {{session}} für {{claims}}: Der Agent ist womöglich beendet."
+    }
   }
 }

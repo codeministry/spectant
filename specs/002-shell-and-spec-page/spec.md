@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 36/49
+progress: 38/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T18:25:22Z
+updated: 2026-09-29T18:45:06Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -223,10 +223,10 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 
 **Live — the round board**
 
-- [ ] ISC-87: The board turns rounds.jsonl into frames (dispatch, result, live) behind a scrubber with a Lanes view and a Flow view over the same cards; scrubbing changes no file.
+- [x] ISC-87: The board turns rounds.jsonl into frames (dispatch, result, live) behind a scrubber with a Lanes view and a Flow view over the same cards; scrubbing changes no file.
 - [ ] ISC-88: All eleven task card states (waiting, dispatched, running, question, concerns, fail, done, closed, absent, operator open, operator done) render with glyph, chip text and colour from the fixture that holds every one of them.
 - [x] ISC-89: Waiting tasks are grouped by their reason and none is hidden; the number of shown cards equals the frame's tasks.
-- [ ] ISC-90: The live frame is built from tasks.md, the master's frontier locks and, when present, `.spectant/activity.jsonl`; a task under a lock shows in flight with the lock's session name. (after: ISC-37)
+- [x] ISC-90: The live frame is built from tasks.md, the master's frontier locks and, when present, `.spectant/activity.jsonl`; a task under a lock shows in flight with the lock's session name. (after: ISC-37)
 - [ ] ISC-91: A re-cut of tasks.md between rounds shows as a marker on the scrubber and struck tasks as absent; no state is attributed to a renumbered id. (after: ISC-87)
 - [ ] ISC-92: The Matrix tab shows tasks × frames with state glyphs, and clicking a cell jumps the scrubber to that frame. (after: ISC-87)
 - [x] ISC-93: At a 600 px container the board has no horizontal page overflow and no lane scrolls on its own.
@@ -286,6 +286,10 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-87: bun-test — `bun test core/tests/frames.test.ts` green (harbor 002 dispatch/result/live frames incl. the re-cut marker and every state's first frame, spectant-001's own rounds.jsonl equal to its golden; the detectRecut/buildMatrix cases are todos until T18/T19) and the tree unchanged; the board renders frames behind a scrubber with Lanes and Flow over the same cards, This frame / Needs you / Your steps as rail blocks at wide and a bottom bar below, one bar in zen; `bun run e2e -- board` 29 passed incl. scrub-changes-no-file (no request but GET/HEAD across every frame in both views) (T17, T27, T81, T82, T88, T89; 2026-09-29)
+
+- ISC-90: bun-test — `bun test core/tests/live.test.ts` 21 pass (frontier and activity sources, a locked task in flight with the session name); rendered: `bun run e2e -- board -g agents` under the frontier lock fixture shows an agent chip per locked in-flight card with session and relative time from since, the stale marker where the model sets it, the lock source name in This frame and a stale-agent alert in Needs you; dashboard rows carry taken (T21, T28, T85, T115; 2026-09-29)
 
 - ISC-2: e2e — `bun run e2e -- offline` 2 passed (light and dark; 710 requests per theme, 0 blocked: every route incl. every spec tab, notes/:id and an unknown path, the area menu, pickers and shortcut sheet, gate confirm, task tick and untick, note create/edit/delete, rail collapse, import dismiss and a theme change all stay on loopback with fonts, scripts and stylesheets from the app's origin; negative control with a planted external fetch failed the guard) plus `bun run test:offline:server` 15 checks passed in docker --network none, 0 DNS queries (T104; 2026-09-29)
 

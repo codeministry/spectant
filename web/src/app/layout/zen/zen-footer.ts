@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject, ViewEncapsulation } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { UiChip } from '../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiMeter } from '../../shared/ui/meter/meter';
 import { areaById, areaPath, specLink } from '../shell/areas';
+import { RailContent } from '../shell/rail-content';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 
@@ -19,7 +21,7 @@ import { ShellState } from '../shell/shell-state.service';
  */
 @Component({
   selector: 'app-zen-footer',
-  imports: [RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiMeter],
+  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiMeter],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   styles: `
@@ -43,9 +45,19 @@ import { ShellState } from '../shell/shell-state.service';
       app-zen-footer .zen-bar { gap: 8px; padding-inline: 16px; }
       app-zen-footer .zen-title, app-zen-footer .zen-meter, app-zen-footer .zen-notes { display: none; }
     }
+    /* Merged with a view's bottom bar (the board, T88): one 48 px bar; the bar yields the command chip first. */
+    app-zen-footer .zen-bar[data-merged] { block-size: 48px; }
+    app-zen-footer .zen-bar[data-merged] .zen-command { flex: 0 1 auto; margin-inline-start: 0; }
+    @container shell (width < 1120px) {
+      app-zen-footer .zen-bar[data-merged] .zen-command, app-zen-footer .zen-bar[data-merged] .zen-notes { display: none; }
+    }
+    @container shell (width < 640px) {
+      app-zen-footer .zen-bar[data-merged] { gap: 4px; padding-inline: 8px; }
+      app-zen-footer .zen-bar[data-merged] [data-zen-part='stage'], app-zen-footer .zen-bar[data-merged] .zen-claims { display: none; }
+    }
   `,
   template: `
-    <footer class="zen-bar" data-zen-footer [attr.aria-label]="'shell.zen.footer' | transloco">
+    <footer class="zen-bar" data-zen-footer [attr.data-merged]="bar() ? '' : null" [attr.aria-label]="'shell.zen.footer' | transloco">
       <span class="zen-id" data-zen-part="id">{{ id() }}</span>
       @if (title(); as title) {
         <span class="zen-title" data-zen-part="title" [attr.title]="title">{{ title }}</span>
@@ -82,12 +94,17 @@ import { ShellState } from '../shell/shell-state.service';
           }
         </a>
       }
+      @if (bar(); as bar) {
+        <ng-container [ngTemplateOutlet]="bar" />
+      }
     </footer>
   `,
 })
 export class ZenFooter {
   private readonly state = inject(ShellState);
   private readonly data = inject(ShellData);
+  /** A view's bottom bar (the board's frame bar, T88), rendered inside this bar so zen shows one bar, not two. */
+  protected readonly bar = inject(RailContent).bar;
 
   private readonly body = computed(() => {
     const spec = this.data.spec.value();

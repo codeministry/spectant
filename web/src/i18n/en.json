@@ -986,7 +986,17 @@
       "needsYouCount": "Needs you {{count}}",
       "yourSteps": "Your steps",
       "emptyFrame": "Nothing changed in this frame.",
-      "emptyNeeds": "Nothing waits on you."
+      "emptyNeeds": "Nothing waits on you.",
+      "thisFrame": "This frame",
+      "needsYou": "Needs you",
+      "badgeThisFrame": "This frame: {{count}}",
+      "badgeNeedsYou": "Needs you: {{count}}",
+      "stepCheck": "Mark {{task}} done",
+      "stepSaving": "Saving",
+      "stepLocked": "Locked by session {{session}}",
+      "stepConflict": "tasks.md changed on disk; nothing was written. Reload the board.",
+      "stepFailed": "The write failed; tick again to retry.",
+      "stepsEmpty": "No operator step in this frame."
     },
     "bar": {
       "heading": "Frame lists"
@@ -1004,6 +1014,12 @@
       "empty": "No card matches the filter."
     },
     "empty": "No card matches the filter.",
-    "failed": "The board could not be read."
+    "failed": "The board could not be read.",
+    "agent": {
+      "stale": "stale",
+      "source": "Lock source: {{source}}",
+      "none": "No agent holds a lock.",
+      "staleAlert": "No release from {{session}} on {{claims}}: the agent may have stopped."
+    }
   }
 }

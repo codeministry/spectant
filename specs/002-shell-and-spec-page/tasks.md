@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T18:39:22Z
+updated: 2026-09-29T18:45:06Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -124,10 +124,10 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T82 · ISC-87 · web — Flow view: four columns with band headers, FLIP moves, segmented control at compact · Mobile (after: T81) · `web/src/app/features/spec/live/flow/`
 - [x] T83 · ISC-88 · web — card anatomy in both densities and the card detail dialog, every state with glyph, chip text and colour (after: T81) · `web/src/app/features/spec/live/card/`
 - [x] T84 · ISC-89 · web — waiting groups by reason, collapsible, no card hidden (after: T81) · `web/src/app/features/spec/live/waiting/`
-- [ ] T85 · ISC-90 · web — live frame rendering: agent chips with elapsed time, stale marker, lock source name, probe status (after: T81) · `web/src/app/features/spec/live/live-frame.ts`
+- [x] T85 · ISC-90 · web — live frame rendering: agent chips with elapsed time, stale marker, lock source name, probe status (after: T81) · `web/src/app/features/spec/live/live-frame.ts`
 - [ ] T86 · ISC-91 · web — re-cut marker on the scrubber and absent cards (after: T81) · `web/src/app/features/spec/live/recut.ts`
 - [ ] T87 · ISC-92 · web — Matrix tab: sticky first column, frame columns, glyph cells, cell click jumps the scrubber (after: T81) · `web/src/app/features/spec/live/matrix/`
-- [ ] T88 · ISC-87 · web — This frame and Needs you: rail blocks at wide, the bottom bar and sheet below wide merged with the zen footer · Mobile, Tablet (after: T81) · `web/src/app/features/spec/live/this-frame/`
+- [x] T88 · ISC-87 · web — This frame and Needs you: rail blocks at wide, the bottom bar and sheet below wide merged with the zen footer · Mobile, Tablet (after: T81) · `web/src/app/features/spec/live/this-frame/`
 - [x] T89 · ISC-87 · web — e2e board: scrubbing changes frames and no file (`git status --porcelain` empty) (after: T81, T82) · `web/e2e/board.spec.ts`
 - [ ] T90 · ISC-88 · web — e2e board states: all eleven card states on the harbor 002 fixture (after: T83) · `web/e2e/board-states.spec.ts`
 - [x] T91 · ISC-89 · web — e2e waiting: shown cards equal the frame's tasks (after: T84) · `web/e2e/board-waiting.spec.ts`

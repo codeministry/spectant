@@ -169,11 +169,6 @@
   grid-column: 1 / -1;
 }
 
-.your-steps .lane {
-  padding: 0;
-  border: 0;
-}
-
 .lane-head {
   display: flex;
   gap: 8px;
@@ -246,31 +241,6 @@
   line-height: 20px;
 }
 
-.aside {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
-  align-items: start;
-  min-inline-size: 0;
-}
-
-.panel {
-  display: grid;
-  gap: 8px;
-  min-inline-size: 0;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-box);
-  background: var(--color-base-100);
-}
-
-.panel h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
-}
-
 .card-list {
   display: grid;
   gap: 4px;
@@ -311,53 +281,6 @@
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.bar {
-  position: sticky;
-  z-index: 2;
-  inset-block-end: 0;
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  min-inline-size: 0;
-  min-block-size: 48px;
-  padding-block-end: env(safe-area-inset-bottom, 0);
-  border-block-start: 1px solid var(--line);
-  background: var(--color-base-100);
-}
-
-.bar-step {
-  flex: none;
-  inline-size: 44px;
-  block-size: 44px;
-}
-
-.bar-step svg {
-  inline-size: 16px;
-  block-size: 16px;
-  fill: currentcolor;
-}
-
-.bar-main {
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  gap: 0 12px;
-  align-items: center;
-  justify-content: center;
-  min-inline-size: 0;
-  min-block-size: 44px;
-  border: 0;
-  background: none;
-  color: var(--color-base-content);
-  font-size: 13px;
-  line-height: 20px;
-  cursor: pointer;
-}
-
-.bar-frame {
-  font-weight: 600;
 }
 
 .lane-filter {
