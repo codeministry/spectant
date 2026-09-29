@@ -236,7 +236,34 @@
   "states": {
     "unreachable": "Spectant ist auf {{host}} nicht erreichbar",
     "staleData": "Daten von {{time}}",
-    "retryIn": "Neuer Versuch in {{seconds}} s"
+    "retryIn": "Neuer Versuch in {{seconds}} s",
+    "card": {
+      "waiting": "wartet",
+      "dispatched": "zugeteilt",
+      "running": "in Arbeit",
+      "question": "Frage",
+      "concerns": "Bedenken",
+      "fail": "fehlgeschlagen",
+      "done": "erledigt",
+      "closed": "geschlossen",
+      "absent": "fehlt",
+      "operatorOpen": "Ihr Schritt",
+      "operatorDone": "Schritt erledigt"
+    },
+    "claim": {
+      "open": "offen",
+      "takeable": "übernehmbar",
+      "taken": "vergeben",
+      "blocked": "blockiert",
+      "closed": "geschlossen",
+      "dropped": "verworfen"
+    }
+  },
+  "scrubber": {
+    "label": "Frame",
+    "previous": "Vorheriger Frame",
+    "play": "Frames abspielen",
+    "next": "Nächster Frame"
   },
   "stages": {
     "plan": "Plan",

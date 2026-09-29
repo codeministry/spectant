@@ -4,7 +4,8 @@
  * `ink` the text colour that clears 4.5:1 (ISC-65). Components bind these as `var()` strings, so no colour is spelled
  * outside the theme files and both themes follow automatically.
  */
-export type Tone = 'neutral' | 'primary' | 'secondary' | 'accent' | 'success' | 'warning' | 'error';
+// `concern` is the yellow `--conc` of the concerns card state (spec 002, ISC-88); it has its own tint and ink.
+export type Tone = 'neutral' | 'primary' | 'secondary' | 'accent' | 'success' | 'warning' | 'error' | 'concern';
 
 const COLOR: Record<Tone, string> = {
   neutral: 'var(--held)',
@@ -14,6 +15,7 @@ const COLOR: Record<Tone, string> = {
   success: 'var(--color-success)',
   warning: 'var(--color-warning)',
   error: 'var(--color-error)',
+  concern: 'var(--conc)',
 };
 
 // `--hover` (warning) has no inherited `-t` tint; it is mixed from the accent the way the old tints were made.
@@ -25,6 +27,7 @@ const TINT: Record<Tone, string> = {
   success: 'var(--done-t)',
   warning: 'color-mix(in oklch, var(--color-warning) 16%, var(--color-base-100))',
   error: 'var(--fail-t)',
+  concern: 'var(--conc-t)',
 };
 
 const INK: Record<Tone, string> = {
@@ -35,6 +38,7 @@ const INK: Record<Tone, string> = {
   success: 'var(--done-ink)',
   warning: 'var(--hover-ink)',
   error: 'var(--fail-ink)',
+  concern: 'var(--conc-ink)',
 };
 
 // Dots: a mark that must reach 3:1 on the tint it sits on (ISC-65). Every accent passes there except light success,

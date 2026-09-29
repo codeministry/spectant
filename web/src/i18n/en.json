@@ -236,7 +236,34 @@
   "states": {
     "unreachable": "Can't reach spectant on {{host}}",
     "staleData": "showing data from {{time}}",
-    "retryIn": "Retrying in {{seconds}} s"
+    "retryIn": "Retrying in {{seconds}} s",
+    "card": {
+      "waiting": "waiting",
+      "dispatched": "dispatched",
+      "running": "in flight",
+      "question": "question",
+      "concerns": "concerns",
+      "fail": "fail",
+      "done": "done",
+      "closed": "closed",
+      "absent": "absent",
+      "operatorOpen": "your step",
+      "operatorDone": "step done"
+    },
+    "claim": {
+      "open": "open",
+      "takeable": "takeable",
+      "taken": "taken",
+      "blocked": "blocked",
+      "closed": "closed",
+      "dropped": "dropped"
+    }
+  },
+  "scrubber": {
+    "label": "Frame",
+    "previous": "Previous frame",
+    "play": "Play frames",
+    "next": "Next frame"
   },
   "stages": {
     "plan": "Plan",

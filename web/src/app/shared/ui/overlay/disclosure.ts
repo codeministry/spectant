@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, model } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, model } from '@angular/core';
 import { UiIcon } from '../../icons/icon';
 import { nextId } from './ids';
 
@@ -27,6 +27,9 @@ import { nextId } from './ids';
       <button type="button" class="summary" [attr.aria-expanded]="open()" [attr.aria-controls]="regionId" (click)="open.set(!open())">
         <ui-icon class="chevron" name="chevron-down" [size]="16" />
         <ng-content select="[uiDisclosureSummary]" />
+        @if (count() !== null) {
+          <span class="badge badge-sm count">{{ count() }}</span>
+        }
       </button>
       <ng-content select="[uiDisclosureActions]" />
     </div>
@@ -37,6 +40,8 @@ import { nextId } from './ids';
 })
 export class UiDisclosure {
   readonly open = model(false);
+  /** Optional count shown at the end of the summary row ("Probe", "Contents", a claim group), inside the button. */
+  readonly count = input<number | null>(null);
 
   protected readonly regionId = nextId('ui-disclosure');
 }

@@ -9,7 +9,7 @@ import { UiDisclosure } from './disclosure';
   imports: [UiDisclosure],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ui-disclosure [(open)]="open">
+    <ui-disclosure [(open)]="open" [count]="count()">
       <span uiDisclosureSummary id="summary">TL;DR</span>
       <button uiDisclosureActions id="action" type="button">Copy</button>
       <p id="body">Prose</p>
@@ -19,6 +19,7 @@ import { UiDisclosure } from './disclosure';
 })
 class Host {
   readonly open = signal(false);
+  readonly count = signal<number | null>(null);
 }
 
 async function render() {
@@ -66,6 +67,16 @@ describe('UiDisclosure', () => {
     await fixture.whenStable();
 
     expect(toggle().getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('shows an optional count inside the summary row, and none by default (spec 002: Probe, Contents, claim groups)', async () => {
+    const { fixture, el, toggle } = await render();
+    expect(toggle().querySelector('.count')).toBeNull();
+
+    fixture.componentInstance.count.set(7);
+    await fixture.whenStable();
+    expect(toggle().querySelector('.count')?.textContent.trim()).toBe('7');
+    expect(el('ui-disclosure').querySelector('button[aria-expanded="false"] .count')).not.toBeNull();
   });
 
   it('keeps actions outside the toggle button, so no interactive element nests in it', async () => {
