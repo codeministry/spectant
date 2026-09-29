@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 17/49
+progress: 18/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T17:04:08Z
+updated: 2026-09-29T17:04:47Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -178,7 +178,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 **Stage 0 — the file contract**
 
 - [x] ISC-68: Every fixture repository under `core/fixtures/` parses into the golden JSON committed beside it, byte for byte.
-- [ ] ISC-68.1: `FORMAT.md` documents every file kind the app reads (spec.md frontmatter and claims, plan.md, tasks.md line grammar, context.md rounds, design.md, constitution.md, rounds.jsonl, `.gates/*.json`, artifacts/, .evidence/, the master) with one real example each. (after: ISC-68)
+- [x] ISC-68.1: `FORMAT.md` documents every file kind the app reads (spec.md frontmatter and claims, plan.md, tasks.md line grammar, context.md rounds, design.md, constitution.md, rounds.jsonl, `.gates/*.json`, artifacts/, .evidence/, the master) with one real example each. (after: ISC-68)
 - [x] ISC-69: The fixture corpus holds Spectant's own spec 001 frozen at a named commit, at least three leadgen specs of at least two types with their licence note, and the synthetic harbor, lantern and empty-master trees.
 - [x] ISC-70: With `SPECTANT_PRIVATE_CORPUS` pointing at a directory of spec trees, the parser reads every spec in it with zero diagnostics; when the variable is unset the test reports skipped, never passed.
 - [x] ISC-71: An unknown spec id or workspace slug yields 404 from the API and a "not found" page; no fallback spec is ever rendered.
@@ -286,6 +286,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-68.1: bash — `bun run check:format-doc` → 13 kinds documented (26 examples verbatim from their files); FORMAT.md holds one section per file kind core reads with a real example, and the three lane notes name the read-only carve-out with its guard (root), the write path, lock sources and spec routes (server), the tiers, tab-bar slot, area routes and 002 primitives (web) (T2, T3, T111, T112, T113; 2026-09-29)
 
 - ISC-78: e2e — `bun run e2e -- spec -g dashboard` 4 passed: claims and task fractions, idea quote, next command and reasons, lane rows in model order with operator last and the five area tile links equal core/fixtures/harbor.spec.golden.json (the ISC-72 check); layouts confirmed by full-page captures at 390/820/1440 after a compact cascade fix (hidden rail cards outranked by .card grew implicit columns) (T53; 2026-09-29)
 

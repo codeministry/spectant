@@ -25,9 +25,31 @@ route: builders, `matchSpecPath`, 200 types (core types only), error bodies, wri
 server, the e2e stub and the web import it; nobody re-types a route. Error codes are kebab-case, `{error: "not-found"}`,
 as every existing route answers (plan 002's `not_found` is superseded). `tests/spec-routes.contract.test.ts` pins it.
 `server/src/spec-routes.ts` serves every GET from the files (one `core/` call per route, ETag/304, the two hash headers,
-404 without fallback); `evidence.ts` serves evidence files, 403 outside `artifacts/` and `.evidence/`. T67 adds the two
-POST writes (hash check, 423 on a lock); they answer 405 until then. Commits come from `git.ts` with the process's one
+404 without fallback); `evidence.ts` serves evidence files, 403 outside `artifacts/` and `.evidence/`. `writes.contract.ts` (T67) types the two
+POST writes; `writes.ts` (T68) performs them and the routes answer 405 until it lands. Commits come from `git.ts` with the process's one
 `CommitCache` (`commitCache` option); the timeline's ETag folds in `HEAD` when the workspace is a repository of its own.
+
+## The write path (spec 002)
+
+The app writes exactly two things into a registered repository, both on a user action, both through `writes.ts` and
+typed by `writes.contract.ts`: the reviewed mark (`.gates/reviewed.json` in the old skill's byte format plus one
+`review → build` line appended to `events.jsonl`, actor `app`) and one task checkbox (one `[ ]` ↔ `[x]` flip on one
+line of `tasks.md`, line endings kept).
+
+- The client sends the hashes it rendered (`X-Spectant-Reviewed-Hashes` for the three gate files, `X-Spectant-Tasks-Hash`
+  for `tasks.md`); the server re-reads and re-hashes before writing. A mismatch is 409 `hash-mismatch` with the current
+  hashes, and the file stays byte-identical. Reason: the user confirms what they saw, never what the file became
+  meanwhile (ISC-25, ISC-26).
+- Lock sources come from `core/`'s `readLockSources`: LifeOS frontier locks when the state directory is present,
+  `.spectant/activity.jsonl` when present. Any lock on the spec is 423 `locked` with the session and source; with no
+  source at all the write proceeds under the hash check and the answer says `lockSource: 'none'`, which the page shows
+  as "no agent source". Reason: an agent mid-claim must not race the user (ISC-27, ISC-86), and a missing source is
+  reported, never guessed.
+- The write goes straight to the target with an fsync: no temp file, no rename, no git object, and `.gates/` is the
+  one directory the gate write may create. Reason: the read-only rule's carve-out names exactly these paths, and
+  `tests/readonly.test.ts` hashes the whole repository, `.git/` included, before and after.
+- Ticking a box that already has the wanted state is a 200 with the unchanged line and no write. Reason: a retry
+  after a lost answer must not flip the box back.
 
 ## Hard rules
 
