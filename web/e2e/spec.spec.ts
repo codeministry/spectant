@@ -2,7 +2,7 @@
  * ISC-76: the area menu and the tab bar of the spec page against the stub API. `bun run e2e -- spec -g "deep link"` is
  * the claim's probe: `/w/harbor/s/002/claims` selects the Data area and the Claims tab from the URL alone, the area
  * menu marks Data `aria-current="page"`, and the tab bar shows only Claims · Tasks · Evidence with the counts the spec
- * model carries. Live is a disabled entry with its reason while its views are not built.
+ * model carries. Live is an enabled entry now its Board and Matrix are built.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -51,7 +51,7 @@ for (const { width, tier } of TIERS) {
       await expect(menu.locator('[role="menu"], [role="menuitem"]')).toHaveCount(0);
     });
 
-    test('area menu shows Live disabled with its reason', async ({ page }) => {
+    test('area menu shows Live enabled, linking to its Board, with no unbuilt reason', async ({ page }) => {
       await page.goto('/w/harbor/s/002/status');
       await page.locator('header [data-control="area"]').click();
       const menu = page.getByRole('navigation', { name: 'Areas' });
@@ -59,12 +59,10 @@ for (const { width, tier } of TIERS) {
 
       for (const area of ['live']) {
         const entry = menu.locator(`[data-area="${area}"]`);
-        await expect(entry, area).toHaveAttribute('aria-disabled', 'true');
-        await expect(entry, area).toContainText(REASON);
-        await expect(entry, area).not.toHaveAttribute('href', /.*/);
+        await expect(entry, area).not.toHaveAttribute('aria-disabled', /.*/);
+        await expect(entry, area).not.toContainText(REASON);
+        await expect(entry, area).toHaveAttribute('href', '/w/harbor/s/002/board');
       }
-      await menu.locator('[data-area="live"]').click();
-      await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/status$/);
 
       const rows = await menu.locator('[data-area]').evaluateAll((entries) => entries.map((entry) => entry.getBoundingClientRect().height));
       for (const height of rows) expect(height).toBeGreaterThanOrEqual(tier === 'compact' ? 56 : 44);

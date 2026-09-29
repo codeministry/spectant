@@ -13,12 +13,13 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { CardState, Frame, FrameCard, SpecFiles } from '../src/files.ts';
+import type { CardState, Frame, FrameCard, MatrixCell, SpecFiles } from '../src/files.ts';
 import { buildFrames, CARD_SEVERITY, worstState } from '../src/frames.ts';
 import { buildLiveFrame } from '../src/live.ts';
 import { readLockSources } from '../src/locks.ts';
 import { buildMatrix } from '../src/matrix.ts';
 import { detectRecut, recutBetween, sameTask } from '../src/recut.ts';
+import { lanesOf } from '../src/tasks.ts';
 import { goldenPath } from './helpers/golden.ts';
 import { FIXTURES, folders, readTreeAt } from './helpers/read-tree.ts';
 
@@ -497,22 +498,26 @@ describe('re-cut markers (T18, detectRecut)', () => {
   });
 });
 
-describe('matrix cells (T19, buildMatrix: stub today)', () => {
+describe('matrix cells (T19, buildMatrix)', () => {
   /** Every frame column's cell holds that frame's card state for the row's task, null where the task has no card. */
   function expectCellsFollowFrames(built: readonly Frame[]): void {
-    const matrix = buildMatrix(built, detectRecut(built));
+    const matrix = buildMatrix(built);
     matrix.rows.forEach((task, r) => {
       matrix.columns.forEach((column, c) => {
         const cell = matrix.cells[r]?.[c];
         expect(cell?.task).toBe(task);
+        expect(cell?.column).toBe(c);
         expect(cell?.frame).toBe(column.frame);
         if (column.kind !== 'recut') expect(cell?.state).toBe(card(built[column.frame ?? -1], task)?.state ?? null);
       });
     });
   }
 
-  test.todo('spectant-001: one column per frame in scrubber order, plus one re-cut column before R5', () => {
-    const matrix = buildMatrix(spectantFrames, detectRecut(spectantFrames));
+  const harborLanes = harborConstitution === null ? [] : lanesOf(harborConstitution);
+  const withLive: readonly Frame[] = [...frames, harborLive];
+
+  test('spectant-001: one column per frame in scrubber order, plus one re-cut column before R5', () => {
+    const matrix = buildMatrix(spectantFrames);
     const frameColumns = matrix.columns.filter((c) => c.kind !== 'recut');
     expect(frameColumns.map((c) => c.frame)).toEqual(spectantFrames.map((f) => f.index));
     expect(frameColumns.map((c) => c.label)).toEqual(spectantFrames.map((f) => f.label));
@@ -520,16 +525,62 @@ describe('matrix cells (T19, buildMatrix: stub today)', () => {
     expectCellsFollowFrames(spectantFrames);
   });
 
-  test.todo('spectant-001: a struck task is dashed (null) in every column after the re-cut', () => {
-    const matrix = buildMatrix(spectantFrames, detectRecut(spectantFrames));
+  test('spectant-001: a struck task is dashed (null, gap absent) in every column after the re-cut', () => {
+    const matrix = buildMatrix(spectantFrames);
     const row = matrix.rows.indexOf('T97');
     const after = matrix.columns.flatMap((c, i) => (c.frame !== null && c.frame >= 8 ? [i] : []));
     expect(after.map((i) => matrix.cells[row]?.[i]?.state)).toEqual(after.map(() => null));
+    expect(after.map((i) => matrix.cells[row]?.[i]?.gap)).toEqual(after.map(() => 'absent'));
   });
 
-  test.todo('harbor 002: cells follow the frames, the re-cut column sits before R3 dispatch', () => {
-    const matrix = buildMatrix(frames, detectRecut(frames));
+  test('harbor 002: cells follow the frames, the re-cut column sits before R3 dispatch', () => {
+    const matrix = buildMatrix(frames);
     expect(matrix.columns.map((c) => c.kind)).toEqual(['dispatch', 'result', 'dispatch', 'result', 'recut', 'dispatch', 'result']);
+    expect(matrix.columns[4]).toEqual({ kind: 'recut', frame: null, label: 'R2 → R3' });
     expectCellsFollowFrames(frames);
+  });
+
+  test('harbor 002 with the live frame: a live column last, T34 none before R3 and absent live, T33 absent after R2', () => {
+    const matrix = buildMatrix(withLive, [], harborLanes);
+    expect(matrix.columns.at(-1)).toEqual({ kind: 'live', frame: 6, label: 'Live' });
+    const cells = (task: string): readonly MatrixCell[] => matrix.cells[matrix.rows.indexOf(task)] ?? [];
+    expect(cells('T34').map((c) => c.state)).toEqual([null, null, null, null, null, 'waiting', 'waiting', 'absent']);
+    expect(cells('T34').map((c) => c.gap)).toEqual(['none', 'none', 'none', 'none', undefined, undefined, undefined, undefined]);
+    expect(cells('T33').map((c) => c.state)).toEqual(['waiting', 'waiting', 'waiting', 'waiting', null, null, null, null]);
+    expect(cells('T33').map((c) => c.gap)).toEqual([undefined, undefined, undefined, undefined, undefined, 'absent', 'absent', 'absent']);
+    expectCellsFollowFrames(withLive);
+  });
+
+  test('harbor 002: the re-cut column marks each row the re-cut touched, and nothing else', () => {
+    const matrix = buildMatrix(frames);
+    const marks = Object.fromEntries(
+      matrix.rows.flatMap((task, r) => {
+        const mark = matrix.cells[r]?.[4]?.recut;
+        return mark === undefined ? [] : [[task, mark]];
+      }),
+    );
+    expect(marks).toEqual({ T27: 'changed', T28: 'changed', T29: 'changed', T30: 'changed', T31: 'changed', T32: 'changed', T33: 'struck', T34: 'added' });
+    expect(matrix.cells.every((row) => row[4]?.state === null && row[4].gap === undefined)).toBe(true);
+  });
+
+  test('rows: every task that ever had a card, by lane in constitution order, operator last, first seen within a lane', () => {
+    const matrix = buildMatrix(withLive, [], harborLanes);
+    expect(matrix.details.map((d) => d.task)).toEqual([...matrix.rows]);
+    expect(matrix.rows).toEqual(['T1', ...ids(2, 29), 'T32', 'T33', 'T34', 'T30', 'T31']);
+    expect([...new Set(matrix.details.map((d) => d.lane))]).toEqual(['api', 'web', 'operator']);
+    expect(harborLanes.indexOf('api')).toBeLessThan(harborLanes.indexOf('web'));
+    // a row carries its latest card's claim, lane and text: T30 moved into the operator lane in the R3 re-cut
+    const last = (task: string): FrameCard | undefined => withLive.flatMap((f) => f.cards).filter((c) => c.task === task).at(-1);
+    for (const d of matrix.details) expect([d.claim, d.lane, d.text]).toEqual([last(d.task)?.claim ?? '', last(d.task)?.lane ?? '', last(d.task)?.text ?? '']);
+  });
+
+  test('without a constitution, lanes come first seen and operator last; a re-cut marker alone adds its column', () => {
+    const plain = frames.map((frame): Frame => ({ ...frame, recut: undefined }));
+    const matrix = buildMatrix(plain, [{ beforeFrame: 4, fromRound: 2, toRound: 3, struck: ['T33'], added: ['T34'], changed: [] }]);
+    expect([...new Set(matrix.details.map((d) => d.lane))].at(-1)).toBe('operator');
+    expect(matrix.columns.map((c) => c.kind)).toEqual(['dispatch', 'result', 'dispatch', 'result', 'recut', 'dispatch', 'result']);
+    expect(matrix.cells[matrix.rows.indexOf('T27')]?.[4]?.recut).toBeUndefined();
+    expect(matrix.cells[matrix.rows.indexOf('T33')]?.[4]?.recut).toBe('struck');
+    expect(buildMatrix([])).toEqual({ rows: [], details: [], columns: [], cells: [] });
   });
 });

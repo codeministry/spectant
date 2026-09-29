@@ -1,0 +1,73 @@
+<section class="matrix" aria-labelledby="matrix-heading">
+  <h2 id="matrix-heading" class="visually-hidden" tabindex="-1">{{ 'shell.tabs.matrix' | transloco }}</h2>
+
+  @if (failed()) {
+    <p class="note" role="alert" data-matrix-failed>{{ 'matrix.failed' | transloco }}</p>
+  } @else if (matrix().rows.length === 0) {
+    @if (!loading()) {
+      <p class="note" data-matrix-empty>{{ 'matrix.empty' | transloco }}</p>
+    }
+  } @else {
+    <p class="hint" data-matrix-hint>{{ 'matrix.hint' | transloco }}</p>
+    <div class="card border border-base-300 bg-base-100 frame-card">
+      <div class="scroll" role="region" tabindex="0" data-matrix-region [attr.aria-label]="'matrix.region' | transloco">
+        <table class="grid" data-matrix>
+          <thead>
+            <tr>
+              <th scope="col" class="task corner">{{ 'matrix.task' | transloco }}</th>
+              @for (column of matrix().columns; track $index) {
+                <th scope="col" data-column [attr.data-kind]="column.kind" [attr.data-frame]="column.frame" [attr.aria-label]="columnNames()[$index]" [attr.title]="columnNames()[$index]">
+                  @switch (column.kind) {
+                    @case ('result') {
+                      <span aria-hidden="true">{{ column.label }}</span>
+                    }
+                    @case ('live') {
+                      <span aria-hidden="true">{{ 'matrix.column.liveShort' | transloco }}</span>
+                    }
+                  }
+                </th>
+              }
+            </tr>
+          </thead>
+          @for (group of groups(); track group.lane) {
+            <tbody [attr.data-lane]="group.lane">
+              <tr class="lane-row">
+                <th scope="rowgroup" [attr.colspan]="matrix().columns.length + 1">
+                  <span class="lane-name" data-lane-name>{{ group.lane }}</span>
+                </th>
+              </tr>
+              @for (row of group.rows; track row.detail.task) {
+                <tr [attr.data-row]="row.detail.task">
+                  <th scope="row" class="task" [attr.title]="row.detail.text">
+                    <span class="task-in">
+                      <span class="id">{{ row.detail.task }}</span>
+                      @if (state.tier() === 'wide') {
+                        <span class="claim">{{ row.detail.claim }}</span>
+                      }
+                    </span>
+                  </th>
+                  @for (cell of row.cells; track cell.column) {
+                    @let column = matrix().columns[cell.column];
+                    @let query = column === undefined ? null : queryOf(column);
+                    @let glyph = glyphOf(cell);
+                    <td [attr.data-kind]="column?.kind" [attr.data-state]="glyph ?? 'none'" [attr.data-recut]="cell.recut ?? null">
+                      @if (query !== null) {
+                        <a class="cell" data-cell [routerLink]="boardLink()" [queryParams]="query" [attr.aria-label]="cellLabel(cell)">
+                          @if (glyph !== null) {
+                            <ui-glyph [state]="glyph" family="card" [size]="14" />
+                          }
+                        </a>
+                      } @else if (cell.recut !== undefined) {
+                        <span class="visually-hidden">{{ recutLabel(cell) }}</span>
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          }
+        </table>
+      </div>
+    </div>
+  }
+</section>

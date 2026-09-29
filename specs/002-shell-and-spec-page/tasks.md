@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T19:13:15Z
+updated: 2026-09-29T19:14:41Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -46,7 +46,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T16 · ISC-32 · [P] · core — `events.jsonl` line validator against `{ts, from, to, command, actor}` · `core/src/events.ts`
 - [x] T17 · ISC-87 · [P] · core — frames from rounds: dispatch and result frames, worst state per frame, task states carried forward (after: T1) · `core/src/frames.ts`
 - [x] T18 · ISC-91 · core — re-cut detection between rounds (ids and texts compared), struck tasks as absent, no state attributed to a renumbered id (after: T17) · `core/src/recut.ts`
-- [ ] T19 · ISC-92 · core — matrix cells: tasks × frames with state glyph keys, absent and re-cut columns (after: T17) · `core/src/matrix.ts`
+- [x] T19 · ISC-92 · core — matrix cells: tasks × frames with state glyph keys, absent and re-cut columns (after: T17) · `core/src/matrix.ts`
 - [x] T20 · ISC-37 · [P] · core — lock sources: frontier lock files under a given LifeOS state directory, `.spectant/activity.jsonl` claim/release lines, `none` when neither exists · `core/src/locks.ts`
 - [x] T21 · ISC-90 · core — live frame from tasks.md plus the lock sources; a locked task in flight with its session name (after: T17, T20) · `core/src/live.ts`
 - [x] T22 · ISC-81 · [P] · core — claim view model: glyph state (open, takeable, taken, blocked, closed, dropped), kind, dependency edges, probe row, verification line (after: T1) · `core/src/claim-view.ts`
@@ -126,7 +126,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T84 · ISC-89 · web — waiting groups by reason, collapsible, no card hidden (after: T81) · `web/src/app/features/spec/live/waiting/`
 - [x] T85 · ISC-90 · web — live frame rendering: agent chips with elapsed time, stale marker, lock source name, probe status (after: T81) · `web/src/app/features/spec/live/live-frame.ts`
 - [x] T86 · ISC-91 · web — re-cut marker on the scrubber and absent cards (after: T81) · `web/src/app/features/spec/live/recut.ts`
-- [ ] T87 · ISC-92 · web — Matrix tab: sticky first column, frame columns, glyph cells, cell click jumps the scrubber (after: T81) · `web/src/app/features/spec/live/matrix/`
+- [x] T87 · ISC-92 · web — Matrix tab: sticky first column, frame columns, glyph cells, cell click jumps the scrubber (after: T81) · `web/src/app/features/spec/live/matrix/`
 - [x] T88 · ISC-87 · web — This frame and Needs you: rail blocks at wide, the bottom bar and sheet below wide merged with the zen footer · Mobile, Tablet (after: T81) · `web/src/app/features/spec/live/this-frame/`
 - [x] T89 · ISC-87 · web — e2e board: scrubbing changes frames and no file (`git status --porcelain` empty) (after: T81, T82) · `web/e2e/board.spec.ts`
 - [x] T90 · ISC-88 · web — e2e board states: all eleven card states on the harbor 002 fixture (after: T83) · `web/e2e/board-states.spec.ts`

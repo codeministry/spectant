@@ -44,7 +44,7 @@ export interface SpecArea {
 export const SPEC_AREAS: readonly SpecArea[] = [
   { id: 'dashboard', tabs: [], icon: 'layout-dashboard', built: true, goKey: null },
   { id: 'status', tabs: ['status', 'timeline'], icon: 'activity', built: true, goKey: 's' },
-  { id: 'live', tabs: ['board', 'matrix'], icon: 'square-kanban', built: false, goKey: 'l' },
+  { id: 'live', tabs: ['board', 'matrix'], icon: 'square-kanban', built: true, goKey: 'l' },
   { id: 'data', tabs: ['claims', 'tasks', 'evidence'], icon: 'table', built: true, goKey: 'd' },
   { id: 'docs', tabs: ['plan', 'design', 'decisions', 'constitution'], icon: 'file-text', built: true, goKey: 'o' },
   { id: 'notes', tabs: ['notes'], icon: 'notebook-pen', built: true, goKey: 'n' },

@@ -23,6 +23,7 @@ export const VIEW_LOADERS: Partial<Record<TabId | 'dashboard', () => Promise<Typ
   tasks: () => import('./data/tasks/tasks-tab').then((m) => m.TasksTab),
   notes: () => import('./notes/notes-area').then((m) => m.NotesArea),
   board: () => import('./live/board/board-tab').then((m) => m.BoardTab),
+  matrix: () => import('./live/matrix/matrix-tab').then((m) => m.MatrixTab),
 };
 
 const view = (key: TabId | 'dashboard') => {

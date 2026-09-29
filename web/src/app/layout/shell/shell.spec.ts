@@ -179,10 +179,12 @@ describe('ShellComponent', () => {
     expect(root.querySelector('aside [data-slot="rail"]')).not.toBeNull();
   });
 
-  it('marks unbuilt areas as coming with later tasks', async () => {
-    setUp();
+  it('renders the Matrix tab, not the placeholder, now every area is built', async () => {
+    const empty = () => Promise.resolve({ kind: 'not-found', served: true });
+    setUp({ ...fakeApi(), frames: empty, live: empty } as FakeApi);
     const { root } = await open('/w/harbor/s/002/matrix');
-    expect(root.querySelector('[data-page="placeholder"]')?.textContent).toContain("Comes with this spec's later tasks");
+    expect(root.querySelector('[data-page="placeholder"]')).toBeNull();
+    expect(root.querySelector('app-matrix-tab')).not.toBeNull();
   });
 
   it('renders the not-found page for notFound route data', async () => {
@@ -288,25 +290,22 @@ describe('ShellComponent', () => {
         expect(nav?.getAttribute('aria-label')).toBe('Areas');
         const entries = [...(nav?.querySelectorAll('[data-area]') ?? [])];
         expect(entries.map((entry) => entry.getAttribute('data-area'))).toEqual(['dashboard', 'status', 'live', 'data', 'docs', 'notes']);
-        expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A', 'SPAN', 'A', 'A', 'A']);
+        expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A', 'A', 'A', 'A', 'A']);
         expect(entries.map((entry) => entry.getAttribute('href'))).toEqual([
           '/w/harbor/s/002',
           '/w/harbor/s/002/status',
-          null,
+          '/w/harbor/s/002/board',
           '/w/harbor/s/002/claims',
           '/w/harbor/s/002/plan',
           '/w/harbor/s/002/notes',
         ]);
         expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual([null, null, null, 'page', null, null]);
-        for (const disabled of [entries[2]]) {
-          expect(disabled.getAttribute('aria-disabled')).toBe('true');
-          expect(disabled.textContent).toContain("Comes with this spec's later tasks");
-        }
+        expect(entries.map((entry) => entry.getAttribute('aria-disabled'))).toEqual([null, null, null, null, null, null]);
         expect(entries.map((entry) => entry.querySelector('.dot')?.getAttribute('data-dot'))).toEqual([...AREA_IDS]);
         expect(texts(nav?.querySelectorAll('[data-area] .sub') as NodeListOf<Element>)).toEqual([
           'Where the spec stands at a glance',
           'Stage, gates and timeline',
-          "Comes with this spec's later tasks",
+          'Agents at work, board and matrix',
           'Claims, tasks and evidence',
           'Plan, design, decisions, constitution',
           'Your notes on this spec',

@@ -1023,5 +1023,28 @@
       "none": "No agent holds a lock.",
       "staleAlert": "No release from {{session}} on {{claims}}: the agent may have stopped."
     }
+  },
+  "matrix": {
+    "region": "Matrix: tasks by frame",
+    "hint": "Select a cell to open the board at that frame.",
+    "task": "Task",
+    "empty": "No round is recorded yet, so the matrix has no frame.",
+    "failed": "The matrix could not be read.",
+    "column": {
+      "dispatch": "R{{round}} dispatch",
+      "result": "R{{round}} result",
+      "live": "Live",
+      "liveShort": "Live",
+      "recut": "Re-cut {{label}}"
+    },
+    "cell": {
+      "label": "{{task}}, {{frame}}: {{state}}",
+      "none": "no card yet"
+    },
+    "recut": {
+      "struck": "{{task}} struck in the re-cut",
+      "added": "{{task}} added in the re-cut",
+      "changed": "{{task}} renumbered in the re-cut"
+    }
   }
 }

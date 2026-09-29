@@ -1023,5 +1023,28 @@
       "none": "Kein Agent hält eine Sperre.",
       "staleAlert": "Keine Freigabe von {{session}} für {{claims}}: Der Agent ist womöglich beendet."
     }
+  },
+  "matrix": {
+    "region": "Matrix: Aufgaben nach Frame",
+    "hint": "Wählen Sie eine Zelle, um das Board in diesem Frame zu öffnen.",
+    "task": "Aufgabe",
+    "empty": "Es ist noch keine Runde aufgezeichnet, die Matrix hat daher keinen Frame.",
+    "failed": "Die Matrix konnte nicht gelesen werden.",
+    "column": {
+      "dispatch": "R{{round}} Vergabe",
+      "result": "R{{round}} Ergebnis",
+      "live": "Live",
+      "liveShort": "Live",
+      "recut": "Neuschnitt {{label}}"
+    },
+    "cell": {
+      "label": "{{task}}, {{frame}}: {{state}}",
+      "none": "noch keine Karte"
+    },
+    "recut": {
+      "struck": "{{task}} im Neuschnitt gestrichen",
+      "added": "{{task}} im Neuschnitt hinzugefügt",
+      "changed": "{{task}} im Neuschnitt neu nummeriert"
+    }
   }
 }

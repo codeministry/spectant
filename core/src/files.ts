@@ -578,13 +578,33 @@ export interface MatrixCell {
   readonly column: number;
   /** The frame the cell jumps to; null for a re-cut column. */
   readonly frame: number | null;
-  /** Null where the task is absent from that frame (a dashed cell). */
+  /** Null where the task has no card in that frame, and on every re-cut cell. */
   readonly state: CardState | null;
+  /**
+   * Why a frame cell has no card: `none` before the task's first card (an empty cell), `absent` once it had one (a
+   * dashed cell: struck, or gone in a re-cut). Unset on a cell with a card and on a re-cut cell.
+   */
+  readonly gap?: 'none' | 'absent';
+  /** On a re-cut cell: how the re-cut touched this row's id. Unset for an id the re-cut left alone. */
+  readonly recut?: 'struck' | 'added' | 'changed';
+}
+
+/** One matrix row: a task id with its latest card's claim, lane and text. */
+export interface MatrixRow {
+  readonly task: string;
+  readonly claim: string;
+  readonly lane: string;
+  readonly text: string;
 }
 
 export interface Matrix {
-  /** Task ids, one row each, in tasks.md order. */
+  /**
+   * Task ids, one row each: every task that ever had a card, grouped by lane (the constitution's lanes in table order,
+   * then lanes only the cards name, `operator` last), first seen within a lane.
+   */
   readonly rows: readonly string[];
+  /** `details[row]`: the row's task, claim, lane and text, in `rows` order. */
+  readonly details: readonly MatrixRow[];
   readonly columns: readonly MatrixColumn[];
   /** `cells[row][column]`. */
   readonly cells: ReadonlyArray<readonly MatrixCell[]>;

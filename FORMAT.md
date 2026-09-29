@@ -347,7 +347,10 @@ From `core/fixtures/harbor/specs/002-web-console/rounds.jsonl`, the end of round
 "progress":"25/30","stop":"a decision only the principal can make"}
 ```
 
-**Derived:** the round entries of the timeline, the row's last-round time, and the scrubber frames of the round board.
+**Derived:** the round entries of the timeline, the row's last-round time, the scrubber frames of the round board,
+and from those frames the Matrix: one row per task id that ever had a card (by lane, `operator` last), one column per
+frame plus a re-cut column where tasks.md changed between two lines, each cell the card's state, empty before the
+task's first card and absent (dashed) after its last.
 
 **Derived: the re-cut** (spec 002, T18, `recut.ts`, ISC-91). A task is its id together with its text. Between two
 consecutive lines, an id with the same text is the same task and carries its card, tries and note; an id with another

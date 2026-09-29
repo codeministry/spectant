@@ -1,0 +1,213 @@
+/*
+ * The Matrix tab (design.md § Live, Matrix; ISC-92). One card that scrolls horizontally inside itself with an edge
+ * shadow while columns hide to the right; the page never scrolls sideways. The first column sticks. Compact: 64 px ids,
+ * 44 × 44 cells. Medium: 64 px ids, 32 × 32 cells. Wide: a 224 px id and claim column, 32 px rows under a 32 px lane
+ * header, dispatch 16 px (dimmed), result 28 px, live 40 px, re-cut 8 px hatched. Colours are theme tokens only.
+ */
+:host {
+  --matrix-first: 64px;
+  --matrix-row: 32px;
+  --matrix-cell: 32px;
+  --matrix-dispatch: var(--matrix-cell);
+  --matrix-result: var(--matrix-cell);
+  --matrix-live: var(--matrix-cell);
+  --matrix-recut: 8px;
+  --matrix-line: color-mix(in oklab, var(--color-base-content) 10%, transparent);
+
+  display: block;
+  min-inline-size: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+:host([data-tier='compact']) {
+  --matrix-row: 44px;
+  --matrix-cell: 44px;
+}
+
+:host([data-tier='wide']) {
+  --matrix-first: 224px;
+  --matrix-dispatch: 16px;
+  --matrix-result: 28px;
+  --matrix-live: 40px;
+}
+
+.matrix {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  overflow: hidden;
+  inline-size: 1px;
+  block-size: 1px;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.hint,
+.note {
+  margin: 0;
+  color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  font-size: 0.875rem;
+}
+
+.frame-card {
+  overflow: hidden;
+  min-inline-size: 0;
+}
+
+/* The edge shadow: a cover that scrolls with the content hides the shadow once the last column is in view. */
+.scroll {
+  overflow-x: auto;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  background:
+    linear-gradient(to left, var(--color-base-100) 40%, transparent) right center / 32px 100% no-repeat local,
+    radial-gradient(farthest-side at 100% 50%, color-mix(in oklab, var(--color-base-content) 24%, transparent), transparent) right center / 14px 100% no-repeat scroll;
+  overscroll-behavior-x: contain;
+}
+
+.scroll:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.grid {
+  border-collapse: separate;
+  border-spacing: 0;
+  inline-size: max-content;
+}
+
+th,
+td {
+  padding: 0;
+  text-align: center;
+  vertical-align: middle;
+}
+
+thead th {
+  block-size: 32px;
+  color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-block-end: 1px solid var(--matrix-line);
+}
+
+th[data-kind],
+td[data-kind] {
+  inline-size: var(--matrix-cell);
+  min-inline-size: var(--matrix-cell);
+  max-inline-size: var(--matrix-cell);
+}
+
+[data-kind='dispatch'] {
+  --matrix-cell: var(--matrix-dispatch);
+}
+
+[data-kind='result'] {
+  --matrix-cell: var(--matrix-result);
+}
+
+[data-kind='live'] {
+  --matrix-cell: var(--matrix-live);
+
+  background: color-mix(in oklab, var(--color-primary) 6%, transparent);
+}
+
+[data-kind='recut'] {
+  --matrix-cell: var(--matrix-recut);
+
+  background: repeating-linear-gradient(135deg, color-mix(in oklab, var(--color-warning) 55%, transparent) 0 1.5px, transparent 1.5px 4px);
+}
+
+.task {
+  position: sticky;
+  z-index: 1;
+  inset-inline-start: 0;
+  inline-size: var(--matrix-first);
+  min-inline-size: var(--matrix-first);
+  max-inline-size: var(--matrix-first);
+  padding-inline: 8px;
+  text-align: start;
+  background: var(--color-base-100);
+  border-inline-end: 1px solid var(--matrix-line);
+}
+
+.task-in {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  block-size: var(--matrix-row);
+}
+
+.corner {
+  z-index: 2;
+}
+
+.id {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.claim {
+  overflow: hidden;
+  color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  font-size: 0.75rem;
+  font-weight: 400;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.lane-row th {
+  block-size: 32px;
+  padding: 0;
+  text-align: start;
+  background: var(--color-base-200);
+  border-block: 1px solid var(--matrix-line);
+}
+
+.lane-name {
+  position: sticky;
+  inset-inline-start: 0;
+  display: inline-block;
+  padding-inline: 8px;
+  color: color-mix(in oklab, var(--color-base-content) 80%, transparent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+tbody td {
+  block-size: var(--matrix-row);
+}
+
+.cell {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  block-size: var(--matrix-row);
+  border-radius: 4px;
+  outline-offset: -2px;
+}
+
+.cell:hover {
+  background: color-mix(in oklab, var(--color-base-content) 8%, transparent);
+}
+
+.cell:focus-visible {
+  outline: 2px solid var(--color-primary);
+}
+
+td[data-kind='dispatch'] ui-glyph {
+  opacity: 0.55;
+}
+
+@media (forced-colors: active) {
+  [data-kind='recut'] {
+    background: GrayText;
+  }
+}
