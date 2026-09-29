@@ -24,7 +24,7 @@
  *   `{error: "method-not-allowed"}` with `Allow`, 403 `{error: "forbidden"}` for a foreign `Host` or a cross-site
  *   `Origin`.
  * - `GET|HEAD /api/lifeos` → `{present}`, true only under the `frontier` lock fixture.
- * - `GET|HEAD|PUT /api/settings` → `{theme, language, refreshSeconds, singleKeyShortcuts}`, held in memory from the
+ * - `GET|HEAD|PUT /api/settings` → `{theme, language, refreshSeconds, singleKeyShortcuts, railCollapsed}`, held in memory from the
  *   `SettingsSchema` defaults, validated as the server does (400 `{error, key}` / `{error: "invalid-body"}`), weak
  *   ETag `W/"<Bun.hash base36>"`, 405 with `Allow: GET, HEAD, PUT`.
  * - Any other `/api` path is the server's JSON 404, `{error: "not found"}`.
@@ -225,7 +225,7 @@ function settingsError(status: number, value: unknown, extra: Record<string, str
 
 // ---- settings: SettingsSchema of server/src/settings.ts, in memory ------------------------------------------------
 
-type Settings = { theme: string; language: string; refreshSeconds: number; singleKeyShortcuts: boolean };
+type Settings = { theme: string; language: string; refreshSeconds: number; singleKeyShortcuts: boolean; railCollapsed: boolean };
 type SettingKey = keyof Settings;
 
 const SCHEMA: { readonly [K in SettingKey]: { default: Settings[K]; validate: (value: unknown) => boolean } } = {
@@ -233,6 +233,7 @@ const SCHEMA: { readonly [K in SettingKey]: { default: Settings[K]; validate: (v
   language: { default: 'en', validate: (v) => v === 'en' || v === 'de' },
   refreshSeconds: { default: 30, validate: (v) => Number.isInteger(v) && (v as number) >= 5 && (v as number) <= 3600 },
   singleKeyShortcuts: { default: true, validate: (v) => typeof v === 'boolean' },
+  railCollapsed: { default: false, validate: (v) => typeof v === 'boolean' },
 };
 
 const defaults = (): Settings => ({
@@ -240,6 +241,7 @@ const defaults = (): Settings => ({
   language: SCHEMA.language.default,
   refreshSeconds: SCHEMA.refreshSeconds.default,
   singleKeyShortcuts: SCHEMA.singleKeyShortcuts.default,
+  railCollapsed: SCHEMA.railCollapsed.default,
 });
 
 const isKey = (key: string): key is SettingKey => Object.hasOwn(SCHEMA, key);

@@ -4,8 +4,20 @@
     <router-outlet />
   </main>
   @if (showRail()) {
-    <aside class="shell-rail" [attr.aria-label]="'shell.rail.label' | transloco">
-      <app-rail-slot />
+    <aside
+      class="shell-rail"
+      [attr.data-rail-strip]="state.railStrip() ? '' : null"
+      [attr.aria-label]="'shell.rail.label' | transloco"
+    >
+      @if (state.tier() === 'wide') {
+        <app-rail-toggle class="rail-toggle" [collapsed]="state.railStrip()" />
+      }
+      @if (!state.railStrip()) {
+        <app-rail-slot />
+      }
     </aside>
   }
 </div>
+@if (state.zen() && showRail()) {
+  <app-zen-footer />
+}

@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T17:07:09Z
+updated: 2026-09-29T17:08:30Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -68,7 +68,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T35 · ISC-73 · [seam] · web — shell: `container: shell` with the three tiers, the grid with the 352 px rail at wide, the tab-bar slot per tier (header row 2 at compact, under the spec head above), the `LockSource` signal, the area routes `/w/:ws/s/:id/:tab` (after: T32, T34) · `web/src/app/layout/shell/`
 - [x] T36 · ISC-73 · web — header: wordmark with living ring, workspace picker, spec picker (name, id at compact), area-menu trigger, palette trigger (field from a 1280 px header container), live indicator, zen, settings with help; the collapse order; two rows at compact · Mobile, one row above · Tablet, Desktop (after: T35) · `web/src/app/layout/header/`
 - [x] T37 · ISC-76 · web — area menu as native popover with `aria-current`, Live and Notes as disabled entries with their reason while unbuilt; tab bar showing only the current area's tabs with counts; deep link selects area and tab (after: T35) · `web/src/app/layout/area-menu/`
-- [ ] T38 · ISC-75 · web — zen: tools and rail hidden, navigation sticky, footer status bar; rail collapse toggle at wide with its state through `/api/settings` (after: T35) · `web/src/app/layout/zen/`
+- [x] T38 · ISC-75 · web — zen: tools and rail hidden, navigation sticky, footer status bar; rail collapse toggle at wide with its state through `/api/settings` (after: T35) · `web/src/app/layout/zen/`
 - [ ] T39 · ISC-77 · web — spec 001's dashboard, overview, inspector and palette rendered inside the shell; their routes unchanged (after: T35, T36) · `web/src/app/features/dashboard/`
 - [ ] T40 · ISC-73 · web — e2e shell: exactly one header with the seven controls at 390 and 1440 (after: T36) · `web/e2e/shell.spec.ts`
 - [ ] T41 · ISC-75 · web — e2e zen and rail persistence (after: T38) · `web/e2e/shell-zen.spec.ts`

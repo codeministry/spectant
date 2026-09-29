@@ -355,11 +355,21 @@
       },
       "open": "{{source}}, Live-Board öffnen"
     },
-    "zen": "Zen-Modus",
+    "zen": {
+      "toggle": "Zen-Modus",
+      "footer": "Spec-Status",
+      "claims": "{{closed}}/{{total}}",
+      "notes": "Notizen",
+      "notesCount": "Notizen {{count}}"
+    },
     "help": "Hilfe und Tastenkürzel",
     "rail": {
       "label": "Spec-Kontext",
-      "pending": "Stand, Ihre offenen Punkte und die Gates kommen mit einem späteren Task."
+      "pending": "Stand, Ihre offenen Punkte und die Gates kommen mit einem späteren Task.",
+      "collapse": "Spec-Kontext einklappen",
+      "expand": "Spec-Kontext ausklappen",
+      "waiting": "Wartet auf Sie: {{count}}",
+      "warnings": "Warnungen: {{count}}"
     },
     "placeholder": {
       "area": "Der Bereich {{area}} kommt mit einem späteren Task dieser Spec.",

@@ -219,7 +219,7 @@ describe('stub API: GET /api/workspaces/:slug/dashboard', () => {
 });
 
 describe('stub API: /api/settings', () => {
-  const DEFAULTS = { theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true };
+  const DEFAULTS = { theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false };
   const put = (body: unknown, session?: string): Promise<Response> =>
     ask('/api/settings', { method: 'PUT', body: JSON.stringify(body), ...(session === undefined ? {} : { session }) });
 

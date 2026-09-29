@@ -55,7 +55,7 @@ byte, so a server contract change fails there first.
 | `…/evidence`, `…/evidence/file?path=` | core's `listEvidence` / `resolveEvidencePath` over the fixture tree's real `artifacts/` and `.evidence/`; the file with `evidenceFileHeaders`, 403 for what confinement refuses, 404 for no file |
 | `POST …/gate/reviewed`, `POST …/tasks/:tid/check` | the two writes, validated with the contract's `is…Request` (400), outcome scripted per request (below) |
 | `GET/HEAD /api/lifeos` | `{present}`: true only under the `frontier` lock fixture |
-| `GET/HEAD/PUT /api/settings` | in memory from the schema defaults (`system`, `en`, 30, `true`), per session |
+| `GET/HEAD/PUT /api/settings` | in memory from the schema defaults (`system`, `en`, 30, `true`, `false`), per session |
 | `POST /api/__stub/reset` | stub only: restores the settings and drops the writes of the request's session, 204 |
 
 Every JSON answer follows `JSON_ANSWER` (strong sha256 ETag, 304 on a match, `HEAD` without a body); 404 is

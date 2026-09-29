@@ -355,11 +355,21 @@
       },
       "open": "{{source}}, open the live board"
     },
-    "zen": "Zen mode",
+    "zen": {
+      "toggle": "Zen mode",
+      "footer": "Spec status",
+      "claims": "{{closed}}/{{total}}",
+      "notes": "Notes",
+      "notesCount": "Notes {{count}}"
+    },
     "help": "Help & shortcuts",
     "rail": {
       "label": "Spec context",
-      "pending": "Where it stands, waiting on you and the gates come with a later task."
+      "pending": "Where it stands, waiting on you and the gates come with a later task.",
+      "collapse": "Collapse the spec context",
+      "expand": "Expand the spec context",
+      "waiting": "Waiting on you: {{count}}",
+      "warnings": "Warnings: {{count}}"
     },
     "placeholder": {
       "area": "The {{area}} area comes with a later task of this spec.",

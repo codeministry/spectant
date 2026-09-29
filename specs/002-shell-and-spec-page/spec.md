@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 18/49
+progress: 19/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T17:04:47Z
+updated: 2026-09-29T17:08:30Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -188,7 +188,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 
 - [ ] ISC-73: Every route renders inside one shell whose header carries the workspace picker, the spec picker (name when a spec is open, or its id at compact; count otherwise), the area menu, the palette trigger, the live indicator, zen and settings with help; no second header exists in the DOM.
 - [x] ISC-74: The app ships Manrope, Sora and JetBrains Mono as local assets and declares no font URL outside its own origin; this supersedes the Inter face of ISC-67.
-- [ ] ISC-75: Zen mode hides the header tools and the context rail and keeps the sticky navigation; the collapsed state of the rail survives a reload.
+- [x] ISC-75: Zen mode hides the header tools and the context rail and keeps the sticky navigation; the collapsed state of the rail survives a reload.
 - [x] ISC-76: The area menu offers Dashboard · Status · Live · Data · Docs · Notes for an open spec, the tab bar shows only the current area's tabs, and a deep link `/w/:ws/s/:id/<tab>` selects area and tab. ⟨?: Live and Notes render as disabled entries with "comes with this spec's later tasks" while their tabs are unbuilt, rather than hidden — assuming a stable menu beats a growing one⟩
 - [ ] ISC-77: Spec 001's dashboard, overview, inspector and palette render inside the new shell and 001's e2e suites stay green. (after: ISC-73)
 - [ ] ISC-97: `g` sequences reach every area and tab, `[` `]` step between specs, `v` toggles Lanes and Flow, `z` toggles zen, `◂ ▸` step frames, and every binding is listed in the shortcut sheet.
@@ -286,6 +286,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-75: e2e — `bun run e2e -- shell -g zen` 3 passed (shell suite 42): at 1440 zen hides palette, live, settings, the spec head and the rail, keeps the sticky tab bar and shows the 40 px footer with id, stage, claims 25/30, command chip and notes pill; at 390 the footer replaces the spec head; the rail collapse toggle stores railCollapsed through PUT /api/settings and a reload shows the strip (T38; 2026-09-29)
 
 - ISC-68.1: bash — `bun run check:format-doc` → 13 kinds documented (26 examples verbatim from their files); FORMAT.md holds one section per file kind core reads with a real example, and the three lane notes name the read-only carve-out with its guard (root), the write path, lock sources and spec routes (server), the tiers, tab-bar slot, area routes and 002 primitives (web) (T2, T3, T111, T112, T113; 2026-09-29)
 

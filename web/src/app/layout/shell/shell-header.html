@@ -29,7 +29,7 @@
     class="zen"
     data-control="zen"
     [icon]="state.zen() ? 'minimize-2' : 'maximize-2'"
-    [label]="'shell.zen' | transloco"
+    [label]="'shell.zen.toggle' | transloco"
     [attr.aria-pressed]="state.zen()"
     (click)="state.toggleZen()"
   ></button>

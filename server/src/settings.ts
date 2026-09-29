@@ -33,6 +33,8 @@ export const SettingsSchema = {
   language: { default: "en", validate: oneOf("en", "de") },
   refreshSeconds: { default: 30, validate: integerIn(5, 3600) },
   singleKeyShortcuts: { default: true, validate: isBoolean },
+  /** Spec 002, ISC-75: the context rail at wide shows as its 48 px strip. */
+  railCollapsed: { default: false, validate: isBoolean },
 } as const satisfies Record<string, SettingSpec<unknown>>;
 
 type Schema = typeof SettingsSchema;

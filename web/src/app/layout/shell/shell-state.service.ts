@@ -55,10 +55,12 @@ export class ShellState {
 
   /** Set by `ShellComponent`'s ResizeObserver through `tierFor`. */
   readonly tier = signal<Tier>('wide');
-  /** T38 fills the behaviour (footer bar, persistence); the CSS already hides the header tools and the rail. */
+  /** Zen (ISC-75): the header tools, the spec head and the rail hide; `app-zen-footer` takes the head's place. */
   readonly zen = signal(false);
-  /** T38 stores it through `/api/settings`. */
-  readonly railCollapsed = signal(false);
+  /** The stored choice, `railCollapsed` in `/api/settings`, so it survives a reload (ISC-75). */
+  readonly railCollapsed = computed(() => this.settings.settings().railCollapsed);
+  /** The rail shows as its 48 px strip only at wide, where it is a column; medium stacks it as page content. */
+  readonly railStrip = computed(() => this.tier() === 'wide' && this.railCollapsed());
   readonly tabBarPlacement = computed<TabBarPlacement>(() => (this.tier() === 'compact' ? 'header' : 'main'));
 
   private readonly navigated = toSignal(this.router.events.pipe(filter((event) => event instanceof NavigationEnd)), {
@@ -77,6 +79,11 @@ export class ShellState {
 
   toggleZen(): void {
     this.zen.update((zen) => !zen);
+  }
+
+  /** Collapses or expands the rail and stores the choice; a refused PUT rolls it back (`SettingsService.update`). */
+  toggleRail(): void {
+    void this.settings.update({ railCollapsed: !this.railCollapsed() });
   }
 
   /**

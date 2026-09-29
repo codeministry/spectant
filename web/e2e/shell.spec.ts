@@ -160,3 +160,121 @@ for (const { width, tier, tabBar } of TIERS) {
     });
   });
 }
+
+/**
+ * ISC-75 (T38): zen hides the header tools, the spec head and the rail, keeps the sticky tab bar and shows the footer
+ * status bar; the rail's collapsed state is `railCollapsed` in `/api/settings` and survives a reload.
+ * `bun run e2e -- shell -g zen`. Each block names its own stub session and resets it first, so a stored
+ * `railCollapsed` never leaks into another case, worker or retry.
+ */
+test.describe('zen', () => {
+  const TOOLS = ['palette', 'live', 'settings'] as const;
+  const session = (id: string): void => {
+    test.use({ extraHTTPHeaders: { 'X-Spectant-Stub-Session': id } });
+    test.beforeEach(async ({ request }) => {
+      await request.post('/api/__stub/reset', { headers: { 'X-Spectant-Stub-Session': id } });
+    });
+  };
+
+  test.describe('at 1440', () => {
+    test.use(atWidth(1440));
+    session('zen-wide');
+
+    test('zen hides the three tools, the spec head and the rail, keeps the tab bar, shows the footer bar; again restores', async ({ page }) => {
+      await page.goto('/w/harbor/s/002/status');
+      const zen = page.locator('header [data-control="zen"]');
+      const head = page.locator('app-spec-page .spec-head');
+      const rail = page.locator('aside.shell-rail');
+      const footer = page.locator('[data-zen-footer]');
+      await expect(head).toBeVisible();
+      await expect(rail).toBeVisible();
+      await expect(footer).toHaveCount(0);
+
+      await zen.click();
+      await expect(zen).toHaveAttribute('aria-pressed', 'true');
+      for (const tool of TOOLS) await expect(page.locator(`header [data-control="${tool}"]`), tool).toBeHidden();
+      for (const kept of ['brand', 'workspace', 'spec', 'area']) {
+        await expect(page.locator(`header [data-control="${kept}"]`), kept).toBeVisible();
+      }
+      await expect(head).toBeHidden();
+      await expect(rail).toBeHidden();
+      await expect(page.locator('main app-tab-bar')).toBeVisible();
+      await expect(footer).toBeVisible();
+      await expect(footer.locator('[data-zen-part="id"]')).toHaveText('002');
+      await expect(footer.locator('[data-zen-part="title"]')).toHaveText('Web console');
+      await expect(footer.locator('[data-zen-part="claims"]')).toContainText('25/30');
+      await expect(footer.locator('ui-command-chip')).toContainText('/spec-implement 002');
+      const box = await footer.boundingBox();
+      expect(box?.height).toBe(40);
+      expect(Math.round((box?.y ?? 0) + (box?.height ?? 0))).toBe(900);
+      // The main column takes the full width once the rail is gone (1440 - 2 × 32).
+      expect((await page.locator('main').boundingBox())?.width).toBe(1376);
+
+      await zen.click();
+      await expect(zen).toHaveAttribute('aria-pressed', 'false');
+      for (const tool of TOOLS) await expect(page.locator(`header [data-control="${tool}"]`), tool).toBeVisible();
+      await expect(head).toBeVisible();
+      await expect(rail).toBeVisible();
+      await expect(footer).toHaveCount(0);
+    });
+  });
+
+  test.describe('rail at 1440', () => {
+    test.use(atWidth(1440));
+    session('zen-rail');
+
+    test('zen spec: the rail collapse toggle stores railCollapsed through /api/settings and a reload keeps the strip', async ({ page }) => {
+      await page.goto('/w/harbor/s/002/status');
+      const shell = page.locator('app-shell');
+      const collapse = page.locator('aside.shell-rail [data-control="rail-collapse"]');
+      await expect(collapse).toHaveAttribute('aria-expanded', 'true');
+
+      const stored = page.waitForResponse((res) => res.url().endsWith('/api/settings') && res.request().method() === 'PUT');
+      await collapse.click();
+      const answer = await stored;
+      expect(((await answer.json()) as { railCollapsed?: boolean }).railCollapsed).toBe(true);
+      await expect(shell).toHaveAttribute('data-rail-collapsed', '');
+      const strip = page.locator('aside.shell-rail[data-rail-strip]');
+      await expect(strip).toBeVisible();
+      await expect(page.locator('app-rail-slot')).toHaveCount(0);
+      // The column eases over 240 ms (`--motion-duration-base`); poll until it settles at the strip's 48 px.
+      await expect.poll(async () => (await strip.boundingBox())?.width).toBe(48);
+
+      await page.reload();
+      await expect(shell).toHaveAttribute('data-rail-collapsed', '');
+      const expand = page.locator('aside.shell-rail [data-control="rail-expand"]');
+      await expect(expand).toHaveAttribute('aria-expanded', 'false');
+
+      await expand.click();
+      await expect(shell).not.toHaveAttribute('data-rail-collapsed');
+      await expect(page.locator('app-rail-slot')).toBeVisible();
+      await page.reload();
+      await expect(page.locator('app-rail-slot')).toBeVisible();
+    });
+  });
+
+  test.describe('at 390', () => {
+    test.use(atWidth(390));
+    session('zen-compact');
+
+    test('zen at compact: the footer bar replaces the spec head, both header rows stay', async ({ page }) => {
+      await page.goto('/w/harbor/s/002/status');
+      const zen = page.locator('header [data-control="zen"]');
+      await zen.click();
+      await expect(page.locator('app-spec-page .spec-head')).toBeHidden();
+      for (const tool of TOOLS) await expect(page.locator(`header [data-control="${tool}"]`), tool).toBeHidden();
+      await expect(page.locator('header app-tab-bar')).toBeVisible();
+      const footer = page.locator('[data-zen-footer]');
+      await expect(footer).toBeVisible();
+      await expect(footer.locator('[data-zen-part="id"]')).toHaveText('002');
+      await expect(footer.locator('[data-zen-part="claims"]')).toContainText('25/30');
+      await expect(footer.locator('ui-command-chip')).toBeVisible();
+      await expect(footer.locator('[data-zen-part="title"]')).toBeHidden();
+      expect((await footer.boundingBox())?.width).toBe(390);
+
+      await zen.click();
+      await expect(page.locator('app-spec-page .spec-head')).toBeVisible();
+      await expect(footer).toHaveCount(0);
+    });
+  });
+});

@@ -1,6 +1,8 @@
 import { afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { RailToggle } from '../zen/rail-toggle';
+import { ZenFooter } from '../zen/zen-footer';
 import { RailSlot } from './rail-slot';
 import { ShellData } from './shell-data.service';
 import { ShellHeader } from './shell-header';
@@ -15,7 +17,7 @@ import { tierFor } from './tier';
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, TranslocoPipe, ShellHeader, RailSlot],
+  imports: [RouterOutlet, TranslocoPipe, ShellHeader, RailSlot, RailToggle, ZenFooter],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.html',
   styleUrl: './shell.css',
@@ -25,7 +27,7 @@ import { tierFor } from './tier';
     '[class.tier-medium]': "state.tier() === 'medium'",
     '[class.tier-wide]': "state.tier() === 'wide'",
     '[attr.data-zen]': "state.zen() ? '' : null",
-    '[attr.data-rail-collapsed]': "state.railCollapsed() ? '' : null",
+    '[attr.data-rail-collapsed]': "state.railStrip() ? '' : null",
     '(document:keydown)': 'onKeydown($event)',
   },
 })
@@ -33,7 +35,7 @@ export class ShellComponent {
   protected readonly state = inject(ShellState);
   protected readonly data = inject(ShellData);
 
-  /** The rail belongs to an open, existing spec; T54 and T38 fill its content and the collapse toggle. */
+  /** The rail belongs to an open, existing spec; T54 fills its content, T38 adds the collapse toggle. */
   protected readonly showRail = computed(
     () => this.state.specId() !== null && !this.state.notFound() && !this.data.specMissing(),
   );

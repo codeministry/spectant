@@ -15,6 +15,8 @@ export interface Settings {
   language: Lang;
   refreshSeconds: number;
   singleKeyShortcuts: boolean;
+  /** The context rail at wide shows as its 48 px strip (spec 002, ISC-75). */
+  railCollapsed: boolean;
 }
 
 /** `SettingsSchema`'s defaults: what a fresh install gets, and what the app shows until `/api/settings` answers. */
@@ -23,6 +25,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({
   language: 'en',
   refreshSeconds: 30,
   singleKeyShortcuts: true,
+  railCollapsed: false,
 });
 
 /** Relative on purpose: the app talks only to the loopback server that served it, on whatever port (ISC-2). */
@@ -34,17 +37,18 @@ const isRefresh = (value: unknown): value is number => Number.isInteger(value) &
 /** A server answer read field by field; a field that fails its check reads as its default, as the server does. */
 function sanitize(raw: unknown): Settings {
   const value = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
-  const { theme, language, refreshSeconds, singleKeyShortcuts } = value;
+  const { theme, language, refreshSeconds, singleKeyShortcuts, railCollapsed } = value;
   return {
     theme: isThemeMode(theme) ? theme : DEFAULT_SETTINGS.theme,
     language: typeof language === 'string' && isLang(language) ? language : DEFAULT_SETTINGS.language,
     refreshSeconds: isRefresh(refreshSeconds) ? refreshSeconds : DEFAULT_SETTINGS.refreshSeconds,
     singleKeyShortcuts: typeof singleKeyShortcuts === 'boolean' ? singleKeyShortcuts : DEFAULT_SETTINGS.singleKeyShortcuts,
+    railCollapsed: typeof railCollapsed === 'boolean' ? railCollapsed : DEFAULT_SETTINGS.railCollapsed,
   };
 }
 
 /**
- * The user's settings (theme mode, language, refresh interval, single-key shortcuts), stored server-side through
+ * The user's settings (theme mode, language, refresh interval, single-key shortcuts, the collapsed rail), stored server-side through
  * `GET` / `PUT /api/settings` so they survive a reload on a different port (ISC-18.3). Never in `localStorage`:
  * per-origin storage is lost when the port changes (web/CLAUDE.md § State).
  *

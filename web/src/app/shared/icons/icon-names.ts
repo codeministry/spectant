@@ -24,6 +24,8 @@ export const ICON_NAMES = [
   'notebook-pen',
   'panel-left-close',
   'panel-left-open',
+  'panel-right-close',
+  'panel-right-open',
   'rotate-cw',
   'scale',
   'settings',
