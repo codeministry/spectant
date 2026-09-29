@@ -139,7 +139,7 @@ and build inside this spec's shell after stage ② lands.
 
 | Route | Returns / does |
 |-------|----------------|
-| `GET /api/workspaces/:ws/specs/:id` | the spec page model from `core/src/spec.ts`; 404 with `{error: "not_found"}` for unknown `:ws` or `:id` |
+| `GET /api/workspaces/:ws/specs/:id` | the spec page model from `core/src/spec.ts`; 404 with `{error: "not-found"}` for unknown `:ws` or `:id` |
 | `GET …/:id/timeline` | `[{ts, kind: decision\|round\|gate\|commit\|stage, derived, title, body?, ref}]` |
 | `GET …/:id/claims` · `GET …/:id/tasks` | claim and task models with glyph state, kind, edges, probe row, verification line; flags, lane, state, paths, probe mapping |
 | `GET …/:id/evidence` · `GET …/:id/evidence/file?path=` | the grouped listing; the file with its media type, 403 for a path outside the spec folder |

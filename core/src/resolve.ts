@@ -27,7 +27,7 @@ export type SpecNotFoundReason = 'no-specs-dir' | 'unknown-id' | 'unknown-slug' 
 export type WorkspaceNotFoundReason = 'unknown-workspace';
 export type NotFoundReason = SpecNotFoundReason | WorkspaceNotFoundReason;
 
-/** The ref named nothing, and why. The API answers it with 404 and `{error: "not_found"}`. */
+/** The ref named nothing, and why. The API answers it with 404 and `{error: "not-found"}` (the kind below is the internal discriminant). */
 export interface NotFound<R extends NotFoundReason = NotFoundReason> {
   readonly kind: 'not_found';
   /** The ref exactly as asked for. */

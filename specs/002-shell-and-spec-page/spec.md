@@ -6,7 +6,7 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 8/48
+progress: 8/49
 started: 2026-09-28T22:08:00Z
 updated: 2026-09-29T14:06:29Z
 context_sufficient: true
@@ -62,6 +62,9 @@ flowchart TD
 Every number on every page comes from the parser's reading of the repository's real files, the same parser the
 golden fixtures pin. Nothing in the prototype's JavaScript fixtures is ported; the prototype is the reference for
 surface and interaction, not for data.
+
+Spectant ships with its Spec skill: spec work starts in the AI chat, and this app runs alongside as the surface for
+control and administration (decided 2026-09-29). The two meet only in files; nothing on these pages calls the skill.
 
 ## Out of Scope
 
@@ -124,17 +127,17 @@ A developer works a spec end to end in Spectant, from dashboard to live board an
 | ISC-25 | bun-test | tick a task | exactly one line changed | `bun test tests/writes.test.ts -t "checkbox"` | derived: light-writes | |
 | ISC-26 | bun-test | stale hash | 409 + file byte-identical | `bun test tests/writes.test.ts -t "cas"` | derived: light-writes | high |
 | ISC-27 | bun-test | write under an open claim | refused | `bun test tests/writes.test.ts -t "claim lock"` | derived: light-writes | high |
-| ISC-32 | bun-test | events.jsonl schema | every line valid | `bun test core/events.test.ts` | derived: state-machine | |
-| ISC-36 | bun-test | timeline order and derived marker | both cases | `bun test tests/timeline.test.ts` | derived: state-machine | |
+| ISC-32 | bun-test | events.jsonl schema | every line valid | `bun test core/tests/events.test.ts` | derived: state-machine | |
+| ISC-36 | bun-test | timeline order and derived marker | both cases | `bun test core/tests/timeline.test.ts` | derived: state-machine | |
 | ISC-37 | bun-test | LifeOS present vs absent | locks shown / no LifeOS read | `bun test tests/lifeos-optional.test.ts` | derived: lifeos-optional | |
 | ISC-49 | bash | board visual baseline, light | green | `bun run test:visual -- report` | derived: no-drift | |
 | ISC-49.1 | bash | board visual baseline, dark | green | `bun run test:visual -- report --theme dark` | derived: no-drift | |
 | ISC-52 | bun-test | notes survive a restart | persisted | `bun test tests/notes.test.ts -t "persist"` | literal | |
 | ISC-53 | bun-test | import of an old notes export | count equal | `bun test tests/notes.test.ts -t "import"` | literal | |
-| ISC-68 | bun-test | every fixture repository parses into its committed golden JSON | byte-equal | `bun test core/golden.test.ts` | literal | high |
-| ISC-68.1 | bash | every file kind the app reads has a section and a real example in FORMAT.md | 11 kinds | `bun run check:format-doc` (section names vs `core/src/files.ts` kinds) | derived: file-contract | |
-| ISC-69 | bash | fixture corpus: spec 001 frozen, ≥ 3 leadgen specs of ≥ 2 types, licence note present | all present | `bun test core/fixtures.test.ts -t "corpus"` | derived: file-contract | |
-| ISC-70 | bun-test | private corpus parses with zero diagnostics when `SPECTANT_PRIVATE_CORPUS` is set; skipped when unset | 0 diagnostics / skipped | `bun test core/private-corpus.test.ts` | derived: file-contract | |
+| ISC-68 | bun-test | every fixture repository parses into its committed golden JSON | byte-equal | `bun test core/tests/golden.test.ts` | literal | high |
+| ISC-68.1 | bash | every file kind the app reads has a section and a real example in FORMAT.md | 13 kinds | `bun run check:format-doc` (section names vs `core/src/files.ts` kinds) | derived: file-contract | |
+| ISC-69 | bash | fixture corpus: spec 001 frozen, ≥ 3 leadgen specs of ≥ 2 types, licence note present | all present | `bun test core/tests/fixtures.test.ts -t "corpus"` | derived: file-contract | |
+| ISC-70 | bun-test | private corpus parses with zero diagnostics when `SPECTANT_PRIVATE_CORPUS` is set; skipped when unset | 0 diagnostics / skipped | `bun test core/tests/private-corpus.test.ts` | derived: file-contract | |
 | ISC-71 | bun-test | unknown spec id or workspace slug | 404 + not-found page, no fallback | `bun test tests/routes.test.ts -t "not found"` and `bun run e2e -- spec -g "not found"` | literal | high |
 | ISC-72 | e2e | every counter on the spec dashboard and its tabs vs golden JSON | 0 mismatches | `bun run e2e -- counts` | derived: single-source | high |
 | ISC-73 | e2e | exactly one shell header on every route, with the seven controls, at 390 and 1440 | 1 header, 7 controls | `bun run e2e -- shell -g header` | derived: prototype-shell | |
@@ -143,8 +146,8 @@ A developer works a spec end to end in Spectant, from dashboard to live board an
 | ISC-76 | e2e | area menu and tab bar follow the deep link `/w/:ws/s/:id/<tab>` | area + tab selected | `bun run e2e -- spec -g "deep link"` | derived: prototype-shell | |
 | ISC-77 | bash | spec 001's e2e suites pass on the new shell | green | `bun run e2e -- dashboard overview palette keyboard` | derived: no-regression | high |
 | ISC-78 | e2e | spec dashboard: key numbers, idea quote, next command with reason, lane bars, area tiles | all rendered from fixture | `bun run e2e -- spec -g dashboard` | derived: prototype-views | |
-| ISC-79 | bun-test | stage and next command per fixture spec equal the table in FORMAT.md | all rows | `bun test core/stage.test.ts` | derived: status-contract | high |
-| ISC-80 | bun-test | timeline merges decisions, rounds, gate marks and commits in time order | ordered, one entry per source event | `bun test core/timeline.test.ts -t "sources"` | derived: status-contract | |
+| ISC-79 | bun-test | stage and next command per fixture spec equal the table in FORMAT.md | all rows | `bun test core/tests/stage.test.ts` | derived: status-contract | high |
+| ISC-80 | bun-test | timeline merges decisions, rounds, gate marks and commits in time order | ordered, one entry per source event | `bun test core/tests/timeline.test.ts -t "sources"` | derived: status-contract | |
 | ISC-81 | e2e | claims tab: glyph state, kind, edges, probe row, verification line; filters | counts equal golden | `bun run e2e -- data -g claims` | derived: prototype-views | |
 | ISC-82 | e2e | tasks tab: lane, flags, state, edges, paths, probe mapping; filters | counts equal golden | `bun run e2e -- data -g tasks` | derived: prototype-views | |
 | ISC-83 | bun-test | evidence file outside the spec folder | 403, nothing served | `bun test tests/evidence.test.ts -t "traversal"` | derived: local-only | high |
@@ -152,11 +155,11 @@ A developer works a spec end to end in Spectant, from dashboard to live board an
 | ISC-84 | e2e | docs tabs render markdown, tables, code, mermaid figures; type-aware empty state | all four tabs | `bun run e2e -- docs` | derived: prototype-views | |
 | ISC-85 | e2e | gate button states ready / stale (naming changed files) / done / paused; dialog lists three hashed files | all four states | `bun run e2e -- gate` | derived: light-writes | |
 | ISC-86 | bun-test | write under a LifeOS frontier lock refused with 423; no lock source → write proceeds with "no agent source" | both | `bun test tests/writes.test.ts -t "frontier"` | derived: light-writes | high |
-| ISC-87 | bun-test | rounds.jsonl → frames (dispatch, result, live); scrubbing changes no file | frames equal golden, tree unchanged | `bun test core/frames.test.ts` and `git status --porcelain` empty after `bun run e2e -- board -g scrub` | literal | |
+| ISC-87 | bun-test | rounds.jsonl → frames (dispatch, result, live); scrubbing changes no file | frames equal golden, tree unchanged | `bun test core/tests/frames.test.ts` and `git status --porcelain` empty after `bun run e2e -- board -g scrub` | literal | |
 | ISC-88 | e2e | all eleven card states render with glyph, chip text and colour | 11 states | `bun run e2e -- board -g states` | derived: state-model | |
 | ISC-89 | e2e | waiting tasks grouped by reason, none hidden | shown cards = frame tasks | `bun run e2e -- board -g waiting` | derived: state-model | |
-| ISC-90 | bun-test | live frame from tasks.md + frontier locks (+ activity.jsonl when present); locked task in flight with session name | both sources | `bun test core/live.test.ts` | derived: state-model | |
-| ISC-91 | bun-test | re-cut between rounds → scrubber marker, struck tasks absent, no state carried to a renumbered id | 0 mis-attributions | `bun test core/frames.test.ts -t "recut"` (fixture: spec 001's own rounds.jsonl) | literal | high |
+| ISC-90 | bun-test | live frame from tasks.md + frontier locks (+ activity.jsonl when present); locked task in flight with session name | both sources | `bun test core/tests/live.test.ts` | derived: state-model | |
+| ISC-91 | bun-test | re-cut between rounds → scrubber marker, struck tasks absent, no state carried to a renumbered id | 0 mis-attributions | `bun test core/tests/frames.test.ts -t "recut"` (fixture: spec 001's own rounds.jsonl) | literal | high |
 | ISC-92 | e2e | matrix tasks × frames with glyphs; cell click jumps to frame | jump works | `bun run e2e -- board -g matrix` | derived: prototype-views | |
 | ISC-93 | e2e | board at 600 px: no horizontal page overflow, no lane with its own scrollbar | scrollWidth == clientWidth, 0 lane scrollers | `bun run e2e -- narrow -g board` | derived: cmux-panel | |
 | ISC-94 | bun-test | a note is stored in the data directory with workspace and at most one anchor; the repository tree is unchanged | row present, `git status` clean | `bun test tests/notes.test.ts -t "store"` | derived: local-only | |
@@ -164,7 +167,8 @@ A developer works a spec end to end in Spectant, from dashboard to live board an
 | ISC-96 | bash | visual baseline: spec dashboard and notes area, light, 390/820/1440 | green on Linux CI | `bun run test:visual -- spec notes` | derived: no-drift | |
 | ISC-96.1 | bash | the same baseline, dark | green | `bun run test:visual -- spec notes --theme dark` | derived: no-drift | |
 | ISC-97 | e2e | keyboard: `g` sequences for areas and tabs, `[` `]` between specs, `v` view toggle, `z` zen, `◂ ▸` frames; all listed in the shortcut sheet | every binding works and is listed | `bun run e2e -- keyboard -g spec` | derived: prototype-shell | |
-| ISC-98 | bash | spec 001's tasks.md carries no shell task and its reviewed mark is fresh after the re-cut | T59/T60 moved, `SpecGate check reviewed` exit 0 | `rg -c "shell with container tiers|header: eyebrow" specs/001-app-skeleton/tasks.md` → 0 and `bun ~/.claude/skills/Spec/Tools/SpecGate.ts check reviewed 001` | literal | |
+| ISC-98 | bash | spec 001's tasks.md carries no shell task and its reviewed mark is fresh after the re-cut | T59/T60 moved, `SpecGate check reviewed` exit 0 | `rg -c "shell with container tiers|header: eyebrow" specs/001-app-skeleton/tasks.md` → 0 and the Spec skill's `SpecGate check reviewed 001` exits 0 | literal | |
+| ISC-99 | bun-test | takeable gated on a fresh reviewed mark | harbor 003 (no mark) 0 takeable, 002 (fresh) unchanged | `bun test core/tests/status.test.ts -t "review gate"` | derived: state-machine | high |
 
 ## Features
 
@@ -189,6 +193,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [ ] ISC-77: Spec 001's dashboard, overview, inspector and palette render inside the new shell and 001's e2e suites stay green. (after: ISC-73)
 - [ ] ISC-97: `g` sequences reach every area and tab, `[` `]` step between specs, `v` toggles Lanes and Flow, `z` toggles zen, `◂ ▸` step frames, and every binding is listed in the shortcut sheet.
 - [ ] ISC-98: Spec 001's tasks.md carries no shell task after the re-cut (T59 and T60 moved to this spec) and 001's reviewed mark is fresh again.
+- [ ] ISC-99: A claim is takeable only while the spec's reviewed mark is fresh; before that every open claim shows as `open` on the dashboard row, the Claims tab and the takeable set, and no task of it is dispatched.
 
 **Spec dashboard and Status**
 
@@ -208,7 +213,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 
 **The two writes**
 
-- [ ] ISC-24: "Mark reviewed" writes `.gates/reviewed` in the format the old skill writes and appends exactly one `tasked → reviewed` event. (after: ISC-32)
+- [ ] ISC-24: "Mark reviewed" writes `.gates/reviewed` in the format the old skill writes and appends exactly one `tasks → review` event (the stage table's names, decided 2026-09-29). (after: ISC-32)
 - [ ] ISC-25: Ticking a task in the app changes exactly that task's checkbox line in `tasks.md` and nothing else.
 - [ ] ISC-26: A write whose sha256 no longer matches the rendered file returns 409 and leaves the file byte-identical.
 - [ ] ISC-27: Anti: the app writes to a spec while `.spectant/activity.jsonl` shows an open claim on it.

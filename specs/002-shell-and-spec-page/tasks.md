@@ -78,7 +78,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 ### ③ Read-only areas
 
 - [x] T44 · ISC-78 · [seam] · server — spec routes contract: paths and response types for spec, timeline, claims, tasks, evidence, docs, frames and live, shared with the web client (after: T1) · `server/src/spec-routes.contract.ts`
-- [ ] T45 · ISC-71 · server — spec routes with ETag; 404 `{error: "not_found"}` for an unknown workspace or spec (after: T44, T13) · `server/src/spec-routes.ts`
+- [ ] T45 · ISC-71 · server — spec routes with ETag; 404 `{error: "not-found"}` for an unknown workspace or spec (after: T44, T13) · `server/src/spec-routes.ts`
 - [x] T46 · ISC-80 · [P] · server — read-only `git log` for the commits touching a spec folder, limited and cached per ETag (after: T44) · `server/src/git.ts`
 - [ ] T47 · ISC-83 · server — evidence file serving with media types, 403 for any path outside the spec folder (after: T44, T24) · `server/src/evidence.ts`
 - [ ] T48 · ISC-71 · server — routes test: unknown spec and workspace → 404, no fallback body (after: T45) · `tests/routes.test.ts`
@@ -105,7 +105,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 
 - [ ] T67 · ISC-26 · [seam] · server — writes contract: request bodies with the client's sha256, the 200 / 409 / 423 response shapes, the event line (after: T44) · `server/src/writes.contract.ts`
 - [ ] T68 · ISC-26 · server — `writes.ts`: read, compare sha256, write the target file with fsync, byte-identical on mismatch (after: T67) · `server/src/writes.ts`
-- [ ] T69 · ISC-24 · server — gate route: `.gates/reviewed.json` in the old skill's format plus exactly one `tasked → reviewed` event line (after: T68, T16) · `server/src/gate-route.ts`
+- [ ] T69 · ISC-24 · server — gate route: `.gates/reviewed.json` in the old skill's format plus exactly one `tasks → review` event line (after: T68, T16) · `server/src/gate-route.ts`
 - [ ] T70 · ISC-25 · server — checkbox route: exactly one task line changed in `tasks.md` (after: T68) · `server/src/checkbox-route.ts`
 - [ ] T71 · ISC-27 · server — lock guard: refuse a write while `.spectant/activity.jsonl` shows an open claim on the spec (after: T68, T20) · `server/src/lock-guard.ts`
 - [ ] T72 · ISC-86 · server — lock guard: frontier lock → 423 with the session name; no source available → proceed with source `none` (after: T71, T51) · `server/src/lock-guard.ts`
@@ -156,15 +156,17 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T111 · ISC-68.1 · repo — root `CLAUDE.md`: the read-only rule names its two exceptions (reviewed gate, task checkbox) and the guard (after: T2) · `CLAUDE.md`
 - [ ] T112 · ISC-68.1 · server — `server/CLAUDE.md`: the write path, the lock sources, the spec routes (after: T2) · `server/CLAUDE.md`
 - [ ] T113 · ISC-68.1 · web — `web/CLAUDE.md`: the shell tiers, the tab-bar slot, the area routes, the new primitives (after: T35) · `web/CLAUDE.md`
+- [ ] T114 · ISC-99 · core — takeable gated on a fresh reviewed mark: rule in `status.ts`/`stage.ts`, dashboard row, claims tab counts and `takeableSet` follow, goldens regenerated (after: T1) · `core/src/status.ts`
+- [ ] T115 · ISC-90 · [P] · core — `DashboardSpecRow.taken: {id, session, since}[]` and lock diagnostics surfaced as row warnings, so the board can name the session (after: T20) · `core/src/dashboard.ts`
 
 ## Probe Mapping
 
 | Task | Claim | Probe (from `spec.md` § Test Strategy) |
 |------|-------|----------------------------------------|
-| T1, T9 | ISC-68 | `bun test core/golden.test.ts` |
+| T1, T9 | ISC-68 | `bun test core/tests/golden.test.ts` |
 | T2, T3, T111, T112, T113 | ISC-68.1 | `bun run check:format-doc` |
-| T4, T5, T6, T7 | ISC-69 | `bun test core/fixtures.test.ts -t "corpus"` |
-| T10 | ISC-70 | `bun test core/private-corpus.test.ts` |
+| T4, T5, T6, T7 | ISC-69 | `bun test core/tests/fixtures.test.ts -t "corpus"` |
+| T10 | ISC-70 | `bun test core/tests/private-corpus.test.ts` |
 | T13, T45, T48 | ISC-71 | `bun test tests/routes.test.ts -t "not found"` and `bun run e2e -- spec -g "not found"` |
 | T61 | ISC-72 | `bun run e2e -- counts` |
 | T35, T36, T40 | ISC-73 | `bun run e2e -- shell -g header` |
@@ -173,8 +175,8 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 | T37, T42 | ISC-76 | `bun run e2e -- spec -g "deep link"` |
 | T39, T43 | ISC-77 | `bun run e2e -- dashboard overview palette keyboard` |
 | T12, T44, T52, T53, T62 | ISC-78 | `bun run e2e -- spec -g dashboard` |
-| T11, T29, T54 | ISC-79 | `bun test core/stage.test.ts` |
-| T14, T26, T46, T55 | ISC-80 | `bun test core/timeline.test.ts -t "sources"` |
+| T11, T29, T54 | ISC-79 | `bun test core/tests/stage.test.ts` |
+| T14, T26, T46, T55 | ISC-80 | `bun test core/tests/timeline.test.ts -t "sources"` |
 | T22, T56, T63 | ISC-81 | `bun run e2e -- data -g claims` |
 | T23, T57, T64 | ISC-82 | `bun run e2e -- data -g tasks` |
 | T24, T47, T49 | ISC-83 | `bun test tests/evidence.test.ts -t "traversal"` |
@@ -182,11 +184,11 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 | T25, T59, T66 | ISC-84 | `bun run e2e -- docs` |
 | T78, T79 | ISC-85 | `bun run e2e -- gate` |
 | T72, T77 | ISC-86 | `bun test tests/writes.test.ts -t "frontier"` |
-| T17, T27, T81, T82, T88, T89 | ISC-87 | `bun test core/frames.test.ts` and `git status --porcelain` empty after `bun run e2e -- board -g scrub` |
+| T17, T27, T81, T82, T88, T89 | ISC-87 | `bun test core/tests/frames.test.ts` and `git status --porcelain` empty after `bun run e2e -- board -g scrub` |
 | T8, T60, T83, T90 | ISC-88 | `bun run e2e -- board -g states` |
 | T84, T91 | ISC-89 | `bun run e2e -- board -g waiting` |
-| T21, T28, T85 | ISC-90 | `bun test core/live.test.ts` |
-| T18, T86 | ISC-91 | `bun test core/frames.test.ts -t "recut"` |
+| T21, T28, T85, T115 | ISC-90 | `bun test core/tests/live.test.ts` |
+| T18, T86 | ISC-91 | `bun test core/tests/frames.test.ts -t "recut"` |
 | T19, T87, T92 | ISC-92 | `bun run e2e -- board -g matrix` |
 | T93 | ISC-93 | `bun run e2e -- narrow -g board` |
 | T94, T95, T96 | ISC-94 | `bun test tests/notes.test.ts -t "store"` |
@@ -194,7 +196,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 | T109 | ISC-96 | `bun run test:visual -- spec notes` |
 | T110 | ISC-96.1 | `bun run test:visual -- spec notes --theme dark` |
 | T102, T103 | ISC-97 | `bun run e2e -- keyboard -g spec` |
-| T31 | ISC-98 | `rg -c "shell with container tiers\|header: eyebrow" specs/001-app-skeleton/tasks.md` → 0 and `bun ~/.claude/skills/Spec/Tools/SpecGate.ts check reviewed 001` |
+| T31 | ISC-98 | `rg -c "shell with container tiers\|header: eyebrow" specs/001-app-skeleton/tasks.md` → 0 and the Spec skill's `SpecGate check reviewed 001` exits 0 |
 | T104 | ISC-2 | `bun run e2e -- offline` plus `bun run test:offline:server` |
 | T105 | ISC-23 | `bun run test:visual -- review` |
 | T106 | ISC-23.1 | `bun run test:visual -- review --theme dark` |
@@ -202,10 +204,11 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 | T70, T75, T80 | ISC-25 | `bun test tests/writes.test.ts -t "checkbox"` |
 | T67, T68, T73 | ISC-26 | `bun test tests/writes.test.ts -t "cas"` |
 | T71, T76 | ISC-27 | `bun test tests/writes.test.ts -t "claim lock"` |
-| T16, T30 | ISC-32 | `bun test core/events.test.ts` |
-| T15, T50 | ISC-36 | `bun test tests/timeline.test.ts` |
+| T16, T30 | ISC-32 | `bun test core/tests/events.test.ts` |
+| T15, T50 | ISC-36 | `bun test core/tests/timeline.test.ts` |
 | T20, T51 | ISC-37 | `bun test tests/lifeos-optional.test.ts` |
 | T107 | ISC-49 | `bun run test:visual -- report` |
 | T108 | ISC-49.1 | `bun run test:visual -- report --theme dark` |
+| T114 | ISC-99 | `bun test core/tests/status.test.ts -t "review gate"` |
 | T97 | ISC-52 | `bun test tests/notes.test.ts -t "persist"` |
 | T98, T99 | ISC-53 | `bun test tests/notes.test.ts -t "import"` |
