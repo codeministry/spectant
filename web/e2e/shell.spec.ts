@@ -42,11 +42,12 @@ for (const { width, tier, tabBar } of TIERS) {
       await expect(page.locator('app-tab-bar')).toHaveCount(0);
     });
 
-    test('placeholder, never not-found, while the stub serves no spec route', async ({ page }) => {
+    test('placeholder, never not-found, for a tab whose view is not built yet', async ({ page }) => {
+      // The stub serves the spec route (T52), so the spec head renders and the tab shows the area placeholder.
       await page.goto('/w/harbor/s/002/status');
       const placeholder = page.locator('[data-page="placeholder"]');
       await expect(placeholder).toHaveAttribute('data-tab', 'status');
-      await expect(placeholder).toContainText('The spec page is not served yet');
+      await expect(placeholder).toContainText('comes with a later task');
       await expect(page.locator('[data-page="not-found"]')).toHaveCount(0);
     });
   });
