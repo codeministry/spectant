@@ -70,11 +70,11 @@ function put(server: RunningServer, body: unknown, headers: Record<string, strin
 
 describe("SettingsSchema", () => {
   test("holds exactly the plan's four keys, each default passing its own validator", () => {
-    expect(Object.keys(SettingsSchema).sort()).toEqual(["language", "railCollapsed", "refreshSeconds", "singleKeyShortcuts", "theme"]);
+    expect(Object.keys(SettingsSchema).sort()).toEqual(["language", "notesImportDismissed", "railCollapsed", "refreshSeconds", "singleKeyShortcuts", "theme"]);
     for (const [key, spec] of Object.entries(SettingsSchema)) {
       expect({ key, valid: spec.validate(spec.default) }).toEqual({ key, valid: true });
     }
-    expect(DEFAULT_SETTINGS).toEqual({ theme: "system", language: "en", refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false });
+    expect(DEFAULT_SETTINGS).toEqual({ theme: "system", language: "en", refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false });
   });
 
   test("the validators accept the plan's values and refuse everything else", () => {
@@ -90,6 +90,8 @@ describe("SettingsSchema", () => {
     for (const flag of ["true", 1, 0, null]) expect(SettingsSchema.singleKeyShortcuts.validate(flag)).toBe(false);
     for (const flag of [true, false]) expect(SettingsSchema.railCollapsed.validate(flag)).toBe(true);
     for (const flag of ["false", 0, null]) expect(SettingsSchema.railCollapsed.validate(flag)).toBe(false);
+    for (const flag of [true, false]) expect(SettingsSchema.notesImportDismissed.validate(flag)).toBe(true);
+    for (const flag of ["true", 1, null]) expect(SettingsSchema.notesImportDismissed.validate(flag)).toBe(false);
   });
 });
 

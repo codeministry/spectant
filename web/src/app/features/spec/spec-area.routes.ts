@@ -21,6 +21,7 @@ export const VIEW_LOADERS: Partial<Record<TabId | 'dashboard', () => Promise<Typ
   decisions: () => import('./docs/docs-tab').then((m) => m.DocsTab),
   constitution: () => import('./docs/docs-tab').then((m) => m.DocsTab),
   tasks: () => import('./data/tasks/tasks-tab').then((m) => m.TasksTab),
+  notes: () => import('./notes/notes-area').then((m) => m.NotesArea),
 };
 
 const view = (key: TabId | 'dashboard') => {
@@ -29,12 +30,14 @@ const view = (key: TabId | 'dashboard') => {
 };
 
 const data = (value: ShellRouteData): ShellRouteData => value;
+/** The Notes view reads its note from the child: '' is the list, `new` or a note id the editor (T100). */
+const NOTE_CHILDREN = { children: [{ path: '', children: [] }, { path: ':noteId', children: [] }] };
 const isTab = (id: string): boolean => (TAB_IDS as readonly string[]).includes(id);
 
 /** The children of `/w/:ws/s/:id`: the dashboard, one route per tab, area-name redirects, then not-found. */
 export const SPEC_AREA_ROUTES: Routes = [
   { path: '', ...view('dashboard'), data: data({ area: 'dashboard' }) },
-  ...TAB_IDS.map((tab) => ({ path: tab, ...view(tab), data: data({ area: areaOfTab(tab).id, tab }) })),
+  ...TAB_IDS.map((tab) => ({ path: tab, ...view(tab), data: data({ area: areaOfTab(tab).id, tab }), ...(tab === 'notes' ? NOTE_CHILDREN : {}) })),
   // `live`, `data`, `docs` are not tab ids: the area name alone opens its first tab (`status` and `notes` are tabs).
   ...SPEC_AREAS.filter((area) => area.tabs.length > 0 && !isTab(area.id)).map((area) => ({
     path: area.id,

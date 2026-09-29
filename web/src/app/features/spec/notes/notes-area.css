@@ -1,0 +1,322 @@
+/* Not encapsulated (the preview is [innerHTML]): every selector starts with app-notes-area. */
+app-notes-area {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-inline-size: 0;
+}
+
+app-notes-area .notes-card {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-inline-size: 0;
+}
+
+app-notes-area .notes-list,
+app-notes-area .notes-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-inline-size: 0;
+}
+
+/* Wide: one card, a 320 px list and the editor filling the rest. */
+app-notes-area[data-tier='wide'] .notes-card {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+}
+
+app-notes-area[data-tier='wide'] .notes-list {
+  border-inline-end: 1px solid var(--line);
+  padding: 16px;
+}
+
+app-notes-area[data-tier='wide'] .notes-editor {
+  padding: 24px;
+}
+
+app-notes-area .notes-list-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+app-notes-area .notes-search {
+  flex: 1;
+  min-inline-size: 0;
+  gap: 8px;
+  color: var(--muted-ink);
+}
+
+app-notes-area .notes-search input {
+  color: var(--color-base-content);
+}
+
+app-notes-area .notes-new {
+  flex: none;
+  gap: 8px;
+}
+
+app-notes-area[data-tier='compact'] .notes-new {
+  min-block-size: 44px;
+}
+
+app-notes-area .notes-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+app-notes-area .notes-row {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-block-size: 64px;
+  padding: 8px;
+  border-radius: var(--radius-field);
+  color: inherit;
+  text-decoration: none;
+}
+
+app-notes-area .notes-row:hover {
+  background: var(--color-base-200);
+}
+
+app-notes-area .notes-row[aria-current='page'] {
+  background: var(--color-base-200);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+app-notes-area .notes-row-top,
+app-notes-area .notes-row-bottom {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-inline-size: 0;
+}
+
+app-notes-area .notes-row-title {
+  flex: 1;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+app-notes-area .notes-row-time {
+  flex: none;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+app-notes-area .notes-anchor {
+  flex: none;
+}
+
+app-notes-area .notes-anchor-none,
+app-notes-area .notes-row-line {
+  overflow: hidden;
+  color: var(--muted-ink);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+app-notes-area .notes-anchor-none {
+  flex: none;
+}
+
+app-notes-area .notes-back {
+  align-self: flex-start;
+  min-block-size: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+app-notes-area .notes-title {
+  inline-size: 100%;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+app-notes-area .notes-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  color: var(--muted-ink);
+  font-size: 13px;
+}
+
+app-notes-area .notes-anchor-field {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+app-notes-area .notes-anchor-select {
+  max-inline-size: 320px;
+}
+
+app-notes-area .notes-local {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+app-notes-area .notes-save {
+  font-variant-numeric: tabular-nums;
+}
+
+app-notes-area .notes-delete {
+  margin-inline-start: auto;
+}
+
+app-notes-area .notes-view .seg {
+  padding-inline: 12px;
+}
+
+app-notes-area .notes-body {
+  display: grid;
+  gap: 16px;
+  min-inline-size: 0;
+}
+
+app-notes-area .notes-body[data-view='split'] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+app-notes-area .notes-textarea {
+  inline-size: 100%;
+  min-block-size: 480px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 22px;
+  resize: vertical;
+}
+
+/* Compact: at least 12 lines at 16 px, so iOS never zooms into the field. */
+app-notes-area[data-tier='compact'] .notes-textarea {
+  min-block-size: calc(12 * 24px + 16px);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+app-notes-area .notes-preview {
+  max-inline-size: 72ch;
+  min-inline-size: 0;
+  font-size: 15px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+app-notes-area .notes-preview > :first-child {
+  margin-block-start: 0;
+}
+
+app-notes-area .notes-preview :is(h1, h2, h3, h4) {
+  margin: 24px 0 8px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+app-notes-area .notes-preview h1 {
+  font-size: 22px;
+}
+
+app-notes-area .notes-preview h2 {
+  font-size: 18px;
+}
+
+app-notes-area .notes-preview :is(p, ul, ol, blockquote, pre) {
+  margin: 0 0 16px;
+}
+
+app-notes-area .notes-preview :is(ul, ol) {
+  padding-inline-start: 24px;
+}
+
+app-notes-area .notes-preview ul {
+  list-style: disc;
+}
+
+app-notes-area .notes-preview ol {
+  list-style: decimal;
+}
+
+app-notes-area .notes-preview code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+app-notes-area .notes-preview pre {
+  overflow-x: auto;
+  padding: 16px;
+  border-radius: var(--radius-field);
+  background: var(--color-base-200);
+}
+
+app-notes-area .notes-preview blockquote {
+  padding-inline-start: 16px;
+  border-inline-start: 3px solid var(--line);
+  color: var(--muted-ink);
+}
+
+app-notes-area .notes-preview a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+app-notes-area .notes-confirm-text {
+  margin: 0 0 24px;
+}
+
+app-notes-area .notes-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+app-notes-area .notes-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+app-notes-area .notes-pick {
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: var(--radius-field);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+}
+
+app-notes-area .notes-pick[aria-pressed='true'] {
+  background: var(--color-base-200);
+  font-weight: 600;
+}
+
+app-notes-area .notes-pick-group {
+  padding: 8px 16px 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}

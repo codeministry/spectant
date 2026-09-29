@@ -35,6 +35,8 @@ export const SettingsSchema = {
   singleKeyShortcuts: { default: true, validate: isBoolean },
   /** Spec 002, ISC-75: the context rail at wide shows as its 48 px strip. */
   railCollapsed: { default: false, validate: isBoolean },
+  /** Spec 002, ISC-95: the Notes area's import notice was dismissed. */
+  notesImportDismissed: { default: false, validate: isBoolean },
 } as const satisfies Record<string, SettingSpec<unknown>>;
 
 type Schema = typeof SettingsSchema;

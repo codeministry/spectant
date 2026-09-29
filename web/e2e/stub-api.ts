@@ -24,9 +24,13 @@
  *   `{error: "method-not-allowed"}` with `Allow`, 403 `{error: "forbidden"}` for a foreign `Host` or a cross-site
  *   `Origin`.
  * - `GET|HEAD /api/lifeos` → `{present}`, true only under the `frontier` lock fixture.
- * - `GET|HEAD|PUT /api/settings` → `{theme, language, refreshSeconds, singleKeyShortcuts, railCollapsed}`, held in memory from the
+ * - `GET|HEAD|PUT /api/settings` → `{theme, language, refreshSeconds, singleKeyShortcuts, railCollapsed, notesImportDismissed}`, held in memory from the
  *   `SettingsSchema` defaults, validated as the server does (400 `{error, key}` / `{error: "invalid-body"}`), weak
  *   ETag `W/"<Bun.hash base36>"`, 405 with `Allow: GET, HEAD, PUT`.
+ * - The notes routes of `NOTE_ROUTE_TABLE` (`server/src/notes.contract.ts`, T94; `server/src/notes.ts`, T95): list with
+ *   `parseNotesQuery`, `note-counts`, `POST` (201), `PUT` (the draft replaced whole), `DELETE` (204, `no-store`), held in
+ *   memory per session and seeded with `STUB_NOTES` (three notes on harbor 002, one per anchor kind). Ids and times are
+ *   deterministic: the n-th write of a session is stamped `STUB_NOW` plus n minutes.
  * - Any other `/api` path is the server's JSON 404, `{error: "not found"}`.
  *
  * Test controls, which the real server does not have (web/e2e/README.md § The stub API), each chosen per request so
@@ -40,7 +44,7 @@
  *   does: 200 when the hashes sent equal the ones the stub last sent, else 409; `stale` is always 409 `Conflict`,
  *   `locked` always 423 `Locked`.
  * - `X-Spectant-Stub-Session: <id>` scopes the settings and the writes (absent: one shared session);
- *   `POST /api/__stub/reset` restores that session's settings and drops its writes (204).
+ *   `POST /api/__stub/reset` restores that session's settings and notes and drops its writes (204).
  *
  * Nothing here reads the clock or the registry: every answer is a function of the fixture files and the request. The
  * goldens are read once when the stub is built, so a missing fixture fails at startup, not on a request. Core's
@@ -95,6 +99,17 @@ import {
   type SpecRouteMatch,
   type TaskCheckResponse,
 } from '../../server/src/spec-routes.contract';
+import {
+  type Note,
+  type NoteCounts,
+  type NotesQuery,
+  matchNoteRoute,
+  noteAllowFor,
+  parseNewNote,
+  parseNoteCountsQuery,
+  parseNoteDraft,
+  parseNotesQuery,
+} from '../../server/src/notes.contract';
 import type { ApiHandler } from './serve-dist';
 
 /** The e2e states the spec names (ISC-16.1): two workspaces, none, and one whose directory cannot be read. */
@@ -117,6 +132,42 @@ export const RESET_PATH = '/api/__stub/reset';
 
 /** The stub's clock: the `now` the live goldens were built with; the `at` of every reviewed mark the stub writes. */
 export const STUB_NOW = '2026-03-08T15:00:00Z';
+
+/** The notes every session starts with (ISC-95): harbor 002, one per anchor kind, newest first as the server lists. */
+// Each seed goes through `seedNote`: `pinned` (notes.contract on main) is on every literal and type-checks on either base.
+const seedNote = (note: Note & { pinned?: boolean }): Note => note;
+export const STUB_NOTES: readonly Note[] = [
+  seedNote({
+    id: '00000000-0000-4000-8000-000000000003',
+    workspace: 'harbor',
+    pinned: false,
+    anchor: { kind: 'task', spec: '002', id: 'T1' },
+    title: 'Ask about the port',
+    body: 'Which port does the console default to?\n\nCheck before T1 lands.',
+    created: '2026-03-08T11:15:00.000Z',
+    updated: '2026-03-08T11:15:00.000Z',
+  }),
+  seedNote({
+    id: '00000000-0000-4000-8000-000000000002',
+    workspace: 'harbor',
+    pinned: false,
+    anchor: { kind: 'claim', spec: '002', id: 'ISC-51' },
+    title: 'Probe for the empty state',
+    body: 'The probe should also cover an **empty** workspace.\n\nSee `bun run e2e -- smoke`.',
+    created: '2026-03-07T14:30:00.000Z',
+    updated: '2026-03-07T14:30:00.000Z',
+  }),
+  seedNote({
+    id: '00000000-0000-4000-8000-000000000001',
+    workspace: 'harbor',
+    pinned: false,
+    anchor: { kind: 'spec', spec: '002' },
+    title: 'Rollout order',
+    body: '# Rollout order\n\nShip the **read-only** console first, then the writes.\n\n- dashboard\n- spec page',
+    created: '2026-03-06T09:00:00.000Z',
+    updated: '2026-03-06T09:00:00.000Z',
+  }),
+];
 
 export type StubWorkspace = {
   slug: string;
@@ -225,7 +276,7 @@ function settingsError(status: number, value: unknown, extra: Record<string, str
 
 // ---- settings: SettingsSchema of server/src/settings.ts, in memory ------------------------------------------------
 
-type Settings = { theme: string; language: string; refreshSeconds: number; singleKeyShortcuts: boolean; railCollapsed: boolean };
+type Settings = { theme: string; language: string; refreshSeconds: number; singleKeyShortcuts: boolean; railCollapsed: boolean; notesImportDismissed: boolean };
 type SettingKey = keyof Settings;
 
 const SCHEMA: { readonly [K in SettingKey]: { default: Settings[K]; validate: (value: unknown) => boolean } } = {
@@ -234,6 +285,7 @@ const SCHEMA: { readonly [K in SettingKey]: { default: Settings[K]; validate: (v
   refreshSeconds: { default: 30, validate: (v) => Number.isInteger(v) && (v as number) >= 5 && (v as number) <= 3600 },
   singleKeyShortcuts: { default: true, validate: (v) => typeof v === 'boolean' },
   railCollapsed: { default: false, validate: (v) => typeof v === 'boolean' },
+  notesImportDismissed: { default: false, validate: (v) => typeof v === 'boolean' },
 };
 
 const defaults = (): Settings => ({
@@ -242,6 +294,7 @@ const defaults = (): Settings => ({
   refreshSeconds: SCHEMA.refreshSeconds.default,
   singleKeyShortcuts: SCHEMA.singleKeyShortcuts.default,
   railCollapsed: SCHEMA.railCollapsed.default,
+  notesImportDismissed: SCHEMA.notesImportDismissed.default,
 });
 
 const isKey = (key: string): key is SettingKey => Object.hasOwn(SCHEMA, key);
@@ -535,6 +588,15 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return fresh;
   };
   const evidence = new Map<string, Promise<EvidenceListing>>();
+  const notebooks = new Map<string, { notes: Note[]; writes: number }>();
+  const notebookOf = (req: Request): { notes: Note[]; writes: number } => {
+    const id = sessionOf(req);
+    const found = notebooks.get(id);
+    if (found) return found;
+    const fresh = { notes: [...STUB_NOTES], writes: 0 };
+    notebooks.set(id, fresh);
+    return fresh;
+  };
 
   const workspaceRoute = (req: Request, state: StubState, slugSegment: string | undefined): Response => {
     if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
@@ -755,6 +817,61 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       : readRoute(req, url, match, found.tree, spec, locks);
   };
 
+  // ---- the notes routes (server/src/notes.ts), per session ----
+
+  const readJson = async (req: Request): Promise<unknown> => {
+    try {
+      return (await req.json()) as unknown;
+    } catch {
+      return undefined; // the contract's parsers answer `invalid-body` for it
+    }
+  };
+
+  const notesRoute = async (req: Request, url: URL, state: StubState): Promise<Response> => {
+    if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
+    const match = matchNoteRoute(url.pathname, req.method);
+    if (match === null) return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: noteAllowFor(url.pathname) ?? '' });
+    const { ws } = match.params;
+    if (!(views.get(state) ?? view(state)).workspaces.has(ws)) return workspaceJson(req, 404, { error: 'not-found' });
+    const book = notebookOf(req);
+    const stamp = (): string => new Date(Date.parse(STUB_NOW) + ++book.writes * 60_000).toISOString();
+    const reachable = (note: Note, id: string): boolean => note.id === id && (note.workspace === ws || note.workspace === null);
+    switch (match.route) {
+      case 'list': {
+        const query = parseNotesQuery(url.searchParams);
+        return query.ok ? workspaceJson(req, 200, listNotes(book.notes, ws, query.value)) : workspaceJson(req, 400, { error: query.error });
+      }
+      case 'counts': {
+        const query = parseNoteCountsQuery(url.searchParams);
+        const own = book.notes.filter((note) => note.workspace === ws);
+        return query.ok ? workspaceJson(req, 200, countNotes(own, query.value.spec)) : workspaceJson(req, 400, { error: query.error });
+      }
+      case 'create': {
+        const draft = parseNewNote(ws, await readJson(req));
+        if (!draft.ok) return workspaceJson(req, 400, { error: draft.error });
+        const at = stamp();
+        const note = { id: `00000000-0000-4000-8000-${String(100 + book.writes).padStart(12, '0')}`, pinned: false, ...draft.value, created: at, updated: at } as Note;
+        book.notes = [note, ...book.notes];
+        return workspaceJson(req, 201, note);
+      }
+      case 'update': {
+        const draft = parseNoteDraft(await readJson(req));
+        if (!draft.ok) return workspaceJson(req, 400, { error: draft.error });
+        const found = book.notes.find((note) => reachable(note, match.params.id));
+        if (!found) return workspaceJson(req, 404, { error: 'not-found' });
+        const note = { ...found, ...draft.value, updated: stamp() } as Note;
+        book.notes = [note, ...book.notes.filter((other) => other !== found)];
+        return workspaceJson(req, 200, note);
+      }
+      case 'remove': {
+        const kept = book.notes.filter((note) => !reachable(note, match.params.id));
+        if (kept.length === book.notes.length) return workspaceJson(req, 404, { error: 'not-found' });
+        book.notes = kept;
+        return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+      }
+    }
+  };
+
   const lifeosRoute = (req: Request, locks: LockState): Response => {
     if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -769,6 +886,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       if (req.method !== 'POST') return settingsError(405, { error: 'method-not-allowed' }, { Allow: 'POST' });
       sessions.delete(sessionOf(req));
       writes.delete(sessionOf(req));
+      notebooks.delete(sessionOf(req));
       return new Response(null, { status: 204 });
     }
     if (pathname === SETTINGS_PATH) return settingsRoute(req);
@@ -779,6 +897,11 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     }
     if (pathname === LIFEOS_PATH) return lifeosRoute(req, locks);
 
+    if (noteAllowFor(pathname) !== null) {
+      const state = req.headers.get(STATE_HEADER) ?? defaultState;
+      if (!isOneOf(STUB_STATES, state)) return settingsError(400, { error: 'unknown-stub-state', state, states: [...STUB_STATES] });
+      return notesRoute(req, url, state);
+    }
     const dashboard = DASHBOARD_PATH.exec(pathname);
     const spec = pathname.startsWith(`${WORKSPACES_PATH}/`) && !dashboard;
     if (pathname !== WORKSPACES_PATH && !dashboard && !spec) return Response.json({ error: 'not found' }, { status: 404 });
@@ -796,3 +919,33 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
 }
 
 const REVIEWED_FILES = Object.keys(REVIEWED_HASH_FILES) as ReviewedHashFile[];
+
+/** `filterOf` of server/src/notes.ts over a list already ordered newest first. */
+export function listNotes(notes: readonly Note[], ws: string, query: NotesQuery): Note[] {
+  if (query.orphans) return notes.filter((note) => note.workspace === null);
+  const own = notes.filter((note) => note.workspace === ws);
+  if (query.unanchored) return own.filter((note) => note.anchor === null);
+  if (query.spec === undefined) return own;
+  const inSpec = own.filter((note) => note.anchor?.spec === query.spec);
+  if (query.claim !== undefined) return inSpec.filter((note) => note.anchor?.kind === 'claim' && note.anchor.id === query.claim);
+  if (query.task !== undefined) return inSpec.filter((note) => note.anchor?.kind === 'task' && note.anchor.id === query.task);
+  return inSpec;
+}
+
+/** `counts` of server/src/notes.ts over one workspace's notes. */
+export function countNotes(notes: readonly Note[], spec: string): NoteCounts {
+  const claims: Record<string, number> = {};
+  const tasks: Record<string, number> = {};
+  let total = 0;
+  let onSpec = 0;
+  for (const { anchor } of notes) {
+    if (anchor?.spec !== spec) continue;
+    total += 1;
+    if (anchor.kind === 'spec') onSpec += 1;
+    else {
+      const table = anchor.kind === 'claim' ? claims : tasks;
+      table[anchor.id] = (table[anchor.id] ?? 0) + 1;
+    }
+  }
+  return { spec, total, onSpec, claims, tasks };
+}

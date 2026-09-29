@@ -20,6 +20,25 @@ import {
   TASKS_HASH_HEADER,
   type Unavailable,
 } from '../../../../server/src/spec-routes.contract';
+import { type Note, type NoteCounts, type NoteDraft, type NotesQuery, noteRoutes } from '../../../../server/src/notes.contract';
+
+/**
+ * What a notes write answers (T100, ISC-95), never a thrown exception: the saved note (`POST` 201, `PUT` 200), or the
+ * status of anything else (400 with the contract's code, 404 for an unknown note or workspace), 0 when no answer came.
+ */
+export type NoteWriteResult =
+  | { readonly kind: 'ok'; readonly note: Note }
+  | { readonly kind: 'error'; readonly status: number; readonly error: string | null };
+
+/** What `DELETE …/notes/:id` answers: 204 is `ok`. */
+export type NoteDeleteResult = { readonly kind: 'ok' } | { readonly kind: 'error'; readonly status: number };
+
+const noteError = (failure: unknown): { readonly kind: 'error'; readonly status: number; readonly error: string | null } => {
+  if (!(failure instanceof HttpErrorResponse)) return { kind: 'error', status: 0, error: null };
+  const body: unknown = failure.error;
+  const code = typeof body === 'object' && body !== null ? (body as { error?: unknown }).error : undefined;
+  return { kind: 'error', status: failure.status, error: typeof code === 'string' ? code : null };
+};
 
 /** What the gate write answers (T54, ISC-85): never a thrown exception, the gate dialog branches on `kind`. */
 export type GateWriteResult =
@@ -271,6 +290,44 @@ export class ApiClient {
       if (failure.status === 409 && isConflict(error)) return { kind: 'conflict', body: error };
       if (failure.status === 423 && isLocked(error)) return { kind: 'locked', body: error };
       return { kind: 'error', status: failure.status };
+    }
+  }
+
+  /** The Notes area (T100, ISC-95): the workspace's notes, newest first, narrowed by `query` (`NotesQuery`). */
+  notes(ws: string, query?: NotesQuery): Promise<ApiResult<readonly Note[]>> {
+    return this.get(noteRoutes.list(ws, query));
+  }
+
+  /** Per-anchor note counts of one spec (ISC-95): the Claims tab's badge reads a claim's through `noteCountFor` (T101). */
+  noteCounts(ws: string, spec: string): Promise<ApiResult<NoteCounts>> {
+    return this.get(noteRoutes.counts(ws, spec));
+  }
+
+  /** `POST …/notes`: 201 with the stored note. The body must not be blank (`empty-body`). */
+  async createNote(ws: string, draft: NoteDraft): Promise<NoteWriteResult> {
+    try {
+      return { kind: 'ok', note: await firstValueFrom(this.http.post<Note>(noteRoutes.create(ws), draft)) };
+    } catch (failure: unknown) {
+      return noteError(failure);
+    }
+  }
+
+  /** `PUT …/notes/:id`: the draft replaces the stored one whole (anchor, title and body). */
+  async updateNote(ws: string, id: string, draft: NoteDraft): Promise<NoteWriteResult> {
+    try {
+      return { kind: 'ok', note: await firstValueFrom(this.http.put<Note>(noteRoutes.update(ws, id), draft)) };
+    } catch (failure: unknown) {
+      return noteError(failure);
+    }
+  }
+
+  /** `DELETE …/notes/:id`: 204 without a body. */
+  async deleteNote(ws: string, id: string): Promise<NoteDeleteResult> {
+    try {
+      await firstValueFrom(this.http.delete(noteRoutes.remove(ws, id)));
+      return { kind: 'ok' };
+    } catch (failure: unknown) {
+      return { kind: 'error', status: failure instanceof HttpErrorResponse ? failure.status : 0 };
     }
   }
 

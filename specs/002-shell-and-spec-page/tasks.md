@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T17:47:26Z
+updated: 2026-09-29T18:01:19Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -139,7 +139,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T97 · ISC-52 · server — notes test "persist": create, edit, pin, restart, unchanged (after: T95) · `tests/notes.test.ts`
 - [ ] T98 · ISC-53 · server — CLI `import-notes <file>` from the old notes page's JSON, `export-notes <file>`, `db rollback 2` (after: T95) · `server/src/cli-notes.ts`
 - [ ] T99 · ISC-53 · server — notes test "import": count equal (after: T98) · `tests/notes.test.ts`
-- [ ] T100 · ISC-95 · web — Notes area: list and editor routes, anchor picker, import notice, stacked below wide · Mobile, Tablet, two panes at wide · Desktop (after: T35, T94, T52) · `web/src/app/features/spec/notes/`
+- [x] T100 · ISC-95 · web — Notes area: list and editor routes, anchor picker, import notice, stacked below wide · Mobile, Tablet, two panes at wide · Desktop (after: T35, T94, T52) · `web/src/app/features/spec/notes/`
 - [ ] T101 · ISC-95 · web — note count on claim cards and e2e notes (after: T100, T56) · `web/e2e/notes.spec.ts`
 
 ### ⑥ Cross-cutting

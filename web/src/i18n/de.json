@@ -845,5 +845,67 @@
       "paused": "Schreiben pausiert"
     },
     "noSource": "Keine Agentenquelle · Schreibvorgänge prüfen nur den Datei-Hash"
+  },
+  "notes": {
+    "import": {
+      "text": "Notizen aus dem alten Dashboard lassen sich in die Notizen auf diesem Rechner übernehmen.",
+      "dismiss": "Ausblenden"
+    },
+    "list": {
+      "label": "Notizen",
+      "search": "Notizen durchsuchen",
+      "new": "Neue Notiz",
+      "empty": "Hier gibt es noch keine Notizen",
+      "emptyBody": "Beginnen Sie mit „Neue Notiz“. Notizen bleiben auf diesem Rechner.",
+      "failed": "Die Notizen konnten nicht geladen werden"
+    },
+    "filter": {
+      "label": "Notizen anzeigen",
+      "spec": "Diese Spec",
+      "unanchored": "Ohne Anker",
+      "workspace": "Workspace",
+      "all": "Alle",
+      "byAnchor": "Nach Anker"
+    },
+    "anchor": {
+      "label": "Anker",
+      "none": "Kein Anker",
+      "spec": "Spec {{spec}}",
+      "claims": "Claims",
+      "tasks": "Tasks",
+      "pick": "Notiz verankern",
+      "search": "Claims und Tasks durchsuchen"
+    },
+    "editor": {
+      "label": "Notiz-Editor",
+      "back": "← Alle Notizen ({{count}})",
+      "title": "Titel",
+      "titlePlaceholder": "Notiz ohne Titel",
+      "body": "Notiztext (Markdown)",
+      "bodyPlaceholder": "In Markdown schreiben …",
+      "local": "Lokal · bleibt auf diesem Rechner",
+      "delete": "Löschen",
+      "missing": "Diese Notiz existiert nicht",
+      "none": "Keine Notiz geöffnet",
+      "noneBody": "Wählen Sie eine Notiz aus der Liste oder beginnen Sie eine neue.",
+      "view": {
+        "label": "Editor-Ansicht",
+        "edit": "Bearbeiten",
+        "preview": "Vorschau",
+        "split": "Nebeneinander"
+      }
+    },
+    "save": {
+      "pending": "ungespeicherte Änderungen",
+      "saving": "wird gespeichert …",
+      "saved": "gespeichert · {{time}}",
+      "failed": "nicht gespeichert"
+    },
+    "delete": {
+      "heading": "Diese Notiz löschen?",
+      "body": "Die Notiz wird von diesem Rechner entfernt. Das lässt sich nicht rückgängig machen.",
+      "cancel": "Abbrechen",
+      "confirm": "Notiz löschen"
+    }
   }
 }

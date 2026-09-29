@@ -62,7 +62,7 @@ for (const { width, tier, tabBar } of TIERS) {
       const menu = page.getByRole('navigation', { name: 'Areas' });
       await expect(menu).toBeVisible();
       await expect(menu.locator('[data-area]')).toHaveCount(6);
-      await expect(menu.locator('[data-area][aria-disabled="true"]')).toHaveCount(2);
+      await expect(menu.locator('[data-area][aria-disabled="true"]')).toHaveCount(1);
       await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('data-area', 'status');
       await menu.locator('[data-area="data"]').click();
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/claims$/);

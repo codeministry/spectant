@@ -845,5 +845,67 @@
       "paused": "writes paused"
     },
     "noSource": "No agent source · writes check the file hash only"
+  },
+  "notes": {
+    "import": {
+      "text": "Notes from the old dashboard can be imported into this machine’s notes.",
+      "dismiss": "Dismiss"
+    },
+    "list": {
+      "label": "Notes",
+      "search": "Search notes",
+      "new": "New note",
+      "empty": "No notes here yet",
+      "emptyBody": "Start one with “New note”. Notes stay on this machine.",
+      "failed": "The notes could not be loaded"
+    },
+    "filter": {
+      "label": "Show notes",
+      "spec": "This spec",
+      "unanchored": "Unanchored",
+      "workspace": "Workspace",
+      "all": "All",
+      "byAnchor": "By anchor"
+    },
+    "anchor": {
+      "label": "Anchor",
+      "none": "No anchor",
+      "spec": "Spec {{spec}}",
+      "claims": "Claims",
+      "tasks": "Tasks",
+      "pick": "Anchor the note",
+      "search": "Search claims and tasks"
+    },
+    "editor": {
+      "label": "Note editor",
+      "back": "← All notes ({{count}})",
+      "title": "Title",
+      "titlePlaceholder": "Untitled note",
+      "body": "Note text (Markdown)",
+      "bodyPlaceholder": "Write in Markdown…",
+      "local": "Local · stays on this machine",
+      "delete": "Delete",
+      "missing": "This note does not exist",
+      "none": "No note open",
+      "noneBody": "Pick a note from the list or start a new one.",
+      "view": {
+        "label": "Editor view",
+        "edit": "Edit",
+        "preview": "Preview",
+        "split": "Side by side"
+      }
+    },
+    "save": {
+      "pending": "unsaved changes",
+      "saving": "saving…",
+      "saved": "saved · {{time}}",
+      "failed": "not saved"
+    },
+    "delete": {
+      "heading": "Delete this note?",
+      "body": "The note is removed from this machine. This cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete note"
+    }
   }
 }

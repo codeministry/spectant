@@ -47,7 +47,7 @@ export const SPEC_AREAS: readonly SpecArea[] = [
   { id: 'live', tabs: ['board', 'matrix'], icon: 'square-kanban', built: false, goKey: 'l' },
   { id: 'data', tabs: ['claims', 'tasks', 'evidence'], icon: 'table', built: true, goKey: 'd' },
   { id: 'docs', tabs: ['plan', 'design', 'decisions', 'constitution'], icon: 'file-text', built: true, goKey: 'o' },
-  { id: 'notes', tabs: ['notes'], icon: 'notebook-pen', built: false, goKey: 'n' },
+  { id: 'notes', tabs: ['notes'], icon: 'notebook-pen', built: true, goKey: 'n' },
 ];
 
 export const areaById = (id: AreaId): SpecArea => SPEC_AREAS.find((area) => area.id === id) ?? must(id);

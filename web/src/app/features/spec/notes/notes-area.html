@@ -1,0 +1,186 @@
+@if (!importDismissed()) {
+  <ui-notice class="notes-import" tone="info" icon="archive" data-notes-import>
+    {{ 'notes.import.text' | transloco }}
+    <button action ui-button variant="ghost" size="sm" (click)="dismissImport()">{{ 'notes.import.dismiss' | transloco }}</button>
+  </ui-notice>
+}
+
+<div class="notes-card" [class.card]="wide()">
+  @if (mode() !== 'editor') {
+    <section class="notes-list" data-notes-list [attr.aria-label]="'notes.list.label' | transloco">
+      <div class="notes-list-head">
+        <label class="input notes-search">
+          <ui-icon name="search" [size]="16" />
+          <input
+            #searchBox
+            type="search"
+            [value]="search()"
+            [placeholder]="'notes.list.search' | transloco"
+            [attr.aria-label]="'notes.list.search' | transloco"
+            (input)="setSearch(searchBox.value)"
+          />
+        </label>
+        <a ui-button class="notes-new" variant="primary" [size]="wide() ? 'sm' : 'md'" [routerLink]="link('new')" queryParamsHandling="preserve" data-notes-new>
+          {{ 'notes.list.new' | transloco }}
+          @if (wide()) {
+            <ui-kbd>n</ui-kbd>
+          }
+        </a>
+      </div>
+      <ui-filter-chips data-filter="notes" [options]="filterOptions()" [value]="filter()" (valueChange)="setFilter($event)" [label]="'notes.filter.label' | transloco" />
+
+      @if (failed()) {
+        <ui-empty-state icon="triangle-alert" [heading]="'notes.list.failed' | transloco" />
+      } @else if (loaded()) {
+        <ul class="notes-rows" role="list">
+          @for (row of rows(); track row.note.id) {
+            <li>
+              <a
+                class="notes-row"
+                data-note-row
+                [attr.data-note]="row.note.id"
+                [routerLink]="link(row.note.id)"
+                queryParamsHandling="preserve"
+                [attr.aria-current]="row.note.id === noteId() ? 'page' : null"
+              >
+                <span class="notes-row-top">
+                  <span class="notes-row-title">{{ row.title }}</span>
+                  <time class="notes-row-time" [attr.datetime]="row.note.updated">{{ row.time }}</time>
+                </span>
+                <span class="notes-row-bottom">
+                  @if (row.anchor; as anchor) {
+                    <ui-id-chip class="notes-anchor" data-anchor [attr.data-kind]="anchor.kind">{{
+                      anchor.kind === 'spec' ? ('notes.anchor.spec' | transloco: { spec: anchor.text }) : anchor.text
+                    }}</ui-id-chip>
+                  } @else {
+                    <span class="notes-anchor-none" data-anchor data-kind="none">{{ 'notes.anchor.none' | transloco }}</span>
+                  }
+                  <span class="notes-row-line">{{ row.line }}</span>
+                </span>
+              </a>
+            </li>
+          } @empty {
+            <li class="notes-empty">
+              <ui-empty-state icon="notebook-pen" [heading]="'notes.list.empty' | transloco" [body]="'notes.list.emptyBody' | transloco" />
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+
+  @if (mode() !== 'list') {
+    <section class="notes-editor" data-notes-editor [attr.aria-label]="'notes.editor.label' | transloco">
+      @if (!wide()) {
+        <a class="notes-back link" [routerLink]="link()" queryParamsHandling="preserve" data-notes-back>
+          {{ 'notes.editor.back' | transloco: { count: notes().length } }}
+        </a>
+      }
+      @if (editing()) {
+        <input
+          class="input notes-title"
+          type="text"
+          maxlength="200"
+          #titleBox
+          data-note-title
+          [value]="draft().title"
+          [placeholder]="'notes.editor.titlePlaceholder' | transloco"
+          [attr.aria-label]="'notes.editor.title' | transloco"
+          (input)="edit({ title: titleBox.value })"
+        />
+
+        <div class="notes-meta">
+          @if (tier() === 'compact') {
+            <button type="button" class="btn btn-sm btn-outline notes-anchor-trigger" data-anchor-trigger (click)="pickerOpen.set(true)">
+              {{ 'notes.anchor.label' | transloco }}:
+              @if (anchorChip(); as chip) {
+                {{ chip.kind === 'spec' ? ('notes.anchor.spec' | transloco: { spec: chip.text }) : chip.text }}
+              } @else {
+                {{ 'notes.anchor.none' | transloco }}
+              }
+            </button>
+          } @else {
+            <label class="notes-anchor-field">
+              <span class="notes-meta-label">{{ 'notes.anchor.label' | transloco }}</span>
+              <select class="select select-sm notes-anchor-select" data-anchor-select [value]="anchorValue()" #anchorSelect (change)="pickAnchor(anchorSelect.value)">
+                <option value="" [selected]="anchorValue() === ''">{{ 'notes.anchor.none' | transloco }}</option>
+                <option [value]="'spec:' + spec()" [selected]="anchorValue() === 'spec:' + spec()">{{ 'notes.anchor.spec' | transloco: { spec: spec() } }}</option>
+                @if (foreignAnchor(); as other) {
+                  <option [value]="other.value" selected>{{ other.label }}</option>
+                }
+                @for (group of anchorGroups(); track group.key) {
+                  <optgroup [label]="'notes.anchor.' + group.key | transloco">
+                    @for (option of group.options; track option.value) {
+                      <option [value]="option.value" [selected]="option.value === anchorValue()">{{ option.label }}</option>
+                    }
+                  </optgroup>
+                }
+              </select>
+            </label>
+          }
+          <span class="notes-local"><ui-icon name="lock" [size]="14" />{{ 'notes.editor.local' | transloco }}</span>
+          <span class="notes-save" data-save-state [attr.data-state]="saveState().kind" role="status">{{ saveText() }}</span>
+          <button type="button" ui-button variant="ghost" size="sm" tone="danger" class="notes-delete" data-note-delete (click)="confirmOpen.set(true)">
+            {{ 'notes.editor.delete' | transloco }}
+          </button>
+        </div>
+
+        <ui-segmented class="notes-view" [options]="viewOptions()" [value]="shownView()" (valueChange)="setView($event)" [label]="'notes.editor.view.label' | transloco" />
+
+        <div class="notes-body" [attr.data-view]="shownView()">
+          @if (shownView() !== 'preview') {
+            <textarea
+              class="textarea notes-textarea"
+              #bodyBox
+              data-note-body
+              [value]="draft().body"
+              [placeholder]="'notes.editor.bodyPlaceholder' | transloco"
+              [attr.aria-label]="'notes.editor.body' | transloco"
+              (input)="edit({ body: bodyBox.value })"
+            ></textarea>
+          }
+          @if (shownView() !== 'edit') {
+            <div class="notes-preview" data-note-preview [innerHTML]="preview()"></div>
+          }
+        </div>
+      } @else if (noteId() !== null && loaded()) {
+        <ui-empty-state icon="notebook-pen" [heading]="'notes.editor.missing' | transloco" />
+      } @else if (wide()) {
+        <ui-empty-state icon="notebook-pen" [heading]="'notes.editor.none' | transloco" [body]="'notes.editor.noneBody' | transloco" />
+      }
+    </section>
+  }
+</div>
+
+<ui-dialog [(open)]="confirmOpen" [heading]="'notes.delete.heading' | transloco" data-note-confirm>
+  <p class="notes-confirm-text">{{ 'notes.delete.body' | transloco }}</p>
+  <div class="notes-confirm-actions">
+    <button type="button" ui-button variant="ghost" (click)="confirmOpen.set(false)">{{ 'notes.delete.cancel' | transloco }}</button>
+    <button type="button" ui-button variant="primary" tone="danger" data-note-delete-confirm (click)="confirmDelete()">{{ 'notes.delete.confirm' | transloco }}</button>
+  </div>
+</ui-dialog>
+
+<ui-sheet [(open)]="pickerOpen" [tier]="tier()" [heading]="'notes.anchor.pick' | transloco" data-anchor-sheet>
+  <label class="input notes-search">
+    <ui-icon name="search" [size]="16" />
+    <input #pickerBox type="search" [value]="pickerSearch()" [attr.aria-label]="'notes.anchor.search' | transloco" [placeholder]="'notes.anchor.search' | transloco" (input)="pickerSearch.set(pickerBox.value)" />
+  </label>
+  <ul class="notes-picker" role="list">
+    <li><button type="button" class="notes-pick" [attr.aria-pressed]="anchorValue() === ''" (click)="pickAnchor('')">{{ 'notes.anchor.none' | transloco }}</button></li>
+    <li>
+      <button type="button" class="notes-pick" [attr.aria-pressed]="anchorValue() === 'spec:' + spec()" (click)="pickAnchor('spec:' + spec())">
+        {{ 'notes.anchor.spec' | transloco: { spec: spec() } }}
+      </button>
+    </li>
+    @for (group of pickerGroups(); track group.key) {
+      <li class="notes-pick-group">{{ 'notes.anchor.' + group.key | transloco }}</li>
+      @for (option of group.options; track option.value) {
+        <li>
+          <button type="button" class="notes-pick" [attr.data-value]="option.value" [attr.aria-pressed]="option.value === anchorValue()" (click)="pickAnchor(option.value)">
+            {{ option.label }}
+          </button>
+        </li>
+      }
+    }
+  </ul>
+</ui-sheet>

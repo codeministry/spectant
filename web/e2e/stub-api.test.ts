@@ -36,6 +36,7 @@ import {
   type LockState,
   SESSION_HEADER,
   STATE_HEADER,
+  STUB_NOTES,
   STUB_NOW,
   STUB_STATES,
   type StubState,
@@ -219,7 +220,7 @@ describe('stub API: GET /api/workspaces/:slug/dashboard', () => {
 });
 
 describe('stub API: /api/settings', () => {
-  const DEFAULTS = { theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false };
+  const DEFAULTS = { theme: 'system', language: 'en', refreshSeconds: 30, singleKeyShortcuts: true, railCollapsed: false, notesImportDismissed: false };
   const put = (body: unknown, session?: string): Promise<Response> =>
     ask('/api/settings', { method: 'PUT', body: JSON.stringify(body), ...(session === undefined ? {} : { session }) });
 
@@ -839,5 +840,88 @@ describe('stub API matches the real server handlers byte for byte', () => {
       const served = await snapshot(await call(realSettings, request('/api/settings', init)));
       expect({ method: init.method ?? 'GET', answer: stubbed }).toEqual({ method: init.method ?? 'GET', answer: served });
     }
+  });
+});
+
+describe('stub API: the notes routes (T100, ISC-95)', () => {
+  const NOTES = '/api/workspaces/harbor/notes';
+  const send = (path: string, method: string, body: unknown, session: string): Promise<Response> =>
+    ask(path, { method, body: JSON.stringify(body), session, headers: { 'Content-Type': 'application/json' } });
+
+  test('every session starts with the three harbor 002 notes, one per anchor kind, newest first', async () => {
+    const res = await ask(NOTES, { session: 'notes-seed' });
+    expect(res.status).toBe(200);
+    const notes = (await res.json()) as Array<{ anchor: { kind: string } | null; updated: string }>;
+    expect(notes).toEqual(JSON.parse(JSON.stringify(STUB_NOTES)) as typeof notes);
+    expect(notes.map((n) => n.anchor?.kind).sort()).toEqual(['claim', 'spec', 'task']);
+    expect(notes.map((n) => n.updated)).toEqual([...notes.map((n) => n.updated)].sort().reverse());
+    expect(await (await ask('/api/workspaces/lantern/notes', { session: 'notes-seed' })).json()).toEqual([]);
+  });
+
+  test('the list query filters as the server does; a bad query is 400 invalid-query', async () => {
+    const count = async (query: string): Promise<number> =>
+      ((await (await ask(`${NOTES}${query}`, { session: 'notes-query' })).json()) as unknown[]).length;
+    expect(await count('?spec=002')).toBe(3);
+    expect(await count('?spec=002&claim=ISC-51')).toBe(1);
+    expect(await count('?spec=002&task=T1')).toBe(1);
+    expect(await count('?spec=003')).toBe(0);
+    expect(await count('?unanchored=1')).toBe(0);
+    const bad = await ask(`${NOTES}?claim=ISC-51`, { session: 'notes-query' });
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toEqual({ error: 'invalid-query' });
+  });
+
+  test('note-counts answers NoteCounts of the spec', async () => {
+    const res = await ask('/api/workspaces/harbor/note-counts?spec=002', { session: 'notes-counts' });
+    expect(await res.json()).toEqual({ spec: '002', total: 3, onSpec: 1, claims: { 'ISC-51': 1 }, tasks: { T1: 1 } });
+  });
+
+  test('POST 201, PUT replaces the draft whole, DELETE 204; each write is stamped deterministically', async () => {
+    const session = 'notes-writes';
+    const created = await send(NOTES, 'POST', { body: 'first' }, session);
+    expect(created.status).toBe(201);
+    const note = (await created.json()) as { id: string; created: string };
+    expect(note).toMatchObject({ workspace: 'harbor', anchor: null, title: '', body: 'first', created: '2026-03-08T15:01:00.000Z' });
+    const anchor = { kind: 'claim', spec: '002', id: 'ISC-52' };
+    const updated = await send(`${NOTES}/${note.id}`, 'PUT', { title: '  Kept  ', body: 'second', anchor }, session);
+    expect(updated.status).toBe(200);
+    expect(await updated.json()).toMatchObject({ id: note.id, title: 'Kept', body: 'second', anchor, created: note.created, updated: '2026-03-08T15:02:00.000Z' });
+    const list = (await (await ask(NOTES, { session })).json()) as Array<{ id: string }>;
+    expect(list[0]?.id).toBe(note.id);
+    expect(list).toHaveLength(4);
+    const removed = await ask(`${NOTES}/${note.id}`, { method: 'DELETE', session });
+    expect(removed.status).toBe(204);
+    expect(removed.headers.get('Cache-Control')).toBe('no-store');
+    expect(await removed.text()).toBe('');
+    expect((await ask(`${NOTES}/${note.id}`, { method: 'DELETE', session })).status).toBe(404);
+  });
+
+  test('validation mirrors the contract: empty body, two anchors, unknown note or workspace, 405 with Allow, 403', async () => {
+    const session = 'notes-validation';
+    const cases: Array<[unknown, string]> = [
+      [{ body: '   ' }, 'empty-body'],
+      [{ body: 'x', anchors: [] }, 'multiple-anchors'],
+      [{ body: 'x', anchor: { kind: 'claim', spec: '2' } }, 'invalid-anchor'],
+      [{ body: 'x', extra: 1 }, 'invalid-body'],
+    ];
+    for (const [body, error] of cases) {
+      const res = await send(NOTES, 'POST', body, session);
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error });
+    }
+    expect((await send(`${NOTES}/00000000-0000-4000-8000-00000000abcd`, 'PUT', { body: 'x' }, session)).status).toBe(404);
+    expect((await ask('/api/workspaces/nowhere/notes', { session })).status).toBe(404);
+    const wrong = await ask(`${NOTES}/${STUB_NOTES[0]?.id ?? ''}`, { session });
+    expect(wrong.status).toBe(405);
+    expect(wrong.headers.get('Allow')).toBe('PUT, DELETE');
+    expect((await ask(NOTES, { session, headers: { Origin: 'https://evil.example' } })).status).toBe(403);
+  });
+
+  test('sessions are isolated and POST /api/__stub/reset restores the seed', async () => {
+    await send(NOTES, 'POST', { body: 'mine' }, 'notes-a');
+    expect(((await (await ask(NOTES, { session: 'notes-b' })).json()) as unknown[]).length).toBe(3);
+    expect(((await (await ask(NOTES, { session: 'notes-a' })).json()) as unknown[]).length).toBe(4);
+    expect((await ask('/api/__stub/reset', { method: 'POST', session: 'notes-a' })).status).toBe(204);
+    expect(((await (await ask(NOTES, { session: 'notes-a' })).json()) as unknown[]).length).toBe(3);
   });
 });

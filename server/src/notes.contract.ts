@@ -178,11 +178,13 @@ function parseBody(value: unknown): NoteCheck<string> {
 }
 
 function parseFields(value: Record<string, unknown>): NoteCheck<NoteDraft> {
-  const anchor = parseAnchor(value.anchor);
+  // Destructured, not dotted: the web tsconfig (`noPropertyAccessFromIndexSignature`) type-checks this module too.
+  const { anchor: rawAnchor, title: rawTitle, body: rawBody } = value;
+  const anchor = parseAnchor(rawAnchor);
   if (!anchor.ok) return anchor;
-  const title = parseTitle(value.title);
+  const title = parseTitle(rawTitle);
   if (!title.ok) return title;
-  const body = parseBody(value.body);
+  const body = parseBody(rawBody);
   if (!body.ok) return body;
   const { pinned } = value;
   if (pinned !== undefined && typeof pinned !== 'boolean') return fail('invalid-body');

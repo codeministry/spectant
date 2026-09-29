@@ -266,7 +266,7 @@ describe('ShellComponent', () => {
       expect(root.querySelector('header nav[aria-label="Areas"]')).toBeNull();
     });
 
-    it('opens the area menu: six areas in registry order, two disabled, the current one marked, links to each area', async () => {
+    it('opens the area menu: six areas in registry order, one disabled, the current one marked, links to each area', async () => {
       const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
       proto['showPopover'] = vi.fn();
       proto['hidePopover'] = vi.fn(function (this: HTMLElement) {
@@ -288,17 +288,17 @@ describe('ShellComponent', () => {
         expect(nav?.getAttribute('aria-label')).toBe('Areas');
         const entries = [...(nav?.querySelectorAll('[data-area]') ?? [])];
         expect(entries.map((entry) => entry.getAttribute('data-area'))).toEqual(['dashboard', 'status', 'live', 'data', 'docs', 'notes']);
-        expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A', 'SPAN', 'A', 'A', 'SPAN']);
+        expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A', 'SPAN', 'A', 'A', 'A']);
         expect(entries.map((entry) => entry.getAttribute('href'))).toEqual([
           '/w/harbor/s/002',
           '/w/harbor/s/002/status',
           null,
           '/w/harbor/s/002/claims',
           '/w/harbor/s/002/plan',
-          null,
+          '/w/harbor/s/002/notes',
         ]);
         expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual([null, null, null, 'page', null, null]);
-        for (const disabled of [entries[2], entries[5]]) {
+        for (const disabled of [entries[2]]) {
           expect(disabled.getAttribute('aria-disabled')).toBe('true');
           expect(disabled.textContent).toContain("Comes with this spec's later tasks");
         }
@@ -309,7 +309,7 @@ describe('ShellComponent', () => {
           "Comes with this spec's later tasks",
           'Claims, tasks and evidence',
           'Plan, design, decisions, constitution',
-          "Comes with this spec's later tasks",
+          'Your notes on this spec',
         ]);
         expect(texts(nav?.querySelectorAll('[data-area] .entry-name') as NodeListOf<Element>)).toEqual([
           'Dashboard',
