@@ -10,7 +10,8 @@
  * is taken (`serveWithFallback`), unless `--strict-port` pins it. Once listening it prints exactly one line on stdout,
  * `spectant · http://127.0.0.1:<port>`, and opens that URL in the browser unless `--no-browser` is given. It serves
  * the settings API (`/api/settings`, T43) and the workspace routes (`/api/workspaces`, T47, `api.ts`) from
- * `spectant.db` in the data directory.
+ * `spectant.db` in the data directory, and `/api/lifeos` (T51, `lifeos.ts`) from `SPECTANT_LIFEOS_STATE_DIR` in the
+ * environment, detected once at start.
  *
  * The workspace commands work on the registry in the data directory from `paths.ts` (`$XDG_DATA_HOME/spectant` or
  * `~/.spectant`). They print a workspace by its slug and its path tail only, never its absolute path (ISC-3), and they
@@ -28,6 +29,7 @@ import { composeApi, dashboardApi } from "./api.ts";
 import type { EmbeddedManifest } from "./assets.contract.ts";
 import { openDatabase } from "./db.ts";
 import { DEFAULT_PORT, LOOPBACK_HOST, PORT_ATTEMPTS, type RunningServer, serveWithFallback } from "./http.ts";
+import { detectLifeos, lifeosApi } from "./lifeos.ts";
 import { type CommandRunner, openBrowser, spawnRunner } from "./open-browser.ts";
 import { dataDir } from "./paths.ts";
 import { openRegistry, type Registry, RegistryError, type Workspace } from "./registry.ts";
@@ -63,7 +65,10 @@ type Command =
   | { kind: "remove"; ref: string };
 
 export type RunOptions = {
-  /** The environment the data directory is resolved from (`XDG_DATA_HOME`). Defaults to `process.env`. */
+  /**
+   * The environment the data directory (`XDG_DATA_HOME`) and the LifeOS state directory (`SPECTANT_LIFEOS_STATE_DIR`)
+   * are resolved from. Defaults to `process.env`.
+   */
   env?: Record<string, string | undefined>;
   /** The directory a relative `add` or `remove` path resolves against. Defaults to `process.cwd()`. */
   cwd?: string;
@@ -144,7 +149,8 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
   }
   let server: RunningServer;
   try {
-    const api = composeApi(settingsApi(openSettings(db)), dashboardApi({ registry }));
+    const lifeos = detectLifeos(options.env ?? process.env);
+    const api = composeApi(settingsApi(openSettings(db)), lifeosApi(lifeos), dashboardApi({ registry, lifeos }));
     server = serveWithFallback({ manifest, port: command.port, strict: command.strictPort, api });
   } catch (error) {
     registry.close();

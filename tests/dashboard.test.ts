@@ -6,7 +6,8 @@
 // which is runtime state (the listeners on this machine). The test injects one fake listener instead of running
 // `lsof`, and asserts that field on its own: labelled from the fixture's constitution (`dev_services:`) where it names
 // the port. The gate state needs no exclusion: neither fixture folder is a repository root (no `.git` in it), so the
-// worktree tree id is null exactly as the goldens were built.
+// worktree tree id is null exactly as the goldens were built. The goldens carry no lock sources; harbor's activity log
+// holds one claim, applied explicitly by `expected` (T51).
 import { afterAll, afterEach, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
@@ -30,6 +31,26 @@ type Name = (typeof NAMES)[number];
 type ListEntry = { slug: string; name: string; pathTail: string; readable: boolean; error?: string; counts: unknown };
 
 const golden = (name: Name): DashboardModel => JSON.parse(readFileSync(join(FIXTURES, `${name}.golden.json`), "utf8")) as DashboardModel;
+
+/**
+ * The model the route answers for a fixture. The goldens are built without lock sources; the route reads the
+ * repository's `.spectant/activity.jsonl` (T51, ISC-37). harbor's log leaves ISC-74 of spec 002 claimed (ISC-72 is
+ * claimed and released), so its model differs from the golden by exactly that lock: ISC-74 leaves 002's takeable list
+ * and next reason, and the takeable count drops by one. lantern has no log and answers its golden unchanged.
+ */
+function expected(name: Name): DashboardModel {
+  const model = golden(name);
+  if (name !== "harbor") return model;
+  return {
+    ...model,
+    kpis: { ...model.kpis, takeable: model.kpis.takeable - 1 },
+    specs: model.specs.map((row) =>
+      row.id !== "002"
+        ? row
+        : { ...row, takeable: row.takeable.filter((id) => id !== "ISC-74"), nextReason: "ISC-75, ISC-76 and 1 more are takeable" },
+    ),
+  };
+}
 
 /** The one listener the fake probe reports for every workspace: port 4200, a node process outside any worktree. */
 const FAKE_LISTENER: DevService = { port: 4200, label: "node", kind: "node", worktree: false };
@@ -109,7 +130,7 @@ describe("the two routes over two registered workspaces", () => {
     expect(res.headers.get("content-type")).toContain("application/json");
     const list = (await res.json()) as ListEntry[];
     expect(list).toEqual(
-      NAMES.map((name) => ({ slug: name, name, pathTail: name, readable: true, counts: golden(name).kpis })),
+      NAMES.map((name) => ({ slug: name, name, pathTail: name, readable: true, counts: expected(name).kpis })),
     );
     // The list builds counts without a services probe: lsof stays off the polled overview route.
     expect(probed).toEqual([]);
@@ -122,7 +143,7 @@ describe("the two routes over two registered workspaces", () => {
       const res = await get(server, `/api/workspaces/${name}/dashboard`);
       expect(res.status).toBe(200);
       const model = (await res.json()) as DashboardModel;
-      expect(withoutServices(model)).toEqual(withoutServices(golden(name)));
+      expect(withoutServices(model)).toEqual(withoutServices(expected(name)));
       expect(model.services).toEqual([
         { port: 4200, url: "http://localhost:4200", process: "node", label: labels[name], worktree: false },
       ]);
@@ -378,7 +399,7 @@ describe("composed behind one api function", () => {
       ]);
       const res = await fetch(`${url}/api/workspaces/lantern/dashboard`);
       expect(res.status).toBe(200);
-      expect(withoutServices((await res.json()) as DashboardModel)).toEqual(withoutServices(golden("lantern")));
+      expect(withoutServices((await res.json()) as DashboardModel)).toEqual(withoutServices(expected("lantern")));
       expect((await fetch(`${url}/api/settings`)).status).toBe(200);
       stop.abort();
       expect(await done).toBe(0);

@@ -25,7 +25,10 @@ const MARK_MIN = 3;
 const MAX_DELTA_E = 0.5;
 const THEMES = ["spec-light", "spec-dark"] as const;
 type Theme = (typeof THEMES)[number];
-const INKS = ["disp", "ques", "clos", "done", "conc", "hover", "fail"].map((n) => `--${n}-ink`);
+// Every accent of the palette (ISC-74, T34). Text in an accent colour uses its `--<accent>-ink`. The badge is the one
+// accent that is a fill, never a text colour: its `--badge-ink` is the text on `--badge-fill`, checked there below.
+const ACCENTS = ["disp", "ques", "clos", "done", "hover", "fail", "conc", "held", "badge"] as const;
+const INKS = ACCENTS.filter((n) => n !== "badge").map((n) => `--${n}-ink`);
 
 // ── Colour math (no dependencies). ──
 type Rgb = [number, number, number]; // sRGB, 0…1, gamma-encoded
@@ -167,11 +170,45 @@ describe("tokens.css", () => {
     expect(required.filter((name) => !names("spec-light").includes(name))).toEqual([]);
   });
 
-  test("shared block: badge text and the focus helpers", () => {
+  test("shared block: badge text, the focus helpers and the header glass", () => {
     const shared = SHARED();
     expect(shared.find((d) => d.name === "--focus-ring")?.value).toBe("var(--color-primary)");
     expect(shared.find((d) => d.name === "--focus-halo")?.value).toBe("var(--color-base-200)");
     expect(shared.find((d) => d.name === "--badge-ink")?.comment).toMatch(/^#fcfcfa\b/);
+    // The prototype's `--page-glass`: the page colour at 85 % under the header's blur (design.md § Header).
+    expect(shared.find((d) => d.name === "--page-glass")?.value).toBe(
+      "color-mix(in srgb, var(--color-base-200) 85%, transparent)",
+    );
+  });
+
+  test("every accent has an -ink in both themes (ISC-74)", () => {
+    const missing = THEMES.flatMap((theme) =>
+      ACCENTS.flatMap((accent) => {
+        try {
+          resolve(theme, `--${accent}-ink`);
+          return [];
+        } catch (error) {
+          return [`${theme} --${accent}-ink: ${(error as Error).message}`];
+        }
+      }),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  test("the prototype's tokens the old pages lack are theme slots in both themes (ISC-74)", () => {
+    // Prototype hex per theme; the round trip itself is the ΔE check of `theme-colors.test.ts` over every slot.
+    const expected: Record<Theme, Record<string, string>> = {
+      "spec-light": { "--hover-t": "#fbedd4", "--scrim": "rgba(0,0,0,.4)" },
+      "spec-dark": { "--hover-t": "#3a2f27", "--scrim": "rgba(0,0,0,.4)" },
+    };
+    for (const theme of THEMES) {
+      const block = themeBlock(STYLES, theme);
+      for (const [name, source] of Object.entries(expected[theme])) {
+        const found = block.find((d) => d.name === name);
+        expect(found?.value.startsWith("oklch(")).toBe(true);
+        expect(found?.comment?.startsWith(source)).toBe(true);
+      }
+    }
   });
 
   test("container tier constants in :root", () => {
@@ -217,3 +254,31 @@ for (const theme of THEMES) {
     });
   });
 }
+
+// design.md (spec 002, § Accessibility and contrast): "Two dark-theme values pass only narrowly: muted text on a card
+// (#939293 on #2d2a2e, about 4.6:1) and the grey stage segment (#7f7d80, about 3.3:1). Neither may drift darker in the
+// OKLCH conversion." Measured, they are 4.57:1 and 3.47:1. A palette edit that darkens either fails here, loudly, even
+// while the generic 4.5 / 3 checks above would still pass by a hair.
+describe("the two narrow dark values (design.md, ISC-65/74)", () => {
+  const card = () => resolve("spec-dark", "--color-base-100");
+  const narrow = [
+    { token: "--muted-ink", what: "muted text", hex: "#939293", min: TEXT_MIN },
+    { token: "--track", what: "grey stage segment", hex: "#7f7d80", min: MARK_MIN },
+  ];
+
+  test("the card is still #2d2a2e", () => {
+    const painted = quantise(card());
+    expect(painted.map((c) => Math.round(c * 255))).toEqual(hexToSrgb("#2d2a2e").map((c) => Math.round(c * 255)));
+  });
+
+  for (const { token, what, hex, min } of narrow) {
+    test(`${what} (${token}) reaches ${min}:1 on the card`, () => {
+      expect(worstContrast(resolve("spec-dark", token), card())).toBeGreaterThanOrEqual(min);
+    });
+
+    test(`${what} (${token}) paints no darker than ${hex}`, () => {
+      // Compare the 8-bit paint, as the browser shows it, against design.md's hex.
+      expect(luminance(quantise(resolve("spec-dark", token)))).toBeGreaterThanOrEqual(luminance(hexToSrgb(hex)));
+    });
+  }
+});

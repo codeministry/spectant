@@ -20,12 +20,16 @@
  * - 405 `{error: "method-not-allowed"}` with `Allow: GET, HEAD` for any other method.
  * - any other `/api/workspaces…` path is `null`, so the server's JSON 404 applies.
  *
+ * Lock sources (T51, ISC-37): both routes read the repository's `.spectant/activity.jsonl`, and the LifeOS frontier
+ * locks only when `options.lifeos` is present, so the counts in the list and the dashboard agree.
+ *
  * No absolute path leaves this module (ISC-3): a workspace is its slug, its name and `pathTail`, the last path segment;
  * the unreadable codes replace OS messages, which would name the path.
  */
 import type { DashboardKpis } from "../../core/src/dashboard.ts";
 import type { ApiHandler } from "./http.ts";
 import { matchesIfNoneMatch } from "./http.ts";
+import type { LifeosDetection } from "./lifeos.ts";
 import type { Registry, Workspace } from "./registry.ts";
 import { listServices } from "./services.ts";
 import { isLoopbackHost, isLoopbackOrigin } from "./settings.ts";
@@ -53,9 +57,15 @@ export type WorkspaceSummary = {
 export type DashboardApiOptions = {
   registry: Pick<Registry, "list" | "get">;
   /** Reads one workspace; `loadDashboard` by default. Tests inject another loader. */
-  loadWorkspace?: (root: string, probe: ServicesProbe | null) => Promise<DashboardLoad>;
+  loadWorkspace?: (root: string, probe: ServicesProbe | null, lifeosStateDir?: string | null) => Promise<DashboardLoad>;
   /** Probes the local listeners for the dashboard route; `listServices` (lsof) by default. */
   services?: ServicesProbe;
+  /**
+   * The LifeOS detection `GET /api/lifeos` answers from (`lifeos.ts`), so both routes see the same answer. Present:
+   * both routes read its frontier locks beside the repository's activity log. Absent (the default): no LifeOS path
+   * is read (ISC-37).
+   */
+  lifeos?: LifeosDetection;
 };
 
 /**
@@ -82,8 +92,8 @@ function strongEtag(body: string): string {
   return `"${new Bun.CryptoHasher("sha256").update(body).digest("base64url")}"`;
 }
 
-/** A JSON answer with its ETag; 304 for a matching `If-None-Match` on a 200, no body on `HEAD`. */
-function json(req: Request, status: number, value: unknown, extra: Record<string, string> = {}): Response {
+/** A JSON answer with its ETag; 304 for a matching `If-None-Match` on a 200, no body on `HEAD`. `lifeos.ts` shares it. */
+export function json(req: Request, status: number, value: unknown, extra: Record<string, string> = {}): Response {
   const body = JSON.stringify(value);
   const headers = {
     "Content-Type": "application/json; charset=utf-8",
@@ -115,17 +125,18 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   const { registry } = options;
   const load = options.loadWorkspace ?? loadDashboard;
   const services = options.services ?? defaultServices;
+  const stateDir = options.lifeos?.stateDir ?? null;
 
   const list = async (req: Request): Promise<Response> => {
     const workspaces = registry.list();
-    const loads = await Promise.all(workspaces.map((w) => load(w.path, null)));
+    const loads = await Promise.all(workspaces.map((w) => load(w.path, null, stateDir)));
     return json(req, 200, workspaces.map((w, i) => summary(w, loads[i] ?? { readable: false, error: "unreadable" })));
   };
 
   const dashboard = async (req: Request, slug: string): Promise<Response> => {
     const workspace = registry.get(slug);
     if (!workspace) return json(req, 404, { error: "not-found" });
-    const loaded = await load(workspace.path, services);
+    const loaded = await load(workspace.path, services, stateDir);
     if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
     return json(req, 200, loaded.model);
   };

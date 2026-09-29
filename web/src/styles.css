@@ -13,6 +13,8 @@
  * The two themes carry the old Spec pages' light and dark token blocks (ISC-18). Every colour is OKLCH, converted
  * from the inherited value in the trailing comment; `web/tests/theme-colors.test.ts` round-trips each one back
  * within ΔE_OK×100 0.5. Inherited tokens without a daisyUI slot stay custom properties under their old names.
+ * The prototype (spec 002, design.md) was built from the same blocks; the two palette colours it adds that the old
+ * pages lack (`--hover-t`, `--scrim`) sit in their own group at the end, with the prototype's value in the comment.
  * Derived contrast tokens (`--track`, `--*-ink`, the corrected `--muted`) live in `styles/tokens.css`, not here.
  * No `prefers-color-scheme` block: the pre-paint script sets `data-theme`; `prefersdark` is only the CSS default.
  */
@@ -74,6 +76,10 @@
   --clos-t: oklch(93.8% 0.037 128.9); /* #e3f0d6 */
   --badge: oklch(59.4% 0.102 219.9); /* #1c8ca8 teal badge fill */
   --shadow: 0 1px 2px oklch(26.8% 0.013 320.6 / 0.06), 0 1px 3px oklch(26.8% 0.013 320.6 / 0.08); /* rgba(41,36,42,.06), rgba(41,36,42,.08) */
+
+  /* Prototype tokens the old pages lack */
+  --hover-t: oklch(95.1% 0.036 82.2); /* #fbedd4 orange tint (prototype --orange-t, equal to --conc-t here) */
+  --scrim: oklch(0% 0 0 / 0.4); /* rgba(0,0,0,.4) modal backdrop (prototype --scrim) */
 }
 
 @plugin "daisyui/theme" {
@@ -133,4 +139,8 @@
   --clos-t: oklch(33.2% 0.04 129.9); /* #2f3a24 */
   --badge: oklch(48% 0.075 215.3); /* #1d6878 teal badge fill */
   --shadow: 0 1px 2px oklch(0% 0 0 / 0.4); /* rgba(0,0,0,.4) */
+
+  /* Prototype tokens the old pages lack */
+  --hover-t: oklch(31.5% 0.021 57.9); /* #3a2f27 orange tint (prototype --orange-t) */
+  --scrim: oklch(0% 0 0 / 0.4); /* rgba(0,0,0,.4) modal backdrop (prototype --scrim) */
 }

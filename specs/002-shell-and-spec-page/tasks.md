@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T12:00:37Z
+updated: 2026-09-29T12:16:09Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -64,7 +64,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T31 · ISC-98 · operator — strike T32, T59 and T60 in spec 001's tasks.md with a note naming this spec, then run `/spec-review 001` so 001's reviewed mark is fresh again · `specs/001-app-skeleton/tasks.md`
 - [x] T32 · ISC-74 · [P] · web — fonts: Manrope, Sora and JetBrains Mono as local variable woff2, Inter removed, `fonts.css` rewritten · `web/src/styles/fonts.css`
 - [x] T33 · ISC-74 · web — fonts test rewritten for the three faces and the no-external-URL guard (after: T32) · `web/tests/fonts.test.ts`
-- [ ] T34 · ISC-74 · [P] · web — tokens: the prototype's hex converted to OKLCH theme slots with the hex in comments, `-ink` aliases for accent text, the two narrow dark values guarded, no glow · `web/src/styles/tokens.css`
+- [x] T34 · ISC-74 · [P] · web — tokens: the prototype's hex converted to OKLCH theme slots with the hex in comments, `-ink` aliases for accent text, the two narrow dark values guarded, no glow · `web/src/styles/tokens.css`
 - [ ] T35 · ISC-73 · [seam] · web — shell: `container: shell` with the three tiers, the grid with the 352 px rail at wide, the tab-bar slot per tier (header row 2 at compact, under the spec head above), the `LockSource` signal, the area routes `/w/:ws/s/:id/:tab` (after: T32, T34) · `web/src/app/layout/shell/`
 - [ ] T36 · ISC-73 · web — header: wordmark with living ring, workspace picker, spec picker (name, id at compact), area-menu trigger, palette trigger (field from a 1280 px header container), live indicator, zen, settings with help; the collapse order; two rows at compact · Mobile, one row above · Tablet, Desktop (after: T35) · `web/src/app/layout/header/`
 - [ ] T37 · ISC-76 · web — area menu as native popover with `aria-current`, Live and Notes as disabled entries with their reason while unbuilt; tab bar showing only the current area's tabs with counts; deep link selects area and tab (after: T35) · `web/src/app/layout/area-menu/`
@@ -77,14 +77,14 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 
 ### ③ Read-only areas
 
-- [ ] T44 · ISC-78 · [seam] · server — spec routes contract: paths and response types for spec, timeline, claims, tasks, evidence, docs, frames and live, shared with the web client (after: T1) · `server/src/spec-routes.contract.ts`
+- [x] T44 · ISC-78 · [seam] · server — spec routes contract: paths and response types for spec, timeline, claims, tasks, evidence, docs, frames and live, shared with the web client (after: T1) · `server/src/spec-routes.contract.ts`
 - [ ] T45 · ISC-71 · server — spec routes with ETag; 404 `{error: "not_found"}` for an unknown workspace or spec (after: T44, T13) · `server/src/spec-routes.ts`
 - [ ] T46 · ISC-80 · [P] · server — read-only `git log` for the commits touching a spec folder, limited and cached per ETag (after: T44) · `server/src/git.ts`
 - [ ] T47 · ISC-83 · server — evidence file serving with media types, 403 for any path outside the spec folder (after: T44, T24) · `server/src/evidence.ts`
 - [ ] T48 · ISC-71 · server — routes test: unknown spec and workspace → 404, no fallback body (after: T45) · `tests/routes.test.ts`
 - [ ] T49 · ISC-83 · server — traversal test: `..`, absolute and symlinked paths refused with 403 (after: T47) · `tests/evidence.test.ts`
 - [ ] T50 · ISC-36 · server — timeline route tests: derived marker without `events.jsonl`, recorded transitions with it (after: T45, T46) · `tests/timeline.test.ts`
-- [ ] T51 · ISC-37 · server — optional LifeOS detection: state directory present or not, nothing read when absent, `GET /api/lifeos` (after: T20) · `server/src/lifeos.ts`
+- [x] T51 · ISC-37 · server — optional LifeOS detection: state directory present or not, nothing read when absent, `GET /api/lifeos` (after: T20) · `server/src/lifeos.ts`
 - [ ] T52 · ISC-78 · [seam] · web — stub API extended: every spec route from the golden JSON, lock fixtures (frontier, activity, none), scripted 409 and 423 for the writes (after: T44) · `web/e2e/stub-api.ts`
 - [ ] T53 · ISC-78 · web — spec dashboard: KPI band, idea quote, next step with reason, lanes, five area tiles, Brief reuse; layouts per `design.md` · Mobile, Tablet, Desktop (after: T35, T52) · `web/src/app/features/spec/dashboard/`
 - [ ] T54 · ISC-79 · web — Status tab: where it stands, progress and gates, what is open, activity; rail content at the top below wide · Mobile, Tablet (after: T35, T52) · `web/src/app/features/spec/status/`

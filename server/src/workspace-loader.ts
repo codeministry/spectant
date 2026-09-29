@@ -4,7 +4,8 @@
  * `readWorkspaceInput` reads the texts `core/` builds from: `ISA.md`, `specs/constitution.md`, `specs/tldr.md`, and every
  * text file kind of every spec folder under `specs/` and `specs/archive/` (folders as `listSpecs` finds them). It
  * parses nothing: every parse is `core/`'s (ISC-5, `bun run check:single-core`). `loadDashboard` adds the local
- * services and calls `buildDashboard`.
+ * services and calls `buildDashboard`. The lock sources are `core/`'s `readLockSources` (T51): the repository's
+ * `.spectant/activity.jsonl`, plus the LifeOS frontier locks only when a LifeOS state directory is passed (ISC-37).
  *
  * Read-only (ISC-15): `node:fs` reads, no write, no temp file, no lock. The worktree tree id for the code-reviewed mark
  * is computed in memory by `core/`'s `treeIdOf` over a file list from `git ls-files`, which reads the index and never
@@ -22,6 +23,7 @@ import type { DashboardInput, DashboardModel, ProbedService } from "../../core/s
 import { FILE_KINDS } from "../../core/src/files.ts";
 import type { SpecFiles, TextFileKind } from "../../core/src/files.ts";
 import { type TreeEntry, type TreeEntryMode, treeIdOf } from "../../core/src/gates.ts";
+import { readLockSources } from "../../core/src/locks.ts";
 import { listSpecs } from "../../core/src/resolve.ts";
 
 /** Why a workspace cannot be read. Stable codes: the web app maps them to its own words. */
@@ -80,8 +82,12 @@ function specFiles(dir: string, folder: string): SpecFiles {
   return { folder, texts };
 }
 
-/** Reads the workspace at `root` into the model's input, without services. */
-export async function readWorkspaceInput(root: string): Promise<WorkspaceReading> {
+/**
+ * Reads the workspace at `root` into the model's input, without services. The lock sources come from `core/`'s
+ * `readLockSources`: the repository's `.spectant/activity.jsonl` always, the LifeOS frontier locks only with a
+ * `lifeosStateDir` (T51, ISC-37). Without one, no path outside `root` is read.
+ */
+export async function readWorkspaceInput(root: string, lifeosStateDir: string | null = null): Promise<WorkspaceReading> {
   try {
     if (!statSync(root).isDirectory()) throw new Unreadable("not-a-directory");
     readdirSync(root); // a directory without read permission fails here, not as an empty workspace
@@ -98,6 +104,7 @@ export async function readWorkspaceInput(root: string): Promise<WorkspaceReading
         specs,
         archived,
         worktreeTree: reviewed ? await worktreeTreeId(root) : null,
+        locks: await readLockSources({ repoRoot: root, lifeosStateDir }),
       },
     };
   } catch (error) {
@@ -108,9 +115,10 @@ export async function readWorkspaceInput(root: string): Promise<WorkspaceReading
 /**
  * The dashboard model of the workspace at `root`. With a `probe`, its listeners become the model's services, labelled
  * from the constitution's `dev_services:`; with `null` the services are empty (the workspace list needs counts only).
+ * `lifeosStateDir` as for `readWorkspaceInput`.
  */
-export async function loadDashboard(root: string, probe: ServicesProbe | null): Promise<DashboardLoad> {
-  const reading = await readWorkspaceInput(root);
+export async function loadDashboard(root: string, probe: ServicesProbe | null, lifeosStateDir: string | null = null): Promise<DashboardLoad> {
+  const reading = await readWorkspaceInput(root, lifeosStateDir);
   if (!reading.readable) return reading;
   const { input } = reading;
   const labels = input.constitution === null ? new Map<number, string>() : devServiceLabels(input.constitution);

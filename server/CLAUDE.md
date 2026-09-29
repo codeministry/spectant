@@ -20,6 +20,11 @@ Everything visual lives in `web/`, and all spec parsing lives in `core/`. Parsin
 
 This lane builds against both seams and does not define what they contain.
 
+**Spec routes.** `server/src/spec-routes.contract.ts` is the one source for every `/api/workspaces/:ws/specs/:id…`
+route: builders, `matchSpecPath`, 200 types (core types only), error bodies, write bodies, `SPEC_ROUTE_TABLE`. The
+server, the e2e stub and the web import it; nobody re-types a route. Error codes are kebab-case, `{error: "not-found"}`,
+as every existing route answers (plan 002's `not_found` is superseded). `tests/spec-routes.contract.test.ts` pins it.
+
 ## Hard rules
 
 - Bind to `127.0.0.1` or `::1` only, never `0.0.0.0`. The app is a local single-user tool (ISC-1).
@@ -67,3 +72,10 @@ This lane builds against both seams and does not define what they contain.
 - `bun run test:install:linux`: runs `install.sh` as a non-root user in an Ubuntu container against a local release
   directory (ISC-10 to ISC-12).
 - `bun run build`: the four-target build, darwin-arm64, darwin-x64, linux-arm64 and linux-x64 (ISC-8).
+
+## LifeOS detection
+
+- LifeOS is present only when `SPECTANT_LIFEOS_STATE_DIR` names an existing directory by an absolute path, detected
+  once at start; no default location is derived or probed (`server/src/lifeos.ts`, ISC-37).
+- Absent means no LifeOS path is read: the dashboard reads only the repository's own `.spectant/activity.jsonl`.
+  Present adds the frontier locks through `core/`'s `readLockSources`. `GET /api/lifeos` answers `{present}`, never the path.

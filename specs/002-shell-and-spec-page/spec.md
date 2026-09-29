@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 3/48
+progress: 5/48
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T12:00:37Z
+updated: 2026-09-29T12:16:09Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -183,7 +183,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 **The shell**
 
 - [ ] ISC-73: Every route renders inside one shell whose header carries the workspace picker, the spec picker (name when a spec is open, or its id at compact; count otherwise), the area menu, the palette trigger, the live indicator, zen and settings with help; no second header exists in the DOM.
-- [ ] ISC-74: The app ships Manrope, Sora and JetBrains Mono as local assets and declares no font URL outside its own origin; this supersedes the Inter face of ISC-67.
+- [x] ISC-74: The app ships Manrope, Sora and JetBrains Mono as local assets and declares no font URL outside its own origin; this supersedes the Inter face of ISC-67.
 - [ ] ISC-75: Zen mode hides the header tools and the context rail and keeps the sticky navigation; the collapsed state of the rail survives a reload.
 - [ ] ISC-76: The area menu offers Dashboard · Status · Live · Data · Docs · Notes for an open spec, the tab bar shows only the current area's tabs, and a deep link `/w/:ws/s/:id/<tab>` selects area and tab. ⟨?: Live and Notes render as disabled entries with "comes with this spec's later tasks" while their tabs are unbuilt, rather than hidden — assuming a stable menu beats a growing one⟩
 - [ ] ISC-77: Spec 001's dashboard, overview, inspector and palette render inside the new shell and 001's e2e suites stay green. (after: ISC-73)
@@ -212,7 +212,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [ ] ISC-25: Ticking a task in the app changes exactly that task's checkbox line in `tasks.md` and nothing else.
 - [ ] ISC-26: A write whose sha256 no longer matches the rendered file returns 409 and leaves the file byte-identical.
 - [ ] ISC-27: Anti: the app writes to a spec while `.spectant/activity.jsonl` shows an open claim on it.
-- [ ] ISC-37: With LifeOS present the board also shows LifeOS frontier locks; without LifeOS the board works and no LifeOS path is read.
+- [x] ISC-37: With LifeOS present the board also shows LifeOS frontier locks; without LifeOS the board works and no LifeOS path is read.
 - [ ] ISC-85: The gate button shows ready, stale (naming the changed files), done or paused from `.gates/reviewed.json` and the lock sources; its dialog lists the three hashed files. (after: ISC-24)
 - [ ] ISC-86: A write is refused with 423 while a LifeOS frontier lock exists for the claim; when no lock source is available the page shows "no agent source" and the write proceeds under the hash check. (after: ISC-26, ISC-37)
 
@@ -280,6 +280,10 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-74: bun-test — bun test web/tests/fonts.test.ts → 27 pass: Manrope (200–800) and Sora (100–800) as local latin variable woff2 from the Google Fonts CSS endpoint with the OFL texts of the pinned upstream commits, JetBrains Mono kept, Inter removed from fonts, preloads and notices; no font URL off the app's origin in any stylesheet or the built output; Sora on the wordmark/h1 per design.md; tokens: every accent has an -ink (light --held-ink derived), --hover-t/--scrim/--page-glass added, the two narrow dark values pinned (#939293 4.57, #7f7d80 3.47), no-glow guard with ui-card's inherited corner glow pinned as the one known exception; ISC-18's round-trip guard untouched and green; browser tier 10 passed; spec 002 round 8
+
+- ISC-37: bun-test — bun test tests/lifeos-optional.test.ts → 13 pass (server) + core/tests/lifeos-optional.test.ts 15 pass: LifeOS present only via SPECTANT_LIFEOS_STATE_DIR naming an existing absolute dir (one stat at start); present → frontier locks from the hashed isa-locks dir join the dashboard (synthetic lock on ISC-75 leaves takeable, session kept in DashboardInput.locks), GET /api/lifeos {present:true}; absent or missing dir → {present:false}, activity.jsonl locks still read, a node:fs spy proves no path outside the repo is touched; the variable's value never appears in a response; repo copy and state dir byte-identical before and after; spec 002 round 8
 
 - ISC-70: bun-test — bun test core/tests/private-corpus.test.ts with SPECTANT_PRIVATE_CORPUS = one local customer corpus (4 spec folders) → 10 pass, 0 fail (tree + every spec: zero error diagnostics, timeline builds newest first); unset → 1 skip, never passed; set to an empty dir → 1 fail naming how many entries were seen; output shows spec numbers and basenames only; spec 002 round 6
 

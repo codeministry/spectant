@@ -40,6 +40,8 @@ Reason: reshaping or re-parsing the model here makes a second parser (ISC-5); an
   in a comment. Reason: ISC-18 round-trips them to the old pages' values.
 - Derived tokens (`--muted`, `--track`, `--*-ink`) live in `src/styles/tokens.css`. Reason: they are contrast fixes
   (ISC-65), not inherited values, and ISC-18 does not cover them.
+- Text in an accent colour uses that accent's `--*-ink` (the badge's is its text on `--badge-fill`); cards are flat,
+  no glow. Reason: ISC-65 and ISC-74, guarded by `web/tests/tokens.test.ts` and `web/tests/no-glow.test.ts`.
 - `color-no-hex` everywhere outside those two files. Reason: a stray hex is a colour neither theme knows.
 - `data-theme` is set by the pre-paint script and the theme service, never by a `prefers-color-scheme` block.
   Reason: system mode follows `matchMedia` live and a chosen mode wins over it (ISC-18.1).
