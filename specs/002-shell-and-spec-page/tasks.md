@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T17:24:11Z
+updated: 2026-09-29T17:27:27Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -116,7 +116,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T77 · ISC-86 · server — writes test "frontier": 423 under a frontier lock, proceed with `none` (after: T72) · `tests/writes.test.ts`
 - [ ] T78 · ISC-85 · web — gate button in the spec head with ready, stale (changed files named), done, paused; the release dialog listing the three hashed files; the agent banner variants (after: T54, T67) · `web/src/app/layout/spec-head/`
 - [ ] T79 · ISC-85 · web — e2e gate: the four states, the dialog, scripted 409 and 423 (after: T78, T52) · `web/e2e/gate.spec.ts`
-- [ ] T80 · ISC-25 · web — checkbox write wiring in the Tasks tab: saving, locked with session name, conflict with Reload, operator rows tickable (after: T57, T67) · `web/src/app/features/spec/data/tasks/checkbox.ts`
+- [x] T80 · ISC-25 · web — checkbox write wiring in the Tasks tab: saving, locked with session name, conflict with Reload, operator rows tickable (after: T57, T67) · `web/src/app/features/spec/data/tasks/checkbox.ts`
 
 ### ⑤ Live and Notes
 

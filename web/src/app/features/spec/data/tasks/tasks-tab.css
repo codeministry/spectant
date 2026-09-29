@@ -100,6 +100,46 @@ h2 {
   line-height: 20px;
 }
 
+/* The checkbox write (T80): a 44 × 44 hit area around the box, the spinner laid over it while saving. */
+.hit {
+  display: grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  margin-inline: -2px;
+  cursor: pointer;
+}
+.hit > * { grid-area: 1 / 1; }
+.hit:has(input:disabled) { cursor: not-allowed; }
+.hit:has(.spinner) input { opacity: 0.4; }
+
+.spinner { color: var(--disp-ink); }
+
+.check-note {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--muted-ink);
+}
+
+.check-alert {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid var(--conc-ink);
+  border-radius: 8px;
+  background: var(--conc-t);
+  color: var(--conc-ink);
+}
+
+.row[data-check='conflict'] {
+  outline: 2px solid var(--conc-ink);
+  outline-offset: -2px;
+}
+.row.is-written { animation: ui-tint-fade var(--motion-duration-highlight) var(--motion-ease-standard); }
+
 .edges a {
   color: var(--disp-ink);
   font-family: var(--font-mono);

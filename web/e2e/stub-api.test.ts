@@ -621,8 +621,22 @@ describe('stub API: the writes, scripted via X-Spectant-Stub-Write', () => {
     expect((await taskRow('T27', session))?.state).toBe('open');
     const res = await check('T27', { checked: true, hash }, { session });
     expect(res.status).toBe(200);
-    const answer = (await res.json()) as { task: string; checked: boolean; hash: string; lockSource: string };
-    expect({ ...answer, hash: HEX64.test(answer.hash) }).toEqual({ task: 'T27', checked: true, hash: true, lockSource: 'activity' });
+    const answer = (await res.json()) as {
+      task: string;
+      checked: boolean;
+      hash: string;
+      lockSource: string;
+      line: { number: number; text: string };
+    };
+    expect({ ...answer, hash: HEX64.test(answer.hash), line: answer.line.number }).toEqual({
+      task: 'T27',
+      checked: true,
+      hash: true,
+      lockSource: 'activity',
+      line: 45,
+    });
+    // `TaskCheckWritten`: the line as it now stands, box ticked, the rest of the fixture line unchanged.
+    expect(answer.line.text).toMatch(/^- \[x\] T27 · ISC-74 · web — settings-page/);
     expect(answer.hash).not.toBe(hash);
     expect(await tasksHash(session)).toBe(answer.hash);
     expect(await taskRow('T27', session)).toMatchObject({ state: 'done', status: 'done' });

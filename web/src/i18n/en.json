@@ -574,7 +574,6 @@
     "doneHidden": "{{count}} done hidden · {{ids}}",
     "show": "Show",
     "helper": "Ticking a task only writes the box in tasks.md — it never closes a claim. Writes pause while an agent holds a claim on this spec.",
-    "writesLater": "The checkboxes are read-only for now: writes come with a later task.",
     "mapping": {
       "title": "Probe mapping",
       "task": "Task",
@@ -588,7 +587,17 @@
       "body": "This spec has no task list yet; /spec-tasks writes one."
     },
     "loading": "Loading tasks…",
-    "error": "The tasks could not be loaded."
+    "error": "The tasks could not be loaded.",
+    "check": {
+      "saving": "Saving {{id}}…",
+      "locked": "locked · {{session}}",
+      "conflict": "tasks.md changed on disk since this list was read · nothing was written",
+      "reload": "Reload",
+      "failed": "{{id}} could not be saved (status {{status}}) · tick it again to retry",
+      "noHash": "read-only · this list came without the tasks.md hash, so a tick could not be checked against the file",
+      "ticked": "{{id}} ticked in tasks.md, line {{line}}",
+      "unticked": "{{id}} unticked in tasks.md, line {{line}}"
+    }
   },
   "evidence": {
     "loading": "Loading evidence",

@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 26/49
+progress: 27/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T17:24:11Z
+updated: 2026-09-29T17:27:27Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -214,7 +214,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 **The two writes**
 
 - [x] ISC-24: "Mark reviewed" writes `.gates/reviewed` in the format the old skill writes and appends exactly one `review → build` event (the stage table names what the spec waits for next, as `core/src/derived-stages.ts` derives it; decided 2026-09-29). (after: ISC-32)
-- [ ] ISC-25: Ticking a task in the app changes exactly that task's checkbox line in `tasks.md` and nothing else.
+- [x] ISC-25: Ticking a task in the app changes exactly that task's checkbox line in `tasks.md` and nothing else.
 - [x] ISC-26: A write whose sha256 no longer matches the rendered file returns 409 and leaves the file byte-identical.
 - [x] ISC-27: Anti: the app writes to a spec while `.spectant/activity.jsonl` shows an open claim on it.
 - [x] ISC-37: With LifeOS present the board also shows LifeOS frontier locks; without LifeOS the board works and no LifeOS path is read.
@@ -286,6 +286,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-25: bun-test — `bun test tests/writes.test.ts -t "checkbox"` 5 pass: ticking T28 of harbor 002 changes exactly one line (- [ ] → - [x]), CRLF endings kept, idempotent tick 200 without a write, unknown task 404; web: `bun run e2e -- data` 20 passed with the task checkbox describe — saving spinner, written row with the answer's hash (second tick no 409), stale → conflict alert with Reload, locked → visible session text, frontier lock disables the box, operator rows tickable (T70, T75, T80; 2026-09-29)
 
 - ISC-86: bun-test — `bun test tests/writes.test.ts -t "frontier"` 4 pass: a synthetic LifeOS state directory with a frontier lock on ISC-96 gives 423 source frontier for the tick and the gate on 004, the task's own claim named first, frontier winning over activity; with no source both writes answer 200 with lockSource none (no agent source) and a stale hash is still 409; a state directory without a lock on the spec still counts as a source (T72, T77; 2026-09-29)
 

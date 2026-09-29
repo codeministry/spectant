@@ -18,6 +18,7 @@ export const ICON_NAMES = [
   'layers',
   'layout-dashboard',
   'list-checks',
+  'lock',
   'maximize-2',
   'minimize-2',
   'moon',

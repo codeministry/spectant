@@ -7,7 +7,11 @@ import {
   isUnavailable,
   SPEC_API_ROOT,
   specRoutes,
+  type Conflict,
+  type Locked,
   type SpecRouteResponses,
+  type TaskCheckRequest,
+  type TaskCheckResponse,
   TASKS_HASH_HEADER,
   type Unavailable,
 } from '../../../../server/src/spec-routes.contract';
@@ -54,6 +58,38 @@ export type ApiResult<T> =
 export type TasksResult =
   | (Extract<ApiResult<SpecRouteResponses['tasks']>, { readonly kind: 'ok' }> & { readonly hash: string | null })
   | Exclude<ApiResult<SpecRouteResponses['tasks']>, { readonly kind: 'ok' }>;
+
+/**
+ * The 200 of the checkbox write: `TaskCheckWritten` of `server/src/writes.contract.ts` (T67), the base answer plus the
+ * task's line as it now stands (1-based, no newline). Re-declared over the contract's base type on purpose: that module
+ * type-imports `core/src/gates.ts`, which `tsconfig.app.json` rejects (see `DashboardBody`).
+ */
+export interface TaskCheckWritten extends TaskCheckResponse {
+  readonly line: { readonly number: number; readonly text: string };
+}
+
+/**
+ * What the checkbox write answers, never a thrown exception (ISC-25, ISC-26, ISC-86):
+ *
+ * - `ok`: 200, the line as written and tasks.md's new raw hash (the next tick sends it).
+ * - `conflict`: 409 `hash-mismatch`, tasks.md changed since it was rendered; nothing was written.
+ * - `locked`: 423, a lock holds the task's claim; the body names the session. Nothing was written.
+ * - `error`: anything else (400, 404, an unreadable workspace's 409), status 0 when no answer came.
+ */
+export type TaskCheckResult =
+  | { readonly kind: 'ok'; readonly body: TaskCheckWritten }
+  | { readonly kind: 'conflict'; readonly body: Conflict<{ readonly tasks: string }> }
+  | { readonly kind: 'locked'; readonly body: Locked }
+  | { readonly kind: 'error'; readonly status: number };
+
+const isConflict = (body: unknown): body is Conflict<{ readonly tasks: string }> =>
+  typeof body === 'object' && body !== null && (body as { error?: unknown }).error === 'hash-mismatch';
+
+const isLocked = (body: unknown): body is Locked => {
+  if (typeof body !== 'object' || body === null || (body as { error?: unknown }).error !== 'locked') return false;
+  const lock: unknown = (body as { lock?: unknown }).lock;
+  return typeof lock === 'object' && lock !== null && typeof (lock as { session?: unknown }).session === 'string';
+};
 
 /** Relative on purpose: the app talks only to the loopback server that served it, on whatever port (ISC-2). */
 export const WORKSPACES_URL = SPEC_API_ROOT;
@@ -173,6 +209,24 @@ export class ApiClient {
       this.tasksHashes.set(url, headers.get(TASKS_HASH_HEADER));
     });
     return result.kind === 'ok' ? { ...result, hash: this.tasksHashes.get(url) ?? null } : result;
+  }
+
+  /**
+   * The checkbox write (T80, ISC-25): `POST …/tasks/:tid/check` with the state wanted and the raw tasks.md hash the tab
+   * rendered (`X-Spectant-Tasks-Hash`). Never cached, never retried: a 409 or a 423 is the user's to act on.
+   */
+  async taskCheck(ws: string, id: string, tid: string, hash: string, checked: boolean): Promise<TaskCheckResult> {
+    const body: TaskCheckRequest = { checked, hash };
+    try {
+      const written = await firstValueFrom(this.http.post<TaskCheckWritten>(specRoutes.taskCheck(ws, id, tid), body));
+      return { kind: 'ok', body: written };
+    } catch (failure: unknown) {
+      if (!(failure instanceof HttpErrorResponse)) return { kind: 'error', status: 0 };
+      const error: unknown = failure.error;
+      if (failure.status === 409 && isConflict(error)) return { kind: 'conflict', body: error };
+      if (failure.status === 423 && isLocked(error)) return { kind: 'locked', body: error };
+      return { kind: 'error', status: failure.status };
+    }
   }
 
   private answer<T>(failure: unknown, cached: { readonly etag: string; readonly body: unknown } | undefined): ApiResult<T> {

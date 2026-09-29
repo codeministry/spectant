@@ -718,7 +718,25 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     else marks.set(row.id, body.checked);
     all.set(id, marks);
     const hash = tasksTab(req, tree, spec).hash ?? '';
-    return workspaceJson(req, 200, { task: row.id, checked: body.checked, hash, lockSource } satisfies TaskCheckResponse);
+    // `TaskCheckWritten` (writes.contract.ts): the base answer plus the task's line as it now stands.
+    const line = { number: row.line, text: writtenLine(tree, spec, row, body.checked) };
+    return workspaceJson(req, 200, { task: row.id, checked: body.checked, hash, lockSource, line } satisfies TaskCheckResponse & {
+      line: { number: number; text: string };
+    });
+  };
+
+  /** The task's line of the fixture tree's tasks.md with its box set as written; built from the row if absent. */
+  const writtenLine = (tree: TreeGoldens, spec: SpecGoldens, row: TaskRow, checked: boolean): string => {
+    const box = checked ? '[x]' : '[ ]';
+    let text: string | undefined;
+    try {
+      text = readFileSync(join(tree.root, spec.key, 'tasks.md'), 'utf8').split('\n')[row.line - 1];
+    } catch {
+      text = undefined;
+    }
+    return text !== undefined && /^\s*[-*]\s+\[[ xX]\]/.test(text)
+      ? text.replace(/\[[ xX]\]/, box)
+      : `- ${box} ${row.id} · ${row.claim} · ${row.lane} — ${row.text}`;
   };
 
   const specRoute = async (req: Request, url: URL, state: StubState, locks: LockState, outcome: WriteOutcome): Promise<Response> => {

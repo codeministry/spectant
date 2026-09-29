@@ -6,21 +6,31 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import golden from '../../../../../../../core/fixtures/harbor.tasks.golden.json';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
-import { ApiClient, type ApiResult, type TasksResult } from '../../../../core/api.service';
+import { ApiClient, type ApiResult, type TaskCheckResult, type TasksResult } from '../../../../core/api.service';
+import { ToastService } from '../../../../shared/ui/toast/toast';
 import { TasksTab, type TasksBody } from './tasks-tab';
 
 const GOLDEN = golden['specs/002-web-console'] as unknown as TasksBody;
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
 const DASHBOARD = { specs: [{ id: '002', title: 'Web console', type: 'feature', stage: 'build' }], archive: [] };
 
-type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'spec' | 'tasks'>;
+type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'spec' | 'tasks' | 'taskCheck'>;
 
-function setUp(tasks: TasksBody | null = GOLDEN): void {
+/** What the fake write was sent, in order. */
+let sent: Array<{ tid: string; hash: string; checked: boolean }> = [];
+
+function setUp(tasks: TasksBody | null = GOLDEN, hash: string | null = 'ab12'): void {
+  sent = [];
   const api: FakeApi = {
     workspaces: () => Promise.resolve(ok([])),
     dashboard: () => Promise.resolve(ok(DASHBOARD)),
     spec: () => Promise.resolve({ kind: 'not-found', served: false }),
-    tasks: (): Promise<TasksResult> => Promise.resolve({ ...ok(tasks), hash: tasks === null ? null : 'ab12' }),
+    tasks: (): Promise<TasksResult> => Promise.resolve({ ...ok(tasks), hash: tasks === null ? null : hash }),
+    taskCheck: (_ws, _id, tid, sentHash, checked): Promise<TaskCheckResult> => {
+      sent.push({ tid, hash: sentHash, checked });
+      const line = { number: 49, text: `- [${checked ? 'x' : ' '}] ${tid} · ISC-77 · operator — pass` };
+      return Promise.resolve({ kind: 'ok', body: { task: tid, checked, hash: `next-${String(sent.length)}`, lockSource: 'none', line } });
+    },
   };
   TestBed.configureTestingModule({
     imports: [
@@ -78,15 +88,43 @@ describe('TasksTab', () => {
     expect(root.querySelector('#task-T31 [data-sub]')?.textContent).toContain('your step');
   });
 
-  it('renders every checkbox disabled, checked from the done state, described by the helper line', async () => {
+  it('renders every checkbox enabled, checked from the done state, described by the helper line', async () => {
     setUp();
     const { root } = await open();
     const boxes = [...root.querySelectorAll<HTMLInputElement>('[data-task-row] input[type="checkbox"]')];
     expect(boxes).toHaveLength(GOLDEN.counts.boxes.total);
-    expect(boxes.every((box) => box.disabled)).toBe(true);
+    expect(boxes.every((box) => !box.disabled)).toBe(true);
     expect(boxes.filter((box) => box.checked)).toHaveLength(GOLDEN.counts.boxes.landed);
     const described = boxes[0]?.getAttribute('aria-describedby') ?? '';
     expect(described.split(' ').every((id) => root.querySelector(`#${id}`) !== null)).toBe(true);
+  });
+
+  it('disables every checkbox with the reason as visible text while the list has no hash', async () => {
+    setUp(GOLDEN, null);
+    const { root } = await open();
+    const boxes = [...root.querySelectorAll<HTMLInputElement>('[data-task-row] input[type="checkbox"]')];
+    expect(boxes.every((box) => box.disabled)).toBe(true);
+    expect(root.querySelector('#task-T31 [data-check-no-hash]')?.textContent).toContain('without the tasks.md hash');
+    const described = root.querySelector('#task-T31 input')?.getAttribute('aria-describedby') ?? '';
+    expect(described.split(' ').every((id) => root.querySelector(`#${id}`) !== null)).toBe(true);
+  });
+
+  it('a tick posts the rendered hash, then the answer hash; the row and the toast follow the answer line', async () => {
+    setUp();
+    const { root, harness } = await open();
+    const box = () => root.querySelector<HTMLInputElement>('#task-T31 input[data-task-check]');
+    box()?.click();
+    await harness.fixture.whenStable();
+    expect(sent).toEqual([{ tid: 'T31', hash: 'ab12', checked: true }]);
+    expect(root.querySelector('#task-T31')?.getAttribute('data-check')).toBe('written');
+    expect(root.querySelector('#task-T31 .status')?.getAttribute('data-tone')).toBe('done');
+    expect(box()?.checked).toBe(true);
+    expect(TestBed.inject(ToastService).message()).toBe('T31 ticked in tasks.md, line 49');
+
+    box()?.click();
+    await harness.fixture.whenStable();
+    expect(sent[1]).toEqual({ tid: 'T31', hash: 'next-1', checked: false });
+    expect(box()?.checked).toBe(false);
   });
 
   it('offers lane chips in byLane order with their counts, and a lane narrows the rows', async () => {

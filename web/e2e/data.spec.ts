@@ -133,12 +133,13 @@ test.describe('tasks', () => {
     await expect(page.locator('[data-done-hidden]')).toBeVisible();
   });
 
-  test('tasks: checkboxes render their state, disabled until writes land', async ({ page }) => {
+  test('tasks: checkboxes render their state and are tickable while no lock holds their claim', async ({ page }) => {
     await page.goto('/w/harbor/s/002/tasks');
     const boxes = page.locator('[data-task-row] input[type="checkbox"]');
     await expect(boxes).toHaveCount(golden.counts.boxes.total);
     await expect(page.locator('[data-task-row] input[type="checkbox"]:checked')).toHaveCount(golden.counts.boxes.landed);
-    await expect(page.locator('[data-task-row] input[type="checkbox"]:enabled')).toHaveCount(0);
+    // The activity fixture's spec page names no lock (areas.live.lock is null), so every box is the write.
+    await expect(page.locator('[data-task-row] input[type="checkbox"]:enabled')).toHaveCount(golden.counts.boxes.total);
   });
 
   test('tasks: an edge link scrolls to and focuses the task it names', async ({ page }) => {
@@ -151,6 +152,125 @@ test.describe('tasks', () => {
     const row = page.locator(`#task-${edge}`);
     await expect(row).toBeFocused();
     await expect(row).toHaveClass(/is-target/);
+  });
+});
+
+/**
+ * T80 (ISC-25, ISC-26, ISC-86): the checkbox write against the stub (`bun run e2e -- data -g "task checkbox"`). Each
+ * test writes in its own stub session and resets it afterwards, so the ticks never leak into the read-only cases above.
+ * The header names are the stub's `SESSION_HEADER`, `WRITE_HEADER` and `LOCKS_HEADER`, `RESET_PATH` its reset route.
+ */
+test.describe('task checkbox', () => {
+  const SESSION = 'X-Spectant-Stub-Session';
+  const WRITE = 'X-Spectant-Stub-Write';
+  const LOCKS = 'X-Spectant-Stub-Locks';
+  const golden = HARBOR_002_TASKS;
+  if (!golden) throw new Error('harbor 002 has no tasks golden');
+  const webOpen = golden.tasks.find((t) => t.lane !== 'operator' && t.state === 'open');
+  const operatorOpen = golden.tasks.find((t) => t.lane === 'operator' && t.state === 'open');
+  if (!webOpen || !operatorOpen) throw new Error('the golden needs an open task and an open operator task');
+  const sessionOf = (testId: string) => `task-check-${testId}`;
+
+  test.beforeEach(async ({ page }, info) => {
+    await page.setExtraHTTPHeaders({ [SESSION]: sessionOf(info.testId) });
+  });
+  test.afterEach(async ({ request }, info) => {
+    await request.post('/api/__stub/reset', { headers: { [SESSION]: sessionOf(info.testId) } });
+  });
+
+  test('task checkbox: a tick shows saving, then the row, the count and the toast follow the answer', async ({ page }) => {
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route('**/tasks/*/check', async (route) => {
+      await held;
+      await route.continue();
+    });
+    await page.goto('/w/harbor/s/002/tasks');
+    const row = page.locator(`#task-${webOpen.id}`);
+    const box = row.locator('input[data-task-check]');
+    await expect(box).toBeEnabled();
+    await expect(box).not.toBeChecked();
+
+    await box.click();
+    await expect(row.locator('[data-check-saving]')).toBeVisible();
+    await expect(box).toBeDisabled();
+    release();
+
+    await expect(row.locator('[data-check-saving]')).toHaveCount(0);
+    await expect(row).toHaveAttribute('data-check', 'written');
+    await expect(box).toBeChecked();
+    await expect(box).toBeEnabled();
+    await expect(row.locator('.status')).toHaveAttribute('data-tone', 'done');
+    await expect(page.locator('ui-toast .alert')).toContainText(`${webOpen.id} ticked in tasks.md, line ${String(webOpen.line)}`);
+    await expect(page.locator('[data-tasks-landed]')).toContainText(
+      `${String(golden.counts.boxes.landed + 1)}/${String(golden.counts.boxes.total)}`,
+    );
+
+    // The answer's hash is the one the next tick sends: unticking again is accepted, not a stale 409.
+    await box.click();
+    await expect(page.locator('ui-toast .alert')).toContainText(`${webOpen.id} unticked in tasks.md`);
+    await expect(box).not.toBeChecked();
+    await expect(row.locator('[data-check-conflict]')).toHaveCount(0);
+  });
+
+  test('task checkbox: a 409 shows the conflict alert, applies nothing, and Reload restores the row', async ({ page }, info) => {
+    await page.setExtraHTTPHeaders({ [SESSION]: sessionOf(info.testId), [WRITE]: 'stale' });
+    await page.goto('/w/harbor/s/002/tasks');
+    const row = page.locator(`#task-${webOpen.id}`);
+    const box = row.locator('input[data-task-check]');
+    await box.click();
+
+    const alert = row.locator('[data-check-conflict]');
+    await expect(alert).toBeVisible();
+    await expect(alert).toHaveAttribute('role', 'alert');
+    await expect(alert).toContainText('tasks.md changed on disk');
+    await expect(row).toHaveAttribute('data-check', 'conflict');
+    await expect(box).not.toBeChecked();
+
+    const reread = page.waitForResponse((r) => r.request().method() === 'GET' && new URL(r.url()).pathname.endsWith("/tasks"));
+    await row.locator('[data-check-reload]').click();
+    await reread;
+    await expect(alert).toHaveCount(0);
+    await expect(row).toHaveAttribute('data-check', 'idle');
+    await expect(box).not.toBeChecked();
+    await expect(box).toBeEnabled();
+  });
+
+  test('task checkbox: a 423 shows locked with the session name as visible text', async ({ page }, info) => {
+    await page.setExtraHTTPHeaders({ [SESSION]: sessionOf(info.testId), [WRITE]: 'locked' });
+    await page.goto('/w/harbor/s/002/tasks');
+    const row = page.locator(`#task-${webOpen.id}`);
+    await row.locator('input[data-task-check]').click();
+    const locked = row.locator('[data-check-locked]');
+    await expect(locked).toBeVisible();
+    await expect(locked).toHaveText(/^\s*locked · spec-\S+\s*$/);
+    await expect(locked.locator('ui-icon')).toBeVisible();
+    await expect(row.locator('input[data-task-check]')).not.toBeChecked();
+  });
+
+  test('task checkbox: under the frontier lock the locked claim\'s rows are disabled with the session named', async ({ page, request }, info) => {
+    await page.setExtraHTTPHeaders({ [SESSION]: sessionOf(info.testId), [LOCKS]: 'frontier' });
+    const spec = await request.get(specRoutes.spec('harbor', '002'), { headers: { [LOCKS]: 'frontier' } });
+    const lock = ((await spec.json()) as SpecRouteResponses['spec']).areas.live.lock;
+    const held = lock === null ? undefined : golden.tasks.find((t) => t.claim === lock.claim && t.state !== 'struck');
+    test.skip(lock === null || held === undefined, 'the frontier fixture holds no lock on a claim with a task row');
+    if (lock === null || held === undefined) return;
+    await page.goto('/w/harbor/s/002/tasks');
+    const row = page.locator(`#task-${held.id}`);
+    await expect(row.locator('input[data-task-check]')).toBeDisabled();
+    await expect(row.locator('[data-check-locked]')).toHaveText(new RegExp(`locked · ${lock.session}`));
+  });
+
+  test('task checkbox: an operator row is tickable like the rest', async ({ page }) => {
+    await page.goto('/w/harbor/s/002/tasks');
+    const row = page.locator(`#task-${operatorOpen.id}`);
+    await expect(row).toHaveAttribute('data-lane-name', 'operator');
+    const box = row.locator('input[data-task-check]');
+    await expect(box).toBeEnabled();
+    await box.click();
+    await expect(row).toHaveAttribute('data-check', 'written');
+    await expect(box).toBeChecked();
+    await expect(page.locator('ui-toast .alert')).toContainText(`${operatorOpen.id} ticked in tasks.md`);
   });
 });
 

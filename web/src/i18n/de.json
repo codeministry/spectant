@@ -574,7 +574,6 @@
     "doneHidden": "{{count}} erledigte ausgeblendet · {{ids}}",
     "show": "Anzeigen",
     "helper": "Ein Häkchen schreibt nur das Kästchen in tasks.md — es schließt nie einen Claim. Schreibvorgänge pausieren, solange ein Agent einen Claim dieser Spec hält.",
-    "writesLater": "Die Kästchen sind vorerst schreibgeschützt: Schreibvorgänge kommen mit einem späteren Task.",
     "mapping": {
       "title": "Probe-Zuordnung",
       "task": "Task",
@@ -588,7 +587,17 @@
       "body": "Diese Spec hat noch keine Taskliste; /spec-tasks schreibt eine."
     },
     "loading": "Tasks werden geladen …",
-    "error": "Die Tasks konnten nicht geladen werden."
+    "error": "Die Tasks konnten nicht geladen werden.",
+    "check": {
+      "saving": "{{id}} wird gespeichert…",
+      "locked": "gesperrt · {{session}}",
+      "conflict": "tasks.md wurde seit dem Laden dieser Liste geändert · nichts wurde geschrieben",
+      "reload": "Neu laden",
+      "failed": "{{id}} konnte nicht gespeichert werden (Status {{status}}) · kreuzen Sie es erneut an, um es noch einmal zu versuchen",
+      "noHash": "schreibgeschützt · diese Liste kam ohne den Hash von tasks.md, ein Haken ließe sich nicht gegen die Datei prüfen",
+      "ticked": "{{id}} in tasks.md abgehakt, Zeile {{line}}",
+      "unticked": "Haken bei {{id}} in tasks.md entfernt, Zeile {{line}}"
+    }
   },
   "evidence": {
     "loading": "Nachweise werden geladen",

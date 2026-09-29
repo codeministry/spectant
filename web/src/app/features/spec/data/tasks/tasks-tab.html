@@ -3,7 +3,7 @@
     <div class="head">
       <h2 id="tasks-heading">{{ 'shell.tabs.tasks' | transloco }}</h2>
       <p class="landed" data-tasks-landed>
-        {{ 'tasks.landed' | transloco: { landed: body.counts.boxes.landed, total: body.counts.boxes.total } }}
+        {{ 'tasks.landed' | transloco: { landed: landed(), total: body.counts.boxes.total } }}
       </p>
     </div>
 
@@ -55,21 +55,36 @@
           data-task-row
           uiRovingItem
           [class.is-target]="target() === row.id"
+          [class.is-written]="checkOf(row.id).kind === 'written'"
           [id]="'task-' + row.id"
           [attr.data-state]="row.state"
           [attr.data-status]="row.status"
           [attr.data-lane-name]="row.lane"
+          [attr.data-check]="checkOf(row.id).kind"
         >
           <span class="box">
             @if (row.state !== 'struck') {
-              <input
-                type="checkbox"
-                class="checkbox checkbox-sm"
-                disabled
-                [checked]="row.state === 'done'"
-                [attr.aria-label]="'tasks.checkbox' | transloco: { id: row.id }"
-                aria-describedby="tasks-helper tasks-writes-later"
-              />
+              <label class="hit">
+                <input
+                  #box
+                  type="checkbox"
+                  class="checkbox checkbox-sm"
+                  data-task-check
+                  [checked]="isChecked(row)"
+                  [disabled]="blocked(row)"
+                  [attr.aria-label]="'tasks.checkbox' | transloco: { id: row.id }"
+                  [attr.aria-describedby]="checkLine(row) ? 'task-' + row.id + '-check tasks-helper' : 'tasks-helper'"
+                  (change)="tick(row, box.checked)"
+                />
+                @if (checkOf(row.id).kind === 'saving') {
+                  <span
+                    class="spinner loading loading-spinner loading-xs"
+                    role="status"
+                    data-check-saving
+                    [attr.aria-label]="'tasks.check.saving' | transloco: { id: row.id }"
+                  ></span>
+                }
+              </label>
             }
           </span>
           <span class="id">{{ row.id }}</span>
@@ -106,8 +121,33 @@
               <span data-builder>{{ row.builder }}</span>
             }
           </span>
-          @if (row.edges.length > 0 || sub(row) !== null) {
+          @if (row.edges.length > 0 || sub(row) !== null || checkLine(row) !== null) {
             <span class="extra">
+              @if (checkLine(row); as line) {
+                @switch (line.kind) {
+                  @case ('locked') {
+                    <span class="check-note" data-check-locked [id]="'task-' + row.id + '-check'">
+                      <ui-icon name="lock" [size]="14" />{{ 'tasks.check.locked' | transloco: { session: line.session } }}
+                    </span>
+                  }
+                  @case ('conflict') {
+                    <span class="check-alert" role="alert" data-check-conflict [id]="'task-' + row.id + '-check'">
+                      <span>{{ 'tasks.check.conflict' | transloco }}</span>
+                      <button type="button" class="btn btn-xs" data-check-reload (click)="reloadTasks(row)">
+                        {{ 'tasks.check.reload' | transloco }}
+                      </button>
+                    </span>
+                  }
+                  @case ('failed') {
+                    <span class="check-alert" role="alert" data-check-failed [id]="'task-' + row.id + '-check'">
+                      {{ 'tasks.check.failed' | transloco: { id: row.id, status: line.status } }}
+                    </span>
+                  }
+                  @case ('no-hash') {
+                    <span class="check-note" data-check-no-hash [id]="'task-' + row.id + '-check'">{{ 'tasks.check.noHash' | transloco }}</span>
+                  }
+                }
+              }
               @if (row.edges.length > 0) {
                 <span class="edges">
                   {{ 'tasks.after' | transloco }}
@@ -133,7 +173,6 @@
     }
 
     <p class="helper" id="tasks-helper">{{ 'tasks.helper' | transloco }}</p>
-    <p class="helper" id="tasks-writes-later">{{ 'tasks.writesLater' | transloco }}</p>
   </section>
 
   @if (mapping().length > 0) {
