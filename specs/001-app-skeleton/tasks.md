@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-28T13:02:35Z
+updated: 2026-09-29T08:31:13Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -59,7 +59,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T26 · ISC-17 · [P] · web — overlay primitives: `ui-popover` (anchor positioning with the `@supports` fallback), `ui-sheet`, `ui-dialog`, `ui-disclosure` (`grid-template-rows` animation) · `web/src/app/shared/ui/overlay/`
 - [x] T27 · ISC-61 · [P] · web — `uiRovingList` directive (arrows, j/k, Home/End, no wrap) · `web/src/app/shared/ui/roving-list.directive.ts`
 - [x] T28 · ISC-17 · [seam] · web — Playwright config: chromium + webkit projects, the pinned Linux container runner behind `test:visual`, `e2e`, `test:browser`; clock pinned, animations disabled, `data-ready` awaited; the `web/e2e/` layout every later spec follows (after: T24, T25, T26, T27) · `web/e2e/playwright.config.ts`
-- [ ] T29 · ISC-64 · [P] · web — browser spec: focus ring on every interactive element, both themes (after: T28) · `web/src/app/shared/ui/focus.browser.spec.ts`
+- [x] T29 · ISC-64 · [P] · web — browser spec: focus ring on every interactive element, both themes (after: T28) · `web/src/app/shared/ui/focus.browser.spec.ts`
 - [ ] T30 · ISC-65 · [P] · web — browser spec: contrast of text and marks, both themes (after: T28) · `web/src/app/shared/ui/contrast.browser.spec.ts`
 - [ ] T31 · ISC-66 · [P] · web — browser spec: no animation or transition runs under reduced motion (after: T28) · `web/src/app/shared/ui/motion.browser.spec.ts`
 
@@ -68,20 +68,20 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T35 · ISC-6 · [P] · core — synthetic fixture spec trees with fixed dates: `.gates/`, `rounds.jsonl`, `tldr.md`, an archive, every warning class, a three-digit/three-digit master fraction; none copied from a real repository · `core/fixtures/`
 - ~~T32 · ISC-6 · core — `FORMAT.md`: the file contract as far as the dashboard reads it~~ — struck 2026-09-29: `FORMAT.md` is owned by spec 002 (ISC-68.1, its T2); ISC-6 keeps its golden test here (T40)
 - [x] T33 · ISC-6 · [seam] · core — frontmatter and claim parser plus the core module skeleton: exported types and function signatures (stubs) for status, gates, stage, takeable, diagrams, tldr, markdown, archive and dashboard, so the fill-ins can be built in parallel · `core/src/` (its former edge to T32 was dropped 2026-09-29: FORMAT.md follows the parser and is written by spec 002)
-- [ ] T34 · ISC-6 · [P] · core — status: claim partition and drift classes, ported from the old status tool (after: T33) · `core/src/status.ts`
-- [ ] T36 · ISC-15 · [P] · core — review and code-review marks with in-memory worktree hashing, no git object writes; `generate.ts` in the fixtures switches to this import (after: T33) · `core/src/gates.ts`
-- [ ] T37 · ISC-14 · [P] · core — stage derivation and next-command rules, ported from the old dashboard tool (after: T33) · `core/src/stage.ts`
-- [ ] T38 · ISC-16 · [P] · core — takeable set, diagram verdict, TL;DR staleness, markdown renderer, archive listing (after: T33) · `core/src/{takeable,diagrams,tldr,markdown,archive}.ts`
+- [x] T34 · ISC-6 · [P] · core — status: claim partition and drift classes, ported from the old status tool (after: T33) · `core/src/status.ts`
+- [x] T36 · ISC-15 · [P] · core — review and code-review marks with in-memory worktree hashing, no git object writes; `generate.ts` in the fixtures switches to this import (after: T33) · `core/src/gates.ts`
+- [x] T37 · ISC-14 · [P] · core — stage derivation and next-command rules, ported from the old dashboard tool (after: T33) · `core/src/stage.ts`
+- [x] T38 · ISC-16 · [P] · core — takeable set, diagram verdict, TL;DR staleness, markdown renderer, archive listing (after: T33) · `core/src/{takeable,diagrams,tldr,markdown,archive}.ts`
 - [ ] T39 · ISC-16 · [seam] · core — dashboard model assembly: the JSON the server returns and the web app renders (after: T34, T36, T37, T38) · `core/src/dashboard.ts`
 - [ ] T40 · ISC-6 · [P] · core — golden snapshot test writing and checking `core/fixtures/<name>.golden.json` (after: T39) · `core/tests/fixtures.test.ts`
 - [ ] T41 · ISC-14 · [P] · core — parity test over `SPECTANT_PARITY_TREES`, failing on zero comparisons (after: T39) · `core/tests/stage-parity.test.ts`
 - [x] T45 · ISC-5 · [P] · server — `check:single-core`: fails on a frontmatter, claim or stage parser outside `core/` · `scripts/check-single-core.ts`
 - [x] T46 · ISC-21 · [P] · server — data directory resolution with its tests · `server/src/paths.ts`
 - [x] T42 · ISC-13 · [P] · server — SQLite workspace registry with slug deduplication · `server/src/registry.ts`
-- [ ] T43 · ISC-18.3 · [P] · server — settings table and the `/api/settings` GET + PUT handlers, with `tests/settings.test.ts` across a port change · `server/src/settings.ts`
-- [ ] T44 · ISC-13 · [P] · server — CLI `add`, `list`, `remove` with `tests/workspaces.test.ts` (after: T42) · `server/src/cli.ts`
+- [x] T43 · ISC-18.3 · [P] · server — settings table and the `/api/settings` GET + PUT handlers, with `tests/settings.test.ts` across a port change · `server/src/settings.ts`
+- [x] T44 · ISC-13 · [P] · server — CLI `add`, `list`, `remove` with `tests/workspaces.test.ts` (after: T42) · `server/src/cli.ts`
 - [ ] T47 · ISC-16 · [P] · server — `/api/workspaces` and `/api/workspaces/:slug/dashboard` with ETag, plus the two-workspace `tests/dashboard.test.ts` (after: T39) · `server/src/api.ts`
-- [ ] T48 · ISC-16 · [P] · server — local listeners for the live indicator, empty when `lsof` is missing · `server/src/services.ts`
+- [x] T48 · ISC-16 · [P] · server — local listeners for the live indicator, empty when `lsof` is missing · `server/src/services.ts`
 - [ ] T49 · ISC-1 · [P] · server — loopback-only bind test · `tests/server.test.ts`
 - [ ] T50 · ISC-20 · [P] · server — port 7717 with fallback, URL printed, browser opened unless `--no-browser`, plus the start-up cases in `tests/cli.test.ts` · `server/src/cli.ts`
 - [ ] T51 · ISC-7 · [P] · server — rebuild test: delete the data directory, re-add, view equal (after: T39) · `tests/rebuild.test.ts`

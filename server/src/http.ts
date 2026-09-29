@@ -65,7 +65,7 @@ function weakEtag(path: string, size: number, generatedAt: string): string {
 }
 
 /** RFC 9110 weak comparison of `If-None-Match` against one tag: `*`, or any listed tag with `W/` stripped. */
-function matchesIfNoneMatch(header: string | null, etag: string): boolean {
+export function matchesIfNoneMatch(header: string | null, etag: string): boolean {
   if (header === null) return false;
   const opaque = etag.replace(/^W\//, "");
   return header.split(",").some((raw) => {

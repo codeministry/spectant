@@ -1,7 +1,16 @@
 // The claim partition and the seven drift classes (T34, ISC-6), ported from the old SpecStatus tool: IsaFrontier's
 // computeFrontier for the partition, computeDrift for the audit of a spec against its master.
-// Stub from the T33 seam: the fill-in task replaces the bodies and keeps the exported names and types.
+//
+// Pure: parsed documents in, model out. No file system, no Bun API. Lock files, the other spec folders and the
+// master file are read by the caller; stale locks are the caller's to filter, as readLocks did before computeFrontier.
+//
+// Deliberate differences, each a superset of the old reading: the partition also lists `open` and `dropped` and
+// reports an edge to an unknown ID as a diagnostic (the old frontier left it silently unmet); the master's progress
+// check, which the old tool ran once beside the per-spec audit, is `masterProgressMismatch`, so a drifted master is
+// reported once per repository and not once per spec.
+import { countProgress, formatProgress } from './claims.ts';
 import type { Claim, ClaimsDocument } from './claims.ts';
+import type { Diagnostic } from './diagnostics.ts';
 import type { ClaimLock } from './files.ts';
 import type { FrontmatterResult } from './frontmatter.ts';
 
@@ -14,10 +23,23 @@ export interface ClaimPartition {
   readonly takeable: readonly string[];
   readonly blocked: ReadonlyArray<{ readonly id: string; readonly openBlockers: readonly string[] }>;
   readonly taken: ReadonlyArray<{ readonly id: string; readonly session: string; readonly since: string }>;
+  /** Every unresolved claim, in file order: takeable, taken and blocked together. */
+  readonly open: readonly string[];
+  /** The tombstoned claims, in file order; a subset of `closed` (resolved, not achieved). */
+  readonly dropped: readonly string[];
+  /** `status-edge-unknown`: an `after` edge names an ID the file does not hold; the edge counts as unmet. */
+  readonly diagnostics: readonly Diagnostic[];
 }
 
 /** A claim's state for the spec-versus-master comparison. */
 export type ClaimState = 'open' | 'closed' | 'dropped';
+
+/** A declared `progress:` that disagrees with the recount from the boxes. */
+export interface ProgressMismatch {
+  readonly file: string;
+  readonly declared: string | null;
+  readonly counted: string;
+}
 
 /** The audit of one spec against its master, one key per drift class; a class is clean when empty, null or 0. */
 export interface DriftReport {
@@ -49,18 +71,134 @@ export interface DriftInput {
   readonly heldElsewhere?: ReadonlySet<string>;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- stub parameters; the fill-in uses them and drops this line
-export function partitionClaims(_claims: readonly Claim[], _locks?: readonly ClaimLock[]): ClaimPartition {
-  throw new Error('not implemented: partitionClaims');
+function stateOf(claim: Claim): ClaimState {
+  return claim.dropped ? 'dropped' : claim.checked ? 'closed' : 'open';
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- stub parameters; the fill-in uses them and drops this line
-export function driftReport(_input: DriftInput): DriftReport {
-  throw new Error('not implemented: driftReport');
+export function partitionClaims(claims: readonly Claim[], locks: readonly ClaimLock[] = []): ClaimPartition {
+  const known = new Set(claims.map((c) => c.id));
+  const resolved = new Set(claims.filter((c) => c.checked || c.dropped).map((c) => c.id));
+  // Later locks win, as the old Map over the lock list did.
+  const lockOf = new Map(locks.map((l) => [l.claim, l]));
+
+  const closed: string[] = [];
+  const takeable: string[] = [];
+  const blocked: Array<{ id: string; openBlockers: string[] }> = [];
+  const taken: Array<{ id: string; session: string; since: string }> = [];
+  const open: string[] = [];
+  const dropped: string[] = [];
+  const diagnostics: Diagnostic[] = [];
+
+  for (const c of claims) {
+    for (const b of c.after) {
+      if (!known.has(b)) {
+        diagnostics.push({
+          severity: 'warning',
+          code: 'status-edge-unknown',
+          message: `${c.id} is after ${b}, which this file does not hold; the edge counts as unmet.`,
+          line: c.line,
+        });
+      }
+    }
+    if (c.dropped) dropped.push(c.id);
+    if (c.checked || c.dropped) {
+      closed.push(c.id);
+      continue;
+    }
+    open.push(c.id);
+    const openBlockers = c.after.filter((b) => !resolved.has(b));
+    if (openBlockers.length > 0) {
+      blocked.push({ id: c.id, openBlockers });
+      continue;
+    }
+    const lock = lockOf.get(c.id);
+    if (lock) taken.push({ id: c.id, session: lock.session, since: lock.since });
+    else takeable.push(c.id);
+  }
+  return { closed, takeable, blocked, taken, open, dropped, diagnostics };
+}
+
+/** Declared `progress:` against the recount of `doc`; null when they agree. A missing or unreadable key disagrees. */
+export function progressMismatch(frontmatter: FrontmatterResult, doc: ClaimsDocument, file: string): ProgressMismatch | null {
+  const declared = frontmatter.data.progress;
+  // Recounted from the claims, not read from doc.counted, so a caller's edited claim list is audited as it stands.
+  const counted = countProgress(doc.claims);
+  if (declared?.closed === counted.closed && declared.total === counted.total) return null;
+  return { file, declared: frontmatter.values.progress ?? null, counted: formatProgress(counted) };
+}
+
+/** The master's own progress check (`ISA.md`), run once per repository beside the per-spec audits. */
+export function masterProgressMismatch(frontmatter: FrontmatterResult, master: ClaimsDocument, file = 'ISA.md'): ProgressMismatch | null {
+  return progressMismatch(frontmatter, master, file);
+}
+
+// Test Strategy columns are positional; a row with fewer than six cells has no anchors_to slot at all, which is the
+// same failure as an empty one. A one-cell row was never a Strategy row to the old reader.
+function anchorsMissing(doc: ClaimsDocument): number {
+  return doc.testStrategy.filter((r) => r.cells >= 2 && (r.cells < 6 || r.anchorsTo === '')).length;
+}
+
+export function driftReport(input: DriftInput): DriftReport {
+  const { frontmatter, spec, master } = input;
+  const heldElsewhere = input.heldElsewhere ?? new Set<string>();
+  const fm = frontmatter.data;
+  const byId = new Map(spec.claims.map((c) => [c.id, c]));
+  const evidence = new Set(spec.verification.map((v) => v.id));
+
+  const evidenceWithoutClose = [...evidence].filter((id) => {
+    const c = byId.get(id);
+    return c !== undefined && !c.checked && !c.dropped;
+  });
+
+  // A bug spec appends its regression claims to the block of the feature it broke; those belong to that spec, which
+  // is why claims another folder holds are not missing here. Claims from other blocks in this spec are not drift.
+  const feature = fm.isaFeature?.trim().split(/[\s,·]+/)[0] ?? '';
+  const missingInSpec: string[] = [];
+  if (master && feature !== '') {
+    const masterById = new Map(master.claims.map((c) => [c.id, c]));
+    const block = master.features.find((f) => f.id === feature);
+    for (const id of block?.claims ?? []) {
+      if (byId.has(id) || heldElsewhere.has(id) || masterById.get(id)?.dropped) continue;
+      missingInSpec.push(id);
+    }
+  }
+
+  const unknownToMaster: string[] = [];
+  const stateMismatch: Array<{ id: string; spec: ClaimState; master: ClaimState }> = [];
+  if (master) {
+    const masterById = new Map(master.claims.map((c) => [c.id, c]));
+    for (const c of spec.claims) {
+      const m = masterById.get(c.id);
+      if (!m) {
+        unknownToMaster.push(c.id);
+        continue;
+      }
+      const specState = stateOf(c);
+      const masterState = stateOf(m);
+      if (specState !== masterState) stateMismatch.push({ id: c.id, spec: specState, master: masterState });
+    }
+  }
+
+  return {
+    unknown_to_master: unknownToMaster,
+    state_mismatch: stateMismatch,
+    progress_mismatch: progressMismatch(frontmatter, spec, 'spec.md'),
+    closed_without_evidence: spec.claims.filter((c) => c.checked && !c.dropped && !evidence.has(c.id)).map((c) => c.id),
+    evidence_without_close: evidenceWithoutClose,
+    missing_in_spec: missingInSpec,
+    anchors_missing_at_complete: fm.phase === 'complete' && fm.principalStatedGoal ? anchorsMissing(spec) : 0,
+  };
 }
 
 /** True when any drift class is non-empty. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- stub parameters; the fill-in uses them and drops this line
-export function hasDrift(_report: DriftReport): boolean {
-  throw new Error('not implemented: hasDrift');
+export function hasDrift(report: DriftReport): boolean {
+  return (
+    report.unknown_to_master.length > 0 ||
+    report.state_mismatch.length > 0 ||
+    report.progress_mismatch !== null ||
+    report.closed_without_evidence.length > 0 ||
+    report.evidence_without_close.length > 0 ||
+    report.missing_in_spec.length > 0 ||
+    report.anchors_missing_at_complete > 0
+  );
 }

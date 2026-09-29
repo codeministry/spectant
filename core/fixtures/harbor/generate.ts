@@ -27,21 +27,12 @@ import {createHash} from "node:crypto";
 import {existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from "node:fs";
 import {dirname, join} from "node:path";
 
+import {hashForGate, REVIEWED_FILES} from "../../src/gates.ts";
+
 // ── reviewed-mark digest ───────────────────────────────────────────────────────────────────────────────
-// The digest the old Spec skill's review gate stores: sha256 over each file with frontmatter, checkbox states, struck
-// task markers and the round-appended spec sections removed. Kept here only so the fixture can carry a current mark;
-// the parser's own implementation lives in core/src/gates.ts.
-
-const REVIEWED_FILES = ["spec.md", "plan.md", "tasks.md"] as const;
-
-function normalizeForReview(name: string, md: string): string {
-    let s = md.replace(/\r\n?/g, "\n").replace(/^---\n[\s\S]*?\n---\n?/, "");
-    s = s.replace(/^(\s*- )\[[ xX]\]/gm, "$1[ ]");
-    if (name === "tasks.md") s = s.replace(/~~/g, "");
-    if (name === "spec.md") for (const h of ["Not yet specified", "Decisions", "Verification"])
-        s = s.replace(new RegExp(`^## ${h}\\b[^\\n]*\\n[\\s\\S]*?(?=^## |(?![\\s\\S]))`, "m"), "");
-    return s.split("\n").map((l) => l.trimEnd()).join("\n").trim();
-}
+// The digest the old Spec skill's review gate stores comes from core/src/gates.ts (`hashForGate`, which applies
+// `normalizeForGate`), so a current fixture mark is exactly what the parser verifies. The two seeded helpers below
+// hash fixed strings, not spec text: they build marks that match no file on purpose.
 
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 const sha1 = (s: string) => createHash("sha1").update(s).digest("hex");
@@ -49,7 +40,7 @@ const sha1 = (s: string) => createHash("sha1").update(s).digest("hex");
 function reviewedMark(specDir: string, at: string): string {
     const files = Object.fromEntries(REVIEWED_FILES.map((f) => {
         const p = join(specDir, f);
-        return [f, existsSync(p) ? sha256(normalizeForReview(f, readFileSync(p, "utf-8"))) : null];
+        return [f, existsSync(p) ? hashForGate(f, readFileSync(p, "utf-8")) : null];
     }));
     return JSON.stringify({gate: "reviewed", at, files}, null, 2) + "\n";
 }

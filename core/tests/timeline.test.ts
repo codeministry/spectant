@@ -127,12 +127,12 @@ describe('sources', () => {
     expect(r3?.ts).toBe('2026-03-08T16:30:00Z');
     expect(r3?.id).toBe('round-3');
     expect(r3?.title).toContain('Round 3');
-    expect(r3?.title).toContain('a question is open');
-    expect(r3?.body).toContain('T19, T20, T21, T22, T23, T24, T25, T26, T27');
-    expect(r3?.body).toContain('ISC-66, ISC-67, ISC-68');
-    expect(r3?.body).toContain('Held: 4');
-    expect(r3?.body).toContain('Stop: a question is open');
-    expect(r3?.actor).toBe('Engineer');
+    expect(r3?.title).toContain('a decision only the principal can make');
+    expect(r3?.body).toContain('T12, T13, T14, T17, T19, T21, T24, T25, T26, T27');
+    expect(r3?.body).toContain('ISC-60.1, ISC-60.2, ISC-61, ISC-64, ISC-66, ISC-68');
+    expect(r3?.body).toContain('Held: 3');
+    expect(r3?.body).toContain('Stop: a decision only the principal can make');
+    expect(r3?.actor).toBe('Engineer, Anvil');
 
     const r1 = rounds[2];
     expect(r1?.body).not.toContain('Stop:');
@@ -146,14 +146,14 @@ describe('sources', () => {
     expectWellFormed(entries);
 
     const gate = entries.find((e) => e.kind === 'gate');
-    expect(gate).toMatchObject({ ts: '2026-03-06T08:45:00Z', ref: 'reviewed', id: 'gate-reviewed', derived: false });
+    expect(gate).toMatchObject({ ts: '2026-03-07T15:30:00Z', ref: 'reviewed', id: 'gate-reviewed', derived: false });
     expect(entries.map((e) => e.id)).toEqual([
       `commit-${COMMITS_HARBOR[1]?.sha ?? '?'}`,
       'round-3',
+      'gate-reviewed',
       'round-2',
       'round-1',
       `commit-${COMMITS_HARBOR[0]?.sha ?? '?'}`,
-      'gate-reviewed',
       'decision-goal',
     ]);
   });

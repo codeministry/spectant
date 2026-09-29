@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F1
 constitution: ../constitution.md
 phase: scoping
-progress: 14/47
+progress: 16/47
 started: 2026-09-28T09:40:00Z
-updated: 2026-09-28T13:02:35Z
+updated: 2026-09-29T08:31:13Z
 context_sufficient: true
 interview_invoked: true
 context_log: context.md
@@ -162,7 +162,7 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [x] ISC-10: In a clean Ubuntu x64 container, the install script pointed at a local release directory puts `spectant` on PATH and `spectant --version` exits 0. (after: ISC-8)
 - [ ] ISC-11: For a fresh user on macOS arm64, the install one-liner puts `spectant` on PATH and `spectant --version` exits 0. (after: ISC-8)
 - [x] ISC-12: The install script writes the binary to `INSTALL_DIR` when that variable is set. (after: ISC-10)
-- [ ] ISC-13: `spectant add <repo>`, `spectant list` and `spectant remove <repo>` round-trip a workspace through the registry.
+- [x] ISC-13: `spectant add <repo>`, `spectant list` and `spectant remove <repo>` round-trip a workspace through the registry.
 - [ ] ISC-14: For copies of the principal's real spec trees, every spec's stage on the dashboard equals the stage the old skill derives, and the probe fails when no tree was compared.
 - [ ] ISC-15: Anti: adding a workspace or opening any page changes a byte inside the registered repository, `.git/` included.
 - [ ] ISC-16: One dashboard lists the specs of two registered workspaces side by side.
@@ -189,7 +189,7 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [ ] ISC-62.1: The same refresh produces a cumulative layout shift of 0. (after: ISC-62)
 - [ ] ISC-63: At a 600 px wide container (the cmux side panel) the dashboard has no horizontal overflow: `scrollWidth` equals `clientWidth`.
 - [ ] ISC-63.1: At the same width a workspace column in the overview has no horizontal overflow.
-- [ ] ISC-64: Every interactive element shows the brand focus ring under keyboard focus, in both themes.
+- [x] ISC-64: Every interactive element shows the brand focus ring under keyboard focus, in both themes.
 - [ ] ISC-65: Text reaches 4.5:1 and marks (ring track, bars, legend dots) 3:1 against their surface, in both themes.
 - [ ] ISC-66: Anti: under `prefers-reduced-motion: reduce` any animation or transition longer than 0 ms runs.
 - [x] ISC-67: Antecedent: the app ships Inter Variable plus JetBrains Mono as local assets.
@@ -225,6 +225,10 @@ Why: the first time the author types `spectant` and sees two real repositories o
   needs their pages (ISC-2 covers "every write" once spec 002 adds writes).
 
 ## Verification
+
+- ISC-13: bun-test — bun test tests/workspaces.test.ts → 7 pass (CLI add/list/remove round-trip through the registry, stdout never carries the absolute path, repo hash unchanged), red before T44 (unknown command), server lane 74 pass; spec 001 round 14
+
+- ISC-64: browser — bun run test:browser -- focus → 2 passed (light, dark; 53 elements per theme against the /__ui gallery; red before the segmented checked-state halo fix, red under ring-width and ring-token mutations); spec 001 round 13
 
 - ISC-22: bun-test — bun test web/tests/i18n-parity.test.ts → exit 0, 17 pass (174 keys in en.json and de.json, 0 missing, 0 informal German, 0 param mismatches; Transloco 8.4.0 with a bundled loader; red on a dropped key, a dropped param and 'deinen'), round 9, T23
 

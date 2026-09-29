@@ -23,6 +23,8 @@ const STEP: Partial<Record<string, number>> = { ArrowRight: 1, ArrowDown: 1, Arr
     .group { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: var(--radius-field); background: var(--color-base-200); }
     .seg { gap: 8px; border: 0; font-weight: 500; }
     .seg[aria-checked='true'] { --btn-bg: var(--color-base-100); --btn-fg: var(--color-base-content); box-shadow: var(--shadow); }
+    /* The checked segment's own shadow outranks the zero-specificity global ring rule; keep the halo (ISC-64). */
+    .seg[aria-checked='true']:focus-visible { box-shadow: 0 0 0 4px var(--focus-halo), var(--shadow); }
     .dot { inline-size: 8px; block-size: 8px; border-radius: 50%; }
     @media (forced-colors: active) {
       .seg[aria-checked='true'] { outline: 2px solid Highlight; }
