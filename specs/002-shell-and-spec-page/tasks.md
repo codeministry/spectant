@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T12:35:16Z
+updated: 2026-09-29T12:42:35Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -85,7 +85,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T49 · ISC-83 · server — traversal test: `..`, absolute and symlinked paths refused with 403 (after: T47) · `tests/evidence.test.ts`
 - [ ] T50 · ISC-36 · server — timeline route tests: derived marker without `events.jsonl`, recorded transitions with it (after: T45, T46) · `tests/timeline.test.ts`
 - [x] T51 · ISC-37 · server — optional LifeOS detection: state directory present or not, nothing read when absent, `GET /api/lifeos` (after: T20) · `server/src/lifeos.ts`
-- [ ] T52 · ISC-78 · [seam] · web — stub API extended: every spec route from the golden JSON, lock fixtures (frontier, activity, none), scripted 409 and 423 for the writes (after: T44) · `web/e2e/stub-api.ts`
+- [x] T52 · ISC-78 · [seam] · web — stub API extended: every spec route from the golden JSON, lock fixtures (frontier, activity, none), scripted 409 and 423 for the writes (after: T44) · `web/e2e/stub-api.ts`
 - [ ] T53 · ISC-78 · web — spec dashboard: KPI band, idea quote, next step with reason, lanes, five area tiles, Brief reuse; layouts per `design.md` · Mobile, Tablet, Desktop (after: T35, T52) · `web/src/app/features/spec/dashboard/`
 - [ ] T54 · ISC-79 · web — Status tab: where it stands, progress and gates, what is open, activity; rail content at the top below wide · Mobile, Tablet (after: T35, T52) · `web/src/app/features/spec/status/`
 - [ ] T55 · ISC-80 · web — Timeline tab: one strand, source filters, day headers, round entries expanding, `derived` chip (after: T35, T52) · `web/src/app/features/spec/status/timeline/`

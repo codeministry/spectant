@@ -13,6 +13,8 @@
     "noPropertyAccessFromIndexSignature": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
+    // The stub imports server/src/spec-routes.contract.ts, whose own imports name their .ts files (T52).
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "noEmit": true
   },

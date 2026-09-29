@@ -50,16 +50,49 @@ byte, so a server contract change fails there first.
 |-------|---------|
 | `GET/HEAD /api/workspaces` | `[{slug, name, pathTail, readable, error?, counts}]`, harbor then lantern |
 | `GET/HEAD /api/workspaces/:slug/dashboard` | the golden model; 404 unknown slug, 409 the unreadable workspace |
+| `GET/HEAD …/:ws/specs/:id` and every read route of `SPEC_ROUTE_TABLE` (`server/src/spec-routes.contract.ts`) | the per-spec value of the route's golden family, `core/fixtures/<tree>.<family>.golden.json` (`GOLDEN_FAMILY`, plus `live`); `:id` is `NNN`, the folder or the bare slug, archived specs too |
+| `…/docs/:name` | the docs golden; 404 `DocMissing` with core's `docsFor` availability when the spec has no such file |
+| `…/evidence`, `…/evidence/file?path=` | core's `listEvidence` / `resolveEvidencePath` over the fixture tree's real `artifacts/` and `.evidence/`; the file with `evidenceFileHeaders`, 403 for what confinement refuses, 404 for no file |
+| `POST …/gate/reviewed`, `POST …/tasks/:tid/check` | the two writes, validated with the contract's `is…Request` (400), outcome scripted per request (below) |
+| `GET/HEAD /api/lifeos` | `{present}`: true only under the `frontier` lock fixture |
 | `GET/HEAD/PUT /api/settings` | in memory from the schema defaults (`system`, `en`, 30, `true`), per session |
-| `POST /api/__stub/reset` | stub only: restores the defaults of the request's session, 204 |
+| `POST /api/__stub/reset` | stub only: restores the settings and drops the writes of the request's session, 204 |
+
+Every JSON answer follows `JSON_ANSWER` (strong sha256 ETag, 304 on a match, `HEAD` without a body); 404 is
+`{error: "not-found"}` for an unknown workspace, spec or task, 405 carries `Allow: allowFor(route)`. `GET …/:id`
+sends `X-Spectant-Reviewed-Hashes` and `GET …/:id/tasks` sends `X-Spectant-Tasks-Hash` (absent without tasks.md):
+deterministic fake sha256 hex values, the ones a write must send back. A tick changes the tasks hash; the reviewed
+hashes normalise checkboxes away, so they stay.
 
 The state is chosen per request by a header, so each test picks its own without restarting the server, and parallel
-workers never race:
+workers never race. An unknown value is always a loud 400, never a silent default:
 
 | Header | Values | Absent |
 |--------|--------|--------|
-| `X-Spectant-Stub-State` | `two-workspaces` (harbor, lantern), `empty` (no workspace), `unreadable` (lantern `readable: false`, `error: 'missing'`, `counts: null`, its dashboard 409) | `two-workspaces`; an unknown value is a 400 |
-| `X-Spectant-Stub-Session` | any id; scopes the settings store | one shared session |
+| `X-Spectant-Stub-State` | `two-workspaces` (harbor, lantern), `empty` (no workspace), `unreadable` (lantern `readable: false`, `error: 'missing'`, `counts: null`, its dashboard and spec routes 409) | `two-workspaces` |
+| `X-Spectant-Stub-Locks` | `none`, `activity`, `frontier` (see the lock fixtures) | `activity`, the goldens as they are |
+| `X-Spectant-Stub-Write` | `ok`, `stale`, `locked` (see the writes) | `ok` |
+| `X-Spectant-Stub-Session` | any id; scopes the settings and the writes | one shared session |
+
+Lock fixtures, applied to `…/live` (the `LiveFrame`), the spec page's `areas.live` and `keyNumbers.rounds.agentsWorking`
+(under `none` and `frontier` only), and `/api/lifeos`:
+
+| `X-Spectant-Stub-Locks` | Live frame | `/api/lifeos` | Gate button (ISC-85) |
+|-------------------------|------------|---------------|----------------------|
+| `none` | `lockSource: 'none'`, `locks: []`, `agents: []`, running cards back to `waiting` without lock fields | `{present: false}` | writes proceed, "no agent source" |
+| `activity` | the golden: harbor 002 has one stale activity session on ISC-74 (T27 running) | `{present: false}` | ready / stale / done |
+| `frontier` | every golden lock relabelled `frontier`, plus a synthetic session `spec-<NNN>-<claim>` on the first open claim no lock holds (harbor 002: ISC-75, T28 running, 20 min, not stale) | `{present: true}` | paused |
+
+Writes, per `X-Spectant-Stub-Write`:
+
+| Outcome | `POST …/gate/reviewed` `{hashes}` | `POST …/tasks/:tid/check` `{checked, hash}` |
+|---------|-----------------------------------|---------------------------------------------|
+| `ok` | as the server: hashes equal to the header → 200 `{at: STUB_NOW, hashes, lockSource}` and the session's next `GET …/:id` shows `gates.reviewed` `fresh` at `2026-03-08T15:00:00Z`; else 409 | hash equal to the header → 200 `{task, checked, hash, lockSource}` with the new hash, and the session's next `GET …/tasks` shows the box (row `state`/`status`, `counts`); else 409 |
+| `stale` | 409 `{error: 'hash-mismatch', expected: <the current hashes>}`, nothing written | 409 `{error: 'hash-mismatch', expected: {tasks: <current hash>}}` |
+| `locked` | 423 `{error: 'locked', lock}`: the lock fixture's lock on the spec, else a frontier lock | 423 with the lock on the task's claim, else as for the gate |
+
+`lockSource` in a 200 is the lock fixture's live `lockSource` (`none` renders "no agent source", ISC-86). Unticking a
+box restores the golden row and the golden hash. An unknown or struck task, or a spec without tasks.md, is 404.
 
 ```ts
 test.describe('overview: empty', () => {
@@ -78,9 +111,22 @@ test.describe('theme: persist', () => {
 });
 ```
 
+```ts
+// The gate under a frontier lock, and a scripted 409 for the stale path (T79):
+test.describe('gate: paused', () => {
+  test.use({ extraHTTPHeaders: { 'X-Spectant-Stub-Locks': 'frontier' } });
+  // …
+});
+test('gate: stale answer', async ({ page }) => {
+  await page.setExtraHTTPHeaders({ 'X-Spectant-Stub-Write': 'stale', 'X-Spectant-Stub-Session': 'gate-stale' });
+  // …
+});
+```
+
 `extraHTTPHeaders` reaches every request of the page, the app's `fetch('/api/…')` included. Import `STATE_HEADER`,
-`SESSION_HEADER` and `STUB_STATES` from `./stub-api` rather than spelling the names. The stub reads no clock and no
-registry: every answer is a function of the golden files and the request.
+`SESSION_HEADER`, `LOCKS_HEADER`, `WRITE_HEADER`, `STUB_STATES`, `LOCK_STATES`, `WRITE_OUTCOMES` and `STUB_NOW` from
+`./stub-api` rather than spelling the names. The stub reads no clock and no registry: every answer is a function of
+the fixture files and the request.
 
 ## Browsers and the container
 
