@@ -6,13 +6,15 @@
  *
  * A static server of its own rather than the `spectant` binary: the binary embeds `web/dist` only after
  * `scripts/build.ts` compiles it, which would put a four-target build in front of every e2e run. The `/api` it
- * answers is a seam: `serveDist({ api })` takes a fetch handler, and the stub API fed from
- * `core/fixtures/*.golden.json` (`stub-api.ts`, a later task) plugs in there. Without one, `/api/*` is a 404.
+ * answers is a seam: `serveDist({ api })` takes a fetch handler; the entry below plugs in `stubApi()` (`stub-api.ts`),
+ * the real `/api` contract fed from `core/fixtures/*.golden.json`. Without a handler, `/api/*` is a 404.
  *
  * Loopback only (ISC-2), no path outside the root is ever read, and every unknown path without a file extension
  * falls back to `index.html`, so the router-driven URLs (`/w/:ws`, `/w/:ws/s/:id`) load on reload.
  */
 import { extname, join, resolve, sep } from 'node:path';
+
+import { stubApi } from './stub-api';
 
 export type ApiHandler = (request: Request, url: URL) => Response | Promise<Response>;
 
@@ -68,6 +70,6 @@ if (import.meta.main) {
     console.error(`serve-dist: ${root}/index.html is missing; run \`bun run --cwd web build\` first`);
     process.exit(1);
   }
-  const server = serveDist({ root });
-  console.log(`serve-dist: ${root} on ${server.url.href}`);
+  const server = serveDist({ root, api: stubApi() });
+  console.log(`serve-dist: ${root} on ${server.url.href}, /api from the stub (core/fixtures/*.golden.json)`);
 }

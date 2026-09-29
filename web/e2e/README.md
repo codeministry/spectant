@@ -13,7 +13,8 @@ Every browser suite of the web lane lives here and runs through one config, `pla
 | `__screenshots__/{project}/{theme}/` | committed baselines, recorded only in the container | — |
 | `fixtures.ts`, `env.ts` | fixtures and the `E2E_SUITE` / `E2E_THEME` switches | — |
 | `run.ts` | maps the Test Strategy's command shapes onto `playwright test` | the `web/package.json` scripts |
-| `serve-dist.ts` | loopback static server for `web/dist/browser`, SPA fallback, `/api` seam for `stub-api.ts` | the config's `webServer` |
+| `serve-dist.ts` | loopback static server for `web/dist/browser`, SPA fallback, `/api` answered by `stub-api.ts` | the config's `webServer` |
+| `stub-api.ts` | the real `/api` contract fed from `core/fixtures/*.golden.json`, states per request (see below) | plugged in by `serve-dist.ts` |
 | `Dockerfile`, `container.ts` | the pinned Linux runner | `bun run test:visual:ci` |
 
 Test names follow the Test Strategy's `-g` names: `palette -g open|filter|enter`, `keyboard -g move|enter|help`,
@@ -36,6 +37,50 @@ the viewport per test with `test.use(atWidth(390 | 820 | 1440 | 600))`.
 
 The config builds the app and serves it on `http://127.0.0.1:4173`; set `E2E_BASE_URL` to test an app that is
 already running instead.
+
+## The stub API
+
+`serve-dist.ts` answers `/api` with `stubApi()` from `stub-api.ts`: the same paths, shapes, status codes, headers and
+ETags as `server/src/api.ts` and `server/src/settings.ts`, but fed from files. A dashboard body is the golden
+snapshot `core/fixtures/<fixture>.golden.json` as the server serializes it; the list's `counts` are that golden's
+`kpis`. `stub-api.test.ts` sends the same requests to the stub and to the real handlers and compares them byte for
+byte, so a server contract change fails there first.
+
+| Route | Answers |
+|-------|---------|
+| `GET/HEAD /api/workspaces` | `[{slug, name, pathTail, readable, error?, counts}]`, harbor then lantern |
+| `GET/HEAD /api/workspaces/:slug/dashboard` | the golden model; 404 unknown slug, 409 the unreadable workspace |
+| `GET/HEAD/PUT /api/settings` | in memory from the schema defaults (`system`, `en`, 30, `true`), per session |
+| `POST /api/__stub/reset` | stub only: restores the defaults of the request's session, 204 |
+
+The state is chosen per request by a header, so each test picks its own without restarting the server, and parallel
+workers never race:
+
+| Header | Values | Absent |
+|--------|--------|--------|
+| `X-Spectant-Stub-State` | `two-workspaces` (harbor, lantern), `empty` (no workspace), `unreadable` (lantern `readable: false`, `error: 'missing'`, `counts: null`, its dashboard 409) | `two-workspaces`; an unknown value is a 400 |
+| `X-Spectant-Stub-Session` | any id; scopes the settings store | one shared session |
+
+```ts
+test.describe('overview: empty', () => {
+  test.use({ extraHTTPHeaders: { 'X-Spectant-Stub-State': 'empty' } });
+  // …
+});
+
+// A spec that PUTs settings (theme -g persist) names its own session, so another worker's theme never leaks in,
+// and resets it first, so a retry or a second project starts from the defaults:
+test.describe('theme: persist', () => {
+  test.use({ extraHTTPHeaders: { 'X-Spectant-Stub-Session': 'theme-persist' } });
+  test.beforeEach(async ({ request }) => {
+    await request.post('/api/__stub/reset', { headers: { 'X-Spectant-Stub-Session': 'theme-persist' } });
+  });
+  // …
+});
+```
+
+`extraHTTPHeaders` reaches every request of the page, the app's `fetch('/api/…')` included. Import `STATE_HEADER`,
+`SESSION_HEADER` and `STUB_STATES` from `./stub-api` rather than spelling the names. The stub reads no clock and no
+registry: every answer is a function of the golden files and the request.
 
 ## Browsers and the container
 

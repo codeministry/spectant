@@ -7,7 +7,9 @@ import { isLang, type Lang, LANGS } from '../../i18n/catalogues';
  * active language, so there is one source of truth; `set` switches it and keeps `<html lang>` in step for assistive
  * technology (WCAG 3.1.1).
  *
- * No persistence yet: the settings service (T58) loads the stored language from `/api/settings` and calls `set`.
+ * Not a store of its own: the stored language comes from `SettingsService` (`/api/settings`), and the app
+ * initializer in `app.config.ts` calls `set` whenever that setting changes. A user's choice goes through
+ * `SettingsService.update({ language })`, so it persists; calling `set` directly switches for this page only.
  */
 @Injectable({ providedIn: 'root' })
 export class LanguageService {

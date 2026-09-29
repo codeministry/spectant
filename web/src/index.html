@@ -5,6 +5,23 @@
   <title>Spectant</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!--
+    Pre-paint theme (ISC-18.1): sets data-theme before the first paint and before Angular boots, from the only
+    synchronous fact there is, matchMedia. The stored mode lives server-side (/api/settings, ISC-18.3) and cannot be
+    awaited here; ThemeService (src/app/core/theme.service.ts) applies it once the settings load. Guarded by
+    web/tests/pre-paint.test.ts.
+  -->
+  <script>
+    (function () {
+      var dark = false;
+      try {
+        dark = matchMedia('(prefers-color-scheme: dark)').matches;
+      } catch (e) {
+        dark = false;
+      }
+      document.documentElement.setAttribute('data-theme', dark ? 'spec-dark' : 'spec-light');
+    })();
+  </script>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="preload" href="/fonts/inter-variable.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-variable.woff2" as="font" type="font/woff2" crossorigin>

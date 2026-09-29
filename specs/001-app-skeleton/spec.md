@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F1
 constitution: ../constitution.md
 phase: scoping
-progress: 23/47
+progress: 25/47
 started: 2026-09-28T09:40:00Z
-updated: 2026-09-29T10:28:35Z
+updated: 2026-09-29T10:47:21Z
 context_sufficient: true
 interview_invoked: true
 context_log: context.md
@@ -149,7 +149,7 @@ Why: what would sink the project whichever slice slipped — data leaving the ma
 - [x] ISC-4: The repository root holds the Apache-2.0 `LICENSE` and a `THIRD_PARTY_NOTICES.md` naming the bundled assets and the LifeOS (MIT) origin of the ISA format.
 - [x] ISC-5: Anti: the repository holds more than one implementation of frontmatter, claim or stage parsing; the app and the plugin both import `core/`.
 - [x] ISC-6: Every fixture under `core/fixtures/` parses without error to its golden JSON snapshot.
-- [ ] ISC-7: Deleting the data directory loses only the workspace registry, notes and pins; after re-adding a workspace its specs view equals the view before deletion.
+- [x] ISC-7: Deleting the data directory loses only the workspace registry, notes and pins; after re-adding a workspace its specs view equals the view before deletion.
 - [x] ISC-5.1: A `CLAUDE.md` exists at the root plus in `core/`, `server/`, `web/`, each lane file naming its probe (root: only what applies everywhere).
 - [x] ISC-5.2: `bun run check:static` runs ESLint with the Angular rules, Stylelint with `color-no-hex` and `tsc --noEmit`, all at zero warnings.
 
@@ -164,7 +164,7 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [x] ISC-12: The install script writes the binary to `INSTALL_DIR` when that variable is set. (after: ISC-10)
 - [x] ISC-13: `spectant add <repo>`, `spectant list` and `spectant remove <repo>` round-trip a workspace through the registry.
 - [x] ISC-14: For copies of the principal's real spec trees, every spec's stage on the dashboard equals the stage the old skill derives, and the probe fails when no tree was compared.
-- [ ] ISC-15: Anti: adding a workspace or opening any page changes a byte inside the registered repository, `.git/` included.
+- [x] ISC-15: Anti: adding a workspace or opening any page changes a byte inside the registered repository, `.git/` included.
 - [ ] ISC-16: One dashboard lists the specs of two registered workspaces side by side.
 - [ ] ISC-16.1: The overview's committed visual baseline (light, three widths, states: two workspaces, empty, unreadable workspace) passes on Linux CI.
 - [ ] ISC-16.2: The same baseline passes in the dark theme.
@@ -225,6 +225,10 @@ Why: the first time the author types `spectant` and sees two real repositories o
   needs their pages (ISC-2 covers "every write" once spec 002 adds writes).
 
 ## Verification
+
+- ISC-15: bash — bun run test:readonly → 3 pass: harbor copy under git with staged, modified, stale-stat, untracked and ignored files and a code-reviewed mark for 004; recursive hash incl. .git/ (bytes, modes, mtimes) equal after add + list + dashboard + 304 + HEAD + settings + SPA routes; .git/index bytes and mtime unchanged; 004 gate reads fresh, proving the in-memory tree id ran; controls: one byte in .git/description flips the hash, a plain git status rewrites the index; spec 001 round 18
+
+- ISC-7: bun-test — bun test tests/rebuild.test.ts → 2 pass (add harbor + lantern, PUT theme, keep list + ETag + both dashboards; rm -rf data dir; serve again: [] workspaces, default settings, fixture hashes unchanged; re-add → list and ETag equal, dashboards byte-equal except runtime services; reverse order changes only list order; tripwire: tables are exactly setting + workspace until notes/pins land); spec 001 round 18
 
 - ISC-4: bash — test -f LICENSE && rg -q 'Apache License' LICENSE && test -f THIRD_PARTY_NOTICES.md → exit 0; LICENSE is the canonical Apache-2.0 text with the appendix line filled in, THIRD_PARTY_NOTICES.md covers Angular, Transloco, RxJS, tslib, Tailwind, daisyUI, Lucide (incl. Feather notice), Inter and JetBrains Mono (OFL), the Bun runtime, the frozen leadgen fixture and the LifeOS (MIT) origin of the ISA format, plus a dev-dependency table; spec 001 round 17
 

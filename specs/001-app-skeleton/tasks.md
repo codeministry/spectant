@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-29T10:28:35Z
+updated: 2026-09-29T10:47:21Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -84,8 +84,8 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T48 · ISC-16 · [P] · server — local listeners for the live indicator, empty when `lsof` is missing · `server/src/services.ts`
 - [x] T49 · ISC-1 · [P] · server — loopback-only bind test · `tests/server.test.ts`
 - [x] T50 · ISC-20 · [P] · server — port 7717 with fallback, URL printed, browser opened unless `--no-browser`, plus the start-up cases in `tests/cli.test.ts` · `server/src/cli.ts`
-- [ ] T51 · ISC-7 · [P] · server — rebuild test: delete the data directory, re-add, view equal (after: T39) · `tests/rebuild.test.ts`
-- [ ] T52 · ISC-15 · [P] · server — read-only test: recursive hash of the fixture repo incl. `.git/` before and after add + browse; `test:readonly` (after: T39) · `tests/readonly.test.ts`
+- [x] T51 · ISC-7 · [P] · server — rebuild test: delete the data directory, re-add, view equal (after: T39) · `tests/rebuild.test.ts`
+- [x] T52 · ISC-15 · [P] · server — read-only test: recursive hash of the fixture repo incl. `.git/` before and after add + browse; `test:readonly` (after: T39) · `tests/readonly.test.ts`
 - [x] T53 · ISC-2 · [P] · server — server-side offline run: the binary in `docker run --network none` through a scripted session; `test:offline:server` (after: T11) · `tests/offline-server.ts`
 - [x] T54 · ISC-3 · [P] · server — `check:leak`: generic classes plus an optional private word list outside the repo · `scripts/check-leak.ts`
 - [x] T55 · ISC-4 · [P] · repo — Apache-2.0 `LICENSE` and `THIRD_PARTY_NOTICES.md` · `LICENSE`
@@ -93,8 +93,8 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 
 ### ④ Views
 
-- [ ] T57 · ISC-17 · [P] · web — stub API serving the fixtures' golden JSON for e2e and visual runs (after: T28, T39) · `web/e2e/stub-api.ts`
-- [ ] T58 · ISC-18.1 · [P] · web — pre-paint `data-theme` script, theme service (system / light / dark, live `matchMedia`), settings service · `web/src/app/core/theme.service.ts`
+- [x] T57 · ISC-17 · [P] · web — stub API serving the fixtures' golden JSON for e2e and visual runs (after: T28, T39) · `web/e2e/stub-api.ts`
+- [x] T58 · ISC-18.1 · [P] · web — pre-paint `data-theme` script, theme service (system / light / dark, live `matchMedia`), settings service · `web/src/app/core/theme.service.ts`
 - [ ] T59 · ISC-16 · operator — prerequisite from spec 002: its shell seam (002-T35: container tiers, routes `/`, `/w/:ws`, `/w/:ws/s/:id`, tab-bar slot, API client) has landed in the main tree — tick when it has; every task below that carried `(after: T59)` waits on it (re-cut 2026-09-29, the shell moved to spec 002) · `specs/002-shell-and-spec-page/tasks.md`
 - ~~T60 · ISC-16 · web — header: eyebrow + title, `ui-badge-switcher` (two levels), palette trigger, `ui-live-indicator`, gear, `?`~~ — struck 2026-09-29: the header is spec 002's T36 (ISC-73), built to the prototype
 - [ ] T61 · ISC-17 · [P] · web — `kpi-band` in its three container forms, tiles as links (after: T59) · `web/src/app/features/dashboard/kpi-band/`
