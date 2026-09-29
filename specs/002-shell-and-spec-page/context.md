@@ -318,3 +318,17 @@ the guarded checkbox; This frame / Needs you / Your steps render inline under th
 compact scrubber buttons are 32 px; `notes.contract.ts` `parseFields` destructures for the web tsconfig; a pinned
 marker is not in the notes rows; the Edit/Preview choice is component state; the worker's e2e cleanup (`pkill` on
 `serve-dist.ts`) can kill sibling servers — brief the next round to kill by pid.
+Round 15 landed (2026-09-29, commits ec91a0e … the rail): T93 narrow-board guard (**ISC-93 closed**), T101 note-count
+badge (**ISC-95 closed**), T104 offline e2e over every route and write in both themes plus the docker half
+(**ISC-2 closed**), T82/T89 Flow view with FLIP on motion tokens and the scrub-changes-no-file e2e, T27/T83 the
+eleventh state in harbor 002 (T34 struck after a hold; generator edited), frames tests on harbor and spectant-001, the
+card in both densities with the detail dialog and state history, T85/T88 rail blocks, bottom bar merged with the zen
+footer, agent chips (**ISC-87 and ISC-90 closed**). T90 (board-states e2e) not written: the worker ran out of turns.
+Whole e2e suite 444 passed, 8 skipped, one load flake ("header controls lead where they say" at 820 — 9/9 alone).
+Progress 39/49, master 64/123. Port 7717 held a stale smoke-test binary from the day before; stopped.
+Marks: `detectRecut` and `buildMatrix` are still stubs (T18/T19; five frames tests are todos); the board tab's inline
+card-detail dialog, `openCard` and the `#cardList` template are dead since the card owns its dialog; `FrameCard` and
+`LiveCard` carry no path or probe status (a core contract change if the detail is to show them); the medium tier's
+stacked rail still shows the T54 placeholder; the board's compact scrubber buttons are 32 px; the e2e README's
+`data-ready` sentence is stale; the counts suite's fixme rows need a per-decision hook in the Docs tab; the initial
+bundle is 613 kB against 500 kB.
