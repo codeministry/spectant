@@ -1,7 +1,7 @@
 ---
 spec: 003-planning-hierarchy
 type: feature
-status: draft
+status: approved
 updated: 2026-09-29
 ---
 

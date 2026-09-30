@@ -5,10 +5,10 @@ spec_type: feature
 isa_master: ../../ISA.md
 isa_feature: F8
 constitution: ../constitution.md
-phase: scoping
+phase: complete
 progress: 18/18
 started: 2026-09-29T20:00:23Z
-updated: 2026-09-30T07:06:01Z
+updated: 2026-09-30T10:33:29Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -217,3 +217,16 @@ Why: the format already carries master → feature → spec → claim → task, 
 - ISC-100.1: bun-test — `bun test core/tests/planning.test.ts -t "main feature"` 5 pass (inline spec-002-shaped input: 002 holds F7 plus one F0 and one F2 claim and is a holder under all three with `main` only under F7 for `F7`, `F7 · plus F0`, `F7, F0`; two-folder winner rule active-then-lower-id); green on first run because T8 built the behaviour, its own probe ran red-then-green; `bun test core/` 871 pass (T8, T11; 2026-09-29)
 
 - ISC-100: bun-test — `bun test core/tests/planning.test.ts -t "tree"` 7 pass (all five fixture trees equal their `<tree>.planning.golden.json` claim by claim; harbor: F0 0/4 with 006, F1 46/46 with the archived 001, F2 25/30, F3 0/14 with 003+005, F4 30/30; recount 101/124); `bun test core/` 866 pass, check:static and check:single-core green (T7, T8; 2026-09-29)
+
+## Remaining Work
+
+- [ ] Render the master's planning diagnostics (`master-milestone-line`, `master-milestone-duplicate`) somewhere a user sees them — today they sit in `PlanningModel.diagnostics` only, so a milestone on a malformed or duplicate line vanishes without an explanation — a surface decision (Status warnings or a workspace-level notice), not a claim of this spec.
+- [ ] Canonical spec reference in `ShellData`: `currentRow`, `specMissing`, `archiveRows` and `notesLink` still compare the raw `:id` route param with `row.id`, so a folder or bare-slug URL resolves the breadcrumb levels but not the header's spec row until the body answers — resolve once through `specRefMatches` and let every consumer read the canonical id.
+- [ ] One workspace reading per navigation: the dashboard, planning and spec routes each re-read and re-parse the whole tree, and the planning route reads git and lock sources it does not use — measure first, then share the parsed folders or build planning inside the dashboard handler.
+- [ ] An active and an archived folder sharing `NNN`: the id-keyed maps of the planning pages and the spec head cannot tell them apart (`track` is by slug already; the server answers `ambiguous`) — decide whether such trees are rejected or the maps key on the slug.
+- [ ] Head height at compact: design 002's 240 px budget (T79) was set for a head without a breadcrumb, design 003 adds the crumb row (20 px, 44 px under a coarse pointer); the gate e2e now measures the head without that row — decide whether the budget grows or the compact head loses something else.
+- [ ] A harbor fixture where one spec holds claims in two feature blocks and one holder is `other`: the `+n` chip and the chip variant order are proven through route interception and unit tests only.
+- [ ] Catalogue follow-ups: plural forms of the area-menu summaries ("1 milestones"), an all-complete summary line, the compact Features H1 ("Features" alone per design § Mobile), the unused keys `planning.features.meta` and `specHead.breadcrumb`; palette ranking has no non-id keyword tier, so typing a milestone state word does not find milestones.
+- [ ] `holder.stage` is null from core (the stage needs the gate states, T8); the pages fill it from the dashboard rows — move it into core once gates are browser-safe.
+- [ ] `ng build` budget warnings: `spec-head.css` 4.86 kB over the 4 kB `anyComponentStyle` warning after T40, the initial bundle over 500 kB (with 001's dashboard) — warnings, not errors; raise the budgets deliberately or trim.
+- [ ] 001 deferred moving the dashboard body types into the browser-safe `core/src/files.ts`; the palette index, overview column, KPI band and Brief keep hand-typed readers until then.
