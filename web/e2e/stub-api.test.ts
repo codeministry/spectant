@@ -1046,3 +1046,37 @@ describe('stub API: the notes routes (T100, ISC-95)', () => {
     expect(((await (await ask(NOTES, { session: 'notes-a' })).json()) as unknown[]).length).toBe(3);
   });
 });
+
+describe('POST /api/__stub/bump (T68)', () => {
+  const HARBOR = '/api/workspaces/harbor/dashboard';
+  const LANTERN = '/api/workspaces/lantern/dashboard';
+  type Kpis = { kpis: { claims: { closed: number } } };
+  const closedOf = async (res: Response): Promise<number> => ((await res.json()) as Kpis).kpis.claims.closed;
+
+  test('raises that session’s claims closed by one with a new ETag, and leaves other sessions and workspaces alone', async () => {
+    const before = await ask(HARBOR, { session: 'bump-a' });
+    const etag = before.headers.get('ETag') ?? '';
+    const closed = await closedOf(before);
+    const lantern = await closedOf(await ask(LANTERN, { session: 'bump-a' }));
+
+    expect((await ask('/api/__stub/bump?ws=harbor', { method: 'POST', session: 'bump-a' })).status).toBe(204);
+
+    const after = await ask(HARBOR, { session: 'bump-a', headers: { 'If-None-Match': etag } });
+    expect(after.status).toBe(200);
+    expect(after.headers.get('ETag')).not.toBe(etag);
+    expect(await closedOf(after)).toBe(closed + 1);
+    expect(await closedOf(await ask(HARBOR, { session: 'bump-b' }))).toBe(closed);
+    expect(await closedOf(await ask(LANTERN, { session: 'bump-a' }))).toBe(lantern);
+
+    expect((await ask('/api/__stub/reset', { method: 'POST', session: 'bump-a' })).status).toBe(204);
+    expect(await closedOf(await ask(HARBOR, { session: 'bump-a' }))).toBe(closed);
+  });
+
+  test('answers 405 for another method and 404 for a workspace the stub does not hold', async () => {
+    const wrong = await ask('/api/__stub/bump?ws=harbor');
+    expect(wrong.status).toBe(405);
+    expect(wrong.headers.get('Allow')).toBe('POST');
+    expect((await ask('/api/__stub/bump?ws=nowhere', { method: 'POST' })).status).toBe(404);
+    expect((await ask('/api/__stub/bump', { method: 'POST' })).status).toBe(404);
+  });
+});

@@ -50,7 +50,10 @@
  *   does: 200 when the hashes sent equal the ones the stub last sent, else 409; `stale` is always 409 `Conflict`,
  *   `locked` always 423 `Locked`.
  * - `X-Spectant-Stub-Session: <id>` scopes the settings and the writes (absent: one shared session);
- *   `POST /api/__stub/reset` restores that session's settings and notes and drops its writes (204).
+ *   `POST /api/__stub/reset` restores that session's settings and notes and drops its writes and bumps (204).
+ * - `POST /api/__stub/bump?ws=<slug>` changes that workspace's dashboard for that session between two polls (T68,
+ *   ISC-62): each call raises `kpis.claims.closed` by one, so the body and its ETag change as a file on disk would.
+ *   204; 404 for a workspace the stub does not hold; 405 with `Allow: POST` for another method.
  *
  * Nothing here reads the clock or the registry: every answer is a function of the fixture files and the request. The
  * goldens are read once when the stub is built, so a missing fixture fails at startup, not on a request. Core's
@@ -139,6 +142,16 @@ export const SESSION_HEADER = 'X-Spectant-Stub-Session';
 export const LOCKS_HEADER = 'X-Spectant-Stub-Locks';
 export const WRITE_HEADER = 'X-Spectant-Stub-Write';
 export const RESET_PATH = '/api/__stub/reset';
+export const BUMP_PATH = '/api/__stub/bump';
+
+/** The dashboard model with `kpis.claims.closed` raised by `by` (the bump hook); the golden itself is never touched. */
+export function bumpDashboard(model: unknown, by: number): unknown {
+  if (by === 0) return model;
+  const copy = structuredClone(model) as { kpis?: { claims?: { closed?: unknown } } };
+  const claims = copy.kpis?.claims;
+  if (claims && typeof claims.closed === 'number') claims.closed += by;
+  return copy;
+}
 
 /** The stub's clock: the `now` the live goldens were built with; the `at` of every reviewed mark the stub writes. */
 export const STUB_NOW = '2026-03-08T15:00:00Z';
@@ -601,6 +614,19 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
 
   const sessions = new Map<string, Settings>();
   const writes = new Map<string, SessionWrites>();
+  /** Bumps per session, then per workspace slug. */
+  const bumps = new Map<string, Map<string, number>>();
+  const bumpsOf = (req: Request, slug: string): number => bumps.get(sessionOf(req))?.get(slug) ?? 0;
+  const bumpRoute = (req: Request, url: URL): Response => {
+    if (req.method !== 'POST') return settingsError(405, { error: 'method-not-allowed' }, { Allow: 'POST' });
+    const slug = url.searchParams.get('ws');
+    if (slug === null || !dashboards.has(slug)) return settingsError(404, { error: 'not-found' });
+    const id = sessionOf(req);
+    const own = bumps.get(id) ?? new Map<string, number>();
+    own.set(slug, (own.get(slug) ?? 0) + 1);
+    bumps.set(id, own);
+    return new Response(null, { status: 204 });
+  };
   const sessionOf = (req: Request): string => req.headers.get(SESSION_HEADER) ?? '';
   const settingsOf = (req: Request): Settings => sessions.get(sessionOf(req)) ?? defaults();
   const writesOf = (req: Request): SessionWrites => {
@@ -638,7 +664,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const found = current.workspaces.get(slug);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
-    return workspaceJson(req, 200, dashboards.get(slug)?.model);
+    return workspaceJson(req, 200, bumpDashboard(dashboards.get(slug)?.model, bumpsOf(req, slug)));
   };
 
   /**
@@ -927,8 +953,10 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       sessions.delete(sessionOf(req));
       writes.delete(sessionOf(req));
       notebooks.delete(sessionOf(req));
+      bumps.delete(sessionOf(req));
       return new Response(null, { status: 204 });
     }
+    if (pathname === BUMP_PATH) return bumpRoute(req, url);
     if (pathname === SETTINGS_PATH) return settingsRoute(req);
 
     const locks = req.headers.get(LOCKS_HEADER) ?? 'activity';

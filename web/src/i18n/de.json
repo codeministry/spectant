@@ -137,7 +137,11 @@
         "other": "{{count}} offene Fog-Einträge"
       },
       "previous": "Vorherige Spec",
-      "next": "Nächste Spec"
+      "next": "Nächste Spec",
+      "stepHint": "vorherige / nächste Spec",
+      "explore": "Spec {{id}} erkunden",
+      "openFog": "Offener Fog",
+      "open": "Spec öffnen"
     },
     "agentWorking": "Agent {{session}} arbeitet"
   },
@@ -214,7 +218,8 @@
       "palette": "Befehlspalette öffnen",
       "sheet": "Diese Übersicht der Tastenkürzel anzeigen",
       "move": "Auswahl in der fokussierten Liste bewegen",
-      "columns": "Zwischen Workspace-Spalten wechseln",
+      "prevColumn": "Vorherige Workspace-Spalte, gleiche Zeile",
+      "nextColumn": "Nächste Workspace-Spalte, gleiche Zeile",
       "open": "Ausgewählte Spec öffnen",
       "close": "Palette, Sheet, Popover oder Inspektor schließen",
       "copy": "Nächsten Befehl der ausgewählten Spec kopieren",
@@ -224,7 +229,7 @@
       "goSpecs": "Zu den Specs",
       "goNextUp": "Zu „Als Nächstes“",
       "goWarnings": "Zu den Warnungen",
-      "phaseFilter": "Phasenfilter: Alle, building, scoping",
+      "phaseFilter": "Phasenfilter: {{target}} (solange die Liste den Fokus hat)",
       "goTo": "Zu {{target}} wechseln",
       "prevSpec": "Vorherige Spec im Workspace",
       "nextSpec": "Nächste Spec im Workspace",
@@ -239,6 +244,11 @@
     },
     "off": "Einzeltasten-Kürzel sind in den Einstellungen ausgeschaltet; nur Esc funktioniert.",
     "later": "Das Markieren als geprüft folgt mit einer späteren Aufgabe.",
+    "contexts": {
+      "workspace": "In einem Workspace oder allen Workspaces",
+      "spec": "In einer Spec",
+      "any": "Überall"
+    },
     "groups": {
       "navigate": "Wechseln zu",
       "spec": "Diese Spec",
@@ -869,6 +879,10 @@
       "paused": "Schreiben pausiert"
     },
     "noSource": "Keine Agentenquelle · Schreibvorgänge prüfen nur den Datei-Hash"
+  },
+  "refresh": {
+    "newSpecs": "{{count}} neu",
+    "announcement": "Dashboard aktualisiert: {{changed}} geändert, {{added}} neu"
   },
   "notes": {
     "import": {

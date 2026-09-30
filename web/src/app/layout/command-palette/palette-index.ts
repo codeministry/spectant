@@ -1,5 +1,6 @@
 import { computed, inject, Injectable, resource, signal } from '@angular/core';
 import { ApiClient, type DashboardBody } from '../../core/api.service';
+import { RefreshService } from '../../core/refresh.service';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 
@@ -78,6 +79,7 @@ export function readWorkspace(slug: string, name: string, body: DashboardBody): 
 export class PaletteIndex {
   private readonly api = inject(ApiClient);
   private readonly data = inject(ShellData);
+  private readonly refresher = inject(RefreshService);
   private readonly state = inject(ShellState);
   private readonly wanted = signal(false);
 
@@ -120,13 +122,12 @@ export class PaletteIndex {
     else this.wanted.set(true);
   }
 
-  /** Refresh now: the shell's resources and this index. */
+  /**
+   * Refresh now: the live refresh (`RefreshService`, the same one the timer and the `r` key call; it reloads the
+   * shell's workspaces, dashboard, planning tree and open spec in place) and this index.
+   */
   refresh(): void {
-    this.data.workspaces.reload();
-    this.data.dashboard.reload();
-    // The planning tree and the open spec feed the Features / Milestones groups, the breadcrumb and the spec pages.
-    this.data.planning.reload();
-    this.data.spec.reload();
+    this.refresher.refresh();
     if (this.wanted()) this.others.reload();
   }
 }

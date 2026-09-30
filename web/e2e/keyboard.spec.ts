@@ -214,3 +214,158 @@ test.describe('keyboard on a coarse pointer', () => {
     await expect(sheetOf(page).locator('[data-binding]')).toHaveCount(SHORTCUTS.length);
   });
 });
+
+/**
+ * ISC-61.1 (spec 001, T69): Enter on the selected row of the Specs panel opens the spec preview — the query state
+ * `?spec=<id>` on `/w/:ws`, shown by the inspector in the rail at wide and in a side sheet at medium — Enter again (or
+ * the Open button) opens the spec page, `[` `]` step through the list, and Esc from the preview clears the query and
+ * puts focus back on the row. `bun run e2e -- keyboard -g enter`.
+ */
+test.describe('keyboard: Enter opens the selected spec', () => {
+  test.use(atWidth(1440));
+
+  const rowsOf = (page: Page) => page.locator('[data-panel="specs"] [data-spec-row]');
+  const rowOf = (page: Page, id: string) => page.locator(`[data-panel="specs"] [data-spec-row="${id}"]`);
+  const inspectorOf = (page: Page) => page.locator('app-spec-inspector');
+
+  test('enter previews the selected spec, enter again opens it, Esc returns to the row', async ({ page }) => {
+    const dashboard = page.waitForResponse((response) => response.url().endsWith('/harbor/dashboard') && response.ok());
+    await page.goto('/w/harbor');
+    const body = (await (await dashboard).json()) as { specs?: Array<{ id: string }> };
+    const ids = (body.specs ?? []).map((spec) => spec.id);
+    expect(ids.length).toBeGreaterThanOrEqual(3);
+    const id = ids[1] ?? '';
+    const next = ids[2] ?? '';
+
+    await rowsOf(page).first().focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(rowOf(page, id)).toBeFocused();
+
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(new RegExp(`/w/harbor\\?spec=${id}$`));
+    await expect(inspectorOf(page)).toBeVisible();
+    await expect(inspectorOf(page)).toHaveAttribute('data-spec', id);
+
+    await page.keyboard.press(']');
+    await expect(page).toHaveURL(new RegExp(`/w/harbor\\?spec=${next}$`));
+    await expect(inspectorOf(page)).toHaveAttribute('data-spec', next);
+    await page.keyboard.press('[');
+    await expect(page).toHaveURL(new RegExp(`/w/harbor\\?spec=${id}$`));
+
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/\/w\/harbor$/);
+    await expect(inspectorOf(page)).toHaveCount(0);
+    await expect(rowOf(page, id)).toBeFocused();
+
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(new RegExp(`/w/harbor\\?spec=${id}$`));
+    // The previewed row now links to the spec page (rendered after the URL commits).
+    await expect(rowOf(page, id)).toHaveAttribute('aria-expanded', 'true');
+    await expect(rowOf(page, id)).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(new RegExp(`/w/harbor/s/${id}$`));
+  });
+
+  test('enter at medium previews in a side sheet whose Open button leads to the spec page', async ({ page }) => {
+    await page.setViewportSize({ width: 820, height: 900 });
+    await page.goto('/w/harbor');
+    const row = rowsOf(page).first();
+    const id = (await row.getAttribute('data-spec-row')) ?? '';
+    await row.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(new RegExp(`/w/harbor\\?spec=${id}$`));
+    const sheet = page.locator('ui-sheet[data-inspector-sheet] dialog');
+    await expect(sheet).toBeVisible();
+    await expect(sheet.locator('app-spec-inspector')).toHaveAttribute('data-spec', id);
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/\/w\/harbor$/);
+    await expect(rowOf(page, id)).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(sheet).toBeVisible();
+    await sheet.locator('[data-action="open-spec"]').click();
+    await expect(page).toHaveURL(new RegExp(`/w/harbor/s/${id}$`));
+  });
+});
+
+/**
+ * ISC-61.2 (spec 001, T67): `?` opens the shortcut sheet on the workspace dashboard too, and it lists the dashboard
+ * context beside the spec context, both from the one `SHORTCUTS` table. The dashboard keys work where the sheet says:
+ * `g s` / `g n` / `g w` land on their section headings, `1`–`3` filter the phase while the list has focus, `g a`
+ * leaves for all workspaces and `l` / `h` move between their columns. `bun run e2e -- keyboard -g help`.
+ */
+test.describe('keyboard help on the workspace dashboard', () => {
+  test.use(atWidth(1440));
+
+  const DASHBOARD_KEYS = [
+    'copy-next',
+    'refresh',
+    'move',
+    'column-prev',
+    'column-next',
+    'phase-all',
+    'phase-building',
+    'phase-scoping',
+    'go-all',
+    'go-specs',
+    'go-next-up',
+    'go-warnings',
+  ];
+
+  async function openDashboard(page: Page): Promise<void> {
+    const dashboard = page.waitForResponse((response) => response.url().endsWith('/harbor/dashboard') && response.ok());
+    await page.goto('/w/harbor');
+    await dashboard;
+    await expect(page.locator('[data-panel="specs"] [data-spec-row]').first()).toBeVisible();
+  }
+
+  test('? opens the help sheet on /w/harbor, listing the dashboard keys per context', async ({ page }) => {
+    await openDashboard(page);
+    await page.keyboard.press('?');
+    const sheet = sheetOf(page);
+    await expect(sheet).toBeVisible();
+    await expect(sheet.locator('[data-context]')).toHaveCount(3);
+    const workspace = sheet.locator('[data-context="workspace"]');
+    await expect(workspace).toBeVisible();
+    await expect(sheet.locator('[data-context="spec"]')).toBeVisible();
+    for (const id of DASHBOARD_KEYS) {
+      const binding = SHORTCUTS.find((entry) => entry.id === id);
+      expect(binding, id).toBeDefined();
+      await expect(workspace.locator(`[data-binding="${id}"] kbd`)).toHaveText((binding?.keys ?? []).map(keyLabel));
+    }
+    await expect(sheet.locator('[data-binding]')).toHaveCount(SHORTCUTS.length);
+    await page.keyboard.press('Escape');
+    await expect(sheet).toBeHidden();
+    await expect(page).toHaveURL(/\/w\/harbor$/);
+  });
+
+  test('the dashboard keys the help sheet lists reach their sections, filter and columns', async ({ page }) => {
+    await openDashboard(page);
+    for (const [key, heading] of [
+      ['s', 'specs'],
+      ['n', 'next-up'],
+      ['w', 'warnings'],
+    ] as const) {
+      await page.keyboard.press('g');
+      await page.keyboard.press(key);
+      await expect(page.locator(`#${heading}`)).toBeFocused();
+    }
+    await expect(page).toHaveURL(/\/w\/harbor$/);
+
+    await page.locator('[data-panel="specs"] [data-spec-row]').first().focus();
+    await page.keyboard.press('2');
+    await expect(page).toHaveURL(/[?&]phase=building(&|$)/);
+    await page.keyboard.press('1');
+    await expect(page).not.toHaveURL(/[?&]phase=/);
+
+    await page.keyboard.press('g');
+    await page.keyboard.press('a');
+    await expect(page).toHaveURL(/\/$/);
+    const columns = page.locator('app-workspace-column');
+    await expect(columns.nth(1).locator('a.d-row').nth(1)).toBeVisible();
+    await columns.nth(0).locator('a.d-row').nth(1).focus();
+    await page.keyboard.press('l');
+    await expect(columns.nth(1).locator('a.d-row').nth(1)).toBeFocused();
+    await page.keyboard.press('h');
+    await expect(columns.nth(0).locator('a.d-row').nth(1)).toBeFocused();
+  });
+});

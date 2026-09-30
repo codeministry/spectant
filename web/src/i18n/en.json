@@ -137,7 +137,11 @@
         "other": "{{count}} open fog items"
       },
       "previous": "Previous spec",
-      "next": "Next spec"
+      "next": "Next spec",
+      "stepHint": "previous / next spec",
+      "explore": "Explore spec {{id}}",
+      "openFog": "Open fog",
+      "open": "Open spec"
     },
     "agentWorking": "Agent {{session}} working"
   },
@@ -214,7 +218,8 @@
       "palette": "Open the command palette",
       "sheet": "Show this shortcut sheet",
       "move": "Move the selection in the focused list",
-      "columns": "Move between workspace columns",
+      "prevColumn": "Previous workspace column, same row",
+      "nextColumn": "Next workspace column, same row",
       "open": "Open the selected spec",
       "close": "Close the palette, sheet, popover or inspector",
       "copy": "Copy the selected spec's next command",
@@ -224,7 +229,7 @@
       "goSpecs": "Go to Specs",
       "goNextUp": "Go to Next up",
       "goWarnings": "Go to Warnings",
-      "phaseFilter": "Phase filter: All, building, scoping",
+      "phaseFilter": "Phase filter: {{target}} (while the list has focus)",
       "goTo": "Go to {{target}}",
       "prevSpec": "Previous spec in the workspace",
       "nextSpec": "Next spec in the workspace",
@@ -239,6 +244,11 @@
     },
     "off": "Single-key shortcuts are off in the settings; only Esc works.",
     "later": "Marking as reviewed comes with a later task.",
+    "contexts": {
+      "workspace": "On a workspace or all workspaces",
+      "spec": "In a spec",
+      "any": "Everywhere"
+    },
     "groups": {
       "navigate": "Go to",
       "spec": "This spec",
@@ -869,6 +879,10 @@
       "paused": "writes paused"
     },
     "noSource": "No agent source · writes check the file hash only"
+  },
+  "refresh": {
+    "newSpecs": "{{count}} new",
+    "announcement": "Dashboard updated: {{changed}} changed, {{added}} new"
   },
   "notes": {
     "import": {

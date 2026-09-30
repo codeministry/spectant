@@ -60,9 +60,12 @@
           <a
             uiRovingItem
             class="row-link"
-            [routerLink]="['/w', ws(), 's', row.id]"
+            [routerLink]="row.id === preview() ? ['/w', ws(), 's', row.id] : []"
+            [queryParams]="row.id === preview() ? null : { spec: row.id }"
+            [queryParamsHandling]="row.id === preview() ? '' : 'merge'"
             [attr.data-spec-row]="row.id"
             [attr.data-selected]="row.id === selectedId() ? '' : null"
+            [attr.aria-expanded]="row.id === preview()"
           >
             <app-spec-row [row]="row" [stageLabels]="stageLabels()" />
           </a>

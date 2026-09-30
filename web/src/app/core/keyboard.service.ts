@@ -4,8 +4,20 @@ import { TranslocoService } from '@jsverse/transloco';
 import { areaById, areaPath, specLink } from '../layout/shell/areas';
 import { ShellData } from '../layout/shell/shell-data.service';
 import { ShellState } from '../layout/shell/shell-state.service';
+import { PaletteIndex } from '../layout/command-palette/palette-index';
+import { writeClipboard } from '../shared/ui/command-chip/command-chip';
 import { ToastService } from '../shared/ui/toast/toast';
-import { G_WINDOW_MS, GO_PREFIX, type Shortcut, type ShortcutAction, SHORTCUTS } from './keyboard-bindings';
+import {
+  type DashboardSection,
+  G_WINDOW_MS,
+  GO_PREFIX,
+  GROUP_CONTEXT,
+  type Shortcut,
+  type ShortcutAction,
+  type ShortcutContext,
+  SHORTCUTS,
+} from './keyboard-bindings';
+import { RefreshService } from './refresh.service';
 import { SettingsService } from './settings.service';
 
 /** Key hints show only where a keyboard is likely (design.md § Interaction and accessibility). */
@@ -22,10 +34,37 @@ const TYPING = 'input, textarea, select, [contenteditable]:not([contenteditable=
 /** How many frames a section jump waits for the new view's H2 before it settles for the page's H1. */
 const HEADING_FRAMES = 30;
 
+/** The overview's workspace columns and their spec rows (`features/overview`), for `h` / `l`. */
+const COLUMN = '[data-ui="workspace-column"]';
+const COLUMN_ROW = 'a.d-row';
+/** The dashboard's Specs panel and its selected row (`features/dashboard/spec-table`), for `c` and `1`–`3`. */
+const SPECS_PANEL = '[data-panel="specs"]';
+const SELECTED_ROW = `${SPECS_PANEL} [data-spec-row][data-selected]`;
+
 const MOD = 'Mod+';
-const chord = new Map(SHORTCUTS.filter((b) => b.keys.length === 1 && b.keys[0]?.startsWith(MOD)).map((b) => [b.keys[0], b]));
-const singleKey = new Map(SHORTCUTS.filter((b) => b.keys.length === 1 && !b.keys[0]?.startsWith(MOD)).map((b) => [b.keys[0], b]));
-const goKey = new Map(SHORTCUTS.filter((b) => b.keys.length === 2 && b.keys[0] === GO_PREFIX).map((b) => [b.keys[1], b]));
+
+/** The bindings of `list` by their `key`; one key holds one binding per context (`GROUP_CONTEXT`). */
+function byKey(list: readonly Shortcut[], key: (binding: Shortcut) => string | undefined): ReadonlyMap<string, readonly Shortcut[]> {
+  const map = new Map<string, Shortcut[]>();
+  for (const binding of list) {
+    const k = key(binding);
+    if (k !== undefined) map.set(k, [...(map.get(k) ?? []), binding]);
+  }
+  return map;
+}
+
+const chord = byKey(
+  SHORTCUTS.filter((b) => b.keys.length === 1 && b.keys[0]?.startsWith(MOD)),
+  (b) => b.keys[0],
+);
+const singleKey = byKey(
+  SHORTCUTS.filter((b) => b.keys.length === 1 && !b.keys[0]?.startsWith(MOD)),
+  (b) => b.keys[0],
+);
+const goKey = byKey(
+  SHORTCUTS.filter((b) => b.keys.length === 2 && b.keys[0] === GO_PREFIX),
+  (b) => b.keys[1],
+);
 
 /**
  * The app's keyboard (ISC-97, T102): one document `keydown` handler, called by the shell, dispatching the bindings of
@@ -41,7 +80,11 @@ export class KeyboardService {
   private readonly router = inject(Router);
   private readonly state = inject(ShellState);
   private readonly data = inject(ShellData);
+  /** The palette's view of the open dashboard (next commands) and its Refresh now, shared with `c` and `r`. */
+  private readonly index = inject(PaletteIndex);
   private readonly settings = inject(SettingsService);
+  /** Injected here, in the root `KeyboardService`, so the live refresh's timer runs from app start (T68). */
+  private readonly refresher = inject(RefreshService);
   private readonly toast = inject(ToastService);
   private readonly transloco = inject(TranslocoService);
   private readonly clock = inject(KEYBOARD_CLOCK);
@@ -88,19 +131,43 @@ export class KeyboardService {
       return false;
     }
     if (this.overlayOpen()) return false;
-    if (event.key === 'Escape') return this.fire(singleKey.get('Escape'), event);
+    if (event.key === 'Escape') return this.fire(this.pick(singleKey, 'Escape'), event);
     if (!this.settings.settings().singleKeyShortcuts) return false;
 
     const now = this.clock();
     const pending = this.goAt;
     this.goAt = null;
-    if (pending !== null && now - pending <= G_WINDOW_MS && goKey.has(event.key)) return this.fire(goKey.get(event.key), event);
-    if (event.key === GO_PREFIX && this.spec() !== null) {
+    if (pending !== null && now - pending <= G_WINDOW_MS && goKey.has(event.key)) return this.fire(this.pick(goKey, event.key), event);
+    if (event.key === GO_PREFIX && this.goContext()) {
       this.goAt = now;
       event.preventDefault();
       return true;
     }
-    return this.fire(singleKey.get(event.key), event);
+    return this.fire(this.pick(singleKey, event.key), event);
+  }
+
+  /**
+   * The page's context (spec 001 T67): a spec open, a workspace dashboard or the all-workspaces page, or neither
+   * (settings, not found), where only the `any` bindings fire.
+   */
+  private context(): ShortcutContext | null {
+    if (this.spec() !== null) return 'spec';
+    if (this.state.ws() !== null || this.router.url.split(/[?#]/u)[0] === '/') return 'workspace';
+    return null;
+  }
+
+  /** The binding `key` has in the current context, else its `any` one. */
+  private pick(map: ReadonlyMap<string, readonly Shortcut[]>, key: string): Shortcut | undefined {
+    const here = this.context();
+    return map.get(key)?.find((binding) => {
+      const context = GROUP_CONTEXT[binding.group];
+      return context === 'any' || context === here;
+    });
+  }
+
+  /** `g` is a prefix wherever a `g` sequence is bound: inside a spec and on a workspace dashboard. */
+  private goContext(): boolean {
+    return this.spec() !== null || this.state.ws() !== null;
   }
 
   /**
@@ -108,7 +175,7 @@ export class KeyboardService {
    * palette again). Another open dialog or popover still owns the keyboard.
    */
   private onChord(event: KeyboardEvent): boolean {
-    const binding = chord.get(`${MOD}${chordKey(event)}`);
+    const binding = this.pick(chord, `${MOD}${chordKey(event)}`);
     if (binding === undefined) return false;
     // In a text field on macOS Ctrl+K is the editing chord "kill to end of line"; there only ⌘K opens the palette.
     if (event.ctrlKey && !event.metaKey && this.mac && event.target instanceof Element && event.target.closest(TYPING)) {
@@ -134,6 +201,9 @@ export class KeyboardService {
       case 'toggle-zen':
         this.state.toggleZen();
         return true;
+      case 'refresh':
+        this.refresher.refresh();
+        return true;
       case 'open-sheet':
         this.openSheet();
         return true;
@@ -142,9 +212,81 @@ export class KeyboardService {
         return true;
       case 'focus-search':
         return this.focusSearch();
+      case 'go-all':
+        if (this.workspace() === null) return false;
+        void this.router.navigate(['/']);
+        return true;
+      case 'go-section':
+        return this.focusSection(action.section);
+      case 'copy-next':
+        return this.copyNext();
+      case 'move-selection':
+        return false;
+      case 'step-column':
+        return this.stepColumn(action.delta);
+      case 'phase-filter':
+        return this.phaseFilter(action.phase);
       default:
         return this.runInSpec(action);
     }
+  }
+
+  /** The open workspace while no spec is open (the dashboard `/w/:ws`), else null. */
+  private workspace(): string | null {
+    return this.spec() === null ? this.state.ws() : null;
+  }
+
+  /** `g s` `g n` `g w` on a dashboard: focus the section's heading (its id), wherever the tier put it. */
+  private focusSection(section: DashboardSection): boolean {
+    if (this.workspace() === null) return false;
+    const heading = this.document.getElementById(section);
+    if (heading === null) return false;
+    if (!heading.hasAttribute('tabindex') && heading.tagName !== 'SUMMARY') heading.setAttribute('tabindex', '-1');
+    heading.focus();
+    return this.document.activeElement === heading;
+  }
+
+  /** `c`: copy the selected spec's next command — the previewed one (`?spec=`), else the Specs panel's selection. */
+  private copyNext(): boolean {
+    if (this.workspace() === null) return false;
+    const preview: unknown = this.router.parseUrl(this.router.url).queryParams['spec'];
+    const id =
+      typeof preview === 'string' && preview !== ''
+        ? preview
+        : (this.document.querySelector(SELECTED_ROW)?.getAttribute('data-spec-row') ?? null);
+    const command = id === null ? null : (this.index.current()?.specs.find((row) => row.id === id)?.nextCommand ?? null);
+    if (command === null) return false;
+    void writeClipboard(command, this.document).then((done) => {
+      this.toast.show(this.transloco.translate(done ? 'common.copied' : 'common.copyFallback', { command }));
+    });
+    return true;
+  }
+
+  /** `h` `l` on `/`: the same row index in the previous / next workspace column (the first column from nowhere). */
+  private stepColumn(delta: -1 | 1): boolean {
+    if (this.state.ws() !== null) return false;
+    const columns = [...this.document.querySelectorAll<HTMLElement>(COLUMN)];
+    const active = this.document.activeElement;
+    const current = active?.closest<HTMLElement>(COLUMN) ?? null;
+    const from = current === null ? -1 : columns.indexOf(current);
+    const to = from < 0 ? 0 : from + delta;
+    // `at` reads a negative index from the end; `h` in the first column must stop, not wrap.
+    const target = to < 0 ? undefined : columns.at(to);
+    if (target === undefined) return false;
+    const row = current === null ? 0 : Math.max(0, [...current.querySelectorAll(COLUMN_ROW)].indexOf(active as Element));
+    const rows = [...target.querySelectorAll<HTMLElement>(COLUMN_ROW)];
+    const next = (rows.length > 0 ? rows.at(Math.min(row, rows.length - 1)) : undefined) ?? target.querySelector<HTMLElement>('a[href]');
+    if (next === null) return false;
+    next.focus();
+    return true;
+  }
+
+  /** `1`–`3` while the Specs panel has focus: its `phase` query param (All removes it). */
+  private phaseFilter(phase: string | null): boolean {
+    const ws = this.workspace();
+    if (ws === null || this.document.querySelector(SPECS_PANEL)?.contains(this.document.activeElement) !== true) return false;
+    void this.router.navigate(['/w', ws], { queryParams: { phase }, queryParamsHandling: 'merge' });
+    return true;
   }
 
   /** The bindings that need an open spec. */

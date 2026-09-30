@@ -44,6 +44,12 @@ export type ContextRailInline = 'all' | 'next-up' | 'warnings';
 export class ContextRail {
   readonly model = input.required<DashboardView>();
   readonly inline = input<ContextRailInline>('all');
+  /**
+   * Rail content that stands in for Next up and Warnings at wide while it is set — the spec inspector while the page
+   * previews a spec (`?spec=<id>`, T69). One registration keeps the rail the dashboard's, so clearing it brings the
+   * two blocks back.
+   */
+  readonly replace = input<TemplateRef<unknown> | null>(null);
 
   private readonly state = inject(ShellState);
   private readonly transloco = inject(TranslocoService);
@@ -66,7 +72,7 @@ export class ContextRail {
   constructor() {
     inject(RailContent).register(
       {
-        blocks: computed(() => (this.wide() ? (this.railBlocks() ?? null) : null)),
+        blocks: computed(() => (this.wide() ? (this.replace() ?? this.railBlocks() ?? null) : null)),
         bar: computed(() => null),
         badges: this.badges,
       },

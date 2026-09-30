@@ -1,0 +1,112 @@
+<div class="insp-back">
+  <button ui-button variant="ghost" size="sm" data-action="back" (click)="back.emit()">
+    <ui-icon name="arrow-left" [size]="16" />
+    {{ 'common.back' | transloco }}
+  </button>
+  <ui-kbd aria-hidden="true">Esc</ui-kbd>
+</div>
+
+<div class="insp-ident">
+  <span class="insp-id">{{ row().id }}</span>
+  <h2 class="insp-title" tabindex="-1" [id]="headingId">{{ row().title }}</h2>
+  @if (row().description; as description) {
+    <p class="insp-desc">{{ description }}</p>
+  }
+</div>
+
+<div class="insp-chips">
+  @if (row().phase; as phase) {
+    <ui-chip [tone]="phaseTone()">{{ 'phases.' + phase | transloco }}</ui-chip>
+  }
+  @if (row().type; as type) {
+    <ui-chip>{{ type }}</ui-chip>
+  }
+  <ui-chip>{{ 'stages.' + row().stage | transloco }}</ui-chip>
+</div>
+
+<ui-stage-track size="labelled" [labels]="stageLabels()" [current]="stageCurrent()" [ariaLabel]="stageAria()" />
+
+<div class="insp-block">
+  <div class="insp-line">
+    <span class="type-eyebrow">{{ 'specs.inspector.claims' | transloco }}</span>
+    <span class="insp-num">{{ row().closed }}/{{ row().total }} · {{ 'specs.inspector.percent' | transloco: { percent: percent() } }}</span>
+  </div>
+  <ui-meter
+    [value]="row().closed"
+    [max]="row().total"
+    [label]="'common.claimsClosed' | transloco: { closed: row().closed, total: row().total }"
+  />
+</div>
+
+@if (row().nextCommand; as command) {
+  <div class="insp-block">
+    <span class="type-eyebrow">{{ 'specs.inspector.nextCommand' | transloco }}</span>
+    <ui-command-chip
+      [command]="command"
+      [copyLabel]="'common.copyCommand' | transloco"
+      [copiedLabel]="'common.copied' | transloco: { command }"
+      [manualHint]="'common.copyFallback' | transloco"
+    />
+  </div>
+}
+
+@if (row().takeable.length > 0) {
+  <div class="insp-block">
+    <span class="type-eyebrow">{{ 'specs.inspector.takeableClaims' | transloco }}</span>
+    <div class="insp-chips">
+      @for (claim of row().takeable; track claim) {
+        <ui-chip tone="success">{{ claim }}</ui-chip>
+      }
+    </div>
+  </div>
+}
+
+<div class="insp-block" data-inspector="warnings">
+  <span class="type-eyebrow">{{ 'specs.inspector.warnings' | transloco }} · {{ warnings().length }}</span>
+  @if (warnings().length > 0) {
+    <ul class="insp-warnings">
+      @for (warning of warnings(); track $index) {
+        <li>
+          <ui-icon class="insp-warn-icon" name="triangle-alert" [size]="16" />
+          <span>{{ warning.text }}</span>
+        </li>
+      }
+    </ul>
+  }
+</div>
+
+<nav class="insp-explore" [attr.aria-label]="'specs.inspector.explore' | transloco: { id: row().id }">
+  <span class="type-eyebrow">{{ 'specs.inspector.explore' | transloco: { id: row().id } }}</span>
+  <div class="insp-explore-grid">
+    @for (tab of exploreTabs; track tab) {
+      <a class="insp-explore-item" [routerLink]="tabLink(tab)">
+        <span>{{ 'shell.tabs.' + tab | transloco }}</span>
+        <ui-icon name="chevron-right" [size]="14" />
+      </a>
+    }
+  </div>
+</nav>
+
+<div class="insp-line">
+  <span class="type-eyebrow">{{ 'specs.inspector.openFog' | transloco }}</span>
+  <span class="insp-num">{{ row().fog }}</span>
+</div>
+
+<div class="insp-step">
+  <ui-kbd aria-hidden="true">[</ui-kbd>
+  <ui-kbd aria-hidden="true">]</ui-kbd>
+  <span class="insp-step-hint">{{ 'specs.inspector.stepHint' | transloco }}</span>
+  <span class="insp-step-links">
+    @if (prev(); as prev) {
+      <a ui-button variant="outline" size="sm" data-action="prev-spec" [routerLink]="[]" [queryParams]="{ spec: prev }" queryParamsHandling="merge" [replaceUrl]="true" [attr.aria-label]="'specs.inspector.previous' | transloco">{{ prev }}</a>
+    }
+    @if (next(); as next) {
+      <a ui-button variant="outline" size="sm" data-action="next-spec" [routerLink]="[]" [queryParams]="{ spec: next }" queryParamsHandling="merge" [replaceUrl]="true" [attr.aria-label]="'specs.inspector.next' | transloco">{{ next }}</a>
+    }
+  </span>
+</div>
+
+<a ui-button variant="primary" class="insp-open" data-action="open-spec" data-autofocus [routerLink]="specPage()">
+  {{ 'specs.inspector.open' | transloco }}
+  <ui-kbd aria-hidden="true">↵</ui-kbd>
+</a>

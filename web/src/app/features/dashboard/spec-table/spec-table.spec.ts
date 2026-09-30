@@ -94,7 +94,8 @@ describe('SpecTable (prototype port, T89)', () => {
   it('renders a row as id | title + description | agent dot, mini track, phase chip | meter + a/b', async () => {
     const { host } = await render();
     const [first, second] = [...host.querySelectorAll<HTMLAnchorElement>('[data-spec-row]')];
-    expect(first.getAttribute('href')).toBe('/w/harbor/s/002');
+    // T69: a row's first activation previews it (`?spec=<id>`); only the previewed row links to the spec page.
+    expect(first.getAttribute('href')).toMatch(/[?&]spec=002$/);
     expect(text(first.querySelector('.rid'))).toBe('002');
     expect(text(first.querySelector('.rtitle .t'))).toBe('Spec 002');
     expect(text(first.querySelector('.rtitle .d'))).toBe('Serves the dashboard.');

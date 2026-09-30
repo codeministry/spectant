@@ -7,13 +7,57 @@
   @if (view(); as view) {
     <app-kpi-band [model]="view" [ws]="ws()" />
     <app-brief [brief]="view.brief" />
-    <!-- One context-rail: at wide it hands Next up and the warnings to the shell's rail, below wide it renders Next up here. -->
-    <app-context-rail [model]="view" inline="next-up" />
+    <!-- One context-rail: at wide it hands Next up and the warnings to the shell's rail (or the inspector while a spec
+         is previewed), below wide it renders Next up here. -->
+    <app-context-rail [model]="view" inline="next-up" [replace]="railInspector()" />
   }
-  <app-spec-table [ws]="ws()" [rows]="rows()" [archive]="archive()" [query]="query()" (queryChange)="setQuery($event)" />
+  <app-spec-table
+    [ws]="ws()"
+    [rows]="rows()"
+    [archive]="archive()"
+    [query]="query()"
+    [preview]="previewId()"
+    (queryChange)="setQuery($event)"
+  />
   @if (view(); as view) {
     @if (!railHolds()) {
       <app-warnings-panel [form]="state.tier() === 'compact' ? 'callout' : 'section'" [specs]="view.specs" [kpis]="view.kpis" />
     }
   }
+}
+
+<ng-template #inspectorRail>
+  @if (preview(); as row) {
+    <app-spec-inspector
+      form="rail"
+      [ws]="ws()"
+      [row]="row"
+      [warnings]="previewWarnings()"
+      [prev]="neighbours().prev"
+      [next]="neighbours().next"
+      (back)="closePreview()"
+    />
+  }
+</ng-template>
+
+@if (!railHolds()) {
+  <ui-sheet
+    data-inspector-sheet
+    [tier]="state.tier() === 'compact' ? 'compact' : 'medium'"
+    [open]="sheetOpen()"
+    (openChange)="sheetChange($event)"
+    [label]="'specs.inspector.label' | transloco"
+  >
+    @if (preview(); as row) {
+      <app-spec-inspector
+        form="sheet"
+        [ws]="ws()"
+        [row]="row"
+        [warnings]="previewWarnings()"
+        [prev]="neighbours().prev"
+        [next]="neighbours().next"
+        (back)="closePreview()"
+      />
+    }
+  </ui-sheet>
 }

@@ -226,3 +226,146 @@ test.describe('palette', () => {
     });
   });
 });
+
+/**
+ * ISC-60.1 (T70): typing narrows the palette to matching entries. Filtering and ranking live in
+ * `layout/command-palette/palette-ranking.ts` (unit-pinned by `palette-ranking.spec.ts`); these tests hold the rendered
+ * list to it. Expected specs derive from what the stub serves by an independent rule: a title word matches when one of
+ * the title's words starts with the query, an ID prefix when the spec's ID starts with it.
+ * `bun run e2e -- palette -g filter`.
+ */
+test.describe('palette filter', () => {
+  test.use(atWidth(1440));
+
+  interface Titled {
+    readonly entry: string;
+    readonly id: string;
+    readonly title: string;
+  }
+
+  /** Every active spec the stub serves, as `slug/id` with its ID and title. */
+  async function titledSpecs(request: APIRequestContext): Promise<Titled[]> {
+    const workspaces = (await (await request.get('/api/workspaces')).json()) as Array<{ slug: string; readable: boolean }>;
+    const specs: Titled[] = [];
+    for (const ws of workspaces.filter((entry) => entry.readable)) {
+      const body = (await (await request.get(`/api/workspaces/${ws.slug}/dashboard`)).json()) as {
+        specs: Array<{ id: string; title: string }>;
+      };
+      specs.push(...body.specs.map((spec) => ({ entry: `${ws.slug}/${spec.id}`, id: spec.id, title: spec.title })));
+    }
+    return specs;
+  }
+
+  const hasWordPrefix = (title: string, query: string): boolean =>
+    title
+      .toLocaleLowerCase()
+      .split(/[^\p{L}\p{N}]+/u)
+      .some((word) => word.startsWith(query));
+
+  /** Every rendered option as `group:entry`, in document order. */
+  const allEntries = (page: Page): Promise<string[]> =>
+    paletteOf(page)
+      .locator('[role="listbox"] [role="option"]')
+      .evaluateAll((els) =>
+        els.map((el) => `${el.closest('[role="group"]')?.getAttribute('data-group') ?? ''}:${el.getAttribute('data-entry') ?? ''}`),
+      );
+
+  /** Each rendered group: its heading text and how many options it holds. */
+  const renderedGroups = (page: Page): Promise<Array<{ heading: string; options: number }>> =>
+    paletteOf(page)
+      .locator('[role="listbox"] [role="group"]')
+      .evaluateAll((els) =>
+        els.map((el) => ({
+          heading: (el.querySelector('.p-group')?.textContent ?? '').trim(),
+          options: el.querySelectorAll('[role="option"]').length,
+        })),
+      );
+
+  test('filter: a title word keeps only the entries that match it, marked, and empty groups lose their heading', async ({
+    page,
+    request,
+  }) => {
+    const specs = await titledSpecs(request);
+    const query = 'manifest';
+    const matching = specs.filter((spec) => hasWordPrefix(spec.title, query)).map((spec) => spec.entry);
+    const other = specs.filter((spec) => !matching.includes(spec.entry)).map((spec) => spec.entry);
+    expect(matching.length).toBeGreaterThanOrEqual(2);
+    expect(other.length).toBeGreaterThan(0);
+
+    await openPalette(page, '/w/harbor');
+    const palette = paletteOf(page);
+    const before = await allEntries(page);
+    const headingsBefore = (await renderedGroups(page)).map((group) => group.heading);
+
+    await palette.getByRole('combobox').fill(query);
+    await expect(palette.locator('[data-group="specs"] [role="option"]')).toHaveCount(matching.length);
+    const specIds = (await entriesOf(page, 'specs')).map((id) => id ?? '');
+    expect([...specIds].sort()).toEqual([...matching].sort());
+
+    // The list narrowed, and no non-matching spec is left in any group.
+    const after = await allEntries(page);
+    expect(after.length).toBeGreaterThan(0);
+    expect(after.length).toBeLessThan(before.length);
+    for (const entry of other) await expect(palette.locator(`[role="option"][data-entry="${entry}"]`)).toHaveCount(0);
+
+    // Every remaining entry shows the match as <mark>.
+    const marks = await palette
+      .locator('[role="listbox"] [role="option"]')
+      .evaluateAll((els) => els.map((el) => Array.from(el.querySelectorAll('mark'), (mark) => mark.textContent.toLowerCase())));
+    expect(marks).toHaveLength(after.length);
+    for (const marked of marks) expect(marked).toContain(query);
+
+    // A group without a match renders no heading at all; every heading left has entries under it.
+    const groups = await renderedGroups(page);
+    expect(groups.every((group) => group.options > 0 && group.heading !== '')).toBe(true);
+    for (const heading of ['Workspaces', 'Next up', 'Milestones', 'Actions']) {
+      expect(headingsBefore).toContain(heading);
+      await expect(palette.locator('.p-group', { hasText: heading })).toHaveCount(0);
+    }
+    for (const gone of ['workspaces', 'nextUp', 'milestones', 'actions']) {
+      await expect(palette.locator(`[data-group="${gone}"]`)).toHaveCount(0);
+    }
+  });
+
+  test('filter: a spec ID prefix keeps that spec with its ID marked, and clearing the query restores the full list', async ({
+    page,
+    request,
+  }) => {
+    const specs = await titledSpecs(request);
+    const query = '004';
+    const matching = specs.filter((spec) => spec.id.startsWith(query)).map((spec) => spec.entry);
+    expect(matching).toHaveLength(1);
+    const target = matching[0] ?? '';
+
+    await openPalette(page, '/w/harbor');
+    const palette = paletteOf(page);
+    const before = await allEntries(page);
+    const groupsBefore = await groupIds(page);
+
+    await palette.getByRole('combobox').fill(query);
+    await expect(palette.locator('[data-group="specs"] [role="option"]')).toHaveCount(1);
+    expect(await entriesOf(page, 'specs')).toEqual(matching);
+    await expect(palette.locator(`[data-group="specs"] [data-entry="${target}"] .p-chip mark`)).toHaveText(query);
+    await expect(palette.locator('[data-group="workspaces"]')).toHaveCount(0);
+    for (const spec of specs.filter((s) => s.entry !== target)) {
+      await expect(palette.locator(`[role="option"][data-entry="${spec.entry}"]`)).toHaveCount(0);
+    }
+    expect((await allEntries(page)).length).toBeLessThan(before.length);
+
+    // Clearing the query brings every entry and every group back, with no mark left.
+    await palette.getByRole('combobox').fill('');
+    await expect(palette.locator('[role="listbox"] [role="option"]')).toHaveCount(before.length);
+    expect(await allEntries(page)).toEqual(before);
+    expect(await groupIds(page)).toEqual(groupsBefore);
+    await expect(palette.locator('[role="listbox"] mark')).toHaveCount(0);
+  });
+
+  test('filter: a query that matches nothing says so and lists no group', async ({ page }) => {
+    await openPalette(page, '/w/harbor');
+    const palette = paletteOf(page);
+    await palette.getByRole('combobox').fill('zzqx');
+    await expect(palette.locator('[role="listbox"] [role="option"]')).toHaveCount(0);
+    await expect(palette.locator('[role="listbox"] [role="group"]')).toHaveCount(0);
+    await expect(palette.locator('.p-empty')).toContainText('No match for “zzqx”');
+  });
+});

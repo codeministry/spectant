@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, input, output, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -73,6 +73,13 @@ export class SpecTable {
   readonly archive = input<readonly ArchiveRow[]>([]);
   readonly query = input.required<ListQuery>();
   readonly queryChange = output<ListQuery>();
+  /**
+   * The spec the preview shows (`?spec=<id>`, T69). A row's link activates in two steps: the first (Enter or a click)
+   * merges `?spec=<id>` into the URL, and on the previewed row it leads to the spec page `/w/:ws/s/:id`.
+   */
+  readonly preview = input<string | null>(null);
+
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly sortMenuKeys = SORT_MENU;
   protected readonly compact = computed(() => this.shell.tier() === 'compact');
@@ -84,6 +91,15 @@ export class SpecTable {
   private readonly roving = viewChild(UiRovingList);
   /** The selected spec: the roving list's tab stop, the first visible row until the user moves. */
   readonly selectedId = computed(() => this.roving()?.activeItem()?.element.getAttribute('data-spec-row') ?? null);
+  /** The ids of the rows as listed, filtered and sorted: the order `[` `]` step through in the preview. */
+  readonly visibleIds = computed(() => this.visible().map((row) => row.id));
+
+  /** Moves focus (and with it the roving selection) to the row of `id`; false when that row is not listed. */
+  focusRow(id: string): boolean {
+    const row = this.host.nativeElement.querySelector<HTMLElement>(`[data-spec-row="${CSS.escape(id)}"]`);
+    row?.focus();
+    return row !== null;
+  }
 
   protected readonly stageLabels = computed(() => {
     this.lang();

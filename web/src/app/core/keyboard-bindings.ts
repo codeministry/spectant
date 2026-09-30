@@ -34,10 +34,36 @@ export const TAB_GO_KEYS: Readonly<Partial<Record<TabId, string>>> = {
   constitution: 'c',
 };
 
-export const SHORTCUT_GROUPS = ['navigate', 'spec', 'board', 'general'] as const;
+export const SHORTCUT_GROUPS = ['workspace', 'navigate', 'spec', 'board', 'general'] as const;
 export type ShortcutGroup = (typeof SHORTCUT_GROUPS)[number];
 
+/**
+ * Where a binding fires (spec 001 T67, `g` + letter is context-bound): `workspace` on `/` and `/w/:ws` while no spec is
+ * open, `spec` inside `/w/:ws/s/:id`, `any` everywhere. The same key may be bound once per context (`g s` is Specs on a
+ * workspace and Status in a spec), never beside an `any` binding. The sheet lists the bindings per context.
+ */
+export const SHORTCUT_CONTEXTS = ['workspace', 'spec', 'any'] as const;
+export type ShortcutContext = (typeof SHORTCUT_CONTEXTS)[number];
+export const GROUP_CONTEXT: Readonly<Record<ShortcutGroup, ShortcutContext>> = {
+  workspace: 'workspace',
+  navigate: 'spec',
+  spec: 'spec',
+  board: 'spec',
+  general: 'any',
+};
+
+/** The workspace dashboard's sections a `g` sequence reaches; each id is its heading's (`tabindex="-1"`). */
+export type DashboardSection = 'specs' | 'next-up' | 'warnings';
+
 export type ShortcutAction =
+  | { readonly kind: 'go-all' }
+  | { readonly kind: 'go-section'; readonly section: DashboardSection }
+  | { readonly kind: 'copy-next' }
+  | { readonly kind: 'refresh' }
+  /** Listed only: `UiRovingList` moves the selection itself, the service never takes these keys. */
+  | { readonly kind: 'move-selection' }
+  | { readonly kind: 'step-column'; readonly delta: -1 | 1 }
+  | { readonly kind: 'phase-filter'; readonly phase: string | null }
   | { readonly kind: 'go-area'; readonly area: AreaId }
   | { readonly kind: 'go-tab'; readonly tab: TabId }
   | { readonly kind: 'step-spec'; readonly delta: -1 | 1 }
@@ -89,7 +115,38 @@ const tabShortcuts: Shortcut[] = SPEC_AREAS.flatMap((area) =>
   }),
 );
 
+/**
+ * The workspace context (spec 001 T67, design.md § Command palette and keyboard). `j k` is one listed row with two keys
+ * (the roving list's), the only multi-key entry that is not a `g` sequence.
+ */
+const workspaceShortcuts: Shortcut[] = [
+  { id: 'go-all', keys: [GO_PREFIX, 'a'], group: 'workspace', action: { kind: 'go-all' }, label: 'shortcuts.actions.goAll' },
+  { id: 'go-specs', keys: [GO_PREFIX, 's'], group: 'workspace', action: { kind: 'go-section', section: 'specs' }, label: 'shortcuts.actions.goSpecs' },
+  { id: 'go-next-up', keys: [GO_PREFIX, 'n'], group: 'workspace', action: { kind: 'go-section', section: 'next-up' }, label: 'shortcuts.actions.goNextUp' },
+  { id: 'go-warnings', keys: [GO_PREFIX, 'w'], group: 'workspace', action: { kind: 'go-section', section: 'warnings' }, label: 'shortcuts.actions.goWarnings' },
+  { id: 'move', keys: ['j', 'k'], group: 'workspace', action: { kind: 'move-selection' }, label: 'shortcuts.actions.move' },
+  { id: 'copy-next', keys: ['c'], group: 'workspace', action: { kind: 'copy-next' }, label: 'shortcuts.actions.copy' },
+  { id: 'refresh', keys: ['r'], group: 'workspace', action: { kind: 'refresh' }, label: 'shortcuts.actions.refresh' },
+  { id: 'column-prev', keys: ['h'], group: 'workspace', action: { kind: 'step-column', delta: -1 }, label: 'shortcuts.actions.prevColumn' },
+  { id: 'column-next', keys: ['l'], group: 'workspace', action: { kind: 'step-column', delta: 1 }, label: 'shortcuts.actions.nextColumn' },
+  ...(
+    [
+      ['1', null, 'specs.filter.all'],
+      ['2', 'building', 'phases.building'],
+      ['3', 'scoping', 'phases.scoping'],
+    ] as const
+  ).map(([key, phase, target]): Shortcut => ({
+    id: `phase-${phase ?? 'all'}`,
+    keys: [key],
+    group: 'workspace',
+    action: { kind: 'phase-filter', phase },
+    label: 'shortcuts.actions.phaseFilter',
+    target,
+  })),
+];
+
 export const SHORTCUTS: readonly Shortcut[] = [
+  ...workspaceShortcuts,
   ...areaShortcuts,
   ...tabShortcuts,
   { id: 'prev-spec', keys: ['['], group: 'spec', action: { kind: 'step-spec', delta: -1 }, label: 'shortcuts.actions.prevSpec' },

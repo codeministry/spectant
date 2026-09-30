@@ -3,15 +3,18 @@ import { TestBed } from '@angular/core/testing';
 import { DefaultUrlSerializer, Router } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
 import { areaById, areaPath, SPEC_AREAS, specLink, TAB_IDS, type TabId } from '../layout/shell/areas';
+import { PaletteIndex } from '../layout/command-palette/palette-index';
+import { RefreshService } from './refresh.service';
 import { ShellData } from '../layout/shell/shell-data.service';
 import { ShellState } from '../layout/shell/shell-state.service';
 import { ToastService } from '../shared/ui/toast/toast';
-import { G_WINDOW_MS, GO_PREFIX, SHORTCUTS, TAB_GO_KEYS } from './keyboard-bindings';
+import { G_WINDOW_MS, GO_PREFIX, GROUP_CONTEXT, SHORTCUTS, TAB_GO_KEYS } from './keyboard-bindings';
 import { HINT_QUERY, KEYBOARD_CLOCK, KeyboardService } from './keyboard.service';
 import { DEFAULT_SETTINGS, SettingsService } from './settings.service';
 
 interface Setup {
   readonly url?: string;
+  readonly ws?: string | null;
   readonly specId?: string | null;
   readonly tab?: TabId | null;
   readonly singleKeys?: boolean;
@@ -44,18 +47,22 @@ function setup(options: Setup = {}) {
   const serializer = new DefaultUrlSerializer();
   const router = { url: options.url ?? '/w/harbor/s/002', navigate, parseUrl: (url: string) => serializer.parse(url) };
   const state = {
-    ws: signal<string | null>('harbor'),
+    ws: signal<string | null>(options.ws === undefined ? 'harbor' : options.ws),
     specId: signal(options.specId === undefined ? '002' : options.specId),
     tab: signal<TabId | null>(options.tab ?? null),
     toggleZen: vi.fn(),
   };
   const settings = { settings: signal({ ...DEFAULT_SETTINGS, singleKeyShortcuts: options.singleKeys ?? true }) };
   const toast = { show: vi.fn() };
+  const refresher = { refresh: vi.fn() };
+  const index = { refresh: vi.fn(), current: signal({ specs: [{ id: '002', nextCommand: '/spec-implement 002' }] }) };
   TestBed.configureTestingModule({
     providers: [
       { provide: Router, useValue: router },
       { provide: ShellState, useValue: state },
       { provide: ShellData, useValue: { specOrder: signal(['001', '002', '003']) } },
+      { provide: PaletteIndex, useValue: index },
+      { provide: RefreshService, useValue: refresher },
       { provide: SettingsService, useValue: settings },
       { provide: ToastService, useValue: toast },
       { provide: TranslocoService, useValue: { translate: (key: string) => `t:${key}` } },
@@ -76,7 +83,7 @@ function setup(options: Setup = {}) {
   const advance = (ms: number): void => {
     now += ms;
   };
-  return { service, navigate, state, settings, toast, media, press, advance };
+  return { service, refresher, navigate, state, settings, toast, index, media, press, advance };
 }
 
 describe('KeyboardService', () => {
@@ -86,9 +93,14 @@ describe('KeyboardService', () => {
   });
 
   describe('binding table', () => {
-    it('has no two bindings on the same key sequence', () => {
-      const sequences = SHORTCUTS.map((binding) => binding.keys.join(' '));
-      expect(new Set(sequences).size).toBe(sequences.length);
+    it('has no two bindings on the same key sequence in one context, and none beside an any binding', () => {
+      for (const [i, a] of SHORTCUTS.entries()) {
+        for (const b of SHORTCUTS.slice(i + 1)) {
+          if (a.keys.join(' ') !== b.keys.join(' ')) continue;
+          const [ca, cb] = [GROUP_CONTEXT[a.group], GROUP_CONTEXT[b.group]];
+          expect(ca !== cb && ca !== 'any' && cb !== 'any', `${a.id} ${b.id}`).toBe(true);
+        }
+      }
     });
 
     it('reaches every area and every tab through a g sequence', () => {
@@ -152,8 +164,8 @@ describe('KeyboardService', () => {
       expect(navigate).toHaveBeenCalledTimes(1);
     });
 
-    it('does nothing without an open spec', () => {
-      const { press, navigate } = setup({ specId: null });
+    it('does nothing outside a spec and a workspace', () => {
+      const { press, navigate } = setup({ url: '/settings', ws: null, specId: null });
       expect(press('g').defaultPrevented).toBe(false);
       press('d');
       expect(navigate).not.toHaveBeenCalled();
@@ -279,6 +291,77 @@ describe('KeyboardService', () => {
       media.set(true);
       settings.settings.set({ ...DEFAULT_SETTINGS, singleKeyShortcuts: false });
       expect(service.showHints()).toBe(false);
+    });
+  });
+
+  describe('the workspace context (spec 001 T67)', () => {
+    const onDashboard = () => setup({ url: '/w/harbor', specId: null });
+
+    it('g s, g n and g w focus the section headings; g a goes to all workspaces', () => {
+      const { press, navigate } = onDashboard();
+      document.body.innerHTML = '<h2 id="specs">S</h2><h2 id="next-up">N</h2><details><summary id="warnings">W</summary></details>';
+      for (const [key, id] of [['s', 'specs'], ['n', 'next-up'], ['w', 'warnings']] as const) {
+        press('g');
+        expect(press(key).defaultPrevented, id).toBe(true);
+        expect(document.activeElement?.id).toBe(id);
+      }
+      expect(document.getElementById('specs')?.getAttribute('tabindex')).toBe('-1');
+      press('g');
+      press('a');
+      expect(navigate).toHaveBeenCalledWith(['/']);
+    });
+
+    it('keeps g s and g n on the spec areas inside a spec', () => {
+      const { press, navigate } = setup();
+      document.body.innerHTML = '<h2 id="specs">S</h2>';
+      press('g');
+      press('s');
+      expect(navigate).toHaveBeenCalledWith(specLink('harbor', '002', areaPath(areaById('status'))));
+      expect(document.activeElement?.id).not.toBe('specs');
+    });
+
+    it('c copies the selected row next command, r refreshes, j k stay with the roving list', async () => {
+      const writeText = vi.fn(() => Promise.resolve());
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      const { press, toast, refresher } = onDashboard();
+      document.body.innerHTML = '<div data-panel="specs"><div data-spec-row="001"></div><div data-spec-row="002" data-selected></div></div>';
+      expect(press('c').defaultPrevented).toBe(true);
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(writeText).toHaveBeenCalledWith('/spec-implement 002');
+      expect(toast.show).toHaveBeenCalledWith('t:common.copied');
+      expect(press('r').defaultPrevented).toBe(true);
+      expect(refresher.refresh).toHaveBeenCalledTimes(1);
+      expect(press('j').defaultPrevented).toBe(false);
+    });
+
+    it('1 to 3 set the phase query only while the Specs panel has focus', () => {
+      const { press, navigate } = onDashboard();
+      document.body.innerHTML = '<div data-panel="specs"><button type="button">row</button></div>';
+      expect(press('2').defaultPrevented).toBe(false);
+      document.querySelector('button')?.focus();
+      press('2');
+      expect(navigate).toHaveBeenLastCalledWith(['/w', 'harbor'], { queryParams: { phase: 'building' }, queryParamsHandling: 'merge' });
+      press('1');
+      expect(navigate).toHaveBeenLastCalledWith(['/w', 'harbor'], { queryParams: { phase: null }, queryParamsHandling: 'merge' });
+    });
+
+    it('h and l keep the row index across the workspace columns on /', () => {
+      const { press } = setup({ url: '/', ws: null, specId: null });
+      const column = (ws: string, rows: number) =>
+        `<section data-ui="workspace-column" data-ws="${ws}">${'<a class="d-row" href="#">r</a>'.repeat(rows)}</section>`;
+      document.body.innerHTML = column('a', 3) + column('b', 3) + column('c', 1);
+      const rows = (i: number) => [...(document.querySelectorAll('[data-ui="workspace-column"]').item(i) as Element | null)?.querySelectorAll('a') ?? []];
+      rows(0)[1]?.focus();
+      press('l');
+      expect(document.activeElement).toBe(rows(1)[1]);
+      press('l');
+      expect(document.activeElement).toBe(rows(2)[0]);
+      expect(press('l').defaultPrevented).toBe(false);
+      press('h');
+      expect(document.activeElement).toBe(rows(1)[0]);
+      rows(0)[0]?.focus();
+      expect(press('h').defaultPrevented).toBe(false);
     });
   });
 
