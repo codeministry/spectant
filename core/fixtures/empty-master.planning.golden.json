@@ -1,0 +1,55 @@
+{
+  "features": [
+    {
+      "id": "F0",
+      "name": "Cross-cutting",
+      "why": "notes stay on the machine they were written on.",
+      "closed": 0,
+      "total": 1,
+      "claims": [
+        {
+          "id": "ISC-3",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        }
+      ],
+      "holders": [],
+      "unheld": [
+        "ISC-3"
+      ]
+    },
+    {
+      "id": "F1",
+      "name": "Weekly digest",
+      "why": "last week's notes are read at least once, in one sitting.",
+      "closed": 0,
+      "total": 2,
+      "claims": [
+        {
+          "id": "ISC-1",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        },
+        {
+          "id": "ISC-2",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        }
+      ],
+      "holders": [],
+      "unheld": [
+        "ISC-1",
+        "ISC-2"
+      ]
+    }
+  ],
+  "milestones": [],
+  "recount": {
+    "closed": 0,
+    "total": 3
+  },
+  "diagnostics": []
+}

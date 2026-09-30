@@ -112,6 +112,6 @@
   </ui-popover>
 }
 
-@if (specOpen()) {
+@if (specOpen() || (state.ws() !== null && !data.workspaceMissing())) {
   <app-area-menu />
 }

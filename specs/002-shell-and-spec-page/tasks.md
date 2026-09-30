@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-29T19:19:14Z
+updated: 2026-09-30T06:43:37Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -61,7 +61,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 
 ### ② Shell
 
-- [ ] T31 · ISC-98 · operator — strike T32, T59 and T60 in spec 001's tasks.md with a note naming this spec, then run `/spec-review 001` so 001's reviewed mark is fresh again · `specs/001-app-skeleton/tasks.md`
+- [x] T31 · ISC-98 · operator — strike T32, T59 and T60 in spec 001's tasks.md with a note naming this spec, then run `/spec-review 001` so 001's reviewed mark is fresh again · `specs/001-app-skeleton/tasks.md`
 - [x] T32 · ISC-74 · [P] · web — fonts: Manrope, Sora and JetBrains Mono as local variable woff2, Inter removed, `fonts.css` rewritten · `web/src/styles/fonts.css`
 - [x] T33 · ISC-74 · web — fonts test rewritten for the three faces and the no-external-URL guard (after: T32) · `web/tests/fonts.test.ts`
 - [x] T34 · ISC-74 · [P] · web — tokens: the prototype's hex converted to OKLCH theme slots with the hex in comments, `-ink` aliases for accent text, the two narrow dark values guarded, no glow · `web/src/styles/tokens.css`

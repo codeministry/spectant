@@ -29,6 +29,8 @@ import { tierFor } from './tier';
     '[class.tier-wide]': "state.tier() === 'wide'",
     '[attr.data-zen]': "state.zen() ? '' : null",
     '[attr.data-rail-collapsed]': "state.railStrip() ? '' : null",
+    // Outside a workspace (the overview `/`, settings) the page has no rail column at all (prototype `no-rail`).
+    '[attr.data-no-rail]': "state.ws() === null ? '' : null",
     '(document:keydown)': 'onKeydown($event)',
   },
 })
@@ -37,10 +39,16 @@ export class ShellComponent {
   protected readonly data = inject(ShellData);
   private readonly keyboard = inject(KeyboardService);
 
-  /** The rail belongs to an open, existing spec; T54 fills its content, T38 adds the collapse toggle. */
-  protected readonly showRail = computed(
-    () => this.state.specId() !== null && !this.state.notFound() && !this.data.specMissing(),
-  );
+  /**
+   * The rail belongs to an open, existing spec (T54 fills its content, T38 adds the collapse toggle), and at wide to
+   * a workspace dashboard, whose Next up and warnings move into it (spec 001 design.md § Desktop Soll).
+   */
+  protected readonly showRail = computed(() => {
+    if (this.state.notFound()) return false;
+    if (this.state.specId() !== null) return !this.data.specMissing();
+    // The spec list only: the Features and Milestones pages draw no rail (spec 003 design.md § Where the pages sit).
+    return this.state.route().wsPage === 'specs' && this.state.tier() === 'wide' && !this.data.workspaceMissing() && !this.data.workspaceUnavailable();
+  });
 
   constructor() {
     const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;

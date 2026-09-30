@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F1
 constitution: ../constitution.md
 phase: scoping
-progress: 25/47
+progress: 27/47
 started: 2026-09-28T09:40:00Z
-updated: 2026-09-29T18:12:20Z
+updated: 2026-09-30T07:00:40Z
 context_sufficient: true
 interview_invoked: true
 context_log: context.md
@@ -179,10 +179,10 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [x] ISC-20: `spectant` without arguments listens on 7717 or the next free port, prints the URL, and opens the browser unless `--no-browser` is given.
 - [x] ISC-21: The data directory is `$XDG_DATA_HOME/spectant` when that variable is set and `~/.spectant/` otherwise.
 - [x] ISC-22: Every UI string key exists in both the English and the German catalogue.
-- [ ] ISC-60: ⌘K / Ctrl+K opens a command palette listing every workspace plus every spec.
+- [x] ISC-60: ⌘K / Ctrl+K opens a command palette listing every workspace plus every spec.
 - [ ] ISC-60.1: Typing in the palette narrows the list to matching entries. (after: ISC-60)
 - [ ] ISC-60.2: Enter in the palette navigates to the highlighted entry. (after: ISC-60)
-- [ ] ISC-61: In a spec list, ↓/↑ (also j/k) move the selection.
+- [x] ISC-61: In a spec list, ↓/↑ (also j/k) move the selection.
 - [ ] ISC-61.1: Enter opens the selected spec. (after: ISC-61)
 - [ ] ISC-61.2: `?` opens the shortcut sheet.
 - [ ] ISC-62: After the auto-refresh timer fires with a changed number on disk, the DOM node holding that number shows the new value with no navigation event.
@@ -225,6 +225,10 @@ Why: the first time the author types `spectant` and sees two real repositories o
   needs their pages (ISC-2 covers "every write" once spec 002 adds writes).
 
 ## Verification
+
+- ISC-60: e2e — `bun run e2e -- palette -g open --workers=1` 3 pass (⌘K lists every workspace and every active spec, open workspace first; Ctrl+K and / open, Esc closes; the header trigger opens and focus returns), red 3/3 before (no palette); groups from PALETTE_SOURCES by order, empty groups absent; palette/keyboard/shell/offline/dashboard e2e 71 pass (T66; 2026-09-30)
+
+- ISC-61: e2e — `bun run e2e -- keyboard -g move --workers=1` 3 pass (Specs panel on /w/harbor: ↓ ↑ j k Home End move one focused data-selected row, the list's only tabindex=0, no wrap, URL unchanged; ?sort=id reorders the walk), red before (0 rows in [data-panel="specs"]) (T27, T63; 2026-09-30)
 
 - ISC-15: bash — bun run test:readonly → 3 pass: harbor copy under git with staged, modified, stale-stat, untracked and ignored files and a code-reviewed mark for 004; recursive hash incl. .git/ (bytes, modes, mtimes) equal after add + list + dashboard + 304 + HEAD + settings + SPA routes; .git/index bytes and mtime unchanged; 004 gate reads fresh, proving the in-memory tree id ran; controls: one byte in .git/description flips the hash, a plain git status rewrites the index; spec 001 round 18
 

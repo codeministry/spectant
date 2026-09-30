@@ -6,9 +6,10 @@
 import { parseClaims } from './claims.ts';
 import type { SpecFiles, SpecType } from './files.ts';
 import { parseFrontmatter, type Progress } from './frontmatter.ts';
+import { specIdOf, specSlugOf } from './spec-ref.ts';
 
 export interface ArchivedSpec {
-  /** `NNN`. */
+  /** The folder's numeric prefix (`specIdOf`), `NNN` for every folder the loader lists; the whole folder name when it has none. */
   readonly id: string;
   /** `NNN-slug`. */
   readonly slug: string;
@@ -55,9 +56,9 @@ export function listArchive(folders: readonly SpecFiles[]): ArchivedSpec[] {
       const { data } = parseFrontmatter(spec);
       return [
         {
-          id: f.folder.slice(0, 3),
+          id: specIdOf(f.folder) ?? f.folder,
           slug: f.folder,
-          title: data.task ?? f.folder.replace(/^\d+-/, ''),
+          title: data.task ?? specSlugOf(f.folder),
           type: data.specType,
           archived: data.archived,
           archivedReason: data.archivedReason,

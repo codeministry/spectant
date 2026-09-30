@@ -220,3 +220,14 @@ describe('diagnostics instead of throws', () => {
     expect(codes('---\n# a comment\n\nslug: 001-x\n---\n')).toEqual([]);
   });
 });
+
+describe('milestone key', () => {
+  test('a milestone name parses as a string; a spec without the key yields null and no diagnostic', () => {
+    const withKey = parseFrontmatter('---\nslug: 004-x\nmilestone: Harbor 1.0\n---\n# X\n');
+    expect(withKey.data.milestone).toBe('Harbor 1.0');
+    expect(withKey.diagnostics).toEqual([]);
+    const without = parseFrontmatter('---\nslug: 004-x\n---\n# X\n');
+    expect(without.data.milestone).toBeNull();
+    expect(without.diagnostics).toEqual([]);
+  });
+});

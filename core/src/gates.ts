@@ -8,12 +8,12 @@
 // (`index.ts`) re-exports its types only, so the browser bundle never pulls `node:crypto` in.
 import { createHash } from 'node:crypto';
 import type { Diagnostic } from './diagnostics.ts';
-import type { GateState, TextFileKind } from './files.ts';
+import type { MarkState, TextFileKind } from './files.ts';
+
+/** A mark's state lives in `files.ts`, so browser-safe modules type it without reaching this one; re-exported here. */
+export type { MarkState } from './files.ts';
 
 export type GateName = 'reviewed' | 'code-reviewed';
-
-/** A mark's state: fresh (matches), stale (content changed since), missing (no mark). */
-export type MarkState = Extract<GateState, 'fresh' | 'stale' | 'missing'>;
 
 /** The files the reviewed mark hashes. */
 export type ReviewedFile = 'spec.md' | 'plan.md' | 'tasks.md';

@@ -45,6 +45,7 @@ import {
   UiSheet,
   UiSkeleton,
   UiStageTrack,
+  UiTerm,
 } from '../../shared/ui';
 
 /**
@@ -92,6 +93,7 @@ import {
     UiSheet,
     UiSkeleton,
     UiStageTrack,
+    UiTerm,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './ui-gallery.html',

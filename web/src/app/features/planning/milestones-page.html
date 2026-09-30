@@ -1,0 +1,144 @@
+@if (missing()) {
+  <app-not-found />
+} @else if (unavailable()) {
+  <p class="unavailable">{{ 'shell.unavailable' | transloco }}</p>
+} @else if (absent()) {
+  <app-not-found />
+  <div class="absent">
+    <p>{{ 'planning.milestones.notFound.body' | transloco: { ws: name() } }}</p>
+    <a ui-button variant="outline" size="sm" [routerLink]="['/w', ws(), 'features']">
+      <ui-icon name="layers" [size]="14" />
+      {{ 'planning.milestones.notFound.link' | transloco }}
+    </a>
+  </div>
+} @else {
+  <h1 id="milestones" tabindex="-1">{{ 'planning.milestones.title' | transloco: { ws: name() } }}</h1>
+
+  @if (model() !== null) {
+    <p class="caption">{{ 'planning.milestones.caption' | transloco }}</p>
+    <p class="meta">{{ meta().key | transloco: meta().params }}</p>
+
+    <ol class="rows">
+      @for (row of rows(); track row.milestone.slug) {
+        @let m = row.milestone;
+        @let anchor = 'm-' + m.slug;
+        <li>
+          <ui-card [padding]="0" [attr.data-arrived]="target() === anchor ? '' : null">
+            <article [id]="anchor" tabindex="-1" [attr.aria-labelledby]="anchor + '-name'">
+              <div class="main">
+                <h2 [id]="anchor + '-name'">
+                  <ui-icon class="flag" name="flag" [size]="16" />
+                  <span class="name">{{ m.name }}</span>
+                </h2>
+
+                <p class="date-line">
+                  @if (row.date !== null) {
+                    <time [attr.datetime]="m.target">{{ row.date }}</time>
+                  }
+                  @switch (m.state) {
+                    @case ('late') {
+                      <ui-chip tone="warning">
+                        <ui-icon name="clock-alert" [size]="14" />
+                        {{ 'planning.milestones.state.late' | transloco: { days: row.days ?? 0 } }}
+                      </ui-chip>
+                    }
+                    @case ('complete') {
+                      <ui-chip tone="success">
+                        <ui-icon name="circle-check" [size]="14" />
+                        {{ 'planning.milestones.state.complete' | transloco }}
+                      </ui-chip>
+                    }
+                    @default {
+                      <span class="relative">
+                        @if (row.days !== null) {
+                          {{ 'planning.milestones.state.upcoming' | transloco: { days: row.days } }}
+                        } @else {
+                          {{ 'planning.milestones.undated' | transloco }}
+                        }
+                      </span>
+                    }
+                  }
+                </p>
+
+                @if (m.description; as description) {
+                  <p class="desc" [title]="description">{{ description }}</p>
+                }
+
+                <dl class="chip-rows">
+                  @if (m.features.length > 0) {
+                    <div class="chip-row features">
+                      <dt>
+                        <ui-term [id]="anchor + '-features-term'" [hint]="'terms.feature' | transloco">{{
+                          'planning.milestones.features' | transloco
+                        }}</ui-term>
+                      </dt>
+                      <dd>
+                        <ul>
+                          @for (feature of m.features; track feature.id) {
+                            <li>
+                              <a
+                                class="feature-chip"
+                                [routerLink]="['/w', ws(), 'features']"
+                                [fragment]="feature.id"
+                                [attr.aria-label]="
+                                  'planning.milestones.featureChip'
+                                    | transloco: { id: feature.id, name: feature.name, closed: feature.closed, total: feature.total }
+                                "
+                              >
+                                <span class="id">{{ feature.id }}</span>
+                                <span class="name" [title]="feature.name">{{ feature.name }}</span>
+                                <span class="count">{{ feature.closed }}/{{ feature.total }}</span>
+                              </a>
+                            </li>
+                          }
+                        </ul>
+                      </dd>
+                    </div>
+                  }
+                  <div class="chip-row specs">
+                    <dt>{{ 'planning.milestones.specs' | transloco }}</dt>
+                    <dd>
+                      <ul>
+                        @for (holder of row.specs; track holder.slug) {
+                          <li><app-spec-chip [ws]="ws()" [holder]="holder" feature="" /></li>
+                        }
+                      </ul>
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div class="side">
+                <div class="progress">
+                  <ui-meter
+                    [value]="m.closed"
+                    [max]="m.total"
+                    [size]="wide() ? 'default' : 'lg'"
+                    [label]="'planning.milestones.meterLabel' | transloco: { name: m.name }"
+                    [valueText]="'planning.features.valueText' | transloco: { closed: m.closed, total: m.total }"
+                  />
+                  <span class="fraction" [class.done]="row.complete" [class.muted]="m.total === 0">
+                    @if (row.complete) {
+                      <ui-icon name="circle-check" [size]="14" />
+                    }
+                    {{ m.closed }}/{{ m.total }}
+                  </span>
+                </div>
+              </div>
+            </article>
+          </ui-card>
+        </li>
+      }
+    </ol>
+  } @else {
+    <div class="rows" aria-hidden="true">
+      @for (slot of [0, 1, 2]; track slot) {
+        <ui-card class="skeleton-card">
+          <ui-skeleton width="40%" height="24px" />
+          <ui-skeleton height="8px" />
+          <ui-skeleton width="70%" />
+        </ui-card>
+      }
+    </div>
+  }
+}

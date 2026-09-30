@@ -12,17 +12,22 @@
  * registries). Nothing here is copied from a real repository.
  *
  * What the tree exercises (see ../README.md):
- *   master ISA.md    124 claims in F0–F4, 101 closed: the three-digit/three-digit master fraction
+ *   master ISA.md    124 claims in F0–F4, 101 closed: the three-digit/three-digit master fraction; a `## Milestones`
+ *                    block (spec 003) with Harbor 0.9 (2026-03-15, target passed with 003's claims open: late) and
+ *                    Harbor 1.0 (2026-05-14, ahead: upcoming), named by `milestone:` on 001, 002, 003 and 004
  *   001  feature     complete, archived under specs/archive/, reviewed and code-reviewed marks, events.jsonl with
- *                    its whole chain from the creation to done in the stage table's vocabulary (T16)
+ *                    its whole chain from the creation to done in the stage table's vocabulary (T16); Harbor 1.0
  *   002  feature     building, reviewed mark current, rounds.jsonl with three rounds and a re-cut holding every card
  *                    state, .spectant/activity.jsonl with one open claim, operator tasks open and ticked,
  *                    artifacts/ with three task results and .evidence/ with a PNG, a HAR and a log (T24), four of
- *                    the six named by a verification line, the HAR by none
- *   003  refactor    scoping, no reviewed mark, plan.md and spec.md without a mermaid fence, no tasks.md
- *   004  feature     building with every claim [x], plan.md without a mermaid fence, code-reviewed mark stale
- *   005  spike       scoping, two fog lines, no reviewed mark
- *   006  bug         scoping, reviewed mark stale, one claim unknown to the master, one master claim not projected
+ *                    the six named by a verification line, the HAR by none; Harbor 1.0
+ *   003  refactor    scoping, no reviewed mark, plan.md and spec.md without a mermaid fence, no tasks.md; Harbor 0.9,
+ *                    whose open claims make it the late milestone (004, closed, could not)
+ *   004  feature     building with every claim [x], plan.md without a mermaid fence, code-reviewed mark stale;
+ *                    Harbor 1.0
+ *   005  spike       scoping, two fog lines, no reviewed mark, no milestone
+ *   006  bug         scoping, reviewed mark stale, one claim unknown to the master, one master claim not projected,
+ *                    no milestone
  *   specs/tldr.md    generated before the newest spec `updated:` (stale)
  */
 
@@ -324,6 +329,11 @@ Why: ${f.why}
 
 ${f.claims.map(claimLine).join("\n")}`).join("\n\n")}
 
+## Milestones
+
+- Harbor 0.9 · 2026-03-15 · Config through one loader, before the console ships.
+- Harbor 1.0 · 2026-05-14 · First release a teammate can install.
+
 ## Decisions
 
 - 2026-03-02: features split into sync, console, config loader and retention; cross-cutting claims in F0.
@@ -354,6 +364,7 @@ interface SpecDef {
     updated: string;
     claims: Claim[];
     archived?: string;
+    milestone?: string;                  // the master's `## Milestones` entry this spec names (spec 003)
     body: (claims: Claim[]) => string;   // everything between the title and ## Test Strategy
     after?: string;                      // sections between ## Test Strategy and ## Decisions (claims block)
     decisions: string[];
@@ -377,7 +388,7 @@ slug: ${d.slug}
 spec_type: ${d.type}
 isa_master: ../../ISA.md
 isa_feature: ${d.feature}
-constitution: ../constitution.md
+${d.milestone ? `milestone: ${d.milestone}\n` : ""}constitution: ../constitution.md
 phase: ${d.phase}
 progress: ${progress(d.claims)}
 started: ${d.started}
@@ -526,6 +537,7 @@ const S001: SpecDef = {
     dir: "archive/001-manifest-sync", slug: "001-manifest-sync", title: "Manifest sync",
     task: "Mirror every listed manifest into the team registry with one command", type: "feature", feature: "F1",
     phase: "complete", started: "2026-03-02T09:00:00Z", updated: "2026-03-05T15:00:00Z", archived: "2026-03-05",
+    milestone: "Harbor 1.0",
     claims: feature("F1").claims, grouped: true, verifiedOn: "2026-03-05",
     decisions: ["2026-03-02: sync compares digests, never tags, so a moved upstream tag is copied again.",
         "2026-03-05: closed; every claim green on its probe."],
@@ -560,7 +572,7 @@ flowchart LR
 const S002: SpecDef = {
     dir: "002-web-console", slug: "002-web-console", title: "Web console",
     task: "Show every sync run and its failures in a small web console", type: "feature", feature: "F2",
-    phase: "building", started: "2026-03-03T10:00:00Z", updated: "2026-03-08T16:45:00Z",
+    phase: "building", started: "2026-03-03T10:00:00Z", updated: "2026-03-08T16:45:00Z", milestone: "Harbor 1.0",
     claims: feature("F2").claims, grouped: true, verifiedOn: "2026-03-08",
     // The evidence listing (T24) groups a file under the claim whose verification line names it: by its path relative
     // to the spec folder, or by its bare file name (ISC-72). `.evidence/dashboard.har` is named by none: ungrouped.
@@ -609,7 +621,7 @@ on a phone-sized screen and with the keyboard alone.`,
 const S003: SpecDef = {
     dir: "003-config-loader", slug: "003-config-loader", title: "Config loader rewrite",
     task: "Read the config through one loader in the CLI, the API and the console", type: "refactor", feature: "F3",
-    phase: "scoping", started: "2026-03-06T09:00:00Z", updated: "2026-03-09T17:30:00Z",
+    phase: "scoping", started: "2026-03-06T09:00:00Z", updated: "2026-03-09T17:30:00Z", milestone: "Harbor 0.9",
     claims: range(81, 93), grouped: false, verifiedOn: "",
     decisions: ["2026-03-06: behaviour is held; every Anti: claim compares against a snapshot taken before the rewrite."],
     body: () => `## Problem
@@ -629,7 +641,7 @@ case in the snapshot corpus is unchanged.`,
 const S004: SpecDef = {
     dir: "004-retention-policies", slug: "004-retention-policies", title: "Retention policies",
     task: "Delete old manifests on a written schedule without touching referenced ones", type: "feature", feature: "F4",
-    phase: "building", started: "2026-03-04T08:30:00Z", updated: "2026-03-08T12:00:00Z",
+    phase: "building", started: "2026-03-04T08:30:00Z", updated: "2026-03-08T12:00:00Z", milestone: "Harbor 1.0",
     claims: feature("F4").claims, grouped: true, verifiedOn: "2026-03-08",
     decisions: ["2026-03-04: a manifest referenced by any tag is never a deletion candidate, whatever the policy says."],
     body: () => `## Problem

@@ -1,0 +1,149 @@
+/*
+ * app-brief, ported from the prototype's `[data-ui="brief"]` (`styles.css:342-349`). Not encapsulated because the
+ * prose is `[innerHTML]`: every selector starts with `app-brief`. A `ui-card` without top edge or glow, with the violet
+ * (`--color-secondary`) 3 px left border; a real border, so forced colours keep it. The header wraps at 390 px, the
+ * command chip pushed to the end; the body clips to three lines until "More" expands it.
+ */
+app-brief {
+  display: block;
+}
+
+app-brief[hidden] {
+  display: none;
+}
+
+app-brief .brief {
+  --edge: var(--color-secondary);
+
+  border-inline-start: 3px solid var(--color-secondary);
+}
+
+app-brief .brief-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 48px;
+  padding: 8px 16px;
+}
+
+app-brief .brief-label {
+  color: var(--ques-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+app-brief .brief-as-of {
+  font-variant-numeric: tabular-nums;
+}
+
+app-brief .brief-command {
+  margin-inline-start: auto;
+}
+
+app-brief .brief-prose {
+  max-inline-size: 72ch;
+  padding: 0 16px 8px;
+  font-size: 15px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+app-brief .brief-prose[data-clipped] {
+  display: -webkit-box;
+  overflow: hidden;
+  padding-block-end: 0;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+app-brief .brief-prose[data-clipped] > * {
+  margin: 0;
+}
+
+app-brief .brief-more {
+  min-block-size: 24px;
+  margin: 0 16px 8px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--ques-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  app-brief .brief-more:hover {
+    text-decoration: underline;
+  }
+}
+
+@media (pointer: coarse) {
+  app-brief .brief-more {
+    min-block-size: 44px;
+  }
+}
+
+app-brief .brief-prose > :last-child {
+  margin-block-end: 0;
+}
+
+app-brief .brief-prose :is(h1, h2, h3, h4) {
+  margin: 16px 0 8px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+app-brief .brief-prose > :is(h1, h2, h3, h4):first-child {
+  margin-block-start: 0;
+}
+
+app-brief .brief-prose :is(p, ul, ol, blockquote, pre) {
+  margin: 0 0 16px;
+}
+
+app-brief .brief-prose :is(ul, ol) {
+  padding-inline-start: 24px;
+}
+
+app-brief .brief-prose ul {
+  list-style: disc;
+}
+
+app-brief .brief-prose ol {
+  list-style: decimal;
+}
+
+app-brief .brief-prose blockquote {
+  padding-inline-start: 16px;
+  border-inline-start: 3px solid var(--line);
+  color: var(--muted-ink);
+}
+
+app-brief .brief-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+app-brief .brief-prose pre {
+  padding: 16px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--color-base-200);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+app-brief .brief-prose a {
+  color: var(--disp-ink);
+  text-decoration: underline;
+}

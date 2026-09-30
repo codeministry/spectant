@@ -4,6 +4,7 @@ slug: 003-config-loader
 spec_type: refactor
 isa_master: ../../ISA.md
 isa_feature: F3
+milestone: Harbor 0.9
 constitution: ../constitution.md
 phase: scoping
 progress: 0/13

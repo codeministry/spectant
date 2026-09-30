@@ -76,13 +76,28 @@
     <span class="pick-text">{{ areaKey() | transloco }}</span>
     <ui-icon class="chevron" name="chevron-down" [size]="14" />
   </button>
+} @else if (workspacePage(); as page) {
+  <button
+    type="button"
+    class="pick area"
+    data-control="area"
+    aria-haspopup="dialog"
+    [attr.aria-expanded]="expanded().area"
+    [attr.aria-label]="'shell.area.pageLabel' | transloco: { page: (page.labelKey | transloco) }"
+    (pointerdown)="press('area')"
+    (click)="toggle($event, 'area')"
+  >
+    <ui-icon [name]="page.icon" />
+    <span class="pick-text">{{ page.labelKey | transloco }}</span>
+    <ui-icon class="chevron" name="chevron-down" [size]="14" />
+  </button>
 } @else {
   <button
     type="button"
     class="pick area"
     data-control="area"
     aria-disabled="true"
-    [attr.title]="'shell.area.needsSpec' | transloco"
+    [attr.title]="areaReason() | transloco"
     [attr.aria-label]="'shell.area.menu' | transloco"
   >
     <ui-icon name="layout-grid" />

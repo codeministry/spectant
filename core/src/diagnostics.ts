@@ -12,4 +12,9 @@ export interface Diagnostic {
   readonly message: string;
   /** 1-based line in the parsed text, when the finding has one. */
   readonly line?: number;
+  /**
+   * The value the finding is about, for a consumer that names it: the unknown milestone's name on
+   * `spec-milestone-unknown`. Set only where a consumer needs it, so it never has to be parsed back out of `message`.
+   */
+  readonly subject?: string;
 }

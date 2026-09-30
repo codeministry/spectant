@@ -40,3 +40,6 @@ specs/tldr.md
 # Playwright output (web/e2e/playwright.config.ts)
 web/e2e/.report/
 web/e2e/.results/
+
+# LifeOS checkpoint state written beside the repository by the spec tooling; never part of the tree.
+.checkpoint-state.json

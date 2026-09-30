@@ -22,7 +22,9 @@ const TYPING = 'input, textarea, select, [contenteditable]:not([contenteditable=
 /** How many frames a section jump waits for the new view's H2 before it settles for the page's H1. */
 const HEADING_FRAMES = 30;
 
-const singleKey = new Map(SHORTCUTS.filter((b) => b.keys.length === 1).map((b) => [b.keys[0], b]));
+const MOD = 'Mod+';
+const chord = new Map(SHORTCUTS.filter((b) => b.keys.length === 1 && b.keys[0]?.startsWith(MOD)).map((b) => [b.keys[0], b]));
+const singleKey = new Map(SHORTCUTS.filter((b) => b.keys.length === 1 && !b.keys[0]?.startsWith(MOD)).map((b) => [b.keys[0], b]));
 const goKey = new Map(SHORTCUTS.filter((b) => b.keys.length === 2 && b.keys[0] === GO_PREFIX).map((b) => [b.keys[1], b]));
 
 /**
@@ -44,9 +46,13 @@ export class KeyboardService {
   private readonly transloco = inject(TranslocoService);
   private readonly clock = inject(KEYBOARD_CLOCK);
   private readonly document = inject(DOCUMENT);
+  /** macOS, where Ctrl is an editing modifier in text fields and ⌘ is the command key. */
+  private readonly mac = /Mac|iPhone|iPad/u.test(this.document.defaultView?.navigator.userAgent ?? '');
 
   /** The shortcut sheet's `open` model (`app-shortcut-sheet`). */
   readonly sheetOpen = signal(false);
+  /** The command palette's `open` model (`app-command-palette`, T66): ⌘K / Ctrl+K, `/` and the header trigger. */
+  readonly paletteOpen = signal(false);
 
   private readonly pointerFine = signal(true);
   /** Whether key hints render: a hovering fine pointer and single-key shortcuts on. */
@@ -68,9 +74,15 @@ export class KeyboardService {
     this.sheetOpen.set(true);
   }
 
+  openPalette(): void {
+    this.paletteOpen.set(true);
+  }
+
   /** Handles one document `keydown`; returns whether a binding took it (and then prevents its default). */
   handle(event: KeyboardEvent): boolean {
-    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return false;
+    if (event.defaultPrevented || event.isComposing) return false;
+    if (event.ctrlKey || event.metaKey) return event.altKey || event.shiftKey ? false : this.onChord(event);
+    if (event.altKey) return false;
     if (event.target instanceof Element && event.target.closest(TYPING)) {
       this.goAt = null;
       return false;
@@ -91,6 +103,26 @@ export class KeyboardService {
     return this.fire(singleKey.get(event.key), event);
   }
 
+  /**
+   * ⌘ / Ctrl + key: only the `Mod+` bindings, also from a field (the palette input included, where the chord closes the
+   * palette again). Another open dialog or popover still owns the keyboard.
+   */
+  private onChord(event: KeyboardEvent): boolean {
+    const binding = chord.get(`${MOD}${chordKey(event)}`);
+    if (binding === undefined) return false;
+    // In a text field on macOS Ctrl+K is the editing chord "kill to end of line"; there only ⌘K opens the palette.
+    if (event.ctrlKey && !event.metaKey && this.mac && event.target instanceof Element && event.target.closest(TYPING)) {
+      return false;
+    }
+    if (binding.action.kind === 'open-palette' && this.paletteOpen()) {
+      this.paletteOpen.set(false);
+      event.preventDefault();
+      return true;
+    }
+    if (this.overlayOpen()) return false;
+    return this.fire(binding, event);
+  }
+
   private fire(binding: Shortcut | undefined, event: KeyboardEvent): boolean {
     if (binding === undefined || !this.run(binding.action)) return false;
     event.preventDefault();
@@ -104,6 +136,9 @@ export class KeyboardService {
         return true;
       case 'open-sheet':
         this.openSheet();
+        return true;
+      case 'open-palette':
+        this.openPalette();
         return true;
       case 'focus-search':
         return this.focusSearch();
@@ -212,4 +247,12 @@ export class KeyboardService {
       return this.document.querySelector('dialog[open]') !== null;
     }
   }
+}
+
+/**
+ * The letter of a chord from the physical key (`KeyK` → `k`), so a non-Latin layout (`л`, `κ`) still reaches the
+ * binding its `aria-keyshortcuts` announces; any other key falls back to its produced value.
+ */
+function chordKey(event: KeyboardEvent): string {
+  return /^Key[A-Z]$/u.test(event.code) ? event.code.slice(3).toLowerCase() : event.key.toLowerCase();
 }

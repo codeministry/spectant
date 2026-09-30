@@ -4,6 +4,7 @@ slug: 002-web-console
 spec_type: feature
 isa_master: ../../ISA.md
 isa_feature: F2
+milestone: Harbor 1.0
 constitution: ../constitution.md
 phase: building
 progress: 25/30

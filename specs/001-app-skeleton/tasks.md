@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-29T18:12:20Z
+updated: 2026-09-30T08:45:56Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -96,16 +96,16 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T57 · ISC-17 · [P] · web — stub API serving the fixtures' golden JSON for e2e and visual runs (after: T28, T39) · `web/e2e/stub-api.ts`
 - [x] T58 · ISC-18.1 · [P] · web — pre-paint `data-theme` script, theme service (system / light / dark, live `matchMedia`), settings service · `web/src/app/core/theme.service.ts`
 - [x] T59 · ISC-16 · operator — prerequisite from spec 002: its shell seam (002-T35: container tiers, routes `/`, `/w/:ws`, `/w/:ws/s/:id`, tab-bar slot, API client) has landed in the main tree — tick when it has; every task below that carried `(after: T59)` waits on it (re-cut 2026-09-29, the shell moved to spec 002) · `specs/002-shell-and-spec-page/tasks.md`
-- ~~T60 · ISC-16 · web — header: eyebrow + title, `ui-badge-switcher` (two levels), palette trigger, `ui-live-indicator`, gear, `?`~~ — struck 2026-09-29: the header is spec 002's T36 (ISC-73), built to the prototype
-- [ ] T61 · ISC-17 · [P] · web — `kpi-band` in its three container forms, tiles as links (after: T59) · `web/src/app/features/dashboard/kpi-band/`
-- [ ] T62 · ISC-17 · [P] · web — Brief disclosure (TL;DR markdown, stale chip, command chip) (after: T59) · `web/src/app/features/dashboard/brief/`
-- [ ] T63 · ISC-61 · [P] · web — Specs panel: toolbar (phase / type filters, sort, phase strip), `spec-row` in normal, compact and dense forms, archive fold, roving list, plus e2e `keyboard.spec.ts` "move" (after: T59) · `web/src/app/features/dashboard/spec-table/`
-- [ ] T64 · ISC-17 · [P] · web — `next-up-list`, `warnings-panel`, `context-rail` (rail at wide, cards below wide) (after: T59) · `web/src/app/features/dashboard/next-up-list/`
-- [ ] T65 · ISC-16 · [P] · web — overview `/`: `workspace-column` with `kpi-strip`, dense list, auto-fit grid capped at three, empty and unreadable states (after: T59) · `web/src/app/features/overview/`
-- [ ] T66 · ISC-60 · [P] · web — command palette: dialog, combobox, groups, ranking, actions; ⌘K / Ctrl+K / `/`, plus e2e `palette.spec.ts` "open" (after: T59) · `web/src/app/layout/command-palette/`
-- [ ] T67 · ISC-61.2 · [P] · web — shortcut sheet and the keyboard service (`c`, `r`, `g` sequences, `1`–`3`, single-key switch), plus e2e `keyboard.spec.ts` "help" (after: T59) · `web/src/app/layout/shortcut-sheet/`
+- ~~T60 · ISC-16 · web — the old header~~ — struck 2026-09-29: the header is spec 002's T36 (ISC-73), built to the prototype
+- [x] T61 · ISC-17 · [P] · web — `kpi-band` in its three container forms, tiles as links (after: T59) · `web/src/app/features/dashboard/kpi-band/`
+- [x] T62 · ISC-17 · [P] · web — Brief disclosure (TL;DR markdown, stale chip, command chip) (after: T59) · `web/src/app/features/dashboard/brief/`
+- [x] T63 · ISC-61 · [P] · web — Specs panel: toolbar (phase / type filters, sort, phase strip), `spec-row` in normal, compact and dense forms, archive fold, roving list, plus e2e `keyboard.spec.ts` "move" (after: T59) · `web/src/app/features/dashboard/spec-table/`
+- [x] T64 · ISC-17 · [P] · web — `next-up-list`, `warnings-panel`, `context-rail` (rail at wide, cards below wide) (after: T59) · `web/src/app/features/dashboard/next-up-list/`
+- [x] T65 · ISC-16 · [P] · web — overview `/` ported from the prototype's `index.html` (`app.js` `pageOverview` / `wsColumn`): `workspace-column` with ws-head (logo badge, name, mono path, updated), `kpi-strip` 2×2 at 96 px (master ring 56 + fraction, spec claims + lime meter, specs + building/scoping split meter, warnings + open fog with an orange edge above 0), Next up card with up to three `next-row`s, 40 px dense list, "Open <name> →"; auto-fit grid ≥ 360 px, three columns from 1300 px; empty and unreadable states; no cover image (after: T59, T85, T86) · `web/src/app/features/overview/`
+- [x] T66 · ISC-60 · [P] · web — command palette: dialog, combobox, groups, ranking, actions; ⌘K / Ctrl+K / `/`, plus e2e `palette.spec.ts` "open" (after: T59) · `web/src/app/layout/command-palette/`
+- [ ] T67 · ISC-61.2 · [P] · web — extend spec 002's `SHORTCUTS` table and shortcut sheet with the dashboard context (`c`, `r`, `/`, `j k`, `h l`, `1`–`3`, `g a/s/n/w` bound to `/w/:ws`, single-key switch), no second service; e2e `keyboard.spec.ts` "help" (after: T59) · `web/src/app/core/keyboard-bindings.ts`, `web/src/app/features/shortcuts/`
 - [ ] T68 · ISC-62 · [P] · web — refresh service: ETag polling, refresh on visibility, in-place diff, changed-value tint, changed-row dot, "n new" pill, one polite announcement, plus e2e `refresh.spec.ts` "in-place" (after: T59) · `web/src/app/core/refresh.service.ts`
-- [ ] T69 · ISC-61.1 · [P] · web — spec open: `spec-inspector` in the rail (wide), `ui-sheet` side (medium) and full-screen (compact), Esc returns focus, `[` `]`, plus e2e `keyboard.spec.ts` "enter" (after: T59) · `web/src/app/features/dashboard/spec-inspector/`
+- [ ] T69 · ISC-61.1 · [P] · web — spec preview on `/w/:ws?spec=<id>`: `spec-inspector` in the rail (wide), `ui-sheet` side (medium) and full-screen (compact), Open to `/w/:ws/s/:id`, Esc clears the query and returns focus, `[` `]`, plus e2e `keyboard.spec.ts` "enter" (after: T59, T63) · `web/src/app/features/dashboard/spec-inspector/`
 - [ ] T70 · ISC-60.1 · [P] · web — palette filtering plus e2e `palette.spec.ts` "filter" (after: T59) · `web/src/app/layout/command-palette/filter.ts`
 - [ ] T71 · ISC-60.2 · [P] · web — palette Enter navigation plus e2e `palette.spec.ts` "enter" (after: T59) · `web/src/app/layout/command-palette/navigate.ts`
 - [ ] T72 · ISC-62.1 · [P] · web — e2e `refresh.spec.ts` "cls": layout shift 0 during a refresh (after: T59) · `web/e2e/refresh.spec.ts`
@@ -120,6 +120,18 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T81 · ISC-16.1 · [P] · web — visual baseline: overview, light, three states (after: T59) · `web/e2e/visual.spec.ts`
 - [ ] T82 · ISC-16.2 · [P] · web — visual baseline: overview, dark (after: T59) · `web/e2e/visual.spec.ts`
 - [ ] T83 · ISC-19 · operator — cmux web view check with Interceptor, WebKit version recorded (after: T11, T78) · `tests/visual/cmux-check.md`
+
+### ⑤ Prototype port (principal 2026-09-29: tile split, data, visualisation, colours, typefaces and edge + glow are binding)
+
+Source: `.design/prototype/prototyp/public/spectant-ui/` (`styles.css`, `app.js`, `pages.js`); inventory with line numbers in `.design/handover-003/` (`tiles.md`, `tokens.md`, `compare/`). Each task ports the named function and rule range instead of re-deriving it; data comes from the dashboard model, mocked only where the parser has none (none known for these tiles).
+
+- [x] T84 · ISC-17 · [seam] · web — tokens the themes still lack, from `styles.css:16-45`: the `-text` inks (light cyan `#027892`, lime `#417c02`, green `#007e50`, yellow `#a15e01`, red `#ca3063`), teal / teal-t, badge (light `#007e9a`), track (dark `#7f7d80`), the seven tints, scrim and shadow colour, both themes, as theme variables the components use; `web/tests/theme-colors.test.ts` extended to them · `web/src/styles.css`
+- [x] T85 · ISC-17 · [seam] · web — card primitive: `edge` (3 px top bar in `--edge`, default cyan) and `glow` (corner `radial-gradient` at 14 % of `--edge`, opacity .7, 1 on a linked card's hover) variants of `ui-card` per `styles.css:112-123`; `web/tests/no-glow.test.ts` re-scoped to "glow only in `ui-card`'s glow variant" and its anchor corrected (master Decisions 2026-09-29, glow) · `web/src/app/shared/ui/card/`, `web/tests/no-glow.test.ts`
+- [x] T86 · ISC-17 · [seam] · web — type scale from `styles.css` as utilities: eyebrow 11/16 600 uppercase .08em, meta 12/16, page h1 24/32, section h2 16/24, card h3 15/24 Sora, KPI value 32/40, hero 40/48, strip 22/28, ring percentage 22 (15 small), chip 11 600 .06em · `web/src/styles.css`
+- [x] T87 · ISC-17 · web — KPI band ported from `app.js` `pageWorkspace` (l.194-212) and `styles.css:297-328` (band and Pulse): `352px repeat(3, 1fr)` with 120 px rows at wide, hero spanning two columns and two rows at medium; hero "Master claims" ring 112 + fraction + "n % closed · m open"; Spec claims + lime meter (lime edge); Specs + split meter + building/scoping legend; Takeable now (cyan edge); Attention `span-wide` (orange edge, warnings · open fog); Archive (violet edge); every tile `card edge glow`; below 640 px the Pulse card (ring 72, spec-claims meter, Specs / Takeable / Attention row) (after: T85, T86) · `web/src/app/features/dashboard/kpi-band/`
+- [x] T88 · ISC-17 · web — Brief card ported from `styles.css:342-349`: violet left edge, header "TL;DR · as of <date>" with the stale chip and `/spec-tldr`, body clipped with a "More…" expander instead of the collapsed disclosure (after: T85, T86) · `web/src/app/features/dashboard/brief/`
+- [x] T89 · ISC-17 · web — Specs table ported from `styles.css:362-400` (`spec-table`, `spec-row`, `phase-strip` 365-368): head "Specs n · k archived" with phase filter chips and a sort popover (Stage / ID / Progress), phase strip, rows `40px | title + one-line description | agent dot + mini five-segment stage track + phase chip | meter + a/b` at 48–64 px, current row cyan tint with the 3 px inset edge, archived footer; keyboard behaviour of T63 unchanged (after: T86) · `web/src/app/features/dashboard/spec-table/`
+- [x] T90 · ISC-17 · web — rail ported from `styles.css` (`next-card` 356-358, `next-row` 480-481, `rail-card` 617-618, `fog-line` ~660-663, `warn-line` 1197-1198): Next up `next-card`s (cyan left edge, id chip + title, labelled five-stage track, command chip + takeable chip), Warnings lines (alert icon, spec link, text) and fog lines (cloud icon, violet) (after: T85, T86) · `web/src/app/features/dashboard/{next-up-list,warnings-panel}/`
 
 ## Probe Mapping
 
@@ -141,7 +153,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 | T22 | ISC-18.2 | `bun test web/tests/icons.test.ts` |
 | T23 | ISC-22 | `bun test web/tests/i18n-parity.test.ts` |
 | T24, T29 | ISC-64 | `bun run test:browser -- focus` |
-| T25, T26, T28, T57, T61, T62, T64, T79 | ISC-17 | `bun run test:visual -- dashboard` |
+| T25, T26, T28, T57, T61, T62, T64, T79, T84–T90 | ISC-17 | `bun run test:visual -- dashboard` |
 | T80 | ISC-17.1 | `bun run test:visual -- dashboard --theme dark` |
 | T27, T63 | ISC-61 | `bun run e2e -- keyboard -g move` |
 | T32, T33, T34, T35, T40 | ISC-6 | `bun test core/` |

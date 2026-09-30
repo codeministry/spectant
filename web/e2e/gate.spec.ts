@@ -152,14 +152,22 @@ test.describe('spec head per tier', () => {
   test.describe('at 390', () => {
     test.use(atWidth(WIDTHS.phone));
 
-    test('no breadcrumb, full-width command chip, at most 240 px tall', async ({ page }) => {
+    // Spec 003 (ISC-105, T39) brings the breadcrumb back at compact in its short form: no workspace, no area. Design
+    // 002's 240 px budget was set for a head without a breadcrumb; the crumb row (20 px plus the 8 px row gap at a fine
+    // pointer) sits on top of it, so the head is measured without that row against the budget and as a whole against
+    // the budget plus the row.
+    test('short breadcrumb, full-width command chip, at most 240 px tall beside the breadcrumb row', async ({ page }) => {
       await page.goto('/w/harbor/s/002/status');
       const head = page.locator(HEAD);
       await expect(head.locator('[data-head-command]')).toBeVisible();
-      await expect(head.locator('[data-breadcrumb]')).toHaveCount(0);
+      await expect(head.locator('[data-breadcrumb] [data-crumb="spec"]')).toHaveText('002');
+      await expect(head.locator('[data-breadcrumb] [data-crumb="workspace"], [data-breadcrumb] [data-crumb="area"]')).toHaveCount(0);
       await expect(head.locator('[data-description]')).toBeVisible();
       const box = await head.boundingBox();
-      expect(box?.height ?? Infinity).toBeLessThanOrEqual(240);
+      const crumbs = await head.locator('[data-breadcrumb]').boundingBox();
+      const crumbRow = (crumbs?.height ?? 0) + 8;
+      expect(crumbs?.height ?? Infinity).toBeLessThanOrEqual(44);
+      expect((box?.height ?? Infinity) - crumbRow).toBeLessThanOrEqual(240);
     });
   });
 });

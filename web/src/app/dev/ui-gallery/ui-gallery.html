@@ -55,6 +55,12 @@
     <div class="gallery-row">
       <ui-segmented [options]="segments" [(value)]="segment" label="Theme" data-gallery="segmented" />
     </div>
+    <div class="gallery-row">
+      <p class="gallery-copy">
+        <ui-term hint="Epic in a ticket tracker" data-gallery="term">Features</ui-term> in harbor · 187/240
+        <ui-term hint="Acceptance criterion" data-gallery="term-claims">claims</ui-term> closed
+      </p>
+    </div>
   </section>
 
   <section class="gallery-group" aria-labelledby="g-cards">
@@ -65,6 +71,9 @@
         <ui-card [accent]="tone" [attr.data-gallery]="'card-' + tone">{{ tone }} accent</ui-card>
       }
       <ui-card accent="primary" [interactive]="true" data-gallery="card-interactive">interactive card</ui-card>
+      <ui-card edge data-gallery="card-edge">edge variant</ui-card>
+      <ui-card glow data-gallery="card-glow">glow variant</ui-card>
+      <ui-card edge glow style="--edge: var(--color-accent)" data-gallery="card-edge-glow-lime">edge and glow, lime</ui-card>
     </div>
     <div class="gallery-grid">
       <ui-kpi-tile variant="hero" label="Master claims" [value]="42" [denominator]="64" meta="66 % closed · 22 open" accent="accent" data-gallery="kpi-tile-hero">
@@ -87,6 +96,7 @@
         <ui-meter [value]="70" [tone]="tone" [label]="tone + ' meter'" [attr.data-gallery]="'meter-' + tone" />
       }
       <ui-meter [value]="25" [mini]="true" label="Mini meter" data-gallery="meter-mini" />
+      <ui-meter [value]="3" [max]="4" size="lg" label="Large meter" valueText="3 of 4 claims closed" data-gallery="meter-lg" />
     </div>
     <div class="gallery-stack">
       <ui-stage-track [labels]="stages" [current]="2" data-gallery="stage-track-mini" />

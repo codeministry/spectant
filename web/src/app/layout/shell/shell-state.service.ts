@@ -3,7 +3,16 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { type ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
 import { SettingsService } from '../../core/settings.service';
-import { type AreaId, isAreaId, isTabId, type ShellRouteData, specLink, type TabId } from './areas';
+import {
+  type AreaId,
+  isAreaId,
+  isTabId,
+  isWorkspacePageId,
+  type ShellRouteData,
+  specLink,
+  type TabId,
+  type WorkspacePageId,
+} from './areas';
 import type { Tier } from './tier';
 
 /** Where the tab bar renders: header row 2 at compact, under the spec head at medium and wide (plan 002, T35). */
@@ -15,6 +24,8 @@ export interface ShellRoute {
   readonly specId: string | null;
   readonly area: AreaId | null;
   readonly tab: TabId | null;
+  /** The workspace-scope page: route data `page`, else the spec list on `/w/:ws`, else null (spec routes, not-found). */
+  readonly wsPage: WorkspacePageId | null;
   readonly notFound: boolean;
 }
 
@@ -31,7 +42,9 @@ function readRoute(root: ActivatedRouteSnapshot): ShellRoute {
   const ws = params['ws'] ?? null;
   const specId = ws === null ? null : (params['id'] ?? null);
   const area = isAreaId(data.area) ? data.area : specId === null ? null : 'dashboard';
-  return { ws, specId, area, tab: isTabId(data.tab) ? data.tab : null, notFound: data.notFound === true };
+  const notFound = data.notFound === true;
+  const wsPage = isWorkspacePageId(data.page) ? data.page : ws !== null && specId === null && !notFound ? 'specs' : null;
+  return { ws, specId, area, tab: isTabId(data.tab) ? data.tab : null, wsPage, notFound };
 }
 
 /** An open `<dialog>` or popover owns Esc (the overlay primitives close it); the shell leaves the key alone then. */

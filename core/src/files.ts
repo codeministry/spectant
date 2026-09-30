@@ -6,6 +6,11 @@
 // claim-view.ts, tasks.ts, evidence.ts, markdown-docs.ts) and are deliberately not re-exported here: several of them
 // read the file system, and a re-export would pull that into the browser bundle.
 //
+// It also holds the few shared types a browser-safe module needs from a server-side one: `MarkState` (the gate marks
+// of `gates.ts`) and `FileDiagnostic` (the per-file finding of `dashboard.ts`). Both modules re-export them, so their
+// importers are unchanged, while `stage.ts` and `planning.ts` type-import them from here and never reach `gates.ts`
+// (`node:crypto`, `Buffer`) or `dashboard.ts` in a browser typecheck (spec 003 T18).
+//
 // Names are stable: the server's route contract (T44) and the web client import them. FORMAT.md (T2) has one section
 // per kind below, and scripts/check-format-doc.ts (T3) compares the two.
 
@@ -161,6 +166,12 @@ export interface SpecFiles {
   readonly texts: Readonly<Partial<Record<TextFileKind, string>>>;
 }
 
+/** A parse finding in one file of the workspace, relative to the repository root (`dashboard.ts` re-exports it). */
+export interface FileDiagnostic {
+  readonly file: string;
+  readonly diagnostic: Diagnostic;
+}
+
 /** A commit touching the spec folder, as the server's read-only `git log` passes it in (core runs no subprocess). */
 export interface CommitRecord {
   readonly sha: string;
@@ -272,6 +283,9 @@ export interface LaneProgress {
 
 /** fresh | stale | missing for the two marks; ok | warn | na for drift and diagrams. */
 export type GateState = 'fresh' | 'stale' | 'missing' | 'ok' | 'warn' | 'na';
+
+/** A mark's state: fresh (matches), stale (content changed since), missing (no mark). `gates.ts` re-exports it. */
+export type MarkState = Extract<GateState, 'fresh' | 'stale' | 'missing'>;
 
 export interface GateView {
   readonly state: GateState;

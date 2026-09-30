@@ -24,9 +24,21 @@
  * their tests already answer `not-found`, `forbidden`, `method-not-allowed`, `invalid-body`, and core's own codes
  * (`not-a-file`, `symlink-escape`, `permission-denied`) are kebab-case too. Plan 002 wrote `not_found`; nothing has
  * consumed it, and one convention across the API beats matching one line of the plan.
+ *
+ * Workspace routes (spec 003, plan 003 § Interfaces "Contract, new workspace route"): a second, smaller family that
+ * names a whole workspace, `/api/workspaces/:ws/<route>`, with no `/specs/:id`. Today it holds `planning`, the
+ * planning tree (`PlanningModel`, `core/src/planning.ts`) the Features and Milestones pages and the spec-head
+ * breadcrumb read once per workspace. It sits beside the spec family, not inside it: `matchSpecPath` requires
+ * `/specs/:id` and its params, so folding a slug-only route into `SPEC_ROUTE_TABLE` would change what every spec
+ * route's match carries. `workspaceRoutes` builds, `matchWorkspacePath` matches (one segment matcher shared with
+ * `matchSpecPath`, so both decode the same way), `WORKSPACE_ROUTE_TABLE` lists, `WorkspaceRouteResponses` types the
+ * 200 and `WorkspaceRouteError` every other answer. The dashboard (`/api/workspaces/:ws/dashboard`) is a workspace
+ * route too but stays in `api.ts` with its own `DASHBOARD_PATH` and is not listed here: this family answers from the
+ * contract alone, and moving the dashboard in would change `api.ts`, which this contract does not own.
  */
 import { API_PREFIX } from './assets.contract.ts';
 import { FILE_KINDS } from '../../core/src/files.ts';
+import type { PlanningModel } from '../../core/src/planning.ts';
 import type {
   ClaimLock,
   ClaimViewModel,
@@ -157,24 +169,32 @@ const COMPILED = SPEC_ROUTE_TABLE.map((entry) => ({ entry, segments: entry.patte
 export function matchSpecPath(pathname: string): SpecRouteMatch | null {
   const parts = pathname.split('/').slice(1);
   for (const { entry, segments } of COMPILED) {
-    if (segments.length !== parts.length) continue;
-    const params: Record<string, string> = {};
-    let matched = true;
-    for (const [i, segment] of segments.entries()) {
-      const part = parts[i] ?? '';
-      if (!segment.startsWith(':')) {
-        matched = segment === part;
-      } else {
-        const value = decodeOnce(part);
-        matched = value !== null && (segment !== ':name' || (DOC_NAMES as readonly string[]).includes(value));
-        if (value !== null) params[segment.slice(1)] = value;
-      }
-      if (!matched) break;
-    }
+    const params = matchSegments(segments, parts);
     // The pattern names exactly the params of its route (the round-trip test pins it), so the cast only restores the union.
-    if (matched) return { route: entry.route, params } as unknown as SpecRouteMatch;
+    if (params !== null) return { route: entry.route, params } as unknown as SpecRouteMatch;
   }
   return null;
+}
+
+/**
+ * The decoded params of a pathname's segments against a pattern's, or null. A literal segment must be equal; a param
+ * segment is decoded once, and a malformed escape, an empty segment or a `:name` outside `DOC_NAMES` is no match.
+ * Shared by both route families, so a slug decodes the same way in each.
+ */
+function matchSegments(segments: readonly string[], parts: readonly string[]): Record<string, string> | null {
+  if (segments.length !== parts.length) return null;
+  const params: Record<string, string> = {};
+  for (const [i, segment] of segments.entries()) {
+    const part = parts[i] ?? '';
+    if (!segment.startsWith(':')) {
+      if (segment !== part) return null;
+      continue;
+    }
+    const value = decodeOnce(part);
+    if (value === null || (segment === ':name' && !(DOC_NAMES as readonly string[]).includes(value))) return null;
+    params[segment.slice(1)] = value;
+  }
+  return params;
 }
 
 /** `matchSpecPath` restricted to the route's method (`HEAD` counts as `GET`); null otherwise. */
@@ -205,6 +225,67 @@ export function evidencePathQuery(search: string): string {
     if ((eq === -1 ? pair : pair.slice(0, eq)) === 'path') return eq === -1 ? '' : pair.slice(eq + 1);
   }
   return '';
+}
+
+// ─── Workspace routes ────────────────────────────────────────────────────────────────────────────────────────────
+
+/** The routes that name a whole workspace (spec 003). The dashboard is one too but lives in `api.ts` (header). */
+export type WorkspaceRouteName = 'planning';
+
+export interface WorkspaceParams {
+  readonly ws: string;
+}
+
+/** What `matchWorkspacePath` returns: the route and its decoded slug, discriminated by `route`. */
+export type WorkspaceRouteMatch = { [R in WorkspaceRouteName]: { readonly route: R; readonly params: WorkspaceParams } }[WorkspaceRouteName];
+
+/** URL builders, one per workspace route. The slug is percent-encoded once; the result is a path, no origin. */
+export const workspaceRoutes = {
+  planning: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/planning`,
+} as const satisfies Record<WorkspaceRouteName, (ws: string) => string>;
+
+/** `SpecRouteEntry` for a workspace route: every one is a read, so `GET` (and `HEAD`) with the read statuses. */
+export interface WorkspaceRouteEntry {
+  readonly route: WorkspaceRouteName;
+  /** `GET` routes also answer `HEAD` (same headers, no body). */
+  readonly method: 'GET';
+  /** The path pattern; `:ws` is the one param. */
+  readonly pattern: string;
+  /** 200 or 304 by ETag; 403 host or origin guard; 404 unknown workspace; 405 wrong method; 409 unreadable workspace. */
+  readonly statuses: readonly number[];
+  /** The 200 body, by type name, for docs and the stub. */
+  readonly response: string;
+}
+
+/** Every workspace route exactly once. The matcher, the server's 405 `Allow`, the stub and the docs iterate it. */
+export const WORKSPACE_ROUTE_TABLE: readonly WorkspaceRouteEntry[] = [
+  { route: 'planning', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/planning`, statuses: READ, response: 'PlanningModel' },
+];
+
+const WORKSPACE_ENTRIES = new Map(WORKSPACE_ROUTE_TABLE.map((entry) => [entry.route, entry]));
+
+/** The `Allow` header of a workspace route's 405: every one is a read, so `GET, HEAD`. */
+export function allowForWorkspace(route: WorkspaceRouteName): string {
+  return WORKSPACE_ENTRIES.get(route)?.method === 'GET' ? 'GET, HEAD' : '';
+}
+
+const WORKSPACE_COMPILED = WORKSPACE_ROUTE_TABLE.map((entry) => ({ entry, segments: entry.pattern.split('/').slice(1) }));
+
+/**
+ * The workspace route a pathname names, whatever the method; null for any other path, every spec route and the
+ * dashboard included. Takes `URL.pathname` (still percent-encoded); the slug is decoded once, as `matchSpecPath` does.
+ * The server checks the method itself (`GET`/`HEAD`, else 405 with `allowForWorkspace`), so a 405 still finds its route.
+ */
+export function matchWorkspacePath(pathname: string): WorkspaceRouteMatch | null {
+  const parts = pathname.split('/').slice(1);
+  for (const { entry, segments } of WORKSPACE_COMPILED) {
+    const params = matchSegments(segments, parts);
+    if (params === null) continue;
+    // Destructured: the web tsconfig forbids dot access on an index signature, root eslint forbids bracket access.
+    const { ws = '' } = params;
+    return { route: entry.route, params: { ws } };
+  }
+  return null;
 }
 
 // ─── Answers ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -240,7 +321,18 @@ export interface SpecRouteResponses {
 
 export type SpecRouteResponse<R extends SpecRouteName> = SpecRouteResponses[R];
 
-/** Which golden family (`core/fixtures/<tree>.<family>.golden.json`, keyed by `specs/…` folder) feeds which route. */
+/** The 200 body of each workspace route. Only core types: the golden family's whole file is exactly this. */
+export interface WorkspaceRouteResponses {
+  planning: PlanningModel;
+}
+
+export type WorkspaceRouteResponse<R extends WorkspaceRouteName> = WorkspaceRouteResponses[R];
+
+/**
+ * Which golden family (`core/fixtures/<tree>.<family>.golden.json`) feeds which route. A spec route's family is keyed
+ * by `specs/…` folder and the route answers one key's value; a workspace route's family is the whole file, the body
+ * as it is.
+ */
 export const GOLDEN_FAMILY = {
   spec: 'spec',
   timeline: 'timeline',
@@ -249,7 +341,12 @@ export const GOLDEN_FAMILY = {
   /** `constitution` at the top level, `plan`, `design` and `decisions` per spec; null means 404 `DocMissing`. */
   docs: 'docs',
   frames: 'frames',
-} as const satisfies Partial<Record<SpecRouteName, string>>;
+  /**
+   * The whole file is the `PlanningModel`, built with a fixed `now` so milestone states hold still; the server
+   * passes today, so a stub body and a live one may differ in `state` alone.
+   */
+  planning: 'planning',
+} as const satisfies Partial<Record<SpecRouteName | WorkspaceRouteName, string>>;
 
 // ─── Error bodies ────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -321,6 +418,12 @@ export type SpecRouteError<R extends SpecRouteName> =
   | (R extends 'docs' ? DocMissing : never)
   | (R extends 'gateReviewed' ? InvalidBody | Conflict<ReviewedHashes> | Locked : never)
   | (R extends 'taskCheck' ? InvalidBody | Conflict<{ readonly tasks: string }> | Locked : never);
+
+/**
+ * The error body a workspace route may send: 404 unknown slug, 403 guard, 405 wrong method, 409 unreadable workspace
+ * (the same `Unavailable` summary the dashboard sends). No route of this family writes, so there is nothing else.
+ */
+export type WorkspaceRouteError = NotFound | Forbidden | MethodNotAllowed | Unavailable;
 
 export function isUnavailable(body: unknown): body is Unavailable {
   return typeof body === 'object' && body !== null && (body as { readable?: unknown }).readable === false;

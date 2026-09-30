@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, viewChild } from 
 import { Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { UiIcon } from '../../shared/icons/icon';
-import { specLink } from './areas';
+import { specLink, workspacePageById } from './areas';
 import { type MenuKind, ShellMenus } from './shell-menus';
 import { ShellData } from './shell-data.service';
 import { ShellState } from './shell-state.service';
@@ -31,7 +31,8 @@ export const navigatesNatively = (event: MouseEvent): boolean =>
  * cmd/ctrl-click and "copy link" keep working; a plain click or Enter opens the picker instead (`ShellMenus`). They carry
  * `href` rather than `routerLink`, because `RouterLink` navigates on every plain click and ignores `preventDefault`.
  * Until the deferred menus have loaded, a plain click navigates too. The spec picker without a workspace and the area
- * trigger without a spec are `aria-disabled` with their reason.
+ * trigger without a workspace are `aria-disabled` with their reason; at workspace scope the area trigger names the
+ * current page (design.md § Area menu).
  *
  * Collapse order (design.md § Viewport-übergreifend): after the wordmark (`ShellBrand`), the workspace name goes to its
  * icon, then the spec title to its id; the area trigger never collapses. At compact the pickers form one pill.
@@ -59,6 +60,18 @@ export class ShellNav {
   protected readonly specCount = computed(() => this.data.specRows().length);
   protected readonly row = this.data.currentRow;
   protected readonly specOpen = computed(() => this.state.specId() !== null && !this.data.specMissing());
+  /**
+   * The workspace page the area trigger names; null without one, with a spec open, or for a workspace the server does
+   * not know (`ShellState` is route-only and calls any `/w/:ws` the Specs page), so the trigger stays disabled there.
+   */
+  protected readonly workspacePage = computed(() => {
+    const id = this.state.route().wsPage;
+    return id === null || this.specOpen() || this.data.workspaceMissing() ? null : workspacePageById(id);
+  });
+  /** The disabled trigger's reason: an unknown workspace has no pages to switch, elsewhere a spec is what is missing. */
+  protected readonly areaReason = computed(() =>
+    this.state.ws() !== null && this.data.workspaceMissing() ? 'shell.area.needsWorkspace' : 'shell.area.needsSpec',
+  );
   protected readonly areaKey = computed(() => `shell.areas.${this.state.area() ?? 'dashboard'}`);
   protected readonly expanded = computed(() => this.menus()?.expanded() ?? CLOSED);
 

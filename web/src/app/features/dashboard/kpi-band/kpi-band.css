@@ -1,0 +1,161 @@
+/*
+ * The KPI band, ported from the prototype (`styles.css` kpi-band and Pulse, design.md § Prototype port). The host is
+ * the `kpi` container; the rules below query that container, never the viewport, so the band keeps its form in a
+ * 600 px cmux panel and full-window alike (ISC-63). The prototype switches on the shell (640 / 1120); the band measures
+ * its own width, which is the shell's less the page gutters and, at wide, the rail, so its thresholds are the band's
+ * own 560 / 880 (design.md § KPI band). Only placement and the band's own markup live here; the tile anatomy is
+ * `ui-kpi-tile`'s, edge and glow `ui-card`'s.
+ */
+:host {
+  display: block;
+  container: kpi / inline-size;
+}
+
+/* Compact (< 560): the Pulse card stands in for the band. */
+.band {
+  display: none;
+}
+
+/* Medium (560–879): three columns of 120 px rows, the hero over two columns and two rows. */
+@container kpi (width >= 560px) {
+  .band {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: minmax(120px, auto);
+    gap: 16px;
+  }
+
+  .master {
+    grid-row: span 2;
+    grid-column: span 2;
+  }
+
+  .pulse {
+    display: none;
+  }
+}
+
+/* Wide (≥ 880): the 352 px hero column beside three tiles; Attention takes two of them in the second row. */
+@container kpi (width >= 880px) {
+  .band {
+    grid-template-columns: 352px repeat(3, minmax(0, 1fr));
+  }
+
+  .master {
+    grid-column: auto;
+  }
+
+  .span-wide {
+    grid-column: span 2;
+  }
+}
+
+/* `.legend`: an 8 px square per phase, the name, then its count in the text colour. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-block-start: 4px;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.legend .entry {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.legend .entry::before {
+  content: '';
+  flex-shrink: 0;
+  inline-size: 8px;
+  block-size: 8px;
+  margin-inline-end: 6px;
+  border-radius: 2px;
+  background: var(--dot);
+}
+
+.count {
+  margin-inline-start: 4px;
+  color: var(--color-base-content);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* `.pulse-in`, `.pulse-top`, `.pulse-stats`. */
+.pulse-in {
+  display: grid;
+  gap: 16px;
+}
+
+.top {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.figure {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.den {
+  color: var(--muted-ink);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.claims {
+  display: grid;
+  gap: 8px;
+}
+
+.claims-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.frac {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-block-start: 16px;
+  border-block-start: 1px solid var(--line);
+}
+
+.stats a {
+  display: grid;
+  gap: 2px;
+  min-inline-size: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.stats a + a {
+  padding-inline-start: 16px;
+  border-inline-start: 1px solid var(--line);
+}
+
+.stats b {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+@media (forced-colors: active) {
+  .legend .entry::before {
+    background: CanvasText;
+  }
+}

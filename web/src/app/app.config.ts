@@ -14,8 +14,11 @@ import { provideTransloco, type Translation, type TranslocoLoader } from '@jsver
 import { CATALOGUES, isLang, LANGS } from '../i18n/catalogues';
 import { routes } from './app.routes';
 import { LanguageService } from './core/language.service';
+import { PALETTE_SOURCES } from './core/palette-sources';
 import { SettingsService } from './core/settings.service';
 import { ThemeService } from './core/theme.service';
+import { featuresPaletteSource, milestonesPaletteSource } from './features/planning/planning-palette';
+import { providePaletteGroups } from './layout/command-palette/palette-groups';
 
 /**
  * Starts the settings before the first render (ISC-18.1, ISC-18.3): the theme service's `data-theme` effect runs from
@@ -61,5 +64,10 @@ export const appConfig: ApplicationConfig = {
       loader: BundledTranslocoLoader,
     }),
     provideAppInitializer(startSettings),
+    // Spec 001's command-palette groups (T66); other specs add theirs with their own provider lines after this one.
+    ...providePaletteGroups(),
+    // Palette groups contributed by their features (plan 001 § "palette groups"): spec 003's Features and Milestones.
+    { provide: PALETTE_SOURCES, useFactory: featuresPaletteSource, multi: true },
+    { provide: PALETTE_SOURCES, useFactory: milestonesPaletteSource, multi: true },
   ],
 };

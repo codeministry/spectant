@@ -1,0 +1,126 @@
+{
+  "features": [
+    {
+      "id": "F0",
+      "name": "Cross-cutting",
+      "why": "what would break the reader's trust whichever feature slipped — data leaving the device or a private detail in the repository.",
+      "closed": 0,
+      "total": 2,
+      "claims": [
+        {
+          "id": "ISC-1",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        },
+        {
+          "id": "ISC-2",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        }
+      ],
+      "holders": [],
+      "unheld": [
+        "ISC-1",
+        "ISC-2"
+      ]
+    },
+    {
+      "id": "F1",
+      "name": "Reading list",
+      "why": "a link saved once is found again later and can be read without a connection.",
+      "closed": 4,
+      "total": 10,
+      "claims": [
+        {
+          "id": "ISC-3",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-4",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-5",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-6",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-7",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-8",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-9",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-10",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-11",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-12",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        }
+      ],
+      "holders": [
+        {
+          "id": "001",
+          "slug": "001-reading-list",
+          "title": "Save a link once and find it again, online or offline",
+          "archived": false,
+          "stage": null,
+          "main": true,
+          "held": 8
+        },
+        {
+          "id": "002",
+          "slug": "002-duplicate-links",
+          "title": "Stop duplicate links and duplicate tags from entering the list",
+          "archived": false,
+          "stage": null,
+          "main": true,
+          "held": 2
+        }
+      ],
+      "unheld": []
+    }
+  ],
+  "milestones": [],
+  "recount": {
+    "closed": 4,
+    "total": 12
+  },
+  "diagnostics": []
+}

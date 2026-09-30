@@ -27,3 +27,9 @@ inline template and styles, plus `<name>.spec.ts`) and is exported from `index.t
 | `ui-toast` + `ToastService` | `toast/` | `show(text)`, `dismiss()`, `message` | The app's single toast (DS-APP-25), mounted once in the app root; auto-dismiss after `TOAST_MS` (4 s); the host owns the page's one polite `ui-live-region`, the visible toast is `aria-hidden`. |
 
 `tone.ts` gained `concern` (the yellow `--conc`, its `-t` tint and `-ink`) for the concerns state.
+
+## Added by spec 003 (T29)
+
+| Primitive | Folder | Inputs / API | Notes |
+|-----------|--------|--------------|-------|
+| `ui-meter` | `meter/` | `value`, `max`, `segments?` (split mode), `tone?`, `mini` (boolean, 4 px), `size` (`default` 6 px / `mini` 4 px / `lg` 8 px), `label?`, `valueText?` | `role` meter (single) or img (split); `valueText` becomes `aria-valuetext` in single mode only and arrives translated. `mini()` wins over `size`; the host carries `data-size` (`mini` / `lg`, absent for default) and `data-mini`. The fill morphs `transform` only. |

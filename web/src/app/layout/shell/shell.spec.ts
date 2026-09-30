@@ -8,6 +8,7 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult } from '../../core/api.service';
+import { KeyboardService } from '../../core/keyboard.service';
 import { LockSourceService } from '../../core/lock-source.service';
 import { navigatesNatively } from './shell-nav';
 import { AREA_IDS } from './areas';
@@ -43,13 +44,15 @@ const HARBOR = {
   archive: [{ id: '001', title: 'Manifest sync', type: 'feature' }],
 };
 
-type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'spec' | 'timeline' | 'claims' | 'docs'>;
+type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'timeline' | 'claims' | 'docs'>;
 
 function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
   return {
     workspaces: () =>
       Promise.resolve(ok([{ slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: null }])),
     dashboard: (ws) => Promise.resolve(ws === 'harbor' ? ok(HARBOR) : { kind: 'not-found', served: true }),
+    // The planning tree (spec 003, ShellData.planning): unserved here, so the spec head keeps its three crumbs.
+    planning: () => Promise.resolve({ kind: 'not-found', served: false }),
     // The stub today: no spec route, the server's catch-all 404.
     spec: () => Promise.resolve({ kind: 'not-found', served: false }),
     // The area views land one by one; the shell specs need only the catch-all answer for each.
@@ -251,7 +254,7 @@ describe('ShellComponent', () => {
       const { root: workspace } = await open('/w/harbor');
       expect(control(workspace, 'spec').tagName).toBe('A');
       expect(control(workspace, 'spec').getAttribute('href')).toBe('/w/harbor#specs');
-      expect(workspace.querySelector('[data-page="workspace"] h1')?.id).toBe('specs');
+      expect(workspace.querySelector('[data-page="workspace"] h2#specs')).not.toBeNull();
 
       const { root: spec } = await open('/w/harbor/s/002/claims');
       expect(control(spec, 'spec').tagName).toBe('A');
@@ -259,13 +262,68 @@ describe('ShellComponent', () => {
       expect(control(spec, 'spec').textContent).toContain('Web console');
     });
 
-    it('keeps the area menu disabled with its reason while no spec is open', async () => {
+    it('keeps the area menu disabled with its reason while no workspace is open', async () => {
       setUp();
-      const { root } = await open('/w/harbor');
+      const { root } = await open('/');
       const area = control(root, 'area');
       expect(area.getAttribute('aria-disabled')).toBe('true');
       expect(area.getAttribute('title')).toBe('Open a spec to switch areas');
       expect(root.querySelector('header nav[aria-label="Areas"]')).toBeNull();
+    });
+
+    it('keeps the area menu disabled with its reason for a workspace the server does not know', async () => {
+      const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+      proto['showPopover'] = vi.fn();
+      try {
+        setUp();
+        for (const url of ['/w/nope', '/w/nope/features']) {
+          const { root, harness } = await open(url);
+          const area = control(root, 'area');
+          expect(area.getAttribute('aria-disabled')).toBe('true');
+          expect(area.getAttribute('title')).toBe('Open a workspace to switch pages');
+          expect(area.getAttribute('aria-label')).toBe('Areas');
+          expect(area.textContent).not.toContain('Specs');
+          area.click();
+          await harness.fixture.whenStable();
+          expect(root.querySelector('app-area-menu')).toBeNull();
+          expect(root.querySelector('header nav[aria-label="Areas"]')).toBeNull();
+        }
+      } finally {
+        delete proto['showPopover'];
+      }
+    });
+
+    it('enables the area trigger at workspace scope and names the current page', async () => {
+      setUp();
+      const { root } = await open('/w/harbor');
+      const area = control(root, 'area');
+      expect(area.getAttribute('aria-disabled')).toBeNull();
+      expect(area.textContent).toContain('Specs');
+      expect(area.getAttribute('aria-expanded')).toBe('false');
+      expect(area.getAttribute('aria-label')).toBe('Page: Specs');
+    });
+
+    it('opens the area menu at workspace scope: Specs and Features while no milestone exists', async () => {
+      const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+      proto['showPopover'] = vi.fn();
+      proto['hidePopover'] = vi.fn(function (this: HTMLElement) {
+        this.dispatchEvent(Object.assign(new Event('toggle'), { newState: 'closed', oldState: 'open' }));
+      });
+      try {
+        setUp();
+        const { root, harness } = await open('/w/harbor');
+        const trigger = control(root, 'area');
+        await harness.fixture.whenStable();
+        trigger.click();
+        await harness.fixture.whenStable();
+        expect(trigger.getAttribute('aria-expanded')).toBe('true');
+        const entries = [...root.querySelectorAll('header nav[aria-label="Areas"] [data-page]')];
+        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'features']);
+        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null]);
+      } finally {
+        delete proto['showPopover'];
+        delete proto['hidePopover'];
+      }
     });
 
     it('opens the area menu: six areas in registry order, one disabled, the current one marked, links to each area', async () => {
@@ -361,14 +419,16 @@ describe('ShellComponent', () => {
       expect(root.querySelectorAll('header')).toHaveLength(1);
     });
 
-    it('describes the pending palette with a hidden hint', async () => {
+    it('makes the palette trigger live: a dialog opener that sets the palette open (spec 001 T66)', async () => {
       setUp();
       const { root } = await open('/w/harbor/s/002');
       const palette = control(root, 'palette');
-      expect(palette.getAttribute('aria-disabled')).toBe('true');
-      const hintId = palette.getAttribute('aria-describedby') ?? '';
-      expect(hintId).not.toBe('');
-      expect(root.querySelector(`#${hintId}`)?.textContent).toContain('comes with a later task');
+      expect(palette.hasAttribute('aria-disabled')).toBe(false);
+      expect(palette.getAttribute('aria-haspopup')).toBe('dialog');
+      const keyboard = TestBed.inject(KeyboardService);
+      expect(keyboard.paletteOpen()).toBe(false);
+      palette.click();
+      expect(keyboard.paletteOpen()).toBe(true);
     });
   });
 

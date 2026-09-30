@@ -1,0 +1,78 @@
+/* Prototype styles.css:463-467 (.overview, workspace-column, ws-head) and the page head. The shell container is named
+   `shell` (layout/shell), so the three-column step is the prototype's container query as it stands. */
+:host {
+  display: grid;
+  gap: 24px;
+}
+
+.page-head {
+  display: grid;
+  gap: 4px;
+}
+
+.page-head h1 {
+  margin: 0;
+}
+
+.overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: 24px;
+}
+
+/* Capped at three columns from 1300 px (the prototype's three workspaces); with fewer workspaces auto-fit stretches the
+   columns over the width instead of leaving an empty track. */
+@container shell (min-width: 1300px) {
+  .overview {
+    grid-template-columns: repeat(auto-fit, minmax(max(360px, calc((100% - 2 * 24px) / 3)), 1fr));
+  }
+}
+
+/* The unreadable and loading columns: the column frame and ws-head without the component. */
+.plain {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-inline-size: 0;
+}
+
+.plain .ws-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 56px;
+  border-block-end: 1px solid var(--line);
+}
+
+.plain h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.path,
+.reason {
+  overflow: hidden;
+  min-inline-size: 0;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reason {
+  color: inherit;
+}
+
+.strip-skeleton {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.loading-note {
+  margin: 0;
+}

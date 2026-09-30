@@ -38,5 +38,6 @@ export { type SegmentedOption, UiSegmented } from './segmented/segmented';
 export { UiSkeleton } from './skeleton/skeleton';
 export { type StageState, UiStageTrack } from './stage-track/stage-track';
 export { UiStateChip } from './state-chip/state-chip';
+export { UiTerm } from './term/term';
 export { TOAST_MS, ToastService, UiToast } from './toast/toast';
 export { type Tone, toneColor, toneInk, toneMark, toneTint } from './tone';

@@ -1,0 +1,130 @@
+@if (missing()) {
+  <app-not-found />
+} @else if (unavailable()) {
+  <p class="unavailable">{{ 'shell.unavailable' | transloco }}</p>
+} @else {
+  <h1 id="features" tabindex="-1">
+    <ui-term id="features-term" [hint]="'terms.feature' | transloco">{{ 'planning.features.titleTerm' | transloco }}</ui-term>
+    {{ 'planning.features.titleIn' | transloco: { ws: name() } }}
+  </h1>
+
+  @if (model() !== null) {
+    @if (rows().length === 0) {
+      <ui-empty-state
+        icon="layers"
+        [heading]="'planning.features.empty.heading' | transloco"
+        [body]="'planning.features.empty.body' | transloco"
+      />
+    } @else {
+      <p class="meta">
+        <span><span class="n">{{ rows().length }}</span> {{ 'planning.features.metaWords.features' | transloco }}</span>
+        <span>
+          <span class="n">{{ recount().closed }}/{{ recount().total }}</span>&ngsp;<ui-term id="features-claims-term" [hint]="'terms.claim' | transloco">{{ 'planning.features.metaWords.claims' | transloco }}</ui-term>
+          {{ 'planning.features.metaWords.closed' | transloco }}
+        </span>
+        <span><span class="n">{{ unheld() }}</span> {{ 'planning.features.metaWords.unheld' | transloco }}</span>
+      </p>
+
+      <ol class="rows">
+        @for (row of rows(); track row.feature.id) {
+          @let feature = row.feature;
+          <li>
+            <ui-card [padding]="0" [attr.data-arrived]="target() === feature.id ? '' : null">
+              <article [id]="feature.id" tabindex="-1" [attr.aria-labelledby]="'f-' + feature.id">
+                <div class="main">
+                  <h2 [id]="'f-' + feature.id">
+                    <span class="id">{{ feature.id }}</span>
+                    <span class="name">{{ feature.name }}</span>
+                  </h2>
+
+                  @if (feature.why; as why) {
+                    @let line = 'planning.features.whyLine' | transloco: { why: why };
+                    <div class="why-block">
+                      <p class="why" [class.clamped]="!whyOpen().has(feature.id)" [attr.data-feature]="feature.id" [title]="line">
+                        {{ line }}
+                      </p>
+                      @if (compact() && (whyOpen().has(feature.id) || whyCut().has(feature.id))) {
+                        <button
+                          type="button"
+                          class="btn btn-link btn-xs more"
+                          [attr.aria-expanded]="whyOpen().has(feature.id)"
+                          (click)="toggleWhy(feature.id)"
+                        >
+                          {{ (whyOpen().has(feature.id) ? 'planning.features.whyLess' : 'planning.features.whyMore') | transloco }}
+                        </button>
+                      }
+                    </div>
+                  }
+
+                  @if (row.chips.length > 0) {
+                    @let shown = visibleChips(row);
+                    <ul class="holders" [attr.aria-label]="'planning.features.holders' | transloco: { id: feature.id }">
+                      @for (chip of shown; track chip.holder.slug) {
+                        <li>
+                          <app-spec-chip
+                            [ws]="state.ws() ?? ''"
+                            [holder]="chip.holder"
+                            [feature]="feature.id"
+                            [mainFeature]="chip.mainFeature"
+                          />
+                        </li>
+                      }
+                      @if (shown.length < row.chips.length) {
+                        <li>
+                          <button ui-button variant="outline" size="sm" class="more-chips" (click)="showAllChips(feature.id)">
+                            {{ 'planning.features.moreChips' | transloco: { count: row.chips.length - shown.length } }}
+                          </button>
+                        </li>
+                      }
+                    </ul>
+                  }
+                </div>
+
+                <div class="side">
+                  <div class="progress">
+                    <ui-meter
+                      [value]="feature.closed"
+                      [max]="feature.total"
+                      [size]="wide() ? 'default' : 'lg'"
+                      [label]="'planning.features.meterLabel' | transloco: { id: feature.id }"
+                      [valueText]="'planning.features.valueText' | transloco: { closed: feature.closed, total: feature.total }"
+                    />
+                    <span class="fraction" [class.done]="row.complete" [class.muted]="feature.total === 0">
+                      @if (row.complete) {
+                        <ui-icon name="circle-check" [size]="14" />
+                      }
+                      {{ feature.closed }}/{{ feature.total }}
+                    </span>
+                  </div>
+
+                  @if (feature.unheld.length > 0) {
+                    <details class="unheld">
+                      <summary>
+                        <ui-icon name="circle-dashed" [size]="14" />
+                        {{ 'planning.features.unheld' | transloco: { count: feature.unheld.length } }}
+                        <ui-icon class="chevron" name="chevron-down" [size]="14" />
+                      </summary>
+                      <p class="ids">{{ feature.unheld.join(', ') }}</p>
+                    </details>
+                  } @else {
+                    <p class="unheld">{{ 'planning.features.allHeld' | transloco }}</p>
+                  }
+                </div>
+              </article>
+            </ui-card>
+          </li>
+        }
+      </ol>
+    }
+  } @else {
+    <div class="rows" aria-hidden="true">
+      @for (slot of [0, 1, 2]; track slot) {
+        <ui-card class="skeleton-card">
+          <ui-skeleton width="40%" height="24px" />
+          <ui-skeleton height="8px" />
+          <ui-skeleton width="70%" />
+        </ui-card>
+      }
+    </div>
+  }
+}

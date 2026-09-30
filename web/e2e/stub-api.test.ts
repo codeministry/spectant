@@ -25,10 +25,13 @@ import {
   SPEC_ROUTE_TABLE,
   type SpecRouteName,
   TASKS_HASH_HEADER,
+  WORKSPACE_ROUTE_TABLE,
   allowFor,
+  allowForWorkspace,
   evidenceFileHeaders,
   parseReviewedHashes,
   specRoutes,
+  workspaceRoutes,
 } from '../../server/src/spec-routes.contract';
 import {
   LOCKS_HEADER,
@@ -216,6 +219,79 @@ describe('stub API: GET /api/workspaces/:slug/dashboard', () => {
     const res = await ask('/api/nothing-here');
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ error: 'not found' });
+  });
+});
+
+describe('stub API: GET /api/workspaces/:slug/planning', () => {
+  // `GOLDEN_FAMILY.planning` is a whole-file family: the route's body is the golden file itself, not a per-spec key.
+  const planningText = (tree: string): string => goldenText(`${tree}.${GOLDEN_FAMILY.planning}`);
+  const planningPath = (slug: string): string => workspaceRoutes.planning(slug);
+
+  test.each(['harbor', 'lantern'])('%s: the body is the whole planning golden in the server serialization', async (name) => {
+    const res = await ask(planningPath(name));
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toBe(JSON.stringify(JSON.parse(planningText(name))));
+    expect(res.headers.get('Content-Type')).toBe(JSON_ANSWER.contentType);
+    expect(res.headers.get('Cache-Control')).toBe(JSON_ANSWER.cacheControl);
+    expect(res.headers.get('ETag')).toBe(`"${new Bun.CryptoHasher('sha256').update(body).digest('base64url')}"`);
+  });
+
+  test('harbor carries features; lantern carries no milestone', async () => {
+    const harbor = (await (await ask(planningPath('harbor'))).json()) as { features: unknown[] };
+    expect(harbor.features.length).toBeGreaterThan(0);
+    // In general a milestone row can hold no spec (0/0): an unnamed block entry of the master still lists. lantern's
+    // master names no milestone and none of its specs carries one, so its list is empty and the Milestones view hides.
+    const lantern = (await (await ask(planningPath('lantern'))).json()) as { milestones: unknown[] };
+    expect(lantern.milestones).toEqual([]);
+  });
+
+  test('HEAD answers the headers without the body; a matching If-None-Match is a 304', async () => {
+    const get = await ask(planningPath('harbor'));
+    const etag = get.headers.get('ETag') ?? '';
+    const head = await ask(planningPath('harbor'), { method: 'HEAD' });
+    expect(head.status).toBe(200);
+    expect(head.headers.get('ETag')).toBe(etag);
+    expect(await head.text()).toBe('');
+    for (const header of [etag, `W/${etag}`, `"other", ${etag}`, '*']) {
+      const res = await ask(planningPath('harbor'), { headers: { 'If-None-Match': header } });
+      expect(res.status).toBe(304);
+      expect(await res.text()).toBe('');
+    }
+    expect((await ask(planningPath('harbor'), { headers: { 'If-None-Match': '"stale"' } })).status).toBe(200);
+  });
+
+  test('an unknown slug is 404 {error: "not-found"}, in every state', async () => {
+    for (const state of STUB_STATES) {
+      const res = await ask(planningPath('nope'), { state });
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({ error: 'not-found' });
+    }
+    expect((await ask(planningPath('harbor'), { state: 'empty' })).status).toBe(404);
+  });
+
+  test('any method but GET or HEAD is 405 with allowForWorkspace', async () => {
+    const res = await ask(planningPath('harbor'), { method: 'POST', body: '{}' });
+    expect(res.status).toBe(405);
+    expect(res.headers.get('Allow')).toBe(allowForWorkspace('planning'));
+    expect(res.headers.get('Allow')).toBe('GET, HEAD');
+    expect(await res.json()).toEqual({ error: 'method-not-allowed' });
+  });
+
+  test('the unreadable workspace is 409 with the same summary as its dashboard', async () => {
+    const res = await ask(planningPath('lantern'), { state: 'unreadable' });
+    expect(res.status).toBe(409);
+    const dashboard = await ask('/api/workspaces/lantern/dashboard', { state: 'unreadable' });
+    expect(await res.json()).toEqual(await dashboard.json());
+    expect((await ask(planningPath('harbor'), { state: 'unreadable' })).status).toBe(200);
+  });
+
+  test('a foreign Host or a cross-site Origin is 403', async () => {
+    const foreign = new Request(`${ORIGIN}${planningPath('harbor')}`, { headers: { Host: 'evil.example' } });
+    expect((await call(api, foreign)).status).toBe(403);
+    const crossSite = await ask(planningPath('harbor'), { headers: { Origin: 'https://evil.example' } });
+    expect(crossSite.status).toBe(403);
+    expect(await crossSite.json()).toEqual({ error: 'forbidden' });
   });
 });
 
@@ -746,6 +822,7 @@ type ApiModule = {
   dashboardApi: (options: {
     registry: { list: () => ServerWorkspace[]; get: (slug: string) => ServerWorkspace | undefined };
     loadWorkspace: (root: string) => Promise<ServerLoad>;
+    today: () => string;
   }) => Handler;
 };
 type SettingsModule = { settingsApi: (store: unknown) => Handler; openSettings: (db: Database) => unknown };
@@ -760,11 +837,22 @@ beforeAll(async () => {
   const settingsModule = (await import(join(SERVER, 'settings.ts'))) as SettingsModule;
   const dbModule = (await import(join(SERVER, 'db.ts'))) as DbModule;
 
-  const registered = (names: string[]): ServerWorkspace[] =>
-    names.map((name, position) => ({ slug: name, path: `/fixtures/${name}`, name, addedAt: '2026-03-01T00:00:00Z', position }));
+  // The dashboard routes take their model from `loadWorkspace` below; the planning route reads the files itself, so a
+  // readable workspace points at its real fixture tree and the unreadable one at a directory that does not exist (the
+  // server's `missing`, the stub's unreadable summary). The last segment, `pathTail`, is the fixture name either way.
+  const registered = (names: string[], unreadable: string | null): ServerWorkspace[] =>
+    names.map((name, position) => ({
+      slug: name,
+      path: name === unreadable ? join(FIXTURES, 'no-such-dir', name) : join(FIXTURES, name),
+      name,
+      addedAt: '2026-03-01T00:00:00Z',
+      position,
+    }));
   const realFor = (names: string[], unreadable: string | null): Handler => {
-    const workspaces = registered(names);
+    const workspaces = registered(names, unreadable);
     return apiModule.dashboardApi({
+      // The day the planning goldens are built at (core/tests/helpers/planning-model.ts `PLANNING_NOW`).
+      today: () => '2026-03-20',
       registry: { list: () => workspaces, get: (slug) => workspaces.find((w) => w.slug === slug) },
       loadWorkspace: (root) => {
         const name = root.split('/').pop() ?? '';
@@ -816,6 +904,39 @@ describe('stub API matches the real server handlers byte for byte', () => {
       if (served[0] === 200 && etag) {
         const revalidate = { ...init, headers: { 'If-None-Match': etag } };
         expect((await call(api, request(path, { ...revalidate, state }))).status).toBe(304);
+      }
+    }
+  });
+
+  test.each([...STUB_STATES])('every GET route of WORKSPACE_ROUTE_TABLE, state %s', async (state) => {
+    const handler = real?.[state];
+    if (!handler) throw new Error('real handlers not loaded');
+    // Every workspace route is a read (`WorkspaceRouteEntry.method` is `'GET'`), so the whole table is iterated.
+    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning']);
+    for (const entry of WORKSPACE_ROUTE_TABLE) {
+      const build = workspaceRoutes[entry.route];
+      const cases: Array<[string, RequestInit]> = [
+        [build('harbor'), {}],
+        [build('lantern'), {}],
+        [build('harbor'), { method: 'HEAD' }],
+        [build('nope'), {}],
+        [`/api/workspaces/%E0%A4%A/${entry.route}`, {}],
+        [build('harbor'), { method: 'POST', body: '{}' }],
+        [build('harbor'), { headers: { Origin: 'https://evil.example' } }],
+      ];
+      for (const [path, init] of cases) {
+        const stubbed = await snapshot(await call(api, request(path, { ...init, state })));
+        // `dashboardApi` declines a slug that does not decode (`matchWorkspacePath` is null); the server then answers its
+        // JSON 404 (`server/src/http.ts`), which is what the stub's catch-all sends.
+        const req = request(path, init);
+        const declined = Response.json({ error: 'not found' }, { status: 404 });
+        const served = await snapshot((await handler(req, new URL(req.url))) ?? declined);
+        expect({ path, method: init.method ?? 'GET', answer: stubbed }).toEqual({ path, method: init.method ?? 'GET', answer: served });
+        const etag = (served[1] as Array<string | null>)[2];
+        if (served[0] === 200 && etag) {
+          const revalidate = { ...init, headers: { 'If-None-Match': etag } };
+          expect((await call(api, request(path, { ...revalidate, state }))).status).toBe(304);
+        }
       }
     }
   });

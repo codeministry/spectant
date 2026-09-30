@@ -11,16 +11,16 @@
     type="button"
     class="palette tool"
     data-control="palette"
-    aria-disabled="true"
-    aria-describedby="shell-palette-pending"
+    aria-haspopup="dialog"
+    aria-keyshortcuts="Meta+K Control+K /"
     [attr.aria-label]="'shell.palette.trigger' | transloco"
-    [attr.title]="'shell.palette.pending' | transloco"
+    [attr.aria-expanded]="keyboard.paletteOpen()"
+    (click)="keyboard.openPalette()"
   >
     <ui-icon name="search" />
     <span class="palette-text" aria-hidden="true">{{ 'shell.palette.trigger' | transloco }}</span>
     <ui-kbd class="palette-key" aria-hidden="true">{{ 'shell.palette.key' | transloco }}</ui-kbd>
   </button>
-  <span id="shell-palette-pending" class="visually-hidden">{{ 'shell.palette.pending' | transloco }}</span>
 
   <app-shell-live class="live tool" [link]="liveLink()" />
 

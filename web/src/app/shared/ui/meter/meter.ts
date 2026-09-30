@@ -10,7 +10,9 @@ export interface MeterSegment {
 /**
  * A bar meter (design.md § KPI band, spec rows): single (`value / max`; the fill is a lime → cyan gradient or a
  * tone and morphs `transform` only) or split (proportional `segments`, e.g. specs per phase). 6 px tall, 4 px `mini`,
- * track in `--track`, fully rounded. Pass `label` (translated): it names the meter for assistive technology.
+ * 8 px `lg` (`size`; the `mini` boolean stays and wins),
+ * track in `--track`, fully rounded. Pass `label` (translated): it names the meter for assistive technology, and
+ * `valueText` (translated, single mode only) for `aria-valuetext`, e.g. "3 of 4 claims closed".
  */
 @Component({
   selector: 'ui-meter',
@@ -21,12 +23,15 @@ export interface MeterSegment {
     '[attr.aria-valuenow]': 'segments() ? null : value()',
     '[attr.aria-valuemin]': 'segments() ? null : 0',
     '[attr.aria-valuemax]': 'segments() ? null : max()',
-    '[attr.data-mini]': 'mini() ? "" : null',
+    '[attr.aria-valuetext]': 'segments() ? null : (valueText() ?? null)',
+    '[attr.data-size]': 'effectiveSize() === "default" ? null : effectiveSize()',
+    '[attr.data-mini]': 'effectiveSize() === "mini" ? "" : null',
     '[attr.data-split]': 'segments() ? "" : null',
   },
   styles: `
     :host { display: flex; overflow: hidden; min-inline-size: 0; block-size: 6px; border-radius: 999px; background: var(--track); }
     :host([data-mini]) { block-size: 4px; }
+    :host([data-size="lg"]) { block-size: 8px; }
     :host([data-split]) { gap: 2px; }
     .fill { flex: 1; background: linear-gradient(90deg, var(--color-accent), var(--color-primary)); transform-origin: left center; transition: transform var(--motion-duration-slow) var(--motion-ease-standard); }
     .seg { min-inline-size: 0; }
@@ -51,9 +56,12 @@ export class UiMeter {
   readonly segments = input<readonly MeterSegment[]>();
   readonly tone = input<Tone>();
   readonly mini = input(false);
+  readonly size = input<'default' | 'mini' | 'lg'>('default');
+  readonly valueText = input<string | null>(null);
   readonly label = input<string>();
 
   protected readonly color = toneColor;
+  protected readonly effectiveSize = computed(() => (this.mini() ? 'mini' : this.size()));
   protected readonly fillColor = computed(() => {
     const tone = this.tone();
     return tone ? toneColor(tone) : null;

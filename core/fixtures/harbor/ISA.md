@@ -322,6 +322,11 @@ Why: old manifests go away on a schedule the team wrote down, and nothing still 
 - [x] ISC-123: The console shows the effect of a manual run before anything is deleted. (after: ISC-103)
 - [x] ISC-124: The console shows the effect of a policy file with comments before anything is deleted. (after: ISC-104)
 
+## Milestones
+
+- Harbor 0.9 · 2026-03-15 · Config through one loader, before the console ships.
+- Harbor 1.0 · 2026-05-14 · First release a teammate can install.
+
 ## Decisions
 
 - 2026-03-02: features split into sync, console, config loader and retention; cross-cutting claims in F0.

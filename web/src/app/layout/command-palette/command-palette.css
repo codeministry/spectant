@@ -1,0 +1,128 @@
+/*
+ * The command palette, ported from the prototype (`spectant-ui/styles.css` `[data-ui="command-palette"]`, `.p-item`):
+ * a 56 px input row over a grouped list, the active option on the raised surface with a 3 px cyan edge, matches
+ * underlined in cyan instead of filled. 640 px wide, 96 px from the top (design.md § Command palette and keyboard).
+ */
+:host {
+  display: contents;
+}
+
+ui-dialog {
+  --ui-dialog-size: 640px;
+  --ui-dialog-top: 96px;
+  --ui-dialog-padding: 0;
+}
+
+.command-palette {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+}
+
+.p-input {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  block-size: 56px;
+  padding-inline: 16px;
+  border-block-end: 1px solid var(--line);
+  color: var(--muted-ink);
+}
+
+.p-input input {
+  flex: 1;
+  min-inline-size: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--color-base-content);
+  font: inherit;
+  font-size: 15px;
+}
+
+/* The input row is the focused control; its caret shows focus, as in the prototype. */
+.p-input input:focus-visible {
+  outline: 0;
+  box-shadow: none;
+}
+
+.p-list {
+  max-block-size: 460px;
+  padding-block: 8px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.p-group {
+  display: flex;
+  align-items: flex-end;
+  block-size: 32px;
+  padding: 0 16px 6px;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.p-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: 40px;
+  padding-inline: 16px;
+  border: 0;
+  background: none;
+  color: var(--color-base-content);
+  font: inherit;
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.p-item[aria-selected="true"] {
+  background: var(--color-base-200);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.p-item .grow {
+  overflow: hidden;
+  flex: 1;
+  min-inline-size: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p-chip {
+  flex: none;
+  min-inline-size: 28px;
+  color: var(--disp-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.meta {
+  overflow: hidden;
+  flex: 0 1 auto;
+  max-inline-size: 40%;
+  color: var(--muted-ink);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p-item mark {
+  background: none;
+  color: inherit;
+  text-decoration: underline 2px var(--color-primary);
+  text-underline-offset: 3px;
+}
+
+.p-empty {
+  margin: 0;
+  padding: 24px 16px;
+  color: var(--muted-ink);
+}

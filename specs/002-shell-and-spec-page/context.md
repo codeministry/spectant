@@ -348,3 +348,4 @@ progress 41/49. The board visual-baseline partial state (T107/T108, `visual-boar
 patches lived in the previous session's scratchpad, which no longer exists; both tasks restart from nothing. T39/T43
 (ISC-77) have nothing to move: spec 001's views (its T61–T71: dashboard, overview, inspector, palette) have not been
 built, so ISC-77 waits on spec 001, not on this spec's frontier. Docker Desktop is down; T105–T110 wait on it.
+Gate fix (2026-09-29, found by 001 round 20): `bun test web/tests` was red on `no-glow` (ISC-74) since the matrix landing (337d9c0): the Matrix tab's edge scroll-shadow used `radial-gradient()`; now a `linear-gradient(to left, …)` of the same 14 px, guard 125/0, stylelint clean, `board -g "matrix scroll"` 1 pass.

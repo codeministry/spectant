@@ -1,0 +1,81 @@
+/*
+ * ui-term: the glossary `<dfn>` (design 002; ISC-107) and its hint, a native popover in the top layer. Dotted
+ * underlines are reserved for glossary terms; links never use them. The hint fades in on the fast token with the
+ * emphasized ease and out with the exit ease; without `@starting-style` (WebKit < 17.4) it appears instantly.
+ */
+:host {
+  display: inline;
+}
+
+dfn {
+  font-style: normal;
+  text-decoration: underline dotted var(--muted-ink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  cursor: help;
+}
+
+.hint {
+  position: fixed;
+  inset: auto;
+  max-inline-size: min(280px, calc(100vw - 16px));
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  box-shadow: var(--shadow);
+  font-family: inherit;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 16px;
+  text-align: start;
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: normal;
+  opacity: 0;
+  transition:
+    opacity var(--motion-duration-fast) var(--motion-ease-exit),
+    overlay var(--motion-duration-fast) allow-discrete,
+    display var(--motion-duration-fast) allow-discrete;
+}
+
+.hint:popover-open {
+  opacity: 1;
+  transition-timing-function: var(--motion-ease-emphasized);
+}
+
+@starting-style {
+  .hint:popover-open {
+    opacity: 0;
+  }
+}
+
+/* Anchored under the term, centred on it; flips above when it does not fit. */
+@supports (anchor-name: --x) {
+  .hint {
+    position-area: block-end;
+    position-try-fallbacks: flip-block;
+    margin-block: 4px;
+  }
+}
+
+/* Fallback: term.ts computes both from the term's `getBoundingClientRect()`, gap included. */
+@supports not (anchor-name: --x) {
+  .hint {
+    top: var(--ui-term-top, 0);
+    left: var(--ui-term-left, 0);
+  }
+}
+
+@media (forced-colors: active) {
+  dfn {
+    text-decoration-color: CanvasText;
+  }
+
+  .hint {
+    border-color: CanvasText;
+  }
+}

@@ -1,0 +1,209 @@
+/* Prototype styles.css:465-483 (workspace-column, ws-head, kpi-strip, dense-list, next-row, open-link) and :1584 / :469
+   (ws-badge, lg). Colour names mapped to the app's roles: cyan → --color-primary / --disp-text, orange → --color-warning. */
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-inline-size: 0;
+}
+
+.eyebrow {
+  overflow: hidden;
+  min-inline-size: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-block-size: 56px;
+  border-block-end: 1px solid var(--line);
+}
+
+.ws-head a {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+  border-radius: var(--radius-field);
+  color: inherit;
+  text-decoration: none;
+}
+
+.ws-head h2 {
+  overflow: hidden;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-head a:hover h2 {
+  color: var(--disp-text);
+}
+
+.ws-head .meta {
+  flex: none;
+  white-space: nowrap;
+}
+
+.path {
+  overflow: hidden;
+  min-inline-size: 0;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The `lg` workspace badge: a primary tint with the primary ink and a 45 % ring, the monogram in the brand face. */
+.ws-badge {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 30px;
+  block-size: 30px;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--color-primary) 22%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-primary) 45%, transparent);
+  color: var(--disp-ink);
+  font: 700 12px/1 var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+[data-ui='kpi-strip'] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+[data-ui='kpi-tile'] {
+  block-size: 96px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  block-size: 100%;
+  padding: 12px;
+}
+
+.tile.mini-ring {
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+}
+
+.body {
+  display: grid;
+  gap: 4px;
+  min-inline-size: 0;
+}
+
+.val {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.val small {
+  color: var(--muted-ink);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.next {
+  display: grid;
+  gap: 8px;
+}
+
+.next-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 4px 8px;
+  padding: 10px 12px;
+  border-inline-start: 3px solid var(--color-primary);
+}
+
+.next-row + .next-row {
+  border-block-start: 1px solid var(--line);
+}
+
+.next-row .cmd {
+  grid-column: 2;
+  min-inline-size: 0;
+}
+
+.id {
+  color: var(--disp-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.t {
+  overflow: hidden;
+  min-inline-size: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  color: var(--muted-ink);
+}
+
+.empty-line ui-icon {
+  color: var(--done-text);
+}
+
+.d-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  block-size: 40px;
+  padding-inline: 12px;
+  border-block-end: 1px solid var(--line);
+  color: inherit;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.d-row:last-child {
+  border-block-end: 0;
+}
+
+.d-row:hover {
+  background: var(--color-base-200);
+}
+
+.open-link {
+  align-self: start;
+  border-radius: var(--radius-field);
+  color: var(--disp-text);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.open-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (forced-colors: active) {
+  .next-row {
+    border-inline-start-color: CanvasText;
+  }
+}

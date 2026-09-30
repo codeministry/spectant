@@ -1,0 +1,19 @@
+@if (data.workspaceMissing()) {
+  <app-not-found />
+} @else if (data.workspaceUnavailable()) {
+  <ui-notice>{{ 'shell.unavailable' | transloco }}</ui-notice>
+} @else {
+  <h1 class="page-title">{{ 'header.titlePrefix' | transloco }} · {{ name() }}</h1>
+  @if (view(); as view) {
+    <app-kpi-band [model]="view" [ws]="ws()" />
+    <app-brief [brief]="view.brief" />
+    <!-- One context-rail: at wide it hands Next up and the warnings to the shell's rail, below wide it renders Next up here. -->
+    <app-context-rail [model]="view" inline="next-up" />
+  }
+  <app-spec-table [ws]="ws()" [rows]="rows()" [archive]="archive()" [query]="query()" (queryChange)="setQuery($event)" />
+  @if (view(); as view) {
+    @if (!railHolds()) {
+      <app-warnings-panel [form]="state.tier() === 'compact' ? 'callout' : 'section'" [specs]="view.specs" [kpis]="view.kpis" />
+    }
+  }
+}

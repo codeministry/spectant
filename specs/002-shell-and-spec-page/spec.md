@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 41/49
+progress: 42/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-29T19:19:14Z
+updated: 2026-09-30T06:43:37Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -192,7 +192,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [x] ISC-76: The area menu offers Dashboard · Status · Live · Data · Docs · Notes for an open spec, the tab bar shows only the current area's tabs, and a deep link `/w/:ws/s/:id/<tab>` selects area and tab. ⟨?: Live and Notes render as disabled entries with "comes with this spec's later tasks" while their tabs are unbuilt, rather than hidden — assuming a stable menu beats a growing one⟩
 - [ ] ISC-77: Spec 001's dashboard, overview, inspector and palette render inside the new shell and 001's e2e suites stay green. (after: ISC-73)
 - [x] ISC-97: `g` sequences reach every area and tab, `[` `]` step between specs, `v` toggles Lanes and Flow, `z` toggles zen, `◂ ▸` step frames, and every binding is listed in the shortcut sheet.
-- [ ] ISC-98: Spec 001's tasks.md carries no shell task after the re-cut (T59 and T60 moved to this spec) and 001's reviewed mark is fresh again.
+- [x] ISC-98: Spec 001's tasks.md carries no shell task after the re-cut (T59 and T60 moved to this spec) and 001's reviewed mark is fresh again.
 - [x] ISC-99: A claim is takeable only while the spec's reviewed mark is fresh; before that every open claim shows as `open` on the dashboard row, the Claims tab and the takeable set, and no task of it is dispatched.
 
 **Spec dashboard and Status**
@@ -286,6 +286,8 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-98: bash — `rg -c "shell with container tiers|header: eyebrow" specs/001-app-skeleton/tasks.md` → 0 (exit 1; T32/T60 struck, T60's line shortened to "the old header") and `SpecGate check reviewed 001` exit 0 after the principal's /spec-review 001 (2026-09-30T06:43Z) (T31)
 
 - ISC-88: e2e — `bun run e2e -- board -g states` 6 pass (board-states: every harbor 002 frame in both densities renders all eleven states with glyph, chip word, own shape and tone; card detail with state history) (T90; 2026-09-29, after launchd recovered)
 

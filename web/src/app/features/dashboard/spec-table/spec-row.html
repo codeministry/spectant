@@ -1,0 +1,24 @@
+<span class="rid">{{ row().id }}</span>
+<span class="rtitle">
+  <span class="t" [title]="row().title">{{ row().title }}</span>
+  @if (row().description; as description) {
+    <span class="d" [title]="description">{{ description }}</span>
+  }
+</span>
+<span class="rtrack">
+  @if (density() === 'normal') {
+    <span class="ragent">
+      @if (row().agent) {
+        <span class="agent-dot" role="img" [attr.aria-label]="agentLabel()" [title]="agentLabel()"></span>
+      }
+    </span>
+  }
+  <ui-stage-track size="mini" [labels]="stageLabels()" [current]="stageCurrent()" [ariaLabel]="stageAria()" />
+  @if (row().phase; as phase) {
+    <ui-chip class="phase" [tone]="phaseTone()" [dot]="true">{{ 'phases.' + phase | transloco }}</ui-chip>
+  }
+</span>
+<span class="rmeter" role="img" [attr.aria-label]="'common.claimsClosed' | transloco: { closed: row().closed, total: row().total }">
+  <ui-meter class="meter" [mini]="true" [value]="row().closed" [max]="row().total" aria-hidden="true" />
+  <span class="frac" aria-hidden="true">{{ row().closed }}/{{ row().total }}</span>
+</span>

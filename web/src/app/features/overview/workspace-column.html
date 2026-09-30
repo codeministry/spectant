@@ -1,0 +1,98 @@
+@let c = column();
+@let k = kpis();
+<div class="ws-head">
+  <a [routerLink]="href()">
+    <span class="ws-badge" aria-hidden="true">{{ badge() }}</span>
+    <h2>{{ c.name }}</h2>
+    <span class="path">{{ c.pathTail }}</span>
+  </a>
+  <span class="meta type-meta" data-updated>{{ 'header.live.updated' | transloco: { time: ago() } }}</span>
+</div>
+
+<div data-ui="kpi-strip">
+  <ui-card data-ui="kpi-tile" data-kpi="master" [padding]="0">
+    <div class="tile mini-ring">
+      <ui-ring [value]="masterPercent()" [size]="52" [stroke]="6" />
+      <div class="body">
+        <div class="eyebrow type-eyebrow" [title]="'kpi.masterClaims' | transloco">{{ 'kpi.master' | transloco }}</div>
+        @if (k.master; as master) {
+          <div class="val type-strip-value">{{ master.closed }}<small>/{{ master.total }}</small></div>
+        } @else {
+          <div class="val type-strip-value">{{ 'common.noValue' | transloco }}</div>
+        }
+      </div>
+    </div>
+  </ui-card>
+
+  <ui-card data-ui="kpi-tile" data-kpi="claims" [padding]="0">
+    <div class="tile">
+      <div class="eyebrow type-eyebrow">{{ 'kpi.specClaims' | transloco }}</div>
+      <div class="val type-strip-value">{{ k.claims.closed }}<small>/{{ k.claims.total }}</small></div>
+      <ui-meter tone="accent" [value]="k.claims.closed" [max]="k.claims.total" [label]="'kpi.specClaims' | transloco" />
+    </div>
+  </ui-card>
+
+  <ui-card data-ui="kpi-tile" data-kpi="specs" [padding]="0">
+    <div class="tile">
+      <div class="eyebrow type-eyebrow">{{ 'kpi.specs' | transloco }}</div>
+      <div class="val type-strip-value">{{ k.specs }}</div>
+      @if (split().length > 0) {
+        <ui-meter [segments]="split()" [label]="'kpi.specs' | transloco" />
+      }
+    </div>
+  </ui-card>
+
+  <ui-card data-ui="kpi-tile" data-kpi="warnings" [padding]="0" [edge]="k.warnings > 0" [glow]="false" style="--edge: var(--color-warning)">
+    <div class="tile">
+      <div class="eyebrow type-eyebrow">{{ 'warnings.title' | transloco }}</div>
+      <div class="val type-strip-value">{{ k.warnings }}</div>
+      <div class="meta type-meta">{{ 'warnings.openFog' | transloco: { count: k.fog } }}</div>
+    </div>
+  </ui-card>
+</div>
+
+@if (c.list.length > 0) {
+  <div class="next">
+    <div class="eyebrow type-eyebrow">{{ 'nextUp.title' | transloco }}</div>
+    <ui-card [padding]="0">
+      @for (row of c.next; track row.id) {
+        <div class="next-row" [attr.data-next]="row.id">
+          <span class="id">{{ row.id }}</span>
+          <span class="t">{{ row.title }}</span>
+          @if (row.nextCommand; as command) {
+            <div class="cmd">
+              <ui-command-chip
+                [command]="command"
+                [copyLabel]="'common.copyCommand' | transloco"
+                [copiedLabel]="'common.copied' | transloco: { command }"
+                [manualHint]="'common.copyFallback' | transloco"
+              />
+            </div>
+          }
+        </div>
+      } @empty {
+        <div class="empty-line"><ui-icon name="clock-alert" [size]="16" />{{ 'nextUp.empty' | transloco }}</div>
+      }
+    </ui-card>
+  </div>
+
+  <ui-card class="dense-list" [padding]="0">
+    @for (row of c.list; track row.id) {
+      <a class="d-row" [routerLink]="['/w', c.slug, 's', row.id]">
+        <span class="id">{{ row.id }}</span>
+        <span class="t">{{ row.title }}</span>
+        @if (row.phase; as phase) {
+          <ui-chip [tone]="phaseTones[phase] ?? 'neutral'" [dot]="true">{{ 'phases.' + phase | transloco }}</ui-chip>
+        } @else {
+          <span></span>
+        }
+      </a>
+    }
+  </ui-card>
+
+  <a class="open-link" [routerLink]="href()">{{ 'overview.open' | transloco: { workspace: c.name } }}</a>
+} @else {
+  <ui-card [padding]="0">
+    <ui-empty-state icon="layers" [heading]="'specs.empty' | transloco" />
+  </ui-card>
+}

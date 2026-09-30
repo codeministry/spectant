@@ -1,0 +1,334 @@
+{
+  "features": [
+    {
+      "id": "F0",
+      "name": "Cross-cutting",
+      "why": "what would sink the project whichever slice slipped — data leaving the machine, a private detail going public, the app and the skill disagreeing about the format, or the database quietly becoming a second truth.",
+      "closed": 3,
+      "total": 9,
+      "claims": [
+        {
+          "id": "ISC-1",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-2",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-3",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-4",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-5",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-6",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-7",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-5.1",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-5.2",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        }
+      ],
+      "holders": [
+        {
+          "id": "001",
+          "slug": "001-app-skeleton",
+          "title": "Install spectant with one line and see two workspaces on the dashboard",
+          "archived": false,
+          "stage": null,
+          "main": false,
+          "held": 9
+        }
+      ],
+      "unheld": []
+    },
+    {
+      "id": "F1",
+      "name": "App skeleton and dashboard",
+      "why": "the first time the author types `spectant` and sees two real repositories on one page in the look they know — the smallest thing that already replaces a per-repo HTML file.",
+      "closed": 11,
+      "total": 38,
+      "claims": [
+        {
+          "id": "ISC-8",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-8.1",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-9",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-10",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-11",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-12",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-13",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-14",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-15",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-16",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-16.1",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-16.2",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-17",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-17.1",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-18",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-18.2",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-18.1",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-18.3",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-19",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-19.1",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-20",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-21",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-22",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-60",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-60.1",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-60.2",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-61",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-61.1",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-61.2",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-62",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-62.1",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-63",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-63.1",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-64",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-65",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-66",
+          "closed": false,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-67",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-67.1",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        }
+      ],
+      "holders": [
+        {
+          "id": "001",
+          "slug": "001-app-skeleton",
+          "title": "Install spectant with one line and see two workspaces on the dashboard",
+          "archived": false,
+          "stage": null,
+          "main": true,
+          "held": 38
+        }
+      ],
+      "unheld": []
+    }
+  ],
+  "milestones": [],
+  "recount": {
+    "closed": 14,
+    "total": 47
+  },
+  "diagnostics": []
+}

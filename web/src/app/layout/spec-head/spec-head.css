@@ -1,8 +1,15 @@
 /*
  * The spec head (design.md § Spec head, every spec area). Medium and wide: breadcrumb, then id + title + chips on one
  * baseline with the action cluster on the right (it wraps below when it does not fit), description, meta, then the
- * agent banner or the no-source line. Compact (≤ 240 px target): no breadcrumb, title clamped to two lines, one
- * wrapping chip row, description clamped with "more", meta at 12/16, the command chip at full width.
+ * agent banner or the no-source line. Compact (≤ 240 px target): the breadcrumb in its short form (ids only, no
+ * workspace crumb, no area crumb; T39), the milestone name at most 96 px, title clamped to two lines, one wrapping chip
+ * row, description clamped with "more", meta at 12/16, the command chip at full width.
+ *
+ * The breadcrumb (T40, ISC-105): one line at every width, never wrapping, never scrolling. When it does not fit the
+ * names truncate with an ellipsis in a fixed order: feature name first (flex-shrink 3), then milestone name (2), then
+ * the spec slug (1). Ids (F-id, spec id, claim or task id) are `flex: none` and never truncate. Full names stay in the
+ * DOM, so accessible names keep the whole text. Separators are generated content only: `/` scope, `·` milestone to
+ * feature, `›` down into the spec.
  */
 :host {
   display: grid;
@@ -11,43 +18,169 @@
   margin-block-end: 16px;
 }
 
+/* `overflow: hidden` is the safety net; the padding and negative margin keep the 2 px ring and 4 px halo of the
+   global focus style inside the clip box. */
 .crumbs ol {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
+  flex-wrap: nowrap;
   align-items: center;
-  margin: 0;
-  padding: 0;
+  min-inline-size: 0;
+  margin: -6px;
+  padding: 6px;
+  overflow: hidden;
   color: var(--muted-ink);
   font-size: 13px;
   line-height: 20px;
+  white-space: nowrap;
   list-style: none;
 }
 
-.crumbs li + li::before {
-  margin-inline-end: 8px;
+.crumbs ol > li {
+  display: inline-flex;
+  flex: 0 1 auto;
+  gap: 4px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+/* Shrink weights: the higher the weight, the earlier a crumb gives up width. */
+.crumbs ol > li:has([data-crumb='feature']) {
+  flex-shrink: 3;
+}
+
+.crumbs ol > li:has([data-crumb='milestone']) {
+  flex-shrink: 2;
+}
+
+.crumbs ol > li:has([data-crumb='spec']) {
+  flex-shrink: 1;
+}
+
+/* The workspace crumb, the area crumb and the claim or task id hold their width. */
+.crumbs ol > li:has([data-crumb='workspace'], [data-crumb='area'], [data-crumb='claim'], [data-crumb='task']) {
+  flex-shrink: 0;
+}
+
+/* The separator grammar: "/" scope, "·" milestone to feature, "›" down. 8 px on both sides, never selectable. */
+.crumbs ol > li + li::before {
+  flex: none;
+  margin-inline: 4px;
   content: '/';
+  user-select: none;
+}
+
+.crumbs ol > li[data-sep='dot']::before {
+  content: '·';
+}
+
+.crumbs ol > li[data-sep='down']::before {
+  content: '›';
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ids are whole or absent: F0, 002, C-12, T3. */
+.crumbs .mono,
+.crumbs [data-crumb='claim'],
+.crumbs [data-crumb='task'] {
+  flex: none;
+}
+
+.crumbs a,
+.crumbs .unknown {
+  display: inline-flex;
+  flex: 0 1 auto;
+  gap: 4px;
+  align-items: center;
+  min-inline-size: 0;
 }
 
 .crumbs a {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
   color: inherit;
   text-decoration: none;
+  text-decoration-style: solid;
+  text-underline-offset: 2px;
 }
 
-.crumbs a:hover {
-  text-decoration: underline;
+/* Underline on hover and keyboard focus only, solid, never dotted. */
+.crumbs a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+}
+
+/* The three truncating names; the icons beside them keep their size. */
+.crumbs .name,
+.crumbs .crumb-slug {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.crumbs [data-crumb='feature'] .name {
+  max-inline-size: 240px;
+}
+
+.crumbs [data-crumb='milestone'] .name {
+  max-inline-size: 160px;
+}
+
+.crumbs .crumb-slug {
+  max-inline-size: 200px;
+}
+
+.crumbs ui-icon {
+  flex: none;
+}
+
+/* "+N more": a 20 px pill at fine pointers; the 44 x 44 hit area grows from a pseudo-element, as the button primitive
+   does, so the row height does not change. */
+.crumb-more {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  block-size: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.crumb-more-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 8px;
+  list-style: none;
 }
 
 .crumbs [aria-current] {
   color: var(--color-base-content);
 }
 
-.mono {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+@media (pointer: coarse) {
+  .crumbs ol {
+    min-block-size: 44px;
+  }
+
+  .crumb-more::before {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    inline-size: 44px;
+    block-size: 44px;
+    transform: translate(-50%, -50%);
+    content: '';
+  }
+}
+
+:host([data-tier='compact']) .crumbs [data-crumb='milestone'] .name {
+  max-inline-size: 96px;
 }
 
 .row {

@@ -4,6 +4,7 @@ slug: 004-retention-policies
 spec_type: feature
 isa_master: ../../ISA.md
 isa_feature: F4
+milestone: Harbor 1.0
 constitution: ../constitution.md
 phase: building
 progress: 30/30

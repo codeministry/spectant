@@ -62,6 +62,11 @@
   grid-template-columns: minmax(0, 1fr) 48px;
 }
 
+/* No workspace open (the overview `/`, settings): no rail column, main takes the full width. */
+:host([data-no-rail]) .shell-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* Zen (ISC-75): the rail goes at every tier and main takes the full width; `app-zen-footer` shows the spec. */
 :host([data-zen]) .shell-rail {
   display: none;

@@ -4,9 +4,8 @@
 // FORMAT.md's stage table is held as data in STAGE_RULES, in table order, first match wins: every column (condition in
 // words, command, reason templates) is a field, and core/tests/stage.test.ts compares each rule with its markdown row
 // verbatim (spec 002 T11, ISC-79). A reason is always one of its row's templates, filled by `fillReason`.
-import type { SpecType } from './files.ts';
+import type { MarkState, SpecType } from './files.ts';
 import type { Progress } from './frontmatter.ts';
-import type { MarkState } from './gates.ts';
 
 export type Stage = 'plan' | 'tasks' | 'review' | 'build' | 'blocked' | 'code-review' | 'close' | 'done';
 

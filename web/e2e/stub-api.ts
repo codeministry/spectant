@@ -12,6 +12,12 @@
  *   golden's `kpis`, `null` when unreadable.
  * - `GET|HEAD /api/workspaces/:slug/dashboard` → the golden model, serialized as the server does (`JSON.stringify`);
  *   404 `{error: "not-found"}` for an unknown slug; 409 with the list entry for the unreadable workspace.
+ * - Every route of `WORKSPACE_ROUTE_TABLE` (`GET|HEAD /api/workspaces/:ws/planning`, spec 003 T20): the whole golden
+ *   file of the route's family, `core/fixtures/<golden>.planning.golden.json` (`GOLDEN_FAMILY.planning`), not keyed by
+ *   folder; matched with the contract's `matchWorkspacePath`. The goldens are built at `2026-03-20`, so a live server
+ *   answer can differ in the milestones' `state` alone. Same guards as the dashboard: 403, 405 with
+ *   `allowForWorkspace(route)`, 404 `{error: "not-found"}` for an unknown slug, 409 with the list entry for the
+ *   unreadable workspace; the lock and write headers change nothing here.
  * - Every route of `SPEC_ROUTE_TABLE` (`…/specs/:id…`): the per-spec value of the route's golden family
  *   (`core/fixtures/<golden>.<family>.golden.json`, keyed by `specs/<folder>`), `:id` resolved as `core/src/resolve.ts`
  *   does (`NNN`, folder or bare slug, archived folders too). 404 `NotFound` for an unknown workspace, spec or task, 404
@@ -79,10 +85,12 @@ import type {
   TimelineEntry,
 } from '../../core/src/files';
 import {
+  GOLDEN_FAMILY,
   REVIEWED_HASHES_HEADER,
   REVIEWED_HASH_FILES,
   TASKS_HASH_HEADER,
   allowFor,
+  allowForWorkspace,
   evidenceFileHeaders,
   evidencePathQuery,
   formatReviewedHashes,
@@ -90,6 +98,7 @@ import {
   isTaskCheckRequest,
   matchSpecPath,
   matchSpecRoute,
+  matchWorkspacePath,
   type Conflict,
   type DocMissing,
   type GateReviewedResponse,
@@ -98,6 +107,7 @@ import {
   type ReviewedHashes,
   type SpecRouteMatch,
   type TaskCheckResponse,
+  type WorkspaceRouteMatch,
 } from '../../server/src/spec-routes.contract';
 import {
   type Note,
@@ -374,6 +384,19 @@ function readDashboard(dir: string, name: string): { model: unknown; kpis: unkno
   return { model, kpis: model.kpis };
 }
 
+/**
+ * The planning route's body: a workspace route's golden family is the whole file (`GOLDEN_FAMILY`), not keyed by
+ * folder, read as it is; the stub parses no spec.
+ */
+function readPlanning(dir: string, name: string): unknown {
+  const file = `${name}.${GOLDEN_FAMILY.planning}.golden.json`;
+  const model = readJson(dir, file) as { features?: unknown; milestones?: unknown };
+  if (!Array.isArray(model.features) || !Array.isArray(model.milestones)) {
+    throw new Error(`stub-api: ${file} has no features or milestones; is it a PlanningModel?`);
+  }
+  return model;
+}
+
 /** A deterministic stand-in for a sha256 hex: the hash of a label, never of a file (the stub reads no spec file). */
 const fakeHex = (label: string): string => new Bun.CryptoHasher('sha256').update(`stub-api:${label}`).digest('hex');
 
@@ -552,6 +575,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   const core = loadCore();
   const dashboards = new Map(workspaces.map((w) => [w.slug, readDashboard(dir, w.golden)]));
   const trees = new Map(workspaces.map((w) => [w.slug, readTree(core, dir, w.golden)]));
+  const plannings = new Map(workspaces.map((w) => [w.slug, readPlanning(dir, w.golden)]));
 
   const view = (state: StubState): StateView => {
     const listed = state === 'empty' ? [] : workspaces;
@@ -615,6 +639,22 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
     return workspaceJson(req, 200, dashboards.get(slug)?.model);
+  };
+
+  /**
+   * A route of `WORKSPACE_ROUTE_TABLE` (`/api/workspaces/:ws/planning`), with the guard order and statuses of the
+   * dashboard branch above and of `server/src/api.ts`: 403, 405 with `allowForWorkspace`, 404 unknown slug, 409 the
+   * unreadable summary, else the whole golden file of the route's family.
+   */
+  const workspaceFamilyRoute = (req: Request, state: StubState, match: WorkspaceRouteMatch): Response => {
+    if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowForWorkspace(match.route) });
+    }
+    const found = (views.get(state) ?? view(state)).workspaces.get(match.params.ws);
+    if (!found) return workspaceJson(req, 404, { error: 'not-found' });
+    if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
+    return workspaceJson(req, 200, plannings.get(match.params.ws));
   };
 
   const settingsRoute = async (req: Request): Promise<Response> => {
@@ -910,6 +950,9 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       return settingsError(400, { error: 'unknown-stub-state', state: requested, states: [...STUB_STATES] });
     }
     if (!spec) return workspaceRoute(req, requested, dashboard?.[1]);
+    // Before the spec catch-all, which answers every other path under a workspace with the server's JSON 404.
+    const family = matchWorkspacePath(pathname);
+    if (family !== null) return workspaceFamilyRoute(req, requested, family);
     const write = req.headers.get(WRITE_HEADER) ?? 'ok';
     if (!isOneOf(WRITE_OUTCOMES, write)) {
       return settingsError(400, { error: 'unknown-stub-write', write, outcomes: [...WRITE_OUTCOMES] });

@@ -32,18 +32,28 @@ import type {
 import { DOC_FILES } from "../core/src/files.ts";
 import { REVIEWED_FILES, hashForGate } from "../core/src/gates.ts";
 import { docsFor } from "../core/src/markdown-docs.ts";
+import type { PlanningModel } from "../core/src/planning.ts";
 import { WORKSPACES_PATH, type WorkspaceSummary, dashboardApi } from "../server/src/api.ts";
 import {
   API_ERRORS,
   DOC_NAMES,
+  type Forbidden,
+  GOLDEN_FAMILY,
   JSON_ANSWER,
+  type MethodNotAllowed,
+  type NotFound,
   SPEC_API_ROOT,
   SPEC_ROUTE_TABLE,
   type SpecRouteName,
   type SpecRouteResponses,
   type Unavailable,
   type UnreadableCode,
+  WORKSPACE_ROUTE_TABLE,
+  type WorkspaceRouteError,
+  type WorkspaceRouteName,
+  type WorkspaceRouteResponses,
   allowFor,
+  allowForWorkspace,
   evidenceFileHeaders,
   evidencePathQuery,
   formatReviewedHashes,
@@ -52,8 +62,10 @@ import {
   isUnavailable,
   matchSpecPath,
   matchSpecRoute,
+  matchWorkspacePath,
   parseReviewedHashes,
   specRoutes,
+  workspaceRoutes,
   REVIEWED_HASH_FILES,
 } from "../server/src/spec-routes.contract.ts";
 import type { UnreadableCode as LoaderUnreadableCode } from "../server/src/workspace-loader.ts";
@@ -218,6 +230,82 @@ describe("builders and matcher", () => {
     expect(evidencePathQuery("?x=1&path=artifacts%252e%252e")).toBe("artifacts%252e%252e");
     expect(evidencePathQuery("?x=1")).toBe("");
     expect(evidencePathQuery("")).toBe("");
+  });
+});
+
+// ─── workspace routes (spec 003) ─────────────────────────────────────────────────────────────────────────────────
+
+// Compile-time pins: the planning answer is core's PlanningModel, never a re-typed copy, and every workspace route has
+// a 200 type, the read error union and a golden family.
+const planningIsCore: Equal<WorkspaceRouteResponses["planning"], PlanningModel> = true;
+const workspaceResponsesCoverRoutes: Equal<keyof WorkspaceRouteResponses, WorkspaceRouteName> = true;
+const workspaceErrors: Equal<WorkspaceRouteError,NotFound | Forbidden | MethodNotAllowed | Unavailable> = true;
+const workspaceFamilies: Equal<Extract<keyof typeof GOLDEN_FAMILY, WorkspaceRouteName>, WorkspaceRouteName> = true;
+
+describe("workspace routes (spec 003): planning beside the spec routes", () => {
+  test("compile-time pins: PlanningModel is core's, every workspace route has a 200 type, an error union, a family", () => {
+    expect([planningIsCore, workspaceResponsesCoverRoutes, workspaceErrors, workspaceFamilies]).toEqual([true, true, true, true]);
+  });
+
+  test("the path is the plan's: /api/workspaces/:ws/planning, the slug percent-encoded once", () => {
+    expect(workspaceRoutes.planning("harbor")).toBe("/api/workspaces/harbor/planning");
+    expect(workspaceRoutes.planning("my repo")).toBe("/api/workspaces/my%20repo/planning");
+    expect(workspaceRoutes.planning("a/b")).toBe("/api/workspaces/a%2Fb/planning");
+  });
+
+  test("every builder round-trips through matchWorkspacePath, the slug decoded exactly once", () => {
+    for (const ws of WS) {
+      const url = new URL(workspaceRoutes.planning(ws), "http://127.0.0.1:7717");
+      expect({ ws, match: matchWorkspacePath(url.pathname) }).toEqual({ ws, match: { route: "planning", params: { ws } } });
+    }
+    expect(matchWorkspacePath("/api/workspaces/a%2541/planning")?.params).toEqual({ ws: "a%41" });
+    expect(matchWorkspacePath("/api/workspaces/%E0%A4%A/planning")).toBeNull();
+  });
+
+  test("anything else is null: extra or missing segments, the dashboard route, every spec route", () => {
+    for (const path of [
+      "/api/workspaces",
+      "/api/workspaces/harbor",
+      "/api/workspaces//planning",
+      "/api/workspaces/harbor/planning/",
+      "/api/workspaces/harbor/planning/extra",
+      "/api/workspaces/harbor/dashboard",
+      "/api/workspacesx/harbor/planning",
+      "/api/lifeos",
+    ]) {
+      expect({ path, match: matchWorkspacePath(path) }).toEqual({ path, match: null });
+    }
+    for (const route of Object.keys(built) as SpecRouteName[]) {
+      const path = new URL(built[route]("harbor", "002"), "http://127.0.0.1").pathname;
+      expect({ route, match: matchWorkspacePath(path) }).toEqual({ route, match: null });
+    }
+    expect(matchSpecPath(workspaceRoutes.planning("harbor"))).toBeNull();
+  });
+
+  test("the table lists every workspace builder exactly once, GET with the read statuses, its builder matching", () => {
+    const routes = WORKSPACE_ROUTE_TABLE.map((entry): string => entry.route);
+    expect(routes.length).toBe(new Set(routes).size);
+    expect([...routes].sort()).toEqual(Object.keys(workspaceRoutes).sort());
+    const read = SPEC_ROUTE_TABLE.find((entry) => entry.route === "spec")?.statuses;
+    for (const entry of WORKSPACE_ROUTE_TABLE) {
+      expect(entry.pattern).toBe(`${SPEC_API_ROOT}/:ws/${entry.route}`);
+      expect(entry.method).toBe("GET");
+      expect(entry.statuses).toEqual(read ?? []);
+      expect(matchWorkspacePath(workspaceRoutes[entry.route]("harbor"))?.route).toBe(entry.route);
+    }
+    expect(WORKSPACE_ROUTE_TABLE.map((entry) => [entry.route, entry.response])).toEqual([["planning", "PlanningModel"]]);
+  });
+
+  test("allowForWorkspace: the planning route answers GET and HEAD", () => {
+    expect(allowForWorkspace("planning")).toBe("GET, HEAD");
+  });
+
+  test("GOLDEN_FAMILY.planning names core/fixtures/<tree>.planning.golden.json, whose whole body is a PlanningModel", () => {
+    expect(GOLDEN_FAMILY.planning).toBe("planning");
+    const value = golden(GOLDEN_FAMILY.planning) as unknown as WorkspaceRouteResponses["planning"];
+    const spec = keysOf<PlanningModel>({ features: "req", milestones: "req", recount: "req", diagnostics: "req" });
+    expect(shapeProblems("planning", value, spec)).toEqual([]);
+    expect(value.features.length).toBeGreaterThan(0);
   });
 });
 

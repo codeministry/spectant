@@ -213,7 +213,8 @@ for (const [theme, tokens] of Object.entries(INHERITED) as Array<[keyof typeof I
       for (const { name, value, comment } of load()) {
         if (/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i.test(value)) failures.push(`${name}: non-OKLCH colour ${value}`);
         const values = oklchValues(value);
-        const sources = [...(comment ?? "").matchAll(/#[0-9a-f]{6}\b|rgba?\([^)]*\)/gi)].map((m) => m[0]);
+        // `#rrggbbaa` (the prototype's shadow colour) counts as one source; its alpha is checked by the T84 block.
+        const sources = [...(comment ?? "").matchAll(/#[0-9a-f]{8}\b|#[0-9a-f]{6}\b|rgba?\([^)]*\)/gi)].map((m) => m[0]);
         if (values.length === 0) {
           if (name.startsWith("--color-")) failures.push(`${name}: colour slot without oklch()`);
           if (sources.length > 0) failures.push(`${name}: ${sources.join(", ")} has no oklch() value`);
@@ -226,11 +227,150 @@ for (const [theme, tokens] of Object.entries(INHERITED) as Array<[keyof typeof I
         values.forEach((v, i) => {
           const source = must(sources[i]);
           const rgb: Rgb = source.startsWith("#")
-            ? hexToSrgb(source)
+            ? hexToSrgb(source.slice(0, 7))
             : (source.match(/[\d.]+/g)?.slice(0, 3).map((c) => Number(c) / 255) as Rgb);
           const dE = roundTrip(parseOklch(v), rgb);
           if (dE > MAX_DELTA_E) failures.push(`${name}: ${v} vs ${source} ΔE_OK×100 ${dE.toFixed(3)}`);
         });
+      }
+      expect(failures).toEqual([]);
+    });
+  });
+}
+
+// ── The prototype's token blocks (T84). ──
+// design.md § Prototype port makes the prototype's colours binding for both themes. Its two blocks
+// (`.design/prototype/prototyp/public/spectant-ui/styles.css:16-45`, gitignored, so copied here verbatim) must each
+// have a home: a daisyUI slot or an old-page name in `styles.css`, or a derived token in `styles/tokens.css` whose
+// value the prototype carries too (badge fill, badge text, track). A home is resolved the way the cascade does on the
+// `data-theme` element: the tokens.css theme rule, the tokens.css shared rule, then the daisyUI theme block.
+const TOKENS_CSS = readFileSync(join(import.meta.dir, "..", "src", "styles", "tokens.css"), "utf8");
+
+const PROTOTYPE = {
+  "spec-dark": {
+    "--page": "#221f22", "--card": "#2d2a2e", "--raised": "#403e41", "--lane": "#282629",
+    "--text": "#fcfcfa", "--muted": "#939293", "--border": "#4a474c",
+    "--cyan": "#78dce8", "--cyan-text": "#78dce8", "--violet": "#ab9df2", "--violet-text": "#ab9df2",
+    "--teal": "#164e5b", "--teal-t": "#dcebee",
+    "--lime": "#a6e22e", "--lime-text": "#a6e22e", "--green": "#a9dc9c", "--green-text": "#a9dc9c",
+    "--yellow": "#ffd866", "--yellow-text": "#ffd866", "--orange": "#fc9867", "--orange-text": "#fc9867",
+    "--red": "#ff6188", "--red-text": "#ff6188",
+    "--badge": "#1d6878", "--badge-text": "#fcfcfa", "--track": "#7f7d80",
+    "--cyan-t": "#24363a", "--violet-t": "#33303f", "--lime-t": "#2f3a24", "--green-t": "#2a3a2d",
+    "--yellow-t": "#3e3826", "--orange-t": "#3a2f27", "--red-t": "#422a33",
+    "--scrim": "#0006", "--shadow-c": "#0000004d",
+  },
+  "spec-light": {
+    "--page": "#f6f1ef", "--card": "#fdfaf9", "--raised": "#ede7e5", "--lane": "#f9f5f4",
+    "--text": "#29242a", "--muted": "#706b6e", "--border": "#dcd5d3",
+    "--cyan": "#1c8ca8", "--cyan-text": "#027892", "--violet": "#7058be", "--violet-text": "#7058be",
+    "--teal": "#2f95ab", "--teal-t": "#20343a",
+    "--lime": "#4c8a13", "--lime-text": "#417c02", "--green": "#269d69", "--green-text": "#007e50",
+    "--yellow": "#cc7a0a", "--yellow-text": "#a15e01", "--orange": "#ad560c", "--orange-text": "#ad560c",
+    "--red": "#e14775", "--red-text": "#ca3063",
+    "--badge": "#007e9a", "--badge-text": "#fcfcfa", "--track": "#8a8489",
+    "--cyan-t": "#ddf0f4", "--violet-t": "#ebe5f8", "--lime-t": "#e3f0d6", "--green-t": "#ddf3e8",
+    "--yellow-t": "#fbedd4", "--orange-t": "#fbedd4", "--red-t": "#fbe3ea",
+    "--scrim": "#0006", "--shadow-c": "#29242a1f",
+  },
+} as const;
+type Theme = keyof typeof PROTOTYPE;
+
+// Prototype name → the token it lives under here. The accents keep the old pages' family names (cyan → disp,
+// violet → ques, lime → clos, green → done, yellow → conc, orange → hover, red → fail), as `--hover-t` already does.
+// The prototype's `--teal-t` is the ink on teal, not a tint, so it is `--teal-content` here (daisyUI's word for it).
+const PROTOTYPE_HOME: Record<string, string> = {
+  "--page": "--color-base-200", "--card": "--color-base-100", "--raised": "--color-base-300", "--lane": "--lane",
+  "--text": "--color-base-content", "--muted": "--muted", "--border": "--line",
+  "--cyan": "--color-primary", "--cyan-text": "--disp-text", "--violet": "--color-secondary",
+  "--violet-text": "--ques-text", "--teal": "--teal", "--teal-t": "--teal-content",
+  "--lime": "--color-accent", "--lime-text": "--clos-text", "--green": "--color-success", "--green-text": "--done-text",
+  "--yellow": "--conc", "--yellow-text": "--conc-text", "--orange": "--color-warning", "--orange-text": "--hover-text",
+  "--red": "--color-error", "--red-text": "--fail-text",
+  "--badge": "--badge-fill", "--badge-text": "--badge-ink", "--track": "--track",
+  "--cyan-t": "--disp-t", "--violet-t": "--ques-t", "--lime-t": "--clos-t", "--green-t": "--done-t",
+  "--yellow-t": "--conc-t", "--orange-t": "--hover-t", "--red-t": "--fail-t",
+  "--scrim": "--scrim", "--shadow-c": "--shadow-color",
+};
+
+// The tokens T84 adds: the themes lacked them, so they are declared in the daisyUI theme blocks themselves.
+const ADDED = [
+  "--disp-text", "--ques-text", "--clos-text", "--done-text", "--conc-text", "--hover-text", "--fail-text",
+  "--teal", "--teal-content", "--shadow-color",
+];
+
+/** `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa` → sRGB 0…1 plus alpha. */
+function hexToRgba(hex: string): { rgb: Rgb; alpha: number } {
+  const digits = must(/^#([0-9a-f]{3,8})$/i.exec(hex)?.[1], `hex ${hex}`);
+  const full = digits.length <= 4 ? digits.replace(/./g, (d) => d + d) : digits;
+  if (full.length !== 6 && full.length !== 8) throw new Error(`not a hex colour: ${hex}`);
+  const channel = (i: number) => Number.parseInt(full.slice(i, i + 2), 16) / 255;
+  return { rgb: [channel(0), channel(2), channel(4)], alpha: full.length === 8 ? channel(6) : 1 };
+}
+
+/** Flat declarations of the `tokens.css` rule with exactly this selector. */
+function tokensRule(selector: string): Decl[] {
+  const found = [...TOKENS_CSS.matchAll(/^([^\n{}]+?)\s*\{([^{}]*)\}/gm)].filter((m) => must(m[1]).trim() === selector);
+  if (found.length !== 1) throw new Error(`expected one "${selector}" rule in tokens.css, found ${found.length}`);
+  return declarations(must(found[0]?.[2]));
+}
+
+/** Resolve a custom property to its oklch() value through the cascade on the `data-theme` element. */
+function resolveOklch(theme: Theme, name: string, seen: string[] = []): Oklch {
+  if (seen.includes(name)) throw new Error(`var() cycle: ${[...seen, name].join(" → ")}`);
+  const scopes = [tokensRule(`[data-theme="${theme}"]`), tokensRule("[data-theme]"), declarations(themeBlock(theme))];
+  const found = scopes.map((s) => decl(s, name)).find(Boolean);
+  if (!found) throw new Error(`${name} is not defined for ${theme}`);
+  const alias = /^var\(\s*(--[\w-]+)\s*\)$/.exec(found.value);
+  if (alias) return resolveOklch(theme, must(alias[1]), [...seen, name]);
+  return parseOklch(found.value);
+}
+
+for (const theme of Object.keys(PROTOTYPE) as Theme[]) {
+  describe(`theme ${theme}: the prototype's palette (T84)`, () => {
+    const tokens: Record<string, string> = PROTOTYPE[theme];
+
+    test("every prototype colour token has a home here", () => {
+      expect(Object.keys(tokens)).toHaveLength(35);
+      expect(Object.keys(tokens).filter((name) => !(name in PROTOTYPE_HOME))).toEqual([]);
+    });
+
+    test("the tokens the themes lacked are declared in the daisyUI theme block", () => {
+      const names = new Set(declarations(themeBlock(theme)).map((d) => d.name));
+      expect(ADDED.filter((name) => !names.has(name))).toEqual([]);
+    });
+
+    test("each home round-trips to the prototype hex (ΔE_OK×100 ≤ 0.5, alpha within 1/255)", () => {
+      const failures: string[] = [];
+      for (const [name, hex] of Object.entries(tokens)) {
+        const home = must(PROTOTYPE_HOME[name], `home of ${name}`);
+        let value: Oklch;
+        try {
+          value = resolveOklch(theme, home);
+        } catch (error) {
+          failures.push(`${name} → ${home}: ${(error as Error).message}`);
+          continue;
+        }
+        const reference = hexToRgba(hex);
+        const dE = roundTrip(value, reference.rgb);
+        if (dE > MAX_DELTA_E) failures.push(`${name} → ${home}: ΔE_OK×100 ${dE.toFixed(3)} > ${MAX_DELTA_E}`);
+        if (Math.abs(value.alpha - reference.alpha) > 1 / 255) {
+          failures.push(`${name} → ${home}: alpha ${value.alpha} vs ${reference.alpha.toFixed(3)} (${hex})`);
+        }
+      }
+      expect(failures).toEqual([]);
+    });
+
+    test("a -text ink equal to its accent aliases that accent with var(), so it follows the palette", () => {
+      const block = declarations(themeBlock(theme));
+      const failures: string[] = [];
+      for (const [name, hex] of Object.entries(tokens)) {
+        if (!name.endsWith("-text") || name === "--badge-text") continue;
+        const base = name.slice(0, -"-text".length);
+        if (tokens[base] !== hex) continue;
+        const expected = `var(${must(PROTOTYPE_HOME[base], `home of ${base}`)})`;
+        const found = decl(block, must(PROTOTYPE_HOME[name], `home of ${name}`))?.value;
+        if (found !== expected) failures.push(`${name}: expected ${expected}, found ${found ?? "nothing"}`);
       }
       expect(failures).toEqual([]);
     });

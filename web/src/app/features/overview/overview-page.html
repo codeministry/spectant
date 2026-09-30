@@ -1,0 +1,58 @@
+<div class="page-head">
+  <div class="type-eyebrow" data-overview-eyebrow>{{ 'header.switcher.allWorkspaces' | transloco: { count: count() } }}</div>
+  <h1 class="type-page-title">{{ 'shell.workspace.menu' | transloco }}</h1>
+</div>
+
+@if (list(); as list) {
+  @if (list.length > 0) {
+    <div class="overview">
+      @for (slot of slots(); track $index) {
+        @switch (slot.kind) {
+          @case ('column') {
+            <app-workspace-column [column]="slot.column" />
+          }
+          @case ('unreadable') {
+            <section data-ui="workspace-column" class="plain" [attr.data-ws]="slot.entry.slug">
+              <div class="ws-head">
+                <h2>{{ slot.entry.name }}</h2>
+                <span class="path">{{ slot.entry.pathTail }}</span>
+              </div>
+              <ui-notice tone="warning">
+                <strong>{{ 'overview.unreadable' | transloco }}</strong>
+                @if (slot.reason; as reason) {
+                  · <span class="reason">{{ reason }}</span>
+                }
+              </ui-notice>
+            </section>
+          }
+          @case ('loading') {
+            <section data-ui="workspace-column" class="plain" aria-busy="true" [attr.data-ws]="slot.entry.slug">
+              <div class="ws-head">
+                <h2>{{ slot.entry.name }}</h2>
+                <span class="path">{{ slot.entry.pathTail }}</span>
+              </div>
+              <div class="strip-skeleton">
+                <ui-skeleton height="96px" /><ui-skeleton height="96px" /><ui-skeleton height="96px" /><ui-skeleton height="96px" />
+              </div>
+            </section>
+          }
+        }
+      }
+    </div>
+  } @else {
+    <ui-card [padding]="0">
+      <ui-empty-state icon="folder-plus" [heading]="'overview.empty.title' | transloco" [body]="'overview.empty.hint' | transloco">
+        <ui-command-chip
+          [command]="'overview.empty.command' | transloco"
+          [copyLabel]="'common.copyCommand' | transloco"
+          [copiedLabel]="'common.copied' | transloco: { command: 'overview.empty.command' | transloco }"
+          [manualHint]="'common.copyFallback' | transloco"
+        />
+      </ui-empty-state>
+    </ui-card>
+  }
+} @else if (failed()) {
+  <ui-notice tone="error">{{ 'shell.error' | transloco }}</ui-notice>
+} @else {
+  <p class="loading-note type-meta">{{ 'common.loading' | transloco }}</p>
+}

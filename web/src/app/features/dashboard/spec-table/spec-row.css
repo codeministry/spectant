@@ -1,0 +1,163 @@
+/*
+ * The spec row, ported from the prototype (styles.css 380-397, 512-513, 598-601). The list declares `container:
+ * specs`; the row reads it, never the viewport. Below 760 px: `id title title` over `. track meter`, 64 px. From
+ * 760 px: one line `40px | 1fr | auto | auto`, 48 px (64 px with the description line). Dense (the overview column):
+ * one 48 px line at every width. `--row-id-ink` is set by the list on the selected row, whose cyan tint takes the ink.
+ */
+:host {
+  display: grid;
+  grid-template-areas:
+    'id title title'
+    '. track meter';
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 4px 16px;
+  align-items: center;
+  min-block-size: 64px;
+  padding: 8px 16px;
+}
+
+.rid {
+  grid-area: id;
+  align-self: start;
+  color: var(--row-id-ink, var(--disp-text));
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.rtitle {
+  display: grid;
+  grid-area: title;
+  min-inline-size: 0;
+}
+
+.t,
+.d {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.t {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.d {
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.rtrack {
+  display: flex;
+  grid-area: track;
+  gap: 16px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.ragent {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 8px;
+}
+
+/* The prototype's `.agent-dot`: an orange 8 px dot with a ping ring; the ring stops under reduced motion (0ms). */
+.agent-dot {
+  display: inline-block;
+  position: relative;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+
+.agent-dot::after {
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--color-warning);
+  border-radius: 50%;
+  animation: agent-ping var(--motion-duration-skeleton) var(--motion-ease-standard) infinite;
+  content: '';
+  opacity: 0;
+}
+
+@keyframes agent-ping {
+  0% {
+    opacity: 0.8;
+    scale: 0.5;
+  }
+
+  100% {
+    opacity: 0;
+    scale: 1.4;
+  }
+}
+
+.rmeter {
+  display: flex;
+  grid-area: meter;
+  gap: 8px;
+  align-items: center;
+  justify-content: end;
+}
+
+.meter {
+  inline-size: 64px;
+}
+
+.frac {
+  min-inline-size: 5ch;
+  color: var(--muted-ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  text-align: end;
+}
+
+@container specs (width >= 760px) {
+  :host {
+    grid-template-areas: 'id title track meter';
+    grid-template-columns: 40px minmax(0, 1fr) auto auto;
+    min-block-size: 48px;
+  }
+
+  .rid {
+    align-self: center;
+  }
+}
+
+:host([data-density='dense']) {
+  grid-template-areas: 'id title track meter';
+  grid-template-columns: 40px minmax(0, 1fr) auto auto;
+  min-block-size: 48px;
+}
+
+:host([data-density='dense']) .rid {
+  align-self: center;
+}
+
+:host([data-density='dense']) .t {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* Dense keeps the overview column to one line: no description line, no phase chip. */
+:host([data-density='dense']) :is(.d, .phase) {
+  display: none;
+}
+
+@media (forced-colors: active) {
+  .agent-dot {
+    background: CanvasText;
+  }
+
+  .agent-dot::after {
+    display: none;
+  }
+}

@@ -1,0 +1,370 @@
+/*
+ * The Features page (design.md § Features page, every viewport). Page head: H1 Sora 24/32, the meta line 13/20 muted
+ * with tabular counts, 24 px to the first row. Rows: one card each, 16 px apart at wide and 8 px below.
+ *
+ * Wide: the row is two stacks on `minmax(0,1fr) 240px`, gap 32 — left the H2 (17/24), the Why line and the chips,
+ * right the 160 x 6 meter with the fraction on the heading's first line box and the unheld line 8 px below.
+ * Medium and compact: the stacks dissolve (`display: contents`) into one column — heading and fraction on one row
+ * (`minmax(0,1fr) auto`), the meter at full width and 8 px high, then Why, chips and the unheld line (compact moves
+ * the unheld line up under the meter, design § Mobile). Every grid and flex child sets `min-inline-size: 0`.
+ */
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+.unavailable {
+  color: var(--muted-ink);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  margin: 0 0 24px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+.meta > span + span::before {
+  margin-inline-end: 8px;
+  content: '·';
+}
+
+.n,
+.id,
+.fraction,
+.ids {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.rows {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rows > li {
+  min-inline-size: 0;
+}
+
+/* The arrival outline: 2 px primary around the card the fragment names, fading over the slow token. Under reduced
+   motion every duration is 0 ms (motion.css), so the outline is set statically instead. */
+ui-card[data-arrived] {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  animation: features-arrival var(--motion-duration-slow) var(--motion-ease-standard);
+}
+
+@keyframes features-arrival {
+  from {
+    outline-color: var(--color-primary);
+  }
+
+  to {
+    outline-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ui-card[data-arrived] {
+    outline-color: var(--color-primary);
+  }
+}
+
+article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 32px;
+  align-items: start;
+  padding: 16px 24px;
+  border-radius: inherit;
+  scroll-margin-block: 96px;
+}
+
+/* The card's arrival outline marks the row; the programmatic focus of a `tabindex="-1"` target draws no ring. */
+article:focus {
+  outline: none;
+}
+
+.main,
+.side {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+h2 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  align-items: baseline;
+  min-inline-size: 0;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+h2 .id {
+  flex: none;
+  color: var(--disp-ink);
+}
+
+h2 .id::after {
+  margin-inline-start: 8px;
+  color: var(--muted-ink);
+  content: '·';
+}
+
+h2 .name {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.why-block {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  min-inline-size: 0;
+  margin-block-start: 4px;
+}
+
+.why {
+  min-inline-size: 0;
+  max-inline-size: 72ch;
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.why.clamped {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.more {
+  flex: none;
+  padding-inline: 0;
+}
+
+.holders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-inline-size: 0;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.holders > li {
+  display: flex;
+  min-inline-size: 0;
+}
+
+.more-chips {
+  min-block-size: 28px;
+  block-size: 28px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.progress {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  min-block-size: 24px;
+}
+
+.progress ui-meter {
+  flex: none;
+  inline-size: 160px;
+}
+
+.fraction {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 13px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.fraction.done {
+  color: var(--done-ink);
+}
+
+.fraction.muted {
+  color: var(--muted-ink);
+}
+
+.unheld {
+  margin: 8px 0 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  text-align: end;
+}
+
+details.unheld {
+  color: var(--conc-ink);
+}
+
+details.unheld summary {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
+}
+
+details.unheld summary::-webkit-details-marker {
+  display: none;
+}
+
+details.unheld .chevron {
+  transition: rotate var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+details.unheld[open] .chevron {
+  rotate: 180deg;
+}
+
+.ids {
+  margin: 4px 0 0;
+  color: var(--color-base-content);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+
+@media (pointer: coarse) {
+  details.unheld summary {
+    min-block-size: 44px;
+  }
+}
+
+.skeleton-card {
+  display: grid;
+  gap: 12px;
+}
+
+/* Medium and compact: one column, the stacks dissolved into the article's grid. */
+:host(:not([data-tier='wide'])) .rows {
+  gap: 8px;
+}
+
+:host(:not([data-tier='wide'])) article {
+  grid-template-areas:
+    'head fraction'
+    'meter meter'
+    'why why'
+    'chips chips'
+    'unheld unheld';
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 16px;
+  padding: 16px;
+}
+
+:host(:not([data-tier='wide'])) :is(.main, .side, .progress) {
+  display: contents;
+}
+
+:host(:not([data-tier='wide'])) h2 {
+  grid-area: head;
+}
+
+:host(:not([data-tier='wide'])) .fraction {
+  grid-area: fraction;
+  place-self: start end;
+  line-height: 24px;
+}
+
+:host(:not([data-tier='wide'])) .progress ui-meter {
+  grid-area: meter;
+  inline-size: auto;
+  margin-block-start: 8px;
+}
+
+:host(:not([data-tier='wide'])) .why-block {
+  grid-area: why;
+  margin-block-start: 8px;
+}
+
+:host(:not([data-tier='wide'])) .holders {
+  grid-area: chips;
+  margin-block-start: 8px;
+}
+
+:host(:not([data-tier='wide'])) .unheld {
+  grid-area: unheld;
+  justify-self: start;
+  text-align: start;
+}
+
+:host([data-tier='compact']) article {
+  grid-template-areas:
+    'head fraction'
+    'meter meter'
+    'unheld unheld'
+    'why why'
+    'chips chips';
+}
+
+:host([data-tier='compact']) h2 {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  font-size: 15px;
+}
+
+:host([data-tier='compact']) h2 .id {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+:host([data-tier='compact']) h2 .id::after {
+  content: none;
+}
+
+:host([data-tier='compact']) h2 .name {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+:host([data-tier='compact']) .unheld {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+@media (forced-colors: active) {
+  ui-card[data-arrived] {
+    outline-color: Highlight;
+  }
+}

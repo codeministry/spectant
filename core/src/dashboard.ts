@@ -19,11 +19,12 @@ import type { Diagnostic } from './diagnostics.ts';
 import { diagramVerdict } from './diagrams.ts';
 import type { DiagramVerdict } from './diagrams.ts';
 import { specFilePath } from './files.ts';
-import type { AgentLockSource, ClaimLock, FileKind, GateView, LockDiagnostic, LockReading, SpecFiles, SpecGates, SpecType, SpecWarning, WarningKind } from './files.ts';
+import type { AgentLockSource, ClaimLock, FileDiagnostic, FileKind, GateView, LockDiagnostic, LockReading, SpecFiles, SpecGates, SpecType, SpecWarning, WarningKind } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import type { Progress } from './frontmatter.ts';
 import { gateState, readGateMark, reviewedGate } from './gates.ts';
 import type { GateCheck, GateMarkReading, GateName, ReviewedFile } from './gates.ts';
+import { specIdOf, specSlugOf } from './spec-ref.ts';
 import { nextCommandWithReason } from './stage.ts';
 import type { Stage } from './stage.ts';
 import { driftReport, hasDrift, heldLocks, masterProgressMismatch, partitionClaims } from './status.ts';
@@ -73,7 +74,7 @@ export interface DashboardTakenClaim {
 
 /** One active spec, as a row of the Specs panel and an entry of Next up. */
 export interface DashboardSpecRow {
-  /** `NNN`. */
+  /** The folder's numeric prefix (`specIdOf`), `NNN` for every folder the loader lists; the whole folder name when it has none. */
   readonly id: string;
   /** `NNN-slug`. */
   readonly slug: string;
@@ -133,11 +134,8 @@ export interface LocalService {
   readonly worktree?: boolean;
 }
 
-/** A parse finding in one file of the workspace, relative to the repository root. */
-export interface FileDiagnostic {
-  readonly file: string;
-  readonly diagnostic: Diagnostic;
-}
+/** A parse finding per file lives in `files.ts`, so `planning.ts` types it without reaching this module. */
+export type { FileDiagnostic } from './files.ts';
 
 export interface DashboardModel {
   readonly kpis: DashboardKpis;
@@ -338,7 +336,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     note('spec', [{ severity: 'error', code: 'spec-missing', message: 'The folder has no spec.md, so it is not a spec and gets no row.' }]);
     return null;
   }
-  const id = f.folder.slice(0, 3);
+  const id = specIdOf(f.folder) ?? f.folder;
   const plan = f.texts.plan ?? null;
   const fm = parseFrontmatter(spec);
   const doc = parseClaims(spec);
@@ -412,7 +410,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
   return {
     id,
     slug: f.folder,
-    title: summary?.title ?? f.folder.replace(/^\d+-/, ''),
+    title: summary?.title ?? specSlugOf(f.folder),
     type,
     phase,
     stage: next.stage,

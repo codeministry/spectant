@@ -75,6 +75,7 @@ a warning (nested YAML is not part of the format); a repeated key warns and the 
 | `principal_stated_goal_signal` | number | — |
 | `context_sufficient`, `interview_invoked` | `true` or `false` | — |
 | `archived_reason`, `archived` | text, `YYYY-MM-DD` | the archive listing |
+| `milestone` | text | matched by name against the master's `## Milestones` entries (`master`, below); a name no entry carries warns `spec-milestone-unknown` and the spec still parses; without the key the spec belongs to no milestone |
 
 Every other key is kept as written (`rest`) and read by nobody.
 
@@ -109,6 +110,7 @@ slug: 002-web-console
 spec_type: feature
 isa_master: ../../ISA.md
 isa_feature: F2
+milestone: Harbor 1.0
 constitution: ../constitution.md
 phase: building
 progress: 25/30
@@ -584,8 +586,45 @@ From `core/fixtures/leadgen/ISA.md`, a tombstone with an edge:
 - [ ] ISC-342: [DROPPED — see Decisions 2026-09-24] The jar carries the Gradle version through Spring Boot's build info, `leadgen.version` defaults to it and `LEADGEN_VERSION` from the image tag still wins when set, the HTTP user agent names the running version, and no file under `backend/src` spells the version as a literal. (after: ISC-348)
 ```
 
+**Milestones** (optional; `frontmatter.ts` reads a spec's `milestone:` and `milestones.ts` this block). A level-two
+`## Milestones` section of the master holds one bullet per milestone:
+
+`- <name> · <YYYY-MM-DD> · <description?>`
+
+- the name runs to the first ` · `; a spec names the milestone by it (`milestone: Harbor 1.0`);
+- the slug is the kebab-cased name, lower-cased with every run of characters other than `a`–`z` and `0`–`9` turned
+  into one `-` and no `-` at either end (`Harbor 0.9` → `harbor-0-9`); it is the milestone's anchor on its page,
+  `#m-<slug>`;
+- then the target date, an ISO date `YYYY-MM-DD`, and after a second ` · ` an optional description running to the end
+  of the line;
+- a line without the date part is a `master-milestone-line` warning and is skipped;
+- only a top-level bullet is a milestone line: an indented bullet is a note under the entry above and is ignored
+  without a warning, and the section ends at the next heading of any level (`#` to `######`) or a `---` rule;
+- a repeated name or slug is a `master-milestone-duplicate` warning and the later entry is skipped; a name the master
+  lists on a skipped line warns only on the master, and a spec naming it belongs to no milestone;
+- there is no `done` mark: completeness is always derived from the claims of the specs naming the milestone, active
+  and archived alike. A milestone is `complete` when every such claim is closed, `late` when its target date has passed
+  with a claim still open (the target day itself is not yet late), and `upcoming` otherwise; a milestone with no counted
+  claim (an entry no spec names) is never `complete`, only `late` or `upcoming` by its date. An archived spec's claims
+  count exactly like an active one's, so archiving alone never completes or reopens a milestone. Milestones are shown in
+  target-date order, whatever their order in the block.
+
+A master without the block has no milestone level: the app shows no Milestones page, menu entry or palette group. A
+block with two entries, one target passed and one ahead.
+
+From `core/fixtures/harbor/ISA.md`:
+
+```markdown
+## Milestones
+
+- Harbor 0.9 · 2026-03-15 · Config through one loader, before the console ships.
+- Harbor 1.0 · 2026-05-14 · First release a teammate can install.
+```
+
 **Derived:** the master fraction (the hero number), the reference for every spec's drift, and its fog lines in the
-attention count.
+attention count. **Derived: the planning tree** (spec 003, `planning.ts`): the features from the master's blocks, each
+claim with the spec folder that holds it, active or archived; and the milestones from the `## Milestones` block
+together with the specs' `milestone:` keys, each with its progress, closed over total, across every feature it touches.
 
 ## The stage table
 

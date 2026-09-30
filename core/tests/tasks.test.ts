@@ -111,12 +111,15 @@ describe("spectant's live spec 001: struck bullets", () => {
   const path = join(REPO, 'specs', '001-app-skeleton', 'tasks.md');
   const text = existsSync(path) ? readFileSync(path, 'utf8') : '';
 
-  test('81 task lines, 2 struck bullets outside the count; done equals archive.ts', () => {
+  // The spec is live and grows by rounds, so the box total is counted from the file itself rather than pinned.
+  test('every checkbox line is a task, 2 struck bullets outside the count; done equals archive.ts', () => {
     const model = parseTaskLines({ tasks: text, constitution: readFileSync(join(REPO, 'specs', 'constitution.md'), 'utf8') });
     const struck = model.tasks.filter((t) => t.state === 'struck');
-    expect(model.counts.boxes.total).toBe(81);
+    const boxLines = text.split('\n').filter((line) => /^- \[[ xX]\] T\d+ /u.test(line)).length;
+    expect(boxLines).toBeGreaterThan(80);
+    expect(model.counts.boxes.total).toBe(boxLines);
     expect(struck).toHaveLength(2);
-    expect(model.counts.rows).toBe(83);
+    expect(model.counts.rows).toBe(boxLines + 2);
     expect(model.counts.boxes).toEqual(archiveBoxes(text));
     expect(model.tasks.filter((t) => t.state === 'done')).toHaveLength(archiveBoxes(text).landed);
     expect(ids(struck)).toEqual(['T32', 'T60']);

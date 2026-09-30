@@ -1,0 +1,80 @@
+<ng-template #body>
+  <div class="command-palette" data-ui="command-palette">
+    <div class="p-input">
+      <ui-icon name="search" />
+      <input
+        type="text"
+        role="combobox"
+        data-autofocus
+        autocomplete="off"
+        spellcheck="false"
+        aria-autocomplete="list"
+        aria-expanded="true"
+        [attr.aria-controls]="listId"
+        [attr.aria-activedescendant]="activeId()"
+        [attr.aria-label]="'palette.label' | transloco"
+        [placeholder]="'shell.palette.trigger' | transloco"
+        [value]="query()"
+        (input)="onInput($event)"
+        (keydown)="onKey($event)"
+      />
+      <ui-kbd aria-hidden="true">{{ escLabel }}</ui-kbd>
+    </div>
+    <div class="p-list" role="listbox" [id]="listId" [attr.aria-label]="'palette.results' | transloco">
+      @for (group of groups(); track group.id) {
+        <div role="group" class="p-section" [attr.data-group]="group.id" [attr.aria-labelledby]="group.headingId">
+          <div role="presentation" class="p-group" [id]="group.headingId">{{ group.labelKey | transloco }}</div>
+          @for (option of group.options; track option.domId) {
+            <button
+              type="button"
+              role="option"
+              tabindex="-1"
+              class="p-item"
+              [id]="option.domId"
+              [attr.data-entry]="option.entry.id"
+              [attr.aria-selected]="option.index === active()"
+              (pointermove)="active.set(option.index)"
+              (click)="activate(option.entry)"
+            >
+              @if (option.entry.chip) {
+                <span class="p-chip">
+                  @for (piece of option.chip; track $index) {
+                    @if (piece.mark) {
+                      <mark>{{ piece.text }}</mark>
+                    } @else {
+                      {{ piece.text }}
+                    }
+                  }
+                </span>
+              }
+              <span class="grow">
+                @for (piece of option.label; track $index) {
+                  @if (piece.mark) {
+                    <mark>{{ piece.text }}</mark>
+                  } @else {
+                    {{ piece.text }}
+                  }
+                }
+              </span>
+              @if (option.entry.meta) {
+                <span class="meta">{{ option.entry.meta }}</span>
+              }
+            </button>
+          }
+        </div>
+      } @empty {
+        <p class="p-empty" role="presentation">{{ 'palette.noMatch' | transloco: { query: query(), example: example() } }}</p>
+      }
+    </div>
+  </div>
+</ng-template>
+
+@if (compact()) {
+  <ui-sheet tier="compact" [label]="'palette.label' | transloco" [(open)]="keyboard.paletteOpen">
+    <ng-container [ngTemplateOutlet]="body" />
+  </ui-sheet>
+} @else {
+  <ui-dialog [label]="'palette.label' | transloco" [(open)]="keyboard.paletteOpen">
+    <ng-container [ngTemplateOutlet]="body" />
+  </ui-dialog>
+}

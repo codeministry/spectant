@@ -29,6 +29,15 @@ its stage and next command; the TL;DR bar stays as a collapsed "Brief"; the over
 designers (container tiers, motion tokens, contrast tokens, icon set, dev-services placement) were resolved by the
 parent and are recorded under `## Viewport-übergreifend`.
 
+## Prototype port (binding since 2026-09-29)
+
+The principal made the Lovable prototype binding for the workspace dashboard and the overview: tile split, the data
+each tile shows, its visualisation, both themes' colours, the typefaces, the 3 px top edge and the corner glow. The
+source is `.design/prototype/prototyp/public/spectant-ui/` (`index.html` → overview, `workspace.html` → dashboard); the tile and token inventory with line
+numbers is `.design/handover-003/tiles.md` and `tokens.md`, the page pairs at 1440 px are in `compare/`. Where the
+viewport sections below disagree with the prototype, the prototype wins; they stay as the record of the first design
+pass. The header, the area menu and the shell are spec 002's; the cover image per workspace stays out of scope.
+
 ## Mobile (390)
 
 ### Ist
@@ -73,8 +82,9 @@ next; the fixture page is about 1,400 px tall instead of 4,577.
   (sheet: Stage, ID, Progress); rows of at least 64 px (`4ch 1fr auto`: mono ID, title clamped to two lines, phase chip
   over `n/m` and a 32 px micro meter); the second line with stage track and command wraps under the title. The
   `archive-fold` `<details>` "15 archived specs" closes the list.
-- **Spec open:** Enter or tap navigates to `/w/:ws/s/:id`, rendered as a full-screen `ui-sheet`; Esc returns and
-  focuses the row.
+- **Spec preview:** Enter or tap sets `?spec=<id>` on `/w/:ws`, rendered as a full-screen `ui-sheet`; its Open
+  button (or Enter again) navigates to the spec page `/w/:ws/s/:id` (spec 002); Esc clears the query and focuses the
+  row.
 - **Popovers become sheets:** at compact every popover (switcher, sort, gear, interval) renders through the one
   `ui-sheet` primitive (bottom sheet; the palette as a top sheet, 8 px inset, `max-height: calc(100dvh - 16px)`).
   No anchor positioning is needed at this tier.
@@ -130,7 +140,8 @@ keyboard, and the upper end of the cmux side-panel band. Gutter 24 px, content 7
   loaded when opened.
 - **Warnings (`warnings-panel`, `#warnings`):** "Warnings · 5 in 4 specs", grouped by spec, plus "Open fog · 2"; with
   no warnings a single 48 px line "No warnings" with a check icon.
-- **Spec open:** `/w/:ws/s/:id` as a 480 px `ui-sheet` from the right (dialog, focus trap, Esc returns to the row).
+- **Spec preview:** `/w/:ws?spec=<id>` as a 480 px `ui-sheet` from the right (dialog, focus trap, Open goes to
+  `/w/:ws/s/:id`, Esc clears the query and returns to the row).
 - **All workspaces (`/`):** two columns of about 374 px side by side (registry order); each `workspace-column` with a
   56 px header link, a 96 px `KpiStrip` (56 px ring + three stat cells), the dense spec list (48 px single-line rows
   with a 40 px mini stage track) and "Open <workspace> →". `/` → `/w/:ws` runs a same-document view transition on
@@ -174,8 +185,8 @@ sequences are the navigation.
   `hyphens: none`, "474" at 40/48 + "/477" at 20/28 muted (nowrap, tabular, stepping down past six digits), caption
   "99 % closed · 3 open". Tiles (120 px): Spec claims (meter), Specs (split meter + legend dots), Takeable now,
   Attention (warnings + fog, `--hover` edge), Archive count, and one reserved slot for the activity sparkline of the
-  state-machine spec. Tiles with a destination are links (the whole tile; hover raises the glow from 14 % to 22 %,
-  no lift). The corner glow is a `::before` behind the content; labels never fade, they ellipsize with a `title`.
+  state-machine spec. Tiles with a destination are links (the whole tile; hover raises the glow's opacity from .7 to 1,
+  no lift; `ui-card` `edge` + `glow`, T85). The corner glow is an `::after` behind the content; labels never fade, they ellipsize with a `title`.
 - **Brief (`ui-disclosure`, 48 px collapsed):** violet 3 px left edge, rotated `chevron-down`, "TL;DR" in mono
   `--ques`, "as of <date>" muted, a `ui-chip` "stale" when the file is older than the newest spec change, a
   `ui-command-chip` `/spec-tldr` with copy. Open: prose at 15/24, `max-inline-size: 72ch`, animated
@@ -193,10 +204,11 @@ sequences are the navigation.
   012") and a "takeable ISC-334" chip. 2 · **Warnings** (`warnings-panel`): rows of `triangle-alert`, mono ID and
   message (clamp 2), grouped by spec; empty state "No warnings" with `circle-check`. 3 · nothing else: dev services
   live in the header indicator at every width.
-- **Inspector mode (`/w/:ws/s/:id`):** the rail swaps to `spec-inspector` through a 240 ms crossfade view
+- **Inspector mode (`/w/:ws?spec=<id>`):** the rail swaps to `spec-inspector` through a 240 ms crossfade view
   transition: "Back" text button with `ui-kbd` Esc; ID and full title (20/28); phase and type chips; labelled stage
   track; claims meter with `n/m` and percentage; the next-command chip; takeable-claim chips; this spec's warnings;
-  fog count; `[` / `]` step through the list in its current order; Esc returns to `/w/:ws` and focuses the row.
+  fog count; an Open button (Enter again) to the spec page `/w/:ws/s/:id`; `[` / `]` step through the list in its
+  current order, rewriting `?spec`; Esc clears `?spec` and focuses the row.
 - **All workspaces (`/`):** no rail; body `repeat(auto-fit, minmax(min(100%, 360px), 1fr))`, gap 32, capped at three
   columns (`max-inline-size` on the grid); two workspaces give two columns of 672 px. `workspace-column` as at 820,
   with four `ui-kpi-tile size=sm` (156 × 96) in the strip. Navigating into a workspace morphs the column title into
@@ -236,9 +248,11 @@ sequences are the navigation.
 
 ### Routes and state
 
-- `/` all workspaces (redirects to `/w/:ws` when exactly one is registered) · `/w/:ws` dashboard · `/w/:ws/s/:id`
-  spec open (inspector at wide, 480 px side sheet at medium, full-screen sheet at compact; Esc returns and focuses
-  the row; `[` / `]` step through the current list order). F2's review page attaches to this route.
+- `/` all workspaces (redirects to `/w/:ws` when exactly one is registered) · `/w/:ws` dashboard ·
+  `/w/:ws?spec=<id>` spec preview (inspector at wide, 480 px side sheet at medium, full-screen sheet at compact; Esc
+  clears the query and focuses the row; `[` / `]` step through the current list order) · `/w/:ws/s/:id` the spec
+  page, owned by spec 002 (decision 2026-09-29: the route this design first gave the inspector became the full spec
+  page, so the preview is router state on the dashboard, not a route of its own).
 - Filter, sort and takeable flags are query state (`?phase=building&type=feature&sort=next&takeable=1`), never
   in-memory, so reload, back and the cmux web view hold them.
 - The badge chevron is the **only switcher widget** (two levels: workspaces, then the specs of the current one). The
@@ -249,6 +263,10 @@ sequences are the navigation.
   wrapped in try/catch.
 
 ### Header and live indicator
+
+> **Superseded (principal, 2026-09-29):** the app keeps spec 002's header — wordmark, workspace picker, spec picker,
+> area menu, palette trigger, live indicator, zen and settings (002 design.md § Header, built by 002-T36, ISC-73).
+> 001 builds no header of its own; T60 is struck. The paragraph below is kept as the original design record only.
 
 One `layout/header` at every width: badge switcher · eyebrow + title · palette trigger (full field ≥ 960 px header
 container, icon button below) · `ui-live-indicator` · gear · `?`. The live indicator replaces the old refresh / timer
@@ -273,16 +291,20 @@ its popover. The page also refreshes when the tab becomes visible again; request
   | `?` | shortcut sheet |
   | ↓ ↑ · j k · Home End | move the selection in the focused list (roving tabindex, no wrap) |
   | ← → · h l | move between workspace columns on `/`, keeping the row index |
-  | Enter | open the selected spec (`/w/:ws/s/:id`) |
-  | Esc | close palette, sheet, popover or inspector; focus returns to the trigger or the row |
+  | Enter | preview the selected spec (`?spec=<id>`); Enter again, or Enter in the palette, opens the spec page `/w/:ws/s/:id` |
+  | Esc | close palette, sheet, popover or preview; focus returns to the trigger or the row |
   | `c` | copy the selected spec's next command |
   | `r` | refresh now |
-  | `[` `]` | previous / next spec while a spec is open |
-  | `g a` · `g s` · `g n` · `g w` | all workspaces · Specs · Next up · Warnings (focus lands on the section heading, DS-APP-35) |
+  | `[` `]` | previous / next spec while a preview is open |
+  | `g a` · `g s` · `g n` · `g w` | on the dashboard: all workspaces · Specs · Next up · Warnings (focus lands on the section heading, DS-APP-35) |
   | `1`–`3` | phase filter All / building / scoping while the list has focus |
 
   Single-key shortcuts never fire inside inputs or with a modifier held; a switch in the gear panel turns them off
-  (WCAG 2.1.4). `g` sequences time out after 1000 ms. "Skip to specs" is the first tab stop; tab order is header →
+  (WCAG 2.1.4). `g` sequences time out after 1500 ms. **`g` + letter is context-bound** (decision 2026-09-29): it
+  jumps to a section of the page in view, so on `/w/:ws` `g s` / `g n` reach Specs / Next up, and inside a spec
+  the same keys reach spec 002's Status / Notes areas. One `SHORTCUTS` table and one keyboard service
+  (`core/keyboard.service.ts`, built by spec 002) carry both contexts; this map extends that table, never a second
+  service. "Skip to specs" is the first tab stop; tab order is header →
   main → rail.
 
 ### States

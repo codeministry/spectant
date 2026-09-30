@@ -254,8 +254,18 @@ describe("ISC-15: add + browse leaves the registered repository byte-identical, 
       const again = await fetch(`${url}/api/workspaces/${SLUG}/dashboard`, { headers: { "If-None-Match": etag } });
       expect(again.status).toBe(304);
       expect((await fetch(`${url}/api/workspaces/${SLUG}/dashboard`, { method: "HEAD" })).status).toBe(200);
+      // The planning tree behind the Features and Milestones pages and the breadcrumb (spec 003, ISC-109): read once,
+      // revalidated, and HEAD, like the dashboard.
+      const planning = await fetch(`${url}/api/workspaces/${SLUG}/planning`);
+      expect(planning.status).toBe(200);
+      const planningEtag = planning.headers.get("etag") ?? "";
+      expect(planningEtag).not.toBe("");
+      expect((await planning.json()) as { features: unknown[] }).toHaveProperty("features");
+      const planningAgain = await fetch(`${url}/api/workspaces/${SLUG}/planning`, { headers: { "If-None-Match": planningEtag } });
+      expect(planningAgain.status).toBe(304);
+      expect((await fetch(`${url}/api/workspaces/${SLUG}/planning`, { method: "HEAD" })).status).toBe(200);
       expect((await fetch(`${url}/api/settings`)).status).toBe(200);
-      for (const page of ["/", `/w/${SLUG}`]) {
+      for (const page of ["/", `/w/${SLUG}`, `/w/${SLUG}/features`, `/w/${SLUG}/milestones`]) {
         const res = await fetch(`${url}${page}`);
         expect(res.status).toBe(200);
         expect(await res.text()).toContain("<title>spectant</title>");

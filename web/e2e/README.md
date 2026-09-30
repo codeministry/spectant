@@ -52,6 +52,7 @@ byte, so a server contract change fails there first.
 |-------|---------|
 | `GET/HEAD /api/workspaces` | `[{slug, name, pathTail, readable, error?, counts}]`, harbor then lantern |
 | `GET/HEAD /api/workspaces/:slug/dashboard` | the golden model; 404 unknown slug, 409 the unreadable workspace |
+| `GET/HEAD /api/workspaces/:slug/planning` and every route of `WORKSPACE_ROUTE_TABLE` | the whole golden file of the route's family, `core/fixtures/<fixture>.planning.golden.json` (`GOLDEN_FAMILY.planning`, not keyed by folder), matched with `matchWorkspacePath`; built at `2026-03-20`, so a live server can differ in the milestones' `state` alone; 404 unknown slug, 405 with `allowForWorkspace(route)`, 409 the unreadable workspace |
 | `GET/HEAD …/:ws/specs/:id` and every read route of `SPEC_ROUTE_TABLE` (`server/src/spec-routes.contract.ts`) | the per-spec value of the route's golden family, `core/fixtures/<tree>.<family>.golden.json` (`GOLDEN_FAMILY`, plus `live`); `:id` is `NNN`, the folder or the bare slug, archived specs too |
 | `…/docs/:name` | the docs golden; 404 `DocMissing` with core's `docsFor` availability when the spec has no such file |
 | `…/evidence`, `…/evidence/file?path=` | core's `listEvidence` / `resolveEvidencePath` over the fixture tree's real `artifacts/` and `.evidence/`; the file with `evidenceFileHeaders`, 403 for what confinement refuses, 404 for no file |
@@ -71,7 +72,7 @@ workers never race. An unknown value is always a loud 400, never a silent defaul
 
 | Header | Values | Absent |
 |--------|--------|--------|
-| `X-Spectant-Stub-State` | `two-workspaces` (harbor, lantern), `empty` (no workspace), `unreadable` (lantern `readable: false`, `error: 'missing'`, `counts: null`, its dashboard and spec routes 409) | `two-workspaces` |
+| `X-Spectant-Stub-State` | `two-workspaces` (harbor, lantern), `empty` (no workspace), `unreadable` (lantern `readable: false`, `error: 'missing'`, `counts: null`, its dashboard, planning and spec routes 409) | `two-workspaces` |
 | `X-Spectant-Stub-Locks` | `none`, `activity`, `frontier` (see the lock fixtures) | `activity`, the goldens as they are |
 | `X-Spectant-Stub-Write` | `ok`, `stale`, `locked` (see the writes) | `ok` |
 | `X-Spectant-Stub-Session` | any id; scopes the settings and the writes | one shared session |

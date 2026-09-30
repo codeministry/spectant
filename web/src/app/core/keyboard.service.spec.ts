@@ -281,4 +281,25 @@ describe('KeyboardService', () => {
       expect(service.showHints()).toBe(false);
     });
   });
+
+  describe('the palette chord (T66, review 2026-09-30)', () => {
+    it('matches Mod+k by the physical key, so a Cyrillic or Greek layout still opens the palette', () => {
+      const { press, service } = setup();
+      press('л', { code: 'KeyK', metaKey: true });
+      expect(service.paletteOpen()).toBe(true);
+    });
+
+    it('leaves Ctrl+K to the text field on macOS (kill to end of line) and still opens with ⌘K there', () => {
+      const platform = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)');
+      const { press, service } = setup();
+      const field = document.body.appendChild(document.createElement('input'));
+      const ctrl = press('k', { code: 'KeyK', ctrlKey: true }, field);
+      expect(ctrl.defaultPrevented).toBe(false);
+      expect(service.paletteOpen()).toBe(false);
+      press('k', { code: 'KeyK', metaKey: true }, field);
+      expect(service.paletteOpen()).toBe(true);
+      field.remove();
+      platform.mockRestore();
+    });
+  });
 });

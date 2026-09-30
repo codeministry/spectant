@@ -133,6 +133,73 @@ test.describe('keyboard', () => {
   });
 });
 
+/**
+ * ISC-61 (spec 001, T63): in the workspace dashboard's Specs panel, ↓ / ↑ and j / k move the selection one row, Home
+ * and End jump to the ends, nothing wraps, and moving never navigates. The row order is the dashboard's, or the
+ * `?sort=` the URL names. `bun run e2e -- keyboard -g move`.
+ */
+test.describe('keyboard in the Specs panel', () => {
+  test.use(atWidth(1440));
+
+  /** Opens a harbor dashboard URL and returns the active spec ids the server sent, in model order. */
+  async function openDashboard(page: Page, path: string): Promise<string[]> {
+    const dashboard = page.waitForResponse((response) => response.url().endsWith('/harbor/dashboard') && response.ok());
+    await page.goto(path);
+    const body = (await (await dashboard).json()) as { specs?: Array<{ id: string }> };
+    return (body.specs ?? []).map((spec) => spec.id);
+  }
+
+  const rowsOf = (page: Page) => page.locator('[data-panel="specs"] [data-spec-row]');
+  const selectedOf = (page: Page) => page.locator('[data-panel="specs"] [data-spec-row][data-selected]');
+
+  /** The selection sits on `id`: that row is marked, focused and the list's one tab stop. */
+  async function expectSelected(page: Page, id: string): Promise<void> {
+    await expect(selectedOf(page)).toHaveCount(1);
+    await expect(selectedOf(page)).toHaveAttribute('data-spec-row', id);
+    await expect(selectedOf(page)).toBeFocused();
+    await expect(rowsOf(page).and(page.locator('[tabindex="0"]'))).toHaveAttribute('data-spec-row', id);
+  }
+
+  test('arrows and j/k move the selection in the Specs panel, without wrapping or navigating', async ({ page }) => {
+    const ids = await openDashboard(page, '/w/harbor');
+    expect(ids.length).toBeGreaterThanOrEqual(3);
+    const rows = rowsOf(page);
+    await expect(rows).toHaveCount(ids.length);
+    expect(await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-spec-row')))).toEqual(ids);
+
+    await rows.first().focus();
+    await expectSelected(page, ids[0] ?? '');
+    await page.keyboard.press('ArrowDown');
+    await expectSelected(page, ids[1] ?? '');
+    await page.keyboard.press('j');
+    await expectSelected(page, ids[2] ?? '');
+    await page.keyboard.press('k');
+    await expectSelected(page, ids[1] ?? '');
+    await page.keyboard.press('ArrowUp');
+    await expectSelected(page, ids[0] ?? '');
+    await page.keyboard.press('k');
+    await expectSelected(page, ids[0] ?? '');
+    await page.keyboard.press('End');
+    await expectSelected(page, ids.at(-1) ?? '');
+    await page.keyboard.press('ArrowDown');
+    await expectSelected(page, ids.at(-1) ?? '');
+    await page.keyboard.press('Home');
+    await expectSelected(page, ids[0] ?? '');
+    await expect(page).toHaveURL(/\/w\/harbor$/);
+  });
+
+  test('the selection moves in the order the sort query names', async ({ page }) => {
+    const ids = await openDashboard(page, '/w/harbor?sort=id');
+    const byId = [...ids].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+    const rows = rowsOf(page);
+    await expect(rows).toHaveCount(ids.length);
+    expect(await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-spec-row')))).toEqual(byId);
+    await rows.first().focus();
+    await page.keyboard.press('j');
+    await expectSelected(page, byId[1] ?? '');
+  });
+});
+
 test.describe('keyboard on a coarse pointer', () => {
   test.use({ ...atWidth(820), hasTouch: true, isMobile: true });
 

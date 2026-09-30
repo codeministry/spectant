@@ -1,0 +1,98 @@
+@switch (form()) {
+  @case ('callout') {
+    @if (count() > 0) {
+      <details class="callout" data-warnings-callout>
+        <summary [id]="headingId">
+          <ui-icon class="warn-icon" name="triangle-alert" [size]="16" />
+          <ng-container [ngTemplateOutlet]="summaryText" />
+        </summary>
+        <ng-container [ngTemplateOutlet]="list" />
+      </details>
+    }
+  }
+  @case ('rail') {
+    <div class="eyebrow" data-warnings-eyebrow>
+      <h2 class="type-eyebrow" tabindex="-1" [id]="headingId">{{ 'warnings.title' | transloco }}</h2>
+      <span class="type-eyebrow count" data-warnings-count>{{ count() }}</span>
+    </div>
+    <ui-card [padding]="0">
+      <ng-container [ngTemplateOutlet]="lines" />
+    </ui-card>
+  }
+  @default {
+    <section class="section">
+      <ui-section-header [heading]="'warnings.title' | transloco" [headingId]="headingId">
+        @if (count() > 0) {
+          <span meta><ng-container [ngTemplateOutlet]="summaryText" /></span>
+        }
+      </ui-section-header>
+      <ui-card [padding]="0">
+        <ng-container [ngTemplateOutlet]="lines" />
+      </ui-card>
+    </section>
+  }
+}
+
+<ng-template #summaryText>
+  <span data-warnings-summary>
+    {{ (count() === 1 ? 'warnings.count.one' : 'warnings.count.other') | transloco: { count: count() } }}
+    {{ (warned() === 1 ? 'warnings.inSpecs.one' : 'warnings.inSpecs.other') | transloco: { count: warned() } }}
+  </span>
+</ng-template>
+
+<!-- The card body: the groups, or the "No warnings" line when no spec has a warning or open fog. -->
+<ng-template #lines>
+  @if (groups().length > 0) {
+    <ng-container [ngTemplateOutlet]="list" />
+  } @else {
+    <p class="empty" data-warnings-empty>
+      <ui-icon class="ok" name="circle-check" [size]="16" />
+      <span>{{ 'warnings.empty' | transloco }}</span>
+    </p>
+  }
+</ng-template>
+
+<!-- Prototype `warningsPanel`: one group per spec, one line per warning (alert icon, spec link, text), then its fog line. -->
+<ng-template #list>
+  <ul class="groups">
+    @for (spec of groups(); track spec.id) {
+      <li class="group" [attr.data-warning-spec]="spec.id">
+        @for (warning of spec.warnings; track $index) {
+          <div class="line" [attr.data-warning-kind]="warning.kind">
+            <ui-icon class="warn-icon" data-icon="triangle-alert" name="triangle-alert" [size]="16" [label]="'warnings.icon' | transloco" />
+            <ng-container [ngTemplateOutlet]="specLink" [ngTemplateOutletContext]="{ $implicit: spec }" />
+            <div class="line-body">
+              <p class="text" data-warning-text>{{ warning.text }}</p>
+              @if (warning.command; as command) {
+                <ui-command-chip
+                  [command]="command"
+                  [copyLabel]="'common.copyCommand' | transloco"
+                  [copiedLabel]="'common.copied' | transloco: { command }"
+                  [manualHint]="'common.copyFallback' | transloco"
+                />
+              }
+            </div>
+          </div>
+        }
+        @if (spec.fog > 0) {
+          <div class="line fog-line" [attr.data-fog-line]="spec.id">
+            <ui-icon class="cloud" data-icon="cloud-fog" name="cloud-fog" [size]="16" />
+            <ng-container [ngTemplateOutlet]="specLink" [ngTemplateOutletContext]="{ $implicit: spec }" />
+            <span class="text">{{ (spec.fog === 1 ? 'specs.inspector.fog.one' : 'specs.inspector.fog.other') | transloco: { count: spec.fog } }}</span>
+          </div>
+        }
+      </li>
+    }
+  </ul>
+</ng-template>
+
+<ng-template #specLink let-spec>
+  <a
+    class="spec"
+    data-warning-link
+    [title]="spec.title"
+    [routerLink]="[]"
+    [queryParams]="{ spec: spec.id }"
+    queryParamsHandling="merge"
+  >{{ spec.id }}</a>
+</ng-template>

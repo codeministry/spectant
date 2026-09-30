@@ -1,7 +1,8 @@
 /*
  * The area menu's list (ISC-76): a `ui-popover` at medium and wide, a `ui-sheet` bottom sheet at compact. The host
  * takes no box; the panels live in the top layer. Dot colours per design.md (Status orange, Live lime, Data cyan,
- * Docs violet, Notes yellow; the dashboard neutral), the same as the trigger's in shell-nav.css.
+ * Docs violet, Notes yellow; the dashboard neutral), the same as the trigger's in shell-nav.css. At workspace scope the
+ * entries are the workspace pages, an icon in the dot's column (spec 003, T26).
  */
 :host {
   display: contents;
@@ -77,6 +78,15 @@
 
 .dot[data-dot="notes"] {
   background: var(--conc-ink);
+}
+
+/* A workspace page's icon takes the dot's place and the neutral dot's tone; the current page's takes its ink. */
+.entry-icon {
+  color: var(--held-ink);
+}
+
+.entry[aria-current] .entry-icon {
+  color: inherit;
 }
 
 .entry-name {

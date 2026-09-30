@@ -388,7 +388,8 @@ describe('gates.ts writes nothing', () => {
     expect(imports).toEqual([
       ['value', 'createHash', 'node:crypto'],
       ['type', 'Diagnostic', './diagnostics.ts'],
-      ['type', 'GateState, TextFileKind', './files.ts'],
+      // MarkState lives in files.ts since spec 003 T18 (browser-clean type graph); gates.ts re-exports it.
+      ['type', 'MarkState, TextFileKind', './files.ts'],
     ]);
     expect(source.match(/^import\b/gm)?.length).toBe(3);
   });

@@ -1,17 +1,20 @@
-// No-glow guard for ISC-74 (T34). design.md (spec 002): "Surfaces are flat, with 12 px cards, a 1 px --line border and
-// no glow", and the prototype's decorative `.card.glow` is ruled out. This guard reads every stylesheet and every
-// component (inline `styles` and templates) under `web/src` and fails on:
+// Glow guard for design.md § Surfaces (spec 002), as amended by the master decision of 2026-09-29 ("Oberkante ja,
+// Glow ja (wie im Prototyp)"): surfaces stay flat, with one exception, the prototype's corner glow (`.card.glow`,
+// `styles.css:118-123`) on the card primitive's glow variant. This guard reads every stylesheet and every component
+// (inline `styles` and templates) under `web/src` and fails on:
 //
-// - a class named `glow`, as a selector or in a template;
+// - a class named `glow`, as a selector or in a template (the glow is `ui-card`'s `glow` input, never a class);
 // - a `box-shadow` layer outside the flat set: `none`, the inherited hairline `var(--shadow)` (never on a card), the
-//   focus halo `0 0 0 4px var(--focus-halo)` (ISC-64) and blur-free `inset` edges (the 3 px accent edge);
+//   focus halo `0 0 0 4px var(--focus-halo)` (ISC-64) and blur-free `inset` edges;
 // - a `text-shadow` or a `drop-shadow()` filter;
-// - a `radial-gradient()`, the prototype's glow technique.
+// - a `radial-gradient()` anywhere but in `ui-card`'s glow variant, the `:host([data-glow])::after` rule (a scroll
+//   region's edge fade is a `linear-gradient`, spec 002 design.md § Tables).
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const SRC = join(import.meta.dir, "..", "src");
+const CARD = "app/shared/ui/card/card.ts";
 
 /** Every `.css`, `.ts` and `.html` file under `web/src`, specs excluded (they describe behaviour, they paint nothing). */
 function sources(dir = SRC): string[] {
@@ -62,21 +65,23 @@ function flat(layer: string): boolean {
   return inset !== null && Number.parseFloat(inset[3] ?? "1") === 0;
 }
 
-// Spec 001's `ui-card` paints a decorative corner glow (a `radial-gradient` `::before`, 001 design.md), which spec
-// 002's design.md rules out. Removing it changes 001's card and its hover affordance, which lies outside T34's lane
-// (tokens and tests); it is recorded as a review item. When the glow goes, this list must be emptied, and the test
-// below fails until it is, so the exception cannot outlive the glow.
-const KNOWN_RADIAL_GLOWS = ["app/shared/ui/card/card.ts"];
+/** The selector of the rule a line sits in: the nearest line above it (or itself) that opens a block. */
+function ruleOf({ file, line }: Line): string {
+  const own = LINES.filter((l) => l.file === file && l.line <= line && l.text.includes("{"));
+  const opener = own.at(-1)?.text ?? "";
+  return opener.slice(0, opener.indexOf("{")).trim();
+}
 
-describe("no glow (ISC-74, design.md § Surfaces)", () => {
+describe("no glow outside ui-card's glow variant (design.md § Surfaces, amended 2026-09-29)", () => {
   test("sources were found", () => {
     expect(LINES.some(({ file }) => file === "styles.css")).toBe(true);
-    expect(LINES.some(({ file }) => file.endsWith("card/card.ts"))).toBe(true);
+    expect(LINES.some(({ file }) => file === CARD)).toBe(true);
   });
 
   test("no class named glow", () => {
     const hits = LINES.filter(
-      ({ text }) => /\.glow\b/.test(text) || /class(?:\.|=["'][^"']*\b)glow\b/.test(text),
+      // `.glow(` is the card's signal input being read, never a selector.
+      ({ text }) => /\.glow\b(?!\()/.test(text) || /class(?:\.|=["'][^"']*\b)glow\b/.test(text),
     ).map(where);
     expect(hits).toEqual([]);
   });
@@ -93,7 +98,7 @@ describe("no glow (ISC-74, design.md § Surfaces)", () => {
   });
 
   test("cards carry no shadow token", () => {
-    const hits = LINES.filter(({ file, text }) => file.endsWith("card/card.ts") && text.includes("var(--shadow)"));
+    const hits = LINES.filter(({ file, text }) => file === CARD && text.includes("var(--shadow)"));
     expect(hits.map(where)).toEqual([]);
   });
 
@@ -102,8 +107,9 @@ describe("no glow (ISC-74, design.md § Surfaces)", () => {
     expect(hits).toEqual([]);
   });
 
-  test("no radial-gradient() glow beyond the known ui-card one", () => {
-    const files = [...new Set(LINES.filter(({ text }) => text.includes("radial-gradient(")).map(({ file }) => file))];
-    expect(files.sort()).toEqual(KNOWN_RADIAL_GLOWS);
+  test("the one radial-gradient() glow is ui-card's glow variant, the :host([data-glow])::after rule", () => {
+    const glows = LINES.filter(({ text }) => text.includes("radial-gradient("));
+    expect(glows.map(({ file }) => file)).toEqual([CARD]);
+    expect(glows.map(ruleOf)).toEqual([":host([data-glow])::after"]);
   });
 });

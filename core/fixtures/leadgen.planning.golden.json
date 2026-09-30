@@ -1,0 +1,271 @@
+{
+  "features": [
+    {
+      "id": "F40",
+      "name": "Installable as a PWA",
+      "why": null,
+      "closed": 9,
+      "total": 10,
+      "claims": [
+        {
+          "id": "ISC-327",
+          "closed": true,
+          "dropped": false,
+          "holder": "012"
+        },
+        {
+          "id": "ISC-328",
+          "closed": true,
+          "dropped": false,
+          "holder": "012"
+        },
+        {
+          "id": "ISC-329",
+          "closed": true,
+          "dropped": false,
+          "holder": "012"
+        },
+        {
+          "id": "ISC-330",
+          "closed": true,
+          "dropped": false,
+          "holder": "012"
+        },
+        {
+          "id": "ISC-331",
+          "closed": true,
+          "dropped": false,
+          "holder": "012"
+        },
+        {
+          "id": "ISC-332",
+          "closed": true,
+          "dropped": false,
+          "holder": "012"
+        },
+        {
+          "id": "ISC-333",
+          "closed": true,
+          "dropped": false,
+          "holder": "012"
+        },
+        {
+          "id": "ISC-334",
+          "closed": false,
+          "dropped": false,
+          "holder": "012"
+        },
+        {
+          "id": "ISC-335",
+          "closed": true,
+          "dropped": false,
+          "holder": "012"
+        },
+        {
+          "id": "ISC-336",
+          "closed": true,
+          "dropped": false,
+          "holder": "012"
+        }
+      ],
+      "holders": [
+        {
+          "id": "012",
+          "slug": "012-pwa-install",
+          "title": "Installable as a PWA: manifest, icons, colours, an offline shell and an update toast",
+          "archived": false,
+          "stage": null,
+          "main": true,
+          "held": 10
+        }
+      ],
+      "unheld": []
+    },
+    {
+      "id": "F41",
+      "name": "The debt behind v0.5.0 is paid down without a change in behaviour",
+      "why": null,
+      "closed": 14,
+      "total": 14,
+      "claims": [
+        {
+          "id": "ISC-337",
+          "closed": true,
+          "dropped": false,
+          "holder": "013"
+        },
+        {
+          "id": "ISC-338",
+          "closed": true,
+          "dropped": false,
+          "holder": "013"
+        },
+        {
+          "id": "ISC-339",
+          "closed": true,
+          "dropped": false,
+          "holder": "013"
+        },
+        {
+          "id": "ISC-340",
+          "closed": true,
+          "dropped": false,
+          "holder": "013"
+        },
+        {
+          "id": "ISC-341",
+          "closed": true,
+          "dropped": false,
+          "holder": "013"
+        },
+        {
+          "id": "ISC-342",
+          "closed": false,
+          "dropped": true,
+          "holder": "013"
+        },
+        {
+          "id": "ISC-343",
+          "closed": true,
+          "dropped": false,
+          "holder": "013"
+        },
+        {
+          "id": "ISC-344",
+          "closed": true,
+          "dropped": false,
+          "holder": "013"
+        },
+        {
+          "id": "ISC-345",
+          "closed": true,
+          "dropped": false,
+          "holder": "013"
+        },
+        {
+          "id": "ISC-346",
+          "closed": true,
+          "dropped": false,
+          "holder": "013"
+        },
+        {
+          "id": "ISC-347",
+          "closed": true,
+          "dropped": false,
+          "holder": "013"
+        },
+        {
+          "id": "ISC-348",
+          "closed": true,
+          "dropped": false,
+          "holder": "013"
+        },
+        {
+          "id": "ISC-349",
+          "closed": true,
+          "dropped": false,
+          "holder": "013"
+        },
+        {
+          "id": "ISC-350",
+          "closed": true,
+          "dropped": false,
+          "holder": "013"
+        },
+        {
+          "id": "ISC-351",
+          "closed": true,
+          "dropped": false,
+          "holder": "013"
+        }
+      ],
+      "holders": [
+        {
+          "id": "013",
+          "slug": "013-tech-debt",
+          "title": "The debt behind v0.5.0 is paid down without a change in behaviour: notes, docs, compose, version, leaks, and the Lombok sweep",
+          "archived": true,
+          "stage": null,
+          "main": true,
+          "held": 14
+        }
+      ],
+      "unheld": []
+    },
+    {
+      "id": "F50",
+      "name": "Chat turn status, bulk delete, and the cited row in view",
+      "why": null,
+      "closed": 8,
+      "total": 8,
+      "claims": [
+        {
+          "id": "ISC-473",
+          "closed": true,
+          "dropped": false,
+          "holder": "022"
+        },
+        {
+          "id": "ISC-474",
+          "closed": true,
+          "dropped": false,
+          "holder": "022"
+        },
+        {
+          "id": "ISC-475",
+          "closed": true,
+          "dropped": false,
+          "holder": "022"
+        },
+        {
+          "id": "ISC-476",
+          "closed": true,
+          "dropped": false,
+          "holder": "022"
+        },
+        {
+          "id": "ISC-477",
+          "closed": true,
+          "dropped": false,
+          "holder": "022"
+        },
+        {
+          "id": "ISC-478",
+          "closed": true,
+          "dropped": false,
+          "holder": "022"
+        },
+        {
+          "id": "ISC-479",
+          "closed": true,
+          "dropped": false,
+          "holder": "022"
+        },
+        {
+          "id": "ISC-480",
+          "closed": true,
+          "dropped": false,
+          "holder": "022"
+        }
+      ],
+      "holders": [
+        {
+          "id": "022",
+          "slug": "022-chat-turn-status-and-bulk-delete",
+          "title": "The chat says what happened to a turn, deletes many conversations at once, and brings a cited row into view",
+          "archived": false,
+          "stage": null,
+          "main": true,
+          "held": 8
+        }
+      ],
+      "unheld": []
+    }
+  ],
+  "milestones": [],
+  "recount": {
+    "closed": 31,
+    "total": 32
+  },
+  "diagnostics": []
+}

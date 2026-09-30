@@ -1,0 +1,41 @@
+@if (brief(); as brief) {
+  <ui-card class="brief" data-ui="brief" role="region" [padding]="0" [attr.aria-label]="'brief.title' | transloco">
+    <div class="brief-head" data-brief-head>
+      <span class="brief-label" data-brief-label>{{ 'brief.label' | transloco }}</span>
+      @if (asOf(); as asOf) {
+        <time class="brief-as-of type-meta" data-brief-as-of [attr.datetime]="asOf.iso">{{
+          'brief.asOf' | transloco: { date: asOf.text }
+        }}</time>
+      }
+      @if (brief.stale) {
+        <ui-chip class="brief-stale" data-brief-stale tone="warning">{{ 'brief.stale' | transloco }}</ui-chip>
+      }
+      <ui-command-chip
+        class="brief-command"
+        data-brief-command
+        [command]="command"
+        [copyLabel]="'common.copyCommand' | transloco"
+        [copiedLabel]="'common.copied' | transloco: { command }"
+        [manualHint]="'common.copyFallback' | transloco"
+        (copied)="copied.emit($event)"
+      />
+    </div>
+    <div
+      class="brief-prose"
+      data-brief-prose
+      [id]="bodyId"
+      [attr.data-clipped]="open() ? null : ''"
+      [innerHTML]="html()"
+    ></div>
+    <button
+      type="button"
+      class="brief-more"
+      data-brief-more
+      [attr.aria-expanded]="open()"
+      [attr.aria-controls]="bodyId"
+      (click)="toggle()"
+    >
+      {{ (open() ? 'brief.less' : 'brief.more') | transloco }}
+    </button>
+  </ui-card>
+}

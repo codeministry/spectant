@@ -16,7 +16,9 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 
 import { buildDashboard } from "../src/dashboard.ts";
-import type { DashboardModel } from "../src/dashboard.ts";
+import { parseFrontmatter } from "../src/frontmatter.ts";
+import { parseMilestones } from "../src/milestones.ts";
+import { diagnosticsOf, EXPECTED_WARNINGS } from "./helpers/expected-warnings.ts";
 import { DASHBOARD_FAMILY, expectGolden, goldenPath, goldenText, goldenTrees } from "./helpers/golden.ts";
 import { FIXTURES, fixtureTrees, readTree } from "./helpers/read-tree.ts";
 
@@ -118,27 +120,30 @@ describe("corpus", () => {
     }
     expect(offending).toEqual([]);
   });
+
+  // ISC-110 (spec 003, T4/T5): the milestone corpus. Harbor's master carries a `## Milestones` block and its archived
+  // spec names one of them; lantern is the none case. The claim's second half, "planning goldens present", closes with
+  // T9/T10, which add the `planning` golden family.
+  test("milestones: harbor carries a Milestones block an archived spec names, lantern carries none", () => {
+    const harborMaster = parseMilestones(readFileSync(join(FIXTURES, "harbor", "ISA.md"), "utf8"));
+    expect(harborMaster.diagnostics).toEqual([]);
+    const names = harborMaster.milestones.map((m) => m.name);
+    expect(names).toEqual(["Harbor 0.9", "Harbor 1.0"]);
+
+    const archived = parseFrontmatter(readFileSync(join(FIXTURES, "harbor", "specs", "archive", "001-manifest-sync", "spec.md"), "utf8"));
+    expect(archived.data.milestone).not.toBeNull();
+    expect(names).toContain(archived.data.milestone ?? "");
+
+    const lantern = join(FIXTURES, "lantern");
+    expect(parseMilestones(readFileSync(join(lantern, "ISA.md"), "utf8")).milestones).toEqual([]);
+    const lanternSpecs = specFilesUnder(lantern);
+    expect(lanternSpecs.length).toBeGreaterThan(0);
+    const named = lanternSpecs.filter((path) => parseFrontmatter(readFileSync(path, "utf8")).data.milestone !== null);
+    expect(named.map((path) => relative(FIXTURES, path))).toEqual([]);
+  });
 });
 
-/** `file: code` for every diagnostic of the given severity in the model. */
-const diagnosticsOf = (m: DashboardModel, severity: "error" | "warning"): string[] =>
-  m.diagnostics.filter((d) => d.diagnostic.severity === severity).map((d) => `${d.file}: ${d.diagnostic.code}`);
-
-/**
- * The warnings each tree is expected to carry, as `file: code`; no tree may carry an error. Harbor's planted findings
- * (006's drift, the stale marks, 005's fog, 004's missing diagram) are dashboard warnings on the rows, not parse
- * diagnostics, so harbor parses to zero diagnostics. The one warning is leadgen's: the frozen copy's own `ISA.md`
- * declares `progress: 31/33` while the recount is 31/32. That is upstream text frozen at a named commit, not a parser
- * fault, so it stays and is pinned here.
- */
-const EXPECTED_WARNINGS: Record<string, string[]> = {
-  harbor: [],
-  lantern: [],
-  "empty-master": [],
-  "spectant-001": [],
-  leadgen: ["ISA.md: master-progress-mismatch"],
-};
-
+// `diagnosticsOf` and `EXPECTED_WARNINGS` live in helpers/expected-warnings.ts, shared with planning.test.ts.
 const UPDATE_COMMAND = "bun test core/tests/fixtures.test.ts";
 
 describe("golden snapshots", () => {

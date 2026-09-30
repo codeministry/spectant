@@ -1,6 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { type Params, RouterLink } from '@angular/router';
 import { UiIcon } from '../../icons/icon';
 import type { IconName } from '../../icons/icons';
 import { UiCard } from '../card/card';
@@ -9,8 +9,10 @@ import type { Tone } from '../tone';
 /**
  * A KPI tile (design.md § Desktop Soll, KPI band): eyebrow label, a tabular value with an optional muted
  * denominator, a meta line, a projected visual (`[visual]`, e.g. a `ui-ring`) and trailing content (a meter).
- * With `href` the whole tile is one router link and hover raises the card glow. The fraction never wraps and steps
- * down one size past six digits, so live numbers cannot reflow the band (ISC-62.1).
+ * With `href` (plus optional `queryParams` and `fragment`) the whole tile is one router link and hover raises the card
+ * glow. The fraction never wraps and steps down one size past six digits, so live numbers cannot reflow the band
+ * (ISC-62.1). `accent`, `edge` and `glow` go to the card as they are: `edge` / `glow` set the prototype's variants
+ * explicitly (a hero glows without an edge), and an `accent` alone keeps `ui-card`'s rule of turning both on.
  */
 @Component({
   selector: 'ui-kpi-tile',
@@ -38,9 +40,9 @@ import type { Tone } from '../tone';
     :host([data-variant='sm']) .long .value { font-size: 20px; line-height: 28px; }
   `,
   template: `
-    <ui-card [accent]="accent()" [padding]="0" [interactive]="!!href()">
+    <ui-card [accent]="accent()" [edge]="edge()" [glow]="glow()" [padding]="0" [interactive]="!!href()">
       @if (href(); as link) {
-        <a class="tile" [routerLink]="link" [fragment]="fragment()"><ng-container [ngTemplateOutlet]="body" /></a>
+        <a class="tile" [routerLink]="link" [queryParams]="queryParams()" [fragment]="fragment()"><ng-container [ngTemplateOutlet]="body" /></a>
       } @else {
         <div class="tile"><ng-container [ngTemplateOutlet]="body" /></div>
       }
@@ -76,9 +78,15 @@ export class UiKpiTile {
   readonly meta = input<string>();
   readonly icon = input<IconName>();
   readonly href = input<string>();
+  /** With `href`: query state the link applies (`?sort=next&takeable=1`); a string `href` cannot carry it. */
+  readonly queryParams = input<Params>();
   /** With `href`: the fragment the link lands on (`#waiting`). */
   readonly fragment = input<string>();
   readonly accent = input<Tone>();
+  /** The card's 3 px top edge; unset, `ui-card` derives it from `accent`. */
+  readonly edge = input<boolean>();
+  /** The card's corner glow; unset, `ui-card` derives it from `accent`. */
+  readonly glow = input<boolean>();
 
   /** More than six digits across value and denominator: the fraction steps down one size. */
   protected readonly long = computed(

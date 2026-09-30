@@ -1,0 +1,20 @@
+/* One column at every tier; the shell adds the 352 px rail at wide (design.md § Viewport-übergreifend, grid rules). */
+:host {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-content: start;
+  min-inline-size: 0;
+}
+
+/* The header carries the visible eyebrow and title; the page keeps its h1 for assistive technology. */
+.page-title {
+  position: absolute;
+  overflow: hidden;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

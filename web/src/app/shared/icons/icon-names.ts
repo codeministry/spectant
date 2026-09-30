@@ -49,4 +49,8 @@ export const ICON_NAMES = [
   'folder-git-2',
   'layout-grid',
   'arrow-left',
+  // Spec 003: planning hierarchy (Features, Milestones, breadcrumb).
+  'flag',
+  'circle-dashed',
+  'clock-alert',
 ] as const;

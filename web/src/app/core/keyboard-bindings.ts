@@ -12,6 +12,11 @@ import { type AreaId, SPEC_AREAS, type TabId } from '../layout/shell/areas';
 export const GO_PREFIX = 'g';
 /** How long the `g` prefix waits for its second key. */
 export const G_WINDOW_MS = 1500;
+/**
+ * The palette chord (T66): `k` with ⌘ (macOS) or Ctrl (Linux, and where cmux claims ⌘K). A `Mod+` entry is the one
+ * kind of binding that fires with a modifier held, from inside a field, and with single-key shortcuts off.
+ */
+export const PALETTE_CHORD = 'Mod+k';
 /** `SPEC_AREAS` gives the dashboard no `goKey`; `g h` ("home") reaches it. */
 export const DASHBOARD_GO_KEY = 'h';
 
@@ -43,6 +48,7 @@ export type ShortcutAction =
   | { readonly kind: 'open-notes' }
   | { readonly kind: 'focus-search' }
   | { readonly kind: 'open-sheet' }
+  | { readonly kind: 'open-palette' }
   | { readonly kind: 'leave-spec' };
 
 export interface Shortcut {
@@ -96,10 +102,17 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: 'next-frame', keys: ['ArrowRight'], group: 'board', action: { kind: 'step-frame', delta: 1 }, label: 'shortcuts.actions.nextFrame' },
   { id: 'zen', keys: ['z'], group: 'general', action: { kind: 'toggle-zen' }, label: 'shortcuts.actions.zen' },
   { id: 'search', keys: ['f'], group: 'general', action: { kind: 'focus-search' }, label: 'shortcuts.actions.search' },
+  { id: 'palette', keys: [PALETTE_CHORD], group: 'general', action: { kind: 'open-palette' }, label: 'shortcuts.actions.palette' },
+  { id: 'palette-slash', keys: ['/'], group: 'general', action: { kind: 'open-palette' }, label: 'shortcuts.actions.palette' },
   { id: 'sheet', keys: ['?'], group: 'general', action: { kind: 'open-sheet' }, label: 'shortcuts.actions.sheet' },
 ];
 
-const KEY_LABELS: Readonly<Record<string, string>> = { ArrowLeft: '◂', ArrowRight: '▸', Escape: 'Esc' };
+const KEY_LABELS: Readonly<Record<string, string>> = {
+  ArrowLeft: '◂',
+  ArrowRight: '▸',
+  Escape: 'Esc',
+  [PALETTE_CHORD]: '⌘K / Ctrl K',
+};
 
 /** What a key cap shows: the key itself, or its symbol for the arrows and Esc. */
 export const keyLabel = (key: string): string => KEY_LABELS[key] ?? key;

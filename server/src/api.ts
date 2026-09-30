@@ -20,6 +20,14 @@
  * - 405 `{error: "method-not-allowed"}` with `Allow: GET, HEAD` for any other method.
  * - any other `/api/workspaces…` path is `null`, so the server's JSON 404 applies.
  *
+ * The planning route (spec 003 T19, ISC-103): `GET /api/workspaces/:ws/planning` → the `PlanningModel` of
+ * `core/src/planning.ts`, `buildPlanning` over the master and every spec folder, active and archived, that
+ * `readWorkspaceInput` reads. It is matched by the contract's `matchWorkspacePath` (`spec-routes.contract.ts` owns the
+ * route) and answers with the same guard order and the same statuses as the dashboard route: 403, 405 with
+ * `allowForWorkspace`, 404, 409 with the workspace's summary. The milestone states compare target dates with today's
+ * local date (`options.today`), so a stub or golden built at a fixed day differs from a live answer in `state` alone.
+ * It lives here rather than in its own handler because it shares this handler's registry, guard and 409 summary.
+ *
  * Lock sources (T51, ISC-37): both routes read the repository's `.spectant/activity.jsonl`, and the LifeOS frontier
  * locks only when `options.lifeos` is present, so the counts in the list and the dashboard agree.
  *
@@ -27,13 +35,22 @@
  * the unreadable codes replace OS messages, which would name the path.
  */
 import type { DashboardKpis } from "../../core/src/dashboard.ts";
+import { buildPlanning } from "../../core/src/planning.ts";
 import type { ApiHandler } from "./http.ts";
 import { matchesIfNoneMatch } from "./http.ts";
 import type { LifeosDetection } from "./lifeos.ts";
 import type { Registry, Workspace } from "./registry.ts";
 import { listServices } from "./services.ts";
 import { isLoopbackHost, isLoopbackOrigin } from "./settings.ts";
-import { type DashboardLoad, type ServicesProbe, type UnreadableCode, loadDashboard } from "./workspace-loader.ts";
+import { type WorkspaceRouteResponses, allowForWorkspace, matchWorkspacePath } from "./spec-routes.contract.ts";
+import {
+  type DashboardLoad,
+  type ServicesProbe,
+  type UnreadableCode,
+  type WorkspaceReading,
+  loadDashboard,
+  readWorkspaceInput,
+} from "./workspace-loader.ts";
 
 /** The list route; a dashboard is `${WORKSPACES_PATH}/:slug/dashboard`. */
 export const WORKSPACES_PATH = "/api/workspaces";
@@ -58,6 +75,11 @@ export type DashboardApiOptions = {
   registry: Pick<Registry, "list" | "get">;
   /** Reads one workspace; `loadDashboard` by default. Tests inject another loader. */
   loadWorkspace?: (root: string, probe: ServicesProbe | null, lifeosStateDir?: string | null) => Promise<DashboardLoad>;
+  /**
+   * Reads one workspace's files for the planning route; `readWorkspaceInput` by default, the same read `loadDashboard`
+   * starts from. Whoever injects `loadWorkspace` injects this too, so both workspace routes answer from one source.
+   */
+  readWorkspace?: (root: string) => Promise<WorkspaceReading>;
   /** Probes the local listeners for the dashboard route; `listServices` (lsof) by default. */
   services?: ServicesProbe;
   /**
@@ -66,7 +88,18 @@ export type DashboardApiOptions = {
    * is read (ISC-37).
    */
   lifeos?: LifeosDetection;
+  /**
+   * Today as `YYYY-MM-DD`, the day the planning route's milestone states compare target dates with; the local date by
+   * default (`localDate`). Tests pin it, as the planning goldens pin theirs.
+   */
+  today?: () => string;
 };
+
+/** The local calendar date of `date` as `YYYY-MM-DD`: the day the user sees, not the UTC one. */
+export function localDate(date: Date = new Date()): string {
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
 
 /**
  * The first handler that answers wins; `null` from all of them lets the server's JSON 404 apply. A handler declines
@@ -117,15 +150,17 @@ function summary(workspace: Workspace, load: DashboardLoad): WorkspaceSummary {
 const defaultServices: ServicesProbe = (repoRoot, labels) => listServices({ repoRoot, labels });
 
 /**
- * `GET` / `HEAD` of the two workspace routes as an `ApiHandler`; `null` for every other path. Nothing is cached: each
+ * `GET` / `HEAD` of the workspace list, the dashboard and the planning route as an `ApiHandler`; `null` for every other path. Nothing is cached: each
  * request reads the registry and the files again, so a `spectant add` or an edited spec shows on the next poll, and
  * the ETag keeps an unchanged answer to a 304.
  */
 export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   const { registry } = options;
   const load = options.loadWorkspace ?? loadDashboard;
+  const read = options.readWorkspace ?? readWorkspaceInput;
   const services = options.services ?? defaultServices;
   const stateDir = options.lifeos?.stateDir ?? null;
+  const today = options.today ?? (() => localDate());
 
   const list = async (req: Request): Promise<Response> => {
     const workspaces = registry.list();
@@ -141,14 +176,30 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     return json(req, 200, loaded.model);
   };
 
+  // No lock source feeds the planning tree, so no LifeOS path is read for it.
+  const planning = async (req: Request, slug: string): Promise<Response> => {
+    const workspace = registry.get(slug);
+    if (!workspace) return json(req, 404, { error: "not-found" });
+    const reading = await read(workspace.path);
+    if (!reading.readable) return json(req, 409, summary(workspace, reading));
+    const { master, specs, archived } = reading.input;
+    const model: WorkspaceRouteResponses["planning"] = buildPlanning({ master, specs, archived, now: today() });
+    return json(req, 200, model);
+  };
+
   return (req, url) => {
     const { pathname } = url;
     const match = DASHBOARD_PATH.exec(pathname);
-    if (pathname !== WORKSPACES_PATH && !match) return null;
+    const workspaceRoute = matchWorkspacePath(pathname);
+    if (pathname !== WORKSPACES_PATH && !match && !workspaceRoute) return null;
     if (!isLoopbackHost(req.headers.get("Host")) || !isLoopbackOrigin(req.headers.get("Origin"))) {
       return json(req, 403, { error: "forbidden" });
     }
-    if (req.method !== "GET" && req.method !== "HEAD") return json(req, 405, { error: "method-not-allowed" }, { Allow: ALLOW });
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      const allow = workspaceRoute ? allowForWorkspace(workspaceRoute.route) : ALLOW;
+      return json(req, 405, { error: "method-not-allowed" }, { Allow: allow });
+    }
+    if (workspaceRoute) return planning(req, workspaceRoute.params.ws);
     if (!match) return list(req);
     let slug: string;
     try {

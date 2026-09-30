@@ -1,0 +1,118 @@
+<ui-card [padding]="0" class="panel">
+  <div class="t-head">
+    <h2 id="specs" class="type-section-title" tabindex="-1">{{ 'specs.title' | transloco }}</h2>
+    <span class="meta type-meta">{{ 'specs.metaShort' | transloco: { active: rows().length, archived: archive().length } }}</span>
+    <ui-filter-chips
+      data-filter="phase"
+      [options]="phaseChips()"
+      [value]="query().phase ?? 'all'"
+      [label]="'specs.filter.label' | transloco"
+      (valueChange)="setPhase($event)"
+    />
+    @if (typeChips().length > 0) {
+      <ui-filter-chips
+        data-filter="type"
+        [options]="typeChips()"
+        [value]="query().type ?? 'all'"
+        [label]="'specs.filter.typeLabel' | transloco"
+        (valueChange)="setType($event)"
+      />
+    }
+    @if (query().takeable) {
+      <button type="button" class="btn btn-sm btn-ghost takeable-flag" data-filter="takeable" aria-pressed="true" (click)="clearTakeable()">
+        {{ 'kpi.takeableNow' | transloco }}
+        <ui-icon name="x" [size]="14" />
+      </button>
+    }
+    @if (compact()) {
+      <button
+        type="button"
+        class="btn btn-sm btn-ghost sort"
+        data-control="sort"
+        aria-haspopup="dialog"
+        [attr.aria-label]="sortLabel()"
+        [attr.aria-expanded]="sortSheetOpen()"
+        (click)="sortSheetOpen.set(true)"
+      >
+        <ui-icon name="arrow-up-down" [size]="16" />
+        <span>{{ 'specs.sort.' + query().sort | transloco }}</span>
+      </button>
+    } @else {
+      <button type="button" class="btn btn-sm btn-ghost sort" data-control="sort" [attr.aria-label]="sortLabel()" [uiPopoverTrigger]="sortPopover">
+        <ui-icon name="arrow-up-down" [size]="16" />
+        <span>{{ 'specs.sort.' + query().sort | transloco }}</span>
+      </button>
+    }
+  </div>
+
+  @if (strip().length > 0) {
+    <div class="phase-strip" role="img" [attr.aria-label]="phaseStripLabel()">
+      @for (segment of strip(); track segment.id) {
+        <i [style.background]="segment.color"></i>
+      }
+    </div>
+  }
+
+  @if (visible().length > 0) {
+    <ol class="rows" uiRovingList [singleKeys]="singleKeys()">
+      @for (row of visible(); track row.id) {
+        <li>
+          <a
+            uiRovingItem
+            class="row-link"
+            [routerLink]="['/w', ws(), 's', row.id]"
+            [attr.data-spec-row]="row.id"
+            [attr.data-selected]="row.id === selectedId() ? '' : null"
+          >
+            <app-spec-row [row]="row" [stageLabels]="stageLabels()" />
+          </a>
+        </li>
+      }
+    </ol>
+  } @else if (rows().length === 0) {
+    <p class="empty">{{ 'specs.empty' | transloco }}</p>
+  } @else {
+    <p class="empty">
+      {{ 'specs.noMatch' | transloco: { phase: noMatchPhase() } }}
+      <button type="button" class="btn btn-sm btn-ghost" (click)="clearFilter()">{{ 'specs.clearFilter' | transloco }}</button>
+    </p>
+  }
+
+  @if (archive().length > 0) {
+    <div id="archive" class="t-foot" data-fold="archive" tabindex="-1">
+      <ui-icon name="layers" [size]="16" />
+      <span>{{ (archive().length === 1 ? 'specs.archived.one' : 'specs.archived.other') | transloco: { count: archive().length } }}</span>
+      @for (spec of archive(); track spec.id) {
+        <a class="archived-link" [routerLink]="['/w', ws(), 's', spec.id]" [attr.data-archived-row]="spec.id" [title]="spec.title">
+          <span class="archived-id">{{ spec.id }}</span> {{ archivedName(spec) }}
+        </a>
+      }
+    </div>
+  }
+</ui-card>
+
+<ng-template #sortMenu>
+  <div class="sort-menu" role="group" [attr.aria-label]="'specs.sort.label' | transloco">
+    @for (key of sortMenuKeys; track key) {
+      <button
+        type="button"
+        class="pop-item"
+        [attr.data-sort]="key"
+        [attr.aria-pressed]="key === query().sort"
+        [attr.data-autofocus]="key === query().sort ? '' : null"
+        (click)="setSort(key)"
+      >
+        {{ 'specs.sort.' + key | transloco }}
+      </button>
+    }
+  </div>
+</ng-template>
+
+<ui-popover #sortPopover class="sort-popover" placement="end" [label]="'specs.sort.label' | transloco">
+  <ng-container [ngTemplateOutlet]="sortMenu" />
+</ui-popover>
+@if (compact()) {
+  <ui-sheet tier="compact" [(open)]="sortSheetOpen" [label]="'specs.sort.label' | transloco">
+    <ng-container [ngTemplateOutlet]="sortMenu" />
+  </ui-sheet>
+}

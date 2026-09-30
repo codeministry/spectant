@@ -69,13 +69,18 @@
     "attention": "Handlungsbedarf",
     "attentionDetail": "{{warnings}} Warnungen · {{fog}} offener Fog",
     "attentionCompact": "{{warnings}} · {{fog}} Fog",
-    "archive": "Archiv"
+    "archive": "Archiv",
+    "takeableCaption": "Claims bereit zum Bauen",
+    "archiveCaption": "archivierte Spec",
+    "master": "Master"
   },
   "brief": {
     "title": "Kurzfassung",
     "label": "TL;DR",
     "asOf": "Stand {{date}}",
-    "stale": "veraltet"
+    "stale": "veraltet",
+    "more": "Mehr…",
+    "less": "Weniger"
   },
   "specs": {
     "title": "Specs",
@@ -133,11 +138,13 @@
       },
       "previous": "Vorherige Spec",
       "next": "Nächste Spec"
-    }
+    },
+    "agentWorking": "Agent {{session}} arbeitet"
   },
   "nextUp": {
     "title": "Als Nächstes",
     "showAll": "Alle {{count}} anzeigen",
+    "badge": "Als Nächstes: {{count}}",
     "empty": "Nichts bereit zum Bauen",
     "waitOnFog": {
       "one": "{{count}} Spec wartet auf Fog",
@@ -179,6 +186,8 @@
       "nextUp": "Als Nächstes",
       "workspaces": "Workspaces",
       "specs": "Specs",
+      "features": "Features",
+      "milestones": "Milestones",
       "services": "Dienste",
       "actions": "Aktionen",
       "archived": "Archiviert"
@@ -325,9 +334,11 @@
     },
     "area": {
       "label": "Bereich: {{area}}",
+      "pageLabel": "Seite: {{page}}",
       "goKey": "g {{key}}",
       "menu": "Bereiche",
       "needsSpec": "Öffnen Sie eine Spec, um den Bereich zu wechseln",
+      "needsWorkspace": "Öffnen Sie einen Workspace, um die Seite zu wechseln",
       "summary": {
         "dashboard": "Der Stand der Spec auf einen Blick",
         "status": "Phase, Gates und Zeitleiste",
@@ -402,6 +413,16 @@
     "settingsPage": {
       "pending": "Einstellungen, Workspaces und Hilfe kommen mit späteren Tasks dieser Spec.",
       "back": "Zurück zu allen Workspaces"
+    },
+    "pages": {
+      "specs": "Specs",
+      "features": "Features",
+      "milestones": "Milestones",
+      "summary": {
+        "specs": "{{active}} aktiv · {{archived}} archiviert",
+        "features": "{{count}} Features · {{closed}}/{{total}} geschlossen",
+        "milestones": "{{count}} Milestones · nächster {{next}}"
+      }
     }
   },
   "notFound": {
@@ -1045,6 +1066,78 @@
       "struck": "{{task}} im Neuschnitt gestrichen",
       "added": "{{task}} im Neuschnitt hinzugefügt",
       "changed": "{{task}} im Neuschnitt neu nummeriert"
+    }
+  },
+  "terms": {
+    "feature": "Epic im Ticket-Tracker",
+    "spec": "Story im Ticket-Tracker",
+    "claim": "Akzeptanzkriterium im Ticket-Tracker",
+    "task": "Sub-Task im Ticket-Tracker"
+  },
+  "planning": {
+    "features": {
+      "title": "Features in {{ws}}",
+      "meta": "{{features}} Features · {{closed}}/{{total}} Claims geschlossen · {{unheld}} ohne Spec",
+      "unheld": "{{count}} ohne Spec",
+      "allHeld": "alle in Specs",
+      "why": "Warum",
+      "holders": "Specs mit Claims von {{id}}",
+      "main": "Haupt-Feature",
+      "archived": "archiviert",
+      "holderMain": "{{name}}, Hauptfeature",
+      "holderOther": "{{name}}, Hauptfeature {{feature}}",
+      "holderArchived": "{{name}}, archiviert",
+      "titleTerm": "Features",
+      "titleIn": "in {{ws}}",
+      "metaWords": {
+        "features": "Features",
+        "claims": "Claims",
+        "closed": "geschlossen",
+        "unheld": "ohne Spec"
+      },
+      "whyLine": "Warum: {{why}}",
+      "whyMore": "mehr",
+      "whyLess": "weniger",
+      "valueText": "{{closed}} von {{total}} Claims geschlossen",
+      "meterLabel": "{{id}} Claims geschlossen",
+      "moreChips": "+{{count}} weitere",
+      "empty": {
+        "heading": "Keine Feature-Blöcke in ISA.md",
+        "body": "Features stammen aus den ## Features-Blöcken des Masters."
+      }
+    },
+    "milestones": {
+      "title": "Milestones in {{ws}}",
+      "meta": "{{count}} Milestones · nächster: {{name}}, {{date}}",
+      "metaNone": "kein anstehender Milestone",
+      "metaUndated": "{{count}} Milestones · nächster: {{name}}",
+      "caption": "Nach Zieldatum sortiert",
+      "undated": "kein Zieldatum",
+      "meterLabel": "{{name}} Claims geschlossen",
+      "featureChip": "{{id}} {{name}}, {{closed}} von {{total}} Claims geschlossen",
+      "state": {
+        "upcoming": "in {{days}} Tagen",
+        "late": "überfällig · {{days}} Tage",
+        "complete": "abgeschlossen"
+      },
+      "stateWord": {
+        "upcoming": "bevorstehend",
+        "late": "überfällig",
+        "complete": "abgeschlossen"
+      },
+      "features": "Features",
+      "specs": "Specs",
+      "notFound": {
+        "heading": "Keine Milestones",
+        "body": "Keine Spec in {{ws}} trägt einen Milestone, daher gibt es keine Milestones-Seite.",
+        "link": "Features"
+      }
+    },
+    "breadcrumb": {
+      "label": "Pfad",
+      "more": "{{count}} weitere Features",
+      "archived": "archiviert",
+      "unknownMilestone": "nicht im Milestones-Block des Masters"
     }
   }
 }

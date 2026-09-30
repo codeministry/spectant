@@ -14,6 +14,7 @@ import { reviewedGate } from '../src/gates.ts';
 import {
   driftReport,
   hasDrift,
+  mainFeatureOf,
   masterProgressMismatch,
   partitionClaims,
   type DriftClass,
@@ -417,5 +418,24 @@ describe('review gate', () => {
     expect(g002.check.state).toBe('fresh');
     expect(partitionClaims(load(join(HARBOR_003, 'spec.md')).doc.claims, [], g003.check.state).takeable).toHaveLength(0);
     expect(partitionClaims(load(join('harbor', HARBOR_002, 'spec.md')).doc.claims, [], g002.check.state).takeable).toHaveLength(4);
+  });
+});
+
+describe('mainFeatureOf', () => {
+  test('the first word of isa_feature, split on whitespace, commas and middle dots', () => {
+    expect(mainFeatureOf('F2')).toBe('F2');
+    expect(mainFeatureOf('F2 F3')).toBe('F2');
+    expect(mainFeatureOf('F2, F3')).toBe('F2');
+    expect(mainFeatureOf('F2 · F3')).toBe('F2');
+    expect(mainFeatureOf('F2·F3')).toBe('F2');
+    expect(mainFeatureOf('  F2  ')).toBe('F2');
+  });
+
+  test('null when the spec names no feature', () => {
+    expect(mainFeatureOf(undefined)).toBeNull();
+    expect(mainFeatureOf(null)).toBeNull();
+    expect(mainFeatureOf('')).toBeNull();
+    expect(mainFeatureOf('   ')).toBeNull();
+    expect(mainFeatureOf(', F3')).toBeNull();
   });
 });

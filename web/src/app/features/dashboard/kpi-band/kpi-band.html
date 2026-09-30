@@ -1,0 +1,132 @@
+@let k = kpis();
+@let master = k.master;
+@let noValue = 'common.noValue' | transloco;
+<!-- The prototype's kpi-band (app.js pageWorkspace): six tiles, each a ui-card with explicit edge and glow. -->
+<div class="band">
+  <ui-kpi-tile
+    class="master"
+    data-kpi="master"
+    variant="hero"
+    [glow]="true"
+    [label]="'kpi.masterClaims' | transloco"
+    [value]="master ? master.closed : noValue"
+    [denominator]="master?.total"
+    [meta]="masterPercent() === null ? undefined : ('kpi.closedCaption' | transloco: { percent: masterPercent(), open: masterOpen() })"
+  >
+    <ui-ring visual [value]="masterPercent()" [size]="112" [stroke]="10" />
+  </ui-kpi-tile>
+
+  <ui-kpi-tile
+    class="claims"
+    data-kpi="claims"
+    accent="accent"
+    [edge]="true"
+    [glow]="true"
+    [label]="'kpi.specClaims' | transloco"
+    [value]="k.claims.closed"
+    [denominator]="k.claims.total"
+  >
+    <ui-meter tone="accent" [value]="k.claims.closed" [max]="k.claims.total" [label]="'kpi.specClaims' | transloco" />
+  </ui-kpi-tile>
+
+  <ui-kpi-tile
+    class="specs"
+    data-kpi="specs"
+    accent="primary"
+    [edge]="true"
+    [glow]="true"
+    [label]="'kpi.specs' | transloco"
+    [value]="k.specs"
+    [href]="href()"
+    [fragment]="targets.specs"
+  >
+    <ui-meter [segments]="phases()" [label]="'kpi.specs' | transloco" />
+    <!-- Spans, not a list: the tile's body is phrasing content inside a link. -->
+    <span class="legend">
+      @for (part of phases(); track part.key) {
+        <span class="entry" [style.--dot]="part.mark">
+          {{ 'phases.' + part.phase | transloco }} <b class="count">{{ part.count }}</b>
+        </span>
+      }
+    </span>
+  </ui-kpi-tile>
+
+  <ui-kpi-tile
+    class="takeable"
+    data-kpi="takeable"
+    accent="primary"
+    [edge]="true"
+    [glow]="true"
+    [label]="'kpi.takeableNow' | transloco"
+    [value]="k.takeable"
+    [meta]="'kpi.takeableCaption' | transloco"
+    [href]="href()"
+    [queryParams]="takeableQuery"
+    [fragment]="targets.specs"
+  />
+
+  <ui-kpi-tile
+    class="attention span-wide"
+    data-kpi="attention"
+    accent="warning"
+    [edge]="true"
+    [glow]="true"
+    [label]="'kpi.attention' | transloco"
+    [value]="k.attention"
+    [meta]="'kpi.attentionDetail' | transloco: { warnings: k.warnings, fog: k.fog }"
+    [href]="href()"
+    [fragment]="targets.warnings"
+  />
+
+  <ui-kpi-tile
+    class="archive"
+    data-kpi="archive"
+    accent="secondary"
+    [edge]="true"
+    [glow]="true"
+    [label]="'kpi.archive' | transloco"
+    [value]="k.archived"
+    [meta]="'kpi.archiveCaption' | transloco"
+    [href]="href()"
+    [fragment]="targets.archive"
+  />
+</div>
+
+<!-- The prototype's Pulse card, the band's compact form: the container query shows it instead of the band. -->
+<div class="pulse" data-kpi="pulse">
+  <ui-card [glow]="true" [padding]="16">
+    <div class="pulse-in">
+      <div class="top">
+        <ui-ring [value]="masterPercent()" [size]="72" [stroke]="8" />
+        <div>
+          <div class="type-eyebrow">{{ 'kpi.masterClaims' | transloco }}</div>
+          <div class="figure type-kpi-value">
+            @if (master) {
+              {{ master.closed }}<small class="den">/{{ master.total }}</small>
+            } @else {
+              {{ noValue }}
+            }
+          </div>
+        </div>
+      </div>
+      <div class="claims">
+        <div class="claims-row">
+          <span class="type-eyebrow">{{ 'kpi.specClaims' | transloco }}</span>
+          <span class="frac">{{ k.claims.closed }}/{{ k.claims.total }}</span>
+        </div>
+        <ui-meter tone="accent" [value]="k.claims.closed" [max]="k.claims.total" [label]="'kpi.specClaims' | transloco" />
+      </div>
+      <div class="stats">
+        <a [routerLink]="href()" [fragment]="targets.specs">
+          <span class="type-eyebrow">{{ 'kpi.specs' | transloco }}</span><b>{{ k.specs }}</b>
+        </a>
+        <a [routerLink]="href()" [queryParams]="takeableQuery" [fragment]="targets.specs">
+          <span class="type-eyebrow">{{ 'kpi.takeable' | transloco }}</span><b>{{ k.takeable }}</b>
+        </a>
+        <a [routerLink]="href()" [fragment]="targets.warnings">
+          <span class="type-eyebrow">{{ 'kpi.attention' | transloco }}</span><b>{{ k.attention }}</b>
+        </a>
+      </div>
+    </div>
+  </ui-card>
+</div>

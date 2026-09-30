@@ -65,7 +65,7 @@
   max-inline-size: 100%;
   background:
     linear-gradient(to left, var(--color-base-100) 40%, transparent) right center / 32px 100% no-repeat local,
-    radial-gradient(farthest-side at 100% 50%, color-mix(in oklab, var(--color-base-content) 24%, transparent), transparent) right center / 14px 100% no-repeat scroll;
+    linear-gradient(to left, color-mix(in oklab, var(--color-base-content) 24%, transparent), transparent) right center / 14px 100% no-repeat scroll;
   overscroll-behavior-x: contain;
 }
 

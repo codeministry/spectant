@@ -1,0 +1,410 @@
+/*
+ * The Milestones page (design.md § Milestones page, every viewport). Page head: H1 Sora 24/32, the caption and the
+ * summary 13/20 muted, 24 px to the first row. Rows: the Features row's card and grid, 16 px apart at wide and 8 px
+ * below.
+ *
+ * Wide: two stacks on `minmax(0,1fr) 240px`, gap 32 — left the H2 (flag + name 17/24), the date line (13/20), the
+ * description and the two chip rows (a fixed 72 px muted label, the chips wrapping beside it), right the 160 x 6 meter
+ * with the fraction. Medium and compact dissolve the stacks (`display: contents`) into one column: heading and
+ * fraction on one row, the date line, the meter at full width, the description, the chip rows; compact turns the chip
+ * labels into 11/16 uppercase eyebrows above their chips. Every grid and flex child sets `min-inline-size: 0`.
+ */
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+.unavailable {
+  color: var(--muted-ink);
+}
+
+.caption,
+.meta {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+.meta {
+  margin-block-end: 24px;
+}
+
+.absent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  max-inline-size: 640px;
+  margin-block-start: 16px;
+}
+
+.absent p {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.rows {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rows > li {
+  min-inline-size: 0;
+}
+
+/* The arrival outline, as on the Features page. */
+ui-card[data-arrived] {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  animation: milestones-arrival var(--motion-duration-slow) var(--motion-ease-standard);
+}
+
+@keyframes milestones-arrival {
+  from {
+    outline-color: var(--color-primary);
+  }
+
+  to {
+    outline-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ui-card[data-arrived] {
+    outline-color: var(--color-primary);
+  }
+}
+
+article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 32px;
+  align-items: start;
+  padding: 16px 24px;
+  border-radius: inherit;
+  scroll-margin-block: 96px;
+}
+
+article:focus {
+  outline: none;
+}
+
+.main,
+.side {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+h2 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+h2 .flag {
+  flex: none;
+  color: var(--muted-ink);
+}
+
+h2 .name {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.date-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  align-items: center;
+  min-inline-size: 0;
+  margin: 4px 0 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+.date-line time {
+  color: var(--color-base-content);
+  white-space: nowrap;
+}
+
+.date-line time::after {
+  margin-inline: 8px;
+  color: var(--muted-ink);
+  content: '·';
+}
+
+.relative {
+  white-space: nowrap;
+}
+
+.desc {
+  display: -webkit-box;
+  overflow: hidden;
+  min-inline-size: 0;
+  max-inline-size: 72ch;
+  margin: 4px 0 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.chip-rows {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+  margin: 12px 0 0;
+}
+
+.chip-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  min-inline-size: 0;
+}
+
+.chip-row dt {
+  padding-block: 6px;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.chip-row dd {
+  min-inline-size: 0;
+  margin: 0;
+}
+
+.chip-row ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip-row li {
+  display: flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+/* A feature chip: the spec chip's metrics (28 px pill, 12/16, 8 px padding), mono id, the name cut at 200 px. */
+.feature-chip {
+  position: relative;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  box-sizing: border-box;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  block-size: 28px;
+  padding-inline: 8px;
+  border: 1px solid var(--color-base-300);
+  border-radius: 999px;
+  color: var(--color-base-content);
+  font-size: 12px;
+  line-height: 16px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.feature-chip .id,
+.feature-chip .count,
+.fraction {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.feature-chip .id {
+  flex: none;
+  color: var(--disp-ink);
+  font-weight: 600;
+}
+
+.feature-chip .name {
+  overflow: hidden;
+  min-inline-size: 0;
+  max-inline-size: 200px;
+  text-overflow: ellipsis;
+}
+
+.feature-chip .count {
+  flex: none;
+  color: var(--muted-ink);
+}
+
+.feature-chip .count::before {
+  margin-inline-end: 4px;
+  content: '·';
+}
+
+@media (pointer: coarse) {
+  .feature-chip::before {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    inline-size: 100%;
+    min-inline-size: 44px;
+    block-size: 44px;
+    transform: translate(-50%, -50%);
+    content: '';
+  }
+}
+
+.progress {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  min-block-size: 24px;
+}
+
+.progress ui-meter {
+  flex: none;
+  inline-size: 160px;
+}
+
+.fraction {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 13px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.fraction.done {
+  color: var(--done-ink);
+}
+
+.fraction.muted {
+  color: var(--muted-ink);
+}
+
+.skeleton-card {
+  display: grid;
+  gap: 12px;
+}
+
+/* Medium and compact: one column, the stacks dissolved into the article's grid. */
+:host(:not([data-tier='wide'])) .rows {
+  gap: 8px;
+}
+
+:host(:not([data-tier='wide'])) article {
+  grid-template-areas:
+    'head fraction'
+    'date date'
+    'meter meter'
+    'desc desc'
+    'chips chips';
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 16px;
+  padding: 16px;
+}
+
+:host(:not([data-tier='wide'])) :is(.main, .side, .progress) {
+  display: contents;
+}
+
+:host(:not([data-tier='wide'])) h2 {
+  grid-area: head;
+}
+
+:host(:not([data-tier='wide'])) .date-line {
+  grid-area: date;
+}
+
+:host(:not([data-tier='wide'])) .fraction {
+  grid-area: fraction;
+  place-self: start end;
+  line-height: 24px;
+}
+
+:host(:not([data-tier='wide'])) .progress ui-meter {
+  grid-area: meter;
+  inline-size: auto;
+  margin-block-start: 8px;
+}
+
+:host(:not([data-tier='wide'])) .desc {
+  grid-area: desc;
+  margin-block-start: 8px;
+}
+
+:host(:not([data-tier='wide'])) .chip-rows {
+  grid-area: chips;
+}
+
+:host([data-tier='compact']) h2 {
+  align-items: flex-start;
+  font-size: 15px;
+}
+
+:host([data-tier='compact']) h2 .flag {
+  margin-block-start: 4px;
+}
+
+:host([data-tier='compact']) h2 .name {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+:host([data-tier='compact']) .date-line {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+:host([data-tier='compact']) .chip-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+:host([data-tier='compact']) .chip-row dt {
+  padding-block: 0;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (forced-colors: active) {
+  ui-card[data-arrived] {
+    outline-color: Highlight;
+  }
+
+  .feature-chip {
+    border-color: CanvasText;
+  }
+}

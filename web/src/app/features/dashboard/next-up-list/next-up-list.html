@@ -1,0 +1,55 @@
+<!--
+  Card form (below wide): one card, the section header, then next-rows. Rail form (wide, prototype `.rail-block`): the
+  eyebrow heading with the count, then one next-card per entry.
+-->
+@if (form() === 'card') {
+  <ui-card [padding]="16">
+    <ui-section-header [heading]="'nextUp.title' | transloco" [headingId]="headingId">
+      @if (total() > 0) {
+        <span meta class="count" data-next-count>{{ total() }}</span>
+      }
+    </ui-section-header>
+    <ng-container [ngTemplateOutlet]="body" />
+  </ui-card>
+} @else {
+  <div class="eyebrow" data-next-eyebrow>
+    <h2 class="type-eyebrow" tabindex="-1" [id]="headingId">{{ 'nextUp.title' | transloco }}</h2>
+    @if (total() > 0) {
+      <span class="type-eyebrow count" data-next-count>{{ total() }}</span>
+    }
+  </div>
+  <ng-container [ngTemplateOutlet]="body" />
+}
+
+<ng-template #body>
+  @if (entries().length > 0) {
+    <ol class="entries" data-next-primary>
+      @for (row of entries(); track row.id) {
+        <li><app-next-up-entry [row]="row" [form]="form()" [labels]="stageLabels()" /></li>
+      }
+    </ol>
+    @if (more().length > 0) {
+      <ui-disclosure class="fold" data-show-all [(open)]="showAll">
+        <span uiDisclosureSummary>{{ 'nextUp.showAll' | transloco: { count: total() } }}</span>
+        <ol class="entries">
+          @for (row of more(); track row.id) {
+            <li><app-next-up-entry [row]="row" [form]="form()" [labels]="stageLabels()" /></li>
+          }
+        </ol>
+      </ui-disclosure>
+    }
+  } @else {
+    <p class="empty" data-next-empty>
+      <span>{{ 'nextUp.empty' | transloco }}</span>
+      @if (fogWaiting() > 0) {
+        <a
+          class="fog"
+          data-next-fog
+          [routerLink]="[]"
+          [queryParams]="{ phase: 'fog' }"
+          queryParamsHandling="merge"
+        >{{ (fogWaiting() === 1 ? 'nextUp.waitOnFog.one' : 'nextUp.waitOnFog.other') | transloco: { count: fogWaiting() } }}</a>
+      }
+    </p>
+  }
+</ng-template>

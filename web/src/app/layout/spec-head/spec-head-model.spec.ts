@@ -1,5 +1,6 @@
 import type { ClaimLock, GateView } from '../../../../../core/src/files';
-import { gateAction, gateInHead, pathSegments, relativeTime, relativeUnit, shortHash, slugName } from './spec-head-model';
+import type { PlanningFeature, PlanningHolder, PlanningModel } from '../../../../../core/src/planning';
+import { featurePlace, gateAction, gateInHead, pathSegments, relativeTime, relativeUnit, shortHash, slugName } from './spec-head-model';
 
 const gate = (state: GateView['state']): GateView => ({ state, detail: '' });
 const LOCK: ClaimLock = { source: 'frontier', claim: 'ISC-74', session: 'spec-002-ISC-74', since: '2026-03-08T16:00:00Z' };
@@ -41,8 +42,8 @@ describe('shortHash', () => {
 
 describe('slugName', () => {
   it('drops the NNN- prefix of the folder name and keeps a slug without one', () => {
-    expect(slugName('002-web-console', '002')).toBe('web-console');
-    expect(slugName('web-console', '002')).toBe('web-console');
+    expect(slugName('002-web-console')).toBe('web-console');
+    expect(slugName('web-console')).toBe('web-console');
   });
 });
 
@@ -67,5 +68,46 @@ describe('relativeTime (ISC-22)', () => {
   it('is null for a missing or unreadable date', () => {
     expect(relativeTime(null, NOW, 'en')).toBeNull();
     expect(relativeTime('not a date', NOW, 'en')).toBeNull();
+  });
+});
+
+describe('featurePlace (ISC-105)', () => {
+  const holder = (id: string, main: boolean): PlanningHolder => ({ id, slug: `${id}-x`, title: 'x', archived: false, main, held: 1, stage: null });
+  const feature = (id: string, holders: readonly PlanningHolder[], claims: readonly string[]): PlanningFeature => ({
+    id,
+    name: id,
+    why: null,
+    closed: 0,
+    total: claims.length,
+    claims: claims.map((claim) => ({ id: claim, closed: false, dropped: false, holder: holders[0]?.id ?? null })),
+    holders,
+    unheld: [],
+  });
+  /**
+   * 002 is main under F7 and holds F0 too; F8's ISC-80 is listed by 002 as well, but 003 won it (planning's winner
+   * rule), so 002 is no holder of F8.
+   */
+  const MODEL: PlanningModel = {
+    features: [
+      feature('F0', [holder('002', false)], ['ISC-1']),
+      feature('F7', [holder('002', true)], ['ISC-100']),
+      feature('F8', [holder('003', true)], ['ISC-80']),
+    ],
+    milestones: [],
+    recount: null,
+    diagnostics: [],
+  };
+  const ids = (place: ReturnType<typeof featurePlace>): [string | null, string[]] => [place.crumb?.id ?? null, place.others.map((f) => f.id)];
+
+  it("is the open claim's block when the spec holds that block", () => {
+    expect(ids(featurePlace(MODEL, '002', 'ISC-1'))).toEqual(['F0', ['F7']]);
+  });
+
+  it('falls back to the main feature when the open claim sits in a block the spec does not hold', () => {
+    expect(ids(featurePlace(MODEL, '002', 'ISC-80'))).toEqual(['F7', ['F0']]);
+  });
+
+  it('is the main feature without an open claim', () => {
+    expect(ids(featurePlace(MODEL, '002', null))).toEqual(['F7', ['F0']]);
   });
 });

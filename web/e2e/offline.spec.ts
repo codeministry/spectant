@@ -79,7 +79,7 @@ async function rendered(page: Page, path: string, tab?: string): Promise<void> {
     await expect(page.locator('app-notes-area'), path).toBeVisible();
   } else if (tab !== undefined) {
     await expect(page.locator('app-tab-bar a[aria-current="page"]'), path).toHaveAttribute('data-tab', tab);
-    await expect(page.locator('[data-page="placeholder"]'), path).toHaveCount(tab === 'matrix' ? 1 : 0);
+    await expect(page.locator('[data-page="placeholder"]'), path).toHaveCount(0);
   }
 }
 
@@ -156,10 +156,13 @@ for (const theme of ['light', 'dark'] as const) {
         await page.keyboard.press('Escape');
         await expect(sheet).toBeHidden();
 
-        // The palette is announced as pending (`aria-disabled`, so Playwright calls it not enabled and the click is
-        // forced): a click keeps the page where it is.
-        await expect(control('palette')).toHaveAttribute('aria-disabled', 'true');
-        await control('palette').click({ force: true });
+        // The palette trigger opens the command palette (spec 001 T66); Esc closes it and the page stays where it is.
+        await expect(control('palette')).not.toHaveAttribute('aria-disabled');
+        await control('palette').click();
+        const palette = page.locator('app-command-palette dialog');
+        await expect(palette).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(palette).toBeHidden();
         await expect(page).toHaveURL(new RegExp(`${SPEC}/status$`, 'u'));
       });
 

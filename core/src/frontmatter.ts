@@ -19,6 +19,8 @@ export interface SpecFrontmatter {
   readonly specType: SpecType | null;
   readonly isaMaster: string | null;
   readonly isaFeature: string | null;
+  /** The master's `## Milestones` entry this spec belongs to, matched by name; null when absent. */
+  readonly milestone: string | null;
   readonly constitution: string | null;
   readonly phase: string | null;
   readonly progress: Progress | null;
@@ -66,6 +68,7 @@ const KEYS: Readonly<Record<string, readonly [keyof SpecFrontmatter, Kind]>> = {
   spec_type: ['specType', 'specType'],
   isa_master: ['isaMaster', 'string'],
   isa_feature: ['isaFeature', 'string'],
+  milestone: ['milestone', 'string'],
   constitution: ['constitution', 'string'],
   phase: ['phase', 'string'],
   progress: ['progress', 'progress'],
@@ -90,6 +93,7 @@ function emptyData(): Mutable<SpecFrontmatter> {
     specType: null,
     isaMaster: null,
     isaFeature: null,
+    milestone: null,
     constitution: null,
     phase: null,
     progress: null,

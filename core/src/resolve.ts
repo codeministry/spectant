@@ -10,6 +10,8 @@
 import { readdirSync, type Dirent } from 'node:fs';
 import { join, resolve } from 'node:path';
 
+import { SPEC_FOLDER, SPEC_ID, specIdOf, specSlugOf } from './spec-ref.ts';
+
 /** A spec folder that exists: `specs/NNN-slug/` or `specs/archive/NNN-slug/`. */
 export interface SpecRef {
   readonly kind: 'spec';
@@ -41,9 +43,6 @@ export interface WorkspaceEntry {
   readonly path: string;
 }
 
-const SPEC_FOLDER = /^(\d{3})-(.+)$/;
-const SPEC_ID = /^\d{3}$/;
-
 /**
  * Every spec folder of the workspace at `workspaceRoot`, active ones in numeric order, then archived ones in numeric
  * order. One level each under `specs/` and `specs/archive/`; a missing `specs/` lists nothing.
@@ -61,12 +60,14 @@ export function resolveSpec(workspaceRoot: string, ref: string): SpecRef | NotFo
   const specs = scan(workspaceRoot);
   if (specs === null) return notFound(ref, 'no-specs-dir');
 
-  if (SPEC_ID.test(ref)) return single(ref, specs.filter((s) => s.id === ref), 'unknown-id');
+  // The three forms come from `spec-ref.ts`, the one definition the web app matches with too. The order here only
+  // decides which form a ref is read as first; every match is one `specRefMatches` would also report.
+  if (SPEC_ID.test(ref)) return single(ref, specs.filter((s) => specIdOf(s.slug) === ref), 'unknown-id');
   if (SPEC_FOLDER.test(ref)) {
     const byFolder = specs.filter((s) => s.slug === ref);
     if (byFolder.length > 0) return single(ref, byFolder, 'unknown-slug');
   }
-  return single(ref, specs.filter((s) => s.slug.slice(s.id.length + 1) === ref), 'unknown-slug');
+  return single(ref, specs.filter((s) => ref !== '' && specSlugOf(s.slug) === ref), 'unknown-slug');
 }
 
 /** The registry entry whose slug equals `slug` exactly, or `not_found`. */

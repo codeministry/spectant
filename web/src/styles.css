@@ -13,9 +13,13 @@
  * The two themes carry the old Spec pages' light and dark token blocks (ISC-18). Every colour is OKLCH, converted
  * from the inherited value in the trailing comment; `web/tests/theme-colors.test.ts` round-trips each one back
  * within ΔE_OK×100 0.5. Inherited tokens without a daisyUI slot stay custom properties under their old names.
- * The prototype (spec 002, design.md) was built from the same blocks; the two palette colours it adds that the old
- * pages lack (`--hover-t`, `--scrim`) sit in their own group at the end, with the prototype's value in the comment.
+ * The prototype (spec 001 design.md § Prototype port, binding) was built from the same blocks. Its tokens the old
+ * pages lack sit in their own group at the end of each theme, under the old family names (cyan → disp, violet → ques,
+ * lime → clos, green → done, yellow → conc, orange → hover, red → fail) with the prototype's name in the comment;
+ * `theme-colors.test.ts` maps every prototype token to its home here or in `styles/tokens.css` and round-trips it.
  * Derived contrast tokens (`--track`, `--*-ink`, the corrected `--muted`) live in `styles/tokens.css`, not here.
+ * The prototype's `--*-text` inks are its values, not contrast fixes: each clears 4.5:1 on the card and the page, but
+ * on its own `-t` tint it gives 4.20 to 4.47, so text on a tint (chips, notices) keeps the matching `--*-ink`.
  * No `prefers-color-scheme` block: the pre-paint script sets `data-theme`; `prefersdark` is only the CSS default.
  */
 
@@ -80,6 +84,18 @@
   /* Prototype tokens the old pages lack */
   --hover-t: oklch(95.1% 0.036 82.2); /* #fbedd4 orange tint (prototype --orange-t, equal to --conc-t here) */
   --scrim: oklch(0% 0 0 / 0.4); /* rgba(0,0,0,.4) modal backdrop (prototype --scrim) */
+  --shadow-color: oklch(26.8% 0.013 320.6 / 0.122); /* #29242a1f hairline shadow (prototype --shadow-c) */
+  --teal: oklch(62.2% 0.096 215.3); /* #2f95ab brand teal (prototype --teal) */
+  --teal-content: oklch(31.1% 0.028 218.6); /* #20343a ink on teal (prototype --teal-t), 3.72:1: marks, not text */
+
+  /* Prototype accent text; ratios read card / page / own tint */
+  --disp-text: oklch(53% 0.096 220); /* #027892 prototype --cyan-text: 4.93 / 4.57 / 4.35 */
+  --ques-text: var(--color-secondary); /* prototype --violet-text, its accent: 5.28 / 4.90 / 4.47 */
+  --clos-text: oklch(52.5% 0.151 134.5); /* #417c02 prototype --lime-text: 4.92 / 4.56 / 4.31 */
+  --done-text: oklch(52.3% 0.12 159.2); /* #007e50 prototype --green-text: 4.93 / 4.57 / 4.40 */
+  --conc-text: oklch(54.6% 0.123 64); /* #a15e01 prototype --yellow-text: 4.91 / 4.55 / 4.41 */
+  --hover-text: var(--color-warning); /* prototype --orange-text, its accent: 4.92 / 4.56 / 4.42 */
+  --fail-text: oklch(56.3% 0.192 6.4); /* #ca3063 prototype --red-text: 4.91 / 4.56 / 4.20 */
 }
 
 @plugin "daisyui/theme" {
@@ -143,4 +159,109 @@
   /* Prototype tokens the old pages lack */
   --hover-t: oklch(31.5% 0.021 57.9); /* #3a2f27 orange tint (prototype --orange-t) */
   --scrim: oklch(0% 0 0 / 0.4); /* rgba(0,0,0,.4) modal backdrop (prototype --scrim) */
+  --shadow-color: oklch(0% 0 0 / 0.302); /* #0000004d hairline shadow (prototype --shadow-c) */
+  --teal: oklch(39.4% 0.06 216.5); /* #164e5b brand teal (prototype --teal) */
+  --teal-content: oklch(93% 0.016 211); /* #dcebee ink on teal (prototype --teal-t), 7.54:1 */
+
+  /* Prototype accent text: in the dark theme every one is its accent */
+  --disp-text: var(--color-primary); /* prototype --cyan-text */
+  --ques-text: var(--color-secondary); /* prototype --violet-text */
+  --clos-text: var(--color-accent); /* prototype --lime-text */
+  --done-text: var(--color-success); /* prototype --green-text */
+  --conc-text: var(--conc); /* prototype --yellow-text */
+  --hover-text: var(--color-warning); /* prototype --orange-text */
+  --fail-text: var(--color-error); /* prototype --red-text */
+}
+
+/*
+ * Type scale (T86): the prototype's steps (design.md § Prototype port, its `styles.css` rules named per step) as
+ * utilities the ported components put in their templates. Pixel sizes as the prototype sets them; faces only from
+ * `styles/fonts.css` (Sora is `--font-display`, the prototype's `--font-brand`); secondary text in `--muted-ink`
+ * (ISC-65). `web/tests/type-scale.test.ts` checks every declaration.
+ */
+
+/* `.eyebrow`: label over a value or a section */
+@utility type-eyebrow {
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-ink);
+}
+
+/* `.meta`: dates, counts and paths under a title */
+@utility type-meta {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted-ink);
+}
+
+/* `.page-head h1`: the page title, the one Sora heading */
+@utility type-page-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* `.section-head`, `.spec-table .t-head h2` */
+@utility type-section-title {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+/* `.c-head h3`: card title */
+@utility type-card-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+/* `kpi-tile .val` */
+@utility type-kpi-value {
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* `.hero-val` */
+@utility type-hero-value {
+  font-size: 40px;
+  line-height: 48px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* `kpi-strip .val`, over the kpi-tile value it refines */
+@utility type-strip-value {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* `ring .pct` and `ring.sm .pct` */
+@utility type-ring-pct {
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 600;
+}
+
+@utility type-ring-pct-sm {
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 600;
+}
+
+/* `[data-ui="chip"]`: state and phase chips */
+@utility type-chip {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }

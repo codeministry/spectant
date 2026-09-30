@@ -1,0 +1,176 @@
+/*
+ * The Specs panel, ported from the prototype (styles.css 362-400): the head as one wrapping line (heading, meta,
+ * phase chips, sort at the inline end), the 8 px phase strip, the rows full-bleed with hairlines, the archived footer.
+ * `container: specs` is what the rows' forms query (spec-row.css).
+ */
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+.panel {
+  display: block;
+  overflow: hidden;
+}
+
+.t-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  min-block-size: 48px;
+  padding: 8px 16px;
+}
+
+.t-head h2 {
+  margin: 0;
+}
+
+.t-head ui-filter-chips {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+}
+
+.sort {
+  gap: 4px;
+  margin-inline-start: auto;
+  color: var(--muted-ink);
+}
+
+.takeable-flag {
+  --btn-bg: var(--disp-t);
+  --btn-fg: var(--disp-ink);
+  --btn-border: var(--color-primary);
+
+  gap: 4px;
+  border-radius: 999px;
+}
+
+/* One equal segment per active spec (prototype `.phase-strip i`): 8 px tall, 2 px apart, 2 px radius. */
+.phase-strip {
+  display: flex;
+  gap: 2px;
+  block-size: 8px;
+  padding-inline: 16px;
+}
+
+.phase-strip i {
+  flex: 1;
+  border-radius: 2px;
+}
+
+.rows {
+  container: specs / inline-size;
+  margin: 8px 0 0;
+  padding: 0;
+  border-block-start: 1px solid var(--line);
+  list-style: none;
+}
+
+.rows > li {
+  border-block-end: 1px solid var(--line);
+}
+
+.row-link {
+  display: block;
+  position: relative;
+  color: var(--color-base-content);
+  text-decoration: none;
+  outline-offset: -2px;
+  transition: background-color var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+@media (hover: hover) {
+  .row-link:hover {
+    background: color-mix(in oklab, var(--color-base-300) 55%, transparent);
+  }
+}
+
+/* The current row while the list holds focus: the cyan tint with the 3 px inset edge; its ID takes the tint's ink. */
+.rows:focus-within .row-link[data-selected] {
+  --row-id-ink: var(--disp-ink);
+
+  background: var(--disp-t);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.empty {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0 0;
+  padding: 16px;
+  border-block-start: 1px solid var(--line);
+  color: var(--muted-ink);
+}
+
+.t-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 44px;
+  padding: 0 16px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.archived-link {
+  display: inline-flex;
+  gap: 8px;
+  align-items: baseline;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  text-decoration: none;
+}
+
+.archived-link:hover {
+  color: var(--color-base-content);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.archived-id {
+  color: var(--disp-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The sort menu, in the popover and the sheet (prototype `.pop-item`). */
+.sort-menu {
+  display: grid;
+  gap: 2px;
+  min-inline-size: 160px;
+}
+
+.pop-item {
+  display: flex;
+  align-items: center;
+  inline-size: 100%;
+  min-block-size: 36px;
+  padding: 6px 8px;
+  border-radius: var(--radius-field);
+  color: var(--color-base-content);
+  font-size: 13px;
+  text-align: start;
+}
+
+.pop-item:hover,
+.pop-item[aria-pressed='true'] {
+  background: var(--color-base-300);
+}
+
+.pop-item[aria-pressed='true'] {
+  font-weight: 600;
+}
+
+@media (forced-colors: active) {
+  .rows:focus-within .row-link[data-selected] {
+    outline: 2px solid Highlight;
+  }
+
+  .phase-strip i {
+    background: CanvasText;
+  }
+}

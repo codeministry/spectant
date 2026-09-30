@@ -21,20 +21,27 @@ snapshot changes only together with the parser change that explains it.
 
 | Fixture | Exercises |
 |---------|-----------|
-| `harbor/` | the rich case. Master with 124 claims in F0–F4, 101 closed: the three-digit/three-digit fraction. Six specs across every type but `infra` and `project`, the stages done, build, tasks, review and code-review, and every dashboard warning class. |
-| `lantern/` | the small clean case. Master with 12 claims, spec 001 (feature, building) and 002 (bug, scoping), both reviewed. No archive, no TL;DR, no warning. |
+| `harbor/` | the rich case. Master with 124 claims in F0–F4, 101 closed: the three-digit/three-digit fraction. Six specs across every type but `infra` and `project`, the stages done, build, tasks, review and code-review, and every dashboard warning class. A `## Milestones` block with two entries, named by four specs (the archived 001 among them). |
+| `lantern/` | the small clean case. Master with 12 claims, spec 001 (feature, building) and 002 (bug, scoping), both reviewed. No archive, no TL;DR, no warning, no milestone: the none case. |
 | `empty-master/` | a repository with `ISA.md` and `specs/constitution.md` but no spec folder: zero specs. |
 
 ### What each harbor spec carries
 
-| Spec | Type · phase | Carries | Expected (as the old Spec skill derives it) |
-|------|--------------|---------|---------------------------------------------|
-| `archive/001-manifest-sync` | feature · complete | `archived:` date, all 46 claims `[x]`, reviewed and code-reviewed marks, `events.jsonl` with the whole chain from the creation to done in the stage table's names | archived, stage done, no warning; the timeline shows the seven recorded transitions, none derived |
-| `002-web-console` | feature · building | reviewed mark renewed after the re-cut, `rounds.jsonl` with three rounds, 25 of 30 claims closed and 27 of 32 tasks `[x]` plus one struck task (T34), one claim blocked by an edge, dotted IDs `ISC-60.1`/`ISC-60.2`; every card state of the round board (see below) | stage build, no warning; R1 9/30, R2 15/30, R3 25/30 with `stop` "a decision only the principal can make" |
-| `003-config-loader` | refactor · scoping | no reviewed mark, no `tasks.md`, no mermaid fence in `spec.md` or `plan.md` | stage tasks, warning review (missing); diagram verdict `warn`, which the dashboard does not list for a refactor |
-| `004-retention-policies` | feature · building | every claim `[x]`, `plan.md` without a mermaid fence, current reviewed mark, stale code-reviewed mark | stage code-review, warnings diagrams (`plan.md`) and closed |
-| `005-config-format-choice` | spike · scoping | one claim, two `- fog:` lines, no reviewed mark | stage review, warnings review (missing) and fog |
-| `006-partial-push` | bug · scoping | stale reviewed mark, `ISC-125` unknown to the master, master claim `ISC-4` of F0 not projected | stage review, warnings drift (`unknown_to_master`, `missing_in_spec`) and review (stale) |
+| Spec | Type · phase | Milestone | Carries | Expected (as the old Spec skill derives it) |
+|------|--------------|-----------|---------|---------------------------------------------|
+| `archive/001-manifest-sync` | feature · complete | Harbor 1.0 | `archived:` date, all 46 claims `[x]`, reviewed and code-reviewed marks, `events.jsonl` with the whole chain from the creation to done in the stage table's names | archived, stage done, no warning; the timeline shows the seven recorded transitions, none derived |
+| `002-web-console` | feature · building | Harbor 1.0 | reviewed mark renewed after the re-cut, `rounds.jsonl` with three rounds, 25 of 30 claims closed and 27 of 32 tasks `[x]` plus one struck task (T34), one claim blocked by an edge, dotted IDs `ISC-60.1`/`ISC-60.2`; every card state of the round board (see below) | stage build, no warning; R1 9/30, R2 15/30, R3 25/30 with `stop` "a decision only the principal can make" |
+| `003-config-loader` | refactor · scoping | Harbor 0.9 | no reviewed mark, no `tasks.md`, no mermaid fence in `spec.md` or `plan.md` | stage tasks, warning review (missing); diagram verdict `warn`, which the dashboard does not list for a refactor |
+| `004-retention-policies` | feature · building | Harbor 1.0 | every claim `[x]`, `plan.md` without a mermaid fence, current reviewed mark, stale code-reviewed mark | stage code-review, warnings diagrams (`plan.md`) and closed |
+| `005-config-format-choice` | spike · scoping | — | one claim, two `- fog:` lines, no reviewed mark | stage review, warnings review (missing) and fog |
+| `006-partial-push` | bug · scoping | — | stale reviewed mark, `ISC-125` unknown to the master, master claim `ISC-4` of F0 not projected | stage review, warnings drift (`unknown_to_master`, `missing_in_spec`) and review (stale) |
+
+**The milestones (spec 003).** The master carries a `## Milestones` block between `## Features` and `## Decisions`:
+`Harbor 0.9 · 2026-03-15` and `Harbor 1.0 · 2026-05-14`. Against the fixed March-2026 "now", Harbor 0.9 has passed
+its target with claims still open (003 is 0 of 13), so it reads `late`; Harbor 1.0 is ahead, `upcoming`, and spans
+F1, F2 and F4 through the archived 001, 002 and 004. 003 names 0.9 rather than 004 because every claim of 004 is
+closed, and a closed milestone cannot be late. 005 and 006 name no milestone. `lantern/` carries neither the block nor
+the key, so it is the tree without milestones.
 
 **The round board in 002.** One fixture holds all eleven card states (ISC-88), checked by
 `core/tests/harbor-states.test.ts`:
@@ -106,4 +113,6 @@ bun core/fixtures/harbor/generate.ts --mark-reviewed core/fixtures/lantern/specs
 bun core/fixtures/harbor/generate.ts --mark-reviewed core/fixtures/lantern/specs/002-duplicate-links 2026-03-06T10:30:00Z
 ```
 
-Either way, the golden snapshots are regenerated by the golden test afterwards, never edited.
+Either way, the golden snapshots are regenerated by the golden test afterwards, never edited. `FORMAT.md` quotes
+harbor files verbatim (the 002 frontmatter, the master's `## Milestones` block among them), so a generator change that
+touches a quoted line updates `FORMAT.md` in the same change; `bun run check:format-doc` holds the two together.

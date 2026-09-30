@@ -1,0 +1,957 @@
+{
+  "features": [
+    {
+      "id": "F0",
+      "name": "Cross-cutting",
+      "why": "what would sink Harbor whichever feature slipped — a half-written manifest, a silent failure or a leaked credential.",
+      "closed": 0,
+      "total": 4,
+      "claims": [
+        {
+          "id": "ISC-1",
+          "closed": false,
+          "dropped": false,
+          "holder": "006"
+        },
+        {
+          "id": "ISC-2",
+          "closed": false,
+          "dropped": false,
+          "holder": "006"
+        },
+        {
+          "id": "ISC-3",
+          "closed": false,
+          "dropped": false,
+          "holder": "006"
+        },
+        {
+          "id": "ISC-4",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        }
+      ],
+      "holders": [
+        {
+          "id": "006",
+          "slug": "006-partial-push",
+          "title": "Stop a timed-out push from leaving a half-written manifest behind",
+          "archived": false,
+          "stage": null,
+          "main": true,
+          "held": 3
+        }
+      ],
+      "unheld": [
+        "ISC-4"
+      ]
+    },
+    {
+      "id": "F1",
+      "name": "Manifest sync",
+      "why": "one command mirrors every manifest a team depends on into its own registry, and running it again changes nothing.",
+      "closed": 46,
+      "total": 46,
+      "claims": [
+        {
+          "id": "ISC-5",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-6",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-7",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-8",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-9",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-10",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-11",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-12",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-13",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-14",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-15",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-16",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-17",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-18",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-19",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-20",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-21",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-22",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-23",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-24",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-25",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-26",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-27",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-28",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-29",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-30",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-31",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-32",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-33",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-34",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-35",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-36",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-37",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-38",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-39",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-40",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-41",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-42",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-43",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-44",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-45",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-46",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-47",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-48",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-49",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-50",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        }
+      ],
+      "holders": [
+        {
+          "id": "001",
+          "slug": "001-manifest-sync",
+          "title": "Mirror every listed manifest into the team registry with one command",
+          "archived": true,
+          "stage": null,
+          "main": true,
+          "held": 46
+        }
+      ],
+      "unheld": []
+    },
+    {
+      "id": "F2",
+      "name": "Web console",
+      "why": "a teammate who never touches the CLI can see what was mirrored, when, and what failed.",
+      "closed": 25,
+      "total": 30,
+      "claims": [
+        {
+          "id": "ISC-51",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-52",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-53",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-54",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-55",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-56",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-57",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-58",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-59",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-60",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-60.1",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-60.2",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-61",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-62",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-63",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-64",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-65",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-66",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-67",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-68",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-69",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-70",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-71",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-72",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-73",
+          "closed": true,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-74",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-75",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-76",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-77",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-78",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        }
+      ],
+      "holders": [
+        {
+          "id": "002",
+          "slug": "002-web-console",
+          "title": "Show every sync run and its failures in a small web console",
+          "archived": false,
+          "stage": null,
+          "main": true,
+          "held": 30
+        }
+      ],
+      "unheld": []
+    },
+    {
+      "id": "F3",
+      "name": "Config loader rewrite",
+      "why": "the CLI, the API and the console read one config through one loader, so a setting means the same thing everywhere.",
+      "closed": 0,
+      "total": 14,
+      "claims": [
+        {
+          "id": "ISC-81",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-82",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-83",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-84",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-85",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-86",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-87",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-88",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-89",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-90",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-91",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-92",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-93",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-94",
+          "closed": false,
+          "dropped": false,
+          "holder": "005"
+        }
+      ],
+      "holders": [
+        {
+          "id": "003",
+          "slug": "003-config-loader",
+          "title": "Read the config through one loader in the CLI, the API and the console",
+          "archived": false,
+          "stage": null,
+          "main": true,
+          "held": 13
+        },
+        {
+          "id": "005",
+          "slug": "005-config-format-choice",
+          "title": "Decide which config format version 2 uses",
+          "archived": false,
+          "stage": null,
+          "main": true,
+          "held": 1
+        }
+      ],
+      "unheld": []
+    },
+    {
+      "id": "F4",
+      "name": "Retention policies",
+      "why": "old manifests go away on a schedule the team wrote down, and nothing still in use ever does.",
+      "closed": 30,
+      "total": 30,
+      "claims": [
+        {
+          "id": "ISC-95",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-96",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-97",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-98",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-99",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-100",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-101",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-102",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-103",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-104",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-105",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-106",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-107",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-108",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-109",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-110",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-111",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-112",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-113",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-114",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-115",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-116",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-117",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-118",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-119",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-120",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-121",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-122",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-123",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        },
+        {
+          "id": "ISC-124",
+          "closed": true,
+          "dropped": false,
+          "holder": "004"
+        }
+      ],
+      "holders": [
+        {
+          "id": "004",
+          "slug": "004-retention-policies",
+          "title": "Delete old manifests on a written schedule without touching referenced ones",
+          "archived": false,
+          "stage": null,
+          "main": true,
+          "held": 30
+        }
+      ],
+      "unheld": []
+    }
+  ],
+  "milestones": [
+    {
+      "name": "Harbor 0.9",
+      "slug": "harbor-0-9",
+      "target": "2026-03-15",
+      "description": "Config through one loader, before the console ships.",
+      "closed": 0,
+      "total": 13,
+      "state": "late",
+      "features": [
+        {
+          "id": "F3",
+          "name": "Config loader rewrite",
+          "closed": 0,
+          "total": 13
+        }
+      ],
+      "specs": [
+        {
+          "id": "003",
+          "slug": "003-config-loader",
+          "title": "Read the config through one loader in the CLI, the API and the console",
+          "archived": false,
+          "stage": null,
+          "main": false,
+          "held": 13
+        }
+      ]
+    },
+    {
+      "name": "Harbor 1.0",
+      "slug": "harbor-1-0",
+      "target": "2026-05-14",
+      "description": "First release a teammate can install.",
+      "closed": 101,
+      "total": 106,
+      "state": "upcoming",
+      "features": [
+        {
+          "id": "F1",
+          "name": "Manifest sync",
+          "closed": 46,
+          "total": 46
+        },
+        {
+          "id": "F2",
+          "name": "Web console",
+          "closed": 25,
+          "total": 30
+        },
+        {
+          "id": "F4",
+          "name": "Retention policies",
+          "closed": 30,
+          "total": 30
+        }
+      ],
+      "specs": [
+        {
+          "id": "002",
+          "slug": "002-web-console",
+          "title": "Show every sync run and its failures in a small web console",
+          "archived": false,
+          "stage": null,
+          "main": false,
+          "held": 30
+        },
+        {
+          "id": "004",
+          "slug": "004-retention-policies",
+          "title": "Delete old manifests on a written schedule without touching referenced ones",
+          "archived": false,
+          "stage": null,
+          "main": false,
+          "held": 30
+        },
+        {
+          "id": "001",
+          "slug": "001-manifest-sync",
+          "title": "Mirror every listed manifest into the team registry with one command",
+          "archived": true,
+          "stage": null,
+          "main": false,
+          "held": 46
+        }
+      ]
+    }
+  ],
+  "recount": {
+    "closed": 101,
+    "total": 124
+  },
+  "diagnostics": []
+}

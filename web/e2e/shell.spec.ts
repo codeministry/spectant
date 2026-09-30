@@ -1,8 +1,8 @@
 /**
  * ISC-73 (T35 structure, T40 fills it): every route renders inside one shell with one header and its controls, the
  * shell reports its container tier, and the tab bar sits in the header at compact and in main above.
- * `bun run e2e -- shell` (`-g header` for the claim's probe). Against the stub API: the spec routes are not served
- * yet (T52), so a known spec shows its placeholder and an unknown one the not-found page, decided from the dashboard.
+ * `bun run e2e -- shell` (`-g header` for the claim's probe). Against the stub API: a known spec renders its tab's view and
+ * an unknown one the not-found page, decided from the dashboard.
  */
 import { atWidth, expect, test } from './fixtures';
 
@@ -150,12 +150,11 @@ for (const { width, tier, tabBar } of TIERS) {
       await expect(page.locator('header .palette-key')).toBeVisible({ visible: width >= 1280 });
     });
 
-    test('placeholder, never not-found, for a tab whose view is not built yet', async ({ page }) => {
-      // The stub serves the spec route (T52), so the spec head renders and the tab shows the area placeholder.
+    test('a known spec tab renders its own view, never the placeholder or not-found', async ({ page }) => {
+      // Every tab has its view since the Matrix tab landed (T87); the last one built stands in for all of them.
       await page.goto('/w/harbor/s/002/matrix');
-      const placeholder = page.locator('[data-page="placeholder"]');
-      await expect(placeholder).toHaveAttribute('data-tab', 'matrix');
-      await expect(placeholder).toContainText('comes with a later task');
+      await expect(page.locator('[data-page="matrix"]')).toBeVisible();
+      await expect(page.locator('[data-page="placeholder"]')).toHaveCount(0);
       await expect(page.locator('[data-page="not-found"]')).toHaveCount(0);
     });
   });

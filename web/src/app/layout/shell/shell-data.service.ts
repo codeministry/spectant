@@ -30,8 +30,8 @@ function rowsOf(body: unknown, key: 'specs' | 'archive'): SpecRowView[] {
 }
 
 /**
- * What the shell loads (T35): the workspace list, the open workspace's dashboard and the open spec, each a
- * `resource()` over `ApiClient`, so a route change reloads only what it names. The spec payload's `areas.live` feeds
+ * What the shell loads (T35): the workspace list, the open workspace's dashboard and planning tree (T22, spec 003) and
+ * the open spec, each a `resource()` over `ApiClient`, so a route change reloads only what it names. The spec payload's `areas.live` feeds
  * `LockSourceService`; while the spec route is not served yet (a catch-all 404) the reading stays null, source `none`.
  */
 @Injectable({ providedIn: 'root' })
@@ -44,6 +44,12 @@ export class ShellData {
   readonly dashboard = resource({
     params: () => this.state.ws() ?? undefined,
     loader: ({ params }) => this.api.dashboard(params),
+  });
+
+  /** The planning tree (spec 003): keyed by the workspace like `dashboard`, so a route change reloads it. */
+  readonly planning = resource({
+    params: () => this.state.ws() ?? undefined,
+    loader: ({ params }) => this.api.planning(params),
   });
 
   readonly spec = resource({
@@ -84,6 +90,23 @@ export class ShellData {
     return result?.kind === 'not-found' && result.served;
   });
   readonly workspaceUnavailable = computed(() => this.dashboard.value()?.kind === 'unavailable');
+
+  /** The planning body as served; null while loading and for every answer but `ok`. */
+  readonly planningModel = computed(() => {
+    const result = this.planning.value();
+    return result?.kind === 'ok' ? result.body : null;
+  });
+  /**
+   * The Milestones page exists only when a spec names a milestone (spec 003). "No spec carries one" is every entry
+   * holding no spec, not an empty list: a block entry no spec names is a 0/0 row and must not reveal the page.
+   */
+  readonly hasMilestones = computed(() => this.planningModel()?.milestones.some((entry) => entry.specs.length > 0) ?? false);
+  /** The server said the workspace does not exist (the contract's 404, not the catch-all). */
+  readonly planningMissing = computed(() => {
+    const result = this.planning.value();
+    return result?.kind === 'not-found' && result.served;
+  });
+  readonly planningUnavailable = computed(() => this.planning.value()?.kind === 'unavailable');
 
   /**
    * The open spec does not exist (ISC-71): the spec route answered the contract's 404, the workspace is unknown, or

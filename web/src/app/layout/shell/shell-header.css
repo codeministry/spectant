@@ -64,7 +64,7 @@
   color: var(--muted-ink);
   font: inherit;
   font-size: 14px;
-  cursor: default;
+  cursor: pointer;
 }
 
 .palette-text,
@@ -113,15 +113,6 @@
 
 .settings {
   grid-area: settings;
-}
-
-.visually-hidden {
-  position: absolute;
-  overflow: hidden;
-  inline-size: 1px;
-  block-size: 1px;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 @container header (width < 1120px) {

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { KeyboardService } from '../../core/keyboard.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
@@ -17,8 +18,8 @@ import { ShellState } from './shell-state.service';
  * The shell header (ISC-73): one `<header>`, 64 px sticky, one row at medium and wide, two rows at compact (48 + 44;
  * row 2 is the area trigger, the tab-bar slot and zen). Every control carries `data-control` so later tasks replace it
  * in place. The parts own their styles: `ShellBrand` (living ring, wordmark), `ShellNav` (pickers, area trigger, and the
- * deferred `ShellMenus`), `ShellLive` (the indicator). This component keeps the grid, the palette trigger (disabled
- * until T39), zen (T38) and settings (T40/T41: help moves into its sheet).
+ * deferred `ShellMenus`), `ShellLive` (the indicator). This component keeps the grid, the palette trigger (opens
+ * `app-command-palette` through `KeyboardService.paletteOpen`, spec 001 T66), zen (T38) and settings (T40/T41: help moves into its sheet).
  */
 @Component({
   selector: 'app-shell-header',
@@ -30,6 +31,7 @@ import { ShellState } from './shell-state.service';
 })
 export class ShellHeader {
   protected readonly state = inject(ShellState);
+  protected readonly keyboard = inject(KeyboardService);
   private readonly data = inject(ShellData);
 
   /** The Live area of the open spec (its first tab), or null: without a spec the indicator is a plain status. */

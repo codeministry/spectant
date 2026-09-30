@@ -11,9 +11,8 @@
 import { countProgress, formatProgress } from './claims.ts';
 import type { Claim, ClaimsDocument } from './claims.ts';
 import type { Diagnostic } from './diagnostics.ts';
-import type { ClaimLock } from './files.ts';
+import type { ClaimLock, MarkState } from './files.ts';
 import type { FrontmatterResult } from './frontmatter.ts';
-import type { MarkState } from './gates.ts';
 
 /**
  * Where each claim stands, as the old frontier computed it. `closed` holds checked and dropped claims (resolved);
@@ -161,7 +160,10 @@ export function progressMismatch(frontmatter: FrontmatterResult, doc: ClaimsDocu
   // Recounted from the claims, not read from doc.counted, so a caller's edited claim list is audited as it stands.
   const counted = countProgress(doc.claims);
   if (declared?.closed === counted.closed && declared.total === counted.total) return null;
-  return { file, declared: frontmatter.values.progress ?? null, counted: formatProgress(counted) };
+  // Destructured, not dotted: the web tsconfigs typecheck this module (through planning.ts) with
+  // noPropertyAccessFromIndexSignature, while the root lint asks for dot notation over brackets.
+  const { progress: declaredText } = frontmatter.values;
+  return { file, declared: declaredText ?? null, counted: formatProgress(counted) };
 }
 
 /** The master's own progress check (`ISA.md`), run once per repository beside the per-spec audits. */
@@ -173,6 +175,16 @@ export function masterProgressMismatch(frontmatter: FrontmatterResult, master: C
 // same failure as an empty one. A one-cell row was never a Strategy row to the old reader.
 function anchorsMissing(doc: ClaimsDocument): number {
   return doc.testStrategy.filter((r) => r.cells >= 2 && (r.cells < 6 || r.anchorsTo === '')).length;
+}
+
+/**
+ * The spec's main feature: the first word of its `isa_feature`, split on whitespace, commas and middle dots
+ * (`F2 · F3` → `F2`); null when the value is missing, blank or starts with a separator. `driftReport` and the
+ * planning tree both read the main feature through here.
+ */
+export function mainFeatureOf(isaFeature: string | null | undefined): string | null {
+  const first = isaFeature?.trim().split(/[\s,·]+/u)[0];
+  return first === undefined || first === '' ? null : first;
 }
 
 export function driftReport(input: DriftInput): DriftReport {
@@ -189,9 +201,9 @@ export function driftReport(input: DriftInput): DriftReport {
 
   // A bug spec appends its regression claims to the block of the feature it broke; those belong to that spec, which
   // is why claims another folder holds are not missing here. Claims from other blocks in this spec are not drift.
-  const feature = fm.isaFeature?.trim().split(/[\s,·]+/)[0] ?? '';
+  const feature = mainFeatureOf(fm.isaFeature);
   const missingInSpec: string[] = [];
-  if (master && feature !== '') {
+  if (master && feature !== null) {
     const masterById = new Map(master.claims.map((c) => [c.id, c]));
     const block = master.features.find((f) => f.id === feature);
     for (const id of block?.claims ?? []) {

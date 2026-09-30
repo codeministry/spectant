@@ -1,0 +1,68 @@
+/*
+ * Next up (T64, ported in T90 from the prototype's `styles.css`: `.rail-block > .eyebrow` l.415, `[data-ui="next-up-list"]`
+ * l.353, `.next-row` l.480-481). Tokens only; spacing on the 8 px scale.
+ */
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+/* Rail form: the eyebrow heading with its count on the right, 12 px above the cards. */
+.eyebrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-block-end: 12px;
+  color: var(--muted-ink);
+}
+
+.eyebrow h2 {
+  margin: 0;
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+}
+
+.entries {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Card form: next-rows inside one card, separated by hairlines. */
+:host([data-form='card']) .entries > li + li {
+  border-block-start: 1px solid var(--line);
+}
+
+/* Rail form: one next-card per entry, 16 px apart. */
+:host([data-form='rail']) .entries {
+  gap: 16px;
+}
+
+:host([data-form='rail']) .fold .entries {
+  padding-block-start: 16px;
+}
+
+.empty {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  margin: 0;
+  padding-block: 8px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.fog {
+  color: var(--disp-ink);
+}
+
+.fog::before {
+  content: '·' / '';
+  margin-inline-end: 8px;
+  color: var(--muted-ink);
+}

@@ -12,6 +12,8 @@
 //   <tree>.frames.golden.json    frames      `buildFrames` per spec folder (T17), keyed by `specs/…` path.
 //   <tree>.live.golden.json      live        `buildLiveFrame` per spec folder (T21) at 2026-03-08T15:00:00Z with the
 //                                            tree's `.spectant/activity.jsonl` reading (no LifeOS state directory).
+//   <tree>.planning.golden.json  planning    `buildPlanning` (spec 003, ISC-100) over the tree's master and spec
+//                                            folders, clock pinned to PLANNING_NOW (helpers/planning-model.ts).
 //
 // The next families join FAMILIES below, not a second harness: the spec page model (T12, spec.ts), the tasks and
 // claim views (T13, tasks.ts / claim-view.ts), the derived stage entries (T15, derived-stages.ts), frames and the live
@@ -39,6 +41,7 @@ import { buildSpecPage } from '../src/spec.ts';
 import { parseTaskLines } from '../src/tasks.ts';
 import { buildTimeline } from '../src/timeline.ts';
 import { docsModel } from './helpers/docs-model.ts';
+import { planningModel } from './helpers/planning-model.ts';
 import { DASHBOARD_FAMILY, expectGolden, goldenFiles, goldenMismatch, goldenPath, goldenText, goldenTrees } from './helpers/golden.ts';
 import { FIXTURES, fixtureTrees, folders, readTreeAt } from './helpers/read-tree.ts';
 
@@ -135,6 +138,7 @@ const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
   frames: (root) => ((texts) => Object.fromEntries(listSpecs(root).map((ref) => [rel(root, ref.dir), buildFrames(texts.get(rel(root, ref.dir)) as SpecFiles)])))(folderTexts(root)),
   'claim-view': (root) => ((texts) => Object.fromEntries(listSpecs(root).map((ref) => [rel(root, ref.dir), buildClaimViews({ files: texts.get(rel(root, ref.dir)) as SpecFiles })])))(folderTexts(root)),
   tasks: (root) => ((texts, constitution) => Object.fromEntries(listSpecs(root).map((ref) => ((t) => [rel(root, ref.dir), t.tasks === undefined ? null : parseTaskLines({ tasks: t.tasks, ...(constitution === null ? {} : { constitution }), ...(t.rounds === undefined ? {} : { rounds: t.rounds }) })])((texts.get(rel(root, ref.dir)) as SpecFiles).texts))))(folderTexts(root), readTreeAt(root).constitution),
+  planning: planningModel,
   live: (root) => ((texts, constitution, locks) => Object.fromEntries(listSpecs(root).map((ref) => ((files) => [rel(root, ref.dir), buildLiveFrame({ files: { folder: files.folder, texts: { ...files.texts, ...(constitution === null ? {} : { constitution }) } }, locks, now: LIVE_NOW })])(texts.get(rel(root, ref.dir)) as SpecFiles))))(folderTexts(root), readTreeAt(root).constitution, LIVE_LOCKS.get(root) as LockReading),
 };
 

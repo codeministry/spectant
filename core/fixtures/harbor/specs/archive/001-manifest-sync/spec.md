@@ -4,6 +4,7 @@ slug: 001-manifest-sync
 spec_type: feature
 isa_master: ../../ISA.md
 isa_feature: F1
+milestone: Harbor 1.0
 constitution: ../constitution.md
 phase: complete
 progress: 46/46

@@ -19,6 +19,8 @@ import {
   type TaskCheckResponse,
   TASKS_HASH_HEADER,
   type Unavailable,
+  workspaceRoutes,
+  type WorkspaceRouteResponses,
 } from '../../../../server/src/spec-routes.contract';
 import { type Note, type NoteCounts, type NoteDraft, type NotesQuery, noteRoutes } from '../../../../server/src/notes.contract';
 
@@ -79,8 +81,16 @@ export interface WorkspaceListEntry {
  * The dashboard body, `DashboardModel` of `core/src/dashboard.ts`. Not imported yet: a type import type-checks that
  * module's whole value graph under the web tsconfig, and `core/src/gates.ts` uses Node's `Buffer` and index-signature
  * dot access, which `tsconfig.app.json` rejects. Needs `DashboardModel` in a pure types module in core (core lane).
+ * `PlanningBody` below is the counter-example: its graph is web-clean, so it is typed.
  */
 export type DashboardBody = unknown;
+
+/**
+ * The planning body, `PlanningModel` of `core/src/planning.ts`, through the contract's `WorkspaceRouteResponses`. Unlike
+ * `DashboardBody` it is typed: its type graph is web-clean (the types it needs live in pure types modules, T18), which
+ * `bun run --cwd web typecheck` proves.
+ */
+export type PlanningBody = WorkspaceRouteResponses['planning'];
 
 export type ApiResult<T> =
   | { readonly kind: 'ok'; readonly body: T; readonly etag: string | null; readonly notModified: boolean }
@@ -128,6 +138,7 @@ const isLocked = (body: unknown): body is Locked => {
 /** Relative on purpose: the app talks only to the loopback server that served it, on whatever port (ISC-2). */
 export const WORKSPACES_URL = SPEC_API_ROOT;
 export const dashboardUrl = (ws: string): string => `${SPEC_API_ROOT}/${encodeURIComponent(ws)}/dashboard`;
+export const planningUrl = (ws: string): string => workspaceRoutes.planning(ws);
 
 /** `GET …/docs/:name`: the page, or the typed 404 saying which doc is absent and whether the spec type has it. */
 export type DocsResult = ApiResult<DocsPage> | { readonly kind: 'doc-missing'; readonly body: DocMissing };
@@ -181,6 +192,11 @@ export class ApiClient {
 
   dashboard(ws: string): Promise<ApiResult<DashboardBody>> {
     return this.get(dashboardUrl(ws));
+  }
+
+  /** The planning tree (spec 003, ISC-103): core's `PlanningModel`, served as it is, ETag-cached like `dashboard()`. */
+  planning(ws: string): Promise<ApiResult<PlanningBody>> {
+    return this.get(planningUrl(ws));
   }
 
   spec(ws: string, id: string): Promise<ApiResult<SpecRouteResponses['spec']>> {

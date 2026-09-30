@@ -1,0 +1,160 @@
+/*
+ * Warnings (T64, ported in T90 from the prototype's `styles.css`: `.rail-block > .eyebrow` l.415, warnings-panel
+ * `.w-group` / `.w-line` l.403-408, `.fog-line` l.660-663, `.empty-line` l.409-410). Tokens only; spacing on the 8 px
+ * scale; the orange callout edge and the violet fog edge are the inherited 3 px exceptions.
+ */
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+.section {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+/* Rail form: the eyebrow heading with its count on the right, 12 px above the card. */
+.eyebrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-block-end: 12px;
+  color: var(--muted-ink);
+}
+
+.eyebrow h2 {
+  margin: 0;
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+}
+
+.callout {
+  border: 1px solid var(--line);
+  border-inline-start: 3px solid var(--color-warning);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+}
+
+.callout summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 48px;
+  padding-inline: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.warn-icon {
+  color: var(--color-warning);
+}
+
+.ok {
+  color: var(--done-ink);
+}
+
+.groups {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.callout > .groups {
+  border-block-start: 1px solid var(--line);
+}
+
+/* One group per spec: 12 px × 16 px, hairlines between. */
+.group {
+  display: grid;
+  gap: 6px;
+  min-inline-size: 0;
+  padding: 12px 16px;
+}
+
+.group + .group {
+  border-block-start: 1px solid var(--line);
+}
+
+/* One line: 16 px icon, 40 px ID column, the text. */
+.line {
+  display: grid;
+  grid-template-columns: 16px 40px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  min-inline-size: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.line ui-icon {
+  margin-block-start: 2px;
+}
+
+.spec {
+  border-radius: var(--radius-field);
+  color: var(--disp-text);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+
+.spec:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.line-body {
+  display: grid;
+  gap: 4px;
+  min-inline-size: 0;
+}
+
+.text {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* Fog line: the violet left edge on the violet tint; text on the tint takes the `-ink` colours. */
+.fog-line {
+  padding: 10px 12px;
+  border-inline-start: 3px solid var(--color-secondary);
+  border-radius: 0 var(--radius-field) var(--radius-field) 0;
+  background: var(--ques-t);
+}
+
+.fog-line .cloud {
+  color: var(--ques-ink);
+}
+
+.fog-line .spec {
+  color: var(--disp-ink);
+}
+
+.empty {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  padding: 16px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+@media (forced-colors: active) {
+  .callout,
+  .fog-line {
+    border-inline-start-color: CanvasText;
+  }
+}
