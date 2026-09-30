@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F1
 constitution: ../constitution.md
 phase: scoping
-progress: 35/47
+progress: 36/47
 started: 2026-09-28T09:40:00Z
-updated: 2026-09-30T11:28:38Z
+updated: 2026-09-30T16:09:34Z
 context_sufficient: true
 interview_invoked: true
 context_log: context.md
@@ -144,7 +144,7 @@ machine and nothing written into either repository.
 Why: what would sink the project whichever slice slipped — data leaving the machine, a private detail going public, the app and the skill disagreeing about the format, or the database quietly becoming a second truth.
 
 - [x] ISC-1: Anti: the app's HTTP server listens on any address other than 127.0.0.1 or ::1.
-- [ ] ISC-2: Anti: with no AI feature switched on, starting the app, adding a workspace, browsing every page and performing every write makes an outbound network request.
+- [x] ISC-2: Anti: with no AI feature switched on, starting the app, adding a workspace, browsing every page and performing every write makes an outbound network request.
 - [ ] ISC-3: Anti: a tracked file contains a customer name, an absolute home path or personal data (generic leak classes plus a private word list kept outside the repo).
 - [x] ISC-4: The repository root holds the Apache-2.0 `LICENSE` and a `THIRD_PARTY_NOTICES.md` naming the bundled assets and the LifeOS (MIT) origin of the ISA format.
 - [x] ISC-5: Anti: the repository holds more than one implementation of frontmatter, claim or stage parsing; the app and the plugin both import `core/`.
@@ -225,6 +225,8 @@ Why: the first time the author types `spectant` and sees two real repositories o
   needs their pages (ISC-2 covers "every write" once spec 002 adds writes).
 
 ## Verification
+
+- ISC-2: e2e — closed in the master by spec 002 (T104, 2026-09-29), projected here by /spec-sync and re-run on 1a246fd: `bun run e2e -- offline --workers=1` 2 passed (light and dark; every route incl. `/` and `/w/harbor`, the chrome, the palette and every write stay on loopback) plus `bun run test:offline:server` 15 checks passed in docker --network none, 0 DNS queries, 0 outbound errors; T77 closes with it, the suite it names is 002's `web/e2e/offline.spec.ts` (2026-09-30)
 
 - ISC-62: e2e — `bun run e2e -- refresh -g in-place --workers=1` 1 pass in the main tree (page.clock; the stub's session-scoped POST /api/__stub/bump raises harbor's closed claims, 31 s later the same KPI node, still connected, reads 56, 0 framenavigated events); red before (Expected "56" Received "55"); RefreshService polls on settings.refreshSeconds while visible and on visibilitychange, through the ETag cache; r and the palette's Refresh now share it (T68; 2026-09-30)
 

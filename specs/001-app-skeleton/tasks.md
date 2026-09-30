@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-30T11:28:38Z
+updated: 2026-09-30T16:09:34Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -113,7 +113,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T74 · ISC-63.1 · [P] · web — e2e `narrow.spec.ts` "column": workspace column at 600 px (after: T59) · `web/e2e/narrow.spec.ts`
 - [ ] T75 · ISC-18.1 · [P] · web — e2e `theme.spec.ts` "system": follows `emulateMedia` live (after: T59) · `web/e2e/theme.spec.ts`
 - [ ] T76 · ISC-18.3 · [P] · web — e2e `theme.spec.ts` "persist": chosen mode survives reload on another port (after: T59) · `web/e2e/theme.spec.ts`
-- [ ] T77 · ISC-2 · [P] · web — e2e `offline.spec.ts`: `route('**')` fails every non-loopback host across every route in both themes (after: T59) · `web/e2e/offline.spec.ts`
+- [x] T77 · ISC-2 · [P] · web — e2e `offline.spec.ts`: `route('**')` fails every non-loopback host across every route in both themes (after: T59) · `web/e2e/offline.spec.ts`
 - [ ] T78 · ISC-19.1 · [P] · web — e2e `smoke.spec.ts` on the webkit project: `/` and `/w/:ws`, zero console errors (after: T59) · `web/e2e/smoke.spec.ts`
 - [x] T79 · ISC-17 · [P] · web — visual baseline: dashboard, light, three widths, committed under `web/e2e/__screenshots__/` (after: T59) · `web/e2e/visual.spec.ts`
 - [x] T80 · ISC-17.1 · [P] · web — visual baseline: dashboard, dark (after: T59) · `web/e2e/visual.spec.ts`

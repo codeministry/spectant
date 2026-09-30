@@ -178,3 +178,5 @@ Round 23 landed (2026-09-30): T67 (**ISC-61.2**: shortcut sheet with workspace /
 - **Spec 002:** 48/49; only ISC-77 (T39/T43) — 001's dashboard, overview, inspector and palette now render inside the shell, so T39/T43 can close once 001's e2e suites are confirmed on the shell.
 - **Docker** is running; visual baselines are recorded only in the container (`bun run test:visual:ci -- <groups> [-u]`).
 - **Follow-ups not taken:** dashboard body types into a browser-safe core module (drops the structural views); the shell rail gap 16 → 32 px (prototype); a `ui-card` left-edge variant; ring size 56; unused i18n keys (`warnings.openFog`, `kpi.open`, `kpi.attentionCompact`, `shell.palette.pending`, `palette.placeholder`); initial bundle over the 500 kB budget.
+
+- 2026-09-30, /spec-sync 001: the one drift (ISC-2 closed in the master by 002, open here) projected into this spec after both probes re-ran green on 1a246fd (offline e2e 2 passed light and dark, test:offline:server 15 checks, 0 DNS queries); ISC-2 and T77 ticked, progress 36/47. Open in 001 now 11.
