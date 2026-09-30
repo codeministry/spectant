@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 42/49
+progress: 48/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-30T06:43:37Z
+updated: 2026-09-30T10:48:28Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -241,12 +241,12 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 **Cross-cutting**
 
 - [x] ISC-2: Anti: with no AI feature switched on, starting the app, adding a workspace, browsing every page and performing every write makes an outbound network request.
-- [ ] ISC-23: The review page's visual baseline (light, three widths) is committed and passes on Linux CI.
-- [ ] ISC-23.1: The same baseline passes in the dark theme.
-- [ ] ISC-49: The report page's visual baseline (light, three widths) is committed and passes on Linux CI.
-- [ ] ISC-49.1: The same baseline passes in the dark theme.
-- [ ] ISC-96: The visual baseline of the spec dashboard and the Notes area (light, 390/820/1440) is committed and passes on Linux CI.
-- [ ] ISC-96.1: The same baseline passes in the dark theme.
+- [x] ISC-23: The review page's visual baseline (light, three widths) is committed and passes on Linux CI.
+- [x] ISC-23.1: The same baseline passes in the dark theme.
+- [x] ISC-49: The report page's visual baseline (light, three widths) is committed and passes on Linux CI.
+- [x] ISC-49.1: The same baseline passes in the dark theme.
+- [x] ISC-96: The visual baseline of the spec dashboard and the Notes area (light, 390/820/1440) is committed and passes on Linux CI.
+- [x] ISC-96.1: The same baseline passes in the dark theme.
 
 ## Not yet specified
 
@@ -286,6 +286,18 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
 
 ## Verification
+
+- ISC-23: bash — `bun run test:visual:ci -- review` green: visual-spec.spec.ts status/claims/tasks × 390/820/1440, light, pinned Playwright v1.63.0-noble container; re-recorded 2026-09-30 after spec 003's breadcrumb row landed in the spec head; full visual suite 48/48 per theme on a separate compare run (T105)
+
+- ISC-23.1: bash — `bun run test:visual:ci -- review --theme dark` green: the nine spec-page baselines dark, pinned Playwright v1.63.0-noble container; re-recorded 2026-09-30 after spec 003's breadcrumb row landed in the spec head; full visual suite 48/48 per theme on a separate compare run (T106)
+
+- ISC-49: bash — `bun run test:visual:ci -- report` green: visual-board.spec.ts board-{lanes,flow}-{390,820,1440}.png, light, rewritten after the lost partial state, red before (no baseline) (T107)
+
+- ISC-49.1: bash — `bun run test:visual:ci -- report --theme dark` green: the six board baselines dark (T108)
+
+- ISC-96: bash — `bun run test:visual:ci -- spec notes` green: visual-spec-notes.spec.ts spec dashboard, notes and note × 390/820/1440, light, pinned Playwright v1.63.0-noble container; re-recorded 2026-09-30 after spec 003's breadcrumb row landed in the spec head; full visual suite 48/48 per theme on a separate compare run (T109)
+
+- ISC-96.1: bash — `bun run test:visual:ci -- spec notes --theme dark` green: the same nine dark (T110)
 
 - ISC-98: bash — `rg -c "shell with container tiers|header: eyebrow" specs/001-app-skeleton/tasks.md` → 0 (exit 1; T32/T60 struck, T60's line shortened to "the old header") and `SpecGate check reviewed 001` exit 0 after the principal's /spec-review 001 (2026-09-30T06:43Z) (T31)
 

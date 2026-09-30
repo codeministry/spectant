@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F1
 constitution: ../constitution.md
 phase: scoping
-progress: 27/47
+progress: 35/47
 started: 2026-09-28T09:40:00Z
-updated: 2026-09-30T07:00:40Z
+updated: 2026-09-30T11:28:38Z
 context_sufficient: true
 interview_invoked: true
 context_log: context.md
@@ -166,10 +166,10 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [x] ISC-14: For copies of the principal's real spec trees, every spec's stage on the dashboard equals the stage the old skill derives, and the probe fails when no tree was compared.
 - [x] ISC-15: Anti: adding a workspace or opening any page changes a byte inside the registered repository, `.git/` included.
 - [ ] ISC-16: One dashboard lists the specs of two registered workspaces side by side.
-- [ ] ISC-16.1: The overview's committed visual baseline (light, three widths, states: two workspaces, empty, unreadable workspace) passes on Linux CI.
-- [ ] ISC-16.2: The same baseline passes in the dark theme.
-- [ ] ISC-17: The dashboard's committed visual baseline (Playwright `toHaveScreenshot`, light theme, 390/820/1440) passes on Linux CI with pinned Chromium.
-- [ ] ISC-17.1: The same baseline passes in the dark theme.
+- [x] ISC-16.1: The overview's committed visual baseline (light, three widths, states: two workspaces, empty, unreadable workspace) passes on Linux CI.
+- [x] ISC-16.2: The same baseline passes in the dark theme.
+- [x] ISC-17: The dashboard's committed visual baseline (Playwright `toHaveScreenshot`, light theme, 390/820/1440) passes on Linux CI with pinned Chromium.
+- [x] ISC-17.1: The same baseline passes in the dark theme.
 - [x] ISC-18: Antecedent: the daisyUI themes `spec-light` and `spec-dark` carry the old pages' light and dark colour values as their tokens, so the look is inherited rather than re-invented.
 - [ ] ISC-18.1: In the default system mode the theme follows `prefers-color-scheme`, also when it changes while the page is open.
 - [ ] ISC-18.3: A chosen light or dark mode, stored server-side, is still applied after a reload on a different port.
@@ -180,12 +180,12 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [x] ISC-21: The data directory is `$XDG_DATA_HOME/spectant` when that variable is set and `~/.spectant/` otherwise.
 - [x] ISC-22: Every UI string key exists in both the English and the German catalogue.
 - [x] ISC-60: ⌘K / Ctrl+K opens a command palette listing every workspace plus every spec.
-- [ ] ISC-60.1: Typing in the palette narrows the list to matching entries. (after: ISC-60)
+- [x] ISC-60.1: Typing in the palette narrows the list to matching entries. (after: ISC-60)
 - [ ] ISC-60.2: Enter in the palette navigates to the highlighted entry. (after: ISC-60)
 - [x] ISC-61: In a spec list, ↓/↑ (also j/k) move the selection.
-- [ ] ISC-61.1: Enter opens the selected spec. (after: ISC-61)
-- [ ] ISC-61.2: `?` opens the shortcut sheet.
-- [ ] ISC-62: After the auto-refresh timer fires with a changed number on disk, the DOM node holding that number shows the new value with no navigation event.
+- [x] ISC-61.1: Enter opens the selected spec. (after: ISC-61)
+- [x] ISC-61.2: `?` opens the shortcut sheet.
+- [x] ISC-62: After the auto-refresh timer fires with a changed number on disk, the DOM node holding that number shows the new value with no navigation event.
 - [ ] ISC-62.1: The same refresh produces a cumulative layout shift of 0. (after: ISC-62)
 - [ ] ISC-63: At a 600 px wide container (the cmux side panel) the dashboard has no horizontal overflow: `scrollWidth` equals `clientWidth`.
 - [ ] ISC-63.1: At the same width a workspace column in the overview has no horizontal overflow.
@@ -225,6 +225,22 @@ Why: the first time the author types `spectant` and sees two real repositories o
   needs their pages (ISC-2 covers "every write" once spec 002 adds writes).
 
 ## Verification
+
+- ISC-62: e2e — `bun run e2e -- refresh -g in-place --workers=1` 1 pass in the main tree (page.clock; the stub's session-scoped POST /api/__stub/bump raises harbor's closed claims, 31 s later the same KPI node, still connected, reads 56, 0 framenavigated events); red before (Expected "56" Received "55"); RefreshService polls on settings.refreshSeconds while visible and on visibilitychange, through the ETag cache; r and the palette's Refresh now share it (T68; 2026-09-30)
+
+- ISC-61.2: e2e — `bun run e2e -- keyboard -g help --workers=1` 2 pass in the main tree (on /w/harbor `?` opens the sheet listing the workspace, spec and any contexts from the one SHORTCUTS table; g s/g n/g w reach #specs/#next-up/#warnings, 1–3 set ?phase=, g a goes to /, h/l move across overview columns); red before (no [data-context], #specs not focused); keyboard/palette/shell e2e 82 pass (T67; 2026-09-30)
+
+- ISC-61.1: e2e — `bun run e2e -- keyboard -g enter --workers=1` 2 pass in the main tree (wide: Enter on the selected row sets ?spec=<id> with the rail inspector, ] [ rewrite it in list order, Esc clears it and refocuses the row, Enter again opens /w/harbor/s/<id>; medium: side sheet, Open → spec page); red before (Enter went straight to the spec page) (T69; 2026-09-30)
+
+- ISC-60.1: e2e — `bun run e2e -- palette -g filter --workers=1` 5 pass in the main tree (describe 'palette filter': 'manifest' leaves exactly harbor/004 and 006, every option marked, unmatched groups render no heading; '004' leaves harbor/004 with its chip marked and clearing restores list and groups; 'zzqx' shows the no-match line; plus the two levels filter tests); red 3/3 against a deliberately match-all rankEntry, reverted byte-identical (T70; 2026-09-30)
+
+- ISC-17: bash — `bun run test:visual:ci -- dashboard` green: visual.spec.ts dashboard-390/820/1440.png, light, pinned Playwright v1.63.0-noble container, recorded 2026-09-30; red before: no baseline existed (Playwright fails on a missing snapshot); full visual suite 48/48 light, stable on a second run (T79, T84–T90)
+
+- ISC-17.1: bash — `bun run test:visual:ci -- dashboard --theme dark` green: dark dashboard-390/820/1440.png, pinned Playwright v1.63.0-noble container, recorded 2026-09-30; red before: no baseline existed (Playwright fails on a missing snapshot); full visual suite 48/48 dark (T80)
+
+- ISC-16.1: bash — `bun run test:visual:ci -- overview` green: overview-{two-workspaces,empty,unreadable}-{390,820,1440}.png, light, pinned Playwright v1.63.0-noble container, recorded 2026-09-30; red before: no baseline existed (Playwright fails on a missing snapshot) (T81)
+
+- ISC-16.2: bash — `bun run test:visual:ci -- overview --theme dark` green: the nine overview baselines dark, pinned Playwright v1.63.0-noble container, recorded 2026-09-30; red before: no baseline existed (Playwright fails on a missing snapshot) (T82)
 
 - ISC-60: e2e — `bun run e2e -- palette -g open --workers=1` 3 pass (⌘K lists every workspace and every active spec, open workspace first; Ctrl+K and / open, Esc closes; the header trigger opens and focus returns), red 3/3 before (no palette); groups from PALETTE_SOURCES by order, empty groups absent; palette/keyboard/shell/offline/dashboard e2e 71 pass (T66; 2026-09-30)
 

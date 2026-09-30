@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-30T06:43:37Z
+updated: 2026-09-30T10:48:28Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -147,12 +147,12 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T102 · ISC-97 · web — keyboard service: `g` sequences for areas and tabs, `[` `]`, `v`, `◂ ▸`, `m`, `n`, `f`; shortcut sheet lists them; hints hidden on coarse pointers (after: T35) · `web/src/app/core/keyboard.service.ts`
 - [x] T103 · ISC-97 · web — e2e keyboard on spec pages (after: T102) · `web/e2e/keyboard-spec.spec.ts`
 - [x] T104 · ISC-2 · web — offline e2e extended to every new route in both themes (after: T53, T54, T55, T56, T57, T58, T59, T81, T100) · `web/e2e/offline.spec.ts`
-- [ ] T105 · ISC-23 · web — visual baseline: spec page (Status, Claims, Tasks), light, three widths (after: T54, T56, T57) · `web/e2e/visual-spec.spec.ts`
-- [ ] T106 · ISC-23.1 · web — visual baseline: spec page, dark (after: T105) · `web/e2e/visual-spec.spec.ts`
-- [ ] T107 · ISC-49 · web — visual baseline: board Lanes and Flow, light, three widths (after: T81, T82) · `web/e2e/visual-board.spec.ts`
-- [ ] T108 · ISC-49.1 · web — visual baseline: board, dark (after: T107) · `web/e2e/visual-board.spec.ts`
-- [ ] T109 · ISC-96 · web — visual baseline: spec dashboard and Notes area, light, three widths (after: T53, T100) · `web/e2e/visual-spec-notes.spec.ts`
-- [ ] T110 · ISC-96.1 · web — visual baseline: spec dashboard and Notes area, dark (after: T109) · `web/e2e/visual-spec-notes.spec.ts`
+- [x] T105 · ISC-23 · web — visual baseline: spec page (Status, Claims, Tasks), light, three widths (after: T54, T56, T57) · `web/e2e/visual-spec.spec.ts`
+- [x] T106 · ISC-23.1 · web — visual baseline: spec page, dark (after: T105) · `web/e2e/visual-spec.spec.ts`
+- [x] T107 · ISC-49 · web — visual baseline: board Lanes and Flow, light, three widths (after: T81, T82) · `web/e2e/visual-board.spec.ts`
+- [x] T108 · ISC-49.1 · web — visual baseline: board, dark (after: T107) · `web/e2e/visual-board.spec.ts`
+- [x] T109 · ISC-96 · web — visual baseline: spec dashboard and Notes area, light, three widths (after: T53, T100) · `web/e2e/visual-spec-notes.spec.ts`
+- [x] T110 · ISC-96.1 · web — visual baseline: spec dashboard and Notes area, dark (after: T109) · `web/e2e/visual-spec-notes.spec.ts`
 - [x] T111 · ISC-68.1 · repo — root `CLAUDE.md`: the read-only rule names its two exceptions (reviewed gate, task checkbox) and the guard (after: T2) · `CLAUDE.md`
 - [x] T112 · ISC-68.1 · server — `server/CLAUDE.md`: the write path, the lock sources, the spec routes (after: T2) · `server/CLAUDE.md`
 - [x] T113 · ISC-68.1 · web — `web/CLAUDE.md`: the shell tiers, the tab-bar slot, the area routes, the new primitives (after: T35) · `web/CLAUDE.md`

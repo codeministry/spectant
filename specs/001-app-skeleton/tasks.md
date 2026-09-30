@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-30T08:45:56Z
+updated: 2026-09-30T11:28:38Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -103,10 +103,10 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T64 · ISC-17 · [P] · web — `next-up-list`, `warnings-panel`, `context-rail` (rail at wide, cards below wide) (after: T59) · `web/src/app/features/dashboard/next-up-list/`
 - [x] T65 · ISC-16 · [P] · web — overview `/` ported from the prototype's `index.html` (`app.js` `pageOverview` / `wsColumn`): `workspace-column` with ws-head (logo badge, name, mono path, updated), `kpi-strip` 2×2 at 96 px (master ring 56 + fraction, spec claims + lime meter, specs + building/scoping split meter, warnings + open fog with an orange edge above 0), Next up card with up to three `next-row`s, 40 px dense list, "Open <name> →"; auto-fit grid ≥ 360 px, three columns from 1300 px; empty and unreadable states; no cover image (after: T59, T85, T86) · `web/src/app/features/overview/`
 - [x] T66 · ISC-60 · [P] · web — command palette: dialog, combobox, groups, ranking, actions; ⌘K / Ctrl+K / `/`, plus e2e `palette.spec.ts` "open" (after: T59) · `web/src/app/layout/command-palette/`
-- [ ] T67 · ISC-61.2 · [P] · web — extend spec 002's `SHORTCUTS` table and shortcut sheet with the dashboard context (`c`, `r`, `/`, `j k`, `h l`, `1`–`3`, `g a/s/n/w` bound to `/w/:ws`, single-key switch), no second service; e2e `keyboard.spec.ts` "help" (after: T59) · `web/src/app/core/keyboard-bindings.ts`, `web/src/app/features/shortcuts/`
-- [ ] T68 · ISC-62 · [P] · web — refresh service: ETag polling, refresh on visibility, in-place diff, changed-value tint, changed-row dot, "n new" pill, one polite announcement, plus e2e `refresh.spec.ts` "in-place" (after: T59) · `web/src/app/core/refresh.service.ts`
-- [ ] T69 · ISC-61.1 · [P] · web — spec preview on `/w/:ws?spec=<id>`: `spec-inspector` in the rail (wide), `ui-sheet` side (medium) and full-screen (compact), Open to `/w/:ws/s/:id`, Esc clears the query and returns focus, `[` `]`, plus e2e `keyboard.spec.ts` "enter" (after: T59, T63) · `web/src/app/features/dashboard/spec-inspector/`
-- [ ] T70 · ISC-60.1 · [P] · web — palette filtering plus e2e `palette.spec.ts` "filter" (after: T59) · `web/src/app/layout/command-palette/filter.ts`
+- [x] T67 · ISC-61.2 · [P] · web — extend spec 002's `SHORTCUTS` table and shortcut sheet with the dashboard context (`c`, `r`, `/`, `j k`, `h l`, `1`–`3`, `g a/s/n/w` bound to `/w/:ws`, single-key switch), no second service; e2e `keyboard.spec.ts` "help" (after: T59) · `web/src/app/core/keyboard-bindings.ts`, `web/src/app/features/shortcuts/`
+- [x] T68 · ISC-62 · [P] · web — refresh service: ETag polling, refresh on visibility, in-place diff, changed-value tint, changed-row dot, "n new" pill, one polite announcement, plus e2e `refresh.spec.ts` "in-place" (after: T59) · `web/src/app/core/refresh.service.ts`
+- [x] T69 · ISC-61.1 · [P] · web — spec preview on `/w/:ws?spec=<id>`: `spec-inspector` in the rail (wide), `ui-sheet` side (medium) and full-screen (compact), Open to `/w/:ws/s/:id`, Esc clears the query and returns focus, `[` `]`, plus e2e `keyboard.spec.ts` "enter" (after: T59, T63) · `web/src/app/features/dashboard/spec-inspector/`
+- [x] T70 · ISC-60.1 · [P] · web — palette filtering plus e2e `palette.spec.ts` "filter" (after: T59) · `web/src/app/layout/command-palette/filter.ts`
 - [ ] T71 · ISC-60.2 · [P] · web — palette Enter navigation plus e2e `palette.spec.ts` "enter" (after: T59) · `web/src/app/layout/command-palette/navigate.ts`
 - [ ] T72 · ISC-62.1 · [P] · web — e2e `refresh.spec.ts` "cls": layout shift 0 during a refresh (after: T59) · `web/e2e/refresh.spec.ts`
 - [ ] T73 · ISC-63 · [P] · web — narrow container behaviour of the dashboard at 600 px plus e2e `narrow.spec.ts` "dashboard" (after: T59) · `web/e2e/narrow.spec.ts`
@@ -115,10 +115,10 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [ ] T76 · ISC-18.3 · [P] · web — e2e `theme.spec.ts` "persist": chosen mode survives reload on another port (after: T59) · `web/e2e/theme.spec.ts`
 - [ ] T77 · ISC-2 · [P] · web — e2e `offline.spec.ts`: `route('**')` fails every non-loopback host across every route in both themes (after: T59) · `web/e2e/offline.spec.ts`
 - [ ] T78 · ISC-19.1 · [P] · web — e2e `smoke.spec.ts` on the webkit project: `/` and `/w/:ws`, zero console errors (after: T59) · `web/e2e/smoke.spec.ts`
-- [ ] T79 · ISC-17 · [P] · web — visual baseline: dashboard, light, three widths, committed under `web/e2e/__screenshots__/` (after: T59) · `web/e2e/visual.spec.ts`
-- [ ] T80 · ISC-17.1 · [P] · web — visual baseline: dashboard, dark (after: T59) · `web/e2e/visual.spec.ts`
-- [ ] T81 · ISC-16.1 · [P] · web — visual baseline: overview, light, three states (after: T59) · `web/e2e/visual.spec.ts`
-- [ ] T82 · ISC-16.2 · [P] · web — visual baseline: overview, dark (after: T59) · `web/e2e/visual.spec.ts`
+- [x] T79 · ISC-17 · [P] · web — visual baseline: dashboard, light, three widths, committed under `web/e2e/__screenshots__/` (after: T59) · `web/e2e/visual.spec.ts`
+- [x] T80 · ISC-17.1 · [P] · web — visual baseline: dashboard, dark (after: T59) · `web/e2e/visual.spec.ts`
+- [x] T81 · ISC-16.1 · [P] · web — visual baseline: overview, light, three states (after: T59) · `web/e2e/visual.spec.ts`
+- [x] T82 · ISC-16.2 · [P] · web — visual baseline: overview, dark (after: T59) · `web/e2e/visual.spec.ts`
 - [ ] T83 · ISC-19 · operator — cmux web view check with Interceptor, WebKit version recorded (after: T11, T78) · `tests/visual/cmux-check.md`
 
 ### ⑤ Prototype port (principal 2026-09-29: tile split, data, visualisation, colours, typefaces and edge + glow are binding)
