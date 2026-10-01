@@ -71,6 +71,7 @@ Requires [Bun](https://bun.sh).
 
 ```sh
 bun install
+bun run dev      # server from source on 127.0.0.1:7718, app with live reload on http://127.0.0.1:4300
 bun run verify
 ```
 
