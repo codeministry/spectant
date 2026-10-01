@@ -7,7 +7,7 @@ export const RAIL_BLOCK_STYLES = `
   .block { display: grid; gap: 8px; min-inline-size: 0; padding: 12px 16px; border: 1px solid var(--line); border-radius: var(--radius-box); background: var(--color-base-100); }
   .head { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 14px; font-weight: 600; line-height: 20px; }
   .title { font-size: 14px; font-weight: 600; line-height: 20px; }
-  .rows { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+  .rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin: 0; padding: 0; list-style: none; }
   .row { display: flex; gap: 8px; align-items: center; inline-size: 100%; min-block-size: 40px; padding: 4px 8px; border: 0; border-radius: var(--radius-field); background: none; color: var(--color-base-content); text-align: start; cursor: pointer; transition: background-color var(--motion-duration-fast) var(--motion-ease-standard); }
   .row:hover { background: var(--color-base-200); }
   .mono { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }

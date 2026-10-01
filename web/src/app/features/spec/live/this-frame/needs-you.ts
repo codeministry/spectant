@@ -26,7 +26,10 @@ import { RAIL_BLOCK_STYLES } from './rail-block.styles';
     RAIL_BLOCK_STYLES,
     `
       .count { font-variant-numeric: tabular-nums; }
-      .edge { border-inline-start: 4px solid var(--edge); border-start-start-radius: 0; border-end-start-radius: 0; }
+      .edge { align-items: start; padding-block: 8px; border-inline-start: 4px solid var(--edge); border-start-start-radius: 0; border-end-start-radius: 0; }
+      .edge ui-glyph { flex: none; margin-block-start: 3px; }
+      .edge .mono, .edge ui-state-chip { flex: none; line-height: 20px; }
+      .edge .text { line-height: 20px; overflow-wrap: anywhere; white-space: normal; }
       .alert { display: flex; gap: 8px; align-items: start; padding: 8px 12px; border: 1px solid var(--line); border-inline-start: 4px solid var(--fail-ink); border-radius: var(--radius-field); background: var(--color-base-200); font-size: 13px; line-height: 20px; }
       .alert ui-icon { flex: none; margin-block-start: 2px; color: var(--fail-ink); }
       .alert-body { display: grid; gap: 4px; min-inline-size: 0; }
