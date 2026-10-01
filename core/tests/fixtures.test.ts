@@ -13,7 +13,7 @@
 // 002, ISC-68) uses for the other model families.
 import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, join, relative } from "node:path";
+import { join, relative } from "node:path";
 
 import { buildDashboard } from "../src/dashboard.ts";
 import { parseFrontmatter } from "../src/frontmatter.ts";
@@ -106,7 +106,9 @@ describe("corpus", () => {
     expect(missingUnder(FIXTURES, ["harbor/ISA.md", "lantern/ISA.md", "empty-master/ISA.md"])).toEqual([]);
   });
 
-  test("the frozen trees name no machine path and no person", () => {
+  // Person names are not listed here: a public test cannot name what it guards against. `check:leak` (ISC-3) scans
+  // these trees with the private word list kept outside the repository.
+  test("the frozen trees name no machine path", () => {
     const roots = [SPECTANT_001, LEADGEN];
     expect(roots.filter((root) => !existsSync(root) || !statSync(root).isDirectory()).map((root) => relative(FIXTURES, root))).toEqual([]);
 
@@ -114,9 +116,6 @@ describe("corpus", () => {
     for (const file of roots.flatMap(filesBelow)) {
       const text = readFileSync(file, "utf8");
       if (text.includes("/Users/")) offending.push(`${relative(FIXTURES, file)}: /Users/`);
-      // Licence attributions are the one place a person's name may appear (constitution § Adaptations, XC-10).
-      const isLicenceNotice = /^LICENSE-[^/]+\.txt$/.test(basename(file));
-      if (!isLicenceNotice && /marcello/i.test(text)) offending.push(`${relative(FIXTURES, file)}: marcello`);
     }
     expect(offending).toEqual([]);
   });
