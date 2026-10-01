@@ -15,9 +15,8 @@ no model, the last two build on the state machine and agent board (F3).
 |---|---|---|---|
 | 1 | [Answer in the app](answer-in-app.md) | `answer-in-app` | F2 write path, F3 events |
 | 2 | [MCP endpoint on the running app](mcp-endpoint.md) | `mcp-endpoint` | spec 001 server |
-| 3 | [Open in chat](open-in-chat.md) | `open-in-chat` | spec 002 command chips |
-| 4 | [Model panel](model-panel.md) | `model-panel` | spec 002 shell, library |
-| 5 | [Agent step feed](agent-step-feed.md) | `agent-step-feed` | F3 (ISC-33 to ISC-35) |
+| 3 | [Model panel](model-panel.md) | `model-panel` | spec 002 shell, library |
+| 4 | [Agent step feed](agent-step-feed.md) | `agent-step-feed` | F3 (ISC-33 to ISC-35) |
 
 Two of them deliberately depart from `ISA.md` § Constraints and say so under **Guard rails**: `answer-in-app` adds a
 third app write, `mcp-endpoint` lets the agent call the running app. `model-panel` moves "AI chat inside the app" from

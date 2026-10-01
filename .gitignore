@@ -43,3 +43,6 @@ web/e2e/.results/
 
 # LifeOS checkpoint state written beside the repository by the spec tooling; never part of the tree.
 .checkpoint-state.json
+
+# archify diagrams, generated locally with repository evidence; never part of the tree.
+.archify/
