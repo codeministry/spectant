@@ -11,6 +11,10 @@
   inline-size: min(var(--ui-dialog-size, 480px), 100% - 32px);
   max-inline-size: none;
   max-block-size: calc(100dvh - 32px);
+
+  /* Explicit: Tailwind's preflight resets every margin to 0, which would pin the modal to the top-left corner instead
+     of the UA's centring `margin: auto`. */
+  margin: auto;
   margin-block-start: var(--ui-dialog-top, auto);
   padding: 0;
   border: 1px solid var(--line);
