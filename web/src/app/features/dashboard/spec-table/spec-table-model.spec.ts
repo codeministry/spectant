@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyListQuery,
   DEFAULT_QUERY,
+  holdNewRows,
   type ListQuery,
   listQueryParams,
   parseListQuery,
@@ -142,5 +143,23 @@ describe('phaseOptions and typeOptions', () => {
   it('lists types only when there are two or more', () => {
     expect(typeOptions(rows).map((option) => option.key)).toEqual(['all', 'bug', 'feature', 'refactor']);
     expect(typeOptions(rows.filter((row) => row.type === 'feature'))).toEqual([]);
+  });
+});
+
+describe('holdNewRows (design.md § Live update: new specs never reflow under the reader)', () => {
+  const rows = readSpecRows({ specs: [wire('002'), wire('003'), wire('004')] });
+
+  it('shows every row while nothing has been seen yet (the first load)', () => {
+    expect(holdNewRows(rows, null)).toEqual({ shown: rows, pending: [] });
+  });
+
+  it('holds back the rows the reader has not seen, in list order, and keeps the seen ones in place', () => {
+    const { shown, pending } = holdNewRows(rows, new Set(['003']));
+    expect(shown.map((row) => row.id)).toEqual(['003']);
+    expect(pending).toEqual(['002', '004']);
+  });
+
+  it('shows nothing extra for a seen spec that has gone', () => {
+    expect(holdNewRows(rows.slice(0, 1), new Set(['002', '009']))).toEqual({ shown: rows.slice(0, 1), pending: [] });
   });
 });

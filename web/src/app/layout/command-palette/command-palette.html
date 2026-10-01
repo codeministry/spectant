@@ -33,6 +33,7 @@
               [id]="option.domId"
               [attr.data-entry]="option.entry.id"
               [attr.aria-selected]="option.index === active()"
+              [attr.aria-label]="option.entry.meta ? option.entry.label + ', ' + option.entry.meta : option.entry.label"
               (pointermove)="active.set(option.index)"
               (click)="activate(option.entry)"
             >
@@ -47,17 +48,16 @@
                   }
                 </span>
               }
-              <span class="grow">
-                @for (piece of option.label; track $index) {
-                  @if (piece.mark) {
-                    <mark>{{ piece.text }}</mark>
-                  } @else {
-                    {{ piece.text }}
-                  }
-                }
-              </span>
-              @if (option.entry.meta) {
-                <span class="meta">{{ option.entry.meta }}</span>
+              <!-- One line cut at a whole word; the highlighted option up to three (ISC-111.2). No control inside an option. -->
+              <span
+                class="grow"
+                [title]="option.entry.label"
+                [uiClamp]="option.entry.label"
+                [uiClampPieces]="option.label"
+                [uiClampLines]="option.index === active() ? 3 : 1"
+              ></span>
+              @if (option.entry.meta; as meta) {
+                <span class="meta" [title]="meta" [uiClamp]="meta" [uiClampLines]="option.index === active() ? 3 : 1"></span>
               }
             </button>
           }

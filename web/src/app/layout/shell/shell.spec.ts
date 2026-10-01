@@ -16,12 +16,12 @@ import { tierFor } from './tier';
 
 /** Stands in for the browser's ResizeObserver: the test decides the shell container's width. */
 class FakeResizeObserver {
+  /** The shell's observer: the one watching `app-shell`, not a `uiClamp` watching its own text. */
   static last: FakeResizeObserver | null = null;
-  constructor(private readonly callback: ResizeObserverCallback) {
-    FakeResizeObserver.last = this;
-  }
-  observe(): void {
+  constructor(private readonly callback: ResizeObserverCallback) {}
+  observe(target: Element): void {
     // The test calls resize() itself.
+    if (target.localName === 'app-shell') FakeResizeObserver.last = this;
   }
   unobserve(): void {
     // Nothing is observed.

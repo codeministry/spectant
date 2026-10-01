@@ -159,3 +159,56 @@
     background: CanvasText;
   }
 }
+
+/*
+ * Changed-value tint (design.md § Live update, ISC-62.1): a tile whose value the last refresh changed gets a cyan
+ * wash over the card that fades over `--motion-duration-highlight`; in the Pulse card the figure itself fades. Paint
+ * only, never layout. `a` and `b` alternate per refresh and name two keyframes, so a second change restarts the fade.
+ * Under reduced motion the fade is gone and a static 4 px dot in the tile's corner marks the change instead.
+ */
+.band > ui-kpi-tile {
+  position: relative;
+}
+
+.band > [data-tint]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-box);
+  pointer-events: none;
+}
+
+.band > [data-tint='a']::after,
+.pulse [data-tint='a'] {
+  animation: ui-tint-fade var(--motion-duration-highlight) var(--motion-ease-standard);
+}
+
+.band > [data-tint='b']::after,
+.pulse [data-tint='b'] {
+  animation: kpi-tint-fade var(--motion-duration-highlight) var(--motion-ease-standard);
+}
+
+.pulse [data-tint] {
+  border-radius: 4px;
+}
+
+/* The same fade as motion.css's `ui-tint-fade`, under a second name for the `b` pass. */
+@keyframes kpi-tint-fade {
+  from {
+    background-color: color-mix(in oklch, var(--color-primary) 18%, transparent);
+  }
+
+  to {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .band > [data-tint]::after {
+    inset: 12px 12px auto auto;
+    inline-size: 4px;
+    block-size: 4px;
+    border-radius: 50%;
+    background: var(--color-primary);
+  }
+}

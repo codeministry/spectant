@@ -1,5 +1,18 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, input, output, signal, viewChild } from '@angular/core';
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  Injector,
+  input,
+  linkedSignal,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -78,8 +91,54 @@ export class SpecTable {
    * merges `?spec=<id>` into the URL, and on the previewed row it leads to the spec page `/w/:ws/s/:id`.
    */
   readonly preview = input<string | null>(null);
+  /** Ids of the rows the last refresh changed (`RefreshService.changedRows`): each gets the 4 px cyan dot. */
+  readonly changed = input<ReadonlySet<string>>(new Set());
+  /** Ids of new specs the page holds back so the list never reflows under the reader; the pill offers them. */
+  readonly pending = input<readonly string[]>([]);
+  /** The reader asked for the held-back specs (the pill). */
+  readonly showPending = output();
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+
+  /**
+   * The rows carrying the changed dot (design.md § Live update): every refresh adds its changed rows, and a row keeps
+   * its dot until it is hovered or focused, however many quiet refreshes pass in between.
+   */
+  protected readonly dots = linkedSignal<ReadonlySet<string>, ReadonlySet<string>>({
+    source: this.changed,
+    computation: (changed, previous) => new Set([...(previous?.value ?? []), ...changed]),
+  });
+
+  /** Rows whose description needs more than two lines, and those the reader opened with "more…" (ISC-111). */
+  protected readonly overflowing = signal<ReadonlySet<string>>(new Set());
+  protected readonly moreOpen = signal<ReadonlySet<string>>(new Set());
+
+  protected setOverflow(id: string, overflows: boolean): void {
+    if (this.overflowing().has(id) === overflows) return;
+    this.overflowing.update((ids) => (overflows ? new Set([...ids, id]) : new Set([...ids].filter((other) => other !== id))));
+  }
+
+  protected toggleMore(id: string): void {
+    this.moreOpen.update((ids) => (ids.has(id) ? new Set([...ids].filter((other) => other !== id)) : new Set([...ids, id])));
+  }
+
+  protected clearDot(id: string): void {
+    if (!this.dots().has(id)) return;
+    this.dots.update((dots) => new Set([...dots].filter((dot) => dot !== id)));
+  }
+
+  /** The pill: the page applies the held-back specs, then focus lands on the first of them (or the heading). */
+  protected applyPending(): void {
+    const first = this.pending().at(0);
+    this.showPending.emit();
+    afterNextRender(
+      () => {
+        if (first === undefined || !this.focusRow(first)) this.host.nativeElement.querySelector<HTMLElement>('#specs')?.focus();
+      },
+      { injector: this.injector },
+    );
+  }
 
   protected readonly sortMenuKeys = SORT_MENU;
   protected readonly compact = computed(() => this.shell.tier() === 'compact');

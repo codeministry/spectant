@@ -6,11 +6,13 @@ import { keyLabel } from '../../core/keyboard-bindings';
 import { KeyboardService } from '../../core/keyboard.service';
 import { PALETTE_SOURCES, type PaletteEntry, type PaletteSource } from '../../core/palette-sources';
 import { UiIcon } from '../../shared/icons/icon';
+import { UiClamp } from '../../shared/ui/clamp/clamp';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiDialog } from '../../shared/ui/overlay/dialog';
 import { nextId } from '../../shared/ui/overlay/ids';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { ShellState } from '../shell/shell-state.service';
+import { follow, isCommitEnter } from './navigate';
 import { isCommand } from './palette-groups';
 import { PaletteIndex } from './palette-index';
 import { highlight, rankEntries, type Segment } from './palette-ranking';
@@ -40,12 +42,13 @@ interface PaletteGroup {
  * groups follow their best match, so Enter lands on it (ranking in palette-ranking.ts).
  *
  * Opened by ⌘K / Ctrl+K / `/` and the header trigger through `KeyboardService.paletteOpen`; mounted once by the app
- * root and deferred until the first open. Enter on a navigating entry follows its link and remembers it as recent; a
- * command entry runs. Focus returns to the opener on close (modal.ts).
+ * root and deferred until the first open. Enter on a navigating entry follows its link through the router and remembers
+ * it as recent; a command entry runs; an Enter that commits an IME composition is left alone (navigate.ts, ISC-60.2).
+ * Focus returns to the opener on close (modal.ts).
  */
 @Component({
   selector: 'app-command-palette',
-  imports: [NgTemplateOutlet, TranslocoPipe, UiDialog, UiIcon, UiKbd, UiSheet],
+  imports: [NgTemplateOutlet, TranslocoPipe, UiClamp, UiDialog, UiIcon, UiKbd, UiSheet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './command-palette.html',
   styleUrl: './command-palette.css',
@@ -126,6 +129,7 @@ export class CommandPalette {
         return;
       }
       case 'Enter': {
+        if (!isCommitEnter(event)) return;
         const option = this.options().at(this.active());
         if (option === undefined) return;
         event.preventDefault();
@@ -150,7 +154,6 @@ export class CommandPalette {
       return;
     }
     this.recent.remember(entry);
-    const link = entry.link;
-    void (typeof link === 'string' ? this.router.navigateByUrl(link) : this.router.navigate([...link]));
+    void follow(this.router, entry);
   }
 }

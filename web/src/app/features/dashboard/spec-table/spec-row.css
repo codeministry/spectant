@@ -33,11 +33,12 @@
   min-inline-size: 0;
 }
 
+/* Title one line, description two, each cut at a whole word by `uiClamp` (ISC-111); the list renders "more…" / "less"
+   outside the row link, and it opens both. */
 .t,
 .d {
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .t {

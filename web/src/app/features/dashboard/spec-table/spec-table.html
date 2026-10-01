@@ -53,6 +53,15 @@
     </div>
   }
 
+  <!-- The pill slot has no height: the pill floats over the first row, so offering new specs moves nothing. -->
+  <div class="pending-slot">
+    @if (pending().length > 0) {
+      <button type="button" class="btn btn-sm pending-pill" data-pending (click)="applyPending()">
+        {{ (pending().length === 1 ? 'header.live.newSpecs.one' : 'header.live.newSpecs.other') | transloco: { count: pending().length } }}
+      </button>
+    }
+  </div>
+
   @if (visible().length > 0) {
     <ol class="rows" uiRovingList [singleKeys]="singleKeys()">
       @for (row of visible(); track row.id) {
@@ -66,9 +75,30 @@
             [attr.data-spec-row]="row.id"
             [attr.data-selected]="row.id === selectedId() ? '' : null"
             [attr.aria-expanded]="row.id === preview()"
+            [attr.data-changed]="dots().has(row.id) ? '' : null"
+            (pointerenter)="clearDot(row.id)"
+            (focusin)="clearDot(row.id)"
           >
-            <app-spec-row [row]="row" [stageLabels]="stageLabels()" />
+            <app-spec-row
+              [row]="row"
+              [stageLabels]="stageLabels()"
+              [descriptionExpanded]="moreOpen().has(row.id)"
+              (descriptionOverflow)="setOverflow(row.id, $event)"
+            />
           </a>
+          <!-- Outside the row link: a control inside a link is a nested interactive element (ISC-111). -->
+          @if (overflowing().has(row.id)) {
+            <button
+              type="button"
+              class="row-more"
+              [attr.data-more]="row.id"
+              [attr.aria-expanded]="moreOpen().has(row.id)"
+              [attr.aria-controls]="'desc-' + row.id"
+              (click)="toggleMore(row.id)"
+            >
+              {{ (moreOpen().has(row.id) ? 'brief.less' : 'brief.more') | transloco }}
+            </button>
+          }
         </li>
       }
     </ol>

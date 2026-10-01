@@ -50,16 +50,20 @@ describe('SpecTable (prototype port, T89)', () => {
     });
   });
 
-  async function render(query: ListQuery = DEFAULT_QUERY) {
+  async function render(query: ListQuery = DEFAULT_QUERY, live: { changed?: ReadonlySet<string>; pending?: readonly string[] } = {}) {
     const fixture = TestBed.createComponent(SpecTable);
     fixture.componentRef.setInput('ws', 'harbor');
     fixture.componentRef.setInput('rows', readSpecRows(BODY));
     fixture.componentRef.setInput('archive', readArchiveRows(BODY));
     fixture.componentRef.setInput('query', query);
+    if (live.changed) fixture.componentRef.setInput('changed', live.changed);
+    if (live.pending) fixture.componentRef.setInput('pending', live.pending);
     const emitted: ListQuery[] = [];
     fixture.componentInstance.queryChange.subscribe((next) => emitted.push(next));
+    let shown = 0;
+    fixture.componentInstance.showPending.subscribe(() => (shown += 1));
     await fixture.whenStable();
-    return { host: fixture.nativeElement as HTMLElement, emitted };
+    return { fixture, host: fixture.nativeElement as HTMLElement, emitted, shown: () => shown };
   }
 
   it('heads the panel "Specs n · k archived" with the #specs heading and the phase chips', async () => {
@@ -123,5 +127,44 @@ describe('SpecTable (prototype port, T89)', () => {
     expect(text(foot?.querySelector(':scope > span'))).toBe('1 archived spec');
     expect(text(foot?.querySelector('a[data-archived-row="001"]'))).toBe('001 manifest-sync');
     expect(foot?.querySelector('a[data-archived-row="001"]')?.getAttribute('href')).toBe('/w/harbor/s/001');
+  });
+
+  describe('live update marks (design.md § Live update, ISC-62.1)', () => {
+    it('dots a changed row and keeps the dot across a refresh that changed nothing, until the row is hovered', async () => {
+      const { fixture, host } = await render(DEFAULT_QUERY, { changed: new Set(['003']) });
+      const row = (id: string) => host.querySelector<HTMLElement>(`[data-spec-row="${id}"]`);
+      expect(row('003')?.hasAttribute('data-changed')).toBe(true);
+      expect(row('002')?.hasAttribute('data-changed')).toBe(false);
+
+      fixture.componentRef.setInput('changed', new Set());
+      await fixture.whenStable();
+      expect(row('003')?.hasAttribute('data-changed')).toBe(true);
+
+      row('003')?.dispatchEvent(new Event('pointerenter'));
+      await fixture.whenStable();
+      expect(row('003')?.hasAttribute('data-changed')).toBe(false);
+    });
+
+    it('clears a row dot when the row takes focus', async () => {
+      const { fixture, host } = await render(DEFAULT_QUERY, { changed: new Set(['002']) });
+      const row = host.querySelector<HTMLElement>('[data-spec-row="002"]');
+      row?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      await fixture.whenStable();
+      expect(row?.hasAttribute('data-changed')).toBe(false);
+    });
+
+    it('offers held-back new specs as a "n new specs · show" pill that asks the page to apply them', async () => {
+      const { host, shown } = await render(DEFAULT_QUERY, { pending: ['004', '005'] });
+      const pill = host.querySelector<HTMLButtonElement>('button[data-pending]');
+      expect(text(pill)).toBe('2 new specs · show');
+      pill?.click();
+      expect(shown()).toBe(1);
+    });
+
+    it('keeps the pill slot but renders no pill while nothing is held back', async () => {
+      const { host } = await render();
+      expect(host.querySelector('.pending-slot')).not.toBeNull();
+      expect(host.querySelector('button[data-pending]')).toBeNull();
+    });
   });
 });

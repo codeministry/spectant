@@ -169,6 +169,22 @@ export function applyListQuery(rows: readonly SpecTableRow[], query: ListQuery):
   }
 }
 
+/**
+ * New specs never reflow under the reader (design.md § Live update, ISC-62.1): of the active rows, `shown` keeps the
+ * ones in `seen` (every row while `seen` is null, the first load) in model order, and `pending` names the rest, which
+ * wait behind the "n new specs · show" pill until the reader applies them.
+ */
+export function holdNewRows(rows: readonly SpecTableRow[], seen: ReadonlySet<string> | null): { shown: readonly SpecTableRow[]; pending: readonly string[] } {
+  if (seen === null) return { shown: rows, pending: [] };
+  const shown: SpecTableRow[] = [];
+  const pending: string[] = [];
+  for (const row of rows) {
+    if (seen.has(row.id)) shown.push(row);
+    else pending.push(row.id);
+  }
+  return { shown, pending };
+}
+
 function phaseRank(phase: string): number {
   const index = PHASE_ORDER.indexOf(phase);
   return index === -1 ? PHASE_ORDER.length : index;

@@ -70,6 +70,7 @@ ui-dialog {
   display: flex;
   gap: 12px;
   align-items: center;
+  padding-block: 10px;
   inline-size: 100%;
   min-block-size: 40px;
   padding-inline: 16px;
@@ -87,12 +88,13 @@ ui-dialog {
   box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
+/* Label and meta are cut at a whole word by `uiClamp`: one line, three on the highlighted option (ISC-111.2). */
 .p-item .grow {
   overflow: hidden;
   flex: 1;
   min-inline-size: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 20px;
+  overflow-wrap: anywhere;
 }
 
 .p-chip {
@@ -110,8 +112,8 @@ ui-dialog {
   max-inline-size: 40%;
   color: var(--muted-ink);
   font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 20px;
+  overflow-wrap: anywhere;
 }
 
 .p-item mark {

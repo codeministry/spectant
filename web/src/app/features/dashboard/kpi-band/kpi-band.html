@@ -6,6 +6,7 @@
   <ui-kpi-tile
     class="master"
     data-kpi="master"
+    [attr.data-tint]="tint()('master')"
     variant="hero"
     [glow]="true"
     [label]="'kpi.masterClaims' | transloco"
@@ -19,6 +20,7 @@
   <ui-kpi-tile
     class="claims"
     data-kpi="claims"
+    [attr.data-tint]="tint()('claims')"
     accent="accent"
     [edge]="true"
     [glow]="true"
@@ -32,6 +34,7 @@
   <ui-kpi-tile
     class="specs"
     data-kpi="specs"
+    [attr.data-tint]="tint()('specs')"
     accent="primary"
     [edge]="true"
     [glow]="true"
@@ -54,6 +57,7 @@
   <ui-kpi-tile
     class="takeable"
     data-kpi="takeable"
+    [attr.data-tint]="tint()('takeable')"
     accent="primary"
     [edge]="true"
     [glow]="true"
@@ -68,6 +72,7 @@
   <ui-kpi-tile
     class="attention span-wide"
     data-kpi="attention"
+    [attr.data-tint]="tint()('attention')"
     accent="warning"
     [edge]="true"
     [glow]="true"
@@ -81,6 +86,7 @@
   <ui-kpi-tile
     class="archive"
     data-kpi="archive"
+    [attr.data-tint]="tint()('archive')"
     accent="secondary"
     [edge]="true"
     [glow]="true"
@@ -100,7 +106,7 @@
         <ui-ring [value]="masterPercent()" [size]="72" [stroke]="8" />
         <div>
           <div class="type-eyebrow">{{ 'kpi.masterClaims' | transloco }}</div>
-          <div class="figure type-kpi-value">
+          <div class="figure type-kpi-value" data-stat="master" [attr.data-tint]="tint()('master')">
             @if (master) {
               {{ master.closed }}<small class="den">/{{ master.total }}</small>
             } @else {
@@ -112,19 +118,20 @@
       <div class="claims">
         <div class="claims-row">
           <span class="type-eyebrow">{{ 'kpi.specClaims' | transloco }}</span>
-          <span class="frac">{{ k.claims.closed }}/{{ k.claims.total }}</span>
+          <span class="frac" data-stat="claims" [attr.data-tint]="tint()('claims')">{{ k.claims.closed }}/{{ k.claims.total }}</span>
         </div>
         <ui-meter tone="accent" [value]="k.claims.closed" [max]="k.claims.total" [label]="'kpi.specClaims' | transloco" />
       </div>
       <div class="stats">
         <a [routerLink]="href()" [fragment]="targets.specs">
-          <span class="type-eyebrow">{{ 'kpi.specs' | transloco }}</span><b>{{ k.specs }}</b>
+          <span class="type-eyebrow">{{ 'kpi.specs' | transloco }}</span><b data-stat="specs" [attr.data-tint]="tint()('specs')">{{ k.specs }}</b>
         </a>
         <a [routerLink]="href()" [queryParams]="takeableQuery" [fragment]="targets.specs">
-          <span class="type-eyebrow">{{ 'kpi.takeable' | transloco }}</span><b>{{ k.takeable }}</b>
+          <span class="type-eyebrow">{{ 'kpi.takeable' | transloco }}</span><b data-stat="takeable" [attr.data-tint]="tint()('takeable')">{{ k.takeable }}</b>
         </a>
         <a [routerLink]="href()" [fragment]="targets.warnings">
-          <span class="type-eyebrow">{{ 'kpi.attention' | transloco }}</span><b>{{ k.attention }}</b>
+          <span class="type-eyebrow">{{ 'kpi.attention' | transloco }}</span
+          ><b data-stat="attention" [attr.data-tint]="tint()('attention')">{{ k.attention }}</b>
         </a>
       </div>
     </div>

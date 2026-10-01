@@ -148,4 +148,36 @@ describe('KpiBand', () => {
     await fixture.whenStable();
     expect(text('master', '.meta')).toBe('81 % geschlossen · 23 offen');
   });
+
+  describe('changed-value tint (design.md § Live update, ISC-62.1)', () => {
+    const tinted = (host: HTMLElement) =>
+      [...host.querySelectorAll<HTMLElement>('[data-tint]')].map((node) => `${node.dataset['kpi'] ?? node.dataset['stat'] ?? '?'}:${node.dataset['tint'] ?? ''}`);
+
+    it('tints nothing before a refresh changed a value', async () => {
+      const { host } = await render();
+      expect(tinted(host)).toEqual([]);
+    });
+
+    it('maps each changed KPI path to its tile, in the band and in the Pulse card', async () => {
+      const { fixture, host } = await render();
+      fixture.componentRef.setInput('changed', new Set(['claims.closed', 'fog', 'master.total']));
+      await fixture.whenStable();
+      expect(tinted(host)).toEqual(['master:a', 'claims:a', 'attention:a', 'master:a', 'claims:a', 'attention:a']);
+    });
+
+    it('restarts the tint on the next refresh that changes the same value, and drops it on one that changes nothing', async () => {
+      const { fixture, host } = await render();
+      fixture.componentRef.setInput('changed', new Set(['claims.closed']));
+      await fixture.whenStable();
+      expect(tinted(host)).toEqual(['claims:a', 'claims:a']);
+
+      fixture.componentRef.setInput('changed', new Set(['claims.closed']));
+      await fixture.whenStable();
+      expect(tinted(host)).toEqual(['claims:b', 'claims:b']);
+
+      fixture.componentRef.setInput('changed', new Set());
+      await fixture.whenStable();
+      expect(tinted(host)).toEqual([]);
+    });
+  });
 });

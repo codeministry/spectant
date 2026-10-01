@@ -2,6 +2,7 @@
 // (spec 002's shell).
 export { UiCard } from './card/card';
 export { UiChip } from './chip/chip';
+export { CLAMP_ELLIPSIS, type ClampPiece, fitWords, UiClamp } from './clamp/clamp';
 export { UiCommandChip, writeClipboard } from './command-chip/command-chip';
 export { UiEmptyState } from './empty-state/empty-state';
 export { UiGlyph } from './glyph/glyph';

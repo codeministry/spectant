@@ -1,8 +1,9 @@
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, type TemplateRef, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, type TemplateRef, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { RefreshService } from '../../core/refresh.service';
 import { SettingsService } from '../../core/settings.service';
 import { NotFound } from '../../layout/not-found/not-found';
 import { ShellData } from '../../layout/shell/shell-data.service';
@@ -16,7 +17,7 @@ import { KpiBand, type KpiBandModel } from './kpi-band/kpi-band';
 import { SpecInspector } from './spec-inspector/spec-inspector';
 import { SpecTable } from './spec-table/spec-table';
 import { WarningsPanel } from './warnings-panel/warnings-panel';
-import { type ListQuery, listQueryParams, parseListQuery, readArchiveRows, readSpecRows } from './spec-table/spec-table-model';
+import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchiveRows, readSpecRows } from './spec-table/spec-table-model';
 
 /**
  * The workspace dashboard `/w/:ws` (spec 001, design.md § Desktop / Tablet / Mobile Soll): KPI band, Brief, Next up,
@@ -67,6 +68,28 @@ export class DashboardPage {
    */
   protected readonly view = computed(() => readView(this.body()));
   protected readonly rows = computed(() => readSpecRows(this.body()));
+
+  /** The live refresh's marks (T68): the KPI tint, the row dots; the page holds back new specs itself. */
+  protected readonly refresh = inject(RefreshService);
+  /**
+   * The active spec ids the reader has seen on this workspace (design.md § Live update: new specs never reflow under
+   * the reader). Taken from the first loaded body of a workspace and kept across refreshes; `showPending` adds the rest.
+   */
+  private readonly seen = linkedSignal<{ ws: string; loaded: boolean; ids: readonly string[] }, ReadonlySet<string> | null>({
+    source: () => ({ ws: this.ws(), loaded: this.body() !== null, ids: this.rows().map((row) => row.id) }),
+    computation: (source, previous) => {
+      if (!source.loaded) return null;
+      const kept = previous?.source.ws === source.ws && previous.source.loaded ? previous.value : null;
+      return kept ?? new Set(source.ids);
+    },
+  });
+  /** The rows the Specs panel lists and the new ones it offers behind the pill. */
+  protected readonly held = computed(() => holdNewRows(this.rows(), this.seen()));
+
+  /** The pill: the held-back specs join the list, on the reader's input. */
+  protected showPending(): void {
+    this.seen.set(new Set(this.rows().map((row) => row.id)));
+  }
   protected readonly archive = computed(() => readArchiveRows(this.body()));
   /** The warnings sit in the rail at wide, after the Specs panel below it. */
   protected readonly railHolds = computed(() => this.state.tier() === 'wide');

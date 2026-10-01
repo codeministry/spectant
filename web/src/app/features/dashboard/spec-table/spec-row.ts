@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, viewChildren } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { UiChip } from '../../../shared/ui/chip/chip';
 import { UiMeter } from '../../../shared/ui/meter/meter';
 import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
@@ -22,7 +23,7 @@ const AGENT_KEY = 'specs.agentWorking';
  */
 @Component({
   selector: 'app-spec-row',
-  imports: [TranslocoPipe, UiChip, UiMeter, UiStageTrack],
+  imports: [TranslocoPipe, UiChip, UiClamp, UiMeter, UiStageTrack],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-row.html',
   styleUrl: './spec-row.css',
@@ -36,6 +37,20 @@ export class SpecRow {
   /** The five stage labels, translated once by the list. */
   readonly stageLabels = input.required<readonly string[]>();
   readonly density = input<'normal' | 'dense'>('normal');
+  /** Title and description show in full (the list's "more…" toggle, ISC-111). */
+  readonly descriptionExpanded = input(false);
+  /** Whether the title needs more than its line or the description more than its two, so the list offers "more…" outside the row link. */
+  readonly descriptionOverflow = output<boolean>();
+
+  private readonly clamps = viewChildren(UiClamp);
+
+  constructor() {
+    let last = false;
+    effect(() => {
+      const overflows = this.clamps().some((clamp) => clamp.overflows());
+      if (overflows !== last) this.descriptionOverflow.emit((last = overflows));
+    });
+  }
 
   protected readonly stageCurrent = computed(() => stageIndex(this.row().stage));
   protected readonly stageAria = computed(() => {

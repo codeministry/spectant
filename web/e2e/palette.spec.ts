@@ -112,6 +112,22 @@ test.describe('palette', () => {
     await expect(palette).toBeHidden();
   });
 
+  // design.md § Command palette: 640 px wide, centred, 96 px from the top. Found pinned to the left edge in the cmux
+  // web view (ISC-19): the preflight margin reset had beaten the UA's centring `margin: auto` in every engine.
+  test('open: the palette sits centred, 640 px wide and 96 px from the top', async ({ page }) => {
+    await openPalette(page, '/w/harbor');
+    // Polled: the entry transition rises 8 px, so the resting box is measured once it has settled.
+    await expect(async () => {
+      const box = await paletteOf(page).evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return { left: r.left, right: window.innerWidth - r.right, top: r.top, width: r.width };
+      });
+      expect(Math.abs(box.left - box.right)).toBeLessThanOrEqual(1);
+      expect(box.width).toBe(640);
+      expect(Math.round(box.top)).toBe(96);
+    }).toPass();
+  });
+
   test('open: the header trigger opens it, and focus returns to the trigger on close', async ({ page }) => {
     await openDashboard(page);
     const trigger = page.locator('header [data-control="palette"]');
@@ -367,5 +383,162 @@ test.describe('palette filter', () => {
     await expect(palette.locator('[role="listbox"] [role="option"]')).toHaveCount(0);
     await expect(palette.locator('[role="listbox"] [role="group"]')).toHaveCount(0);
     await expect(palette.locator('.p-empty')).toContainText('No match for “zzqx”');
+  });
+});
+
+/**
+ * ISC-60.2 (T71): Enter in the palette follows the highlighted entry through the Angular router. The highlight is
+ * whatever `aria-selected` marks, moved by the arrows or the pointer; the page is never reloaded (a window marker set
+ * before Enter survives the navigation). `bun run e2e -- palette -g enter`.
+ */
+test.describe('palette enter', () => {
+  test.use(atWidth(1440));
+
+  const options = (page: Page) => paletteOf(page).locator('[role="listbox"] [role="option"]');
+  const highlighted = (page: Page) => paletteOf(page).locator('[role="option"][aria-selected="true"]');
+
+  /** Marks the running document; a full reload would drop the mark. */
+  const markDocument = (page: Page): Promise<void> =>
+    page.evaluate(() => {
+      Reflect.set(window, '__paletteEnter', true);
+    });
+  const documentKept = (page: Page): Promise<boolean> => page.evaluate(() => Reflect.get(window, '__paletteEnter') === true);
+
+  const specUrl = (entry: string): RegExp => {
+    const [ws = '', id = ''] = entry.split('/');
+    return new RegExp(`/w/${ws}/s/${id}$`);
+  };
+
+  /**
+   * Walks the highlight down to `entry` of `group` with ArrowDown and checks it is the one `aria-selected` marks. The
+   * group matters: Next up lists a spec's copy command under the same `data-entry` as the Specs group's link.
+   */
+  async function arrowTo(page: Page, group: string, entry: string, scope = paletteOf(page)): Promise<void> {
+    const order = await scope
+      .locator('[role="listbox"] [role="option"]')
+      .evaluateAll((els) => els.map((el) => `${el.closest('[data-group]')?.getAttribute('data-group') ?? ''}:${el.getAttribute('data-entry') ?? ''}`));
+    const at = order.indexOf(`${group}:${entry}`);
+    expect(at, `${group}:${entry} is listed`).toBeGreaterThanOrEqual(0);
+    for (let i = 0; i < at; i++) await page.keyboard.press('ArrowDown');
+    await expect(scope.locator(`[data-group="${group}"] [role="option"][aria-selected="true"]`)).toHaveAttribute('data-entry', entry);
+  }
+
+  test('enter: the arrows move the highlight and Enter opens that spec without a reload', async ({ page, request }) => {
+    const target = (await listed(request)).specs.filter((id) => id.startsWith('harbor/'))[1];
+    if (target === undefined) throw new Error('the stub serves fewer than two harbor specs');
+    await openPalette(page, '/w/harbor');
+    await expect(paletteOf(page).locator(`[data-group="specs"] [data-entry="${target}"]`)).toBeAttached();
+    await markDocument(page);
+
+    await arrowTo(page, 'specs', target);
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(specUrl(target));
+    await expect(paletteOf(page)).toBeHidden();
+    await expect(page.locator('app-not-found')).toHaveCount(0);
+    expect(await documentKept(page)).toBe(true);
+  });
+
+  test('enter: a spec of another workspace opens under that workspace', async ({ page, request }) => {
+    const target = (await listed(request)).specs.find((id) => !id.startsWith('harbor/'));
+    if (target === undefined) throw new Error('the stub serves no spec outside harbor');
+    await openPalette(page, '/w/harbor');
+    await expect(paletteOf(page).locator(`[data-group="specs"] [data-entry="${target}"]`)).toBeAttached();
+    await markDocument(page);
+
+    await arrowTo(page, 'specs', target);
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(specUrl(target));
+    await expect(page.locator('app-not-found')).toHaveCount(0);
+    expect(await documentKept(page)).toBe(true);
+  });
+
+  test('enter: the entry under the pointer is the highlighted one Enter follows', async ({ page, request }) => {
+    const other = (await listed(request)).workspaces.find((ws) => ws.slug !== 'harbor');
+    if (other === undefined) throw new Error('the stub serves no second workspace');
+    await openPalette(page, '/w/harbor');
+    await paletteOf(page).locator(`[data-group="workspaces"] [data-entry="${other.slug}"]`).hover();
+    await expect(highlighted(page)).toHaveAttribute('data-entry', other.slug);
+    // The pointer only moves the highlight; focus stays in the combobox.
+    await expect(paletteOf(page).getByRole('combobox')).toBeFocused();
+    await markDocument(page);
+
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(new RegExp(`/w/${other.slug}$`));
+    expect(await documentKept(page)).toBe(true);
+  });
+
+  test('enter: the entry followed leads the Recent group on the next open', async ({ page, request }) => {
+    const target = (await listed(request)).specs.find((id) => id.startsWith('harbor/'));
+    if (target === undefined) throw new Error('the stub serves no harbor spec');
+    await openPalette(page, '/w/harbor');
+    await expect(paletteOf(page).locator(`[data-group="specs"] [data-entry="${target}"]`)).toBeAttached();
+    await arrowTo(page, 'specs', target);
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(specUrl(target));
+    await expect(paletteOf(page)).toBeHidden();
+
+    await page.keyboard.press('Control+k');
+    await expect(paletteOf(page)).toBeVisible();
+    await expect(paletteOf(page).locator('[data-group="recent"] [role="option"]').first()).toHaveAttribute('data-entry', target);
+  });
+
+  test('enter: an Enter that commits an IME composition stays in the palette', async ({ page, request }) => {
+    const [first, second] = (await listed(request)).specs.filter((id) => id.startsWith('harbor/'));
+    if (first === undefined || second === undefined) throw new Error('the stub serves fewer than two harbor specs');
+    await openPalette(page, '/w/harbor');
+    await expect(paletteOf(page).locator(`[data-group="specs"] [data-entry="${second}"]`)).toBeAttached();
+    await arrowTo(page, 'specs', second);
+
+    // What an input method sends when Enter commits the composed text: `isComposing` set, keyCode 229. The palette
+    // must leave it to the input method: not consumed (dispatchEvent answers true), nothing followed.
+    const passedOn = await paletteOf(page)
+      .getByRole('combobox')
+      .evaluate((input) =>
+        input.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 229, isComposing: true, bubbles: true, cancelable: true }),
+        ),
+      );
+    expect(passedOn).toBe(true);
+
+    // A real key after it still lands in the open palette, and the page never left the dashboard.
+    await page.keyboard.press('ArrowUp');
+    await expect(paletteOf(page)).toBeVisible();
+    await expect(highlighted(page)).toHaveAttribute('data-entry', first);
+    await expect(page).toHaveURL(/\/w\/harbor$/);
+  });
+
+  test('enter: with no match Enter does nothing', async ({ page }) => {
+    await openPalette(page, '/w/harbor');
+    await paletteOf(page).getByRole('combobox').fill('qqqzzzxxx');
+    await expect(options(page)).toHaveCount(0);
+
+    await page.keyboard.press('Enter');
+
+    await expect(paletteOf(page)).toBeVisible();
+    await expect(page).toHaveURL(/\/w\/harbor$/);
+  });
+
+  test.describe('palette enter compact', () => {
+    test.use(atWidth(390));
+
+    test('enter: in the sheet at 390 Enter opens the highlighted spec', async ({ page, request }) => {
+      const target = (await listed(request)).specs.find((id) => id.startsWith('harbor/'));
+      if (target === undefined) throw new Error('the stub serves no harbor spec');
+      await page.goto('/w/harbor');
+      await page.locator('header [data-control="palette"]').click();
+      const sheet = page.locator('ui-sheet');
+      await expect(sheet.getByRole('combobox')).toBeFocused();
+      await expect(sheet.locator(`[data-group="specs"] [data-entry="${target}"]`)).toBeAttached();
+      await arrowTo(page, 'specs', target, sheet);
+      await markDocument(page);
+
+      await page.keyboard.press('Enter');
+
+      await expect(page).toHaveURL(specUrl(target));
+      expect(await documentKept(page)).toBe(true);
+    });
   });
 });

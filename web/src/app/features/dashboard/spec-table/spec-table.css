@@ -174,3 +174,74 @@
     background: CanvasText;
   }
 }
+
+/*
+ * Live update marks (design.md § Live update, ISC-62.1). Neither may move anything: the pill slot has no height and
+ * the pill floats over the first row; the changed dot sits in the row's inline padding, out of flow.
+ */
+.pending-slot {
+  position: relative;
+  block-size: 0;
+}
+
+.pending-pill {
+  --btn-bg: var(--color-primary);
+  --btn-fg: var(--color-primary-content);
+  --btn-border: var(--color-primary);
+
+  position: absolute;
+  z-index: 1;
+  inset-block-start: 16px;
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.row-link[data-changed]::before {
+  content: '';
+  position: absolute;
+  inset-block-start: calc(50% - 2px);
+  inset-inline-start: 6px;
+  inline-size: 4px;
+  block-size: 4px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  pointer-events: none;
+}
+
+@media (forced-colors: active) {
+  .row-link[data-changed]::before {
+    background: CanvasText;
+  }
+}
+
+/* "more…" / "less" under a row whose description is cut (ISC-111): outside the row link, aligned with the title
+   column (16 px padding + 40 px id + 16 px gap), styled like the Brief's toggle. */
+.row-more {
+  display: block;
+  min-block-size: 24px;
+  margin: -8px 16px 8px 72px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--ques-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .row-more:hover {
+    text-decoration: underline;
+  }
+}
+
+@media (pointer: coarse) {
+  .row-more {
+    min-block-size: 44px;
+  }
+}

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, linkedSignal } from '@angular/core';
 import { type Params, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { UiCard } from '../../../shared/ui/card/card';
@@ -45,6 +45,28 @@ interface PhaseSegment extends MeterSegment {
 
 const PHASE_TONE: Record<PhaseSegment['phase'], Tone> = { building: 'primary', scoping: 'secondary', complete: 'accent' };
 
+/** The band's tiles, as their `data-kpi` names them (and the Pulse card's figures their `data-stat`). */
+export type KpiTile = 'master' | 'claims' | 'specs' | 'takeable' | 'attention' | 'archive';
+
+/** Which tile shows a KPI leaf: the first segment of the refresh diff's dotted path (`claims.closed` → claims). */
+const TILE_OF: Readonly<Record<string, KpiTile>> = {
+  master: 'master',
+  claims: 'claims',
+  specs: 'specs',
+  building: 'specs',
+  scoping: 'specs',
+  takeable: 'takeable',
+  warnings: 'attention',
+  fog: 'attention',
+  attention: 'attention',
+  archived: 'archive',
+};
+
+/** The tile a changed KPI path (`RefreshService.changedKpis`) belongs to; null for a leaf no tile shows. */
+export function kpiTileOf(path: string): KpiTile | null {
+  return TILE_OF[path.split('.')[0] ?? ''] ?? null;
+}
+
 /**
  * The dashboard's KPI band (T61, ported in T87 from the prototype's `app.js` kpiBand and `styles.css` kpi-band /
  * Pulse): the "Master claims" hero with its 112 px ring, Spec claims with a lime meter, Specs with the phase split and
@@ -66,6 +88,27 @@ export class KpiBand {
   readonly model = input.required<KpiBandModel>();
   /** The workspace slug; every tile link targets `/w/:ws`. */
   readonly ws = input.required<string>();
+  /** The KPI paths the last refresh changed (`RefreshService.changedKpis`): their tiles get the fading tint. */
+  readonly changed = input<ReadonlySet<string>>(new Set());
+
+  /**
+   * `a` / `b`, flipped by every refresh that changed a value: the two tint rules name two keyframes, so the fade
+   * restarts on a tile whose value changes on two refreshes in a row. A quiet refresh keeps the letter.
+   */
+  private readonly pass = linkedSignal<ReadonlySet<string>, 'a' | 'b'>({
+    source: this.changed,
+    computation: (changed, previous) => {
+      const last = previous?.value ?? 'b';
+      return changed.size === 0 ? last : last === 'a' ? 'b' : 'a';
+    },
+  });
+  private readonly tinted = computed(() => new Set([...this.changed()].map(kpiTileOf)));
+  /** The `data-tint` of a tile: the current pass when the last refresh changed one of its values, else none. */
+  protected readonly tint = computed(() => {
+    const tinted = this.tinted();
+    const pass = this.pass();
+    return (tile: KpiTile): 'a' | 'b' | null => (tinted.has(tile) ? pass : null);
+  });
 
   protected readonly targets = KPI_TARGETS;
   protected readonly takeableQuery = TAKEABLE_QUERY;
