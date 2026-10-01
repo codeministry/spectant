@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 type: feature
-status: draft
+status: approved
 updated: 2026-09-28
 ---
 

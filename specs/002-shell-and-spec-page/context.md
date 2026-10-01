@@ -36,7 +36,7 @@ Principal's words, verbatim: see `principal_stated_goal` in the master `ISA.md` 
 
 ### Q4 · Where do the golden fixtures come from?
 - Offered: own spec 001 + public leadgen specs (recommended) | own + synthetic only | private corpus local, fixtures synthetic
-- Chosen: own spec 001 frozen + frozen public leadgen specs (Apache-2.0) + synthetic harbor/lantern/empty-master. Added by the principal mid-shaping: the porzellan-shop specs as a further corpus; being a customer's, they stay a private local corpus behind an environment variable and never enter the repository
+- Chosen: own spec 001 frozen + frozen public leadgen specs (Apache-2.0) + synthetic harbor/lantern/empty-master. Added by the principal mid-shaping: a customer's specs as a further corpus; being a customer's, they stay a private local corpus behind an environment variable and never enter the repository
 - Landed in: ISC-69, ISC-70
 
 ## Round 1 — before the spec, 2026-09-28T22:07:00Z

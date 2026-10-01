@@ -76,7 +76,7 @@ copied for F0 and F1 only) and `leadgen/` (three leadgen specs of two types, the
 master, `LICENSE-leadgen.txt`). The lane rule "never a copy of a real repository" in `core/CLAUDE.md` is narrowed to
 "never a copy of a private repository": both corpora are public, and the rule's reason (private names) does not
 apply. `harbor/002-web-console/rounds.jsonl` is extended so one fixture holds every one of the eleven card states,
-a retry, a question, a stop reason and a re-cut (ISC-88, ISC-91). The porzellan-shop specs stay outside the
+a retry, a question, a stop reason and a re-cut (ISC-88, ISC-91). A customer's spec corpus stays outside the
 repository behind `SPECTANT_PRIVATE_CORPUS`, reusing the harness pattern of the existing `SPECTANT_PARITY_TREES`
 test: skipped, not passed, when unset.
 

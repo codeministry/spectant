@@ -1,7 +1,7 @@
 ---
 spec: 001-app-skeleton
 plan: plan.md
-updated: 2026-09-30T16:09:34Z
+updated: 2026-09-30T23:39:38Z
 ---
 
 # Tasks 001 — App skeleton and dashboard
@@ -43,7 +43,7 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T13 · ISC-9 · [P] · server — `--version` from the inlined build version, `check:version` (after: T11) · `server/src/cli.ts`
 - [x] T14 · ISC-10 · [P] · server — `install.sh` (OS/arch, `SPECTANT_RELEASE_URL`, `/usr/local/bin` when writable else `~/.local/bin`, PATH hint, never edits an rc file) plus the non-root Ubuntu container run against a local release dir that also runs the binary smoke; `test:install:linux` (after: T11) · `install.sh`
 - [x] T15 · ISC-12 · [P] · server — `INSTALL_DIR` override plus the "`/usr/local/bin` not writable → `~/.local/bin`" container case (after: T11) · `install.sh`
-- [ ] T16 · ISC-11 · operator — macOS arm64 install on a throwaway user account, transcript into `.evidence/` (after: T11) · `tests/install/run-macos.md`
+- [x] T16 · ISC-11 · operator — macOS arm64 install on a throwaway user account, transcript into `.evidence/` (after: T11) · `tests/install/run-macos.md`
 
 ### ② Design system and baseline
 
@@ -107,19 +107,19 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T68 · ISC-62 · [P] · web — refresh service: ETag polling, refresh on visibility, in-place diff, changed-value tint, changed-row dot, "n new" pill, one polite announcement, plus e2e `refresh.spec.ts` "in-place" (after: T59) · `web/src/app/core/refresh.service.ts`
 - [x] T69 · ISC-61.1 · [P] · web — spec preview on `/w/:ws?spec=<id>`: `spec-inspector` in the rail (wide), `ui-sheet` side (medium) and full-screen (compact), Open to `/w/:ws/s/:id`, Esc clears the query and returns focus, `[` `]`, plus e2e `keyboard.spec.ts` "enter" (after: T59, T63) · `web/src/app/features/dashboard/spec-inspector/`
 - [x] T70 · ISC-60.1 · [P] · web — palette filtering plus e2e `palette.spec.ts` "filter" (after: T59) · `web/src/app/layout/command-palette/filter.ts`
-- [ ] T71 · ISC-60.2 · [P] · web — palette Enter navigation plus e2e `palette.spec.ts` "enter" (after: T59) · `web/src/app/layout/command-palette/navigate.ts`
-- [ ] T72 · ISC-62.1 · [P] · web — e2e `refresh.spec.ts` "cls": layout shift 0 during a refresh (after: T59) · `web/e2e/refresh.spec.ts`
-- [ ] T73 · ISC-63 · [P] · web — narrow container behaviour of the dashboard at 600 px plus e2e `narrow.spec.ts` "dashboard" (after: T59) · `web/e2e/narrow.spec.ts`
-- [ ] T74 · ISC-63.1 · [P] · web — e2e `narrow.spec.ts` "column": workspace column at 600 px (after: T59) · `web/e2e/narrow.spec.ts`
-- [ ] T75 · ISC-18.1 · [P] · web — e2e `theme.spec.ts` "system": follows `emulateMedia` live (after: T59) · `web/e2e/theme.spec.ts`
-- [ ] T76 · ISC-18.3 · [P] · web — e2e `theme.spec.ts` "persist": chosen mode survives reload on another port (after: T59) · `web/e2e/theme.spec.ts`
+- [x] T71 · ISC-60.2 · [P] · web — palette Enter navigation plus e2e `palette.spec.ts` "enter" (after: T59) · `web/src/app/layout/command-palette/navigate.ts`
+- [x] T72 · ISC-62.1 · [P] · web — e2e `refresh.spec.ts` "cls": layout shift 0 during a refresh (after: T59) · `web/e2e/refresh.spec.ts`
+- [x] T73 · ISC-63 · [P] · web — narrow container behaviour of the dashboard at 600 px plus e2e `narrow.spec.ts` "dashboard" (after: T59) · `web/e2e/narrow.spec.ts`
+- [x] T74 · ISC-63.1 · [P] · web — e2e `narrow.spec.ts` "column": workspace column at 600 px (after: T59) · `web/e2e/narrow.spec.ts`
+- [x] T75 · ISC-18.1 · [P] · web — e2e `theme.spec.ts` "system": follows `emulateMedia` live (after: T59) · `web/e2e/theme.spec.ts`
+- [x] T76 · ISC-18.3 · [P] · web — e2e `theme.spec.ts` "persist": chosen mode survives reload on another port (after: T59) · `web/e2e/theme.spec.ts`
 - [x] T77 · ISC-2 · [P] · web — e2e `offline.spec.ts`: `route('**')` fails every non-loopback host across every route in both themes (after: T59) · `web/e2e/offline.spec.ts`
-- [ ] T78 · ISC-19.1 · [P] · web — e2e `smoke.spec.ts` on the webkit project: `/` and `/w/:ws`, zero console errors (after: T59) · `web/e2e/smoke.spec.ts`
+- [x] T78 · ISC-19.1 · [P] · web — e2e `smoke.spec.ts` on the webkit project: `/` and `/w/:ws`, zero console errors (after: T59) · `web/e2e/smoke.spec.ts`
 - [x] T79 · ISC-17 · [P] · web — visual baseline: dashboard, light, three widths, committed under `web/e2e/__screenshots__/` (after: T59) · `web/e2e/visual.spec.ts`
 - [x] T80 · ISC-17.1 · [P] · web — visual baseline: dashboard, dark (after: T59) · `web/e2e/visual.spec.ts`
 - [x] T81 · ISC-16.1 · [P] · web — visual baseline: overview, light, three states (after: T59) · `web/e2e/visual.spec.ts`
 - [x] T82 · ISC-16.2 · [P] · web — visual baseline: overview, dark (after: T59) · `web/e2e/visual.spec.ts`
-- [ ] T83 · ISC-19 · operator — cmux web view check with Interceptor, WebKit version recorded (after: T11, T78) · `tests/visual/cmux-check.md`
+- [x] T83 · ISC-19 · operator — cmux web view check with Interceptor, WebKit version recorded (after: T11, T78) · `tests/visual/cmux-check.md`
 
 ### ⑤ Prototype port (principal 2026-09-29: tile split, data, visualisation, colours, typefaces and edge + glow are binding)
 
@@ -132,6 +132,12 @@ Source: `.design/prototype/prototyp/public/spectant-ui/` (`styles.css`, `app.js`
 - [x] T88 · ISC-17 · web — Brief card ported from `styles.css:342-349`: violet left edge, header "TL;DR · as of <date>" with the stale chip and `/spec-tldr`, body clipped with a "More…" expander instead of the collapsed disclosure (after: T85, T86) · `web/src/app/features/dashboard/brief/`
 - [x] T89 · ISC-17 · web — Specs table ported from `styles.css:362-400` (`spec-table`, `spec-row`, `phase-strip` 365-368): head "Specs n · k archived" with phase filter chips and a sort popover (Stage / ID / Progress), phase strip, rows `40px | title + one-line description | agent dot + mini five-segment stage track + phase chip | meter + a/b` at 48–64 px, current row cyan tint with the 3 px inset edge, archived footer; keyboard behaviour of T63 unchanged (after: T86) · `web/src/app/features/dashboard/spec-table/`
 - [x] T90 · ISC-17 · web — rail ported from `styles.css` (`next-card` 356-358, `next-row` 480-481, `rail-card` 617-618, `fog-line` ~660-663, `warn-line` 1197-1198): Next up `next-card`s (cyan left edge, id chip + title, labelled five-stage track, command chip + takeable chip), Warnings lines (alert icon, spec link, text) and fog lines (cloud icon, violet) (after: T85, T86) · `web/src/app/features/dashboard/{next-up-list,warnings-panel}/`
+
+Added 2026-10-01 (Teilplan 27, the principal's cmux check: long text cut sensibly with a "more…" link):
+
+- [x] T91 · ISC-111 · [seam] · web — shared `ui-clamp`: measures its text, cuts at the last whole word that fits N lines with "…", and renders a "more…"/"less" button (keys `brief.more`/`brief.less`) outside the host's link that shows the full text in place; used first by the Specs table description; e2e `truncate.spec.ts` "table" · `web/src/app/shared/ui/clamp/`
+- [x] T92 · ISC-111.1 · [P] · web — Next-up card title through `ui-clamp` at two lines, the button outside the card link; e2e `truncate.spec.ts` "next" (after: T91) · `web/src/app/features/dashboard/next-up-list/`
+- [x] T93 · ISC-111.2 · [P] · web — palette option: the highlighted one grows to three lines of full title and description, the others stay one line ending at a whole word, no interactive element inside an option; e2e `truncate.spec.ts` "palette" · `web/src/app/layout/command-palette/`
 
 ## Probe Mapping
 
@@ -184,3 +190,6 @@ Source: `.design/prototype/prototyp/public/spectant-ui/` (`styles.css`, `app.js`
 | T81 | ISC-16.1 | `bun run test:visual -- overview` |
 | T82 | ISC-16.2 | `bun run test:visual -- overview --theme dark` |
 | T83 | ISC-19 | Interceptor / cmux screenshot (manual) |
+| T91 | ISC-111 | `bun run e2e -- truncate -g table` |
+| T92 | ISC-111.1 | `bun run e2e -- truncate -g next` |
+| T93 | ISC-111.2 | `bun run e2e -- truncate -g palette` |

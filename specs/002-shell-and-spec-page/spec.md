@@ -89,7 +89,7 @@ control and administration (decided 2026-09-29). The two meet only in files; not
 - Contrast 4.5:1 for text and 3:1 for marks in both themes, reduced motion honoured, focus visible (ISC-64 to ISC-66);
   UI chrome from the EN/DE catalogues (ISC-22).
 - Everything under `specs/` is English and public-safe; the prototype and its German docs stay under the gitignored
-  `.design/prototype/`; no customer material enters the repository. The porzellan-shop specs are read only through
+  `.design/prototype/`; no customer material enters the repository. A customer's spec corpus is read only through
   `SPECTANT_PRIVATE_CORPUS` on the principal's machine.
 - The prototype is an interface reference, not a data model.
 - Lanes as the constitution names them: core, server, web, repo; the plugin lane is not touched by this spec.
@@ -270,7 +270,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   joins as a second lock source when the plugin writes it; without any lock source the page says so and writes under
   the hash check alone (ISC-86, ISC-90). Recommended over blocking writes until F3 and over "reviewed gate only".
 - 2026-09-28: fixtures are Spectant's own spec 001 frozen, public leadgen specs (Apache-2.0) and the synthetic trees;
-  the porzellan-shop specs are a customer's and stay a private local corpus behind `SPECTANT_PRIVATE_CORPUS` (ISC-69,
+  a customer's specs stay a private local corpus behind `SPECTANT_PRIVATE_CORPUS` (ISC-69,
   ISC-70). The prototype's JavaScript fixtures are never ported.
 - 2026-09-28: Manrope, Sora and JetBrains Mono supersede Inter (ISC-74); the closed ISC-67 stays as the record of what
   001 shipped.

@@ -5,10 +5,10 @@ spec_type: feature
 isa_master: ../../ISA.md
 isa_feature: F1
 constitution: ../constitution.md
-phase: scoping
-progress: 36/47
+phase: complete
+progress: 50/50
 started: 2026-09-28T09:40:00Z
-updated: 2026-09-30T16:09:34Z
+updated: 2026-10-01T00:22:20Z
 context_sufficient: true
 interview_invoked: true
 context_log: context.md
@@ -130,6 +130,9 @@ machine and nothing written into either repository.
 | ISC-66 | browser | reduced motion: no animation or transition runs | 0 | `bun run test:browser -- motion` | derived: design-standard | |
 | ISC-67 | bun-test | two font files present as local assets | 2 faces | `bun test web/tests/fonts.test.ts -t "local"` | derived: local-only | |
 | ISC-67.1 | bun-test | external font URL in any stylesheet | 0 | `bun test web/tests/fonts.test.ts -t "external"` | derived: local-only | |
+| ISC-111 | e2e | Specs table: long description cut at a whole word after two lines, more/less toggles it in place | 2 lines, whole word, toggles | `bun run e2e -- truncate -g table` | literal | |
+| ISC-111.1 | e2e | Next-up card: long title cut the same way, more/less toggles it | 2 lines, whole word, toggles | `bun run e2e -- truncate -g next` | literal | |
+| ISC-111.2 | e2e | palette: highlighted option full text, others one line at a whole word, no control inside an option | full text, 0 controls | `bun run e2e -- truncate -g palette` | literal | |
 | ISC-5.1 | bash | lane working notes present | 4 files | `test -f CLAUDE.md -a -f core/CLAUDE.md -a -f server/CLAUDE.md -a -f web/CLAUDE.md` | derived: lanes | |
 | ISC-5.2 | bash | static tier runs lint, stylelint and tsc at zero warnings | exit 0 | `bun run check:static` | derived: ladder | |
 | ISC-8.1 | bash | compiled host binary serves the embedded app from an empty directory | 200 html · 200 js · SPA fallback | `bun run test:binary` (copies the binary to a temp dir, `--no-browser --port 0`, curls `/`, one `main-*.js`, `/w/x`) | literal | high |
@@ -145,7 +148,7 @@ Why: what would sink the project whichever slice slipped — data leaving the ma
 
 - [x] ISC-1: Anti: the app's HTTP server listens on any address other than 127.0.0.1 or ::1.
 - [x] ISC-2: Anti: with no AI feature switched on, starting the app, adding a workspace, browsing every page and performing every write makes an outbound network request.
-- [ ] ISC-3: Anti: a tracked file contains a customer name, an absolute home path or personal data (generic leak classes plus a private word list kept outside the repo).
+- [x] ISC-3: Anti: a tracked file contains a customer name, an absolute home path or personal data (generic leak classes plus a private word list kept outside the repo).
 - [x] ISC-4: The repository root holds the Apache-2.0 `LICENSE` and a `THIRD_PARTY_NOTICES.md` naming the bundled assets and the LifeOS (MIT) origin of the ISA format.
 - [x] ISC-5: Anti: the repository holds more than one implementation of frontmatter, claim or stage parsing; the app and the plugin both import `core/`.
 - [x] ISC-6: Every fixture under `core/fixtures/` parses without error to its golden JSON snapshot.
@@ -160,40 +163,43 @@ Why: the first time the author types `spectant` and sees two real repositories o
 - [x] ISC-8.1: The compiled host binary, copied to an empty directory, passes the embedded-app smoke (`/` → HTML, hashed `main-*.js` → JavaScript, `/w/x` → `index.html`). (after: ISC-8)
 - [x] ISC-9: The host binary's `--version` prints the version in `package.json`. (after: ISC-8)
 - [x] ISC-10: In a clean Ubuntu x64 container, the install script pointed at a local release directory puts `spectant` on PATH and `spectant --version` exits 0. (after: ISC-8)
-- [ ] ISC-11: For a fresh user on macOS arm64, the install one-liner puts `spectant` on PATH and `spectant --version` exits 0. (after: ISC-8)
+- [x] ISC-11: For a fresh user on macOS arm64, the install one-liner puts `spectant` on PATH and `spectant --version` exits 0. (after: ISC-8)
 - [x] ISC-12: The install script writes the binary to `INSTALL_DIR` when that variable is set. (after: ISC-10)
 - [x] ISC-13: `spectant add <repo>`, `spectant list` and `spectant remove <repo>` round-trip a workspace through the registry.
 - [x] ISC-14: For copies of the principal's real spec trees, every spec's stage on the dashboard equals the stage the old skill derives, and the probe fails when no tree was compared.
 - [x] ISC-15: Anti: adding a workspace or opening any page changes a byte inside the registered repository, `.git/` included.
-- [ ] ISC-16: One dashboard lists the specs of two registered workspaces side by side.
+- [x] ISC-16: One dashboard lists the specs of two registered workspaces side by side.
 - [x] ISC-16.1: The overview's committed visual baseline (light, three widths, states: two workspaces, empty, unreadable workspace) passes on Linux CI.
 - [x] ISC-16.2: The same baseline passes in the dark theme.
 - [x] ISC-17: The dashboard's committed visual baseline (Playwright `toHaveScreenshot`, light theme, 390/820/1440) passes on Linux CI with pinned Chromium.
 - [x] ISC-17.1: The same baseline passes in the dark theme.
 - [x] ISC-18: Antecedent: the daisyUI themes `spec-light` and `spec-dark` carry the old pages' light and dark colour values as their tokens, so the look is inherited rather than re-invented.
-- [ ] ISC-18.1: In the default system mode the theme follows `prefers-color-scheme`, also when it changes while the page is open.
-- [ ] ISC-18.3: A chosen light or dark mode, stored server-side, is still applied after a reload on a different port.
+- [x] ISC-18.1: In the default system mode the theme follows `prefers-color-scheme`, also when it changes while the page is open.
+- [x] ISC-18.3: A chosen light or dark mode, stored server-side, is still applied after a reload on a different port.
 - [x] ISC-18.2: Antecedent: every icon the app renders comes from the old pages' pinned Lucide set.
-- [ ] ISC-19: The dashboard renders and navigates inside the cmux web view.
-- [ ] ISC-19.1: Playwright's WebKit project renders `/` and `/w/:ws` with zero console errors.
+- [x] ISC-19: The dashboard renders and navigates inside the cmux web view.
+- [x] ISC-19.1: Playwright's WebKit project renders `/` and `/w/:ws` with zero console errors.
 - [x] ISC-20: `spectant` without arguments listens on 7717 or the next free port, prints the URL, and opens the browser unless `--no-browser` is given.
 - [x] ISC-21: The data directory is `$XDG_DATA_HOME/spectant` when that variable is set and `~/.spectant/` otherwise.
 - [x] ISC-22: Every UI string key exists in both the English and the German catalogue.
 - [x] ISC-60: ⌘K / Ctrl+K opens a command palette listing every workspace plus every spec.
 - [x] ISC-60.1: Typing in the palette narrows the list to matching entries. (after: ISC-60)
-- [ ] ISC-60.2: Enter in the palette navigates to the highlighted entry. (after: ISC-60)
+- [x] ISC-60.2: Enter in the palette navigates to the highlighted entry. (after: ISC-60)
 - [x] ISC-61: In a spec list, ↓/↑ (also j/k) move the selection.
 - [x] ISC-61.1: Enter opens the selected spec. (after: ISC-61)
 - [x] ISC-61.2: `?` opens the shortcut sheet.
 - [x] ISC-62: After the auto-refresh timer fires with a changed number on disk, the DOM node holding that number shows the new value with no navigation event.
-- [ ] ISC-62.1: The same refresh produces a cumulative layout shift of 0. (after: ISC-62)
-- [ ] ISC-63: At a 600 px wide container (the cmux side panel) the dashboard has no horizontal overflow: `scrollWidth` equals `clientWidth`.
-- [ ] ISC-63.1: At the same width a workspace column in the overview has no horizontal overflow.
+- [x] ISC-62.1: The same refresh produces a cumulative layout shift of 0. (after: ISC-62)
+- [x] ISC-63: At a 600 px wide container (the cmux side panel) the dashboard has no horizontal overflow: `scrollWidth` equals `clientWidth`.
+- [x] ISC-63.1: At the same width a workspace column in the overview has no horizontal overflow.
 - [x] ISC-64: Every interactive element shows the brand focus ring under keyboard focus, in both themes.
 - [x] ISC-65: Text reaches 4.5:1 and marks (ring track, bars, legend dots) 3:1 against their surface, in both themes.
 - [x] ISC-66: Anti: under `prefers-reduced-motion: reduce` any animation or transition longer than 0 ms runs.
 - [x] ISC-67: Antecedent: the app ships Inter Variable plus JetBrains Mono as local assets.
 - [x] ISC-67.1: Anti: a stylesheet declares a font URL outside the app's own origin.
+- [x] ISC-111: In the Specs table a description longer than two lines ends after two lines at a whole word with "…", and a "more…" button outside the row link shows the full text in place and then reads "less".
+- [x] ISC-111.1: A Next-up card title longer than two lines is cut the same way, with the same "more…"/"less" button outside the card link. (after: ISC-111)
+- [x] ISC-111.2: In the palette the highlighted option shows its full title and description on up to three lines while every other option stays on one line ending at a whole word, and no option contains an interactive element.
 
 ## Decisions
 
@@ -223,8 +229,38 @@ Why: the first time the author types `spectant` and sees two real repositories o
   version. See design.md.
 - 2026-09-28: this spec projects F1 and the F0 cross-cutting claims; F0 stays open across later specs where a claim
   needs their pages (ISC-2 covers "every write" once spec 002 adds writes).
+- 2026-10-01 (principal, cmux check of ISC-19): **added:** ISC-111, ISC-111.1 and ISC-111.2 — long text on the dashboard is cut sensibly with a "more…" link: "der text muss sinnvoll gekürtzt werden und mit "mehr..."-Link versehen werden". Chosen per place over one pattern everywhere: Specs table and Next-up cards get two lines cut at a whole word plus a "more…"/"less" button outside the row or card link; the palette gets no control inside an option (a nested interactive element breaks the listbox pattern), its highlighted option shows the full text instead.
+- 2026-10-01 (principal, /spec-complete 001): **waived for now:** the code-review close condition — "review bewusst überspringen, kommt später gebündelt". Spec 001 closes without a code-reviewed mark; the review of its code runs later in one bundled `/spec-code-review` pass together with the other open specs, and a finding there is fixed under a new claim or task, not by reopening 001.
 
 ## Verification
+
+- ISC-11: manual — the principal's own macOS arm64 account (macOS 27.0): `SPECTANT_RELEASE_URL=<local dist> INSTALL_DIR=$HOME/.local/bin sh < install.sh` exit 0 ("Installing spectant (darwin-arm64) … Installed spectant 0.1.0"), no sudo, no rc file touched; then in a new terminal the principal reported "$HOME/.local/bin/spectant" and "spectant 0.1.0" (home path redacted here); the fresh-HOME transcript (env -i, empty HOME) in .evidence/ shows the same with the PATH hint; the published one-liner waits for a GitHub release (ISC-54) (T16; 2026-10-01)
+
+- ISC-111.2: e2e — `bun run e2e -- truncate -g palette --workers=1` 1 pass at 800 (no a, button, input or tabindex inside any option; every cut text outside the highlighted option stays one line and ends at a word break with "…"; the option under the pointer shows label and meta whole within three lines; options carry the full label and meta as accessible name); match highlights survive the cut (`uiClamp` pieces render `<mark>`); red before: the palette template of HEAD → 1 failed (no cut element); unit 512, check:static green, palette/keyboard/truncate/dashboard/narrow/shell/offline/smoke/refresh e2e 146 pass, visual 46/48 with the two board-1440 baselines moved by a concurrent change to the board rail, not by this task (T93; 2026-10-01)
+
+- ISC-111.1: e2e — `bun run e2e -- truncate -g next --workers=1` 2 pass (1440 rail card: a long title stays within two lines, ends in "…" at a word break, its "more…" button sits outside the title link with aria-controls and opens the full title in place, "less" closes it; 600 px card form: every one-line row title is cut at a whole word or shown whole, at least one cut); red before: the Next-up entry of HEAD → 2 failed (no cut title); unit 512, check:static green, broad e2e 91 pass, dashboard visual baselines re-recorded and stable 12/12 per theme (T92; 2026-10-01)
+
+- ISC-111: e2e — `bun run e2e -- truncate -g table --workers=1` 2 pass at 390 (a cut description stays within two lines, ends in "…" at a word break of its full text, its "more…" button sits outside the row link with aria-controls, opens it in place to the full text and "less" closes it; every cut row has its button, a fitting one none); the row title is cut the same way on one line; `uiClamp` measures and trims to the last whole word (`fitWords` unit specs 4 pass); red before: the row markup of HEAD → 2 failed (no cut element); unit 512, check:static green, dashboard visual baselines re-recorded and stable 12/12 per theme (T91; 2026-10-01)
+
+- ISC-19: manual — the principal in the cmux web view (cmux 0.64.25, system WebKit 22625.1.29.11.27) on the host build at 127.0.0.1:7717, overview, workspace dashboard, spec page, palette, back/forward and reload walked: "läuft alles, ⌘K: Geht die Palette auf? ja, aber am linken Rand klebend"; the palette defect was reproduced in Chromium and WebKit (dialog left 0 at 1440), fixed in ui-dialog (explicit margin: auto against the preflight reset) and guarded by palette.spec.ts "sits centred" (red 800 px right gap, green after); on recheck: "fast, der text muss sinnvoll gekürtzt werden und mit "mehr..."-Link versehen werden" — follow-up claims ISC-111 to ISC-111.2 (T83; 2026-10-01)
+
+- ISC-3: bash — `SPECTANT_LEAK_WORDS=<private list outside the repo> bun run check:leak` exit 0, 0 hits over 667 tracked files (generic classes home-path, machine-path, email, ipv4, phone, iban, secret plus a 14-word private list of customer, product, place and person names; licence notices exempt per XC-10); red observed 2026-09-30: the first run with the list found 4 real hits — a customer project's name in spec 002's context.md, plan.md and spec.md — reworded to "a customer's spec corpus"; a person name hard-coded in core/tests/fixtures.test.ts removed the same way (the test now guards machine paths only, names are check:leak's job), then 0 (parent, Teilplan 26; 2026-09-30)
+
+- ISC-16: bun-test — `bun test tests/dashboard.test.ts -t "multi-workspace"` 6 pass (GET /api/workspaces lists harbor and lantern in registry order with path tail and model counts, each dashboard route answers its fixture's golden model, no absolute path, strong ETags with 304); red observed 2026-09-30: server/src/api.ts made to list only the first registered workspace → 1 fail ("lists both in registry order"), reverted, 6 pass (parent, Teilplan 26; 2026-09-30)
+
+- ISC-19.1: e2e — `bun run e2e -- --project webkit smoke --workers=1` 2 pass (WebKit 2359 from pinned Playwright 1.63.0: `/` shows the overview landmark, its h1 and the harbor column, `/w/harbor` the workspace landmark, h1.page-title and #specs; console errors and pageerrors collected from before goto through networkidle, nothing filtered, zero; chromium 2 pass); red before: a console.error planted in main.ts failed both routes on WebKit with "console: smoke negative control", reverted (the first drafts also went red on test bugs — awaitReady has no producer on app routes, and /w/harbor has two h1) (T78; 2026-09-30)
+
+- ISC-18.3: e2e — `bun run e2e -- theme -g persist --workers=1` 2 pass (light under a dark system and dark under a light system: the mode is chosen through the palette's theme action, the PUT /api/settings answer carries it, then the page loads from a second origin on another port — fresh localStorage partition, routed to the same settings store, as the binary restarted on another port reads the same SQLite — and html[data-theme], color-scheme and page lightness show the chosen mode while matchMedia still reports the opposite scheme; with theme system both describes 4 pass); red before: settings.service load() made to drop the stored theme (what a localStorage-only implementation does) → 2 failed, Expected "spec-light" Received "spec-dark" and vice versa, reverted (T76; 2026-09-30)
+
+- ISC-63.1: e2e — `bun run e2e -- narrow -g column --workers=1` pass (overview `/` at 600 px, compact tier, light and dark × en and de × two workspaces, unreadable, empty: column count asserted, scrollWidth == clientWidth on every workspace column and on the page host, plus a permanent negative control injecting a 720 px column head that the guard must report; the whole narrow file 44 pass); red before: no real overflow at HEAD, so the guard was proven red with `.overview` forced to minmax(720px, 1fr) — every state with columns failed on document scrollWidth vs 600 — then reverted (T74; 2026-09-30)
+
+- ISC-62.1: e2e — `bun run e2e -- refresh -g cls --workers=1` 2 pass at 1440 and 820 (page.clock; the stub's POST /api/__stub/bump raises harbor's closed claims; a PerformanceObserver on layout-shift entries without recent input sums to 0 while the claims value flips 55→56 and its tile carries data-tint; the claims tile and first spec row stay in the viewport); red before: negative control, an in-flow announcement <p> above app-spec-table while changedKpis is non-empty → Received 0.00789 at 1440 / 0.00400 at 820; merged tree: refresh + narrow 34 pass, dashboard visual baselines 12/12 light and dark in the pinned container (T72; 2026-09-30)
+
+- ISC-60.2: e2e — `bun run e2e -- palette -g enter --workers=1` 9 pass (arrows or pointer move the highlight and Enter opens that spec, a spec in another workspace, a workspace, all through the router with no reload — a window marker survives; the entry leads Recent on the next open; the 390 sheet does the same; no match → Enter does nothing; an Enter that commits an IME composition is not consumed); red before 1/9 on f73e78b (T66 already navigated; the IME Enter was consumed and followed the entry), and with `follow` made a no-op 7/9 go red; merged tree: palette/keyboard/refresh/narrow/theme/shell/offline/dashboard e2e 127 pass (T71; 2026-09-30)
+
+- ISC-18.1: e2e — `bun run e2e -- theme -g system --workers=1` 2 pass in the main tree (stub default system mode: emulateMedia before the load gives the matching html[data-theme], color-scheme and page-background lightness, dark then light; switching emulateMedia light→dark→light on the open page flips all three with no reload); red before: the live path already worked at HEAD (T58), so the guard was proven by two reverted breaks in theme.service.ts — a frozen matchMedia signal failed the live case, system mode forced light failed both (T75; 2026-09-30)
+
+- ISC-63: e2e — `bun run e2e -- narrow -g dashboard --workers=1` 17 pass in the main tree (/w/harbor at 600 px, compact tier, light and dark × en and de × default, takeable sorted by next, phase filter, sort sheet open: scrollWidth == clientWidth on document, body, .shell-body, main and app-dashboard-page, no unclipped element past the viewport; plus a permanent negative control injecting a 720 px KPI band that the guard must report); red before: HEAD had no real overflow at 600 px, so the guard was proven red with the dashboard grid set to max-content (16 failed, scrollWidth 1162/1276 vs 600), reverted (T73; 2026-09-30)
 
 - ISC-2: e2e — closed in the master by spec 002 (T104, 2026-09-29), projected here by /spec-sync and re-run on 1a246fd: `bun run e2e -- offline --workers=1` 2 passed (light and dark; every route incl. `/` and `/w/harbor`, the chrome, the palette and every write stay on loopback) plus `bun run test:offline:server` 15 checks passed in docker --network none, 0 DNS queries, 0 outbound errors; T77 closes with it, the suite it names is 002's `web/e2e/offline.spec.ts` (2026-09-30)
 
