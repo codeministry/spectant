@@ -6,9 +6,9 @@ isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
 phase: scoping
-progress: 48/49
+progress: 49/49
 started: 2026-09-28T22:08:00Z
-updated: 2026-09-30T10:48:28Z
+updated: 2026-10-09T07:36:12Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
@@ -144,7 +144,7 @@ A developer works a spec end to end in Spectant, from dashboard to live board an
 | ISC-74 | bun-test | Manrope, Sora and JetBrains Mono present as local assets; no external font URL | 3 faces, 0 URLs | `bun test web/tests/fonts.test.ts` | derived: local-only | |
 | ISC-75 | e2e | zen hides tools and rail, keeps navigation; rail state survives reload | both | `bun run e2e -- shell -g zen` | derived: prototype-shell | |
 | ISC-76 | e2e | area menu and tab bar follow the deep link `/w/:ws/s/:id/<tab>` | area + tab selected | `bun run e2e -- spec -g "deep link"` | derived: prototype-shell | |
-| ISC-77 | bash | spec 001's e2e suites pass on the new shell | green | `bun run e2e -- dashboard overview palette keyboard` | derived: no-regression | high |
+| ISC-77 | e2e | spec 001's e2e suites pass on the new shell | green | `bun run e2e -- smoke.spec refresh.spec narrow.spec theme.spec palette.spec keyboard.spec truncate.spec`; `bun run test:visual:ci -- dashboard overview --theme light --grep-invert notes`, `bun run test:visual:ci -- dashboard overview --theme dark --grep-invert notes` | derived: no-regression | high |
 | ISC-78 | e2e | spec dashboard: key numbers, idea quote, next command with reason, lane bars, area tiles | all rendered from fixture | `bun run e2e -- spec -g dashboard` | derived: prototype-views | |
 | ISC-79 | bun-test | stage and next command per fixture spec equal the table in FORMAT.md | all rows | `bun test core/tests/stage.test.ts` | derived: status-contract | high |
 | ISC-80 | bun-test | timeline merges decisions, rounds, gate marks and commits in time order | ordered, one entry per source event | `bun test core/tests/timeline.test.ts -t "sources"` | derived: status-contract | |
@@ -190,7 +190,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - [x] ISC-74: The app ships Manrope, Sora and JetBrains Mono as local assets and declares no font URL outside its own origin; this supersedes the Inter face of ISC-67.
 - [x] ISC-75: Zen mode hides the header tools and the context rail and keeps the sticky navigation; the collapsed state of the rail survives a reload.
 - [x] ISC-76: The area menu offers Dashboard · Status · Live · Data · Docs · Notes for an open spec, the tab bar shows only the current area's tabs, and a deep link `/w/:ws/s/:id/<tab>` selects area and tab. ⟨?: Live and Notes render as disabled entries with "comes with this spec's later tasks" while their tabs are unbuilt, rather than hidden — assuming a stable menu beats a growing one⟩
-- [ ] ISC-77: Spec 001's dashboard, overview, inspector and palette render inside the new shell and 001's e2e suites stay green. (after: ISC-73)
+- [x] ISC-77: Spec 001's dashboard, overview, inspector and palette render inside the new shell and 001's e2e suites stay green. (after: ISC-73)
 - [x] ISC-97: `g` sequences reach every area and tab, `[` `]` step between specs, `v` toggles Lanes and Flow, `z` toggles zen, `◂ ▸` step frames, and every binding is listed in the shortcut sheet.
 - [x] ISC-98: Spec 001's tasks.md carries no shell task after the re-cut (T59 and T60 moved to this spec) and 001's reviewed mark is fresh again.
 - [x] ISC-99: A claim is takeable only while the spec's reviewed mark is fresh; before that every open claim shows as `open` on the dashboard row, the Claims tab and the takeable set, and no task of it is dispatched.
@@ -284,6 +284,7 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
   in the area menu as disabled entries with a visible reason while their tabs are unbuilt (ISC-76); the frozen spec
   001 fixture is pinned to a named commit and refreshed only on `/spec-complete 001` (ISC-69). 001 keeps building the
   parser, API and web infrastructure this spec extends; only its shell tasks are struck (ISC-98).
+- 2026-10-09 (code review of the ISC-77 close): **refined:** ISC-77's probe runs spec 001's seven e2e suites by file name, `bun run e2e -- smoke.spec refresh.spec narrow.spec theme.spec palette.spec keyboard.spec truncate.spec`, plus its dashboard and overview baselines in the pinned container, `bun run test:visual:ci -- dashboard overview --theme light --grep-invert notes`, `bun run test:visual:ci -- dashboard overview --theme dark --grep-invert notes`. The old filters `dashboard overview` matched no e2e file name, so the row ran only `keyboard.spec.ts` and `palette.spec.ts`; bare words also matched suites of specs 002 and 003, hence the `.spec` suffix and the `notes` exclusion.
 
 ## Verification
 
@@ -382,3 +383,5 @@ Why: the developer works a spec end to end in Spectant, from its dashboard throu
 - ISC-68: bun-test — bun test core/tests/golden.test.ts → 16 pass: two new golden families for all five trees (<tree>.specs.golden.json = listSpecs/resolve listing, <tree>.timeline.golden.json = buildTimeline per spec folder with commits pinned to []), byte-equal via the shared helper core/tests/helpers/golden.ts that fixtures.test.ts now uses too; inventory tree↔golden both ways, two-space + trailing newline, no path-shaped strings, non-vacuity by in-memory mutation; core lane 480 pass; spec 002 round 4
 
 - ISC-69: bun-test — core/tests/fixtures.test.ts -t corpus → 4 pass (spectant-001 frozen at ab49485; leadgen 012 feature, archive/013 refactor, 022 feature with LICENSE-leadgen.txt; harbor/lantern/empty-master; leak grep empty), red before T4/T5 landed; probe row names core/fixtures.test.ts, path corrected at the next review; spec 002 round 2
+
+- ISC-77: e2e — bun run e2e -- smoke.spec refresh.spec narrow.spec theme.spec palette.spec keyboard.spec truncate.spec → exit 0, 80 pass, spec 001's seven suites only (2026-10-09); red-before by mutation: dashboard and overview routed outside the shell → exit 1, 62 failed, routes restored byte-identical; T43: test:visual:ci -- dashboard overview --grep-invert notes → 12 pass light, 12 pass dark, all in visual.spec.ts (dashboard baselines from 9b5c32b, overview from 17b9c14, both after the shell landed in 925bb0a)

@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 plan: plan.md
-updated: 2026-09-30T10:48:28Z
+updated: 2026-10-09T07:36:12Z
 ---
 
 # Tasks 002 — Shell and spec page
@@ -69,11 +69,11 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 - [x] T36 · ISC-73 · web — header: wordmark with living ring, workspace picker, spec picker (name, id at compact), area-menu trigger, palette trigger (field from a 1280 px header container), live indicator, zen, settings with help; the collapse order; two rows at compact · Mobile, one row above · Tablet, Desktop (after: T35) · `web/src/app/layout/header/`
 - [x] T37 · ISC-76 · web — area menu as native popover with `aria-current`, Live and Notes as disabled entries with their reason while unbuilt; tab bar showing only the current area's tabs with counts; deep link selects area and tab (after: T35) · `web/src/app/layout/area-menu/`
 - [x] T38 · ISC-75 · web — zen: tools and rail hidden, navigation sticky, footer status bar; rail collapse toggle at wide with its state through `/api/settings` (after: T35) · `web/src/app/layout/zen/`
-- [ ] T39 · ISC-77 · web — spec 001's dashboard, overview, inspector and palette rendered inside the shell; their routes unchanged (after: T35, T36) · `web/src/app/features/dashboard/`
+- [x] T39 · ISC-77 · web — spec 001's dashboard, overview, inspector and palette rendered inside the shell; their routes unchanged (after: T35, T36) · `web/src/app/features/dashboard/`
 - [x] T40 · ISC-73 · web — e2e shell: exactly one header with the seven controls at 390 and 1440 (after: T36) · `web/e2e/shell.spec.ts`
 - [x] T41 · ISC-75 · web — e2e zen and rail persistence (after: T38) · `web/e2e/shell-zen.spec.ts`
 - [x] T42 · ISC-76 · web — e2e deep link selects area and tab (after: T37) · `web/e2e/spec-deeplink.spec.ts`
-- [ ] T43 · ISC-77 · web — 001's e2e suites run on the new shell; 001's dashboard and overview baselines re-recorded once (after: T39) · `web/e2e/__screenshots__/`
+- [x] T43 · ISC-77 · web — 001's e2e suites run on the new shell; 001's dashboard and overview baselines re-recorded once (after: T39) · `web/e2e/__screenshots__/`
 
 ### ③ Read-only areas
 
@@ -173,7 +173,8 @@ constitution's `## Lanes`. `[seam]` = the contract between two lanes; nothing ac
 | T32, T33, T34 | ISC-74 | `bun test web/tests/fonts.test.ts` |
 | T38, T41 | ISC-75 | `bun run e2e -- shell -g zen` |
 | T37, T42 | ISC-76 | `bun run e2e -- spec -g "deep link"` |
-| T39, T43 | ISC-77 | `bun run e2e -- dashboard overview palette keyboard` |
+| T39 | ISC-77 | `bun run e2e -- smoke.spec refresh.spec narrow.spec theme.spec palette.spec keyboard.spec truncate.spec` |
+| T43 | ISC-77 | `bun run test:visual:ci -- dashboard overview --theme light --grep-invert notes`, `bun run test:visual:ci -- dashboard overview --theme dark --grep-invert notes` |
 | T12, T44, T52, T53, T62 | ISC-78 | `bun run e2e -- spec -g dashboard` |
 | T11, T29, T54 | ISC-79 | `bun test core/tests/stage.test.ts` |
 | T14, T26, T46, T55 | ISC-80 | `bun test core/tests/timeline.test.ts -t "sources"` |

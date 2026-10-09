@@ -1,8 +1,8 @@
 ---
 spec: 002-shell-and-spec-page
 created: 2026-09-28T22:08:00Z
-updated: 2026-09-29T10:00:00Z
-rounds: 3
+updated: 2026-10-09T07:36:12Z
+rounds: 4
 ---
 
 <!-- CONTEXT LOG — a record, not an authority. Nothing here gates anything and nothing
@@ -351,3 +351,4 @@ built, so ISC-77 waits on spec 001, not on this spec's frontier. Docker Desktop 
 Gate fix (2026-09-29, found by 001 round 20): `bun test web/tests` was red on `no-glow` (ISC-74) since the matrix landing (337d9c0): the Matrix tab's edge scroll-shadow used `radial-gradient()`; now a `linear-gradient(to left, …)` of the same 14 px, guard 125/0, stylelint clean, `board -g "matrix scroll"` 1 pass.
 Visual claims closed (2026-09-30): **ISC-23, ISC-23.1, ISC-49, ISC-49.1, ISC-96, ISC-96.1** on the pinned container (48/48 per theme); the spec-page, notes-390 and board-390 baselines re-recorded after spec 003's breadcrumb row; T107/T108's `visual-board.spec.ts` rewritten. Stale round-16 locks released. 48/49: only ISC-77 (T39/T43) remains — 001's dashboard, overview and palette now render inside the shell; the inspector (001-T69) is the missing piece.
 Handover 2026-09-30: this session's 001 work stops after round 23; see 001 context.md § Handover. 002 stands at 48/49 (ISC-77 open), uncommitted closes since 17b9c14 listed there.
+ISC-77 closed (2026-10-09): second look off (default); run by the parent without a worktree, since spec 001 had already built the views. T39 needed no code: dashboard, overview, inspector (001-T69) and palette render inside the shell, routes unchanged. The code review found the old probe row `bun run e2e -- dashboard overview palette keyboard` ran only `keyboard.spec.ts` and `palette.spec.ts`, because no e2e file name matches `dashboard` or `overview`, and that bare words also pick up suites of specs 002 and 003; the row now names spec 001's seven suites as `<name>.spec` (80 pass). Red-before was observed by mutation: with dashboard and overview routed outside the shell the probe failed (62 failed), and the routes were restored byte-identical. T43: `bun run e2e` skips the visual suite, so 001's baselines ran in the pinned container with `--grep-invert notes` to leave out spec 002's notes baselines: 12 pass per theme, all in `visual.spec.ts`; the dashboard baselines date from 9b5c32b, the overview ones from 17b9c14, both after the shell landed. Accepted at review: the WebKit smoke run stays with 001's ISC-19.1, `.gitignore` names the one notes file on purpose, and `phase:` is set by /spec-complete.
