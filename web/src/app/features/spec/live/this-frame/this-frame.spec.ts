@@ -1,12 +1,13 @@
 import { TestBed } from '@angular/core/testing';
-import { TranslocoTestingModule } from '@jsverse/transloco';
+import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
+import { firstValueFrom } from 'rxjs';
 import frames from '../../../../../../../core/fixtures/harbor.frames.golden.json';
 import live from '../../../../../../../core/fixtures/harbor.live.golden.json';
 import type { Frame, LiveFrame } from '../../../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
 import { frameEvents } from '../board/board-model';
 import { AgentChip } from './agent-chip';
-import { NeedsYou } from './needs-you';
+import { ALERT_PLACEHOLDERS, alertParts, NeedsYou } from './needs-you';
 import { ThisFrame } from './this-frame';
 
 const LIVE = live['specs/002-web-console'] as unknown as LiveFrame;
@@ -71,6 +72,43 @@ describe('NeedsYou', () => {
     expect(cards).toEqual(LIVE.needsYou.map((c) => c.task));
     const stale = LIVE.agents.filter((a) => a.stale);
     expect(root.querySelectorAll('[data-stale-agent]').length).toBe(stale.length);
-    for (const agent of stale) expect(root.querySelector('[data-stale-agent]')?.textContent).toContain(agent.session);
+    for (const agent of stale) {
+      const ids = [...root.querySelectorAll(`[data-stale-agent][data-session="${agent.session}"] p [data-alert-id]`)].map((el) => el.textContent);
+      expect(ids).toEqual([agent.session, ...agent.claims]);
+    }
+  });
+});
+
+describe('alertParts', () => {
+  /** The catalogue's sentence translated by transloco with the component's placeholders, as `alerts` hands it on. */
+  async function sentence(lang: 'en' | 'de'): Promise<string> {
+    const transloco = TestBed.inject(TranslocoService);
+    await firstValueFrom(transloco.selectTranslation(lang));
+    return transloco.translate('board.agent.staleAlert', ALERT_PLACEHOLDERS, lang);
+  }
+  const parts = async (lang: 'en' | 'de'): Promise<ReturnType<typeof alertParts>> =>
+    alertParts(await sentence(lang), 'spec-002-ISC-74', ['ISC-74', 'ISC-75', 'ISC-76'], new Intl.ListFormat(lang, { type: 'conjunction' }));
+  const join = (all: ReturnType<typeof alertParts>): string => all.map((p) => p.text + p.tail).join('');
+
+  it('puts the session and every claim back as id parts, joined by the app language list', async () => {
+    const en = await parts('en');
+    expect(en.filter((p) => p.kind === 'id').map((p) => p.text)).toEqual(['spec-002-ISC-74', 'ISC-74', 'ISC-75', 'ISC-76']);
+    expect(join(en)).toBe('No release from spec-002-ISC-74 on ISC-74, ISC-75, and ISC-76: the agent may have stopped.');
+    const de = await parts('de');
+    expect(join(de)).toBe('Keine Freigabe von spec-002-ISC-74 für ISC-74, ISC-75 und ISC-76: Der Agent ist womöglich beendet.');
+  });
+
+  it('keeps the punctuation after an id on the id, so no line starts with it', async () => {
+    const ids = (await parts('en')).filter((p) => p.kind === 'id');
+    expect(ids.map((p) => p.tail)).toEqual(['', ',', ',', ':']);
+  });
+
+  it('glues punctuation only, never a word that follows an id', () => {
+    const glued = alertParts(`${ALERT_PLACEHOLDERS.session}-Sitzung für ${ALERT_PLACEHOLDERS.claims}.`, 'spec-1', ['ISC-1'], new Intl.ListFormat('de', { type: 'conjunction' }));
+    expect(glued.filter((p) => p.kind === 'id').map((p) => [p.text, p.tail])).toEqual([
+      ['spec-1', '-'],
+      ['ISC-1', '.'],
+    ]);
+    expect(glued.map((p) => p.text + p.tail).join('')).toBe('spec-1-Sitzung für ISC-1.');
   });
 });
