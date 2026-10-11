@@ -5,10 +5,10 @@ spec_type: bug
 isa_master: ../../ISA.md
 isa_feature: F7
 constitution: ../constitution.md
-phase: scoping
+phase: complete
 progress: 2/2
 started: 2026-10-11T08:00:00Z
-updated: 2026-10-11T08:31:49Z
+updated: 2026-10-11T09:19:12Z
 context_sufficient: true
 interview_invoked: false
 context_log: context.md
