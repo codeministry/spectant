@@ -1,7 +1,7 @@
 ---
 spec: 002-shell-and-spec-page
 type: feature
-status: draft
+status: approved
 updated: 2026-09-29
 ---
 
