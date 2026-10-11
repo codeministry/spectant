@@ -20,7 +20,7 @@ administration. The skill targets Claude Code first and is meant to work with ot
 | `server/` | the CLI and the loopback HTTP server that embeds the web build into the binary |
 | `web/` | the Angular app (the dashboard UI) |
 | `plugin/` | the Claude Code plugin with the Spec skill — part of the product, built by its own spec; not present yet |
-| `specs/` | the spec-driven work: `constitution.md` and one folder per spec, `specs/NNN-slug/` |
+| `specs/` | the spec-driven work: `constitution.md`, the ideas backlog and one folder per spec, `specs/NNN-slug/` — **untracked** (`.gitignore`), it stays on the developer's machine like the master |
 | `scripts/` | build, embed and repository checks |
 | `tests/` | cross-lane tests: server, CLI, binary, install, read-only and offline checks |
 
@@ -31,8 +31,9 @@ administration. The skill targets Claude Code first and is meant to work with ot
 - **Never commit or push from an agent.** A human reviews every change and makes every commit.
 - **The master `ISA.md` is untracked and never hand-edited.** It holds private material; specs derive from it and are
   reconciled through the Spec workflow, never by editing it directly.
-- **Everything under `specs/` is English and public-safe.** This repository is public; no person, customer, machine,
-  private repository or absolute home path appears in any tracked file.
+- **Nothing individual in a tracked file.** This repository is public; no person, customer, machine, private
+  repository or absolute home path appears in any tracked file (`bun run check:leak`). `specs/` and `ISA.md` are
+  untracked planning material in the developer's own language; nothing from them is quoted into a tracked file.
 - **Loopback only; nothing leaves the machine.** The server binds 127.0.0.1 or ::1, and no code path calls an
   external host.
 - **Files in registered repositories are read-only for the app, `.git/` included**, with exactly two exceptions the

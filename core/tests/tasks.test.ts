@@ -109,11 +109,15 @@ describe('spectant-001, the frozen fixture', () => {
 
 describe("spectant's live spec 001: struck bullets", () => {
   const path = join(REPO, 'specs', '001-app-skeleton', 'tasks.md');
-  const text = existsSync(path) ? readFileSync(path, 'utf8') : '';
+  const constitutionPath = join(REPO, 'specs', 'constitution.md');
+  // `specs/` is untracked planning material (since 2026-10-11): present on the developer's machine, absent in CI.
+  const live = existsSync(path) && existsSync(constitutionPath);
+  const text = live ? readFileSync(path, 'utf8') : '';
 
-  // The spec is live and grows by rounds, so the box total is counted from the file itself rather than pinned.
-  test('every checkbox line is a task, 2 struck bullets outside the count; done equals archive.ts', () => {
-    const model = parseTaskLines({ tasks: text, constitution: readFileSync(join(REPO, 'specs', 'constitution.md'), 'utf8') });
+  // The spec is live and grows by rounds, so the box total is counted from the file itself rather than pinned;
+  // its prose is in the developer's language, so only the grammar (ids, lane, claim, the struck note's date) is asserted.
+  test.skipIf(!live)('every checkbox line is a task, 2 struck bullets outside the count; done equals archive.ts', () => {
+    const model = parseTaskLines({ tasks: text, constitution: readFileSync(constitutionPath, 'utf8') });
     const struck = model.tasks.filter((t) => t.state === 'struck');
     const boxLines = text.split('\n').filter((line) => /^- \[[ xX]\] T\d+ /u.test(line)).length;
     expect(boxLines).toBeGreaterThan(80);
@@ -123,15 +127,12 @@ describe("spectant's live spec 001: struck bullets", () => {
     expect(model.counts.boxes).toEqual(archiveBoxes(text));
     expect(model.tasks.filter((t) => t.state === 'done')).toHaveLength(archiveBoxes(text).landed);
     expect(ids(struck)).toEqual(['T32', 'T60']);
-    expect(struck[0]).toMatchObject({
-      claim: 'ISC-6',
-      lane: 'core',
-      status: 'struck',
-      text: '`FORMAT.md`: the file contract as far as the dashboard reads it',
-      paths: [],
-    });
-    expect(struck[0]?.note).toStartWith('struck 2026-09-29: `FORMAT.md` is owned by spec 002');
-    expect(struck[1]?.note).toStartWith('struck 2026-09-29: the header is spec 002');
+    expect(struck[0]).toMatchObject({ claim: 'ISC-6', lane: 'core', status: 'struck', paths: [] });
+    expect(struck[0]?.text).toContain('`FORMAT.md`');
+    expect(struck[0]?.note).toMatch(/^\S+ 2026-09-29: /u);
+    expect(struck[0]?.note).toContain('002');
+    expect(struck[1]?.note).toMatch(/^\S+ 2026-09-29: /u);
+    expect(struck[1]?.note).toContain('002');
     // Struck tasks count nowhere in the box fraction, but the Tasks tab shows and counts them as rows.
     expect(model.counts.byStatus.find((c) => c.name === 'struck')).toEqual({ name: 'struck', count: 2 });
   });

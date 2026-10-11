@@ -75,7 +75,8 @@ bun run dev      # server from source on 127.0.0.1:7718, app with live reload on
 bun run verify
 ```
 
-Contributor and agent working notes live in `CLAUDE.md`; the rules specs are held to live in `specs/constitution.md`.
+Contributor and agent working notes live in `CLAUDE.md`. The repository's own specs are planning material and stay
+untracked; the format they follow is `FORMAT.md`.
 
 ## License
 

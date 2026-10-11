@@ -371,8 +371,10 @@ describe("this repository (integration)", () => {
     }
   })();
 
-  test.skipIf(!hasGit)("spec 001's folder has its round commits", async () => {
-    const result = await commitsFor(self, "specs/001-app-skeleton");
+  // `specs/` is untracked planning material (since 2026-10-11), so the repository's own commits are read for a
+  // tracked path the implement rounds touched: core/src carries round commits of specs 001 to 003.
+  test.skipIf(!hasGit)("this repository's core/src has its round commits", async () => {
+    const result = await commitsFor(self, "core/src");
     // A failed read carries its reason; surface it, because on CI the checkout may be shallow, foreign-owned or without git.
     if (result.source !== "git") throw new Error(`commitsFor on this repository answered none: ${result.diagnostic ?? "(no diagnostic)"}`);
     expect(result.head).toMatch(/^[0-9a-f]{40,64}$/);

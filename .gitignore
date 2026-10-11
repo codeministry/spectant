@@ -49,3 +49,9 @@ web/e2e/.results/
 
 # archify diagrams, generated locally with repository evidence; never part of the tree.
 .archify/
+
+# Outline export in German for the principal (public repo keeps specs/ English)
+specs/ideas/outline.md
+
+# planning is private: specs/ (constitution, ideas, every spec) stays on this machine and out of the public tree (principal, 2026-10-11)
+/specs/
