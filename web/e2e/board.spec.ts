@@ -8,7 +8,8 @@
  * - `bun run e2e -- board -g waiting` (ISC-89): waiting cards sit in their reason's group and the rendered cards equal
  *   the frame's cards, at 390 and 1440.
  * - The scrubber steps `?frame` and the frame chip follows; under the `frontier` lock fixture the locked task is in flight
- *   with its session (ISC-90); no horizontal overflow and no lane scrolling on its own at 390 and 600 (ISC-93).
+ *   with its session (ISC-90); no horizontal overflow and no lane scrolling on its own at 390, 600 and 1440, at 1440
+ *   also under the `frontier` locks; below wide the open rail sheet fits under them too (ISC-93).
  * - `bun run e2e -- board -g flow` (T82, ISC-87): the Flow view's four columns hold every card of the frame once, the
  *   band headers name the lanes in constitution order with n/m, scrubbing moves a card between columns, and at 390 the
  *   segmented control shows the four counts and switches the group.
@@ -19,6 +20,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { CardState, Frame, LiveFrame } from '../../core/src/files.ts';
+import type { Locator, Page } from '@playwright/test';
 import { atWidth, expect, test } from './fixtures';
 
 const SPEC = 'specs/002-web-console';
@@ -35,6 +37,10 @@ const EN = JSON.parse(readFileSync(fileURLToPath(new URL('../src/i18n/en.json', 
 };
 
 const BOARD = '/w/harbor/s/002/board';
+/** The stub's per-test session header: settings and writes are scoped to it. */
+const SESSION_HEADER = 'X-Spectant-Stub-Session';
+/** The stub's lock fixture with sessions, agents and a stale agent (`web/e2e/stub-api.ts` `lockFixtures`). */
+const FRONTIER_LOCKS = { 'X-Spectant-Stub-Locks': 'frontier' } as const;
 /** Every card of the board: the lanes, and at wide the operator steps in the shell rail's "Your steps" (T88). */
 const CARDS = ':is(app-board-tab, app-rail-slot) article[data-card]';
 const statesOf = (cards: ReadonlyArray<{ state: CardState }>): string[] => [...new Set(cards.map((c) => c.state))].sort();
@@ -121,7 +127,7 @@ for (const width of [390, 1440] as const) {
 }
 
 test.describe('locks', () => {
-  test.use({ ...atWidth(1440), extraHTTPHeaders: { 'X-Spectant-Stub-Locks': 'frontier' } });
+  test.use({ ...atWidth(1440), extraHTTPHeaders: FRONTIER_LOCKS });
 
   test('a task under a frontier lock shows in flight with the session name', async ({ page }) => {
     await page.goto(BOARD);
@@ -139,9 +145,18 @@ test.describe('locks', () => {
   });
 });
 
-for (const width of [390, 600] as const) {
-  test.describe(`overflow at ${String(width)}`, () => {
-    test.use(atWidth(width));
+// 1440 is the wide layout, where the rail is its own column; before ed718b7 its rows pushed the page past 1440 px. At
+// 1440 the frontier locks add the agents row to This frame and the stale-agent alert to Needs you; below wide both sit
+// in the closed sheet, which `rail sheet at …` opens.
+const OVERFLOW = [
+  [390, 'none'],
+  [600, 'none'],
+  [1440, 'none'],
+  [1440, 'frontier'],
+] as const;
+for (const [width, locks] of OVERFLOW) {
+  test.describe(`overflow at ${String(width)}${locks === 'frontier' ? ' with frontier locks' : ''}`, () => {
+    test.use({ ...atWidth(width), ...(locks === 'frontier' ? { extraHTTPHeaders: FRONTIER_LOCKS } : {}) });
 
     test(`no horizontal overflow and no lane scrolling on its own at ${String(width)}`, async ({ page }) => {
       await page.goto(BOARD);
@@ -420,7 +435,7 @@ test.describe('rail', () => {
  * model set it, the lock source name in This frame and the stale-agent alert in Needs you.
  */
 test.describe('agents', () => {
-  test.use({ ...atWidth(1440), extraHTTPHeaders: { 'X-Spectant-Stub-Locks': 'frontier' }, clockAt: LIVE.ts });
+  test.use({ ...atWidth(1440), extraHTTPHeaders: FRONTIER_LOCKS, clockAt: LIVE.ts });
 
   const ago = (since: string): string => {
     const minutes = Math.floor((Date.parse(LIVE.ts) - Date.parse(since)) / 60_000);
@@ -450,5 +465,164 @@ test.describe('agents', () => {
     for (const agent of frame.agents.filter((a) => a.stale)) {
       await expect(page.locator(`aside.shell-rail app-needs-you [data-stale-agent][data-session="${agent.session}"]`)).toBeVisible();
     }
+  });
+
+  test('agents: the stale alert keeps the session and each claim id on one line', async ({ page }) => {
+    const answer = page.waitForResponse((res) => /\/live(\?|$)/.test(res.url()));
+    await page.goto(BOARD);
+    const frame = (await (await answer).json()) as LiveFrame;
+    const stale = frame.agents.filter((a) => a.stale);
+    expect(stale.length).toBeGreaterThan(0);
+    for (const agent of stale) {
+      const ids = page.locator(`aside.shell-rail app-needs-you [data-stale-agent][data-session="${agent.session}"] [data-alert-id]`);
+      await expect(ids).toHaveText([agent.session, ...agent.claims]);
+      await expectIdsWhole(ids);
+    }
+  });
+});
+
+/**
+ * The rail's rows wrap their text instead of cutting it, so the claim id at the end of a row stays readable, and the state
+ * chip sits on the first text line. Under the frontier locks, so This frame carries its agents row and Needs you its alert.
+ */
+test.describe('rail text', () => {
+  test.use({ ...atWidth(1440), extraHTTPHeaders: FRONTIER_LOCKS });
+  const ROWS = 'aside.shell-rail :is(app-this-frame [data-frame-event], app-needs-you [data-needs-card])';
+
+  test('rail text: This frame and Needs you show each row text in full, wrapped rather than cut', async ({ page }) => {
+    await page.goto(BOARD);
+    await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
+    const texts = page.locator(`${ROWS} .text`);
+    expect(await texts.count()).toBeGreaterThan(0);
+    for (const clip of await texts.evaluateAll((els) => els.map((el) => el.scrollWidth - el.clientWidth))) expect(clip).toBeLessThanOrEqual(0);
+  });
+
+  test('rail text: the state chip centres on the first text line', async ({ page }) => {
+    await page.goto(BOARD);
+    await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
+    const rows = await chipOffsets(page.locator(ROWS));
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(row.offset, row.task).toBeLessThanOrEqual(0.5);
+  });
+});
+
+/** How far each rail row's state chip sits from the centre of its text's first line, and the row's height. */
+async function chipOffsets(rows: Locator): Promise<Array<{ task: string; offset: number; height: number }>> {
+  return rows.evaluateAll((els) =>
+    els.map((el) => {
+      const task = el.querySelector('.mono')?.textContent.trim() ?? el.textContent.trim().slice(0, 12);
+      const chip = el.querySelector('ui-state-chip ui-chip');
+      const text = el.querySelector('.text');
+      if (chip === null || text === null) return { task: `${task}: no chip or no text`, offset: Number.POSITIVE_INFINITY, height: 0 };
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      const line = range.getClientRects()[0];
+      const box = chip.getBoundingClientRect();
+      if (line === undefined) return { task: `${task}: empty text`, offset: Number.POSITIVE_INFINITY, height: 0 };
+      return { task, offset: Math.abs(box.top + box.height / 2 - (line.top + line.height / 2)), height: el.getBoundingClientRect().height };
+    }),
+  );
+}
+
+/** Each id of the stale alert renders on one line: its box is no taller than one line of its own line height. */
+async function expectIdsWhole(ids: Locator): Promise<void> {
+  const boxes = await ids.evaluateAll((els) =>
+    els.map((el) => ({ id: el.textContent, height: el.getBoundingClientRect().height, line: parseFloat(getComputedStyle(el).lineHeight) })),
+  );
+  expect(boxes.length).toBeGreaterThan(0);
+  for (const box of boxes) {
+    expect(Number.isFinite(box.line), `${box.id}: line height`).toBe(true);
+    expect(box.height, box.id).toBeLessThanOrEqual(box.line + 0.5);
+  }
+}
+
+/**
+ * The page and the open sheet's scrolling body scroll on neither axis sideways, and every row text is shown in full with
+ * room to read. The sheet's `.body` is its scroll container (`ui-sheet`), so it is measured, not the dialog.
+ */
+async function expectSheetFits(page: Page, rows: Locator): Promise<void> {
+  const widths = await page.evaluate(() => {
+    const root = document.scrollingElement ?? document.documentElement;
+    const body = document.querySelector('ui-sheet dialog[open] .body');
+    return { page: root.scrollWidth - root.clientWidth, body: body === null ? null : body.scrollWidth - body.clientWidth };
+  });
+  expect(widths.page).toBeLessThanOrEqual(0);
+  expect(widths.body, 'the open sheet has a scrolling body').not.toBeNull();
+  expect(widths.body ?? 0).toBeLessThanOrEqual(0);
+  const texts = await rows.locator('.text').evaluateAll((els) => els.map((el) => ({ clip: el.scrollWidth - el.clientWidth, width: el.clientWidth })));
+  expect(texts.length).toBeGreaterThan(0);
+  for (const text of texts) {
+    expect(text.clip).toBeLessThanOrEqual(0);
+    expect(text.width).toBeGreaterThanOrEqual(80);
+  }
+}
+
+/** Opens the bottom bar's sheet and returns it with its two segments: This frame first, Needs you second. */
+async function openRailSheet(page: Page): Promise<{ sheet: Locator; needsYou: Locator }> {
+  await page.goto(BOARD);
+  await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
+  await page.locator('[data-bottom-bar] [data-bar-open]').click();
+  const sheet = page.locator('ui-sheet dialog[open]');
+  await expect(sheet.locator('app-this-frame [data-frame-event]').first()).toBeVisible();
+  return { sheet, needsYou: sheet.locator('ui-segmented [aria-checked]').nth(1) };
+}
+
+/**
+ * Below wide the rail lives in the bottom bar's sheet. Under the frontier locks This frame carries its agents row and
+ * Needs you its stale alert, so both lists, the alert's whole ids and the chips on the first line are checked there, in
+ * English and in German, the long case (state words and the alert sentence).
+ */
+for (const lang of ['en', 'de'] as const) {
+  for (const width of [390, 600] as const) {
+    test.describe(`rail sheet at ${String(width)} in ${lang}`, () => {
+      test.use(atWidth(width));
+
+      // One stub session per test, so the language set here never leaks into a case running in another worker.
+      let session = '';
+      test.beforeEach(async ({ page, request }, info) => {
+        session = `rail-sheet-${lang}-${String(width)}-${info.testId}`;
+        await page.context().setExtraHTTPHeaders({ ...FRONTIER_LOCKS, [SESSION_HEADER]: session });
+        const saved = await request.put('/api/settings', { data: { language: lang }, headers: { [SESSION_HEADER]: session } });
+        expect(saved.ok()).toBe(true);
+      });
+      test.afterEach(async ({ request }) => {
+        await request.post('/api/__stub/reset', { headers: { [SESSION_HEADER]: session } });
+      });
+
+      test(`rail sheet: both lists fit the open sheet at ${String(width)} in ${lang}, texts in full and ids whole`, async ({ page }) => {
+        const { sheet, needsYou } = await openRailSheet(page);
+        const frameRows = sheet.locator('app-this-frame [data-frame-event]');
+        await expectSheetFits(page, frameRows);
+        for (const row of await chipOffsets(frameRows)) expect(row.offset, row.task).toBeLessThanOrEqual(0.5);
+
+        await needsYou.click();
+        await expect(sheet.locator('app-needs-you [data-stale-agent]').first()).toBeVisible();
+        const needsRows = sheet.locator('app-needs-you [data-needs-card]');
+        await expectSheetFits(page, needsRows);
+        for (const row of await chipOffsets(needsRows)) expect(row.offset, row.task).toBeLessThanOrEqual(0.5);
+        await expectIdsWhole(sheet.locator('app-needs-you [data-alert-id]'));
+      });
+    });
+  }
+}
+
+/** On a coarse pointer every rail row, in This frame and in Needs you, keeps its 44 px target and centres its chip. */
+test.describe('rail sheet on a coarse pointer', () => {
+  test.use({ ...atWidth(820), hasTouch: true, isMobile: true, extraHTTPHeaders: FRONTIER_LOCKS });
+
+  test('rail sheet: on a coarse pointer each row is at least 44 px and its chip centres on the first line', async ({ page }) => {
+    const { sheet, needsYou } = await openRailSheet(page);
+    const check = async (rows: Locator): Promise<void> => {
+      const measured = await chipOffsets(rows);
+      expect(measured.length).toBeGreaterThan(0);
+      for (const row of measured) {
+        expect(row.offset, row.task).toBeLessThanOrEqual(0.5);
+        expect(row.height, row.task).toBeGreaterThanOrEqual(44);
+      }
+    };
+    await check(sheet.locator('app-this-frame [data-frame-event]'));
+    await needsYou.click();
+    await expect(sheet.locator('app-needs-you [data-needs-card]').first()).toBeVisible();
+    await check(sheet.locator('app-needs-you [data-needs-card]'));
   });
 });
