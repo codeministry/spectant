@@ -5,7 +5,7 @@
 //
 // Mermaid is not rendered here. Each fence becomes `<figure data-figure="n"><pre class="mermaid">…</pre>`, its source
 // escaped, and the web app draws it client-side with the pinned mermaid package.
-import type { DocAvailability, DocName, DocsPage, SpecType } from './files.ts';
+import type { DESIGN_ASSETS, DocAvailability, DocName, DocsPage, SpecType } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { renderMarkdown } from './markdown.ts';
 import { TYPE_NEEDS } from './stage.ts';
@@ -17,7 +17,9 @@ export interface DocsOptions {
    * Whether a relative image path (as written, relative to the document's folder) exists. The caller answers from a
    * directory listing; the file is never read. Absent: existence is unknown and no figure is flagged missing.
    */
-  readonly assetExists?: (src: string) => boolean;
+  readonly assetExists?: (src: string, asset: string | null) => boolean;
+  /** The folder whose images load through the spec's evidence file route (`markdown.ts`): the Design tab's `.design`. */
+  readonly specAssets?: ReadonlyArray<typeof DESIGN_ASSETS>;
 }
 
 const ENTITIES: Readonly<Record<string, string>> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" };
@@ -39,6 +41,7 @@ export function renderDocsMarkdown(markdown: string, options?: DocsOptions): Doc
     document: true,
     ...(options?.idPrefix === undefined ? {} : { idPrefix: options.idPrefix }),
     ...(options?.assetExists === undefined ? {} : { assetExists: options.assetExists }),
+    ...(options?.specAssets === undefined ? {} : { specAssets: options.specAssets }),
   });
   return {
     frontmatter: fm.present ? { ...fm.values } : null,

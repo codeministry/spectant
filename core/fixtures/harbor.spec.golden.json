@@ -399,7 +399,7 @@
       },
       "docs": {
         "plan": true,
-        "design": false,
+        "design": true,
         "constitution": true,
         "decisions": 1
       },

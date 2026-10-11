@@ -154,6 +154,12 @@ export const DOC_FILES: Readonly<Record<DocName, TextFileKind>> = {
   constitution: 'constitution',
 };
 
+/**
+ * The design pass's own folder beside design.md (screenshots, prototypes). Never parsed; the Design tab loads its images
+ * through the evidence file route, which serves this folder besides `artifacts/` and `.evidence/` (spec 004).
+ */
+export const DESIGN_ASSETS = '.design';
+
 // ─── Inputs shared by the model functions ────────────────────────────────────────────────────────────────────────
 
 /**
@@ -956,6 +962,12 @@ export interface ImageFigure {
   readonly missing?: true;
   /** The source is not a relative path: never loaded, only linked. */
   readonly remote?: true;
+  /**
+   * The source lies in one of the caller's `specAssets` folders: its path relative to the spec folder
+   * (`.design/mobile-ist.png`). The `<img>` carries it as `data-spec-asset` and no `src`; the web app points it at the
+   * spec's evidence file route, so nothing is requested from the page's base.
+   */
+  readonly asset?: string;
 }
 
 export type DocsFigure = MermaidFigure | ImageFigure;

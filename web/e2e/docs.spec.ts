@@ -49,6 +49,34 @@ test.describe('docs', () => {
       await expect(empty.locator('ui-command-chip')).toContainText('/spec-design 002');
     });
 
+    test('design image: a design-pass screenshot loads through the evidence file route (ISC-112)', async ({ page }) => {
+      const requested: URL[] = [];
+      page.on('request', (request) => requested.push(new URL(request.url())));
+      await page.goto('/w/harbor/s/004/design');
+      await page.locator('app-docs-tab').first().waitFor(); // the shell sets no data-ready on spec routes yet
+      const images = page.locator('app-docs-tab[data-doc="design"] figure.image-figure img');
+      await expect(images).toHaveCount(1);
+      await expect.poll(() => images.evaluateAll((all) => all.map((img) => (img as HTMLImageElement).naturalWidth))).toEqual([4]);
+      const evidence = requested.filter((url) => url.pathname.endsWith('/specs/004/evidence/file'));
+      expect(evidence.map((url) => url.searchParams.get('path'))).toEqual(['.design/mobile-ist.png']);
+      expect(requested.filter((url) => url.pathname.startsWith('/.design/'))).toEqual([]);
+    });
+
+    test('design image: a screenshot that fails to load becomes the missing figure with its own note, never a broken image', async ({ page }) => {
+      // The file went away between the docs render and the image load.
+      await page.route('**/specs/004/evidence/file?*', (route) =>
+        route.fulfill({ status: 404, contentType: 'application/json; charset=utf-8', body: '{"error":"not-found"}' }),
+      );
+      await page.goto('/w/harbor/s/004/design');
+      await page.locator('app-docs-tab').first().waitFor(); // the shell sets no data-ready on spec routes yet
+      const figure = page.locator('app-docs-tab[data-doc="design"] figure.image-figure').first();
+      await expect(figure).toHaveAttribute('data-missing', '');
+      await expect(figure).toHaveAttribute('data-unavailable', '');
+      await expect(figure.locator('img')).toHaveCount(0);
+      await expect(figure.locator('.figure-missing code')).toHaveText('.design/mobile-ist.png');
+      await expect(figure.locator('.figure-missing-note')).toHaveText('Image could not be shown');
+    });
+
     test('a refactor shows the type-aware empty state', async ({ page }) => {
       await page.goto('/w/harbor/s/003/design');
       await page.locator('app-docs-tab').first().waitFor(); // the shell sets no data-ready on spec routes yet

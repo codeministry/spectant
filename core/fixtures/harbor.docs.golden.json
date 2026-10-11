@@ -318,7 +318,65 @@
         ],
         "wordCount": 98
       },
-      "design": null,
+      "design": {
+        "frontmatter": {
+          "spec": "004-retention-policies",
+          "type": "feature",
+          "status": "approved",
+          "updated": "2026-03-04"
+        },
+        "html": "<h1 id=\"design-004-retention-policies\">Design 004 — Retention policies</h1>\n<h2 id=\"phone\">Phone</h2>\n<h3 id=\"current\">Current</h3>\n<figure class=\"image-figure\" data-figure=\"1\"><img data-spec-asset=\".design/mobile-ist.png\" alt=\"The registry list at 390 before the preview exists\" loading=\"lazy\"><figcaption>The registry list at 390 before the preview exists</figcaption></figure>\n<h3 id=\"target\">Target</h3>\n<p>The preview opens as a sheet over the list; the delete action stays disabled until the preview is confirmed.</p>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Phone",
+            "anchor": "phone"
+          },
+          {
+            "level": 3,
+            "text": "Current",
+            "anchor": "current"
+          },
+          {
+            "level": 3,
+            "text": "Target",
+            "anchor": "target"
+          }
+        ],
+        "figures": [
+          {
+            "index": 1,
+            "kind": "image",
+            "src": ".design/mobile-ist.png",
+            "alt": "The registry list at 390 before the preview exists",
+            "caption": "The registry list at 390 before the preview exists",
+            "asset": ".design/mobile-ist.png"
+          }
+        ],
+        "sections": [
+          {
+            "id": "design-004-retention-policies",
+            "heading": "Design 004 — Retention policies",
+            "level": 1
+          },
+          {
+            "id": "phone",
+            "heading": "Phone",
+            "level": 2
+          },
+          {
+            "id": "current",
+            "heading": "Current",
+            "level": 3
+          },
+          {
+            "id": "target",
+            "heading": "Target",
+            "level": 3
+          }
+        ],
+        "wordCount": 26
+      },
       "decisions": {
         "frontmatter": {
           "spec": "004-retention-policies",

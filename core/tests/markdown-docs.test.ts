@@ -103,6 +103,27 @@ describe('constructs, one each, exact HTML', () => {
     ]);
   });
 
+  test('a spec asset (spec 004): an image under the named folder renders without src, its path in data-spec-asset', () => {
+    const md = '![Phone](./.design/mobile-ist.png)\n\n![](shots/ok.png)\n\n![up](.design/../plan.png)\n\n![](.design)\n\n![](x/../.design/a.png)';
+    const asked: Array<[string, string | null]> = [];
+    const page = renderDocsMarkdown(md, { specAssets: ['.design'], assetExists: (src, asset) => (asked.push([src, asset]), true) });
+    expect(page.html).toContain('<img data-spec-asset=".design/mobile-ist.png" alt="Phone" loading="lazy">');
+    // Normalised first, as the browser resolves it: `.design/../plan.png` is plan.png, `x/../.design/a.png` is in the folder.
+    expect(page.figures.map((figure) => (figure.kind === 'image' ? (figure.asset ?? null) : null))).toEqual(['.design/mobile-ist.png', null, null, null, '.design/a.png']);
+    // The folder alone is refused by the route, so it renders missing and is never asked about.
+    expect(page.figures.map((figure) => (figure.kind === 'image' ? (figure.missing ?? false) : null))).toEqual([false, false, false, true, false]);
+    expect(asked).toEqual([['./.design/mobile-ist.png', '.design/mobile-ist.png'], ['shots/ok.png', null], ['.design/../plan.png', null], ['x/../.design/a.png', '.design/a.png']]);
+    expect(page.html).not.toContain('src="./.design');
+    expect(page.html).not.toContain('src="x/../.design');
+    // Decoded once, as the route decodes: a name with a space is written `%20`; a second layer or bad escape is missing.
+    // `%2e%2e` climbs as the browser climbs it, so `a/%2e%2e/.design/b.png` is `.design/b.png`.
+    const encoded = renderDocsMarkdown('![](.design/Screenshot%202026.png)\n\n![](.design/%252e%252e/x.png)\n\n![](.design/%E0%A4%A.png)\n\n![](a/%2e%2e/.design/b.png)', { specAssets: ['.design'] });
+    expect(encoded.figures.map((figure) => (figure.kind === 'image' ? (figure.asset ?? figure.missing ?? null) : null))).toEqual(['.design/Screenshot 2026.png', true, true, '.design/b.png']);
+    expect(encoded.html).toContain('data-spec-asset=".design/Screenshot 2026.png"');
+    // Without the option (every tab but Design), nothing changes.
+    expect(renderDocsMarkdown(md).html).not.toContain('data-spec-asset');
+  });
+
   test('an image off the machine is never loaded: a figure with a link, flagged remote', () => {
     const page = renderDocsMarkdown('![chart](https://example.org/c.png)');
     expect(page.html).toBe(

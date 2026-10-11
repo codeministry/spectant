@@ -544,6 +544,7 @@
     "updated": "Updated {{date}}",
     "tableRegion": "Table {{index}}, scrolls sideways",
     "imageMissing": "Image not in this checkout",
+    "imageUnavailable": "Image could not be shown",
     "diagramMissing": {
       "title": "This plan has no diagram.",
       "body": "A mermaid figure of the approach shows its shape at a glance."

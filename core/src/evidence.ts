@@ -1,10 +1,16 @@
 // The evidence listing (T24, ISC-83): `artifacts/` and `.evidence/` of one spec folder, grouped by claim, each file
-// with its media type; and the path confinement every served evidence file goes through.
+// with its media type; and the path confinement every served evidence file goes through, which also admits the design
+// pass's `.design/` so the Design tab can show its screenshots (spec 004, ISC-112). `.design/` is served, never listed,
+// and each side keeps to itself: a link in `artifacts/` or `.evidence/` may not lead into `.design/`, nor the reverse.
+// `docsRenderOptions` gives the Docs routes their image options from the same confinement.
 //
-// Reads only, with async node:fs/promises (no Bun API, so the plugin can reuse it): readdir, lstat, stat, realpath,
-// readlink and one read of spec.md. Nothing is opened for writing, nothing is followed out of the two folders.
+// Reads only, no Bun API, so the plugin can reuse it. The listing and the resolver use async node:fs/promises (readdir,
+// lstat, stat, realpath, readlink and one read of spec.md); `docsRenderOptions` answers existence synchronously
+// (existsSync, statSync, realpathSync), because the markdown renderer asks inline. Nothing is opened for writing,
+// nothing is followed out of what a request's first folder may reach.
+import { existsSync, realpathSync, statSync } from 'node:fs';
 import { lstat, readFile, readdir, readlink, realpath, stat } from 'node:fs/promises';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 import { parseClaims } from './claims.ts';
 import type { Diagnostic } from './diagnostics.ts';
@@ -16,13 +22,19 @@ import type {
   EvidencePathResult,
   EvidenceRefusal,
 } from './files.ts';
-import { FILE_KINDS, specFilePath } from './files.ts';
+import type { DocName } from './files.ts';
+import { DESIGN_ASSETS, FILE_KINDS, specFilePath } from './files.ts';
+import type { DocsOptions } from './markdown-docs.ts';
 
 /** The two folders by their name on disk (`artifacts`, `.evidence`), from files.ts. */
 const FOLDERS: ReadonlyArray<readonly [EvidenceGroup, string]> = (['artifacts', 'evidence'] as const).map(
   (group) => [group, FILE_KINDS[group].path.replace(/\/$/, '')] as const,
 );
 const FOLDER_NAMES = new Set(FOLDERS.map(([, name]) => name));
+/** What may be served: the two listed folders and `.design/` (spec 004). */
+const SERVED_NAMES = new Set([...FOLDER_NAMES, DESIGN_ASSETS]);
+/** Where a request may end up, by its first segment: `.design/` stays in itself, the listed two stay among themselves. */
+const REACH = (first: string): ReadonlySet<string> => (first === DESIGN_ASSETS ? new Set([DESIGN_ASSETS]) : FOLDER_NAMES);
 
 /** Media types by lower-case extension; everything else is `application/octet-stream`. */
 const MEDIA_TYPES: ReadonlyMap<string, string> = new Map([
@@ -33,6 +45,10 @@ const MEDIA_TYPES: ReadonlyMap<string, string> = new Map([
   ['jpg', 'image/jpeg'],
   ['jpeg', 'image/jpeg'],
   ['webp', 'image/webp'],
+  ['gif', 'image/gif'],
+  ['avif', 'image/avif'],
+  // Served with nosniff and `default-src 'none'; sandbox`, so an SVG opened on its own runs no script (spec 004).
+  ['svg', 'image/svg+xml'],
   ['log', 'text/plain'],
   ['txt', 'text/plain'],
   ['html', 'text/html'],
@@ -50,7 +66,7 @@ export function mediaTypeOf(name: string): string {
  * The request as segments, or null when it is refused before the file system is asked: percent-encoding is decoded
  * exactly once (a malformed or second layer is refused), then a NUL or other control character, a backslash, an
  * absolute path, a drive letter or a `..` segment is refused. `.` and empty segments drop out. The first segment must
- * be `artifacts` or `.evidence`, with at least one segment below it.
+ * be `artifacts`, `.evidence` or `.design`, with at least one segment below it.
  */
 function normalise(requested: string): string[] | null {
   if (typeof requested !== 'string' || requested === '' || requested.length > 4096) return null;
@@ -66,15 +82,15 @@ function normalise(requested: string): string[] | null {
   if (decoded.startsWith('/') || /^[A-Za-z]:/.test(decoded)) return null;
   const segments = decoded.split('/').filter((s) => s !== '' && s !== '.');
   if (segments.includes('..')) return null;
-  if (segments.length < 2 || !FOLDER_NAMES.has(segments[0] ?? '')) return null;
+  if (segments.length < 2 || !SERVED_NAMES.has(segments[0] ?? '')) return null;
   return segments;
 }
 
-/** `real` lies inside `<realSpec>/artifacts/` or `<realSpec>/.evidence/`, below the folder itself. */
-function confined(realSpec: string, real: string): boolean {
+/** `real` lies below one of the folders `first` may reach (`REACH`) inside `realSpec`, not on the folder itself. */
+function confined(realSpec: string, real: string, first: string): boolean {
   if (!real.startsWith(realSpec + sep)) return false;
   const parts = relative(realSpec, real).split(sep);
-  return parts.length >= 2 && FOLDER_NAMES.has(parts[0] ?? '');
+  return parts.length >= 2 && REACH(first).has(parts[0] ?? '');
 }
 
 const code = (error: unknown): string | undefined => (error as NodeJS.ErrnoException | null)?.code;
@@ -82,7 +98,8 @@ const code = (error: unknown): string | undefined => (error as NodeJS.ErrnoExcep
 /**
  * Resolve a requested evidence path against the spec folder `specDir`. The request is the raw value as the client sent
  * it (decoded here, once); the answer is the real path to open, or why nothing may be served. A lexically clean
- * request whose real path leaves `artifacts/` or `.evidence/` went through a symlink: `symlink-escape`. A dangling
+ * request whose real path leaves what its first folder may reach (`artifacts/` and `.evidence/` together, `.design/` on
+ * its own) went through a symlink: `symlink-escape`. A dangling
  * symlink is `symlink-escape` when its target would lie outside, else `not-found`.
  */
 export async function resolveEvidencePath(specDir: string, requested: string): Promise<EvidencePathResult> {
@@ -105,18 +122,64 @@ export async function resolveEvidencePath(specDir: string, requested: string): P
       const link = await lstat(candidate);
       if (!link.isSymbolicLink()) return refuse('not-found');
       const target = resolve(dirname(candidate), await readlink(candidate));
-      return refuse(confined(realSpec, target) ? 'not-found' : 'symlink-escape');
+      return refuse(confined(realSpec, target, segments[0] ?? '') ? 'not-found' : 'symlink-escape');
     } catch {
       return refuse('not-found');
     }
   }
-  if (!confined(realSpec, real)) return refuse('symlink-escape');
+  if (!confined(realSpec, real, segments[0] ?? '')) return refuse('symlink-escape');
   try {
     if (!(await stat(real)).isFile()) return refuse('not-a-file');
   } catch {
     return refuse('not-found');
   }
   return { ok: true, absolute: real, path: segments.join('/') };
+}
+
+/**
+ * The image options a Docs page of `docPath` renders with, the server's and the golden helper's alike (spec 004).
+ * Existence only, never a read: an image outside the workspace `root` reads as missing. The Design tab also loads
+ * `.design/` images through the evidence file route (`specAssets`); one whose real path leaves the spec's own
+ * `.design/` (a symlink out) reads as missing too, since the route would refuse it.
+ */
+export function docsRenderOptions(root: string, docPath: string, name: DocName): DocsOptions {
+  const dir = resolve(docPath, '..');
+  const design = name === 'design';
+  // `..x` is a name inside the workspace; only `..` itself, `../…` or another root leaves it.
+  const inside = (target: string): boolean => {
+    const rel = relative(root, target);
+    return rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+  };
+  let realSpec: string | null | undefined;
+  const specReal = (): string | null => {
+    if (realSpec === undefined) {
+      try {
+        realSpec = realpathSync(dir);
+      } catch {
+        realSpec = null;
+      }
+    }
+    return realSpec;
+  };
+  return {
+    // `asset` is the renderer's `specAsset` answer for `src`: one rule, computed once.
+    assetExists: (src, asset) => {
+      if (asset === null) {
+        const target = resolve(dir, src);
+        return inside(target) && existsSync(target);
+      }
+      // As the route will judge it: a file whose real path stays in the spec's own `.design/`.
+      const spec = specReal();
+      if (spec === null) return false;
+      try {
+        const real = realpathSync(join(dir, asset));
+        return confined(spec, real, DESIGN_ASSETS) && statSync(real).isFile();
+      } catch {
+        return false;
+      }
+    },
+    ...(design ? { specAssets: [DESIGN_ASSETS] } : {}),
+  };
 }
 
 // ─── Listing ─────────────────────────────────────────────────────────────────────────────────────────────────────

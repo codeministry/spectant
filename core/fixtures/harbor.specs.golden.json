@@ -49,6 +49,7 @@
         "plan",
         "tasks",
         "context",
+        "design",
         "gateReviewed",
         "gateCodeReviewed"
       ],
