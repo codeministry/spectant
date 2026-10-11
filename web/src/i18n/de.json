@@ -544,6 +544,7 @@
     "updated": "Aktualisiert {{date}}",
     "tableRegion": "Tabelle {{index}}, seitlich scrollbar",
     "imageMissing": "Bild ist in diesem Checkout nicht vorhanden",
+    "imageUnavailable": "Bild konnte nicht angezeigt werden",
     "diagramMissing": {
       "title": "Dieser Plan enthält kein Diagramm.",
       "body": "Eine Mermaid-Abbildung des Ansatzes zeigt seine Struktur auf einen Blick."

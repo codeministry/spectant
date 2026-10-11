@@ -25,7 +25,7 @@ route: builders, `matchSpecPath`, 200 types (core types only), error bodies, wri
 server, the e2e stub and the web import it; nobody re-types a route. Error codes are kebab-case, `{error: "not-found"}`,
 as every existing route answers (plan 002's `not_found` is superseded). `tests/spec-routes.contract.test.ts` pins it.
 `server/src/spec-routes.ts` serves every GET from the files (one `core/` call per route, ETag/304, the two hash headers,
-404 without fallback); `evidence.ts` serves evidence files, 403 outside `artifacts/` and `.evidence/`. `writes.contract.ts` (T67) types the two
+404 without fallback); `evidence.ts` serves evidence files, 403 outside `artifacts/`, `.evidence/` and `.design/` (the Design tab's images, spec 004). `writes.contract.ts` (T67) types the two
 POST writes; `writes.ts` (T68) performs them under `gate-route.ts` (T69) and `checkbox-route.ts` (T70), wired into `spec-routes.ts`; `tests/writes.test.ts` holds their probes. Commits come from `git.ts` with the process's one
 `CommitCache` (`commitCache` option); the timeline's ETag folds in `HEAD` when the workspace is a repository of its own.
 

@@ -14,7 +14,7 @@
 // mode, or inside running text, is not rendered (its alt text stands in), no copy button and no bilingual callout
 // title (the web app owns every visible label), and the private-use character U+E000 that brackets a code-span
 // placeholder is dropped from the input, so text can never forge one.
-import type { DocsFigure, RenderedMarkdown, TocEntry } from './files.ts';
+import type { DESIGN_ASSETS, DocsFigure, RenderedMarkdown, TocEntry } from './files.ts';
 
 export interface MarkdownOptions {
   /** Prefix for heading anchors, so several documents on one page never collide. */
@@ -22,10 +22,17 @@ export interface MarkdownOptions {
   /** Document mode, for the Docs tabs: mermaid fences and standalone images become numbered figures. */
   readonly document?: boolean;
   /**
-   * Document mode: whether the relative image path `src` (as written, relative to the document's folder) exists.
-   * Asked once per image and never used to read the file. Absent: existence is unknown and no figure is flagged.
+   * Document mode: whether the relative image path `src` (as written, relative to the document's folder) exists;
+   * `asset` is its spec-asset path (`specAsset`) when it has one, else null. Asked once per image and never used to
+   * read the file. Absent: existence is unknown and no figure is flagged.
    */
-  readonly assetExists?: (src: string) => boolean;
+  readonly assetExists?: (src: string, asset: string | null) => boolean;
+  /**
+   * Document mode: spec-folder subfolders (`.design`) whose images the web app loads through the spec's evidence file
+   * route. Such an image renders without `src`, its path in `data-spec-asset`, so the page never resolves it against
+   * its own base. Absent: every relative image keeps its `src` as written.
+   */
+  readonly specAssets?: ReadonlyArray<typeof DESIGN_ASSETS>;
 }
 
 const ESCAPES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -179,7 +186,8 @@ interface Context {
   readonly ids: Map<string, number>;
   readonly toc: TocEntry[];
   readonly document: boolean;
-  readonly assetExists: ((src: string) => boolean) | undefined;
+  readonly assetExists: ((src: string, asset: string | null) => boolean) | undefined;
+  readonly specAssets: readonly string[];
   readonly figures: DocsFigure[];
   /** The plain text of the last heading seen, the fallback caption of a mermaid figure. */
   heading: string | null;
@@ -223,12 +231,61 @@ function imageFigure(alt: string, src: string, ctx: Context): string | null {
     ctx.figures.push({ index, kind: 'image', src, alt, caption, remote: true });
     return `<figure class="image-figure remote" data-figure="${index}" data-remote><a href="${esc(src)}" target="_blank" rel="noopener">${esc(src)}</a>${cap}</figure>`;
   }
-  if (ctx.assetExists?.(src) === false) {
+  const asset = specAsset(src, ctx.specAssets);
+  // Under a spec-asset folder but never servable (the folder alone, a second encoding layer): missing, so the page
+  // asks for nothing.
+  if (asset === false || ctx.assetExists?.(src, asset) === false) {
     ctx.figures.push({ index, kind: 'image', src, alt, caption, missing: true });
     return `<figure class="image-figure missing" data-figure="${index}" data-missing><div class="figure-missing" role="img" aria-label="${esc(caption)}"><code>${esc(src)}</code></div>${cap}</figure>`;
   }
+  if (asset !== null) {
+    ctx.figures.push({ index, kind: 'image', src, alt, caption, asset });
+    return `<figure class="image-figure" data-figure="${index}"><img data-spec-asset="${esc(asset)}" alt="${esc(alt)}" loading="lazy">${cap}</figure>`;
+  }
   ctx.figures.push({ index, kind: 'image', src, alt, caption });
   return `<figure class="image-figure" data-figure="${index}"><img src="${esc(src)}" alt="${esc(alt)}" loading="lazy">${cap}</figure>`;
+}
+
+/**
+ * A relative path's segments after lexical normalisation, as a browser resolves it: `.` dropped, `..` taking the
+ * segment before it; null when a `..` climbs above the start. With `browser`, `%2e` counts as a dot, as the URL
+ * parser counts it.
+ */
+function lexical(path: string, browser: boolean): string[] | null {
+  const out: string[] = [];
+  for (const raw of path.split('/')) {
+    const s = browser ? raw.replace(/%2e/gi, '.') : raw;
+    if (s === '' || s === '.') continue;
+    if (s !== '..') out.push(raw);
+    else if (out.pop() === undefined) return null;
+  }
+  return out;
+}
+
+/**
+ * The one rule for "this image is a spec asset" (the renderer asks it and hands the answer to `assetExists`): the path
+ * normalised lexically first, so `x/../.design/a.png` is `.design/a.png` and `.design/../plan.png` is no spec asset;
+ * its first segment one of the `folders`, as the browser would resolve the src or as the route would decode it → the
+ * path relative to the spec folder, decoded once like the route's query (`Screenshot%202026.png` is
+ * `Screenshot 2026.png`); any other path → null. false for a path in a folder that the route refuses: undecodable, a
+ * second encoding layer, a control character or backslash, or the folder alone. The server confines again before a byte.
+ */
+export function specAsset(src: string, folders: readonly string[]): string | false | null {
+  let decoded: string | null;
+  try {
+    decoded = decodeURIComponent(src);
+  } catch {
+    decoded = null;
+  }
+  const asResolved = lexical(src, true);
+  const asDecoded = decoded === null ? null : lexical(decoded, false);
+  const inFolder = (segments: string[] | null): segments is string[] => segments !== null && folders.includes(segments[0] ?? '');
+  if (!inFolder(asResolved) && !inFolder(asDecoded)) return null;
+  // eslint-disable-next-line no-control-regex -- control characters are exactly what the route refuses
+  if (decoded === null || !inFolder(asDecoded) || asDecoded.length < 2 || /%[0-9A-Fa-f]{2}|[\u0000-\u001f\u007f\\]/.test(decoded)) {
+    return false;
+  }
+  return asDecoded.join('/');
 }
 
 /** A paragraph's lines: soft breaks join with a space; two trailing spaces or a trailing backslash break the line. */
@@ -382,6 +439,7 @@ export function renderMarkdown(markdown: string, options?: MarkdownOptions): Ren
     toc: [],
     document: options?.document ?? false,
     assetExists: options?.assetExists,
+    specAssets: options?.document ? (options.specAssets ?? []) : [],
     figures: [],
     heading: null,
   };

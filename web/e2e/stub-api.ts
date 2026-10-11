@@ -23,7 +23,8 @@
  *   does (`NNN`, folder or bare slug, archived folders too). 404 `NotFound` for an unknown workspace, spec or task, 404
  *   `DocMissing` (availability from core's `docsFor`) for a doc the spec lacks, 409 for the unreadable workspace, 405
  *   with `allowFor(route)`. The evidence listing and files come from the fixture tree's real `artifacts/` and
- *   `.evidence/` through core's `listEvidence` and `resolveEvidencePath` (403 for what confinement refuses). The two
+ *   `.evidence/` (files also from `.design/`, the Design tab's images) through core's `listEvidence` and
+ *   `resolveEvidencePath` (403 for what confinement refuses). The two
  *   hash headers carry deterministic fake sha256 hex values the client sends back with a write.
  * - Every JSON answer carries `Content-Type: application/json; charset=utf-8`, `Cache-Control: no-cache` and the strong
  *   ETag `"<sha256 base64url of the body>"` (`JSON_ANSWER`); a matching `If-None-Match` on a 200 is a 304. 405

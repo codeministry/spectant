@@ -1,7 +1,7 @@
 // The evidence file route (T47, ISC-83; plan 002 § Interfaces "HTTP"): `GET …/evidence/file?path=` serves a file of the
-// spec folder's `artifacts/` or `.evidence/` with `evidenceFileHeaders(mediaTypeOf(name))`, and nothing else. Anti:
-// a path outside the spec folder, or outside those two folders inside it, is a 403 with no file byte and no path in
-// the answer; a path that names no file is a 404.
+// spec folder's `artifacts/`, `.evidence/` or `.design/` (spec 004, ISC-112) with `evidenceFileHeaders(mediaTypeOf(name))`,
+// and nothing else. Anti: a path outside the spec folder, or outside those three folders inside it, is a 403 with no
+// file byte and no path in the answer; a path that names no file is a 404 (ISC-83, ISC-113).
 //
 // The workspace is a temp copy of the harbor fixture with planted files: an HTML report, a symlink out of the spec
 // folder to a secret file beside the workspace, a symlink to the spec's own plan.md, a nested directory. The copy is
@@ -11,6 +11,8 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { cpSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { docsRenderOptions } from "../core/src/evidence.ts";
+import { specAsset } from "../core/src/markdown.ts";
 import { evidenceFileResponse } from "../server/src/evidence.ts";
 import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
@@ -60,6 +62,21 @@ beforeAll(() => {
   symlinkSync(join(root, "secret.log"), join(specDir, ".evidence", "escape.log"));
   symlinkSync("../plan.md", join(specDir, "artifacts", "plan-link.md"));
   symlinkSync("T12-dashboard-model.md", join(specDir, "artifacts", "inner-link.md"));
+  // `.design/` (spec 004): an own screenshot, a symlink out to the secret, one to the spec's own plan.md, and one to
+  // another spec's `.design/` screenshot (harbor 004 carries one).
+  mkdirSync(join(specDir, ".design"));
+  cpSync(join(workspace, "specs", "004-retention-policies", ".design", "mobile-ist.png"), join(specDir, ".design", "shot.png"));
+  symlinkSync(join(root, "secret.log"), join(specDir, ".design", "escape.png"));
+  symlinkSync("../plan.md", join(specDir, ".design", "plan.png"));
+  symlinkSync("../../004-retention-policies/.design/mobile-ist.png", join(specDir, ".design", "other.png"));
+  // Links across the two sides: `.design/` and the listed folders never reach into each other.
+  symlinkSync("../.design/shot.png", join(specDir, "artifacts", "to-design.png"));
+  symlinkSync("../artifacts/T12-dashboard-model.md", join(specDir, ".design", "to-artifacts.md"));
+  mkdirSync(join(specDir, ".design", "screens"));
+  writeFileSync(join(specDir, ".design", "Screen shot.png"), "png");
+  mkdirSync(join(workspace, "..shared"));
+  writeFileSync(join(workspace, "..shared", "d.png"), "png");
+  writeFileSync(join(specDir, ".design", "wire.svg"), '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
   registry = openRegistry(mkdtempSync(join(root, "data-")));
   registry.add(workspace);
   api = specRoutesApi({ registry, lifeos: LIFEOS_ABSENT });
@@ -124,6 +141,62 @@ describe("traversal", () => {
     const head = await fetchRaw("../spec.md", { method: "HEAD" });
     expect(head.status).toBe(403);
     expect(await head.text()).toBe("");
+    expect(treeHash(workspace)).toBe(before);
+    expect(readFileSync(join(root, "secret.log"), "utf8")).toBe(SECRET);
+  });
+
+  test("traversal: `.design/` serves the spec's own screenshot and nothing beyond its own folder (ISC-113)", async () => {
+    const before = treeHash(workspace);
+    const refused = [
+      "plan.md",
+      ".design%2F..%2Fplan.md",
+      ".design/../../004-retention-policies/.design/mobile-ist.png",
+      "..%2F004-retention-policies%2F.design%2Fmobile-ist.png",
+      ".design%252F..%252Fplan.md",
+      ".design/%252e%252e/spec.md",
+      encodeURIComponent(join(specDir, ".design", "shot.png")),
+      encodeURIComponent(join(workspace, "specs", "004-retention-policies", ".design", "mobile-ist.png")),
+      ".design%2Fescape.png",
+      ".design%2Fplan.png",
+      ".design%2Fother.png",
+      ".design%2Fto-artifacts.md",
+      "artifacts%2Fto-design.png",
+      ".design",
+      ".design%2F",
+    ];
+    for (const raw of refused) {
+      const res = await fetchRaw(raw);
+      const text = await res.text();
+      expect({ raw, status: res.status, body: text }).toEqual({ raw, status: 403, body: '{"error":"forbidden"}' });
+      for (const leak of [SECRET, root, "PNG", "# "]) expect({ raw, leaked: text.includes(leak) }).toEqual({ raw, leaked: false });
+    }
+    const own = await fetchPath(".design/shot.png");
+    expect(own.status).toBe(200);
+    expect(own.headers.get("content-type")).toBe("image/png");
+    expect(Buffer.from(await own.arrayBuffer()).equals(readFileSync(join(specDir, ".design", "shot.png")))).toBe(true);
+    // An SVG renders as an image, yet opened on its own it runs nothing: nosniff and a sandboxing CSP.
+    const svg = await fetchPath(".design/wire.svg");
+    expect([svg.status, svg.headers.get("content-type"), svg.headers.get("content-disposition")]).toEqual([200, "image/svg+xml", "inline"]);
+    expect(svg.headers.get("content-security-policy")).toBe("default-src 'none'; sandbox");
+    expect(svg.headers.get("x-content-type-options")).toBe("nosniff");
+    // The Docs options read what the route would refuse as missing, so no broken image is ever asked for.
+    const options = docsRenderOptions(workspace, join(specDir, "design.md"), "design");
+    // As the renderer asks: with its `specAsset` answer, and never at all for a path it already refused.
+    const exists = (o: typeof options, src: string): boolean | undefined => {
+      const asset = specAsset(src, o.specAssets ?? []);
+      return asset === false ? false : o.assetExists?.(src, asset);
+    };
+    expect(options.specAssets).toEqual([".design"]);
+    expect([".design/shot.png", ".design/other.png", ".design/escape.png", "./.design/shot.png", "x/../.design/shot.png"].map((src) => exists(options, src))).toEqual([true, false, false, true, true]);
+    // A folder is no image; a name with a space is written `%20` and served by its decoded name.
+    expect([".design/screens", ".design/Screen%20shot.png", ".design/Screen shot.png"].map((src) => exists(options, src))).toEqual([false, true, true]);
+    expect((await fetchPath(".design/Screen shot.png")).status).toBe(200);
+    const plan = docsRenderOptions(workspace, join(specDir, "plan.md"), "plan");
+    expect(plan.specAssets).toBeUndefined();
+    // `..shared` is a folder inside the workspace, not a way out of it.
+    expect(["../../..shared/d.png", "../../../secret.log"].map((src) => exists(plan, src))).toEqual([true, false]);
+    const missing = await fetchPath(".design/none.png");
+    expect(missing.status).toBe(404);
     expect(treeHash(workspace)).toBe(before);
     expect(readFileSync(join(root, "secret.log"), "utf8")).toBe(SECRET);
   });

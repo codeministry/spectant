@@ -495,8 +495,8 @@ the `review` warning, and one gate entry per mark on the timeline (with files, h
 
 Versioned task results, shown as "Results" on the Evidence tab. Listed, never parsed (`evidence.ts`, T24), recursively,
 dotfiles skipped, sorted by path. Each file carries its path relative to the spec folder, its name, its size in bytes,
-its media type from the extension (`md`, `json`, `har`, `png`, `jpg`, `webp`, `log`, `txt`, `html`; anything else is
-`application/octet-stream`), the task id when the name starts with `T<n>` followed by `-`, `_`, `.` or nothing, and
+its media type from the extension (`md`, `json`, `har`, `png`, `jpg`, `webp`, `gif`, `avif`, `svg`, `log`, `txt`,
+`html`; anything else is `application/octet-stream`), the task id when the name starts with `T<n>` followed by `-`, `_`, `.` or nothing, and
 its claim:
 
 1. a claim ID of `spec.md` that a path segment is or starts with (`ISC-61/shot.png`, `ISC-61-shot.png`; the longest
@@ -508,7 +508,9 @@ its claim:
 No modification time is listed: it moves with every checkout. A symlink is listed and flagged; one that does not
 resolve inside `artifacts/` or `.evidence/` is listed as refused (size 0, a warning), never followed, and a symlinked
 folder is never descended. A group folder that is itself a symlink is not listed. Serving goes through
-`resolveEvidencePath` and nothing outside the two folders of the spec's own folder is ever served (ISC-83).
+`resolveEvidencePath` and nothing outside the two folders and `.design/` of the spec's own folder is ever served
+(ISC-83, ISC-113); `.design/` is served for the Design tab's images and never listed. A symlink may not cross between
+`.design/` and the other two.
 
 From `core/fixtures/harbor/specs/002-web-console/spec.md`, two verification lines naming a result and a raw file:
 
@@ -770,8 +772,9 @@ Answer the empty-state question in 002, then run the code review for 004.
 ## Not part of the contract
 
 Derived pages (`review.html`, `report.html`, the old dashboard), `.i18n/`, `.vendor/` and `.design/` folders inside a
-spec, and any other file not named above are not read by `core/`. Changing them never changes a stage, a count or a
-warning.
+spec, and any other file not named above are not parsed by `core/`. Changing them never changes a stage, a count or a
+warning. The one use of `.design/`, where `core/` only resolves paths and never reads a byte: in the Design tab, a standalone image of `design.md` under it renders without
+`src`, its path in `data-spec-asset`, and the web app loads it through the evidence file route (ISC-112).
 
 ## Open questions
 

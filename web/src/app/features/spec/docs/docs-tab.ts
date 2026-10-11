@@ -15,6 +15,7 @@ import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { DocName, DocsPage, MermaidFigure } from '../../../../../../core/src/files';
+import { specRoutes } from '../../../../../../server/src/spec-routes.contract';
 import { ApiClient, type DocsResult } from '../../../core/api.service';
 import { ThemeService } from '../../../core/theme.service';
 import { ShellData } from '../../../layout/shell/shell-data.service';
@@ -148,10 +149,20 @@ export class DocsTab {
         const page = this.page();
         const theme = this.theme.resolved();
         const tableLabel = (index: number) => this.transloco.translate('docs.tableRegion', { index });
-        const imageMissing = this.transloco.translate('docs.imageMissing');
+        const notes: MissingNotes = {
+          missing: this.transloco.translate('docs.imageMissing'),
+          unavailable: this.transloco.translate('docs.imageUnavailable'),
+        };
+        const ws = this.state.ws();
+        const id = this.state.specId();
         if (!host || page === null) return;
+        // Only once this spec's page has loaded: while the route moves on, the old HTML keeps its own spec's URLs.
+        const current = this.result.status() === 'resolved';
+        if (current && ws !== null && id !== null) {
+          enhanceSpecAssets(host, (path) => specRoutes.evidenceFile(ws, id, path), () => enhanceMissingImages(host, notes));
+        }
         enhanceTables(host, tableLabel);
-        enhanceMissingImages(host, imageMissing);
+        enhanceMissingImages(host, notes);
         void this.drawMermaid(host, this.mermaidFigures(), theme);
       },
     });
@@ -206,6 +217,38 @@ function docName(value: unknown): DocName {
   return typeof value === 'string' && DOC_NAMES.has(value) ? (value as DocName) : 'plan';
 }
 
+/**
+ * Core renders a spec-folder image (`.design/…`, Design tab only) without `src`, its path in `data-spec-asset`, so the
+ * page never asks its own base for it; point it at the spec's evidence file route (idempotent). Should it fail to load
+ * (refused since the render, or bytes the browser cannot show), the figure takes core's missing shape, flagged
+ * `data-unavailable`, and `noted` adds the "could not be shown" note: never a broken image, and never "not in this
+ * checkout" for a file that is there.
+ */
+function enhanceSpecAssets(host: HTMLElement, url: (path: string) => string, noted: () => void): void {
+  host.querySelectorAll<HTMLImageElement>('img[data-spec-asset]').forEach((img) => {
+    const path = img.dataset['specAsset'] ?? '';
+    const src = url(path);
+    if (img.getAttribute('src') === src) return;
+    img.addEventListener('error', () => {
+      const figure = img.closest('figure');
+      if (!figure) return;
+      const box = host.ownerDocument.createElement('div');
+      box.className = 'figure-missing';
+      box.setAttribute('role', 'img');
+      box.setAttribute('aria-label', figure.querySelector('figcaption')?.textContent ?? path);
+      const code = host.ownerDocument.createElement('code');
+      code.textContent = path;
+      box.append(code);
+      img.replaceWith(box);
+      figure.classList.add('missing');
+      figure.setAttribute('data-missing', '');
+      figure.setAttribute('data-unavailable', '');
+      noted();
+    }, { once: true });
+    img.setAttribute('src', src);
+  });
+}
+
 /** Core wraps each table in `div.mdtable`; make it a focusable, labelled horizontal scroll region (idempotent). */
 function enhanceTables(host: HTMLElement, label: (index: number) => string): void {
   host.querySelectorAll<HTMLElement>('div.mdtable').forEach((region, index) => {
@@ -215,8 +258,14 @@ function enhanceTables(host: HTMLElement, label: (index: number) => string): voi
   });
 }
 
+/** The notes of a missing figure: core found no file at render, or the image failed to load (`data-unavailable`). */
+interface MissingNotes {
+  readonly missing: string;
+  readonly unavailable: string;
+}
+
 /** Core marks an image absent from the checkout with `div.figure-missing`; add the muted note once. */
-function enhanceMissingImages(host: HTMLElement, text: string): void {
+function enhanceMissingImages(host: HTMLElement, notes: MissingNotes): void {
   host.querySelectorAll<HTMLElement>('figure[data-missing] .figure-missing').forEach((box) => {
     let note = box.querySelector<HTMLElement>(':scope > .figure-missing-note');
     if (!note) {
@@ -224,6 +273,6 @@ function enhanceMissingImages(host: HTMLElement, text: string): void {
       note.className = 'figure-missing-note';
       box.prepend(note);
     }
-    note.textContent = text;
+    note.textContent = box.closest('figure')?.hasAttribute('data-unavailable') ? notes.unavailable : notes.missing;
   });
 }

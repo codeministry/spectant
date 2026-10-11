@@ -15,8 +15,8 @@
  * | claims | `buildClaimViews({files, locks})` |
  * | tasks | `parseTaskLines` or `null` without tasks.md; header `X-Spectant-Tasks-Hash` (sha256 hex of the raw bytes) |
  * | evidence | `listEvidence(specDir, {specText})` |
- * | evidenceFile | `evidenceFileResponse` (`evidence.ts`): 403 outside the two folders, 404 no file |
- * | docs/:name | `renderDocsMarkdown`, images confined to the workspace; 404 `DocMissing` with `docsFor(type)[name]` |
+ * | evidenceFile | `evidenceFileResponse` (`evidence.ts`): 403 outside `artifacts/`, `.evidence/` and `.design/`, 404 no file |
+ * | docs/:name | `renderDocsMarkdown` with `docsRenderOptions`: images confined to the workspace, the Design tab's `.design/` images through evidenceFile; 404 `DocMissing` with `docsFor(type)[name]` |
  * | frames | `buildFrames(files)` |
  * | live | `buildLiveFrame({files + constitution, locks, now})` |
  *
@@ -30,10 +30,9 @@
  * the answers typed by `writes.contract.ts`. No absolute path leaves this module (ISC-3): bodies are core models over texts, and
  * a workspace is its slug, its name and `pathTail`.
  */
-import { existsSync } from "node:fs";
-import { basename, join, relative, resolve, sep } from "node:path";
+import { basename, join, relative, sep } from "node:path";
 import { buildClaimViews } from "../../core/src/claim-view.ts";
-import { listEvidence } from "../../core/src/evidence.ts";
+import { docsRenderOptions, listEvidence } from "../../core/src/evidence.ts";
 import { DOC_FILES, specFilePath } from "../../core/src/files.ts";
 import type { DocName, LockReading, SpecFiles } from "../../core/src/files.ts";
 import { buildFrames } from "../../core/src/frames.ts";
@@ -174,14 +173,8 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
       const missing: DocMissing = { error: "not-found", doc: name, availability: docsFor(type)[name] };
       return json(req, 404, missing);
     }
-    const dir = resolve(path, "..");
-    const page = renderDocsMarkdown(text, {
-      // Existence only, confined to the workspace: an image outside it reads as missing, and no image is ever read.
-      assetExists: (src) => {
-        const target = resolve(dir, src);
-        return !relative(root, target).startsWith("..") && existsSync(target);
-      },
-    });
+    // Existence only, confined to the workspace; the Design tab loads `.design/` through the evidence file route.
+    const page = renderDocsMarkdown(text, docsRenderOptions(root, path, name));
     return json(req, 200, page);
   }
 
