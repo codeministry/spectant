@@ -5,7 +5,7 @@ import type { Frame, FrameCard, LiveFrame } from '../../../../../../../core/src/
 import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
 import { UiDisclosure } from '../../../../shared/ui/overlay/disclosure';
 import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
-import { agentsOf, lockSourceOf } from '../live-frame';
+import { agentKey, agentsOf, lockSourceOf } from '../live-frame';
 import { AgentChip } from './agent-chip';
 import { RAIL_BLOCK_STYLES } from './rail-block.styles';
 
@@ -37,7 +37,7 @@ import { RAIL_BLOCK_STYLES } from './rail-block.styles';
       @if (source(); as source) {
         <div class="agents" data-agents>
           <p class="source" data-lock-source [attr.data-lock-source]="source">{{ 'board.agent.source' | transloco: { source } }}</p>
-          @for (agent of agents(); track agent.session) {
+          @for (agent of agents(); track agentKey(agent)) {
             <app-agent-chip [session]="agent.session" [since]="agent.since" [stale]="agent.stale" />
           } @empty {
             <p class="empty">{{ 'board.agent.none' | transloco }}</p>
@@ -74,4 +74,5 @@ export class ThisFrame {
   protected readonly open = signal(true);
   protected readonly source = computed(() => lockSourceOf(this.frame()));
   protected readonly agents = computed(() => agentsOf(this.frame()));
+  protected readonly agentKey = agentKey;
 }

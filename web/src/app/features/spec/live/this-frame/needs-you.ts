@@ -8,7 +8,7 @@ import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
 import { glyphSpec } from '../../../../shared/ui/glyph/states';
 import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
 import { toneMark } from '../../../../shared/ui/tone';
-import { staleAgents } from '../live-frame';
+import { agentKey, staleAgents } from '../live-frame';
 import { AgentChip } from './agent-chip';
 import { RAIL_BLOCK_STYLES } from './rail-block.styles';
 
@@ -17,48 +17,69 @@ const SESSION = '\u0001session\u0001';
 const CLAIMS = '\u0001claims\u0001';
 export const ALERT_PLACEHOLDERS = { session: SESSION, claims: CLAIMS } as const;
 
-/**
- * A run of the stale-agent sentence: plain text, or an id (the session or a claim) that must not break across lines,
- * with the punctuation that follows it (`tail`, e.g. "," or ":") kept on its line.
- */
-export interface AlertPart {
-  readonly kind: 'text' | 'id';
+/** A piece of a run: an id (the session or a claim), or the characters that touch it without a space between. */
+export interface RunPiece {
+  readonly id: boolean;
   readonly text: string;
-  readonly tail: string;
-}
-
-/** Moves the punctuation that opens a text part onto the id before it, so no line starts with "," or ":". */
-function glue(parts: readonly AlertPart[]): AlertPart[] {
-  const out: AlertPart[] = [];
-  for (const part of parts) {
-    const last = out.at(-1);
-    const tail = part.kind === 'text' && last?.kind === 'id' ? (/^\p{P}+/u.exec(part.text)?.[0] ?? '') : '';
-    if (last !== undefined && tail !== '') {
-      out[out.length - 1] = { ...last, tail: last.tail + tail };
-      if (part.text.length > tail.length) out.push({ ...part, text: part.text.slice(tail.length) });
-    } else {
-      out.push(part);
-    }
-  }
-  return out;
 }
 
 /**
- * Splits the translated stale-agent sentence at its two placeholders. The session and every claim id become `id`
- * parts carrying the punctuation that follows them; the words between the claims come from the app language's
+ * A part of the stale-agent sentence: plain text, or a run, the whitespace-delimited token that holds one id or more
+ * together with whatever touches them ("(ISC-74),", "„spec-1“", "spec-1/ISC-2"), rendered as one unit that breaks only
+ * where the sentence has a space.
+ */
+export type AlertPart = { readonly kind: 'text'; readonly text: string } | { readonly kind: 'run'; readonly pieces: readonly RunPiece[] };
+
+/**
+ * Where a line may break between words (UAX #14): the spaces it breaks after (SP; the BA spaces U+1680, U+2000 to
+ * U+2006, U+2008 to U+200A, U+205F, U+3000; ZW U+200B) and the mandatory breaks (BK, CR, LF, NL: U+000A to U+000D,
+ * U+0085, U+2028, U+2029). A no-break space (U+00A0, U+2007, U+202F) is absent, so it stays inside a token as in layout.
+ */
+export const BREAKABLE = '[ \\t\\n\\v\\f\\r\\u0085\\u1680\\u2000-\\u2006\\u2008-\\u200A\\u2028\\u2029\\u205F\\u3000\\u200B]';
+const BREAK = new RegExp(`(${BREAKABLE}+)`);
+
+/**
+ * Splits the translated stale-agent sentence at its two placeholders and groups it into tokens at breakable white space:
+ * a token that holds an id becomes a run, every other stretch stays text. The alert therefore breaks like ordinary
+ * text and never inside an id's token, whatever classes a language gives its brackets, quotes and apostrophes, and
+ * ids that share a token share one run (ISC-115, ISC-115.1). The words between the claims come from the app language's
  * `Intl.ListFormat`, so neither the sentence's word order nor the list joiner lives in the template.
  */
 export function alertParts(sentence: string, session: string, claims: readonly string[], joiner: Intl.ListFormat): AlertPart[] {
-  const list = joiner
-    .formatToParts(claims)
-    .map((p): AlertPart => ({ kind: p.type === 'element' ? 'id' : 'text', text: p.value, tail: '' }));
-  const text = (value: string): AlertPart[] => (value === '' ? [] : [{ kind: 'text', text: value, tail: '' }]);
-  return glue(
-    sentence.split(SESSION).flatMap((chunk, i): AlertPart[] => [
-      ...(i > 0 ? [{ kind: 'id' as const, text: session, tail: '' }] : []),
-      ...chunk.split(CLAIMS).flatMap((piece, j) => [...(j > 0 ? list : []), ...text(piece)]),
-    ]),
-  );
+  const list = joiner.formatToParts(claims).map((p): RunPiece => ({ id: p.type === 'element', text: p.value }));
+  const pieces = sentence.split(SESSION).flatMap((chunk, i): RunPiece[] => [
+    ...(i > 0 ? [{ id: true, text: session }] : []),
+    ...chunk.split(CLAIMS).flatMap((piece, j) => [...(j > 0 ? list : []), { id: false, text: piece }]),
+  ]);
+  const out: AlertPart[] = [];
+  const pushText = (text: string): void => {
+    if (text === '') return;
+    const last = out.at(-1);
+    if (last?.kind === 'text') out[out.length - 1] = { kind: 'text', text: last.text + text };
+    else out.push({ kind: 'text', text });
+  };
+  let token: RunPiece[] = [];
+  const flush = (): void => {
+    if (token.some((p) => p.id)) out.push({ kind: 'run', pieces: token });
+    else pushText(token.map((p) => p.text).join(''));
+    token = [];
+  };
+  for (const piece of pieces) {
+    if (piece.id) {
+      token.push(piece);
+      continue;
+    }
+    piece.text.split(BREAK).forEach((chunk, k) => {
+      if (k % 2 === 1) {
+        flush();
+        pushText(chunk);
+      } else if (chunk !== '') {
+        token.push({ id: false, text: chunk });
+      }
+    });
+  }
+  flush();
+  return out;
 }
 
 /**
@@ -100,15 +121,23 @@ export function alertParts(sentence: string, session: string, claims: readonly s
     }
 
     <ng-template #body>
-      @for (alert of alerts(); track alert.agent.session) {
+      @for (alert of alerts(); track alert.key) {
         @let agent = alert.agent;
-        <div class="alert" data-stale-agent [attr.data-session]="agent.session">
+        <div class="alert" data-stale-agent [attr.data-session]="agent.session" [attr.data-source]="agent.source">
           <ui-icon name="triangle-alert" [size]="16" />
           <div class="alert-body">
             <p>
               @for (part of alert.parts; track $index) {
-                @if (part.kind === 'id') {
-                  <span class="id-run"><span class="id" data-alert-id>{{ part.text }}</span>{{ part.tail }}</span>
+                @if (part.kind === 'run') {
+                  <span class="id-run">
+                    @for (piece of part.pieces; track $index) {
+                      @if (piece.id) {
+                        <span class="id" data-alert-id>{{ piece.text }}</span>
+                      } @else {
+                        <ng-container>{{ piece.text }}</ng-container>
+                      }
+                    }
+                  </span>
                 } @else {
                   <span>{{ part.text }}</span>
                 }
@@ -153,13 +182,22 @@ export class NeedsYou {
   private readonly copy = computed(() => {
     if (this.translation() === undefined) return null;
     const lang = this.transloco.getActiveLang();
-    return { sentence: this.transloco.translate('board.agent.staleAlert', ALERT_PLACEHOLDERS, lang), joiner: new Intl.ListFormat(lang, { type: 'conjunction' }) };
+    return {
+      sentence: this.transloco.translate('board.agent.staleAlert', ALERT_PLACEHOLDERS, lang),
+      joiner: new Intl.ListFormat(lang, { type: 'conjunction' }),
+    };
   });
   /** Each stale agent with its sentence in parts; none until the catalogue is there, so no alert renders without words. */
   protected readonly alerts = computed(() => {
     const copy = this.copy();
     if (copy === null) return [];
-    return this.stale().map((agent) => ({ agent, parts: alertParts(copy.sentence, agent.session, agent.claims, copy.joiner) }));
+    // Core builds every agent from a lock, so a stale agent holds at least one claim (core/src/live.ts agentsOf).
+    // Keyed by source and session: core groups agents by both, so one session can stand stale in two lock sources.
+    return this.stale().map((agent) => ({
+      key: agentKey(agent),
+      agent,
+      parts: alertParts(copy.sentence, agent.session, agent.claims, copy.joiner),
+    }));
   });
 
   protected edge(card: FrameCard): string {

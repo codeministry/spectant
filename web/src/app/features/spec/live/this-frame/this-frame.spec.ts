@@ -7,7 +7,7 @@ import type { Frame, LiveFrame } from '../../../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
 import { frameEvents } from '../board/board-model';
 import { AgentChip } from './agent-chip';
-import { ALERT_PLACEHOLDERS, alertParts, NeedsYou } from './needs-you';
+import { ALERT_PLACEHOLDERS, alertParts, BREAKABLE, NeedsYou } from './needs-you';
 import { ThisFrame } from './this-frame';
 
 const LIVE = live['specs/002-web-console'] as unknown as LiveFrame;
@@ -79,6 +79,48 @@ describe('NeedsYou', () => {
   });
 });
 
+describe('one session in two lock sources', () => {
+  const agent = LIVE.agents.find((a) => a.stale);
+  const twin = agent === undefined ? undefined : { ...agent, source: agent.source === 'frontier' ? ('activity' as const) : ('frontier' as const) };
+
+  /** Renders a frame, then a frame with the twin agent and a reordered one, so the lists reconcile twice. */
+  async function renderTwice(type: typeof NeedsYou | typeof ThisFrame, inputs: Record<string, unknown>): Promise<{ root: HTMLElement; said: string[] }> {
+    if (agent === undefined || twin === undefined) throw new Error('the live fixture holds no stale agent');
+    const frame = { ...LIVE, agents: [...LIVE.agents, twin] };
+    const warn = vi.spyOn(console, 'warn');
+    const error = vi.spyOn(console, 'error');
+    try {
+      const fixture = TestBed.createComponent<unknown>(type);
+      for (const [name, value] of Object.entries(inputs)) fixture.componentRef.setInput(name, value);
+      fixture.componentRef.setInput('frame', LIVE);
+      await fixture.whenStable();
+      // A frame update re-runs the lists' reconciliation, where Angular reports duplicate track keys (NG0955).
+      fixture.componentRef.setInput('frame', frame);
+      await fixture.whenStable();
+      fixture.componentRef.setInput('frame', { ...frame, agents: [...frame.agents].reverse() });
+      await fixture.whenStable();
+      const said = [...warn.mock.calls, ...error.mock.calls].map((args) => args.map(String).join(' '));
+      return { root: fixture.nativeElement as HTMLElement, said };
+    } finally {
+      warn.mockRestore();
+      error.mockRestore();
+    }
+  }
+
+  it('NeedsYou raises one alert per source and session, never a duplicate track key', async () => {
+    const { root, said } = await renderTwice(NeedsYou, { cards: LIVE.needsYou });
+    const sources = [...root.querySelectorAll(`[data-stale-agent][data-session="${agent?.session ?? ''}"]`)].map((el) => el.getAttribute('data-source'));
+    expect(sources.sort()).toEqual([agent?.source, twin?.source].sort());
+    expect(said.filter((line) => line.includes('NG0955'))).toEqual([]);
+  });
+
+  it('ThisFrame lists the agent once per source and session, never a duplicate track key', async () => {
+    const { root, said } = await renderTwice(ThisFrame, { events: [] });
+    expect(root.querySelectorAll('[data-agents] app-agent-chip').length).toBe(LIVE.agents.length + 1);
+    expect(said.filter((line) => line.includes('NG0955'))).toEqual([]);
+  });
+});
+
 describe('alertParts', () => {
   /** The catalogue's sentence translated by transloco with the component's placeholders, as `alerts` hands it on. */
   async function sentence(lang: 'en' | 'de'): Promise<string> {
@@ -88,27 +130,67 @@ describe('alertParts', () => {
   }
   const parts = async (lang: 'en' | 'de'): Promise<ReturnType<typeof alertParts>> =>
     alertParts(await sentence(lang), 'spec-002-ISC-74', ['ISC-74', 'ISC-75', 'ISC-76'], new Intl.ListFormat(lang, { type: 'conjunction' }));
-  const join = (all: ReturnType<typeof alertParts>): string => all.map((p) => p.text + p.tail).join('');
+  const runText = (part: ReturnType<typeof alertParts>[number]): string => (part.kind === 'run' ? part.pieces.map((x) => x.text).join('') : part.text);
+  const join = (all: ReturnType<typeof alertParts>): string => all.map(runText).join('');
 
   it('puts the session and every claim back as id parts, joined by the app language list', async () => {
     const en = await parts('en');
-    expect(en.filter((p) => p.kind === 'id').map((p) => p.text)).toEqual(['spec-002-ISC-74', 'ISC-74', 'ISC-75', 'ISC-76']);
+    expect(en.flatMap((p) => (p.kind === 'run' ? p.pieces.filter((x) => x.id).map((x) => x.text) : []))).toEqual(['spec-002-ISC-74', 'ISC-74', 'ISC-75', 'ISC-76']);
     expect(join(en)).toBe('No release from spec-002-ISC-74 on ISC-74, ISC-75, and ISC-76: the agent may have stopped.');
     const de = await parts('de');
     expect(join(de)).toBe('Keine Freigabe von spec-002-ISC-74 für ISC-74, ISC-75 und ISC-76: Der Agent ist womöglich beendet.');
   });
 
-  it('keeps the punctuation after an id on the id, so no line starts with it', async () => {
-    const ids = (await parts('en')).filter((p) => p.kind === 'id');
-    expect(ids.map((p) => p.tail)).toEqual(['', ',', ',', ':']);
+  it('keeps the punctuation after an id in its run, so no line starts with it', async () => {
+    const runs = (await parts('en')).filter((p) => p.kind === 'run');
+    expect(runs.map(runText)).toEqual(['spec-002-ISC-74', 'ISC-74,', 'ISC-75,', 'ISC-76:']);
   });
 
-  it('glues punctuation only, never a word that follows an id', () => {
-    const glued = alertParts(`${ALERT_PLACEHOLDERS.session}-Sitzung für ${ALERT_PLACEHOLDERS.claims}.`, 'spec-1', ['ISC-1'], new Intl.ListFormat('de', { type: 'conjunction' }));
-    expect(glued.filter((p) => p.kind === 'id').map((p) => [p.text, p.tail])).toEqual([
-      ['spec-1', '-'],
-      ['ISC-1', '.'],
-    ]);
-    expect(glued.map((p) => p.text + p.tail).join('')).toBe('spec-1-Sitzung für ISC-1.');
+  const S = ALERT_PLACEHOLDERS.session;
+  const C = ALERT_PLACEHOLDERS.claims;
+  /** Splits the joined sentence into the tokens CSS would keep together: a no-break space does not separate. */
+  const tokensOf = (text: string): string[] => text.split(new RegExp(`${BREAKABLE}+`));
+  const endsOpen = new RegExp(`${BREAKABLE}$`);
+  const startsOpen = new RegExp(`^${BREAKABLE}`);
+  const idsOf = (all: ReturnType<typeof alertParts>): string[] => all.flatMap((p) => (p.kind === 'run' ? p.pieces.filter((x) => x.id).map((x) => x.text) : []));
+
+  it('token rule: each run is exactly a whitespace-delimited token, ids sharing a token share a run', () => {
+    for (const lang of ['en', 'de'] as const) {
+      const joiner = new Intl.ListFormat(lang, { type: 'conjunction' });
+      for (const sentence of [`(${S}) on ${C}.`, `„${S}“ for ${C}.`, `${S}-session for ${C}`, `${S}’s ${C}:`, `${S}, ${C}: x`, `${S}/${C}`, `«\u202F${S}\u202F» ${C}`]) {
+        const all = alertParts(sentence, 'spec-1', ['ISC-1', 'ISC-2'], joiner);
+        const joined = join(all);
+        expect(joined, sentence).toBe(sentence.replace(S, 'spec-1').replace(C, joiner.format(['ISC-1', 'ISC-2'])));
+        expect(idsOf(all), sentence).toEqual(['spec-1', 'ISC-1', 'ISC-2']);
+        const tokens = tokensOf(joined);
+        for (const run of all.filter((p) => p.kind === 'run')) expect(tokens, `${lang} ${sentence}`).toContain(runText(run));
+        all.forEach((p, i) => {
+          if (p.kind !== 'text') return;
+          if (all[i + 1]?.kind === 'run') expect(p.text, sentence).toMatch(endsOpen);
+          if (all[i - 1]?.kind === 'run') expect(p.text, sentence).toMatch(startsOpen);
+        });
+      }
+    }
+    const shared = alertParts(`${S}/${C}`, 'spec-1', ['ISC-1'], new Intl.ListFormat('en', { type: 'conjunction' }));
+    expect(shared.filter((p) => p.kind === 'run').map(runText)).toEqual(['spec-1/ISC-1']);
+  });
+
+  it('touching marks: opening marks before an id and closing marks or letters after it are in its run, in en and de', () => {
+    for (const lang of ['en', 'de'] as const) {
+      const joiner = new Intl.ListFormat(lang, { type: 'conjunction' });
+      const and = lang === 'en' ? 'and' : 'und';
+      const quoted = alertParts(`„${S}“ (${C}).`, 'spec-1', ['ISC-1', 'ISC-2'], joiner);
+      expect(quoted.filter((p) => p.kind === 'run').map(runText), lang).toEqual(['„spec-1“', '(ISC-1', 'ISC-2).']);
+      expect(join(quoted), lang).toBe(`„spec-1“ (ISC-1 ${and} ISC-2).`);
+      const owned = alertParts(`${S}’s ${C}`, 'spec-1', ['ISC-1'], joiner);
+      expect(owned.filter((p) => p.kind === 'run').map(runText), lang).toEqual(['spec-1’s', 'ISC-1']);
+      for (const all of [quoted, owned]) {
+        for (const p of all) {
+          if (p.kind !== 'text') continue;
+          expect(p.text, lang).not.toMatch(/[\p{Ps}\p{Pi}]$/u);
+          expect(p.text, lang).not.toMatch(/^[\p{Pe}\p{Pf}\p{Po}]/u);
+        }
+      }
+    }
   });
 });

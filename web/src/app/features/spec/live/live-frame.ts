@@ -39,6 +39,11 @@ export function agentsOf(frame: Frame | LiveFrame): readonly LiveAgent[] {
   return isLiveFrame(frame) ? frame.agents : [];
 }
 
+/** A key unique per agent: core groups agents by lock source and session, so one session can appear once per source. */
+export function agentKey(agent: LiveAgent): string {
+  return `${agent.source}\u0000${agent.session}`;
+}
+
 /** The sessions the model marked stale: the stale-agent alert of "Needs you". */
 export function staleAgents(frame: Frame | LiveFrame): readonly LiveAgent[] {
   return agentsOf(frame).filter((agent) => agent.stale);
