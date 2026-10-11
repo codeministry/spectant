@@ -16,6 +16,30 @@ still a stub, the section says so and names the task that fills it.
   that order, each naming its path and holding an example. Every example introduced by a line `From \`path\`:` is
   compared with that file and must occur in it verbatim.
 
+## Glossary
+
+The words this contract uses, one row per term: the Spectant term, the term an issue tracker uses for the same thing,
+the German term and a one-sentence definition. Spectant keeps its own words; the common term is a pointer, never a
+rename. Not exported yet: `core/src/glossary.ts` (spec 008, T41) will export the same rows, the app's Help page renders
+them from that export, and `core/tests/glossary.test.ts` compares each row with its line in this table verbatim, so
+neither side can change alone.
+
+| Spectant term | Common term | German | Definition |
+|---------------|-------------|--------|------------|
+| Feature | Epic | Feature | A block `### F<n>` of the master that owns claims. |
+| Spec | Story | Spec | A numbered folder `specs/NNN-slug/` with a `spec.md`. |
+| Claim | Acceptance criterion | Claim | One falsifiable line `- [ ] ISC-<n>:` that closes on its probe. |
+| Task | Sub-task | Task | One atomic step of `tasks.md`, hanging on exactly one claim. |
+| Milestone | Fix version | Meilenstein | A release named in the master's `## Milestones` block. |
+| Idea | Backlog item | Idee | A story file under `specs/ideas/`, the stage before a spec. |
+| Stage | Status | Stage | Where a spec stands in its workflow. |
+| Workflow | Workflow | Workflow | The ordered stages a spec type runs through, from `specs/workflow.md` or the default. |
+| Gate | Quality gate | Gate | A condition a transition needs; two are fixed in every workflow: review before build, and every claim closed before done. |
+| Probe | Test | Probe | The command a claim closes on. |
+| Actor | Assignee | Akteur | The neutral id in a file, `u:<8 hex>` for a person or `a:<kind>:<id>` for an agent. |
+| Agent | Bot | Agent | A Claude Code session or sub-agent working a task, recorded as an `a:` actor. |
+| Chore | Chore | Chore | The seventh spec type: `spec.md` only, review then build then done, no code review. |
+
 ## Where the files live
 
 A repository root holds the master `ISA.md` (untracked in a public repository) and a `specs/` folder:
@@ -30,28 +54,40 @@ archived folders alike; no match or more than one match is `not_found`, never an
 
 Paths are relative to the spec folder, as `FILE_KINDS` holds them. Legend: **R** required (no spec without it),
 **S** the stage table stops at this file until it exists, **S3** the same from three claims on, **G** a gate the stage
-table waits on until it is fresh, **O** optional, read when present. A spec with an unknown or missing `spec_type`
-needs neither plan nor tasks.
+table waits on until it is fresh, **O** optional, read when present, **—** not part of the type: no stage waits on it
+and the type's workflow never asks for it. A spec with an unknown or missing `spec_type` needs neither plan nor tasks.
 
-| Kind | Path | Read as | feature | project | infra | refactor | bug | spike |
-|------|------|---------|---------|---------|-------|----------|-----|-------|
-| `spec` | `spec.md` | frontmatter, claims, sections | R | R | R | R | R | R |
-| `plan` | `plan.md` | existence, mermaid fence, hash | S | S | S | O | O | O |
-| `tasks` | `tasks.md` | task lines, hash | S3 | S3 | O | S3 | O | O |
-| `context` | `context.md` | goal lock, rounds, questions | O | O | O | O | O | O |
-| `design` | `design.md` | Markdown, rendered | O | O | O | O | O | O |
-| `constitution` | `../constitution.md` | frontmatter, lanes | O | O | O | O | O | O |
-| `rounds` | `rounds.jsonl` | one JSON line per round | O | O | O | O | O | O |
-| `events` | `events.jsonl` | one JSON line per transition | O | O | O | O | O | O |
-| `gateReviewed` | `.gates/reviewed.json` | JSON mark | G | G | G | G | G | G |
-| `gateCodeReviewed` | `.gates/code-reviewed.json` | JSON mark | G | G | G | G | G | G |
-| `artifacts` | `artifacts/` | directory listing | O | O | O | O | O | O |
-| `evidence` | `.evidence/` | directory listing | O | O | O | O | O | O |
-| `master` | `../../ISA.md` | frontmatter, claims, fog | O | O | O | O | O | O |
+| Kind | Path | Read as | feature | project | infra | refactor | bug | spike | chore |
+|------|------|---------|---------|---------|-------|----------|-----|-------|-------|
+| `spec` | `spec.md` | frontmatter, claims, sections | R | R | R | R | R | R | R |
+| `plan` | `plan.md` | existence, mermaid fence, hash | S | S | S | O | O | O | — |
+| `tasks` | `tasks.md` | task lines, hash | S3 | S3 | O | S3 | O | O | — |
+| `context` | `context.md` | goal lock, rounds, questions | O | O | O | O | O | O | O |
+| `design` | `design.md` | Markdown, rendered | O | O | O | O | O | O | — |
+| `constitution` | `../constitution.md` | frontmatter, lanes | O | O | O | O | O | O | O |
+| `rounds` | `rounds.jsonl` | one JSON line per round | O | O | O | O | O | O | O |
+| `events` | `events.jsonl` | one JSON line per transition | O | O | O | O | O | O | O |
+| `gateReviewed` | `.gates/reviewed.json` | JSON mark | G | G | G | G | G | G | G |
+| `gateCodeReviewed` | `.gates/code-reviewed.json` | JSON mark | G | G | G | G | G | G | — |
+| `artifacts` | `artifacts/` | directory listing | O | O | O | O | O | O | O |
+| `evidence` | `.evidence/` | directory listing | O | O | O | O | O | O | O |
+| `master` | `../../ISA.md` | frontmatter, claims, fog | O | O | O | O | O | O | O |
+
+The seven types are `feature`, `project`, `infra`, `refactor`, `bug`, `spike` and `chore`. A **chore** is a small fix
+that is its own small spec, never a task collected in a sidelane spec: it carries `spec.md` only and runs review →
+build → done. Its claims wait on a fresh reviewed mark like every type's, and once every claim is closed it is done
+without a code-reviewed mark and without an edit to `phase: complete` (the stage-table row for this is spec 008, T23).
+Not read yet: `SpecType` in `core/src/files.ts` gains `chore` in T37 and `frontmatter.ts` accepts it in T38; until
+then `spec_type: chore` warns `frontmatter-spec-type` and reads as none.
 
 Diagrams: a `feature`, `infra` or `project` spec needs a fence whose info string is exactly `mermaid` in both
 `spec.md` and `plan.md` (dashboard warning `diagrams`); a `refactor` only warns without one in `spec.md`; a complete
 spec is never held to it (`diagrams.ts`).
+
+Beside the thirteen, a repository may carry story files under `specs/ideas/` and one workflow table
+`specs/workflow.md`, documented in the sections Ideas and Workflow below. Neither belongs to a spec folder, so the
+table above has no row for them; they join `FILE_KINDS` as the kinds `idea` and `workflow` together with their readers
+(spec 008, T37).
 
 ## `spec` — `spec.md`
 
@@ -67,7 +103,7 @@ a warning (nested YAML is not part of the format); a repeated key warns and the 
 |-----|-------|----------|
 | `task` | text | the row title (else the folder slug without its number) |
 | `slug`, `isa_master`, `isa_feature`, `constitution`, `context_log`, `migrated_from` | text | `isa_feature`'s first word names the master block for `missing_in_spec` |
-| `spec_type` | `feature`, `bug`, `refactor`, `spike`, `infra`, `project` | the type router; anything else warns and reads as none |
+| `spec_type` | `feature`, `bug`, `refactor`, `spike`, `infra`, `project`, `chore` | the type router; anything else warns and reads as none (`chore` until spec 008, T38, too) |
 | `phase` | text | `complete` decides stage `done`; otherwise a tooltip only |
 | `progress` | `M/N`, M ≤ N | compared with the recount (`progress_mismatch`) |
 | `started`, `updated` | ISO 8601 as written | `updated` against the TL;DR's `generated` |
@@ -76,8 +112,15 @@ a warning (nested YAML is not part of the format); a repeated key warns and the 
 | `context_sufficient`, `interview_invoked` | `true` or `false` | — |
 | `archived_reason`, `archived` | text, `YYYY-MM-DD` | the archive listing |
 | `milestone` | text | matched by name against the master's `## Milestones` entries (`master`, below); a name no entry carries warns `spec-milestone-unknown` and the spec still parses; without the key the spec belongs to no milestone |
+| `priority` | `P1`, `P2`, `P3` or `P4` | the urgency, shown on the dashboard row, the spec head and the breadcrumb; a missing key reads as `P3` without a diagnostic, any other value is a `frontmatter-priority` warning and the file still parses; a story's frontmatter takes the same key (Ideas, below); not read yet: spec 008, T39, until then kept in `rest` |
+| `stage` | a stage of the spec type's workflow (`specs/workflow.md`, below, or the default) | the explicit stage: when present it wins over the derived stage and must equal the last `to` of `events.jsonl`; a value outside the type's workflow, or one the last event contradicts, is a `stage-mismatch` diagnostic and the derived stage applies; without the key the stage derives from the files as before and is marked derived (`stageSource`, ISC-36); not read yet: spec 008, T40 and T47, until then kept in `rest` |
 
 Every other key is kept as written (`rest`) and read by nobody.
+
+**A transition writes `stage:`.** A `/spec` command and a drop on the board go through the same transition: it sets or
+replaces the `stage:` line of `spec.md`, leaves the rest of the file byte-identical, and appends exactly one line to
+`events.jsonl`, so the key and the last event agree. Not written yet: the transition is spec 008's (ISC-121, T71); until
+it lands nothing writes the key, and a spec without it derives its stage as before.
 
 **Body.** The goal is the first prose paragraph under `## Goal` (or `## Ziel`); fences, comments and tables are
 skipped. The claim section is the first of `## Features`, `## Claims`, `## Criteria`, `## ISC Criteria`,
@@ -388,6 +431,24 @@ A single line in the schema, the transition "Mark reviewed" records (ISC-24):
 {"ts":"2026-03-07T15:30:00Z","from":"review","to":"build","command":"/spec-review 002","actor":"principal"}
 ```
 
+**The actor grammar** (spec 008, ISC-119). Every `actor` a file of this contract carries — an `events.jsonl` line,
+either gate mark, and the `session` of an activity line or a frontier lock (Activity and lock lines, below) — is a
+neutral id, never a name or an e-mail address:
+
+| Form | Pattern | Example | Names |
+|------|---------|---------|-------|
+| person | `u:[0-9a-f]{8}` | `u:3f9a0c7e` | a person: the first eight hex digits of sha256 over the lower-cased git `user.email` of the repository |
+| agent | `a:<kind>:<id>` | `a:claude:sess-7` | an agent session of the given kind |
+| sub-agent | `a:<kind>:<id>/<task>` | `a:claude:sess-7/T12` | a sub-agent of that session working one task |
+
+The person id is unsalted, so two machines with the same `user.email` agree on one person without any exchange.
+`core/` derives the `u:` id from the repository's git configuration (spec 008, T59 for the derivation, T77 for reading
+`user.email`); the app maps an id to a display name and its git identities in its own data directory, never in a file
+of the repository, and shows an id without a mapping as the id itself. Any other value is **legacy**: it is read,
+marked `legacy` and never rejected. Every example in this document still carries a legacy actor (`principal`,
+`agent`, `spec-002-ISC-74`) until the harbor fixture is regenerated with the new forms (T28). Not parsed yet: until
+`actor.ts` (T59) lands, an actor is free text that must only be non-empty (`event-empty` for an event line).
+
 **Validated** (`events.ts`, T16, ISC-32). `parseEvents` reads the file line by line, skips blank lines and keeps file
 order; `validateEventLine` checks one line and never throws. A line is rejected with one diagnostic (severity
 `error`, its line number, the first rule it breaks) and is not an event: `event-json` (not JSON), `event-not-object`,
@@ -487,6 +548,10 @@ From `core/fixtures/leadgen/specs/022-chat-turn-status-and-bulk-delete/.gates/co
     "security": 0
   },
 ```
+
+**Who recorded a mark.** Either mark may carry `actor`, the person or agent that recorded it, in the actor grammar
+(`events`, above): a `u:` id for a principal's review, an `a:` id when a reviewer agent recorded it. Not read yet: the
+key is ignored today; the harbor fixture gains it in spec 008, T28, and `actor.ts` parses it (T59).
 
 **Derived for both marks:** the gate views on the row and the spec page, the stage (`review`, `code-review`, `close`),
 the `review` warning, and one gate entry per mark on the timeline (with files, head, branch and note).
@@ -628,6 +693,139 @@ attention count. **Derived: the planning tree** (spec 003, `planning.ts`): the f
 claim with the spec folder that holds it, active or archived; and the milestones from the `## Milestones` block
 together with the specs' `milestone:` keys, each with its progress, closed over total, across every feature it touches.
 
+## Ideas (`idea`) — `specs/ideas/<slug>.md`
+
+A story: an idea that is shaped but not yet a spec, one file per story in `specs/ideas/`. The file is a filled `/spec`
+prompt with a frontmatter block in front of it. A story has no number and no claims; it belongs to a feature block of
+the master and, optionally, to one of its milestones. Not read yet: `ideas.ts` (spec 008, T51, T52) fills the reader,
+and `FILE_KINDS` gains the kind `idea` with it (T37); until then this section carries no kind heading, and
+`check:format-doc` does not count it.
+
+**Frontmatter** (the same reader as a spec, `frontmatter.ts`). Five typed keys:
+
+| Key | Value | Missing |
+|-----|-------|---------|
+| `type` | a spec type: `feature`, `project`, `infra`, `refactor`, `bug`, `spike`, `chore` | no type, as for a spec without `spec_type:` |
+| `feature` | the master feature block the story belongs to, `F<n>` | belongs to no feature |
+| `milestone` | a name from the master's `## Milestones` block, as a spec's `milestone:` names it | belongs to no milestone |
+| `priority` | `P1`, `P2`, `P3` or `P4`, as a spec's `priority:` (above) | reads as `P3` |
+| `status` | `idea`, the only value today | — |
+
+**Read as** (`ideas.ts`):
+
+- the slug is the file name without `.md`;
+- the title is the first prose line under the heading that starts with `## Goal` (the prompt writes
+  `## Goal (one sentence)`): the first non-empty line that is not an HTML comment;
+- the rest of the file is the prompt (Type, Repo, Problem, Vision, In, Out, Done means, Guard rails, and a
+  `## Shaping record` where the story was shaped in a question round); it is rendered, never parsed;
+- a file in `specs/ideas/` without a frontmatter block is not a story: it is skipped with a warning, so notes may sit
+  beside the stories;
+- `specs/ideas/README.md` is the index, never a story. It names every story file and the feature it belongs to; a
+  story file the index does not name, or a name in the index without a file, is one `ideas-index` warning each;
+- a `feature` or `milestone` naming no block of the master is an `unknown-feature` or `unknown-milestone` warning on
+  the planning tree, and the story is listed under neither.
+
+**Derived: the stage `idea`.** Each story is an entry of the stage `idea`, listed in the planning tree under its
+feature and under its milestone beside the specs. Stories are counted apart from claims: a story adds no claim to any
+total, so no progress fraction (master, feature or milestone) changes when a story is added, moved or removed.
+
+**Allocation.** Starting a story (`/spec new <slug>` or the board) creates `specs/NNN-slug/` with the next free number
+and removes the story file; the story's text becomes the new spec's first `spec.md` and `context.md`. The app reads a
+story; it never edits one in place.
+
+**No fixture yet.** A story of the shape the harbor fixture will carry (T31; T35 replaces this example with a verbatim
+block from it):
+
+```markdown
+---
+type: feature
+feature: F2
+milestone: Harbor 1.0
+priority: P2
+status: idea
+---
+/spec
+
+## Type
+feature
+
+## Repo
+harbor
+Slug: console-audit-log
+
+## Goal (one sentence)
+Every change made in the web console is written to an audit log a teammate can read back.
+
+## Problem
+A setting changed in the console leaves no trace; when a mirror stops, nobody can say who changed what, or when.
+
+## In
+- One audit line per console write: time, actor, setting, old and new value
+- An audit page in the console, newest first
+
+## Out
+- No export, no retention policy of its own
+
+## Done means (observable)
+- A console write appends exactly one audit line → bun-test
+```
+
+## Workflow (`workflow`) — `specs/workflow.md`
+
+The workflow: per spec type, the ordered stages a spec of that type runs through and how its code review is done. One
+file per repository, at `specs/workflow.md`, beside the constitution; it belongs to no spec folder. Not read yet:
+`workflow.ts` (spec 008, T42, T43) fills the reader, and `FILE_KINDS` gains the kind `workflow` with it (T37); until
+then this section carries no kind heading, `check:format-doc` does not count it, and every spec runs the default below.
+
+The file holds one Markdown table `| type | stages | code_review |`, one row per type:
+
+- `type` is a spec type (`feature`, `project`, `infra`, `refactor`, `bug`, `spike`, `chore`);
+- `stages` lists the ordered stages the type runs through, separated by ` · `, taken from `plan`, `tasks`, `review`,
+  `build`, `code-review`, `close`, `done`; `blocked` and `close-pending` are detours every type has and no row lists;
+- `code_review` is `spec` (one code-reviewed mark per spec, as today), `feature` (one code review for every spec of the
+  spec's main feature: a spec whose claims are all closed waits in the intermediate stage `close-pending` while a sibling
+  of that feature is still open; the stage-table row is spec 008, T22) or `none` (no code-reviewed mark at all);
+- a type the file has no row for runs its default row; without the file every type runs the default table.
+
+**The default** is the stage table below in its order, each type listing the stages it needs today (`TYPE_NEEDS` in
+`stage.ts`: `plan.md` and `tasks.md` per the file-kind table above), with `code_review: spec` for every type and
+`none` for `chore`. This is the table `core/` applies when `specs/workflow.md` is missing:
+
+| type | stages | code_review |
+|------|--------|-------------|
+| feature | plan · tasks · review · build · code-review · close · done | spec |
+| project | plan · tasks · review · build · code-review · close · done | spec |
+| infra | plan · review · build · code-review · close · done | spec |
+| refactor | tasks · review · build · code-review · close · done | spec |
+| bug | review · build · code-review · close · done | spec |
+| spike | review · build · code-review · close · done | spec |
+| chore | review · build · done | none |
+
+As today, `tasks` stops a spec only from three claims on; with fewer, the spec passes through it. A spec without a
+`spec_type` needs neither plan nor tasks and runs `review · build · code-review · close · done` with
+`code_review: spec`, as it does today.
+
+**Two gates are fixed in every workflow:** `review` comes before `build`, and `done` comes last, reached only once
+every claim is closed. A file may narrow the optional stages of a type or reorder them, never move a fixed gate: a row
+that omits `review`, `build` or `done`, puts `review` after `build` or lists a stage after `done` is one
+`workflow-gate` diagnostic, and the default row applies for that type (T43). Who may pass a fixed gate, a person or an
+agent, is not part of this file.
+
+**No fixture yet.** A file of the shape the harbor fixture will carry (T29; T36 replaces this example with a verbatim
+block from it):
+
+```markdown
+| type | stages | code_review |
+|------|--------|-------------|
+| feature | plan · tasks · review · build · code-review · close · done | spec |
+| spike | review · build · code-review · close · done | feature |
+| chore | review · build · done | none |
+```
+
+**Derived:** the stages each spec may stand in and, from the union over the types in table order, the columns of the
+board (spec 008, T44); the transitions a spec may take (T45); and for `code_review: feature` the stage `close-pending`
+and the one code review for the whole feature (T49, T74).
+
 ## The stage table
 
 Stage and next command per spec (`stage.ts`, `STAGE_RULES`), derived from the files on every read. The rows are
@@ -696,6 +894,11 @@ Read when present, never written by the app (spec 002, T20, `locks.ts`). Two sou
   LifeOS no LifeOS path is read (ISC-37).
 - **`.spectant/activity.jsonl`** at the repository root, written by the plugin's hooks: one JSON object per line,
   `{ts, event: "claim" | "release", claim, session, task?, worktree?}`. A claim without a later release is open.
+
+In both sources `session` is the actor that holds the claim, in the actor grammar (`events`, above): `a:<kind>:<id>`
+for an agent session, `a:<kind>:<id>/<task>` for a sub-agent on a task (`a:claude:sess-7/T12`, with `task: "T12"`), a
+`u:` id for a person who holds a claim by hand. A `session` in another form, such as the `spec-002-ISC-74` lines below,
+is legacy: read, marked `legacy`, never rejected (spec 008, T28 regenerates harbor with the new forms).
 
 The page names the source it read (`frontier` before `activity`, else `none`); with no source it says so and a write
 proceeds under the hash check alone.
@@ -801,3 +1004,8 @@ parser.
   All 13 now quote a fixture file verbatim, so "one real example each" holds for every kind.⟩
 - ⟨?: `rounds.jsonl` `v` is not checked, and the timeline accepts a `ts` that does not parse while the dashboard
   skips it with a diagnostic.⟩
+- ⟨?: Spec 008: the default workflow lists per type only the stages `TYPE_NEEDS` makes it stop at (a `bug` never
+  lists `plan`); the alternative, every type listing every stage of the stage table, would put a `plan` column on the
+  board that no bug ever fills. T42 builds the default from this section.⟩
+- ⟨?: Spec 008: whether a row with `code_review: none` that still lists `code-review` or `close`, or a stage name
+  outside the seven, is a `workflow-gate` diagnostic or a diagnostic of its own (T43).⟩
