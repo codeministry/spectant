@@ -19,9 +19,12 @@
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { CardState, Frame, LiveFrame } from '../../core/src/files.ts';
-import type { APIRequestContext, Locator, Page } from '@playwright/test';
+import type { CardState, Frame, LiveFrame, SpecType, Workflow, WorkflowStage } from '../../core/src/files.ts';
+import type { APIRequestContext, Locator, Page, Request, Response as PlaywrightResponse } from '@playwright/test';
 import { assigneeOf } from '../../core/src/assignee.ts';
+import { allowedTransition, workflowStagesOf } from '../../core/src/stage.ts';
+import { FIXED_GATES } from '../../core/src/workflow.ts';
+import { writePathsOf } from '../../server/src/writes.contract.ts';
 import { atWidth, expect, test } from './fixtures';
 import { LOCKS_HEADER, RESET_PATH } from './stub-api';
 
@@ -1186,5 +1189,386 @@ test.describe('assignee', () => {
         await expectActor(chip, card.assignee, nameFor(card.assignee, true));
       }
     }
+  });
+});
+
+// ─── Moving a card (spec 008, T146, ISC-130) ─────────────────────────────────────────────────────────────────────────
+//
+// `bun run e2e -- board -g drag`: on harbor at 1440 a mouse drag of a card's grip onto a column core's table admits
+// sends exactly one transition, lands the card there, shows the toast and moves both column counts by one; a drag onto
+// a column the row does not list comes back 422 from the stub, the card stays in its column and the refusal notice
+// under it carries the stub's phrase and command, without a toast. The grip opens "Move to…" (a popover at 1440, a
+// sheet at 390) with each stage's hint, an allowed entry sends one transition, Escape gives focus back to the grip;
+// Shift+→ on a focused card moves it to its next allowed stage. Which moves the stub accepts is web/CLAUDE.md
+// "Driving the board writes from an e2e spec": 002 is held by the default `activity` lock, so the moved cards are
+// 003, 005 and 006, whose stages and allowed targets come from the planning golden and core's table.
+
+const HARBOR_WORKFLOW = (PLANNING.harbor as unknown as { readonly workflow: Workflow }).workflow;
+const HARBOR_STAGES = PLANNING.harbor.stages as readonly WorkflowStage[];
+const TRANSITION_PATH = /^\/api\/workspaces\/harbor\/specs\/[^/]+\/transition$/u;
+const ALLOCATE_PATH = /^\/api\/workspaces\/harbor\/ideas\/[^/]+\/allocate$/u;
+const TOAST = 'ui-toast .alert';
+const MOVE_MENU = '[data-move-menu]';
+
+/** A spec card of the harbor board as the goldens hold it: number, slug, stage and type. */
+interface MovableSpec {
+  readonly id: string;
+  readonly slug: string;
+  readonly key: string;
+  readonly stage: WorkflowStage;
+  readonly type: SpecType;
+}
+function movable(id: string): MovableSpec {
+  const holder = holderOf(PLANNING.harbor, id);
+  const type = rowOf(holder.slug).type as SpecType | null;
+  if (holder.stage === null || type === null) throw new Error(`harbor ${id} has no stage or no type`);
+  return { id, slug: holder.slug, key: `spec:${holder.slug}`, stage: holder.stage as WorkflowStage, type };
+}
+/** The columns core's table admits from the spec's stage, in board order (the board's `dropTargetsOf`). */
+const targetsOf = (spec: MovableSpec): WorkflowStage[] =>
+  HARBOR_STAGES.filter((s) => s !== spec.stage && allowedTransition(spec.stage, s, spec.type, HARBOR_WORKFLOW));
+/** The hint the design gives a column for the lifted card: current, allowed, a fixed gate, or not next. */
+const hintOf = (spec: MovableSpec, stage: WorkflowStage): string =>
+  stage === spec.stage ? 'current' : targetsOf(spec).includes(stage) ? 'allowed' : FIXED_GATES.includes(stage) ? 'gate' : 'not-next';
+/** A column the row does not list and that is no fixed gate, so the stub's 422 is the workflow's refusal. */
+const notNextOf = (spec: MovableSpec): WorkflowStage => {
+  const stage = HARBOR_STAGES.find((s) => hintOf(spec, s) === 'not-next');
+  if (stage === undefined) throw new Error(`harbor ${spec.id} has no not-next column`);
+  return stage;
+};
+
+const columnOf = (page: Page, stage: string): Locator => page.locator(`app-board-page section[data-col="${stage}"]`);
+const cardIn = (page: Page, stage: string, key: string): Locator => columnOf(page, stage).locator(`app-board-card[data-key="${key}"]`);
+const gripOf = (page: Page, key: string): Locator => page.locator(`app-board-page app-board-card[data-key="${key}"] [data-grip]`);
+const noticeOf = (page: Page, stage: string, key: string): Locator =>
+  columnOf(page, stage).locator('li', { has: page.locator(`app-board-card[data-key="${key}"]`) }).locator('app-refusal-notice');
+
+/** Every POST the page sends (the app's own `fetch` included), in order. */
+function postsOf(page: Page): Request[] {
+  const posts: Request[] = [];
+  page.on('request', (req) => {
+    if (req.method() === 'POST') posts.push(req);
+  });
+  return posts;
+}
+const pathsOf = (posts: readonly Request[], path: RegExp): string[] => posts.map((r) => new URL(r.url()).pathname).filter((p) => path.test(p));
+const answerTo = (page: Page, path: RegExp): Promise<PlaywrightResponse> =>
+  page.waitForResponse((r) => path.test(new URL(r.url()).pathname) && r.request().method() === 'POST');
+
+/**
+ * A mouse drag as a person makes it: down on the grip, a few moves past the CDK's threshold (`dragStartDelay` is 0 for
+ * a mouse), then over the target column, where `whileOver` may look at the hints before the button is released.
+ */
+async function mouseDrag(page: Page, grip: Locator, target: Locator, whileOver?: () => Promise<void>): Promise<void> {
+  await grip.scrollIntoViewIfNeeded();
+  const from = await grip.boundingBox();
+  const to = await target.boundingBox();
+  if (from === null || to === null) throw new Error('the grip or the target column is not rendered');
+  const x0 = from.x + from.width / 2;
+  const y0 = from.y + from.height / 2;
+  const x1 = to.x + to.width / 2;
+  const y1 = to.y + Math.min(to.height / 2, 96);
+  await page.mouse.move(x0, y0);
+  await page.mouse.down();
+  await page.mouse.move(x0 + 8, y0 + 8, { steps: 4 });
+  await page.mouse.move(x1, y1, { steps: 16 });
+  await page.mouse.move(x1 + 2, y1 + 2, { steps: 2 });
+  if (whileOver) await whileOver();
+  await page.mouse.up();
+}
+
+test.describe('drag', () => {
+  useStubSession('board-drag');
+
+  test.describe('at 1440', () => {
+    test.use(atWidth(1440));
+
+    test('drag: a mouse drag onto an allowed column sends one transition, moves the card, shows the toast and moves both counts', async ({ page }) => {
+      const spec = movable('006');
+      const to = targetsOf(spec)[0];
+      if (to === undefined) throw new Error(`harbor ${spec.id} has no allowed target`);
+      const counts = PLANNING.harbor.stageCounts;
+      const posts = postsOf(page);
+      await page.goto(wsBoard('harbor'));
+      await expect(page.locator(WS_CARDS)).toHaveCount(goldenCards(PLANNING.harbor).length);
+      await expect(cardIn(page, spec.stage, spec.key)).toHaveCount(1);
+      await expect(page.locator(TOAST)).toHaveCount(0);
+
+      const answered = answerTo(page, TRANSITION_PATH);
+      await mouseDrag(page, gripOf(page, spec.key), columnOf(page, to), async () => {
+        // While lifted, every column says what a drop there would be.
+        for (const stage of HARBOR_STAGES) await expect(columnOf(page, stage), `hint on ${stage}`).toHaveAttribute('data-drop', hintOf(spec, stage));
+      });
+      const answer = await answered;
+      expect(answer.status()).toBe(200);
+      expect(answer.request().postDataJSON()).toMatchObject({ to });
+
+      await expect(cardIn(page, to, spec.key)).toHaveCount(1);
+      await expect(cardIn(page, spec.stage, spec.key)).toHaveCount(0);
+      await expect(page.locator(TOAST)).toHaveText(`${spec.id} → ${String(STAGE_WORDS[to])}`);
+      await expect(columnCount(page, spec.stage)).toHaveText(String((counts[spec.stage] ?? 0) - 1));
+      await expect(columnCount(page, to)).toHaveText(String((counts[to] ?? 0) + 1));
+      // A reload shows the session's moved tree; the drag sent one write and nothing else.
+      await page.reload();
+      await expect(cardIn(page, to, spec.key)).toHaveCount(1);
+      await expect(columnCount(page, to)).toHaveText(String((counts[to] ?? 0) + 1));
+      expect(pathsOf(posts, TRANSITION_PATH)).toEqual([`/api/workspaces/harbor/specs/${spec.id}/transition`]);
+      expect(posts).toHaveLength(1);
+    });
+
+    test('drag: a drop the workflow refuses (422) springs the card back, the notice under it names the reason and the command, no toast', async ({ page }) => {
+      const spec = movable('006');
+      const to = notNextOf(spec);
+      const counts = PLANNING.harbor.stageCounts;
+      const posts = postsOf(page);
+      await page.goto(wsBoard('harbor'));
+      await expect(page.locator(WS_CARDS)).toHaveCount(goldenCards(PLANNING.harbor).length);
+
+      const answered = answerTo(page, TRANSITION_PATH);
+      await mouseDrag(page, gripOf(page, spec.key), columnOf(page, to), async () => {
+        await expect(columnOf(page, to)).toHaveAttribute('data-drop', 'not-next');
+        await expect(columnOf(page, to).locator('.drop-hint[data-hint="not-next"]')).toHaveText(`not next from ${String(STAGE_WORDS[spec.stage])}`);
+      });
+      const answer = await answered;
+      expect(answer.status(), 'the stub refuses a move the row does not list').toBe(422);
+      const refused = (await answer.json()) as { error: string; reason: string; command: string | null };
+      expect(refused.error).toBe('transition-refused');
+      expect(refused.command, 'the stub names the spec’s next command').not.toBeNull();
+
+      // Back in its own column, the counts as the golden holds them.
+      const card = cardIn(page, spec.stage, spec.key);
+      await expect(card).toHaveCount(1);
+      await expect(cardIn(page, to, spec.key)).toHaveCount(0);
+      await expect(columnCount(page, spec.stage)).toHaveText(String(counts[spec.stage] ?? 0));
+      await expect(columnCount(page, to)).toHaveText(String(counts[to] ?? 0));
+
+      // The notice sits in the card's own list item, under the card.
+      const notice = noticeOf(page, spec.stage, spec.key);
+      await expect(notice).toHaveAttribute('data-refusal', 'refused');
+      await expect(notice.locator('[data-head]')).toHaveText(`Not moved — ${spec.id} cannot enter ${String(STAGE_WORDS[to])}`);
+      await expect(notice.locator('ui-reason .phrase')).toHaveText(refused.reason);
+      await expect(notice.locator('ui-reason ui-command-chip')).toContainText(String(refused.command));
+      await expect(page.locator(TOAST)).toHaveCount(0);
+      expect(pathsOf(posts, TRANSITION_PATH)).toHaveLength(1);
+
+      // ✕ dismisses it; the card stays.
+      await notice.locator('[data-dismiss]').click();
+      await expect(notice).toHaveCount(0);
+      await expect(card).toHaveCount(1);
+    });
+
+    test('drag: the grip opens “Move to…” as a popover with every stage’s hint; Escape returns focus; an allowed entry moves the card', async ({ page }) => {
+      const spec = movable('003');
+      const to = targetsOf(spec)[0];
+      if (to === undefined) throw new Error(`harbor ${spec.id} has no allowed target`);
+      const posts = postsOf(page);
+      await page.goto(wsBoard('harbor'));
+      await expect(page.locator(WS_CARDS)).toHaveCount(goldenCards(PLANNING.harbor).length);
+
+      const grip = gripOf(page, spec.key);
+      await expect(grip).toHaveAttribute('aria-haspopup', 'dialog');
+      await expect(grip).toHaveAccessibleName(`Move ${spec.id}`);
+      await grip.focus();
+      await page.keyboard.press('Enter');
+      const menu = page.locator(MOVE_MENU);
+      await expect(menu).toBeVisible();
+      await expect(menu).toHaveAttribute('data-surface', 'popover');
+      const entries = menu.locator('[data-move-to]');
+      expect(await entries.evaluateAll((els) => els.map((el) => el.getAttribute('data-move-to')))).toEqual([...HARBOR_STAGES]);
+      for (const stage of HARBOR_STAGES) {
+        const entry = menu.locator(`[data-move-to="${stage}"]`);
+        const hint = hintOf(spec, stage);
+        await expect(entry, stage).toHaveAttribute('data-hint', hint);
+        if (hint === 'current') await expect(entry, stage).toHaveAttribute('aria-current', 'true');
+        else await expect(entry, stage).not.toHaveAttribute('aria-current');
+        if (hint === 'allowed') await expect(entry, stage).not.toHaveAttribute('aria-disabled');
+        else await expect(entry, stage).toHaveAttribute('aria-disabled', 'true');
+      }
+
+      await page.keyboard.press('Escape');
+      await expect(menu).toHaveCount(0);
+      await expect(grip).toBeFocused();
+      expect(posts).toHaveLength(0);
+
+      // A disabled entry sends nothing; the allowed one sends the one transition and the card lands.
+      await page.keyboard.press('Enter');
+      await expect(menu).toBeVisible();
+      // `aria-disabled`, not `disabled`: the entry stays focusable so its reason is read, and Enter on it does nothing.
+      await menu.locator(`[data-move-to="${notNextOf(spec)}"]`).focus();
+      await page.keyboard.press('Enter');
+      await expect(menu).toBeVisible();
+      expect(posts).toHaveLength(0);
+      const answered = answerTo(page, TRANSITION_PATH);
+      await menu.locator(`[data-move-to="${to}"]`).click();
+      expect((await answered).status()).toBe(200);
+      await expect(menu).toHaveCount(0);
+      await expect(cardIn(page, to, spec.key)).toHaveCount(1);
+      await expect(cardIn(page, spec.stage, spec.key)).toHaveCount(0);
+      await expect(page.locator(TOAST)).toHaveText(`${spec.id} → ${String(STAGE_WORDS[to])}`);
+      await expect(gripOf(page, spec.key)).toBeFocused();
+      expect(pathsOf(posts, TRANSITION_PATH)).toEqual([`/api/workspaces/harbor/specs/${spec.id}/transition`]);
+      expect(posts).toHaveLength(1);
+    });
+
+    test('drag: Shift+ArrowRight on a focused card moves it to its next allowed stage with one transition', async ({ page }) => {
+      const spec = movable('005');
+      const at = HARBOR_STAGES.indexOf(spec.stage);
+      const to = HARBOR_STAGES.slice(at + 1).find((s) => targetsOf(spec).includes(s));
+      if (to === undefined) throw new Error(`harbor ${spec.id} has no allowed stage to its right`);
+      const posts = postsOf(page);
+      await page.goto(wsBoard('harbor'));
+      await expect(page.locator(WS_CARDS)).toHaveCount(goldenCards(PLANNING.harbor).length);
+
+      await cardIn(page, spec.stage, spec.key).locator('a.title').focus();
+      const answered = answerTo(page, TRANSITION_PATH);
+      await page.keyboard.press('Shift+ArrowRight');
+      const answer = await answered;
+      expect(answer.status()).toBe(200);
+      expect(answer.request().postDataJSON()).toMatchObject({ to });
+      await expect(cardIn(page, to, spec.key)).toHaveCount(1);
+      await expect(cardIn(page, spec.stage, spec.key)).toHaveCount(0);
+      await expect(page.locator(MOVE_MENU)).toHaveCount(0);
+      await expect(gripOf(page, spec.key)).toBeFocused();
+      expect(pathsOf(posts, TRANSITION_PATH)).toEqual([`/api/workspaces/harbor/specs/${spec.id}/transition`]);
+      expect(posts).toHaveLength(1);
+    });
+  });
+
+  test.describe('at 390', () => {
+    test.use(atWidth(390));
+
+    test('drag: at 390 “Move to…” is a bottom sheet; Escape closes it and focus returns to the grip', async ({ page }) => {
+      const spec = movable('006');
+      const posts = postsOf(page);
+      await page.goto(`${wsBoard('harbor')}?col=${spec.stage}`);
+      await expect(page.locator('app-board-page')).toHaveAttribute('data-tier', 'compact');
+      const grip = gripOf(page, spec.key);
+      await grip.click();
+      const menu = page.locator(MOVE_MENU);
+      await expect(menu).toBeVisible();
+      await expect(menu).toHaveAttribute('data-surface', 'sheet');
+      for (const stage of HARBOR_STAGES) await expect(menu.locator(`[data-move-to="${stage}"]`), stage).toHaveAttribute('data-hint', hintOf(spec, stage));
+      await page.keyboard.press('Escape');
+      await expect(menu).toHaveCount(0);
+      await expect(grip).toBeFocused();
+      expect(posts).toHaveLength(0);
+    });
+  });
+});
+
+// ─── Allocating a story (spec 008, T147, ISC-130.2) ──────────────────────────────────────────────────────────────────
+//
+// `bun run e2e -- board -g allocate`: a story dragged (or moved through "Move to…") onto the first stage of its type
+// opens the allocation dialog naming the folder `specs/NNN-<slug>/`, the files it writes and the story file it removes,
+// all from the contract's `WRITE_PATHS.allocate`. "Not yet" sends nothing; Allocate sends exactly one allocation and
+// opens the new spec the stub answers; `registry-webhooks`, which the story index does not name, comes back 422
+// `not-in-index`: the notice under its card, no navigation.
+
+const STORY_OK = 'console-audit-log';
+const STORY_UNINDEXED = 'registry-webhooks';
+const DIALOG = '[data-allocate-dialog]';
+
+interface StoryCard {
+  readonly slug: string;
+  readonly key: string;
+  readonly first: WorkflowStage;
+  readonly path: string;
+}
+function storyOf(slug: string): StoryCard {
+  const idea = (PLANNING.harbor.ideas as ReadonlyArray<{ slug: string; type: string | null; path?: string }>).find((i) => i.slug === slug);
+  if (idea?.type === undefined || idea.type === null || idea.path === undefined) throw new Error(`the harbor planning golden holds no typed story ${slug}`);
+  const first = workflowStagesOf(idea.type as SpecType, HARBOR_WORKFLOW)[0];
+  if (first === undefined) throw new Error(`the ${idea.type} row has no first stage`);
+  return { slug, key: `idea:${slug}`, first, path: idea.path };
+}
+
+/** The dialog names the folder, the files and the story file of `WRITE_PATHS.allocate`, the number left open. */
+async function expectAllocateDialog(page: Page, story: StoryCard): Promise<Locator> {
+  const paths = writePathsOf('allocate', `NNN-${story.slug}`, story.slug);
+  const folder = String(paths.creates);
+  expect(folder).toBe(`specs/NNN-${story.slug}/`);
+  expect(paths.removes).toEqual([story.path]);
+  const dialog = page.locator(DIALOG);
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute('data-slug', story.slug);
+  await expect(dialog.locator('[data-allocate-folder]')).toHaveText(folder);
+  await expect(dialog.locator('[data-allocate-file]')).toHaveText(paths.writes.map((p) => p.slice(folder.length)));
+  await expect(dialog.locator('[data-allocate-number]')).toBeVisible();
+  await expect(dialog.locator('[data-allocate-story]')).toHaveText(story.path);
+  return dialog;
+}
+
+test.describe('allocate', () => {
+  useStubSession('board-allocate');
+  test.use(atWidth(1440));
+
+  test('allocate: a story dropped on the first stage of its type, or moved there from the menu, opens the dialog; Not yet sends nothing; Allocate sends one and opens the new spec', async ({ page }) => {
+    const story = storyOf(STORY_OK);
+    const posts = postsOf(page);
+    await page.goto(wsBoard('harbor'));
+    await expect(page.locator(WS_CARDS)).toHaveCount(goldenCards(PLANNING.harbor).length);
+    await expect(cardIn(page, 'idea', story.key)).toHaveCount(1);
+    const dropStory = (): Promise<void> =>
+      mouseDrag(page, gripOf(page, story.key), columnOf(page, story.first), async () => {
+        await expect(columnOf(page, story.first)).toHaveAttribute('data-drop', 'allowed');
+      });
+
+    // A drop asks; "Not yet" closes the dialog and sends nothing.
+    await dropStory();
+    await (await expectAllocateDialog(page, story)).locator('[data-allocate-cancel]').click();
+    await expect(page.locator(DIALOG)).toHaveCount(0);
+    await expect(cardIn(page, 'idea', story.key)).toHaveCount(1);
+    expect(posts, 'Not yet sends no request').toHaveLength(0);
+
+    // "Move to…": the first stage's entry asks the same; "Not yet" gives focus back to the grip.
+    await gripOf(page, story.key).click();
+    await expect(page.locator(MOVE_MENU)).toHaveAttribute('data-surface', 'popover');
+    const entry = page.locator(`${MOVE_MENU} [data-move-to="${story.first}"]`);
+    await expect(entry).toHaveAttribute('data-hint', 'allowed');
+    await entry.click();
+    await expect(page.locator(MOVE_MENU)).toHaveCount(0);
+    await (await expectAllocateDialog(page, story)).locator('[data-allocate-cancel]').click();
+    await expect(page.locator(DIALOG)).toHaveCount(0);
+    await expect(gripOf(page, story.key)).toBeFocused();
+    expect(posts, 'Not yet sends no request').toHaveLength(0);
+
+    // A drop again, and Allocate: one allocation, then the new spec's page.
+    await dropStory();
+    await expectAllocateDialog(page, story);
+    const answered = answerTo(page, ALLOCATE_PATH);
+    await page.locator(`${DIALOG} [data-allocate-confirm]`).click();
+    const answer = await answered;
+    expect(answer.status()).toBe(200);
+    const written = (await answer.json()) as { id: string; folder: string };
+    expect(written.folder).toBe(`specs/${written.id}-${story.slug}/`);
+    await expect(page).toHaveURL(new RegExp(`/w/harbor/s/${written.id}(?:[/?#]|$)`, 'u'));
+    expect(pathsOf(posts, ALLOCATE_PATH)).toEqual([`/api/workspaces/harbor/ideas/${story.slug}/allocate`]);
+    expect(posts).toHaveLength(1);
+  });
+
+  test('allocate: a story the index does not name comes back not-in-index; the notice stays under its card and the page does not navigate', async ({ page }) => {
+    const story = storyOf(STORY_UNINDEXED);
+    const posts = postsOf(page);
+    await page.goto(wsBoard('harbor'));
+    await expect(page.locator(WS_CARDS)).toHaveCount(goldenCards(PLANNING.harbor).length);
+
+    await mouseDrag(page, gripOf(page, story.key), columnOf(page, story.first));
+    await expectAllocateDialog(page, story);
+    const answered = answerTo(page, ALLOCATE_PATH);
+    await page.locator(`${DIALOG} [data-allocate-confirm]`).click();
+    const answer = await answered;
+    expect(answer.status()).toBe(422);
+    expect(await answer.json()).toMatchObject({ error: 'allocate-refused', reason: 'not-in-index' });
+
+    await expect(page.locator(DIALOG)).toHaveCount(0);
+    const notice = noticeOf(page, 'idea', story.key);
+    await expect(notice).toHaveAttribute('data-refusal', 'unallocated');
+    await expect(notice.locator('[data-head]')).toHaveText(`Not allocated — ${story.slug} stays an idea`);
+    await expect(notice.locator('ui-reason .phrase')).toHaveText(`The ideas index specs/ideas/README.md does not name ${story.slug}`);
+    await expect(cardIn(page, 'idea', story.key)).toHaveCount(1);
+    await expect(page).toHaveURL(/\/w\/harbor\/board(?:\?|$)/u);
+    await expect(page.locator(TOAST)).toHaveCount(0);
+    expect(pathsOf(posts, ALLOCATE_PATH)).toHaveLength(1);
+    expect(posts).toHaveLength(1);
   });
 });
