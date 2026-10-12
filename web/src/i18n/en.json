@@ -1391,6 +1391,52 @@
       "gettingStarted": "Getting started",
       "keyboard": "Keyboard"
     },
+    "subtitle": "Spectant · the words, the workflows, the commands",
+    "about": {
+      "body": "Spectant reads the Markdown specs of your registered repositories and shows them on one board. The files are the only source of truth: the app keeps a small registry and its settings, and writes a file only when you move a card or tick a task."
+    },
+    "moves": {
+      "body": "A spec moves through the stages of its type. On the board you drag its card, or open Move to… from the grip; core runs the same transition either way and either moves it or says, under the card, what is missing.",
+      "chain": "The stages of a feature, in the default order",
+      "types": "The workflow of each spec type"
+    },
+    "legend": {
+      "label": "Legend",
+      "moving": "moving",
+      "waits": "waits on you",
+      "done": "done",
+      "detour": "detour",
+      "gate": "fixed gate"
+    },
+    "commands": {
+      "lead": "Spec work starts in the AI chat with the Spec skill; the board shows the command a waiting card needs.",
+      "caption": "The commands of the Spec skill, as the stage table names them",
+      "columns": {
+        "command": "Command",
+        "purpose": "What it does"
+      },
+      "list": {
+        "spec-new": "Turn a shaped story under specs/ideas/ into a spec folder.",
+        "spec-plan": "Write plan.md: the how, locked in one question.",
+        "spec-tasks": "Break the spec into tasks.md, one claim per task.",
+        "spec-review": "Review the spec and record the reviewed mark, the gate into Build.",
+        "spec-implement": "Work the tasks until every claim closes on its probe.",
+        "spec-code-review": "Run the code and security review on the working tree.",
+        "spec-complete": "Close the spec once every close condition holds.",
+        "spec-status": "Phase, progress and claims of every spec in the repository."
+      }
+    },
+    "start": {
+      "lead": "Three steps from the installer to the board.",
+      "steps": {
+        "install": "Install the binary with the one-line script from the README; it picks the build for your OS and architecture.",
+        "register": "Register a repository that has a `specs/` folder: `spectant add <repo>`.",
+        "open": "Run `spectant`, then open the workspace and its board: every spec and idea stands in its stage."
+      }
+    },
+    "keyboard": {
+      "lead": "The same bindings as the shortcut sheet that ? opens."
+    },
     "glossary": {
       "heading": "Glossary",
       "caption": "The words the spec format uses",

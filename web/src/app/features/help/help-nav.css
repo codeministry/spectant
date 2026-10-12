@@ -1,0 +1,64 @@
+/*
+ * The Help section nav (T162): sticky under the shell header (64 px at medium and wide, the 48 + 44 px compact header
+ * below 640), on the page colour so the sections scroll under it. Medium and wide wrap the chips; compact keeps one
+ * row that scrolls sideways inside the nav, never the page.
+ */
+:host {
+  position: sticky;
+  inset-block-start: 64px;
+  z-index: 10;
+  display: block;
+  border-block-end: 1px solid var(--line);
+  background: var(--color-base-200);
+}
+
+ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  block-size: 32px;
+  padding-inline: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-selector);
+  color: var(--muted-ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+}
+
+.chip[aria-current="true"] {
+  border-color: var(--track);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+}
+
+@container shell (width < 640px) {
+  :host {
+    inset-block-start: 92px;
+  }
+
+  ul {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  li {
+    flex: none;
+  }
+}

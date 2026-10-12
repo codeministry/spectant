@@ -1391,6 +1391,52 @@
       "gettingStarted": "Erste Schritte",
       "keyboard": "Tastatur"
     },
+    "subtitle": "Spectant · die Begriffe, die Workflows, die Befehle",
+    "about": {
+      "body": "Spectant liest die Markdown-Specs Ihrer registrierten Repositories und zeigt sie auf einem Board. Die Dateien sind die einzige Quelle der Wahrheit: Die App führt nur ein kleines Register und ihre Einstellungen und schreibt eine Datei nur dann, wenn Sie eine Karte verschieben oder einen Task abhaken."
+    },
+    "moves": {
+      "body": "Eine Spec durchläuft die Stages ihres Typs. Auf dem Board ziehen Sie ihre Karte oder öffnen „Verschieben nach…“ am Griff; core führt in beiden Fällen dieselbe Transition aus und verschiebt die Karte oder nennt unter ihr, was noch fehlt.",
+      "chain": "Die Stages eines Features in der Standardreihenfolge",
+      "types": "Der Workflow jedes Spec-Typs"
+    },
+    "legend": {
+      "label": "Legende",
+      "moving": "in Bewegung",
+      "waits": "wartet auf Sie",
+      "done": "erledigt",
+      "detour": "Umweg",
+      "gate": "festes Gate"
+    },
+    "commands": {
+      "lead": "Die Arbeit an einer Spec beginnt im KI-Chat mit dem Spec-Skill; das Board zeigt den Befehl, den eine wartende Karte braucht.",
+      "caption": "Die Befehle des Spec-Skills, wie die Stage-Tabelle sie nennt",
+      "columns": {
+        "command": "Befehl",
+        "purpose": "Was er tut"
+      },
+      "list": {
+        "spec-new": "Macht aus einer ausgearbeiteten Story unter specs/ideas/ einen Spec-Ordner.",
+        "spec-plan": "Schreibt plan.md: das Wie, mit einer Frage festgelegt.",
+        "spec-tasks": "Zerlegt die Spec in tasks.md, ein Claim pro Task.",
+        "spec-review": "Prüft die Spec und setzt die Review-Marke, das Gate zu Build.",
+        "spec-implement": "Arbeitet die Tasks ab, bis jeder Claim auf seine Probe hin schliesst.",
+        "spec-code-review": "Führt das Code- und Security-Review auf dem Arbeitsbaum aus.",
+        "spec-complete": "Schliesst die Spec, sobald jede Abschlussbedingung erfüllt ist.",
+        "spec-status": "Phase, Fortschritt und Claims jeder Spec im Repository."
+      }
+    },
+    "start": {
+      "lead": "Drei Schritte vom Installer zum Board.",
+      "steps": {
+        "install": "Installieren Sie das Binary mit dem einzeiligen Skript aus dem README; es wählt den Build für Ihr Betriebssystem und Ihre Architektur.",
+        "register": "Registrieren Sie ein Repository mit einem Ordner `specs/`: `spectant add <repo>`.",
+        "open": "Starten Sie `spectant` und öffnen Sie den Workspace und sein Board: Jede Spec und jede Idee steht in ihrer Stage."
+      }
+    },
+    "keyboard": {
+      "lead": "Dieselben Tastenbelegungen wie im Shortcut-Sheet, das ? öffnet."
+    },
     "glossary": {
       "heading": "Glossar",
       "caption": "Die Begriffe des Spec-Formats",

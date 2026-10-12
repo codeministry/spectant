@@ -4,7 +4,7 @@ import {
   Component,
   computed,
   DestroyRef,
-  type ElementRef,
+  ElementRef,
   inject,
   resource,
   viewChild,
@@ -12,18 +12,24 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { Workflow, WorkflowRow, WorkflowStage } from '../../../../../core/src/files';
+import type { SpecType, Workflow, WorkflowRow, WorkflowStage } from '../../../../../core/src/files';
 import { GLOSSARY } from '../../../../../core/src/glossary';
 import { DEFAULT_WORKFLOW, defaultWorkflowRow } from '../../../../../core/src/stage';
 import { ApiClient } from '../../core/api.service';
+import { keyLabel } from '../../core/keyboard-bindings';
 import { type ResolvedTheme, ThemeService } from '../../core/theme.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
+import { UiIcon } from '../../shared/icons/icon';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiChip } from '../../shared/ui/chip/chip';
+import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
+import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiTypeGlyph } from '../../shared/ui/type-glyph/type-glyph';
 // The Docs tabs' loader, reused as it is: one lazy `mermaid` chunk for the whole app (web/tests/docs-lazy-chunk.test.ts).
 import { MERMAID_LOADER, type MermaidApi, mermaidConfig, themeVariables } from '../../shared/ui/doc-prose/mermaid';
+import { HelpNav } from './help-nav';
+import { HELP_COMMANDS, HELP_SECTIONS, HELP_TYPES, KEY_CONTEXTS, LEGEND, STAGE_CHAIN, START_STEPS } from './help-sections';
 import { type DiagramTransition, diagramDirection, transitionList, workflowDiagram } from './workflow-diagram';
 
 /** The default table as a workflow: what the page shows without a workspace or when its workflow cannot be read. */
@@ -71,7 +77,7 @@ let nextRenderId = 0;
  */
 @Component({
   selector: 'app-help-page',
-  imports: [TranslocoPipe, UiCard, UiChip, UiTypeGlyph],
+  imports: [HelpNav, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiIcon, UiKbd, UiTypeGlyph],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'help' },
   templateUrl: './help-page.html',
@@ -88,6 +94,17 @@ export class HelpPage {
   private readonly loadMermaid = inject(MERMAID_LOADER);
 
   protected readonly glossary = GLOSSARY.map((row) => ({ ...row, key: row.term.toLowerCase() }));
+
+  // The sections around the workflows and the glossary (T162, ISC-133.1): data from core and the one shortcut table.
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  protected readonly sections = HELP_SECTIONS;
+  protected readonly chain = STAGE_CHAIN;
+  protected readonly types = HELP_TYPES;
+  protected readonly legend = LEGEND;
+  protected readonly commands = HELP_COMMANDS;
+  protected readonly steps = START_STEPS;
+  protected readonly keyContexts = KEY_CONTEXTS;
+  protected readonly keyLabel = keyLabel;
 
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
   private readonly query = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
@@ -164,6 +181,15 @@ export class HelpPage {
   /** The select writes `?ws=` (empty for the default table), so reload and back land on the same choice. */
   protected choose(ws: string): void {
     void this.router.navigate([], { relativeTo: this.route, queryParams: { ws }, queryParamsHandling: 'merge' });
+  }
+
+  /** A type chip of "How a spec moves": scrolls to that type's figure and focuses it, as a section jump does. */
+  protected showFigure(type: SpecType): void {
+    const figure = this.host.nativeElement.querySelector<HTMLElement>(`figure[data-workflow-figure="${type}"]`);
+    if (!figure) return;
+    if (!figure.hasAttribute('tabindex')) figure.setAttribute('tabindex', '-1');
+    figure.scrollIntoView({ block: 'start' });
+    figure.focus({ preventScroll: true });
   }
 
   protected spans(text: string): readonly Span[] {

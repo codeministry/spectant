@@ -1,37 +1,90 @@
+<app-help-nav [sections]="sections" />
+
 <ui-card class="head" [padding]="24">
   <h1 id="help" tabindex="-1">{{ 'help.title' | transloco }}</h1>
+  <p class="subtitle">{{ 'help.subtitle' | transloco }}</p>
 </ui-card>
 
-<section class="section" aria-labelledby="help-workflows">
-  <ui-card [padding]="24">
-    <h2 id="help-workflows">
-      @if (selected(); as ws) {
-        {{ 'help.workflow.heading' | transloco: { ws: data.workspaceName(ws) } }}
-      } @else {
-        {{ 'help.workflow.headingDefault' | transloco }}
-      }
-    </h2>
-    <div class="workspace">
-      <label for="help-workspace">{{ 'help.workflow.workspace' | transloco }}</label>
-      <select
-        id="help-workspace"
-        class="select select-sm"
-        data-workflow-workspace
-        #workspace
-        [value]="selected() ?? ''"
-        (change)="choose(workspace.value)"
-      >
-        <option value="" [selected]="selected() === null">{{ 'help.workflow.headingDefault' | transloco }}</option>
-        @for (entry of data.workspaceList(); track entry.slug) {
-          <option [value]="entry.slug" [selected]="selected() === entry.slug">{{ entry.name }}</option>
+<section id="about" class="section" aria-labelledby="help-about">
+  <h2 id="help-about" tabindex="-1">{{ 'help.nav.about' | transloco }}</h2>
+  <p class="prose">{{ 'help.about.body' | transloco }}</p>
+</section>
+
+<section id="moves" class="section" aria-labelledby="help-moves">
+  <h2 id="help-moves" tabindex="-1">{{ 'help.nav.moves' | transloco }}</h2>
+  <p class="prose lead">{{ 'help.moves.body' | transloco }}</p>
+  <ol class="chain" data-stage-chain [attr.aria-label]="'help.moves.chain' | transloco">
+    @for (stage of chain; track stage; let last = $last) {
+      <li [attr.data-stage]="stage">
+        <span class="pill">{{ 'stages.' + stage | transloco }}</span>
+        @if (!last) {
+          <ui-icon class="chevron" name="chevron-right" [size]="14" />
         }
-      </select>
+      </li>
+    }
+  </ol>
+  <ul class="types" data-type-chips [attr.aria-label]="'help.moves.types' | transloco">
+    @for (type of types; track type) {
+      <li>
+        <button type="button" class="type-chip" [attr.data-type-chip]="type" (click)="showFigure(type)">
+          <ui-type-glyph [type]="type" [size]="16" [decorative]="true" />
+          <span>{{ 'types.' + type | transloco }}</span>
+        </button>
+      </li>
+    }
+  </ul>
+</section>
+
+<section id="workflows" class="section" aria-labelledby="help-workflows">
+  <ui-card [padding]="24">
+    <div class="workflow-head">
+      <h2 id="help-workflows" tabindex="-1">
+        @if (selected(); as ws) {
+          {{ 'help.workflow.heading' | transloco: { ws: data.workspaceName(ws) } }}
+        } @else {
+          {{ 'help.workflow.headingDefault' | transloco }}
+        }
+      </h2>
+      <div class="workspace">
+        <label for="help-workspace">{{ 'help.workflow.workspace' | transloco }}</label>
+        <select
+          id="help-workspace"
+          class="select select-sm"
+          data-workflow-workspace
+          #workspace
+          [value]="selected() ?? ''"
+          (change)="choose(workspace.value)"
+        >
+          <option value="" [selected]="selected() === null">{{ 'help.workflow.headingDefault' | transloco }}</option>
+          @for (entry of data.workspaceList(); track entry.slug) {
+            <option [value]="entry.slug" [selected]="selected() === entry.slug">{{ entry.name }}</option>
+          }
+        </select>
+      </div>
     </div>
     <p class="source" data-workflow-source aria-live="polite">
       @if (sourceLine(); as line) {
         {{ line.key | transloco: line.params }}
       }
     </p>
+    <ul class="legend" data-workflow-legend [attr.aria-label]="'help.legend.label' | transloco">
+      @for (entry of legend; track entry.key) {
+        <li [attr.data-legend]="entry.key">
+          @switch (entry.look) {
+            @case ('edge') {
+              <span class="swatch" aria-hidden="true" [style.--legend-edge]="entry.edge"></span>
+            }
+            @case ('dashed') {
+              <span class="swatch dashed" aria-hidden="true"></span>
+            }
+            @case ('gate') {
+              <ui-icon class="gate-glyph" name="shield-check" [size]="14" />
+            }
+          }
+          <span>{{ 'help.legend.' + entry.key | transloco }}</span>
+        </li>
+      }
+    </ul>
 
     <div class="figures" #diagrams [attr.aria-busy]="view().kind === 'loading'">
       @for (figure of figures(); track figure.row.type) {
@@ -65,9 +118,38 @@
   </ui-card>
 </section>
 
-<section class="section" aria-labelledby="help-glossary">
+<section id="commands" class="section" aria-labelledby="help-commands">
+  <h2 id="help-commands" tabindex="-1">{{ 'help.nav.commands' | transloco }}</h2>
+  <p class="prose lead">{{ 'help.commands.lead' | transloco }}</p>
+  <table class="commands" data-commands role="table">
+    <caption>{{ 'help.commands.caption' | transloco }}</caption>
+    <thead role="rowgroup">
+      <tr role="row">
+        <th scope="col" role="columnheader">{{ 'help.commands.columns.command' | transloco }}</th>
+        <th scope="col" role="columnheader">{{ 'help.commands.columns.purpose' | transloco }}</th>
+      </tr>
+    </thead>
+    <tbody role="rowgroup">
+      @for (row of commands; track row.command) {
+        <tr role="row" [attr.data-command]="row.command">
+          <td role="cell" class="command">
+            <ui-command-chip
+              [command]="row.command"
+              [copyLabel]="'common.copyCommand' | transloco"
+              [copiedLabel]="'common.copied' | transloco: { command: row.command }"
+              [manualHint]="'common.copyFallback' | transloco"
+            />
+          </td>
+          <td role="cell" class="purpose">{{ 'help.commands.list.' + row.key | transloco }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</section>
+
+<section id="glossary" class="section" aria-labelledby="help-glossary">
   <ui-card [padding]="24">
-    <h2 id="help-glossary">{{ 'help.glossary.heading' | transloco }}</h2>
+    <h2 id="help-glossary" tabindex="-1">{{ 'help.glossary.heading' | transloco }}</h2>
     <table class="glossary" data-glossary role="table">
       <caption>{{ 'help.glossary.caption' | transloco }}</caption>
       <thead role="rowgroup">
@@ -94,4 +176,45 @@
       </tbody>
     </table>
   </ui-card>
+</section>
+
+<section id="start" class="section" aria-labelledby="help-start">
+  <h2 id="help-start" tabindex="-1">{{ 'help.nav.gettingStarted' | transloco }}</h2>
+  <p class="prose lead">{{ 'help.start.lead' | transloco }}</p>
+  <ol class="steps" data-start-steps>
+    @for (step of steps; track step) {
+      @let text = 'help.start.steps.' + step | transloco;
+      <!-- One line on purpose, as in the glossary: the code spans sit flush against their words. -->
+      <li [attr.data-step]="step">@for (span of spans(text); track $index) {@if (span.code) {<code>{{ span.text }}</code>} @else {<span>{{ span.text }}</span>}}</li>
+    }
+  </ol>
+</section>
+
+<section id="keys" class="section" aria-labelledby="help-keys">
+  <h2 id="help-keys" tabindex="-1">{{ 'help.nav.keyboard' | transloco }}</h2>
+  <p class="prose lead">{{ 'help.keyboard.lead' | transloco }}</p>
+  @for (context of keyContexts; track context.id) {
+    <div class="keys-context" [attr.data-context]="context.id">
+      <h3>{{ 'shortcuts.contexts.' + context.id | transloco }}</h3>
+      @for (group of context.groups; track group.id) {
+        <div class="keys-group" [attr.data-group]="group.id">
+          @if (context.titled) {
+            <h4>{{ 'shortcuts.groups.' + group.id | transloco }}</h4>
+          }
+          <dl class="keys">
+            @for (binding of group.bindings; track binding.id) {
+              <div class="key-row" [attr.data-binding]="binding.id">
+                <dt>
+                  @for (key of binding.keys; track $index) {
+                    <ui-kbd>{{ keyLabel(key) }}</ui-kbd>
+                  }
+                </dt>
+                <dd>{{ binding.label | transloco: { target: binding.target ? (binding.target | transloco) : '' } }}</dd>
+              </div>
+            }
+          </dl>
+        </div>
+      }
+    </div>
+  }
 </section>
