@@ -1088,6 +1088,50 @@ describe('POST /api/__stub/bump (T68)', () => {
   });
 });
 
+describe('PUT /api/__stub/workflow (T151)', () => {
+  const PLANNING = '/api/workspaces/harbor/planning';
+  const HARBOR_FEATURE = ['plan', 'review', 'tasks', 'build', 'code-review', 'close', 'done'];
+  type Tree = { workflow: { source: string; rows: Array<{ type: string; stages: string[] }> } };
+  const featureOf = async (res: Response): Promise<string[]> =>
+    ((await res.json()) as Tree).workflow.rows.find((row) => row.type === 'feature')?.stages ?? [];
+  const TABLE = [
+    '| type | stages | code_review |',
+    '|------|--------|-------------|',
+    '| feature | plan · review · build · code-review · close · done | spec |',
+  ].join('\n');
+
+  test('serves that session’s planning tree with the workflow core parses from the text sent, until a reset', async () => {
+    const before = await ask(PLANNING, { session: 'wf-a' });
+    const etag = before.headers.get('ETag') ?? '';
+    expect(await featureOf(before)).toEqual(HARBOR_FEATURE);
+
+    expect((await ask('/api/__stub/workflow?ws=harbor', { method: 'PUT', session: 'wf-a', body: TABLE })).status).toBe(204);
+
+    const after = await ask(PLANNING, { session: 'wf-a', headers: { 'If-None-Match': etag } });
+    expect(after.status).toBe(200);
+    expect(after.headers.get('ETag')).not.toBe(etag);
+    const tree = (await after.json()) as Tree;
+    expect(tree.workflow.source).toBe('file');
+    expect(tree.workflow.rows.find((row) => row.type === 'feature')?.stages).toEqual(['plan', 'review', 'build', 'code-review', 'close', 'done']);
+    // The types the text leaves out run core's default row, as the real reader does.
+    expect(tree.workflow.rows).toHaveLength(7);
+
+    expect(await featureOf(await ask(PLANNING, { session: 'wf-b' }))).toEqual(HARBOR_FEATURE);
+    expect(((await (await ask('/api/workspaces/lantern/planning', { session: 'wf-a' })).json()) as Tree).workflow.source).toBe('default');
+
+    expect((await ask('/api/__stub/reset', { method: 'POST', session: 'wf-a' })).status).toBe(204);
+    expect(await featureOf(await ask(PLANNING, { session: 'wf-a' }))).toEqual(HARBOR_FEATURE);
+  });
+
+  test('answers 405 for another method and 404 for a workspace the stub does not hold', async () => {
+    const wrong = await ask('/api/__stub/workflow?ws=harbor');
+    expect(wrong.status).toBe(405);
+    expect(wrong.headers.get('Allow')).toBe('PUT');
+    expect((await ask('/api/__stub/workflow?ws=nowhere', { method: 'PUT', body: TABLE })).status).toBe(404);
+    expect((await ask('/api/__stub/workflow', { method: 'PUT', body: TABLE })).status).toBe(404);
+  });
+});
+
 // ---- the Stage-3 board seam (T119, ISC-129) -----------------------------------------------------------------------
 
 type BoardHolder = { id: string; slug: string; stage: string | null; stageSource: string | null; hash: string | null; main: boolean; held: number };

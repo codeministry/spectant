@@ -4,6 +4,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import { KeyboardService } from '../../core/keyboard.service';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiCard } from '../../shared/ui/card/card';
+import { ActorsSection } from '../settings/actors-section';
 
 /**
  * `/settings` until T40/T41 bring the settings popover (theme, language, single-key shortcuts, help): the header's
@@ -12,7 +13,7 @@ import { UiCard } from '../../shared/ui/card/card';
  */
 @Component({
   selector: 'app-settings-page',
-  imports: [RouterLink, TranslocoPipe, UiButton, UiCard],
+  imports: [RouterLink, TranslocoPipe, UiButton, UiCard, ActorsSection],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'settings' },
   styles: `
@@ -32,6 +33,7 @@ import { UiCard } from '../../shared/ui/card/card';
       </button>
       <a routerLink="/help" data-action="help">{{ 'help.title' | transloco }}</a>
     </ui-card>
+    <app-actors-section />
     <a routerLink="/">{{ 'shell.settingsPage.back' | transloco }}</a>
   `,
 })

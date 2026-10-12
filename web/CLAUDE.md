@@ -125,3 +125,12 @@ what it sends, never by a hidden switch:
 - **422**: a move the row does not list (`006` `review → done`, or the stage it already stands in), answered with the
   stage-table phrase and the spec's next command; allocating `registry-webhooks`, which the story index does not name,
   is `not-in-index`. Reason: these are the refusals the real write gives for the same fixture.
+
+## Changing a workflow from an e2e spec
+
+`PUT /api/__stub/workflow?ws=<slug>` with a `specs/workflow.md` text as the body stands in for an edit of that file
+(T151): core's `parseWorkflow` reads it, and that `X-Spectant-Stub-Session`'s planning tree carries the result as
+`workflow` (and `boardStages` of it as `stages`) until `POST /api/__stub/reset`. 204; 404 for an unknown slug; 405 with
+`Allow: PUT`. Set the session on the context (`setExtraHTTPHeaders`), send the edited fixture file, reload, assert;
+reset after. Reason: the next read must show the changed table without touching the fixture tree, and the parse
+stays core's.

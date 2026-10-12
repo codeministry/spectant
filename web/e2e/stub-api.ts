@@ -65,6 +65,10 @@
  * - `POST /api/__stub/bump?ws=<slug>` changes that workspace's dashboard for that session between two polls (T68,
  *   ISC-62): each call raises `kpis.claims.closed` by one, so the body and its ETag change as a file on disk would.
  *   204; 404 for a workspace the stub does not hold; 405 with `Allow: POST` for another method.
+ * - `PUT /api/__stub/workflow?ws=<slug>` with a `specs/workflow.md` text as the body stands in for an edit of that
+ *   workspace's workflow file (T151, ISC-123): core's `parseWorkflow` reads the text, and that session's planning tree
+ *   carries the result as its `workflow` until a reset, so the next read shows the changed table (body and ETag). 204;
+ *   404 for a workspace the stub does not hold; 405 with `Allow: PUT` for another method.
  *
  * Nothing here reads the clock or the registry: every answer is a function of the fixture files and the request. The
  * goldens are read once when the stub is built, so a missing fixture fails at startup, not on a request. Core's
@@ -97,6 +101,7 @@ import type {
   TaskStatus,
   TasksTab,
   TimelineEntry,
+  Workflow,
 } from '../../core/src/files';
 import { parseActor } from '../../core/src/actor';
 import type { PlanningHolder, PlanningModel } from '../../core/src/planning';
@@ -181,6 +186,7 @@ export const LOCKS_HEADER = 'X-Spectant-Stub-Locks';
 export const WRITE_HEADER = 'X-Spectant-Stub-Write';
 export const RESET_PATH = '/api/__stub/reset';
 export const BUMP_PATH = '/api/__stub/bump';
+export const WORKFLOW_PATH = '/api/__stub/workflow';
 
 /** The dashboard model with `kpis.claims.closed` raised by `by` (the bump hook); the golden itself is never touched. */
 export function bumpDashboard(model: unknown, by: number): unknown {
@@ -379,6 +385,8 @@ type Core = {
   mediaTypeOf: (name: string) => string;
   docsFor: (type: SpecType | null) => Readonly<Record<DocName, DocAvailability>>;
   worstState: (states: Iterable<CardState>) => CardState;
+  parseWorkflow: (text: string | null) => Workflow;
+  boardStages: (workflow: Workflow) => PlanningModel['stages'];
 };
 
 /** Core's pure functions, loaded by a computed path so `tsc -p web/e2e` never walks core's module graph. */
@@ -388,7 +396,8 @@ function loadCore(): Core {
   const evidence = load(join(src, 'evidence.ts')) as Pick<Core, 'listEvidence' | 'resolveEvidencePath' | 'mediaTypeOf'>;
   const docs = load(join(src, 'markdown-docs.ts')) as Pick<Core, 'docsFor'>;
   const frames = load(join(src, 'frames.ts')) as Pick<Core, 'worstState'>;
-  return { ...evidence, ...docs, ...frames };
+  const workflow = load(join(src, 'workflow.ts')) as Pick<Core, 'parseWorkflow' | 'boardStages'>;
+  return { ...evidence, ...docs, ...frames, parseWorkflow: workflow.parseWorkflow, boardStages: workflow.boardStages };
 }
 
 // ---- the goldens --------------------------------------------------------------------------------------------------
@@ -704,8 +713,28 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     boards.set(id, fresh);
     return fresh;
   };
-  /** The planning tree this session sees for a workspace slug: its own after a write, else the golden as it is. */
-  const planningOf = (req: Request, slug: string): PlanningModel | undefined => boards.get(sessionOf(req))?.planning.get(slug) ?? plannings.get(slug);
+  /** Workflows sent through `PUT /api/__stub/workflow` (T151), per session, then per workspace slug, as core parsed them. */
+  const workflows = new Map<string, Map<string, Workflow>>();
+  const workflowRoute = async (req: Request, url: URL): Promise<Response> => {
+    if (req.method !== 'PUT') return settingsError(405, { error: 'method-not-allowed' }, { Allow: 'PUT' });
+    const slug = url.searchParams.get('ws');
+    if (slug === null || !plannings.has(slug)) return settingsError(404, { error: 'not-found' });
+    const id = sessionOf(req);
+    const own = workflows.get(id) ?? new Map<string, Workflow>();
+    own.set(slug, core.parseWorkflow(await req.text()));
+    workflows.set(id, own);
+    return new Response(null, { status: 204 });
+  };
+  /**
+   * The planning tree this session sees for a workspace slug: its own after a write, else the golden as it is; with
+   * the session's workflow from `PUT /api/__stub/workflow` and core's board columns for it in place of the tree's,
+   * when one was sent (the counts stay the tree's: the specs' stages are not re-derived).
+   */
+  const planningOf = (req: Request, slug: string): PlanningModel | undefined => {
+    const model = boards.get(sessionOf(req))?.planning.get(slug) ?? plannings.get(slug);
+    const workflow = workflows.get(sessionOf(req))?.get(slug);
+    return model && workflow ? { ...model, workflow, stages: core.boardStages(workflow) } : model;
+  };
   /** spec.md's raw hash as this session sees it: the planning holder's (the golden's real sha256, or a move's), else a fake. */
   const specHashOf = (req: Request, ws: string, tree: TreeGoldens, spec: SpecGoldens): string => {
     const model = planningOf(req, ws);
@@ -1207,9 +1236,11 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       boards.delete(sessionOf(req));
       actorLists.delete(sessionOf(req));
       boardQueries.delete(sessionOf(req));
+      workflows.delete(sessionOf(req));
       return new Response(null, { status: 204 });
     }
     if (pathname === BUMP_PATH) return bumpRoute(req, url);
+    if (pathname === WORKFLOW_PATH) return workflowRoute(req, url);
     if (pathname === SETTINGS_PATH) return settingsRoute(req);
     if (pathname === ACTORS_PATH) return actorsRoute(req);
 
