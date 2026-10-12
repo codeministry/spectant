@@ -1,8 +1,18 @@
-// Contrast guard for ISC-65 (T18): the derived tokens in `web/src/styles/tokens.css` reach WCAG 2.x contrast on the
-// surfaces of both daisyUI themes in `web/src/styles.css`. Text (`--muted-ink`, every `--*-ink`) needs 4.5:1 on the
-// card (`--color-base-100`) and the page (`--color-base-200`); the `--track` mark needs 3:1 on both; badge text needs
-// 4.5:1 on the badge fill. A `var()` value is resolved through the token block, then the shared block, then the
-// theme block in `styles.css`, as the cascade does on the element that carries `data-theme`.
+// Contrast guard for ISC-65 as refined by ISC-146.1 (spec 024, T20): the derived tokens in `web/src/styles/tokens.css`
+// against the surfaces of both daisyUI themes in `web/src/styles.css`.
+//
+// ISC-146.1: where the prototype and a contrast correction disagree, the prototype wins. Every `--*-ink` therefore
+// paints the prototype's `--*-text` of its role (`--held-ink` and `--muted-ink` its `--muted`), found through the
+// shared map in `prototype-token-map.ts`, and `--badge-ink` / `--badge-fill` paint its badge pair; the fixture
+// `fixtures/prototype-reference.json` holds the values.
+//
+// ISC-65, refined: text reaches 4.5:1 and the `--track` mark 3:1, except the pairs the DS-APP-32/33 adaptation names
+// with their measured ratio (`specs/constitution.md` § Adaptations). Measured: `--muted-ink` and every `--*-ink` on
+// the card (`--color-base-100`) and the page (`--color-base-200`), every accent ink also on its own `-t` tint (chips,
+// notices, the danger and warning buttons), `--badge-ink` on `--badge-fill`, `--track` on card and page. The pairs
+// below the line must equal `CONTRAST_EXCEPTIONS` (`contrast-exceptions.ts`) exactly, the list the browser spec reads
+// too. A `var()` value is resolved through the token block, then the shared block, then the theme block in
+// `styles.css`, as the cascade does on the element that carries `data-theme`.
 //
 // The browser contrast spec (T30) settles ISC-65 on rendered pages; this guard keeps the token values honest.
 //
@@ -11,6 +21,8 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { CONTRAST_EXCEPTIONS } from "./contrast-exceptions.ts";
+import { homesOf, PROTOTYPE_TOKENS } from "./prototype-token-map.ts";
 
 const must = <T,>(value: T | null | undefined, what = "value"): T => {
   if (value === null || value === undefined) throw new Error(`missing ${what}`);
@@ -158,6 +170,58 @@ function below(theme: Theme, name: string, min: number): string[] {
   });
 }
 
+const toHex = (rgb: Rgb) => `#${quantise(rgb).map((c) => Math.round(c * 255).toString(16).padStart(2, "0")).join("")}`;
+
+// ── ISC-146.1: the prototype value of every ink, through the shared map. ──
+// Each prototype `--<colour>-text` (the badge's aside) is held by its home `--<accent>-text`; the ink of that accent
+// must paint the same value. The held state's text is the prototype's `--muted` (`.st-held`, `.o-line.held`), as is
+// the secondary text; the badge pair is the prototype's `--badge` / `--badge-text`.
+const PROTOTYPE_SOURCE: Readonly<Record<string, string>> = Object.fromEntries<string>([
+  ...Object.keys(PROTOTYPE_TOKENS["spec-light"])
+    .filter((name) => /^--[a-z]+-text$/.test(name) && name !== "--badge-text")
+    .map((name): [string, string] => [must(homesOf(name)[0], `home of ${name}`).replace(/-text$/, "-ink"), name]),
+  ["--held-ink", "--muted"],
+  ["--muted-ink", "--muted"],
+  ["--badge-ink", "--badge-text"],
+  ["--badge-fill", "--badge"],
+]);
+
+/** ΔE_OK×100 between the painted token and the prototype hex. */
+const deltaE = (painted: Rgb, hex: string) => {
+  const [a, b] = [srgbToOklab(quantise(painted)), srgbToOklab(hexToSrgb(hex))];
+  return 100 * Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+};
+
+// ── ISC-65 refined: every measured pair, and the exact exception list. ──
+type Pair = { tone: string; surface: string; min: number };
+const PAIRS: readonly Pair[] = [
+  ...["--muted-ink", ...INKS].flatMap((tone) => {
+    // Held text never sits on `--held-t`: the neutral tone's ink is `base-content` (tone.ts), and the prototype's held
+    // chip is muted text on `--raised`. Secondary text has no tint.
+    const tint = tone === "--held-ink" || tone === "--muted-ink" ? [] : [tone.replace(/-ink$/, "-t")];
+    return ["--color-base-100", "--color-base-200", ...tint].map((surface) => ({ tone, surface, min: TEXT_MIN }));
+  }),
+  { tone: "--badge-ink", surface: "--badge-fill", min: TEXT_MIN },
+  { tone: "--track", surface: "--color-base-100", min: MARK_MIN },
+  { tone: "--track", surface: "--color-base-200", min: MARK_MIN },
+];
+
+type Line = { tone: string; theme: string; surface: string; fg: string; bg: string; ratio: number; min: number };
+/** One pair as both the measurement and the exception list print it. */
+const pairLine = (p: Line) =>
+  `${p.theme} ${p.tone} on ${p.surface}: ${p.fg} on ${p.bg} ${p.ratio.toFixed(2)} < ${String(p.min)}`;
+
+/** Every measured pair below its line, in both themes, sorted. */
+function measuredBelow(): string[] {
+  return THEMES.flatMap((theme) =>
+    PAIRS.flatMap(({ tone, surface, min }) => {
+      const [fg, bg] = [resolve(theme, tone), resolve(theme, surface)];
+      const ratio = worstContrast(fg, bg);
+      return ratio < min ? [pairLine({ tone, theme, surface, fg: toHex(fg), bg: toHex(bg), ratio, min })] : [];
+    }),
+  ).sort();
+}
+
 describe("tokens.css", () => {
   test("styles.css imports it", () => {
     expect(STYLES).toMatch(/^@import\s+"\.\/styles\/tokens\.css";$/m);
@@ -238,22 +302,43 @@ describe("tokens.css", () => {
   });
 });
 
-for (const theme of THEMES) {
-  describe(`contrast in ${theme} (WCAG 2.x)`, () => {
-    test(`--muted-ink and every --*-ink reach ${TEXT_MIN}:1 on the card and the page`, () => {
-      expect(["--muted-ink", ...INKS].flatMap((name) => below(theme, name, TEXT_MIN))).toEqual([]);
+describe("prototype value over contrast correction (ISC-146.1)", () => {
+  test("every ink has a prototype source in the shared map", () => {
+    expect(["--muted-ink", ...INKS].filter((ink) => !(ink in PROTOTYPE_SOURCE))).toEqual([]);
+  });
+
+  for (const theme of THEMES) {
+    test(`every ink and the badge pair paint the prototype value · ${theme}`, () => {
+      const drift = Object.entries(PROTOTYPE_SOURCE).flatMap(([token, source]) => {
+        const hex = must(PROTOTYPE_TOKENS[theme][source], `prototype ${source} in ${theme}`);
+        const painted = resolve(theme, token);
+        const dE = deltaE(painted, hex);
+        return dE > MAX_DELTA_E ? [`${theme} ${token}: ${toHex(painted)} vs prototype ${source} ${hex} (ΔE ${dE.toFixed(2)})`] : [];
+      });
+      expect(drift).toEqual([]);
     });
 
-    test(`--track reaches ${MARK_MIN}:1 on the card and the page`, () => {
-      expect(below(theme, "--track", MARK_MIN)).toEqual([]);
+    test(`no ink is a contrast correction of its own · ${theme}`, () => {
+      // An ink aliases the prototype value's home with `var()`; a literal shade in the token block is a correction.
+      const literal = tokensOf(theme).filter((d) => d.name.endsWith("-ink") && d.value.startsWith("oklch("));
+      expect(literal.map((d) => d.name)).toEqual([]);
     });
+  }
+});
 
-    test(`--badge-ink reaches ${TEXT_MIN}:1 on --badge-fill`, () => {
+describe("contrast (WCAG 2.x, ISC-65 with the DS-APP-32/33 adaptation)", () => {
+  test("the pairs below the line are exactly the exception list", () => {
+    expect(measuredBelow()).toEqual(CONTRAST_EXCEPTIONS.map(pairLine).sort());
+  });
+
+  for (const theme of THEMES) {
+    test(`--muted-ink, --track and --badge-ink pass without exception · ${theme}`, () => {
+      expect([...below(theme, "--muted-ink", TEXT_MIN), ...below(theme, "--track", MARK_MIN)]).toEqual([]);
       const ratio = worstContrast(resolve(theme, "--badge-ink"), resolve(theme, "--badge-fill"));
       expect(ratio).toBeGreaterThanOrEqual(TEXT_MIN);
     });
-  });
-}
+  }
+});
 
 // design.md (spec 002, § Accessibility and contrast): "Two dark-theme values pass only narrowly: muted text on a card
 // (#939293 on #2d2a2e, about 4.6:1) and the grey stage segment (#7f7d80, about 3.3:1). Neither may drift darker in the

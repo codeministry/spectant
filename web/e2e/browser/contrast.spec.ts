@@ -27,10 +27,14 @@
  * background in the chain is not modelled and is reported as a note, so a gradient surface cannot pass unseen.
  *
  * Every failing element is reported as `<data-gallery or text snippet>: <ratio> (<fg> on <bg>)`, plus the colour it
- * was painted from when opacity or alpha changed it. Zero failures is the threshold. The two known-narrow values
- * (design.md § Contrast: muted text ≈ 4.6:1, the unfilled track ≈ 3.3:1) are asserted to be present and printed as
- * annotations and on stdout.
+ * was painted from when opacity or alpha changed it. Zero failures is the threshold, except the pairs the DS-APP-32/33
+ * adaptation names (ISC-146.1: the prototype's value wins over a contrast correction): a sample below the line passes
+ * only when its painted foreground and surface match an entry of `web/tests/contrast-exceptions.ts` for its theme and
+ * line, each channel within 1. That list is the one `web/tests/tokens.test.ts` holds exact against the tokens; the
+ * accepted samples are printed as annotations. The two known-narrow values (design.md § Contrast: muted text ≈ 4.6:1,
+ * the unfilled track ≈ 3.3:1) are asserted to be present and printed as annotations and on stdout.
  */
+import { CONTRAST_EXCEPTIONS } from '../../tests/contrast-exceptions.ts';
 import { awaitReady, expect, test } from '../fixtures';
 
 type Page = Parameters<typeof awaitReady>[0];
@@ -271,6 +275,14 @@ const hex = (rgb: readonly number[]): string => `#${rgb.map((v) => v.toString(16
 const same = (a: readonly number[], b: readonly number[]): boolean =>
   a.length === 3 && a.every((v, i) => Math.abs(v - (b[i] ?? -99)) <= 1);
 
+const bytes = (rgb: string): number[] => [1, 3, 5].map((i) => Number.parseInt(rgb.slice(i, i + 2), 16));
+
+/** A sample below `min` that the DS-APP-32/33 adaptation lists for this theme (`contrast-exceptions.ts`). */
+const excepted = (theme: 'light' | 'dark', s: Sample, min: number): boolean =>
+  CONTRAST_EXCEPTIONS.some(
+    (e) => e.theme === `spec-${theme}` && e.min === min && same(s.fg, bytes(e.fg)) && same(s.bg, bytes(e.bg)),
+  );
+
 /** `<name>: <ratio> (<fg> on <bg>)`, plus the unpainted colour when opacity or alpha changed it, plus notes. */
 const line = (s: Sample, ratio: number): string =>
   `${s.name}: ${ratio.toFixed(2)} (${hex(s.fg)} on ${hex(s.bg)})` +
@@ -317,15 +329,23 @@ test.describe('contrast', () => {
       const text = samples.filter((s) => s.kind === 'text');
       expect(text.length, 'text samples in the gallery').toBeGreaterThanOrEqual(MIN_TEXT);
 
+      const accepted: string[] = [];
       const failures = text.flatMap((s) => {
         const ratio = contrast(s.fg, s.bg);
-        return ratio < (s.large ? LARGE_TEXT_MIN : TEXT_MIN) ? [line(s, ratio)] : [];
+        const min = s.large ? LARGE_TEXT_MIN : TEXT_MIN;
+        if (ratio >= min) return [];
+        if (excepted(theme, s, min)) {
+          accepted.push(line(s, ratio));
+          return [];
+        }
+        return [line(s, ratio)];
       });
 
       const large = text.filter((s) => s.large).length;
-      const summary = `${theme}: ${String(text.length)} text samples (${String(large)} large), ${String(exempt.length)} disabled exempt`;
+      const summary = `${theme}: ${String(text.length)} text samples (${String(large)} large), ${String(exempt.length)} disabled exempt, ${String(accepted.length)} DS-APP-32/33 exceptions`;
       const muted = `${theme}: ${narrow('muted', text, tokens.muted)}`;
       test.info().annotations.push({ type: 'contrast', description: summary }, { type: 'muted', description: muted });
+      for (const description of accepted) test.info().annotations.push({ type: 'exception', description });
       console.log(`[contrast] ${summary}\n[contrast] ${muted}`);
       expect(failures, `text below threshold (${theme}):\n${failures.join('\n')}`).toEqual([]);
     });
@@ -340,7 +360,7 @@ test.describe('contrast', () => {
 
       const failures = marks.flatMap((s) => {
         const ratio = contrast(s.fg, s.bg);
-        return ratio < MARK_MIN ? [line(s, ratio)] : [];
+        return ratio < MARK_MIN && !excepted(theme, s, MARK_MIN) ? [line(s, ratio)] : [];
       });
 
       // The unfilled track: ring and meter tracks and pending stage segments (a neutral dot or fill may share the hex).
