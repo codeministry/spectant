@@ -12,10 +12,12 @@
 // directory, no name, no address, no prompt or answer text, and never the arguments of a command — only the spec
 // number read from them.
 //
-// The stubs below name themselves (`not implemented: <name>`); T5 (parseTranscript), T6 (tokenRows, serializeTokens),
-// T16 (mergeBaselines) and T17 (readTokens) replace them without changing a signature.
+// T5 (parseTranscript) and T6 (tokenRows, serializeTokens) are implemented; the remaining stubs name themselves
+// (`not implemented: <name>`) until T16 (mergeBaselines) and T17 (readTokens) replace them without changing a signature.
 
 import type { Diagnostic } from './diagnostics.ts';
+import { EVENT_STAGES, parseEvents } from './events.ts';
+import { roundLines } from './timeline.ts';
 
 // ─── The file ────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -234,28 +236,419 @@ export interface TokensReading {
   readonly diagnostics: readonly TokenDiagnostic[];
 }
 
-// ─── Functions (stubs until T5, T6, T16, T17) ───────────────────────────────────────────────────────────────────
+// ─── Reading a transcript (T5) ──────────────────────────────────────────────────────────────────────────────────
 
 /** A stub's throw; the input rides along as the cause, so a caller debugging the seam sees what reached it. */
 function notImplemented(name: string, input: unknown): never {
   throw new Error(`not implemented: ${name}`, { cause: input });
 }
 
-/**
- * Reads one transcript defensively: every line that is not JSON or carries nothing countable is skipped with a
- * diagnostic, never a throw (T5).
- */
-export function parseTranscript(file: TranscriptFile): ParsedTranscript {
-  return notImplemented('parseTranscript', file);
+type JsonRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is JsonRecord => typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const stringOf = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null);
+
+const countOf = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0);
+
+/** A `/spec` command name: `/spec` itself or `/spec-<name>`; any other slash command is an ordinary user input. */
+const SPEC_COMMAND = /^\/spec(?:-[a-z0-9-]+)?$/;
+
+const COMMAND_NAME = /<command-name>\s*([^<\s]+)\s*<\/command-name>/;
+
+const COMMAND_ARGS = /<command-args>([\s\S]*?)<\/command-args>/;
+
+/** The first three-digit number standing alone in a command's arguments. */
+const SPEC_NUMBER = /(?<!\d)(\d{3})(?!\d)/;
+
+/** The text of a user line's content; null when the content is only tool results (or nothing a user typed). */
+function userText(content: unknown): string | null {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return null;
+  const blocks = content.filter(isRecord);
+  if (blocks.length === 0 || blocks.every((block) => block.type === 'tool_result')) return null;
+  return blocks.map((block) => (typeof block.text === 'string' ? block.text : '')).join('\n');
+}
+
+/** The `tool_use` IDs an assistant line starts. */
+function toolUseIdsOf(content: unknown): string[] {
+  if (!Array.isArray(content)) return [];
+  return content.filter(isRecord).flatMap((block) => (block.type === 'tool_use' ? (stringOf(block.id) ?? []) : []));
 }
 
 /**
+ * Reads one transcript defensively: every line that is not JSON or carries nothing countable is skipped with a
+ * diagnostic, never a throw (T5). Kept: `/spec` commands (name and spec number only), real user inputs (no `isMeta`
+ * line, no tool result) and assistant lines with `usage`. Other line kinds (system, summary, snapshots) carry no
+ * tokens and are passed over silently.
+ */
+export function parseTranscript(file: TranscriptFile): ParsedTranscript {
+  const entries: TranscriptEntry[] = [];
+  const diagnostics: TokenDiagnostic[] = [];
+  const warn = (code: string, message: string, line?: number): void => {
+    diagnostics.push({ severity: 'warning', code, message, ...(line === undefined ? {} : { line }), source: file.label });
+  };
+
+  file.text.split(/\r?\n/).forEach((raw, i) => {
+    const line = i + 1;
+    if (raw.trim() === '') return;
+    let value: unknown;
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      warn('tokens-line-not-json', 'The line is not JSON; it is skipped.', line);
+      return;
+    }
+    if (!isRecord(value)) {
+      warn('tokens-line-not-object', 'The line is not a JSON object; it is skipped.', line);
+      return;
+    }
+    if (value.type !== 'user' && value.type !== 'assistant') return;
+    const ts = stringOf(value.timestamp);
+    const message = isRecord(value.message) ? value.message : {};
+    if (value.type === 'assistant') {
+      const usage = isRecord(message.usage) ? message.usage : null;
+      if (usage === null) {
+        warn('tokens-usage-missing', 'The assistant line carries no `usage`; it is not counted.', line);
+        return;
+      }
+      if (ts === null) {
+        warn('tokens-timestamp-missing', 'The assistant line carries no `timestamp`; it is not counted.', line);
+        return;
+      }
+      const requestId = stringOf(value.requestId) ?? stringOf(message.id);
+      if (requestId === null) warn('tokens-request-key-missing', 'The line has neither `requestId` nor `message.id`; it is counted alone.', line);
+      entries.push({
+        type: 'usage',
+        ts,
+        requestId,
+        toolUseIds: toolUseIdsOf(message.content),
+        version: stringOf(value.version),
+        input: countOf(usage.input_tokens),
+        output: countOf(usage.output_tokens),
+        cache_read: countOf(usage.cache_read_input_tokens),
+        cache_write: countOf(usage.cache_creation_input_tokens),
+      });
+      return;
+    }
+    if (value.isMeta === true) return;
+    const text = userText(message.content);
+    if (text === null) return;
+    if (ts === null) {
+      warn('tokens-timestamp-missing', 'The user line carries no `timestamp`; it is skipped.', line);
+      return;
+    }
+    const command = COMMAND_NAME.exec(text)?.[1] ?? null;
+    if (command !== null && SPEC_COMMAND.test(command)) {
+      const args = COMMAND_ARGS.exec(text)?.[1] ?? '';
+      entries.push({ type: 'command', ts, command, specNumber: SPEC_NUMBER.exec(args)?.[1] ?? null });
+    } else {
+      entries.push({ type: 'input', ts });
+    }
+  });
+
+  if (!entries.some((entry) => entry.type === 'usage')) warn('tokens-transcript-no-usage', 'The transcript carries no `usage`; nothing in it is counted.');
+  return { role: file.role, session: file.session, label: file.label, toolUseId: file.role === 'subagent' ? (file.toolUseId ?? null) : null, entries, diagnostics };
+}
+
+// ─── Measuring (T5, T6) ─────────────────────────────────────────────────────────────────────────────────────────
+
+const ROLE_RANK: Readonly<Record<TranscriptRole, number>> = { main: 0, worktree: 1, subagent: 2 };
+
+const IMPLEMENT = '/spec-implement';
+
+/** Byte-independent, locale-free string order. */
+const plainOrder = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+const timeOf = (ts: string): number => new Date(ts).getTime();
+
+const zero = (): Record<TokenCounter, number> => ({ input: 0, output: 0, cache_read: 0, cache_write: 0 });
+
+interface Invocation {
+  readonly id: string;
+  readonly command: string;
+  readonly spec: string | null;
+  readonly ts: string;
+  subagents: number;
+}
+
+/** One API request, counted once: the first line seen in the fixed file order, its counters the maximum over all. */
+interface Request {
+  readonly ts: string;
+  readonly version: string | null;
+  readonly invocation: Invocation | null;
+  readonly counters: Record<TokenCounter, number>;
+}
+
+interface Sum extends Record<TokenCounter, number> {
+  requests: number;
+}
+
+function addTo(sums: Map<string, Sum>, key: string, request: Request): void {
+  let sum = sums.get(key);
+  if (sum === undefined) {
+    sum = { requests: 0, ...zero() };
+    sums.set(key, sum);
+  }
+  sum.requests += 1;
+  for (const counter of TOKEN_COUNTERS) sum[counter] += request.counters[counter];
+}
+
+/** A spec's stage and round timeline: events through `parseEvents`, rounds through `roundLines`, no second parser. */
+interface SpecTimeline {
+  readonly events: ReadonlyArray<{ readonly at: number; readonly to: string }>;
+  readonly rounds: ReadonlyArray<{ readonly at: number; readonly round: number }>;
+  readonly derivedStage: string | null;
+}
+
+function timelineOf(spec: TokenSpecInput): SpecTimeline {
+  return {
+    events: spec.events === null ? [] : parseEvents(spec.events).events.map((event) => ({ at: timeOf(event.ts), to: event.to })),
+    rounds: roundLines(spec.rounds ?? undefined).map((line) => ({ at: timeOf(line.ts), round: line.round })),
+    derivedStage: spec.derivedStage,
+  };
+}
+
+/** The `to` of the latest transition at or before the turn; without one, the derived stage. */
+function stageAt(timeline: SpecTimeline, at: number): string | null {
+  let best: { at: number; to: string } | null = null;
+  for (const event of timeline.events) if (event.at <= at && (best === null || event.at >= best.at)) best = event;
+  return best?.to ?? timeline.derivedStage;
+}
+
+/** The first round (file order) whose `ts` is not before the turn; null after the last round. */
+function roundAt(timeline: SpecTimeline, at: number): number | null {
+  return timeline.rounds.find((round) => round.at >= at)?.round ?? null;
+}
+
+const stageRank = (stage: string): number => {
+  const i = EVENT_STAGES.indexOf(stage);
+  return i < 0 ? EVENT_STAGES.length : i;
+};
+
+/**
  * Measures: parses every transcript, counts each request once across all files, cuts the invocation windows, attaches
- * sub-agents through `toolUseId`, attributes spec, stage and round, and sums into lines (T5, T6).
+ * sub-agents through `toolUseId`, attributes spec, stage and round, and sums into lines (T5, T6). The files are put
+ * into a fixed order first (role, session, label), so the result does not depend on the order they came in.
  */
 export function tokenRows(input: TokenInput): TokenRun {
-  return notImplemented('tokenRows', input);
+  const diagnostics: TokenDiagnostic[] = [];
+  const parsed = input.transcripts
+    .map(parseTranscript)
+    .sort((a, b) => ROLE_RANK[a.role] - ROLE_RANK[b.role] || plainOrder(a.session, b.session) || plainOrder(a.label, b.label));
+  for (const transcript of parsed) diagnostics.push(...transcript.diagnostics);
+
+  const slugs = [...input.specs].map((spec) => spec.slug).sort(plainOrder);
+  const resolveSpec = (number: string | null, source: string): string | null => {
+    if (number === null) return null;
+    const slug = slugs.find((s) => s.startsWith(`${number}-`)) ?? null;
+    if (slug === null) {
+      diagnostics.push({ severity: 'warning', code: 'tokens-spec-unknown', message: `No spec folder carries the number ${number}; the invocation counts to no spec.`, subject: number, source });
+    }
+    return slug;
+  };
+
+  // Invocation windows in the sessions (main and worktree): a `/spec` command opens one, a real user input or the
+  // next command closes it. Every usage line gets the invocation open at it, every tool_use ID too.
+  const invocations: Invocation[] = [];
+  const perSession = new Map<string, number>();
+  const lineInvocations = new Map<ParsedTranscript, Array<Invocation | null>>();
+  const toolUses = new Map<string, Invocation | null>();
+  for (const transcript of parsed) {
+    if (transcript.role === 'subagent') continue;
+    let open: Invocation | null = null;
+    const owners: Array<Invocation | null> = [];
+    for (const entry of transcript.entries) {
+      if (entry.type === 'command') {
+        const n = (perSession.get(transcript.session) ?? 0) + 1;
+        perSession.set(transcript.session, n);
+        open = { id: `a:claude:${transcript.session}#${n}`, command: entry.command, spec: resolveSpec(entry.specNumber, transcript.label), ts: entry.ts, subagents: 0 };
+        invocations.push(open);
+      } else if (entry.type === 'input') {
+        open = null;
+      } else {
+        for (const id of entry.toolUseIds) toolUses.set(id, open);
+      }
+      owners.push(open);
+    }
+    lineInvocations.set(transcript, owners);
+  }
+
+  // Sub-agents: each belongs to the invocation of the tool call that started it; a sub-agent started by another
+  // sub-agent resolves once its parent has, so the loop runs until nothing new resolves.
+  const pending = new Set(parsed.filter((t) => t.role === 'subagent'));
+  for (const transcript of pending) {
+    if (transcript.toolUseId === null) {
+      diagnostics.push({ severity: 'warning', code: 'tokens-subagent-no-meta', message: 'The sub-agent has no `toolUseId` in a `.meta.json`; its requests count as unassigned.', source: transcript.label });
+    }
+  }
+  let resolved = true;
+  while (resolved) {
+    resolved = false;
+    for (const transcript of pending) {
+      if (transcript.toolUseId === null || !toolUses.has(transcript.toolUseId)) continue;
+      const owner = toolUses.get(transcript.toolUseId) ?? null;
+      if (owner !== null) owner.subagents += 1;
+      lineInvocations.set(transcript, transcript.entries.map(() => owner));
+      for (const entry of transcript.entries) if (entry.type === 'usage') for (const id of entry.toolUseIds) toolUses.set(id, owner);
+      pending.delete(transcript);
+      resolved = true;
+    }
+  }
+  for (const transcript of pending) {
+    if (transcript.toolUseId !== null) {
+      diagnostics.push({ severity: 'warning', code: 'tokens-subagent-parent-unknown', message: 'No session starts the tool call the sub-agent names; its requests count as unassigned.', source: transcript.label });
+    }
+    lineInvocations.set(transcript, transcript.entries.map(() => null));
+  }
+
+  // Every request once, across all files: the first line in the fixed order is the one counted.
+  const requests: Request[] = [];
+  const byKey = new Map<string, Request>();
+  for (const transcript of parsed) {
+    const owners = lineInvocations.get(transcript) ?? [];
+    transcript.entries.forEach((entry, i) => {
+      if (entry.type !== 'usage') return;
+      const seen = entry.requestId === null ? undefined : byKey.get(entry.requestId);
+      if (seen !== undefined) {
+        for (const counter of TOKEN_COUNTERS) seen.counters[counter] = Math.max(seen.counters[counter], entry[counter]);
+        return;
+      }
+      const request: Request = { ts: entry.ts, version: entry.version, invocation: owners[i] ?? null, counters: { input: entry.input, output: entry.output, cache_read: entry.cache_read, cache_write: entry.cache_write } };
+      requests.push(request);
+      if (entry.requestId !== null) byKey.set(entry.requestId, request);
+    });
+  }
+
+  // Sums: per invocation, per spec, per spec and stage, per spec and implement round, and the rest.
+  const timelines = new Map(input.specs.map((spec) => [spec.slug, timelineOf(spec)]));
+  const perInvocation = new Map<string, Sum>();
+  const perSpec = new Map<string, Sum>();
+  const perStage = new Map<string, Sum>();
+  const perRound = new Map<string, Sum>();
+  const unassigned = new Map<string, Sum>();
+  const stageKeys = new Map<string, { spec: string; stage: string }>();
+  const roundKeys = new Map<string, { spec: string; round: number }>();
+  for (const request of requests) {
+    const invocation = request.invocation;
+    if (invocation === null) {
+      addTo(unassigned, '', request);
+      continue;
+    }
+    addTo(perInvocation, invocation.id, request);
+    const spec = invocation.spec;
+    if (spec === null) continue;
+    addTo(perSpec, spec, request);
+    const timeline = timelines.get(spec);
+    if (timeline === undefined) continue;
+    const at = timeOf(request.ts);
+    const stage = stageAt(timeline, at);
+    if (stage !== null) {
+      const key = JSON.stringify([spec, stage]);
+      stageKeys.set(key, { spec, stage });
+      addTo(perStage, key, request);
+    }
+    const round = invocation.command === IMPLEMENT ? roundAt(timeline, at) : null;
+    if (round !== null) {
+      const key = JSON.stringify([spec, round]);
+      roundKeys.set(key, { spec, round });
+      addTo(perRound, key, request);
+    }
+  }
+
+  const counters = (sum: Sum | undefined): TokenCounters => {
+    const out = zero();
+    for (const counter of TOKEN_COUNTERS) out[counter] = sum?.[counter] ?? 0;
+    return out;
+  };
+  const rows: Array<Exclude<TokenRow, BaselineRow>> = [];
+  for (const invocation of invocations) {
+    const sum = perInvocation.get(invocation.id);
+    rows.push({ v: TOKENS_VERSION, kind: 'invocation', id: invocation.id, command: invocation.command, spec: invocation.spec, ts: invocation.ts, requests: sum?.requests ?? 0, subagents: invocation.subagents, ...counters(sum) });
+  }
+  for (const [spec, sum] of perSpec) rows.push({ v: TOKENS_VERSION, kind: 'spec', spec, requests: sum.requests, ...counters(sum) });
+  for (const [key, sum] of perStage) {
+    const { spec, stage } = stageKeys.get(key) ?? { spec: '', stage: '' };
+    rows.push({ v: TOKENS_VERSION, kind: 'stage', spec, stage, requests: sum.requests, ...counters(sum) });
+  }
+  for (const [key, sum] of perRound) {
+    const { spec, round } = roundKeys.get(key) ?? { spec: '', round: 0 };
+    rows.push({ v: TOKENS_VERSION, kind: 'round', spec, round, requests: sum.requests, ...counters(sum) });
+  }
+  const rest = unassigned.get('');
+  rows.push({ v: TOKENS_VERSION, kind: 'unassigned', requests: rest?.requests ?? 0, ...counters(rest) });
+  rows.sort(compareRows);
+
+  return { rows, baseline: baselineOf(requests, rows), diagnostics };
 }
+
+/** This run's baseline line: newest counted turn, Claude Code versions, per command the sums and rounded means. */
+function baselineOf(requests: readonly Request[], rows: ReadonlyArray<Exclude<TokenRow, BaselineRow>>): BaselineRow | null {
+  if (requests.length === 0) return null;
+  let newest = requests[0]?.ts ?? '';
+  for (const request of requests) if (timeOf(request.ts) > timeOf(newest)) newest = request.ts;
+  const versions = [...new Set(requests.flatMap((request) => request.version ?? []))].sort(plainOrder);
+  const sums = new Map<string, { count: number } & Record<TokenCounter, number>>();
+  for (const row of rows) {
+    if (row.kind !== 'invocation') continue;
+    const sum = sums.get(row.command) ?? { count: 0, ...zero() };
+    sum.count += 1;
+    for (const counter of TOKEN_COUNTERS) sum[counter] += row[counter];
+    sums.set(row.command, sum);
+  }
+  const commands: Record<string, BaselineCommand> = {};
+  for (const command of [...sums.keys()].sort(plainOrder)) {
+    const sum = sums.get(command) ?? { count: 0, ...zero() };
+    const mean = zero();
+    for (const counter of TOKEN_COUNTERS) mean[counter] = sum.count === 0 ? 0 : Math.round(sum[counter] / sum.count);
+    commands[command] = { ...sum, mean };
+  }
+  return { v: TOKENS_VERSION, kind: 'baseline', measured_through: newest, claude_code: versions, commands };
+}
+
+// ─── Writing (T6) ───────────────────────────────────────────────────────────────────────────────────────────────
+
+/** The file's line order: kind first, then per kind as FORMAT.md § `tokens` names it. */
+function compareRows(a: TokenRow, b: TokenRow): number {
+  const byKind = TOKEN_ROW_KINDS.indexOf(a.kind) - TOKEN_ROW_KINDS.indexOf(b.kind);
+  if (byKind !== 0) return byKind;
+  if (a.kind === 'baseline' && b.kind === 'baseline') return timeOf(a.measured_through) - timeOf(b.measured_through) || plainOrder(a.measured_through, b.measured_through);
+  if (a.kind === 'invocation' && b.kind === 'invocation') return timeOf(a.ts) - timeOf(b.ts) || plainOrder(a.id, b.id);
+  if (a.kind === 'spec' && b.kind === 'spec') return plainOrder(a.spec, b.spec);
+  if (a.kind === 'stage' && b.kind === 'stage') return plainOrder(a.spec, b.spec) || stageRank(a.stage) - stageRank(b.stage) || plainOrder(a.stage, b.stage);
+  if (a.kind === 'round' && b.kind === 'round') return plainOrder(a.spec, b.spec) || a.round - b.round;
+  return 0;
+}
+
+/** A plain object with exactly `keys`, in that order, read from `source`. */
+function ordered(source: object, keys: readonly string[]): JsonRecord {
+  const record = source as JsonRecord;
+  const out: JsonRecord = {};
+  for (const key of keys) out[key] = record[key];
+  return out;
+}
+
+function lineOf(row: TokenRow): JsonRecord {
+  const line = ordered(row, TOKEN_ROW_KEYS[row.kind]);
+  if (row.kind !== 'baseline') return line;
+  const commands: JsonRecord = {};
+  for (const command of Object.keys(row.commands).sort(plainOrder)) {
+    const entry = row.commands[command];
+    if (entry === undefined) continue;
+    commands[command] = { ...ordered(entry, BASELINE_COMMAND_KEYS), mean: ordered(entry.mean, TOKEN_COUNTERS) };
+  }
+  return { ...line, claude_code: [...row.claude_code], commands };
+}
+
+/** The file text: lines in the fixed order of `TOKEN_ROW_KINDS`, keys in the order of `TOKEN_ROW_KEYS`, `\n` after each (T6). */
+export function serializeTokens(rows: readonly TokenRow[]): string {
+  return [...rows]
+    .sort(compareRows)
+    .map((row) => `${JSON.stringify(lineOf(row))}\n`)
+    .join('');
+}
+
+// ─── Stubs until T16, T17 ───────────────────────────────────────────────────────────────────────────────────────
 
 /**
  * The baseline lines to write: every earlier line kept as read, plus `next` unless a line with the same state is
@@ -263,11 +656,6 @@ export function tokenRows(input: TokenInput): TokenRun {
  */
 export function mergeBaselines(previous: readonly BaselineRow[], next: BaselineRow | null): BaselineRow[] {
   return notImplemented('mergeBaselines', [previous, next]);
-}
-
-/** The file text: lines in the fixed order of `TOKEN_ROW_KINDS`, keys in the order of `TOKEN_ROW_KEYS`, `\n` after each (T6). */
-export function serializeTokens(rows: readonly TokenRow[]): string {
-  return notImplemented('serializeTokens', rows);
 }
 
 /** Reads `specs/tokens.jsonl` back into the lines `serializeTokens` wrote; a bad line is a diagnostic (T17). */
