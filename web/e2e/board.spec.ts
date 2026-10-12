@@ -626,3 +626,398 @@ test.describe('rail sheet on a coarse pointer', () => {
     await check(sheet.locator('app-needs-you [data-needs-card]'));
   });
 });
+
+// ─── The workspace board (spec 008, T143 / T144, ISC-129 / ISC-129.1) ───────────────────────────────────────────────
+//
+// `/w/:ws/board` against the planning goldens the stub serves (`core/fixtures/<ws>.planning.golden.json`) and the
+// harbor dashboard golden (`harbor.golden.json`: the rows' type, reason and command). Every expectation is read from
+// them, never restated. Each test runs in its own stub session, so the remembered `board-query` it writes never reaches
+// a test in another worker, and resets it afterwards.
+//
+// - `bun run e2e -- board -g "workspace board"` (T143, ISC-129): one column per stage of the workflow in table order
+//   (harbor's own table, lantern's default one), each head counting `stageCounts`, every card in its column with its
+//   fields; at 820 the same columns in the board's own scroller.
+// - `bun run e2e -- board -g filters` (T144, ISC-129.1): a filter and a swimlane group in the query, restored by a
+//   reload and, from the remembered `board-query`, by the bare route; "Clear filters" keeps group and column; `?col`
+//   picks the compact tier's one column.
+
+/** The fields of a planning golden the board groups read (structural: `core/src/planning.ts` is not imported here). */
+interface PlanningHolderGolden {
+  readonly id: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly stage: string | null;
+  readonly priority: string;
+  readonly main: boolean;
+  readonly archived: boolean;
+  readonly assignee: { readonly id: string } | null;
+}
+interface PlanningGolden {
+  readonly stages: readonly string[];
+  readonly stageCounts: Readonly<Record<string, number>>;
+  readonly features: ReadonlyArray<{ readonly id: string; readonly name: string; readonly holders: readonly PlanningHolderGolden[] }>;
+  readonly milestones: ReadonlyArray<{ readonly name: string; readonly specs: ReadonlyArray<{ readonly slug: string }> }>;
+  readonly ideas: ReadonlyArray<{
+    readonly slug: string;
+    readonly title: string;
+    readonly type: string | null;
+    readonly priority: string;
+    readonly feature: string | null;
+    readonly milestone: string | null;
+  }>;
+}
+type DashboardRowGolden = { readonly slug: string; readonly type: string | null; readonly nextCommand: string | null; readonly nextReason: string };
+
+const fixture = (name: string): unknown => JSON.parse(readFileSync(fileURLToPath(new URL(`../../core/fixtures/${name}`, import.meta.url)), 'utf8'));
+const PLANNING = {
+  harbor: fixture('harbor.planning.golden.json') as PlanningGolden,
+  lantern: fixture('lantern.planning.golden.json') as PlanningGolden,
+} as const;
+const HARBOR_ROWS = (fixture('harbor.golden.json') as { specs: readonly DashboardRowGolden[] }).specs;
+const STAGE_WORDS = (JSON.parse(readFileSync(fileURLToPath(new URL('../src/i18n/en.json', import.meta.url)), 'utf8')) as { stages: Readonly<Record<string, string>> })
+  .stages;
+
+/** One card the golden puts on the board: an active holder in one of its stages, or a story in `idea`. */
+interface ExpectedCard {
+  readonly key: string;
+  readonly stage: string;
+  readonly feature: string | null;
+}
+
+/** Every card of a workspace's board, from its planning golden: the active holders (one per slug) and the ideas. */
+function goldenCards(planning: PlanningGolden): ExpectedCard[] {
+  const specs = new Map<string, ExpectedCard>();
+  for (const feature of planning.features) {
+    for (const holder of feature.holders) {
+      if (holder.archived || holder.stage === null || !planning.stages.includes(holder.stage)) continue;
+      const known = specs.get(holder.slug);
+      if (known === undefined || (holder.main && known.feature === null)) {
+        specs.set(holder.slug, { key: `spec:${holder.slug}`, stage: holder.stage, feature: holder.main ? feature.id : null });
+      }
+    }
+  }
+  const ideas = planning.stages.includes('idea')
+    ? planning.ideas.map((idea): ExpectedCard => ({ key: `idea:${idea.slug}`, stage: 'idea', feature: idea.feature }))
+    : [];
+  return [...specs.values(), ...ideas];
+}
+
+function holderOf(planning: PlanningGolden, id: string): PlanningHolderGolden {
+  const found = planning.features.flatMap((f) => f.holders).find((h) => h.id === id && !h.archived);
+  if (!found) throw new Error(`the planning golden holds no active spec ${id}`);
+  return found;
+}
+function rowOf(slug: string): DashboardRowGolden {
+  const found = HARBOR_ROWS.find((r) => r.slug === slug);
+  if (!found) throw new Error(`the harbor dashboard golden holds no row ${slug}`);
+  return found;
+}
+
+const wsBoard = (ws: string): string => `/w/${ws}/board`;
+/** The columns of the scroller (medium, wide): a column with cards or a stub, each carrying `data-col`. */
+const SCROLLER_COLUMNS = 'app-board-page .scroller section[data-col]';
+const WS_CARDS = 'app-board-page app-board-card';
+const BAND_HEADS = 'app-board-page .band-head h3.bh';
+/** A column's full count: in the head of a column with cards, beside the label of a stub. */
+const columnCount = (page: Page, stage: string): Locator =>
+  page.locator(`app-board-page section[data-col="${stage}"] > header > .count, app-board-page section[data-col="${stage}"][data-stub] > .count`);
+const renderedKeys = (cards: Locator): Promise<string[]> => cards.evaluateAll((els) => els.map((el) => el.getAttribute('data-key') ?? '').sort());
+
+/** One stub session per test, reset before and after, so a remembered query never outlives its test. */
+function useStubSession(prefix: string): () => string {
+  let session = '';
+  test.beforeEach(async ({ page, request }, info) => {
+    session = `${prefix}-${info.testId}`;
+    await page.context().setExtraHTTPHeaders({ [SESSION_HEADER]: session });
+    await request.post('/api/__stub/reset', { headers: { [SESSION_HEADER]: session } });
+  });
+  test.afterEach(async ({ request }) => {
+    await request.post('/api/__stub/reset', { headers: { [SESSION_HEADER]: session } });
+  });
+  return () => session;
+}
+
+/** The scroller's columns in table order, each head showing its `stageCounts` entry. */
+async function expectColumns(page: Page, planning: PlanningGolden): Promise<void> {
+  await expect(page.locator(SCROLLER_COLUMNS)).toHaveCount(planning.stages.length);
+  expect(await page.locator(SCROLLER_COLUMNS).evaluateAll((cols) => cols.map((c) => c.getAttribute('data-col')))).toEqual([...planning.stages]);
+  for (const stage of planning.stages) {
+    await expect(columnCount(page, stage), `count of ${stage}`).toHaveText(String(planning.stageCounts[stage] ?? 0));
+  }
+}
+
+test.describe('workspace board', () => {
+  useStubSession('workspace-board');
+
+  test.describe('at 1440', () => {
+    test.use(atWidth(1440));
+
+    test('workspace board: harbor shows one column per workflow stage in table order, counts equal stageCounts', async ({ page }) => {
+      const planning = PLANNING.harbor;
+      await page.goto(wsBoard('harbor'));
+      await expectColumns(page, planning);
+
+      // The strip names the same stages in the same order, each with its column's card count.
+      const strip = 'app-board-page .strip ui-segmented[data-mode="strip"] button[data-key]';
+      expect(await page.locator(strip).evaluateAll((s) => s.map((b) => b.getAttribute('data-key')))).toEqual([...planning.stages]);
+      for (const stage of planning.stages) {
+        await expect(page.locator(`${strip}[data-key="${stage}"] .count`), `strip ${stage}`).toHaveText(String(planning.stageCounts[stage] ?? 0));
+      }
+
+      // Every card of the golden sits in its stage's column, once; a stage without one is a stub.
+      const cards = goldenCards(planning);
+      expect(cards.length).toBe(Object.values(planning.stageCounts).reduce((n, c) => n + c, 0));
+      await expect(page.locator(WS_CARDS)).toHaveCount(cards.length);
+      for (const stage of planning.stages) {
+        const keys = cards.filter((c) => c.stage === stage).map((c) => c.key).sort();
+        const column = page.locator(`${SCROLLER_COLUMNS}[data-col="${stage}"]`);
+        if (keys.length === 0) await expect(column, `${stage} is a stub`).toHaveAttribute('data-stub', '');
+        else expect(await renderedKeys(column.locator('app-board-card')), `cards in ${stage}`).toEqual(keys);
+      }
+    });
+
+    test('workspace board: cards carry type glyph, number, title, priority, feature, milestone, assignee and the reason line', async ({ page }) => {
+      const planning = PLANNING.harbor;
+      await page.goto(wsBoard('harbor'));
+      await expect(page.locator(WS_CARDS)).toHaveCount(goldenCards(planning).length);
+      const cardIn = (stage: string, key: string): Locator => page.locator(`app-board-page section[data-col="${stage}"] app-board-card[data-key="${key}"]`);
+      const accessiblePhrase = (card: Locator): Promise<string | null> => card.locator('ui-reason .visually-hidden').evaluate((el) => el.textContent);
+
+      // 008 waits in close-pending: the reason line carries the row's phrase and no command chip (close-pending has none).
+      const s008 = holderOf(planning, '008');
+      const r008 = rowOf(s008.slug);
+      const f008 = planning.features.find((f) => f.holders.some((h) => h.slug === s008.slug && h.main));
+      const c008 = cardIn('close-pending', `spec:${s008.slug}`);
+      await expect(c008).toHaveCount(1);
+      await expect(c008.locator('ui-type-glyph')).toHaveAttribute('data-type', String(r008.type));
+      await expect(c008.locator('.num')).toHaveText(s008.id);
+      await expect(c008.locator('a.title')).toHaveText(s008.title);
+      await expect(c008.locator('ui-priority')).toHaveAttribute('data-level', s008.priority);
+      await expect(c008.locator('.chip.feat')).toHaveText(String(f008?.id));
+      await expect(c008.locator('.chip.feat')).toHaveAttribute('title', `Feature ${String(f008?.id)}: ${String(f008?.name)}`);
+      await expect(c008.locator('ui-actor-chip')).toHaveAttribute('data-kind', 'person');
+      await expect(c008.locator('ui-actor-chip')).toContainText(String(s008.assignee?.id));
+      expect(r008.nextCommand).toBeNull();
+      await expect(c008.locator('ui-reason')).toHaveCount(1);
+      expect(await accessiblePhrase(c008)).toBe(r008.nextReason);
+      await expect(c008.locator('ui-reason ui-command-chip')).toHaveCount(0);
+
+      // 006 is the P1 card; it waits in review with the row's phrase and command.
+      const s006 = holderOf(planning, '006');
+      const r006 = rowOf(s006.slug);
+      expect(s006.priority).toBe('P1');
+      const c006 = cardIn(String(s006.stage), `spec:${s006.slug}`);
+      await expect(c006).toHaveCount(1);
+      await expect(c006.locator('ui-priority')).toHaveAttribute('data-level', 'P1');
+      await expect(c006.locator('ui-priority [role="img"]')).toHaveAccessibleName('priority P1');
+      await expect(c006.locator('ui-priority [role="img"] > span')).toHaveText('P1');
+      await expect(c006.locator('ui-type-glyph')).toHaveAttribute('data-type', String(r006.type));
+      await expect(c006.locator('.num')).toHaveText(s006.id);
+      await expect(c006.locator('a.title')).toHaveText(s006.title);
+      expect(await accessiblePhrase(c006)).toBe(r006.nextReason);
+      await expect(c006.locator('ui-reason ui-command-chip')).toContainText(String(r006.nextCommand));
+
+      // A story in idea: the idea chip with its slug in place of a number, its type's glyph, its feature and milestone,
+      // no assignee and no reason line (a story does not wait).
+      const story = planning.ideas.find((i) => i.feature !== null && i.milestone !== null && i.type !== null);
+      if (!story) throw new Error('the harbor planning golden holds no story with a type, a feature and a milestone');
+      const cIdea = cardIn('idea', `idea:${story.slug}`);
+      await expect(cIdea).toHaveCount(1);
+      await expect(cIdea).toHaveAttribute('data-kind', 'idea');
+      await expect(cIdea.locator('.idea .slug')).toHaveText(story.slug);
+      await expect(cIdea.locator('.num')).toHaveCount(0);
+      await expect(cIdea.locator('ui-type-glyph')).toHaveAttribute('data-type', String(story.type));
+      await expect(cIdea.locator('a.title')).toHaveText(story.title);
+      await expect(cIdea.locator('ui-priority')).toHaveAttribute('data-level', story.priority);
+      await expect(cIdea.locator('.chip.feat')).toHaveText(String(story.feature));
+      await expect(cIdea.locator('.chip.ms')).toHaveText(String(story.milestone));
+      await expect(cIdea.locator('ui-actor-chip')).toHaveCount(0);
+      await expect(cIdea.locator('ui-reason')).toHaveCount(0);
+
+      // Every spec card: number, title, priority and main feature as the golden holds them, the milestone chip exactly
+      // where a milestone lists the spec (the first in target order), the assignee chip exactly where one is set.
+      const milestoneOf = new Map<string, string>();
+      for (const m of planning.milestones) for (const s of m.specs) if (!milestoneOf.has(s.slug)) milestoneOf.set(s.slug, m.name);
+      for (const feature of planning.features) {
+        for (const holder of feature.holders.filter((h) => !h.archived && h.main && h.stage !== null)) {
+          const card = cardIn(String(holder.stage), `spec:${holder.slug}`);
+          await expect(card, holder.slug).toHaveCount(1);
+          await expect(card.locator('.num'), holder.slug).toHaveText(holder.id);
+          await expect(card.locator('a.title'), holder.slug).toHaveText(holder.title);
+          await expect(card.locator('ui-priority'), holder.slug).toHaveAttribute('data-level', holder.priority);
+          await expect(card.locator('.chip.feat'), holder.slug).toHaveText(feature.id);
+          const milestone = milestoneOf.get(holder.slug);
+          if (milestone === undefined) await expect(card.locator('.chip.ms'), holder.slug).toHaveCount(0);
+          else await expect(card.locator('.chip.ms'), holder.slug).toHaveText(milestone);
+          await expect(card.locator('ui-actor-chip'), holder.slug).toHaveCount(holder.assignee === null ? 0 : 1);
+        }
+      }
+    });
+
+    test('workspace board: lantern shows the default table’s columns with its counts', async ({ page }) => {
+      const planning = PLANNING.lantern;
+      await page.goto(wsBoard('lantern'));
+      await expectColumns(page, planning);
+      const cards = goldenCards(planning);
+      await expect(page.locator(WS_CARDS)).toHaveCount(cards.length);
+      for (const card of cards) {
+        await expect(page.locator(`${SCROLLER_COLUMNS}[data-col="${card.stage}"] app-board-card[data-key="${card.key}"]`), card.key).toHaveCount(1);
+      }
+    });
+  });
+
+  test.describe('at 820', () => {
+    test.use(atWidth(820));
+
+    test('workspace board: at 820 the same columns sit in the board’s own scroller and the page never scrolls sideways', async ({ page }) => {
+      const planning = PLANNING.harbor;
+      await page.goto(wsBoard('harbor'));
+      await expect(page.locator('app-board-page')).toHaveAttribute('data-tier', 'medium');
+      await expectColumns(page, planning);
+      const measured = await page.evaluate(() => {
+        const scroller = document.querySelector<HTMLElement>('app-board-page .scroller');
+        const root = document.scrollingElement ?? document.documentElement;
+        return {
+          scroller: scroller && { scroll: scroller.scrollWidth, client: scroller.clientWidth, overflowX: getComputedStyle(scroller).overflowX },
+          page: { scroll: root.scrollWidth, client: root.clientWidth },
+        };
+      });
+      if (!measured.scroller) throw new Error('the board renders no scroller at 820');
+      expect(measured.scroller.scroll, 'the columns overflow the scroller').toBeGreaterThan(measured.scroller.client);
+      expect(['auto', 'scroll']).toContain(measured.scroller.overflowX);
+      expect(measured.page.scroll, 'page scrollWidth').toBe(measured.page.client);
+    });
+  });
+});
+
+/** The query the URL carries, order-free: the router writes the keys in its own order. */
+const urlQuery = (page: Page): URLSearchParams => new URL(page.url()).searchParams;
+const BOARD_QUERY_PATH = '/api/workspaces/harbor/board-query';
+const FILTER_CHIPS = (key: string): string => `app-board-filters [data-filter="${key}"] ui-filter-chips button`;
+const LANE_RADIOS = 'app-board-filters [data-group] ui-segmented [role="radio"]';
+
+test.describe('filters', () => {
+  const session = useStubSession('board-filters');
+
+  test.describe('at 1440', () => {
+    test.use(atWidth(1440));
+
+    test('filters: a feature filter and its swimlanes go to the URL, survive a reload, and the bare route restores them', async ({ page, request }) => {
+      const planning = PLANNING.harbor;
+      const all = goldenCards(planning);
+      const featured = planning.features.find((f) => all.filter((c) => c.feature === f.id).length >= 2);
+      if (!featured) throw new Error('the harbor planning golden holds no feature with two cards');
+      const shown = all.filter((c) => c.feature === featured.id);
+
+      await page.goto(wsBoard('harbor'));
+      await expect(page.locator(WS_CARDS)).toHaveCount(all.length);
+      expect(urlQuery(page).toString(), 'nothing remembered yet: the bare route stays bare').toBe('');
+
+      const featureChip = page.locator(FILTER_CHIPS('feature')).filter({ hasText: featured.id });
+      const laneFeature = page.locator(LANE_RADIOS).filter({ hasText: 'Feature' });
+      await featureChip.click();
+      await expect.poll(() => urlQuery(page).getAll('feature')).toEqual([featured.id]);
+
+      // Every query the page shows is remembered: the PUT of the last one carries filter and group.
+      const saved = page.waitForRequest((req) => {
+        if (req.method() !== 'PUT' || new URL(req.url()).pathname !== BOARD_QUERY_PATH) return false;
+        const body = req.postDataJSON() as { query?: unknown };
+        const query = new URLSearchParams(typeof body.query === 'string' ? body.query : '');
+        return query.getAll('feature').join() === featured.id && query.get('group') === 'feature';
+      });
+      await laneFeature.click();
+      await saved;
+      await expect.poll(() => urlQuery(page).get('group')).toBe('feature');
+
+      const expectFiltered = async (): Promise<void> => {
+        await expect(featureChip).toHaveAttribute('aria-pressed', 'true');
+        await expect(laneFeature).toHaveAttribute('aria-checked', 'true');
+        await expect(page.locator(WS_CARDS)).toHaveCount(shown.length);
+        expect(await renderedKeys(page.locator(WS_CARDS))).toEqual(shown.map((c) => c.key).sort());
+        await expect(page.locator('app-board-filters [data-shown] > span')).toHaveText(`${String(shown.length)} of ${String(all.length)} cards`);
+        // One band across the board, the feature's: its id, name and card count.
+        const heads = page.locator(BAND_HEADS);
+        await expect(heads).toHaveCount(1);
+        await expect(heads.locator('.mono')).toHaveText(featured.id);
+        await expect(heads.locator('.name')).toHaveText(featured.name);
+        await expect(heads.locator('.n')).toHaveText(`${String(shown.length)} cards`);
+        // A column with a shown card keeps its full count in the head; a column the filter emptied is a stub showing 0
+        // and naming how many cards it hides.
+        for (const stage of planning.stages) {
+          if (shown.some((c) => c.stage === stage)) {
+            await expect(columnCount(page, stage), `${stage} keeps its full count`).toHaveText(String(planning.stageCounts[stage] ?? 0));
+            continue;
+          }
+          const hidden = all.filter((c) => c.stage === stage).length;
+          const stub = page.locator(`${SCROLLER_COLUMNS}[data-col="${stage}"][data-stub]`);
+          await expect(stub, `${stage} is a stub`).toHaveCount(1);
+          await expect(columnCount(page, stage), `${stage} stub count`).toHaveText('0');
+          await expect(stub.locator('.vnote'), `${stage} stub note`).toHaveText(hidden > 0 ? `${String(hidden)} hidden by filters` : 'empty');
+        }
+      };
+      await expectFiltered();
+
+      // A reload lands on the same URL and restores chips, lanes and bands from it.
+      await page.reload();
+      expect(urlQuery(page).getAll('feature')).toEqual([featured.id]);
+      expect(urlQuery(page).get('group')).toBe('feature');
+      await expectFiltered();
+
+      // The stub holds the remembered query; the bare route restores it and replaces its URL with it.
+      const answer = await request.get(BOARD_QUERY_PATH, { headers: { [SESSION_HEADER]: session() } });
+      expect(answer.status()).toBe(200);
+      const remembered = new URLSearchParams(((await answer.json()) as { query: string }).query);
+      expect(remembered.getAll('feature')).toEqual([featured.id]);
+      expect(remembered.get('group')).toBe('feature');
+      await page.goto(wsBoard('harbor'));
+      await expect.poll(() => urlQuery(page).get('group')).toBe('feature');
+      expect(new URL(page.url()).pathname).toBe(wsBoard('harbor'));
+      expect(urlQuery(page).getAll('feature')).toEqual([featured.id]);
+      await expectFiltered();
+    });
+
+    test('filters: "Clear filters" drops every filter value and keeps the swimlane group and the column', async ({ page }) => {
+      const planning = PLANNING.harbor;
+      const all = goldenCards(planning);
+      const featured = planning.features.find((f) => all.some((c) => c.feature === f.id));
+      if (!featured) throw new Error('the harbor planning golden holds no feature with a card');
+      const col = planning.stages.find((s) => s !== 'build' && (planning.stageCounts[s] ?? 0) > 0) ?? planning.stages[0] ?? 'idea';
+
+      await page.goto(`${wsBoard('harbor')}?feature=${featured.id}&group=feature&col=${col}`);
+      await expect(page.locator(WS_CARDS)).toHaveCount(all.filter((c) => c.feature === featured.id).length);
+      await page.locator('app-board-filters [data-shown] [data-clear]').click();
+
+      await expect.poll(() => urlQuery(page).getAll('feature')).toEqual([]);
+      expect(urlQuery(page).get('group')).toBe('feature');
+      expect(urlQuery(page).get('col')).toBe(col);
+      await expect(page.locator(WS_CARDS)).toHaveCount(all.length);
+      await expect(page.locator('app-board-filters [data-shown]')).toHaveCount(0);
+      await expect(page.locator(FILTER_CHIPS('feature')).first()).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator(LANE_RADIOS).filter({ hasText: 'Feature' })).toHaveAttribute('aria-checked', 'true');
+      // A band per feature holding a card, in master order, and the band without a feature last when a card has none.
+      const withCards = planning.features.filter((f) => all.some((c) => c.feature === f.id)).map((f) => f.id);
+      const heads = page.locator(BAND_HEADS);
+      await expect(heads).toHaveCount(withCards.length + (all.some((c) => c.feature === null) ? 1 : 0));
+      expect((await heads.locator('.mono').allTextContents()).map((t) => t.trim())).toEqual(withCards);
+    });
+  });
+
+  test.describe('at 390', () => {
+    test.use(atWidth(390));
+
+    test('filters: ?col= picks the column the compact switch and the tray highlight, and the one column shown', async ({ page }) => {
+      const planning = PLANNING.harbor;
+      const all = goldenCards(planning);
+      for (const col of planning.stages.filter((s) => s !== 'build')) {
+        await page.goto(`${wsBoard('harbor')}?col=${col}`);
+        await expect(page.locator('app-board-page')).toHaveAttribute('data-tier', 'compact');
+        const checked = page.locator('app-board-page .colswitch ui-segmented [role="radio"][aria-checked="true"]');
+        await expect(checked, col).toHaveCount(1);
+        await expect(checked, col).toHaveText(`${String(STAGE_WORDS[col])} ${String(all.filter((c) => c.stage === col).length)}`);
+        await expect(page.locator('app-board-page [data-tray] [data-drop-col][data-current]'), col).toHaveAttribute('data-drop-col', col);
+        await expect(page.locator('app-board-page section.one'), col).toHaveAttribute('data-col', col);
+        await expect(page.locator('app-board-page section.one app-board-card'), col).toHaveCount(all.filter((c) => c.stage === col).length);
+      }
+    });
+  });
+});
