@@ -24,6 +24,21 @@ const EMPTY: PlanningBody = { ...PLANNING, stageCounts: {}, ideas: [], features:
 type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'actors' | 'boardQuery' | 'putBoardQuery'>;
 
 let harness: RouterTestingHarness;
+
+/**
+ * jsdom has no Popover API: `showPopover` / `hidePopover` are stubbed as the browser behaves (popover.spec.ts), hiding
+ * fires the closing `toggle`; top layer and the anchored geometry belong to the browser tier.
+ */
+function stubPopovers(): void {
+  const el = HTMLElement.prototype as unknown as Record<string, unknown>;
+  el['showPopover'] = vi.fn(function (this: HTMLElement) {
+    this.setAttribute('data-shown', '');
+  });
+  el['hidePopover'] = vi.fn(function (this: HTMLElement) {
+    this.removeAttribute('data-shown');
+    this.dispatchEvent(Object.assign(new Event('toggle'), { newState: 'closed', oldState: 'open' }));
+  });
+}
 /** Every `PUT …/board-query` the page sent, as `ws|query`. */
 let saved: string[] = [];
 
@@ -35,6 +50,7 @@ async function open(
   remembered = '',
 ): Promise<HTMLElement> {
   saved = [];
+  stubPopovers();
   const api: FakeApi = {
     workspaces: () => Promise.resolve(ok([{ slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: null }])),
     dashboard: (ws) => Promise.resolve(ws === 'harbor' ? ok(body) : { kind: 'not-found', served: true }),
@@ -165,7 +181,9 @@ describe('BoardPage (T121, ISC-129)', () => {
 });
 
 // T123 · ISC-129.1: filters and swimlanes live in the URL query; the bare route restores the remembered query once and
-// every other query the page shows is saved through `saveBoardQuery`.
+// every other query the page shows is saved through `saveBoardQuery`. T163 · ISC-133.1: the controls are the toolbar:
+// four triggers, each a popover checkbox list, the active selections as removable chips, the swimlane switch, "n of m
+// cards" while filtering and Clear; and the source chip beside the title.
 
 const settle = async (): Promise<void> => {
   await harness.fixture.whenStable();
@@ -175,34 +193,147 @@ const settle = async (): Promise<void> => {
 };
 const url = (): string => TestBed.inject(Router).url;
 const searchOf = (): string => url().split('?')[1] ?? '';
-const group = (page: HTMLElement, key: string): HTMLElement | null => page.querySelector<HTMLElement>(`app-board-filters [data-filter="${key}"]`);
-const chip = (page: HTMLElement, key: string, label: string): HTMLButtonElement | undefined =>
-  [...(group(page, key)?.querySelectorAll<HTMLButtonElement>('button.chip') ?? [])].find((b) => text(b).startsWith(label));
-const pressed = (page: HTMLElement, key: string): string[] =>
-  [...(group(page, key)?.querySelectorAll<HTMLButtonElement>('button[aria-pressed="true"]') ?? [])].map((b) => text(b));
+const trigger = (page: HTMLElement, key: string): HTMLButtonElement | null => page.querySelector<HTMLButtonElement>(`app-board-filters [data-trigger="${key}"]`);
+const list = (page: HTMLElement, key: string): HTMLElement | null => page.querySelector<HTMLElement>(`app-board-filters ui-popover[data-filter="${key}"]`);
+const panel = (page: HTMLElement, key: string): HTMLElement | null => list(page, key)?.querySelector<HTMLElement>('[popover]') ?? null;
+const rows = (page: HTMLElement, key: string): HTMLElement[] => [...(list(page, key)?.querySelectorAll<HTMLElement>('[data-value]') ?? [])];
+const box = (page: HTMLElement, key: string, value: string): HTMLInputElement | null | undefined =>
+  rows(page, key)
+    .find((r) => r.dataset['value'] === value)
+    ?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+const checked = (page: HTMLElement, key: string): string[] =>
+  rows(page, key)
+    .filter((r) => r.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked === true)
+    .map((r) => r.dataset['value'] ?? '?');
+const chips = (page: HTMLElement): string[] => [...page.querySelectorAll<HTMLElement>('app-board-filters [data-chip]')].map((c) => c.dataset['chip'] ?? '?');
+const toggle = async (page: HTMLElement, key: string, value: string): Promise<void> => {
+  box(page, key, value)?.click();
+  await settle();
+};
 
-describe('BoardPage query (T123, ISC-129.1)', () => {
-  it('offers one chip group per filter key with the values the cards carry, "All" first', async () => {
+describe('BoardPage toolbar (T123, T163, ISC-129.1, ISC-133.1)', () => {
+  it('renders the four triggers with a caret in toolbar order, each naming its key and "· n" once values are selected', async () => {
     const page = await open('/w/harbor/board');
-    expect([...page.querySelectorAll<HTMLElement>('app-board-filters [data-filter]')].map((g) => g.dataset['filter'])).toEqual(['feature', 'milestone', 'type', 'assignee']);
-    const labels = (key: string): string[] => [...(group(page, key)?.querySelectorAll('button.chip') ?? [])].map((b) => text(b));
-    expect(labels('feature')).toEqual(['All 10', 'F0 1', 'F2 2', 'F3 2', 'F4 1', 'F5 1', 'F6 2', 'F7 1']);
-    expect(labels('milestone')).toEqual(['All 10', 'Harbor 0.9 1', 'Harbor 1.0 3', 'Harbor 2.0 1', 'No milestone 5']);
-    expect(labels('type')).toEqual(['All 10', 'feature 2', 'refactor 1', 'bug 1', 'spike 3', 'chore 1', 'idea 2']);
-    expect(labels('assignee')).toEqual(['All 10', 'u:3f9c0a7d 4', 'Unassigned 6']);
-    for (const key of ['feature', 'milestone', 'type', 'assignee']) expect(pressed(page, key)).toEqual([expect.stringMatching(/^All/)]);
-    expect(page.querySelector('[data-shown]')).toBeNull();
-    expect(saved).toEqual([]);
+    const triggers = [...page.querySelectorAll<HTMLButtonElement>('app-board-filters [data-trigger]')];
+    expect(triggers.map((t) => t.dataset['trigger'])).toEqual(['feature', 'milestone', 'type', 'assignee']);
+    expect(triggers.map((t) => text(t))).toEqual(['Feature', 'Milestone', 'Type', 'Assignee']);
+    for (const t of triggers) {
+      expect(t.querySelector('ui-icon.caret')).not.toBeNull();
+      expect(t.getAttribute('aria-expanded')).toBe('false');
+      expect(t.getAttribute('aria-haspopup')).toBe('dialog');
+      expect(t.getAttribute('aria-controls')).toBe(panel(page, t.dataset['trigger'] ?? '')?.id);
+      expect(t.hasAttribute('data-active')).toBe(false);
+    }
+    TestBed.resetTestingModule();
+    const filtered = await open('/w/harbor/board?type=spike&type=bug&milestone=none');
+    expect(text(trigger(filtered, 'type'))).toBe('Type · 2');
+    expect(text(trigger(filtered, 'milestone'))).toBe('Milestone · 1');
+    expect(text(trigger(filtered, 'feature'))).toBe('Feature');
+    expect(trigger(filtered, 'type')?.hasAttribute('data-active')).toBe(true);
   });
 
-  it('reflects the query in the chips and the lane switch, and counts what the filters let through', async () => {
+  it('lists the values the cards carry in model order, the none value last, with their counts and the type glyphs', async () => {
+    const page = await open('/w/harbor/board');
+    const values = (key: string): string[] => rows(page, key).map((r) => r.dataset['value'] ?? '?');
+    const counts = (key: string): string[] => rows(page, key).map((r) => text(r.querySelector('.n')));
+    expect(values('feature')).toEqual(['F0', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7']);
+    expect(counts('feature')).toEqual(['1', '2', '2', '1', '1', '2', '1']);
+    expect(text(rows(page, 'feature')[5]?.querySelector('.fid'))).toBe('F6');
+    expect(text(rows(page, 'feature')[5]?.querySelector('.name'))).toBe('Registry compatibility');
+    expect(values('milestone')).toEqual(['Harbor 0.9', 'Harbor 1.0', 'Harbor 2.0', 'none']);
+    expect(text(rows(page, 'milestone')[3]?.querySelector('.name'))).toBe('No milestone');
+    expect(counts('milestone')).toEqual(['1', '3', '1', '5']);
+    expect(values('type')).toEqual(['feature', 'refactor', 'bug', 'spike', 'chore', 'idea']);
+    expect(rows(page, 'type').map((r) => r.querySelector('ui-type-glyph')?.getAttribute('data-type'))).toEqual(values('type'));
+    expect(rows(page, 'type').map((r) => text(r.querySelector('.name')))).toEqual(['feature', 'refactor', 'bug', 'spike', 'chore', 'idea']);
+    expect(counts('type')).toEqual(['2', '1', '1', '3', '1', '2']);
+    expect(values('assignee')).toEqual(['u:3f9c0a7d', 'unassigned']);
+    expect(rows(page, 'assignee')[0]?.querySelector('ui-actor-chip')?.getAttribute('data-kind')).toBe('person');
+    expect(text(rows(page, 'assignee')[1]?.querySelector('.name'))).toBe('Unassigned');
+    expect(counts('assignee')).toEqual(['4', '6']);
+    for (const key of ['feature', 'milestone', 'type', 'assignee']) {
+      expect(checked(page, key)).toEqual([]);
+      expect(panel(page, key)?.getAttribute('aria-label')).toBe(text(trigger(page, key)));
+    }
+  });
+
+  it('reads the assignee list as people, then agents, then unassigned', async () => {
+    const agent = { raw: 'a:claude:sess-9', kind: 'agent', id: 'a:claude:sess-9', legacy: false };
+    const planning = structuredClone(PLANNING) as unknown as { features: Array<{ holders: Array<{ id: string; assignee: unknown }> }> };
+    for (const f of planning.features) for (const h of f.holders) if (h.id === '004') h.assignee = agent;
+    const page = await open('/w/harbor/board', Promise.resolve(ok(planning as unknown as PlanningBody)));
+    expect(rows(page, 'assignee').map((r) => r.dataset['value'])).toEqual(['u:3f9c0a7d', 'a:claude:sess-9', 'unassigned']);
+    expect([...(list(page, 'assignee')?.querySelectorAll('.section') ?? [])].map((h) => text(h))).toEqual(['People', 'Agents']);
+    expect(rows(page, 'assignee')[1]?.querySelector('ui-actor-chip')?.getAttribute('data-kind')).toBe('agent');
+  });
+
+  it('a trigger opens its list with focus inside; Escape closes it and focus returns to the trigger', async () => {
+    const page = await open('/w/harbor/board');
+    const type = trigger(page, 'type');
+    type?.click();
+    await settle();
+    expect(panel(page, 'type')?.hasAttribute('data-shown')).toBe(true);
+    expect(type?.getAttribute('aria-expanded')).toBe('true');
+    expect(document.activeElement).toBe(box(page, 'type', 'feature'));
+    document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle();
+    expect(panel(page, 'type')?.hasAttribute('data-shown')).toBe(false);
+    expect(type?.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(type);
+  });
+
+  it('checks several values of one key into the query with replaceUrl, keeps the lanes, and the list stays open', async () => {
+    const page = await open('/w/harbor/board?group=feature');
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+    trigger(page, 'type')?.click();
+    await settle();
+    await toggle(page, 'type', 'spike');
+    expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({ replaceUrl: true, queryParamsHandling: 'merge' }));
+    await toggle(page, 'type', 'bug');
+    expect(parseBoardQuery(searchOf())).toEqual({ ...EMPTY_BOARD_QUERY, type: ['spike', 'bug'], group: 'feature' });
+    expect(saved.at(-1)).toBe('harbor|type=spike&type=bug&group=feature');
+    expect(checked(page, 'type')).toEqual(['bug', 'spike']);
+    expect(text(trigger(page, 'type'))).toBe('Type · 2');
+    expect(panel(page, 'type')?.hasAttribute('data-shown')).toBe(true);
+    expect(page.querySelectorAll('.scroller app-board-card')).toHaveLength(4);
+    await toggle(page, 'type', 'spike');
+    expect(parseBoardQuery(searchOf())).toEqual({ ...EMPTY_BOARD_QUERY, type: ['bug'], group: 'feature' });
+    expect(saved.at(-1)).toBe('harbor|type=bug&group=feature');
+  });
+
+  it("shows the active selections as chips in key order; a chip's remove button drops that one value", async () => {
+    const page = await open('/w/harbor/board?feature=F6&type=spike&type=bug&assignee=unassigned&group=milestone');
+    expect(chips(page)).toEqual(['feature:F6', 'type:spike', 'type:bug', 'assignee:unassigned']);
+    const chip = (key: string): HTMLElement | null => page.querySelector<HTMLElement>(`app-board-filters [data-chip="${key}"]`);
+    expect(text(chip('feature:F6')?.querySelector('.cl'))).toBe('F6');
+    expect(text(chip('assignee:unassigned')?.querySelector('.cl'))).toBe('Unassigned');
+    expect(chip('type:spike')?.querySelector('ui-type-glyph')?.getAttribute('data-type')).toBe('spike');
+    const remove = chip('type:spike')?.querySelector<HTMLButtonElement>('button[data-remove]');
+    expect(remove?.getAttribute('aria-label')).toBe('Remove filter spike');
+    remove?.click();
+    await settle();
+    expect(parseBoardQuery(searchOf())).toEqual({ ...EMPTY_BOARD_QUERY, feature: ['F6'], type: ['bug'], assignee: ['unassigned'], group: 'milestone' });
+    expect(chips(page)).toEqual(['feature:F6', 'type:bug', 'assignee:unassigned']);
+    expect(document.activeElement).toBe(page.querySelector('app-board-filters [data-chip="type:bug"] button[data-remove]'));
+    TestBed.resetTestingModule();
+    const bare = await open('/w/harbor/board');
+    expect(chips(bare)).toEqual([]);
+  });
+
+  it('reflects the query in the lists and the lane switch, and counts what the filters let through only while filtering', async () => {
+    const bare = await open('/w/harbor/board');
+    expect(bare.querySelector('app-board-filters [data-shown]')).toBeNull();
+    expect(bare.querySelector('app-board-filters [data-clear]')).toBeNull();
+    TestBed.resetTestingModule();
     const page = await open('/w/harbor/board?type=spike&milestone=none&group=milestone');
-    expect(pressed(page, 'type')).toEqual(['spike 3']);
-    expect(pressed(page, 'milestone')).toEqual(['No milestone 5']);
-    expect(pressed(page, 'feature')).toEqual(['All 10']);
+    expect(checked(page, 'type')).toEqual(['spike']);
+    expect(checked(page, 'milestone')).toEqual(['none']);
+    expect(checked(page, 'feature')).toEqual([]);
     const lanes = page.querySelector('app-board-filters [data-group] ui-segmented');
     expect(text(lanes?.querySelector('[aria-checked="true"]'))).toBe('Milestone');
-    expect(text(page.querySelector('[data-shown] span'))).toBe('3 of 10 cards');
+    expect(text(page.querySelector('app-board-filters [data-group] .label'))).toBe('Swimlanes');
+    expect(text(page.querySelector('app-board-filters [data-shown] [data-count]'))).toBe('3 of 10 cards');
+    expect(text(page.querySelector('app-board-filters [data-shown] [data-clear]'))).toBe('Clear');
   });
 
   it('round-trips the whole query: the URL stays as written and the canonical string is saved', async () => {
@@ -211,21 +342,6 @@ describe('BoardPage query (T123, ISC-129.1)', () => {
     await settle();
     expect(parseBoardQuery(searchOf())).toEqual(parseBoardQuery(query));
     expect(saved).toEqual([`harbor|${boardQueryString(parseBoardQuery(query))}`]);
-  });
-
-  it('a filter click navigates with replaceUrl, keeps the lanes, and saves the new query', async () => {
-    const page = await open('/w/harbor/board?group=feature');
-    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
-    chip(page, 'type', 'bug')?.click();
-    await settle();
-    expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({ replaceUrl: true, queryParamsHandling: 'merge' }));
-    expect(parseBoardQuery(searchOf())).toEqual({ ...EMPTY_BOARD_QUERY, type: ['bug'], group: 'feature' });
-    expect(saved.at(-1)).toBe('harbor|type=bug&group=feature');
-    expect(pressed(page, 'type')).toEqual(['bug 1']);
-    chip(page, 'type', 'All')?.click();
-    await settle();
-    expect(searchOf()).toBe('group=feature');
-    expect(saved.at(-1)).toBe('harbor|group=feature');
   });
 
   it('the lane switch writes ?group and renders the bands', async () => {
@@ -238,13 +354,14 @@ describe('BoardPage query (T123, ISC-129.1)', () => {
     expect(saved).toEqual(['harbor|group=feature']);
   });
 
-  it('"Clear filters" drops every filter value but keeps the lanes and the column', async () => {
+  it('Clear drops every filter value but keeps the lanes and the column', async () => {
     const page = await open('/w/harbor/board?type=bug&assignee=unassigned&group=milestone&col=review');
-    page.querySelector<HTMLButtonElement>('app-board-filters [data-clear]')?.click();
+    page.querySelector<HTMLButtonElement>('app-board-filters [data-shown] [data-clear]')?.click();
     await settle();
     expect(parseBoardQuery(searchOf())).toEqual({ ...EMPTY_BOARD_QUERY, group: 'milestone', col: 'review' });
     expect(saved.at(-1)).toBe('harbor|group=milestone&col=review');
-    expect(page.querySelector('[data-shown]')).toBeNull();
+    expect(page.querySelector('app-board-filters [data-shown]')).toBeNull();
+    expect(chips(page)).toEqual([]);
   });
 
   it('the bare route restores the remembered query once, without saving it back', async () => {
@@ -253,7 +370,8 @@ describe('BoardPage query (T123, ISC-129.1)', () => {
     expect(parseBoardQuery(searchOf())).toEqual({ ...EMPTY_BOARD_QUERY, type: ['bug'], group: 'feature' });
     expect(saved).toEqual([]);
     const page = (harness.fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('app-board-page');
-    expect(page && pressed(page, 'type')).toEqual(['bug 1']);
+    expect(page && checked(page, 'type')).toEqual(['bug']);
+    expect(page && text(trigger(page, 'type'))).toBe('Type · 1');
   });
 
   it('a route with a query wins over the remembered one and becomes the remembered query', async () => {
@@ -277,6 +395,44 @@ describe('BoardPage query (T123, ISC-129.1)', () => {
     await settle();
     expect(url()).toBe('/w/harbor/board');
     expect(saved.at(-1)).toBe('harbor|');
+  });
+
+  it('renders the same toolbar at the compact tier, its lists still popovers', async () => {
+    const page = await open('/w/harbor/board?type=spike', undefined, undefined, 'compact');
+    expect(page.querySelectorAll('app-board-filters [data-trigger]')).toHaveLength(4);
+    expect(page.querySelectorAll('app-board-filters ui-popover [popover]')).toHaveLength(4);
+    expect(chips(page)).toEqual(['type:spike']);
+  });
+});
+
+describe('BoardPage source chip (T163, ISC-133.1)', () => {
+  it('names specs/workflow.md in mono beside the title when the workspace has its own table', async () => {
+    const page = await open('/w/harbor/board');
+    const chip = page.querySelector<HTMLElement>('.title-row [data-source]');
+    expect(chip?.dataset['source']).toBe('file');
+    expect(text(chip)).toBe('specs/workflow.md');
+    expect(chip?.classList.contains('mono')).toBe(true);
+    expect(text(page.querySelector('.title-row h1'))).toBe('Board');
+  });
+
+  it('says "default workflow", muted, when the file is missing', async () => {
+    const page = await open('/w/harbor/board', Promise.resolve(ok({ ...PLANNING, workflow: { ...PLANNING.workflow, source: 'default' } })));
+    const chip = page.querySelector<HTMLElement>('.title-row [data-source]');
+    expect(chip?.dataset['source']).toBe('default');
+    expect(text(chip)).toBe('default workflow');
+    expect(chip?.classList.contains('mono')).toBe(false);
+  });
+
+  it('shows no chip while the planning tree is loading', async () => {
+    let release: (value: ApiResult<PlanningBody>) => void = () => undefined;
+    const pending = new Promise<ApiResult<PlanningBody>>((resolve) => (release = resolve));
+    const opened = open('/w/harbor/board', pending);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    harness.fixture.detectChanges();
+    const loading = (harness.fixture.nativeElement as HTMLElement).querySelector('app-board-page');
+    expect(loading?.querySelector('[data-source]')).toBeNull();
+    release(ok(PLANNING));
+    await opened;
   });
 });
 

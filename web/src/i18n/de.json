@@ -1121,6 +1121,7 @@
         "active": "{{label}} · {{count}}",
         "shown": "{{shown}} von {{total}} Karten",
         "remove": "Filter {{label}} entfernen",
+        "activeList": "Aktive Filter",
         "clear": "Zurücksetzen",
         "noMatch": "Keine Karte passt",
         "clearAll": "Filter zurücksetzen",

@@ -266,12 +266,11 @@ async function openBoardPage(page: Page, name: string): Promise<void> {
 }
 
 /**
- * The board's layout. The filter chips row (`ui-filter-chips`) scrolls sideways behind its edge fades at compact by
- * design; it is the one scroller the board may have. Everything else is measured as for every other surface.
+ * The board's layout, measured as for every other surface: the toolbar (T163) wraps its triggers, chips and swimlane
+ * switch at compact, so no part of the board scrolls sideways.
  */
 async function boardLayout(page: Page): Promise<Layout> {
-  const found = await layout(page, BOARD_PAGE.host);
-  return { ...found, scrollers: found.scrollers.filter((path) => !path.endsWith('ui-filter-chips > div.row')) };
+  return layout(page, BOARD_PAGE.host);
 }
 
 /** Every column section of the board that is rendered and visible: its `data-col`. */
@@ -394,6 +393,25 @@ test.describe('narrow board page', () => {
         window.scrollTo(0, 0);
       });
       await expect(bar).not.toHaveAttribute('data-away');
+    });
+  });
+
+  test.describe('board at 390, toolbar with active filters', () => {
+    test.use(atWidth(WIDTHS.phone));
+
+    test('board at 390: the toolbar wraps its triggers, chips and swimlanes without sideways overflow', async ({ page }, info) => {
+      await speak(page, 'de');
+      const name = `narrow-board-toolbar-${info.testId}-${String(info.retry)}`;
+      await page.setExtraHTTPHeaders({ [SESSION_HEADER]: name });
+      expect((await page.request.post(RESET_PATH, { headers: { [SESSION_HEADER]: name } })).status()).toBe(204);
+      await pinClock(page);
+      await page.goto(`${BOARD_PAGE.url}?feature=F6&milestone=none&type=spike&type=bug&assignee=unassigned&group=milestone`);
+      await expect(page.locator('app-shell')).toHaveAttribute('data-tier', 'compact');
+      await expect(page.locator('app-board-filters [data-chip]')).toHaveCount(5);
+      await expect(page.locator('app-board-filters [data-shown]')).toBeVisible();
+      expectNoHorizontalOverflow(await boardLayout(page), WIDTHS.phone);
+      const shell = await page.locator('app-shell').evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
+      expect(shell.scroll, 'app-shell scrollWidth').toBe(shell.client);
     });
   });
 

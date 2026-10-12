@@ -898,7 +898,10 @@ test.describe('workspace board', () => {
 /** The query the URL carries, order-free: the router writes the keys in its own order. */
 const urlQuery = (page: Page): URLSearchParams => new URL(page.url()).searchParams;
 const BOARD_QUERY_PATH = '/api/workspaces/harbor/board-query';
-const FILTER_CHIPS = (key: string): string => `app-board-filters [data-filter="${key}"] ui-filter-chips button`;
+/** The toolbar (T163): a trigger per filter key opening its popover checkbox list, and the active selections as chips. */
+const TRIGGER = (key: string): string => `app-board-filters [data-trigger="${key}"]`;
+const FILTER_ROW = (key: string, value: string): string => `app-board-filters ui-popover[data-filter="${key}"] [data-value="${value}"]`;
+const ACTIVE_CHIPS = 'app-board-filters [data-chip]';
 const LANE_RADIOS = 'app-board-filters [data-group] ui-segmented [role="radio"]';
 
 test.describe('filters', () => {
@@ -918,10 +921,18 @@ test.describe('filters', () => {
       await expect(page.locator(WS_CARDS)).toHaveCount(all.length);
       expect(urlQuery(page).toString(), 'nothing remembered yet: the bare route stays bare').toBe('');
 
-      const featureChip = page.locator(FILTER_CHIPS('feature')).filter({ hasText: featured.id });
+      const trigger = page.locator(TRIGGER('feature'));
+      const featureRow = page.locator(FILTER_ROW('feature', featured.id));
       const laneFeature = page.locator(LANE_RADIOS).filter({ hasText: 'Feature' });
-      await featureChip.click();
+      await trigger.click();
+      await expect(featureRow).toBeVisible();
+      await featureRow.click();
       await expect.poll(() => urlQuery(page).getAll('feature')).toEqual([featured.id]);
+      // The list stays open for a second pick; Escape closes it and focus returns to its trigger.
+      await expect(featureRow.locator('input[type="checkbox"]')).toBeChecked();
+      await page.keyboard.press('Escape');
+      await expect(featureRow).toBeHidden();
+      await expect(trigger).toBeFocused();
 
       // Every query the page shows is remembered: the PUT of the last one carries filter and group.
       const saved = page.waitForRequest((req) => {
@@ -935,7 +946,9 @@ test.describe('filters', () => {
       await expect.poll(() => urlQuery(page).get('group')).toBe('feature');
 
       const expectFiltered = async (): Promise<void> => {
-        await expect(featureChip).toHaveAttribute('aria-pressed', 'true');
+        await expect(trigger).toHaveText('Feature · 1');
+        await expect(page.locator(ACTIVE_CHIPS)).toHaveCount(1);
+        await expect(page.locator(ACTIVE_CHIPS)).toHaveAttribute('data-chip', `feature:${featured.id}`);
         await expect(laneFeature).toHaveAttribute('aria-checked', 'true');
         await expect(page.locator(WS_CARDS)).toHaveCount(shown.length);
         expect(await renderedKeys(page.locator(WS_CARDS))).toEqual(shown.map((c) => c.key).sort());
@@ -997,7 +1010,8 @@ test.describe('filters', () => {
       expect(urlQuery(page).get('col')).toBe(col);
       await expect(page.locator(WS_CARDS)).toHaveCount(all.length);
       await expect(page.locator('app-board-filters [data-shown]')).toHaveCount(0);
-      await expect(page.locator(FILTER_CHIPS('feature')).first()).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator(TRIGGER('feature'))).toHaveText('Feature');
+      await expect(page.locator(ACTIVE_CHIPS)).toHaveCount(0);
       await expect(page.locator(LANE_RADIOS).filter({ hasText: 'Feature' })).toHaveAttribute('aria-checked', 'true');
       // A band per feature holding a card, in master order, and the band without a feature last when a card has none.
       const withCards = planning.features.filter((f) => all.some((c) => c.feature === f.id)).map((f) => f.id);

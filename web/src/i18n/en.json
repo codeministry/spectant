@@ -1121,6 +1121,7 @@
         "active": "{{label}} · {{count}}",
         "shown": "{{shown}} of {{total}} cards",
         "remove": "Remove filter {{label}}",
+        "activeList": "Active filters",
         "clear": "Clear",
         "noMatch": "No cards match",
         "clearAll": "Clear filters",

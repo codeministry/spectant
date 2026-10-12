@@ -148,7 +148,10 @@ interface BandRow {
   changeDetection: ChangeDetectionStrategy.OnPush,
   hostDirectives: [CdkDropListGroup],
   providers: [provideBoardDrag()],
-  host: { 'data-page': 'board', '[attr.data-tier]': 'tier()', '[attr.data-dragging]': 'drag.dragging() ? "" : null' },
+  host: {
+    'data-page': 'board',
+    '[attr.data-tier]': 'tier()',
+    '[style.--board-toolbar]': 'toolbarHeight() === null ? null : toolbarHeight() + "px"', '[attr.data-dragging]': 'drag.dragging() ? "" : null' },
   templateUrl: './board-page.html',
   styleUrls: ['./board-page.css', './board-page.compact.css'],
 })
@@ -170,6 +173,11 @@ export class BoardPage {
   protected readonly compact = computed(() => this.tier() === 'compact');
   protected readonly ws = computed(() => this.state.ws() ?? '');
   protected readonly name = computed(() => this.data.workspaceName(this.ws()));
+  /** Where the columns come from (T163, ISC-122): 'file' for the workspace's own `specs/workflow.md`, 'default' without it; null while loading. */
+  protected readonly workflowSource = computed(() => this.data.workflow()?.source ?? null);
+  /** The toolbar's rendered height: the stage strip sticks right under it at medium and wide (board-page.css). */
+  protected readonly toolbarHeight = signal<number | null>(null);
+  private readonly toolbarRef = viewChild<BoardFilters, ElementRef<HTMLElement>>(BoardFilters, { read: ElementRef });
 
   private readonly pageState = planningPageState(this.data);
   protected readonly missing = this.pageState.missing;
@@ -325,6 +333,14 @@ export class BoardPage {
       const observer = new IntersectionObserver((entries) => this.switchAway.set(entries.some((entry) => !entry.isIntersecting)), {
         rootMargin: '-92px 0px 0px 0px',
       });
+      observer.observe(el);
+      onCleanup(() => observer.disconnect());
+    });
+    // The toolbar wraps when its chips do not fit one row: the strip's sticky offset follows its height.
+    afterRenderEffect((onCleanup) => {
+      const el = this.toolbarRef()?.nativeElement;
+      if (!el || typeof ResizeObserver !== 'function') return;
+      const observer = new ResizeObserver(() => this.toolbarHeight.set(Math.round(el.getBoundingClientRect().height)));
       observer.observe(el);
       onCleanup(() => observer.disconnect());
     });

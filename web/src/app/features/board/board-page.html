@@ -3,7 +3,15 @@
 } @else if (unavailable()) {
   <p class="unavailable">{{ 'shell.unavailable' | transloco }}</p>
 } @else {
-  <h1 id="board" tabindex="-1">{{ 'board.workspace.title' | transloco }}</h1>
+  <div class="title-row">
+    <h1 id="board" tabindex="-1">{{ 'board.workspace.title' | transloco }}</h1>
+    @if (workflowSource(); as source) {
+      <!-- The workflow the columns come from (ISC-122): the workspace's own table, or the default one when the file is missing. -->
+      <span class="source" [class.mono]="source === 'file'" [attr.data-source]="source">{{
+        (source === 'file' ? 'board.workspace.source.custom' : 'board.workspace.source.default') | transloco
+      }}</span>
+    }
+  </div>
 
   @if (board(); as b) {
     @if (b.total === 0) {
@@ -17,7 +25,7 @@
     } @else {
       <p class="meta">{{ 'board.workspace.summary' | transloco: { cards: b.total, specs: b.specs, ideas: b.ideas } }}</p>
 
-      <app-board-filters [board]="b" (queryChange)="setQuery($event)" />
+      <app-board-filters #toolbar [board]="b" (queryChange)="setQuery($event)" />
 
       <!-- The single-pointer and keyboard move (T127) and the story's allocation (T128): one of each per board. -->
       <app-move-to-menu #menu [board]="b" [ws]="ws()" [tier]="tier()" (moved)="followMove($event)" />
