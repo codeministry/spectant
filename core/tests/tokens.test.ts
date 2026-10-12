@@ -10,7 +10,22 @@ import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 
 import { buildDashboard } from '../src/dashboard.ts';
-import { type TokenInput, type TokenSpecInput, type TranscriptFile, serializeTokens, tokenRows } from '../src/tokens.ts';
+import {
+  type InvocationRow,
+  type RoundTotalRow,
+  type SpecTotalRow,
+  type StageTotalRow,
+  TOKEN_COUNTERS,
+  type TokenCounters,
+  type TokenInput,
+  type TokenRun,
+  type TokenSpecInput,
+  type TranscriptFile,
+  type TranscriptRole,
+  type UnassignedRow,
+  serializeTokens,
+  tokenRows,
+} from '../src/tokens.ts';
 import { readTree } from './helpers/read-tree.ts';
 
 const TRANSCRIPTS = join(import.meta.dir, 'fixtures', 'transcripts');
@@ -99,5 +114,549 @@ describe('rows', () => {
     const run = tokenRows(reversed);
     const built = serializeTokens([...(run.baseline === null ? [] : [run.baseline]), ...run.rows]);
     expect(built).toBe(readFileSync(GOLDEN, 'utf8'));
+  });
+});
+
+// ─── Small in-test transcripts (T9–T13) ─────────────────────────────────────────────────────────────────────────
+//
+// Each group below builds its transcripts inline from these helpers, in the line shapes Claude Code writes: a user
+// line per input or `/spec` command, an assistant line per streamed content block with the request's `usage`, a
+// user line with `tool_result` blocks for every tool answer.
+
+/** input, output, cache_read, cache_write — the order of `TOKEN_COUNTERS`. */
+type Counts = readonly [number, number, number, number];
+
+const T0 = Date.UTC(2026, 2, 10, 9, 0, 0);
+
+/** The ISO timestamp `minute` minutes after a fixed start; whole minutes keep the windows easy to read. */
+const at = (minute: number): string => new Date(T0 + minute * 60_000).toISOString();
+
+const userLine = (ts: string, content: unknown): string => JSON.stringify({ type: 'user', timestamp: ts, message: { role: 'user', content } });
+
+const commandLine = (ts: string, name: string, args: string): string =>
+  userLine(ts, `<command-message>${name.slice(1)} is running…</command-message>\n<command-name>${name}</command-name>\n<command-args>${args}</command-args>`);
+
+const toolResultLine = (ts: string, toolUseId: string): string => userLine(ts, [{ type: 'tool_result', tool_use_id: toolUseId, content: 'done' }]);
+
+const usageLine = (ts: string, requestId: string, counts: Counts, toolUses: readonly string[] = []): string =>
+  JSON.stringify({
+    type: 'assistant',
+    timestamp: ts,
+    requestId,
+    version: '2.1.40',
+    message: {
+      id: `msg_${requestId}`,
+      role: 'assistant',
+      content: [{ type: 'text', text: 'ok' }, ...toolUses.map((id) => ({ type: 'tool_use', id, name: 'Task', input: {} }))],
+      usage: { input_tokens: counts[0], output_tokens: counts[1], cache_read_input_tokens: counts[2], cache_creation_input_tokens: counts[3] },
+    },
+  });
+
+function transcript(role: TranscriptRole, session: string, lines: readonly string[], toolUseId?: string | null): TranscriptFile {
+  const label = role === 'subagent' ? `${session}/subagents/agent-${toolUseId ?? 'nometa'}.jsonl` : `${role}/${session}.jsonl`;
+  return { role, session, label, text: `${lines.join('\n')}\n`, ...(role === 'subagent' ? { toolUseId: toolUseId ?? null } : {}) };
+}
+
+const eventLine = (ts: string, from: string | null, to: string): string => JSON.stringify({ ts, from, to, command: '/spec-plan 002', actor: 'u:3f9c0a7d' });
+
+const roundLine = (round: number, ts: string): string => JSON.stringify({ v: 1, round, ts });
+
+function specInput(slug: string, parts: { events?: readonly string[]; rounds?: readonly string[]; derivedStage?: string | null } = {}): TokenSpecInput {
+  return {
+    slug,
+    events: parts.events === undefined ? null : `${parts.events.join('\n')}\n`,
+    rounds: parts.rounds === undefined ? null : `${parts.rounds.join('\n')}\n`,
+    derivedStage: parts.derivedStage ?? null,
+  };
+}
+
+const countsOf = (row: TokenCounters): Counts => [row.input, row.output, row.cache_read, row.cache_write];
+
+const addCounts = (a: Counts, b: Counts): Counts => [a[0] + b[0], a[1] + b[1], a[2] + b[2], a[3] + b[3]];
+
+const ZERO: Counts = [0, 0, 0, 0];
+
+const sumRows = (rows: readonly TokenCounters[]): Counts => rows.reduce<Counts>((sum, row) => addCounts(sum, countsOf(row)), ZERO);
+
+const invocationsOf = (run: TokenRun): InvocationRow[] => run.rows.filter((row): row is InvocationRow => row.kind === 'invocation');
+const stagesOf = (run: TokenRun): StageTotalRow[] => run.rows.filter((row): row is StageTotalRow => row.kind === 'stage');
+const roundsOf = (run: TokenRun): RoundTotalRow[] => run.rows.filter((row): row is RoundTotalRow => row.kind === 'round');
+const unassignedOf = (run: TokenRun): UnassignedRow[] => run.rows.filter((row): row is UnassignedRow => row.kind === 'unassigned');
+const codesOf = (run: TokenRun): string[] => run.diagnostics.map((d) => d.code);
+
+const specRowOf = (run: TokenRun, spec: string): SpecTotalRow | undefined => run.rows.find((row): row is SpecTotalRow => row.kind === 'spec' && row.spec === spec);
+
+/**
+ * The oracle for the sum invariant, read straight from the transcript texts and independent of `tokens.ts`: every
+ * assistant line with `usage` and a timestamp, one entry per `requestId` (else `message.id`), each counter the
+ * maximum over the lines repeating it.
+ */
+function dedupedUsage(files: readonly TranscriptFile[]): { requests: number; counts: Counts } {
+  const byKey = new Map<string, Counts>();
+  let alone = 0;
+  const num = (v: unknown): number => (typeof v === 'number' ? v : 0);
+  for (const file of files) {
+    for (const raw of file.text.split(/\r?\n/)) {
+      let value: unknown;
+      try {
+        value = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+      if (typeof value !== 'object' || value === null) continue;
+      const line = value as { type?: unknown; timestamp?: unknown; requestId?: unknown; message?: { id?: unknown; usage?: Record<string, unknown> } };
+      const usage = line.message?.usage;
+      if (line.type !== 'assistant' || usage === undefined || typeof line.timestamp !== 'string') continue;
+      const counts: Counts = [num(usage.input_tokens), num(usage.output_tokens), num(usage.cache_read_input_tokens), num(usage.cache_creation_input_tokens)];
+      const key = typeof line.requestId === 'string' ? line.requestId : typeof line.message?.id === 'string' ? line.message.id : `alone-${alone++}`;
+      const seen = byKey.get(key);
+      byKey.set(key, seen === undefined ? counts : [Math.max(seen[0], counts[0]), Math.max(seen[1], counts[1]), Math.max(seen[2], counts[2]), Math.max(seen[3], counts[3])]);
+    }
+  }
+  return { requests: byKey.size, counts: [...byKey.values()].reduce(addCounts, ZERO) };
+}
+
+/** The sum invariant of ISC-135.3: invocation lines plus the one `unassigned` line equal the deduplicated usage. */
+function expectSumInvariant(input: TokenInput, run: TokenRun): void {
+  const oracle = dedupedUsage(input.transcripts);
+  const lines = [...invocationsOf(run), ...unassignedOf(run)];
+  expect(lines.reduce((n, row) => n + row.requests, 0)).toBe(oracle.requests);
+  const sums = sumRows(lines);
+  const differences = Object.fromEntries(TOKEN_COUNTERS.map((counter, i) => [counter, (sums[i] ?? 0) - (oracle.counts[i] ?? 0)]));
+  expect(differences).toEqual({ input: 0, output: 0, cache_read: 0, cache_write: 0 });
+}
+
+// ─── ISC-135.1 · invocation windows (T9) ────────────────────────────────────────────────────────────────────────
+
+describe('invocation', () => {
+  test('a tool result does not end the window, a real user input does', () => {
+    const run = tokenRows({
+      transcripts: [
+        transcript('main', 'm', [
+          commandLine(at(0), '/spec-plan', '002'),
+          usageLine(at(1), 'r1', [1, 10, 100, 1000], ['toolu_a']),
+          toolResultLine(at(2), 'toolu_a'),
+          usageLine(at(3), 'r2', [2, 20, 200, 2000]),
+          userLine(at(4), [{ type: 'text', text: 'thanks, now something else' }]),
+          usageLine(at(5), 'r3', [4, 40, 400, 4000]),
+        ]),
+      ],
+      specs: [specInput('002-alpha')],
+    });
+    expect(invocationsOf(run).map((row) => [row.requests, ...countsOf(row)])).toEqual([[2, 3, 30, 300, 3000]]);
+    expect(unassignedOf(run).map((row) => [row.requests, ...countsOf(row)])).toEqual([[1, 4, 40, 400, 4000]]);
+  });
+
+  test('a meta line (the loaded skill text) does not end the window either', () => {
+    const meta = JSON.stringify({ type: 'user', isMeta: true, timestamp: at(1), message: { role: 'user', content: [{ type: 'text', text: 'Base directory for this skill' }] } });
+    const run = tokenRows({
+      transcripts: [transcript('main', 'm', [commandLine(at(0), '/spec-plan', '002'), meta, usageLine(at(2), 'r1', [1, 1, 1, 1])])],
+      specs: [specInput('002-alpha')],
+    });
+    expect(invocationsOf(run).map((row) => row.requests)).toEqual([1]);
+    expect(unassignedOf(run).map((row) => row.requests)).toEqual([0]);
+  });
+
+  test('the next /spec command ends the window and opens its own', () => {
+    const run = tokenRows({
+      transcripts: [
+        transcript('main', 'm', [
+          commandLine(at(0), '/spec-plan', '002'),
+          usageLine(at(1), 'r1', [1, 1, 1, 1]),
+          commandLine(at(2), '/spec-tasks', '002'),
+          usageLine(at(3), 'r2', [2, 2, 2, 2]),
+        ]),
+      ],
+      specs: [specInput('002-alpha')],
+    });
+    expect(invocationsOf(run).map((row) => [row.id, row.command, row.requests, row.input])).toEqual([
+      ['a:claude:m#1', '/spec-plan', 1, 1],
+      ['a:claude:m#2', '/spec-tasks', 1, 2],
+    ]);
+  });
+
+  test('a sub-agent counts to the invocation of its toolUseId, not to the one open at its time, nested ones too', () => {
+    const run = tokenRows({
+      transcripts: [
+        transcript('main', 'm', [
+          commandLine(at(0), '/spec-implement', '002'),
+          usageLine(at(1), 'r1', [1, 0, 0, 0], ['toolu_first']),
+          userLine(at(2), 'stop, plan the next one'),
+          commandLine(at(3), '/spec-plan', '003'),
+          usageLine(at(4), 'r2', [2, 0, 0, 0]),
+        ]),
+        // The sub-agent keeps running after its invocation ended; its turns still belong to the first one.
+        transcript('subagent', 'm', [usageLine(at(5), 's1', [10, 0, 0, 0], ['toolu_nested']), usageLine(at(6), 's2', [20, 0, 0, 0])], 'toolu_first'),
+        transcript('subagent', 'm', [usageLine(at(7), 's3', [100, 0, 0, 0])], 'toolu_nested'),
+      ],
+      specs: [specInput('002-alpha'), specInput('003-beta')],
+    });
+    expect(invocationsOf(run).map((row) => [row.command, row.spec, row.requests, row.subagents, row.input])).toEqual([
+      ['/spec-implement', '002-alpha', 4, 2, 131],
+      ['/spec-plan', '003-beta', 1, 0, 2],
+    ]);
+    expect(unassignedOf(run).map((row) => row.requests)).toEqual([0]);
+  });
+
+  test('an agent-worktree session is an invocation of its own, numbered in its own session', () => {
+    const run = tokenRows({
+      transcripts: [
+        transcript('main', 'm', [commandLine(at(0), '/spec-implement', '002'), usageLine(at(1), 'r1', [1, 0, 0, 0])]),
+        transcript('worktree', 'w', [commandLine(at(2), '/spec-implement', '002'), usageLine(at(3), 'r2', [2, 0, 0, 0])]),
+      ],
+      specs: [specInput('002-alpha')],
+    });
+    expect(invocationsOf(run).map((row) => [row.id, row.requests, row.input])).toEqual([
+      ['a:claude:m#1', 1, 1],
+      ['a:claude:w#1', 1, 2],
+    ]);
+  });
+
+  test('the same requestId counts once: on several lines of one file and across two files', () => {
+    const repeated = usageLine(at(1), 'r1', [5, 50, 500, 5000], ['toolu_x']);
+    const files = [
+      transcript('main', 'm', [commandLine(at(0), '/spec-implement', '002'), repeated, repeated, toolResultLine(at(2), 'toolu_x')]),
+      transcript('worktree', 'w', [userLine(at(3), 'unrelated'), repeated, usageLine(at(4), 'r2', [1, 1, 1, 1])]),
+    ];
+    for (const transcripts of [files, [...files].reverse()]) {
+      const run = tokenRows({ transcripts, specs: [specInput('002-alpha')] });
+      expect(invocationsOf(run).map((row) => [row.requests, ...countsOf(row)])).toEqual([[1, 5, 50, 500, 5000]]);
+      expect(unassignedOf(run).map((row) => [row.requests, ...countsOf(row)])).toEqual([[1, 1, 1, 1, 1]]);
+    }
+  });
+});
+
+// ─── ISC-135.2 · spec, stage and round (T10) ────────────────────────────────────────────────────────────────────
+
+describe('attribution', () => {
+  test('the spec is the first standalone three-digit number in <command-args>; the arguments never reach the file', () => {
+    const run = tokenRows({
+      transcripts: [
+        transcript('main', 'm', [
+          commandLine(at(0), '/spec-plan', 'after 1234 issues, take 003 then 002'),
+          usageLine(at(1), 'r1', [1, 0, 0, 0]),
+          commandLine(at(2), '/spec-idea', 'a dashboard for quokkas'),
+          usageLine(at(3), 'r2', [2, 0, 0, 0]),
+        ]),
+      ],
+      specs: [specInput('002-alpha'), specInput('003-beta')],
+    });
+    expect(invocationsOf(run).map((row) => [row.command, row.spec])).toEqual([
+      ['/spec-plan', '003-beta'],
+      ['/spec-idea', null],
+    ]);
+    expect(run.rows.flatMap((row) => (row.kind === 'spec' ? [[row.spec, row.requests]] : []))).toEqual([['003-beta', 1]]);
+    const text = serializeTokens(run.rows);
+    for (const word of ['1234', 'quokka', 'take', 'issues']) expect(text).not.toContain(word);
+  });
+
+  test('the stage is the `to` of the last transition before the turn; before any event, the derived stage', () => {
+    const events = [eventLine(at(10), null, 'plan'), eventLine(at(20), 'plan', 'tasks'), eventLine(at(30), 'tasks', 'review'), eventLine(at(40), 'review', 'build')];
+    const run = tokenRows({
+      transcripts: [
+        transcript('main', 'm', [
+          commandLine(at(0), '/spec-plan', '002'),
+          usageLine(at(5), 'r0', [1, 0, 0, 0]),
+          usageLine(at(15), 'r1', [2, 0, 0, 0]),
+          usageLine(at(25), 'r2', [4, 0, 0, 0]),
+          usageLine(at(35), 'r3', [8, 0, 0, 0]),
+          usageLine(at(45), 'r4', [16, 0, 0, 0]),
+          usageLine(at(46), 'r5', [32, 0, 0, 0]),
+          commandLine(at(50), '/spec-plan', '003'),
+          usageLine(at(51), 'r6', [64, 0, 0, 0]),
+        ]),
+      ],
+      specs: [specInput('002-alpha', { events, derivedStage: 'idea' }), specInput('003-beta', { derivedStage: 'tasks' })],
+    });
+    expect(stagesOf(run).map((row) => [row.spec, row.stage, row.requests, row.input])).toEqual([
+      ['002-alpha', 'idea', 1, 1],
+      ['002-alpha', 'plan', 1, 2],
+      ['002-alpha', 'tasks', 1, 4],
+      ['002-alpha', 'review', 1, 8],
+      ['002-alpha', 'build', 2, 48],
+      ['003-beta', 'tasks', 1, 64],
+    ]);
+  });
+
+  test('an implement turn belongs to the first round whose ts is not before it; after the last round to no round', () => {
+    const rounds = [roundLine(1, at(20)), roundLine(2, at(40))];
+    const run = tokenRows({
+      transcripts: [
+        transcript('main', 'm', [
+          commandLine(at(0), '/spec-implement', '002'),
+          usageLine(at(10), 'r1', [1, 0, 0, 0]),
+          usageLine(at(20), 'r2', [2, 0, 0, 0]),
+          usageLine(at(30), 'r3', [4, 0, 0, 0]),
+          usageLine(at(50), 'r4', [8, 0, 0, 0]),
+          // Not an implement invocation: inside round 2's window in time, counted to no round.
+          commandLine(at(31), '/spec-review', '002'),
+          usageLine(at(32), 'r5', [16, 0, 0, 0]),
+        ]),
+      ],
+      specs: [specInput('002-alpha', { events: [eventLine(at(0), null, 'build')], rounds })],
+    });
+    expect(roundsOf(run).map((row) => [row.spec, row.round, row.requests, row.input])).toEqual([
+      ['002-alpha', 1, 2, 3],
+      ['002-alpha', 2, 1, 4],
+    ]);
+    // The turn after the last round still counts to its spec and its stage.
+    const spec = specRowOf(run, '002-alpha');
+    expect(spec === undefined ? null : countsOf(spec)).toEqual([31, 0, 0, 0]);
+    expect(stagesOf(run).map((row) => [row.stage, row.input])).toEqual([['build', 31]]);
+  });
+
+  test('over the fixture, the spec, stage and round lines equal the golden', () => {
+    const run = tokenRows(fixtureInput());
+    const kinds = new Set<string>(['spec', 'stage', 'round']);
+    const golden = readFileSync(GOLDEN, 'utf8')
+      .split('\n')
+      .filter((line) => line !== '' && kinds.has((JSON.parse(line) as { kind: string }).kind));
+    expect(golden.length).toBeGreaterThan(0);
+    const built = serializeTokens(run.rows.filter((row) => kinds.has(row.kind)));
+    expect(built.split('\n').filter((line) => line !== '')).toEqual(golden);
+  });
+});
+
+// ─── ISC-135.3 · the sum invariant (T11) ────────────────────────────────────────────────────────────────────────
+
+/** A small seeded PRNG (mulberry32), so every composed case is the same on every run. */
+function seeded(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+interface Owner {
+  readonly id: string;
+  readonly command: string;
+  readonly spec: string | null;
+}
+
+interface WindowSum {
+  readonly requests: number;
+  readonly counts: Counts;
+}
+
+interface Composed {
+  readonly input: TokenInput;
+  /** Per invocation ID, the requests the generator put into its window. */
+  readonly invocations: ReadonlyMap<string, WindowSum>;
+  /** Per `spec#round`, the implement requests whose minute falls into the round's window. */
+  readonly rounds: ReadonlyMap<string, WindowSum>;
+}
+
+const SLUGS: Readonly<Record<string, string>> = { '002': '002-alpha', '003': '003-beta' };
+
+/**
+ * Composes random sessions — free input, non-spec slash commands, `/spec` commands with known and unknown numbers,
+ * tool calls with their results, sub-agents (some without meta), lines repeated in the same file and main-session
+ * lines copied into a sub-agent file — and records, while writing, which invocation and round each request belongs to.
+ */
+function compose(seed: number): Composed {
+  const random = seeded(seed);
+  const int = (max: number): number => Math.floor(random() * max);
+  const pick = <T,>(items: readonly T[]): T => items[int(items.length)] as T;
+  let minute = 0;
+  const tick = (): number => ++minute;
+  let nextRequest = 0;
+  let nextTool = 0;
+  const files: TranscriptFile[] = [];
+  const requests: Array<{ owner: Owner | null; minute: number; counts: Counts }> = [];
+  const copyable: string[] = [];
+
+  const usage = (owner: Owner | null, lines: string[], toolUses: readonly string[], copyFrom: boolean): void => {
+    const when = tick();
+    const counts: Counts = [int(40), int(3000), int(80000), int(9000)];
+    const line = usageLine(at(when), `req_${seed}_${nextRequest++}`, counts, toolUses);
+    requests.push({ owner, minute: when, counts });
+    lines.push(line);
+    if (random() < 0.3) lines.push(line);
+    if (copyFrom && toolUses.length === 0) copyable.push(line);
+  };
+
+  const sessions: Array<[TranscriptRole, string]> = [
+    ['main', `main-${seed}-a`],
+    ['main', `main-${seed}-b`],
+    ['worktree', `wt-${seed}`],
+  ];
+  for (const [role, session] of sessions) {
+    const lines: string[] = [];
+    let owner: Owner | null = null;
+    let n = 0;
+    for (let step = 0, steps = 4 + int(6); step < steps; step++) {
+      const r = random();
+      if (r < 0.25) {
+        lines.push(userLine(at(tick()), 'free text'));
+        owner = null;
+      } else if (r < 0.35) {
+        lines.push(commandLine(at(tick()), '/clear', ''));
+        owner = null;
+      } else if (r < 0.85) {
+        const number = pick(['002', '003', '999', '']);
+        const command = pick(['/spec-plan', '/spec-implement', '/spec-implement', '/spec-review']);
+        n += 1;
+        owner = { id: `a:claude:${session}#${n}`, command, spec: SLUGS[number] ?? null };
+        lines.push(commandLine(at(tick()), command, number === '' ? 'everything open' : `${number} please`));
+      }
+      for (let turn = 0, turns = int(4); turn < turns; turn++) {
+        if (random() < 0.3) {
+          const tool = `toolu_${seed}_${nextTool++}`;
+          usage(owner, lines, [tool], false);
+          const hasMeta = random() < 0.85;
+          const agentLines: string[] = [];
+          for (let k = 0, ks = 1 + int(3); k < ks; k++) usage(hasMeta ? owner : null, agentLines, [], false);
+          // A main-session line copied into the sub-agent file: counted once, where the main session has it.
+          if (copyable.length > 0 && random() < 0.4) agentLines.push(pick(copyable));
+          files.push(transcript('subagent', session, agentLines, hasMeta ? tool : null));
+          lines.push(toolResultLine(at(tick()), tool));
+        } else {
+          usage(owner, lines, [], role === 'main');
+        }
+      }
+    }
+    files.push(transcript(role, session, lines));
+  }
+
+  // Timelines over the composed span: events and rounds in time order, at random minutes.
+  const span = minute + 5;
+  const sortedMinutes = (count: number): number[] => Array.from({ length: count }, () => 1 + int(span)).sort((a, b) => a - b);
+  const roundMinutes = new Map<string, number[]>();
+  const stages = ['plan', 'tasks', 'review', 'build'];
+  const specs: TokenSpecInput[] = Object.values(SLUGS).map((slug) => {
+    const events = sortedMinutes(4).map((m, i) => eventLine(at(m), i === 0 ? null : (stages[i - 1] ?? null), stages[i] ?? 'build'));
+    const rounds = sortedMinutes(1 + int(3));
+    roundMinutes.set(slug, rounds);
+    return specInput(slug, { events, rounds: rounds.map((m, i) => roundLine(i + 1, at(m))), derivedStage: 'idea' });
+  });
+
+  const add = (map: Map<string, WindowSum>, key: string, counts: Counts): void => {
+    const sum = map.get(key) ?? { requests: 0, counts: ZERO };
+    map.set(key, { requests: sum.requests + 1, counts: addCounts(sum.counts, counts) });
+  };
+  const invocations = new Map<string, WindowSum>();
+  const rounds = new Map<string, WindowSum>();
+  for (const request of requests) {
+    if (request.owner === null) continue;
+    add(invocations, request.owner.id, request.counts);
+    const spec = request.owner.spec;
+    if (request.owner.command !== '/spec-implement' || spec === null) continue;
+    const index = (roundMinutes.get(spec) ?? []).findIndex((m) => m >= request.minute);
+    if (index >= 0) add(rounds, `${spec}#${index + 1}`, request.counts);
+  }
+  return { input: { transcripts: files, specs }, invocations, rounds };
+}
+
+describe('sums', () => {
+  test('over the fixture: invocation lines plus unassigned equal the deduplicated usage, difference 0 per counter', () => {
+    const input = fixtureInput();
+    expectSumInvariant(input, tokenRows(input));
+  });
+
+  test('over the fixture: the stage lines of a spec add up to its spec line', () => {
+    const run = tokenRows(fixtureInput());
+    for (const row of run.rows) {
+      if (row.kind !== 'spec') continue;
+      expect(sumRows(stagesOf(run).filter((stage) => stage.spec === row.spec))).toEqual(countsOf(row));
+    }
+  });
+
+  const SEEDS = Array.from({ length: 25 }, (_, i) => i + 1);
+
+  test.each(SEEDS)('over composed transcripts (seed %d): the sum invariant holds, difference 0 per counter', (seed) => {
+    const { input } = compose(seed);
+    expect(dedupedUsage(input.transcripts).requests).toBeGreaterThan(0);
+    expectSumInvariant(input, tokenRows(input));
+  });
+
+  test.each(SEEDS)('over composed transcripts (seed %d): every invocation and every round line equals the sum of its window', (seed) => {
+    const composed = compose(seed);
+    const run = tokenRows(composed.input);
+    const invocations = Object.fromEntries(invocationsOf(run).map((row) => [row.id, { requests: row.requests, counts: countsOf(row) }]));
+    const expected = Object.fromEntries(Object.keys(invocations).map((id) => [id, composed.invocations.get(id) ?? { requests: 0, counts: ZERO }]));
+    expect(invocations).toEqual(expected);
+    expect([...composed.invocations.keys()].filter((id) => !(id in invocations))).toEqual([]);
+    const rounds = Object.fromEntries(roundsOf(run).map((row) => [`${row.spec}#${row.round}`, { requests: row.requests, counts: countsOf(row) }]));
+    expect(rounds).toEqual(Object.fromEntries(composed.rounds));
+  });
+});
+
+// ─── ISC-135.4 · unassigned and robustness (T13) ────────────────────────────────────────────────────────────────
+
+describe('unassigned', () => {
+  test('turns without a /spec reference land in exactly one unassigned line, from every source', () => {
+    const run = tokenRows({
+      transcripts: [
+        transcript('main', 'm', [
+          usageLine(at(0), 'r1', [1, 0, 0, 0]),
+          commandLine(at(1), '/spec-plan', '002'),
+          usageLine(at(2), 'r2', [2, 0, 0, 0], ['toolu_known']),
+          commandLine(at(3), '/model', 'opus'),
+          usageLine(at(4), 'r3', [4, 0, 0, 0]),
+        ]),
+        transcript('worktree', 'w', [userLine(at(5), 'hello'), usageLine(at(6), 'r4', [8, 0, 0, 0])]),
+        transcript('subagent', 'm', [usageLine(at(7), 's1', [16, 0, 0, 0])], null),
+        transcript('subagent', 'm', [usageLine(at(8), 's2', [32, 0, 0, 0])], 'toolu_nobody'),
+      ],
+      specs: [specInput('002-alpha')],
+    });
+    expect(unassignedOf(run).map((row) => [row.requests, row.input])).toEqual([[5, 61]]);
+    for (const code of ['tokens-subagent-no-meta', 'tokens-subagent-parent-unknown']) expect(codesOf(run)).toContain(code);
+  });
+
+  test('a run with nothing unassigned still carries exactly one unassigned line, all zero', () => {
+    const run = tokenRows({
+      transcripts: [transcript('main', 'm', [commandLine(at(0), '/spec-plan', '002'), usageLine(at(1), 'r1', [1, 1, 1, 1])])],
+      specs: [specInput('002-alpha')],
+    });
+    expect(unassignedOf(run).map((row) => [row.requests, ...countsOf(row)])).toEqual([[0, 0, 0, 0, 0]]);
+  });
+
+  test('a line that is not JSON is one diagnostic with its source and line, and the rest is still counted', () => {
+    const run = tokenRows({
+      transcripts: [transcript('main', 'm', [commandLine(at(0), '/spec-plan', '002'), '{"type":"assistant", broken', usageLine(at(1), 'r1', [3, 3, 3, 3])])],
+      specs: [specInput('002-alpha')],
+    });
+    expect(run.diagnostics.filter((d) => d.code === 'tokens-line-not-json').map((d) => [d.source, d.line])).toEqual([['main/m.jsonl', 2]]);
+    expect(invocationsOf(run).map((row) => [row.requests, row.input])).toEqual([[1, 3]]);
+  });
+
+  test('a transcript without usage is one diagnostic and counts nothing', () => {
+    const run = tokenRows({
+      transcripts: [
+        transcript('main', 'm', [commandLine(at(0), '/spec-plan', '002'), usageLine(at(1), 'r1', [1, 0, 0, 0])]),
+        transcript('worktree', 'w', [userLine(at(2), 'only talk'), JSON.stringify({ type: 'system', timestamp: at(3) })]),
+      ],
+      specs: [specInput('002-alpha')],
+    });
+    expect(run.diagnostics.filter((d) => d.code === 'tokens-transcript-no-usage').map((d) => d.source)).toEqual(['worktree/w.jsonl']);
+    expect([...invocationsOf(run), ...unassignedOf(run)].reduce((n, row) => n + row.requests, 0)).toBe(1);
+  });
+
+  test('an unknown spec number is one diagnostic; the invocation stays, with no spec, and adds to no spec line', () => {
+    const run = tokenRows({
+      transcripts: [transcript('main', 'm', [commandLine(at(0), '/spec-implement', '999'), usageLine(at(1), 'r1', [7, 0, 0, 0])])],
+      specs: [specInput('002-alpha')],
+    });
+    expect(run.diagnostics.filter((d) => d.code === 'tokens-spec-unknown').map((d) => d.subject)).toEqual(['999']);
+    expect(invocationsOf(run).map((row) => [row.spec, row.requests, row.input])).toEqual([[null, 1, 7]]);
+    expect(run.rows.filter((row) => row.kind === 'spec' || row.kind === 'stage' || row.kind === 'round')).toEqual([]);
+  });
+
+  test('all three at once: the run does not throw, names each finding, and the sums still hold', () => {
+    const input: TokenInput = {
+      transcripts: [
+        transcript('main', 'm', ['not json at all', commandLine(at(0), '/spec-plan', '404'), usageLine(at(1), 'r1', [1, 2, 3, 4]), userLine(at(2), 'bye'), usageLine(at(3), 'r2', [5, 6, 7, 8])]),
+        transcript('worktree', 'w', [userLine(at(4), 'nothing to count')]),
+      ],
+      specs: [specInput('002-alpha')],
+    };
+    const run = tokenRows(input);
+    for (const code of ['tokens-line-not-json', 'tokens-spec-unknown', 'tokens-transcript-no-usage']) expect(codesOf(run)).toContain(code);
+    expect(unassignedOf(run).map((row) => row.requests)).toEqual([1]);
+    expectSumInvariant(input, run);
   });
 });
