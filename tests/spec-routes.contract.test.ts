@@ -34,7 +34,7 @@ import { REVIEWED_FILES, hashForGate } from "../core/src/gates.ts";
 import { docsFor } from "../core/src/markdown-docs.ts";
 import type { DashboardIdea, DashboardIdeas, DashboardModel } from "../core/src/dashboard.ts";
 import type { PlanningModel } from "../core/src/planning.ts";
-import type { EventLine, IdeaRef, TransitionPlan, WorkflowStage } from "../core/src/files.ts";
+import type { EventLine, IdeaRef, TechModel, TransitionPlan, WorkflowStage } from "../core/src/files.ts";
 import { WORKSPACES_PATH, type WorkspaceSummary, dashboardApi } from "../server/src/api.ts";
 import type { ActorRow } from "../server/src/db.ts";
 import {
@@ -292,13 +292,16 @@ const workspaceErrors: Equal<WorkspaceRouteError,NotFound | Forbidden | MethodNo
 // The board query (T92) reads the database alone: no 409, and its PUT adds 400.
 const boardQueryErrors: Equal<WorkspaceRouteError<"boardQuery">, NotFound | Forbidden | MethodNotAllowed | InvalidBody> = true;
 const boardQueryBodies: Equal<[WorkspaceRouteResponses["boardQuery"], WorkspaceRouteRequests["boardQuery"]], [BoardQuery, BoardQuery]> = true;
-const workspaceFamilies: Equal<Extract<keyof typeof GOLDEN_FAMILY, WorkspaceRouteName>, Exclude<WorkspaceRouteName, "idea" | "boardQuery" | "allocate">> = true;
+const workspaceFamilies: Equal<Extract<keyof typeof GOLDEN_FAMILY, WorkspaceRouteName>, Exclude<WorkspaceRouteName, "idea" | "boardQuery" | "allocate" | "tech" | "techAsset">> = true;
 // The allocation (T87) is the family's one write: the read errors plus its write answers.
 const allocateErrors: Equal<
   WorkspaceRouteError<"allocate">,
   NotFound | Forbidden | MethodNotAllowed | Unavailable | InvalidBody | Conflict<{ readonly idea: string }> | AllocateRefused | Locked
 > = true;
 const allocateIsCore: Equal<WorkspaceRouteResponses["allocate"], IdeaAllocated> = true;
+// The tech page (spec 023, ISC-134.1): core's TechModel as it is; its asset answers bytes like the evidence file.
+const techIsCore: Equal<[WorkspaceRouteResponses["tech"], WorkspaceRouteResponses["techAsset"]], [TechModel, Blob]> = true;
+const techErrors: Equal<[WorkspaceRouteError<"tech">, WorkspaceRouteError<"techAsset">], [WorkspaceRouteError, WorkspaceRouteError]> = true;
 
 /** One call per workspace builder, with a story slug where the route takes one. */
 const WORKSPACE_ARGS: Record<WorkspaceRouteName, (ws: string) => string> = {
@@ -306,12 +309,14 @@ const WORKSPACE_ARGS: Record<WorkspaceRouteName, (ws: string) => string> = {
   idea: (ws) => workspaceRoutes.idea(ws, "console-audit-log"),
   boardQuery: (ws) => workspaceRoutes.boardQuery(ws),
   allocate: (ws) => workspaceRoutes.allocate(ws, "console-audit-log"),
+  tech: (ws) => workspaceRoutes.tech(ws),
+  techAsset: (ws) => workspaceRoutes.techAsset(ws, ".tech/architecture.png"),
 };
 
 describe("workspace routes (spec 003, 008): planning and the story page beside the spec routes", () => {
   test("compile-time pins: PlanningModel and IdeaPage's parts are core's, every route has a 200 type and an error union", () => {
-    expect([planningIsCore, ideaIsCore, ideaPartsAreCore, workspaceResponsesCoverRoutes, workspaceErrors, boardQueryErrors, boardQueryBodies, workspaceFamilies, allocateErrors, allocateIsCore]).toEqual([
-      true, true, true, true, true, true, true, true, true, true,
+    expect([planningIsCore, ideaIsCore, ideaPartsAreCore, workspaceResponsesCoverRoutes, workspaceErrors, boardQueryErrors, boardQueryBodies, workspaceFamilies, allocateErrors, allocateIsCore, techIsCore, techErrors]).toEqual([
+      true, true, true, true, true, true, true, true, true, true, true, true,
     ]);
   });
 
@@ -323,6 +328,9 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     expect(workspaceRoutes.idea("my repo", "a/b")).toBe("/api/workspaces/my%20repo/ideas/a%2Fb");
     expect(workspaceRoutes.boardQuery("häfen")).toBe("/api/workspaces/h%C3%A4fen/board-query");
     expect(workspaceRoutes.allocate("my repo", "a/b")).toBe("/api/workspaces/my%20repo/ideas/a%2Fb/allocate");
+    expect(workspaceRoutes.tech("harbor")).toBe("/api/workspaces/harbor/tech");
+    expect(workspaceRoutes.tech("my repo")).toBe("/api/workspaces/my%20repo/tech");
+    expect(workspaceRoutes.techAsset("harbor", ".tech/a b.png")).toBe("/api/workspaces/harbor/tech/asset?path=.tech%2Fa%20b.png");
   });
 
   test("every builder round-trips through matchWorkspacePath, each param decoded exactly once", () => {
@@ -337,6 +345,13 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       }
       const board = new URL(workspaceRoutes.boardQuery(ws), "http://127.0.0.1:7717");
       expect({ ws, match: matchWorkspacePath(board.pathname) }).toEqual({ ws, match: { route: "boardQuery", params: { ws } } });
+      const tech = new URL(workspaceRoutes.tech(ws), "http://127.0.0.1:7717");
+      expect({ ws, match: matchWorkspacePath(tech.pathname) }).toEqual({ ws, match: { route: "tech", params: { ws } } });
+      for (const path of [".tech/architecture.png", "a b+c%41.svg", "ü/ö.png"]) {
+        const asset = new URL(workspaceRoutes.techAsset(ws, path), "http://127.0.0.1:7717");
+        expect({ ws, path, match: matchWorkspacePath(asset.pathname) }).toEqual({ ws, path, match: { route: "techAsset", params: { ws } } });
+        expect(decodeURIComponent(evidencePathQuery(asset.search))).toBe(path);
+      }
     }
     expect(matchWorkspacePath("/api/workspaces/a%2541/planning")?.params).toEqual({ ws: "a%41" });
     expect(matchWorkspacePath("/api/workspaces/%E0%A4%A/planning")).toBeNull();
@@ -358,6 +373,10 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       "/api/workspaces/harbor/ideas/x/allocate/",
       "/api/workspaces/harbor/ideas/x/allocate/more",
       "/api/workspaces/harbor/ideas//allocate",
+      "/api/workspaces//tech",
+      "/api/workspaces/harbor/tech/",
+      "/api/workspaces/harbor/tech/asset/",
+      "/api/workspaces/harbor/tech/other",
       "/api/workspaces/harbor/dashboard",
       "/api/workspacesx/harbor/planning",
       "/api/lifeos",
@@ -384,13 +403,15 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       expect(entry.statuses).toEqual(
         entry.route === "allocate" ? (write ?? []) : entry.write === undefined ? (read ?? []) : [200, 304, 400, 403, 404, 405],
       );
-      expect(matchWorkspacePath(WORKSPACE_ARGS[entry.route]("harbor"))?.route).toBe(entry.route);
+      expect(matchWorkspacePath(new URL(WORKSPACE_ARGS[entry.route]("harbor"), "http://127.0.0.1").pathname)?.route).toBe(entry.route);
     }
     expect(WORKSPACE_ROUTE_TABLE.map((entry) => [entry.route, entry.method, entry.pattern, entry.write ?? null, entry.request ?? null, entry.response])).toEqual([
       ["planning", "GET", `${SPEC_API_ROOT}/:ws/planning`, null, null, "PlanningModel"],
       ["idea", "GET", `${SPEC_API_ROOT}/:ws/ideas/:slug`, null, null, "IdeaPage"],
       ["boardQuery", "GET", `${SPEC_API_ROOT}/:ws/board-query`, "PUT", "BoardQuery", "BoardQuery"],
       ["allocate", "POST", `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, null, "AllocateRequest", "IdeaAllocated"],
+      ["tech", "GET", `${SPEC_API_ROOT}/:ws/tech`, null, null, "TechModel"],
+      ["techAsset", "GET", `${SPEC_API_ROOT}/:ws/tech/asset`, null, null, "file bytes"],
     ]);
   });
 
@@ -399,6 +420,8 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     expect(allowForWorkspace("idea")).toBe("GET, HEAD");
     expect(allowForWorkspace("boardQuery")).toBe("GET, HEAD, PUT");
     expect(allowForWorkspace("allocate")).toBe("POST");
+    expect(allowForWorkspace("tech")).toBe("GET, HEAD");
+    expect(allowForWorkspace("techAsset")).toBe("GET, HEAD");
   });
 
   test("IdeaPage's key list (no golden family yet)", () => {

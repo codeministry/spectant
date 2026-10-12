@@ -60,6 +60,7 @@ import type {
   LockSource,
   SpecPageModel,
   TasksTab,
+  TechModel,
   TimelineEntry,
   WorkflowStage,
 } from '../../core/src/files.ts';
@@ -255,9 +256,11 @@ export function evidencePathQuery(search: string): string {
 
 /**
  * The routes that name a whole workspace (spec 003): the planning tree, and one story of `specs/ideas/` (spec 008,
- * T88). The dashboard is one too but lives in `api.ts` (header).
+ * T88). The tech page (spec 023, ISC-134.1): `tech`, `readTech` over `specs/tech.md` and the
+ * active spec folders, and `techAsset`, one image tech.md names, by the query `?path=` relative to `specs/` (T7 serves
+ * it; until then `api.ts` declines it, so the server's JSON 404 applies). The dashboard is one too but lives in `api.ts` (header).
  */
-export type WorkspaceRouteName = 'planning' | 'idea' | 'boardQuery' | 'allocate';
+export type WorkspaceRouteName = 'planning' | 'idea' | 'boardQuery' | 'allocate' | 'tech' | 'techAsset';
 
 export interface WorkspaceParams {
   readonly ws: string;
@@ -274,6 +277,9 @@ export interface WorkspaceRouteParams {
   idea: StoryParams;
   boardQuery: WorkspaceParams;
   allocate: StoryParams;
+  tech: WorkspaceParams;
+  /** The image's `path` is a query value, relative to `specs/`: `evidencePathQuery(url.search)`. */
+  techAsset: WorkspaceParams;
 }
 
 /** What `matchWorkspacePath` returns: the route and its decoded params, discriminated by `route`. */
@@ -287,6 +293,9 @@ export const workspaceRoutes = {
   idea: (ws: string, slug: string): string => `${SPEC_API_ROOT}/${enc(ws)}/ideas/${enc(slug)}`,
   boardQuery: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/board-query`,
   allocate: (ws: string, slug: string): string => `${SPEC_API_ROOT}/${enc(ws)}/ideas/${enc(slug)}/allocate`,
+  tech: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/tech`,
+  /** `path` is relative to `specs/`, as tech.md names the image (`.tech/architecture.png`); it travels raw like the evidence file's. */
+  techAsset: (ws: string, path: string): string => `${SPEC_API_ROOT}/${enc(ws)}/tech/asset?path=${enc(path)}`,
 } as const satisfies Record<WorkspaceRouteName, (...args: never[]) => string>;
 
 /**
@@ -319,6 +328,8 @@ export const WORKSPACE_ROUTE_TABLE: readonly WorkspaceRouteEntry[] = [
   { route: 'idea', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/ideas/:slug`, statuses: READ, response: 'IdeaPage' },
   { route: 'boardQuery', method: 'GET', write: 'PUT', pattern: `${SPEC_API_ROOT}/:ws/board-query`, statuses: BOARD_QUERY_STATUSES, request: 'BoardQuery', response: 'BoardQuery' },
   { route: 'allocate', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, statuses: REFUSABLE_WRITE, request: 'AllocateRequest', response: 'IdeaAllocated' },
+  { route: 'tech', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/tech`, statuses: READ, response: 'TechModel' },
+  { route: 'techAsset', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/tech/asset`, statuses: READ, response: 'file bytes' },
 ];
 
 const WORKSPACE_ENTRIES = new Map(WORKSPACE_ROUTE_TABLE.map((entry) => [entry.route, entry]));
@@ -393,6 +404,10 @@ export interface WorkspaceRouteResponses {
   /** The database's row for the workspace, never a file; `{query: ''}` when none is stored. `PUT` answers the same. */
   boardQuery: BoardQuery;
   allocate: IdeaAllocated;
+  /** `readTech` over `specs/tech.md` and the active spec folders, as it is; `pages: null` without the file. */
+  tech: TechModel;
+  /** The image's bytes with `evidenceFileHeaders(mediaTypeOf(name))`, as the evidence file route sends them. */
+  techAsset: Blob;
 }
 
 /** The body of each workspace route that takes one (`WorkspaceRouteEntry.write` or a POST route). */
