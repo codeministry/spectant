@@ -1,14 +1,16 @@
 /*
  * The spec head (design.md § Spec head, every spec area). Medium and wide: breadcrumb, then id + title + chips on one
  * baseline with the action cluster on the right (it wraps below when it does not fit), description, meta, then the
- * agent banner or the no-source line. Compact (≤ 240 px target): the breadcrumb in its short form (ids only, no
- * workspace crumb, no area crumb; T39), the milestone name at most 96 px, title clamped to two lines, one wrapping chip
- * row, description clamped with "more", meta at 12/16, the command chip at full width.
+ * agent banner or the no-source line. Compact (≤ 240 px target): the breadcrumb in its short form (workspace first,
+ * then ids only, no area crumb, no priority chip: it stays in the chip row; T39, T19), the milestone name at most 96 px,
+ * title clamped to two lines, one wrapping chip row, description clamped with "more", meta at 12/16, the command chip
+ * at full width.
  *
- * The breadcrumb (T40, ISC-105): one line at every width, never wrapping, never scrolling. When it does not fit the
- * names truncate with an ellipsis in a fixed order: feature name first (flex-shrink 3), then milestone name (2), then
- * the spec slug (1). Ids (F-id, spec id, claim or task id) and the priority chip before the spec id (spec 008,
- * ISC-118) are `flex: none` and never truncate. Full names stay in the
+ * The breadcrumb (T40, ISC-105; T20, ISC-140.1): one line at every width, never wrapping, never scrolling. When it does
+ * not fit the names truncate with an ellipsis in a fixed order: feature name first (flex-shrink 3), then milestone name
+ * down to its flag (2), then the spec slug (1). The workspace, ids (F-id, spec id, claim or task id) and the priority
+ * chip before the spec id at medium and wide (spec 008, ISC-118) are `flex: none` and never truncate. At compact, if
+ * the ids still do not fit, milestone and feature give way to one `…` button (spec-head.ts). Full names stay in the
  * DOM, so accessible names keep the whole text. Separators are generated content only: `/` scope, `·` milestone to
  * feature, `›` down into the spec.
  */
@@ -83,6 +85,22 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The full path in the bottom sheet: one 44 px row per level. */
+.crumb-path {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crumb-path-entry {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 44px;
+  color: inherit;
+}
+
 /* Ids are whole or absent: F0, 002, C-12, T3. */
 .crumbs .mono,
 .crumbs [data-crumb='claim'],
@@ -152,6 +170,40 @@
   background: none;
   color: inherit;
   cursor: pointer;
+}
+
+/* The workspace never truncates: its name holds its whole width at every tier. */
+.crumbs .ws-name {
+  flex: none;
+}
+
+/* The compact "…" that stands for milestone and feature: a 24 px glyph button whose 44 x 44 hit area grows from a
+   pseudo-element, so the row does not grow. */
+.crumb-collapse {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 24px;
+  block-size: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.crumb-collapse::before {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  inline-size: 44px;
+  block-size: 44px;
+  transform: translate(-50%, -50%);
+  content: '';
 }
 
 .crumb-more-list {

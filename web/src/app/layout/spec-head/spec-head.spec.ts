@@ -247,11 +247,13 @@ describe('SpecHead breadcrumb (T39, ISC-105)', () => {
     expect(ms?.getAttribute('aria-description')).toBe(en.planning.breadcrumb.unknownMilestone);
   });
 
-  it('returns at compact in the short form: no workspace, no area, the spec as its mono id', async () => {
+  it('returns at compact in the short form: the workspace first (T19, ISC-140.1), no area, the spec as its mono id', async () => {
     setUp();
     const root = await open('/w/harbor/s/002/claims#claim-ISC-100', 'compact');
-    expect(crumbs(root)).toEqual(['milestone', 'feature', 'spec', 'claim']);
-    expect(seps(root)).toEqual([null, 'dot', 'down', 'down']);
+    expect(crumbs(root)).toEqual(['workspace', 'milestone', 'feature', 'spec', 'claim']);
+    expect(seps(root)).toEqual([null, 'scope', 'dot', 'down', 'down']);
+    expect(crumb(root, 'workspace')?.getAttribute('href')).toBe('/w/harbor');
+    expect(nav(root).querySelector('[data-crumb-priority]')).toBeNull(); // the priority stays in the chip row
     expect(text(crumb(root, 'feature'))).toBe('F7');
     expect(text(crumb(root, 'spec'))).toBe('002');
     expect(text(crumb(root, 'claim'))).toBe('ISC-100');
@@ -349,7 +351,8 @@ describe('SpecHead priority (T134, ISC-118)', () => {
   const crumbPriority = (root: HTMLElement): HTMLElement | null => nav(root).querySelector<HTMLElement>('[data-crumb-priority]');
   const headPriority = (root: HTMLElement): HTMLElement | null => root.querySelector<HTMLElement>('[data-head-chip="priority"]');
 
-  for (const tier of ['wide', 'compact'] as const) {
+  // At compact the breadcrumb drops the priority (T20, ISC-140.1); the short-form case asserts it is gone there.
+  for (const tier of ['wide', 'medium'] as const) {
     it(`shows P1 before the spec id in the breadcrumb and after type and stage in the head (${tier})`, async () => {
       setUp(unserved, () => bodyOf('006-partial-push'));
       const root = await open('/w/harbor/s/006/status', tier);

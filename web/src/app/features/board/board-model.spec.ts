@@ -14,6 +14,9 @@ import {
   buildBoard,
   dropTargetsOf,
   EMPTY_BOARD_QUERY,
+  hiddenColumnsOf,
+  hiddenLanesOf,
+  type OverflowColumn,
   parseBoardQuery,
 } from './board-model';
 
@@ -304,5 +307,95 @@ describe('the board summary (T116, ISC-129)', () => {
     expect(summary.waiting).toBe(3);
     // A filtered model still summarises the whole board: the area menu line never follows the page's filters.
     expect(boardSummaryOf(board({ type: ['idea'] }))).toEqual(summary);
+  });
+});
+
+describe('hidden columns at medium (spec 019, T29, ISC-141.1)', () => {
+  /** The harbor board with feature swimlanes, as `?group=feature` renders it. */
+  const lanes = (query: Partial<BoardQueryState> = {}): BoardModel => board({ group: 'feature', ...query });
+  /** Every column from `build` on lies right of the scroller box, as at 820 px. */
+  const RIGHT_OF_BUILD = new Set(PLANNING.stages.slice(PLANNING.stages.indexOf('build')));
+  /** A column of `n` cards (per lane `bands`) without building a card: the overflow reads only the counts. */
+  const col = (stage: OverflowColumn['stage'], bands: ReadonlyArray<readonly [string | null, number]>): OverflowColumn => ({
+    stage,
+    cards: { length: bands.reduce((n, [, count]) => n + count, 0) },
+    bands: bands.map(([key, count]) => ({ key, count })),
+  });
+
+  describe('hiddenColumnsOf', () => {
+    it('names every hidden column that holds cards, in column order, with its count', () => {
+      expect(hiddenColumnsOf(lanes().columns, RIGHT_OF_BUILD)).toEqual([
+        { stage: 'build', count: 2 },
+        { stage: 'close-pending', count: 1 },
+        { stage: 'code-review', count: 1 },
+        { stage: 'done', count: 1 },
+      ]);
+    });
+
+    it('leaves out an empty column or stub (blocked, close) and every column in view', () => {
+      const stages = hiddenColumnsOf(lanes().columns, new Set(PLANNING.stages)).map((c) => c.stage);
+      expect(stages).not.toContain('plan');
+      expect(stages).not.toContain('blocked');
+      expect(stages).not.toContain('close');
+      expect(hiddenColumnsOf(lanes().columns, new Set())).toEqual([]);
+      expect(hiddenColumnsOf(lanes().columns, new Set(['plan', 'blocked', 'close'] as const))).toEqual([]);
+    });
+
+    it('counts a folded column with cards (?fold=), and never an opened empty one (?open=)', () => {
+      const model = lanes({ fold: ['done'], open: ['close'] });
+      expect(hiddenColumnsOf(model.columns, new Set(['done', 'close'] as const))).toEqual([{ stage: 'done', count: 1 }]);
+    });
+
+    it('counts the cards the filters let through, and drops a column whose cards they all hide', () => {
+      const model = lanes({ feature: ['F6'] });
+      expect(hiddenColumnsOf(model.columns, RIGHT_OF_BUILD)).toEqual([
+        { stage: 'build', count: 1 },
+        { stage: 'close-pending', count: 1 },
+      ]);
+    });
+  });
+
+  describe('hiddenLanesOf', () => {
+    it('gives every lane whose cards all lie in hidden columns its count and those columns', () => {
+      const found = hiddenLanesOf(lanes().columns, RIGHT_OF_BUILD);
+      expect([...found.keys()].sort()).toEqual(['F4', 'F5', 'F6']);
+      expect(found.get('F6')).toEqual({
+        key: 'F6',
+        count: 2,
+        columns: [
+          { stage: 'build', count: 1 },
+          { stage: 'close-pending', count: 1 },
+        ],
+      });
+      expect(found.get('F4')).toEqual({ key: 'F4', count: 1, columns: [{ stage: 'code-review', count: 1 }] });
+    });
+
+    it('leaves out a lane with one card in view, however many it has out of view', () => {
+      // F2 has a card in idea (in view) and one in build (hidden): the lane does not look empty.
+      expect(hiddenLanesOf(lanes().columns, RIGHT_OF_BUILD).has('F2')).toBe(false);
+      expect(hiddenLanesOf(lanes().columns, new Set()).size).toBe(0);
+    });
+
+    it('keys the band without a feature by null, and sums a lane over its hidden columns', () => {
+      const columns = [col('idea', [['F1', 1]]), col('plan', []), col('build', [['F1', 1], [null, 2]]), col('done', [[null, 1]])];
+      const found = hiddenLanesOf(columns, new Set(['plan', 'build', 'done'] as const));
+      expect([...found.keys()]).toEqual([null]);
+      expect(found.get(null)).toEqual({
+        key: null,
+        count: 3,
+        columns: [
+          { stage: 'build', count: 2 },
+          { stage: 'done', count: 1 },
+        ],
+      });
+      expect(hiddenColumnsOf(columns, new Set(['plan', 'build', 'done'] as const))).toEqual([
+        { stage: 'build', count: 3 },
+        { stage: 'done', count: 1 },
+      ]);
+    });
+
+    it('is empty without swimlanes: a board without a group has no bands', () => {
+      expect(hiddenLanesOf(board().columns, RIGHT_OF_BUILD).size).toBe(0);
+    });
   });
 });

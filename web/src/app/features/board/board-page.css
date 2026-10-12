@@ -1,9 +1,10 @@
 /*
  * The workspace board (design 008 § board layout, Tablet 820 and Desktop 1440). Page head: H1 Sora 20/28 and the mono
  * summary 13/20. The stage strip sticks under the toolbar (sticky under the 64 px header), outside the scroller. The board card holds the
- * one horizontal scroller (the page never scrolls sideways): 232 px columns 12 px apart, scroll-snap at column starts,
- * a 32 px edge fade on each side that has more to show. A stub (no shown card) is 48 px at medium and 56 px at wide;
- * its track comes from `data-stub`, never from a drag. Columns stretch to the tallest; a column never scrolls itself.
+ * one horizontal scroller (the page never scrolls sideways): 232 px columns at medium and 152 px at wide (ISC-141: at
+ * 1440 the ten default stages fit the board, seven with cards and three stubs; titles clamp to two lines), 12 px apart, scroll-snap at
+ * column starts, a 32 px edge fade on each side that has more to show. A stub (no shown card) is 48 px at medium and
+ * 56 px at wide; its track comes from `data-stub`, never from a drag. Columns stretch to the tallest; a column never scrolls itself.
  */
 :host {
   --board-col: 232px;
@@ -14,6 +15,7 @@
 }
 
 :host([data-tier='wide']) {
+  --board-col: 152px;
   --board-stub: 56px;
 }
 

@@ -3,7 +3,8 @@
  * the stub API (`core/fixtures/harbor.planning.golden.json`). `bun run e2e -- breadcrumb`.
  *
  * The levels are `milestone · feature › spec › area › claim or task`; the compact tier returns the short form
- * `⚑ Harbor 1.0 · F2 › 002 › ISC-51` (no workspace, no area, the spec as its mono id). "Links resolve" splits in two:
+ * `harbor / ⚑ Harbor 1.0 · F2 › 002 › ISC-51` (the workspace first since T19 · ISC-140.1, no area, the spec as its mono
+ * id). "Links resolve" splits in two:
  * workspace, spec, area, claim and task links are clicked and must land; the feature and milestone links point at the
  * Features and Milestones pages, so their `href` is asserted and they are clicked at the end to land on the focused
  * card and row.
@@ -69,23 +70,21 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
     test('the spec dashboard: levels in order, with their separators', async ({ page }) => {
       await page.goto('/w/harbor/s/002');
       await expect(page.locator(NAV)).toBeVisible();
-      await expect(page.locator(`${NAV} ol > li`)).toHaveCount(compact ? 3 : 5);
+      await expect(page.locator(`${NAV} ol > li`)).toHaveCount(compact ? 4 : 5);
 
       await expect(crumb(page, 'milestone')).toHaveText(M10.name);
       await expect(crumb(page, 'feature')).toHaveText(compact ? F2.id : `${F2.id} ${F2.name}`);
       await expect(crumb(page, 'spec')).toHaveText(compact ? '002' : `002 ${slugOf('002')}`);
       await expect(page.locator(`${NAV} [data-crumb-more]`)).toHaveCount(0); // 002 holds F2 only
 
+      await expect(crumb(page, 'workspace')).toHaveText('harbor'); // every tier since T19 · ISC-140.1
+      await expect(item(page, 'milestone')).toHaveAttribute('data-sep', 'scope');
       if (compact) {
-        await expect(crumb(page, 'workspace')).toHaveCount(0);
         await expect(crumb(page, 'area')).toHaveCount(0);
-        await expect(item(page, 'milestone')).not.toHaveAttribute('data-sep');
         await expect(crumb(page, 'spec')).toHaveAttribute('aria-current', 'page'); // the spec is the last crumb
       } else {
-        await expect(crumb(page, 'workspace')).toHaveText('harbor');
         await expect(crumb(page, 'area')).toHaveText(en.shell.areas['dashboard'] ?? '');
         await expect(crumb(page, 'area')).toHaveAttribute('aria-current', 'page');
-        await expect(item(page, 'milestone')).toHaveAttribute('data-sep', 'scope');
         await expect(item(page, 'area')).toHaveAttribute('data-sep', 'down');
         await expect(crumb(page, 'spec')).not.toHaveAttribute('aria-current');
       }
@@ -97,9 +96,9 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
 
     test('the order in the DOM is milestone, feature, spec, area', async ({ page }) => {
       await page.goto('/w/harbor/s/002/status');
-      await expect(page.locator(`${NAV} ol > li`)).toHaveCount(compact ? 3 : 5);
+      await expect(page.locator(`${NAV} ol > li`)).toHaveCount(compact ? 4 : 5);
       const names = await page.locator(`${NAV} [data-crumb]`).evaluateAll((els) => els.map((el) => el.getAttribute('data-crumb')));
-      expect(names).toEqual(compact ? ['milestone', 'feature', 'spec'] : ['workspace', 'milestone', 'feature', 'spec', 'area']);
+      expect(names).toEqual(compact ? ['workspace', 'milestone', 'feature', 'spec'] : ['workspace', 'milestone', 'feature', 'spec', 'area']);
     });
 
     for (const { area, tab, first } of TAB_ROUTES) {
@@ -222,7 +221,6 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
     });
 
     test('the workspace link resolves', async ({ page }) => {
-      test.skip(compact, 'the short form has no workspace crumb; the header pill names it');
       await page.goto('/w/harbor/s/002/claims');
       await expect(crumb(page, 'workspace')).toHaveAttribute('href', '/w/harbor');
       await crumb(page, 'workspace').click();
@@ -396,6 +394,37 @@ test.describe('eyebrow', () => {
         expect(saved.ok()).toBe(true);
         for (const entry of EYEBROW_PAGES) await checkEyebrow(page, entry, 'de');
         await page.request.post(RESET_PATH, { headers });
+      });
+    });
+  }
+});
+
+// T18 · ISC-140.1: the workspace leads the spec breadcrumb at every tier, compact included (design.md, Mobile § the spec
+// breadcrumb). `bun run e2e -- breadcrumb -g "workspace first"`.
+//
+// On the spec pages of the stub workspace harbor at 390, 820 and 1440, the first entry of `nav[data-breadcrumb]` is the
+// workspace link (`data-crumb="workspace"`, href `/w/harbor`, the workspace name), and the last entry carries
+// `aria-current="page"`: the spec at compact, the area at medium and wide, or the claim when one is open.
+const WORKSPACE_FIRST_PATHS = ['/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/002/claims#claim-ISC-51', '/w/harbor/s/001'];
+
+test.describe('workspace first', () => {
+  for (const width of [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      test(`workspace first: the workspace leads the spec breadcrumb at ${String(width)}`, async ({ page }) => {
+        for (const path of WORKSPACE_FIRST_PATHS) {
+          await page.goto(path);
+          const entries = page.locator(`nav[data-breadcrumb] ol > li`);
+          await expect(entries.last(), `${path}: the breadcrumb renders`).toBeVisible();
+          const first = entries.first().locator('[data-crumb]').first();
+          await expect(first, `${path}: the first entry is the workspace`).toHaveAttribute('data-crumb', 'workspace');
+          await expect(first, `${path}: the workspace links to its dashboard`).toHaveAttribute('href', '/w/harbor');
+          await expect(first, `${path}: the workspace is named`).toHaveText('harbor');
+          await expect(first, `${path}: the workspace is visible`).toBeVisible();
+          await expect(entries.last().locator('[aria-current="page"]'), `${path}: the last entry is current`).toHaveCount(1);
+          await expect(page.locator('nav[data-breadcrumb] [aria-current="page"]'), `${path}: one current entry`).toHaveCount(1);
+        }
       });
     });
   }

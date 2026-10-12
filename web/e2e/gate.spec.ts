@@ -152,7 +152,8 @@ test.describe('spec head per tier', () => {
   test.describe('at 390', () => {
     test.use(atWidth(WIDTHS.phone));
 
-    // Spec 003 (ISC-105, T39) brings the breadcrumb back at compact in its short form: no workspace, no area. Design
+    // Spec 003 (ISC-105, T39) brings the breadcrumb back at compact in its short form; since spec 019 (ISC-140.1) it leads
+    // with the workspace at every tier and still names no area. Design
     // 002's 240 px budget was set for a head without a breadcrumb; the crumb row (20 px plus the 8 px row gap at a fine
     // pointer) sits on top of it, so the head is measured without that row against the budget and as a whole against
     // the budget plus the row.
@@ -161,7 +162,8 @@ test.describe('spec head per tier', () => {
       const head = page.locator(HEAD);
       await expect(head.locator('[data-head-command]')).toBeVisible();
       await expect(head.locator('[data-breadcrumb] [data-crumb="spec"]')).toHaveText('002');
-      await expect(head.locator('[data-breadcrumb] [data-crumb="workspace"], [data-breadcrumb] [data-crumb="area"]')).toHaveCount(0);
+      await expect(head.locator('[data-breadcrumb] [data-crumb]').first()).toHaveAttribute('data-crumb', 'workspace');
+      await expect(head.locator('[data-breadcrumb] [data-crumb="area"]')).toHaveCount(0);
       await expect(head.locator('[data-description]')).toBeVisible();
       const box = await head.boundingBox();
       const crumbs = await head.locator('[data-breadcrumb]').boundingBox();

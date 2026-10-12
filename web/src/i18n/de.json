@@ -199,8 +199,18 @@
       "milestones": "Meilensteine",
       "services": "Dienste",
       "actions": "Aktionen",
-      "archived": "Archiviert"
+      "archived": "Archiviert",
+      "claims": "Claims"
     },
+    "claimStates": {
+      "open": "offen",
+      "takeable": "übernehmbar",
+      "taken": "vergeben",
+      "blocked": "blockiert",
+      "closed": "geschlossen",
+      "dropped": "verworfen"
+    },
+    "claimHit": "{{claim}}, {{text}}, Spec {{spec}}, Workspace {{workspace}}",
     "actions": {
       "allWorkspaces": "Zu allen Workspaces",
       "goTo": "Zu {{workspace}}",
