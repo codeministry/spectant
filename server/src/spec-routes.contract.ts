@@ -257,8 +257,8 @@ export function evidencePathQuery(search: string): string {
 /**
  * The routes that name a whole workspace (spec 003): the planning tree, and one story of `specs/ideas/` (spec 008,
  * T88). The tech page (spec 023, ISC-134.1): `tech`, `readTech` over `specs/tech.md` and the
- * active spec folders, and `techAsset`, one image tech.md names, by the query `?path=` relative to `specs/` (T7 serves
- * it; until then `api.ts` declines it, so the server's JSON 404 applies). The dashboard is one too but lives in `api.ts` (header).
+ * active spec folders, and `techAsset`, one image tech.md names, by the query `?path=` relative to `specs/` (served by
+ * `api.ts` through the evidence resolver with `specs/` as its root, images only). The dashboard is one too but lives in `api.ts` (header).
  */
 export type WorkspaceRouteName = 'planning' | 'idea' | 'boardQuery' | 'allocate' | 'tech' | 'techAsset';
 

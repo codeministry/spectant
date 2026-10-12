@@ -36,6 +36,13 @@ const SERVED_NAMES = new Set([...FOLDER_NAMES, DESIGN_ASSETS]);
 /** Where a request may end up, by its first segment: `.design/` stays in itself, the listed two stay among themselves. */
 const REACH = (first: string): ReadonlySet<string> => (first === DESIGN_ASSETS ? new Set([DESIGN_ASSETS]) : FOLDER_NAMES);
 
+/**
+ * What a resolution may reach below its root: `evidence` (the default) is a spec folder's `artifacts/`, `.evidence/`
+ * and `.design/` as above; `tree` is any file below the root, the tech page's images under `specs/` (spec 023).
+ * Everything else, the single decode, the lexical refusals and the symlink check against the real root, is the same.
+ */
+export type PathReach = 'evidence' | 'tree';
+
 /** Media types by lower-case extension; everything else is `application/octet-stream`. */
 const MEDIA_TYPES: ReadonlyMap<string, string> = new Map([
   ['md', 'text/markdown'],
@@ -65,10 +72,11 @@ export function mediaTypeOf(name: string): string {
 /**
  * The request as segments, or null when it is refused before the file system is asked: percent-encoding is decoded
  * exactly once (a malformed or second layer is refused), then a NUL or other control character, a backslash, an
- * absolute path, a drive letter or a `..` segment is refused. `.` and empty segments drop out. The first segment must
- * be `artifacts`, `.evidence` or `.design`, with at least one segment below it.
+ * absolute path, a drive letter or a `..` segment is refused. `.` and empty segments drop out. Under `evidence` reach
+ * the first segment must be `artifacts`, `.evidence` or `.design`, with at least one segment below it; under `tree`
+ * one segment is enough.
  */
-function normalise(requested: string): string[] | null {
+function normalise(requested: string, reach: PathReach): string[] | null {
   if (typeof requested !== 'string' || requested === '' || requested.length > 4096) return null;
   let decoded: string;
   try {
@@ -82,13 +90,18 @@ function normalise(requested: string): string[] | null {
   if (decoded.startsWith('/') || /^[A-Za-z]:/.test(decoded)) return null;
   const segments = decoded.split('/').filter((s) => s !== '' && s !== '.');
   if (segments.includes('..')) return null;
+  if (reach === 'tree') return segments.length >= 1 ? segments : null;
   if (segments.length < 2 || !SERVED_NAMES.has(segments[0] ?? '')) return null;
   return segments;
 }
 
-/** `real` lies below one of the folders `first` may reach (`REACH`) inside `realSpec`, not on the folder itself. */
-function confined(realSpec: string, real: string, first: string): boolean {
+/**
+ * `real` lies below one of the folders `first` may reach (`REACH`) inside `realSpec`, not on the folder itself; under
+ * `tree` reach, anywhere below `realSpec`.
+ */
+function confined(realSpec: string, real: string, first: string, reach: PathReach = 'evidence'): boolean {
   if (!real.startsWith(realSpec + sep)) return false;
+  if (reach === 'tree') return true;
   const parts = relative(realSpec, real).split(sep);
   return parts.length >= 2 && REACH(first).has(parts[0] ?? '');
 }
@@ -100,11 +113,16 @@ const code = (error: unknown): string | undefined => (error as NodeJS.ErrnoExcep
  * it (decoded here, once); the answer is the real path to open, or why nothing may be served. A lexically clean
  * request whose real path leaves what its first folder may reach (`artifacts/` and `.evidence/` together, `.design/` on
  * its own) went through a symlink: `symlink-escape`. A dangling
- * symlink is `symlink-escape` when its target would lie outside, else `not-found`.
+ * symlink is `symlink-escape` when its target would lie outside, else `not-found`. With `reach: 'tree'`, `specDir` is
+ * any root (the tech asset route passes the workspace's `specs/`) and every file below its real path may be reached.
  */
-export async function resolveEvidencePath(specDir: string, requested: string): Promise<EvidencePathResult> {
+export async function resolveEvidencePath(
+  specDir: string,
+  requested: string,
+  reach: PathReach = 'evidence',
+): Promise<EvidencePathResult> {
   const refuse = (reason: EvidenceRefusal): EvidencePathResult => ({ ok: false, reason });
-  const segments = normalise(requested);
+  const segments = normalise(requested, reach);
   if (!segments) return refuse('outside');
   let realSpec: string;
   try {
@@ -122,12 +140,12 @@ export async function resolveEvidencePath(specDir: string, requested: string): P
       const link = await lstat(candidate);
       if (!link.isSymbolicLink()) return refuse('not-found');
       const target = resolve(dirname(candidate), await readlink(candidate));
-      return refuse(confined(realSpec, target, segments[0] ?? '') ? 'not-found' : 'symlink-escape');
+      return refuse(confined(realSpec, target, segments[0] ?? '', reach) ? 'not-found' : 'symlink-escape');
     } catch {
       return refuse('not-found');
     }
   }
-  if (!confined(realSpec, real, segments[0] ?? '')) return refuse('symlink-escape');
+  if (!confined(realSpec, real, segments[0] ?? '', reach)) return refuse('symlink-escape');
   try {
     if (!(await stat(real)).isFile()) return refuse('not-a-file');
   } catch {

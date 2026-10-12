@@ -496,6 +496,67 @@ describe("ISC-132: the board's reads, the database routes and a refused drop lea
   });
 });
 
+// The tech page (spec 023 T8, ISC-134.3) under the same guard, through the served app on its own copy, `.git/`
+// included: harbor carries `specs/tech.md` and the image it names (`specs/tech/overview.png`), so the tech model, the
+// served image, a missing one and a refused `..` are read, revalidated and HEAD, and the copy stays byte-identical.
+describe("ISC-134.3: the tech page and its assets leave the repository byte-identical", () => {
+  test("readonly: tech, a served image, a missing one and a refused .. (GET and HEAD) change no byte, .git/ included", async () => {
+    const copy = join(mkdtempSync(join(root, "tech-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    expect(lstatSync(join(copy, "specs", "tech.md")).isFile()).toBe(true);
+    expect(lstatSync(join(copy, "specs", "tech", "overview.png")).isFile()).toBe(true);
+    const before = snapshot(copy);
+    const indexBefore = readFileSync(join(copy, ".git", "index"));
+
+    const env = { XDG_DATA_HOME: mkdtempSync(join(root, "xdg-tech-")) };
+    const lines: string[] = [];
+    const log = spyOn(console, "log").mockImplementation((...args: unknown[]) => void lines.push(args.join(" ")));
+    const stop = new AbortController();
+    try {
+      expect(await run(["add", copy], manifest(), { env })).toBe(0);
+      const done = run(["--port", "0", "--no-browser"], manifest(), { env, signal: stop.signal });
+      const deadline = Date.now() + 5_000;
+      let url = "";
+      while (url === "") {
+        url = /^spectant · (http:\/\/127\.0\.0\.1:\d+)$/.exec(lines.find((l) => l.startsWith("spectant · ")) ?? "")?.[1] ?? "";
+        if (Date.now() > deadline) throw new Error(`no URL line: ${lines.join(" | ")}`);
+        if (url === "") await Bun.sleep(5);
+      }
+
+      // The tech model and the served image: read, revalidated and HEAD.
+      for (const path of [workspaceRoutes.tech(SLUG), workspaceRoutes.techAsset(SLUG, "tech/overview.png")]) {
+        const first = await fetch(`${url}${path}`);
+        expect({ path, status: first.status }).toEqual({ path, status: 200 });
+        await first.arrayBuffer();
+        const etag = first.headers.get("etag") ?? "";
+        expect((await fetch(`${url}${path}`, { headers: { "If-None-Match": etag } })).status).toBe(304);
+        expect((await fetch(`${url}${path}`, { method: "HEAD" })).status).toBe(200);
+      }
+
+      // A missing image and a refused `..`, GET and HEAD.
+      for (const [path, status] of [
+        [workspaceRoutes.techAsset(SLUG, "tech/gone.png"), 404],
+        [workspaceRoutes.techAsset(SLUG, "../README.md"), 403],
+      ] as const) {
+        expect({ path, status: (await fetch(`${url}${path}`)).status }).toEqual({ path, status });
+        expect({ path, status: (await fetch(`${url}${path}`, { method: "HEAD" })).status }).toEqual({ path, status });
+      }
+
+      stop.abort();
+      expect(await done).toBe(0);
+    } finally {
+      stop.abort();
+      log.mockRestore();
+    }
+
+    const after = snapshot(copy);
+    expect(changed(before, after, { mtime: true })).toEqual([]);
+    expect(after.checksum).toBe(before.checksum);
+    expect(underGit(after)).toEqual(underGit(before));
+    expect(readFileSync(join(copy, ".git", "index")).equals(indexBefore)).toBe(true);
+  });
+});
+
 // The allocation (spec 008, T96, ISC-130.2) under the same guard, on its own copy (`.git/` included, so the git reads
 // of `takenSpecNumbers` and the viewer run): every refused allocation (400, 404, 409, 422) leaves the copy
 // byte-identical, an accepted one creates exactly the new folder with its three files and removes the story file, and

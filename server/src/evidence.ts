@@ -18,17 +18,31 @@
  *
  * No answer carries a path: the error bodies are the fixed codes, and the file's own name travels only as the media
  * type (ISC-3). Read-only: `stat` and one open for reading (ISC-15).
+ *
+ * The tech asset route (spec 023 T7, ISC-134.3) answers through the same function with the workspace's `specs/` as the
+ * root, `reach: 'tree'` (any file below it) and `serves` admitting images only: a file of another media type is 403.
  */
 import { statSync } from "node:fs";
 import { basename } from "node:path";
-import { mediaTypeOf, resolveEvidencePath } from "../../core/src/evidence.ts";
+import { type PathReach, mediaTypeOf, resolveEvidencePath } from "../../core/src/evidence.ts";
 import { json } from "./api.ts";
 import { matchesIfNoneMatch } from "./http.ts";
 import { evidenceFileHeaders, evidencePathQuery } from "./spec-routes.contract.ts";
 
+/** Which part of the root a file route may reach, and which media types it serves (every one by default). */
+export interface FileRouteScope {
+  readonly reach?: PathReach;
+  readonly serves?: (mediaType: string) => boolean;
+}
+
 /** The answer of the evidence file route for the spec folder `specDir` and the request's raw query (`URL.search`). */
-export async function evidenceFileResponse(req: Request, specDir: string, search: string): Promise<Response> {
-  const hit = await resolveEvidencePath(specDir, evidencePathQuery(search));
+export async function evidenceFileResponse(
+  req: Request,
+  specDir: string,
+  search: string,
+  scope: FileRouteScope = {},
+): Promise<Response> {
+  const hit = await resolveEvidencePath(specDir, evidencePathQuery(search), scope.reach);
   if (!hit.ok) {
     return hit.reason === "outside" || hit.reason === "symlink-escape"
       ? json(req, 403, { error: "forbidden" })
@@ -46,7 +60,9 @@ export async function evidenceFileResponse(req: Request, specDir: string, search
     return json(req, 404, { error: "not-found" });
   }
   // The media type of the name asked for, as the listing shows it; a confined symlink serves its target's bytes.
-  const headers = { ...evidenceFileHeaders(mediaTypeOf(basename(hit.path))), ETag: etag };
+  const mediaType = mediaTypeOf(basename(hit.path));
+  if (scope.serves !== undefined && !scope.serves(mediaType)) return json(req, 403, { error: "forbidden" });
+  const headers = { ...evidenceFileHeaders(mediaType), ETag: etag };
   if (matchesIfNoneMatch(req.headers.get("If-None-Match"), etag)) return new Response(null, { status: 304, headers });
   if (req.method === "HEAD") return new Response(null, { status: 200, headers: { ...headers, "Content-Length": String(size) } });
   // Bun sets Content-Length from the file it opens, so a file that changed since the stat is never cut short.

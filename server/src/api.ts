@@ -60,7 +60,10 @@
  * does (`readWorkspaceInput`), then `specs/tech.md` (absent: `tech` undefined, so `pages: null`), and answers
  * core's `readTech` over that text and the active spec folders as it is. An image tech.md names counts as present only
  * when it is a regular file whose real path stays under the real `specs/` (existence only, never a read or a write).
- * Its asset route `techAsset` (T7) is declined here until its handler lands, so the server's JSON 404 applies.
+ * Its asset route `techAsset` (T7, ISC-134.3), `GET`/`HEAD …/tech/asset?path=` relative to `specs/`, is the evidence
+ * file route (`evidence.ts`) with the workspace's `specs/` as the root: the same once-decoded resolver, every file below
+ * the real `specs/` reachable, images only. 200 with the bytes and the evidence headers (ETag, 304), 403 for `..`, a
+ * second encoding, an absolute path, a symlink out or another media type, 404 for a missing file or workspace.
  *
  * Lock sources (T51, ISC-37): both routes read the repository's `.spectant/activity.jsonl`, and the LifeOS frontier
  * locks only when `options.lifeos` is present, so the counts in the list and the dashboard agree.
@@ -82,6 +85,7 @@ import { type PlanningSpecState, buildPlanning } from "../../core/src/planning.t
 import { listSpecs } from "../../core/src/resolve.ts";
 import { readTech } from "../../core/src/tech.ts";
 import { getBoardQuery, listActors, replaceActors, setBoardQuery } from "./db.ts";
+import { evidenceFileResponse } from "./evidence.ts";
 import type { ApiHandler } from "./http.ts";
 import { matchesIfNoneMatch } from "./http.ts";
 import type { LifeosDetection } from "./lifeos.ts";
@@ -335,6 +339,16 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     }
   };
 
+  // One image below specs/, through the evidence file route's resolver and answer (header).
+  const techAsset = (req: Request, slug: string, search: string): Promise<Response> | Response => {
+    const workspace = registry.get(slug);
+    if (!workspace) return json(req, 404, { error: "not-found" });
+    return evidenceFileResponse(req, join(workspace.path, "specs"), search, {
+      reach: "tree",
+      serves: (mediaType) => mediaType.startsWith("image/"),
+    });
+  };
+
   // The story folder alone: no spec folder, lock source or git call feeds a story page (header).
   const idea = (req: Request, slug: string, story: string): Response => {
     const workspace = registry.get(slug);
@@ -407,8 +421,6 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     if (pathname !== WORKSPACES_PATH && !match && !workspaceRoute) return null;
     const { db } = options;
     if (workspaceRoute?.route === "boardQuery" && db === undefined) return null;
-    // The tech asset (T7) has no handler yet: declined, so the server's JSON 404 applies.
-    if (workspaceRoute?.route === "techAsset") return null;
     if (!isLoopbackHost(req.headers.get("Host")) || !isLoopbackOrigin(req.headers.get("Origin"))) {
       return json(req, 403, { error: "forbidden" });
     }
@@ -423,6 +435,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     }
     if (workspaceRoute?.route === "idea") return idea(req, workspaceRoute.params.ws, workspaceRoute.params.slug);
     if (workspaceRoute?.route === "tech") return tech(req, workspaceRoute.params.ws);
+    if (workspaceRoute?.route === "techAsset") return techAsset(req, workspaceRoute.params.ws, url.search);
     if (workspaceRoute) return planning(req, workspaceRoute.params.ws);
     if (!match) return list(req);
     let slug: string;

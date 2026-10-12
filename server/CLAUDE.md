@@ -33,7 +33,7 @@ stay in § Spec 008 bodies. The story page `idea` (`GET`/`HEAD /api/workspaces/:
 `api.ts` from the story folder alone; the allocation `allocate` (`POST /api/workspaces/:ws/ideas/:slug/allocate`, T87) is the
 workspace family's one write, served by `allocate-route.ts` through `writes.ts`; the board query (`GET`/`HEAD`/`PUT
 /api/workspaces/:ws/board-query`, T92) lives in `WORKSPACE_ROUTE_TABLE` (`write: 'PUT'`) and is served from the `board_query`
-table alone (the `db` option; no 409, 404 for an unknown workspace); the actor names (`GET`/`HEAD`/`PUT /api/actors`, T91) are a
+table alone (the `db` option; no 409, 404 for an unknown workspace); the tech page (`GET`/`HEAD /api/workspaces/:ws/tech`, spec 023) is `readTech` over `specs/tech.md` and the spec folders, served as it is, and its images (`…/tech/asset?path=`) go through the evidence resolver with `specs/` as the root, `reach: 'tree'`, images only; the actor names (`GET`/`HEAD`/`PUT /api/actors`, T91) are a
 route of their own, `ACTORS_PATH`, served by `api.ts`'s `actorsApi` over the `actor` table like `/api/settings` (PUT replaces
 the whole mapping); the stage move `transition` (`POST …/specs/:id/transition`, T83) is a registered spec route served by
 `transition-route.ts` through `writes.ts`, and the planning route passes the workflow and every active spec's stage and raw
