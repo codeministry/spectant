@@ -41,7 +41,7 @@ describe('UiPriority (ISC-118)', () => {
     const seen = new Set<string>();
     for (const [level, tint, ink] of [
       ['P2', 'var(--hover-t)', 'var(--hover-ink)'],
-      ['P3', 'transparent', 'var(--color-base-content)'],
+      ['P3', 'transparent', 'var(--muted-ink)'],
       ['P4', 'transparent', 'var(--muted-ink)'],
     ] as const) {
       const { host, chip, icon } = await render(level);

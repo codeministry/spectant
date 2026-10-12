@@ -196,9 +196,11 @@ const deltaE = (painted: Rgb, hex: string) => {
 type Pair = { tone: string; surface: string; min: number };
 const PAIRS: readonly Pair[] = [
   ...["--muted-ink", ...INKS].flatMap((tone) => {
-    // Held text never sits on `--held-t`: the neutral tone's ink is `base-content` (tone.ts), and the prototype's held
-    // chip is muted text on `--raised`. Secondary text has no tint.
-    const tint = tone === "--held-ink" || tone === "--muted-ink" ? [] : [tone.replace(/-ink$/, "-t")];
+    // Held text never sits on `--held-t`: the prototype's held chip is muted text on `--raised`. The neutral tone's
+    // ink is `--muted-ink` (tone.ts), so the neutral chip's tint is `--raised`, daisyUI's `--color-base-300` (spec 024
+    // ISC-148), not a `-t` token.
+    const tint =
+      tone === "--muted-ink" ? ["--color-base-300"] : tone === "--held-ink" ? [] : [tone.replace(/-ink$/, "-t")];
     return ["--color-base-100", "--color-base-200", ...tint].map((surface) => ({ tone, surface, min: TEXT_MIN }));
   }),
   { tone: "--badge-ink", surface: "--badge-fill", min: TEXT_MIN },

@@ -37,4 +37,7 @@ export const CONTRAST_EXCEPTIONS: readonly ContrastException[] = [
   { tone: "--conc-ink", theme: "spec-light", surface: "--conc-t", fg: "#a15e01", bg: "#fbedd4", ratio: 4.41, min: 4.5 },
   { tone: "--hover-ink", theme: "spec-light", surface: "--hover-t", fg: "#ad560c", bg: "#fbedd4", ratio: 4.41, min: 4.5 },
   { tone: "--fail-ink", theme: "spec-light", surface: "--fail-t", fg: "#ca3063", bg: "#fbe3ea", ratio: 4.19, min: 4.5 },
+  // The neutral chip (the prototype's base chip): `--muted` text on `--raised` (daisyUI's `--color-base-300`), both themes.
+  { tone: "--muted-ink", theme: "spec-light", surface: "--color-base-300", fg: "#706b6e", bg: "#ede7e5", ratio: 4.27, min: 4.5 },
+  { tone: "--muted-ink", theme: "spec-dark", surface: "--color-base-300", fg: "#939293", bg: "#403e41", ratio: 3.41, min: 4.5 },
 ];

@@ -31,7 +31,7 @@ const TINT: Record<Tone, string> = {
 };
 
 const INK: Record<Tone, string> = {
-  neutral: 'var(--color-base-content)',
+  neutral: 'var(--muted-ink)', // the prototype's --muted on the neutral chip's --raised (spec 024 ISC-148; DS-APP-32/33 pair)
   primary: 'var(--disp-ink)',
   secondary: 'var(--ques-ink)',
   accent: 'var(--clos-ink)',

@@ -66,7 +66,7 @@ export type CardDensity = 'comfortable' | 'compact';
       [style.--edge]="edge()"
     >
       <div class="r1">
-        <ui-glyph [state]="c.state" family="card" />
+        <ui-glyph [state]="c.state" family="card" [size]="20" />
         <button type="button" class="id" aria-haspopup="dialog" [attr.aria-label]="'board.card.open' | transloco: { task: c.task }" (click)="detailOpen.set(true)">{{ c.task }}</button>
         @if (density() === 'comfortable') {
           <ui-chip class="claim">{{ c.claim }}</ui-chip>

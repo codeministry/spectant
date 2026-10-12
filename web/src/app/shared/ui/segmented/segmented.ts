@@ -87,7 +87,9 @@ const reducedMotion = () =>
  * the highlighted segment, the first in view unless the keyboard moved it; arrow keys (wrap-around), Home and End move
  * it and scroll along. More than five segments that overflow one line wrap into rows of five.
  *
- * TODO(T24): the segments are plain buttons until `ui-button-group` lands; the focus ring arrives with T24.
+ * Radio mode wears the prototype's `.seg` (spec 024, ISC-148): a grid of equal columns, 2 px padding, 1 px `--line`
+ * border, 8 px radius on `--lane`; segments 28 px high, 6 px radius, 13 px `--muted`; the checked one `--card` with
+ * `--shadow-hair` and `--text`. The focus ring is the global one (primitives.css).
  */
 @Component({
   selector: 'ui-segmented',
@@ -95,11 +97,13 @@ const reducedMotion = () =>
   host: { '[attr.data-mode]': 'mode()' },
   styles: `
     :host { display: inline-flex; }
-    .group { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: var(--radius-field); background: var(--color-base-200); }
-    .seg { gap: 8px; border: 0; font-weight: 500; }
-    .seg[aria-checked='true'] { --btn-bg: var(--color-base-100); --btn-fg: var(--color-base-content); box-shadow: var(--shadow); }
+    .group { display: inline-grid; grid-auto-columns: 1fr; grid-auto-flow: column; min-inline-size: 0; padding: 2px; border: 1px solid var(--line); border-radius: var(--radius-field); background: var(--lane); }
+    .seg { display: inline-flex; align-items: center; justify-content: center; block-size: 28px; border-radius: 6px; background: transparent; color: var(--muted-ink); font-size: 13px; cursor: pointer; transition: color var(--motion-duration-instant) var(--motion-ease-standard); }
+    .seg:hover { color: var(--color-base-content); }
+    .seg[aria-checked='true'] { background: var(--color-base-100); color: var(--color-base-content); box-shadow: var(--shadow-hair); }
+    .seg .dot { margin-inline-end: 6px; }
     /* The checked segment's own shadow outranks the zero-specificity global ring rule; keep the halo (ISC-64). */
-    .seg[aria-checked='true']:focus-visible { box-shadow: 0 0 0 4px var(--focus-halo), var(--shadow); }
+    .seg[aria-checked='true']:focus-visible { box-shadow: 0 0 0 4px var(--focus-halo), var(--shadow-hair); }
     .dot { inline-size: 8px; block-size: 8px; border-radius: 50%; }
     :host([data-mode='strip']) { display: block; min-inline-size: 0; }
     .strip { display: flex; gap: 2px; padding-block: 4px 6px; }
@@ -151,7 +155,7 @@ const reducedMotion = () =>
             #segment
             type="button"
             role="radio"
-            class="btn btn-sm btn-ghost seg"
+            class="seg"
             [attr.aria-checked]="option.key === value()"
             [tabIndex]="i === activeIndex() ? 0 : -1"
             (click)="value.set(option.key)"

@@ -93,5 +93,7 @@
 }
 
 .gallery-kpi-band {
+  display: grid;
+  grid-auto-rows: 120px;
   inline-size: 960px;
 }

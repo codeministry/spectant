@@ -5,7 +5,7 @@
 //
 // - a class named `glow`, as a selector or in a template (the glow is `ui-card`'s `glow` input, never a class);
 // - a `box-shadow` layer outside the flat set: `none`, the inherited hairline `var(--shadow)` (never on a card), the
-//   focus halo `0 0 0 4px var(--focus-halo)` (ISC-64) and blur-free `inset` edges;
+//   prototype's `var(--shadow-hair)` (0 1px 2px, the pressed segment; spec 024 ISC-148), the focus halo `0 0 0 4px var(--focus-halo)` (ISC-64) and blur-free `inset` edges;
 // - a `text-shadow` or a `drop-shadow()` filter;
 // - a `radial-gradient()` anywhere but in `ui-card`'s glow variant, the `:host([data-glow])::after` rule (a scroll
 //   region's edge fade is a `linear-gradient`, spec 002 design.md § Tables).
@@ -58,7 +58,7 @@ const FOCUS_HALO = "0 0 0 4px var(--focus-halo)";
 
 /** A flat layer: none, the hairline token, the focus halo, or an inset edge with no blur. */
 function flat(layer: string): boolean {
-  if (layer === "none" || layer === "var(--shadow)" || layer === FOCUS_HALO) return true;
+  if (layer === "none" || layer === "var(--shadow)" || layer === "var(--shadow-hair)" || layer === FOCUS_HALO) return true;
   const inset = /^inset\s+(-?[\d.]+(?:px)?)\s+(-?[\d.]+(?:px)?)\s+(-?[\d.]+(?:px)?)\s+(?:var\(--[\w-]+\)|CanvasText)$/.exec(
     layer,
   );
@@ -123,7 +123,7 @@ describe("no glow outside ui-card's glow variant (design.md § Surfaces, amended
     expect(glowClassHits(LINES)).toEqual([]);
   });
 
-  test("every box-shadow layer is flat: none, var(--shadow), the focus halo or a blur-free inset edge", () => {
+  test("every box-shadow layer is flat: none, var(--shadow), var(--shadow-hair), the focus halo or a blur-free inset edge", () => {
     expect(boxShadowHits(LINES)).toEqual([]);
   });
 

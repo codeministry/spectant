@@ -13,12 +13,15 @@
  *
  * Compared: everything the claim names — radius, padding and gap, border, shadow, font family, size and weight —
  * plus the box the content sets (height, min-width, width where the fixture has it, line-height, letter-spacing,
- * text-transform), the surface (background-color, background-image: tints, the edge bar and the glow) and opacity.
- * Not compared: `color`. Text in an accent colour takes that accent's `--*-ink`, not the prototype's `--*-text`
- * (ISC-65, web/CLAUDE.md § Design system); the inks are ISC-146's tokens and guarded by `web/tests/tokens.test.ts`
- * and the contrast spec. `border-style` and `border-color` are compared only where the fixture draws a border (a
- * non-zero `border-width`): with no width the style paints nothing (Tailwind's preflight resets every element to
- * `0 solid`, the prototype leaves `none`) and the colour is `currentColor`, the text colour above.
+ * text-transform), the surface (background-color, background-image: tints, the edge bar and the glow), opacity and
+ * the text `color`: every `--*-ink` aliases the prototype's `--*-text`, so text colour matches the prototype too.
+ * `border-style` and `border-color` are compared only where the fixture draws a border (a non-zero `border-width`):
+ * with no width the style paints nothing (Tailwind's preflight resets every element to `0 solid`, the prototype
+ * leaves `none`) and the colour is `currentColor`, the text colour above.
+ *
+ * Not compared: the fixture parts `seam-badge` and `seam-badge.seam`. ISC-148 does not name them; they are the
+ * live-board card's seam flag (`features/spec/live/card`, no shared primitive), checked with that card in the parity
+ * inventory, so they are left out here.
  *
  * Colours: the app's tokens are OKLCH (web/CLAUDE.md § Design system), which Chromium serialises as `oklch()`, and
  * `color-mix()` resolves to `color(srgb …)`; both are converted to sRGB hex here like the extractor's `rgb()`, and
@@ -42,8 +45,7 @@
  * | command-chip                  | `ui-command-chip` → `.chip` with command `ab`                      |
  * | pill                          | `ui-chip variant="pill"` (secondary)                               |
  * | badge (prototype .count-badge)| `ui-chip variant="count"` (secondary), content `3`                 |
- * | seam-badge, seam-badge.seam   | none yet: the board card's seam flag (`features/spec/live/card`) is no shared primitive; the block stays empty and the part fails |
- * | kpi-tile (+ .eyebrow, .val, .val small) | `ui-kpi-tile` label `Ag`, value 12, denominator 3, meta `Ag` in a 960 px band → `.tile`, `.eyebrow`, `.figure`, `.den` (T27) |
+ * | kpi-tile (+ .eyebrow, .val, .val small) | `ui-kpi-tile` label `Ag`, value 12, denominator 3, meta `Ag` in a 960 px band of 120 px rows → its `ui-card` (the tile), `.eyebrow`, `.figure`, `.den` (T27) |
  * | glyph, glyph.take / taken / closed | `ui-glyph` claim states open / takeable / taken / closed (T28)   |
  * | glyph .icon                   | the `svg` inside the taken `ui-glyph` (T28)                        |
  * | seg, seg button, seg button[aria-pressed] | `ui-segmented` with two options → `.group`, the unchecked and the checked `.seg` (T28) |
@@ -75,9 +77,7 @@ const SELECTOR: Record<string, string> = {
   'command-chip': 'ui-command-chip .chip',
   pill: 'ui-chip',
   badge: 'ui-chip',
-  'seam-badge': '[data-ui="seam-badge"]',
-  'seam-badge.seam': '[data-ui="seam-badge"]',
-  'kpi-tile': 'ui-kpi-tile .tile',
+  'kpi-tile': 'ui-kpi-tile ui-card',
   'kpi-tile .eyebrow': 'ui-kpi-tile .eyebrow',
   'kpi-tile .val': 'ui-kpi-tile .figure',
   'kpi-tile .val small': 'ui-kpi-tile .den',
@@ -95,8 +95,8 @@ const SELECTOR: Record<string, string> = {
 const selectorOf = (part: string): string => SELECTOR[part] ?? 'ui-chip';
 const pseudoOf = (part: string): string | null => /::(before|after)$/.exec(part)?.[0] ?? null;
 
-/** The properties never compared (see the header): text colour is ISC-65's ink. */
-const SKIP = new Set(['color']);
+/** The fixture parts this spec leaves out (see the header): the live-board card's seam flag. */
+const NOT_PRIMITIVES = new Set(['seam-badge', 'seam-badge.seam']);
 
 const round = (n: number, places: number): number => Math.round(n * 10 ** places) / 10 ** places;
 
@@ -176,10 +176,12 @@ function normalise(prop: string, value: string): string {
 const draws = (width: string | undefined): boolean => (width ?? '0px').split(/\s+/).some((w) => w !== '0px');
 
 test.describe('primitives', () => {
-  const parts = Object.keys(FIXTURE.primitives);
+  const measured = Object.keys(FIXTURE.primitives);
+  const parts = measured.filter((part) => !NOT_PRIMITIVES.has(part));
 
-  test('the fixture holds the 41 measured parts', () => {
-    expect(parts.length).toBe(41);
+  test('the fixture holds the 41 measured parts, 39 of them primitives', () => {
+    expect(measured.length).toBe(41);
+    expect(parts.length).toBe(39);
   });
 
   for (const theme of ['light', 'dark'] as const) {
@@ -219,7 +221,6 @@ test.describe('primitives', () => {
         if (!got) diffs.push('no app element');
         else {
           for (const [prop, expected] of Object.entries(want)) {
-            if (SKIP.has(prop)) continue;
             if ((prop === 'border-color' || prop === 'border-style') && !draws(want['border-width'])) continue;
             const wanted = normalise(prop, expected);
             const actual = normalise(prop, got[prop] ?? '');

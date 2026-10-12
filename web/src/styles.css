@@ -176,6 +176,16 @@
 }
 
 /*
+ * Body base (spec 024, ISC-148): the prototype's `body` sets `400 14px/20px var(--font-ui)`, so text that sets no size
+ * of its own reads at 14/20 as it does there; the face and tabular figures come from styles/fonts.css.
+ */
+body {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+/*
  * Type scale (T86): the prototype's steps (design.md § Prototype port, its `styles.css` rules named per step) as
  * utilities the ported components put in their templates. Pixel sizes as the prototype sets them; faces only from
  * `styles/fonts.css` (Sora is `--font-display`, the prototype's `--font-brand`); secondary text in `--muted-ink`
