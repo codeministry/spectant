@@ -81,9 +81,11 @@ test.describe('status tab', () => {
   test('stage, next command, reasons and waiting rows equal the golden (ISC-79)', async ({ page }) => {
     await page.goto('/w/harbor/s/002/status');
     const tab = page.locator('app-status-tab');
-    await expect(tab.locator('[data-stage]')).toHaveAttribute('data-value', SPEC_002.head.stage);
+    // The stage chip of the status block; the stage track's segments carry `data-stage` too, keyed by their stage.
+    await expect(tab.locator('.stage-chip[data-stage]')).toHaveAttribute('data-value', SPEC_002.head.stage);
     await expect(tab.locator('[data-next-command]')).toContainText(SPEC_002.next.command ?? '');
-    await expect(tab.locator('[data-reason]')).toHaveText([...SPEC_002.next.reasons]);
+    await expect(tab.locator('ui-reason .phrase')).toHaveText(SPEC_002.next.reasons[0] ?? '');
+    await expect(tab.locator('[data-reason]')).toHaveText([...SPEC_002.next.reasons.slice(1)]);
     await expect(tab.locator('[data-waiting-row]')).toHaveCount(SPEC_002.waitingOnYou.length);
     await expect(tab.locator('ui-stage-track li[aria-current="step"]')).toHaveCount(1);
     await expect(tab.locator('[data-claims-closed]')).toBeVisible();
@@ -156,7 +158,7 @@ test.describe('status tab', () => {
       const button = page.locator('app-status-tab [data-gate-action]');
       await expect(button).toHaveAttribute('data-state', 'paused');
       await expect(button).toBeDisabled();
-      await expect(button).toContainText(/spec-002-ISC-\d+/u); // single-core: allow — asserts the session text on the paused button, no parsing
+      await expect(button).toContainText(/a:claude:(?:sess-2|stub-002-isc-\d+)/u);
       // The agent banner moved to the spec head, above every area (T78).
       await expect(page.locator('app-spec-head [data-writes-paused]')).toBeVisible();
     });

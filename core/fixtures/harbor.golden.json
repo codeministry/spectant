@@ -1,21 +1,21 @@
 {
   "kpis": {
-    "specs": 5,
-    "building": 2,
+    "specs": 8,
+    "building": 4,
     "scoping": 3,
     "master": {
-      "closed": 101,
-      "total": 124
+      "closed": 106,
+      "total": 130
     },
     "claims": {
-      "closed": 55,
-      "total": 78
+      "closed": 58,
+      "total": 82
     },
     "tasks": {
       "landed": 57,
       "total": 62
     },
-    "takeable": 4,
+    "takeable": 5,
     "warnings": 7,
     "fog": 4,
     "attention": 11,
@@ -25,11 +25,12 @@
     "plan": 0,
     "tasks": 1,
     "review": 2,
-    "build": 1,
+    "build": 2,
     "blocked": 0,
     "code-review": 1,
+    "close-pending": 1,
     "close": 0,
-    "done": 0
+    "done": 1
   },
   "specs": [
     {
@@ -37,8 +38,10 @@
       "slug": "004-retention-policies",
       "title": "Delete old manifests on a written schedule without touching referenced ones",
       "type": "feature",
+      "priority": "P3",
       "phase": "building",
       "stage": "code-review",
+      "stageSource": "derived",
       "progress": {
         "closed": 30,
         "total": 30
@@ -51,6 +54,7 @@
       "nextReason": "every claim is closed and the code-reviewed mark is stale",
       "takeable": [],
       "taken": [],
+      "assignee": null,
       "warnings": [
         {
           "kind": "diagrams",
@@ -100,8 +104,10 @@
       "slug": "005-config-format-choice",
       "title": "Decide which config format version 2 uses",
       "type": "spike",
+      "priority": "P3",
       "phase": "scoping",
       "stage": "review",
+      "stageSource": "derived",
       "progress": {
         "closed": 0,
         "total": 1
@@ -111,6 +117,7 @@
       "nextReason": "the reviewed mark is missing",
       "takeable": [],
       "taken": [],
+      "assignee": null,
       "warnings": [
         {
           "kind": "review",
@@ -150,8 +157,10 @@
       "slug": "006-partial-push",
       "title": "Stop a timed-out push from leaving a half-written manifest behind",
       "type": "bug",
+      "priority": "P1",
       "phase": "scoping",
       "stage": "review",
+      "stageSource": "derived",
       "progress": {
         "closed": 0,
         "total": 4
@@ -161,6 +170,12 @@
       "nextReason": "the reviewed mark is stale",
       "takeable": [],
       "taken": [],
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      },
       "warnings": [
         {
           "kind": "drift",
@@ -205,8 +220,10 @@
       "slug": "002-web-console",
       "title": "Show every sync run and its failures in a small web console",
       "type": "feature",
+      "priority": "P2",
       "phase": "building",
       "stage": "build",
+      "stageSource": "explicit",
       "progress": {
         "closed": 25,
         "total": 30
@@ -224,6 +241,12 @@
         "ISC-77"
       ],
       "taken": [],
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      },
       "warnings": [],
       "gates": {
         "reviewed": {
@@ -255,12 +278,68 @@
       "goal": "A teammate opens the console, finds any mirrored repository in two steps, and sees each sync run with its failures, on a phone-sized screen and with the keyboard alone."
     },
     {
+      "id": "009",
+      "slug": "009-chunked-upload-limits",
+      "title": "Find the largest blob chunk each target registry accepts",
+      "type": "spike",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "build",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 1,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": "/spec-implement 009",
+      "nextReason": "ISC-131 is takeable",
+      "takeable": [
+        "ISC-131"
+      ],
+      "taken": [],
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      },
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-08T14:10:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-09T09:30:00Z",
+      "lastRound": null,
+      "goal": "A recorded table names each target registry's chunk limit, and Harbor never picks a chunk larger than it."
+    },
+    {
       "id": "003",
       "slug": "003-config-loader",
       "title": "Read the config through one loader in the CLI, the API and the console",
       "type": "refactor",
+      "priority": "P3",
       "phase": "scoping",
       "stage": "tasks",
+      "stageSource": "derived",
       "progress": {
         "closed": 0,
         "total": 13
@@ -270,6 +349,7 @@
       "nextReason": "13 claims and no tasks.md",
       "takeable": [],
       "taken": [],
+      "assignee": null,
       "warnings": [
         {
           "kind": "review",
@@ -302,6 +382,105 @@
       "updated": "2026-03-09T17:30:00Z",
       "lastRound": null,
       "goal": "The CLI, the API and the console read their configuration through one loader, and the effective config for every case in the snapshot corpus is unchanged."
+    },
+    {
+      "id": "008",
+      "slug": "008-referrers-support",
+      "title": "Find out which target registries answer the OCI referrers endpoint",
+      "type": "spike",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "close-pending",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": null,
+      "nextReason": "every claim is closed and F6 waits on spec 009",
+      "takeable": [],
+      "taken": [],
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      },
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-08T14:00:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-09T09:00:00Z",
+      "lastRound": null,
+      "goal": "A recorded table says which target registry answers the referrers endpoint, and a decision names the fallback for the ones that do not."
+    },
+    {
+      "id": "007",
+      "slug": "007-rotate-mirror-token",
+      "title": "Replace the push token without stopping a scheduled sync",
+      "type": "chore",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "done",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": null,
+      "nextReason": "every claim of the chore is closed",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-09T09:00:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-09T11:00:00Z",
+      "lastRound": null,
+      "goal": "The push token is replaced with one command, and the next scheduled run uses the new token without a restart."
     }
   ],
   "nextUp": [
@@ -422,5 +601,44 @@
     }
   },
   "services": [],
-  "diagnostics": []
+  "diagnostics": [
+    {
+      "file": "specs/005-config-format-choice/spec.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "frontmatter-priority",
+        "message": "priority high is none of P1, P2, P3, P4; it reads as P3.",
+        "line": 7
+      }
+    },
+    {
+      "file": "specs/006-partial-push/spec.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "stage-mismatch",
+        "message": "stage \"review\" is contradicted by the last events.jsonl line, which enters \"build\"; the derived stage applies.",
+        "line": 8,
+        "subject": "review"
+      }
+    }
+  ],
+  "ideas": {
+    "count": 2,
+    "list": [
+      {
+        "feature": "F2",
+        "milestone": "Harbor 2.0",
+        "slug": "console-audit-log",
+        "title": "Every change made in the web console is written to an audit log a teammate can read back.",
+        "priority": "P3"
+      },
+      {
+        "feature": "F7",
+        "milestone": "Harbor 1.0",
+        "slug": "registry-webhooks",
+        "title": "A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.",
+        "priority": "P2"
+      }
+    ]
+  }
 }

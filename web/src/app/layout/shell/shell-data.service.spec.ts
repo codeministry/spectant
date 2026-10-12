@@ -9,6 +9,7 @@ type Milestone = PlanningBody['milestones'][number];
 
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
 const milestone = (name: string, specs: Milestone['specs']): Milestone => ({
+  ideas: [],
   name,
   slug: name,
   target: '2026-12-01',
@@ -19,10 +20,23 @@ const milestone = (name: string, specs: Milestone['specs']): Milestone => ({
   features: [],
   specs,
 });
-const model = (milestones: readonly Milestone[]): PlanningBody => ({ features: [], milestones, recount: null, diagnostics: [] });
+const model = (milestones: readonly Milestone[]): PlanningBody => ({
+  workflow: { rows: [], source: 'default', diagnostics: [] },
+  stages: [],
+  stageCounts: {},
+  ideas: [],
+  features: [],
+  milestones,
+  recount: null,
+  diagnostics: [],
+});
 const holder = { id: '003', title: 'Planning', main: false, archived: false } as unknown as Milestone['specs'][number];
 
-function setUp(planning: (ws: string) => Promise<ApiResult<PlanningBody>>, initialWs: string | null) {
+function setUp(
+  planning: (ws: string) => Promise<ApiResult<PlanningBody>>,
+  initialWs: string | null,
+  extra: Partial<Record<'actors' | 'putActors' | 'boardQuery' | 'putBoardQuery', unknown>> = {},
+) {
   const ws = signal<string | null>(initialWs);
   const calls: string[] = [];
   const api = {
@@ -33,6 +47,9 @@ function setUp(planning: (ws: string) => Promise<ApiResult<PlanningBody>>, initi
       calls.push(slug);
       return planning(slug);
     },
+    actors: () => Promise.resolve(ok([])),
+    boardQuery: () => Promise.resolve(ok({ query: '' })),
+    ...extra,
   };
   TestBed.configureTestingModule({
     providers: [
@@ -101,5 +118,105 @@ describe('ShellData.planning (T22)', () => {
     await settle();
     expect(down.data.planningUnavailable()).toBe(true);
     expect(down.data.hasMilestones()).toBe(false);
+  });
+});
+
+describe('ShellData spec 008 (T112, ISC-129.1)', () => {
+  const idea = { slug: 'tide-tables', title: 'Tide tables', type: 'feature', feature: null, milestone: null, priority: 'P3', path: 'specs/ideas/tide-tables.md' } as const;
+  const board = (): PlanningBody => ({
+    ...model([]),
+    workflow: { rows: [], source: 'file', diagnostics: [] },
+    stages: ['idea', 'plan', 'build', 'blocked', 'done'],
+    stageCounts: { idea: 1, plan: 2, build: 0 },
+    ideas: [idea],
+  });
+
+  it('exposes the planning model\'s workflow, stages, stage counts and ideas as signals', async () => {
+    const { data } = setUp(() => Promise.resolve(ok(board())), 'harbor');
+    await settle();
+    expect(data.workflow()).toEqual({ rows: [], source: 'file', diagnostics: [] });
+    expect(data.stages()).toEqual(['idea', 'plan', 'build', 'blocked', 'done']);
+    expect(data.stageCounts()).toEqual({ idea: 1, plan: 2, build: 0 });
+    expect(data.ideas()).toEqual([idea]);
+  });
+
+  it('answers null workflow and empty stages, counts and ideas while the planning tree is not ok', async () => {
+    const { data } = setUp(() => Promise.resolve({ kind: 'not-found', served: true }), 'harbor');
+    await settle();
+    expect(data.workflow()).toBeNull();
+    expect(data.stages()).toEqual([]);
+    expect(data.stageCounts()).toEqual({});
+    expect(data.ideas()).toEqual([]);
+  });
+
+  it('loads the actor names once, and reloads them after an accepted PUT only', async () => {
+    const stored = [{ id: 'u:3f9c0a7d', displayName: 'Harbour Master', gitIdentities: [] }];
+    let reads = 0;
+    let current: readonly unknown[] = [];
+    const { data } = setUp(() => Promise.resolve(ok(model([]))), null, {
+      actors: () => {
+        reads += 1;
+        return Promise.resolve(ok(current));
+      },
+      putActors: (list: readonly unknown[]) => {
+        if (list.length === 0) return Promise.resolve({ kind: 'error', status: 400, error: 'invalid-body' });
+        current = list;
+        return Promise.resolve({ kind: 'ok', body: list });
+      },
+    });
+    await settle();
+    expect(reads).toBe(1);
+    expect(data.actorList()).toEqual([]);
+
+    expect(await data.saveActors(stored)).toEqual({ kind: 'ok', body: stored });
+    await settle();
+    expect(reads).toBe(2);
+    expect(data.actorList()).toEqual(stored);
+
+    expect(await data.saveActors([])).toEqual({ kind: 'error', status: 400, error: 'invalid-body' });
+    await settle();
+    expect(reads).toBe(2);
+    expect(data.actorList()).toEqual(stored);
+  });
+
+  it('answers an empty actor list when the actor route fails', async () => {
+    const { data } = setUp(() => Promise.resolve(ok(model([]))), null, { actors: () => Promise.reject(new Error('down')) });
+    await settle();
+    expect(data.actorList()).toEqual([]);
+  });
+
+  it('loads the board query per workspace, and keeps the stored query after a PUT', async () => {
+    const reads: string[] = [];
+    const puts: Array<[string, string]> = [];
+    const { data, ws } = setUp(() => Promise.resolve(ok(model([]))), null, {
+      boardQuery: (slug: string) => {
+        reads.push(slug);
+        return Promise.resolve(ok({ query: slug === 'harbor' ? 'feature=F1' : '' }));
+      },
+      putBoardQuery: (slug: string, query: string) => {
+        puts.push([slug, query]);
+        return Promise.resolve({ kind: 'ok', body: { query } });
+      },
+    });
+    await settle();
+    expect(reads).toEqual([]);
+    expect(data.boardQueryText()).toBeNull();
+    expect(await data.saveBoardQuery('col=build')).toEqual({ kind: 'error', status: 0, error: null });
+
+    ws.set('harbor');
+    await settle();
+    expect(reads).toEqual(['harbor']);
+    expect(data.boardQueryText()).toBe('feature=F1');
+
+    expect(await data.saveBoardQuery('group=feature')).toEqual({ kind: 'ok', body: { query: 'group=feature' } });
+    TestBed.tick();
+    expect(puts).toEqual([['harbor', 'group=feature']]);
+    expect(data.boardQueryText()).toBe('group=feature');
+    expect(reads).toEqual(['harbor']);
+
+    ws.set('lantern');
+    await settle();
+    expect(reads).toEqual(['harbor', 'lantern']);
+    expect(data.boardQueryText()).toBe('');
   });
 });

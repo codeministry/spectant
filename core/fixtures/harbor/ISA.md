@@ -3,7 +3,7 @@ task: "Mirror container manifests between registries with Harbor"
 slug: 20260302-harbor
 project: harbor
 phase: climbing
-progress: 101/124
+progress: 106/130
 started: 2026-03-02T08:00:00Z
 updated: 2026-03-09T17:30:00Z
 ---
@@ -175,6 +175,12 @@ with identical digests, while the console shows each run and retention keeps the
 | ISC-122 | e2e | preview shown for a scheduled run | before delete | `bun run e2e -- retention -g "preview 8"` | literal |  |
 | ISC-123 | e2e | preview shown for a manual run | before delete | `bun run e2e -- retention -g "preview 9"` | literal |  |
 | ISC-124 | e2e | preview shown for a policy file with comments | before delete | `bun run e2e -- retention -g "preview 10"` | literal |  |
+| ISC-126 | bun-test | token used by the run after a rotation | the new token | `bun test tests/token.test.ts -t "rotate"` | literal |  |
+| ISC-127 | bun-test | registry stub log after a rotation | 0 requests with the old token | `bun test tests/token.test.ts -t "old token"` | derived: no-leak | high |
+| ISC-128 | bash | registries listed in the referrers probe output | 4 rows | `bun run cli -- probe referrers --matrix tests/registries.toml` | literal |  |
+| ISC-129 | manual | decision row for the referrers fallback | present | review of `spec.md` § Decisions | derived: registry-is-truth |  |
+| ISC-130 | bash | registries listed in the chunk probe output | 4 rows | `bun run cli -- probe chunks --matrix tests/registries.toml` | literal |  |
+| ISC-131 | bun-test | chunk size chosen per registry against the recorded limit | 0 over the limit | `bun test tests/chunks.test.ts -t "limit"` | derived: atomic-push | high |
 
 ## Features
 
@@ -322,6 +328,23 @@ Why: old manifests go away on a schedule the team wrote down, and nothing still 
 - [x] ISC-123: The console shows the effect of a manual run before anything is deleted. (after: ISC-103)
 - [x] ISC-124: The console shows the effect of a policy file with comments before anything is deleted. (after: ISC-104)
 
+### F5 · Mirror credentials
+Why: the token Harbor pushes with can be replaced without stopping a scheduled sync.
+
+- [x] ISC-126: `harbor token rotate` replaces the push token in the credential store, and the next scheduled run uses it without a restart.
+- [x] ISC-127: Anti: a sync started after the rotation authenticates with the old token.
+
+### F6 · Registry compatibility
+Why: Harbor lists a registry as supported only after a spike has checked it, so a team knows before its first sync what will work.
+
+- [x] ISC-128: A recorded table names, for each of the four target registries in the test matrix, whether it answers the OCI referrers endpoint.
+- [x] ISC-129: A decision row names the fallback Harbor uses on a registry without the referrers endpoint.
+- [x] ISC-130: A recorded table names the largest chunk each target registry in the test matrix accepts in a chunked blob upload.
+- [ ] ISC-131: Anti: Harbor picks a chunk size for a registry that is larger than the limit the spike recorded for it. (after: ISC-130)
+
+### F7 · Registry webhooks
+Why: a mirror that reacts when an upstream tag moves, instead of waiting for the next scheduled run.
+
 ## Milestones
 
 - Harbor 0.9 · 2026-03-15 · Config through one loader, before the console ships.
@@ -332,6 +355,9 @@ Why: old manifests go away on a schedule the team wrote down, and nothing still 
 - 2026-03-02: features split into sync, console, config loader and retention; cross-cutting claims in F0.
 - 2026-03-05: spec 001 closed and archived; sync is idempotent on digest, not on tag.
 - 2026-03-07: refined: the console's colour mode is a stored setting (ISC-60.1, ISC-60.2).
+- 2026-03-09: token rotation is a chore (spec 007): one small fix, spec.md only, no plan and no tasks.
+- 2026-03-09: registry compatibility is checked by spikes, one question each (specs 008 and 009); their code review runs once for the whole feature.
+- 2026-03-09: registry webhooks get a feature block before any claim (F7); the story under it is shaped first.
 
 ## Verification
 
@@ -436,6 +462,11 @@ Why: old manifests go away on a schedule the team wrote down, and nothing still 
 - ISC-122: `bun run e2e -- retention -g "preview 8"` passed, 2026-03-08
 - ISC-123: `bun run e2e -- retention -g "preview 9"` passed, 2026-03-08
 - ISC-124: `bun run e2e -- retention -g "preview 10"` passed, 2026-03-08
+- ISC-126: `bun test tests/token.test.ts -t "rotate"` passed, 2026-03-09
+- ISC-127: `bun test tests/token.test.ts -t "old token"` passed, 2026-03-09
+- ISC-128: `bun run cli -- probe referrers --matrix tests/registries.toml` passed, 2026-03-09
+- ISC-129: review of `spec.md` § Decisions passed, 2026-03-09
+- ISC-130: `bun run cli -- probe chunks --matrix tests/registries.toml` passed, 2026-03-09
 
 ## Remaining Work
 

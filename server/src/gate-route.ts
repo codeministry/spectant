@@ -2,7 +2,7 @@
  * The gate route (T69, ISC-24): `POST …/:id/gate/reviewed`. The reviewer confirms the three files as the page showed
  * them; the server re-reads and re-hashes them (`hashForGate`), and only when all three still match and no lock holds
  * the spec does it write `.gates/reviewed.json` in the old skill's byte format (`reviewedMarkText`, over the server's
- * own hashes) and append exactly one `review → build` event line (actor `app`) to `events.jsonl`. The mark is written
+ * own hashes) and append exactly one `review → build` event line (actor the viewer's `u:` id, else `VIEWER_ACTOR_FALLBACK`; T80) to `events.jsonl`. The mark is written
  * first, then the event: a failure between them leaves a mark without its event, never an event without a mark.
  */
 import { join } from "node:path";
@@ -20,6 +20,8 @@ export interface GateWriteInput {
   readonly body: GateReviewedRequest;
   /** The workspace's constitution, for the lane table of the spec's task claims. */
   readonly constitution: string | null;
+  /** The event's actor: `writeActorOf` of the viewer's `u:` id (T80). */
+  readonly actor: string;
 }
 
 export function writeGateReviewed(input: GateWriteInput): Promise<WriteResult<"gateReviewed">> {
@@ -39,7 +41,7 @@ export function writeGateReviewed(input: GateWriteInput): Promise<WriteResult<"g
         claim: null,
         commit: (lockSource) => {
           const at = now.toISOString();
-          const event = reviewedEvent(at, ref.slug);
+          const event = reviewedEvent(at, ref.slug, input.actor);
           writeInPlace(join(ensureGatesDir(ref.dir), "reviewed.json"), reviewedMarkText(at, hashes));
           const events = join(ref.dir, EVENTS_PATH);
           appendInPlace(events, eventAppendBytes(readIfExists(events), event));

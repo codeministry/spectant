@@ -11,9 +11,11 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { buildDashboard, devServiceLabels, toLocalService } from '../src/dashboard.ts';
-import type { DashboardModel, DashboardSpecRow } from '../src/dashboard.ts';
+import type { DashboardInput, DashboardModel, DashboardSpecRow } from '../src/dashboard.ts';
 import type { LockReading } from '../src/files.ts';
 import { readLockSources } from '../src/locks.ts';
+import { buildSpecPage } from '../src/spec.ts';
+import { STAGE_RULES, WAITING_STAGES, fillsTemplate } from '../src/stage.ts';
 import { FIXTURES, fixtureTrees, readTree } from './helpers/read-tree.ts';
 
 const model = (name: string): DashboardModel => buildDashboard(readTree(name));
@@ -42,8 +44,8 @@ function strings(value: unknown, out: string[] = []): string[] {
 describe('harbor: the README Expected column', () => {
   const m = model('harbor');
 
-  test('the master fraction is the three-digit/three-digit 101/124', () => {
-    expect(m.kpis.master).toEqual({ closed: 101, total: 124 });
+  test('the master fraction is the three-digit/three-digit 106/130', () => {
+    expect(m.kpis.master).toEqual({ closed: 106, total: 130 });
   });
 
   test('stages per spec as the old skill derives them', () => {
@@ -53,6 +55,9 @@ describe('harbor: the README Expected column', () => {
       '004': 'code-review',
       '005': 'review',
       '006': 'review',
+      '007': 'done', // the chore, reviewed with every claim closed (spec 008, T50)
+      '008': 'close-pending', // every claim closed, waits on 009 under `code_review: feature` (spec 008, T49)
+      '009': 'build',
     });
   });
 
@@ -84,7 +89,8 @@ describe('harbor: the README Expected column', () => {
   });
 
   test('rows in action order (nearest to done first), Next up the top three with a command', () => {
-    expect(m.specs.map((r) => r.id)).toEqual(['004', '005', '006', '002', '003']);
+    // close-pending names no command and sits with done, just before it (spec 008, T49).
+    expect(m.specs.map((r) => r.id)).toEqual(['004', '005', '006', '002', '009', '003', '008', '007']);
     expect(m.nextUp).toEqual(['004', '005', '006']);
     expect(row(m, '002').nextCommand).toBe('/spec-implement 002');
     expect(row(m, '002').takeable.length).toBeGreaterThan(0);
@@ -92,16 +98,16 @@ describe('harbor: the README Expected column', () => {
 
   test('KPIs: specs split building and scoping, attention is warnings plus open fog', () => {
     const { kpis } = m;
-    expect(kpis.specs).toBe(5);
-    expect(kpis.building).toBe(2); // 002 build, 004 code-review
-    expect(kpis.scoping).toBe(3); // 003 tasks, 005 and 006 review
-    expect(kpis.warnings).toBe(7);
+    expect(kpis.specs).toBe(8);
+    expect(kpis.building).toBe(4); // 002 and 009 build, 004 code-review, 008 close-pending
+    expect(kpis.scoping).toBe(3); // 003 tasks, 005 and 006 review; 007 is done
+    expect(kpis.warnings).toBe(7); // the done chore and the close-pending 008 carry none (T49, T50)
     expect(kpis.attention).toBe(kpis.warnings + kpis.fog);
     expect(kpis.takeable).toBe(m.specs.reduce((n, r) => n + r.takeable.length, 0));
     expect(kpis.claims).toEqual(
       m.specs.filter((r) => r.stage !== 'done').reduce((a, r) => ({ closed: a.closed + r.progress.closed, total: a.total + r.progress.total }), { closed: 0, total: 0 }),
     );
-    expect(m.stageCounts).toMatchObject({ build: 1, tasks: 1, 'code-review': 1, review: 2, done: 0 });
+    expect(m.stageCounts).toMatchObject({ build: 2, tasks: 1, 'code-review': 1, 'close-pending': 1, review: 2, done: 1 });
   });
 
   test('warnings grouped by kind, each item naming its spec', () => {
@@ -219,9 +225,9 @@ describe('multi-workspace', () => {
   test('two workspaces built side by side each list their own specs, nothing crosses over', () => {
     const harbor = model('harbor');
     const lantern = model('lantern');
-    expect(harbor.specs.map((r) => r.slug).sort()).toEqual(['002-web-console', '003-config-loader', '004-retention-policies', '005-config-format-choice', '006-partial-push']);
+    expect(harbor.specs.map((r) => r.slug).sort()).toEqual(['002-web-console', '003-config-loader', '004-retention-policies', '005-config-format-choice', '006-partial-push', '007-rotate-mirror-token', '008-referrers-support', '009-chunked-upload-limits']);
     expect(lantern.specs.map((r) => r.slug).sort()).toEqual(['001-reading-list', '002-duplicate-links']);
-    expect(harbor.kpis.master).toEqual({ closed: 101, total: 124 });
+    expect(harbor.kpis.master).toEqual({ closed: 106, total: 130 });
     expect(lantern.kpis.master?.total).toBe(12);
     // pure: building one never changes the other
     expect(JSON.stringify(model('harbor'))).toBe(JSON.stringify(harbor));
@@ -263,7 +269,7 @@ describe('taken and lock warnings (spec 002 T115, ISC-90)', () => {
 
   test("harbor 002's row lists the ISC-74 activity lock with its session and since", async () => {
     const m = await withLocks(readLockSources({ repoRoot: HARBOR, now: NOW }));
-    expect(row(m, '002').taken).toEqual([{ id: 'ISC-74', session: 'spec-002-ISC-74', since: '2026-03-08T14:06:00Z', source: 'activity' }]);
+    expect(row(m, '002').taken).toEqual([{ id: 'ISC-74', session: 'a:claude:sess-2', since: '2026-03-08T14:06:00Z', source: 'activity' }]);
     expect(kinds(row(m, '002'))).toEqual([]);
     for (const r of m.specs.filter((s) => s.id !== '002')) expect(r.taken).toEqual([]);
   });
@@ -277,16 +283,16 @@ describe('taken and lock warnings (spec 002 T115, ISC-90)', () => {
   });
 
   test('a claim held in both sources is listed once, the frontier lock winning as on the live frame', async () => {
-    const repo = tempRepo(['{"ts":"2026-03-08T15:00:00Z","event":"claim","claim":"ISC-75","session":"act-75"}']);
-    const state = stateWith(repo, { 'ISC-75': { session: 'front-75', ts: '2026-03-08T15:30:00.000Z' } });
+    const repo = tempRepo(['{"ts":"2026-03-08T15:00:00Z","event":"claim","claim":"ISC-75","session":"a:claude:act-75"}']);
+    const state = stateWith(repo, { 'ISC-75': { session: 'a:lifeos:front-75', ts: '2026-03-08T15:30:00.000Z' } });
     const m = await withLocks(readLockSources({ repoRoot: repo, lifeosStateDir: state, now: NOW }));
-    expect(row(m, '002').taken).toEqual([{ id: 'ISC-75', session: 'front-75', since: '2026-03-08T15:30:00.000Z', source: 'frontier' }]);
+    expect(row(m, '002').taken).toEqual([{ id: 'ISC-75', session: 'a:lifeos:front-75', since: '2026-03-08T15:30:00.000Z', source: 'frontier' }]);
   });
 
   test('a malformed activity line is a row warning of kind locks on every open row, never a throw', async () => {
-    const repo = tempRepo(['not json', '{"ts":"2026-03-08T15:00:00Z","event":"claim","claim":"ISC-76","session":"s-76"}']);
+    const repo = tempRepo(['not json', '{"ts":"2026-03-08T15:00:00Z","event":"claim","claim":"ISC-76","session":"a:claude:s-76"}']);
     const m = await withLocks(readLockSources({ repoRoot: repo, now: NOW }));
-    expect(row(m, '002').taken).toEqual([{ id: 'ISC-76', session: 's-76', since: '2026-03-08T15:00:00Z', source: 'activity' }]);
+    expect(row(m, '002').taken).toEqual([{ id: 'ISC-76', session: 'a:claude:s-76', since: '2026-03-08T15:00:00Z', source: 'activity' }]);
     expect(open(m).length).toBeGreaterThan(0);
     for (const r of open(m)) {
       const locks = r.warnings.filter((w) => w.kind === 'locks');
@@ -298,17 +304,17 @@ describe('taken and lock warnings (spec 002 T115, ISC-90)', () => {
   });
 
   test("a diagnostic naming a claim lands on that claim's row only, with the claim as ref", async () => {
-    const repo = tempRepo(['{"ts":"2026-03-08T15:00:00Z","event":"release","claim":"ISC-75","session":"s-75"}']);
+    const repo = tempRepo(['{"ts":"2026-03-08T15:00:00Z","event":"release","claim":"ISC-75","session":"a:claude:s-75"}']);
     const m = await withLocks(readLockSources({ repoRoot: repo, now: NOW }));
     const locks = row(m, '002').warnings.filter((w) => w.kind === 'locks');
     expect(locks.map((w) => w.ref)).toEqual(['ISC-75']);
-    expect(locks[0]?.text).toContain('ISC-75 is released by s-75 but is not held');
+    expect(locks[0]?.text).toContain('ISC-75 is released by a:claude:s-75 but is not held');
     for (const r of m.specs.filter((s) => s.id !== '002')) expect(kinds(r)).not.toContain('locks');
   });
 
   test('a stale frontier lock is a locks warning on its row and not taken', async () => {
     const repo = tempRepo();
-    const state = stateWith(repo, { 'ISC-75': { session: 'old-75', ts: '2026-03-08T12:00:00.000Z' } });
+    const state = stateWith(repo, { 'ISC-75': { session: 'a:lifeos:old-75', ts: '2026-03-08T12:00:00.000Z' } });
     const m = await withLocks(readLockSources({ repoRoot: repo, lifeosStateDir: state, now: NOW }));
     expect(row(m, '002').taken).toEqual([]);
     expect(row(m, '002').warnings.filter((w) => w.kind === 'locks').map((w) => w.ref)).toEqual(['ISC-75']);
@@ -316,5 +322,82 @@ describe('taken and lock warnings (spec 002 T115, ISC-90)', () => {
 
   test('a spec without locks, or a model without a reading, has taken []', () => {
     for (const r of model('harbor').specs) expect(r.taken).toEqual([]);
+  });
+});
+
+// ─── One reason phrase on every surface (spec 008, T69, ISC-122.3) ─────────────────────────────────────────────────
+
+describe('reason: the dashboard row and the spec head carry the same phrase (T69)', () => {
+  const tree = readTree('harbor');
+  const dash = buildDashboard(tree);
+
+  test('harbor has a spec in every waiting row the fixture reaches', () => {
+    const waiting = new Set(dash.specs.filter((r) => WAITING_STAGES.has(r.stage)).map((r) => r.stage));
+    for (const stage of ['review', 'close-pending', 'code-review'] as const) expect(waiting.has(stage)).toBe(true);
+  });
+
+  for (const r of dash.specs) {
+    test(`${r.slug}: row nextReason = head nextReason = next.reasons[0], one phrase of its row`, () => {
+      const all = [...tree.specs, ...tree.archived];
+      const files = all.find((f) => f.folder === r.slug);
+      if (!files) throw new Error(`no folder ${r.slug}`);
+      const page = buildSpecPage({
+        files: { folder: r.slug, texts: { ...files.texts, ...(tree.master === null ? {} : { master: tree.master }), ...(tree.constitution === null ? {} : { constitution: tree.constitution }) } },
+        others: all.filter((f) => f !== files),
+        tldr: tree.tldr,
+        worktreeTree: tree.worktreeTree ?? null,
+        ...(tree.workflow ? { workflow: tree.workflow } : {}),
+      });
+      expect(page.head.nextReason).toBe(r.nextReason);
+      expect(page.next.reasons[0]).toBe(r.nextReason);
+      const templates = STAGE_RULES.flatMap((rule) => rule.reasons).filter((t) => fillsTemplate(t, r.nextReason));
+      expect(templates).toHaveLength(1);
+    });
+  }
+});
+
+// ─── The stories on the dashboard (spec 008, T70, ISC-124.2) ───────────────────────────────────────────────────────
+
+describe('ideas: the dashboard lists the stories (T70)', () => {
+  test('harbor: two stories with feature, milestone, slug, title and priority, in file-name order', () => {
+    expect(model('harbor').ideas).toEqual({
+      count: 2,
+      list: [
+        {
+          feature: 'F2',
+          milestone: 'Harbor 2.0',
+          slug: 'console-audit-log',
+          title: 'Every change made in the web console is written to an audit log a teammate can read back.',
+          priority: 'P3',
+        },
+        {
+          feature: 'F7',
+          milestone: 'Harbor 1.0',
+          slug: 'registry-webhooks',
+          title: 'A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.',
+          priority: 'P2',
+        },
+      ],
+    });
+  });
+
+  /** harbor's input as a reader that passes no story folder builds it: no `ideas` key at all. */
+  const harborWithoutIdeas = (): DashboardInput => {
+    const input: { -readonly [K in keyof DashboardInput]: DashboardInput[K] } = { ...readTree('harbor') };
+    delete input.ideas;
+    return input;
+  };
+
+  test('every other fixture, and an input without ideas, has none', () => {
+    for (const name of fixtureTrees().filter((n) => n !== 'harbor')) expect(model(name).ideas).toEqual({ count: 0, list: [] });
+    const withoutIdeas = harborWithoutIdeas();
+    expect(buildDashboard(withoutIdeas).ideas).toEqual({ count: 0, list: [] });
+  });
+
+  test('stories add no spec, claim or diagnostic to the dashboard', () => {
+    const withoutIdeas = harborWithoutIdeas();
+    const without = buildDashboard(withoutIdeas);
+    const withIdeas = model('harbor');
+    expect({ ...withIdeas, ideas: without.ideas }).toEqual(without);
   });
 });

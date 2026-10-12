@@ -81,6 +81,22 @@ export default defineConfig(
       // Bans `@Output()`: `output()` needs no EventEmitter (an RxJS Subject) in component code.
       '@angular-eslint/prefer-output-emitter-ref': 'error',
       '@angular-eslint/prefer-inject': 'error',
+      // DS-APP-23 (ISC-130): of the Angular CDK only `drag-drop` and `scrolling` may be imported. Overlay, dialog,
+      // menu and focus (a11y) primitives exist once, in shared/ui; a second layer from the CDK would duplicate them.
+      // The regex refuses the bare package and every other entry, sub-entries of the allowed two included.
+      // Guarded by web/tests/cdk-entries.test.ts.
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^@angular/cdk(?!/(?:drag-drop|scrolling)$)(?:/.*)?$',
+              message:
+                'Only @angular/cdk/drag-drop and @angular/cdk/scrolling may be imported: the app keeps its own overlay, dialog, menu and focus primitives in shared/ui (DS-APP-23).',
+            },
+          ],
+        },
+      ],
     },
   },
 

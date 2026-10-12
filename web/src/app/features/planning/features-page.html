@@ -78,6 +78,20 @@
                       }
                     </ul>
                   }
+
+                  @if (feature.ideas.length > 0) {
+                    @let ideasLabel = 'f-' + feature.id + '-ideas';
+                    <div class="ideas" [attr.data-ideas]="feature.ideas.length">
+                      <span class="ideas-label" data-ideas-label [id]="ideasLabel">{{
+                        'planning.ideas.label' | transloco: { count: feature.ideas.length }
+                      }}</span>
+                      <ul [attr.aria-labelledby]="ideasLabel">
+                        @for (idea of feature.ideas; track idea.slug) {
+                          <li><ui-idea-chip [ws]="state.ws() ?? ''" [slug]="idea.slug" [title]="idea.title" /></li>
+                        }
+                      </ul>
+                    </div>
+                  }
                 </div>
 
                 <div class="side">

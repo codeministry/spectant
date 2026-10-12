@@ -1,5 +1,7 @@
 import { computed, inject, Injectable, resource } from '@angular/core';
-import { ApiClient, type WorkspaceListEntry } from '../../core/api.service';
+import type { Priority } from '../../../../../core/src/files';
+import type { ActorMapping, BoardQuery } from '../../../../../server/src/spec-routes.contract';
+import { ApiClient, type PlanningBody, type PutResult, type WorkspaceListEntry } from '../../core/api.service';
 import { type LiveReading, LockSourceService } from '../../core/lock-source.service';
 import { ShellState } from './shell-state.service';
 
@@ -12,7 +14,14 @@ export interface SpecRowView {
   readonly title: string;
   readonly type: string | null;
   readonly stage: string;
+  /**
+   * The dashboard row's `priority` (P3 for a missing or invalid key); null when the row carries none (archive rows).
+   * Optional so hand-built rows in specs need not name it.
+   */
+  readonly priority?: Priority | null;
 }
+
+const PRIORITIES: readonly Priority[] = ['P1', 'P2', 'P3', 'P4'];
 
 type Loose = Readonly<Record<string, unknown>>;
 const isLoose = (value: unknown): value is Loose => typeof value === 'object' && value !== null;
@@ -25,7 +34,8 @@ function rowsOf(body: unknown, key: 'specs' | 'archive'): SpecRowView[] {
     const id = text(row['id']);
     if (id === null) return [];
     const stage = text(row['stage']) ?? (key === 'archive' ? 'done' : 'plan');
-    return [{ id, title: text(row['title']) ?? id, type: text(row['type']), stage }];
+    const priority = PRIORITIES.find((level) => level === row['priority']) ?? null;
+    return [{ id, title: text(row['title']) ?? id, type: text(row['type']), stage, priority }];
   });
 }
 
@@ -50,6 +60,18 @@ export class ShellData {
   readonly planning = resource({
     params: () => this.state.ws() ?? undefined,
     loader: ({ params }) => this.api.planning(params),
+  });
+
+  /**
+   * The actor names (spec 008, T112): the whole `ActorMapping` list, loaded once for the app; `saveActors` reloads it
+   * after an accepted `PUT`, so every chip renders the names as stored.
+   */
+  readonly actors = resource({ loader: () => this.api.actors() });
+
+  /** The open workspace's remembered board query (spec 008, T112), keyed like `planning`. */
+  readonly boardQuery = resource({
+    params: () => this.state.ws() ?? undefined,
+    loader: ({ params }) => this.api.boardQuery(params),
   });
 
   readonly spec = resource({
@@ -107,6 +129,46 @@ export class ShellData {
     return result?.kind === 'not-found' && result.served;
   });
   readonly planningUnavailable = computed(() => this.planning.value()?.kind === 'unavailable');
+
+  /** The workspace's workflow as the planning tree carries it (spec 008); null until it answers `ok`. */
+  readonly workflow = computed<PlanningBody['workflow'] | null>(() => this.planningModel()?.workflow ?? null);
+  /** The board's columns in board order (`boardStages`), as served; empty until the planning tree answers `ok`. */
+  readonly stages = computed<PlanningBody['stages']>(() => this.planningModel()?.stages ?? []);
+  /** The count per board column as served (a column without specs may be absent); empty until `ok`. */
+  readonly stageCounts = computed<PlanningBody['stageCounts']>(() => this.planningModel()?.stageCounts ?? {});
+  /** Every story of `specs/ideas/`, in file-name order, as served; empty until `ok`. */
+  readonly ideas = computed<PlanningBody['ideas']>(() => this.planningModel()?.ideas ?? []);
+
+  /** The actor names as stored; empty while loading and for every answer but `ok` (a failed route included). */
+  readonly actorList = computed<readonly ActorMapping[]>(() => {
+    const result = this.actors.hasValue() ? this.actors.value() : undefined;
+    return result?.kind === 'ok' ? result.body : [];
+  });
+
+  /** The open workspace's stored board query (`''` when none is stored); null without a workspace or an `ok` answer. */
+  readonly boardQueryText = computed<string | null>(() => {
+    const result = this.boardQuery.hasValue() ? this.boardQuery.value() : undefined;
+    return result?.kind === 'ok' ? result.body.query : null;
+  });
+
+  /** `PUT /api/actors` with the whole list; on an accepted answer the `actors` resource reloads. */
+  async saveActors(list: readonly ActorMapping[]): Promise<PutResult<readonly ActorMapping[]>> {
+    const result = await this.api.putActors(list);
+    if (result.kind === 'ok') this.actors.reload();
+    return result;
+  }
+
+  /**
+   * Stores the board URL's query for the open workspace. The accepted answer is the query as stored, so it becomes
+   * the resource's value without a second read; without a workspace nothing is sent (`error`, status 0).
+   */
+  async saveBoardQuery(query: string): Promise<PutResult<BoardQuery>> {
+    const ws = this.state.ws();
+    if (ws === null) return { kind: 'error', status: 0, error: null };
+    const result = await this.api.putBoardQuery(ws, query);
+    if (result.kind === 'ok' && this.state.ws() === ws) this.boardQuery.set({ kind: 'ok', body: result.body, etag: null, notModified: false });
+    return result;
+  }
 
   /**
    * The open spec does not exist (ISC-71): the spec route answered the contract's 404, the workspace is unknown, or

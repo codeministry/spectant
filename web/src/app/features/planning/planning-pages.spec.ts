@@ -23,6 +23,7 @@ const DASHBOARD = {
 type Milestone = PlanningBody['milestones'][number];
 
 const milestone = (name: string, specs: Milestone['specs']): Milestone => ({
+  ideas: [],
   name,
   slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
   target: '2026-11-30',
@@ -35,14 +36,18 @@ const milestone = (name: string, specs: Milestone['specs']): Milestone => ({
 });
 
 const planning = (milestones: readonly Milestone[]): PlanningBody => ({
-  features: [{ id: 'F2', name: 'Web console', why: null, closed: 2, total: 4, claims: [], holders: [], unheld: [] }],
+  workflow: { rows: [], source: 'default', diagnostics: [] },
+  stages: [],
+  stageCounts: {},
+  ideas: [],
+  features: [{ ideas: [], id: 'F2', name: 'Web console', why: null, closed: 2, total: 4, claims: [], holders: [], unheld: [] }],
   milestones,
   recount: { closed: 2, total: 4 },
   diagnostics: [],
 });
 
 const NAMED = planning([
-  milestone('Harbor 1.0', [{ id: '002', slug: '002-web-console', title: 'Web console', archived: false, main: true, held: 4, stage: null }]),
+  milestone('Harbor 1.0', [{ id: '002', slug: '002-web-console', title: 'Web console', archived: false, main: true, held: 4, stage: null, stageSource: null, priority: 'P3', hash: null, assignee: null }]),
 ]);
 /** A block entry no spec names is a 0/0 row: the page stays absent (ISC-104). */
 const UNNAMED_ONLY = planning([milestone('Someday', [])]);

@@ -3,7 +3,7 @@ import type { PlanningFeature, PlanningHolder, PlanningModel } from '../../../..
 import { featurePlace, gateAction, gateInHead, pathSegments, relativeTime, relativeUnit, shortHash, slugName } from './spec-head-model';
 
 const gate = (state: GateView['state']): GateView => ({ state, detail: '' });
-const LOCK: ClaimLock = { source: 'frontier', claim: 'ISC-74', session: 'spec-002-ISC-74', since: '2026-03-08T16:00:00Z' };
+const LOCK: ClaimLock = { source: 'frontier', claim: 'ISC-74', session: 'spec-002-ISC-74', actor: { raw: 'spec-002-ISC-74', kind: 'legacy', id: 'spec-002-ISC-74', legacy: true }, since: '2026-03-08T16:00:00Z' };
 const NOW = Date.parse('2026-09-01T08:00:00Z');
 
 describe('gateAction (ISC-85)', () => {
@@ -72,8 +72,9 @@ describe('relativeTime (ISC-22)', () => {
 });
 
 describe('featurePlace (ISC-105)', () => {
-  const holder = (id: string, main: boolean): PlanningHolder => ({ id, slug: `${id}-x`, title: 'x', archived: false, main, held: 1, stage: null });
+  const holder = (id: string, main: boolean): PlanningHolder => ({ id, slug: `${id}-x`, title: 'x', archived: false, main, held: 1, stage: null, stageSource: null, priority: 'P3', hash: null, assignee: null });
   const feature = (id: string, holders: readonly PlanningHolder[], claims: readonly string[]): PlanningFeature => ({
+    ideas: [],
     id,
     name: id,
     why: null,
@@ -88,6 +89,10 @@ describe('featurePlace (ISC-105)', () => {
    * rule), so 002 is no holder of F8.
    */
   const MODEL: PlanningModel = {
+    workflow: { rows: [], source: 'default', diagnostics: [] },
+    stages: [],
+    stageCounts: {},
+    ideas: [],
     features: [
       feature('F0', [holder('002', false)], ['ISC-1']),
       feature('F7', [holder('002', true)], ['ISC-100']),

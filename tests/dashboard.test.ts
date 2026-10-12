@@ -10,7 +10,7 @@
 // holds one claim, applied explicitly by `expected` (T51).
 import { afterAll, afterEach, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DashboardModel } from "../core/src/dashboard.ts";
@@ -22,7 +22,8 @@ import { type RunningServer, serve } from "../server/src/http.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import type { DevService } from "../server/src/services.ts";
 import { DEFAULT_SETTINGS, openSettings, settingsApi } from "../server/src/settings.ts";
-import { loadDashboard, worktreeTreeId } from "../server/src/workspace-loader.ts";
+import { loadDashboard, readWorkspaceInput, worktreeTreeId } from "../server/src/workspace-loader.ts";
+import { DEFAULT_WORKFLOW, parseWorkflow } from "../core/src/workflow.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
 const NAMES = ["harbor", "lantern"] as const;
@@ -37,9 +38,13 @@ const golden = (name: Name): DashboardModel => JSON.parse(readFileSync(join(FIXT
  * repository's `.spectant/activity.jsonl` (T51, ISC-37). harbor's log leaves ISC-74 of spec 002 claimed (ISC-72 is
  * claimed and released), so its model differs from the golden by exactly that lock: ISC-74 leaves 002's takeable list
  * and next reason, and the takeable count drops by one. lantern has no log and answers its golden unchanged.
+ *
+ * The goldens list harbor's two stories (`ideas`, spec 008 T70); the server's loader does not read `specs/ideas/` yet
+ * (a later task of spec 008), so until then the route answers no stories. Drop this override when the loader passes
+ * them in.
  */
 function expected(name: Name): DashboardModel {
-  const model = golden(name);
+  const model: DashboardModel = { ...golden(name), ideas: { count: 0, list: [] } };
   if (name !== "harbor") return model;
   return {
     ...model,
@@ -52,7 +57,9 @@ function expected(name: Name): DashboardModel {
             takeable: row.takeable.filter((id) => id !== "ISC-74"),
             nextReason: "ISC-75, ISC-76 and 1 more are takeable",
             // The route reads harbor's activity log; the golden is built without lock sources (T115).
-            taken: [{ id: "ISC-74", session: "spec-002-ISC-74", since: "2026-03-08T14:06:00Z", source: "activity" }],
+            taken: [{ id: "ISC-74", session: "a:claude:sess-2", since: "2026-03-08T14:06:00Z", source: "activity" }],
+            // That open lock's session is the assignee, over the last event's actor (spec 008, T65).
+            assignee: { raw: "a:claude:sess-2", kind: "agent", id: "a:claude:sess-2", legacy: false },
           },
     ),
   };
@@ -412,6 +419,48 @@ describe("composed behind one api function", () => {
     } finally {
       stop.abort();
       log.mockRestore();
+    }
+  });
+});
+
+describe("the reading carries the workflow (T78, ISC-122)", () => {
+  const readable = async (at: string) => {
+    const reading = await readWorkspaceInput(at);
+    if (!reading.readable) throw new Error(`unreadable: ${reading.error}`);
+    return reading;
+  };
+
+  test("harbor has specs/workflow.md: its table is read through core, source file, no diagnostics", async () => {
+    const reading = await readable(join(FIXTURES, "harbor"));
+    const text = readFileSync(join(FIXTURES, "harbor", "specs", "workflow.md"), "utf8");
+    expect(reading.workflow).toEqual(parseWorkflow(text));
+    expect(reading.workflow.source).toBe("file");
+    expect(reading.workflow.rows.find((r) => r.type === "chore")).toEqual({ type: "chore", stages: ["review", "build", "done"], codeReview: "none" });
+    expect(reading.diagnostics).toEqual([]);
+  });
+
+  test("lantern has no specs/workflow.md: every type runs the default table", async () => {
+    const reading = await readable(join(FIXTURES, "lantern"));
+    expect(reading.workflow).toEqual({ rows: DEFAULT_WORKFLOW, source: "default", diagnostics: [] });
+    expect(reading.diagnostics).toEqual([]);
+  });
+
+  test("a workflow file's findings join the reading's diagnostics under the repository-relative file name", async () => {
+    const copy = join(mkdtempSync(join(root, "workflow-")), "lantern");
+    cpSync(join(FIXTURES, "lantern"), copy, { recursive: true });
+    writeFileSync(join(copy, "specs", "workflow.md"), "# Workflow\n\nNo table here.\n");
+    const reading = await readable(copy);
+    expect(reading.workflow.source).toBe("file");
+    expect(reading.workflow.diagnostics.map((d) => d.code)).toEqual(["workflow-table"]);
+    expect(reading.diagnostics).toEqual(reading.workflow.diagnostics.map((diagnostic) => ({ file: "specs/workflow.md", diagnostic })));
+    expect(strings(reading.diagnostics).filter(hasAbsolutePath)).toEqual([]);
+  });
+
+  test("the loader passes the workflow into the model (close-pending, spec 008 T49): harbor and lantern answer their goldens", async () => {
+    for (const name of NAMES) {
+      const load = await loadDashboard(join(FIXTURES, name), null);
+      if (!load.readable) throw new Error(`unreadable: ${load.error}`);
+      expect(withoutServices(load.model)).toEqual(withoutServices(expected(name)));
     }
   });
 });

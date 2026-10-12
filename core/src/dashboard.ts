@@ -13,21 +13,43 @@
 // imports below (gates hashing through `node:crypto`, for one) never reach the browser bundle.
 import { listArchive } from './archive.ts';
 import type { ArchivedSpec } from './archive.ts';
+import { assigneeOf } from './assignee.ts';
 import { parseClaims } from './claims.ts';
 import type { ClaimsDocument } from './claims.ts';
 import type { Diagnostic } from './diagnostics.ts';
 import { diagramVerdict } from './diagrams.ts';
+import { parseEvents } from './events.ts';
 import type { DiagramVerdict } from './diagrams.ts';
 import { specFilePath } from './files.ts';
-import type { AgentLockSource, ClaimLock, FileDiagnostic, FileKind, GateView, LockDiagnostic, LockReading, SpecFiles, SpecGates, SpecType, SpecWarning, WarningKind } from './files.ts';
+import type {
+  ActorRef,
+  AgentLockSource,
+  ClaimLock,
+  FileDiagnostic,
+  FileKind,
+  GateView,
+  IdeaFiles,
+  LockDiagnostic,
+  LockReading,
+  Priority,
+  SpecFiles,
+  SpecGates,
+  SpecType,
+  SpecWarning,
+  StageSource,
+  WarningKind,
+  Workflow,
+  WorkflowStage,
+} from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import type { Progress } from './frontmatter.ts';
 import { gateState, readGateMark, reviewedGate } from './gates.ts';
+import { readIdeas } from './ideas.ts';
 import type { GateCheck, GateMarkReading, GateName, ReviewedFile } from './gates.ts';
 import { specIdOf, specSlugOf } from './spec-ref.ts';
-import { nextCommandWithReason } from './stage.ts';
-import type { Stage } from './stage.ts';
-import { driftReport, hasDrift, heldLocks, masterProgressMismatch, partitionClaims } from './status.ts';
+import { codeReviewOf, isWorkflowStage, nextCommandWithReason, reasonOf, stageMismatchOf } from './stage.ts';
+import type { Stage, StageInput } from './stage.ts';
+import { driftReport, hasDrift, heldLocks, mainFeatureOf, masterProgressMismatch, partitionClaims } from './status.ts';
 import type { DriftClass, DriftReport } from './status.ts';
 import { parseTldr, tldrState } from './tldr.ts';
 
@@ -81,9 +103,13 @@ export interface DashboardSpecRow {
   /** Frontmatter `task:`, falling back to the slug without its number. */
   readonly title: string;
   readonly type: SpecType | null;
+  /** Frontmatter `priority:`, `P3` when absent or invalid (T39); the spec head carries the same value (T67, ISC-118). */
+  readonly priority: Priority;
   /** Frontmatter `phase:` as written: a tooltip only, the stage is derived. */
   readonly phase: string | null;
   readonly stage: Stage;
+  /** Whether `stage` is the frontmatter `stage:` (`explicit`) or the stage table's (`derived`), T47. */
+  readonly stageSource: StageSource;
   /** Live claims, closed over total. */
   readonly progress: Progress;
   /** Null when the spec has no tasks.md. */
@@ -96,6 +122,11 @@ export interface DashboardSpecRow {
   readonly takeable: readonly string[];
   /** Claims of this spec a lock holds, one entry per claim, in claim-ID order; empty without locks. Additive (T115). */
   readonly taken: readonly DashboardTakenClaim[];
+  /**
+   * Who the spec is assigned to (spec 008, T65, ISC-131, `assigneeOf` in `assignee.ts`): the actor of the newest lock
+   * on one of its claims, else the actor of its last event, else null. The spec head carries the same value.
+   */
+  readonly assignee: ActorRef | null;
   readonly warnings: readonly SpecWarning[];
   readonly gates: SpecGates;
   readonly fog: number;
@@ -137,6 +168,26 @@ export interface LocalService {
 /** A parse finding per file lives in `files.ts`, so `planning.ts` types it without reaching this module. */
 export type { FileDiagnostic } from './files.ts';
 
+/** A story of `specs/ideas/` as the dashboard's disclosure and the palette list it (spec 008, T70, ISC-124.2). */
+export interface DashboardIdea {
+  /** Frontmatter `feature:`, `F<n>`; null when the story belongs to no feature. */
+  readonly feature: string | null;
+  /** Frontmatter `milestone:`; null when the story belongs to no milestone. */
+  readonly milestone: string | null;
+  /** The file name without `.md`; `/spec new <slug>` starts its spec. */
+  readonly slug: string;
+  /** The first prose line under `## Goal`, else the slug. */
+  readonly title: string;
+  readonly priority: Priority;
+}
+
+/** The stories of the workspace, counted apart from specs and claims. */
+export interface DashboardIdeas {
+  readonly count: number;
+  /** In file-name order, as `readIdeas` lists them. */
+  readonly list: readonly DashboardIdea[];
+}
+
 export interface DashboardModel {
   readonly kpis: DashboardKpis;
   readonly stageCounts: Readonly<Record<Stage, number>>;
@@ -150,6 +201,11 @@ export interface DashboardModel {
   readonly brief: DashboardBrief | null;
   readonly services: readonly LocalService[];
   readonly diagnostics: readonly FileDiagnostic[];
+  /**
+   * The stories (`specs/ideas/`, stage `idea`, spec 008, T70), empty without any. Their `ideas-…` findings belong to
+   * the planning tree (`planning.ts`) and are not listed here a second time.
+   */
+  readonly ideas: DashboardIdeas;
 }
 
 /** Everything the model is built from, read by the caller; pure over it. */
@@ -168,16 +224,26 @@ export interface DashboardInput {
   readonly worktreeTree?: string | null;
   readonly locks?: LockReading;
   readonly services?: readonly LocalService[];
+  /**
+   * `specs/workflow.md` as `parseWorkflow` read it (the server's loader, T78); absent, the default table. It decides
+   * each spec's code review (row 7, `close-pending`, T49) and which stages may stand explicitly (T47).
+   */
+  readonly workflow?: Workflow;
+  /** The story folder `specs/ideas/` as `readIdeas` takes it (file name to text); absent or empty without stories. */
+  readonly ideas?: IdeaFiles;
 }
 
 /** The stage table's order, for the stage counts. */
-const STAGES: readonly Stage[] = ['plan', 'tasks', 'review', 'build', 'blocked', 'code-review', 'close', 'done'];
+const STAGES: readonly Stage[] = ['plan', 'tasks', 'review', 'build', 'blocked', 'code-review', 'close-pending', 'close', 'done'];
 
-/** The order the lists show specs in: the action they need, nearest to done first, done last (old ACTION_ORDER). */
-export const ACTION_ORDER: readonly Stage[] = ['close', 'code-review', 'review', 'build', 'blocked', 'tasks', 'plan', 'done'];
+/**
+ * The order the lists show specs in: the action they need, nearest to done first, done last (old ACTION_ORDER).
+ * `close-pending` needs no action on the spec itself (row 7 names no command), so it sits with done, just before it.
+ */
+export const ACTION_ORDER: readonly Stage[] = ['close', 'code-review', 'review', 'build', 'blocked', 'tasks', 'plan', 'close-pending', 'done'];
 
-/** Stages counted as building on the KPI split; every other stage but done is scoping. */
-const BUILDING: ReadonlySet<Stage> = new Set<Stage>(['build', 'blocked', 'code-review']);
+/** Stages counted as building on the KPI split (`close-pending` waits on a sibling's build); every other but done is scoping. */
+const BUILDING: ReadonlySet<Stage> = new Set<Stage>(['build', 'blocked', 'code-review', 'close-pending']);
 
 /** Warning kinds in the order the old dashboard listed them on a row. */
 const WARNING_ORDER: readonly WarningKind[] = ['drift', 'review', 'diagrams', 'closed', 'fog', 'locks'];
@@ -307,6 +373,14 @@ interface SpecContext {
   /** Claim IDs of the active folders: a lock diagnostic naming one of them lands on its row only. */
   readonly activeIds: ReadonlySet<string>;
   readonly worktreeTree: string | null;
+  readonly workflow: Workflow | undefined;
+  /** Main feature → the ids of its open active specs (row 7's siblings), in folder order. */
+  readonly openByFeature: ReadonlyMap<string, readonly string[]>;
+}
+
+/** Whether an active spec holds a feature's code review back (row 7): not `phase: complete`, at least one open claim. */
+function holdsFeatureOpen(phase: string | null, doc: ClaimsDocument): boolean {
+  return phase !== 'complete' && doc.claims.some((c) => !c.checked && !c.dropped);
 }
 
 const ACTIVITY_FILE = '.spectant/activity.jsonl';
@@ -355,7 +429,14 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
   const codeReviewed = gateState('code-reviewed', codeMark?.mark ?? null, { worktreeTree: ctx.worktreeTree });
 
   const { specType: type, phase } = fm.data;
-  const next = nextCommandWithReason({
+  // The explicit stage needs the last recorded transition; the events' own diagnostics belong to the timeline.
+  const events = f.texts.events === undefined ? [] : parseEvents(f.texts.events).events;
+  const lastTo = events.at(-1)?.to ?? null;
+  const lastEventTo: WorkflowStage | null = lastTo !== null && isWorkflowStage(lastTo) ? lastTo : null;
+  // Row 7 (T49): the type's code review under the workspace's workflow and the open siblings of the main feature.
+  const mainFeature = mainFeatureOf(fm.data.isaFeature);
+  const featureSiblingsOpen = mainFeature === null ? [] : (ctx.openByFeature.get(mainFeature) ?? []).filter((other) => other !== id);
+  const stageInput: StageInput = {
     number: id,
     type,
     phase,
@@ -371,13 +452,25 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
       closed: partition.closed.length - partition.dropped.length,
       dropped: partition.dropped.length,
     },
-  });
+    explicitStage: fm.data.stage,
+    lastEventTo,
+    ...(ctx.workflow === undefined ? {} : { workflow: ctx.workflow }),
+    codeReview: codeReviewOf(type, ctx.workflow),
+    mainFeature,
+    featureSiblingsOpen,
+  };
+  const next = nextCommandWithReason(stageInput);
+  // A `stage:` that does not apply is one warning on spec.md, at the key's line (T48, ISC-120.1).
+  const mismatch = stageMismatchOf(stageInput, fm.keyLines.stage);
+  if (mismatch !== null) note('spec', [mismatch]);
 
   const drift = ctx.master === null ? null : driftReport({ frontmatter: fm, spec: doc, master: ctx.master, heldElsewhere: heldElsewhere(ctx, f.folder) });
   const diagrams = diagramVerdict({ type, phase, spec, plan });
   const fog = doc.fog.length;
   const rounds = newestRound(f.texts.rounds);
   note('rounds', rounds.diagnostics);
+  // events.jsonl's findings: rejected lines, old words and the one actor-legacy warning of the file (spec 008, T61).
+  if (f.texts.events !== undefined) note('events', parseEvents(f.texts.events).diagnostics);
 
   // As the old collect(): drift always; the rest only while the spec is open, since completing it closed them.
   const warnings: SpecWarning[] = [];
@@ -394,7 +487,9 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     if (diagrams.level === 'fail' && missing.length > 0) {
       warnings.push({ kind: 'diagrams', text: `diagram missing in ${missing.join(', ')}`, ref: missing.join(', ') });
     }
-    if (doc.counted.total > 0 && doc.counted.closed === doc.counted.total) {
+    // Only while the stage table still names a command: a chore done by row 6 and a spec waiting in row 7
+    // (`close-pending`) have every claim closed and nothing left to do on the spec itself (T49, T50).
+    if (doc.counted.total > 0 && doc.counted.closed === doc.counted.total && next.command !== null) {
       warnings.push({ kind: 'closed', text: 'every claim closed, phase not complete' });
     }
     if (fog > 0) warnings.push({ kind: 'fog', text: plural(fog, 'open fog line') });
@@ -412,14 +507,18 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     slug: f.folder,
     title: summary?.title ?? specSlugOf(f.folder),
     type,
+    priority: fm.data.priority,
     phase,
     stage: next.stage,
+    stageSource: next.stageSource,
     progress: doc.counted,
     tasks: f.texts.tasks === undefined ? null : (summary?.tasks ?? { landed: 0, total: 0 }),
     nextCommand: next.command,
-    nextReason: next.reason,
+    // The one phrase of the step, as every surface shows it (T58, T69, ISC-122.3); the spec head reads it from here.
+    nextReason: reasonOf(next),
     takeable: partition.takeable,
     taken,
+    assignee: assigneeOf({ claims: ids, locks: ctx.locks, events }),
     warnings,
     gates: {
       reviewed: reviewedView(reviewed, reviewedMark),
@@ -472,8 +571,16 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
   const active = [...input.specs].sort(byFolder);
   const archived = [...input.archived].sort(byFolder);
   const idsByFolder = new Map<string, ReadonlySet<string>>();
+  // Row 7's siblings: the active specs of each main feature that still hold it open; an archived one never does.
+  const openByFeature = new Map<string, string[]>();
   for (const f of [...active, ...archived]) {
-    if (f.texts.spec !== undefined) idsByFolder.set(f.folder, new Set(parseClaims(f.texts.spec).claims.map((c) => c.id)));
+    if (f.texts.spec === undefined) continue;
+    const doc = parseClaims(f.texts.spec);
+    idsByFolder.set(f.folder, new Set(doc.claims.map((c) => c.id)));
+    if (!active.includes(f)) continue;
+    const fm = parseFrontmatter(f.texts.spec).data;
+    const feature = mainFeatureOf(fm.isaFeature);
+    if (feature !== null && holdsFeatureOpen(fm.phase, doc)) openByFeature.set(feature, [...(openByFeature.get(feature) ?? []), specIdOf(f.folder) ?? f.folder]);
   }
   const activeIds = new Set(active.flatMap((f) => [...(idsByFolder.get(f.folder) ?? [])]));
   const ctx: SpecContext = {
@@ -483,6 +590,8 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     lockDiagnostics: input.locks?.diagnostics ?? [],
     activeIds,
     worktreeTree: input.worktreeTree ?? null,
+    workflow: input.workflow,
+    openByFeature,
   };
 
   const rows = active.flatMap((f) => specRow(f, ctx, diagnostics) ?? []).sort(byAction);
@@ -538,5 +647,12 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     brief,
     services,
     diagnostics,
+    ideas: ideasOf(input.ideas),
   };
+}
+
+/** The stories for the disclosure and the palette: what each needs to be listed and started, nothing more. */
+function ideasOf(files: IdeaFiles | undefined): DashboardIdeas {
+  const list = readIdeas(files ?? {}).ideas.map(({ feature, milestone, slug, title, priority }) => ({ feature, milestone, slug, title, priority }));
+  return { count: list.length, list };
 }

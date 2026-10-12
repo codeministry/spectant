@@ -1,4 +1,115 @@
 {
+  "workflow": {
+    "rows": [
+      {
+        "type": "feature",
+        "stages": [
+          "plan",
+          "review",
+          "tasks",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "project",
+        "stages": [
+          "plan",
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "infra",
+        "stages": [
+          "plan",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "refactor",
+        "stages": [
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "bug",
+        "stages": [
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "spike",
+        "stages": [
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "feature"
+      },
+      {
+        "type": "chore",
+        "stages": [
+          "review",
+          "build",
+          "done"
+        ],
+        "codeReview": "none"
+      }
+    ],
+    "source": "file",
+    "diagnostics": []
+  },
+  "stages": [
+    "idea",
+    "plan",
+    "review",
+    "tasks",
+    "build",
+    "blocked",
+    "close-pending",
+    "code-review",
+    "close",
+    "done"
+  ],
+  "stageCounts": {
+    "idea": 2,
+    "plan": 0,
+    "review": 2,
+    "tasks": 1,
+    "build": 2,
+    "blocked": 0,
+    "close-pending": 1,
+    "code-review": 1,
+    "close": 0,
+    "done": 1
+  },
   "features": [
     {
       "id": "F0",
@@ -38,14 +149,24 @@
           "slug": "006-partial-push",
           "title": "Stop a timed-out push from leaving a half-written manifest behind",
           "archived": false,
-          "stage": null,
+          "stage": "review",
+          "stageSource": "derived",
+          "priority": "P1",
+          "hash": "8850b9f79b8171b07dc5054e9b92d7ca9f8849c7fa06657a6b022e9fc8c76c80",
+          "assignee": {
+            "raw": "u:3f9c0a7d",
+            "kind": "person",
+            "id": "u:3f9c0a7d",
+            "legacy": false
+          },
           "main": true,
           "held": 3
         }
       ],
       "unheld": [
         "ISC-4"
-      ]
+      ],
+      "ideas": []
     },
     {
       "id": "F1",
@@ -338,11 +459,16 @@
           "title": "Mirror every listed manifest into the team registry with one command",
           "archived": true,
           "stage": null,
+          "stageSource": null,
+          "priority": "P3",
+          "hash": null,
+          "assignee": null,
           "main": true,
           "held": 46
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     },
     {
       "id": "F2",
@@ -538,12 +664,32 @@
           "slug": "002-web-console",
           "title": "Show every sync run and its failures in a small web console",
           "archived": false,
-          "stage": null,
+          "stage": "build",
+          "stageSource": "explicit",
+          "priority": "P2",
+          "hash": "4a5d1af65764759f960d59dc983f6e7fd281416d246b1f8a3a4d87a32b968b66",
+          "assignee": {
+            "raw": "u:3f9c0a7d",
+            "kind": "person",
+            "id": "u:3f9c0a7d",
+            "legacy": false
+          },
           "main": true,
           "held": 30
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": [
+        {
+          "slug": "console-audit-log",
+          "title": "Every change made in the web console is written to an audit log a teammate can read back.",
+          "type": "feature",
+          "feature": "F2",
+          "milestone": "Harbor 2.0",
+          "priority": "P3",
+          "path": "specs/ideas/console-audit-log.md"
+        }
+      ]
     },
     {
       "id": "F3",
@@ -643,7 +789,11 @@
           "slug": "003-config-loader",
           "title": "Read the config through one loader in the CLI, the API and the console",
           "archived": false,
-          "stage": null,
+          "stage": "tasks",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "2a621803f73719a721274b778fe1a6a5b08534689392928cc4cf6e386d7862ff",
+          "assignee": null,
           "main": true,
           "held": 13
         },
@@ -652,12 +802,17 @@
           "slug": "005-config-format-choice",
           "title": "Decide which config format version 2 uses",
           "archived": false,
-          "stage": null,
+          "stage": "review",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "862381cb959c50eced1eab6561be57c1d08ce19332c2444450af8a44fe60ba1e",
+          "assignee": null,
           "main": true,
           "held": 1
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     },
     {
       "id": "F4",
@@ -853,12 +1008,149 @@
           "slug": "004-retention-policies",
           "title": "Delete old manifests on a written schedule without touching referenced ones",
           "archived": false,
-          "stage": null,
+          "stage": "code-review",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "3bb5d81474bf932e7fb727837fc6c96ef622567e3e848659b1aa21403ccafa15",
+          "assignee": null,
           "main": true,
           "held": 30
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
+    },
+    {
+      "id": "F5",
+      "name": "Mirror credentials",
+      "why": "the token Harbor pushes with can be replaced without stopping a scheduled sync.",
+      "closed": 2,
+      "total": 2,
+      "claims": [
+        {
+          "id": "ISC-126",
+          "closed": true,
+          "dropped": false,
+          "holder": "007"
+        },
+        {
+          "id": "ISC-127",
+          "closed": true,
+          "dropped": false,
+          "holder": "007"
+        }
+      ],
+      "holders": [
+        {
+          "id": "007",
+          "slug": "007-rotate-mirror-token",
+          "title": "Replace the push token without stopping a scheduled sync",
+          "archived": false,
+          "stage": "done",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "e017692bab9ecf6e34e2379b986f1c7ace3d361ed37d8073dca4f46c27cd60fa",
+          "assignee": null,
+          "main": true,
+          "held": 2
+        }
+      ],
+      "unheld": [],
+      "ideas": []
+    },
+    {
+      "id": "F6",
+      "name": "Registry compatibility",
+      "why": "Harbor lists a registry as supported only after a spike has checked it, so a team knows before its first sync what will work.",
+      "closed": 3,
+      "total": 4,
+      "claims": [
+        {
+          "id": "ISC-128",
+          "closed": true,
+          "dropped": false,
+          "holder": "008"
+        },
+        {
+          "id": "ISC-129",
+          "closed": true,
+          "dropped": false,
+          "holder": "008"
+        },
+        {
+          "id": "ISC-130",
+          "closed": true,
+          "dropped": false,
+          "holder": "009"
+        },
+        {
+          "id": "ISC-131",
+          "closed": false,
+          "dropped": false,
+          "holder": "009"
+        }
+      ],
+      "holders": [
+        {
+          "id": "008",
+          "slug": "008-referrers-support",
+          "title": "Find out which target registries answer the OCI referrers endpoint",
+          "archived": false,
+          "stage": "close-pending",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "c35f5b40bfbf6ec89ae3876ddbb0607b6cddc53f5f2e9d80fe2800f047f5938e",
+          "assignee": {
+            "raw": "u:3f9c0a7d",
+            "kind": "person",
+            "id": "u:3f9c0a7d",
+            "legacy": false
+          },
+          "main": true,
+          "held": 2
+        },
+        {
+          "id": "009",
+          "slug": "009-chunked-upload-limits",
+          "title": "Find the largest blob chunk each target registry accepts",
+          "archived": false,
+          "stage": "build",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "3924e9a54638a6a94bb0e251654f703cdde450aaa1e0d3aa3e896166c309e412",
+          "assignee": {
+            "raw": "u:3f9c0a7d",
+            "kind": "person",
+            "id": "u:3f9c0a7d",
+            "legacy": false
+          },
+          "main": true,
+          "held": 2
+        }
+      ],
+      "unheld": [],
+      "ideas": []
+    },
+    {
+      "id": "F7",
+      "name": "Registry webhooks",
+      "why": "a mirror that reacts when an upstream tag moves, instead of waiting for the next scheduled run.",
+      "closed": 0,
+      "total": 0,
+      "claims": [],
+      "holders": [],
+      "unheld": [],
+      "ideas": [
+        {
+          "slug": "registry-webhooks",
+          "title": "A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.",
+          "type": "feature",
+          "feature": "F7",
+          "milestone": "Harbor 1.0",
+          "priority": "P2",
+          "path": "specs/ideas/registry-webhooks.md"
+        }
+      ]
     }
   ],
   "milestones": [
@@ -884,11 +1176,16 @@
           "slug": "003-config-loader",
           "title": "Read the config through one loader in the CLI, the API and the console",
           "archived": false,
-          "stage": null,
+          "stage": "tasks",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "2a621803f73719a721274b778fe1a6a5b08534689392928cc4cf6e386d7862ff",
+          "assignee": null,
           "main": false,
           "held": 13
         }
-      ]
+      ],
+      "ideas": []
     },
     {
       "name": "Harbor 1.0",
@@ -924,7 +1221,16 @@
           "slug": "002-web-console",
           "title": "Show every sync run and its failures in a small web console",
           "archived": false,
-          "stage": null,
+          "stage": "build",
+          "stageSource": "explicit",
+          "priority": "P2",
+          "hash": "4a5d1af65764759f960d59dc983f6e7fd281416d246b1f8a3a4d87a32b968b66",
+          "assignee": {
+            "raw": "u:3f9c0a7d",
+            "kind": "person",
+            "id": "u:3f9c0a7d",
+            "legacy": false
+          },
           "main": false,
           "held": 30
         },
@@ -933,7 +1239,11 @@
           "slug": "004-retention-policies",
           "title": "Delete old manifests on a written schedule without touching referenced ones",
           "archived": false,
-          "stage": null,
+          "stage": "code-review",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "3bb5d81474bf932e7fb727837fc6c96ef622567e3e848659b1aa21403ccafa15",
+          "assignee": null,
           "main": false,
           "held": 30
         },
@@ -943,15 +1253,69 @@
           "title": "Mirror every listed manifest into the team registry with one command",
           "archived": true,
           "stage": null,
+          "stageSource": null,
+          "priority": "P3",
+          "hash": null,
+          "assignee": null,
           "main": false,
           "held": 46
+        }
+      ],
+      "ideas": [
+        {
+          "slug": "registry-webhooks",
+          "title": "A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.",
+          "type": "feature",
+          "feature": "F7",
+          "milestone": "Harbor 1.0",
+          "priority": "P2",
+          "path": "specs/ideas/registry-webhooks.md"
         }
       ]
     }
   ],
+  "ideas": [
+    {
+      "slug": "console-audit-log",
+      "title": "Every change made in the web console is written to an audit log a teammate can read back.",
+      "type": "feature",
+      "feature": "F2",
+      "milestone": "Harbor 2.0",
+      "priority": "P3",
+      "path": "specs/ideas/console-audit-log.md"
+    },
+    {
+      "slug": "registry-webhooks",
+      "title": "A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.",
+      "type": "feature",
+      "feature": "F7",
+      "milestone": "Harbor 1.0",
+      "priority": "P2",
+      "path": "specs/ideas/registry-webhooks.md"
+    }
+  ],
   "recount": {
-    "closed": 101,
-    "total": 124
+    "closed": 106,
+    "total": 130
   },
-  "diagnostics": []
+  "diagnostics": [
+    {
+      "file": "specs/ideas/README.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "ideas-index",
+        "message": "The story registry-webhooks is not named in the index README.md.",
+        "subject": "registry-webhooks"
+      }
+    },
+    {
+      "file": "specs/ideas/console-audit-log.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "unknown-milestone",
+        "message": "milestone \"Harbor 2.0\" is not in the master's ## Milestones block",
+        "subject": "Harbor 2.0"
+      }
+    }
+  ]
 }

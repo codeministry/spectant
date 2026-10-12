@@ -160,6 +160,22 @@ describe("golden snapshots", () => {
     expect(diagnosticsOf(m, "warning")).toEqual(EXPECTED_WARNINGS[name] ?? []);
   });
 
+  // Spec 008, T38 (ISC-117): `spec_type: chore` is the seventh type. The harbor chore has every claim closed and a
+  // current reviewed mark (T50), so the chore row makes it done; it needs neither plan.md nor tasks.md.
+  test("harbor 007 reads as a chore: no type warning, done once reviewed with every claim closed", () => {
+    const m = buildDashboard(readTree("harbor"));
+    expect(diagnosticsOf(m, "warning").filter((d) => d.endsWith("frontmatter-spec-type"))).toEqual([]);
+    const row = m.specs.find((r) => r.id === "007");
+    expect(row).toMatchObject({
+      type: "chore",
+      stage: "done",
+      nextCommand: null,
+      nextReason: "every claim of the chore is closed",
+      progress: { closed: 2, total: 2 },
+      tasks: null,
+    });
+  });
+
   test("the error check is not vacuous: a folder without spec.md is an error", () => {
     const m = buildDashboard({ master: null, constitution: null, tldr: null, specs: [{ folder: "009-no-spec", texts: { plan: "# plan only\n" } }], archived: [] });
     expect(diagnosticsOf(m, "error")).toEqual(["specs/009-no-spec/spec.md: spec-missing"]);

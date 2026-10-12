@@ -6,7 +6,8 @@
 // Golden comparison: the route's body is the whole `core/fixtures/<tree>.planning.golden.json` (`GOLDEN_FAMILY.planning`,
 // the contract's "whole-file body"), byte for byte once both are compact JSON. The goldens are built with the clock
 // pinned to `PLANNING_NOW`; the route takes "today" from its `today` option, which the test pins to the same date. The
-// planning tree reads no lock source, so harbor's activity log changes nothing here (unlike the dashboard's golden).
+// board's stages come from the dashboard rows of the route's reading, harbor's activity log included; the golden's
+// stages agree with them (no harbor stage depends on a lock).
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { cpSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -30,6 +31,12 @@ const HOST = { Host: "127.0.0.1:7717" };
 
 /** The golden file's text, as written (pretty-printed). */
 const goldenText = (tree: string): string => readFileSync(join(FIXTURES, `${tree}.${GOLDEN_FAMILY.planning}.golden.json`), "utf8");
+
+/**
+ * The golden as the route sends it: compact JSON. The server passes the story folder (T79), the workflow and each
+ * active spec's stage, source and raw spec.md hash (T83), as the golden is built (T64), so nothing is pinned away.
+ */
+const compact = (golden: string): string => JSON.stringify(JSON.parse(golden));
 
 let root: string;
 const registries: Registry[] = [];
@@ -74,19 +81,30 @@ describe("GET /api/workspaces/:ws/planning", () => {
     expect(res.headers.get("cache-control")).toBe("no-cache");
     expect(res.headers.get("etag")).toMatch(/^"[A-Za-z0-9_-]+"$/);
     const text = await res.text();
-    expect(text).toBe(JSON.stringify(JSON.parse(goldenText("harbor"))));
+    expect(text).toBe(compact(goldenText("harbor")));
     const body = JSON.parse(text) as WorkspaceRouteResponses["planning"];
     expect(body.features.length).toBeGreaterThan(0);
     // The pinned day puts Harbor 0.9 behind and Harbor 1.0 ahead: the golden's states, not today's.
     expect(body.milestones.map((m) => m.state)).toEqual(["late", "upcoming"]);
   });
 
-  test("lantern: the golden too, and `milestones` is empty (no spec carries one)", async () => {
+  test("harbor's two stories ride the planning answer (T79, ISC-124): the tree, its features and milestones list them", async () => {
+    const body = (await (await call(workspaceRoutes.planning("harbor"))).json()) as PlanningModel;
+    expect(body.ideas.map((i) => i.slug)).toEqual(["console-audit-log", "registry-webhooks"]);
+    expect(body.ideas.every((i) => i.path === `specs/ideas/${i.slug}.md`)).toBe(true);
+    const listed = [...body.features.flatMap((f) => f.ideas), ...body.milestones.flatMap((m) => m.ideas)].map((i) => i.slug);
+    expect(listed).toContain("registry-webhooks");
+  });
+
+  test("lantern: the golden too, `milestones` is empty (no spec carries one), and no story folder means no stories", async () => {
     const res = await call(workspaceRoutes.planning("lantern"));
     expect(res.status).toBe(200);
     const text = await res.text();
-    expect(text).toBe(JSON.stringify(JSON.parse(goldenText("lantern"))));
-    expect((JSON.parse(text) as PlanningModel).milestones).toEqual([]);
+    expect(text).toBe(compact(goldenText("lantern")));
+    const body = JSON.parse(text) as PlanningModel;
+    expect(body.milestones).toEqual([]);
+    expect(body.ideas).toEqual([]);
+    expect(body.diagnostics.filter((d) => d.file.startsWith("specs/ideas/"))).toEqual([]);
   });
 
   test("HEAD: 200 with the same headers and no body", async () => {

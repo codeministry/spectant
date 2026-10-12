@@ -15,6 +15,7 @@
 // per kind below, and scripts/check-format-doc.ts (T3) compares the two.
 
 import type { Diagnostic } from './diagnostics.ts';
+import type { Stage } from './stage.ts';
 
 // ─── File kinds ──────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -32,10 +33,22 @@ export type FileKind =
   | 'gateCodeReviewed'
   | 'artifacts'
   | 'evidence'
-  | 'master';
+  | 'master'
+  | 'idea'
+  | 'workflow';
+
+/**
+ * Where a kind lives: `spec` inside the spec folder, `repo` once per repository outside every spec folder (the
+ * constitution, the master, the story files and the workflow table).
+ */
+export type FileScope = 'spec' | 'repo';
 
 export interface FileKindInfo {
-  /** Path relative to the spec folder `specs/NNN-slug/`, POSIX separators; a directory ends in `/`. */
+  /**
+   * Path relative to an active spec folder `specs/NNN-slug/`, POSIX separators; a directory ends in `/`. A `repo` kind
+   * reaches out with `..`, which is right for an active folder only: an archived folder sits one level deeper, so a
+   * reader of a `repo` kind joins `repoPath` onto the repository root (`repoFilePath`) instead.
+   */
   readonly path: string;
   /** One line: what the file holds, for FORMAT.md and diagnostics. */
   readonly description: string;
@@ -43,6 +56,9 @@ export interface FileKindInfo {
   readonly required: boolean;
   /** The kind is a directory, listed rather than read. */
   readonly directory: boolean;
+  readonly scope: FileScope;
+  /** Path relative to the repository root for a `repo` kind, same separators and slash rule as `path`; null for `spec`. */
+  readonly repoPath: string | null;
 }
 
 export const FILE_KINDS: Readonly<Record<FileKind, FileKindInfo>> = {
@@ -51,97 +67,158 @@ export const FILE_KINDS: Readonly<Record<FileKind, FileKindInfo>> = {
     description: 'the what: frontmatter, goal, Test Strategy, claims with stable IDs and (after: …) edges, decisions',
     required: true,
     directory: false,
+    scope: 'spec',
+    repoPath: null,
   },
   plan: {
     path: 'plan.md',
     description: 'the how: approach, affected files, interfaces, risks, open points',
     required: false,
     directory: false,
+    scope: 'spec',
+    repoPath: null,
   },
   tasks: {
     path: 'tasks.md',
     description: 'atomic task lines anchored to one claim each, with flags, lane, edges and paths, plus the probe mapping',
     required: false,
     directory: false,
+    scope: 'spec',
+    repoPath: null,
   },
   context: {
     path: 'context.md',
     description: 'the context log: question rounds and dated decisions',
     required: false,
     directory: false,
+    scope: 'spec',
+    repoPath: null,
   },
   design: {
     path: 'design.md',
     description: 'the design pass per viewport for a UI spec',
     required: false,
     directory: false,
+    scope: 'spec',
+    repoPath: null,
   },
   constitution: {
     path: '../constitution.md',
     description: 'the repository constitution shared by every spec: binding rules, lanes, conformance baseline',
     required: false,
     directory: false,
+    scope: 'repo',
+    repoPath: 'specs/constitution.md',
   },
   rounds: {
     path: 'rounds.jsonl',
     description: 'one JSON line per implementation round: the whole board after that round',
     required: false,
     directory: false,
+    scope: 'spec',
+    repoPath: null,
   },
   events: {
     path: 'events.jsonl',
     description: 'one JSON line per recorded stage transition {ts, from, to, command, actor}',
     required: false,
     directory: false,
+    scope: 'spec',
+    repoPath: null,
   },
   gateReviewed: {
     path: '.gates/reviewed.json',
     description: 'the reviewed mark: hashes of spec.md, plan.md and tasks.md at release time',
     required: false,
     directory: false,
+    scope: 'spec',
+    repoPath: null,
   },
   gateCodeReviewed: {
     path: '.gates/code-reviewed.json',
     description: 'the code-reviewed mark: tree and head of the reviewed working tree',
     required: false,
     directory: false,
+    scope: 'spec',
+    repoPath: null,
   },
   artifacts: {
     path: 'artifacts/',
     description: 'files the tasks produced, grouped by claim',
     required: false,
     directory: true,
+    scope: 'spec',
+    repoPath: null,
   },
   evidence: {
     path: '.evidence/',
     description: 'probe output that closed a claim, grouped by claim',
     required: false,
     directory: true,
+    scope: 'spec',
+    repoPath: null,
   },
   master: {
     path: '../../ISA.md',
     description: 'the master ISA the spec derives from; untracked in a public repository',
     required: false,
     directory: false,
+    scope: 'repo',
+    repoPath: 'ISA.md',
+  },
+  idea: {
+    path: '../ideas/',
+    description: 'one story file <slug>.md per shaped idea, frontmatter plus a filled /spec prompt; README.md is the index',
+    required: false,
+    directory: true,
+    scope: 'repo',
+    repoPath: 'specs/ideas/',
+  },
+  workflow: {
+    path: '../workflow.md',
+    description: 'the workflow table: per spec type the ordered stages and how its code review is done',
+    required: false,
+    directory: false,
+    scope: 'repo',
+    repoPath: 'specs/workflow.md',
   },
 };
 
-/** The file kinds read as text (every kind but the two directories). */
-export type TextFileKind = Exclude<FileKind, 'artifacts' | 'evidence'>;
+/** The kinds that live once per repository, outside every spec folder. */
+export type RepoFileKind = 'constitution' | 'master' | 'idea' | 'workflow';
 
 /**
- * Path of a file kind for the spec folder `specDir`, normalised (`..` resolved), POSIX separators, no trailing
- * slash. Pure string work, no `node:path`, so the browser bundle can use it. `specDir` may be absolute or relative.
+ * The file kinds a spec folder's `SpecFiles.texts` may carry: every kind but the two directories and the two
+ * repository kinds of spec 008 (`idea` is a directory of stories, `workflow` one table per repository; their readers
+ * take their own input). `constitution` and `master` stay for the readers that already take them per spec.
  */
-export function specFilePath(specDir: string, kind: FileKind): string {
-  const absolute = specDir.startsWith('/');
+export type TextFileKind = Exclude<FileKind, 'artifacts' | 'evidence' | 'idea' | 'workflow'>;
+
+/** `base/rel` normalised (`..` resolved), POSIX separators, no trailing slash. */
+function joinPath(base: string, rel: string): string {
+  const absolute = base.startsWith('/');
   const out: string[] = [];
-  for (const segment of `${specDir}/${FILE_KINDS[kind].path}`.split('/')) {
+  for (const segment of `${base}/${rel}`.split('/')) {
     if (segment === '' || segment === '.') continue;
     if (segment === '..' && out.length > 0 && out[out.length - 1] !== '..') out.pop();
     else if (segment !== '..' || !absolute) out.push(segment);
   }
   return (absolute ? '/' : '') + out.join('/');
+}
+
+/**
+ * Path of a file kind for the spec folder `specDir`, normalised (`..` resolved), POSIX separators, no trailing
+ * slash. Pure string work, no `node:path`, so the browser bundle can use it. `specDir` may be absolute or relative.
+ * For a `repo` kind the result is right for an active folder `specs/NNN-slug` only; use `repoFilePath` where the
+ * folder may be archived.
+ */
+export function specFilePath(specDir: string, kind: FileKind): string {
+  return joinPath(specDir, FILE_KINDS[kind].path);
+}
+
+/** Path of a repository kind under the repository root `root`, normalised like `specFilePath`. */
+export function repoFilePath(root: string, kind: RepoFileKind): string {
+  return joinPath(root, FILE_KINDS[kind].repoPath ?? FILE_KINDS[kind].path);
 }
 
 /** The Docs area's tabs and the file kind each renders. */
@@ -188,10 +265,27 @@ export interface CommitRecord {
 
 // ─── Spec page (spec.ts) ─────────────────────────────────────────────────────────────────────────────────────────
 
-export type SpecType = 'feature' | 'bug' | 'refactor' | 'spike' | 'infra' | 'project';
+/**
+ * The seven spec types. `chore` joins in spec 008 (T37): the type exists here, `frontmatter.ts` accepts it in T38;
+ * until then `spec_type: chore` warns and reads as no type.
+ */
+export type SpecType = 'feature' | 'bug' | 'refactor' | 'spike' | 'infra' | 'project' | 'chore';
 
 /** A stage name from the stage table (stage.ts, FORMAT.md); kept open here so the table stays the one authority. */
 export type StageName = string;
+
+/**
+ * Every stage a spec 008 workflow knows: the stage table's (`Stage`, which `dashboard.ts` counts; `close-pending`, the
+ * detour of `code_review: feature`, among them since T49) plus `idea`, the stage of a story before it is a spec (row 1,
+ * `STORY_RULE`, T54), kept apart from `Stage`, the stages a spec folder stands in.
+ */
+export type WorkflowStage = Stage | 'idea';
+
+/** A spec's or a story's priority (frontmatter `priority:`, FORMAT.md); a missing key reads as `P3` (T39). */
+export type Priority = 'P1' | 'P2' | 'P3' | 'P4';
+
+/** Where a spec's stage came from: a valid frontmatter `stage:` (`explicit`) or the stage table (`derived`), T47. */
+export type StageSource = 'explicit' | 'derived';
 
 export interface SpecHead {
   /** `NNN`. */
@@ -218,6 +312,15 @@ export interface SpecHead {
   readonly lastRound: string | null;
   /** Uncommitted files in the spec folder: a git fact only the server has, so always null from `core/`. */
   readonly uncommittedFiles: number | null;
+  /** Frontmatter `priority:`, `P3` when absent or invalid; `spec.ts` sets it from T39 on, the type keeps it optional. */
+  readonly priority?: Priority;
+  /** Whether `stage` is the frontmatter `stage:` or derived; `spec.ts` sets it from T47 on, the type keeps it optional. */
+  readonly stageSource?: StageSource;
+  /**
+   * Who the spec is assigned to (spec 008, T65, ISC-131): the dashboard row's `assignee` (`assigneeOf` in
+   * `assignee.ts`), null when unassigned. `spec.ts` always sets it; the type keeps it optional, as `priority`.
+   */
+  readonly assignee?: ActorRef | null;
 }
 
 /** Where the idea quote came from: the first sentence of `## Goal`, or frontmatter `task:`. */
@@ -367,6 +470,8 @@ export interface SpecPageInput {
   readonly worktreeTree?: string | null;
   /** Commits touching the spec folder, for the Status tile's timeline count; absent means none were read. */
   readonly commits?: readonly CommitRecord[];
+  /** `specs/workflow.md` as read, as the dashboard gets it (row 7, the explicit stage); absent, the default table. */
+  readonly workflow?: Workflow;
 }
 
 // ─── Timeline (timeline.ts, derived-stages.ts, events.ts) ────────────────────────────────────────────────────────
@@ -432,8 +537,14 @@ export interface EventLine {
   readonly to: StageName;
   /** The command that made the transition, e.g. `/spec-review 002`; never empty. */
   readonly command: string;
-  /** Who ran it, e.g. `principal`; never empty. */
+  /** Who ran it, as written: an id of the actor grammar (`u:3f9c0a7d`, `a:claude:sess-7`) or a legacy value; never empty. */
   readonly actor: string;
+  /**
+   * `actor` through `parseActor` (spec 008, T61): set on every event `validateEventLine` accepts, a legacy value
+   * included. Read side only, never written: a line that carried it would fail `event-extra-key`, so a writer builds
+   * its event without it.
+   */
+  readonly actorRef?: ActorRef;
 }
 
 /**
@@ -471,8 +582,10 @@ export type AgentLockSource = Exclude<LockSource, 'none'>;
 export interface ClaimLock {
   readonly source: AgentLockSource;
   readonly claim: string;
-  /** The session name the lock carries. */
+  /** The session name the lock carries, as written. */
   readonly session: string;
+  /** `session` through `parseActor` (spec 008, T63): the holder in the actor grammar, or flagged `legacy`. */
+  readonly actor: ActorRef;
   /** ISO 8601. */
   readonly since: string;
 }
@@ -638,6 +751,14 @@ export interface LiveCard extends FrameCard {
   readonly elapsedMs?: number;
   /** No release for longer than `staleAfterMs`: the agent may have died. Set on `running` cards only. */
   readonly stale?: boolean;
+  /**
+   * The agent session working the task (spec 008, T66, ISC-131.1), `a:<kind>:<id>`; for a sub-agent its parent session.
+   * Derived from the lock that puts the card in flight, so it is null on every card that is not `running`, and on a
+   * running card whose lock a person (`u:`) or a legacy session holds: neither is an agent.
+   */
+  readonly agent: ActorRef | null;
+  /** The sub-agent working the task, `a:<kind>:<id>/<task>` naming this card's own task; null when none does (T66). */
+  readonly subagent: ActorRef | null;
 }
 
 /** One session holding locks on this spec's claims: an entry of the "This frame" rail. */
@@ -1007,3 +1128,92 @@ export interface DocAvailability {
   readonly applies: boolean;
   readonly command: string | null;
 }
+
+// ─── Workflow, stories, actors, transitions (spec 008: workflow.ts, ideas.ts, actor.ts, transition.ts) ───────────
+
+/** How a spec type's code review is done: one mark per spec, one per main feature, or none (FORMAT.md § workflow). */
+export type CodeReviewMode = 'spec' | 'feature' | 'none';
+
+/** One row of `specs/workflow.md`: the ordered stages a spec type runs through and its code review. */
+export interface WorkflowRow {
+  readonly type: SpecType;
+  /** In table order; `blocked` and `close-pending` are detours every type has and no row lists. */
+  readonly stages: readonly WorkflowStage[];
+  readonly codeReview: CodeReviewMode;
+}
+
+/** The workspace's workflow: the file's rows with the default for every type it leaves out, or the default table. */
+export interface Workflow {
+  readonly rows: readonly WorkflowRow[];
+  /** `file` when `specs/workflow.md` was read, `default` when it is missing. */
+  readonly source: 'file' | 'default';
+  /** `workflow-…` findings in `specs/workflow.md` (a row moving a fixed gate is `workflow-gate`, T43). */
+  readonly diagnostics: readonly Diagnostic[];
+}
+
+/** A story file `specs/ideas/<slug>.md` as the planning tree lists it; its stage is always `idea`. */
+export interface IdeaRef {
+  /** The file name without `.md`. */
+  readonly slug: string;
+  /** The first prose line under `## Goal`. */
+  readonly title: string;
+  /** Frontmatter `type:`; null when absent or unknown. */
+  readonly type: SpecType | null;
+  /** Frontmatter `feature:`, `F<n>`; null when the story belongs to no feature. */
+  readonly feature: string | null;
+  /** Frontmatter `milestone:`; null when the story belongs to no milestone. */
+  readonly milestone: string | null;
+  /** Frontmatter `priority:`, `P3` when absent. */
+  readonly priority: Priority;
+  /** Repository-relative, POSIX separators: `specs/ideas/<slug>.md`. */
+  readonly path: string;
+}
+
+/**
+ * The text of the story folder `specs/ideas/`, read by the caller: file name (`<slug>.md`, `README.md` the index) to
+ * its text. A missing folder is an empty record.
+ */
+export type IdeaFiles = Readonly<Record<string, string>>;
+
+/** What `readIdeas` returns: the stories, and the findings (`ideas-…`) of files skipped or missing from the index. */
+export interface IdeasReading {
+  readonly ideas: readonly IdeaRef[];
+  readonly diagnostics: readonly FileDiagnostic[];
+}
+
+/** The kind of an actor id: `u:` a person, `a:<kind>:<id>` an agent, `a:<kind>:<id>/<task>` its sub-agent. */
+export type ActorKind = 'person' | 'agent' | 'subagent' | 'legacy';
+
+/** One `actor` value of an event, activity line, mark or lock, parsed (FORMAT.md § Glossary, Actor). */
+export interface ActorRef {
+  /** The value as written; never dropped, whatever its form. */
+  readonly raw: string;
+  readonly kind: ActorKind;
+  /** `u:0123abcd`, `a:claude:sess-7`; a legacy value is its own id. */
+  readonly id: string;
+  /** The task of a sub-agent, `T12` in `a:claude:sess-7/T12`. */
+  readonly task?: string;
+  /** True for every value outside the grammar: read and flagged, never rejected. */
+  readonly legacy: boolean;
+}
+
+/**
+ * A stage move planned in memory (`transition.ts`): on `ok`, `spec.md` with its `stage:` set and otherwise
+ * byte-identical, and the `events.jsonl` line to append; refused, the stage row's reason and the missing command.
+ * `planTransition` reads and writes nothing; `server/src/writes.ts` does both.
+ */
+export type TransitionPlan =
+  | {
+      readonly ok: true;
+      readonly from: WorkflowStage;
+      readonly to: WorkflowStage;
+      readonly specText: string;
+      readonly event: EventLine;
+    }
+  | {
+      readonly ok: false;
+      readonly from: WorkflowStage;
+      readonly to: WorkflowStage;
+      readonly reason: string;
+      readonly command: string | null;
+    };

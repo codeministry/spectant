@@ -14,6 +14,10 @@ const holder = (id: string, over: Partial<PlanningHolder> = {}): PlanningHolder 
   main: false,
   held: 1,
   stage: null,
+  stageSource: null,
+  priority: 'P3',
+  hash: null,
+  assignee: null,
   ...over,
 });
 

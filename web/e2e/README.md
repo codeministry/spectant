@@ -73,18 +73,21 @@ workers never race. An unknown value is always a loud 400, never a silent defaul
 | Header | Values | Absent |
 |--------|--------|--------|
 | `X-Spectant-Stub-State` | `two-workspaces` (harbor, lantern), `empty` (no workspace), `unreadable` (lantern `readable: false`, `error: 'missing'`, `counts: null`, its dashboard, planning and spec routes 409) | `two-workspaces` |
-| `X-Spectant-Stub-Locks` | `none`, `activity`, `frontier` (see the lock fixtures) | `activity`, the goldens as they are |
+| `X-Spectant-Stub-Locks` | `none`, `activity`, `frontier`, `claims`, `person` (see the lock fixtures) | `activity`, the goldens as they are |
 | `X-Spectant-Stub-Write` | `ok`, `stale`, `locked` (see the writes) | `ok` |
 | `X-Spectant-Stub-Session` | any id; scopes the settings and the writes | one shared session |
 
 Lock fixtures, applied to `…/live` (the `LiveFrame`), the spec page's `areas.live` and `keyNumbers.rounds.agentsWorking`
-(under `none` and `frontier` only), and `/api/lifeos`:
+(under every fixture but `activity`), and `/api/lifeos`. Every in-flight card names its `agent` and `subagent` as
+core's `live.ts` does (a person's or legacy lock: both null; a released card: both null):
 
 | `X-Spectant-Stub-Locks` | Live frame | `/api/lifeos` | Gate button (ISC-85) |
 |-------------------------|------------|---------------|----------------------|
 | `none` | `lockSource: 'none'`, `locks: []`, `agents: []`, running cards back to `waiting` without lock fields | `{present: false}` | writes proceed, "no agent source" |
-| `activity` | the golden: harbor 002 has one stale activity session on ISC-74 (T27 running) | `{present: false}` | ready / stale / done |
-| `frontier` | every golden lock relabelled `frontier`, plus a synthetic session `spec-<NNN>-<claim>` on the first open claim no lock holds (harbor 002: ISC-75, T28 running, 20 min, not stale) | `{present: true}` | paused |
+| `activity` | the golden: harbor 002 has one stale activity session on ISC-74 (T27 running, agent `a:claude:sess-2`) | `{present: false}` | ready / stale / done |
+| `frontier` | every golden lock relabelled `frontier`, plus a synthetic agent `a:claude:stub-<NNN>-<claim>` on the first open claim no lock holds (harbor 002: ISC-75, T28 running, 20 min, not stale) | `{present: true}` | paused |
+| `claims` | the tree's `.spectant/activity.jsonl` claim lines without their releases (as `core/tests/live.test.ts`); a held card runs, a landed one re-opened (harbor 002: T4 by the sub-agent `a:claude:sess-2/T4`, T25 and T27 by `a:claude:sess-2`, all stale) | `{present: false}` | as `activity` |
+| `person` | the golden's locks held by the person `STUB_PERSON` (`u:3f9c0a7d`): harbor 002 T27 running, `agent` and `subagent` null | `{present: false}` | as `activity` |
 
 Writes, per `X-Spectant-Stub-Write`:
 

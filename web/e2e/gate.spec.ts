@@ -58,11 +58,11 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         const gate = page.locator(GATE);
         await expect(gate).toHaveAttribute('data-state', 'paused');
         await expect(gate).toBeDisabled();
-        await expect(gate).toContainText(/spec-002-ISC-\d+/u); // single-core: allow — asserts the session text in the UI, no parsing
+        await expect(gate).toContainText(/a:claude:(?:sess-2|stub-002-isc-\d+)/u);
         const banner = page.locator(`${HEAD} [data-agent-banner]`);
         await expect(banner).toBeVisible();
         const session = (await gate.textContent()) ?? '';
-        const named = /spec-002-ISC-\d+/u.exec(session)?.[0] ?? ''; // single-core: allow — asserts the session text in the UI, no parsing
+        const named = /a:claude:(?:sess-2|stub-002-isc-\d+)/u.exec(session)?.[0] ?? '';
         await expect(banner.locator('[data-session]')).toHaveText(named);
         await expect(banner.locator('[data-writes-paused]')).toBeVisible();
         await expect(page.locator(`${HEAD} [data-no-source-line]`)).toHaveCount(0);
@@ -124,7 +124,7 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         await page.locator(GATE).click();
         const dialog = page.locator(DIALOG);
         await dialog.locator('[data-confirm]').click();
-        await expect(dialog.locator('[data-write-locked]')).toContainText(/spec-003-ISC-\d+/u); // single-core: allow — asserts the session text in the UI, no parsing
+        await expect(dialog.locator('[data-write-locked]')).toContainText(/a:claude:stub-003-isc-\d+/u);
         await expect(page.locator(`${HEAD} [data-gate-written]`)).toHaveCount(0);
       });
     });

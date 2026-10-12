@@ -47,6 +47,9 @@ type WriteState =
     }
     :host([data-size='inline']) .gate-button.done { padding: 4px 8px; font-size: 13px; line-height: 20px; }
     .gate-button[data-state='paused'] { color: var(--color-base-content); }
+    /* The paused label carries a session id of any length (actor grammar, spec 008): it wraps and breaks inside the id
+       instead of pushing the head past a 390 px viewport. */
+    .gate-button[data-state='paused'] { block-size: auto; white-space: normal; overflow-wrap: anywhere; text-align: start; max-inline-size: 100%; }
     .changed { display: grid; gap: 4px; min-inline-size: 0; }
     :host([data-size='inline']) .changed { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
     .changed-label { margin: 0; color: var(--hover-ink); font-size: 12px; font-weight: 600; line-height: 16px; }

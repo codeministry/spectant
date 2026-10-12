@@ -100,7 +100,7 @@
     },
     "sort": {
       "label": "Sortieren",
-      "stage": "Nach Stufe",
+      "stage": "Nach Stage",
       "next": "Als Nächstes",
       "id": "ID",
       "progress": "Fortschritt"
@@ -108,7 +108,7 @@
     "columns": {
       "id": "ID",
       "title": "Titel",
-      "stage": "Stufe",
+      "stage": "Stage",
       "phase": "Phase",
       "claims": "Claims"
     },
@@ -143,7 +143,11 @@
       "openFog": "Offener Fog",
       "open": "Spec öffnen"
     },
-    "agentWorking": "Agent {{session}} arbeitet"
+    "agentWorking": "Agent {{session}} arbeitet",
+    "ideas": {
+      "title": "Ideen · {{count}}",
+      "label": "Ideen im Backlog"
+    }
   },
   "nextUp": {
     "title": "Als Nächstes",
@@ -190,8 +194,9 @@
       "nextUp": "Als Nächstes",
       "workspaces": "Workspaces",
       "specs": "Specs",
+      "ideas": "Ideen",
       "features": "Features",
-      "milestones": "Milestones",
+      "milestones": "Meilensteine",
       "services": "Dienste",
       "actions": "Aktionen",
       "archived": "Archiviert"
@@ -204,6 +209,7 @@
       "theme": "Farbschema",
       "language": "Sprache",
       "shortcuts": "Tastenkürzel anzeigen",
+      "help": "Hilfe",
       "openPort": "localhost:{{port}} öffnen"
     },
     "noMatch": "Kein Treffer für „{{query}}“ · versuchen Sie eine Spec-ID wie {{example}}"
@@ -243,7 +249,7 @@
       "search": "Suchfeld fokussieren"
     },
     "off": "Einzeltasten-Kürzel sind in den Einstellungen ausgeschaltet; nur Esc funktioniert.",
-    "later": "Das Markieren als geprüft folgt mit einer späteren Aufgabe.",
+    "later": "Das Markieren als geprüft folgt mit einem späteren Task.",
     "contexts": {
       "workspace": "In einem Workspace oder allen Workspaces",
       "spec": "In einer Spec",
@@ -252,7 +258,7 @@
     "groups": {
       "navigate": "Wechseln zu",
       "spec": "Diese Spec",
-      "board": "Board",
+      "board": "Runden-Board",
       "general": "Überall"
     }
   },
@@ -269,7 +275,21 @@
       "en": "English",
       "de": "Deutsch"
     },
-    "singleKey": "Einzeltasten-Kürzel"
+    "singleKey": "Einzeltasten-Kürzel",
+    "actors": {
+      "title": "Akteure",
+      "intro": "Namen für die Personen-IDs in Ihren Specs, nur im Datenverzeichnis der App gespeichert. Eine ID ohne Namen erscheint als die ID selbst.",
+      "empty": "Noch ist keine Personen-ID bekannt.",
+      "displayName": "Anzeigename",
+      "gitIdentities": "Git-Identitäten",
+      "nameFor": "Anzeigename für {{ id }}",
+      "gitFor": "Git-Identitäten für {{ id }}",
+      "gitHint": "Mehrere Adressen, durch Kommas getrennt.",
+      "save": "Akteure speichern",
+      "saving": "Wird gespeichert …",
+      "saved": "Akteure gespeichert.",
+      "failed": "Die Akteure konnten nicht gespeichert werden (Status {{ status }})."
+    }
   },
   "states": {
     "unreachable": "Spectant ist auf {{host}} nicht erreichbar",
@@ -309,10 +329,12 @@
     "review": "Review",
     "build": "Bauen",
     "close": "Abschluss",
-    "position": "Stufe {{index}} von {{total}}: {{stage}}",
+    "position": "Stage {{index}} von {{total}}: {{stage}}",
     "blocked": "Blockiert",
     "code-review": "Code-Review",
-    "done": "Fertig"
+    "done": "Fertig",
+    "idea": "Idee",
+    "close-pending": "Abschluss ausstehend"
   },
   "phases": {
     "scoping": "scoping",
@@ -352,7 +374,7 @@
       "summary": {
         "dashboard": "Der Stand der Spec auf einen Blick",
         "status": "Phase, Gates und Zeitleiste",
-        "live": "Arbeitende Agenten, Board und Matrix",
+        "live": "Arbeitende Agenten, Runden-Board und Matrix",
         "data": "Claims, Tasks und Belege",
         "docs": "Plan, Design, Entscheidungen, Verfassung",
         "notes": "Ihre Notizen zu dieser Spec"
@@ -370,7 +392,7 @@
     "tabs": {
       "status": "Status",
       "timeline": "Zeitleiste",
-      "board": "Board",
+      "board": "Runden-Board",
       "matrix": "Matrix",
       "claims": "Claims",
       "tasks": "Tasks",
@@ -393,7 +415,7 @@
         "activity": "Agentenquelle: Aktivitätsprotokoll",
         "none": "Keine Agentenquelle"
       },
-      "open": "{{source}}, Live-Board öffnen"
+      "open": "{{source}}, Runden-Board öffnen"
     },
     "zen": {
       "toggle": "Zen-Modus",
@@ -426,12 +448,14 @@
     },
     "pages": {
       "specs": "Specs",
+      "board": "Board",
       "features": "Features",
-      "milestones": "Milestones",
+      "milestones": "Meilensteine",
       "summary": {
         "specs": "{{active}} aktiv · {{archived}} archiviert",
+        "board": "{{stages}} Stages · {{cards}} Karten · {{waiting}} warten auf Sie",
         "features": "{{count}} Features · {{closed}}/{{total}} geschlossen",
-        "milestones": "{{count}} Milestones · nächster {{next}}"
+        "milestones": "{{count}} Meilensteine · nächster {{next}}"
       }
     }
   },
@@ -446,7 +470,7 @@
     "listLabel": "Zeitleiste, neueste zuerst",
     "loading": "Zeitleiste wird geladen",
     "kinds": {
-      "stage": "Stufe",
+      "stage": "Stage",
       "decision": "Entscheidung",
       "round": "Runde",
       "gate": "Gate",
@@ -454,10 +478,10 @@
     },
     "derived": "abgeleitet",
     "dateUnknown": "Datum unbekannt",
-    "openBoard": "Board öffnen →",
+    "openBoard": "Runden-Board öffnen →",
     "empty": {
       "heading": "Noch keine Ereignisse",
-      "body": "Die Stufe wird aus den Dateien abgeleitet."
+      "body": "Die Stage wird aus den Dateien abgeleitet."
     },
     "filtered": {
       "heading": "Keine Einträge aus diesen Quellen",
@@ -506,7 +530,7 @@
       "blockedBy": "blockiert durch {{id}}"
     },
     "probe": {
-      "label": "Prüfung",
+      "label": "Probe",
       "severity": "Schweregrad {{severity}}"
     },
     "verification": "Verifiziert",
@@ -775,7 +799,6 @@
       "heading": "Wo es steht",
       "claimsClosed": "{{closed}}/{{total}} Claims geschlossen",
       "since": "seit {{time}} über {{via}}",
-      "derived": "abgeleitet",
       "reasons": "Warum dieser Befehl als Nächstes kommt",
       "done": "Nichts mehr auszuführen: Die Spec ist fertig.",
       "copy": "Befehl kopieren",
@@ -791,9 +814,9 @@
     "waiting": {
       "heading": "Wartet auf Sie",
       "none": "Nichts wartet auf Sie.",
-      "checkLabel": "Operator-Aufgabe {{ref}}",
+      "checkLabel": "Operator-Task {{ref}}",
       "kinds": {
-        "operator": "Operator-Aufgabe",
+        "operator": "Operator-Task",
         "manual": "Manueller Claim",
         "question": "Frage"
       }
@@ -857,14 +880,19 @@
         "round": "Runde",
         "gate": "Gate",
         "commit": "Commit",
-        "stage": "Phase"
+        "stage": "Stage"
       }
     },
     "lanes": {
       "heading": "Fortschritt je Lane",
-      "tasks": "Aufgaben gelandet",
+      "tasks": "Tasks gelandet",
       "none": "Keine Lanes: Die Spec hat keine tasks.md."
-    }
+    },
+    "stageSource": {
+      "explicit": "in der Frontmatter gesetzt",
+      "derived": "aus der Stage-Tabelle abgeleitet"
+    },
+    "unassigned": "nicht zugewiesen"
   },
   "specHead": {
     "breadcrumb": "Pfad",
@@ -948,7 +976,7 @@
     }
   },
   "board": {
-    "toolbar": "Board-Werkzeuge",
+    "toolbar": "Werkzeuge des Runden-Boards",
     "view": {
       "label": "Ansicht",
       "lanes": "Bahnen",
@@ -1017,7 +1045,7 @@
       "note": "Notiz",
       "claim": "Claim",
       "history": "Zustand über die Frames",
-      "historyEmpty": "Noch kein Frame enthält diese Aufgabe."
+      "historyEmpty": "Noch kein Frame enthält diesen Task."
     },
     "rail": {
       "thisFrameCount": "Dieser Frame {{count}}",
@@ -1032,7 +1060,7 @@
       "stepCheck": "{{task}} als erledigt markieren",
       "stepSaving": "Wird gespeichert",
       "stepLocked": "Gesperrt durch Sitzung {{session}}",
-      "stepConflict": "tasks.md wurde auf der Platte geändert; nichts wurde geschrieben. Bitte laden Sie das Board neu.",
+      "stepConflict": "tasks.md wurde auf der Platte geändert; nichts wurde geschrieben. Bitte laden Sie das Runden-Board neu.",
       "stepFailed": "Das Schreiben ist fehlgeschlagen; setzen Sie den Haken erneut.",
       "stepsEmpty": "Kein Operator-Schritt in diesem Frame."
     },
@@ -1052,18 +1080,145 @@
       "empty": "Keine Karte passt zum Filter."
     },
     "empty": "Keine Karte passt zum Filter.",
-    "failed": "Das Board konnte nicht gelesen werden.",
+    "failed": "Das Runden-Board konnte nicht gelesen werden.",
     "agent": {
       "stale": "veraltet",
       "source": "Sperrquelle: {{source}}",
       "none": "Kein Agent hält eine Sperre.",
       "staleAlert": "Keine Freigabe von {{session}} für {{claims}}: Der Agent ist womöglich beendet."
+    },
+    "workspace": {
+      "title": "Board",
+      "summary": "{{cards}} Karten · {{specs}} Specs · {{ideas}} Ideen",
+      "open": "Board öffnen",
+      "source": {
+        "custom": "specs/workflow.md",
+        "default": "Standard-Workflow"
+      },
+      "column": {
+        "empty": "leer",
+        "cards": "{{count}} Karten",
+        "waitsOnYou": "{{count}} warten auf Sie",
+        "name": "{{stage}}, {{count}} Karten, {{waiting}} warten auf Sie",
+        "stub": "{{stage}}, keine Karten",
+        "emptyIn": "Keine Karte in {{stage}}",
+        "hiddenByFilters": "{{count}} durch Filter ausgeblendet",
+        "fixedGate": "festes Gate",
+        "gateReviewed": "Review-Marke",
+        "gateClosed": "jeder Claim geschlossen",
+        "waitingStage": "eine wartende Stage",
+        "fold": "{{stage}} einklappen",
+        "unfold": "{{stage}} aufklappen",
+        "folded": "eingeklappt"
+      },
+      "filter": {
+        "open": "Filter",
+        "feature": "Feature",
+        "milestone": "Meilenstein",
+        "type": "Typ",
+        "assignee": "Zuständig",
+        "people": "Personen",
+        "agents": "Agenten",
+        "unassigned": "Nicht zugewiesen",
+        "noMilestone": "Kein Meilenstein",
+        "active": "{{label}} · {{count}}",
+        "shown": "{{shown}} von {{total}} Karten",
+        "remove": "Filter {{label}} entfernen",
+        "activeList": "Aktive Filter",
+        "clear": "Zurücksetzen",
+        "noMatch": "Keine Karte passt",
+        "clearAll": "Filter zurücksetzen",
+        "all": "Alle"
+      },
+      "swimlanes": {
+        "label": "Bahnen",
+        "none": "Keine",
+        "feature": "Feature",
+        "milestone": "Meilenstein",
+        "cards": "{{count}} Karten",
+        "collapse": "{{lane}} einklappen",
+        "expand": "{{lane}} ausklappen",
+        "omittedFeatures": "{{count}} Features haben keine Karte in {{stage}}",
+        "omittedMilestones": "{{count}} Meilensteine haben keine Karte in {{stage}}",
+        "noFeature": "Kein Feature"
+      },
+      "card": {
+        "name": "Spec {{id}}, {{type}}, {{title}}, Priorität {{priority}}, Stage {{stage}}",
+        "ideaName": "Idee, {{title}}, Priorität {{priority}}",
+        "waits": "wartet: {{reason}}",
+        "feature": "Feature {{id}}: {{name}}",
+        "move": "{{id}} verschieben",
+        "locked": "gesperrt · {{actor}} hält {{claim}}",
+        "saving": "Wird gespeichert"
+      },
+      "drag": {
+        "notNext": "nicht als Nächstes nach {{stage}}",
+        "gate": "Gate",
+        "current": "aktuell",
+        "pickedUp": "{{id}} aufgenommen",
+        "over": "über {{stage}}",
+        "moving": "{{id}} wird nach {{stage}} verschoben",
+        "moved": "{{id}} nach {{stage}} verschoben",
+        "toast": "{{id}} → {{stage}}",
+        "view": "Anzeigen",
+        "cancelled": "Verschieben von {{id}} abgebrochen"
+      },
+      "move": {
+        "open": "Verschieben nach…",
+        "title": "{{id}} verschieben · {{title}}",
+        "stage": "In Stage verschieben"
+      },
+      "refusal": {
+        "notMoved": "Nicht verschoben — {{id}} kann nicht nach {{stage}} wechseln",
+        "missing": "Fehlt: {{command}}",
+        "dismiss": "Schließen",
+        "lock": "Schreiben pausiert · {{actor}} hält {{claim}}",
+        "conflict": "{{file}} wurde auf der Festplatte geändert · Neu laden",
+        "refreshed": "{{id}} wurde auf der Festplatte geändert · das Board wurde aktualisiert",
+        "failed": "Der Wechsel konnte nicht geschrieben werden (Status {{status}})"
+      },
+      "allocate": {
+        "title": "Als Spec {{id}} anlegen?",
+        "lead": "Diese Idee zur Spec machen?",
+        "creates": "Legt an",
+        "removes": "Entfernt",
+        "confirm": "Anlegen",
+        "cancel": "Noch nicht",
+        "saving": "{{slug}} wird angelegt",
+        "number": "NNN ist die nächste freie Spec-Nummer; sie wird beim Anlegen des Ordners vergeben.",
+        "unreadable": "Die Story-Datei konnte nicht gelesen werden; daher kann nichts angelegt werden.",
+        "notAllocated": "Nicht angelegt — {{slug}} bleibt eine Idee",
+        "refused": {
+          "notInIndex": "Der Ideen-Index specs/ideas/README.md nennt {{slug}} nicht",
+          "folderExists": "{{folder}} existiert bereits"
+        }
+      },
+      "live": {
+        "changed": "{{count}} Karten geändert · anzeigen"
+      },
+      "empty": {
+        "noSpecs": "Noch keine Specs in {{ws}}",
+        "gettingStarted": "Erste Schritte",
+        "body": "Formen Sie im KI-Chat mit dem Spec-Skill eine erste Idee; ihre Karte erscheint hier."
+      },
+      "failed": "Das Board konnte nicht gelesen werden.",
+      "stale": "veraltete Daten",
+      "strip": "Stages · zu einer Spalte springen",
+      "columns": "Board-Spalten",
+      "compact": {
+        "columns": "Stages · eine Spalte anzeigen",
+        "segment": "{{stage}} {{count}}",
+        "prev": "Vorherige Spalte: {{stage}}",
+        "next": "Nächste Spalte: {{stage}}",
+        "back": "{{stage}}, {{count}} Karten · zurück zu den Stages",
+        "tray": "Ablageziele: die Stages"
+      }
     }
   },
   "matrix": {
-    "region": "Matrix: Aufgaben nach Frame",
-    "hint": "Wählen Sie eine Zelle, um das Board in diesem Frame zu öffnen.",
-    "task": "Aufgabe",
+    "region": "Matrix: Tasks nach Frame",
+    "hint": "Wählen Sie eine Zelle, um das Runden-Board in diesem Frame zu öffnen.",
+    "task": "Task",
     "empty": "Es ist noch keine Runde aufgezeichnet, die Matrix hat daher keinen Frame.",
     "failed": "Die Matrix konnte nicht gelesen werden.",
     "column": {
@@ -1087,7 +1242,77 @@
     "feature": "Epic im Ticket-Tracker",
     "spec": "Story im Ticket-Tracker",
     "claim": "Akzeptanzkriterium im Ticket-Tracker",
-    "task": "Sub-Task im Ticket-Tracker"
+    "task": "Sub-Task im Ticket-Tracker",
+    "milestone": "Lösungsversion im Ticket-Tracker",
+    "stage": "Status im Ticket-Tracker",
+    "actor": "Zugewiesene Person im Ticket-Tracker"
+  },
+  "glossary": {
+    "feature": {
+      "term": "Feature",
+      "common": "Epic",
+      "definition": "Ein Block `### F<n>` des Masters, dem Claims gehören."
+    },
+    "spec": {
+      "term": "Spec",
+      "common": "Story",
+      "definition": "Ein nummerierter Ordner `specs/NNN-slug/` mit einer `spec.md`."
+    },
+    "claim": {
+      "term": "Claim",
+      "common": "Akzeptanzkriterium",
+      "definition": "Eine falsifizierbare Zeile `- [ ] ISC-<n>:`, die über ihre Probe geschlossen wird."
+    },
+    "task": {
+      "term": "Task",
+      "common": "Sub-Task",
+      "definition": "Ein atomarer Schritt der `tasks.md`, der an genau einem Claim hängt."
+    },
+    "milestone": {
+      "term": "Meilenstein",
+      "common": "Lösungsversion",
+      "definition": "Ein Release, das im Block `## Milestones` des Masters benannt ist."
+    },
+    "idea": {
+      "term": "Idee",
+      "common": "Backlog-Eintrag",
+      "definition": "Eine Story-Datei unter `specs/ideas/`, die Stage vor einer Spec."
+    },
+    "stage": {
+      "term": "Stage",
+      "common": "Status",
+      "definition": "Wo eine Spec in ihrem Workflow steht."
+    },
+    "workflow": {
+      "term": "Workflow",
+      "common": "Workflow",
+      "definition": "Die geordneten Stages, die ein Spec-Typ durchläuft, aus `specs/workflow.md` oder dem Standard."
+    },
+    "gate": {
+      "term": "Gate",
+      "common": "Quality Gate",
+      "definition": "Eine Bedingung, die eine Transition braucht; zwei sind in jedem Workflow fest: Review vor Build und jeder Claim geschlossen vor Done."
+    },
+    "probe": {
+      "term": "Probe",
+      "common": "Test",
+      "definition": "Der Befehl, über den ein Claim geschlossen wird."
+    },
+    "actor": {
+      "term": "Akteur",
+      "common": "Zugewiesene Person",
+      "definition": "Die neutrale ID in einer Datei, `u:<8 hex>` für eine Person oder `a:<kind>:<id>` für einen Agenten."
+    },
+    "agent": {
+      "term": "Agent",
+      "common": "Bot",
+      "definition": "Eine Claude-Code-Session oder ein Sub-Agent, die einen Task bearbeitet, festgehalten als `a:`-Akteur."
+    },
+    "chore": {
+      "term": "Chore",
+      "common": "Chore",
+      "definition": "Der siebte Spec-Typ: nur `spec.md`, Review, dann Build, dann Done, ohne Code-Review."
+    }
   },
   "planning": {
     "features": {
@@ -1122,10 +1347,10 @@
       }
     },
     "milestones": {
-      "title": "Milestones in {{ws}}",
-      "meta": "{{count}} Milestones · nächster: {{name}}, {{date}}",
-      "metaNone": "kein anstehender Milestone",
-      "metaUndated": "{{count}} Milestones · nächster: {{name}}",
+      "title": "Meilensteine in {{ws}}",
+      "meta": "{{count}} Meilensteine · nächster: {{name}}, {{date}}",
+      "metaNone": "kein anstehender Meilenstein",
+      "metaUndated": "{{count}} Meilensteine · nächster: {{name}}",
       "caption": "Nach Zieldatum sortiert",
       "undated": "kein Zieldatum",
       "meterLabel": "{{name}} Claims geschlossen",
@@ -1143,8 +1368,8 @@
       "features": "Features",
       "specs": "Specs",
       "notFound": {
-        "heading": "Keine Milestones",
-        "body": "Keine Spec in {{ws}} trägt einen Milestone, daher gibt es keine Milestones-Seite.",
+        "heading": "Keine Meilensteine",
+        "body": "Keine Spec in {{ws}} trägt einen Meilenstein, daher gibt es keine Meilenstein-Seite.",
         "link": "Features"
       }
     },
@@ -1152,7 +1377,176 @@
       "label": "Pfad",
       "more": "{{count}} weitere Features",
       "archived": "archiviert",
-      "unknownMilestone": "nicht im Milestones-Block des Masters"
+      "unknownMilestone": "nicht im Block ## Milestones des Masters"
+    },
+    "ideas": {
+      "label": "Ideen · {{count}}"
     }
+  },
+  "help": {
+    "title": "Hilfe",
+    "nav": {
+      "label": "Abschnitte",
+      "about": "Über Spectant",
+      "moves": "Wie eine Spec sich bewegt",
+      "workflows": "Workflows",
+      "commands": "Befehle",
+      "glossary": "Glossar",
+      "gettingStarted": "Erste Schritte",
+      "keyboard": "Tastatur"
+    },
+    "subtitle": "Spectant · die Begriffe, die Workflows, die Befehle",
+    "about": {
+      "body": "Spectant liest die Markdown-Specs Ihrer registrierten Repositories und zeigt sie auf einem Board. Die Dateien sind die einzige Quelle der Wahrheit: Die App führt nur ein kleines Register und ihre Einstellungen und schreibt eine Datei nur dann, wenn Sie eine Karte verschieben oder einen Task abhaken."
+    },
+    "moves": {
+      "body": "Eine Spec durchläuft die Stages ihres Typs. Auf dem Board ziehen Sie ihre Karte oder öffnen „Verschieben nach…“ am Griff; core führt in beiden Fällen dieselbe Transition aus und verschiebt die Karte oder nennt unter ihr, was noch fehlt.",
+      "chain": "Die Stages eines Features in der Standardreihenfolge",
+      "types": "Der Workflow jedes Spec-Typs"
+    },
+    "legend": {
+      "label": "Legende",
+      "moving": "in Bewegung",
+      "waits": "wartet auf Sie",
+      "done": "erledigt",
+      "detour": "Umweg",
+      "gate": "festes Gate"
+    },
+    "commands": {
+      "lead": "Die Arbeit an einer Spec beginnt im KI-Chat mit dem Spec-Skill; das Board zeigt den Befehl, den eine wartende Karte braucht.",
+      "caption": "Die Befehle des Spec-Skills, wie die Stage-Tabelle sie nennt",
+      "columns": {
+        "command": "Befehl",
+        "purpose": "Was er tut"
+      },
+      "list": {
+        "spec-new": "Macht aus einer ausgearbeiteten Story unter specs/ideas/ einen Spec-Ordner.",
+        "spec-plan": "Schreibt plan.md: das Wie, mit einer Frage festgelegt.",
+        "spec-tasks": "Zerlegt die Spec in tasks.md, ein Claim pro Task.",
+        "spec-review": "Prüft die Spec und setzt die Review-Marke, das Gate zu Build.",
+        "spec-implement": "Arbeitet die Tasks ab, bis jeder Claim auf seine Probe hin schliesst.",
+        "spec-code-review": "Führt das Code- und Security-Review auf dem Arbeitsbaum aus.",
+        "spec-complete": "Schliesst die Spec, sobald jede Abschlussbedingung erfüllt ist.",
+        "spec-status": "Phase, Fortschritt und Claims jeder Spec im Repository."
+      }
+    },
+    "start": {
+      "lead": "Drei Schritte vom Installer zum Board.",
+      "steps": {
+        "install": "Installieren Sie das Binary mit dem einzeiligen Skript aus dem README; es wählt den Build für Ihr Betriebssystem und Ihre Architektur.",
+        "register": "Registrieren Sie ein Repository mit einem Ordner `specs/`: `spectant add <repo>`.",
+        "open": "Starten Sie `spectant` und öffnen Sie den Workspace und sein Board: Jede Spec und jede Idee steht in ihrer Stage."
+      }
+    },
+    "keyboard": {
+      "lead": "Dieselben Tastenbelegungen wie im Shortcut-Sheet, das ? öffnet."
+    },
+    "glossary": {
+      "heading": "Glossar",
+      "caption": "Die Begriffe des Spec-Formats",
+      "columns": {
+        "term": "Spectant-Begriff",
+        "common": "Gängiger Begriff",
+        "german": "Deutsch",
+        "definition": "Definition"
+      },
+      "copyLink": "Link zu {{term}} kopieren",
+      "more": "Mehr in der Hilfe"
+    },
+    "workflow": {
+      "heading": "Workflow von {{ws}}",
+      "headingDefault": "Standard-Workflow",
+      "workspace": "Workspace",
+      "defaultCaption": "Standardtabelle: Es ist kein Workspace geöffnet.",
+      "figure": "Workflow des Typs {{type}}",
+      "source": {
+        "custom": "aus specs/workflow.md",
+        "default": "Standardtabelle"
+      },
+      "codeReview": "Code-Review: {{mode}}",
+      "custom": "angepasst",
+      "default": "Standard",
+      "asText": "Transitionen als Text",
+      "gateReviewed": "Gate · Review-Marke",
+      "gateClosed": "Gate · jeder Claim geschlossen",
+      "updated": "vor {{age}} aus specs/workflow.md aktualisiert",
+      "gateDropped": "workflow.md lässt das Review-Gate für {{type}} weg · Standard angewendet",
+      "unavailable": "Der Workflow von {{ws}} konnte nicht gelesen werden; die Standardtabelle wird angezeigt.",
+      "move": "{{from}} → {{to}}",
+      "diagram": "Workflow-Diagramm des Typs {{type}}, die Stages der Reihe nach: {{stages}}.",
+      "diagramDetours": "Umwege: {{detours}}.",
+      "diagramGates": "Feste Gates: {{gates}}.",
+      "diagramGate": "{{stage}} ({{gate}})",
+      "legend": {
+        "moving": "in Bewegung",
+        "waits": "wartet auf Sie",
+        "done": "fertig",
+        "detour": "Umweg",
+        "gate": "festes Gate"
+      }
+    }
+  },
+  "ideas": {
+    "title": "Idee",
+    "meta": "Frontmatter der Story",
+    "chip": {
+      "stage": "Stage",
+      "type": "Typ",
+      "feature": "Feature",
+      "milestone": "Meilenstein"
+    },
+    "noType": "kein Typ",
+    "noFeature": "kein Feature",
+    "noMilestone": "kein Meilenstein",
+    "source": "{{path}} · schreibgeschützt · Hash {{hash}}",
+    "allocateHint": "Sie teilen die Story zu, indem Sie sie auf dem Board in ihre erste Stage ziehen.",
+    "loading": "Story wird geladen",
+    "error": "Diese Story konnte nicht geladen werden."
+  },
+  "types": {
+    "feature": "Feature",
+    "bug": "Bug",
+    "refactor": "Refactor",
+    "spike": "Spike",
+    "infra": "Infra",
+    "project": "Projekt",
+    "chore": "Chore",
+    "idea": "Idee"
+  },
+  "priority": {
+    "P1": "P1",
+    "P2": "P2",
+    "P3": "P3",
+    "P4": "P4",
+    "name": "Priorität {{level}}",
+    "hint": {
+      "P1": "höchste",
+      "P2": "hoch",
+      "P3": "normal",
+      "P4": "niedrig"
+    },
+    "unmarked": "kein Prioritätsschlüssel, gelesen als P3",
+    "title": "{{level}} · {{hint}}",
+    "label": {
+      "P1": "Priorität P1",
+      "P2": "Priorität P2",
+      "P3": "Priorität P3",
+      "P4": "Priorität P4"
+    }
+  },
+  "actors": {
+    "legacy": "Altformat",
+    "agent": "Agent",
+    "subagent": "Sub-Agent",
+    "active": "Sperre aktiv",
+    "stale": "keine Freigabe",
+    "staleFor": "keine Freigabe · {{ age }}",
+    "unmapped": "nicht zugeordnet"
+  },
+  "reason": {
+    "glyph": "wartet"
+  },
+  "live": {
+    "taskActors": "Arbeitet an {{ task }}"
   }
 }

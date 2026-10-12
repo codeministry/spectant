@@ -3,11 +3,12 @@ import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, type E
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { SpecPageModel } from '../../../../../core/src/files';
+import type { Priority, SpecPageModel } from '../../../../../core/src/files';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiChip } from '../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiPopover, UiPopoverTrigger } from '../../shared/ui/overlay/popover';
+import { UiPriority } from '../../shared/ui/priority/priority';
 import { areaById, areaPath, specLink, workspaceLink } from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
@@ -32,8 +33,9 @@ import {
  *   `⚑ milestone · F2 +n › NNN › ISC-51` (the header pill and the row-2 trigger carry workspace and area). The
  *   milestone and feature levels come from the planning tree (`ShellData.planningModel`), so without it the line is
  *   the three levels of spec 002. The claim or task level is the one the open Claims or Tasks tab names by fragment.
- *   Each `<li>` names the separator drawn before it in `data-sep` (`scope` "/", `dot` "·", `down` "›").
- * - Row 2: mono id and the Sora title (ellipsis with `title`), the type and stage chips; the cluster on the right
+ *   Each `<li>` names the separator drawn before it in `data-sep` (`scope` "/", `dot` "·", `down` "›"). The spec level
+ *   opens with `ui-priority` before the id at every tier, never truncated (spec 008, ISC-118).
+ * - Row 2: mono id and the Sora title (ellipsis with `title`), the type, stage and priority chips; the cluster on the right
  *   holds the next-command chip with copy (the canonical copy target of the page), the notes pill and, when the stage
  *   allows, the shared gate button. At compact the chips wrap under the title and the command chip goes full width.
  * - Row 3: the description (the idea quote, clamped to two lines with a "more" disclosure at compact) and the meta
@@ -46,7 +48,7 @@ import {
  */
 @Component({
   selector: 'app-spec-head',
-  imports: [GateButton, NgTemplateOutlet, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger],
+  imports: [GateButton, NgTemplateOutlet, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiPriority],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './spec-head.css',
   host: { class: 'spec-head', '[attr.data-tier]': 'tier()' },
@@ -111,6 +113,7 @@ import {
           </li>
         }
         <li [attr.data-sep]="seps().spec">
+          <ui-priority data-crumb-priority [value]="priority()" />
           <a
             [routerLink]="specHome()"
             data-crumb="spec"
@@ -165,6 +168,7 @@ import {
             <ui-chip data-head-chip="type">{{ type }}</ui-chip>
           }
           <ui-chip tone="primary" [dot]="true" data-head-chip="stage">{{ 'stages.' + stage() | transloco }}</ui-chip>
+          <ui-priority data-head-chip="priority" [value]="priority()" />
           @if (compact()) {
             <ng-container [ngTemplateOutlet]="notesPill" />
             @if (showGate()) {
@@ -269,6 +273,10 @@ export class SpecHead {
   protected readonly title = computed(() => this.body()?.head.title ?? this.row()?.title ?? null);
   protected readonly type = computed(() => this.body()?.head.type ?? this.row()?.type ?? null);
   protected readonly stage = computed(() => this.body()?.head.stage ?? this.row()?.stage ?? 'plan');
+  /** `priority:` as core reads it (P3 for a missing or invalid key); null until a source answers, drawn as unmarked P3. */
+  protected readonly priority = computed<Priority | null>(
+    () => this.body()?.head.priority ?? this.row()?.priority ?? this.holder()?.priority ?? null,
+  );
   protected readonly slug = computed(() => slugName(this.body()?.head.slug ?? this.holder()?.slug ?? ''));
   protected readonly command = computed(() => this.body()?.head.nextCommand ?? null);
   protected readonly notes = computed(() => this.body()?.areas.notes.count ?? null);

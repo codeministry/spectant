@@ -1,7 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { type ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
-import { filter } from 'rxjs';
+import { filter, tap } from 'rxjs';
 import { SettingsService } from '../../core/settings.service';
 import {
   type AreaId,
@@ -26,6 +26,8 @@ export interface ShellRoute {
   readonly tab: TabId | null;
   /** The workspace-scope page: route data `page`, else the spec list on `/w/:ws`, else null (spec routes, not-found). */
   readonly wsPage: WorkspacePageId | null;
+  /** The story's slug on `/w/:ws/ideas/:slug` (`wsPage` `idea`, spec 008); null on every other route. */
+  readonly ideaSlug: string | null;
   readonly notFound: boolean;
 }
 
@@ -44,7 +46,8 @@ function readRoute(root: ActivatedRouteSnapshot): ShellRoute {
   const area = isAreaId(data.area) ? data.area : specId === null ? null : 'dashboard';
   const notFound = data.notFound === true;
   const wsPage = isWorkspacePageId(data.page) ? data.page : ws !== null && specId === null && !notFound ? 'specs' : null;
-  return { ws, specId, area, tab: isTabId(data.tab) ? data.tab : null, wsPage, notFound };
+  const ideaSlug = wsPage === 'idea' ? (params['slug'] ?? null) : null;
+  return { ws, specId, area, tab: isTabId(data.tab) ? data.tab : null, wsPage, ideaSlug, notFound };
 }
 
 /** An open `<dialog>` or popover owns Esc (the overlay primitives close it); the shell leaves the key alone then. */
@@ -76,9 +79,23 @@ export class ShellState {
   readonly railStrip = computed(() => this.tier() === 'wide' && this.railCollapsed());
   readonly tabBarPlacement = computed<TabBarPlacement>(() => (this.tier() === 'compact' ? 'header' : 'main'));
 
-  private readonly navigated = toSignal(this.router.events.pipe(filter((event) => event instanceof NavigationEnd)), {
-    initialValue: null,
-  });
+  private readonly lastWorkspace = signal<string | null>(null);
+  /**
+   * The workspace of the last `/w/:ws` route (spec 008, T129): a global page such as `/help` has no `ws` of its own and
+   * shows the workspace the user came from. Written on every `NavigationEnd`, so it holds even while nothing reads it.
+   */
+  readonly lastWs = this.lastWorkspace.asReadonly();
+
+  private readonly navigated = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      tap(() => {
+        const ws = readRoute(this.router.routerState.snapshot.root).ws;
+        if (ws !== null) this.lastWorkspace.set(ws);
+      }),
+    ),
+    { initialValue: null },
+  );
 
   readonly route = computed<ShellRoute>(() => {
     this.navigated();
@@ -87,6 +104,8 @@ export class ShellState {
   readonly ws = computed(() => this.route().ws);
   readonly specId = computed(() => this.route().specId);
   readonly area = computed(() => this.route().area);
+  /** The workspace page of the route (`specs`, `board`, `features`, `milestones`, `idea`), null on spec and global routes. */
+  readonly wsPage = computed(() => this.route().wsPage);
   readonly tab = computed(() => this.route().tab);
   readonly notFound = computed(() => this.route().notFound);
 

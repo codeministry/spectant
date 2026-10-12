@@ -10,7 +10,7 @@ import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import { ApiClient, type ApiResult, type DocsResult } from '../../../core/api.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { DocsTab } from './docs-tab';
-import { MERMAID_LOADER, type MermaidApi } from './mermaid';
+import { MERMAID_LOADER, type MermaidApi } from '../../../shared/ui/doc-prose/mermaid';
 
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
 const SPEC_KEYS: Partial<Record<string, string>> = { '002': 'specs/002-web-console', '003': 'specs/003-config-loader', '009': 'specs/009-untyped' };

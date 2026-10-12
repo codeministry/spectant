@@ -24,6 +24,9 @@ import { UiEmptyState } from '../../../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../../../shared/ui/filter-chips/filter-chips';
 import { UiIdChip } from '../../../../shared/ui/id-chip/id-chip';
 import { UiRovingItem, UiRovingList } from '../../../../shared/ui/roving-list.directive';
+import type { FrameCard } from '../../../../../../../core/src/files';
+import { taskActorsOf } from '../../live/live-frame';
+import { TaskActors } from '../../live/task-actors/task-actors';
 
 /** core's `TasksTab` as the tasks route serves it (`null` there means the spec has no tasks.md). */
 export type TasksBody = NonNullable<SpecRouteResponses['tasks']>;
@@ -87,7 +90,7 @@ const probeText = (probe: string): string => (/^`[^`]*`$/.test(probe) ? probe.sl
  */
 @Component({
   selector: 'app-tasks-tab',
-  imports: [RouterLink, TranslocoPipe, UiChip, UiEmptyState, UiFilterChips, UiIcon, UiIdChip, UiRovingItem, UiRovingList],
+  imports: [RouterLink, TaskActors, TranslocoPipe, UiChip, UiEmptyState, UiFilterChips, UiIcon, UiIdChip, UiRovingItem, UiRovingList],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'tasks' },
   templateUrl: './tasks-tab.html',
@@ -111,6 +114,22 @@ export class TasksTab {
       return ws === null || id === null ? undefined : { ws, id };
     },
     loader: ({ params }) => this.api.tasks(params.ws, params.id),
+  });
+
+  /** The live frame (`…/live`), read once with the list: who works which task (T135, ISC-131.1). */
+  readonly live = resource({
+    params: () => {
+      const ws = this.state.ws();
+      const id = this.state.specId();
+      return ws === null || id === null ? undefined : { ws, id };
+    },
+    loader: ({ params }) => this.api.live(params.ws, params.id),
+  });
+  /** The live cards core named an agent or sub-agent for, by task id; empty until the live route answers `ok`. */
+  protected readonly liveCards = computed<ReadonlyMap<string, FrameCard>>(() => {
+    const result = this.live.hasValue() ? this.live.value() : undefined;
+    if (result?.kind !== 'ok') return new Map();
+    return new Map(result.body.cards.filter((card) => taskActorsOf(card) !== null).map((card) => [card.task, card]));
   });
 
   /** The body once the route answered `ok`: null for a spec without tasks.md, undefined before or on failure. */

@@ -106,3 +106,45 @@ Reason: reshaping or re-parsing the model here makes a second parser (ISC-5); an
   Reason: committed baselines must match CI byte for byte.
 - Pure TypeScript guards (tokens, icons, i18n parity, fonts) live in `web/tests/*.test.ts` and run under root
   `bun test`, where `bunfig.toml` excludes `web/src`. Reason: they need no Angular, and Bun must skip Vitest specs.
+
+## Driving the board writes from an e2e spec
+
+The stub answers the Stage-3 board (spec 008, T119) from the planning golden and an in-memory state per
+`X-Spectant-Stub-Session`; `POST /api/__stub/reset` restores the golden for that session. A spec picks the answer by
+what it sends, never by a hidden switch:
+
+- **200**: send the hash the page read (the planning holder's `hash`, or `X-Spectant-Spec-Hash` on `GET …/specs/:id`;
+  for a story `IdeaPage.hash`) and a move the spec's workflow row lists, on a spec no lock holds. The session's tree
+  then shows the card moved (stage, `stageSource: explicit`, a new `hash`, `stageCounts`); an allocation removes the
+  story and adds the new spec at `plan` (`010-console-audit-log` on harbor). Reason: the next poll must render the move.
+- **409**: send any other hash (`'0'.repeat(64)`), or the old hash after a move; or `X-Spectant-Stub-Write: stale`.
+- **423**: transition a spec the lock fixture holds: harbor 002 under the default `activity` locks (`a:claude:sess-2`
+  on ISC-74), every spec with an open claim under `X-Spectant-Stub-Locks: frontier`, none under `none`; or send
+  `X-Spectant-Stub-Write: locked` (the only way for an allocation, which the real server never locks). Lock sessions
+  follow the actor grammar; made-up ones read `a:claude:stub-<id>-<claim>`.
+- **422**: a move the row does not list (`006` `review → done`, or the stage it already stands in), answered with the
+  stage-table phrase and the spec's next command; allocating `registry-webhooks`, which the story index does not name,
+  is `not-in-index`. Reason: these are the refusals the real write gives for the same fixture.
+
+## Changing a workflow from an e2e spec
+
+`PUT /api/__stub/workflow?ws=<slug>` with a `specs/workflow.md` text as the body stands in for an edit of that file
+(T151): core's `parseWorkflow` reads it, and that `X-Spectant-Stub-Session`'s planning tree carries the result as
+`workflow` (and `boardStages` of it as `stages`) until `POST /api/__stub/reset`. 204; 404 for an unknown slug; 405 with
+`Allow: PUT`. Set the session on the context (`setExtraHTTPHeaders`), send the edited fixture file, reload, assert;
+reset after. Reason: the next read must show the changed table without touching the fixture tree, and the parse
+stays core's.
+
+## Driving who works a task from an e2e spec
+
+The agent and sub-agent chips (T135, ISC-131.1; `web/e2e/live.spec.ts`, `-g subagents`) read core's `LiveCard.agent` and
+`.subagent`; the stub fills them in every lock fixture as core's `live.ts` `workersOf` does. Pin the clock to
+`STUB_NOW` (`test.use({ clockAt: STUB_NOW })`) so a lock is stale exactly past `LIVE_STALE_MS`, and pick the holder with
+`X-Spectant-Stub-Locks`:
+
+- **agent, stale**: `activity` (default), harbor 002 T27 by `a:claude:sess-2`, 54 minutes without a release.
+- **agent, fresh**: `frontier`, harbor 002 T28 by `syntheticSession('002', 'ISC-75')`, 20 minutes.
+- **sub-agent**: `claims`, the fixture tree's activity claim lines without their releases, landed cards re-opened as
+  `core/tests/live.test.ts` does; harbor 002 T4 by `a:claude:sess-2/T4` under `a:claude:sess-2`, stale. Reason: the
+  golden log releases T4's claim, so no golden frame holds a sub-agent.
+- **person**: `person`, the golden's locks held by `STUB_PERSON` (`u:3f9c0a7d`); T27 runs and no agent chip shows.

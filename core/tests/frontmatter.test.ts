@@ -28,7 +28,7 @@ describe('fixtures', () => {
   const files = markdownFiles();
 
   test('the corpus holds the spec and master files the parsers are measured on', () => {
-    expect(files.filter((f) => f.endsWith('/spec.md') || f.endsWith('/ISA.md')).length).toBe(17);
+    expect(files.filter((f) => f.endsWith('/spec.md') || f.endsWith('/ISA.md')).length).toBe(20);
   });
 
   test.each(files)('%s parses without an error diagnostic', (rel) => {
@@ -36,21 +36,26 @@ describe('fixtures', () => {
     expect(fm.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
+  // Harbor 005 carries the invalid `priority: high` (spec 008, T26): its one planted warning.
+  const PLANTED: Readonly<Record<string, readonly string[]>> = {
+    'harbor/specs/005-config-format-choice/spec.md': ['frontmatter-priority'],
+  };
+
   test.each(files.filter((f) => f.endsWith('/spec.md')))('%s carries a typed spec head', (rel) => {
     const fm = parseFrontmatter(read(rel));
     expect(fm.present).toBe(true);
-    expect(fm.diagnostics).toEqual([]);
-    expect(fm.data.slug).toMatch(/^\d{3}-[a-z0-9-]+$/);
+    expect(fm.diagnostics.map((d) => d.code)).toEqual([...(PLANTED[rel] ?? [])]);
     expect(fm.data.specType).not.toBeNull();
+    expect(fm.data.slug).toMatch(/^\d{3}-[a-z0-9-]+$/);
     expect(fm.data.progress).not.toBeNull();
     expect(fm.data.phase).not.toBeNull();
     expect(typeof fm.data.contextSufficient).toBe('boolean');
     expect(typeof fm.data.interviewInvoked).toBe('boolean');
   });
 
-  test('harbor master: progress 101/124, project kept in rest', () => {
+  test('harbor master: progress 106/130, project kept in rest', () => {
     const fm = parseFrontmatter(read('harbor/ISA.md'));
-    expect(fm.data.progress).toEqual({ closed: 101, total: 124 });
+    expect(fm.data.progress).toEqual({ closed: 106, total: 130 });
     expect(fm.data.task).toBe('Mirror container manifests between registries with Harbor');
     expect(fm.data.slug).toBe('20260302-harbor');
     expect(fm.data.phase).toBe('climbing');
@@ -76,7 +81,16 @@ describe('fixtures', () => {
       interviewInvoked: false,
       contextLog: 'context.md',
       archived: null,
+      priority: 'P2',
+      stage: 'build',
     });
+    expect(fm.rest).toEqual({});
+  });
+
+  test('harbor 007: spec_type chore is the seventh type (spec 008, T38)', () => {
+    const fm = parseFrontmatter(read('harbor/specs/007-rotate-mirror-token/spec.md'));
+    expect(fm.diagnostics).toEqual([]);
+    expect(fm.data.specType).toBe('chore');
     expect(fm.rest).toEqual({});
   });
 
@@ -229,5 +243,58 @@ describe('milestone key', () => {
     const without = parseFrontmatter('---\nslug: 004-x\n---\n# X\n');
     expect(without.data.milestone).toBeNull();
     expect(without.diagnostics).toEqual([]);
+  });
+});
+
+// Spec 008, T40 (ISC-120): `stage:` is read as plain text, unvalidated; precedence and `stage-mismatch` are T47/T48.
+describe('stage key', () => {
+  test('stage: the explicit stage is read as written, out of rest, with no diagnostic; absent is null', () => {
+    const fm = parseFrontmatter('---\nslug: 004-x\nstage: build\n---\n# X\n');
+    expect(fm.data.stage).toBe('build');
+    expect(fm.rest).toEqual({});
+    expect(fm.diagnostics).toEqual([]);
+    // No validation yet: a value outside every workflow is still read as text.
+    expect(parseFrontmatter('---\nstage: "someday"\n---\n').data.stage).toBe('someday');
+    expect(parseFrontmatter('---\nslug: 004-x\n---\n').data.stage).toBeNull();
+    expect(parseFrontmatter(read('harbor/specs/006-partial-push/spec.md')).data.stage).toBe('review');
+  });
+});
+
+// Spec 008, T39 (ISC-118): `priority:` is exactly P1, P2, P3 or P4; a missing key reads as P3 without a diagnostic,
+// any other value is one `frontmatter-priority` warning, reads as P3, and the rest of the file still parses.
+describe('priority key', () => {
+  test('priority: a missing key reads as P3 with no diagnostic', () => {
+    const fm = parseFrontmatter('---\nslug: 004-x\n---\n# X\n');
+    expect(fm.data.priority).toBe('P3');
+    expect(fm.diagnostics).toEqual([]);
+  });
+
+  test.each(['P1', 'P2', 'P3', 'P4'] as const)('priority: %s reads as written, no diagnostic, not in rest', (value) => {
+    const fm = parseFrontmatter(`---\nslug: 004-x\npriority: ${value}\n---\n# X\n`);
+    expect(fm.data.priority).toBe(value);
+    expect(fm.diagnostics).toEqual([]);
+    expect(fm.rest).toEqual({});
+    expect(fm.values).toEqual({ slug: '004-x', priority: value });
+  });
+
+  test.each(['high', 'p1', 'P5', 'P0', ''])('priority: an invalid value "%s" is one warning, reads as P3, and the file parses', (value) => {
+    const fm = parseFrontmatter(`---\nslug: 004-x\npriority: ${value}\nphase: building\n---\n# X\n`);
+    expect(fm.diagnostics.map((d) => `${d.severity}:${d.code}@${d.line ?? '-'}`)).toEqual(['warning:frontmatter-priority@3']);
+    expect(fm.data.priority).toBe('P3');
+    expect(fm.present).toBe(true);
+    expect(fm.data.slug).toBe('004-x');
+    expect(fm.data.phase).toBe('building');
+    expect(fm.body).toBe('# X\n');
+    expect(fm.rest).toEqual({});
+  });
+
+  test('priority: harbor carries P1 on 006, P2 on 002, the invalid high on 005 and the P3 default elsewhere', () => {
+    const priorityOf = (rel: string) => parseFrontmatter(read(rel)).data.priority;
+    expect(priorityOf('harbor/specs/006-partial-push/spec.md')).toBe('P1');
+    expect(priorityOf('harbor/specs/002-web-console/spec.md')).toBe('P2');
+    expect(priorityOf('harbor/specs/005-config-format-choice/spec.md')).toBe('P3');
+    expect(priorityOf('harbor/specs/003-config-loader/spec.md')).toBe('P3');
+    const invalid = parseFrontmatter(read('harbor/specs/005-config-format-choice/spec.md'));
+    expect(invalid.diagnostics.map((d) => [d.code, d.line])).toEqual([['frontmatter-priority', 7]]);
   });
 });

@@ -27,6 +27,7 @@ import type {
   KeyNumbers,
   LaneProgress,
   SpecAreas,
+  SpecFiles,
   SpecHead,
   SpecNextStep,
   SpecPageInput,
@@ -179,18 +180,25 @@ function tldrOf(text: string | null | undefined, row: DashboardSpecRow): SpecTld
 
 // ── the page ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** The dashboard row of this folder, built by the dashboard itself, so no shared counter is computed twice. */
+/**
+ * The dashboard row of this folder, built by the dashboard itself, so no shared counter is computed twice. The other
+ * folders go in as the dashboard sees them, active or archived (an archived spec carries `archived:`, FORMAT.md § The
+ * archive rule), so row 7's open siblings (T49) and the lock routing match the dashboard row.
+ */
 function rowOf(input: SpecPageInput): DashboardSpecRow {
   const { texts } = input.files;
+  const others = input.others ?? [];
+  const isArchived = (f: SpecFiles): boolean => parseFrontmatter(f.texts.spec ?? '').values.archived !== undefined;
   const row = buildDashboard({
     master: texts.master ?? null,
     constitution: null,
     tldr: null,
-    specs: [input.files],
-    archived: input.others ?? [],
+    specs: [input.files, ...others.filter((f) => !isArchived(f))],
+    archived: others.filter(isArchived),
     worktreeTree: input.worktreeTree ?? null,
     ...(input.locks ? { locks: input.locks } : {}),
-  }).specs[0];
+    ...(input.workflow ? { workflow: input.workflow } : {}),
+  }).specs.find((r) => r.slug === input.files.folder);
   if (row === undefined) throw new Error(`buildSpecPage: ${input.files.folder} has no spec.md, so it is not a spec`);
   return row;
 }
@@ -253,8 +261,14 @@ export function buildSpecPage(input: SpecPageInput): SpecPageModel {
     round: roundNumbers.length > 0 ? Math.max(...roundNumbers) : null,
     lastRound: row.lastRound,
     uncommittedFiles: null,
+    // Both from the row, the one source (ISC-72): its stage was decided with the explicit stage (T47, ISC-120).
+    priority: row.priority,
+    stageSource: row.stageSource,
+    // The row's assignee (T65, ISC-131): the same locks and events, so the head and the row name the same actor.
+    assignee: row.assignee,
   };
 
+  // The stage phrase first and unchanged: the row's `nextReason` is `reasonOf(step)` (T69, ISC-122.3); the page's own facts follow.
   const reasons = [row.nextReason];
   if (PAST_REVIEW.has(row.stage)) reasons.push('the reviewed mark is fresh');
   if (row.stage !== 'done' && waitingOnYou.length > 0) {

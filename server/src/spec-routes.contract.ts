@@ -26,15 +26,21 @@
  * consumed it, and one convention across the API beats matching one line of the plan.
  *
  * Workspace routes (spec 003, plan 003 § Interfaces "Contract, new workspace route"): a second, smaller family that
- * names a whole workspace, `/api/workspaces/:ws/<route>`, with no `/specs/:id`. Today it holds `planning`, the
+ * names a whole workspace, `/api/workspaces/:ws/<route>`, with no `/specs/:id`. It holds `planning`, the
  * planning tree (`PlanningModel`, `core/src/planning.ts`) the Features and Milestones pages and the spec-head
- * breadcrumb read once per workspace. It sits beside the spec family, not inside it: `matchSpecPath` requires
+ * breadcrumb read once per workspace, and since spec 008 T88 `idea`, one story of `specs/ideas/` (`IdeaPage`), the
+ * family's one route with a second param, `:slug`. It sits beside the spec family, not inside it: `matchSpecPath` requires
  * `/specs/:id` and its params, so folding a slug-only route into `SPEC_ROUTE_TABLE` would change what every spec
  * route's match carries. `workspaceRoutes` builds, `matchWorkspacePath` matches (one segment matcher shared with
  * `matchSpecPath`, so both decode the same way), `WORKSPACE_ROUTE_TABLE` lists, `WorkspaceRouteResponses` types the
  * 200 and `WorkspaceRouteError` every other answer. The dashboard (`/api/workspaces/:ws/dashboard`) is a workspace
  * route too but stays in `api.ts` with its own `DASHBOARD_PATH` and is not listed here: this family answers from the
  * contract alone, and moving the dashboard in would change `api.ts`, which this contract does not own.
+ *
+ * Pending routes (spec 008, T81; plan 008 § Interfaces "Contract, new routes"): none left. `transition` moved into
+ * `SPEC_ROUTE_TABLE` with its handler (T83, `transition-route.ts`), `idea` (T88), `boardQuery` (T92) and `allocate` (T87,
+ * the family's one write) into `WORKSPACE_ROUTE_TABLE`; `actors` (T91) is a route of its own, `ACTORS_PATH`, beside
+ * `/api/settings`. The pending family went with its last route; the bodies stay in § Spec 008 bodies.
  */
 import { API_PREFIX } from './assets.contract.ts';
 import { FILE_KINDS } from '../../core/src/files.ts';
@@ -45,14 +51,17 @@ import type {
   DocAvailability,
   DocName,
   DocsPage,
+  EventLine,
   EvidenceListing,
   FileKind,
   Frame,
+  IdeaRef,
   LiveFrame,
   LockSource,
   SpecPageModel,
   TasksTab,
   TimelineEntry,
+  WorkflowStage,
 } from '../../core/src/files.ts';
 
 // ─── Paths ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -74,7 +83,8 @@ export type SpecRouteName =
   | 'frames'
   | 'live'
   | 'gateReviewed'
-  | 'taskCheck';
+  | 'taskCheck'
+  | 'transition';
 
 export interface SpecParams {
   readonly ws: string;
@@ -95,6 +105,7 @@ export interface SpecRouteParams {
   live: SpecParams;
   gateReviewed: SpecParams;
   taskCheck: SpecParams & { readonly tid: string };
+  transition: SpecParams;
 }
 
 /** What `matchSpecPath` returns: the route and its params, discriminated by `route`. */
@@ -117,6 +128,7 @@ export const specRoutes = {
   live: (ws: string, id: string): string => `${base(ws, id)}/live`,
   gateReviewed: (ws: string, id: string): string => `${base(ws, id)}/gate/reviewed`,
   taskCheck: (ws: string, id: string, tid: string): string => `${base(ws, id)}/tasks/${enc(tid)}/check`,
+  transition: (ws: string, id: string): string => `${base(ws, id)}/transition`,
 } as const satisfies Record<SpecRouteName, (...args: never[]) => string>;
 
 export type SpecRouteMethod = 'GET' | 'POST';
@@ -137,7 +149,18 @@ export interface SpecRouteEntry {
 const READ = [200, 304, 403, 404, 405, 409] as const;
 /** 200 written; 400 invalid body; 403 guard; 404 unknown workspace, spec or task; 405; 409 hash mismatch or unreadable; 423 locked. */
 const WRITE = [200, 400, 403, 404, 405, 409, 423] as const;
-const P = `${SPEC_API_ROOT}/:ws/specs/:id`;
+/**
+ * A write the workflow or the index may refuse: `WRITE` plus 422. 404 is the unknown workspace, spec or story; 409 is
+ * `hash-mismatch` or the unreadable workspace's `Unavailable`.
+ */
+const REFUSABLE_WRITE = [200, 400, 403, 404, 405, 409, 422, 423] as const;
+/**
+ * The app's own state (the database), never a repository file: 400 invalid body, no 409 (spec 008, T91, T92). The
+ * board query's 404 is the unknown workspace; the actors route names none.
+ */
+const BOARD_QUERY_STATUSES = [200, 304, 400, 403, 404, 405] as const;
+export const ACTORS_STATUSES = [200, 304, 400, 403, 405] as const;
+const P =`${SPEC_API_ROOT}/:ws/specs/:id`;
 
 /** Every spec route exactly once. The matcher, the server's 405 `Allow`, the stub and the docs iterate it. */
 export const SPEC_ROUTE_TABLE: readonly SpecRouteEntry[] = [
@@ -152,6 +175,7 @@ export const SPEC_ROUTE_TABLE: readonly SpecRouteEntry[] = [
   { route: 'live', method: 'GET', pattern: `${P}/live`, statuses: READ, response: 'LiveFrame' },
   { route: 'gateReviewed', method: 'POST', pattern: `${P}/gate/reviewed`, statuses: WRITE, response: 'GateReviewedResponse' },
   { route: 'taskCheck', method: 'POST', pattern: `${P}/tasks/:tid/check`, statuses: WRITE, response: 'TaskCheckResponse' },
+  { route: 'transition', method: 'POST', pattern: `${P}/transition`, statuses: REFUSABLE_WRITE, response: 'TransitionWritten' },
 ];
 
 /** The `Allow` header of a route's 405. */
@@ -229,29 +253,61 @@ export function evidencePathQuery(search: string): string {
 
 // ─── Workspace routes ────────────────────────────────────────────────────────────────────────────────────────────
 
-/** The routes that name a whole workspace (spec 003). The dashboard is one too but lives in `api.ts` (header). */
-export type WorkspaceRouteName = 'planning';
+/**
+ * The routes that name a whole workspace (spec 003): the planning tree, and one story of `specs/ideas/` (spec 008,
+ * T88). The dashboard is one too but lives in `api.ts` (header).
+ */
+export type WorkspaceRouteName = 'planning' | 'idea' | 'boardQuery' | 'allocate';
 
 export interface WorkspaceParams {
   readonly ws: string;
 }
 
-/** What `matchWorkspacePath` returns: the route and its decoded slug, discriminated by `route`. */
-export type WorkspaceRouteMatch = { [R in WorkspaceRouteName]: { readonly route: R; readonly params: WorkspaceParams } }[WorkspaceRouteName];
+/** The workspace slug and a story's slug, the file name of `specs/ideas/<slug>.md` without `.md`. */
+export interface StoryParams extends WorkspaceParams {
+  readonly slug: string;
+}
 
-/** URL builders, one per workspace route. The slug is percent-encoded once; the result is a path, no origin. */
+/** The decoded params of each workspace route. */
+export interface WorkspaceRouteParams {
+  planning: WorkspaceParams;
+  idea: StoryParams;
+  boardQuery: WorkspaceParams;
+  allocate: StoryParams;
+}
+
+/** What `matchWorkspacePath` returns: the route and its decoded params, discriminated by `route`. */
+export type WorkspaceRouteMatch = {
+  [R in WorkspaceRouteName]: { readonly route: R; readonly params: WorkspaceRouteParams[R] };
+}[WorkspaceRouteName];
+
+/** URL builders, one per workspace route. Each segment is percent-encoded once; the result is a path, no origin. */
 export const workspaceRoutes = {
   planning: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/planning`,
-} as const satisfies Record<WorkspaceRouteName, (ws: string) => string>;
+  idea: (ws: string, slug: string): string => `${SPEC_API_ROOT}/${enc(ws)}/ideas/${enc(slug)}`,
+  boardQuery: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/board-query`,
+  allocate: (ws: string, slug: string): string => `${SPEC_API_ROOT}/${enc(ws)}/ideas/${enc(slug)}/allocate`,
+} as const satisfies Record<WorkspaceRouteName, (...args: never[]) => string>;
 
-/** `SpecRouteEntry` for a workspace route: every one is a read, so `GET` (and `HEAD`) with the read statuses. */
+/**
+ * `SpecRouteEntry` for a workspace route: the reads are `GET` (and `HEAD`) with the read statuses; the board query
+ * (T92) also takes a `PUT` (`write`, `request`) and answers its own statuses; `allocate` (T87) is the one `POST`, with
+ * the statuses of a refusable write.
+ */
 export interface WorkspaceRouteEntry {
   readonly route: WorkspaceRouteName;
   /** `GET` routes also answer `HEAD` (same headers, no body). */
-  readonly method: 'GET';
-  /** The path pattern; `:ws` is the one param. */
+  readonly method: 'GET' | 'POST';
+  /** The write method a GET route answers beside `GET`, after `HEAD` in `Allow`; absent on a read-only or POST route. */
+  readonly write?: 'PUT';
+  /** The body the write takes, by type name; absent on a read-only route. */
+  readonly request?: string;
+  /** The path pattern; `:ws` is a param of every route, `:slug` of `idea`. */
   readonly pattern: string;
-  /** 200 or 304 by ETag; 403 host or origin guard; 404 unknown workspace; 405 wrong method; 409 unreadable workspace. */
+  /**
+   * 200 or 304 by ETag; 403 host or origin guard; 404 unknown workspace (and, for `idea`, unknown story); 405 wrong
+   * method; 409 unreadable workspace.
+   */
   readonly statuses: readonly number[];
   /** The 200 body, by type name, for docs and the stub. */
   readonly response: string;
@@ -260,30 +316,35 @@ export interface WorkspaceRouteEntry {
 /** Every workspace route exactly once. The matcher, the server's 405 `Allow`, the stub and the docs iterate it. */
 export const WORKSPACE_ROUTE_TABLE: readonly WorkspaceRouteEntry[] = [
   { route: 'planning', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/planning`, statuses: READ, response: 'PlanningModel' },
+  { route: 'idea', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/ideas/:slug`, statuses: READ, response: 'IdeaPage' },
+  { route: 'boardQuery', method: 'GET', write: 'PUT', pattern: `${SPEC_API_ROOT}/:ws/board-query`, statuses: BOARD_QUERY_STATUSES, request: 'BoardQuery', response: 'BoardQuery' },
+  { route: 'allocate', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, statuses: REFUSABLE_WRITE, request: 'AllocateRequest', response: 'IdeaAllocated' },
 ];
 
 const WORKSPACE_ENTRIES = new Map(WORKSPACE_ROUTE_TABLE.map((entry) => [entry.route, entry]));
 
-/** The `Allow` header of a workspace route's 405: every one is a read, so `GET, HEAD`. */
+/** The `Allow` header of a workspace route's 405: `GET, HEAD` for a read (plus its write method if it has one), `POST` for `allocate`. */
 export function allowForWorkspace(route: WorkspaceRouteName): string {
-  return WORKSPACE_ENTRIES.get(route)?.method === 'GET' ? 'GET, HEAD' : '';
+  const entry = WORKSPACE_ENTRIES.get(route);
+  if (entry === undefined) return '';
+  if (entry.method !== 'GET') return entry.method;
+  return entry.write === undefined ? 'GET, HEAD' : `GET, HEAD, ${entry.write}`;
 }
 
 const WORKSPACE_COMPILED = WORKSPACE_ROUTE_TABLE.map((entry) => ({ entry, segments: entry.pattern.split('/').slice(1) }));
 
 /**
  * The workspace route a pathname names, whatever the method; null for any other path, every spec route and the
- * dashboard included. Takes `URL.pathname` (still percent-encoded); the slug is decoded once, as `matchSpecPath` does.
- * The server checks the method itself (`GET`/`HEAD`, else 405 with `allowForWorkspace`), so a 405 still finds its route.
+ * dashboard included. Takes `URL.pathname` (still percent-encoded); each param is decoded once, as `matchSpecPath`
+ * does. The server checks the method itself (`GET`/`HEAD`, else 405 with `allowForWorkspace`), so a 405 still finds
+ * its route.
  */
 export function matchWorkspacePath(pathname: string): WorkspaceRouteMatch | null {
   const parts = pathname.split('/').slice(1);
   for (const { entry, segments } of WORKSPACE_COMPILED) {
     const params = matchSegments(segments, parts);
-    if (params === null) continue;
-    // Destructured: the web tsconfig forbids dot access on an index signature, root eslint forbids bracket access.
-    const { ws = '' } = params;
-    return { route: entry.route, params: { ws } };
+    // The pattern names exactly the params of its route (the round-trip test pins it), so the cast only restores the union.
+    if (params !== null) return { route: entry.route, params } as unknown as WorkspaceRouteMatch;
   }
   return null;
 }
@@ -317,13 +378,38 @@ export interface SpecRouteResponses {
   live: LiveFrame;
   gateReviewed: GateReviewedResponse;
   taskCheck: TaskCheckResponse;
+  transition: TransitionWritten;
 }
 
 export type SpecRouteResponse<R extends SpecRouteName> = SpecRouteResponses[R];
 
-/** The 200 body of each workspace route. Only core types: the golden family's whole file is exactly this. */
+/**
+ * The 200 body of each workspace route. Only core types, or a record of them (`IdeaPage`); a golden family's whole
+ * file is exactly the body (`idea` and `boardQuery` have no family yet).
+ */
 export interface WorkspaceRouteResponses {
   planning: PlanningModel;
+  idea: IdeaPage;
+  /** The database's row for the workspace, never a file; `{query: ''}` when none is stored. `PUT` answers the same. */
+  boardQuery: BoardQuery;
+  allocate: IdeaAllocated;
+}
+
+/** The body of each workspace route that takes one (`WorkspaceRouteEntry.write` or a POST route). */
+export interface WorkspaceRouteRequests {
+  boardQuery: BoardQuery;
+  allocate: AllocateRequest;
+}
+
+/**
+ * 200 of `GET …/ideas/:slug`: the story as the planning tree lists it (`readIdeas`), its file rendered by
+ * `markdown-docs.ts` (the flat frontmatter as written in `page.frontmatter`), and the raw sha256 hex of the file's
+ * bytes, `allocate`'s `hash`. All three come from one read of the file.
+ */
+export interface IdeaPage {
+  readonly idea: IdeaRef;
+  readonly page: DocsPage;
+  readonly hash: string;
 }
 
 export type WorkspaceRouteResponse<R extends WorkspaceRouteName> = WorkspaceRouteResponses[R];
@@ -350,8 +436,20 @@ export const GOLDEN_FAMILY = {
 
 // ─── Error bodies ────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Every `error` code the API sends besides the unreadable-workspace codes. */
-export const API_ERRORS = ['not-found', 'forbidden', 'method-not-allowed', 'invalid-body', 'hash-mismatch', 'locked'] as const;
+/**
+ * Every `error` code the API sends besides the unreadable-workspace codes. The two refusals are the 422s of the
+ * pending writes (`TransitionRefused`, `AllocateRefused`): the file is current, the workflow or the index says no.
+ */
+export const API_ERRORS = [
+  'not-found',
+  'forbidden',
+  'method-not-allowed',
+  'invalid-body',
+  'hash-mismatch',
+  'locked',
+  'transition-refused',
+  'allocate-refused',
+] as const;
 export type ApiError = (typeof API_ERRORS)[number];
 
 /** 404: unknown workspace, spec, doc file or task, or an evidence path that names no file. Never a fallback body. */
@@ -417,13 +515,22 @@ export type SpecRouteError<R extends SpecRouteName> =
   | Unavailable
   | (R extends 'docs' ? DocMissing : never)
   | (R extends 'gateReviewed' ? InvalidBody | Conflict<ReviewedHashes> | Locked : never)
-  | (R extends 'taskCheck' ? InvalidBody | Conflict<{ readonly tasks: string }> | Locked : never);
+  | (R extends 'taskCheck' ? InvalidBody | Conflict<{ readonly tasks: string }> | Locked : never)
+  | (R extends 'transition' ? InvalidBody | Conflict<{ readonly spec: string }> | TransitionRefused | Locked : never);
 
 /**
  * The error body a workspace route may send: 404 unknown slug, 403 guard, 405 wrong method, 409 unreadable workspace
- * (the same `Unavailable` summary the dashboard sends). No route of this family writes, so there is nothing else.
+ * (the same `Unavailable` summary the dashboard sends). The board query (T92) reads the database alone: no 409, and
+ * its `PUT` adds 400 `invalid-body`. The allocation (T87) adds its write answers: 400, the 409 `hash-mismatch` of the
+ * story, the 422 `allocate-refused` and the 423 the contract keeps (unreachable for a story, `writes.ts` `writeAllocate`).
+ * Without a route named, the union of the file reads.
  */
-export type WorkspaceRouteError = NotFound | Forbidden | MethodNotAllowed | Unavailable;
+export type WorkspaceRouteError<R extends WorkspaceRouteName = 'planning' | 'idea'> =
+  | NotFound
+  | Forbidden
+  | MethodNotAllowed
+  | ([R] extends ['boardQuery'] ? InvalidBody : Unavailable)
+  | ([R] extends ['allocate'] ? InvalidBody | Conflict<{ readonly idea: string }> | AllocateRefused | Locked : never);
 
 export function isUnavailable(body: unknown): body is Unavailable {
   return typeof body === 'object' && body !== null && (body as { readable?: unknown }).readable === false;
@@ -520,6 +627,169 @@ export function isTaskCheckRequest(body: unknown): body is TaskCheckRequest {
   if (typeof body !== 'object' || body === null) return false;
   const { checked, hash } = body as { checked?: unknown; hash?: unknown };
   return typeof checked === 'boolean' && typeof hash === 'string' && HEX64.test(hash);
+}
+
+// ─── Spec 008 bodies (T81) ───────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The bodies of spec 008's writes and resources, declared ahead of their handlers (T81) and shared by the server, the
+ * e2e stub and the web client; every route is registered now (`transition` in `SPEC_ROUTE_TABLE`, `idea`, `boardQuery`
+ * and `allocate` in `WORKSPACE_ROUTE_TABLE`, the actor names at `ACTORS_PATH`).
+ */
+
+/**
+ * The actor names route (T91, ISC-119.2); it names no workspace and is no family's: `GET`/`HEAD` answer every stored
+ * `ActorMapping` ordered by id (ETag, 304), `PUT` replaces the whole mapping with an array `isActorMappings` admits.
+ * Statuses `ACTORS_STATUSES`, errors `ActorsError`, 405 with `ACTORS_ALLOW`.
+ */
+export const ACTORS_PATH = `${API_PREFIX}actors`;
+export const ACTORS_ALLOW = 'GET, HEAD, PUT';
+
+/**
+ * Where the client gets `TransitionRequest.hash`: the raw sha256 hex of spec.md on `GET …/:id` (200 and 304), as
+ * `TASKS_HASH_HEADER` carries tasks.md's. Raw, not normalised: the transition rewrites `stage:` in the frontmatter,
+ * which the normalised gate hash drops. `GET …/:id` sends it beside `REVIEWED_HASHES_HEADER` (T83).
+ */
+export const SPEC_HASH_HEADER = 'X-Spectant-Spec-Hash';
+
+/** Every stage a transition may name, pinned to core's `WorkflowStage` (a missing or extra key fails `tsc`). */
+const WORKFLOW_STAGES = {
+  plan: true,
+  tasks: true,
+  review: true,
+  build: true,
+  blocked: true,
+  'code-review': true,
+  close: true,
+  done: true,
+  idea: true,
+  'close-pending': true,
+} as const satisfies Record<WorkflowStage, true>;
+
+/**
+ * `POST …/:id/transition`: the stage wanted and the raw sha256 hex of spec.md as the page read it. The actor is not
+ * the client's to name: the server records the viewer's `u:` id (`VIEWER_ACTOR_FALLBACK` without one).
+ */
+export interface TransitionRequest {
+  readonly to: WorkflowStage;
+  readonly hash: string;
+}
+
+/** 200 of the transition: the move made, spec.md's new raw hash, the event appended, the lock source consulted. */
+export interface TransitionWritten {
+  readonly from: WorkflowStage;
+  readonly to: WorkflowStage;
+  readonly hash: string;
+  readonly event: EventLine;
+  readonly lockSource: LockSource;
+}
+
+/**
+ * 422 of the transition: spec.md is current and the workflow says no. `reason` is the stage row's phrase and
+ * `command` the one that would make the move, as `planTransition` refuses; spec.md stays byte-identical.
+ */
+export interface TransitionRefused {
+  readonly error: 'transition-refused';
+  readonly reason: string;
+  readonly command: string | null;
+}
+
+/** `POST …/ideas/:slug/allocate`: the raw sha256 hex of the story file as the page read it. */
+export interface AllocateRequest {
+  readonly hash: string;
+}
+
+/** 200 of the allocation: the new spec, the files written and the story file removed, all repository-relative. */
+export interface IdeaAllocated {
+  /** `NNN`. */
+  readonly id: string;
+  /** `specs/NNN-slug/`. */
+  readonly folder: string;
+  /** In `WRITE_PATHS.allocate` order. */
+  readonly files: readonly string[];
+  /** `specs/ideas/<slug>.md`. */
+  readonly removed: string;
+  readonly lockSource: LockSource;
+}
+
+/**
+ * 422 of the allocation: nothing was written. `folder-exists` when the folder the next number names is already
+ * there, `not-in-index` when `specs/ideas/README.md` does not list the story; `folder` is the folder it would create.
+ */
+export interface AllocateRefused {
+  readonly error: 'allocate-refused';
+  readonly reason: 'folder-exists' | 'not-in-index';
+  readonly folder: string | null;
+}
+
+/**
+ * One person of the actor table (`ActorRow` in `db.ts` without `updatedAt`, pinned by the contract test): the
+ * `u:` id, the name the app shows, the git addresses seen for it. `GET /api/actors` answers every row ordered by id;
+ * `PUT` takes the whole list (`isActorMappings`), replaces the table with it and answers the list as stored. The
+ * handler checks each `id` with core's `parseActor`: only a person (`u:` + eight hex) has a row.
+ */
+export interface ActorMapping {
+  readonly id: string;
+  readonly displayName: string;
+  readonly gitIdentities: readonly string[];
+}
+
+/** A workspace's remembered board filter: the board URL's query without `?`, `''` when none is stored. */
+export interface BoardQuery {
+  readonly query: string;
+}
+
+export const BOARD_QUERY_MAX = 2048;
+
+/** The actor names route's 200 body (`GET` and `PUT`) and its `PUT` body: the whole mapping. */
+export type ActorsResponse = readonly ActorMapping[];
+export type ActorsRequest = readonly ActorMapping[];
+
+/** The error body the actor names route may send: no workspace, so no 404 slug, and no file, so no 409. */
+export type ActorsError = Forbidden | MethodNotAllowed | InvalidBody;
+
+/** The 422 codes. */
+export const REFUSAL_ERRORS = ['transition-refused', 'allocate-refused'] as const satisfies readonly ApiError[];
+
+const isPlainRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const hasOnlyKeys = (v: Record<string, unknown>, keys: readonly string[]): boolean =>
+  Object.keys(v).every((key) => keys.includes(key));
+
+export function isTransitionRequest(body: unknown): body is TransitionRequest {
+  if (!isPlainRecord(body) || !hasOnlyKeys(body, ['to', 'hash'])) return false;
+  const { to, hash } = body;
+  return typeof to === 'string' && Object.hasOwn(WORKFLOW_STAGES, to) && typeof hash === 'string' && HEX64.test(hash);
+}
+
+export function isAllocateRequest(body: unknown): body is AllocateRequest {
+  if (!isPlainRecord(body) || !hasOnlyKeys(body, ['hash'])) return false;
+  const { hash } = body;
+  return typeof hash === 'string' && HEX64.test(hash);
+}
+
+export function isActorMapping(body: unknown): body is ActorMapping {
+  if (!isPlainRecord(body) || !hasOnlyKeys(body, ['id', 'displayName', 'gitIdentities'])) return false;
+  const { id, displayName, gitIdentities } = body;
+  return (
+    typeof id === 'string' &&
+    id !== '' &&
+    typeof displayName === 'string' &&
+    displayName.trim() !== '' &&
+    Array.isArray(gitIdentities) &&
+    gitIdentities.every((address) => typeof address === 'string')
+  );
+}
+
+/** The `PUT /api/actors` body: an array of `ActorMapping`s, each id once. The handler adds the person-id check. */
+export function isActorMappings(body: unknown): body is ActorsRequest {
+  if (!Array.isArray(body) || !body.every((entry) => isActorMapping(entry))) return false;
+  return new Set(body.map((entry: ActorMapping) => entry.id)).size === body.length;
+}
+
+export function isBoardQuery(body: unknown): body is BoardQuery {
+  if (!isPlainRecord(body) || !hasOnlyKeys(body, ['query'])) return false;
+  const { query } = body;
+  return typeof query === 'string' && query.length <= BOARD_QUERY_MAX && !query.startsWith('?');
 }
 
 // ─── Evidence file ───────────────────────────────────────────────────────────────────────────────────────────────

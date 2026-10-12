@@ -66,7 +66,9 @@ export class ShellNav {
    */
   protected readonly workspacePage = computed(() => {
     const id = this.state.route().wsPage;
-    return id === null || this.specOpen() || this.data.workspaceMissing() ? null : workspacePageById(id);
+    // A story page (`idea`) is no menu page: the trigger names the board it is reached from (spec 008).
+    if (id === null || this.specOpen() || this.data.workspaceMissing()) return null;
+    return workspacePageById(id === 'idea' ? 'board' : id);
   });
   /** The disabled trigger's reason: an unknown workspace has no pages to switch, elsewhere a spec is what is missing. */
   protected readonly areaReason = computed(() =>

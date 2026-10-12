@@ -4,6 +4,8 @@ slug: 006-partial-push
 spec_type: bug
 isa_master: ../../ISA.md
 isa_feature: F0
+priority: P1
+stage: review
 constitution: ../constitution.md
 phase: scoping
 progress: 0/4

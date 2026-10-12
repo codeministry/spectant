@@ -22,6 +22,7 @@ import { UiIcon } from '../../../shared/icons/icon';
 import { UiCard } from '../../../shared/ui/card/card';
 import { type FilterOption, UiFilterChips } from '../../../shared/ui/filter-chips/filter-chips';
 import { UiPopover, UiPopoverTrigger } from '../../../shared/ui/overlay/popover';
+import { UiReason } from '../../../shared/ui/reason/reason';
 import { UiSheet } from '../../../shared/ui/overlay/sheet';
 import { UiRovingItem, UiRovingList } from '../../../shared/ui/roving-list.directive';
 import { toneMark } from '../../../shared/ui/tone';
@@ -65,6 +66,7 @@ import {
     UiIcon,
     UiPopover,
     UiPopoverTrigger,
+    UiReason,
     UiRovingItem,
     UiRovingList,
     UiSheet,

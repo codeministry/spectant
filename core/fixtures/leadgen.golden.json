@@ -28,6 +28,7 @@
     "build": 1,
     "blocked": 0,
     "code-review": 0,
+    "close-pending": 0,
     "close": 0,
     "done": 1
   },
@@ -37,8 +38,10 @@
       "slug": "012-pwa-install",
       "title": "Installable as a PWA: manifest, icons, colours, an offline shell and an update toast",
       "type": "feature",
+      "priority": "P3",
       "phase": "building",
       "stage": "build",
+      "stageSource": "derived",
       "progress": {
         "closed": 9,
         "total": 10
@@ -53,6 +56,7 @@
         "ISC-334"
       ],
       "taken": [],
+      "assignee": null,
       "warnings": [
         {
           "kind": "fog",
@@ -93,8 +97,10 @@
       "slug": "022-chat-turn-status-and-bulk-delete",
       "title": "The chat says what happened to a turn, deletes many conversations at once, and brings a cited row into view",
       "type": "feature",
+      "priority": "P3",
       "phase": "complete",
       "stage": "done",
+      "stageSource": "derived",
       "progress": {
         "closed": 8,
         "total": 8
@@ -107,6 +113,7 @@
       "nextReason": "phase: complete",
       "takeable": [],
       "taken": [],
+      "assignee": null,
       "warnings": [],
       "gates": {
         "reviewed": {
@@ -186,5 +193,9 @@
         "message": "progress 31/33 disagrees with the recount 31/32."
       }
     }
-  ]
+  ],
+  "ideas": {
+    "count": 0,
+    "list": []
+  }
 }

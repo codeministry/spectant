@@ -29,13 +29,14 @@ interface Expected {
 
 // Counts as core/fixtures/README.md states them, completed from the trees for the files the README does not list.
 const EXPECTED: Record<string, Expected> = {
-  'harbor/ISA.md': { claims: 124, closed: 101, counted: '101/124', dropped: 0, anti: 30, antecedent: 1, edged: 29, features: ['F0', 'F1', 'F2', 'F3', 'F4'], fog: 2, rows: 124 },
+  'harbor/ISA.md': { claims: 130, closed: 106, counted: '106/130', dropped: 0, anti: 32, antecedent: 1, edged: 30, features: ['F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'], fog: 2, rows: 130 },
   'harbor/specs/archive/001-manifest-sync/spec.md': { claims: 46, closed: 46, counted: '46/46', dropped: 0, anti: 12, antecedent: 0, edged: 9, features: ['F1'], fog: 0, rows: 46 },
   'harbor/specs/002-web-console/spec.md': { claims: 30, closed: 25, counted: '25/30', dropped: 0, anti: 0, antecedent: 0, edged: 4, features: ['F2'], fog: 0, rows: 30 },
   'harbor/specs/003-config-loader/spec.md': { claims: 13, closed: 0, counted: '0/13', dropped: 0, anti: 6, antecedent: 0, edged: 6, features: [], fog: 0, rows: 13 },
   'harbor/specs/004-retention-policies/spec.md': { claims: 30, closed: 30, counted: '30/30', dropped: 0, anti: 10, antecedent: 0, edged: 10, features: ['F4'], fog: 0, rows: 30 },
   'harbor/specs/005-config-format-choice/spec.md': { claims: 1, closed: 0, counted: '0/1', dropped: 0, anti: 0, antecedent: 1, edged: 0, features: [], fog: 2, rows: 1 },
   'harbor/specs/006-partial-push/spec.md': { claims: 4, closed: 0, counted: '0/4', dropped: 0, anti: 3, antecedent: 0, edged: 0, features: [], fog: 0, rows: 4 },
+  'harbor/specs/007-rotate-mirror-token/spec.md': { claims: 2, closed: 2, counted: '2/2', dropped: 0, anti: 1, antecedent: 0, edged: 0, features: [], fog: 0, rows: 2 },
   'lantern/ISA.md': { claims: 12, closed: 4, counted: '4/12', dropped: 0, anti: 4, antecedent: 0, edged: 4, features: ['F0', 'F1'], fog: 0, rows: 12 },
   'lantern/specs/001-reading-list/spec.md': { claims: 8, closed: 4, counted: '4/8', dropped: 0, anti: 0, antecedent: 0, edged: 4, features: ['F1'], fog: 0, rows: 8 },
   'lantern/specs/002-duplicate-links/spec.md': { claims: 2, closed: 0, counted: '0/2', dropped: 0, anti: 2, antecedent: 0, edged: 0, features: [], fog: 0, rows: 2 },
@@ -77,19 +78,19 @@ describe('fixtures', () => {
     }
   });
 
-  test('harbor master: 101/124 is the three-digit/three-digit fraction, F0 holds ISC-1 to ISC-4', () => {
+  test('harbor master: 106/130 is the three-digit/three-digit fraction, F0 holds ISC-1 to ISC-4', () => {
     const doc = parse('harbor/ISA.md');
-    expect(doc.section).toEqual({ heading: 'Features', line: 179 });
+    expect(doc.section).toEqual({ heading: 'Features', line: 185 });
     const f0 = doc.features.find((f) => f.id === 'F0');
-    expect(f0).toMatchObject({ name: 'Cross-cutting', line: 181, claims: ['ISC-1', 'ISC-2', 'ISC-3', 'ISC-4'] });
+    expect(f0).toMatchObject({ name: 'Cross-cutting', line: 187, claims: ['ISC-1', 'ISC-2', 'ISC-3', 'ISC-4'] });
     expect(f0?.why?.startsWith('what would sink Harbor whichever feature slipped')).toBe(true);
     const first = doc.claims[0];
-    expect(first).toMatchObject({ id: 'ISC-1', checked: false, kind: 'anti', feature: 'F0', line: 184, indent: 0, dropped: false });
+    expect(first).toMatchObject({ id: 'ISC-1', checked: false, kind: 'anti', feature: 'F0', line: 190, indent: 0, dropped: false });
     expect(first?.text).toBe('a failed push leaves a partial manifest visible in the target registry.');
     expect(doc.fog.map((f) => f.line)).toEqual([47, 48]);
     expect(doc.fog[0]?.text).toBe('which config format version 2 uses — the spike in spec 005 has to name the trade-off first');
     // Remaining Work sits outside the claim section: its checkbox is not a claim and not an ID-less box.
-    expect(doc.claims.some((c) => c.line > 325)).toBe(false);
+    expect(doc.claims.some((c) => c.line > 343)).toBe(false);
   });
 
   test('harbor 002: dotted IDs ISC-60.1 and ISC-60.2 with their edges', () => {

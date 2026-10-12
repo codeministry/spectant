@@ -1,5 +1,7 @@
 // check:leak (T54, ISC-3): the generic leak classes, the allow marker, the licence exemption (XC-10), the optional
-// private word list, redaction, and one end-to-end run over a throwaway git repository.
+// private word list, redaction, the git user.name class (T76, ISC-119.1), and end-to-end runs over throwaway git
+// repositories. Every git call and every checker run uses an empty global config and no system config, so the
+// host's own name never reaches an assertion.
 //
 // Every synthetic leak below carries a trailing `leak:allow` marker, so the repository scan stays clean while the
 // strings still reach the scanner as plain values (the marker lives in this source, not in the scanned string).
@@ -7,10 +9,50 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { allowMarker, compileWords, derivedGoldenTree, inheritFixtureAllows, parseWordList, redact, scanLine, scanText } from "../scripts/check-leak.ts";
+import {
+  allowMarker,
+  compileGitName,
+  compileWords,
+  derivedGoldenTree,
+  inheritFixtureAllows,
+  parseWordList,
+  redact,
+  scanLine,
+  scanText,
+} from "../scripts/check-leak.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "scripts", "check-leak.ts");
 const NO_WORDS = null;
+const PLANTED = "Planted Name";
+
+/** A throwaway config root: an empty global config and no system config, so only a repository's local config counts. */
+function isolatedGitEnv(dir: string): Record<string, string> {
+  const emptyConfig = join(dir, "empty-gitconfig");
+  writeFileSync(emptyConfig, "");
+  const env: Record<string, string> = {};
+  for (const [k, v] of Object.entries(process.env)) {
+    if (v !== undefined && !["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"].includes(k)) env[k] = v;
+  }
+  env.GIT_CONFIG_GLOBAL = emptyConfig;
+  env.GIT_CONFIG_NOSYSTEM = "1";
+  return env;
+}
+
+function spawnGit(repo: string, env: Record<string, string>, ...args: string[]): void {
+  const r = Bun.spawnSync(["git", "-C", repo, ...args], { env, stdout: "pipe", stderr: "pipe" });
+  if (r.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${r.stderr.toString()}`);
+}
+
+function runChecker(
+  args: string[],
+  base: Record<string, string>,
+  env: Record<string, string | undefined> = {},
+): { code: number; out: string; err: string } {
+  const merged: Record<string, string> = {};
+  for (const [k, v] of Object.entries({ ...base, ...env })) if (v !== undefined) merged[k] = v;
+  const r = Bun.spawnSync(["bun", SCRIPT, ...args], { env: merged, stdout: "pipe", stderr: "pipe" });
+  return { code: r.exitCode, out: r.stdout.toString(), err: r.stderr.toString() };
+}
 
 function classes(line: string, path = "src/a.ts", words: RegExp | null = NO_WORDS): string[] {
   return scanLine(line, path, words).map((h) => h.cls);
@@ -186,20 +228,16 @@ describe("private word list", () => {
 describe("run over a git repository", () => {
   let repo: string;
   let wordsFile: string;
+  let configDir: string;
+  let gitEnv: Record<string, string>;
 
-  function git(...args: string[]): void {
-    const r = Bun.spawnSync(["git", "-C", repo, ...args], { stdout: "pipe", stderr: "pipe" });
-    if (r.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${r.stderr.toString()}`);
-  }
-
-  function run(args: string[], env: Record<string, string | undefined> = {}): { code: number; out: string; err: string } {
-    const merged: Record<string, string> = {};
-    for (const [k, v] of Object.entries({ ...process.env, ...env })) if (v !== undefined) merged[k] = v;
-    const r = Bun.spawnSync(["bun", SCRIPT, ...args], { env: merged, stdout: "pipe", stderr: "pipe" });
-    return { code: r.exitCode, out: r.stdout.toString(), err: r.stderr.toString() };
-  }
+  const git = (...args: string[]): void => spawnGit(repo, gitEnv, ...args);
+  const run = (args: string[], env: Record<string, string | undefined> = {}): { code: number; out: string; err: string } =>
+    runChecker(args, gitEnv, env);
 
   beforeAll(() => {
+    configDir = mkdtempSync(join(tmpdir(), "spectant-leak-config-"));
+    gitEnv = isolatedGitEnv(configDir);
     repo = mkdtempSync(join(tmpdir(), "spectant-leak-"));
     git("init", "-q");
     writeFileSync(join(repo, "README.md"), "# demo\n\nserve on 127.0.0.1:4200\n");
@@ -214,6 +252,7 @@ describe("run over a git repository", () => {
 
   afterAll(() => {
     rmSync(repo, { recursive: true, force: true });
+    rmSync(configDir, { recursive: true, force: true });
     rmSync(wordsFile, { force: true });
   });
 
@@ -258,6 +297,104 @@ describe("run over a git repository", () => {
     const r = run(["--help"]);
     expect(r.code).toBe(0);
     expect(r.out).toContain("Usage");
+  });
+});
+
+describe("git user.name class (T76, ISC-119.1)", () => {
+  const name = compileGitName(PLANTED);
+  const cls = (line: string, path = "a.md"): string[] => scanLine(line, path, NO_WORDS, name).map((h) => h.cls);
+
+  test("the configured name compiles to a matcher; a short or absent one to nothing", () => {
+    expect(name).not.toBeNull();
+    expect(compileGitName(undefined)).toBeNull();
+    expect(compileGitName("")).toBeNull();
+    expect(compileGitName("  ab  ")).toBeNull();
+    expect(compileGitName("a.b")?.test("x aXb y")).toBe(false);
+  });
+
+  test("matches the full name case-insensitively as a word sequence, never a part of it", () => {
+    expect(cls("written by Planted Name today")).toEqual(["git-user-name"]);
+    expect(cls("written by PLANTED name.")).toEqual(["git-user-name"]);
+    expect(cls("written by Planted  Name")).toEqual(["git-user-name"]);
+    expect(cls("PlantedName, Planted Names, Planted alone, Name alone")).toEqual([]);
+    expect(cls("unplanted name")).toEqual([]);
+  });
+
+  test("licence and notice files may carry the rights holder's name", () => {
+    for (const path of ["LICENSE", "LICENSE.md", "web/public/fonts/LICENSE-Inter.txt", "NOTICE", "THIRD_PARTY_NOTICES.md"]) {
+      expect(cls(`Copyright 2026 ${PLANTED}`, path)).toEqual([]);
+    }
+    expect(cls(`Copyright 2026 ${PLANTED}`, "docs/credits.md")).toEqual(["git-user-name"]);
+  });
+
+  test("a hit shows its first three characters only; a leak:allow marker with a reason suppresses it", () => {
+    const { hits } = scanText("a.md", `x\nby ${PLANTED}\n`, NO_WORDS, name);
+    expect(hits.map((h) => `${h.path}:${h.line}: ${h.cls}: ${redact(h.match)}`)).toEqual(["a.md:2: git-user-name: Pla…"]);
+    const marked = scanText("a.md", `by ${PLANTED} <!-- leak:allow sample author -->\n`, NO_WORDS, name);
+    expect(marked.hits).toEqual([]);
+    expect(marked.allowed).toEqual([{ path: "a.md", line: 1, reason: "sample author" }]);
+    const bare = scanText("a.md", `by ${PLANTED} <!-- leak:allow -->\n`, NO_WORDS, name);
+    expect(bare.hits.map((h) => h.cls)).toEqual(["git-user-name"]);
+  });
+
+  describe("end to end, with the name in the repository's local config", () => {
+    let repo: string;
+    let configDir: string;
+    let gitEnv: Record<string, string>;
+    const git = (...args: string[]): void => spawnGit(repo, gitEnv, ...args);
+    const run = (): { code: number; out: string; err: string } => runChecker([repo], gitEnv, { SPECTANT_LEAK_WORDS: undefined });
+
+    beforeAll(() => {
+      configDir = mkdtempSync(join(tmpdir(), "spectant-leak-name-config-"));
+      gitEnv = isolatedGitEnv(configDir);
+      repo = mkdtempSync(join(tmpdir(), "spectant-leak-name-"));
+      git("init", "-q");
+      git("config", "user.name", PLANTED);
+      writeFileSync(join(repo, "credits.md"), `line one\nwritten by ${PLANTED}\n`);
+      writeFileSync(join(repo, "clean.md"), "nothing individual here\n");
+      writeFileSync(join(repo, "marked.md"), `by ${PLANTED} <!-- leak:allow sample author -->\n`);
+      writeFileSync(join(repo, "LICENSE"), `Copyright 2026 ${PLANTED}\n`);
+      git("add", "credits.md", "clean.md", "marked.md", "LICENSE");
+    });
+
+    afterAll(() => {
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(configDir, { recursive: true, force: true });
+    });
+
+    test("one redacted hit on the planted line; the clean file, the licence and the marked line are not findings", () => {
+      const r = run();
+      expect(r.code).toBe(1);
+      expect(r.err).toContain("credits.md:2: git-user-name: Pla…");
+      expect(r.err).toMatch(/leak: 1 hit, 4 files scanned \(0 binary skipped, 1 line allowed\)/);
+      expect(r.err).not.toContain("clean.md");
+      expect(r.err).not.toContain("LICENSE");
+      expect(r.out).toContain("allowed: marked.md:1: sample author");
+      expect(r.out).not.toContain("no name configured");
+      expect((r.out + r.err).toLowerCase()).not.toContain(PLANTED.toLowerCase());
+    });
+
+    test("no configured name skips the class with one summary line", () => {
+      git("config", "--unset", "user.name");
+      try {
+        const r = run();
+        expect(r.code).toBe(0);
+        expect(r.out).toContain("git-user-name: no name configured, class skipped");
+      } finally {
+        git("config", "user.name", PLANTED);
+      }
+    });
+
+    test("a name shorter than three characters skips the class too", () => {
+      git("config", "user.name", "ab");
+      try {
+        const r = run();
+        expect(r.code).toBe(0);
+        expect(r.out).toContain("git-user-name: no name configured, class skipped");
+      } finally {
+        git("config", "user.name", PLANTED);
+      }
+    });
   });
 });
 

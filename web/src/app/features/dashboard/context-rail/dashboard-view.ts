@@ -14,6 +14,8 @@ export interface DashboardRowView {
   /** The derived stage (`plan` … `done`); `stageIndex` places it on the track. */
   readonly stage: string;
   readonly nextCommand: string | null;
+  /** Why that command is next: the stage table's phrase, shown verbatim by `ui-reason` (ISC-122.3). */
+  readonly nextReason: string;
   readonly takeable: readonly string[];
   readonly warnings: readonly SpecWarning[];
   readonly fog: number;

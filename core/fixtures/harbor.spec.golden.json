@@ -13,7 +13,15 @@
       "updated": "2026-03-08T16:45:00Z",
       "round": 3,
       "lastRound": "2026-03-08T16:30:00Z",
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P2",
+      "stageSource": "explicit",
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      }
     },
     "keyNumbers": {
       "claims": {
@@ -45,8 +53,8 @@
         "the reviewed mark is fresh",
         "3 items wait on you"
       ],
-      "since": null,
-      "via": null
+      "since": "2026-03-04T09:00:00Z",
+      "via": "/spec-review 002"
     },
     "lanes": [
       {
@@ -167,7 +175,10 @@
       "updated": "2026-03-09T17:30:00Z",
       "round": null,
       "lastRound": null,
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null
     },
     "keyNumbers": {
       "claims": {
@@ -281,7 +292,10 @@
       "updated": "2026-03-08T12:00:00Z",
       "round": null,
       "lastRound": null,
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null
     },
     "keyNumbers": {
       "claims": {
@@ -431,7 +445,10 @@
       "updated": "2026-03-07T14:00:00Z",
       "round": null,
       "lastRound": null,
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null
     },
     "keyNumbers": {
       "claims": {
@@ -553,7 +570,15 @@
       "updated": "2026-03-09T10:15:00Z",
       "round": null,
       "lastRound": null,
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P1",
+      "stageSource": "derived",
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      }
     },
     "keyNumbers": {
       "claims": {
@@ -583,8 +608,8 @@
       "reasons": [
         "the reviewed mark is stale"
       ],
-      "since": null,
-      "via": null
+      "since": "2026-03-08T09:00:00Z",
+      "via": "/spec-bug partial-push"
     },
     "lanes": [],
     "gates": {
@@ -659,6 +684,353 @@
       "stale": true
     }
   },
+  "specs/007-rotate-mirror-token": {
+    "head": {
+      "id": "007",
+      "slug": "007-rotate-mirror-token",
+      "title": "Rotate the mirror token",
+      "type": "chore",
+      "stage": "done",
+      "nextCommand": null,
+      "nextReason": "every claim of the chore is closed",
+      "phase": "building",
+      "started": "2026-03-09T08:30:00Z",
+      "updated": "2026-03-09T11:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 2,
+        "total": 2,
+        "open": 0,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "The push token is replaced with one command, and the next scheduled run uses the new token without a restart.",
+    "ideaSource": "goal",
+    "next": {
+      "command": null,
+      "reasons": [
+        "every claim of the chore is closed"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md",
+        "at": "2026-03-09T09:00:00Z",
+        "files": [
+          "spec.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 4,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 2,
+          "total": 2
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 0
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": {
+      "brief": null,
+      "generated": "2026-03-07T18:00:00Z",
+      "stale": true
+    }
+  },
+  "specs/008-referrers-support": {
+    "head": {
+      "id": "008",
+      "slug": "008-referrers-support",
+      "title": "Referrers API support",
+      "type": "spike",
+      "stage": "close-pending",
+      "nextCommand": null,
+      "nextReason": "every claim is closed and F6 waits on spec 009",
+      "phase": "building",
+      "started": "2026-03-08T13:00:00Z",
+      "updated": "2026-03-09T09:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      }
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 2,
+        "total": 2,
+        "open": 0,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "A recorded table says which target registry answers the referrers endpoint, and a decision names the fallback for the ones that do not.",
+    "ideaSource": "goal",
+    "next": {
+      "command": null,
+      "reasons": [
+        "every claim is closed and F6 waits on spec 009"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md",
+        "at": "2026-03-08T14:00:00Z",
+        "files": [
+          "spec.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 4,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 2,
+          "total": 2
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 1
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": {
+      "brief": null,
+      "generated": "2026-03-07T18:00:00Z",
+      "stale": true
+    }
+  },
+  "specs/009-chunked-upload-limits": {
+    "head": {
+      "id": "009",
+      "slug": "009-chunked-upload-limits",
+      "title": "Chunked upload limits",
+      "type": "spike",
+      "stage": "build",
+      "nextCommand": "/spec-implement 009",
+      "nextReason": "ISC-131 is takeable",
+      "phase": "building",
+      "started": "2026-03-08T13:30:00Z",
+      "updated": "2026-03-09T09:30:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      }
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 1,
+        "total": 2,
+        "open": 1,
+        "takeable": 1
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "A recorded table names each target registry's chunk limit, and Harbor never picks a chunk larger than it.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-implement 009",
+      "reasons": [
+        "ISC-131 is takeable",
+        "the reviewed mark is fresh"
+      ],
+      "since": "2026-03-08T14:10:00Z",
+      "via": "/spec-review 009"
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md",
+        "at": "2026-03-08T14:10:00Z",
+        "files": [
+          "spec.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 4,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 1,
+          "total": 2
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 1
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": {
+      "brief": null,
+      "generated": "2026-03-07T18:00:00Z",
+      "stale": true
+    }
+  },
   "specs/archive/001-manifest-sync": {
     "head": {
       "id": "001",
@@ -673,7 +1045,15 @@
       "updated": "2026-03-05T15:00:00Z",
       "round": null,
       "lastRound": null,
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      }
     },
     "keyNumbers": {
       "claims": {

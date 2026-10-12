@@ -18,6 +18,7 @@ import { UiIcon } from '../../shared/icons/icon';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
+import { UiIdeaChip } from '../../shared/ui/idea-chip/idea-chip';
 import { UiMeter } from '../../shared/ui/meter/meter';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../shared/ui/term/term';
@@ -62,7 +63,7 @@ const toggled = (set: ReadonlySet<string>, id: string): ReadonlySet<string> => {
  */
 @Component({
   selector: 'app-features-page',
-  imports: [TranslocoPipe, NotFound, UiButton, UiCard, UiEmptyState, UiIcon, UiMeter, UiSkeleton, UiTerm, SpecChip],
+  imports: [TranslocoPipe, NotFound, UiButton, UiCard, UiEmptyState, UiIcon, UiIdeaChip, UiMeter, UiSkeleton, UiTerm, SpecChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'features', '[attr.data-tier]': 'tier()' },
   templateUrl: './features-page.html',

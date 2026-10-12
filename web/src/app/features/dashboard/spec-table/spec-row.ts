@@ -4,7 +4,9 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { UiChip } from '../../../shared/ui/chip/chip';
 import { UiMeter } from '../../../shared/ui/meter/meter';
+import { UiPriority } from '../../../shared/ui/priority/priority';
 import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
+import { TYPE_GLYPHS, type TypeGlyphKind, UiTypeGlyph } from '../../../shared/ui/type-glyph/type-glyph';
 import { stageIndex } from '../../spec/dashboard/dashboard-model';
 import { PHASE_TONES, type SpecTableRow } from './spec-table-model';
 
@@ -13,7 +15,8 @@ const AGENT_KEY = 'specs.agentWorking';
 
 /**
  * One spec as a row of the Specs panel, ported from the prototype's `spec-row` (styles.css 380-397, app.js specRow):
- * `40px | title + one-line description | agent dot + mini five-segment stage track + phase chip | meter + a/b`. It
+ * `type glyph + id | title + one-line description | agent dot + priority + mini five-segment stage track + phase chip |
+ * meter + a/b` (spec 008: the type glyph before the number, `ui-priority` before the stage track, ISC-118). It
  * renders the cells only; the link and the roving tab stop are the list's (`spec-table`), so the row nests no
  * interactive element.
  *
@@ -23,7 +26,7 @@ const AGENT_KEY = 'specs.agentWorking';
  */
 @Component({
   selector: 'app-spec-row',
-  imports: [TranslocoPipe, UiChip, UiClamp, UiMeter, UiStageTrack],
+  imports: [TranslocoPipe, UiChip, UiClamp, UiMeter, UiPriority, UiStageTrack, UiTypeGlyph],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-row.html',
   styleUrl: './spec-row.css',
@@ -52,6 +55,11 @@ export class SpecRow {
     });
   }
 
+  /** The row's `spec_type:` as a glyph kind; null for a missing or unknown type, which leaves the glyph slot empty. */
+  protected readonly glyphType = computed<TypeGlyphKind | null>(() => {
+    const type = this.row().type;
+    return type !== null && Object.hasOwn(TYPE_GLYPHS, type) ? (type as TypeGlyphKind) : null;
+  });
   protected readonly stageCurrent = computed(() => stageIndex(this.row().stage));
   protected readonly stageAria = computed(() => {
     const labels = this.stageLabels();

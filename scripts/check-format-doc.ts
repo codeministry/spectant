@@ -19,14 +19,24 @@
  * Every `From \`path\`…:` block anywhere in the document is checked verbatim against its file, relative to the
  * repository root, so a quoted example can never drift from the file it claims to quote.
  *
- * Output: `format-doc: 13 kinds documented (…)` on stdout and exit 0; otherwise one `format-doc: <kind>: <problem>`
- * per problem on stderr, then `format-doc: N of 13 kinds documented`, and exit 1. Exit 2 on a usage error.
+ * The kinds include the two repository kinds `idea` and `workflow` (spec 008, T37): they come from `FILE_KINDS` like
+ * the thirteen spec-folder kinds and are held to the same rules, section, path and verbatim `From` block (T75).
+ *
+ * `## Glossary` is a required section (spec 008, T75, ISC-124): exactly one, holding a table of exactly thirteen rows,
+ * one per term of `GLOSSARY` (`core/src/glossary.ts`) by its first cell. A missing section, a missing table, a missing
+ * term or a different row count is one `Glossary: <problem>` each; `core/tests/glossary.test.ts` compares the cells.
+ *
+ * Output: `format-doc: 15 kinds documented (…), glossary: 13 rows` on stdout and exit 0; otherwise one
+ * `format-doc: <kind>: <problem>` per problem on stderr, then `format-doc: N of 15 kinds documented`, and exit 1. Exit 2
+ * on a usage error.
  *
  * Pure except for the CLI at the bottom: `checkFormatDoc` takes the text and a file reader. No dependency.
  */
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { FILE_KINDS, type FileKind } from '../core/src/files.ts';
+import { GLOSSARY } from '../core/src/glossary.ts';
+import { TABLE_SEP, tableCells } from '../core/src/markdown.ts';
 
 export interface FormatDocReport {
   /** Kinds with a section that passed every check, in files.ts order. */
@@ -37,7 +47,9 @@ export interface FormatDocReport {
   readonly noFixture: FileKind[];
   /** `From` blocks checked verbatim across the whole document. */
   readonly verbatim: number;
-  /** One line per problem, `<kind>: <problem>`. */
+  /** The data rows of the glossary table; null without a `## Glossary` section or table. */
+  readonly glossaryRows: number | null;
+  /** One line per problem, `<kind>: <problem>`, or `Glossary: <problem>`. */
   readonly problems: string[];
 }
 
@@ -47,6 +59,9 @@ export type FileReader = (path: string) => string | null;
 const KINDS = Object.keys(FILE_KINDS) as FileKind[];
 const NO_FIXTURE = '**No fixture yet.**';
 const FIXTURE_PREFIX = 'core/fixtures/';
+const GLOSSARY_HEADING = '## Glossary';
+/** ISC-124: the glossary holds exactly this many rows. */
+const GLOSSARY_ROWS = 13;
 
 /** A fence opener or closer: up to three spaces, then three or more backticks or tildes. */
 const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
@@ -116,6 +131,32 @@ function sectionsOf(text: string): { sections: Section[]; blocks: Block[] } {
     else if (raw.trim() !== '') pendingFrom = null;
   });
   return { sections, blocks };
+}
+
+/**
+ * The required glossary: one `## Glossary` section whose first table has a header, a separator and exactly
+ * GLOSSARY_ROWS data rows, one per GLOSSARY term by its first cell. Cells split with core's `tableCells`.
+ */
+function checkGlossary(sections: readonly Section[], fail: (name: string, problem: string) => void): number | null {
+  const found = sections.filter((s) => s.heading.trimEnd() === GLOSSARY_HEADING);
+  if (found.length === 0) {
+    fail('Glossary', `no section \`${GLOSSARY_HEADING}\``);
+    return null;
+  }
+  if (found.length > 1) fail('Glossary', `more than one section \`${GLOSSARY_HEADING}\``);
+  const body = found[0]?.body ?? [];
+  const start = body.findIndex((line) => line.trimStart().startsWith('|'));
+  const end = start < 0 ? -1 : body.findIndex((line, i) => i > start && !line.trimStart().startsWith('|'));
+  const table = start < 0 ? [] : body.slice(start, end < 0 ? undefined : end);
+  if (table.length < 2 || !TABLE_SEP.test(table[1] ?? '')) {
+    fail('Glossary', `no table under \`${GLOSSARY_HEADING}\``);
+    return null;
+  }
+  const rows = table.slice(2);
+  const terms = new Set(rows.map((line) => tableCells(line)[0] ?? ''));
+  for (const { term } of GLOSSARY) if (!terms.has(term)) fail('Glossary', `no row for the term "${term}"`);
+  if (rows.length !== GLOSSARY_ROWS) fail('Glossary', `${rows.length} rows, expected exactly ${GLOSSARY_ROWS}`);
+  return rows.length;
 }
 
 /** A repository-relative path that stays inside the repository. */
@@ -195,11 +236,14 @@ export function checkFormatDoc(text: string, read: FileReader): FormatDocReport 
     else fail(kind, 'no verbatim fixture example and no "No fixture yet." marker');
   }
 
+  const glossaryRows = checkGlossary(sections, fail);
+
   return {
     documented: KINDS.filter((k) => !failed.has(k)),
     missing,
     noFixture,
     verbatim,
+    glossaryRows,
     problems,
   };
 }
@@ -237,5 +281,5 @@ if (import.meta.main) {
     process.exit(1);
   }
   const extra = report.noFixture.length > 0 ? `; no fixture yet: ${report.noFixture.join(', ')}` : '';
-  console.log(`format-doc: ${total} kinds documented (${report.verbatim} examples verbatim from their files${extra})`);
+  console.log(`format-doc: ${total} kinds documented (${report.verbatim} examples verbatim from their files${extra}), glossary: ${report.glossaryRows ?? 0} rows`);
 }

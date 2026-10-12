@@ -6,6 +6,7 @@ import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import harborPlanning from '../../../../../core/fixtures/harbor.planning.golden.json';
 import type { PlanningFeature, PlanningHolder } from '../../../../../core/src/planning';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
@@ -40,10 +41,15 @@ const holder = (id: string, over: Partial<PlanningHolder> = {}): PlanningHolder 
   main: false,
   held: 1,
   stage: null,
+  stageSource: null,
+  priority: 'P3',
+  hash: null,
+  assignee: null,
   ...over,
 });
 
 const feature = (id: string, name: string, over: Partial<PlanningFeature> = {}): PlanningFeature => ({
+  ideas: [],
   id,
   name,
   why: null,
@@ -83,6 +89,10 @@ const FEATURES: readonly PlanningFeature[] = [
 ];
 
 const planning = (features: readonly PlanningFeature[]): PlanningBody => ({
+  workflow: { rows: [], source: 'default', diagnostics: [] },
+  stages: [],
+  stageCounts: {},
+  ideas: [],
   features,
   milestones: [],
   recount: { closed: 71, total: 94 },
@@ -329,5 +339,38 @@ describe('FeaturesPage (T32, ISC-103)', () => {
     const root = page(harness.fixture.nativeElement as HTMLElement);
     expect(root.querySelector('p.unavailable')).not.toBeNull();
     expect(root.querySelector('ol.rows')).toBeNull();
+  });
+});
+
+// T139 · ISC-124.2: each feature block lists its stories after its specs as a sub-list "Ideas · n" with idea chips;
+// the block's claim fraction stays the model's, since a story holds no claim.
+describe('FeaturesPage ideas (T139, ISC-124.2)', () => {
+  const HARBOR = harborPlanning as unknown as PlanningBody;
+  const ideasOf = (el: HTMLElement) => el.querySelector<HTMLElement>('[data-ideas]');
+
+  it('shows one idea chip each on F2 and F7 of the harbor golden, linking to the idea page', async () => {
+    const root = page(await open('/w/harbor/features', 'wide', HARBOR));
+    for (const id of ['F2', 'F7']) {
+      const feature = HARBOR.features.find((f) => f.id === id) as PlanningFeature;
+      expect(feature.ideas).toHaveLength(1);
+      const list = ideasOf(row(root, id)) as HTMLElement;
+      expect(list.getAttribute('data-ideas')).toBe('1');
+      expect(list.querySelector('[data-ideas-label]')).not.toBeNull();
+      const links = [...list.querySelectorAll<HTMLAnchorElement>('ui-idea-chip a')];
+      expect(links.map((a) => a.getAttribute('href'))).toEqual(feature.ideas.map((idea) => `/w/harbor/ideas/${idea.slug}`));
+      expect(links.map((a) => a.textContent.trim())).toEqual(feature.ideas.map((idea) => idea.title));
+    }
+  });
+
+  it('keeps the claim fraction of a block with stories unchanged', async () => {
+    const root = page(await open('/w/harbor/features', 'wide', HARBOR));
+    expect(row(root, 'F2').querySelector('.fraction')?.textContent.trim()).toBe('25/30');
+    expect(row(root, 'F7').querySelector('.fraction')?.textContent.trim()).toBe('0/0');
+  });
+
+  it('shows no sub-list on a block without stories', async () => {
+    const root = page(await open('/w/harbor/features', 'wide', HARBOR));
+    for (const id of ['F0', 'F1', 'F3', 'F4', 'F5', 'F6']) expect(ideasOf(row(root, id))).toBeNull();
+    expect(root.querySelectorAll('[data-ideas] ui-idea-chip')).toHaveLength(2);
   });
 });

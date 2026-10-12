@@ -106,6 +106,32 @@ ui-dialog {
   font-variant-numeric: tabular-nums;
 }
 
+/* An idea (spec 008): the idea chip's look, drawn here because an option may hold no link. */
+.p-chip.p-idea {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  block-size: 22px;
+  padding-inline: 7px;
+  border: 1px dashed var(--track);
+  border-radius: 999px;
+  color: var(--muted-ink);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.p-chip.p-idea ui-icon {
+  color: var(--conc-ink);
+}
+
+@media (forced-colors: active) {
+  .p-chip.p-idea,
+  .p-chip.p-idea ui-icon {
+    border-color: CanvasText;
+    color: CanvasText;
+  }
+}
+
 .meta {
   overflow: hidden;
   flex: 0 1 auto;

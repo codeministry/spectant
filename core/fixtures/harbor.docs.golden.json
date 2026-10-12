@@ -506,6 +506,99 @@
         "wordCount": 42
       }
     },
+    "specs/007-rotate-mirror-token": {
+      "plan": null,
+      "design": null,
+      "decisions": null
+    },
+    "specs/008-referrers-support": {
+      "plan": null,
+      "design": null,
+      "decisions": {
+        "frontmatter": {
+          "spec": "008-referrers-support",
+          "created": "2026-03-08T13:00:00Z",
+          "updated": "2026-03-09T09:00:00Z",
+          "rounds": "1"
+        },
+        "html": "<h1 id=\"context-008-referrers-api-support\">Context 008 — Referrers API support</h1>\n<h2 id=\"goal-confirmed-2026-03-08t13-00-00z\">Goal — confirmed 2026-03-08T13:00:00Z</h2>\n<p>A recorded table says which target registry answers the referrers endpoint, and a decision names the fallback for the ones that do not.</p>\n<h2 id=\"round-1-no-gaps-the-repo-could-not-close-2026-03-08t13-00-00z\">Round 1 — no gaps the repo could not close, 2026-03-08T13:00:00Z</h2>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Goal — confirmed 2026-03-08T13:00:00Z",
+            "anchor": "goal-confirmed-2026-03-08t13-00-00z"
+          },
+          {
+            "level": 2,
+            "text": "Round 1 — no gaps the repo could not close, 2026-03-08T13:00:00Z",
+            "anchor": "round-1-no-gaps-the-repo-could-not-close-2026-03-08t13-00-00z"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "context-008-referrers-api-support",
+            "heading": "Context 008 — Referrers API support",
+            "level": 1
+          },
+          {
+            "id": "goal-confirmed-2026-03-08t13-00-00z",
+            "heading": "Goal — confirmed 2026-03-08T13:00:00Z",
+            "level": 2
+          },
+          {
+            "id": "round-1-no-gaps-the-repo-could-not-close-2026-03-08t13-00-00z",
+            "heading": "Round 1 — no gaps the repo could not close, 2026-03-08T13:00:00Z",
+            "level": 2
+          }
+        ],
+        "wordCount": 45
+      }
+    },
+    "specs/009-chunked-upload-limits": {
+      "plan": null,
+      "design": null,
+      "decisions": {
+        "frontmatter": {
+          "spec": "009-chunked-upload-limits",
+          "created": "2026-03-08T13:30:00Z",
+          "updated": "2026-03-09T09:30:00Z",
+          "rounds": "1"
+        },
+        "html": "<h1 id=\"context-009-chunked-upload-limits\">Context 009 — Chunked upload limits</h1>\n<h2 id=\"goal-confirmed-2026-03-08t13-30-00z\">Goal — confirmed 2026-03-08T13:30:00Z</h2>\n<p>A recorded table names each target registry&#39;s chunk limit, and Harbor never picks a chunk larger than it.</p>\n<h2 id=\"round-1-no-gaps-the-repo-could-not-close-2026-03-08t13-30-00z\">Round 1 — no gaps the repo could not close, 2026-03-08T13:30:00Z</h2>",
+        "toc": [
+          {
+            "level": 2,
+            "text": "Goal — confirmed 2026-03-08T13:30:00Z",
+            "anchor": "goal-confirmed-2026-03-08t13-30-00z"
+          },
+          {
+            "level": 2,
+            "text": "Round 1 — no gaps the repo could not close, 2026-03-08T13:30:00Z",
+            "anchor": "round-1-no-gaps-the-repo-could-not-close-2026-03-08t13-30-00z"
+          }
+        ],
+        "figures": [],
+        "sections": [
+          {
+            "id": "context-009-chunked-upload-limits",
+            "heading": "Context 009 — Chunked upload limits",
+            "level": 1
+          },
+          {
+            "id": "goal-confirmed-2026-03-08t13-30-00z",
+            "heading": "Goal — confirmed 2026-03-08T13:30:00Z",
+            "level": 2
+          },
+          {
+            "id": "round-1-no-gaps-the-repo-could-not-close-2026-03-08t13-30-00z",
+            "heading": "Round 1 — no gaps the repo could not close, 2026-03-08T13:30:00Z",
+            "level": 2
+          }
+        ],
+        "wordCount": 40
+      }
+    },
     "specs/archive/001-manifest-sync": {
       "plan": {
         "frontmatter": {

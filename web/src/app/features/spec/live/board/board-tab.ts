@@ -21,7 +21,8 @@ import { toneMark } from '../../../../shared/ui/tone';
 import { CardDetail } from '../card/card-detail';
 import { cardHistory } from '../card/card-history';
 import { FlowView } from '../flow/flow-view';
-import { agentOfCard, type CardAgent } from '../live-frame';
+import { agentOfCard, type CardAgent, taskActorsOf } from '../live-frame';
+import { TaskActors } from '../task-actors/task-actors';
 import { AgentChip } from '../this-frame/agent-chip';
 import { FrameBar } from '../this-frame/frame-bar';
 import { NeedsYou } from '../this-frame/needs-you';
@@ -75,6 +76,7 @@ const PLAY_STEP_MS = 1200;
     FrameBar,
     NeedsYou,
     NgTemplateOutlet,
+    TaskActors,
     ThisFrame,
     TranslocoPipe,
     YourSteps,
@@ -245,6 +247,11 @@ export class BoardTab {
   /** The agent holding a card in flight (T85, ISC-90): session, since, stale. */
   protected agentOf(card: FrameCard): CardAgent | null {
     return agentOfCard(card);
+  }
+
+  /** Whether core named an agent or sub-agent for the card (T135, ISC-131.1); only live cards carry them. */
+  protected hasTaskActors(card: FrameCard): boolean {
+    return taskActorsOf(card) !== null;
   }
 
   protected setFrame(index: number): void {

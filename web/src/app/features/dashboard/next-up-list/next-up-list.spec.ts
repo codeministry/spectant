@@ -139,3 +139,23 @@ describe('NextUpList', () => {
     expect(link.textContent.trim()).toBe(waiting.length === 1 ? '1 spec waits on fog' : `${waiting.length} specs wait on fog`);
   });
 });
+
+// T137 · ISC-122.3: every Next up entry, in both forms and behind "Show all", shows the dashboard row's phrase
+// through `ui-reason` (compact in the card form), with the next command as its chip.
+describe('NextUpList reason line (T137, ISC-122.3)', () => {
+  for (const form of ['card', 'rail'] as const) {
+    it(`shows each harbor entry's nextReason verbatim with its command chip (${form})`, async () => {
+      const root = await render(HARBOR, form);
+      const shown = [...root.querySelectorAll<HTMLElement>('[data-next-entry]')];
+      expect(shown.length).toBeGreaterThan(0);
+      for (const entry of shown) {
+        const id = entry.getAttribute('data-next-entry') ?? '';
+        const reason = entry.querySelector('ui-reason[data-next-reason]');
+        expect(reason?.querySelector('.visually-hidden')?.textContent, id).toBe(row(id).nextReason);
+        expect(reason?.hasAttribute('data-compact')).toBe(form === 'card');
+        expect(reason?.querySelector('ui-command-chip code')?.textContent).toBe(row(id).nextCommand);
+        expect(entry.querySelectorAll('ui-command-chip').length).toBe(1);
+      }
+    });
+  }
+});

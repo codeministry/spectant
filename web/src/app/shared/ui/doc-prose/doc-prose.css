@@ -1,0 +1,184 @@
+/* Not encapsulated (the prose is [innerHTML]): every selector starts with ui-doc-prose. */
+ui-doc-prose { display: block; }
+
+ui-doc-prose .docs-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+ui-doc-prose[data-wide] .docs-layout {
+  grid-template-columns: minmax(0, 1fr) 200px;
+  gap: 32px;
+  align-items: start;
+}
+
+ui-doc-prose .docs-toc {
+  position: sticky;
+  inset-block-start: 80px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+ui-doc-prose .docs-toc-title {
+  margin: 0 0 8px;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+ui-doc-prose .docs-toc-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+ui-doc-prose .docs-toc-list [data-level='3'] { padding-inline-start: 16px; }
+
+ui-doc-prose .docs-toc-list a {
+  color: var(--color-base-content);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+ui-doc-prose .docs-toc-list a:hover {
+  color: var(--disp-ink);
+  text-decoration: underline;
+}
+
+ui-doc-prose .docs-prose {
+  min-inline-size: 0;
+  font-size: 15px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+ui-doc-prose .docs-prose > :is(p, ul, ol, blockquote, h1, h2, h3, h4) { max-inline-size: 72ch; }
+
+ui-doc-prose .docs-prose :is(h1, h2, h3, h4) {
+  margin: 32px 0 8px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  scroll-margin-block-start: 80px;
+}
+
+ui-doc-prose .docs-prose h1 {
+  margin-block-start: 0;
+  font-size: 22px;
+  line-height: 32px;
+}
+
+ui-doc-prose .docs-prose h2 {
+  font-size: 18px;
+  line-height: 28px;
+}
+
+ui-doc-prose .docs-prose h3 {
+  font-size: 16px;
+  line-height: 24px;
+}
+ui-doc-prose .docs-prose :is(p, ul, ol) { margin: 0 0 16px; }
+
+ui-doc-prose .docs-prose blockquote {
+  margin: 0 0 16px;
+  padding-inline-start: 16px;
+  border-inline-start: 3px solid var(--line);
+  color: var(--muted-ink);
+}
+
+ui-doc-prose .docs-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+ui-doc-prose .docs-prose pre {
+  margin: 0 0 16px;
+  padding: 16px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--color-base-200);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+ui-doc-prose .docs-prose .mdtable {
+  margin: 0 0 16px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+}
+
+ui-doc-prose .docs-prose table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+ui-doc-prose .docs-prose :is(th, td) {
+  padding: 8px 12px;
+  border-block-end: 1px solid var(--line);
+  text-align: start;
+  vertical-align: top;
+}
+
+ui-doc-prose .docs-prose th {
+  background: var(--color-base-200);
+  font-weight: 600;
+  white-space: nowrap;
+}
+ui-doc-prose .docs-prose tr:last-child td { border-block-end: 0; }
+
+ui-doc-prose .docs-prose figure {
+  margin: 0 0 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+}
+
+ui-doc-prose .docs-prose figcaption {
+  margin-block-start: 8px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+ui-doc-prose .docs-prose figure[data-rendered] > pre.mermaid { display: none; }
+
+ui-doc-prose .docs-prose .mermaid-svg {
+  overflow-x: auto;
+  text-align: center;
+}
+
+ui-doc-prose .docs-prose .mermaid-svg svg {
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+ui-doc-prose .docs-prose img {
+  display: block;
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+ui-doc-prose .docs-prose .figure-missing {
+  display: grid;
+  gap: 4px;
+  place-items: center;
+  padding: 24px 16px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-field);
+  background: var(--color-base-200);
+  color: var(--muted-ink);
+  font-size: 13px;
+}
+
+@container shell (width < 640px) {
+  ui-doc-prose .docs-prose .mdtable table {
+    inline-size: max-content;
+    min-inline-size: 100%;
+  }
+}

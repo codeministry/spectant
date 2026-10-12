@@ -22,6 +22,10 @@
     [preview]="previewId()"
     (queryChange)="setQuery($event)"
   />
+  <!-- The backlog after the Specs panel at every tier, the desktop's closing group of the spec list (T138). -->
+  @if (ideas().count > 0) {
+    <app-ideas-panel [ws]="ws()" [ideas]="ideas()" />
+  }
   @if (view(); as view) {
     @if (!railHolds()) {
       <app-warnings-panel [form]="state.tier() === 'compact' ? 'callout' : 'section'" [specs]="view.specs" [kpis]="view.kpis" />

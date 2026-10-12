@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { CommitCache, commitsFor, defaultGitRunner, type GitRunner } from "../server/src/git.ts";
+import { CommitCache, commitsFor, defaultGitRunner, type GitRunner, takenSpecNumbers, userEmail } from "../server/src/git.ts";
 
 const FOLDER = "specs/010-x";
 
@@ -321,6 +321,142 @@ describe("the head cache", () => {
   });
 });
 
+describe("userEmail reads the repository's git user.email (T77, ISC-119)", () => {
+  /** A repository with `user.email` set in its own config to a synthetic address, nothing committed. */
+  function identityRepo(): string {
+    const dir = mkdtempSync(join(root, "identity-"));
+    git(dir, "2026-01-01T00:00:00Z", "init", "-q", "-b", "main");
+    git(dir, "2026-01-01T00:00:00Z", "config", "user.email", "dev@example.com");
+    return dir;
+  }
+
+  test("a configured address is returned as written", async () => {
+    expect(await userEmail(identityRepo())).toBe("dev@example.com");
+  });
+
+  test("no configuration (empty global config, no system config, none in the repository) → null", async () => {
+    expect(await userEmail(repo)).toBeNull();
+  });
+
+  test("a directory that is no repository root → null, git never spawned", async () => {
+    const { runner, calls } = countingRunner();
+    expect(await userEmail(mkdtempSync(join(root, "plain-")), { runner })).toBeNull();
+    expect(await userEmail(join(repo, "specs"), { runner })).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
+  test("git missing, a failing git, a throwing runner or the deadline → null, never a throw", async () => {
+    const dir = identityRepo();
+    expect(await userEmail(dir, { runner: () => Promise.resolve(null) })).toBeNull();
+    expect(await userEmail(dir, { runner: () => Promise.resolve({ code: 128, stdout: "", stderr: "fatal: broken\n" }) })).toBeNull();
+    expect(await userEmail(dir, { runner: () => Promise.reject(new Error("spawn failed")) })).toBeNull();
+    expect(await userEmail(dir, { runner: () => Promise.resolve({ code: 0, stdout: "  \n", stderr: "" }) })).toBeNull();
+    const slow: GitRunner = () => new Promise(() => undefined);
+    expect(await userEmail(dir, { runner: slow, timeoutMs: 20 })).toBeNull();
+  });
+
+  test("runs only `config --get user.email` under the read-only environment, rooted at the repository", async () => {
+    const dir = identityRepo();
+    const seen: Array<{ args: string[]; env: Record<string, string> }> = [];
+    const runner: GitRunner = (args, env, signal) => {
+      seen.push({ args: [...args], env });
+      return defaultGitRunner(args, env, signal);
+    };
+    expect(await userEmail(dir, { runner })).toBe("dev@example.com");
+    expect(seen.map((s) => s.args)).toEqual([["-C", dir, "config", "--get", "user.email"]]);
+    expect(seen[0]?.env).toMatchObject({ GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0", GIT_CEILING_DIRECTORIES: dirname(dir) });
+  });
+
+  test("reading the config leaves the repository, .git/ included, byte- and mtime-identical (ISC-15)", async () => {
+    const dir = identityRepo();
+    const before = checksum(dir);
+    await userEmail(dir);
+    await userEmail(dir, { timeoutMs: 1 });
+    expect(checksum(dir)).toBe(before);
+    const beforeRepo = checksum(repo);
+    await userEmail(repo);
+    expect(checksum(repo)).toBe(beforeRepo);
+  });
+});
+
+describe("takenSpecNumbers reads the spec numbers branch names and history have given out (T86, ISC-130.2)", () => {
+  /**
+   * A repository whose history added specs/003-a/ and specs/archive/002-b/, added and then deleted specs/005-gone/,
+   * with local branches main, feature/012-tide-tables, release/1.0 and fix/44-short (no three-digit folder segment),
+   * and a remote-tracking ref origin/feature/031-remote.
+   */
+  function numberedRepo(): string {
+    const dir = mkdtempSync(join(root, "numbers-"));
+    git(dir, "2026-01-01T00:00:00Z", "init", "-q", "-b", "main");
+    commit(dir, "2026-01-01T12:00:00Z", "spec 003", { "specs/003-a/spec.md": "# a\n", "specs/ideas/README.md": "# ideas\n" });
+    commit(dir, "2026-01-02T12:00:00Z", "archived 002", { "specs/archive/002-b/spec.md": "# b\n" });
+    commit(dir, "2026-01-03T12:00:00Z", "spec 005", { "specs/005-gone/spec.md": "# gone\n" });
+    git(dir, "2026-01-04T12:00:00Z", "rm", "-q", "-r", "--", "specs/005-gone");
+    git(dir, "2026-01-04T12:00:00Z", "commit", "-q", "-m", "drop 005");
+    for (const branch of ["feature/012-tide-tables", "release/1.0", "fix/44-short"]) git(dir, "2026-01-05T00:00:00Z", "branch", branch);
+    git(dir, "2026-01-05T00:00:00Z", "update-ref", "refs/remotes/origin/feature/031-remote", "HEAD");
+    return dir;
+  }
+
+  test("folders added anywhere in history (deleted or archived ones too) and branch segments, sorted and unique", async () => {
+    expect(await takenSpecNumbers(numberedRepo())).toEqual({ numbers: [2, 3, 5, 12, 31], source: "git" });
+    // The timeline repository: specs/010-x/ and specs/010-xy/ both give 10, once.
+    expect(await takenSpecNumbers(repo)).toEqual({ numbers: [10], source: "git" });
+  });
+
+  test("a repository without commits answers no number from git", async () => {
+    const empty = mkdtempSync(join(root, "numbers-empty-"));
+    git(empty, "2026-01-01T00:00:00Z", "init", "-q", "-b", "main");
+    expect(await takenSpecNumbers(empty)).toEqual({ numbers: [], source: "git" });
+  });
+
+  test("no repository root, git missing, a failing git, a throwing runner or the deadline → none, never a throw", async () => {
+    const { runner, calls } = countingRunner();
+    expect(await takenSpecNumbers(mkdtempSync(join(root, "numbers-plain-")), { runner })).toMatchObject({ numbers: [], source: "none" });
+    expect(await takenSpecNumbers(join(repo, "specs"), { runner })).toMatchObject({ numbers: [], source: "none" });
+    expect(calls).toEqual([]);
+    expect(await takenSpecNumbers(repo, { runner: () => Promise.resolve(null) })).toMatchObject({ numbers: [], source: "none" });
+    const failing: GitRunner = () => Promise.resolve({ code: 128, stdout: "", stderr: "fatal: broken\n" });
+    const failed = await takenSpecNumbers(repo, { runner: failing });
+    expect(failed).toMatchObject({ numbers: [], source: "none" });
+    expect(failed.diagnostic).toContain("fatal: broken");
+    expect(await takenSpecNumbers(repo, { runner: () => Promise.reject(new Error("spawn failed")) })).toMatchObject({ numbers: [], source: "none" });
+    const slow: GitRunner = () => new Promise(() => undefined);
+    expect(await takenSpecNumbers(repo, { runner: slow, timeoutMs: 20 })).toMatchObject({ numbers: [], source: "none" });
+  });
+
+  test("runs only for-each-ref over branches and remotes and an --all log of added specs/ paths, under the read-only environment", async () => {
+    const dir = numberedRepo();
+    const seen: Array<{ args: string[]; env: Record<string, string> }> = [];
+    const runner: GitRunner = (args, env, signal) => {
+      seen.push({ args: [...args], env });
+      return defaultGitRunner(args, env, signal);
+    };
+    await takenSpecNumbers(dir, { runner });
+    expect(seen.map((s) => s.args.slice(0, 4))).toEqual([
+      ["-C", dir, "for-each-ref", "--format=%(refname)"],
+      ["-C", dir, "--no-pager", "log"],
+    ]);
+    expect(seen[1]?.args).toContain("--all");
+    expect(seen[1]?.args).toContain("--diff-filter=A");
+    expect(seen[1]?.args.slice(-2)).toEqual(["--", "specs"]);
+    for (const s of seen) {
+      expect(s.env).toMatchObject({ GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_LITERAL_PATHSPECS: "1", GIT_CEILING_DIRECTORIES: dirname(dir) });
+    }
+  });
+
+  test("reading the numbers leaves the repository, .git/ included, byte- and mtime-identical (ISC-15)", async () => {
+    const dir = numberedRepo();
+    const before = checksum(dir);
+    await takenSpecNumbers(dir);
+    await takenSpecNumbers(dir, { timeoutMs: 1 });
+    expect(checksum(dir)).toBe(before);
+    const beforeRepo = checksum(repo);
+    await takenSpecNumbers(repo);
+    expect(checksum(repo)).toBe(beforeRepo);
+  });
+});
+
 describe("read-only (ISC-15)", () => {
   test("the repository, .git/ included, is byte- and mtime-identical after every kind of read", async () => {
     const before = checksum(repo);
@@ -371,8 +507,10 @@ describe("this repository (integration)", () => {
     }
   })();
 
-  test.skipIf(!hasGit)("spec 001's folder has its round commits", async () => {
-    const result = await commitsFor(self, "specs/001-app-skeleton");
+  // `specs/` is untracked planning material (since 2026-10-11), so the repository's own commits are read for a
+  // tracked path the implement rounds touched: core/src carries round commits of specs 001 to 003.
+  test.skipIf(!hasGit)("this repository's core/src has its round commits", async () => {
+    const result = await commitsFor(self, "core/src");
     // A failed read carries its reason; surface it, because on CI the checkout may be shallow, foreign-owned or without git.
     if (result.source !== "git") throw new Error(`commitsFor on this repository answered none: ${result.diagnostic ?? "(no diagnostic)"}`);
     expect(result.head).toMatch(/^[0-9a-f]{40,64}$/);

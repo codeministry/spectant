@@ -6,6 +6,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import en from '../../../i18n/en.json';
+import specGolden from '../../../../../core/fixtures/harbor.spec.golden.json';
 import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.service';
 import { LockSourceService } from '../../core/lock-source.service';
 import type { ShellRouteData } from '../shell/areas';
@@ -32,8 +33,13 @@ const holder = (id: string, slug: string, main: boolean, archived = false): Hold
   main,
   held: 1,
   stage: null,
+  stageSource: null,
+  priority: 'P3',
+  hash: null,
+  assignee: null,
 });
 const feature = (id: string, name: string, holders: readonly Holder[], claims: readonly string[]): Feature => ({
+  ideas: [],
   id,
   name,
   why: null,
@@ -44,6 +50,7 @@ const feature = (id: string, name: string, holders: readonly Holder[], claims: r
   unheld: [],
 });
 const milestone = (name: string, slug: string, specs: readonly Holder[]): Milestone => ({
+  ideas: [],
   name,
   slug,
   target: '2026-12-01',
@@ -57,6 +64,10 @@ const milestone = (name: string, slug: string, specs: readonly Holder[]): Milest
 
 /** 002 is main under F7 and also holds claims of F0 and F2; 001 is archived, main under F1. */
 const PLAN: PlanningBody = {
+  workflow: { rows: [], source: 'default', diagnostics: [] },
+  stages: [],
+  stageCounts: {},
+  ideas: [],
   features: [
     feature('F0', 'Cross-cutting', [holder('002', '002-web-console', false)], ['ISC-1']),
     feature('F1', 'Manifest sync', [holder('001', '001-manifest-sync', true, true)], ['ISC-5']),
@@ -81,12 +92,17 @@ const TABS: ReadonlyArray<[string, ShellRouteData]> = [
 ];
 const routes: Routes = TABS.map(([tab, data]) => ({ path: tab ? `w/:ws/s/:id/${tab}` : 'w/:ws/s/:id', component: SpecHead, data }));
 
-function setUp(planning: ApiResult<PlanningBody> = ok(PLAN)): void {
+function setUp(
+  planning: ApiResult<PlanningBody> = ok(PLAN),
+  spec: () => ApiResult<unknown> = () => unserved,
+  dashboard: unknown = HARBOR,
+): void {
   const api = {
     workspaces: () => Promise.resolve(ok([{ slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: null }])),
-    dashboard: () => Promise.resolve(ok(HARBOR)),
+    dashboard: () => Promise.resolve(ok(dashboard)),
     planning: () => Promise.resolve(planning),
-    spec: () => Promise.resolve(unserved),
+    spec: () => Promise.resolve(spec()),
+    reviewedHashes: () => null,
   };
   TestBed.configureTestingModule({
     imports: [
@@ -322,5 +338,59 @@ describe('SpecHead breadcrumb (T39, ISC-105)', () => {
     expect(crumbs(root)).toEqual(['workspace', 'spec', 'area']);
     expect(crumb(root, 'workspace')?.getAttribute('href')).toBe('/w/harbor');
     expect(crumb(root, 'area')?.getAttribute('aria-current')).toBe('page');
+  });
+});
+
+// T134 · ISC-118: `ui-priority` in the head's chip row after type and stage, and in the breadcrumb before the spec id,
+// against the harbor spec golden (006 P1; 003 P3; 005's invalid `priority: high`, which core reads as P3).
+describe('SpecHead priority (T134, ISC-118)', () => {
+  const GOLDEN = specGolden as unknown as Record<string, { head: Record<string, unknown> }>;
+  const bodyOf = (folder: string) => ok(GOLDEN[`specs/${folder}`]);
+  const crumbPriority = (root: HTMLElement): HTMLElement | null => nav(root).querySelector<HTMLElement>('[data-crumb-priority]');
+  const headPriority = (root: HTMLElement): HTMLElement | null => root.querySelector<HTMLElement>('[data-head-chip="priority"]');
+
+  for (const tier of ['wide', 'compact'] as const) {
+    it(`shows P1 before the spec id in the breadcrumb and after type and stage in the head (${tier})`, async () => {
+      setUp(unserved, () => bodyOf('006-partial-push'));
+      const root = await open('/w/harbor/s/006/status', tier);
+      const chip = crumbPriority(root);
+      expect(chip?.getAttribute('data-level')).toBe('P1');
+      expect(chip?.nextElementSibling?.getAttribute('data-crumb')).toBe('spec');
+      expect(chip?.closest('li')?.querySelector('[data-crumb="spec"]')).not.toBeNull();
+      expect(chip?.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('priority P1');
+      expect(text(chip)).toBe('P1');
+      const chips = [...root.querySelectorAll('.chips [data-head-chip]')].map((el) => el.getAttribute('data-head-chip'));
+      expect(chips).toEqual(['type', 'stage', 'priority']);
+      expect(headPriority(root)?.getAttribute('data-level')).toBe('P1');
+    });
+  }
+
+  it('shows the P3 core delivers for a spec without a priority key as a solid P3', async () => {
+    setUp(unserved, () => bodyOf('003-config-loader'));
+    const root = await open('/w/harbor/s/003/status');
+    for (const chip of [crumbPriority(root), headPriority(root)]) {
+      expect(chip?.getAttribute('data-level')).toBe('P3');
+      expect(chip?.hasAttribute('data-unmarked')).toBe(false);
+    }
+  });
+
+  it("reads 005's invalid priority as P3; the head carries no warning indicator, the diagnostic stays core's", async () => {
+    setUp(unserved, () => bodyOf('005-config-format-choice'));
+    const root = await open('/w/harbor/s/005/status');
+    expect(crumbPriority(root)?.getAttribute('data-level')).toBe('P3');
+    expect(headPriority(root)?.getAttribute('data-level')).toBe('P3');
+    expect(root.querySelector('[data-warning], [data-head-chip="warning"]')).toBeNull();
+  });
+
+  it('falls back to the dashboard row, then draws an unmarked P3 when no source names a priority', async () => {
+    setUp(unserved, () => unserved, { specs: [{ id: '002', title: 'Web console', type: 'feature', stage: 'build', priority: 'P2' }], archive: [] });
+    const fromRow = await open('/w/harbor/s/002/status');
+    expect(crumbPriority(fromRow)?.getAttribute('data-level')).toBe('P2');
+    TestBed.resetTestingModule();
+    setUp(unserved);
+    const none = await open('/w/harbor/s/002/status');
+    expect(crumbPriority(none)?.getAttribute('data-level')).toBe('P3');
+    expect(crumbPriority(none)?.hasAttribute('data-unmarked')).toBe(true);
+    expect(headPriority(none)?.hasAttribute('data-unmarked')).toBe(true);
   });
 });

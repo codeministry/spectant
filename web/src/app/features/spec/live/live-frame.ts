@@ -1,4 +1,4 @@
-import type { AgentLockSource, Frame, FrameCard, LiveAgent, LiveCard, LiveFrame, LockSource } from '../../../../../../core/src/files';
+import type { ActorRef, AgentLockSource, Frame, FrameCard, LiveAgent, LiveCard, LiveFrame, LockSource } from '../../../../../../core/src/files';
 import { relativeParts, type RelativeUnit } from '../../../shared/ui/relative-time/relative-time';
 
 /**
@@ -57,4 +57,28 @@ export function elapsedLabel(since: string, now: number, locale: string): string
   if (Number.isNaN(then)) return null;
   const { value, unit } = relativeParts(then, now);
   return new Intl.RelativeTimeFormat(locale, { numeric: 'always' }).format(-value, INTL_UNIT[unit]);
+}
+
+/** Who works one task (T135, ISC-131.1): core's `LiveCard.agent` and `.subagent`, the lock's since and stale mark. */
+export interface TaskActors {
+  readonly agent: ActorRef | null;
+  readonly subagent: ActorRef | null;
+  readonly since: string | null;
+  readonly elapsedMs: number | null;
+  readonly stale: boolean;
+}
+
+/** The agent and sub-agent core put on a live card; null when it names neither (and on every history frame's card). */
+export function taskActorsOf(card: FrameCard | LiveCard): TaskActors | null {
+  const live = card as Partial<LiveCard>;
+  const agent = live.agent ?? null;
+  const subagent = live.subagent ?? null;
+  if (agent === null && subagent === null) return null;
+  return { agent, subagent, since: live.since ?? null, elapsedMs: live.elapsedMs ?? null, stale: live.stale === true };
+}
+
+/** How long the holder went without a release, as `elapsedLabel` says it: from `since`, else from core's `elapsedMs`. */
+export function staleAgeLabel(actors: TaskActors, now: number, locale: string): string | null {
+  if (actors.since !== null) return elapsedLabel(actors.since, now, locale);
+  return actors.elapsedMs === null ? null : elapsedLabel(new Date(now - actors.elapsedMs).toISOString(), now, locale);
 }

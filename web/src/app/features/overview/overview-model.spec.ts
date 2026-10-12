@@ -8,15 +8,8 @@ const entry = (slug: string) => ({ slug, name: slug, pathTail: `code/${slug}` })
 describe('readColumn (T65)', () => {
   it('reads the four strip figures from the model KPIs as they are', () => {
     const column = readColumn(entry('harbor'), harbor, 1000);
-    expect(column.kpis).toEqual({
-      master: { closed: 101, total: 124 },
-      claims: { closed: 55, total: 78 },
-      specs: 5,
-      building: 2,
-      scoping: 3,
-      warnings: 7,
-      fog: 4,
-    });
+    const { master, claims, specs, building, scoping, warnings, fog } = harbor.kpis;
+    expect(column.kpis).toEqual({ master, claims, specs, building, scoping, warnings, fog });
     expect(column.loadedAt).toBe(1000);
     expect(column.pathTail).toBe('code/harbor');
   });

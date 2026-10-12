@@ -7,15 +7,17 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 
+import { parseActor } from '../src/actor.ts';
 import { deriveStages } from '../src/derived-stages.ts';
 import { EVENT_STAGES, EVENT_VOCABULARY_ALIASES, parseEvents, validateEventLine } from '../src/events.ts';
 import type { SpecFiles } from '../src/files.ts';
-import { STAGE_RULES } from '../src/stage.ts';
+import { STAGE_RULES, WORKFLOW_STAGES } from '../src/stage.ts';
 import { buildTimeline } from '../src/timeline.ts';
 import { FIXTURES, fixtureTrees, folders } from './helpers/read-tree.ts';
 
 const HARBOR = join(FIXTURES, 'harbor');
 const HARBOR_001 = 'specs/archive/001-manifest-sync';
+const LANTERN_002_EVENTS = 'lantern/specs/002-duplicate-links/events.jsonl';
 
 /** A harbor spec folder read whole, as the server reads it. */
 function harborFolder(relDir: string): SpecFiles {
@@ -40,17 +42,34 @@ function fixtureEventFiles(): Array<[string, string]> {
 }
 
 const line = (fields: Record<string, unknown>): string => JSON.stringify(fields);
-const VALID = { ts: '2026-03-07T15:30:00Z', from: 'review', to: 'build', command: '/spec-review 002', actor: 'principal' };
+const VALID = { ts: '2026-03-07T15:30:00Z', from: 'review', to: 'build', command: '/spec-review 002', actor: 'u:3f9c0a7d' };
+/** VALID's actor as the reader parses it: every accepted event carries it as `actorRef` (T61). */
+const REF = parseActor(VALID.actor);
 
 describe('the vocabulary (principal decision 2026-09-29)', () => {
-  test('the event stages are the stage table of stage.ts, one vocabulary for timeline and stage', () => {
-    expect([...EVENT_STAGES].sort()).toEqual(STAGE_RULES.map((r) => r.stage).sort());
-    expect(EVENT_STAGES).toHaveLength(8);
+  test('the event stages are every workflow stage, idea and close-pending included (T62), in board order', () => {
+    expect(EVENT_STAGES).toEqual(WORKFLOW_STAGES);
+    expect([...EVENT_STAGES].sort()).toEqual([...new Set([...STAGE_RULES.map((r) => r.stage), 'idea'])].sort());
+    expect(EVENT_STAGES).toHaveLength(10);
   });
 
-  test('the alias table maps every older lifecycle word to a stage name, `idea` to the creation', () => {
+  test('`idea` and `close-pending` are stage names: read as they stand, without an alias warning (T62)', () => {
+    for (const [from, to] of [['idea', 'plan'], ['build', 'close-pending'], ['close-pending', 'code-review']] as const) {
+      const v = validateEventLine(line({ ...VALID, from, to }));
+      expect(v).toMatchObject({ ok: true, event: { from, to }, warnings: [] });
+    }
+  });
+
+  test('a null `from` stays the creation, on the first event only (T62)', () => {
+    const first = line({ ...VALID, from: null, to: 'idea' });
+    const late = line({ ...VALID, from: null, to: 'close-pending' });
+    const { events, diagnostics } = parseEvents([first, late].join('\n'));
+    expect(events.map((e) => [e.from, e.to])).toEqual([[null, 'idea']]);
+    expect(diagnostics.map((d) => [d.code, d.line])).toEqual([['event-null-from', 2]]);
+  });
+
+  test('the alias table maps every older lifecycle word to a stage name', () => {
     expect(EVENT_VOCABULARY_ALIASES).toEqual({
-      idea: null,
       specified: 'plan',
       planned: 'tasks',
       tasked: 'review',
@@ -60,7 +79,7 @@ describe('the vocabulary (principal decision 2026-09-29)', () => {
     });
     for (const [word, stage] of Object.entries(EVENT_VOCABULARY_ALIASES)) {
       expect(EVENT_STAGES.includes(word)).toBe(false);
-      if (stage !== null) expect(EVENT_STAGES.includes(stage)).toBe(true);
+      expect(EVENT_STAGES.includes(stage)).toBe(true);
     }
   });
 });
@@ -80,7 +99,9 @@ describe('fixtures: every events.jsonl line is valid', () => {
       expect(v).toMatchObject({ ok: true, warnings: [] });
     }
     const parsed = parseEvents(text);
-    expect(parsed.diagnostics).toEqual([]);
+    // Lantern 002 keeps the legacy actor (spec 008, T33): read, flagged once for the file, never rejected.
+    const expected = _path === LANTERN_002_EVENTS ? ['actor-legacy'] : [];
+    expect(parsed.diagnostics.map((d) => d.code)).toEqual(expected);
     expect(parsed.events).toHaveLength(lines.length);
   });
 
@@ -104,8 +125,9 @@ describe('fixtures: every events.jsonl line is valid', () => {
 describe('validateEventLine: a valid line', () => {
   test('returns the event with its keys in schema order and no warnings', () => {
     const v = validateEventLine(line(VALID), 1);
-    expect(v).toEqual({ ok: true, event: VALID, warnings: [] });
-    if (v.ok) expect(Object.keys(v.event)).toEqual(['ts', 'from', 'to', 'command', 'actor']);
+    expect(v).toEqual({ ok: true, event: { ...VALID, actorRef: REF }, warnings: [] });
+    // The schema's five keys in order, then the read-side actorRef (T61), which no written line carries.
+    if (v.ok) expect(Object.keys(v.event)).toEqual(['ts', 'from', 'to', 'command', 'actor', 'actorRef']);
   });
 
   test('accepts a `ts` with an offset and with fractional seconds', () => {
@@ -171,7 +193,7 @@ describe('the older lifecycle words (ISC-24 wording) are read and normalised', (
     const v = validateEventLine(line({ ...VALID, from: 'tasked', to: 'reviewed' }), 9);
     expect(v.ok).toBe(true);
     if (!v.ok) return;
-    expect(v.event).toEqual({ ...VALID, from: 'review', to: 'build' });
+    expect(v.event).toEqual({ ...VALID, from: 'review', to: 'build', actorRef: REF });
     expect(v.warnings.map((w) => [w.severity, w.code, w.line])).toEqual([
       ['warning', 'event-alias', 9],
       ['warning', 'event-alias', 9],
@@ -182,9 +204,10 @@ describe('the older lifecycle words (ISC-24 wording) are read and normalised', (
     expect(v.warnings[1]?.message).toContain('build');
   });
 
-  test('`idea → specified` is the creation: `null → plan`', () => {
+  test('`idea → specified` is `idea → plan`: `idea` is a stage since T62, only `specified` warns', () => {
     const v = validateEventLine(line({ ...VALID, from: 'idea', to: 'specified' }));
-    expect(v).toMatchObject({ ok: true, event: { from: null, to: 'plan' } });
+    expect(v).toMatchObject({ ok: true, event: { from: 'idea', to: 'plan' } });
+    if (v.ok) expect(v.warnings.map((w) => w.message.includes('specified'))).toEqual([true]);
   });
 
   test('a stage name beside an old word warns once, for the old word only', () => {
@@ -204,9 +227,9 @@ describe('the older lifecycle words (ISC-24 wording) are read and normalised', (
 });
 
 describe('parseEvents', () => {
-  const a = line({ ts: '2026-03-02T09:00:00Z', from: null, to: 'plan', command: '/spec-feature manifest-sync', actor: 'principal' });
-  const b = line({ ts: '2026-03-02T09:40:00Z', from: 'plan', to: 'tasks', command: '/spec-plan 001', actor: 'principal' });
-  const c = line({ ts: '2026-03-02T10:20:00Z', from: 'tasks', to: 'review', command: '/spec-tasks 001', actor: 'principal' });
+  const a = line({ ts: '2026-03-02T09:00:00Z', from: null, to: 'plan', command: '/spec-feature manifest-sync', actor: 'u:3f9c0a7d' });
+  const b = line({ ts: '2026-03-02T09:40:00Z', from: 'plan', to: 'tasks', command: '/spec-plan 001', actor: 'u:3f9c0a7d' });
+  const c = line({ ts: '2026-03-02T10:20:00Z', from: 'tasks', to: 'review', command: '/spec-tasks 001', actor: 'u:3f9c0a7d' });
 
   test('keeps file order, skips blank and whitespace-only lines, reads CRLF', () => {
     const { events, diagnostics } = parseEvents(['', a, '   ', b, '', c, ''].join('\r\n'));
@@ -232,7 +255,7 @@ describe('parseEvents', () => {
 
   test('alias warnings come through beside the normalised events', () => {
     const { events, diagnostics } = parseEvents(line({ ...VALID, from: 'tasked', to: 'reviewed' }));
-    expect(events).toEqual([{ ...VALID, from: 'review', to: 'build' }]);
+    expect(events).toEqual([{ ...VALID, from: 'review', to: 'build', actorRef: REF }]);
     expect(diagnostics.map((d) => [d.severity, d.code, d.line])).toEqual([
       ['warning', 'event-alias', 1],
       ['warning', 'event-alias', 1],
@@ -243,6 +266,45 @@ describe('parseEvents', () => {
     expect(parseEvents('')).toEqual({ events: [], diagnostics: [] });
     expect(parseEvents('\n\n')).toEqual({ events: [], diagnostics: [] });
     expect(() => parseEvents('\u0000{]')).not.toThrow();
+  });
+});
+
+describe('the actor of an event goes through the actor grammar (spec 008, T61, ISC-119)', () => {
+  const at = (ts: string, from: string | null, to: string, actor: string): string =>
+    line({ ts, from, to, command: '/spec-x 009', actor });
+
+  test('an accepted line carries the parsed actor as actorRef, the raw actor unchanged', () => {
+    const agent = validateEventLine(line({ ...VALID, actor: 'a:claude:sess-7/T12' }));
+    expect(agent).toMatchObject({ ok: true, warnings: [] });
+    if (agent.ok) {
+      expect(agent.event.actor).toBe('a:claude:sess-7/T12');
+      expect(agent.event.actorRef).toEqual({ raw: 'a:claude:sess-7/T12', kind: 'subagent', id: 'a:claude:sess-7', task: 'T12', legacy: false });
+    }
+  });
+
+  test('a legacy actor is accepted by the line validator, flagged on its actorRef; the file warning is parseEvents\' job', () => {
+    const v = validateEventLine(line({ ...VALID, actor: 'principal' }), 4);
+    expect(v).toEqual({ ok: true, event: { ...VALID, actor: 'principal', actorRef: parseActor('principal') }, warnings: [] });
+  });
+
+  test('legacy: one actor-legacy warning per file, not per value, naming the first legacy value', () => {
+    const text = [
+      at('2026-03-02T09:00:00Z', null, 'plan', 'u:3f9c0a7d'),
+      at('2026-03-02T09:40:00Z', 'plan', 'tasks', 'principal'),
+      at('2026-03-02T10:20:00Z', 'tasks', 'review', 'agent'),
+      at('2026-03-02T11:00:00Z', 'review', 'build', 'principal'),
+    ].join('\n');
+    const { events, diagnostics } = parseEvents(text);
+    expect(events.map((e) => e.actor)).toEqual(['u:3f9c0a7d', 'principal', 'agent', 'principal']);
+    expect(events.map((e) => e.actorRef?.legacy)).toEqual([false, true, true, true]);
+    expect(diagnostics).toMatchObject([{ severity: 'warning', code: 'actor-legacy', line: 2, subject: 'principal' }]);
+    expect(diagnostics[0]?.message).toContain('3 actors');
+  });
+
+  test('legacy: a rejected line\'s actor is not counted; a file of grammar actors raises nothing', () => {
+    const rejected = parseEvents([at('2026-03-02T09:00:00Z', null, 'plan', 'u:3f9c0a7d'), at('2026-03-02', 'plan', 'tasks', 'principal')].join('\n'));
+    expect(rejected.diagnostics.map((d) => d.code)).toEqual(['event-ts']);
+    expect(parseEvents(at('2026-03-02T09:00:00Z', null, 'plan', 'a:claude:sess-7')).diagnostics).toEqual([]);
   });
 });
 
@@ -260,7 +322,7 @@ describe('the timeline reads events.jsonl (ISC-32 feeding ISC-36)', () => {
       expect(Number.isFinite(Date.parse(e.ts))).toBe(true);
     }
     // Newest first: done by /spec-complete, the creation last, titled like a derived creation.
-    expect(stages[0]).toMatchObject({ from: 'close', to: 'done', command: '/spec-complete 001', actor: 'principal' });
+    expect(stages[0]).toMatchObject({ from: 'close', to: 'done', command: '/spec-complete 001', actor: 'u:3f9c0a7d' });
     expect(stages.at(-1)).toMatchObject({ from: null, to: 'plan', title: 'created → plan' });
     expect(buildTimeline({ files, commits: [] }).some((e) => e.derived)).toBe(false);
   });
@@ -273,7 +335,7 @@ describe('the timeline reads events.jsonl (ISC-32 feeding ISC-36)', () => {
   });
 
   test('a spec without events.jsonl still derives its stages, marked derived', () => {
-    const files = harborFolder('specs/002-web-console');
+    const files = harborFolder('specs/004-retention-policies');
     expect(files.texts.events).toBeUndefined();
     const stages = buildTimeline({ files, commits: [] }).filter((e) => e.kind === 'stage');
     expect(stages.length).toBeGreaterThan(0);

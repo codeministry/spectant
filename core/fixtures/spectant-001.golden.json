@@ -28,6 +28,7 @@
     "build": 0,
     "blocked": 0,
     "code-review": 0,
+    "close-pending": 0,
     "close": 0,
     "done": 0
   },
@@ -37,8 +38,10 @@
       "slug": "001-app-skeleton",
       "title": "Install spectant with one line and see two workspaces on the dashboard",
       "type": "feature",
+      "priority": "P3",
       "phase": "scoping",
       "stage": "review",
+      "stageSource": "derived",
       "progress": {
         "closed": 14,
         "total": 47
@@ -51,6 +54,7 @@
       "nextReason": "the reviewed mark is missing",
       "takeable": [],
       "taken": [],
+      "assignee": null,
       "warnings": [
         {
           "kind": "review",
@@ -103,5 +107,9 @@
   "archive": [],
   "brief": null,
   "services": [],
-  "diagnostics": []
+  "diagnostics": [],
+  "ideas": {
+    "count": 0,
+    "list": []
+  }
 }

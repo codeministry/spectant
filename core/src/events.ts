@@ -3,8 +3,9 @@
 //
 // Pure over text the caller read: no `node:*`, so the web bundle may import it beside timeline.ts.
 //
-// One vocabulary (principal decision 2026-09-29): `from` and `to` are the stage names of stage.ts (`plan | tasks |
-// review | build | blocked | code-review | close | done`), as timeline and stage use them. The older lifecycle words
+// One vocabulary (principal decision 2026-09-29): `from` and `to` are the workflow's stage names (stage.ts
+// `WORKFLOW_STAGES`: `idea | plan | tasks | review | build | blocked | code-review | close-pending | close | done`;
+// `idea` and `close-pending` since spec 008, T62), as timeline and stage use them. The older lifecycle words
 // the old skill wrote (ISC-24's `specified → planned → tasked → reviewed → implementing → code-reviewed → done`) are
 // read through EVENT_VOCABULARY_ALIASES and normalised, each with a warning naming the old word, so an old file still
 // parses and everything downstream sees stage names only. A stage names what the spec waits for, so an old word
@@ -21,24 +22,34 @@
 // | `event-type`       | every value is a string; `from` may also be null (the creation), `to` never                 |
 // | `event-ts`         | `ts` is an ISO 8601 date-time with a zone (`Z` or `±hh:mm`) on a real calendar day          |
 // | `event-empty`      | `command` and `actor` are not empty or blank                                                |
-// | `event-stage`      | `from` and `to` are stage names, or old words that map to one (`to` never to the creation)  |
+// | `event-stage`      | `from` and `to` are stage names, or old words that map to one                               |
 // | `event-same-stage` | `from` and `to` differ after mapping; severity `warning` when only the mapping made them equal |
 // | `event-null-from`  | (parseEvents) a null `from` stands only on the creation, the file's first event            |
 //
 // Blank lines are skipped. A file whose lines are all rejected yields no events, and the timeline then derives.
+//
+// The actor (spec 008, T61, ISC-119): every accepted line's `actor` goes through `parseActor` and rides on the event as
+// `actorRef`. A value outside the grammar is legacy: accepted, never rejected, and `parseEvents` raises one
+// `actor-legacy` warning for the whole file (`legacyActorWarning`, actor.ts), after the line diagnostics. Only
+// `event-empty` rejects an actor.
+import { legacyActorWarning, parseActor, type ActorSighting } from './actor.ts';
 import type { Diagnostic, DiagnosticSeverity } from './diagnostics.ts';
 import type { EventLine, EventValidation, StageName } from './files.ts';
 
-/** The stage table's names (stage.ts `Stage`), in lifecycle order: the one vocabulary of `from` and `to`. */
-export const EVENT_STAGES: readonly StageName[] = ['plan', 'tasks', 'review', 'build', 'blocked', 'code-review', 'close', 'done'];
+/**
+ * Every workflow stage (stage.ts `WORKFLOW_STAGES`, `WorkflowStage`), in board order: the one vocabulary of `from` and
+ * `to`. `idea` is a story's stage before it is a spec (a spec made from a story starts `from: idea`), `close-pending`
+ * the detour of `code_review: feature` (spec 008, T62). A null `from` still marks the creation, on the first line only.
+ */
+export const EVENT_STAGES: readonly StageName[] = ['idea', 'plan', 'tasks', 'review', 'build', 'blocked', 'code-review', 'close-pending', 'close', 'done'];
 
 /**
- * The older lifecycle words (ISC-24's wording, written by the old skill) and the stage name each is read as; `idea`
- * is the creation (a null `from`). `done` is the same word in both vocabularies and needs no alias.
+ * The older lifecycle words (ISC-24's wording, written by the old skill) and the stage name each is read as. `done`
+ * is the same word in both vocabularies and needs no alias; `idea` was the creation's old word and, a stage name since
+ * T62, reads as the stage `idea` itself, without a warning.
  *
  * | old word        | stage         | why                                                                          |
  * |-----------------|---------------|------------------------------------------------------------------------------|
- * | `idea`          | null          | the spec did not exist yet: the creation                                     |
  * | `specified`     | `plan`        | spec.md written, the plan is next                                            |
  * | `planned`       | `tasks`       | plan.md written, the tasks are next                                          |
  * | `tasked`        | `review`      | tasks.md written, the review is next                                         |
@@ -46,8 +57,7 @@ export const EVENT_STAGES: readonly StageName[] = ['plan', 'tasks', 'review', 'b
  * | `implementing`  | `build`       | building                                                                     |
  * | `code-reviewed` | `close`       | the code-reviewed mark written, the close is next                            |
  */
-export const EVENT_VOCABULARY_ALIASES: Readonly<Record<string, StageName | null>> = {
-  idea: null,
+export const EVENT_VOCABULARY_ALIASES: Readonly<Record<string, StageName>> = {
   specified: 'plan',
   planned: 'tasks',
   tasked: 'review',
@@ -90,31 +100,30 @@ export function validateEventLine(line: string, lineNo?: number): EventValidatio
   if (wrong.length > 0) return reject('event-type', `${names(wrong)} must be a string${wrong.includes('from') ? ' (`from` may be null)' : ''}.`);
   // Every value is a string now, `from` possibly null.
   const { ts, to, command, actor } = record as Record<(typeof KEYS)[number], string>;
-  const fromWord = record.from as string | null;
+  const { from: fromWord } = record as Record<'from', string | null>;
 
   if (!isIsoDateTime(ts)) return reject('event-ts', `\`ts\` "${ts}" is not an ISO 8601 date-time with a zone.`);
   const blank = (['command', 'actor'] as const).filter((k) => (k === 'command' ? command : actor).trim() === '');
   if (blank.length > 0) return reject('event-empty', `${names(blank)} must not be empty.`);
 
   const warnings: Diagnostic[] = [];
-  const read = (key: 'from' | 'to', word: string | null): StageName | null | undefined => {
-    if (word === null) return null;
+  const read = (key: 'from' | 'to', word: string): StageName | undefined => {
     if (EVENT_STAGES.includes(word)) return word;
-    if (!Object.hasOwn(EVENT_VOCABULARY_ALIASES, word)) return undefined;
-    const stage = EVENT_VOCABULARY_ALIASES[word] ?? null;
+    const stage = Object.hasOwn(EVENT_VOCABULARY_ALIASES, word) ? EVENT_VOCABULARY_ALIASES[word] : undefined;
+    if (stage === undefined) return undefined;
     warnings.push({
       severity: 'warning',
       code: 'event-alias',
-      message: `\`${key}\` "${word}" is an older lifecycle word, read as ${stage === null ? 'the creation (null)' : `the stage "${stage}"`}.`,
+      message: `\`${key}\` "${word}" is an older lifecycle word, read as the stage "${stage}".`,
       ...at,
     });
     return stage;
   };
-  const fromStage = read('from', fromWord);
+  // A null `from` is the creation; parseEvents allows it on the file's first event only (`event-null-from`).
+  const fromStage = fromWord === null ? null : read('from', fromWord);
   const toStage = read('to', to);
   if (fromStage === undefined) return reject('event-stage', `\`from\` "${fromWord ?? ''}" is not a stage name (${EVENT_STAGES.join(', ')}).`);
   if (toStage === undefined) return reject('event-stage', `\`to\` "${to}" is not a stage name (${EVENT_STAGES.join(', ')}).`);
-  if (toStage === null) return reject('event-stage', `\`to\` "${to}" names the creation; a transition enters a stage.`);
 
   if (fromStage === toStage) {
     return fromWord === to
@@ -122,17 +131,19 @@ export function validateEventLine(line: string, lineNo?: number): EventValidatio
       : reject('event-same-stage', `"${fromWord ?? ''} → ${to}" is "${toStage} → ${toStage}" in the stage table: no transition, skipped.`, 'warning');
   }
 
-  return { ok: true, event: { ts, from: fromStage, to: toStage, command, actor }, warnings };
+  return { ok: true, event: { ts, from: fromStage, to: toStage, command, actor, actorRef: parseActor(actor) }, warnings };
 }
 
 /**
  * Every line of an events.jsonl text: the valid ones as events in file order, every other one and every old-word
  * warning as diagnostics with its 1-based line. Blank lines are skipped. A null `from` counts only on the first event
- * of the file (the creation); later it is rejected with `event-null-from`.
+ * of the file (the creation); later it is rejected with `event-null-from`. Legacy actors among the accepted events
+ * raise one `actor-legacy` warning for the file, last, at the line of the first one.
  */
 export function parseEvents(text: string): { events: EventLine[]; diagnostics: Diagnostic[] } {
   const events: EventLine[] = [];
   const diagnostics: Diagnostic[] = [];
+  const actors: ActorSighting[] = [];
   text.split(/\r?\n/).forEach((raw, i) => {
     if (raw.trim() === '') return;
     const v = validateEventLine(raw, i + 1);
@@ -151,7 +162,10 @@ export function parseEvents(text: string): { events: EventLine[]; diagnostics: D
     }
     diagnostics.push(...v.warnings);
     events.push(v.event);
+    actors.push({ ref: v.event.actorRef ?? parseActor(v.event.actor), line: i + 1 });
   });
+  const legacy = legacyActorWarning(actors);
+  if (legacy !== null) diagnostics.push(legacy);
   return { events, diagnostics };
 }
 

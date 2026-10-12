@@ -5,6 +5,8 @@ spec_type: feature
 isa_master: ../../ISA.md
 isa_feature: F2
 milestone: Harbor 1.0
+priority: P2
+stage: build
 constitution: ../constitution.md
 phase: building
 progress: 25/30

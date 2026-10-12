@@ -17,11 +17,15 @@ import type {
   TasksTab,
 } from '../../core/src/files';
 import {
+  ACTORS_ALLOW,
+  ACTORS_PATH,
+  ACTORS_STATUSES,
   DOC_NAMES,
   GOLDEN_FAMILY,
   JSON_ANSWER,
   REVIEWED_HASHES_HEADER,
   type ReviewedHashes,
+  SPEC_HASH_HEADER,
   SPEC_ROUTE_TABLE,
   type SpecRouteName,
   TASKS_HASH_HEADER,
@@ -623,6 +627,58 @@ describe('stub API: lock fixtures via X-Spectant-Stub-Locks', () => {
     expect((await live('frontier', 'lantern', '001')).lockSource).toBe('frontier');
   });
 
+  // Who works a task (T149, ISC-131.1): each fixture's in-flight cards name their agent and sub-agent as core's live.ts
+  // does (`workersOf`), so the board and the tasks tab render the chips from the stub as from the server.
+  const workers = (frame: LiveFrame): Array<[string, string | null, string | null, boolean | undefined]> =>
+    frame.cards.filter((c) => c.agent !== null || c.subagent !== null).map((c) => [c.task, c.agent?.raw ?? null, c.subagent?.raw ?? null, c.stale]);
+
+  test('workers: activity names a:claude:sess-2 on T27 (stale), frontier adds its own agent on T28 (fresh), none names nobody', async () => {
+    expect(workers(await live('activity'))).toEqual([['T27', 'a:claude:sess-2', null, true]]);
+    expect(workers(await live('frontier'))).toEqual([
+      ['T27', 'a:claude:sess-2', null, true],
+      ['T28', 'a:claude:stub-002-isc-75', null, false],
+    ]);
+    expect(workers(await live('none'))).toEqual([]);
+  });
+
+  test("claims: harbor's claim lines without their releases; T4 by the sub-agent a:claude:sess-2/T4 under its parent", async () => {
+    const frame = await live('claims');
+    expect(frame.lockSource).toBe('activity');
+    expect(frame.locks.map((l) => [l.claim, l.session, l.since])).toEqual([
+      ['ISC-53', 'a:claude:sess-2/T4', '2026-03-06T09:12:00Z'],
+      ['ISC-72', 'a:claude:sess-2', '2026-03-08T14:05:00Z'],
+      ['ISC-74', 'a:claude:sess-2', '2026-03-08T14:06:00Z'],
+    ]);
+    // As core/tests/live.test.ts re-opens T4 and T25, all three claims' cards are in flight, every lock stale at STUB_NOW.
+    expect(frame.cards.filter((c) => c.state === 'running').map((c) => c.task)).toEqual(['T4', 'T25', 'T27']);
+    expect(workers(frame)).toEqual([
+      ['T4', 'a:claude:sess-2', 'a:claude:sess-2/T4', true],
+      ['T25', 'a:claude:sess-2', null, true],
+      ['T27', 'a:claude:sess-2', null, true],
+    ]);
+    const t4 = frame.cards.find((c) => c.task === 'T4');
+    expect(t4?.subagent).toEqual({ raw: 'a:claude:sess-2/T4', kind: 'subagent', id: 'a:claude:sess-2', task: 'T4', legacy: false });
+    expect(t4?.elapsedMs).toBe(Date.parse(STUB_NOW) - Date.parse('2026-03-06T09:12:00Z'));
+    expect(frame.agents.map((a) => [a.session, a.claims])).toEqual([
+      ['a:claude:sess-2/T4', ['ISC-53']],
+      ['a:claude:sess-2', ['ISC-72', 'ISC-74']],
+    ]);
+    const spec = (await (await ask(specRoutes.spec(WS, '002'), { headers: { [LOCKS_HEADER]: 'claims' } })).json()) as SpecPageModel;
+    expect(spec.areas.live.agentsWorking).toBe(2);
+    expect(await lifeos('claims')).toEqual({ present: false });
+    // The log names only spec 002's claims: every other spec stays as its golden.
+    expect(workers(await live('claims', WS, '004'))).toEqual([]);
+  });
+
+  test('person: the golden lock held by the person u:3f9c0a7d; T27 runs, agent and sub-agent null', async () => {
+    const frame = await live('person');
+    expect(frame.locks.map((l) => [l.claim, l.session, l.actor.kind])).toEqual([['ISC-74', 'u:3f9c0a7d', 'person']]);
+    const t27 = frame.cards.find((c) => c.task === 'T27');
+    expect(t27).toMatchObject({ state: 'running', lock: { source: 'activity', session: 'u:3f9c0a7d' }, agent: null, subagent: null });
+    expect(workers(frame)).toEqual([]);
+    expect(frame.agents.map((a) => a.session)).toEqual(['u:3f9c0a7d']);
+  });
+
   test('an unknown lock state is a loud 400', async () => {
     const res = await ask(specRoutes.live(WS, '002'), { headers: { [LOCKS_HEADER]: 'sometimes' } });
     expect(res.status).toBe(400);
@@ -735,7 +791,7 @@ describe('stub API: the writes, scripted via X-Spectant-Stub-Write', () => {
     expect(await stale.json()).toEqual({ error: 'hash-mismatch', expected: { tasks: hash } });
     const locked = await check('T27', { checked: true, hash }, { session: 'check-script', headers: { [WRITE_HEADER]: 'locked', [LOCKS_HEADER]: 'frontier' } });
     expect(locked.status).toBe(423);
-    expect(await locked.json()).toEqual({ error: 'locked', lock: { source: 'frontier', claim: 'ISC-74', session: 'spec-002-ISC-74', since: '2026-03-08T14:06:00Z' } });
+    expect(await locked.json()).toEqual({ error: 'locked', lock: { source: 'frontier', claim: 'ISC-74', session: 'a:claude:sess-2', actor: { raw: 'a:claude:sess-2', kind: 'agent', id: 'a:claude:sess-2', legacy: false }, since: '2026-03-08T14:06:00Z' } });
     expect(await taskRow('T27', 'check-script')).toMatchObject({ state: 'open' });
   });
 
@@ -911,10 +967,13 @@ describe('stub API matches the real server handlers byte for byte', () => {
   test.each([...STUB_STATES])('every GET route of WORKSPACE_ROUTE_TABLE, state %s', async (state) => {
     const handler = real?.[state];
     if (!handler) throw new Error('real handlers not loaded');
-    // Every workspace route is a read (`WorkspaceRouteEntry.method` is `'GET'`), so the whole table is iterated.
-    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning']);
-    for (const entry of WORKSPACE_ROUTE_TABLE) {
-      const build = workspaceRoutes[entry.route];
+    // The routes with a golden family (`planning`) are compared here, whole file to whole body. The story route, the board
+    // query and the allocation (T119) have no family; their parity runs in "stub API board seam matches the real handlers".
+    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning', 'idea', 'boardQuery', 'allocate']);
+    const golden = WORKSPACE_ROUTE_TABLE.filter((entry) => entry.route in GOLDEN_FAMILY);
+    expect(golden.map((entry) => entry.route)).toEqual(['planning']);
+    for (const entry of golden) {
+      const build = workspaceRoutes.planning;
       const cases: Array<[string, RequestInit]> = [
         [build('harbor'), {}],
         [build('lantern'), {}],
@@ -1078,5 +1137,440 @@ describe('POST /api/__stub/bump (T68)', () => {
     expect(wrong.headers.get('Allow')).toBe('POST');
     expect((await ask('/api/__stub/bump?ws=nowhere', { method: 'POST' })).status).toBe(404);
     expect((await ask('/api/__stub/bump', { method: 'POST' })).status).toBe(404);
+  });
+});
+
+describe('PUT /api/__stub/workflow (T151)', () => {
+  const PLANNING = '/api/workspaces/harbor/planning';
+  const HARBOR_FEATURE = ['plan', 'review', 'tasks', 'build', 'code-review', 'close', 'done'];
+  type Tree = { workflow: { source: string; rows: Array<{ type: string; stages: string[] }> } };
+  const featureOf = async (res: Response): Promise<string[]> =>
+    ((await res.json()) as Tree).workflow.rows.find((row) => row.type === 'feature')?.stages ?? [];
+  const TABLE = [
+    '| type | stages | code_review |',
+    '|------|--------|-------------|',
+    '| feature | plan · review · build · code-review · close · done | spec |',
+  ].join('\n');
+
+  test('serves that session’s planning tree with the workflow core parses from the text sent, until a reset', async () => {
+    const before = await ask(PLANNING, { session: 'wf-a' });
+    const etag = before.headers.get('ETag') ?? '';
+    expect(await featureOf(before)).toEqual(HARBOR_FEATURE);
+
+    expect((await ask('/api/__stub/workflow?ws=harbor', { method: 'PUT', session: 'wf-a', body: TABLE })).status).toBe(204);
+
+    const after = await ask(PLANNING, { session: 'wf-a', headers: { 'If-None-Match': etag } });
+    expect(after.status).toBe(200);
+    expect(after.headers.get('ETag')).not.toBe(etag);
+    const tree = (await after.json()) as Tree;
+    expect(tree.workflow.source).toBe('file');
+    expect(tree.workflow.rows.find((row) => row.type === 'feature')?.stages).toEqual(['plan', 'review', 'build', 'code-review', 'close', 'done']);
+    // The types the text leaves out run core's default row, as the real reader does.
+    expect(tree.workflow.rows).toHaveLength(7);
+
+    expect(await featureOf(await ask(PLANNING, { session: 'wf-b' }))).toEqual(HARBOR_FEATURE);
+    expect(((await (await ask('/api/workspaces/lantern/planning', { session: 'wf-a' })).json()) as Tree).workflow.source).toBe('default');
+
+    expect((await ask('/api/__stub/reset', { method: 'POST', session: 'wf-a' })).status).toBe(204);
+    expect(await featureOf(await ask(PLANNING, { session: 'wf-a' }))).toEqual(HARBOR_FEATURE);
+  });
+
+  test('answers 405 for another method and 404 for a workspace the stub does not hold', async () => {
+    const wrong = await ask('/api/__stub/workflow?ws=harbor');
+    expect(wrong.status).toBe(405);
+    expect(wrong.headers.get('Allow')).toBe('PUT');
+    expect((await ask('/api/__stub/workflow?ws=nowhere', { method: 'PUT', body: TABLE })).status).toBe(404);
+    expect((await ask('/api/__stub/workflow', { method: 'PUT', body: TABLE })).status).toBe(404);
+  });
+});
+
+// ---- the Stage-3 board seam (T119, ISC-129) -----------------------------------------------------------------------
+
+type BoardHolder = { id: string; slug: string; stage: string | null; stageSource: string | null; hash: string | null; main: boolean; held: number };
+type BoardTree = {
+  stageCounts: Record<string, number>;
+  ideas: Array<{ slug: string; path: string }>;
+  features: Array<{ id: string; holders: BoardHolder[]; ideas: Array<{ slug: string }> }>;
+  milestones: Array<{ name: string; specs: BoardHolder[]; ideas: Array<{ slug: string }> }>;
+};
+const NO_LOCKS = { [LOCKS_HEADER]: 'none' };
+const boardTree = async (session: string): Promise<BoardTree> =>
+  (await (await ask(workspaceRoutes.planning(WS), { session })).json()) as BoardTree;
+const holderIn = (tree: BoardTree, slug: string): BoardHolder | undefined => tree.features.flatMap((f) => f.holders).find((h) => h.slug === slug);
+const storyHash = (slug: string): string =>
+  new Bun.CryptoHasher('sha256').update(readFileSync(join(FIXTURES, WS, 'specs', 'ideas', `${slug}.md`))).digest('hex');
+const move = (id: string, body: unknown, init: Parameters<typeof request>[1] = {}): Promise<Response> =>
+  postJson(specRoutes.transition(WS, id), body, init);
+const allocate = (slug: string, body: unknown, init: Parameters<typeof request>[1] = {}): Promise<Response> =>
+  postJson(workspaceRoutes.allocate(WS, slug), body, init);
+const RESET = '/api/__stub/reset';
+
+describe('stub API: the Stage-3 board seam (T119)', () => {
+  test('the planning tree is the extended golden: workflow, stages, stageCounts, ideas, per holder stage, source, priority, hash, assignee', async () => {
+    const tree = (await (await ask(workspaceRoutes.planning(WS))).json()) as Record<string, unknown>;
+    expect(Object.keys(tree)).toEqual(['workflow', 'stages', 'stageCounts', 'features', 'milestones', 'ideas', 'recount', 'diagnostics']);
+    const first = (tree as unknown as BoardTree).features.flatMap((f) => f.holders)[0] ?? {};
+    for (const key of ['stage', 'stageSource', 'priority', 'hash', 'assignee']) expect(Object.keys(first)).toContain(key);
+  });
+
+  test('the spec page carries X-Spectant-Spec-Hash: the planning holder hash, the raw sha256 of spec.md', async () => {
+    const raw = new Bun.CryptoHasher('sha256').update(readFileSync(join(FIXTURES, WS, 'specs', '006-partial-push', 'spec.md'))).digest('hex');
+    expect((await ask(specRoutes.spec(WS, '006'))).headers.get(SPEC_HASH_HEADER)).toBe(raw);
+    expect(holderIn(await boardTree(''), '006-partial-push')?.hash).toBe(raw);
+  });
+
+  test('transition 200: the card moves in the session tree (stage, explicit source, new hash, stageCounts); others keep the golden', async () => {
+    const session = 't119-move';
+    const before = await boardTree(session);
+    const from = holderIn(before, '006-partial-push');
+    const res = await move('006', { to: 'build', hash: from?.hash }, { session, headers: NO_LOCKS });
+    expect(res.status).toBe(200);
+    const answer = (await res.json()) as { hash: string };
+    expect(answer as unknown).toEqual({
+      from: 'review',
+      to: 'build',
+      hash: answer.hash,
+      event: { ts: '2026-03-08T15:00:00.000Z', from: 'review', to: 'build', command: '/spec-review 006', actor: 'a:spectant:app' },
+      lockSource: 'none',
+    });
+    expect(HEX64.test(answer.hash) && answer.hash !== from?.hash).toBe(true);
+    const after = await boardTree(session);
+    expect(holderIn(after, '006-partial-push')).toMatchObject({ stage: 'build', stageSource: 'explicit', hash: answer.hash });
+    expect([after.stageCounts['review'], after.stageCounts['build']]).toEqual([(before.stageCounts['review'] ?? 0) - 1, (before.stageCounts['build'] ?? 0) + 1]);
+    const page = await ask(specRoutes.spec(WS, '006'), { session });
+    expect(page.headers.get(SPEC_HASH_HEADER)).toBe(answer.hash);
+    expect(((await page.json()) as SpecPageModel).head).toMatchObject({ stage: 'build', stageSource: 'explicit' });
+    expect(await (await ask(workspaceRoutes.planning(WS), { session: 't119-other' })).text()).toBe(JSON.stringify(golden(`${WS}.planning`)));
+    // The old hash is stale now; the reset restores the golden.
+    expect((await move('006', { to: 'code-review', hash: from?.hash }, { session, headers: NO_LOCKS })).status).toBe(409);
+    expect((await ask(RESET, { method: 'POST', session })).status).toBe(204);
+    expect(holderIn(await boardTree(session), '006-partial-push')).toEqual(from);
+  });
+
+  test('transition 409: a hash that is not the holder hash, or X-Spectant-Stub-Write: stale, answers StaleSpec with the current hash', async () => {
+    const hash = holderIn(await boardTree(''), '006-partial-push')?.hash ?? '';
+    for (const [body, headers] of [
+      [{ to: 'build', hash: '0'.repeat(64) }, NO_LOCKS],
+      [{ to: 'build', hash }, { ...NO_LOCKS, [WRITE_HEADER]: 'stale' }],
+    ] as const) {
+      const res = await move('006', body, { session: 't119-409', headers });
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({ error: 'hash-mismatch', files: ['spec.md'], expected: { spec: hash } });
+    }
+  });
+
+  test('transition 422: a move the workflow row does not list, or no move at all; reason phrase and the spec next command', async () => {
+    const session = 't119-422';
+    const hash = holderIn(await boardTree(session), '006-partial-push')?.hash ?? '';
+    const res = await move('006', { to: 'done', hash }, { session, headers: NO_LOCKS });
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({ error: 'transition-refused', reason: 'the bug workflow lists no move review → done', command: '/spec-review 006' });
+    const same = await move('006', { to: 'review', hash }, { session, headers: NO_LOCKS });
+    expect(await same.json()).toEqual({ error: 'transition-refused', reason: 'the spec already stands in review', command: '/spec-review 006' });
+    expect(holderIn(await boardTree(session), '006-partial-push')?.stage).toBe('review');
+  });
+
+  test('transition 423: the spec the lock fixture holds (002 under activity), or X-Spectant-Stub-Write: locked; a grammar lock', async () => {
+    const hash = holderIn(await boardTree(''), '002-web-console')?.hash ?? '';
+    const res = await move('002', { to: 'blocked', hash }, { session: 't119-423' });
+    expect(res.status).toBe(423);
+    expect(await res.json()).toEqual({ error: 'locked', lock: (goldenFor('live') as LiveFrame).locks[0] });
+    expect((await move('002', { to: 'blocked', hash }, { session: 't119-423', headers: NO_LOCKS })).status).toBe(200);
+    const hash006 = holderIn(await boardTree(''), '006-partial-push')?.hash ?? '';
+    const scripted = await move('006', { to: 'build', hash: hash006 }, { headers: { ...NO_LOCKS, [WRITE_HEADER]: 'locked' } });
+    expect(scripted.status).toBe(423);
+    const { lock } = (await scripted.json()) as { lock: { session: string; actor: unknown } };
+    expect(lock.session).toMatch(/^a:claude:stub-006-/u);
+    expect(lock.actor).toEqual({ raw: lock.session, kind: 'agent', id: lock.session, legacy: false });
+    expect((await move('006', { to: 'nowhere', hash: hash006 })).status).toBe(400);
+  });
+
+  test('idea: the IdeaPage of each harbor story with its raw sha256; 404 for an unknown story and for lantern', async () => {
+    const listed = golden(`${WS}.planning`)['ideas'] as Array<{ slug: string }>;
+    for (const slug of ['console-audit-log', 'registry-webhooks']) {
+      const res = await ask(workspaceRoutes.idea(WS, slug));
+      expect(res.status).toBe(200);
+      const page = (await res.json()) as { idea: unknown; hash: string };
+      expect(Object.keys(page)).toEqual(['idea', 'page', 'hash']);
+      expect(page.idea).toEqual(listed.find((i) => i.slug === slug));
+      expect(page.hash).toBe(storyHash(slug));
+    }
+    expect((await ask(workspaceRoutes.idea(WS, 'nope'))).status).toBe(404);
+    expect((await ask(workspaceRoutes.idea('lantern', 'console-audit-log'))).status).toBe(404);
+  });
+
+  test('allocate 200: the story leaves the session tree and its page, the new spec stands in plan; 409, 422, 423, 400 scripted', async () => {
+    const session = 't119-allocate';
+    const before = await boardTree(session);
+    const res = await allocate('console-audit-log', { hash: storyHash('console-audit-log') }, { session });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      id: '010',
+      folder: 'specs/010-console-audit-log/',
+      files: ['specs/010-console-audit-log/context.md', 'specs/010-console-audit-log/spec.md', 'specs/010-console-audit-log/events.jsonl'],
+      removed: 'specs/ideas/console-audit-log.md',
+      lockSource: 'activity',
+    });
+    const after = await boardTree(session);
+    expect(after.ideas.map((i) => i.slug)).toEqual(['registry-webhooks']);
+    expect(after.features.flatMap((f) => f.ideas).map((i) => i.slug)).toEqual(['registry-webhooks']);
+    expect([after.stageCounts['idea'], after.stageCounts['plan']]).toEqual([(before.stageCounts['idea'] ?? 0) - 1, (before.stageCounts['plan'] ?? 0) + 1]);
+    expect(after.features.find((f) => f.id === 'F2')?.holders.find((h) => h.id === '010')).toMatchObject({
+      slug: '010-console-audit-log',
+      stage: 'plan',
+      stageSource: 'explicit',
+      main: true,
+      held: 0,
+    });
+    expect((await ask(workspaceRoutes.idea(WS, 'console-audit-log'), { session })).status).toBe(404);
+    expect((await allocate('console-audit-log', { hash: storyHash('console-audit-log') }, { session })).status).toBe(404);
+
+    const stale = await allocate('console-audit-log', { hash: '0'.repeat(64) }, { session: 't119-alloc-409' });
+    expect([stale.status, await stale.json()]).toEqual([
+      409,
+      { error: 'hash-mismatch', files: ['specs/ideas/console-audit-log.md'], expected: { idea: storyHash('console-audit-log') } },
+    ]);
+    const unindexed = await allocate('registry-webhooks', { hash: storyHash('registry-webhooks') }, { session: 't119-alloc-422' });
+    expect([unindexed.status, await unindexed.json()]).toEqual([422, { error: 'allocate-refused', reason: 'not-in-index', folder: 'specs/010-registry-webhooks/' }]);
+    const locked = await allocate('console-audit-log', { hash: storyHash('console-audit-log') }, { session: 't119-alloc-423', headers: { [WRITE_HEADER]: 'locked' } });
+    expect(locked.status).toBe(423);
+    expect((await allocate('console-audit-log', { hash: 'x' })).status).toBe(400);
+  });
+
+  test('board-query and actors: in memory per session, validated as the server does, cleared by the reset', async () => {
+    const session = 't119-mem';
+    const bq = workspaceRoutes.boardQuery(WS);
+    expect(await (await ask(bq, { session })).json()).toEqual({ query: '' });
+    expect(await (await ask(bq, { session, method: 'PUT', body: JSON.stringify({ query: 'stage=build' }) })).json()).toEqual({ query: 'stage=build' });
+    expect(await (await ask(bq, { session })).json()).toEqual({ query: 'stage=build' });
+    expect(await (await ask(bq, { session: 't119-mem-other' })).json()).toEqual({ query: '' });
+    expect((await ask(bq, { session, method: 'PUT', body: JSON.stringify({ query: '?x' }) })).status).toBe(400);
+    const people = [
+      { id: 'u:3f9c0a7d', displayName: 'Harbor dev', gitIdentities: ['dev@example.test'] },
+      { id: 'u:0000000a', displayName: 'Second', gitIdentities: [] },
+    ];
+    expect(await (await ask(ACTORS_PATH, { session, method: 'PUT', body: JSON.stringify(people) })).json()).toEqual([people[1], people[0]]);
+    expect(await (await ask(ACTORS_PATH, { session })).json()).toEqual([people[1], people[0]]);
+    const agent = [{ id: 'a:claude:x', displayName: 'x', gitIdentities: [] }];
+    expect((await ask(ACTORS_PATH, { session, method: 'PUT', body: JSON.stringify(agent) })).status).toBe(400);
+    expect((await ask(RESET, { method: 'POST', session })).status).toBe(204);
+    expect(await (await ask(ACTORS_PATH, { session })).json()).toEqual([]);
+    expect(await (await ask(bq, { session })).json()).toEqual({ query: '' });
+  });
+
+  // Every registered route, every status its contract row names and no other; each 405 names the table's Allow.
+  test('the status set of every registered route equals its contract row', async () => {
+    const hash006 = holderIn(await boardTree(''), '006-partial-push')?.hash ?? '';
+    const tasks = (await ask(specRoutes.tasks(WS, '002'))).headers.get(TASKS_HASH_HEADER) ?? '';
+    const reviewed = await specHashes(specRoutes.spec(WS, '006'));
+    const evil = { Origin: 'https://evil.example' };
+    type Case = [string, Parameters<typeof request>[1]];
+    const reads = (build: (ws: string, id: string) => string): Case[] => [
+      [build(WS, '002'), {}],
+      [build(WS, '002'), { headers: { 'If-None-Match': '*' } }],
+      [build(WS, '002'), { headers: evil }],
+      [build('nope', '002'), {}],
+      [build(WS, '002'), { method: 'POST', body: '{}' }],
+      [build('lantern', '001'), { state: 'unreadable' }],
+    ];
+    const writes = (build: (ws: string) => string, ok: unknown, refused?: unknown): Case[] => [
+      [build(WS), { method: 'POST', body: JSON.stringify(ok), headers: NO_LOCKS, session: `t119-status-${build(WS)}` }],
+      [build(WS), { method: 'POST', body: '{' }],
+      [build(WS), { method: 'POST', body: JSON.stringify(ok), headers: evil }],
+      [build('nope'), { method: 'POST', body: JSON.stringify(ok) }],
+      [build(WS), { method: 'GET' }],
+      [build(WS), { method: 'POST', body: JSON.stringify(ok), headers: { [WRITE_HEADER]: 'stale' } }],
+      [build(WS), { method: 'POST', body: JSON.stringify(ok), headers: { [WRITE_HEADER]: 'locked' } }],
+      [build('lantern'), { method: 'POST', body: JSON.stringify(ok), state: 'unreadable' }],
+      ...(refused === undefined ? [] : ([[build(WS), { method: 'POST', body: JSON.stringify(refused), headers: NO_LOCKS }]] as Case[])),
+    ];
+    const statusesOf = async (cases: Case[]): Promise<{ statuses: number[]; allow: string[] }> => {
+      const seen = new Set<number>();
+      const allow = new Set<string>();
+      for (const [path, init] of cases) {
+        const res = await ask(path, init);
+        seen.add(res.status);
+        if (res.status === 405) allow.add(res.headers.get('Allow') ?? '');
+      }
+      return { statuses: [...seen].sort((a, b) => a - b), allow: [...allow] };
+    };
+    const spec: Record<SpecRouteName, Case[]> = {
+      spec: reads(specRoutes.spec),
+      timeline: reads(specRoutes.timeline),
+      claims: reads(specRoutes.claims),
+      tasks: reads(specRoutes.tasks),
+      evidence: reads(specRoutes.evidence),
+      evidenceFile: reads((ws, id) => specRoutes.evidenceFile(ws, id, 'artifacts/T12-dashboard-model.md')),
+      docs: reads((ws, id) => specRoutes.docs(ws, id, 'plan')),
+      frames: reads(specRoutes.frames),
+      live: reads(specRoutes.live),
+      gateReviewed: writes((ws) => specRoutes.gateReviewed(ws, ws === 'lantern' ? '001' : '006'), { hashes: reviewed }),
+      taskCheck: writes((ws) => specRoutes.taskCheck(ws, ws === 'lantern' ? '001' : '002', 'T27'), { checked: true, hash: tasks }),
+      transition: writes((ws) => specRoutes.transition(ws, ws === 'lantern' ? '001' : '006'), { to: 'build', hash: hash006 }, { to: 'done', hash: hash006 }),
+    };
+    for (const entry of SPEC_ROUTE_TABLE) {
+      expect({ route: entry.route, ...(await statusesOf(spec[entry.route])) }).toEqual({ route: entry.route, statuses: [...entry.statuses], allow: [allowFor(entry.route)] });
+    }
+    const ideaHash = storyHash('console-audit-log');
+    const workspace: Record<string, Case[]> = {
+      planning: reads((ws) => workspaceRoutes.planning(ws)),
+      idea: reads((ws) => workspaceRoutes.idea(ws, ws === 'lantern' ? 'x' : 'console-audit-log')),
+      boardQuery: [
+        [workspaceRoutes.boardQuery(WS), {}],
+        [workspaceRoutes.boardQuery(WS), { headers: { 'If-None-Match': '*' } }],
+        [workspaceRoutes.boardQuery(WS), { method: 'PUT', body: '[]' }],
+        [workspaceRoutes.boardQuery(WS), { headers: evil }],
+        [workspaceRoutes.boardQuery('nope'), {}],
+        [workspaceRoutes.boardQuery(WS), { method: 'DELETE' }],
+        [workspaceRoutes.boardQuery('lantern'), { state: 'unreadable' }],
+      ],
+      allocate: [
+        ...writes((ws) => workspaceRoutes.allocate(ws, 'console-audit-log'), { hash: ideaHash }),
+        [workspaceRoutes.allocate(WS, 'registry-webhooks'), { method: 'POST', body: JSON.stringify({ hash: storyHash('registry-webhooks') }) }],
+      ],
+    };
+    // The table's routes stay pinned; every one of them is served now.
+    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning', 'idea', 'boardQuery', 'allocate']);
+    for (const entry of WORKSPACE_ROUTE_TABLE) {
+      expect({ route: entry.route, ...(await statusesOf(workspace[entry.route] ?? [])) }).toEqual({
+        route: entry.route,
+        statuses: [...entry.statuses],
+        allow: [allowForWorkspace(entry.route)],
+      });
+    }
+    const actors = await statusesOf([
+      [ACTORS_PATH, {}],
+      [ACTORS_PATH, { headers: { 'If-None-Match': '*' } }],
+      [ACTORS_PATH, { method: 'PUT', body: '{}' }],
+      [ACTORS_PATH, { headers: evil }],
+      [ACTORS_PATH, { method: 'DELETE' }],
+    ]);
+    expect(actors).toEqual({ statuses: [...ACTORS_STATUSES], allow: [ACTORS_ALLOW] });
+  });
+});
+
+// ---- the board seam against the real handlers ---------------------------------------------------------------------
+
+describe('stub API board seam matches the real handlers (T119)', () => {
+  type BoardApiModule = {
+    dashboardApi: (options: {
+      registry: { list: () => ServerWorkspace[]; get: (slug: string) => ServerWorkspace | undefined };
+      today: () => string;
+      db: Database;
+    }) => Handler;
+    actorsApi: (db: Database) => Handler;
+  };
+  type SpecRoutesModule = { specRoutesApi: (options: { registry: { get: (slug: string) => ServerWorkspace | undefined } }) => Handler };
+  const boardDb = new Database(':memory:', { strict: true });
+  let dashboard: Handler | undefined;
+  let actors: Handler | undefined;
+  let specs: Handler | undefined;
+
+  beforeAll(async () => {
+    ((await import(join(SERVER, 'db.ts'))) as DbModule).migrate(boardDb);
+    const apiModule = (await import(join(SERVER, 'api.ts'))) as BoardApiModule;
+    const routesModule = (await import(join(SERVER, 'spec-routes.ts'))) as SpecRoutesModule;
+    const workspaces: ServerWorkspace[] = ['harbor', 'lantern'].map((name, position) => ({
+      slug: name,
+      path: join(FIXTURES, name),
+      name,
+      addedAt: '2026-03-01T00:00:00Z',
+      position,
+    }));
+    const registry = { list: () => workspaces, get: (slug: string) => workspaces.find((w) => w.slug === slug) };
+    dashboard = apiModule.dashboardApi({ registry, today: () => '2026-03-20', db: boardDb });
+    actors = apiModule.actorsApi(boardDb);
+    specs = routesModule.specRoutesApi({ registry });
+  });
+  afterAll(() => boardDb.close());
+
+  /** Sends each step to both, expects the same status, headers and bytes; answers the statuses, so a test sees what it compared. */
+  const same = async (real: Handler | undefined, steps: Array<[string, RequestInit]>, session: string): Promise<number[]> => {
+    if (!real) throw new Error('real handlers not loaded');
+    const statuses: number[] = [];
+    for (const [path, init] of steps) {
+      const stubbed = await snapshot(await call(api, request(path, { ...init, session })));
+      const served = await snapshot(await call(real, request(path, init)));
+      expect({ path, method: init.method ?? 'GET', answer: stubbed }).toEqual({ path, method: init.method ?? 'GET', answer: served });
+      statuses.push(served[0] as number);
+    }
+    return statuses;
+  };
+
+  test('idea: byte-equal to the real story route on the harbor fixture; 404 and 405 too', async () => {
+    const statuses = await same(
+      dashboard,
+      [
+        [workspaceRoutes.idea(WS, 'console-audit-log'), {}],
+        [workspaceRoutes.idea(WS, 'registry-webhooks'), {}],
+        [workspaceRoutes.idea(WS, 'registry-webhooks'), { method: 'HEAD' }],
+        [workspaceRoutes.idea(WS, 'nope'), {}],
+        [workspaceRoutes.idea('lantern', 'console-audit-log'), {}],
+        [workspaceRoutes.idea(WS, 'console-audit-log'), { method: 'POST', body: '{}' }],
+      ],
+      't119-parity-idea',
+    );
+    expect(statuses).toEqual([200, 200, 200, 404, 404, 405]);
+  });
+
+  test('board-query and actors: the same sequence of requests gives the same answers', async () => {
+    const queries = await same(
+      dashboard,
+      [
+        [workspaceRoutes.boardQuery(WS), {}],
+        [workspaceRoutes.boardQuery(WS), { method: 'PUT', body: JSON.stringify({ query: 'stage=build&f=F2' }) }],
+        [workspaceRoutes.boardQuery(WS), {}],
+        [workspaceRoutes.boardQuery(WS), { method: 'PUT', body: '{' }],
+        [workspaceRoutes.boardQuery('nope'), {}],
+        [workspaceRoutes.boardQuery(WS), { method: 'DELETE' }],
+      ],
+      't119-parity-bq',
+    );
+    expect(queries).toEqual([200, 200, 200, 400, 404, 405]);
+    const people = [
+      { id: 'u:3f9c0a7d', displayName: 'Harbor dev', gitIdentities: [] },
+      { id: 'u:0000000a', displayName: 'B', gitIdentities: ['b@example.test'] },
+    ];
+    const named = await same(
+      actors,
+      [
+        [ACTORS_PATH, {}],
+        [ACTORS_PATH, { method: 'PUT', body: JSON.stringify(people) }],
+        [ACTORS_PATH, { method: 'HEAD' }],
+        [ACTORS_PATH, { method: 'PUT', body: JSON.stringify([{ id: 'a:claude:x', displayName: 'x', gitIdentities: [] }]) }],
+        [ACTORS_PATH, { method: 'POST', body: '[]' }],
+      ],
+      't119-parity-actors',
+    );
+    expect(named).toEqual([200, 200, 200, 400, 405]);
+  });
+
+  test('the answers that write nothing on the real side: allocate 400/404/409/422/405, transition 400/409/422, the spec hash', async () => {
+    const raw006 = holderIn(await boardTree(''), '006-partial-push')?.hash ?? '';
+    const allocations = await same(
+      dashboard,
+      [
+        [workspaceRoutes.allocate(WS, 'console-audit-log'), { method: 'POST', body: '{' }],
+        [workspaceRoutes.allocate(WS, 'nope'), { method: 'POST', body: JSON.stringify({ hash: '0'.repeat(64) }) }],
+        [workspaceRoutes.allocate(WS, 'console-audit-log'), { method: 'POST', body: JSON.stringify({ hash: '0'.repeat(64) }) }],
+        [workspaceRoutes.allocate(WS, 'registry-webhooks'), { method: 'POST', body: JSON.stringify({ hash: storyHash('registry-webhooks') }) }],
+        [workspaceRoutes.allocate(WS, 'console-audit-log'), { method: 'GET' }],
+      ],
+      't119-parity-alloc',
+    );
+    expect(allocations).toEqual([400, 404, 409, 422, 405]);
+    const moves = await same(
+      specs,
+      [
+        [specRoutes.transition(WS, '006'), { method: 'POST', body: '{"to":"nowhere"}' }],
+        [specRoutes.transition(WS, '006'), { method: 'POST', body: JSON.stringify({ to: 'build', hash: '0'.repeat(64) }) }],
+        [specRoutes.transition(WS, '006'), { method: 'POST', body: JSON.stringify({ to: 'done', hash: raw006 }) }],
+      ],
+      't119-parity-move',
+    );
+    expect(moves).toEqual([400, 409, 422]);
+    if (!specs) throw new Error('real handlers not loaded');
+    const served = await call(specs, request(specRoutes.spec(WS, '006')));
+    expect((await ask(specRoutes.spec(WS, '006'))).headers.get(SPEC_HASH_HEADER)).toBe(served.headers.get(SPEC_HASH_HEADER));
   });
 });

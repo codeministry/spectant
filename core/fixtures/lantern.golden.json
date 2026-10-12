@@ -28,6 +28,7 @@
     "build": 2,
     "blocked": 0,
     "code-review": 0,
+    "close-pending": 0,
     "close": 0,
     "done": 0
   },
@@ -37,8 +38,10 @@
       "slug": "001-reading-list",
       "title": "Save a link once and find it again, online or offline",
       "type": "feature",
+      "priority": "P3",
       "phase": "building",
       "stage": "build",
+      "stageSource": "derived",
       "progress": {
         "closed": 4,
         "total": 8
@@ -54,6 +57,7 @@
         "ISC-9"
       ],
       "taken": [],
+      "assignee": null,
       "warnings": [],
       "gates": {
         "reviewed": {
@@ -89,8 +93,10 @@
       "slug": "002-duplicate-links",
       "title": "Stop duplicate links and duplicate tags from entering the list",
       "type": "bug",
+      "priority": "P3",
       "phase": "scoping",
       "stage": "build",
+      "stageSource": "derived",
       "progress": {
         "closed": 0,
         "total": 2
@@ -103,6 +109,12 @@
         "ISC-12"
       ],
       "taken": [],
+      "assignee": {
+        "raw": "principal",
+        "kind": "legacy",
+        "id": "principal",
+        "legacy": true
+      },
       "warnings": [],
       "gates": {
         "reviewed": {
@@ -140,5 +152,20 @@
   "archive": [],
   "brief": null,
   "services": [],
-  "diagnostics": []
+  "diagnostics": [
+    {
+      "file": "specs/002-duplicate-links/events.jsonl",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "actor-legacy",
+        "message": "The file carries 2 actors outside the actor grammar (u:<8 hex>, a:<kind>:<id>, a:<kind>:<id>/<task>), the first \"principal\"; legacy values are read as written, never dropped.",
+        "line": 1,
+        "subject": "principal"
+      }
+    }
+  ],
+  "ideas": {
+    "count": 0,
+    "list": []
+  }
 }

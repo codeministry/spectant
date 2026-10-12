@@ -1,4 +1,115 @@
 {
+  "workflow": {
+    "rows": [
+      {
+        "type": "feature",
+        "stages": [
+          "plan",
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "project",
+        "stages": [
+          "plan",
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "infra",
+        "stages": [
+          "plan",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "refactor",
+        "stages": [
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "bug",
+        "stages": [
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "spike",
+        "stages": [
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "chore",
+        "stages": [
+          "review",
+          "build",
+          "done"
+        ],
+        "codeReview": "none"
+      }
+    ],
+    "source": "default",
+    "diagnostics": []
+  },
+  "stages": [
+    "idea",
+    "plan",
+    "tasks",
+    "review",
+    "build",
+    "blocked",
+    "close-pending",
+    "code-review",
+    "close",
+    "done"
+  ],
+  "stageCounts": {
+    "idea": 0,
+    "plan": 0,
+    "tasks": 0,
+    "review": 0,
+    "build": 1,
+    "blocked": 0,
+    "close-pending": 0,
+    "code-review": 0,
+    "close": 0,
+    "done": 1
+  },
   "features": [
     {
       "id": "F40",
@@ -74,12 +185,17 @@
           "slug": "012-pwa-install",
           "title": "Installable as a PWA: manifest, icons, colours, an offline shell and an update toast",
           "archived": false,
-          "stage": null,
+          "stage": "build",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "691eec9cf6d1d2f8529e4699d8f5547daa364da3fcf7bc2b2e1fd4946bb099b0",
+          "assignee": null,
           "main": true,
           "held": 10
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     },
     {
       "id": "F41",
@@ -186,11 +302,16 @@
           "title": "The debt behind v0.5.0 is paid down without a change in behaviour: notes, docs, compose, version, leaks, and the Lombok sweep",
           "archived": true,
           "stage": null,
+          "stageSource": null,
+          "priority": "P3",
+          "hash": null,
+          "assignee": null,
           "main": true,
           "held": 14
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     },
     {
       "id": "F50",
@@ -254,15 +375,21 @@
           "slug": "022-chat-turn-status-and-bulk-delete",
           "title": "The chat says what happened to a turn, deletes many conversations at once, and brings a cited row into view",
           "archived": false,
-          "stage": null,
+          "stage": "done",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "e7b72ff0eba67d797869352596ccae4461fdd300dd02459b3def41648091c403",
+          "assignee": null,
           "main": true,
           "held": 8
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     }
   ],
   "milestones": [],
+  "ideas": [],
   "recount": {
     "closed": 31,
     "total": 32

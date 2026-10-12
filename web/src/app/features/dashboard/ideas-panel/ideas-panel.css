@@ -1,0 +1,38 @@
+/* The backlog disclosure after the Specs panel (T138): the panel's 16 px inset, one story per line. */
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+.fold {
+  padding-inline: 16px;
+}
+
+.title {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0 0 16px;
+  list-style: none;
+}
+
+.list > li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.where {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}

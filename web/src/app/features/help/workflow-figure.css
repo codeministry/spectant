@@ -1,0 +1,206 @@
+/* One workflow figure (ISC-123, T161): tokens only; forced-colors falls back to system colours. */
+
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0 0 8px;
+  padding: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+  list-style: none;
+}
+
+.legend li {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.legend ui-icon {
+  color: var(--ques-ink);
+}
+
+.swatch {
+  box-sizing: border-box;
+  inline-size: 12px;
+  block-size: 12px;
+  border: 1px solid var(--line);
+  border-inline-start: 3px solid var(--swatch);
+  border-radius: 0;
+  background: var(--color-base-100);
+}
+
+.swatch[data-role='moving'] {
+  --swatch: var(--color-primary);
+}
+
+.swatch[data-role='waits'] {
+  --swatch: var(--color-secondary);
+}
+
+.swatch[data-role='done'] {
+  --swatch: var(--color-accent);
+}
+
+.swatch[data-role='detour'] {
+  border: 1px dashed var(--track);
+  background: var(--lane);
+}
+
+/* The canvas: a dotted grid (1 px dots every 16 px, two linear layers) that scrolls sideways when the figure is wider. */
+.canvas {
+  overflow-x: auto;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  background-color: var(--lane);
+  background-image:
+    linear-gradient(90deg, var(--lane) 15px, transparent 15px),
+    linear-gradient(var(--lane) 15px, color-mix(in srgb, var(--track) 45%, transparent) 15px);
+  background-size: 16px 16px;
+}
+
+/* Scales down to 80 % to fit a medium panel, then scrolls; at compact it keeps its size and scrolls. */
+svg {
+  display: block;
+  overflow: visible;
+  inline-size: 100%;
+  min-inline-size: calc(var(--wf-width) * 0.8);
+  max-inline-size: var(--wf-width);
+  block-size: auto;
+  margin-inline: auto;
+}
+
+@container shell (width < 640px) {
+  svg {
+    min-inline-size: var(--wf-width);
+  }
+}
+
+.node .box {
+  fill: var(--color-base-100);
+  stroke: var(--track);
+  stroke-width: 1;
+}
+
+.node .frame {
+  fill: none;
+  stroke: var(--color-secondary);
+  stroke-width: 1;
+}
+
+.node[data-gate] .box {
+  stroke: var(--color-secondary);
+  stroke-width: 1.5;
+}
+
+.node .bar {
+  fill: var(--edge);
+}
+
+.node text {
+  fill: var(--color-base-content);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.node[data-detour] .box {
+  fill: var(--lane);
+  stroke: var(--track);
+  stroke-dasharray: 4 3;
+}
+
+.node[data-detour] text {
+  fill: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.edge .line {
+  fill: none;
+  stroke: var(--track);
+  stroke-width: 1.5;
+}
+
+.edge .head {
+  fill: var(--track);
+}
+
+.edge[data-kind='gate'] .line {
+  stroke: var(--color-secondary);
+  stroke-width: 2.5;
+}
+
+.edge[data-kind='gate'] .head {
+  fill: var(--color-secondary);
+}
+
+.edge:is([data-kind='loop'], [data-kind='branch']) .line {
+  stroke-dasharray: 4 3;
+}
+
+.gate-label {
+  fill: var(--ques-ink);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.glyph path {
+  fill: none;
+  stroke: var(--ques-ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (forced-colors: active) {
+  .canvas {
+    border-color: CanvasText;
+    background-image: none;
+  }
+
+  .swatch {
+    border-color: CanvasText;
+    background: Canvas;
+  }
+
+  .node .box {
+    fill: Canvas;
+    stroke: CanvasText;
+  }
+
+  .node .bar,
+  .edge .head {
+    fill: CanvasText;
+  }
+
+  .node text,
+  .node[data-detour] text,
+  .gate-label {
+    fill: CanvasText;
+  }
+
+  .edge .line {
+    stroke: CanvasText;
+  }
+
+  .node[data-gate] .box,
+  .node .frame,
+  .edge[data-kind='gate'] .line,
+  .glyph path {
+    stroke: Highlight;
+  }
+
+  .edge[data-kind='gate'] .head {
+    fill: Highlight;
+  }
+}

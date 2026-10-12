@@ -28,6 +28,7 @@
       "kinds": [
         "spec",
         "context",
+        "events",
         "gateReviewed"
       ],
       "resolves": {

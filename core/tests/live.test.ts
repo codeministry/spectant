@@ -5,8 +5,11 @@
 // state directory, so nothing outside the fixture is read), a hand-made frontier reading, and none. The clock is
 // always passed in; nothing here reads the time of day.
 import { describe, expect, test } from 'bun:test';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { parseActor } from '../src/actor.ts';
 import type { ClaimLock, LiveFrame, LockReading, SpecFiles } from '../src/files.ts';
 import { hashForGate } from '../src/gates.ts';
 import { buildFrames } from '../src/frames.ts';
@@ -58,7 +61,7 @@ describe('activity source (harbor 002, the fixture log)', () => {
 
   test('the reading is the activity log: ISC-74 held, ISC-72 released', () => {
     expect(locks.source).toBe('activity');
-    expect(locks.locks.map((l) => [l.claim, l.session])).toEqual([['ISC-74', 'spec-002-ISC-74']]);
+    expect(locks.locks.map((l) => [l.claim, l.session])).toEqual([['ISC-74', 'a:claude:sess-2']]);
   });
 
   test('T27 carries ISC-74 and is in flight with the session name, 30 minutes in, not stale', () => {
@@ -66,7 +69,7 @@ describe('activity source (harbor 002, the fixture log)', () => {
     const t27 = card(live, 'T27');
     expect(t27.claim).toBe('ISC-74');
     expect(t27.state).toBe('running');
-    expect(t27.lock).toEqual({ source: 'activity', session: 'spec-002-ISC-74' });
+    expect(t27.lock).toEqual({ source: 'activity', session: 'a:claude:sess-2' });
     expect(t27.since).toBe(T27_SINCE);
     expect(t27.elapsedMs).toBe(30 * MIN);
     expect(t27.stale).toBe(false);
@@ -78,7 +81,7 @@ describe('activity source (harbor 002, the fixture log)', () => {
     const live = buildLiveFrame({ files, locks, now: at(60) });
     expect(card(live, 'T27')).toMatchObject({ state: 'running', elapsedMs: 60 * MIN, stale: true });
     expect(live.agents).toEqual([
-      { session: 'spec-002-ISC-74', source: 'activity', claims: ['ISC-74'], since: T27_SINCE, elapsedMs: 60 * MIN, stale: true },
+      { session: 'a:claude:sess-2', source: 'activity', claims: ['ISC-74'], since: T27_SINCE, elapsedMs: 60 * MIN, stale: true },
     ]);
     expect(live.staleAfterMs).toBe(LIVE_STALE_MS);
   });
@@ -101,7 +104,7 @@ describe('activity source (harbor 002, the fixture log)', () => {
       lockSource: 'activity',
       closedClaims: [],
     });
-    expect(live.locks).toEqual([{ source: 'activity', claim: 'ISC-74', session: 'spec-002-ISC-74', since: T27_SINCE }]);
+    expect(live.locks).toEqual([{ source: 'activity', claim: 'ISC-74', session: 'a:claude:sess-2', actor: parseActor('a:claude:sess-2'), since: T27_SINCE }]);
     // spec.md: 25 of 30 claims checked; the board: 27 landed (26 closed + the operator's T30) of 32.
     expect(live.progress).toEqual({ claims: { closed: 25, total: 30 }, tasks: { landed: 27, total: 32 } });
     expect(live.worst).toBe('question');
@@ -123,15 +126,15 @@ describe('activity source (harbor 002, the fixture log)', () => {
 
 describe('frontier source (hand-made reading)', () => {
   const files = harbor002();
-  const activity: ClaimLock = { source: 'activity', claim: 'ISC-74', session: 'spec-002-ISC-74', since: T27_SINCE };
-  const frontier: ClaimLock = { source: 'frontier', claim: 'ISC-75', session: 'spec-002-ISC-75', since: '2026-03-08T14:30:00.000Z' };
+  const activity: ClaimLock = { source: 'activity', claim: 'ISC-74', session: 'a:claude:sess-2', actor: parseActor('a:claude:sess-2'), since: T27_SINCE };
+  const frontier: ClaimLock = { source: 'frontier', claim: 'ISC-75', session: 'spec-002-ISC-75', actor: parseActor('spec-002-ISC-75'), since: '2026-03-08T14:30:00.000Z' };
   const reading: LockReading = { source: 'frontier', sources: ['frontier', 'activity'], locks: [activity, frontier] };
 
   test('both sessions are on the rail; the frame names frontier; T28 runs under the frontier lock', () => {
     const live = buildLiveFrame({ files, locks: reading, now: at(30) });
     expect(live.lockSource).toBe('frontier');
     expect(live.agents.map((a) => [a.session, a.source, a.claims, a.elapsedMs])).toEqual([
-      ['spec-002-ISC-74', 'activity', ['ISC-74'], 30 * MIN],
+      ['a:claude:sess-2', 'activity', ['ISC-74'], 30 * MIN],
       ['spec-002-ISC-75', 'frontier', ['ISC-75'], 6 * MIN],
     ]);
     expect(card(live, 'T28')).toMatchObject({ state: 'running', lock: { source: 'frontier', session: 'spec-002-ISC-75' }, elapsedMs: 6 * MIN, stale: false });
@@ -144,7 +147,7 @@ describe('frontier source (hand-made reading)', () => {
     const both: LockReading = {
       source: 'frontier',
       sources: ['frontier', 'activity'],
-      locks: [activity, { source: 'frontier', claim: 'ISC-74', session: 'spec-002-ISC-74-b', since: '2026-03-08T14:20:00Z' }],
+      locks: [activity, { source: 'frontier', claim: 'ISC-74', session: 'spec-002-ISC-74-b', actor: parseActor('spec-002-ISC-74-b'), since: '2026-03-08T14:20:00Z' }],
     };
     const live = buildLiveFrame({ files, locks: both, now: at(30) });
     expect(card(live, 'T27').lock).toEqual({ source: 'frontier', session: 'spec-002-ISC-74-b' });
@@ -153,8 +156,8 @@ describe('frontier source (hand-made reading)', () => {
   });
 
   test('a lock on a claim of another spec, and an operator step under a lock, stay out of flight', () => {
-    const other: ClaimLock = { source: 'frontier', claim: 'ISC-999', session: 'spec-009-ISC-999', since: T27_SINCE };
-    const onOperator: ClaimLock = { source: 'frontier', claim: 'ISC-77', session: 'spec-002-ISC-77', since: T27_SINCE };
+    const other: ClaimLock = { source: 'frontier', claim: 'ISC-999', session: 'spec-009-ISC-999', actor: parseActor('spec-009-ISC-999'), since: T27_SINCE };
+    const onOperator: ClaimLock = { source: 'frontier', claim: 'ISC-77', session: 'spec-002-ISC-77', actor: parseActor('spec-002-ISC-77'), since: T27_SINCE };
     const live = buildLiveFrame({ files, locks: { source: 'frontier', sources: ['frontier'], locks: [other, onOperator] }, now: at(30) });
     expect(live.locks.map((l) => l.claim)).toEqual(['ISC-77']);
     // T31 is the principal's own step on ISC-77: an agent's lock does not put it in flight.
@@ -179,7 +182,9 @@ describe('no source', () => {
     const last = buildFrames(files).at(-1);
     expect(last?.kind).toBe('result');
     const struck = { state: 'absent' as const, note: "struck 2026-03-08: covered by T32's keyboard probe" };
-    expect(live.cards).toEqual((last?.cards ?? []).map(({ reason, ...c }) => (c.task === 'T34' ? { ...c, ...struck } : { ...c, ...(reason === undefined ? {} : { reason }) })));
+    // Nobody works a card without a lock (T66): agent and sub-agent are null on every card.
+    const idle = { agent: null, subagent: null };
+    expect(live.cards).toEqual((last?.cards ?? []).map(({ reason, ...c }) => (c.task === 'T34' ? { ...c, ...struck, ...idle } : { ...c, ...(reason === undefined ? {} : { reason }), ...idle })));
   });
 
   test('without rounds every open task waits with its hold reason, every checked box is landed', () => {
@@ -197,7 +202,7 @@ describe('no source', () => {
 
   test('without tasks.md the last result frame carries over unchanged', () => {
     const noTasks: SpecFiles = { folder: files.folder, texts: { ...files.texts, tasks: undefined } };
-    expect(buildLiveFrame({ files: noTasks, locks: NONE, now: at(30) }).cards).toEqual(buildFrames(files).at(-1)?.cards ?? []);
+    expect(buildLiveFrame({ files: noTasks, locks: NONE, now: at(30) }).cards).toEqual((buildFrames(files).at(-1)?.cards ?? []).map((c) => ({ ...c, agent: null, subagent: null })));
   });
 
   test('an empty folder gives an empty live frame', () => {
@@ -238,7 +243,7 @@ describe('tasks.md overlays the last round', () => {
         .replace(/^- \[ \] (T28 .*)$/m, '- ~~$1~~ — struck 2026-03-09: folded into T29')
         .replace(/^(- \[ \] T32 .*)$/m, '$1\n- ~~T33 · ISC-78 · web — theme-switch: contrast · `web/src/app/theme-switch/`~~ — struck'),
     );
-    const live = buildLiveFrame({ files: struck, locks: { source: 'frontier', sources: ['frontier'], locks: [{ source: 'frontier', claim: 'ISC-75', session: 's', since: T27_SINCE }] }, now: at(30) });
+    const live = buildLiveFrame({ files: struck, locks: { source: 'frontier', sources: ['frontier'], locks: [{ source: 'frontier', claim: 'ISC-75', session: 's', actor: parseActor('s'), since: T27_SINCE }] }, now: at(30) });
     expect(card(live, 'T28')).toMatchObject({ state: 'absent', note: 'struck 2026-03-09: folded into T29' });
     expect(live.cards.some((c) => c.task === 'T33')).toBe(false);
     // Absent counts in no total and is never put in flight.
@@ -261,6 +266,77 @@ describe('tasks.md overlays the last round', () => {
     expect(card(live, 'T28').reason).not.toBe('width 10 reached');
     // Board order is tasks.md order.
     expect(live.cards.map((c) => c.task).slice(-4)).toEqual(['T31', 'T32', 'T33', 'T34']);
+  });
+});
+
+describe('who works a task (spec 008, T66, ISC-131.1)', () => {
+  const files = harbor002();
+  const SESS2 = parseActor('a:claude:sess-2');
+  const SUB_T4 = parseActor('a:claude:sess-2/T4');
+  const workers = (frame: LiveFrame) => frame.cards.filter((c) => c.agent !== null || c.subagent !== null).map((c) => [c.task, c.agent?.raw ?? null, c.subagent?.raw ?? null]);
+  const lockOn = (claim: string, session: string): LockReading => ({ source: 'activity', sources: ['activity'], locks: [{ source: 'activity', claim, session, actor: parseActor(session), since: T27_SINCE }] });
+
+  /** Harbor's own activity lines, filtered, as the log of a temp repository: read back through the real reader. */
+  async function harborActivity(keep: (entry: { event: string }) => boolean): Promise<LockReading> {
+    const lines = readFileSync(join(HARBOR, '.spectant', 'activity.jsonl'), 'utf8').split('\n').filter((l) => l.trim() !== '' && keep(JSON.parse(l) as { event: string }));
+    const root = mkdtempSync(join(tmpdir(), 'spectant-live-t66-'));
+    mkdirSync(join(root, '.spectant'));
+    try {
+      writeFileSync(join(root, '.spectant', 'activity.jsonl'), `${lines.join('\n')}\n`);
+      return await readLockSources({ repoRoot: root });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+
+  test("harbor's log as it stands: T27 is worked by the agent a:claude:sess-2, no sub-agent; every other card by nobody", () => {
+    const live = buildLiveFrame({ files, locks: HARBOR_LOCKS, now: at(30) });
+    expect(card(live, 'T27')).toMatchObject({ state: 'running', agent: SESS2, subagent: null });
+    expect(card(live, 'T27').agent).toEqual({ raw: 'a:claude:sess-2', kind: 'agent', id: 'a:claude:sess-2', legacy: false });
+    expect(workers(live)).toEqual([['T27', 'a:claude:sess-2', null]]);
+  });
+
+  test("harbor's claim lines without their releases: T4 by the sub-agent a:claude:sess-2/T4 under its parent, T25 and T27 by the agent", async () => {
+    const locks = await harborActivity((e) => e.event === 'claim');
+    expect(locks.locks.map((l) => [l.claim, l.session])).toEqual([
+      ['ISC-53', 'a:claude:sess-2/T4'],
+      ['ISC-72', 'a:claude:sess-2'],
+      ['ISC-74', 'a:claude:sess-2'],
+    ]);
+    // Without rounds and with T4 and T25 open again, all three claims' cards are in flight.
+    const open = edited({ folder: files.folder, texts: { ...files.texts, rounds: undefined } }, 'tasks', (t) => t.replace('- [x] T4 ', '- [ ] T4 ').replace('- [x] T25 ', '- [ ] T25 '));
+    const live = buildLiveFrame({ files: open, locks, now: at(30) });
+    expect(live.cards.filter((c) => c.state === 'running').map((c) => c.task)).toEqual(['T4', 'T25', 'T27']);
+    expect(card(live, 'T4')).toMatchObject({ agent: SESS2, subagent: SUB_T4 });
+    expect(card(live, 'T4').subagent).toEqual({ raw: 'a:claude:sess-2/T4', kind: 'subagent', id: 'a:claude:sess-2', task: 'T4', legacy: false });
+    expect(workers(live)).toEqual([
+      ['T4', 'a:claude:sess-2', 'a:claude:sess-2/T4'],
+      ['T25', 'a:claude:sess-2', null],
+      ['T27', 'a:claude:sess-2', null],
+    ]);
+  });
+
+  test('a sub-agent on another task of the claim names its parent as the agent, but not itself as the sub-agent', () => {
+    const live = buildLiveFrame({ files, locks: lockOn('ISC-74', 'a:claude:sess-2/T9'), now: at(30) });
+    expect(card(live, 'T27')).toMatchObject({ state: 'running', agent: SESS2, subagent: null });
+  });
+
+  test('a person holding the claim (u:) is no agent: running, agent null, sub-agent null', () => {
+    const live = buildLiveFrame({ files, locks: lockOn('ISC-74', 'u:3f9c0a7d'), now: at(30) });
+    expect(card(live, 'T27')).toMatchObject({ state: 'running', lock: { source: 'activity', session: 'u:3f9c0a7d' }, agent: null, subagent: null });
+    expect(workers(live)).toEqual([]);
+  });
+
+  test('a legacy session is no agent either: running, agent null, sub-agent null', () => {
+    const live = buildLiveFrame({ files, locks: lockOn('ISC-75', 'spec-002-ISC-75'), now: at(30) });
+    expect(card(live, 'T28')).toMatchObject({ state: 'running', lock: { source: 'activity', session: 'spec-002-ISC-75' }, agent: null, subagent: null });
+    expect(workers(live)).toEqual([]);
+  });
+
+  test('a landed card under a lock is worked by nobody', () => {
+    const ticked = edited(edited(files, 'tasks', (t) => t.replace('- [ ] T27 ', '- [x] T27 ')), 'spec', (t) => t.replace('- [ ] ISC-74:', '- [x] ISC-74:'));
+    const live = buildLiveFrame({ files: ticked, locks: HARBOR_LOCKS, now: at(30) });
+    expect(card(live, 'T27')).toMatchObject({ state: 'closed', agent: null, subagent: null });
   });
 });
 

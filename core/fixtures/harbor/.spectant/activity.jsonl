@@ -1,3 +1,5 @@
-{"ts":"2026-03-08T14:05:00Z","event":"claim","claim":"ISC-72","task":"T25","session":"spec-002-ISC-72","worktree":"wt-6"}
-{"ts":"2026-03-08T14:06:00Z","event":"claim","claim":"ISC-74","task":"T27","session":"spec-002-ISC-74","worktree":"wt-7"}
-{"ts":"2026-03-08T15:52:00Z","event":"release","claim":"ISC-72","session":"spec-002-ISC-72"}
+{"ts":"2026-03-06T09:12:00Z","event":"claim","claim":"ISC-53","task":"T4","session":"a:claude:sess-2/T4","worktree":"wt-1"}
+{"ts":"2026-03-06T09:58:00Z","event":"release","claim":"ISC-53","task":"T4","session":"a:claude:sess-2/T4"}
+{"ts":"2026-03-08T14:05:00Z","event":"claim","claim":"ISC-72","task":"T25","session":"a:claude:sess-2","worktree":"wt-6"}
+{"ts":"2026-03-08T14:06:00Z","event":"claim","claim":"ISC-74","task":"T27","session":"a:claude:sess-2","worktree":"wt-7"}
+{"ts":"2026-03-08T15:52:00Z","event":"release","claim":"ISC-72","session":"a:claude:sess-2"}

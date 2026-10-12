@@ -12,7 +12,8 @@
  *   golden's `kpis`, `null` when unreadable.
  * - `GET|HEAD /api/workspaces/:slug/dashboard` → the golden model, serialized as the server does (`JSON.stringify`);
  *   404 `{error: "not-found"}` for an unknown slug; 409 with the list entry for the unreadable workspace.
- * - Every route of `WORKSPACE_ROUTE_TABLE` (`GET|HEAD /api/workspaces/:ws/planning`, spec 003 T20): the whole golden
+ * - Every route of `WORKSPACE_ROUTE_TABLE` with a golden family (`GET|HEAD /api/workspaces/:ws/planning`, spec 003
+ *   T20): the whole golden
  *   file of the route's family, `core/fixtures/<golden>.planning.golden.json` (`GOLDEN_FAMILY.planning`), not keyed by
  *   folder; matched with the contract's `matchWorkspacePath`. The goldens are built at `2026-03-20`, so a live server
  *   answer can differ in the milestones' `state` alone. Same guards as the dashboard: 403, 405 with
@@ -38,6 +39,15 @@
  *   `parseNotesQuery`, `note-counts`, `POST` (201), `PUT` (the draft replaced whole), `DELETE` (204, `no-store`), held in
  *   memory per session and seeded with `STUB_NOTES` (three notes on harbor 002, one per anchor kind). Ids and times are
  *   deterministic: the n-th write of a session is stamped `STUB_NOW` plus n minutes.
+ * - The Stage-3 board seam (spec 008, T119, `stub-board.ts`), per session like the writes: `GET|HEAD …/planning` is the
+ *   session's tree (the golden until a board write); `GET|HEAD …/ideas/:slug` the `IdeaPage` (the tree's `IdeaRef`,
+ *   core's `renderDocsMarkdown` over the fixture's story file, its raw sha256); `GET|HEAD|PUT …/board-query` and
+ *   `GET|HEAD|PUT /api/actors` in memory with the server's validation (`isBoardQuery`, `isActorMappings` plus persons
+ *   only); `GET …/specs/:id` adds `X-Spectant-Spec-Hash`, the holder's hash. The two board writes answer by the request:
+ *   `POST …/specs/:id/transition` 400 → 409 (hash not the holder's, or `stale`) → 423 (a lock of the fixture on the
+ *   spec, or `locked`) → 422 (a move the workflow row does not list) → 200 (the holder moved); `POST …/ideas/:slug/
+ *   allocate` 400 → 404 → 409 (hash not the story file's, or `stale`) → 423 (`locked` only) → 422 (`not-in-index`
+ *   from the golden's `ideas-index` finding) → 200 (the story gone, the new spec at `plan`).
  * - Any other `/api` path is the server's JSON 404, `{error: "not found"}`.
  *
  * Test controls, which the real server does not have (web/e2e/README.md § The stub API), each chosen per request so
@@ -49,12 +59,16 @@
  *   session on another open claim and makes LifeOS present.
  * - `X-Spectant-Stub-Write: ok | stale | locked` scripts the two writes (absent: `ok`). `ok` answers as the server
  *   does: 200 when the hashes sent equal the ones the stub last sent, else 409; `stale` is always 409 `Conflict`,
- *   `locked` always 423 `Locked`.
+ *   `locked` always 423 `Locked`. The board writes (transition, allocate) honour it the same way.
  * - `X-Spectant-Stub-Session: <id>` scopes the settings and the writes (absent: one shared session);
  *   `POST /api/__stub/reset` restores that session's settings and notes and drops its writes and bumps (204).
  * - `POST /api/__stub/bump?ws=<slug>` changes that workspace's dashboard for that session between two polls (T68,
  *   ISC-62): each call raises `kpis.claims.closed` by one, so the body and its ETag change as a file on disk would.
  *   204; 404 for a workspace the stub does not hold; 405 with `Allow: POST` for another method.
+ * - `PUT /api/__stub/workflow?ws=<slug>` with a `specs/workflow.md` text as the body stands in for an edit of that
+ *   workspace's workflow file (T151, ISC-123): core's `parseWorkflow` reads the text, and that session's planning tree
+ *   carries the result as its `workflow` until a reset, so the next read shows the changed table (body and ETag). 204;
+ *   404 for a workspace the stub does not hold; 405 with `Allow: PUT` for another method.
  *
  * Nothing here reads the clock or the registry: every answer is a function of the fixture files and the request. The
  * goldens are read once when the stub is built, so a missing fixture fails at startup, not on a request. Core's
@@ -66,6 +80,7 @@ import { createRequire } from 'node:module';
 import { basename, join } from 'node:path';
 
 import type {
+  ActorRef,
   AgentLockSource,
   CardState,
   ClaimLock,
@@ -87,8 +102,25 @@ import type {
   TaskStatus,
   TasksTab,
   TimelineEntry,
+  Workflow,
 } from '../../core/src/files';
+import { parseActor } from '../../core/src/actor';
+import type { PlanningHolder, PlanningModel } from '../../core/src/planning';
 import {
+  ACTORS_ALLOW,
+  ACTORS_PATH,
+  SPEC_HASH_HEADER,
+  isActorMappings,
+  isAllocateRequest,
+  isBoardQuery,
+  isTransitionRequest,
+  type ActorMapping,
+  type AllocateRefused,
+  type BoardQuery,
+  type IdeaAllocated,
+  type IdeaPage,
+  type TransitionRefused,
+  type TransitionWritten,
   GOLDEN_FAMILY,
   REVIEWED_HASHES_HEADER,
   REVIEWED_HASH_FILES,
@@ -125,13 +157,28 @@ import {
   parseNotesQuery,
 } from '../../server/src/notes.contract';
 import type { ApiHandler } from './serve-dist';
+import {
+  type StoryFile,
+  allocatedPlanning,
+  commandFor,
+  holderOf,
+  loadBoardCore,
+  movedPlanning,
+  readStories,
+  refusalOf,
+  rowFor,
+} from './stub-board';
 
 /** The e2e states the spec names (ISC-16.1): two workspaces, none, and one whose directory cannot be read. */
 export const STUB_STATES = ['two-workspaces', 'empty', 'unreadable'] as const;
 export type StubState = (typeof STUB_STATES)[number];
 
-/** The lock fixtures (ISC-85, ISC-86): no source, the repository's activity log (the goldens), a LifeOS frontier. */
-export const LOCK_STATES = ['none', 'activity', 'frontier'] as const;
+/**
+ * The lock fixtures (ISC-85, ISC-86): no source, the repository's activity log (the goldens), a LifeOS frontier; for
+ * who works a task (T149, ISC-131.1) the log's claim lines without their releases, and the golden's locks held by a
+ * person.
+ */
+export const LOCK_STATES = ['none', 'activity', 'frontier', 'claims', 'person'] as const;
 export type LockState = (typeof LOCK_STATES)[number];
 
 /** The scripted outcomes of the two writes (ISC-26, ISC-86). */
@@ -144,6 +191,7 @@ export const LOCKS_HEADER = 'X-Spectant-Stub-Locks';
 export const WRITE_HEADER = 'X-Spectant-Stub-Write';
 export const RESET_PATH = '/api/__stub/reset';
 export const BUMP_PATH = '/api/__stub/bump';
+export const WORKFLOW_PATH = '/api/__stub/workflow';
 
 /** The dashboard model with `kpis.claims.closed` raised by `by` (the bump hook); the golden itself is never touched. */
 export function bumpDashboard(model: unknown, by: number): unknown {
@@ -280,11 +328,12 @@ function matchesIfNoneMatch(header: string | null, etag: string): boolean {
 
 const strongEtag = (bytes: string | Uint8Array): string => `"${new Bun.CryptoHasher('sha256').update(bytes).digest('base64url')}"`;
 
-/** A JSON answer (`JSON_ANSWER`): strong ETag, 304 on a matching 200, no body on HEAD. */
+/** A JSON answer (`JSON_ANSWER`): strong ETag, 304 on a matching 200 of a read (as `api.ts` `json()`), no body on HEAD. */
 function workspaceJson(req: Request, status: number, value: unknown, extra: Record<string, string> = {}): Response {
   const body = JSON.stringify(value);
   const headers = { 'Content-Type': JSON_TYPE, 'Cache-Control': 'no-cache', ETag: strongEtag(body), ...extra };
-  if (status === 200 && matchesIfNoneMatch(req.headers.get('If-None-Match'), headers.ETag)) {
+  const read = req.method === 'GET' || req.method === 'HEAD';
+  if (status === 200 && read && matchesIfNoneMatch(req.headers.get('If-None-Match'), headers.ETag)) {
     return new Response(null, { status: 304, headers });
   }
   return new Response(req.method === 'HEAD' ? null : body, { status, headers });
@@ -341,6 +390,8 @@ type Core = {
   mediaTypeOf: (name: string) => string;
   docsFor: (type: SpecType | null) => Readonly<Record<DocName, DocAvailability>>;
   worstState: (states: Iterable<CardState>) => CardState;
+  parseWorkflow: (text: string | null) => Workflow;
+  boardStages: (workflow: Workflow) => PlanningModel['stages'];
 };
 
 /** Core's pure functions, loaded by a computed path so `tsc -p web/e2e` never walks core's module graph. */
@@ -350,7 +401,8 @@ function loadCore(): Core {
   const evidence = load(join(src, 'evidence.ts')) as Pick<Core, 'listEvidence' | 'resolveEvidencePath' | 'mediaTypeOf'>;
   const docs = load(join(src, 'markdown-docs.ts')) as Pick<Core, 'docsFor'>;
   const frames = load(join(src, 'frames.ts')) as Pick<Core, 'worstState'>;
-  return { ...evidence, ...docs, ...frames };
+  const workflow = load(join(src, 'workflow.ts')) as Pick<Core, 'parseWorkflow' | 'boardStages'>;
+  return { ...evidence, ...docs, ...frames, parseWorkflow: workflow.parseWorkflow, boardStages: workflow.boardStages };
 }
 
 // ---- the goldens --------------------------------------------------------------------------------------------------
@@ -402,13 +454,13 @@ function readDashboard(dir: string, name: string): { model: unknown; kpis: unkno
  * The planning route's body: a workspace route's golden family is the whole file (`GOLDEN_FAMILY`), not keyed by
  * folder, read as it is; the stub parses no spec.
  */
-function readPlanning(dir: string, name: string): unknown {
+function readPlanning(dir: string, name: string): PlanningModel {
   const file = `${name}.${GOLDEN_FAMILY.planning}.golden.json`;
-  const model = readJson(dir, file) as { features?: unknown; milestones?: unknown };
-  if (!Array.isArray(model.features) || !Array.isArray(model.milestones)) {
-    throw new Error(`stub-api: ${file} has no features or milestones; is it a PlanningModel?`);
+  const model = readJson(dir, file) as { features?: unknown; milestones?: unknown; ideas?: unknown; stageCounts?: unknown };
+  if (!Array.isArray(model.features) || !Array.isArray(model.milestones) || !Array.isArray(model.ideas) || typeof model.stageCounts !== 'object') {
+    throw new Error(`stub-api: ${file} has no features, milestones, ideas or stageCounts; is it a PlanningModel?`);
   }
-  return model;
+  return model as PlanningModel;
 }
 
 /** A deterministic stand-in for a sha256 hex: the hash of a label, never of a file (the stub reads no spec file). */
@@ -421,11 +473,115 @@ function without<T extends object>(value: T, keys: ReadonlyArray<keyof T>): T {
   return Object.fromEntries(Object.entries(value).filter(([key]) => !keys.includes(key as keyof T))) as T;
 }
 
-/** A lock-free copy of a live card: the running state goes back to waiting, the lock fields go. */
+/** A lock-free copy of a live card: the running state goes back to waiting, the lock fields go, and nobody works it. */
 function released(card: LiveCard): LiveCard {
-  const rest = without(card, ['lock', 'since', 'elapsedMs', 'stale']);
+  const rest = { ...without(card, ['lock', 'since', 'elapsedMs', 'stale']), agent: null, subagent: null };
   return card.state === 'running' ? { ...rest, state: 'waiting' } : rest;
 }
+
+/**
+ * Who works a card under a lock held by `actor` (spec 008, T66, ISC-131.1), as core's `live.ts` `workersOf` says it:
+ * an agent is the agent; a sub-agent names its parent session as the agent and itself as the sub-agent when its task is
+ * this card's; a person or a legacy session is no agent.
+ */
+function workersOf(actor: ActorRef, task: string): Pick<LiveCard, 'agent' | 'subagent'> {
+  if (actor.kind === 'agent') return { agent: actor, subagent: null };
+  if (actor.kind === 'subagent') return { agent: parseActor(actor.id), subagent: actor.task === task ? actor : null };
+  return { agent: null, subagent: null };
+}
+
+/** The person the `person` lock fixture puts on the golden's locks: the `u:` id harbor's planning golden already uses. */
+export const STUB_PERSON = 'u:3f9c0a7d';
+
+/**
+ * The claim lines of a fixture tree's `.spectant/activity.jsonl`, without its releases (the `claims` lock fixture): as
+ * `core/tests/live.test.ts` keeps only `event: "claim"` before core's reader, each line held since its `ts`, a later
+ * claim on the same claim taking it over. Empty without a log.
+ */
+function claimLines(root: string): ClaimLock[] {
+  let text: string;
+  try {
+    text = readFileSync(join(root, '.spectant', 'activity.jsonl'), 'utf8');
+  } catch {
+    return [];
+  }
+  const held = new Map<string, ClaimLock>();
+  for (const line of text.split('\n')) {
+    if (line.trim() === '') continue;
+    const entry = JSON.parse(line) as { event?: unknown; claim?: unknown; session?: unknown; ts?: unknown };
+    if (entry.event !== 'claim' || typeof entry.claim !== 'string' || typeof entry.session !== 'string' || typeof entry.ts !== 'string') continue;
+    held.delete(entry.claim);
+    held.set(entry.claim, { source: 'activity', claim: entry.claim, session: entry.session, actor: parseActor(entry.session), since: entry.ts });
+  }
+  return [...held.values()].sort((a, b) => byClaimId(a.claim, b.claim));
+}
+
+/** The rail's agents for `locks`, as core's `live.ts` `agentsOf`: one per source and session, oldest lock first. */
+function railOf(locks: readonly ClaimLock[], now: number, staleAfterMs: number): LiveAgent[] {
+  const groups = new Map<string, { session: string; source: AgentLockSource; claims: string[]; since: string }>();
+  for (const lock of locks) {
+    const key = `${lock.source}\u0000${lock.session}`;
+    const group = groups.get(key);
+    if (group === undefined) {
+      groups.set(key, { session: lock.session, source: lock.source, claims: [lock.claim], since: lock.since });
+      continue;
+    }
+    group.claims.push(lock.claim);
+    if (Date.parse(lock.since) < Date.parse(group.since)) group.since = lock.since;
+  }
+  return [...groups.values()]
+    .map((g): LiveAgent => {
+      const elapsedMs = Math.max(0, now - Date.parse(g.since));
+      return { session: g.session, source: g.source, claims: [...g.claims].sort(byClaimId), since: g.since, elapsedMs, stale: elapsedMs > staleAfterMs };
+    })
+    .sort((a, b) => b.elapsedMs - a.elapsedMs || a.session.localeCompare(b.session) || a.source.localeCompare(b.source));
+}
+
+/**
+ * The golden live frame under another set of activity `locks` (the `claims` and `person` fixtures): only locks on this
+ * spec's claims count; a card whose claim one holds is in flight with its lock, `since`, `elapsedMs`, `stale` and its
+ * workers, a landed one re-opened (as `core/tests/live.test.ts` unticks T4 and T25 for the claim lines); every other
+ * card is released. The operator lane and struck cards never run, as in core.
+ */
+function relocked(core: Core, live: LiveFrame, claims: ClaimViewModel, all: readonly ClaimLock[]): LiveFrame {
+  const ours = new Set([...claims.claims.map((c) => c.id), ...live.cards.map((c) => c.claim)]);
+  const locks = all.filter((l) => ours.has(l.claim));
+  const held = new Map(locks.map((l) => [l.claim, l]));
+  const now = Date.parse(live.ts);
+  const cards = live.cards.map((card): LiveCard => {
+    const lock = held.get(card.claim);
+    if (lock === undefined || card.state === 'absent' || card.lane === 'operator') return released(card);
+    const elapsedMs = Math.max(0, now - Date.parse(lock.since));
+    return {
+      ...without(card, ['reason']),
+      state: 'running',
+      lock: { source: lock.source, session: lock.session },
+      since: lock.since,
+      elapsedMs,
+      stale: elapsedMs > live.staleAfterMs,
+      ...workersOf(lock.actor, card.task),
+    };
+  });
+  return {
+    ...live,
+    cards,
+    worst: core.worstState(cards.map((c) => c.state)),
+    lockSource: 'activity',
+    locks,
+    agents: railOf(locks, now, live.staleAfterMs),
+    needsYou: NEEDS_YOU.flatMap((state) => cards.filter((c) => c.state === state)),
+  };
+}
+
+/** The Needs you list's states, in core's order (`live.ts` `NEEDS_YOU`). */
+const NEEDS_YOU: readonly CardState[] = ['question', 'concerns', 'operatorOpen'];
+
+/**
+ * The session id of a lock the stub makes up (the frontier fixture's second session, a scripted 423's fallback): an
+ * agent id of the actor grammar (`core/src/actor.ts`, `a:<kind>:<id>`), so `parseActor` reads it as `legacy: false`
+ * like the goldens' own `a:claude:sess-2`; `ISC-75` of spec 002 becomes `a:claude:stub-002-isc-75`.
+ */
+export const syntheticSession = (specId: string, claim: string): string => `a:claude:stub-${specId}-${claim.toLowerCase()}`;
 
 const LANDED_OR_GONE: ReadonlySet<CardState> = new Set<CardState>(['done', 'operatorDone', 'closed', 'absent', 'operatorOpen']);
 
@@ -433,8 +589,10 @@ const LANDED_OR_GONE: ReadonlySet<CardState> = new Set<CardState>(['done', 'oper
  * The lock fixtures of one spec, from its golden live frame (built under the activity reading) and spec page.
  * `none`: no source, every lock released. `frontier`: every golden lock relabelled `frontier`, plus a synthetic
  * session on the first open claim no lock holds (a waiting or dispatched card's claim first, else any open claim).
+ * `claims`: the tree's activity claim lines without their releases (`claimLines`). `person`: the golden's locks held by
+ * `STUB_PERSON` instead. Every in-flight card names its workers as core does (`workersOf`).
  */
-function lockFixtures(core: Core, spec: SpecPageModel, live: LiveFrame, claims: ClaimViewModel): SpecGoldens['locked'] {
+function lockFixtures(core: Core, spec: SpecPageModel, live: LiveFrame, claims: ClaimViewModel, activityClaims: readonly ClaimLock[]): SpecGoldens['locked'] {
   const pageWith = (lockSource: LockSource, agents: readonly LiveAgent[], locks: readonly ClaimLock[]): SpecPageModel => {
     const newest = [...locks].sort((a, b) => (a.since < b.since ? 1 : a.since > b.since ? -1 : 0))[0] ?? null;
     return {
@@ -463,17 +621,25 @@ function lockFixtures(core: Core, spec: SpecPageModel, live: LiveFrame, claims: 
   const waitingCard = cards.find((c) => (c.state === 'waiting' || c.state === 'dispatched') && open.includes(c.claim));
   const claim = waitingCard?.claim ?? open[0];
   if (claim !== undefined) {
-    const session = `spec-${spec.head.id}-${claim}`;
+    const session = syntheticSession(spec.head.id, claim);
     const since = new Date(Date.parse(live.ts) - SYNTHETIC_LOCK_AGE_MS).toISOString().replace('.000Z', 'Z');
     const stale = SYNTHETIC_LOCK_AGE_MS > live.staleAfterMs;
-    locks.push({ source: 'frontier', claim, session, since });
+    locks.push({ source: 'frontier', claim, session, actor: parseActor(session), since });
     locks.sort((a, b) => byClaimId(a.claim, b.claim));
     agents.push({ session, source: 'frontier', claims: [claim], since, elapsedMs: SYNTHETIC_LOCK_AGE_MS, stale });
     agents.sort((a, b) => (a.since < b.since ? -1 : a.since > b.since ? 1 : 0));
     cards = cards.map((c) => {
       if (c.claim !== claim || LANDED_OR_GONE.has(c.state) || c.lane === 'operator') return c;
       // In flight: the session is the reason, so a waiting or dispatch reason is dropped (as core's live.ts does).
-      return { ...without(c, ['reason']), state: 'running', lock: { source: 'frontier', session }, since, elapsedMs: SYNTHETIC_LOCK_AGE_MS, stale };
+      return {
+        ...without(c, ['reason']),
+        state: 'running',
+        lock: { source: 'frontier', session },
+        since,
+        elapsedMs: SYNTHETIC_LOCK_AGE_MS,
+        stale,
+        ...workersOf(parseActor(session), c.task),
+      };
     });
   }
   // A card the new lock set running no longer waits on the principal.
@@ -488,10 +654,16 @@ function lockFixtures(core: Core, spec: SpecPageModel, live: LiveFrame, claims: 
     needsYou,
   };
 
+  const claimsLive = relocked(core, live, claims, activityClaims);
+  const person = parseActor(STUB_PERSON);
+  const personLive = relocked(core, live, claims, live.locks.map((l) => ({ ...l, session: STUB_PERSON, actor: person })));
+
   return {
     none: { spec: pageWith('none', [], []), live: none },
     activity: { spec, live },
     frontier: { spec: pageWith('frontier', agents, locks), live: frontierLive },
+    claims: { spec: pageWith('activity', claimsLive.agents, claimsLive.locks), live: claimsLive },
+    person: { spec: pageWith('activity', personLive.agents, personLive.locks), live: personLive },
   };
 }
 
@@ -510,6 +682,7 @@ function readTree(core: Core, dir: string, golden: string): TreeGoldens {
     if (!Object.hasOwn(record, key)) throw new Error(`stub-api: ${golden}.${family}.golden.json has no ${key}`);
     return record[key] as T;
   };
+  const activityClaims = claimLines(join(dir, golden));
   return {
     golden,
     root: join(dir, golden),
@@ -533,7 +706,7 @@ function readTree(core: Core, dir: string, golden: string): TreeGoldens {
         tasks,
         docs: specDocs,
         frames: pick(families.frames, key, 'frames'),
-        locked: lockFixtures(core, spec, live, claims),
+        locked: lockFixtures(core, spec, live, claims, activityClaims),
         hashes,
       };
     }),
@@ -578,6 +751,12 @@ function marked(row: TaskRow, checked: boolean): TaskRow {
 
 type SessionWrites = { reviewed: Map<string, GateView>; marks: Map<string, Map<string, boolean>> };
 
+/** One session's board writes: the planning tree per workspace slug, the write count (it seeds the new hashes), allocations per slug. */
+type BoardSession = { planning: Map<string, PlanningModel>; writes: number; allocated: Map<string, number> };
+
+type AllocateMatch = Extract<WorkspaceRouteMatch, { route: 'allocate' }>;
+type IdeaMatch = Extract<WorkspaceRouteMatch, { route: 'idea' }>;
+
 const isOneOf = <T extends string>(values: readonly T[], value: string): value is T => (values as readonly string[]).includes(value);
 
 /** The `api` handler for `serveDist({ api })`: the real `/api` contract, fed from the golden snapshots. */
@@ -590,6 +769,10 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   const dashboards = new Map(workspaces.map((w) => [w.slug, readDashboard(dir, w.golden)]));
   const trees = new Map(workspaces.map((w) => [w.slug, readTree(core, dir, w.golden)]));
   const plannings = new Map(workspaces.map((w) => [w.slug, readPlanning(dir, w.golden)]));
+  const board = loadBoardCore();
+  const stories = new Map(
+    workspaces.map((w): [string, ReadonlyMap<string, StoryFile>] => [w.slug, readStories(board, join(dir, w.golden), readPlanning(dir, w.golden))]),
+  );
 
   const view = (state: StubState): StateView => {
     const listed = state === 'empty' ? [] : workspaces;
@@ -638,6 +821,47 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     writes.set(id, fresh);
     return fresh;
   };
+  // ---- the Stage-3 board state (T119), per session: the planning tree after the session's moves and allocations ----
+
+  const boards = new Map<string, BoardSession>();
+  const boardOf = (req: Request): BoardSession => {
+    const id = sessionOf(req);
+    const found = boards.get(id);
+    if (found) return found;
+    const fresh: BoardSession = { planning: new Map(), writes: 0, allocated: new Map() };
+    boards.set(id, fresh);
+    return fresh;
+  };
+  /** Workflows sent through `PUT /api/__stub/workflow` (T151), per session, then per workspace slug, as core parsed them. */
+  const workflows = new Map<string, Map<string, Workflow>>();
+  const workflowRoute = async (req: Request, url: URL): Promise<Response> => {
+    if (req.method !== 'PUT') return settingsError(405, { error: 'method-not-allowed' }, { Allow: 'PUT' });
+    const slug = url.searchParams.get('ws');
+    if (slug === null || !plannings.has(slug)) return settingsError(404, { error: 'not-found' });
+    const id = sessionOf(req);
+    const own = workflows.get(id) ?? new Map<string, Workflow>();
+    own.set(slug, core.parseWorkflow(await req.text()));
+    workflows.set(id, own);
+    return new Response(null, { status: 204 });
+  };
+  /**
+   * The planning tree this session sees for a workspace slug: its own after a write, else the golden as it is; with
+   * the session's workflow from `PUT /api/__stub/workflow` and core's board columns for it in place of the tree's,
+   * when one was sent (the counts stay the tree's: the specs' stages are not re-derived).
+   */
+  const planningOf = (req: Request, slug: string): PlanningModel | undefined => {
+    const model = boards.get(sessionOf(req))?.planning.get(slug) ?? plannings.get(slug);
+    const workflow = workflows.get(sessionOf(req))?.get(slug);
+    return model && workflow ? { ...model, workflow, stages: core.boardStages(workflow) } : model;
+  };
+  /** spec.md's raw hash as this session sees it: the planning holder's (the golden's real sha256, or a move's), else a fake. */
+  const specHashOf = (req: Request, ws: string, tree: TreeGoldens, spec: SpecGoldens): string => {
+    const model = planningOf(req, ws);
+    return (model ? holderOf(model, spec.folder)?.hash : null) ?? fakeHex(`${tree.golden}:${spec.key}:spec.md:raw`);
+  };
+  const actorLists = new Map<string, ActorMapping[]>();
+  const boardQueries = new Map<string, Map<string, string>>();
+
   const evidence = new Map<string, Promise<EvidenceListing>>();
   const notebooks = new Map<string, { notes: Note[]; writes: number }>();
   const notebookOf = (req: Request): { notes: Note[]; writes: number } => {
@@ -681,7 +905,132 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const found = (views.get(state) ?? view(state)).workspaces.get(match.params.ws);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
-    return workspaceJson(req, 200, plannings.get(match.params.ws));
+    return workspaceJson(req, 200, planningOf(req, match.params.ws));
+  };
+
+  /** The guard order every workspace route shares (`api.ts`): 404 unknown slug, 409 the unreadable summary, else the tree. */
+  const readableTree = (req: Request, state: StubState, ws: string): TreeGoldens | Response => {
+    const found = (views.get(state) ?? view(state)).workspaces.get(ws);
+    if (!found) return workspaceJson(req, 404, { error: 'not-found' });
+    if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
+    return found.tree;
+  };
+
+  /**
+   * `GET|HEAD …/ideas/:slug` (`api.ts` `idea`): the session tree's `IdeaRef`, the page core renders from the fixture's
+   * story file and its raw sha256. 404 for a story the session's tree no longer lists (allocated) or never did.
+   */
+  const ideaRoute = (req: Request, state: StubState, match: IdeaMatch): Response => {
+    if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowForWorkspace('idea') });
+    }
+    const tree = readableTree(req, state, match.params.ws);
+    if (tree instanceof Response) return tree;
+    const idea = planningOf(req, match.params.ws)?.ideas.find((ref) => ref.slug === match.params.slug);
+    const file = stories.get(match.params.ws)?.get(match.params.slug);
+    if (!idea || !file) return workspaceJson(req, 404, { error: 'not-found' });
+    return workspaceJson(req, 200, { idea, page: file.page, hash: file.hash } satisfies IdeaPage);
+  };
+
+  /**
+   * `GET|HEAD|PUT …/board-query` (`api.ts` `boardQuery`): per session and workspace, in memory, `''` until a PUT.
+   * 405 before the slug, 404 for a workspace the state does not list; no 409, the database is not the workspace's files.
+   */
+  const boardQueryRoute = async (req: Request, state: StubState, ws: string): Promise<Response> => {
+    if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
+    if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'PUT') {
+      return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowForWorkspace('boardQuery') });
+    }
+    if (!(views.get(state) ?? view(state)).workspaces.has(ws)) return workspaceJson(req, 404, { error: 'not-found' });
+    const own = boardQueries.get(sessionOf(req)) ?? new Map<string, string>();
+    if (req.method !== 'PUT') return workspaceJson(req, 200, { query: own.get(ws) ?? '' } satisfies BoardQuery);
+    const body = await readJson(req);
+    if (!isBoardQuery(body)) return workspaceJson(req, 400, { error: 'invalid-body' });
+    own.set(ws, body.query);
+    boardQueries.set(sessionOf(req), own);
+    return workspaceJson(req, 200, { query: body.query } satisfies BoardQuery);
+  };
+
+  /** `GET|HEAD|PUT /api/actors` (`api.ts` `actorsApi`): the session's list ordered by id, replaced whole by a PUT of persons. */
+  const actorsRoute = async (req: Request): Promise<Response> => {
+    if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
+    const list = actorLists.get(sessionOf(req)) ?? [];
+    if (req.method === 'GET' || req.method === 'HEAD') return workspaceJson(req, 200, list);
+    if (req.method !== 'PUT') return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: ACTORS_ALLOW });
+    const body = await readJson(req);
+    if (!isActorMappings(body) || !body.every((actor) => parseActor(actor.id).kind === 'person')) {
+      return workspaceJson(req, 400, { error: 'invalid-body' });
+    }
+    const stored = body
+      .map(({ id, displayName, gitIdentities }) => ({ id, displayName, gitIdentities: [...gitIdentities] }))
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    actorLists.set(sessionOf(req), stored);
+    return workspaceJson(req, 200, stored);
+  };
+
+  /** The lock a scripted 423 of a workspace write names: the first lock any spec holds under the fixture, else a frontier one. */
+  const anyLock = (tree: TreeGoldens, locks: LockState): ClaimLock => {
+    for (const fixture of [locks, 'frontier'] as const) {
+      for (const spec of tree.specs) {
+        const lock = spec.locked[fixture].live.locks[0];
+        if (lock) return lock;
+      }
+    }
+    return fallbackLock('ISC-1', syntheticSession('000', 'ISC-1'));
+  };
+
+  /**
+   * `POST …/ideas/:slug/allocate` (`allocate-route.ts`, `writes.ts` `writeAllocate`), scripted by the request: 400 for a
+   * body `isAllocateRequest` refuses, 404 for a story the session's tree does not list, 409 `StaleIdea` for a hash that
+   * is not the story file's raw sha256 (or `X-Spectant-Stub-Write: stale`), 423 only under `X-Spectant-Stub-Write:
+   * locked` (the real write never answers it: a story has no claim), 422 `not-in-index` for a story the planning
+   * golden's `ideas-index` finding names, else 200: the next number past every folder of the tree and the session's
+   * earlier allocations, the story gone from the session's tree and the new spec at `plan` (`allocatedPlanning`).
+   */
+  const allocateRoute = async (req: Request, state: StubState, locks: LockState, outcome: WriteOutcome, match: AllocateMatch): Promise<Response> => {
+    if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
+    if (req.method !== 'POST') return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowForWorkspace('allocate') });
+    const { ws, slug } = match.params;
+    const tree = readableTree(req, state, ws);
+    if (tree instanceof Response) return tree;
+    const body = await readJson(req);
+    if (!isAllocateRequest(body)) return workspaceJson(req, 400, { error: 'invalid-body' });
+    const model = planningOf(req, ws);
+    const story = model?.ideas.find((ref) => ref.slug === slug);
+    const file = stories.get(ws)?.get(slug);
+    if (!model || !story || !file) return workspaceJson(req, 404, { error: 'not-found' });
+    const stale = outcome === 'stale' ? { error: 'hash-mismatch', files: [story.path], expected: { idea: file.hash } } : board.ideaConflict(story.path, body.hash, file.hash);
+    if (stale !== null) return workspaceJson(req, 409, stale);
+    if (outcome === 'locked') return workspaceJson(req, 423, { error: 'locked', lock: anyLock(tree, locks) } satisfies Locked);
+    const session = boards.get(sessionOf(req));
+    const taken = Math.max(0, ...tree.specs.map((s) => Number.parseInt(s.folder.slice(0, 3), 10)).filter(Number.isFinite));
+    const id = String(taken + 1 + (session?.allocated.get(ws) ?? 0)).padStart(3, '0');
+    const name = `${id}-${slug}`;
+    const folder = `specs/${name}/`;
+    const unindexed = model.diagnostics.some((d) => d.diagnostic.code === 'ideas-index' && d.diagnostic.subject === slug);
+    if (unindexed) return workspaceJson(req, 422, { error: 'allocate-refused', reason: 'not-in-index', folder } satisfies AllocateRefused);
+    const own = boardOf(req);
+    own.writes += 1;
+    own.allocated.set(ws, (own.allocated.get(ws) ?? 0) + 1);
+    const holder: PlanningHolder = {
+      id,
+      slug: name,
+      // No `task:` in the spec.md `allocationOf` writes: the title falls back to the folder slug without its number.
+      title: slug,
+      archived: false,
+      main: true,
+      held: 0,
+      stage: 'plan',
+      stageSource: 'explicit',
+      priority: story.priority,
+      hash: fakeHex(`${tree.golden}:specs/${name}:spec.md:allocate-${String(own.writes)}`),
+      assignee: null,
+    };
+    own.planning.set(ws, allocatedPlanning(model, story, holder));
+    const paths = board.writePathsOf('allocate', name, slug);
+    const lockSource = tree.specs[0]?.locked[locks].live.lockSource ?? 'none';
+    return workspaceJson(req, 200, { id, folder, files: paths.writes, removed: paths.removes[0] ?? story.path, lockSource } satisfies IdeaAllocated);
   };
 
   const settingsRoute = async (req: Request): Promise<Response> => {
@@ -710,10 +1059,15 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   // ---- the spec routes ----
 
   /** The spec page as this session sees it: the lock fixture's page with the session's reviewed mark. */
-  const specPage = (req: Request, tree: TreeGoldens, spec: SpecGoldens, locks: LockState): SpecPageModel => {
+  const specPage = (req: Request, ws: string, tree: TreeGoldens, spec: SpecGoldens, locks: LockState): SpecPageModel => {
     const page = spec.locked[locks].spec;
     const reviewed = writesOf(req).reviewed.get(`${tree.golden}\0${spec.key}`);
-    return reviewed ? { ...page, gates: { ...page.gates, reviewed } } : page;
+    const gated = reviewed ? { ...page, gates: { ...page.gates, reviewed } } : page;
+    // A stage move of this session (T119) shows in the head as the board shows it; nothing else of the page moves.
+    const moved = boards.get(sessionOf(req))?.planning.get(ws);
+    const holder = moved ? holderOf(moved, spec.folder) : null;
+    if (!holder?.stage || holder.stage === gated.head.stage) return gated;
+    return { ...gated, head: { ...gated.head, stage: holder.stage, stageSource: 'explicit' } };
   };
 
   /** The Tasks tab as this session sees it, and the raw tasks.md hash that goes with it. */
@@ -727,6 +1081,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return { tab: { ...spec.tasks, tasks, counts: recountTasks(tasks, spec.tasks.counts) }, hash: fakeHex(`${label}:${ticks.join(',')}`) };
   };
 
+  const fallbackLock = (claim: string, session: string): ClaimLock => ({ source: 'frontier', claim, session, actor: parseActor(session), since: STUB_NOW });
   /** The lock a scripted 423 names: the fixture's lock on `claim`, any lock of the spec, else a frontier lock. */
   const lockFor = (spec: SpecGoldens, locks: LockState, claim: string | null): ClaimLock => {
     const current = spec.locked[locks].live.locks;
@@ -736,7 +1091,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return (
       onClaim ??
       current[0] ??
-      frontier[0] ?? { source: 'frontier', claim: fallbackClaim, session: `spec-${spec.spec.head.id}-${fallbackClaim}`, since: STUB_NOW }
+      frontier[0] ?? fallbackLock(fallbackClaim, syntheticSession(spec.spec.head.id, fallbackClaim))
     );
   };
 
@@ -772,7 +1127,10 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   ): Promise<Response> => {
     switch (match.route) {
       case 'spec':
-        return workspaceJson(req, 200, specPage(req, tree, spec, locks), { [REVIEWED_HASHES_HEADER]: formatReviewedHashes(spec.hashes) });
+        return workspaceJson(req, 200, specPage(req, match.params.ws, tree, spec, locks), {
+          [REVIEWED_HASHES_HEADER]: formatReviewedHashes(spec.hashes),
+          [SPEC_HASH_HEADER]: specHashOf(req, match.params.ws, tree, spec),
+        });
       case 'timeline':
         return workspaceJson(req, 200, spec.timeline);
       case 'claims':
@@ -879,9 +1237,48 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
     const spec = resolveSpec(found.tree.specs, match.params.id);
     if (!spec) return workspaceJson(req, 404, { error: 'not-found' });
+    if (match.route === 'transition') return transitionRoute(req, match.params.ws, found.tree, spec, locks, outcome);
     return match.route === 'gateReviewed' || match.route === 'taskCheck'
       ? writeRoute(req, match, found.tree, spec, locks, outcome)
       : readRoute(req, url, match, found.tree, spec, locks);
+  };
+
+  /**
+   * `POST …/:id/transition` (`transition-route.ts`, `writes.ts` `writeTransition`), scripted by the request in the
+   * real write's order: 400 for a body `isTransitionRequest` refuses; 409 `StaleSpec` for a hash that is not the one the
+   * session's planning holder (and `X-Spectant-Spec-Hash`) carries, or under `X-Spectant-Stub-Write: stale`; 423 while
+   * the lock fixture holds a lock on the spec (`blockingLock`; 002 under `activity`, every spec with an open claim under
+   * `frontier`, none under `none`), or under `locked`; 422 `transition-refused` for a move the spec's workflow row does
+   * not list (`refusalOf`), `command` the spec's next command; else 200: the holder moved in the session's tree
+   * (`movedPlanning`, a new fake hash), the event by `VIEWER_ACTOR_FALLBACK` at `STUB_NOW`.
+   */
+  const transitionRoute = async (req: Request, ws: string, tree: TreeGoldens, spec: SpecGoldens, locks: LockState, outcome: WriteOutcome): Promise<Response> => {
+    const body = await readJson(req);
+    if (!isTransitionRequest(body)) return workspaceJson(req, 400, { error: 'invalid-body' });
+    const hash = specHashOf(req, ws, tree, spec);
+    const stale = outcome === 'stale' ? { error: 'hash-mismatch', files: ['spec.md'], expected: { spec: hash } } : board.specConflict(body.hash, hash);
+    if (stale !== null) return workspaceJson(req, 409, stale);
+    const live = spec.locked[locks].live;
+    const locked = outcome === 'locked' ? ({ error: 'locked', lock: lockFor(spec, locks, null) } satisfies Locked) : board.blockingLock(live.locks, null);
+    if (locked !== null) return workspaceJson(req, 423, locked);
+    const model = planningOf(req, ws);
+    const holder = model ? holderOf(model, spec.folder) : null;
+    const { head } = spec.spec;
+    const refuse = (reason: string): Response =>
+      workspaceJson(req, 422, { error: 'transition-refused', reason, command: head.nextCommand } satisfies TransitionRefused);
+    const from = holder?.stage ?? null;
+    if (!model || from === null) return refuse(`${spec.folder} has no stage on the board`);
+    const reason = refusalOf(board, rowFor(board, model.workflow, head.type), head.type, from, body.to);
+    // No row lists a move into `idea` (only a story stands there), so the second test only narrows the type.
+    if (reason !== null || body.to === 'idea') return refuse(reason ?? `the spec cannot move back to idea`);
+    const command = commandFor(board, from, head.id) ?? commandFor(board, body.to, head.id);
+    if (command === null) return refuse(`no stage table command makes the move ${from} → ${body.to}`);
+    const own = boardOf(req);
+    own.writes += 1;
+    const next = fakeHex(`${tree.golden}:${spec.key}:spec.md:move-${String(own.writes)}:${body.to}`);
+    own.planning.set(ws, movedPlanning(model, spec.folder, from, body.to, next));
+    const event = { ts: new Date(STUB_NOW).toISOString(), from, to: body.to, command, actor: board.VIEWER_ACTOR_FALLBACK };
+    return workspaceJson(req, 200, { from, to: body.to, hash: next, event, lockSource: live.lockSource } satisfies TransitionWritten);
   };
 
   // ---- the notes routes (server/src/notes.ts), per session ----
@@ -955,10 +1352,16 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       writes.delete(sessionOf(req));
       notebooks.delete(sessionOf(req));
       bumps.delete(sessionOf(req));
+      boards.delete(sessionOf(req));
+      actorLists.delete(sessionOf(req));
+      boardQueries.delete(sessionOf(req));
+      workflows.delete(sessionOf(req));
       return new Response(null, { status: 204 });
     }
     if (pathname === BUMP_PATH) return bumpRoute(req, url);
+    if (pathname === WORKFLOW_PATH) return workflowRoute(req, url);
     if (pathname === SETTINGS_PATH) return settingsRoute(req);
+    if (pathname === ACTORS_PATH) return actorsRoute(req);
 
     const locks = req.headers.get(LOCKS_HEADER) ?? 'activity';
     if (!isOneOf(LOCK_STATES, locks)) {
@@ -979,13 +1382,17 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       return settingsError(400, { error: 'unknown-stub-state', state: requested, states: [...STUB_STATES] });
     }
     if (!spec) return workspaceRoute(req, requested, dashboard?.[1]);
-    // Before the spec catch-all, which answers every other path under a workspace with the server's JSON 404.
+    // Every route of WORKSPACE_ROUTE_TABLE before the spec catch-all, which answers every other path under a workspace
+    // with the server's JSON 404 (T119: the story page, the board query and the allocation joined the planning tree).
     const family = matchWorkspacePath(pathname);
-    if (family !== null) return workspaceFamilyRoute(req, requested, family);
+    if (family?.route === 'planning') return workspaceFamilyRoute(req, requested, family);
+    if (family?.route === 'idea') return ideaRoute(req, requested, family);
+    if (family?.route === 'boardQuery') return boardQueryRoute(req, requested, family.params.ws);
     const write = req.headers.get(WRITE_HEADER) ?? 'ok';
     if (!isOneOf(WRITE_OUTCOMES, write)) {
       return settingsError(400, { error: 'unknown-stub-write', write, outcomes: [...WRITE_OUTCOMES] });
     }
+    if (family?.route === 'allocate') return allocateRoute(req, requested, locks, write, family);
     return specRoute(req, url, requested, locks, write);
   };
 }

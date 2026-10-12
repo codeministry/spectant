@@ -17,6 +17,10 @@
  *   iban          an IBAN whose mod-97 checksum holds, so upper-case hex runs are not reported.
  *   secret        API-key shapes (OpenAI, GitHub, Slack, AWS access key), a private key block, and 32+ hex digits
  *                 right after a token/secret/key name.
+ *   git-user-name the scanned repository's git `user.name` (`git config user.name`: its local config first, then the
+ *                 global one), read at run time and matched case-insensitively as a whole word sequence. The name
+ *                 lives only in the git config, never in this script. A name shorter than three characters, or none,
+ *                 skips the class with one summary line.
  *
  * Then the OPTIONAL private word list: `SPECTANT_LEAK_WORDS` names a file outside the repository, one word or phrase
  * per line (`#` comments and blank lines ignored), matched case-insensitively as whole words. The concrete names of
@@ -24,7 +28,7 @@
  *
  * Exemption (constitution § Adaptations, XC-10): a licence attribution may carry the copyright holder's name as the
  * licence requires, so `LICENSE-*.txt` and `THIRD_PARTY_NOTICES.md` are exempt from the private word list, and every
- * `LICENSE*` / `NOTICE*` file from the email class. Every other class still applies to them.
+ * `LICENSE*` / `NOTICE*` file from the email and git-user-name classes. Every other class still applies to them.
  *
  * Suppression: a line that ends in an allow marker with a reason — an HTML comment `leak:allow REASON` in markdown,
  * or `// leak:allow REASON` / `# leak:allow REASON` in code — is skipped for the generic classes and listed with its
@@ -38,7 +42,16 @@
 import { lstatSync, readFileSync, readlinkSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 
-export type LeakClass = "home-path" | "machine-path" | "email" | "ipv4" | "phone" | "iban" | "secret" | "private-word";
+export type LeakClass =
+  | "home-path"
+  | "machine-path"
+  | "email"
+  | "git-user-name"
+  | "ipv4"
+  | "phone"
+  | "iban"
+  | "secret"
+  | "private-word";
 export type LineHit = { cls: LeakClass; match: string };
 export type Hit = LineHit & { path: string; line: number; note?: string };
 export type Allowed = { path: string; line: number; reason: string };
@@ -151,13 +164,13 @@ function isLicenceAttribution(path: string): boolean {
   return /^LICENSE-[^/]+\.txt$/.test(name) || name === "THIRD_PARTY_NOTICES.md";
 }
 
-/** Files whose addresses are licence contact or attribution lines. */
+/** Files whose addresses and names are licence contact or attribution lines. */
 function isLicenceOrNotice(path: string): boolean {
   const name = basename(path);
   return /^(?:LICENSE|NOTICE)/i.test(name) || name === "THIRD_PARTY_NOTICES.md";
 }
 
-function genericHits(line: string, path: string): LineHit[] {
+function genericHits(line: string, path: string, gitName: RegExp | null): LineHit[] {
   const hits: LineHit[] = [];
 
   for (const re of [HOME_UNIX, HOME_WINDOWS]) {
@@ -171,6 +184,7 @@ function genericHits(line: string, path: string): LineHit[] {
       if (EMAIL_LOCAL_OK.test(local) || EMAIL_DOMAIN_OK.test(domain) || FILE_TLD.test(tld)) continue;
       hits.push({ cls: "email", match: whole });
     }
+    if (gitName) for (const m of line.matchAll(gitName)) hits.push({ cls: "git-user-name", match: m[0] });
   }
 
   for (const m of line.matchAll(IPV4)) {
@@ -191,8 +205,8 @@ function wordHits(line: string, path: string, words: RegExp | null): LineHit[] {
 }
 
 /** Every hit on one line, ignoring allow markers. */
-export function scanLine(line: string, path: string, words: RegExp | null): LineHit[] {
-  return [...genericHits(line, path), ...wordHits(line, path, words)];
+export function scanLine(line: string, path: string, words: RegExp | null, gitName: RegExp | null = null): LineHit[] {
+  return [...genericHits(line, path, gitName), ...wordHits(line, path, words)];
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -226,6 +240,27 @@ export function compileWords(words: string[]): RegExp | null {
   return new RegExp(`(?<![\\p{L}\\p{N}_])(?:${alternatives.join("|")})(?![\\p{L}\\p{N}_])`, "giu");
 }
 
+/**
+ * The git-user-name matcher: the whole name as a case-insensitive word sequence, any run of whitespace between its
+ * words; null when the name is absent or shorter than three characters.
+ */
+export function compileGitName(name: string | undefined): RegExp | null {
+  const trimmed = (name ?? "").trim();
+  if (Array.from(trimmed).length < 3) return null;
+  const sequence = trimmed
+    .split(/\s+/)
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("\\s+");
+  return new RegExp(`(?<![\\p{L}\\p{N}_])${sequence}(?![\\p{L}\\p{N}_])`, "giu");
+}
+
+/** The repository's `user.name` as git resolves it (local, then global, then system); undefined when unset. */
+function gitUserName(root: string): string | undefined {
+  const r = Bun.spawnSync(["git", "-C", root, "config", "user.name"], { stdout: "pipe", stderr: "pipe" });
+  if (r.exitCode !== 0) return undefined;
+  return r.stdout.toString().trim() || undefined;
+}
+
 /** A match is reported by its first three characters only, so the report never repeats the leak. */
 export function redact(match: string): string {
   return `${Array.from(match).slice(0, 3).join("")}…`;
@@ -235,14 +270,19 @@ export function redact(match: string): string {
 // Files
 // ---------------------------------------------------------------------------------------------------------------
 
-export function scanText(path: string, text: string, words: RegExp | null): { hits: Hit[]; allowed: Allowed[] } {
+export function scanText(
+  path: string,
+  text: string,
+  words: RegExp | null,
+  gitName: RegExp | null = null,
+): { hits: Hit[]; allowed: Allowed[] } {
   const hits: Hit[] = [];
   const allowed: Allowed[] = [];
 
   text.split("\n").forEach((raw, index) => {
     const line = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
     const lineNo = index + 1;
-    const generic = genericHits(line, path);
+    const generic = genericHits(line, path, gitName);
     const privateWords = wordHits(line, path, words);
     for (const h of privateWords) hits.push({ ...h, path, line: lineNo });
     if (generic.length === 0) return;
@@ -286,8 +326,9 @@ const USAGE = `Usage: bun run check:leak
        bun scripts/check-leak.ts [DIR]
 
 Scans the tracked files of the git repository at DIR (default: this repository) for leak classes
-(home-path, machine-path, email, ipv4, phone, iban, secret) and, when SPECTANT_LEAK_WORDS names a
-word-list file, for its private words. Exit 0 clean, 1 on any hit, 2 on a usage error.`;
+(home-path, machine-path, email, git-user-name, ipv4, phone, iban, secret) and, when SPECTANT_LEAK_WORDS
+names a word-list file, for its private words. git-user-name is the repository's git user.name, read at
+run time. Exit 0 clean, 1 on any hit, 2 on a usage error.`;
 
 function usageError(message: string): number {
   console.error(`check-leak: ${message}`);
@@ -326,6 +367,11 @@ export function main(argv: string[], env: Record<string, string | undefined>): n
     wordLine = `private word list: ${plural(list.length, "word")} (SPECTANT_LEAK_WORDS)`;
   }
 
+  const gitName = compileGitName(gitUserName(root));
+  const gitNameLine = gitName
+    ? "git-user-name: on (git config user.name)"
+    : "git-user-name: no name configured, class skipped";
+
   let hits: Hit[] = [];
   const allowed: Allowed[] = [];
   /** Text of every allow-marked line per fixture tree, so a derived golden can inherit the allowance. */
@@ -343,7 +389,7 @@ export function main(argv: string[], env: Record<string, string | undefined>): n
       continue;
     }
     scanned += 1;
-    const result = scanText(path, text, words);
+    const result = scanText(path, text, words, gitName);
     hits.push(...result.hits);
     allowed.push(...result.allowed);
     const tree = /^core\/fixtures\/([^/]+)\//.exec(path)?.[1];
@@ -357,6 +403,7 @@ export function main(argv: string[], env: Record<string, string | undefined>): n
   hits = inheritFixtureAllows(hits, allowed, allowedText);
 
   console.log(wordLine);
+  console.log(gitNameLine);
   const byReason = new Map<string, number[]>();
   for (const a of allowed) {
     const key = `${a.path}\0${a.reason}`;

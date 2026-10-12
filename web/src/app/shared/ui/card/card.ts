@@ -18,6 +18,12 @@ const optionalFlag = (value: boolean | string | undefined): boolean | undefined 
  * private `--card-tone` because a null host binding on `--edge` would clear the consumer's inline value. An `accent`
  * without `edge` or `glow` turns both on.
  * The glow sits behind the content (`z-index: -1` in the card's own stacking context), so text keeps its contrast.
+ *
+ * Spec 008 adds two variants for the board card (design 008 § board card), neither a glow nor a tint:
+ *
+ * - `side`: a 4 px inline-start edge in `--edge` (the card's border there, so it takes the radius), `--line` when no
+ *   `--edge` is set;
+ * - `dashed`: the whole border dashed, the side edge included (a story, which has no spec folder yet).
  */
 @Component({
   selector: 'ui-card',
@@ -26,6 +32,8 @@ const optionalFlag = (value: boolean | string | undefined): boolean | undefined 
     '[attr.data-edge]': 'showEdge() ? "" : null',
     '[attr.data-glow]': 'showGlow() ? "" : null',
     '[attr.data-interactive]': 'interactive() ? "" : null',
+    '[attr.data-side]': 'side() ? "" : null',
+    '[attr.data-dashed]': 'dashed() ? "" : null',
     '[attr.data-accent]': 'accent() ?? null',
     '[style.--card-tone]': 'tone()',
     '[style.padding.px]': 'padding()',
@@ -65,6 +73,12 @@ const optionalFlag = (value: boolean | string | undefined): boolean | undefined 
       pointer-events: none;
       transition: opacity var(--motion-duration-instant) var(--motion-ease-standard);
     }
+    :host([data-side]) {
+      border-inline-start: 4px solid var(--edge, var(--line));
+    }
+    :host([data-dashed]) {
+      border-style: dashed;
+    }
     @media (hover: hover) {
       :host([data-interactive]:hover)::after {
         opacity: 1;
@@ -83,8 +97,13 @@ export class UiCard {
   readonly accent = input<Tone>();
   readonly edge = input(undefined, { transform: optionalFlag });
   readonly glow = input(undefined, { transform: optionalFlag });
-  readonly padding = input<0 | 16 | 24>(16);
+  /** 12 is the board card's (design 008 § board card); the others are the inherited cards'. */
+  readonly padding = input<0 | 12 | 16 | 24>(16);
   readonly interactive = input(false);
+  /** The 4 px inline-start edge in `--edge` (spec 008, the board card's wait class). */
+  readonly side = input(false, { transform: booleanAttribute });
+  /** The whole border dashed (spec 008, a story's card). */
+  readonly dashed = input(false, { transform: booleanAttribute });
 
   protected readonly tone = computed(() => {
     const accent = this.accent();

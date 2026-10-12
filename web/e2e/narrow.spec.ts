@@ -4,6 +4,7 @@
  *
  *   bun run e2e -- narrow -g dashboard     ISC-63 (T73): the workspace dashboard `/w/harbor`
  *   bun run e2e -- narrow -g column        ISC-63.1 (T74): a workspace column of the overview `/`
+ *   bun run e2e -- narrow -g board         ISC-129.2 (T145): the workspace board `/w/harbor/board` at compact
  *
  * "No horizontal overflow" is checked on every scroll container the page has, not only the document: the document
  * (`scrollingElement`), `<body>`, the shell body and `<main>` must each have `scrollWidth === clientWidth`; no element
@@ -236,6 +237,195 @@ test.describe('narrow column', () => {
       expect(found.wide.some((entry) => entry.includes('ws-head'))).toBe(true);
       expect(() => {
         expectNoHorizontalOverflow(found, width);
+      }).toThrow();
+    });
+  });
+});
+
+const BOARD_PAGE = {
+  host: 'app-board-page',
+  url: '/w/harbor/board',
+  radios: 'app-board-page .colswitch [role="radio"]',
+  column: 'app-board-page section[data-col]',
+  bar: 'app-board-page [data-colbar]',
+} as const;
+
+/**
+ * Opens the workspace board in its own stub session (one test's remembered `?col` never restores in another), in the
+ * compact tier, and waits until the column switch and the one column are rendered.
+ */
+async function openBoardPage(page: Page, name: string): Promise<void> {
+  await page.setExtraHTTPHeaders({ [SESSION_HEADER]: name });
+  const reset = await page.request.post(RESET_PATH, { headers: { [SESSION_HEADER]: name } });
+  expect(reset.status()).toBe(204);
+  await pinClock(page);
+  await page.goto(BOARD_PAGE.url);
+  await expect(page.locator('app-shell')).toHaveAttribute('data-tier', 'compact');
+  await expect(page.locator(BOARD_PAGE.radios).first()).toBeVisible();
+  await expect(page.locator(BOARD_PAGE.column)).toHaveCount(1);
+}
+
+/**
+ * The board's layout, measured as for every other surface: the toolbar (T163) wraps its triggers, chips and swimlane
+ * switch at compact, so no part of the board scrolls sideways.
+ */
+async function boardLayout(page: Page): Promise<Layout> {
+  return layout(page, BOARD_PAGE.host);
+}
+
+/** Every column section of the board that is rendered and visible: its `data-col`. */
+async function visibleColumns(page: Page): Promise<string[]> {
+  return page
+    .locator(BOARD_PAGE.column)
+    .evaluateAll((els) => els.filter((el) => el.checkVisibility() && el.getBoundingClientRect().height > 0).map((el) => el.getAttribute('data-col') ?? '?'));
+}
+
+/** The order the switch's segments follow: the drop tray's slots, one per stage in the board's order. */
+async function stageOrder(page: Page): Promise<string[]> {
+  return page.locator(`${BOARD_PAGE.host} .tray [data-drop-col]`).evaluateAll((els) => els.map((el) => el.getAttribute('data-drop-col') ?? '?'));
+}
+
+/**
+ * The board fits `width`: the shell container (`container: shell` on `app-shell`) is compact and does not scroll
+ * sideways, nor does any scroll container of the page; exactly one column is visible and the wide scroller is absent.
+ */
+async function expectBoardFits(page: Page, width: number): Promise<void> {
+  const shell = await page
+    .locator('app-shell')
+    .evaluate((el) => ({ width: el.getBoundingClientRect().width, scroll: el.scrollWidth, client: el.clientWidth }));
+  expect(shell.width, 'shell container width').toBeLessThanOrEqual(width);
+  expect(shell.width, 'shell container in the compact tier').toBeLessThan(640);
+  expect(shell.scroll, `app-shell scrollWidth vs clientWidth ${String(shell.client)}`).toBe(shell.client);
+  expectNoHorizontalOverflow(await boardLayout(page), width);
+  expect(await visibleColumns(page), 'visible columns').toHaveLength(1);
+  await expect(page.locator(`${BOARD_PAGE.host} .scroller`), 'no wide scroller at compact').toHaveCount(0);
+}
+
+/**
+ * The workspace board at compact (T145, ISC-129.2), probe `bun run e2e -- narrow -g board`. In the 600 px shell
+ * container and at the 390 px phone the page and the shell never scroll sideways and the radio column switch shows
+ * exactly one column; a switch writes `?col` and swaps the column; at 390 the sticky column bar takes the switch's
+ * place once it has scrolled away.
+ */
+test.describe('narrow board page', () => {
+  for (const width of [WIDTHS.panel, WIDTHS.phone]) {
+    for (const theme of THEMES) {
+      test.describe(`board at ${String(width)}, ${theme} theme`, () => {
+        test.use({ ...atWidth(width), colorScheme: theme });
+
+        for (const language of LANGUAGES) {
+          test(`board at ${String(width)}, ${theme}, ${language}: one column, no horizontal overflow`, async ({ page }, info) => {
+            await speak(page, language);
+            await openBoardPage(page, `narrow-board-${info.testId}-${String(info.retry)}`);
+            await expect(page.locator('html')).toHaveAttribute('data-theme', `spec-${theme}`);
+            await expect(page.locator('html')).toHaveAttribute('lang', language);
+            await expectBoardFits(page, width);
+          });
+        }
+      });
+    }
+
+    test.describe(`board at ${String(width)}, column switch`, () => {
+      test.use(atWidth(width));
+
+      test(`board at ${String(width)}: switching the column changes ?col and the visible column`, async ({ page }, info) => {
+        await openBoardPage(page, `narrow-board-switch-${info.testId}-${String(info.retry)}`);
+        const order = await stageOrder(page);
+        const [from] = await visibleColumns(page);
+        const to = order.find((stage) => stage !== from);
+        if (from === undefined || to === undefined) throw new Error(`no second column to switch to: ${order.join(', ')}`);
+        const radios = page.locator(BOARD_PAGE.radios);
+        await expect(radios).toHaveCount(order.length);
+        await expect(radios.nth(order.indexOf(from))).toHaveAttribute('aria-checked', 'true');
+        expect(new URL(page.url()).searchParams.get('col')).not.toBe(to);
+
+        await radios.nth(order.indexOf(to)).click();
+        await expect.poll(() => new URL(page.url()).searchParams.get('col')).toBe(to);
+        await expect(page.locator(BOARD_PAGE.column)).toHaveAttribute('data-col', to);
+        await expect(radios.nth(order.indexOf(to))).toHaveAttribute('aria-checked', 'true');
+        await expect(page.locator(`${BOARD_PAGE.radios}[aria-checked="true"]`)).toHaveCount(1);
+        expect(await visibleColumns(page)).toEqual([to]);
+        await expectBoardFits(page, width);
+
+        // `?col` is router state: a reload lands on the same column.
+        await page.reload();
+        await expect(page.locator('app-shell')).toHaveAttribute('data-tier', 'compact');
+        await expect(page.locator(BOARD_PAGE.column)).toHaveCount(1);
+        await expect(page.locator(BOARD_PAGE.column)).toHaveAttribute('data-col', to);
+        await expectBoardFits(page, width);
+      });
+    });
+  }
+
+  test.describe('board at 390, sticky column bar', () => {
+    test.use(atWidth(WIDTHS.phone));
+
+    test('board at 390: the sticky column bar appears after scrolling past the switch', async ({ page }, info) => {
+      await openBoardPage(page, `narrow-board-bar-${info.testId}-${String(info.retry)}`);
+      // The fixture's longest column holds two cards, so the 844 px page cannot scroll the switch away; this block
+      // stands in for a column longer than the screen. Only the page's height changes, never its width.
+      await page.addStyleTag({ content: 'app-board-page section.one { min-block-size: 150vh !important; }' });
+      const bar = page.locator(BOARD_PAGE.bar);
+      const row = bar.locator('.barrow');
+      await expect(bar).not.toHaveAttribute('data-away');
+      await expect(row).toBeHidden();
+
+      const below = await page
+        .locator(`${BOARD_PAGE.host} .colswitch`)
+        .evaluate((el) => el.getBoundingClientRect().bottom + window.scrollY);
+      await page.evaluate((y) => {
+        window.scrollTo(0, y);
+      }, below);
+      await expect(bar).toHaveAttribute('data-away', '');
+      await expect(row).toBeVisible();
+      await expect(row.locator('.barname .sl')).not.toBeEmpty();
+
+      // Stuck under the 92 px compact header, inside the viewport's width, and the page still fits.
+      const box = await row.boundingBox();
+      expect(box, 'bar box').not.toBeNull();
+      expect(Math.round(box?.y ?? -1), 'bar top under the compact header').toBe(92);
+      expect(box?.x ?? -1, 'bar left edge').toBeGreaterThanOrEqual(0);
+      expect((box?.x ?? 0) + (box?.width ?? Infinity), 'bar right edge').toBeLessThanOrEqual(WIDTHS.phone + 0.5);
+      expectNoHorizontalOverflow(await boardLayout(page), WIDTHS.phone);
+
+      // Back at the top the switch is in view again and the bar steps aside.
+      await page.evaluate(() => {
+        window.scrollTo(0, 0);
+      });
+      await expect(bar).not.toHaveAttribute('data-away');
+    });
+  });
+
+  test.describe('board at 390, toolbar with active filters', () => {
+    test.use(atWidth(WIDTHS.phone));
+
+    test('board at 390: the toolbar wraps its triggers, chips and swimlanes without sideways overflow', async ({ page }, info) => {
+      await speak(page, 'de');
+      const name = `narrow-board-toolbar-${info.testId}-${String(info.retry)}`;
+      await page.setExtraHTTPHeaders({ [SESSION_HEADER]: name });
+      expect((await page.request.post(RESET_PATH, { headers: { [SESSION_HEADER]: name } })).status()).toBe(204);
+      await pinClock(page);
+      await page.goto(`${BOARD_PAGE.url}?feature=F6&milestone=none&type=spike&type=bug&assignee=unassigned&group=milestone`);
+      await expect(page.locator('app-shell')).toHaveAttribute('data-tier', 'compact');
+      await expect(page.locator('app-board-filters [data-chip]')).toHaveCount(5);
+      await expect(page.locator('app-board-filters [data-shown]')).toBeVisible();
+      expectNoHorizontalOverflow(await boardLayout(page), WIDTHS.phone);
+      const shell = await page.locator('app-shell').evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
+      expect(shell.scroll, 'app-shell scrollWidth').toBe(shell.client);
+    });
+  });
+
+  // Negative control: the board's measurement must see an overflow when one exists, or a green above proves nothing.
+  test.describe('board negative control', () => {
+    test.use(atWidth(WIDTHS.panel));
+
+    test(`board at ${String(WIDTHS.panel)}: the guard reports an injected overflow`, async ({ page }, info) => {
+      await openBoardPage(page, `narrow-board-control-${info.testId}-${String(info.retry)}`);
+      await page.addStyleTag({ content: 'app-board-page .colswitch { min-inline-size: 720px !important; }' });
+      const found = await boardLayout(page);
+      expect(found.wide.some((entry) => entry.includes('colswitch'))).toBe(true);
+      expect(() => {
+        expectNoHorizontalOverflow(found, WIDTHS.panel);
       }).toThrow();
     });
   });

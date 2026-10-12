@@ -33,3 +33,11 @@ inline template and styles, plus `<name>.spec.ts`) and is exported from `index.t
 | Primitive | Folder | Inputs / API | Notes |
 |-----------|--------|--------------|-------|
 | `ui-meter` | `meter/` | `value`, `max`, `segments?` (split mode), `tone?`, `mini` (boolean, 4 px), `size` (`default` 6 px / `mini` 4 px / `lg` 8 px), `label?`, `valueText?` | `role` meter (single) or img (split); `valueText` becomes `aria-valuetext` in single mode only and arrives translated. `mini()` wins over `size`; the host carries `data-size` (`mini` / `lg`, absent for default) and `data-mini`. The fill morphs `transform` only. |
+
+## Added by spec 008 (T104, T105, T107)
+
+| Primitive | Folder | Inputs / API | Notes |
+|-----------|--------|--------------|-------|
+| `ui-type-glyph` | `type-glyph/` | `type` (a `SpecType` or `idea`), `size` (`14` / `16` default / `20`), `decorative` | `TYPE_GLYPHS` maps each type to one Lucide icon (chore is the broom, not the builder tag's wrench); an image named by `types.*` unless `decorative`, where the word stands beside it. Draws in `currentColor`. |
+| `ui-priority` | `priority/` | `value` (`P1`…`P4`, null or absent reads as `P3`) | Glyph and text always together, never truncated; `role="img"` named `priority.name`, tooltip `priority.title`. P1 error tint and ink, P2 warning tint and ink, P3 outline in the neutral ink, P4 outline in `--muted-ink`; a missing value is P3 with a dashed outline (`data-unmarked`). |
+| `ui-reason` | `reason/` | `phrase` (core's `nextReason`, shown as is), `command?` (null: no chip), `compact` (one line), `block` (status block: 15/24, wrapping, never clamped), output `copied` | Hourglass named `reason.glyph`, the phrase clamped at a whole word by `uiClamp` (two lines, one when compact; unclamped plain text when block) with the full phrase kept as accessible text, then a `ui-command-chip`. Ink is `--reason-ink`, falling back to `--hover-ink`. |

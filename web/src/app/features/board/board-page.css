@@ -1,0 +1,315 @@
+/*
+ * The workspace board (design 008 § board layout, Tablet 820 and Desktop 1440). Page head: H1 Sora 20/28 and the mono
+ * summary 13/20. The stage strip sticks under the toolbar (sticky under the 64 px header), outside the scroller. The board card holds the
+ * one horizontal scroller (the page never scrolls sideways): 232 px columns 12 px apart, scroll-snap at column starts,
+ * a 32 px edge fade on each side that has more to show. A stub (no shown card) is 48 px at medium and 56 px at wide;
+ * its track comes from `data-stub`, never from a drag. Columns stretch to the tallest; a column never scrolls itself.
+ */
+:host {
+  --board-col: 232px;
+  --board-stub: 48px;
+
+  display: block;
+  min-inline-size: 0;
+}
+
+:host([data-tier='wide']) {
+  --board-stub: 56px;
+}
+
+/* The page head (T163): "Board" 20/28 with the workflow source chip beside it, the summary under it; 56 px. */
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-block-end: 8px;
+}
+
+h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.source {
+  display: inline-flex;
+  align-items: center;
+  block-size: 22px;
+  padding-inline: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.source.mono {
+  color: var(--color-base-content);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.unavailable,
+.meta,
+.no-match {
+  color: var(--muted-ink);
+}
+
+.meta {
+  margin: 0 0 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+.no-match {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.link {
+  color: var(--disp-ink);
+  font-weight: 600;
+}
+
+.board-card {
+  position: relative;
+}
+
+.scroller {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding: 12px;
+  scroll-padding-inline: 12px;
+  scroll-snap-type: x mandatory;
+  scrollbar-color: var(--track) transparent;
+}
+
+/* The grid fills the scroller; its `minmax(--board-col, 1fr)` tracks share the room and never go under the design width,
+   so the grid grows to its min-content (every column at its design width) only when they do not fit. `max-content` here
+   would let a `1fr` track take the width of its longest title. */
+.grid {
+  display: grid;
+  column-gap: 12px;
+  align-items: stretch;
+  inline-size: 100%;
+  min-inline-size: min-content;
+}
+
+.col,
+.stub {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  scroll-snap-align: start;
+  border-radius: var(--radius-box);
+}
+
+.head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  block-size: 40px;
+  padding-inline: 10px;
+  border-block-end: 2px solid var(--role, var(--line));
+  border-radius: var(--radius-field) var(--radius-field) 0 0;
+  background: var(--lane);
+  color: var(--muted-ink);
+}
+
+.head h2 {
+  margin: 0;
+  color: var(--color-base-content);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.head .gate {
+  display: inline-flex;
+  color: var(--ques-ink);
+}
+
+.head .count,
+.stub .count {
+  color: var(--color-base-content);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.head .count {
+  margin-inline-start: auto;
+}
+
+/* Folding a column by hand: a small ghost button after the head's count, and in a stub above its count. */
+.fold {
+  inline-size: 24px;
+  min-block-size: 24px;
+  block-size: 24px;
+  padding: 0;
+  color: var(--muted-ink);
+}
+
+.cards {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 8px;
+  border-radius: 0 0 var(--radius-field) var(--radius-field);
+  background: color-mix(in srgb, var(--lane) 60%, transparent);
+  list-style: none;
+}
+
+.stub {
+  gap: 8px;
+  align-items: center;
+  min-block-size: 240px;
+  padding-block: 10px;
+  border: 1px dashed var(--line);
+  border-block-start: 2px solid var(--role, var(--line));
+  color: var(--muted-ink);
+}
+
+.stub .vlabel,
+.stub .vnote {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+}
+
+.stub .vlabel {
+  font-weight: 600;
+}
+
+/* Swimlanes: the bands share the column grid; the head's label sticks to the scroller's start. */
+.band-head {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  block-size: 40px;
+  margin-block-start: 12px;
+  border-block-start: 1px solid var(--line);
+}
+
+.bh {
+  position: sticky;
+  inset-inline-start: 0;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+  max-inline-size: 480px;
+  margin: 0;
+  padding-inline-end: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.bh .name {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bh .mono,
+.bh .n {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.bh .n,
+.bh .muted {
+  color: var(--muted-ink);
+  font-weight: 500;
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 64px;
+}
+
+.cell .cards {
+  border-radius: var(--radius-field);
+}
+
+.cell.stubcell {
+  border-inline: 1px dashed var(--line);
+}
+
+.fade {
+  position: absolute;
+  z-index: 2;
+  inset-block: 0;
+  inline-size: 32px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.fade.start {
+  inset-inline-start: 0;
+  background: linear-gradient(to left, transparent, var(--color-base-100));
+}
+
+.fade.end {
+  inset-inline-end: 0;
+  background: linear-gradient(to right, transparent, var(--color-base-100));
+}
+
+.fade.on {
+  opacity: 1;
+}
+
+.vh {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.loading {
+  display: grid;
+  gap: 12px;
+}
+
+.skeleton-cols {
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.skeleton-card {
+  display: grid;
+  flex: none;
+  gap: 8px;
+  inline-size: var(--board-col);
+}
+
+@media (forced-colors: active) {
+  .fade {
+    display: none;
+  }
+
+  .stub,
+  .cell.stubcell {
+    border-color: CanvasText;
+  }
+}
+

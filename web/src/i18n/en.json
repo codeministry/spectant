@@ -143,7 +143,11 @@
       "openFog": "Open fog",
       "open": "Open spec"
     },
-    "agentWorking": "Agent {{session}} working"
+    "agentWorking": "Agent {{session}} working",
+    "ideas": {
+      "title": "Ideas · {{count}}",
+      "label": "Ideas in the backlog"
+    }
   },
   "nextUp": {
     "title": "Next up",
@@ -190,6 +194,7 @@
       "nextUp": "Next up",
       "workspaces": "Workspaces",
       "specs": "Specs",
+      "ideas": "Ideas",
       "features": "Features",
       "milestones": "Milestones",
       "services": "Services",
@@ -204,6 +209,7 @@
       "theme": "Theme",
       "language": "Language",
       "shortcuts": "Show shortcuts",
+      "help": "Help",
       "openPort": "Open localhost:{{port}}"
     },
     "noMatch": "No match for “{{query}}” · try a spec ID like {{example}}"
@@ -252,7 +258,7 @@
     "groups": {
       "navigate": "Go to",
       "spec": "This spec",
-      "board": "Board",
+      "board": "Round board",
       "general": "Everywhere"
     }
   },
@@ -269,7 +275,21 @@
       "en": "English",
       "de": "Deutsch"
     },
-    "singleKey": "Single-key shortcuts"
+    "singleKey": "Single-key shortcuts",
+    "actors": {
+      "title": "Actors",
+      "intro": "Names for the person ids in your specs, stored only in the app's data directory. An id without a name shows as the id itself.",
+      "empty": "No person id is known yet.",
+      "displayName": "Display name",
+      "gitIdentities": "Git identities",
+      "nameFor": "Display name for {{ id }}",
+      "gitFor": "Git identities for {{ id }}",
+      "gitHint": "Several addresses separated by commas.",
+      "save": "Save actors",
+      "saving": "Saving…",
+      "saved": "Actors saved.",
+      "failed": "The actors could not be saved (status {{ status }})."
+    }
   },
   "states": {
     "unreachable": "Can't reach spectant on {{host}}",
@@ -312,7 +332,9 @@
     "position": "Stage {{index}} of {{total}}: {{stage}}",
     "blocked": "Blocked",
     "code-review": "Code review",
-    "done": "Done"
+    "done": "Done",
+    "idea": "Idea",
+    "close-pending": "Close-pending"
   },
   "phases": {
     "scoping": "scoping",
@@ -352,7 +374,7 @@
       "summary": {
         "dashboard": "Where the spec stands at a glance",
         "status": "Stage, gates and timeline",
-        "live": "Agents at work, board and matrix",
+        "live": "Agents at work, round board and matrix",
         "data": "Claims, tasks and evidence",
         "docs": "Plan, design, decisions, constitution",
         "notes": "Your notes on this spec"
@@ -370,7 +392,7 @@
     "tabs": {
       "status": "Status",
       "timeline": "Timeline",
-      "board": "Board",
+      "board": "Round board",
       "matrix": "Matrix",
       "claims": "Claims",
       "tasks": "Tasks",
@@ -393,7 +415,7 @@
         "activity": "Agent source: activity log",
         "none": "No agent source"
       },
-      "open": "{{source}}, open the live board"
+      "open": "{{source}}, open the round board"
     },
     "zen": {
       "toggle": "Zen mode",
@@ -426,10 +448,12 @@
     },
     "pages": {
       "specs": "Specs",
+      "board": "Board",
       "features": "Features",
       "milestones": "Milestones",
       "summary": {
         "specs": "{{active}} active · {{archived}} archived",
+        "board": "{{stages}} stages · {{cards}} cards · {{waiting}} wait on you",
         "features": "{{count}} features · {{closed}}/{{total}} closed",
         "milestones": "{{count}} milestones · next {{next}}"
       }
@@ -454,7 +478,7 @@
     },
     "derived": "derived",
     "dateUnknown": "date unknown",
-    "openBoard": "Open board →",
+    "openBoard": "Open round board →",
     "empty": {
       "heading": "No events yet",
       "body": "The stage is derived from the files."
@@ -775,7 +799,6 @@
       "heading": "Where it stands",
       "claimsClosed": "{{closed}}/{{total}} claims closed",
       "since": "since {{time}} via {{via}}",
-      "derived": "derived",
       "reasons": "Why this command is next",
       "done": "Nothing left to run: the spec is done.",
       "copy": "Copy command",
@@ -864,7 +887,12 @@
       "heading": "Progress by lane",
       "tasks": "Tasks landed",
       "none": "No lanes: the spec has no tasks.md."
-    }
+    },
+    "stageSource": {
+      "explicit": "set in the frontmatter",
+      "derived": "derived from the stage table"
+    },
+    "unassigned": "unassigned"
   },
   "specHead": {
     "breadcrumb": "Breadcrumb",
@@ -948,7 +976,7 @@
     }
   },
   "board": {
-    "toolbar": "Board tools",
+    "toolbar": "Round board tools",
     "view": {
       "label": "View",
       "lanes": "Lanes",
@@ -1032,7 +1060,7 @@
       "stepCheck": "Mark {{task}} done",
       "stepSaving": "Saving",
       "stepLocked": "Locked by session {{session}}",
-      "stepConflict": "tasks.md changed on disk; nothing was written. Reload the board.",
+      "stepConflict": "tasks.md changed on disk; nothing was written. Reload the round board.",
       "stepFailed": "The write failed; tick again to retry.",
       "stepsEmpty": "No operator step in this frame."
     },
@@ -1052,17 +1080,144 @@
       "empty": "No card matches the filter."
     },
     "empty": "No card matches the filter.",
-    "failed": "The board could not be read.",
+    "failed": "The round board could not be read.",
     "agent": {
       "stale": "stale",
       "source": "Lock source: {{source}}",
       "none": "No agent holds a lock.",
       "staleAlert": "No release from {{session}} on {{claims}}: the agent may have stopped."
+    },
+    "workspace": {
+      "title": "Board",
+      "summary": "{{cards}} cards · {{specs}} specs · {{ideas}} ideas",
+      "open": "Open board",
+      "source": {
+        "custom": "specs/workflow.md",
+        "default": "default workflow"
+      },
+      "column": {
+        "empty": "empty",
+        "cards": "{{count}} cards",
+        "waitsOnYou": "{{count}} wait on you",
+        "name": "{{stage}}, {{count}} cards, {{waiting}} wait on you",
+        "stub": "{{stage}}, no cards",
+        "emptyIn": "No card in {{stage}}",
+        "hiddenByFilters": "{{count}} hidden by filters",
+        "fixedGate": "fixed gate",
+        "gateReviewed": "reviewed mark",
+        "gateClosed": "every claim closed",
+        "waitingStage": "a waiting stage",
+        "fold": "Fold {{stage}}",
+        "unfold": "Open {{stage}}",
+        "folded": "folded"
+      },
+      "filter": {
+        "open": "Filter",
+        "feature": "Feature",
+        "milestone": "Milestone",
+        "type": "Type",
+        "assignee": "Assignee",
+        "people": "People",
+        "agents": "Agents",
+        "unassigned": "Unassigned",
+        "noMilestone": "No milestone",
+        "active": "{{label}} · {{count}}",
+        "shown": "{{shown}} of {{total}} cards",
+        "remove": "Remove filter {{label}}",
+        "activeList": "Active filters",
+        "clear": "Clear",
+        "noMatch": "No cards match",
+        "clearAll": "Clear filters",
+        "all": "All"
+      },
+      "swimlanes": {
+        "label": "Swimlanes",
+        "none": "None",
+        "feature": "Feature",
+        "milestone": "Milestone",
+        "cards": "{{count}} cards",
+        "collapse": "Collapse {{lane}}",
+        "expand": "Expand {{lane}}",
+        "omittedFeatures": "{{count}} features have no card in {{stage}}",
+        "omittedMilestones": "{{count}} milestones have no card in {{stage}}",
+        "noFeature": "No feature"
+      },
+      "card": {
+        "name": "Spec {{id}}, {{type}}, {{title}}, priority {{priority}}, stage {{stage}}",
+        "ideaName": "Idea, {{title}}, priority {{priority}}",
+        "waits": "waits: {{reason}}",
+        "feature": "Feature {{id}}: {{name}}",
+        "move": "Move {{id}}",
+        "locked": "locked · {{actor}} holds {{claim}}",
+        "saving": "Saving"
+      },
+      "drag": {
+        "notNext": "not next from {{stage}}",
+        "gate": "gate",
+        "current": "current",
+        "pickedUp": "Picked up {{id}}",
+        "over": "over {{stage}}",
+        "moving": "Moving {{id}} to {{stage}}",
+        "moved": "{{id}} moved to {{stage}}",
+        "toast": "{{id}} → {{stage}}",
+        "view": "View",
+        "cancelled": "Move of {{id}} cancelled"
+      },
+      "move": {
+        "open": "Move to…",
+        "title": "Move {{id}} · {{title}}",
+        "stage": "Move to stage"
+      },
+      "refusal": {
+        "notMoved": "Not moved — {{id}} cannot enter {{stage}}",
+        "missing": "Missing: {{command}}",
+        "dismiss": "Dismiss",
+        "lock": "writes paused · {{actor}} holds {{claim}}",
+        "conflict": "{{file}} changed on disk · Reload",
+        "refreshed": "{{id}} changed on disk · the board refreshed",
+        "failed": "The move could not be written (status {{status}})"
+      },
+      "allocate": {
+        "title": "Allocate as spec {{id}}?",
+        "lead": "Make this idea a spec?",
+        "creates": "Creates",
+        "removes": "Removes",
+        "confirm": "Allocate",
+        "cancel": "Not yet",
+        "saving": "Allocating {{slug}}",
+        "number": "NNN is the next free spec number; it is set when the folder is written.",
+        "unreadable": "The story file could not be read, so nothing can be allocated.",
+        "notAllocated": "Not allocated — {{slug}} stays an idea",
+        "refused": {
+          "notInIndex": "The ideas index specs/ideas/README.md does not name {{slug}}",
+          "folderExists": "{{folder}} already exists"
+        }
+      },
+      "live": {
+        "changed": "{{count}} cards changed · show"
+      },
+      "empty": {
+        "noSpecs": "No specs in {{ws}} yet",
+        "gettingStarted": "Getting started",
+        "body": "Shape a first idea in the AI chat with the Spec skill; its card appears here."
+      },
+      "failed": "The board could not be read.",
+      "stale": "stale data",
+      "strip": "Stages · jump to a column",
+      "columns": "Board columns",
+      "compact": {
+        "columns": "Stages · show one column",
+        "segment": "{{stage}} {{count}}",
+        "prev": "Previous column: {{stage}}",
+        "next": "Next column: {{stage}}",
+        "back": "{{stage}}, {{count}} cards · back to the stages",
+        "tray": "Drop targets: the stages"
+      }
     }
   },
   "matrix": {
     "region": "Matrix: tasks by frame",
-    "hint": "Select a cell to open the board at that frame.",
+    "hint": "Select a cell to open the round board at that frame.",
     "task": "Task",
     "empty": "No round is recorded yet, so the matrix has no frame.",
     "failed": "The matrix could not be read.",
@@ -1087,7 +1242,77 @@
     "feature": "Epic in a ticket tracker",
     "spec": "Story in a ticket tracker",
     "claim": "Acceptance criterion in a ticket tracker",
-    "task": "Sub-task in a ticket tracker"
+    "task": "Sub-task in a ticket tracker",
+    "milestone": "Fix version in a ticket tracker",
+    "stage": "Status in a ticket tracker",
+    "actor": "Assignee in a ticket tracker"
+  },
+  "glossary": {
+    "feature": {
+      "term": "Feature",
+      "common": "Epic",
+      "definition": "A block `### F<n>` of the master that owns claims."
+    },
+    "spec": {
+      "term": "Spec",
+      "common": "Story",
+      "definition": "A numbered folder `specs/NNN-slug/` with a `spec.md`."
+    },
+    "claim": {
+      "term": "Claim",
+      "common": "Acceptance criterion",
+      "definition": "One falsifiable line `- [ ] ISC-<n>:` that closes on its probe."
+    },
+    "task": {
+      "term": "Task",
+      "common": "Sub-task",
+      "definition": "One atomic step of `tasks.md`, hanging on exactly one claim."
+    },
+    "milestone": {
+      "term": "Milestone",
+      "common": "Fix version",
+      "definition": "A release named in the master's `## Milestones` block."
+    },
+    "idea": {
+      "term": "Idea",
+      "common": "Backlog item",
+      "definition": "A story file under `specs/ideas/`, the stage before a spec."
+    },
+    "stage": {
+      "term": "Stage",
+      "common": "Status",
+      "definition": "Where a spec stands in its workflow."
+    },
+    "workflow": {
+      "term": "Workflow",
+      "common": "Workflow",
+      "definition": "The ordered stages a spec type runs through, from `specs/workflow.md` or the default."
+    },
+    "gate": {
+      "term": "Gate",
+      "common": "Quality gate",
+      "definition": "A condition a transition needs; two are fixed in every workflow: review before build, and every claim closed before done."
+    },
+    "probe": {
+      "term": "Probe",
+      "common": "Test",
+      "definition": "The command a claim closes on."
+    },
+    "actor": {
+      "term": "Actor",
+      "common": "Assignee",
+      "definition": "The neutral id in a file, `u:<8 hex>` for a person or `a:<kind>:<id>` for an agent."
+    },
+    "agent": {
+      "term": "Agent",
+      "common": "Bot",
+      "definition": "A Claude Code session or sub-agent working a task, recorded as an `a:` actor."
+    },
+    "chore": {
+      "term": "Chore",
+      "common": "Chore",
+      "definition": "The seventh spec type: `spec.md` only, review then build then done, no code review."
+    }
   },
   "planning": {
     "features": {
@@ -1153,6 +1378,175 @@
       "more": "{{count}} more features",
       "archived": "archived",
       "unknownMilestone": "not in the master's Milestones block"
+    },
+    "ideas": {
+      "label": "Ideas · {{count}}"
     }
+  },
+  "help": {
+    "title": "Help",
+    "nav": {
+      "label": "Sections",
+      "about": "About",
+      "moves": "How a spec moves",
+      "workflows": "Workflows",
+      "commands": "Commands",
+      "glossary": "Glossary",
+      "gettingStarted": "Getting started",
+      "keyboard": "Keyboard"
+    },
+    "subtitle": "Spectant · the words, the workflows, the commands",
+    "about": {
+      "body": "Spectant reads the Markdown specs of your registered repositories and shows them on one board. The files are the only source of truth: the app keeps a small registry and its settings, and writes a file only when you move a card or tick a task."
+    },
+    "moves": {
+      "body": "A spec moves through the stages of its type. On the board you drag its card, or open Move to… from the grip; core runs the same transition either way and either moves it or says, under the card, what is missing.",
+      "chain": "The stages of a feature, in the default order",
+      "types": "The workflow of each spec type"
+    },
+    "legend": {
+      "label": "Legend",
+      "moving": "moving",
+      "waits": "waits on you",
+      "done": "done",
+      "detour": "detour",
+      "gate": "fixed gate"
+    },
+    "commands": {
+      "lead": "Spec work starts in the AI chat with the Spec skill; the board shows the command a waiting card needs.",
+      "caption": "The commands of the Spec skill, as the stage table names them",
+      "columns": {
+        "command": "Command",
+        "purpose": "What it does"
+      },
+      "list": {
+        "spec-new": "Turn a shaped story under specs/ideas/ into a spec folder.",
+        "spec-plan": "Write plan.md: the how, locked in one question.",
+        "spec-tasks": "Break the spec into tasks.md, one claim per task.",
+        "spec-review": "Review the spec and record the reviewed mark, the gate into Build.",
+        "spec-implement": "Work the tasks until every claim closes on its probe.",
+        "spec-code-review": "Run the code and security review on the working tree.",
+        "spec-complete": "Close the spec once every close condition holds.",
+        "spec-status": "Phase, progress and claims of every spec in the repository."
+      }
+    },
+    "start": {
+      "lead": "Three steps from the installer to the board.",
+      "steps": {
+        "install": "Install the binary with the one-line script from the README; it picks the build for your OS and architecture.",
+        "register": "Register a repository that has a `specs/` folder: `spectant add <repo>`.",
+        "open": "Run `spectant`, then open the workspace and its board: every spec and idea stands in its stage."
+      }
+    },
+    "keyboard": {
+      "lead": "The same bindings as the shortcut sheet that ? opens."
+    },
+    "glossary": {
+      "heading": "Glossary",
+      "caption": "The words the spec format uses",
+      "columns": {
+        "term": "Spectant term",
+        "common": "Common term",
+        "german": "German",
+        "definition": "Definition"
+      },
+      "copyLink": "Copy link to {{term}}",
+      "more": "More in the guide"
+    },
+    "workflow": {
+      "heading": "Workflow of {{ws}}",
+      "headingDefault": "Default workflow",
+      "workspace": "Workspace",
+      "defaultCaption": "Default table: no workspace is open.",
+      "figure": "Workflow of the type {{type}}",
+      "source": {
+        "custom": "from specs/workflow.md",
+        "default": "default table"
+      },
+      "codeReview": "code review: {{mode}}",
+      "custom": "custom",
+      "default": "default",
+      "asText": "Transitions as text",
+      "gateReviewed": "gate · reviewed mark",
+      "gateClosed": "gate · every claim closed",
+      "updated": "updated from specs/workflow.md {{age}} ago",
+      "gateDropped": "workflow.md drops the review gate for {{type}} · default applied",
+      "unavailable": "The workflow of {{ws}} could not be read; the default table is shown.",
+      "move": "{{from}} → {{to}}",
+      "diagram": "Workflow diagram of the type {{type}}, its stages in order: {{stages}}.",
+      "diagramDetours": "Detours: {{detours}}.",
+      "diagramGates": "Fixed gates: {{gates}}.",
+      "diagramGate": "{{stage}} ({{gate}})",
+      "legend": {
+        "moving": "moving",
+        "waits": "waits on you",
+        "done": "done",
+        "detour": "detour",
+        "gate": "fixed gate"
+      }
+    }
+  },
+  "ideas": {
+    "title": "Idea",
+    "meta": "Story frontmatter",
+    "chip": {
+      "stage": "Stage",
+      "type": "Type",
+      "feature": "Feature",
+      "milestone": "Milestone"
+    },
+    "noType": "no type",
+    "noFeature": "no feature",
+    "noMilestone": "no milestone",
+    "source": "{{path}} · read-only · hash {{hash}}",
+    "allocateHint": "Allocate it by dropping it into its first stage on the board.",
+    "loading": "Loading story",
+    "error": "This story could not be loaded."
+  },
+  "types": {
+    "feature": "feature",
+    "bug": "bug",
+    "refactor": "refactor",
+    "spike": "spike",
+    "infra": "infra",
+    "project": "project",
+    "chore": "chore",
+    "idea": "idea"
+  },
+  "priority": {
+    "P1": "P1",
+    "P2": "P2",
+    "P3": "P3",
+    "P4": "P4",
+    "name": "priority {{level}}",
+    "hint": {
+      "P1": "highest",
+      "P2": "high",
+      "P3": "normal",
+      "P4": "low"
+    },
+    "unmarked": "no priority key, read as P3",
+    "title": "{{level}} · {{hint}}",
+    "label": {
+      "P1": "priority P1",
+      "P2": "priority P2",
+      "P3": "priority P3",
+      "P4": "priority P4"
+    }
+  },
+  "actors": {
+    "legacy": "legacy",
+    "agent": "agent",
+    "subagent": "sub-agent",
+    "active": "lock active",
+    "stale": "no release",
+    "staleFor": "no release · {{ age }}",
+    "unmapped": "unmapped"
+  },
+  "reason": {
+    "glyph": "waits"
+  },
+  "live": {
+    "taskActors": "Working on {{ task }}"
   }
 }

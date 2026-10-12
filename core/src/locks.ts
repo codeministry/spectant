@@ -19,12 +19,18 @@
 //    release by its holder is held since the claim line's `ts`.
 //
 // The reading names `frontier` when a LifeOS state directory exists, else `activity` when the log exists, else `none`.
-// With no state directory given, nothing outside `repoRoot` is touched (ISC-37). Server-side module: it reads through
+// With no state directory given, nothing outside `repoRoot` is touched (ISC-37).
+//
+// The holder (spec 008, T63, ISC-119): every `session` read goes through `parseActor`, and each lock carries the result
+// as `actor`. A session outside the grammar is legacy: read and counted as any other, flagged with one `actor-legacy`
+// warning per file (`legacyActorWarning`, actor.ts): once for the activity log, at its first legacy line and that
+// line's claim, and once per frontier lock file (a file holds one session) for a lock of this ISA. Server-side module: it reads through
 // `node:fs/promises` and hashes with `node:crypto`, no Bun API, so the server and the plugin can both import it.
 import { createHash } from 'node:crypto';
 import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
+import { legacyActorWarning, parseActor, type ActorSighting } from './actor.ts';
 import type { AgentLockSource, ClaimLock, LockDiagnostic, LockReadInput, LockReading } from './files.ts';
 
 /** LifeOS's default stale TTL for a frontier lock: a session silent this long has died or moved on. */
@@ -114,11 +120,14 @@ async function readFrontier(repoRoot: string, stateDir: string, now: number): Pr
       diagnostics.push(warning('locks-frontier-foreign', `The frontier lock for ${claim} names another ISA file; it is not counted.`, { claim }));
       continue;
     }
+    const actor = parseActor(session);
+    const legacy = legacyActorWarning([{ ref: actor }], 'session', `The frontier lock for ${claim}`);
+    if (legacy !== null) diagnostics.push({ ...legacy, claim });
     if (now - since > FRONTIER_STALE_MS) {
       diagnostics.push(warning('locks-frontier-stale', `The frontier lock for ${claim} (${session}, since ${ts}) is older than two hours; LifeOS treats it as stale, so it is not counted.`, { claim }));
       continue;
     }
-    locks.push({ source: 'frontier', claim, session, since: ts });
+    locks.push({ source: 'frontier', claim, session, actor, since: ts });
   }
   return { present: true, locks, diagnostics };
 }
@@ -137,6 +146,7 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
 
   const held = new Map<string, ClaimLock>();
   const diagnostics: LockDiagnostic[] = [];
+  const actors: Array<ActorSighting & { readonly claim: string }> = [];
   text.split('\n').forEach((raw, index) => {
     const line = index + 1;
     if (raw.trim() === '') return;
@@ -160,6 +170,8 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
       diagnostics.push(warning('locks-activity-malformed', 'The line lacks a claim, a session or a ts; it is skipped.', { line, ...claimOf(entry) }));
       return;
     }
+    const actor = parseActor(session);
+    actors.push({ ref: actor, line, claim });
     const holder = held.get(claim);
     if (event === 'claim') {
       if (holder?.session === session) return; // a repeated claim by the holder keeps the first `since`
@@ -167,7 +179,7 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
         diagnostics.push(warning('locks-activity-takeover', `${claim} is claimed by ${session} while ${holder.session} holds it; the later claim holds it now.`, { line, claim }));
         held.delete(claim);
       }
-      held.set(claim, { source: 'activity', claim, session, since: ts });
+      held.set(claim, { source: 'activity', claim, session, actor, since: ts });
       return;
     }
     if (holder === undefined) {
@@ -178,6 +190,9 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
       held.delete(claim);
     }
   });
+  const legacy = legacyActorWarning(actors, 'session');
+  const first = actors.find((a) => a.ref.legacy);
+  if (legacy !== null && first !== undefined) diagnostics.push({ ...legacy, claim: first.claim });
   return { present: true, locks: [...held.values()].sort(byClaim), diagnostics };
 }
 

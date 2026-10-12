@@ -24,7 +24,22 @@ import { type Registry, openRegistry } from "../server/src/registry.ts";
 import { REVIEWED_HASHES_HEADER, type ReviewedHashes, TASKS_HASH_HEADER, parseReviewedHashes, specRoutes } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
 import { readSpecFiles } from "../server/src/workspace-loader.ts";
-import { NO_AGENT_SOURCE, REVIEWED_EVENT, WRITE_ACTOR, hasAgentSource, reviewedMarkText, writeAnswerOf } from "../server/src/writes.contract.ts";
+import { actorIdOf } from "../core/src/actor-id.ts";
+import type { WorkflowStage } from "../core/src/files.ts";
+import { parseFrontmatter } from "../core/src/frontmatter.ts";
+import { allocationOf } from "../core/src/allocate.ts";
+import { parseClaims } from "../core/src/claims.ts";
+import { readIdeas } from "../core/src/ideas.ts";
+import { gateHashes, writeAllocate, writeTransition } from "../server/src/writes.ts";
+import {
+  NO_AGENT_SOURCE,
+  REVIEWED_EVENT,
+  VIEWER_ACTOR_FALLBACK,
+  WRITE_ACTOR,
+  hasAgentSource,
+  reviewedMarkText,
+  writeAnswerOf,
+} from "../server/src/writes.contract.ts";
 import type { ApiHandler } from "../server/src/http.ts";
 
 const HARBOR = join(import.meta.dir, "..", "core", "fixtures", "harbor");
@@ -32,7 +47,7 @@ const HOST = { Host: "127.0.0.1:7717" };
 const WEB = "specs/002-web-console";
 const RETENTION = "specs/004-retention-policies";
 const LOADER = "specs/003-config-loader";
-const ISC_74_LOCK = { source: "activity", claim: "ISC-74", session: "spec-002-ISC-74", since: "2026-03-08T14:06:00Z" } as const;
+const ISC_74_LOCK = { source: "activity", claim: "ISC-74", session: "a:claude:sess-2", actor: { raw: "a:claude:sess-2", kind: "agent", id: "a:claude:sess-2", legacy: false }, since: "2026-03-08T14:06:00Z" } as const;
 
 let root: string;
 const registries: Registry[] = [];
@@ -126,10 +141,23 @@ function changed(before: Map<string, string>, after: Map<string, string>): strin
 
 const lines = (text: string): string[] => text.split("\n");
 
+/** A synthetic address (reserved `.test` domain): the viewer of the repository a test turns into one. */
+const VIEWER_EMAIL = "viewer@example.test";
+
+/** Runs git in `repo` (the test's own setup, never the server's), with the inherited repository variables dropped. */
+function gitIn(repo: string, ...args: string[]): void {
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"].includes(key)));
+  const run = Bun.spawnSync(["git", "-C", repo, ...args], { env, stdout: "ignore", stderr: "pipe" });
+  if (run.exitCode !== 0) throw new Error(`git ${args.join(" ")} failed: ${run.stderr.toString()}`);
+}
+
 describe("ISC-24 reviewed: the mark in the old skill's format plus exactly one review → build event", () => {
   test("marking 002 writes .gates/reviewed.json as reviewedMarkText of the server's hashes and appends one event", async () => {
     const { repo, api } = setup({ activity: false });
     const hashes = await renderedHashes(api, "002");
+    // Harbor 002 already carries its stage history; the write appends one line after it and keeps it byte for byte.
+    const prior = readFileSync(join(repo, WEB, "events.jsonl"), "utf8");
+    expect(prior.endsWith("\n")).toBe(true);
     const before = tree(repo);
     const res = await post(api, specRoutes.gateReviewed("harbor", "002"), { hashes });
     expect(res.status).toBe(200);
@@ -144,10 +172,15 @@ describe("ISC-24 reviewed: the mark in the old skill's format plus exactly one r
     expect(reviewedGate(readSpecFiles({ dir: join(repo, WEB), slug: "002-web-console" }).texts).check.state).toBe("fresh");
 
     const events = readFileSync(join(repo, WEB, "events.jsonl"), "utf8");
-    expect(lines(events.trimEnd())).toHaveLength(1);
-    expect(validateEventLine(events.trimEnd()).ok).toBe(true);
-    expect(JSON.parse(events)).toEqual(body.event);
-    expect(body.event).toMatchObject({ ts: body.at, ...REVIEWED_EVENT, actor: WRITE_ACTOR });
+    expect(events.startsWith(prior)).toBe(true);
+    const appended = events.slice(prior.length);
+    expect(lines(appended.trimEnd())).toHaveLength(1);
+    expect(lines(events.trimEnd())).toHaveLength(lines(prior.trimEnd()).length + 1);
+    expect(validateEventLine(appended.trimEnd()).ok).toBe(true);
+    expect(JSON.parse(appended)).toEqual(body.event);
+    // harbor's copy is no repository of its own, so no git address: the fallback agent id, never the legacy `app` (T80).
+    expect(body.event).toMatchObject({ ts: body.at, ...REVIEWED_EVENT, actor: VIEWER_ACTOR_FALLBACK });
+    expect(body.event.actor).not.toBe(WRITE_ACTOR);
 
     expect(changed(before, tree(repo))).toEqual([`${WEB}/.gates/reviewed.json`, `${WEB}/events.jsonl`]);
   });
@@ -170,6 +203,21 @@ describe("ISC-24 reviewed: the mark in the old skill's format plus exactly one r
     const mark = JSON.parse(readFileSync(join(repo, LOADER, ".gates", "reviewed.json"), "utf8")) as { files: Record<string, string | null> };
     expect(mark.files["tasks.md"]).toBeNull();
     expect(changed(before, tree(repo))).toEqual([`${LOADER}/.gates`, `${LOADER}/.gates/reviewed.json`, `${LOADER}/events.jsonl`]);
+  });
+
+  test("viewer: in a repository with a git address the event names the viewer's u: id (T80, ISC-119)", async () => {
+    const { repo, api } = setup({ activity: false });
+    gitIn(repo, "init", "-q");
+    gitIn(repo, "config", "user.email", VIEWER_EMAIL);
+    const hashes = await renderedHashes(api, "002");
+    const before = tree(repo);
+    const res = await post(api, specRoutes.gateReviewed("harbor", "002"), { hashes });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { event: { actor: string } };
+    expect(body.event.actor).toBe(actorIdOf(VIEWER_EMAIL));
+    expect(body.event.actor).toMatch(/^u:[0-9a-f]{8}$/);
+    expect(writeAnswerOf("gateReviewed", 200, body)).not.toBeNull();
+    expect(changed(before, tree(repo))).toEqual([`${WEB}/.gates/reviewed.json`, `${WEB}/events.jsonl`]);
   });
 });
 
@@ -320,7 +368,7 @@ describe("ISC-27 claim lock: an open claim in .spectant/activity.jsonl refuses t
     const other = await post(api, specRoutes.gateReviewed("harbor", "004"), { hashes: await renderedHashes(api, "004") });
     expect(other.status).toBe(200);
     expect(((await other.json()) as { lockSource: string }).lockSource).toBe("activity");
-    appendFileSync(join(repo, ".spectant", "activity.jsonl"), '{"ts":"2026-03-08T16:00:00Z","event":"release","claim":"ISC-74","session":"spec-002-ISC-74"}\n');
+    appendFileSync(join(repo, ".spectant", "activity.jsonl"), '{"ts":"2026-03-08T16:00:00Z","event":"release","claim":"ISC-74","session":"a:claude:sess-2"}\n');
     const tick = await post(api, specRoutes.taskCheck("harbor", "002", "T27"), { checked: true, hash: await renderedTasksHash(api, "002") });
     expect(tick.status).toBe(200);
   });
@@ -370,5 +418,240 @@ describe("ISC-86 frontier: a LifeOS lock is 423; with no lock source the write p
     const { api } = setup({ activity: false, frontier: ["ISC-74"] });
     const res = await post(api, specRoutes.taskCheck("harbor", "004", "T2"), { checked: false, hash: await renderedTasksHash(api, "004") });
     expect([res.status, ((await res.json()) as { lockSource: string }).lockSource]).toEqual([200, "frontier"]);
+  });
+});
+
+// The stage move (spec 008, T82, ISC-121): `writeTransition` driven directly, its route being T83. The client's hash
+// is the raw sha256 of spec.md as it read it (`X-Spectant-Spec-Hash` once T83 sends it).
+describe("ISC-121 transition: the workflow decides, spec.md and one event line are the only bytes written", () => {
+  const NOW = new Date("2026-03-20T10:00:00Z");
+  const move = (repo: string, folder: string, to: WorkflowStage, hash?: string) => {
+    const dir = join(repo, folder);
+    return writeTransition({
+      root: repo,
+      ref: { dir, slug: folder.split("/").pop() ?? "" },
+      stateDir: null,
+      now: NOW,
+      body: { to, hash: hash ?? sha256(readFileSync(join(dir, "spec.md"))) },
+    });
+  };
+
+  test("transition accepted: 003 tasks → review sets stage:, creates events.jsonl with one line; exactly those two files differ", async () => {
+    const { repo } = setup();
+    const spec = join(repo, LOADER, "spec.md");
+    const prior = readFileSync(spec, "utf8");
+    expect(existsSync(join(repo, LOADER, "events.jsonl"))).toBe(false);
+    const before = tree(repo);
+    const res = await move(repo, LOADER, "review");
+    expect(res.status).toBe(200);
+    if (res.status !== 200) return;
+    const after = readFileSync(spec, "utf8");
+    expect(res.body).toEqual({ from: "tasks", to: "review", hash: sha256(after), event: res.body.event, lockSource: "activity" });
+    expect(parseFrontmatter(after).data.stage).toBe("review");
+    expect(parseFrontmatter(after).body).toBe(parseFrontmatter(prior).body);
+    expect(res.body.event).toEqual({ ts: NOW.toISOString(), from: "tasks", to: "review", command: res.body.event.command, actor: VIEWER_ACTOR_FALLBACK });
+    const events = readFileSync(join(repo, LOADER, "events.jsonl"), "utf8");
+    expect(events).toBe(`${JSON.stringify(res.body.event)}\n`);
+    expect(validateEventLine(events.trimEnd()).ok).toBe(true);
+    expect(changed(before, tree(repo))).toEqual([`${LOADER}/events.jsonl`, `${LOADER}/spec.md`]);
+  });
+
+  test("transition accepted on a folder with events: 009 build → blocked appends one line after the history", async () => {
+    const { repo } = setup();
+    const folder = "specs/009-chunked-upload-limits";
+    const prior = readFileSync(join(repo, folder, "events.jsonl"), "utf8");
+    const before = tree(repo);
+    const res = await move(repo, folder, "blocked");
+    expect(res.status).toBe(200);
+    const events = readFileSync(join(repo, folder, "events.jsonl"), "utf8");
+    expect(events.startsWith(prior)).toBe(true);
+    expect(lines(events.slice(prior.length).trimEnd())).toHaveLength(1);
+    expect(changed(before, tree(repo))).toEqual([`${folder}/events.jsonl`, `${folder}/spec.md`]);
+  });
+
+  test("transition stale: a hash that no longer matches is 409 StaleSpec with the current hash, nothing written", async () => {
+    const { repo } = setup();
+    const current = sha256(readFileSync(join(repo, LOADER, "spec.md")));
+    const before = tree(repo);
+    const res = await move(repo, LOADER, "review", sha256("an older spec.md"));
+    expect(res).toEqual({ status: 409, body: { error: "hash-mismatch", files: ["spec.md"], expected: { spec: current } } });
+    expect(changed(before, tree(repo))).toEqual([]);
+  });
+
+  test("transition locked: a session holding a claim of 002 is 423, before the workflow is asked, nothing written", async () => {
+    const { repo } = setup();
+    const before = tree(repo);
+    const res = await move(repo, WEB, "blocked");
+    expect(res).toEqual({ status: 423, body: { error: "locked", lock: ISC_74_LOCK } });
+    expect(changed(before, tree(repo))).toEqual([]);
+  });
+
+  test("transition refused: 005 review → build without a fresh reviewed mark is 422 with reason and command, zero bytes changed", async () => {
+    const { repo } = setup();
+    const before = tree(repo);
+    const res = await move(repo, "specs/005-config-format-choice", "build");
+    expect(res.status).toBe(422);
+    if (res.status !== 422) return;
+    expect(res.body.error).toBe("transition-refused");
+    expect(res.body.reason).toStartWith("build needs a fresh reviewed mark");
+    expect(res.body.command).toBe("/spec-review 005");
+    expect(changed(before, tree(repo))).toEqual([]);
+  });
+
+  // T84 (ISC-130.1), `-t "transition refused"`: a refused drop changes zero bytes of the spec folder and appends zero
+  // event lines; the folder is hashed file by file before and after, `events.jsonl` counted by line.
+  const eventCount = (dir: string): number => {
+    const path = join(dir, "events.jsonl");
+    return existsSync(path) ? readFileSync(path, "utf8").split("\n").filter((l) => l.trim() !== "").length : 0;
+  };
+
+  test("transition refused: a drop to build without a fresh reviewed mark changes zero bytes and appends zero events", async () => {
+    const { repo } = setup({ activity: false });
+    const folder = "specs/005-config-format-choice";
+    const dir = join(repo, folder);
+    expect(reviewedGate(readSpecFiles({ dir, slug: "005-config-format-choice" }).texts).check.state).not.toBe("fresh");
+    const before = tree(dir);
+    const events = eventCount(dir);
+    const res = await move(repo, folder, "build");
+    expect(res.status).toBe(422);
+    if (res.status !== 422) return;
+    expect(res.body).toMatchObject({ error: "transition-refused", command: "/spec-review 005" });
+    expect(res.body.reason).toStartWith("build needs a fresh reviewed mark");
+    expect(changed(before, tree(dir))).toEqual([]);
+    expect(eventCount(dir)).toBe(events);
+  });
+
+  test("transition refused: a drop to done with an open claim changes zero bytes and appends zero events", async () => {
+    // 007 is a chore building under a fresh reviewed mark, whose lane moves build → done. In the copy one of its claims
+    // is reopened and the mark renewed over the files as they now stand, so the open claim is the only gate that fails;
+    // a history line gives the event count something to keep.
+    const { repo } = setup({ activity: false });
+    const slug = "007-rotate-mirror-token";
+    const folder = `specs/${slug}`;
+    const dir = join(repo, folder);
+    const spec = join(dir, "spec.md");
+    writeFileSync(spec, readFileSync(spec, "utf8").replace("- [x] ISC-127", "- [ ] ISC-127")); // single-core: allow — test setup reopens one fixed claim line in a temp copy, no parsing
+    writeFileSync(join(dir, ".gates", "reviewed.json"), reviewedMarkText("2026-03-19T10:00:00.000Z", gateHashes(readSpecFiles({ dir, slug }).texts)));
+    writeFileSync(join(dir, "events.jsonl"), `${JSON.stringify({ ts: "2026-03-19T10:00:00.000Z", from: "review", to: "build", command: "/spec-implement 007", actor: VIEWER_ACTOR_FALLBACK })}\n`);
+    expect(reviewedGate(readSpecFiles({ dir, slug }).texts).check.state).toBe("fresh");
+    const before = tree(dir);
+    const events = eventCount(dir);
+    expect(events).toBe(1);
+    const res = await move(repo, folder, "done");
+    expect(res.status).toBe(422);
+    if (res.status !== 422) return;
+    expect(res.body.error).toBe("transition-refused");
+    expect(res.body.reason).toStartWith("done needs every claim closed");
+    expect(changed(before, tree(dir))).toEqual([]);
+    expect(eventCount(dir)).toBe(events);
+  });
+});
+
+// T86 (ISC-130.2), `-t allocate`: a story becomes a spec folder. On a harbor copy (no `.git`, so no number from git;
+// folders 001 to 009, the highest active one 009) console-audit-log is in the index, registry-webhooks is not.
+describe("ISC-130.2 allocate: a story becomes specs/NNN-slug/ with three files, and its story file is removed", () => {
+  const NOW = new Date("2026-03-20T10:00:00Z");
+  const STORY = "specs/ideas/console-audit-log.md";
+  const FOLDER = "specs/010-console-audit-log";
+  const SHAPING = "\n## Shaping record\n- Round 1: the audit page lists the newest line first (decided)\n";
+  const storyHash = (repo: string, slug = "console-audit-log"): string => sha256(readFileSync(join(repo, "specs", "ideas", `${slug}.md`)));
+  const allocate = (repo: string, slug: string, hash?: string) =>
+    writeAllocate({ root: repo, slug, stateDir: null, now: NOW, body: { hash: hash ?? storyHash(repo, slug) } });
+
+  test("allocate accepted: 010 is created with context.md, spec.md and events.jsonl from allocationOf; the story file is gone; nothing else differs", async () => {
+    const { repo } = setup();
+    appendFileSync(join(repo, STORY), SHAPING);
+    const storyText = readFileSync(join(repo, STORY), "utf8");
+    const ref = readIdeas({ "console-audit-log.md": storyText }).ideas[0];
+    if (ref === undefined) throw new Error("the story did not read");
+    const before = tree(repo);
+    const res = await allocate(repo, "console-audit-log");
+    expect(res).toEqual({
+      status: 200,
+      body: {
+        id: "010",
+        folder: `${FOLDER}/`,
+        files: [`${FOLDER}/context.md`, `${FOLDER}/spec.md`, `${FOLDER}/events.jsonl`],
+        removed: STORY,
+        lockSource: "activity",
+      },
+    });
+    const planned = allocationOf(ref, storyText, 10, NOW, VIEWER_ACTOR_FALLBACK);
+    const spec = readFileSync(join(repo, FOLDER, "spec.md"), "utf8");
+    const context = readFileSync(join(repo, FOLDER, "context.md"), "utf8");
+    const events = readFileSync(join(repo, FOLDER, "events.jsonl"), "utf8");
+    expect([spec, context, events]).toEqual([planned.specText, planned.contextText, `${JSON.stringify(planned.event)}\n`]);
+    // The three files parse: the frontmatter through core, zero claims, the shaping record in Round 0, one valid event.
+    const fm = parseFrontmatter(spec);
+    expect(fm.data).toMatchObject({ slug: "010-console-audit-log", isaFeature: "F2", stage: "plan", phase: "scoping", started: NOW.toISOString() });
+    expect(parseClaims(spec).claims).toEqual([]);
+    expect(parseFrontmatter(context).present).toBe(true);
+    expect(context).toContain("## Round 0 — the story");
+    expect(context).toContain(SHAPING.trim());
+    const line = validateEventLine(events.trimEnd());
+    expect(line.ok && line.event).toMatchObject({ from: null, to: "plan", command: "/spec new console-audit-log", actor: VIEWER_ACTOR_FALLBACK });
+    expect(existsSync(join(repo, STORY))).toBe(false);
+    // Exactly the new folder, its three files and the removed story; the index (README.md) is not touched.
+    expect(changed(before, tree(repo))).toEqual([FOLDER, `${FOLDER}/context.md`, `${FOLDER}/events.jsonl`, `${FOLDER}/spec.md`, STORY]);
+  });
+
+  test("allocate numbering: an archived folder and a branch name count; with no lock source the answer says none", async () => {
+    const { repo } = setup({ activity: false });
+    mkdirSync(join(repo, "specs", "archive", "030-old-mirror"));
+    expect((await allocate(repo, "console-audit-log")).body).toMatchObject({ id: "031", folder: "specs/031-console-audit-log/", lockSource: "none" });
+
+    // A repository whose branch names a higher number: one past it, whatever the folders say.
+    const branched = setup({ activity: false }).repo;
+    gitIn(branched, "init", "-q", "-b", "main");
+    gitIn(branched, "-c", "user.name=Spectant Test", "-c", `user.email=${VIEWER_EMAIL}`, "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty", "-m", "empty");
+    gitIn(branched, "branch", "feature/057-tide-tables");
+    const res = await allocate(branched, "console-audit-log");
+    expect(res.body).toMatchObject({ id: "058", folder: "specs/058-console-audit-log/" });
+    expect(existsSync(join(branched, "specs", "058-console-audit-log", "spec.md"))).toBe(true);
+  });
+
+  test("allocate stale: a story changed since render is 409 StaleIdea with its path and raw hash now, nothing written", async () => {
+    const { repo } = setup();
+    const before = tree(repo);
+    const res = await allocate(repo, "console-audit-log", sha256("an older story"));
+    expect(res).toEqual({ status: 409, body: { error: "hash-mismatch", files: [STORY], expected: { idea: storyHash(repo) } } });
+    expect(changed(before, tree(repo))).toEqual([]);
+  });
+
+  test("allocate refused: a story the index does not name is 422 not-in-index, nothing written", async () => {
+    const { repo } = setup();
+    const before = tree(repo);
+    const res = await allocate(repo, "registry-webhooks");
+    expect(res).toEqual({ status: 422, body: { error: "allocate-refused", reason: "not-in-index", folder: "specs/010-registry-webhooks/" } });
+    expect(changed(before, tree(repo))).toEqual([]);
+  });
+
+  test("allocate refused: a path already at the folder's name is 422 folder-exists, nothing written", async () => {
+    // A plain file is no spec folder, so it takes no number; the folder the next number names is then occupied.
+    const { repo } = setup();
+    writeFileSync(join(repo, FOLDER), "not a folder\n");
+    const before = tree(repo);
+    const res = await allocate(repo, "console-audit-log");
+    expect(res).toEqual({ status: 422, body: { error: "allocate-refused", reason: "folder-exists", folder: `${FOLDER}/` } });
+    expect(changed(before, tree(repo))).toEqual([]);
+  });
+
+  test("allocate unknown: a slug that names no story is 404, nothing written", async () => {
+    const { repo } = setup();
+    const before = tree(repo);
+    for (const slug of ["tide-tables", "README", "../ideas/console-audit-log", ""]) {
+      expect({ slug, res: await allocate(repo, slug, "0".repeat(64)) }).toEqual({ slug, res: { status: 404, body: { error: "not-found" } } });
+    }
+    expect(changed(before, tree(repo))).toEqual([]);
+  });
+
+  test("allocate viewer: in a repository with a git address the creation event names the viewer's u: id", async () => {
+    const { repo } = setup();
+    gitIn(repo, "init", "-q", "-b", "main");
+    gitIn(repo, "config", "user.email", VIEWER_EMAIL);
+    const res = await allocate(repo, "console-audit-log");
+    expect(res.status).toBe(200);
+    const events = readFileSync(join(repo, FOLDER, "events.jsonl"), "utf8");
+    expect(JSON.parse(events.trimEnd())).toMatchObject({ actor: actorIdOf(VIEWER_EMAIL) });
   });
 });

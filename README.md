@@ -57,6 +57,20 @@ opening a browser, `--port N` to choose the port.
 ## How it works
 
 - spectant reads the Markdown specs (`specs/`) of each registered repository. The files are the only source of truth.
+- It never changes a registered repository, `.git/` included, except along five write paths, each one an action you
+  take:
+  1. the reviewed mark: `specs/NNN-slug/.gates/reviewed.json` plus one line in `events.jsonl`;
+  2. a task checkbox: one line of `tasks.md`;
+  3. a stage transition: `stage:` in `spec.md` plus one line in `events.jsonl`, from the board or the API;
+  4. a story's allocation: the new folder `specs/NNN-slug/` with `context.md`, `spec.md` and `events.jsonl`, and the
+     story file `specs/ideas/<slug>.md` removed;
+  5. the feature-level code-review mark: `.gates/code-reviewed.json` with `scope: F<n>` plus one line in
+     `events.jsonl` per spec of the feature, written by `spectant gate code-reviewed F<n>` on the command line, never
+     from the browser.
+
+  A write from the app is checked against the file you saw (a file changed since is refused and left untouched). Every
+  write is refused while an agent holds an open claim on the spec, and lands in place: no temp file, no commit, and
+  `.gates/` and the new spec folder are the only directories it may create.
 - It keeps only a workspace registry and your settings in SQLite, in `$XDG_DATA_HOME/spectant` or `~/.spectant/`.
   Deleting that directory loses nothing a repository says.
 - The server listens on loopback only; the web UI, fonts and icons are embedded in the binary.
@@ -75,7 +89,8 @@ bun run dev      # server from source on 127.0.0.1:7718, app with live reload on
 bun run verify
 ```
 
-Contributor and agent working notes live in `CLAUDE.md`; the rules specs are held to live in `specs/constitution.md`.
+Contributor and agent working notes live in `CLAUDE.md`. The repository's own specs are planning material and stay
+untracked; the format they follow is `FORMAT.md`.
 
 ## License
 

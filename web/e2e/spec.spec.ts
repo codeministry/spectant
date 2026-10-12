@@ -6,6 +6,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import type { Locator } from '@playwright/test';
+import type { Diagnostic } from '../../core/src/diagnostics.ts';
 import type { SpecPageModel } from '../../core/src/files.ts';
 import { atWidth, expect, test } from './fixtures';
 
@@ -145,5 +147,89 @@ test.describe('dashboard', () => {
     for (const [area, href] of AREA_TILES) {
       await expect(page.locator(`app-spec-dashboard [data-area-tile="${area}"]`)).toHaveAttribute('href', href);
     }
+  });
+});
+
+// ── T155: the priority chip on the dashboard row, the spec head and the breadcrumb (ISC-118) ─────────────────────
+
+/**
+ * `bun run e2e -- spec -g priority`. The harbor fixture sets `priority:` on three specs (core/fixtures/README.md): 006
+ * `P1`, 002 `P2`, 005 `high` (not a level: it reads as P3 with a `frontmatter-priority` warning); 004 has no key and
+ * reads as P3 without one. Each chip shows its level's text in full, never cut, at 390 px as at 1440 px.
+ */
+const PRIORITY_CASES = [
+  { id: '006', level: 'P1', why: 'priority: P1' },
+  { id: '002', level: 'P2', why: 'priority: P2' },
+  { id: '004', level: 'P3', why: 'no priority key' },
+  { id: '005', level: 'P3', why: 'priority: high, the invalid value' },
+] as const;
+
+/** Where the chip sits: the dashboard row (T136), the spec head's chips and the breadcrumb (T134). */
+const ROW_PRIORITY = (id: string): string => `[data-spec-row="${id}"] ui-priority`;
+const HEAD_PRIORITY = 'app-spec-head ui-priority[data-head-chip="priority"]';
+const CRUMB_PRIORITY = 'app-spec-head ui-priority[data-crumb-priority]';
+
+/** The chip's box against its own content and against every ancestor that clips: a cut chip fails either check. */
+const chipFit = (chip: Locator) =>
+  chip.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const clippedBy: string[] = [];
+    for (let parent = el.parentElement; parent; parent = parent.parentElement) {
+      if (!/^(hidden|clip)$/u.test(getComputedStyle(parent).overflowX)) continue;
+      const outer = parent.getBoundingClientRect();
+      if (box.left < outer.left - 0.5 || box.right > outer.right + 0.5) clippedBy.push(parent.tagName.toLowerCase());
+    }
+    return { scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, clippedBy };
+  });
+
+async function expectPriorityChip(host: Locator, level: string, where: string): Promise<void> {
+  await expect(host, where).toHaveCount(1);
+  await expect(host, where).toHaveAttribute('data-level', level);
+  const chip = host.locator('.chip');
+  await expect(chip, where).toBeVisible();
+  await expect(chip, where).toHaveAccessibleName(`priority ${level}`);
+  await expect(chip.locator('span[aria-hidden="true"]'), where).toHaveText(level, { useInnerText: true });
+  const fit = await chipFit(chip);
+  expect(fit.scrollWidth, `${where}: scrollWidth ${String(fit.scrollWidth)} ≤ clientWidth ${String(fit.clientWidth)}`).toBeLessThanOrEqual(fit.clientWidth);
+  expect(fit.clippedBy, `${where}: no clipping ancestor cuts the chip`).toEqual([]);
+}
+
+for (const width of [390, 1440] as const) {
+  test.describe(`priority at ${String(width)}`, () => {
+    test.use(atWidth(width));
+
+    test('priority: the dashboard rows show P1, P2 and P3 in full', async ({ page }) => {
+      await page.goto('/w/harbor');
+      for (const { id, level, why } of PRIORITY_CASES) {
+        await expectPriorityChip(page.locator(ROW_PRIORITY(id)), level, `row ${id} (${why})`);
+      }
+    });
+
+    for (const { id, level, why } of PRIORITY_CASES) {
+      test(`priority: the spec head and the breadcrumb of ${id} show ${level} (${why})`, async ({ page }) => {
+        await page.goto(`/w/harbor/s/${id}`);
+        await expectPriorityChip(page.locator(HEAD_PRIORITY), level, `head ${id}`);
+        await expectPriorityChip(page.locator(CRUMB_PRIORITY), level, `breadcrumb ${id}`);
+      });
+    }
+  });
+}
+
+test.describe('priority warning', () => {
+  /**
+   * The `frontmatter-priority` warning travels in the dashboard model's `diagnostics`, which no page renders yet: the
+   * warnings panel lists the rows' `warnings`, and the spec page carries none of the tree's diagnostics. So the warning
+   * half is checked on the model the dashboard page loads: exactly one, on 005's `spec.md`, none for a missing key.
+   */
+  test('priority: the invalid value carries one frontmatter-priority warning, a missing key none', async ({ page }) => {
+    const answer = await page.request.get('/api/workspaces/harbor/dashboard');
+    expect(answer.status()).toBe(200);
+    // `DashboardModel.diagnostics`, typed here: `core/src/dashboard.ts` pulls in modules that fail this tsconfig.
+    const model = (await answer.json()) as { readonly diagnostics: ReadonlyArray<{ readonly file: string; readonly diagnostic: Diagnostic }> };
+    const warnings = model.diagnostics.filter(({ diagnostic }) => diagnostic.code === 'frontmatter-priority');
+    expect(warnings.map(({ file, diagnostic }) => [file, diagnostic.severity])).toEqual([['specs/005-config-format-choice/spec.md', 'warning']]);
+
+    await page.goto('/w/harbor');
+    await expectPriorityChip(page.locator(ROW_PRIORITY('005')), 'P3', 'row 005 beside its warning');
   });
 });

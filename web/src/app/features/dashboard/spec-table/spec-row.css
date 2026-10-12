@@ -1,7 +1,7 @@
 /*
  * The spec row, ported from the prototype (styles.css 380-397, 512-513, 598-601). The list declares `container:
  * specs`; the row reads it, never the viewport. Below 760 px: `id title title` over `. track meter`, 64 px. From
- * 760 px: one line `40px | 1fr | auto | auto`, 48 px (64 px with the description line). Dense (the overview column):
+ * 760 px: one line `48px | 1fr | auto | auto`, 48 px (64 px with the description line). Dense (the overview column):
  * one 48 px line at every width. `--row-id-ink` is set by the list on the selected row, whose cyan tint takes the ink.
  */
 :host {
@@ -9,22 +9,34 @@
   grid-template-areas:
     'id title title'
     '. track meter';
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
   gap: 4px 16px;
   align-items: center;
   min-block-size: 64px;
   padding: 8px 16px;
 }
 
+/* The id cell: the 16 px type glyph slot (empty for an unknown type, so ids align), 4 px, then the number. */
 .rid {
+  display: flex;
   grid-area: id;
+  gap: 4px;
+  align-items: center;
   align-self: start;
+  white-space: nowrap;
   color: var(--row-id-ink, var(--disp-text));
   font-family: var(--font-mono);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
   line-height: 24px;
+}
+
+.rglyph {
+  display: inline-flex;
+  flex: none;
+  inline-size: 16px;
+  color: var(--muted-ink);
 }
 
 .rtitle {
@@ -124,7 +136,7 @@
 @container specs (width >= 760px) {
   :host {
     grid-template-areas: 'id title track meter';
-    grid-template-columns: 40px minmax(0, 1fr) auto auto;
+    grid-template-columns: 48px minmax(0, 1fr) auto auto;
     min-block-size: 48px;
   }
 
@@ -135,7 +147,7 @@
 
 :host([data-density='dense']) {
   grid-template-areas: 'id title track meter';
-  grid-template-columns: 40px minmax(0, 1fr) auto auto;
+  grid-template-columns: 48px minmax(0, 1fr) auto auto;
   min-block-size: 48px;
 }
 

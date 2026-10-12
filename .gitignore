@@ -38,7 +38,7 @@ server/embedded.gen.ts
 specs/tldr.md
 
 # German working notes for the principal (public repo keeps specs/ English)
-specs/ideas/notizen.md
+specs/notes/notizen.md
 
 # Playwright output (web/e2e/playwright.config.ts)
 web/e2e/.report/
@@ -49,3 +49,9 @@ web/e2e/.results/
 
 # archify diagrams, generated locally with repository evidence; never part of the tree.
 .archify/
+
+# Outline export in German for the principal (public repo keeps specs/ English)
+specs/notes/outline.md
+
+# planning is private: specs/ (constitution, ideas, every spec) stays on this machine and out of the public tree (principal, 2026-10-11)
+/specs/

@@ -125,8 +125,8 @@ const ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
 const CHECK = /^\[([ xX])\]\s+(.*)$/;
 const QUOTE = /^\s*>/;
 const TABLE_ROW = /^\s*\|/;
-/** GFM: one hyphen per cell is enough. */
-const TABLE_SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+/** GFM: one hyphen per cell is enough. Exported for the table readers in core/ (workflow.ts), so a row splits one way. */
+export const TABLE_SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
 /** A cell that holds a figure: right-aligned by the stylesheet unless its column says otherwise. */
 const NUMERIC = /^[-+\u2212]?\d[\d.,\u202f ]*\s*(%|‰|€|\$|ms|s|min|h|[KMG]B|px)?$/;
 const CALLOUT = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i;
@@ -141,7 +141,8 @@ interface Item {
 const blank = (line: string | undefined): boolean => line === undefined || line.trim() === '';
 const indentOf = (line: string): number => line.replace(/\t/g, '  ').search(/\S/);
 
-function tableCells(line: string): string[] {
+/** The cells of a table row: outer pipes dropped, split on unescaped pipes, `\|` unescaped, each trimmed. */
+export function tableCells(line: string): string[] {
   return line
     .trim()
     .replace(/^\|/, '')

@@ -99,6 +99,10 @@
               {{ (moreOpen().has(row.id) ? 'brief.less' : 'brief.more') | transloco }}
             </button>
           }
+          <!-- The reason line, last (ISC-122.3): outside the row link too, since its command chip is a copy button. -->
+          @if (row.nextReason) {
+            <ui-reason class="row-reason" [attr.data-reason]="row.id" [compact]="true" [phrase]="row.nextReason" [command]="row.nextCommand" />
+          }
         </li>
       }
     </ol>

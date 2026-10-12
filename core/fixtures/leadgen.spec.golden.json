@@ -13,7 +13,10 @@
       "updated": "2026-09-24T15:56:51Z",
       "round": 5,
       "lastRound": "2026-09-28T01:13:09.164Z",
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null
     },
     "keyNumbers": {
       "claims": {
@@ -158,7 +161,10 @@
       "updated": "2026-09-28T12:46:09Z",
       "round": 5,
       "lastRound": "2026-09-28T00:13:28.033Z",
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null
     },
     "keyNumbers": {
       "claims": {
@@ -285,7 +291,10 @@
       "updated": "2026-09-24T17:25:53Z",
       "round": 4,
       "lastRound": "2026-09-24T19:30:00Z",
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived",
+      "assignee": null
     },
     "keyNumbers": {
       "claims": {

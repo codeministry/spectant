@@ -7,11 +7,15 @@
 // entries (`derived: false`, their `actor` and `command`) and nothing is derived. An invalid line is dropped from the
 // timeline, which carries no diagnostics; parseEvents reports it. A file whose lines are all invalid derives as if absent.
 //
+// Harbor 002 carries a recorded events.jsonl since spec 008 (T27). Every test here starts from 002's derived state,
+// so `workspace()` removes that file from the copy; a test that wants recorded transitions writes its own.
+//
 // The temp workspaces are no git repository of their own, so the route answers no commits and the plain body-hash ETag.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { parseActor } from "../core/src/actor.ts";
 import { EVENT_STAGES, parseEvents } from "../core/src/events.ts";
 import type { TimelineEntry } from "../core/src/files.ts";
 import { buildTimeline } from "../core/src/timeline.ts";
@@ -48,10 +52,14 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-/** A fresh copy of harbor at `root/<slug>`, registered alone; the handler answers the spec routes for it. */
+/**
+ * A fresh copy of harbor at `root/<slug>` without 002's events.jsonl (see the header), registered alone; the handler
+ * answers the spec routes for it.
+ */
 function workspace(slug: string): { dir: string; handler: ApiHandler } {
   const dir = join(root, slug);
   cpSync(HARBOR, dir, { recursive: true });
+  rmSync(join(dir, KEY, "events.jsonl"));
   const registry = openRegistry(mkdtempSync(join(root, "data-")));
   registries.push(registry);
   registry.add(dir);
@@ -84,10 +92,14 @@ function expectNewestFirst(entries: readonly TimelineEntry[]): void {
 
 describe("timeline route (T50, ISC-36)", () => {
   test("without events.jsonl: harbor 002's stage transitions are derived, in date order among decisions, rounds and gates", async () => {
-    const { handler } = workspace("dock");
+    const { dir, handler } = workspace("dock");
     const { entries } = await body(await timeline(handler, "dock", "002"));
-    const golden = JSON.parse(readFileSync(join(FIXTURES, "harbor.timeline.golden.json"), "utf8")) as Record<string, unknown>;
-    expect(entries).toEqual(golden[KEY] as TimelineEntry[]);
+    // The route answers exactly what core builds from the files without events.jsonl.
+    const built = buildTimeline({ files: readSpecFiles({ dir: join(dir, KEY), slug: "002-web-console" }), commits: [] });
+    expect(entries).toEqual(JSON.parse(JSON.stringify(built)) as TimelineEntry[]);
+    // The golden holds 002's recorded stages; every other entry is the golden's, in the golden's order.
+    const golden = JSON.parse(readFileSync(join(FIXTURES, "harbor.timeline.golden.json"), "utf8")) as Record<string, TimelineEntry[]>;
+    expect(entries.filter((e) => e.kind !== "stage")).toEqual((golden[KEY] ?? []).filter((e) => e.kind !== "stage"));
 
     // Every stage entry is derived and nobody's; every other entry is recorded.
     const stages = stagesOf(entries);
@@ -113,15 +125,15 @@ describe("timeline route (T50, ISC-36)", () => {
 
   test("without events.jsonl: a spec with spec.md alone shows exactly one derived stage entry, between its decisions", async () => {
     const { dir, handler } = workspace("berth");
-    const spec = join(dir, "specs", "008-bare-spec");
+    const spec = join(dir, "specs", "010-bare-spec");
     mkdirSync(spec);
-    writeFileSync(join(spec, "spec.md"), "---\nslug: 008-bare-spec\nspec_type: feature\ncreated: 2026-03-10T09:00:00Z\n---\n# 008 — Bare spec\n");
+    writeFileSync(join(spec, "spec.md"), "---\nslug: 010-bare-spec\nspec_type: feature\ncreated: 2026-03-10T09:00:00Z\n---\n# 010 — Bare spec\n");
     writeFileSync(
       join(spec, "context.md"),
       "# Context\n\n## Goal — confirmed 2026-03-10T09:00:00Z\n\nA bare spec.\n\n## Round 1 — shaping, 2026-03-11T10:00:00Z\n\n### Q1 · Which store?\n\n- From: principal\n\nThe file.\n",
     );
 
-    const { entries } = await body(await timeline(handler, "berth", "008"));
+    const { entries } = await body(await timeline(handler, "berth", "010"));
     const stages = stagesOf(entries);
     expect(stages).toHaveLength(1);
     expect(stages[0]).toMatchObject({ kind: "stage", derived: true, actor: null, from: null, to: "plan", ts: "2026-03-10T09:00:00Z" });
@@ -138,10 +150,14 @@ describe("timeline route (T50, ISC-36)", () => {
     const text = `${EVENTS.map((e) => JSON.stringify(e)).join("\n")}\n`;
     writeFileSync(join(folder, "events.jsonl"), text);
 
-    // The core contract for the file: three events in file order, line 3 one diagnostic naming the unknown stage.
+    // The core contract for the file: three events in file order, line 3 one diagnostic naming the unknown stage, and
+    // one actor-legacy warning for the file at its first legacy actor (spec 008, T61).
     const parsed = parseEvents(text);
-    expect(parsed.events).toEqual(VALID.map((e) => ({ ...e })));
-    expect(parsed.diagnostics.map((d) => ({ severity: d.severity, code: d.code, line: d.line }))).toEqual([{ severity: "error", code: "event-stage", line: 3 }]);
+    expect(parsed.events).toEqual(VALID.map((e) => ({ ...e, actorRef: parseActor(e.actor) })));
+    expect(parsed.diagnostics.map((d) => ({ severity: d.severity, code: d.code, line: d.line }))).toEqual([
+      { severity: "error", code: "event-stage", line: 3 },
+      { severity: "warning", code: "actor-legacy", line: 1 },
+    ]);
 
     const { entries } = await body(await timeline(handler, "quay", "002"));
     const stages = stagesOf(entries);

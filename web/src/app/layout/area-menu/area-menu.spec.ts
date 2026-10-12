@@ -9,6 +9,9 @@ import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.ser
 import { ShellState } from '../shell/shell-state.service';
 import type { Tier } from '../shell/tier';
 import { AreaMenu } from './area-menu';
+import DASHBOARD_GOLDEN from '../../../../../core/fixtures/harbor.golden.json';
+import PLANNING_GOLDEN from '../../../../../core/fixtures/harbor.planning.golden.json';
+import { boardRowsOf, buildBoard } from '../../features/board/board-model';
 
 @Component({ selector: 'app-blank', template: '' })
 class Blank {}
@@ -44,9 +47,14 @@ const holder = (id: string, archived = false): Holder => ({
   main: false,
   held: 2,
   stage: null,
+  stageSource: null,
+  priority: 'P3',
+  hash: null,
+  assignee: null,
 });
 
 const milestone = (name: string, target: string | null, state: Milestone['state'], specs: readonly Holder[]): Milestone => ({
+  ideas: [],
   name,
   slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
   target,
@@ -59,6 +67,7 @@ const milestone = (name: string, target: string | null, state: Milestone['state'
 });
 
 const feature = (id: string, closed: number, total: number): PlanningBody['features'][number] => ({
+  ideas: [],
   id,
   name: `Feature ${id}`,
   why: null,
@@ -70,6 +79,10 @@ const feature = (id: string, closed: number, total: number): PlanningBody['featu
 });
 
 const planning = (milestones: readonly Milestone[]): PlanningBody => ({
+  workflow: { rows: [], source: 'default', diagnostics: [] },
+  stages: [],
+  stageCounts: {},
+  ideas: [],
   features: [feature('F1', 3, 5), feature('F2', 2, 4)],
   milestones,
   recount: { closed: 5, total: 9 },
@@ -86,16 +99,16 @@ const WITH_MILESTONES = planning([
 
 type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec'>;
 
-function fakeApi(plan: ApiResult<PlanningBody>): FakeApi {
+function fakeApi(plan: ApiResult<PlanningBody>, dashboard: unknown): FakeApi {
   return {
     workspaces: () => Promise.resolve(ok([{ slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: null }])),
-    dashboard: (ws) => Promise.resolve(ws === 'harbor' ? ok(DASHBOARD) : { kind: 'not-found', served: true }),
+    dashboard: (ws) => Promise.resolve(ws === 'harbor' ? ok(dashboard) : { kind: 'not-found', served: true }),
     planning: () => Promise.resolve(plan),
     spec: () => Promise.resolve({ kind: 'not-found', served: false }),
   };
 }
 
-function setUp(plan: ApiResult<PlanningBody>): void {
+function setUp(plan: ApiResult<PlanningBody>, dashboard: unknown = DASHBOARD): void {
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -104,7 +117,7 @@ function setUp(plan: ApiResult<PlanningBody>): void {
         preloadLangs: true,
       }),
     ],
-    providers: [provideRouter(ROUTES), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: fakeApi(plan) }],
+    providers: [provideRouter(ROUTES), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: fakeApi(plan, dashboard) }],
   });
 }
 
@@ -134,33 +147,33 @@ describe('AreaMenu', () => {
       setUp(ok(planning([UNNAMED])));
       const root = await render('/w/harbor');
       const entries = pages(root);
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'features']);
-      expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A']);
-      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/features']);
-      expect(attr(entries, 'aria-disabled')).toEqual([null, null]);
-      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Features']);
+      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features']);
+      expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A', 'A']);
+      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/board', '/w/harbor/features']);
+      expect(attr(entries, 'aria-disabled')).toEqual([null, null, null]);
+      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Board', 'Features']);
       expect(root.querySelectorAll('nav [data-area]')).toHaveLength(0);
     });
 
     it('adds the Milestones entry, third, as soon as a spec carries a milestone', async () => {
       setUp(ok(WITH_MILESTONES));
       const entries = pages(await render('/w/harbor'));
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'features', 'milestones']);
-      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/features', '/w/harbor/milestones']);
-      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Features', 'Milestones']);
+      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features', 'milestones']);
+      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/board', '/w/harbor/features', '/w/harbor/milestones']);
+      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Board', 'Features', 'Milestones']);
     });
 
     it("counts an archived spec's milestone", async () => {
       setUp(ok(planning([milestone('Harbor 0.9', '2026-08-01', 'complete', [holder('001', true)])])));
-      expect(attr(pages(await render('/w/harbor')), 'data-page')).toEqual(['specs', 'features', 'milestones']);
+      expect(attr(pages(await render('/w/harbor')), 'data-page')).toEqual(['specs', 'board', 'features', 'milestones']);
     });
 
     it('marks the current page with aria-current and gives it focus on open', async () => {
       setUp(ok(WITH_MILESTONES));
       const cases: Array<[string, Array<string | null>]> = [
-        ['/w/harbor', ['page', null, null]],
-        ['/w/harbor/features', [null, 'page', null]],
-        ['/w/harbor/milestones', [null, null, 'page']],
+        ['/w/harbor', ['page', null, null, null]],
+        ['/w/harbor/features', [null, null, 'page', null]],
+        ['/w/harbor/milestones', [null, null, null, 'page']],
       ];
       for (const [url, current] of cases) {
         const entries = pages(await render(url));
@@ -182,7 +195,29 @@ describe('AreaMenu', () => {
     it('renders the summaries from the dashboard rows and the planning model', async () => {
       setUp(ok(WITH_MILESTONES));
       const entries = pages(await render('/w/harbor'));
-      expect(entries.map(sub)).toEqual(['3 active · 1 archived', '2 features · 5/9 closed', '2 milestones · next Nov 30']);
+      expect(entries.map(sub)).toEqual([
+        '3 active · 1 archived',
+        '0 stages · 0 cards · 0 wait on you',
+        '2 features · 5/9 closed',
+        '2 milestones · next Nov 30',
+      ]);
+    });
+
+    it('counts the Board line through the board model: stages, cards and cards waiting on you (T116, ISC-129)', async () => {
+      const golden = PLANNING_GOLDEN as unknown as PlanningBody;
+      setUp(ok(golden), DASHBOARD_GOLDEN);
+      const model = buildBoard({ planning: golden, rows: boardRowsOf(DASHBOARD_GOLDEN) });
+      const cards = Object.values(golden.stageCounts).reduce((n, v) => n + v, 0);
+      expect(model.total).toBe(cards);
+      expect(pages(await render('/w/harbor')).map(sub)[1]).toBe(`${String(golden.stages.length)} stages · ${String(cards)} cards · 3 wait on you`);
+    });
+
+    it('leaves the Board line out until the dashboard rows have answered too', async () => {
+      setUp(ok(WITH_MILESTONES));
+      TestBed.overrideProvider(ApiClient, {
+        useValue: { ...fakeApi(ok(WITH_MILESTONES), DASHBOARD), dashboard: () => Promise.resolve({ kind: 'unavailable' }) },
+      });
+      expect(pages(await render('/w/harbor')).map(sub)[1]).toBeNull();
     });
 
     it('names an undated next milestone by its name', async () => {
@@ -194,14 +229,14 @@ describe('AreaMenu', () => {
           ]),
         ),
       );
-      expect(pages(await render('/w/harbor')).map(sub)[2]).toBe('2 milestones · next Harbor 2.0');
+      expect(pages(await render('/w/harbor')).map(sub)[3]).toBe('2 milestones · next Harbor 2.0');
     });
 
     it('leaves the Features summary out while the planning model is not loaded, rather than a broken template', async () => {
       setUp({ kind: 'not-found', served: false });
       const entries = pages(await render('/w/harbor'));
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'features']);
-      expect(entries.map(sub)).toEqual(['3 active · 1 archived', null]);
+      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features']);
+      expect(entries.map(sub)).toEqual(['3 active · 1 archived', null, null]);
       expect(entries.map((entry) => entry.textContent)).not.toContain('{{');
     });
 
@@ -209,8 +244,8 @@ describe('AreaMenu', () => {
       setUp(ok(WITH_MILESTONES));
       const root = await render('/w/harbor/features', 'compact');
       expect(root.querySelector('ui-sheet nav')?.getAttribute('data-tier')).toBe('compact');
-      expect(attr(pages(root), 'data-page')).toEqual(['specs', 'features', 'milestones']);
-      expect(attr(pages(root), 'aria-current')).toEqual([null, 'page', null]);
+      expect(attr(pages(root), 'data-page')).toEqual(['specs', 'board', 'features', 'milestones']);
+      expect(attr(pages(root), 'aria-current')).toEqual([null, null, 'page', null]);
     });
   });
 

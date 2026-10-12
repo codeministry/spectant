@@ -388,7 +388,7 @@ describe('harbor 002: the live frame completes the eleven states (T21 over T17)'
   });
 
   test('T27 runs under its session; the released T25 does not', () => {
-    expect(card(harborLive, 'T27')).toMatchObject({ state: 'running', lock: { source: 'activity', session: 'spec-002-ISC-74' } });
+    expect(card(harborLive, 'T27')).toMatchObject({ state: 'running', lock: { source: 'activity', session: 'a:claude:sess-2' } });
     expect(card(harborLive, 'T25')?.state).toBe('closed');
   });
 

@@ -3,6 +3,8 @@
  * (T44, ISC-13) and `--version`.
  *
  * `import-notes`, `export-notes` and `db rollback` (T98, ISC-53) live in `cli-notes.ts`; this file parses them.
+ * `gate code-reviewed F<n> [--root DIR] [--yes]` (spec 008, T93, ISC-122.2) lives in `feature-gate.ts`: the
+ * feature-level code-review mark, the one write into a repository the CLI makes; without `--yes` it only prints.
  *
  * `--version` (also `-v`, `-V`; T13, ISC-9) prints exactly `spectant <VERSION>` and a newline on stdout and nothing
  * else, so `scripts/check-version.ts` can compare the binary byte for byte with `package.json`. It short-circuits
@@ -27,9 +29,10 @@
  */
 import { realpathSync } from "node:fs";
 import { basename, resolve } from "node:path";
-import { composeApi, dashboardApi } from "./api.ts";
+import { actorsApi, composeApi, dashboardApi } from "./api.ts";
 import type { EmbeddedManifest } from "./assets.contract.ts";
 import { exportNotesCommand, importNotesCommand, rollbackCommand } from "./cli-notes.ts";
+import { FEATURE_ARG, featureGateCommand } from "./feature-gate.ts";
 import { SCHEMA_VERSION, openDatabase } from "./db.ts";
 import { DEFAULT_PORT, LOOPBACK_HOST, PORT_ATTEMPTS, type RunningServer, serveWithFallback } from "./http.ts";
 import { CommitCache } from "./git.ts";
@@ -57,13 +60,17 @@ Commands:
   db rollback <version> --yes
                    undo the newer schema migrations (1 to ${SCHEMA_VERSION - 1}); without --yes it only says
                    what would be lost
+  gate code-reviewed F<n> [--root <dir>] [--yes]
+                   write the feature-level code-review mark into every spec of main feature
+                   F<n> once all its claims are closed; without --yes it only prints the plan
 
 Options:
   --port <n>       port to listen on (default ${DEFAULT_PORT}; 0 picks a free port); a busy port falls
                    forward to the next free one, up to ${PORT_ATTEMPTS} ports in all
   --strict-port    fail instead of falling forward when the port is busy
   --no-browser     do not open the browser
-  --yes            confirm db rollback
+  --yes            confirm db rollback or gate code-reviewed
+  --root <dir>     the repository gate code-reviewed works on (default: the working directory)
   -v, -V, --version
                    print the version and exit
   -h, --help       print this help and exit`;
@@ -78,7 +85,8 @@ type Command =
   | { kind: "list" }
   | { kind: "remove"; ref: string }
   | { kind: "import-notes" | "export-notes"; file: string }
-  | { kind: "db-rollback"; target: number; yes: boolean };
+  | { kind: "db-rollback"; target: number; yes: boolean }
+  | { kind: "gate-code-reviewed"; feature: string; root: string | null; yes: boolean };
 
 export type RunOptions = {
   /**
@@ -106,6 +114,7 @@ function parse(argv: string[]): Command {
   let strictPort = false;
   let browser = true;
   let yes = false;
+  let root: string | undefined;
   const positional: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] ?? "";
@@ -116,6 +125,10 @@ function parse(argv: string[]): Command {
     else if (arg === "--strict-port") strictPort = true;
     else if (arg === "--port") port = parsePort(argv[++i]);
     else if (arg.startsWith("--port=")) port = parsePort(arg.slice("--port=".length));
+    else if (arg === "--root" || arg.startsWith("--root=")) {
+      root = arg === "--root" ? argv[++i] : arg.slice("--root=".length);
+      if (root === undefined || root === "") throw new UsageError("--root needs a directory");
+    }
     else if (arg.startsWith("-")) throw new UsageError(`unknown option ${arg}`);
     else positional.push(arg);
   }
@@ -124,7 +137,8 @@ function parse(argv: string[]): Command {
     if (port !== undefined) throw new UsageError(`--port only applies to serve, not to ${command}`);
     if (strictPort) throw new UsageError(`--strict-port only applies to serve, not to ${command}`);
   }
-  if (yes && command !== "db") throw new UsageError(`--yes only applies to db rollback, not to ${command ?? "serve"}`);
+  if (yes && command !== "db" && command !== "gate") throw new UsageError(`--yes only applies to db rollback and gate, not to ${command ?? "serve"}`);
+  if (root !== undefined && command !== "gate") throw new UsageError(`--root only applies to gate, not to ${command ?? "serve"}`);
   const arity = (count: number, what: string): string[] => {
     if (rest.length < count) throw new UsageError(`${command ?? "serve"} needs ${what}`);
     if (rest.length > count) throw new UsageError(`unexpected argument ${rest[count] ?? ""}`);
@@ -153,6 +167,12 @@ function parse(argv: string[]): Command {
         throw new UsageError(`db rollback needs a schema version from 1 to ${SCHEMA_VERSION - 1}, got ${JSON.stringify(version)}`);
       }
       return { kind: "db-rollback", target, yes };
+    }
+    case "gate": {
+      const [gate, feature = ""] = arity(2, "code-reviewed and a feature id F<n>");
+      if (gate !== "code-reviewed") throw new UsageError(`unknown gate ${gate ?? ""}; the CLI writes only code-reviewed`);
+      if (!FEATURE_ARG.test(feature)) throw new UsageError(`gate code-reviewed needs a feature id F<n>, got ${JSON.stringify(feature)}`);
+      return { kind: "gate-code-reviewed", feature, root: root ?? null, yes };
     }
     default:
       throw new UsageError(`unknown command ${command}`);
@@ -183,7 +203,14 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
     const lifeos = detectLifeos(options.env ?? process.env);
     // One commit cache for the process (T46): the timeline and the spec page skip `git log` while HEAD is unchanged.
     const specs = specRoutesApi({ registry, lifeos, commitCache: new CommitCache() });
-    const api = composeApi(settingsApi(openSettings(db)), lifeosApi(lifeos), dashboardApi({ registry, lifeos }), notesApi({ store: openNotes(db), registry }), specs);
+    const api = composeApi(
+      settingsApi(openSettings(db)),
+      actorsApi(db),
+      lifeosApi(lifeos),
+      dashboardApi({ registry, lifeos, db }),
+      notesApi({ store: openNotes(db), registry }),
+      specs,
+    );
     server = serveWithFallback({ manifest, port: command.port, strict: command.strictPort, api });
   } catch (error) {
     registry.close();
@@ -308,5 +335,7 @@ export async function run(argv: string[], manifest: EmbeddedManifest, options: R
       return exportNotesCommand(dataDir(options.env ?? process.env), resolve(options.cwd ?? process.cwd(), command.file), command.file);
     case "db-rollback":
       return rollbackCommand(dataDir(options.env ?? process.env), command.target, command.yes);
+    case "gate-code-reviewed":
+      return featureGateCommand(resolve(options.cwd ?? process.cwd(), command.root ?? "."), command.feature, command.yes);
   }
 }

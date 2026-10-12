@@ -4,12 +4,13 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { SettingsService } from '../../core/settings.service';
+import { boardRowsOf, boardSummaryOf, buildBoard } from '../../features/board/board-model';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiRovingItem, UiRovingList } from '../../shared/ui/roving-list.directive';
-import { areaPath, SPEC_AREAS, type SpecArea, specLink, WORKSPACE_PAGES, type WorkspacePageId, workspaceLink } from '../shell/areas';
+import { areaPath, SPEC_AREAS, type SpecArea, specLink, WORKSPACE_PAGES, type WorkspaceMenuPageId, workspaceLink } from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 
@@ -68,11 +69,12 @@ export class AreaMenu {
   protected readonly currentPage = computed(() => this.state.route().wsPage);
 
   /** Each page's summary params, from what has loaded; a page whose source has not answered gets null. */
-  protected readonly summaries = computed<Record<WorkspacePageId, SummaryParams>>(() => ({
+  protected readonly summaries = computed<Record<WorkspaceMenuPageId, SummaryParams>>(() => ({
     specs:
       this.data.dashboard.value()?.kind === 'ok'
         ? { active: this.data.specRows().length, archived: this.data.archiveRows().length }
         : null,
+    board: this.boardSummary(),
     features: this.featuresSummary(),
     milestones: this.milestonesSummary(),
   }));
@@ -101,8 +103,20 @@ export class AreaMenu {
   }
 
   /** `/w/:ws` or `/w/:ws/<page>`; rendered only at workspace scope, where the workspace is set. */
-  protected pageLink(page: WorkspacePageId): string[] {
+  protected pageLink(page: WorkspaceMenuPageId): string[] {
     return workspaceLink(this.state.ws() ?? '', page);
+  }
+
+  /**
+   * Board (spec 008, T116): its columns, its cards and those waiting on you, counted by the board's own model
+   * (`buildBoard`, unfiltered) so the line and the page agree; null until the planning tree and the dashboard rows,
+   * which carry the stages and next commands of the specs, have both answered.
+   */
+  private boardSummary(): SummaryParams {
+    const planning = this.data.planningModel();
+    const dashboard = this.data.dashboard.value();
+    if (planning === null || dashboard?.kind !== 'ok') return null;
+    return { ...boardSummaryOf(buildBoard({ planning, rows: boardRowsOf(dashboard.body) })) };
   }
 
   /** Features: the feature count and the master's recount of closed and total claims (ISC-100.2). */

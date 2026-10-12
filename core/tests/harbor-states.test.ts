@@ -125,13 +125,14 @@ describe("harbor 002 card states", () => {
     expect([...found].sort()).toEqual([...ELEVEN].sort());
   });
 
-  test("the live layer holds one open claim and one released pair", () => {
+  test("the live layer holds one open claim and two released pairs, one of them a sub-agent's", () => {
     const claims = activity.filter((line) => line.event === "claim");
     const releases = activity.filter((line) => line.event === "release");
-    expect(claims.length).toBe(2);
-    expect(releases.length).toBe(1);
+    expect(claims.length).toBe(3);
+    expect(releases.length).toBe(2);
     for (const line of claims) {
-      expect(line.session).toMatch(/^spec-002-ISC-\d+$/);
+      // the actor grammar (spec 008, T28): the session, or a sub-agent of it on the line's task
+      expect(line.session).toBe(line.task === "T4" ? "a:claude:sess-2/T4" : "a:claude:sess-2");
       expect(line.worktree).toMatch(/^wt-\d+$/);
       expect(line.task).toMatch(/^T\d+$/);
     }

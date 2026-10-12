@@ -13,7 +13,7 @@ import { nextId } from '../../shared/ui/overlay/ids';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { ShellState } from '../shell/shell-state.service';
 import { follow, isCommitEnter } from './navigate';
-import { isCommand } from './palette-groups';
+import { isCommand, isIdea } from './palette-groups';
 import { PaletteIndex } from './palette-index';
 import { highlight, rankEntries, type Segment } from './palette-ranking';
 import { PaletteRecent } from './palette-recent';
@@ -25,6 +25,8 @@ interface PaletteOption {
   readonly domId: string;
   readonly label: readonly Segment[];
   readonly chip: readonly Segment[];
+  /** An idea (spec 008): the chip takes the idea chip's look. */
+  readonly idea: boolean;
 }
 
 interface PaletteGroup {
@@ -90,6 +92,7 @@ export class CommandPalette {
           domId: `${this.listId}-o${String(at)}`,
           label: highlight(entry.label, query),
           chip: highlight(entry.chip ?? '', query),
+          idea: isIdea(entry),
         };
       }),
     }));

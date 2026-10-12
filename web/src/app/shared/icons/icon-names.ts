@@ -53,4 +53,35 @@ export const ICON_NAMES = [
   'flag',
   'circle-dashed',
   'clock-alert',
+  // Spec 008: type glyph, priority, reason, board and actor primitives (chevron-down and square-kanban are above).
+  'puzzle',
+  'bug',
+  'refresh-ccw-dot',
+  'flask-conical',
+  'server',
+  'folder-kanban',
+  'brush-cleaning',
+  'lightbulb',
+  'chevrons-up',
+  'chevron-up',
+  'minus',
+  'bot',
+  'hourglass',
+  'shield-check',
+  'grip-vertical',
+  'circle-help',
+  // Spec 008, the board's column heads: one glyph per workflow stage (lightbulb, list-checks, hourglass and
+  // circle-check are above).
+  'list',
+  'eye',
+  'hammer',
+  'octagon-x',
+  'git-pull-request',
+  'check-check',
+  // Spec 008, the board's drag hints and its refusal notice (T125, T126).
+  'ban',
+  'circle-alert',
+  // Spec 008, folding a board column by hand.
+  'fold-horizontal',
+  'unfold-horizontal',
 ] as const;

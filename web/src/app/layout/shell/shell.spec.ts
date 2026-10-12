@@ -318,8 +318,8 @@ describe('ShellComponent', () => {
         await harness.fixture.whenStable();
         expect(trigger.getAttribute('aria-expanded')).toBe('true');
         const entries = [...root.querySelectorAll('header nav[aria-label="Areas"] [data-page]')];
-        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'features']);
-        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null]);
+        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'board', 'features']);
+        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null, null]);
       } finally {
         delete proto['showPopover'];
         delete proto['hidePopover'];
@@ -363,7 +363,7 @@ describe('ShellComponent', () => {
         expect(texts(nav?.querySelectorAll('[data-area] .sub') as NodeListOf<Element>)).toEqual([
           'Where the spec stands at a glance',
           'Stage, gates and timeline',
-          'Agents at work, board and matrix',
+          'Agents at work, round board and matrix',
           'Claims, tasks and evidence',
           'Plan, design, decisions, constitution',
           'Your notes on this spec',
@@ -396,7 +396,8 @@ describe('ShellComponent', () => {
       const live = control(spec, 'live');
       expect(live.tagName).toBe('A');
       expect(live.getAttribute('href')).toBe('/w/harbor/s/002/board');
-      expect(live.getAttribute('title')).toBe('No agent source, open the live board');
+      // Spec 008 (T116): the spec's board is the "Round board", never the workspace's "Board".
+      expect(live.getAttribute('title')).toBe('No agent source, open the round board');
       expect(live.getAttribute('data-source')).toBe('none');
     });
 
@@ -415,7 +416,8 @@ describe('ShellComponent', () => {
       const page = root.querySelector('[data-page="settings"]');
       expect(page?.querySelector('h1')?.textContent).toContain('Settings');
       expect(page?.textContent).toContain('Settings, workspaces and help come with later tasks of this spec');
-      expect(page?.querySelector('a')?.getAttribute('href')).toBe('/');
+      expect([...(page?.querySelectorAll('a') ?? [])].map((a) => a.getAttribute('href'))).toEqual(['/help', '/']);
+      expect(page?.querySelector('a[data-action="help"]')?.textContent.trim()).toBe('Help');
       expect(root.querySelectorAll('header')).toHaveLength(1);
     });
 

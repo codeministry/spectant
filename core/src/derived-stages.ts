@@ -25,6 +25,7 @@
 // | (every claim closed)         | build → code-review                | none: implied by the code-reviewed mark, always undated |
 // | implementing → code-reviewed | code-review → close                | `.gates/code-reviewed.json` `at`                      |
 // | → done                       | <last stage> → done                | spec.md `completed:`, `updated:` (with `phase: complete`) |
+// | (chore, every claim closed)  | build → done                      | none: row 6 of the stage table, always undated (T50)  |
 //
 // A file's `updated:` is its last edit, not its creation, and is never a plan or tasks date (harbor 002's tasks.md
 // says 03-08, a day after the review that hashed it). The review marks are read as far as their `at`; whether a mark
@@ -79,6 +80,13 @@ export function deriveStages(files: SpecFiles, events?: readonly EventLine[]): T
       codeReviewed: 'missing',
       takeable: [],
       partition: { takeable: 0, open: total, closed: 0, dropped: 0 },
+      // A replay from the files: this path runs only without events, so no explicit stage can apply.
+      explicitStage: null,
+      lastEventTo: null,
+      // Every claim is open here, so row 7 (`close-pending`) cannot match whatever the code review.
+      codeReview: 'spec',
+      mainFeature: null,
+      featureSiblingsOpen: [],
     });
 
   const out: TimelineEntry[] = [];
@@ -104,6 +112,10 @@ export function deriveStages(files: SpecFiles, events?: readonly EventLine[]): T
     }
   }
   if (fm.data.phase === 'complete') step('done', doneDate(fm.values, fm.data.updated));
+  // Row 6 (spec 008, T50): a chore is done once every claim is closed, with no code review and no phase edit.
+  else if (current() === 'build' && type === 'chore' && allClosed(spec)) {
+    step('done', { ts: null, source: 'every claim of the chore closed; the files give no date' });
+  }
   return out;
 }
 
@@ -154,6 +166,12 @@ function derivedEntry(from: StageName | null, to: StageName, date: Dated): Timel
     to,
     ...(date.ts === null ? { undated: true } : {}),
   };
+}
+
+/** Every claim closed, the stage table's sense: at least one claim, none open (checked or dropped). */
+function allClosed(spec: string): boolean {
+  const claims = parseClaims(spec).claims;
+  return claims.length > 0 && claims.every((c) => c.checked || c.dropped);
 }
 
 // ─── date sources ────────────────────────────────────────────────────────────────────────────────────────────────

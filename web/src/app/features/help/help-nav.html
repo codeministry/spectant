@@ -1,0 +1,18 @@
+<nav data-help-nav [attr.aria-label]="'help.nav.label' | transloco">
+  <ul>
+    @for (section of sections(); track section.id) {
+      <li>
+        <a
+          class="chip"
+          [routerLink]="[]"
+          [fragment]="section.id"
+          queryParamsHandling="preserve"
+          [attr.data-help-chip]="section.id"
+          [attr.aria-current]="current() === section.id ? 'true' : null"
+          (click)="go(section)"
+          >{{ section.label | transloco }}</a
+        >
+      </li>
+    }
+  </ul>
+</nav>

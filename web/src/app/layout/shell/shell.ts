@@ -29,8 +29,9 @@ import { tierFor } from './tier';
     '[class.tier-wide]': "state.tier() === 'wide'",
     '[attr.data-zen]': "state.zen() ? '' : null",
     '[attr.data-rail-collapsed]': "state.railStrip() ? '' : null",
-    // Outside a workspace (the overview `/`, settings) the page has no rail column at all (prototype `no-rail`).
-    '[attr.data-no-rail]': "state.ws() === null ? '' : null",
+    // Outside a workspace (the overview `/`, settings) the page has no rail column at all (prototype `no-rail`); the
+    // workspace board (spec 008) has nothing for the rail either and takes the full width.
+    '[attr.data-no-rail]': "state.ws() === null || state.wsPage() === 'board' ? '' : null",
     '(document:keydown)': 'onKeydown($event)',
   },
 })

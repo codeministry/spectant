@@ -7,26 +7,33 @@
 // held by the spec folder whose spec.md lists its id, active or archived; a spec belongs to every feature whose
 // claims it holds, and the first word of its `isa_feature` (`mainFeatureOf` in `status.ts`) names its main feature.
 // Milestones come from the master's `## Milestones` block (`milestones.ts`) and group specs by their `milestone:`
-// frontmatter, across features. Every count is derived from the files on each read; nothing is stored.
+// frontmatter, across features. The stories of `specs/ideas/` (spec 008, T55) sit beside them: under the feature
+// their `feature:` names and the milestone their `milestone:` names, counted apart so no fraction changes. Every count
+// is derived from the files on each read; nothing is stored.
 //
-// `buildPlanning` is pure over text the caller read and parses nothing itself: it composes `claims.ts`,
-// `frontmatter.ts`, `milestones.ts` and `status.ts`. Malformed input becomes a FileDiagnostic, never a throw. Its
-// runtime imports are browser-safe parsers the barrel already exports (never `gates.ts` or `dashboard.ts` at runtime),
-// so the barrel exports it whole and the web bundle may import it. Its type graph is browser-clean too (T18): it types
-// against `files.ts`, `claims.ts`, `frontmatter.ts`, `milestones.ts`, `stage.ts` and `status.ts` only, never
+// `buildPlanning` is pure over text the caller read and parses nothing itself: it composes `assignee.ts`, `claims.ts`,
+// `events.ts`, `frontmatter.ts`, `ideas.ts`, `milestones.ts` and `status.ts`. Malformed input becomes a FileDiagnostic, never a
+// throw. Its runtime imports are browser-safe parsers the barrel already exports (never `gates.ts` or `dashboard.ts`
+// at runtime), so the barrel exports it whole and the web bundle may import it. Its type graph is browser-clean too
+// (T18): it types against `files.ts`, `claims.ts`, `frontmatter.ts`, `milestones.ts`, `stage.ts` and `status.ts` only, never
 // `dashboard.ts` or `gates.ts`, so the route contract's `import type { PlanningModel }` typechecks in the web tsconfigs
 // without Node types.
+import { assigneeOf } from './assignee.ts';
 import { parseClaims } from './claims.ts';
 import type { Claim, FeatureBlock } from './claims.ts';
+import { parseEvents } from './events.ts';
 import { specFilePath } from './files.ts';
-import type { FileDiagnostic, SpecFiles } from './files.ts';
+import type { ActorRef, ClaimLock, FileDiagnostic, IdeaFiles, IdeaRef, LockReading, Priority, SpecFiles, StageSource, Workflow, WorkflowStage } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
+import { readIdeas } from './ideas.ts';
 import { milestoneSlug, parseMilestones } from './milestones.ts';
 import type { Milestone } from './milestones.ts';
 import type { Progress } from './frontmatter.ts';
 import { specIdOf, specSlugOf } from './spec-ref.ts';
+import { DEFAULT_WORKFLOW } from './stage.ts';
 import type { Stage } from './stage.ts';
 import { mainFeatureOf } from './status.ts';
+import { boardStages } from './workflow.ts';
 
 /**
  * A milestone's derived state (design 003 § Milestone states): `complete` when every counted claim is closed, `late`
@@ -74,11 +81,41 @@ export interface PlanningHolder {
    */
   readonly held: number;
   /**
-   * The dashboard's stage for an active spec (`build`, `close`, …); null for an archived one. As of T8 null for every
-   * spec: the stage needs the reviewed and code-reviewed gate states, which `gates.ts` computes with `node:crypto` and
-   * a worktree tree id, so the browser-safe tree cannot derive it; whoever holds the dashboard rows fills it in.
+   * The dashboard's stage for an active spec (`build`, `close`, …); null for an archived one, and for every spec the
+   * caller passed no state for. The stage needs the reviewed and code-reviewed gate states, which `gates.ts` computes
+   * with `node:crypto` and a worktree tree id, so the browser-safe tree cannot derive it: the caller passes the
+   * dashboard rows in `PlanningInput.specStates` (spec 008, T64), and the tree carries their values unchanged.
    */
   readonly stage: Stage | null;
+  /** Whether `stage` is the frontmatter `stage:` or the stage table's, as the dashboard row says; null with `stage`. */
+  readonly stageSource: StageSource | null;
+  /** The spec's frontmatter `priority:`, `P3` when absent or invalid, read here for active and archived specs alike. */
+  readonly priority: Priority;
+  /**
+   * The raw sha256 hex of the spec's `spec.md` bytes, the hash a board write sends back to be compared (as the
+   * server's `writes.ts` hashes a file); null for an archived spec and where the caller passed none. Computed by the
+   * caller in `PlanningInput.specStates`, since hashing is `node:crypto` and this module stays browser-safe.
+   */
+  readonly hash: string | null;
+  /**
+   * Who the active spec is assigned to (spec 008, T65, ISC-131, `assigneeOf` in `assignee.ts`): the actor of the newest
+   * lock of `PlanningInput.locks` on one of its claims, else the actor of its last event, else null; the dashboard
+   * row's value over the same input. Null for an archived spec, which is never given a stage either.
+   */
+  readonly assignee: ActorRef | null;
+}
+
+/**
+ * One active spec's state as the caller holds it (spec 008, T64): the dashboard row's stage and source, and the raw
+ * sha256 of its spec.md. A `DashboardSpecRow` is one, `hash` aside, so the server passes its rows with the hash added.
+ */
+export interface PlanningSpecState {
+  /** The folder name `NNN-slug`, as the dashboard row and the holder name it. */
+  readonly slug: string;
+  readonly stage: Stage;
+  readonly stageSource: StageSource;
+  /** Raw sha256 hex of spec.md; absent when the caller hashes nothing. */
+  readonly hash?: string;
 }
 
 /** One feature block of the master (an epic, in tracker words) with its progress across every spec that holds it. */
@@ -102,6 +139,11 @@ export interface PlanningFeature {
   readonly holders: readonly PlanningHolder[];
   /** Ids of the block's claims no spec holds, dropped claims excluded, in master order. */
   readonly unheld: readonly string[];
+  /**
+   * The stories (`specs/ideas/`, spec 008) whose `feature:` names this block, in file-name order. Counted apart from
+   * the claims: a story adds nothing to `closed` or `total`.
+   */
+  readonly ideas: readonly IdeaRef[];
 }
 
 /** A feature's share of one milestone: the claims of that block held by the milestone's specs. */
@@ -136,19 +178,39 @@ export interface PlanningMilestone {
   readonly features: readonly PlanningMilestoneFeature[];
   /** Specs whose `milestone:` names this entry, archived ones included (last), `main` always false. */
   readonly specs: readonly PlanningHolder[];
+  /** The stories whose `milestone:` names this entry, in file-name order, counted apart from the claims. */
+  readonly ideas: readonly IdeaRef[];
 }
 
 export interface PlanningModel {
+  /** The workspace's workflow (`specs/workflow.md`, spec 008), the default table when the caller passed none. */
+  readonly workflow: Workflow;
+  /** The board's columns, `boardStages(workflow)` (T44): `idea` first, the detours right after `build`. */
+  readonly stages: readonly WorkflowStage[];
+  /**
+   * The count per board column, keyed in `stages` order (T64, ISC-129): `idea` counts the stories, every other
+   * stage the active specs the caller's `specStates` put there, each spec once however many features it holds. The
+   * source of the board's column counts; a spec whose stage is not a column of the board is counted nowhere.
+   */
+  readonly stageCounts: Readonly<Partial<Record<WorkflowStage, number>>>;
   /** Every feature block of the master, in master order, never re-sorted by progress. */
   readonly features: readonly PlanningFeature[];
   /** Target date ascending, undated last; empty when the master has no `## Milestones` block. */
   readonly milestones: readonly PlanningMilestone[];
   /**
+   * Every story of `specs/ideas/` (spec 008, T55), in file-name order: also those the tree lists under no feature or
+   * milestone (none named, or an `unknown-feature` or `unknown-milestone` one). Empty without stories.
+   */
+  readonly ideas: readonly IdeaRef[];
+  /**
    * The master's own count of closed and total claims, dropped ones excluded: the sum over `features` must equal it
    * (ISC-100.2). Null without a master.
    */
   readonly recount: Progress | null;
-  /** Parse findings met on the way (a malformed milestone line, a `milestone:` naming no entry), per file. */
+  /**
+   * Parse findings met on the way (a malformed milestone line, a `milestone:` naming no entry, the story reader's
+   * `ideas-…` findings, a story's `unknown-feature` or `unknown-milestone`), per file.
+   */
   readonly diagnostics: readonly FileDiagnostic[];
 }
 
@@ -169,6 +231,23 @@ export interface PlanningInput {
    * fixture goldens pass a fixed date so the snapshot does not move with the clock.
    */
   readonly now?: string;
+  /**
+   * The story folder `specs/ideas/` as `readIdeas` takes it (file name to text); absent or empty without stories.
+   * Optional so a `DashboardInput` stays assignable; the server passes it from T79 on.
+   */
+  readonly ideas?: IdeaFiles;
+  /** The workspace's workflow as `parseWorkflow` read it; the default table when absent (spec 008, T64). */
+  readonly workflow?: Workflow;
+  /**
+   * The state of each active spec, from the dashboard rows plus the hash of spec.md (`PlanningSpecState`); absent,
+   * every holder has a null stage, source and hash, and no spec is counted on the board.
+   */
+  readonly specStates?: readonly PlanningSpecState[];
+  /**
+   * The repository's lock reading (`readLockSources`), the one the dashboard takes as `DashboardInput.locks`, for each
+   * holder's `assignee` (T65); absent, the assignee comes from the events alone.
+   */
+  readonly locks?: LockReading;
 }
 
 /** The file every master diagnostic names, as the dashboard names it. */
@@ -192,19 +271,38 @@ const byFolderName = (a: SpecFiles, b: SpecFiles): number => (a.folder < b.folde
  * Active folders in folder-name order, then archived ones in folder-name order: the order a claim's holder is picked
  * in, and the order of every holder list. A folder without spec.md is not a spec and holds nothing.
  */
-function readFolders(active: readonly SpecFiles[], archived: readonly SpecFiles[]): Folder[] {
+function readFolders(
+  active: readonly SpecFiles[],
+  archived: readonly SpecFiles[],
+  states: ReadonlyMap<string, PlanningSpecState>,
+  locks: readonly ClaimLock[],
+): Folder[] {
   const read = (files: readonly SpecFiles[], isArchived: boolean): Folder[] =>
     [...files].sort(byFolderName).flatMap((f): Folder[] => {
       const spec = f.texts.spec;
       if (spec === undefined) return [];
       const { data } = parseFrontmatter(spec);
       const milestone = data.milestone?.trim();
-      const holder = { id: specIdOf(f.folder) ?? f.folder, slug: f.folder, title: data.task ?? specSlugOf(f.folder), archived: isArchived, stage: null };
+      const ids = new Set(parseClaims(spec).claims.map((c) => c.id));
+      // An archived spec is never given a stage (`PlanningHolder.archived`), whatever the caller's states say.
+      const state = isArchived ? undefined : states.get(f.folder);
+      const events = f.texts.events === undefined ? [] : parseEvents(f.texts.events).events;
+      const holder = {
+        id: specIdOf(f.folder) ?? f.folder,
+        slug: f.folder,
+        title: data.task ?? specSlugOf(f.folder),
+        archived: isArchived,
+        stage: state?.stage ?? null,
+        stageSource: state?.stageSource ?? null,
+        priority: data.priority,
+        hash: state?.hash ?? null,
+        assignee: isArchived ? null : assigneeOf({ claims: ids, locks, events }),
+      };
       return [
         {
           holder,
           feature: mainFeatureOf(data.isaFeature),
-          ids: new Set(parseClaims(spec).claims.map((c) => c.id)),
+          ids,
           milestone: milestone === undefined || milestone === '' ? null : milestone,
           file: specFilePath(`specs/${isArchived ? 'archive/' : ''}${f.folder}`, 'spec'),
         },
@@ -238,7 +336,7 @@ function resolveBlock(block: FeatureBlock, claimById: ReadonlyMap<string, Claim>
 }
 
 /** One feature block with each claim resolved to its holding folder, the block's holders and its progress. */
-function planningFeature({ block, claims: resolved }: ResolvedBlock, folders: readonly Folder[]): PlanningFeature {
+function planningFeature({ block, claims: resolved }: ResolvedBlock, folders: readonly Folder[], ideas: readonly IdeaRef[]): PlanningFeature {
   const live = resolved.filter((c) => !c.dropped);
   return {
     id: block.id,
@@ -252,6 +350,7 @@ function planningFeature({ block, claims: resolved }: ResolvedBlock, folders: re
       return held === 0 ? [] : [{ ...f.holder, main: f.feature === block.id, held }];
     }),
     unheld: live.filter((c) => c.folder === undefined).map((c) => c.id),
+    ideas: ideas.filter((idea) => idea.feature === block.id),
   };
 }
 
@@ -272,7 +371,7 @@ function milestoneState(closed: number, total: number, target: string, now: stri
  * live claims they hold, per feature block in master order. A claim counts for the folder that wins it (the feature
  * rule), so a claim a milestone's spec lists but another folder holds counts for neither the spec nor the milestone.
  */
-function planningMilestone(entry: Milestone, blocks: readonly ResolvedBlock[], folders: readonly Folder[], now: string): PlanningMilestone {
+function planningMilestone(entry: Milestone, blocks: readonly ResolvedBlock[], folders: readonly Folder[], ideas: readonly IdeaRef[], now: string): PlanningMilestone {
   const members = new Set(folders.filter((f) => f.milestone === entry.name));
   const features = blocks.flatMap(({ block, claims }): PlanningMilestoneFeature[] => {
     const held = claims.filter((c) => !c.dropped && c.folder !== undefined && members.has(c.folder));
@@ -294,7 +393,43 @@ function planningMilestone(entry: Milestone, blocks: readonly ResolvedBlock[], f
       main: false,
       held: blocks.reduce((n, { claims }) => n + claims.filter((c) => !c.dropped && c.folder === f).length, 0),
     })),
+    ideas: ideas.filter((idea) => idea.milestone === entry.name),
   };
+}
+
+/**
+ * A story's `feature:` naming no block of the master, or its `milestone:` naming no entry of the `## Milestones` block
+ * (spec 008, T55): one warning each, keyed to the story file, the name as subject. A name the master lists on a line
+ * `parseMilestones` skipped is known (`entries` holds it), as for a spec; the master's own warning names the cause.
+ */
+function unknownIdeaNames(ideas: readonly IdeaRef[], blocks: ReadonlySet<string>, entries: ReadonlySet<string>): FileDiagnostic[] {
+  const warn = (idea: IdeaRef, code: string, message: string, subject: string): FileDiagnostic => ({
+    file: idea.path,
+    diagnostic: { severity: 'warning', code, message, subject },
+  });
+  return ideas.flatMap((idea): FileDiagnostic[] => [
+    ...(idea.feature === null || blocks.has(idea.feature)
+      ? []
+      : [warn(idea, 'unknown-feature', `feature "${idea.feature}" is not a feature block of the master`, idea.feature)]),
+    ...(idea.milestone === null || entries.has(idea.milestone)
+      ? []
+      : [warn(idea, 'unknown-milestone', `milestone "${idea.milestone}" is not in the master's ## Milestones block`, idea.milestone)]),
+  ]);
+}
+
+/** The default table as a workflow, for a caller that passes none. */
+const DEFAULT_PLANNING_WORKFLOW: Workflow = { rows: DEFAULT_WORKFLOW, source: 'default', diagnostics: [] };
+
+/**
+ * The count per board column (T64): the stories in `idea`, each active folder once in the stage its state names. A
+ * folder without a state, and an archived one, has no stage and is counted nowhere.
+ */
+function stageCounts(stages: readonly WorkflowStage[], folders: readonly Folder[], stories: number): Partial<Record<WorkflowStage, number>> {
+  const counts: Partial<Record<WorkflowStage, number>> = {};
+  for (const stage of stages) {
+    counts[stage] = stage === 'idea' ? stories : folders.filter((f) => f.holder.stage === stage).length;
+  }
+  return counts;
 }
 
 /**
@@ -309,11 +444,16 @@ function planningMilestone(entry: Milestone, blocks: readonly ResolvedBlock[], f
  * the local date, and fixtures pass a fixed one.
  */
 export function buildPlanning(input: PlanningInput): PlanningModel {
-  if (input.master === null) return { features: [], milestones: [], recount: null, diagnostics: [] };
+  const stories = readIdeas(input.ideas ?? {});
+  const ideas = stories.ideas;
+  const workflow = input.workflow ?? DEFAULT_PLANNING_WORKFLOW;
+  const stages = boardStages(workflow);
+  const folders = readFolders(input.specs, input.archived, new Map((input.specStates ?? []).map((s) => [s.slug, s])), input.locks?.locks ?? []);
+  const board = { workflow, stages, stageCounts: stageCounts(stages, folders, ideas.length) };
+  if (input.master === null) return { ...board, features: [], milestones: [], ideas, recount: null, diagnostics: stories.diagnostics };
   const master = parseClaims(input.master);
   const claimById = new Map<string, Claim>();
   for (const claim of master.claims) if (!claimById.has(claim.id)) claimById.set(claim.id, claim);
-  const folders = readFolders(input.specs, input.archived);
   const blocks = master.features.map((block) => resolveBlock(block, claimById, folders));
   const parsed = parseMilestones(input.master);
   // A name the master lists on a line `parseMilestones` skipped is known but unusable: the master's own warning names the
@@ -338,13 +478,17 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
   const now = input.now ?? new Date().toISOString().slice(0, 10);
   const byTarget = [...parsed.milestones].sort((a, b) => (a.target < b.target ? -1 : a.target > b.target ? 1 : 0));
   return {
-    features: blocks.map((block) => planningFeature(block, folders)),
-    milestones: byTarget.map((entry) => planningMilestone(entry, blocks, folders, now)),
+    ...board,
+    features: blocks.map((block) => planningFeature(block, folders, ideas)),
+    milestones: byTarget.map((entry) => planningMilestone(entry, blocks, folders, ideas, now)),
+    ideas,
     recount: master.counted,
     diagnostics: [
       ...master.diagnostics.map((diagnostic) => ({ file: MASTER_FILE, diagnostic })),
       ...parsed.diagnostics.map((diagnostic) => ({ file: MASTER_FILE, diagnostic })),
       ...unknownMilestones,
+      ...stories.diagnostics,
+      ...unknownIdeaNames(ideas, new Set(master.features.map((f) => f.id)), entries),
     ],
   };
 }

@@ -80,6 +80,29 @@ describe('UiCard', () => {
     expect(host.hasAttribute('data-interactive')).toBe(true);
   });
 
+  it('turns the side edge and the dashed border on as attributes (spec 008, the board card)', async () => {
+    const fixture = TestBed.createComponent(UiCard);
+    const host = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    expect(host.hasAttribute('data-side')).toBe(false);
+    expect(host.hasAttribute('data-dashed')).toBe(false);
+    fixture.componentRef.setInput('side', true);
+    fixture.componentRef.setInput('dashed', '');
+    fixture.componentRef.setInput('padding', 12);
+    await fixture.whenStable();
+    expect(host.hasAttribute('data-side')).toBe(true);
+    expect(host.hasAttribute('data-dashed')).toBe(true);
+    expect(host.style.padding).toBe('12px');
+    expect(host.hasAttribute('data-edge')).toBe(false);
+    expect(host.hasAttribute('data-glow')).toBe(false);
+  });
+
+  it('paints the side edge as a 4 px inline-start border in --edge (--line by default) and dashes the whole border', () => {
+    const css = cardStyles();
+    expect(css).toMatch(/\[data-side\][^{]*\{\s*border-inline-start: 4px solid var\(--edge, var\(--line\)\);/);
+    expect(css).toMatch(/\[data-dashed\][^{]*\{\s*border-style: dashed;/);
+  });
+
   it('paints the edge as the prototype: a 3 px ::before bar in --edge, cyan by default, no shadow', () => {
     const css = cardStyles();
     expect(css).toMatch(/\[data-edge\][^{]*::before\s*\{[^}]*inset: 0 0 auto;[^}]*block-size: 3px;[^}]*background: var\(--edge, var\(--color-primary\)\);/);

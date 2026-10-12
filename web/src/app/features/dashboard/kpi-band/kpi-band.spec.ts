@@ -7,6 +7,12 @@ import { type KpiBandModel, KpiBand } from './kpi-band';
 
 // The golden snapshot of the harbor fixture is the model the server sends; the band must take it as it is.
 const HARBOR: KpiBandModel = harbor;
+// The expected figures are read from the golden, so the specs follow the fixture as it grows.
+const K = harbor.kpis;
+const MASTER = `${String(K.master.closed)}/${String(K.master.total)}`;
+const CLAIMS = `${String(K.claims.closed)}/${String(K.claims.total)}`;
+const PCT = String(Math.floor((K.master.closed / K.master.total) * 100));
+const OPEN = String(K.master.total - K.master.closed);
 
 describe('KpiBand', () => {
   beforeEach(() => {
@@ -39,15 +45,15 @@ describe('KpiBand', () => {
   it('renders the key numbers of the model as they are', async () => {
     const { text } = await render();
 
-    expect(text('master', '.figure')?.replace(/ /g, '')).toBe('101/124');
-    expect(text('master', '.meta')).toBe('81 % closed · 23 open');
-    expect(text('master', 'ui-ring .text')?.replace(/ /g, '')).toBe('81%');
-    expect(text('claims', '.figure')?.replace(/ /g, '')).toBe('55/78');
-    expect(text('specs', '.value')).toBe('5');
-    expect(text('takeable', '.value')).toBe('4');
-    expect(text('attention', '.value')).toBe('11');
-    expect(text('attention', '.meta')).toBe('7 warnings · 4 open fog');
-    expect(text('archive', '.value')).toBe('1');
+    expect(text('master', '.figure')?.replace(/ /g, '')).toBe(MASTER);
+    expect(text('master', '.meta')).toBe(`${PCT} % closed · ${OPEN} open`);
+    expect(text('master', 'ui-ring .text')?.replace(/ /g, '')).toBe(`${PCT}%`);
+    expect(text('claims', '.figure')?.replace(/ /g, '')).toBe(CLAIMS);
+    expect(text('specs', '.value')).toBe(String(K.specs));
+    expect(text('takeable', '.value')).toBe(String(K.takeable));
+    expect(text('attention', '.value')).toBe(String(K.attention));
+    expect(text('attention', '.meta')).toBe(`${String(K.warnings)} warnings · ${String(K.fog)} open fog`);
+    expect(text('archive', '.value')).toBe(String(K.archived));
   });
 
   it('ports the prototype tiles: hero ring 112, lime claims meter, "Takeable now", attention wide, no reserved slot', async () => {
@@ -55,7 +61,7 @@ describe('KpiBand', () => {
     const claimsMeter = tile('claims')?.querySelector('ui-meter');
 
     expect(tile('master')?.querySelector('ui-ring')?.getAttribute('data-size')).toBe('112');
-    expect(claimsMeter?.getAttribute('aria-valuenow')).toBe('55');
+    expect(claimsMeter?.getAttribute('aria-valuenow')).toBe(String(K.claims.closed));
     expect(claimsMeter?.querySelector('.fill')?.getAttribute('style')).toContain('--color-accent');
     expect(text('takeable', '.eyebrow-text')).toBe('Takeable now');
     expect(tile('attention')?.classList.contains('span-wide')).toBe(true);
@@ -104,7 +110,9 @@ describe('KpiBand', () => {
     const legend = [...(specs?.querySelectorAll('.legend .entry') ?? [])].map((entry) => squash(entry));
 
     expect(specs?.querySelector('ui-meter')?.getAttribute('aria-label')).toBe('Specs');
-    expect(legend).toEqual(['building 2', 'scoping 3']);
+    const counts = { building: K.building, scoping: K.scoping, complete: K.specs - K.building - K.scoping };
+    const present = Object.entries(counts).filter(([, n]) => n > 0);
+    expect(legend).toEqual(present.map(([phase, n]) => `${phase} ${String(n)}`));
   });
 
   it('carries the Pulse card for the compact form: ring 72, master fraction, spec-claims meter and three stat links', async () => {
@@ -118,14 +126,14 @@ describe('KpiBand', () => {
     expect(pulse?.querySelector('ui-card')?.hasAttribute('data-glow')).toBe(true);
     expect(pulse?.querySelector('ui-card')?.hasAttribute('data-edge')).toBe(false);
     expect(pulse?.querySelector('ui-ring')?.getAttribute('data-size')).toBe('72');
-    expect(squash(pulse?.querySelector('.figure'))?.replace(/ /g, '')).toBe('101/124');
+    expect(squash(pulse?.querySelector('.figure'))?.replace(/ /g, '')).toBe(MASTER);
     expect(squash(pulse?.querySelector('.claims-row .type-eyebrow'))).toBe('Spec claims');
-    expect(squash(pulse?.querySelector('.claims-row .frac'))).toBe('55/78');
-    expect(pulse?.querySelector('.claims ui-meter')?.getAttribute('aria-valuenow')).toBe('55');
+    expect(squash(pulse?.querySelector('.claims-row .frac'))).toBe(CLAIMS);
+    expect(pulse?.querySelector('.claims ui-meter')?.getAttribute('aria-valuenow')).toBe(String(K.claims.closed));
     expect(stats).toEqual([
-      { label: 'Specs', value: '5', href: '/w/harbor#specs' },
-      { label: 'Takeable', value: '4', href: '/w/harbor?sort=next&takeable=1#specs' },
-      { label: 'Attention', value: '11', href: '/w/harbor#warnings' },
+      { label: 'Specs', value: String(K.specs), href: '/w/harbor#specs' },
+      { label: 'Takeable', value: String(K.takeable), href: '/w/harbor?sort=next&takeable=1#specs' },
+      { label: 'Attention', value: String(K.attention), href: '/w/harbor#warnings' },
     ]);
   });
 
@@ -146,7 +154,7 @@ describe('KpiBand', () => {
     const { fixture, text } = await render();
     TestBed.inject(TranslocoService).setActiveLang('de');
     await fixture.whenStable();
-    expect(text('master', '.meta')).toBe('81 % geschlossen · 23 offen');
+    expect(text('master', '.meta')).toBe(`${PCT} % geschlossen · ${OPEN} offen`);
   });
 
   describe('changed-value tint (design.md § Live update, ISC-62.1)', () => {

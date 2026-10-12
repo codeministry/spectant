@@ -1,8 +1,8 @@
 /**
  * The SQLite connection and its schema migrations (T42, T94). `spectant.db` lives in the data directory from
- * `paths.ts` (ISC-21) and holds the workspace registry, the settings and the developer's notes, never anything a
- * repository says: deleting it loses nothing a re-add cannot rebuild (ISC-7) except the notes, which live here and
- * nowhere else, never in a registered repository (ISC-94, ISC-15).
+ * `paths.ts` (ISC-21) and holds the workspace registry, the settings, the developer's notes, the actor names and the
+ * board queries, never anything a repository says: deleting it loses nothing a re-add cannot rebuild (ISC-7) except
+ * the notes, which live here and nowhere else, never in a registered repository (ISC-94, ISC-15).
  *
  * The schema version is the `schema_version` row of the `setting` table. `migrate` walks it forward one step at a
  * time inside a single transaction.
@@ -17,8 +17,21 @@
  * every existing note starts unpinned. It reads `pragma_table_info` first, because SQLite has no ADD COLUMN IF NOT
  * EXISTS and a half-applied run must be adopted like migration 2's.
  *
+ * Migration 4 (T89, ISC-119.2) is expand-only: it creates `actor` (CREATE TABLE IF NOT EXISTS, adopted like migration
+ * 2's), one row per person id (`u:…`, `core/`'s `actorIdOf`) with a display name and the git addresses it was seen
+ * with as a JSON array, which a CHECK holds to an array. The ids derive from git config, so losing the table with the
+ * data directory loses the display names and nothing a repository holds (ISC-7). `ActorRow` and its accessors are below.
+ *
+ * Migration 5 (T90, ISC-129.1) is expand-only: it creates `board_query` (CREATE TABLE IF NOT EXISTS, adopted like
+ * migration 2's), one row per workspace slug holding the board's last query string (`BoardQuery` in
+ * `spec-routes.contract.ts`) and the time it was set. No foreign key: the row is keyed by the slug as the route names
+ * it, and a re-added workspace keeps its board. Losing it loses the remembered filter, nothing a repository holds
+ * (ISC-7). `BoardQueryRow` and its accessors are below.
+ *
  * No down migration runs on open. The documented reversals are `REVERSALS`, applied only by `rollback` (the CLI's
- * `spectant db rollback <version> --yes`, T98), newest first: 3 → 2 is `ALTER TABLE note DROP COLUMN pinned` (loses
+ * `spectant db rollback <version> --yes`, T98), newest first: 5 → 4 is `DROP TABLE board_query` (loses every
+ * remembered board query; the board opens unfiltered), 4 → 3 is `DROP TABLE actor` (loses every display name;
+ * the ids come back from git config), 3 → 2 is `ALTER TABLE note DROP COLUMN pinned` (loses
  * every pin), 2 → 1 is `DROP INDEX note_workspace_anchor; DROP TABLE note;` (loses every note not exported first with
  * `spectant export-notes`; plan 002 § Data Model, rollback). The next `openDatabase` migrates forward again, so a
  * rollback is only for handing the file to an older build.
@@ -27,7 +40,7 @@ import { Database } from "bun:sqlite";
 import { dbPath, ensureDataDir } from "./paths.ts";
 
 /** The schema version this build writes. A database from a newer build is refused rather than downgraded. */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 5;
 
 /** Opens (creating on first use) `spectant.db` in `dir`, in WAL mode with foreign keys on, migrated to the latest schema. */
 export function openDatabase(dir: string): Database {
@@ -107,6 +120,21 @@ export function migrate(db: Database): void {
             db.run("ALTER TABLE note ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0 CHECK (pinned IN (0, 1))");
           }
           break;
+        case 3:
+          db.run(`CREATE TABLE IF NOT EXISTS actor (
+            id             TEXT PRIMARY KEY,
+            display_name   TEXT NOT NULL,
+            git_identities TEXT NOT NULL CHECK (json_valid(git_identities) AND json_type(git_identities) = 'array'),
+            updated_at     TEXT NOT NULL
+          )`);
+          break;
+        case 4:
+          db.run(`CREATE TABLE IF NOT EXISTS board_query (
+            ws         TEXT PRIMARY KEY,
+            query      TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          )`);
+          break;
       }
       version++;
       db.run("INSERT INTO setting (key, value) VALUES ('schema_version', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [
@@ -118,6 +146,8 @@ export function migrate(db: Database): void {
 
 /** Each migration's documented reversal, keyed by the version it undoes. Every statement drops what that step made. */
 const REVERSALS: Readonly<Record<number, readonly string[]>> = {
+  5: ["DROP TABLE IF EXISTS board_query"],
+  4: ["DROP TABLE IF EXISTS actor"],
   3: ["ALTER TABLE note DROP COLUMN pinned"],
   2: ["DROP INDEX IF EXISTS note_workspace_anchor", "DROP TABLE IF EXISTS note"],
 };
@@ -143,4 +173,87 @@ export function rollback(db: Database, target: number): { from: number; to: numb
       return { from, to: Math.min(from, target) };
     })
     .immediate();
+}
+
+// ── the actor table (migration 4, T89, ISC-119.2) ────────────────────────────────────────────────────────────────────
+
+/** One person: the `u:` id, the name the app shows, the addresses seen for it, the time of the last upsert (ISO 8601). */
+export interface ActorRow {
+  readonly id: string;
+  readonly displayName: string;
+  readonly gitIdentities: readonly string[];
+  readonly updatedAt: string;
+}
+
+interface ActorRecord {
+  id: string;
+  display_name: string;
+  git_identities: string;
+  updated_at: string;
+}
+
+const actorOf = (r: ActorRecord): ActorRow => ({
+  id: r.id,
+  displayName: r.display_name,
+  gitIdentities: JSON.parse(r.git_identities) as string[], // the schema's CHECK holds it to a JSON array
+  updatedAt: r.updated_at,
+});
+
+const ACTOR_COLUMNS = "id, display_name, git_identities, updated_at";
+
+/** Inserts the actor, or replaces every field of the row with its id. */
+export function upsertActor(db: Database, actor: ActorRow): void {
+  db.run(
+    `INSERT INTO actor (${ACTOR_COLUMNS}) VALUES (?, ?, ?, ?)
+     ON CONFLICT (id) DO UPDATE SET display_name = excluded.display_name, git_identities = excluded.git_identities, updated_at = excluded.updated_at`,
+    [actor.id, actor.displayName, JSON.stringify(actor.gitIdentities), actor.updatedAt],
+  );
+}
+
+/** The actor with `id`, or null. */
+export function getActor(db: Database, id: string): ActorRow | null {
+  const row = db.query<ActorRecord, [string]>(`SELECT ${ACTOR_COLUMNS} FROM actor WHERE id = ?`).get(id);
+  return row ? actorOf(row) : null;
+}
+
+/** Every actor, ordered by id. */
+export function listActors(db: Database): ActorRow[] {
+  return db.query<ActorRecord, []>(`SELECT ${ACTOR_COLUMNS} FROM actor ORDER BY id`).all().map(actorOf);
+}
+
+/**
+ * Replaces the whole table with `actors` in one immediate transaction (`PUT /api/actors`, T91): a row whose id is
+ * not among them is deleted, every other one upserted. A failure leaves the table as it was.
+ */
+export function replaceActors(db: Database, actors: readonly ActorRow[]): void {
+  db.transaction(() => {
+    db.run("DELETE FROM actor");
+    for (const actor of actors) upsertActor(db, actor);
+  }).immediate();
+}
+
+// ── the board_query table (migration 5, T90, ISC-129.1) ──────────────────────────────────────────────────────────────
+
+/** A workspace's remembered board query: the slug, the query string as the board sent it, the time it was set (ISO 8601). */
+export interface BoardQueryRow {
+  readonly ws: string;
+  readonly query: string;
+  readonly updatedAt: string;
+}
+
+/** The board query remembered for workspace `ws`, or null when none was set. */
+export function getBoardQuery(db: Database, ws: string): BoardQueryRow | null {
+  const row = db
+    .query<{ ws: string; query: string; updated_at: string }, [string]>("SELECT ws, query, updated_at FROM board_query WHERE ws = ?")
+    .get(ws);
+  return row ? { ws: row.ws, query: row.query, updatedAt: row.updated_at } : null;
+}
+
+/** Remembers `query` for workspace `ws`, replacing the row it had. */
+export function setBoardQuery(db: Database, ws: string, query: string, updatedAt: string): void {
+  db.run(
+    `INSERT INTO board_query (ws, query, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT (ws) DO UPDATE SET query = excluded.query, updated_at = excluded.updated_at`,
+    [ws, query, updatedAt],
+  );
 }

@@ -1,4 +1,4 @@
-import { type AreaId, SPEC_AREAS, type TabId } from '../layout/shell/areas';
+import { type AreaId, SPEC_AREAS, type TabId, type WorkspaceMenuPageId, workspacePageById } from '../layout/shell/areas';
 
 /**
  * The app's keyboard bindings (ISC-97, T102) as data: `KeyboardService` dispatches from this table, the shortcut sheet
@@ -58,6 +58,8 @@ export type DashboardSection = 'specs' | 'next-up' | 'warnings';
 export type ShortcutAction =
   | { readonly kind: 'go-all' }
   | { readonly kind: 'go-section'; readonly section: DashboardSection }
+  /** A workspace-scope page (spec 008: `g b`, the Board), from any page of the open workspace. */
+  | { readonly kind: 'go-page'; readonly page: WorkspaceMenuPageId }
   | { readonly kind: 'copy-next' }
   | { readonly kind: 'refresh' }
   /** Listed only: `UiRovingList` moves the selection itself, the service never takes these keys. */
@@ -124,6 +126,16 @@ const workspaceShortcuts: Shortcut[] = [
   { id: 'go-specs', keys: [GO_PREFIX, 's'], group: 'workspace', action: { kind: 'go-section', section: 'specs' }, label: 'shortcuts.actions.goSpecs' },
   { id: 'go-next-up', keys: [GO_PREFIX, 'n'], group: 'workspace', action: { kind: 'go-section', section: 'next-up' }, label: 'shortcuts.actions.goNextUp' },
   { id: 'go-warnings', keys: [GO_PREFIX, 'w'], group: 'workspace', action: { kind: 'go-section', section: 'warnings' }, label: 'shortcuts.actions.goWarnings' },
+  // Spec 008 (T117): `g b`, the second key read from the page registry; free per the 2026-10-11 review (plan.md § Open
+  // Points), since the round board inside a spec is a tab, not a `g` sequence.
+  {
+    id: 'go-board',
+    keys: [GO_PREFIX, workspacePageById('board').goKey ?? 'b'],
+    group: 'workspace',
+    action: { kind: 'go-page', page: 'board' },
+    label: 'shortcuts.actions.goTo',
+    target: 'shell.pages.board',
+  },
   { id: 'move', keys: ['j', 'k'], group: 'workspace', action: { kind: 'move-selection' }, label: 'shortcuts.actions.move' },
   { id: 'copy-next', keys: ['c'], group: 'workspace', action: { kind: 'copy-next' }, label: 'shortcuts.actions.copy' },
   { id: 'refresh', keys: ['r'], group: 'workspace', action: { kind: 'refresh' }, label: 'shortcuts.actions.refresh' },

@@ -66,11 +66,48 @@ function flat(layer: string): boolean {
 }
 
 /** The selector of the rule a line sits in: the nearest line above it (or itself) that opens a block. */
-function ruleOf({ file, line }: Line): string {
-  const own = LINES.filter((l) => l.file === file && l.line <= line && l.text.includes("{"));
+function ruleOf({ file, line }: Line, lines: Line[] = LINES): string {
+  const own = lines.filter((l) => l.file === file && l.line <= line && l.text.includes("{"));
   const opener = own.at(-1)?.text ?? "";
   return opener.slice(0, opener.indexOf("{")).trim();
 }
+
+// Each rule is a function of the lines it reads, so the negative tests below can feed it a made-up file.
+const glowClassHits = (lines: Line[]) =>
+  lines
+    .filter(
+      // `.glow(` is the card's signal input being read, never a selector.
+      ({ text }) => /\.glow\b(?!\()/.test(text) || /class(?:\.|=["'][^"']*\b)glow\b/.test(text),
+    )
+    .map(where);
+
+const boxShadowHits = (lines: Line[]) =>
+  lines.flatMap((line) =>
+    [...line.text.matchAll(/box-shadow:\s*([^;}]+)/g)].flatMap((m) =>
+      layers((m[1] ?? "").trim())
+        .filter((layer) => !flat(layer))
+        .map((layer) => `${where(line)}: ${layer}`),
+    ),
+  );
+
+const textShadowHits = (lines: Line[]) =>
+  lines.filter(({ text }) => /text-shadow\s*:|drop-shadow\(/.test(text)).map(where);
+
+/** Every radial-gradient() outside ui-card's `:host([data-glow])::after` rule. */
+const radialHits = (lines: Line[]) =>
+  lines
+    .filter(({ text }) => text.includes("radial-gradient("))
+    .filter((l) => !(l.file === CARD && ruleOf(l, lines) === ":host([data-glow])::after"))
+    .map(where);
+
+/** A made-up source as the guard reads it: comment lines dropped. */
+const fake = (file: string, css: string): Line[] =>
+  css
+    .split("\n")
+    .map((text, i) => ({ file, line: i + 1, text }))
+    .filter(({ text }) => !/^\s*(\/\/|\/\*|\*)/.test(text));
+
+const FEATURES = ["app/features/board/", "app/features/help/", "app/features/ideas/"];
 
 describe("no glow outside ui-card's glow variant (design.md § Surfaces, amended 2026-09-29)", () => {
   test("sources were found", () => {
@@ -78,23 +115,16 @@ describe("no glow outside ui-card's glow variant (design.md § Surfaces, amended
     expect(LINES.some(({ file }) => file === CARD)).toBe(true);
   });
 
+  test("the board, help and ideas features are scanned (ISC-133, T142)", () => {
+    for (const folder of FEATURES) expect(LINES.some(({ file }) => file.startsWith(folder)), folder).toBe(true);
+  });
+
   test("no class named glow", () => {
-    const hits = LINES.filter(
-      // `.glow(` is the card's signal input being read, never a selector.
-      ({ text }) => /\.glow\b(?!\()/.test(text) || /class(?:\.|=["'][^"']*\b)glow\b/.test(text),
-    ).map(where);
-    expect(hits).toEqual([]);
+    expect(glowClassHits(LINES)).toEqual([]);
   });
 
   test("every box-shadow layer is flat: none, var(--shadow), the focus halo or a blur-free inset edge", () => {
-    const hits = LINES.flatMap((line) =>
-      [...line.text.matchAll(/box-shadow:\s*([^;}]+)/g)].flatMap((m) =>
-        layers((m[1] ?? "").trim())
-          .filter((layer) => !flat(layer))
-          .map((layer) => `${where(line)}: ${layer}`),
-      ),
-    );
-    expect(hits).toEqual([]);
+    expect(boxShadowHits(LINES)).toEqual([]);
   });
 
   test("cards carry no shadow token", () => {
@@ -103,13 +133,35 @@ describe("no glow outside ui-card's glow variant (design.md § Surfaces, amended
   });
 
   test("no text-shadow and no drop-shadow() filter", () => {
-    const hits = LINES.filter(({ text }) => /text-shadow\s*:|drop-shadow\(/.test(text)).map(where);
-    expect(hits).toEqual([]);
+    expect(textShadowHits(LINES)).toEqual([]);
   });
 
   test("the one radial-gradient() glow is ui-card's glow variant, the :host([data-glow])::after rule", () => {
     const glows = LINES.filter(({ text }) => text.includes("radial-gradient("));
     expect(glows.map(({ file }) => file)).toEqual([CARD]);
-    expect(glows.map(ruleOf)).toEqual([":host([data-glow])::after"]);
+    expect(glows.map((l) => ruleOf(l))).toEqual([":host([data-glow])::after"]);
+    expect(radialHits(LINES)).toEqual([]);
+  });
+});
+
+describe("negative: a glow in features/board/x.css fails (ISC-133, T142)", () => {
+  const file = "app/features/board/x.css";
+
+  test("a blurred box-shadow is reported", () => {
+    expect(boxShadowHits(fake(file, ".x {\n  box-shadow: 0 0 24px var(--disp);\n}"))).toEqual([
+      `${file}:2: 0 0 24px var(--disp)`,
+    ]);
+  });
+
+  test("a glow class, a text-shadow, a drop-shadow() and a radial-gradient() are reported", () => {
+    expect(glowClassHits(fake(file, ".x.glow { color: var(--disp-ink); }"))).toHaveLength(1);
+    expect(textShadowHits(fake(file, ".x { text-shadow: 0 0 8px var(--disp); }"))).toHaveLength(1);
+    expect(textShadowHits(fake(file, ".x { filter: drop-shadow(0 0 8px var(--disp)); }"))).toHaveLength(1);
+    expect(radialHits(fake(file, ".x { background: radial-gradient(var(--disp), transparent); }"))).toHaveLength(1);
+  });
+
+  test("control: the flat set passes", () => {
+    const flatSet = ".x { box-shadow: none; }\n.y { box-shadow: 0 0 0 4px var(--focus-halo); }";
+    expect(boxShadowHits(fake(file, flatSet))).toEqual([]);
   });
 });

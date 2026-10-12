@@ -15,7 +15,9 @@
         "parallel": true,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T2",
@@ -25,7 +27,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T3",
@@ -35,7 +39,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T4",
@@ -45,7 +51,9 @@
         "parallel": true,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T5",
@@ -56,7 +64,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "[P], claim takeable, edges closed"
+        "reason": "[P], claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T6",
@@ -67,7 +77,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "claim blocked by ISC-7"
+        "reason": "claim blocked by ISC-7",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T7",
@@ -78,7 +90,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "[P], claim takeable, edges closed"
+        "reason": "[P], claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T8",
@@ -89,7 +103,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "claim blocked by ISC-9"
+        "reason": "claim blocked by ISC-9",
+        "agent": null,
+        "subagent": null
       }
     ],
     "progress": {
