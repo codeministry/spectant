@@ -185,7 +185,14 @@
           </section>
         }
       } @else {
-        <div class="strip" cdkDropList [cdkDropListData]="null" (cdkDropListDropped)="dropped($event)">
+        <div
+          class="strip"
+          cdkDropList
+          [cdkDropListData]="null"
+          [style.--board-tracks]="tracks()"
+          [style.--strip-shift.px]="stripShift()"
+          (cdkDropListDropped)="dropped($event)"
+        >
           <ui-segmented
             mode="strip"
             [options]="stripOptions()"

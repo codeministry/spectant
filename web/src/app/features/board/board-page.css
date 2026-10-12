@@ -50,12 +50,36 @@ h1 {
   font-weight: 600;
 }
 
+/* The strip is a column header: its segments lie on the same tracks as the columns (`--board-tracks`, stubs narrow), and
+   follow the scroller sideways (`--strip-shift`), so the names stand over their columns whatever is collapsed. */
 .strip {
   position: sticky;
   z-index: 3;
   inset-block-start: 64px;
   margin-block-end: 8px;
+  padding-inline: 12px;
+  overflow: hidden;
   background: var(--color-base-200);
+}
+
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+.strip ::ng-deep ui-segmented .strip,
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+.strip ::ng-deep ui-segmented .strip[data-wrap] {
+  display: grid;
+  grid-template-columns: var(--board-tracks);
+  gap: 0 12px;
+  inline-size: 100%;
+  min-inline-size: min-content;
+  padding: 4px 0 6px;
+  transform: translateX(calc(-1 * var(--strip-shift, 0px)));
+}
+
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+.strip ::ng-deep ui-segmented .sseg {
+  min-inline-size: 0;
+  padding-inline: 8px;
+  justify-content: center;
 }
 
 .board-card {
@@ -71,12 +95,15 @@ h1 {
   scrollbar-color: var(--track) transparent;
 }
 
+/* The grid fills the scroller; its `minmax(--board-col, 1fr)` tracks share the room and never go under the design width,
+   so the grid grows to its min-content (every column at its design width) only when they do not fit. `max-content` here
+   would let a `1fr` track take the width of its longest title. */
 .grid {
   display: grid;
   column-gap: 12px;
   align-items: stretch;
-  inline-size: max-content;
-  min-inline-size: 100%;
+  inline-size: 100%;
+  min-inline-size: min-content;
 }
 
 .col,

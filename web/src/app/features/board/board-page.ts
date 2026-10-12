@@ -244,6 +244,7 @@ export class BoardPage {
         key: c.stage,
         label,
         count: c.cards.length,
+        ...(c.stub.kind === 'empty' ? { narrow: true } : {}),
         ...(c.waitingOnYou > 0 ? { tone: 'secondary' as const } : {}),
         ariaLabel: this.transloco.translate('board.workspace.column.name', { stage: label, count: c.cards.length, waiting: c.waitingOnYou }, lang),
       };
@@ -285,6 +286,8 @@ export class BoardPage {
   private readonly scrollerRef = viewChild<ElementRef<HTMLElement>>('scroller');
   protected readonly scrollerEl = computed(() => this.scrollerRef()?.nativeElement);
   protected readonly inView = signal<readonly string[]>([]);
+  /** The scroller's horizontal offset, so the strip's column-aligned segments follow the columns under them. */
+  protected readonly stripShift = signal(0);
   protected readonly fadeStart = signal(false);
   protected readonly fadeEnd = signal(false);
 
@@ -434,6 +437,7 @@ export class BoardPage {
   protected updateFades(): void {
     const el = this.scrollerEl();
     if (!el) return;
+    this.stripShift.set(el.scrollLeft);
     this.fadeStart.set(el.scrollLeft > 4);
     this.fadeEnd.set(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
   }
