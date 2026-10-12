@@ -63,7 +63,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
     .r3 { flex-wrap: wrap; }
     .r3 ui-actor-chip { max-inline-size: 14ch; margin-inline-start: auto; }
     .num { color: var(--disp-ink); font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 600; line-height: 20px; }
-    .idea { display: inline-flex; gap: 6px; align-items: center; min-inline-size: 0; block-size: 22px; padding-inline: 7px; border: 1px dashed var(--track); border-radius: 999px; color: var(--muted-ink); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; line-height: 16px; white-space: nowrap; }
+    .idea { display: inline-flex; gap: 6px; align-items: center; min-inline-size: 0; block-size: 22px; padding-inline: 7px; border: 1px dashed var(--track); border-radius: var(--radius-selector); color: var(--muted-ink); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; line-height: 16px; white-space: nowrap; }
     .idea ui-icon { flex: none; color: var(--conc-ink); }
     .slug { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; }
     .title { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--color-base-content); font-size: 14px; font-weight: 600; line-height: 20px; overflow-wrap: anywhere; text-decoration: none; }
