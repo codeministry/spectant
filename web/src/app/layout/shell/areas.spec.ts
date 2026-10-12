@@ -1,15 +1,15 @@
 import de from '../../../i18n/de.json';
 import en from '../../../i18n/en.json';
 import { ICON_NAMES } from '../../shared/icons/icon-names';
-import { WORKSPACE_PAGES, workspaceLink, workspacePageById } from './areas';
+import { isWorkspacePageId, WORKSPACE_PAGES, workspaceLink, workspacePageById } from './areas';
 
 /** Resolves a dotted key in a catalogue; the i18n-parity test (rule 7) covers the pairing, this covers that these keys exist. */
 const lookup = (catalogue: unknown, key: string): unknown =>
   key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], catalogue);
 
 describe('WORKSPACE_PAGES', () => {
-  it('holds exactly Specs, Features and Milestones, in that order', () => {
-    expect(WORKSPACE_PAGES.map((page) => page.id)).toEqual(['specs', 'features', 'milestones']);
+  it('holds exactly Specs, Board, Features and Milestones, in that order (spec 008, ISC-129)', () => {
+    expect(WORKSPACE_PAGES.map((page) => page.id)).toEqual(['specs', 'board', 'features', 'milestones']);
   });
 
   it('uses an icon from ICON_NAMES for every page', () => {
@@ -27,19 +27,27 @@ describe('WORKSPACE_PAGES', () => {
     }
   });
 
-  it('records go keys as candidates only: f and m, none for specs (g s is Status)', () => {
-    expect(WORKSPACE_PAGES.map((page) => page.goKey)).toEqual([null, 'f', 'm']);
+  it('records go keys as candidates only: b, f and m, none for specs (g s is Status)', () => {
+    expect(WORKSPACE_PAGES.map((page) => page.goKey)).toEqual([null, 'b', 'f', 'm']);
   });
 
   it('looks a page up by id', () => {
+    expect(workspacePageById('board').icon).toBe('square-kanban');
     expect(workspacePageById('features').icon).toBe('layers');
     expect(workspacePageById('milestones').icon).toBe('flag');
+  });
+
+  it('knows the story page as a page id, but lists it in no menu entry', () => {
+    for (const id of ['specs', 'board', 'features', 'milestones', 'idea']) expect(isWorkspacePageId(id)).toBe(true);
+    expect(isWorkspacePageId('ideas')).toBe(false);
+    expect(WORKSPACE_PAGES.map((page): string => page.id)).not.toContain('idea');
   });
 });
 
 describe('workspaceLink', () => {
   it('links Specs to the workspace root and the others to their page', () => {
     expect(workspaceLink('harbor', 'specs')).toEqual(['/w', 'harbor']);
+    expect(workspaceLink('harbor', 'board')).toEqual(['/w', 'harbor', 'board']);
     expect(workspaceLink('harbor', 'features')).toEqual(['/w', 'harbor', 'features']);
     expect(workspaceLink('harbor', 'milestones')).toEqual(['/w', 'harbor', 'milestones']);
   });

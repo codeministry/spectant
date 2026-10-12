@@ -10,8 +10,13 @@ import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
 import { ApiClient, type ApiResult } from '../../../../core/api.service';
 import { TimelineTab } from './timeline-tab';
 
-/** What the stub serves for `/w/harbor/s/002/timeline`: 3 rounds, 4 derived stage entries, 1 gate, 1 decision. */
-const HARBOR_002 = (golden as unknown as Record<string, readonly TimelineEntry[]>)['specs/002-web-console'] ?? [];
+const TIMELINES = golden as unknown as Record<string, readonly TimelineEntry[]>;
+/** What the stub serves for `/w/harbor/s/002/timeline`: 3 rounds, 4 recorded stage entries, 1 gate, 1 decision. */
+const HARBOR_002 = TIMELINES['specs/002-web-console'] ?? [];
+/** Spec 004's strand: its stages are derived from the files, three of them undated. */
+const HARBOR_004 = TIMELINES['specs/004-retention-policies'] ?? [];
+/** The local day of an ISO `ts`, as the tab groups by it. */
+const localDay = (ts: string): string => new Date(ts).toDateString();
 
 type FakeApi = Pick<ApiClient, 'timeline'>;
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
@@ -92,24 +97,48 @@ describe('TimelineTab (T55, ISC-80, ISC-36)', () => {
     expect(chip(root, 'gate')?.getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('groups entries by local day; undated stage entries join the group before them', async () => {
+  it('groups entries by local day', async () => {
     setUp();
     const root = await open('/w/harbor/s/002/timeline');
     const groups = [...root.querySelectorAll<HTMLElement>('[data-day]')];
-    expect(groups).toHaveLength(4);
+    expect(HARBOR_002.every((entry) => entry.ts !== '')).toBe(true);
+    expect(groups).toHaveLength(new Set(HARBOR_002.map((entry) => localDay(entry.ts))).size);
     const round1Group = groups.find((group) => group.querySelector('[data-id="round-1"]'));
     const ids = [...(round1Group?.querySelectorAll<HTMLElement>('[data-entry]') ?? [])].map((el) => el.dataset['id']);
-    expect(ids).toEqual(['round-1', 'stage-review', 'stage-tasks']);
+    const round1 = HARBOR_002.find((entry) => entry.id === 'round-1');
+    expect(ids).toEqual(HARBOR_002.filter((entry) => localDay(entry.ts) === localDay(round1?.ts ?? '')).map((entry) => entry.id));
+  });
+
+  it('puts an undated stage entry in the group of the entry before it', async () => {
+    setUp(HARBOR_004);
+    const root = await open('/w/harbor/s/004/timeline');
+    const groupOf = (id: string) => root.querySelector(`[data-id="${id}"]`)?.closest('[data-day]');
+    const undated = HARBOR_004.filter((entry) => entry.ts === '');
+    expect(undated.map((entry) => entry.id)).toEqual(['stage-code-review', 'stage-review', 'stage-tasks']);
+    for (const entry of undated) {
+      const index = HARBOR_004.indexOf(entry);
+      expect(index).toBeGreaterThan(0);
+      expect(groupOf(entry.id ?? '')).toBe(groupOf(HARBOR_004.at(index - 1)?.id ?? ''));
+    }
     expect(root.querySelector('[data-id="stage-review"] .time')?.textContent).toContain('date unknown');
   });
 
   it('marks every derived stage entry with a derived chip and a dashed marker (ISC-36)', async () => {
+    setUp(HARBOR_004);
+    const root = await open('/w/harbor/s/004/timeline');
+    const derived = HARBOR_004.filter((entry) => entry.derived).length;
+    expect(derived).toBeGreaterThan(0);
+    expect(root.querySelectorAll('[data-derived-chip]')).toHaveLength(derived);
+    expect(root.querySelectorAll('.marker[data-derived]')).toHaveLength(derived);
+    expect(root.querySelector('[data-id="gate-reviewed"] [data-derived-chip]')).toBeNull();
+  });
+
+  it('marks no recorded stage entry as derived', async () => {
     setUp();
     const root = await open('/w/harbor/s/002/timeline');
-    const derived = root.querySelectorAll('[data-derived-chip]');
-    expect(derived).toHaveLength(HARBOR_002.filter((entry) => entry.derived).length);
-    expect(root.querySelectorAll('.marker[data-derived]')).toHaveLength(4);
-    expect(root.querySelector('[data-id="round-3"] [data-derived-chip]')).toBeNull();
+    expect(HARBOR_002.filter((entry) => entry.kind === 'stage' && entry.derived)).toEqual([]);
+    expect(root.querySelectorAll('[data-derived-chip]')).toHaveLength(0);
+    expect(root.querySelectorAll('.marker[data-derived]')).toHaveLength(0);
   });
 
   it('expands a round entry on Enter into its body lines and an Open board link', async () => {

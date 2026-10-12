@@ -144,33 +144,33 @@ describe('AreaMenu', () => {
       setUp(ok(planning([UNNAMED])));
       const root = await render('/w/harbor');
       const entries = pages(root);
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'features']);
-      expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A']);
-      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/features']);
-      expect(attr(entries, 'aria-disabled')).toEqual([null, null]);
-      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Features']);
+      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features']);
+      expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A', 'A']);
+      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/board', '/w/harbor/features']);
+      expect(attr(entries, 'aria-disabled')).toEqual([null, null, null]);
+      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Board', 'Features']);
       expect(root.querySelectorAll('nav [data-area]')).toHaveLength(0);
     });
 
     it('adds the Milestones entry, third, as soon as a spec carries a milestone', async () => {
       setUp(ok(WITH_MILESTONES));
       const entries = pages(await render('/w/harbor'));
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'features', 'milestones']);
-      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/features', '/w/harbor/milestones']);
-      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Features', 'Milestones']);
+      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features', 'milestones']);
+      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/board', '/w/harbor/features', '/w/harbor/milestones']);
+      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Board', 'Features', 'Milestones']);
     });
 
     it("counts an archived spec's milestone", async () => {
       setUp(ok(planning([milestone('Harbor 0.9', '2026-08-01', 'complete', [holder('001', true)])])));
-      expect(attr(pages(await render('/w/harbor')), 'data-page')).toEqual(['specs', 'features', 'milestones']);
+      expect(attr(pages(await render('/w/harbor')), 'data-page')).toEqual(['specs', 'board', 'features', 'milestones']);
     });
 
     it('marks the current page with aria-current and gives it focus on open', async () => {
       setUp(ok(WITH_MILESTONES));
       const cases: Array<[string, Array<string | null>]> = [
-        ['/w/harbor', ['page', null, null]],
-        ['/w/harbor/features', [null, 'page', null]],
-        ['/w/harbor/milestones', [null, null, 'page']],
+        ['/w/harbor', ['page', null, null, null]],
+        ['/w/harbor/features', [null, null, 'page', null]],
+        ['/w/harbor/milestones', [null, null, null, 'page']],
       ];
       for (const [url, current] of cases) {
         const entries = pages(await render(url));
@@ -192,7 +192,12 @@ describe('AreaMenu', () => {
     it('renders the summaries from the dashboard rows and the planning model', async () => {
       setUp(ok(WITH_MILESTONES));
       const entries = pages(await render('/w/harbor'));
-      expect(entries.map(sub)).toEqual(['3 active · 1 archived', '2 features · 5/9 closed', '2 milestones · next Nov 30']);
+      expect(entries.map(sub)).toEqual(['3 active · 1 archived', '0 stages · 0 cards', '2 features · 5/9 closed', '2 milestones · next Nov 30']);
+    });
+
+    it('sums the Board summary over its columns as served (spec 008, ISC-129)', async () => {
+      setUp(ok({ ...planning([UNNAMED]), stages: ['idea', 'plan', 'build', 'done'], stageCounts: { idea: 2, plan: 1, build: 3 } }));
+      expect(pages(await render('/w/harbor')).map(sub)[1]).toBe('4 stages · 6 cards');
     });
 
     it('names an undated next milestone by its name', async () => {
@@ -204,14 +209,14 @@ describe('AreaMenu', () => {
           ]),
         ),
       );
-      expect(pages(await render('/w/harbor')).map(sub)[2]).toBe('2 milestones · next Harbor 2.0');
+      expect(pages(await render('/w/harbor')).map(sub)[3]).toBe('2 milestones · next Harbor 2.0');
     });
 
     it('leaves the Features summary out while the planning model is not loaded, rather than a broken template', async () => {
       setUp({ kind: 'not-found', served: false });
       const entries = pages(await render('/w/harbor'));
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'features']);
-      expect(entries.map(sub)).toEqual(['3 active · 1 archived', null]);
+      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features']);
+      expect(entries.map(sub)).toEqual(['3 active · 1 archived', null, null]);
       expect(entries.map((entry) => entry.textContent)).not.toContain('{{');
     });
 
@@ -219,8 +224,8 @@ describe('AreaMenu', () => {
       setUp(ok(WITH_MILESTONES));
       const root = await render('/w/harbor/features', 'compact');
       expect(root.querySelector('ui-sheet nav')?.getAttribute('data-tier')).toBe('compact');
-      expect(attr(pages(root), 'data-page')).toEqual(['specs', 'features', 'milestones']);
-      expect(attr(pages(root), 'aria-current')).toEqual([null, 'page', null]);
+      expect(attr(pages(root), 'data-page')).toEqual(['specs', 'board', 'features', 'milestones']);
+      expect(attr(pages(root), 'aria-current')).toEqual([null, null, 'page', null]);
     });
   });
 

@@ -92,6 +92,15 @@ describe("ISC-18.2 generated icon map", () => {
     const read = (n: string) => readFileSync(join(lucideDir(), "icons", `${n}.svg`), "utf8");
     expect(renderIconsModule(["x", "check"], PINNED, read)).toBe(renderIconsModule(["check", "x"], PINNED, read));
   });
+
+  test("an entry whose path data reads as a dotted quad carries the leak allow marker, others do not", () => {
+    const svg = (d: string) =>
+      `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+    const read = (n: string) => svg(n === "check" ? "M6 3.5.7.7 1 1" : "M4 4h16"); // leak:allow synthetic path data
+    const lines = renderIconsModule(["check", "x"], PINNED, read).split("\n");
+    expect(lines.find((l) => l.startsWith("  check:"))).toEndWith("// leak:allow Lucide path data, not an address");
+    expect(lines.find((l) => l.startsWith("  x:"))).toBe(`  x: '<path d="M4 4h16"/>',`);
+  });
 });
 
 describe("ISC-18.2 icon usage in web/src", () => {

@@ -133,10 +133,10 @@ test.describe('locks', () => {
     await page.goto(BOARD);
     await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
     // The stub's frontier fixture relabels the golden's lock and adds one session on the first waiting open claim
-    // (web/e2e/stub-api.ts `lockFixtures`): T27 keeps spec-002-ISC-74, T28 gets spec-002-ISC-75.
+    // (web/e2e/stub-api.ts `lockFixtures`): T27 keeps a:claude:sess-2, T28 gets a:claude:stub-002-isc-75.
     for (const [task, session] of [
-      ['T27', 'spec-002-ISC-74'],
-      ['T28', 'spec-002-ISC-75'],
+      ['T27', 'a:claude:sess-2'],
+      ['T28', 'a:claude:stub-002-isc-75'],
     ] as const) {
       const card = page.locator(`[data-section="inFlight"] article[data-card="${task}"]`);
       await expect(card).toHaveAttribute('data-state', 'running');

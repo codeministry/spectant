@@ -106,3 +106,22 @@ Reason: reshaping or re-parsing the model here makes a second parser (ISC-5); an
   Reason: committed baselines must match CI byte for byte.
 - Pure TypeScript guards (tokens, icons, i18n parity, fonts) live in `web/tests/*.test.ts` and run under root
   `bun test`, where `bunfig.toml` excludes `web/src`. Reason: they need no Angular, and Bun must skip Vitest specs.
+
+## Driving the board writes from an e2e spec
+
+The stub answers the Stage-3 board (spec 008, T119) from the planning golden and an in-memory state per
+`X-Spectant-Stub-Session`; `POST /api/__stub/reset` restores the golden for that session. A spec picks the answer by
+what it sends, never by a hidden switch:
+
+- **200**: send the hash the page read (the planning holder's `hash`, or `X-Spectant-Spec-Hash` on `GET …/specs/:id`;
+  for a story `IdeaPage.hash`) and a move the spec's workflow row lists, on a spec no lock holds. The session's tree
+  then shows the card moved (stage, `stageSource: explicit`, a new `hash`, `stageCounts`); an allocation removes the
+  story and adds the new spec at `plan` (`010-console-audit-log` on harbor). Reason: the next poll must render the move.
+- **409**: send any other hash (`'0'.repeat(64)`), or the old hash after a move; or `X-Spectant-Stub-Write: stale`.
+- **423**: transition a spec the lock fixture holds: harbor 002 under the default `activity` locks (`a:claude:sess-2`
+  on ISC-74), every spec with an open claim under `X-Spectant-Stub-Locks: frontier`, none under `none`; or send
+  `X-Spectant-Stub-Write: locked` (the only way for an allocation, which the real server never locks). Lock sessions
+  follow the actor grammar; made-up ones read `a:claude:stub-<id>-<claim>`.
+- **422**: a move the row does not list (`006` `review → done`, or the stage it already stands in), answered with the
+  stage-table phrase and the spec's next command; allocating `registry-webhooks`, which the story index does not name,
+  is `not-in-index`. Reason: these are the refusals the real write gives for the same fixture.

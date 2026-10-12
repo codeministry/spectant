@@ -13,8 +13,14 @@ class Stub {}
 const notFound: ShellRouteData = { notFound: true };
 const milestones: ShellRouteData = { page: 'milestones' };
 
+const board: ShellRouteData = { page: 'board' };
+const idea: ShellRouteData = { page: 'idea' };
+
+// The board and story routes as T115 registers them in `app.routes.ts`; declared here so the derivation is pinned first.
 const routes: Routes = [
   { path: 'w/:ws', component: Stub },
+  { path: 'w/:ws/board', component: Stub, data: board },
+  { path: 'w/:ws/ideas/:slug', component: Stub, data: idea },
   { path: 'w/:ws/milestones', component: Stub, data: milestones },
   { path: 'w/:ws/s/:id', component: Stub },
   { path: '**', component: Stub, data: notFound },
@@ -45,5 +51,26 @@ describe('ShellState.route().wsPage', () => {
     expect(route.wsPage).toBe('milestones');
     expect(route.ws).toBe('harbor');
     expect(route.specId).toBeNull();
+    expect(route.ideaSlug).toBeNull();
+  });
+
+  it("is 'board' on the workspace board, with no spec and no story (spec 008, ISC-129)", async () => {
+    const route = await routeAt('/w/harbor/board?feature=F1&col=build');
+    expect(route).toEqual({ ws: 'harbor', specId: null, area: null, tab: null, wsPage: 'board', ideaSlug: null, notFound: false });
+  });
+
+  it("is 'idea' on a story page, with the story's slug from the URL", async () => {
+    const route = await routeAt('/w/harbor/ideas/tide-tables');
+    expect(route).toEqual({ ws: 'harbor', specId: null, area: null, tab: null, wsPage: 'idea', ideaSlug: 'tide-tables', notFound: false });
+  });
+
+  it('decodes an encoded story slug once, as the router does', async () => {
+    expect((await routeAt('/w/harbor/ideas/tide%20tables')).ideaSlug).toBe('tide tables');
+  });
+
+  it('has no story slug on the workspace and spec routes', async () => {
+    expect((await routeAt('/w/harbor')).ideaSlug).toBeNull();
+    TestBed.resetTestingModule();
+    expect((await routeAt('/w/harbor/s/002')).ideaSlug).toBeNull();
   });
 });

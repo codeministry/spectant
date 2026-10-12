@@ -9,7 +9,7 @@ import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiRovingItem, UiRovingList } from '../../shared/ui/roving-list.directive';
-import { areaPath, SPEC_AREAS, type SpecArea, specLink, WORKSPACE_PAGES, type WorkspacePageId, workspaceLink } from '../shell/areas';
+import { areaPath, SPEC_AREAS, type SpecArea, specLink, WORKSPACE_PAGES, type WorkspaceMenuPageId, workspaceLink } from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 
@@ -68,11 +68,12 @@ export class AreaMenu {
   protected readonly currentPage = computed(() => this.state.route().wsPage);
 
   /** Each page's summary params, from what has loaded; a page whose source has not answered gets null. */
-  protected readonly summaries = computed<Record<WorkspacePageId, SummaryParams>>(() => ({
+  protected readonly summaries = computed<Record<WorkspaceMenuPageId, SummaryParams>>(() => ({
     specs:
       this.data.dashboard.value()?.kind === 'ok'
         ? { active: this.data.specRows().length, archived: this.data.archiveRows().length }
         : null,
+    board: this.boardSummary(),
     features: this.featuresSummary(),
     milestones: this.milestonesSummary(),
   }));
@@ -101,8 +102,16 @@ export class AreaMenu {
   }
 
   /** `/w/:ws` or `/w/:ws/<page>`; rendered only at workspace scope, where the workspace is set. */
-  protected pageLink(page: WorkspacePageId): string[] {
+  protected pageLink(page: WorkspaceMenuPageId): string[] {
     return workspaceLink(this.state.ws() ?? '', page);
+  }
+
+  /** Board (spec 008): its columns and the cards they count, as the planning tree serves them; null until it answers. */
+  private boardSummary(): SummaryParams {
+    if (this.data.planningModel() === null) return null;
+    const counts = this.data.stageCounts();
+    const cards = this.data.stages().reduce((sum, stage) => sum + (counts[stage] ?? 0), 0);
+    return { stages: this.data.stages().length, cards };
   }
 
   /** Features: the feature count and the master's recount of closed and total claims (ISC-100.2). */

@@ -26,6 +26,8 @@ export interface ShellRoute {
   readonly tab: TabId | null;
   /** The workspace-scope page: route data `page`, else the spec list on `/w/:ws`, else null (spec routes, not-found). */
   readonly wsPage: WorkspacePageId | null;
+  /** The story's slug on `/w/:ws/ideas/:slug` (`wsPage` `idea`, spec 008); null on every other route. */
+  readonly ideaSlug: string | null;
   readonly notFound: boolean;
 }
 
@@ -44,7 +46,8 @@ function readRoute(root: ActivatedRouteSnapshot): ShellRoute {
   const area = isAreaId(data.area) ? data.area : specId === null ? null : 'dashboard';
   const notFound = data.notFound === true;
   const wsPage = isWorkspacePageId(data.page) ? data.page : ws !== null && specId === null && !notFound ? 'specs' : null;
-  return { ws, specId, area, tab: isTabId(data.tab) ? data.tab : null, wsPage, notFound };
+  const ideaSlug = wsPage === 'idea' ? (params['slug'] ?? null) : null;
+  return { ws, specId, area, tab: isTabId(data.tab) ? data.tab : null, wsPage, ideaSlug, notFound };
 }
 
 /** An open `<dialog>` or popover owns Esc (the overlay primitives close it); the shell leaves the key alone then. */

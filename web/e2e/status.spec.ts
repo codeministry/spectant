@@ -156,7 +156,7 @@ test.describe('status tab', () => {
       const button = page.locator('app-status-tab [data-gate-action]');
       await expect(button).toHaveAttribute('data-state', 'paused');
       await expect(button).toBeDisabled();
-      await expect(button).toContainText(/spec-002-ISC-\d+/u); // single-core: allow — asserts the session text on the paused button, no parsing
+      await expect(button).toContainText(/a:claude:(?:sess-2|stub-002-isc-\d+)/u);
       // The agent banner moved to the spec head, above every area (T78).
       await expect(page.locator('app-spec-head [data-writes-paused]')).toBeVisible();
     });

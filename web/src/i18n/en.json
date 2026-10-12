@@ -312,7 +312,9 @@
     "position": "Stage {{index}} of {{total}}: {{stage}}",
     "blocked": "Blocked",
     "code-review": "Code review",
-    "done": "Done"
+    "done": "Done",
+    "idea": "Idea",
+    "close-pending": "Close-pending"
   },
   "phases": {
     "scoping": "scoping",
@@ -426,10 +428,12 @@
     },
     "pages": {
       "specs": "Specs",
+      "board": "Board",
       "features": "Features",
       "milestones": "Milestones",
       "summary": {
         "specs": "{{active}} active · {{archived}} archived",
+        "board": "{{stages}} stages · {{cards}} cards",
         "features": "{{count}} features · {{closed}}/{{total}} closed",
         "milestones": "{{count}} milestones · next {{next}}"
       }
@@ -1058,6 +1062,108 @@
       "source": "Lock source: {{source}}",
       "none": "No agent holds a lock.",
       "staleAlert": "No release from {{session}} on {{claims}}: the agent may have stopped."
+    },
+    "workspace": {
+      "title": "Board",
+      "summary": "{{cards}} cards · {{specs}} specs · {{ideas}} ideas",
+      "areaSummary": "{{stages}} stages · {{cards}} cards · {{waiting}} wait on you",
+      "open": "Open board",
+      "source": {
+        "custom": "specs/workflow.md",
+        "default": "default workflow"
+      },
+      "column": {
+        "empty": "empty",
+        "cards": "{{count}} cards",
+        "waitsOnYou": "{{count}} wait on you",
+        "name": "{{stage}}, {{count}} cards, {{waiting}} wait on you",
+        "stub": "{{stage}}, no cards",
+        "emptyIn": "No card in {{stage}}",
+        "hiddenByFilters": "{{count}} hidden by filters",
+        "fixedGate": "fixed gate",
+        "gateReviewed": "reviewed mark",
+        "gateClosed": "every claim closed"
+      },
+      "filter": {
+        "open": "Filter",
+        "feature": "Feature",
+        "milestone": "Milestone",
+        "type": "Type",
+        "assignee": "Assignee",
+        "people": "People",
+        "agents": "Agents",
+        "unassigned": "Unassigned",
+        "noMilestone": "No milestone",
+        "active": "{{label}} · {{count}}",
+        "shown": "{{shown}} of {{total}} cards",
+        "remove": "Remove filter {{label}}",
+        "clear": "Clear",
+        "noMatch": "No cards match",
+        "clearAll": "Clear filters"
+      },
+      "swimlanes": {
+        "label": "Swimlanes",
+        "none": "None",
+        "feature": "Feature",
+        "milestone": "Milestone",
+        "cards": "{{count}} cards",
+        "collapse": "Collapse {{lane}}",
+        "expand": "Expand {{lane}}",
+        "omittedFeatures": "{{count}} features have no card in {{stage}}",
+        "omittedMilestones": "{{count}} milestones have no card in {{stage}}"
+      },
+      "card": {
+        "name": "Spec {{id}}, {{type}}, {{title}}, priority {{priority}}, stage {{stage}}",
+        "ideaName": "Idea, {{title}}, priority {{priority}}",
+        "waits": "waits: {{reason}}",
+        "feature": "Feature {{id}}: {{name}}",
+        "move": "Move {{id}}",
+        "locked": "locked · {{actor}} holds {{claim}}",
+        "saving": "Saving"
+      },
+      "drag": {
+        "notNext": "not next from {{stage}}",
+        "gate": "gate",
+        "current": "current",
+        "pickedUp": "Picked up {{id}}",
+        "over": "over {{stage}}",
+        "moving": "Moving {{id}} to {{stage}}",
+        "moved": "{{id}} moved to {{stage}}",
+        "toast": "{{id}} → {{stage}}",
+        "view": "View",
+        "cancelled": "Move of {{id}} cancelled"
+      },
+      "move": {
+        "open": "Move to…",
+        "title": "Move {{id}} · {{title}}",
+        "stage": "Move to stage"
+      },
+      "refusal": {
+        "notMoved": "Not moved — {{id}} cannot enter {{stage}}",
+        "missing": "Missing: {{command}}",
+        "dismiss": "Dismiss",
+        "lock": "writes paused · {{actor}} holds {{claim}}",
+        "conflict": "{{file}} changed on disk · Reload",
+        "refreshed": "{{id}} changed on disk · the board refreshed"
+      },
+      "allocate": {
+        "title": "Allocate as spec {{id}}?",
+        "lead": "Make this idea a spec?",
+        "creates": "Creates",
+        "removes": "Removes",
+        "confirm": "Allocate",
+        "cancel": "Not yet",
+        "saving": "Allocating {{slug}}"
+      },
+      "live": {
+        "changed": "{{count}} cards changed · show"
+      },
+      "empty": {
+        "noSpecs": "No specs in {{ws}} yet",
+        "gettingStarted": "Getting started"
+      },
+      "failed": "The board could not be read.",
+      "stale": "stale data"
     }
   },
   "matrix": {
@@ -1087,7 +1193,77 @@
     "feature": "Epic in a ticket tracker",
     "spec": "Story in a ticket tracker",
     "claim": "Acceptance criterion in a ticket tracker",
-    "task": "Sub-task in a ticket tracker"
+    "task": "Sub-task in a ticket tracker",
+    "milestone": "Fix version in a ticket tracker",
+    "stage": "Status in a ticket tracker",
+    "actor": "Assignee in a ticket tracker"
+  },
+  "glossary": {
+    "feature": {
+      "term": "Feature",
+      "common": "Epic",
+      "definition": "A block `### F<n>` of the master that owns claims."
+    },
+    "spec": {
+      "term": "Spec",
+      "common": "Story",
+      "definition": "A numbered folder `specs/NNN-slug/` with a `spec.md`."
+    },
+    "claim": {
+      "term": "Claim",
+      "common": "Acceptance criterion",
+      "definition": "One falsifiable line `- [ ] ISC-<n>:` that closes on its probe."
+    },
+    "task": {
+      "term": "Task",
+      "common": "Sub-task",
+      "definition": "One atomic step of `tasks.md`, hanging on exactly one claim."
+    },
+    "milestone": {
+      "term": "Milestone",
+      "common": "Fix version",
+      "definition": "A release named in the master's `## Milestones` block."
+    },
+    "idea": {
+      "term": "Idea",
+      "common": "Backlog item",
+      "definition": "A story file under `specs/ideas/`, the stage before a spec."
+    },
+    "stage": {
+      "term": "Stage",
+      "common": "Status",
+      "definition": "Where a spec stands in its workflow."
+    },
+    "workflow": {
+      "term": "Workflow",
+      "common": "Workflow",
+      "definition": "The ordered stages a spec type runs through, from `specs/workflow.md` or the default."
+    },
+    "gate": {
+      "term": "Gate",
+      "common": "Quality gate",
+      "definition": "A condition a transition needs; two are fixed in every workflow: review before build, and every claim closed before done."
+    },
+    "probe": {
+      "term": "Probe",
+      "common": "Test",
+      "definition": "The command a claim closes on."
+    },
+    "actor": {
+      "term": "Actor",
+      "common": "Assignee",
+      "definition": "The neutral id in a file, `u:<8 hex>` for a person or `a:<kind>:<id>` for an agent."
+    },
+    "agent": {
+      "term": "Agent",
+      "common": "Bot",
+      "definition": "A Claude Code session or sub-agent working a task, recorded as an `a:` actor."
+    },
+    "chore": {
+      "term": "Chore",
+      "common": "Chore",
+      "definition": "The seventh spec type: `spec.md` only, review then build then done, no code review."
+    }
   },
   "planning": {
     "features": {
@@ -1154,5 +1330,92 @@
       "archived": "archived",
       "unknownMilestone": "not in the master's Milestones block"
     }
+  },
+  "help": {
+    "title": "Help",
+    "nav": {
+      "label": "Sections",
+      "about": "About",
+      "moves": "How a spec moves",
+      "workflows": "Workflows",
+      "commands": "Commands",
+      "glossary": "Glossary",
+      "gettingStarted": "Getting started",
+      "keyboard": "Keyboard"
+    },
+    "glossary": {
+      "heading": "Glossary",
+      "caption": "The words the spec format uses",
+      "columns": {
+        "term": "Spectant term",
+        "common": "Common term",
+        "german": "German",
+        "definition": "Definition"
+      },
+      "copyLink": "Copy link to {{term}}",
+      "more": "More in the guide"
+    },
+    "workflow": {
+      "heading": "Workflow of {{ws}}",
+      "headingDefault": "Default workflow",
+      "workspace": "Workspace",
+      "defaultCaption": "Default table: no workspace is open.",
+      "figure": "Workflow of the type {{type}}",
+      "source": {
+        "custom": "from specs/workflow.md",
+        "default": "default table"
+      },
+      "codeReview": "code review: {{mode}}",
+      "custom": "custom",
+      "default": "default",
+      "asText": "Transitions as text",
+      "gateReviewed": "gate · reviewed mark",
+      "gateClosed": "gate · every claim closed",
+      "updated": "updated from specs/workflow.md {{age}} ago",
+      "gateDropped": "workflow.md drops the review gate for {{type}} · default applied"
+    }
+  },
+  "types": {
+    "feature": "feature",
+    "bug": "bug",
+    "refactor": "refactor",
+    "spike": "spike",
+    "infra": "infra",
+    "project": "project",
+    "chore": "chore",
+    "idea": "idea"
+  },
+  "priority": {
+    "P1": "P1",
+    "P2": "P2",
+    "P3": "P3",
+    "P4": "P4",
+    "name": "priority {{level}}",
+    "hint": {
+      "P1": "highest",
+      "P2": "high",
+      "P3": "normal",
+      "P4": "low"
+    },
+    "unmarked": "no priority key, read as P3",
+    "title": "{{level}} · {{hint}}",
+    "label": {
+      "P1": "priority P1",
+      "P2": "priority P2",
+      "P3": "priority P3",
+      "P4": "priority P4"
+    }
+  },
+  "actors": {
+    "legacy": "legacy",
+    "agent": "agent",
+    "subagent": "sub-agent",
+    "active": "lock active",
+    "stale": "no release",
+    "staleFor": "no release · {{ age }}",
+    "unmapped": "unmapped"
+  },
+  "reason": {
+    "glyph": "waits"
   }
 }

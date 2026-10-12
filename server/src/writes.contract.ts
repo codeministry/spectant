@@ -40,13 +40,15 @@
  * `WRITE_PATHS.codeReviewFeature`, but it has no route: the skill triggers it through the CLI (`spectant gate
  * code-reviewed F<n>`, T93, `feature-gate.ts`), never the UI, so it is not in this table.
  *
- * Browser-safe like its base: value imports are `spec-routes.contract.ts` and `core/src/events.ts` only (no Bun, no
- * Node); `core/src/gates.ts` is imported as types, because it hashes with `node:crypto`.
+ * Browser-safe like its base: imports are `spec-routes.contract.ts`, `core/src/events.ts` and `core/src/files.ts` only
+ * (no Bun, no Node). `core/src/gates.ts` is not imported, not even as types: it hashes with `node:crypto`, and a type
+ * import still type-checks its module under the web tsconfig, which rejects it. `ReviewedFile` and `ReviewedMark` are
+ * therefore declared here, pinned equal to gates.ts' own by `tests/writes.contract.test.ts`, so the web client imports
+ * `writeAnswerOf` directly (spec 008, T111).
  */
 import { validateEventLine } from '../../core/src/events.ts';
 import { FILE_KINDS } from '../../core/src/files.ts';
 import type { ClaimLock, EventLine, LockSource } from '../../core/src/files.ts';
-import type { ReviewedFile, ReviewedMark } from '../../core/src/gates.ts';
 import {
   REVIEWED_HASHES_HEADER,
   REVIEWED_HASH_FILES,
@@ -76,6 +78,16 @@ import type {
   TransitionRequest,
   TransitionWritten,
 } from './spec-routes.contract.ts';
+
+/** `ReviewedFile` of `core/src/gates.ts`: the files the reviewed mark hashes (equality pinned by the contract test). */
+export type ReviewedFile = 'spec.md' | 'plan.md' | 'tasks.md';
+
+/** `ReviewedMark` of `core/src/gates.ts`: the bytes of `.gates/reviewed.json` (equality pinned by the contract test). */
+export interface ReviewedMark {
+  readonly gate: 'reviewed';
+  readonly at: string;
+  readonly files: Readonly<Record<ReviewedFile, string | null>>;
+}
 
 // ─── Routes ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -394,7 +406,15 @@ export function hasAgentSource(source: LockSource): boolean {
 // ─── Answer validators (the client's side) ───────────────────────────────────────────────────────────────────────
 
 const HEX64 = /^[0-9a-f]{64}$/;
-type Rec = Record<string, unknown>;
+/**
+ * The fields the validators read, named: a record with literal keys, not an index signature, so the web tsconfig's
+ * `noPropertyAccessFromIndexSignature` admits the dot access this file uses (T111).
+ */
+type RecKey =
+  | 'at' | 'checked' | 'claim' | 'command' | 'error' | 'event' | 'expected' | 'files' | 'folder' | 'from' | 'hash'
+  | 'hashes' | 'id' | 'idea' | 'line' | 'lock' | 'lockSource' | 'number' | 'reason' | 'removed' | 'session' | 'since'
+  | 'source' | 'spec' | 'task' | 'tasks' | 'text' | 'to';
+type Rec = Partial<Record<RecKey, unknown>>;
 const isRec = (v: unknown): v is Rec => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isHex = (v: unknown): boolean => typeof v === 'string' && HEX64.test(v);
 const isLockSource = (v: unknown): v is LockSource => v === 'frontier' || v === 'activity' || v === 'none';
@@ -429,10 +449,31 @@ function isTransitionEvent(v: unknown, from: unknown, to: unknown): boolean {
   return check.ok && v.from === from && v.to === to && check.event.actorRef?.legacy === false;
 }
 
-function isOk(route: WriteRoute, b: Rec): boolean {
+/** `specs/ideas/<slug>.md`: a story file's repository path, as the allocation's 200 and 409 name it. */
+const IDEAS_DIR = FILE_KINDS.idea.repoPath ?? '';
+const isStoryPath = (v: unknown): boolean =>
+  typeof v === 'string' &&
+  v.startsWith(IDEAS_DIR) &&
+  v.endsWith('.md') &&
+  v.length > IDEAS_DIR.length + '.md'.length &&
+  !v.slice(IDEAS_DIR.length).includes('/');
+const SPEC_FOLDER = /^specs\/(\d{3})-[^/]+\/$/;
+
+/** The allocation's 200: `NNN`, its folder `specs/NNN-slug/`, the files `WRITE_PATHS.allocate` writes there, the story removed. */
+function isAllocated(b: Rec): boolean {
+  if (typeof b.id !== 'string' || typeof b.folder !== 'string' || !isStoryPath(b.removed)) return false;
+  const folder = SPEC_FOLDER.exec(b.folder);
+  if (folder?.[1] !== b.id) return false;
+  const expected = writePathsOf('allocate', b.folder.slice('specs/'.length, -1)).writes;
+  const files = b.files;
+  return Array.isArray(files) && files.length === expected.length && expected.every((path, i) => files[i] === path);
+}
+
+function isOk(route: WriteOperation, b: Rec): boolean {
   if (!isLockSource(b.lockSource)) return false;
   if (route === 'gateReviewed') return typeof b.at === 'string' && isHashes(b.hashes) && isReviewedEvent(b.event);
   if (route === 'transition') return isStage(b.from) && isStage(b.to) && isHex(b.hash) && isTransitionEvent(b.event, b.from, b.to);
+  if (route === 'allocate') return isAllocated(b);
   const line = b.line;
   return (
     typeof b.task === 'string' &&
@@ -446,21 +487,38 @@ function isOk(route: WriteRoute, b: Rec): boolean {
   );
 }
 
-function isStale(route: WriteRoute, b: Rec): boolean {
-  if (b.error !== 'hash-mismatch' || !isFileList(b.files) || !isRec(b.expected)) return false;
-  if (route === 'gateReviewed') return isHashes(b.expected);
+function isStale(route: WriteOperation, b: Rec): boolean {
+  if (b.error !== 'hash-mismatch' || !isRec(b.expected) || !Array.isArray(b.files)) return false;
   const files = b.files as unknown[];
+  if (route === 'allocate') return files.length === 1 && isStoryPath(files[0]) && isHex(b.expected.idea);
+  if (!isFileList(files)) return false;
+  if (route === 'gateReviewed') return isHashes(b.expected);
   if (route === 'transition') return files.length === 1 && files[0] === SPEC_PATH && isHex(b.expected.spec);
   return files.length === 1 && files[0] === TASKS_PATH && isHex(b.expected.tasks);
 }
 
-/** The transition's 422: the stage row's phrase and the command that would make the move (or null). */
-function isRefused(route: WriteRoute, b: Rec): boolean {
-  return route === 'transition' && b.error === 'transition-refused' && typeof b.reason === 'string' && (b.command === null || typeof b.command === 'string');
+/**
+ * The two 422s: the transition's (the stage row's phrase and the command that would make the move, or null) and the
+ * allocation's (`folder-exists` or `not-in-index`, with the folder it would create, or null).
+ */
+function isRefused(route: WriteOperation, b: Rec): boolean {
+  if (route === 'transition') {
+    return b.error === 'transition-refused' && typeof b.reason === 'string' && (b.command === null || typeof b.command === 'string');
+  }
+  return (
+    route === 'allocate' &&
+    b.error === 'allocate-refused' &&
+    (b.reason === 'folder-exists' || b.reason === 'not-in-index') &&
+    (b.folder === null || (typeof b.folder === 'string' && SPEC_FOLDER.test(b.folder)))
+  );
 }
 
-/** The answer typed by its status when the body fits it; null for any other status or a body that does not fit. */
-export function writeAnswerOf<R extends WriteRoute>(route: R, status: number, body: unknown): WriteAnswer<R> | null {
+/**
+ * The answer typed by its status when the body fits it; null for any other status or a body that does not fit. It
+ * covers the four app writes (`WriteOperation`): the three spec routes and, since T111, the allocation, so the web
+ * client validates every write answer here and nowhere else.
+ */
+export function writeAnswerOf<R extends WriteOperation>(route: R, status: number, body: unknown): WriteAnswer<R> | null {
   if (!isRec(body)) return null;
   const fits =
     (status === 200 && isOk(route, body)) ||

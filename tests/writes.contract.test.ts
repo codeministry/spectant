@@ -7,7 +7,13 @@ import { dirname, join, resolve } from "node:path";
 import { parseActor } from "../core/src/actor.ts";
 import { validateEventLine } from "../core/src/events.ts";
 import { FILE_KINDS, type ClaimLock } from "../core/src/files.ts";
-import { REVIEWED_FILES, hashForGate, readGateMark } from "../core/src/gates.ts";
+import {
+  REVIEWED_FILES,
+  hashForGate,
+  readGateMark,
+  type ReviewedFile as GateReviewedFile,
+  type ReviewedMark as GateReviewedMark,
+} from "../core/src/gates.ts";
 import {
   API_ERRORS,
   REVIEWED_HASHES_HEADER,
@@ -53,6 +59,8 @@ import {
   writeActorOf,
   writeAnswerOf,
   writeRoutes,
+  type ReviewedFile as ContractReviewedFile,
+  type ReviewedMark as ContractReviewedMark,
   type WriteAnswer,
   type WriteRoute,
 } from "../server/src/writes.contract.ts";
@@ -275,6 +283,34 @@ describe("answers", () => {
     expect(writeAnswerOf("transition", 422, { ...refused, command: null })).not.toBeNull();
     expect(writeAnswerOf("taskCheck", 422, refused)).toBeNull();
   });
+
+  test("the allocation (T111): its 200, 409, 422 and 423 fit writeAnswerOf; a body of another write does not", () => {
+    const paths = writePathsOf("allocate", "007-tide-tables", "tide-tables");
+    const ok = { id: "007", folder: "specs/007-tide-tables/", files: paths.writes, removed: "specs/ideas/tide-tables.md", lockSource: "none" } as const;
+    expect(paths.removes).toEqual([ok.removed]);
+    expect(writeAnswerOf("allocate", 200, ok)).toEqual({ status: 200, body: ok });
+    expect(writeAnswerOf("allocate", 200, { ...ok, id: "008" })).toBeNull();
+    expect(writeAnswerOf("allocate", 200, { ...ok, files: paths.writes.slice(1) })).toBeNull();
+    expect(writeAnswerOf("allocate", 200, { ...ok, removed: "specs/ideas/a/b.md" })).toBeNull();
+    expect(writeAnswerOf("allocate", 200, { ...ok, lockSource: "maybe" })).toBeNull();
+    expect(writeAnswerOf("transition", 200, ok)).toBeNull();
+
+    const stale = ideaConflict("specs/ideas/tide-tables.md", HEX_A, HEX_B);
+    if (stale === null) throw new Error("expected a conflict");
+    expect(writeAnswerOf("allocate", 409, stale)).toEqual({ status: 409, body: stale });
+    expect(writeAnswerOf("allocate", 409, specConflict(HEX_A, HEX_B))).toBeNull();
+    expect(writeAnswerOf("transition", 409, stale)).toBeNull();
+
+    for (const reason of ["folder-exists", "not-in-index"] as const) {
+      const refused = { error: "allocate-refused", reason, folder: "specs/007-tide-tables/" } as const;
+      expect(writeAnswerOf("allocate", 422, refused)).toEqual({ status: 422, body: refused });
+      expect(writeAnswerOf("transition", 422, refused)).toBeNull();
+    }
+    expect(writeAnswerOf("allocate", 422, { error: "allocate-refused", reason: "folder-exists", folder: null })).not.toBeNull();
+    expect(writeAnswerOf("allocate", 422, { error: "allocate-refused", reason: "other", folder: null })).toBeNull();
+    expect(writeAnswerOf("allocate", 423, blockingLock([lock("activity", "ISC-1")], null))).not.toBeNull();
+    expect(writeAnswerOf("allocate", 400, { error: "invalid-body" })).not.toBeNull();
+  });
 });
 
 describe("error codes", () => {
@@ -403,6 +439,18 @@ describe("the writes contract is browser-safe", () => {
       return /\bBun\.|\bprocess\.|\brequire\(|(?:from|import)\s*\(?\s*['"](?:node:|bun|fs|path|os|child_process)/.test(source);
     });
     expect(offending).toEqual([]);
+  });
+
+  // T111: the web client imports `writeAnswerOf`, and its tsconfig type-checks a type import's module too, so not even
+  // a type may come from `gates.ts` (it imports `node:crypto`). The two types re-declared here equal gates.ts' own.
+  test("the contract imports nothing from gates.ts, not even a type; its ReviewedFile and ReviewedMark equal gates.ts'", () => {
+    const source = readFileSync(CONTRACT, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(source).not.toMatch(/from\s+['"][^'"]*gates\.ts['"]/);
+    const sameFile: [GateReviewedFile] extends [ContractReviewedFile] ? ([ContractReviewedFile] extends [GateReviewedFile] ? true : false) : false = true;
+    const sameMark: [GateReviewedMark] extends [ContractReviewedMark] ? ([ContractReviewedMark] extends [GateReviewedMark] ? true : false) : false = true;
+    expect([sameFile, sameMark]).toEqual([true, true]);
+    const mark: ContractReviewedMark = { gate: "reviewed", at: TS, files: { "spec.md": HEX_A, "plan.md": null, "tasks.md": HEX_C } };
+    expect(Object.keys(mark.files)).toEqual([...REVIEWED_FILES]);
   });
 });
 

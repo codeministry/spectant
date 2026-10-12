@@ -71,6 +71,15 @@ export function innerMarkup(name: string, svg: string): string {
 
 const key = (name: string) => (/^[a-z][a-z0-9]*$/.test(name) ? name : `'${name}'`);
 
+/**
+ * Compact path data can read as a dotted quad (the numbers 3.5, .7 and .7 written without separators): such an
+ * entry ends in the leak checker's allow marker (`bun run check:leak`, ISC-3), so the generated file stays clean
+ * without editing it by hand.
+ */
+const DOTTED_QUAD = /(?<![\d.])\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?!\d|\.\d)/;
+const entry = (name: string, markup: string) =>
+  `  ${key(name)}: '${markup}',${DOTTED_QUAD.test(markup) ? ' // leak:allow Lucide path data, not an address' : ''}`;
+
 /** The full `icons.ts` source for `names`, drawn from `read` (the pinned package by default). */
 export function renderIconsModule(
   names: readonly string[],
@@ -80,7 +89,7 @@ export function renderIconsModule(
   const sorted = [...names].sort();
   const duplicate = sorted.find((name, i) => sorted[i - 1] === name);
   if (duplicate !== undefined) throw new Error(`icon "${duplicate}" is listed twice in ICON_NAMES`);
-  const entries = sorted.map((name) => `  ${key(name)}: '${innerMarkup(name, read(name))}',`);
+  const entries = sorted.map((name) => entry(name, innerMarkup(name, read(name))));
   return [
     `// Generated from lucide-static ${version} by generate-icons.ts. Do not edit by hand:`,
     '// change icon-names.ts and run `bun run --cwd web icons:generate` (ISC-18.2).',

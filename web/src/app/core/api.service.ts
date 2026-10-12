@@ -3,6 +3,16 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { ClaimLock, DocName, DocsPage } from '../../../../core/src/files';
 import {
+  ACTORS_PATH,
+  type ActorMapping,
+  type ActorsRequest,
+  type AllocateRequest,
+  type BoardQuery,
+  type IdeaPage,
+  isActorMappings,
+  isBoardQuery,
+  SPEC_HASH_HEADER,
+  type TransitionRequest,
   type DocMissing,
   type GateReviewedRequest,
   type GateReviewedResponse,
@@ -22,7 +32,27 @@ import {
   workspaceRoutes,
   type WorkspaceRouteResponses,
 } from '../../../../server/src/spec-routes.contract';
+import { type WriteAnswer, writeAnswerOf, type WriteOperation } from '../../../../server/src/writes.contract';
+import type { WorkflowStage } from '../../../../core/src/files';
 import { type Note, type NoteCounts, type NoteDraft, type NotesQuery, noteRoutes } from '../../../../server/src/notes.contract';
+
+/**
+ * What a spec 008 write answers (T111, ISC-130), never a thrown exception: the contract's `WriteAnswer` when the body
+ * fits its status (`writeAnswerOf`, the one validator the server's tests pin too), else `error` with the status: a
+ * 403, 404 or 405 of the route layer, a body that does not fit (a 200 included), 0 when no answer came.
+ */
+export type WriteResult<R extends WriteOperation> =
+  | { readonly kind: 'answer'; readonly answer: WriteAnswer<R> }
+  | { readonly kind: 'error'; readonly status: number };
+
+/**
+ * What a `PUT` of a stored setting answers (the actor names, the board query): the body as stored when it fits the
+ * contract's validator, else `error` with the status and the contract's code (`invalid-body`, `not-found`), status 0
+ * when no answer came.
+ */
+export type PutResult<T> =
+  | { readonly kind: 'ok'; readonly body: T }
+  | { readonly kind: 'error'; readonly status: number; readonly error: string | null };
 
 /**
  * What a notes write answers (T100, ISC-95), never a thrown exception: the saved note (`POST` 201, `PUT` 200), or the
@@ -170,6 +200,7 @@ export class ApiClient {
   private readonly cache = new Map<string, { readonly etag: string; readonly body: unknown }>();
   private readonly tasksHashes = new Map<string, string | null>();
   private readonly specHashes = new Map<string, ReviewedHashes | null>();
+  private readonly specFileHashes = new Map<string, string | null>();
 
   async get<T>(url: string, onHeaders?: (headers: HttpHeaders) => void): Promise<ApiResult<T>> {
     const cached = this.cache.get(url);
@@ -203,7 +234,61 @@ export class ApiClient {
     const url = specRoutes.spec(ws, id);
     return this.get(url, (headers) => {
       this.specHashes.set(url, parseReviewedHashes(headers.get(REVIEWED_HASHES_HEADER)));
+      this.specFileHashes.set(url, headers.get(SPEC_HASH_HEADER));
     });
+  }
+
+  /**
+   * The raw spec.md hash `X-Spectant-Spec-Hash` carried on the last 200 of `GET …/:id` (a 304 keeps it), the hash
+   * `transition()` sends; null before the spec was read or when the header is absent.
+   */
+  specHash(ws: string, id: string): string | null {
+    return this.specFileHashes.get(specRoutes.spec(ws, id)) ?? null;
+  }
+
+  /**
+   * T111 · ISC-130: `POST …/:id/transition` with the stage wanted and the raw spec.md hash the page rendered. The
+   * answer is the contract's, validated: 200 `TransitionWritten`, 409 `hash-mismatch`, 422 `transition-refused`
+   * (the stage row's reason and command), 423 `locked`. Never cached, never retried.
+   */
+  transition(ws: string, id: string, to: WorkflowStage, hash: string): Promise<WriteResult<'transition'>> {
+    const body: TransitionRequest = { to, hash };
+    return this.write('transition', specRoutes.transition(ws, id), body);
+  }
+
+  /**
+   * T111 · ISC-130.2: `POST …/ideas/:slug/allocate` with the story file's raw hash (`IdeaPage.hash`). 200
+   * `IdeaAllocated`, 409 `hash-mismatch`, 422 `allocate-refused`, 423 `locked`, validated like `transition()`.
+   */
+  allocate(ws: string, slug: string, hash: string): Promise<WriteResult<'allocate'>> {
+    const body: AllocateRequest = { hash };
+    return this.write('allocate', workspaceRoutes.allocate(ws, slug), body);
+  }
+
+  /** T111: one story of `specs/ideas/` (`IdeaPage`: the ref, the rendered page, the raw hash), ETag-cached. */
+  idea(ws: string, slug: string): Promise<ApiResult<IdeaPage>> {
+    return this.get(workspaceRoutes.idea(ws, slug));
+  }
+
+  /** T111: the actor names (`GET /api/actors`), every stored `ActorMapping` ordered by id, ETag-cached. */
+  actors(): Promise<ApiResult<readonly ActorMapping[]>> {
+    return this.get(ACTORS_PATH);
+  }
+
+  /** T111: `PUT /api/actors` replaces the whole mapping; the answer is the list as stored. */
+  putActors(list: ActorsRequest): Promise<PutResult<readonly ActorMapping[]>> {
+    return this.put(ACTORS_PATH, list, isActorMappings);
+  }
+
+  /** T111: the workspace's remembered board query (`{query}`, `''` when none is stored), ETag-cached. */
+  boardQuery(ws: string): Promise<ApiResult<BoardQuery>> {
+    return this.get(workspaceRoutes.boardQuery(ws));
+  }
+
+  /** T111: `PUT …/board-query` stores the board URL's query (without `?`); the answer is the query as stored. */
+  putBoardQuery(ws: string, query: string): Promise<PutResult<BoardQuery>> {
+    const body: BoardQuery = { query };
+    return this.put(workspaceRoutes.boardQuery(ws), body, isBoardQuery);
   }
 
   /** T55: the spec's timeline, newest first (`TimelineEntry[]`, ISC-80). */
@@ -354,6 +439,33 @@ export class ApiClient {
       return { kind: 'ok' };
     } catch (failure: unknown) {
       return { kind: 'error', status: failure instanceof HttpErrorResponse ? failure.status : 0 };
+    }
+  }
+
+  /** A write's answer through the contract's `writeAnswerOf`: the status and body of a 2xx or an error alike. */
+  private async write<R extends WriteOperation>(route: R, url: string, body: unknown): Promise<WriteResult<R>> {
+    let status: number;
+    let answer: unknown;
+    try {
+      const response = await firstValueFrom(this.http.post<unknown>(url, body, { observe: 'response' }));
+      status = response.status;
+      answer = response.body;
+    } catch (failure: unknown) {
+      if (!(failure instanceof HttpErrorResponse)) return { kind: 'error', status: 0 };
+      status = failure.status;
+      answer = failure.error;
+    }
+    const typed = writeAnswerOf(route, status, answer);
+    return typed === null ? { kind: 'error', status } : { kind: 'answer', answer: typed };
+  }
+
+  /** A `PUT` whose 200 body must pass the contract's validator `fits`; anything else is an `error`. */
+  private async put<T>(url: string, body: unknown, fits: (value: unknown) => value is T): Promise<PutResult<T>> {
+    try {
+      const response = await firstValueFrom(this.http.put<unknown>(url, body, { observe: 'response' }));
+      return fits(response.body) ? { kind: 'ok', body: response.body } : { kind: 'error', status: response.status, error: null };
+    } catch (failure: unknown) {
+      return noteError(failure);
     }
   }
 

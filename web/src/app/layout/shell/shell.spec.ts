@@ -318,8 +318,8 @@ describe('ShellComponent', () => {
         await harness.fixture.whenStable();
         expect(trigger.getAttribute('aria-expanded')).toBe('true');
         const entries = [...root.querySelectorAll('header nav[aria-label="Areas"] [data-page]')];
-        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'features']);
-        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null]);
+        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'board', 'features']);
+        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null, null]);
       } finally {
         delete proto['showPopover'];
         delete proto['hidePopover'];

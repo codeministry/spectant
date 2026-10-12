@@ -77,11 +77,18 @@ export interface ShellRouteData {
   readonly notFound?: boolean;
 }
 
-/** The workspace-scope pages, the counterpart of the spec areas one level up. */
-export type WorkspacePageId = 'specs' | 'features' | 'milestones';
+/**
+ * The workspace-scope pages, the counterpart of the spec areas one level up. `idea` (spec 008, `/w/:ws/ideas/:slug`)
+ * is a read-only story page reached from a board card, the palette or a chip, never from the menu: it has no
+ * `WORKSPACE_PAGES` entry, so the menu's pages are `WorkspaceMenuPageId`.
+ */
+export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea';
+export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea'>;
+
+const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea'];
 
 export const isWorkspacePageId = (value: unknown): value is WorkspacePageId =>
-  value === 'specs' || value === 'features' || value === 'milestones';
+  (WORKSPACE_PAGE_IDS as readonly unknown[]).includes(value);
 
 /**
  * A page of a workspace (`/w/:ws`, `/w/:ws/features`, `/w/:ws/milestones`): the registry the area menu, the palette and
@@ -90,7 +97,7 @@ export const isWorkspacePageId = (value: unknown): value is WorkspacePageId =>
  * with the reader, not here.
  */
 export interface WorkspacePage {
-  readonly id: WorkspacePageId;
+  readonly id: WorkspaceMenuPageId;
   readonly icon: IconName;
   /** Transloco key of the page's name: `shell.pages.<id>`. */
   readonly labelKey: string;
@@ -106,11 +113,14 @@ export interface WorkspacePage {
 
 export const WORKSPACE_PAGES: readonly WorkspacePage[] = [
   { id: 'specs', icon: 'file-text', labelKey: 'shell.pages.specs', summaryKey: 'shell.pages.summary.specs', goKey: null },
+  // Spec 008 (ISC-129): the workspace board, second in the menu. `g b` is a proposal like `g f` and `g m`; whether it
+  // collides with the round board's `b` sub-tab key is decided at `/spec-review 008` against SHORTCUTS.
+  { id: 'board', icon: 'square-kanban', labelKey: 'shell.pages.board', summaryKey: 'shell.pages.summary.board', goKey: 'b' },
   { id: 'features', icon: 'layers', labelKey: 'shell.pages.features', summaryKey: 'shell.pages.summary.features', goKey: 'f' },
   { id: 'milestones', icon: 'flag', labelKey: 'shell.pages.milestones', summaryKey: 'shell.pages.summary.milestones', goKey: 'm' },
 ];
 
-export const workspacePageById = (id: WorkspacePageId): WorkspacePage => WORKSPACE_PAGES.find((page) => page.id === id) ?? must(id);
+export const workspacePageById = (id: WorkspaceMenuPageId): WorkspacePage => WORKSPACE_PAGES.find((page) => page.id === id) ?? must(id);
 
 /** `['/w', ws]` for Specs (the workspace root), else `['/w', ws, page]`, as a router link. */
-export const workspaceLink = (ws: string, page: WorkspacePageId): string[] => (page === 'specs' ? ['/w', ws] : ['/w', ws, page]);
+export const workspaceLink = (ws: string, page: WorkspaceMenuPageId): string[] => (page === 'specs' ? ['/w', ws] : ['/w', ws, page]);
