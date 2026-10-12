@@ -3,9 +3,13 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 let nextId = 0;
 
 /**
- * Circular progress (design.md § KPI band): the unfilled track in `--track`, the value stroke as a lime → cyan
- * gradient (accent → primary), the percentage as real centred text so forced colours and screen readers keep it.
- * Value changes morph `stroke-dashoffset` over `--motion-duration-slow`. `null` shows "—" (no specs yet).
+ * Circular progress, the prototype's `[data-ui="ring"]` (spec 024 design.md § Fundament: "Ring"): the value stroke
+ * with round caps in a lime → cyan gradient (accent → primary) running top left to bottom right, the percentage as real
+ * centred text (600, line-height 1: 22 px on the 112 px hero ring, 15 px on the prototype's `sm` rings 96 to 52, 11 px
+ * on the 40 px row ring) with the `%` as a 12 px / 500 muted `small`, so forced colours and screen readers keep it.
+ * The track is the full `--track`, not the prototype's 45 % opacity: at .45 it paints about 1.6:1 and the mark rule
+ * (ISC-65, 3:1) holds it. Value changes morph `stroke-dashoffset` over `--motion-duration-slow` (the prototype's
+ * `--dur-morph`). `null` shows "—" (no specs yet).
  */
 @Component({
   selector: 'ui-ring',
@@ -18,12 +22,11 @@ let nextId = 0;
     .bar { fill: none; transition: stroke-dashoffset var(--motion-duration-slow) var(--motion-ease-standard); }
     .from { stop-color: var(--color-accent); }
     .to { stop-color: var(--color-primary); }
-    .text { grid-area: 1 / 1; font-size: 11px; font-variant-numeric: tabular-nums; font-weight: 600; line-height: 16px; }
-    .unit { margin-inline-start: 0.1em; color: var(--muted-ink); font-size: 0.75em; }
-    :host([data-size='112']) .text { font-size: 20px; line-height: 28px; }
-    :host([data-size='96']) .text { font-size: 17px; line-height: 24px; }
-    :host([data-size='72']) .text { font-size: 15px; line-height: 20px; }
-    :host([data-size='52']) .text { font-size: 13px; line-height: 16px; }
+    .text { grid-area: 1 / 1; font-size: 15px; font-variant-numeric: tabular-nums; font-weight: 600; line-height: 1; }
+    .unit { color: var(--muted-ink); font-size: 12px; font-weight: 500; }
+    :host([data-size='112']) .text { font-size: 22px; }
+    :host([data-size='40']) .text { font-size: 11px; }
+    :host([data-size='40']) .unit { font-size: 0.75em; }
     @media (forced-colors: active) {
       .bar { stroke: CanvasText; }
       .track { stroke: GrayText; }
@@ -32,7 +35,7 @@ let nextId = 0;
   template: `
     <svg data-icon-exempt aria-hidden="true" focusable="false" [attr.width]="size()" [attr.height]="size()" [attr.viewBox]="viewBox()">
       <defs>
-        <linearGradient [attr.id]="gradientId" x1="0" y1="1" x2="1" y2="0">
+        <linearGradient [attr.id]="gradientId" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" class="from" />
           <stop offset="1" class="to" />
         </linearGradient>
@@ -61,8 +64,9 @@ let nextId = 0;
 })
 export class UiRing {
   readonly value = input.required<number | null>();
-  readonly size = input<112 | 96 | 72 | 52 | 40>(72);
-  readonly stroke = input<10 | 8 | 6>(8);
+  /** 112 the hero (stroke 10); 88, 72, 64 and 56 the prototype's `sm` rings (strokes 8, 7, 6, 6); 96, 52, 40 kept. */
+  readonly size = input<112 | 96 | 88 | 72 | 64 | 56 | 52 | 40>(72);
+  readonly stroke = input<10 | 8 | 7 | 6>(8);
 
   protected readonly gradientId = `ui-ring-${nextId++}`;
   protected readonly gradientUrl = `url(#${this.gradientId})`;

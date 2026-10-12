@@ -5,7 +5,8 @@ import { SIZE_CLASS, type ButtonSize } from './button';
 import { swallowClicksWhile } from './disabled';
 
 /**
- * A square icon-only button, 32 / 40 px. `label` is required and must be a translated string: it is the accessible
+ * A square icon-only button: `size="md"` (default) is the prototype's `.btn-icon`, 40 px with a 1 px `--line` border
+ * on `--card`; `size="sm"` is its `.quiet-icon`, 32 px without chrome, muted, with an 8 % hover tint (button.css). `label` is required and must be a translated string: it is the accessible
  * name (`aria-label`) and the pointer tooltip (`title`), since the icon alone names nothing.
  */
 @Component({
@@ -17,7 +18,7 @@ import { swallowClicksWhile } from './disabled';
   styleUrl: './button.css',
   host: {
     '[class]': 'classes()',
-    'data-variant': 'ghost',
+    '[attr.data-variant]': 'variant()',
     '[attr.type]': 'type()',
     '[attr.aria-label]': 'label()',
     '[attr.title]': 'label()',
@@ -33,7 +34,11 @@ export class UiIconButton {
   readonly type = input<'button' | 'submit' | 'reset'>('button');
   readonly disabled = input(false, { transform: booleanAttribute });
 
-  protected readonly classes = computed(() => `btn btn-ghost btn-square ui-icon-button ${SIZE_CLASS[this.size()]}`);
+  /** md is the bordered card button (the `secondary` rules in button.css), sm the quiet ghost. */
+  protected readonly variant = computed(() => (this.size() === 'sm' ? 'ghost' : 'secondary'));
+  protected readonly classes = computed(
+    () => `btn btn-square ui-icon-button ${this.size() === 'sm' ? 'btn-ghost ' : ''}${SIZE_CLASS[this.size()]}`,
+  );
 
   constructor() {
     swallowClicksWhile(this.disabled);
