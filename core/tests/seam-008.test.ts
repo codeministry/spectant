@@ -24,7 +24,9 @@ describe('spec 008 seam: barrel', () => {
 describe('spec 008 seam: repository-level file kinds', () => {
   test('idea and workflow are repository kinds after master, in FORMAT.md order', () => {
     const kinds = Object.keys(FILE_KINDS);
-    expect(kinds.slice(-3)).toEqual(['master', 'idea', 'workflow']);
+    // Spec 009 T1 appends `tokens` after `workflow`; the three stay consecutive after master.
+    const master = kinds.indexOf('master');
+    expect(kinds.slice(master, master + 3)).toEqual(['master', 'idea', 'workflow']);
     expect(FILE_KINDS.idea).toMatchObject({ scope: 'repo', repoPath: 'specs/ideas/', directory: true, required: false });
     expect(FILE_KINDS.workflow).toMatchObject({ scope: 'repo', repoPath: 'specs/workflow.md', directory: false, required: false });
   });

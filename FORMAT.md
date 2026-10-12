@@ -83,10 +83,11 @@ Diagrams: a `feature`, `infra` or `project` spec needs a fence whose info string
 `spec.md` and `plan.md` (dashboard warning `diagrams`); a `refactor` only warns without one in `spec.md`; a complete
 spec is never held to it (`diagrams.ts`).
 
-Beside the thirteen, `FILE_KINDS` holds two repository kinds (spec 008, T37): `idea`, the story files under
-`specs/ideas/`, and `workflow`, the one table `specs/workflow.md`, each documented in its section below. Neither
-belongs to a spec folder, so the table above has no row for them; like `constitution` and `master` they carry
-`scope: repo` and a path from the repository root (`repoFilePath`) beside the path relative to an active spec folder.
+Beside the thirteen, `FILE_KINDS` holds three repository kinds: `idea`, the story files under `specs/ideas/`, and
+`workflow`, the one table `specs/workflow.md` (both spec 008, T37), and `tokens`, the one measurement
+`specs/tokens.jsonl` (spec 009, T1), each documented in its section below. None belongs to a spec folder, so the
+table above has no row for them; like `constitution` and `master` they carry `scope: repo` and a path from the
+repository root (`repoFilePath`) beside the path relative to an active spec folder.
 
 ## `spec` — `spec.md`
 
@@ -948,6 +949,82 @@ and `blocked → build` for every type, `build → close-pending` where the row 
 `close-pending → code-review` where the row has `code-review`; every other pair, a backward move such as
 `build → review` included, is refused; and for `code_review: feature` the stage `close-pending` and the one code
 review for the whole feature (T49, T74).
+
+## `tokens` — `../tokens.jsonl`, at `specs/tokens.jsonl`
+
+The token measurement: how many tokens each `/spec` invocation, each spec, each stage and each implement round used,
+as the Claude Code transcripts of the repository report them. One file per repository, at `specs/tokens.jsonl`,
+beside the constitution; it belongs to no spec folder and is optional. It is written only by the CLI
+`spectant tokens`, never by a route, and can be recomputed at any time from the transcripts and the repository's
+`events.jsonl` and `rounds.jsonl`; only the baseline lines of earlier runs are kept rather than recomputed. Types,
+line layout and signatures live in `core/src/tokens.ts` (spec 009, T1): `parseTranscript`, `tokenRows`,
+`mergeBaselines`, `serializeTokens` and `readTokens`, which reads the file back into the lines it was written from.
+
+One JSON line per entry, each with `v: 1` and a `kind`. The four counters are `input`, `output`, `cache_read` and
+`cache_write`, taken from the transcripts' `usage` fields (`cache_write` is `cache_creation_input_tokens`); no
+tokenisation of our own. Every API request counts once, however many transcript lines repeat its `requestId`.
+
+| `kind` | Keys, in order |
+|--------|----------------|
+| `baseline` | `v`, `kind`, `measured_through`, `claude_code`, `commands` |
+| `invocation` | `v`, `kind`, `id`, `command`, `spec`, `ts`, `requests`, `subagents`, `input`, `output`, `cache_read`, `cache_write` |
+| `spec` | `v`, `kind`, `spec`, `requests`, `input`, `output`, `cache_read`, `cache_write` |
+| `stage` | `v`, `kind`, `spec`, `stage`, `requests`, `input`, `output`, `cache_read`, `cache_write` |
+| `round` | `v`, `kind`, `spec`, `round`, `requests`, `input`, `output`, `cache_read`, `cache_write` |
+| `unassigned` | `v`, `kind`, `requests`, `input`, `output`, `cache_read`, `cache_write` |
+
+- `baseline`: one line per measuring run. `measured_through` is the timestamp of the newest measured turn, never the
+  wall clock; `claude_code` the Claude Code versions the transcripts name; `commands` per `/spec` command an object
+  `count`, the four counters and `mean`, the four counters divided by `count` and rounded to whole tokens. Earlier
+  baseline lines are kept, even when their transcripts are gone, and a run over the same state adds none. The state
+  is `measured_through`: when a kept line carries the same one, the kept line stays and the new one is dropped, even
+  if their numbers differ, since a later run over the same newest turn can only have lost transcripts.
+- `invocation`: one `/spec` command up to the next slash command of any kind (`/clear`, `/model`, another `/spec…`)
+  or the end of its session; prose prompts, task notifications, local-command output and tool results in between
+  belong to it, and so do the sub-agents started from a tool call in that window. A slash command that is no `/spec`
+  command ends the window and opens none. `id` is
+  `a:claude:<session>#<n>`, `command` the command name only (its arguments are never stored), `spec` the slug the
+  number in its arguments names, or `null`; `ts` its first turn; `subagents` the sub-agent transcripts attributed to it.
+- `spec`, `stage` and `round`: the sums per spec, per spec and stage (the stage the spec stood in at the turn), and per
+  spec and implement round (`/spec-implement` only).
+- `unassigned`: every request outside a `/spec` invocation, in exactly one line.
+
+Line order: `baseline` by `measured_through`, `invocation` by `ts` then `id`, `spec` by slug, `stage` by slug then the
+stage table's order, `round` by slug then number, `unassigned` last. The file holds numbers, timestamps, command
+names, spec slugs, stage names, round numbers and neutral actor IDs only: no path, no working directory, no name, no
+address and no prompt or answer text.
+
+Reading the file back (`readTokens`) gives the lines it was written from, and serialising them again gives the same
+bytes. A blank line is skipped. A line that is not a JSON object, carries another `v` or an unknown `kind`, lacks a key
+of its kind or holds a value of the wrong shape is left out with a diagnostic naming its line; a key its kind does not
+name is dropped with a diagnostic and the line kept. Reading never throws.
+
+The whole file of the harbor fixture: one measuring run without earlier baseline lines over the transcript fixture (a
+main session with one sub-agent, an agent-worktree session, and a spec-worktree session with one sub-agent); every
+kind appears, in the line order above. It is
+written by `core/fixtures/harbor/generate.ts` through `tokenRows` and `serializeTokens`, and
+`core/tests/tokens.test.ts` (group `roundtrip`) holds it to the golden and reads it back into the same bytes.
+
+From `core/fixtures/harbor/specs/tokens.jsonl`:
+
+```jsonl
+{"v":1,"kind":"baseline","measured_through":"2026-03-08T17:01:00.700Z","claude_code":["2.1.38","2.1.40","2.1.42"],"commands":{"/spec-idea":{"count":1,"input":9,"output":850,"cache_read":43200,"cache_write":5200,"mean":{"input":9,"output":850,"cache_read":43200,"cache_write":5200}},"/spec-implement":{"count":3,"input":47,"output":4130,"cache_read":125000,"cache_write":32400,"mean":{"input":16,"output":1377,"cache_read":41667,"cache_write":10800}},"/spec-plan":{"count":1,"input":18,"output":1380,"cache_read":59400,"cache_write":3000,"mean":{"input":18,"output":1380,"cache_read":59400,"cache_write":3000}},"/spec-review":{"count":1,"input":6,"output":510,"cache_read":10500,"cache_write":3200,"mean":{"input":6,"output":510,"cache_read":10500,"cache_write":3200}},"/spec-tasks":{"count":1,"input":17,"output":3075,"cache_read":83800,"cache_write":13800,"mean":{"input":17,"output":3075,"cache_read":83800,"cache_write":13800}}}}
+{"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#1","command":"/spec-review","spec":"002-web-console","ts":"2026-03-04T08:30:00.020Z","requests":1,"subagents":0,"input":6,"output":510,"cache_read":10500,"cache_write":3200}
+{"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#2","command":"/spec-plan","spec":"003-config-loader","ts":"2026-03-06T08:10:00.250Z","requests":3,"subagents":0,"input":18,"output":1380,"cache_read":59400,"cache_write":3000}
+{"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#3","command":"/spec-implement","spec":"002-web-console","ts":"2026-03-06T08:40:00.600Z","requests":4,"subagents":1,"input":20,"output":2290,"cache_read":54100,"cache_write":12200}
+{"v":1,"kind":"invocation","id":"a:claude:3a7c9e21-6b4d-4f80-8e12-5d6c7b8a9f01#1","command":"/spec-tasks","spec":"003-config-loader","ts":"2026-03-06T09:30:00.400Z","requests":6,"subagents":1,"input":17,"output":3075,"cache_read":83800,"cache_write":13800}
+{"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#4","command":"/spec-implement","spec":"002-web-console","ts":"2026-03-07T10:30:00.900Z","requests":2,"subagents":0,"input":12,"output":760,"cache_read":54900,"cache_write":3300}
+{"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#5","command":"/spec-idea","spec":null,"ts":"2026-03-07T12:05:00.000Z","requests":2,"subagents":0,"input":9,"output":850,"cache_read":43200,"cache_write":5200}
+{"v":1,"kind":"invocation","id":"a:claude:9c8b7a65-4321-4fed-8cba-0987654321ab#1","command":"/spec-implement","spec":"002-web-console","ts":"2026-03-08T17:00:00.300Z","requests":2,"subagents":0,"input":15,"output":1080,"cache_read":16000,"cache_write":16900}
+{"v":1,"kind":"spec","spec":"002-web-console","requests":9,"input":53,"output":4640,"cache_read":135500,"cache_write":35600}
+{"v":1,"kind":"spec","spec":"003-config-loader","requests":9,"input":35,"output":4455,"cache_read":143200,"cache_write":16800}
+{"v":1,"kind":"stage","spec":"002-web-console","stage":"review","requests":1,"input":6,"output":510,"cache_read":10500,"cache_write":3200}
+{"v":1,"kind":"stage","spec":"002-web-console","stage":"build","requests":8,"input":47,"output":4130,"cache_read":125000,"cache_write":32400}
+{"v":1,"kind":"stage","spec":"003-config-loader","stage":"tasks","requests":9,"input":35,"output":4455,"cache_read":143200,"cache_write":16800}
+{"v":1,"kind":"round","spec":"002-web-console","round":1,"requests":4,"input":20,"output":2290,"cache_read":54100,"cache_write":12200}
+{"v":1,"kind":"round","spec":"002-web-console","round":2,"requests":2,"input":12,"output":760,"cache_read":54900,"cache_write":3300}
+{"v":1,"kind":"unassigned","requests":2,"input":14,"output":220,"cache_read":18000,"cache_write":1800}
+```
 
 ## The stage table
 

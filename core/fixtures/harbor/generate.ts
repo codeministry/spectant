@@ -38,13 +38,18 @@
  *   specs/ideas/     README.md (the index) and two stories: console-audit-log (F2, Harbor 2.0, a milestone the master
  *                    does not list) and registry-webhooks (F7, Harbor 1.0), the second missing from the index (T31, T32)
  *   specs/tldr.md    generated before the newest spec `updated:` (stale)
+ *   specs/tokens.jsonl  one measuring run over the transcript fixture under core/tests/fixtures/transcripts/, through
+ *                    core's `tokenRows` and `serializeTokens`; equal to core/tests/fixtures/tokens.golden.jsonl (T18)
  */
 
 import {createHash} from "node:crypto";
-import {existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from "node:fs";
+import {existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync} from "node:fs";
 import {dirname, join} from "node:path";
 
+import {buildDashboard} from "../../src/dashboard.ts";
 import {hashForGate, REVIEWED_FILES} from "../../src/gates.ts";
+import {mergeBaselines, serializeTokens, tokenRows, type TokenSpecInput, type TranscriptFile} from "../../src/tokens.ts";
+import {readTreeAt} from "../../tests/helpers/read-tree.ts";
 
 // ── reviewed-mark digest ───────────────────────────────────────────────────────────────────────────────
 // The digest the old Spec skill's review gate stores comes from core/src/gates.ts (`hashForGate`, which applies
@@ -1445,6 +1450,89 @@ function generate() {
     write("specs/ideas/README.md", IDEAS_README);
     write("specs/ideas/console-audit-log.md", IDEA_CONSOLE_AUDIT_LOG);
     write("specs/ideas/registry-webhooks.md", IDEA_REGISTRY_WEBHOOKS);
+
+    // last: the measurement reads the events, rounds and derived stages of the tree written above (spec 009, T18)
+    write("specs/tokens.jsonl", tokensJsonl());
+}
+
+// ── tokens ─────────────────────────────────────────────────────────────────────────────────────────────
+// `specs/tokens.jsonl` (spec 009, T18): the measurement `spectant tokens` writes, computed through core's own
+// `tokenRows` and `serializeTokens` from the hand-written transcript fixture under core/tests/fixtures/transcripts/
+// (the project folder `harbor` and its agent-worktree sibling) over the spec folders generated above. The reading
+// mirrors core/tests/tokens.test.ts, whose `roundtrip` group holds this file to the golden tokens.golden.jsonl byte
+// for byte. FORMAT.md § `tokens` quotes it verbatim.
+
+const TRANSCRIPTS = join(ROOT, "..", "..", "tests", "fixtures", "transcripts");
+const TRANSCRIPT_PROJECT = "harbor";
+const WORKTREE_INFIX = "--claude-worktrees-agent-";
+/** What follows the project name in a spec worktree's project folder: `-` and exactly three digits. */
+const SPEC_WORKTREE = /^-\d{3}$/;
+
+const byteOrder = (a: string, b: string): number => Buffer.compare(Buffer.from(a), Buffer.from(b));
+const sortedNames = (dir: string): string[] => readdirSync(dir).sort(byteOrder);
+
+function toolUseIdOf(path: string): string | null {
+    if (!existsSync(path)) return null;
+    const meta: unknown = JSON.parse(readFileSync(path, "utf-8"));
+    const id = typeof meta === "object" && meta !== null ? (meta as {toolUseId?: unknown}).toolUseId : undefined;
+    return typeof id === "string" && id !== "" ? id : null;
+}
+
+/** The main sessions of one project folder and their sub-agents; `prefix` goes before every label. */
+function fixtureSessions(folder: string, prefix: string): TranscriptFile[] {
+    const files: TranscriptFile[] = [];
+    for (const name of sortedNames(folder)) {
+        if (name.endsWith(".jsonl")) {
+            files.push({role: "main", session: name.slice(0, -".jsonl".length), label: `${prefix}${name}`, text: readFileSync(join(folder, name), "utf-8")});
+            continue;
+        }
+        const subagents = join(folder, name, "subagents");
+        if (!existsSync(subagents)) continue;
+        for (const file of sortedNames(subagents)) {
+            const match = /^(agent-.+)\.jsonl$/.exec(file);
+            if (match === null) continue;
+            files.push({role: "subagent", session: name, label: `${prefix}${name}/subagents/${file}`,
+                text: readFileSync(join(subagents, file), "utf-8"), toolUseId: toolUseIdOf(join(subagents, `${match[1] ?? ""}.meta.json`))});
+        }
+    }
+    return files;
+}
+
+/**
+ * The main sessions and their sub-agents, the agent-worktree sessions and the spec-worktree folders
+ * (`harbor-NNN`, read like the main folder), in the order the CLI's discovery lists them.
+ */
+function fixtureTranscripts(): TranscriptFile[] {
+    const files = fixtureSessions(join(TRANSCRIPTS, TRANSCRIPT_PROJECT), "");
+    for (const sibling of sortedNames(TRANSCRIPTS)) {
+        if (sibling.startsWith(TRANSCRIPT_PROJECT) && SPEC_WORKTREE.test(sibling.slice(TRANSCRIPT_PROJECT.length))) {
+            files.push(...fixtureSessions(join(TRANSCRIPTS, sibling), `../${sibling}/`));
+            continue;
+        }
+        if (!sibling.startsWith(`${TRANSCRIPT_PROJECT}${WORKTREE_INFIX}`)) continue;
+        for (const name of sortedNames(join(TRANSCRIPTS, sibling))) {
+            if (!name.endsWith(".jsonl")) continue;
+            files.push({role: "worktree", session: name.slice(0, -".jsonl".length), label: `../${sibling}/${name}`,
+                text: readFileSync(join(TRANSCRIPTS, sibling, name), "utf-8")});
+        }
+    }
+    return files;
+}
+
+/** Every spec folder of the generated tree with its events and rounds texts and the stage the dashboard derives. */
+function fixtureSpecs(): TokenSpecInput[] {
+    const input = readTreeAt(ROOT);
+    const stages = new Map(buildDashboard({...input, services: []}).specs.map((row) => [row.slug, row.stage]));
+    return [...input.specs, ...input.archived]
+        .map((files) => ({slug: files.folder, events: files.texts.events ?? null, rounds: files.texts.rounds ?? null,
+            derivedStage: stages.get(files.folder) ?? null}))
+        .sort((a, b) => byteOrder(a.slug, b.slug));
+}
+
+/** One measuring run without earlier lines: the baseline first, then every row. */
+function tokensJsonl(): string {
+    const run = tokenRows({transcripts: fixtureTranscripts(), specs: fixtureSpecs()});
+    return serializeTokens([...mergeBaselines([], run.baseline), ...run.rows]);
 }
 
 // ── cli ────────────────────────────────────────────────────────────────────────────────────────────────
