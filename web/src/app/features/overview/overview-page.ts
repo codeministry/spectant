@@ -4,6 +4,7 @@ import { UiCard } from '../../shared/ui/card/card';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { UiNotice } from '../../shared/ui/notice/notice';
+import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { OverviewData } from './overview-data.service';
 import { WorkspaceColumn } from './workspace-column';
@@ -16,7 +17,7 @@ import { WorkspaceColumn } from './workspace-column';
  */
 @Component({
   selector: 'app-overview-page',
-  imports: [TranslocoPipe, UiCard, UiCommandChip, UiEmptyState, UiNotice, UiSkeleton, WorkspaceColumn],
+  imports: [TranslocoPipe, UiCard, UiCommandChip, UiEmptyState, UiNotice, UiPageHead, UiSkeleton, WorkspaceColumn],
   providers: [OverviewData],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'overview' },

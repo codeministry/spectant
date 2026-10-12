@@ -1,4 +1,4 @@
-import type { PaletteEntry } from '../../core/palette-sources';
+import type { PaletteEntry, PaletteSource } from '../../core/palette-sources';
 
 /**
  * The palette's ranking (design.md § Command palette and keyboard): exact ID > ID prefix > title word prefix >
@@ -56,13 +56,112 @@ export function rankEntry(entry: PaletteEntry, query: string): Rank {
   return RANK.none;
 }
 
-/** The entries that match, best rank first, keeping the source's order within a rank. */
-export function rankEntries(entries: readonly PaletteEntry[], query: string): Array<{ entry: PaletteEntry; rank: Rank }> {
+/** The entries that match, best rank first, keeping the source's order within a rank; `rank` defaults to `rankEntry`. */
+export function rankEntries(
+  entries: readonly PaletteEntry[],
+  query: string,
+  rank: (entry: PaletteEntry, query: string) => Rank = rankEntry,
+): Array<{ entry: PaletteEntry; rank: Rank }> {
   return entries
-    .map((entry, index) => ({ entry, rank: rankEntry(entry, query), index }))
+    .map((entry, index) => ({ entry, rank: rank(entry, query), index }))
     .filter((item) => item.rank > RANK.none)
     .sort((a, b) => b.rank - a.rank || a.index - b.index)
-    .map(({ entry, rank }) => ({ entry, rank }));
+    .map(({ entry, rank: tier }) => ({ entry, rank: tier }));
+}
+
+/** The Claims group (019 T4 · ISC-139): ranked by `rankClaim`, at most `CLAIM_HITS` hits, first for a claim-like query. */
+export const CLAIMS_GROUP = 'claims';
+export const CLAIM_HITS = 8;
+
+/** `ISC-`, `ISC-12`, `ISC-126.1` (folded). */
+const CLAIM_ID = /^isc-[\d.]*$/u;
+/** `126`, `126.1`: a claim number without its prefix. */
+const CLAIM_NUMBER = /^\d+(?:\.\d+)*$/u;
+
+/** Whether `query` looks like a claim ID (`ISC-…`) or a bare claim number (`126`): the Claims group then leads (T40). */
+export function isClaimQuery(query: string): boolean {
+  const q = fold(query.trim());
+  return CLAIM_ID.test(q) || CLAIM_NUMBER.test(q);
+}
+
+/**
+ * How well a claim entry (its ISC in `chip`, its text in `label`, its status word among the `keywords`) matches `query`
+ * (T40). A claim ID matches the chip exactly or as a prefix; a bare number matches the number part of the chip on whole
+ * segments, so "126" finds ISC-126 (exact) and ISC-126.1 (prefix) but not ISC-1260. A claim-like query never matches
+ * the text. Any other query matches a status word as a prefix or a word of the text as a word prefix, never as a
+ * subsequence: a long claim line holds nearly any letters in order. An empty query matches nothing, so the group only
+ * lists with a query.
+ */
+export function rankClaim(entry: PaletteEntry, query: string): Rank {
+  const q = fold(query.trim());
+  if (q === '') return RANK.none;
+  const id = fold(entry.chip ?? '');
+  if (CLAIM_NUMBER.test(q)) {
+    const number = id.replace(/^isc-/u, '');
+    if (number === q) return RANK.exactId;
+    return number.startsWith(`${q}.`) ? RANK.idPrefix : RANK.none;
+  }
+  if (CLAIM_ID.test(q)) {
+    if (id === q) return RANK.exactId;
+    return id.startsWith(q) ? RANK.idPrefix : RANK.none;
+  }
+  if (entry.keywords.some((keyword) => keyword !== '' && fold(keyword).startsWith(q))) return RANK.idPrefix;
+  const label = fold(entry.label);
+  return wordStarts(label).some((start) => label.startsWith(q, start)) ? RANK.wordPrefix : RANK.none;
+}
+
+export interface RankedGroup<S extends PaletteSource = PaletteSource> {
+  readonly source: S;
+  readonly matches: ReadonlyArray<{ entry: PaletteEntry; rank: Rank }>;
+}
+
+/**
+ * The palette's groups for `query`, from `sources` in their `order`. An empty query keeps that order, shows Recent and
+ * no Claims; a query drops Recent, and the groups follow their best match (ties by `order`), so Enter lands on it.
+ * Claims (T40) rank by `rankClaim` and keep at most `CLAIM_HITS` hits: a claim-like query puts the group first, so its
+ * first hit is the preselected option; any other query never puts it before Specs while Specs has a hit, since a spec
+ * title naming the word is the likelier target than a line inside a claim.
+ */
+export function rankGroups<S extends PaletteSource>(sources: readonly S[], query: string): Array<RankedGroup<S>> {
+  const q = query.trim();
+  const groups = sources
+    .filter((source) => (q === '' ? source.id !== CLAIMS_GROUP : source.id !== 'recent'))
+    .map((source) => ({
+      source,
+      matches: source.id === CLAIMS_GROUP ? rankEntries(source.entries(), q, rankClaim).slice(0, CLAIM_HITS) : rankEntries(source.entries(), q),
+    }))
+    .filter((group) => group.matches.length > 0);
+  if (q === '') return groups;
+  groups.sort((a, b) => (b.matches[0]?.rank ?? 0) - (a.matches[0]?.rank ?? 0) || a.source.order - b.source.order);
+  const at = groups.findIndex((group) => group.source.id === CLAIMS_GROUP);
+  if (at < 0) return groups;
+  const [claims] = groups.splice(at, 1);
+  if (isClaimQuery(q)) return [claims, ...groups];
+  const specs = groups.findIndex((group) => group.source.id === 'specs');
+  groups.splice(specs >= at ? specs + 1 : at, 0, claims);
+  return groups;
+}
+
+/** How many characters of a claim line may stand before a text hit before the shown line starts nearer to it. */
+export const EXCERPT_LEAD = 24;
+
+/**
+ * The part of a claim line the palette shows for `query`: the whole line when the hit (a word prefix) starts within
+ * `EXCERPT_LEAD` characters or there is none, else "…" and the line from the first whole word at most that far before
+ * the hit, so a word late in a long claim is on the one shown line with its mark. Code points, like `highlight`.
+ */
+export function excerpt(text: string, query: string): string {
+  const q = Array.from(fold(query.trim()));
+  if (q.length === 0) return text;
+  const chars = Array.from(text);
+  const lower = chars.map(fold);
+  const isWord = (char: string | undefined): boolean => char !== undefined && /[\p{L}\p{N}]/u.test(char);
+  const wordStart = (i: number): boolean => isWord(chars[i]) && !isWord(chars[i - 1]);
+  const hit = chars.findIndex((_, i) => (i === 0 || !isWord(chars[i - 1])) && q.every((char, k) => lower[i + k] === char));
+  if (hit <= EXCERPT_LEAD) return text;
+  let from = hit;
+  for (let i = hit - 1; i >= hit - EXCERPT_LEAD; i--) if (wordStart(i)) from = i;
+  return `…${chars.slice(from).join('')}`;
 }
 
 /**

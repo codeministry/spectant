@@ -10,6 +10,7 @@ import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
+import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { Brief, type BriefModel } from './brief/brief';
 import { ContextRail } from './context-rail/context-rail';
 import type { DashboardView } from './context-rail/dashboard-view';
@@ -40,7 +41,7 @@ import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchi
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [TranslocoPipe, NotFound, UiNotice, UiSheet, KpiBand, Brief, ContextRail, SpecInspector, SpecTable, WarningsPanel, IdeasPanel],
+  imports: [TranslocoPipe, NotFound, UiNotice, UiPageHead, UiSheet, KpiBand, Brief, ContextRail, SpecInspector, SpecTable, WarningsPanel, IdeasPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.css',
@@ -58,7 +59,6 @@ export class DashboardPage {
   protected readonly query = computed(() => parseListQuery(this.params()));
 
   protected readonly ws = computed(() => this.state.ws() ?? '');
-  protected readonly name = computed(() => this.data.workspaceName(this.ws()));
   protected readonly body = computed(() => {
     const result = this.data.dashboard.value();
     return result?.kind === 'ok' ? result.body : null;

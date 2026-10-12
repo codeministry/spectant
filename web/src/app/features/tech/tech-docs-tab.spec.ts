@@ -50,7 +50,7 @@ function expectEmptyState(root: HTMLElement): void {
   expect(empty?.querySelector('.body')?.textContent.trim()).toBe('Overview and Architecture come from specs/tech.md. Draft it from Claude Code:');
   const chip = empty?.querySelector('.slot ui-command-chip');
   expect(chip?.querySelector('code')?.textContent).toBe('/spec-doc');
-  expect(chip?.querySelector('button')?.getAttribute('aria-label')).toBe('Copy command');
+  expect(chip?.querySelector('button')?.getAttribute('aria-label')).toBe('Copy /spec-doc');
   expect(root.querySelector('ui-doc-prose')).toBeNull();
   expect(root.querySelector('ui-notice')).toBeNull();
 }

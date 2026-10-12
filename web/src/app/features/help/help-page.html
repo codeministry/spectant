@@ -1,7 +1,9 @@
 <app-help-nav [sections]="sections" />
 
 <ui-card class="head" [padding]="24">
-  <h1 id="help" tabindex="-1">{{ 'help.title' | transloco }}</h1>
+  <ui-page-head [segments]="[('shell.eyebrow.app' | transloco), ('help.title' | transloco)]">
+    <h1 class="type-page-title" id="help" tabindex="-1">{{ 'help.title' | transloco }}</h1>
+  </ui-page-head>
   <p class="subtitle">{{ 'help.subtitle' | transloco }}</p>
 </ui-card>
 

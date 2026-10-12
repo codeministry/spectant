@@ -1,7 +1,11 @@
 /*
  * The pickers and the area trigger (design.md § Header, § Shell header). The host is `display: contents`: `.pickers` and
  * `.area` are items of the header grid. Medium and wide draw them on the header's bordered rail field; compact makes
- * the pickers one pill with a "/" between and puts the area trigger in row 2.
+ * the pickers one pill with a 1 px line between and puts the area trigger in row 2.
+ *
+ * Labelled pills (ISC-140.2, design.md § Header-Pillen): every segment is a label over its value at compact and medium
+ * (40 px pill), `LABEL value` inline at wide. Numbers and ids never shorten (`flex-shrink: 0`, `tabular-nums`); only
+ * names ellipsize.
  */
 :host {
   display: contents;
@@ -36,11 +40,13 @@
   content: "";
 }
 
-.divider {
+/* The line between the workspace and spec segments, vertically centred in every tier (not daisyUI's `.divider`). */
+.pill-divider {
   flex-shrink: 0;
+  align-self: center;
   inline-size: 1px;
   block-size: 24px;
-  background: var(--line);
+  background: var(--track);
 }
 
 .pick {
@@ -72,6 +78,41 @@
   }
 }
 
+/* Wide: `LABEL value`, the label in mono caps, the value in 600. */
+.pill {
+  display: inline-flex;
+  gap: 8px;
+  align-items: baseline;
+  min-inline-size: 0;
+}
+
+.pill-label {
+  flex-shrink: 0;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pill-value {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+  min-inline-size: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.pill-num {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
 .pick-text {
   overflow: hidden;
   max-inline-size: 200px;
@@ -79,8 +120,13 @@
   white-space: nowrap;
 }
 
+.pill-num.pick-text {
+  overflow: visible;
+  max-inline-size: none;
+}
+
 .spec-title {
-  max-inline-size: 240px;
+  max-inline-size: 280px;
 }
 
 .pick-id {
@@ -90,8 +136,13 @@
 }
 
 .pick-id,
+.page-icon,
 .chevron {
   flex-shrink: 0;
+}
+
+.pick-id,
+.chevron {
   color: var(--muted-ink);
 }
 
@@ -101,8 +152,29 @@
   }
 }
 
-/* Medium: tighter caps, then the collapse order (after the wordmark): workspace name < 720, spec title < 680. */
+/* Medium: the label (11/12) over the value (14/16), 6 px above and below in the 40 px pill; tighter name caps. */
 @container header (width < 1120px) {
+  .pill {
+    flex-direction: column;
+    gap: 0;
+    align-items: flex-start;
+  }
+
+  .pick {
+    padding-block: 6px;
+  }
+
+  .pill-label {
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 12px;
+  }
+
+  .pill-value {
+    line-height: 16px;
+  }
+
   .ws-name {
     max-inline-size: 120px;
   }
@@ -112,19 +184,14 @@
   }
 }
 
-@container header (640px <= width < 720px) {
-  .ws-name {
-    display: none;
-  }
-}
-
+/* The narrowest medium widths drop the spec title; the id stays. */
 @container header (640px <= width < 680px) {
   .spec-title {
     display: none;
   }
 }
 
-/* Compact: the pickers as one pill (workspace / spec id), the area trigger a bordered 36 px field in row 2. */
+/* Compact: the pickers as one pill (workspace | spec id), the area trigger a bordered 40 px field in row 2. */
 @container header (width < 640px) {
   .pickers,
   .area {
@@ -145,27 +212,25 @@
     display: none;
   }
 
-  .divider {
-    inline-size: auto;
-    block-size: auto;
-    background: none;
-    color: var(--muted-ink);
-  }
-
-  .divider::before {
-    content: "/";
-  }
-
   .pick {
+    padding-block: 4px;
     padding-inline: 8px;
   }
 
-  .pick-text {
-    max-inline-size: 104px;
+  .pill-label {
+    line-height: 16px;
+  }
+
+  .pill-value {
+    font-size: 13px;
+  }
+
+  .ws-name {
+    max-inline-size: 96px;
   }
 
   .area {
-    block-size: 36px;
+    block-size: 40px;
   }
 }
 

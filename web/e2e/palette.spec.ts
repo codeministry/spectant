@@ -542,3 +542,105 @@ test.describe('palette enter', () => {
     });
   });
 });
+
+/**
+ * ISC-139 (019 T1): the palette finds every claim of every readable workspace in a group "Claims", by full ID, by
+ * the number alone and by a word of its text. Enter opens `/w/<ws>/s/<id>/claims#claim-<ISC>`, the claim card is
+ * visible and focused, and a reload of that address shows the same claim (ISC-143 for the palette jump). The target
+ * derives from the claim-view golden the stub serves; its number and its text word are unique across harbor and
+ * lantern, so each query names exactly one claim. `bun run e2e -- palette -g "claims"`.
+ */
+test.describe('palette claims', () => {
+  test.use(atWidth(1440));
+
+  interface ClaimGolden {
+    readonly claims: ReadonlyArray<{ id: string; text: string }>;
+  }
+
+  const claimGolden = (tree: 'harbor' | 'lantern'): Record<string, ClaimGolden> =>
+    JSON.parse(readFileSync(new URL(`../../core/fixtures/${tree}.claim-view.golden.json`, import.meta.url), 'utf8')) as Record<
+      string,
+      ClaimGolden
+    >;
+
+  /** harbor 007 · ISC-126: the claim the design's palette view searches for by "126". */
+  const TARGET = { ws: 'harbor', spec: '007', folder: 'specs/007-rotate-mirror-token', claim: 'ISC-126', number: '126', word: 'restart' };
+  const ENTRY = `claim:${TARGET.ws}:${TARGET.claim}`;
+  const claimUrl = new RegExp(`/w/${TARGET.ws}/s/${TARGET.spec}/claims#claim-${TARGET.claim}$`);
+
+  const claimOptions = (page: Page) => paletteOf(page).locator('[data-group="claims"] [role="option"]');
+  const claimCard = (page: Page) => page.locator(`#claim-${TARGET.claim}`);
+
+  /** The claim card the address names is on screen and holds the focus. */
+  async function expectClaimFocused(page: Page): Promise<void> {
+    await expect(page).toHaveURL(claimUrl);
+    await expect(page.locator('app-not-found')).toHaveCount(0);
+    await expect(claimCard(page)).toBeVisible();
+    await expect(claimCard(page)).toBeFocused();
+    await expect(claimCard(page)).toBeInViewport();
+  }
+
+  test('claims: the fixture claim the queries target is unique by number and by text word', () => {
+    const all = (['harbor', 'lantern'] as const).flatMap((tree) => Object.values(claimGolden(tree)).flatMap((spec) => spec.claims));
+    const target = claimGolden('harbor')[TARGET.folder]?.claims.find((c) => c.id === TARGET.claim);
+    expect(target?.text).toContain(TARGET.word);
+    expect(all.filter((c) => c.id.replace(/^ISC-/, '').startsWith(TARGET.number))).toHaveLength(1);
+    expect(all.filter((c) => c.text.toLocaleLowerCase().includes(TARGET.word))).toHaveLength(1);
+  });
+
+  test('claims: the full ID lists the claim first in a group "Claims", and Enter lands on the focused card', async ({ page }) => {
+    await openPalette(page, '/w/harbor');
+    await paletteOf(page).getByRole('combobox').fill(TARGET.claim);
+
+    const group = paletteOf(page).locator('[data-group="claims"]');
+    await expect(group.locator('.p-group')).toContainText(/claims/i);
+    await expect(claimOptions(page)).toHaveCount(1);
+    await expect(claimOptions(page).first()).toHaveAttribute('data-entry', ENTRY);
+    await expect(claimOptions(page).first()).toContainText(TARGET.claim);
+    // A claim-like query puts Claims first and preselects its first hit.
+    expect((await groupIds(page))[0]).toBe('claims');
+    await expect(paletteOf(page).locator('[role="option"][aria-selected="true"]')).toHaveAttribute('data-entry', ENTRY);
+
+    await page.keyboard.press('Enter');
+    await expect(paletteOf(page)).toBeHidden();
+    await expectClaimFocused(page);
+  });
+
+  test('claims: the number alone finds the claim from another workspace, and a reload shows the same claim', async ({ page }) => {
+    await openPalette(page, '/w/lantern');
+    await paletteOf(page).getByRole('combobox').fill(TARGET.number);
+
+    await expect(claimOptions(page)).toHaveCount(1);
+    await expect(claimOptions(page).first()).toHaveAttribute('data-entry', ENTRY);
+    expect((await groupIds(page))[0]).toBe('claims');
+    await expect(paletteOf(page).locator('[role="option"][aria-selected="true"]')).toHaveAttribute('data-entry', ENTRY);
+
+    await page.keyboard.press('Enter');
+    await expectClaimFocused(page);
+
+    // ISC-143: the address carries the whole jump; a reload lands on the same focused claim.
+    await page.reload();
+    await expectClaimFocused(page);
+  });
+
+  test('claims: a word of the claim text finds it after Specs, and Enter on that hit lands on the focused card', async ({ page }) => {
+    await openPalette(page, '/');
+    await paletteOf(page).getByRole('combobox').fill(TARGET.word);
+
+    await expect(claimOptions(page)).toHaveCount(1);
+    await expect(claimOptions(page).first()).toHaveAttribute('data-entry', ENTRY);
+    await expect(claimOptions(page).first().locator('mark')).toHaveText(TARGET.word);
+
+    // Text is not claim-like: Claims follows Specs when Specs has a hit, so the highlight is walked to the claim.
+    const order = await paletteOf(page)
+      .locator('[role="listbox"] [role="option"]')
+      .evaluateAll((els) => els.map((el) => `${el.closest('[data-group]')?.getAttribute('data-group') ?? ''}:${el.getAttribute('data-entry') ?? ''}`));
+    const at = order.indexOf(`claims:${ENTRY}`);
+    expect(at).toBeGreaterThanOrEqual(0);
+    for (let i = 0; i < at; i++) await page.keyboard.press('ArrowDown');
+    await expect(paletteOf(page).locator('[data-group="claims"] [role="option"][aria-selected="true"]')).toHaveAttribute('data-entry', ENTRY);
+
+    await page.keyboard.press('Enter');
+    await expectClaimFocused(page);
+  });
+});

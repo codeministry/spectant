@@ -8,12 +8,19 @@
  * - every lane header, sticky at compact, stays inside the viewport's width.
  *
  * `board.spec.ts` holds the same overflow check under its own `overflow at …` names; this file is the probe's.
+ *
+ * The workspace board at 820 px (spec 019, T28, ISC-141.1): `bun run e2e -- narrow-board -g "hidden columns"`. With
+ * feature swimlanes, the columns right of the board's own scroller box are named with their card counts in the
+ * overflow line `[data-board-hidden]`, and every swimlane whose cards all lie in those columns carries a hint
+ * `[data-lane-hidden]` inside the visible box that names the count and the column, so no lane looks empty. Empty
+ * stubs are not hidden columns. Every expectation is measured from the rendered columns, never restated.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
 import type { Frame, LiveFrame } from '../../core/src/files.ts';
 import { atWidth, expect, test } from './fixtures';
+import { RESET_PATH, SESSION_HEADER } from './stub-api';
 
 const SPEC = 'specs/002-web-console';
 const read = (name: string): unknown => {
@@ -114,3 +121,160 @@ for (const width of [600, 390] as const) {
     });
   });
 }
+
+// ─── The workspace board at 820: hidden columns (spec 019, T28, ISC-141.1) ──────────────────────────────────────────
+
+/** Feature swimlanes, set in the URL so the probe never hangs on a remembered or default group. */
+const WS_BOARD = '/w/harbor/board?group=feature';
+const HARBOR_STAGE_COUNTS = (
+  JSON.parse(readFileSync(fileURLToPath(new URL('../../core/fixtures/harbor.planning.golden.json', import.meta.url)), 'utf8')) as {
+    stageCounts: Readonly<Record<string, number>>;
+  }
+).stageCounts;
+const STAGE_WORDS = (
+  JSON.parse(readFileSync(fileURLToPath(new URL('../src/i18n/en.json', import.meta.url)), 'utf8')) as { stages: Readonly<Record<string, string>> }
+).stages;
+const wordOf = (stage: string): string => {
+  const word = STAGE_WORDS[stage];
+  if (word === undefined) throw new Error(`en.json names no stage ${stage}`);
+  return word;
+};
+const escaped = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** A stage word as a whole word: `Close` never matches inside `Close-pending`. */
+const wordPattern = (word: string): string => `(?<![\\w-])${escaped(word)}(?![\\w-])`;
+/** `Build 1` as one entry of the line: the word whole, then its count, `1` never inside `12`; `null` is any count. */
+const entryOf = (word: string, count: number | null): RegExp => new RegExp(`${wordPattern(word)}\\s*${count === null ? '\\d+' : String(count)}(?!\\d)`);
+
+interface BoardColumn {
+  readonly stage: string;
+  readonly stub: boolean;
+  /** The column's left edge lies at or past the scroller box's right edge. */
+  readonly hidden: boolean;
+  /** The column's full count, as its head (or its stub) shows it. */
+  readonly count: number;
+}
+interface BoardLane {
+  readonly name: string;
+  readonly top: number;
+  readonly bottom: number;
+  /** Cards of this lane per column, in column order. */
+  readonly cards: readonly number[];
+}
+interface BoxText {
+  readonly text: string;
+  readonly top: number;
+  readonly bottom: number;
+  readonly left: number;
+  readonly right: number;
+}
+interface BoardOverflow {
+  readonly box: { readonly left: number; readonly right: number };
+  readonly columns: readonly BoardColumn[];
+  readonly lanes: readonly BoardLane[];
+  readonly hints: readonly BoxText[];
+}
+
+/** The scroller box, its columns (hidden or not), the swimlanes with their cards per column, and every lane hint. */
+async function boardOverflow(page: Page): Promise<BoardOverflow> {
+  return page.evaluate(() => {
+    const scroller = document.querySelector<HTMLElement>('app-board-page .scroller');
+    const grid = scroller?.querySelector<HTMLElement>(':scope > .grid');
+    if (!scroller || !grid) throw new Error('the workspace board renders no scroller');
+    const box = scroller.getBoundingClientRect();
+    const gridBox = grid.getBoundingClientRect();
+    const rows: Array<{ head: HTMLElement; cells: HTMLElement[] }> = [];
+    for (const el of grid.children) {
+      if (!(el instanceof HTMLElement)) continue;
+      if (el.classList.contains('band-head')) rows.push({ head: el, cells: [] });
+      else if (el.classList.contains('cell')) rows.at(-1)?.cells.push(el);
+    }
+    const sections = [...grid.querySelectorAll<HTMLElement>(':scope > section[data-col]')];
+    const columns = sections.map((section) => {
+      const head = section.querySelector<HTMLElement>(':scope > header') ?? section;
+      const count = section.querySelector<HTMLElement>(':scope > header > .count, :scope > .count');
+      return {
+        stage: section.dataset['col'] ?? '?',
+        stub: section.hasAttribute('data-stub'),
+        hidden: head.getBoundingClientRect().left >= box.right - 1,
+        count: Number(count?.textContent.trim() ?? 'NaN'),
+      };
+    });
+    const lanes = rows.map((row, r) => {
+      const next = rows[r + 1];
+      return {
+        name: row.head.innerText.replace(/\s+/g, ' ').trim(),
+        top: row.head.getBoundingClientRect().top,
+        bottom: next ? next.head.getBoundingClientRect().top : gridBox.bottom,
+        cards: sections.map((_, i) => row.cells[i]?.querySelectorAll('app-board-card').length ?? 0),
+      };
+    });
+    const hints = [...document.querySelectorAll<HTMLElement>('app-board-page [data-lane-hidden]')].map((el) => {
+      const r = el.getBoundingClientRect();
+      return { text: el.innerText.replace(/\s+/g, ' ').trim(), top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+    });
+    return { box: { left: box.left, right: box.right }, columns, lanes, hints };
+  });
+}
+
+test.describe('hidden columns', () => {
+  test.use(atWidth(820));
+  let session = '';
+  test.beforeEach(async ({ page, request }, info) => {
+    session = `narrow-board-hidden-${info.testId}-${String(info.retry)}`;
+    await page.context().setExtraHTTPHeaders({ [SESSION_HEADER]: session });
+    expect((await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } })).status()).toBe(204);
+  });
+  test.afterEach(async ({ request }) => {
+    await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
+  });
+
+  test('hidden columns: at 820 the overflow line names every hidden column with its cards, and no swimlane looks empty', async ({ page }) => {
+    const total = Object.values(HARBOR_STAGE_COUNTS).reduce((sum, n) => sum + n, 0);
+    await page.goto(WS_BOARD);
+    await expect(page.locator('app-board-page')).toHaveAttribute('data-tier', 'medium');
+    await expect(page.locator('app-board-page app-board-card')).toHaveCount(total);
+    await expect(page.locator('app-board-page .band-head').first()).toBeVisible();
+
+    const found = await boardOverflow(page);
+    for (const column of found.columns) expect(column.count, `count of ${column.stage}`).toBe(HARBOR_STAGE_COUNTS[column.stage] ?? 0);
+    // Only columns with cards count: an empty stub (or an empty column) right of the box hides nothing.
+    const hidden = found.columns.filter((c) => c.hidden && c.count > 0);
+    const shown = found.columns.filter((c) => !c.hidden && c.count > 0);
+    expect(hidden.length, 'at 820 some columns with cards lie right of the scroller box').toBeGreaterThan(0);
+
+    // (1) The overflow line names every hidden column with its count, and no column in view.
+    const line = page.locator('app-board-page [data-board-hidden]');
+    await expect.soft(line, 'the overflow line [data-board-hidden] is shown').toBeVisible();
+    if ((await line.count()) === 1) {
+      const text = (await line.innerText()).replace(/\s+/g, ' ');
+      for (const column of hidden) {
+        expect.soft(text, `the line names ${column.stage} with ${String(column.count)}`).toMatch(entryOf(wordOf(column.stage), column.count));
+      }
+      for (const column of shown) {
+        expect.soft(text, `the line leaves out ${column.stage}, which is in view`).not.toMatch(entryOf(wordOf(column.stage), null));
+      }
+    }
+
+    // (2) Every lane whose cards all lie in hidden columns says so inside the visible box: count and column.
+    const unseen = found.lanes.filter(
+      (lane) =>
+        lane.cards.every((n, i) => n === 0 || found.columns[i]?.hidden === true) &&
+        lane.cards.some((n, i) => n > 0 && found.columns[i]?.hidden === true),
+    );
+    expect(unseen.length, 'some swimlane holds cards only in hidden columns').toBeGreaterThan(0);
+    for (const lane of unseen) {
+      const hints = found.hints.filter((h) => (h.top + h.bottom) / 2 >= lane.top && (h.top + h.bottom) / 2 < lane.bottom);
+      expect.soft(hints, `lane "${lane.name}" carries one [data-lane-hidden] hint`).toHaveLength(1);
+      const hint = hints[0];
+      if (hint === undefined) continue;
+      expect.soft(hint.left, `lane "${lane.name}": the hint starts inside the box`).toBeGreaterThanOrEqual(found.box.left - 1);
+      expect.soft(hint.right, `lane "${lane.name}": the hint ends inside the box`).toBeLessThanOrEqual(found.box.right + 1);
+      const count = lane.cards.reduce((sum, n) => sum + n, 0);
+      expect.soft(hint.text, `lane "${lane.name}": the hint names ${String(count)}`).toMatch(new RegExp(`(?<!\\d)${String(count)}(?!\\d)`));
+      found.columns.forEach((column, i) => {
+        if ((lane.cards[i] ?? 0) === 0) return;
+        expect.soft(hint.text, `lane "${lane.name}": the hint names ${column.stage}`).toMatch(new RegExp(wordPattern(wordOf(column.stage))));
+      });
+    }
+  });
+});

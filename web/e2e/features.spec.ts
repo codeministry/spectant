@@ -156,11 +156,12 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       expect(features.reduce((sum, f) => sum + f.total, 0)).toBe(recount.total);
     });
 
-    test('the title reads "Features in harbor"; "Features" and "claims" are glossary terms', async ({ page }) => {
+    test('the title reads "Features"; "Features" and "claims" are glossary terms', async ({ page }) => {
       await open(page);
       const h1 = page.locator('h1');
-      await expect.poll(async () => (await h1.innerText()).replace(/\s+/gu, ' ').trim()).toBe('Features in harbor');
-      const term = h1.locator('ui-term');
+      await expect.poll(async () => (await h1.innerText()).replace(/\s+/gu, ' ').trim()).toBe('Features');
+      // ISC-142: the glossary term is an info trigger beside the h1, not inside it.
+      const term = page.locator('ui-term[data-features-term]');
       await expect(term.locator('dfn')).toHaveText('Features');
       await expect(term.locator('[role="tooltip"]')).toHaveText(en.terms.feature);
       expect(en.terms.feature).toBe('Epic in a ticket tracker');
@@ -286,13 +287,13 @@ for (const [lang, cat] of Object.entries(LANGS) as Array<[keyof typeof LANGS, Ca
 
       test(`vocabulary: the Features H1 and meta terms keep the file word and open the ${lang} hint`, async ({ page }) => {
         await open(page);
-        const h1Term = page.locator('h1 ui-term');
+        const h1Term = page.locator('ui-term[data-features-term]');
         await expect(h1Term.locator('dfn')).toHaveText('Features');
         await expect(h1Term.locator('dfn')).toHaveAttribute('tabindex', '0');
         await expect(h1Term.locator('[role="tooltip"]')).toHaveAttribute('popover', /hint|manual/u);
         const describedBy = await h1Term.locator('dfn').getAttribute('aria-describedby');
         await expect(h1Term.locator('[role="tooltip"]')).toHaveAttribute('id', describedBy ?? 'missing');
-        await expect.poll(async () => (await page.locator('h1').innerText()).replace(/\s+/gu, ' ').trim()).toBe(template(cat.planning.features.title, { ws: 'harbor' }));
+        await expect.poll(async () => (await page.locator('h1').innerText()).replace(/\s+/gu, ' ').trim()).toBe(cat.shell.pages.features);
         await hintOpens(page, h1Term, cat.terms.feature);
 
         const claimTerm = page.locator('p.meta ui-term');

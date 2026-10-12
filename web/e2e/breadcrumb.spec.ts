@@ -3,7 +3,8 @@
  * the stub API (`core/fixtures/harbor.planning.golden.json`). `bun run e2e -- breadcrumb`.
  *
  * The levels are `milestone · feature › spec › area › claim or task`; the compact tier returns the short form
- * `⚑ Harbor 1.0 · F2 › 002 › ISC-51` (no workspace, no area, the spec as its mono id). "Links resolve" splits in two:
+ * `harbor / ⚑ Harbor 1.0 · F2 › 002 › ISC-51` (the workspace first since T19 · ISC-140.1, no area, the spec as its mono
+ * id). "Links resolve" splits in two:
  * workspace, spec, area, claim and task links are clicked and must land; the feature and milestone links point at the
  * Features and Milestones pages, so their `href` is asserted and they are clicked at the end to land on the focused
  * card and row.
@@ -17,6 +18,7 @@ import type { Locator, Page } from '@playwright/test';
 import type { PlanningModel } from '../../core/src/planning';
 import { SPEC_AREAS } from '../src/app/layout/shell/areas';
 import { atWidth, expect, test, WIDTHS } from './fixtures';
+import { RESET_PATH, SESSION_HEADER } from './stub-api';
 
 const read = (path: string): unknown => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
@@ -68,23 +70,21 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
     test('the spec dashboard: levels in order, with their separators', async ({ page }) => {
       await page.goto('/w/harbor/s/002');
       await expect(page.locator(NAV)).toBeVisible();
-      await expect(page.locator(`${NAV} ol > li`)).toHaveCount(compact ? 3 : 5);
+      await expect(page.locator(`${NAV} ol > li`)).toHaveCount(compact ? 4 : 5);
 
       await expect(crumb(page, 'milestone')).toHaveText(M10.name);
       await expect(crumb(page, 'feature')).toHaveText(compact ? F2.id : `${F2.id} ${F2.name}`);
       await expect(crumb(page, 'spec')).toHaveText(compact ? '002' : `002 ${slugOf('002')}`);
       await expect(page.locator(`${NAV} [data-crumb-more]`)).toHaveCount(0); // 002 holds F2 only
 
+      await expect(crumb(page, 'workspace')).toHaveText('harbor'); // every tier since T19 · ISC-140.1
+      await expect(item(page, 'milestone')).toHaveAttribute('data-sep', 'scope');
       if (compact) {
-        await expect(crumb(page, 'workspace')).toHaveCount(0);
         await expect(crumb(page, 'area')).toHaveCount(0);
-        await expect(item(page, 'milestone')).not.toHaveAttribute('data-sep');
         await expect(crumb(page, 'spec')).toHaveAttribute('aria-current', 'page'); // the spec is the last crumb
       } else {
-        await expect(crumb(page, 'workspace')).toHaveText('harbor');
         await expect(crumb(page, 'area')).toHaveText(en.shell.areas['dashboard'] ?? '');
         await expect(crumb(page, 'area')).toHaveAttribute('aria-current', 'page');
-        await expect(item(page, 'milestone')).toHaveAttribute('data-sep', 'scope');
         await expect(item(page, 'area')).toHaveAttribute('data-sep', 'down');
         await expect(crumb(page, 'spec')).not.toHaveAttribute('aria-current');
       }
@@ -96,9 +96,9 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
 
     test('the order in the DOM is milestone, feature, spec, area', async ({ page }) => {
       await page.goto('/w/harbor/s/002/status');
-      await expect(page.locator(`${NAV} ol > li`)).toHaveCount(compact ? 3 : 5);
+      await expect(page.locator(`${NAV} ol > li`)).toHaveCount(compact ? 4 : 5);
       const names = await page.locator(`${NAV} [data-crumb]`).evaluateAll((els) => els.map((el) => el.getAttribute('data-crumb')));
-      expect(names).toEqual(compact ? ['milestone', 'feature', 'spec'] : ['workspace', 'milestone', 'feature', 'spec', 'area']);
+      expect(names).toEqual(compact ? ['workspace', 'milestone', 'feature', 'spec'] : ['workspace', 'milestone', 'feature', 'spec', 'area']);
     });
 
     for (const { area, tab, first } of TAB_ROUTES) {
@@ -221,7 +221,6 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
     });
 
     test('the workspace link resolves', async ({ page }) => {
-      test.skip(compact, 'the short form has no workspace crumb; the header pill names it');
       await page.goto('/w/harbor/s/002/claims');
       await expect(crumb(page, 'workspace')).toHaveAttribute('href', '/w/harbor');
       await crumb(page, 'workspace').click();
@@ -282,4 +281,521 @@ test.describe('feature and milestone links land', () => {
     await expect(page.locator(`article#${F3.id}`)).toBeFocused();
     expect(await page.evaluate(() => document.activeElement?.id)).toBe(F3.id);
   });
+});
+
+// T7 · ISC-140: the eyebrow over the h1 on the eight pages without a spec breadcrumb, at 390, 820 and 1440, in English
+// and German. `bun run e2e -- breadcrumb -g eyebrow`.
+//
+// The eyebrow is the element `[data-page-eyebrow]` (one per page, plain text, no link) directly above the page's h1:
+// the first h1 after it in document order is visible and starts at most 16 px below it. Its segments are its text split
+// at ` · `, compared case-insensitively (the uppercase is CSS, the catalog texts stay mixed case) against the route's
+// workspace slug and the catalog values named by key, so the expectations follow the catalogs rather than literals.
+// `/` names no workspace; `/help` and `/settings` start with the `APP` segment (`shell.eyebrow.app`, added by T8) and
+// never name a workspace (design.md, across viewports). No eyebrow and no h1 may show a raw catalog key.
+
+type Catalog = Record<string, unknown>;
+type Language = 'en' | 'de';
+const catalogs: Record<Language, Catalog> = { en: read('../src/i18n/en.json') as Catalog, de: read('../src/i18n/de.json') as Catalog };
+
+/** The catalog value at a dotted key, or undefined when the key is missing. */
+const lookup = (catalog: Catalog, key: string): string | undefined => {
+  let node: unknown = catalog;
+  for (const part of key.split('.')) node = typeof node === 'object' && node !== null ? (node as Record<string, unknown>)[part] : undefined;
+  return typeof node === 'string' ? node : undefined;
+};
+
+const IDEA = 'console-audit-log';
+const WORKSPACE = 'harbor';
+const WORKSPACE_NAMES = ['harbor', 'lantern'];
+/** A dotted catalog key such as `shell.pages.board` or `header.switcher.allWorkspaces`. */
+const CATALOG_KEY = /\b[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+\b/u;
+
+/** A segment is the route's workspace or the catalog value at a key; `null` asserts only "no workspace named". */
+type Segment = { ws: true } | { key: string };
+interface EyebrowPage {
+  readonly name: string;
+  readonly path: string;
+  readonly segments: readonly Segment[] | null;
+  /** The visible h1, where design.md fixes it. */
+  readonly h1?: RegExp;
+}
+
+const EYEBROW_PAGES: readonly EyebrowPage[] = [
+  { name: 'workspaces', path: '/', segments: null },
+  { name: 'dashboard', path: `/w/${WORKSPACE}`, segments: [{ ws: true }, { key: 'shell.pages.specs' }], h1: /^\s*Specs(\s*·\s*\d+)?\s*$/u },
+  { name: 'board', path: `/w/${WORKSPACE}/board`, segments: [{ ws: true }, { key: 'shell.pages.board' }] },
+  { name: 'idea', path: `/w/${WORKSPACE}/ideas/${IDEA}`, segments: [{ ws: true }, { key: 'shell.pages.board' }, { key: 'ideas.title' }] },
+  { name: 'features', path: `/w/${WORKSPACE}/features`, segments: [{ ws: true }, { key: 'shell.pages.features' }] },
+  { name: 'milestones', path: `/w/${WORKSPACE}/milestones`, segments: [{ ws: true }, { key: 'shell.pages.milestones' }] },
+  { name: 'help', path: '/help', segments: [{ key: 'shell.eyebrow.app' }, { key: 'help.title' }] },
+  { name: 'settings', path: '/settings', segments: [{ key: 'shell.eyebrow.app' }, { key: 'settings.title' }] },
+];
+
+const segmentsOf = (text: string): string[] =>
+  text
+    .split('·')
+    .map((part) => part.replace(/\s+/gu, ' ').trim().toLowerCase())
+    .filter((part) => part.length > 0);
+
+/** Opens the page and checks its eyebrow against the catalog of `language`. */
+async function checkEyebrow(page: Page, entry: EyebrowPage, language: Language): Promise<void> {
+  await page.goto(entry.path);
+  const eyebrow = page.locator('[data-page-eyebrow]');
+  await expect(eyebrow, `${entry.name}: one eyebrow`).toHaveCount(1);
+  await expect(eyebrow, `${entry.name}: the eyebrow is visible`).toBeVisible();
+  await expect(eyebrow.locator('a'), `${entry.name}: the eyebrow is plain text`).toHaveCount(0);
+
+  // The h1 it heads: the first h1 after it in document order, visible and at most 16 px below it.
+  const index = await eyebrow.evaluate((el) =>
+    [...document.querySelectorAll('h1')].findIndex((h) => (el.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0),
+  );
+  expect(index, `${entry.name}: an h1 follows the eyebrow`).toBeGreaterThanOrEqual(0);
+  const h1 = page.locator('h1').nth(index);
+  await expect(h1, `${entry.name}: the h1 under the eyebrow is visible`).toBeVisible();
+  if (entry.h1) await expect(h1, `${entry.name}: the h1`).toHaveText(entry.h1);
+  const [top, head] = await Promise.all([eyebrow.boundingBox(), h1.boundingBox()]);
+  const gap = (head?.y ?? -Infinity) - ((top?.y ?? 0) + (top?.height ?? 0));
+  expect(gap, `${entry.name}: the eyebrow sits directly above the h1`).toBeGreaterThanOrEqual(-1);
+  expect(gap, `${entry.name}: the eyebrow sits directly above the h1`).toBeLessThanOrEqual(16);
+
+  const text = (await eyebrow.textContent()) ?? '';
+  expect(text, `${entry.name}: no catalog key in the eyebrow`).not.toMatch(CATALOG_KEY);
+  expect((await h1.textContent()) ?? '', `${entry.name}: no catalog key in the h1`).not.toMatch(CATALOG_KEY);
+  const actual = segmentsOf(text);
+  const global = entry.segments === null || entry.segments.every((segment) => !('ws' in segment));
+  if (global) for (const name of WORKSPACE_NAMES) expect(actual, `${entry.name}: no workspace in the eyebrow`).not.toContain(name);
+  if (entry.segments === null) return;
+
+  const expected = entry.segments.map((segment) => {
+    if ('ws' in segment) return WORKSPACE;
+    const value = lookup(catalogs[language], segment.key);
+    expect(value, `${entry.name}: the ${language} catalog holds ${segment.key}`).toBeDefined();
+    return (value ?? '').toLowerCase();
+  });
+  expect(actual, `${entry.name}: the eyebrow segments in ${language}`).toEqual(expected);
+}
+
+test.describe('eyebrow', () => {
+  for (const width of [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      for (const entry of EYEBROW_PAGES) {
+        test(`eyebrow over the h1: ${entry.name} (${entry.path})`, async ({ page }) => {
+          await checkEyebrow(page, entry, 'en');
+        });
+      }
+
+      test('eyebrow in German on all eight pages', async ({ page }, info) => {
+        const headers = { [SESSION_HEADER]: `eyebrow-de-${info.testId}` };
+        await page.context().setExtraHTTPHeaders(headers);
+        await page.request.post(RESET_PATH, { headers });
+        const saved = await page.request.put('/api/settings', { data: { language: 'de' }, headers });
+        expect(saved.ok()).toBe(true);
+        for (const entry of EYEBROW_PAGES) await checkEyebrow(page, entry, 'de');
+        await page.request.post(RESET_PATH, { headers });
+      });
+    });
+  }
+});
+
+// T18 · ISC-140.1: the workspace leads the spec breadcrumb at every tier, compact included (design.md, Mobile § the spec
+// breadcrumb). `bun run e2e -- breadcrumb -g "workspace first"`.
+//
+// On the spec pages of the stub workspace harbor at 390, 820 and 1440, the first entry of `nav[data-breadcrumb]` is the
+// workspace link (`data-crumb="workspace"`, href `/w/harbor`, the workspace name), and the last entry carries
+// `aria-current="page"`: the spec at compact, the area at medium and wide, or the claim when one is open.
+const WORKSPACE_FIRST_PATHS = ['/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/002/claims#claim-ISC-51', '/w/harbor/s/001'];
+
+test.describe('workspace first', () => {
+  for (const width of [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      test(`workspace first: the workspace leads the spec breadcrumb at ${String(width)}`, async ({ page }) => {
+        for (const path of WORKSPACE_FIRST_PATHS) {
+          await page.goto(path);
+          const entries = page.locator(`nav[data-breadcrumb] ol > li`);
+          await expect(entries.last(), `${path}: the breadcrumb renders`).toBeVisible();
+          const first = entries.first().locator('[data-crumb]').first();
+          await expect(first, `${path}: the first entry is the workspace`).toHaveAttribute('data-crumb', 'workspace');
+          await expect(first, `${path}: the workspace links to its dashboard`).toHaveAttribute('href', '/w/harbor');
+          await expect(first, `${path}: the workspace is named`).toHaveText('harbor');
+          await expect(first, `${path}: the workspace is visible`).toBeVisible();
+          await expect(entries.last().locator('[aria-current="page"]'), `${path}: the last entry is current`).toHaveCount(1);
+          await expect(page.locator('nav[data-breadcrumb] [aria-current="page"]'), `${path}: one current entry`).toHaveCount(1);
+        }
+      });
+    });
+  }
+});
+
+// T21 · ISC-140.2: the header pills carry labels (design.md, every viewport § header pills, and across viewports). At
+// 390, 820 and 1440 every visible segment of `app-shell-nav` holds a visible label `[data-pill-label]` and its value
+// `[data-pill-value]`; no segment's text is a bare number. The labels are catalog values looked up by key name and
+// compared case-insensitively (the uppercase is CSS): `shell.pills.workspace`, `shell.pills.specs` on workspace pages,
+// `shell.pills.spec` on spec pages, `shell.pills.area`. On `/`, `/help` and `/settings` the spec and area pills are
+// absent, the workspace pill reads `shell.pills.all · n`, and no segment shows `0`. `bun run e2e -- breadcrumb -g pills`.
+const PILLS = 'app-shell-nav';
+type PillName = 'workspace' | 'spec' | 'area';
+/** The expected value of a pill: an exact catalog-backed text, or a pattern the value must match. */
+interface PillExpectation {
+  readonly label: string;
+  readonly value: { key: string; count: number } | { key: string } | { text: string } | { pattern: RegExp };
+}
+interface PillPage {
+  readonly name: string;
+  readonly path: string;
+  /** The pills that render; the others must be absent. */
+  readonly pills: Partial<Record<PillName, PillExpectation>>;
+}
+
+const DATA_AREA = SPEC_AREAS.find((area) => area.tabs.includes('claims'))?.id ?? 'data';
+const ALL_WORKSPACES: PillExpectation = { label: 'shell.pills.workspace', value: { key: 'shell.pills.all', count: WORKSPACE_NAMES.length } };
+const PILL_PAGES: readonly PillPage[] = [
+  {
+    name: 'workspace page',
+    path: `/w/${WORKSPACE}`,
+    pills: {
+      workspace: { label: 'shell.pills.workspace', value: { text: WORKSPACE } },
+      spec: { label: 'shell.pills.specs', value: { pattern: /^\s*\d+\s*$/u } },
+      area: { label: 'shell.pills.area', value: { key: 'shell.pages.specs' } },
+    },
+  },
+  {
+    name: 'spec page',
+    path: `/w/${WORKSPACE}/s/002/claims`,
+    pills: {
+      workspace: { label: 'shell.pills.workspace', value: { text: WORKSPACE } },
+      spec: { label: 'shell.pills.spec', value: { pattern: /^\s*002(\s|$)/u } },
+      area: { label: 'shell.pills.area', value: { key: `shell.areas.${DATA_AREA}` } },
+    },
+  },
+  { name: 'workspaces overview', path: '/', pills: { workspace: ALL_WORKSPACES } },
+  { name: 'help', path: '/help', pills: { workspace: ALL_WORKSPACES } },
+  { name: 'settings', path: '/settings', pills: { workspace: ALL_WORKSPACES } },
+];
+
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+/** The en catalog value at `key`; a missing key fails the test with its name rather than crashing the file. */
+const pillCatalog = (where: string, key: string): string => {
+  const value = lookup(catalogs.en, key);
+  expect(value, `${where}: the en catalog holds ${key}`).toBeDefined();
+  return value ?? '';
+};
+/** A whole-text, case-insensitive pattern for a catalog text. */
+const exactly = (text: string): RegExp => new RegExp(`^\\s*${escapeRegExp(text).replace(/\s+/gu, '\\s+')}\\s*$`, 'iu');
+const normalized = (text: string | null): string => (text ?? '').replace(/\s+/gu, ' ').trim();
+
+async function checkPills(page: Page, entry: PillPage): Promise<void> {
+  await page.goto(entry.path);
+  for (const name of ['workspace', 'spec', 'area'] as const) {
+    const where = `${entry.name} (${entry.path}), the ${name} pill`;
+    const segment = page.locator(`${PILLS} [data-control="${name}"]`);
+    const expected = entry.pills[name];
+    if (!expected) {
+      await expect(segment, `${where} is absent`).toHaveCount(0);
+      continue;
+    }
+    await expect(segment, `${where} renders once`).toHaveCount(1);
+    await expect(segment, `${where} is visible`).toBeVisible();
+
+    const label = segment.locator('[data-pill-label]');
+    await expect(label, `${where} carries one label`).toHaveCount(1);
+    await expect(label, `${where}: the label is visible`).toBeVisible();
+    await expect(label, `${where}: the label is ${expected.label}`).toHaveText(exactly(pillCatalog(where, expected.label)));
+
+    const value = segment.locator('[data-pill-value]');
+    await expect(value, `${where} carries one value`).toHaveCount(1);
+    await expect(value, `${where}: the value is visible`).toBeVisible();
+    const spec = expected.value;
+    if ('pattern' in spec) {
+      await expect(value, `${where}: the value`).toHaveText(spec.pattern);
+    } else if ('text' in spec) {
+      await expect(value, `${where}: the value`).toHaveText(exactly(spec.text));
+    } else if ('count' in spec) {
+      const all = pillCatalog(where, spec.key);
+      const pattern = new RegExp(`^\\s*${escapeRegExp(all)}\\s*·\\s*${String(spec.count)}\\s*$`, 'iu');
+      await expect(value, `${where}: the value is ${spec.key} · ${String(spec.count)}`).toHaveText(pattern);
+    } else {
+      await expect(value, `${where}: the value is ${spec.key}`).toHaveText(exactly(pillCatalog(where, spec.key)));
+    }
+
+    const text = normalized(await segment.textContent());
+    expect(text, `${where}: the segment is not a bare number`).not.toMatch(/^\d+$/u);
+    expect(text, `${where}: no catalog key in the segment`).not.toMatch(CATALOG_KEY);
+    if (entry.path === '/' || entry.path === '/help' || entry.path === '/settings') {
+      expect(text, `${where}: no 0 on an app page`).not.toMatch(/(^|[^\d])0([^\d]|$)/u);
+    }
+  }
+}
+
+test.describe('pills', () => {
+  for (const width of [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      for (const entry of PILL_PAGES) {
+        test(`pills carry labels: ${entry.name} (${entry.path}) at ${String(width)}`, async ({ page }) => {
+          await checkPills(page, entry);
+        });
+      }
+    });
+  }
+});
+
+// T32 · ISC-142: polish of the orientation, at 390 and 1440 against the stub API. `bun run e2e -- breadcrumb -g polish`.
+//
+// (1) The idea page leads back to the board: a visible link to `/w/harbor/board` outside the header sits before the
+//     eyebrow in document order (design.md, across viewports: the `←` in the place of the spec breadcrumb's), with a
+//     non-empty accessible name that is no raw catalog key.
+// (2) No two visible targets of a view share an accessible name. The check is scoped to the two groups the claim names,
+//     so a legitimate repeat elsewhere (identical pagination, one link per row to the same page) cannot make it flaky:
+//     the copy buttons of the `ui-command-chip`s on `/` (each names its command) and the `after` / `blocked by` links of
+//     the claim cards on `/w/harbor/s/002/claims` (each names its claim; 002 holds two `after ISC-60` edges in the
+//     golden). The names are Playwright's computed accessible names, read from each element's ARIA snapshot.
+// (3) The h1 of the Features page names only the title: its accessible name is exactly `shell.pages.features`, and
+//     neither that name nor the h1's text holds the glossary hint (`terms.feature`).
+
+/** Playwright's computed accessible name of a link or button, from its ARIA snapshot (`- button "Copy command"`). */
+async function accessibleName(target: Locator): Promise<string> {
+  const snapshot = await target.ariaSnapshot();
+  const match = /^-\s+(?:link|button)\s+("(?:[^"\\]|\\.)*")/u.exec(snapshot.trim());
+  return match?.[1] === undefined ? '' : (JSON.parse(match[1]) as string);
+}
+
+/** The names that occur more than once in `names`. */
+const repeated = (names: readonly string[]): string[] => [...new Set(names.filter((name, i) => names.indexOf(name) !== i))];
+
+test.describe('polish', () => {
+  for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      test(`polish: the idea page links back to the board at ${String(width)}`, async ({ page }) => {
+        await page.goto(`/w/${WORKSPACE}/ideas/${IDEA}`);
+        const h1 = page.locator('h1').first();
+        await expect(h1, 'the idea page renders its h1').toBeVisible();
+        // The eyebrow is ISC-140's (`-g eyebrow`); until it renders here, the back link must at least precede the h1.
+        const eyebrow = (await page.locator('[data-page-eyebrow]').count()) > 0 ? page.locator('[data-page-eyebrow]') : h1;
+
+        // Visible links to the board, outside the header, that precede the eyebrow in document order.
+        const back = page.locator(`a[href="/w/${WORKSPACE}/board"]`).filter({ visible: true });
+        const before = await back.evaluateAll(
+          (links, ref) =>
+            links.map((link) => link.closest('header') === null && (link.compareDocumentPosition(ref) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0),
+          await eyebrow.elementHandle(),
+        );
+        const index = before.indexOf(true);
+        expect(index, 'a visible link to the board sits before the eyebrow').toBeGreaterThanOrEqual(0);
+
+        const name = await accessibleName(back.nth(index));
+        expect(name.trim(), 'the back link has an accessible name').not.toBe('');
+        expect(name, 'the back link names no catalog key').not.toMatch(CATALOG_KEY);
+      });
+
+      test(`polish: every copy chip on the workspaces overview names its command at ${String(width)}`, async ({ page }) => {
+        await page.goto('/');
+        const chips = page.locator('ui-command-chip').filter({ visible: true });
+        await expect(chips.first(), 'the overview shows copy chips').toBeVisible();
+        const names: string[] = [];
+        for (const chip of await chips.all()) {
+          const command = normalized(await chip.locator('code').textContent());
+          const name = await accessibleName(chip.getByRole('button'));
+          expect.soft(name, `the copy chip of ${command} names its command`).toContain(command);
+          names.push(name);
+        }
+        expect(names.length, 'at least two copy chips to compare').toBeGreaterThan(1);
+        expect(repeated(names), 'no two copy chips share an accessible name').toEqual([]);
+      });
+
+      test(`polish: every after link on the claims tab names its claim at ${String(width)}`, async ({ page }) => {
+        await page.goto(`/w/${WORKSPACE}/s/002/claims`);
+        const edges = page.locator('[data-claim] a[data-edge]').filter({ visible: true });
+        await expect(edges.first(), 'the claims tab shows edge links').toBeVisible();
+        const names: string[] = [];
+        for (const edge of await edges.all()) {
+          const target = (await edge.getAttribute('data-edge')) ?? '';
+          const owner = await edge.evaluate((el) => el.closest('[data-claim]')?.getAttribute('data-claim') ?? '');
+          const name = await accessibleName(edge);
+          expect.soft(name, `the edge of ${owner} names its target ${target}`).toContain(target);
+          expect.soft(name, `the edge ${target} names its claim ${owner}`).toContain(owner);
+          names.push(name);
+        }
+        expect(repeated(names), 'no two edge links share an accessible name').toEqual([]);
+      });
+
+      test(`polish: the Features h1 holds no glossary hint at ${String(width)}`, async ({ page }) => {
+        await page.goto(`/w/${WORKSPACE}/features`);
+        const title = lookup(catalogs.en, 'shell.pages.features');
+        const hint = lookup(catalogs.en, 'terms.feature');
+        expect(title, 'the en catalog holds shell.pages.features').toBeDefined();
+        expect(hint, 'the en catalog holds terms.feature').toBeDefined();
+
+        const h1 = page.getByRole('heading', { level: 1 });
+        await expect(h1, 'one h1').toHaveCount(1);
+        await expect(h1, 'the h1 is visible').toBeVisible();
+        expect.soft(normalized(await h1.textContent()), 'the h1 text holds no glossary hint').not.toContain(hint ?? '');
+        await expect.soft(h1, 'the h1 name holds no glossary hint').not.toHaveAccessibleName(new RegExp(escapeRegExp(hint ?? ''), 'u'));
+        await expect(h1, 'the h1 names only the title').toHaveAccessibleName(title ?? '');
+      });
+    });
+  }
+});
+
+// T38 · ISC-143 (Anti): no location indicator shows a state the address does not carry. `bun run e2e -- breadcrumb -g
+// reload`, at 390 and 1440 against the stub API.
+//
+// The location state of a view is the address (`pathname` + `hash`), the text of every `[data-page-eyebrow]`, every
+// entry of `nav[data-breadcrumb]` (its level, text, href and `aria-current`) and every segment of `app-shell-nav` (its
+// control, `[data-pill-label]` and `[data-pill-value]`). It is read once the view has settled (two reads in a row
+// agree), the page is reloaded, and it is read again: the two must be equal, for every route with an indicator. Help and
+// settings are reached in-app from a spec page (the router's popstate, no full load), so a remembered "last workspace"
+// would show there: they name neither workspace, before and after the reload. The palette jump from lantern to harbor
+// 007 · ISC-126 survives the reload, and the workspace pill names the address's workspace, harbor.
+interface LocationState {
+  readonly address: string;
+  readonly eyebrow: readonly string[];
+  readonly crumbs: readonly string[];
+  readonly pills: readonly string[];
+}
+
+const RELOAD_ROUTES: ReadonlyArray<{ readonly path: string; readonly indicator: 'eyebrow' | 'crumbs' }> = [
+  { path: '/', indicator: 'eyebrow' },
+  { path: `/w/${WORKSPACE}`, indicator: 'eyebrow' },
+  { path: `/w/${WORKSPACE}/board`, indicator: 'eyebrow' },
+  { path: `/w/${WORKSPACE}/ideas/${IDEA}`, indicator: 'eyebrow' },
+  { path: `/w/${WORKSPACE}/features`, indicator: 'eyebrow' },
+  { path: `/w/${WORKSPACE}/milestones`, indicator: 'eyebrow' },
+  { path: '/help', indicator: 'eyebrow' },
+  { path: '/settings', indicator: 'eyebrow' },
+  { path: `/w/${WORKSPACE}/s/002`, indicator: 'crumbs' },
+  { path: `/w/${WORKSPACE}/s/002/claims`, indicator: 'crumbs' },
+  { path: `/w/${WORKSPACE}/s/002/tasks`, indicator: 'crumbs' },
+  { path: `/w/${WORKSPACE}/s/002/plan`, indicator: 'crumbs' },
+];
+/** harbor 007 · ISC-126, the claim the palette's claims cases find by its number alone (palette.spec.ts). */
+const JUMP = { number: '126', entry: `claim:${WORKSPACE}:ISC-126`, url: `/w/${WORKSPACE}/s/007/claims#claim-ISC-126` };
+const WORKSPACE_PILL_VALUE = `${PILLS} [data-control="workspace"] [data-pill-value]`;
+
+/** The location state as the DOM shows it now. */
+const locationOf = (page: Page): Promise<LocationState> =>
+  page.evaluate(() => {
+    const text = (el: Element | null): string => (el?.textContent ?? '').replace(/\s+/gu, ' ').trim();
+    const all = (selector: string): Element[] => [...document.querySelectorAll(selector)];
+    return {
+      address: `${location.pathname}${location.hash}`,
+      eyebrow: all('[data-page-eyebrow]').map(text),
+      crumbs: all('nav[data-breadcrumb] [data-crumb], nav[data-breadcrumb] [data-crumb-more]').map((el) =>
+        [el.getAttribute('data-crumb') ?? 'more', text(el), el.getAttribute('href') ?? '', el.getAttribute('aria-current') ?? ''].join(' | '),
+      ),
+      pills: all('app-shell-nav [data-control]').map((el) =>
+        [el.getAttribute('data-control') ?? '', text(el.querySelector('[data-pill-label]')), text(el.querySelector('[data-pill-value]'))].join(' | '),
+      ),
+    };
+  });
+
+/** Waits for the route's indicator and the workspace pill, then for two reads in a row to agree, and returns that read. */
+async function settledLocation(page: Page, indicator: 'eyebrow' | 'crumbs', where: string): Promise<LocationState> {
+  const shown = indicator === 'eyebrow' ? page.locator('[data-page-eyebrow]').first() : page.locator('nav[data-breadcrumb] [data-crumb="spec"]');
+  await expect(shown, `${where}: the ${indicator} renders`).toBeVisible();
+  await expect(page.locator(WORKSPACE_PILL_VALUE), `${where}: the workspace pill renders`).toHaveText(/\S/u);
+  let previous = '';
+  let current: LocationState | undefined;
+  await expect
+    .poll(
+      async () => {
+        current = await locationOf(page);
+        const key = JSON.stringify(current);
+        const same = key === previous;
+        previous = key;
+        return same;
+      },
+      { message: `${where}: the location state settles`, intervals: [100, 250, 250, 500] },
+    )
+    .toBe(true);
+  if (!current) throw new Error(`${where}: no location state read`);
+  return current;
+}
+
+/** Reloads the page and expects the same location state as before. */
+async function expectSameAfterReload(page: Page, before: LocationState, indicator: 'eyebrow' | 'crumbs', where: string): Promise<LocationState> {
+  await page.reload();
+  const after = await settledLocation(page, indicator, `${where}, after the reload`);
+  expect(after, `${where}: the location state after the reload equals the one before`).toEqual(before);
+  return after;
+}
+
+/** No workspace is named in the eyebrow, the breadcrumb or the pills of an app page. */
+function expectNoWorkspaceNamed(state: LocationState, where: string): void {
+  const shown = [...state.eyebrow, ...state.crumbs, ...state.pills].join(' \n ').toLowerCase();
+  for (const name of WORKSPACE_NAMES) expect(shown, `${where}: no workspace named (${name})`).not.toContain(name);
+}
+
+/** An in-app navigation through the router's popstate listener: no full load, so in-memory state stays. */
+async function navigateInApp(page: Page, path: string): Promise<void> {
+  const probe = 'reloadProbe';
+  await page.evaluate(
+    ([target, key]) => {
+      (window as unknown as Record<string, unknown>)[key] = true;
+      history.pushState(null, '', target);
+      dispatchEvent(new PopStateEvent('popstate', { state: null }));
+    },
+    [path, probe] as const,
+  );
+  await expect(page).toHaveURL(new RegExp(`${escapeRegExp(path)}$`, 'u'));
+  const kept = await page.evaluate((key) => (window as unknown as Record<string, unknown>)[key] === true, probe);
+  expect(kept, `${path}: reached in-app, without a full load`).toBe(true);
+}
+
+test.describe('reload', () => {
+  for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      for (const { path, indicator } of RELOAD_ROUTES) {
+        test(`reload: ${path} shows the same location after a reload at ${String(width)}`, async ({ page }) => {
+          await page.goto(path);
+          const before = await settledLocation(page, indicator, path);
+          expect(before.eyebrow.length + before.crumbs.length, `${path}: a location indicator is read`).toBeGreaterThan(0);
+          expect(before.pills.length, `${path}: the pills are read`).toBeGreaterThan(0);
+          await expectSameAfterReload(page, before, indicator, path);
+        });
+      }
+
+      test(`reload: help and settings after a spec page name no workspace, before and after a reload at ${String(width)}`, async ({ page }) => {
+        for (const target of ['/help', '/settings']) {
+          await page.goto(`/w/${WORKSPACE}/s/002/claims`);
+          const spec = await settledLocation(page, 'crumbs', 'the spec page');
+          expect(spec.pills.join(' '), 'the spec page names its workspace').toContain(WORKSPACE);
+
+          await navigateInApp(page, target);
+          const where = `${target} after the spec page`;
+          const before = await settledLocation(page, 'eyebrow', where);
+          expectNoWorkspaceNamed(before, where);
+          const after = await expectSameAfterReload(page, before, 'eyebrow', where);
+          expectNoWorkspaceNamed(after, `${where}, after the reload`);
+        }
+      });
+
+      test(`reload: a palette jump from lantern to a harbor claim shows the same location after a reload at ${String(width)}`, async ({ page }) => {
+        await page.goto('/w/lantern');
+        await expect(page.locator(WORKSPACE_PILL_VALUE), 'lantern is the current workspace').toHaveText(exactly('lantern'));
+        await page.keyboard.press('ControlOrMeta+k');
+        const palette = page.locator('app-command-palette dialog');
+        await expect(palette).toBeVisible();
+        await palette.getByRole('combobox').fill(JUMP.number);
+        await expect(palette.locator('[role="option"][aria-selected="true"]')).toHaveAttribute('data-entry', JUMP.entry);
+        await page.keyboard.press('Enter');
+        await expect(palette).toBeHidden();
+        await expect(page).toHaveURL(new RegExp(`${escapeRegExp(JUMP.url)}$`, 'u'));
+
+        const where = 'the palette jump';
+        const before = await settledLocation(page, 'crumbs', where);
+        await expect(page.locator(WORKSPACE_PILL_VALUE), `${where}: the workspace pill names the address's workspace`).toHaveText(exactly(WORKSPACE));
+        await expectSameAfterReload(page, before, 'crumbs', where);
+        await expect(page.locator(WORKSPACE_PILL_VALUE), `${where}, after the reload: the workspace pill names harbor`).toHaveText(exactly(WORKSPACE));
+      });
+    });
+  }
 });

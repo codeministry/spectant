@@ -3,7 +3,9 @@
 } @else if (data.workspaceUnavailable()) {
   <ui-notice>{{ 'shell.unavailable' | transloco }}</ui-notice>
 } @else {
-  <h1 class="page-title">{{ 'header.titlePrefix' | transloco }} · {{ name() }}</h1>
+  <ui-page-head [segments]="[ws(), ('shell.pages.specs' | transloco)]">
+    <h1 class="type-page-title">{{ 'shell.pages.specs' | transloco }}</h1>
+  </ui-page-head>
   @if (view(); as view) {
     <app-kpi-band [model]="view" [ws]="ws()" [changed]="refresh.changedKpis()" />
     <app-brief [brief]="view.brief" />

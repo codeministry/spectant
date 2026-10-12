@@ -20,6 +20,7 @@ import { UiCard } from '../../shared/ui/card/card';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { UiIdeaChip } from '../../shared/ui/idea-chip/idea-chip';
 import { UiMeter } from '../../shared/ui/meter/meter';
+import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../shared/ui/term/term';
 import { fragmentTarget, installArrival, planningPageState, stagesByRow } from './planning-page';
@@ -63,7 +64,7 @@ const toggled = (set: ReadonlySet<string>, id: string): ReadonlySet<string> => {
  */
 @Component({
   selector: 'app-features-page',
-  imports: [TranslocoPipe, NotFound, UiButton, UiCard, UiEmptyState, UiIcon, UiIdeaChip, UiMeter, UiSkeleton, UiTerm, SpecChip],
+  imports: [TranslocoPipe, NotFound, UiButton, UiCard, UiEmptyState, UiIcon, UiIdeaChip, UiMeter, UiPageHead, UiSkeleton, UiTerm, SpecChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'features', '[attr.data-tier]': 'tier()' },
   templateUrl: './features-page.html',
@@ -75,7 +76,6 @@ export class FeaturesPage {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
 
-  protected readonly name = computed(() => this.data.workspaceName(this.state.ws() ?? ''));
   protected readonly tier = this.state.tier;
   protected readonly wide = computed(() => this.tier() === 'wide');
   protected readonly compact = computed(() => this.tier() === 'compact');

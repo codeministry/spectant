@@ -165,9 +165,12 @@ describe('FeaturesPage (T32, ISC-103)', () => {
     const root = page(await open('/w/harbor/features'));
     const h1 = root.querySelector('h1#features');
     expect(h1?.getAttribute('tabindex')).toBe('-1');
-    expect(visible(h1)).toBe('Features in harbor');
-    expect(h1?.querySelector('dfn')?.textContent.trim()).toBe('Features');
-    expect(h1?.querySelector('[role="tooltip"]')?.textContent.trim()).toBe('Epic in a ticket tracker');
+    // ISC-142: the h1 is the title only; the glossary term is its own trigger beside it.
+    expect(h1?.textContent.trim()).toBe('Features');
+    expect(h1?.querySelector('ui-term')).toBeNull();
+    const term = root.querySelector('ui-term[data-features-term]');
+    expect(term?.querySelector('dfn')?.textContent.trim()).toBe('Features');
+    expect(term?.querySelector('[role="tooltip"]')?.textContent.trim()).toBe('Epic in a ticket tracker');
 
     const meta = root.querySelector('p.meta');
     // The "·" separators are generated content (the spec head's meta idiom), so the parts are read one by one.

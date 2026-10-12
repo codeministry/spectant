@@ -16,6 +16,7 @@ import type { IconName } from '../../shared/icons/icons';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
+import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { type SegmentedOption, UiSegmented } from '../../shared/ui/segmented/segmented';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../shared/ui/term/term';
@@ -32,6 +33,9 @@ import {
   boardQueryString,
   boardRowsOf,
   buildBoard,
+  type HiddenColumn,
+  hiddenColumnsOf,
+  hiddenLanesOf,
   parseBoardQuery,
 } from './board-model';
 import { AllocateDialog } from './allocate-dialog';
@@ -75,6 +79,15 @@ const GATE_TEXT: Partial<Record<WorkflowStage, string>> = {
 export const gateOf = (stage: WorkflowStage): string | null => (FIXED_GATES.includes(stage) ? (GATE_TEXT[stage] ?? null) : null);
 
 const WAITING: ReadonlySet<string> = WAITING_STAGES;
+
+/** Two stage sets hold the same stages: the measured set only changes (and re-renders) when a column crosses the edge. */
+const sameStages = (a: ReadonlySet<WorkflowStage>, b: ReadonlySet<WorkflowStage>): boolean => a.size === b.size && [...a].every((s) => b.has(s));
+
+/** A swimlane's hint at medium (ISC-141.1): its text ("3 cards in Build and Done, right of view") and the first column to show. */
+interface LaneHint {
+  readonly text: string;
+  readonly stage: WorkflowStage;
+}
 
 const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -144,6 +157,7 @@ interface BandRow {
     UiEmptyState,
     UiIcon,
     UiIconButton,
+    UiPageHead,
     UiSegmented,
     UiSkeleton,
     UiTerm,
@@ -156,7 +170,7 @@ interface BandRow {
     '[attr.data-tier]': 'tier()',
     '[attr.data-dragging]': 'drag.dragging() ? "" : null' },
   templateUrl: './board-page.html',
-  styleUrls: ['./board-page.css', './board-page.compact.css', './board-page.drag.css', './board-page.fill.css'],
+  styleUrls: ['./board-page.css', './board-page.compact.css', './board-page.drag.css', './board-page.fill.css', './board-page.hidden.css'],
 })
 export class BoardPage {
   protected readonly state = inject(ShellState);
@@ -281,6 +295,34 @@ export class BoardPage {
   protected readonly fadeStart = signal(false);
   protected readonly fadeEnd = signal(false);
 
+  /**
+   * The stages whose column lies right of the scroller box at medium (spec 019, ISC-141.1): a column head's left edge
+   * at or past the box's right edge, measured on every render, scroll and resize of the scroller. Empty at compact
+   * (its own column switch) and at wide (ISC-141 fits every column).
+   */
+  private readonly rightOfView = signal<ReadonlySet<WorkflowStage>>(new Set(), { equal: sameStages });
+  /** The overflow line's entries: every column right of view that holds a shown card, with its count. */
+  protected readonly hiddenRight = computed<readonly HiddenColumn[]>(() => {
+    const b = this.board();
+    return b === null || this.tier() !== 'medium' ? [] : hiddenColumnsOf(b.columns, this.rightOfView());
+  });
+  /** One hint per swimlane whose cards all lie right of view, by band key. */
+  protected readonly laneHints = computed<ReadonlyMap<string | null, LaneHint>>(() => {
+    const b = this.board();
+    const hints = new Map<string | null, LaneHint>();
+    if (b === null || this.tier() !== 'medium' || b.query.group === 'none') return hints;
+    const lang = this.lang();
+    const list = new Intl.ListFormat(lang, { type: 'conjunction' });
+    for (const [key, lane] of hiddenLanesOf(b.columns, this.rightOfView())) {
+      const first = lane.columns.at(0);
+      if (first === undefined) continue;
+      const columns = list.format(lane.columns.map((c): string => this.transloco.translate(`stages.${c.stage}`, {}, lang)));
+      const id = lane.count === 1 ? 'board.workspace.hidden.lane.one' : 'board.workspace.hidden.lane.other';
+      hints.set(key, { text: this.transloco.translate(id, { count: lane.count, columns }, lang), stage: first.stage });
+    }
+    return hints;
+  });
+
   constructor() {
     // Focus after a move from the menu or the keys, or a closed allocation dialog: the grip, once it is rendered.
     afterRenderEffect(() => {
@@ -296,7 +338,20 @@ export class BoardPage {
     });
     afterRenderEffect(() => {
       this.board();
+      this.tier();
       this.updateFades();
+      this.measureHidden();
+    });
+    // A resized scroller (panel, window, rail) can hide or show columns without a render or a scroll.
+    afterRenderEffect((onCleanup) => {
+      const el = this.scrollerEl();
+      if (!el || typeof ResizeObserver !== 'function') return;
+      const observer = new ResizeObserver(() => {
+        this.updateFades();
+        this.measureHidden();
+      });
+      observer.observe(el);
+      onCleanup(() => observer.disconnect());
     });
     // The compact sticky bar: shown once the column switch has left the area under the 92 px compact header.
     afterRenderEffect((onCleanup) => {
@@ -422,6 +477,34 @@ export class BoardPage {
 
   private navigate(query: BoardQueryState): void {
     void this.router.navigate([], { relativeTo: this.route, queryParams: boardNavigationParams(query), queryParamsHandling: 'merge', replaceUrl: true });
+  }
+
+  /** The scroller scrolled: the fades and the columns right of view follow. */
+  protected scrolled(): void {
+    this.updateFades();
+    this.measureHidden();
+  }
+
+  /** Measures which columns lie right of the scroller box (ISC-141.1); nothing outside medium. */
+  private measureHidden(): void {
+    const el = this.scrollerEl();
+    const hidden = new Set<WorkflowStage>();
+    if (el && untracked(this.tier) === 'medium') {
+      const right = el.getBoundingClientRect().right - 1;
+      for (const section of el.querySelectorAll<HTMLElement>(':scope > .grid > section[data-col]')) {
+        const stage = section.dataset['col'];
+        const head = section.querySelector<HTMLElement>(':scope > header') ?? section;
+        if (stage !== undefined && isWorkflowStage(stage) && head.getBoundingClientRect().left >= right) hidden.add(stage);
+      }
+    }
+    this.rightOfView.set(hidden);
+  }
+
+  /** Scrolls the column of `stage` to the scroller's start (the overflow line's entries, a lane's hint). */
+  protected showColumn(stage: WorkflowStage): void {
+    const section = this.scrollerEl()?.querySelector<HTMLElement>(`:scope > .grid > section[data-col="${stage}"]`);
+    if (!section || typeof section.scrollIntoView !== 'function') return;
+    section.scrollIntoView({ inline: 'start', block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
   }
 
   /** The edge fades show only where the scroller has more to show on that side. */

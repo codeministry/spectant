@@ -199,8 +199,18 @@
       "milestones": "Meilensteine",
       "services": "Dienste",
       "actions": "Aktionen",
-      "archived": "Archiviert"
+      "archived": "Archiviert",
+      "claims": "Claims"
     },
+    "claimStates": {
+      "open": "offen",
+      "takeable": "übernehmbar",
+      "taken": "vergeben",
+      "blocked": "blockiert",
+      "closed": "geschlossen",
+      "dropped": "verworfen"
+    },
+    "claimHit": "{{claim}}, {{text}}, Spec {{spec}}, Workspace {{workspace}}",
     "actions": {
       "allWorkspaces": "Zu allen Workspaces",
       "goTo": "Zu {{workspace}}",
@@ -381,6 +391,13 @@
       },
       "unbuilt": "Kommt mit späteren Tasks dieser Spec"
     },
+    "pills": {
+      "workspace": "Workspace",
+      "specs": "Specs",
+      "spec": "Spec",
+      "area": "Bereich",
+      "all": "Alle"
+    },
     "areas": {
       "dashboard": "Dashboard",
       "status": "Status",
@@ -445,6 +462,9 @@
     "settingsPage": {
       "pending": "Einstellungen, Workspaces und Hilfe kommen mit späteren Tasks dieser Spec.",
       "back": "Zurück zu allen Workspaces"
+    },
+    "eyebrow": {
+      "app": "App"
     },
     "pages": {
       "specs": "Specs",
@@ -1133,12 +1153,23 @@
         "clearAll": "Filter zurücksetzen",
         "all": "Alle"
       },
+      "hidden": {
+        "right": "Rechts ausserhalb:",
+        "show": "Zu {{stage}} scrollen",
+        "lane": {
+          "one": "{{count}} Karte in {{columns}}, rechts ausserhalb",
+          "other": "{{count}} Karten in {{columns}}, rechts ausserhalb"
+        }
+      },
       "swimlanes": {
         "label": "Bahnen",
         "none": "Keine",
         "feature": "Feature",
         "milestone": "Meilenstein",
-        "cards": "{{count}} Karten",
+        "cards": {
+          "one": "{{count}} Karte",
+          "other": "{{count}} Karten"
+        },
         "collapse": "{{lane}} einklappen",
         "expand": "{{lane}} ausklappen",
         "omittedFeatures": "{{count}} Features haben keine Karte in {{stage}}",
@@ -1623,5 +1654,11 @@
       "page": "Tech",
       "tab": "Tech · {{tab}}"
     }
+  },
+  "orientation": {
+    "backToBoard": "Zurück zum Board",
+    "copyCommand": "{{command}} kopieren",
+    "edgeAfter": "{{claim}} kommt nach {{target}}",
+    "edgeBlockedBy": "{{claim}} ist blockiert durch {{target}}"
   }
 }

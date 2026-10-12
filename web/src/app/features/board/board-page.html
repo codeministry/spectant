@@ -4,7 +4,9 @@
   <p class="unavailable">{{ 'shell.unavailable' | transloco }}</p>
 } @else {
   <div class="title-row">
-    <h1 id="board" tabindex="-1">{{ 'board.workspace.title' | transloco }}</h1>
+    <ui-page-head [segments]="[ws(), ('shell.pages.board' | transloco)]">
+      <h1 class="type-page-title" id="board" tabindex="-1">{{ 'board.workspace.title' | transloco }}</h1>
+    </ui-page-head>
     @if (workflowSource(); as source) {
       <!-- The workflow the columns come from (ISC-122): the workspace's own table, or the default one when the file is missing. -->
       <span class="source" [class.mono]="source === 'file'" [attr.data-source]="source">{{
@@ -194,6 +196,37 @@
         }
       } @else {
         <ui-card class="board-card" [padding]="0">
+          @let hidden = hiddenRight();
+          @if (hidden.length > 0) {
+            <!-- Medium (spec 019, ISC-141.1): the columns with cards right of the scroller box, each a jump to its column. -->
+            <p class="overflow" data-board-hidden>
+              <span class="ol">{{ 'board.workspace.hidden.right' | transloco }}</span>
+              @for (column of hidden; track column.stage; let last = $last) {
+                @let label = 'stages.' + column.stage | transloco;
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-sm entry"
+                  [attr.data-show]="column.stage"
+                  [title]="'board.workspace.hidden.show' | transloco: { stage: label }"
+                  (click)="showColumn(column.stage)"
+                >
+                  {{ label }} <span class="n">{{ column.count }}</span>
+                </button>
+                @if (!last) {
+                  <span class="sep" aria-hidden="true">·</span>
+                }
+              }
+              @if (hidden[0]; as first) {
+                <button
+                  ui-icon-button
+                  icon="chevron-right"
+                  class="jump"
+                  [label]="'board.workspace.hidden.show' | transloco: { stage: ('stages.' + first.stage | transloco) }"
+                  (click)="showColumn(first.stage)"
+                ></button>
+              }
+            </p>
+          }
           <div
             #scroller
             class="scroller"
@@ -201,7 +234,7 @@
             role="region"
             tabindex="0"
             [attr.aria-label]="'board.workspace.columns' | transloco"
-            (scroll)="updateFades()"
+            (scroll)="scrolled()"
           >
             <div class="grid" [style.grid-template-columns]="tracks()" [attr.data-grouped]="bands().length > 0 ? '' : null">
               @for (column of b.columns; track column.stage; let i = $index) {
@@ -290,6 +323,13 @@
                 <div class="band-head" [style.grid-row]="2 + r * 2">
                   <ng-container [ngTemplateOutlet]="bandHead" [ngTemplateOutletContext]="{ $implicit: band, group: b.query.group }" />
                 </div>
+                @if (laneHints().get(band.key); as hint) {
+                  <!-- A lane whose cards all lie right of view (ISC-141.1) says so in view, sticky at the scroller's start. -->
+                  <button type="button" class="btn btn-ghost btn-sm lane-hidden" data-lane-hidden [style.grid-row]="3 + r * 2" (click)="showColumn(hint.stage)">
+                    {{ hint.text }}
+                    <ui-icon name="chevron-right" [size]="14" />
+                  </button>
+                }
                 @for (cell of band.cells; track cell.stage; let i = $index) {
                   <div
                     class="cell"
@@ -393,7 +433,7 @@
         <span class="mono muted">{{ target }}</span>
       }
     }
-    <span class="n">{{ 'board.workspace.swimlanes.cards' | transloco: { count: band.count } }}</span>
+    <span class="n">{{ (band.count === 1 ? 'board.workspace.swimlanes.cards.one' : 'board.workspace.swimlanes.cards.other') | transloco: { count: band.count } }}</span>
   </h3>
 </ng-template>
 

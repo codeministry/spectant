@@ -6,6 +6,7 @@ import { NotFound } from '../../layout/not-found/not-found';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { UiCard, UiChip, UiDocProse, UiNotice, UiPriority, UiSkeleton, UiTypeGlyph } from '../../shared/ui';
+import { UiPageHead } from '../../shared/ui/page-head/page-head';
 
 /**
  * A story of `specs/ideas/` at `/w/:ws/ideas/:slug` (spec 008, T131, ISC-124.2), read-only: the frontmatter as chips
@@ -16,13 +17,14 @@ import { UiCard, UiChip, UiDocProse, UiNotice, UiPriority, UiSkeleton, UiTypeGly
  */
 @Component({
   selector: 'app-idea-page',
-  imports: [NotFound, TranslocoPipe, UiCard, UiChip, UiDocProse, UiNotice, UiPriority, UiSkeleton, UiTypeGlyph],
+  imports: [NotFound, TranslocoPipe, UiCard, UiChip, UiDocProse, UiNotice, UiPageHead, UiPriority, UiSkeleton, UiTypeGlyph],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'idea' },
   styles: `
     :host { display: block; }
-    header { display: grid; gap: 8px; margin-block-end: 24px; }
-    h1 { margin: 0; font-family: var(--font-display); font-size: 24px; font-weight: 600; line-height: 32px; overflow-wrap: anywhere; }
+    .head { display: grid; gap: 8px; margin-block-end: 24px; }
+    .head ui-page-head { margin-block-start: 8px; }
+    h1 { margin: 0; overflow-wrap: anywhere; }
     .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0; padding: 0; list-style: none; }
     .chips li { display: inline-flex; }
     .chip-body { display: inline-flex; gap: 6px; align-items: center; }
@@ -38,7 +40,8 @@ import { UiCard, UiChip, UiDocProse, UiNotice, UiPriority, UiSkeleton, UiTypeGly
       <app-not-found />
     } @else if (story(); as story) {
       <ui-card [padding]="24">
-        <header>
+        <!-- A div, not a header: the page head's back link belongs to the page, not to a banner (ISC-142). -->
+        <div class="head">
           <ul class="chips" data-idea-chips [attr.aria-label]="'ideas.meta' | transloco">
             <li data-idea-chip="stage">
               <span class="visually-hidden">{{ 'ideas.chip.stage' | transloco }}</span>
@@ -76,9 +79,16 @@ import { UiCard, UiChip, UiDocProse, UiNotice, UiPriority, UiSkeleton, UiTypeGly
             </li>
             <li data-idea-chip="priority"><ui-priority [value]="story.idea.priority" /></li>
           </ul>
-          <h1 id="idea" tabindex="-1">{{ story.idea.title || story.idea.slug }}</h1>
+          <!-- Chips, 16 px, then the page head (ISC-140): the back link to the board (ISC-142) and the eyebrow, 4 px over the
+               idea's title. -->
+          <ui-page-head
+            [segments]="[state.ws() ?? '', ('shell.pages.board' | transloco), ('ideas.title' | transloco)]"
+            [back]="{ href: boardPath(), label: 'orientation.backToBoard' | transloco }"
+          >
+            <h1 class="type-page-title" id="idea" tabindex="-1">{{ story.idea.title || story.idea.slug }}</h1>
+          </ui-page-head>
           <p class="hint source" data-idea-source>{{ 'ideas.source' | transloco: { path: story.idea.path, hash: shortHash() } }}</p>
-        </header>
+        </div>
         <ui-doc-prose [page]="story.page" [wide]="state.tier() === 'wide'" />
         <p class="hint" data-idea-hint>{{ 'ideas.allocateHint' | transloco }}</p>
       </ui-card>
@@ -100,6 +110,8 @@ export class IdeaPage {
   private readonly api = inject(ApiClient);
 
   protected readonly slug = computed(() => this.state.route().ideaSlug ?? '');
+  /** The board the back link leads to (ISC-142). */
+  protected readonly boardPath = computed(() => `/w/${this.state.ws() ?? ''}/board`);
 
   protected readonly result = resource<ApiResult<IdeaPageBody>, { ws: string; slug: string } | undefined>({
     params: () => {

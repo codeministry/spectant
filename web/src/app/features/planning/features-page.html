@@ -3,10 +3,16 @@
 } @else if (unavailable()) {
   <p class="unavailable">{{ 'shell.unavailable' | transloco }}</p>
 } @else {
-  <h1 id="features" tabindex="-1">
-    <ui-term id="features-term" [hint]="'terms.feature' | transloco">{{ 'planning.features.titleTerm' | transloco }}</ui-term>
-    {{ 'planning.features.titleIn' | transloco: { ws: name() } }}
-  </h1>
+  <!-- The h1 is the title only, the eyebrow names the workspace; the glossary hint hangs on its own info trigger beside
+       the h1, never in it, and opens on tap (ISC-142). -->
+  <div class="title">
+    <ui-page-head [segments]="[state.ws() ?? '', ('shell.pages.features' | transloco)]">
+      <h1 class="type-page-title" id="features" tabindex="-1">{{ 'shell.pages.features' | transloco }}</h1>
+    </ui-page-head>
+    <ui-term class="info" id="features-term" data-features-term [hint]="'terms.feature' | transloco"
+      ><ui-icon name="circle-help" [size]="16" /><span class="vh">{{ 'planning.features.titleTerm' | transloco }}</span></ui-term
+    >
+  </div>
 
   @if (model() !== null) {
     @if (rows().length === 0) {

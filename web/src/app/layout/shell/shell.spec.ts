@@ -114,13 +114,14 @@ describe('ShellComponent', () => {
     else Reflect.deleteProperty(globalThis, 'ResizeObserver');
   });
 
-  it('renders exactly one header with the eight data-control slots on every route', async () => {
+  it('renders exactly one header with the eight data-control slots in a workspace, six outside one (ISC-140.2)', async () => {
     setUp();
     for (const url of ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/999', '/settings', '/nope']) {
       const { root } = await open(url);
       expect(root.querySelectorAll('header'), url).toHaveLength(1);
       const controls = [...root.querySelectorAll('header [data-control]')].map((el) => el.getAttribute('data-control'));
-      expect(controls, url).toEqual(['brand', 'workspace', 'spec', 'area', 'palette', 'live', 'zen', 'settings']);
+      const pills = url.startsWith('/w/') ? ['workspace', 'spec', 'area'] : ['workspace'];
+      expect(controls, url).toEqual(['brand', ...pills, 'palette', 'live', 'zen', 'settings']);
     }
   });
 
@@ -255,13 +256,10 @@ describe('ShellComponent', () => {
       }
     });
 
-    it('makes the spec picker a link to the open spec, the workspace spec list, or a disabled placeholder', async () => {
+    it('makes the spec picker a link to the open spec or the workspace spec list, and leaves it out without a workspace', async () => {
       setUp();
       const { root: home } = await open('/');
-      const none = control(home, 'spec');
-      expect(none.tagName).toBe('BUTTON');
-      expect(none.getAttribute('aria-disabled')).toBe('true');
-      expect(none.getAttribute('title')).toBe('Open a workspace to pick a spec');
+      expect(home.querySelector('header [data-control="spec"]')).toBeNull();
 
       const { root: workspace } = await open('/w/harbor');
       expect(control(workspace, 'spec').tagName).toBe('A');
@@ -274,12 +272,10 @@ describe('ShellComponent', () => {
       expect(control(spec, 'spec').textContent).toContain('Web console');
     });
 
-    it('keeps the area menu disabled with its reason while no workspace is open', async () => {
+    it('leaves the area trigger out while no workspace is open (ISC-140.2)', async () => {
       setUp();
       const { root } = await open('/');
-      const area = control(root, 'area');
-      expect(area.getAttribute('aria-disabled')).toBe('true');
-      expect(area.getAttribute('title')).toBe('Open a spec to switch areas');
+      expect(root.querySelector('header [data-control="area"]')).toBeNull();
       expect(root.querySelector('header nav[aria-label="Areas"]')).toBeNull();
     });
 

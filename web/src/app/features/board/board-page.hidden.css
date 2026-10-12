@@ -1,0 +1,48 @@
+/* Medium (spec 019, ISC-141.1): the overflow line over the column heads, above the edge fades, and a lane's hint
+   sticking to the scroller's start in the lane's card row. */
+.overflow {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  min-block-size: 40px;
+  margin: 0;
+  padding-inline: 16px 8px;
+  border-block-end: 1px solid var(--line);
+  background: var(--color-base-100);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.overflow .ol,
+.overflow .sep {
+  color: var(--muted-ink);
+}
+
+.overflow .n,
+.lane-hidden {
+  font-variant-numeric: tabular-nums;
+}
+
+.overflow .n {
+  font-family: var(--font-mono);
+}
+
+.overflow .jump {
+  margin-inline-start: auto;
+}
+
+.lane-hidden {
+  position: sticky;
+  z-index: 1;
+  inset-inline-start: 4px;
+  grid-column: 1 / -1;
+  place-self: start start;
+  margin-block-start: 8px;
+}
+
+:host([data-dragging]) .lane-hidden {
+  pointer-events: none;
+}

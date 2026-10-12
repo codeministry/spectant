@@ -23,10 +23,10 @@ import type { CardState, Frame, LiveFrame, SpecType, Workflow, WorkflowStage } f
 import type { APIRequestContext, Locator, Page, Request, Response as PlaywrightResponse } from '@playwright/test';
 import { assigneeOf } from '../../core/src/assignee.ts';
 import { allowedTransition, workflowStagesOf } from '../../core/src/stage.ts';
-import { FIXED_GATES } from '../../core/src/workflow.ts';
+import { DEFAULT_WORKFLOW, FIXED_GATES, boardStages } from '../../core/src/workflow.ts';
 import { writePathsOf } from '../../server/src/writes.contract.ts';
 import { atWidth, expect, test } from './fixtures';
-import { LOCKS_HEADER, RESET_PATH } from './stub-api';
+import { LOCKS_HEADER, RESET_PATH, WORKFLOW_PATH } from './stub-api';
 
 const SPEC = 'specs/002-web-console';
 const read = (name: string): unknown => {
@@ -642,6 +642,9 @@ test.describe('rail sheet on a coarse pointer', () => {
 // - `bun run e2e -- board -g "workspace board"` (T143, ISC-129): one column per stage of the workflow in table order
 //   (harbor's own table, lantern's default one), each head counting `stageCounts`, every card in its column with its
 //   fields; at 820 the same columns in the board's own scroller.
+// - `bun run e2e -- board -g "all columns"` (T26, ISC-141): at 1440 every column of the default workflow, head or stub,
+//   lies whole inside the unscrolled board scroller, which needs no horizontal scrolling: lantern as its tree holds it
+//   (no workflow.md) and harbor's cards under the default table (`PUT /api/__stub/workflow`).
 // - `bun run e2e -- board -g filters` (T144, ISC-129.1): a filter and a swimlane group in the query, restored by a
 //   reload and, from the remembered `board-query`, by the bare route; "Clear filters" keeps group and column; `?col`
 //   picks the compact tier's one column.
@@ -888,6 +891,71 @@ test.describe('workspace board', () => {
       expect(['auto', 'scroll']).toContain(measured.scroller.overflowX);
       expect(measured.page.scroll, 'page scrollWidth').toBe(measured.page.client);
     });
+  });
+});
+
+/** The board columns of the default table, as core derives them when a workspace has no `specs/workflow.md`. */
+const DEFAULT_STAGES = boardStages({ rows: DEFAULT_WORKFLOW, source: 'default', diagnostics: [] });
+/** The default table as a `specs/workflow.md` text, so the stub can put harbor's cards on it. */
+const DEFAULT_TABLE = [
+  '| type | stages | code_review |',
+  '|------|--------|-------------|',
+  ...DEFAULT_WORKFLOW.map((row) => `| ${row.type} | ${row.stages.join(' · ')} | ${row.codeReview} |`),
+].join('\n');
+
+/**
+ * Every column of the scroller against the scroller's visible box (its padding box, `clientLeft` to `clientWidth`):
+ * a column with cards by its head, a stub by itself; each one that sticks out, with by how many pixels.
+ */
+async function columnFit(page: Page): Promise<{ scrollLeft: number; scrollWidth: number; clientWidth: number; outside: string[] }> {
+  return page.evaluate(() => {
+    const scroller = document.querySelector<HTMLElement>('app-board-page .scroller');
+    if (!scroller) throw new Error('the board renders no scroller');
+    const left = scroller.getBoundingClientRect().left + scroller.clientLeft;
+    const right = left + scroller.clientWidth;
+    const outside: string[] = [];
+    for (const column of scroller.querySelectorAll<HTMLElement>('section[data-col]')) {
+      const part = column.hasAttribute('data-stub') ? column : column.querySelector<HTMLElement>(':scope > header');
+      if (!part) throw new Error(`column ${String(column.dataset['col'])} has no head`);
+      const box = part.getBoundingClientRect();
+      const over = Math.ceil(Math.max(box.right - right, left - box.left));
+      if (over > 0) outside.push(`${String(column.dataset['col'])} +${String(over)}px`);
+    }
+    return { scrollLeft: scroller.scrollLeft, scrollWidth: scroller.scrollWidth, clientWidth: scroller.clientWidth, outside };
+  });
+}
+
+test.describe('all columns', () => {
+  const session = useStubSession('all-columns');
+  test.use(atWidth(1440));
+
+  async function expectAllColumnsInView(page: Page, cards: number): Promise<void> {
+    await expect(page.locator('app-board-page')).toHaveAttribute('data-tier', 'wide');
+    await expect(page.locator(SCROLLER_COLUMNS)).toHaveCount(DEFAULT_STAGES.length);
+    expect(await page.locator(SCROLLER_COLUMNS).evaluateAll((cols) => cols.map((c) => c.getAttribute('data-col')))).toEqual([...DEFAULT_STAGES]);
+    await expect(page.locator(WS_CARDS)).toHaveCount(cards);
+    const fit = await columnFit(page);
+    expect(fit.scrollLeft, 'the scroller starts unscrolled').toBe(0);
+    expect(fit.outside, 'columns outside the visible board at 1440').toEqual([]);
+    expect(fit.scrollWidth, 'the board needs no horizontal scrolling at 1440').toBeLessThanOrEqual(fit.clientWidth + 1);
+  }
+
+  test('all columns: lantern, on the default workflow, shows every column whole in the board at 1440', async ({ page }) => {
+    expect(PLANNING.lantern.stages).toEqual([...DEFAULT_STAGES]);
+    await page.goto(wsBoard('lantern'));
+    await expectAllColumnsInView(page, goldenCards(PLANNING.lantern).length);
+  });
+
+  test('all columns: harbor’s cards on the default workflow show every column whole in the board at 1440', async ({ page }) => {
+    const put = await page.request.put(`${WORKFLOW_PATH}?ws=harbor`, {
+      data: DEFAULT_TABLE,
+      headers: { [SESSION_HEADER]: session(), 'Content-Type': 'text/markdown' },
+    });
+    expect(put.status()).toBe(204);
+    await page.goto(wsBoard('harbor'));
+    const cards = goldenCards({ ...PLANNING.harbor, stages: DEFAULT_STAGES });
+    expect(new Set(cards.map((c) => c.stage)).size, 'harbor fills most columns of the default table').toBeGreaterThan(DEFAULT_STAGES.length / 2);
+    await expectAllColumnsInView(page, cards.length);
   });
 });
 

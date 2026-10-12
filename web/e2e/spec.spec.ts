@@ -209,7 +209,10 @@ for (const width of [390, 1440] as const) {
       test(`priority: the spec head and the breadcrumb of ${id} show ${level} (${why})`, async ({ page }) => {
         await page.goto(`/w/harbor/s/${id}`);
         await expectPriorityChip(page.locator(HEAD_PRIORITY), level, `head ${id}`);
-        await expectPriorityChip(page.locator(CRUMB_PRIORITY), level, `breadcrumb ${id}`);
+        // Spec 019 (ISC-140.1, T20): at compact the priority stays in the chip row only; the breadcrumb leads with the
+        // workspace and carries no priority chip there.
+        if (width === 390) await expect(page.locator(CRUMB_PRIORITY), `breadcrumb ${id}`).toHaveCount(0);
+        else await expectPriorityChip(page.locator(CRUMB_PRIORITY), level, `breadcrumb ${id}`);
       });
     }
   });

@@ -12,7 +12,9 @@
     </a>
   </div>
 } @else {
-  <h1 id="milestones" tabindex="-1">{{ 'planning.milestones.title' | transloco: { ws: name() } }}</h1>
+  <ui-page-head [segments]="[ws(), ('shell.pages.milestones' | transloco)]">
+    <h1 class="type-page-title" id="milestones" tabindex="-1">{{ 'planning.milestones.title' | transloco: { ws: name() } }}</h1>
+  </ui-page-head>
 
   @if (model() !== null) {
     <p class="caption">{{ 'planning.milestones.caption' | transloco }}</p>

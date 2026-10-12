@@ -1,5 +1,16 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, type ElementRef, inject, signal, viewChild } from '@angular/core';
+import {
+  afterRenderEffect,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  ElementRef,
+  inject,
+  linkedSignal,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -8,6 +19,7 @@ import { UiIcon } from '../../shared/icons/icon';
 import { UiChip } from '../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiPopover, UiPopoverTrigger } from '../../shared/ui/overlay/popover';
+import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiPriority } from '../../shared/ui/priority/priority';
 import { areaById, areaPath, specLink, workspaceLink } from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
@@ -30,11 +42,15 @@ import {
  *
  * - Row 1, every tier: the breadcrumb (T39, ISC-105; design § The breadcrumb). Medium and wide:
  *   `← workspace / ⚑ milestone · F2 name +n › NNN slug › area › ISC-51`; compact returns it in the short form
- *   `⚑ milestone · F2 +n › NNN › ISC-51` (the header pill and the row-2 trigger carry workspace and area). The
- *   milestone and feature levels come from the planning tree (`ShellData.planningModel`), so without it the line is
- *   the three levels of spec 002. The claim or task level is the one the open Claims or Tasks tab names by fragment.
- *   Each `<li>` names the separator drawn before it in `data-sep` (`scope` "/", `dot` "·", `down` "›"). The spec level
- *   opens with `ui-priority` before the id at every tier, never truncated (spec 008, ISC-118).
+ *   `workspace / ⚑ milestone · F2 +n › NNN › ISC-51` (no area: the row-2 trigger carries it). The workspace is the
+ *   first entry at every tier (T19, ISC-140.1). The milestone and feature levels come from the planning tree
+ *   (`ShellData.planningModel`), so without it the line is the levels of the workspace and spec 002. The claim or
+ *   task level is the one the open Claims or Tasks tab names by fragment. Each `<li>` names the separator drawn before
+ *   it in `data-sep` (`scope` "/", `dot` "·", `down` "›"). At medium and wide the spec level opens with `ui-priority`
+ *   before the id, never truncated (spec 008, ISC-118); at compact the priority shows only in the chip row.
+ *   Shortening when the row is short: the feature name first down to its id, then the milestone down to its flag; at
+ *   compact, if it still does not fit, milestone and feature collapse into one `…` button that opens the full path in
+ *   a bottom sheet (`ui-sheet`). The workspace and the last entry never shorten.
  * - Row 2: mono id and the Sora title (ellipsis with `title`), the type, stage and priority chips; the cluster on the right
  *   holds the next-command chip with copy (the canonical copy target of the page), the notes pill and, when the stage
  *   allows, the shared gate button. At compact the chips wrap under the title and the command chip goes full width.
@@ -48,22 +64,69 @@ import {
  */
 @Component({
   selector: 'app-spec-head',
-  imports: [GateButton, NgTemplateOutlet, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiPriority],
+  imports: [GateButton, NgTemplateOutlet, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiPriority, UiSheet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './spec-head.css',
   host: { class: 'spec-head', '[attr.data-tier]': 'tier()' },
   template: `
     <nav class="crumbs" data-breadcrumb [attr.aria-label]="'planning.breadcrumb.label' | transloco">
-      <ol>
-        @if (!compact()) {
-          <li>
-            <a [routerLink]="workspaceLink()" data-crumb="workspace">
+      <ol #crumbList>
+        <li>
+          <a [routerLink]="workspaceLink()" data-crumb="workspace">
+            @if (!compact()) {
               <ui-icon name="arrow-left" [size]="16" />
-              <span>{{ workspaceName() }}</span>
-            </a>
+            }
+            <span class="ws-name">{{ workspaceName() }}</span>
+          </a>
+        </li>
+        @if (collapsed()) {
+          <li data-sep="scope">
+            <button
+              type="button"
+              class="crumb-collapse"
+              data-crumb-collapse
+              aria-haspopup="dialog"
+              [attr.aria-expanded]="pathOpen()"
+              [attr.aria-label]="'planning.breadcrumb.label' | transloco"
+              (click)="pathOpen.set(true)"
+            >
+              …
+            </button>
+            <ui-sheet tier="compact" [label]="'planning.breadcrumb.label' | transloco" [(open)]="pathOpen">
+              <ul class="crumb-path" data-crumb-path>
+                @if (milestoneCrumb(); as milestone) {
+                  <li>
+                    @if (milestone.known) {
+                      <a class="crumb-path-entry" [routerLink]="milestonesLink()" [fragment]="'m-' + milestone.slug" (click)="pathOpen.set(false)">
+                        <ui-icon name="flag" [size]="12" />
+                        {{ milestone.name }}
+                      </a>
+                    } @else {
+                      <span class="crumb-path-entry" [attr.aria-description]="'planning.breadcrumb.unknownMilestone' | transloco">
+                        <ui-icon name="triangle-alert" [size]="12" />
+                        {{ milestone.name }}
+                      </span>
+                    }
+                  </li>
+                }
+                @for (feature of collapsedFeatures(); track feature.id) {
+                  <li>
+                    <a
+                      class="crumb-path-entry"
+                      [routerLink]="featuresLink()"
+                      [fragment]="feature.id"
+                      [attr.aria-description]="'terms.feature' | transloco"
+                      (click)="pathOpen.set(false)"
+                    >
+                      <span class="mono">{{ feature.id }}</span> {{ feature.name }}
+                    </a>
+                  </li>
+                }
+              </ul>
+            </ui-sheet>
           </li>
         }
-        @if (milestoneCrumb(); as milestone) {
+        @if (!collapsed() && milestoneCrumb(); as milestone) {
           <li [attr.data-sep]="seps().milestone">
             @if (milestone.known) {
               <a [routerLink]="milestonesLink()" [fragment]="'m-' + milestone.slug" data-crumb="milestone">
@@ -80,7 +143,7 @@ import {
             }
           </li>
         }
-        @if (featureCrumb(); as feature) {
+        @if (!collapsed() && featureCrumb(); as feature) {
           <li [attr.data-sep]="seps().feature">
             <a [routerLink]="featuresLink()" [fragment]="feature.id" data-crumb="feature" [attr.aria-description]="'terms.feature' | transloco">
               <span class="mono">{{ feature.id }}</span>
@@ -113,7 +176,9 @@ import {
           </li>
         }
         <li [attr.data-sep]="seps().spec">
-          <ui-priority data-crumb-priority [value]="priority()" />
+          @if (!compact()) {
+            <ui-priority data-crumb-priority [value]="priority()" />
+          }
           <a
             [routerLink]="specHome()"
             data-crumb="spec"
@@ -333,14 +398,35 @@ export class SpecHead {
   protected readonly specCurrent = computed(() => this.compact() && this.leaf() === null);
   /** The separator before each level: "/" leaves the workspace scope, "·" joins milestone and feature, "›" descends. */
   protected readonly seps = computed(() => {
-    const lead = this.compact() ? null : 'scope';
+    const lead = 'scope';
     const milestone = this.milestoneCrumb() !== null;
     return {
       milestone: lead,
       feature: milestone ? 'dot' : lead,
-      spec: milestone || this.featureCrumb() !== null ? 'down' : lead,
+      spec: milestone || this.featureCrumb() !== null || this.collapsed() ? 'down' : lead,
     };
   });
+
+  // ─── Shortening (T19, ISC-140.1) ────────────────────────────────────────────────────────────────────────────
+  private readonly crumbList = viewChild<ElementRef<HTMLOListElement>>('crumbList');
+  /** The inline size of the spec head, followed by a `ResizeObserver`; a change re-measures the fit. */
+  private readonly rowWidth = signal(0);
+  /**
+   * At compact, when the row does not fit even with the feature as its id and the milestone down to its flag, milestone
+   * and feature collapse into one `…` button that opens the full path in a bottom sheet. Reset on every navigation,
+   * tier or width change, then measured again after render; workspace and the last entry never collapse.
+   */
+  protected readonly collapsed = linkedSignal<readonly unknown[], boolean>({
+    source: () => [this.compact(), this.state.route(), this.rowWidth(), this.plan()],
+    computation: () => false,
+  });
+  protected readonly pathOpen = signal(false);
+  /** The sheet's feature lines: the crumb's feature, then the other blocks the spec holds. */
+  protected readonly collapsedFeatures = computed(() => {
+    const crumb = this.featureCrumb();
+    return crumb === null ? this.otherFeatures() : [crumb, ...this.otherFeatures()];
+  });
+  private readonly collapsible = computed(() => this.milestoneCrumb() !== null || this.featureCrumb() !== null);
   protected readonly milestonesLink = computed(() => workspaceLink(this.state.ws() ?? '', 'milestones'));
   protected readonly featuresLink = computed(() => workspaceLink(this.state.ws() ?? '', 'features'));
   protected readonly areaLink = computed(() => {
@@ -383,5 +469,23 @@ export class SpecHead {
       this.description();
       this.overflowing.set(el.scrollHeight > el.clientHeight + 1);
     });
+
+    // The compact fit: collapse milestone and feature when an item's content, or the row itself, overflows.
+    afterRenderEffect(() => {
+      const list = this.crumbList()?.nativeElement;
+      if (!list || !this.compact() || this.collapsed() || !this.collapsible()) return;
+      this.state.route();
+      this.rowWidth();
+      const items = [...list.children] as HTMLElement[];
+      const overflows = list.scrollWidth > list.clientWidth + 1 || items.some((li) => li.scrollWidth > li.clientWidth + 1);
+      if (overflows) this.collapsed.set(true);
+    });
+
+    const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => this.rowWidth.set(Math.round(host.getBoundingClientRect().width)));
+      observer.observe(host);
+      inject(DestroyRef).onDestroy(() => observer.disconnect());
+    }
   }
 }

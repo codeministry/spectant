@@ -6,15 +6,3 @@
   align-content: start;
   min-inline-size: 0;
 }
-
-/* The header carries the visible eyebrow and title; the page keeps its h1 for assistive technology. */
-.page-title {
-  position: absolute;
-  overflow: hidden;
-  inline-size: 1px;
-  block-size: 1px;
-  margin: -1px;
-  padding: 0;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}

@@ -1,7 +1,6 @@
-<div class="page-head">
-  <div class="type-eyebrow" data-overview-eyebrow>{{ 'header.switcher.allWorkspaces' | transloco: { count: count() } }}</div>
+<ui-page-head [segments]="[('header.switcher.allWorkspaces' | transloco: { count: count() })]">
   <h1 class="type-page-title">{{ 'shell.workspace.menu' | transloco }}</h1>
-</div>
+</ui-page-head>
 
 @if (list(); as list) {
   @if (list.length > 0) {

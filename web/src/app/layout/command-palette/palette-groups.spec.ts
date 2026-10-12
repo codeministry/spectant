@@ -4,12 +4,14 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import type { ClaimGlyphState, ClaimViewModel } from '../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.service';
 import { PALETTE_SOURCES, type PaletteSource } from '../../core/palette-sources';
-import { IDEAS_ORDER, isIdea, providePaletteGroups, TECH_ORDER } from './palette-groups';
-import { RANK, rankEntries } from './palette-ranking';
+import { CLAIMS_ORDER, IDEAS_ORDER, isClaim, isIdea, providePaletteGroups, TECH_ORDER } from './palette-groups';
+import { PaletteIndex } from './palette-index';
+import { CLAIMS_GROUP, RANK, rankEntries } from './palette-ranking';
 
 // T117 · ISC-124.2: spec 008's palette entries — "Open board" and "Help" among the actions, and the Ideas group listing
 // the open workspace's stories with the idea chip, leading to their read-only page.
@@ -127,5 +129,79 @@ describe('spec 023 palette entries (T21, ISC-134.2)', () => {
     expect(ranked[0]?.entry.label).toBe('Tech · Architecture');
     expect(ranked[0]?.entry.link).toEqual(['/w', 'harbor', 'tech', 'architecture']);
     expect(ranked.filter((hit) => hit.rank === RANK.idPrefix).map((hit) => hit.entry.label)).toEqual(['Tech · Architecture']);
+  });
+});
+
+// 019 T4 · ISC-139: the Claims group lists every claim of the readable workspaces, its ISC as the chip, leading to the
+// claim card's anchor on the claims tab, with the status as a word and the accessible name from `palette.claimHit`.
+describe('spec 019 Claims group (T4, ISC-139)', () => {
+  const claimsBody = (claims: ReadonlyArray<{ id: string; text: string; state: ClaimGlyphState }>): ClaimViewModel =>
+    ({ claims }) as unknown as ClaimViewModel;
+
+  beforeEach(() => {
+    const api: Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'claims'> = {
+      workspaces: () =>
+        Promise.resolve(
+          ok([
+            { slug: 'harbor', name: 'Harbor', pathTail: 'harbor', readable: true, counts: null },
+            { slug: 'lantern', name: 'Lantern', pathTail: 'lantern', readable: true, counts: null },
+          ]),
+        ),
+      dashboard: (ws: string) => Promise.resolve(ok({ specs: [{ id: ws === 'harbor' ? '007' : '002', title: 'A spec' }], archive: [] })),
+      planning: () => Promise.resolve(ok(PLANNING)),
+      spec: () => Promise.resolve({ kind: 'not-found', served: false }),
+      claims: (ws: string) =>
+        Promise.resolve(
+          ok(
+            ws === 'harbor'
+              ? claimsBody([
+                  { id: 'ISC-126', text: 'The rotated token is used\n  without a restart.', state: 'taken' },
+                  { id: 'ISC-126.1', text: 'The old token is revoked.', state: 'open' },
+                ])
+              : claimsBody([{ id: 'ISC-12', text: 'A lantern claim.', state: 'closed' }]),
+          ),
+        ),
+    };
+    TestBed.overrideProvider(ApiClient, { useValue: api });
+  });
+
+  async function claimsAt(url: string, count: number): Promise<PaletteSource> {
+    const sources = await open(url);
+    const claims = byId(sources, CLAIMS_GROUP);
+    TestBed.inject(PaletteIndex).want();
+    for (let i = 0; i < 20 && claims.entries().length < count; i++) {
+      TestBed.tick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    return claims;
+  }
+
+  it('sits before Next up under the heading key palette.groups.claims', async () => {
+    const sources = await open('/w/harbor');
+    const claims = byId(sources, CLAIMS_GROUP);
+    expect(claims.labelKey).toBe('palette.groups.claims');
+    expect(claims.order).toBe(CLAIMS_ORDER);
+    expect(CLAIMS_ORDER).toBeLessThan(byId(sources, 'nextUp').order);
+  });
+
+  it('lists the claims of the open workspace and of every other readable one, each leading to its card', async () => {
+    const entries = (await claimsAt('/w/harbor', 3)).entries();
+    expect(entries.map((entry) => [entry.id, entry.chip, entry.label, entry.meta, entry.link])).toEqual([
+      ['claim:harbor:ISC-126', 'ISC-126', 'The rotated token is used without a restart.', 'Harbor · 007', '/w/harbor/s/007/claims#claim-ISC-126'],
+      ['claim:harbor:ISC-126.1', 'ISC-126.1', 'The old token is revoked.', 'Harbor · 007', '/w/harbor/s/007/claims#claim-ISC-126.1'],
+      ['claim:lantern:ISC-12', 'ISC-12', 'A lantern claim.', 'Lantern · 002', '/w/lantern/s/002/claims#claim-ISC-12'],
+    ]);
+    const first = entries.find(isClaim);
+    if (first === undefined) throw new Error('not a claim entry');
+    expect(first.keywords).toEqual(['126', 'taken']);
+    expect(first.claim.statusWord).toBe('taken');
+    expect(first.claim.accessibleName).toBe('ISC-126, The rotated token is used without a restart., spec 007, workspace Harbor, taken');
+    // Every claim navigates (Enter follows the link and Recent remembers it); none runs a command.
+    expect(entries.some((entry) => 'run' in entry)).toBe(false);
+  });
+
+  it('lists every readable workspace\'s claims with no workspace open', async () => {
+    const entries = (await claimsAt('/', 3)).entries();
+    expect(entries.map((entry) => entry.id).sort()).toEqual(['claim:harbor:ISC-126', 'claim:harbor:ISC-126.1', 'claim:lantern:ISC-12']);
   });
 });

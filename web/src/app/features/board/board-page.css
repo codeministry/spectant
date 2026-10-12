@@ -1,9 +1,10 @@
 /*
  * The workspace board (design 008 § board layout, Tablet 820 and Desktop 1440). Page head: H1 Sora 20/28 and the mono
  * summary 13/20. The stage strip sticks under the toolbar (sticky under the 64 px header), outside the scroller. The board card holds the
- * one horizontal scroller (the page never scrolls sideways): 232 px columns 12 px apart, scroll-snap at column starts,
- * a 32 px edge fade on each side that has more to show. A stub (no shown card) is 48 px at medium and 56 px at wide;
- * its track comes from `data-stub`, never from a drag. Columns stretch to the tallest; a column never scrolls itself.
+ * one horizontal scroller (the page never scrolls sideways): 232 px columns at medium and 152 px at wide (ISC-141: at
+ * 1440 the ten default stages fit the board, seven with cards and three stubs; titles clamp to two lines), 12 px apart, scroll-snap at
+ * column starts, a 32 px edge fade on each side that has more to show. A stub (no shown card) is 48 px at medium and
+ * 56 px at wide; its track comes from `data-stub`, never from a drag. Columns stretch to the tallest; a column never scrolls itself.
  */
 :host {
   --board-col: 232px;
@@ -14,30 +15,33 @@
 }
 
 :host([data-tier='wide']) {
+  --board-col: 152px;
   --board-stub: 56px;
 }
 
-/* The page head (T163): "Board" 20/28 with the workflow source chip beside it, the summary under it; 56 px. */
+/* The page head (T163, ISC-140): `ui-page-head` (eyebrow over the "Board" h1) with the workflow source chip beside
+   the h1, the summary under it. */
 .title-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  align-items: center;
+  align-items: flex-end;
   margin-block-end: 8px;
+}
+
+.title-row ui-page-head {
+  min-inline-size: 0;
 }
 
 h1 {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 28px;
 }
 
 .source {
   display: inline-flex;
   align-items: center;
   block-size: 22px;
+  margin-block-end: 5px; /* centred on the h1 line (32 px) while the row aligns to its end */
   padding-inline: 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius-field);

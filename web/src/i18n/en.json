@@ -199,8 +199,18 @@
       "milestones": "Milestones",
       "services": "Services",
       "actions": "Actions",
-      "archived": "Archived"
+      "archived": "Archived",
+      "claims": "Claims"
     },
+    "claimStates": {
+      "open": "open",
+      "takeable": "takeable",
+      "taken": "taken",
+      "blocked": "blocked",
+      "closed": "closed",
+      "dropped": "dropped"
+    },
+    "claimHit": "{{claim}}, {{text}}, spec {{spec}}, workspace {{workspace}}",
     "actions": {
       "allWorkspaces": "Go to all workspaces",
       "goTo": "Go to {{workspace}}",
@@ -381,6 +391,13 @@
       },
       "unbuilt": "Comes with this spec's later tasks"
     },
+    "pills": {
+      "workspace": "Workspace",
+      "specs": "Specs",
+      "spec": "Spec",
+      "area": "Area",
+      "all": "All"
+    },
     "areas": {
       "dashboard": "Dashboard",
       "status": "Status",
@@ -445,6 +462,9 @@
     "settingsPage": {
       "pending": "Settings, workspaces and help come with later tasks of this spec.",
       "back": "Back to all workspaces"
+    },
+    "eyebrow": {
+      "app": "App"
     },
     "pages": {
       "specs": "Specs",
@@ -1133,12 +1153,23 @@
         "clearAll": "Clear filters",
         "all": "All"
       },
+      "hidden": {
+        "right": "Right of view:",
+        "show": "Scroll to {{stage}}",
+        "lane": {
+          "one": "{{count}} card in {{columns}}, right of view",
+          "other": "{{count}} cards in {{columns}}, right of view"
+        }
+      },
       "swimlanes": {
         "label": "Swimlanes",
         "none": "None",
         "feature": "Feature",
         "milestone": "Milestone",
-        "cards": "{{count}} cards",
+        "cards": {
+          "one": "{{count}} card",
+          "other": "{{count}} cards"
+        },
         "collapse": "Collapse {{lane}}",
         "expand": "Expand {{lane}}",
         "omittedFeatures": "{{count}} features have no card in {{stage}}",
@@ -1623,5 +1654,11 @@
       "page": "Tech",
       "tab": "Tech · {{tab}}"
     }
+  },
+  "orientation": {
+    "backToBoard": "Back to board",
+    "copyCommand": "Copy {{command}}",
+    "edgeAfter": "{{claim}} comes after {{target}}",
+    "edgeBlockedBy": "{{claim}} is blocked by {{target}}"
   }
 }
