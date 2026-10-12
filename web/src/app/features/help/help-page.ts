@@ -1,23 +1,13 @@
-import {
-  afterRenderEffect,
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  DestroyRef,
-  ElementRef,
-  inject,
-  resource,
-  viewChild,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, resource } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { catchError, map, of, switchMap } from 'rxjs';
 import type { SpecType, Workflow, WorkflowRow, WorkflowStage } from '../../../../../core/src/files';
 import { GLOSSARY } from '../../../../../core/src/glossary';
 import { DEFAULT_WORKFLOW, defaultWorkflowRow } from '../../../../../core/src/stage';
 import { ApiClient } from '../../core/api.service';
 import { keyLabel } from '../../core/keyboard-bindings';
-import { type ResolvedTheme, ThemeService } from '../../core/theme.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { UiIcon } from '../../shared/icons/icon';
@@ -26,11 +16,10 @@ import { UiChip } from '../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiTypeGlyph } from '../../shared/ui/type-glyph/type-glyph';
-// The Docs tabs' loader, reused as it is: one lazy `mermaid` chunk for the whole app (web/tests/docs-lazy-chunk.test.ts).
-import { MERMAID_LOADER, type MermaidApi, mermaidConfig, themeVariables } from '../../shared/ui/doc-prose/mermaid';
 import { HelpNav } from './help-nav';
 import { HELP_COMMANDS, HELP_SECTIONS, HELP_TYPES, KEY_CONTEXTS, LEGEND, STAGE_CHAIN, START_STEPS } from './help-sections';
-import { type DiagramTransition, diagramDirection, transitionList, workflowDiagram } from './workflow-diagram';
+import { type DiagramLabels, type DiagramTransition, transitionList, type WorkflowLayout, workflowLayout } from './workflow-diagram';
+import { WorkflowFigure } from './workflow-figure';
 
 /** The default table as a workflow: what the page shows without a workspace or when its workflow cannot be read. */
 const DEFAULT: Workflow = { rows: DEFAULT_WORKFLOW, source: 'default', diagnostics: [] };
@@ -42,11 +31,14 @@ type WorkflowView =
   | { readonly kind: 'workspace'; readonly ws: string; readonly workflow: Workflow }
   | { readonly kind: 'unavailable'; readonly ws: string; readonly workflow: Workflow };
 
-interface WorkflowFigure {
+interface HelpFigure {
   readonly row: WorkflowRow;
   /** The row differs from the type's default row. */
   readonly custom: boolean;
-  readonly text: string;
+  /** What `app-workflow-figure` draws, its words from the loaded catalogue. */
+  readonly layout: WorkflowLayout;
+  /** The figure's accessible name: the type, its stages in order, the detours and the fixed gates. */
+  readonly label: string;
   readonly moves: readonly DiagramTransition[];
 }
 
@@ -65,19 +57,18 @@ interface Span {
 const sameRow = (a: WorkflowRow, b: WorkflowRow): boolean =>
   a.codeReview === b.codeReview && a.stages.length === b.stages.length && a.stages.every((stage, i) => stage === b.stages[i]);
 
-let nextRenderId = 0;
-
 /**
  * The global help page (spec 008, ISC-116, ISC-123), inside the shell like settings and outside any workspace. The
  * glossary is core's `GLOSSARY` with its cells from the `glossary.*` catalogue, so the active language applies. The
  * workflows are those of one workspace: `?ws=` names it (`?ws=` empty for the default table), else the workspace of
- * the last `/w/:ws` route; its planning tree carries the parsed table, and each type's row becomes one mermaid state
- * diagram drawn through the Docs tabs' lazy chunk. The diagram text is a computed signal of that workflow and the
- * tier, so a changed `specs/workflow.md` redraws on the next read.
+ * the last `/w/:ws` route; its planning tree carries the parsed table, and each type's row becomes one layout model
+ * (`workflowLayout`) that `app-workflow-figure` draws as an inline SVG, left to right at every tier. The models are a
+ * computed signal of that workflow and of the loaded catalogue, so a changed `specs/workflow.md` redraws on the next
+ * read and a language switch redraws once the new catalogue has arrived (T161).
  */
 @Component({
   selector: 'app-help-page',
-  imports: [HelpNav, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiIcon, UiKbd, UiTypeGlyph],
+  imports: [HelpNav, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiIcon, UiKbd, UiTypeGlyph, WorkflowFigure],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'help' },
   templateUrl: './help-page.html',
@@ -90,8 +81,6 @@ export class HelpPage {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly transloco = inject(TranslocoService);
-  private readonly theme = inject(ThemeService);
-  private readonly loadMermaid = inject(MERMAID_LOADER);
 
   protected readonly glossary = GLOSSARY.map((row) => ({ ...row, key: row.term.toLowerCase() }));
 
@@ -106,7 +95,22 @@ export class HelpPage {
   protected readonly keyContexts = KEY_CONTEXTS;
   protected readonly keyLabel = keyLabel;
 
-  private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+  /**
+   * The active language once its catalogue has loaded; undefined until the first one has. `translate()` answers a key
+   * with the key itself while its catalogue is still on the way (the cold first load), so the figures translate only
+   * against a language this signal names: they never show a key, and they redraw when a switched-to catalogue lands.
+   * A catalogue that fails to load still names its language, and the configured fallback answers.
+   */
+  private readonly loadedLang = toSignal(
+    this.transloco.langChanges$.pipe(
+      switchMap((lang) =>
+        this.transloco.load(lang).pipe(
+          map(() => lang),
+          catchError(() => of(lang)),
+        ),
+      ),
+    ),
+  );
   private readonly query = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
 
   /** The chosen workspace: `?ws=`, else the last `/w/:ws` route; null for the default table. */
@@ -144,39 +148,21 @@ export class HelpPage {
     }
   });
 
-  protected readonly figures = computed<readonly WorkflowFigure[]>(() => {
-    this.lang();
+  protected readonly figures = computed<readonly HelpFigure[]>(() => {
+    const lang = this.loadedLang();
     const view = this.view();
-    if (view.kind === 'loading') return [];
-    const t = (key: string): string => this.transloco.translate(key);
-    const labels = {
+    if (lang === undefined || view.kind === 'loading') return [];
+    const t = (key: string, params?: Readonly<Record<string, string>>): string => this.transloco.translate(key, params, lang);
+    const labels: DiagramLabels = {
       stage: (stage: WorkflowStage) => t(`stages.${stage}`),
       gateReviewed: t('help.workflow.gateReviewed'),
       gateClosed: t('help.workflow.gateClosed'),
     };
-    const direction = diagramDirection(this.shell.tier());
-    return view.workflow.rows.map((row) => ({
-      row,
-      custom: !sameRow(row, defaultWorkflowRow(row.type)),
-      text: workflowDiagram(row, direction, labels),
-      moves: transitionList(row),
-    }));
-  });
-
-  private readonly diagrams = viewChild<ElementRef<HTMLElement>>('diagrams');
-  private renderRun = 0;
-
-  constructor() {
-    inject(DestroyRef).onDestroy(() => (this.renderRun += 1));
-    afterRenderEffect({
-      write: () => {
-        const host = this.diagrams()?.nativeElement;
-        const figures = this.figures();
-        const theme = this.theme.resolved();
-        if (host) void this.draw(host, figures, theme);
-      },
+    return view.workflow.rows.map((row) => {
+      const layout = workflowLayout(row, labels);
+      return { row, custom: !sameRow(row, defaultWorkflowRow(row.type)), layout, label: figureLabel(row, layout, t), moves: transitionList(row) };
     });
-  }
+  });
 
   /** The select writes `?ws=` (empty for the default table), so reload and back land on the same choice. */
   protected choose(ws: string): void {
@@ -195,32 +181,16 @@ export class HelpPage {
   protected spans(text: string): readonly Span[] {
     return text.split('`').flatMap((part, i) => (part === '' ? [] : [{ code: i % 2 === 1, text: part }]));
   }
+}
 
-  private async draw(host: HTMLElement, figures: readonly WorkflowFigure[], theme: ResolvedTheme): Promise<void> {
-    if (figures.length === 0) return;
-    const run = ++this.renderRun;
-    let mermaid: MermaidApi;
-    try {
-      mermaid = await this.loadMermaid();
-    } catch {
-      return; // The diagram text stays visible in its `pre`: a readable fallback, never a blank figure.
-    }
-    if (run !== this.renderRun) return;
-    mermaid.initialize(mermaidConfig(theme, themeVariables(host)));
-    for (const figure of figures) {
-      const element = host.querySelector<HTMLElement>(`figure[data-workflow-figure="${figure.row.type}"]`);
-      const target = element?.querySelector<HTMLElement>('[data-diagram]');
-      if (!element || !target) continue;
-      try {
-        const { svg } = await mermaid.render(`help-workflow-${figure.row.type}-${++nextRenderId}`, figure.text);
-        if (run !== this.renderRun) return;
-        // Mermaid's own output under `securityLevel: 'strict'` (DOMPurify-cleaned, no HTML labels, no click handlers).
-        target.innerHTML = svg;
-        element.setAttribute('data-rendered', '');
-        element.removeAttribute('data-render-error');
-      } catch {
-        element.setAttribute('data-render-error', '');
-      }
-    }
-  }
+/** A figure's accessible name: its type and stages in order, then the detours and the fixed gates it draws. */
+function figureLabel(row: WorkflowRow, layout: WorkflowLayout, t: (key: string, params?: Readonly<Record<string, string>>) => string): string {
+  const main = layout.nodes.filter((n) => !n.detour);
+  const detours = layout.nodes.filter((n) => n.detour);
+  const gates = layout.gates.map((g) => t('help.workflow.diagramGate', { stage: main.find((n) => n.stage === g.stage)?.label ?? g.stage, gate: g.label }));
+  return [
+    t('help.workflow.diagram', { type: row.type, stages: main.map((n) => n.label).join(', ') }),
+    ...(detours.length === 0 ? [] : [t('help.workflow.diagramDetours', { detours: detours.map((n) => n.label).join(', ') })]),
+    ...(gates.length === 0 ? [] : [t('help.workflow.diagramGates', { gates: gates.join(', ') })]),
+  ].join(' ');
 }

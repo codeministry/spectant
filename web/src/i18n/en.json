@@ -1468,7 +1468,18 @@
       "updated": "updated from specs/workflow.md {{age}} ago",
       "gateDropped": "workflow.md drops the review gate for {{type}} · default applied",
       "unavailable": "The workflow of {{ws}} could not be read; the default table is shown.",
-      "move": "{{from}} → {{to}}"
+      "move": "{{from}} → {{to}}",
+      "diagram": "Workflow diagram of the type {{type}}, its stages in order: {{stages}}.",
+      "diagramDetours": "Detours: {{detours}}.",
+      "diagramGates": "Fixed gates: {{gates}}.",
+      "diagramGate": "{{stage}} ({{gate}})",
+      "legend": {
+        "moving": "moving",
+        "waits": "waits on you",
+        "done": "done",
+        "detour": "detour",
+        "gate": "fixed gate"
+      }
     }
   },
   "ideas": {

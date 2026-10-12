@@ -89,8 +89,7 @@
     <div class="figures" #diagrams [attr.aria-busy]="view().kind === 'loading'">
       @for (figure of figures(); track figure.row.type) {
         <figure class="workflow-figure" [attr.data-workflow-figure]="figure.row.type">
-          <pre class="diagram-source" data-diagram-source>{{ figure.text }}</pre>
-          <div class="diagram" data-diagram></div>
+          <app-workflow-figure class="diagram" data-diagram [layout]="figure.layout" [label]="figure.label" [legend]="false" />
           <figcaption>
             <ui-type-glyph [type]="figure.row.type" [size]="16" [decorative]="true" />
             <span class="figure-name">{{ 'help.workflow.figure' | transloco: { type: figure.row.type } }}</span>

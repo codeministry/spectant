@@ -1,9 +1,19 @@
-import type { WorkflowRow } from '../../../../../core/src/files';
+import type { WorkflowRow, WorkflowStage } from '../../../../../core/src/files';
 import { defaultWorkflowRow } from '../../../../../core/src/stage';
-import { diagramDirection, type DiagramLabels, transitionList, workflowDiagram } from './workflow-diagram';
+import { CARD_EDGE } from '../board/board-card';
+import {
+  type DiagramLabels,
+  FIGURE,
+  ROLE_EDGE,
+  roleOf,
+  SHIELD_CHECK,
+  transitionList,
+  type WorkflowLayout,
+  workflowLayout,
+} from './workflow-diagram';
 
 const LABELS: DiagramLabels = {
-  stage: (stage) => stage,
+  stage: (stage) => stage.toUpperCase(),
   gateReviewed: 'gate · reviewed mark',
   gateClosed: 'gate · every claim closed',
 };
@@ -15,90 +25,135 @@ const HARBOR_FEATURE: WorkflowRow = {
   codeReview: 'spec',
 };
 
-const lines = (text: string): string[] => text.split('\n').map((line) => line.trim());
+const ALL_STAGES: readonly WorkflowStage[] = ['idea', 'plan', 'tasks', 'review', 'build', 'blocked', 'close-pending', 'code-review', 'close', 'done'];
 
-describe('workflowDiagram', () => {
-  it('draws the default feature row as a stateDiagram-v2, left to right', () => {
-    expect(workflowDiagram(defaultWorkflowRow('feature'), 'LR', LABELS)).toBe(
-      [
-        'stateDiagram-v2',
-        '  direction LR',
-        '  classDef fixedGate stroke-width:3px',
-        '  classDef detour stroke-dasharray:4 4',
-        '  state "plan" as s_plan',
-        '  state "tasks" as s_tasks',
-        '  state "review" as s_review',
-        '  state "build" as s_build',
-        '  state "code-review" as s_code_review',
-        '  state "close" as s_close',
-        '  state "done" as s_done',
-        '  state "blocked" as s_blocked',
-        '  state "close-pending" as s_close_pending',
-        '  [*] --> s_plan',
-        '  s_plan --> s_tasks',
-        '  s_tasks --> s_review',
-        '  s_review --> s_build : gate · reviewed mark',
-        '  s_build --> s_code_review',
-        '  s_code_review --> s_close',
-        '  s_close --> s_done : gate · every claim closed',
-        '  s_build --> s_blocked',
-        '  s_blocked --> s_build',
-        '  s_close_pending --> s_code_review',
-        '  s_done --> [*]',
-        '  class s_review, s_done fixedGate',
-        '  class s_blocked, s_close_pending detour',
-      ].join('\n'),
-    );
+const node = (layout: WorkflowLayout, stage: WorkflowStage) => {
+  const found = layout.nodes.find((n) => n.stage === stage);
+  if (!found) throw new Error(`no node ${stage}`);
+  return found;
+};
+const mainLine = (layout: WorkflowLayout) => layout.nodes.filter((n) => !n.detour);
+const pairs = (layout: WorkflowLayout) => layout.edges.map((e) => `${e.from}→${e.to}:${e.kind}`);
+
+describe('workflowLayout', () => {
+  it('lays the default feature row out left to right, one 32 px node per stage in table order', () => {
+    const layout = workflowLayout(defaultWorkflowRow('feature'), LABELS);
+    const main = mainLine(layout);
+    expect(main.map((n) => n.stage)).toEqual(['plan', 'tasks', 'review', 'build', 'code-review', 'close', 'done']);
+    expect(main.map((n) => n.label)).toEqual(['PLAN', 'TASKS', 'REVIEW', 'BUILD', 'CODE-REVIEW', 'CLOSE', 'DONE']);
+    for (const n of layout.nodes) expect(n.height).toBe(32);
+    // One horizontal line: the same top, each node one slot to the right of the one before.
+    expect(new Set(main.map((n) => n.y)).size).toBe(1);
+    main.slice(1).forEach((n, i) => expect(n.x - (main[i]?.x ?? 0)).toBe(FIGURE.nodeWidth + FIGURE.gap));
+    expect(main[0]?.x).toBe(FIGURE.pad);
+  });
+
+  it('draws the chain, the gates and the blocked loop as edges, from core’s moves', () => {
+    const layout = workflowLayout(defaultWorkflowRow('feature'), LABELS);
+    expect(pairs(layout)).toEqual([
+      'plan→tasks:main',
+      'tasks→review:main',
+      'review→build:gate',
+      'build→code-review:main',
+      'code-review→close:main',
+      'close→done:gate',
+      'build→blocked:loop',
+      'blocked→build:loop',
+      'close-pending→code-review:branch',
+    ]);
+    expect(layout.edges.map(({ from, to }) => ({ from, to }))).toEqual(transitionList(defaultWorkflowRow('feature')).map(({ from, to }) => ({ from, to })));
+  });
+
+  it('puts blocked under build, below the main line, and closes the loop with two arcs', () => {
+    const layout = workflowLayout(defaultWorkflowRow('bug'), LABELS);
+    const build = node(layout, 'build');
+    const blocked = node(layout, 'blocked');
+    expect(blocked.detour).toBe(true);
+    expect(blocked.y).toBeGreaterThan(build.y + build.height);
+    expect(blocked.x + blocked.width / 2).toBe(build.x + build.width / 2);
+    const loop = layout.edges.filter((e) => e.kind === 'loop');
+    expect(loop).toHaveLength(2);
+    // Arcs, not straight lines: each path is a quadratic curve.
+    for (const edge of loop) expect(edge.path).toMatch(/^M[\d.]+ [\d.]+ Q[\d.]+ [\d.]+ [\d.]+ [\d.]+$/);
+  });
+
+  it('adds the close-pending branch under the main line where the row reviews per feature', () => {
+    const spike: WorkflowRow = { ...defaultWorkflowRow('feature'), codeReview: 'feature' };
+    const layout = workflowLayout(spike, LABELS);
+    expect(pairs(layout)).toContain('build→close-pending:branch');
+    expect(pairs(layout)).toContain('close-pending→code-review:branch');
+    const pending = node(layout, 'close-pending');
+    const blocked = node(layout, 'blocked');
+    expect(pending.detour).toBe(true);
+    expect(pending.y).toBe(blocked.y);
+    // Beside blocked, never on top of it.
+    expect(pending.x).toBeGreaterThanOrEqual(blocked.x + blocked.width);
+    expect(pending.x + pending.width + FIGURE.pad).toBeLessThanOrEqual(layout.size.width);
+  });
+
+  it('draws close-pending only where core has a move for it: never for a row without code review', () => {
+    // A per-spec review still returns from close-pending to code-review (rowTransitions), without the way in.
+    expect(pairs(workflowLayout(defaultWorkflowRow('feature'), LABELS)).filter((p) => p.includes('close-pending'))).toEqual(['close-pending→code-review:branch']);
+    expect(workflowLayout(defaultWorkflowRow('chore'), LABELS).nodes.some((n) => n.stage === 'close-pending')).toBe(false);
+  });
+
+  it('marks the two fixed gates: a double-framed node, a shield-check annotation above it, the gate label', () => {
+    const layout = workflowLayout(defaultWorkflowRow('feature'), LABELS);
+    expect(layout.nodes.filter((n) => n.gate !== null).map((n) => [n.stage, n.gate])).toEqual([
+      ['build', 'reviewed'],
+      ['done', 'closed'],
+    ]);
+    expect(layout.gates.map((g) => [g.stage, g.kind, g.label])).toEqual([
+      ['build', 'reviewed', 'gate · reviewed mark'],
+      ['done', 'closed', 'gate · every claim closed'],
+    ]);
+    for (const gate of layout.gates) {
+      const gated = node(layout, gate.stage);
+      expect(gate.iconY + FIGURE.iconSize).toBeLessThanOrEqual(gated.y);
+      expect(gate.textY).toBeLessThan(gated.y);
+      expect(gate.textX).toBeGreaterThan(gate.iconX);
+    }
+    expect(SHIELD_CHECK.length).toBeGreaterThan(0);
   });
 
   it("follows harbor's deviating feature row: review before tasks, the reviewed-mark gate on tasks → build", () => {
-    const text = lines(workflowDiagram(HARBOR_FEATURE, 'LR', LABELS));
-    expect(text).toContain('s_plan --> s_review');
-    expect(text).toContain('s_review --> s_tasks');
-    expect(text).toContain('s_tasks --> s_build : gate · reviewed mark');
-    expect(text).not.toContain('s_plan --> s_tasks');
-    expect(text).not.toContain('s_review --> s_build : gate · reviewed mark');
+    const layout = workflowLayout(HARBOR_FEATURE, LABELS);
+    expect(mainLine(layout).map((n) => n.stage)).toEqual(HARBOR_FEATURE.stages);
+    expect(pairs(layout)).toContain('tasks→build:gate');
+    expect(pairs(layout)).toContain('plan→review:main');
+    expect(pairs(layout)).not.toContain('review→build:gate');
   });
 
-  it('marks the two fixed gates once each: the edge into build (never from blocked) and the edge into done', () => {
-    const text = lines(workflowDiagram(defaultWorkflowRow('chore'), 'LR', LABELS));
-    expect(text.filter((line) => line.endsWith(': gate · reviewed mark'))).toEqual(['s_review --> s_build : gate · reviewed mark']);
-    expect(text.filter((line) => line.endsWith(': gate · every claim closed'))).toEqual(['s_build --> s_done : gate · every claim closed']);
-    expect(text).toContain('s_blocked --> s_build');
-    expect(text).toContain('class s_review, s_done fixedGate');
-    // A chore has no code review: no close-pending branch, blocked is its only side node.
-    expect(text).toContain('class s_blocked detour');
-    expect(text.some((line) => line.includes('close_pending'))).toBe(false);
+  it('colours each node’s left edge by its stage’s role, the tokens the board’s card edges use', () => {
+    for (const stage of ALL_STAGES) expect(ROLE_EDGE[roleOf(stage)], stage).toBe(CARD_EDGE[stage]);
+    const layout = workflowLayout(defaultWorkflowRow('feature'), LABELS);
+    expect(node(layout, 'build').role).toBe('moving');
+    expect(node(layout, 'review').role).toBe('waits');
+    expect(node(layout, 'done').role).toBe('done');
+    expect(node(layout, 'blocked').role).toBe('detour');
+    expect(node(layout, 'build').edge).toBe('var(--color-primary)');
   });
 
-  it('adds build → close-pending where the row reviews per feature', () => {
-    const spike: WorkflowRow = { ...defaultWorkflowRow('spike'), codeReview: 'feature' };
-    const text = lines(workflowDiagram(spike, 'LR', LABELS));
-    expect(text).toContain('s_build --> s_close_pending');
-    expect(text).toContain('s_close_pending --> s_code_review');
+  it('sizes the canvas to hold every node and the gate labels, wider for a longer row', () => {
+    const feature = workflowLayout(defaultWorkflowRow('feature'), LABELS);
+    const chore = workflowLayout(defaultWorkflowRow('chore'), LABELS);
+    for (const layout of [feature, chore]) {
+      for (const n of layout.nodes) {
+        expect(n.x + n.width).toBeLessThanOrEqual(layout.size.width);
+        expect(n.y + n.height).toBeLessThanOrEqual(layout.size.height);
+      }
+    }
+    expect(feature.size.width).toBeGreaterThan(chore.size.width);
+    expect(feature.size.height).toBe(chore.size.height);
   });
 
-  it('labels stages through the caller and keeps mermaid syntax out of labels', () => {
-    const text = workflowDiagram(defaultWorkflowRow('chore'), 'TB', {
-      stage: (stage) => `Stage: ${stage}; "x"`,
-      gateReviewed: 'Gate · Review-Marke',
-      gateClosed: 'Gate # jeder Claim',
-    });
-    expect(text).toContain('state "Stage  review   x " as s_review');
-    expect(text).toContain('s_review --> s_build : Gate · Review-Marke');
-    expect(text).toContain('s_build --> s_done : Gate   jeder Claim');
-  });
-
-  it('turns direction by tier: left to right at wide, top to bottom at medium and compact', () => {
-    expect(diagramDirection('wide')).toBe('LR');
-    expect(diagramDirection('medium')).toBe('TB');
-    expect(diagramDirection('compact')).toBe('TB');
-    expect(lines(workflowDiagram(defaultWorkflowRow('bug'), 'TB', LABELS))[1]).toBe('direction TB');
+  it('is a pure function of the row and the words: the same input gives the same model', () => {
+    expect(workflowLayout(HARBOR_FEATURE, LABELS)).toEqual(workflowLayout(HARBOR_FEATURE, LABELS));
   });
 });
 
 describe('transitionList', () => {
-  it('lists the moves in the order the diagram draws them, gates flagged', () => {
+  it('lists the moves in drawing order (the chain, then the detours), gates flagged', () => {
     expect(transitionList(defaultWorkflowRow('chore'))).toEqual([
       { from: 'review', to: 'build', gate: 'reviewed' },
       { from: 'build', to: 'done', gate: 'closed' },

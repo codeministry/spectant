@@ -1468,7 +1468,18 @@
       "updated": "vor {{age}} aus specs/workflow.md aktualisiert",
       "gateDropped": "workflow.md lässt das Review-Gate für {{type}} weg · Standard angewendet",
       "unavailable": "Der Workflow von {{ws}} konnte nicht gelesen werden; die Standardtabelle wird angezeigt.",
-      "move": "{{from}} → {{to}}"
+      "move": "{{from}} → {{to}}",
+      "diagram": "Workflow-Diagramm des Typs {{type}}, die Stages der Reihe nach: {{stages}}.",
+      "diagramDetours": "Umwege: {{detours}}.",
+      "diagramGates": "Feste Gates: {{gates}}.",
+      "diagramGate": "{{stage}} ({{gate}})",
+      "legend": {
+        "moving": "in Bewegung",
+        "waits": "wartet auf Sie",
+        "done": "fertig",
+        "detour": "Umweg",
+        "gate": "festes Gate"
+      }
     }
   },
   "ideas": {

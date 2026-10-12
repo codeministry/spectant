@@ -8,7 +8,8 @@
  * - `workflow` (T151, ISC-123): one figure per spec type; harbor's feature row (its `specs/workflow.md`) runs review
  *   before tasks, lantern (no workflow file) the default order; the workspace select switches the figures and the
  *   source line between harbor, lantern and the default table; a workflow changed on the stub
- *   (`PUT /api/__stub/workflow`, per stub session) shows on the next read; mermaid draws one `svg` per figure.
+ *   (`PUT /api/__stub/workflow`, per stub session) shows on the next read; each figure is one inline `svg` drawn from the
+ *   parsed row (T161), its node and gate labels the catalogue words.
  *
  * The expected rows come from core's `GLOSSARY` and the planning goldens, the expected words from the catalogues, so
  * the spec states nothing the sources do not.
@@ -34,6 +35,8 @@ interface Catalogue {
     readonly workflow: {
       readonly figure: string;
       readonly move: string;
+      readonly gateReviewed: string;
+      readonly gateClosed: string;
       readonly custom: string;
       readonly default: string;
       readonly defaultCaption: string;
@@ -150,6 +153,11 @@ test.describe('workflow', () => {
   const figures = (page: Page) => page.locator('figure[data-workflow-figure]');
   const feature = (page: Page) => page.locator('figure[data-workflow-figure="feature"]');
   const source = (page: Page) => page.locator('[data-workflow-source]');
+  /** The stages on the feature figure's main line, in drawing order (the detours below it left out). */
+  const stagesOf = (page: Page): Promise<string[]> =>
+    feature(page)
+      .locator('[data-diagram] g[data-stage]:not([data-detour])')
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-stage') ?? ''));
 
   /** Opens the feature figure's "Transitions as text" and expects its list to start with `chain`. */
   async function expectChain(page: Page, chain: readonly string[]): Promise<void> {
@@ -174,9 +182,12 @@ test.describe('workflow', () => {
     await expectChain(page, chainOf(harbor));
     await expect(feature(page).locator('[data-workflow-origin]')).toHaveText(en.help.workflow.custom);
 
-    // Mermaid's lazy chunk loads in the e2e browser: every figure holds its drawn diagram.
-    await expect(page.locator('figure[data-workflow-figure][data-rendered] [data-diagram] svg')).toHaveCount(7);
-    await expect(page.locator('figure[data-workflow-figure][data-render-error]')).toHaveCount(0);
+    // Every figure holds its inline svg at once, the harbor row drawn in table order with the catalogue words.
+    await expect(page.locator('figure[data-workflow-figure] [data-diagram][data-rendered] svg[role="img"]')).toHaveCount(7);
+    await expect.poll(() => stagesOf(page)).toEqual(harbor.stages);
+    await expect(feature(page).locator('[data-diagram] g[data-stage]:not([data-detour]) text')).toHaveText(harbor.stages.map((stage) => en.stages[stage]));
+    await expect(feature(page).locator('[data-diagram] g[data-gate-note]')).toHaveText([en.help.workflow.gateReviewed, en.help.workflow.gateClosed]);
+    await expect(page.locator('[data-workflow-legend]')).toHaveCount(1);
   });
 
   test('lantern, without a workflow file, runs the default order', async ({ page }) => {
@@ -193,12 +204,13 @@ test.describe('workflow', () => {
     await page.goto('/help?ws=harbor');
     const select = page.locator('select[data-workflow-workspace]');
     await expect(source(page)).toHaveText(en.help.workflow.source.custom);
-    const harborText = await feature(page).locator('[data-diagram-source]').textContent();
+    const harborStages = await stagesOf(page);
+    expect(harborStages).toEqual(featureOf(rowsOf('harbor')).stages);
 
     await select.selectOption('lantern');
     await expect(page).toHaveURL(/\/help\?ws=lantern$/);
     await expect(source(page)).toHaveText(en.help.workflow.source.default);
-    await expect(feature(page).locator('[data-diagram-source]')).not.toHaveText(harborText ?? '');
+    await expect.poll(() => stagesOf(page)).toEqual(featureOf(rowsOf('lantern')).stages);
     await expectChain(page, chainOf(featureOf(rowsOf('lantern'))));
 
     await select.selectOption('');
@@ -217,9 +229,7 @@ test.describe('workflow', () => {
   test('a workflow changed on the stub shows on the next read', async ({ page }, info) => {
     const headers = await ownSession(page, `help-workflow-${info.testId}`);
     await page.goto('/help?ws=harbor');
-    const diagram = feature(page).locator('[data-diagram-source]');
-    await expect(diagram).toContainText('s_tasks');
-    const before = (await diagram.textContent()) ?? '';
+    await expect.poll(() => stagesOf(page)).toContain('tasks');
 
     // harbor's own workflow.md with the feature row edited: tasks dropped, the fixed gates kept.
     const file = readFileSync(new URL('../../core/fixtures/harbor/specs/workflow.md', import.meta.url), 'utf8');
@@ -229,9 +239,8 @@ test.describe('workflow', () => {
     expect(put.status()).toBe(204);
 
     await page.reload();
-    await expect(diagram).not.toHaveText(before);
-    await expect(diagram).not.toContainText('s_tasks');
     const changed: Row = { type: 'feature', stages: ['plan', 'review', 'build', 'code-review', 'close', 'done'] };
+    await expect.poll(() => stagesOf(page)).toEqual(changed.stages);
     await expectChain(page, chainOf(changed));
     const moves = await feature(page).locator('details.as-text li').allTextContents();
     expect(moves.filter((move) => move.includes(en.stages.tasks))).toEqual([]);
