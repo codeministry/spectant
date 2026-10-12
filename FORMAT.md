@@ -976,7 +976,9 @@ tokenisation of our own. Every API request counts once, however many transcript 
 - `baseline`: one line per measuring run. `measured_through` is the timestamp of the newest measured turn, never the
   wall clock; `claude_code` the Claude Code versions the transcripts name; `commands` per `/spec` command an object
   `count`, the four counters and `mean`, the four counters divided by `count` and rounded to whole tokens. Earlier
-  baseline lines are kept, and a run over the same state adds none.
+  baseline lines are kept, even when their transcripts are gone, and a run over the same state adds none. The state
+  is `measured_through`: when a kept line carries the same one, the kept line stays and the new one is dropped, even
+  if their numbers differ, since a later run over the same newest turn can only have lost transcripts.
 - `invocation`: one `/spec` command up to the next real user input, the sub-agents it started included. `id` is
   `a:claude:<session>#<n>`, `command` the command name only (its arguments are never stored), `spec` the slug the
   number in its arguments names, or `null`; `ts` its first turn; `subagents` the sub-agent transcripts attributed to it.
@@ -988,6 +990,11 @@ Line order: `baseline` by `measured_through`, `invocation` by `ts` then `id`, `s
 stage table's order, `round` by slug then number, `unassigned` last. The file holds numbers, timestamps, command
 names, spec slugs, stage names, round numbers and neutral actor IDs only: no path, no working directory, no name, no
 address and no prompt or answer text.
+
+Reading the file back (`readTokens`) gives the lines it was written from, and serialising them again gives the same
+bytes. A blank line is skipped. A line that is not a JSON object, carries another `v` or an unknown `kind`, lacks a key
+of its kind or holds a value of the wrong shape is left out with a diagnostic naming its line; a key its kind does not
+name is dropped with a diagnostic and the line kept. Reading never throws.
 
 **No fixture yet.** Three lines of the shape, with invented numbers (a real file also holds the baseline, stage and
 round lines):

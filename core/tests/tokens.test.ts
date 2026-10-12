@@ -11,6 +11,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { buildDashboard } from '../src/dashboard.ts';
 import {
+  type BaselineRow,
   type InvocationRow,
   type RoundTotalRow,
   type SpecTotalRow,
@@ -22,7 +23,10 @@ import {
   type TokenSpecInput,
   type TranscriptFile,
   type TranscriptRole,
+  type TokenRow,
   type UnassignedRow,
+  mergeBaselines,
+  readTokens,
   serializeTokens,
   tokenRows,
 } from '../src/tokens.ts';
@@ -658,5 +662,253 @@ describe('unassigned', () => {
     for (const code of ['tokens-line-not-json', 'tokens-spec-unknown', 'tokens-transcript-no-usage']) expect(codesOf(run)).toContain(code);
     expect(unassignedOf(run).map((row) => row.requests)).toEqual([1]);
     expectSumInvariant(input, run);
+  });
+});
+
+// ─── ISC-136.1 · baseline lines across runs (T16) ───────────────────────────────────────────────────────────────
+
+/**
+ * One session grown to `segments` invocations, alternating `/spec-plan` and `/spec-implement` on spec 002, ten minutes
+ * apart, each with two requests; its newest turn is `at(10 * (segments - 1) + 2)`. A longer session is a later state
+ * of the same transcripts. The third invocation's `cache_write` of 3 makes the `/spec-plan` mean round (1.5 → 2).
+ */
+function sessionLines(segments: number): string[] {
+  const lines: string[] = [];
+  for (let k = 0; k < segments; k += 1) {
+    lines.push(
+      commandLine(at(10 * k), k % 2 === 0 ? '/spec-plan' : '/spec-implement', '002'),
+      usageLine(at(10 * k + 1), `b${k}a`, [1 + k, 10, 100, k === 2 ? 3 : 0]),
+      usageLine(at(10 * k + 2), `b${k}b`, [2, 5, 50, 0]),
+    );
+  }
+  return lines;
+}
+
+const stateInput = (segments: number, extra: readonly TranscriptFile[] = []): TokenInput => ({
+  transcripts: [transcript('main', 'b', sessionLines(segments)), ...extra],
+  specs: [specInput('002-alpha')],
+});
+
+function baselineOfRun(run: TokenRun): BaselineRow {
+  expect(run.baseline).not.toBeNull();
+  return run.baseline as BaselineRow;
+}
+
+const stateBaseline = (segments: number): BaselineRow => baselineOfRun(tokenRows(stateInput(segments)));
+
+/** The newest timestamp of an assistant line with `usage`, read straight from the texts (independent of tokens.ts). */
+function newestUsageTs(files: readonly TranscriptFile[]): string {
+  let newest = '';
+  for (const file of files) {
+    for (const raw of file.text.split(/\r?\n/)) {
+      let value: unknown;
+      try {
+        value = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+      if (typeof value !== 'object' || value === null) continue;
+      const line = value as { type?: unknown; timestamp?: unknown; message?: { usage?: unknown } };
+      if (line.type !== 'assistant' || line.message?.usage === undefined || typeof line.timestamp !== 'string') continue;
+      if (newest === '' || Date.parse(line.timestamp) > Date.parse(newest)) newest = line.timestamp;
+    }
+  }
+  return newest;
+}
+
+/** The CLI's order (server/src/tokens-cli.ts): read the file back, keep its baseline lines, measure, merge, serialise. */
+function measureInto(existing: string | null, input: TokenInput): string {
+  const previous = existing === null ? [] : readTokens(existing).rows.filter((row): row is BaselineRow => row.kind === 'baseline');
+  const run = tokenRows(input);
+  return serializeTokens([...mergeBaselines(previous, run.baseline), ...run.rows]);
+}
+
+const baselineLinesOf = (text: string): string[] => text.split('\n').filter((line) => line.includes('"kind":"baseline"'));
+
+describe('baseline', () => {
+  test('a run yields one baseline line: newest measured turn, versions, per /spec command count, sums and rounded mean', () => {
+    const baseline = stateBaseline(3);
+    expect(baseline.measured_through).toBe(at(22));
+    expect(baseline.claude_code).toEqual(['2.1.40']);
+    expect(baseline.commands).toEqual({
+      '/spec-implement': { count: 1, input: 4, output: 15, cache_read: 150, cache_write: 0, mean: { input: 4, output: 15, cache_read: 150, cache_write: 0 } },
+      '/spec-plan': { count: 2, input: 8, output: 30, cache_read: 300, cache_write: 3, mean: { input: 4, output: 15, cache_read: 150, cache_write: 2 } },
+    });
+  });
+
+  test('over the fixture: measured_through is the newest usage turn, every version is named, every mean is the rounded quotient', () => {
+    const input = fixtureInput();
+    const run = tokenRows(input);
+    const baseline = baselineOfRun(run);
+    expect(baseline.measured_through).toBe(newestUsageTs(input.transcripts));
+    expect(baseline.claude_code).toEqual(['2.1.38', '2.1.42']);
+    const invocations = invocationsOf(run);
+    expect(Object.keys(baseline.commands)).toEqual([...new Set(invocations.map((row) => row.command))].sort());
+    for (const [command, entry] of Object.entries(baseline.commands)) {
+      const mine = invocations.filter((row) => row.command === command);
+      expect(entry.count).toBe(mine.length);
+      expect(countsOf(entry)).toEqual(sumRows(mine));
+      for (const counter of TOKEN_COUNTERS) expect(entry.mean[counter]).toBe(Math.round(entry[counter] / entry.count));
+    }
+  });
+
+  test('n earlier lines plus a run over a new state give n+1 lines, the earlier ones kept as they were', () => {
+    let lines: BaselineRow[] = [];
+    for (let n = 1; n <= 4; n += 1) {
+      const before = structuredClone(lines);
+      const merged = mergeBaselines(lines, stateBaseline(n));
+      expect(merged).toHaveLength(n);
+      expect(merged.slice(0, n - 1)).toEqual(before);
+      expect(merged.map((row) => row.measured_through)).toEqual([...merged.map((row) => row.measured_through)].sort());
+      lines = merged;
+    }
+  });
+
+  test('the same state again adds no second line', () => {
+    const lines = mergeBaselines(mergeBaselines([], stateBaseline(1)), stateBaseline(2));
+    const again = mergeBaselines(lines, stateBaseline(2));
+    expect(again).toHaveLength(2);
+    expect(again).toEqual(lines);
+    expect(mergeBaselines(again, stateBaseline(1))).toEqual(lines);
+  });
+
+  test('the same measured_through with other numbers (a transcript deleted since): the line already there is kept', () => {
+    const older = transcript('main', 'a', [commandLine(at(0), '/spec-plan', '002'), usageLine(at(1), 'old1', [900, 900, 900, 900])]);
+    const first = baselineOfRun(tokenRows(stateInput(3, [older])));
+    const later = stateBaseline(3);
+    expect(later.measured_through).toBe(first.measured_through);
+    expect(later.commands).not.toEqual(first.commands);
+    expect(mergeBaselines([first], later)).toEqual([first]);
+  });
+
+  test('a line older than every kept one still adds, in measured_through order', () => {
+    const merged = mergeBaselines([stateBaseline(3)], stateBaseline(1));
+    expect(merged.map((row) => row.measured_through)).toEqual([at(2), at(22)]);
+  });
+
+  test('a run that measured nothing keeps every earlier line unchanged', () => {
+    const lines = mergeBaselines(mergeBaselines([], stateBaseline(1)), stateBaseline(2));
+    const empty = tokenRows({ transcripts: [], specs: [specInput('002-alpha')] });
+    expect(empty.baseline).toBeNull();
+    expect(mergeBaselines(lines, empty.baseline)).toEqual(lines);
+    const talkOnly = tokenRows({ transcripts: [transcript('main', 'c', [userLine(at(0), 'hello')])], specs: [] });
+    expect(talkOnly.baseline).toBeNull();
+    expect(mergeBaselines(lines, talkOnly.baseline)).toEqual(lines);
+    expect(mergeBaselines([], null)).toEqual([]);
+  });
+
+  test('neither argument is changed', () => {
+    const previous = Object.freeze([Object.freeze(stateBaseline(1))]);
+    const next = Object.freeze(stateBaseline(2));
+    const snapshot = structuredClone([previous, next]);
+    const merged = mergeBaselines(previous, next);
+    expect(merged).not.toBe(previous);
+    expect([previous, next]).toEqual(snapshot);
+  });
+
+  test('through the file: n+1 lines after a new state, n after the same, and earlier lines outlive their transcripts', () => {
+    const first = measureInto(null, stateInput(2));
+    expect(baselineLinesOf(first)).toHaveLength(1);
+    const second = measureInto(first, stateInput(3));
+    expect(baselineLinesOf(second)).toHaveLength(2);
+    expect(baselineLinesOf(second)[0]).toBe(baselineLinesOf(first)[0]);
+    expect(measureInto(second, stateInput(3))).toBe(second);
+    const gone = measureInto(second, { transcripts: [], specs: [specInput('002-alpha')] });
+    expect(baselineLinesOf(gone)).toEqual(baselineLinesOf(second));
+    expect(gone.split('\n').filter((line) => line !== '' && !line.includes('"kind":"baseline"'))).toEqual([
+      '{"v":1,"kind":"unassigned","requests":0,"input":0,"output":0,"cache_read":0,"cache_write":0}',
+    ]);
+  });
+});
+
+// ─── ISC-137 · reading the file back (T17) ──────────────────────────────────────────────────────────────────────
+
+/** A run's lines as the file holds them: the merged baseline lines first, then the rest as `tokenRows` sorted them. */
+const linesOfRun = (run: TokenRun, earlier: readonly BaselineRow[] = []): TokenRow[] => [...mergeBaselines(earlier, run.baseline), ...run.rows];
+
+describe('roundtrip', () => {
+  test('the golden reads back without a diagnostic and serialises to the same bytes', () => {
+    const golden = readFileSync(GOLDEN, 'utf8');
+    const reading = readTokens(golden);
+    expect(reading.diagnostics).toEqual([]);
+    expect(reading.rows).toHaveLength(golden.split('\n').filter((line) => line !== '').length);
+    expect(serializeTokens(reading.rows)).toBe(golden);
+  });
+
+  test('the fixture run reads back into the very lines it was written from', () => {
+    const rows = linesOfRun(tokenRows(fixtureInput()));
+    const reading = readTokens(serializeTokens(rows));
+    expect(reading.diagnostics).toEqual([]);
+    expect(reading.rows).toEqual(rows);
+  });
+
+  test('generated runs, with earlier baseline lines and null specs, read back into the same lines', () => {
+    let earlier: BaselineRow[] = [];
+    for (let seed = 1; seed <= 25; seed += 1) {
+      const rows = linesOfRun(tokenRows(compose(seed).input), earlier);
+      const reading = readTokens(serializeTokens(rows));
+      expect(reading.diagnostics).toEqual([]);
+      expect(reading.rows).toEqual(rows);
+      earlier = rows.filter((row): row is BaselineRow => row.kind === 'baseline');
+    }
+    expect(earlier.length).toBeGreaterThan(1);
+  });
+
+  test('blank lines are skipped and CRLF reads like LF', () => {
+    const text = serializeTokens(linesOfRun(tokenRows(stateInput(2))));
+    const expected = readTokens(text).rows;
+    expect(expected.length).toBeGreaterThan(0);
+    expect(readTokens(`\n${text.replaceAll('\n', '\n\n')}  \n`)).toEqual({ rows: expected, diagnostics: [] });
+    expect(readTokens(text.replaceAll('\n', '\r\n'))).toEqual({ rows: expected, diagnostics: [] });
+    expect(readTokens('')).toEqual({ rows: [], diagnostics: [] });
+  });
+
+  test('a malformed line is a diagnostic with its line number, never a throw, and the good lines still read', () => {
+    const good = '{"v":1,"kind":"spec","spec":"002-alpha","requests":1,"input":1,"output":2,"cache_read":3,"cache_write":4}';
+    const last = '{"v":1,"kind":"unassigned","requests":0,"input":0,"output":0,"cache_read":0,"cache_write":0}';
+    const lines = [
+      good,
+      'not json at all',
+      '',
+      '[1,2,3]',
+      '{"v":1,"kind":"session","requests":1}',
+      '{"v":2,"kind":"unassigned","requests":0,"input":0,"output":0,"cache_read":0,"cache_write":0}',
+      '{"v":1,"kind":"spec","spec":"002-alpha","input":1,"output":2,"cache_read":3,"cache_write":4}',
+      '{"v":1,"kind":"spec","spec":"002-alpha","requests":1,"input":"1","output":2,"cache_read":3,"cache_write":4}',
+      '{"v":1,"kind":"round","spec":"002-alpha","round":1.5,"requests":1,"input":1,"output":2,"cache_read":3,"cache_write":4}',
+      '{"v":1,"kind":"baseline","measured_through":"2026-03-10T09:00:00.000Z","claude_code":["2.1.40"],"commands":{"/spec-plan":{"count":1,"input":1,"output":1,"cache_read":1,"cache_write":1}}}',
+      '{"v":1,"kind":"invocation","id":"a:claude:b#1","command":"/spec-plan","spec":7,"ts":"2026-03-10T09:00:00.000Z","requests":1,"subagents":0,"input":1,"output":1,"cache_read":1,"cache_write":1}',
+      'null',
+      '{"kind":"spec"}',
+      last,
+    ];
+    let reading: ReturnType<typeof readTokens> = { rows: [], diagnostics: [] };
+    expect(() => {
+      reading = readTokens(`${lines.join('\n')}\n`);
+    }).not.toThrow();
+    expect(serializeTokens(reading.rows)).toBe(`${good}\n${last}\n`);
+    expect(reading.diagnostics.map((d) => [d.line, d.code])).toEqual([
+      [2, 'tokens-line-not-json'],
+      [4, 'tokens-line-not-object'],
+      [5, 'tokens-kind-unknown'],
+      [6, 'tokens-version-unknown'],
+      [7, 'tokens-key-missing'],
+      [8, 'tokens-value-invalid'],
+      [9, 'tokens-value-invalid'],
+      [10, 'tokens-value-invalid'],
+      [11, 'tokens-value-invalid'],
+      [12, 'tokens-line-not-object'],
+      [13, 'tokens-version-unknown'],
+    ]);
+    expect(reading.diagnostics.find((d) => d.line === 7)?.subject).toBe('requests');
+    expect(reading.diagnostics.find((d) => d.line === 9)?.subject).toBe('round');
+    expect(reading.diagnostics.find((d) => d.line === 10)?.subject).toBe('commands');
+  });
+
+  test('an unknown extra key is a diagnostic; the line is kept without it', () => {
+    const line = '{"v":1,"kind":"unassigned","requests":0,"input":0,"output":0,"cache_read":0,"cache_write":0,"skill":"9.9.9"}';
+    const reading = readTokens(`${line}\n`);
+    expect(reading.diagnostics.map((d) => [d.line, d.code, d.subject])).toEqual([[1, 'tokens-key-unknown', 'skill']]);
+    expect(serializeTokens(reading.rows)).toBe('{"v":1,"kind":"unassigned","requests":0,"input":0,"output":0,"cache_read":0,"cache_write":0}\n');
   });
 });

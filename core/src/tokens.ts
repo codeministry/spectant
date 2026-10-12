@@ -12,8 +12,7 @@
 // directory, no name, no address, no prompt or answer text, and never the arguments of a command — only the spec
 // number read from them.
 //
-// T5 (parseTranscript) and T6 (tokenRows, serializeTokens) are implemented; the remaining stubs name themselves
-// (`not implemented: <name>`) until T16 (mergeBaselines) and T17 (readTokens) replace them without changing a signature.
+// T5 (parseTranscript), T6 (tokenRows, serializeTokens), T16 (mergeBaselines) and T17 (readTokens) are implemented.
 
 import type { Diagnostic } from './diagnostics.ts';
 import { EVENT_STAGES, parseEvents } from './events.ts';
@@ -237,11 +236,6 @@ export interface TokensReading {
 }
 
 // ─── Reading a transcript (T5) ──────────────────────────────────────────────────────────────────────────────────
-
-/** A stub's throw; the input rides along as the cause, so a caller debugging the seam sees what reached it. */
-function notImplemented(name: string, input: unknown): never {
-  throw new Error(`not implemented: ${name}`, { cause: input });
-}
 
 type JsonRecord = Record<string, unknown>;
 
@@ -648,17 +642,120 @@ export function serializeTokens(rows: readonly TokenRow[]): string {
     .join('');
 }
 
-// ─── Stubs until T16, T17 ───────────────────────────────────────────────────────────────────────────────────────
+// ─── Merging the baseline lines (T16) ───────────────────────────────────────────────────────────────────────────
+
+/** Two `measured_through` values name the same state when they are the same string or the same instant. */
+const sameState = (a: string, b: string): boolean => a === b || timeOf(a) === timeOf(b);
 
 /**
  * The baseline lines to write: every earlier line kept as read, plus `next` unless a line with the same state is
- * already there (T16).
+ * already there, all in `measured_through` order (T16). The state is `measured_through`, the newest measured turn:
+ * when an earlier line carries it, that line is kept and `next` dropped, even if their numbers differ. A baseline line
+ * is a record of what was measured then, never recomputed; a later run over the same newest turn can only have lost
+ * transcripts since (Claude Code deletes old ones), so the line already in the file is the fuller one. `next` null (a
+ * run that measured no turn) leaves the earlier lines as they are. Neither argument is changed.
  */
 export function mergeBaselines(previous: readonly BaselineRow[], next: BaselineRow | null): BaselineRow[] {
-  return notImplemented('mergeBaselines', [previous, next]);
+  const lines = [...previous];
+  if (next !== null && !lines.some((line) => sameState(line.measured_through, next.measured_through))) lines.push(next);
+  return lines.sort(compareRows);
 }
 
-/** Reads `specs/tokens.jsonl` back into the lines `serializeTokens` wrote; a bad line is a diagnostic (T17). */
+// ─── Reading the file back (T17) ────────────────────────────────────────────────────────────────────────────────
+
+const isCount = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0;
+
+const isText = (value: unknown): value is string => typeof value === 'string' && value !== '';
+
+const isCounters = (value: unknown): value is JsonRecord => isRecord(value) && TOKEN_COUNTERS.every((counter) => isCount(value[counter]));
+
+const isCommandEntry = (value: unknown): boolean => isCounters(value) && isCount(value.count) && isCounters(value.mean);
+
+/** Per key, the values a line may hold there; `spec` is checked per kind (an invocation's may be null). */
+const VALUE_CHECKS: Readonly<Record<string, (value: unknown) => boolean>> = {
+  measured_through: isText,
+  claude_code: (value) => Array.isArray(value) && value.every(isText),
+  commands: (value) => isRecord(value) && Object.values(value).every(isCommandEntry),
+  id: isText,
+  command: isText,
+  ts: isText,
+  stage: isText,
+  round: isCount,
+  requests: isCount,
+  subagents: isCount,
+  ...Object.fromEntries(TOKEN_COUNTERS.map((counter) => [counter, isCount])),
+};
+
+const validValue = (kind: TokenRowKind, key: string, value: unknown): boolean =>
+  key === 'spec' ? isText(value) || (kind === 'invocation' && value === null) : (VALUE_CHECKS[key]?.(value) ?? false);
+
+const isRowKind = (value: unknown): value is TokenRowKind => typeof value === 'string' && (TOKEN_ROW_KINDS as readonly string[]).includes(value);
+
+/** A checked line as a row: its keys in order, a baseline's commands and means rebuilt key by key. */
+function rowOf(record: JsonRecord, kind: TokenRowKind): TokenRow {
+  if (kind !== 'baseline') return ordered(record, TOKEN_ROW_KEYS[kind]) as unknown as TokenRow;
+  const source = record.commands as Record<string, JsonRecord>;
+  const commands: Record<string, BaselineCommand> = {};
+  for (const command of Object.keys(source).sort(plainOrder)) {
+    const entry = source[command] ?? {};
+    commands[command] = { ...ordered(entry, BASELINE_COMMAND_KEYS), mean: ordered(entry.mean as JsonRecord, TOKEN_COUNTERS) } as unknown as BaselineCommand;
+  }
+  return { v: TOKENS_VERSION, kind, measured_through: record.measured_through as string, claude_code: [...(record.claude_code as string[])], commands };
+}
+
+/**
+ * Reads `specs/tokens.jsonl` back into the lines `serializeTokens` wrote: `serializeTokens(readTokens(text).rows)` is
+ * `text` for every file it wrote (T17). Never throws. A blank line is skipped; a line that is not a JSON object, has
+ * another `v` or an unknown `kind`, lacks a key of its kind or holds a value of the wrong shape is left out, with a
+ * diagnostic naming its 1-based line (and the key in `subject`). A key the kind does not name is dropped, with a
+ * diagnostic, and the line is kept.
+ */
 export function readTokens(text: string): TokensReading {
-  return notImplemented('readTokens', text);
+  const rows: TokenRow[] = [];
+  const diagnostics: TokenDiagnostic[] = [];
+  const warn = (code: string, message: string, line: number, subject?: string): void => {
+    diagnostics.push({ severity: 'warning', code, message, line, ...(subject === undefined ? {} : { subject }) });
+  };
+
+  text.split(/\r?\n/).forEach((raw, i) => {
+    const line = i + 1;
+    if (raw.trim() === '') return;
+    let value: unknown;
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      warn('tokens-line-not-json', 'The line is not JSON; it is skipped.', line);
+      return;
+    }
+    if (!isRecord(value)) {
+      warn('tokens-line-not-object', 'The line is not a JSON object; it is skipped.', line);
+      return;
+    }
+    if (value.v !== TOKENS_VERSION) {
+      warn('tokens-version-unknown', `The line does not carry \`v: ${TOKENS_VERSION}\`; it is skipped.`, line);
+      return;
+    }
+    const kind = value.kind;
+    if (!isRowKind(kind)) {
+      warn('tokens-kind-unknown', 'The line carries no known `kind`; it is skipped.', line, typeof kind === 'string' ? kind : undefined);
+      return;
+    }
+    const keys = TOKEN_ROW_KEYS[kind];
+    for (const key of keys.slice(2)) {
+      if (!(key in value)) {
+        warn('tokens-key-missing', `The ${kind} line lacks \`${key}\`; it is skipped.`, line, key);
+        return;
+      }
+      if (!validValue(kind, key, value[key])) {
+        warn('tokens-value-invalid', `The ${kind} line's \`${key}\` has the wrong shape; it is skipped.`, line, key);
+        return;
+      }
+    }
+    for (const key of Object.keys(value)) {
+      if (!keys.includes(key)) warn('tokens-key-unknown', `The ${kind} line carries \`${key}\`, which its kind does not name; the key is dropped.`, line, key);
+    }
+    rows.push(rowOf(value, kind));
+  });
+
+  return { rows, diagnostics };
 }
