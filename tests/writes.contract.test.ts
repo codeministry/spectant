@@ -405,3 +405,38 @@ describe("the writes contract is browser-safe", () => {
     expect(offending).toEqual([]);
   });
 });
+
+// T98 (ISC-130.3): the root `CLAUDE.md` and the `README.md` name the same write paths as `WRITE_PATHS`. The expected
+// words come from the constant at test time, so a path renamed or added there fails here until both documents follow.
+describe("the documents name every write path", () => {
+  const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"] as const;
+  /** `specs/NNN-slug/`, the folder placeholder, as `WRITE_PATHS` itself writes it (the allocation creates it). */
+  const folder = WRITE_PATHS.allocate.creates;
+  /** A listed path as a document may write it: whole, or relative to the spec folder when it lies inside it. */
+  const forms = (path: string): string[] => (path.startsWith(folder) && path !== folder ? [path, path.slice(folder.length)] : [path]);
+  const docs = ["CLAUDE.md", "README.md"].map((name) => ({ name, text: readFileSync(join(ROOT, name), "utf8") }));
+
+  test("each document names every path of every WRITE_PATHS entry, in backticks", () => {
+    expect(folder).toBe("specs/NNN-slug/");
+    for (const { name, text } of docs) {
+      for (const [op, paths] of Object.entries(WRITE_PATHS)) {
+        const listed: string[] = [...paths.writes, ...paths.removes, ...(paths.creates === null ? [] : [paths.creates])];
+        for (const path of listed) {
+          const named = forms(path).some((form) => text.includes(`\`${form}\``));
+          expect({ name, op, path, named }).toEqual({ name, op, path, named: true });
+        }
+      }
+    }
+  });
+
+  test("each document counts the write paths as WRITE_PATHS does, and no longer says two exceptions", () => {
+    const total = Object.keys(WRITE_PATHS).length;
+    const count: string = NUMBER_WORDS[total] ?? String(total);
+    expect(count).toBe("five");
+    for (const { name, text } of docs) {
+      // Whitespace as Markdown reads it: a phrase may wrap across a line.
+      expect({ name, stale: /exactly\s+two\s+exceptions/i.test(text) }).toEqual({ name, stale: false });
+      expect({ name, counted: new RegExp(`\\b${count}\\s+write\\s+paths\\b`, "i").test(text) }).toEqual({ name, counted: true });
+    }
+  });
+});

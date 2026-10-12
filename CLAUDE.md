@@ -36,14 +36,26 @@ administration. The skill targets Claude Code first and is meant to work with ot
   untracked planning material in the developer's own language; nothing from them is quoted into a tracked file.
 - **Loopback only; nothing leaves the machine.** The server binds 127.0.0.1 or ::1, and no code path calls an
   external host.
-- **Files in registered repositories are read-only for the app, `.git/` included**, with exactly two exceptions the
-  user triggers in the app (spec 002): the reviewed mark (`specs/NNN-slug/.gates/reviewed.json` plus one line in
-  `events.jsonl`) and a task checkbox (one line of `tasks.md`). Both go through `server/src/writes.ts`: the file is
-  read, its sha256 compared with the one the client rendered (409 on a mismatch, the file byte-identical), lock sources
-  consulted (423 while a session holds the claim), then the target written in place with an fsync — no temp file, no
-  git object, nothing else in the tree. The guard is `tests/readonly.test.ts`: it hashes a registered repository,
-  `.git/` included, before and after every read route and every refused write, and only those two files may differ
-  after an accepted one.
+- **Files in registered repositories are read-only for the app, `.git/` included**, except for exactly five write
+  paths, each named with every file it may touch in `WRITE_PATHS` (`server/src/writes.contract.ts`):
+  1. the reviewed mark: `specs/NNN-slug/.gates/reviewed.json` plus one line in `events.jsonl` (spec 002);
+  2. a task checkbox: one line of `tasks.md` (spec 002);
+  3. a stage transition: `stage:` in `spec.md` plus one line in `events.jsonl`, through the board or the API
+     (spec 008);
+  4. a story's allocation: the new folder `specs/NNN-slug/` with `context.md`, `spec.md` and `events.jsonl`, and the
+     story file `specs/ideas/<slug>.md` removed (spec 008);
+  5. the feature-level code-review mark: `.gates/code-reviewed.json` with `scope: F<n>` plus one line in
+     `events.jsonl` per spec of the feature, written by the CLI `spectant gate code-reviewed F<n>`, never by a route
+     (spec 008).
+
+  The first four are user actions in the app and go through `server/src/writes.ts`: the file is read, its sha256
+  compared with the one the client rendered (409 on a mismatch, the file byte-identical), lock sources consulted (423
+  while a session holds the claim), then the target written in place with an fsync — no temp file, no git object,
+  nothing else in the tree. `.gates/` and the allocated `specs/NNN-slug/` are the only directories a write may create.
+  The fifth uses the same in-place primitives and is refused while a spec of the feature still holds an open claim.
+  The guard is `tests/readonly.test.ts`: it hashes a registered repository, `.git/` included, before and after every
+  read route and every refused write, and after an accepted one only the files of that write's `WRITE_PATHS` entry
+  may differ; the CLI mark's probes are in `tests/gates.test.ts` (`-t feature`).
 - **One parser for the spec format, in `core/`.** Every other lane imports it; a second implementation is a defect.
 - **Pin every dependency and tool version.** Reproducible builds and baselines depend on it.
 
