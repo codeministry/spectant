@@ -1,3 +1,4 @@
+import { CdkDrag, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { NgTemplateOutlet } from '@angular/common';
 import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, effect, type ElementRef, inject, signal, untracked, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -19,6 +20,7 @@ import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../shared/ui/term/term';
 import { planningPageState } from '../planning/planning-page';
 import { BoardCard, CARD_EDGE } from './board-card';
+import { BoardDrag, type BoardDropEvent, provideBoardDrag, withMoves } from './board-drag';
 import { BoardFilters, withoutFilters } from './board-filters';
 import {
   type BoardCard as BoardCardModel,
@@ -31,6 +33,7 @@ import {
   buildBoard,
   parseBoardQuery,
 } from './board-model';
+import { RefusalNotice } from './refusal-notice';
 
 /** Every key the board query owns: a navigation clears the ones the next query leaves out and keeps any other param. */
 const QUERY_KEYS = ['feature', 'milestone', 'type', 'assignee', 'group', 'col'] as const;
@@ -108,11 +111,23 @@ interface BandRow {
  * radio picks the one visible column (`?col`, else the model's default), a 44 px sticky bar (◂ · stage · ▸) takes the
  * control's place once it scrolled away, and the bar carries the drop tray, one placeholder per stage, which T125
  * opens during a drag (`trayOpen`).
+ *
+ * Drag and drop (T125, T126, ISC-130) is `@angular/cdk/drag-drop` alone (DS-APP-23): the page is the
+ * `cdkDropListGroup` (a host directive), so every `cdkDropList` under it is connected: each column and stub, each band
+ * cell, the strip (one list over `ui-segmented`, the segment under the drop point names the stage) and at compact the
+ * one column and every tray slot. Each card is a `cdkDrag` lifted by its grip, with `BOARD_DRAG_CONFIG`'s delays.
+ * Lists never sort and keep an anchor (`cdkDropListHasAnchor`), so the card's slot stays as a dashed placeholder; a
+ * placeholder entering a stub, the strip or a slot is hidden, so their tracks never change. While a card is lifted
+ * every list carries `data-drop` (`dropHint`): `allowed` columns get the dashed outline, `not-next` and `gate` the
+ * muted hint. A drop goes to `BoardDrag.drop`; its answer moves the card or leaves a `app-refusal-notice` under it.
  */
 @Component({
   selector: 'app-board-page',
   imports: [
+    CdkDrag,
+    CdkDropList,
     NgTemplateOutlet,
+    RefusalNotice,
     TranslocoPipe,
     RouterLink,
     NotFound,
@@ -127,13 +142,17 @@ interface BandRow {
     UiTerm,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { 'data-page': 'board', '[attr.data-tier]': 'tier()' },
+  hostDirectives: [CdkDropListGroup],
+  providers: [provideBoardDrag()],
+  host: { 'data-page': 'board', '[attr.data-tier]': 'tier()', '[attr.data-dragging]': 'drag.dragging() ? "" : null' },
   templateUrl: './board-page.html',
   styleUrl: './board-page.css',
 })
 export class BoardPage {
   protected readonly state = inject(ShellState);
   protected readonly data = inject(ShellData);
+  /** The drag state and the transition write (T125, T126). */
+  readonly drag = inject(BoardDrag);
   private readonly transloco = inject(TranslocoService);
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
   private readonly route = inject(ActivatedRoute);
@@ -160,13 +179,16 @@ export class BoardPage {
   protected readonly asColumn = (column: BoardColumn): BoardColumn => column;
   protected readonly asBand = (band: BandHead): BandHead => band;
 
-  /** The board, once the planning tree and the dashboard rows have both answered; null while loading. */
+  /**
+   * The board, once the planning tree and the dashboard rows have both answered; null while loading. Accepted moves
+   * the tree does not show yet are applied first (`withMoves`), so a moved card lands on the 200.
+   */
   protected readonly board = computed<BoardModel | null>(() => {
     const planning = this.data.planningModel();
     const dashboard = this.data.dashboard.value();
     if (planning === null || dashboard === undefined) return null;
     return buildBoard({
-      planning,
+      planning: withMoves(planning, this.drag.moves()),
       rows: boardRowsOf(dashboard.kind === 'ok' ? dashboard.body : null),
       actors: this.data.actorList(),
       query: this.query(),
@@ -323,6 +345,28 @@ export class BoardPage {
     if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' });
     el.querySelector<HTMLElement>('[role="radio"][tabindex="0"]')?.focus({ preventScroll: true });
   }
+
+  /** A card is lifted: its hints show, and at compact the tray opens under the sticky bar. */
+  protected dragStarted(card: BoardCardModel): void {
+    this.drag.start(card);
+    this.trayOpen.set(this.compact());
+  }
+
+  protected dragEnded(): void {
+    this.drag.end();
+    this.trayOpen.set(false);
+  }
+
+  /** A CDK drop on a column, stub, band cell, strip segment or tray slot: the transition, whatever the hint said. */
+  protected dropped(event: BoardDropEvent): void {
+    void this.drag.drop(this.ws(), event.item.data, this.drag.stageOf(event));
+  }
+
+  /** The stage word of the lifted card, for the "not next from …" hint. */
+  protected readonly fromLabel = computed(() => {
+    const card = this.drag.dragging();
+    return card === null ? '' : this.transloco.translate(`stages.${card.stage}`, {}, this.lang());
+  });
 
   private navigate(query: BoardQueryState): void {
     void this.router.navigate([], { relativeTo: this.route, queryParams: boardNavigationParams(query), queryParamsHandling: 'merge', replaceUrl: true });

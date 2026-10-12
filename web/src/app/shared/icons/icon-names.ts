@@ -78,4 +78,7 @@ export const ICON_NAMES = [
   'octagon-x',
   'git-pull-request',
   'check-check',
+  // Spec 008, the board's drag hints and its refusal notice (T125, T126).
+  'ban',
+  'circle-alert',
 ] as const;

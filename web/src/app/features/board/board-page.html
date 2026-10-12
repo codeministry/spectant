@@ -61,7 +61,7 @@
               >
                 <ui-icon [name]="glyphs[c.stage]" [size]="16" />
                 <span class="sl">{{ curLabel }}</span>
-                <span class="count">{{ c.cards.length }}</span>
+                <span class="count" [attr.data-morph]="drag.morph().includes(c.stage) ? '' : null">{{ c.cards.length }}</span>
               </button>
               <button
                 ui-icon-button
@@ -82,10 +82,18 @@
             [attr.aria-hidden]="trayOpen() ? null : 'true'"
           >
             @for (column of b.columns; track column.stage) {
-              <div class="slot" [attr.data-drop-col]="column.stage" [attr.data-current]="column.stage === b.current ? '' : null" [style.--role]="edges[column.stage]">
+              <div
+                class="slot"
+                cdkDropList
+                cdkDropListHasAnchor
+                [cdkDropListData]="column.stage"
+                (cdkDropListDropped)="dropped($event)"
+                [attr.data-drop]="drag.hint(column.stage)"
+                [attr.data-drop-col]="column.stage" [attr.data-current]="column.stage === b.current ? '' : null" [style.--role]="edges[column.stage]">
                 <ui-icon [name]="glyphs[column.stage]" [size]="16" />
                 <span class="sl">{{ 'stages.' + column.stage | transloco }}</span>
-                <span class="count">{{ column.cards.length }}</span>
+                <span class="count" [attr.data-morph]="drag.morph().includes(column.stage) ? '' : null">{{ column.cards.length }}</span>
+                <ng-container [ngTemplateOutlet]="hintTpl" [ngTemplateOutletContext]="{ $implicit: column.stage }" />
               </div>
             }
           </div>
@@ -96,6 +104,11 @@
           @let label = 'stages.' + stage | transloco;
           <section
             class="one"
+            cdkDropList
+            cdkDropListHasAnchor
+            [cdkDropListData]="stage"
+            (cdkDropListDropped)="dropped($event)"
+            [attr.data-drop]="drag.hint(stage)"
             [attr.data-col]="stage"
             [style.--role]="edges[stage]"
             [attr.aria-label]="'board.workspace.column.name' | transloco: { stage: label, count: c.count, waiting: c.waitingOnYou }"
@@ -112,7 +125,20 @@
             } @else if (c.bands.length === 0) {
               <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + stage">
                 @for (card of c.cards; track card.key) {
-                  <li><app-board-card [card]="card" [ws]="ws()" /></li>
+                  <li [attr.data-moved]="drag.moved() === card.key ? '' : null">
+                    <app-board-card
+                      cdkDrag
+                      [cdkDragData]="card"
+                      [cdkDragDisabled]="!drag.draggable(card)"
+                      (cdkDragStarted)="dragStarted(card)"
+                      (cdkDragEnded)="dragEnded()"
+                      [card]="card"
+                      [ws]="ws()"
+                    />
+                    @if (drag.refusalOf(card); as refusal) {
+                      <app-refusal-notice [refusal]="refusal" (closed)="drag.dismiss(card.key)" />
+                    }
+                  </li>
                 }
               </ul>
             } @else {
@@ -122,7 +148,20 @@
                 </div>
                 <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + stage">
                   @for (card of band.cards; track card.key) {
-                    <li><app-board-card [card]="card" [ws]="ws()" /></li>
+                    <li [attr.data-moved]="drag.moved() === card.key ? '' : null">
+                    <app-board-card
+                      cdkDrag
+                      [cdkDragData]="card"
+                      [cdkDragDisabled]="!drag.draggable(card)"
+                      (cdkDragStarted)="dragStarted(card)"
+                      (cdkDragEnded)="dragEnded()"
+                      [card]="card"
+                      [ws]="ws()"
+                    />
+                    @if (drag.refusalOf(card); as refusal) {
+                      <app-refusal-notice [refusal]="refusal" (closed)="drag.dismiss(card.key)" />
+                    }
+                  </li>
                   }
                 </ul>
               }
@@ -138,7 +177,7 @@
           </section>
         }
       } @else {
-        <div class="strip">
+        <div class="strip" cdkDropList [cdkDropListData]="null" (cdkDropListDropped)="dropped($event)">
           <ui-segmented
             mode="strip"
             [options]="stripOptions()"
@@ -165,13 +204,19 @@
                   <section
                     class="stub"
                     data-stub
+                    cdkDropList
+                    cdkDropListHasAnchor
+                    [cdkDropListData]="stage"
+                    (cdkDropListDropped)="dropped($event)"
+                    [attr.data-drop]="drag.hint(stage)"
                     [attr.data-col]="stage"
                     [style.--role]="edges[stage]"
                     [style.grid-column]="i + 1"
                     [attr.aria-labelledby]="'col-' + stage"
                   >
                     <ui-icon [name]="glyphs[stage]" [size]="16" />
-                    <span class="count">0</span>
+                    <span class="count" [attr.data-morph]="drag.morph().includes(stage) ? '' : null">0</span>
+                    <ng-container [ngTemplateOutlet]="hintTpl" [ngTemplateOutletContext]="{ $implicit: stage }" />
                     <h2 class="vlabel" [id]="'col-' + stage">{{ label }}</h2>
                     <span class="vnote">
                       @if (column.stub.hidden > 0) {
@@ -184,16 +229,35 @@
                 } @else {
                   <section
                     class="col"
+                    cdkDropList
+                    cdkDropListHasAnchor
+                    [cdkDropListData]="stage"
+                    (cdkDropListDropped)="dropped($event)"
+                    [attr.data-drop]="drag.hint(stage)"
                     [attr.data-col]="stage"
                     [style.--role]="edges[stage]"
                     [style.grid-column]="i + 1"
                     [attr.aria-label]="'board.workspace.column.name' | transloco: { stage: label, count: column.count, waiting: column.waitingOnYou }"
                   >
                     <ng-container [ngTemplateOutlet]="head" [ngTemplateOutletContext]="{ $implicit: column, label: label }" />
+                    <ng-container [ngTemplateOutlet]="hintTpl" [ngTemplateOutletContext]="{ $implicit: stage }" />
                     @if (bands().length === 0) {
                       <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + stage">
                         @for (card of column.cards; track card.key) {
-                          <li><app-board-card [card]="card" [ws]="ws()" /></li>
+                          <li [attr.data-moved]="drag.moved() === card.key ? '' : null">
+                    <app-board-card
+                      cdkDrag
+                      [cdkDragData]="card"
+                      [cdkDragDisabled]="!drag.draggable(card)"
+                      (cdkDragStarted)="dragStarted(card)"
+                      (cdkDragEnded)="dragEnded()"
+                      [card]="card"
+                      [ws]="ws()"
+                    />
+                    @if (drag.refusalOf(card); as refusal) {
+                      <app-refusal-notice [refusal]="refusal" (closed)="drag.dismiss(card.key)" />
+                    }
+                  </li>
                         }
                       </ul>
                     }
@@ -206,11 +270,31 @@
                   <ng-container [ngTemplateOutlet]="bandHead" [ngTemplateOutletContext]="{ $implicit: band, group: b.query.group }" />
                 </div>
                 @for (cell of band.cells; track cell.stage; let i = $index) {
-                  <div class="cell" [class.stubcell]="cell.stub" [style.grid-row]="3 + r * 2" [style.grid-column]="i + 1">
+                  <div
+                    class="cell"
+                    cdkDropList
+                    cdkDropListHasAnchor
+                    [cdkDropListData]="cell.stage"
+                    (cdkDropListDropped)="dropped($event)"
+                    [attr.data-drop]="drag.hint(cell.stage)"
+                    [class.stubcell]="cell.stub" [style.grid-row]="3 + r * 2" [style.grid-column]="i + 1">
                     @if (cell.cards.length > 0) {
                       <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + cell.stage">
                         @for (card of cell.cards; track card.key) {
-                          <li><app-board-card [card]="card" [ws]="ws()" /></li>
+                          <li [attr.data-moved]="drag.moved() === card.key ? '' : null">
+                    <app-board-card
+                      cdkDrag
+                      [cdkDragData]="card"
+                      [cdkDragDisabled]="!drag.draggable(card)"
+                      (cdkDragStarted)="dragStarted(card)"
+                      (cdkDragEnded)="dragEnded()"
+                      [card]="card"
+                      [ws]="ws()"
+                    />
+                    @if (drag.refusalOf(card); as refusal) {
+                      <app-refusal-notice [refusal]="refusal" (closed)="drag.dismiss(card.key)" />
+                    }
+                  </li>
                         }
                       </ul>
                     }
@@ -254,7 +338,7 @@
     @if (waiting(column.stage)) {
       <ui-icon class="wait" name="hourglass" [size]="14" [label]="'board.workspace.column.waitingStage' | transloco" />
     }
-    <span class="count" aria-hidden="true">{{ column.count }}</span>
+    <span class="count" aria-hidden="true" [attr.data-morph]="drag.morph().includes(column.stage) ? '' : null">{{ column.count }}</span>
   </header>
 </ng-template>
 
@@ -278,4 +362,23 @@
     }
     <span class="n">{{ 'board.workspace.swimlanes.cards' | transloco: { count: band.count } }}</span>
   </h3>
+</ng-template>
+
+<!-- The drag hint of one column while a card is lifted (T125): "not next from …", "gate", or "current". -->
+<ng-template #hintTpl let-stage>
+  @switch (drag.hint(stage)) {
+    @case ('not-next') {
+      <span class="drop-hint" data-hint="not-next"
+        ><ui-icon name="ban" [size]="14" /><span class="hl">{{ 'board.workspace.drag.notNext' | transloco: { stage: fromLabel() } }}</span></span
+      >
+    }
+    @case ('gate') {
+      <span class="drop-hint" data-hint="gate"
+        ><ui-icon name="shield-check" [size]="14" /><span class="hl">{{ 'board.workspace.drag.gate' | transloco }}</span></span
+      >
+    }
+    @case ('current') {
+      <span class="drop-hint" data-hint="current"><span class="hl">{{ 'board.workspace.drag.current' | transloco }}</span></span>
+    }
+  }
 </ng-template>

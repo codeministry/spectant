@@ -1170,7 +1170,8 @@
         "dismiss": "Dismiss",
         "lock": "writes paused · {{actor}} holds {{claim}}",
         "conflict": "{{file}} changed on disk · Reload",
-        "refreshed": "{{id}} changed on disk · the board refreshed"
+        "refreshed": "{{id}} changed on disk · the board refreshed",
+        "failed": "The move could not be written (status {{status}})"
       },
       "allocate": {
         "title": "Allocate as spec {{id}}?",

@@ -379,22 +379,29 @@ h1 {
   line-height: 20px;
 }
 
-/* The drop tray: the whole stage grid as drop-target placeholders (52 px, rows of five), hidden until a drag opens it. */
+/*
+ * The drop tray: the whole stage grid as drop-target placeholders (52 px, rows of five), hidden until a drag opens it.
+ * Closed it is laid out but invisible and inert, not `display: none`: the CDK measures every connected list once, when
+ * the drag starts, so the slots must have their boxes before the tray opens (T125).
+ */
 .tray {
   position: absolute;
   inset-inline: 0;
   inset-block-start: 100%;
-  display: none;
+  display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--line);
   border-radius: 0 0 var(--radius-box) var(--radius-box);
   background: var(--color-base-100);
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .tray[data-open] {
-  display: grid;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .slot {
@@ -448,5 +455,136 @@ h1 {
 @media (forced-colors: active) {
   .slot {
     border-color: CanvasText;
+  }
+}
+
+/*
+ * Drag and drop (T125, T126, ISC-130; design 008 § Drag, Drop und die Alternativen). While a card is lifted every list
+ * carries `data-drop`: the columns the workflow allows get a dashed primary outline, `not-next` and `gate` columns are
+ * muted under their hint, which overlays the column top so nothing shifts under the pointer. The lifted card follows
+ * the pointer with a 2 px primary outline; its slot stays as a dashed placeholder (the CDK anchor), and a placeholder
+ * entering a stub, the strip or a tray slot is hidden, so their fixed tracks never change. No glow, tokens only.
+ */
+.col,
+.stub,
+.cell,
+.one,
+.slot {
+  position: relative;
+}
+
+:host([data-dragging]) [data-drop='allowed'] {
+  outline: 2px dashed var(--color-primary);
+  outline-offset: -2px;
+}
+
+:host([data-dragging]) [data-drop='not-next'] .cards,
+:host([data-dragging]) [data-drop='gate'] .cards,
+:host([data-dragging]) .slot[data-drop='not-next'],
+:host([data-dragging]) .slot[data-drop='gate'] {
+  opacity: 0.55;
+}
+
+.drop-hint {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: 44px;
+  inset-inline: 8px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  min-inline-size: 0;
+  padding: 2px 6px;
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+  pointer-events: none;
+}
+
+.drop-hint .hl {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drop-hint[data-hint='gate'] {
+  color: var(--ques-ink);
+}
+
+.stub .drop-hint,
+.slot .drop-hint {
+  position: static;
+  justify-content: center;
+  padding: 0;
+  background: none;
+}
+
+.stub .drop-hint .hl {
+  writing-mode: vertical-rl;
+}
+
+.slot .drop-hint .hl {
+  display: none;
+}
+
+.cdk-drag-preview {
+  border-radius: var(--radius-box);
+  outline: 2px solid var(--color-primary);
+}
+
+.cdk-drag-anchor,
+.cdk-drag-placeholder {
+  position: relative;
+}
+
+.cdk-drag-anchor::after,
+.cdk-drag-placeholder::after {
+  position: absolute;
+  inset: 0;
+  border: 1px dashed var(--muted-ink);
+  border-radius: var(--radius-box);
+  background: var(--color-base-200);
+  content: '';
+}
+
+.stub .cdk-drag-placeholder,
+.strip .cdk-drag-placeholder,
+.slot .cdk-drag-placeholder,
+.cell.stubcell .cdk-drag-placeholder {
+  display: none;
+}
+
+/* An accepted move: the counts morph in, the card carries the changed-value tint (1200 ms) over its surface. */
+.count[data-morph] {
+  animation: board-count-in var(--motion-duration-slow) var(--motion-ease-standard);
+}
+
+@keyframes board-count-in {
+  from {
+    opacity: 0;
+    transform: translateY(-25%);
+  }
+}
+
+.cards li {
+  position: relative;
+}
+
+.cards li[data-moved]::after {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-box);
+  content: '';
+  pointer-events: none;
+  animation: ui-tint-fade var(--motion-duration-highlight) var(--motion-ease-standard);
+}
+
+@media (forced-colors: active) {
+  :host([data-dragging]) [data-drop='allowed'],
+  .cdk-drag-preview {
+    outline-color: Highlight;
   }
 }

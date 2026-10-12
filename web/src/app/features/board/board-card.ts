@@ -1,3 +1,4 @@
+import { CdkDragHandle } from '@angular/cdk/drag-drop';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
@@ -43,13 +44,15 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  * - Row 3: the main feature chip `F<n>` (its name in the tooltip), the milestone (muted) and, pushed to the end,
  *   `ui-actor-chip` with the resolved name or the raw id; nothing when the card is unassigned.
  * - Row 4, waiting cards only: `ui-reason` compact, the row's phrase and its command chip (none for close-pending).
- * - The `grip-vertical` zone at the trailing edge: decorative until the drag task (T125) gives it behaviour.
+ * - The `grip-vertical` zone at the trailing edge is the `cdkDragHandle` (T125): the board page puts `cdkDrag` on this
+ *   element and only the grip lifts the card, so the title stays a link. It stays `aria-hidden`; the keyboard and
+ *   single-pointer path is the "Move to…" menu (T127).
  *
  * Variants come only from `ui-card`: `side` (the edge, `--edge` per stage) on every card, `dashed` on a story's.
  */
 @Component({
   selector: 'app-board-card',
-  imports: [RouterLink, TranslocoPipe, UiActorChip, UiCard, UiIcon, UiPriority, UiReason, UiTypeGlyph],
+  imports: [CdkDragHandle, RouterLink, TranslocoPipe, UiActorChip, UiCard, UiIcon, UiPriority, UiReason, UiTypeGlyph],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-key]': 'card().key', '[attr.data-stage]': 'card().stage', '[attr.data-kind]': 'card().kind' },
   styles: `
@@ -76,7 +79,8 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
     .feat { background: var(--disp-t); color: var(--disp-ink); font-family: var(--font-mono); }
     .ms { border: 1px solid var(--line); color: var(--muted-ink); }
     ui-reason { position: relative; z-index: 1; }
-    .grip { display: grid; place-items: center; align-self: center; inline-size: 44px; block-size: 44px; color: var(--muted-ink); }
+    .grip { display: grid; place-items: center; align-self: center; inline-size: 44px; block-size: 44px; color: var(--muted-ink); cursor: grab; }
+    .grip:active { cursor: grabbing; }
     .vh { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     @media (forced-colors: active) {
       .title:focus-visible::after { outline-color: Highlight; }
@@ -133,7 +137,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
             <ui-reason [compact]="true" [phrase]="reason" [command]="c.command" />
           }
         </div>
-        <span class="grip" aria-hidden="true"><ui-icon name="grip-vertical" [size]="16" /></span>
+        <span class="grip" cdkDragHandle aria-hidden="true"><ui-icon name="grip-vertical" [size]="16" /></span>
       </article>
     </ui-card>
   `,

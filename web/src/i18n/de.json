@@ -1170,7 +1170,8 @@
         "dismiss": "Schließen",
         "lock": "Schreiben pausiert · {{actor}} hält {{claim}}",
         "conflict": "{{file}} wurde auf der Festplatte geändert · Neu laden",
-        "refreshed": "{{id}} wurde auf der Festplatte geändert · das Board wurde aktualisiert"
+        "refreshed": "{{id}} wurde auf der Festplatte geändert · das Board wurde aktualisiert",
+        "failed": "Der Wechsel konnte nicht geschrieben werden (Status {{status}})"
       },
       "allocate": {
         "title": "Als Spec {{id}} anlegen?",
