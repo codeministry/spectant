@@ -1,4 +1,5 @@
 import type { IconName } from '../../shared/icons/icons';
+import type { TechTabId } from './page-tabs';
 
 /**
  * The spec page's areas and their tabs (design.md, ISC-76): the one registry the area menu, the tab bar, the routes
@@ -71,7 +72,8 @@ function must(key: string): never {
 /** Route data the shell reads (`ShellState.route`): which area and tab a route shows, or that it is the not-found page. */
 export interface ShellRouteData {
   readonly area?: AreaId;
-  readonly tab?: TabId;
+  /** A spec tab under `/w/:ws/s/:id`, or a tech tab on `page: 'tech'` (`ShellState.route().techTab`, spec 023). */
+  readonly tab?: TabId | TechTabId;
   /** The workspace-scope page a `w/:ws` route shows (`ShellState.route().wsPage`); absent means the spec list. */
   readonly page?: WorkspacePageId;
   readonly notFound?: boolean;
@@ -80,12 +82,13 @@ export interface ShellRouteData {
 /**
  * The workspace-scope pages, the counterpart of the spec areas one level up. `idea` (spec 008, `/w/:ws/ideas/:slug`)
  * is a read-only story page reached from a board card, the palette or a chip, never from the menu: it has no
- * `WORKSPACE_PAGES` entry, so the menu's pages are `WorkspaceMenuPageId`.
+ * `WORKSPACE_PAGES` entry, so the menu's pages are `WorkspaceMenuPageId`. `tech` (spec 023, `/w/:ws/tech/<tab>`, tabs
+ * in `TECH_TABS`) is routed but not listed yet: its menu entry comes with T20, which drops it from the exclusion.
  */
-export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea';
-export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea'>;
+export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea' | 'tech';
+export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea' | 'tech'>;
 
-const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea'];
+const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea', 'tech'];
 
 export const isWorkspacePageId = (value: unknown): value is WorkspacePageId =>
   (WORKSPACE_PAGE_IDS as readonly unknown[]).includes(value);
@@ -121,7 +124,13 @@ export const WORKSPACE_PAGES: readonly WorkspacePage[] = [
   { id: 'milestones', icon: 'flag', labelKey: 'shell.pages.milestones', summaryKey: 'shell.pages.summary.milestones', goKey: 'm' },
 ];
 
-export const workspacePageById = (id: WorkspaceMenuPageId): WorkspacePage => WORKSPACE_PAGES.find((page) => page.id === id) ?? must(id);
+/** A menu page's entry; `tech` has none until T20 lists it, so the area trigger names no page there yet. */
+export function workspacePageById(id: WorkspaceMenuPageId): WorkspacePage;
+export function workspacePageById(id: WorkspaceMenuPageId | 'tech'): WorkspacePage | null;
+export function workspacePageById(id: WorkspaceMenuPageId | 'tech'): WorkspacePage | null {
+  if (id === 'tech') return null;
+  return WORKSPACE_PAGES.find((page) => page.id === id) ?? must(id);
+}
 
 /** `['/w', ws]` for Specs (the workspace root), else `['/w', ws, page]`, as a router link. */
 export const workspaceLink = (ws: string, page: WorkspaceMenuPageId): string[] => (page === 'specs' ? ['/w', ws] : ['/w', ws, page]);

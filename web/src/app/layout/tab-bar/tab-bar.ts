@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { UiRovingItem, UiRovingList } from '../../shared/ui/roving-list.directive';
-import { areaById, type SpecArea, specLink, type TabId } from '../shell/areas';
-import { ShellData } from '../shell/shell-data.service';
-import { ShellState, type TabBarPlacement } from '../shell/shell-state.service';
+import { areaById, type SpecArea } from '../shell/areas';
+import type { PageTab } from '../shell/page-tabs';
+import type { ShellState, TabBarPlacement } from '../shell/shell-state.service';
 
 /** The current area when it has more than one tab (Notes has one, the dashboard none: no bar, design.md § Tab bar). */
 export function tabbedArea(state: ShellState): SpecArea | null {
@@ -15,11 +15,11 @@ export function tabbedArea(state: ShellState): SpecArea | null {
 }
 
 /**
- * The tab bar (ISC-76): the current area's tabs from `SPEC_AREAS` as route links, `aria-current="page"` on the open
- * tab, one tab stop with roving focus. One component; `TabBarSlot` decides where it renders per tier and passes the
- * placement: in the header (compact) the strip scrolls on its own with a fade on the trailing edge; under the spec
- * head (medium, wide) the first tab's label shares the cards' left edge. Counts ride inside the tabs where the spec
- * model has them (Claims closed/total, Tasks landed/total); a count the model does not carry is left out.
+ * The tab bar (ISC-76, ISC-134.1): the tabs it is given as route links, `aria-current="page"` on the current one, one
+ * tab stop with roving focus. One component for every page with tabs (DS-APP-27): `TabBarSlot` builds the list (the
+ * spec page's from `SPEC_AREAS`, the tech page's from `TECH_TABS`) and decides where it renders per tier. In the
+ * header (compact) the strip scrolls on its own with a fade on the trailing edge; under the page head (medium, wide)
+ * the first tab's label shares the cards' left edge. A count rides inside its tab; a tab without one shows none.
  */
 @Component({
   selector: 'app-tab-bar',
@@ -37,15 +37,15 @@ export function tabbedArea(state: ShellState): SpecArea | null {
     .count { color: var(--muted-ink); font-family: var(--font-mono); font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; }
   `,
   template: `
-    @if (area(); as area) {
-      <nav uiRovingList [attr.aria-label]="'shell.tabBar' | transloco: { area: (areaKey() | transloco) }">
+    @if (tabs().length > 0) {
+      <nav uiRovingList [attr.aria-label]="'shell.tabBar' | transloco: { area: (labelKey() | transloco) }">
         @for (tab of tabs(); track tab.id) {
           <a
             uiRovingItem
             [routerLink]="tab.link"
             [attr.data-tab]="tab.id"
-            [attr.aria-current]="tab.id === state.tab() ? 'page' : null"
-            >{{ tab.key | transloco }}
+            [attr.aria-current]="tab.id === current() ? 'page' : null"
+            >{{ tab.labelKey | transloco }}
             @if (tab.count; as count) {
               <span class="count" [attr.data-count]="tab.id">{{ count }}</span>
             }</a
@@ -56,29 +56,10 @@ export function tabbedArea(state: ShellState): SpecArea | null {
   `,
 })
 export class TabBar {
+  readonly tabs = input.required<readonly PageTab[]>();
+  /** The id of the open tab, `aria-current="page"`; null marks none. */
+  readonly current = input<string | null>(null);
+  /** Transloco key of the name of what the tabs belong to (an area, a page): the bar's accessible name. */
+  readonly labelKey = input.required<string>();
   readonly placement = input<TabBarPlacement>('main');
-
-  protected readonly state = inject(ShellState);
-  private readonly data = inject(ShellData);
-  protected readonly area = computed(() => tabbedArea(this.state));
-  protected readonly areaKey = computed(() => `shell.areas.${this.area()?.id ?? 'dashboard'}`);
-  protected readonly tabs = computed(() => {
-    const area = this.area();
-    const ws = this.state.ws();
-    const id = this.state.specId();
-    if (area === null || ws === null || id === null) return [];
-    const counts = this.counts();
-    return area.tabs.map((tab) => ({ id: tab, key: `shell.tabs.${tab}`, link: specLink(ws, id, tab), count: counts.get(tab) ?? null }));
-  });
-
-  /** Counts from the spec model the shell already loaded (`areas.data`); Evidence has none there, so it shows none. */
-  private readonly counts = computed(() => {
-    const counts = new Map<TabId, string>();
-    const spec = this.data.spec.value();
-    if (spec?.kind !== 'ok') return counts;
-    const { claims, tasks } = spec.body.areas.data;
-    counts.set('claims', `${String(claims.closed)}/${String(claims.total)}`);
-    if (tasks !== null) counts.set('tasks', `${String(tasks.landed)}/${String(tasks.total)}`);
-    return counts;
-  });
 }
