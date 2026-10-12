@@ -1,0 +1,38 @@
+@if (risks(); as page) {
+  <section class="risks" data-tech-risks [attr.aria-label]="'tech.open.risks' | transloco">
+    @if (compact()) {
+      <ui-doc-prose [page]="page" />
+    } @else {
+      <ui-card [padding]="24">
+        <ui-doc-prose [page]="page" />
+      </ui-card>
+    }
+  </section>
+} @else {
+  <p class="risks no-risks" data-tech-norisks>{{ 'tech.open.noRisks' | transloco }}</p>
+}
+<section class="questions" data-tech-questions aria-labelledby="tech-open-questions">
+  <h2 id="tech-open-questions">{{ 'tech.open.questions' | transloco: { lines: lines(), specs: groups().length } }}</h2>
+  <ui-card [padding]="0">
+    @for (group of groups(); track group.id) {
+      <section class="group" [attr.data-fog-spec]="group.id" [attr.aria-labelledby]="'tech-fog-' + group.id">
+        <h3 [id]="'tech-fog-' + group.id">
+          <span class="num">{{ group.id }}</span>
+          @if (group.type; as type) {
+            <ui-type-glyph [type]="type" [size]="14" />
+          }
+          <span class="title">{{ group.title }}</span>
+        </h3>
+        <ul>
+          @for (line of group.lines; track $index) {
+            <li>
+              <a [routerLink]="group.link">{{ line }}<span class="vh"> · {{ 'tech.links.status' | transloco: { id: group.id } }}</span></a>
+            </li>
+          }
+        </ul>
+      </section>
+    } @empty {
+      <p class="none" data-tech-fog-none>{{ 'tech.open.none' | transloco }}</p>
+    }
+  </ui-card>
+</section>

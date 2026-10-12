@@ -11,7 +11,7 @@
 //
 // The web app imports this file's types only (`import type`, and the barrel re-exports types only), so the runtime
 // imports below (gates hashing through `node:crypto`, for one) never reach the browser bundle.
-import { listArchive } from './archive.ts';
+import { listArchive, specTitle } from './archive.ts';
 import type { ArchivedSpec } from './archive.ts';
 import { assigneeOf } from './assignee.ts';
 import { parseClaims } from './claims.ts';
@@ -46,7 +46,7 @@ import type { Progress } from './frontmatter.ts';
 import { gateState, readGateMark, reviewedGate } from './gates.ts';
 import { readIdeas } from './ideas.ts';
 import type { GateCheck, GateMarkReading, GateName, ReviewedFile } from './gates.ts';
-import { specIdOf, specSlugOf } from './spec-ref.ts';
+import { specIdOf } from './spec-ref.ts';
 import { codeReviewOf, isWorkflowStage, nextCommandWithReason, reasonOf, stageMismatchOf } from './stage.ts';
 import type { Stage, StageInput } from './stage.ts';
 import { driftReport, hasDrift, heldLocks, mainFeatureOf, masterProgressMismatch, partitionClaims } from './status.ts';
@@ -505,7 +505,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
   return {
     id,
     slug: f.folder,
-    title: summary?.title ?? specSlugOf(f.folder),
+    title: specTitle(summary, f.folder),
     type,
     priority: fm.data.priority,
     phase,

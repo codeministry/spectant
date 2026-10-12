@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { ClaimLock, DocName, DocsPage } from '../../../../core/src/files';
+import type { ClaimLock, DocName, DocsPage, TechModel } from '../../../../core/src/files';
 import {
   ACTORS_PATH,
   type ActorMapping,
@@ -268,6 +268,22 @@ export class ApiClient {
   /** T111: one story of `specs/ideas/` (`IdeaPage`: the ref, the rendered page, the raw hash), ETag-cached. */
   idea(ws: string, slug: string): Promise<ApiResult<IdeaPage>> {
     return this.get(workspaceRoutes.idea(ws, slug));
+  }
+
+  /**
+   * The tech page (spec 023, T9, ISC-134.1): core's `TechModel` over `specs/tech.md` and the active spec folders, served
+   * as it is (`pages: null` without the file), ETag-cached like `planning()`.
+   */
+  tech(ws: string): Promise<ApiResult<TechModel>> {
+    return this.get(workspaceRoutes.tech(ws));
+  }
+
+  /**
+   * The URL of one image tech.md names (`…/tech/asset?path=`), `path` relative to `specs/` as written there
+   * (`.tech/architecture.png`). A URL, not a read: the browser loads it as an `<img>` source.
+   */
+  techAssetUrl(ws: string, path: string): string {
+    return workspaceRoutes.techAsset(ws, path);
   }
 
   /** T111: the actor names (`GET /api/actors`), every stored `ActorMapping` ordered by id, ETag-cached. */

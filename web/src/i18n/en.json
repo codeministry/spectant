@@ -451,11 +451,13 @@
       "board": "Board",
       "features": "Features",
       "milestones": "Milestones",
+      "tech": "Tech",
       "summary": {
         "specs": "{{active}} active · {{archived}} archived",
         "board": "{{stages}} stages · {{cards}} cards · {{waiting}} wait on you",
         "features": "{{count}} features · {{closed}}/{{total}} closed",
-        "milestones": "{{count}} milestones · next {{next}}"
+        "milestones": "{{count}} milestones · next {{next}}",
+        "tech": "{{specs}} specs · {{fog}} open questions"
       }
     }
   },
@@ -567,6 +569,7 @@
     "contents": "Contents",
     "updated": "Updated {{date}}",
     "tableRegion": "Table {{index}}, scrolls sideways",
+    "figureRegion": "Diagram {{index}}, scrolls sideways",
     "imageMissing": "Image not in this checkout",
     "imageUnavailable": "Image could not be shown",
     "diagramMissing": {
@@ -1548,5 +1551,77 @@
   },
   "live": {
     "taskActors": "Working on {{ task }}"
+  },
+  "tech": {
+    "title": "Tech",
+    "loading": "Loading the tech page",
+    "error": "Could not load the tech page.",
+    "contents": "Contents",
+    "tabs": {
+      "overview": "Overview",
+      "architecture": "Architecture",
+      "status": "Status",
+      "specs": "Specs",
+      "open": "Open"
+    },
+    "subline": {
+      "file": "specs/tech.md · {{count}} specs",
+      "noFile": "no specs/tech.md · {{count}} specs"
+    },
+    "section": {
+      "missing": "specs/tech.md has no {{key}} section.",
+      "hint": "Run /spec-doc to draft it."
+    },
+    "empty": {
+      "title": "No tech.md yet",
+      "body": "Overview and Architecture come from specs/tech.md. Draft it from Claude Code:"
+    },
+    "status": {
+      "heading": "Status",
+      "caption": "Status of every spec",
+      "summary": {
+        "specs": "{{count}} specs",
+        "open": "{{count}} open",
+        "phase": "{{count}} {{phase}}",
+        "complete": "{{count}} complete"
+      },
+      "legend": "Complete specs are listed last.",
+      "columns": {
+        "spec": "Spec",
+        "title": "Title",
+        "type": "Type",
+        "stage": "Stage",
+        "claims": "Claims",
+        "tasks": "Tasks",
+        "fog": "Fog"
+      },
+      "claims": "{{closed}} of {{total}} claims closed",
+      "tasks": "{{landed}}/{{total}} tasks",
+      "noTasks": "no tasks",
+      "fog": "{{count}} fog",
+      "fogHint": "Fog counts the open-question lines (- fog:) in this spec.",
+      "complete": "Complete · {{count}}"
+    },
+    "specs": {
+      "goal": "Goal",
+      "approach": "Approach",
+      "noPlan": "No plan.md yet",
+      "open": "Open spec"
+    },
+    "links": {
+      "goal": "Goal of {{id}}",
+      "plan": "Plan of {{id}}",
+      "status": "Status of {{id}}"
+    },
+    "open": {
+      "risks": "Risks",
+      "noRisks": "Risks come from specs/tech.md.",
+      "questions": "Open questions · {{lines}} fog lines · {{specs}} open specs",
+      "none": "No open questions in any open spec."
+    },
+    "palette": {
+      "page": "Tech",
+      "tab": "Tech · {{tab}}"
+    }
   }
 }

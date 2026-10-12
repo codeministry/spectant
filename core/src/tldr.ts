@@ -60,16 +60,25 @@ export function parseTldr(text: string): TldrDocument {
     diagnostics.push({ severity: 'warning', code: 'tldr-generated-invalid', message: `generated ${generated} is no ISO 8601 time, so the TL;DR counts as stale.` });
   }
 
+  return { generated: generated === '' ? null : generated, sections: sectionsByMarker(fm.body), diagnostics };
+}
+
+/**
+ * The text between one `<!-- section: key -->` marker and the next, per key in file order: text before the first marker
+ * belongs to no section, a repeated key's parts are joined with a blank line, each part trimmed. The one marker reader
+ * of tldr.md and tech.md (`tech.ts`).
+ */
+export function sectionsByMarker(body: string): Readonly<Record<string, string>> {
   // A Map, then own data properties: a key such as `__proto__` stays a section instead of reaching the prototype.
   const sections = new Map<string, string>();
-  const parts = fm.body.split(new RegExp(MARKER.source));
+  const parts = body.split(new RegExp(MARKER.source));
   for (let i = 1; i < parts.length; i += 2) {
     const key = parts[i] ?? '';
-    const body = (parts[i + 1] ?? '').trim();
+    const part = (parts[i + 1] ?? '').trim();
     const before = sections.get(key);
-    sections.set(key, before === undefined ? body : [before, body].filter((s) => s !== '').join('\n\n'));
+    sections.set(key, before === undefined ? part : [before, part].filter((s) => s !== '').join('\n\n'));
   }
-  return { generated: generated === '' ? null : generated, sections: Object.fromEntries(sections), diagnostics };
+  return Object.fromEntries(sections);
 }
 
 /** Whether the TL;DR is there, stale, and complete. An absent TL;DR is neither stale nor incomplete: it is absent. */

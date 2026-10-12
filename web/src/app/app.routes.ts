@@ -6,9 +6,11 @@ import { SPEC_AREA_ROUTES } from './features/spec/spec-area.routes';
 import { SpecPage } from './features/spec/spec-page';
 import { NotFound } from './layout/not-found/not-found';
 import type { ShellRouteData } from './layout/shell/areas';
+import { TECH_TABS, type TechTabId } from './layout/shell/page-tabs';
 import { ShellComponent } from './layout/shell/shell';
 
 const notFound: ShellRouteData = { notFound: true };
+const techTab = (tab: TechTabId): ShellRouteData => ({ page: 'tech', tab });
 const featuresPage: ShellRouteData = { page: 'features' };
 const milestonesPage: ShellRouteData = { page: 'milestones' };
 const boardPage: ShellRouteData = { page: 'board' };
@@ -52,6 +54,21 @@ export const routes: Routes = [
         path: 'w/:ws/milestones',
         loadComponent: () => import('./features/planning/milestones-page').then((m) => m.MilestonesPage),
         data: milestonesPage,
+      },
+      // Spec 023 (ISC-134.1): the tech page, one route per tab like a spec area; `/w/:ws/tech` opens the first tab. The
+      // tabs are componentless children of one lazy page, so a tab switch keeps the page; an unknown tab falls past
+      // them to not-found with the workspace still in the route.
+      {
+        path: 'w/:ws/tech',
+        children: [
+          { path: '', redirectTo: TECH_TABS[0], pathMatch: 'full' },
+          {
+            path: '',
+            loadComponent: () => import('./features/tech/tech-page').then((m) => m.TechPage),
+            children: TECH_TABS.map((tab) => ({ path: tab, children: [], data: techTab(tab) })),
+          },
+          { path: '**', component: NotFound, data: notFound },
+        ],
       },
       { path: 'w/:ws/s/:id', component: SpecPage, children: SPEC_AREA_ROUTES },
       { path: '**', component: NotFound, data: notFound },

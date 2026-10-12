@@ -14,6 +14,8 @@
 //                                            tree's `.spectant/activity.jsonl` reading (no LifeOS state directory).
 //   <tree>.planning.golden.json  planning    `buildPlanning` (spec 003, ISC-100) over the tree's master and spec
 //                                            folders, clock pinned to PLANNING_NOW (helpers/planning-model.ts).
+//   <tree>.tech.golden.json      tech        `readTech` (spec 023, ISC-134) over the tree's `specs/tech.md` and active
+//                                            spec folders; an image exists when its file under `specs/` does.
 //
 // The next families join FAMILIES below, not a second harness: the spec page model (T12, spec.ts), the tasks and
 // claim views (T13, tasks.ts / claim-view.ts), the derived stage entries (T15, derived-stages.ts), frames and the live
@@ -39,6 +41,7 @@ import { buildLiveFrame } from '../src/live.ts';
 import { readLockSources } from '../src/locks.ts';
 import { buildSpecPage } from '../src/spec.ts';
 import { parseTaskLines } from '../src/tasks.ts';
+import { readTech } from '../src/tech.ts';
 import { buildTimeline } from '../src/timeline.ts';
 import { docsModel } from './helpers/docs-model.ts';
 import { planningModel } from './helpers/planning-model.ts';
@@ -129,6 +132,19 @@ function specPageModel(root: string): Record<string, SpecPageModel> {
 const LIVE_NOW = new Date('2026-03-08T15:00:00Z');
 const LIVE_LOCKS = new Map(await Promise.all(fixtureTrees().map(async (tree) => [join(FIXTURES, tree), await readLockSources({ repoRoot: join(FIXTURES, tree) })] as const)));
 
+/**
+ * The `tech` family (spec 023, T3): `readTech` over `specs/tech.md` (pages null without it) and the active folders as
+ * the dashboard reads them; an image counts as present when its file exists under `specs/` (readTech confines it).
+ */
+function techModel(root: string): unknown {
+  const path = join(root, 'specs', 'tech.md');
+  return readTech({
+    ...(existsSync(path) ? { tech: readFileSync(path, 'utf8') } : {}),
+    specs: readTreeAt(root).specs,
+    assetExists: (src) => existsSync(join(root, 'specs', src)),
+  });
+}
+
 /** Spec 002's model families, each a function of a tree root. A later task adds its model here. */
 const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
   specs: specsModel,
@@ -139,6 +155,7 @@ const FAMILIES: Readonly<Record<string, (root: string) => unknown>> = {
   'claim-view': (root) => ((texts) => Object.fromEntries(listSpecs(root).map((ref) => [rel(root, ref.dir), buildClaimViews({ files: texts.get(rel(root, ref.dir)) as SpecFiles })])))(folderTexts(root)),
   tasks: (root) => ((texts, constitution) => Object.fromEntries(listSpecs(root).map((ref) => ((t) => [rel(root, ref.dir), t.tasks === undefined ? null : parseTaskLines({ tasks: t.tasks, ...(constitution === null ? {} : { constitution }), ...(t.rounds === undefined ? {} : { rounds: t.rounds }) })])((texts.get(rel(root, ref.dir)) as SpecFiles).texts))))(folderTexts(root), readTreeAt(root).constitution),
   planning: planningModel,
+  tech: techModel,
   live: (root) => ((texts, constitution, locks) => Object.fromEntries(listSpecs(root).map((ref) => ((files) => [rel(root, ref.dir), buildLiveFrame({ files: { folder: files.folder, texts: { ...files.texts, ...(constitution === null ? {} : { constitution }) } }, locks, now: LIVE_NOW })])(texts.get(rel(root, ref.dir)) as SpecFiles))))(folderTexts(root), readTreeAt(root).constitution, LIVE_LOCKS.get(root) as LockReading),
 };
 

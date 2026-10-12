@@ -1,4 +1,5 @@
 import type { IconName } from '../../shared/icons/icons';
+import type { TechTabId } from './page-tabs';
 
 /**
  * The spec page's areas and their tabs (design.md, ISC-76): the one registry the area menu, the tab bar, the routes
@@ -71,7 +72,8 @@ function must(key: string): never {
 /** Route data the shell reads (`ShellState.route`): which area and tab a route shows, or that it is the not-found page. */
 export interface ShellRouteData {
   readonly area?: AreaId;
-  readonly tab?: TabId;
+  /** A spec tab under `/w/:ws/s/:id`, or a tech tab on `page: 'tech'` (`ShellState.route().techTab`, spec 023). */
+  readonly tab?: TabId | TechTabId;
   /** The workspace-scope page a `w/:ws` route shows (`ShellState.route().wsPage`); absent means the spec list. */
   readonly page?: WorkspacePageId;
   readonly notFound?: boolean;
@@ -80,19 +82,20 @@ export interface ShellRouteData {
 /**
  * The workspace-scope pages, the counterpart of the spec areas one level up. `idea` (spec 008, `/w/:ws/ideas/:slug`)
  * is a read-only story page reached from a board card, the palette or a chip, never from the menu: it has no
- * `WORKSPACE_PAGES` entry, so the menu's pages are `WorkspaceMenuPageId`.
+ * `WORKSPACE_PAGES` entry, so the menu's pages are `WorkspaceMenuPageId`. `tech` (spec 023, `/w/:ws/tech/<tab>`, tabs
+ * in `TECH_TABS`) is a menu page, fifth after Milestones (T20).
  */
-export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea';
+export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea' | 'tech';
 export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea'>;
 
-const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea'];
+const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea', 'tech'];
 
 export const isWorkspacePageId = (value: unknown): value is WorkspacePageId =>
   (WORKSPACE_PAGE_IDS as readonly unknown[]).includes(value);
 
 /**
  * A page of a workspace (`/w/:ws`, `/w/:ws/features`, `/w/:ws/milestones`): the registry the area menu, the palette and
- * the routes read, in menu order. It always holds all three entries; `milestones` is only listed by the menu (and the
+ * the routes read, in menu order. It always holds every entry; `milestones` is only listed by the menu (and the
  * palette, and answered by the route) while `ShellData.hasMilestones` is true (ISC-104, T26), so the filtering lives
  * with the reader, not here.
  */
@@ -106,7 +109,8 @@ export interface WorkspacePage {
   /**
    * The second key of the page's `g` sequence. Board's `g b` is bound (`SHORTCUTS` reads it, T117); `g f` and `g m`
    * are still a proposal (design.md § Keyboard, plan.md § Open Points) that `/spec-review 003` decides, and nothing
-   * binds them. Specs has none: `g s` is Status inside a spec and no workspace-scope binding exists.
+   * binds them. Specs has none: `g s` is Status inside a spec and no workspace-scope binding exists; Tech has none
+   * either (spec 023 plan.md: no `g` key yet).
    */
   readonly goKey: string | null;
 }
@@ -119,8 +123,11 @@ export const WORKSPACE_PAGES: readonly WorkspacePage[] = [
   { id: 'board', icon: 'square-kanban', labelKey: 'shell.pages.board', summaryKey: 'shell.pages.summary.board', goKey: 'b' },
   { id: 'features', icon: 'layers', labelKey: 'shell.pages.features', summaryKey: 'shell.pages.summary.features', goKey: 'f' },
   { id: 'milestones', icon: 'flag', labelKey: 'shell.pages.milestones', summaryKey: 'shell.pages.summary.milestones', goKey: 'm' },
+  // Spec 023 (T20, ISC-134.2): the tech page, fifth after Milestones; `/w/:ws/tech` redirects to its first tab.
+  { id: 'tech', icon: 'book-open', labelKey: 'shell.pages.tech', summaryKey: 'shell.pages.summary.tech', goKey: null },
 ];
 
+/** A menu page's entry. */
 export const workspacePageById = (id: WorkspaceMenuPageId): WorkspacePage => WORKSPACE_PAGES.find((page) => page.id === id) ?? must(id);
 
 /** `['/w', ws]` for Specs (the workspace root), else `['/w', ws, page]`, as a router link. */

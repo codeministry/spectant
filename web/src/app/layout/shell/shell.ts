@@ -30,8 +30,8 @@ import { tierFor } from './tier';
     '[attr.data-zen]': "state.zen() ? '' : null",
     '[attr.data-rail-collapsed]': "state.railStrip() ? '' : null",
     // Outside a workspace (the overview `/`, settings) the page has no rail column at all (prototype `no-rail`); the
-    // workspace board (spec 008) has nothing for the rail either and takes the full width.
-    '[attr.data-no-rail]': "state.ws() === null || state.wsPage() === 'board' ? '' : null",
+    // workspace board (spec 008) and the tech page (spec 023) have nothing for the rail either and take the full width.
+    '[attr.data-no-rail]': "state.ws() === null || state.wsPage() === 'board' || state.wsPage() === 'tech' ? '' : null",
     '(document:keydown)': 'onKeydown($event)',
   },
 })

@@ -26,19 +26,36 @@ export interface ArchivedSpec {
   readonly goal: string;
 }
 
-/** The `## Goal` (or `## Ziel`) section up to the next level-two heading or the end of the file. */
-const GOAL = /^##\s+(?:Goal|Ziel)\s*$([\s\S]*?)(?=^##\s|(?![\s\S]))/m;
+/** The headings of a spec's goal section: `## Goal`, or `## Ziel` in a German spec. */
+export const GOAL_HEADINGS: readonly string[] = ['Goal', 'Ziel'];
 /** A task row's checkbox and id: counted only, the full task grammar is tasks.ts (spec 002). */
 const TASK_BOX = /^\s*- \[([ xX])\]\s*T\d+\b/gm;
 
+const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The body of the first level-two section headed exactly one of `headings` (`## Goal`, `## Approach`), up to the next
+ * level-two heading or the end of the file, line endings normalised; null when the text has no such section.
+ */
+export function levelTwoSection(text: string, headings: readonly string[]): string | null {
+  const names = headings.map(escapeRegExp).join('|');
+  const section = new RegExp(String.raw`^##\s+(?:${names})\s*$([\s\S]*?)(?=^##\s|(?![\s\S]))`, 'm');
+  return section.exec(text.replace(/\r\n?/g, '\n'))?.[1] ?? null;
+}
+
+/** The first prose paragraph of a section, its lines kept: fences, comments and tables are not prose; null when none. */
+export function firstParagraph(section: string): string | null {
+  return (
+    section
+      .split(/\n\s*\n/)
+      .map((p) => p.trim())
+      .find((p) => p !== '' && !p.startsWith('```') && !p.startsWith('~~~') && !p.startsWith('<!--') && !p.startsWith('|')) ?? null
+  );
+}
+
 /** The first prose paragraph under `## Goal`, on one line: fences, comments and tables are not prose. */
 export function goalOf(spec: string): string {
-  const section = GOAL.exec(spec.replace(/\r\n?/g, '\n'))?.[1] ?? '';
-  const para = section
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .find((p) => p !== '' && !p.startsWith('```') && !p.startsWith('~~~') && !p.startsWith('<!--') && !p.startsWith('|'));
-  return (para ?? '').replace(/\s+/g, ' ');
+  return (firstParagraph(levelTwoSection(spec, GOAL_HEADINGS) ?? '') ?? '').replace(/\s+/g, ' ');
 }
 
 function taskCounts(tasks: string | undefined): { landed: number; total: number } {
@@ -47,6 +64,14 @@ function taskCounts(tasks: string | undefined): { landed: number; total: number 
 }
 
 /** One row per archived folder, in folder order. A folder without spec.md is not a spec and has no row. */
+/**
+ * A spec's title as every page shows it: the archive summary's title (frontmatter `task:`), else the folder's slug without
+ * its number. One rule for the dashboard row and the tech page.
+ */
+export function specTitle(summary: Pick<ArchivedSpec, 'title'> | undefined, folder: string): string {
+  return summary?.title ?? specSlugOf(folder);
+}
+
 export function listArchive(folders: readonly SpecFiles[]): ArchivedSpec[] {
   return [...folders]
     .sort((a, b) => (a.folder < b.folder ? -1 : a.folder > b.folder ? 1 : 0))

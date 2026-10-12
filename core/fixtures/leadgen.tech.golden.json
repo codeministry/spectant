@@ -1,0 +1,56 @@
+{
+  "pages": null,
+  "diagnostics": [],
+  "specs": [
+    {
+      "id": "012",
+      "slug": "012-pwa-install",
+      "title": "Installable as a PWA: manifest, icons, colours, an offline shell and an update toast",
+      "type": "feature",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>The app can be installed on a desktop, a tablet or a phone and opens in its own window with the lead-ring icon and the app&#39;s own colours; a service worker keeps the app shell available without a network, a toast offers to reload when a deploy has landed, and data still comes from the API only.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 57
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>Angular&#39;s own service worker (<code>@angular/service-worker</code>, <code>ngsw</code>) over a hand-written one, in four steps: the manifest and the icon set first, because they are what makes the app installable and they touch nothing that runs; then the worker with its <code>ngsw-config.json</code>, an <code>update</code> store that listens to <code>SwUpdate.versionUpdates</code> and raises the reload toast; then the cache headers in the repository&#39;s <code>nginx.conf</code> and, by the operator&#39;s hand, in the chart&#39;s own copy of that file; last the two manual probes on a real install. The obvious path in this house is a hand-written <code>src/sw.js</code> stamped at postbuild (FE-PWA-01), and it is not taken: that rule is written for a product used offline in the field, where a chunk never fetched must still exist and the precache therefore needs two halves. This app is used online; the worker exists so an installed window opens on its shell instead of the browser&#39;s offline page and so a deploy reaches an open window. <code>ngsw</code> expresses that in a JSON file a spec can read, ships the update channel the toast needs, and needs no build step of its own. The departure is recorded below with its probe.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 198
+      },
+      "fog": [
+        "whether an installed window on iOS keeps the sign-in redirect in scope or hands it to the browser. Resolves on the device in ISC-334; if it does not, the claim narrows to desktop and Android and the iOS case becomes remaining work."
+      ]
+    },
+    {
+      "id": "022",
+      "slug": "022-chat-turn-status-and-bulk-delete",
+      "title": "The chat says what happened to a turn, deletes many conversations at once, and brings a cited row into view",
+      "type": "feature",
+      "phase": "complete",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>Hovering or focusing the ring beside an answer plays its turn and opens a popover with that turn&#39;s state, the reason when it ended incomplete, its steps, duration and model, the same live and after a reload; the empty chat&#39;s ring does the same with the chat&#39;s own status (model, today&#39;s calls against the ceiling, the tool-round bound); the conversation list deletes the selected or all shown conversations with one confirmation and one request; and an offer opened from a chat citation has its marked shortlist row scrolled into the list pane.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 92
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>Three vertical slices, each carried from the database to the screen before it counts, so each one can ship on its own: <strong>(A) the cited row in view</strong> (ISC-479, frontend only, the smallest), <strong>(B) the status popovers</strong> (ISC-473 to ISC-476: <code>V36</code>, the turn&#39;s end reason and finish time on <code>TurnView</code>, <code>GET /api/v1/chat/status</code>, one popover component for the answer glyph and the plate), and <strong>(C) bulk delete</strong> (ISC-477, ISC-478: the endpoint, a store event, the list&#39;s select mode). ISC-480 closes last, over all three. The slices touch disjoint files except the two i18n catalogs and <code>docs/decisions/chat.md</code>, so they can be built side by side as long as the catalog and doc edits land one after the other. The obvious alternative, backend first and then the frontend layer by layer, was not taken: nothing would be visible until everything stood, and the three parts share no code worth sequencing for.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 154
+      },
+      "fog": []
+    }
+  ]
+}

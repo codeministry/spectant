@@ -13,6 +13,7 @@ import {
   type TabId,
   type WorkspacePageId,
 } from './areas';
+import { isTechTabId, type TechTabId } from './page-tabs';
 import type { Tier } from './tier';
 
 /** Where the tab bar renders: header row 2 at compact, under the spec head at medium and wide (plan 002, T35). */
@@ -23,7 +24,10 @@ export interface ShellRoute {
   readonly ws: string | null;
   readonly specId: string | null;
   readonly area: AreaId | null;
+  /** The spec tab; null off a spec, the tech page included (its `status` is no spec tab). */
   readonly tab: TabId | null;
+  /** The tech page's tab on `/w/:ws/tech/<tab>` (`wsPage` `tech`, spec 023); null on every other route. */
+  readonly techTab: TechTabId | null;
   /** The workspace-scope page: route data `page`, else the spec list on `/w/:ws`, else null (spec routes, not-found). */
   readonly wsPage: WorkspacePageId | null;
   /** The story's slug on `/w/:ws/ideas/:slug` (`wsPage` `idea`, spec 008); null on every other route. */
@@ -47,7 +51,10 @@ function readRoute(root: ActivatedRouteSnapshot): ShellRoute {
   const notFound = data.notFound === true;
   const wsPage = isWorkspacePageId(data.page) ? data.page : ws !== null && specId === null && !notFound ? 'specs' : null;
   const ideaSlug = wsPage === 'idea' ? (params['slug'] ?? null) : null;
-  return { ws, specId, area, tab: isTabId(data.tab) ? data.tab : null, wsPage, ideaSlug, notFound };
+  const tech = wsPage === 'tech';
+  const tab = !tech && isTabId(data.tab) ? data.tab : null;
+  const techTab = tech && isTechTabId(data.tab) ? data.tab : null;
+  return { ws, specId, area, tab, techTab, wsPage, ideaSlug, notFound };
 }
 
 /** An open `<dialog>` or popover owns Esc (the overlay primitives close it); the shell leaves the key alone then. */
@@ -104,9 +111,11 @@ export class ShellState {
   readonly ws = computed(() => this.route().ws);
   readonly specId = computed(() => this.route().specId);
   readonly area = computed(() => this.route().area);
-  /** The workspace page of the route (`specs`, `board`, `features`, `milestones`, `idea`), null on spec and global routes. */
+  /** The workspace page of the route (`specs`, `board`, `features`, `milestones`, `idea`, `tech`), null on spec and global routes. */
   readonly wsPage = computed(() => this.route().wsPage);
   readonly tab = computed(() => this.route().tab);
+  /** The open tab of the tech page (`overview` … `open`), null elsewhere. */
+  readonly techTab = computed(() => this.route().techTab);
   readonly notFound = computed(() => this.route().notFound);
 
   toggleZen(): void {

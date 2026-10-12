@@ -44,7 +44,7 @@ const HARBOR = {
   archive: [{ id: '001', title: 'Manifest sync', type: 'feature' }],
 };
 
-type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'timeline' | 'claims' | 'docs'>;
+type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'timeline' | 'claims' | 'docs' | 'tech'>;
 
 function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
   return {
@@ -59,6 +59,7 @@ function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
     timeline: () => Promise.resolve({ kind: 'not-found', served: false }),
     claims: () => Promise.resolve({ kind: 'not-found', served: false }),
     docs: () => Promise.resolve({ kind: 'not-found', served: false }),
+    tech: () => Promise.resolve({ kind: 'not-found', served: false }),
     ...overrides,
   };
 }
@@ -120,6 +121,17 @@ describe('ShellComponent', () => {
       expect(root.querySelectorAll('header'), url).toHaveLength(1);
       const controls = [...root.querySelectorAll('header [data-control]')].map((el) => el.getAttribute('data-control'));
       expect(controls, url).toEqual(['brand', 'workspace', 'spec', 'area', 'palette', 'live', 'zen', 'settings']);
+    }
+  });
+
+  it('drops the rail column (data-no-rail) outside a workspace, on the board and on the tech page (spec 023)', async () => {
+    setUp();
+    const noRail = async (url: string): Promise<boolean> => (await open(url)).root.querySelector('app-shell')?.hasAttribute('data-no-rail') ?? false;
+    for (const url of ['/', '/settings', '/w/harbor/board', '/w/harbor/tech/overview', '/w/harbor/tech/status']) {
+      expect(await noRail(url), url).toBe(true);
+    }
+    for (const url of ['/w/harbor', '/w/harbor/features', '/w/harbor/s/002', '/w/harbor/s/002/status']) {
+      expect(await noRail(url), url).toBe(false);
     }
   });
 
@@ -303,6 +315,19 @@ describe('ShellComponent', () => {
       expect(area.getAttribute('aria-label')).toBe('Page: Specs');
     });
 
+    it('names Tech with book-open on every tab of the tech page, enabled (spec 023, T20, ISC-134.2)', async () => {
+      setUp();
+      for (const url of ['/w/harbor/tech/overview', '/w/harbor/tech/open']) {
+        const { root } = await open(url);
+        const area = control(root, 'area');
+        expect(area.getAttribute('aria-disabled'), url).toBeNull();
+        expect(area.querySelector('.pick-text')?.textContent.trim(), url).toBe('Tech');
+        // The leading icon is `book-open`: its first path is the spine (`ICONS['book-open']`).
+        expect(area.querySelector('ui-icon path')?.getAttribute('d'), url).toBe('M12 5v16');
+        expect(area.getAttribute('aria-label'), url).toBe('Page: Tech');
+      }
+    });
+
     it('opens the area menu at workspace scope: Specs and Features while no milestone exists', async () => {
       const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
       proto['showPopover'] = vi.fn();
@@ -318,8 +343,8 @@ describe('ShellComponent', () => {
         await harness.fixture.whenStable();
         expect(trigger.getAttribute('aria-expanded')).toBe('true');
         const entries = [...root.querySelectorAll('header nav[aria-label="Areas"] [data-page]')];
-        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'board', 'features']);
-        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null, null]);
+        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'board', 'features', 'tech']);
+        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null, null, null]);
       } finally {
         delete proto['showPopover'];
         delete proto['hidePopover'];

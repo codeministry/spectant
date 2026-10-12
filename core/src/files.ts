@@ -1192,6 +1192,50 @@ export interface IdeasReading {
   readonly diagnostics: readonly FileDiagnostic[];
 }
 
+// ─── Tech page (tech.ts) ─────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What `readTech` reads, from the caller: the text of `specs/tech.md` (absent when the file does not exist) and the
+ * active spec folders as the dashboard takes them (`DashboardInput.specs`); only `spec` and `plan` are read.
+ */
+export interface TechInput {
+  readonly tech?: string;
+  readonly specs: readonly SpecFiles[];
+  /**
+   * Whether an image of tech.md exists, its path as written, relative to `specs/` (as `DocsOptions.assetExists`). An
+   * image whose path leaves `specs/` is flagged missing either way; absent, every other image counts as present.
+   */
+  readonly assetExists?: (src: string, asset: string | null) => boolean;
+}
+
+/** One open or closed spec as the tech page lists it. */
+export interface TechSpec {
+  /** `NNN`, the folder's numeric prefix. */
+  readonly id: string;
+  /** `NNN-slug`, the folder name. */
+  readonly slug: string;
+  /** The title the dashboard row shows for the spec (`SpecRow.title`): frontmatter `task:`, else the slug without its number. */
+  readonly title: string;
+  /** Frontmatter `spec_type:`; null when absent or unknown. */
+  readonly type: SpecType | null;
+  /** Frontmatter `phase:` as written; null when absent. */
+  readonly phase: string | null;
+  /** The `## Goal` section of spec.md as a document; null when the section is absent or empty. */
+  readonly goal: DocsPage | null;
+  /** The first prose paragraph of plan.md's `## Approach`; null without plan.md or without the section. */
+  readonly approach: DocsPage | null;
+  /** The text of each `- fog:` line under `## Not yet specified`; empty for a spec whose phase is `complete`. */
+  readonly fog: readonly string[];
+}
+
+/** What `readTech` returns: the three pages of `specs/tech.md`, its findings (`tech-…`), and the specs in number order. */
+export interface TechModel {
+  /** `overview` holds the overview and stack sections as one document; null when `specs/tech.md` does not exist. */
+  readonly pages: { readonly overview: DocsPage; readonly architecture: DocsPage; readonly risks: DocsPage } | null;
+  readonly diagnostics: readonly FileDiagnostic[];
+  readonly specs: readonly TechSpec[];
+}
+
 /** The kind of an actor id: `u:` a person, `a:<kind>:<id>` an agent, `a:<kind>:<id>/<task>` its sub-agent. */
 export type ActorKind = 'person' | 'agent' | 'subagent' | 'legacy';
 

@@ -18,6 +18,7 @@ import { join, relative } from "node:path";
 import { buildDashboard } from "../src/dashboard.ts";
 import { parseFrontmatter } from "../src/frontmatter.ts";
 import { parseMilestones } from "../src/milestones.ts";
+import { readTech } from "../src/tech.ts";
 import { diagnosticsOf, EXPECTED_WARNINGS } from "./helpers/expected-warnings.ts";
 import { DASHBOARD_FAMILY, expectGolden, goldenPath, goldenText, goldenTrees } from "./helpers/golden.ts";
 import { FIXTURES, fixtureTrees, readTree } from "./helpers/read-tree.ts";
@@ -108,6 +109,25 @@ describe("corpus", () => {
 
   // Person names are not listed here: a public test cannot name what it guards against. `check:leak` (ISC-3) scans
   // these trees with the private word list kept outside the repository.
+  // ISC-134 (spec 023, T3): harbor carries specs/tech.md with all four sections, a mermaid fence and an image that
+  // exists; lantern has none, the pages: null case. The whole model is the `tech` golden family in golden.test.ts.
+  test("tech.md: harbor carries all four sections, lantern none", () => {
+    const harborRoot = join(FIXTURES, "harbor");
+    const harbor = readTech({
+      tech: readFileSync(join(harborRoot, "specs", "tech.md"), "utf8"),
+      specs: readTree("harbor").specs,
+      assetExists: (src) => existsSync(join(harborRoot, "specs", src)),
+    });
+    expect(harbor.diagnostics).toEqual([]);
+    expect(harbor.pages?.overview.toc.map((t) => t.text)).toEqual(["Overview", "Stack"]);
+    expect(harbor.pages?.overview.figures).toMatchObject([{ kind: "image", src: "tech/overview.png" }]);
+    expect(harbor.pages?.overview.figures[0]).not.toHaveProperty("missing");
+    expect(harbor.pages?.architecture.figures).toMatchObject([{ kind: "mermaid", diagram: "flowchart" }]);
+    expect(harbor.pages?.risks.html).not.toBe("");
+    expect(existsSync(join(FIXTURES, "lantern", "specs", "tech.md"))).toBe(false);
+    expect(readTech({ specs: readTree("lantern").specs }).pages).toBeNull();
+  });
+
   test("the frozen trees name no machine path", () => {
     const roots = [SPECTANT_001, LEADGEN];
     expect(roots.filter((root) => !existsSync(root) || !statSync(root).isDirectory()).map((root) => relative(FIXTURES, root))).toEqual([]);

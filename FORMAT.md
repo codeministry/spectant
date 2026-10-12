@@ -43,7 +43,7 @@ The app's Help page will render them from that export (a later task of the web l
 ## Where the files live
 
 A repository root holds the master `ISA.md` (untracked in a public repository) and a `specs/` folder:
-`specs/constitution.md`, optionally `specs/tldr.md`, one folder per spec `specs/NNN-slug/`, and closed specs under
+`specs/constitution.md`, optionally `specs/tldr.md` and `specs/tech.md`, one folder per spec `specs/NNN-slug/`, and closed specs under
 `specs/archive/NNN-slug/`. A spec folder name is three digits, a hyphen and a slug (`^\d{3}-.+$`); other names are
 ignored, and symbolic links are not followed. A folder without `spec.md` is not a spec: it gets a diagnostic, no row.
 
@@ -1239,6 +1239,44 @@ From `core/fixtures/harbor/specs/tldr.md`:
 ```markdown
 <!-- section: next -->
 Answer the empty-state question in 002, then run the code review for 004.
+```
+
+## The tech page
+
+`specs/tech.md` (`tech.ts`, spec 023): the repository's technical documentation, written by hand or by the skill's
+`/spec-doc` and read by `readTech`. It is optional and belongs to no spec folder; without it the page model has
+`pages: null` and no diagnostic. Frontmatter `title:` and `lang:` (`frontmatter.ts`; a malformed block is its usual
+`frontmatter-…` diagnostic on `specs/tech.md`), then sections opened by `<!-- section: <key> -->` markers, read by the
+same marker reader as the TL;DR. The keys are `overview`, `stack`, `architecture` and `risks`, in that order; a
+repeated key appends its parts in file order, and text before the first marker belongs to no section and is dropped.
+
+- **Pages:** three documents rendered by `markdown-docs.ts` (headings, tables, mermaid and image figures, TOC):
+  `overview` is the overview and stack sections joined, overview first, a blank line between; `architecture` and
+  `risks` are one section each. Each page prefixes its anchors with `tech-<page>-`.
+- **Images** are relative to `specs/` and only inside it: an absolute path, a backslash or a `..` that climbs above
+  `specs/`, as written or decoded once, is a figure with `missing: true` and no `<img>`; inside `specs/`, the caller
+  answers whether the file exists (`TechInput.assetExists`).
+- **Warning:** a key without its marker is one `tech-section` warning on `specs/tech.md`, the key as subject, and its
+  section reads as empty; a file without any marker warns once per key. The reader never throws.
+- **Specs:** beside the pages, every active spec folder with a `spec.md`, in number order: id, slug, type and phase
+  from the frontmatter, the title the dashboard row shows (frontmatter `task:`, else the slug without its number,
+  read through the archive listing as the row does), the `## Goal` section, the first paragraph of plan.md's
+  `## Approach` and the open `- fog:` lines (none once `phase: complete`).
+
+Harbor carries the four sections, a stack table, a mermaid fence in `architecture` and one image,
+`specs/tech/overview.png`, in `overview`; lantern has no tech.md, the `pages: null` case.
+
+From `core/fixtures/harbor/specs/tech.md`:
+
+```markdown
+<!-- section: stack -->
+## Stack
+
+| Part | Built with | Notes |
+|------|------------|-------|
+| CLI | Bun, TypeScript | `harbor sync`, one binary |
+| API | Bun, TypeScript | port 8080, loopback by default |
+| Console | Angular | port 4200 in development |
 ```
 
 ## Not part of the contract

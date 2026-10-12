@@ -257,18 +257,14 @@ export class BoardDrag {
   }
 
   /**
-   * The stage a CDK drop names: the drop list's data (a column, a stub, a band cell, a tray slot), or for the strip,
-   * whose segments live inside `ui-segmented`, the `[data-key]` segment under the drop point. Null when the pointer
-   * left every list, or the drop is on no stage.
+   * The stage a CDK drop names: the drop list's data (a column, a stub, a band cell, a tray slot). Null when the pointer
+   * left every list. (Named `dropTarget`, not `stageOf`: the single-core guard reserves that name for core's stage
+   * derivation, and this only reads which list took the drop.)
    */
-  stageOf(event: BoardDropEvent): WorkflowStage | null {
+  dropTarget(event: BoardDropEvent): WorkflowStage | null {
     if (!event.isPointerOverContainer) return null;
     const data = event.container.data;
-    if (typeof data === 'string') return isWorkflowStage(data) ? data : null;
-    const { x, y } = event.dropPoint;
-    const hit = typeof this.doc.elementFromPoint === 'function' ? this.doc.elementFromPoint(x, y) : null;
-    const key = hit?.closest<HTMLElement>('[data-key]')?.dataset['key'] ?? null;
-    return key !== null && isWorkflowStage(key) ? key : null;
+    return typeof data === 'string' && isWorkflowStage(data) ? data : null;
   }
 
   /** The transition for `card` dropped on `to`: nothing for its own column, a card that cannot move or a write in flight. */

@@ -1,0 +1,170 @@
+/*
+ * The Specs tab (spec 023, T17; design.md § Specs per viewport): a list of cards, 12 px apart at compact and 16 px
+ * above, padding 16 (24 at wide). Not encapsulated (the clip reaches into ui-doc-prose): every selector starts with
+ * app-tech-specs-tab. Complete specs are muted through ink only, never opacity (4.5:1 text in both themes).
+ */
+app-tech-specs-tab {
+  display: grid;
+  gap: 16px;
+}
+
+app-tech-specs-tab[data-tier='compact'] {
+  gap: 12px;
+}
+
+app-tech-specs-tab .divider {
+  margin: 8px 0 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+app-tech-specs-tab .card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+app-tech-specs-tab .sid {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+app-tech-specs-tab .title {
+  min-inline-size: 0;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+app-tech-specs-tab[data-tier='wide'] .title {
+  font-size: 17px;
+}
+
+/* Two lines of title at compact and medium; wide shows it whole. */
+app-tech-specs-tab:not([data-tier='wide']) .title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+app-tech-specs-tab .excerpt {
+  margin-block-start: 16px;
+}
+
+app-tech-specs-tab .excerpt-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+app-tech-specs-tab .doc-link,
+app-tech-specs-tab .open-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--disp-ink);
+  text-decoration: none;
+}
+
+app-tech-specs-tab .doc-link {
+  min-block-size: 24px;
+}
+
+app-tech-specs-tab[data-tier='compact'] .doc-link {
+  min-block-size: 44px;
+}
+
+@media (hover: hover) {
+  app-tech-specs-tab .doc-link:hover,
+  app-tech-specs-tab .open-link:hover,
+  app-tech-specs-tab .more:hover {
+    text-decoration: underline;
+  }
+}
+
+app-tech-specs-tab .clip {
+  margin-block-start: 8px;
+}
+
+/* Four lines, then "More…" (as the dashboard brief): the article is the line box the clamp counts. */
+app-tech-specs-tab .clip[data-clipped] .docs-prose {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
+
+app-tech-specs-tab .clip[data-clipped] .docs-prose > * {
+  margin: 0;
+}
+
+app-tech-specs-tab .clip .docs-prose > :first-child {
+  margin-block-start: 0;
+}
+
+app-tech-specs-tab .clip .docs-prose > :last-child {
+  margin-block-end: 0;
+}
+
+app-tech-specs-tab .more {
+  min-block-size: 24px;
+  margin-block-start: 4px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--ques-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+app-tech-specs-tab[data-tier='compact'] .more {
+  min-block-size: 44px;
+}
+
+app-tech-specs-tab .card-foot {
+  margin-block-start: 8px;
+}
+
+app-tech-specs-tab .open-link {
+  min-block-size: 44px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+app-tech-specs-tab .spec-card[data-complete],
+app-tech-specs-tab .spec-card[data-complete] .sid,
+app-tech-specs-tab .spec-card[data-complete] .title {
+  color: var(--muted-ink);
+}
+
+/* Hidden text that completes a link's accessible name after its visible label (WCAG 2.5.3, label in name). */
+.vh {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

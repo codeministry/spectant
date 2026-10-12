@@ -8,8 +8,8 @@ const lookup = (catalogue: unknown, key: string): unknown =>
   key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], catalogue);
 
 describe('WORKSPACE_PAGES', () => {
-  it('holds exactly Specs, Board, Features and Milestones, in that order (spec 008, ISC-129)', () => {
-    expect(WORKSPACE_PAGES.map((page) => page.id)).toEqual(['specs', 'board', 'features', 'milestones']);
+  it('holds exactly Specs, Board, Features, Milestones and Tech, in that order (spec 008, ISC-129; spec 023, ISC-134.2)', () => {
+    expect(WORKSPACE_PAGES.map((page) => page.id)).toEqual(['specs', 'board', 'features', 'milestones', 'tech']);
   });
 
   it('uses an icon from ICON_NAMES for every page', () => {
@@ -27,14 +27,15 @@ describe('WORKSPACE_PAGES', () => {
     }
   });
 
-  it('records go keys as candidates only: b, f and m, none for specs (g s is Status)', () => {
-    expect(WORKSPACE_PAGES.map((page) => page.goKey)).toEqual([null, 'b', 'f', 'm']);
+  it('records go keys as candidates only: b, f and m, none for specs (g s is Status) and none for tech', () => {
+    expect(WORKSPACE_PAGES.map((page) => page.goKey)).toEqual([null, 'b', 'f', 'm', null]);
   });
 
-  it('looks a page up by id', () => {
+  it('looks a page up by id, tech included', () => {
     expect(workspacePageById('board').icon).toBe('square-kanban');
     expect(workspacePageById('features').icon).toBe('layers');
     expect(workspacePageById('milestones').icon).toBe('flag');
+    expect(workspacePageById('tech')).toMatchObject({ icon: 'book-open', labelKey: 'shell.pages.tech', summaryKey: 'shell.pages.summary.tech' });
   });
 
   it('knows the story page as a page id, but lists it in no menu entry', () => {
@@ -50,5 +51,6 @@ describe('workspaceLink', () => {
     expect(workspaceLink('harbor', 'board')).toEqual(['/w', 'harbor', 'board']);
     expect(workspaceLink('harbor', 'features')).toEqual(['/w', 'harbor', 'features']);
     expect(workspaceLink('harbor', 'milestones')).toEqual(['/w', 'harbor', 'milestones']);
+    expect(workspaceLink('harbor', 'tech')).toEqual(['/w', 'harbor', 'tech']);
   });
 });
