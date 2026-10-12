@@ -543,3 +543,102 @@ test.describe('pills', () => {
     });
   }
 });
+
+// T32 · ISC-142: polish of the orientation, at 390 and 1440 against the stub API. `bun run e2e -- breadcrumb -g polish`.
+//
+// (1) The idea page leads back to the board: a visible link to `/w/harbor/board` outside the header sits before the
+//     eyebrow in document order (design.md, across viewports: the `←` in the place of the spec breadcrumb's), with a
+//     non-empty accessible name that is no raw catalog key.
+// (2) No two visible targets of a view share an accessible name. The check is scoped to the two groups the claim names,
+//     so a legitimate repeat elsewhere (identical pagination, one link per row to the same page) cannot make it flaky:
+//     the copy buttons of the `ui-command-chip`s on `/` (each names its command) and the `after` / `blocked by` links of
+//     the claim cards on `/w/harbor/s/002/claims` (each names its claim; 002 holds two `after ISC-60` edges in the
+//     golden). The names are Playwright's computed accessible names, read from each element's ARIA snapshot.
+// (3) The h1 of the Features page names only the title: its accessible name is exactly `shell.pages.features`, and
+//     neither that name nor the h1's text holds the glossary hint (`terms.feature`).
+
+/** Playwright's computed accessible name of a link or button, from its ARIA snapshot (`- button "Copy command"`). */
+async function accessibleName(target: Locator): Promise<string> {
+  const snapshot = await target.ariaSnapshot();
+  const match = /^-\s+(?:link|button)\s+("(?:[^"\\]|\\.)*")/u.exec(snapshot.trim());
+  return match?.[1] === undefined ? '' : (JSON.parse(match[1]) as string);
+}
+
+/** The names that occur more than once in `names`. */
+const repeated = (names: readonly string[]): string[] => [...new Set(names.filter((name, i) => names.indexOf(name) !== i))];
+
+test.describe('polish', () => {
+  for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      test(`polish: the idea page links back to the board at ${String(width)}`, async ({ page }) => {
+        await page.goto(`/w/${WORKSPACE}/ideas/${IDEA}`);
+        const h1 = page.locator('h1').first();
+        await expect(h1, 'the idea page renders its h1').toBeVisible();
+        // The eyebrow is ISC-140's (`-g eyebrow`); until it renders here, the back link must at least precede the h1.
+        const eyebrow = (await page.locator('[data-page-eyebrow]').count()) > 0 ? page.locator('[data-page-eyebrow]') : h1;
+
+        // Visible links to the board, outside the header, that precede the eyebrow in document order.
+        const back = page.locator(`a[href="/w/${WORKSPACE}/board"]`).filter({ visible: true });
+        const before = await back.evaluateAll(
+          (links, ref) =>
+            links.map((link) => link.closest('header') === null && (link.compareDocumentPosition(ref) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0),
+          await eyebrow.elementHandle(),
+        );
+        const index = before.indexOf(true);
+        expect(index, 'a visible link to the board sits before the eyebrow').toBeGreaterThanOrEqual(0);
+
+        const name = await accessibleName(back.nth(index));
+        expect(name.trim(), 'the back link has an accessible name').not.toBe('');
+        expect(name, 'the back link names no catalog key').not.toMatch(CATALOG_KEY);
+      });
+
+      test(`polish: every copy chip on the workspaces overview names its command at ${String(width)}`, async ({ page }) => {
+        await page.goto('/');
+        const chips = page.locator('ui-command-chip').filter({ visible: true });
+        await expect(chips.first(), 'the overview shows copy chips').toBeVisible();
+        const names: string[] = [];
+        for (const chip of await chips.all()) {
+          const command = normalized(await chip.locator('code').textContent());
+          const name = await accessibleName(chip.getByRole('button'));
+          expect.soft(name, `the copy chip of ${command} names its command`).toContain(command);
+          names.push(name);
+        }
+        expect(names.length, 'at least two copy chips to compare').toBeGreaterThan(1);
+        expect(repeated(names), 'no two copy chips share an accessible name').toEqual([]);
+      });
+
+      test(`polish: every after link on the claims tab names its claim at ${String(width)}`, async ({ page }) => {
+        await page.goto(`/w/${WORKSPACE}/s/002/claims`);
+        const edges = page.locator('[data-claim] a[data-edge]').filter({ visible: true });
+        await expect(edges.first(), 'the claims tab shows edge links').toBeVisible();
+        const names: string[] = [];
+        for (const edge of await edges.all()) {
+          const target = (await edge.getAttribute('data-edge')) ?? '';
+          const owner = await edge.evaluate((el) => el.closest('[data-claim]')?.getAttribute('data-claim') ?? '');
+          const name = await accessibleName(edge);
+          expect.soft(name, `the edge of ${owner} names its target ${target}`).toContain(target);
+          expect.soft(name, `the edge ${target} names its claim ${owner}`).toContain(owner);
+          names.push(name);
+        }
+        expect(repeated(names), 'no two edge links share an accessible name').toEqual([]);
+      });
+
+      test(`polish: the Features h1 holds no glossary hint at ${String(width)}`, async ({ page }) => {
+        await page.goto(`/w/${WORKSPACE}/features`);
+        const title = lookup(catalogs.en, 'shell.pages.features');
+        const hint = lookup(catalogs.en, 'terms.feature');
+        expect(title, 'the en catalog holds shell.pages.features').toBeDefined();
+        expect(hint, 'the en catalog holds terms.feature').toBeDefined();
+
+        const h1 = page.getByRole('heading', { level: 1 });
+        await expect(h1, 'one h1').toHaveCount(1);
+        await expect(h1, 'the h1 is visible').toBeVisible();
+        expect.soft(normalized(await h1.textContent()), 'the h1 text holds no glossary hint').not.toContain(hint ?? '');
+        await expect.soft(h1, 'the h1 name holds no glossary hint').not.toHaveAccessibleName(new RegExp(escapeRegExp(hint ?? ''), 'u'));
+        await expect(h1, 'the h1 names only the title').toHaveAccessibleName(title ?? '');
+      });
+    });
+  }
+});

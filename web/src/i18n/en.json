@@ -391,6 +391,13 @@
       },
       "unbuilt": "Comes with this spec's later tasks"
     },
+    "pills": {
+      "workspace": "Workspace",
+      "specs": "Specs",
+      "spec": "Spec",
+      "area": "Area",
+      "all": "All"
+    },
     "areas": {
       "dashboard": "Dashboard",
       "status": "Status",

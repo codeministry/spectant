@@ -8,6 +8,9 @@ import { atWidth, expect, test } from './fixtures';
 
 const ROUTES = ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/999', '/settings'] as const;
 const CONTROLS = ['brand', 'workspace', 'spec', 'area', 'palette', 'live', 'zen', 'settings'] as const;
+/** Outside a workspace the spec and area pills are left out rather than showing `0` (spec 019, ISC-140.2). */
+const controlsOn = (route: string): readonly string[] =>
+  route.startsWith('/w/') ? CONTROLS : CONTROLS.filter((control) => control !== 'spec' && control !== 'area');
 const TIERS = [
   { width: 390, tier: 'compact', tabBar: 'header' },
   { width: 820, tier: 'medium', tabBar: 'main' },
@@ -23,7 +26,7 @@ for (const { width, tier, tabBar } of TIERS) {
         await page.goto(route);
         await expect(page.locator('app-shell')).toHaveAttribute('data-tier', tier);
         await expect(page.locator('header')).toHaveCount(1);
-        for (const control of CONTROLS) {
+        for (const control of controlsOn(route)) {
           await expect(page.locator(`header [data-control="${control}"]`), control).toBeVisible();
         }
       });
@@ -186,7 +189,7 @@ test.describe('header', () => {
           await expect(page.locator('header')).toHaveCount(1);
           await expect(page.locator('[role="banner"]')).toHaveCount(1);
           const header = page.locator('header');
-          for (const control of CONTROLS) {
+          for (const control of controlsOn(route)) {
             await expect(header.locator(`[data-control="${control}"]`), control).toHaveCount(1);
             await expect(header.locator(`[data-control="${control}"]`), control).toBeVisible();
           }
@@ -201,6 +204,8 @@ test.describe('header', () => {
             // The name comes from the dashboard row (`ShellData.currentRow`), not from the spec head's title.
             if (wide) await expect(spec.locator('.spec-title')).toHaveText(/^(?!002$)\S.*\S$/);
             await expect(spec).toHaveAttribute('aria-label', /002/);
+          } else if (!route.startsWith('/w/')) {
+            await expect(spec).toHaveCount(0);
           } else {
             await expect(spec.locator('.pick-id')).toHaveCount(0);
             await expect(spec.locator('.pick-text')).toHaveText(/^\d+$/);

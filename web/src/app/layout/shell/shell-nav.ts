@@ -1,4 +1,4 @@
-import { LocationStrategy, NgTemplateOutlet } from '@angular/common';
+import { LocationStrategy } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
@@ -30,16 +30,22 @@ export const navigatesNatively = (event: MouseEvent): boolean =>
  * **Pickers.** Real anchors (`href` to the workspace, the open spec, or the workspace's spec list), so middle-click,
  * cmd/ctrl-click and "copy link" keep working; a plain click or Enter opens the picker instead (`ShellMenus`). They carry
  * `href` rather than `routerLink`, because `RouterLink` navigates on every plain click and ignores `preventDefault`.
- * Until the deferred menus have loaded, a plain click navigates too. The spec picker without a workspace and the area
- * trigger without a workspace are `aria-disabled` with their reason; at workspace scope the area trigger names the
- * current page (design.md § Area menu).
+ * Until the deferred menus have loaded, a plain click navigates too. At workspace scope the area trigger names the
+ * current page (design.md § Area menu); for a workspace the server does not know, or a spec it does not list, it is
+ * `aria-disabled` with its reason.
  *
- * Collapse order (design.md § Viewport-übergreifend): after the wordmark (`ShellBrand`), the workspace name goes to its
- * icon, then the spec title to its id; the area trigger never collapses. At compact the pickers form one pill.
+ * **Pills (ISC-140.2).** Every segment carries a label (`[data-pill-label]`: Workspace, Specs or Spec, Area) and its
+ * value (`[data-pill-value]`), so no segment is a bare number; the picker segments have no leading icon, the label
+ * carries their meaning. Outside a workspace (`/`, `/help`, `/settings`) the spec and area pills are not rendered
+ * rather than showing `0`, and the workspace pill reads "All · n".
+ *
+ * Collapse order (design.md § Viewport-übergreifend): after the wordmark (`ShellBrand`), the spec title goes to its
+ * id; numbers and ids never shorten, only names ellipsize. Compact and medium stack the label over the value in the
+ * 40 px pill, wide sets them inline. At compact the pickers form one pill.
  */
 @Component({
   selector: 'app-shell-nav',
-  imports: [NgTemplateOutlet, TranslocoPipe, UiIcon, ShellMenus],
+  imports: [TranslocoPipe, UiIcon, ShellMenus],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell-nav.html',
   styleUrl: './shell-nav.css',
@@ -58,6 +64,8 @@ export class ShellNav {
   });
   protected readonly workspaceCount = computed(() => this.data.workspaceList().length);
   protected readonly specCount = computed(() => this.data.specRows().length);
+  /** A workspace in the route: the spec and area pills render only then (ISC-140.2). */
+  protected readonly inWorkspace = computed(() => this.state.ws() !== null);
   protected readonly row = this.data.currentRow;
   protected readonly specOpen = computed(() => this.state.specId() !== null && !this.data.specMissing());
   /**

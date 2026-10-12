@@ -15,6 +15,7 @@ import { UiCard } from '../../shared/ui/card/card';
 import { UiChip } from '../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
+import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { UiTypeGlyph } from '../../shared/ui/type-glyph/type-glyph';
 import { HelpNav } from './help-nav';
 import { HELP_COMMANDS, HELP_SECTIONS, HELP_TYPES, KEY_CONTEXTS, LEGEND, STAGE_CHAIN, START_STEPS } from './help-sections';
@@ -68,7 +69,7 @@ const sameRow = (a: WorkflowRow, b: WorkflowRow): boolean =>
  */
 @Component({
   selector: 'app-help-page',
-  imports: [HelpNav, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiIcon, UiKbd, UiTypeGlyph, WorkflowFigure],
+  imports: [HelpNav, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiIcon, UiKbd, UiPageHead, UiTypeGlyph, WorkflowFigure],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'help' },
   templateUrl: './help-page.html',

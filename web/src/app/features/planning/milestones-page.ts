@@ -12,6 +12,7 @@ import { UiCard } from '../../shared/ui/card/card';
 import { UiChip } from '../../shared/ui/chip/chip';
 import { UiIdeaChip } from '../../shared/ui/idea-chip/idea-chip';
 import { UiMeter } from '../../shared/ui/meter/meter';
+import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../shared/ui/term/term';
 import { fragmentTarget, installArrival, planningPageState, stagesByRow } from './planning-page';
@@ -61,7 +62,7 @@ interface RowView {
  */
 @Component({
   selector: 'app-milestones-page',
-  imports: [TranslocoPipe, RouterLink, NotFound, UiButton, UiCard, UiChip, UiIcon, UiIdeaChip, UiMeter, UiSkeleton, UiTerm, SpecChip],
+  imports: [TranslocoPipe, RouterLink, NotFound, UiButton, UiCard, UiChip, UiIcon, UiIdeaChip, UiMeter, UiPageHead, UiSkeleton, UiTerm, SpecChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'milestones', '[attr.data-tier]': 'tier()' },
   templateUrl: './milestones-page.html',

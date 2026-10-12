@@ -19,27 +19,29 @@
   --board-stub: 56px;
 }
 
-/* The page head (T163): "Board" 20/28 with the workflow source chip beside it, the summary under it; 56 px. */
+/* The page head (T163, ISC-140): `ui-page-head` (eyebrow over the "Board" h1) with the workflow source chip beside
+   the h1, the summary under it. */
 .title-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  align-items: center;
+  align-items: flex-end;
   margin-block-end: 8px;
+}
+
+.title-row ui-page-head {
+  min-inline-size: 0;
 }
 
 h1 {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 28px;
 }
 
 .source {
   display: inline-flex;
   align-items: center;
   block-size: 22px;
+  margin-block-end: 5px; /* centred on the h1 line (32 px) while the row aligns to its end */
   padding-inline: 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius-field);

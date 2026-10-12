@@ -13,23 +13,19 @@
     (pointerdown)="press('workspace')"
     (click)="toggle($event, 'workspace')"
   >
-    <ui-icon name="folder-git-2" />
-    <span class="pick-text ws-name">{{ workspaceName() ?? workspaceCount() }}</span>
+    <span class="pill">
+      <span class="pill-label" data-pill-label>{{ 'shell.pills.workspace' | transloco }}</span>
+      @if (workspaceName(); as name) {
+        <span class="pill-value pick-text ws-name" data-pill-value>{{ name }}</span>
+      } @else {
+        <span class="pill-value pill-num" data-pill-value>{{ 'shell.pills.all' | transloco }} · {{ workspaceCount() }}</span>
+      }
+    </span>
     <ui-icon class="chevron" name="chevron-down" [size]="14" />
   </a>
-  <span class="divider" aria-hidden="true"></span>
-  <ng-template #specContent>
-    <ui-icon name="file-text" />
-    @if (specOpen()) {
-      <span class="pick-id">{{ state.specId() }}</span>
-      @if (row(); as row) {
-        <span class="pick-text spec-title">{{ row.title }}</span>
-      }
-    } @else {
-      <span class="pick-text">{{ specCount() }}</span>
-    }
-  </ng-template>
+  <!-- Outside a workspace (`/`, `/help`, `/settings`) there is no spec pill rather than a `0` (ISC-140.2). -->
   @if (specHref(); as href) {
+    <span class="pill-divider" aria-hidden="true"></span>
     <a
       class="pick"
       data-control="spec"
@@ -44,66 +40,78 @@
       (pointerdown)="press('spec')"
       (click)="toggle($event, 'spec')"
     >
-      <ng-container [ngTemplateOutlet]="specContent" />
+      <span class="pill">
+        <span class="pill-label" data-pill-label>{{ (specOpen() ? 'shell.pills.spec' : 'shell.pills.specs') | transloco }}</span>
+        @if (specOpen()) {
+          <span class="pill-value" data-pill-value>
+            <span class="pick-id">{{ state.specId() }}</span>
+            @if (row(); as row) {
+              &ngsp;<span class="pick-text spec-title">{{ row.title }}</span>
+            }
+          </span>
+        } @else {
+          <span class="pill-value pill-num pick-text" data-pill-value>{{ specCount() }}</span>
+        }
+      </span>
       <ui-icon class="chevron" name="chevron-down" [size]="14" />
     </a>
-  } @else {
-    <button
-      type="button"
-      class="pick"
-      data-control="spec"
-      aria-disabled="true"
-      [attr.title]="'shell.spec.none' | transloco"
-      [attr.aria-label]="'shell.spec.countLabel' | transloco: { count: specCount() }"
-    >
-      <ng-container [ngTemplateOutlet]="specContent" />
-    </button>
   }
 </div>
 
-@if (specOpen()) {
-  <button
-    type="button"
-    class="pick area"
-    data-control="area"
-    aria-haspopup="dialog"
-    [attr.aria-expanded]="expanded().area"
-    [attr.aria-label]="'shell.area.label' | transloco: { area: (areaKey() | transloco) }"
-    (pointerdown)="press('area')"
-    (click)="toggle($event, 'area')"
-  >
-    <span class="area-dot" aria-hidden="true" [attr.data-dot]="state.area() ?? 'dashboard'"></span>
-    <span class="pick-text">{{ areaKey() | transloco }}</span>
-    <ui-icon class="chevron" name="chevron-down" [size]="14" />
-  </button>
-} @else if (workspacePage(); as page) {
-  <button
-    type="button"
-    class="pick area"
-    data-control="area"
-    aria-haspopup="dialog"
-    [attr.aria-expanded]="expanded().area"
-    [attr.aria-label]="'shell.area.pageLabel' | transloco: { page: (page.labelKey | transloco) }"
-    (pointerdown)="press('area')"
-    (click)="toggle($event, 'area')"
-  >
-    <ui-icon [name]="page.icon" />
-    <span class="pick-text">{{ page.labelKey | transloco }}</span>
-    <ui-icon class="chevron" name="chevron-down" [size]="14" />
-  </button>
-} @else {
-  <button
-    type="button"
-    class="pick area"
-    data-control="area"
-    aria-disabled="true"
-    [attr.title]="areaReason() | transloco"
-    [attr.aria-label]="'shell.area.menu' | transloco"
-  >
-    <ui-icon name="layout-grid" />
-    <span class="pick-text">{{ 'shell.area.menu' | transloco }}</span>
-    <ui-icon class="chevron" name="chevron-down" [size]="14" />
-  </button>
+<!-- Outside a workspace there is no area pill either; inside one it names the spec area or the workspace page. -->
+@if (inWorkspace()) {
+  @if (specOpen()) {
+    <button
+      type="button"
+      class="pick area"
+      data-control="area"
+      aria-haspopup="dialog"
+      [attr.aria-expanded]="expanded().area"
+      [attr.aria-label]="'shell.area.label' | transloco: { area: (areaKey() | transloco) }"
+      (pointerdown)="press('area')"
+      (click)="toggle($event, 'area')"
+    >
+      <span class="area-dot" aria-hidden="true" [attr.data-dot]="state.area() ?? 'dashboard'"></span>
+      <span class="pill">
+        <span class="pill-label" data-pill-label>{{ 'shell.pills.area' | transloco }}</span>
+        <span class="pill-value pick-text" data-pill-value>{{ areaKey() | transloco }}</span>
+      </span>
+      <ui-icon class="chevron" name="chevron-down" [size]="14" />
+    </button>
+  } @else if (workspacePage(); as page) {
+    <button
+      type="button"
+      class="pick area"
+      data-control="area"
+      aria-haspopup="dialog"
+      [attr.aria-expanded]="expanded().area"
+      [attr.aria-label]="'shell.area.pageLabel' | transloco: { page: (page.labelKey | transloco) }"
+      (pointerdown)="press('area')"
+      (click)="toggle($event, 'area')"
+    >
+      <ui-icon class="page-icon" [name]="page.icon" />
+      <span class="pill">
+        <span class="pill-label" data-pill-label>{{ 'shell.pills.area' | transloco }}</span>
+        <span class="pill-value pick-text" data-pill-value>{{ page.labelKey | transloco }}</span>
+      </span>
+      <ui-icon class="chevron" name="chevron-down" [size]="14" />
+    </button>
+  } @else {
+    <button
+      type="button"
+      class="pick area"
+      data-control="area"
+      aria-disabled="true"
+      [attr.title]="areaReason() | transloco"
+      [attr.aria-label]="'shell.area.menu' | transloco"
+    >
+      <span class="pill">
+        <span class="pill-label" data-pill-label>{{ 'shell.pills.area' | transloco }}</span>
+        <span class="pill-value pick-text" data-pill-value>{{ 'shell.area.menu' | transloco }}</span>
+      </span>
+      <ui-icon class="chevron" name="chevron-down" [size]="14" />
+    </button>
+  }
 }
 
 <!-- The lists, sheets and popovers load after first render; their overlay primitives stay out of the initial bundle. -->

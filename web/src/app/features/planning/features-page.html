@@ -3,10 +3,12 @@
 } @else if (unavailable()) {
   <p class="unavailable">{{ 'shell.unavailable' | transloco }}</p>
 } @else {
-  <h1 id="features" tabindex="-1">
-    <ui-term id="features-term" [hint]="'terms.feature' | transloco">{{ 'planning.features.titleTerm' | transloco }}</ui-term>
-    {{ 'planning.features.titleIn' | transloco: { ws: name() } }}
-  </h1>
+  <ui-page-head [segments]="[state.ws() ?? '', ('shell.pages.features' | transloco)]">
+    <h1 class="type-page-title" id="features" tabindex="-1">
+      <ui-term id="features-term" [hint]="'terms.feature' | transloco">{{ 'planning.features.titleTerm' | transloco }}</ui-term>
+      {{ 'planning.features.titleIn' | transloco: { ws: name() } }}
+    </h1>
+  </ui-page-head>
 
   @if (model() !== null) {
     @if (rows().length === 0) {

@@ -16,6 +16,7 @@ import type { IconName } from '../../shared/icons/icons';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
+import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { type SegmentedOption, UiSegmented } from '../../shared/ui/segmented/segmented';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../shared/ui/term/term';
@@ -144,6 +145,7 @@ interface BandRow {
     UiEmptyState,
     UiIcon,
     UiIconButton,
+    UiPageHead,
     UiSegmented,
     UiSkeleton,
     UiTerm,
