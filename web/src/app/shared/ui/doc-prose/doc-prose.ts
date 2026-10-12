@@ -17,7 +17,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { DocsPage, MermaidFigure } from '../../../../../../core/src/files';
 import { ThemeService } from '../../../core/theme.service';
 import { UiDisclosure } from '../overlay/disclosure';
-import { MERMAID_LOADER, type MermaidApi, mermaidConfig, themeVariables } from './mermaid';
+import { fitMermaid, MERMAID_LOADER, type MermaidApi, mermaidConfig, themeVariables } from './mermaid';
 
 let nextRenderId = 0;
 
@@ -26,7 +26,8 @@ let nextRenderId = 0;
  * page (T131, ISC-124.2). It shows core's sanitised HTML and the table of contents (a sticky mini nav when `wide`, a
  * disclosure above the prose otherwise), and enhances the figures in place: tables become labelled scroll regions,
  * missing images get a note, mermaid sources are drawn client-side from the lazily loaded pinned package and redrawn
- * when the theme changes. With `assetUrl`, spec-folder images (`data-spec-asset`) are pointed at that URL.
+ * when the theme changes. A drawn diagram scales to its container until its labels would fall below 12 px; past that
+ * it keeps its natural width and scrolls sideways as a labelled region, like a table (`fitMermaid`). With `assetUrl`, spec-folder images (`data-spec-asset`) are pointed at that URL.
  *
  * Not encapsulated: the prose is `[innerHTML]`, which Angular's emulated encapsulation cannot reach; every selector in
  * `doc-prose.css` starts with `ui-doc-prose`.
@@ -68,9 +69,16 @@ export class UiDocProse {
 
   private readonly prose = viewChild<ElementRef<HTMLElement>>('prose');
   private renderRun = 0;
+  /** Each drawn diagram box and its region name; the observer refits a box whenever its container width changes. */
+  private readonly diagramLabels = new Map<Element, string>();
+  private diagramResize: ResizeObserver | null = null;
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => (this.renderRun += 1));
+    inject(DestroyRef).onDestroy(() => {
+      this.renderRun += 1;
+      this.diagramResize?.disconnect();
+      this.diagramLabels.clear();
+    });
     afterRenderEffect({
       write: () => {
         const host = this.prose()?.nativeElement;
@@ -102,6 +110,28 @@ export class UiDocProse {
     void this.router.navigate([], { relativeTo: this.route, fragment: anchor, queryParamsHandling: 'preserve', replaceUrl: true });
   }
 
+  /**
+   * Fits a drawn diagram to its container now (one measurement after the SVG landed) and again on every resize of its
+   * box, so a tier change or a panel resize re-decides between scaling and the natural-width scroll region.
+   */
+  private watchDiagram(box: HTMLElement, label: string): void {
+    for (const known of this.diagramLabels.keys()) {
+      if (known.isConnected) continue;
+      this.diagramResize?.unobserve(known);
+      this.diagramLabels.delete(known);
+    }
+    this.diagramLabels.set(box, label);
+    fitMermaid(box, label);
+    if (typeof ResizeObserver !== 'function') return;
+    this.diagramResize ??= new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const name = this.diagramLabels.get(entry.target);
+        if (name !== undefined && entry.target instanceof HTMLElement) fitMermaid(entry.target, name);
+      }
+    });
+    this.diagramResize.observe(box);
+  }
+
   private async drawMermaid(host: HTMLElement, figures: readonly MermaidFigure[], theme: 'light' | 'dark'): Promise<void> {
     if (figures.length === 0) return;
     const run = ++this.renderRun;
@@ -128,6 +158,8 @@ export class UiDocProse {
         // Mermaid's own output under `securityLevel: 'strict'` (DOMPurify-cleaned, no HTML labels, no click handlers).
         target.innerHTML = svg;
         element.setAttribute('data-rendered', '');
+        const caption = (element.querySelector('figcaption')?.textContent ?? figure.caption).trim();
+        this.watchDiagram(target, caption === '' ? this.transloco.translate('docs.figureRegion', { index: figure.index }) : caption);
         element.removeAttribute('data-render-error');
       } catch {
         element.setAttribute('data-render-error', '');

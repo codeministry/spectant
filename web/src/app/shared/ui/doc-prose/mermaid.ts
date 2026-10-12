@@ -75,3 +75,59 @@ export function mermaidConfig(theme: ResolvedTheme, variables: Record<string, st
     themeVariables: { ...variables, darkMode: theme === 'dark' },
   };
 }
+
+/** Below this rendered label size a scaled-down diagram is no longer readable (the shared renderer's floor). */
+export const MIN_DIAGRAM_LABEL_PX = 12;
+
+/** Mermaid's label size when the SVG's computed one cannot be read (its theme default). */
+const MERMAID_DEFAULT_FONT_PX = 16;
+
+/**
+ * Whether a drawn diagram keeps its natural width and scrolls sideways instead of scaling to its container: only when
+ * scaling `viewBoxWidth` user units into `containerWidth` px would draw its `fontSize` labels below
+ * `MIN_DIAGRAM_LABEL_PX`. No input depends on the figure's own rendered width, so applying the answer never changes the
+ * next measurement (no layout loop). An unmeasured side (0, NaN) decides nothing: the figure keeps scaling.
+ */
+export function mermaidKeepsNaturalWidth(viewBoxWidth: number, containerWidth: number, fontSize: number): boolean {
+  if (!(viewBoxWidth > 0) || !(containerWidth > 0) || !(fontSize > 0)) return false;
+  if (viewBoxWidth <= containerWidth) return false;
+  return (fontSize * containerWidth) / viewBoxWidth < MIN_DIAGRAM_LABEL_PX;
+}
+
+/** The width of an SVG's `viewBox` in user units, or 0 when it has none. */
+function viewBoxWidth(svg: SVGSVGElement): number {
+  const parts = (svg.getAttribute('viewBox') ?? '').trim().split(/[\s,]+/);
+  const width = Number.parseFloat(parts.at(2) ?? '');
+  return parts.length === 4 && Number.isFinite(width) ? width : 0;
+}
+
+/**
+ * Measures one drawn diagram after render (`.mermaid-svg`, the box holding mermaid's SVG: its `viewBox` width and
+ * computed font size against the box's own width) and switches it between the two shapes: scaled to 100 % of the
+ * container, or kept at its natural width as a labelled, focusable horizontal scroll region (`data-natural`,
+ * `role="region"`, `tabindex="0"`, `aria-label`), the way tables are. Idempotent; it writes only on a change.
+ */
+export function fitMermaid(scroller: HTMLElement, label: string): void {
+  const svg = scroller.querySelector<SVGSVGElement>(':scope > svg');
+  const container = scroller.clientWidth;
+  if (!svg || !(container > 0)) return; // not laid out (a hidden panel): the resize observer measures once it is
+  const fontSize = Number.parseFloat(getComputedStyle(svg).fontSize) || MERMAID_DEFAULT_FONT_PX;
+  const natural = viewBoxWidth(svg);
+  const keep = mermaidKeepsNaturalWidth(natural, container, fontSize);
+  const width = `${natural}px`;
+  if (keep) {
+    if (scroller.hasAttribute('data-natural') && scroller.getAttribute('aria-label') === label
+      && scroller.style.getPropertyValue('--mermaid-natural-width') === width) return;
+    scroller.setAttribute('data-natural', '');
+    scroller.style.setProperty('--mermaid-natural-width', width);
+    scroller.setAttribute('role', 'region');
+    scroller.setAttribute('tabindex', '0');
+    scroller.setAttribute('aria-label', label);
+  } else if (scroller.hasAttribute('data-natural')) {
+    scroller.removeAttribute('data-natural');
+    scroller.style.removeProperty('--mermaid-natural-width');
+    scroller.removeAttribute('role');
+    scroller.removeAttribute('tabindex');
+    scroller.removeAttribute('aria-label');
+  }
+}

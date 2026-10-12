@@ -451,11 +451,13 @@
       "board": "Board",
       "features": "Features",
       "milestones": "Meilensteine",
+      "tech": "Tech",
       "summary": {
         "specs": "{{active}} aktiv · {{archived}} archiviert",
         "board": "{{stages}} Stages · {{cards}} Karten · {{waiting}} warten auf Sie",
         "features": "{{count}} Features · {{closed}}/{{total}} geschlossen",
-        "milestones": "{{count}} Meilensteine · nächster {{next}}"
+        "milestones": "{{count}} Meilensteine · nächster {{next}}",
+        "tech": "{{specs}} Specs · {{fog}} offene Fragen"
       }
     }
   },
@@ -567,6 +569,7 @@
     "contents": "Inhalt",
     "updated": "Aktualisiert {{date}}",
     "tableRegion": "Tabelle {{index}}, seitlich scrollbar",
+    "figureRegion": "Diagramm {{index}}, seitlich scrollbar",
     "imageMissing": "Bild ist in diesem Checkout nicht vorhanden",
     "imageUnavailable": "Bild konnte nicht angezeigt werden",
     "diagramMissing": {
@@ -1548,5 +1551,77 @@
   },
   "live": {
     "taskActors": "Arbeitet an {{ task }}"
+  },
+  "tech": {
+    "title": "Tech",
+    "loading": "Tech-Seite wird geladen",
+    "error": "Die Tech-Seite konnte nicht geladen werden.",
+    "contents": "Inhalt",
+    "tabs": {
+      "overview": "Überblick",
+      "architecture": "Architektur",
+      "status": "Status",
+      "specs": "Specs",
+      "open": "Offen"
+    },
+    "subline": {
+      "file": "specs/tech.md · {{count}} Specs",
+      "noFile": "keine specs/tech.md · {{count}} Specs"
+    },
+    "section": {
+      "missing": "In specs/tech.md fehlt der Abschnitt {{key}}.",
+      "hint": "Führen Sie /spec-doc aus, um ihn zu entwerfen."
+    },
+    "empty": {
+      "title": "Noch keine tech.md",
+      "body": "Überblick und Architektur stammen aus specs/tech.md. Entwerfen Sie die Datei aus Claude Code:"
+    },
+    "status": {
+      "heading": "Status",
+      "caption": "Status jeder Spec",
+      "summary": {
+        "specs": "{{count}} Specs",
+        "open": "{{count}} offen",
+        "phase": "{{count}} {{phase}}",
+        "complete": "{{count}} abgeschlossen"
+      },
+      "legend": "Abgeschlossene Specs stehen am Ende.",
+      "columns": {
+        "spec": "Spec",
+        "title": "Titel",
+        "type": "Typ",
+        "stage": "Stage",
+        "claims": "Claims",
+        "tasks": "Tasks",
+        "fog": "Fog"
+      },
+      "claims": "{{closed}} von {{total}} Claims geschlossen",
+      "tasks": "{{landed}}/{{total}} Tasks",
+      "noTasks": "keine Tasks",
+      "fog": "{{count}} Fog",
+      "fogHint": "Fog zählt die Zeilen mit offenen Fragen (- fog:) in dieser Spec.",
+      "complete": "Abgeschlossen · {{count}}"
+    },
+    "specs": {
+      "goal": "Ziel",
+      "approach": "Ansatz",
+      "noPlan": "Noch keine plan.md",
+      "open": "Spec öffnen"
+    },
+    "links": {
+      "goal": "Ziel von {{id}}",
+      "plan": "Plan von {{id}}",
+      "status": "Status von {{id}}"
+    },
+    "open": {
+      "risks": "Risiken",
+      "noRisks": "Risiken stammen aus specs/tech.md.",
+      "questions": "Offene Fragen · {{lines}} Fog-Zeilen · {{specs}} offene Specs",
+      "none": "Keine offenen Fragen in offenen Specs."
+    },
+    "palette": {
+      "page": "Tech",
+      "tab": "Tech · {{tab}}"
+    }
   }
 }

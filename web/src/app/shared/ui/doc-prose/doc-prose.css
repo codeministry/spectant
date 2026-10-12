@@ -158,6 +158,19 @@ ui-doc-prose .docs-prose .mermaid-svg svg {
   block-size: auto;
 }
 
+/* Scaled to the container its labels would drop below 12 px: natural width, scrolling inside the figure (fitMermaid). */
+ui-doc-prose .docs-prose .mermaid-svg[data-natural] {
+  text-align: start;
+  overscroll-behavior-inline: contain;
+}
+
+ui-doc-prose .docs-prose .mermaid-svg[data-natural] svg {
+  display: block;
+  inline-size: var(--mermaid-natural-width);
+  min-inline-size: var(--mermaid-natural-width);
+  max-inline-size: none;
+}
+
 ui-doc-prose .docs-prose img {
   display: block;
   max-inline-size: 100%;
