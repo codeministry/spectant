@@ -1,7 +1,21 @@
 import { TestBed } from '@angular/core/testing';
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import { UiCommandChip } from './command-chip';
 
 describe('UiCommandChip', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en' },
+          preloadLangs: true,
+        }),
+      ],
+    });
+  });
+
   afterEach(() => {
     Reflect.deleteProperty(navigator, 'clipboard');
   });
@@ -16,6 +30,7 @@ describe('UiCommandChip', () => {
     await fixture.whenStable();
 
     const button = (fixture.nativeElement as HTMLElement).querySelector('button');
+    expect(button?.getAttribute('aria-label')).toBe('Copy /spec-implement 012');
     button?.click();
     await fixture.whenStable();
     expect(writeText).toHaveBeenCalledWith('/spec-implement 012');

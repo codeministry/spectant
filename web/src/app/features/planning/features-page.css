@@ -13,8 +13,42 @@
   min-inline-size: 0;
 }
 
-ui-page-head {
+.title {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  min-inline-size: 0;
   margin-block-end: 8px;
+}
+
+ui-page-head {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+}
+
+/* The glossary trigger beside the h1: centred on the title's 32 px line, 44 x 44 under a coarse pointer. */
+.info {
+  display: inline-flex;
+  flex: none;
+  padding: 4px;
+  margin-block-end: 4px;
+  color: var(--muted-ink);
+}
+
+@media (pointer: coarse) {
+  .info {
+    padding: 14px;
+    margin: 0 -10px -10px;
+  }
+}
+
+.vh {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 h1 {

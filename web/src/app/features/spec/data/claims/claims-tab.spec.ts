@@ -185,6 +185,7 @@ describe('ClaimsTab (ISC-81)', () => {
       expect(blocked?.querySelector('.probe')?.textContent).toContain('all reachable');
       const edge = blocked?.querySelector<HTMLAnchorElement>('a[data-edge="ISC-77"]');
       expect(edge?.textContent.trim()).toBe('blocked by ISC-77');
+      expect(edge?.getAttribute('aria-label')).toBe('ISC-78 is blocked by ISC-77');
       expect(edge?.getAttribute('href')).toBe('/w/harbor/s/002/claims#claim-ISC-77');
     });
   });

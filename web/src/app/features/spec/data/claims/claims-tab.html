@@ -109,6 +109,7 @@
                       class="edge"
                       [class.is-blocking]="claim.blockedBy.includes(edge)"
                       [attr.data-edge]="edge"
+                      [attr.aria-label]="(claim.blockedBy.includes(edge) ? 'orientation.edgeBlockedBy' : 'orientation.edgeAfter') | transloco: { claim: claim.id, target: edge }"
                       [routerLink]="claimsPath()"
                       [fragment]="'claim-' + edge"
                       queryParamsHandling="preserve"

@@ -76,7 +76,6 @@ export class FeaturesPage {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
 
-  protected readonly name = computed(() => this.data.workspaceName(this.state.ws() ?? ''));
   protected readonly tier = this.state.tier;
   protected readonly wide = computed(() => this.tier() === 'wide');
   protected readonly compact = computed(() => this.tier() === 'compact');

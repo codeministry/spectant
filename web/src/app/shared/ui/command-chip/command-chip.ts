@@ -10,6 +10,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { UiIcon } from '../../icons/icon';
 
 /**
@@ -56,13 +57,16 @@ function highlightMs(doc: Document): number {
  * holds until the button loses focus) and `copied` emits the command for the page's live region. When every copy
  * path fails the command text is selected and `manualHint` ("Select and press ⌘C") is shown.
  *
+ * The button's accessible name names its command (`orientation.copyCommand`: "Copy /spec-implement 012"; ISC-142),
+ * so no two chips of a view share a name; `copyLabel` stays the tooltip, `copiedLabel` the name while the check shows.
+ *
  * TODO(T23): `copyLabel`, `copiedLabel` and `manualHint` come from Transloco; the defaults are English fallbacks.
  * TODO(T24): swap the plain button to `ui-icon-button`; the focus ring and the coarse-pointer hit area come with it.
  */
 @Component({
   selector: 'ui-command-chip',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [UiIcon],
+  imports: [TranslocoPipe, UiIcon],
   styles: `
     :host { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; max-inline-size: 100%; }
     .chip { display: inline-flex; gap: 4px; align-items: center; min-inline-size: 0; padding-inline: 8px 2px; border: 1px solid var(--line); border-radius: var(--radius-field); background: var(--color-base-200); }
@@ -78,7 +82,7 @@ function highlightMs(doc: Document): number {
         type="button"
         class="btn btn-ghost btn-xs btn-square copy"
         [attr.data-copied]="state() === 'copied' ? '' : null"
-        [attr.aria-label]="state() === 'copied' ? copiedLabel() : copyLabel()"
+        [attr.aria-label]="state() === 'copied' ? copiedLabel() : ('orientation.copyCommand' | transloco: { command: command() })"
         [title]="copyLabel()"
         (click)="copy()"
         (blur)="onBlur()"

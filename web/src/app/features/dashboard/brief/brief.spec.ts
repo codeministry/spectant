@@ -103,7 +103,7 @@ describe('Brief', () => {
     expect(chip?.querySelector('code')?.textContent.trim()).toBe('/spec-tldr');
     expect(head()?.contains(chip)).toBe(true);
     expect(more()?.contains(chip ?? null)).toBe(false);
-    expect(chip?.querySelector('button')?.getAttribute('aria-label')).toBe('Copy command');
+    expect(chip?.querySelector('button')?.getAttribute('aria-label')).toBe('Copy /spec-tldr');
   });
 
   it('expands on "More" and clips again on "Less"', async () => {

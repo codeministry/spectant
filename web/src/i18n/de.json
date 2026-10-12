@@ -1153,12 +1153,23 @@
         "clearAll": "Filter zurücksetzen",
         "all": "Alle"
       },
+      "hidden": {
+        "right": "Rechts ausserhalb:",
+        "show": "Zu {{stage}} scrollen",
+        "lane": {
+          "one": "{{count}} Karte in {{columns}}, rechts ausserhalb",
+          "other": "{{count}} Karten in {{columns}}, rechts ausserhalb"
+        }
+      },
       "swimlanes": {
         "label": "Bahnen",
         "none": "Keine",
         "feature": "Feature",
         "milestone": "Meilenstein",
-        "cards": "{{count}} Karten",
+        "cards": {
+          "one": "{{count}} Karte",
+          "other": "{{count}} Karten"
+        },
         "collapse": "{{lane}} einklappen",
         "expand": "{{lane}} ausklappen",
         "omittedFeatures": "{{count}} Features haben keine Karte in {{stage}}",
@@ -1643,5 +1654,11 @@
       "page": "Tech",
       "tab": "Tech · {{tab}}"
     }
+  },
+  "orientation": {
+    "backToBoard": "Zurück zum Board",
+    "copyCommand": "{{command}} kopieren",
+    "edgeAfter": "{{claim}} kommt nach {{target}}",
+    "edgeBlockedBy": "{{claim}} ist blockiert durch {{target}}"
   }
 }

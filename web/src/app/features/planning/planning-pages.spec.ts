@@ -89,7 +89,7 @@ describe('planning routes', () => {
     h1?.querySelectorAll('[role="tooltip"]').forEach((hint) => {
       hint.remove();
     });
-    expect(h1?.textContent.replace(/\s+/g, ' ').trim()).toBe('Features in harbor');
+    expect(h1?.textContent.replace(/\s+/g, ' ').trim()).toBe('Features');
     expect(root.querySelector('[data-page="features"] h1')?.getAttribute('tabindex')).toBe('-1');
     expect(root.querySelector('app-not-found')).toBeNull();
     expect(TestBed.inject(ShellState).route().wsPage).toBe('features');

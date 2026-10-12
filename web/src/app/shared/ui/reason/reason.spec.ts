@@ -33,7 +33,7 @@ describe('UiReason (ISC-122.3)', () => {
     expect(host.querySelector('.phrase')?.textContent).toBe(phrase);
     expect(host.querySelector('.visually-hidden')?.textContent).toBe(phrase);
     expect(host.querySelector('ui-command-chip code')?.textContent).toBe('/spec-review 008');
-    expect(host.querySelector('ui-command-chip button')?.getAttribute('aria-label')).toBe('Copy command');
+    expect(host.querySelector('ui-command-chip button')?.getAttribute('aria-label')).toBe('Copy /spec-review 008');
   });
 
   it('renders no chip without a command, and clamps to two lines by default', async () => {

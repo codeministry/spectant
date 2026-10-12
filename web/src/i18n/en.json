@@ -1153,12 +1153,23 @@
         "clearAll": "Clear filters",
         "all": "All"
       },
+      "hidden": {
+        "right": "Right of view:",
+        "show": "Scroll to {{stage}}",
+        "lane": {
+          "one": "{{count}} card in {{columns}}, right of view",
+          "other": "{{count}} cards in {{columns}}, right of view"
+        }
+      },
       "swimlanes": {
         "label": "Swimlanes",
         "none": "None",
         "feature": "Feature",
         "milestone": "Milestone",
-        "cards": "{{count}} cards",
+        "cards": {
+          "one": "{{count}} card",
+          "other": "{{count}} cards"
+        },
         "collapse": "Collapse {{lane}}",
         "expand": "Expand {{lane}}",
         "omittedFeatures": "{{count}} features have no card in {{stage}}",
@@ -1643,5 +1654,11 @@
       "page": "Tech",
       "tab": "Tech · {{tab}}"
     }
+  },
+  "orientation": {
+    "backToBoard": "Back to board",
+    "copyCommand": "Copy {{command}}",
+    "edgeAfter": "{{claim}} comes after {{target}}",
+    "edgeBlockedBy": "{{claim}} is blocked by {{target}}"
   }
 }
