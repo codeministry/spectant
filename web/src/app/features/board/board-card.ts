@@ -1,5 +1,5 @@
 import { CdkDragHandle } from '@angular/cdk/drag-drop';
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { WorkflowStage } from '../../../../../core/src/files';
@@ -45,8 +45,11 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  *   `ui-actor-chip` with the resolved name or the raw id; nothing when the card is unassigned.
  * - Row 4, waiting cards only: `ui-reason` compact, the row's phrase and its command chip (none for close-pending).
  * - The `grip-vertical` zone at the trailing edge is the `cdkDragHandle` (T125): the board page puts `cdkDrag` on this
- *   element and only the grip lifts the card, so the title stays a link. It stays `aria-hidden`; the keyboard and
- *   single-pointer path is the "Move to…" menu (T127).
+ *   element and only the grip lifts the card, so the title stays a link. The grip is a button named "Move 008"
+ *   (T127): a click without movement, Enter or Space emits `moveMenu` with the grip, and the board opens "Move to…"
+ *   on it, the single-pointer and keyboard path to the move (WCAG 2.5.7).
+ * - Shift+← / Shift+→ anywhere on the card (the title link or the grip focused) emit `step` with -1 or 1; the board
+ *   moves the card to the previous or next allowed stage (T127).
  *
  * Variants come only from `ui-card`: `side` (the edge, `--edge` per stage) on every card, `dashed` on a story's.
  */
@@ -54,7 +57,13 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
   selector: 'app-board-card',
   imports: [CdkDragHandle, RouterLink, TranslocoPipe, UiActorChip, UiCard, UiIcon, UiPriority, UiReason, UiTypeGlyph],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[attr.data-key]': 'card().key', '[attr.data-stage]': 'card().stage', '[attr.data-kind]': 'card().kind' },
+  host: {
+    '[attr.data-key]': 'card().key',
+    '[attr.data-stage]': 'card().stage',
+    '[attr.data-kind]': 'card().kind',
+    '(keydown.shift.arrowleft)': 'onStep($event, -1)',
+    '(keydown.shift.arrowright)': 'onStep($event, 1)',
+  },
   styles: `
     :host { display: block; min-inline-size: 0; }
     ui-card { min-block-size: 72px; }
@@ -79,7 +88,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
     .feat { background: var(--disp-t); color: var(--disp-ink); font-family: var(--font-mono); }
     .ms { border: 1px solid var(--line); color: var(--muted-ink); }
     ui-reason { position: relative; z-index: 1; }
-    .grip { display: grid; place-items: center; align-self: center; inline-size: 44px; block-size: 44px; color: var(--muted-ink); cursor: grab; }
+    .grip { position: relative; z-index: 1; display: grid; place-items: center; align-self: center; inline-size: 44px; block-size: 44px; padding: 0; border: 0; border-radius: var(--radius-field); background: none; color: var(--muted-ink); cursor: grab; }
     .grip:active { cursor: grabbing; }
     .vh { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     @media (forced-colors: active) {
@@ -137,7 +146,18 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
             <ui-reason [compact]="true" [phrase]="reason" [command]="c.command" />
           }
         </div>
-        <span class="grip" cdkDragHandle aria-hidden="true"><ui-icon name="grip-vertical" [size]="16" /></span>
+        <button
+          type="button"
+          class="grip"
+          cdkDragHandle
+          data-grip
+          aria-haspopup="dialog"
+          [attr.aria-label]="'board.workspace.card.move' | transloco: { id: c.id ?? c.slug }"
+          (click)="moveMenu.emit(grip)"
+          #grip
+        >
+          <ui-icon name="grip-vertical" [size]="16" />
+        </button>
       </article>
     </ui-card>
   `,
@@ -146,6 +166,15 @@ export class BoardCard {
   readonly card = input.required<BoardCardModel>();
   /** The workspace slug the card's link opens in. */
   readonly ws = input.required<string>();
+  /** The grip was clicked (no drag), or pressed with Enter or Space: the board opens "Move to…" on it (T127). */
+  readonly moveMenu = output<HTMLElement>();
+  /** Shift+← (-1) or Shift+→ (1) on the card: the board moves it to the previous or next allowed stage (T127). */
+  readonly step = output<-1 | 1>();
+
+  protected onStep(event: Event, dir: -1 | 1): void {
+    event.preventDefault();
+    this.step.emit(dir);
+  }
 
   protected readonly edge = computed(() => CARD_EDGE[this.card().stage]);
   protected readonly ink = computed(() => reasonInk(this.card()));

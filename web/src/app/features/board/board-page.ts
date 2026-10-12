@@ -1,6 +1,6 @@
 import { CdkDrag, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { NgTemplateOutlet } from '@angular/common';
-import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, effect, type ElementRef, inject, signal, untracked, viewChild } from '@angular/core';
+import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, signal, untracked, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -33,6 +33,8 @@ import {
   buildBoard,
   parseBoardQuery,
 } from './board-model';
+import { AllocateDialog } from './allocate-dialog';
+import { type MovedCard, MoveToMenu, stepTarget } from './move-to-menu';
 import { RefusalNotice } from './refusal-notice';
 
 /** Every key the board query owns: a navigation clears the ones the next query leaves out and keeps any other param. */
@@ -124,8 +126,10 @@ interface BandRow {
 @Component({
   selector: 'app-board-page',
   imports: [
+    AllocateDialog,
     CdkDrag,
     CdkDropList,
+    MoveToMenu,
     NgTemplateOutlet,
     RefusalNotice,
     TranslocoPipe,
@@ -271,6 +275,13 @@ export class BoardPage {
     });
   });
 
+  private readonly menu = viewChild(MoveToMenu);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  /** The card whose grip takes focus after the next render that shows it (T127, T128). */
+  private readonly pendingFocus = signal<string | null>(null);
+  /** True from a drag's start until the task after its end: the release's click is no menu click. */
+  private dragClick = false;
+
   private readonly scrollerRef = viewChild<ElementRef<HTMLElement>>('scroller');
   protected readonly scrollerEl = computed(() => this.scrollerRef()?.nativeElement);
   protected readonly inView = signal<readonly string[]>([]);
@@ -278,6 +289,18 @@ export class BoardPage {
   protected readonly fadeEnd = signal(false);
 
   constructor() {
+    // Focus after a move from the menu or the keys, or a closed allocation dialog: the grip, once it is rendered.
+    afterRenderEffect(() => {
+      const key = this.pendingFocus();
+      this.board();
+      this.query();
+      if (key === null) return;
+      const card = [...this.host.querySelectorAll<HTMLElement>('app-board-card')].find((el) => el.dataset['key'] === key);
+      const grip = card?.querySelector<HTMLElement>('[data-grip]');
+      if (!grip) return;
+      grip.focus();
+      untracked(() => this.pendingFocus.set(null));
+    });
     // The minimap: watch the scroller's columns again whenever the board re-renders them.
     afterRenderEffect((onCleanup) => {
       this.board();
@@ -350,16 +373,51 @@ export class BoardPage {
   protected dragStarted(card: BoardCardModel): void {
     this.drag.start(card);
     this.trayOpen.set(this.compact());
+    this.dragClick = true;
   }
 
   protected dragEnded(): void {
     this.drag.end();
     this.trayOpen.set(false);
+    // The click a drag's release may still send to the grip must not open the menu; the next task clears the guard.
+    setTimeout(() => {
+      this.dragClick = false;
+    });
   }
 
-  /** A CDK drop on a column, stub, band cell, strip segment or tray slot: the transition, whatever the hint said. */
+  /**
+   * A CDK drop on a column, stub, band cell, strip segment or tray slot: the one move (`BoardDrag.move`), whatever the
+   * hint said: a spec's transition, or a story's allocation dialog (T128).
+   */
   protected dropped(event: BoardDropEvent): void {
-    void this.drag.drop(this.ws(), event.item.data, this.drag.stageOf(event));
+    void this.drag.move(this.ws(), event.item.data, this.drag.stageOf(event));
+  }
+
+  /** The grip was clicked without a drag (T127): "Move to…" opens on it, the grip focused so Esc returns there. */
+  protected openMenu(card: BoardCardModel, grip: HTMLElement): void {
+    if (this.dragClick) return;
+    grip.focus({ preventScroll: true });
+    this.menu()?.openFor(card, grip);
+  }
+
+  /** Shift+← / Shift+→ on a card (T127): the same move to the previous or next allowed stage, no menu. */
+  protected async step(card: BoardCardModel, dir: -1 | 1): Promise<void> {
+    const to = stepTarget(card, this.board()?.stages ?? [], dir);
+    if (to === null) return;
+    const outcome = await this.drag.move(this.ws(), card, to);
+    if (outcome === 'moved') this.followMove({ key: card.key, to });
+    else if (outcome === 'refused') this.focusGrip(card.key);
+  }
+
+  /** After a move from the menu or the keys the grip of the moved card takes focus; at compact its column shows. */
+  protected followMove(moved: MovedCard): void {
+    if (this.compact()) this.selectColumn(moved.to);
+    this.focusGrip(moved.key);
+  }
+
+  /** Focuses the grip of `key` once it is rendered (a moved card is a new element in its new column). */
+  protected focusGrip(key: string): void {
+    this.pendingFocus.set(key);
   }
 
   /** The stage word of the lifted card, for the "not next from …" hint. */

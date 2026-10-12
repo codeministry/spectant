@@ -1180,7 +1180,14 @@
         "removes": "Removes",
         "confirm": "Allocate",
         "cancel": "Not yet",
-        "saving": "Allocating {{slug}}"
+        "saving": "Allocating {{slug}}",
+        "number": "NNN is the next free spec number; it is set when the folder is written.",
+        "unreadable": "The story file could not be read, so nothing can be allocated.",
+        "notAllocated": "Not allocated — {{slug}} stays an idea",
+        "refused": {
+          "notInIndex": "The ideas index specs/ideas/README.md does not name {{slug}}",
+          "folderExists": "{{folder}} already exists"
+        }
       },
       "live": {
         "changed": "{{count}} cards changed · show"

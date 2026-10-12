@@ -172,14 +172,16 @@ describe('BoardDrag on the board page (T125, ISC-130)', () => {
     expect(planningLoads).toBeGreaterThan(loads);
   });
 
-  it('sends nothing for the own column, a story or a card without hash', async () => {
+  it('sends no transition for the own column, a story or a card without hash', async () => {
     const { drag } = await open(answer(written('tasks', 'review')));
     await drag.drop('harbor', C003, 'tasks');
     await drag.drop('harbor', cardOf('idea:registry-webhooks'), 'plan');
     await drag.drop('harbor', { ...C003, hash: null }, 'review');
     await drag.drop('harbor', C003, null);
     expect(calls).toEqual([]);
-    expect(drag.draggable(cardOf('idea:registry-webhooks'))).toBe(false);
+    // a story is draggable since T128: its drop asks for the allocation (allocate-dialog.spec.ts), never a transition
+    expect(drag.draggable(cardOf('idea:registry-webhooks'))).toBe(true);
+    expect(drag.draggable({ ...C003, hash: null })).toBe(false);
   });
 });
 

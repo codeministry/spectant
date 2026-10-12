@@ -106,12 +106,20 @@ describe('BoardCard (T122, ISC-129)', () => {
     expect(unmapped?.assigneeName).toBeNull();
   });
 
-  it('has exactly one link and a decorative grip at the trailing edge', async () => {
+  it('has exactly one link and, at the trailing edge, the grip as the "Move to…" button (T127)', async () => {
     const host = await render('002');
     expect(host.querySelectorAll('a')).toHaveLength(1);
-    const grip = host.querySelector('.grip');
-    expect(grip?.getAttribute('aria-hidden')).toBe('true');
+    const grip = host.querySelector<HTMLButtonElement>('[data-grip]');
+    expect(grip?.tagName).toBe('BUTTON');
+    expect(grip?.getAttribute('type')).toBe('button');
+    expect(grip?.getAttribute('aria-label')).toBe('Move 002');
+    expect(grip?.getAttribute('aria-haspopup')).toBe('dialog');
     expect(grip?.querySelector('ui-icon')).not.toBeNull();
     expect(host.querySelector('ui-reason')).toBeNull();
+  });
+
+  it('a story\'s grip is named by its slug', async () => {
+    const host = await render('registry-webhooks');
+    expect(host.querySelector('[data-grip]')?.getAttribute('aria-label')).toBe('Move registry-webhooks');
   });
 });

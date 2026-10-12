@@ -6,6 +6,7 @@ import type { WorkflowStage } from '../../../../../core/src/files';
 import type { PlanningHolder, PlanningModel } from '../../../../../core/src/planning';
 import { isWorkflowStage } from '../../../../../core/src/stage';
 import { FIXED_GATES } from '../../../../../core/src/workflow';
+import type { AllocateRefused, IdeaAllocated } from '../../../../../server/src/spec-routes.contract';
 import { ApiClient } from '../../core/api.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ToastService } from '../../shared/ui/toast/toast';
@@ -90,7 +91,15 @@ export type BoardRefusal = {
   | { readonly kind: 'stale' }
   | { readonly kind: 'locked'; readonly session: string; readonly claim: string }
   | { readonly kind: 'failed'; readonly status: number }
+  /** T128: the allocation's 422 (`AllocateRefused`); `id` is the story's slug. */
+  | { readonly kind: 'unallocated'; readonly reason: AllocateRefused['reason']; readonly folder: string | null }
 );
+
+/**
+ * What one move from any path came to (T127): `moved` on a 200, `refused` when a refusal now stands for the card,
+ * `asked` when a story's drop opened the allocation dialog (T128), `none` when nothing was sent.
+ */
+export type MoveOutcome = 'moved' | 'refused' | 'asked' | 'none';
 
 /**
  * The fields of a CDK drop the board reads. Structural, so every list's event fits whatever its data type (a stage, or
@@ -142,6 +151,8 @@ export class BoardDrag {
   readonly moved = signal<string | null>(null);
   /** The two columns whose counts morph after a move. */
   readonly morph = signal<readonly WorkflowStage[]>([]);
+  /** The story whose allocation waits on the confirmation dialog (T128); null while none is asked. */
+  readonly allocating = signal<BoardCard | null>(null);
   private readonly refusals = signal<ReadonlyMap<string, BoardRefusal>>(new Map());
 
   /** The hint per column for the lifted card; null while nothing is dragged. */
@@ -160,9 +171,65 @@ export class BoardDrag {
     return this.hints()?.get(stage) ?? null;
   }
 
-  /** A spec card the server hashed can be dragged; a story's allocation is its own write (T128). */
+  /**
+   * A spec card the server hashed can be dragged; so can a story with a target, the first stage of its type, whose
+   * drop asks for the allocation (T128) instead of sending a transition.
+   */
   draggable(card: BoardCard): boolean {
-    return card.kind === 'spec' && card.id !== null && card.hash !== null;
+    if (card.kind === 'idea') return card.targets.length > 0;
+    return card.id !== null && card.hash !== null;
+  }
+
+  /**
+   * The one move of every path (T127): a drop, a "Move to…" entry and Shift+←/→ all come here. A spec sends its
+   * transition (`drop`); a story asked onto one of its targets opens the allocation dialog and sends nothing yet; a
+   * story anywhere else is not moved.
+   */
+  async move(ws: string, card: BoardCard, to: WorkflowStage | null): Promise<MoveOutcome> {
+    if (card.kind === 'spec') return this.drop(ws, card, to);
+    if (to === null || !card.targets.includes(to) || this.saving() !== null) return 'none';
+    this.dismiss(card.key);
+    this.allocating.set(card);
+    return 'asked';
+  }
+
+  /**
+   * T128 · ISC-130.2: the allocation of the asked story with the story file's raw hash (`IdeaPage.hash`). 200 reloads
+   * the planning tree and the dashboard and answers the new spec; 422 (`not-in-index`, `folder-exists`), 409 (which
+   * also reloads the tree), 423 and any other answer leave a refusal under the story's card and answer null.
+   */
+  async allocate(ws: string, card: BoardCard, hash: string): Promise<IdeaAllocated | null> {
+    const to = card.targets.at(0);
+    if (card.kind !== 'idea' || to === undefined || this.saving() !== null) return null;
+    this.saving.set(card.key);
+    const result = await this.api.allocate(ws, card.slug, hash);
+    this.saving.set(null);
+    const base = { key: card.key, id: card.slug, stage: card.stage, to };
+    if (result.kind === 'error') {
+      this.refuse({ ...base, kind: 'failed', status: result.status });
+      return null;
+    }
+    const answer = result.answer;
+    switch (answer.status) {
+      case 200:
+        this.dismiss(card.key);
+        this.data.planning.reload();
+        this.data.dashboard.reload();
+        return answer.body;
+      case 422:
+        this.refuse({ ...base, kind: 'unallocated', reason: answer.body.reason, folder: answer.body.folder });
+        return null;
+      case 409:
+        this.refuse({ ...base, kind: 'stale' });
+        this.data.planning.reload();
+        return null;
+      case 423:
+        this.refuse({ ...base, kind: 'locked', session: answer.body.lock.session, claim: answer.body.lock.claim });
+        return null;
+      case 400:
+        this.refuse({ ...base, kind: 'failed', status: 400 });
+        return null;
+    }
   }
 
   start(card: BoardCard): void {
@@ -205,35 +272,36 @@ export class BoardDrag {
   }
 
   /** The transition for `card` dropped on `to`: nothing for its own column, a card that cannot move or a write in flight. */
-  async drop(ws: string, card: BoardCard, to: WorkflowStage | null): Promise<void> {
+  async drop(ws: string, card: BoardCard, to: WorkflowStage | null): Promise<MoveOutcome> {
     const id = card.id;
     const hash = card.hash;
-    if (to === null || to === card.stage || card.kind !== 'spec' || id === null || hash === null || this.saving() !== null) return;
+    if (to === null || to === card.stage || card.kind !== 'spec' || id === null || hash === null || this.saving() !== null) return 'none';
     this.saving.set(card.key);
     const result = await this.api.transition(ws, id, to, hash);
     this.saving.set(null);
     const base = { key: card.key, id, stage: card.stage, to };
     if (result.kind === 'error') {
       this.refuse({ ...base, kind: 'failed', status: result.status });
-      return;
+      return 'refused';
     }
     const answer = result.answer;
     switch (answer.status) {
       case 200:
         this.accept(card, hash, answer.body.to, answer.body.hash);
-        return;
+        return 'moved';
       case 422:
         this.refuse({ ...base, kind: 'refused', reason: answer.body.reason, command: answer.body.command });
-        return;
+        return 'refused';
       case 409:
         this.refuse({ ...base, kind: 'stale' });
         this.data.planning.reload();
-        return;
+        return 'refused';
       case 423:
         this.refuse({ ...base, kind: 'locked', session: answer.body.lock.session, claim: answer.body.lock.claim });
-        return;
+        return 'refused';
       case 400:
         this.refuse({ ...base, kind: 'failed', status: 400 });
+        return 'refused';
     }
   }
 

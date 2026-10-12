@@ -19,6 +19,10 @@
 
       <app-board-filters [board]="b" (queryChange)="setQuery($event)" />
 
+      <!-- The single-pointer and keyboard move (T127) and the story's allocation (T128): one of each per board. -->
+      <app-move-to-menu #menu [board]="b" [ws]="ws()" [tier]="tier()" (moved)="followMove($event)" />
+      <app-allocate-dialog [ws]="ws()" (closed)="focusGrip($event)" />
+
       @if (b.shown === 0) {
         <p class="no-match">
           {{ 'board.workspace.filter.noMatch' | transloco }} ·
@@ -132,6 +136,8 @@
                       [cdkDragDisabled]="!drag.draggable(card)"
                       (cdkDragStarted)="dragStarted(card)"
                       (cdkDragEnded)="dragEnded()"
+                      (moveMenu)="openMenu(card, $event)"
+                      (step)="step(card, $event)"
                       [card]="card"
                       [ws]="ws()"
                     />
@@ -155,6 +161,8 @@
                       [cdkDragDisabled]="!drag.draggable(card)"
                       (cdkDragStarted)="dragStarted(card)"
                       (cdkDragEnded)="dragEnded()"
+                      (moveMenu)="openMenu(card, $event)"
+                      (step)="step(card, $event)"
                       [card]="card"
                       [ws]="ws()"
                     />
@@ -251,6 +259,8 @@
                       [cdkDragDisabled]="!drag.draggable(card)"
                       (cdkDragStarted)="dragStarted(card)"
                       (cdkDragEnded)="dragEnded()"
+                      (moveMenu)="openMenu(card, $event)"
+                      (step)="step(card, $event)"
                       [card]="card"
                       [ws]="ws()"
                     />
@@ -288,6 +298,8 @@
                       [cdkDragDisabled]="!drag.draggable(card)"
                       (cdkDragStarted)="dragStarted(card)"
                       (cdkDragEnded)="dragEnded()"
+                      (moveMenu)="openMenu(card, $event)"
+                      (step)="step(card, $event)"
                       [card]="card"
                       [ws]="ws()"
                     />

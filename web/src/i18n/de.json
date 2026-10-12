@@ -1180,7 +1180,14 @@
         "removes": "Entfernt",
         "confirm": "Anlegen",
         "cancel": "Noch nicht",
-        "saving": "{{slug}} wird angelegt"
+        "saving": "{{slug}} wird angelegt",
+        "number": "NNN ist die nächste freie Spec-Nummer; sie wird beim Anlegen des Ordners vergeben.",
+        "unreadable": "Die Story-Datei konnte nicht gelesen werden; daher kann nichts angelegt werden.",
+        "notAllocated": "Nicht angelegt — {{slug}} bleibt eine Idee",
+        "refused": {
+          "notInIndex": "Der Ideen-Index specs/ideas/README.md nennt {{slug}} nicht",
+          "folderExists": "{{folder}} existiert bereits"
+        }
       },
       "live": {
         "changed": "{{count}} Karten geändert · anzeigen"
