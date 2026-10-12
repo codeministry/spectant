@@ -1,13 +1,20 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
-import { mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
 import { run } from "../server/src/cli.ts";
 import { DEFAULT_PORT, PORT_ATTEMPTS } from "../server/src/http.ts";
 import { openBrowser } from "../server/src/open-browser.ts";
 import { dataDir, dbPath, ensureDataDir } from "../server/src/paths.ts";
 import { DEFAULT_SETTINGS } from "../server/src/settings.ts";
+import {
+  TranscriptFolderError,
+  claudeConfigDir,
+  defaultTranscriptFolder,
+  discoverTranscripts,
+  encodeProjectPath,
+} from "../server/src/tokens-cli.ts";
 import { VERSION } from "../server/src/version.ts";
 
 describe("data dir", () => {
@@ -154,6 +161,159 @@ describe("run", () => {
   test("--strict-port only applies to serve", async () => {
     expect(await run(["list", "--strict-port"], manifest)).toBe(2);
     expect(err.join("\n")).toContain("--strict-port only applies to serve");
+  });
+
+  // `spectant tokens` (spec 009, T8): its usage errors, all exit 2 before anything is read.
+  test("tokens: --help names the command and --transcripts", async () => {
+    expect(await run(["--help"], manifest)).toBe(0);
+    const text = out.join("\n");
+    expect(text).toContain("tokens [--root <dir>] [--transcripts <dir>] [--yes]");
+    expect(text).toContain("--transcripts <dir>");
+  });
+
+  test("tokens: an unknown option, an extra argument or a missing value is a usage error", async () => {
+    expect(await run(["tokens", "--bogus"], manifest)).toBe(2);
+    expect(await run(["tokens", "extra"], manifest)).toBe(2);
+    expect(await run(["tokens", "--transcripts"], manifest)).toBe(2);
+    expect(await run(["tokens", "--transcripts="], manifest)).toBe(2);
+    expect(await run(["tokens", "--root"], manifest)).toBe(2);
+    const text = err.join("\n");
+    expect(text).toContain("unknown option --bogus");
+    expect(text).toContain("unexpected argument extra");
+    expect(text).toContain("--transcripts needs a directory");
+    expect(text).toContain("--root needs a directory");
+    expect(out).toEqual([]);
+  });
+
+  test("tokens: --transcripts only applies to tokens", async () => {
+    expect(await run(["serve", "--transcripts", dir], manifest)).toBe(2);
+    expect(await run(["list", "--transcripts", dir], manifest)).toBe(2);
+    expect(await run(["gate", "code-reviewed", "F1", "--transcripts", dir], manifest)).toBe(2);
+    expect(err.filter((line) => line.includes("--transcripts only applies to tokens"))).toHaveLength(3);
+  });
+
+  test("tokens: --root and --yes apply to gate and tokens only", async () => {
+    expect(await run(["list", "--root", dir], manifest)).toBe(2);
+    expect(await run(["list", "--yes"], manifest)).toBe(2);
+    const text = err.join("\n");
+    expect(text).toContain("--root only applies to gate and tokens");
+    expect(text).toContain("--yes only applies to db rollback, gate and tokens");
+  });
+});
+
+// The transcript discovery of `spectant tokens` (spec 009, T7): the folder Claude Code keeps a repository's sessions
+// in, its sub-agents and its agent worktrees' sibling folders, every list sorted. Temp dirs only; the operator's own
+// `~/.claude` is never read.
+describe("tokens discovery", () => {
+  const made: string[] = [];
+  const out: string[] = [];
+  const err: string[] = [];
+  const restore: Array<() => void> = [];
+  const manifest: EmbeddedManifest = { generatedAt: "2026-10-12T00:00:00.000Z", index: "index.html", assets: [] };
+  const temp = (prefix: string): string => {
+    const made1 = realpathSync(mkdtempSync(join(tmpdir(), prefix)));
+    made.push(made1);
+    return made1;
+  };
+  const put = (path: string, text: string): void => {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, text);
+  };
+  beforeEach(() => {
+    out.length = 0;
+    err.length = 0;
+    const log = spyOn(console, "log").mockImplementation((...args: unknown[]) => void out.push(args.join(" ")));
+    const error = spyOn(console, "error").mockImplementation((...args: unknown[]) => void err.push(args.join(" ")));
+    restore.push(
+      () => log.mockRestore(),
+      () => error.mockRestore(),
+    );
+  });
+  afterEach(() => {
+    for (const undo of restore.splice(0)) undo();
+    for (const path of made.splice(0)) rmSync(path, { recursive: true, force: true });
+  });
+
+  test("encodes a project path as Claude Code does: every non-alphanumeric character becomes -", () => {
+    expect(encodeProjectPath("/srv/a.b/x")).toBe("-srv-a-b-x");
+    expect(encodeProjectPath("/r/.claude/worktrees/agent-a1")).toBe("-r--claude-worktrees-agent-a1");
+    expect(encodeProjectPath("/srv/my_repo 2")).toBe("-srv-my-repo-2");
+  });
+
+  test("the config dir is $CLAUDE_CONFIG_DIR when set, ~/.claude otherwise", () => {
+    expect(claudeConfigDir({ CLAUDE_CONFIG_DIR: "/tmp/cfg" }, "/tmp/h")).toBe("/tmp/cfg");
+    expect(claudeConfigDir({}, "/tmp/h")).toBe("/tmp/h/.claude");
+    expect(claudeConfigDir({ CLAUDE_CONFIG_DIR: "" }, "/tmp/h")).toBe("/tmp/h/.claude");
+    expect(defaultTranscriptFolder("/srv/a.b/x", { CLAUDE_CONFIG_DIR: "/tmp/cfg" }, "/tmp/h")).toBe("/tmp/cfg/projects/-srv-a-b-x");
+    expect(defaultTranscriptFolder("/srv/a.b/x", {}, "/tmp/h")).toBe("/tmp/h/.claude/projects/-srv-a-b-x");
+  });
+
+  test("finds main sessions, sub-agents with their toolUseId and the worktree siblings by their exact suffix, sorted", () => {
+    const projects = temp("spectant-tokens-projects-");
+    const folder = join(projects, "-r");
+    put(join(folder, "b.jsonl"), "B\n");
+    put(join(folder, "a.jsonl"), "A\n");
+    put(join(folder, "notes.txt"), "not a transcript\n");
+    put(join(folder, "a", "subagents", "agent-2.jsonl"), "A2\n");
+    put(join(folder, "a", "subagents", "agent-2.meta.json"), JSON.stringify({ toolUseId: "toolu_2" }));
+    put(join(folder, "a", "subagents", "agent-1.jsonl"), "A1\n");
+    put(join(folder, "a", "subagents", "agent-3.jsonl"), "A3\n");
+    put(join(folder, "a", "subagents", "agent-3.meta.json"), "{not json");
+    put(join(projects, "-r--claude-worktrees-agent-f00", "w2.jsonl"), "W2\n");
+    put(join(projects, "-r--claude-worktrees-agent-e00", "w1.jsonl"), "W1\n");
+    // Not this repository's: a longer name sharing the prefix, a worktree of another repository, a nested folder.
+    put(join(projects, "-r-other", "x.jsonl"), "X\n");
+    put(join(projects, "-r-other--claude-worktrees-agent-f00", "y.jsonl"), "Y\n");
+    put(join(projects, "-rx--claude-worktrees-agent-f00", "z.jsonl"), "Z\n");
+    put(join(projects, "-r--claude-worktrees-agent-f00-sub", "s.jsonl"), "S\n");
+
+    const found = discoverTranscripts(folder);
+    expect(found.diagnostics).toEqual([]);
+    expect(found.files).toEqual([
+      { role: "subagent", session: "a", label: "a/subagents/agent-1.jsonl", text: "A1\n", toolUseId: null },
+      { role: "subagent", session: "a", label: "a/subagents/agent-2.jsonl", text: "A2\n", toolUseId: "toolu_2" },
+      { role: "subagent", session: "a", label: "a/subagents/agent-3.jsonl", text: "A3\n", toolUseId: null },
+      { role: "main", session: "a", label: "a.jsonl", text: "A\n" },
+      { role: "main", session: "b", label: "b.jsonl", text: "B\n" },
+      { role: "worktree", session: "w1", label: "../-r--claude-worktrees-agent-e00/w1.jsonl", text: "W1\n" },
+      { role: "worktree", session: "w2", label: "../-r--claude-worktrees-agent-f00/w2.jsonl", text: "W2\n" },
+    ]);
+  });
+
+  test("a missing transcript folder is an error, not an empty run", () => {
+    const projects = temp("spectant-tokens-missing-");
+    expect(() => discoverTranscripts(join(projects, "-nowhere"))).toThrow(TranscriptFolderError);
+  });
+
+  test("tokens: a root without specs/ exits 1 and writes nothing", async () => {
+    const root = temp("spectant-tokens-root-");
+    const transcripts = temp("spectant-tokens-tr-");
+    expect(await run(["tokens", "--root", root, "--transcripts", transcripts], manifest)).toBe(1);
+    expect(err.join("\n")).toContain("spectant: tokens: ");
+    expect(err.join("\n")).toContain("specs/");
+    expect(existsSync(join(root, "specs"))).toBe(false);
+  });
+
+  test("tokens: an unreadable transcript folder from $CLAUDE_CONFIG_DIR exits 1", async () => {
+    const root = temp("spectant-tokens-root-");
+    mkdirSync(join(root, "specs"));
+    const config = temp("spectant-tokens-cfg-");
+    expect(await run(["tokens", "--root", root], manifest, { env: { CLAUDE_CONFIG_DIR: config } })).toBe(1);
+    const text = err.join("\n");
+    expect(text).toContain("transcript folder");
+    expect(text).toContain(encodeProjectPath(root));
+    expect(readdirSync(join(root, "specs"))).toEqual([]);
+  });
+
+  test("tokens: without --yes nothing is written; a failure of core is one stderr line and exit 1", async () => {
+    const root = temp("spectant-tokens-root-");
+    mkdirSync(join(root, "specs"));
+    const config = temp("spectant-tokens-cfg-");
+    put(join(config, "projects", encodeProjectPath(root), "s.jsonl"), "{}\n");
+    const code = await run(["tokens", "--root", root], manifest, { env: { CLAUDE_CONFIG_DIR: config } });
+    expect([0, 1]).toContain(code);
+    if (code === 1) expect(err.at(-1)).toMatch(/^spectant: tokens: /);
+    expect(readdirSync(join(root, "specs"))).toEqual([]);
   });
 });
 
