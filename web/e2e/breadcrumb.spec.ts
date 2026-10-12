@@ -642,3 +642,160 @@ test.describe('polish', () => {
     });
   }
 });
+
+// T38 · ISC-143 (Anti): no location indicator shows a state the address does not carry. `bun run e2e -- breadcrumb -g
+// reload`, at 390 and 1440 against the stub API.
+//
+// The location state of a view is the address (`pathname` + `hash`), the text of every `[data-page-eyebrow]`, every
+// entry of `nav[data-breadcrumb]` (its level, text, href and `aria-current`) and every segment of `app-shell-nav` (its
+// control, `[data-pill-label]` and `[data-pill-value]`). It is read once the view has settled (two reads in a row
+// agree), the page is reloaded, and it is read again: the two must be equal, for every route with an indicator. Help and
+// settings are reached in-app from a spec page (the router's popstate, no full load), so a remembered "last workspace"
+// would show there: they name neither workspace, before and after the reload. The palette jump from lantern to harbor
+// 007 · ISC-126 survives the reload, and the workspace pill names the address's workspace, harbor.
+interface LocationState {
+  readonly address: string;
+  readonly eyebrow: readonly string[];
+  readonly crumbs: readonly string[];
+  readonly pills: readonly string[];
+}
+
+const RELOAD_ROUTES: ReadonlyArray<{ readonly path: string; readonly indicator: 'eyebrow' | 'crumbs' }> = [
+  { path: '/', indicator: 'eyebrow' },
+  { path: `/w/${WORKSPACE}`, indicator: 'eyebrow' },
+  { path: `/w/${WORKSPACE}/board`, indicator: 'eyebrow' },
+  { path: `/w/${WORKSPACE}/ideas/${IDEA}`, indicator: 'eyebrow' },
+  { path: `/w/${WORKSPACE}/features`, indicator: 'eyebrow' },
+  { path: `/w/${WORKSPACE}/milestones`, indicator: 'eyebrow' },
+  { path: '/help', indicator: 'eyebrow' },
+  { path: '/settings', indicator: 'eyebrow' },
+  { path: `/w/${WORKSPACE}/s/002`, indicator: 'crumbs' },
+  { path: `/w/${WORKSPACE}/s/002/claims`, indicator: 'crumbs' },
+  { path: `/w/${WORKSPACE}/s/002/tasks`, indicator: 'crumbs' },
+  { path: `/w/${WORKSPACE}/s/002/plan`, indicator: 'crumbs' },
+];
+/** harbor 007 · ISC-126, the claim the palette's claims cases find by its number alone (palette.spec.ts). */
+const JUMP = { number: '126', entry: `claim:${WORKSPACE}:ISC-126`, url: `/w/${WORKSPACE}/s/007/claims#claim-ISC-126` };
+const WORKSPACE_PILL_VALUE = `${PILLS} [data-control="workspace"] [data-pill-value]`;
+
+/** The location state as the DOM shows it now. */
+const locationOf = (page: Page): Promise<LocationState> =>
+  page.evaluate(() => {
+    const text = (el: Element | null): string => (el?.textContent ?? '').replace(/\s+/gu, ' ').trim();
+    const all = (selector: string): Element[] => [...document.querySelectorAll(selector)];
+    return {
+      address: `${location.pathname}${location.hash}`,
+      eyebrow: all('[data-page-eyebrow]').map(text),
+      crumbs: all('nav[data-breadcrumb] [data-crumb], nav[data-breadcrumb] [data-crumb-more]').map((el) =>
+        [el.getAttribute('data-crumb') ?? 'more', text(el), el.getAttribute('href') ?? '', el.getAttribute('aria-current') ?? ''].join(' | '),
+      ),
+      pills: all('app-shell-nav [data-control]').map((el) =>
+        [el.getAttribute('data-control') ?? '', text(el.querySelector('[data-pill-label]')), text(el.querySelector('[data-pill-value]'))].join(' | '),
+      ),
+    };
+  });
+
+/** Waits for the route's indicator and the workspace pill, then for two reads in a row to agree, and returns that read. */
+async function settledLocation(page: Page, indicator: 'eyebrow' | 'crumbs', where: string): Promise<LocationState> {
+  const shown = indicator === 'eyebrow' ? page.locator('[data-page-eyebrow]').first() : page.locator('nav[data-breadcrumb] [data-crumb="spec"]');
+  await expect(shown, `${where}: the ${indicator} renders`).toBeVisible();
+  await expect(page.locator(WORKSPACE_PILL_VALUE), `${where}: the workspace pill renders`).toHaveText(/\S/u);
+  let previous = '';
+  let current: LocationState | undefined;
+  await expect
+    .poll(
+      async () => {
+        current = await locationOf(page);
+        const key = JSON.stringify(current);
+        const same = key === previous;
+        previous = key;
+        return same;
+      },
+      { message: `${where}: the location state settles`, intervals: [100, 250, 250, 500] },
+    )
+    .toBe(true);
+  if (!current) throw new Error(`${where}: no location state read`);
+  return current;
+}
+
+/** Reloads the page and expects the same location state as before. */
+async function expectSameAfterReload(page: Page, before: LocationState, indicator: 'eyebrow' | 'crumbs', where: string): Promise<LocationState> {
+  await page.reload();
+  const after = await settledLocation(page, indicator, `${where}, after the reload`);
+  expect(after, `${where}: the location state after the reload equals the one before`).toEqual(before);
+  return after;
+}
+
+/** No workspace is named in the eyebrow, the breadcrumb or the pills of an app page. */
+function expectNoWorkspaceNamed(state: LocationState, where: string): void {
+  const shown = [...state.eyebrow, ...state.crumbs, ...state.pills].join(' \n ').toLowerCase();
+  for (const name of WORKSPACE_NAMES) expect(shown, `${where}: no workspace named (${name})`).not.toContain(name);
+}
+
+/** An in-app navigation through the router's popstate listener: no full load, so in-memory state stays. */
+async function navigateInApp(page: Page, path: string): Promise<void> {
+  const probe = 'reloadProbe';
+  await page.evaluate(
+    ([target, key]) => {
+      (window as unknown as Record<string, unknown>)[key] = true;
+      history.pushState(null, '', target);
+      dispatchEvent(new PopStateEvent('popstate', { state: null }));
+    },
+    [path, probe] as const,
+  );
+  await expect(page).toHaveURL(new RegExp(`${escapeRegExp(path)}$`, 'u'));
+  const kept = await page.evaluate((key) => (window as unknown as Record<string, unknown>)[key] === true, probe);
+  expect(kept, `${path}: reached in-app, without a full load`).toBe(true);
+}
+
+test.describe('reload', () => {
+  for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      for (const { path, indicator } of RELOAD_ROUTES) {
+        test(`reload: ${path} shows the same location after a reload at ${String(width)}`, async ({ page }) => {
+          await page.goto(path);
+          const before = await settledLocation(page, indicator, path);
+          expect(before.eyebrow.length + before.crumbs.length, `${path}: a location indicator is read`).toBeGreaterThan(0);
+          expect(before.pills.length, `${path}: the pills are read`).toBeGreaterThan(0);
+          await expectSameAfterReload(page, before, indicator, path);
+        });
+      }
+
+      test(`reload: help and settings after a spec page name no workspace, before and after a reload at ${String(width)}`, async ({ page }) => {
+        for (const target of ['/help', '/settings']) {
+          await page.goto(`/w/${WORKSPACE}/s/002/claims`);
+          const spec = await settledLocation(page, 'crumbs', 'the spec page');
+          expect(spec.pills.join(' '), 'the spec page names its workspace').toContain(WORKSPACE);
+
+          await navigateInApp(page, target);
+          const where = `${target} after the spec page`;
+          const before = await settledLocation(page, 'eyebrow', where);
+          expectNoWorkspaceNamed(before, where);
+          const after = await expectSameAfterReload(page, before, 'eyebrow', where);
+          expectNoWorkspaceNamed(after, `${where}, after the reload`);
+        }
+      });
+
+      test(`reload: a palette jump from lantern to a harbor claim shows the same location after a reload at ${String(width)}`, async ({ page }) => {
+        await page.goto('/w/lantern');
+        await expect(page.locator(WORKSPACE_PILL_VALUE), 'lantern is the current workspace').toHaveText(exactly('lantern'));
+        await page.keyboard.press('ControlOrMeta+k');
+        const palette = page.locator('app-command-palette dialog');
+        await expect(palette).toBeVisible();
+        await palette.getByRole('combobox').fill(JUMP.number);
+        await expect(palette.locator('[role="option"][aria-selected="true"]')).toHaveAttribute('data-entry', JUMP.entry);
+        await page.keyboard.press('Enter');
+        await expect(palette).toBeHidden();
+        await expect(page).toHaveURL(new RegExp(`${escapeRegExp(JUMP.url)}$`, 'u'));
+
+        const where = 'the palette jump';
+        const before = await settledLocation(page, 'crumbs', where);
+        await expect(page.locator(WORKSPACE_PILL_VALUE), `${where}: the workspace pill names the address's workspace`).toHaveText(exactly(WORKSPACE));
+        await expectSameAfterReload(page, before, 'crumbs', where);
+        await expect(page.locator(WORKSPACE_PILL_VALUE), `${where}, after the reload: the workspace pill names harbor`).toHaveText(exactly(WORKSPACE));
+      });
+    });
+  }
+});
