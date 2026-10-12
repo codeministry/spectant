@@ -19,7 +19,9 @@ import { UiCommandChip } from '../command-chip/command-chip';
   host: { '[attr.data-compact]': 'compact() && !block() ? "" : null', '[attr.data-block]': 'block() ? "" : null' },
   styles: `
     :host { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: flex-start; min-inline-size: 0; }
-    :host([data-compact]) { flex-wrap: nowrap; align-items: center; }
+    /* Compact keeps one line while the chip fits beside the phrase; in a narrow board card the chip wraps under the
+       phrase instead of squeezing it to a column of letters (found in the T157 baselines). */
+    :host([data-compact]) { align-items: center; }
     .line { display: flex; flex: 1 1 16ch; gap: 6px; align-items: flex-start; min-inline-size: 0; color: var(--reason-ink, var(--hover-ink)); font-size: 13px; line-height: 20px; }
     :host([data-compact]) .line { align-items: center; }
     ui-icon { padding-block-start: 3px; }
