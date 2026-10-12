@@ -69,9 +69,10 @@ function highlightMs(doc: Document): number {
   imports: [TranslocoPipe, UiIcon],
   styles: `
     :host { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; max-inline-size: 100%; }
-    .chip { display: inline-flex; gap: 4px; align-items: center; min-inline-size: 0; padding-inline: 8px 2px; border: 1px solid var(--line); border-radius: var(--radius-field); background: var(--color-base-200); }
-    code { overflow: hidden; color: var(--color-base-content); font-family: var(--font-mono); font-size: 13px; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }
-    .copy { color: var(--muted-ink); }
+    /* The prototype's command chip (ISC-148): 28 px, 1 px border, radius 6, --lane, mono 400 12/1. */
+    .chip { display: inline-flex; gap: 2px; align-items: center; min-inline-size: 0; block-size: 28px; padding-inline: 8px 0; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--lane); font-family: var(--font-mono); font-size: 12px; font-weight: 400; line-height: 12px; }
+    code { overflow: hidden; color: var(--color-base-content); font: inherit; text-overflow: ellipsis; white-space: nowrap; }
+    .copy { inline-size: 26px; block-size: 26px; min-block-size: 26px; padding: 0; border-radius: 5px; color: var(--muted-ink); }
     .copy[data-copied] { color: var(--done-ink); }
     .hint { color: var(--muted-ink); font-size: 12px; line-height: 16px; }
   `,

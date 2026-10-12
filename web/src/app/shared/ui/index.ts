@@ -2,7 +2,8 @@
 // (spec 002's shell).
 export { UiActorChip } from './actor-chip/actor-chip';
 export { UiCard } from './card/card';
-export { UiChip } from './chip/chip';
+export { type ChipVariant, UiChip } from './chip/chip';
+export { CHIP_ICON, chipIcon } from './chip/chip-icons';
 export { CLAMP_ELLIPSIS, type ClampPiece, fitWords, UiClamp } from './clamp/clamp';
 export { UiCommandChip, writeClipboard } from './command-chip/command-chip';
 export { UiEmptyState } from './empty-state/empty-state';

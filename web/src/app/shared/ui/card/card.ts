@@ -48,6 +48,9 @@ const optionalFlag = (value: boolean | string | undefined): boolean | undefined 
       border-radius: var(--radius-box);
       background: var(--color-base-100);
       color: var(--color-base-content);
+      /* The prototype's text base inside a card (its body: 400 14px/20px), whatever the page around it sets. */
+      font-size: 14px;
+      line-height: 20px;
     }
     /* An accent tone becomes the edge colour; a --edge set inline on the element still wins. */
     :host([data-accent]) {

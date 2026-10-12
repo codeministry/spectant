@@ -55,7 +55,8 @@ export const CLAIM_GLYPHS: Readonly<Record<ClaimGlyphState, GlyphSpec>> = {
   open: { shape: 'ring', tone: 'neutral' },
   takeable: { shape: 'ring-plus', tone: 'accent' },
   taken: { shape: 'lock', tone: 'primary' },
-  blocked: { shape: 'ring-slash', tone: 'warning' },
+  // Neutral like the prototype's `.st-blocked` chip (--raised / --muted; spec 024 ISC-148).
+  blocked: { shape: 'ring-slash', tone: 'neutral' },
   closed: { shape: 'disc', tone: 'accent' },
   dropped: { shape: 'ring-minus', tone: 'neutral' },
 };

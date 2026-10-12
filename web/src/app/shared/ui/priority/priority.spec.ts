@@ -40,7 +40,7 @@ describe('UiPriority (ISC-118)', () => {
   it('gives every level its own glyph and look', async () => {
     const seen = new Set<string>();
     for (const [level, tint, ink] of [
-      ['P2', 'color-mix(in oklch, var(--color-warning) 16%, var(--color-base-100))', 'var(--hover-ink)'],
+      ['P2', 'var(--hover-t)', 'var(--hover-ink)'],
       ['P3', 'transparent', 'var(--color-base-content)'],
       ['P4', 'transparent', 'var(--muted-ink)'],
     ] as const) {
