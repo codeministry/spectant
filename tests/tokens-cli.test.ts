@@ -7,11 +7,26 @@
 //   cannot be read is the one failure that stays exit 1.
 // - `deterministic` (ISC-136, T15): the same transcripts measured twice give a byte-identical `specs/tokens.jsonl`,
 //   equal to the golden, whatever order the folder lists its files in and whatever the clock or time zone says.
+// - `leak` (ISC-137.2, T22): none of the fixture's bait values (working directory, branch, e-mail, a person's name,
+//   prompt and answer text, the `/spec-idea` argument, the model name) reaches `specs/tokens.jsonl`; every line carries
+//   exactly the keys of its row kind and every string value has one of the allowed shapes. A generated case injects
+//   random baits into every free-text field of a transcript copy.
+// - `offline` (ISC-137.3, T23): with every network entry point of the process stubbed to record and fail, the command
+//   makes zero calls, with and without `--yes`, and the app's data directory stays empty.
+import * as sqlite from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, setSystemTime, spyOn, test } from "bun:test";
+import * as dns from "node:dns";
 import * as fs from "node:fs";
+import * as http from "node:http";
+import * as https from "node:https";
+import * as net from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { TOKENS_PATH, tokensCommand } from "../server/src/tokens-cli.ts";
+import * as tls from "node:tls";
+import { EVENT_STAGES } from "../core/src/events.ts";
+import { BASELINE_COMMAND_KEYS, TOKEN_COUNTERS, TOKEN_ROW_KEYS, TOKEN_ROW_KINDS, type TokenRowKind } from "../core/src/tokens.ts";
+import * as paths from "../server/src/paths.ts";
+import { TOKENS_PATH, encodeProjectPath, tokensCommand } from "../server/src/tokens-cli.ts";
 
 const HARBOR_SPECS = join(import.meta.dir, "..", "core", "fixtures", "harbor", "specs");
 const TRANSCRIPTS = join(import.meta.dir, "..", "core", "tests", "fixtures", "transcripts");
@@ -223,5 +238,336 @@ describe("deterministic", () => {
     expect(a.toString("utf8")).toBe(fs.readFileSync(GOLDEN, "utf8"));
     // No wall-clock content: neither faked year appears anywhere in the file.
     for (const year of ["1999", "2041"]) expect(a.toString("utf8")).not.toContain(year);
+  });
+});
+
+/** Every bait value planted in the transcript fixture; none may reach the written file. */
+const BAITS = [
+  "/srv/bait-harbor-checkout",
+  "/srv/bait-harbor-checkout/.claude/worktrees/agent-a0f1e2d3c4b5a6978",
+  "quill.ferret@bait.example.invalid",
+  "Ottoline Quastbridge",
+  "zephyr-quokka",
+  "marmalade-orbit",
+  "feature/bait-quokka-branch",
+  "claude-fixture-model-1",
+] as const;
+
+/** Fragments of the baits, so a bait that is cut or re-cased still shows up. */
+const BAIT_FRAGMENTS = [
+  "/srv",
+  "bait-harbor",
+  "checkout",
+  "worktrees",
+  "a0f1e2d3c4b5a6978",
+  "quill",
+  "ferret",
+  "bait.example",
+  "ottoline",
+  "quastbridge",
+  "zephyr",
+  "quokka",
+  "marmalade",
+  "orbit",
+  "tide clock",
+  "fixture-model",
+];
+
+/** Every transcript of the fixture as one text: the baits must really be in the input, or the probe is vacuous. */
+const fixtureText = (): string =>
+  filesBelow(TRANSCRIPTS)
+    .map((file) => fs.readFileSync(join(TRANSCRIPTS, file), "utf8"))
+    .join("\n");
+
+const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const COMMAND = /^\/spec(-[a-z]+)*$/;
+const SLUG = /^\d{3}-[a-z0-9]+(-[a-z0-9]+)*$/;
+const ACTOR = /^a:claude:[A-Za-z0-9-]+#\d+$/;
+const VERSION = /^\d+\.\d+\.\d+$/;
+
+/** The one whitelist every string of the file must pass: a kind, a timestamp, a command, a slug, a stage, an id, a version. */
+function allowedString(value: string): boolean {
+  return (
+    (TOKEN_ROW_KINDS as readonly string[]).includes(value) ||
+    ISO.test(value) ||
+    COMMAND.test(value) ||
+    SLUG.test(value) ||
+    EVENT_STAGES.includes(value) ||
+    ACTOR.test(value) ||
+    VERSION.test(value)
+  );
+}
+
+/** Every structural finding of one file text: wrong keys, a disallowed value, a slash, an `@`, whitespace. Empty is clean. */
+function shapeFindings(text: string): string[] {
+  const findings: string[] = [];
+  const value = (where: string, v: unknown): void => {
+    if (v === null || typeof v === "number") return;
+    if (typeof v === "string") {
+      if (!allowedString(v)) findings.push(`${where}: string ${JSON.stringify(v)} has no allowed shape`);
+      return;
+    }
+    if (Array.isArray(v)) {
+      v.forEach((item: unknown, i) => {
+        value(`${where}[${i}]`, item);
+      });
+      return;
+    }
+    findings.push(`${where}: unexpected ${typeof v}`);
+  };
+  const keys = (where: string, record: Record<string, unknown>, expected: readonly string[]): void => {
+    if (JSON.stringify(Object.keys(record)) !== JSON.stringify(expected)) findings.push(`${where}: keys ${Object.keys(record).join(",")}`);
+  };
+  const command = (where: string, name: string, entry: Record<string, unknown>): void => {
+    if (!COMMAND.test(name)) findings.push(`${where}: command key ${JSON.stringify(name)}`);
+    keys(`${where} ${name}`, entry, BASELINE_COMMAND_KEYS);
+    for (const [k, n] of Object.entries(entry)) {
+      if (k !== "mean") {
+        if (typeof n !== "number") findings.push(`${where}: ${name}.${k} ${JSON.stringify(n)}`);
+        continue;
+      }
+      const mean = n as Record<string, unknown>;
+      keys(`${where} ${name} mean`, mean, TOKEN_COUNTERS);
+      for (const m of Object.values(mean)) if (typeof m !== "number") findings.push(`${where}: mean ${JSON.stringify(m)}`);
+    }
+  };
+  const lines = text.split("\n");
+  if (lines.at(-1) !== "") findings.push("the file does not end in a newline");
+  lines.slice(0, -1).forEach((line, i) => {
+    const where = `line ${i + 1}`;
+    if (/\s/.test(line)) findings.push(`${where}: whitespace`);
+    if (line.includes("@")) findings.push(`${where}: @`);
+    if (line.replace(/"\/spec/g, '"').includes("/")) findings.push(`${where}: a slash outside a command name`);
+    const row = JSON.parse(line) as Record<string, unknown>;
+    const kind = row.kind;
+    if (typeof kind !== "string" || !(TOKEN_ROW_KINDS as readonly string[]).includes(kind)) {
+      findings.push(`${where}: kind ${JSON.stringify(kind)}`);
+      return;
+    }
+    keys(where, row, TOKEN_ROW_KEYS[kind as TokenRowKind]);
+    for (const [key, v] of Object.entries(row)) {
+      if (kind === "baseline" && key === "commands") {
+        for (const [name, entry] of Object.entries(v as Record<string, Record<string, unknown>>)) command(where, name, entry);
+      } else value(`${where} ${key}`, v);
+    }
+  });
+  return findings;
+}
+
+/** Every bait or bait fragment found in `text`, case-insensitively; empty is clean. */
+const baitsIn = (text: string, baits: readonly string[]): string[] => baits.filter((bait) => text.toLowerCase().includes(bait.toLowerCase()));
+
+/** A small seeded generator (mulberry32), so a failing generated case can be replayed from its seed. */
+function seeded(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** A bait word that cannot occur by chance in the file: `zq` (no hex digit, kind, stage or command) plus ten letters. */
+function baitWord(random: () => number): string {
+  let word = "zq";
+  for (let i = 0; i < 10; i += 1) word += String.fromCharCode(0x61 + Math.floor(random() * 26));
+  return word;
+}
+
+/** A prompt with baits: the `/spec-idea` argument replaced, other command lines kept, free text extended. */
+function baitPrompt(content: string, bait: () => string): string {
+  if (content.includes("<command-name>/spec-idea</command-name>")) {
+    return content.replace(/<command-args>[\s\S]*?<\/command-args>/, `<command-args>${bait()} told ${bait()}@bait.example.invalid</command-args>`);
+  }
+  if (content.includes("<command-name>")) return content;
+  return `${content} ${bait()} ${bait()}@bait.example.invalid`;
+}
+
+/**
+ * Rewrites one transcript line with fresh baits in every free-text field: `cwd`, `gitBranch`, user prompt text, the
+ * `/spec-idea` argument, assistant text, tool inputs and tool results. A line that is not JSON stays as it is.
+ */
+function injectBaits(line: string, next: () => string, planted: string[]): string {
+  let record: Record<string, unknown>;
+  try {
+    record = JSON.parse(line) as Record<string, unknown>;
+  } catch {
+    return line;
+  }
+  const bait = (): string => {
+    const word = next();
+    planted.push(word);
+    return word;
+  };
+  if (typeof record.cwd === "string") record.cwd = `/srv/${bait()}/checkout`;
+  if (typeof record.gitBranch === "string") record.gitBranch = `feature/${bait()}`;
+  const message = record.message as { content?: unknown } | undefined;
+  if (message !== undefined && typeof message.content === "string") message.content = baitPrompt(message.content, bait);
+  else if (message !== undefined && Array.isArray(message.content)) {
+    for (const block of message.content as Array<Record<string, unknown>>) {
+      if (typeof block.text === "string") block.text = `${block.text} ${bait()}`;
+      if (typeof block.input === "object" && block.input !== null) (block.input as Record<string, unknown>).note = `${bait()} /srv/${bait()}`;
+      if (typeof block.content === "string") block.content = `${block.content} ${bait()}`;
+    }
+  }
+  return JSON.stringify(record);
+}
+
+describe("leak", () => {
+  test("the baits are really in the fixture, so the probes below are not vacuous", () => {
+    const text = fixtureText();
+    for (const bait of BAITS) expect({ bait, present: text.includes(bait) }).toEqual({ bait, present: true });
+    expect(text).toContain("<command-name>/spec-idea</command-name>");
+  });
+
+  test("no bait and no bait fragment reaches specs/tokens.jsonl or the printed plan", async () => {
+    const root = harborRoot();
+    expect(await measure(root, transcriptCopy(), true)).toBe(0);
+    const text = tokensText(root);
+    expect(kindsOf(text)).toContain("invocation");
+    expect(baitsIn(text, [...BAITS, ...BAIT_FRAGMENTS])).toEqual([]);
+    expect(await measure(root, transcriptCopy(), false)).toBe(0);
+    expect(baitsIn(out.join("\n"), BAITS)).toEqual([]);
+  });
+
+  test("every line carries exactly the keys of its row kind and only whitelisted values", async () => {
+    const root = harborRoot();
+    expect(await measure(root, transcriptCopy(), true)).toBe(0);
+    const text = tokensText(root);
+    expect(new Set(kindsOf(text))).toEqual(new Set(TOKEN_ROW_KINDS));
+    expect(shapeFindings(text)).toEqual([]);
+  });
+
+  test("the whitelist itself refuses a path, an e-mail, a name, prose and a foreign key", () => {
+    const line = (last: string): string => `{"v":1,"kind":"unassigned","requests":0,"input":0,"output":0,"cache_read":0,"cache_write":${last}}\n`;
+    expect(shapeFindings(line("0"))).toEqual([]);
+    for (const leak of ['"/srv/x"', '"a@b.invalid"', '"Ottoline Quastbridge"', '"zephyr-quokka"']) expect(shapeFindings(line(leak))).not.toEqual([]);
+    expect(shapeFindings(`{"v":1,"kind":"unassigned","cwd":"x","requests":0,"input":0,"output":0,"cache_read":0,"cache_write":0}\n`)).not.toEqual([]);
+  });
+
+  test("generated: random baits in prompts, answers, tool inputs, cwd and gitBranch never leak", async () => {
+    for (const seed of [1, 7, 42, 1009, 65537]) {
+      const random = seeded(seed);
+      const planted: string[] = [];
+      const transcripts = transcriptCopy();
+      const projects = dirname(transcripts);
+      for (const file of filesBelow(projects).filter((name) => name.endsWith(".jsonl"))) {
+        const path = join(projects, file);
+        const lines = fs.readFileSync(path, "utf8").split("\n");
+        fs.writeFileSync(path, lines.map((line) => (line === "" ? line : injectBaits(line, () => baitWord(random), planted))).join("\n"));
+      }
+      const input = filesBelow(projects)
+        .map((file) => fs.readFileSync(join(projects, file), "utf8"))
+        .join("\n");
+      expect(planted.length).toBeGreaterThan(50);
+      expect(baitsIn(input, planted)).toEqual(planted);
+
+      const root = harborRoot();
+      expect(await measure(root, transcripts, true)).toBe(0);
+      const text = tokensText(root);
+      expect(kindsOf(text).filter((kind) => kind === "invocation")).toHaveLength(6);
+      expect({ seed, leaked: baitsIn(text, [...planted, "zq", "bait.example"]) }).toEqual({ seed, leaked: [] });
+      expect({ seed, findings: shapeFindings(text) }).toEqual({ seed, findings: [] });
+    }
+  });
+});
+
+describe("offline", () => {
+  /** Every network entry point of the process and the app's data-directory and database seams, each a failing recorder. */
+  function stubNetwork(): string[] {
+    const calls: string[] = [];
+    const fail =
+      (name: string) =>
+      (): never => {
+        calls.push(name);
+        throw new Error(`a forbidden call in spectant tokens: ${name}`);
+      };
+    const targets: Array<[object, string, string]> = [
+      [globalThis, "fetch", "fetch"],
+      [Bun, "connect", "Bun.connect"],
+      [Bun, "listen", "Bun.listen"],
+      [Bun, "serve", "Bun.serve"],
+      [Bun, "udpSocket", "Bun.udpSocket"],
+      [net, "connect", "net.connect"],
+      [net, "createConnection", "net.createConnection"],
+      [net, "createServer", "net.createServer"],
+      [tls, "connect", "tls.connect"],
+      [http, "request", "http.request"],
+      [http, "get", "http.get"],
+      [https, "request", "https.request"],
+      [https, "get", "https.get"],
+      [dns, "lookup", "dns.lookup"],
+      [dns, "resolve", "dns.resolve"],
+      [paths, "dataDir", "paths.dataDir"],
+      [paths, "dbPath", "paths.dbPath"],
+      [paths, "ensureDataDir", "paths.ensureDataDir"],
+      [sqlite, "Database", "sqlite.Database"],
+    ];
+    for (const [owner, key, name] of targets) {
+      const spy = spyOn(owner as Record<string, () => unknown>, key).mockImplementation(fail(name));
+      restore.push(() => spy.mockRestore());
+    }
+    return calls;
+  }
+
+  /** Points the process's own data-directory variables at `xdg` and `home` for one test; restored afterwards. */
+  function isolateEnv(xdg: string, home: string): void {
+    const saved = { XDG_DATA_HOME: process.env.XDG_DATA_HOME, HOME: process.env.HOME };
+    process.env.XDG_DATA_HOME = xdg;
+    process.env.HOME = home;
+    restore.push(() => {
+      if (saved.XDG_DATA_HOME === undefined) delete process.env.XDG_DATA_HOME;
+      else process.env.XDG_DATA_HOME = saved.XDG_DATA_HOME;
+      if (saved.HOME === undefined) delete process.env.HOME;
+      else process.env.HOME = saved.HOME;
+    });
+  }
+
+  test("the stubs are live: a call to any of them is recorded and fails", () => {
+    const calls = stubNetwork();
+    expect(() => fetch("http://127.0.0.1:9/")).toThrow();
+    expect(() => net.connect(9, "127.0.0.1")).toThrow();
+    expect(() => paths.dataDir()).toThrow();
+    expect(() => new sqlite.Database(":memory:")).toThrow();
+    expect(calls).toEqual(["fetch", "net.connect", "paths.dataDir", "sqlite.Database"]);
+  });
+
+  test("with and without --yes: zero network calls, the data directory stays empty, no database appears", async () => {
+    const xdg = temp("spectant-tokens-cli-xdg-");
+    const home = temp("spectant-tokens-cli-home-");
+    isolateEnv(xdg, home);
+    const root = harborRoot();
+    const transcripts = transcriptCopy();
+    const env = { XDG_DATA_HOME: xdg, HOME: home };
+    const calls = stubNetwork();
+
+    expect(await tokensCommand(root, { transcripts, yes: false, env, home })).toBe(0);
+    expect(fs.existsSync(join(root, TOKENS_PATH))).toBe(false);
+    expect(await tokensCommand(root, { transcripts, yes: true, env, home })).toBe(0);
+    expect(fs.existsSync(join(root, TOKENS_PATH))).toBe(true);
+
+    expect(calls).toEqual([]);
+    expect(fs.readdirSync(xdg)).toEqual([]);
+    expect(fs.readdirSync(home)).toEqual([]);
+  });
+
+  test("the default transcript folder below the home: zero network calls, no data directory, no database", async () => {
+    const xdg = temp("spectant-tokens-cli-xdg-");
+    const home = temp("spectant-tokens-cli-home-");
+    isolateEnv(xdg, home);
+    const root = harborRoot();
+    fs.cpSync(join(TRANSCRIPTS, "harbor"), join(home, ".claude", "projects", encodeProjectPath(root)), { recursive: true });
+    const before = filesBelow(home);
+    const calls = stubNetwork();
+
+    for (const yes of [false, true]) expect(await tokensCommand(root, { transcripts: null, yes, env: { XDG_DATA_HOME: xdg, HOME: home }, home })).toBe(0);
+    expect(kindsOf(tokensText(root))).toContain("invocation");
+
+    expect(calls).toEqual([]);
+    expect(fs.readdirSync(xdg)).toEqual([]);
+    expect(filesBelow(home)).toEqual(before);
+    expect(fs.existsSync(join(home, ".spectant"))).toBe(false);
   });
 });
