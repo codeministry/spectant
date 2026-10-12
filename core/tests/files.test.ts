@@ -20,12 +20,13 @@ const EXPECTED: Record<FileKind, string> = {
   master: '../../ISA.md',
   idea: '../ideas/',
   workflow: '../workflow.md',
+  tokens: '../tokens.jsonl',
 };
 
 describe('FILE_KINDS', () => {
-  test('holds exactly the 15 kinds with their paths relative to an active spec folder', () => {
+  test('holds exactly the 16 kinds with their paths relative to an active spec folder', () => {
     const actual = Object.fromEntries(Object.entries(FILE_KINDS).map(([kind, info]) => [kind, info.path]));
-    expect(Object.keys(FILE_KINDS)).toHaveLength(15);
+    expect(Object.keys(FILE_KINDS)).toHaveLength(16);
     expect(actual).toEqual(EXPECTED);
   });
 
@@ -80,6 +81,12 @@ describe('model stubs', () => {
     ['parseTaskLines', async () => (await import('../src/tasks.ts')).parseTaskLines],
     ['listEvidence', async () => (await import('../src/evidence.ts')).listEvidence],
     ['renderDocsMarkdown', async () => (await import('../src/markdown-docs.ts')).renderDocsMarkdown],
+    // Spec 009 T1: the token-baseline seam; T5, T6, T16 and T17 replace these stubs.
+    ['parseTranscript', async () => (await import('../src/tokens.ts')).parseTranscript],
+    ['tokenRows', async () => (await import('../src/tokens.ts')).tokenRows],
+    ['mergeBaselines', async () => (await import('../src/tokens.ts')).mergeBaselines],
+    ['serializeTokens', async () => (await import('../src/tokens.ts')).serializeTokens],
+    ['readTokens', async () => (await import('../src/tokens.ts')).readTokens],
   ];
 
   test.each(stubs)('%s is exported, and a stub names itself', async (name, load) => {
