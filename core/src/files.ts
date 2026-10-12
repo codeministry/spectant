@@ -35,11 +35,12 @@ export type FileKind =
   | 'evidence'
   | 'master'
   | 'idea'
-  | 'workflow';
+  | 'workflow'
+  | 'tokens';
 
 /**
  * Where a kind lives: `spec` inside the spec folder, `repo` once per repository outside every spec folder (the
- * constitution, the master, the story files and the workflow table).
+ * constitution, the master, the story files, the workflow table and the token measurement).
  */
 export type FileScope = 'spec' | 'repo';
 
@@ -182,17 +183,27 @@ export const FILE_KINDS: Readonly<Record<FileKind, FileKindInfo>> = {
     scope: 'repo',
     repoPath: 'specs/workflow.md',
   },
+  tokens: {
+    path: '../tokens.jsonl',
+    description:
+      'the token measurement: one JSON line per measuring run, /spec invocation, spec, stage, round and the unassigned rest',
+    required: false,
+    directory: false,
+    scope: 'repo',
+    repoPath: 'specs/tokens.jsonl',
+  },
 };
 
 /** The kinds that live once per repository, outside every spec folder. */
-export type RepoFileKind = 'constitution' | 'master' | 'idea' | 'workflow';
+export type RepoFileKind = 'constitution' | 'master' | 'idea' | 'workflow' | 'tokens';
 
 /**
- * The file kinds a spec folder's `SpecFiles.texts` may carry: every kind but the two directories and the two
- * repository kinds of spec 008 (`idea` is a directory of stories, `workflow` one table per repository; their readers
- * take their own input). `constitution` and `master` stay for the readers that already take them per spec.
+ * The file kinds a spec folder's `SpecFiles.texts` may carry: every kind but the two directories and the repository
+ * kinds of specs 008 and 009 (`idea` is a directory of stories, `workflow` one table per repository, `tokens` one
+ * measurement per repository; their readers take their own input). `constitution` and `master` stay for the readers
+ * that already take them per spec.
  */
-export type TextFileKind = Exclude<FileKind, 'artifacts' | 'evidence' | 'idea' | 'workflow'>;
+export type TextFileKind = Exclude<FileKind, 'artifacts' | 'evidence' | 'idea' | 'workflow' | 'tokens'>;
 
 /** `base/rel` normalised (`..` resolved), POSIX separators, no trailing slash. */
 function joinPath(base: string, rel: string): string {

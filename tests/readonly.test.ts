@@ -51,8 +51,12 @@ import {
   workspaceRoutes,
 } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
+import { tokensCommand } from "../server/src/tokens-cli.ts";
+import { WRITE_PATHS } from "../server/src/writes.contract.ts";
 
 const FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "harbor");
+/** The harbor transcripts: a main session with a sub-agent, beside the folders of an agent and a spec worktree. */
+const TRANSCRIPTS = join(import.meta.dir, "..", "core", "tests", "fixtures", "transcripts", "harbor");
 const SLUG = "harbor";
 const MARKED_SPEC = "004-retention-policies";
 const MARK = `specs/${MARKED_SPEC}/.gates/code-reviewed.json`;
@@ -542,6 +546,51 @@ describe("ISC-130.2 with the allocation: a refused one changes nothing, an accep
       expect(underGit(afterAllocate)).toEqual(underGit(before));
     } finally {
       registry.close();
+    }
+  });
+});
+
+// The sixth write path (spec 009, T21, ISC-137.1) under the same guard: `spectant tokens` runs on its own copy against
+// the harbor transcripts. Without `--yes` it only prints the plan, and the copy stays byte-identical with every mtime
+// kept; with `--yes` exactly the files of `WRITE_PATHS.tokens` differ, and `.git/` never changes. The transcript folder
+// it reads (and its worktree siblings) is hashed too: the run reads it and writes nothing there.
+describe("ISC-137.1 with the token measurement: a dry run changes nothing, `tokens --yes` only specs/tokens.jsonl", () => {
+  test("readonly: tokens without --yes leaves the copy byte-identical; with --yes exactly WRITE_PATHS.tokens differs", async () => {
+    const copy = join(mkdtempSync(join(root, "tokens-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    // harbor carries its own specs/tokens.jsonl (the FORMAT.md example), byte-equal to what the run writes; removed
+    // here so that `--yes` has to create the file and the diff below can prove it.
+    rmSync(join(copy, WRITE_PATHS.tokens.writes[0]), { force: true });
+    const home = mkdtempSync(join(root, "home-tokens-"));
+    const transcripts = join(TRANSCRIPTS, "..");
+    const transcriptsBefore = snapshot(transcripts);
+    const gitChanges = (a: Snapshot, b: Snapshot): string[] => changed(a, b, { mtime: true }).filter((p) => p === ".git" || p.startsWith(".git/"));
+    const out: string[] = [];
+    const log = spyOn(console, "log").mockImplementation((...args: unknown[]) => void out.push(args.join(" ")));
+    const error = spyOn(console, "error").mockImplementation(() => undefined);
+
+    try {
+      const before = snapshot(copy);
+      expect(before.entries.has(WRITE_PATHS.tokens.writes[0])).toBe(false);
+
+      // Without --yes: the plan is printed, nothing is written, every mtime is kept.
+      expect(await tokensCommand(copy, { transcripts: TRANSCRIPTS, yes: false, env: {}, home })).toBe(0);
+      const afterDry = snapshot(copy);
+      expect(changed(before, afterDry, { mtime: true })).toEqual([]);
+      expect(afterDry.checksum).toBe(before.checksum);
+
+      // With --yes: exactly the sixth path's file appears; `.git/` keeps every byte and mtime.
+      expect(await tokensCommand(copy, { transcripts: TRANSCRIPTS, yes: true, env: {}, home })).toBe(0);
+      const afterWrite = snapshot(copy);
+      expect(changed(before, afterWrite)).toEqual([...WRITE_PATHS.tokens.writes]);
+      expect(gitChanges(before, afterWrite)).toEqual([]);
+      expect(underGit(afterWrite)).toEqual(underGit(before));
+      expect(out.some((line) => line.startsWith(`tokens wrote ${WRITE_PATHS.tokens.writes[0]} `))).toBe(true);
+
+      expect(changed(transcriptsBefore, snapshot(transcripts), { mtime: true })).toEqual([]);
+    } finally {
+      log.mockRestore();
+      error.mockRestore();
     }
   });
 });
