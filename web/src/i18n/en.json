@@ -1106,7 +1106,10 @@
         "fixedGate": "fixed gate",
         "gateReviewed": "reviewed mark",
         "gateClosed": "every claim closed",
-        "waitingStage": "a waiting stage"
+        "waitingStage": "a waiting stage",
+        "fold": "Fold {{stage}}",
+        "unfold": "Open {{stage}}",
+        "folded": "folded"
       },
       "filter": {
         "open": "Filter",

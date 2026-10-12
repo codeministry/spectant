@@ -81,4 +81,7 @@ export const ICON_NAMES = [
   // Spec 008, the board's drag hints and its refusal notice (T125, T126).
   'ban',
   'circle-alert',
+  // Spec 008, folding a board column by hand.
+  'fold-horizontal',
+  'unfold-horizontal',
 ] as const;

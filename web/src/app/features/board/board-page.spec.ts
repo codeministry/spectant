@@ -114,19 +114,29 @@ describe('BoardPage (T121, ISC-129)', () => {
     expect(text(col(page, 'build')?.querySelector('.vnote'))).toBe('2 hidden by filters');
   });
 
-  it('offers one strip segment per column with its label, count and accessible name', async () => {
+  it('names every open column in its own head with the stage and count, and draws no separate stage strip', async () => {
     const page = await open('/w/harbor/board');
-    const strip = page.querySelector('ui-segmented[data-mode="strip"]');
-    expect(strip?.getAttribute('data-mode')).toBe('strip');
-    expect(strip?.querySelector('[role="toolbar"]')?.getAttribute('aria-label')).toBe('Stages · jump to a column');
-    const segs = [...page.querySelectorAll<HTMLElement>('ui-segmented .sseg')];
-    expect(segs.map((s) => s.dataset['key'])).toEqual(PLANNING.stages);
-    const review = segs.find((s) => s.dataset['key'] === 'review');
-    expect(text(review?.querySelector('.sl'))).toBe('Review');
-    expect(text(review?.querySelector('.count'))).toBe('2');
-    expect(review?.getAttribute('aria-label')).toBe('Review, 2 cards, 2 wait on you');
-    expect(review?.querySelector('.dot')).not.toBeNull();
-    expect(segs.find((s) => s.dataset['key'] === 'build')?.querySelector('.dot')).toBeNull();
+    expect(page.querySelector('ui-segmented[data-mode="strip"]')).toBeNull();
+    const review = col(page, 'review');
+    expect(text(review?.querySelector('.head h2'))).toBe('Review');
+    expect(text(review?.querySelector('.head .count'))).toBe('2');
+    expect(review?.querySelector('.head [data-fold-toggle]')?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('folds a column with cards on its head button (?fold=) and opens an empty one from its stub (?open=)', async () => {
+    const page = await open('/w/harbor/board');
+    const review = col(page, 'review');
+    review?.querySelector<HTMLButtonElement>('.head [data-fold-toggle]')?.click();
+    await settle();
+    expect(url()).toContain('fold=review');
+    expect(col(page, 'review')?.hasAttribute('data-stub')).toBe(true);
+    expect(text(col(page, 'review')?.querySelector('.count'))).toBe('2');
+    const empty = page.querySelector<HTMLElement>('.scroller [data-stub]:not([data-col="review"])');
+    const stage = empty?.dataset['col'] ?? '';
+    empty?.querySelector<HTMLButtonElement>('[data-fold-toggle]')?.click();
+    await settle();
+    expect(url()).toContain(`open=${stage}`);
+    expect(col(page, stage)?.hasAttribute('data-stub')).toBe(false);
   });
 
   it('puts the gate dfn on review and done only, with the catalogue gate text, and the hourglass on waiting stages', async () => {

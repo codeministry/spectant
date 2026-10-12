@@ -25,8 +25,6 @@ export interface SegmentedOption {
   readonly count?: number;
   /** Strip mode: the segment's full accessible name, translated by the host ("Review, 2 cards, 1 waits on you"). */
   readonly ariaLabel?: string;
-  /** Strip mode: the segment sits over a collapsed column (a stub track), so it shows the count alone; the label stays in `ariaLabel`. */
-  readonly narrow?: boolean;
 }
 
 /** `radio` picks one value (phase filter, theme mode, the compact board column); `strip` is the board's minimap. */
@@ -111,8 +109,6 @@ const reducedMotion = () =>
     .sseg[data-inview] { --btn-fg: var(--color-base-content); }
     .sseg[data-inview]::after { position: absolute; inset-inline: 8px; inset-block-end: 0; block-size: 2px; border-radius: 1px; background: var(--color-primary); content: ''; }
     .sl { font-size: 12px; line-height: 16px; }
-    .sseg[data-narrow] { padding-inline: 0; }
-    .sseg[data-narrow] .sl { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     .strip[data-wrap] .sl { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; text-align: center; }
     .count { color: var(--color-base-content); font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; line-height: 20px; }
     .strip .dot { inline-size: 6px; block-size: 6px; }
@@ -133,7 +129,6 @@ const reducedMotion = () =>
             class="btn btn-ghost sseg"
             [attr.data-key]="option.key"
             [attr.data-inview]="inView().includes(option.key) ? '' : null"
-            [attr.data-narrow]="option.narrow ? '' : null"
             [attr.aria-label]="option.ariaLabel ?? null"
             [tabIndex]="i === highlighted() ? 0 : -1"
             (click)="go(i)"

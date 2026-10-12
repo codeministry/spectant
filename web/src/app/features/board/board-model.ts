@@ -26,7 +26,7 @@ export const NO_FEATURE = 'none';
 export const NO_MILESTONE = 'none';
 export const UNASSIGNED = 'unassigned';
 
-/** The board's URL state: four filters (values OR'ed within a key, keys AND'ed), the swimlane group and `?col`. */
+/** The board's URL state: four filters (values OR'ed within a key, keys AND'ed), the swimlane group, `?col` and the folds. */
 export interface BoardQueryState {
   /** Main feature ids (`F6`), or `none`. */
   readonly feature: readonly string[];
@@ -38,9 +38,13 @@ export interface BoardQueryState {
   readonly group: BoardGroup;
   /** The visible column at compact; null for the default. */
   readonly col: WorkflowStage | null;
+  /** Columns without a shown card the viewer opened (`?open=`); such a column is folded by default. */
+  readonly open: readonly WorkflowStage[];
+  /** Columns with cards the viewer folded (`?fold=`); such a column is open by default. */
+  readonly fold: readonly WorkflowStage[];
 }
 
-export const EMPTY_BOARD_QUERY: BoardQueryState = { feature: [], milestone: [], type: [], assignee: [], group: 'none', col: null };
+export const EMPTY_BOARD_QUERY: BoardQueryState = { feature: [], milestone: [], type: [], assignee: [], group: 'none', col: null, open: [], fold: [] };
 
 const LIST_KEYS = ['feature', 'milestone', 'type', 'assignee'] as const;
 const CARD_TYPES: readonly BoardCardType[] = [...WORKFLOW_TYPES, 'idea'];
@@ -72,6 +76,8 @@ export function parseBoardQuery(source: BoardQuerySource): BoardQueryState {
     assignee: distinct(valuesOf(source, 'assignee')),
     group,
     col,
+    open: distinct(valuesOf(source, 'open')).filter(isWorkflowStage),
+    fold: distinct(valuesOf(source, 'fold')).filter(isWorkflowStage),
   };
 }
 
@@ -87,6 +93,10 @@ export function boardQueryParams(query: BoardQueryState): Record<string, string 
   }
   if (query.group !== 'none') params['group'] = query.group;
   if (query.col !== null) params['col'] = query.col;
+  for (const key of ['open', 'fold'] as const) {
+    const stages = distinct(query[key]);
+    if (stages.length > 0) params[key] = stages;
+  }
   return params;
 }
 
@@ -213,6 +223,11 @@ export interface BoardColumn {
   readonly hidden: number;
   readonly waitingOnYou: number;
   readonly stub: BoardStub;
+  /**
+   * Drawn as a narrow stub at medium and wide: a column without a shown card unless the viewer opened it, a column with
+   * cards only when the viewer folded it.
+   */
+  readonly folded: boolean;
   /** The bands holding a card of this column, empty without a group. */
   readonly bands: readonly BoardBand[];
   /** Features (or milestones) of the master with no card in this column: "4 features have no card in Build". */
@@ -425,6 +440,7 @@ export function buildBoard(input: BoardInput): BoardModel {
       hidden,
       waitingOnYou,
       stub: shown.length === 0 ? { kind: 'empty', hidden } : { kind: 'cards', cards: shown.length, waitingOnYou },
+      folded: shown.length === 0 ? !query.open.includes(stage) : query.fold.includes(stage),
       bands,
       bandsOmitted: omitted,
     };

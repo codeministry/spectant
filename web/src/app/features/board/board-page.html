@@ -193,27 +193,11 @@
           </section>
         }
       } @else {
-        <div
-          class="strip"
-          cdkDropList
-          [cdkDropListData]="null"
-          [style.--board-tracks]="tracks()"
-          [style.--strip-shift.px]="stripShift()"
-          (cdkDropListDropped)="dropped($event)"
-        >
-          <ui-segmented
-            mode="strip"
-            [options]="stripOptions()"
-            [inView]="inView()"
-            [scroller]="scrollerEl()"
-            [label]="'board.workspace.strip' | transloco"
-          />
-        </div>
-
         <ui-card class="board-card" [padding]="0">
           <div
             #scroller
             class="scroller"
+            cdkScrollable
             role="region"
             tabindex="0"
             [attr.aria-label]="'board.workspace.columns' | transloco"
@@ -223,7 +207,7 @@
               @for (column of b.columns; track column.stage; let i = $index) {
                 @let stage = column.stage;
                 @let label = 'stages.' + stage | transloco;
-                @if (column.stub.kind === 'empty') {
+                @if (column.folded) {
                   <section
                     class="stub"
                     data-stub
@@ -238,11 +222,23 @@
                     [attr.aria-labelledby]="'col-' + stage"
                   >
                     <ui-icon [name]="glyphs[stage]" [size]="16" />
-                    <span class="count" [attr.data-morph]="drag.morph().includes(stage) ? '' : null">0</span>
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-xs fold"
+                      data-fold-toggle
+                      aria-expanded="false"
+                      [attr.aria-label]="'board.workspace.column.unfold' | transloco: { stage: label }"
+                      (click)="toggleFold(column)"
+                    >
+                      <ui-icon name="unfold-horizontal" [size]="14" />
+                    </button>
+                    <span class="count" [attr.data-morph]="drag.morph().includes(stage) ? '' : null">{{ column.cards.length }}</span>
                     <ng-container [ngTemplateOutlet]="hintTpl" [ngTemplateOutletContext]="{ $implicit: stage }" />
                     <h2 class="vlabel" [id]="'col-' + stage">{{ label }}</h2>
                     <span class="vnote">
-                      @if (column.stub.hidden > 0) {
+                      @if (column.cards.length > 0) {
+                        {{ 'board.workspace.column.folded' | transloco }}
+                      } @else if (column.stub.kind === 'empty' && column.stub.hidden > 0) {
                         {{ 'board.workspace.column.hiddenByFilters' | transloco: { count: column.stub.hidden } }}
                       } @else {
                         {{ 'board.workspace.column.empty' | transloco }}
@@ -303,7 +299,7 @@
                     (cdkDropListDropped)="dropped($event)"
                     [attr.data-drop]="drag.hint(cell.stage)"
                     [class.stubcell]="cell.stub" [style.grid-row]="3 + r * 2" [style.grid-column]="i + 1">
-                    @if (cell.cards.length > 0) {
+                    @if (!cell.stub && cell.cards.length > 0) {
                       <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + cell.stage">
                         @for (card of cell.cards; track card.key) {
                           <li [attr.data-moved]="drag.moved() === card.key ? '' : null">
@@ -366,6 +362,16 @@
       <ui-icon class="wait" name="hourglass" [size]="14" [label]="'board.workspace.column.waitingStage' | transloco" />
     }
     <span class="count" aria-hidden="true" [attr.data-morph]="drag.morph().includes(column.stage) ? '' : null">{{ column.count }}</span>
+    <button
+      type="button"
+      class="btn btn-ghost btn-xs fold"
+      data-fold-toggle
+      aria-expanded="true"
+      [attr.aria-label]="'board.workspace.column.fold' | transloco: { stage: label }"
+      (click)="toggleFold(column)"
+    >
+      <ui-icon name="fold-horizontal" [size]="14" />
+    </button>
   </header>
 </ng-template>
 

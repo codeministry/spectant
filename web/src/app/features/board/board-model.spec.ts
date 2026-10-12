@@ -222,6 +222,27 @@ describe('buildBoard (T120, ISC-129)', () => {
   });
 });
 
+describe('folded columns (Marcello 2026-10-13)', () => {
+  it('folds a column without a shown card, opens it on ?open=, folds a column with cards on ?fold=', () => {
+    const base = board();
+    const empty = base.columns.find((c) => c.cards.length === 0);
+    const full = base.columns.find((c) => c.cards.length > 0);
+    if (!empty || !full) throw new Error('harbor has an empty and a full column');
+    expect(empty.folded).toBe(true);
+    expect(full.folded).toBe(false);
+    const toggled = board({ open: [empty.stage], fold: [full.stage] });
+    expect(toggled.columns.find((c) => c.stage === empty.stage)?.folded).toBe(false);
+    expect(toggled.columns.find((c) => c.stage === full.stage)?.folded).toBe(true);
+  });
+
+  it('writes open and fold after col, one repeated key per stage, and drops unknown stages', () => {
+    const q = parseBoardQuery('open=blocked&open=nope&fold=idea&fold=idea');
+    expect(q.open).toEqual(['blocked']);
+    expect(q.fold).toEqual(['idea']);
+    expect(boardQueryString({ ...EMPTY_BOARD_QUERY, col: 'build', open: ['blocked'], fold: ['idea'] })).toBe('col=build&open=blocked&fold=idea');
+  });
+});
+
 describe('the board query (ISC-129.1)', () => {
   const FULL: BoardQueryState = {
     feature: ['F6', 'F2'],
@@ -230,6 +251,8 @@ describe('the board query (ISC-129.1)', () => {
     assignee: [PERSON, 'unassigned'],
     group: 'milestone',
     col: 'close-pending',
+    open: ['blocked'],
+    fold: ['idea'],
   };
 
   it('parses a router query map, single values and repeated ones', () => {

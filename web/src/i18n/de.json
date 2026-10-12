@@ -1106,7 +1106,10 @@
         "fixedGate": "festes Gate",
         "gateReviewed": "Review-Marke",
         "gateClosed": "jeder Claim geschlossen",
-        "waitingStage": "eine wartende Stage"
+        "waitingStage": "eine wartende Stage",
+        "fold": "{{stage}} einklappen",
+        "unfold": "{{stage}} aufklappen",
+        "folded": "eingeklappt"
       },
       "filter": {
         "open": "Filter",

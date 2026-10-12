@@ -1,0 +1,97 @@
+/* The full-height board at medium and wide, split from board-page.css for the per-file style budget. */
+
+/*
+ * Medium and wide: the board card fills the rest of the viewport (header 64, body padding 16 above and 48 below)
+ * and the scroller scrolls in both axes inside it, with the column heads stuck to its top edge, so a tall screen shows
+ * as many cards as it has height for and the page itself never has to scroll. On a short panel the card keeps a floor
+ * of 360 px and the page scrolls as before. Compact keeps its one column in the page flow.
+ */
+@container shell (width >= 640px) {
+  :host {
+    display: flex;
+    flex-direction: column;
+    block-size: calc(100dvh - 128px);
+  }
+
+  .board-card {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-block-size: 360px;
+    overflow: hidden;
+  }
+
+  .scroller {
+    flex: 1 1 auto;
+    min-block-size: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+
+  .head {
+    position: sticky;
+    z-index: 1;
+    inset-block-start: 0;
+  }
+
+  /* With swimlanes a column section is a head-only grid item in row 1, too short for its head to stick inside it: the
+     section itself sticks to the scroller's top, over the bands scrolling under it. */
+  .grid[data-grouped] > .col,
+  .grid[data-grouped] > .stub {
+    position: sticky;
+    z-index: 2;
+    inset-block-start: 0;
+    background: var(--color-base-100);
+  }
+
+  /* Row 1 is only the heads: the sections do not stretch, and a stub there is a 40 px head (glyph and count, its name
+     kept for the cells' `aria-labelledby` but visually hidden), so the sticky row stays one head high. */
+  .grid[data-grouped] > .col {
+    align-self: start;
+  }
+
+  .grid[data-grouped] > .stub {
+    flex-direction: row;
+    justify-content: center;
+    align-self: start;
+    gap: 4px;
+    block-size: 40px;
+    min-block-size: 0;
+    padding-block: 0;
+    border-block-end: 0;
+    border-radius: var(--radius-field) var(--radius-field) 0 0;
+  }
+
+  .grid[data-grouped] > .stub .vlabel {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .grid[data-grouped] > .stub .vnote {
+    display: none;
+  }
+
+  /* Without swimlanes each column scrolls its own cards, so the canvas itself shows no bar; with bands the grid is one
+     sheet and the scroller scrolls it. The columns grow to fill the width (`minmax(--board-col, 1fr)` tracks), so a
+     sideways bar appears only when even the design width does not fit. */
+  .grid:not([data-grouped]) {
+    block-size: 100%;
+  }
+
+  .grid:not([data-grouped]) .col {
+    min-block-size: 0;
+  }
+
+  .grid:not([data-grouped]) .col .cards {
+    min-block-size: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--track) transparent;
+  }
+}

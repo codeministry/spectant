@@ -762,12 +762,8 @@ test.describe('workspace board', () => {
       await page.goto(wsBoard('harbor'));
       await expectColumns(page, planning);
 
-      // The strip names the same stages in the same order, each with its column's card count.
-      const strip = 'app-board-page .strip ui-segmented[data-mode="strip"] button[data-key]';
-      expect(await page.locator(strip).evaluateAll((s) => s.map((b) => b.getAttribute('data-key')))).toEqual([...planning.stages]);
-      for (const stage of planning.stages) {
-        await expect(page.locator(`${strip}[data-key="${stage}"] .count`), `strip ${stage}`).toHaveText(String(planning.stageCounts[stage] ?? 0));
-      }
+      // The column heads are the one header: no separate stage strip above the board.
+      await expect(page.locator('app-board-page ui-segmented[data-mode="strip"]')).toHaveCount(0);
 
       // Every card of the golden sits in its stage's column, once; a stage without one is a stub.
       const cards = goldenCards(planning);
@@ -1584,5 +1580,44 @@ test.describe('allocate', () => {
     await expect(page.locator(TOAST)).toHaveCount(0);
     expect(pathsOf(posts, ALLOCATE_PATH)).toHaveLength(1);
     expect(posts).toHaveLength(1);
+  });
+});
+
+// Marcello 2026-10-13: the column heads are the board's one header and stay on screen while the cards scroll, in the
+// swimlane views too, one head high; any column folds and opens by hand, the choice in the URL (`?fold=`, `?open=`).
+test.describe('column heads', () => {
+  useStubSession('board-heads');
+  test.use({ viewport: { width: 1440, height: 640 } });
+
+  for (const group of ['feature', 'milestone'] as const) {
+    test(`heads: with ${group} swimlanes the heads stay at the scroller's top, one head high, while the bands scroll`, async ({ page }) => {
+      await page.goto(`${wsBoard('harbor')}?group=${group}`);
+      const scroller = page.locator('app-board-page .scroller');
+      await expect(page.locator('app-board-page .band-head').first()).toBeVisible();
+      const head = page.locator('app-board-page .grid[data-grouped] > section.col').first();
+      const before = await head.boundingBox();
+      if (before === null) throw new Error('no column section in the grouped grid');
+      expect(before.height, 'the sticky head row is one head high').toBeLessThanOrEqual(48);
+      const scrolled = await scroller.evaluate((el) => {
+        el.scrollTop = 160;
+        return el.scrollTop;
+      });
+      expect(scrolled, 'the bands are taller than the board, so the scroller scrolls').toBeGreaterThan(0);
+      await expect.poll(async () => Math.round((await head.boundingBox())?.y ?? -1)).toBe(Math.round(before.y));
+    });
+  }
+
+  test('heads: a column with cards folds from its head, an empty one opens from its stub, both written to the URL', async ({ page }) => {
+    await page.goto(wsBoard('harbor'));
+    await page.locator('app-board-page section[data-col="review"] .head [data-fold-toggle]').click();
+    await expect(page).toHaveURL(/fold=review/);
+    await expect(page.locator('app-board-page section[data-col="review"]')).toHaveAttribute('data-stub', '');
+    const stub = page.locator('app-board-page section[data-stub]:not([data-col="review"])').first();
+    const stage = await stub.getAttribute('data-col');
+    await stub.locator('[data-fold-toggle]').click();
+    await expect(page).toHaveURL(new RegExp(`open=${stage ?? ''}`));
+    await expect(page.locator(`app-board-page section[data-col="${stage ?? ''}"]`)).not.toHaveAttribute('data-stub', '');
+    await page.reload();
+    await expect(page.locator('app-board-page section[data-col="review"]')).toHaveAttribute('data-stub', '');
   });
 });

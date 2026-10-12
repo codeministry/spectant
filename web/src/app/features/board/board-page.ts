@@ -1,4 +1,5 @@
 import { CdkDrag, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
+import { CdkScrollable } from '@angular/cdk/scrolling';
 import { NgTemplateOutlet } from '@angular/common';
 import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, signal, untracked, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -15,7 +16,7 @@ import type { IconName } from '../../shared/icons/icons';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
-import { type SegmentedOption, UiSegmented, watchColumns } from '../../shared/ui/segmented/segmented';
+import { type SegmentedOption, UiSegmented } from '../../shared/ui/segmented/segmented';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../shared/ui/term/term';
 import { planningPageState } from '../planning/planning-page';
@@ -93,9 +94,10 @@ interface BandRow {
  * `/w/:ws/board` (spec 008, T121, ISC-129; design 008 § board layout, Tablet 820 and Desktop 1440): the workspace
  * board from `buildBoard` over the planning tree, the dashboard rows, the actor names and the URL's board query.
  *
- * - The sticky stage strip (`ui-segmented mode="strip"`) sits above the board card, outside the scroller (a column head
- *   cannot stick inside an `overflow-x` container): one segment per column, `inView` fed by `watchColumns`, a click
- *   scrolls its column into view, so the strip is the minimap.
+ * - The board card fills the viewport at medium and wide and its scroller scrolls both axes, so the column heads stick
+ *   to its top edge in every view: without swimlanes each column scrolls its own cards under its head, with swimlanes
+ *   the column sections (head-only grid items in row 1) stick themselves. The scroller is `cdkScrollable`, so a drag
+ *   near its edge scrolls it towards a column out of view. There is no separate stage strip any more.
  * - Inside the card one horizontal scroller owns the overflow (the page never scrolls sideways): 232 px columns,
  *   12 px apart, scroll-snap at column starts and edge fades. A column with no shown card is a stub (48 px at medium,
  *   56 px at wide) carrying `data-stub`: its track is fixed by that attribute, so the drag task never widens it.
@@ -129,6 +131,7 @@ interface BandRow {
     AllocateDialog,
     CdkDrag,
     CdkDropList,
+    CdkScrollable,
     MoveToMenu,
     NgTemplateOutlet,
     RefusalNotice,
@@ -151,9 +154,9 @@ interface BandRow {
   host: {
     'data-page': 'board',
     '[attr.data-tier]': 'tier()',
-    '[style.--board-toolbar]': 'toolbarHeight() === null ? null : toolbarHeight() + "px"', '[attr.data-dragging]': 'drag.dragging() ? "" : null' },
+    '[attr.data-dragging]': 'drag.dragging() ? "" : null' },
   templateUrl: './board-page.html',
-  styleUrls: ['./board-page.css', './board-page.compact.css'],
+  styleUrls: ['./board-page.css', './board-page.compact.css', './board-page.drag.css', './board-page.fill.css'],
 })
 export class BoardPage {
   protected readonly state = inject(ShellState);
@@ -175,9 +178,6 @@ export class BoardPage {
   protected readonly name = computed(() => this.data.workspaceName(this.ws()));
   /** Where the columns come from (T163, ISC-122): 'file' for the workspace's own `specs/workflow.md`, 'default' without it; null while loading. */
   protected readonly workflowSource = computed(() => this.data.workflow()?.source ?? null);
-  /** The toolbar's rendered height: the stage strip sticks right under it at medium and wide (board-page.css). */
-  protected readonly toolbarHeight = signal<number | null>(null);
-  private readonly toolbarRef = viewChild<BoardFilters, ElementRef<HTMLElement>>(BoardFilters, { read: ElementRef });
 
   private readonly pageState = planningPageState(this.data);
   protected readonly missing = this.pageState.missing;
@@ -241,23 +241,8 @@ export class BoardPage {
 
   /** The track of each column: a stub's fixed width, or the 232 px column. */
   protected readonly tracks = computed(() =>
-    (this.board()?.columns ?? []).map((c) => (c.stub.kind === 'empty' ? 'var(--board-stub)' : 'minmax(var(--board-col), 1fr)')).join(' '),
+    (this.board()?.columns ?? []).map((c) => (c.folded ? 'var(--board-stub)' : 'minmax(var(--board-col), 1fr)')).join(' '),
   );
-
-  protected readonly stripOptions = computed<readonly SegmentedOption[]>(() => {
-    const lang = this.lang();
-    return (this.board()?.columns ?? []).map((c) => {
-      const label = this.transloco.translate(`stages.${c.stage}`, {}, lang);
-      return {
-        key: c.stage,
-        label,
-        count: c.cards.length,
-        ...(c.stub.kind === 'empty' ? { narrow: true } : {}),
-        ...(c.waitingOnYou > 0 ? { tone: 'secondary' as const } : {}),
-        ariaLabel: this.transloco.translate('board.workspace.column.name', { stage: label, count: c.cards.length, waiting: c.waitingOnYou }, lang),
-      };
-    });
-  });
 
   /** The bands across the board in band order (master order, or target order for milestones), the one without last. */
   protected readonly bands = computed<readonly BandRow[]>(() => {
@@ -276,7 +261,7 @@ export class BoardPage {
           count,
           cells: b.columns.map((c) => ({
             stage: c.stage,
-            stub: c.stub.kind === 'empty',
+            stub: c.folded,
             cards: c.bands.find((band) => band.key === key)?.cards ?? [],
           })),
         },
@@ -293,9 +278,6 @@ export class BoardPage {
 
   private readonly scrollerRef = viewChild<ElementRef<HTMLElement>>('scroller');
   protected readonly scrollerEl = computed(() => this.scrollerRef()?.nativeElement);
-  protected readonly inView = signal<readonly string[]>([]);
-  /** The scroller's horizontal offset, so the strip's column-aligned segments follow the columns under them. */
-  protected readonly stripShift = signal(0);
   protected readonly fadeStart = signal(false);
   protected readonly fadeEnd = signal(false);
 
@@ -312,13 +294,6 @@ export class BoardPage {
       grip.focus();
       untracked(() => this.pendingFocus.set(null));
     });
-    // The minimap: watch the scroller's columns again whenever the board re-renders them.
-    afterRenderEffect((onCleanup) => {
-      this.board();
-      const scroller = this.scrollerEl();
-      if (!scroller || typeof IntersectionObserver !== 'function') return;
-      onCleanup(watchColumns(scroller, (keys) => this.inView.set(keys)));
-    });
     afterRenderEffect(() => {
       this.board();
       this.updateFades();
@@ -333,14 +308,6 @@ export class BoardPage {
       const observer = new IntersectionObserver((entries) => this.switchAway.set(entries.some((entry) => !entry.isIntersecting)), {
         rootMargin: '-92px 0px 0px 0px',
       });
-      observer.observe(el);
-      onCleanup(() => observer.disconnect());
-    });
-    // The toolbar wraps when its chips do not fit one row: the strip's sticky offset follows its height.
-    afterRenderEffect((onCleanup) => {
-      const el = this.toolbarRef()?.nativeElement;
-      if (!el || typeof ResizeObserver !== 'function') return;
-      const observer = new ResizeObserver(() => this.toolbarHeight.set(Math.round(el.getBoundingClientRect().height)));
       observer.observe(el);
       onCleanup(() => observer.disconnect());
     });
@@ -364,6 +331,14 @@ export class BoardPage {
   }
 
   /** Writes `query` to the URL, replacing the entry: a filter, lane or column change adds no history step. */
+  /** Opens a folded column or folds an open one (`?open=` for a column without shown cards, `?fold=` for one with). */
+  protected toggleFold(column: BoardColumn): void {
+    const q = this.query();
+    const key = column.cards.length === 0 ? 'open' : 'fold';
+    const stages = q[key].includes(column.stage) ? q[key].filter((s) => s !== column.stage) : [...q[key], column.stage];
+    this.setQuery({ ...q, [key]: stages });
+  }
+
   protected setQuery(query: BoardQueryState): void {
     if (boardQueryString(query) === boardQueryString(this.query())) return;
     this.navigate(query);
@@ -453,7 +428,6 @@ export class BoardPage {
   protected updateFades(): void {
     const el = this.scrollerEl();
     if (!el) return;
-    this.stripShift.set(el.scrollLeft);
     this.fadeStart.set(el.scrollLeft > 4);
     this.fadeEnd.set(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
   }
