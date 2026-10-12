@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import type { DashboardInput } from '../../src/dashboard.ts';
 import { FILE_KINDS } from '../../src/files.ts';
 import type { SpecFiles, TextFileKind } from '../../src/files.ts';
+import { parseWorkflow } from '../../src/workflow.ts';
 
 export const FIXTURES = join(import.meta.dir, '..', '..', 'fixtures');
 
@@ -44,7 +45,10 @@ export function fixtureTrees(): string[] {
     .sort();
 }
 
-/** Any repository root read into the model's input, as the server reads a registered workspace. */
+/**
+ * Any repository root read into the model's input, as the server reads a registered workspace: `specs/workflow.md`
+ * through `parseWorkflow`, the default table when the file is missing.
+ */
 export function readTreeAt(root: string, worktreeTree: string | null = null): DashboardInput {
   return {
     master: readIfExists(join(root, 'ISA.md')),
@@ -53,10 +57,28 @@ export function readTreeAt(root: string, worktreeTree: string | null = null): Da
     specs: folders(join(root, 'specs')),
     archived: folders(join(root, 'specs', 'archive')),
     worktreeTree,
+    workflow: parseWorkflow(readIfExists(join(root, 'specs', 'workflow.md'))),
   };
 }
 
 /** A fixture tree by name. */
 export function readTree(name: string): DashboardInput {
   return readTreeAt(join(FIXTURES, name));
+}
+
+/**
+ * The story folder `specs/ideas/` of any tree root as `readIdeas` takes it (spec 008, T51): every regular file directly
+ * in it, file name to text, in name order; an empty record when the folder is missing. The reader decides what a
+ * story is.
+ */
+export function ideaFilesAt(root: string): Record<string, string> {
+  const dir = join(root, 'specs', 'ideas');
+  if (!existsSync(dir)) return {};
+  const names = readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isFile())
+    .map((e) => e.name)
+    .sort();
+  const files: Record<string, string> = {};
+  for (const name of names) files[name] = readFileSync(join(dir, name), 'utf8');
+  return files;
 }

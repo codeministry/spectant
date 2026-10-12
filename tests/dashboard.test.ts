@@ -450,7 +450,7 @@ describe("the reading carries the workflow (T78, ISC-122)", () => {
     expect(strings(reading.diagnostics).filter(hasAbsolutePath)).toEqual([]);
   });
 
-  test("the dashboard model is unchanged by the workflow: harbor and lantern still answer their goldens", async () => {
+  test("the loader passes the workflow into the model (close-pending, spec 008 T49): harbor and lantern answer their goldens", async () => {
     for (const name of NAMES) {
       const load = await loadDashboard(join(FIXTURES, name), null);
       if (!load.readable) throw new Error(`unreadable: ${load.error}`);

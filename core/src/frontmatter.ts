@@ -60,6 +60,8 @@ export interface FrontmatterResult {
   readonly body: string;
   /** 1-based line of the text where `body` starts. */
   readonly bodyLine: number;
+  /** 1-based line of each key, the last one when a key is set twice (as `values`); e.g. a `stage-mismatch` names it. */
+  readonly keyLines: Readonly<Record<string, number>>;
   readonly diagnostics: readonly Diagnostic[];
 }
 
@@ -166,7 +168,8 @@ export function parseFrontmatter(text: string): FrontmatterResult {
   const data = emptyData();
   const values: Record<string, string> = {};
   const rest: Record<string, string> = {};
-  const none = (): FrontmatterResult => ({ present: false, data, values, rest, body: normalised, bodyLine: 1, diagnostics });
+  const keyLines: Record<string, number> = {};
+  const none = (): FrontmatterResult => ({ present: false, data, values, rest, body: normalised, bodyLine: 1, keyLines, diagnostics });
 
   if (lines[0]?.trimEnd() !== DELIMITER) return none();
   const close = lines.findIndex((line, i) => i > 0 && line.trimEnd() === DELIMITER);
@@ -194,6 +197,7 @@ export function parseFrontmatter(text: string): FrontmatterResult {
     if (key in values) warn('frontmatter-duplicate', `The key ${key} is set twice; the last value wins.`, lineNo);
     if (unterminated) warn('frontmatter-quote', `The quoted value of ${key} is never closed.`, lineNo);
     values[key] = value;
+    keyLines[key] = lineNo;
 
     const known = KEYS[key];
     if (!known) {
@@ -243,6 +247,7 @@ export function parseFrontmatter(text: string): FrontmatterResult {
     rest,
     body: lines.slice(close + 1).join('\n'),
     bodyLine: close + 2,
+    keyLines,
     diagnostics,
   };
 }

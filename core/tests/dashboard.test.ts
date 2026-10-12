@@ -53,8 +53,8 @@ describe('harbor: the README Expected column', () => {
       '004': 'code-review',
       '005': 'review',
       '006': 'review',
-      '007': 'review', // the chore reads as type none until spec 008, T38, and has no reviewed mark
-      '008': 'code-review', // every claim closed; close-pending under `code_review: feature` from spec 008, T49 on
+      '007': 'done', // the chore, reviewed with every claim closed (spec 008, T50)
+      '008': 'close-pending', // every claim closed, waits on 009 under `code_review: feature` (spec 008, T49)
       '009': 'build',
     });
   });
@@ -87,8 +87,9 @@ describe('harbor: the README Expected column', () => {
   });
 
   test('rows in action order (nearest to done first), Next up the top three with a command', () => {
-    expect(m.specs.map((r) => r.id)).toEqual(['004', '008', '005', '006', '007', '002', '009', '003']);
-    expect(m.nextUp).toEqual(['004', '008', '005']);
+    // close-pending names no command and sits with done, just before it (spec 008, T49).
+    expect(m.specs.map((r) => r.id)).toEqual(['004', '005', '006', '002', '009', '003', '008', '007']);
+    expect(m.nextUp).toEqual(['004', '005', '006']);
     expect(row(m, '002').nextCommand).toBe('/spec-implement 002');
     expect(row(m, '002').takeable.length).toBeGreaterThan(0);
   });
@@ -96,20 +97,20 @@ describe('harbor: the README Expected column', () => {
   test('KPIs: specs split building and scoping, attention is warnings plus open fog', () => {
     const { kpis } = m;
     expect(kpis.specs).toBe(8);
-    expect(kpis.building).toBe(4); // 002 and 009 build, 004 and 008 code-review
-    expect(kpis.scoping).toBe(4); // 003 tasks, 005, 006 and 007 review
-    expect(kpis.warnings).toBe(10); // 008's closed joins the nine
+    expect(kpis.building).toBe(4); // 002 and 009 build, 004 code-review, 008 close-pending
+    expect(kpis.scoping).toBe(3); // 003 tasks, 005 and 006 review; 007 is done
+    expect(kpis.warnings).toBe(7); // the done chore and the close-pending 008 carry none (T49, T50)
     expect(kpis.attention).toBe(kpis.warnings + kpis.fog);
     expect(kpis.takeable).toBe(m.specs.reduce((n, r) => n + r.takeable.length, 0));
     expect(kpis.claims).toEqual(
       m.specs.filter((r) => r.stage !== 'done').reduce((a, r) => ({ closed: a.closed + r.progress.closed, total: a.total + r.progress.total }), { closed: 0, total: 0 }),
     );
-    expect(m.stageCounts).toMatchObject({ build: 2, tasks: 1, 'code-review': 2, review: 3, done: 0 });
+    expect(m.stageCounts).toMatchObject({ build: 2, tasks: 1, 'code-review': 1, 'close-pending': 1, review: 2, done: 1 });
   });
 
   test('warnings grouped by kind, each item naming its spec', () => {
     const groups = Object.fromEntries(m.warningGroups.map((g) => [g.kind, g.items.map((i) => i.spec)]));
-    expect(groups).toEqual({ drift: ['006'], review: ['005', '006', '007', '003'], diagrams: ['004'], closed: ['004', '008', '007'], fog: ['005'] });
+    expect(groups).toEqual({ drift: ['006'], review: ['005', '006', '003'], diagrams: ['004'], closed: ['004'], fog: ['005'] });
   });
 
   test('gates: 004 reviewed fresh and code-reviewed stale, 006 reviewed stale, 003 reviewed missing', () => {

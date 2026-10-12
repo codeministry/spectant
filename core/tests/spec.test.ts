@@ -28,6 +28,7 @@ function pageInput(tree: DashboardInput, folder: string, extra: Partial<SpecPage
     others: all.filter((f) => f !== files),
     tldr: tree.tldr,
     worktreeTree: tree.worktreeTree ?? null,
+    ...(tree.workflow ? { workflow: tree.workflow } : {}),
     ...extra,
   };
 }

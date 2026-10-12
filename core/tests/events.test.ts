@@ -11,7 +11,7 @@ import { parseActor } from '../src/actor.ts';
 import { deriveStages } from '../src/derived-stages.ts';
 import { EVENT_STAGES, EVENT_VOCABULARY_ALIASES, parseEvents, validateEventLine } from '../src/events.ts';
 import type { SpecFiles } from '../src/files.ts';
-import { STAGE_RULES } from '../src/stage.ts';
+import { STAGE_RULES, WORKFLOW_STAGES } from '../src/stage.ts';
 import { buildTimeline } from '../src/timeline.ts';
 import { FIXTURES, fixtureTrees, folders } from './helpers/read-tree.ts';
 
@@ -47,14 +47,29 @@ const VALID = { ts: '2026-03-07T15:30:00Z', from: 'review', to: 'build', command
 const REF = parseActor(VALID.actor);
 
 describe('the vocabulary (principal decision 2026-09-29)', () => {
-  test('the event stages are the stage table of stage.ts, one vocabulary for timeline and stage', () => {
-    expect([...EVENT_STAGES].sort()).toEqual([...new Set(STAGE_RULES.map((r) => r.stage))].sort());
-    expect(EVENT_STAGES).toHaveLength(8);
+  test('the event stages are every workflow stage, idea and close-pending included (T62), in board order', () => {
+    expect(EVENT_STAGES).toEqual(WORKFLOW_STAGES);
+    expect([...EVENT_STAGES].sort()).toEqual([...new Set([...STAGE_RULES.map((r) => r.stage), 'idea'])].sort());
+    expect(EVENT_STAGES).toHaveLength(10);
   });
 
-  test('the alias table maps every older lifecycle word to a stage name, `idea` to the creation', () => {
+  test('`idea` and `close-pending` are stage names: read as they stand, without an alias warning (T62)', () => {
+    for (const [from, to] of [['idea', 'plan'], ['build', 'close-pending'], ['close-pending', 'code-review']] as const) {
+      const v = validateEventLine(line({ ...VALID, from, to }));
+      expect(v).toMatchObject({ ok: true, event: { from, to }, warnings: [] });
+    }
+  });
+
+  test('a null `from` stays the creation, on the first event only (T62)', () => {
+    const first = line({ ...VALID, from: null, to: 'idea' });
+    const late = line({ ...VALID, from: null, to: 'close-pending' });
+    const { events, diagnostics } = parseEvents([first, late].join('\n'));
+    expect(events.map((e) => [e.from, e.to])).toEqual([[null, 'idea']]);
+    expect(diagnostics.map((d) => [d.code, d.line])).toEqual([['event-null-from', 2]]);
+  });
+
+  test('the alias table maps every older lifecycle word to a stage name', () => {
     expect(EVENT_VOCABULARY_ALIASES).toEqual({
-      idea: null,
       specified: 'plan',
       planned: 'tasks',
       tasked: 'review',
@@ -64,7 +79,7 @@ describe('the vocabulary (principal decision 2026-09-29)', () => {
     });
     for (const [word, stage] of Object.entries(EVENT_VOCABULARY_ALIASES)) {
       expect(EVENT_STAGES.includes(word)).toBe(false);
-      if (stage !== null) expect(EVENT_STAGES.includes(stage)).toBe(true);
+      expect(EVENT_STAGES.includes(stage)).toBe(true);
     }
   });
 });
@@ -189,9 +204,10 @@ describe('the older lifecycle words (ISC-24 wording) are read and normalised', (
     expect(v.warnings[1]?.message).toContain('build');
   });
 
-  test('`idea → specified` is the creation: `null → plan`', () => {
+  test('`idea → specified` is `idea → plan`: `idea` is a stage since T62, only `specified` warns', () => {
     const v = validateEventLine(line({ ...VALID, from: 'idea', to: 'specified' }));
-    expect(v).toMatchObject({ ok: true, event: { from: null, to: 'plan' } });
+    expect(v).toMatchObject({ ok: true, event: { from: 'idea', to: 'plan' } });
+    if (v.ok) expect(v.warnings.map((w) => w.message.includes('specified'))).toEqual([true]);
   });
 
   test('a stage name beside an old word warns once, for the old word only', () => {

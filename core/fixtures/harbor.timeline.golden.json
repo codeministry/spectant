@@ -304,6 +304,40 @@
   ],
   "specs/007-rotate-mirror-token": [
     {
+      "ts": "",
+      "kind": "stage",
+      "derived": true,
+      "title": "build → done",
+      "body": "- Undated: every claim of the chore closed; the files give no date",
+      "ref": "done",
+      "id": "stage-done",
+      "actor": null,
+      "from": "build",
+      "to": "done",
+      "undated": true
+    },
+    {
+      "ts": "2026-03-09T09:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "review → build",
+      "body": "- Derived from: .gates/reviewed.json `at`",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": null,
+      "from": "review",
+      "to": "build"
+    },
+    {
+      "ts": "2026-03-09T09:00:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
       "ts": "2026-03-09T08:30:00Z",
       "kind": "stage",
       "derived": true,

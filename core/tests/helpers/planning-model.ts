@@ -6,7 +6,7 @@ import { join } from 'node:path';
 
 import { buildPlanning } from '../../src/planning.ts';
 import type { PlanningModel } from '../../src/planning.ts';
-import { FIXTURES, readTreeAt } from './read-tree.ts';
+import { FIXTURES, ideaFilesAt, readTreeAt } from './read-tree.ts';
 
 /**
  * The fixed "today" of every planning golden: after harbor's `Harbor 0.9` target (2026-03-15) and before
@@ -14,10 +14,10 @@ import { FIXTURES, readTreeAt } from './read-tree.ts';
  */
 export const PLANNING_NOW = '2026-03-20';
 
-/** The planning model of any tree root. */
+/** The planning model of any tree root, its story folder `specs/ideas/` included (spec 008, T55). */
 export function planningModel(root: string): PlanningModel {
   const { master, specs, archived } = readTreeAt(root);
-  return buildPlanning({ master, specs, archived, now: PLANNING_NOW });
+  return buildPlanning({ master, specs, archived, ideas: ideaFilesAt(root), now: PLANNING_NOW });
 }
 
 /** The planning model of a fixture tree by name. */

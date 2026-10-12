@@ -160,17 +160,17 @@ describe("golden snapshots", () => {
     expect(diagnosticsOf(m, "warning")).toEqual(EXPECTED_WARNINGS[name] ?? []);
   });
 
-  // Spec 008, T38 (ISC-117): `spec_type: chore` is the seventh type. The harbor chore has every claim closed but no
-  // reviewed mark, so it waits in review like every type; it needs neither plan.md nor tasks.md.
-  test("harbor 007 reads as a chore: no type warning, stage review until its reviewed mark exists", () => {
+  // Spec 008, T38 (ISC-117): `spec_type: chore` is the seventh type. The harbor chore has every claim closed and a
+  // current reviewed mark (T50), so the chore row makes it done; it needs neither plan.md nor tasks.md.
+  test("harbor 007 reads as a chore: no type warning, done once reviewed with every claim closed", () => {
     const m = buildDashboard(readTree("harbor"));
     expect(diagnosticsOf(m, "warning").filter((d) => d.endsWith("frontmatter-spec-type"))).toEqual([]);
     const row = m.specs.find((r) => r.id === "007");
     expect(row).toMatchObject({
       type: "chore",
-      stage: "review",
-      nextCommand: "/spec-review 007",
-      nextReason: "the reviewed mark is missing",
+      stage: "done",
+      nextCommand: null,
+      nextReason: "every claim of the chore is closed",
       progress: { closed: 2, total: 2 },
       tasks: null,
     });

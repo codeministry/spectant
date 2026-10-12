@@ -9,6 +9,7 @@ type Milestone = PlanningBody['milestones'][number];
 
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
 const milestone = (name: string, specs: Milestone['specs']): Milestone => ({
+  ideas: [],
   name,
   slug: name,
   target: '2026-12-01',
@@ -19,7 +20,7 @@ const milestone = (name: string, specs: Milestone['specs']): Milestone => ({
   features: [],
   specs,
 });
-const model = (milestones: readonly Milestone[]): PlanningBody => ({ features: [], milestones, recount: null, diagnostics: [] });
+const model = (milestones: readonly Milestone[]): PlanningBody => ({ ideas: [], features: [], milestones, recount: null, diagnostics: [] });
 const holder = { id: '003', title: 'Planning', main: false, archived: false } as unknown as Milestone['specs'][number];
 
 function setUp(planning: (ws: string) => Promise<ApiResult<PlanningBody>>, initialWs: string | null) {

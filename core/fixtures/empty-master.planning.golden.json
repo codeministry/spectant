@@ -17,7 +17,8 @@
       "holders": [],
       "unheld": [
         "ISC-3"
-      ]
+      ],
+      "ideas": []
     },
     {
       "id": "F1",
@@ -43,10 +44,12 @@
       "unheld": [
         "ISC-1",
         "ISC-2"
-      ]
+      ],
+      "ideas": []
     }
   ],
   "milestones": [],
+  "ideas": [],
   "recount": {
     "closed": 0,
     "total": 3

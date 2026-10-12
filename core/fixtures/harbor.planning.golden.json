@@ -45,7 +45,8 @@
       ],
       "unheld": [
         "ISC-4"
-      ]
+      ],
+      "ideas": []
     },
     {
       "id": "F1",
@@ -342,7 +343,8 @@
           "held": 46
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     },
     {
       "id": "F2",
@@ -543,7 +545,18 @@
           "held": 30
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": [
+        {
+          "slug": "console-audit-log",
+          "title": "Every change made in the web console is written to an audit log a teammate can read back.",
+          "type": "feature",
+          "feature": "F2",
+          "milestone": "Harbor 2.0",
+          "priority": "P3",
+          "path": "specs/ideas/console-audit-log.md"
+        }
+      ]
     },
     {
       "id": "F3",
@@ -657,7 +670,8 @@
           "held": 1
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     },
     {
       "id": "F4",
@@ -858,7 +872,8 @@
           "held": 30
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     },
     {
       "id": "F5",
@@ -891,7 +906,8 @@
           "held": 2
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     },
     {
       "id": "F6",
@@ -945,7 +961,8 @@
           "held": 2
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     },
     {
       "id": "F7",
@@ -955,7 +972,18 @@
       "total": 0,
       "claims": [],
       "holders": [],
-      "unheld": []
+      "unheld": [],
+      "ideas": [
+        {
+          "slug": "registry-webhooks",
+          "title": "A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.",
+          "type": "feature",
+          "feature": "F7",
+          "milestone": "Harbor 1.0",
+          "priority": "P2",
+          "path": "specs/ideas/registry-webhooks.md"
+        }
+      ]
     }
   ],
   "milestones": [
@@ -985,7 +1013,8 @@
           "main": false,
           "held": 13
         }
-      ]
+      ],
+      "ideas": []
     },
     {
       "name": "Harbor 1.0",
@@ -1043,12 +1072,62 @@
           "main": false,
           "held": 46
         }
+      ],
+      "ideas": [
+        {
+          "slug": "registry-webhooks",
+          "title": "A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.",
+          "type": "feature",
+          "feature": "F7",
+          "milestone": "Harbor 1.0",
+          "priority": "P2",
+          "path": "specs/ideas/registry-webhooks.md"
+        }
       ]
+    }
+  ],
+  "ideas": [
+    {
+      "slug": "console-audit-log",
+      "title": "Every change made in the web console is written to an audit log a teammate can read back.",
+      "type": "feature",
+      "feature": "F2",
+      "milestone": "Harbor 2.0",
+      "priority": "P3",
+      "path": "specs/ideas/console-audit-log.md"
+    },
+    {
+      "slug": "registry-webhooks",
+      "title": "A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.",
+      "type": "feature",
+      "feature": "F7",
+      "milestone": "Harbor 1.0",
+      "priority": "P2",
+      "path": "specs/ideas/registry-webhooks.md"
     }
   ],
   "recount": {
     "closed": 106,
     "total": 130
   },
-  "diagnostics": []
+  "diagnostics": [
+    {
+      "file": "specs/ideas/README.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "ideas-index",
+        "message": "The story registry-webhooks is not named in the index README.md.",
+        "subject": "registry-webhooks"
+      }
+    },
+    {
+      "file": "specs/ideas/console-audit-log.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "unknown-milestone",
+        "message": "milestone \"Harbor 2.0\" is not in the master's ## Milestones block",
+        "subject": "Harbor 2.0"
+      }
+    }
+  ]
 }

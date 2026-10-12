@@ -47,6 +47,7 @@ const holder = (id: string, archived = false): Holder => ({
 });
 
 const milestone = (name: string, target: string | null, state: Milestone['state'], specs: readonly Holder[]): Milestone => ({
+  ideas: [],
   name,
   slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
   target,
@@ -59,6 +60,7 @@ const milestone = (name: string, target: string | null, state: Milestone['state'
 });
 
 const feature = (id: string, closed: number, total: number): PlanningBody['features'][number] => ({
+  ideas: [],
   id,
   name: `Feature ${id}`,
   why: null,
@@ -70,6 +72,7 @@ const feature = (id: string, closed: number, total: number): PlanningBody['featu
 });
 
 const planning = (milestones: readonly Milestone[]): PlanningBody => ({
+  ideas: [],
   features: [feature('F1', 3, 5), feature('F2', 2, 4)],
   milestones,
   recount: { closed: 5, total: 9 },

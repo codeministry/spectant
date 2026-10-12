@@ -74,6 +74,7 @@ describe('relativeTime (ISC-22)', () => {
 describe('featurePlace (ISC-105)', () => {
   const holder = (id: string, main: boolean): PlanningHolder => ({ id, slug: `${id}-x`, title: 'x', archived: false, main, held: 1, stage: null });
   const feature = (id: string, holders: readonly PlanningHolder[], claims: readonly string[]): PlanningFeature => ({
+    ideas: [],
     id,
     name: id,
     why: null,
@@ -88,6 +89,7 @@ describe('featurePlace (ISC-105)', () => {
    * rule), so 002 is no holder of F8.
    */
   const MODEL: PlanningModel = {
+    ideas: [],
     features: [
       feature('F0', [holder('002', false)], ['ISC-1']),
       feature('F7', [holder('002', true)], ['ISC-100']),

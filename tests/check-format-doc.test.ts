@@ -7,6 +7,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FILE_KINDS, type FileKind } from '../core/src/files.ts';
+import { GLOSSARY } from '../core/src/glossary.ts';
 import { checkFormatDoc } from '../scripts/check-format-doc.ts';
 
 const ROOT = join(import.meta.dir, '..');
@@ -34,9 +35,39 @@ function withoutSection(text: string, kind: FileKind): string {
   return [...lines.slice(0, start), ...lines.slice(next < 0 ? lines.length : next)].join('\n');
 }
 
-/** A minimal document: one section per kind, each with a no-fixture marker and a fenced block. */
+/** A `## Glossary` section with the table rows of `terms`, the definition cell a placeholder. */
+function glossary(terms: readonly string[] = GLOSSARY.map((row) => row.term)): string {
+  const rows = terms.map((term) => `| ${term} | ${term} | ${term} | A word. |`);
+  return ['## Glossary', '', '| Spectant term | Common term | German | Definition |', '|---|---|---|---|', ...rows, ''].join('\n');
+}
+
+/** A minimal document: the glossary, then one section per kind, each with a no-fixture marker and a fenced block. */
 function synthetic(kinds: readonly FileKind[], body: (kind: FileKind) => string = () => '**No fixture yet.**\n\n```text\nx\n```'): string {
-  return kinds.map((k) => `## \`${k}\` — \`${FILE_KINDS[k].path}\`\n\n${body(k)}\n`).join('\n');
+  return [glossary(), ...kinds.map((k) => `## \`${k}\` — \`${FILE_KINDS[k].path}\`\n\n${body(k)}\n`)].join('\n');
+}
+
+/** FORMAT.md with every line `line` matches dropped. */
+function withoutLines(text: string, line: (l: string) => boolean): string {
+  return text
+    .split('\n')
+    .filter((l) => !line(l))
+    .join('\n');
+}
+
+/** FORMAT.md with the `From` line of `kind`'s section dropped, so its fixture block is introduced by nothing. */
+function withoutFromLine(text: string, kind: FileKind): string {
+  const lines = text.split('\n');
+  const start = lines.findIndex((l) => l.startsWith(`## \`${kind}\``));
+  const from = lines.findIndex((l, i) => i > start && l.startsWith('From `'));
+  if (start < 0 || from < 0) throw new Error(`FORMAT.md has no From line for ${kind}`);
+  return [...lines.slice(0, from), ...lines.slice(from + 1)].join('\n');
+}
+
+/** Runs the script on `text` written to a temporary FORMAT.md. */
+function runOn(text: string): { code: number; stdout: string; stderr: string } {
+  const copy = join(tmp, 'FORMAT.md');
+  writeFileSync(copy, text);
+  return run(copy);
 }
 
 const fixtures: Record<string, string> = { 'core/fixtures/demo/spec.md': '---\ntask: "demo"\n---\n\n# 001 — Demo\n' };
@@ -57,6 +88,77 @@ describe('the real FORMAT.md', () => {
     expect(code).toBe(1);
     expect(stderr).toContain('plan: no section');
     expect(stderr).toContain(`${KINDS.length - 1} of ${KINDS.length} kinds documented`);
+  });
+});
+
+// spec 008, T75 (ISC-124): the repository kinds `idea` and `workflow` are checked like every other kind, and
+// `## Glossary` is a required section of exactly thirteen rows. Every case runs the real script on a mutated copy.
+describe('the repository kinds and the glossary (T75, ISC-124)', () => {
+  const format = readFileSync(FORMAT, 'utf8');
+
+  test('idea and workflow are kinds of files.ts, documented from a fixture, in that order at the end', () => {
+    expect(KINDS.slice(-2)).toEqual(['idea', 'workflow']);
+    const report = checkFormatDoc(format, (path) => {
+      try {
+        return readFileSync(join(ROOT, path), 'utf8');
+      } catch {
+        return null;
+      }
+    });
+    expect(report.problems).toEqual([]);
+    expect(report.documented).toContain('idea');
+    expect(report.documented).toContain('workflow');
+    expect(report.noFixture).toEqual([]);
+  });
+
+  test('the script reports the glossary with its thirteen rows', () => {
+    const { code, stdout } = run();
+    expect(code).toBe(0);
+    expect(stdout).toContain('glossary: 13 rows');
+  });
+
+  for (const kind of ['idea', 'workflow'] as const) {
+    test(`a copy without the ${kind} section fails and names the kind`, () => {
+      const { code, stderr } = runOn(withoutSection(format, kind));
+      expect(code).toBe(1);
+      expect(stderr).toContain(`format-doc: ${kind}: no section`);
+    });
+
+    test(`a copy whose ${kind} example lost its From line fails and names the kind`, () => {
+      const { code, stderr } = runOn(withoutFromLine(format, kind));
+      expect(code).toBe(1);
+      expect(stderr).toContain(`format-doc: ${kind}: no verbatim fixture example`);
+    });
+  }
+
+  test('a copy without the glossary section fails', () => {
+    const { code, stderr } = runOn(format.replace('\n## Glossary\n', '\n## Words\n'));
+    expect(code).toBe(1);
+    expect(stderr).toContain('format-doc: Glossary: no section `## Glossary`');
+  });
+
+  test('a copy missing one glossary row fails, names the term and the count', () => {
+    const { code, stderr } = runOn(withoutLines(format, (l) => l.startsWith('| Chore | Chore |')));
+    expect(code).toBe(1);
+    expect(stderr).toContain('format-doc: Glossary: no row for the term "Chore"');
+    expect(stderr).toContain('format-doc: Glossary: 12 rows, expected exactly 13');
+  });
+
+  test('a copy with a fourteenth glossary row fails on the count', () => {
+    const extra = format.replace('| Chore | Chore |', '| Board | Board | Board | The columns of the stages. |\n| Chore | Chore |');
+    const { code, stderr } = runOn(extra);
+    expect(code).toBe(1);
+    expect(stderr).toContain('format-doc: Glossary: 14 rows, expected exactly 13');
+    expect(stderr).not.toContain('no row for');
+  });
+
+  test('a glossary section without a table fails', () => {
+    const doc = synthetic(KINDS).replace(/\| Spectant term[\s\S]*?\n\n/, 'No table yet.\n\n');
+    expect(checkFormatDoc(doc, readFixture).problems).toEqual(['Glossary: no table under `## Glossary`']);
+  });
+
+  test('two glossary sections fail', () => {
+    expect(checkFormatDoc(`${glossary()}\n${synthetic(KINDS)}`, readFixture).problems).toEqual(['Glossary: more than one section `## Glossary`']);
   });
 });
 

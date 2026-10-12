@@ -33,8 +33,8 @@ export type UnreadableCode = "missing" | "not-a-directory" | "permission-denied"
 
 /**
  * A readable workspace: the model's input, the workflow table (T78, ISC-122; the default table when `specs/workflow.md`
- * is missing) and the reading's own findings, each under its repository-relative file name. The workflow is not part
- * of `DashboardInput`, so the dashboard model and its goldens are unchanged by it.
+ * is missing) and the reading's own findings, each under its repository-relative file name. The input carries the
+ * same workflow (`DashboardInput.workflow`), which decides row 7 of the stage table (`close-pending`, spec 008 T49).
  */
 export type WorkspaceReading =
   | { readable: true; input: DashboardInput; workflow: Workflow; diagnostics: readonly FileDiagnostic[] }
@@ -157,6 +157,7 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
         archived,
         worktreeTree: reviewed ? await worktreeTreeId(root) : null,
         locks: await readLockSources({ repoRoot: root, lifeosStateDir }),
+        workflow,
       },
     };
   } catch (error) {

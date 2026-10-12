@@ -19,7 +19,7 @@ const UPDATE_COMMAND = 'bun test core/tests/golden.test.ts';
 
 describe('planning', () => {
   test('seam: buildPlanning returns the empty model for an empty input', () => {
-    const empty: PlanningModel = { features: [], milestones: [], recount: null, diagnostics: [] };
+    const empty: PlanningModel = { features: [], milestones: [], ideas: [], recount: null, diagnostics: [] };
     expect(core.buildPlanning({ master: null, specs: [], archived: [] })).toEqual(empty);
 
     // T18: PlanningInput repeats DashboardInput's fields instead of picking them (planning.ts types against no
@@ -540,6 +540,7 @@ describe('planning: milestones', () => {
       specs: [
         { id: '003', slug: '003-config-loader', title: 'Read the config through one loader in the CLI, the API and the console', archived: false, stage: null, main: false, held: 13 },
       ],
+      ideas: [],
     },
     {
       name: 'Harbor 1.0',
@@ -558,6 +559,18 @@ describe('planning: milestones', () => {
         { id: '002', slug: '002-web-console', title: 'Show every sync run and its failures in a small web console', archived: false, stage: null, main: false, held: 30 },
         { id: '004', slug: '004-retention-policies', title: 'Delete old manifests on a written schedule without touching referenced ones', archived: false, stage: null, main: false, held: 30 },
         { id: '001', slug: '001-manifest-sync', title: 'Mirror every listed manifest into the team registry with one command', archived: true, stage: null, main: false, held: 46 },
+      ],
+      // The story registry-webhooks (F7) names Harbor 1.0 and adds no claim to its 101/106 (spec 008, T55).
+      ideas: [
+        {
+          slug: 'registry-webhooks',
+          title: 'A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.',
+          type: 'feature',
+          feature: 'F7',
+          milestone: 'Harbor 1.0',
+          priority: 'P2',
+          path: 'specs/ideas/registry-webhooks.md',
+        },
       ],
     },
   ];
@@ -634,8 +647,8 @@ describe('planning: milestones', () => {
     const master = masterWith([{ id: 'F0', name: 'Only', claims: [1] }], [['Nobody', '2026-01-10', 'Passed, empty.'], ['Later', '2026-12-01']]);
     const model = core.buildPlanning({ master, specs: [], archived: [], now: '2026-03-20' });
     expect(model.milestones).toEqual([
-      { name: 'Nobody', slug: 'nobody', target: '2026-01-10', description: 'Passed, empty.', closed: 0, total: 0, state: 'late', features: [], specs: [] },
-      { name: 'Later', slug: 'later', target: '2026-12-01', description: null, closed: 0, total: 0, state: 'upcoming', features: [], specs: [] },
+      { name: 'Nobody', slug: 'nobody', target: '2026-01-10', description: 'Passed, empty.', closed: 0, total: 0, state: 'late', features: [], specs: [], ideas: [] },
+      { name: 'Later', slug: 'later', target: '2026-12-01', description: null, closed: 0, total: 0, state: 'upcoming', features: [], specs: [], ideas: [] },
     ]);
   });
 
@@ -706,5 +719,87 @@ describe('planning: milestones', () => {
       ['003', false, 0],
     ]);
     expect({ closed: row?.closed, total: row?.total, state: row?.state }).toEqual({ closed: 2, total: 2, state: 'complete' });
+  });
+});
+
+// Spec 008 T55 (ISC-124): the stories of `specs/ideas/` sit in the tree under their feature and their milestone, as
+// `ideas` beside the claims and holders, counted apart so no fraction moves; a name the master does not carry is
+// `unknown-feature` or `unknown-milestone`, keyed to the story file, and the story is listed under neither.
+describe('planning: ideas', () => {
+  const slugs = (ideas: ReadonlyArray<{ slug: string }> | undefined): string[] => (ideas ?? []).map((i) => i.slug);
+  const codesOf = (model: PlanningModel, ...codes: string[]): string[] =>
+    model.diagnostics.filter((d) => codes.includes(d.diagnostic.code)).map((d) => `${d.file}: ${d.diagnostic.code} ${d.diagnostic.subject ?? ''}`);
+
+  test('ideas: harbor lists console-audit-log under F2 and registry-webhooks under F7 and Harbor 1.0', () => {
+    const model = planningOf('harbor');
+    expect(slugs(model.ideas)).toEqual(['console-audit-log', 'registry-webhooks']);
+    const byId = new Map(model.features.map((f) => [f.id, f]));
+    expect(slugs(byId.get('F2')?.ideas)).toEqual(['console-audit-log']);
+    expect(slugs(byId.get('F7')?.ideas)).toEqual(['registry-webhooks']);
+    expect(model.features.filter((f) => f.id !== 'F2' && f.id !== 'F7').every((f) => f.ideas.length === 0)).toBe(true);
+    const byName = new Map(model.milestones.map((m) => [m.name, m]));
+    expect(slugs(byName.get('Harbor 1.0')?.ideas)).toEqual(['registry-webhooks']);
+    expect(slugs(byName.get('Harbor 0.9')?.ideas)).toEqual([]);
+  });
+
+  test('ideas: harbor console-audit-log names Harbor 2.0, one unknown-milestone on its file, and sits under no milestone', () => {
+    const model = planningOf('harbor');
+    expect(codesOf(model, 'unknown-milestone', 'unknown-feature')).toEqual(['specs/ideas/console-audit-log.md: unknown-milestone Harbor 2.0']);
+    expect(model.milestones.some((m) => m.ideas.some((i) => i.slug === 'console-audit-log'))).toBe(false);
+    // The reader's own finding rides along: registry-webhooks is missing from the index on purpose (T52).
+    expect(codesOf(model, 'ideas-index')).toEqual(['specs/ideas/README.md: ideas-index registry-webhooks']);
+  });
+
+  test('ideas: stories change no fraction; the tree without ideas counts the same', () => {
+    const { master, specs, archived } = readTree('harbor');
+    const without = core.buildPlanning({ master, specs, archived, now: '2026-03-20' });
+    const withIdeas = planningOf('harbor');
+    const counts = (m: PlanningModel) => ({
+      recount: m.recount,
+      features: m.features.map((f) => [f.id, f.closed, f.total]),
+      milestones: m.milestones.map((r) => [r.name, r.closed, r.total, r.state]),
+    });
+    expect(counts(withIdeas)).toEqual(counts(without));
+    expect(without.ideas).toEqual([]);
+    expect(without.features.every((f) => f.ideas.length === 0) && without.milestones.every((r) => r.ideas.length === 0)).toBe(true);
+    // F7 has a block and no claim: 0/0 with or without its story.
+    expect(withIdeas.features.find((f) => f.id === 'F7')).toMatchObject({ closed: 0, total: 0, claims: [] });
+  });
+
+  test('ideas: a feature without a block is unknown-feature on the story file; the story stays in the flat list', () => {
+    const master = [masterOf([{ id: 'F0', name: 'Only', claims: [1] }]), '## Milestones', '', '- R1 · 2026-12-01 · A release', ''].join('\n');
+    const ideas = {
+      'README.md': '| Story | Milestone | Priority | Spec |\n|---|---|---|---|\n| stray | R1 | P3 | — |\n| none | — | P3 | — |\n',
+      'stray.md': '---\ntype: feature\nfeature: F9\nmilestone: R1\n---\n## Goal\nA stray story.\n',
+      'none.md': '---\ntype: chore\n---\n## Goal\nA story of no feature.\n',
+    };
+    const model = core.buildPlanning({ master, specs: [], archived: [], ideas, now: '2026-03-20' });
+    expect(codesOf(model, 'unknown-feature', 'unknown-milestone')).toEqual(['specs/ideas/stray.md: unknown-feature F9']);
+    expect(model.diagnostics.find((d) => d.diagnostic.code === 'unknown-feature')?.diagnostic.severity).toBe('warning');
+    expect(slugs(model.ideas)).toEqual(['none', 'stray']);
+    expect(model.features.every((f) => f.ideas.length === 0)).toBe(true);
+    // The unknown feature does not hide the story from its known milestone.
+    expect(slugs(model.milestones[0]?.ideas)).toEqual(['stray']);
+  });
+
+  test('ideas: a milestone the master lists on a skipped line is known: no warning, under no milestone', () => {
+    const master = [masterOf([{ id: 'F0', name: 'Only', claims: [1] }]), '## Milestones', '', '- Later · someday · undated', ''].join('\n');
+    const ideas = { 'README.md': '| Story |\n|---|\n| later |\n', 'later.md': '---\nfeature: F0\nmilestone: Later\n---\n' };
+    const model = core.buildPlanning({ master, specs: [], archived: [], ideas });
+    expect(codesOf(model, 'unknown-feature', 'unknown-milestone')).toEqual([]);
+    expect(slugs(model.features[0]?.ideas)).toEqual(['later']);
+  });
+
+  test('ideas: without a master the stories are listed flat with the reader findings and no unknown-* warning', () => {
+    const ideas = { 'lone.md': '---\nfeature: F1\nmilestone: M\n---\n' };
+    const model = core.buildPlanning({ master: null, specs: [], archived: [], ideas });
+    expect(slugs(model.ideas)).toEqual(['lone']);
+    expect(codesOf(model, 'unknown-feature', 'unknown-milestone', 'ideas-index')).toEqual(['specs/ideas/README.md: ideas-index lone']);
+  });
+
+  test.each(['lantern', 'leadgen', 'spectant-001', 'empty-master'])('ideas: %s has no stories, so every ideas list is empty', (tree) => {
+    const model = planningOf(tree);
+    expect(model.ideas).toEqual([]);
+    expect(model.features.every((f) => f.ideas.length === 0) && model.milestones.every((m) => m.ideas.length === 0)).toBe(true);
   });
 });

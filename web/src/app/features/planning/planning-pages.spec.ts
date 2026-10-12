@@ -23,6 +23,7 @@ const DASHBOARD = {
 type Milestone = PlanningBody['milestones'][number];
 
 const milestone = (name: string, specs: Milestone['specs']): Milestone => ({
+  ideas: [],
   name,
   slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
   target: '2026-11-30',
@@ -35,7 +36,8 @@ const milestone = (name: string, specs: Milestone['specs']): Milestone => ({
 });
 
 const planning = (milestones: readonly Milestone[]): PlanningBody => ({
-  features: [{ id: 'F2', name: 'Web console', why: null, closed: 2, total: 4, claims: [], holders: [], unheld: [] }],
+  ideas: [],
+  features: [{ ideas: [], id: 'F2', name: 'Web console', why: null, closed: 2, total: 4, claims: [], holders: [], unheld: [] }],
   milestones,
   recount: { closed: 2, total: 4 },
   diagnostics: [],

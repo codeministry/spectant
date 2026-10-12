@@ -72,6 +72,7 @@ describe('actor grammar on the harbor fixture', () => {
       'specs/004-retention-policies/.gates/reviewed.json',
       'specs/006-partial-push/.gates/reviewed.json',
       'specs/006-partial-push/events.jsonl',
+      'specs/007-rotate-mirror-token/.gates/reviewed.json',
       'specs/008-referrers-support/.gates/reviewed.json',
       'specs/008-referrers-support/events.jsonl',
       'specs/009-chunked-upload-limits/.gates/reviewed.json',
@@ -86,7 +87,7 @@ describe('actor grammar on the harbor fixture', () => {
   test('every file carries actors and 0 values fall outside the three forms', () => {
     for (const { rel, actors } of scanned) expect({ rel, count: actors.length > 0 }).toEqual({ rel, count: true });
     const values = scanned.flatMap(({ rel, actors }) => actors.map((raw) => ({ rel, raw, ref: parseActor(raw) })));
-    expect(values.length).toBe(30);
+    expect(values.length).toBe(31); // 007's reviewed mark (spec 008, T50) added one
     expect(values.filter(({ ref }) => ref.legacy).map(({ rel, raw }) => `${rel}: ${raw}`)).toEqual([]);
     const kinds = new Set(values.map(({ ref }) => ref.kind));
     expect([...kinds].sort()).toEqual(['agent', 'person', 'subagent']);

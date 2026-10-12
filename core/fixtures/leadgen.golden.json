@@ -28,6 +28,7 @@
     "build": 1,
     "blocked": 0,
     "code-review": 0,
+    "close-pending": 0,
     "close": 0,
     "done": 1
   },

@@ -28,8 +28,9 @@
  *   005  spike       scoping, two fog lines, no reviewed mark, no milestone
  *   006  bug         scoping, reviewed mark stale, one claim unknown to the master, one master claim not projected,
  *                    no milestone
- *   007  chore       spec.md only (no context, plan, tasks or gate marks), both claims closed with verification lines;
- *                    the master holds them in F5; no milestone (spec 008, T25)
+ *   007  chore       spec.md and a current reviewed mark only (no context, plan, tasks or code-reviewed mark), both
+ *                    claims closed with verification lines: done by the chore row (T50); the master holds them in F5;
+ *                    no milestone (spec 008, T25)
  *   008  spike       building, every claim [x], reviewed mark current, no code-reviewed mark; F6, no milestone
  *   009  spike       building, one of two claims open, reviewed mark current; F6, the open sibling of 008 under
  *                    `code_review: feature` (the close-pending base, spec 008, T30)
@@ -764,9 +765,8 @@ retry creates a second tag.
 A push interrupted at any point leaves the target registry exactly as it was before the push started.`,
 };
 
-// A chore (spec 008, T25): a small fix that is its own small spec. spec.md only — no context.md, plan, tasks or gate
-// marks — with both claims closed on their probes. Until core accepts the type (spec 008, T38) it reads as none and
-// warns `frontmatter-spec-type`.
+// A chore (spec 008, T25): a small fix that is its own small spec. spec.md only — no context.md, plan or tasks — with
+// a current reviewed mark (T50) and both claims closed on their probes: done without a code review or a phase edit.
 const S007: SpecDef = {
     dir: "007-rotate-mirror-token", slug: "007-rotate-mirror-token", title: "Rotate the mirror token",
     task: "Replace the push token without stopping a scheduled sync", type: "chore", feature: "F5",
@@ -784,8 +784,7 @@ The push token is replaced with one command, and the next scheduled run uses the
 
 // The spike pair of F6 (spec 008, T30): under `code_review: feature` in specs/workflow.md a spike is code-reviewed once
 // for every spec of its main feature. 008 has every claim closed and a current reviewed mark, no code-reviewed mark;
-// 009, its sibling, still has a claim open. From T49 on 008 derives `close-pending` naming 009; until then it derives
-// as any closed spec does.
+// 009, its sibling, still has a claim open, so 008 derives `close-pending` naming 009 (T49).
 const S008: SpecDef = {
     dir: "008-referrers-support", slug: "008-referrers-support", title: "Referrers API support",
     task: "Find out which target registries answer the OCI referrers endpoint", type: "spike", feature: "F6",
@@ -1436,6 +1435,8 @@ function generate() {
     g(S004, "reviewed", reviewedMark(join(ROOT, "specs", S004.dir), "2026-03-04T10:00:00Z", PERSON));
     g(S004, "code-reviewed", codeReviewedMark("harbor 004", "2026-03-08T11:00:00Z", "a:claude:sess-4", "feature/004-retention-policies", "one finding fixed; tree changed since"));
     g(S006, "reviewed", staleReviewedMark("harbor 006", "2026-03-08T12:00:00Z", PERSON));
+    // the chore is reviewed like every type; with both claims closed it derives `done` (row 6, spec 008, T50)
+    g(S007, "reviewed", reviewedMark(join(ROOT, "specs", S007.dir), "2026-03-09T09:00:00Z", PERSON));
     g(S008, "reviewed", reviewedMark(join(ROOT, "specs", S008.dir), "2026-03-08T14:00:00Z", PERSON));
     g(S009, "reviewed", reviewedMark(join(ROOT, "specs", S009.dir), "2026-03-08T14:10:00Z", PERSON));
 

@@ -24,7 +24,8 @@
       "unheld": [
         "ISC-1",
         "ISC-2"
-      ]
+      ],
+      "ideas": []
     },
     {
       "id": "F1",
@@ -114,10 +115,12 @@
           "held": 2
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     }
   ],
   "milestones": [],
+  "ideas": [],
   "recount": {
     "closed": 4,
     "total": 12

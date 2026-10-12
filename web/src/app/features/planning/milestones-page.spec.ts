@@ -43,6 +43,7 @@ const holder = (id: string, over: Partial<PlanningHolder> = {}): PlanningHolder 
 });
 
 const milestone = (name: string, over: Partial<PlanningMilestone> = {}): PlanningMilestone => ({
+  ideas: [],
   name,
   slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
   target: null,
@@ -91,6 +92,7 @@ const MILESTONES: readonly PlanningMilestone[] = [
 ];
 
 const planning = (milestones: readonly PlanningMilestone[]): PlanningBody => ({
+  ideas: [],
   features: [],
   milestones,
   recount: { closed: 0, total: 0 },

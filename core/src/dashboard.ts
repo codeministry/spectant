@@ -35,6 +35,7 @@ import type {
   SpecWarning,
   StageSource,
   WarningKind,
+  Workflow,
   WorkflowStage,
 } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
@@ -42,9 +43,9 @@ import type { Progress } from './frontmatter.ts';
 import { gateState, readGateMark, reviewedGate } from './gates.ts';
 import type { GateCheck, GateMarkReading, GateName, ReviewedFile } from './gates.ts';
 import { specIdOf, specSlugOf } from './spec-ref.ts';
-import { isWorkflowStage, nextCommandWithReason } from './stage.ts';
-import type { Stage } from './stage.ts';
-import { driftReport, hasDrift, heldLocks, masterProgressMismatch, partitionClaims } from './status.ts';
+import { codeReviewOf, isWorkflowStage, nextCommandWithReason, stageMismatchOf } from './stage.ts';
+import type { Stage, StageInput } from './stage.ts';
+import { driftReport, hasDrift, heldLocks, mainFeatureOf, masterProgressMismatch, partitionClaims } from './status.ts';
 import type { DriftClass, DriftReport } from './status.ts';
 import { parseTldr, tldrState } from './tldr.ts';
 
@@ -189,16 +190,24 @@ export interface DashboardInput {
   readonly worktreeTree?: string | null;
   readonly locks?: LockReading;
   readonly services?: readonly LocalService[];
+  /**
+   * `specs/workflow.md` as `parseWorkflow` read it (the server's loader, T78); absent, the default table. It decides
+   * each spec's code review (row 7, `close-pending`, T49) and which stages may stand explicitly (T47).
+   */
+  readonly workflow?: Workflow;
 }
 
 /** The stage table's order, for the stage counts. */
-const STAGES: readonly Stage[] = ['plan', 'tasks', 'review', 'build', 'blocked', 'code-review', 'close', 'done'];
+const STAGES: readonly Stage[] = ['plan', 'tasks', 'review', 'build', 'blocked', 'code-review', 'close-pending', 'close', 'done'];
 
-/** The order the lists show specs in: the action they need, nearest to done first, done last (old ACTION_ORDER). */
-export const ACTION_ORDER: readonly Stage[] = ['close', 'code-review', 'review', 'build', 'blocked', 'tasks', 'plan', 'done'];
+/**
+ * The order the lists show specs in: the action they need, nearest to done first, done last (old ACTION_ORDER).
+ * `close-pending` needs no action on the spec itself (row 7 names no command), so it sits with done, just before it.
+ */
+export const ACTION_ORDER: readonly Stage[] = ['close', 'code-review', 'review', 'build', 'blocked', 'tasks', 'plan', 'close-pending', 'done'];
 
-/** Stages counted as building on the KPI split; every other stage but done is scoping. */
-const BUILDING: ReadonlySet<Stage> = new Set<Stage>(['build', 'blocked', 'code-review']);
+/** Stages counted as building on the KPI split (`close-pending` waits on a sibling's build); every other but done is scoping. */
+const BUILDING: ReadonlySet<Stage> = new Set<Stage>(['build', 'blocked', 'code-review', 'close-pending']);
 
 /** Warning kinds in the order the old dashboard listed them on a row. */
 const WARNING_ORDER: readonly WarningKind[] = ['drift', 'review', 'diagrams', 'closed', 'fog', 'locks'];
@@ -328,6 +337,14 @@ interface SpecContext {
   /** Claim IDs of the active folders: a lock diagnostic naming one of them lands on its row only. */
   readonly activeIds: ReadonlySet<string>;
   readonly worktreeTree: string | null;
+  readonly workflow: Workflow | undefined;
+  /** Main feature → the ids of its open active specs (row 7's siblings), in folder order. */
+  readonly openByFeature: ReadonlyMap<string, readonly string[]>;
+}
+
+/** Whether an active spec holds a feature's code review back (row 7): not `phase: complete`, at least one open claim. */
+function holdsFeatureOpen(phase: string | null, doc: ClaimsDocument): boolean {
+  return phase !== 'complete' && doc.claims.some((c) => !c.checked && !c.dropped);
 }
 
 const ACTIVITY_FILE = '.spectant/activity.jsonl';
@@ -379,7 +396,10 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
   // The explicit stage needs the last recorded transition; the events' own diagnostics belong to the timeline.
   const lastTo = f.texts.events === undefined ? null : (parseEvents(f.texts.events).events.at(-1)?.to ?? null);
   const lastEventTo: WorkflowStage | null = lastTo !== null && isWorkflowStage(lastTo) ? lastTo : null;
-  const next = nextCommandWithReason({
+  // Row 7 (T49): the type's code review under the workspace's workflow and the open siblings of the main feature.
+  const mainFeature = mainFeatureOf(fm.data.isaFeature);
+  const featureSiblingsOpen = mainFeature === null ? [] : (ctx.openByFeature.get(mainFeature) ?? []).filter((other) => other !== id);
+  const stageInput: StageInput = {
     number: id,
     type,
     phase,
@@ -397,7 +417,15 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     },
     explicitStage: fm.data.stage,
     lastEventTo,
-  });
+    ...(ctx.workflow === undefined ? {} : { workflow: ctx.workflow }),
+    codeReview: codeReviewOf(type, ctx.workflow),
+    mainFeature,
+    featureSiblingsOpen,
+  };
+  const next = nextCommandWithReason(stageInput);
+  // A `stage:` that does not apply is one warning on spec.md, at the key's line (T48, ISC-120.1).
+  const mismatch = stageMismatchOf(stageInput, fm.keyLines.stage);
+  if (mismatch !== null) note('spec', [mismatch]);
 
   const drift = ctx.master === null ? null : driftReport({ frontmatter: fm, spec: doc, master: ctx.master, heldElsewhere: heldElsewhere(ctx, f.folder) });
   const diagrams = diagramVerdict({ type, phase, spec, plan });
@@ -422,7 +450,9 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     if (diagrams.level === 'fail' && missing.length > 0) {
       warnings.push({ kind: 'diagrams', text: `diagram missing in ${missing.join(', ')}`, ref: missing.join(', ') });
     }
-    if (doc.counted.total > 0 && doc.counted.closed === doc.counted.total) {
+    // Only while the stage table still names a command: a chore done by row 6 and a spec waiting in row 7
+    // (`close-pending`) have every claim closed and nothing left to do on the spec itself (T49, T50).
+    if (doc.counted.total > 0 && doc.counted.closed === doc.counted.total && next.command !== null) {
       warnings.push({ kind: 'closed', text: 'every claim closed, phase not complete' });
     }
     if (fog > 0) warnings.push({ kind: 'fog', text: plural(fog, 'open fog line') });
@@ -502,8 +532,16 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
   const active = [...input.specs].sort(byFolder);
   const archived = [...input.archived].sort(byFolder);
   const idsByFolder = new Map<string, ReadonlySet<string>>();
+  // Row 7's siblings: the active specs of each main feature that still hold it open; an archived one never does.
+  const openByFeature = new Map<string, string[]>();
   for (const f of [...active, ...archived]) {
-    if (f.texts.spec !== undefined) idsByFolder.set(f.folder, new Set(parseClaims(f.texts.spec).claims.map((c) => c.id)));
+    if (f.texts.spec === undefined) continue;
+    const doc = parseClaims(f.texts.spec);
+    idsByFolder.set(f.folder, new Set(doc.claims.map((c) => c.id)));
+    if (!active.includes(f)) continue;
+    const fm = parseFrontmatter(f.texts.spec).data;
+    const feature = mainFeatureOf(fm.isaFeature);
+    if (feature !== null && holdsFeatureOpen(fm.phase, doc)) openByFeature.set(feature, [...(openByFeature.get(feature) ?? []), specIdOf(f.folder) ?? f.folder]);
   }
   const activeIds = new Set(active.flatMap((f) => [...(idsByFolder.get(f.folder) ?? [])]));
   const ctx: SpecContext = {
@@ -513,6 +551,8 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     lockDiagnostics: input.locks?.diagnostics ?? [],
     activeIds,
     worktreeTree: input.worktreeTree ?? null,
+    workflow: input.workflow,
+    openByFeature,
   };
 
   const rows = active.flatMap((f) => specRow(f, ctx, diagnostics) ?? []).sort(byAction);

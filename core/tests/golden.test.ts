@@ -117,7 +117,7 @@ function specPageModel(root: string): Record<string, SpecPageModel> {
     const folder = rel(root, ref.dir);
     const files = texts.get(folder) as SpecFiles;
     const own = { ...files.texts, ...(tree.master === null ? {} : { master: tree.master }), ...(tree.constitution === null ? {} : { constitution: tree.constitution }) };
-    out[folder] = buildSpecPage({ files: { folder: files.folder, texts: own }, others: [...texts.values()].filter((f) => f !== files), tldr: tree.tldr });
+    out[folder] = buildSpecPage({ files: { folder: files.folder, texts: own }, others: [...texts.values()].filter((f) => f !== files), tldr: tree.tldr, ...(tree.workflow ? { workflow: tree.workflow } : {}) });
   }
   return out;
 }

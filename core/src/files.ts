@@ -275,11 +275,11 @@ export type SpecType = 'feature' | 'bug' | 'refactor' | 'spike' | 'infra' | 'pro
 export type StageName = string;
 
 /**
- * Every stage a spec 008 workflow knows: the stage table's (`Stage`, which `dashboard.ts` counts) plus `idea`, the
- * stage of a story before it is a spec, and `close-pending`, the detour of `code_review: feature`. Kept apart from
- * `Stage` until the rows exist (T49, T54), so no count or golden changes before then.
+ * Every stage a spec 008 workflow knows: the stage table's (`Stage`, which `dashboard.ts` counts; `close-pending`, the
+ * detour of `code_review: feature`, among them since T49) plus `idea`, the stage of a story before it is a spec, kept
+ * apart from `Stage` until its row exists (T54).
  */
-export type WorkflowStage = Stage | 'idea' | 'close-pending';
+export type WorkflowStage = Stage | 'idea';
 
 /** A spec's or a story's priority (frontmatter `priority:`, FORMAT.md); a missing key reads as `P3` (T39). */
 export type Priority = 'P1' | 'P2' | 'P3' | 'P4';
@@ -467,6 +467,8 @@ export interface SpecPageInput {
   readonly worktreeTree?: string | null;
   /** Commits touching the spec folder, for the Status tile's timeline count; absent means none were read. */
   readonly commits?: readonly CommitRecord[];
+  /** `specs/workflow.md` as read, as the dashboard gets it (row 7, the explicit stage); absent, the default table. */
+  readonly workflow?: Workflow;
 }
 
 // ─── Timeline (timeline.ts, derived-stages.ts, events.ts) ────────────────────────────────────────────────────────

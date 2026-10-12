@@ -98,7 +98,8 @@
       "folder": "specs/007-rotate-mirror-token",
       "archived": false,
       "kinds": [
-        "spec"
+        "spec",
+        "gateReviewed"
       ],
       "resolves": {
         "id": "specs/007-rotate-mirror-token",

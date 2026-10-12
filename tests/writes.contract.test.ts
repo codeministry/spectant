@@ -10,7 +10,9 @@ import { FILE_KINDS, type ClaimLock } from "../core/src/files.ts";
 import { REVIEWED_FILES, hashForGate, readGateMark } from "../core/src/gates.ts";
 import {
   API_ERRORS,
+  PENDING_ROUTE_TABLE,
   REVIEWED_HASHES_HEADER,
+  SPEC_HASH_HEADER,
   SPEC_ROUTE_TABLE,
   TASKS_HASH_HEADER,
   formatReviewedHashes,
@@ -23,11 +25,19 @@ import {
   NO_AGENT_SOURCE,
   REVIEWED_EVENT,
   REVIEWED_MARK_PATH,
+  VIEWER_ACTOR_FALLBACK,
   WRITE_ACTOR,
   WRITE_ERRORS,
   WRITE_HASH_HEADER,
+  WRITE_OPERATIONS,
+  WRITE_PATHS,
   WRITE_ROUTES,
   WRITE_STATUSES,
+  WRITE_TABLE,
+  ideaConflict,
+  specConflict,
+  writePathsOf,
+  type WriteOperation,
   blockingLock,
   eventAppendBytes,
   gateConflict,
@@ -233,6 +243,91 @@ describe("error codes", () => {
       expect(API_ERRORS as readonly string[]).toContain(code);
     }
     expect([...WRITE_ERRORS]).toEqual(["invalid-body", "hash-mismatch", "locked"]);
+  });
+});
+
+describe("the four app writes (spec 008, T81): the table, the paths each may touch, the 409 and 423 forms", () => {
+  test("the table holds the four operations in order; the registered ones are exactly WRITE_ROUTES", () => {
+    expect([...WRITE_OPERATIONS]).toEqual(["gateReviewed", "taskCheck", "transition", "allocate"]);
+    expect(Object.keys(WRITE_TABLE)).toEqual([...WRITE_OPERATIONS]);
+    expect(WRITE_OPERATIONS.filter((op) => WRITE_TABLE[op].registered)).toEqual([...WRITE_ROUTES]);
+    const pending = PENDING_ROUTE_TABLE.filter((e) => e.methods.includes("POST")).map((e): string => e.route);
+    expect<readonly string[]>(WRITE_OPERATIONS.filter((op) => !WRITE_TABLE[op].registered)).toEqual(pending);
+  });
+
+  test("each write's hash source, hash form, 409, 422 and 423 forms", () => {
+    const rows = WRITE_OPERATIONS.map((op) => {
+      const e = WRITE_TABLE[op];
+      return [op, e.hashFrom, e.hash, e.conflict, e.refused, e.locked];
+    });
+    expect(rows).toEqual([
+      ["gateReviewed", REVIEWED_HASHES_HEADER, "normalised", "StaleGate", null, "Locked"],
+      ["taskCheck", TASKS_HASH_HEADER, "raw", "StaleTasks", null, "Locked"],
+      ["transition", SPEC_HASH_HEADER, "raw", "StaleSpec", "TransitionRefused", "Locked"],
+      ["allocate", "IdeaPage.hash", "raw", "StaleIdea", "AllocateRefused", "Locked"],
+    ]);
+    // A refusable write lists 422 on its route; the others do not.
+    for (const op of WRITE_OPERATIONS) {
+      const statuses = [...SPEC_ROUTE_TABLE, ...PENDING_ROUTE_TABLE].find((e) => e.route === op)?.statuses ?? [];
+      for (const status of [200, 400, 403, 404, 405, 409, 423]) expect({ op, status, listed: statuses.includes(status) }).toEqual({ op, status, listed: true });
+      expect({ op, refusable: statuses.includes(422) }).toEqual({ op, refusable: WRITE_TABLE[op].refused !== null });
+    }
+  });
+
+  test("WRITE_PATHS names exactly the files each write may touch, built from core's file kinds", () => {
+    const folder = (kind: keyof typeof FILE_KINDS): string => `specs/NNN-slug/${FILE_KINDS[kind].path}`;
+    expect(WRITE_PATHS).toEqual({
+      gateReviewed: { writes: [folder("gateReviewed"), folder("events")], removes: [], creates: "specs/NNN-slug/.gates/" },
+      taskCheck: { writes: [folder("tasks")], removes: [], creates: null },
+      transition: { writes: [folder("spec"), folder("events")], removes: [], creates: null },
+      allocate: { writes: [folder("context"), folder("spec"), folder("events")], removes: [`${FILE_KINDS.idea.repoPath ?? ""}<slug>.md`], creates: "specs/NNN-slug/" },
+    });
+    expect(Object.keys(WRITE_PATHS)).toEqual([...WRITE_OPERATIONS]);
+    expect(WRITE_PATHS.gateReviewed.writes[0].startsWith(WRITE_PATHS.gateReviewed.creates)).toBe(true);
+    // The existing two writes keep the targets the routes already write.
+    expect(WRITE_PATHS.gateReviewed.writes).toEqual([`specs/NNN-slug/${REVIEWED_MARK_PATH}`, `specs/NNN-slug/${EVENTS_PATH}`]);
+  });
+
+  test("writePathsOf fills the folder and the story slug; nothing else changes", () => {
+    expect(writePathsOf("transition", "002-web-console")).toEqual({
+      writes: ["specs/002-web-console/spec.md", "specs/002-web-console/events.jsonl"],
+      removes: [],
+      creates: null,
+    });
+    expect(writePathsOf("allocate", "007-tide-tables", "tide-tables")).toEqual({
+      writes: ["specs/007-tide-tables/context.md", "specs/007-tide-tables/spec.md", "specs/007-tide-tables/events.jsonl"],
+      removes: ["specs/ideas/tide-tables.md"],
+      creates: "specs/007-tide-tables/",
+    });
+    expect(writePathsOf("gateReviewed", "002-web-console").creates).toBe("specs/002-web-console/.gates/");
+    for (const op of WRITE_OPERATIONS) {
+      const all = Object.values(writePathsOf(op, "001-x", "s")).flat().filter((p): p is string => typeof p === "string");
+      expect(all.filter((p) => p.includes("NNN-slug") || p.includes("<slug>"))).toEqual([]);
+    }
+  });
+
+  test("the spec and story conflicts name their file and its raw hash now; none when equal", () => {
+    const hex = hashForGate("spec.md", "# a\n");
+    const other = hashForGate("spec.md", "# b\n");
+    expect(specConflict(hex, hex)).toBeNull();
+    expect(specConflict(hex, other)).toEqual({ error: "hash-mismatch", files: ["spec.md"], expected: { spec: other } });
+    expect(ideaConflict("specs/ideas/tide-tables.md", hex, hex)).toBeNull();
+    expect(ideaConflict("specs/ideas/tide-tables.md", hex, other)).toEqual({
+      error: "hash-mismatch",
+      files: ["specs/ideas/tide-tables.md"],
+      expected: { idea: other },
+    });
+  });
+
+  test("the viewer's fallback actor is an agent id of the grammar, not a legacy value like WRITE_ACTOR", () => {
+    expect(VIEWER_ACTOR_FALLBACK).toBe("a:spectant:app");
+    expect(parseActor(VIEWER_ACTOR_FALLBACK)).toMatchObject({ kind: "agent", legacy: false });
+    expect(parseActor(WRITE_ACTOR).legacy).toBe(true);
+  });
+
+  test("WriteOperation covers the table at compile time", () => {
+    const ops: Record<WriteOperation, true> = { gateReviewed: true, taskCheck: true, transition: true, allocate: true };
+    expect(Object.keys(ops)).toEqual([...WRITE_OPERATIONS]);
   });
 });
 

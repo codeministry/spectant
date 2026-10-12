@@ -79,7 +79,8 @@
           "held": 10
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     },
     {
       "id": "F41",
@@ -190,7 +191,8 @@
           "held": 14
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     },
     {
       "id": "F50",
@@ -259,10 +261,12 @@
           "held": 8
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     }
   ],
   "milestones": [],
+  "ideas": [],
   "recount": {
     "closed": 31,
     "total": 32

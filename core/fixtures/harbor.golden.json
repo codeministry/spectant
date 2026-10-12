@@ -2,34 +2,35 @@
   "kpis": {
     "specs": 8,
     "building": 4,
-    "scoping": 4,
+    "scoping": 3,
     "master": {
       "closed": 106,
       "total": 130
     },
     "claims": {
-      "closed": 60,
-      "total": 84
+      "closed": 58,
+      "total": 82
     },
     "tasks": {
       "landed": 57,
       "total": 62
     },
     "takeable": 5,
-    "warnings": 10,
+    "warnings": 7,
     "fog": 4,
-    "attention": 14,
+    "attention": 11,
     "archived": 1
   },
   "stageCounts": {
     "plan": 0,
     "tasks": 1,
-    "review": 3,
+    "review": 2,
     "build": 2,
     "blocked": 0,
-    "code-review": 2,
+    "code-review": 1,
+    "close-pending": 1,
     "close": 0,
-    "done": 0
+    "done": 1
   },
   "specs": [
     {
@@ -96,57 +97,6 @@
       "updated": "2026-03-08T12:00:00Z",
       "lastRound": null,
       "goal": "A team writes its retention policy once, sees its effect before anything goes, and no manifest that a tag still references is ever deleted."
-    },
-    {
-      "id": "008",
-      "slug": "008-referrers-support",
-      "title": "Find out which target registries answer the OCI referrers endpoint",
-      "type": "spike",
-      "priority": "P3",
-      "phase": "building",
-      "stage": "code-review",
-      "stageSource": "derived",
-      "progress": {
-        "closed": 2,
-        "total": 2
-      },
-      "tasks": null,
-      "nextCommand": "/spec-code-review 008",
-      "nextReason": "every claim is closed and the code-reviewed mark is missing",
-      "takeable": [],
-      "taken": [],
-      "warnings": [
-        {
-          "kind": "closed",
-          "text": "every claim closed, phase not complete"
-        }
-      ],
-      "gates": {
-        "reviewed": {
-          "state": "fresh",
-          "detail": "matches spec.md",
-          "at": "2026-03-08T14:00:00Z",
-          "files": [
-            "spec.md"
-          ]
-        },
-        "codeReviewed": {
-          "state": "missing",
-          "detail": "no code-reviewed mark"
-        },
-        "drift": {
-          "state": "ok",
-          "detail": "in step with the master"
-        },
-        "diagrams": {
-          "state": "na",
-          "detail": "no diagram required"
-        }
-      },
-      "fog": 0,
-      "updated": "2026-03-09T09:00:00Z",
-      "lastRound": null,
-      "goal": "A recorded table says which target registry answers the referrers endpoint, and a decision names the fallback for the ones that do not."
     },
     {
       "id": "005",
@@ -256,58 +206,6 @@
       "updated": "2026-03-09T10:15:00Z",
       "lastRound": null,
       "goal": "A push interrupted at any point leaves the target registry exactly as it was before the push started."
-    },
-    {
-      "id": "007",
-      "slug": "007-rotate-mirror-token",
-      "title": "Replace the push token without stopping a scheduled sync",
-      "type": "chore",
-      "priority": "P3",
-      "phase": "building",
-      "stage": "review",
-      "stageSource": "derived",
-      "progress": {
-        "closed": 2,
-        "total": 2
-      },
-      "tasks": null,
-      "nextCommand": "/spec-review 007",
-      "nextReason": "the reviewed mark is missing",
-      "takeable": [],
-      "taken": [],
-      "warnings": [
-        {
-          "kind": "review",
-          "text": "no reviewed mark yet",
-          "command": "/spec-review 007"
-        },
-        {
-          "kind": "closed",
-          "text": "every claim closed, phase not complete"
-        }
-      ],
-      "gates": {
-        "reviewed": {
-          "state": "missing",
-          "detail": "no reviewed mark"
-        },
-        "codeReviewed": {
-          "state": "missing",
-          "detail": "no code-reviewed mark"
-        },
-        "drift": {
-          "state": "ok",
-          "detail": "in step with the master"
-        },
-        "diagrams": {
-          "state": "na",
-          "detail": "no diagram required"
-        }
-      },
-      "fog": 0,
-      "updated": "2026-03-09T11:00:00Z",
-      "lastRound": null,
-      "goal": "The push token is replaced with one command, and the next scheduled run uses the new token without a restart."
     },
     {
       "id": "002",
@@ -463,12 +361,104 @@
       "updated": "2026-03-09T17:30:00Z",
       "lastRound": null,
       "goal": "The CLI, the API and the console read their configuration through one loader, and the effective config for every case in the snapshot corpus is unchanged."
+    },
+    {
+      "id": "008",
+      "slug": "008-referrers-support",
+      "title": "Find out which target registries answer the OCI referrers endpoint",
+      "type": "spike",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "close-pending",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": null,
+      "nextReason": "every claim is closed and F6 waits on spec 009",
+      "takeable": [],
+      "taken": [],
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-08T14:00:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-09T09:00:00Z",
+      "lastRound": null,
+      "goal": "A recorded table says which target registry answers the referrers endpoint, and a decision names the fallback for the ones that do not."
+    },
+    {
+      "id": "007",
+      "slug": "007-rotate-mirror-token",
+      "title": "Replace the push token without stopping a scheduled sync",
+      "type": "chore",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "done",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": null,
+      "nextReason": "every claim of the chore is closed",
+      "takeable": [],
+      "taken": [],
+      "warnings": [],
+      "gates": {
+        "reviewed": {
+          "state": "fresh",
+          "detail": "matches spec.md",
+          "at": "2026-03-09T09:00:00Z",
+          "files": [
+            "spec.md"
+          ]
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-09T11:00:00Z",
+      "lastRound": null,
+      "goal": "The push token is replaced with one command, and the next scheduled run uses the new token without a restart."
     }
   ],
   "nextUp": [
     "004",
-    "008",
-    "005"
+    "005",
+    "006"
   ],
   "warningGroups": [
     {
@@ -504,14 +494,6 @@
           }
         },
         {
-          "spec": "007",
-          "warning": {
-            "kind": "review",
-            "text": "no reviewed mark yet",
-            "command": "/spec-review 007"
-          }
-        },
-        {
           "spec": "003",
           "warning": {
             "kind": "review",
@@ -539,20 +521,6 @@
       "items": [
         {
           "spec": "004",
-          "warning": {
-            "kind": "closed",
-            "text": "every claim closed, phase not complete"
-          }
-        },
-        {
-          "spec": "008",
-          "warning": {
-            "kind": "closed",
-            "text": "every claim closed, phase not complete"
-          }
-        },
-        {
-          "spec": "007",
           "warning": {
             "kind": "closed",
             "text": "every claim closed, phase not complete"
@@ -613,6 +581,16 @@
         "code": "frontmatter-priority",
         "message": "priority high is none of P1, P2, P3, P4; it reads as P3.",
         "line": 7
+      }
+    },
+    {
+      "file": "specs/006-partial-push/spec.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "stage-mismatch",
+        "message": "stage \"review\" is contradicted by the last events.jsonl line, which enters \"build\"; the derived stage applies.",
+        "line": 8,
+        "subject": "review"
       }
     }
   ]

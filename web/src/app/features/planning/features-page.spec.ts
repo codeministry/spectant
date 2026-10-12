@@ -44,6 +44,7 @@ const holder = (id: string, over: Partial<PlanningHolder> = {}): PlanningHolder 
 });
 
 const feature = (id: string, name: string, over: Partial<PlanningFeature> = {}): PlanningFeature => ({
+  ideas: [],
   id,
   name,
   why: null,
@@ -83,6 +84,7 @@ const FEATURES: readonly PlanningFeature[] = [
 ];
 
 const planning = (features: readonly PlanningFeature[]): PlanningBody => ({
+  ideas: [],
   features,
   milestones: [],
   recount: { closed: 71, total: 94 },

@@ -160,6 +160,7 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
       worktreeTree: input.worktreeTree,
       commits: (await commitsOf(root, ref)).commits,
       ...(input.locks ? { locks: input.locks } : {}),
+      workflow: reading.workflow,
     });
     // The same hashes the gate write recomputes (`writes.ts`), so a render and its write can only differ by the files.
     return json(req, 200, page, { [REVIEWED_HASHES_HEADER]: formatReviewedHashes(gateHashes(files.texts)) });

@@ -34,6 +34,7 @@ const holder = (id: string, slug: string, main: boolean, archived = false): Hold
   stage: null,
 });
 const feature = (id: string, name: string, holders: readonly Holder[], claims: readonly string[]): Feature => ({
+  ideas: [],
   id,
   name,
   why: null,
@@ -44,6 +45,7 @@ const feature = (id: string, name: string, holders: readonly Holder[], claims: r
   unheld: [],
 });
 const milestone = (name: string, slug: string, specs: readonly Holder[]): Milestone => ({
+  ideas: [],
   name,
   slug,
   target: '2026-12-01',
@@ -57,6 +59,7 @@ const milestone = (name: string, slug: string, specs: readonly Holder[]): Milest
 
 /** 002 is main under F7 and also holds claims of F0 and F2; 001 is archived, main under F1. */
 const PLAN: PlanningBody = {
+  ideas: [],
   features: [
     feature('F0', 'Cross-cutting', [holder('002', '002-web-console', false)], ['ISC-1']),
     feature('F1', 'Manifest sync', [holder('001', '001-manifest-sync', true, true)], ['ISC-5']),

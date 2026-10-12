@@ -73,7 +73,8 @@
           "held": 9
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     },
     {
       "id": "F1",
@@ -322,10 +323,12 @@
           "held": 38
         }
       ],
-      "unheld": []
+      "unheld": [],
+      "ideas": []
     }
   ],
   "milestones": [],
+  "ideas": [],
   "recount": {
     "closed": 14,
     "total": 47

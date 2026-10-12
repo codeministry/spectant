@@ -675,9 +675,9 @@
       "slug": "007-rotate-mirror-token",
       "title": "Rotate the mirror token",
       "type": "chore",
-      "stage": "review",
-      "nextCommand": "/spec-review 007",
-      "nextReason": "the reviewed mark is missing",
+      "stage": "done",
+      "nextCommand": null,
+      "nextReason": "every claim of the chore is closed",
       "phase": "building",
       "started": "2026-03-09T08:30:00Z",
       "updated": "2026-03-09T11:00:00Z",
@@ -703,7 +703,7 @@
         "agentsWorking": 0
       },
       "gates": {
-        "ok": 1,
+        "ok": 2,
         "total": 4
       },
       "waiting": 0
@@ -711,9 +711,9 @@
     "ideaQuote": "The push token is replaced with one command, and the next scheduled run uses the new token without a restart.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-review 007",
+      "command": null,
       "reasons": [
-        "the reviewed mark is missing"
+        "every claim of the chore is closed"
       ],
       "since": null,
       "via": null
@@ -721,8 +721,12 @@
     "lanes": [],
     "gates": {
       "reviewed": {
-        "state": "missing",
-        "detail": "no reviewed mark"
+        "state": "fresh",
+        "detail": "matches spec.md",
+        "at": "2026-03-09T09:00:00Z",
+        "files": [
+          "spec.md"
+        ]
       },
       "codeReviewed": {
         "state": "missing",
@@ -737,22 +741,12 @@
         "detail": "no diagram required"
       }
     },
-    "warnings": [
-      {
-        "kind": "review",
-        "text": "no reviewed mark yet",
-        "command": "/spec-review 007"
-      },
-      {
-        "kind": "closed",
-        "text": "every claim closed, phase not complete"
-      }
-    ],
+    "warnings": [],
     "waitingOnYou": [],
     "areas": {
       "status": {
-        "timelineEntries": 1,
-        "warnings": 2
+        "timelineEntries": 4,
+        "warnings": 0
       },
       "live": {
         "lockSource": "none",
@@ -792,9 +786,9 @@
       "slug": "008-referrers-support",
       "title": "Referrers API support",
       "type": "spike",
-      "stage": "code-review",
-      "nextCommand": "/spec-code-review 008",
-      "nextReason": "every claim is closed and the code-reviewed mark is missing",
+      "stage": "close-pending",
+      "nextCommand": null,
+      "nextReason": "every claim is closed and F6 waits on spec 009",
       "phase": "building",
       "started": "2026-03-08T13:00:00Z",
       "updated": "2026-03-09T09:00:00Z",
@@ -828,10 +822,9 @@
     "ideaQuote": "A recorded table says which target registry answers the referrers endpoint, and a decision names the fallback for the ones that do not.",
     "ideaSource": "goal",
     "next": {
-      "command": "/spec-code-review 008",
+      "command": null,
       "reasons": [
-        "every claim is closed and the code-reviewed mark is missing",
-        "the reviewed mark is fresh"
+        "every claim is closed and F6 waits on spec 009"
       ],
       "since": null,
       "via": null
@@ -859,17 +852,12 @@
         "detail": "no diagram required"
       }
     },
-    "warnings": [
-      {
-        "kind": "closed",
-        "text": "every claim closed, phase not complete"
-      }
-    ],
+    "warnings": [],
     "waitingOnYou": [],
     "areas": {
       "status": {
         "timelineEntries": 4,
-        "warnings": 1
+        "warnings": 0
       },
       "live": {
         "lockSource": "none",

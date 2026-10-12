@@ -31,6 +31,22 @@ const HOST = { Host: "127.0.0.1:7717" };
 /** The golden file's text, as written (pretty-printed). */
 const goldenText = (tree: string): string => readFileSync(join(FIXTURES, `${tree}.${GOLDEN_FAMILY.planning}.golden.json`), "utf8");
 
+/**
+ * Until T79 (spec 008) the server passes no story folder to `buildPlanning`, so the route serves the golden without
+ * its stories: every `ideas` list empty and no diagnostic keyed to `specs/ideas/`. T79 removes this pin and compares
+ * the whole golden again.
+ */
+const servedBeforeT79 = (golden: string): string => {
+  const model = JSON.parse(golden) as PlanningModel;
+  return JSON.stringify({
+    ...model,
+    features: model.features.map((f) => ({ ...f, ideas: [] })),
+    milestones: model.milestones.map((m) => ({ ...m, ideas: [] })),
+    ideas: [],
+    diagnostics: model.diagnostics.filter((d) => !d.file.startsWith("specs/ideas/")),
+  });
+};
+
 let root: string;
 const registries: Registry[] = [];
 
@@ -74,7 +90,7 @@ describe("GET /api/workspaces/:ws/planning", () => {
     expect(res.headers.get("cache-control")).toBe("no-cache");
     expect(res.headers.get("etag")).toMatch(/^"[A-Za-z0-9_-]+"$/);
     const text = await res.text();
-    expect(text).toBe(JSON.stringify(JSON.parse(goldenText("harbor"))));
+    expect(text).toBe(servedBeforeT79(goldenText("harbor")));
     const body = JSON.parse(text) as WorkspaceRouteResponses["planning"];
     expect(body.features.length).toBeGreaterThan(0);
     // The pinned day puts Harbor 0.9 behind and Harbor 1.0 ahead: the golden's states, not today's.

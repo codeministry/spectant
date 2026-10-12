@@ -26,6 +26,19 @@
  *   claim's lock first, then frontier over activity.
  * - A tick to the state the box already holds is a 200 with the unchanged line; the implementation writes nothing.
  *
+ * Spec 008 (T81) adds two writes, declared here and served by later tasks (`WRITE_TABLE`, `WRITE_PATHS`):
+ *
+ * | write | trigger | client's hash | 200 | 409 `hash-mismatch` | 422 | 423 `locked` |
+ * |-------|---------|---------------|-----|---------------------|-----|--------------|
+ * | reviewed mark | `POST …/:id/gate/reviewed` | normalised gate hashes | `GateReviewedWritten` | `StaleGate` | — | `Locked` |
+ * | task checkbox | `POST …/:id/tasks/:tid/check` | raw tasks.md | `TaskCheckWritten` | `StaleTasks` | — | `Locked` |
+ * | transition | `POST …/:id/transition` (pending) | raw spec.md, `X-Spectant-Spec-Hash` | `TransitionWritten` | `StaleSpec` | `TransitionRefused` | `Locked` |
+ * | allocate | `POST …/ideas/:slug/allocate` (pending) | raw story file, `IdeaPage.hash` | `IdeaAllocated` | `StaleIdea` | `AllocateRefused` | `Locked` |
+ *
+ * These four are every write the app makes on a user's action. The feature-level code-review mark
+ * (`.gates/code-reviewed.json` in each folder of a main feature) is a fifth write path, but it has no route: the
+ * skill triggers it through the CLI (`spectant gate code-reviewed F<n>`, T93), never the UI, so it is not in this table.
+ *
  * Browser-safe like its base: value imports are `spec-routes.contract.ts` and `core/src/events.ts` only (no Bun, no
  * Node); `core/src/gates.ts` is imported as types, because it hashes with `node:crypto`.
  */
@@ -36,6 +49,7 @@ import type { ReviewedFile, ReviewedMark } from '../../core/src/gates.ts';
 import {
   REVIEWED_HASHES_HEADER,
   REVIEWED_HASH_FILES,
+  SPEC_HASH_HEADER,
   TASKS_HASH_HEADER,
   isGateReviewedRequest,
   isTaskCheckRequest,
@@ -43,10 +57,12 @@ import {
   specRoutes,
 } from './spec-routes.contract.ts';
 import type {
+  AllocateRefused,
   ApiError,
   Conflict,
   GateReviewedRequest,
   GateReviewedResponse,
+  IdeaAllocated,
   InvalidBody,
   Locked,
   ReviewedHashFile,
@@ -54,6 +70,8 @@ import type {
   SpecRouteName,
   TaskCheckRequest,
   TaskCheckResponse,
+  TransitionRefused,
+  TransitionWritten,
 } from './spec-routes.contract.ts';
 
 // ─── Routes ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -84,6 +102,73 @@ export const WRITE_HASH_HEADER = {
 export const REVIEWED_MARK_PATH = FILE_KINDS.gateReviewed.path;
 export const EVENTS_PATH = FILE_KINDS.events.path;
 export const TASKS_PATH = FILE_KINDS.tasks.path;
+export const SPEC_PATH = FILE_KINDS.spec.path;
+export const CONTEXT_PATH = FILE_KINDS.context.path;
+
+// ─── The four app writes (spec 008, T81) ─────────────────────────────────────────────────────────────────────────
+
+/** Every write the app makes on a user's action, in table order; the first two are `WRITE_ROUTES`. */
+export const WRITE_OPERATIONS = ['gateReviewed', 'taskCheck', 'transition', 'allocate'] as const;
+export type WriteOperation = (typeof WRITE_OPERATIONS)[number];
+
+export interface WriteTableEntry {
+  /** The client's hash: the GET header it was rendered with, or the body field it read. */
+  readonly hashFrom: string;
+  /** `normalised` by `hashForGate` (the reviewed mark), or `raw` file bytes. */
+  readonly hash: 'normalised' | 'raw';
+  /** The 409 body, by type name: `hash-mismatch` with `files` and `expected`, nothing written. */
+  readonly conflict: 'StaleGate' | 'StaleTasks' | 'StaleSpec' | 'StaleIdea';
+  /** The 422 body, by type name; null for a write the workflow never refuses. */
+  readonly refused: 'TransitionRefused' | 'AllocateRefused' | null;
+  /** The 423 body, by type name: the same `{error: 'locked', lock}` for every write. */
+  readonly locked: 'Locked';
+  /** True while its route is in `SPEC_ROUTE_TABLE` and served; false while it is in `PENDING_ROUTE_TABLE`. */
+  readonly registered: boolean;
+}
+
+/** The four writes with their hash, 409, 422 and 423 forms (the header's table). */
+export const WRITE_TABLE = {
+  gateReviewed: { hashFrom: REVIEWED_HASHES_HEADER, hash: 'normalised', conflict: 'StaleGate', refused: null, locked: 'Locked', registered: true },
+  taskCheck: { hashFrom: TASKS_HASH_HEADER, hash: 'raw', conflict: 'StaleTasks', refused: null, locked: 'Locked', registered: true },
+  transition: { hashFrom: SPEC_HASH_HEADER, hash: 'raw', conflict: 'StaleSpec', refused: 'TransitionRefused', locked: 'Locked', registered: false },
+  allocate: { hashFrom: 'IdeaPage.hash', hash: 'raw', conflict: 'StaleIdea', refused: 'AllocateRefused', locked: 'Locked', registered: false },
+} as const satisfies Record<WriteOperation, WriteTableEntry>;
+
+/** What one write may touch, repository-relative: `specs/NNN-slug/` is the spec folder, `<slug>` the story's slug. */
+export interface WritePaths {
+  /** Written in place, with an fsync; no temp file, no rename. */
+  readonly writes: readonly string[];
+  /** Removed. */
+  readonly removes: readonly string[];
+  /** The one directory the write may create, or null. */
+  readonly creates: string | null;
+}
+
+const FOLDER = 'specs/NNN-slug/';
+const STORY = '<slug>';
+const inFolder = (path: string): string => `${FOLDER}${path}`;
+
+/**
+ * The one constant naming every file an app write may touch; nothing outside it changes in a registered repository
+ * (`tests/readonly.test.ts`). Built from core's file kinds, so a renamed file renames here.
+ */
+export const WRITE_PATHS = {
+  gateReviewed: { writes: [inFolder(REVIEWED_MARK_PATH), inFolder(EVENTS_PATH)], removes: [], creates: inFolder('.gates/') },
+  taskCheck: { writes: [inFolder(TASKS_PATH)], removes: [], creates: null },
+  transition: { writes: [inFolder(SPEC_PATH), inFolder(EVENTS_PATH)], removes: [], creates: null },
+  allocate: {
+    writes: [inFolder(CONTEXT_PATH), inFolder(SPEC_PATH), inFolder(EVENTS_PATH)],
+    removes: [`${FILE_KINDS.idea.repoPath ?? ''}${STORY}.md`],
+    creates: FOLDER,
+  },
+} as const satisfies Record<WriteOperation, WritePaths>;
+
+/** `WRITE_PATHS[op]` for one spec folder (`NNN-slug`) and, for `allocate`, the story's slug. */
+export function writePathsOf(op: WriteOperation, folder: string, slug = ''): WritePaths {
+  const fill = (path: string): string => path.replace(FOLDER, `specs/${folder}/`).replace(STORY, slug);
+  const paths: WritePaths = WRITE_PATHS[op];
+  return { writes: paths.writes.map(fill), removes: paths.removes.map(fill), creates: paths.creates === null ? null : fill(paths.creates) };
+}
 
 // ─── Requests ────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -147,6 +232,12 @@ export const REVIEWED_EVENT = { from: 'review', to: 'build' } as const;
 /** Who the app's event lines name. */
 export const WRITE_ACTOR = 'app';
 
+/**
+ * The actor the transition and the allocation record when the viewer has no `u:` id (no git address configured):
+ * an agent id of the grammar, where `WRITE_ACTOR` reads as legacy. With an id, the event names the viewer.
+ */
+export const VIEWER_ACTOR_FALLBACK = 'a:spectant:app';
+
 /** The event's `command`: the app's action, not a skill command it did not run. */
 export function reviewedEventCommand(specId: string): string {
   return `spectant mark-reviewed ${specId}`;
@@ -190,22 +281,48 @@ export interface StaleTasks extends Conflict<{ readonly tasks: string }> {
   readonly expected: { readonly tasks: string };
 }
 
+/** 409 of the transition: spec.md changed since render; its raw hash now. Nothing was written. */
+export interface StaleSpec extends Conflict<{ readonly spec: string }> {
+  readonly files: readonly ['spec.md'];
+  readonly expected: { readonly spec: string };
+}
+
+/** 409 of the allocation: the story file changed since render; its path and raw hash now. Nothing was written. */
+export interface StaleIdea extends Conflict<{ readonly idea: string }> {
+  readonly files: readonly [string];
+  readonly expected: { readonly idea: string };
+}
+
 export interface WriteOk {
   gateReviewed: GateReviewedWritten;
   taskCheck: TaskCheckWritten;
+  transition: TransitionWritten;
+  allocate: IdeaAllocated;
 }
 
 export interface WriteStale {
   gateReviewed: StaleGate;
   taskCheck: StaleTasks;
+  transition: StaleSpec;
+  allocate: StaleIdea;
 }
 
-/** Every answer a write's own logic gives, by status. A `switch (answer.status)` needs no default. */
-export type WriteAnswer<R extends WriteRoute> =
+/** The 422 of the two writes the workflow or the index may refuse. */
+export interface WriteRefused {
+  transition: TransitionRefused;
+  allocate: AllocateRefused;
+}
+
+/**
+ * Every answer a write's own logic gives, by status. A `switch (answer.status)` needs no default; the 422 arm exists
+ * only for a refusable write, so `WriteAnswer<WriteRoute>` is the two registered writes' union as before.
+ */
+export type WriteAnswer<R extends WriteOperation> =
   | { readonly status: 200; readonly body: WriteOk[R] }
   | { readonly status: 400; readonly body: InvalidBody }
   | { readonly status: 409; readonly body: WriteStale[R] }
-  | { readonly status: 423; readonly body: Locked };
+  | { readonly status: 423; readonly body: Locked }
+  | (R extends keyof WriteRefused ? { readonly status: 422; readonly body: WriteRefused[R] } : never);
 
 /** The files whose hash differs between what the client rendered and what the server reads now. */
 export function staleFiles(sent: ReviewedHashes, now: ReviewedHashes): ReviewedFile[] {
@@ -221,6 +338,16 @@ export function gateConflict(sent: ReviewedHashes, now: ReviewedHashes): StaleGa
 /** The checkbox write's 409 (raw tasks.md hashes), or null when they match. */
 export function tasksConflict(sent: string, now: string): StaleTasks | null {
   return sent === now ? null : { error: 'hash-mismatch', files: ['tasks.md'], expected: { tasks: now } };
+}
+
+/** The transition's 409 (raw spec.md hashes), or null when they match. */
+export function specConflict(sent: string, now: string): StaleSpec | null {
+  return sent === now ? null : { error: 'hash-mismatch', files: ['spec.md'], expected: { spec: now } };
+}
+
+/** The allocation's 409 for the story file at `path` (`specs/ideas/<slug>.md`), or null when the raw hashes match. */
+export function ideaConflict(path: string, sent: string, now: string): StaleIdea | null {
+  return sent === now ? null : { error: 'hash-mismatch', files: [path], expected: { idea: now } };
 }
 
 /**
