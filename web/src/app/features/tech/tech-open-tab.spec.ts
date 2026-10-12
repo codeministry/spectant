@@ -12,7 +12,7 @@ import { TechOpenTab } from './tech-open-tab';
 
 // T18 · ISC-134.1: the Open tab against the harbor tech golden: the risks page through ui-doc-prose (a card at medium
 // and wide, on the page at compact), the count line, the fog lines grouped under their spec with a status link each,
-// the none-state, and the seam left when the workspace has no specs/tech.md.
+// the none-state; T23 · ISC-134.2: the muted no-risks line, without a chip, when the workspace has no specs/tech.md.
 
 const HARBOR = harborTech as unknown as TechModel;
 const ROWS: SpecRowView[] = [{ id: '005', title: 'Config format choice', type: 'spike', stage: 'plan' }];
@@ -113,12 +113,18 @@ describe('TechOpenTab (T18, ISC-134.1)', () => {
     expect(text(root.querySelector('[data-tech-questions] h2'))).toBe('Open questions · 0 fog lines · 0 open specs');
   });
 
-  it('leaves the [data-tech-norisks] seam where the risks would be when there is no specs/tech.md', async () => {
-    const root = await render({ ...HARBOR, pages: null });
-    expect(root.querySelector('[data-tech-risks]')).toBeNull();
-    const seam = root.querySelector('[data-tech-norisks]');
-    expect(seam).not.toBeNull();
-    expect(seam?.nextElementSibling?.hasAttribute('data-tech-questions')).toBe(true);
-    expect(root.querySelectorAll('[data-fog-spec] li').length).toBe(2);
+  it('shows the muted no-risks line, without a command chip, above the fog list when there is no specs/tech.md (T23, ISC-134.2)', async () => {
+    for (const tier of ['wide', 'compact'] as const) {
+      TestBed.resetTestingModule();
+      const root = await render({ ...HARBOR, pages: null }, tier);
+      expect(root.querySelector('[data-tech-risks]')).toBeNull();
+      const line = root.querySelector('[data-tech-norisks]');
+      expect(line?.tagName).toBe('P');
+      expect(line?.classList.contains('no-risks')).toBe(true);
+      expect(text(line)).toBe('Risks come from specs/tech.md.');
+      expect(line?.nextElementSibling?.hasAttribute('data-tech-questions')).toBe(true);
+      expect(root.querySelector('ui-command-chip, ui-empty-state, ui-notice')).toBeNull();
+      expect(root.querySelectorAll('[data-fog-spec] li').length).toBe(2);
+    }
   });
 });

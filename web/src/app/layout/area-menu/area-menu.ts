@@ -17,6 +17,10 @@ import { ShellState } from '../shell/shell-state.service';
 /** The params of a workspace page's summary key (`shell.pages.summary.<id>`); null leaves the summary line out. */
 type SummaryParams = Readonly<Record<string, string | number>> | null;
 
+type Loose = Readonly<Record<string, unknown>>;
+const isLoose = (value: unknown): value is Loose => typeof value === 'object' && value !== null;
+const count = (value: unknown): number | null => (typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null);
+
 /** `Nov 30` for an ISO date, read as a calendar day (UTC), so no time zone moves it a day. */
 const shortDate = (iso: string, locale: string): string =>
   new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));
@@ -31,7 +35,7 @@ const shortDate = (iso: string, locale: string): string =>
  * (only on a fine pointer that can hover). An area whose views are not built (`built: false`) is an `aria-disabled`
  * entry without a link, its reason as visible text. At workspace scope (a workspace open, no spec) it lists
  * `WORKSPACE_PAGES` instead: each entry a link to the page with its icon, its name and a summary from the dashboard
- * rows and the planning model. Milestones is absent, not disabled, while no spec carries a milestone (ISC-104). The
+ * rows, its KPIs and the planning model. Milestones is absent, not disabled, while no spec carries a milestone (ISC-104). The
  * pages show no `g`-key hint while `g f` / `g m` are a proposal nothing binds.
  *
  * Either way the current entry carries `aria-current="page"` and takes focus on open. Router-driven: entries are route
@@ -77,6 +81,7 @@ export class AreaMenu {
     board: this.boardSummary(),
     features: this.featuresSummary(),
     milestones: this.milestonesSummary(),
+    tech: this.techSummary(),
   }));
 
   protected readonly sheetOpen = signal(false);
@@ -124,6 +129,21 @@ export class AreaMenu {
     const model = this.data.planningModel();
     if (!model?.recount) return null;
     return { count: model.features.length, closed: model.recount.closed, total: model.recount.total };
+  }
+
+  /**
+   * Tech (spec 023, T20): the workspace's spec count and its open fog lines, both as the dashboard's KPIs carry them
+   * (`kpis.specs`, the SPECS tile; `kpis.fog`, the open-fog half of ATTENTION: lines over the master and the active
+   * specs, not specs with fog). Null until the dashboard answers with both.
+   */
+  private techSummary(): SummaryParams {
+    const result = this.data.dashboard.value();
+    if (result?.kind !== 'ok' || !isLoose(result.body)) return null;
+    const kpis = result.body['kpis'];
+    if (!isLoose(kpis)) return null;
+    const specs = count(kpis['specs']);
+    const fog = count(kpis['fog']);
+    return specs === null || fog === null ? null : { specs, fog };
   }
 
   /**

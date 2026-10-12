@@ -7,12 +7,13 @@ import harborTech from '../../../../../core/fixtures/harbor.tech.golden.json';
 import type { FileDiagnostic, TechModel } from '../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { ApiClient } from '../../core/api.service';
+import { ICONS } from '../../shared/icons/icons';
 import { MERMAID_LOADER, type MermaidApi } from '../../shared/ui/doc-prose/mermaid';
 import { type TechDocsPageName, TechDocsTab } from './tech-docs-tab';
 
 // T15 · ISC-134.1: Overview and Architecture against the harbor tech golden: core's pages through ui-doc-prose, one
-// warning notice per tech-section finding of the tab, images through the tech asset route, and the seam for T22's
-// empty state when specs/tech.md is missing.
+// warning notice per tech-section finding of the tab, images through the tech asset route; T22 · ISC-134.2: the empty
+// state with the /spec-doc chip without specs/tech.md or when every key of the tab is missing.
 
 const HARBOR = harborTech as unknown as TechModel;
 
@@ -37,6 +38,21 @@ async function render(page: TechDocsPageName, model: TechModel = HARBOR): Promis
   fixture.componentRef.setInput('ws', 'harbor');
   await fixture.whenStable();
   return fixture.nativeElement as HTMLElement;
+}
+
+/** The tech empty state (design.md § Leerzustand): book-open, title, body, the /spec-doc chip; no prose, no notice. */
+function expectEmptyState(root: HTMLElement): void {
+  const empty = root.querySelector('ui-empty-state[data-tech-empty]');
+  expect(empty).not.toBeNull();
+  const paths = [...(empty?.querySelectorAll('.icon ui-icon svg path') ?? [])].map((path) => path.getAttribute('d'));
+  expect(paths).toEqual([...ICONS['book-open'].matchAll(/ d="([^"]+)"/g)].map((match) => match[1]));
+  expect(empty?.querySelector('.title')?.textContent.trim()).toBe('No tech.md yet');
+  expect(empty?.querySelector('.body')?.textContent.trim()).toBe('Overview and Architecture come from specs/tech.md. Draft it from Claude Code:');
+  const chip = empty?.querySelector('.slot ui-command-chip');
+  expect(chip?.querySelector('code')?.textContent).toBe('/spec-doc');
+  expect(chip?.querySelector('button')?.getAttribute('aria-label')).toBe('Copy command');
+  expect(root.querySelector('ui-doc-prose')).toBeNull();
+  expect(root.querySelector('ui-notice')).toBeNull();
 }
 
 describe('TechDocsTab', () => {
@@ -66,7 +82,7 @@ describe('TechDocsTab', () => {
     expect(img?.getAttribute('src')).toBe('/api/workspaces/harbor/tech/asset?path=tech%2Foverview.png');
   });
 
-  it('shows one warning notice per missing key of the tab, above the prose', async () => {
+  it('shows one warning notice per missing key of the tab, above the prose, while the tab keeps some content', async () => {
     const model: TechModel = { ...HARBOR, diagnostics: [missing('stack'), missing('architecture'), missing('risks')] };
     const overview = await render('overview', model);
     const notices = [...overview.querySelectorAll('ui-notice')];
@@ -81,13 +97,31 @@ describe('TechDocsTab', () => {
 
     TestBed.resetTestingModule();
     const architecture = await render('architecture', model);
-    expect([...architecture.querySelectorAll('ui-notice')].map((notice) => notice.getAttribute('data-tech-section'))).toEqual(['architecture']);
+    // Architecture is made of that one key alone, so the tab is empty and shows the empty state instead (T22).
+    expectEmptyState(architecture);
   });
 
-  it('renders only [data-tech-empty] without specs/tech.md', async () => {
-    const root = await render('overview', { ...HARBOR, pages: null });
-    expect(root.querySelector('[data-tech-empty]')).not.toBeNull();
-    expect(root.querySelector('ui-doc-prose')).toBeNull();
-    expect(root.querySelector('ui-notice')).toBeNull();
+  it('shows the empty state with the /spec-doc chip in both tabs without specs/tech.md (T22, ISC-134.2)', async () => {
+    for (const page of ['overview', 'architecture'] as const) {
+      TestBed.resetTestingModule();
+      const root = await render(page, { ...HARBOR, pages: null });
+      expectEmptyState(root);
+    }
+  });
+
+  it('shows the empty state instead of the notices when every key of the tab is missing', async () => {
+    const architecture = await render('architecture', { ...HARBOR, diagnostics: [missing('architecture')] });
+    expectEmptyState(architecture);
+
+    TestBed.resetTestingModule();
+    const overview = await render('overview', { ...HARBOR, diagnostics: [missing('overview'), missing('stack')] });
+    expectEmptyState(overview);
+  });
+
+  it('keeps the notice above the prose when only part of the tab is missing', async () => {
+    const root = await render('overview', { ...HARBOR, diagnostics: [missing('overview'), missing('architecture')] });
+    expect([...root.querySelectorAll('ui-notice')].map((notice) => notice.getAttribute('data-tech-section'))).toEqual(['overview']);
+    expect(root.querySelector('ui-doc-prose')).not.toBeNull();
+    expect(root.querySelector('[data-tech-empty], ui-empty-state, ui-command-chip')).toBeNull();
   });
 });

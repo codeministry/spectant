@@ -9,8 +9,7 @@
     }
   </section>
 } @else {
-  <!-- T23 fills this seam with the muted line naming specs/tech.md. -->
-  <div class="risks" data-tech-norisks></div>
+  <p class="risks no-risks" data-tech-norisks>{{ 'tech.open.noRisks' | transloco }}</p>
 }
 <section class="questions" data-tech-questions aria-labelledby="tech-open-questions">
   <h2 id="tech-open-questions">{{ 'tech.open.questions' | transloco: { lines: lines(), specs: groups().length } }}</h2>

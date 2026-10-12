@@ -84,8 +84,8 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       await page.goto('/w/lantern');
       await expect(page.locator('header [data-control="area"]')).toBeVisible();
       const menu = await areaMenu(page);
-      await expect(menu.locator('[data-page]')).toHaveCount(3);
-      expect(await pageNames(menu)).toEqual(['specs', 'board', 'features']);
+      await expect(menu.locator('[data-page]')).toHaveCount(4);
+      expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'tech']);
       await expect(menu.locator('[data-page="milestones"]')).toHaveCount(0);
     });
 
@@ -261,7 +261,7 @@ test.describe('milestones page: the area menu', () => {
     await page.goto('/w/harbor');
     await expect(page.locator('header [data-control="area"]')).toBeVisible();
     let menu = await areaMenu(page);
-    expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'milestones']);
+    expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'milestones', 'tech']);
     await menu.locator('[data-page="milestones"]').click();
     await expect(page).toHaveURL(/\/w\/harbor\/milestones$/u);
     await expect(page.locator('ol.rows > li').first()).toBeVisible();

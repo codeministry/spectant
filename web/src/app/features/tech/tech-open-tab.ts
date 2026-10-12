@@ -27,8 +27,8 @@ interface FogGroup {
  * `Status of <id>`. The title is the dashboard row's (`TechSpec` carries none), the folder slug without its number
  * when the row is missing.
  *
- * Without `specs/tech.md` (`model.pages` null) an empty `[data-tech-norisks]` holds the risks' place; the muted line
- * that fills it is T23.
+ * Without `specs/tech.md` (`model.pages` null) the muted line `[data-tech-norisks]` (`tech.open.noRisks`, T23,
+ * ISC-134.2) holds the risks' place, without a command chip: the Overview and Architecture empty states carry it.
  */
 @Component({
   selector: 'app-tech-open-tab',

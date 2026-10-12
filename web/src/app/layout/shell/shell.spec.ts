@@ -315,6 +315,19 @@ describe('ShellComponent', () => {
       expect(area.getAttribute('aria-label')).toBe('Page: Specs');
     });
 
+    it('names Tech with book-open on every tab of the tech page, enabled (spec 023, T20, ISC-134.2)', async () => {
+      setUp();
+      for (const url of ['/w/harbor/tech/overview', '/w/harbor/tech/open']) {
+        const { root } = await open(url);
+        const area = control(root, 'area');
+        expect(area.getAttribute('aria-disabled'), url).toBeNull();
+        expect(area.querySelector('.pick-text')?.textContent.trim(), url).toBe('Tech');
+        // The leading icon is `book-open`: its first path is the spine (`ICONS['book-open']`).
+        expect(area.querySelector('ui-icon path')?.getAttribute('d'), url).toBe('M12 5v16');
+        expect(area.getAttribute('aria-label'), url).toBe('Page: Tech');
+      }
+    });
+
     it('opens the area menu at workspace scope: Specs and Features while no milestone exists', async () => {
       const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
       proto['showPopover'] = vi.fn();
@@ -330,8 +343,8 @@ describe('ShellComponent', () => {
         await harness.fixture.whenStable();
         expect(trigger.getAttribute('aria-expanded')).toBe('true');
         const entries = [...root.querySelectorAll('header nav[aria-label="Areas"] [data-page]')];
-        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'board', 'features']);
-        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null, null]);
+        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'board', 'features', 'tech']);
+        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null, null, null]);
       } finally {
         delete proto['showPopover'];
         delete proto['hidePopover'];

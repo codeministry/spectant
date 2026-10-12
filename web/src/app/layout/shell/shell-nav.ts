@@ -66,7 +66,8 @@ export class ShellNav {
    */
   protected readonly workspacePage = computed(() => {
     const id = this.state.route().wsPage;
-    // A story page (`idea`) is no menu page: the trigger names the board it is reached from (spec 008).
+    // A story page (`idea`) is no menu page: the trigger names the board it is reached from (spec 008). The tech page
+    // is one (spec 023, T20): the trigger shows `book-open` and "Tech" there.
     if (id === null || this.specOpen() || this.data.workspaceMissing()) return null;
     return workspacePageById(id === 'idea' ? 'board' : id);
   });

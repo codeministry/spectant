@@ -3,7 +3,9 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import type { DocsPage, TechModel } from '../../../../../core/src/files';
 import { ApiClient } from '../../core/api.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
+import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiDocProse } from '../../shared/ui/doc-prose/doc-prose';
+import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { UiNotice } from '../../shared/ui/notice/notice';
 
 /** The two curated tabs that render a page of `specs/tech.md`. */
@@ -15,6 +17,8 @@ const PAGE_SECTIONS: Readonly<Record<TechDocsPageName, readonly string[]>> = {
   architecture: ['architecture'],
 };
 
+/** The command the empty state offers: the Spec skill drafts `specs/tech.md`. */
+const DRAFT_COMMAND = '/spec-doc';
 
 /**
  * The Overview and Architecture tabs of the tech page (spec 023, T15, ISC-134.1; design.md § Overview und
@@ -23,20 +27,35 @@ const PAGE_SECTIONS: Readonly<Record<TechDocsPageName, readonly string[]>> = {
  * workspace's tech asset route. Above the prose, one warning notice per `tech-section` finding about a key of this page
  * (Overview: `overview`, `stack`; Architecture: `architecture`).
  *
- * Without `specs/tech.md` (`pages: null`) it renders only the `[data-tech-empty]` seam, which T22 fills with the empty
- * state. `ws` defaults to the route's workspace.
+ * Without `specs/tech.md` (`pages: null`), and when every key of this page is missing so the tab would be empty
+ * (design.md § Overview und Architecture), it renders `ui-empty-state` instead (T22, ISC-134.2): `book-open`,
+ * `tech.empty.*` and the `/spec-doc` command chip, whose copy button gets a 44 × 44 hit area. A page that lacks only
+ * some of its keys keeps the notices above the prose. `ws` defaults to the route's workspace.
  */
 @Component({
   selector: 'app-tech-docs-tab',
-  imports: [TranslocoPipe, UiDocProse, UiNotice],
+  imports: [TranslocoPipe, UiCommandChip, UiDocProse, UiEmptyState, UiNotice],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-tech-tab]': 'page()' },
   styles: `
     :host { display: block; }
     ui-notice { margin-block-end: 16px; }
+    ui-empty-state { margin-block-start: 48px; }
+    /* The copy button stays chip-sized; an invisible 44 × 44 box centred on it is the hit area (WCAG 2.5.8). */
+    ui-command-chip ::ng-deep .copy { position: relative; }
+    ui-command-chip ::ng-deep .copy::after { position: absolute; inset-block-start: 50%; inset-inline-start: 50%; inline-size: 44px; block-size: 44px; content: ''; translate: -50% -50%; }
   `,
   template: `
-    @if (doc(); as doc) {
+    @if (empty()) {
+      <ui-empty-state data-tech-empty icon="book-open" [heading]="'tech.empty.title' | transloco" [body]="'tech.empty.body' | transloco">
+        <ui-command-chip
+          [command]="command"
+          [copyLabel]="'common.copyCommand' | transloco"
+          [copiedLabel]="'common.copied' | transloco: { command }"
+          [manualHint]="'common.copyFallback' | transloco"
+        />
+      </ui-empty-state>
+    } @else if (doc(); as doc) {
       @for (key of missingKeys(); track key) {
         <ui-notice tone="warning" [attr.data-tech-section]="key">
           <strong>{{ 'tech.section.missing' | transloco: { key } }}</strong>
@@ -44,9 +63,6 @@ const PAGE_SECTIONS: Readonly<Record<TechDocsPageName, readonly string[]>> = {
         </ui-notice>
       }
       <ui-doc-prose [page]="doc" [wide]="state.tier() === 'wide'" [assetUrl]="assetUrl()" />
-    } @else {
-      <!-- T22: the empty state without specs/tech.md replaces this seam. -->
-      <div data-tech-empty></div>
     }
   `,
 })
@@ -71,6 +87,14 @@ export class TechDocsTab {
       diagnostic.code === 'tech-section' && diagnostic.subject !== undefined && keys.includes(diagnostic.subject) ? [diagnostic.subject] : [],
     );
   });
+
+  /** No tech.md, or none of this page's keys in it: the tab would be empty, so it shows the empty state. */
+  protected readonly empty = computed(() => {
+    const missing = this.missingKeys();
+    return this.doc() === null || PAGE_SECTIONS[this.page()].every((key) => missing.includes(key));
+  });
+
+  protected readonly command = DRAFT_COMMAND;
 
   protected readonly assetUrl = computed<((path: string) => string) | null>(() => {
     const ws = this.ws() ?? this.state.ws();
