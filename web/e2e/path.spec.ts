@@ -101,7 +101,7 @@ for (const width of [1440, 600, 390] as const) {
       await expect(trigger).toBeVisible();
       const steps = new StepCounter(page);
 
-      if (touch) await steps.tapOn(trigger, 'tap search');
+      if (touch) await steps.tapAsChord(trigger, 'tap search');
       else await steps.press('ControlOrMeta+k', 'Meta+K');
       const combobox = paletteOf(page).getByRole('combobox');
       await expect(combobox).toBeFocused();

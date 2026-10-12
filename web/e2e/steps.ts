@@ -130,6 +130,16 @@ export class StepCounter extends StepRecorder {
     await target.tap();
   }
 
+  /**
+   * A tap that stands in for a chord: the touch trigger of the palette (the search button) counts like `⌘K`, as a key
+   * step and K for time, with no mouse-to-keyboard switch (principal, 2026-10-12, spec 019 ISC-139.1).
+   */
+  async tapAsChord(target: Locator, label: string): Promise<void> {
+    await expect(target).toBeInViewport({ ratio: 1 });
+    this.key(label, label);
+    await target.tap();
+  }
+
   /** One key press or chord into the focused element (`ControlOrMeta+k`, `Enter`). */
   async press(key: string, label: string = key): Promise<void> {
     this.key(key, label);
