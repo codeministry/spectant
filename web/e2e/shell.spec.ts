@@ -129,7 +129,7 @@ for (const { width, tier, tabBar } of TIERS) {
       await expect(workspace).toHaveAttribute('aria-expanded', 'false');
     });
 
-    test('one header row at medium and wide, two at compact; the pill hugs its 40 px segments (T36)', async ({ page }) => {
+    test('one header row at wide, two below 1120; the rail hugs its 40 px segments (T36, spec 024)', async ({ page }) => {
       await page.goto('/w/harbor/s/002/status');
       const header = page.locator('header');
       await expect(header).toHaveCount(1);
@@ -138,19 +138,28 @@ for (const { width, tier, tabBar } of TIERS) {
       const brand = await box('header [data-control="brand"]');
       const area = await box('header [data-control="area"]');
       const pickers = await box('header .pickers');
-      if (width < 640) {
-        expect(head.height).toBeGreaterThanOrEqual(92);
-        expect(head.height).toBeLessThanOrEqual(93);
-        expect(area.y).toBeGreaterThanOrEqual(brand.y + brand.height - 1);
-        expect(pickers.height).toBeLessThanOrEqual(42);
+      if (width < 1120) {
+        // spec 024: two-row header below 1120 / prototype palette rule (principal 2026-10-12)
+        expect(brand.y + brand.height).toBeLessThanOrEqual(head.y + 64);
+        // spec 024: two-row header below 1120 / prototype palette rule (principal 2026-10-12)
+        expect(area.y).toBeGreaterThanOrEqual(head.y + 64);
+        // spec 024: two-row header below 1120 / prototype palette rule (principal 2026-10-12)
+        expect(area.y + area.height).toBeLessThanOrEqual(head.y + 112);
+        // spec 024: two-row header below 1120 / prototype palette rule (principal 2026-10-12)
+        expect(head.height).toBeGreaterThanOrEqual(112);
+        // spec 024: two-row header below 1120 / prototype palette rule (principal 2026-10-12)
+        if (width >= 640) expect(head.height).toBeLessThanOrEqual(113);
+        if (width < 640) expect(pickers.height).toBeLessThanOrEqual(42);
       } else {
         expect(head.height).toBeGreaterThanOrEqual(64);
         expect(head.height).toBeLessThanOrEqual(65);
         expect(Math.abs(area.y - brand.y)).toBeLessThan(12);
       }
       const palette = await box('header [data-control="palette"]');
-      expect(Math.round(palette.width)).toBe(width >= 1280 ? 240 : 40);
-      await expect(page.locator('header .palette-key')).toBeVisible({ visible: width >= 1280 });
+      // spec 024: two-row header below 1120 / prototype palette rule (principal 2026-10-12): a spec page keeps the 40 px icon below 1560
+      expect(Math.round(palette.width)).toBe(40);
+      // spec 024: two-row header below 1120 / prototype palette rule (principal 2026-10-12)
+      await expect(page.locator('header .palette-key')).toBeHidden();
     });
 
     test('a known spec tab renders its own view, never the placeholder or not-found', async ({ page }) => {
@@ -215,8 +224,11 @@ test.describe('header', () => {
           const palette = header.locator('[data-control="palette"]');
           await expect(palette).toHaveAttribute('aria-label', /\S/);
           await expect(palette.locator('ui-icon')).toBeVisible();
-          await expect(palette.locator('.palette-text')).toBeVisible({ visible: wide });
-          await expect(palette.locator('.palette-key')).toBeVisible({ visible: wide });
+          // spec 024: two-row header below 1120 / prototype palette rule (principal 2026-10-12): the field at wide off spec pages, the icon on spec pages below 1560
+          const field = wide && !SPEC_OPEN.has(route);
+          await expect(palette.locator('.palette-text')).toBeVisible({ visible: field });
+          // spec 024: two-row header below 1120 / prototype palette rule (principal 2026-10-12)
+          await expect(palette.locator('.palette-key')).toBeVisible({ visible: field });
 
           await expect(header.locator('[data-control="settings"]')).toHaveAttribute('aria-label', /help/i);
         });

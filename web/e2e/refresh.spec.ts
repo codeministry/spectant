@@ -78,6 +78,9 @@ test.describe('refresh cls', () => {
         const tile = page.locator('.band [data-kpi="claims"]');
         const value = tile.locator('.value');
         await expect(value).toHaveText(BEFORE);
+        // spec 024: below 1120 the header's second row (48 px) scrolls away (principal 2026-10-12); scroll it off so the
+        // tile and the first row are both in view, as before the two-row header. Setup only; the CLS check is unchanged.
+        if (width < 1120) await page.evaluate(() => window.scrollBy(0, 48));
         await expect(tile).toBeInViewport();
         await expect(page.locator('[data-spec-row]').first()).toBeInViewport();
         await page.evaluate(() => document.fonts.ready);

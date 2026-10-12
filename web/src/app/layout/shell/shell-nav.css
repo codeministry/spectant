@@ -1,68 +1,60 @@
 /*
- * The pickers and the area trigger (design.md § Header, § Shell header). The host is `display: contents`: `.pickers` and
- * `.area` are items of the header grid. Medium and wide draw them on the header's bordered rail field; compact makes
- * the pickers one pill with a 1 px line between and puts the area trigger in row 2.
+ * The rail-selects (prototype `.rail-select`, `.rail-divider`; spec 024 T34): Workspace · Spec · Area. From 1120 px they
+ * sit on the header's brand rail after the logo; below 1120 px the host is its own bordered rail in header row 2.
  *
- * Labelled pills (ISC-140.2, design.md § Header-Pillen): every segment is a label over its value at compact and medium
- * (40 px pill), `LABEL value` inline at wide. Numbers and ids never shorten (`flex-shrink: 0`, `tabular-nums`); only
- * names ellipsize.
+ * Labelled selects (ISC-140.2): every segment is its 9 px mono label (`[data-pill-label]`) and its 13/650 value
+ * (`[data-pill-value]`), inline on one baseline as in the prototype; at compact the label stacks over the value and the
+ * chevrons go (prototype rule). Numbers and ids never shorten (`flex-shrink: 0`, `tabular-nums`); only names ellipsize.
  */
 :host {
-  display: contents;
-}
-
-.pickers,
-.area {
-  position: relative;
-  z-index: 1;
-}
-
-.pickers {
   display: flex;
-  grid-area: pickers;
   align-items: center;
   min-inline-size: 0;
 }
 
-.area {
-  grid-area: area;
-  color: var(--disp-ink);
+.pickers {
+  display: flex;
+  align-items: center;
+  min-inline-size: 0;
 }
 
-/* The rail's 1 px rules between brand · pickers · area, centred in the 8 px gap. */
+/* The rail dividers, 1 × 18 px: logo | workspace (wide only), workspace | spec, spec | area. */
 .pickers::before,
+.pill-divider {
+  flex-shrink: 0;
+  inline-size: 1px;
+  block-size: 18px;
+  margin-inline: 2px;
+  background: var(--line);
+  content: "";
+}
+
+.area {
+  position: relative;
+  margin-inline-start: 5px;
+}
+
 .area::before {
   position: absolute;
-  inset-block: 8px;
-  inset-inline-start: -5px;
+  inset-block: 10px;
+  inset-inline-start: -3px;
   inline-size: 1px;
   background: var(--line);
   content: "";
 }
 
-/* The line between the workspace and spec segments, vertically centred in every tier (not daisyUI's `.divider`). */
-.pill-divider {
-  flex-shrink: 0;
-  align-self: center;
-  inline-size: 1px;
-  block-size: 24px;
-  background: var(--track);
-}
-
 .pick {
   display: inline-flex;
-  gap: 8px;
+  gap: 7px;
   align-items: center;
   min-inline-size: 0;
-  block-size: 40px;
-  padding-inline: 12px;
+  block-size: 38px;
+  padding-inline: 10px;
   border: 0;
-  border-radius: var(--radius-field);
+  border-radius: calc(var(--radius) - 1px);
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 14px;
-  line-height: 20px;
   text-decoration: none;
   cursor: pointer;
   transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
@@ -78,10 +70,9 @@
   }
 }
 
-/* Wide: `LABEL value`, the label in mono caps, the value in 600. */
 .pill {
   display: inline-flex;
-  gap: 8px;
+  gap: 7px;
   align-items: baseline;
   min-inline-size: 0;
 }
@@ -90,8 +81,9 @@
   flex-shrink: 0;
   color: var(--muted-ink);
   font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 16px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 18px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -102,9 +94,9 @@
   gap: 6px;
   align-items: baseline;
   min-inline-size: 0;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 18px;
   white-space: nowrap;
 }
 
@@ -125,14 +117,30 @@
   max-inline-size: none;
 }
 
+/* The spec's name in violet (prototype `.specs-select`, `.spec-name`), the area's in cyan (`.area-select`). */
+[data-control="spec"] .pill-value {
+  color: var(--violet-text);
+}
+
 .spec-title {
-  max-inline-size: 280px;
+  max-inline-size: 180px;
+}
+
+.area .pill-value {
+  color: var(--cyan-text);
 }
 
 .pick-id {
+  color: var(--muted-ink);
   font-family: var(--font-mono);
   font-size: 12px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+/* The prototype's area select carries no dot; the workspace page's icon stays (spec 023, T20). */
+.area-dot {
+  display: none;
 }
 
 .pick-id,
@@ -141,8 +149,12 @@
   flex-shrink: 0;
 }
 
-.pick-id,
+.page-icon {
+  color: var(--cyan-text);
+}
+
 .chevron {
+  align-self: center;
   color: var(--muted-ink);
 }
 
@@ -152,8 +164,26 @@
   }
 }
 
-/* Medium: the label (11/12) over the value (14/16), 6 px above and below in the 40 px pill; tighter name caps. */
+/* Below 1120 px: the host is header row 2's own brand rail (40 px, radius 10, 78 % card). */
 @container header (width < 1120px) {
+  :host {
+    min-block-size: 40px;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) + 2px);
+    background: color-mix(in oklch, var(--color-base-100) 78%, transparent);
+  }
+
+  .pickers::before {
+    display: none;
+  }
+
+  .ws-name {
+    max-inline-size: 160px;
+  }
+}
+
+/* Compact: the label over the value, no chevrons (prototype rule); the workspace name ellipsizes from 120 px. */
+@container header (width < 640px) {
   .pill {
     flex-direction: column;
     gap: 0;
@@ -161,13 +191,11 @@
   }
 
   .pick {
-    padding-block: 6px;
+    gap: 4px;
+    padding-inline: 8px;
   }
 
   .pill-label {
-    font-family: inherit;
-    font-size: 11px;
-    font-weight: 600;
     line-height: 12px;
   }
 
@@ -175,90 +203,16 @@
     line-height: 16px;
   }
 
+  .spec-title,
+  .chevron {
+    display: none;
+  }
+
   .ws-name {
     max-inline-size: 120px;
   }
 
-  .spec-title {
-    max-inline-size: 110px;
+  .area .pill-value {
+    font-size: 12px;
   }
-}
-
-/* The narrowest medium widths drop the spec title; the id stays. */
-@container header (640px <= width < 680px) {
-  .spec-title {
-    display: none;
-  }
-}
-
-/* Compact: the pickers as one pill (workspace | spec id), the area trigger a bordered 40 px field in row 2. */
-@container header (width < 640px) {
-  .pickers,
-  .area {
-    border: 1px solid var(--line);
-    border-radius: var(--radius-field);
-    background: var(--color-base-100);
-  }
-
-  .pickers {
-    justify-self: start;
-    max-inline-size: 100%;
-  }
-
-  .pickers::before,
-  .area::before,
-  .spec-title,
-  .pickers .chevron {
-    display: none;
-  }
-
-  .pick {
-    padding-block: 4px;
-    padding-inline: 8px;
-  }
-
-  .pill-label {
-    line-height: 16px;
-  }
-
-  .pill-value {
-    font-size: 13px;
-  }
-
-  .ws-name {
-    max-inline-size: 96px;
-  }
-
-  .area {
-    block-size: 40px;
-  }
-}
-
-/* The area trigger's dot (ISC-76): the current area's colour, as in area-menu.css. */
-.area-dot {
-  flex-shrink: 0;
-  inline-size: 8px;
-  block-size: 8px;
-  border-radius: 50%;
-  background: var(--held-ink);
-}
-
-.area-dot[data-dot="status"] {
-  background: var(--color-warning);
-}
-
-.area-dot[data-dot="live"] {
-  background: var(--color-accent);
-}
-
-.area-dot[data-dot="data"] {
-  background: var(--color-primary);
-}
-
-.area-dot[data-dot="docs"] {
-  background: var(--color-secondary);
-}
-
-.area-dot[data-dot="notes"] {
-  background: var(--conc-ink);
 }

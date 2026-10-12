@@ -24,8 +24,8 @@ export const navigatesNatively = (event: MouseEvent): boolean =>
   event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 
 /**
- * The header's navigation group (ISC-73): workspace picker, spec picker and area-menu trigger. The host is
- * `display: contents`, so its children sit in the header grid's `pickers` and `area` areas.
+ * The header's navigation group (ISC-73): workspace picker, spec picker and area-menu trigger. The host is a
+ * flex rail: on the brand rail from 1120 px, its own bordered rail in header row 2 below (spec 024 T34).
  *
  * **Pickers.** Real anchors (`href` to the workspace, the open spec, or the workspace's spec list), so middle-click,
  * cmd/ctrl-click and "copy link" keep working; a plain click or Enter opens the picker instead (`ShellMenus`). They carry
@@ -40,8 +40,8 @@ export const navigatesNatively = (event: MouseEvent): boolean =>
  * rather than showing `0`, and the workspace pill reads "All · n".
  *
  * Collapse order (design.md § Viewport-übergreifend): after the wordmark (`ShellBrand`), the spec title goes to its
- * id; numbers and ids never shorten, only names ellipsize. Compact and medium stack the label over the value in the
- * 40 px pill, wide sets them inline. At compact the pickers form one pill.
+ * id; numbers and ids never shorten, only names ellipsize. Labels sit inline before the value; compact stacks them
+ * and drops the chevrons.
  */
 @Component({
   selector: 'app-shell-nav',

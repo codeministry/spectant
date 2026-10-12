@@ -353,7 +353,7 @@ export class BoardPage {
       observer.observe(el);
       onCleanup(() => observer.disconnect());
     });
-    // The compact sticky bar: shown once the column switch has left the area under the 92 px compact header.
+    // The compact sticky bar: shown once the column switch has left the area under the 64 px sticky header row (spec 024).
     afterRenderEffect((onCleanup) => {
       const el = this.switchRef()?.nativeElement;
       if (!el || typeof IntersectionObserver !== 'function') {
@@ -361,7 +361,7 @@ export class BoardPage {
         return;
       }
       const observer = new IntersectionObserver((entries) => this.switchAway.set(entries.some((entry) => !entry.isIntersecting)), {
-        rootMargin: '-92px 0px 0px 0px',
+        rootMargin: '-64px 0px 0px 0px',
       });
       observer.observe(el);
       onCleanup(() => observer.disconnect());

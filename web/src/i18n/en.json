@@ -483,6 +483,16 @@
         "milestones": "{{count}} milestones · next {{next}}",
         "tech": "{{specs}} specs · {{fog}} open questions"
       }
+    },
+    "assistant": {
+      "trigger": "Assistant",
+      "soon": "The assistant comes with a later version"
+    },
+    "refresh": {
+      "now": "Refresh now",
+      "interval": "Refresh interval",
+      "seconds": "{{seconds}} s",
+      "off": "Off"
     }
   },
   "notFound": {

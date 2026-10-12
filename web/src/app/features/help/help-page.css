@@ -1,7 +1,7 @@
 /*
  * The Help page (spec 008, T162, ISC-133.1): one centred column of at most 1080 px (the shell body's padding is the
  * gutter: 16 px compact, 24 px medium, 32 px wide), the sticky section nav, the page head, then the sections in nav
- * order. A section lands below the 64 px header and the nav (92 px header at compact), its heading focused.
+ * order. A section lands below the 64 px header and the nav (the 64 px sticky row at compact too), its heading focused.
  */
 :host {
   --help-scroll-margin: 128px;

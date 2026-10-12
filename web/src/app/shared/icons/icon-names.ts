@@ -29,6 +29,7 @@ export const ICON_NAMES = [
   'panel-right-open',
   'rotate-cw',
   'scale',
+  'scan',
   'settings',
   'shapes',
   'square-kanban',

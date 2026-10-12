@@ -380,10 +380,11 @@ test.describe('narrow board page', () => {
       await expect(row).toBeVisible();
       await expect(row.locator('.barname .sl')).not.toBeEmpty();
 
-      // Stuck under the 92 px compact header, inside the viewport's width, and the page still fits.
+      // Stuck under the 64 px sticky header row, inside the viewport's width, and the page still fits.
       const box = await row.boundingBox();
       expect(box, 'bar box').not.toBeNull();
-      expect(Math.round(box?.y ?? -1), 'bar top under the compact header').toBe(92);
+      // spec 024: two-row header below 1120 / prototype palette rule (principal 2026-10-12): the sticky row is 64 px
+      expect(Math.round(box?.y ?? -1), 'bar top under the compact header').toBe(64);
       expect(box?.x ?? -1, 'bar left edge').toBeGreaterThanOrEqual(0);
       expect((box?.x ?? 0) + (box?.width ?? Infinity), 'bar right edge').toBeLessThanOrEqual(WIDTHS.phone + 0.5);
       expectNoHorizontalOverflow(await boardLayout(page), WIDTHS.phone);

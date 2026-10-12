@@ -1,15 +1,15 @@
-<header role="banner" class="shell-header">
-  <!-- The left group's one bordered rail field (medium, wide: brand · pickers · area), drawn behind them. -->
-  <span class="rail-field" aria-hidden="true"></span>
+<header role="banner" class="shell-header" [class.on-spec]="specPage()">
+  <!-- The brand rail's bordered field (prototype `.brand-rail`): behind brand and rail-selects at wide, the logo below. -->
+  <span class="rail-field r1" aria-hidden="true"></span>
 
-  <app-shell-brand class="brand" />
-  <app-shell-nav />
+  <app-shell-brand class="brand r1" />
+  <app-shell-nav class="nav" />
 
   <app-tab-bar-slot class="tabs" placement="header" />
 
   <button
     type="button"
-    class="palette tool"
+    class="palette tool r1"
     data-control="palette"
     aria-haspopup="dialog"
     aria-keyshortcuts="Meta+K Control+K /"
@@ -22,22 +22,43 @@
     <ui-kbd class="palette-key" aria-hidden="true">{{ 'shell.palette.key' | transloco }}</ui-kbd>
   </button>
 
-  <app-shell-live class="live tool" [link]="liveLink()" />
+  <app-shell-live class="live tool r1" [link]="liveLink()" />
 
   <button
     ui-icon-button
     class="zen"
     data-control="zen"
-    [icon]="state.zen() ? 'minimize-2' : 'maximize-2'"
+    icon="scan"
+    [size]="state.tier() === 'wide' ? 'md' : 'sm'"
     [label]="'shell.zen.toggle' | transloco"
     [attr.aria-pressed]="state.zen()"
     (click)="state.toggleZen()"
   ></button>
 
+  <!-- The assistant dot (prototype `assistant-toggle`): only the trigger's place and look; T53 builds the assistant. -->
+  <button
+    type="button"
+    class="assistant tool r1"
+    data-tool="assistant"
+    aria-pressed="false"
+    aria-disabled="true"
+    [attr.aria-label]="'shell.assistant.trigger' | transloco"
+    [attr.title]="'shell.assistant.soon' | transloco"
+  >
+    <svg class="mascot" viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon-exempt>
+      <!-- The mascot, not a lucide icon (data-icon-exempt, ISC-18.2): the ring lime to cyan, the violet dot with eyes. -->
+      <circle class="m-ring m-ring-a" cx="12" cy="12" r="9" pathLength="100" transform="rotate(-24 12 12)" />
+      <circle class="m-ring m-ring-b" cx="12" cy="12" r="9" pathLength="100" transform="rotate(-24 12 12)" />
+      <circle class="m-dot" cx="16.5" cy="4.2" r="3.4" />
+      <circle class="m-eye" cx="15.4" cy="3.9" r="0.6" />
+      <circle class="m-eye" cx="17.6" cy="3.9" r="0.6" />
+    </svg>
+  </button>
+
   <a
     ui-button
-    variant="ghost"
-    class="settings tool btn-square"
+    variant="secondary"
+    class="settings tool r1 btn-square"
     data-control="settings"
     routerLink="/settings"
     routerLinkActive
@@ -47,4 +68,14 @@
   >
     <ui-icon name="settings" [size]="16" />
   </a>
+
+  <button
+    ui-icon-button
+    class="help tool r1"
+    data-tool="help"
+    icon="circle-help"
+    aria-haspopup="dialog"
+    [label]="'shell.help' | transloco"
+    (click)="keyboard.sheetOpen.set(true)"
+  ></button>
 </header>

@@ -1,6 +1,6 @@
 /*
- * The Help section nav (T162): sticky under the shell header (64 px at medium and wide, the 48 + 44 px compact header
- * below 640), on the page colour so the sections scroll under it. Medium and wide wrap the chips; compact keeps one
+ * The Help section nav (T162): sticky under the shell header (its sticky row is 64 px on every tier since spec 024;
+ * row 2 below 1120 scrolls away), on the page colour so the sections scroll under it. Medium and wide wrap the chips; compact keeps one
  * row that scrolls sideways inside the nav, never the page.
  */
 :host {
@@ -49,7 +49,7 @@ ul {
 
 @container shell (width < 640px) {
   :host {
-    inset-block-start: 92px;
+    inset-block-start: 64px;
   }
 
   ul {

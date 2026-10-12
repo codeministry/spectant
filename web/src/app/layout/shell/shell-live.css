@@ -1,32 +1,80 @@
-/* The live indicator: 40 px, 44 px on touch; three dot states, the text alternative carries the meaning. */
+/*
+ * The status group (prototype `[data-ui="live-indicator"]`): one 40 px bordered group on the card, its parts split by
+ * 1 px rules; 44 px on touch. The dot's three states; the text alternative carries the meaning.
+ */
 :host {
   display: block;
 }
 
-.live {
+.group {
   display: inline-flex;
+  align-items: stretch;
+  block-size: 40px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--color-base-100);
+  color: var(--muted-ink);
+}
+
+.part {
+  display: inline-flex;
+  gap: 8px;
   align-items: center;
   justify-content: center;
-  inline-size: 40px;
-  block-size: 40px;
-  border-radius: var(--radius-field);
+  min-inline-size: 38px;
+  padding-inline: 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
   transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
+.part:first-child {
+  border-start-start-radius: inherit;
+  border-end-start-radius: inherit;
+}
+
+.part:last-child {
+  border-start-end-radius: inherit;
+  border-end-end-radius: inherit;
+}
+
+.part + .part {
+  border-inline-start: 1px solid var(--line);
+}
+
+.refresh {
+  cursor: pointer;
+}
+
 @media (hover: hover) {
-  a.live:hover {
+  a.part:hover,
+  button.part:hover {
     background: var(--color-base-200);
   }
 }
 
+.seconds {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 @media (pointer: coarse) {
-  .live {
-    inline-size: 44px;
+  .group {
     block-size: 44px;
+  }
+
+  .part {
+    min-inline-size: 44px;
   }
 }
 
 .live-dot {
+  flex-shrink: 0;
   inline-size: 6px;
   block-size: 6px;
   border-radius: 50%;
@@ -34,12 +82,25 @@
 }
 
 .live:not([data-source="none"]) .live-dot {
-  background: var(--clos-ink);
+  background: var(--lime-text);
 }
 
 .live[data-source="frontier"] .live-dot {
-  outline: 2px solid color-mix(in oklch, var(--clos-ink) 40%, transparent);
+  outline: 2px solid color-mix(in oklch, var(--lime-text) 40%, transparent);
   outline-offset: 2px;
+}
+
+/* Below 640 px only the indicator: activity and the dot, no refresh, no interval (prototype rule). */
+@container header (width < 640px) {
+  .refresh,
+  .interval {
+    display: none;
+  }
+
+  .live {
+    gap: 4px;
+    padding-inline: 6px;
+  }
 }
 
 .visually-hidden {

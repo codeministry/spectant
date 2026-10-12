@@ -1,8 +1,16 @@
 /*
- * The shell header's grid (design.md § Header, ISC-73): 64 px, sticky, the page glass under a 12 px blur; the host is the
- * `header` size container the parts query. Medium and wide: one row, brand · pickers · area on one bordered 40 px rail
- * field, the tools right. Compact (< 640): two rows, 48 + 44: ring, pickers pill, palette, live, settings; then the area
- * trigger, the tab strip and zen. The palette trigger is a 240 px field from a 1280 px header, an icon below.
+ * The shell header's grid (spec 024 T34, design.md § Viewport-übergreifend; prototype `[data-ui="header"]`). The host is
+ * sticky and the `header` size container the parts query; the header's own tiers follow the `shell` container.
+ *
+ * From 1120 px: one 64 px row, the prototype header unchanged: brand rail (brand · rail-selects on one bordered field),
+ * the palette (field 36 px in a minmax(240px, 360px) track; the 40 px icon on spec pages below 1560 px), then status
+ * group, zen, dot, settings, help.
+ *
+ * Below 1120 px: two rows. Row 1 (64 px) the logo rail, palette, status, dot, settings, help; row 2 (48 px) the
+ * rail-selects and zen; at compact a third row holds the tab-bar slot (until T35). Row 1 stays, row 2 scrolls away under
+ * it: the host sticks at -48 px, and every row-1 part spans all rows and sticks 12 px from the top, so it slides down
+ * over row 2 inside the header's box (a grid item's sticky range is its grid area). `::before` is row 1's glass strip,
+ * `::after` the glass behind the lower rows.
  */
 :host {
   position: sticky;
@@ -14,34 +22,55 @@
 
 .shell-header {
   display: grid;
-  grid-template-areas: "brand pickers area . palette live zen settings";
-  grid-template-columns: auto minmax(0, auto) minmax(0, auto) minmax(0, 1fr) auto auto auto auto;
-  gap: 8px;
+  grid-template: "brand nav . palette live zen assistant settings help" 64px / auto minmax(0, auto) minmax(0, 1fr) minmax(240px, 360px) auto auto auto auto auto;
+  column-gap: 8px;
   align-items: center;
-  min-block-size: 64px;
   padding-block-start: env(safe-area-inset-top);
   padding-inline: 32px;
   border-block-end: 1px solid var(--line);
+}
+
+.shell-header::before,
+.shell-header::after {
+  z-index: 0;
+  pointer-events: none;
+  grid-column: 1 / -1;
+  margin-inline: -32px;
   background: var(--page-glass);
   /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
+  content: "";
 }
 
-/* One bordered field behind the left group; the parts stack above it by `z-index`. */
-.rail-field {
-  z-index: 0;
+.shell-header::before {
   grid-row: 1;
-  grid-column: brand-start / area-end;
+  align-self: stretch;
+}
+
+.shell-header::after {
+  display: none;
+}
+
+/* The bordered brand rail: 40 px, radius 10, 78 % card (prototype `.brand-rail`). */
+.rail-field {
+  z-index: 1;
+  grid-row: 1;
+  grid-column: brand-start / nav-end;
   block-size: 40px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-field);
-  background: var(--color-base-100);
+  border-radius: calc(var(--radius) + 2px);
+  background: color-mix(in oklch, var(--color-base-100) 78%, transparent);
 }
 
 .brand {
-  z-index: 1;
+  z-index: 2;
   grid-area: brand;
+}
+
+.nav {
+  z-index: 2;
+  grid-area: nav;
 }
 
 .tabs {
@@ -55,52 +84,73 @@
   grid-area: palette;
   gap: 8px;
   align-items: center;
-  justify-content: center;
-  inline-size: 40px;
-  block-size: 40px;
+  justify-content: flex-start;
+  inline-size: 100%;
+  block-size: 36px;
+  padding-inline: 12px 8px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-field);
+  border-radius: var(--radius);
   background: var(--color-base-100);
   color: var(--muted-ink);
   font: inherit;
   font-size: 14px;
   cursor: pointer;
+  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
-.palette-text,
+@media (hover: hover) {
+  .palette:hover {
+    background: var(--color-base-200);
+  }
+}
+
+.palette-text {
+  overflow: hidden;
+  flex: 1;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .palette-key {
   display: none;
 }
 
-@container header (width >= 1280px) {
-  .palette {
-    justify-content: flex-start;
-    inline-size: 240px;
-    padding-inline: 12px;
-  }
-
-  .palette-text {
-    display: inline;
-    overflow: hidden;
-    flex: 1;
-    text-align: start;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* `⌘K` only in the field form, and only where a keyboard is likely. */
-  @media (any-hover: hover) and (any-pointer: fine) {
-    .palette-key {
-      display: inline-flex;
-    }
+/* `⌘K` only in the field form, and only where a keyboard is likely. */
+@media (any-hover: hover) and (any-pointer: fine) {
+  .palette-key {
+    display: inline-flex;
   }
 }
 
-@media (pointer: coarse) {
-  .palette {
-    min-inline-size: 44px;
-    min-block-size: 44px;
+/* The icon form (prototype `.palette-icon`): below 1120 px, and on spec pages below 1560 px. */
+@container shell (width < 1560px) {
+  .on-spec {
+    grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) auto auto auto auto auto auto;
   }
+
+  .on-spec .palette {
+    justify-content: center;
+    inline-size: 40px;
+    block-size: 40px;
+    padding-inline: 0;
+  }
+
+  .on-spec .palette-text,
+  .on-spec .palette-key {
+    display: none;
+  }
+}
+
+/* Every part paints above the glass strips (grid items honour z-index). */
+.palette,
+.live,
+.zen,
+.assistant,
+.settings,
+.help,
+.tabs {
+  z-index: 1;
 }
 
 .live {
@@ -115,32 +165,170 @@
   grid-area: settings;
 }
 
-@container header (width < 1120px) {
-  .shell-header {
-    padding-inline: 24px;
+.help {
+  grid-area: help;
+}
+
+/* The dot trigger: a prototype `.btn-icon` with the mascot, 24 px. */
+.assistant {
+  display: inline-grid;
+  grid-area: assistant;
+  place-items: center;
+  inline-size: 40px;
+  block-size: 40px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  cursor: default;
+}
+
+.mascot {
+  inline-size: 24px;
+  block-size: 24px;
+  fill: none;
+  stroke-width: 3;
+}
+
+.m-ring {
+  stroke-linecap: round;
+}
+
+.m-ring-a {
+  stroke: var(--lime-text);
+  stroke-dasharray: 40 60;
+}
+
+.m-ring-b {
+  stroke: var(--cyan-text);
+  stroke-dasharray: 0 40 40 20;
+}
+
+.m-dot {
+  fill: var(--violet-text);
+}
+
+.m-eye {
+  fill: var(--color-base-100);
+}
+
+/* 44 px hit areas on a coarse pointer (prototype rule), not by width. */
+@media (pointer: coarse) {
+  .palette,
+  .assistant {
+    min-inline-size: 44px;
+    min-block-size: 44px;
   }
 }
 
-@container header (width < 640px) {
-  .shell-header {
-    grid-template:
-      "brand pickers pickers palette live settings" 48px
-      "area area tabs tabs tabs zen" 44px / 44px auto minmax(0, 1fr) auto auto auto;
-    row-gap: 0;
-    padding-inline: 16px;
+/* Below 1120 px: two rows (design.md § Viewport-übergreifend, principal 2026-10-12). */
+@container shell (width < 1120px) {
+  :host {
+    inset-block-start: -48px;
   }
 
-  /* The pill hugs its segments and carries its own border (ShellNav). */
+  .shell-header,
+  .shell-header.on-spec {
+    grid-template:
+      "brand . palette live assistant settings help" 64px
+      "nav nav nav nav nav nav zen" 48px
+      "tabs tabs tabs tabs tabs tabs tabs" auto / auto minmax(0, 1fr) auto auto auto auto auto;
+    padding-inline: 24px;
+  }
+
+  .shell-header::before,
+  .shell-header::after {
+    margin-inline: -24px;
+  }
+
+  /* Row 1's glass strip, stuck on top of the rows that scroll under it. */
+  .shell-header::before {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 3;
+    grid-row: 1 / -1;
+    align-self: start;
+    block-size: 64px;
+  }
+
+  .shell-header::after {
+    display: block;
+    grid-row: 2 / -1;
+    align-self: stretch;
+  }
+
+  .r1 {
+    position: sticky;
+    inset-block-start: 12px;
+    z-index: 4;
+    grid-row: 1 / -1;
+    align-self: start;
+    margin-block-start: 12px;
+  }
+
   .rail-field {
+    grid-row: 1 / -1;
+    grid-column: brand;
+  }
+
+  .brand {
+    z-index: 5;
+  }
+
+  .nav,
+  .zen,
+  .tabs {
+    z-index: 1;
+  }
+
+  .nav {
+    justify-self: start;
+    max-inline-size: 100%;
+  }
+
+  .palette {
+    justify-content: center;
+    inline-size: 40px;
+    block-size: 40px;
+    padding-inline: 0;
+  }
+
+  .palette-text,
+  .palette-key {
     display: none;
   }
 
-  .tabs {
-    display: block;
+  @media (pointer: coarse) {
+    .r1 {
+      inset-block-start: 10px;
+      margin-block-start: 10px;
+    }
   }
 }
 
-/* Zen (ISC-75): the tools go; brand, pickers, area trigger and the pressed zen button stay. */
+@container shell (width < 640px) {
+  .shell-header,
+  .shell-header.on-spec {
+    padding-inline: 16px;
+  }
+
+  .shell-header::before,
+  .shell-header::after {
+    margin-inline: -16px;
+  }
+
+  /* The tab-bar slot is row 3 only while it holds a bar (a spec tab); help lives in the settings page there. */
+  .tabs:has(app-tab-bar) {
+    display: block;
+  }
+
+  .help {
+    display: none;
+  }
+}
+
+/* Zen (ISC-75): the tools go; brand, rail-selects and the pressed zen button stay. */
 :host([data-zen]) .tool {
   display: none;
 }
