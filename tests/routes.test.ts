@@ -52,7 +52,7 @@ const golden = (tree: string, family: string): Record<string, unknown> =>
   JSON.parse(readFileSync(join(FIXTURES, `${tree}.${family}.golden.json`), "utf8")) as Record<string, unknown>;
 
 /** The lock ISC-74 carries from harbor's activity log. */
-const ISC_74_LOCK = { source: "activity", claim: "ISC-74", session: "a:claude:sess-2", since: "2026-03-08T14:06:00Z" } as const;
+const ISC_74_LOCK = { source: "activity", claim: "ISC-74", session: "a:claude:sess-2", actor: { raw: "a:claude:sess-2", kind: "agent", id: "a:claude:sess-2", legacy: false }, since: "2026-03-08T14:06:00Z" } as const;
 
 /** harbor 002's spec page golden with the activity lock applied (see the header). */
 function expectedSpecPage(): SpecPageModel {

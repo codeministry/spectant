@@ -28,7 +28,7 @@ describe('fixtures', () => {
   const files = markdownFiles();
 
   test('the corpus holds the spec and master files the parsers are measured on', () => {
-    expect(files.filter((f) => f.endsWith('/spec.md') || f.endsWith('/ISA.md')).length).toBe(18);
+    expect(files.filter((f) => f.endsWith('/spec.md') || f.endsWith('/ISA.md')).length).toBe(20);
   });
 
   test.each(files)('%s parses without an error diagnostic', (rel) => {
@@ -53,9 +53,9 @@ describe('fixtures', () => {
     expect(typeof fm.data.interviewInvoked).toBe('boolean');
   });
 
-  test('harbor master: progress 103/126, project kept in rest', () => {
+  test('harbor master: progress 106/130, project kept in rest', () => {
     const fm = parseFrontmatter(read('harbor/ISA.md'));
-    expect(fm.data.progress).toEqual({ closed: 103, total: 126 });
+    expect(fm.data.progress).toEqual({ closed: 106, total: 130 });
     expect(fm.data.task).toBe('Mirror container manifests between registries with Harbor');
     expect(fm.data.slug).toBe('20260302-harbor');
     expect(fm.data.phase).toBe('climbing');

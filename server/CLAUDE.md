@@ -59,7 +59,7 @@ line of `tasks.md`, line endings kept).
 - Never write into a registered repository beyond the two writes above: no other file, no `.git/` object, no index,
   no lock, and no shelling out to git for anything that writes. `tests/readonly.test.ts` hashes the fixture repo, `.git/` included, before and after
   (ISC-15).
-- The database holds only the registry, the settings and the notes (spec 002, `note` table from migration 2, `pinned` from migration 3: a note belongs to a workspace and carries at most one anchor — spec, claim or task — enforced by the schema's CHECK; removing a workspace orphans its notes), never anything a repository says. Deleting it must lose nothing
+- The database holds only the registry, the settings and the notes (spec 002, `note` table from migration 2, `pinned` from migration 3: a note belongs to a workspace and carries at most one anchor — spec, claim or task — enforced by the schema's CHECK; removing a workspace orphans its notes) and the actors (spec 008, `actor` table from migration 4: a `u:` id with a display name and its git addresses as a JSON array), never anything a repository says. Deleting it must lose nothing
   a re-add cannot rebuild (ISC-7).
 - The API never returns an absolute path. It returns only `pathTail`, the last path segment, because the model reaches
   the browser and screenshots (ISC-3).
@@ -109,4 +109,5 @@ line of `tasks.md`, line endings kept).
 ## Git reads
 
 - `server/src/git.ts` `commitsFor(root, folder, {limit 200, timeoutMs 3000, files?, cache?})` runs only `rev-parse HEAD` and `git log -- <folder>` (optional locks off, literal pathspecs, discovery stops at the root), never throws: no repo, no git, failure or deadline → `source: 'none'` + `diagnostic`.
+- `userEmail(root, {timeoutMs?, runner?})` runs only `config --get user.email` under the same environment and root rule (repository config, then global; system config off) and answers the trimmed address or null, never a throw (T77, ISC-119); `core/`'s `actorIdOf` turns it into the `u:` id.
 - A `CommitCache` keyed by root and folder skips `git log` while `HEAD` is unchanged; the returned `head` belongs in the timeline route's ETag. No other git command is added without a read-only proof in `tests/git.test.ts` (ISC-15).

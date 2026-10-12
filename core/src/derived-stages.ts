@@ -79,6 +79,9 @@ export function deriveStages(files: SpecFiles, events?: readonly EventLine[]): T
       codeReviewed: 'missing',
       takeable: [],
       partition: { takeable: 0, open: total, closed: 0, dropped: 0 },
+      // A replay from the files: this path runs only without events, so no explicit stage can apply.
+      explicitStage: null,
+      lastEventTo: null,
     });
 
   const out: TimelineEntry[] = [];

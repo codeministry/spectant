@@ -316,6 +316,100 @@
       "to": "review"
     }
   ],
+  "specs/008-referrers-support": [
+    {
+      "ts": "2026-03-08T14:00:00Z",
+      "kind": "stage",
+      "derived": false,
+      "title": "review → build",
+      "body": "- Command: /spec-review 008",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": "u:3f9c0a7d",
+      "from": "review",
+      "to": "build",
+      "command": "/spec-review 008"
+    },
+    {
+      "ts": "2026-03-08T14:00:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-08T13:00:00Z",
+      "kind": "stage",
+      "derived": false,
+      "title": "created → review",
+      "body": "- Command: /spec-spike referrers-support",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": "u:3f9c0a7d",
+      "from": null,
+      "to": "review",
+      "command": "/spec-spike referrers-support"
+    },
+    {
+      "ts": "2026-03-08T13:00:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal confirmed",
+      "body": "A recorded table says which target registry answers the referrers endpoint, and a decision names the fallback for\nthe ones that do not.",
+      "ref": "goal",
+      "id": "decision-goal",
+      "goalLock": true
+    }
+  ],
+  "specs/009-chunked-upload-limits": [
+    {
+      "ts": "2026-03-08T14:10:00Z",
+      "kind": "stage",
+      "derived": false,
+      "title": "review → build",
+      "body": "- Command: /spec-review 009",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": "u:3f9c0a7d",
+      "from": "review",
+      "to": "build",
+      "command": "/spec-review 009"
+    },
+    {
+      "ts": "2026-03-08T14:10:00Z",
+      "kind": "gate",
+      "derived": false,
+      "title": "Reviewed",
+      "body": "- Files: spec.md, plan.md, tasks.md",
+      "ref": "reviewed",
+      "id": "gate-reviewed"
+    },
+    {
+      "ts": "2026-03-08T13:30:00Z",
+      "kind": "stage",
+      "derived": false,
+      "title": "created → review",
+      "body": "- Command: /spec-spike chunked-upload-limits",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": "u:3f9c0a7d",
+      "from": null,
+      "to": "review",
+      "command": "/spec-spike chunked-upload-limits"
+    },
+    {
+      "ts": "2026-03-08T13:30:00Z",
+      "kind": "decision",
+      "derived": false,
+      "title": "Goal confirmed",
+      "body": "A recorded table names each target registry's chunk limit, and Harbor never picks a chunk larger than it.",
+      "ref": "goal",
+      "id": "decision-goal",
+      "goalLock": true
+    }
+  ],
   "specs/archive/001-manifest-sync": [
     {
       "ts": "2026-03-05T15:00:00Z",

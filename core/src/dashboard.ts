@@ -17,15 +17,32 @@ import { parseClaims } from './claims.ts';
 import type { ClaimsDocument } from './claims.ts';
 import type { Diagnostic } from './diagnostics.ts';
 import { diagramVerdict } from './diagrams.ts';
+import { parseEvents } from './events.ts';
 import type { DiagramVerdict } from './diagrams.ts';
 import { specFilePath } from './files.ts';
-import type { AgentLockSource, ClaimLock, FileDiagnostic, FileKind, GateView, LockDiagnostic, LockReading, SpecFiles, SpecGates, SpecType, SpecWarning, WarningKind } from './files.ts';
+import type {
+  AgentLockSource,
+  ClaimLock,
+  FileDiagnostic,
+  FileKind,
+  GateView,
+  LockDiagnostic,
+  LockReading,
+  Priority,
+  SpecFiles,
+  SpecGates,
+  SpecType,
+  SpecWarning,
+  StageSource,
+  WarningKind,
+  WorkflowStage,
+} from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import type { Progress } from './frontmatter.ts';
 import { gateState, readGateMark, reviewedGate } from './gates.ts';
 import type { GateCheck, GateMarkReading, GateName, ReviewedFile } from './gates.ts';
 import { specIdOf, specSlugOf } from './spec-ref.ts';
-import { nextCommandWithReason } from './stage.ts';
+import { isWorkflowStage, nextCommandWithReason } from './stage.ts';
 import type { Stage } from './stage.ts';
 import { driftReport, hasDrift, heldLocks, masterProgressMismatch, partitionClaims } from './status.ts';
 import type { DriftClass, DriftReport } from './status.ts';
@@ -81,9 +98,13 @@ export interface DashboardSpecRow {
   /** Frontmatter `task:`, falling back to the slug without its number. */
   readonly title: string;
   readonly type: SpecType | null;
+  /** Frontmatter `priority:`, `P3` when absent or invalid (T39); the spec head carries the same value (T67, ISC-118). */
+  readonly priority: Priority;
   /** Frontmatter `phase:` as written: a tooltip only, the stage is derived. */
   readonly phase: string | null;
   readonly stage: Stage;
+  /** Whether `stage` is the frontmatter `stage:` (`explicit`) or the stage table's (`derived`), T47. */
+  readonly stageSource: StageSource;
   /** Live claims, closed over total. */
   readonly progress: Progress;
   /** Null when the spec has no tasks.md. */
@@ -355,6 +376,9 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
   const codeReviewed = gateState('code-reviewed', codeMark?.mark ?? null, { worktreeTree: ctx.worktreeTree });
 
   const { specType: type, phase } = fm.data;
+  // The explicit stage needs the last recorded transition; the events' own diagnostics belong to the timeline.
+  const lastTo = f.texts.events === undefined ? null : (parseEvents(f.texts.events).events.at(-1)?.to ?? null);
+  const lastEventTo: WorkflowStage | null = lastTo !== null && isWorkflowStage(lastTo) ? lastTo : null;
   const next = nextCommandWithReason({
     number: id,
     type,
@@ -371,6 +395,8 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
       closed: partition.closed.length - partition.dropped.length,
       dropped: partition.dropped.length,
     },
+    explicitStage: fm.data.stage,
+    lastEventTo,
   });
 
   const drift = ctx.master === null ? null : driftReport({ frontmatter: fm, spec: doc, master: ctx.master, heldElsewhere: heldElsewhere(ctx, f.folder) });
@@ -378,6 +404,8 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
   const fog = doc.fog.length;
   const rounds = newestRound(f.texts.rounds);
   note('rounds', rounds.diagnostics);
+  // events.jsonl's findings: rejected lines, old words and the one actor-legacy warning of the file (spec 008, T61).
+  if (f.texts.events !== undefined) note('events', parseEvents(f.texts.events).diagnostics);
 
   // As the old collect(): drift always; the rest only while the spec is open, since completing it closed them.
   const warnings: SpecWarning[] = [];
@@ -412,8 +440,10 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     slug: f.folder,
     title: summary?.title ?? specSlugOf(f.folder),
     type,
+    priority: fm.data.priority,
     phase,
     stage: next.stage,
+    stageSource: next.stageSource,
     progress: doc.counted,
     tasks: f.texts.tasks === undefined ? null : (summary?.tasks ?? { landed: 0, total: 0 }),
     nextCommand: next.command,

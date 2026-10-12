@@ -42,8 +42,8 @@ function strings(value: unknown, out: string[] = []): string[] {
 describe('harbor: the README Expected column', () => {
   const m = model('harbor');
 
-  test('the master fraction is the three-digit/three-digit 103/126', () => {
-    expect(m.kpis.master).toEqual({ closed: 103, total: 126 });
+  test('the master fraction is the three-digit/three-digit 106/130', () => {
+    expect(m.kpis.master).toEqual({ closed: 106, total: 130 });
   });
 
   test('stages per spec as the old skill derives them', () => {
@@ -54,6 +54,8 @@ describe('harbor: the README Expected column', () => {
       '005': 'review',
       '006': 'review',
       '007': 'review', // the chore reads as type none until spec 008, T38, and has no reviewed mark
+      '008': 'code-review', // every claim closed; close-pending under `code_review: feature` from spec 008, T49 on
+      '009': 'build',
     });
   });
 
@@ -85,29 +87,29 @@ describe('harbor: the README Expected column', () => {
   });
 
   test('rows in action order (nearest to done first), Next up the top three with a command', () => {
-    expect(m.specs.map((r) => r.id)).toEqual(['004', '005', '006', '007', '002', '003']);
-    expect(m.nextUp).toEqual(['004', '005', '006']);
+    expect(m.specs.map((r) => r.id)).toEqual(['004', '008', '005', '006', '007', '002', '009', '003']);
+    expect(m.nextUp).toEqual(['004', '008', '005']);
     expect(row(m, '002').nextCommand).toBe('/spec-implement 002');
     expect(row(m, '002').takeable.length).toBeGreaterThan(0);
   });
 
   test('KPIs: specs split building and scoping, attention is warnings plus open fog', () => {
     const { kpis } = m;
-    expect(kpis.specs).toBe(6);
-    expect(kpis.building).toBe(2); // 002 build, 004 code-review
+    expect(kpis.specs).toBe(8);
+    expect(kpis.building).toBe(4); // 002 and 009 build, 004 and 008 code-review
     expect(kpis.scoping).toBe(4); // 003 tasks, 005, 006 and 007 review
-    expect(kpis.warnings).toBe(9);
+    expect(kpis.warnings).toBe(10); // 008's closed joins the nine
     expect(kpis.attention).toBe(kpis.warnings + kpis.fog);
     expect(kpis.takeable).toBe(m.specs.reduce((n, r) => n + r.takeable.length, 0));
     expect(kpis.claims).toEqual(
       m.specs.filter((r) => r.stage !== 'done').reduce((a, r) => ({ closed: a.closed + r.progress.closed, total: a.total + r.progress.total }), { closed: 0, total: 0 }),
     );
-    expect(m.stageCounts).toMatchObject({ build: 1, tasks: 1, 'code-review': 1, review: 3, done: 0 });
+    expect(m.stageCounts).toMatchObject({ build: 2, tasks: 1, 'code-review': 2, review: 3, done: 0 });
   });
 
   test('warnings grouped by kind, each item naming its spec', () => {
     const groups = Object.fromEntries(m.warningGroups.map((g) => [g.kind, g.items.map((i) => i.spec)]));
-    expect(groups).toEqual({ drift: ['006'], review: ['005', '006', '007', '003'], diagrams: ['004'], closed: ['004', '007'], fog: ['005'] });
+    expect(groups).toEqual({ drift: ['006'], review: ['005', '006', '007', '003'], diagrams: ['004'], closed: ['004', '008', '007'], fog: ['005'] });
   });
 
   test('gates: 004 reviewed fresh and code-reviewed stale, 006 reviewed stale, 003 reviewed missing', () => {
@@ -220,9 +222,9 @@ describe('multi-workspace', () => {
   test('two workspaces built side by side each list their own specs, nothing crosses over', () => {
     const harbor = model('harbor');
     const lantern = model('lantern');
-    expect(harbor.specs.map((r) => r.slug).sort()).toEqual(['002-web-console', '003-config-loader', '004-retention-policies', '005-config-format-choice', '006-partial-push', '007-rotate-mirror-token']);
+    expect(harbor.specs.map((r) => r.slug).sort()).toEqual(['002-web-console', '003-config-loader', '004-retention-policies', '005-config-format-choice', '006-partial-push', '007-rotate-mirror-token', '008-referrers-support', '009-chunked-upload-limits']);
     expect(lantern.specs.map((r) => r.slug).sort()).toEqual(['001-reading-list', '002-duplicate-links']);
-    expect(harbor.kpis.master).toEqual({ closed: 103, total: 126 });
+    expect(harbor.kpis.master).toEqual({ closed: 106, total: 130 });
     expect(lantern.kpis.master?.total).toBe(12);
     // pure: building one never changes the other
     expect(JSON.stringify(model('harbor'))).toBe(JSON.stringify(harbor));
@@ -278,16 +280,16 @@ describe('taken and lock warnings (spec 002 T115, ISC-90)', () => {
   });
 
   test('a claim held in both sources is listed once, the frontier lock winning as on the live frame', async () => {
-    const repo = tempRepo(['{"ts":"2026-03-08T15:00:00Z","event":"claim","claim":"ISC-75","session":"act-75"}']);
-    const state = stateWith(repo, { 'ISC-75': { session: 'front-75', ts: '2026-03-08T15:30:00.000Z' } });
+    const repo = tempRepo(['{"ts":"2026-03-08T15:00:00Z","event":"claim","claim":"ISC-75","session":"a:claude:act-75"}']);
+    const state = stateWith(repo, { 'ISC-75': { session: 'a:lifeos:front-75', ts: '2026-03-08T15:30:00.000Z' } });
     const m = await withLocks(readLockSources({ repoRoot: repo, lifeosStateDir: state, now: NOW }));
-    expect(row(m, '002').taken).toEqual([{ id: 'ISC-75', session: 'front-75', since: '2026-03-08T15:30:00.000Z', source: 'frontier' }]);
+    expect(row(m, '002').taken).toEqual([{ id: 'ISC-75', session: 'a:lifeos:front-75', since: '2026-03-08T15:30:00.000Z', source: 'frontier' }]);
   });
 
   test('a malformed activity line is a row warning of kind locks on every open row, never a throw', async () => {
-    const repo = tempRepo(['not json', '{"ts":"2026-03-08T15:00:00Z","event":"claim","claim":"ISC-76","session":"s-76"}']);
+    const repo = tempRepo(['not json', '{"ts":"2026-03-08T15:00:00Z","event":"claim","claim":"ISC-76","session":"a:claude:s-76"}']);
     const m = await withLocks(readLockSources({ repoRoot: repo, now: NOW }));
-    expect(row(m, '002').taken).toEqual([{ id: 'ISC-76', session: 's-76', since: '2026-03-08T15:00:00Z', source: 'activity' }]);
+    expect(row(m, '002').taken).toEqual([{ id: 'ISC-76', session: 'a:claude:s-76', since: '2026-03-08T15:00:00Z', source: 'activity' }]);
     expect(open(m).length).toBeGreaterThan(0);
     for (const r of open(m)) {
       const locks = r.warnings.filter((w) => w.kind === 'locks');
@@ -299,17 +301,17 @@ describe('taken and lock warnings (spec 002 T115, ISC-90)', () => {
   });
 
   test("a diagnostic naming a claim lands on that claim's row only, with the claim as ref", async () => {
-    const repo = tempRepo(['{"ts":"2026-03-08T15:00:00Z","event":"release","claim":"ISC-75","session":"s-75"}']);
+    const repo = tempRepo(['{"ts":"2026-03-08T15:00:00Z","event":"release","claim":"ISC-75","session":"a:claude:s-75"}']);
     const m = await withLocks(readLockSources({ repoRoot: repo, now: NOW }));
     const locks = row(m, '002').warnings.filter((w) => w.kind === 'locks');
     expect(locks.map((w) => w.ref)).toEqual(['ISC-75']);
-    expect(locks[0]?.text).toContain('ISC-75 is released by s-75 but is not held');
+    expect(locks[0]?.text).toContain('ISC-75 is released by a:claude:s-75 but is not held');
     for (const r of m.specs.filter((s) => s.id !== '002')) expect(kinds(r)).not.toContain('locks');
   });
 
   test('a stale frontier lock is a locks warning on its row and not taken', async () => {
     const repo = tempRepo();
-    const state = stateWith(repo, { 'ISC-75': { session: 'old-75', ts: '2026-03-08T12:00:00.000Z' } });
+    const state = stateWith(repo, { 'ISC-75': { session: 'a:lifeos:old-75', ts: '2026-03-08T12:00:00.000Z' } });
     const m = await withLocks(readLockSources({ repoRoot: repo, lifeosStateDir: state, now: NOW }));
     expect(row(m, '002').taken).toEqual([]);
     expect(row(m, '002').warnings.filter((w) => w.kind === 'locks').map((w) => w.ref)).toEqual(['ISC-75']);

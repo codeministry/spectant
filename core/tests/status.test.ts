@@ -7,6 +7,7 @@ import { describe, expect, test } from 'bun:test';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { parseActor } from '../src/actor.ts';
 import { parseClaims, type Claim, type ClaimsDocument } from '../src/claims.ts';
 import type { ClaimLock } from '../src/files.ts';
 import { parseFrontmatter, type FrontmatterResult } from '../src/frontmatter.ts';
@@ -69,7 +70,7 @@ function activityLocks(rel: string): ClaimLock[] {
   for (const line of readFileSync(join(FIXTURES, rel), 'utf8').split('\n')) {
     if (line.trim() === '') continue;
     const e = JSON.parse(line) as { ts: string; event: string; claim: string; session: string };
-    if (e.event === 'claim') open.set(e.claim, { source: 'activity', claim: e.claim, session: e.session, since: e.ts });
+    if (e.event === 'claim') open.set(e.claim, { source: 'activity', claim: e.claim, session: e.session, actor: parseActor(e.session), since: e.ts });
     else if (e.event === 'release') open.delete(e.claim);
   }
   return [...open.values()];
@@ -127,7 +128,7 @@ describe('partitionClaims', () => {
     'harbor/specs/006-partial-push/spec.md': [0, 4, 0],
     'harbor/specs/007-rotate-mirror-token/spec.md': [2, 0, 0],
     'harbor/specs/archive/001-manifest-sync/spec.md': [46, 0, 0],
-    'harbor/ISA.md': [103, 16, 7],
+    'harbor/ISA.md': [106, 17, 7],
     'lantern/specs/001-reading-list/spec.md': [4, 2, 2],
     'lantern/ISA.md': [4, 6, 2],
     'leadgen/specs/012-pwa-install/spec.md': [9, 1, 0],
@@ -168,8 +169,8 @@ describe('partitionClaims', () => {
     const claims = load(join('harbor', HARBOR_002, 'spec.md')).doc.claims;
     const closedId = claims.find((c) => c.checked)?.id ?? '';
     const locks: ClaimLock[] = [
-      { source: 'frontier', claim: 'ISC-78', session: 's1', since: '2026-03-08T10:00:00Z' },
-      { source: 'frontier', claim: closedId, session: 's2', since: '2026-03-08T10:00:00Z' },
+      { source: 'frontier', claim: 'ISC-78', session: 's1', actor: parseActor('s1'), since: '2026-03-08T10:00:00Z' },
+      { source: 'frontier', claim: closedId, session: 's2', actor: parseActor('s2'), since: '2026-03-08T10:00:00Z' },
     ];
     const p = partitionClaims(claims, locks, 'fresh');
     expect(p.blocked.map((b) => b.id)).toEqual(['ISC-78']);

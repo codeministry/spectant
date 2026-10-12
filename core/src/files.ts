@@ -314,7 +314,7 @@ export interface SpecHead {
   readonly uncommittedFiles: number | null;
   /** Frontmatter `priority:`, `P3` when absent or invalid; `spec.ts` sets it from T39 on, the type keeps it optional. */
   readonly priority?: Priority;
-  /** Whether `stage` is the frontmatter `stage:` or derived; optional until T47, absent means `derived`. */
+  /** Whether `stage` is the frontmatter `stage:` or derived; `spec.ts` sets it from T47 on, the type keeps it optional. */
   readonly stageSource?: StageSource;
   /** Who the spec is assigned to; optional until T65, absent means unassigned. */
   readonly assignee?: ActorRef | null;
@@ -532,8 +532,14 @@ export interface EventLine {
   readonly to: StageName;
   /** The command that made the transition, e.g. `/spec-review 002`; never empty. */
   readonly command: string;
-  /** Who ran it, e.g. `principal`; never empty. */
+  /** Who ran it, as written: an id of the actor grammar (`u:3f9c0a7d`, `a:claude:sess-7`) or a legacy value; never empty. */
   readonly actor: string;
+  /**
+   * `actor` through `parseActor` (spec 008, T61): set on every event `validateEventLine` accepts, a legacy value
+   * included. Read side only, never written: a line that carried it would fail `event-extra-key`, so a writer builds
+   * its event without it.
+   */
+  readonly actorRef?: ActorRef;
 }
 
 /**
@@ -571,8 +577,10 @@ export type AgentLockSource = Exclude<LockSource, 'none'>;
 export interface ClaimLock {
   readonly source: AgentLockSource;
   readonly claim: string;
-  /** The session name the lock carries. */
+  /** The session name the lock carries, as written. */
   readonly session: string;
+  /** `session` through `parseActor` (spec 008, T63): the holder in the actor grammar, or flagged `legacy`. */
+  readonly actor: ActorRef;
   /** ISO 8601. */
   readonly since: string;
 }

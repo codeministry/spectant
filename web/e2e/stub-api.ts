@@ -88,6 +88,7 @@ import type {
   TasksTab,
   TimelineEntry,
 } from '../../core/src/files';
+import { parseActor } from '../../core/src/actor';
 import {
   GOLDEN_FAMILY,
   REVIEWED_HASHES_HEADER,
@@ -466,7 +467,7 @@ function lockFixtures(core: Core, spec: SpecPageModel, live: LiveFrame, claims: 
     const session = `spec-${spec.head.id}-${claim}`;
     const since = new Date(Date.parse(live.ts) - SYNTHETIC_LOCK_AGE_MS).toISOString().replace('.000Z', 'Z');
     const stale = SYNTHETIC_LOCK_AGE_MS > live.staleAfterMs;
-    locks.push({ source: 'frontier', claim, session, since });
+    locks.push({ source: 'frontier', claim, session, actor: parseActor(session), since });
     locks.sort((a, b) => byClaimId(a.claim, b.claim));
     agents.push({ session, source: 'frontier', claims: [claim], since, elapsedMs: SYNTHETIC_LOCK_AGE_MS, stale });
     agents.sort((a, b) => (a.since < b.since ? -1 : a.since > b.since ? 1 : 0));
@@ -727,6 +728,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return { tab: { ...spec.tasks, tasks, counts: recountTasks(tasks, spec.tasks.counts) }, hash: fakeHex(`${label}:${ticks.join(',')}`) };
   };
 
+  const fallbackLock = (claim: string, session: string): ClaimLock => ({ source: 'frontier', claim, session, actor: parseActor(session), since: STUB_NOW });
   /** The lock a scripted 423 names: the fixture's lock on `claim`, any lock of the spec, else a frontier lock. */
   const lockFor = (spec: SpecGoldens, locks: LockState, claim: string | null): ClaimLock => {
     const current = spec.locked[locks].live.locks;
@@ -736,7 +738,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return (
       onClaim ??
       current[0] ??
-      frontier[0] ?? { source: 'frontier', claim: fallbackClaim, session: `spec-${spec.spec.head.id}-${fallbackClaim}`, since: STUB_NOW }
+      frontier[0] ?? fallbackLock(fallbackClaim, `spec-${spec.spec.head.id}-${fallbackClaim}`)
     );
   };
 

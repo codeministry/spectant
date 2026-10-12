@@ -29,7 +29,7 @@ const ok = (checked: boolean, text: string): TaskCheckResult => ({
 const conflict: TaskCheckResult = { kind: 'conflict', body: { error: 'hash-mismatch', expected: { tasks: 'c'.repeat(64) } } };
 const locked: TaskCheckResult = {
   kind: 'locked',
-  body: { error: 'locked', lock: { source: 'frontier', claim: 'ISC-77', session: 'spec-002-ISC-77', since: '2026-09-01T08:00:00Z' } },
+  body: { error: 'locked', lock: { source: 'frontier', claim: 'ISC-77', session: 'spec-002-ISC-77', actor: { raw: 'spec-002-ISC-77', kind: 'legacy', id: 'spec-002-ISC-77', legacy: true }, since: '2026-09-01T08:00:00Z' } },
 };
 
 describe('checkbox state machine', () => {

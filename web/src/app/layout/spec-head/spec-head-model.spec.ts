@@ -3,7 +3,7 @@ import type { PlanningFeature, PlanningHolder, PlanningModel } from '../../../..
 import { featurePlace, gateAction, gateInHead, pathSegments, relativeTime, relativeUnit, shortHash, slugName } from './spec-head-model';
 
 const gate = (state: GateView['state']): GateView => ({ state, detail: '' });
-const LOCK: ClaimLock = { source: 'frontier', claim: 'ISC-74', session: 'spec-002-ISC-74', since: '2026-03-08T16:00:00Z' };
+const LOCK: ClaimLock = { source: 'frontier', claim: 'ISC-74', session: 'spec-002-ISC-74', actor: { raw: 'spec-002-ISC-74', kind: 'legacy', id: 'spec-002-ISC-74', legacy: true }, since: '2026-03-08T16:00:00Z' };
 const NOW = Date.parse('2026-09-01T08:00:00Z');
 
 describe('gateAction (ISC-85)', () => {

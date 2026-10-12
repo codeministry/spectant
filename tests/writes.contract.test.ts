@@ -4,6 +4,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { parseActor } from "../core/src/actor.ts";
 import { validateEventLine } from "../core/src/events.ts";
 import { FILE_KINDS, type ClaimLock } from "../core/src/files.ts";
 import { REVIEWED_FILES, hashForGate, readGateMark } from "../core/src/gates.ts";
@@ -52,7 +53,7 @@ const HEX_B = hashForGate("plan.md", "# b\n");
 const HEX_C = hashForGate("tasks.md", "- [ ] T1 · ISC-1 · core — c\n");
 const HASHES: ReviewedHashes = { spec: HEX_A, plan: HEX_B, tasks: HEX_C };
 const TS = "2026-09-29T10:00:00.000Z";
-const lock = (source: ClaimLock["source"], claim: string, session = `s-${claim}`): ClaimLock => ({ source, claim, session, since: TS });
+const lock = (source: ClaimLock["source"], claim: string, session = `s-${claim}`): ClaimLock => ({ source, claim, session, actor: parseActor(session), since: TS });
 
 describe("routes", () => {
   test("the write routes are the table's two POST routes; every builder round-trips as POST only", () => {
@@ -129,7 +130,8 @@ describe("the reviewed mark and the event line", () => {
     const line = JSON.stringify(event);
     expect(line).not.toContain("\n");
     const v = validateEventLine(line, 1);
-    expect(v).toEqual({ ok: true, event, warnings: [] });
+    // The read side adds the parsed actor (spec 008, T61); `app` is outside the actor grammar, so it reads as legacy.
+    expect(v).toEqual({ ok: true, event: { ...event, actorRef: parseActor("app") }, warnings: [] });
   });
 
   test("the appended bytes are exactly one line, a missing trailing newline repaired first", () => {
@@ -248,6 +250,7 @@ describe("the writes contract is browser-safe", () => {
   test("no module reached from the writes contract imports Bun or Node", () => {
     const files = [...reach(CONTRACT)];
     expect(files.map((f) => f.slice(ROOT.length + 1)).sort()).toEqual([
+      "core/src/actor.ts",
       "core/src/events.ts",
       "core/src/files.ts",
       "server/src/assets.contract.ts",

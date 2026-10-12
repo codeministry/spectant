@@ -14,7 +14,8 @@
       "round": null,
       "lastRound": null,
       "uncommittedFiles": null,
-      "priority": "P3"
+      "priority": "P3",
+      "stageSource": "derived"
     },
     "keyNumbers": {
       "claims": {
@@ -137,7 +138,8 @@
       "round": null,
       "lastRound": null,
       "uncommittedFiles": null,
-      "priority": "P3"
+      "priority": "P3",
+      "stageSource": "derived"
     },
     "keyNumbers": {
       "claims": {
@@ -168,8 +170,8 @@
         "ISC-11 and ISC-12 are takeable",
         "the reviewed mark is fresh"
       ],
-      "since": null,
-      "via": null
+      "since": "2026-03-06T10:30:00Z",
+      "via": "/spec-review 002"
     },
     "lanes": [],
     "gates": {

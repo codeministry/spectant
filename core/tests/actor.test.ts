@@ -6,15 +6,22 @@
 // The fixture walk reads every file of the harbor fixture that carries an actor — each `events.jsonl`, the
 // `.spectant/activity.jsonl` (its `session` is the actor), every `.gates/*.json` mark and every `*.lock` file — and
 // requires 0 values outside the three forms. Only synthetic addresses (`example.com`) appear here.
+//
+// T60: a file with at least one legacy actor yields one `actor-legacy` warning, never one per value. Lantern's
+// `specs/002-duplicate-links/events.jsonl` (T33) carries `principal`; `-t legacy` runs the legacy tests.
 import { describe, expect, test } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, relative } from 'node:path';
 
 import * as core from '../src/index.ts';
-import { parseActor } from '../src/actor.ts';
+import { legacyActorWarning, parseActor } from '../src/actor.ts';
+import { parseEvents } from '../src/events.ts';
+import { readLockSources } from '../src/locks.ts';
 import { actorIdOf } from '../src/actor-id.ts';
 
 const HARBOR = join(import.meta.dir, '..', 'fixtures', 'harbor');
+const LANTERN = join(import.meta.dir, '..', 'fixtures', 'lantern');
+const LANTERN_EVENTS = join(LANTERN, 'specs', '002-duplicate-links', 'events.jsonl');
 const SRC = join(import.meta.dir, '..', 'src');
 
 type Source = 'events' | 'activity' | 'gate' | 'lock';
@@ -65,6 +72,10 @@ describe('actor grammar on the harbor fixture', () => {
       'specs/004-retention-policies/.gates/reviewed.json',
       'specs/006-partial-push/.gates/reviewed.json',
       'specs/006-partial-push/events.jsonl',
+      'specs/008-referrers-support/.gates/reviewed.json',
+      'specs/008-referrers-support/events.jsonl',
+      'specs/009-chunked-upload-limits/.gates/reviewed.json',
+      'specs/009-chunked-upload-limits/events.jsonl',
       'specs/archive/001-manifest-sync/.gates/code-reviewed.json',
       'specs/archive/001-manifest-sync/.gates/reviewed.json',
       'specs/archive/001-manifest-sync/events.jsonl',
@@ -75,7 +86,7 @@ describe('actor grammar on the harbor fixture', () => {
   test('every file carries actors and 0 values fall outside the three forms', () => {
     for (const { rel, actors } of scanned) expect({ rel, count: actors.length > 0 }).toEqual({ rel, count: true });
     const values = scanned.flatMap(({ rel, actors }) => actors.map((raw) => ({ rel, raw, ref: parseActor(raw) })));
-    expect(values.length).toBe(24);
+    expect(values.length).toBe(30);
     expect(values.filter(({ ref }) => ref.legacy).map(({ rel, raw }) => `${rel}: ${raw}`)).toEqual([]);
     const kinds = new Set(values.map(({ ref }) => ref.kind));
     expect([...kinds].sort()).toEqual(['agent', 'person', 'subagent']);
@@ -115,6 +126,60 @@ describe('parseActor', () => {
     ]) {
       expect(parseActor(raw)).toEqual({ raw, kind: 'legacy', id: raw, legacy: true });
     }
+  });
+});
+
+describe('legacy actors: one actor-legacy warning per file (T60)', () => {
+  test('legacy: lantern\'s events.jsonl carries principal and yields exactly one actor-legacy warning, nothing dropped', () => {
+    const text = readFileSync(LANTERN_EVENTS, 'utf8');
+    const lines = text.split('\n').filter((l) => l.trim() !== '');
+    const { events, diagnostics } = parseEvents(text);
+    const legacy = diagnostics.filter((d) => d.code === 'actor-legacy');
+    expect(legacy).toHaveLength(1);
+    expect(legacy[0]).toMatchObject({ severity: 'warning', code: 'actor-legacy', line: 1, subject: 'principal' });
+    expect(legacy[0]?.message).toContain('"principal"');
+    expect(diagnostics).toEqual(legacy);
+    // Read, never rejected: every line is an event, its actor kept as written and flagged.
+    expect(events).toHaveLength(lines.length);
+    expect(events.map((e) => e.actor)).toEqual(lines.map(() => 'principal'));
+    expect(events.map((e) => e.actorRef)).toEqual(lines.map(() => parseActor('principal')));
+  });
+
+  test('legacy: the helper raises one warning for a file, naming its first legacy value and line', () => {
+    const sightings = [
+      { ref: parseActor('u:3f9c0a7d'), line: 1 },
+      { ref: parseActor('agent'), line: 3 },
+      { ref: parseActor('principal'), line: 4 },
+      { ref: parseActor('agent'), line: 6 },
+    ];
+    const warning = legacyActorWarning(sightings);
+    expect(warning).toMatchObject({ severity: 'warning', code: 'actor-legacy', line: 3, subject: 'agent' });
+    expect(warning?.message).toContain('"agent"');
+    expect(warning?.message).toContain('3 actors');
+    expect(legacyActorWarning(sightings, 'session')?.message).toContain('3 sessions');
+  });
+
+  test('legacy: a file whose actors all fit the grammar, or that has none, raises no warning', () => {
+    expect(legacyActorWarning([])).toBeNull();
+    expect(legacyActorWarning([{ ref: parseActor('u:3f9c0a7d') }, { ref: parseActor('a:claude:sess-7/T12') }])).toBeNull();
+  });
+
+  test('legacy: without a line the warning carries none', () => {
+    const warning = legacyActorWarning([{ ref: parseActor('spec-002-ISC-75') }], 'session');
+    expect(warning).not.toBeNull();
+    expect(warning && 'line' in warning).toBe(false);
+    expect(warning?.message).toContain('1 session ');
+  });
+
+  test('legacy: harbor raises no actor-legacy, in events or in its lock reading', async () => {
+    for (const { rel, source } of scanned) {
+      if (source !== 'events') continue;
+      const codes = parseEvents(readFileSync(join(HARBOR, rel), 'utf8')).diagnostics.map((d) => d.code);
+      expect({ rel, codes }).toEqual({ rel, codes: [] });
+    }
+    const reading = await readLockSources({ repoRoot: HARBOR });
+    expect((reading.diagnostics ?? []).filter((d) => d.code === 'actor-legacy')).toEqual([]);
+    expect(reading.locks.every((l) => l.actor.raw === l.session && !l.actor.legacy)).toBe(true);
   });
 });
 

@@ -5,7 +5,11 @@
 // FORMAT.md's stage table is held as data in STAGE_RULES, in table order, first match wins: every column (condition in
 // words, command, reason templates) is a field, and core/tests/stage.test.ts compares each rule with its markdown row
 // verbatim (spec 002 T11, ISC-79). A reason is always one of its row's templates, filled by `fillReason`.
-import type { MarkState, SpecType } from './files.ts';
+//
+// Spec 008 adds the workflow's defaults and what derives from a row: the default table (T42, read by workflow.ts, which
+// imports it from here so the two modules form no import cycle), the allowed transitions (T45, ISC-29) and the explicit
+// stage, a frontmatter `stage:` that wins over the derived one when the last event agrees with it (T47, ISC-120).
+import type { CodeReviewMode, MarkState, SpecType, StageSource, Workflow, WorkflowRow, WorkflowStage } from './files.ts';
 import type { Progress } from './frontmatter.ts';
 
 export type Stage = 'plan' | 'tasks' | 'review' | 'build' | 'blocked' | 'code-review' | 'close' | 'done';
@@ -39,6 +43,12 @@ export interface StageInput {
    * (dropped ones included) toward the three-claim threshold, and "every claim closed" once none is open.
    */
   readonly partition?: ClaimCounts;
+  /** Frontmatter `stage:` as written, unvalidated (`SpecFrontmatter.stage`, T40); null without the key. */
+  readonly explicitStage: string | null;
+  /** The `to` of the last valid `events.jsonl` line, in file order; null without events. */
+  readonly lastEventTo: WorkflowStage | null;
+  /** The workspace's workflow; absent, the default table (FORMAT.md § workflow). Decides which stages are explicit. */
+  readonly workflow?: Workflow;
 }
 
 /** The type router: which files a spec type needs besides spec.md. An unknown type needs neither. */
@@ -211,21 +221,30 @@ function ruleOf(input: StageInput): StageRule {
 }
 
 export interface NextStep {
+  /** The explicit stage when one applies (`explicitStageOf`), else the matching row's. */
   readonly stage: Stage;
+  /** `explicit` when the frontmatter `stage:` decided `stage`, `derived` when the stage table did (T47). */
+  readonly stageSource: StageSource;
   /** E.g. `/spec-implement 002`; null for a complete spec. */
   readonly command: string | null;
   /** One of the row's reasons, filled, e.g. `ISC-334 is takeable`. */
   readonly reason: string;
 }
 
-/** The stage, the one command it needs next and why: the matching row's command and one of its reasons. */
+/**
+ * The stage, the one command it needs next and why: the matching row's command and one of its reasons. An explicit
+ * stage replaces the row's stage only; the command and the reason stay the stage table's, since they say what the
+ * files still need (FORMAT.md, frontmatter `stage`).
+ */
 export function nextCommandWithReason(input: StageInput): NextStep {
   const rule = ruleOf(input);
   const { form = 0, values = {} } = rule.explain(input);
   const template = rule.reasons[form];
   if (template === undefined) throw new Error(`stage row ${rule.stage} has no reason ${form}`);
+  const explicit = explicitStageOf(input);
   return {
-    stage: rule.stage,
+    stage: explicit ?? rule.stage,
+    stageSource: explicit === null ? 'derived' : 'explicit',
     command: rule.next === null ? null : `${rule.next} ${input.number}`,
     reason: fillReason(template, values),
   };
@@ -236,7 +255,133 @@ export function nextCommand(input: StageInput): string | null {
   return nextCommandWithReason(input).command;
 }
 
-/** The stage the next command stands for; `blocked` when no command in the chain applies, `done` when complete. */
+/**
+ * The spec's stage: the explicit one when it applies, else the stage the next command stands for (`blocked` when no
+ * command in the chain applies, `done` when complete).
+ */
 export function stageOf(input: StageInput): Stage {
-  return ruleOf(input).stage;
+  return explicitStageOf(input) ?? ruleOf(input).stage;
+}
+
+// ─── The workflow's default rows (spec 008, T42) ────────────────────────────────────────────────────────────────────
+
+/** Every stage a workflow knows, `WorkflowStage` in board order: `idea`, the stage table's, and `close-pending`. */
+const WORKFLOW_STAGE_KEYS = {
+  idea: true,
+  plan: true,
+  tasks: true,
+  review: true,
+  build: true,
+  blocked: true,
+  'code-review': true,
+  'close-pending': true,
+  close: true,
+  done: true,
+} as const satisfies Record<WorkflowStage, true>;
+
+/** Every `WorkflowStage`, checked exhaustive by the compiler. */
+export const WORKFLOW_STAGES: readonly WorkflowStage[] = Object.keys(WORKFLOW_STAGE_KEYS) as WorkflowStage[];
+
+export const isWorkflowStage = (value: string): value is WorkflowStage => Object.hasOwn(WORKFLOW_STAGE_KEYS, value);
+
+const TABLE_STAGES: ReadonlySet<string> = new Set(STAGE_RULES.map((rule) => rule.stage));
+const isStage = (value: string): value is Stage => TABLE_STAGES.has(value);
+
+/** The spec types in row order: FORMAT.md § workflow's default table. */
+export const WORKFLOW_TYPES: readonly SpecType[] = ['feature', 'project', 'infra', 'refactor', 'bug', 'spike', 'chore'];
+
+/** The default code review: one mark per spec, none for a chore. */
+const defaultCodeReview = (type: SpecType | null): CodeReviewMode => (type === 'chore' ? 'none' : 'spec');
+
+/** The stages that exist only for a code review: a type with `code_review: none` goes from `build` to `done`. */
+const CODE_REVIEW_STAGES: ReadonlySet<WorkflowStage> = new Set(['code-review', 'close']);
+
+/**
+ * The default stages of a type: the stage table in its order, `done` last and the `blocked` detour left out, keeping
+ * `plan` and `tasks` only where TYPE_NEEDS asks for the file and the code-review stages only where the type has a
+ * review. A spec without a type needs neither file and has a review: `review · build · code-review · close · done`.
+ */
+function defaultStages(type: SpecType | null): WorkflowStage[] {
+  const needs = type === null ? { plan: false, tasks: false } : TYPE_NEEDS[type];
+  const codeReview = defaultCodeReview(type);
+  const keep = (stage: WorkflowStage): boolean => {
+    if (stage === 'blocked' || stage === 'done') return false;
+    if (stage === 'plan') return needs.plan;
+    if (stage === 'tasks') return needs.tasks;
+    return codeReview !== 'none' || !CODE_REVIEW_STAGES.has(stage);
+  };
+  return [...STAGE_RULES.map((rule) => rule.stage).filter(keep), 'done'];
+}
+
+/** A type's default row (FORMAT.md § workflow). */
+export function defaultWorkflowRow(type: SpecType): WorkflowRow {
+  return { type, stages: defaultStages(type), codeReview: defaultCodeReview(type) };
+}
+
+/** The default table, applied when `specs/workflow.md` is missing (FORMAT.md § workflow). */
+export const DEFAULT_WORKFLOW: readonly WorkflowRow[] = WORKFLOW_TYPES.map(defaultWorkflowRow);
+
+const DEFAULT: Workflow = { rows: DEFAULT_WORKFLOW, source: 'default', diagnostics: [] };
+
+/** The row a type runs under `workflow`: its own, else its default row. */
+const rowOf = (type: SpecType, workflow: Workflow): WorkflowRow => workflow.rows.find((r) => r.type === type) ?? defaultWorkflowRow(type);
+
+/** The stages a spec runs: its type's row in `workflow` (the default table when absent); untyped, the untyped default. */
+export function workflowStagesOf(type: SpecType | null, workflow: Workflow = DEFAULT): readonly WorkflowStage[] {
+  return type === null ? defaultStages(null) : rowOf(type, workflow).stages;
+}
+
+// ─── Transitions (spec 008, T45, ISC-29) ────────────────────────────────────────────────────────────────────────────
+
+/** One allowed stage move. */
+export interface StageTransition {
+  readonly from: WorkflowStage;
+  readonly to: WorkflowStage;
+}
+
+/**
+ * The moves a row allows, and no other: each stage to its successor in the row, the `blocked` detour from `build` and
+ * back for every type, and `close-pending → code-review` where the row has `code-review`. A backward move
+ * (`build → review`) or a skip (`review → done`) is not listed, so it is refused.
+ */
+export function rowTransitions(row: WorkflowRow): readonly StageTransition[] {
+  const pairs: StageTransition[] = [];
+  const add = (from: WorkflowStage, to: WorkflowStage): void => {
+    if (!pairs.some((p) => p.from === from && p.to === to)) pairs.push({ from, to });
+  };
+  row.stages.forEach((stage, i) => {
+    const next = row.stages[i + 1];
+    if (next !== undefined) add(stage, next);
+  });
+  add('build', 'blocked');
+  add('blocked', 'build');
+  if (row.stages.includes('code-review')) add('close-pending', 'code-review');
+  return pairs;
+}
+
+/** The allowed moves per spec type under `workflow`. */
+export function transitionsOf(workflow: Workflow): Readonly<Record<SpecType, readonly StageTransition[]>> {
+  return Object.fromEntries(WORKFLOW_TYPES.map((type) => [type, rowTransitions(rowOf(type, workflow))])) as Record<SpecType, readonly StageTransition[]>;
+}
+
+/** The allowed moves per spec type under the default table, as data. */
+export const TRANSITIONS: Readonly<Record<SpecType, readonly StageTransition[]>> = transitionsOf(DEFAULT);
+
+/** Whether a spec of `type` may move `from` → `to` under `workflow`: true exactly for the pairs its row lists. */
+export function allowedTransition(from: WorkflowStage, to: WorkflowStage, type: SpecType, workflow: Workflow): boolean {
+  return rowTransitions(rowOf(type, workflow)).some((p) => p.from === from && p.to === to);
+}
+
+// ─── The explicit stage (spec 008, T47, ISC-120) ────────────────────────────────────────────────────────────────────
+
+/**
+ * The frontmatter `stage:` when it applies: a stage of the spec type's workflow row that equals the last event's `to`;
+ * null otherwise, and the stage table decides (`stageSource: derived`).
+ */
+export function explicitStageOf(input: StageInput): Stage | null {
+  const stage = input.explicitStage;
+  // TODO(T48): a value outside the row, or one the last event contradicts, becomes a `stage-mismatch` diagnostic.
+  if (stage === null || stage !== input.lastEventTo) return null;
+  if (!workflowStagesOf(input.type, input.workflow).some((s) => s === stage)) return null;
+  return isStage(stage) ? stage : null;
 }

@@ -26,6 +26,12 @@
 // | `event-null-from`  | (parseEvents) a null `from` stands only on the creation, the file's first event            |
 //
 // Blank lines are skipped. A file whose lines are all rejected yields no events, and the timeline then derives.
+//
+// The actor (spec 008, T61, ISC-119): every accepted line's `actor` goes through `parseActor` and rides on the event as
+// `actorRef`. A value outside the grammar is legacy: accepted, never rejected, and `parseEvents` raises one
+// `actor-legacy` warning for the whole file (`legacyActorWarning`, actor.ts), after the line diagnostics. Only
+// `event-empty` rejects an actor.
+import { legacyActorWarning, parseActor, type ActorSighting } from './actor.ts';
 import type { Diagnostic, DiagnosticSeverity } from './diagnostics.ts';
 import type { EventLine, EventValidation, StageName } from './files.ts';
 
@@ -122,17 +128,19 @@ export function validateEventLine(line: string, lineNo?: number): EventValidatio
       : reject('event-same-stage', `"${fromWord ?? ''} → ${to}" is "${toStage} → ${toStage}" in the stage table: no transition, skipped.`, 'warning');
   }
 
-  return { ok: true, event: { ts, from: fromStage, to: toStage, command, actor }, warnings };
+  return { ok: true, event: { ts, from: fromStage, to: toStage, command, actor, actorRef: parseActor(actor) }, warnings };
 }
 
 /**
  * Every line of an events.jsonl text: the valid ones as events in file order, every other one and every old-word
  * warning as diagnostics with its 1-based line. Blank lines are skipped. A null `from` counts only on the first event
- * of the file (the creation); later it is rejected with `event-null-from`.
+ * of the file (the creation); later it is rejected with `event-null-from`. Legacy actors among the accepted events
+ * raise one `actor-legacy` warning for the file, last, at the line of the first one.
  */
 export function parseEvents(text: string): { events: EventLine[]; diagnostics: Diagnostic[] } {
   const events: EventLine[] = [];
   const diagnostics: Diagnostic[] = [];
+  const actors: ActorSighting[] = [];
   text.split(/\r?\n/).forEach((raw, i) => {
     if (raw.trim() === '') return;
     const v = validateEventLine(raw, i + 1);
@@ -151,7 +159,10 @@ export function parseEvents(text: string): { events: EventLine[]; diagnostics: D
     }
     diagnostics.push(...v.warnings);
     events.push(v.event);
+    actors.push({ ref: v.event.actorRef ?? parseActor(v.event.actor), line: i + 1 });
   });
+  const legacy = legacyActorWarning(actors);
+  if (legacy !== null) diagnostics.push(legacy);
   return { events, diagnostics };
 }
 

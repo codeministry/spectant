@@ -892,6 +892,70 @@
         }
       ],
       "unheld": []
+    },
+    {
+      "id": "F6",
+      "name": "Registry compatibility",
+      "why": "Harbor lists a registry as supported only after a spike has checked it, so a team knows before its first sync what will work.",
+      "closed": 3,
+      "total": 4,
+      "claims": [
+        {
+          "id": "ISC-128",
+          "closed": true,
+          "dropped": false,
+          "holder": "008"
+        },
+        {
+          "id": "ISC-129",
+          "closed": true,
+          "dropped": false,
+          "holder": "008"
+        },
+        {
+          "id": "ISC-130",
+          "closed": true,
+          "dropped": false,
+          "holder": "009"
+        },
+        {
+          "id": "ISC-131",
+          "closed": false,
+          "dropped": false,
+          "holder": "009"
+        }
+      ],
+      "holders": [
+        {
+          "id": "008",
+          "slug": "008-referrers-support",
+          "title": "Find out which target registries answer the OCI referrers endpoint",
+          "archived": false,
+          "stage": null,
+          "main": true,
+          "held": 2
+        },
+        {
+          "id": "009",
+          "slug": "009-chunked-upload-limits",
+          "title": "Find the largest blob chunk each target registry accepts",
+          "archived": false,
+          "stage": null,
+          "main": true,
+          "held": 2
+        }
+      ],
+      "unheld": []
+    },
+    {
+      "id": "F7",
+      "name": "Registry webhooks",
+      "why": "a mirror that reacts when an upstream tag moves, instead of waiting for the next scheduled run.",
+      "closed": 0,
+      "total": 0,
+      "claims": [],
+      "holders": [],
+      "unheld": []
     }
   ],
   "milestones": [
@@ -983,8 +1047,8 @@
     }
   ],
   "recount": {
-    "closed": 103,
-    "total": 126
+    "closed": 106,
+    "total": 130
   },
   "diagnostics": []
 }

@@ -1,6 +1,7 @@
 // The workflow reader (spec 008 T42, ISC-122): `parseWorkflow` turns `specs/workflow.md` into one row per spec type,
 // the file's rows where it has them and the default row elsewhere, and reports what it cannot use as `workflow-…`
-// diagnostics without failing the file. The fixed-gate check (`workflow-gate`) is T43 and not tested here.
+// diagnostics without failing the file. The fixed gates (T43, ISC-122.1) are the `workflow-gate` block at the end;
+// `bun test core/tests/workflow.test.ts -t gate` runs it alone.
 import { describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -157,5 +158,74 @@ describe('parseWorkflow: partial files and diagnostics', () => {
 
   test('CRLF line endings parse like LF', () => {
     expect(parseWorkflow(HARBOR.replace(/\n/g, '\r\n'))).toEqual(parseWorkflow(HARBOR));
+  });
+});
+
+describe('parseWorkflow: the fixed gates (workflow-gate, T43)', () => {
+  /** One row of `bug` between two clean rows: the broken row is line 4. */
+  const broken = (stages: string): string =>
+    `${HEAD}| chore | review · build · done | none |\n| bug | ${stages} | spec |\n| infra | plan · review · build · done | none |\n`;
+
+  const expectOneGate = (stages: string): void => {
+    const workflow = parseWorkflow(broken(stages));
+    expect(workflow.source).toBe('file');
+    expect(workflow.diagnostics).toEqual([expect.objectContaining({ severity: 'warning', code: 'workflow-gate', line: 4, subject: 'bug' })]);
+    expect(rowOf(workflow.rows, 'bug')).toEqual(defaultWorkflowRow('bug'));
+    // the file still parses: the clean rows around the broken one are taken from it
+    expect(rowOf(workflow.rows, 'chore')).toEqual({ type: 'chore', stages: ['review', 'build', 'done'], codeReview: 'none' });
+    expect(rowOf(workflow.rows, 'infra')).toEqual({ type: 'infra', stages: ['plan', 'review', 'build', 'done'], codeReview: 'none' });
+  };
+
+  test.each([
+    ['review left out', 'build · code-review · close · done'],
+    ['review only after build', 'build · review · code-review · close · done'],
+  ])('gate: review must come before build (%s)', (_name, stages) => expectOneGate(stages));
+
+  test.each([
+    ['done left out', 'review · build · code-review · close'],
+    ['done not last', 'review · build · done · code-review · close'],
+  ])('gate: done must be the last stage (%s)', (_name, stages) => expectOneGate(stages));
+
+  test.each([
+    ['build left out', 'review · code-review · close · done'],
+    ['review and build swapped', 'build · review · done'],
+    ['done first', 'done · review · build'],
+    ['a fixed gate listed twice', 'review · build · review · done'],
+  ])('gate: no fixed gate is reordered or left out (%s)', (_name, stages) => expectOneGate(stages));
+
+  test.each([
+    ['a name core does not know', 'review · build · deploy · done'],
+    ['the blocked detour', 'review · build · blocked · done'],
+    ['the close-pending detour', 'review · build · close-pending · close · done'],
+  ])('gate: a stage outside the row stages is a gate violation (%s)', (_name, stages) => expectOneGate(stages));
+
+  test('gate: the message names the type, the fixed gate it moves and the default it falls back to', () => {
+    const [diagnostic] = parseWorkflow(broken('build · review · done')).diagnostics;
+    expect(diagnostic?.message).toContain('type bug');
+    expect(diagnostic?.message).toContain('review');
+    expect(diagnostic?.message).toContain('default row');
+  });
+
+  test('gate: optional stages may be narrowed or reordered around the fixed gates', () => {
+    const workflow = parseWorkflow(`${HEAD}| feature | review · plan · build · tasks · close · code-review · done | spec |\n| bug | review · build · done | spec |\n`);
+    expect(workflow.diagnostics).toEqual([]);
+    expect(rowOf(workflow.rows, 'feature')?.stages).toEqual(['review', 'plan', 'build', 'tasks', 'close', 'code-review', 'done']);
+  });
+
+  test('gate: two broken rows are one workflow-gate each', () => {
+    const workflow = parseWorkflow(`${HEAD}| bug | build · review · done | spec |\n| spike | review · build | spec |\n`);
+    expect(workflow.diagnostics.map((d) => [d.code, d.line, d.subject])).toEqual([
+      ['workflow-gate', 3, 'bug'],
+      ['workflow-gate', 4, 'spike'],
+    ]);
+  });
+
+  test('gate: the harbor workflow keeps every fixed gate, zero workflow-gate', () => {
+    expect(codes(HARBOR).filter((c) => c === 'workflow-gate')).toEqual([]);
+  });
+
+  test('gate: every default row passes its own gate check', () => {
+    const table = DEFAULT_WORKFLOW.map((r) => `| ${r.type} | ${r.stages.join(' · ')} | ${r.codeReview} |`).join('\n');
+    expect(parseWorkflow(`${HEAD}${table}\n`)).toEqual({ rows: DEFAULT_WORKFLOW, source: 'file', diagnostics: [] });
   });
 });

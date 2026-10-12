@@ -119,6 +119,8 @@ describe('listSpecs', () => {
       ['005-config-format-choice', false],
       ['006-partial-push', false],
       ['007-rotate-mirror-token', false],
+      ['008-referrers-support', false],
+      ['009-chunked-upload-limits', false],
       ['001-manifest-sync', true],
     ]);
     for (const spec of specs) expect(spec.kind).toBe('spec');

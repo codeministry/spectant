@@ -21,8 +21,8 @@ snapshot changes only together with the parser change that explains it.
 
 | Fixture | Exercises |
 |---------|-----------|
-| `harbor/` | the rich case. Master with 126 claims in F0–F5, 103 closed: the three-digit/three-digit fraction. Seven specs across every type but `infra` and `project` (a `chore` among them), the stages done, build, tasks, review and code-review, and every dashboard warning class. A `## Milestones` block with two entries, named by four specs (the archived 001 among them). `priority:` and `stage:` on some specs, every actor in the `u:`/`a:` grammar, and a `specs/workflow.md` (spec 008, below). |
-| `lantern/` | the small clean case. Master with 12 claims, spec 001 (feature, building) and 002 (bug, scoping), both reviewed. No archive, no TL;DR, no warning, no milestone: the none case. |
+| `harbor/` | the rich case. Master with 130 claims in F0–F7, 106 closed: the three-digit/three-digit fraction; F7 is a feature block with its `Why:` line and no claim. Nine specs across every type but `infra` and `project`: the chore 007 and the spike pair 008/009 among them. The stages done, build, tasks, review and code-review, and every dashboard warning class. A `## Milestones` block with two entries, named by four specs (the archived 001 among them). `priority:` on three specs (one value invalid), an explicit `stage:` with `events.jsonl` on 002 and 006, every actor in the `u:`/`a:` grammar, a `specs/workflow.md`, and two stories with their index in `specs/ideas/` (spec 008, below). |
+| `lantern/` | the small clean case. Master with 12 claims, spec 001 (feature, building) and 002 (bug, scoping), both reviewed. No archive, no TL;DR, no milestone: the none case. Its one warning is the legacy actor case (spec 008, T33): 002's `events.jsonl` records its two transitions with the actor `principal`, outside the actor grammar, so it reads as recorded and raises one `actor-legacy` for the file. |
 | `empty-master/` | a repository with `ISA.md` and `specs/constitution.md` but no spec folder: zero specs. |
 
 ### What each harbor spec carries
@@ -36,6 +36,8 @@ snapshot changes only together with the parser change that explains it.
 | `005-config-format-choice` | spike · scoping | — | one claim, two `- fog:` lines, no reviewed mark | stage review, warnings review (missing) and fog |
 | `006-partial-push` | bug · scoping | — | stale reviewed mark, `ISC-125` unknown to the master, master claim `ISC-4` of F0 not projected | stage review, warnings drift (`unknown_to_master`, `missing_in_spec`) and review (stale) |
 | `007-rotate-mirror-token` | chore · building | — | `spec.md` only (no context, plan, tasks or gate marks), `ISC-126` and `ISC-127` closed with verification lines, held by the master in F5 | type `chore` (spec 008, T38), stage review, warnings review (missing) and closed |
+| `008-referrers-support` | spike · building | — | F6, both claims `[x]` (`ISC-128`, `ISC-129`), current reviewed mark, no code-reviewed mark, `events.jsonl` ending in `to: build` | stage code-review, warning closed; under `code_review: feature` it waits for its open sibling 009 (`close-pending` from spec 008, T49) |
+| `009-chunked-upload-limits` | spike · building | — | F6, `ISC-130` closed and `ISC-131` open (after `ISC-130`), current reviewed mark, `events.jsonl` ending in `to: build` | stage build, no warning; the open sibling that holds 008 back |
 
 **Spec 008 keys and files.** `core/` reads `priority:` and `stage:` (T39, T40; `stage:` is applied from T47 on); the
 parser tasks named here pick up the rest.
@@ -45,7 +47,10 @@ parser tasks named here pick up the rest.
 | `priority:` (T26, read from T39) | 006 `P1`, 002 `P2`, 005 `high` | the two valid values, and `high` for the `frontmatter-priority` warning; every other spec has no key, the `P3` default |
 | `stage:` (T27, read from T40) | 002 `stage: build`, 006 `stage: review` | 002's `events.jsonl` ends in `to: build`, so key and event agree; 006's ends in `to: build` (reviewed, then edited: the mark is stale), the `stage-mismatch` case. Both files make the timeline of 002 and 006 recorded, no longer derived |
 | actors (T28, parsed from T59) | every `events.jsonl`, `.spectant/activity.jsonl`, every gate mark | persons `u:3f9c0a7d`, agents `a:claude:sess-7` (001's implement step) and `a:claude:sess-4` (004's code-reviewed mark), the activity session `a:claude:sess-2` and its sub-agent `a:claude:sess-2/T4`; harbor carries no legacy actor (`lantern/` keeps the legacy case) |
-| `specs/workflow.md` (T29, read from T42) | `specs/` | the default table of `FORMAT.md` § Workflow, except `feature` (`plan · review · tasks · build · code-review · close · done`: reviewed before its tasks, still review before build and every claim closed before done) and `spike` with `code_review: feature`, the base of the `close-pending` case (T30) |
+| `specs/workflow.md` (T29, read from T42) | `specs/` | the default table of `FORMAT.md` § Workflow, except `feature` (`plan · review · tasks · build · code-review · close · done`: reviewed before its tasks, still review before build and every claim closed before done) and `spike` with `code_review: feature` |
+| the `close-pending` base (T30, derived from T49) | 008, 009, master F6 | two spikes of one main feature F6 under `spike`'s `code_review: feature`: 008 has every claim closed, 009 still has `ISC-131` open, so 008 waits for 009 and the one code review covers both |
+| stories (T31, read from T51) | `specs/ideas/` | `README.md`, the index, and two stories, each a filled `/spec` prompt behind the story frontmatter: `console-audit-log` (F2, `milestone: Harbor 2.0`, which the master does not list, the `unknown-milestone` case) and `registry-webhooks` (F7, `milestone: Harbor 1.0`, a milestone the master lists). The index names `console-audit-log` only; `registry-webhooks` is missing from it on purpose, the `ideas-index` case (T52) |
+| a feature block without claims (T32, ISC-124.1) | master F7 | `### F7 · Registry webhooks` with its `Why:` line and no claim: it counts 0/0 without a diagnostic, and the story `registry-webhooks` belongs to it |
 
 **The milestones (spec 003).** The master carries a `## Milestones` block between `## Features` and `## Decisions`:
 `Harbor 0.9 · 2026-03-15` and `Harbor 1.0 · 2026-05-14`. Against the fixed March-2026 "now", Harbor 0.9 has passed
@@ -75,7 +80,7 @@ the key, so it is the tree without milestones.
 `.spectant/` is ignored at the repository root; `core/fixtures/.gitignore` re-includes it for the fixtures.
 
 `specs/tldr.md` was generated on 2026-03-07, before the newest spec `updated:` (003, 2026-03-09): stale. It does not
-name 006 or 007, which were opened after it, so the old skill's completeness check fails on it too; that is deliberate.
+name 006 to 009, which were opened after it, so the old skill's completeness check fails on it too; that is deliberate.
 `specs/constitution.md` names `dev_services: 4200=Web dev, 8080=API`.
 
 The code-reviewed marks hold fixed tree and head ids that match no working tree, so they read as stale wherever the

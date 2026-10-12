@@ -14,20 +14,28 @@ import { join } from 'node:path';
 
 import { parseClaims } from '../src/claims.ts';
 import { buildDashboard } from '../src/dashboard.ts';
+import type { SpecType, StageSource, Workflow, WorkflowStage } from '../src/files.ts';
 import { parseFrontmatter } from '../src/frontmatter.ts';
 import type { MarkState } from '../src/gates.ts';
 import {
   STAGE_RULES,
+  TRANSITIONS,
   TYPE_NEEDS,
+  WORKFLOW_STAGES,
+  WORKFLOW_TYPES,
+  allowedTransition,
+  defaultWorkflowRow,
   fillReason,
   nextCommand,
   nextCommandWithReason,
   stageOf,
+  transitionsOf,
   type ClaimCounts,
   type Stage,
   type StageInput,
   type StageRule,
 } from '../src/stage.ts';
+import { parseWorkflow } from '../src/workflow.ts';
 import { goldenPath } from './helpers/golden.ts';
 import { fixtureTrees, readTree } from './helpers/read-tree.ts';
 
@@ -73,6 +81,9 @@ function specInput(rel: string, gates: HandGates): { input: StageInput; blocked:
       codeReviewed: gates.codeReviewed,
       takeable,
       partition,
+      // The old derivation knew no explicit stage; the explicit cases run below, through the real pipeline.
+      explicitStage: null,
+      lastEventTo: null,
     },
     blocked,
   };
@@ -103,6 +114,9 @@ const CASES: readonly FixtureCase[] = [
   { rel: 'harbor/specs/006-partial-push', gates: { reviewed: stale, codeReviewed: missing }, total: 4, resolved: 0, takeable: 4, stage: 'review', next: '/spec-review 006' },
   // The chore (spec 008): every claim closed, but no reviewed mark yet, so it waits in review like every type.
   { rel: 'harbor/specs/007-rotate-mirror-token', gates: { reviewed: missing, codeReviewed: missing }, total: 2, resolved: 2, takeable: 0, stage: 'review', next: '/spec-review 007' },
+  // The spike pair of F6 under `code_review: feature`: 008 closed (close-pending from spec 008, T49 on), 009 open.
+  { rel: 'harbor/specs/008-referrers-support', gates: { reviewed: fresh, codeReviewed: missing }, total: 2, resolved: 2, takeable: 0, stage: 'code-review', next: '/spec-code-review 008' },
+  { rel: 'harbor/specs/009-chunked-upload-limits', gates: { reviewed: fresh, codeReviewed: missing }, total: 2, resolved: 1, takeable: 1, stage: 'build', next: '/spec-implement 009' },
   { rel: 'lantern/specs/001-reading-list', gates: { reviewed: fresh, codeReviewed: missing }, total: 8, resolved: 4, takeable: 2, stage: 'build', next: '/spec-implement 001' },
   { rel: 'lantern/specs/002-duplicate-links', gates: { reviewed: fresh, codeReviewed: missing }, total: 2, resolved: 0, takeable: 2, stage: 'build', next: '/spec-implement 002' },
   // The frozen copy carries no `.gates/`, so the old skill derives review here, not build.
@@ -129,13 +143,14 @@ describe('stage per fixture spec equals the old derivation', () => {
   }
 
   test('the comparison ran on every listed spec', () => {
-    expect(CASES.length).toBe(13);
+    expect(CASES.length).toBe(15);
   });
 
   test('leadgen 012 names its takeable claim as the reason', () => {
     const { input } = specInput('leadgen/specs/012-pwa-install', { reviewed: fresh, codeReviewed: missing });
     expect(nextCommandWithReason(input)).toEqual({
       stage: 'build',
+      stageSource: 'derived',
       command: '/spec-implement 012',
       reason: 'ISC-334 is takeable',
     });
@@ -160,6 +175,8 @@ const BASE: StageInput = {
   codeReviewed: 'missing',
   takeable: ['ISC-2'],
   partition: { takeable: 1, open: 2, closed: 1, dropped: 0 },
+  explicitStage: null,
+  lastEventTo: null,
 };
 
 function at(patch: Partial<StageInput>): StageInput {
@@ -242,6 +259,7 @@ describe('chore done', () => {
     for (const codeReviewed of ['missing', 'stale', 'fresh'] as const) {
       expect(nextCommandWithReason(chore({ ...ALL_CLOSED, codeReviewed }))).toEqual({
         stage: 'done',
+        stageSource: 'derived',
         command: null,
         reason: 'every claim of the chore is closed',
       });
@@ -419,13 +437,26 @@ describe('FORMAT.md holds STAGE_RULES verbatim', () => {
     expect(table.slice(0, 2)).toEqual(TABLE_HEAD);
   });
 
-  test('one markdown row per rule, no more, no fewer', () => {
-    expect(table.length - TABLE_HEAD.length).toBe(STAGE_RULES.length);
+  // FORMAT.md documents the `close-pending` row (spec 008, T22) ahead of its rule, which STAGE_RULES gains with T49.
+  // Until then that one row is skipped here; every other row keeps its FORMAT.md number. T49 empties this set.
+  const RULE_PENDING: ReadonlySet<string> = new Set(['close-pending']);
+  const body = table.slice(TABLE_HEAD.length);
+  const ruleRows = body.flatMap((row, index) => (RULE_PENDING.has(row.split('|')[2]?.trim().replace(/`/g, '') ?? '') ? [] : [{ row, index }]));
+
+  test('one markdown row per rule, no more, no fewer, besides the rows whose rule is pending', () => {
+    expect(body.length - RULE_PENDING.size).toBe(STAGE_RULES.length);
+    expect(ruleRows).toHaveLength(STAGE_RULES.length);
+  });
+
+  test('the rows are numbered 1 to n without a gap', () => {
+    expect(body.map((row) => row.split('|')[1]?.trim())).toEqual(body.map((_row, i) => String(i + 1)));
   });
 
   STAGE_RULES.forEach((rule, i) => {
-    test(`row ${i + 1}: ${rule.stage}`, () => {
-      expect(table[i + TABLE_HEAD.length]).toBe(renderRow(rule, i));
+    test(`row ${(ruleRows[i]?.index ?? i) + 1}: ${rule.stage}`, () => {
+      const documented = ruleRows[i];
+      expect(documented).toBeDefined();
+      expect(documented?.row).toBe(renderRow(rule, documented?.index ?? i));
     });
   });
 
@@ -467,6 +498,9 @@ const WALK: Readonly<Record<string, readonly Walked[]>> = {
     ['specs/006-partial-push', 'review', '/spec-review 006', 'the reviewed mark is stale'],
     // The chore reads as type none until spec 008, T38: no plan or tasks asked for, and no reviewed mark yet.
     ['specs/007-rotate-mirror-token', 'review', '/spec-review 007', 'the reviewed mark is missing'],
+    // The spike pair of F6: 008 derives code-review like any closed spec until spec 008, T49 (close-pending).
+    ['specs/008-referrers-support', 'code-review', '/spec-code-review 008', 'every claim is closed and the code-reviewed mark is missing'],
+    ['specs/009-chunked-upload-limits', 'build', '/spec-implement 009', 'ISC-131 is takeable'],
     ['specs/archive/001-manifest-sync', 'done', null, 'phase: complete'],
   ],
   lantern: [
@@ -527,7 +561,7 @@ describe('every fixture spec derives the stage table row it names (ISC-79)', () 
   }
 
   test('the walk compared every listed spec', () => {
-    expect(compared).toBe(13);
+    expect(compared).toBe(15);
   });
 });
 
@@ -559,4 +593,200 @@ function readmeExpected(): Map<string, string> {
 test('core/fixtures/README.md states the walked stage for every fixture spec', () => {
   const walked = Object.entries(WALK).flatMap(([tree, rows]) => rows.map(([folder, stage]): [string, string] => [`${tree}/${folder}`, stage]));
   expect([...readmeExpected()].sort()).toEqual([...walked].sort());
+});
+
+// ─── Transitions (spec 008, T45, ISC-29) ───────────────────────────────────────────────────────────────────────────
+//
+// The expected pairs are rebuilt here from FORMAT.md's rule in words, independent of `rowTransitions`: each stage to
+// its successor in the row, `build ⇄ blocked` for every type, `close-pending → code-review` where the row has
+// code-review. Every ordered pair over all of WorkflowStage is then asked of `allowedTransition`.
+
+const DEFAULT_WF: Workflow = parseWorkflow(null);
+const HARBOR_WF: Workflow = parseWorkflow(readFileSync(join(FIXTURES, 'harbor', 'specs', 'workflow.md'), 'utf8'));
+
+const pair = (from: WorkflowStage, to: WorkflowStage): string => `${from} → ${to}`;
+
+function expectedPairs(stages: readonly WorkflowStage[]): Set<string> {
+  const out = new Set<string>();
+  for (const [i, to] of stages.slice(1).entries()) {
+    const from = stages[i];
+    if (from !== undefined) out.add(pair(from, to));
+  }
+  out.add(pair('build', 'blocked'));
+  out.add(pair('blocked', 'build'));
+  if (stages.includes('code-review')) out.add(pair('close-pending', 'code-review'));
+  return out;
+}
+
+/** Every ordered pair of stages `allowedTransition` answers yes to. */
+function allowedPairs(type: SpecType, workflow: Workflow): Set<string> {
+  const out = new Set<string>();
+  for (const from of WORKFLOW_STAGES) for (const to of WORKFLOW_STAGES) if (allowedTransition(from, to, type, workflow)) out.add(pair(from, to));
+  return out;
+}
+
+const rowStages = (workflow: Workflow, type: SpecType): readonly WorkflowStage[] => workflow.rows.find((r) => r.type === type)?.stages ?? [];
+const minus = (a: Set<string>, b: Set<string>): string[] => [...a].filter((x) => !b.has(x)).sort();
+
+describe('transitions (T45, ISC-29)', () => {
+  test('WORKFLOW_STAGES holds every workflow stage once', () => {
+    expect(WORKFLOW_STAGES).toEqual(['idea', 'plan', 'tasks', 'review', 'build', 'blocked', 'code-review', 'close-pending', 'close', 'done']);
+  });
+
+  test('TRANSITIONS is the default table as data, one entry per type', () => {
+    expect(Object.keys(TRANSITIONS)).toEqual([...WORKFLOW_TYPES]);
+    expect(TRANSITIONS).toEqual(transitionsOf(DEFAULT_WF));
+    for (const type of WORKFLOW_TYPES) {
+      expect(new Set(TRANSITIONS[type].map((p) => pair(p.from, p.to)))).toEqual(expectedPairs(defaultWorkflowRow(type).stages));
+    }
+  });
+
+  test('the chore row, literally: review → build → done and the blocked detour, no code-review pairs', () => {
+    expect(TRANSITIONS.chore).toEqual([
+      { from: 'review', to: 'build' },
+      { from: 'build', to: 'done' },
+      { from: 'build', to: 'blocked' },
+      { from: 'blocked', to: 'build' },
+    ]);
+  });
+
+  test('property: under the default workflow allowedTransition is true exactly for the pairs in TRANSITIONS', () => {
+    let asked = 0;
+    for (const type of WORKFLOW_TYPES) {
+      for (const from of WORKFLOW_STAGES) {
+        for (const to of WORKFLOW_STAGES) {
+          const listed = TRANSITIONS[type].some((p) => p.from === from && p.to === to);
+          expect([type, from, to, allowedTransition(from, to, type, DEFAULT_WF)]).toEqual([type, from, to, listed]);
+          asked += 1;
+        }
+      }
+    }
+    expect(asked).toBe(WORKFLOW_TYPES.length * WORKFLOW_STAGES.length ** 2);
+  });
+
+  test("property: under the harbor workflow every type allows exactly its row's pairs", () => {
+    for (const type of WORKFLOW_TYPES) expect(allowedPairs(type, HARBOR_WF)).toEqual(expectedPairs(rowStages(HARBOR_WF, type)));
+  });
+
+  test("harbor's feature row (review before tasks) changes exactly the feature pairs it reorders", () => {
+    const harbor = allowedPairs('feature', HARBOR_WF);
+    const fallback = allowedPairs('feature', DEFAULT_WF);
+    expect(minus(harbor, fallback)).toEqual(['plan → review', 'review → tasks', 'tasks → build']);
+    expect(minus(fallback, harbor)).toEqual(['plan → tasks', 'review → build', 'tasks → review']);
+    // Every other type keeps its pairs; spike's `code_review: feature` reorders nothing.
+    for (const type of WORKFLOW_TYPES.filter((t) => t !== 'feature')) expect(allowedPairs(type, HARBOR_WF)).toEqual(allowedPairs(type, DEFAULT_WF));
+  });
+
+  test('a backward move or a skip stays refused, for every type under both workflows', () => {
+    const refused: ReadonlyArray<[WorkflowStage, WorkflowStage]> = [
+      ['build', 'review'],
+      ['review', 'plan'],
+      ['done', 'build'],
+      ['close', 'code-review'],
+      ['code-review', 'build'],
+      ['review', 'done'],
+      ['idea', 'review'],
+      ['build', 'build'],
+    ];
+    for (const workflow of [DEFAULT_WF, HARBOR_WF]) {
+      for (const type of WORKFLOW_TYPES) {
+        for (const [from, to] of refused) expect([type, from, to, allowedTransition(from, to, type, workflow)]).toEqual([type, from, to, false]);
+      }
+    }
+  });
+
+  test('the detours: blocked ⇄ build for every type, close-pending → code-review only where the row has code-review', () => {
+    for (const type of WORKFLOW_TYPES) {
+      expect(allowedTransition('build', 'blocked', type, DEFAULT_WF)).toBe(true);
+      expect(allowedTransition('blocked', 'build', type, DEFAULT_WF)).toBe(true);
+      expect(allowedTransition('close-pending', 'code-review', type, DEFAULT_WF)).toBe(type !== 'chore');
+      expect(allowedTransition('code-review', 'close-pending', type, DEFAULT_WF)).toBe(false);
+    }
+  });
+});
+
+// ─── The explicit stage (spec 008, T47, ISC-120) ───────────────────────────────────────────────────────────────────
+//
+// Every test name here carries "explicit", so `bun test core/tests/stage.test.ts -t explicit` runs exactly them.
+
+interface SourceGolden {
+  readonly head: { readonly stage: Stage; readonly stageSource?: StageSource };
+}
+
+/** The one harbor spec whose `stage:` its last event confirms; 006's `stage: review` is contradicted by `to: build`. */
+const EXPLICIT_IN_HARBOR: Readonly<Record<string, StageSource>> = { '002-web-console': 'explicit' };
+
+describe('explicit stage (T47, ISC-120)', () => {
+  const explicit = (stage: string | null, last: WorkflowStage | null, patch: Partial<StageInput> = {}): StageInput =>
+    at({ explicitStage: stage, lastEventTo: last, ...patch });
+
+  test("explicit: a row stage equal to the last event wins; command and reason stay the stage table's", () => {
+    const input = explicit('build', 'build', { reviewed: 'stale' });
+    expect(stageOf(input)).toBe('build');
+    expect(nextCommandWithReason(input)).toEqual({
+      stage: 'build',
+      stageSource: 'explicit',
+      command: '/spec-review 007',
+      reason: 'the reviewed mark is stale',
+    });
+  });
+
+  test('explicit: a value the last event contradicts falls back to derived', () => {
+    const got = nextCommandWithReason(explicit('review', 'build'));
+    expect([got.stage, got.stageSource]).toEqual(['build', 'derived']);
+  });
+
+  test('explicit: a value without any event falls back to derived', () => {
+    const got = nextCommandWithReason(explicit('code-review', null));
+    expect([got.stage, got.stageSource]).toEqual(['build', 'derived']);
+  });
+
+  test('explicit: without the key the stage is derived', () => {
+    expect(nextCommandWithReason(explicit(null, 'review')).stageSource).toBe('derived');
+  });
+
+  test("explicit: a value outside the type's row falls back to derived, the detours and unknown words included", () => {
+    const chore: Partial<StageInput> = { type: 'chore', hasPlan: false, hasTasks: false };
+    const outside: readonly WorkflowStage[] =['code-review', 'plan', 'blocked', 'close-pending', 'idea'];
+    for (const stage of outside) {
+      const got = nextCommandWithReason(explicit(stage, stage, chore));
+      expect([stage, got.stage, got.stageSource]).toEqual([stage, 'build', 'derived']);
+    }
+    expect(nextCommandWithReason(explicit('shipping', 'build')).stageSource).toBe('derived');
+  });
+
+  test('explicit: the workflow passed in decides the row', () => {
+    const refactor: Partial<StageInput> = { type: 'refactor', hasPlan: false };
+    const narrowed = parseWorkflow('| type | stages | code_review |\n|---|---|---|\n| refactor | review · build · code-review · close · done | spec |\n');
+    expect(stageOf(explicit('tasks', 'tasks', refactor))).toBe('tasks');
+    expect(stageOf(explicit('tasks', 'tasks', { ...refactor, workflow: narrowed }))).toBe('build');
+  });
+
+  test('explicit: an untyped spec runs review · build · code-review · close · done', () => {
+    expect(stageOf(explicit('close', 'close', { type: null }))).toBe('close');
+    expect(stageOf(explicit('plan', 'plan', { type: null }))).toBe('build');
+  });
+
+  test('explicit: the harbor goldens: 002 explicit, 006 (contradicted by its last event) derived, every other spec derived', () => {
+    const golden = JSON.parse(readFileSync(goldenPath('harbor', 'dashboard'), 'utf8')) as { specs: Array<{ slug: string; stage: Stage; stageSource: StageSource }> };
+    const pages = JSON.parse(readFileSync(goldenPath('harbor', 'spec'), 'utf8')) as Record<string, SourceGolden>;
+    expect(golden.specs.length).toBe(8); // six specs plus the F6 spike pair (T30)
+    for (const row of golden.specs) {
+      const want = EXPLICIT_IN_HARBOR[row.slug] ?? 'derived';
+      expect([row.slug, row.stageSource]).toEqual([row.slug, want]);
+      expect([row.slug, pages[`specs/${row.slug}`]?.head.stageSource]).toEqual([row.slug, want]);
+    }
+    expect(golden.specs.find((r) => r.slug === '006-partial-push')?.stage).toBe('review');
+    expect(pages['specs/archive/001-manifest-sync']?.head.stageSource).toBe('derived');
+    // The goldens are the built model, not a hand edit.
+    expect(buildDashboard(readTree('harbor')).specs.map((s) => [s.slug, s.stageSource])).toEqual(golden.specs.map((r) => [r.slug, r.stageSource]));
+  });
+
+  test('explicit: every spec of every other fixture tree is derived', () => {
+    for (const tree of fixtureTrees().filter((t) => t !== 'harbor')) {
+      const pages = JSON.parse(readFileSync(goldenPath(tree, 'spec'), 'utf8')) as Record<string, SourceGolden>;
+      for (const [folder, page] of Object.entries(pages)) expect([tree, folder, page.head.stageSource]).toEqual([tree, folder, 'derived']);
+      for (const row of buildDashboard(readTree(tree)).specs) expect([tree, row.slug, row.stageSource]).toEqual([tree, row.slug, 'derived']);
+    }
+  });
 });

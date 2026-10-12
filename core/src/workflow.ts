@@ -1,5 +1,6 @@
 // The workflow table `specs/workflow.md` (spec 008, ISC-122): per spec type the ordered stages and the code review.
-// T42 parses the table and builds the default from STAGE_RULES and TYPE_NEEDS; T43 checks the fixed gates (and the
+// T42 parses the table; the default rows (built from STAGE_RULES and TYPE_NEEDS) live in stage.ts beside the
+// transitions and the explicit stage that read them, and are re-exported here. T43 checks the fixed gates (and the
 // stage names) as `workflow-gate`, T44 adds `boardStages`. Browser-safe: no file system, the caller passes the text in.
 //
 // The reader never fails the file. A row it cannot use is one `workflow-…` diagnostic and its type runs the default
@@ -7,38 +8,54 @@
 import type { Diagnostic } from './diagnostics.ts';
 import type { CodeReviewMode, SpecType, Workflow, WorkflowRow, WorkflowStage } from './files.ts';
 import { TABLE_SEP, tableCells } from './markdown.ts';
-import { STAGE_RULES, TYPE_NEEDS } from './stage.ts';
+import { DEFAULT_WORKFLOW, WORKFLOW_TYPES, defaultWorkflowRow } from './stage.ts';
 
-/** The spec types in row order: FORMAT.md § workflow's default table. */
-export const WORKFLOW_TYPES: readonly SpecType[] = ['feature', 'project', 'infra', 'refactor', 'bug', 'spike', 'chore'];
+export { DEFAULT_WORKFLOW, WORKFLOW_TYPES, defaultWorkflowRow };
 
 const CODE_REVIEW_MODES: readonly CodeReviewMode[] = ['spec', 'feature', 'none'];
 
-/** The default code review: one mark per spec, none for a chore. */
-const DEFAULT_CODE_REVIEW = (type: SpecType): CodeReviewMode => (type === 'chore' ? 'none' : 'spec');
+/**
+ * Every stage core knows (`WorkflowStage`), true where a workflow row may list it. `blocked` and `close-pending` are
+ * detours every type has and no row lists; `idea` is a story's stage, before a spec exists. A Record, so a stage
+ * added to `WorkflowStage` fails to compile here until it is placed.
+ */
+const ROW_STAGE: Readonly<Record<WorkflowStage, boolean>> = {
+  idea: false,
+  plan: true,
+  tasks: true,
+  review: true,
+  build: true,
+  blocked: false,
+  'close-pending': false,
+  'code-review': true,
+  close: true,
+  done: true,
+};
 
-/** The stages that exist only for a code review: a type with `code_review: none` goes from `build` to `done`. */
-const CODE_REVIEW_STAGES: ReadonlySet<WorkflowStage> = new Set(['code-review', 'close']);
+/** The fixed gates (FORMAT.md § workflow): in every row, each exactly once, `review` before `build`, `done` last. */
+const FIXED_GATES: readonly WorkflowStage[] = ['review', 'build', 'done'];
+
+const knownStage = (stage: string): stage is WorkflowStage => Object.hasOwn(ROW_STAGE, stage);
 
 /**
- * A type's default row: the stage table in its order, `done` last and the `blocked` detour left out, keeping `plan`
- * and `tasks` only where TYPE_NEEDS asks for the file and the code-review stages only where the type has a review.
+ * The first fixed-gate violation of a row's stages as a phrase, or null when the row keeps every gate. A violation is
+ * a stage no row may list (unknown to core, or a detour), any stage listed twice, a fixed gate left out, `review`
+ * after `build`, or a stage after `done`. The optional stages may be left out or reordered freely.
  */
-export function defaultWorkflowRow(type: SpecType): WorkflowRow {
-  const needs = TYPE_NEEDS[type];
-  const codeReview = DEFAULT_CODE_REVIEW(type);
-  const keep = (stage: WorkflowStage): boolean => {
-    if (stage === 'blocked' || stage === 'done') return false;
-    if (stage === 'plan') return needs.plan;
-    if (stage === 'tasks') return needs.tasks;
-    return codeReview !== 'none' || !CODE_REVIEW_STAGES.has(stage);
-  };
-  const stages: WorkflowStage[] = [...STAGE_RULES.map((rule) => rule.stage).filter(keep), 'done'];
-  return { type, stages, codeReview };
+function gateViolation(stages: readonly string[]): string | null {
+  const foreign = stages.find((s) => !knownStage(s) || !ROW_STAGE[s]);
+  if (foreign !== undefined) {
+    return knownStage(foreign) ? `list ${foreign}, a detour no workflow row lists` : `list ${foreign}, a stage core does not know`;
+  }
+  const twice = stages.find((s, i) => stages.indexOf(s) !== i);
+  if (twice !== undefined) return `list ${twice} twice`;
+  const missing = FIXED_GATES.find((gate) => !stages.includes(gate));
+  if (missing !== undefined) return `leave out the fixed gate ${missing}`;
+  if (stages.indexOf('review') > stages.indexOf('build')) return 'put the fixed gate review after build';
+  const last = stages.at(-1) ?? '';
+  if (last !== 'done') return `list ${last} after the fixed gate done`;
+  return null;
 }
-
-/** The default table, applied when `specs/workflow.md` is missing (FORMAT.md § workflow). */
-export const DEFAULT_WORKFLOW: readonly WorkflowRow[] = WORKFLOW_TYPES.map(defaultWorkflowRow);
 
 const HEADER = ['type', 'stages', 'code_review'];
 const FENCE = /^\s*(```|~~~)/;
@@ -56,7 +73,9 @@ interface FileRow {
  * table (FORMAT.md § workflow). Diagnostics: `workflow-table` (no `| type | stages | code_review |` table outside a
  * fence, or one without its separator row), `workflow-row` (a row without exactly three cells or with an empty stage),
  * `workflow-type` (a type no spec has), `workflow-code-review` (a mode outside `spec | feature | none`) and
- * `workflow-duplicate` (a type listed twice: neither row is taken). Stage names and the fixed gates are T43.
+ * `workflow-duplicate` (a type listed twice: neither row is taken) and `workflow-gate` (T43: a type's one row moves a
+ * fixed gate or lists a stage no row may list, see `gateViolation`). A duplicated type is `workflow-duplicate` only:
+ * neither of its rows is taken, so neither is gate-checked.
  */
 export function parseWorkflow(text: string | null): Workflow {
   if (text === null) return { rows: DEFAULT_WORKFLOW, source: 'default', diagnostics: [] };
@@ -84,7 +103,12 @@ export function parseWorkflow(text: string | null): Workflow {
     for (const dup of found.slice(1)) {
       warn('workflow-duplicate', `type ${type} has more than one row; it runs its default row.`, dup.line, type);
     }
-    return found.length === 1 && found[0] ? found[0].row : defaultWorkflowRow(type);
+    const only = found.length === 1 ? found[0] : undefined;
+    if (!only) return defaultWorkflowRow(type);
+    const violation = gateViolation(only.row.stages);
+    if (violation === null) return only.row;
+    warn('workflow-gate', `the stages of type ${type} ${violation}; it runs its default row.`, only.line, type);
+    return defaultWorkflowRow(type);
   });
   diagnostics.sort((a, b) => (a.line ?? 0) - (b.line ?? 0));
   return { rows, source: 'file', diagnostics };
@@ -101,7 +125,7 @@ function findHeader(lines: readonly string[]): number | null {
   return null;
 }
 
-/** One body row, or null after its diagnostic. The stage names are kept as written; T43 checks them. */
+/** One body row, or null after its diagnostic. The stage names are kept as written; `gateViolation` checks them. */
 function parseRow(text: string, line: number, warn: (code: string, message: string, line: number, subject?: string) => void): FileRow | null {
   const cells = tableCells(text).map(plain);
   if (cells.length !== HEADER.length) {

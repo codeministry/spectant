@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { CommitCache, commitsFor, defaultGitRunner, type GitRunner } from "../server/src/git.ts";
+import { CommitCache, commitsFor, defaultGitRunner, type GitRunner, userEmail } from "../server/src/git.ts";
 
 const FOLDER = "specs/010-x";
 
@@ -318,6 +318,64 @@ describe("the head cache", () => {
     expect(cache.size).toBe(2);
     expect(cache.has(repo, "specs/a")).toBe(false);
     expect(cache.has(repo, "specs/c")).toBe(true);
+  });
+});
+
+describe("userEmail reads the repository's git user.email (T77, ISC-119)", () => {
+  /** A repository with `user.email` set in its own config to a synthetic address, nothing committed. */
+  function identityRepo(): string {
+    const dir = mkdtempSync(join(root, "identity-"));
+    git(dir, "2026-01-01T00:00:00Z", "init", "-q", "-b", "main");
+    git(dir, "2026-01-01T00:00:00Z", "config", "user.email", "dev@example.com");
+    return dir;
+  }
+
+  test("a configured address is returned as written", async () => {
+    expect(await userEmail(identityRepo())).toBe("dev@example.com");
+  });
+
+  test("no configuration (empty global config, no system config, none in the repository) → null", async () => {
+    expect(await userEmail(repo)).toBeNull();
+  });
+
+  test("a directory that is no repository root → null, git never spawned", async () => {
+    const { runner, calls } = countingRunner();
+    expect(await userEmail(mkdtempSync(join(root, "plain-")), { runner })).toBeNull();
+    expect(await userEmail(join(repo, "specs"), { runner })).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
+  test("git missing, a failing git, a throwing runner or the deadline → null, never a throw", async () => {
+    const dir = identityRepo();
+    expect(await userEmail(dir, { runner: () => Promise.resolve(null) })).toBeNull();
+    expect(await userEmail(dir, { runner: () => Promise.resolve({ code: 128, stdout: "", stderr: "fatal: broken\n" }) })).toBeNull();
+    expect(await userEmail(dir, { runner: () => Promise.reject(new Error("spawn failed")) })).toBeNull();
+    expect(await userEmail(dir, { runner: () => Promise.resolve({ code: 0, stdout: "  \n", stderr: "" }) })).toBeNull();
+    const slow: GitRunner = () => new Promise(() => undefined);
+    expect(await userEmail(dir, { runner: slow, timeoutMs: 20 })).toBeNull();
+  });
+
+  test("runs only `config --get user.email` under the read-only environment, rooted at the repository", async () => {
+    const dir = identityRepo();
+    const seen: Array<{ args: string[]; env: Record<string, string> }> = [];
+    const runner: GitRunner = (args, env, signal) => {
+      seen.push({ args: [...args], env });
+      return defaultGitRunner(args, env, signal);
+    };
+    expect(await userEmail(dir, { runner })).toBe("dev@example.com");
+    expect(seen.map((s) => s.args)).toEqual([["-C", dir, "config", "--get", "user.email"]]);
+    expect(seen[0]?.env).toMatchObject({ GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0", GIT_CEILING_DIRECTORIES: dirname(dir) });
+  });
+
+  test("reading the config leaves the repository, .git/ included, byte- and mtime-identical (ISC-15)", async () => {
+    const dir = identityRepo();
+    const before = checksum(dir);
+    await userEmail(dir);
+    await userEmail(dir, { timeoutMs: 1 });
+    expect(checksum(dir)).toBe(before);
+    const beforeRepo = checksum(repo);
+    await userEmail(repo);
+    expect(checksum(repo)).toBe(beforeRepo);
   });
 });
 

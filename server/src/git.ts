@@ -1,8 +1,9 @@
 // The timeline's commit source (T46, ISC-80): the commits touching a spec folder, read with `git log` and nothing else
 // that could write (ISC-15). `core/` runs no subprocess; the server reads here and passes the records in.
 //
-// Read-only by construction: only `rev-parse` and `log` run, both of which never touch the index, never take a lock
-// and never write an object; `GIT_OPTIONAL_LOCKS=0` covers any optional lock a future git might take. The inherited
+// Read-only by construction: only `rev-parse`, `log` and `config --get` (the identity, `userEmail`) run, all of which
+// never touch the index, never take a lock and never write an object; `GIT_OPTIONAL_LOCKS=0` covers any optional lock
+// a future git might take. The inherited
 // `GIT_DIR`, `GIT_WORK_TREE` and `GIT_INDEX_FILE` are dropped so the environment cannot redirect the read, pathspecs
 // are literal, and discovery stops at the root: a directory without its own `.git` is not read, even inside a repository.
 //
@@ -203,6 +204,52 @@ export async function commitsFor(root: string, folder: string, options: CommitsO
     return await Promise.race([read(root, rel, { limit, withFiles, runner, cache: options.cache }, controller.signal), deadline]);
   } catch (error) {
     return none(`git read failed: ${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
+}
+
+// ── the identity (T77, ISC-119) ──────────────────────────────────────────────────────────────────────────────────
+
+export interface UserEmailOptions {
+  /** Deadline in milliseconds (default 3000). */
+  readonly timeoutMs?: number;
+  /** Injected for tests; the default spawns the `git` on PATH. */
+  readonly runner?: GitRunner;
+}
+
+/**
+ * The `user.email` git would commit with in `root`'s repository (its own config, then the global one; the system
+ * config is off as for every read here), trimmed, for `core/`'s `actorIdOf`. Runs only `config --get`, which reads
+ * and never writes. Never throws: no repository root, no git, no address, a failure or the deadline answer null.
+ */
+export async function userEmail(root: string, options: UserEmailOptions = {}): Promise<string | null> {
+  const runner = options.runner ?? defaultGitRunner;
+  try {
+    lstatSync(join(root, ".git"));
+  } catch {
+    return null;
+  }
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      resolve(null);
+    }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  });
+  const read = async (): Promise<string | null> => {
+    const run = await runner(["-C", root, "config", "--get", "user.email"], gitEnv(root), controller.signal);
+    // No git (null), exit 1 ("not set") and any other failure all read as no address.
+    if (run?.code !== 0 || controller.signal.aborted) return null;
+    const address = run.stdout.trim();
+    return address === "" ? null : address;
+  };
+  try {
+    return await Promise.race([read(), deadline]);
+  } catch {
+    return null;
   } finally {
     clearTimeout(timer);
     controller.abort();

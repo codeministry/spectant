@@ -12,7 +12,7 @@
  * registries). Nothing here is copied from a real repository.
  *
  * What the tree exercises (see ../README.md):
- *   master ISA.md    126 claims in F0–F5, 103 closed: the three-digit/three-digit master fraction; a `## Milestones`
+ *   master ISA.md    130 claims in F0–F7, 106 closed: the three-digit/three-digit master fraction; a `## Milestones`
  *                    block (spec 003) with Harbor 0.9 (2026-03-15, target passed with 003's claims open: late) and
  *                    Harbor 1.0 (2026-05-14, ahead: upcoming), named by `milestone:` on 001, 002, 003 and 004
  *   001  feature     complete, archived under specs/archive/, reviewed and code-reviewed marks, events.jsonl with
@@ -30,6 +30,12 @@
  *                    no milestone
  *   007  chore       spec.md only (no context, plan, tasks or gate marks), both claims closed with verification lines;
  *                    the master holds them in F5; no milestone (spec 008, T25)
+ *   008  spike       building, every claim [x], reviewed mark current, no code-reviewed mark; F6, no milestone
+ *   009  spike       building, one of two claims open, reviewed mark current; F6, the open sibling of 008 under
+ *                    `code_review: feature` (the close-pending base, spec 008, T30)
+ *   master F7        a feature block with its Why: line and no claim (ISC-124.1)
+ *   specs/ideas/     README.md (the index) and two stories: console-audit-log (F2, Harbor 2.0, a milestone the master
+ *                    does not list) and registry-webhooks (F7, Harbor 1.0), the second missing from the index (T31, T32)
  *   specs/tldr.md    generated before the newest spec `updated:` (stale)
  */
 
@@ -246,7 +252,33 @@ const F5: Feature = {
     ] satisfies Array<Omit<Claim, "feature" | "closed">>).map((c) => ({...c, feature: "F5", closed: true})),
 };
 
-const FEATURES: Feature[] = [F0, buildF1(), buildF2(), buildF3(), buildF4(), F5];
+// F6 · Registry compatibility — four claims held by the two spikes 008 (every claim closed) and 009 (one open). The
+// workflow runs a spike's code review once per feature (`code_review: feature`), so 008 waits for 009: the base of
+// the `close-pending` case (spec 008, T30; the stage itself is derived from T49 on).
+const F6: Feature = {
+    key: "F6", name: "Registry compatibility",
+    why: "Harbor lists a registry as supported only after a spike has checked it, so a team knows before its first sync what will work.",
+    claims: ([
+        {id: "ISC-128", text: "A recorded table names, for each of the four target registries in the test matrix, whether it answers the OCI referrers endpoint.",
+            probe: {type: "bash", check: "registries listed in the referrers probe output", threshold: "4 rows", tool: "`bun run cli -- probe referrers --matrix tests/registries.toml`", anchors: "literal", severity: ""}, closed: true},
+        {id: "ISC-129", text: "A decision row names the fallback Harbor uses on a registry without the referrers endpoint.",
+            probe: {type: "manual", check: "decision row for the referrers fallback", threshold: "present", tool: "review of `spec.md` § Decisions", anchors: "derived: registry-is-truth", severity: ""}, closed: true},
+        {id: "ISC-130", text: "A recorded table names the largest chunk each target registry in the test matrix accepts in a chunked blob upload.",
+            probe: {type: "bash", check: "registries listed in the chunk probe output", threshold: "4 rows", tool: "`bun run cli -- probe chunks --matrix tests/registries.toml`", anchors: "literal", severity: ""}, closed: true},
+        {id: "ISC-131", text: "Anti: Harbor picks a chunk size for a registry that is larger than the limit the spike recorded for it.",
+            probe: {type: "bun-test", check: "chunk size chosen per registry against the recorded limit", threshold: "0 over the limit", tool: "`bun test tests/chunks.test.ts -t \"limit\"`", anchors: "derived: atomic-push", severity: "high"}, closed: false, after: "ISC-130"},
+    ] satisfies Array<Omit<Claim, "feature">>).map((c) => ({...c, feature: "F6"})),
+};
+
+// F7 · Registry webhooks — a feature block with its `Why:` line and no claim yet: the story under it is shaped first
+// (spec 008, T32, ISC-124.1). It counts 0/0.
+const F7: Feature = {
+    key: "F7", name: "Registry webhooks",
+    why: "a mirror that reacts when an upstream tag moves, instead of waiting for the next scheduled run.",
+    claims: [],
+};
+
+const FEATURES: Feature[] = [F0, buildF1(), buildF2(), buildF3(), buildF4(), F5, F6, F7];
 const ALL: Claim[] = FEATURES.flatMap((f) => f.claims);
 const byId = new Map(ALL.map((c) => [c.id, c]));
 const claim = (id: string) => { const c = byId.get(id); if (!c) throw new Error(`no claim ${id}`); return c; };
@@ -283,7 +315,7 @@ const verificationStub = (c: Claim, date: string) => `- ${c.id}: ${c.probe.tool.
 // ── master ─────────────────────────────────────────────────────────────────────────────────────────────
 
 function master(): string {
-    const closedDates: Record<string, string> = {F1: "2026-03-05", F2: "2026-03-08", F4: "2026-03-08", F5: "2026-03-09"};
+    const closedDates: Record<string, string> = {F1: "2026-03-05", F2: "2026-03-08", F4: "2026-03-08", F5: "2026-03-09", F6: "2026-03-09"};
     return `---
 task: "Mirror container manifests between registries with Harbor"
 slug: 20260302-harbor
@@ -341,9 +373,7 @@ ${ALL.map(strategyRow).join("\n")}
 ## Features
 
 ${FEATURES.map((f) => `### ${f.key} · ${f.name}
-Why: ${f.why}
-
-${f.claims.map(claimLine).join("\n")}`).join("\n\n")}
+Why: ${f.why}${f.claims.length ? `\n\n${f.claims.map(claimLine).join("\n")}` : ""}`).join("\n\n")}
 
 ## Milestones
 
@@ -356,6 +386,8 @@ ${f.claims.map(claimLine).join("\n")}`).join("\n\n")}
 - 2026-03-05: spec 001 closed and archived; sync is idempotent on digest, not on tag.
 - 2026-03-07: refined: the console's colour mode is a stored setting (ISC-60.1, ISC-60.2).
 - 2026-03-09: token rotation is a chore (spec 007): one small fix, spec.md only, no plan and no tasks.
+- 2026-03-09: registry compatibility is checked by spikes, one question each (specs 008 and 009); their code review runs once for the whole feature.
+- 2026-03-09: registry webhooks get a feature block before any claim (F7); the story under it is shaped first.
 
 ## Verification
 
@@ -549,7 +581,7 @@ function tasksFor(claims: Claim[], lane: (c: Claim, i: number) => string, path: 
     return out;
 }
 
-// ── the six specs ──────────────────────────────────────────────────────────────────────────────────────
+// ── the specs ────────────────────────────────────────────────────────────────────────────────────────────
 
 const S001: SpecDef = {
     dir: "archive/001-manifest-sync", slug: "001-manifest-sync", title: "Manifest sync",
@@ -750,7 +782,45 @@ Replacing the push token means stopping the schedule, editing the credential sto
 The push token is replaced with one command, and the next scheduled run uses the new token without a restart.`,
 };
 
-const SPECS = [S001, S002, S003, S004, S005, S006, S007];
+// The spike pair of F6 (spec 008, T30): under `code_review: feature` in specs/workflow.md a spike is code-reviewed once
+// for every spec of its main feature. 008 has every claim closed and a current reviewed mark, no code-reviewed mark;
+// 009, its sibling, still has a claim open. From T49 on 008 derives `close-pending` naming 009; until then it derives
+// as any closed spec does.
+const S008: SpecDef = {
+    dir: "008-referrers-support", slug: "008-referrers-support", title: "Referrers API support",
+    task: "Find out which target registries answer the OCI referrers endpoint", type: "spike", feature: "F6",
+    phase: "building", started: "2026-03-08T13:00:00Z", updated: "2026-03-09T09:00:00Z",
+    claims: range(128, 129), grouped: false, verifiedOn: "2026-03-09",
+    decisions: ["2026-03-08: opened; signatures and attestations are mirrored through the referrers endpoint where a registry has one.",
+        "2026-03-09: three of the four registries in the matrix answer the endpoint; the fourth gets the tag-schema fallback."],
+    body: () => `## Problem
+
+Signatures and attestations hang off a manifest through the referrers endpoint, and not every registry answers it.
+Nobody has checked the four registries teams mirror into.
+
+## Goal
+
+A recorded table says which target registry answers the referrers endpoint, and a decision names the fallback for
+the ones that do not.`,
+};
+
+const S009: SpecDef = {
+    dir: "009-chunked-upload-limits", slug: "009-chunked-upload-limits", title: "Chunked upload limits",
+    task: "Find the largest blob chunk each target registry accepts", type: "spike", feature: "F6",
+    phase: "building", started: "2026-03-08T13:30:00Z", updated: "2026-03-09T09:30:00Z",
+    claims: range(130, 131), grouped: false, verifiedOn: "2026-03-09",
+    decisions: ["2026-03-08: opened; a push that picks one chunk size for every registry fails on the strictest one."],
+    body: () => `## Problem
+
+Large layers are uploaded in chunks, and each registry has its own upper limit. A chunk over the limit fails the push
+halfway, which is exactly the half-written state F0 forbids.
+
+## Goal
+
+A recorded table names each target registry's chunk limit, and Harbor never picks a chunk larger than it.`,
+};
+
+const SPECS = [S001, S002, S003, S004, S005, S006, S007, S008, S009];
 
 // ── spec 002: the re-cut, rounds.jsonl and the live layer ──────────────────────────────────────────────
 // One fixture holds every card state of the round board (ISC-88): waiting (`held`), dispatched, question, concerns,
@@ -929,6 +999,20 @@ const EVENTS_002 = [
 const EVENTS_006 = [
     {ts: "2026-03-08T09:00:00Z", from: null, to: "review", command: "/spec-bug partial-push", actor: PERSON},
     {ts: "2026-03-08T12:00:00Z", from: "review", to: "build", command: "/spec-review 006", actor: PERSON},
+].map((e) => JSON.stringify(e)).join("\n") + "\n";
+
+// ── specs 008 and 009: events.jsonl (spec 008, T30) ────────────────────────────────────────────────────
+// Both spikes were opened, reviewed and moved to build by the principal. The claims closing afterwards is no recorded
+// transition, so both files end in `to: build`; neither spec carries a `stage:` key.
+
+const EVENTS_008 = [
+    {ts: "2026-03-08T13:00:00Z", from: null, to: "review", command: "/spec-spike referrers-support", actor: PERSON},
+    {ts: "2026-03-08T14:00:00Z", from: "review", to: "build", command: "/spec-review 008", actor: PERSON},
+].map((e) => JSON.stringify(e)).join("\n") + "\n";
+
+const EVENTS_009 = [
+    {ts: "2026-03-08T13:30:00Z", from: null, to: "review", command: "/spec-spike chunked-upload-limits", actor: PERSON},
+    {ts: "2026-03-08T14:10:00Z", from: "review", to: "build", command: "/spec-review 009", actor: PERSON},
 ].map((e) => JSON.stringify(e)).join("\n") + "\n";
 
 // ── spec 001: events.jsonl (T16) ───────────────────────────────────────────────────────────────────────
@@ -1181,6 +1265,100 @@ const WORKFLOW = `# Workflow — harbor
 | chore | review · build · done | none |
 `;
 
+// ── specs/ideas/: the stories and their index (spec 008, T31, T32) ─────────────────────────────────────
+// Two stories, each a filled `/spec` prompt behind the story frontmatter of FORMAT.md § idea. console-audit-log
+// belongs to F2 and names `Harbor 2.0`, a milestone the master does not list; registry-webhooks belongs to the empty
+// block F7 and names `Harbor 1.0`. The index names console-audit-log only: registry-webhooks is missing from it on purpose,
+// the `ideas-index` case (T52). Not read by core yet (T51).
+
+const IDEAS_README = `# Ideas — harbor
+
+The backlog: one story per file, shaped but not yet a spec. Each file is a filled \`/spec\` prompt with a frontmatter
+block (\`type\`, \`feature\`, \`milestone\`, \`priority\`, \`status: idea\`). Starting a story gives it a folder
+\`specs/NNN-slug/\` and removes the file; the \`Spec\` column below then names the number.
+
+## F2 · Web console
+
+| Story | Milestone | Priority | Spec |
+|-------|-----------|----------|------|
+| console-audit-log | Harbor 2.0 | P3 | — |
+`;
+
+const IDEA_CONSOLE_AUDIT_LOG = `---
+type: feature
+feature: F2
+milestone: Harbor 2.0
+priority: P3
+status: idea
+---
+/spec
+
+## Type
+feature
+
+## Repo
+harbor
+Slug: console-audit-log
+
+## Goal (one sentence)
+Every change made in the web console is written to an audit log a teammate can read back.
+
+## Problem
+A setting changed in the console leaves no trace; when a mirror stops, nobody can say who changed what, or when.
+
+## In
+- One audit line per console write: time, actor, setting, old and new value
+- An audit page in the console, newest first
+
+## Out
+- No export, no retention policy of its own
+
+## Done means (observable)
+- A console write appends exactly one audit line → bun-test
+- The audit page lists the newest line first → e2e
+
+## Guard rails
+- No credential value ever reaches an audit line (F0)
+`;
+
+const IDEA_REGISTRY_WEBHOOKS = `---
+type: feature
+feature: F7
+milestone: Harbor 1.0
+priority: P2
+status: idea
+---
+/spec
+
+## Type
+feature
+
+## Repo
+harbor
+Slug: registry-webhooks
+
+## Goal (one sentence)
+A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.
+
+## Problem
+A moved upstream tag reaches the mirror only on the next scheduled run, so a build in between pulls the old digest.
+
+## In
+- A webhook endpoint on the API that accepts a registry's push event
+- One sync of the named repository per event, deduplicated while one is running
+
+## Out
+- No webhook for retention runs
+- No registry outside the test matrix
+
+## Done means (observable)
+- One push event starts exactly one sync of that repository → bun-test
+- An event for a repository not in the config starts nothing and is logged → bun-test
+
+## Guard rails
+- The endpoint binds to loopback unless \`--listen\` names another address (F0)
+`;
+
 // ── main ───────────────────────────────────────────────────────────────────────────────────────────────
 
 function generate() {
@@ -1246,6 +1424,8 @@ function generate() {
     write(`specs/${S001.dir}/events.jsonl`, EVENTS_001);
     write(`specs/${S002.dir}/events.jsonl`, EVENTS_002);
     write(`specs/${S006.dir}/events.jsonl`, EVENTS_006);
+    write(`specs/${S008.dir}/events.jsonl`, EVENTS_008);
+    write(`specs/${S009.dir}/events.jsonl`, EVENTS_009);
 
     // gate marks — after every spec, plan and tasks file is written, since the reviewed digest covers them
     const g = (d: SpecDef, name: string, body: string) => write(`specs/${d.dir}/.gates/${name}.json`, body);
@@ -1256,9 +1436,14 @@ function generate() {
     g(S004, "reviewed", reviewedMark(join(ROOT, "specs", S004.dir), "2026-03-04T10:00:00Z", PERSON));
     g(S004, "code-reviewed", codeReviewedMark("harbor 004", "2026-03-08T11:00:00Z", "a:claude:sess-4", "feature/004-retention-policies", "one finding fixed; tree changed since"));
     g(S006, "reviewed", staleReviewedMark("harbor 006", "2026-03-08T12:00:00Z", PERSON));
+    g(S008, "reviewed", reviewedMark(join(ROOT, "specs", S008.dir), "2026-03-08T14:00:00Z", PERSON));
+    g(S009, "reviewed", reviewedMark(join(ROOT, "specs", S009.dir), "2026-03-08T14:10:00Z", PERSON));
 
     write("specs/tldr.md", TLDR);
     write("specs/workflow.md", WORKFLOW);
+    write("specs/ideas/README.md", IDEAS_README);
+    write("specs/ideas/console-audit-log.md", IDEA_CONSOLE_AUDIT_LOG);
+    write("specs/ideas/registry-webhooks.md", IDEA_REGISTRY_WEBHOOKS);
 }
 
 // ── cli ────────────────────────────────────────────────────────────────────────────────────────────────

@@ -1,8 +1,9 @@
 /**
  * One registered repository read into the dashboard model (T47, ISC-16; plan 001 § Interfaces "HTTP").
  *
- * `readWorkspaceInput` reads the texts `core/` builds from: `ISA.md`, `specs/constitution.md`, `specs/tldr.md`, and every
- * text file kind of every spec folder under `specs/` and `specs/archive/` (folders as `listSpecs` finds them). It
+ * `readWorkspaceInput` reads the texts `core/` builds from: `ISA.md`, `specs/constitution.md`, `specs/tldr.md`,
+ * `specs/workflow.md` (parsed by `core/`'s `parseWorkflow`, carried beside the input, T78), and every text file kind
+ * of every spec folder under `specs/` and `specs/archive/` (folders as `listSpecs` finds them). It
  * parses nothing: every parse is `core/`'s (ISC-5, `bun run check:single-core`). `loadDashboard` adds the local
  * services and calls `buildDashboard`. The lock sources are `core/`'s `readLockSources` (T51): the repository's
  * `.spectant/activity.jsonl`, plus the LifeOS frontier locks only when a LifeOS state directory is passed (ISC-37).
@@ -20,16 +21,24 @@ import { lstatSync, readFileSync, readlinkSync, readdirSync, statSync } from "no
 import { join } from "node:path";
 import { buildDashboard, devServiceLabels, toLocalService } from "../../core/src/dashboard.ts";
 import type { DashboardInput, DashboardModel, ProbedService } from "../../core/src/dashboard.ts";
-import { FILE_KINDS } from "../../core/src/files.ts";
-import type { SpecFiles, TextFileKind } from "../../core/src/files.ts";
+import { FILE_KINDS, repoFilePath } from "../../core/src/files.ts";
+import type { FileDiagnostic, SpecFiles, TextFileKind, Workflow } from "../../core/src/files.ts";
 import { type TreeEntry, type TreeEntryMode, treeIdOf } from "../../core/src/gates.ts";
 import { readLockSources } from "../../core/src/locks.ts";
 import { type SpecRef, listSpecs } from "../../core/src/resolve.ts";
+import { parseWorkflow } from "../../core/src/workflow.ts";
 
 /** Why a workspace cannot be read. Stable codes: the web app maps them to its own words. */
 export type UnreadableCode = "missing" | "not-a-directory" | "permission-denied" | "unreadable";
 
-export type WorkspaceReading = { readable: true; input: DashboardInput } | { readable: false; error: UnreadableCode };
+/**
+ * A readable workspace: the model's input, the workflow table (T78, ISC-122; the default table when `specs/workflow.md`
+ * is missing) and the reading's own findings, each under its repository-relative file name. The workflow is not part
+ * of `DashboardInput`, so the dashboard model and its goldens are unchanged by it.
+ */
+export type WorkspaceReading =
+  | { readable: true; input: DashboardInput; workflow: Workflow; diagnostics: readonly FileDiagnostic[] }
+  | { readable: false; error: UnreadableCode };
 
 export type DashboardLoad = { readable: true; model: DashboardModel } | { readable: false; error: UnreadableCode };
 
@@ -40,6 +49,9 @@ export type ServicesProbe = (repoRoot: string, labels: ReadonlyMap<number, strin
 const FOLDER_KINDS = (Object.keys(FILE_KINDS) as Array<keyof typeof FILE_KINDS>).filter(
   (kind): kind is TextFileKind => !FILE_KINDS[kind].directory && !FILE_KINDS[kind].path.startsWith(".."),
 );
+
+/** The workflow table's repository-relative name, the `file` of its findings: never the absolute path (ISC-3). */
+const WORKFLOW_FILE = repoFilePath("", "workflow");
 
 /** A read failure, carried up to the workspace as its code. */
 class Unreadable extends Error {
@@ -132,8 +144,11 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
     const archived: SpecFiles[] = [];
     for (const ref of listSpecs(root)) (ref.archived ? archived : specs).push(specFiles(ref.dir, ref.slug));
     const reviewed = specs.some((f) => f.texts.gateCodeReviewed !== undefined);
+    const workflow = parseWorkflow(readIfExists(repoFilePath(root, "workflow")));
     return {
       readable: true,
+      workflow,
+      diagnostics: workflow.diagnostics.map((diagnostic) => ({ file: WORKFLOW_FILE, diagnostic })),
       input: {
         master: readIfExists(join(root, "ISA.md")),
         constitution: readIfExists(join(root, "specs", "constitution.md")),

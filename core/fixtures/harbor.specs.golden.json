@@ -107,6 +107,40 @@
       }
     },
     {
+      "id": "008",
+      "slug": "008-referrers-support",
+      "folder": "specs/008-referrers-support",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "context",
+        "events",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/008-referrers-support",
+        "folder": "specs/008-referrers-support",
+        "slug": "specs/008-referrers-support"
+      }
+    },
+    {
+      "id": "009",
+      "slug": "009-chunked-upload-limits",
+      "folder": "specs/009-chunked-upload-limits",
+      "archived": false,
+      "kinds": [
+        "spec",
+        "context",
+        "events",
+        "gateReviewed"
+      ],
+      "resolves": {
+        "id": "specs/009-chunked-upload-limits",
+        "folder": "specs/009-chunked-upload-limits",
+        "slug": "specs/009-chunked-upload-limits"
+      }
+    },
+    {
       "id": "001",
       "slug": "001-manifest-sync",
       "folder": "specs/archive/001-manifest-sync",

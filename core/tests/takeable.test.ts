@@ -6,6 +6,7 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { parseActor } from '../src/actor.ts';
 import { parseClaims, type Claim } from '../src/claims.ts';
 import type { ClaimLock, TasksModel, TaskView } from '../src/files.ts';
 import { parseFrontmatter } from '../src/frontmatter.ts';
@@ -180,7 +181,7 @@ describe('the hold vocabulary', () => {
   });
 
   test('same file, closed claim, blocked claim, locked claim, operator lane, open edge, struck and done tasks', () => {
-    const locks: ClaimLock[] = [{ source: 'activity', claim: 'ISC-4', session: 'wt-7', since: '2026-03-08T10:00:00Z' }];
+    const locks: ClaimLock[] = [{ source: 'activity', claim: 'ISC-4', session: 'wt-7', actor: parseActor('wt-7'), since: '2026-03-08T10:00:00Z' }];
     const plan = takeableSet({ reviewed: 'fresh',
       specType: 'feature',
       claims: [claim('ISC-1'), claim('ISC-2', { checked: true }), claim('ISC-3', { after: ['ISC-1'] }), claim('ISC-4')],

@@ -10,7 +10,7 @@
 // holds one claim, applied explicitly by `expected` (T51).
 import { afterAll, afterEach, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DashboardModel } from "../core/src/dashboard.ts";
@@ -22,7 +22,8 @@ import { type RunningServer, serve } from "../server/src/http.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import type { DevService } from "../server/src/services.ts";
 import { DEFAULT_SETTINGS, openSettings, settingsApi } from "../server/src/settings.ts";
-import { loadDashboard, worktreeTreeId } from "../server/src/workspace-loader.ts";
+import { loadDashboard, readWorkspaceInput, worktreeTreeId } from "../server/src/workspace-loader.ts";
+import { DEFAULT_WORKFLOW, parseWorkflow } from "../core/src/workflow.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
 const NAMES = ["harbor", "lantern"] as const;
@@ -412,6 +413,48 @@ describe("composed behind one api function", () => {
     } finally {
       stop.abort();
       log.mockRestore();
+    }
+  });
+});
+
+describe("the reading carries the workflow (T78, ISC-122)", () => {
+  const readable = async (at: string) => {
+    const reading = await readWorkspaceInput(at);
+    if (!reading.readable) throw new Error(`unreadable: ${reading.error}`);
+    return reading;
+  };
+
+  test("harbor has specs/workflow.md: its table is read through core, source file, no diagnostics", async () => {
+    const reading = await readable(join(FIXTURES, "harbor"));
+    const text = readFileSync(join(FIXTURES, "harbor", "specs", "workflow.md"), "utf8");
+    expect(reading.workflow).toEqual(parseWorkflow(text));
+    expect(reading.workflow.source).toBe("file");
+    expect(reading.workflow.rows.find((r) => r.type === "chore")).toEqual({ type: "chore", stages: ["review", "build", "done"], codeReview: "none" });
+    expect(reading.diagnostics).toEqual([]);
+  });
+
+  test("lantern has no specs/workflow.md: every type runs the default table", async () => {
+    const reading = await readable(join(FIXTURES, "lantern"));
+    expect(reading.workflow).toEqual({ rows: DEFAULT_WORKFLOW, source: "default", diagnostics: [] });
+    expect(reading.diagnostics).toEqual([]);
+  });
+
+  test("a workflow file's findings join the reading's diagnostics under the repository-relative file name", async () => {
+    const copy = join(mkdtempSync(join(root, "workflow-")), "lantern");
+    cpSync(join(FIXTURES, "lantern"), copy, { recursive: true });
+    writeFileSync(join(copy, "specs", "workflow.md"), "# Workflow\n\nNo table here.\n");
+    const reading = await readable(copy);
+    expect(reading.workflow.source).toBe("file");
+    expect(reading.workflow.diagnostics.map((d) => d.code)).toEqual(["workflow-table"]);
+    expect(reading.diagnostics).toEqual(reading.workflow.diagnostics.map((diagnostic) => ({ file: "specs/workflow.md", diagnostic })));
+    expect(strings(reading.diagnostics).filter(hasAbsolutePath)).toEqual([]);
+  });
+
+  test("the dashboard model is unchanged by the workflow: harbor and lantern still answer their goldens", async () => {
+    for (const name of NAMES) {
+      const load = await loadDashboard(join(FIXTURES, name), null);
+      if (!load.readable) throw new Error(`unreadable: ${load.error}`);
+      expect(withoutServices(load.model)).toEqual(withoutServices(expected(name)));
     }
   });
 });

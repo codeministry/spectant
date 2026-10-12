@@ -5,6 +5,7 @@
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 
+import { parseActor } from '../src/actor.ts';
 import { buildDashboard } from '../src/dashboard.ts';
 import type { DashboardInput, DashboardSpecRow } from '../src/dashboard.ts';
 import type { ClaimLock, LockReading, SpecFiles, SpecPageInput, SpecPageModel } from '../src/files.ts';
@@ -36,7 +37,7 @@ const page = (name: string, folder: string, extra: Partial<SpecPageInput> = {}):
 const NO_LOCKS: LockReading = { source: 'none', sources: [], locks: [] };
 
 /** The activity line of harbor's `.spectant/activity.jsonl` that is still open (ISC-74, never released). */
-const HARBOR_LOCK: ClaimLock = { source: 'activity', claim: 'ISC-74', session: 'a:claude:sess-2', since: '2026-03-08T14:06:00Z' };
+const HARBOR_LOCK: ClaimLock = { source: 'activity', claim: 'ISC-74', session: 'a:claude:sess-2', actor: parseActor('a:claude:sess-2'), since: '2026-03-08T14:06:00Z' };
 const HARBOR_LOCKS: LockReading = { source: 'activity', sources: ['activity'], locks: [HARBOR_LOCK] };
 
 describe('harbor 002: the richest spec (round 3, all three kinds waiting on you)', () => {
@@ -59,6 +60,8 @@ describe('harbor 002: the richest spec (round 3, all three kinds waiting on you)
       uncommittedFiles: null,
       // spec 008, T39: the frontmatter `priority: P2`
       priority: 'P2',
+      // spec 008, T47: `stage: build`, and events.jsonl's last line ends in `to: build`
+      stageSource: 'explicit',
     });
   });
 

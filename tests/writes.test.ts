@@ -32,7 +32,7 @@ const HOST = { Host: "127.0.0.1:7717" };
 const WEB = "specs/002-web-console";
 const RETENTION = "specs/004-retention-policies";
 const LOADER = "specs/003-config-loader";
-const ISC_74_LOCK = { source: "activity", claim: "ISC-74", session: "a:claude:sess-2", since: "2026-03-08T14:06:00Z" } as const;
+const ISC_74_LOCK = { source: "activity", claim: "ISC-74", session: "a:claude:sess-2", actor: { raw: "a:claude:sess-2", kind: "agent", id: "a:claude:sess-2", legacy: false }, since: "2026-03-08T14:06:00Z" } as const;
 
 let root: string;
 const registries: Registry[] = [];

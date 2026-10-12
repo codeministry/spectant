@@ -37,8 +37,10 @@
       "slug": "001-reading-list",
       "title": "Save a link once and find it again, online or offline",
       "type": "feature",
+      "priority": "P3",
       "phase": "building",
       "stage": "build",
+      "stageSource": "derived",
       "progress": {
         "closed": 4,
         "total": 8
@@ -89,8 +91,10 @@
       "slug": "002-duplicate-links",
       "title": "Stop duplicate links and duplicate tags from entering the list",
       "type": "bug",
+      "priority": "P3",
       "phase": "scoping",
       "stage": "build",
+      "stageSource": "derived",
       "progress": {
         "closed": 0,
         "total": 2
@@ -140,5 +144,16 @@
   "archive": [],
   "brief": null,
   "services": [],
-  "diagnostics": []
+  "diagnostics": [
+    {
+      "file": "specs/002-duplicate-links/events.jsonl",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "actor-legacy",
+        "message": "The file carries 2 actors outside the actor grammar (u:<8 hex>, a:<kind>:<id>, a:<kind>:<id>/<task>), the first \"principal\"; legacy values are read as written, never dropped.",
+        "line": 1,
+        "subject": "principal"
+      }
+    }
+  ]
 }

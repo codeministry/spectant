@@ -2092,6 +2092,136 @@
       "antecedent": 0
     }
   },
+  "specs/008-referrers-support": {
+    "claims": [
+      {
+        "id": "ISC-128",
+        "text": "A recorded table names, for each of the four target registries in the test matrix, whether it answers the OCI referrers endpoint.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-128",
+          "type": "bash",
+          "check": "registries listed in the referrers probe output",
+          "threshold": "4 rows",
+          "tool": "`bun run cli -- probe referrers --matrix tests/registries.toml`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun run cli -- probe referrers --matrix tests/registries.toml` passed, 2026-03-09",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 34
+      },
+      {
+        "id": "ISC-129",
+        "text": "A decision row names the fallback Harbor uses on a registry without the referrers endpoint.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-129",
+          "type": "manual",
+          "check": "decision row for the referrers fallback",
+          "threshold": "present",
+          "tool": "review of `spec.md` § Decisions",
+          "anchorsTo": "derived: registry-is-truth",
+          "severity": ""
+        },
+        "verification": "review of `spec.md` § Decisions passed, 2026-03-09",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 35
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 2,
+      "open": 0,
+      "takeable": 0,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 2,
+      "dropped": 0,
+      "normal": 2,
+      "anti": 0,
+      "antecedent": 0
+    }
+  },
+  "specs/009-chunked-upload-limits": {
+    "claims": [
+      {
+        "id": "ISC-130",
+        "text": "A recorded table names the largest chunk each target registry in the test matrix accepts in a chunked blob upload.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-130",
+          "type": "bash",
+          "check": "registries listed in the chunk probe output",
+          "threshold": "4 rows",
+          "tool": "`bun run cli -- probe chunks --matrix tests/registries.toml`",
+          "anchorsTo": "literal",
+          "severity": ""
+        },
+        "verification": "`bun run cli -- probe chunks --matrix tests/registries.toml` passed, 2026-03-09",
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 33
+      },
+      {
+        "id": "ISC-131",
+        "text": "Harbor picks a chunk size for a registry that is larger than the limit the spike recorded for it.",
+        "feature": null,
+        "state": "takeable",
+        "kind": "anti",
+        "edges": [
+          "ISC-130"
+        ],
+        "blockedBy": [],
+        "probe": {
+          "isc": "ISC-131",
+          "type": "bun-test",
+          "check": "chunk size chosen per registry against the recorded limit",
+          "threshold": "0 over the limit",
+          "tool": "`bun test tests/chunks.test.ts -t \"limit\"`",
+          "anchorsTo": "derived: atomic-push",
+          "severity": "high"
+        },
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 34
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 2,
+      "open": 1,
+      "takeable": 1,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 1,
+      "dropped": 0,
+      "normal": 1,
+      "anti": 1,
+      "antecedent": 0
+    }
+  },
   "specs/archive/001-manifest-sync": {
     "claims": [
       {

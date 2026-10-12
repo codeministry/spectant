@@ -14,7 +14,8 @@
       "round": 3,
       "lastRound": "2026-03-08T16:30:00Z",
       "uncommittedFiles": null,
-      "priority": "P2"
+      "priority": "P2",
+      "stageSource": "explicit"
     },
     "keyNumbers": {
       "claims": {
@@ -169,7 +170,8 @@
       "round": null,
       "lastRound": null,
       "uncommittedFiles": null,
-      "priority": "P3"
+      "priority": "P3",
+      "stageSource": "derived"
     },
     "keyNumbers": {
       "claims": {
@@ -284,7 +286,8 @@
       "round": null,
       "lastRound": null,
       "uncommittedFiles": null,
-      "priority": "P3"
+      "priority": "P3",
+      "stageSource": "derived"
     },
     "keyNumbers": {
       "claims": {
@@ -435,7 +438,8 @@
       "round": null,
       "lastRound": null,
       "uncommittedFiles": null,
-      "priority": "P3"
+      "priority": "P3",
+      "stageSource": "derived"
     },
     "keyNumbers": {
       "claims": {
@@ -558,7 +562,8 @@
       "round": null,
       "lastRound": null,
       "uncommittedFiles": null,
-      "priority": "P1"
+      "priority": "P1",
+      "stageSource": "derived"
     },
     "keyNumbers": {
       "claims": {
@@ -679,7 +684,8 @@
       "round": null,
       "lastRound": null,
       "uncommittedFiles": null,
-      "priority": "P3"
+      "priority": "P3",
+      "stageSource": "derived"
     },
     "keyNumbers": {
       "claims": {
@@ -780,6 +786,235 @@
       "stale": true
     }
   },
+  "specs/008-referrers-support": {
+    "head": {
+      "id": "008",
+      "slug": "008-referrers-support",
+      "title": "Referrers API support",
+      "type": "spike",
+      "stage": "code-review",
+      "nextCommand": "/spec-code-review 008",
+      "nextReason": "every claim is closed and the code-reviewed mark is missing",
+      "phase": "building",
+      "started": "2026-03-08T13:00:00Z",
+      "updated": "2026-03-09T09:00:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived"
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 2,
+        "total": 2,
+        "open": 0,
+        "takeable": 0
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "A recorded table says which target registry answers the referrers endpoint, and a decision names the fallback for the ones that do not.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-code-review 008",
+      "reasons": [
+        "every claim is closed and the code-reviewed mark is missing",
+        "the reviewed mark is fresh"
+      ],
+      "since": null,
+      "via": null
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md",
+        "at": "2026-03-08T14:00:00Z",
+        "files": [
+          "spec.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [
+      {
+        "kind": "closed",
+        "text": "every claim closed, phase not complete"
+      }
+    ],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 4,
+        "warnings": 1
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 2,
+          "total": 2
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 1
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": {
+      "brief": null,
+      "generated": "2026-03-07T18:00:00Z",
+      "stale": true
+    }
+  },
+  "specs/009-chunked-upload-limits": {
+    "head": {
+      "id": "009",
+      "slug": "009-chunked-upload-limits",
+      "title": "Chunked upload limits",
+      "type": "spike",
+      "stage": "build",
+      "nextCommand": "/spec-implement 009",
+      "nextReason": "ISC-131 is takeable",
+      "phase": "building",
+      "started": "2026-03-08T13:30:00Z",
+      "updated": "2026-03-09T09:30:00Z",
+      "round": null,
+      "lastRound": null,
+      "uncommittedFiles": null,
+      "priority": "P3",
+      "stageSource": "derived"
+    },
+    "keyNumbers": {
+      "claims": {
+        "closed": 1,
+        "total": 2,
+        "open": 1,
+        "takeable": 1
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      },
+      "rounds": {
+        "count": 0,
+        "agentsWorking": 0
+      },
+      "gates": {
+        "ok": 2,
+        "total": 4
+      },
+      "waiting": 0
+    },
+    "ideaQuote": "A recorded table names each target registry's chunk limit, and Harbor never picks a chunk larger than it.",
+    "ideaSource": "goal",
+    "next": {
+      "command": "/spec-implement 009",
+      "reasons": [
+        "ISC-131 is takeable",
+        "the reviewed mark is fresh"
+      ],
+      "since": "2026-03-08T14:10:00Z",
+      "via": "/spec-review 009"
+    },
+    "lanes": [],
+    "gates": {
+      "reviewed": {
+        "state": "fresh",
+        "detail": "matches spec.md",
+        "at": "2026-03-08T14:10:00Z",
+        "files": [
+          "spec.md"
+        ]
+      },
+      "codeReviewed": {
+        "state": "missing",
+        "detail": "no code-reviewed mark"
+      },
+      "drift": {
+        "state": "ok",
+        "detail": "in step with the master"
+      },
+      "diagrams": {
+        "state": "na",
+        "detail": "no diagram required"
+      }
+    },
+    "warnings": [],
+    "waitingOnYou": [],
+    "areas": {
+      "status": {
+        "timelineEntries": 4,
+        "warnings": 0
+      },
+      "live": {
+        "lockSource": "none",
+        "agentsWorking": 0,
+        "lock": null
+      },
+      "data": {
+        "claims": {
+          "closed": 1,
+          "total": 2
+        },
+        "tasks": null
+      },
+      "docs": {
+        "plan": false,
+        "design": false,
+        "constitution": true,
+        "decisions": 1
+      },
+      "notes": {
+        "count": null
+      },
+      "board": {
+        "rounds": 0,
+        "stop": null
+      }
+    },
+    "tldr": {
+      "brief": null,
+      "generated": "2026-03-07T18:00:00Z",
+      "stale": true
+    }
+  },
   "specs/archive/001-manifest-sync": {
     "head": {
       "id": "001",
@@ -795,7 +1030,8 @@
       "round": null,
       "lastRound": null,
       "uncommittedFiles": null,
-      "priority": "P3"
+      "priority": "P3",
+      "stageSource": "derived"
     },
     "keyNumbers": {
       "claims": {

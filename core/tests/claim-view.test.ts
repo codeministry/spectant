@@ -7,6 +7,7 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { parseActor } from '../src/actor.ts';
 import { buildClaimViews } from '../src/claim-view.ts';
 import { buildDashboard } from '../src/dashboard.ts';
 import type { ClaimGlyphState, ClaimLock, ClaimView, ClaimViewModel, LockReading, SpecFiles } from '../src/files.ts';
@@ -207,7 +208,7 @@ Why: a reason.
 const FRESH_MARK = JSON.stringify({ gate: 'reviewed', at: '2026-01-03T09:00:00Z', files: { 'spec.md': hashForGate('spec.md', SYNTHETIC), 'plan.md': null, 'tasks.md': null } });
 const synthetic = (): SpecFiles => ({ folder: '900-synthetic', texts: { spec: SYNTHETIC, gateReviewed: FRESH_MARK } });
 const unreviewed = (): SpecFiles => ({ folder: '900-synthetic', texts: { spec: SYNTHETIC } });
-const lock = (claim: string, session: string, source: 'activity' | 'frontier' = 'activity'): ClaimLock => ({ source, claim, session, since: '2026-01-03T10:00:00Z' });
+const lock = (claim: string, session: string, source: 'activity' | 'frontier' = 'activity'): ClaimLock => ({ source, claim, session, actor: parseActor(session), since: '2026-01-03T10:00:00Z' });
 
 describe('a synthetic spec: the edge cases in one file', () => {
   test('every glyph state but open, in file order', () => {

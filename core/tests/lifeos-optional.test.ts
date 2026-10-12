@@ -4,7 +4,9 @@
 //
 // The frontier locks are synthetic: every LifeOS state directory here is a fresh temp dir, laid out the way LifeOS
 // lays out its own (`isa-locks/<first 16 hex of sha1(realpath(ISA.md))>/<claim-id>.lock`, content
-// `{"session","ts","isa"}`). No real state directory, session or path enters the repository.
+// `{"session","ts","isa"}`). No real state directory, session or path enters the repository. The frontier sessions keep
+// LifeOS's own naming (`spec-002-ISC-75`), which is legacy in the actor grammar (spec 008, T63): each such lock file
+// adds one `actor-legacy` warning and still counts. The activity sessions are in the grammar, as the plugin writes them.
 import { afterAll, afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { createHash } from 'node:crypto';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -12,6 +14,7 @@ import * as fsp from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 
+import { parseActor } from '../src/actor.ts';
 import { parseClaims } from '../src/claims.ts';
 import type { ClaimLock, LockReading } from '../src/files.ts';
 import { FRONTIER_STALE_MS, readLockSources } from '../src/locks.ts';
@@ -76,10 +79,13 @@ describe('frontier locks (LifeOS present)', () => {
     expect(r.source).toBe('frontier');
     expect(r.sources).toEqual(['frontier']);
     expect(r.locks).toEqual([
-      { source: 'frontier', claim: 'ISC-75', session: 'spec-002-ISC-75', since: '2026-03-08T15:30:00.000Z' },
-      { source: 'frontier', claim: 'ISC-76', session: 'spec-002-ISC-76', since: '2026-03-08T15:40:00.000Z' },
+      { source: 'frontier', claim: 'ISC-75', session: 'spec-002-ISC-75', actor: parseActor('spec-002-ISC-75'), since: '2026-03-08T15:30:00.000Z' },
+      { source: 'frontier', claim: 'ISC-76', session: 'spec-002-ISC-76', actor: parseActor('spec-002-ISC-76'), since: '2026-03-08T15:40:00.000Z' },
     ]);
-    expect(r.diagnostics).toEqual([]);
+    expect(r.diagnostics?.map((d) => [d.code, d.claim])).toEqual([
+      ['actor-legacy', 'ISC-75'],
+      ['actor-legacy', 'ISC-76'],
+    ]);
   });
 
   test('the repository reached through a symbolic link finds the same lock directory', async () => {
@@ -89,7 +95,7 @@ describe('frontier locks (LifeOS present)', () => {
     symlinkSync(repo, link);
     const r = await readLockSources({ repoRoot: link, lifeosStateDir: state, now: NOW });
     expect(r.locks.map((l) => l.claim)).toEqual(['ISC-75']);
-    expect(r.diagnostics).toEqual([]);
+    expect(codes(r)).toEqual(['actor-legacy']);
   });
 
   test('locks of another ISA are not read, and LifeOS without a lock for this ISA is still the frontier source', async () => {
@@ -121,8 +127,12 @@ describe('frontier locks (LifeOS present)', () => {
     const r = await readLockSources({ repoRoot: repo, lifeosStateDir: state, now: NOW });
     expect(FRONTIER_STALE_MS).toBe(2 * 60 * 60 * 1000);
     expect(r.locks.map((l) => l.claim)).toEqual(['ISC-76']);
-    expect(codes(r)).toEqual(['locks-frontier-stale']);
-    expect(r.diagnostics?.[0]?.message).toContain('ISC-75');
+    expect(r.diagnostics?.map((d) => [d.code, d.claim])).toEqual([
+      ['actor-legacy', 'ISC-75'],
+      ['locks-frontier-stale', 'ISC-75'],
+      ['actor-legacy', 'ISC-76'],
+    ]);
+    expect(r.diagnostics?.[1]?.message).toContain('ISC-75');
   });
 
   test('malformed lock files are diagnostics, never a throw; files that are not .lock are ignored', async () => {
@@ -139,7 +149,8 @@ describe('frontier locks (LifeOS present)', () => {
     writeFileSync(join(frontierDir(state, isa), 'ISC-76.steal.0a1b2c3d'), 'x');
     const r = await readLockSources({ repoRoot: repo, lifeosStateDir: state, now: NOW });
     expect(r.locks.map((l) => l.claim)).toEqual(['ISC-76']);
-    expect(codes(r)).toEqual(['locks-frontier-malformed', 'locks-frontier-malformed', 'locks-frontier-malformed', 'locks-frontier-malformed']);
+    // ISC-76 is read and counted; its LifeOS session name is legacy in the actor grammar.
+    expect(codes(r)).toEqual(['locks-frontier-malformed', 'locks-frontier-malformed', 'locks-frontier-malformed', 'locks-frontier-malformed', 'actor-legacy']);
     expect((r.diagnostics ?? []).every((d) => d.severity === 'warning')).toBe(true);
   });
 
@@ -157,24 +168,24 @@ describe('activity lines (.spectant/activity.jsonl)', () => {
     const r = await readLockSources({ repoRoot: HARBOR });
     expect(r.source).toBe('activity');
     expect(r.sources).toEqual(['activity']);
-    expect(r.locks).toEqual([{ source: 'activity', claim: 'ISC-74', session: 'a:claude:sess-2', since: '2026-03-08T14:06:00Z' }]);
+    expect(r.locks).toEqual([{ source: 'activity', claim: 'ISC-74', session: 'a:claude:sess-2', actor: parseActor('a:claude:sess-2'), since: '2026-03-08T14:06:00Z' }]);
     expect(r.diagnostics).toEqual([]);
   });
 
   test('malformed lines, unknown events and a release without a claim are diagnostics with line numbers', async () => {
     const repo = tempRepo([
-      '{"ts":"2026-03-08T14:05:00Z","event":"claim","claim":"ISC-72","session":"s-72"}',
+      '{"ts":"2026-03-08T14:05:00Z","event":"claim","claim":"ISC-72","session":"a:claude:s-72"}',
       'not json at all',
       '',
-      '{"ts":"2026-03-08T14:06:00Z","event":"heartbeat","claim":"ISC-72","session":"s-72"}',
-      '{"ts":"2026-03-08T14:07:00Z","event":"claim","session":"s-no-claim"}',
-      '{"ts":"2026-03-08T14:08:00Z","event":"release","claim":"ISC-99","session":"s-99"}',
-      '{"ts":"2026-03-08T14:09:00Z","event":"claim","claim":"ISC-74","session":"s-74"}',
+      '{"ts":"2026-03-08T14:06:00Z","event":"heartbeat","claim":"ISC-72","session":"a:claude:s-72"}',
+      '{"ts":"2026-03-08T14:07:00Z","event":"claim","session":"a:claude:s-no-claim"}',
+      '{"ts":"2026-03-08T14:08:00Z","event":"release","claim":"ISC-99","session":"a:claude:s-99"}',
+      '{"ts":"2026-03-08T14:09:00Z","event":"claim","claim":"ISC-74","session":"a:claude:s-74"}',
     ]);
     const r = await readLockSources({ repoRoot: repo });
     expect(r.locks.map((l) => [l.claim, l.session])).toEqual([
-      ['ISC-72', 's-72'],
-      ['ISC-74', 's-74'],
+      ['ISC-72', 'a:claude:s-72'],
+      ['ISC-74', 'a:claude:s-74'],
     ]);
     expect((r.diagnostics ?? []).map((d) => [d.code, d.line])).toEqual([
       ['locks-activity-malformed', 2],
@@ -186,17 +197,17 @@ describe('activity lines (.spectant/activity.jsonl)', () => {
 
   test('a claim taken over by another session moves to it; a release by a non-holder releases nothing', async () => {
     const repo = tempRepo([
-      '{"ts":"2026-03-08T14:05:00Z","event":"claim","claim":"ISC-72","session":"s-a"}',
-      '{"ts":"2026-03-08T14:06:00Z","event":"claim","claim":"ISC-72","session":"s-a"}',
-      '{"ts":"2026-03-08T14:07:00Z","event":"claim","claim":"ISC-74","session":"s-a"}',
-      '{"ts":"2026-03-08T14:08:00Z","event":"claim","claim":"ISC-74","session":"s-b"}',
-      '{"ts":"2026-03-08T14:09:00Z","event":"release","claim":"ISC-72","session":"s-b"}',
+      '{"ts":"2026-03-08T14:05:00Z","event":"claim","claim":"ISC-72","session":"a:claude:s-a"}',
+      '{"ts":"2026-03-08T14:06:00Z","event":"claim","claim":"ISC-72","session":"a:claude:s-a"}',
+      '{"ts":"2026-03-08T14:07:00Z","event":"claim","claim":"ISC-74","session":"a:claude:s-a"}',
+      '{"ts":"2026-03-08T14:08:00Z","event":"claim","claim":"ISC-74","session":"a:claude:s-b"}',
+      '{"ts":"2026-03-08T14:09:00Z","event":"release","claim":"ISC-72","session":"a:claude:s-b"}',
     ]);
     const r = await readLockSources({ repoRoot: repo });
     expect(r.locks).toEqual([
       // A repeated claim by the holder keeps the first `since`.
-      { source: 'activity', claim: 'ISC-72', session: 's-a', since: '2026-03-08T14:05:00Z' },
-      { source: 'activity', claim: 'ISC-74', session: 's-b', since: '2026-03-08T14:08:00Z' },
+      { source: 'activity', claim: 'ISC-72', session: 'a:claude:s-a', actor: parseActor('a:claude:s-a'), since: '2026-03-08T14:05:00Z' },
+      { source: 'activity', claim: 'ISC-74', session: 'a:claude:s-b', actor: parseActor('a:claude:s-b'), since: '2026-03-08T14:08:00Z' },
     ]);
     expect((r.diagnostics ?? []).map((d) => [d.code, d.line])).toEqual([
       ['locks-activity-takeover', 4],
@@ -209,7 +220,7 @@ describe('both sources', () => {
   test('the union keeps one entry per source; activity first, frontier last, so frontier wins a shared claim', async () => {
     const repo = tempRepo([
       '{"ts":"2026-03-08T14:06:00Z","event":"claim","claim":"ISC-74","task":"T27","session":"a:claude:sess-2","worktree":"wt-7"}',
-      '{"ts":"2026-03-08T14:10:00Z","event":"claim","claim":"ISC-76","task":"T29","session":"plugin-76","worktree":"wt-8"}',
+      '{"ts":"2026-03-08T14:10:00Z","event":"claim","claim":"ISC-76","task":"T29","session":"a:plugin:sess-76","worktree":"wt-8"}',
     ]);
     const state = stateWithLocks(repo, {
       'ISC-75': lockFile('spec-002-ISC-75', '2026-03-08T15:30:00.000Z', join(repo, 'ISA.md')),
@@ -220,7 +231,7 @@ describe('both sources', () => {
     expect(r.sources).toEqual(['frontier', 'activity']);
     expect(r.locks.map((l) => [l.source, l.claim, l.session])).toEqual([
       ['activity', 'ISC-74', 'a:claude:sess-2'],
-      ['activity', 'ISC-76', 'plugin-76'],
+      ['activity', 'ISC-76', 'a:plugin:sess-76'],
       ['frontier', 'ISC-75', 'spec-002-ISC-75'],
       ['frontier', 'ISC-76', 'spec-002-ISC-76'],
     ]);
@@ -280,7 +291,7 @@ describe('neither source (ISC-37 anti-case)', () => {
   });
 
   test('nothing is written: the repository tree is unchanged after a read with both sources', async () => {
-    const repo = tempRepo(['{"ts":"2026-03-08T14:06:00Z","event":"claim","claim":"ISC-74","session":"s-74"}']);
+    const repo = tempRepo(['{"ts":"2026-03-08T14:06:00Z","event":"claim","claim":"ISC-74","session":"a:claude:s-74"}']);
     const state = stateWithLocks(repo, { 'ISC-75': lockFile('spec-002-ISC-75', '2026-03-08T15:30:00.000Z', join(repo, 'ISA.md')) });
     const before = await fsp.readdir(repo, { recursive: true });
     const writes = ['writeFile', 'appendFile', 'mkdir', 'mkdtemp', 'rename', 'rm', 'unlink'].map((name) => spyOn(fsp, name as 'writeFile'));

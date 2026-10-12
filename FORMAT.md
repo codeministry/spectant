@@ -111,8 +111,8 @@ a warning (nested YAML is not part of the format); a repeated key warns and the 
 | `context_sufficient`, `interview_invoked` | `true` or `false` | — |
 | `archived_reason`, `archived` | text, `YYYY-MM-DD` | the archive listing |
 | `milestone` | text | matched by name against the master's `## Milestones` entries (`master`, below); a name no entry carries warns `spec-milestone-unknown` and the spec still parses; without the key the spec belongs to no milestone |
-| `priority` | `P1`, `P2`, `P3` or `P4` | the urgency, shown on the dashboard row, the spec head and the breadcrumb; a missing key reads as `P3` without a diagnostic, any other value is a `frontmatter-priority` warning and the file still parses; a story's frontmatter takes the same key (Ideas, below); read from spec 008, T39 on (`SpecFrontmatter.priority`, `SpecHead.priority`) |
-| `stage` | a stage of the spec type's workflow (`specs/workflow.md`, below, or the default) | the explicit stage: when present it wins over the derived stage and must equal the last `to` of `events.jsonl`; a value outside the type's workflow, or one the last event contradicts, is a `stage-mismatch` diagnostic and the derived stage applies; without the key the stage derives from the files as before and is marked derived (`stageSource`, ISC-36); spec 008, T40 reads the key as text (`SpecFrontmatter.stage`, unvalidated) and T47 applies it: until then the stage derives from the files whatever the key says |
+| `priority` | `P1`, `P2`, `P3` or `P4` | the urgency, shown on the dashboard row, the spec head and the breadcrumb; a missing key reads as `P3` without a diagnostic, any other value is a `frontmatter-priority` warning and the file still parses; a story's frontmatter takes the same key (Ideas, below); read from spec 008, T39 on (`SpecFrontmatter.priority`, `SpecHead.priority`), on the dashboard row from T67 (`DashboardSpecRow.priority`, the head's value) |
+| `stage` | a stage of the spec type's workflow (`specs/workflow.md`, below, or the default) | the explicit stage: when present it wins over the derived stage and must equal the last `to` of `events.jsonl`; a value outside the type's workflow, or one the last event contradicts, is a `stage-mismatch` diagnostic and the derived stage applies; without the key the stage derives from the files as before and is marked derived (`stageSource`, ISC-36); spec 008, T40 reads the key as text (`SpecFrontmatter.stage`, unvalidated) and T47 applies it (`explicitStageOf` in `stage.ts`): a value that is a stage of the type's row and equals the last event's `to` replaces the stage, and the dashboard row and the spec head carry `stageSource: explicit`; the next command and its reason stay the stage table's, since they say what the files still need; `blocked` and `close-pending`, which no row lists, never apply explicitly; the `stage-mismatch` diagnostic is T48, and until then an invalid or contradicted value falls back to the derived stage without one |
 
 Every other key is kept as written (`rest`) and read by nobody.
 
@@ -451,11 +451,19 @@ The person id is unsalted, so two machines with the same `user.email` agree on o
 optional salt is prepended to the normalised address, and no caller passes one. The app maps an id to a display name
 and its git identities in its own data directory, never in a file of the repository, and shows an id without a
 mapping as the id itself. Any other value is **legacy**: it is read, marked `legacy` and never rejected. The harbor
-fixture carries the new forms only (spec 008, T28); the legacy case (`principal`, `agent`, `spec-002-ISC-75`) is left
-to the `lantern/` fixture (T33) and the frontier-lock example below. The grammar is read by `parseActor` in
+fixture carries the new forms only (spec 008, T28); the legacy case is `lantern/`'s `specs/002-duplicate-links/events.jsonl`
+(T33, actor `principal` on both lines) and the frontier-lock example below. The grammar is read by `parseActor` in
 `core/src/actor.ts` (T59), which keeps the raw value and returns the form, the id (`a:<kind>:<id>` for an agent and
-its sub-agent) and the task of a sub-agent. The event validator still only requires a non-empty actor
-(`event-empty`); it calls `parseActor` from spec 008, T61, and the per-file `actor-legacy` warning is T60.
+its sub-agent) and the task of a sub-agent.
+
+A file that carries at least one legacy actor gets exactly one `warning` diagnostic `actor-legacy` (spec 008, T60), never
+one per value: `legacyActorWarning` in `actor.ts`, shared by every reader, names the first legacy value (in the message
+and as `subject`), its line when the file has lines, and how many legacy values the file holds. The events reader
+(T61) runs every accepted line's `actor` through `parseActor` and carries the result on the event as `actorRef`
+(`{raw, kind, id, task?, legacy}`); a legacy actor is accepted, and `parseEvents` adds the file's `actor-legacy` after
+the line diagnostics. Only `event-empty` rejects an actor, and a rejected line's actor is not counted. `actorRef` is
+read side only: a written line carries the five keys and nothing else (`event-extra-key`). The dashboard lists every
+diagnostic of an open spec's `events.jsonl` under that file.
 
 **Validated** (`events.ts`, T16, ISC-32). `parseEvents` reads the file line by line, skips blank lines and keeps file
 order; `validateEventLine` checks one line and never throws. A line is rejected with one diagnostic (severity
@@ -643,7 +651,7 @@ task: "Mirror container manifests between registries with Harbor"
 slug: 20260302-harbor
 project: harbor
 phase: climbing
-progress: 103/126
+progress: 106/130
 started: 2026-03-02T08:00:00Z
 updated: 2026-03-09T17:30:00Z
 ---
@@ -743,15 +751,18 @@ total, so no progress fraction (master, feature or milestone) changes when a sto
 and removes the story file; the story's text becomes the new spec's first `spec.md` and `context.md`. The app reads a
 story; it never edits one in place.
 
-**No fixture yet.** A story of the shape the harbor fixture will carry (T31; T35 replaces this example with a verbatim
-block from it):
+A story that belongs to the feature block F2 and names `Harbor 2.0`, a milestone the master does not list (the
+`unknown-milestone` case); the index names it, while the second harbor story, `registry-webhooks`, is missing from the
+index on purpose.
+
+From `core/fixtures/harbor/specs/ideas/console-audit-log.md`:
 
 ```markdown
 ---
 type: feature
 feature: F2
-milestone: Harbor 1.0
-priority: P2
+milestone: Harbor 2.0
+priority: P3
 status: idea
 ---
 /spec
@@ -778,6 +789,10 @@ A setting changed in the console leaves no trace; when a mirror stops, nobody ca
 
 ## Done means (observable)
 - A console write appends exactly one audit line → bun-test
+- The audit page lists the newest line first → e2e
+
+## Guard rails
+- No credential value ever reaches an audit line (F0)
 ```
 
 ## `workflow` — `../workflow.md`, at `specs/workflow.md`
@@ -785,8 +800,11 @@ A setting changed in the console leaves no trace; when a mirror stops, nobody ca
 The workflow: per spec type, the ordered stages a spec of that type runs through and how its code review is done. One
 file per repository, at `specs/workflow.md`, beside the constitution; it belongs to no spec folder. Read by
 `parseWorkflow` in `workflow.ts` (spec 008, T42): one row per spec type, the file's rows and the default row for every
-type it leaves out. Still pending: the fixed-gate check (T43) and the application to specs, the board and the transitions
-(later tasks of spec 008); until then every spec runs the default below, whatever the file says.
+type it leaves out, each row taken from the file checked against the fixed gates below (T43). The default rows are
+built in `stage.ts` (`defaultWorkflowRow`, `DEFAULT_WORKFLOW`, re-exported by `workflow.ts`); the transitions (T45)
+and the explicit stage (T47) take a workflow as their input. Still pending: the application of the file to the
+dashboard, the board and the transitions of live specs (later tasks of spec 008); until then every spec on the dashboard
+runs the default below, whatever the file says.
 
 The file holds one Markdown table `| type | stages | code_review |`, one row per type:
 
@@ -795,14 +813,15 @@ The file holds one Markdown table `| type | stages | code_review |`, one row per
   `build`, `code-review`, `close`, `done`; `blocked` and `close-pending` are detours every type has and no row lists;
 - `code_review` is `spec` (one code-reviewed mark per spec, as today), `feature` (one code review for every spec of the
   spec's main feature: a spec whose claims are all closed waits in the intermediate stage `close-pending` while a sibling
-  of that feature is still open; the stage-table row is spec 008, T22) or `none` (no code-reviewed mark at all);
+  of that feature is still open, row 7 of the stage table) or `none` (no code-reviewed mark at all);
 - a type the file has no row for runs its default row; without the file every type runs the default table.
 
 The reader never rejects the file. What it cannot use is one `workflow-…` diagnostic, and the type concerned runs its
 default row: `workflow-table` (no such table outside a fence, or a header without its separator row: every type runs
 its default), `workflow-row` (a row without exactly three cells or with an empty stage), `workflow-type` (a type
 outside the seven; the row is ignored), `workflow-code-review` (a value outside `spec | feature | none`) and
-`workflow-duplicate` (a type listed twice: neither row is taken, on every row after the first). Cells may carry
+`workflow-duplicate` (a type listed twice: neither row is taken, on every row after the first, and neither is
+gate-checked) and `workflow-gate` (a row that moves a fixed gate, below). Cells may carry
 backticks; the rows come back in the order of the default table below, whatever order the file lists them in.
 
 **The default** is the stage table below in its order, each type listing the stages it needs today (`TYPE_NEEDS` in
@@ -824,35 +843,50 @@ As today, `tasks` stops a spec only from three claims on; with fewer, the spec p
 `code_review: spec`, as it does today.
 
 **Two gates are fixed in every workflow:** `review` comes before `build`, and `done` comes last, reached only once
-every claim is closed. A file may narrow the optional stages of a type or reorder them, never move a fixed gate: a row
-that omits `review`, `build` or `done`, puts `review` after `build` or lists a stage after `done` is one
-`workflow-gate` diagnostic, and the default row applies for that type (T43). Who may pass a fixed gate, a person or an
-agent, is not part of this file.
+every claim is closed. A file may narrow the optional stages of a type (`plan`, `tasks`, `code-review`, `close`) or
+reorder them, never move a fixed gate. `parseWorkflow` checks the one row of each type (T43): a row that omits
+`review`, `build` or `done`, puts `review` after `build`, lists a stage after `done` or lists any stage twice, or
+names a stage outside the seven above (a name `core/` does not know, or the detours `blocked` and `close-pending`, or
+a story's `idea`), is one `workflow-gate` diagnostic on its line, the type as its subject, and the default row applies
+for that type; the other rows still parse. Who may pass a fixed gate, a person or an agent, is not part of this file.
 
-**No fixture yet.** A file of the shape the harbor fixture will carry (T29; T36 replaces this example with a verbatim
-block from it):
+Harbor's file departs from the default in two rows: `feature` is reviewed after its plan and before its tasks, and
+`spike` runs `code_review: feature`, so its spike pair 008/009 (main feature F6) is code-reviewed once.
+
+From `core/fixtures/harbor/specs/workflow.md`:
 
 ```markdown
+# Workflow — harbor
+
 | type | stages | code_review |
 |------|--------|-------------|
-| feature | plan · tasks · review · build · code-review · close · done | spec |
+| feature | plan · review · tasks · build · code-review · close · done | spec |
+| project | plan · tasks · review · build · code-review · close · done | spec |
+| infra | plan · review · build · code-review · close · done | spec |
+| refactor | tasks · review · build · code-review · close · done | spec |
+| bug | review · build · code-review · close · done | spec |
 | spike | review · build · code-review · close · done | feature |
 | chore | review · build · done | none |
 ```
 
 **Derived:** the stages each spec may stand in and, from the union over the types in table order, the columns of the
-board (spec 008, T44); the transitions a spec may take (T45); and for `code_review: feature` the stage `close-pending`
-and the one code review for the whole feature (T49, T74).
+board (spec 008, T44); the transitions a spec may take (T45, `TRANSITIONS` and `allowedTransition` in `stage.ts`): each
+stage of the type's row to its successor in the row, `build → blocked` and `blocked → build` for every type, and
+`close-pending → code-review` where the row has `code-review`; every other pair, a backward move such as
+`build → review` included, is refused; and for `code_review: feature` the stage `close-pending` and the one code
+review for the whole feature (T49, T74).
 
 ## The stage table
 
 Stage and next command per spec (`stage.ts`, `STAGE_RULES`), derived from the files on every read. The rows are
-tried in order and the first match wins; `phase:` decides row 1 and nothing else, and row 6 is the chore's own
-`done`. "Closed" counts checked claims; the three-claim threshold counts every claim line, tombstones included; "every
-claim closed" means none is open.
+tried in order and the first match wins; `phase:` decides row 1 and nothing else, row 6 is the chore's own `done`,
+and row 7 is the `close-pending` detour of `code_review: feature` (spec 008, T22). "Closed" counts checked claims; the
+three-claim threshold counts every claim line, tombstones included; "every claim closed" means none is open.
 Every next command carries its reason, one phrase the matching row names in its Reason column, never free text; the
 dashboard row shows it and the spec page leads its reasons with it (spec 002, ISC-79). `STAGE_RULES` holds every
-column of this table as data, and `core/tests/stage.test.ts` compares each rule with its row here, verbatim.
+column of this table as data, and `core/tests/stage.test.ts` compares each rule with its row here, verbatim. Row 7 is
+written here ahead of its rule: `STAGE_RULES` gains it with spec 008, T49, and until then no spec stands in
+`close-pending` and the test skips that one row.
 
 | # | Stage | Condition | Next command | Reason |
 |---|-------|-----------|--------------|--------|
@@ -862,19 +896,29 @@ column of this table as data, and `core/tests/stage.test.ts` compares each rule 
 | 4 | `review` | the reviewed mark is not fresh | `/spec-review NNN` | `the reviewed mark is {state}` |
 | 5 | `build` | at least one claim is takeable | `/spec-implement NNN` | `{ids} {is} takeable` |
 | 6 | `done` | the type is `chore` and every claim is closed | — | `every claim of the chore is closed` |
-| 7 | `code-review` | every claim is closed and the code-reviewed mark is not fresh | `/spec-code-review NNN` | `every claim is closed and the code-reviewed mark is {state}` |
-| 8 | `close` | every claim is closed and the code-reviewed mark is fresh | `/spec-complete NNN` | `every claim is closed and code-reviewed` |
-| 9 | `blocked` | anything else: open claims none of which is takeable, or no claims yet | `/spec-status NNN` | `{open}, none takeable` or `no claims yet` |
+| 7 | `close-pending` | every claim is closed, the type's workflow has `code_review: feature`, and at least one other spec of the spec's main feature is still open | — | `every claim is closed and {feature} waits on {siblings}` |
+| 8 | `code-review` | every claim is closed and the code-reviewed mark is not fresh | `/spec-code-review NNN` | `every claim is closed and the code-reviewed mark is {state}` |
+| 9 | `close` | every claim is closed and the code-reviewed mark is fresh | `/spec-complete NNN` | `every claim is closed and code-reviewed` |
+| 10 | `blocked` | anything else: open claims none of which is takeable, or no claims yet | `/spec-status NNN` | `{open}, none takeable` or `no claims yet` |
 
 The placeholders of the Reason column:
 
 - `{type}`: the spec's `type:`, e.g. `feature`.
 - `{claims}`: every claim line counted, with its noun, e.g. `13 claims`.
-- `{state}`: the mark's state, `missing` or `stale` (the reviewed mark in row 4, the code-reviewed mark in row 7).
+- `{state}`: the mark's state, `missing` or `stale` (the reviewed mark in row 4, the code-reviewed mark in row 8).
 - `{ids}`: the takeable claim IDs: one (`ISC-334`), two joined by "and" (`ISC-7 and ISC-9`), or the first two and the
   rest as a count (`ISC-74, ISC-75 and 2 more`); a count with its noun (`2 claims`) when the caller passes no IDs.
 - `{is}`: `is` for one takeable claim, `are` for more.
 - `{open}`: the open claims counted, with their noun, e.g. `3 open claims`.
+- `{feature}`: the spec's main feature, e.g. `F2` (row 7).
+- `{siblings}`: the other open specs of that feature by number: one (`spec 005`), two joined by "and" (`specs 005 and
+  006`), or the first two and the rest as a count (`specs 005, 006 and 2 more`) (row 7).
+
+In row 7 a sibling is **open** while it is active (not archived, not `phase: complete`) and holds at least one open
+claim; a sibling whose claims are all closed waits in row 7 itself and does not hold the others back, so the last
+sibling to close its claims moves every spec of the feature past row 7 at once. Row 7 has no next command: nothing is
+to be done on the spec itself while a sibling is open. The one code review of the feature, `/spec-code-review F<n>`,
+belongs to the feature-level mark and appears only when the last sibling closes (spec 008, T74).
 
 A claim is **takeable** when it is open, every claim in its `(after: …)` is closed or dropped, no lock holds it, and the
 spec's reviewed mark is fresh; an open claim is **blocked** while an edge is unresolved (an edge to an unknown ID counts
@@ -919,6 +963,10 @@ In both sources `session` is the actor that holds the claim, in the actor gramma
 for an agent session, `a:<kind>:<id>/<task>` for a sub-agent on a task (`a:claude:sess-7/T12`, with `task: "T12"`), a
 `u:` id for a person who holds a claim by hand. A `session` in another form, such as the `spec-002-ISC-75` of the
 frontier lock below, is legacy: read, marked `legacy`, never rejected; harbor carries the new forms only (spec 008, T28).
+Every lock carries its `session` parsed as `actor` (`ClaimLock.actor`, spec 008, T63), and a legacy session raises the
+`actor-legacy` warning of the `events` section once per file: once for `.spectant/activity.jsonl`, at its first legacy
+claim or release line and that line's claim, and once per frontier lock file of this ISA (a lock skipped as foreign
+raises none). The lock still counts. LifeOS names its sessions like `spec-002-ISC-75`, so each such frontier lock warns.
 
 The page names the source it read (`frontier` before `activity`, else `none`); with no source it says so and a write
 proceeds under the hash check alone.
@@ -1029,5 +1077,8 @@ parser.
 - ⟨?: Spec 008: the default workflow lists per type only the stages `TYPE_NEEDS` makes it stop at (a `bug` never
   lists `plan`); the alternative, every type listing every stage of the stage table, would put a `plan` column on the
   board that no bug ever fills. T42 builds the default from this section.⟩
-- ⟨?: Spec 008: whether a row with `code_review: none` that still lists `code-review` or `close`, or a stage name
-  outside the seven, is a `workflow-gate` diagnostic or a diagnostic of its own (T43).⟩
+- ⟨?: Spec 008: whether a row with `code_review: none` that still lists `code-review` or `close` is a diagnostic,
+  and which one. T43 settled the other half: a stage name outside the seven is `workflow-gate`; such a row parses
+  today without a diagnostic.⟩
+- ⟨?: Spec 008: the `{feature}` of row 7 is the spec's main feature; whether that is the first word of `isa_feature:`
+  (as for `missing_in_spec`) is T49's to fix.⟩
