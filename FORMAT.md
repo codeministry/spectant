@@ -1182,8 +1182,9 @@ repeated key appends its parts in file order, and text before the first marker b
 - **Warning:** a key without its marker is one `tech-section` warning on `specs/tech.md`, the key as subject, and its
   section reads as empty; a file without any marker warns once per key. The reader never throws.
 - **Specs:** beside the pages, every active spec folder with a `spec.md`, in number order: id, slug, type and phase
-  from the frontmatter, the `## Goal` section, the first paragraph of plan.md's `## Approach` and the open `- fog:`
-  lines (none once `phase: complete`).
+  from the frontmatter, the title the dashboard row shows (frontmatter `task:`, else the slug without its number,
+  read through the archive listing as the row does), the `## Goal` section, the first paragraph of plan.md's
+  `## Approach` and the open `- fog:` lines (none once `phase: complete`).
 
 Harbor carries the four sections, a stack table, a mermaid fence in `architecture` and one image,
 `specs/tech/overview.png`, in `overview`; lantern has no tech.md, the `pages: null` case.

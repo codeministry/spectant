@@ -10,7 +10,7 @@
       @if (card.spec.type; as type) {
         <ui-type-glyph [type]="type" />
       }
-      <h2 class="title" [id]="'spec-title-' + id">{{ card.title }}</h2>
+      <h2 class="title" [id]="'spec-title-' + id">{{ card.spec.title }}</h2>
     </div>
 
     @if (card.spec.goal; as goal) {

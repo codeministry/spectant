@@ -1,10 +1,12 @@
 // The tech page (spec 023, ISC-134): `specs/tech.md` read by its four section markers into three documents (overview
-// and stack joined), and per spec its goal, the first paragraph of its approach and its open fog. Inline texts only;
-// a harbor fixture tech.md is the next task.
+// and stack joined), and per spec its title, its goal, the first paragraph of its approach and its open fog. Inline
+// texts, and the fixture trees for the title the dashboard row shows.
 import { describe, expect, test } from 'bun:test';
 
+import { buildDashboard } from '../src/dashboard.ts';
 import type { SpecFiles } from '../src/files.ts';
 import { readTech } from '../src/tech.ts';
+import { readTree } from './helpers/read-tree.ts';
 
 const TECH = `---
 title: Harbor
@@ -62,7 +64,7 @@ const SPECS: SpecFiles[] = [
       plan: '# Plan\n\n## Approach\n\n<!-- note -->\n\nPoll the **harbor** API\nevery hour.\n\nSecond paragraph.\n\n## Risks\n\nNone.\n',
     },
   },
-  { folder: '003-no-plan', texts: { spec: spec('spec_type: spike', '## Ziel\n\nEin Ziel.\n') } },
+  { folder: '003-no-plan', texts: { spec: spec('spec_type: spike\ntask: Pick the first port', '## Ziel\n\nEin Ziel.\n') } },
   { folder: '004-no-spec', texts: { plan: '## Approach\n\nOrphan.\n' } },
   { folder: '005-no-approach', texts: { spec: spec('spec_type: chore', 'No goal here.\n'), plan: '## Risks\n\nNone.\n' } },
 ];
@@ -168,5 +170,26 @@ describe('specs', () => {
     expect(specs[1]?.fog).toEqual([]);
     expect(late?.phase).toBe('complete');
     expect(late?.fog).toEqual([]);
+  });
+
+  test("title: frontmatter task: when set, else the folder's slug without its number", () => {
+    expect(specs.map((s) => [s.id, s.title])).toEqual([
+      ['002', 'sync'],
+      ['003', 'Pick the first port'],
+      ['005', 'no-approach'],
+      ['010', 'late'],
+    ]);
+  });
+
+  test('title: equal to the dashboard row title for every spec of a fixture tree', () => {
+    for (const name of ['harbor', 'leadgen']) {
+      const tree = readTree(name);
+      const rows = new Map(buildDashboard(tree).specs.map((row) => [row.id, row.title]));
+      const tech = readTech({ specs: tree.specs }).specs;
+      expect(tech.length).toBeGreaterThan(0);
+      for (const s of tech) expect([s.id, s.title]).toEqual([s.id, rows.get(s.id) ?? '']);
+    }
+    const harbor002 = readTech({ specs: readTree('harbor').specs }).specs.find((s) => s.id === '002');
+    expect(harbor002?.title).toBe('Show every sync run and its failures in a small web console');
   });
 });

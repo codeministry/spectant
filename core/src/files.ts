@@ -1203,6 +1203,8 @@ export interface TechSpec {
   readonly id: string;
   /** `NNN-slug`, the folder name. */
   readonly slug: string;
+  /** The title the dashboard row shows for the spec (`SpecRow.title`): frontmatter `task:`, else the slug without its number. */
+  readonly title: string;
   /** Frontmatter `spec_type:`; null when absent or unknown. */
   readonly type: SpecType | null;
   /** Frontmatter `phase:` as written; null when absent. */

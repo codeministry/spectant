@@ -5,6 +5,7 @@
     {
       "id": "012",
       "slug": "012-pwa-install",
+      "title": "Installable as a PWA: manifest, icons, colours, an offline shell and an update toast",
       "type": "feature",
       "phase": "building",
       "goal": {
@@ -30,6 +31,7 @@
     {
       "id": "022",
       "slug": "022-chat-turn-status-and-bulk-delete",
+      "title": "The chat says what happened to a turn, deletes many conversations at once, and brings a cited row into view",
       "type": "feature",
       "phase": "complete",
       "goal": {
