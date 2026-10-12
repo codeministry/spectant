@@ -305,14 +305,14 @@ describe("tokens discovery", () => {
     expect(readdirSync(join(root, "specs"))).toEqual([]);
   });
 
-  test("tokens: without --yes nothing is written; a failure of core is one stderr line and exit 1", async () => {
+  test("tokens: without --yes nothing is written; the plan is printed and the run exits 0", async () => {
     const root = temp("spectant-tokens-root-");
     mkdirSync(join(root, "specs"));
     const config = temp("spectant-tokens-cfg-");
     put(join(config, "projects", encodeProjectPath(root), "s.jsonl"), "{}\n");
-    const code = await run(["tokens", "--root", root], manifest, { env: { CLAUDE_CONFIG_DIR: config } });
-    expect([0, 1]).toContain(code);
-    if (code === 1) expect(err.at(-1)).toMatch(/^spectant: tokens: /);
+    expect(await run(["tokens", "--root", root], manifest, { env: { CLAUDE_CONFIG_DIR: config } })).toBe(0);
+    expect(out.join("\n")).toContain("tokens would write specs/tokens.jsonl");
+    expect(out.at(-1)).toBe("run it again with --yes to write");
     expect(readdirSync(join(root, "specs"))).toEqual([]);
   });
 });

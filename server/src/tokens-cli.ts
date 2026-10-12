@@ -24,7 +24,6 @@ import { type Dirent, readFileSync, readdirSync, realpathSync, statSync } from "
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { buildDashboard } from "../../core/src/dashboard.ts";
-import { FILE_KINDS, repoFilePath } from "../../core/src/files.ts";
 import {
   type BaselineRow,
   TOKEN_COUNTERS,
@@ -41,6 +40,7 @@ import {
   tokenRows,
 } from "../../core/src/tokens.ts";
 import { readIfExists, readWorkspaceInput, unreadableCode } from "./workspace-loader.ts";
+import { WRITE_PATHS } from "./writes.contract.ts";
 import { writeInPlace } from "./writes.ts";
 
 type Env = Record<string, string | undefined>;
@@ -54,8 +54,8 @@ const WORKTREE_ID = /^[A-Za-z0-9]+$/;
 /** A sub-agent transcript's file name and the meta file beside it. */
 const SUBAGENT_FILE = /^(agent-.+)\.jsonl$/;
 
-/** The repository-relative path of the measurement file (T19 moves it to `WRITE_PATHS.tokens`). */
-export const TOKENS_PATH = FILE_KINDS.tokens.repoPath ?? "specs/tokens.jsonl";
+/** The repository-relative path of the measurement file: the one file of the sixth write path, `WRITE_PATHS.tokens`. */
+export const TOKENS_PATH: string = WRITE_PATHS.tokens.writes[0];
 
 /** A transcript folder that cannot be listed: the run has nothing to measure, so the command ends with exit 1. */
 export class TranscriptFolderError extends Error {
@@ -271,7 +271,7 @@ export async function tokensCommand(root: string, options: TokensCommandOptions)
       derivedStage: stages.get(files.folder) ?? null,
     }))
     .sort((a, b) => byteOrder(a.slug, b.slug));
-  const path = repoFilePath(root, "tokens");
+  const path = join(root, TOKENS_PATH);
 
   let rows: TokenRow[];
   const diagnostics: TokenDiagnostic[] = [...discovery.diagnostics];

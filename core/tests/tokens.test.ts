@@ -835,6 +835,16 @@ describe('roundtrip', () => {
     expect(serializeTokens(reading.rows)).toBe(golden);
   });
 
+  // ISC-137: harbor/generate.ts writes harbor's `specs/tokens.jsonl` from the same transcript fixture, and FORMAT.md
+  // quotes it verbatim; the generated file is the golden byte for byte and reads back into the same bytes.
+  test("harbor's specs/tokens.jsonl, written by generate.ts, is the golden and reads back to the same bytes", () => {
+    const generated = readFileSync(join(import.meta.dir, '..', 'fixtures', 'harbor', 'specs', 'tokens.jsonl'), 'utf8');
+    expect(generated).toBe(readFileSync(GOLDEN, 'utf8'));
+    const reading = readTokens(generated);
+    expect(reading.diagnostics).toEqual([]);
+    expect(serializeTokens(reading.rows)).toBe(generated);
+  });
+
   test('the fixture run reads back into the very lines it was written from', () => {
     const rows = linesOfRun(tokenRows(fixtureInput()));
     const reading = readTokens(serializeTokens(rows));
