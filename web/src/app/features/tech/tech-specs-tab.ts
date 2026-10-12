@@ -32,10 +32,16 @@ export interface TechSpecGroups {
 export function techSpecGroups(specs: readonly TechSpec[], rows: readonly SpecRowView[]): TechSpecGroups {
   const rank = new Map(rows.map((row, index) => [row.id, index]));
   const titles = new Map(rows.map((row) => [row.id, row.title]));
+  // "Complete" as the Status tab and the SPECS tile count it: the dashboard row's stage `done`; a spec without a row
+  // falls back to its phase.
+  const stages = new Map(rows.map((row) => [row.id, row.stage]));
   const position = (spec: TechSpec): number => rank.get(spec.id) ?? rows.length;
   const cards = [...specs]
     .sort((a, b) => position(a) - position(b) || a.id.localeCompare(b.id))
-    .map((spec): TechSpecCard => ({ spec, title: titles.get(spec.id) ?? spec.slug, complete: spec.phase === 'complete' }));
+    .map((spec): TechSpecCard => {
+      const stage = stages.get(spec.id);
+      return { spec, title: titles.get(spec.id) ?? spec.slug, complete: stage === undefined ? spec.phase === 'complete' : stage === 'done' };
+    });
   return { open: cards.filter((card) => !card.complete), complete: cards.filter((card) => card.complete) };
 }
 

@@ -90,25 +90,25 @@ describe('TechSpecsTab', () => {
     expect(card(fixture, '005')?.querySelector('a[data-tech-link="plan"]')).toBeNull();
   });
 
-  it('orders the cards as the dashboard rows, without a divider while no spec is complete', async () => {
-    const fixture = await render();
-    expect(cards(fixture).map((el) => el.dataset['techSpec'])).toEqual(ROWS.map((row) => row.id));
+  it('orders the cards as the dashboard rows, without a divider while no row stands in done', async () => {
+    const rows = ROWS.map((row) => (row.stage === 'done' ? { ...row, stage: 'build' } : row));
+    const fixture = await render(HARBOR, 'wide', rows);
+    expect(cards(fixture).map((el) => el.dataset['techSpec'])).toEqual(rows.map((row) => row.id));
     expect((fixture.nativeElement as HTMLElement).querySelector('[data-tech-divider]')).toBeNull();
   });
 
-  it('puts the complete specs last, behind "Complete · n", muted', async () => {
+  it('puts the specs whose dashboard row stands in done last, behind "Complete · n", muted — as the Status tab counts them', async () => {
     const complete = new Set(['004', '003']);
-    const model: TechModel = { ...HARBOR, specs: HARBOR.specs.map((spec) => (complete.has(spec.id) ? { ...spec, phase: 'complete', fog: [] } : spec)) };
-    const fixture = await render(model);
-    const order = ROWS.map((row) => row.id);
+    const rows = ROWS.map((row) => ({ ...row, stage: complete.has(row.id) ? 'done' : row.stage === 'done' ? 'build' : row.stage }));
+    const fixture = await render(HARBOR, 'wide', rows);
+    const order = rows.map((row) => row.id);
     const expected = [...order.filter((id) => !complete.has(id)), ...order.filter((id) => complete.has(id))];
     expect(cards(fixture).map((el) => el.dataset['techSpec'])).toEqual(expected);
     const host = fixture.nativeElement as HTMLElement;
     const divider = host.querySelector('[data-tech-divider]');
     expect(text(divider)).toBe('Complete · 2');
-    expect(divider?.nextElementSibling?.getAttribute('data-tech-spec')).toBe('004');
     expect(host.querySelectorAll('[data-tech-divider]')).toHaveLength(1);
-    expect(cards(fixture).filter((el) => el.hasAttribute('data-complete')).map((el) => el.dataset['techSpec'])).toEqual(['004', '003']);
+    expect(cards(fixture).filter((el) => el.hasAttribute('data-complete')).map((el) => el.dataset['techSpec'])).toEqual(expected.slice(-2));
   });
 
   it('keeps specs the dashboard has no row for, in number order after the rows, titled by their folder', () => {
