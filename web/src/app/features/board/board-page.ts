@@ -150,7 +150,7 @@ interface BandRow {
   providers: [provideBoardDrag()],
   host: { 'data-page': 'board', '[attr.data-tier]': 'tier()', '[attr.data-dragging]': 'drag.dragging() ? "" : null' },
   templateUrl: './board-page.html',
-  styleUrl: './board-page.css',
+  styleUrls: ['./board-page.css', './board-page.compact.css'],
 })
 export class BoardPage {
   protected readonly state = inject(ShellState);
