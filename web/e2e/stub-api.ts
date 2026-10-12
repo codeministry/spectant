@@ -18,7 +18,12 @@
  *   folder; matched with the contract's `matchWorkspacePath`. The goldens are built at `2026-03-20`, so a live server
  *   answer can differ in the milestones' `state` alone. Same guards as the dashboard: 403, 405 with
  *   `allowForWorkspace(route)`, 404 `{error: "not-found"}` for an unknown slug, 409 with the list entry for the
- *   unreadable workspace; the lock and write headers change nothing here.
+ *   unreadable workspace; the lock and write headers change nothing here. The tech page (spec 023, T10, ISC-134.1):
+ *   `GET|HEAD …/:ws/tech` is the whole `core/fixtures/<golden>.tech.golden.json` (`WORKSPACE_GOLDEN_FAMILY.tech`) under
+ *   the same guards, and `GET|HEAD …/:ws/tech/asset?path=` the fixture tree's file under `specs/` with the evidence
+ *   file's headers (`evidenceFileHeaders(mediaTypeOf(name))`, strong ETag over the bytes, 304, HEAD without a body):
+ *   403 for a path that leaves `specs/` (a `..` segment, an absolute path, a backslash, a control character, a
+ *   second encoding layer, a symlink out), 404 for no regular file.
  * - Every route of `SPEC_ROUTE_TABLE` (`…/specs/:id…`): the per-spec value of the route's golden family
  *   (`core/fixtures/<golden>.<family>.golden.json`, keyed by `specs/<folder>`), `:id` resolved as `core/src/resolve.ts`
  *   does (`NNN`, folder or bare slug, archived folders too). 404 `NotFound` for an unknown workspace, spec or task, 404
@@ -144,6 +149,7 @@ import {
   type SpecRouteMatch,
   type TaskCheckResponse,
   type WorkspaceRouteMatch,
+  type WorkspaceRouteName,
 } from '../../server/src/spec-routes.contract';
 import {
   type Note,
@@ -192,6 +198,15 @@ export const WRITE_HEADER = 'X-Spectant-Stub-Write';
 export const RESET_PATH = '/api/__stub/reset';
 export const BUMP_PATH = '/api/__stub/bump';
 export const WORKFLOW_PATH = '/api/__stub/workflow';
+
+/**
+ * The workspace routes with a whole-file golden family: the contract's `GOLDEN_FAMILY.planning` and the tech page's
+ * `tech` (spec 023, `core/tests/golden.test.ts` `FAMILIES.tech`), which the contract's map does not name yet.
+ */
+export const WORKSPACE_GOLDEN_FAMILY = {
+  planning: GOLDEN_FAMILY.planning,
+  tech: 'tech',
+} as const satisfies Partial<Record<WorkspaceRouteName, string>>;
 
 /** The dashboard model with `kpis.claims.closed` raised by `by` (the bump hook); the golden itself is never touched. */
 export function bumpDashboard(model: unknown, by: number): unknown {
@@ -386,7 +401,7 @@ function settingsJson(req: Request, settings: Settings): Response {
 
 type Core = {
   listEvidence: (specDir: string) => Promise<EvidenceListing>;
-  resolveEvidencePath: (specDir: string, requested: string) => Promise<EvidencePathResult>;
+  resolveEvidencePath: (specDir: string, requested: string, reach?: 'evidence' | 'tree') => Promise<EvidencePathResult>;
   mediaTypeOf: (name: string) => string;
   docsFor: (type: SpecType | null) => Readonly<Record<DocName, DocAvailability>>;
   worstState: (states: Iterable<CardState>) => CardState;
@@ -461,6 +476,16 @@ function readPlanning(dir: string, name: string): PlanningModel {
     throw new Error(`stub-api: ${file} has no features, milestones, ideas or stageCounts; is it a PlanningModel?`);
   }
   return model as PlanningModel;
+}
+
+/** The tech route's body: the whole `<golden>.tech.golden.json` (`readTech`'s `TechModel`), read as it is. */
+function readTechGolden(dir: string, name: string): unknown {
+  const file = `${name}.${WORKSPACE_GOLDEN_FAMILY.tech}.golden.json`;
+  const model = readJson(dir, file) as { pages?: unknown; specs?: unknown; diagnostics?: unknown };
+  if (!('pages' in model) || typeof model.pages !== 'object' || !Array.isArray(model.specs) || !Array.isArray(model.diagnostics)) {
+    throw new Error(`stub-api: ${file} has no pages, specs or diagnostics; is it a TechModel?`);
+  }
+  return model;
 }
 
 /** A deterministic stand-in for a sha256 hex: the hash of a label, never of a file (the stub reads no spec file). */
@@ -769,6 +794,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   const dashboards = new Map(workspaces.map((w) => [w.slug, readDashboard(dir, w.golden)]));
   const trees = new Map(workspaces.map((w) => [w.slug, readTree(core, dir, w.golden)]));
   const plannings = new Map(workspaces.map((w) => [w.slug, readPlanning(dir, w.golden)]));
+  const techs = new Map(workspaces.map((w) => [w.slug, readTechGolden(dir, w.golden)]));
   const board = loadBoardCore();
   const stories = new Map(
     workspaces.map((w): [string, ReadonlyMap<string, StoryFile>] => [w.slug, readStories(board, join(dir, w.golden), readPlanning(dir, w.golden))]),
@@ -893,9 +919,10 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   };
 
   /**
-   * A route of `WORKSPACE_ROUTE_TABLE` (`/api/workspaces/:ws/planning`), with the guard order and statuses of the
-   * dashboard branch above and of `server/src/api.ts`: 403, 405 with `allowForWorkspace`, 404 unknown slug, 409 the
-   * unreadable summary, else the whole golden file of the route's family.
+   * A route of `WORKSPACE_ROUTE_TABLE` with a whole-file golden family (`…/planning`, `…/tech`), with the guard order
+   * and statuses of the dashboard branch above and of `server/src/api.ts`: 403, 405 with `allowForWorkspace`, 404
+   * unknown slug, 409 the unreadable summary, else the whole golden file of the route's family (planning: the session's
+   * tree).
    */
   const workspaceFamilyRoute = (req: Request, state: StubState, match: WorkspaceRouteMatch): Response => {
     if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
@@ -905,7 +932,33 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const found = (views.get(state) ?? view(state)).workspaces.get(match.params.ws);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
-    return workspaceJson(req, 200, planningOf(req, match.params.ws));
+    return workspaceJson(req, 200, match.route === 'tech' ? techs.get(match.params.ws) : planningOf(req, match.params.ws));
+  };
+
+  /**
+   * `GET|HEAD …/:ws/tech/asset?path=` (spec 023, T10): the guards of the family route above, then the fixture tree's
+   * file under `specs/` through core's `resolveEvidencePath` with `reach: 'tree'`, images only, answered as the evidence file is: `evidenceFileHeaders` of core's
+   * `mediaTypeOf`, a strong ETag over the bytes, 304 on a match, no body on HEAD.
+   */
+  const techAssetRoute = async (req: Request, url: URL, state: StubState, match: WorkspaceRouteMatch): Promise<Response> => {
+    if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowForWorkspace('techAsset') });
+    }
+    const tree = readableTree(req, state, match.params.ws);
+    if (tree instanceof Response) return tree;
+    // The one resolver (core's, as `api.ts` uses it): `specs/` as the root, any file below it, images only.
+    const resolved = await core.resolveEvidencePath(join(tree.root, 'specs'), evidencePathQuery(url.search), 'tree');
+    if (!resolved.ok) {
+      const status = resolved.reason === 'not-found' || resolved.reason === 'not-a-file' ? 404 : 403;
+      return workspaceJson(req, status, { error: status === 403 ? 'forbidden' : 'not-found' });
+    }
+    const type = core.mediaTypeOf(basename(resolved.path));
+    if (!type.startsWith('image/')) return workspaceJson(req, 403, { error: 'forbidden' });
+    const bytes = new Uint8Array(readFileSync(resolved.absolute));
+    const headers = { ...evidenceFileHeaders(type), ETag: strongEtag(bytes) };
+    if (matchesIfNoneMatch(req.headers.get('If-None-Match'), headers.ETag)) return new Response(null, { status: 304, headers });
+    return new Response(req.method === 'HEAD' ? null : bytes, { headers });
   };
 
   /** The guard order every workspace route shares (`api.ts`): 404 unknown slug, 409 the unreadable summary, else the tree. */
@@ -1385,7 +1438,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     // Every route of WORKSPACE_ROUTE_TABLE before the spec catch-all, which answers every other path under a workspace
     // with the server's JSON 404 (T119: the story page, the board query and the allocation joined the planning tree).
     const family = matchWorkspacePath(pathname);
-    if (family?.route === 'planning') return workspaceFamilyRoute(req, requested, family);
+    if (family?.route === 'planning' || family?.route === 'tech') return workspaceFamilyRoute(req, requested, family);
+    if (family?.route === 'techAsset') return techAssetRoute(req, url, requested, family);
     if (family?.route === 'idea') return ideaRoute(req, requested, family);
     if (family?.route === 'boardQuery') return boardQueryRoute(req, requested, family.params.ws);
     const write = req.headers.get(WRITE_HEADER) ?? 'ok';

@@ -48,6 +48,7 @@ import {
   STUB_STATES,
   type StubState,
   WRITE_HEADER,
+  WORKSPACE_GOLDEN_FAMILY,
   WRITE_OUTCOMES,
   recountTasks,
   stubApi,
@@ -296,6 +297,103 @@ describe('stub API: GET /api/workspaces/:slug/planning', () => {
     const crossSite = await ask(planningPath('harbor'), { headers: { Origin: 'https://evil.example' } });
     expect(crossSite.status).toBe(403);
     expect(await crossSite.json()).toEqual({ error: 'forbidden' });
+  });
+});
+
+describe('stub API: GET /api/workspaces/:slug/tech (spec 023, T10)', () => {
+  // `WORKSPACE_GOLDEN_FAMILY.tech` is a whole-file family like planning: the body is the golden file itself.
+  const techText = (tree: string): string => goldenText(`${tree}.${WORKSPACE_GOLDEN_FAMILY.tech}`);
+
+  test.each(['harbor', 'lantern'])('%s: the body is the whole tech golden in the server serialization, JSON_ANSWER headers', async (name) => {
+    const res = await ask(workspaceRoutes.tech(name));
+    const body = await res.text();
+    expect(res.status).toBe(200);
+    expect(body).toBe(JSON.stringify(JSON.parse(techText(name))));
+    expect(res.headers.get('Content-Type')).toBe('application/json; charset=utf-8');
+    expect(res.headers.get('Cache-Control')).toBe('no-cache');
+    expect(res.headers.get('ETag')).toBe(`"${new Bun.CryptoHasher('sha256').update(body).digest('base64url')}"`);
+  });
+
+  test('harbor carries pages; lantern, without specs/tech.md, answers pages null', async () => {
+    const harbor = (await (await ask(workspaceRoutes.tech('harbor'))).json()) as { pages: Record<string, unknown> | null };
+    expect(harbor.pages).not.toBeNull();
+    expect(Object.keys(harbor.pages ?? {})).toContain('overview');
+    const lantern = (await (await ask(workspaceRoutes.tech('lantern'))).json()) as { pages: unknown };
+    expect(lantern.pages).toBeNull();
+  });
+
+  test('HEAD answers the headers without the body; a matching If-None-Match is a 304', async () => {
+    const get = await ask(workspaceRoutes.tech('harbor'));
+    const etag = get.headers.get('ETag') ?? '';
+    const head = await ask(workspaceRoutes.tech('harbor'), { method: 'HEAD' });
+    expect([head.status, head.headers.get('ETag'), await head.text()]).toEqual([200, etag, '']);
+    const revalidated = await ask(workspaceRoutes.tech('harbor'), { headers: { 'If-None-Match': etag } });
+    expect([revalidated.status, await revalidated.text()]).toEqual([304, '']);
+    expect((await ask(workspaceRoutes.tech('harbor'), { headers: { 'If-None-Match': '"stale"' } })).status).toBe(200);
+  });
+
+  test('404 unknown slug in every state, 405 with allowForWorkspace, 409 the unreadable summary, 403 cross-site', async () => {
+    for (const state of STUB_STATES) {
+      const res = await ask(workspaceRoutes.tech('nope'), { state });
+      expect([res.status, await res.json()]).toEqual([404, { error: 'not-found' }]);
+    }
+    expect((await ask(workspaceRoutes.tech('harbor'), { state: 'empty' })).status).toBe(404);
+    const post = await ask(workspaceRoutes.tech('harbor'), { method: 'POST', body: '{}' });
+    expect([post.status, post.headers.get('Allow'), await post.json()]).toEqual([405, allowForWorkspace('tech'), { error: 'method-not-allowed' }]);
+    const unreadable = await ask(workspaceRoutes.tech('lantern'), { state: 'unreadable' });
+    const dashboard = await ask('/api/workspaces/lantern/dashboard', { state: 'unreadable' });
+    expect([unreadable.status, await unreadable.text()]).toEqual([409, await dashboard.text()]);
+    expect((await ask(workspaceRoutes.tech('harbor'), { state: 'unreadable' })).status).toBe(200);
+    const crossSite = await ask(workspaceRoutes.tech('harbor'), { headers: { Origin: 'https://evil.example' } });
+    expect([crossSite.status, await crossSite.json()]).toEqual([403, { error: 'forbidden' }]);
+  });
+});
+
+describe('stub API: GET /api/workspaces/:slug/tech/asset?path= (spec 023, T10)', () => {
+  const asset = (ws: string, path: string): string => workspaceRoutes.techAsset(ws, path);
+  const bytesOf = (tree: string, path: string): Uint8Array<ArrayBuffer> => new Uint8Array(readFileSync(join(FIXTURES, tree, 'specs', path)));
+
+  test('the image tech.md names: its bytes from the fixture tree with evidenceFileHeaders and a strong ETag; HEAD, 304', async () => {
+    const res = await ask(asset('harbor', 'tech/overview.png'));
+    const bytes = bytesOf('harbor', 'tech/overview.png');
+    const etag = `"${new Bun.CryptoHasher('sha256').update(bytes).digest('base64url')}"`;
+    expect(res.status).toBe(200);
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
+    for (const [name, value] of Object.entries({ ...evidenceFileHeaders('image/png'), ETag: etag })) {
+      expect({ name, value: res.headers.get(name) }).toEqual({ name, value });
+    }
+    const head = await ask(asset('harbor', 'tech/overview.png'), { method: 'HEAD' });
+    expect([head.status, head.headers.get('ETag'), head.headers.get('Content-Type'), await head.text()]).toEqual([200, etag, 'image/png', '']);
+    const revalidated = await ask(asset('harbor', 'tech/overview.png'), { headers: { 'If-None-Match': etag } });
+    expect([revalidated.status, await revalidated.text()]).toEqual([304, '']);
+  });
+
+  test('a file under specs/ that is no image is refused, as api.ts serves images only', async () => {
+    const res = await ask(asset('harbor', 'tech.md'));
+    expect({ status: res.status, body: (await res.json()) as unknown }).toEqual({ status: 403, body: { error: 'forbidden' } });
+  });
+
+  test('403 for a .. segment, an absolute path, a backslash or a second encoding layer; 404 for no file', async () => {
+    for (const path of ['../constitution.md', 'tech/../tech.md', '..', '/etc/hosts', 'tech\\overview.png', '%2e%2e/README.md', '']) {
+      const res = await ask(asset('harbor', path));
+      expect({ path, status: res.status, body: (await res.json()) as unknown }).toEqual({ path, status: 403, body: { error: 'forbidden' } });
+    }
+    for (const [ws, path] of [['harbor', 'tech/nothing.png'], ['harbor', 'tech'], ['lantern', 'tech/overview.png']] as const) {
+      const res = await ask(asset(ws, path));
+      expect({ ws, path, status: res.status, body: (await res.json()) as unknown }).toEqual({ ws, path, status: 404, body: { error: 'not-found' } });
+    }
+  });
+
+  test('404 unknown slug, 405 with allowForWorkspace, 409 the unreadable summary, 403 cross-site', async () => {
+    expect((await ask(asset('nope', 'tech/overview.png'))).status).toBe(404);
+    expect((await ask(asset('harbor', 'tech/overview.png'), { state: 'empty' })).status).toBe(404);
+    const put = await ask(asset('harbor', 'tech/overview.png'), { method: 'PUT', body: '{}' });
+    expect([put.status, put.headers.get('Allow')]).toEqual([405, allowForWorkspace('techAsset')]);
+    const unreadable = await ask(asset('lantern', 'tech/overview.png'), { state: 'unreadable' });
+    const dashboard = await ask('/api/workspaces/lantern/dashboard', { state: 'unreadable' });
+    expect([unreadable.status, await unreadable.text()]).toEqual([409, await dashboard.text()]);
+    const crossSite = await ask(asset('harbor', 'tech/overview.png'), { headers: { Origin: 'https://evil.example' } });
+    expect([crossSite.status, await crossSite.json()]).toEqual([403, { error: 'forbidden' }]);
   });
 });
 
@@ -967,13 +1065,14 @@ describe('stub API matches the real server handlers byte for byte', () => {
   test.each([...STUB_STATES])('every GET route of WORKSPACE_ROUTE_TABLE, state %s', async (state) => {
     const handler = real?.[state];
     if (!handler) throw new Error('real handlers not loaded');
-    // The routes with a golden family (`planning`) are compared here, whole file to whole body. The story route, the board
-    // query and the allocation (T119) have no family; their parity runs in "stub API board seam matches the real handlers".
-    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning', 'idea', 'boardQuery', 'allocate']);
-    const golden = WORKSPACE_ROUTE_TABLE.filter((entry) => entry.route in GOLDEN_FAMILY);
-    expect(golden.map((entry) => entry.route)).toEqual(['planning']);
+    // The routes with a golden family (`planning`, `tech`) are compared here, whole file to whole body. The story route,
+    // the board query and the allocation (T119) have no family; their parity runs in "stub API board seam matches the real
+    // handlers". The tech asset serves the fixture tree's files, not a golden; its answers are pinned in its own block.
+    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning', 'idea', 'boardQuery', 'allocate', 'tech', 'techAsset']);
+    const golden = WORKSPACE_ROUTE_TABLE.filter((entry) => entry.route in WORKSPACE_GOLDEN_FAMILY);
+    expect(golden.map((entry) => entry.route)).toEqual(['planning', 'tech']);
     for (const entry of golden) {
-      const build = workspaceRoutes.planning;
+      const build = entry.route === 'tech' ? workspaceRoutes.tech : workspaceRoutes.planning;
       const cases: Array<[string, RequestInit]> = [
         [build('harbor'), {}],
         [build('lantern'), {}],
@@ -1428,9 +1527,16 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
         ...writes((ws) => workspaceRoutes.allocate(ws, 'console-audit-log'), { hash: ideaHash }),
         [workspaceRoutes.allocate(WS, 'registry-webhooks'), { method: 'POST', body: JSON.stringify({ hash: storyHash('registry-webhooks') }) }],
       ],
+      tech: reads((ws) => workspaceRoutes.tech(ws)),
+      techAsset: [
+        ...reads((ws) => workspaceRoutes.techAsset(ws, 'tech/overview.png')),
+        [workspaceRoutes.techAsset(WS, '../constitution.md'), {}],
+        [workspaceRoutes.techAsset(WS, 'tech/nothing.png'), {}],
+        [workspaceRoutes.techAsset(WS, 'tech/overview.png'), { method: 'HEAD' }],
+      ],
     };
     // The table's routes stay pinned; every one of them is served now.
-    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning', 'idea', 'boardQuery', 'allocate']);
+    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning', 'idea', 'boardQuery', 'allocate', 'tech', 'techAsset']);
     for (const entry of WORKSPACE_ROUTE_TABLE) {
       expect({ route: entry.route, ...(await statusesOf(workspace[entry.route] ?? [])) }).toEqual({
         route: entry.route,
