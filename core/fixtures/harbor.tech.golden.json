@@ -2,7 +2,7 @@
   "pages": {
     "overview": {
       "frontmatter": null,
-      "html": "<h2 id=\"tech-overview-overview\">Overview</h2>\n<p>Harbor mirrors the container manifests a team depends on into the team&#39;s own registry. One command, <code>harbor sync</code>, copies every listed manifest byte for byte, and running it again is a no-op. A small web console shows each run, and retention policies keep the mirror bounded.</p>\n<figure class=\"image-figure\" data-figure=\"1\"><img src=\"tech/overview.png\" alt=\"Harbor at a glance\" loading=\"lazy\"><figcaption>Harbor at a glance</figcaption></figure>\n<h2 id=\"tech-overview-stack\">Stack</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Part</th><th>Built with</th><th>Notes</th></tr></thead><tbody><tr><td>CLI</td><td>Bun, TypeScript</td><td><code>harbor sync</code>, one binary</td></tr><tr><td>API</td><td>Bun, TypeScript</td><td>port 8080, loopback by default</td></tr><tr><td>Console</td><td>Angular</td><td>port 4200 in development</td></tr></tbody></table></div>",
+      "html": "<h2 id=\"tech-overview-overview\">Overview</h2>\n<p>Harbor mirrors the container manifests a team depends on into the team&#39;s own registry. One command, <code>harbor sync</code>, copies every listed manifest byte for byte, and running it again is a no-op. A small web console shows each run, and retention policies keep the mirror bounded.</p>\n<figure class=\"image-figure\" data-figure=\"1\"><img data-spec-asset=\"tech/overview.png\" alt=\"Harbor at a glance\" loading=\"lazy\"><figcaption>Harbor at a glance</figcaption></figure>\n<h2 id=\"tech-overview-stack\">Stack</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Part</th><th>Built with</th><th>Notes</th></tr></thead><tbody><tr><td>CLI</td><td>Bun, TypeScript</td><td><code>harbor sync</code>, one binary</td></tr><tr><td>API</td><td>Bun, TypeScript</td><td>port 8080, loopback by default</td></tr><tr><td>Console</td><td>Angular</td><td>port 4200 in development</td></tr></tbody></table></div>",
       "toc": [
         {
           "level": 2,
@@ -21,7 +21,8 @@
           "kind": "image",
           "src": "tech/overview.png",
           "alt": "Harbor at a glance",
-          "caption": "Harbor at a glance"
+          "caption": "Harbor at a glance",
+          "asset": "tech/overview.png"
         }
       ],
       "sections": [

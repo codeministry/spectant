@@ -32,19 +32,29 @@
       <!-- One placeholder per tab; the tab components (T15 onwards) replace them and take model(). -->
       @switch (tab()) {
         @case ('overview') {
-          <div data-tech-tab="overview"></div>
+          @if (model(); as m) {
+            <app-tech-docs-tab page="overview" [model]="m" />
+          }
         }
         @case ('architecture') {
-          <div data-tech-tab="architecture"></div>
+          @if (model(); as m) {
+            <app-tech-docs-tab page="architecture" [model]="m" />
+          }
         }
         @case ('status') {
-          <div data-tech-tab="status"></div>
+          @if (model(); as m) {
+            <app-tech-status-tab data-tech-tab="status" [model]="m" />
+          }
         }
         @case ('specs') {
-          <div data-tech-tab="specs"></div>
+          @if (model(); as m) {
+            <app-tech-specs-tab [model]="m" />
+          }
         }
         @case ('open') {
-          <div data-tech-tab="open"></div>
+          @if (model(); as m) {
+            <app-tech-open-tab data-tech-tab="open" [model]="m" />
+          }
         }
       }
     }

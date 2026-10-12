@@ -57,6 +57,8 @@ function techOptions(page: string, input: TechInput): DocsOptions {
   const exists = input.assetExists;
   return {
     idPrefix: `tech-${page}-`,
+    // Every image tech.md names loads through the tech asset route (`data-spec-asset`, path relative to `specs/`).
+    specAssets: ['*'],
     assetExists: (src, asset) => insideSpecs(src) && (exists === undefined || exists(src, asset)),
   };
 }

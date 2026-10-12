@@ -1,0 +1,140 @@
+<h2 class="sr">{{ 'tech.status.heading' | transloco }}</h2>
+@let s = summary();
+<p class="summary">
+  <span data-summary
+    >{{ 'tech.status.summary.specs' | transloco: { count: s.specs } }}
+    @for (part of s.phases; track part.phase) {
+      · {{ 'tech.status.summary.phase' | transloco: { count: part.count, phase: ('phases.' + part.phase | transloco) } }}
+    }
+    @if (s.complete > 0) {
+      · {{ 'tech.status.summary.complete' | transloco: { count: s.complete } }}
+    }
+  </span>
+  <span data-legend>{{ 'tech.status.legend' | transloco }}</span>
+</p>
+
+<div class="card">
+  @if (tier() === 'compact') {
+    <ul data-stacked [attr.aria-label]="'tech.status.caption' | transloco">
+      @for (row of open(); track row.id) {
+        <li><ng-container [ngTemplateOutlet]="stacked" [ngTemplateOutletContext]="{ $implicit: row }" /></li>
+      }
+    </ul>
+    @if (done().length > 0) {
+      <h3 class="divider" data-divider>{{ 'tech.status.complete' | transloco: { count: done().length } }}</h3>
+      <ul data-stacked [attr.aria-label]="'tech.status.complete' | transloco: { count: done().length }">
+        @for (row of done(); track row.id) {
+          <li><ng-container [ngTemplateOutlet]="stacked" [ngTemplateOutletContext]="{ $implicit: row }" /></li>
+        }
+      </ul>
+    }
+  } @else {
+    <table>
+      <caption class="sr">{{ 'tech.status.caption' | transloco }}</caption>
+      <thead>
+        <tr>
+          <th scope="col" data-col="spec">{{ 'tech.status.columns.spec' | transloco }}</th>
+          <th scope="col" data-col="title">{{ 'tech.status.columns.title' | transloco }}</th>
+          @if (tier() === 'wide') {
+            <th scope="col" data-col="type">{{ 'tech.status.columns.type' | transloco }}</th>
+          }
+          <th scope="col" data-col="stage">{{ 'tech.status.columns.stage' | transloco }}</th>
+          <th scope="col" data-col="claims">{{ 'tech.status.columns.claims' | transloco }}</th>
+          <th scope="col" data-col="tasks">{{ 'tech.status.columns.tasks' | transloco }}</th>
+          <th scope="col" data-col="fog">
+            <ui-term [hint]="'tech.status.fogHint' | transloco">{{ 'tech.status.columns.fog' | transloco }}</ui-term>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of open(); track row.id) {
+          <ng-container [ngTemplateOutlet]="tableRow" [ngTemplateOutletContext]="{ $implicit: row }" />
+        }
+      </tbody>
+      @if (done().length > 0) {
+        <tbody>
+          <tr data-divider>
+            <th scope="rowgroup" [attr.colspan]="columns()">{{ 'tech.status.complete' | transloco: { count: done().length } }}</th>
+          </tr>
+          @for (row of done(); track row.id) {
+            <ng-container [ngTemplateOutlet]="tableRow" [ngTemplateOutletContext]="{ $implicit: row }" />
+          }
+        </tbody>
+      }
+    </table>
+  }
+</div>
+
+<ng-template #tableRow let-row>
+  <tr [attr.data-spec]="row.id" [attr.data-complete]="row.complete ? '' : null">
+    <td data-col="spec">
+      <a class="num" tabindex="-1" aria-hidden="true" [routerLink]="['/w', ws(), 's', row.id]">{{ row.id }}</a>
+    </td>
+    <td data-col="title">
+      <span class="ttl">
+        @if (row.type; as type) {
+          <ui-type-glyph [type]="type" [decorative]="tier() === 'wide'" />
+        }
+        <a [routerLink]="['/w', ws(), 's', row.id]" [title]="row.title"
+          ><span class="sr">{{ 'tech.links.status' | transloco: { id: row.id } }} </span>{{ row.title }}</a
+        >
+      </span>
+    </td>
+    @if (tier() === 'wide') {
+      <td data-col="type">{{ row.type === null ? ('common.noValue' | transloco) : ('types.' + row.type | transloco) }}</td>
+    }
+    <td data-col="stage">
+      <ui-chip [tone]="stageTone(row)" [dot]="true">{{ 'stages.' + row.stage | transloco }}</ui-chip>
+    </td>
+    <td data-col="claims">
+      <span class="claims">
+        <ng-container [ngTemplateOutlet]="meter" [ngTemplateOutletContext]="{ $implicit: row }" />
+        <span class="frac">{{ row.closed }}/{{ row.total }}</span>
+      </span>
+    </td>
+    <td data-col="tasks">
+      @if (row.tasks; as tasks) {
+        {{ tasks.landed }}/{{ tasks.total }}
+      } @else {
+        <span aria-hidden="true">{{ 'common.noValue' | transloco }}</span><span class="sr">{{ 'tech.status.noTasks' | transloco }}</span>
+      }
+    </td>
+    <td data-col="fog" [attr.data-has]="row.fog > 0 ? '' : null">{{ row.fog }}</td>
+  </tr>
+</ng-template>
+
+<ng-template #stacked let-row>
+  <a class="row" [attr.data-spec]="row.id" [attr.data-complete]="row.complete ? '' : null" [routerLink]="['/w', ws(), 's', row.id]">
+    <span class="r-id" aria-hidden="true">
+      @if (row.type; as type) {
+        <ui-type-glyph [type]="type" [size]="14" [decorative]="true" />
+      }
+      <span class="num">{{ row.id }}</span>
+    </span>
+    <span class="r-title"><span class="sr">{{ 'tech.links.status' | transloco: { id: row.id } }} </span>{{ row.title }}</span>
+    <span class="r-meta">
+      <ui-chip data-field="stage" [tone]="stageTone(row)" [dot]="true">{{ 'stages.' + row.stage | transloco }}</ui-chip>
+      <span class="mono" data-field="tasks">{{
+        row.tasks ? ('tech.status.tasks' | transloco: row.tasks) : ('tech.status.noTasks' | transloco)
+      }}</span>
+      @if (row.fog > 0) {
+        <span class="mono fogw" data-field="fog">{{ 'tech.status.fog' | transloco: { count: row.fog } }}</span>
+      }
+    </span>
+    <span class="claims r-claims">
+      <ng-container [ngTemplateOutlet]="meter" [ngTemplateOutletContext]="{ $implicit: row }" />
+      <span class="frac">{{ row.closed }}/{{ row.total }}</span>
+    </span>
+  </a>
+</ng-template>
+
+<ng-template #meter let-row>
+  <ui-meter
+    [mini]="true"
+    [tone]="row.complete ? 'success' : 'accent'"
+    [attr.data-muted]="row.complete ? '' : null"
+    [value]="row.closed"
+    [max]="row.total"
+    [valueText]="'tech.status.claims' | transloco: { closed: row.closed, total: row.total }"
+  />
+</ng-template>

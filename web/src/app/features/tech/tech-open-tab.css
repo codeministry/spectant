@@ -1,0 +1,110 @@
+/*
+ * The Open tab (spec 023, T18, ISC-134.1; design.md § Open): the risks, 48 px to the open questions, one card of fog
+ * groups split by a 1 px --line with 16 px padding; each fog line a link with the 2 px violet left edge of the TL;DR
+ * card, 15/24 on at most 72ch, 14/20 and at least 44 px tall at compact.
+ */
+:host {
+  display: block;
+}
+
+.risks {
+  margin-block-end: 48px;
+}
+
+h2 {
+  margin: 0 0 16px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 24px;
+}
+
+.group {
+  padding: 16px;
+}
+
+.group + .group {
+  border-block-start: 1px solid var(--line);
+}
+
+h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-inline-size: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.num {
+  color: var(--disp-ink);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+ui-type-glyph {
+  flex: none;
+}
+
+.title {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+ul {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  display: block;
+  max-inline-size: 72ch;
+  padding-inline-start: 12px;
+  border-inline-start: 2px solid var(--color-secondary);
+  color: inherit;
+  font-size: 15px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.none {
+  margin: 0;
+  padding: 16px;
+  color: var(--muted-ink);
+}
+
+@container shell (width < 640px) {
+  a {
+    display: flex;
+    align-items: center;
+    min-block-size: 44px;
+    font-size: 14px;
+    line-height: 20px;
+  }
+}
+
+/* Hidden text that completes a link's accessible name after its visible label (WCAG 2.5.3, label in name). */
+.vh {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

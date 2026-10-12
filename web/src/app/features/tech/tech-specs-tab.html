@@ -1,0 +1,73 @@
+@let g = groups();
+@for (card of cards(); track card.spec.id) {
+  @let id = card.spec.id;
+  @if (card.complete && $index === g.open.length) {
+    <p class="divider" data-tech-divider>{{ 'tech.status.complete' | transloco: { count: g.complete.length } }}</p>
+  }
+  <ui-card class="spec-card" [padding]="wide() ? 24 : 16" [id]="'spec-' + id" [attr.data-tech-spec]="id" [attr.data-complete]="card.complete ? '' : null">
+    <div class="card-head">
+      <span class="sid">{{ id }}</span>
+      @if (card.spec.type; as type) {
+        <ui-type-glyph [type]="type" />
+      }
+      <h2 class="title" [id]="'spec-title-' + id">{{ card.title }}</h2>
+    </div>
+
+    @if (card.spec.goal; as goal) {
+      <section class="excerpt" data-tech-goal>
+        <h3 class="excerpt-label">
+          <a class="doc-link" data-tech-link="goal" [routerLink]="link(ws(), id)"
+            >{{ 'tech.specs.goal' | transloco }}<span class="vh"> · {{ 'tech.links.goal' | transloco: { id } }}</span></a
+          >
+        </h3>
+        <div class="clip" [id]="id + '-goal'" [attr.data-clipped]="clipped(id + '-goal') ? '' : null">
+          <ui-doc-prose [page]="goal" />
+        </div>
+        @if (!wide()) {
+          <button
+            type="button"
+            class="more"
+            data-tech-more="goal"
+            [attr.aria-expanded]="isExpanded(id + '-goal')"
+            [attr.aria-controls]="id + '-goal'"
+            (click)="toggle(id + '-goal')"
+          >
+            {{ (isExpanded(id + '-goal') ? 'brief.less' : 'brief.more') | transloco }}
+          </button>
+        }
+      </section>
+    }
+
+    @if (card.spec.approach; as approach) {
+      <section class="excerpt" data-tech-approach>
+        <h3 class="excerpt-label">
+          <a class="doc-link" data-tech-link="plan" [routerLink]="link(ws(), id, 'plan')"
+            >{{ 'tech.specs.approach' | transloco }}<span class="vh"> · {{ 'tech.links.plan' | transloco: { id } }}</span></a
+          >
+        </h3>
+        <div class="clip" [id]="id + '-approach'" [attr.data-clipped]="clipped(id + '-approach') ? '' : null">
+          <ui-doc-prose [page]="approach" />
+        </div>
+        @if (!wide()) {
+          <button
+            type="button"
+            class="more"
+            data-tech-more="approach"
+            [attr.aria-expanded]="isExpanded(id + '-approach')"
+            [attr.aria-controls]="id + '-approach'"
+            (click)="toggle(id + '-approach')"
+          >
+            {{ (isExpanded(id + '-approach') ? 'brief.less' : 'brief.more') | transloco }}
+          </button>
+        }
+      </section>
+    }
+
+    <div class="card-foot">
+      <a class="open-link" data-tech-link="spec" [routerLink]="link(ws(), id)" [attr.aria-describedby]="'spec-title-' + id">
+        {{ 'tech.specs.open' | transloco }}
+        <ui-icon name="chevron-right" />
+      </a>
+    </div>
+  </ui-card>
+}

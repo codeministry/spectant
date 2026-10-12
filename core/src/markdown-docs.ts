@@ -19,7 +19,7 @@ export interface DocsOptions {
    */
   readonly assetExists?: (src: string, asset: string | null) => boolean;
   /** The folder whose images load through the spec's evidence file route (`markdown.ts`): the Design tab's `.design`. */
-  readonly specAssets?: ReadonlyArray<typeof DESIGN_ASSETS>;
+  readonly specAssets?: ReadonlyArray<typeof DESIGN_ASSETS | '*'>;
 }
 
 const ENTITIES: Readonly<Record<string, string>> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" };

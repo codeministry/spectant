@@ -30,9 +30,10 @@ export interface MarkdownOptions {
   /**
    * Document mode: spec-folder subfolders (`.design`) whose images the web app loads through the spec's evidence file
    * route. Such an image renders without `src`, its path in `data-spec-asset`, so the page never resolves it against
-   * its own base. Absent: every relative image keeps its `src` as written.
+   * its own base. `*` makes every relative image such an asset, the document's folder its root (the tech page, whose
+   * images the tech asset route serves from `specs/`). Absent: every relative image keeps its `src` as written.
    */
-  readonly specAssets?: ReadonlyArray<typeof DESIGN_ASSETS>;
+  readonly specAssets?: ReadonlyArray<typeof DESIGN_ASSETS | '*'>;
 }
 
 const ESCAPES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -272,6 +273,9 @@ function lexical(path: string, browser: boolean): string[] | null {
  * second encoding layer, a control character or backslash, or the folder alone. The server confines again before a byte.
  */
 export function specAsset(src: string, folders: readonly string[]): string | false | null {
+  // `*`: any relative path below the document's folder is an asset, the file at its top included.
+  const anywhere = folders.includes('*');
+  if (anywhere && src.startsWith('/')) return false;
   let decoded: string | null;
   try {
     decoded = decodeURIComponent(src);
@@ -280,10 +284,11 @@ export function specAsset(src: string, folders: readonly string[]): string | fal
   }
   const asResolved = lexical(src, true);
   const asDecoded = decoded === null ? null : lexical(decoded, false);
-  const inFolder = (segments: string[] | null): segments is string[] => segments !== null && folders.includes(segments[0] ?? '');
+  const inFolder = (segments: string[] | null): segments is string[] =>
+    segments !== null && segments.length > 0 && (anywhere || folders.includes(segments[0] ?? ''));
   if (!inFolder(asResolved) && !inFolder(asDecoded)) return null;
   // eslint-disable-next-line no-control-regex -- control characters are exactly what the route refuses
-  if (decoded === null || !inFolder(asDecoded) || asDecoded.length < 2 || /%[0-9A-Fa-f]{2}|[\u0000-\u001f\u007f\\]/.test(decoded)) {
+  if (decoded === null || !inFolder(asDecoded) || asDecoded.length < (anywhere ? 1 : 2) || /%[0-9A-Fa-f]{2}|[\u0000-\u001f\u007f\\]/.test(decoded)) {
     return false;
   }
   return asDecoded.join('/');

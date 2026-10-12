@@ -9,6 +9,10 @@ import { ShellState } from '../../layout/shell/shell-state.service';
 import { TabBarSlot } from '../../layout/tab-bar/tab-bar-slot';
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
+import { TechDocsTab } from './tech-docs-tab';
+import { TechOpenTab } from './tech-open-tab';
+import { TechSpecsTab } from './tech-specs-tab';
+import { TechStatusTab } from './tech-status-tab';
 
 /**
  * The tab figures of a tech model (design.md § Tabs): Status and Specs count the specs, Open the `- fog:` lines of the
@@ -35,7 +39,7 @@ export function techTabCounts(model: TechModel): TechTabCountValues {
  */
 @Component({
   selector: 'app-tech-page',
-  imports: [TranslocoPipe, NotFound, TabBarSlot, UiNotice, UiSkeleton],
+  imports: [NotFound, TabBarSlot, TechDocsTab, TechOpenTab, TechSpecsTab, TechStatusTab, TranslocoPipe, UiNotice, UiSkeleton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'tech', '[attr.data-tab]': 'tab()' },
   styleUrl: './tech-page.css',

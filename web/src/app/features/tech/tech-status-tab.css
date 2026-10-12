@@ -1,0 +1,280 @@
+/*
+ * The Status tab (spec 023, T16; design.md § Status): the summary line, then one card with a real table at medium and
+ * wide or stacked 64 px rows at compact. Complete rows are muted by ink, never by opacity; their meter keeps a muted
+ * green fill so a full meter does not read as an empty one. Rules run in ascending specificity (stylelint).
+ */
+:host {
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+li + li {
+  border-block-start: 1px solid var(--line);
+}
+
+table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+th,
+td {
+  padding: 4px 8px;
+  border-block-end: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+td {
+  block-size: 48px;
+}
+
+ui-chip {
+  font-family: var(--font-mono);
+}
+
+thead th {
+  padding-block: 12px;
+}
+
+thead th,
+.divider {
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+  text-align: start;
+  text-transform: uppercase;
+}
+
+.sr {
+  position: absolute;
+  overflow: hidden;
+  clip-path: inset(50%);
+  inline-size: 1px;
+  block-size: 1px;
+  white-space: nowrap;
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0 0 16px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+.card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+}
+
+.divider {
+  margin: 0;
+  padding: 16px 16px 8px;
+  background: var(--color-base-200);
+}
+
+.num,
+.frac,
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.num {
+  color: var(--disp-ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ttl {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.ttl a,
+.r-title {
+  overflow: hidden;
+  min-inline-size: 0;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.claims {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.claims ui-meter {
+  flex: 1;
+  max-inline-size: 120px;
+}
+
+.frac {
+  min-inline-size: 5ch;
+  font-size: 13px;
+  text-align: end;
+}
+
+.row {
+  display: grid;
+  grid-template-areas: 'id title title' '. meta claims';
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 4px 16px;
+  align-items: center;
+  min-block-size: 64px;
+  padding: 12px 16px;
+}
+
+.r-id {
+  display: inline-flex;
+  grid-area: id;
+  gap: 4px;
+  align-items: center;
+}
+
+.r-title {
+  grid-area: title;
+  font-size: 15px;
+}
+
+.r-meta {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: meta;
+  gap: 4px 12px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.mono {
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.fogw {
+  color: var(--ques-ink);
+  font-weight: 600;
+}
+
+.r-claims {
+  grid-area: claims;
+  gap: 8px;
+}
+
+.r-claims ui-meter {
+  inline-size: 48px;
+}
+
+[data-col='spec'] {
+  inline-size: 64px;
+}
+
+[data-col='type'] {
+  inline-size: 88px;
+}
+
+[data-col='stage'] {
+  inline-size: 128px;
+}
+
+[data-col='claims'] {
+  inline-size: 200px;
+}
+
+[data-col='tasks'],
+[data-col='fog'] {
+  inline-size: 72px;
+}
+
+[data-col='claims'],
+[data-col='tasks'],
+[data-col='fog'] {
+  text-align: end;
+}
+
+:host([data-tier='medium']) [data-col='claims'] {
+  inline-size: 152px;
+}
+
+td:is([data-col='tasks'], [data-col='fog']) {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+td:is([data-col='type'], [data-col='fog']) {
+  color: var(--muted-ink);
+}
+
+td[data-col='type'] {
+  font-size: 13px;
+}
+
+:is(th, td):first-child {
+  padding-inline-start: 16px;
+}
+
+:is(th, td):last-child {
+  padding-inline-end: 16px;
+}
+
+[data-divider] th {
+  padding: 16px 16px 8px;
+  background: var(--color-base-200);
+}
+
+td[data-col='fog'][data-has] {
+  color: var(--ques-ink);
+  font-weight: 600;
+}
+
+ui-meter[data-muted] {
+  /* A complete spec's full meter: a muted green, neither lime progress nor an empty-looking track. */
+  --color-success: color-mix(in srgb, var(--done-mark) 55%, var(--track));
+}
+
+[data-complete] :is(td, a, .num, .r-title, ui-type-glyph, ui-chip),
+.row[data-complete] {
+  color: var(--muted-ink);
+}
+
+.row:hover,
+tr[data-spec]:hover td {
+  background: var(--color-base-200);
+}
+
+tbody:last-child tr:last-child td {
+  border-block-end: 0;
+}
+
+.ttl a:hover,
+a.num:hover,
+.row:hover .r-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
