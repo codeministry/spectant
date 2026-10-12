@@ -1,0 +1,29 @@
+{
+  "pages": null,
+  "diagnostics": [],
+  "specs": [
+    {
+      "id": "001",
+      "slug": "001-app-skeleton",
+      "type": "feature",
+      "phase": "scoping",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A fresh macOS or Linux user installs spectant with one line, registers two workspaces and sees their specs side by side on a read-only dashboard that inherits the old Spec dashboard&#39;s look in its light and its dark theme and works like a current developer tool (command palette, keyboard navigation, in-place refresh), with nothing leaving the machine and nothing written into either repository.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 63
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>Build a thin end-to-end skeleton first, then the design system with its own visual baseline, then the data path, then the two views until every claim&#39;s probe is green. The obvious order would be contract first (parser, server, UI, binary last). It layers most cleanly, but it proves the two riskiest seams last: embedding an Angular build in a <code>bun build --compile</code> binary, and installing that binary with one line on a machine that has never seen the repo. Walking the whole path with a hello page on day one turns both into known quantities before any real UI exists (ISC-8.1 is the probe that keeps that seam honest from then on). The design system comes second because every later screen is built from its primitives and measured against its own Playwright baseline; the old dashboard is the design source, never a measurement target (Decisions 2026-09-28), so no reference render of the old skill is needed and the harness has no dependency outside this repository.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 166
+      },
+      "fog": []
+    }
+  ]
+}

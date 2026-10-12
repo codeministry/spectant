@@ -1,0 +1,45 @@
+{
+  "pages": null,
+  "diagnostics": [],
+  "specs": [
+    {
+      "id": "001",
+      "slug": "001-reading-list",
+      "type": "feature",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A reader saves a link in one step, finds it again by title or tag, and reads it offline.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 19
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>Store each saved link with its fetched text in IndexedDB at save time, so reading offline is a read from the same store the list uses. Fetching the text only when the reader opens an article would fail exactly when there is no connection.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 44
+      },
+      "fog": []
+    },
+    {
+      "id": "002",
+      "slug": "002-duplicate-links",
+      "type": "bug",
+      "phase": "scoping",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>Saving a known link or a known tag again changes nothing in the list.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 14
+      },
+      "approach": null,
+      "fog": []
+    }
+  ]
+}

@@ -1,0 +1,245 @@
+{
+  "pages": {
+    "overview": {
+      "frontmatter": null,
+      "html": "<h2 id=\"tech-overview-overview\">Overview</h2>\n<p>Harbor mirrors the container manifests a team depends on into the team&#39;s own registry. One command, <code>harbor sync</code>, copies every listed manifest byte for byte, and running it again is a no-op. A small web console shows each run, and retention policies keep the mirror bounded.</p>\n<figure class=\"image-figure\" data-figure=\"1\"><img src=\"tech/overview.png\" alt=\"Harbor at a glance\" loading=\"lazy\"><figcaption>Harbor at a glance</figcaption></figure>\n<h2 id=\"tech-overview-stack\">Stack</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Part</th><th>Built with</th><th>Notes</th></tr></thead><tbody><tr><td>CLI</td><td>Bun, TypeScript</td><td><code>harbor sync</code>, one binary</td></tr><tr><td>API</td><td>Bun, TypeScript</td><td>port 8080, loopback by default</td></tr><tr><td>Console</td><td>Angular</td><td>port 4200 in development</td></tr></tbody></table></div>",
+      "toc": [
+        {
+          "level": 2,
+          "text": "Overview",
+          "anchor": "tech-overview-overview"
+        },
+        {
+          "level": 2,
+          "text": "Stack",
+          "anchor": "tech-overview-stack"
+        }
+      ],
+      "figures": [
+        {
+          "index": 1,
+          "kind": "image",
+          "src": "tech/overview.png",
+          "alt": "Harbor at a glance",
+          "caption": "Harbor at a glance"
+        }
+      ],
+      "sections": [
+        {
+          "id": "tech-overview-overview",
+          "heading": "Overview",
+          "level": 2
+        },
+        {
+          "id": "tech-overview-stack",
+          "heading": "Stack",
+          "level": 2
+        }
+      ],
+      "wordCount": 73
+    },
+    "architecture": {
+      "frontmatter": null,
+      "html": "<h2 id=\"tech-architecture-architecture\">Architecture</h2>\n<p>The CLI reads the config, resolves each upstream manifest and pushes it whole to the target, or not at all. Every run is recorded in the history the console reads through the API.</p>\n<figure class=\"mermaid-figure\" data-figure=\"1\"><pre class=\"mermaid\">flowchart LR\n  config[Config] --&gt; cli[harbor sync]\n  cli --&gt; upstream[Upstream registry]\n  cli --&gt; target[Target registry]\n  cli --&gt; history[(Run history)]\n  history --&gt; console[Web console]</pre><figcaption>Architecture</figcaption></figure>",
+      "toc": [
+        {
+          "level": 2,
+          "text": "Architecture",
+          "anchor": "tech-architecture-architecture"
+        }
+      ],
+      "figures": [
+        {
+          "index": 1,
+          "kind": "mermaid",
+          "diagram": "flowchart",
+          "source": "flowchart LR\n  config[Config] --> cli[harbor sync]\n  cli --> upstream[Upstream registry]\n  cli --> target[Target registry]\n  cli --> history[(Run history)]\n  history --> console[Web console]",
+          "caption": "Architecture"
+        }
+      ],
+      "sections": [
+        {
+          "id": "tech-architecture-architecture",
+          "heading": "Architecture",
+          "level": 2
+        }
+      ],
+      "wordCount": 34
+    },
+    "risks": {
+      "frontmatter": null,
+      "html": "<h2 id=\"tech-risks-risks\">Risks</h2>\n<ul><li>The config loader rewrite touches every package at once; its parity snapshots are the only guard.</li><li>A push interrupted mid-manifest must leave nothing behind in the target; the atomic-push probe holds it.</li></ul>",
+      "toc": [
+        {
+          "level": 2,
+          "text": "Risks",
+          "anchor": "tech-risks-risks"
+        }
+      ],
+      "figures": [],
+      "sections": [
+        {
+          "id": "tech-risks-risks",
+          "heading": "Risks",
+          "level": 2
+        }
+      ],
+      "wordCount": 33
+    }
+  },
+  "diagnostics": [],
+  "specs": [
+    {
+      "id": "002",
+      "slug": "002-web-console",
+      "type": "feature",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A teammate opens the console, finds any mirrored repository in two steps, and sees each sync run with its failures, on a phone-sized screen and with the keyboard alone.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 29
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>Serve a static Angular build from the API and read everything through one history endpoint. A separate console server would be one more process to run and secure.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 28
+      },
+      "fog": []
+    },
+    {
+      "id": "003",
+      "slug": "003-config-loader",
+      "type": "refactor",
+      "phase": "scoping",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>The CLI, the API and the console read their configuration through one loader, and the effective config for every case in the snapshot corpus is unchanged.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 26
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>Snapshot the effective config for every case first, then move each package onto the shared loader one at a time. Rewriting all three at once would leave no working reference to compare against.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 33
+      },
+      "fog": []
+    },
+    {
+      "id": "004",
+      "slug": "004-retention-policies",
+      "type": "feature",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A team writes its retention policy once, sees its effect before anything goes, and no manifest that a tag still references is ever deleted.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 24
+      },
+      "approach": {
+        "frontmatter": null,
+        "html": "<p>Evaluate policies into a preview first and delete only from a confirmed preview. Deleting inline while evaluating would make the preview a guess.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 23
+      },
+      "fog": []
+    },
+    {
+      "id": "005",
+      "slug": "005-config-format-choice",
+      "type": "spike",
+      "phase": "scoping",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A recorded decision names the config format for version 2 and the one trade-off that decided it.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 17
+      },
+      "approach": null,
+      "fog": [
+        "whether includes are resolved relative to the including file or to the working directory — needs one real multi-repository config",
+        "whether a comment-preserving writer is required at all — depends on whether the console ever edits the config"
+      ]
+    },
+    {
+      "id": "006",
+      "slug": "006-partial-push",
+      "type": "bug",
+      "phase": "scoping",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A push interrupted at any point leaves the target registry exactly as it was before the push started.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 18
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "007",
+      "slug": "007-rotate-mirror-token",
+      "type": "chore",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>The push token is replaced with one command, and the next scheduled run uses the new token without a restart.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 20
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "008",
+      "slug": "008-referrers-support",
+      "type": "spike",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A recorded table says which target registry answers the referrers endpoint, and a decision names the fallback for the ones that do not.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 23
+      },
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "009",
+      "slug": "009-chunked-upload-limits",
+      "type": "spike",
+      "phase": "building",
+      "goal": {
+        "frontmatter": null,
+        "html": "<p>A recorded table names each target registry&#39;s chunk limit, and Harbor never picks a chunk larger than it.</p>",
+        "toc": [],
+        "figures": [],
+        "sections": [],
+        "wordCount": 18
+      },
+      "approach": null,
+      "fog": []
+    }
+  ]
+}
