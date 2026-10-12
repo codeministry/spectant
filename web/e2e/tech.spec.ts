@@ -243,3 +243,185 @@ test.describe('tabs', () => {
     });
   });
 });
+
+/*
+ * T25 · ISC-134.2: the tech page is reachable (area menu, palette) and holds without `specs/tech.md`.
+ * `bun run e2e -- tech -g reach` and `-g empty`. Data: the harbor dashboard golden's `kpis` (the menu's summary),
+ * `core/fixtures/lantern.tech.golden.json` (`pages: null`: specs and fog only) and `src/i18n/en.json`.
+ */
+interface Kpis {
+  readonly kpis: { readonly specs: number; readonly fog: number };
+}
+interface ReachCopy {
+  readonly shell: { readonly pages: { readonly tech: string; readonly summary: { readonly tech: string } } };
+  readonly tech: {
+    readonly palette: { readonly tab: string };
+    readonly tabs: Readonly<Record<Tab, string>>;
+    readonly subline: { readonly noFile: string };
+    readonly empty: { readonly title: string; readonly body: string };
+    readonly open: { readonly noRisks: string; readonly none: string; readonly questions: string };
+  };
+}
+const COPY = EN as unknown as ReachCopy;
+const HARBOR_KPIS = (DASHBOARD as unknown as Kpis).kpis;
+const LANTERN = read('../../core/fixtures/lantern.tech.golden.json') as TechGolden;
+const LANTERN_WS = 'lantern';
+const LANTERN_FOGGY = LANTERN.specs.filter((spec) => spec.phase !== 'complete' && spec.fog.length > 0);
+/** The command the empty state offers (`DRAFT_COMMAND` of `tech-docs-tab.ts`): named by the claim, in neither file. */
+const DRAFT_COMMAND = '/spec-doc';
+/** WCAG 2.5.8: the copy button's hit area spans at least this many CSS px on both axes. */
+const HIT = 44;
+
+const fill = (template: string, params: Readonly<Record<string, string | number>>): string =>
+  Object.entries(params).reduce((text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)), template);
+const lanternUrl = (tab: Tab): RegExp => new RegExp(`/w/${LANTERN_WS}/tech/${tab}$`);
+
+async function openAreaMenu(page: Page): Promise<Locator> {
+  await page.locator('header [data-control="area"]').click();
+  const menu = page.locator('nav[aria-label="Areas"]');
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
+/**
+ * Whether the points `HIT / 2 - 1` px off the button's centre (left, right, up, down, two diagonals) still hit the
+ * button: its hit area spans at least `HIT` × `HIT`, however small the drawn button is.
+ */
+async function hitArea(button: Locator): Promise<boolean[]> {
+  return button.evaluate((el, reach) => {
+    const box = el.getBoundingClientRect();
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+    const probes: Array<[number, number]> = [
+      [x - reach, y],
+      [x + reach, y],
+      [x, y - reach],
+      [x, y + reach],
+      [x - reach, y - reach],
+      [x + reach, y + reach],
+    ];
+    return probes.map(([px, py]) => {
+      const hit = document.elementFromPoint(px, py);
+      return hit !== null && (hit === el || el.contains(hit));
+    });
+  }, HIT / 2 - 1);
+}
+
+test.describe('reach', () => {
+  for (const width of [WIDTHS.desktop, WIDTHS.phone]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      test('the area menu lists Tech fifth with the KPI summary; it lands on overview, current in the menu and on the trigger', async ({ page }) => {
+        await page.goto(`/w/${WS}`);
+        await expect(page.locator('header [data-control="area"]')).toBeVisible();
+        let menu = await openAreaMenu(page);
+        const entries = menu.locator('[data-page]');
+        expect(await entries.evaluateAll((all) => all.map((el) => el.getAttribute('data-page')))).toEqual(['specs', 'board', 'features', 'milestones', 'tech']);
+        const tech = menu.locator('[data-page="tech"]');
+        await expect(tech).toHaveAttribute('href', `/w/${WS}/tech`);
+        await expect(tech.locator('.entry-name')).toHaveText(COPY.shell.pages.tech);
+        await expect(tech.locator('.sub')).toHaveText(fill(COPY.shell.pages.summary.tech, { specs: HARBOR_KPIS.specs, fog: HARBOR_KPIS.fog }));
+
+        await tech.click();
+        await expect(page).toHaveURL(tabUrl('overview'));
+        await expectOnlyPanel(page, 'overview');
+        await expect(page.locator('header [data-control="area"]')).toContainText(COPY.shell.pages.tech);
+        menu = await openAreaMenu(page);
+        await expect(menu.locator('[aria-current="page"]')).toHaveCount(1);
+        await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('data-page', 'tech');
+      });
+
+      test('the palette finds Tech · Architecture for "arch"; opening it lands on the architecture tab', async ({ page }) => {
+        await page.goto(`/w/${WS}`);
+        await expect(page.locator('header [data-control="palette"]')).toBeVisible();
+        await page.locator('header [data-control="palette"]').click();
+        const box = page.locator('app-command-palette').getByRole('combobox');
+        await expect(box).toBeVisible();
+        await box.fill('arch');
+        const option = page.locator(`app-command-palette [role="option"][data-entry="tech/${WS}/architecture"]`);
+        await expect(option).toBeVisible();
+        await expect(option).toContainText(fill(COPY.tech.palette.tab, { tab: COPY.tech.tabs.architecture }));
+        await option.click();
+        await expect(page).toHaveURL(tabUrl('architecture'));
+        await expectOnlyPanel(page, 'architecture');
+      });
+    });
+  }
+});
+
+test.describe('empty', () => {
+  if (LANTERN.pages !== null) throw new Error('tech.spec: the lantern tech golden is expected without pages');
+
+  for (const width of [WIDTHS.desktop, WIDTHS.phone]) {
+    const compact = width === WIDTHS.phone;
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      test('without tech.md: the noFile subline, the /spec-doc empty state, the muted risks line, full Status and Specs, no tab disabled', async ({ page }) => {
+        await page.goto(`/w/${LANTERN_WS}/tech`);
+        await expect(page).toHaveURL(lanternUrl('overview'));
+        await expect(page.locator('[data-subline]')).toHaveText(fill(COPY.tech.subline.noFile, { count: LANTERN.specs.length }));
+
+        const bar = page.locator(compact ? 'header app-tab-bar[data-placement="header"]' : 'app-tech-page app-tab-bar[data-placement="main"]');
+        await expect(bar.locator('a[data-tab]')).toHaveCount(TABS.length);
+        await expect(bar.locator('[aria-disabled], [disabled], [inert]')).toHaveCount(0);
+
+        for (const tab of TABS) {
+          await bar.locator(`a[data-tab="${tab}"]`).click();
+          await expect(page).toHaveURL(lanternUrl(tab));
+          await expect(bar.locator('a[aria-current="page"]')).toHaveAttribute('data-tab', tab);
+          const panel = panelOf(page);
+
+          if (tab === 'overview' || tab === 'architecture') {
+            const empty = panel.locator('ui-empty-state[data-tech-empty]');
+            await expect(empty).toBeVisible();
+            await expect(empty.locator('.title')).toHaveText(COPY.tech.empty.title);
+            await expect(empty.locator('.body')).toHaveText(COPY.tech.empty.body);
+            await expect(panel.locator('ui-doc-prose')).toHaveCount(0);
+            const chip = empty.locator('ui-command-chip');
+            await expect(chip).toHaveCount(1);
+            await expect(chip.locator('code')).toHaveText(DRAFT_COMMAND);
+            const copy = chip.getByRole('button');
+            await copy.scrollIntoViewIfNeeded();
+            await expect(copy).toBeVisible();
+            if (compact) expect(await hitArea(copy), `${tab}: the copy button's hit area spans ${String(HIT)} × ${String(HIT)}`).toEqual(Array<boolean>(6).fill(true));
+            // Reduced motion holds the copied state until blur, so the check cannot race the highlight fade.
+            await page.emulateMedia({ reducedMotion: 'reduce' });
+            await copy.click();
+            await expect(copy).toHaveAttribute('data-copied', '');
+            await page.emulateMedia({ reducedMotion: 'no-preference' });
+          }
+
+          if (tab === 'status') {
+            const rows = tabOf(page, 'status').locator(compact ? 'ul[data-stacked] a.row[data-spec]' : 'table tr[data-spec]');
+            await expect(rows).toHaveCount(LANTERN.specs.length);
+            expect((await rows.evaluateAll((all) => all.map((el) => el.getAttribute('data-spec') ?? ''))).toSorted()).toEqual(LANTERN.specs.map((spec) => spec.id).toSorted());
+          }
+
+          if (tab === 'specs') {
+            await expect(tabOf(page, 'specs').locator('ui-card[data-tech-spec]')).toHaveCount(LANTERN.specs.length);
+            for (const spec of LANTERN.specs) {
+              await expect(panel.locator(`[data-tech-spec="${spec.id}"] a[data-tech-link="goal"]`)).toHaveAttribute('href', `/w/${LANTERN_WS}/s/${spec.id}`);
+            }
+          }
+
+          if (tab === 'open') {
+            const open = tabOf(page, 'open');
+            await expect(open.locator('[data-tech-norisks]')).toHaveText(COPY.tech.open.noRisks);
+            await expect(open.locator('[data-tech-risks]')).toHaveCount(0);
+            await expect(open.locator('ui-command-chip')).toHaveCount(0);
+            const lines = LANTERN_FOGGY.reduce((sum, spec) => sum + spec.fog.length, 0);
+            await expect(open.locator('#tech-open-questions')).toHaveText(fill(COPY.tech.open.questions, { lines, specs: LANTERN_FOGGY.length }));
+            const groups = open.locator('[data-fog-spec]');
+            await expect(groups).toHaveCount(LANTERN_FOGGY.length);
+            expect(await groups.evaluateAll((all) => all.map((group) => group.getAttribute('data-fog-spec')))).toEqual(LANTERN_FOGGY.map((spec) => spec.id));
+            for (const spec of LANTERN_FOGGY) await expect(open.locator(`[data-fog-spec="${spec.id}"] li a`)).toHaveCount(spec.fog.length);
+            await expect(open.locator('[data-tech-fog-none]')).toHaveCount(LANTERN_FOGGY.length === 0 ? 1 : 0);
+            if (LANTERN_FOGGY.length === 0) await expect(open.locator('[data-tech-fog-none]')).toHaveText(COPY.tech.open.none);
+          }
+        }
+      });
+    });
+  }
+});
