@@ -44,7 +44,7 @@ const HARBOR = {
   archive: [{ id: '001', title: 'Manifest sync', type: 'feature' }],
 };
 
-type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'timeline' | 'claims' | 'docs'>;
+type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'timeline' | 'claims' | 'docs' | 'tech'>;
 
 function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
   return {
@@ -59,6 +59,7 @@ function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
     timeline: () => Promise.resolve({ kind: 'not-found', served: false }),
     claims: () => Promise.resolve({ kind: 'not-found', served: false }),
     docs: () => Promise.resolve({ kind: 'not-found', served: false }),
+    tech: () => Promise.resolve({ kind: 'not-found', served: false }),
     ...overrides,
   };
 }
@@ -120,6 +121,17 @@ describe('ShellComponent', () => {
       expect(root.querySelectorAll('header'), url).toHaveLength(1);
       const controls = [...root.querySelectorAll('header [data-control]')].map((el) => el.getAttribute('data-control'));
       expect(controls, url).toEqual(['brand', 'workspace', 'spec', 'area', 'palette', 'live', 'zen', 'settings']);
+    }
+  });
+
+  it('drops the rail column (data-no-rail) outside a workspace, on the board and on the tech page (spec 023)', async () => {
+    setUp();
+    const noRail = async (url: string): Promise<boolean> => (await open(url)).root.querySelector('app-shell')?.hasAttribute('data-no-rail') ?? false;
+    for (const url of ['/', '/settings', '/w/harbor/board', '/w/harbor/tech/overview', '/w/harbor/tech/status']) {
+      expect(await noRail(url), url).toBe(true);
+    }
+    for (const url of ['/w/harbor', '/w/harbor/features', '/w/harbor/s/002', '/w/harbor/s/002/status']) {
+      expect(await noRail(url), url).toBe(false);
     }
   });
 

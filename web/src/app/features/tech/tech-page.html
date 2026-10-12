@@ -1,0 +1,52 @@
+@if (missing()) {
+  <app-not-found />
+} @else if (unavailable()) {
+  <p class="unavailable">{{ 'shell.unavailable' | transloco }}</p>
+} @else {
+  <!-- The head holds for every tab and does not change on a tab switch (design.md § Seitenkopf). -->
+  <div class="head">
+    <h1 id="tech" tabindex="-1">{{ 'tech.title' | transloco }}</h1>
+    @if (model(); as m) {
+      <p class="subline" data-subline>
+        {{ (m.pages === null ? 'tech.subline.noFile' : 'tech.subline.file') | transloco: { count: m.specs.length } }}
+      </p>
+    } @else if (!failed()) {
+      <ui-skeleton class="subline-skeleton" width="200px" height="20px" />
+    }
+  </div>
+
+  <app-tab-bar-slot placement="main" />
+
+  <div class="panel" data-tech-panel>
+    @if (failed()) {
+      <ui-notice tone="error" icon="circle-alert">{{ 'tech.error' | transloco }}</ui-notice>
+    } @else if (model() === null) {
+      <div class="loading" role="status" [attr.aria-label]="'tech.loading' | transloco">
+        <ui-skeleton width="40%" height="24px" />
+        <ui-skeleton />
+        <ui-skeleton />
+        <ui-skeleton width="72%" />
+        <ui-skeleton width="56%" />
+      </div>
+    } @else {
+      <!-- One placeholder per tab; the tab components (T15 onwards) replace them and take model(). -->
+      @switch (tab()) {
+        @case ('overview') {
+          <div data-tech-tab="overview"></div>
+        }
+        @case ('architecture') {
+          <div data-tech-tab="architecture"></div>
+        }
+        @case ('status') {
+          <div data-tech-tab="status"></div>
+        }
+        @case ('specs') {
+          <div data-tech-tab="specs"></div>
+        }
+        @case ('open') {
+          <div data-tech-tab="open"></div>
+        }
+      }
+    }
+  </div>
+}
