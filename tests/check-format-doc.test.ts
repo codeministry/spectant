@@ -96,8 +96,9 @@ describe('the real FORMAT.md', () => {
 describe('the repository kinds and the glossary (T75, ISC-124)', () => {
   const format = readFileSync(FORMAT, 'utf8');
 
-  test('idea and workflow are kinds of files.ts, documented from a fixture, in that order at the end', () => {
-    expect(KINDS.slice(-2)).toEqual(['idea', 'workflow']);
+  test('idea and workflow are kinds of files.ts, documented from a fixture, in that order after master', () => {
+    // Spec 009 appends `tokens` after them, so the pair is pinned behind `master`, not at the end.
+    expect(KINDS.slice(KINDS.indexOf('master') + 1, KINDS.indexOf('master') + 3)).toEqual(['idea', 'workflow']);
     const report = checkFormatDoc(format, (path) => {
       try {
         return readFileSync(join(ROOT, path), 'utf8');
@@ -108,7 +109,8 @@ describe('the repository kinds and the glossary (T75, ISC-124)', () => {
     expect(report.problems).toEqual([]);
     expect(report.documented).toContain('idea');
     expect(report.documented).toContain('workflow');
-    expect(report.noFixture).toEqual([]);
+    expect(report.noFixture).not.toContain('idea');
+    expect(report.noFixture).not.toContain('workflow');
   });
 
   test('the script reports the glossary with its thirteen rows', () => {

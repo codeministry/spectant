@@ -83,10 +83,11 @@ Diagrams: a `feature`, `infra` or `project` spec needs a fence whose info string
 `spec.md` and `plan.md` (dashboard warning `diagrams`); a `refactor` only warns without one in `spec.md`; a complete
 spec is never held to it (`diagrams.ts`).
 
-Beside the thirteen, `FILE_KINDS` holds two repository kinds (spec 008, T37): `idea`, the story files under
-`specs/ideas/`, and `workflow`, the one table `specs/workflow.md`, each documented in its section below. Neither
-belongs to a spec folder, so the table above has no row for them; like `constitution` and `master` they carry
-`scope: repo` and a path from the repository root (`repoFilePath`) beside the path relative to an active spec folder.
+Beside the thirteen, `FILE_KINDS` holds three repository kinds: `idea`, the story files under `specs/ideas/`, and
+`workflow`, the one table `specs/workflow.md` (both spec 008, T37), and `tokens`, the one measurement
+`specs/tokens.jsonl` (spec 009, T1), each documented in its section below. None belongs to a spec folder, so the
+table above has no row for them; like `constitution` and `master` they carry `scope: repo` and a path from the
+repository root (`repoFilePath`) beside the path relative to an active spec folder.
 
 ## `spec` — `spec.md`
 
@@ -948,6 +949,54 @@ and `blocked → build` for every type, `build → close-pending` where the row 
 `close-pending → code-review` where the row has `code-review`; every other pair, a backward move such as
 `build → review` included, is refused; and for `code_review: feature` the stage `close-pending` and the one code
 review for the whole feature (T49, T74).
+
+## `tokens` — `../tokens.jsonl`, at `specs/tokens.jsonl`
+
+The token measurement: how many tokens each `/spec` invocation, each spec, each stage and each implement round used,
+as the Claude Code transcripts of the repository report them. One file per repository, at `specs/tokens.jsonl`,
+beside the constitution; it belongs to no spec folder and is optional. It is written only by the CLI
+`spectant tokens`, never by a route, and can be recomputed at any time from the transcripts and the repository's
+`events.jsonl` and `rounds.jsonl`; only the baseline lines of earlier runs are kept rather than recomputed. Types,
+line layout and signatures live in `core/src/tokens.ts` (spec 009, T1): `parseTranscript`, `tokenRows`,
+`mergeBaselines`, `serializeTokens` and `readTokens`, which reads the file back into the lines it was written from.
+
+One JSON line per entry, each with `v: 1` and a `kind`. The four counters are `input`, `output`, `cache_read` and
+`cache_write`, taken from the transcripts' `usage` fields (`cache_write` is `cache_creation_input_tokens`); no
+tokenisation of our own. Every API request counts once, however many transcript lines repeat its `requestId`.
+
+| `kind` | Keys, in order |
+|--------|----------------|
+| `baseline` | `v`, `kind`, `measured_through`, `claude_code`, `commands` |
+| `invocation` | `v`, `kind`, `id`, `command`, `spec`, `ts`, `requests`, `subagents`, `input`, `output`, `cache_read`, `cache_write` |
+| `spec` | `v`, `kind`, `spec`, `requests`, `input`, `output`, `cache_read`, `cache_write` |
+| `stage` | `v`, `kind`, `spec`, `stage`, `requests`, `input`, `output`, `cache_read`, `cache_write` |
+| `round` | `v`, `kind`, `spec`, `round`, `requests`, `input`, `output`, `cache_read`, `cache_write` |
+| `unassigned` | `v`, `kind`, `requests`, `input`, `output`, `cache_read`, `cache_write` |
+
+- `baseline`: one line per measuring run. `measured_through` is the timestamp of the newest measured turn, never the
+  wall clock; `claude_code` the Claude Code versions the transcripts name; `commands` per `/spec` command an object
+  `count`, the four counters and `mean`, the four counters divided by `count` and rounded to whole tokens. Earlier
+  baseline lines are kept, and a run over the same state adds none.
+- `invocation`: one `/spec` command up to the next real user input, the sub-agents it started included. `id` is
+  `a:claude:<session>#<n>`, `command` the command name only (its arguments are never stored), `spec` the slug the
+  number in its arguments names, or `null`; `ts` its first turn; `subagents` the sub-agent transcripts attributed to it.
+- `spec`, `stage` and `round`: the sums per spec, per spec and stage (the stage the spec stood in at the turn), and per
+  spec and implement round (`/spec-implement` only).
+- `unassigned`: every request outside a `/spec` invocation, in exactly one line.
+
+Line order: `baseline` by `measured_through`, `invocation` by `ts` then `id`, `spec` by slug, `stage` by slug then the
+stage table's order, `round` by slug then number, `unassigned` last. The file holds numbers, timestamps, command
+names, spec slugs, stage names, round numbers and neutral actor IDs only: no path, no working directory, no name, no
+address and no prompt or answer text.
+
+**No fixture yet.** Three lines of the shape, with invented numbers (a real file also holds the baseline, stage and
+round lines):
+
+```jsonl
+{"v":1,"kind":"invocation","id":"a:claude:s1#1","command":"/spec-plan","spec":"003-example","ts":"2026-01-02T10:00:00Z","requests":2,"subagents":0,"input":12,"output":340,"cache_read":18000,"cache_write":2400}
+{"v":1,"kind":"spec","spec":"003-example","requests":2,"input":12,"output":340,"cache_read":18000,"cache_write":2400}
+{"v":1,"kind":"unassigned","requests":1,"input":3,"output":40,"cache_read":9000,"cache_write":0}
+```
 
 ## The stage table
 
