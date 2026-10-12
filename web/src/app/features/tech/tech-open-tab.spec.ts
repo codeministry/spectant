@@ -5,7 +5,6 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import harborTech from '../../../../../core/fixtures/harbor.tech.golden.json';
 import type { TechModel, TechSpec } from '../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
-import { ShellData, type SpecRowView } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import type { Tier } from '../../layout/shell/tier';
 import { TechOpenTab } from './tech-open-tab';
@@ -15,11 +14,10 @@ import { TechOpenTab } from './tech-open-tab';
 // the none-state; T23 · ISC-134.2: the muted no-risks line, without a chip, when the workspace has no specs/tech.md.
 
 const HARBOR = harborTech as unknown as TechModel;
-const ROWS: SpecRowView[] = [{ id: '005', title: 'Config format choice', type: 'spike', stage: 'plan' }];
-
 const spec = (id: string, fog: string[], phase = 'scoping'): TechSpec => ({
   id,
   slug: `${id}-some-spec`,
+  title: `Title of ${id}`,
   type: 'feature',
   phase,
   goal: null,
@@ -39,7 +37,6 @@ async function render(model: TechModel, tier: Tier = 'wide'): Promise<HTMLElemen
     providers: [
       provideRouter([]),
       { provide: ShellState, useValue: { ws: signal('harbor'), tier: signal(tier) } },
-      { provide: ShellData, useValue: { specRows: signal(ROWS) } },
     ],
   });
   const fixture = TestBed.createComponent(TechOpenTab);
@@ -74,6 +71,7 @@ describe('TechOpenTab (T18, ISC-134.1)', () => {
   it('counts the fog lines and the open specs that carry them', async () => {
     const root = await render(HARBOR);
     expect(text(root.querySelector('[data-tech-questions] h2'))).toBe('Open questions · 2 fog lines · 1 open specs');
+    expect(text(root.querySelector('[data-fog-spec="005"] h3 .title'))).toBe('Decide which config format version 2 uses');
   });
 
   it('groups the fog lines under their spec: mono id, type glyph and title, specs without fog skipped', async () => {
@@ -87,8 +85,9 @@ describe('TechOpenTab (T18, ISC-134.1)', () => {
     const head = groups[0]?.querySelector('h3');
     expect(text(head?.querySelector('.num'))).toBe('005');
     expect(head?.querySelector('ui-type-glyph')?.getAttribute('data-type')).toBe('feature');
-    expect(text(head?.querySelector('.title'))).toBe('Config format choice');
-    expect(text(groups[1]?.querySelector('.title'))).toBe('some-spec');
+    // The title is TechSpec.title as core gives it; the tab looks up no dashboard row.
+    expect(text(head?.querySelector('.title'))).toBe('Title of 005');
+    expect(text(groups[1]?.querySelector('.title'))).toBe('Title of 007');
     expect(groups.map((group) => [...group.querySelectorAll('li a')].map((a) => (a.firstChild?.textContent ?? '').trim()))).toEqual([['a', 'b'], ['c']]);
     expect(text(root.querySelector('[data-tech-questions] h2'))).toBe('Open questions · 3 fog lines · 2 open specs');
   });

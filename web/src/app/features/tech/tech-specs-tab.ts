@@ -10,11 +10,9 @@ import { UiCard } from '../../shared/ui/card/card';
 import { UiDocProse } from '../../shared/ui/doc-prose/doc-prose';
 import { UiTypeGlyph } from '../../shared/ui/type-glyph/type-glyph';
 
-/** One card of the Specs tab: the tech model's spec, the title its dashboard row carries, and whether it is complete. */
+/** One card of the Specs tab: the tech model's spec (its `title` is the dashboard row's) and whether it is complete. */
 export interface TechSpecCard {
   readonly spec: TechSpec;
-  /** The dashboard row's title; the folder name while the dashboard has no row for the spec. */
-  readonly title: string;
   readonly complete: boolean;
 }
 
@@ -31,7 +29,6 @@ export interface TechSpecGroups {
  */
 export function techSpecGroups(specs: readonly TechSpec[], rows: readonly SpecRowView[]): TechSpecGroups {
   const rank = new Map(rows.map((row, index) => [row.id, index]));
-  const titles = new Map(rows.map((row) => [row.id, row.title]));
   // "Complete" as the Status tab and the SPECS tile count it: the dashboard row's stage `done`; a spec without a row
   // falls back to its phase.
   const stages = new Map(rows.map((row) => [row.id, row.stage]));
@@ -40,7 +37,7 @@ export function techSpecGroups(specs: readonly TechSpec[], rows: readonly SpecRo
     .sort((a, b) => position(a) - position(b) || a.id.localeCompare(b.id))
     .map((spec): TechSpecCard => {
       const stage = stages.get(spec.id);
-      return { spec, title: titles.get(spec.id) ?? spec.slug, complete: stage === undefined ? spec.phase === 'complete' : stage === 'done' };
+      return { spec, complete: stage === undefined ? spec.phase === 'complete' : stage === 'done' };
     });
   return { open: cards.filter((card) => !card.complete), complete: cards.filter((card) => card.complete) };
 }

@@ -5,6 +5,7 @@
     {
       "id": "001",
       "slug": "001-reading-list",
+      "title": "Save a link once and find it again, online or offline",
       "type": "feature",
       "phase": "building",
       "goal": {
@@ -28,6 +29,7 @@
     {
       "id": "002",
       "slug": "002-duplicate-links",
+      "title": "Stop duplicate links and duplicate tags from entering the list",
       "type": "bug",
       "phase": "scoping",
       "goal": {

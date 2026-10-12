@@ -4,7 +4,9 @@
  *
  * `import-notes`, `export-notes` and `db rollback` (T98, ISC-53) live in `cli-notes.ts`; this file parses them.
  * `gate code-reviewed F<n> [--root DIR] [--yes]` (spec 008, T93, ISC-122.2) lives in `feature-gate.ts`: the
- * feature-level code-review mark, the one write into a repository the CLI makes; without `--yes` it only prints.
+ * feature-level code-review mark; without `--yes` it only prints. `tokens [--root DIR] [--transcripts DIR] [--yes]`
+ * (spec 009, T8, ISC-135) lives in `tokens-cli.ts`: the token measurement, written to `specs/tokens.jsonl` with
+ * `--yes` and only printed without it. These two are the only writes into a repository the CLI makes.
  *
  * `--version` (also `-v`, `-V`; T13, ISC-9) prints exactly `spectant <VERSION>` and a newline on stdout and nothing
  * else, so `scripts/check-version.ts` can compare the binary byte for byte with `package.json`. It short-circuits
@@ -33,6 +35,7 @@ import { actorsApi, composeApi, dashboardApi } from "./api.ts";
 import type { EmbeddedManifest } from "./assets.contract.ts";
 import { exportNotesCommand, importNotesCommand, rollbackCommand } from "./cli-notes.ts";
 import { FEATURE_ARG, featureGateCommand } from "./feature-gate.ts";
+import { tokensCommand } from "./tokens-cli.ts";
 import { SCHEMA_VERSION, openDatabase } from "./db.ts";
 import { DEFAULT_PORT, LOOPBACK_HOST, PORT_ATTEMPTS, type RunningServer, serveWithFallback } from "./http.ts";
 import { CommitCache } from "./git.ts";
@@ -63,14 +66,21 @@ Commands:
   gate code-reviewed F<n> [--root <dir>] [--yes]
                    write the feature-level code-review mark into every spec of main feature
                    F<n> once all its claims are closed; without --yes it only prints the plan
+  tokens [--root <dir>] [--transcripts <dir>] [--yes]
+                   measure the token use of the repository's Claude Code sessions per /spec call,
+                   spec, stage and round into specs/tokens.jsonl; without --yes it only prints it
 
 Options:
   --port <n>       port to listen on (default ${DEFAULT_PORT}; 0 picks a free port); a busy port falls
                    forward to the next free one, up to ${PORT_ATTEMPTS} ports in all
   --strict-port    fail instead of falling forward when the port is busy
   --no-browser     do not open the browser
-  --yes            confirm db rollback or gate code-reviewed
-  --root <dir>     the repository gate code-reviewed works on (default: the working directory)
+  --yes            confirm db rollback, gate code-reviewed or tokens
+  --root <dir>     the repository gate code-reviewed and tokens work on (default: the working
+                   directory)
+  --transcripts <dir>
+                   the Claude Code project folder tokens reads (default: projects/<encoded root>
+                   in $CLAUDE_CONFIG_DIR or ~/.claude); its agent worktrees' folders beside it too
   -v, -V, --version
                    print the version and exit
   -h, --help       print this help and exit`;
@@ -86,7 +96,8 @@ type Command =
   | { kind: "remove"; ref: string }
   | { kind: "import-notes" | "export-notes"; file: string }
   | { kind: "db-rollback"; target: number; yes: boolean }
-  | { kind: "gate-code-reviewed"; feature: string; root: string | null; yes: boolean };
+  | { kind: "gate-code-reviewed"; feature: string; root: string | null; yes: boolean }
+  | { kind: "tokens"; root: string | null; transcripts: string | null; yes: boolean };
 
 export type RunOptions = {
   /**
@@ -115,6 +126,7 @@ function parse(argv: string[]): Command {
   let browser = true;
   let yes = false;
   let root: string | undefined;
+  let transcripts: string | undefined;
   const positional: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] ?? "";
@@ -128,6 +140,9 @@ function parse(argv: string[]): Command {
     else if (arg === "--root" || arg.startsWith("--root=")) {
       root = arg === "--root" ? argv[++i] : arg.slice("--root=".length);
       if (root === undefined || root === "") throw new UsageError("--root needs a directory");
+    } else if (arg === "--transcripts" || arg.startsWith("--transcripts=")) {
+      transcripts = arg === "--transcripts" ? argv[++i] : arg.slice("--transcripts=".length);
+      if (transcripts === undefined || transcripts === "") throw new UsageError("--transcripts needs a directory");
     }
     else if (arg.startsWith("-")) throw new UsageError(`unknown option ${arg}`);
     else positional.push(arg);
@@ -137,8 +152,13 @@ function parse(argv: string[]): Command {
     if (port !== undefined) throw new UsageError(`--port only applies to serve, not to ${command}`);
     if (strictPort) throw new UsageError(`--strict-port only applies to serve, not to ${command}`);
   }
-  if (yes && command !== "db" && command !== "gate") throw new UsageError(`--yes only applies to db rollback and gate, not to ${command ?? "serve"}`);
-  if (root !== undefined && command !== "gate") throw new UsageError(`--root only applies to gate, not to ${command ?? "serve"}`);
+  if (yes && command !== "db" && command !== "gate" && command !== "tokens") {
+    throw new UsageError(`--yes only applies to db rollback, gate and tokens, not to ${command ?? "serve"}`);
+  }
+  if (root !== undefined && command !== "gate" && command !== "tokens") {
+    throw new UsageError(`--root only applies to gate and tokens, not to ${command ?? "serve"}`);
+  }
+  if (transcripts !== undefined && command !== "tokens") throw new UsageError(`--transcripts only applies to tokens, not to ${command ?? "serve"}`);
   const arity = (count: number, what: string): string[] => {
     if (rest.length < count) throw new UsageError(`${command ?? "serve"} needs ${what}`);
     if (rest.length > count) throw new UsageError(`unexpected argument ${rest[count] ?? ""}`);
@@ -174,6 +194,9 @@ function parse(argv: string[]): Command {
       if (!FEATURE_ARG.test(feature)) throw new UsageError(`gate code-reviewed needs a feature id F<n>, got ${JSON.stringify(feature)}`);
       return { kind: "gate-code-reviewed", feature, root: root ?? null, yes };
     }
+    case "tokens":
+      arity(0, "");
+      return { kind: "tokens", root: root ?? null, transcripts: transcripts ?? null, yes };
     default:
       throw new UsageError(`unknown command ${command}`);
   }
@@ -337,5 +360,13 @@ export async function run(argv: string[], manifest: EmbeddedManifest, options: R
       return rollbackCommand(dataDir(options.env ?? process.env), command.target, command.yes);
     case "gate-code-reviewed":
       return featureGateCommand(resolve(options.cwd ?? process.cwd(), command.root ?? "."), command.feature, command.yes);
+    case "tokens": {
+      const cwd = options.cwd ?? process.cwd();
+      return tokensCommand(resolve(cwd, command.root ?? "."), {
+        transcripts: command.transcripts === null ? null : resolve(cwd, command.transcripts),
+        yes: command.yes,
+        env: options.env ?? process.env,
+      });
+    }
   }
 }

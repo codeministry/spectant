@@ -38,7 +38,9 @@
  * These four are every write the app makes on a user's action. The feature-level code-review mark
  * (`.gates/code-reviewed.json` in each folder of a main feature, plus one event line each) is the fifth write path,
  * `WRITE_PATHS.codeReviewFeature`, but it has no route: the skill triggers it through the CLI (`spectant gate
- * code-reviewed F<n>`, T93, `feature-gate.ts`), never the UI, so it is not in this table.
+ * code-reviewed F<n>`, T93, `feature-gate.ts`), never the UI, so it is not in this table. The token measurement
+ * (`specs/tokens.jsonl`, once per repository) is the sixth, `WRITE_PATHS.tokens`, written in place only by the CLI
+ * `spectant tokens --yes` (spec 009, `tokens-cli.ts`) and likewise without a route or a row here.
  *
  * Browser-safe like its base: imports are `spec-routes.contract.ts`, `core/src/events.ts` and `core/src/files.ts` only
  * (no Bun, no Node). `core/src/gates.ts` is not imported, not even as types: it hashes with `node:crypto`, and a type
@@ -184,7 +186,10 @@ export const WRITE_PATHS = {
   // The fifth path (T93): the feature-level code-review mark and one event line in each target folder, written only by
   // `spectant gate code-reviewed F<n>` (`feature-gate.ts`). No HTTP write, so no `WriteOperation` and no `WRITE_TABLE` row.
   codeReviewFeature: { writes: [inFolder(FILE_KINDS.gateCodeReviewed.path), inFolder(EVENTS_PATH)], removes: [], creates: inFolder('.gates/') },
-} as const satisfies Record<WriteOperation | 'codeReviewFeature', WritePaths>;
+  // The sixth path (spec 009): the repository's token measurement, rewritten in place only by `spectant tokens --yes`
+  // (`tokens-cli.ts`), which takes its target from here. No HTTP write, so no `WriteOperation` and no `WRITE_TABLE` row.
+  tokens: { writes: [FILE_KINDS.tokens.repoPath ?? ''], removes: [], creates: null },
+} as const satisfies Record<WriteOperation | 'codeReviewFeature' | 'tokens', WritePaths>;
 
 /** `WRITE_PATHS[op]` for one spec folder (`NNN-slug`) and, for `allocate`, the story's slug. */
 export function writePathsOf(op: WriteOperation, folder: string, slug = ''): WritePaths {

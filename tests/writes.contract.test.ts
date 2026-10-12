@@ -7,6 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { parseActor } from "../core/src/actor.ts";
 import { validateEventLine } from "../core/src/events.ts";
 import { FILE_KINDS, type ClaimLock } from "../core/src/files.ts";
+import { TOKENS_PATH } from "../server/src/tokens-cli.ts";
 import {
   REVIEWED_FILES,
   hashForGate,
@@ -361,10 +362,14 @@ describe("the four app writes (spec 008, T81): the table, the paths each may tou
       transition: { writes: [folder("spec"), folder("events")], removes: [], creates: null },
       allocate: { writes: [folder("context"), folder("spec"), folder("events")], removes: [`${FILE_KINDS.idea.repoPath ?? ""}<slug>.md`], creates: "specs/NNN-slug/" },
       codeReviewFeature: { writes: [folder("gateCodeReviewed"), folder("events")], removes: [], creates: "specs/NNN-slug/.gates/" },
+      tokens: { writes: [FILE_KINDS.tokens.repoPath ?? ""], removes: [], creates: null },
     });
-    // The four app writes, then the fifth path, the CLI's feature-level code-review mark (T93), which has no table row.
-    expect(Object.keys(WRITE_PATHS)).toEqual([...WRITE_OPERATIONS, "codeReviewFeature"]);
+    // The four app writes, then the two CLI-only paths, each without a table row and without a route: the fifth, the
+    // feature-level code-review mark (T93), and the sixth, the token measurement `spectant tokens --yes` writes.
+    expect(Object.keys(WRITE_PATHS)).toEqual([...WRITE_OPERATIONS, "codeReviewFeature", "tokens"]);
     expect(Object.keys(WRITE_TABLE)).not.toContain("codeReviewFeature");
+    expect(Object.keys(WRITE_TABLE)).not.toContain("tokens");
+    expect(WRITE_PATHS.tokens.writes).toEqual(["specs/tokens.jsonl"]);
     expect(WRITE_PATHS.gateReviewed.writes[0].startsWith(WRITE_PATHS.gateReviewed.creates)).toBe(true);
     // The existing two writes keep the targets the routes already write.
     expect(WRITE_PATHS.gateReviewed.writes).toEqual([`specs/NNN-slug/${REVIEWED_MARK_PATH}`, `specs/NNN-slug/${EVENTS_PATH}`]);
@@ -410,6 +415,16 @@ describe("the four app writes (spec 008, T81): the table, the paths each may tou
   test("WriteOperation covers the table at compile time", () => {
     const ops: Record<WriteOperation, true> = { gateReviewed: true, taskCheck: true, transition: true, allocate: true };
     expect(Object.keys(ops)).toEqual([...WRITE_OPERATIONS]);
+  });
+});
+
+// T19 (ISC-137.1): the CLI writes the sixth path's file, and it takes the path from the constant, not a literal.
+describe("the sixth write path is the one the CLI writes", () => {
+  test("`spectant tokens` takes its path from WRITE_PATHS.tokens and names no literal of its own", () => {
+    expect(TOKENS_PATH).toBe(WRITE_PATHS.tokens.writes[0]);
+    const source = readFileSync(join(ROOT, "server", "src", "tokens-cli.ts"), "utf8");
+    expect(source.includes("WRITE_PATHS.tokens")).toBe(true);
+    expect(source.includes('"specs/tokens.jsonl"')).toBe(false);
   });
 });
 
@@ -480,7 +495,7 @@ describe("the documents name every write path", () => {
   test("each document counts the write paths as WRITE_PATHS does, and no longer says two exceptions", () => {
     const total = Object.keys(WRITE_PATHS).length;
     const count: string = NUMBER_WORDS[total] ?? String(total);
-    expect(count).toBe("five");
+    expect(count).toBe("six");
     for (const { name, text } of docs) {
       // Whitespace as Markdown reads it: a phrase may wrap across a line.
       expect({ name, stale: /exactly\s+two\s+exceptions/i.test(text) }).toEqual({ name, stale: false });

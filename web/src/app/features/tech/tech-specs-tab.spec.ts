@@ -111,12 +111,18 @@ describe('TechSpecsTab', () => {
     expect(cards(fixture).filter((el) => el.hasAttribute('data-complete')).map((el) => el.dataset['techSpec'])).toEqual(expected.slice(-2));
   });
 
-  it('keeps specs the dashboard has no row for, in number order after the rows, titled by their folder', () => {
+  it('keeps specs the dashboard has no row for, in number order after the rows, still titled by core', async () => {
     const groups = techSpecGroups(HARBOR.specs, ROWS.filter((row) => row.id !== '002' && row.id !== '007'));
-    expect(groups.open.slice(-2).map((entry) => [entry.spec.id, entry.title])).toEqual([
-      ['002', '002-web-console'],
-      ['007', '007-rotate-mirror-token'],
+    expect(groups.open.slice(-2).map((entry) => [entry.spec.id, entry.spec.title])).toEqual([
+      ['002', 'Show every sync run and its failures in a small web console'],
+      ['007', 'Replace the push token without stopping a scheduled sync'],
     ]);
+    // The heading reads TechSpec.title, never a dashboard row: with no rows at all every card keeps its title.
+    const fixture = await render(HARBOR, 'wide', []);
+    const rowless = techSpecGroups(HARBOR.specs, []);
+    const titles = [...rowless.open, ...rowless.complete].map((entry) => entry.spec.title);
+    expect(titles).toHaveLength(HARBOR.specs.length);
+    expect(cards(fixture).map((el) => text(el.querySelector('h2')))).toEqual(titles);
     expect(groups.complete).toEqual([]);
   });
 

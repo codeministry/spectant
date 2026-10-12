@@ -3,7 +3,6 @@ import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { DocsPage, SpecType, TechModel } from '../../../../../core/src/files';
 import { specLink } from '../../layout/shell/areas';
-import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiDocProse } from '../../shared/ui/doc-prose/doc-prose';
@@ -24,8 +23,7 @@ interface FogGroup {
  * `specs/tech.md` through `ui-doc-prose` without its table of contents (the heading comes from the file), in a
  * `ui-card` at medium and wide and straight on the page at compact; then the count line and one card holding a group
  * per spec not yet complete that has `- fog:` lines. Every fog line is a link to the spec's status tab, named
- * `Status of <id>`. The title is the dashboard row's (`TechSpec` carries none), the folder slug without its number
- * when the row is missing.
+ * `Status of <id>`. The title is `TechSpec.title`, the one core gives the spec's dashboard row.
  *
  * Without `specs/tech.md` (`model.pages` null) the muted line `[data-tech-norisks]` (`tech.open.noRisks`, T23,
  * ISC-134.2) holds the risks' place, without a command chip: the Overview and Architecture empty states carry it.
@@ -39,7 +37,6 @@ interface FogGroup {
 })
 export class TechOpenTab {
   private readonly state = inject(ShellState);
-  private readonly data = inject(ShellData);
 
   readonly model = input.required<TechModel>();
 
@@ -53,13 +50,12 @@ export class TechOpenTab {
 
   protected readonly groups = computed<readonly FogGroup[]>(() => {
     const ws = this.state.ws() ?? '';
-    const titles = new Map(this.data.specRows().map((row) => [row.id, row.title]));
     return this.model()
       .specs.filter((spec) => spec.phase !== 'complete' && spec.fog.length > 0)
       .map((spec) => ({
         id: spec.id,
         type: spec.type,
-        title: titles.get(spec.id) ?? spec.slug.replace(/^\d+-/, ''),
+        title: spec.title,
         lines: spec.fog,
         link: specLink(ws, spec.id, 'status'),
       }));

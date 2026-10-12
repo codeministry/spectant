@@ -64,6 +64,14 @@ function taskCounts(tasks: string | undefined): { landed: number; total: number 
 }
 
 /** One row per archived folder, in folder order. A folder without spec.md is not a spec and has no row. */
+/**
+ * A spec's title as every page shows it: the archive summary's title (frontmatter `task:`), else the folder's slug without
+ * its number. One rule for the dashboard row and the tech page.
+ */
+export function specTitle(summary: Pick<ArchivedSpec, 'title'> | undefined, folder: string): string {
+  return summary?.title ?? specSlugOf(folder);
+}
+
 export function listArchive(folders: readonly SpecFiles[]): ArchivedSpec[] {
   return [...folders]
     .sort((a, b) => (a.folder < b.folder ? -1 : a.folder > b.folder ? 1 : 0))

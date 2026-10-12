@@ -1,10 +1,11 @@
 // The tech page (spec 023, ISC-134), ported from the old skill's tech documentation: `specs/tech.md` with its four
-// `<!-- section: key -->` markers as three documents (overview and stack joined), and per spec its goal, the first
-// paragraph of its approach and its open fog. Browser-safe: no file system, the caller passes the texts in; malformed
-// input becomes a FileDiagnostic, never a throw. Markers go through `tldr.ts`'s marker reader, frontmatter through
-// `frontmatter.ts`, the goal and approach sections through `archive.ts`'s section reader, fog lines through
-// `claims.ts`, and rendering through `markdown-docs.ts`, so this module adds no second parser of any of them.
-import { firstParagraph, GOAL_HEADINGS, levelTwoSection } from './archive.ts';
+// `<!-- section: key -->` markers as three documents (overview and stack joined), and per spec its title, its goal,
+// the first paragraph of its approach and its open fog. Browser-safe: no file system, the caller passes the texts in;
+// malformed input becomes a FileDiagnostic, never a throw. Markers go through `tldr.ts`'s marker reader, frontmatter
+// through `frontmatter.ts`, the title through `archive.ts`'s listing (as the dashboard row takes it), the goal and
+// approach sections through `archive.ts`'s section reader, fog lines through `claims.ts`, and rendering through
+// `markdown-docs.ts`, so this module adds no second parser of any of them.
+import { firstParagraph, GOAL_HEADINGS, levelTwoSection, listArchive, specTitle } from './archive.ts';
 import { parseClaims } from './claims.ts';
 import type { Diagnostic } from './diagnostics.ts';
 import type { DocsPage, FileDiagnostic, SpecFiles, TechInput, TechModel, TechSpec } from './files.ts';
@@ -97,6 +98,8 @@ function techSpec(f: SpecFiles): TechSpec | null {
   return {
     id,
     slug: f.folder,
+    // The dashboard row's title, derived as `dashboard.ts` does: the archive listing's summary of the folder.
+    title: specTitle(listArchive([f])[0], f.folder),
     type: specType,
     phase,
     goal: pageOf(levelTwoSection(spec, GOAL_HEADINGS), `spec-${id}-goal-`),

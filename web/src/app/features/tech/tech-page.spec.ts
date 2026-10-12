@@ -12,6 +12,7 @@ import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult } from '../../core/api.service';
 import { TECH_TABS, TechTabCounts } from '../../layout/shell/page-tabs';
+import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import type { Tier } from '../../layout/shell/tier';
 import { techTabCounts } from './tech-page';
@@ -75,6 +76,17 @@ describe('TechPage (T14, ISC-134.1)', () => {
     await go('/w/harbor/tech/open');
     expect(text(page(root)?.querySelector('h1'))).toBe('Tech');
     expect(text(page(root)?.querySelector('[data-subline]'))).toBe('specs/tech.md · 8 specs');
+  });
+
+  it('reads the shared ShellData.tech resource: a new value there is the page\'s model', async () => {
+    const root = await open('/w/harbor/tech/overview');
+    const data = TestBed.inject(ShellData);
+    expect(data.techModel()).toEqual(HARBOR);
+    data.tech.set(ok({ ...HARBOR, specs: HARBOR.specs.slice(0, 3) }));
+    await harness.fixture.whenStable();
+    harness.fixture.detectChanges();
+    expect(text(page(root)?.querySelector('[data-subline]'))).toBe('specs/tech.md · 3 specs');
+    expect(counts()).toMatchObject({ status: 3, specs: 3 });
   });
 
   it('says "no specs/tech.md" when the model carries no pages', async () => {

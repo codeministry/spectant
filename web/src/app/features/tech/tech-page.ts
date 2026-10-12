@@ -1,7 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, resource } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { TechModel } from '../../../../../core/src/files';
-import { ApiClient } from '../../core/api.service';
 import { NotFound } from '../../layout/not-found/not-found';
 import { type TechTabCountValues, TechTabCounts, type TechTabId } from '../../layout/shell/page-tabs';
 import { ShellData } from '../../layout/shell/shell-data.service';
@@ -24,7 +23,8 @@ export function techTabCounts(model: TechModel): TechTabCountValues {
 }
 
 /**
- * The tech page at `/w/:ws/tech/<tab>` (spec 023, T14, ISC-134.1): `readTech`'s model over `GET …/:ws/tech`, the page
+ * The tech page at `/w/:ws/tech/<tab>` (spec 023, T14, ISC-134.1): `readTech`'s model over `GET …/:ws/tech`, read
+ * from `ShellData.tech` so the live refresh reloads it with the rest of the shell (an unchanged answer a 304), the page
  * head (title and the mono subline naming `specs/tech.md` and the spec count), the tab bar's main slot sticky under
  * the head at medium and wide (the header slot takes it at compact), then the current tab's panel. One instance stays
  * across tab switches: the tab routes are componentless children, so the panel follows `ShellState.techTab` and no
@@ -46,37 +46,23 @@ export function techTabCounts(model: TechModel): TechTabCountValues {
   templateUrl: './tech-page.html',
 })
 export class TechPage {
-  private readonly api = inject(ApiClient);
   private readonly state = inject(ShellState);
   private readonly data = inject(ShellData);
   private readonly counts = inject(TechTabCounts);
 
-  /** The tech model of the open workspace, keyed by it: a workspace change drops the old value while the new one loads. */
-  readonly tech = resource({
-    params: () => this.state.ws() ?? undefined,
-    loader: ({ params }) => this.api.tech(params),
-  });
-
-  private readonly result = computed(() => (this.tech.hasValue() ? this.tech.value() : undefined));
-
-  /** The model as served; null while loading and for every answer but `ok`. */
-  readonly model = computed<TechModel | null>(() => {
-    const result = this.result();
-    return result?.kind === 'ok' ? result.body : null;
-  });
+  /** The model as `ShellData.tech` serves it (refreshed with the shell); null while loading and for every answer but `ok`. */
+  readonly model = this.data.techModel;
+  private readonly result = this.data.techResult;
 
   protected readonly tab = computed<TechTabId>(() => this.state.techTab() ?? 'overview');
 
   /** The workspace or the tech route answered the contract's 404. */
-  protected readonly missing = computed(() => {
-    const result = this.result();
-    return this.data.workspaceMissing() || (result?.kind === 'not-found' && result.served);
-  });
+  protected readonly missing = this.data.techMissing;
   protected readonly unavailable = computed(() => this.data.workspaceUnavailable() || this.result()?.kind === 'unavailable');
   /** The read failed: an error status, a thrown loader or a path no route answers (the catch-all 404). */
   protected readonly failed = computed(() => {
     const result = this.result();
-    return this.tech.status() === 'error' || result?.kind === 'error' || (result?.kind === 'not-found' && !result.served);
+    return this.data.tech.status() === 'error' || result?.kind === 'error' || (result?.kind === 'not-found' && !result.served);
   });
 
   constructor() {

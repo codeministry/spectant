@@ -16,7 +16,8 @@ interface BarModel {
  * Where the tab bar may render (plan 002 § Client shell contract): the header's row 2 (`placement="header"`) and a
  * page under its head (`placement="main"`). A slot renders the bar only when the shell's tier puts it there
  * (compact → header, else main) and the route has tabs, so exactly one bar exists: an existing spec with a multi-tab
- * area (tabs from `SPEC_AREAS`) or the tech page (tabs from `TECH_TABS`, spec 023, ISC-134.1).
+ * area (tabs from `SPEC_AREAS`) or the tech page (tabs from `TECH_TABS`, spec 023, ISC-134.1) unless it is the
+ * not-found page (`ShellData.techMissing`, the page's own condition).
  */
 @Component({
   selector: 'app-tab-bar-slot',
@@ -44,6 +45,7 @@ export class TabBarSlot {
     const ws = this.state.ws();
     if (ws === null) return null;
     if (this.state.wsPage() === 'tech') {
+      if (this.data.techMissing()) return null;
       return { tabs: techTabs(ws, this.techCounts.counts()), current: this.state.techTab(), labelKey: 'shell.pages.tech' };
     }
     return this.specBar(ws);

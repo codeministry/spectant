@@ -35,10 +35,12 @@ const holder = { id: '003', title: 'Planning', main: false, archived: false } as
 function setUp(
   planning: (ws: string) => Promise<ApiResult<PlanningBody>>,
   initialWs: string | null,
-  extra: Partial<Record<'actors' | 'putActors' | 'boardQuery' | 'putBoardQuery', unknown>> = {},
+  extra: Partial<Record<'actors' | 'putActors' | 'boardQuery' | 'putBoardQuery' | 'tech', unknown>> = {},
 ) {
   const ws = signal<string | null>(initialWs);
+  const wsPage = signal<string | null>(null);
   const calls: string[] = [];
+  const techCalls: string[] = [];
   const api = {
     workspaces: () => Promise.resolve(ok([])),
     dashboard: () => Promise.resolve(ok({ specs: [], archive: [] })),
@@ -49,16 +51,20 @@ function setUp(
     },
     actors: () => Promise.resolve(ok([])),
     boardQuery: () => Promise.resolve(ok({ query: '' })),
+    tech: (slug: string) => {
+      techCalls.push(slug);
+      return Promise.resolve(ok({ pages: null, specs: [] }));
+    },
     ...extra,
   };
   TestBed.configureTestingModule({
     providers: [
       { provide: ApiClient, useValue: api },
-      { provide: ShellState, useValue: { ws, specId: signal<string | null>(null) } },
+      { provide: ShellState, useValue: { ws, wsPage, specId: signal<string | null>(null) } },
       { provide: LockSourceService, useValue: { connect: () => undefined } },
     ],
   });
-  return { data: TestBed.inject(ShellData), ws, calls };
+  return { data: TestBed.inject(ShellData), ws, wsPage, calls, techCalls };
 }
 
 async function settle(): Promise<void> {
@@ -218,5 +224,42 @@ describe('ShellData spec 008 (T112, ISC-129.1)', () => {
     await settle();
     expect(reads).toEqual(['harbor', 'lantern']);
     expect(data.boardQueryText()).toBe('');
+  });
+});
+
+describe('ShellData.tech (spec 023)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('loads the tech model only on the tech page, keyed by the workspace', async () => {
+    const { data, ws, wsPage, techCalls } = setUp(() => Promise.resolve(ok(model([]))), 'harbor');
+    await settle();
+    expect(techCalls).toEqual([]);
+    expect(data.tech.status()).toBe('idle');
+    wsPage.set('tech');
+    await settle();
+    expect(techCalls).toEqual(['harbor']);
+    expect(data.techModel()).toEqual({ pages: null, specs: [] });
+    ws.set('lantern');
+    await settle();
+    expect(techCalls).toEqual(['harbor', 'lantern']);
+    wsPage.set('board');
+    await settle();
+    expect(data.tech.status()).toBe('idle');
+    expect(data.techModel()).toBeNull();
+    expect(data.tech.reload()).toBe(false);
+    await settle();
+    expect(techCalls).toEqual(['harbor', 'lantern']);
+  });
+
+  it('flags the tech page missing on the tech route\'s served 404, not on the catch-all', async () => {
+    const served = setUp(() => Promise.resolve(ok(model([]))), 'harbor', { tech: () => Promise.resolve({ kind: 'not-found', served: true }) });
+    served.wsPage.set('tech');
+    await settle();
+    expect(served.data.techMissing()).toBe(true);
+    TestBed.resetTestingModule();
+    const unserved = setUp(() => Promise.resolve(ok(model([]))), 'harbor', { tech: () => Promise.resolve({ kind: 'not-found', served: false }) });
+    unserved.wsPage.set('tech');
+    await settle();
+    expect(unserved.data.techMissing()).toBe(false);
   });
 });
