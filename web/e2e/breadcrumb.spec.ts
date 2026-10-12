@@ -17,6 +17,7 @@ import type { Locator, Page } from '@playwright/test';
 import type { PlanningModel } from '../../core/src/planning';
 import { SPEC_AREAS } from '../src/app/layout/shell/areas';
 import { atWidth, expect, test, WIDTHS } from './fixtures';
+import { RESET_PATH, SESSION_HEADER } from './stub-api';
 
 const read = (path: string): unknown => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
@@ -282,4 +283,120 @@ test.describe('feature and milestone links land', () => {
     await expect(page.locator(`article#${F3.id}`)).toBeFocused();
     expect(await page.evaluate(() => document.activeElement?.id)).toBe(F3.id);
   });
+});
+
+// T7 · ISC-140: the eyebrow over the h1 on the eight pages without a spec breadcrumb, at 390, 820 and 1440, in English
+// and German. `bun run e2e -- breadcrumb -g eyebrow`.
+//
+// The eyebrow is the element `[data-page-eyebrow]` (one per page, plain text, no link) directly above the page's h1:
+// the first h1 after it in document order is visible and starts at most 16 px below it. Its segments are its text split
+// at ` · `, compared case-insensitively (the uppercase is CSS, the catalog texts stay mixed case) against the route's
+// workspace slug and the catalog values named by key, so the expectations follow the catalogs rather than literals.
+// `/` names no workspace; `/help` and `/settings` start with the `APP` segment (`shell.eyebrow.app`, added by T8) and
+// never name a workspace (design.md, across viewports). No eyebrow and no h1 may show a raw catalog key.
+
+type Catalog = Record<string, unknown>;
+type Language = 'en' | 'de';
+const catalogs: Record<Language, Catalog> = { en: read('../src/i18n/en.json') as Catalog, de: read('../src/i18n/de.json') as Catalog };
+
+/** The catalog value at a dotted key, or undefined when the key is missing. */
+const lookup = (catalog: Catalog, key: string): string | undefined => {
+  let node: unknown = catalog;
+  for (const part of key.split('.')) node = typeof node === 'object' && node !== null ? (node as Record<string, unknown>)[part] : undefined;
+  return typeof node === 'string' ? node : undefined;
+};
+
+const IDEA = 'console-audit-log';
+const WORKSPACE = 'harbor';
+const WORKSPACE_NAMES = ['harbor', 'lantern'];
+/** A dotted catalog key such as `shell.pages.board` or `header.switcher.allWorkspaces`. */
+const CATALOG_KEY = /\b[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+\b/u;
+
+/** A segment is the route's workspace or the catalog value at a key; `null` asserts only "no workspace named". */
+type Segment = { ws: true } | { key: string };
+interface EyebrowPage {
+  readonly name: string;
+  readonly path: string;
+  readonly segments: readonly Segment[] | null;
+  /** The visible h1, where design.md fixes it. */
+  readonly h1?: RegExp;
+}
+
+const EYEBROW_PAGES: readonly EyebrowPage[] = [
+  { name: 'workspaces', path: '/', segments: null },
+  { name: 'dashboard', path: `/w/${WORKSPACE}`, segments: [{ ws: true }, { key: 'shell.pages.specs' }], h1: /^\s*Specs(\s*·\s*\d+)?\s*$/u },
+  { name: 'board', path: `/w/${WORKSPACE}/board`, segments: [{ ws: true }, { key: 'shell.pages.board' }] },
+  { name: 'idea', path: `/w/${WORKSPACE}/ideas/${IDEA}`, segments: [{ ws: true }, { key: 'shell.pages.board' }, { key: 'ideas.title' }] },
+  { name: 'features', path: `/w/${WORKSPACE}/features`, segments: [{ ws: true }, { key: 'shell.pages.features' }] },
+  { name: 'milestones', path: `/w/${WORKSPACE}/milestones`, segments: [{ ws: true }, { key: 'shell.pages.milestones' }] },
+  { name: 'help', path: '/help', segments: [{ key: 'shell.eyebrow.app' }, { key: 'help.title' }] },
+  { name: 'settings', path: '/settings', segments: [{ key: 'shell.eyebrow.app' }, { key: 'settings.title' }] },
+];
+
+const segmentsOf = (text: string): string[] =>
+  text
+    .split('·')
+    .map((part) => part.replace(/\s+/gu, ' ').trim().toLowerCase())
+    .filter((part) => part.length > 0);
+
+/** Opens the page and checks its eyebrow against the catalog of `language`. */
+async function checkEyebrow(page: Page, entry: EyebrowPage, language: Language): Promise<void> {
+  await page.goto(entry.path);
+  const eyebrow = page.locator('[data-page-eyebrow]');
+  await expect(eyebrow, `${entry.name}: one eyebrow`).toHaveCount(1);
+  await expect(eyebrow, `${entry.name}: the eyebrow is visible`).toBeVisible();
+  await expect(eyebrow.locator('a'), `${entry.name}: the eyebrow is plain text`).toHaveCount(0);
+
+  // The h1 it heads: the first h1 after it in document order, visible and at most 16 px below it.
+  const index = await eyebrow.evaluate((el) =>
+    [...document.querySelectorAll('h1')].findIndex((h) => (el.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0),
+  );
+  expect(index, `${entry.name}: an h1 follows the eyebrow`).toBeGreaterThanOrEqual(0);
+  const h1 = page.locator('h1').nth(index);
+  await expect(h1, `${entry.name}: the h1 under the eyebrow is visible`).toBeVisible();
+  if (entry.h1) await expect(h1, `${entry.name}: the h1`).toHaveText(entry.h1);
+  const [top, head] = await Promise.all([eyebrow.boundingBox(), h1.boundingBox()]);
+  const gap = (head?.y ?? -Infinity) - ((top?.y ?? 0) + (top?.height ?? 0));
+  expect(gap, `${entry.name}: the eyebrow sits directly above the h1`).toBeGreaterThanOrEqual(-1);
+  expect(gap, `${entry.name}: the eyebrow sits directly above the h1`).toBeLessThanOrEqual(16);
+
+  const text = (await eyebrow.textContent()) ?? '';
+  expect(text, `${entry.name}: no catalog key in the eyebrow`).not.toMatch(CATALOG_KEY);
+  expect((await h1.textContent()) ?? '', `${entry.name}: no catalog key in the h1`).not.toMatch(CATALOG_KEY);
+  const actual = segmentsOf(text);
+  const global = entry.segments === null || entry.segments.every((segment) => !('ws' in segment));
+  if (global) for (const name of WORKSPACE_NAMES) expect(actual, `${entry.name}: no workspace in the eyebrow`).not.toContain(name);
+  if (entry.segments === null) return;
+
+  const expected = entry.segments.map((segment) => {
+    if ('ws' in segment) return WORKSPACE;
+    const value = lookup(catalogs[language], segment.key);
+    expect(value, `${entry.name}: the ${language} catalog holds ${segment.key}`).toBeDefined();
+    return (value ?? '').toLowerCase();
+  });
+  expect(actual, `${entry.name}: the eyebrow segments in ${language}`).toEqual(expected);
+}
+
+test.describe('eyebrow', () => {
+  for (const width of [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      for (const entry of EYEBROW_PAGES) {
+        test(`eyebrow over the h1: ${entry.name} (${entry.path})`, async ({ page }) => {
+          await checkEyebrow(page, entry, 'en');
+        });
+      }
+
+      test('eyebrow in German on all eight pages', async ({ page }, info) => {
+        const headers = { [SESSION_HEADER]: `eyebrow-de-${info.testId}` };
+        await page.context().setExtraHTTPHeaders(headers);
+        await page.request.post(RESET_PATH, { headers });
+        const saved = await page.request.put('/api/settings', { data: { language: 'de' }, headers });
+        expect(saved.ok()).toBe(true);
+        for (const entry of EYEBROW_PAGES) await checkEyebrow(page, entry, 'de');
+        await page.request.post(RESET_PATH, { headers });
+      });
+    });
+  }
 });
