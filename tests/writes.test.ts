@@ -27,7 +27,7 @@ import { readSpecFiles } from "../server/src/workspace-loader.ts";
 import { actorIdOf } from "../core/src/actor-id.ts";
 import type { WorkflowStage } from "../core/src/files.ts";
 import { parseFrontmatter } from "../core/src/frontmatter.ts";
-import { writeTransition } from "../server/src/writes.ts";
+import { gateHashes, writeTransition } from "../server/src/writes.ts";
 import {
   NO_AGENT_SOURCE,
   REVIEWED_EVENT,
@@ -493,5 +493,53 @@ describe("ISC-121 transition: the workflow decides, spec.md and one event line a
     expect(res.body.reason).toStartWith("build needs a fresh reviewed mark");
     expect(res.body.command).toBe("/spec-review 005");
     expect(changed(before, tree(repo))).toEqual([]);
+  });
+
+  // T84 (ISC-130.1), `-t "transition refused"`: a refused drop changes zero bytes of the spec folder and appends zero
+  // event lines; the folder is hashed file by file before and after, `events.jsonl` counted by line.
+  const eventCount = (dir: string): number => {
+    const path = join(dir, "events.jsonl");
+    return existsSync(path) ? readFileSync(path, "utf8").split("\n").filter((l) => l.trim() !== "").length : 0;
+  };
+
+  test("transition refused: a drop to build without a fresh reviewed mark changes zero bytes and appends zero events", async () => {
+    const { repo } = setup({ activity: false });
+    const folder = "specs/005-config-format-choice";
+    const dir = join(repo, folder);
+    expect(reviewedGate(readSpecFiles({ dir, slug: "005-config-format-choice" }).texts).check.state).not.toBe("fresh");
+    const before = tree(dir);
+    const events = eventCount(dir);
+    const res = await move(repo, folder, "build");
+    expect(res.status).toBe(422);
+    if (res.status !== 422) return;
+    expect(res.body).toMatchObject({ error: "transition-refused", command: "/spec-review 005" });
+    expect(res.body.reason).toStartWith("build needs a fresh reviewed mark");
+    expect(changed(before, tree(dir))).toEqual([]);
+    expect(eventCount(dir)).toBe(events);
+  });
+
+  test("transition refused: a drop to done with an open claim changes zero bytes and appends zero events", async () => {
+    // 007 is a chore building under a fresh reviewed mark, whose lane moves build → done. In the copy one of its claims
+    // is reopened and the mark renewed over the files as they now stand, so the open claim is the only gate that fails;
+    // a history line gives the event count something to keep.
+    const { repo } = setup({ activity: false });
+    const slug = "007-rotate-mirror-token";
+    const folder = `specs/${slug}`;
+    const dir = join(repo, folder);
+    const spec = join(dir, "spec.md");
+    writeFileSync(spec, readFileSync(spec, "utf8").replace("- [x] ISC-127", "- [ ] ISC-127")); // single-core: allow — test setup reopens one fixed claim line in a temp copy, no parsing
+    writeFileSync(join(dir, ".gates", "reviewed.json"), reviewedMarkText("2026-03-19T10:00:00.000Z", gateHashes(readSpecFiles({ dir, slug }).texts)));
+    writeFileSync(join(dir, "events.jsonl"), `${JSON.stringify({ ts: "2026-03-19T10:00:00.000Z", from: "review", to: "build", command: "/spec-implement 007", actor: VIEWER_ACTOR_FALLBACK })}\n`);
+    expect(reviewedGate(readSpecFiles({ dir, slug }).texts).check.state).toBe("fresh");
+    const before = tree(dir);
+    const events = eventCount(dir);
+    expect(events).toBe(1);
+    const res = await move(repo, folder, "done");
+    expect(res.status).toBe(422);
+    if (res.status !== 422) return;
+    expect(res.body.error).toBe("transition-refused");
+    expect(res.body.reason).toStartWith("done needs every claim closed");
+    expect(changed(before, tree(dir))).toEqual([]);
+    expect(eventCount(dir)).toBe(events);
   });
 });

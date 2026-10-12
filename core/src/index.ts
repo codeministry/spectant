@@ -5,7 +5,7 @@
 // through it) export their types here; the server imports their functions from the module itself. `planning.ts`
 // imports only browser-safe parsers at runtime (claims, frontmatter), so it rides the barrel whole. Spec 002's model
 // modules (spec.ts, timeline.ts, …) stay out for the reason files.ts gives: several read the file system. Spec 008's
-// readers (workflow.ts, ideas.ts, actor.ts, transition.ts) take their texts from the caller and ride the barrel whole;
+// readers and planners (workflow.ts, ideas.ts, actor.ts, transition.ts, allocate.ts) take their texts from the caller and ride the barrel whole;
 // glossary.ts is literal data and rides it too.
 export * from './files.ts';
 export type * from './diagnostics.ts';
@@ -23,7 +23,9 @@ export * from './planning.ts';
 export * from './workflow.ts';
 export * from './ideas.ts';
 export * from './actor.ts';
+export * from './assignee.ts';
 export * from './transition.ts';
+export * from './allocate.ts';
 export * from './glossary.ts';
 export type * from './gates.ts';
 export type * from './dashboard.ts';

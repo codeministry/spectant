@@ -159,7 +159,7 @@ describe("openSettings", () => {
     expect(Object.keys(settings.get())).not.toContain("schema_version");
     expect(() => settings.set({ schema_version: "9" })).toThrow(SettingsError);
     const row = database.query<{ value: string }, []>("SELECT value FROM setting WHERE key = 'schema_version'").get();
-    expect(row?.value).toBe("4");
+    expect(row?.value).toBe("5");
   });
 
   test("a corrupt or out-of-range stored value falls back to its default", () => {

@@ -100,7 +100,7 @@ export function validateEventLine(line: string, lineNo?: number): EventValidatio
   if (wrong.length > 0) return reject('event-type', `${names(wrong)} must be a string${wrong.includes('from') ? ' (`from` may be null)' : ''}.`);
   // Every value is a string now, `from` possibly null.
   const { ts, to, command, actor } = record as Record<(typeof KEYS)[number], string>;
-  const fromWord = record.from as string | null;
+  const { from: fromWord } = record as Record<'from', string | null>;
 
   if (!isIsoDateTime(ts)) return reject('event-ts', `\`ts\` "${ts}" is not an ISO 8601 date-time with a zone.`);
   const blank = (['command', 'actor'] as const).filter((k) => (k === 'command' ? command : actor).trim() === '');

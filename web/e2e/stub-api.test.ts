@@ -911,10 +911,13 @@ describe('stub API matches the real server handlers byte for byte', () => {
   test.each([...STUB_STATES])('every GET route of WORKSPACE_ROUTE_TABLE, state %s', async (state) => {
     const handler = real?.[state];
     if (!handler) throw new Error('real handlers not loaded');
-    // Every workspace route is a read (`WorkspaceRouteEntry.method` is `'GET'`), so the whole table is iterated.
-    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning']);
-    for (const entry of WORKSPACE_ROUTE_TABLE) {
-      const build = workspaceRoutes[entry.route];
+    // Every workspace route is a read (`WorkspaceRouteEntry.method` is `'GET'`); the stub serves those with a golden
+    // family. The story route (`idea`, server T88) has none yet: its parity arrives with the stub's story route (T119).
+    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning', 'idea']);
+    const golden = WORKSPACE_ROUTE_TABLE.filter((entry) => entry.route in GOLDEN_FAMILY);
+    expect(golden.map((entry) => entry.route)).toEqual(['planning']);
+    for (const entry of golden) {
+      const build = workspaceRoutes.planning;
       const cases: Array<[string, RequestInit]> = [
         [build('harbor'), {}],
         [build('lantern'), {}],

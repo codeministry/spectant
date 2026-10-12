@@ -40,11 +40,19 @@
  * Exit 1 on any unmapped entry, stale row or bad row; 0 otherwise. When no source exists at all it prints
  * `sources absent` and exits 0 without reading the mapping. Exit 2 on a usage error.
  *
- * --free-specs: for every `specs/ideas/*.md` whose frontmatter says `milestone: Free`, the slug (the file name) must
- * have exactly one folder `specs/NNN-<slug>/` holding a `context.md` and a `spec.md` without a claim line
- * (`- [ ] ISC-…` / `- [x] ISC-…`). Prints one `<path>: <problem>` per problem and
- * `free-specs: N Free stories checked, P problems`; exit 1 on any problem. Without `specs/ideas/` it prints
- * `sources absent` and exits 0.
+ * --free-specs (T164, ISC-128): the Free stories come from the index `specs/ideas/README.md`, every row whose
+ * Milestone cell is `Free` in any table whose first header column is `Story` (one table per feature block, columns
+ * Story | Milestone | Priority | Spec; FORMAT.md § idea), and from the story files. Per Free row:
+ *
+ *   allocated   the Spec cell names a spec (anything but blank or a dash: `009`, `009-slug`, a link to it): exactly one
+ *               folder in `specs/` answers that ref (core's `specRefMatches`), holding a `context.md` and a `spec.md`
+ *               without a claim line (`- [ ] ISC-…` / `- [x] ISC-…`, core's `parseClaims`);
+ *   a story     the Spec cell is blank or a dash: the story file `specs/ideas/<slug>.md` exists.
+ *
+ * A row that is neither is a problem, and so is a story file whose frontmatter says `milestone: Free` but which no
+ * row of the index names. The index is read with core's `tableCells` and `TABLE_SEP`, never a splitter of its own.
+ * Prints one `<path>[:<line>]: <problem>` per problem and `free-specs: N Free stories checked, P problems`; exit 1 on
+ * any problem. Without `specs/ideas/` it prints `sources absent` and exits 0.
  *
  * Pure Bun/Node fs, no shelling out, no dependency. The parsing helpers are exported for the tests.
  */
@@ -53,6 +61,8 @@ import { join, resolve } from 'node:path';
 
 import { parseClaims } from '../core/src/claims.ts';
 import { parseFrontmatter } from '../core/src/frontmatter.ts';
+import { TABLE_SEP, tableCells } from '../core/src/markdown.ts';
+import { SPEC_FOLDER, specRefMatches } from '../core/src/spec-ref.ts';
 
 export type SourceName = 'roadmap' | 'outline' | 'notes' | 'view' | 'doc';
 export type Entry = { line: number; entry: string };
@@ -61,6 +71,8 @@ export type CoverageRow = { line: number; source: SourceName; entry: string };
 const PROTOTYPE = 'specs/001-app-skeleton/.design/prototype/spectant-ui';
 const COVERAGE = 'specs/008-spectant-complete/artifacts/coverage.md';
 const IDEAS = 'specs/ideas';
+const INDEX_FILE = 'README.md';
+const FREE = 'Free';
 
 const HEADING_SOURCES: ReadonlyArray<readonly [SourceName, string]> = [
   ['roadmap', 'spectant-produktideen.md'],
@@ -266,6 +278,65 @@ function frontmatterValue(text: string, key: string): string | null {
   return parseFrontmatter(text).values[key] ?? null;
 }
 
+/** One row of the ideas index: its 1-based line, the story slug, the Milestone cell and the Spec cell, each plain. */
+export type IndexRow = { line: number; story: string; milestone: string; spec: string };
+
+/** A cell as a name: a link reduced to its text, backticks dropped, trimmed, a trailing `.md` dropped. */
+function plainCell(cell: string): string {
+  return cell
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/`/g, '')
+    .trim()
+    .replace(/\.md$/, '');
+}
+
+/**
+ * The rows of `specs/ideas/README.md`: every table whose header's first column is `Story` (one per feature block),
+ * the Milestone and Spec columns found by their header name. Rows are split by core's `tableCells` after core's
+ * `TABLE_SEP` marks a header; lines inside a fence are skipped.
+ */
+export function indexRowsOf(text: string): IndexRow[] {
+  const lines = text.replace(/\r\n?/g, '\n').split('\n');
+  const rows: IndexRow[] = [];
+  let fenced = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? '';
+    if (FENCE.test(line)) fenced = !fenced;
+    if (fenced || !/^\s*\|/.test(line) || !TABLE_SEP.test(lines[i + 1] ?? '')) continue;
+    const header = tableCells(line).map((c) => plainCell(c).toLowerCase());
+    if (header[0] !== 'story') continue;
+    const milestone = header.indexOf('milestone');
+    const spec = header.indexOf('spec');
+    for (i += 2; i < lines.length && /^\s*\|/.test(lines[i] ?? ''); i++) {
+      const cells = tableCells(lines[i] ?? '');
+      const story = plainCell(cells[0] ?? '');
+      if (story === '') continue;
+      rows.push({
+        line: i + 1,
+        story,
+        milestone: milestone < 0 ? '' : plainCell(cells[milestone] ?? ''),
+        spec: spec < 0 ? '' : plainCell(cells[spec] ?? ''),
+      });
+    }
+    i -= 1;
+  }
+  return rows;
+}
+
+/** A Spec cell that names a spec: anything but blank or a dash. */
+const namesSpec = (cell: string): boolean => !/^[\s—–-]*$/.test(cell);
+
+/** The problems of an allocated folder: it holds `context.md` and a `spec.md` without a claim. */
+function folderProblems(root: string, folder: string): string[] {
+  const problems: string[] = [];
+  if (!existsSync(join(root, folder, 'context.md'))) problems.push(`${folder}: no context.md`);
+  const spec = join(root, folder, 'spec.md');
+  if (!existsSync(spec)) return [...problems, `${folder}: no spec.md`];
+  const claims = parseClaims(readFileSync(spec, 'utf8')).claims.length;
+  if (claims > 0) problems.push(`${folder}/spec.md: ${claims} claim${claims === 1 ? '' : 's'}`);
+  return problems;
+}
+
 function freeSpecs(root: string): number {
   const ideas = join(root, IDEAS);
   if (!isDir(ideas)) {
@@ -274,37 +345,45 @@ function freeSpecs(root: string): number {
   }
   const specsDir = join(root, 'specs');
   const folders = readdirSync(specsDir, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && /^\d{3}-/.test(d.name))
+    .filter((d) => d.isDirectory() && SPEC_FOLDER.test(d.name))
     .map((d) => d.name);
+  const stories = new Set(
+    readdirSync(ideas, { withFileTypes: true })
+      .filter((d) => d.isFile() && d.name.endsWith('.md') && d.name !== INDEX_FILE)
+      .map((d) => d.name.slice(0, -'.md'.length)),
+  );
+  const indexFile = join(ideas, INDEX_FILE);
+  const rows = existsSync(indexFile) ? indexRowsOf(readFileSync(indexFile, 'utf8')) : [];
 
   const problems: string[] = [];
-  let checked = 0;
-  const stories = readdirSync(ideas, { withFileTypes: true })
-    .filter((d) => d.isFile() && d.name.endsWith('.md'))
-    .map((d) => d.name)
-    .sort();
-  for (const file of stories) {
-    if (frontmatterValue(readFileSync(join(ideas, file), 'utf8'), 'milestone') !== 'Free') continue;
-    checked += 1;
-    const slug = file.slice(0, -'.md'.length);
-    const matches = folders.filter((f) => f.slice(4) === slug);
+  const checked = new Set<string>();
+  // Each Free row of the index: an allocated row (its Spec cell names a spec) needs that folder, unique in specs/, with
+  // context.md and a claimless spec.md; a row not yet allocated needs its story file.
+  for (const row of rows.filter((r) => r.milestone === FREE)) {
+    checked.add(row.story);
+    const at = `${IDEAS}/${INDEX_FILE}:${row.line}: ${row.story}`;
+    if (!namesSpec(row.spec)) {
+      if (!stories.has(row.story)) problems.push(`${at}: no story file and no spec`);
+      continue;
+    }
+    const matches = folders.filter((f) => specRefMatches(f, row.spec));
     if (matches.length !== 1) {
-      problems.push(`${IDEAS}/${file}: ${matches.length === 0 ? 'no spec folder' : `${matches.length} spec folders`}`);
+      problems.push(`${at}: spec ${row.spec} ${matches.length === 0 ? 'has no folder in specs/' : `names ${matches.length} folders`}`);
       continue;
     }
-    const folder = `specs/${matches[0] ?? ''}`;
-    if (!existsSync(join(root, folder, 'context.md'))) problems.push(`${folder}: no context.md`);
-    const spec = join(root, folder, 'spec.md');
-    if (!existsSync(spec)) {
-      problems.push(`${folder}: no spec.md`);
-      continue;
-    }
-    const claims = parseClaims(readFileSync(spec, 'utf8')).claims.length;
-    if (claims > 0) problems.push(`${folder}/spec.md: ${claims} claim${claims === 1 ? '' : 's'}`);
+    problems.push(...folderProblems(root, `specs/${matches[0] ?? ''}`));
   }
+  // Each Free story file the index does not name at all.
+  const named = new Set(rows.map((r) => r.story));
+  for (const slug of [...stories].sort()) {
+    if (named.has(slug) || frontmatterValue(readFileSync(join(ideas, `${slug}.md`), 'utf8'), 'milestone') !== FREE) continue;
+    checked.add(slug);
+    problems.push(`${IDEAS}/${slug}.md: a Free story the index does not name`);
+  }
+  const count = checked.size;
 
   for (const p of problems) console.error(p);
-  const summary = `free-specs: ${checked} Free ${checked === 1 ? 'story' : 'stories'} checked, ${problems.length} problem${problems.length === 1 ? '' : 's'}`;
+  const summary = `free-specs: ${count} Free ${count === 1 ? 'story' : 'stories'} checked, ${problems.length} problem${problems.length === 1 ? '' : 's'}`;
   if (problems.length > 0) {
     console.error(summary);
     return 1;

@@ -35,6 +35,7 @@ const holder = (id: string, slug: string, main: boolean, archived = false): Hold
   stageSource: null,
   priority: 'P3',
   hash: null,
+  assignee: null,
 });
 const feature = (id: string, name: string, holders: readonly Holder[], claims: readonly string[]): Feature => ({
   ideas: [],

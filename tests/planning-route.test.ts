@@ -6,13 +6,13 @@
 // Golden comparison: the route's body is the whole `core/fixtures/<tree>.planning.golden.json` (`GOLDEN_FAMILY.planning`,
 // the contract's "whole-file body"), byte for byte once both are compact JSON. The goldens are built with the clock
 // pinned to `PLANNING_NOW`; the route takes "today" from its `today` option, which the test pins to the same date. The
-// planning tree reads no lock source, so harbor's activity log changes nothing here (unlike the dashboard's golden).
+// board's stages come from the dashboard rows of the route's reading, harbor's activity log included; the golden's
+// stages agree with them (no harbor stage depends on a lock).
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { cpSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { PlanningHolder, PlanningModel } from "../core/src/planning.ts";
-import { DEFAULT_WORKFLOW, boardStages, parseWorkflow } from "../core/src/workflow.ts";
+import type { PlanningModel } from "../core/src/planning.ts";
 // The day every planning golden is built at: one constant, so moving the goldens' clock moves this route test with it.
 import { PLANNING_NOW } from "../core/tests/helpers/planning-model.ts";
 import { dashboardApi } from "../server/src/api.ts";
@@ -33,26 +33,10 @@ const HOST = { Host: "127.0.0.1:7717" };
 const goldenText = (tree: string): string => readFileSync(join(FIXTURES, `${tree}.${GOLDEN_FAMILY.planning}.golden.json`), "utf8");
 
 /**
- * The server passes the story folder to `buildPlanning` (T79, spec 008), so the route serves the stories. It passes
- * neither the workflow nor the spec states yet (T64 builds the golden with both), so until the task that wires them into
- * the route lands it serves the default table and board, every holder without stage, source and hash, and a zero count
- * per column; that task removes this pin and compares the whole golden again.
+ * The golden as the route sends it: compact JSON. The server passes the story folder (T79), the workflow and each
+ * active spec's stage, source and raw spec.md hash (T83), as the golden is built (T64), so nothing is pinned away.
  */
-const servedBeforeWiring = (golden: string): string => {
-  const model = JSON.parse(golden) as PlanningModel;
-  const workflow = { rows: DEFAULT_WORKFLOW, source: "default", diagnostics: [] };
-  const stages = boardStages(parseWorkflow(null));
-  const bare = <H extends PlanningHolder>(h: H): H => ({ ...h, stage: null, stageSource: null, hash: null });
-  return JSON.stringify({
-    ...model,
-    workflow,
-    stages,
-    // without spec states every spec column is 0; `idea` counts the stories the route already serves (T79)
-    stageCounts: Object.fromEntries(stages.map((s) => [s, s === "idea" ? model.ideas.length : 0])),
-    features: model.features.map((f) => ({ ...f, holders: f.holders.map(bare) })),
-    milestones: model.milestones.map((m) => ({ ...m, specs: m.specs.map(bare) })),
-  });
-};
+const compact = (golden: string): string => JSON.stringify(JSON.parse(golden));
 
 let root: string;
 const registries: Registry[] = [];
@@ -97,7 +81,7 @@ describe("GET /api/workspaces/:ws/planning", () => {
     expect(res.headers.get("cache-control")).toBe("no-cache");
     expect(res.headers.get("etag")).toMatch(/^"[A-Za-z0-9_-]+"$/);
     const text = await res.text();
-    expect(text).toBe(servedBeforeWiring(goldenText("harbor")));
+    expect(text).toBe(compact(goldenText("harbor")));
     const body = JSON.parse(text) as WorkspaceRouteResponses["planning"];
     expect(body.features.length).toBeGreaterThan(0);
     // The pinned day puts Harbor 0.9 behind and Harbor 1.0 ahead: the golden's states, not today's.
@@ -116,7 +100,7 @@ describe("GET /api/workspaces/:ws/planning", () => {
     const res = await call(workspaceRoutes.planning("lantern"));
     expect(res.status).toBe(200);
     const text = await res.text();
-    expect(text).toBe(servedBeforeWiring(goldenText("lantern")));
+    expect(text).toBe(compact(goldenText("lantern")));
     const body = JSON.parse(text) as PlanningModel;
     expect(body.milestones).toEqual([]);
     expect(body.ideas).toEqual([]);

@@ -98,7 +98,7 @@ describe("routes", () => {
 
 describe("request bodies", () => {
   test("the header round-trips into the gate body the validator accepts", () => {
-    expect(WRITE_HASH_HEADER).toEqual({ gateReviewed: REVIEWED_HASHES_HEADER, taskCheck: TASKS_HASH_HEADER });
+    expect(WRITE_HASH_HEADER).toEqual({ gateReviewed: REVIEWED_HASHES_HEADER, taskCheck: TASKS_HASH_HEADER, transition: SPEC_HASH_HEADER });
     const header = formatReviewedHashes({ ...HASHES, tasks: null });
     const body = gateReviewedRequestFromHeader(header);
     expect(body).toEqual({ hashes: { ...HASHES, tasks: null } });
@@ -214,6 +214,8 @@ describe("answers", () => {
         return answer.body.error;
       case 409:
         return `${answer.body.error} ${answer.body.files.join(",")}`;
+      case 422:
+        return `${answer.body.error} ${answer.body.reason}`;
       case 423:
         return `${answer.body.error} ${answer.body.lock.session}`;
     }
@@ -249,6 +251,29 @@ describe("answers", () => {
 
     expect(writeAnswerOf("gateReviewed", 400, { error: "invalid-body" })).toEqual({ status: 400, body: { error: "invalid-body" } });
     expect(writeAnswerOf("gateReviewed", 404, { error: "not-found" })).toBeNull();
+  });
+
+  test("the transition (T83): its body parses, and its 200, 409 and 422 fit; a 422 fits no other write", () => {
+    expect(parseWriteBody("transition", JSON.stringify({ to: "review", hash: HEX_A }))).toEqual({ ok: true, body: { to: "review", hash: HEX_A } });
+    expect(parseWriteBody("transition", JSON.stringify({ to: "shipping", hash: HEX_A }))).toEqual({ ok: false, error: { error: "invalid-body" } });
+    expect(parseWriteBody("transition", "{")).toEqual({ ok: false, error: { error: "invalid-body" } });
+
+    const event = { ts: TS, from: "tasks", to: "review", command: "spectant move 003 review", actor: VIEWER } as const;
+    const ok = { from: "tasks", to: "review", hash: HEX_B, event, lockSource: "activity" } as const;
+    expect(writeAnswerOf("transition", 200, ok)).toEqual({ status: 200, body: ok });
+    expect(writeAnswerOf("transition", 200, { ...ok, to: "build" })).toBeNull();
+    expect(writeAnswerOf("transition", 200, { ...ok, event: { ...event, actor: WRITE_ACTOR } })).toBeNull();
+
+    const stale = specConflict(HEX_A, HEX_B);
+    if (stale === null) throw new Error("expected a conflict");
+    expect(writeAnswerOf("transition", 409, stale)).toEqual({ status: 409, body: stale });
+    expect(writeAnswerOf("transition", 409, tasksConflict(HEX_C, HEX_A))).toBeNull();
+
+    const refused = { error: "transition-refused", reason: "build needs a fresh reviewed mark", command: "/spec-review 005" };
+    const answer = writeAnswerOf("transition", 422, refused);
+    expect(answer && describeAnswer(answer)).toBe("transition-refused build needs a fresh reviewed mark");
+    expect(writeAnswerOf("transition", 422, { ...refused, command: null })).not.toBeNull();
+    expect(writeAnswerOf("taskCheck", 422, refused)).toBeNull();
   });
 });
 

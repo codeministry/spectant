@@ -28,14 +28,29 @@
  * local date (`options.today`), so a stub or golden built at a fixed day differs from a live answer in `state` alone.
  * It lives here rather than in its own handler because it shares this handler's registry, guard and 409 summary.
  *
+ * The story route (spec 008 T88, ISC-124.2): `GET /api/workspaces/:ws/ideas/:slug` → `IdeaPage`, matched by the same
+ * `matchWorkspacePath` with the same guard order. It reads the story folder alone (`readIdeaFiles`), never the whole
+ * workspace: a story page needs no spec folder, lock source or git call. The slug must be one `readIdeas` lists, so a
+ * path out of the folder, the index or a skipped file is a 404 before any file is opened by it; then one read of the
+ * file's bytes gives the `IdeaRef` (`readIdeas` over the folder with that text), the page (`renderDocsMarkdown`, images
+ * confined to the workspace as on a Docs tab) and `hash`, the raw sha256 hex of those bytes (`rawSha256`, the hash
+ * `allocate` checks). The ETag is `json()`'s body hash, and the body carries `hash`, so any byte change revalidates.
+ * 404 for an unknown story and for a workspace without stories; 409 with the summary when the folder cannot be read.
+ *
  * Lock sources (T51, ISC-37): both routes read the repository's `.spectant/activity.jsonl`, and the LifeOS frontier
  * locks only when `options.lifeos` is present, so the counts in the list and the dashboard agree.
  *
  * No absolute path leaves this module (ISC-3): a workspace is its slug, its name and `pathTail`, the last path segment;
  * the unreadable codes replace OS messages, which would name the path.
  */
-import type { DashboardKpis } from "../../core/src/dashboard.ts";
-import { buildPlanning } from "../../core/src/planning.ts";
+import { join } from "node:path";
+import { type DashboardKpis, buildDashboard } from "../../core/src/dashboard.ts";
+import { docsRenderOptions } from "../../core/src/evidence.ts";
+import { repoFilePath, specFilePath } from "../../core/src/files.ts";
+import { readIdeas } from "../../core/src/ideas.ts";
+import { renderDocsMarkdown } from "../../core/src/markdown-docs.ts";
+import { type PlanningSpecState, buildPlanning } from "../../core/src/planning.ts";
+import { listSpecs } from "../../core/src/resolve.ts";
 import type { ApiHandler } from "./http.ts";
 import { matchesIfNoneMatch } from "./http.ts";
 import type { LifeosDetection } from "./lifeos.ts";
@@ -49,8 +64,13 @@ import {
   type UnreadableCode,
   type WorkspaceReading,
   loadDashboard,
+  readBytesIfExists,
+  readIdeaFiles,
   readWorkspaceInput,
+  unreadableCode,
+  workspaceUnreadable,
 } from "./workspace-loader.ts";
+import { rawSha256 } from "./writes.ts";
 
 /** The list route; a dashboard is `${WORKSPACES_PATH}/:slug/dashboard`. */
 export const WORKSPACES_PATH = "/api/workspaces";
@@ -147,6 +167,20 @@ function summary(workspace: Workspace, load: DashboardLoad): WorkspaceSummary {
     : { ...base, readable: false, error: load.error, counts: null };
 }
 
+/**
+ * Each active spec's state for the board (spec 008, T83): the stage and its source from the dashboard rows of the very
+ * reading the tree is built from, and the raw sha256 of spec.md's bytes, the hash `writes.ts` compares a transition
+ * against (`rawSha256`), so a card's move fails only on a file changed since the board was read.
+ */
+function specStatesOf(root: string, reading: Extract<WorkspaceReading, { readable: true }>): PlanningSpecState[] {
+  const dirs = new Map(listSpecs(root).filter((ref) => !ref.archived).map((ref) => [ref.slug, ref.dir]));
+  return buildDashboard(reading.input).specs.map((row): PlanningSpecState => {
+    const dir = dirs.get(row.slug);
+    const bytes = dir === undefined ? null : readBytesIfExists(specFilePath(dir, "spec"));
+    return { slug: row.slug, stage: row.stage, stageSource: row.stageSource, ...(bytes === null ? {} : { hash: rawSha256(bytes) }) };
+  });
+}
+
 const defaultServices: ServicesProbe = (repoRoot, labels) => listServices({ repoRoot, labels });
 
 /**
@@ -176,15 +210,55 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     return json(req, 200, loaded.model);
   };
 
-  // No lock source feeds the planning tree, so no LifeOS path is read for it.
+  // The board's stages come from the reading's own lock source (the repository's activity log); no LifeOS path is read.
   const planning = async (req: Request, slug: string): Promise<Response> => {
     const workspace = registry.get(slug);
     if (!workspace) return json(req, 404, { error: "not-found" });
     const reading = await read(workspace.path);
     if (!reading.readable) return json(req, 409, summary(workspace, reading));
     const { master, specs, archived } = reading.input;
-    const model: WorkspaceRouteResponses["planning"] = buildPlanning({ master, specs, archived, ideas: reading.ideas, now: today() });
+    const model: WorkspaceRouteResponses["planning"] = buildPlanning({
+      master,
+      specs,
+      archived,
+      ideas: reading.ideas,
+      now: today(),
+      workflow: reading.workflow,
+      specStates: specStatesOf(workspace.path, reading),
+    });
     return json(req, 200, model);
+  };
+
+  // The story folder alone: no spec folder, lock source or git call feeds a story page (header).
+  const idea = (req: Request, slug: string, story: string): Response => {
+    const workspace = registry.get(slug);
+    if (!workspace) return json(req, 404, { error: "not-found" });
+    const root = workspace.path;
+    const unreadable = workspaceUnreadable(root);
+    if (unreadable !== null) return json(req, 409, summary(workspace, { readable: false, error: unreadable }));
+    try {
+      const files = readIdeaFiles(root);
+      // Only a slug `readIdeas` lists names a file: never a path built from the request alone.
+      if (!readIdeas(files).ideas.some((ref) => ref.slug === story)) return json(req, 404, { error: "not-found" });
+      const name = `${story}.md`;
+      const path = join(repoFilePath(root, "idea"), name);
+      const bytes = readBytesIfExists(path);
+      if (bytes === null) return json(req, 404, { error: "not-found" });
+      // One read: the ref, the page and the hash all describe these bytes, even if the file changed since the listing.
+      const text = bytes.toString("utf8");
+      const ref = readIdeas({ ...files, [name]: text }).ideas.find((r) => r.slug === story);
+      if (ref === undefined) return json(req, 404, { error: "not-found" });
+      // A story renders as a Docs tab that is not the Design tab: images confined to the workspace, no spec assets.
+      const body: WorkspaceRouteResponses["idea"] = {
+        idea: ref,
+        page: renderDocsMarkdown(text, docsRenderOptions(root, path, "plan")),
+        hash: rawSha256(bytes),
+      };
+      return json(req, 200, body);
+    } catch (error) {
+      if (typeof (error as NodeJS.ErrnoException | null)?.code !== "string") throw error;
+      return json(req, 409, summary(workspace, { readable: false, error: unreadableCode(error) }));
+    }
   };
 
   return (req, url) => {
@@ -199,6 +273,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       const allow = workspaceRoute ? allowForWorkspace(workspaceRoute.route) : ALLOW;
       return json(req, 405, { error: "method-not-allowed" }, { Allow: allow });
     }
+    if (workspaceRoute?.route === "idea") return idea(req, workspaceRoute.params.ws, workspaceRoute.params.slug);
     if (workspaceRoute) return planning(req, workspaceRoute.params.ws);
     if (!match) return list(req);
     let slug: string;

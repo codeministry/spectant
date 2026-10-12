@@ -77,6 +77,7 @@ import {
   type NotFound,
   SPEC_API_ROOT,
   SPEC_ROUTE_TABLE,
+  type SpecRouteError,
   type SpecRouteName,
   type SpecRouteResponses,
   type Unavailable,
@@ -157,6 +158,7 @@ const built: Record<SpecRouteName, (ws: string, id: string) => string> = {
   live: specRoutes.live,
   gateReviewed: specRoutes.gateReviewed,
   taskCheck: (ws, id) => specRoutes.taskCheck(ws, id, "T12"),
+  transition: specRoutes.transition,
 };
 
 function methodOf(route: SpecRouteName): string {
@@ -254,6 +256,21 @@ describe("builders and matcher", () => {
     }
   });
 
+  test("the transition is registered (T83): POST only, the refusable write's statuses, no longer a pending path", () => {
+    const entry = SPEC_ROUTE_TABLE.find((e) => e.route === "transition");
+    expect(entry).toEqual({
+      route: "transition",
+      method: "POST",
+      pattern: `${SPEC_API_ROOT}/:ws/specs/:id/transition`,
+      statuses: [200, 400, 403, 404, 405, 409, 422, 423],
+      response: "TransitionWritten",
+    });
+    expect(allowFor("transition")).toBe("POST");
+    expect(matchSpecRoute(specRoutes.transition("harbor", "002"), "GET")).toBeNull();
+    expect(matchPendingPath(specRoutes.transition("harbor", "002"))).toBeNull();
+    expect(PENDING_ROUTE_TABLE.map((e): string => e.route)).not.toContain("transition");
+  });
+
   test("the evidence path travels raw and core decodes it once", () => {
     for (const path of ["artifacts/T12-dashboard-model.md", ".evidence/a b+c%41.log", "artifacts/ü/ö.png"]) {
       const url = new URL(specRoutes.evidenceFile("harbor", "002", path), "http://127.0.0.1");
@@ -268,31 +285,50 @@ describe("builders and matcher", () => {
 
 // ─── workspace routes (spec 003) ─────────────────────────────────────────────────────────────────────────────────
 
-// Compile-time pins: the planning answer is core's PlanningModel, never a re-typed copy, and every workspace route has
-// a 200 type, the read error union and a golden family.
+// Compile-time pins: the planning answer is core's PlanningModel, never a re-typed copy, the story answer reuses core's
+// IdeaRef and DocsPage, and every workspace route has a 200 type and the read error union. Every one but `idea` has a
+// golden family; the story family arrives with the e2e stub's story route (spec 008 T119).
 const planningIsCore: Equal<WorkspaceRouteResponses["planning"], PlanningModel> = true;
+const ideaIsCore: Equal<WorkspaceRouteResponses["idea"], IdeaPage> = true;
+const ideaPartsAreCore: Equal<[IdeaPage["idea"], IdeaPage["page"]], [IdeaRef, DocsPage]> = true;
 const workspaceResponsesCoverRoutes: Equal<keyof WorkspaceRouteResponses, WorkspaceRouteName> = true;
 const workspaceErrors: Equal<WorkspaceRouteError,NotFound | Forbidden | MethodNotAllowed | Unavailable> = true;
-const workspaceFamilies: Equal<Extract<keyof typeof GOLDEN_FAMILY, WorkspaceRouteName>, WorkspaceRouteName> = true;
+const workspaceFamilies: Equal<Extract<keyof typeof GOLDEN_FAMILY, WorkspaceRouteName>, Exclude<WorkspaceRouteName, "idea">> = true;
 
-describe("workspace routes (spec 003): planning beside the spec routes", () => {
-  test("compile-time pins: PlanningModel is core's, every workspace route has a 200 type, an error union, a family", () => {
-    expect([planningIsCore, workspaceResponsesCoverRoutes, workspaceErrors, workspaceFamilies]).toEqual([true, true, true, true]);
+/** One call per workspace builder, with a story slug where the route takes one. */
+const WORKSPACE_ARGS: Record<WorkspaceRouteName, (ws: string) => string> = {
+  planning: (ws) => workspaceRoutes.planning(ws),
+  idea: (ws) => workspaceRoutes.idea(ws, "console-audit-log"),
+};
+
+describe("workspace routes (spec 003, 008): planning and the story page beside the spec routes", () => {
+  test("compile-time pins: PlanningModel and IdeaPage's parts are core's, every route has a 200 type and an error union", () => {
+    expect([planningIsCore, ideaIsCore, ideaPartsAreCore, workspaceResponsesCoverRoutes, workspaceErrors, workspaceFamilies]).toEqual([
+      true, true, true, true, true, true,
+    ]);
   });
 
-  test("the path is the plan's: /api/workspaces/:ws/planning, the slug percent-encoded once", () => {
+  test("the paths are the plans': /api/workspaces/:ws/planning and /api/workspaces/:ws/ideas/:slug, each segment encoded once", () => {
     expect(workspaceRoutes.planning("harbor")).toBe("/api/workspaces/harbor/planning");
     expect(workspaceRoutes.planning("my repo")).toBe("/api/workspaces/my%20repo/planning");
     expect(workspaceRoutes.planning("a/b")).toBe("/api/workspaces/a%2Fb/planning");
+    expect(workspaceRoutes.idea("harbor", "tide-tables")).toBe("/api/workspaces/harbor/ideas/tide-tables");
+    expect(workspaceRoutes.idea("my repo", "a/b")).toBe("/api/workspaces/my%20repo/ideas/a%2Fb");
   });
 
-  test("every builder round-trips through matchWorkspacePath, the slug decoded exactly once", () => {
+  test("every builder round-trips through matchWorkspacePath, each param decoded exactly once", () => {
     for (const ws of WS) {
       const url = new URL(workspaceRoutes.planning(ws), "http://127.0.0.1:7717");
       expect({ ws, match: matchWorkspacePath(url.pathname) }).toEqual({ ws, match: { route: "planning", params: { ws } } });
+      for (const slug of WS) {
+        const story = new URL(workspaceRoutes.idea(ws, slug), "http://127.0.0.1:7717");
+        expect({ ws, slug, match: matchWorkspacePath(story.pathname) }).toEqual({ ws, slug, match: { route: "idea", params: { ws, slug } } });
+      }
     }
     expect(matchWorkspacePath("/api/workspaces/a%2541/planning")?.params).toEqual({ ws: "a%41" });
     expect(matchWorkspacePath("/api/workspaces/%E0%A4%A/planning")).toBeNull();
+    expect(matchWorkspacePath("/api/workspaces/harbor/ideas/x%2541")?.params).toEqual({ ws: "harbor", slug: "x%41" });
+    expect(matchWorkspacePath("/api/workspaces/harbor/ideas/%E0%A4%A")).toBeNull();
   });
 
   test("anything else is null: extra or missing segments, the dashboard route, every spec route", () => {
@@ -302,6 +338,9 @@ describe("workspace routes (spec 003): planning beside the spec routes", () => {
       "/api/workspaces//planning",
       "/api/workspaces/harbor/planning/",
       "/api/workspaces/harbor/planning/extra",
+      "/api/workspaces/harbor/ideas",
+      "/api/workspaces/harbor/ideas/",
+      "/api/workspaces/harbor/ideas/x/allocate",
       "/api/workspaces/harbor/dashboard",
       "/api/workspacesx/harbor/planning",
       "/api/lifeos",
@@ -313,6 +352,7 @@ describe("workspace routes (spec 003): planning beside the spec routes", () => {
       expect({ route, match: matchWorkspacePath(path) }).toEqual({ route, match: null });
     }
     expect(matchSpecPath(workspaceRoutes.planning("harbor"))).toBeNull();
+    expect(matchSpecPath(workspaceRoutes.idea("harbor", "x"))).toBeNull();
   });
 
   test("the table lists every workspace builder exactly once, GET with the read statuses, its builder matching", () => {
@@ -321,16 +361,23 @@ describe("workspace routes (spec 003): planning beside the spec routes", () => {
     expect([...routes].sort()).toEqual(Object.keys(workspaceRoutes).sort());
     const read = SPEC_ROUTE_TABLE.find((entry) => entry.route === "spec")?.statuses;
     for (const entry of WORKSPACE_ROUTE_TABLE) {
-      expect(entry.pattern).toBe(`${SPEC_API_ROOT}/:ws/${entry.route}`);
       expect(entry.method).toBe("GET");
       expect(entry.statuses).toEqual(read ?? []);
-      expect(matchWorkspacePath(workspaceRoutes[entry.route]("harbor"))?.route).toBe(entry.route);
+      expect(matchWorkspacePath(WORKSPACE_ARGS[entry.route]("harbor"))?.route).toBe(entry.route);
     }
-    expect(WORKSPACE_ROUTE_TABLE.map((entry) => [entry.route, entry.response])).toEqual([["planning", "PlanningModel"]]);
+    expect(WORKSPACE_ROUTE_TABLE.map((entry) => [entry.route, entry.pattern, entry.response])).toEqual([
+      ["planning", `${SPEC_API_ROOT}/:ws/planning`, "PlanningModel"],
+      ["idea", `${SPEC_API_ROOT}/:ws/ideas/:slug`, "IdeaPage"],
+    ]);
   });
 
-  test("allowForWorkspace: the planning route answers GET and HEAD", () => {
+  test("allowForWorkspace: every workspace route answers GET and HEAD", () => {
     expect(allowForWorkspace("planning")).toBe("GET, HEAD");
+    expect(allowForWorkspace("idea")).toBe("GET, HEAD");
+  });
+
+  test("IdeaPage's key list (no golden family yet)", () => {
+    expect(Object.keys(keysOf<IdeaPage>({ idea: "req", page: "req", hash: "req" }))).toEqual(["idea", "page", "hash"]);
   });
 
   test("GOLDEN_FAMILY.planning names core/fixtures/<tree>.planning.golden.json, whose whole body is a PlanningModel", () => {
@@ -354,7 +401,7 @@ describe("workspace routes (spec 003): planning beside the spec routes", () => {
 // ─── pending routes (spec 008, T81) ──────────────────────────────────────────────────────────────────────────────
 
 // Compile-time pins: no golden family exists yet, so the shapes are pinned against core's types and the key lists
-// below. Each pending answer reuses core (`EventLine`, `IdeaRef`, `DocsPage`, `TransitionPlan`) and never re-types it.
+// below. Each pending answer reuses core (`EventLine`, `TransitionPlan`) and never re-types it.
 type RefusedPlan = Extract<TransitionPlan, { readonly ok: false }>;
 type WrittenPlan = Extract<TransitionPlan, { readonly ok: true }>;
 const pendingResponsesCoverRoutes: Equal<keyof PendingRouteResponses, PendingRouteName> = true;
@@ -363,18 +410,18 @@ const refusalIsThePlans: Equal<Pick<TransitionRefused, "reason" | "command">, Pi
 const writtenStagesArePlans: Equal<Pick<TransitionWritten, "from" | "to">, Pick<WrittenPlan, "from" | "to">> = true;
 const writtenEventIsCore: Equal<TransitionWritten["event"], EventLine> = true;
 const toIsAWorkflowStage: Equal<TransitionRequest["to"], WorkflowStage> = true;
-const ideaIsCore: Equal<IdeaPage["idea"], IdeaRef> = true;
 const actorIsTheRow: Equal<ActorMapping, Omit<ActorRow, "updatedAt">> = true;
-const requestsAreBodies: Equal<keyof PendingRouteRequests, Exclude<PendingRouteName, "idea">> = true;
+const requestsAreBodies: Equal<keyof PendingRouteRequests, PendingRouteName> = true;
+// The story page (T88) and the transition (T83) left the pending family with their handlers.
+const ideaLanded: Equal<Extract<PendingRouteName, "idea" | "transition">, never> = true;
 const transitionErrors: Equal<
-  PendingRouteError<"transition">,
+  SpecRouteError<"transition">,
   NotFound | Forbidden | MethodNotAllowed | Unavailable | InvalidBody | Conflict<{ readonly spec: string }> | TransitionRefused | Locked
 > = true;
 const allocateErrors: Equal<
   PendingRouteError<"allocate">,
   NotFound | Forbidden | MethodNotAllowed | Unavailable | InvalidBody | Conflict<{ readonly idea: string }> | AllocateRefused | Locked
 > = true;
-const ideaErrors: Equal<PendingRouteError<"idea">, NotFound | Forbidden | MethodNotAllowed | Unavailable> = true;
 const actorsErrors: Equal<PendingRouteError<"actors">, Forbidden | MethodNotAllowed | InvalidBody> = true;
 const boardQueryErrors: Equal<PendingRouteError<"boardQuery">, NotFound | Forbidden | MethodNotAllowed | InvalidBody> = true;
 
@@ -383,7 +430,6 @@ const PENDING_KEYS = {
   TransitionRequest: keysOf<TransitionRequest>({ to: "req", hash: "req" }),
   TransitionWritten: keysOf<TransitionWritten>({ from: "req", to: "req", hash: "req", event: "req", lockSource: "req" }),
   TransitionRefused: keysOf<TransitionRefused>({ error: "req", reason: "req", command: "req" }),
-  IdeaPage: keysOf<IdeaPage>({ idea: "req", page: "req", hash: "req" }),
   AllocateRequest: keysOf<AllocateRequest>({ hash: "req" }),
   IdeaAllocated: keysOf<IdeaAllocated>({ id: "req", folder: "req", files: "req", removed: "req", lockSource: "req" }),
   AllocateRefused: keysOf<AllocateRefused>({ error: "req", reason: "req", folder: "req" }),
@@ -393,8 +439,6 @@ const PENDING_KEYS = {
 
 const PENDING_HEX = hashForGate("spec.md", "# a\n");
 const PENDING_ARGS: Record<PendingRouteName, () => string> = {
-  transition: () => pendingRoutes.transition("harbor", "002"),
-  idea: () => pendingRoutes.idea("harbor", "tide-tables"),
   allocate: () => pendingRoutes.allocate("harbor", "tide-tables"),
   actors: () => pendingRoutes.actors(),
   boardQuery: () => pendingRoutes.boardQuery("harbor"),
@@ -404,14 +448,13 @@ describe("pending routes (spec 008, T81): declared ahead of their handlers, kept
   test("compile-time pins: answers are core's types, errors per route, requests per writing route, names apart", () => {
     expect([
       pendingResponsesCoverRoutes, pendingKeptApart, refusalIsThePlans, writtenStagesArePlans, writtenEventIsCore,
-      toIsAWorkflowStage, ideaIsCore, actorIsTheRow, requestsAreBodies, transitionErrors, allocateErrors, ideaErrors,
+      toIsAWorkflowStage, actorIsTheRow, requestsAreBodies, ideaLanded, transitionErrors, allocateErrors,
       actorsErrors, boardQueryErrors,
     ].every(Boolean)).toBe(true);
   });
 
   test("the paths are the plan's, each segment percent-encoded once", () => {
-    expect(pendingRoutes.transition("harbor", "002")).toBe("/api/workspaces/harbor/specs/002/transition");
-    expect(pendingRoutes.idea("harbor", "tide-tables")).toBe("/api/workspaces/harbor/ideas/tide-tables");
+    expect(specRoutes.transition("harbor", "002")).toBe("/api/workspaces/harbor/specs/002/transition");
     expect(pendingRoutes.allocate("my repo", "a/b")).toBe("/api/workspaces/my%20repo/ideas/a%2Fb/allocate");
     expect(pendingRoutes.actors()).toBe("/api/actors");
     expect(ACTORS_PATH).toBe("/api/actors");
@@ -420,8 +463,9 @@ describe("pending routes (spec 008, T81): declared ahead of their handlers, kept
 
   test("every builder round-trips through matchPendingPath, params decoded exactly once", () => {
     for (const ws of WS) {
-      expect(matchPendingPath(pendingRoutes.transition(ws, "a b/c%"))).toEqual({ route: "transition", params: { ws, id: "a b/c%" } });
-      expect(matchPendingPath(pendingRoutes.idea(ws, "x%41"))).toEqual({ route: "idea", params: { ws, slug: "x%41" } });
+      // The story page (T88) and the transition (T83) are registered routes now: no pending matcher claims them.
+      expect(matchPendingPath(workspaceRoutes.idea(ws, "x%41"))).toBeNull();
+      expect(matchPendingPath(specRoutes.transition(ws, "a b/c%"))).toBeNull();
       expect(matchPendingPath(pendingRoutes.allocate(ws, "a/b"))).toEqual({ route: "allocate", params: { ws, slug: "a/b" } });
       expect(matchPendingPath(pendingRoutes.boardQuery(ws))).toEqual({ route: "boardQuery", params: { ws } });
     }
@@ -443,7 +487,7 @@ describe("pending routes (spec 008, T81): declared ahead of their handlers, kept
 
   test("the table lists every pending builder once; no registered matcher claims a pending path, and vice versa", () => {
     const routes = PENDING_ROUTE_TABLE.map((entry): string => entry.route);
-    expect(routes).toEqual(["transition", "idea", "allocate", "actors", "boardQuery"]);
+    expect(routes).toEqual(["allocate", "actors", "boardQuery"]);
     expect([...routes].sort()).toEqual(Object.keys(pendingRoutes).sort());
     for (const entry of PENDING_ROUTE_TABLE) {
       const path = PENDING_ARGS[entry.route]();
@@ -463,21 +507,17 @@ describe("pending routes (spec 008, T81): declared ahead of their handlers, kept
       expect(matchPendingPath(new URL(built[route]("harbor", "002"), "http://127.0.0.1").pathname)).toBeNull();
     }
     expect(matchPendingPath(workspaceRoutes.planning("harbor"))).toBeNull();
+    expect(matchPendingPath(workspaceRoutes.idea("harbor", "tide-tables"))).toBeNull();
   });
 
   test("methods, statuses and bodies per route, as plan 008 § Interfaces names them", () => {
     const rows = PENDING_ROUTE_TABLE.map((e) => [e.route, e.family, e.methods.join(","), e.statuses.join(","), e.request, e.response]);
     expect(rows).toEqual([
-      ["transition", "spec", "POST", "200,400,403,404,405,409,422,423", "TransitionRequest", "TransitionWritten"],
-      ["idea", "workspace", "GET", "200,304,403,404,405,409", null, "IdeaPage"],
       ["allocate", "workspace", "POST", "200,400,403,404,405,409,422,423", "AllocateRequest", "IdeaAllocated"],
       ["actors", "app", "GET,PUT", "200,304,400,403,405", "ActorMapping", "ActorMapping[]"],
       ["boardQuery", "workspace", "GET,PUT", "200,304,400,403,404,405", "BoardQuery", "BoardQuery"],
     ]);
-    expect(PENDING_ROUTE_TABLE.find((e) => e.route === "idea")?.statuses).toEqual(SPEC_ROUTE_TABLE.find((e) => e.route === "spec")?.statuses);
     expect(Object.fromEntries(PENDING_ROUTE_TABLE.map((e) => [e.route, allowForPending(e.route)]))).toEqual({
-      transition: "POST",
-      idea: "GET, HEAD",
       allocate: "POST",
       actors: "GET, HEAD, PUT",
       boardQuery: "GET, HEAD, PUT",
@@ -489,7 +529,6 @@ describe("pending routes (spec 008, T81): declared ahead of their handlers, kept
       TransitionRequest: ["to", "hash"],
       TransitionWritten: ["from", "to", "hash", "event", "lockSource"],
       TransitionRefused: ["error", "reason", "command"],
-      IdeaPage: ["idea", "page", "hash"],
       AllocateRequest: ["hash"],
       IdeaAllocated: ["id", "folder", "files", "removed", "lockSource"],
       AllocateRefused: ["error", "reason", "folder"],

@@ -11,17 +11,19 @@
 // their `feature:` names and the milestone their `milestone:` names, counted apart so no fraction changes. Every count
 // is derived from the files on each read; nothing is stored.
 //
-// `buildPlanning` is pure over text the caller read and parses nothing itself: it composes `claims.ts`,
-// `frontmatter.ts`, `ideas.ts`, `milestones.ts` and `status.ts`. Malformed input becomes a FileDiagnostic, never a
+// `buildPlanning` is pure over text the caller read and parses nothing itself: it composes `assignee.ts`, `claims.ts`,
+// `events.ts`, `frontmatter.ts`, `ideas.ts`, `milestones.ts` and `status.ts`. Malformed input becomes a FileDiagnostic, never a
 // throw. Its runtime imports are browser-safe parsers the barrel already exports (never `gates.ts` or `dashboard.ts`
 // at runtime), so the barrel exports it whole and the web bundle may import it. Its type graph is browser-clean too
 // (T18): it types against `files.ts`, `claims.ts`, `frontmatter.ts`, `milestones.ts`, `stage.ts` and `status.ts` only, never
 // `dashboard.ts` or `gates.ts`, so the route contract's `import type { PlanningModel }` typechecks in the web tsconfigs
 // without Node types.
+import { assigneeOf } from './assignee.ts';
 import { parseClaims } from './claims.ts';
 import type { Claim, FeatureBlock } from './claims.ts';
+import { parseEvents } from './events.ts';
 import { specFilePath } from './files.ts';
-import type { FileDiagnostic, IdeaFiles, IdeaRef, Priority, SpecFiles, StageSource, Workflow, WorkflowStage } from './files.ts';
+import type { ActorRef, ClaimLock, FileDiagnostic, IdeaFiles, IdeaRef, LockReading, Priority, SpecFiles, StageSource, Workflow, WorkflowStage } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { readIdeas } from './ideas.ts';
 import { milestoneSlug, parseMilestones } from './milestones.ts';
@@ -95,6 +97,12 @@ export interface PlanningHolder {
    * caller in `PlanningInput.specStates`, since hashing is `node:crypto` and this module stays browser-safe.
    */
   readonly hash: string | null;
+  /**
+   * Who the active spec is assigned to (spec 008, T65, ISC-131, `assigneeOf` in `assignee.ts`): the actor of the newest
+   * lock of `PlanningInput.locks` on one of its claims, else the actor of its last event, else null; the dashboard
+   * row's value over the same input. Null for an archived spec, which is never given a stage either.
+   */
+  readonly assignee: ActorRef | null;
 }
 
 /**
@@ -235,6 +243,11 @@ export interface PlanningInput {
    * every holder has a null stage, source and hash, and no spec is counted on the board.
    */
   readonly specStates?: readonly PlanningSpecState[];
+  /**
+   * The repository's lock reading (`readLockSources`), the one the dashboard takes as `DashboardInput.locks`, for each
+   * holder's `assignee` (T65); absent, the assignee comes from the events alone.
+   */
+  readonly locks?: LockReading;
 }
 
 /** The file every master diagnostic names, as the dashboard names it. */
@@ -258,15 +271,22 @@ const byFolderName = (a: SpecFiles, b: SpecFiles): number => (a.folder < b.folde
  * Active folders in folder-name order, then archived ones in folder-name order: the order a claim's holder is picked
  * in, and the order of every holder list. A folder without spec.md is not a spec and holds nothing.
  */
-function readFolders(active: readonly SpecFiles[], archived: readonly SpecFiles[], states: ReadonlyMap<string, PlanningSpecState>): Folder[] {
+function readFolders(
+  active: readonly SpecFiles[],
+  archived: readonly SpecFiles[],
+  states: ReadonlyMap<string, PlanningSpecState>,
+  locks: readonly ClaimLock[],
+): Folder[] {
   const read = (files: readonly SpecFiles[], isArchived: boolean): Folder[] =>
     [...files].sort(byFolderName).flatMap((f): Folder[] => {
       const spec = f.texts.spec;
       if (spec === undefined) return [];
       const { data } = parseFrontmatter(spec);
       const milestone = data.milestone?.trim();
+      const ids = new Set(parseClaims(spec).claims.map((c) => c.id));
       // An archived spec is never given a stage (`PlanningHolder.archived`), whatever the caller's states say.
       const state = isArchived ? undefined : states.get(f.folder);
+      const events = f.texts.events === undefined ? [] : parseEvents(f.texts.events).events;
       const holder = {
         id: specIdOf(f.folder) ?? f.folder,
         slug: f.folder,
@@ -276,12 +296,13 @@ function readFolders(active: readonly SpecFiles[], archived: readonly SpecFiles[
         stageSource: state?.stageSource ?? null,
         priority: data.priority,
         hash: state?.hash ?? null,
+        assignee: isArchived ? null : assigneeOf({ claims: ids, locks, events }),
       };
       return [
         {
           holder,
           feature: mainFeatureOf(data.isaFeature),
-          ids: new Set(parseClaims(spec).claims.map((c) => c.id)),
+          ids,
           milestone: milestone === undefined || milestone === '' ? null : milestone,
           file: specFilePath(`specs/${isArchived ? 'archive/' : ''}${f.folder}`, 'spec'),
         },
@@ -427,7 +448,7 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
   const ideas = stories.ideas;
   const workflow = input.workflow ?? DEFAULT_PLANNING_WORKFLOW;
   const stages = boardStages(workflow);
-  const folders = readFolders(input.specs, input.archived, new Map((input.specStates ?? []).map((s) => [s.slug, s])));
+  const folders = readFolders(input.specs, input.archived, new Map((input.specStates ?? []).map((s) => [s.slug, s])), input.locks?.locks ?? []);
   const board = { workflow, stages, stageCounts: stageCounts(stages, folders, ideas.length) };
   if (input.master === null) return { ...board, features: [], milestones: [], ideas, recount: null, diagnostics: stories.diagnostics };
   const master = parseClaims(input.master);

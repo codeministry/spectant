@@ -183,6 +183,7 @@
           "stageSource": "derived",
           "priority": "P3",
           "hash": "e0fb7e23a1bf8247dd53d9459b5554272f8904f63695baeb98d05a580d832b65",
+          "assignee": null,
           "main": false,
           "held": 9
         }
@@ -436,6 +437,7 @@
           "stageSource": "derived",
           "priority": "P3",
           "hash": "e0fb7e23a1bf8247dd53d9459b5554272f8904f63695baeb98d05a580d832b65",
+          "assignee": null,
           "main": true,
           "held": 38
         }

@@ -316,7 +316,10 @@ export interface SpecHead {
   readonly priority?: Priority;
   /** Whether `stage` is the frontmatter `stage:` or derived; `spec.ts` sets it from T47 on, the type keeps it optional. */
   readonly stageSource?: StageSource;
-  /** Who the spec is assigned to; optional until T65, absent means unassigned. */
+  /**
+   * Who the spec is assigned to (spec 008, T65, ISC-131): the dashboard row's `assignee` (`assigneeOf` in
+   * `assignee.ts`), null when unassigned. `spec.ts` always sets it; the type keeps it optional, as `priority`.
+   */
   readonly assignee?: ActorRef | null;
 }
 

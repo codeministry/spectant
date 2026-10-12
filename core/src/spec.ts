@@ -264,6 +264,8 @@ export function buildSpecPage(input: SpecPageInput): SpecPageModel {
     // Both from the row, the one source (ISC-72): its stage was decided with the explicit stage (T47, ISC-120).
     priority: row.priority,
     stageSource: row.stageSource,
+    // The row's assignee (T65, ISC-131): the same locks and events, so the head and the row name the same actor.
+    assignee: row.assignee,
   };
 
   // The stage phrase first and unchanged: the row's `nextReason` is `reasonOf(step)` (T69, ISC-122.3); the page's own facts follow.

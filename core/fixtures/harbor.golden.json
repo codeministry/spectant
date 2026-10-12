@@ -54,6 +54,7 @@
       "nextReason": "every claim is closed and the code-reviewed mark is stale",
       "takeable": [],
       "taken": [],
+      "assignee": null,
       "warnings": [
         {
           "kind": "diagrams",
@@ -116,6 +117,7 @@
       "nextReason": "the reviewed mark is missing",
       "takeable": [],
       "taken": [],
+      "assignee": null,
       "warnings": [
         {
           "kind": "review",
@@ -168,6 +170,12 @@
       "nextReason": "the reviewed mark is stale",
       "takeable": [],
       "taken": [],
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      },
       "warnings": [
         {
           "kind": "drift",
@@ -233,6 +241,12 @@
         "ISC-77"
       ],
       "taken": [],
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      },
       "warnings": [],
       "gates": {
         "reviewed": {
@@ -283,6 +297,12 @@
         "ISC-131"
       ],
       "taken": [],
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      },
       "warnings": [],
       "gates": {
         "reviewed": {
@@ -329,6 +349,7 @@
       "nextReason": "13 claims and no tasks.md",
       "takeable": [],
       "taken": [],
+      "assignee": null,
       "warnings": [
         {
           "kind": "review",
@@ -380,6 +401,12 @@
       "nextReason": "every claim is closed and F6 waits on spec 009",
       "takeable": [],
       "taken": [],
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      },
       "warnings": [],
       "gates": {
         "reviewed": {
@@ -426,6 +453,7 @@
       "nextReason": "every claim of the chore is closed",
       "takeable": [],
       "taken": [],
+      "assignee": null,
       "warnings": [],
       "gates": {
         "reviewed": {

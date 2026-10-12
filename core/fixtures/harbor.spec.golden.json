@@ -15,7 +15,13 @@
       "lastRound": "2026-03-08T16:30:00Z",
       "uncommittedFiles": null,
       "priority": "P2",
-      "stageSource": "explicit"
+      "stageSource": "explicit",
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      }
     },
     "keyNumbers": {
       "claims": {
@@ -171,7 +177,8 @@
       "lastRound": null,
       "uncommittedFiles": null,
       "priority": "P3",
-      "stageSource": "derived"
+      "stageSource": "derived",
+      "assignee": null
     },
     "keyNumbers": {
       "claims": {
@@ -287,7 +294,8 @@
       "lastRound": null,
       "uncommittedFiles": null,
       "priority": "P3",
-      "stageSource": "derived"
+      "stageSource": "derived",
+      "assignee": null
     },
     "keyNumbers": {
       "claims": {
@@ -439,7 +447,8 @@
       "lastRound": null,
       "uncommittedFiles": null,
       "priority": "P3",
-      "stageSource": "derived"
+      "stageSource": "derived",
+      "assignee": null
     },
     "keyNumbers": {
       "claims": {
@@ -563,7 +572,13 @@
       "lastRound": null,
       "uncommittedFiles": null,
       "priority": "P1",
-      "stageSource": "derived"
+      "stageSource": "derived",
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      }
     },
     "keyNumbers": {
       "claims": {
@@ -685,7 +700,8 @@
       "lastRound": null,
       "uncommittedFiles": null,
       "priority": "P3",
-      "stageSource": "derived"
+      "stageSource": "derived",
+      "assignee": null
     },
     "keyNumbers": {
       "claims": {
@@ -796,7 +812,13 @@
       "lastRound": null,
       "uncommittedFiles": null,
       "priority": "P3",
-      "stageSource": "derived"
+      "stageSource": "derived",
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      }
     },
     "keyNumbers": {
       "claims": {
@@ -907,7 +929,13 @@
       "lastRound": null,
       "uncommittedFiles": null,
       "priority": "P3",
-      "stageSource": "derived"
+      "stageSource": "derived",
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      }
     },
     "keyNumbers": {
       "claims": {
@@ -1019,7 +1047,13 @@
       "lastRound": null,
       "uncommittedFiles": null,
       "priority": "P3",
-      "stageSource": "derived"
+      "stageSource": "derived",
+      "assignee": {
+        "raw": "u:3f9c0a7d",
+        "kind": "person",
+        "id": "u:3f9c0a7d",
+        "legacy": false
+      }
     },
     "keyNumbers": {
       "claims": {

@@ -195,36 +195,79 @@ describe('check-coverage --free-specs', () => {
     expect(code).toBe(0);
   });
 
-  test('every Free story has a folder with context.md and a claimless spec.md: exit 0', () => {
+  /** `specs/ideas/README.md`: one table per feature block, columns Story | Milestone | Priority | Spec (T164). */
+  const index = (...blocks: ReadonlyArray<readonly string[]>): string =>
+    [
+      '# Ideas',
+      '',
+      ...blocks.flatMap((rows, i) => [`## F${i + 1} · Block`, '', '| Story | Milestone | Priority | Spec |', '|-------|-----------|----------|------|', ...rows, '']),
+    ].join('\n');
+
+  test('Free rows across every table: a story file, or an allocated row whose folder has context.md and a claimless spec.md: exit 0', () => {
     const root = tree({
-      'specs/ideas/README.md': '# Ideas',
-      'specs/ideas/alpha.md': story('Free'),
+      'specs/ideas/README.md': index(
+        ['| alpha | Free | P2 | 009 |', '| beta | Pro | P3 | — |'],
+        ['| `gamma` | `Free` | P2 | [010](../010-gamma/) |', '| [delta](delta.md) | Free | P1 | — |', '| epsilon | Free | P2 | 011-epsilon |'],
+      ),
       'specs/ideas/beta.md': story('Pro'),
-      'specs/ideas/gamma.md': story('"Free"'),
+      'specs/ideas/delta.md': story('"Free"'),
       'specs/009-alpha/context.md': '# ctx',
       'specs/009-alpha/spec.md': '---\nmilestone: Free\n---\n## Acceptance\n- one criterion as prose\n',
       'specs/010-gamma/context.md': '# ctx',
       'specs/010-gamma/spec.md': '# gamma\n',
+      'specs/011-epsilon/context.md': '# ctx',
+      'specs/011-epsilon/spec.md': '# epsilon\n',
     });
     const { code, out } = run(root, '--free-specs');
-    expect(out).toContain('free-specs: 2 Free stories checked, 0 problems');
+    expect(out).toContain('free-specs: 4 Free stories checked, 0 problems');
     expect(code).toBe(0);
   });
 
-  test('a missing folder, a missing context.md and a spec with claims each fail', () => {
+  test('an allocated row without its folder fails, and so does a row with neither story file nor spec', () => {
     const root = tree({
-      'specs/ideas/alpha.md': story('Free'),
-      'specs/ideas/beta.md': story('Free'),
+      'specs/ideas/README.md': index(['| alpha | Free | P2 | 012 |', '| beta | Free | P2 | — |', '| gamma | Free | P2 | |']),
       'specs/ideas/gamma.md': story('Free'),
+    });
+    const { code, out } = run(root, '--free-specs');
+    expect(out).toContain('specs/ideas/README.md:7: alpha: spec 012 has no folder in specs/');
+    expect(out).toContain('specs/ideas/README.md:8: beta: no story file and no spec');
+    expect(out).not.toContain('gamma');
+    expect(out).toContain('free-specs: 3 Free stories checked, 2 problems');
+    expect(code).toBe(1);
+  });
+
+  test('an allocated folder without context.md, or whose spec.md has claims, fails', () => {
+    const root = tree({
+      'specs/ideas/README.md': index(['| beta | Free | P2 | 011 |', '| gamma | Free | P2 | 012-gamma |']),
       'specs/011-beta/spec.md': '# beta\n',
       'specs/012-gamma/context.md': '# ctx',
       'specs/012-gamma/spec.md': '# gamma\n\n## Claims\n\n- [ ] ISC-1: a claim\n',
     });
     const { code, out } = run(root, '--free-specs');
-    expect(out).toContain('specs/ideas/alpha.md: no spec folder');
     expect(out).toContain('specs/011-beta: no context.md');
     expect(out).toContain('specs/012-gamma/spec.md: 1 claim');
-    expect(out).toContain('free-specs: 3 Free stories checked, 3 problems');
+    expect(out).toContain('free-specs: 2 Free stories checked, 2 problems');
+    expect(code).toBe(1);
+  });
+
+  test('a Free story file the index does not name fails; an unnamed story of another milestone does not', () => {
+    const root = tree({
+      'specs/ideas/README.md': index(['| alpha | Free | P2 | — |']),
+      'specs/ideas/alpha.md': story('Free'),
+      'specs/ideas/zeta.md': story('Free'),
+      'specs/ideas/eta.md': story('Pro'),
+    });
+    const { code, out } = run(root, '--free-specs');
+    expect(out).toContain('specs/ideas/zeta.md: a Free story the index does not name');
+    expect(out).not.toContain('ideas/eta.md');
+    expect(out).toContain('free-specs: 2 Free stories checked, 1 problem');
+    expect(code).toBe(1);
+  });
+
+  test('without an index every Free story file is unnamed', () => {
+    const root = tree({ 'specs/ideas/alpha.md': story('Free') });
+    const { code, out } = run(root, '--free-specs');
+    expect(out).toContain('specs/ideas/alpha.md: a Free story the index does not name');
     expect(code).toBe(1);
   });
 });

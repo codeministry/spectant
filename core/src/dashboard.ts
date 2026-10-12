@@ -13,6 +13,7 @@
 // imports below (gates hashing through `node:crypto`, for one) never reach the browser bundle.
 import { listArchive } from './archive.ts';
 import type { ArchivedSpec } from './archive.ts';
+import { assigneeOf } from './assignee.ts';
 import { parseClaims } from './claims.ts';
 import type { ClaimsDocument } from './claims.ts';
 import type { Diagnostic } from './diagnostics.ts';
@@ -21,6 +22,7 @@ import { parseEvents } from './events.ts';
 import type { DiagramVerdict } from './diagrams.ts';
 import { specFilePath } from './files.ts';
 import type {
+  ActorRef,
   AgentLockSource,
   ClaimLock,
   FileDiagnostic,
@@ -120,6 +122,11 @@ export interface DashboardSpecRow {
   readonly takeable: readonly string[];
   /** Claims of this spec a lock holds, one entry per claim, in claim-ID order; empty without locks. Additive (T115). */
   readonly taken: readonly DashboardTakenClaim[];
+  /**
+   * Who the spec is assigned to (spec 008, T65, ISC-131, `assigneeOf` in `assignee.ts`): the actor of the newest lock
+   * on one of its claims, else the actor of its last event, else null. The spec head carries the same value.
+   */
+  readonly assignee: ActorRef | null;
   readonly warnings: readonly SpecWarning[];
   readonly gates: SpecGates;
   readonly fog: number;
@@ -423,7 +430,8 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
 
   const { specType: type, phase } = fm.data;
   // The explicit stage needs the last recorded transition; the events' own diagnostics belong to the timeline.
-  const lastTo = f.texts.events === undefined ? null : (parseEvents(f.texts.events).events.at(-1)?.to ?? null);
+  const events = f.texts.events === undefined ? [] : parseEvents(f.texts.events).events;
+  const lastTo = events.at(-1)?.to ?? null;
   const lastEventTo: WorkflowStage | null = lastTo !== null && isWorkflowStage(lastTo) ? lastTo : null;
   // Row 7 (T49): the type's code review under the workspace's workflow and the open siblings of the main feature.
   const mainFeature = mainFeatureOf(fm.data.isaFeature);
@@ -510,6 +518,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     nextReason: reasonOf(next),
     takeable: partition.takeable,
     taken,
+    assignee: assigneeOf({ claims: ids, locks: ctx.locks, events }),
     warnings,
     gates: {
       reviewed: reviewedView(reviewed, reviewedMark),

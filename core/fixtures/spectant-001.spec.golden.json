@@ -15,7 +15,8 @@
       "lastRound": "2026-09-28T13:06:30.452Z",
       "uncommittedFiles": null,
       "priority": "P3",
-      "stageSource": "derived"
+      "stageSource": "derived",
+      "assignee": null
     },
     "keyNumbers": {
       "claims": {

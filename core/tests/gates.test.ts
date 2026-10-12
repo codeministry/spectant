@@ -6,11 +6,13 @@
 // Only this test shells out to git, and only inside a temp directory outside the repository; the module never does.
 import { describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  codeReviewedMarkText,
+  featureCodeReviewTargets,
   gateState,
   hashForGate,
   normalizeForGate,
@@ -22,6 +24,7 @@ import {
   type ReviewedMark,
   type TreeEntry,
 } from '../src/gates.ts';
+import { planningModel, planningOf } from './helpers/planning-model.ts';
 
 const FIXTURES = join(import.meta.dir, '..', 'fixtures');
 const GATES_SOURCE = join(import.meta.dir, '..', 'src', 'gates.ts');
@@ -158,6 +161,7 @@ describe('readGateMark', () => {
         branch: 'feature/004-retention-policies',
         findings: { code: 0, security: 0 },
         note: 'one finding fixed; tree changed since',
+        scope: null,
       },
       diagnostics: [],
     });
@@ -175,7 +179,7 @@ describe('readGateMark', () => {
 
   test('a code-reviewed mark without findings or counts holds null', () => {
     const mark = mustCodeReviewed(JSON.stringify({ gate: 'code-reviewed', at: 'x', tree: 'c'.repeat(40) }));
-    expect(mark).toEqual({ gate: 'code-reviewed', at: 'x', root: null, tree: 'c'.repeat(40), head: null, branch: null, findings: null, note: null });
+    expect(mark).toEqual({ gate: 'code-reviewed', at: 'x', root: null, tree: 'c'.repeat(40), head: null, branch: null, findings: null, note: null, scope: null });
   });
 
   const malformed: Array<[string, 'reviewed' | 'code-reviewed', string, string]> = [
@@ -248,6 +252,7 @@ describe('gateState', () => {
 
   const codeReviewed: CodeReviewedMark = {
     gate: 'code-reviewed',
+    scope: null,
     at: '2026-03-05T14:30:00Z',
     root: null,
     tree: 'c'.repeat(40),
@@ -371,6 +376,82 @@ describe('treeIdOf', () => {
   });
 });
 
+// ── the feature-level code review (spec 008, T74, ISC-122.2) ────────────────────────────────────────────────
+
+/** Harbor copied to a temp directory with ISC-131, 009's last open claim, closed in the master and in 009's spec.md. */
+function harborWith131Closed(): string {
+  const root = mkdtempSync(join(tmpdir(), 'spectant-t74-'));
+  cpSync(join(FIXTURES, 'harbor'), root, { recursive: true });
+  const close = (rel: string) => {
+    const path = join(root, rel);
+    const text = readFileSync(path, 'utf-8');
+    const closed = text.replace('- [ ] ISC-131:', '- [x] ISC-131:');
+    if (closed === text) throw new Error(`no open ISC-131 in ${rel}`);
+    writeFileSync(path, closed);
+  };
+  close('ISA.md');
+  close('specs/009-chunked-upload-limits/spec.md');
+  return root;
+}
+
+describe('featureCodeReviewTargets', () => {
+  test('harbor F6 while 009 holds ISC-131 open: only 008, whose claims are all closed', () => {
+    expect(featureCodeReviewTargets(planningOf('harbor'), 'F6')).toEqual(['008-referrers-support']);
+  });
+
+  test('harbor F6 with 009’s last claim closed: both spikes, in folder order', () => {
+    const root = harborWith131Closed();
+    try {
+      expect(featureCodeReviewTargets(planningModel(root), 'F6')).toEqual(['008-referrers-support', '009-chunked-upload-limits']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('an unknown feature gives an empty list', () => {
+    expect(featureCodeReviewTargets(planningOf('harbor'), 'F99')).toEqual([]);
+    expect(featureCodeReviewTargets(planningOf('harbor'), 'nope')).toEqual([]);
+  });
+
+  test('an archived spec is never a target: F1 is held by the archived 001 only', () => {
+    const f1 = planningOf('harbor').features.find((f) => f.id === 'F1');
+    expect(f1?.holders.some((h) => h.archived)).toBe(true);
+    expect(featureCodeReviewTargets(planningOf('harbor'), 'F1').every((slug) => !slug.startsWith('001-'))).toBe(true);
+  });
+});
+
+describe('codeReviewedMarkText', () => {
+  const fields = { at: '2026-03-10T09:00:00Z', actor: 'u:3f9c0a7d', tree: 'c'.repeat(40), head: 'd'.repeat(40), branch: 'feature/f6', code: 1, security: 0, note: 'one accepted' };
+
+  test('the feature-level form carries scope beside the existing fields, and reads back', () => {
+    const text = codeReviewedMarkText({ ...fields, scope: 'F6' });
+    expect(Object.keys(JSON.parse(text) as object)).toEqual(['gate', 'at', 'actor', 'scope', 'tree', 'head', 'branch', 'code', 'security', 'note']);
+    expect(text.endsWith('}\n')).toBe(true);
+    const mark = mustCodeReviewed(text);
+    expect(mark.scope).toBe('F6');
+    expect(mark.tree).toBe('c'.repeat(40));
+    expect(mark.findings).toEqual({ code: 1, security: 0 });
+  });
+
+  test('a per-spec mark carries no scope key, and the reader gives null as for every older mark', () => {
+    const text = codeReviewedMarkText({ at: fields.at, tree: fields.tree, code: 0, security: 0 });
+    expect(JSON.parse(text)).toEqual({ gate: 'code-reviewed', at: fields.at, tree: fields.tree, code: 0, security: 0 });
+    expect(mustCodeReviewed(text).scope).toBeNull();
+  });
+
+  test('a scope that is no feature id warns and reads as a per-spec mark', () => {
+    const { mark, diagnostics } = readGateMark('code-reviewed', JSON.stringify({ gate: 'code-reviewed', at: 'x', tree: 'c'.repeat(40), scope: 'feature six' }));
+    expect(mark?.gate === 'code-reviewed' ? mark.scope : 'no mark').toBeNull();
+    expect(diagnostics.map((d) => d.code)).toEqual(['gate-scope-invalid']);
+  });
+
+  test('a form that could not be read back throws', () => {
+    expect(() => codeReviewedMarkText({ ...fields, scope: 'six' })).toThrow(RangeError);
+    expect(() => codeReviewedMarkText({ ...fields, tree: 'abc' })).toThrow(RangeError);
+    expect(() => codeReviewedMarkText({ ...fields, code: -1 })).toThrow(RangeError);
+  });
+});
+
 // ── read-only guard ──────────────────────────────────────────────────────────────────────────────────
 
 describe('gates.ts writes nothing', () => {
@@ -390,7 +471,9 @@ describe('gates.ts writes nothing', () => {
       ['type', 'Diagnostic', './diagnostics.ts'],
       // MarkState lives in files.ts since spec 003 T18 (browser-clean type graph); gates.ts re-exports it.
       ['type', 'MarkState, TextFileKind', './files.ts'],
+      // The planning tree types featureCodeReviewTargets' input (spec 008, T74); a type import writes nothing.
+      ['type', 'PlanningModel', './planning.ts'],
     ]);
-    expect(source.match(/^import\b/gm)?.length).toBe(3);
+    expect(source.match(/^import\b/gm)?.length).toBe(4);
   });
 });

@@ -32,7 +32,7 @@
  * |-------|---------|---------------|-----|---------------------|-----|--------------|
  * | reviewed mark | `POST …/:id/gate/reviewed` | normalised gate hashes | `GateReviewedWritten` | `StaleGate` | — | `Locked` |
  * | task checkbox | `POST …/:id/tasks/:tid/check` | raw tasks.md | `TaskCheckWritten` | `StaleTasks` | — | `Locked` |
- * | transition | `POST …/:id/transition` (pending) | raw spec.md, `X-Spectant-Spec-Hash` | `TransitionWritten` | `StaleSpec` | `TransitionRefused` | `Locked` |
+ * | transition | `POST …/:id/transition` (T83) | raw spec.md, `X-Spectant-Spec-Hash` | `TransitionWritten` | `StaleSpec` | `TransitionRefused` | `Locked` |
  * | allocate | `POST …/ideas/:slug/allocate` (pending) | raw story file, `IdeaPage.hash` | `IdeaAllocated` | `StaleIdea` | `AllocateRefused` | `Locked` |
  *
  * These four are every write the app makes on a user's action. The feature-level code-review mark
@@ -53,6 +53,7 @@ import {
   TASKS_HASH_HEADER,
   isGateReviewedRequest,
   isTaskCheckRequest,
+  isTransitionRequest,
   parseReviewedHashes,
   specRoutes,
 } from './spec-routes.contract.ts';
@@ -71,19 +72,21 @@ import type {
   TaskCheckRequest,
   TaskCheckResponse,
   TransitionRefused,
+  TransitionRequest,
   TransitionWritten,
 } from './spec-routes.contract.ts';
 
 // ─── Routes ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** The two POST routes of `SPEC_ROUTE_TABLE`, in table order. */
-export const WRITE_ROUTES = ['gateReviewed', 'taskCheck'] as const satisfies readonly SpecRouteName[];
+/** The POST routes of `SPEC_ROUTE_TABLE`, in table order: the two writes of spec 002 and the transition (T83). */
+export const WRITE_ROUTES = ['gateReviewed', 'taskCheck', 'transition'] as const satisfies readonly SpecRouteName[];
 export type WriteRoute = (typeof WRITE_ROUTES)[number];
 
 /** The builders of the write routes; the same functions as `specRoutes`. */
 export const writeRoutes = {
   gateReviewed: specRoutes.gateReviewed,
   taskCheck: specRoutes.taskCheck,
+  transition: specRoutes.transition,
 } as const satisfies Record<WriteRoute, (...args: never[]) => string>;
 
 /** The statuses `WriteAnswer` types; 403, 404 and 405 are the route layer's, as on every spec route. */
@@ -96,6 +99,7 @@ export const WRITE_ERRORS = ['invalid-body', 'hash-mismatch', 'locked'] as const
 export const WRITE_HASH_HEADER = {
   gateReviewed: REVIEWED_HASHES_HEADER,
   taskCheck: TASKS_HASH_HEADER,
+  transition: SPEC_HASH_HEADER,
 } as const satisfies Record<WriteRoute, string>;
 
 /** The files the writes touch, relative to the spec folder. */
@@ -130,7 +134,7 @@ export interface WriteTableEntry {
 export const WRITE_TABLE = {
   gateReviewed: { hashFrom: REVIEWED_HASHES_HEADER, hash: 'normalised', conflict: 'StaleGate', refused: null, locked: 'Locked', registered: true },
   taskCheck: { hashFrom: TASKS_HASH_HEADER, hash: 'raw', conflict: 'StaleTasks', refused: null, locked: 'Locked', registered: true },
-  transition: { hashFrom: SPEC_HASH_HEADER, hash: 'raw', conflict: 'StaleSpec', refused: 'TransitionRefused', locked: 'Locked', registered: false },
+  transition: { hashFrom: SPEC_HASH_HEADER, hash: 'raw', conflict: 'StaleSpec', refused: 'TransitionRefused', locked: 'Locked', registered: true },
   allocate: { hashFrom: 'IdeaPage.hash', hash: 'raw', conflict: 'StaleIdea', refused: 'AllocateRefused', locked: 'Locked', registered: false },
 } as const satisfies Record<WriteOperation, WriteTableEntry>;
 
@@ -175,6 +179,7 @@ export function writePathsOf(op: WriteOperation, folder: string, slug = ''): Wri
 export interface WriteRequests {
   gateReviewed: GateReviewedRequest;
   taskCheck: TaskCheckRequest;
+  transition: TransitionRequest;
 }
 
 /** The gate body from the `X-Spectant-Reviewed-Hashes` value the page was rendered with; null when malformed. */
@@ -201,7 +206,8 @@ export function parseWriteBody<R extends WriteRoute>(route: R, text: string): Pa
   } catch {
     return invalid;
   }
-  const valid = route === 'gateReviewed' ? isGateReviewedRequest(data) : isTaskCheckRequest(data);
+  const valid =
+    route === 'gateReviewed' ? isGateReviewedRequest(data) : route === 'taskCheck' ? isTaskCheckRequest(data) : isTransitionRequest(data);
   return valid ? { ok: true, body: data as WriteRequests[R] } : invalid;
 }
 
@@ -323,7 +329,7 @@ export interface WriteRefused {
 
 /**
  * Every answer a write's own logic gives, by status. A `switch (answer.status)` needs no default; the 422 arm exists
- * only for a refusable write, so `WriteAnswer<WriteRoute>` is the two registered writes' union as before.
+ * only for a refusable write, so `WriteAnswer<WriteRoute>` carries it for the transition alone.
  */
 export type WriteAnswer<R extends WriteOperation> =
   | { readonly status: 200; readonly body: WriteOk[R] }
@@ -406,9 +412,20 @@ function isClaimLock(v: unknown): v is ClaimLock {
   );
 }
 
+/** A stage name a transition may carry: the request's own validator, over a well-formed placeholder hash. */
+const isStage = (v: unknown): boolean => isTransitionRequest({ to: v, hash: '0'.repeat(64) });
+
+/** The transition's event: a valid line from `from` to `to`, its actor of the grammar (the viewer or the fallback). */
+function isTransitionEvent(v: unknown, from: unknown, to: unknown): boolean {
+  if (!isRec(v)) return false;
+  const check = validateEventLine(JSON.stringify(v));
+  return check.ok && v.from === from && v.to === to && check.event.actorRef?.legacy === false;
+}
+
 function isOk(route: WriteRoute, b: Rec): boolean {
   if (!isLockSource(b.lockSource)) return false;
   if (route === 'gateReviewed') return typeof b.at === 'string' && isHashes(b.hashes) && isReviewedEvent(b.event);
+  if (route === 'transition') return isStage(b.from) && isStage(b.to) && isHex(b.hash) && isTransitionEvent(b.event, b.from, b.to);
   const line = b.line;
   return (
     typeof b.task === 'string' &&
@@ -425,7 +442,14 @@ function isOk(route: WriteRoute, b: Rec): boolean {
 function isStale(route: WriteRoute, b: Rec): boolean {
   if (b.error !== 'hash-mismatch' || !isFileList(b.files) || !isRec(b.expected)) return false;
   if (route === 'gateReviewed') return isHashes(b.expected);
-  return (b.files as unknown[]).length === 1 && (b.files as unknown[])[0] === TASKS_PATH && isHex(b.expected.tasks);
+  const files = b.files as unknown[];
+  if (route === 'transition') return files.length === 1 && files[0] === SPEC_PATH && isHex(b.expected.spec);
+  return files.length === 1 && files[0] === TASKS_PATH && isHex(b.expected.tasks);
+}
+
+/** The transition's 422: the stage row's phrase and the command that would make the move (or null). */
+function isRefused(route: WriteRoute, b: Rec): boolean {
+  return route === 'transition' && b.error === 'transition-refused' && typeof b.reason === 'string' && (b.command === null || typeof b.command === 'string');
 }
 
 /** The answer typed by its status when the body fits it; null for any other status or a body that does not fit. */
@@ -435,6 +459,7 @@ export function writeAnswerOf<R extends WriteRoute>(route: R, status: number, bo
     (status === 200 && isOk(route, body)) ||
     (status === 400 && body.error === 'invalid-body') ||
     (status === 409 && isStale(route, body)) ||
+    (status === 422 && isRefused(route, body)) ||
     (status === 423 && body.error === 'locked' && isClaimLock(body.lock));
   return fits ? ({ status, body } as unknown as WriteAnswer<R>) : null;
 }

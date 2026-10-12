@@ -587,6 +587,18 @@ From `core/fixtures/leadgen/specs/022-chat-turn-status-and-bulk-delete/.gates/co
 mark carries it since spec 008, T28 (the examples above), and its value is read in the actor grammar by `parseActor`
 (T59); `readGateMark` does not carry the key into the mark, and it plays no part in freshness.
 
+**The feature-level mark.** Under `code_review: feature` (§ workflow) one code review, `/spec-code-review F<n>`, covers
+every spec of the main feature `F<n>`, and the same code-reviewed mark goes into each target folder with one key more,
+`scope: "F<n>"`, beside the fields above (spec 008, T74): `{gate, at, actor?, scope, tree, head?, branch?, code,
+security, note?}`, the order `codeReviewedMarkText` in `gates.ts` writes it in. The targets are
+`featureCodeReviewTargets(planning, "F<n>")`: every active spec whose main feature is `F<n>` and whose live claims are
+all closed in the master (across every block it holds claims of), in folder order; an archived spec is never a
+target, and an unknown feature gives none. Both functions are pure and write nothing; the caller writes the text. A
+mark without `scope` is a per-spec mark, as every mark before T74, and reads as before (`CodeReviewedMark.scope`
+null); a `scope` that is no `F<n>` reads the same way, with one `gate-scope-invalid` warning. `scope` plays no part in
+freshness: the tree id alone decides it. Harbor's spike pair 008/009 (F6) shows the targets: while 009 holds `ISC-131`
+open only 008 is one, with it closed both are.
+
 **Derived for both marks:** the gate views on the row and the spec page, the stage (`review`, `code-review`, `close`),
 the `review` warning, and one gate entry per mark on the timeline (with files, head, branch and note).
 
@@ -780,7 +792,20 @@ feature or milestone) changes when a story is added, moved or removed.
 
 **Allocation.** Starting a story (`/spec new <slug>` or the board) creates `specs/NNN-slug/` with the next free number
 and removes the story file; the story's text becomes the new spec's first `spec.md` and `context.md`. The app reads a
-story; it never edits one in place.
+story; it never edits one in place. `allocate.ts` plans the allocation in memory and writes nothing (spec 008, T85,
+ISC-130.2):
+
+- the number (`nextSpecNumber`) is one past the highest number taken by a folder in `specs/` or `specs/archive/`
+  (`specNumbersOf`, the `NNN-slug` folders) or by a branch name or commit the caller found; 1 when none is taken. A
+  gap below the highest is never reused, since a branch, a commit or an archived folder may still name that number;
+- `spec.md` (`allocationOf`) is claimless: a frontmatter block with `slug: NNN-<slug>`, `spec_type` from the story's
+  `type`, `isa_feature` from its `feature`, `milestone`, `priority`, `stage: plan`, `phase: scoping` and `started`,
+  `updated` at the allocation time (a story key without a value is left out, a value the reader would cut is
+  quoted), then `# NNN — <Slug as words>` and a `## Goal` holding the story's title;
+- `context.md` carries `spec`, `created`, `updated` and `rounds: 1`, and `## Round 0 — the story, <ts>` holds the
+  story's text after its frontmatter verbatim, a `## Shaping record` included;
+- the creation event, the first line of `events.jsonl`, is `{ts, from: null, to: "plan", command: "/spec new <slug>",
+  actor}`.
 
 A story that belongs to the feature block F2 and names `Harbor 2.0`, a milestone the master does not list (the
 `unknown-milestone` case); the index names it, while the second harbor story, `registry-webhooks`, is missing from the
@@ -970,7 +995,8 @@ In row 8 a sibling is **open** while it is active (not archived, not `phase: com
 claim; a sibling whose claims are all closed waits in row 8 itself and does not hold the others back, so the last
 sibling to close its claims moves every spec of the feature past row 8 at once. Row 8 has no next command: nothing is
 to be done on the spec itself while a sibling is open. The one code review of the feature, `/spec-code-review F<n>`,
-belongs to the feature-level mark and appears only when the last sibling closes (spec 008, T74). The dashboard finds
+belongs to the feature-level mark (`scope: "F<n>"`, § `gateCodeReviewed`, spec 008, T74), written into every folder
+`featureCodeReviewTargets` names, and appears only when the last sibling closes. The dashboard finds
 the open siblings among its active spec folders (`featureSiblingsOpen` of `StageInput`, the ids in folder order) and
 takes the code review from the type's workflow row (`codeReview`); a spec without a main feature has no sibling. A
 spec waiting in `close-pending`, like a chore done by the chore row, carries no "every claim closed, phase not

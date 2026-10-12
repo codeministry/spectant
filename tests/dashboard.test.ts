@@ -58,6 +58,8 @@ function expected(name: Name): DashboardModel {
             nextReason: "ISC-75, ISC-76 and 1 more are takeable",
             // The route reads harbor's activity log; the golden is built without lock sources (T115).
             taken: [{ id: "ISC-74", session: "a:claude:sess-2", since: "2026-03-08T14:06:00Z", source: "activity" }],
+            // That open lock's session is the assignee, over the last event's actor (spec 008, T65).
+            assignee: { raw: "a:claude:sess-2", kind: "agent", id: "a:claude:sess-2", legacy: false },
           },
     ),
   };

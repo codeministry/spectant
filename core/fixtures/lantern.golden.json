@@ -57,6 +57,7 @@
         "ISC-9"
       ],
       "taken": [],
+      "assignee": null,
       "warnings": [],
       "gates": {
         "reviewed": {
@@ -108,6 +109,12 @@
         "ISC-12"
       ],
       "taken": [],
+      "assignee": {
+        "raw": "principal",
+        "kind": "legacy",
+        "id": "principal",
+        "legacy": true
+      },
       "warnings": [],
       "gates": {
         "reviewed": {

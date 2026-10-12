@@ -1,8 +1,8 @@
 /**
  * The SQLite connection and its schema migrations (T42, T94). `spectant.db` lives in the data directory from
- * `paths.ts` (ISC-21) and holds the workspace registry, the settings, the developer's notes and the actor names, never anything a
- * repository says: deleting it loses nothing a re-add cannot rebuild (ISC-7) except the notes, which live here and
- * nowhere else, never in a registered repository (ISC-94, ISC-15).
+ * `paths.ts` (ISC-21) and holds the workspace registry, the settings, the developer's notes, the actor names and the
+ * board queries, never anything a repository says: deleting it loses nothing a re-add cannot rebuild (ISC-7) except
+ * the notes, which live here and nowhere else, never in a registered repository (ISC-94, ISC-15).
  *
  * The schema version is the `schema_version` row of the `setting` table. `migrate` walks it forward one step at a
  * time inside a single transaction.
@@ -22,8 +22,15 @@
  * with as a JSON array, which a CHECK holds to an array. The ids derive from git config, so losing the table with the
  * data directory loses the display names and nothing a repository holds (ISC-7). `ActorRow` and its accessors are below.
  *
+ * Migration 5 (T90, ISC-129.1) is expand-only: it creates `board_query` (CREATE TABLE IF NOT EXISTS, adopted like
+ * migration 2's), one row per workspace slug holding the board's last query string (`BoardQuery` in
+ * `spec-routes.contract.ts`) and the time it was set. No foreign key: the row is keyed by the slug as the route names
+ * it, and a re-added workspace keeps its board. Losing it loses the remembered filter, nothing a repository holds
+ * (ISC-7). `BoardQueryRow` and its accessors are below.
+ *
  * No down migration runs on open. The documented reversals are `REVERSALS`, applied only by `rollback` (the CLI's
- * `spectant db rollback <version> --yes`, T98), newest first: 4 → 3 is `DROP TABLE actor` (loses every display name;
+ * `spectant db rollback <version> --yes`, T98), newest first: 5 → 4 is `DROP TABLE board_query` (loses every
+ * remembered board query; the board opens unfiltered), 4 → 3 is `DROP TABLE actor` (loses every display name;
  * the ids come back from git config), 3 → 2 is `ALTER TABLE note DROP COLUMN pinned` (loses
  * every pin), 2 → 1 is `DROP INDEX note_workspace_anchor; DROP TABLE note;` (loses every note not exported first with
  * `spectant export-notes`; plan 002 § Data Model, rollback). The next `openDatabase` migrates forward again, so a
@@ -33,7 +40,7 @@ import { Database } from "bun:sqlite";
 import { dbPath, ensureDataDir } from "./paths.ts";
 
 /** The schema version this build writes. A database from a newer build is refused rather than downgraded. */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /** Opens (creating on first use) `spectant.db` in `dir`, in WAL mode with foreign keys on, migrated to the latest schema. */
 export function openDatabase(dir: string): Database {
@@ -121,6 +128,13 @@ export function migrate(db: Database): void {
             updated_at     TEXT NOT NULL
           )`);
           break;
+        case 4:
+          db.run(`CREATE TABLE IF NOT EXISTS board_query (
+            ws         TEXT PRIMARY KEY,
+            query      TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          )`);
+          break;
       }
       version++;
       db.run("INSERT INTO setting (key, value) VALUES ('schema_version', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [
@@ -132,6 +146,7 @@ export function migrate(db: Database): void {
 
 /** Each migration's documented reversal, keyed by the version it undoes. Every statement drops what that step made. */
 const REVERSALS: Readonly<Record<number, readonly string[]>> = {
+  5: ["DROP TABLE IF EXISTS board_query"],
   4: ["DROP TABLE IF EXISTS actor"],
   3: ["ALTER TABLE note DROP COLUMN pinned"],
   2: ["DROP INDEX IF EXISTS note_workspace_anchor", "DROP TABLE IF EXISTS note"],
@@ -204,4 +219,30 @@ export function getActor(db: Database, id: string): ActorRow | null {
 /** Every actor, ordered by id. */
 export function listActors(db: Database): ActorRow[] {
   return db.query<ActorRecord, []>(`SELECT ${ACTOR_COLUMNS} FROM actor ORDER BY id`).all().map(actorOf);
+}
+
+// ── the board_query table (migration 5, T90, ISC-129.1) ──────────────────────────────────────────────────────────────
+
+/** A workspace's remembered board query: the slug, the query string as the board sent it, the time it was set (ISO 8601). */
+export interface BoardQueryRow {
+  readonly ws: string;
+  readonly query: string;
+  readonly updatedAt: string;
+}
+
+/** The board query remembered for workspace `ws`, or null when none was set. */
+export function getBoardQuery(db: Database, ws: string): BoardQueryRow | null {
+  const row = db
+    .query<{ ws: string; query: string; updated_at: string }, [string]>("SELECT ws, query, updated_at FROM board_query WHERE ws = ?")
+    .get(ws);
+  return row ? { ws: row.ws, query: row.query, updatedAt: row.updated_at } : null;
+}
+
+/** Remembers `query` for workspace `ws`, replacing the row it had. */
+export function setBoardQuery(db: Database, ws: string, query: string, updatedAt: string): void {
+  db.run(
+    `INSERT INTO board_query (ws, query, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT (ws) DO UPDATE SET query = excluded.query, updated_at = excluded.updated_at`,
+    [ws, query, updatedAt],
+  );
 }

@@ -153,6 +153,12 @@
           "stageSource": "derived",
           "priority": "P1",
           "hash": "8850b9f79b8171b07dc5054e9b92d7ca9f8849c7fa06657a6b022e9fc8c76c80",
+          "assignee": {
+            "raw": "u:3f9c0a7d",
+            "kind": "person",
+            "id": "u:3f9c0a7d",
+            "legacy": false
+          },
           "main": true,
           "held": 3
         }
@@ -456,6 +462,7 @@
           "stageSource": null,
           "priority": "P3",
           "hash": null,
+          "assignee": null,
           "main": true,
           "held": 46
         }
@@ -661,6 +668,12 @@
           "stageSource": "explicit",
           "priority": "P2",
           "hash": "4a5d1af65764759f960d59dc983f6e7fd281416d246b1f8a3a4d87a32b968b66",
+          "assignee": {
+            "raw": "u:3f9c0a7d",
+            "kind": "person",
+            "id": "u:3f9c0a7d",
+            "legacy": false
+          },
           "main": true,
           "held": 30
         }
@@ -780,6 +793,7 @@
           "stageSource": "derived",
           "priority": "P3",
           "hash": "2a621803f73719a721274b778fe1a6a5b08534689392928cc4cf6e386d7862ff",
+          "assignee": null,
           "main": true,
           "held": 13
         },
@@ -792,6 +806,7 @@
           "stageSource": "derived",
           "priority": "P3",
           "hash": "862381cb959c50eced1eab6561be57c1d08ce19332c2444450af8a44fe60ba1e",
+          "assignee": null,
           "main": true,
           "held": 1
         }
@@ -997,6 +1012,7 @@
           "stageSource": "derived",
           "priority": "P3",
           "hash": "3bb5d81474bf932e7fb727837fc6c96ef622567e3e848659b1aa21403ccafa15",
+          "assignee": null,
           "main": true,
           "held": 30
         }
@@ -1034,6 +1050,7 @@
           "stageSource": "derived",
           "priority": "P3",
           "hash": "e017692bab9ecf6e34e2379b986f1c7ace3d361ed37d8073dca4f46c27cd60fa",
+          "assignee": null,
           "main": true,
           "held": 2
         }
@@ -1083,6 +1100,12 @@
           "stageSource": "derived",
           "priority": "P3",
           "hash": "c35f5b40bfbf6ec89ae3876ddbb0607b6cddc53f5f2e9d80fe2800f047f5938e",
+          "assignee": {
+            "raw": "u:3f9c0a7d",
+            "kind": "person",
+            "id": "u:3f9c0a7d",
+            "legacy": false
+          },
           "main": true,
           "held": 2
         },
@@ -1095,6 +1118,12 @@
           "stageSource": "derived",
           "priority": "P3",
           "hash": "3924e9a54638a6a94bb0e251654f703cdde450aaa1e0d3aa3e896166c309e412",
+          "assignee": {
+            "raw": "u:3f9c0a7d",
+            "kind": "person",
+            "id": "u:3f9c0a7d",
+            "legacy": false
+          },
           "main": true,
           "held": 2
         }
@@ -1151,6 +1180,7 @@
           "stageSource": "derived",
           "priority": "P3",
           "hash": "2a621803f73719a721274b778fe1a6a5b08534689392928cc4cf6e386d7862ff",
+          "assignee": null,
           "main": false,
           "held": 13
         }
@@ -1195,6 +1225,12 @@
           "stageSource": "explicit",
           "priority": "P2",
           "hash": "4a5d1af65764759f960d59dc983f6e7fd281416d246b1f8a3a4d87a32b968b66",
+          "assignee": {
+            "raw": "u:3f9c0a7d",
+            "kind": "person",
+            "id": "u:3f9c0a7d",
+            "legacy": false
+          },
           "main": false,
           "held": 30
         },
@@ -1207,6 +1243,7 @@
           "stageSource": "derived",
           "priority": "P3",
           "hash": "3bb5d81474bf932e7fb727837fc6c96ef622567e3e848659b1aa21403ccafa15",
+          "assignee": null,
           "main": false,
           "held": 30
         },
@@ -1219,6 +1256,7 @@
           "stageSource": null,
           "priority": "P3",
           "hash": null,
+          "assignee": null,
           "main": false,
           "held": 46
         }

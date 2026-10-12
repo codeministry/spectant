@@ -12,7 +12,8 @@
  *   golden's `kpis`, `null` when unreadable.
  * - `GET|HEAD /api/workspaces/:slug/dashboard` → the golden model, serialized as the server does (`JSON.stringify`);
  *   404 `{error: "not-found"}` for an unknown slug; 409 with the list entry for the unreadable workspace.
- * - Every route of `WORKSPACE_ROUTE_TABLE` (`GET|HEAD /api/workspaces/:ws/planning`, spec 003 T20): the whole golden
+ * - Every route of `WORKSPACE_ROUTE_TABLE` with a golden family (`GET|HEAD /api/workspaces/:ws/planning`, spec 003
+ *   T20; the story route `idea` has none yet and is answered as an unknown path until T119): the whole golden
  *   file of the route's family, `core/fixtures/<golden>.planning.golden.json` (`GOLDEN_FAMILY.planning`), not keyed by
  *   folder; matched with the contract's `matchWorkspacePath`. The goldens are built at `2026-03-20`, so a live server
  *   answer can differ in the milestones' `state` alone. Same guards as the dashboard: 403, 405 with
@@ -982,8 +983,10 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     }
     if (!spec) return workspaceRoute(req, requested, dashboard?.[1]);
     // Before the spec catch-all, which answers every other path under a workspace with the server's JSON 404.
+    // The story route (`idea`, server T88) has no golden family yet; until the stub serves it (T119) it falls through
+    // to the catch-all like any unknown path.
     const family = matchWorkspacePath(pathname);
-    if (family !== null) return workspaceFamilyRoute(req, requested, family);
+    if (family?.route === 'planning') return workspaceFamilyRoute(req, requested, family);
     const write = req.headers.get(WRITE_HEADER) ?? 'ok';
     if (!isOneOf(WRITE_OUTCOMES, write)) {
       return settingsError(400, { error: 'unknown-stub-write', write, outcomes: [...WRITE_OUTCOMES] });

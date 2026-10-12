@@ -47,6 +47,7 @@ const holder = (id: string, archived = false): Holder => ({
   stageSource: null,
   priority: 'P3',
   hash: null,
+  assignee: null,
 });
 
 const milestone = (name: string, target: string | null, state: Milestone['state'], specs: readonly Holder[]): Milestone => ({

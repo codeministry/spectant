@@ -234,6 +234,7 @@ export function exportNotesCommand(dir: string, file: string, shown: string): nu
 function losses(db: Database, from: number, target: number): string[] {
   const count = (sql: string): number => db.query<{ n: number }, []>(sql).get()?.n ?? 0;
   const out: string[] = [];
+  if (from >= 5 && target < 5) out.push(`drop the board_query table (${count("SELECT count(*) AS n FROM board_query")} workspaces lose their remembered board query)`);
   if (from >= 4 && target < 4) out.push(`drop the actor table (${count("SELECT count(*) AS n FROM actor")} actors lose their display name)`);
   if (from >= 3 && target < 3) out.push(`drop the pinned column (${count("SELECT count(*) AS n FROM note WHERE pinned = 1")} pinned notes lose their pin)`);
   if (from >= 2 && target < 2) out.push(`drop the note table (${count("SELECT count(*) AS n FROM note")} notes; save them first with spectant export-notes <file>)`);

@@ -63,6 +63,8 @@ describe('harbor 002: the richest spec (round 3, all three kinds waiting on you)
       priority: 'P2',
       // spec 008, T47: `stage: build`, and events.jsonl's last line ends in `to: build`
       stageSource: 'explicit',
+      // spec 008, T65: no lock reading here, so the actor of events.jsonl's last line
+      assignee: { raw: 'u:3f9c0a7d', kind: 'person', id: 'u:3f9c0a7d', legacy: false },
     });
   });
 

@@ -237,8 +237,9 @@ describe('planning: archived', () => {
     const holder = archivedHolder();
     expect(holder?.stage).toBeNull();
     // The holder's whole shape is pinned: a next-command (or any other) field cannot sneak in silently.
-    expect(Object.keys(holder ?? {}).sort()).toEqual(['archived', 'hash', 'held', 'id', 'main', 'priority', 'slug', 'stage', 'stageSource', 'title']);
-    expect({ stageSource: holder?.stageSource, hash: holder?.hash }).toEqual({ stageSource: null, hash: null });
+    expect(Object.keys(holder ?? {}).sort()).toEqual(['archived', 'assignee', 'hash', 'held', 'id', 'main', 'priority', 'slug', 'stage', 'stageSource', 'title']);
+    // An archived spec is assigned to nobody (T65), though 001's events.jsonl names who closed it.
+    expect({ stageSource: holder?.stageSource, hash: holder?.hash, assignee: holder?.assignee }).toEqual({ stageSource: null, hash: null, assignee: null });
     for (const key of Object.keys(holder ?? {})) expect(key).not.toMatch(/next|command/i);
   });
 
@@ -260,7 +261,7 @@ describe('planning: archived', () => {
     const model = core.buildPlanning({ master, specs: [], archived });
     const feature = model.features[0];
     expect(feature?.holders).toEqual([
-      { id: '001', slug: '001-old', title: 'A spec', archived: true, stage: null, stageSource: null, priority: 'P3', hash: null, main: true, held: 3 },
+      { id: '001', slug: '001-old', title: 'A spec', archived: true, stage: null, stageSource: null, priority: 'P3', hash: null, assignee: null, main: true, held: 3 },
     ]);
     expect(feature?.unheld).toEqual([]);
     expect(feature?.claims.every((c) => c.holder === '001')).toBe(true);
@@ -558,6 +559,7 @@ describe('planning: milestones', () => {
           stageSource: 'derived',
           priority: 'P3',
           hash: SHA256,
+          assignee: null,
           main: false,
           held: 13,
         },
@@ -587,6 +589,8 @@ describe('planning: milestones', () => {
           stageSource: 'explicit',
           priority: 'P2',
           hash: SHA256,
+          // No lock reading in the planning golden: the last event's actor (T65).
+          assignee: { raw: 'u:3f9c0a7d', kind: 'person', id: 'u:3f9c0a7d', legacy: false },
           main: false,
           held: 30,
         },
@@ -599,6 +603,7 @@ describe('planning: milestones', () => {
           stageSource: 'derived',
           priority: 'P3',
           hash: SHA256,
+          assignee: null,
           main: false,
           held: 30,
         },
@@ -611,6 +616,7 @@ describe('planning: milestones', () => {
           stageSource: null,
           priority: 'P3',
           hash: null,
+          assignee: null,
           main: false,
           held: 46,
         },

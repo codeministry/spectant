@@ -54,6 +54,7 @@
       "nextReason": "the reviewed mark is missing",
       "takeable": [],
       "taken": [],
+      "assignee": null,
       "warnings": [
         {
           "kind": "review",

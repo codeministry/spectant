@@ -216,6 +216,7 @@
           "stageSource": "derived",
           "priority": "P3",
           "hash": "d63418423d6b414d01eb4b676ed9700e5ee07d19f9be42d6068ab45837d61752",
+          "assignee": null,
           "main": true,
           "held": 8
         },
@@ -228,6 +229,12 @@
           "stageSource": "derived",
           "priority": "P3",
           "hash": "13200c8a12785198c2a1d77b1f3347078e9ca0fa7fb1e837d85328f91b4c3281",
+          "assignee": {
+            "raw": "principal",
+            "kind": "legacy",
+            "id": "principal",
+            "legacy": true
+          },
           "main": true,
           "held": 2
         }

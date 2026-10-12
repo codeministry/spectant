@@ -10,7 +10,7 @@
  *
  * | route | answer |
  * |-------|--------|
- * | spec | `buildSpecPage` over the dashboard's own reading (`readWorkspaceInput`), so page and row agree (ISC-72); header `X-Spectant-Reviewed-Hashes` |
+ * | spec | `buildSpecPage` over the dashboard's own reading (`readWorkspaceInput`), so page and row agree (ISC-72); headers `X-Spectant-Reviewed-Hashes` and `X-Spectant-Spec-Hash` (raw sha256 of spec.md) |
  * | timeline | `buildTimeline({files, commits})`, commits from `git.ts` `commitsFor`; ETag over body and `HEAD` |
  * | claims | `buildClaimViews({files, locks})` |
  * | tasks | `parseTaskLines` or `null` without tasks.md; header `X-Spectant-Tasks-Hash` (sha256 hex of the raw bytes) |
@@ -27,7 +27,8 @@
  *
  * The two writes (`POST …/gate/reviewed`, `POST …/tasks/:tid/check`): the body through `parseWriteBody` (400), then
  * `gate-route.ts` / `checkbox-route.ts` over `writes.ts` (404 unknown task, 409 hash mismatch, 423 lock, 200 written),
- * the answers typed by `writes.contract.ts`. No absolute path leaves this module (ISC-3): bodies are core models over texts, and
+ * the answers typed by `writes.contract.ts`. The stage move (`POST …/transition`, T83) goes through `transition-route.ts`
+ * over `writeTransition` and adds the 422 `transition-refused`. No absolute path leaves this module (ISC-3): bodies are core models over texts, and
  * a workspace is its slug, its name and `pathTail`.
  */
 import { basename, join, relative, sep } from "node:path";
@@ -58,6 +59,7 @@ import {
   type NotFound,
   REVIEWED_HASHES_HEADER,
   SPEC_API_ROOT,
+  SPEC_HASH_HEADER,
   type SpecRouteMatch,
   TASKS_HASH_HEADER,
   type Unavailable,
@@ -76,8 +78,9 @@ import {
   viewerActorOf,
   workspaceUnreadable,
 } from "./workspace-loader.ts";
+import { transitionAnswer } from "./transition-route.ts";
 import { parseWriteBody, writeActorOf } from "./writes.contract.ts";
-import { gateHashes } from "./writes.ts";
+import { gateHashes, rawSha256 } from "./writes.ts";
 
 export type SpecRoutesOptions = {
   registry: Pick<Registry, "get">;
@@ -163,8 +166,13 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
       ...(input.locks ? { locks: input.locks } : {}),
       workflow: reading.workflow,
     });
-    // The same hashes the gate write recomputes (`writes.ts`), so a render and its write can only differ by the files.
-    return json(req, 200, page, { [REVIEWED_HASHES_HEADER]: formatReviewedHashes(gateHashes(files.texts)) });
+    // The same hashes the gate write and the transition recompute (`writes.ts`), so a render and its write can only
+    // differ by the files: the normalised gate hashes, and spec.md's raw bytes for the stage move (T83).
+    const specBytes = readBytesIfExists(specFilePath(ref.dir, "spec"));
+    return json(req, 200, page, {
+      [REVIEWED_HASHES_HEADER]: formatReviewedHashes(gateHashes(files.texts)),
+      ...(specBytes === null ? {} : { [SPEC_HASH_HEADER]: rawSha256(specBytes) }),
+    });
   }
 
   function docs(req: Request, root: string, ref: SpecRef, files: SpecFiles, name: DocName): Response {
@@ -238,6 +246,10 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         if (!parsed.ok) return json(req, 400, parsed.error);
         const { tid } = match.params;
         const result = await writeTaskCheck({ root, ref, stateDir, now: clock(), tid, body: parsed.body, constitution: constitution() });
+        return json(req, result.status, result.body);
+      }
+      case "transition": {
+        const result = await transitionAnswer({ root, ref, stateDir, now: clock(), text: await req.text() });
         return json(req, result.status, result.body);
       }
     }

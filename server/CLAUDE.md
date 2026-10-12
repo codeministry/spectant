@@ -28,9 +28,11 @@ as every existing route answers (plan 002's `not_found` is superseded). `tests/s
 404 without fallback); `evidence.ts` serves evidence files, 403 outside `artifacts/`, `.evidence/` and `.design/` (the Design tab's images, spec 004). `writes.contract.ts` (T67) types the two
 POST writes; `writes.ts` (T68) performs them under `gate-route.ts` (T69) and `checkbox-route.ts` (T70), wired into `spec-routes.ts`; `tests/writes.test.ts` holds their probes. Commits come from `git.ts` with the process's one
 `CommitCache` (`commitCache` option); the timeline's ETag folds in `HEAD` when the workspace is a repository of its own.
-Spec 008's routes (`transition`, `idea`, `allocate`, `actors`, `boardQuery`) are declared in `PENDING_ROUTE_TABLE`, outside
+Spec 008's routes `allocate`, `actors` and `boardQuery` are declared in `PENDING_ROUTE_TABLE`, outside
 the registered tables, so until a handler lands they answer as unknown paths (404); the task that lands one moves its entry
-into the registered family. `writes.contract.ts` holds the four app writes in `WRITE_TABLE` and every file they may touch
+into the registered family. The story page `idea` (`GET`/`HEAD /api/workspaces/:ws/ideas/:slug`, T88) has moved into
+`WORKSPACE_ROUTE_TABLE` and is served by `api.ts` from the story folder alone; the stage move `transition` (`POST …/specs/:id/transition`, T83) is a registered spec route served by `transition-route.ts` through `writes.ts`, and the planning route passes the workflow and every active spec's stage and raw `spec.md` hash into `buildPlanning`: the `IdeaRef`, the page through
+`markdown-docs.ts` and the raw sha256 of the file's bytes from one read, 404 for an unknown story or a workspace without stories. `writes.contract.ts` holds the four app writes in `WRITE_TABLE` and every file they may touch
 in `WRITE_PATHS`; the feature-level code-review mark is a fifth path, written by the CLI only.
 
 ## The write path (spec 002)
@@ -63,7 +65,7 @@ line of `tasks.md`, line endings kept).
 - Never write into a registered repository beyond the two writes above: no other file, no `.git/` object, no index,
   no lock, and no shelling out to git for anything that writes. `tests/readonly.test.ts` hashes the fixture repo, `.git/` included, before and after
   (ISC-15).
-- The database holds only the registry, the settings and the notes (spec 002, `note` table from migration 2, `pinned` from migration 3: a note belongs to a workspace and carries at most one anchor — spec, claim or task — enforced by the schema's CHECK; removing a workspace orphans its notes) and the actors (spec 008, `actor` table from migration 4: a `u:` id with a display name and its git addresses as a JSON array), never anything a repository says. Deleting it must lose nothing
+- The database holds only the registry, the settings and the notes (spec 002, `note` table from migration 2, `pinned` from migration 3: a note belongs to a workspace and carries at most one anchor — spec, claim or task — enforced by the schema's CHECK; removing a workspace orphans its notes), the actors (spec 008, `actor` table from migration 4: a `u:` id with a display name and its git addresses as a JSON array) and the board query (spec 008, `board_query` table from migration 5: the board's last query string per workspace slug), never anything a repository says. Deleting it must lose nothing
   a re-add cannot rebuild (ISC-7).
 - The API never returns an absolute path. It returns only `pathTail`, the last path segment, because the model reaches
   the browser and screenshots (ISC-3).

@@ -9,6 +9,7 @@
 import { createHash } from 'node:crypto';
 import type { Diagnostic } from './diagnostics.ts';
 import type { MarkState, TextFileKind } from './files.ts';
+import type { PlanningModel } from './planning.ts';
 
 /** A mark's state lives in `files.ts`, so browser-safe modules type it without reaching this one; re-exported here. */
 export type { MarkState } from './files.ts';
@@ -44,6 +45,13 @@ export interface CodeReviewedMark {
   /** Accepted remainder of /code-review and /security-review, from `findings` or top-level `code`/`security`. */
   readonly findings: { readonly code: number; readonly security: number } | null;
   readonly note: string | null;
+  /**
+   * The feature the mark was recorded for (spec 008, T74): `F<n>` when one feature-level code review
+   * (`/spec-code-review F<n>` under `code_review: feature`) wrote the same mark into every target folder of that
+   * feature (`featureCodeReviewTargets`); null on a per-spec mark, which carries no `scope` key. Informational only:
+   * freshness is the tree id alone.
+   */
+  readonly scope: string | null;
 }
 
 export type GateMark = ReviewedMark | CodeReviewedMark;
@@ -78,6 +86,8 @@ export interface GateCheck {
 /** A git object id: 40 hex (SHA-1 repositories) or 64 hex (SHA-256 repositories). */
 const OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const SHA256_HEX = /^[0-9a-f]{64}$/;
+/** A feature block id of the master (`F6`): the value of a code-reviewed mark's `scope`. */
+const FEATURE_ID = /^F[0-9]+$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -133,6 +143,13 @@ export function readGateMark(gate: GateName, text: string): GateMarkReading {
   if (code !== null || security !== null) findings = { code: code ?? 0, security: security ?? 0 };
   else if (data.findings !== undefined) warn('gate-findings-invalid', 'The code-reviewed mark holds findings without code or security counts.');
 
+  // No `scope` is a per-spec mark, as every mark before spec 008, T74; a malformed one is read as absent, with a warning.
+  let scope: string | null = null;
+  if (typeof data.scope === 'string' && FEATURE_ID.test(data.scope)) scope = data.scope;
+  else if (data.scope !== undefined) {
+    warn('gate-scope-invalid', `The code-reviewed mark's scope ${JSON.stringify(data.scope)} is not a feature id F<n>; it is read as a per-spec mark.`);
+  }
+
   return {
     mark: {
       gate,
@@ -143,6 +160,7 @@ export function readGateMark(gate: GateName, text: string): GateMarkReading {
       branch: stringOrNull(data.branch),
       findings,
       note: stringOrNull(data.note),
+      scope,
     },
     diagnostics,
   };
@@ -188,6 +206,70 @@ export function reviewedGate(texts: Readonly<Partial<Record<TextFileKind, string
   if (texts.plan !== undefined) current['plan.md'] = texts.plan;
   if (texts.tasks !== undefined) current['tasks.md'] = texts.tasks;
   return { reading, check: gateState('reviewed', reading?.mark ?? null, { texts: current }) };
+}
+
+// ── the feature-level code review (spec 008, T74) ────────────────────────────────────────────────────────
+
+/**
+ * The spec folders (`NNN-slug`, folder order) that receive the code-reviewed mark when the one code review of feature
+ * `F<n>` is done (`/spec-code-review F<n>`, `code_review: feature`, FORMAT.md row 8): every active spec whose main
+ * feature is the block (`PlanningHolder.main`) and whose live claims are all closed, across every block it holds
+ * claims of. Archived specs are excluded, a spec holding no live claim is no target, and an unknown feature gives an
+ * empty list. Read from the planning tree (the master's checkboxes, as `buildPlanning` resolves them); pure, writes
+ * nothing.
+ */
+export function featureCodeReviewTargets(planning: PlanningModel, feature: string): readonly string[] {
+  const block = planning.features.find((f) => f.id === feature);
+  if (block === undefined) return [];
+  const claims = planning.features.flatMap((f) => f.claims);
+  return block.holders
+    .filter((h) => !h.archived && h.main)
+    .filter((h) => {
+      const own = claims.filter((c) => c.holder === h.id && !c.dropped);
+      return own.length > 0 && own.every((c) => c.closed);
+    })
+    .map((h) => h.slug);
+}
+
+/** What a code-reviewed mark records; `scope` only on the mark of a feature-level code review. */
+export interface CodeReviewedMarkFields {
+  /** ISO 8601. */
+  readonly at: string;
+  /** Who recorded it, in the actor grammar (FORMAT.md § events); absent, the mark carries no `actor`. */
+  readonly actor?: string;
+  /** `F<n>` for a feature-level code review (T74); absent on a per-spec mark. */
+  readonly scope?: string;
+  /** The git tree id of the reviewed working tree (`treeIdOf`). */
+  readonly tree: string;
+  readonly head?: string | null;
+  readonly branch?: string | null;
+  /** The accepted remainder of /code-review and /security-review. */
+  readonly code: number;
+  readonly security: number;
+  readonly note?: string | null;
+}
+
+/**
+ * The text of `.gates/code-reviewed.json` (two-space JSON, trailing newline) in the shape `readGateMark` reads:
+ * `{gate, at, actor?, scope?, tree, head?, branch?, code, security, note?}`, absent and null fields left out. The same
+ * text goes into every folder of `featureCodeReviewTargets` for a feature-level review. Pure: the caller writes it.
+ * Throws a RangeError on a tree that is no git object id, a scope that is no `F<n>` or a count that is no
+ * non-negative integer, since a mark with them could not be read back.
+ */
+export function codeReviewedMarkText(fields: CodeReviewedMarkFields): string {
+  if (!OBJECT_ID.test(fields.tree)) throw new RangeError(`codeReviewedMarkText: tree ${JSON.stringify(fields.tree)} is not a git object id`);
+  if (fields.scope !== undefined && !FEATURE_ID.test(fields.scope)) throw new RangeError(`codeReviewedMarkText: scope ${JSON.stringify(fields.scope)} is not F<n>`);
+  if (count(fields.code) === null || count(fields.security) === null) throw new RangeError('codeReviewedMarkText: code and security must be non-negative integers');
+  const mark: Record<string, unknown> = { gate: 'code-reviewed', at: fields.at };
+  if (fields.actor !== undefined) mark.actor = fields.actor;
+  if (fields.scope !== undefined) mark.scope = fields.scope;
+  mark.tree = fields.tree;
+  if (typeof fields.head === 'string') mark.head = fields.head;
+  if (typeof fields.branch === 'string') mark.branch = fields.branch;
+  mark.code = fields.code;
+  mark.security = fields.security;
+  if (typeof fields.note === 'string') mark.note = fields.note;
+  return `${JSON.stringify(mark, null, 2)}\n`;
 }
 
 // ── the reviewed digest ───────────────────────────────────────────────────────────────────────────────

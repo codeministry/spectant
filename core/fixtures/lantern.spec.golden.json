@@ -15,7 +15,8 @@
       "lastRound": null,
       "uncommittedFiles": null,
       "priority": "P3",
-      "stageSource": "derived"
+      "stageSource": "derived",
+      "assignee": null
     },
     "keyNumbers": {
       "claims": {
@@ -139,7 +140,13 @@
       "lastRound": null,
       "uncommittedFiles": null,
       "priority": "P3",
-      "stageSource": "derived"
+      "stageSource": "derived",
+      "assignee": {
+        "raw": "principal",
+        "kind": "legacy",
+        "id": "principal",
+        "legacy": true
+      }
     },
     "keyNumbers": {
       "claims": {

@@ -72,7 +72,7 @@ describe('relativeTime (ISC-22)', () => {
 });
 
 describe('featurePlace (ISC-105)', () => {
-  const holder = (id: string, main: boolean): PlanningHolder => ({ id, slug: `${id}-x`, title: 'x', archived: false, main, held: 1, stage: null, stageSource: null, priority: 'P3', hash: null });
+  const holder = (id: string, main: boolean): PlanningHolder => ({ id, slug: `${id}-x`, title: 'x', archived: false, main, held: 1, stage: null, stageSource: null, priority: 'P3', hash: null, assignee: null });
   const feature = (id: string, holders: readonly PlanningHolder[], claims: readonly string[]): PlanningFeature => ({
     ideas: [],
     id,

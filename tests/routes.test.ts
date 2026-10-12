@@ -16,7 +16,7 @@ import { listEvidence } from "../core/src/evidence.ts";
 import type { ClaimViewModel, DocName, SpecPageModel } from "../core/src/files.ts";
 import { hashForGate } from "../core/src/gates.ts";
 import { buildTimeline } from "../core/src/timeline.ts";
-import { docsFor } from "../core/src/markdown-docs.ts";
+import { docsFor, renderDocsMarkdown } from "../core/src/markdown-docs.ts";
 import { composeApi, dashboardApi } from "../server/src/api.ts";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
 import { run } from "../server/src/cli.ts";
@@ -28,16 +28,23 @@ import {
   DOC_NAMES,
   JSON_ANSWER,
   REVIEWED_HASHES_HEADER,
+  SPEC_HASH_HEADER,
   SPEC_ROUTE_TABLE,
   type SpecRouteName,
   TASKS_HASH_HEADER,
+  type TransitionRefused,
+  type TransitionWritten,
+  type WorkspaceRouteResponses,
   allowFor,
+  allowForWorkspace,
   formatReviewedHashes,
   parseReviewedHashes,
   specRoutes,
+  workspaceRoutes,
 } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi, timelineEtag } from "../server/src/spec-routes.ts";
 import { readSpecFiles } from "../server/src/workspace-loader.ts";
+import { VIEWER_ACTOR_FALLBACK } from "../server/src/writes.contract.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
 const HARBOR = join(FIXTURES, "harbor");
@@ -60,7 +67,8 @@ function expectedSpecPage(): SpecPageModel {
   const reason = "ISC-75, ISC-76 and 1 more are takeable";
   return {
     ...page,
-    head: { ...page.head, nextReason: reason },
+    // The open lock on ISC-74 makes its session the assignee over the last event's actor (spec 008, T65).
+    head: { ...page.head, nextReason: reason, assignee: ISC_74_LOCK.actor },
     keyNumbers: {
       ...page.keyNumbers,
       claims: { ...page.keyNumbers.claims, takeable: page.keyNumbers.claims.takeable - 1 },
@@ -200,8 +208,8 @@ describe("every read route of harbor 002", () => {
       }
     }
     const writes = SPEC_ROUTE_TABLE.filter((entry) => entry.method === "POST").map((entry) => entry.route);
-    expect(writes).toEqual(["gateReviewed", "taskCheck"]);
-    for (const path of [specRoutes.gateReviewed("harbor", "002"), specRoutes.taskCheck("harbor", "002", "T1")]) {
+    expect(writes).toEqual(["gateReviewed", "taskCheck", "transition"]);
+    for (const path of [specRoutes.gateReviewed("harbor", "002"), specRoutes.taskCheck("harbor", "002", "T1"), specRoutes.transition("harbor", "002")]) {
       const get = await call(path);
       expect([get.status, get.headers.get("allow")]).toEqual([405, "POST"]);
       for (const method of ["PUT", "DELETE", "PATCH"]) {
@@ -384,6 +392,77 @@ describe("the timeline from git (T46)", () => {
   });
 });
 
+describe("the transition route (T83, ISC-130)", () => {
+  const sha = (bytes: Uint8Array | string): string => new Bun.CryptoHasher("sha256").update(bytes).digest("hex");
+  /** A fresh copy of harbor (its activity log kept) registered as `harbor`, with its spec routes. */
+  const harborCopy = (): { repo: string; handler: ApiHandler } => {
+    const repo = join(mkdtempSync(join(root, "move-")), "harbor");
+    cpSync(HARBOR, repo, { recursive: true });
+    return { repo, handler: specRoutesApi({ registry: registryWith(repo), lifeos: LIFEOS_ABSENT, now: () => LIVE_NOW }) };
+  };
+  const move = async (handler: ApiHandler, id: string, body: unknown): Promise<Response> => {
+    const url = new URL(`http://127.0.0.1:7717${specRoutes.transition("harbor", id)}`);
+    const req = new Request(url.href, { method: "POST", headers: HOST, body: typeof body === "string" ? body : JSON.stringify(body) });
+    const res = await handler(req, url);
+    if (res === null) throw new Error("the spec routes declined the transition");
+    return res;
+  };
+  const LOADER = "specs/003-config-loader";
+
+  test("accepted: 003 tasks → review with the hash the spec page sent is 200, one event, the new hash is the file's", async () => {
+    const { repo, handler } = harborCopy();
+    const page = await call(specRoutes.spec("harbor", "003"), { handler });
+    const hash = page.headers.get(SPEC_HASH_HEADER) ?? "";
+    expect(hash).toBe(sha(readFileSync(join(repo, LOADER, "spec.md"))));
+    const res = await move(handler, "003", { to: "review", hash });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as TransitionWritten;
+    expect(body).toMatchObject({ from: "tasks", to: "review", lockSource: "activity" });
+    expect(body.hash).toBe(sha(readFileSync(join(repo, LOADER, "spec.md"))));
+    expect(body.event).toMatchObject({ ts: LIVE_NOW.toISOString(), from: "tasks", to: "review", actor: VIEWER_ACTOR_FALLBACK });
+    expect(readFileSync(join(repo, LOADER, "events.jsonl"), "utf8")).toBe(`${JSON.stringify(body.event)}\n`);
+    // The page now sends the hash the write answered, so the next move can go on from it.
+    expect((await call(specRoutes.spec("harbor", "003"), { handler })).headers.get(SPEC_HASH_HEADER)).toBe(body.hash);
+  });
+
+  test("stale hash: 409 hash-mismatch with spec.md's hash now", async () => {
+    const { repo, handler } = harborCopy();
+    const res = await move(handler, "003", { to: "review", hash: sha("an older spec.md") });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "hash-mismatch", files: ["spec.md"], expected: { spec: sha(readFileSync(join(repo, LOADER, "spec.md"))) } });
+  });
+
+  test("refused: 005 review → build without a fresh reviewed mark is 422 with reason and command", async () => {
+    const { repo, handler } = harborCopy();
+    const hash = sha(readFileSync(join(repo, "specs/005-config-format-choice/spec.md")));
+    const res = await move(handler, "005", { to: "build", hash });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as TransitionRefused;
+    expect(body.error).toBe("transition-refused");
+    expect(body.reason).toStartWith("build needs a fresh reviewed mark");
+    expect(body.command).toBe("/spec-review 005");
+  });
+
+  test("locked: a session holding a claim of 002 is 423 with its lock", async () => {
+    const { repo, handler } = harborCopy();
+    const res = await move(handler, "002", { to: "blocked", hash: sha(readFileSync(join(repo, KEY, "spec.md"))) });
+    expect(res.status).toBe(423);
+    expect(await res.json()).toEqual({ error: "locked", lock: ISC_74_LOCK });
+  });
+
+  test("an unknown spec is 404; a body that is no TransitionRequest is 400", async () => {
+    const { handler } = harborCopy();
+    const hash = sha("x");
+    const unknown = await move(handler, "999", { to: "review", hash });
+    expect([unknown.status, await unknown.json()]).toEqual([404, { error: "not-found" }]);
+    for (const bad of ["not json", { to: "shipping", hash }, { to: "review" }, { to: "review", hash, actor: "u:1" }]) {
+      const res = await move(handler, "003", bad);
+      expect({ bad, status: res.status }).toEqual({ bad, status: 400 });
+      expect(await res.json()).toEqual({ error: "invalid-body" });
+    }
+  });
+});
+
 describe("an unreadable workspace", () => {
   test("a registered workspace whose directory is gone answers 409 with its own summary, no path", async () => {
     const gone = join(root, "gone");
@@ -410,6 +489,89 @@ describe("an unreadable workspace", () => {
     } finally {
       chmodSync(spec, 0o644);
     }
+  });
+});
+
+// The story route (T88, ISC-124.2): `GET`/`HEAD /api/workspaces/:ws/ideas/:slug`, a workspace route served by
+// `dashboardApi` beside the planning route. The page is core's `renderDocsMarkdown` over the file, the hash the raw
+// sha256 hex of its bytes (the one `allocate` checks), the ETag `json()`'s strong body hash.
+describe("the story route (T88, ISC-124.2)", () => {
+  const STORY = join(HARBOR, "specs", "ideas", "console-audit-log.md");
+  const ideaApi = (): ApiHandler =>
+    dashboardApi({ registry: registryWith(HARBOR, join(FIXTURES, "lantern")), services: () => Promise.resolve([]) });
+
+  test("harbor console-audit-log: 200 with the IdeaRef, the rendered page and the raw sha256 of the file, no absolute path", async () => {
+    const res = await call(workspaceRoutes.idea("harbor", "console-audit-log"), { handler: ideaApi() });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe(JSON_ANSWER.contentType);
+    expect(res.headers.get("cache-control")).toBe(JSON_ANSWER.cacheControl);
+    expect(res.headers.get("etag")).toMatch(/^"[A-Za-z0-9_-]{43}"$/);
+    const body = (await res.json()) as WorkspaceRouteResponses["idea"];
+    expect(body.idea).toEqual({
+      slug: "console-audit-log",
+      title: "Every change made in the web console is written to an audit log a teammate can read back.",
+      type: "feature",
+      feature: "F2",
+      milestone: "Harbor 2.0",
+      priority: "P3",
+      path: "specs/ideas/console-audit-log.md",
+    });
+    const bytes = readFileSync(STORY);
+    expect(body.hash).toBe(new Bun.CryptoHasher("sha256").update(bytes).digest("hex"));
+    expect(body.page).toEqual(renderDocsMarkdown(bytes.toString("utf8")));
+    expect(body.page.frontmatter).toEqual({ type: "feature", feature: "F2", milestone: "Harbor 2.0", priority: "P3", status: "idea" });
+    expect(body.page.html).toContain("Every change made in the web console");
+    expect(body.page.toc.map((entry) => entry.text)).toContain("Goal (one sentence)");
+    expect(strings(body).filter((s) => [homedir(), tmpdir(), FIXTURES].some((d) => s.includes(d)))).toEqual([]);
+  });
+
+  test("ETag: a matching If-None-Match is a 304 without a body; HEAD sends the same headers and no body", async () => {
+    const handler = ideaApi();
+    const path = workspaceRoutes.idea("harbor", "console-audit-log");
+    const get = await call(path, { handler });
+    const etag = get.headers.get("etag") ?? "";
+    expect(etag).not.toBe("");
+    const again = await call(path, { handler, headers: { "If-None-Match": etag } });
+    expect(again.status).toBe(304);
+    expect(await again.text()).toBe("");
+    expect(again.headers.get("etag")).toBe(etag);
+    const head = await call(path, { handler, method: "HEAD" });
+    expect(head.status).toBe(200);
+    expect(await head.text()).toBe("");
+    for (const name of ["content-type", "cache-control", "etag"]) expect({ name, value: head.headers.get(name) }).toEqual({ name, value: get.headers.get(name) });
+  });
+
+  test("not found: an unknown slug, the index, a path out of the folder, an unknown workspace, lantern without stories → 404", async () => {
+    const handler = ideaApi();
+    for (const path of [
+      workspaceRoutes.idea("harbor", "tide-tables"),
+      workspaceRoutes.idea("harbor", "README"),
+      workspaceRoutes.idea("harbor", "../ideas/console-audit-log"),
+      workspaceRoutes.idea("nowhere", "console-audit-log"),
+      workspaceRoutes.idea("lantern", "console-audit-log"),
+    ]) {
+      const res = await call(path, { handler });
+      expect({ path, status: res.status, body: await res.json() }).toEqual({ path, status: 404, body: { error: "not-found" } });
+    }
+  });
+
+  test("405 with Allow: GET, HEAD for any other method; 403 for a foreign Host before anything is read", async () => {
+    const path = workspaceRoutes.idea("harbor", "console-audit-log");
+    const post = await call(path, { handler: ideaApi(), method: "POST" });
+    expect(post.status).toBe(405);
+    expect(allowForWorkspace("idea")).toBe("GET, HEAD");
+    expect(post.headers.get("allow")).toBe(allowForWorkspace("idea"));
+    expect((await call(path, { handler: ideaApi(), headers: { Host: "evil.example" } })).status).toBe(403);
+  });
+
+  test("a registered workspace whose directory is gone answers 409 with its own summary, no path", async () => {
+    const gone = join(root, "story-gone");
+    cpSync(HARBOR, gone, { recursive: true });
+    const handler = dashboardApi({ registry: registryWith(gone), services: () => Promise.resolve([]) });
+    rmSync(gone, { recursive: true, force: true });
+    const res = await call(workspaceRoutes.idea("story-gone", "console-audit-log"), { handler });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ slug: "story-gone", name: "story-gone", pathTail: "story-gone", readable: false, error: "missing", counts: null });
   });
 });
 

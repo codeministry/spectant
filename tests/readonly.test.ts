@@ -39,7 +39,15 @@ import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.co
 import { run } from "../server/src/cli.ts";
 import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { openRegistry } from "../server/src/registry.ts";
-import { REVIEWED_HASHES_HEADER, type ReviewedHashes, TASKS_HASH_HEADER, parseReviewedHashes, specRoutes } from "../server/src/spec-routes.contract.ts";
+import {
+  REVIEWED_HASHES_HEADER,
+  type ReviewedHashes,
+  SPEC_HASH_HEADER,
+  TASKS_HASH_HEADER,
+  parseReviewedHashes,
+  specRoutes,
+  workspaceRoutes,
+} from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
 
 const FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "harbor");
@@ -264,6 +272,14 @@ describe("ISC-15: add + browse leaves the registered repository byte-identical, 
       const planningAgain = await fetch(`${url}/api/workspaces/${SLUG}/planning`, { headers: { "If-None-Match": planningEtag } });
       expect(planningAgain.status).toBe(304);
       expect((await fetch(`${url}/api/workspaces/${SLUG}/planning`, { method: "HEAD" })).status).toBe(200);
+      // A story page (spec 008 T88, ISC-124.2): read, revalidated and HEAD; an unknown story is a 404 that reads nothing.
+      const story = await fetch(`${url}${workspaceRoutes.idea(SLUG, "console-audit-log")}`);
+      expect(story.status).toBe(200);
+      const storyEtag = story.headers.get("etag") ?? "";
+      expect(((await story.json()) as { idea: { slug: string } }).idea.slug).toBe("console-audit-log");
+      expect((await fetch(`${url}${workspaceRoutes.idea(SLUG, "console-audit-log")}`, { headers: { "If-None-Match": storyEtag } })).status).toBe(304);
+      expect((await fetch(`${url}${workspaceRoutes.idea(SLUG, "console-audit-log")}`, { method: "HEAD" })).status).toBe(200);
+      expect((await fetch(`${url}${workspaceRoutes.idea(SLUG, "tide-tables")}`)).status).toBe(404);
       expect((await fetch(`${url}/api/settings`)).status).toBe(200);
       for (const page of ["/", `/w/${SLUG}`, `/w/${SLUG}/features`, `/w/${SLUG}/milestones`]) {
         const res = await fetch(`${url}${page}`);
@@ -349,6 +365,56 @@ describe("ISC-15 with the writes: refused writes change nothing, an accepted one
       expect(changed(afterMark, afterTick)).toEqual([`${retention}/tasks.md`]);
       expect(gitChanges(before, afterTick)).toEqual([]);
       expect(underGit(afterTick)).toEqual(underGit(before));
+    } finally {
+      registry.close();
+    }
+  });
+});
+
+// The stage move (spec 008, T95, ISC-130) under the same guard, on its own copy (`.git/` included): every refused
+// move (400, 404, 409, 422, 423) leaves the copy byte-identical, an accepted one changes exactly that spec's `spec.md`
+// and `events.jsonl`, and `.git/` never changes.
+describe("ISC-130 with the transition: a refused move changes nothing, an accepted one only spec.md and events.jsonl", () => {
+  test("readonly: refused transitions leave the copy byte-identical; the accepted one touches only its two files", async () => {
+    const copy = join(mkdtempSync(join(root, "moves-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    const registry = openRegistry(mkdtempSync(join(root, "data-moves-")));
+    registry.add(copy);
+    const api = specRoutesApi({ registry, lifeos: LIFEOS_ABSENT });
+    const call = async (path: string, method = "GET", body?: unknown): Promise<Response> => {
+      const url = new URL(`http://127.0.0.1:7717${path}`);
+      const init = body === undefined ? {} : { body: typeof body === "string" ? body : JSON.stringify(body) };
+      const res = await api(new Request(url.href, { method, headers: { Host: "127.0.0.1:7717" }, ...init }), url);
+      if (res === null) throw new Error(`the spec routes declined ${path}`);
+      return res;
+    };
+    const specHash = async (id: string): Promise<string> => (await call(specRoutes.spec(SLUG, id))).headers.get(SPEC_HASH_HEADER) ?? "";
+    const loader = "specs/003-config-loader";
+    const gitChanges = (a: Snapshot, b: Snapshot): string[] => changed(a, b, { mtime: true }).filter((p) => p === ".git" || p.startsWith(".git/"));
+
+    try {
+      const before = snapshot(copy);
+      // Refused: 423 (ISC-74 of 002 held), 409 (stale hash), 422 (005 → build without a fresh mark), 404, 400.
+      const refused: Array<[string, unknown, number]> = [
+        [specRoutes.transition(SLUG, "002"), { to: "blocked", hash: await specHash("002") }, 423],
+        [specRoutes.transition(SLUG, "003"), { to: "review", hash: "0".repeat(64) }, 409],
+        [specRoutes.transition(SLUG, "005"), { to: "build", hash: await specHash("005") }, 422],
+        [specRoutes.transition(SLUG, "999"), { to: "review", hash: "0".repeat(64) }, 404],
+        [specRoutes.transition(SLUG, "003"), "not json", 400],
+      ];
+      for (const [path, body, status] of refused) expect({ path, status: (await call(path, "POST", body)).status }).toEqual({ path, status });
+      const afterRefused = snapshot(copy);
+      expect(changed(before, afterRefused, { mtime: true })).toEqual([]);
+      expect(afterRefused.checksum).toBe(before.checksum);
+
+      // Accepted: 003 tasks → review changes its spec.md and creates its events.jsonl, nothing else.
+      const res = await call(specRoutes.transition(SLUG, "003"), "POST", { to: "review", hash: await specHash("003") });
+      expect(res.status).toBe(200);
+      const afterMove = snapshot(copy);
+      expect(changed(before, afterMove)).toEqual([`${loader}/events.jsonl`, `${loader}/spec.md`]);
+      expect(gitChanges(before, afterMove)).toEqual([]);
+      expect(underGit(afterMove)).toEqual(underGit(before));
+      expect(((await res.json()) as { hash: string }).hash).toBe(sha256(readFileSync(join(copy, loader, "spec.md"))));
     } finally {
       registry.close();
     }

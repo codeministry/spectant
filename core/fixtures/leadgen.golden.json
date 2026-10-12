@@ -56,6 +56,7 @@
         "ISC-334"
       ],
       "taken": [],
+      "assignee": null,
       "warnings": [
         {
           "kind": "fog",
@@ -112,6 +113,7 @@
       "nextReason": "phase: complete",
       "takeable": [],
       "taken": [],
+      "assignee": null,
       "warnings": [],
       "gates": {
         "reviewed": {

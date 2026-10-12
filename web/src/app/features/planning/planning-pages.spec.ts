@@ -47,7 +47,7 @@ const planning = (milestones: readonly Milestone[]): PlanningBody => ({
 });
 
 const NAMED = planning([
-  milestone('Harbor 1.0', [{ id: '002', slug: '002-web-console', title: 'Web console', archived: false, main: true, held: 4, stage: null, stageSource: null, priority: 'P3', hash: null }]),
+  milestone('Harbor 1.0', [{ id: '002', slug: '002-web-console', title: 'Web console', archived: false, main: true, held: 4, stage: null, stageSource: null, priority: 'P3', hash: null, assignee: null }]),
 ]);
 /** A block entry no spec names is a 0/0 row: the page stays absent (ISC-104). */
 const UNNAMED_ONLY = planning([milestone('Someday', [])]);
