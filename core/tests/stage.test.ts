@@ -101,6 +101,8 @@ const CASES: readonly FixtureCase[] = [
   { rel: 'harbor/specs/004-retention-policies', gates: { reviewed: fresh, codeReviewed: stale }, total: 30, resolved: 30, takeable: 0, stage: 'code-review', next: '/spec-code-review 004' },
   { rel: 'harbor/specs/005-config-format-choice', gates: { reviewed: missing, codeReviewed: missing }, total: 1, resolved: 0, takeable: 1, stage: 'review', next: '/spec-review 005' },
   { rel: 'harbor/specs/006-partial-push', gates: { reviewed: stale, codeReviewed: missing }, total: 4, resolved: 0, takeable: 4, stage: 'review', next: '/spec-review 006' },
+  // The chore (spec 008): every claim closed, but no reviewed mark yet, so it waits in review like every type.
+  { rel: 'harbor/specs/007-rotate-mirror-token', gates: { reviewed: missing, codeReviewed: missing }, total: 2, resolved: 2, takeable: 0, stage: 'review', next: '/spec-review 007' },
   { rel: 'lantern/specs/001-reading-list', gates: { reviewed: fresh, codeReviewed: missing }, total: 8, resolved: 4, takeable: 2, stage: 'build', next: '/spec-implement 001' },
   { rel: 'lantern/specs/002-duplicate-links', gates: { reviewed: fresh, codeReviewed: missing }, total: 2, resolved: 0, takeable: 2, stage: 'build', next: '/spec-implement 002' },
   // The frozen copy carries no `.gates/`, so the old skill derives review here, not build.
@@ -127,7 +129,7 @@ describe('stage per fixture spec equals the old derivation', () => {
   }
 
   test('the comparison ran on every listed spec', () => {
-    expect(CASES.length).toBe(12);
+    expect(CASES.length).toBe(13);
   });
 
   test('leadgen 012 names its takeable claim as the reason', () => {
@@ -171,13 +173,14 @@ const ALL_CLOSED: Partial<StageInput> = {
 };
 
 describe('STAGE_RULES is the status contract as data', () => {
-  test('eight rows in table order, each with its command', () => {
+  test('nine rows in table order, each with its command', () => {
     expect(STAGE_RULES.map((r) => [r.stage, r.next])).toEqual([
       ['done', null],
       ['plan', '/spec-plan'],
       ['tasks', '/spec-tasks'],
       ['review', '/spec-review'],
       ['build', '/spec-implement'],
+      ['done', null],
       ['code-review', '/spec-code-review'],
       ['close', '/spec-complete'],
       ['blocked', '/spec-status'],
@@ -207,6 +210,7 @@ describe('STAGE_RULES is the status contract as data', () => {
 describe('one synthetic case per row', () => {
   const rows: ReadonlyArray<[string, StageInput, Stage, string | null]> = [
     ['done: phase complete', at({ phase: 'complete' }), 'done', null],
+    ['chore done: every claim closed, no code-reviewed mark, no phase edit', at({ type: 'chore', hasPlan: false, hasTasks: false, ...ALL_CLOSED }), 'done', null],
     ['plan: a feature without plan.md', at({ hasPlan: false }), 'plan', '/spec-plan 007'],
     ['plan: an infra spec without plan.md', at({ type: 'infra', hasPlan: false, hasTasks: false }), 'plan', '/spec-plan 007'],
     ['plan: a project without plan.md', at({ type: 'project', hasPlan: false }), 'plan', '/spec-plan 007'],
@@ -227,6 +231,37 @@ describe('one synthetic case per row', () => {
       expect(nextCommand(input)).toBe(next);
     });
   }
+});
+
+// Spec 008 (ISC-117): a chore runs review → build → done. Done comes once every claim is closed, without a
+// code-reviewed mark and without `phase: complete`; its claims still wait on a fresh reviewed mark.
+describe('chore done', () => {
+  const chore = (patch: Partial<StageInput>): StageInput => at({ type: 'chore', hasPlan: false, hasTasks: false, ...patch });
+
+  test('chore done: every claim closed, whatever the code-reviewed mark', () => {
+    for (const codeReviewed of ['missing', 'stale', 'fresh'] as const) {
+      expect(nextCommandWithReason(chore({ ...ALL_CLOSED, codeReviewed }))).toEqual({
+        stage: 'done',
+        command: null,
+        reason: 'every claim of the chore is closed',
+      });
+    }
+  });
+
+  test('chore done waits on the reviewed mark like every type', () => {
+    expect(stageOf(chore({ ...ALL_CLOSED, reviewed: 'missing' }))).toBe('review');
+    expect(stageOf(chore({ ...ALL_CLOSED, reviewed: 'stale' }))).toBe('review');
+  });
+
+  test('chore done needs no plan.md or tasks.md, and an open claim keeps it in build', () => {
+    expect(stageOf(chore({}))).toBe('build');
+    expect(stageOf(chore({ takeable: [], partition: { takeable: 0, open: 2, closed: 1, dropped: 0 } }))).toBe('blocked');
+  });
+
+  test('chore done is the chore row only: another type with every claim closed goes to code-review', () => {
+    expect(stageOf(at({ type: 'bug', hasPlan: false, hasTasks: false, ...ALL_CLOSED }))).toBe('code-review');
+    expect(stageOf(at({ type: null, hasPlan: false, hasTasks: false, ...ALL_CLOSED }))).toBe('code-review');
+  });
 });
 
 describe('the type router decides plan and tasks', () => {
@@ -315,6 +350,7 @@ describe('nextCommandWithReason', () => {
     [at({ takeable: ['ISC-2', 'ISC-3'], partition: { takeable: 2, open: 1, closed: 1, dropped: 0 } }), 'ISC-2 and ISC-3 are takeable'],
     [at({ takeable: ['ISC-2', 'ISC-3', 'ISC-4', 'ISC-5'], partition: { takeable: 4, open: 0, closed: 1, dropped: 0 } }), 'ISC-2, ISC-3 and 2 more are takeable'],
     [at({ takeable: [], partition: { takeable: 2, open: 1, closed: 1, dropped: 0 } }), '2 claims are takeable'],
+    [at({ type: 'chore', hasPlan: false, hasTasks: false, ...ALL_CLOSED }), 'every claim of the chore is closed'],
     [at({ ...ALL_CLOSED }), 'every claim is closed and the code-reviewed mark is missing'],
     [at({ ...ALL_CLOSED, codeReviewed: 'stale' }), 'every claim is closed and the code-reviewed mark is stale'],
     [at({ ...ALL_CLOSED, codeReviewed: 'fresh' }), 'every claim is closed and code-reviewed'],
@@ -329,7 +365,7 @@ describe('nextCommandWithReason', () => {
       expect(got.stage).toBe(stageOf(input));
       expect(got.command).toBe(nextCommand(input));
       // The reason is one the row names, not free text.
-      expect(namesReason(ruleFor(got.stage), got.reason)).toBe(true);
+      expect(rulesFor(got.stage).some((rule) => namesReason(rule, got.reason))).toBe(true);
     });
   }
 });
@@ -369,10 +405,11 @@ function namesReason(rule: StageRule, reason: string): boolean {
   return rule.reasons.some((template) => new RegExp(`^${template.split(/\{[a-zA-Z]+\}/).map(escapeRe).join('.+')}$`).test(reason));
 }
 
-function ruleFor(stage: Stage): StageRule {
-  const rule = STAGE_RULES.find((r) => r.stage === stage);
-  if (!rule) throw new Error(`no stage row for ${stage}`);
-  return rule;
+/** Every row of `stage`: `done` has two, `phase: complete` and the chore row. */
+function rulesFor(stage: Stage): StageRule[] {
+  const rules = STAGE_RULES.filter((r) => r.stage === stage);
+  if (rules.length === 0) throw new Error(`no stage row for ${stage}`);
+  return rules;
 }
 
 describe('FORMAT.md holds STAGE_RULES verbatim', () => {
@@ -455,10 +492,11 @@ function specPages(tree: string): Record<string, SpecPageGolden> {
 
 /** The expectation of one walked spec: the table row its stage names, with the spec's number in the command. */
 function expectTableRow(folder: string, stage: Stage, command: string | null, reason: string): void {
-  const rule = ruleFor(stage);
+  const rule = rulesFor(stage).find((r) => namesReason(r, reason));
+  expect(rule).toBeDefined();
   const number = (folder.split('/').pop() ?? '').slice(0, 3);
-  expect(command).toBe(rule.next === null ? null : `${rule.next} ${number}`);
-  expect(namesReason(rule, reason)).toBe(true);
+  const next = rule?.next ?? null;
+  expect(command).toBe(next === null ? null : `${next} ${number}`);
 }
 
 describe('every fixture spec derives the stage table row it names (ISC-79)', () => {

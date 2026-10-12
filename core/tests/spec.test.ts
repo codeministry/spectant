@@ -57,6 +57,8 @@ describe('harbor 002: the richest spec (round 3, all three kinds waiting on you)
       round: 3,
       lastRound: '2026-03-08T16:30:00Z',
       uncommittedFiles: null,
+      // spec 008, T39: the frontmatter `priority: P2`
+      priority: 'P2',
     });
   });
 

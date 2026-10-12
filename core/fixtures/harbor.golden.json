@@ -204,7 +204,7 @@
       "id": "007",
       "slug": "007-rotate-mirror-token",
       "title": "Replace the push token without stopping a scheduled sync",
-      "type": null,
+      "type": "chore",
       "phase": "building",
       "stage": "review",
       "progress": {
@@ -489,12 +489,12 @@
   "services": [],
   "diagnostics": [
     {
-      "file": "specs/007-rotate-mirror-token/spec.md",
+      "file": "specs/005-config-format-choice/spec.md",
       "diagnostic": {
         "severity": "warning",
-        "code": "frontmatter-spec-type",
-        "message": "spec_type chore is none of feature, bug, refactor, spike, infra, project.",
-        "line": 4
+        "code": "frontmatter-priority",
+        "message": "priority high is none of P1, P2, P3, P4; it reads as P3.",
+        "line": 7
       }
     }
   ]

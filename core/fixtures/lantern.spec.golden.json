@@ -13,7 +13,8 @@
       "updated": "2026-03-06T15:00:00Z",
       "round": null,
       "lastRound": null,
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P3"
     },
     "keyNumbers": {
       "claims": {
@@ -135,7 +136,8 @@
       "updated": "2026-03-06T11:00:00Z",
       "round": null,
       "lastRound": null,
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P3"
     },
     "keyNumbers": {
       "claims": {

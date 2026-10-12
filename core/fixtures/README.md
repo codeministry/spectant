@@ -35,9 +35,10 @@ snapshot changes only together with the parser change that explains it.
 | `004-retention-policies` | feature · building | Harbor 1.0 | every claim `[x]`, `plan.md` without a mermaid fence, current reviewed mark, stale code-reviewed mark | stage code-review, warnings diagrams (`plan.md`) and closed |
 | `005-config-format-choice` | spike · scoping | — | one claim, two `- fog:` lines, no reviewed mark | stage review, warnings review (missing) and fog |
 | `006-partial-push` | bug · scoping | — | stale reviewed mark, `ISC-125` unknown to the master, master claim `ISC-4` of F0 not projected | stage review, warnings drift (`unknown_to_master`, `missing_in_spec`) and review (stale) |
-| `007-rotate-mirror-token` | chore · building | — | `spec.md` only (no context, plan, tasks or gate marks), `ISC-126` and `ISC-127` closed with verification lines, held by the master in F5 | stage review, warnings review (missing) and closed; until spec 008, T38 `spec_type: chore` warns `frontmatter-spec-type` and reads as none |
+| `007-rotate-mirror-token` | chore · building | — | `spec.md` only (no context, plan, tasks or gate marks), `ISC-126` and `ISC-127` closed with verification lines, held by the master in F5 | type `chore` (spec 008, T38), stage review, warnings review (missing) and closed |
 
-**Spec 008 keys and files.** None of these is read by `core/` yet; the parser tasks named here pick them up.
+**Spec 008 keys and files.** `core/` reads `priority:` and `stage:` (T39, T40; `stage:` is applied from T47 on); the
+parser tasks named here pick up the rest.
 
 | Spec 008 case | Where | Carries |
 |---------------|-------|---------|

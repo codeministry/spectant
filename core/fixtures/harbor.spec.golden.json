@@ -13,7 +13,8 @@
       "updated": "2026-03-08T16:45:00Z",
       "round": 3,
       "lastRound": "2026-03-08T16:30:00Z",
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P2"
     },
     "keyNumbers": {
       "claims": {
@@ -167,7 +168,8 @@
       "updated": "2026-03-09T17:30:00Z",
       "round": null,
       "lastRound": null,
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P3"
     },
     "keyNumbers": {
       "claims": {
@@ -281,7 +283,8 @@
       "updated": "2026-03-08T12:00:00Z",
       "round": null,
       "lastRound": null,
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P3"
     },
     "keyNumbers": {
       "claims": {
@@ -431,7 +434,8 @@
       "updated": "2026-03-07T14:00:00Z",
       "round": null,
       "lastRound": null,
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P3"
     },
     "keyNumbers": {
       "claims": {
@@ -553,7 +557,8 @@
       "updated": "2026-03-09T10:15:00Z",
       "round": null,
       "lastRound": null,
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P1"
     },
     "keyNumbers": {
       "claims": {
@@ -664,7 +669,7 @@
       "id": "007",
       "slug": "007-rotate-mirror-token",
       "title": "Rotate the mirror token",
-      "type": null,
+      "type": "chore",
       "stage": "review",
       "nextCommand": "/spec-review 007",
       "nextReason": "the reviewed mark is missing",
@@ -673,7 +678,8 @@
       "updated": "2026-03-09T11:00:00Z",
       "round": null,
       "lastRound": null,
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P3"
     },
     "keyNumbers": {
       "claims": {
@@ -788,7 +794,8 @@
       "updated": "2026-03-05T15:00:00Z",
       "round": null,
       "lastRound": null,
-      "uncommittedFiles": null
+      "uncommittedFiles": null,
+      "priority": "P3"
     },
     "keyNumbers": {
       "claims": {

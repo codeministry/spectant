@@ -4,7 +4,7 @@
 //
 // Pure: text in, model out. No file system, no Bun API. Malformed input yields diagnostics, never a throw.
 import type { Diagnostic } from './diagnostics.ts';
-import type { SpecType } from './files.ts';
+import type { Priority, SpecType } from './files.ts';
 
 /** `progress: M/N` — closed claims over live claims. */
 export interface Progress {
@@ -12,7 +12,10 @@ export interface Progress {
   readonly total: number;
 }
 
-/** The keys the spec format defines, typed. A key that is absent (or unreadable, with a diagnostic) is null. */
+/**
+ * The keys the spec format defines, typed. A key that is absent (or unreadable, with a diagnostic) is null, except
+ * `priority`, which reads as `P3` then.
+ */
 export interface SpecFrontmatter {
   readonly task: string | null;
   readonly slug: string | null;
@@ -39,6 +42,10 @@ export interface SpecFrontmatter {
   readonly archivedReason: string | null;
   /** The archive date `YYYY-MM-DD` as written; set only on a folder under `specs/archive/`. */
   readonly archived: string | null;
+  /** `P1` to `P4` as written; `P3` when the key is absent or its value is none of the four (spec 008, T39). */
+  readonly priority: Priority;
+  /** The explicit stage as written, unvalidated; null when absent. Applied over the derived stage from T47 on. */
+  readonly stage: string | null;
 }
 
 export interface FrontmatterResult {
@@ -56,10 +63,15 @@ export interface FrontmatterResult {
   readonly diagnostics: readonly Diagnostic[];
 }
 
-export const SPEC_TYPES: readonly SpecType[] = ['feature', 'bug', 'refactor', 'spike', 'infra', 'project'];
+export const SPEC_TYPES: readonly SpecType[] = ['feature', 'bug', 'refactor', 'spike', 'infra', 'project', 'chore'];
+
+export const PRIORITIES: readonly Priority[] = ['P1', 'P2', 'P3', 'P4'];
+
+/** The priority a spec without a readable `priority:` key has. */
+export const DEFAULT_PRIORITY: Priority = 'P3';
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
-type Kind = 'string' | 'specType' | 'progress' | 'boolean' | 'number';
+type Kind = 'string' | 'specType' | 'priority' | 'progress' | 'boolean' | 'number';
 
 /** Frontmatter key → typed field and how its value is read. */
 const KEYS: Readonly<Record<string, readonly [keyof SpecFrontmatter, Kind]>> = {
@@ -84,6 +96,8 @@ const KEYS: Readonly<Record<string, readonly [keyof SpecFrontmatter, Kind]>> = {
   migrated_from: ['migratedFrom', 'string'],
   archived_reason: ['archivedReason', 'string'],
   archived: ['archived', 'string'],
+  priority: ['priority', 'priority'],
+  stage: ['stage', 'string'],
 };
 
 function emptyData(): Mutable<SpecFrontmatter> {
@@ -109,6 +123,8 @@ function emptyData(): Mutable<SpecFrontmatter> {
     migratedFrom: null,
     archivedReason: null,
     archived: null,
+    priority: DEFAULT_PRIORITY,
+    stage: null,
   };
 }
 
@@ -193,6 +209,12 @@ export function parseFrontmatter(text: string): FrontmatterResult {
         const type = SPEC_TYPES.find((t) => t === value) ?? null;
         if (!type) warn('frontmatter-spec-type', `spec_type ${value} is none of ${SPEC_TYPES.join(', ')}.`, lineNo);
         data.specType = type;
+        break;
+      }
+      case 'priority': {
+        const priority = PRIORITIES.find((p) => p === value) ?? null;
+        if (!priority) warn('frontmatter-priority', `priority ${value} is none of ${PRIORITIES.join(', ')}; it reads as ${DEFAULT_PRIORITY}.`, lineNo);
+        data.priority = priority ?? DEFAULT_PRIORITY;
         break;
       }
       case 'progress':

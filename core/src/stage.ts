@@ -1,6 +1,7 @@
 // Stage per spec and the next command (T37, ISC-14), ported from the old SpecDashboard `stageOf()` and
 // `nextCommand()`: one fixed chain (plan, tasks, review, implement, code review, complete), derived from the files
-// on every read, never from the frontmatter `phase:` (which decides `done` and nothing else).
+// on every read, never from the frontmatter `phase:` (which decides the first row's `done` and nothing else). A chore
+// (spec 008) leaves the chain early: once every claim is closed it is done without a code review.
 // FORMAT.md's stage table is held as data in STAGE_RULES, in table order, first match wins: every column (condition in
 // words, command, reason templates) is a field, and core/tests/stage.test.ts compares each rule with its markdown row
 // verbatim (spec 002 T11, ISC-79). A reason is always one of its row's templates, filled by `fillReason`.
@@ -48,7 +49,7 @@ export const TYPE_NEEDS: Readonly<Record<SpecType, { readonly plan: boolean; rea
   feature: { plan: true, tasks: true },
   project: { plan: true, tasks: true },
   infra: { plan: true, tasks: false },
-  // spec 008 T37: the row the wider `SpecType` demands; no spec reads as `chore` until `frontmatter.ts` accepts it (T38).
+  // spec 008: a chore carries spec.md only (FORMAT.md § The thirteen file kinds).
   chore: { plan: false, tasks: false },
 };
 
@@ -165,6 +166,14 @@ export const STAGE_RULES: readonly StageRule[] = [
       const many = input.takeable.length === 0 ? count !== 1 : input.takeable.length > 1;
       return { values: { ids: takeableIds(input, count), is: many ? 'are' : 'is' } };
     },
+  },
+  {
+    stage: 'done',
+    condition: 'the type is `chore` and every claim is closed',
+    when: (input) => input.type === 'chore' && countsOf(input).allClosed,
+    next: null,
+    reasons: ['every claim of the chore is closed'],
+    explain: () => ({}),
   },
   {
     stage: 'code-review',

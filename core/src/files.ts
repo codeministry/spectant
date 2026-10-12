@@ -312,7 +312,7 @@ export interface SpecHead {
   readonly lastRound: string | null;
   /** Uncommitted files in the spec folder: a git fact only the server has, so always null from `core/`. */
   readonly uncommittedFiles: number | null;
-  /** Frontmatter `priority:`; optional until `spec.ts` sets it (T39), absent means `P3`. */
+  /** Frontmatter `priority:`, `P3` when absent or invalid; `spec.ts` sets it from T39 on, the type keeps it optional. */
   readonly priority?: Priority;
   /** Whether `stage` is the frontmatter `stage:` or derived; optional until T47, absent means `derived`. */
   readonly stageSource?: StageSource;

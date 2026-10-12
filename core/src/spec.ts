@@ -253,6 +253,7 @@ export function buildSpecPage(input: SpecPageInput): SpecPageModel {
     round: roundNumbers.length > 0 ? Math.max(...roundNumbers) : null,
     lastRound: row.lastRound,
     uncommittedFiles: null,
+    priority: fm.data.priority,
   };
 
   const reasons = [row.nextReason];

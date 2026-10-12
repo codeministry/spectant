@@ -44,7 +44,7 @@ const VALID = { ts: '2026-03-07T15:30:00Z', from: 'review', to: 'build', command
 
 describe('the vocabulary (principal decision 2026-09-29)', () => {
   test('the event stages are the stage table of stage.ts, one vocabulary for timeline and stage', () => {
-    expect([...EVENT_STAGES].sort()).toEqual(STAGE_RULES.map((r) => r.stage).sort());
+    expect([...EVENT_STAGES].sort()).toEqual([...new Set(STAGE_RULES.map((r) => r.stage))].sort());
     expect(EVENT_STAGES).toHaveLength(8);
   });
 
