@@ -36,12 +36,12 @@ describe('harbor', () => {
     expect(tldr.diagnostics).toEqual([]);
   });
 
-  test('stale, complete in its sections, and 006 unnamed', () => {
+  test('stale, complete in its sections, and 006 and 007 unnamed', () => {
     expect(tldrState({ tldr, specs: activeSpecs('harbor') })).toEqual({
       present: true,
       stale: true,
       missingSections: [],
-      unnamedSpecs: ['006'],
+      unnamedSpecs: ['006', '007'],
     });
   });
 

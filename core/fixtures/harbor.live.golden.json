@@ -339,7 +339,7 @@
         "tries": 1,
         "lock": {
           "source": "activity",
-          "session": "spec-002-ISC-74"
+          "session": "a:claude:sess-2"
         },
         "since": "2026-03-08T14:06:00Z",
         "elapsedMs": 3240000,
@@ -430,13 +430,13 @@
       {
         "source": "activity",
         "claim": "ISC-74",
-        "session": "spec-002-ISC-74",
+        "session": "a:claude:sess-2",
         "since": "2026-03-08T14:06:00Z"
       }
     ],
     "agents": [
       {
-        "session": "spec-002-ISC-74",
+        "session": "a:claude:sess-2",
         "source": "activity",
         "claims": [
           "ISC-74"
@@ -862,6 +862,31 @@
       "claims": {
         "closed": 0,
         "total": 4
+      },
+      "tasks": {
+        "landed": 0,
+        "total": 0
+      }
+    },
+    "closedClaims": [],
+    "lockSource": "activity",
+    "locks": [],
+    "agents": [],
+    "needsYou": [],
+    "staleAfterMs": 2700000
+  },
+  "specs/007-rotate-mirror-token": {
+    "index": 0,
+    "kind": "live",
+    "round": null,
+    "ts": "2026-03-08T15:00:00.000Z",
+    "label": "Live",
+    "worst": "closed",
+    "cards": [],
+    "progress": {
+      "claims": {
+        "closed": 2,
+        "total": 2
       },
       "tasks": {
         "landed": 0,

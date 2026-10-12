@@ -245,7 +245,7 @@ describe("LifeOS present", () => {
     expect(locks?.source).toBe("frontier");
     expect(locks?.sources).toEqual(["frontier", "activity"]);
     expect(locks?.locks.map((l) => [l.source, l.claim, l.session])).toEqual([
-      ["activity", ACTIVITY_CLAIM, "spec-002-ISC-74"],
+      ["activity", ACTIVITY_CLAIM, "a:claude:sess-2"],
       ["frontier", FRONTIER_CLAIM, FRONTIER_SESSION],
     ]);
     const without = await readWorkspaceInput(repo);

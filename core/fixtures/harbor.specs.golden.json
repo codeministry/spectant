@@ -13,6 +13,7 @@
         "tasks",
         "context",
         "rounds",
+        "events",
         "gateReviewed",
         "artifacts",
         "evidence"
@@ -82,12 +83,27 @@
       "kinds": [
         "spec",
         "context",
+        "events",
         "gateReviewed"
       ],
       "resolves": {
         "id": "specs/006-partial-push",
         "folder": "specs/006-partial-push",
         "slug": "specs/006-partial-push"
+      }
+    },
+    {
+      "id": "007",
+      "slug": "007-rotate-mirror-token",
+      "folder": "specs/007-rotate-mirror-token",
+      "archived": false,
+      "kinds": [
+        "spec"
+      ],
+      "resolves": {
+        "id": "specs/007-rotate-mirror-token",
+        "folder": "specs/007-rotate-mirror-token",
+        "slug": "specs/007-rotate-mirror-token"
       }
     },
     {

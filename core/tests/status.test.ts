@@ -103,7 +103,7 @@ describe('partitionClaims', () => {
     const locks = activityLocks(join('harbor', '.spectant', 'activity.jsonl'));
     expect(locks.map((l) => l.claim)).toEqual(['ISC-74']);
     const p = partitionClaims(load(join('harbor', HARBOR_002, 'spec.md')).doc.claims, locks, 'fresh');
-    expect(p.taken).toEqual([{ id: 'ISC-74', session: 'spec-002-ISC-74', since: '2026-03-08T14:06:00Z' }]);
+    expect(p.taken).toEqual([{ id: 'ISC-74', session: 'a:claude:sess-2', since: '2026-03-08T14:06:00Z' }]);
     expect(p.takeable).not.toContain('ISC-74');
     expect([p.closed.length, p.takeable.length, p.blocked.length, p.taken.length]).toEqual([25, 3, 1, 1]);
   });
@@ -125,8 +125,9 @@ describe('partitionClaims', () => {
     'harbor/specs/004-retention-policies/spec.md': [30, 0, 0],
     'harbor/specs/005-config-format-choice/spec.md': [0, 1, 0],
     'harbor/specs/006-partial-push/spec.md': [0, 4, 0],
+    'harbor/specs/007-rotate-mirror-token/spec.md': [2, 0, 0],
     'harbor/specs/archive/001-manifest-sync/spec.md': [46, 0, 0],
-    'harbor/ISA.md': [101, 16, 7],
+    'harbor/ISA.md': [103, 16, 7],
     'lantern/specs/001-reading-list/spec.md': [4, 2, 2],
     'lantern/ISA.md': [4, 6, 2],
     'leadgen/specs/012-pwa-install/spec.md': [9, 1, 0],

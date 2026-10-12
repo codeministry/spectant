@@ -42,8 +42,8 @@ function strings(value: unknown, out: string[] = []): string[] {
 describe('harbor: the README Expected column', () => {
   const m = model('harbor');
 
-  test('the master fraction is the three-digit/three-digit 101/124', () => {
-    expect(m.kpis.master).toEqual({ closed: 101, total: 124 });
+  test('the master fraction is the three-digit/three-digit 103/126', () => {
+    expect(m.kpis.master).toEqual({ closed: 103, total: 126 });
   });
 
   test('stages per spec as the old skill derives them', () => {
@@ -53,6 +53,7 @@ describe('harbor: the README Expected column', () => {
       '004': 'code-review',
       '005': 'review',
       '006': 'review',
+      '007': 'review', // the chore reads as type none until spec 008, T38, and has no reviewed mark
     });
   });
 
@@ -84,7 +85,7 @@ describe('harbor: the README Expected column', () => {
   });
 
   test('rows in action order (nearest to done first), Next up the top three with a command', () => {
-    expect(m.specs.map((r) => r.id)).toEqual(['004', '005', '006', '002', '003']);
+    expect(m.specs.map((r) => r.id)).toEqual(['004', '005', '006', '007', '002', '003']);
     expect(m.nextUp).toEqual(['004', '005', '006']);
     expect(row(m, '002').nextCommand).toBe('/spec-implement 002');
     expect(row(m, '002').takeable.length).toBeGreaterThan(0);
@@ -92,21 +93,21 @@ describe('harbor: the README Expected column', () => {
 
   test('KPIs: specs split building and scoping, attention is warnings plus open fog', () => {
     const { kpis } = m;
-    expect(kpis.specs).toBe(5);
+    expect(kpis.specs).toBe(6);
     expect(kpis.building).toBe(2); // 002 build, 004 code-review
-    expect(kpis.scoping).toBe(3); // 003 tasks, 005 and 006 review
-    expect(kpis.warnings).toBe(7);
+    expect(kpis.scoping).toBe(4); // 003 tasks, 005, 006 and 007 review
+    expect(kpis.warnings).toBe(9);
     expect(kpis.attention).toBe(kpis.warnings + kpis.fog);
     expect(kpis.takeable).toBe(m.specs.reduce((n, r) => n + r.takeable.length, 0));
     expect(kpis.claims).toEqual(
       m.specs.filter((r) => r.stage !== 'done').reduce((a, r) => ({ closed: a.closed + r.progress.closed, total: a.total + r.progress.total }), { closed: 0, total: 0 }),
     );
-    expect(m.stageCounts).toMatchObject({ build: 1, tasks: 1, 'code-review': 1, review: 2, done: 0 });
+    expect(m.stageCounts).toMatchObject({ build: 1, tasks: 1, 'code-review': 1, review: 3, done: 0 });
   });
 
   test('warnings grouped by kind, each item naming its spec', () => {
     const groups = Object.fromEntries(m.warningGroups.map((g) => [g.kind, g.items.map((i) => i.spec)]));
-    expect(groups).toEqual({ drift: ['006'], review: ['005', '006', '003'], diagrams: ['004'], closed: ['004'], fog: ['005'] });
+    expect(groups).toEqual({ drift: ['006'], review: ['005', '006', '007', '003'], diagrams: ['004'], closed: ['004', '007'], fog: ['005'] });
   });
 
   test('gates: 004 reviewed fresh and code-reviewed stale, 006 reviewed stale, 003 reviewed missing', () => {
@@ -219,9 +220,9 @@ describe('multi-workspace', () => {
   test('two workspaces built side by side each list their own specs, nothing crosses over', () => {
     const harbor = model('harbor');
     const lantern = model('lantern');
-    expect(harbor.specs.map((r) => r.slug).sort()).toEqual(['002-web-console', '003-config-loader', '004-retention-policies', '005-config-format-choice', '006-partial-push']);
+    expect(harbor.specs.map((r) => r.slug).sort()).toEqual(['002-web-console', '003-config-loader', '004-retention-policies', '005-config-format-choice', '006-partial-push', '007-rotate-mirror-token']);
     expect(lantern.specs.map((r) => r.slug).sort()).toEqual(['001-reading-list', '002-duplicate-links']);
-    expect(harbor.kpis.master).toEqual({ closed: 101, total: 124 });
+    expect(harbor.kpis.master).toEqual({ closed: 103, total: 126 });
     expect(lantern.kpis.master?.total).toBe(12);
     // pure: building one never changes the other
     expect(JSON.stringify(model('harbor'))).toBe(JSON.stringify(harbor));
@@ -263,7 +264,7 @@ describe('taken and lock warnings (spec 002 T115, ISC-90)', () => {
 
   test("harbor 002's row lists the ISC-74 activity lock with its session and since", async () => {
     const m = await withLocks(readLockSources({ repoRoot: HARBOR, now: NOW }));
-    expect(row(m, '002').taken).toEqual([{ id: 'ISC-74', session: 'spec-002-ISC-74', since: '2026-03-08T14:06:00Z', source: 'activity' }]);
+    expect(row(m, '002').taken).toEqual([{ id: 'ISC-74', session: 'a:claude:sess-2', since: '2026-03-08T14:06:00Z', source: 'activity' }]);
     expect(kinds(row(m, '002'))).toEqual([]);
     for (const r of m.specs.filter((s) => s.id !== '002')) expect(r.taken).toEqual([]);
   });

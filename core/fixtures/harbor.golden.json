@@ -1,30 +1,30 @@
 {
   "kpis": {
-    "specs": 5,
+    "specs": 6,
     "building": 2,
-    "scoping": 3,
+    "scoping": 4,
     "master": {
-      "closed": 101,
-      "total": 124
+      "closed": 103,
+      "total": 126
     },
     "claims": {
-      "closed": 55,
-      "total": 78
+      "closed": 57,
+      "total": 80
     },
     "tasks": {
       "landed": 57,
       "total": 62
     },
     "takeable": 4,
-    "warnings": 7,
+    "warnings": 9,
     "fog": 4,
-    "attention": 11,
+    "attention": 13,
     "archived": 1
   },
   "stageCounts": {
     "plan": 0,
     "tasks": 1,
-    "review": 2,
+    "review": 3,
     "build": 1,
     "blocked": 0,
     "code-review": 1,
@@ -201,6 +201,56 @@
       "goal": "A push interrupted at any point leaves the target registry exactly as it was before the push started."
     },
     {
+      "id": "007",
+      "slug": "007-rotate-mirror-token",
+      "title": "Replace the push token without stopping a scheduled sync",
+      "type": null,
+      "phase": "building",
+      "stage": "review",
+      "progress": {
+        "closed": 2,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": "/spec-review 007",
+      "nextReason": "the reviewed mark is missing",
+      "takeable": [],
+      "taken": [],
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "no reviewed mark yet",
+          "command": "/spec-review 007"
+        },
+        {
+          "kind": "closed",
+          "text": "every claim closed, phase not complete"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "missing",
+          "detail": "no reviewed mark"
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-09T11:00:00Z",
+      "lastRound": null,
+      "goal": "The push token is replaced with one command, and the next scheduled run uses the new token without a restart."
+    },
+    {
       "id": "002",
       "slug": "002-web-console",
       "title": "Show every sync run and its failures in a small web console",
@@ -343,6 +393,14 @@
           }
         },
         {
+          "spec": "007",
+          "warning": {
+            "kind": "review",
+            "text": "no reviewed mark yet",
+            "command": "/spec-review 007"
+          }
+        },
+        {
           "spec": "003",
           "warning": {
             "kind": "review",
@@ -370,6 +428,13 @@
       "items": [
         {
           "spec": "004",
+          "warning": {
+            "kind": "closed",
+            "text": "every claim closed, phase not complete"
+          }
+        },
+        {
+          "spec": "007",
           "warning": {
             "kind": "closed",
             "text": "every claim closed, phase not complete"
@@ -422,5 +487,15 @@
     }
   },
   "services": [],
-  "diagnostics": []
+  "diagnostics": [
+    {
+      "file": "specs/007-rotate-mirror-token/spec.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "frontmatter-spec-type",
+        "message": "spec_type chore is none of feature, bug, refactor, spike, infra, project.",
+        "line": 4
+      }
+    }
+  ]
 }

@@ -2046,6 +2046,7 @@
   },
   "specs/005-config-format-choice": null,
   "specs/006-partial-push": null,
+  "specs/007-rotate-mirror-token": null,
   "specs/archive/001-manifest-sync": {
     "tasks": [
       {

@@ -52,7 +52,7 @@ function expected(name: Name): DashboardModel {
             takeable: row.takeable.filter((id) => id !== "ISC-74"),
             nextReason: "ISC-75, ISC-76 and 1 more are takeable",
             // The route reads harbor's activity log; the golden is built without lock sources (T115).
-            taken: [{ id: "ISC-74", session: "spec-002-ISC-74", since: "2026-03-08T14:06:00Z", source: "activity" }],
+            taken: [{ id: "ISC-74", session: "a:claude:sess-2", since: "2026-03-08T14:06:00Z", source: "activity" }],
           },
     ),
   };

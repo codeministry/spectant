@@ -36,7 +36,7 @@ const page = (name: string, folder: string, extra: Partial<SpecPageInput> = {}):
 const NO_LOCKS: LockReading = { source: 'none', sources: [], locks: [] };
 
 /** The activity line of harbor's `.spectant/activity.jsonl` that is still open (ISC-74, never released). */
-const HARBOR_LOCK: ClaimLock = { source: 'activity', claim: 'ISC-74', session: 'spec-002-ISC-74', since: '2026-03-08T14:06:00Z' };
+const HARBOR_LOCK: ClaimLock = { source: 'activity', claim: 'ISC-74', session: 'a:claude:sess-2', since: '2026-03-08T14:06:00Z' };
 const HARBOR_LOCKS: LockReading = { source: 'activity', sources: ['activity'], locks: [HARBOR_LOCK] };
 
 describe('harbor 002: the richest spec (round 3, all three kinds waiting on you)', () => {
@@ -81,8 +81,9 @@ describe('harbor 002: the richest spec (round 3, all three kinds waiting on you)
     expect(p.next).toEqual({
       command: '/spec-implement 002',
       reasons: ['ISC-74, ISC-75 and 2 more are takeable', 'the reviewed mark is fresh', '3 items wait on you'],
-      since: null,
-      via: null,
+      // since spec 008 (T27) 002 records its transitions: the last one into build
+      since: '2026-03-04T09:00:00Z',
+      via: '/spec-review 002',
     });
   });
 

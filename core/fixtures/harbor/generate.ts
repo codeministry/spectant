@@ -12,7 +12,7 @@
  * registries). Nothing here is copied from a real repository.
  *
  * What the tree exercises (see ../README.md):
- *   master ISA.md    124 claims in F0–F4, 101 closed: the three-digit/three-digit master fraction; a `## Milestones`
+ *   master ISA.md    126 claims in F0–F5, 103 closed: the three-digit/three-digit master fraction; a `## Milestones`
  *                    block (spec 003) with Harbor 0.9 (2026-03-15, target passed with 003's claims open: late) and
  *                    Harbor 1.0 (2026-05-14, ahead: upcoming), named by `milestone:` on 001, 002, 003 and 004
  *   001  feature     complete, archived under specs/archive/, reviewed and code-reviewed marks, events.jsonl with
@@ -24,10 +24,12 @@
  *   003  refactor    scoping, no reviewed mark, plan.md and spec.md without a mermaid fence, no tasks.md; Harbor 0.9,
  *                    whose open claims make it the late milestone (004, closed, could not)
  *   004  feature     building with every claim [x], plan.md without a mermaid fence, code-reviewed mark stale;
- *                    Harbor 1.0
+ *                    Harbor 1.0; design.md with one screenshot under .design/ (spec 004 of this repository)
  *   005  spike       scoping, two fog lines, no reviewed mark, no milestone
  *   006  bug         scoping, reviewed mark stale, one claim unknown to the master, one master claim not projected,
  *                    no milestone
+ *   007  chore       spec.md only (no context, plan, tasks or gate marks), both claims closed with verification lines;
+ *                    the master holds them in F5; no milestone (spec 008, T25)
  *   specs/tldr.md    generated before the newest spec `updated:` (stale)
  */
 
@@ -45,23 +47,25 @@ import {hashForGate, REVIEWED_FILES} from "../../src/gates.ts";
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 const sha1 = (s: string) => createHash("sha1").update(s).digest("hex");
 
-function reviewedMark(specDir: string, at: string): string {
+// `actor` (spec 008, T28) names who recorded a mark in the actor grammar; the --mark-reviewed path for the
+// hand-written lantern fixture passes none, so lantern keeps its legacy marks without the key.
+function reviewedMark(specDir: string, at: string, actor?: string): string {
     const files = Object.fromEntries(REVIEWED_FILES.map((f) => {
         const p = join(specDir, f);
         return [f, existsSync(p) ? hashForGate(f, readFileSync(p, "utf-8")) : null];
     }));
-    return JSON.stringify({gate: "reviewed", at, files}, null, 2) + "\n";
+    return JSON.stringify({gate: "reviewed", at, ...(actor ? {actor} : {}), files}, null, 2) + "\n";
 }
 
 /** A reviewed mark whose hashes were taken from an earlier text of the files: stale by construction. */
-function staleReviewedMark(seed: string, at: string): string {
+function staleReviewedMark(seed: string, at: string, actor: string): string {
     const files = Object.fromEntries(REVIEWED_FILES.map((f) => [f, f === "spec.md" ? sha256(`${seed} ${f} before the last edit`) : null]));
-    return JSON.stringify({gate: "reviewed", at, files}, null, 2) + "\n";
+    return JSON.stringify({gate: "reviewed", at, actor, files}, null, 2) + "\n";
 }
 
 /** A code-reviewed mark with fixed tree and head ids that match no worktree: stale for any in-memory tree hash. */
-function codeReviewedMark(seed: string, at: string, branch: string, note: string): string {
-    return JSON.stringify({gate: "code-reviewed", at, tree: sha1(`${seed} tree`), head: sha1(`${seed} head`), branch,
+function codeReviewedMark(seed: string, at: string, actor: string, branch: string, note: string): string {
+    return JSON.stringify({gate: "code-reviewed", at, actor, tree: sha1(`${seed} tree`), head: sha1(`${seed} head`), branch,
         code: 0, security: 0, note}, null, 2) + "\n";
 }
 
@@ -230,7 +234,19 @@ function buildF4(): Feature {
         claims};
 }
 
-const FEATURES: Feature[] = [F0, buildF1(), buildF2(), buildF3(), buildF4()];
+// F5 · Mirror credentials — two claims, both closed, held by the chore spec 007 (spec 008, T25).
+const F5: Feature = {
+    key: "F5", name: "Mirror credentials",
+    why: "the token Harbor pushes with can be replaced without stopping a scheduled sync.",
+    claims: ([
+        {id: "ISC-126", text: "`harbor token rotate` replaces the push token in the credential store, and the next scheduled run uses it without a restart.",
+            probe: {type: "bun-test", check: "token used by the run after a rotation", threshold: "the new token", tool: "`bun test tests/token.test.ts -t \"rotate\"`", anchors: "literal", severity: ""}},
+        {id: "ISC-127", text: "Anti: a sync started after the rotation authenticates with the old token.",
+            probe: {type: "bun-test", check: "registry stub log after a rotation", threshold: "0 requests with the old token", tool: "`bun test tests/token.test.ts -t \"old token\"`", anchors: "derived: no-leak", severity: "high"}},
+    ] satisfies Array<Omit<Claim, "feature" | "closed">>).map((c) => ({...c, feature: "F5", closed: true})),
+};
+
+const FEATURES: Feature[] = [F0, buildF1(), buildF2(), buildF3(), buildF4(), F5];
 const ALL: Claim[] = FEATURES.flatMap((f) => f.claims);
 const byId = new Map(ALL.map((c) => [c.id, c]));
 const claim = (id: string) => { const c = byId.get(id); if (!c) throw new Error(`no claim ${id}`); return c; };
@@ -267,7 +283,7 @@ const verificationStub = (c: Claim, date: string) => `- ${c.id}: ${c.probe.tool.
 // ── master ─────────────────────────────────────────────────────────────────────────────────────────────
 
 function master(): string {
-    const closedDates: Record<string, string> = {F1: "2026-03-05", F2: "2026-03-08", F4: "2026-03-08"};
+    const closedDates: Record<string, string> = {F1: "2026-03-05", F2: "2026-03-08", F4: "2026-03-08", F5: "2026-03-09"};
     return `---
 task: "Mirror container manifests between registries with Harbor"
 slug: 20260302-harbor
@@ -339,6 +355,7 @@ ${f.claims.map(claimLine).join("\n")}`).join("\n\n")}
 - 2026-03-02: features split into sync, console, config loader and retention; cross-cutting claims in F0.
 - 2026-03-05: spec 001 closed and archived; sync is idempotent on digest, not on tag.
 - 2026-03-07: refined: the console's colour mode is a stored setting (ISC-60.1, ISC-60.2).
+- 2026-03-09: token rotation is a chore (spec 007): one small fix, spec.md only, no plan and no tasks.
 
 ## Verification
 
@@ -357,7 +374,7 @@ interface SpecDef {
     slug: string;
     title: string;
     task: string;
-    type: "feature" | "refactor" | "spike" | "bug";
+    type: "feature" | "refactor" | "spike" | "bug" | "chore";
     feature: string;
     phase: "scoping" | "building" | "complete";
     started: string;
@@ -365,6 +382,8 @@ interface SpecDef {
     claims: Claim[];
     archived?: string;
     milestone?: string;                  // the master's `## Milestones` entry this spec names (spec 003)
+    priority?: string;                   // `priority:` as written, a wrong value included (spec 008, T26)
+    stage?: string;                      // the explicit `stage:` (spec 008, T27)
     body: (claims: Claim[]) => string;   // everything between the title and ## Test Strategy
     after?: string;                      // sections between ## Test Strategy and ## Decisions (claims block)
     decisions: string[];
@@ -388,15 +407,14 @@ slug: ${d.slug}
 spec_type: ${d.type}
 isa_master: ../../ISA.md
 isa_feature: ${d.feature}
-${d.milestone ? `milestone: ${d.milestone}\n` : ""}constitution: ../constitution.md
+${d.milestone ? `milestone: ${d.milestone}\n` : ""}${d.priority ? `priority: ${d.priority}\n` : ""}${d.stage ? `stage: ${d.stage}\n` : ""}constitution: ../constitution.md
 phase: ${d.phase}
 progress: ${progress(d.claims)}
 started: ${d.started}
 updated: ${d.updated}
 ${d.archived ? `archived: ${d.archived}\n` : ""}context_sufficient: true
 interview_invoked: false
-context_log: context.md
----
+${d.type === "chore" ? "" : "context_log: context.md\n"}---
 
 <!-- SPEC — a derived view of ../../ISA.md (feature ${d.feature}). Claim IDs belong to the master.
      Sync: Skill("Spec", "sync ${d.slug}"). Never edit the master from this file. -->
@@ -573,6 +591,7 @@ const S002: SpecDef = {
     dir: "002-web-console", slug: "002-web-console", title: "Web console",
     task: "Show every sync run and its failures in a small web console", type: "feature", feature: "F2",
     phase: "building", started: "2026-03-03T10:00:00Z", updated: "2026-03-08T16:45:00Z", milestone: "Harbor 1.0",
+    priority: "P2", stage: "build", // the key and the last event of events.jsonl agree (spec 008, T27)
     claims: feature("F2").claims, grouped: true, verifiedOn: "2026-03-08",
     // The evidence listing (T24) groups a file under the claim whose verification line names it: by its path relative
     // to the spec folder, or by its bare file name (ISC-72). `.evidence/dashboard.har` is named by none: ungrouped.
@@ -678,6 +697,7 @@ const S005: SpecDef = {
     dir: "005-config-format-choice", slug: "005-config-format-choice", title: "Config format choice",
     task: "Decide which config format version 2 uses", type: "spike", feature: "F3",
     phase: "scoping", started: "2026-03-07T13:00:00Z", updated: "2026-03-07T14:00:00Z",
+    priority: "high", // not a priority: the `frontmatter-priority` warning case (spec 008, T26)
     claims: [claim("ISC-94")], grouped: false, verifiedOn: "",
     decisions: ["2026-03-07: opened; the decision this spike makes possible is the loader's input format."],
     body: () => `## Problem
@@ -699,6 +719,7 @@ const S006: SpecDef = {
     dir: "006-partial-push", slug: "006-partial-push", title: "Partial push after a timeout",
     task: "Stop a timed-out push from leaving a half-written manifest behind", type: "bug", feature: "F0",
     phase: "scoping", started: "2026-03-08T09:00:00Z", updated: "2026-03-09T10:15:00Z",
+    priority: "P1", stage: "review", // the last event says build: the `stage-mismatch` case (spec 008, T27)
     claims: [claim("ISC-1"), claim("ISC-2"), claim("ISC-3"), UNKNOWN], grouped: false, verifiedOn: "",
     decisions: ["2026-03-08: reproduced against a registry stub that drops the connection after the second blob."],
     body: () => `## Problem
@@ -711,7 +732,25 @@ retry creates a second tag.
 A push interrupted at any point leaves the target registry exactly as it was before the push started.`,
 };
 
-const SPECS = [S001, S002, S003, S004, S005, S006];
+// A chore (spec 008, T25): a small fix that is its own small spec. spec.md only — no context.md, plan, tasks or gate
+// marks — with both claims closed on their probes. Until core accepts the type (spec 008, T38) it reads as none and
+// warns `frontmatter-spec-type`.
+const S007: SpecDef = {
+    dir: "007-rotate-mirror-token", slug: "007-rotate-mirror-token", title: "Rotate the mirror token",
+    task: "Replace the push token without stopping a scheduled sync", type: "chore", feature: "F5",
+    phase: "building", started: "2026-03-09T08:30:00Z", updated: "2026-03-09T11:00:00Z",
+    claims: feature("F5").claims, grouped: false, verifiedOn: "2026-03-09",
+    decisions: ["2026-03-09: a chore, not a task in another spec; the token store already existed, only the swap was missing."],
+    body: () => `## Problem
+
+Replacing the push token means stopping the schedule, editing the credential store by hand and starting it again.
+
+## Goal
+
+The push token is replaced with one command, and the next scheduled run uses the new token without a restart.`,
+};
+
+const SPECS = [S001, S002, S003, S004, S005, S006, S007];
 
 // ── spec 002: the re-cut, rounds.jsonl and the live layer ──────────────────────────────────────────────
 // One fixture holds every card state of the round board (ISC-88): waiting (`held`), dispatched, question, concerns,
@@ -856,12 +895,41 @@ function rounds002(t: {before: Task[]; after: Task[]}): string {
     ], S002.claims);
 }
 
-/** `.spectant/activity.jsonl` at the repository root: T27 of round 3 still out, T25 claimed and released. */
+// ── actors (spec 008, T28) ─────────────────────────────────────────────────────────────────────────────
+// Every actor in the actor grammar of FORMAT.md: a person as `u:<8 hex>` (a synthetic id, hashed from no address), an
+// agent session as `a:<kind>:<id>`, a sub-agent of that session on one task as `a:<kind>:<id>/<task>`.
+const PERSON = "u:3f9c0a7d";
+const AGENT_001 = "a:claude:sess-7";
+const SESSION_002 = "a:claude:sess-2";
+
+/**
+ * `.spectant/activity.jsonl` at the repository root: T27 of round 3 still out, T25 claimed and released, and a
+ * sub-agent of the same session that claimed and released T4's claim in round 1.
+ */
 const ACTIVITY_002 = [
-    {ts: "2026-03-08T14:05:00Z", event: "claim", claim: "ISC-72", task: "T25", session: "spec-002-ISC-72", worktree: "wt-6"},
-    {ts: "2026-03-08T14:06:00Z", event: "claim", claim: "ISC-74", task: "T27", session: "spec-002-ISC-74", worktree: "wt-7"},
-    {ts: "2026-03-08T15:52:00Z", event: "release", claim: "ISC-72", session: "spec-002-ISC-72"},
+    {ts: "2026-03-06T09:12:00Z", event: "claim", claim: "ISC-53", task: "T4", session: `${SESSION_002}/T4`, worktree: "wt-1"},
+    {ts: "2026-03-06T09:58:00Z", event: "release", claim: "ISC-53", task: "T4", session: `${SESSION_002}/T4`},
+    {ts: "2026-03-08T14:05:00Z", event: "claim", claim: "ISC-72", task: "T25", session: SESSION_002, worktree: "wt-6"},
+    {ts: "2026-03-08T14:06:00Z", event: "claim", claim: "ISC-74", task: "T27", session: SESSION_002, worktree: "wt-7"},
+    {ts: "2026-03-08T15:52:00Z", event: "release", claim: "ISC-72", session: SESSION_002},
 ].map((line) => JSON.stringify(line)).join("\n") + "\n";
+
+// ── spec 002 and 006: events.jsonl and the explicit `stage:` (spec 008, T27) ────────────────────────────
+// 002 carries `stage: build` and its events end in `to: build`: the key and the last event agree. 006 carries
+// `stage: review` while its last event says `build` (reviewed, then edited, so the mark went stale): the
+// `stage-mismatch` case.
+
+const EVENTS_002 = [
+    {ts: "2026-03-03T10:00:00Z", from: null, to: "plan", command: "/spec-feature web-console", actor: PERSON},
+    {ts: "2026-03-03T11:00:00Z", from: "plan", to: "tasks", command: "/spec-plan 002", actor: PERSON},
+    {ts: "2026-03-03T12:00:00Z", from: "tasks", to: "review", command: "/spec-tasks 002", actor: PERSON},
+    {ts: "2026-03-04T09:00:00Z", from: "review", to: "build", command: "/spec-review 002", actor: PERSON},
+].map((e) => JSON.stringify(e)).join("\n") + "\n";
+
+const EVENTS_006 = [
+    {ts: "2026-03-08T09:00:00Z", from: null, to: "review", command: "/spec-bug partial-push", actor: PERSON},
+    {ts: "2026-03-08T12:00:00Z", from: "review", to: "build", command: "/spec-review 006", actor: PERSON},
+].map((e) => JSON.stringify(e)).join("\n") + "\n";
 
 // ── spec 001: events.jsonl (T16) ───────────────────────────────────────────────────────────────────────
 // Every recorded stage transition of the archived spec, in the stage table's names (one vocabulary for timeline and
@@ -870,13 +938,13 @@ const ACTIVITY_002 = [
 // dated ones: `started:`, both gate marks' `at` and `updated:`. The creation is the only null `from`.
 
 const EVENTS_001 = [
-    {ts: "2026-03-02T09:00:00Z", from: null, to: "plan", command: "/spec-feature manifest-sync", actor: "principal"},
-    {ts: "2026-03-02T09:40:00Z", from: "plan", to: "tasks", command: "/spec-plan 001", actor: "principal"},
-    {ts: "2026-03-02T10:20:00Z", from: "tasks", to: "review", command: "/spec-tasks 001", actor: "principal"},
-    {ts: "2026-03-02T11:00:00Z", from: "review", to: "build", command: "/spec-review 001", actor: "principal"},
-    {ts: "2026-03-05T12:10:00Z", from: "build", to: "code-review", command: "/spec-implement 001", actor: "agent"},
-    {ts: "2026-03-05T14:30:00Z", from: "code-review", to: "close", command: "/spec-code-review 001", actor: "principal"},
-    {ts: "2026-03-05T15:00:00Z", from: "close", to: "done", command: "/spec-complete 001", actor: "principal"},
+    {ts: "2026-03-02T09:00:00Z", from: null, to: "plan", command: "/spec-feature manifest-sync", actor: PERSON},
+    {ts: "2026-03-02T09:40:00Z", from: "plan", to: "tasks", command: "/spec-plan 001", actor: PERSON},
+    {ts: "2026-03-02T10:20:00Z", from: "tasks", to: "review", command: "/spec-tasks 001", actor: PERSON},
+    {ts: "2026-03-02T11:00:00Z", from: "review", to: "build", command: "/spec-review 001", actor: PERSON},
+    {ts: "2026-03-05T12:10:00Z", from: "build", to: "code-review", command: "/spec-implement 001", actor: AGENT_001},
+    {ts: "2026-03-05T14:30:00Z", from: "code-review", to: "close", command: "/spec-code-review 001", actor: PERSON},
+    {ts: "2026-03-05T15:00:00Z", from: "close", to: "done", command: "/spec-complete 001", actor: PERSON},
 ].map((e) => JSON.stringify(e)).join("\n") + "\n";
 
 // ── spec 002: artifacts/ and .evidence/ (T24) ──────────────────────────────────────────────────────────
@@ -987,6 +1055,32 @@ function kpiBandPng(): Uint8Array {
         ...chunk("IEND", [])]);
 }
 
+// ── spec 004: design.md and its screenshot (spec 004 of this repository, docs-tab images) ───────────────
+
+/** A design.md whose one image sits under `.design/`, the folder the docs tab loads through the evidence route. */
+const DESIGN_004 = `---
+spec: 004-retention-policies
+type: feature
+status: approved
+updated: 2026-03-04
+---
+
+# Design 004 — Retention policies
+
+## Phone
+
+### Current
+
+![The registry list at 390 before the preview exists](.design/mobile-ist.png)
+
+### Target
+
+The preview opens as a sheet over the list; the delete action stays disabled until the preview is confirmed.
+`;
+
+/** A 4 × 3 RGB PNG of 73 bytes, the screenshot stand-in; fixed bytes, so no encoder version can change it. */
+const MOBILE_IST_PNG_004 = "iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAAEElEQVR4nGOwbvoGRww4OQCFEBRlmZgzfQAAAABJRU5ErkJggg==";
+
 // ── repo-level files ───────────────────────────────────────────────────────────────────────────────────
 
 const CONSTITUTION = `---
@@ -1068,6 +1162,25 @@ The config loader rewrite touches every package at once; its parity snapshots ar
 Answer the empty-state question in 002, then run the code review for 004.
 `;
 
+/**
+ * `specs/workflow.md` (spec 008, T29): the default table of FORMAT.md's Workflow section with two departures. A feature
+ * is reviewed after its plan and before its tasks (review still before build, every claim closed before done), and a
+ * spike's code review runs once per feature (`code_review: feature`), the base of the `close-pending` case (T30).
+ * Not read by core yet (T42).
+ */
+const WORKFLOW = `# Workflow — harbor
+
+| type | stages | code_review |
+|------|--------|-------------|
+| feature | plan · review · tasks · build · code-review · close · done | spec |
+| project | plan · tasks · review · build · code-review · close · done | spec |
+| infra | plan · review · build · code-review · close · done | spec |
+| refactor | tasks · review · build · code-review · close · done | spec |
+| bug | review · build · code-review · close · done | spec |
+| spike | review · build · code-review · close · done | feature |
+| chore | review · build · done | none |
+`;
+
 // ── main ───────────────────────────────────────────────────────────────────────────────────────────────
 
 function generate() {
@@ -1083,7 +1196,7 @@ function generate() {
         write(`specs/${d.dir}/spec.md`, md);
         const goal = /^## Goal\n\n([^\n]+(?:\n[^\n#][^\n]*)*)/m.exec(md)?.[1] ?? d.task;
         goals[d.slug] = goal;
-        write(`specs/${d.dir}/context.md`, contextMd(d, goal));
+        if (d.type !== "chore") write(`specs/${d.dir}/context.md`, contextMd(d, goal)); // a chore carries spec.md only
     }
 
     // plans
@@ -1127,18 +1240,25 @@ function generate() {
     write(`specs/${S002.dir}/.evidence/dashboard.har`, HAR_002);
     write(`specs/${S002.dir}/.evidence/bun-test-r3.log`, LOG_002);
 
+    write(`specs/${S004.dir}/design.md`, DESIGN_004);
+    writeBytes(`specs/${S004.dir}/.design/mobile-ist.png`, Buffer.from(MOBILE_IST_PNG_004, "base64"));
+
     write(`specs/${S001.dir}/events.jsonl`, EVENTS_001);
+    write(`specs/${S002.dir}/events.jsonl`, EVENTS_002);
+    write(`specs/${S006.dir}/events.jsonl`, EVENTS_006);
 
     // gate marks — after every spec, plan and tasks file is written, since the reviewed digest covers them
     const g = (d: SpecDef, name: string, body: string) => write(`specs/${d.dir}/.gates/${name}.json`, body);
-    g(S001, "reviewed", reviewedMark(join(ROOT, "specs", S001.dir), "2026-03-02T11:00:00Z"));
-    g(S001, "code-reviewed", codeReviewedMark("harbor 001", "2026-03-05T14:30:00Z", "feature/001-manifest-sync", "clean"));
-    g(S002, "reviewed", reviewedMark(join(ROOT, "specs", S002.dir), "2026-03-07T15:30:00Z")); // renewed after the re-cut
-    g(S004, "reviewed", reviewedMark(join(ROOT, "specs", S004.dir), "2026-03-04T10:00:00Z"));
-    g(S004, "code-reviewed", codeReviewedMark("harbor 004", "2026-03-08T11:00:00Z", "feature/004-retention-policies", "one finding fixed; tree changed since"));
-    g(S006, "reviewed", staleReviewedMark("harbor 006", "2026-03-08T12:00:00Z"));
+    // the principal reviews; 004's code review was recorded by a reviewer agent (spec 008, T28)
+    g(S001, "reviewed", reviewedMark(join(ROOT, "specs", S001.dir), "2026-03-02T11:00:00Z", PERSON));
+    g(S001, "code-reviewed", codeReviewedMark("harbor 001", "2026-03-05T14:30:00Z", PERSON, "feature/001-manifest-sync", "clean"));
+    g(S002, "reviewed", reviewedMark(join(ROOT, "specs", S002.dir), "2026-03-07T15:30:00Z", PERSON)); // renewed after the re-cut
+    g(S004, "reviewed", reviewedMark(join(ROOT, "specs", S004.dir), "2026-03-04T10:00:00Z", PERSON));
+    g(S004, "code-reviewed", codeReviewedMark("harbor 004", "2026-03-08T11:00:00Z", "a:claude:sess-4", "feature/004-retention-policies", "one finding fixed; tree changed since"));
+    g(S006, "reviewed", staleReviewedMark("harbor 006", "2026-03-08T12:00:00Z", PERSON));
 
     write("specs/tldr.md", TLDR);
+    write("specs/workflow.md", WORKFLOW);
 }
 
 // ── cli ────────────────────────────────────────────────────────────────────────────────────────────────

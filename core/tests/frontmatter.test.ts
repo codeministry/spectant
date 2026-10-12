@@ -28,7 +28,7 @@ describe('fixtures', () => {
   const files = markdownFiles();
 
   test('the corpus holds the spec and master files the parsers are measured on', () => {
-    expect(files.filter((f) => f.endsWith('/spec.md') || f.endsWith('/ISA.md')).length).toBe(17);
+    expect(files.filter((f) => f.endsWith('/spec.md') || f.endsWith('/ISA.md')).length).toBe(18);
   });
 
   test.each(files)('%s parses without an error diagnostic', (rel) => {
@@ -36,21 +36,30 @@ describe('fixtures', () => {
     expect(fm.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
+  // The harbor chore (spec 008, T25) carries `spec_type: chore`, which the parser accepts only from T38 on: until
+  // then it warns `frontmatter-spec-type` and reads as none.
+  const CHORE_UNTIL_T38 = new Set(['harbor/specs/007-rotate-mirror-token/spec.md']);
+
   test.each(files.filter((f) => f.endsWith('/spec.md')))('%s carries a typed spec head', (rel) => {
     const fm = parseFrontmatter(read(rel));
     expect(fm.present).toBe(true);
-    expect(fm.diagnostics).toEqual([]);
+    if (CHORE_UNTIL_T38.has(rel)) {
+      expect(fm.diagnostics.map((d) => [d.severity, d.code])).toEqual([['warning', 'frontmatter-spec-type']]);
+      expect(fm.data.specType).toBeNull();
+    } else {
+      expect(fm.diagnostics).toEqual([]);
+      expect(fm.data.specType).not.toBeNull();
+    }
     expect(fm.data.slug).toMatch(/^\d{3}-[a-z0-9-]+$/);
-    expect(fm.data.specType).not.toBeNull();
     expect(fm.data.progress).not.toBeNull();
     expect(fm.data.phase).not.toBeNull();
     expect(typeof fm.data.contextSufficient).toBe('boolean');
     expect(typeof fm.data.interviewInvoked).toBe('boolean');
   });
 
-  test('harbor master: progress 101/124, project kept in rest', () => {
+  test('harbor master: progress 103/126, project kept in rest', () => {
     const fm = parseFrontmatter(read('harbor/ISA.md'));
-    expect(fm.data.progress).toEqual({ closed: 101, total: 124 });
+    expect(fm.data.progress).toEqual({ closed: 103, total: 126 });
     expect(fm.data.task).toBe('Mirror container manifests between registries with Harbor');
     expect(fm.data.slug).toBe('20260302-harbor');
     expect(fm.data.phase).toBe('climbing');
@@ -77,7 +86,8 @@ describe('fixtures', () => {
       contextLog: 'context.md',
       archived: null,
     });
-    expect(fm.rest).toEqual({});
+    // `priority:` and `stage:` are kept in rest until the parser types them (spec 008, T39 and T40)
+    expect(fm.rest).toEqual({ priority: 'P2', stage: 'build' });
   });
 
   test('harbor archive/001: archived date, isa_master left unchanged', () => {

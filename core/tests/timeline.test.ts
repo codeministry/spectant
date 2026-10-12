@@ -213,7 +213,11 @@ function readFolder(relDir: string): SpecFiles {
   const name = relDir.split('/').pop() ?? relDir;
   const files = folders(dirname(dir)).find((f) => f.folder === name);
   if (!files) throw new Error(`no fixture folder ${relDir}`);
-  return files;
+  // These tests prove the derivation from the files; a test that wants recorded transitions passes `events` itself.
+  // Harbor 002 and 006 carry an events.jsonl since spec 008 (T27), so it is left out here.
+  const texts = { ...files.texts };
+  delete texts.events;
+  return { ...files, texts };
 }
 
 /** Every spec folder of every fixture tree, active and archived, as `tree/specs/…` paths. */

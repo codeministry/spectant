@@ -7,6 +7,9 @@
 // entries (`derived: false`, their `actor` and `command`) and nothing is derived. An invalid line is dropped from the
 // timeline, which carries no diagnostics; parseEvents reports it. A file whose lines are all invalid derives as if absent.
 //
+// Harbor 002 carries a recorded events.jsonl since spec 008 (T27). Every test here starts from 002's derived state,
+// so `workspace()` removes that file from the copy; a test that wants recorded transitions writes its own.
+//
 // The temp workspaces are no git repository of their own, so the route answers no commits and the plain body-hash ETag.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -48,10 +51,14 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-/** A fresh copy of harbor at `root/<slug>`, registered alone; the handler answers the spec routes for it. */
+/**
+ * A fresh copy of harbor at `root/<slug>` without 002's events.jsonl (see the header), registered alone; the handler
+ * answers the spec routes for it.
+ */
 function workspace(slug: string): { dir: string; handler: ApiHandler } {
   const dir = join(root, slug);
   cpSync(HARBOR, dir, { recursive: true });
+  rmSync(join(dir, KEY, "events.jsonl"));
   const registry = openRegistry(mkdtempSync(join(root, "data-")));
   registries.push(registry);
   registry.add(dir);
@@ -84,10 +91,14 @@ function expectNewestFirst(entries: readonly TimelineEntry[]): void {
 
 describe("timeline route (T50, ISC-36)", () => {
   test("without events.jsonl: harbor 002's stage transitions are derived, in date order among decisions, rounds and gates", async () => {
-    const { handler } = workspace("dock");
+    const { dir, handler } = workspace("dock");
     const { entries } = await body(await timeline(handler, "dock", "002"));
-    const golden = JSON.parse(readFileSync(join(FIXTURES, "harbor.timeline.golden.json"), "utf8")) as Record<string, unknown>;
-    expect(entries).toEqual(golden[KEY] as TimelineEntry[]);
+    // The route answers exactly what core builds from the files without events.jsonl.
+    const built = buildTimeline({ files: readSpecFiles({ dir: join(dir, KEY), slug: "002-web-console" }), commits: [] });
+    expect(entries).toEqual(JSON.parse(JSON.stringify(built)) as TimelineEntry[]);
+    // The golden holds 002's recorded stages; every other entry is the golden's, in the golden's order.
+    const golden = JSON.parse(readFileSync(join(FIXTURES, "harbor.timeline.golden.json"), "utf8")) as Record<string, TimelineEntry[]>;
+    expect(entries.filter((e) => e.kind !== "stage")).toEqual((golden[KEY] ?? []).filter((e) => e.kind !== "stage"));
 
     // Every stage entry is derived and nobody's; every other entry is recorded.
     const stages = stagesOf(entries);

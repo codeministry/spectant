@@ -4,6 +4,7 @@ slug: 005-config-format-choice
 spec_type: spike
 isa_master: ../../ISA.md
 isa_feature: F3
+priority: high
 constitution: ../constitution.md
 phase: scoping
 progress: 0/1

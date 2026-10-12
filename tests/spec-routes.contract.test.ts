@@ -344,6 +344,8 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
         nextCommand: "req", // single-core: allow — key list of the core type, not a derivation
         nextReason: "req", phase: "req", started: "req", updated: "req", round: "req", lastRound: "req",
         uncommittedFiles: "req",
+        // spec 008: optional until their fill-ins (T39, T47, T65) set them.
+        priority: "opt", stageSource: "opt", assignee: "opt",
       })),
       ...shapeProblems("spec.keyNumbers", value.keyNumbers, keysOf<KeyNumbers>({
         claims: "req", tasks: "req", rounds: "req", gates: "req", waiting: "req",

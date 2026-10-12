@@ -218,7 +218,7 @@ describe('check-coverage --free-specs', () => {
       'specs/ideas/gamma.md': story('Free'),
       'specs/011-beta/spec.md': '# beta\n',
       'specs/012-gamma/context.md': '# ctx',
-      'specs/012-gamma/spec.md': '# gamma\n\n  - [ ] ISC-1: a claim\n',
+      'specs/012-gamma/spec.md': '# gamma\n\n## Claims\n\n- [ ] ISC-1: a claim\n',
     });
     const { code, out } = run(root, '--free-specs');
     expect(out).toContain('specs/ideas/alpha.md: no spec folder');

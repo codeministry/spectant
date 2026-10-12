@@ -506,6 +506,11 @@
         "wordCount": 42
       }
     },
+    "specs/007-rotate-mirror-token": {
+      "plan": null,
+      "design": null,
+      "decisions": null
+    },
     "specs/archive/001-manifest-sync": {
       "plan": {
         "frontmatter": {

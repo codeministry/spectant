@@ -48,6 +48,8 @@ export const TYPE_NEEDS: Readonly<Record<SpecType, { readonly plan: boolean; rea
   feature: { plan: true, tasks: true },
   project: { plan: true, tasks: true },
   infra: { plan: true, tasks: false },
+  // spec 008 T37: the row the wider `SpecType` demands; no spec reads as `chore` until `frontmatter.ts` accepts it (T38).
+  chore: { plan: false, tasks: false },
 };
 
 /** Below this many claims a spec needs no tasks.md, whatever its type. */

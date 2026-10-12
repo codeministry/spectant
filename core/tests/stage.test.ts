@@ -192,6 +192,7 @@ describe('STAGE_RULES is the status contract as data', () => {
       feature: { plan: true, tasks: true },
       project: { plan: true, tasks: true },
       infra: { plan: true, tasks: false },
+      chore: { plan: false, tasks: false },
     });
   });
 
@@ -427,6 +428,8 @@ const WALK: Readonly<Record<string, readonly Walked[]>> = {
     ['specs/004-retention-policies', 'code-review', '/spec-code-review 004', 'every claim is closed and the code-reviewed mark is stale'],
     ['specs/005-config-format-choice', 'review', '/spec-review 005', 'the reviewed mark is missing'],
     ['specs/006-partial-push', 'review', '/spec-review 006', 'the reviewed mark is stale'],
+    // The chore reads as type none until spec 008, T38: no plan or tasks asked for, and no reviewed mark yet.
+    ['specs/007-rotate-mirror-token', 'review', '/spec-review 007', 'the reviewed mark is missing'],
     ['specs/archive/001-manifest-sync', 'done', null, 'phase: complete'],
   ],
   lantern: [
@@ -486,7 +489,7 @@ describe('every fixture spec derives the stage table row it names (ISC-79)', () 
   }
 
   test('the walk compared every listed spec', () => {
-    expect(compared).toBe(12);
+    expect(compared).toBe(13);
   });
 });
 

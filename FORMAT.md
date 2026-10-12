@@ -77,17 +77,17 @@ The seven types are `feature`, `project`, `infra`, `refactor`, `bug`, `spike` an
 that is its own small spec, never a task collected in a sidelane spec: it carries `spec.md` only and runs review →
 build → done. Its claims wait on a fresh reviewed mark like every type's, and once every claim is closed it is done
 without a code-reviewed mark and without an edit to `phase: complete` (the stage-table row for this is spec 008, T23).
-Not read yet: `SpecType` in `core/src/files.ts` gains `chore` in T37 and `frontmatter.ts` accepts it in T38; until
-then `spec_type: chore` warns `frontmatter-spec-type` and reads as none.
+Not read yet: `SpecType` in `core/src/files.ts` holds `chore` (spec 008, T37), and `frontmatter.ts` accepts it in
+T38; until then `spec_type: chore` warns `frontmatter-spec-type` and reads as none.
 
 Diagrams: a `feature`, `infra` or `project` spec needs a fence whose info string is exactly `mermaid` in both
 `spec.md` and `plan.md` (dashboard warning `diagrams`); a `refactor` only warns without one in `spec.md`; a complete
 spec is never held to it (`diagrams.ts`).
 
-Beside the thirteen, a repository may carry story files under `specs/ideas/` and one workflow table
-`specs/workflow.md`, documented in the sections Ideas and Workflow below. Neither belongs to a spec folder, so the
-table above has no row for them; they join `FILE_KINDS` as the kinds `idea` and `workflow` together with their readers
-(spec 008, T37).
+Beside the thirteen, `FILE_KINDS` holds two repository kinds (spec 008, T37): `idea`, the story files under
+`specs/ideas/`, and `workflow`, the one table `specs/workflow.md`, each documented in its section below. Neither
+belongs to a spec folder, so the table above has no row for them; like `constitution` and `master` they carry
+`scope: repo` and a path from the repository root (`repoFilePath`) beside the path relative to an active spec folder.
 
 ## `spec` — `spec.md`
 
@@ -154,6 +154,8 @@ spec_type: feature
 isa_master: ../../ISA.md
 isa_feature: F2
 milestone: Harbor 1.0
+priority: P2
+stage: build
 constitution: ../constitution.md
 phase: building
 progress: 25/30
@@ -416,19 +418,19 @@ vocabulary for timeline and stage); `from` is null only on the creation, the fil
 From `core/fixtures/harbor/specs/archive/001-manifest-sync/events.jsonl`, the whole chain of a complete spec:
 
 ```json
-{"ts":"2026-03-02T09:00:00Z","from":null,"to":"plan","command":"/spec-feature manifest-sync","actor":"principal"}
-{"ts":"2026-03-02T09:40:00Z","from":"plan","to":"tasks","command":"/spec-plan 001","actor":"principal"}
-{"ts":"2026-03-02T10:20:00Z","from":"tasks","to":"review","command":"/spec-tasks 001","actor":"principal"}
-{"ts":"2026-03-02T11:00:00Z","from":"review","to":"build","command":"/spec-review 001","actor":"principal"}
-{"ts":"2026-03-05T12:10:00Z","from":"build","to":"code-review","command":"/spec-implement 001","actor":"agent"}
-{"ts":"2026-03-05T14:30:00Z","from":"code-review","to":"close","command":"/spec-code-review 001","actor":"principal"}
-{"ts":"2026-03-05T15:00:00Z","from":"close","to":"done","command":"/spec-complete 001","actor":"principal"}
+{"ts":"2026-03-02T09:00:00Z","from":null,"to":"plan","command":"/spec-feature manifest-sync","actor":"u:3f9c0a7d"}
+{"ts":"2026-03-02T09:40:00Z","from":"plan","to":"tasks","command":"/spec-plan 001","actor":"u:3f9c0a7d"}
+{"ts":"2026-03-02T10:20:00Z","from":"tasks","to":"review","command":"/spec-tasks 001","actor":"u:3f9c0a7d"}
+{"ts":"2026-03-02T11:00:00Z","from":"review","to":"build","command":"/spec-review 001","actor":"u:3f9c0a7d"}
+{"ts":"2026-03-05T12:10:00Z","from":"build","to":"code-review","command":"/spec-implement 001","actor":"a:claude:sess-7"}
+{"ts":"2026-03-05T14:30:00Z","from":"code-review","to":"close","command":"/spec-code-review 001","actor":"u:3f9c0a7d"}
+{"ts":"2026-03-05T15:00:00Z","from":"close","to":"done","command":"/spec-complete 001","actor":"u:3f9c0a7d"}
 ```
 
 A single line in the schema, the transition "Mark reviewed" records (ISC-24):
 
 ```json
-{"ts":"2026-03-07T15:30:00Z","from":"review","to":"build","command":"/spec-review 002","actor":"principal"}
+{"ts":"2026-03-07T15:30:00Z","from":"review","to":"build","command":"/spec-review 002","actor":"u:3f9c0a7d"}
 ```
 
 **The actor grammar** (spec 008, ISC-119). Every `actor` a file of this contract carries — an `events.jsonl` line,
@@ -445,8 +447,9 @@ The person id is unsalted, so two machines with the same `user.email` agree on o
 `core/` derives the `u:` id from the repository's git configuration (spec 008, T59 for the derivation, T77 for reading
 `user.email`); the app maps an id to a display name and its git identities in its own data directory, never in a file
 of the repository, and shows an id without a mapping as the id itself. Any other value is **legacy**: it is read,
-marked `legacy` and never rejected. Every example in this document still carries a legacy actor (`principal`,
-`agent`, `spec-002-ISC-74`) until the harbor fixture is regenerated with the new forms (T28). Not parsed yet: until
+marked `legacy` and never rejected. The harbor fixture carries the new forms only (spec 008, T28); the legacy case
+(`principal`, `agent`, `spec-002-ISC-75`) is left to the `lantern/` fixture (T33) and the frontier-lock example
+below. Not parsed yet: until
 `actor.ts` (T59) lands, an actor is free text that must only be non-empty (`event-empty` for an event line).
 
 **Validated** (`events.ts`, T16, ISC-32). `parseEvents` reads the file line by line, skips blank lines and keeps file
@@ -508,6 +511,7 @@ From `core/fixtures/harbor/specs/006-partial-push/.gates/reviewed.json`:
 {
   "gate": "reviewed",
   "at": "2026-03-08T12:00:00Z",
+  "actor": "u:3f9c0a7d",
   "files": {
     "spec.md": "08a83a1bc735b8b7a913eee076ba5eae301e66dadb19037eb07b5beb148439ec",
     "plan.md": null,
@@ -531,6 +535,7 @@ From `core/fixtures/harbor/specs/004-retention-policies/.gates/code-reviewed.jso
 {
   "gate": "code-reviewed",
   "at": "2026-03-08T11:00:00Z",
+  "actor": "a:claude:sess-4",
   "tree": "0f0b75edd68fe6549744de66e4500c4f95b538bf",
   "head": "da3b7bf10406c1facaabffd3c7acd7853204a65d",
   "branch": "feature/004-retention-policies",
@@ -551,7 +556,8 @@ From `core/fixtures/leadgen/specs/022-chat-turn-status-and-bulk-delete/.gates/co
 
 **Who recorded a mark.** Either mark may carry `actor`, the person or agent that recorded it, in the actor grammar
 (`events`, above): a `u:` id for a principal's review, an `a:` id when a reviewer agent recorded it. Not read yet: the
-key is ignored today; the harbor fixture gains it in spec 008, T28, and `actor.ts` parses it (T59).
+key is ignored today; every harbor mark carries it since spec 008, T28 (the examples above), and `actor.ts` parses it
+(T59).
 
 **Derived for both marks:** the gate views on the row and the spec page, the stage (`review`, `code-review`, `close`),
 the `review` warning, and one gate entry per mark on the timeline (with files, head, branch and note).
@@ -632,7 +638,7 @@ task: "Mirror container manifests between registries with Harbor"
 slug: 20260302-harbor
 project: harbor
 phase: climbing
-progress: 101/124
+progress: 103/126
 started: 2026-03-02T08:00:00Z
 updated: 2026-03-09T17:30:00Z
 ---
@@ -693,13 +699,12 @@ attention count. **Derived: the planning tree** (spec 003, `planning.ts`): the f
 claim with the spec folder that holds it, active or archived; and the milestones from the `## Milestones` block
 together with the specs' `milestone:` keys, each with its progress, closed over total, across every feature it touches.
 
-## Ideas (`idea`) — `specs/ideas/<slug>.md`
+## `idea` — `../ideas/`, one `specs/ideas/<slug>.md` per story
 
 A story: an idea that is shaped but not yet a spec, one file per story in `specs/ideas/`. The file is a filled `/spec`
 prompt with a frontmatter block in front of it. A story has no number and no claims; it belongs to a feature block of
-the master and, optionally, to one of its milestones. Not read yet: `ideas.ts` (spec 008, T51, T52) fills the reader,
-and `FILE_KINDS` gains the kind `idea` with it (T37); until then this section carries no kind heading, and
-`check:format-doc` does not count it.
+the master and, optionally, to one of its milestones. Not read yet: the kind is in `FILE_KINDS` (spec 008, T37), and
+`ideas.ts` (T51, T52) fills the reader.
 
 **Frontmatter** (the same reader as a spec, `frontmatter.ts`). Five typed keys:
 
@@ -770,12 +775,12 @@ A setting changed in the console leaves no trace; when a mirror stops, nobody ca
 - A console write appends exactly one audit line → bun-test
 ```
 
-## Workflow (`workflow`) — `specs/workflow.md`
+## `workflow` — `../workflow.md`, at `specs/workflow.md`
 
 The workflow: per spec type, the ordered stages a spec of that type runs through and how its code review is done. One
-file per repository, at `specs/workflow.md`, beside the constitution; it belongs to no spec folder. Not read yet:
-`workflow.ts` (spec 008, T42, T43) fills the reader, and `FILE_KINDS` gains the kind `workflow` with it (T37); until
-then this section carries no kind heading, `check:format-doc` does not count it, and every spec runs the default below.
+file per repository, at `specs/workflow.md`, beside the constitution; it belongs to no spec folder. Not read yet: the
+kind is in `FILE_KINDS` (spec 008, T37), and `workflow.ts` (T42, T43) fills the reader; until then every spec runs the
+default below.
 
 The file holds one Markdown table `| type | stages | code_review |`, one row per type:
 
@@ -897,8 +902,8 @@ Read when present, never written by the app (spec 002, T20, `locks.ts`). Two sou
 
 In both sources `session` is the actor that holds the claim, in the actor grammar (`events`, above): `a:<kind>:<id>`
 for an agent session, `a:<kind>:<id>/<task>` for a sub-agent on a task (`a:claude:sess-7/T12`, with `task: "T12"`), a
-`u:` id for a person who holds a claim by hand. A `session` in another form, such as the `spec-002-ISC-74` lines below,
-is legacy: read, marked `legacy`, never rejected (spec 008, T28 regenerates harbor with the new forms).
+`u:` id for a person who holds a claim by hand. A `session` in another form, such as the `spec-002-ISC-75` of the
+frontier lock below, is legacy: read, marked `legacy`, never rejected; harbor carries the new forms only (spec 008, T28).
 
 The page names the source it read (`frontier` before `activity`, else `none`); with no source it says so and a write
 proceeds under the hash check alone.
@@ -906,8 +911,10 @@ proceeds under the hash check alone.
 From `core/fixtures/harbor/.spectant/activity.jsonl`:
 
 ```json
-{"ts":"2026-03-08T14:06:00Z","event":"claim","claim":"ISC-74","task":"T27","session":"spec-002-ISC-74","worktree":"wt-7"}
-{"ts":"2026-03-08T15:52:00Z","event":"release","claim":"ISC-72","session":"spec-002-ISC-72"}
+{"ts":"2026-03-06T09:12:00Z","event":"claim","claim":"ISC-53","task":"T4","session":"a:claude:sess-2/T4","worktree":"wt-1"}
+{"ts":"2026-03-06T09:58:00Z","event":"release","claim":"ISC-53","task":"T4","session":"a:claude:sess-2/T4"}
+{"ts":"2026-03-08T14:05:00Z","event":"claim","claim":"ISC-72","task":"T25","session":"a:claude:sess-2","worktree":"wt-6"}
+{"ts":"2026-03-08T14:06:00Z","event":"claim","claim":"ISC-74","task":"T27","session":"a:claude:sess-2","worktree":"wt-7"}
 ```
 
 A frontier lock is one file per held claim, `<state>/isa-locks/<hash>/<claim-id>.lock`, where `<state>` is the LifeOS

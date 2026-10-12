@@ -58,7 +58,7 @@ describe('activity source (harbor 002, the fixture log)', () => {
 
   test('the reading is the activity log: ISC-74 held, ISC-72 released', () => {
     expect(locks.source).toBe('activity');
-    expect(locks.locks.map((l) => [l.claim, l.session])).toEqual([['ISC-74', 'spec-002-ISC-74']]);
+    expect(locks.locks.map((l) => [l.claim, l.session])).toEqual([['ISC-74', 'a:claude:sess-2']]);
   });
 
   test('T27 carries ISC-74 and is in flight with the session name, 30 minutes in, not stale', () => {
@@ -66,7 +66,7 @@ describe('activity source (harbor 002, the fixture log)', () => {
     const t27 = card(live, 'T27');
     expect(t27.claim).toBe('ISC-74');
     expect(t27.state).toBe('running');
-    expect(t27.lock).toEqual({ source: 'activity', session: 'spec-002-ISC-74' });
+    expect(t27.lock).toEqual({ source: 'activity', session: 'a:claude:sess-2' });
     expect(t27.since).toBe(T27_SINCE);
     expect(t27.elapsedMs).toBe(30 * MIN);
     expect(t27.stale).toBe(false);
@@ -78,7 +78,7 @@ describe('activity source (harbor 002, the fixture log)', () => {
     const live = buildLiveFrame({ files, locks, now: at(60) });
     expect(card(live, 'T27')).toMatchObject({ state: 'running', elapsedMs: 60 * MIN, stale: true });
     expect(live.agents).toEqual([
-      { session: 'spec-002-ISC-74', source: 'activity', claims: ['ISC-74'], since: T27_SINCE, elapsedMs: 60 * MIN, stale: true },
+      { session: 'a:claude:sess-2', source: 'activity', claims: ['ISC-74'], since: T27_SINCE, elapsedMs: 60 * MIN, stale: true },
     ]);
     expect(live.staleAfterMs).toBe(LIVE_STALE_MS);
   });
@@ -101,7 +101,7 @@ describe('activity source (harbor 002, the fixture log)', () => {
       lockSource: 'activity',
       closedClaims: [],
     });
-    expect(live.locks).toEqual([{ source: 'activity', claim: 'ISC-74', session: 'spec-002-ISC-74', since: T27_SINCE }]);
+    expect(live.locks).toEqual([{ source: 'activity', claim: 'ISC-74', session: 'a:claude:sess-2', since: T27_SINCE }]);
     // spec.md: 25 of 30 claims checked; the board: 27 landed (26 closed + the operator's T30) of 32.
     expect(live.progress).toEqual({ claims: { closed: 25, total: 30 }, tasks: { landed: 27, total: 32 } });
     expect(live.worst).toBe('question');
@@ -123,7 +123,7 @@ describe('activity source (harbor 002, the fixture log)', () => {
 
 describe('frontier source (hand-made reading)', () => {
   const files = harbor002();
-  const activity: ClaimLock = { source: 'activity', claim: 'ISC-74', session: 'spec-002-ISC-74', since: T27_SINCE };
+  const activity: ClaimLock = { source: 'activity', claim: 'ISC-74', session: 'a:claude:sess-2', since: T27_SINCE };
   const frontier: ClaimLock = { source: 'frontier', claim: 'ISC-75', session: 'spec-002-ISC-75', since: '2026-03-08T14:30:00.000Z' };
   const reading: LockReading = { source: 'frontier', sources: ['frontier', 'activity'], locks: [activity, frontier] };
 
@@ -131,7 +131,7 @@ describe('frontier source (hand-made reading)', () => {
     const live = buildLiveFrame({ files, locks: reading, now: at(30) });
     expect(live.lockSource).toBe('frontier');
     expect(live.agents.map((a) => [a.session, a.source, a.claims, a.elapsedMs])).toEqual([
-      ['spec-002-ISC-74', 'activity', ['ISC-74'], 30 * MIN],
+      ['a:claude:sess-2', 'activity', ['ISC-74'], 30 * MIN],
       ['spec-002-ISC-75', 'frontier', ['ISC-75'], 6 * MIN],
     ]);
     expect(card(live, 'T28')).toMatchObject({ state: 'running', lock: { source: 'frontier', session: 'spec-002-ISC-75' }, elapsedMs: 6 * MIN, stale: false });

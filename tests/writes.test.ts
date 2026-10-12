@@ -32,7 +32,7 @@ const HOST = { Host: "127.0.0.1:7717" };
 const WEB = "specs/002-web-console";
 const RETENTION = "specs/004-retention-policies";
 const LOADER = "specs/003-config-loader";
-const ISC_74_LOCK = { source: "activity", claim: "ISC-74", session: "spec-002-ISC-74", since: "2026-03-08T14:06:00Z" } as const;
+const ISC_74_LOCK = { source: "activity", claim: "ISC-74", session: "a:claude:sess-2", since: "2026-03-08T14:06:00Z" } as const;
 
 let root: string;
 const registries: Registry[] = [];
@@ -130,6 +130,9 @@ describe("ISC-24 reviewed: the mark in the old skill's format plus exactly one r
   test("marking 002 writes .gates/reviewed.json as reviewedMarkText of the server's hashes and appends one event", async () => {
     const { repo, api } = setup({ activity: false });
     const hashes = await renderedHashes(api, "002");
+    // Harbor 002 already carries its stage history; the write appends one line after it and keeps it byte for byte.
+    const prior = readFileSync(join(repo, WEB, "events.jsonl"), "utf8");
+    expect(prior.endsWith("\n")).toBe(true);
     const before = tree(repo);
     const res = await post(api, specRoutes.gateReviewed("harbor", "002"), { hashes });
     expect(res.status).toBe(200);
@@ -144,9 +147,12 @@ describe("ISC-24 reviewed: the mark in the old skill's format plus exactly one r
     expect(reviewedGate(readSpecFiles({ dir: join(repo, WEB), slug: "002-web-console" }).texts).check.state).toBe("fresh");
 
     const events = readFileSync(join(repo, WEB, "events.jsonl"), "utf8");
-    expect(lines(events.trimEnd())).toHaveLength(1);
-    expect(validateEventLine(events.trimEnd()).ok).toBe(true);
-    expect(JSON.parse(events)).toEqual(body.event);
+    expect(events.startsWith(prior)).toBe(true);
+    const appended = events.slice(prior.length);
+    expect(lines(appended.trimEnd())).toHaveLength(1);
+    expect(lines(events.trimEnd())).toHaveLength(lines(prior.trimEnd()).length + 1);
+    expect(validateEventLine(appended.trimEnd()).ok).toBe(true);
+    expect(JSON.parse(appended)).toEqual(body.event);
     expect(body.event).toMatchObject({ ts: body.at, ...REVIEWED_EVENT, actor: WRITE_ACTOR });
 
     expect(changed(before, tree(repo))).toEqual([`${WEB}/.gates/reviewed.json`, `${WEB}/events.jsonl`]);
@@ -320,7 +326,7 @@ describe("ISC-27 claim lock: an open claim in .spectant/activity.jsonl refuses t
     const other = await post(api, specRoutes.gateReviewed("harbor", "004"), { hashes: await renderedHashes(api, "004") });
     expect(other.status).toBe(200);
     expect(((await other.json()) as { lockSource: string }).lockSource).toBe("activity");
-    appendFileSync(join(repo, ".spectant", "activity.jsonl"), '{"ts":"2026-03-08T16:00:00Z","event":"release","claim":"ISC-74","session":"spec-002-ISC-74"}\n');
+    appendFileSync(join(repo, ".spectant", "activity.jsonl"), '{"ts":"2026-03-08T16:00:00Z","event":"release","claim":"ISC-74","session":"a:claude:sess-2"}\n');
     const tick = await post(api, specRoutes.taskCheck("harbor", "002", "T27"), { checked: true, hash: await renderedTasksHash(api, "002") });
     expect(tick.status).toBe(200);
   });

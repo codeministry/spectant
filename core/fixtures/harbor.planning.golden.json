@@ -859,6 +859,39 @@
         }
       ],
       "unheld": []
+    },
+    {
+      "id": "F5",
+      "name": "Mirror credentials",
+      "why": "the token Harbor pushes with can be replaced without stopping a scheduled sync.",
+      "closed": 2,
+      "total": 2,
+      "claims": [
+        {
+          "id": "ISC-126",
+          "closed": true,
+          "dropped": false,
+          "holder": "007"
+        },
+        {
+          "id": "ISC-127",
+          "closed": true,
+          "dropped": false,
+          "holder": "007"
+        }
+      ],
+      "holders": [
+        {
+          "id": "007",
+          "slug": "007-rotate-mirror-token",
+          "title": "Replace the push token without stopping a scheduled sync",
+          "archived": false,
+          "stage": null,
+          "main": true,
+          "held": 2
+        }
+      ],
+      "unheld": []
     }
   ],
   "milestones": [
@@ -950,8 +983,8 @@
     }
   ],
   "recount": {
-    "closed": 101,
-    "total": 124
+    "closed": 103,
+    "total": 126
   },
   "diagnostics": []
 }

@@ -55,7 +55,7 @@ describe('harbor 002, the richest spec', () => {
     expect(model.counts).toEqual({ all: 30, open: 5, takeable: 3, taken: 1, blocked: 1, closed: 25, dropped: 0, normal: 30, anti: 0, antecedent: 0 });
     expect(idsIn(model, 'taken')).toEqual(['ISC-74']);
     expect(idsIn(model, 'takeable')).toEqual(['ISC-75', 'ISC-76', 'ISC-77']);
-    expect(byId(model, 'ISC-74').lock).toEqual({ source: 'activity', session: 'spec-002-ISC-74', since: '2026-03-08T14:06:00Z' });
+    expect(byId(model, 'ISC-74').lock).toEqual({ source: 'activity', session: 'a:claude:sess-2', since: '2026-03-08T14:06:00Z' });
     // ISC-72 was claimed and released: closed, no lock.
     expect(byId(model, 'ISC-72')).toMatchObject({ state: 'closed', lock: null });
   });
@@ -131,14 +131,14 @@ describe('kinds, tombstones and fog in the other fixtures', () => {
         resolves: 'needs one real multi-repository config',
         sinceRound: null,
         marks: [],
-        line: 33,
+        line: 34,
       },
       {
         text: 'whether a comment-preserving writer is required at all',
         resolves: 'depends on whether the console ever edits the config',
         sinceRound: null,
         marks: [],
-        line: 34,
+        line: 35,
       },
     ]);
   });

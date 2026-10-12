@@ -12,18 +12,6 @@
     },
     {
       "ts": "2026-03-07T15:30:00Z",
-      "kind": "stage",
-      "derived": true,
-      "title": "review → build",
-      "body": "- Derived from: .gates/reviewed.json `at`",
-      "ref": "build",
-      "id": "stage-build",
-      "actor": null,
-      "from": "review",
-      "to": "build"
-    },
-    {
-      "ts": "2026-03-07T15:30:00Z",
       "kind": "gate",
       "derived": false,
       "title": "Reviewed",
@@ -52,42 +40,56 @@
       "actor": "Engineer"
     },
     {
-      "ts": "",
+      "ts": "2026-03-04T09:00:00Z",
       "kind": "stage",
-      "derived": true,
-      "title": "tasks → review",
-      "body": "- Undated: tasks.md exists; no `created:` and no context.md round \"before the tasks\"",
-      "ref": "review",
-      "id": "stage-review",
-      "actor": null,
-      "from": "tasks",
-      "to": "review",
-      "undated": true
+      "derived": false,
+      "title": "review → build",
+      "body": "- Command: /spec-review 002",
+      "ref": "build",
+      "id": "stage-build",
+      "actor": "u:3f9c0a7d",
+      "from": "review",
+      "to": "build",
+      "command": "/spec-review 002"
     },
     {
-      "ts": "",
+      "ts": "2026-03-03T12:00:00Z",
       "kind": "stage",
-      "derived": true,
+      "derived": false,
+      "title": "tasks → review",
+      "body": "- Command: /spec-tasks 002",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": "u:3f9c0a7d",
+      "from": "tasks",
+      "to": "review",
+      "command": "/spec-tasks 002"
+    },
+    {
+      "ts": "2026-03-03T11:00:00Z",
+      "kind": "stage",
+      "derived": false,
       "title": "plan → tasks",
-      "body": "- Undated: plan.md exists; no `created:` and no context.md round \"before the plan\"",
+      "body": "- Command: /spec-plan 002",
       "ref": "tasks",
       "id": "stage-tasks",
-      "actor": null,
+      "actor": "u:3f9c0a7d",
       "from": "plan",
       "to": "tasks",
-      "undated": true
+      "command": "/spec-plan 002"
     },
     {
       "ts": "2026-03-03T10:00:00Z",
       "kind": "stage",
-      "derived": true,
+      "derived": false,
       "title": "created → plan",
-      "body": "- Derived from: spec.md `started:`",
+      "body": "- Command: /spec-feature web-console",
       "ref": "plan",
       "id": "stage-plan",
-      "actor": null,
+      "actor": "u:3f9c0a7d",
       "from": null,
-      "to": "plan"
+      "to": "plan",
+      "command": "/spec-feature web-console"
     },
     {
       "ts": "2026-03-03T10:00:00Z",
@@ -257,14 +259,15 @@
     {
       "ts": "2026-03-08T12:00:00Z",
       "kind": "stage",
-      "derived": true,
+      "derived": false,
       "title": "review → build",
-      "body": "- Derived from: .gates/reviewed.json `at`",
+      "body": "- Command: /spec-review 006",
       "ref": "build",
       "id": "stage-build",
-      "actor": null,
+      "actor": "u:3f9c0a7d",
       "from": "review",
-      "to": "build"
+      "to": "build",
+      "command": "/spec-review 006"
     },
     {
       "ts": "2026-03-08T12:00:00Z",
@@ -278,14 +281,15 @@
     {
       "ts": "2026-03-08T09:00:00Z",
       "kind": "stage",
-      "derived": true,
+      "derived": false,
       "title": "created → review",
-      "body": "- Derived from: spec.md `started:`",
+      "body": "- Command: /spec-bug partial-push",
       "ref": "review",
       "id": "stage-review",
-      "actor": null,
+      "actor": "u:3f9c0a7d",
       "from": null,
-      "to": "review"
+      "to": "review",
+      "command": "/spec-bug partial-push"
     },
     {
       "ts": "2026-03-08T09:00:00Z",
@@ -298,6 +302,20 @@
       "goalLock": true
     }
   ],
+  "specs/007-rotate-mirror-token": [
+    {
+      "ts": "2026-03-09T08:30:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → review",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "review",
+      "id": "stage-review",
+      "actor": null,
+      "from": null,
+      "to": "review"
+    }
+  ],
   "specs/archive/001-manifest-sync": [
     {
       "ts": "2026-03-05T15:00:00Z",
@@ -307,7 +325,7 @@
       "body": "- Command: /spec-complete 001",
       "ref": "done",
       "id": "stage-done",
-      "actor": "principal",
+      "actor": "u:3f9c0a7d",
       "from": "close",
       "to": "done",
       "command": "/spec-complete 001"
@@ -320,7 +338,7 @@
       "body": "- Command: /spec-code-review 001",
       "ref": "close",
       "id": "stage-close",
-      "actor": "principal",
+      "actor": "u:3f9c0a7d",
       "from": "code-review",
       "to": "close",
       "command": "/spec-code-review 001"
@@ -342,7 +360,7 @@
       "body": "- Command: /spec-implement 001",
       "ref": "code-review",
       "id": "stage-code-review",
-      "actor": "agent",
+      "actor": "a:claude:sess-7",
       "from": "build",
       "to": "code-review",
       "command": "/spec-implement 001"
@@ -355,7 +373,7 @@
       "body": "- Command: /spec-review 001",
       "ref": "build",
       "id": "stage-build",
-      "actor": "principal",
+      "actor": "u:3f9c0a7d",
       "from": "review",
       "to": "build",
       "command": "/spec-review 001"
@@ -377,7 +395,7 @@
       "body": "- Command: /spec-tasks 001",
       "ref": "review",
       "id": "stage-review",
-      "actor": "principal",
+      "actor": "u:3f9c0a7d",
       "from": "tasks",
       "to": "review",
       "command": "/spec-tasks 001"
@@ -390,7 +408,7 @@
       "body": "- Command: /spec-plan 001",
       "ref": "tasks",
       "id": "stage-tasks",
-      "actor": "principal",
+      "actor": "u:3f9c0a7d",
       "from": "plan",
       "to": "tasks",
       "command": "/spec-plan 001"
@@ -403,7 +421,7 @@
       "body": "- Command: /spec-feature manifest-sync",
       "ref": "plan",
       "id": "stage-plan",
-      "actor": "principal",
+      "actor": "u:3f9c0a7d",
       "from": null,
       "to": "plan",
       "command": "/spec-feature manifest-sync"

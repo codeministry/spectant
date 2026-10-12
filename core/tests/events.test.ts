@@ -260,7 +260,7 @@ describe('the timeline reads events.jsonl (ISC-32 feeding ISC-36)', () => {
       expect(Number.isFinite(Date.parse(e.ts))).toBe(true);
     }
     // Newest first: done by /spec-complete, the creation last, titled like a derived creation.
-    expect(stages[0]).toMatchObject({ from: 'close', to: 'done', command: '/spec-complete 001', actor: 'principal' });
+    expect(stages[0]).toMatchObject({ from: 'close', to: 'done', command: '/spec-complete 001', actor: 'u:3f9c0a7d' });
     expect(stages.at(-1)).toMatchObject({ from: null, to: 'plan', title: 'created → plan' });
     expect(buildTimeline({ files, commits: [] }).some((e) => e.derived)).toBe(false);
   });
@@ -273,7 +273,7 @@ describe('the timeline reads events.jsonl (ISC-32 feeding ISC-36)', () => {
   });
 
   test('a spec without events.jsonl still derives its stages, marked derived', () => {
-    const files = harborFolder('specs/002-web-console');
+    const files = harborFolder('specs/004-retention-policies');
     expect(files.texts.events).toBeUndefined();
     const stages = buildTimeline({ files, commits: [] }).filter((e) => e.kind === 'stage');
     expect(stages.length).toBeGreaterThan(0);

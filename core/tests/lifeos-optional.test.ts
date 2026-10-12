@@ -157,7 +157,7 @@ describe('activity lines (.spectant/activity.jsonl)', () => {
     const r = await readLockSources({ repoRoot: HARBOR });
     expect(r.source).toBe('activity');
     expect(r.sources).toEqual(['activity']);
-    expect(r.locks).toEqual([{ source: 'activity', claim: 'ISC-74', session: 'spec-002-ISC-74', since: '2026-03-08T14:06:00Z' }]);
+    expect(r.locks).toEqual([{ source: 'activity', claim: 'ISC-74', session: 'a:claude:sess-2', since: '2026-03-08T14:06:00Z' }]);
     expect(r.diagnostics).toEqual([]);
   });
 
@@ -208,7 +208,7 @@ describe('activity lines (.spectant/activity.jsonl)', () => {
 describe('both sources', () => {
   test('the union keeps one entry per source; activity first, frontier last, so frontier wins a shared claim', async () => {
     const repo = tempRepo([
-      '{"ts":"2026-03-08T14:06:00Z","event":"claim","claim":"ISC-74","task":"T27","session":"spec-002-ISC-74","worktree":"wt-7"}',
+      '{"ts":"2026-03-08T14:06:00Z","event":"claim","claim":"ISC-74","task":"T27","session":"a:claude:sess-2","worktree":"wt-7"}',
       '{"ts":"2026-03-08T14:10:00Z","event":"claim","claim":"ISC-76","task":"T29","session":"plugin-76","worktree":"wt-8"}',
     ]);
     const state = stateWithLocks(repo, {
@@ -219,7 +219,7 @@ describe('both sources', () => {
     expect(r.source).toBe('frontier');
     expect(r.sources).toEqual(['frontier', 'activity']);
     expect(r.locks.map((l) => [l.source, l.claim, l.session])).toEqual([
-      ['activity', 'ISC-74', 'spec-002-ISC-74'],
+      ['activity', 'ISC-74', 'a:claude:sess-2'],
       ['activity', 'ISC-76', 'plugin-76'],
       ['frontier', 'ISC-75', 'spec-002-ISC-75'],
       ['frontier', 'ISC-76', 'spec-002-ISC-76'],
@@ -228,7 +228,7 @@ describe('both sources', () => {
     const p = partitionClaims(parseClaims(readFileSync(HARBOR_002_SPEC, 'utf8')).claims, r.locks, 'fresh');
     const taken = new Map(p.taken.map((t) => [t.id, t.session]));
     expect(taken.get('ISC-76')).toBe('spec-002-ISC-76');
-    expect(taken.get('ISC-74')).toBe('spec-002-ISC-74');
+    expect(taken.get('ISC-74')).toBe('a:claude:sess-2');
   });
 });
 
@@ -236,7 +236,7 @@ describe('the reading feeds the claim partition', () => {
   test('harbor 002 with the activity reading: ISC-74 is taken, not takeable', async () => {
     const r = await readLockSources({ repoRoot: HARBOR });
     const p = partitionClaims(parseClaims(readFileSync(HARBOR_002_SPEC, 'utf8')).claims, r.locks, 'fresh');
-    expect(p.taken).toEqual([{ id: 'ISC-74', session: 'spec-002-ISC-74', since: '2026-03-08T14:06:00Z' }]);
+    expect(p.taken).toEqual([{ id: 'ISC-74', session: 'a:claude:sess-2', since: '2026-03-08T14:06:00Z' }]);
     expect(p.takeable).not.toContain('ISC-74');
     expect([p.closed.length, p.takeable.length, p.blocked.length, p.taken.length]).toEqual([25, 3, 1, 1]);
   });

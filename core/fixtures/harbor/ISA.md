@@ -3,7 +3,7 @@ task: "Mirror container manifests between registries with Harbor"
 slug: 20260302-harbor
 project: harbor
 phase: climbing
-progress: 101/124
+progress: 103/126
 started: 2026-03-02T08:00:00Z
 updated: 2026-03-09T17:30:00Z
 ---
@@ -175,6 +175,8 @@ with identical digests, while the console shows each run and retention keeps the
 | ISC-122 | e2e | preview shown for a scheduled run | before delete | `bun run e2e -- retention -g "preview 8"` | literal |  |
 | ISC-123 | e2e | preview shown for a manual run | before delete | `bun run e2e -- retention -g "preview 9"` | literal |  |
 | ISC-124 | e2e | preview shown for a policy file with comments | before delete | `bun run e2e -- retention -g "preview 10"` | literal |  |
+| ISC-126 | bun-test | token used by the run after a rotation | the new token | `bun test tests/token.test.ts -t "rotate"` | literal |  |
+| ISC-127 | bun-test | registry stub log after a rotation | 0 requests with the old token | `bun test tests/token.test.ts -t "old token"` | derived: no-leak | high |
 
 ## Features
 
@@ -322,6 +324,12 @@ Why: old manifests go away on a schedule the team wrote down, and nothing still 
 - [x] ISC-123: The console shows the effect of a manual run before anything is deleted. (after: ISC-103)
 - [x] ISC-124: The console shows the effect of a policy file with comments before anything is deleted. (after: ISC-104)
 
+### F5 · Mirror credentials
+Why: the token Harbor pushes with can be replaced without stopping a scheduled sync.
+
+- [x] ISC-126: `harbor token rotate` replaces the push token in the credential store, and the next scheduled run uses it without a restart.
+- [x] ISC-127: Anti: a sync started after the rotation authenticates with the old token.
+
 ## Milestones
 
 - Harbor 0.9 · 2026-03-15 · Config through one loader, before the console ships.
@@ -332,6 +340,7 @@ Why: old manifests go away on a schedule the team wrote down, and nothing still 
 - 2026-03-02: features split into sync, console, config loader and retention; cross-cutting claims in F0.
 - 2026-03-05: spec 001 closed and archived; sync is idempotent on digest, not on tag.
 - 2026-03-07: refined: the console's colour mode is a stored setting (ISC-60.1, ISC-60.2).
+- 2026-03-09: token rotation is a chore (spec 007): one small fix, spec.md only, no plan and no tasks.
 
 ## Verification
 
@@ -436,6 +445,8 @@ Why: old manifests go away on a schedule the team wrote down, and nothing still 
 - ISC-122: `bun run e2e -- retention -g "preview 8"` passed, 2026-03-08
 - ISC-123: `bun run e2e -- retention -g "preview 9"` passed, 2026-03-08
 - ISC-124: `bun run e2e -- retention -g "preview 10"` passed, 2026-03-08
+- ISC-126: `bun test tests/token.test.ts -t "rotate"` passed, 2026-03-09
+- ISC-127: `bun test tests/token.test.ts -t "old token"` passed, 2026-03-09
 
 ## Remaining Work
 

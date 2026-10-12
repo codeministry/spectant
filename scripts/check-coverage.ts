@@ -51,6 +51,9 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
+import { parseClaims } from '../core/src/claims.ts';
+import { parseFrontmatter } from '../core/src/frontmatter.ts';
+
 export type SourceName = 'roadmap' | 'outline' | 'notes' | 'view' | 'doc';
 export type Entry = { line: number; entry: string };
 export type CoverageRow = { line: number; source: SourceName; entry: string };
@@ -69,7 +72,6 @@ const SOURCE_NAMES: readonly SourceName[] = ['roadmap', 'outline', 'notes', 'vie
 const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
 const HEADING = /^ {0,3}#{1,6}(?:\s|$)/;
 const TARGET = /^(?:F\d+|story:[a-z0-9][a-z0-9-]*|decision:\d{4}-\d{2}-\d{2}|spec:\d{3}|drop)$/;
-const CLAIM = /^\s*- \[[ xX]\] ISC-/;
 const DOC = /^0[123]-.*\.md$/;
 const YAML_KEY = /^([A-Za-z_][\w-]*)\s*:\s*(.*)$/;
 
@@ -80,7 +82,7 @@ const YAML_KEY = /^([A-Za-z_][\w-]*)\s*:\s*(.*)$/;
 /** The comparable form of a heading line or a mapping entry (see the header). */
 export function normaliseHeading(raw: string): string {
   let s = raw.trim().replace(/^#{1,6}(?=\s|$)/, '').replace(/\s#+\s*$/, '').trim();
-  s = s.replace(/^- \[[ xX]\]\s*/, '');
+  s = s.replace(/^- \[[ xX]\]\s*/, ''); // single-core: allow — the marker of a coverage.md mapping entry, not a claim line
   const annotation = s.indexOf(' · ');
   if (annotation >= 0) s = s.slice(0, annotation);
   return s.replace(/\s+/g, ' ').trim().toLowerCase();
@@ -91,12 +93,10 @@ export function headingsOf(text: string): Entry[] {
   const lines = text.split(/\r?\n/);
   const out: Entry[] = [];
   let start = 0;
-  // Frontmatter only when a YAML key follows the opening line: a leading `---` before a blank line is a thematic
-  // break, and treating it as frontmatter would hide every heading up to the next break.
-  if (lines[0]?.trim() === '---' && YAML_KEY.test(lines[1] ?? '')) {
-    const end = lines.findIndex((l, i) => i > 0 && l.trim() === '---');
-    if (end > 0) start = end + 1;
-  }
+  // The core parser finds the block; it counts as frontmatter only when a YAML key follows the opening line, since a
+  // leading thematic break before a blank line would otherwise hide every heading up to the next break.
+  const frontmatter = parseFrontmatter(text);
+  if (frontmatter.present && YAML_KEY.test(lines[1] ?? '')) start = frontmatter.bodyLine - 1;
   let fence: { char: string; size: number } | null = null;
   for (let i = start; i < lines.length; i++) {
     const raw = lines[i] ?? '';
@@ -261,17 +261,9 @@ function lineOf(report: string): number {
 // --free-specs
 // ---------------------------------------------------------------------------------------------------------------
 
-/** The value of `key` in a leading frontmatter block, quotes dropped; null without one. */
+/** The value of `key` in a leading frontmatter block (the core parser, quotes dropped); null without one. */
 function frontmatterValue(text: string, key: string): string | null {
-  const lines = text.split(/\r?\n/);
-  if (lines[0]?.trim() !== '---') return null;
-  for (let i = 1; i < lines.length; i++) {
-    const raw = lines[i] ?? '';
-    if (raw.trim() === '---') return null;
-    const m = YAML_KEY.exec(raw);
-    if (m?.[1] === key) return (m[2] ?? '').trim().replace(/^(["'])(.*)\1$/, '$2');
-  }
-  return null;
+  return parseFrontmatter(text).values[key] ?? null;
 }
 
 function freeSpecs(root: string): number {
@@ -307,7 +299,7 @@ function freeSpecs(root: string): number {
       problems.push(`${folder}: no spec.md`);
       continue;
     }
-    const claims = readFileSync(spec, 'utf8').split(/\r?\n/).filter((l) => CLAIM.test(l)).length;
+    const claims = parseClaims(readFileSync(spec, 'utf8')).claims.length;
     if (claims > 0) problems.push(`${folder}/spec.md: ${claims} claim${claims === 1 ? '' : 's'}`);
   }
 

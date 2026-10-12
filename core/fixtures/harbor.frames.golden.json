@@ -2488,5 +2488,6 @@
   "specs/004-retention-policies": [],
   "specs/005-config-format-choice": [],
   "specs/006-partial-push": [],
+  "specs/007-rotate-mirror-token": [],
   "specs/archive/001-manifest-sync": []
 }

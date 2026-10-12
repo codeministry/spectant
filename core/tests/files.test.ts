@@ -18,12 +18,14 @@ const EXPECTED: Record<FileKind, string> = {
   artifacts: 'artifacts/',
   evidence: '.evidence/',
   master: '../../ISA.md',
+  idea: '../ideas/',
+  workflow: '../workflow.md',
 };
 
 describe('FILE_KINDS', () => {
-  test('holds exactly the 13 kinds with their paths inside a spec folder', () => {
+  test('holds exactly the 15 kinds with their paths relative to an active spec folder', () => {
     const actual = Object.fromEntries(Object.entries(FILE_KINDS).map(([kind, info]) => [kind, info.path]));
-    expect(Object.keys(FILE_KINDS)).toHaveLength(13);
+    expect(Object.keys(FILE_KINDS)).toHaveLength(15);
     expect(actual).toEqual(EXPECTED);
   });
 

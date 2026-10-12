@@ -1,6 +1,7 @@
 {
   "gate": "reviewed",
   "at": "2026-03-08T12:00:00Z",
+  "actor": "u:3f9c0a7d",
   "files": {
     "spec.md": "08a83a1bc735b8b7a913eee076ba5eae301e66dadb19037eb07b5beb148439ec",
     "plan.md": null,
