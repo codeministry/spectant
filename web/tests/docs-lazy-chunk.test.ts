@@ -1,5 +1,5 @@
 // The pinned `mermaid` package draws the Docs tabs' diagrams (T59, ISC-84). It is several hundred kB, so it must stay a
-// lazy chunk: reached only through `import('mermaid')` in `features/spec/docs/mermaid.ts`, never in the initial bundle.
+// lazy chunk: reached only through `import('mermaid')` in `shared/ui/doc-prose/mermaid.ts`, never in the initial bundle.
 // The source check always runs; the build check reads `web/dist/browser/` when a build exists.
 import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -39,14 +39,14 @@ describe("mermaid stays a lazy chunk", () => {
     expect(MERMAID_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
-  test("web/src imports it only dynamically, and only from the docs feature", () => {
+  test("web/src imports it only dynamically, and only from the shared doc renderer", () => {
     const offenders: string[] = [];
     for (const file of tsFiles(SRC)) {
       const code = readFileSync(file, "utf8");
       const rel = relative(WEB, file);
       if (/from\s+['"]mermaid['"]|^\s*import\s+['"]mermaid['"]/m.test(code)) offenders.push(`${rel}: static import`);
-      if (/import\(\s*['"]mermaid['"]\s*\)/.test(code) && rel !== join("src", "app", "features", "spec", "docs", "mermaid.ts")) {
-        offenders.push(`${rel}: dynamic import outside the docs feature`);
+      if (/import\(\s*['"]mermaid['"]\s*\)/.test(code) && rel !== join("src", "app", "shared", "ui", "doc-prose", "mermaid.ts")) {
+        offenders.push(`${rel}: dynamic import outside the shared doc renderer`);
       }
     }
     expect(offenders).toEqual([]);

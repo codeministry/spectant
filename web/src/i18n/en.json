@@ -1105,7 +1105,8 @@
         "hiddenByFilters": "{{count}} hidden by filters",
         "fixedGate": "fixed gate",
         "gateReviewed": "reviewed mark",
-        "gateClosed": "every claim closed"
+        "gateClosed": "every claim closed",
+        "waitingStage": "a waiting stage"
       },
       "filter": {
         "open": "Filter",
@@ -1133,7 +1134,8 @@
         "collapse": "Collapse {{lane}}",
         "expand": "Expand {{lane}}",
         "omittedFeatures": "{{count}} features have no card in {{stage}}",
-        "omittedMilestones": "{{count}} milestones have no card in {{stage}}"
+        "omittedMilestones": "{{count}} milestones have no card in {{stage}}",
+        "noFeature": "No feature"
       },
       "card": {
         "name": "Spec {{id}}, {{type}}, {{title}}, priority {{priority}}, stage {{stage}}",
@@ -1183,10 +1185,13 @@
       },
       "empty": {
         "noSpecs": "No specs in {{ws}} yet",
-        "gettingStarted": "Getting started"
+        "gettingStarted": "Getting started",
+        "body": "Shape a first idea in the AI chat with the Spec skill; its card appears here."
       },
       "failed": "The board could not be read.",
-      "stale": "stale data"
+      "stale": "stale data",
+      "strip": "Stages · jump to a column",
+      "columns": "Board columns"
     }
   },
   "matrix": {
@@ -1398,11 +1403,27 @@
       "gateReviewed": "gate · reviewed mark",
       "gateClosed": "gate · every claim closed",
       "updated": "updated from specs/workflow.md {{age}} ago",
-      "gateDropped": "workflow.md drops the review gate for {{type}} · default applied"
+      "gateDropped": "workflow.md drops the review gate for {{type}} · default applied",
+      "unavailable": "The workflow of {{ws}} could not be read; the default table is shown.",
+      "move": "{{from}} → {{to}}"
     }
   },
   "ideas": {
-    "title": "Idea"
+    "title": "Idea",
+    "meta": "Story frontmatter",
+    "chip": {
+      "stage": "Stage",
+      "type": "Type",
+      "feature": "Feature",
+      "milestone": "Milestone"
+    },
+    "noType": "no type",
+    "noFeature": "no feature",
+    "noMilestone": "no milestone",
+    "source": "{{path}} · read-only · hash {{hash}}",
+    "allocateHint": "Allocate it by dropping it into its first stage on the board.",
+    "loading": "Loading story",
+    "error": "This story could not be loaded."
   },
   "types": {
     "feature": "feature",

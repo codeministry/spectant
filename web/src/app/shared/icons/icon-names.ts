@@ -70,4 +70,12 @@ export const ICON_NAMES = [
   'shield-check',
   'grip-vertical',
   'circle-help',
+  // Spec 008, the board's column heads: one glyph per workflow stage (lightbulb, list-checks, hourglass and
+  // circle-check are above).
+  'list',
+  'eye',
+  'hammer',
+  'octagon-x',
+  'git-pull-request',
+  'check-check',
 ] as const;

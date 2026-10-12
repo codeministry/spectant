@@ -1,7 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { type ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
-import { filter } from 'rxjs';
+import { filter, tap } from 'rxjs';
 import { SettingsService } from '../../core/settings.service';
 import {
   type AreaId,
@@ -79,9 +79,23 @@ export class ShellState {
   readonly railStrip = computed(() => this.tier() === 'wide' && this.railCollapsed());
   readonly tabBarPlacement = computed<TabBarPlacement>(() => (this.tier() === 'compact' ? 'header' : 'main'));
 
-  private readonly navigated = toSignal(this.router.events.pipe(filter((event) => event instanceof NavigationEnd)), {
-    initialValue: null,
-  });
+  private readonly lastWorkspace = signal<string | null>(null);
+  /**
+   * The workspace of the last `/w/:ws` route (spec 008, T129): a global page such as `/help` has no `ws` of its own and
+   * shows the workspace the user came from. Written on every `NavigationEnd`, so it holds even while nothing reads it.
+   */
+  readonly lastWs = this.lastWorkspace.asReadonly();
+
+  private readonly navigated = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      tap(() => {
+        const ws = readRoute(this.router.routerState.snapshot.root).ws;
+        if (ws !== null) this.lastWorkspace.set(ws);
+      }),
+    ),
+    { initialValue: null },
+  );
 
   readonly route = computed<ShellRoute>(() => {
     this.navigated();

@@ -1,0 +1,156 @@
+@if (missing()) {
+  <app-not-found />
+} @else if (unavailable()) {
+  <p class="unavailable">{{ 'shell.unavailable' | transloco }}</p>
+} @else {
+  <h1 id="board" tabindex="-1">{{ 'board.workspace.title' | transloco }}</h1>
+
+  @if (board(); as b) {
+    @if (b.total === 0) {
+      <ui-empty-state
+        icon="square-kanban"
+        [heading]="'board.workspace.empty.noSpecs' | transloco: { ws: name() }"
+        [body]="'board.workspace.empty.body' | transloco"
+      >
+        <a class="link" routerLink="/help" fragment="getting-started">{{ 'board.workspace.empty.gettingStarted' | transloco }}</a>
+      </ui-empty-state>
+    } @else {
+      <p class="meta">{{ 'board.workspace.summary' | transloco: { cards: b.total, specs: b.specs, ideas: b.ideas } }}</p>
+
+      <div class="strip">
+        <ui-segmented
+          mode="strip"
+          [options]="stripOptions()"
+          [inView]="inView()"
+          [scroller]="scrollerEl()"
+          [label]="'board.workspace.strip' | transloco"
+        />
+      </div>
+
+      @if (b.shown === 0) {
+        <p class="no-match">
+          {{ 'board.workspace.filter.noMatch' | transloco }} ·
+          <a class="link" [routerLink]="[]">{{ 'board.workspace.filter.clearAll' | transloco }}</a>
+        </p>
+      }
+
+      <ui-card class="board-card" [padding]="0">
+        <div
+          #scroller
+          class="scroller"
+          role="region"
+          tabindex="0"
+          [attr.aria-label]="'board.workspace.columns' | transloco"
+          (scroll)="updateFades()"
+        >
+          <div class="grid" [style.grid-template-columns]="tracks()" [attr.data-grouped]="bands().length > 0 ? '' : null">
+            @for (column of b.columns; track column.stage; let i = $index) {
+              @let stage = column.stage;
+              @let label = 'stages.' + stage | transloco;
+              @if (column.stub.kind === 'empty') {
+                <section
+                  class="stub"
+                  data-stub
+                  [attr.data-col]="stage"
+                  [style.--role]="edges[stage]"
+                  [style.grid-column]="i + 1"
+                  [attr.aria-labelledby]="'col-' + stage"
+                >
+                  <ui-icon [name]="glyphs[stage]" [size]="16" />
+                  <span class="count">0</span>
+                  <h2 class="vlabel" [id]="'col-' + stage">{{ label }}</h2>
+                  <span class="vnote">
+                    @if (column.stub.hidden > 0) {
+                      {{ 'board.workspace.column.hiddenByFilters' | transloco: { count: column.stub.hidden } }}
+                    } @else {
+                      {{ 'board.workspace.column.empty' | transloco }}
+                    }
+                  </span>
+                </section>
+              } @else {
+                <section
+                  class="col"
+                  [attr.data-col]="stage"
+                  [style.--role]="edges[stage]"
+                  [style.grid-column]="i + 1"
+                  [attr.aria-label]="'board.workspace.column.name' | transloco: { stage: label, count: column.count, waiting: column.waitingOnYou }"
+                >
+                  <header class="head">
+                    <ui-icon [name]="glyphs[stage]" [size]="16" />
+                    <h2 [id]="'col-' + stage">{{ label }}</h2>
+                    @if (gateOf(stage); as gate) {
+                      <ui-term class="gate" [id]="'gate-' + stage" [hint]="gate | transloco"
+                        ><ui-icon name="shield-check" [size]="14" /><span class="vh">{{
+                          'board.workspace.column.fixedGate' | transloco
+                        }}</span></ui-term
+                      >
+                    }
+                    @if (waiting(stage)) {
+                      <ui-icon class="wait" name="hourglass" [size]="14" [label]="'board.workspace.column.waitingStage' | transloco" />
+                    }
+                    <span class="count" aria-hidden="true">{{ column.count }}</span>
+                  </header>
+                  @if (bands().length === 0) {
+                    <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + stage">
+                      @for (card of column.cards; track card.key) {
+                        <li><app-board-card [card]="card" [ws]="ws()" /></li>
+                      }
+                    </ul>
+                  }
+                </section>
+              }
+            }
+
+            @for (band of bands(); track band.key; let r = $index) {
+              <div class="band-head" [style.grid-row]="2 + r * 2">
+                <h3 class="bh">
+                  @if (b.query.group === 'feature') {
+                    @if (band.key !== null) {
+                      <span class="mono">{{ band.key }}</span>
+                      <span class="name">{{ band.label }}</span>
+                    } @else {
+                      <span class="name">{{ 'board.workspace.swimlanes.noFeature' | transloco }}</span>
+                    }
+                  } @else {
+                    <ui-icon name="flag" [size]="14" />
+                    <span class="name">{{ band.label ?? ('board.workspace.filter.noMilestone' | transloco) }}</span>
+                    @if (band.target; as target) {
+                      <span class="mono muted">{{ target }}</span>
+                    }
+                  }
+                  <span class="n">{{ 'board.workspace.swimlanes.cards' | transloco: { count: band.count } }}</span>
+                </h3>
+              </div>
+              @for (cell of band.cells; track cell.stage; let i = $index) {
+                <div class="cell" [class.stubcell]="cell.stub" [style.grid-row]="3 + r * 2" [style.grid-column]="i + 1">
+                  @if (cell.cards.length > 0) {
+                    <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + cell.stage">
+                      @for (card of cell.cards; track card.key) {
+                        <li><app-board-card [card]="card" [ws]="ws()" /></li>
+                      }
+                    </ul>
+                  }
+                </div>
+              }
+            }
+          </div>
+        </div>
+        <span class="fade start" aria-hidden="true" [class.on]="fadeStart()"></span>
+        <span class="fade end" aria-hidden="true" [class.on]="fadeEnd()"></span>
+      </ui-card>
+    }
+  } @else {
+    <div class="loading" aria-hidden="true">
+      <ui-skeleton height="40px" />
+      <div class="skeleton-cols">
+        @for (slot of [0, 1, 2]; track slot) {
+          <ui-card class="skeleton-card" [padding]="12">
+            <ui-skeleton width="40%" height="20px" />
+            <ui-skeleton height="20px" />
+            <ui-skeleton width="70%" />
+          </ui-card>
+        }
+      </div>
+    </div>
+  }
+}

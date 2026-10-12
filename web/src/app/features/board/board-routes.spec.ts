@@ -38,7 +38,7 @@ const PLANNING: PlanningBody = {
   diagnostics: [],
 };
 
-type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec'>;
+type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'idea'>;
 
 function setUp(): void {
   const api: FakeApi = {
@@ -46,6 +46,13 @@ function setUp(): void {
     dashboard: (ws) => Promise.resolve(ws === 'harbor' ? ok(DASHBOARD) : { kind: 'not-found', served: true }),
     planning: (ws) => Promise.resolve(ws === 'harbor' ? ok(PLANNING) : { kind: 'not-found', served: true }),
     spec: () => Promise.resolve({ kind: 'not-found', served: false }),
+    // The story route (T131): the fake serves the one story of PLANNING with an empty rendered body.
+    idea: (ws, slug) =>
+      Promise.resolve(
+        ws === 'harbor' && slug === 'board-swimlanes'
+          ? ok({ idea: PLANNING.ideas[0], page: { html: '', toc: [], frontmatter: null, figures: [], sections: [], wordCount: 0 }, hash: '0'.repeat(64) })
+          : { kind: 'not-found', served: true },
+      ),
   };
   TestBed.configureTestingModule({
     imports: [
@@ -74,7 +81,7 @@ describe('spec 008 routes (T115, ISC-129)', () => {
   it('resolves /w/:ws/board to the workspace board inside the shell and names it in the shell state', async () => {
     const root = await open('/w/harbor/board');
     expect(root.querySelector('app-shell [data-page="board"]')).not.toBeNull();
-    expect(text(root.querySelector('[data-page="board"] ui-card h1#board'))).toBe('Board');
+    expect(text(root.querySelector('[data-page="board"] h1#board'))).toBe('Board');
     expect(root.querySelector('app-not-found')).toBeNull();
     expect(TestBed.inject(ShellState).route()).toMatchObject({ ws: 'harbor', specId: null, wsPage: 'board', ideaSlug: null, notFound: false });
   });
@@ -82,8 +89,8 @@ describe('spec 008 routes (T115, ISC-129)', () => {
   it('resolves /w/:ws/ideas/:slug to the idea page with the story slug', async () => {
     const root = await open('/w/harbor/ideas/board-swimlanes');
     const page = root.querySelector('app-shell [data-page="idea"]');
-    expect(text(page?.querySelector('ui-card h1#idea'))).toBe('Idea');
-    expect(text(page?.querySelector('[data-slug]'))).toBe('board-swimlanes');
+    expect(text(page?.querySelector('h1#idea'))).toBe('Swimlanes on the board');
+    expect(page?.querySelector('[data-idea-chips]')).not.toBeNull();
     expect(root.querySelector('app-not-found')).toBeNull();
     expect(TestBed.inject(ShellState).route()).toMatchObject({ ws: 'harbor', wsPage: 'idea', ideaSlug: 'board-swimlanes', notFound: false });
   });

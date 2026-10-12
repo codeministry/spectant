@@ -1,0 +1,27 @@
+<div class="docs-layout">
+  @if (toc().length > 0 && !wide()) {
+    <ui-disclosure class="docs-toc-fold">
+      <span uiDisclosureSummary>{{ 'docs.contents' | transloco }}</span>
+      <ng-container [ngTemplateOutlet]="tocList" />
+    </ui-disclosure>
+  }
+
+  <article class="docs-prose" #prose [innerHTML]="html()"></article>
+
+  @if (toc().length > 0 && wide()) {
+    <nav class="docs-toc" [attr.aria-label]="'docs.contents' | transloco">
+      <p class="docs-toc-title">{{ 'docs.contents' | transloco }}</p>
+      <ng-container [ngTemplateOutlet]="tocList" />
+    </nav>
+  }
+</div>
+
+<ng-template #tocList>
+  <ol class="docs-toc-list">
+    @for (entry of toc(); track entry.anchor) {
+      <li [attr.data-level]="entry.level">
+        <a [href]="'#' + entry.anchor" (click)="jump($event, entry.anchor)">{{ entry.text }}</a>
+      </li>
+    }
+  </ol>
+</ng-template>

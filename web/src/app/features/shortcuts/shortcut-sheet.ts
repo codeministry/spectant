@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import {
   GROUP_CONTEXT,
@@ -45,7 +46,7 @@ const CONTEXTS: readonly SheetContext[] = SHORTCUT_CONTEXTS.map((context) => {
  */
 @Component({
   selector: 'app-shortcut-sheet',
-  imports: [TranslocoPipe, UiKbd, UiSheet],
+  imports: [RouterLink, TranslocoPipe, UiKbd, UiSheet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .off { margin: 0 0 16px; color: var(--muted-ink); font-size: 14px; line-height: 20px; }
@@ -58,6 +59,8 @@ const CONTEXTS: readonly SheetContext[] = SHORTCUT_CONTEXTS.map((context) => {
     .row:last-child { border-block-end: 0; }
     dt { display: flex; gap: 4px; }
     dd { margin: 0; font-size: 14px; line-height: 20px; }
+    .footer { margin: 32px 0 0; padding-block-start: 16px; border-block-start: 1px solid var(--line); }
+    .footer a { display: inline-flex; align-items: center; min-block-size: 44px; color: var(--disp-ink); font-size: 14px; }
   `,
   template: `
     <ui-sheet [tier]="tier()" [heading]="'shortcuts.title' | transloco" [(open)]="keyboard.sheetOpen">
@@ -88,6 +91,9 @@ const CONTEXTS: readonly SheetContext[] = SHORTCUT_CONTEXTS.map((context) => {
           }
         </section>
       }
+      <p class="footer">
+        <a routerLink="/help" data-sheet-help (click)="keyboard.sheetOpen.set(false)">{{ 'help.title' | transloco }}</a>
+      </p>
     </ui-sheet>
   `,
 })

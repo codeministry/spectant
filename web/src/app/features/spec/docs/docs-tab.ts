@@ -1,27 +1,12 @@
-import {
-  afterRenderEffect,
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  DestroyRef,
-  type ElementRef,
-  inject,
-  resource,
-  viewChild,
-  ViewEncapsulation,
-} from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
-import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
-import { ActivatedRoute, Router } from '@angular/router';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { DocName, DocsPage, MermaidFigure } from '../../../../../../core/src/files';
+import { ChangeDetectionStrategy, Component, computed, inject, resource, ViewEncapsulation } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { TranslocoPipe } from '@jsverse/transloco';
+import type { DocName, DocsPage } from '../../../../../../core/src/files';
 import { specRoutes } from '../../../../../../server/src/spec-routes.contract';
 import { ApiClient, type DocsResult } from '../../../core/api.service';
-import { ThemeService } from '../../../core/theme.service';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
-import { type Tone, UiChip, UiCommandChip, UiDisclosure, UiEmptyState, UiNotice, UiSkeleton } from '../../../shared/ui';
-import { MERMAID_LOADER, type MermaidApi, mermaidConfig, themeVariables } from './mermaid';
+import { type Tone, UiChip, UiCommandChip, UiDocProse, UiEmptyState, UiNotice, UiSkeleton } from '../../../shared/ui';
 
 /** The file behind each Docs tab, as the empty state names it. */
 export const DOC_FILE_NAMES: Readonly<Record<DocName, string>> = {
@@ -34,22 +19,18 @@ export const DOC_FILE_NAMES: Readonly<Record<DocName, string>> = {
 const DOC_NAMES = new Set<string>(Object.keys(DOC_FILE_NAMES));
 const STATUS_TONE: Readonly<Record<string, Tone>> = { approved: 'success', draft: 'warning', superseded: 'neutral' };
 
-let nextRenderId = 0;
-
 /**
  * One view for the four Docs tabs (T59, ISC-84): `plan`, `design`, `decisions` (the spec's `context.md`) and
- * `constitution`, picked by the route's `tab` data. It renders core's sanitised HTML, a frontmatter meta row, the
- * table of contents (a sticky mini nav at wide, a disclosure above the prose below), and enhances the figures in
- * place: tables become labelled scroll regions, missing images get a note, mermaid sources are drawn client-side from
- * the lazily loaded pinned package and redrawn when the theme changes. A doc the spec lacks answers `DocMissing`,
- * shown as a type-aware empty state.
+ * `constitution`, picked by the route's `tab` data. It shows a frontmatter meta row and hands the page to the shared
+ * renderer `ui-doc-prose` (core's sanitised HTML, the table of contents, the figure enhancements), pointing spec-folder
+ * images at the spec's evidence file route. A doc the spec lacks answers `DocMissing`, shown as a type-aware empty
+ * state.
  *
- * Not encapsulated: the prose is `[innerHTML]`, which Angular's emulated encapsulation cannot reach; every selector in
- * `docs-tab.css` starts with `app-docs-tab`.
+ * Not encapsulated, like the renderer it hosts; every selector in `docs-tab.css` starts with `app-docs-tab`.
  */
 @Component({
   selector: 'app-docs-tab',
-  imports: [NgTemplateOutlet, TranslocoPipe, UiChip, UiCommandChip, UiDisclosure, UiEmptyState, UiNotice, UiSkeleton],
+  imports: [TranslocoPipe, UiChip, UiCommandChip, UiDocProse, UiEmptyState, UiNotice, UiSkeleton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   templateUrl: './docs-tab.html',
@@ -60,12 +41,7 @@ export class DocsTab {
   protected readonly state = inject(ShellState);
   private readonly data = inject(ShellData);
   private readonly api = inject(ApiClient);
-  private readonly theme = inject(ThemeService);
-  private readonly sanitizer = inject(DomSanitizer);
-  private readonly transloco = inject(TranslocoService);
-  private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly loadMermaid = inject(MERMAID_LOADER);
 
   /** The tab id from the route data; the four Docs tab ids are exactly the four `DocName`s. */
   protected readonly name: DocName = docName(this.route.snapshot.data['tab']);
@@ -94,23 +70,20 @@ export class DocsTab {
   });
 
   /**
-   * Trusted on purpose, and only here: core's renderer (`core/src/markdown.ts`) escapes every text and every raw HTML
-   * block and emits only its own tags and attributes, so no script or handler can reach this string. Angular's
-   * sanitizer would strip the heading ids the table of contents jumps to and the `data-figure` hooks; bypassing it is
-   * sound because the HTML is already sanitised at its one source, and it is never built from anything else.
+   * The spec's evidence file route for spec-folder images, only once this spec's page has loaded: while the route
+   * moves on, the old HTML keeps its own spec's URLs.
    */
-  protected readonly html = computed<SafeHtml | null>(() => {
-    const page = this.page();
-    return page === null ? null : this.sanitizer.bypassSecurityTrustHtml(page.html);
+  protected readonly assetUrl = computed<((path: string) => string) | null>(() => {
+    const ws = this.state.ws();
+    const id = this.state.specId();
+    if (this.result.status() !== 'resolved' || ws === null || id === null) return null;
+    return (path) => specRoutes.evidenceFile(ws, id, path);
   });
 
-  protected readonly toc = computed(() => this.page()?.toc ?? []);
-  protected readonly mermaidFigures = computed(
-    () => this.page()?.figures.filter((figure): figure is MermaidFigure => figure.kind === 'mermaid') ?? [],
-  );
-  protected readonly diagramMissing = computed(
-    () => this.name === 'plan' && this.page() !== null && this.mermaidFigures().length === 0,
-  );
+  protected readonly diagramMissing = computed(() => {
+    const page = this.page();
+    return this.name === 'plan' && page !== null && !page.figures.some((figure) => figure.kind === 'mermaid');
+  });
 
   /** Frontmatter as chips: every key on the constitution, `status` (toned) elsewhere; `updated` is its own line. */
   protected readonly metaChips = computed<ReadonlyArray<{ label: string; tone: Tone }>>(() => {
@@ -137,142 +110,8 @@ export class DocsTab {
     const command = base === null ? null : this.name === 'constitution' ? base : `${base} ${this.state.specId() ?? ''}`.trim();
     return { key: 'docs.empty.missing', params: { type, file }, command, bodyKey: command ? 'docs.empty.missingBody' : 'docs.empty.missingNoCommand' };
   });
-
-  private readonly prose = viewChild<ElementRef<HTMLElement>>('prose');
-  private renderRun = 0;
-
-  constructor() {
-    inject(DestroyRef).onDestroy(() => (this.renderRun += 1));
-    afterRenderEffect({
-      write: () => {
-        const host = this.prose()?.nativeElement;
-        const page = this.page();
-        const theme = this.theme.resolved();
-        const tableLabel = (index: number) => this.transloco.translate('docs.tableRegion', { index });
-        const notes: MissingNotes = {
-          missing: this.transloco.translate('docs.imageMissing'),
-          unavailable: this.transloco.translate('docs.imageUnavailable'),
-        };
-        const ws = this.state.ws();
-        const id = this.state.specId();
-        if (!host || page === null) return;
-        // Only once this spec's page has loaded: while the route moves on, the old HTML keeps its own spec's URLs.
-        const current = this.result.status() === 'resolved';
-        if (current && ws !== null && id !== null) {
-          enhanceSpecAssets(host, (path) => specRoutes.evidenceFile(ws, id, path), () => enhanceMissingImages(host, notes));
-        }
-        enhanceTables(host, tableLabel);
-        enhanceMissingImages(host, notes);
-        void this.drawMermaid(host, this.mermaidFigures(), theme);
-      },
-    });
-  }
-
-  /** TOC link: scroll the heading into view, move focus to it, and put its anchor in the URL (router-driven). */
-  protected jump(event: Event, anchor: string): void {
-    event.preventDefault();
-    const heading = this.prose()?.nativeElement.querySelector<HTMLElement>(`[id="${anchor.replaceAll('"', '')}"]`);
-    if (!heading) return;
-    heading.setAttribute('tabindex', '-1');
-    heading.scrollIntoView({ block: 'start' });
-    heading.focus({ preventScroll: true });
-    void this.router.navigate([], { relativeTo: this.route, fragment: anchor, queryParamsHandling: 'preserve', replaceUrl: true });
-  }
-
-  private async drawMermaid(host: HTMLElement, figures: readonly MermaidFigure[], theme: 'light' | 'dark'): Promise<void> {
-    if (figures.length === 0) return;
-    const run = ++this.renderRun;
-    let mermaid: MermaidApi;
-    try {
-      mermaid = await this.loadMermaid();
-    } catch {
-      return; // The source stays visible in its `pre`: a readable fallback, never a blank figure.
-    }
-    if (run !== this.renderRun) return;
-    mermaid.initialize(mermaidConfig(theme, themeVariables(host)));
-    for (const figure of figures) {
-      const element = host.querySelector<HTMLElement>(`figure.mermaid-figure[data-figure="${figure.index}"]`);
-      if (!element) continue;
-      try {
-        const { svg } = await mermaid.render(`docs-mermaid-${++nextRenderId}`, figure.source);
-        if (run !== this.renderRun) return;
-        let target = element.querySelector<HTMLElement>(':scope > .mermaid-svg');
-        if (!target) {
-          target = host.ownerDocument.createElement('div');
-          target.className = 'mermaid-svg';
-          element.insertBefore(target, element.querySelector('figcaption'));
-        }
-        // Mermaid's own output under `securityLevel: 'strict'` (DOMPurify-cleaned, no HTML labels, no click handlers).
-        target.innerHTML = svg;
-        element.setAttribute('data-rendered', '');
-        element.removeAttribute('data-render-error');
-      } catch {
-        element.setAttribute('data-render-error', '');
-      }
-    }
-  }
 }
 
 function docName(value: unknown): DocName {
   return typeof value === 'string' && DOC_NAMES.has(value) ? (value as DocName) : 'plan';
-}
-
-/**
- * Core renders a spec-folder image (`.design/…`, Design tab only) without `src`, its path in `data-spec-asset`, so the
- * page never asks its own base for it; point it at the spec's evidence file route (idempotent). Should it fail to load
- * (refused since the render, or bytes the browser cannot show), the figure takes core's missing shape, flagged
- * `data-unavailable`, and `noted` adds the "could not be shown" note: never a broken image, and never "not in this
- * checkout" for a file that is there.
- */
-function enhanceSpecAssets(host: HTMLElement, url: (path: string) => string, noted: () => void): void {
-  host.querySelectorAll<HTMLImageElement>('img[data-spec-asset]').forEach((img) => {
-    const path = img.dataset['specAsset'] ?? '';
-    const src = url(path);
-    if (img.getAttribute('src') === src) return;
-    img.addEventListener('error', () => {
-      const figure = img.closest('figure');
-      if (!figure) return;
-      const box = host.ownerDocument.createElement('div');
-      box.className = 'figure-missing';
-      box.setAttribute('role', 'img');
-      box.setAttribute('aria-label', figure.querySelector('figcaption')?.textContent ?? path);
-      const code = host.ownerDocument.createElement('code');
-      code.textContent = path;
-      box.append(code);
-      img.replaceWith(box);
-      figure.classList.add('missing');
-      figure.setAttribute('data-missing', '');
-      figure.setAttribute('data-unavailable', '');
-      noted();
-    }, { once: true });
-    img.setAttribute('src', src);
-  });
-}
-
-/** Core wraps each table in `div.mdtable`; make it a focusable, labelled horizontal scroll region (idempotent). */
-function enhanceTables(host: HTMLElement, label: (index: number) => string): void {
-  host.querySelectorAll<HTMLElement>('div.mdtable').forEach((region, index) => {
-    region.setAttribute('role', 'region');
-    region.setAttribute('tabindex', '0');
-    region.setAttribute('aria-label', label(index + 1));
-  });
-}
-
-/** The notes of a missing figure: core found no file at render, or the image failed to load (`data-unavailable`). */
-interface MissingNotes {
-  readonly missing: string;
-  readonly unavailable: string;
-}
-
-/** Core marks an image absent from the checkout with `div.figure-missing`; add the muted note once. */
-function enhanceMissingImages(host: HTMLElement, notes: MissingNotes): void {
-  host.querySelectorAll<HTMLElement>('figure[data-missing] .figure-missing').forEach((box) => {
-    let note = box.querySelector<HTMLElement>(':scope > .figure-missing-note');
-    if (!note) {
-      note = host.ownerDocument.createElement('span');
-      note.className = 'figure-missing-note';
-      box.prepend(note);
-    }
-    note.textContent = box.closest('figure')?.hasAttribute('data-unavailable') ? notes.unavailable : notes.missing;
-  });
 }

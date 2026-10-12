@@ -29,6 +29,7 @@ export { UiLiveRegion } from './live-region/live-region';
 export { type MeterSegment, UiMeter } from './meter/meter';
 export { type NoticeTone, UiNotice } from './notice/notice';
 export { UiDialog } from './overlay/dialog';
+export { UiDocProse } from './doc-prose/doc-prose';
 export { UiDisclosure } from './overlay/disclosure';
 export { type PopoverPlacement, UiPopover, UiPopoverTrigger } from './overlay/popover';
 export { type SheetTier, UiSheet } from './overlay/sheet';

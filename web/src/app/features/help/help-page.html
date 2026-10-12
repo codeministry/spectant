@@ -1,0 +1,97 @@
+<ui-card class="head" [padding]="24">
+  <h1 id="help" tabindex="-1">{{ 'help.title' | transloco }}</h1>
+</ui-card>
+
+<section class="section" aria-labelledby="help-workflows">
+  <ui-card [padding]="24">
+    <h2 id="help-workflows">
+      @if (selected(); as ws) {
+        {{ 'help.workflow.heading' | transloco: { ws: data.workspaceName(ws) } }}
+      } @else {
+        {{ 'help.workflow.headingDefault' | transloco }}
+      }
+    </h2>
+    <div class="workspace">
+      <label for="help-workspace">{{ 'help.workflow.workspace' | transloco }}</label>
+      <select
+        id="help-workspace"
+        class="select select-sm"
+        data-workflow-workspace
+        #workspace
+        [value]="selected() ?? ''"
+        (change)="choose(workspace.value)"
+      >
+        <option value="" [selected]="selected() === null">{{ 'help.workflow.headingDefault' | transloco }}</option>
+        @for (entry of data.workspaceList(); track entry.slug) {
+          <option [value]="entry.slug" [selected]="selected() === entry.slug">{{ entry.name }}</option>
+        }
+      </select>
+    </div>
+    <p class="source" data-workflow-source aria-live="polite">
+      @if (sourceLine(); as line) {
+        {{ line.key | transloco: line.params }}
+      }
+    </p>
+
+    <div class="figures" #diagrams [attr.aria-busy]="view().kind === 'loading'">
+      @for (figure of figures(); track figure.row.type) {
+        <figure class="workflow-figure" [attr.data-workflow-figure]="figure.row.type">
+          <pre class="diagram-source" data-diagram-source>{{ figure.text }}</pre>
+          <div class="diagram" data-diagram></div>
+          <figcaption>
+            <ui-type-glyph [type]="figure.row.type" [size]="16" [decorative]="true" />
+            <span class="figure-name">{{ 'help.workflow.figure' | transloco: { type: figure.row.type } }}</span>
+            <ui-chip>{{ 'help.workflow.codeReview' | transloco: { mode: figure.row.codeReview } }}</ui-chip>
+            <ui-chip data-workflow-origin>{{ (figure.custom ? 'help.workflow.custom' : 'help.workflow.default') | transloco }}</ui-chip>
+          </figcaption>
+          <details class="as-text">
+            <summary>{{ 'help.workflow.asText' | transloco }}</summary>
+            <ol>
+              @for (move of figure.moves; track $index) {
+                <li>
+                  {{ 'help.workflow.move' | transloco: { from: ('stages.' + move.from | transloco), to: ('stages.' + move.to | transloco) } }}
+                  @if (move.gate === 'reviewed') {
+                    <span class="gate">{{ 'help.workflow.gateReviewed' | transloco }}</span>
+                  } @else if (move.gate === 'closed') {
+                    <span class="gate">{{ 'help.workflow.gateClosed' | transloco }}</span>
+                  }
+                </li>
+              }
+            </ol>
+          </details>
+        </figure>
+      }
+    </div>
+  </ui-card>
+</section>
+
+<section class="section" aria-labelledby="help-glossary">
+  <ui-card [padding]="24">
+    <h2 id="help-glossary">{{ 'help.glossary.heading' | transloco }}</h2>
+    <table class="glossary" data-glossary role="table">
+      <caption>{{ 'help.glossary.caption' | transloco }}</caption>
+      <thead role="rowgroup">
+        <tr role="row">
+          <th scope="col" role="columnheader">{{ 'help.glossary.columns.term' | transloco }}</th>
+          <th scope="col" role="columnheader">{{ 'help.glossary.columns.common' | transloco }}</th>
+          <th scope="col" role="columnheader">{{ 'help.glossary.columns.german' | transloco }}</th>
+          <th scope="col" role="columnheader">{{ 'help.glossary.columns.definition' | transloco }}</th>
+        </tr>
+      </thead>
+      <tbody role="rowgroup">
+        @for (row of glossary; track row.key) {
+          @let definition = 'glossary.' + row.key + '.definition' | transloco;
+          <tr role="row" [id]="'term-' + row.key">
+            <th scope="row" role="rowheader" class="term"><dfn>{{ 'glossary.' + row.key + '.term' | transloco }}</dfn></th>
+            <td role="cell" class="common" [attr.data-label]="'help.glossary.columns.common' | transloco">
+              {{ 'glossary.' + row.key + '.common' | transloco }}
+            </td>
+            <td role="cell" class="german" lang="de" [attr.data-label]="'help.glossary.columns.german' | transloco">{{ row.german }}</td>
+            <!-- One line on purpose: template whitespace between the spans would add spaces the definition does not have. -->
+            <td role="cell" class="definition">@for (span of spans(definition); track $index) {@if (span.code) {<code>{{ span.text }}</code>} @else {<span>{{ span.text }}</span>}}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </ui-card>
+</section>

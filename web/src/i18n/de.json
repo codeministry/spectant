@@ -1105,7 +1105,8 @@
         "hiddenByFilters": "{{count}} durch Filter ausgeblendet",
         "fixedGate": "festes Gate",
         "gateReviewed": "Review-Marke",
-        "gateClosed": "jeder Claim geschlossen"
+        "gateClosed": "jeder Claim geschlossen",
+        "waitingStage": "eine wartende Stage"
       },
       "filter": {
         "open": "Filter",
@@ -1133,7 +1134,8 @@
         "collapse": "{{lane}} einklappen",
         "expand": "{{lane}} ausklappen",
         "omittedFeatures": "{{count}} Features haben keine Karte in {{stage}}",
-        "omittedMilestones": "{{count}} Meilensteine haben keine Karte in {{stage}}"
+        "omittedMilestones": "{{count}} Meilensteine haben keine Karte in {{stage}}",
+        "noFeature": "Kein Feature"
       },
       "card": {
         "name": "Spec {{id}}, {{type}}, {{title}}, Priorität {{priority}}, Stage {{stage}}",
@@ -1183,10 +1185,13 @@
       },
       "empty": {
         "noSpecs": "Noch keine Specs in {{ws}}",
-        "gettingStarted": "Erste Schritte"
+        "gettingStarted": "Erste Schritte",
+        "body": "Formen Sie im KI-Chat mit dem Spec-Skill eine erste Idee; ihre Karte erscheint hier."
       },
       "failed": "Das Board konnte nicht gelesen werden.",
-      "stale": "veraltete Daten"
+      "stale": "veraltete Daten",
+      "strip": "Stages · zu einer Spalte springen",
+      "columns": "Board-Spalten"
     }
   },
   "matrix": {
@@ -1398,11 +1403,27 @@
       "gateReviewed": "Gate · Review-Marke",
       "gateClosed": "Gate · jeder Claim geschlossen",
       "updated": "vor {{age}} aus specs/workflow.md aktualisiert",
-      "gateDropped": "workflow.md lässt das Review-Gate für {{type}} weg · Standard angewendet"
+      "gateDropped": "workflow.md lässt das Review-Gate für {{type}} weg · Standard angewendet",
+      "unavailable": "Der Workflow von {{ws}} konnte nicht gelesen werden; die Standardtabelle wird angezeigt.",
+      "move": "{{from}} → {{to}}"
     }
   },
   "ideas": {
-    "title": "Idee"
+    "title": "Idee",
+    "meta": "Frontmatter der Story",
+    "chip": {
+      "stage": "Stage",
+      "type": "Typ",
+      "feature": "Feature",
+      "milestone": "Meilenstein"
+    },
+    "noType": "kein Typ",
+    "noFeature": "kein Feature",
+    "noMilestone": "kein Meilenstein",
+    "source": "{{path}} · schreibgeschützt · Hash {{hash}}",
+    "allocateHint": "Sie teilen die Story zu, indem Sie sie auf dem Board in ihre erste Stage ziehen.",
+    "loading": "Story wird geladen",
+    "error": "Diese Story konnte nicht geladen werden."
   },
   "types": {
     "feature": "Feature",

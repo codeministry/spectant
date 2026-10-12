@@ -33,7 +33,7 @@ const ROW_STAGE: Readonly<Record<WorkflowStage, boolean>> = {
 };
 
 /** The fixed gates (FORMAT.md § workflow): in every row, each exactly once, `review` before `build`, `done` last. */
-const FIXED_GATES: readonly WorkflowStage[] = ['review', 'build', 'done'];
+export const FIXED_GATES: readonly WorkflowStage[] = ['review', 'build', 'done'];
 
 const knownStage = (stage: string): stage is WorkflowStage => Object.hasOwn(ROW_STAGE, stage);
 

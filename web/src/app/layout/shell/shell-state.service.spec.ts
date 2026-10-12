@@ -74,3 +74,18 @@ describe('ShellState.route().wsPage', () => {
     expect((await routeAt('/w/harbor/s/002')).ideaSlug).toBeNull();
   });
 });
+
+describe('ShellState.lastWs (spec 008, T129)', () => {
+  it('keeps the workspace of the last /w/:ws route after leaving it for a global page', async () => {
+    TestBed.configureTestingModule({ providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()] });
+    const state = TestBed.inject(ShellState);
+    const harness = await RouterTestingHarness.create();
+    expect(state.lastWs()).toBeNull();
+    await harness.navigateByUrl('/w/harbor/s/002');
+    await harness.navigateByUrl('/help');
+    expect(state.ws()).toBeNull();
+    expect(state.lastWs()).toBe('harbor');
+    await harness.navigateByUrl('/w/lantern');
+    expect(state.lastWs()).toBe('lantern');
+  });
+});

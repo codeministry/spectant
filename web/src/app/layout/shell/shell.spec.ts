@@ -416,7 +416,8 @@ describe('ShellComponent', () => {
       const page = root.querySelector('[data-page="settings"]');
       expect(page?.querySelector('h1')?.textContent).toContain('Settings');
       expect(page?.textContent).toContain('Settings, workspaces and help come with later tasks of this spec');
-      expect(page?.querySelector('a')?.getAttribute('href')).toBe('/');
+      expect([...(page?.querySelectorAll('a') ?? [])].map((a) => a.getAttribute('href'))).toEqual(['/help', '/']);
+      expect(page?.querySelector('a[data-action="help"]')?.textContent.trim()).toBe('Help');
       expect(root.querySelectorAll('header')).toHaveLength(1);
     });
 

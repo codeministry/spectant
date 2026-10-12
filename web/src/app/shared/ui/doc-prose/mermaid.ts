@@ -1,7 +1,7 @@
 import { InjectionToken } from '@angular/core';
 import type { ResolvedTheme } from '../../../core/theme.service';
 
-/** The slice of the mermaid API the Docs tabs use. */
+/** The slice of the mermaid API `ui-doc-prose` uses (the Docs tabs and the idea page). */
 export interface MermaidApi {
   initialize(config: Record<string, unknown>): void;
   render(id: string, source: string): Promise<{ readonly svg: string }>;
@@ -9,7 +9,7 @@ export interface MermaidApi {
 
 /**
  * Loads the pinned `mermaid` package. A dynamic `import()` on purpose: mermaid and its diagram modules are several
- * hundred kB and must stay lazy chunks, fetched only when a Docs tab shows a diagram, never in the initial bundle
+ * hundred kB and must stay lazy chunks, fetched only when a rendered doc shows a diagram, never in the initial bundle
  * (`web/tests/docs-lazy-chunk.test.ts`). A token so a spec can hold the import open or hand in a fake.
  */
 export const MERMAID_LOADER = new InjectionToken<() => Promise<MermaidApi>>('MERMAID_LOADER', {

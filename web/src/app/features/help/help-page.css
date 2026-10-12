@@ -1,0 +1,228 @@
+:host {
+  display: block;
+  max-inline-size: 1080px;
+  margin-inline: auto;
+}
+
+.head {
+  margin-block-end: 24px;
+}
+
+h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+h2 {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.section + .section {
+  margin-block-start: 24px;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+/* Workflows (ISC-123) */
+
+.workspace {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.workspace label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.workspace select {
+  min-block-size: 40px;
+}
+
+.source {
+  min-block-size: 20px;
+  margin: 8px 0 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.figures {
+  display: grid;
+  gap: 24px;
+  margin-block-start: 24px;
+}
+
+.workflow-figure {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+}
+
+.diagram-source {
+  overflow-x: auto;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: pre;
+}
+
+.workflow-figure[data-rendered] > .diagram-source {
+  display: none;
+}
+
+.diagram {
+  overflow-x: auto;
+  text-align: center;
+}
+
+.diagram :where(svg) {
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-block-start: 8px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.figure-name {
+  font-weight: 600;
+}
+
+.as-text {
+  margin-block-start: 8px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.as-text summary {
+  min-block-size: 44px;
+  align-content: center;
+  color: var(--disp-ink);
+  cursor: pointer;
+}
+
+.as-text ol {
+  margin: 0;
+  padding-inline-start: 24px;
+}
+
+.gate {
+  margin-inline-start: 8px;
+  color: var(--muted-ink);
+}
+
+/* Glossary (ISC-116) */
+
+.glossary {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.glossary caption {
+  margin-block-end: 8px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  text-align: start;
+}
+
+.glossary :is(th, td) {
+  padding: 12px 8px;
+  border-block-end: 1px solid var(--line);
+  text-align: start;
+  vertical-align: top;
+}
+
+.glossary thead th {
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.glossary .term {
+  inline-size: 22%;
+  font-weight: 600;
+}
+
+.glossary .term dfn {
+  font-style: normal;
+}
+
+.glossary .common,
+.glossary .german {
+  inline-size: 18%;
+}
+
+.glossary .definition {
+  max-inline-size: 72ch;
+}
+
+/* Compact: every row a card; the explicit roles keep the table semantics through the display change. */
+@container shell (width < 640px) {
+  .glossary thead {
+    position: absolute;
+    overflow: hidden;
+    clip-path: inset(50%);
+    inline-size: 1px;
+    block-size: 1px;
+    white-space: nowrap;
+  }
+
+  .glossary,
+  .glossary tbody {
+    display: block;
+  }
+
+  .glossary tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding-block: 12px;
+    border-block-end: 1px solid var(--line);
+  }
+
+  .glossary :is(th, td) {
+    inline-size: auto;
+    padding: 0;
+    border: 0;
+  }
+
+  .glossary .term,
+  .glossary .definition {
+    grid-column: 1 / -1;
+    font-size: 15px;
+    line-height: 24px;
+  }
+
+  .glossary :is(.common, .german)::before {
+    display: block;
+    color: var(--muted-ink);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+    content: attr(data-label);
+  }
+}
