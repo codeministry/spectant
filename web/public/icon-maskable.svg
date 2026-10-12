@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- The app icon (manifest.webmanifest, apple-touch-icon.png): favicon.svg's living ring on the dark card surface,
+       in the dark theme's track, clos-ink and ques-ink values. Full-bleed tile for purpose "maskable": the mark stays inside the 40 % safe circle.
+       The PNGs are rendered from these files: rsvg-convert -w <size> -h <size> <svg> -o <png>. -->
+  <rect width="512" height="512" rx="0" fill="#2d2a2e" />
+  <g transform="translate(256 256) scale(12) translate(-14 -14)">
+    <g fill="none" stroke-width="3">
+      <circle stroke="#7f7d80" cx="14" cy="14" r="11" />
+      <circle stroke="#a6e22e" cx="14" cy="14" r="11" stroke-dasharray="55.292 13.823" stroke-linecap="round" transform="rotate(-24 14 14)" />
+    </g>
+    <circle fill="#ab9df2" cx="19.5" cy="4.47" r="2.6" />
+  </g>
+</svg>
