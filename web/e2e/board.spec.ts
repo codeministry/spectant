@@ -20,8 +20,10 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { CardState, Frame, LiveFrame } from '../../core/src/files.ts';
-import type { Locator, Page } from '@playwright/test';
+import type { APIRequestContext, Locator, Page } from '@playwright/test';
+import { assigneeOf } from '../../core/src/assignee.ts';
 import { atWidth, expect, test } from './fixtures';
+import { LOCKS_HEADER, RESET_PATH } from './stub-api';
 
 const SPEC = 'specs/002-web-console';
 const read = (name: string): unknown => {
@@ -1019,5 +1021,170 @@ test.describe('filters', () => {
         await expect(page.locator('app-board-page section.one app-board-card'), col).toHaveCount(all.filter((c) => c.stage === col).length);
       }
     });
+  });
+});
+
+// ─── Who a card is assigned to (spec 008, T148, ISC-131) ────────────────────────────────────────────────────────────
+//
+// `bun run e2e -- board -g assignee`: every harbor card whose planning holder names an assignee shows it as
+// `ui-actor-chip`, the raw `u:` id in mono until the actors route maps a name for it, and the spec's status block shows
+// the same actor; a card without an assignee shows no chip. The ids come from `harbor.planning.golden.json` and
+// `harbor.spec.golden.json`, the display names are synthetic.
+//
+// The agent case: core's `assigneeOf` gives a spec the actor of its newest open claim lock before its last event, and
+// the card shows that one assignee, so an agent's lock replaces the person chip with the agent chip. The stub serves
+// `…/planning` from a golden built without locks under every lock fixture, so that test takes the locks from the
+// stub's `…/live` answer under the `activity` fixture, lets `assigneeOf` pick the assignee, and serves the planning
+// tree with it through `page.route`.
+
+/** An actor as a golden serializes it (`ActorRef`, structural). */
+interface ActorGolden {
+  readonly raw: string;
+  readonly kind: string;
+  readonly id: string;
+}
+/** The main holder of one spec card, with the assignee's full ref. */
+interface AssignedHolder {
+  readonly id: string;
+  readonly slug: string;
+  readonly assignee: ActorGolden | null;
+}
+const ASSIGNEE_PLANNING = fixture('harbor.planning.golden.json') as {
+  readonly stages: readonly string[];
+  readonly features: ReadonlyArray<{
+    readonly holders: ReadonlyArray<AssignedHolder & { readonly main: boolean; readonly archived: boolean; readonly stage: string | null }>;
+  }>;
+};
+const SPEC_HEADS = fixture('harbor.spec.golden.json') as Readonly<Record<string, { readonly head: { readonly assignee: ActorGolden | null } }>>;
+/** Every spec card of the harbor board, from its main holder (the holder `buildBoard` picks for the card). */
+const SPEC_CARDS: readonly AssignedHolder[] = ASSIGNEE_PLANNING.features.flatMap((f) =>
+  f.holders
+    .filter((h) => h.main && !h.archived && h.stage !== null && ASSIGNEE_PLANNING.stages.includes(h.stage))
+    .map((h) => ({ id: h.id, slug: h.slug, assignee: h.assignee })),
+);
+const PERSON_IDS = [...new Set(SPEC_CARDS.flatMap((c) => (c.assignee?.kind === 'person' ? [c.assignee.id] : [])))].sort();
+/** One synthetic display name per person id of the golden. */
+const NAMES = new Map(PERSON_IDS.map((id, i) => [id, `Sample Person ${String(i + 1)}`]));
+const ACTORS_PATH = '/api/actors';
+const PLANNING_PATH = '/api/workspaces/harbor/planning';
+
+const cardOf = (page: Page, card: AssignedHolder): Locator => page.locator(`${WS_CARDS}[data-key="spec:${card.slug}"]`);
+const statusChip = (page: Page): Locator => page.locator('app-status-block [data-assignee] ui-actor-chip');
+const nameFor = (actor: ActorGolden, named: boolean): string | null => (named && actor.kind === 'person' ? (NAMES.get(actor.id) ?? null) : null);
+
+/** The chip names `actor`: its kind, the raw ref as its title, the mapped name as text or else the id in mono. */
+async function expectActor(chip: Locator, actor: ActorGolden, name: string | null): Promise<void> {
+  await expect(chip).toHaveCount(1);
+  await expect(chip).toHaveAttribute('data-kind', actor.kind);
+  await expect(chip).toHaveAttribute('title', actor.raw);
+  const label = chip.locator('.label');
+  await expect(label).toHaveText(name ?? actor.id);
+  if (name === null) await expect(label).toHaveClass(/\bmono\b/u);
+  else await expect(label).not.toHaveClass(/\bmono\b/u);
+}
+
+/** Every harbor card as the golden assigns it (person names resolved when `named`), no chip where nobody is. */
+async function expectCards(page: Page, named: boolean): Promise<void> {
+  await page.goto(wsBoard('harbor'));
+  await expect(page.locator(WS_CARDS)).toHaveCount(goldenCards(PLANNING.harbor).length);
+  for (const card of SPEC_CARDS) {
+    const chip = cardOf(page, card).locator('ui-actor-chip');
+    if (card.assignee === null) await expect(chip, card.slug).toHaveCount(0);
+    else await expectActor(chip, card.assignee, nameFor(card.assignee, named));
+  }
+  await expect(page.locator(`${WS_CARDS}[data-kind="idea"] ui-actor-chip`)).toHaveCount(0);
+}
+
+/** The status block of every spec card shows the card's assignee; an unassigned spec says so and shows no chip. */
+async function expectStatusBlocks(page: Page, named: boolean): Promise<void> {
+  for (const card of SPEC_CARDS) {
+    expect(SPEC_HEADS[`specs/${card.slug}`]?.head.assignee?.id ?? null, `${card.slug}: head and holder agree`).toBe(card.assignee?.id ?? null);
+    await page.goto(`/w/harbor/s/${card.id}/status`);
+    if (card.assignee === null) {
+      await expect(page.locator('app-status-block [data-unassigned]'), card.slug).toBeVisible();
+      await expect(statusChip(page), card.slug).toHaveCount(0);
+    } else {
+      await expectActor(statusChip(page), card.assignee, nameFor(card.assignee, named));
+    }
+  }
+}
+
+test.describe('assignee', () => {
+  const session = useStubSession('board-assignee');
+  test.use(atWidth(1440));
+
+  /** `PUT /api/actors` with the whole list: one synthetic name per person id of the golden. */
+  const saveNames = async (request: APIRequestContext): Promise<void> => {
+    const list = PERSON_IDS.map((id) => ({ id, displayName: NAMES.get(id) ?? id, gitIdentities: [] }));
+    const saved = await request.put(ACTORS_PATH, { data: list, headers: { [SESSION_HEADER]: session() } });
+    expect(saved.status()).toBe(200);
+    expect(await saved.json()).toEqual(list);
+  };
+
+  test('assignee: a card whose spec has an assignee shows the raw id, its status block the same; a card without one shows no chip', async ({ page }) => {
+    expect(PERSON_IDS.length, 'the harbor golden assigns a person').toBeGreaterThan(0);
+    expect(SPEC_CARDS.some((c) => c.assignee === null), 'the harbor golden has an unassigned card').toBe(true);
+    await expectCards(page, false);
+    await expectStatusBlocks(page, false);
+  });
+
+  test('assignee: a name saved in the actors route shows on card and status block; after a reset the raw id again', async ({ page, request }) => {
+    await saveNames(request);
+    await expectCards(page, true);
+    await expectStatusBlocks(page, true);
+
+    // The mapping dropped, as a deleted data directory would: the raw id again on both surfaces.
+    expect((await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session() } })).status()).toBe(204);
+    expect(await (await request.get(ACTORS_PATH, { headers: { [SESSION_HEADER]: session() } })).json()).toEqual([]);
+    await expectCards(page, false);
+    await expectStatusBlocks(page, false);
+  });
+
+  test('assignee: a card an agent works shows the agent chip in place of the person chip, never a mapped name', async ({ page, request }) => {
+    const headers = { [LOCKS_HEADER]: 'activity', [SESSION_HEADER]: session() };
+    // Each spec's assignee by core's rule over the stub's live frame under the `activity` locks.
+    const worked = new Map<string, ActorGolden>();
+    for (const card of SPEC_CARDS) {
+      const answer = await request.get(`/api/workspaces/harbor/specs/${card.id}/live`, { headers });
+      expect(answer.status(), card.slug).toBe(200);
+      const frame = (await answer.json()) as LiveFrame;
+      const actor = assigneeOf({ claims: frame.cards.map((c) => c.claim), locks: frame.locks });
+      if (actor?.kind === 'agent') worked.set(card.slug, actor);
+    }
+    expect(worked.size, 'the activity locks put an agent on a harbor spec').toBeGreaterThan(0);
+    for (const slug of worked.keys()) {
+      expect(SPEC_CARDS.find((c) => c.slug === slug)?.assignee?.kind, `${slug}: a person's card without the lock`).toBe('person');
+    }
+
+    await page.route(
+      (url) => url.pathname === PLANNING_PATH,
+      async (route) => {
+        const sent = Object.entries(route.request().headers()).filter(([name]) => name.toLowerCase() !== 'if-none-match');
+        const response = await route.fetch({ headers: Object.fromEntries(sent) });
+        const body = (await response.json()) as { features: Array<{ holders: Array<{ slug: string; assignee: unknown }> }> };
+        for (const feature of body.features) for (const holder of feature.holders) holder.assignee = worked.get(holder.slug) ?? holder.assignee;
+        await route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify(body) });
+      },
+    );
+    await page.setExtraHTTPHeaders({ [LOCKS_HEADER]: 'activity' });
+    await saveNames(request);
+
+    await page.goto(wsBoard('harbor'));
+    await expect(page.locator(WS_CARDS)).toHaveCount(goldenCards(PLANNING.harbor).length);
+    for (const card of SPEC_CARDS) {
+      const chip = cardOf(page, card).locator('ui-actor-chip');
+      const agent = worked.get(card.slug);
+      if (agent !== undefined) {
+        // One chip, the agent's: the bot glyph, the word "agent" for assistive tech, the session id in mono.
+        await expectActor(chip, agent, null);
+        await expect(chip.locator('ui-icon')).toHaveCount(1);
+        await expect(chip.locator('.vh')).toHaveText('agent');
+        await expect(cardOf(page, card).locator('ui-actor-chip[data-kind="person"]'), card.slug).toHaveCount(0);
+      } else if (card.assignee === null) {
+        await expect(chip, card.slug).toHaveCount(0);
+      } else {
+        await expectActor(chip, card.assignee, nameFor(card.assignee, true));
+      }
+    }
   });
 });
