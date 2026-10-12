@@ -1,4 +1,5 @@
 import { computed, inject, Injectable, resource } from '@angular/core';
+import type { Priority } from '../../../../../core/src/files';
 import type { ActorMapping, BoardQuery } from '../../../../../server/src/spec-routes.contract';
 import { ApiClient, type PlanningBody, type PutResult, type WorkspaceListEntry } from '../../core/api.service';
 import { type LiveReading, LockSourceService } from '../../core/lock-source.service';
@@ -13,7 +14,14 @@ export interface SpecRowView {
   readonly title: string;
   readonly type: string | null;
   readonly stage: string;
+  /**
+   * The dashboard row's `priority` (P3 for a missing or invalid key); null when the row carries none (archive rows).
+   * Optional so hand-built rows in specs need not name it.
+   */
+  readonly priority?: Priority | null;
 }
+
+const PRIORITIES: readonly Priority[] = ['P1', 'P2', 'P3', 'P4'];
 
 type Loose = Readonly<Record<string, unknown>>;
 const isLoose = (value: unknown): value is Loose => typeof value === 'object' && value !== null;
@@ -26,7 +34,8 @@ function rowsOf(body: unknown, key: 'specs' | 'archive'): SpecRowView[] {
     const id = text(row['id']);
     if (id === null) return [];
     const stage = text(row['stage']) ?? (key === 'archive' ? 'done' : 'plan');
-    return [{ id, title: text(row['title']) ?? id, type: text(row['type']), stage }];
+    const priority = PRIORITIES.find((level) => level === row['priority']) ?? null;
+    return [{ id, title: text(row['title']) ?? id, type: text(row['type']), stage, priority }];
   });
 }
 

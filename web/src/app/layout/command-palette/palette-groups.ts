@@ -7,7 +7,7 @@ import { SettingsService } from '../../core/settings.service';
 import { ThemeService } from '../../core/theme.service';
 import { writeClipboard } from '../../shared/ui/command-chip/command-chip';
 import { ToastService } from '../../shared/ui/toast/toast';
-import { specLink } from '../shell/areas';
+import { specLink, workspaceLink } from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { PaletteIndex } from './palette-index';
@@ -126,6 +126,47 @@ function specsSource(): PaletteSource {
   );
 }
 
+/**
+ * An idea of the open workspace (spec 008, ISC-124.2): the palette draws its chip in the idea chip's look (`lightbulb`,
+ * dashed, the slug in mono). Not `ui-idea-chip` itself, which is a link: an option holds no control.
+ */
+export interface PaletteIdeaEntry extends PaletteEntry {
+  readonly idea: true;
+}
+
+export const isIdea = (entry: PaletteEntry): entry is PaletteIdeaEntry => (entry as Partial<PaletteIdeaEntry>).idea === true;
+
+/** Between Specs (40) and Features (50). */
+export const IDEAS_ORDER = 45;
+
+/**
+ * The Ideas group (T117): every story of the open workspace in file-name order, its slug as the chip, its title as the
+ * label and its feature id as the meta, searchable by title, slug and feature; Enter opens `/w/:ws/ideas/:slug`.
+ */
+function ideasSource(): PaletteSource {
+  const state = inject(ShellState);
+  const data = inject(ShellData);
+  return source(
+    'ideas',
+    IDEAS_ORDER,
+    computed(() => {
+      const ws = state.ws();
+      if (ws === null) return [];
+      return data.ideas().map(
+        (idea): PaletteIdeaEntry => ({
+          id: `idea/${ws}/${idea.slug}`,
+          label: idea.title,
+          chip: idea.slug,
+          ...(idea.feature === null ? {} : { meta: idea.feature }),
+          link: ['/w', ws, 'ideas', idea.slug],
+          keywords: [idea.slug, idea.title, idea.feature ?? '', 'idea'],
+          idea: true,
+        }),
+      );
+    }),
+  );
+}
+
 function servicesSource(): PaletteSource {
   const index = inject(PaletteIndex);
   const view = inject(DOCUMENT).defaultView;
@@ -179,6 +220,16 @@ function actionsSource(): PaletteSource {
           },
         } satisfies PaletteCommandEntry);
       }
+      // Spec 008 (T117): the workspace board ("Board", never the spec's round board) while a workspace is open, and help.
+      if (here !== null) {
+        actions.push({
+          id: 'action/open-board',
+          label: t('board.workspace.open'),
+          link: workspaceLink(here, 'board'),
+          keywords: ['board', 'kanban', 'stages', 'cards'],
+        });
+      }
+      actions.push({ id: 'action/help', label: t('palette.actions.help'), link: ['/help'], keywords: ['help', 'guide', 'glossary', 'workflow'] });
       const url = here === null ? '/' : `/w/${here}`;
       actions.push(
         {
@@ -246,10 +297,10 @@ function archivedSource(): PaletteSource {
 
 /**
  * Spec 001's own palette groups (T66): Recent 10, Next up 20, Workspaces 30, Specs 40, Services 60, Actions 70,
- * Archived 80, each one provider line on `PALETTE_SOURCES` like any other spec's group.
+ * Archived 80, plus spec 008's Ideas 45, each one provider line on `PALETTE_SOURCES` like any other spec's group.
  */
 export function providePaletteGroups(): Provider[] {
-  return [recentSource, nextUpSource, workspacesSource, specsSource, servicesSource, actionsSource, archivedSource].map(
+  return [recentSource, nextUpSource, workspacesSource, specsSource, ideasSource, servicesSource, actionsSource, archivedSource].map(
     (factory) => ({ provide: PALETTE_SOURCES, useFactory: factory, multi: true }),
   );
 }

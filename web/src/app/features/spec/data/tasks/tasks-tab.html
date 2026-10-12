@@ -121,8 +121,11 @@
               <span data-builder>{{ row.builder }}</span>
             }
           </span>
-          @if (row.edges.length > 0 || sub(row) !== null || checkLine(row) !== null) {
+          @if (row.edges.length > 0 || sub(row) !== null || checkLine(row) !== null || liveCards().has(row.id)) {
             <span class="extra">
+              @if (liveCards().get(row.id); as card) {
+                <app-task-actors [card]="card" />
+              }
               @if (checkLine(row); as line) {
                 @switch (line.kind) {
                   @case ('locked') {

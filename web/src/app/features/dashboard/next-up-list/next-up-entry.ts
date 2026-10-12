@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
@@ -7,6 +8,7 @@ import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { UiChip } from '../../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
 import { UiIdChip } from '../../../shared/ui/id-chip/id-chip';
+import { UiReason } from '../../../shared/ui/reason/reason';
 import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
 import { stageIndex } from '../../spec/dashboard/dashboard-model';
 import type { NextUpForm } from './next-up-list';
@@ -15,12 +17,13 @@ import type { NextUpForm } from './next-up-list';
  * One Next up entry, ported from the prototype (`app.js` nextCard / wsColumn, `styles.css` `.next-card` l.356-358,
  * `.next-row` l.480-481). `rail` form (wide): a next-card — a card with the cyan 3 px left edge, 16 px padding and a
  * 12 px gap: an h3 of the tinted ID chip and the title link, the labelled five-stage track (60 px segments so
- * "Abschluss" fits), then the command chip and the first takeable claim. `card` form (below wide): a next-row inside
- * the list's card — the cyan left edge, the ID in a 36 px column beside the one-line title, the command below it.
+ * "Abschluss" fits), then the reason line (`ui-reason`: the row's `nextReason` and its command chip) and the first
+ * takeable claim. `card` form (below wide): a next-row inside the list's card — the cyan left edge, the ID in a 36 px
+ * column beside the one-line title, the compact reason line below it. The phrase is the dashboard row's (ISC-122.3).
  */
 @Component({
   selector: 'app-next-up-entry',
-  imports: [RouterLink, TranslocoPipe, UiCard, UiChip, UiClamp, UiCommandChip, UiIdChip, UiStageTrack],
+  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiCard, UiChip, UiClamp, UiCommandChip, UiIdChip, UiReason, UiStageTrack],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-next-entry]': 'row().id' },
   styles: `
@@ -38,6 +41,7 @@ import type { NextUpForm } from './next-up-list';
     .link { border-radius: var(--radius-field); color: var(--color-base-content); text-decoration: none; }
     .link:hover { text-decoration: underline; text-underline-offset: 3px; }
     .next-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-inline-size: 0; }
+    .next-foot .reason { flex: 1 1 100%; }
     .take { font-family: var(--font-mono); font-size: 12px; }
     .next-row { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 4px 8px; align-items: baseline; padding: 10px 12px; border-inline-start: 3px solid var(--color-primary); }
     .next-row .link { min-inline-size: 0; font-size: 14px; font-weight: 600; line-height: 20px; }
@@ -75,14 +79,7 @@ import type { NextUpForm } from './next-up-list';
           [ariaLabel]="'stages.position' | transloco: { index: position(), total: labels().length, stage: labels()[position() - 1] ?? '' }"
         />
         <div class="next-foot" data-next-foot>
-          @if (row().nextCommand; as command) {
-            <ui-command-chip
-              [command]="command"
-              [copyLabel]="'common.copyCommand' | transloco"
-              [copiedLabel]="'common.copied' | transloco: { command }"
-              [manualHint]="'common.copyFallback' | transloco"
-            />
-          }
+          <ng-container [ngTemplateOutlet]="next" [ngTemplateOutletContext]="{ compact: false }" />
           @if (row().takeable[0]; as claim) {
             <ui-chip class="take" tone="accent" data-next-takeable>{{ 'common.takeable' | transloco: { claim } }}</ui-chip>
           }
@@ -107,18 +104,27 @@ import type { NextUpForm } from './next-up-list';
             {{ (open() ? 'brief.less' : 'brief.more') | transloco }}
           </button>
         }
-        @if (row().nextCommand; as command) {
+        @if (row().nextReason || row().nextCommand) {
           <div class="cmd">
-            <ui-command-chip
-              [command]="command"
-              [copyLabel]="'common.copyCommand' | transloco"
-              [copiedLabel]="'common.copied' | transloco: { command }"
-              [manualHint]="'common.copyFallback' | transloco"
-            />
+            <ng-container [ngTemplateOutlet]="next" [ngTemplateOutletContext]="{ compact: true }" />
           </div>
         }
       </div>
     }
+
+    <!-- The reason line (ISC-122.3): the same phrase and chip as the dashboard row; the bare chip without a phrase. -->
+    <ng-template #next let-compact="compact">
+      @if (row().nextReason; as phrase) {
+        <ui-reason class="reason" data-next-reason [phrase]="phrase" [command]="row().nextCommand" [compact]="compact" />
+      } @else if (row().nextCommand; as command) {
+        <ui-command-chip
+          [command]="command"
+          [copyLabel]="'common.copyCommand' | transloco"
+          [copiedLabel]="'common.copied' | transloco: { command }"
+          [manualHint]="'common.copyFallback' | transloco"
+        />
+      }
+    </ng-template>
   `,
 })
 export class NextUpEntry {

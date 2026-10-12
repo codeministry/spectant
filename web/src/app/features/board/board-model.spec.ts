@@ -8,6 +8,8 @@ import {
   type BoardQueryState,
   type BoardRow,
   boardQueryParams,
+  boardRowsOf,
+  boardSummaryOf,
   boardQueryString,
   buildBoard,
   dropTargetsOf,
@@ -261,5 +263,23 @@ describe('the board query (ISC-129.1)', () => {
     expect(boardQueryString(EMPTY_BOARD_QUERY)).toBe('');
     expect(boardQueryParams({ ...EMPTY_BOARD_QUERY, col: 'build' })).toEqual({ col: 'build' });
     expect(boardQueryString({ ...EMPTY_BOARD_QUERY, milestone: ['Harbor 1.0'], group: 'feature' })).toBe('milestone=Harbor+1.0&group=feature');
+  });
+});
+
+describe('the board summary (T116, ISC-129)', () => {
+  it('reads the active rows of a served dashboard body, and nothing from anything else', () => {
+    expect(boardRowsOf(dashboard)).toEqual(ROWS);
+    expect(boardRowsOf(null)).toEqual([]);
+    expect(boardRowsOf({ specs: 'nope' })).toEqual([]);
+    expect(boardRowsOf({ specs: [{ id: '002' }, 7, { id: '003', slug: '003-x' }] })).toEqual([{ id: '003', slug: '003-x' }]);
+  });
+
+  it('counts the columns, every card on the board and the cards that wait on you, unfiltered', () => {
+    const summary = boardSummaryOf(board());
+    expect(summary).toEqual({ stages: PLANNING.stages.length, cards: board().total, waiting: board().waitingOnYou });
+    expect(summary.cards).toBe(Object.values(PLANNING.stageCounts).reduce((n, v) => n + v, 0));
+    expect(summary.waiting).toBe(3);
+    // A filtered model still summarises the whole board: the area menu line never follows the page's filters.
+    expect(boardSummaryOf(board({ type: ['idea'] }))).toEqual(summary);
   });
 });

@@ -1,7 +1,7 @@
 import { computed, DOCUMENT, inject, Injectable, InjectionToken, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
-import { areaById, areaPath, specLink } from '../layout/shell/areas';
+import { areaById, areaPath, specLink, workspaceLink } from '../layout/shell/areas';
 import { ShellData } from '../layout/shell/shell-data.service';
 import { ShellState } from '../layout/shell/shell-state.service';
 import { PaletteIndex } from '../layout/command-palette/palette-index';
@@ -218,6 +218,10 @@ export class KeyboardService {
         return true;
       case 'go-section':
         return this.focusSection(action.section);
+      case 'go-page': {
+        const ws = this.workspace();
+        return ws === null ? false : this.jump(workspaceLink(ws, action.page));
+      }
       case 'copy-next':
         return this.copyNext();
       case 'move-selection':

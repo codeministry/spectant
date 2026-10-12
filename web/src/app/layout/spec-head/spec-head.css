@@ -7,7 +7,8 @@
  *
  * The breadcrumb (T40, ISC-105): one line at every width, never wrapping, never scrolling. When it does not fit the
  * names truncate with an ellipsis in a fixed order: feature name first (flex-shrink 3), then milestone name (2), then
- * the spec slug (1). Ids (F-id, spec id, claim or task id) are `flex: none` and never truncate. Full names stay in the
+ * the spec slug (1). Ids (F-id, spec id, claim or task id) and the priority chip before the spec id (spec 008,
+ * ISC-118) are `flex: none` and never truncate. Full names stay in the
  * DOM, so accessible names keep the whole text. Separators are generated content only: `/` scope, `·` milestone to
  * feature, `›` down into the spec.
  */
@@ -131,7 +132,8 @@
   max-inline-size: 200px;
 }
 
-.crumbs ui-icon {
+.crumbs ui-icon,
+.crumbs ui-priority {
   flex: none;
 }
 

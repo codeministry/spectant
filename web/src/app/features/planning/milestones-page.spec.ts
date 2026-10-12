@@ -6,6 +6,7 @@ import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
+import harborPlanning from '../../../../../core/fixtures/harbor.planning.golden.json';
 import type { PlanningHolder, PlanningMilestone } from '../../../../../core/src/planning';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
@@ -341,6 +342,30 @@ describe('MilestonesPage (T36, ISC-104)', () => {
     const root = page(harness.fixture.nativeElement as HTMLElement);
     expect(root.querySelector('p.unavailable')).not.toBeNull();
     expect(root.querySelector('ol.rows')).toBeNull();
+  });
+});
+
+// T139 · ISC-124.2: each milestone lists its stories after its specs as a sub-list "Ideas · n" with idea chips; the
+// milestone's claim fraction stays the model's, since a story holds no claim.
+describe('MilestonesPage ideas (T139, ISC-124.2)', () => {
+  const HARBOR = harborPlanning as unknown as PlanningBody;
+  const ideasOf = (el: HTMLElement) => el.querySelector<HTMLElement>('[data-ideas]');
+
+  it('shows the one story of Harbor 1.0 as an idea chip and keeps its claim fraction', async () => {
+    const root = await open('/w/harbor/milestones', HARBOR);
+    const milestone = row(root, 'harbor-1-0');
+    const list = ideasOf(milestone) as HTMLElement;
+    expect(list.getAttribute('data-ideas')).toBe('1');
+    expect(list.querySelector('[data-ideas-label]')).not.toBeNull();
+    const links = [...list.querySelectorAll<HTMLAnchorElement>('ui-idea-chip a')];
+    expect(links.map((a) => a.getAttribute('href'))).toEqual(['/w/harbor/ideas/registry-webhooks']);
+    expect(milestone.querySelector('.fraction')?.textContent.trim()).toBe('101/106');
+  });
+
+  it('shows no sub-list on a milestone without stories', async () => {
+    const root = await open('/w/harbor/milestones', HARBOR);
+    expect(ideasOf(row(root, 'harbor-0-9'))).toBeNull();
+    expect(root.querySelectorAll('[data-ideas] ui-idea-chip')).toHaveLength(1);
   });
 });
 

@@ -11,17 +11,16 @@ import { ShellState } from '../../../layout/shell/shell-state.service';
 import { GateButton } from '../../../layout/spec-head/gate-button';
 import { type GateAction, gateAction, pathSegments } from '../../../layout/spec-head/spec-head-model';
 import { UiIcon } from '../../../shared/icons/icon';
-import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
 import { UiEmptyState } from '../../../shared/ui/empty-state/empty-state';
 import { UiMeter } from '../../../shared/ui/meter/meter';
 import { UiRing } from '../../../shared/ui/ring/ring';
 import { UiSectionHeader } from '../../../shared/ui/section-header/section-header';
 import { UiSkeleton } from '../../../shared/ui/skeleton/skeleton';
-import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
 import { UiStateChip } from '../../../shared/ui/state-chip/state-chip';
 import type { Tone } from '../../../shared/ui/tone';
 import { AreaPlaceholder } from '../area-placeholder';
-import { GATE_NAMES, GATE_TONE, stageIndex, TRACK_STAGES } from '../dashboard/dashboard-model';
+import { GATE_NAMES, GATE_TONE } from '../dashboard/dashboard-model';
+import { StatusBlock } from './status-block';
 import { openClaims } from './status-model';
 
 /** The section headings a hash anchor lands on (the dashboard's Waiting and Gates tiles link there). */
@@ -45,15 +44,14 @@ const ACTIVITY_LIMIT = 5;
     GateButton,
     NgTemplateOutlet,
     RouterLink,
+    StatusBlock,
     TranslocoPipe,
-    UiCommandChip,
     UiEmptyState,
     UiIcon,
     UiMeter,
     UiRing,
     UiSectionHeader,
     UiSkeleton,
-    UiStageTrack,
     UiStateChip,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -121,16 +119,9 @@ export class StatusTab {
     return claims && claims.total > 0 ? (claims.closed / claims.total) * 100 : null;
   });
 
-  protected readonly stageLabels = computed(() => {
-    this.lang();
-    return TRACK_STAGES.map((stage) => this.transloco.translate(`stages.${stage}`));
-  });
-  protected readonly stageCurrent = computed(() => stageIndex(this.model()?.head.stage ?? ''));
-  protected readonly stageAria = computed(() => {
-    const labels = this.stageLabels();
-    const index = Math.min(this.stageCurrent(), labels.length - 1);
-    return this.transloco.translate('stages.position', { index: index + 1, total: labels.length, stage: labels[index] ?? '' });
-  });
+  /** The workspace workflow (`ShellData.workflow`) and the person names (`ShellData.actorList`) for the status block. */
+  protected readonly workflow = this.data.workflow;
+  protected readonly actors = this.data.actorList;
 
   protected readonly lock = computed(() => this.model()?.areas.live.lock ?? null);
   protected readonly action = computed<GateAction | null>(() => {

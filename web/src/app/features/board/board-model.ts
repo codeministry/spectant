@@ -123,6 +123,19 @@ export interface BoardRow {
   readonly assignee: ActorRef | null;
 }
 
+const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> => typeof value === 'object' && value !== null;
+
+/**
+ * The active rows of a served dashboard body (`DashboardModel.specs`, untyped in web, see `DashboardBody`) as
+ * `BoardRow`s: a served row is assignable to it, so the rows are passed through as they are, never reshaped. Only a
+ * row without its `id` and `slug` strings is left out; anything but a body with a `specs` array reads as no rows.
+ */
+export function boardRowsOf(body: unknown): readonly BoardRow[] {
+  const specs = isRecord(body) ? body['specs'] : null;
+  if (!Array.isArray(specs)) return [];
+  return specs.filter((row): row is BoardRow => isRecord(row) && typeof row['id'] === 'string' && typeof row['slug'] === 'string');
+}
+
 export interface BoardInput {
   readonly planning: PlanningModel;
   /** The dashboard rows of the same workspace: the type, reason and command a planning holder does not carry. */
@@ -437,3 +450,22 @@ export function buildBoard(input: BoardInput): BoardModel {
     },
   };
 }
+
+// ─── The summary (T116) ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/** The workspace area menu's Board line, "n stages · m cards · k wait on you" (`shell.pages.summary.board`). */
+export interface BoardSummary {
+  readonly stages: number;
+  readonly cards: number;
+  readonly waiting: number;
+}
+
+/**
+ * The summary of a board as `buildBoard` built it, so the menu line and the page count the same cards: its columns,
+ * every card on it and every card waiting on the principal, whatever the model's filters let through.
+ */
+export const boardSummaryOf = (model: BoardModel): BoardSummary => ({
+  stages: model.stages.length,
+  cards: model.total,
+  waiting: model.cards.filter((card) => card.waitsOnYou).length,
+});

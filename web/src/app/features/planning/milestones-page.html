@@ -105,6 +105,18 @@
                       </ul>
                     </dd>
                   </div>
+                  @if (m.ideas.length > 0) {
+                    <div class="chip-row ideas" [attr.data-ideas]="m.ideas.length">
+                      <dt data-ideas-label>{{ 'planning.ideas.label' | transloco: { count: m.ideas.length } }}</dt>
+                      <dd>
+                        <ul>
+                          @for (idea of m.ideas; track idea.slug) {
+                            <li><ui-idea-chip [ws]="ws()" [slug]="idea.slug" [title]="idea.title" /></li>
+                          }
+                        </ul>
+                      </dd>
+                    </div>
+                  }
                 </dl>
               </div>
 

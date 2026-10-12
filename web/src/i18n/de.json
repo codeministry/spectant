@@ -143,7 +143,11 @@
       "openFog": "Offener Fog",
       "open": "Spec öffnen"
     },
-    "agentWorking": "Agent {{session}} arbeitet"
+    "agentWorking": "Agent {{session}} arbeitet",
+    "ideas": {
+      "title": "Ideen · {{count}}",
+      "label": "Ideen im Backlog"
+    }
   },
   "nextUp": {
     "title": "Als Nächstes",
@@ -190,6 +194,7 @@
       "nextUp": "Als Nächstes",
       "workspaces": "Workspaces",
       "specs": "Specs",
+      "ideas": "Ideen",
       "features": "Features",
       "milestones": "Meilensteine",
       "services": "Dienste",
@@ -204,6 +209,7 @@
       "theme": "Farbschema",
       "language": "Sprache",
       "shortcuts": "Tastenkürzel anzeigen",
+      "help": "Hilfe",
       "openPort": "localhost:{{port}} öffnen"
     },
     "noMatch": "Kein Treffer für „{{query}}“ · versuchen Sie eine Spec-ID wie {{example}}"
@@ -252,7 +258,7 @@
     "groups": {
       "navigate": "Wechseln zu",
       "spec": "Diese Spec",
-      "board": "Board",
+      "board": "Runden-Board",
       "general": "Überall"
     }
   },
@@ -269,7 +275,21 @@
       "en": "English",
       "de": "Deutsch"
     },
-    "singleKey": "Einzeltasten-Kürzel"
+    "singleKey": "Einzeltasten-Kürzel",
+    "actors": {
+      "title": "Akteure",
+      "intro": "Namen für die Personen-IDs in Ihren Specs, nur im Datenverzeichnis der App gespeichert. Eine ID ohne Namen erscheint als die ID selbst.",
+      "empty": "Noch ist keine Personen-ID bekannt.",
+      "displayName": "Anzeigename",
+      "gitIdentities": "Git-Identitäten",
+      "nameFor": "Anzeigename für {{ id }}",
+      "gitFor": "Git-Identitäten für {{ id }}",
+      "gitHint": "Mehrere Adressen, durch Kommas getrennt.",
+      "save": "Akteure speichern",
+      "saving": "Wird gespeichert …",
+      "saved": "Akteure gespeichert.",
+      "failed": "Die Akteure konnten nicht gespeichert werden (Status {{ status }})."
+    }
   },
   "states": {
     "unreachable": "Spectant ist auf {{host}} nicht erreichbar",
@@ -354,7 +374,7 @@
       "summary": {
         "dashboard": "Der Stand der Spec auf einen Blick",
         "status": "Phase, Gates und Zeitleiste",
-        "live": "Arbeitende Agenten, Board und Matrix",
+        "live": "Arbeitende Agenten, Runden-Board und Matrix",
         "data": "Claims, Tasks und Belege",
         "docs": "Plan, Design, Entscheidungen, Verfassung",
         "notes": "Ihre Notizen zu dieser Spec"
@@ -372,7 +392,7 @@
     "tabs": {
       "status": "Status",
       "timeline": "Zeitleiste",
-      "board": "Board",
+      "board": "Runden-Board",
       "matrix": "Matrix",
       "claims": "Claims",
       "tasks": "Tasks",
@@ -395,7 +415,7 @@
         "activity": "Agentenquelle: Aktivitätsprotokoll",
         "none": "Keine Agentenquelle"
       },
-      "open": "{{source}}, Live-Board öffnen"
+      "open": "{{source}}, Runden-Board öffnen"
     },
     "zen": {
       "toggle": "Zen-Modus",
@@ -433,7 +453,7 @@
       "milestones": "Meilensteine",
       "summary": {
         "specs": "{{active}} aktiv · {{archived}} archiviert",
-        "board": "{{stages}} Stages · {{cards}} Karten",
+        "board": "{{stages}} Stages · {{cards}} Karten · {{waiting}} warten auf Sie",
         "features": "{{count}} Features · {{closed}}/{{total}} geschlossen",
         "milestones": "{{count}} Meilensteine · nächster {{next}}"
       }
@@ -458,7 +478,7 @@
     },
     "derived": "abgeleitet",
     "dateUnknown": "Datum unbekannt",
-    "openBoard": "Board öffnen →",
+    "openBoard": "Runden-Board öffnen →",
     "empty": {
       "heading": "Noch keine Ereignisse",
       "body": "Die Stage wird aus den Dateien abgeleitet."
@@ -779,7 +799,6 @@
       "heading": "Wo es steht",
       "claimsClosed": "{{closed}}/{{total}} Claims geschlossen",
       "since": "seit {{time}} über {{via}}",
-      "derived": "abgeleitet",
       "reasons": "Warum dieser Befehl als Nächstes kommt",
       "done": "Nichts mehr auszuführen: Die Spec ist fertig.",
       "copy": "Befehl kopieren",
@@ -868,7 +887,12 @@
       "heading": "Fortschritt je Lane",
       "tasks": "Tasks gelandet",
       "none": "Keine Lanes: Die Spec hat keine tasks.md."
-    }
+    },
+    "stageSource": {
+      "explicit": "in der Frontmatter gesetzt",
+      "derived": "aus der Stage-Tabelle abgeleitet"
+    },
+    "unassigned": "nicht zugewiesen"
   },
   "specHead": {
     "breadcrumb": "Pfad",
@@ -952,7 +976,7 @@
     }
   },
   "board": {
-    "toolbar": "Board-Werkzeuge",
+    "toolbar": "Werkzeuge des Runden-Boards",
     "view": {
       "label": "Ansicht",
       "lanes": "Bahnen",
@@ -1036,7 +1060,7 @@
       "stepCheck": "{{task}} als erledigt markieren",
       "stepSaving": "Wird gespeichert",
       "stepLocked": "Gesperrt durch Sitzung {{session}}",
-      "stepConflict": "tasks.md wurde auf der Platte geändert; nichts wurde geschrieben. Bitte laden Sie das Board neu.",
+      "stepConflict": "tasks.md wurde auf der Platte geändert; nichts wurde geschrieben. Bitte laden Sie das Runden-Board neu.",
       "stepFailed": "Das Schreiben ist fehlgeschlagen; setzen Sie den Haken erneut.",
       "stepsEmpty": "Kein Operator-Schritt in diesem Frame."
     },
@@ -1056,7 +1080,7 @@
       "empty": "Keine Karte passt zum Filter."
     },
     "empty": "Keine Karte passt zum Filter.",
-    "failed": "Das Board konnte nicht gelesen werden.",
+    "failed": "Das Runden-Board konnte nicht gelesen werden.",
     "agent": {
       "stale": "veraltet",
       "source": "Sperrquelle: {{source}}",
@@ -1066,7 +1090,6 @@
     "workspace": {
       "title": "Board",
       "summary": "{{cards}} Karten · {{specs}} Specs · {{ideas}} Ideen",
-      "areaSummary": "{{stages}} Stages · {{cards}} Karten · {{waiting}} warten auf Sie",
       "open": "Board öffnen",
       "source": {
         "custom": "specs/workflow.md",
@@ -1168,7 +1191,7 @@
   },
   "matrix": {
     "region": "Matrix: Tasks nach Frame",
-    "hint": "Wählen Sie eine Zelle, um das Board in diesem Frame zu öffnen.",
+    "hint": "Wählen Sie eine Zelle, um das Runden-Board in diesem Frame zu öffnen.",
     "task": "Task",
     "empty": "Es ist noch keine Runde aufgezeichnet, die Matrix hat daher keinen Frame.",
     "failed": "Die Matrix konnte nicht gelesen werden.",
@@ -1329,6 +1352,9 @@
       "more": "{{count}} weitere Features",
       "archived": "archiviert",
       "unknownMilestone": "nicht im Block ## Milestones des Masters"
+    },
+    "ideas": {
+      "label": "Ideen · {{count}}"
     }
   },
   "help": {
@@ -1375,6 +1401,9 @@
       "gateDropped": "workflow.md lässt das Review-Gate für {{type}} weg · Standard angewendet"
     }
   },
+  "ideas": {
+    "title": "Idee"
+  },
   "types": {
     "feature": "Feature",
     "bug": "Bug",
@@ -1417,5 +1446,8 @@
   },
   "reason": {
     "glyph": "wartet"
+  },
+  "live": {
+    "taskActors": "Arbeitet an {{ task }}"
   }
 }

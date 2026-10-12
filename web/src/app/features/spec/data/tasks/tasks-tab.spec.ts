@@ -4,7 +4,9 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import liveGolden from '../../../../../../../core/fixtures/harbor.live.golden.json';
 import golden from '../../../../../../../core/fixtures/harbor.tasks.golden.json';
+import type { LiveFrame } from '../../../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
 import { ApiClient, type ApiResult, type TaskCheckResult, type TasksResult } from '../../../../core/api.service';
 import { ToastService } from '../../../../shared/ui/toast/toast';
@@ -14,7 +16,9 @@ const GOLDEN = golden['specs/002-web-console'] as unknown as TasksBody;
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
 const DASHBOARD = { specs: [{ id: '002', title: 'Web console', type: 'feature', stage: 'build' }], archive: [] };
 
-type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'spec' | 'tasks' | 'taskCheck'>;
+const LIVE = liveGolden['specs/002-web-console'] as unknown as LiveFrame;
+
+type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'spec' | 'tasks' | 'taskCheck' | 'live'>;
 
 /** What the fake write was sent, in order. */
 let sent: Array<{ tid: string; hash: string; checked: boolean }> = [];
@@ -25,6 +29,7 @@ function setUp(tasks: TasksBody | null = GOLDEN, hash: string | null = 'ab12'): 
     workspaces: () => Promise.resolve(ok([])),
     dashboard: () => Promise.resolve(ok(DASHBOARD)),
     spec: () => Promise.resolve({ kind: 'not-found', served: false }),
+    live: () => Promise.resolve(ok(LIVE as never)),
     tasks: (): Promise<TasksResult> => Promise.resolve({ ...ok(tasks), hash: tasks === null ? null : hash }),
     taskCheck: (_ws, _id, tid, sentHash, checked): Promise<TaskCheckResult> => {
       sent.push({ tid, hash: sentHash, checked });
@@ -86,6 +91,18 @@ describe('TasksTab', () => {
     expect(root.querySelector('#task-T27 [data-builder]')?.textContent.trim()).toBe('Engineer');
     expect(root.querySelector('#task-T28 [data-sub]')?.textContent).toContain('width 10 reached');
     expect(root.querySelector('#task-T31 [data-sub]')?.textContent).toContain('your step');
+  });
+
+  it('shows the agent of a task the live frame names (T27 of the golden, stale, no sub-agent), nothing on the others', async () => {
+    setUp();
+    const { root } = await open();
+    const actors = root.querySelectorAll('[data-task-row] app-task-actors');
+    expect(actors).toHaveLength(LIVE.cards.filter((c) => c.agent !== null || c.subagent !== null).length);
+    const t27 = root.querySelector('#task-T27 app-task-actors');
+    expect(t27?.querySelector('ui-actor-chip[data-task-agent] .label')?.textContent.trim()).toBe('a:claude:sess-2');
+    expect(t27?.querySelector('ui-actor-chip[data-task-agent]')?.hasAttribute('data-stale')).toBe(true);
+    expect(t27?.querySelector('[data-task-subagent]')).toBeNull();
+    expect(root.querySelector('#task-T2 app-task-actors')).toBeNull();
   });
 
   it('renders every checkbox enabled, checked from the done state, described by the helper line', async () => {

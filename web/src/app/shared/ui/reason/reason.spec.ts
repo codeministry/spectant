@@ -52,6 +52,17 @@ describe('UiReason (ISC-122.3)', () => {
     expect(host.querySelector('.phrase')?.textContent).toBe(phrase);
   });
 
+  it('wraps the whole phrase unclamped in the block variant, read once', async () => {
+    const { host } = await render({ phrase, command: '/spec-implement 002', block: true });
+    expect(host.getAttribute('data-block')).toBe('');
+    const shown = host.querySelector('.phrase');
+    expect(shown?.textContent).toBe(phrase);
+    expect(shown?.getAttribute('data-clamp')).toBeNull();
+    expect(shown?.getAttribute('aria-hidden')).toBeNull();
+    expect(host.querySelector('.visually-hidden')).toBeNull();
+    expect(host.querySelector('ui-command-chip code')?.textContent).toBe('/spec-implement 002');
+  });
+
   it('re-emits the copied command for the live region', async () => {
     const writeText = vi.fn(() => Promise.resolve());
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });

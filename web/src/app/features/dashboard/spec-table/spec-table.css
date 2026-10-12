@@ -218,11 +218,11 @@
 }
 
 /* "more…" / "less" under a row whose description is cut (ISC-111): outside the row link, aligned with the title
-   column (16 px padding + 40 px id + 16 px gap), styled like the Brief's toggle. */
+   column (16 px padding + 48 px id + 16 px gap), styled like the Brief's toggle. */
 .row-more {
   display: block;
   min-block-size: 24px;
-  margin: -8px 16px 8px 72px;
+  margin: -8px 16px 8px 80px;
   padding: 2px 0;
   border: 0;
   background: none;
@@ -244,4 +244,10 @@
   .row-more {
     min-block-size: 44px;
   }
+}
+
+/* The reason line under the row (ISC-122.3), aligned with the title column like "more…": it pulls into the row's
+   bottom padding, and after "more…" the two margins collapse, so it follows that toggle directly. */
+.row-reason {
+  margin: -8px 16px 8px 80px;
 }

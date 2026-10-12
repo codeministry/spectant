@@ -363,7 +363,7 @@ describe('ShellComponent', () => {
         expect(texts(nav?.querySelectorAll('[data-area] .sub') as NodeListOf<Element>)).toEqual([
           'Where the spec stands at a glance',
           'Stage, gates and timeline',
-          'Agents at work, board and matrix',
+          'Agents at work, round board and matrix',
           'Claims, tasks and evidence',
           'Plan, design, decisions, constitution',
           'Your notes on this spec',
@@ -396,7 +396,8 @@ describe('ShellComponent', () => {
       const live = control(spec, 'live');
       expect(live.tagName).toBe('A');
       expect(live.getAttribute('href')).toBe('/w/harbor/s/002/board');
-      expect(live.getAttribute('title')).toBe('No agent source, open the live board');
+      // Spec 008 (T116): the spec's board is the "Round board", never the workspace's "Board".
+      expect(live.getAttribute('title')).toBe('No agent source, open the round board');
       expect(live.getAttribute('data-source')).toBe('none');
     });
 

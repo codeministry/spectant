@@ -83,7 +83,8 @@ test.describe('status tab', () => {
     const tab = page.locator('app-status-tab');
     await expect(tab.locator('[data-stage]')).toHaveAttribute('data-value', SPEC_002.head.stage);
     await expect(tab.locator('[data-next-command]')).toContainText(SPEC_002.next.command ?? '');
-    await expect(tab.locator('[data-reason]')).toHaveText([...SPEC_002.next.reasons]);
+    await expect(tab.locator('ui-reason .phrase')).toHaveText(SPEC_002.next.reasons[0] ?? '');
+    await expect(tab.locator('[data-reason]')).toHaveText([...SPEC_002.next.reasons.slice(1)]);
     await expect(tab.locator('[data-waiting-row]')).toHaveCount(SPEC_002.waitingOnYou.length);
     await expect(tab.locator('ui-stage-track li[aria-current="step"]')).toHaveCount(1);
     await expect(tab.locator('[data-claims-closed]')).toBeVisible();

@@ -9,6 +9,9 @@ import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.ser
 import { ShellState } from '../shell/shell-state.service';
 import type { Tier } from '../shell/tier';
 import { AreaMenu } from './area-menu';
+import DASHBOARD_GOLDEN from '../../../../../core/fixtures/harbor.golden.json';
+import PLANNING_GOLDEN from '../../../../../core/fixtures/harbor.planning.golden.json';
+import { boardRowsOf, buildBoard } from '../../features/board/board-model';
 
 @Component({ selector: 'app-blank', template: '' })
 class Blank {}
@@ -96,16 +99,16 @@ const WITH_MILESTONES = planning([
 
 type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec'>;
 
-function fakeApi(plan: ApiResult<PlanningBody>): FakeApi {
+function fakeApi(plan: ApiResult<PlanningBody>, dashboard: unknown): FakeApi {
   return {
     workspaces: () => Promise.resolve(ok([{ slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: null }])),
-    dashboard: (ws) => Promise.resolve(ws === 'harbor' ? ok(DASHBOARD) : { kind: 'not-found', served: true }),
+    dashboard: (ws) => Promise.resolve(ws === 'harbor' ? ok(dashboard) : { kind: 'not-found', served: true }),
     planning: () => Promise.resolve(plan),
     spec: () => Promise.resolve({ kind: 'not-found', served: false }),
   };
 }
 
-function setUp(plan: ApiResult<PlanningBody>): void {
+function setUp(plan: ApiResult<PlanningBody>, dashboard: unknown = DASHBOARD): void {
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -114,7 +117,7 @@ function setUp(plan: ApiResult<PlanningBody>): void {
         preloadLangs: true,
       }),
     ],
-    providers: [provideRouter(ROUTES), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: fakeApi(plan) }],
+    providers: [provideRouter(ROUTES), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: fakeApi(plan, dashboard) }],
   });
 }
 
@@ -192,12 +195,29 @@ describe('AreaMenu', () => {
     it('renders the summaries from the dashboard rows and the planning model', async () => {
       setUp(ok(WITH_MILESTONES));
       const entries = pages(await render('/w/harbor'));
-      expect(entries.map(sub)).toEqual(['3 active · 1 archived', '0 stages · 0 cards', '2 features · 5/9 closed', '2 milestones · next Nov 30']);
+      expect(entries.map(sub)).toEqual([
+        '3 active · 1 archived',
+        '0 stages · 0 cards · 0 wait on you',
+        '2 features · 5/9 closed',
+        '2 milestones · next Nov 30',
+      ]);
     });
 
-    it('sums the Board summary over its columns as served (spec 008, ISC-129)', async () => {
-      setUp(ok({ ...planning([UNNAMED]), stages: ['idea', 'plan', 'build', 'done'], stageCounts: { idea: 2, plan: 1, build: 3 } }));
-      expect(pages(await render('/w/harbor')).map(sub)[1]).toBe('4 stages · 6 cards');
+    it('counts the Board line through the board model: stages, cards and cards waiting on you (T116, ISC-129)', async () => {
+      const golden = PLANNING_GOLDEN as unknown as PlanningBody;
+      setUp(ok(golden), DASHBOARD_GOLDEN);
+      const model = buildBoard({ planning: golden, rows: boardRowsOf(DASHBOARD_GOLDEN) });
+      const cards = Object.values(golden.stageCounts).reduce((n, v) => n + v, 0);
+      expect(model.total).toBe(cards);
+      expect(pages(await render('/w/harbor')).map(sub)[1]).toBe(`${String(golden.stages.length)} stages · ${String(cards)} cards · 3 wait on you`);
+    });
+
+    it('leaves the Board line out until the dashboard rows have answered too', async () => {
+      setUp(ok(WITH_MILESTONES));
+      TestBed.overrideProvider(ApiClient, {
+        useValue: { ...fakeApi(ok(WITH_MILESTONES), DASHBOARD), dashboard: () => Promise.resolve({ kind: 'unavailable' }) },
+      });
+      expect(pages(await render('/w/harbor')).map(sub)[1]).toBeNull();
     });
 
     it('names an undated next milestone by its name', async () => {

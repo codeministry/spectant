@@ -143,7 +143,11 @@
       "openFog": "Open fog",
       "open": "Open spec"
     },
-    "agentWorking": "Agent {{session}} working"
+    "agentWorking": "Agent {{session}} working",
+    "ideas": {
+      "title": "Ideas · {{count}}",
+      "label": "Ideas in the backlog"
+    }
   },
   "nextUp": {
     "title": "Next up",
@@ -190,6 +194,7 @@
       "nextUp": "Next up",
       "workspaces": "Workspaces",
       "specs": "Specs",
+      "ideas": "Ideas",
       "features": "Features",
       "milestones": "Milestones",
       "services": "Services",
@@ -204,6 +209,7 @@
       "theme": "Theme",
       "language": "Language",
       "shortcuts": "Show shortcuts",
+      "help": "Help",
       "openPort": "Open localhost:{{port}}"
     },
     "noMatch": "No match for “{{query}}” · try a spec ID like {{example}}"
@@ -252,7 +258,7 @@
     "groups": {
       "navigate": "Go to",
       "spec": "This spec",
-      "board": "Board",
+      "board": "Round board",
       "general": "Everywhere"
     }
   },
@@ -269,7 +275,21 @@
       "en": "English",
       "de": "Deutsch"
     },
-    "singleKey": "Single-key shortcuts"
+    "singleKey": "Single-key shortcuts",
+    "actors": {
+      "title": "Actors",
+      "intro": "Names for the person ids in your specs, stored only in the app's data directory. An id without a name shows as the id itself.",
+      "empty": "No person id is known yet.",
+      "displayName": "Display name",
+      "gitIdentities": "Git identities",
+      "nameFor": "Display name for {{ id }}",
+      "gitFor": "Git identities for {{ id }}",
+      "gitHint": "Several addresses separated by commas.",
+      "save": "Save actors",
+      "saving": "Saving…",
+      "saved": "Actors saved.",
+      "failed": "The actors could not be saved (status {{ status }})."
+    }
   },
   "states": {
     "unreachable": "Can't reach spectant on {{host}}",
@@ -354,7 +374,7 @@
       "summary": {
         "dashboard": "Where the spec stands at a glance",
         "status": "Stage, gates and timeline",
-        "live": "Agents at work, board and matrix",
+        "live": "Agents at work, round board and matrix",
         "data": "Claims, tasks and evidence",
         "docs": "Plan, design, decisions, constitution",
         "notes": "Your notes on this spec"
@@ -372,7 +392,7 @@
     "tabs": {
       "status": "Status",
       "timeline": "Timeline",
-      "board": "Board",
+      "board": "Round board",
       "matrix": "Matrix",
       "claims": "Claims",
       "tasks": "Tasks",
@@ -395,7 +415,7 @@
         "activity": "Agent source: activity log",
         "none": "No agent source"
       },
-      "open": "{{source}}, open the live board"
+      "open": "{{source}}, open the round board"
     },
     "zen": {
       "toggle": "Zen mode",
@@ -433,7 +453,7 @@
       "milestones": "Milestones",
       "summary": {
         "specs": "{{active}} active · {{archived}} archived",
-        "board": "{{stages}} stages · {{cards}} cards",
+        "board": "{{stages}} stages · {{cards}} cards · {{waiting}} wait on you",
         "features": "{{count}} features · {{closed}}/{{total}} closed",
         "milestones": "{{count}} milestones · next {{next}}"
       }
@@ -458,7 +478,7 @@
     },
     "derived": "derived",
     "dateUnknown": "date unknown",
-    "openBoard": "Open board →",
+    "openBoard": "Open round board →",
     "empty": {
       "heading": "No events yet",
       "body": "The stage is derived from the files."
@@ -779,7 +799,6 @@
       "heading": "Where it stands",
       "claimsClosed": "{{closed}}/{{total}} claims closed",
       "since": "since {{time}} via {{via}}",
-      "derived": "derived",
       "reasons": "Why this command is next",
       "done": "Nothing left to run: the spec is done.",
       "copy": "Copy command",
@@ -868,7 +887,12 @@
       "heading": "Progress by lane",
       "tasks": "Tasks landed",
       "none": "No lanes: the spec has no tasks.md."
-    }
+    },
+    "stageSource": {
+      "explicit": "set in the frontmatter",
+      "derived": "derived from the stage table"
+    },
+    "unassigned": "unassigned"
   },
   "specHead": {
     "breadcrumb": "Breadcrumb",
@@ -952,7 +976,7 @@
     }
   },
   "board": {
-    "toolbar": "Board tools",
+    "toolbar": "Round board tools",
     "view": {
       "label": "View",
       "lanes": "Lanes",
@@ -1036,7 +1060,7 @@
       "stepCheck": "Mark {{task}} done",
       "stepSaving": "Saving",
       "stepLocked": "Locked by session {{session}}",
-      "stepConflict": "tasks.md changed on disk; nothing was written. Reload the board.",
+      "stepConflict": "tasks.md changed on disk; nothing was written. Reload the round board.",
       "stepFailed": "The write failed; tick again to retry.",
       "stepsEmpty": "No operator step in this frame."
     },
@@ -1056,7 +1080,7 @@
       "empty": "No card matches the filter."
     },
     "empty": "No card matches the filter.",
-    "failed": "The board could not be read.",
+    "failed": "The round board could not be read.",
     "agent": {
       "stale": "stale",
       "source": "Lock source: {{source}}",
@@ -1066,7 +1090,6 @@
     "workspace": {
       "title": "Board",
       "summary": "{{cards}} cards · {{specs}} specs · {{ideas}} ideas",
-      "areaSummary": "{{stages}} stages · {{cards}} cards · {{waiting}} wait on you",
       "open": "Open board",
       "source": {
         "custom": "specs/workflow.md",
@@ -1168,7 +1191,7 @@
   },
   "matrix": {
     "region": "Matrix: tasks by frame",
-    "hint": "Select a cell to open the board at that frame.",
+    "hint": "Select a cell to open the round board at that frame.",
     "task": "Task",
     "empty": "No round is recorded yet, so the matrix has no frame.",
     "failed": "The matrix could not be read.",
@@ -1329,6 +1352,9 @@
       "more": "{{count}} more features",
       "archived": "archived",
       "unknownMilestone": "not in the master's Milestones block"
+    },
+    "ideas": {
+      "label": "Ideas · {{count}}"
     }
   },
   "help": {
@@ -1375,6 +1401,9 @@
       "gateDropped": "workflow.md drops the review gate for {{type}} · default applied"
     }
   },
+  "ideas": {
+    "title": "Idea"
+  },
   "types": {
     "feature": "feature",
     "bug": "bug",
@@ -1417,5 +1446,8 @@
   },
   "reason": {
     "glyph": "waits"
+  },
+  "live": {
+    "taskActors": "Working on {{ task }}"
   }
 }

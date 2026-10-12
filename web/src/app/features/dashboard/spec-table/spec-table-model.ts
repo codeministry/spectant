@@ -1,3 +1,4 @@
+import type { Priority } from '../../../../../../core/src/files';
 import type { Tone } from '../../../shared/ui/tone';
 
 /**
@@ -12,6 +13,8 @@ export interface SpecTableRow {
   readonly id: string;
   readonly title: string;
   readonly type: string | null;
+  /** Frontmatter `priority:` as core reads it (`P3` when absent or invalid); null only when the row carries none. */
+  readonly priority: Priority | null;
   /** Frontmatter `phase:` as written. */
   readonly phase: string | null;
   /** The derived stage (`plan` … `done`). */
@@ -19,6 +22,8 @@ export interface SpecTableRow {
   readonly closed: number;
   readonly total: number;
   readonly nextCommand: string | null;
+  /** The stage table's phrase for why that command is next (`nextReason`), shown verbatim; empty when absent. */
+  readonly nextReason: string;
   readonly takeable: readonly string[];
   /** How many warnings the spec carries. */
   readonly warnings: number;
@@ -76,6 +81,8 @@ export interface ListOption {
 type Loose = Readonly<Record<string, unknown>>;
 const isLoose = (value: unknown): value is Loose => typeof value === 'object' && value !== null;
 const text = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+const PRIORITIES: readonly Priority[] = ['P1', 'P2', 'P3', 'P4'];
+const priorityOf = (value: unknown): Priority | null => PRIORITIES.find((level) => level === value) ?? null;
 const count = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
 const listOf = (body: unknown, key: string): Loose[] => {
   const list = isLoose(body) ? body[key] : null;
@@ -95,11 +102,13 @@ export function readSpecRows(body: unknown): SpecTableRow[] {
         id,
         title: text(row['title']) ?? id,
         type: text(row['type']),
+        priority: priorityOf(row['priority']),
         phase: text(row['phase']),
         stage: text(row['stage']) ?? 'plan',
         closed: count(progress['closed']),
         total: count(progress['total']),
         nextCommand: text(row['nextCommand']),
+        nextReason: text(row['nextReason']) ?? '',
         takeable,
         warnings: Array.isArray(row['warnings']) ? row['warnings'].length : 0,
         fog: count(row['fog']),

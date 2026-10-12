@@ -204,6 +204,9 @@
               @if (agentOf(c); as agent) {
                 <app-agent-chip class="in-flight-agent" [attr.data-agent-of]="c.task" [session]="agent.session" [since]="agent.since" [stale]="agent.stale" />
               }
+              @if (hasTaskActors(c)) {
+                <app-task-actors class="in-flight-actors" [card]="c" />
+              }
             }
           </div>
         }

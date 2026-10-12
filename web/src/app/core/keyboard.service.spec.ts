@@ -311,6 +311,28 @@ describe('KeyboardService', () => {
       expect(navigate).toHaveBeenCalledWith(['/']);
     });
 
+    it('g b opens the workspace board from any workspace page, and from nowhere else (spec 008, T117)', () => {
+      const binding = SHORTCUTS.find((b) => b.id === 'go-board');
+      expect(binding?.keys).toEqual([GO_PREFIX, 'b']);
+      expect(binding && GROUP_CONTEXT[binding.group]).toBe('workspace');
+      for (const url of ['/w/harbor', '/w/harbor/features']) {
+        const { press, navigate } = setup({ url, specId: null });
+        press('g');
+        expect(press('b').defaultPrevented, url).toBe(true);
+        expect(navigate, url).toHaveBeenCalledWith(['/w', 'harbor', 'board']);
+        TestBed.resetTestingModule();
+      }
+      const inSpec = setup();
+      inSpec.press('g');
+      expect(inSpec.press('b').defaultPrevented).toBe(false);
+      expect(inSpec.navigate).not.toHaveBeenCalled();
+      TestBed.resetTestingModule();
+      const allWorkspaces = setup({ url: '/', ws: null, specId: null });
+      allWorkspaces.press('g');
+      allWorkspaces.press('b');
+      expect(allWorkspaces.navigate).not.toHaveBeenCalled();
+    });
+
     it('keeps g s and g n on the spec areas inside a spec', () => {
       const { press, navigate } = setup();
       document.body.innerHTML = '<h2 id="specs">S</h2>';

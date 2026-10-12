@@ -11,6 +11,8 @@ import { ShellComponent } from './layout/shell/shell';
 const notFound: ShellRouteData = { notFound: true };
 const featuresPage: ShellRouteData = { page: 'features' };
 const milestonesPage: ShellRouteData = { page: 'milestones' };
+const boardPage: ShellRouteData = { page: 'board' };
+const ideaPage: ShellRouteData = { page: 'idea' };
 
 export const routes: Routes = [
   // The primitives gallery the browser tier measures (T29 to T31). Lazy, so it ships as a separate chunk that only
@@ -24,7 +26,21 @@ export const routes: Routes = [
       { path: '', component: OverviewPage },
       // The header's gear leads here until T40/T41 bring the settings popover and help.
       { path: 'settings', component: SettingsPage },
+      // Spec 008 (ISC-116): help is global like settings, inside the shell and outside any workspace; lazy, its own chunk.
+      { path: 'help', loadComponent: () => import('./features/help/help-page').then((m) => m.HelpPage) },
       { path: 'w/:ws', component: DashboardPage },
+      // Spec 008 (ISC-129, ISC-124.2): the workspace board, a sibling of the planning pages, and a story's read-only
+      // page, reached from a board card, the palette or an idea chip; an unknown slug renders not-found in the page.
+      {
+        path: 'w/:ws/board',
+        loadComponent: () => import('./features/board/board-page').then((m) => m.BoardPage),
+        data: boardPage,
+      },
+      {
+        path: 'w/:ws/ideas/:slug',
+        loadComponent: () => import('./features/ideas/idea-page').then((m) => m.IdeaPage),
+        data: ideaPage,
+      },
       // The workspace's planning pages (spec 003, ISC-103 / ISC-104): siblings of the spec list, reached through the
       // area menu at workspace scope; lazy, so they ship as one chunk that only these two routes load.
       {

@@ -13,6 +13,7 @@ import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { Brief, type BriefModel } from './brief/brief';
 import { ContextRail } from './context-rail/context-rail';
 import type { DashboardView } from './context-rail/dashboard-view';
+import { type DashboardIdeas, IdeasPanel } from './ideas-panel/ideas-panel';
 import { KpiBand, type KpiBandModel } from './kpi-band/kpi-band';
 import { SpecInspector } from './spec-inspector/spec-inspector';
 import { SpecTable } from './spec-table/spec-table';
@@ -39,7 +40,7 @@ import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchi
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [TranslocoPipe, NotFound, UiNotice, UiSheet, KpiBand, Brief, ContextRail, SpecInspector, SpecTable, WarningsPanel],
+  imports: [TranslocoPipe, NotFound, UiNotice, UiSheet, KpiBand, Brief, ContextRail, SpecInspector, SpecTable, WarningsPanel, IdeasPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.css',
@@ -91,6 +92,8 @@ export class DashboardPage {
     this.seen.set(new Set(this.rows().map((row) => row.id)));
   }
   protected readonly archive = computed(() => readArchiveRows(this.body()));
+  /** The backlog's stories (`DashboardModel.ideas`), none while the body lacks the block. */
+  protected readonly ideas = computed(() => readIdeas(this.body()));
   /** The warnings sit in the rail at wide, after the Specs panel below it. */
   protected readonly railHolds = computed(() => this.state.tier() === 'wide');
 
@@ -178,6 +181,15 @@ export class DashboardPage {
 }
 
 type DashboardPageView = DashboardView & KpiBandModel & { readonly brief: BriefModel | null };
+
+const NO_IDEAS: DashboardIdeas = { count: 0, list: [] };
+
+/** The body's `ideas` block as served, or none when it is missing or malformed. */
+function readIdeas(body: unknown): DashboardIdeas {
+  if (typeof body !== 'object' || body === null) return NO_IDEAS;
+  const { ideas } = body as { ideas?: Partial<DashboardIdeas> | null };
+  return typeof ideas?.count === 'number' && Array.isArray(ideas.list) ? (ideas as DashboardIdeas) : NO_IDEAS;
+}
 
 /** The body as the components' view, or null when it lacks the KPI block and the spec rows they all read. */
 function readView(body: unknown): DashboardPageView | null {

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
 import { SpecTable } from './spec-table';
 import { DEFAULT_QUERY, type ListQuery, readArchiveRows, readSpecRows } from './spec-table-model';
@@ -166,5 +167,69 @@ describe('SpecTable (prototype port, T89)', () => {
       expect(host.querySelector('.pending-slot')).not.toBeNull();
       expect(host.querySelector('button[data-pending]')).toBeNull();
     });
+  });
+});
+
+// T136 · ISC-118 and T137 · ISC-122.3 against the harbor dashboard golden: the type glyph before the number,
+// `ui-priority` before the stage track (006 P1, 002 P2, every other row P3), and `ui-reason` under every row with the
+// golden's `nextReason` verbatim and its `nextCommand` as the chip, outside the row link.
+describe('SpecTable rows on the harbor golden (T136, T137)', () => {
+  const GOLDEN = harbor as unknown as { specs: ReadonlyArray<{ id: string; type: string; nextReason: string; nextCommand: string | null }> };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en' },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  async function renderHarbor(): Promise<HTMLElement> {
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows(harbor));
+    fixture.componentRef.setInput('archive', readArchiveRows(harbor));
+    fixture.componentRef.setInput('query', DEFAULT_QUERY);
+    await fixture.whenStable();
+    return fixture.nativeElement as HTMLElement;
+  }
+  const rowOf = (host: HTMLElement, id: string): HTMLElement => {
+    const found = host.querySelector<HTMLElement>(`[data-spec-row="${id}"]`);
+    if (!found) throw new Error(`no row ${id}`);
+    return found;
+  };
+
+  it('draws the type glyph before the number and the priority before the stage track: 006 P1, 002 P2, others P3', async () => {
+    const host = await renderHarbor();
+    expect(GOLDEN.specs.length).toBeGreaterThan(2);
+    for (const spec of GOLDEN.specs) {
+      const row = rowOf(host, spec.id);
+      const rid = row.querySelector('.rid') as HTMLElement;
+      expect(rid.querySelector('ui-type-glyph')?.getAttribute('data-type')).toBe(spec.type);
+      expect(rid.querySelector('ui-type-glyph + .rnum, .rglyph + .rnum')?.textContent.trim()).toBe(spec.id);
+      const priority = row.querySelector('.rtrack ui-priority');
+      const level = spec.id === '006' ? 'P1' : spec.id === '002' ? 'P2' : 'P3';
+      expect(priority?.getAttribute('data-level'), spec.id).toBe(level);
+      expect(priority?.hasAttribute('data-unmarked')).toBe(false);
+      expect(priority?.nextElementSibling?.tagName.toLowerCase()).toBe('ui-stage-track');
+    }
+  });
+
+  it("puts every row's nextReason verbatim in ui-reason with its next command, outside the row link", async () => {
+    const host = await renderHarbor();
+    for (const spec of GOLDEN.specs) {
+      const reason = host.querySelector<HTMLElement>(`ui-reason[data-reason="${spec.id}"]`);
+      expect(reason, spec.id).not.toBeNull();
+      expect(reason?.hasAttribute('data-compact')).toBe(true);
+      expect(reason?.querySelector('.visually-hidden')?.textContent).toBe(spec.nextReason);
+      expect(reason?.closest('a')).toBeNull();
+      expect(reason?.parentElement).toBe(rowOf(host, spec.id).parentElement);
+      expect(reason?.querySelector('ui-command-chip code')?.textContent ?? null).toBe(spec.nextCommand);
+    }
   });
 });

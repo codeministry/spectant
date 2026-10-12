@@ -181,6 +181,37 @@ h2 .name {
   min-inline-size: 0;
 }
 
+/* The block's stories after its specs (T139): a muted "Ideas · n" label, then the idea chips; no claim count. */
+.ideas {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+  margin-block-start: 12px;
+}
+
+.ideas-label {
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ideas ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ideas li {
+  display: flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
 .more-chips {
   min-block-size: 28px;
   block-size: 28px;

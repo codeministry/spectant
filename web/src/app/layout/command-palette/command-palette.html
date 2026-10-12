@@ -38,7 +38,10 @@
               (click)="activate(option.entry)"
             >
               @if (option.entry.chip) {
-                <span class="p-chip">
+                <span class="p-chip" [class.p-idea]="option.idea">
+                  @if (option.idea) {
+                    <ui-icon name="lightbulb" [size]="12" />
+                  }
                   @for (piece of option.chip; track $index) {
                     @if (piece.mark) {
                       <mark>{{ piece.text }}</mark>

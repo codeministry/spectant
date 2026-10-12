@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { SettingsService } from '../../core/settings.service';
+import { boardRowsOf, boardSummaryOf, buildBoard } from '../../features/board/board-model';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiPopover } from '../../shared/ui/overlay/popover';
@@ -106,12 +107,16 @@ export class AreaMenu {
     return workspaceLink(this.state.ws() ?? '', page);
   }
 
-  /** Board (spec 008): its columns and the cards they count, as the planning tree serves them; null until it answers. */
+  /**
+   * Board (spec 008, T116): its columns, its cards and those waiting on you, counted by the board's own model
+   * (`buildBoard`, unfiltered) so the line and the page agree; null until the planning tree and the dashboard rows,
+   * which carry the stages and next commands of the specs, have both answered.
+   */
   private boardSummary(): SummaryParams {
-    if (this.data.planningModel() === null) return null;
-    const counts = this.data.stageCounts();
-    const cards = this.data.stages().reduce((sum, stage) => sum + (counts[stage] ?? 0), 0);
-    return { stages: this.data.stages().length, cards };
+    const planning = this.data.planningModel();
+    const dashboard = this.data.dashboard.value();
+    if (planning === null || dashboard?.kind !== 'ok') return null;
+    return { ...boardSummaryOf(buildBoard({ planning, rows: boardRowsOf(dashboard.body) })) };
   }
 
   /** Features: the feature count and the master's recount of closed and total claims (ISC-100.2). */

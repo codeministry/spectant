@@ -104,17 +104,18 @@ export interface WorkspacePage {
   /** Transloco key of the one-line summary the menu shows under the name: `shell.pages.summary.<id>`. */
   readonly summaryKey: string;
   /**
-   * The second key of a candidate `g` sequence (`g f`, `g m`), not bound: the keys are a proposal (design.md § Keyboard,
-   * plan.md § Open Points) that `/spec-review 003` decides, and `SHORTCUTS` does not read this field yet. Specs has
-   * none: `g s` is Status inside a spec and no workspace-scope binding exists.
+   * The second key of the page's `g` sequence. Board's `g b` is bound (`SHORTCUTS` reads it, T117); `g f` and `g m`
+   * are still a proposal (design.md § Keyboard, plan.md § Open Points) that `/spec-review 003` decides, and nothing
+   * binds them. Specs has none: `g s` is Status inside a spec and no workspace-scope binding exists.
    */
   readonly goKey: string | null;
 }
 
 export const WORKSPACE_PAGES: readonly WorkspacePage[] = [
   { id: 'specs', icon: 'file-text', labelKey: 'shell.pages.specs', summaryKey: 'shell.pages.summary.specs', goKey: null },
-  // Spec 008 (ISC-129): the workspace board, second in the menu. `g b` is a proposal like `g f` and `g m`; whether it
-  // collides with the round board's `b` sub-tab key is decided at `/spec-review 008` against SHORTCUTS.
+  // Spec 008 (ISC-129): the workspace board, second in the menu, "Board" (the spec's tab is the "Round board"). Its
+  // summary line counts through the board's own model (T116). `g b` is bound (T117, SHORTCUTS `go-board`): the
+  // 2026-10-11 review found it free, the round board's `b` being a tab inside a spec, not a `g` sequence.
   { id: 'board', icon: 'square-kanban', labelKey: 'shell.pages.board', summaryKey: 'shell.pages.summary.board', goKey: 'b' },
   { id: 'features', icon: 'layers', labelKey: 'shell.pages.features', summaryKey: 'shell.pages.summary.features', goKey: 'f' },
   { id: 'milestones', icon: 'flag', labelKey: 'shell.pages.milestones', summaryKey: 'shell.pages.summary.milestones', goKey: 'm' },
