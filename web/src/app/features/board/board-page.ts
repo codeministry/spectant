@@ -384,7 +384,7 @@ export class BoardPage {
    * hint said: a spec's transition, or a story's allocation dialog (T128).
    */
   protected dropped(event: BoardDropEvent): void {
-    void this.drag.move(this.ws(), event.item.data, this.drag.stageOf(event));
+    void this.drag.move(this.ws(), event.item.data, this.drag.dropTarget(event));
   }
 
   /** The grip was clicked without a drag (T127): "Move to…" opens on it, the grip focused so Esc returns there. */
