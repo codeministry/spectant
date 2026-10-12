@@ -593,7 +593,15 @@ every spec of the main feature `F<n>`, and the same code-reviewed mark goes into
 security, note?}`, the order `codeReviewedMarkText` in `gates.ts` writes it in. The targets are
 `featureCodeReviewTargets(planning, "F<n>")`: every active spec whose main feature is `F<n>` and whose live claims are
 all closed in the master (across every block it holds claims of), in folder order; an archived spec is never a
-target, and an unknown feature gives none. Both functions are pure and write nothing; the caller writes the text. A
+target, and an unknown feature gives none. Both functions are pure and write nothing; the caller writes the text.
+That caller is the CLI, `spectant gate code-reviewed F<n> [--root DIR] [--yes]` (spec 008, T93): it refuses, writing
+nothing, while any active spec of the main feature still holds an open claim (naming each with its claims), when the
+targets are empty, or when the worktree tree id cannot be computed; without `--yes` it prints the plan. With `--yes` it
+appends one event per target to `events.jsonl` (`from` the spec's stage, normally `code-review`, `to` `close`,
+`command` `spectant gate code-reviewed F<n>`, the viewer's `u:` id or `a:spectant:app`), then computes the tree id
+over the worktree as it now stands and writes the same mark, `code: 0` and `security: 0`, with that tree, `head` and
+`branch`, into every target folder; with `.gates/` outside the tree, as for every mark, it reads fresh, and the
+specs stand in `close` (row 10). A
 mark without `scope` is a per-spec mark, as every mark before T74, and reads as before (`CodeReviewedMark.scope`
 null); a `scope` that is no `F<n>` reads the same way, with one `gate-scope-invalid` warning. `scope` plays no part in
 freshness: the tree id alone decides it. Harbor's spike pair 008/009 (F6) shows the targets: while 009 holds `ISC-131`
@@ -1106,7 +1114,14 @@ task with the same id and text keeps its card, and a box checked since that roun
 `waiting` (or `operator open`) with the takeable set's reason; a struck task still on that board is `absent`, any other
 struck task has no card. Last, every card not landed and outside the operator lane whose claim a session holds on this
 spec is `running` with the lock's source, session name, `since` and elapsed time, and `stale` after 45 minutes without
-a release; a claim held in both sources shows the frontier lock. The frame names the reading's source (`frontier`,
+a release; a claim held in both sources shows the frontier lock. Every card also names who works it (spec 008, T66,
+ISC-131.1), from the actor of the lock that puts it in flight (`ClaimLock.actor`, the `session` of the activity line
+or frontier lock): `agent` is the agent session `a:<kind>:<id>` (for a sub-agent its parent, the sub-agent's own id
+read as an agent), `subagent` the `a:<kind>:<id>/<task>` ref when that task is the card's own (a sub-agent session
+names its task itself; an agent session's task is the card its claim puts in flight). Both are parsed actors
+(`{raw, kind, id, task?, legacy}`) or `null`: `null` on every card that is not `running`, and on a running card whose
+lock a person (`u:`) or a legacy session holds, since neither is an agent; a sub-agent on another task of the claim
+leaves `subagent` `null`. In harbor 002, T27 is worked by `a:claude:sess-2` with no sub-agent. The frame names the reading's source (`frontier`,
 `activity`, `none`), lists the sessions holding locks here, and carries the Needs you cards (question, concerns, open
 operator steps). The clock is the caller's: the frame's `ts` is the time it was built.
 

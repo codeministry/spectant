@@ -751,6 +751,14 @@ export interface LiveCard extends FrameCard {
   readonly elapsedMs?: number;
   /** No release for longer than `staleAfterMs`: the agent may have died. Set on `running` cards only. */
   readonly stale?: boolean;
+  /**
+   * The agent session working the task (spec 008, T66, ISC-131.1), `a:<kind>:<id>`; for a sub-agent its parent session.
+   * Derived from the lock that puts the card in flight, so it is null on every card that is not `running`, and on a
+   * running card whose lock a person (`u:`) or a legacy session holds: neither is an agent.
+   */
+  readonly agent: ActorRef | null;
+  /** The sub-agent working the task, `a:<kind>:<id>/<task>` naming this card's own task; null when none does (T66). */
+  readonly subagent: ActorRef | null;
 }
 
 /** One session holding locks on this spec's claims: an entry of the "This frame" rail. */

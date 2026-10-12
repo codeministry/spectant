@@ -33,11 +33,12 @@
  * | reviewed mark | `POST …/:id/gate/reviewed` | normalised gate hashes | `GateReviewedWritten` | `StaleGate` | — | `Locked` |
  * | task checkbox | `POST …/:id/tasks/:tid/check` | raw tasks.md | `TaskCheckWritten` | `StaleTasks` | — | `Locked` |
  * | transition | `POST …/:id/transition` (T83) | raw spec.md, `X-Spectant-Spec-Hash` | `TransitionWritten` | `StaleSpec` | `TransitionRefused` | `Locked` |
- * | allocate | `POST …/ideas/:slug/allocate` (pending) | raw story file, `IdeaPage.hash` | `IdeaAllocated` | `StaleIdea` | `AllocateRefused` | `Locked` |
+ * | allocate | `POST …/ideas/:slug/allocate` (T87) | raw story file, `IdeaPage.hash` | `IdeaAllocated` | `StaleIdea` | `AllocateRefused` | `Locked` |
  *
  * These four are every write the app makes on a user's action. The feature-level code-review mark
- * (`.gates/code-reviewed.json` in each folder of a main feature) is a fifth write path, but it has no route: the
- * skill triggers it through the CLI (`spectant gate code-reviewed F<n>`, T93), never the UI, so it is not in this table.
+ * (`.gates/code-reviewed.json` in each folder of a main feature, plus one event line each) is the fifth write path,
+ * `WRITE_PATHS.codeReviewFeature`, but it has no route: the skill triggers it through the CLI (`spectant gate
+ * code-reviewed F<n>`, T93, `feature-gate.ts`), never the UI, so it is not in this table.
  *
  * Browser-safe like its base: value imports are `spec-routes.contract.ts` and `core/src/events.ts` only (no Bun, no
  * Node); `core/src/gates.ts` is imported as types, because it hashes with `node:crypto`.
@@ -126,7 +127,10 @@ export interface WriteTableEntry {
   readonly refused: 'TransitionRefused' | 'AllocateRefused' | null;
   /** The 423 body, by type name: the same `{error: 'locked', lock}` for every write. */
   readonly locked: 'Locked';
-  /** True while its route is in `SPEC_ROUTE_TABLE` and served; false while it is in `PENDING_ROUTE_TABLE`. */
+  /**
+   * True while its route is registered and served (`SPEC_ROUTE_TABLE`, or `WORKSPACE_ROUTE_TABLE` for `allocate`);
+   * false while its route has no handler (every one has since T87).
+   */
   readonly registered: boolean;
 }
 
@@ -135,7 +139,7 @@ export const WRITE_TABLE = {
   gateReviewed: { hashFrom: REVIEWED_HASHES_HEADER, hash: 'normalised', conflict: 'StaleGate', refused: null, locked: 'Locked', registered: true },
   taskCheck: { hashFrom: TASKS_HASH_HEADER, hash: 'raw', conflict: 'StaleTasks', refused: null, locked: 'Locked', registered: true },
   transition: { hashFrom: SPEC_HASH_HEADER, hash: 'raw', conflict: 'StaleSpec', refused: 'TransitionRefused', locked: 'Locked', registered: true },
-  allocate: { hashFrom: 'IdeaPage.hash', hash: 'raw', conflict: 'StaleIdea', refused: 'AllocateRefused', locked: 'Locked', registered: false },
+  allocate: { hashFrom: 'IdeaPage.hash', hash: 'raw', conflict: 'StaleIdea', refused: 'AllocateRefused', locked: 'Locked', registered: true },
 } as const satisfies Record<WriteOperation, WriteTableEntry>;
 
 /** What one write may touch, repository-relative: `specs/NNN-slug/` is the spec folder, `<slug>` the story's slug. */
@@ -165,7 +169,10 @@ export const WRITE_PATHS = {
     removes: [`${FILE_KINDS.idea.repoPath ?? ''}${STORY}.md`],
     creates: FOLDER,
   },
-} as const satisfies Record<WriteOperation, WritePaths>;
+  // The fifth path (T93): the feature-level code-review mark and one event line in each target folder, written only by
+  // `spectant gate code-reviewed F<n>` (`feature-gate.ts`). No HTTP write, so no `WriteOperation` and no `WRITE_TABLE` row.
+  codeReviewFeature: { writes: [inFolder(FILE_KINDS.gateCodeReviewed.path), inFolder(EVENTS_PATH)], removes: [], creates: inFolder('.gates/') },
+} as const satisfies Record<WriteOperation | 'codeReviewFeature', WritePaths>;
 
 /** `WRITE_PATHS[op]` for one spec folder (`NNN-slug`) and, for `allocate`, the story's slug. */
 export function writePathsOf(op: WriteOperation, folder: string, slug = ''): WritePaths {

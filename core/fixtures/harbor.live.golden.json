@@ -17,7 +17,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "seam — runs alone before its fan-out"
+        "reason": "seam — runs alone before its fan-out",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T2",
@@ -29,7 +31,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T3",
@@ -41,7 +45,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T4",
@@ -53,7 +59,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T5",
@@ -65,7 +73,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T6",
@@ -77,7 +87,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T7",
@@ -89,7 +101,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T8",
@@ -101,7 +115,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T9",
@@ -113,7 +129,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T10",
@@ -125,7 +143,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T11",
@@ -137,7 +157,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T12",
@@ -149,7 +171,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T13",
@@ -161,7 +185,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T14",
@@ -176,7 +202,9 @@
         "verdict": "pass",
         "tries": 2,
         "reason": "claim takeable, edges closed",
-        "note": "retry with: probe exit 1 — wrap the digest column below 480 px"
+        "note": "retry with: probe exit 1 — wrap the digest column below 480 px",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T15",
@@ -188,7 +216,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T16",
@@ -200,7 +230,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T17",
@@ -215,7 +247,9 @@
         "verdict": "pass",
         "tries": 2,
         "reason": "claim takeable, edges closed",
-        "note": "retry with: concerns — let the settings form stack its labels at 390 px"
+        "note": "retry with: concerns — let the settings form stack its labels at 390 px",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T18",
@@ -227,7 +261,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T19",
@@ -239,7 +275,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T20",
@@ -251,7 +289,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T21",
@@ -263,7 +303,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T22",
@@ -275,7 +317,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T23",
@@ -287,7 +331,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T24",
@@ -301,7 +347,9 @@
         "reader": "Forge",
         "verdict": "skipped",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T25",
@@ -313,7 +361,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T26",
@@ -325,7 +375,9 @@
         "state": "closed",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "claim takeable, edges closed"
+        "reason": "claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T27",
@@ -343,7 +395,14 @@
         },
         "since": "2026-03-08T14:06:00Z",
         "elapsedMs": 3240000,
-        "stale": true
+        "stale": true,
+        "agent": {
+          "raw": "a:claude:sess-2",
+          "kind": "agent",
+          "id": "a:claude:sess-2",
+          "legacy": false
+        },
+        "subagent": null
       },
       {
         "task": "T28",
@@ -354,7 +413,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "width 10 reached"
+        "reason": "width 10 reached",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T29",
@@ -367,7 +428,9 @@
         "builder": "Engineer",
         "tries": 0,
         "reason": "claim takeable, edges closed",
-        "note": "question: should the empty state link to the sync docs or to the settings page?"
+        "note": "question: should the empty state link to the sync docs or to the settings page?",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T30",
@@ -378,7 +441,9 @@
         "seam": false,
         "state": "operatorDone",
         "tries": 0,
-        "reason": "operator lane — the principal's own action, never auto-dispatched"
+        "reason": "operator lane — the principal's own action, never auto-dispatched",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T31",
@@ -389,7 +454,9 @@
         "seam": false,
         "state": "operatorOpen",
         "tries": 0,
-        "reason": "operator lane — the principal's own action, never auto-dispatched"
+        "reason": "operator lane — the principal's own action, never auto-dispatched",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T32",
@@ -400,7 +467,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "after T31 still open"
+        "reason": "after T31 still open",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T34",
@@ -411,7 +480,9 @@
         "seam": false,
         "state": "absent",
         "tries": 0,
-        "note": "struck 2026-03-08: covered by T32's keyboard probe"
+        "note": "struck 2026-03-08: covered by T32's keyboard probe",
+        "agent": null,
+        "subagent": null
       }
     ],
     "progress": {
@@ -464,7 +535,9 @@
         "builder": "Engineer",
         "tries": 0,
         "reason": "claim takeable, edges closed",
-        "note": "question: should the empty state link to the sync docs or to the settings page?"
+        "note": "question: should the empty state link to the sync docs or to the settings page?",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T31",
@@ -475,7 +548,9 @@
         "seam": false,
         "state": "operatorOpen",
         "tries": 0,
-        "reason": "operator lane — the principal's own action, never auto-dispatched"
+        "reason": "operator lane — the principal's own action, never auto-dispatched",
+        "agent": null,
+        "subagent": null
       }
     ],
     "staleAfterMs": 2700000
@@ -521,7 +596,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T2",
@@ -531,7 +608,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T3",
@@ -541,7 +620,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T4",
@@ -551,7 +632,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T5",
@@ -561,7 +644,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T6",
@@ -571,7 +656,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T7",
@@ -581,7 +668,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T8",
@@ -591,7 +680,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T9",
@@ -601,7 +692,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T10",
@@ -611,7 +704,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T11",
@@ -621,7 +716,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T12",
@@ -631,7 +728,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T13",
@@ -641,7 +740,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T14",
@@ -651,7 +752,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T15",
@@ -661,7 +764,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T16",
@@ -671,7 +776,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T17",
@@ -681,7 +788,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T18",
@@ -691,7 +800,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T19",
@@ -701,7 +812,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T20",
@@ -711,7 +824,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T21",
@@ -721,7 +836,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T22",
@@ -731,7 +848,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T23",
@@ -741,7 +860,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T24",
@@ -751,7 +872,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T25",
@@ -761,7 +884,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T26",
@@ -771,7 +896,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T27",
@@ -781,7 +908,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T28",
@@ -791,7 +920,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T29",
@@ -801,7 +932,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T30",
@@ -811,7 +944,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       }
     ],
     "progress": {
@@ -972,7 +1107,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T2",
@@ -982,7 +1119,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T3",
@@ -992,7 +1131,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T4",
@@ -1002,7 +1143,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T5",
@@ -1012,7 +1155,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T6",
@@ -1022,7 +1167,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T7",
@@ -1032,7 +1179,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T8",
@@ -1042,7 +1191,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T9",
@@ -1052,7 +1203,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T10",
@@ -1062,7 +1215,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T11",
@@ -1072,7 +1227,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T12",
@@ -1082,7 +1239,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T13",
@@ -1092,7 +1251,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T14",
@@ -1102,7 +1263,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T15",
@@ -1112,7 +1275,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T16",
@@ -1122,7 +1287,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T17",
@@ -1132,7 +1299,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T18",
@@ -1142,7 +1311,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T19",
@@ -1152,7 +1323,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T20",
@@ -1162,7 +1335,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T21",
@@ -1172,7 +1347,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T22",
@@ -1182,7 +1359,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T23",
@@ -1192,7 +1371,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T24",
@@ -1202,7 +1383,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T25",
@@ -1212,7 +1395,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T26",
@@ -1222,7 +1407,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T27",
@@ -1232,7 +1419,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T28",
@@ -1242,7 +1431,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T29",
@@ -1252,7 +1443,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T30",
@@ -1262,7 +1455,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T31",
@@ -1272,7 +1467,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T32",
@@ -1282,7 +1479,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T33",
@@ -1292,7 +1491,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T34",
@@ -1302,7 +1503,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T35",
@@ -1312,7 +1515,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T36",
@@ -1322,7 +1527,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T37",
@@ -1332,7 +1539,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T38",
@@ -1342,7 +1551,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T39",
@@ -1352,7 +1563,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T40",
@@ -1362,7 +1575,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T41",
@@ -1372,7 +1587,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T42",
@@ -1382,7 +1599,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T43",
@@ -1392,7 +1611,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T44",
@@ -1402,7 +1623,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T45",
@@ -1412,7 +1635,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T46",
@@ -1422,7 +1647,9 @@
         "parallel": false,
         "seam": false,
         "state": "closed",
-        "tries": 0
+        "tries": 0,
+        "agent": null,
+        "subagent": null
       }
     ],
     "progress": {

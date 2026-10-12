@@ -10,11 +10,11 @@ import { FILE_KINDS, type ClaimLock } from "../core/src/files.ts";
 import { REVIEWED_FILES, hashForGate, readGateMark } from "../core/src/gates.ts";
 import {
   API_ERRORS,
-  PENDING_ROUTE_TABLE,
   REVIEWED_HASHES_HEADER,
   SPEC_HASH_HEADER,
   SPEC_ROUTE_TABLE,
   TASKS_HASH_HEADER,
+  WORKSPACE_ROUTE_TABLE,
   formatReviewedHashes,
   matchSpecRoute,
   specRoutes,
@@ -288,12 +288,14 @@ describe("error codes", () => {
 });
 
 describe("the four app writes (spec 008, T81): the table, the paths each may touch, the 409 and 423 forms", () => {
-  test("the table holds the four operations in order; the registered ones are exactly WRITE_ROUTES", () => {
+  test("the table holds the four operations in order; the registered ones are WRITE_ROUTES and the allocation", () => {
     expect([...WRITE_OPERATIONS]).toEqual(["gateReviewed", "taskCheck", "transition", "allocate"]);
     expect(Object.keys(WRITE_TABLE)).toEqual([...WRITE_OPERATIONS]);
-    expect(WRITE_OPERATIONS.filter((op) => WRITE_TABLE[op].registered)).toEqual([...WRITE_ROUTES]);
-    const pending = PENDING_ROUTE_TABLE.filter((e) => e.methods.includes("POST")).map((e): string => e.route);
-    expect<readonly string[]>(WRITE_OPERATIONS.filter((op) => !WRITE_TABLE[op].registered)).toEqual(pending);
+    // Widened to boolean: every entry is registered since the allocation landed (T87), so the literal types agree.
+    const registered = (op: WriteOperation): boolean => WRITE_TABLE[op].registered;
+    expect(WRITE_OPERATIONS.filter(registered)).toEqual([...WRITE_ROUTES, "allocate"]);
+    expect(WORKSPACE_ROUTE_TABLE.filter((e) => e.method === "POST").map((e): string => e.route)).toEqual(["allocate"]);
+    expect<readonly string[]>(WRITE_OPERATIONS.filter((op) => !registered(op))).toEqual([]);
   });
 
   test("each write's hash source, hash form, 409, 422 and 423 forms", () => {
@@ -309,7 +311,7 @@ describe("the four app writes (spec 008, T81): the table, the paths each may tou
     ]);
     // A refusable write lists 422 on its route; the others do not.
     for (const op of WRITE_OPERATIONS) {
-      const statuses = [...SPEC_ROUTE_TABLE, ...PENDING_ROUTE_TABLE].find((e) => e.route === op)?.statuses ?? [];
+      const statuses = [...SPEC_ROUTE_TABLE, ...WORKSPACE_ROUTE_TABLE].find((e) => e.route === op)?.statuses ?? [];
       for (const status of [200, 400, 403, 404, 405, 409, 423]) expect({ op, status, listed: statuses.includes(status) }).toEqual({ op, status, listed: true });
       expect({ op, refusable: statuses.includes(422) }).toEqual({ op, refusable: WRITE_TABLE[op].refused !== null });
     }
@@ -322,8 +324,11 @@ describe("the four app writes (spec 008, T81): the table, the paths each may tou
       taskCheck: { writes: [folder("tasks")], removes: [], creates: null },
       transition: { writes: [folder("spec"), folder("events")], removes: [], creates: null },
       allocate: { writes: [folder("context"), folder("spec"), folder("events")], removes: [`${FILE_KINDS.idea.repoPath ?? ""}<slug>.md`], creates: "specs/NNN-slug/" },
+      codeReviewFeature: { writes: [folder("gateCodeReviewed"), folder("events")], removes: [], creates: "specs/NNN-slug/.gates/" },
     });
-    expect(Object.keys(WRITE_PATHS)).toEqual([...WRITE_OPERATIONS]);
+    // The four app writes, then the fifth path, the CLI's feature-level code-review mark (T93), which has no table row.
+    expect(Object.keys(WRITE_PATHS)).toEqual([...WRITE_OPERATIONS, "codeReviewFeature"]);
+    expect(Object.keys(WRITE_TABLE)).not.toContain("codeReviewFeature");
     expect(WRITE_PATHS.gateReviewed.writes[0].startsWith(WRITE_PATHS.gateReviewed.creates)).toBe(true);
     // The existing two writes keep the targets the routes already write.
     expect(WRITE_PATHS.gateReviewed.writes).toEqual([`specs/NNN-slug/${REVIEWED_MARK_PATH}`, `specs/NNN-slug/${EVENTS_PATH}`]);

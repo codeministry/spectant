@@ -27,7 +27,10 @@ import { readSpecFiles } from "../server/src/workspace-loader.ts";
 import { actorIdOf } from "../core/src/actor-id.ts";
 import type { WorkflowStage } from "../core/src/files.ts";
 import { parseFrontmatter } from "../core/src/frontmatter.ts";
-import { gateHashes, writeTransition } from "../server/src/writes.ts";
+import { allocationOf } from "../core/src/allocate.ts";
+import { parseClaims } from "../core/src/claims.ts";
+import { readIdeas } from "../core/src/ideas.ts";
+import { gateHashes, writeAllocate, writeTransition } from "../server/src/writes.ts";
 import {
   NO_AGENT_SOURCE,
   REVIEWED_EVENT,
@@ -541,5 +544,114 @@ describe("ISC-121 transition: the workflow decides, spec.md and one event line a
     expect(res.body.reason).toStartWith("done needs every claim closed");
     expect(changed(before, tree(dir))).toEqual([]);
     expect(eventCount(dir)).toBe(events);
+  });
+});
+
+// T86 (ISC-130.2), `-t allocate`: a story becomes a spec folder. On a harbor copy (no `.git`, so no number from git;
+// folders 001 to 009, the highest active one 009) console-audit-log is in the index, registry-webhooks is not.
+describe("ISC-130.2 allocate: a story becomes specs/NNN-slug/ with three files, and its story file is removed", () => {
+  const NOW = new Date("2026-03-20T10:00:00Z");
+  const STORY = "specs/ideas/console-audit-log.md";
+  const FOLDER = "specs/010-console-audit-log";
+  const SHAPING = "\n## Shaping record\n- Round 1: the audit page lists the newest line first (decided)\n";
+  const storyHash = (repo: string, slug = "console-audit-log"): string => sha256(readFileSync(join(repo, "specs", "ideas", `${slug}.md`)));
+  const allocate = (repo: string, slug: string, hash?: string) =>
+    writeAllocate({ root: repo, slug, stateDir: null, now: NOW, body: { hash: hash ?? storyHash(repo, slug) } });
+
+  test("allocate accepted: 010 is created with context.md, spec.md and events.jsonl from allocationOf; the story file is gone; nothing else differs", async () => {
+    const { repo } = setup();
+    appendFileSync(join(repo, STORY), SHAPING);
+    const storyText = readFileSync(join(repo, STORY), "utf8");
+    const ref = readIdeas({ "console-audit-log.md": storyText }).ideas[0];
+    if (ref === undefined) throw new Error("the story did not read");
+    const before = tree(repo);
+    const res = await allocate(repo, "console-audit-log");
+    expect(res).toEqual({
+      status: 200,
+      body: {
+        id: "010",
+        folder: `${FOLDER}/`,
+        files: [`${FOLDER}/context.md`, `${FOLDER}/spec.md`, `${FOLDER}/events.jsonl`],
+        removed: STORY,
+        lockSource: "activity",
+      },
+    });
+    const planned = allocationOf(ref, storyText, 10, NOW, VIEWER_ACTOR_FALLBACK);
+    const spec = readFileSync(join(repo, FOLDER, "spec.md"), "utf8");
+    const context = readFileSync(join(repo, FOLDER, "context.md"), "utf8");
+    const events = readFileSync(join(repo, FOLDER, "events.jsonl"), "utf8");
+    expect([spec, context, events]).toEqual([planned.specText, planned.contextText, `${JSON.stringify(planned.event)}\n`]);
+    // The three files parse: the frontmatter through core, zero claims, the shaping record in Round 0, one valid event.
+    const fm = parseFrontmatter(spec);
+    expect(fm.data).toMatchObject({ slug: "010-console-audit-log", isaFeature: "F2", stage: "plan", phase: "scoping", started: NOW.toISOString() });
+    expect(parseClaims(spec).claims).toEqual([]);
+    expect(parseFrontmatter(context).present).toBe(true);
+    expect(context).toContain("## Round 0 — the story");
+    expect(context).toContain(SHAPING.trim());
+    const line = validateEventLine(events.trimEnd());
+    expect(line.ok && line.event).toMatchObject({ from: null, to: "plan", command: "/spec new console-audit-log", actor: VIEWER_ACTOR_FALLBACK });
+    expect(existsSync(join(repo, STORY))).toBe(false);
+    // Exactly the new folder, its three files and the removed story; the index (README.md) is not touched.
+    expect(changed(before, tree(repo))).toEqual([FOLDER, `${FOLDER}/context.md`, `${FOLDER}/events.jsonl`, `${FOLDER}/spec.md`, STORY]);
+  });
+
+  test("allocate numbering: an archived folder and a branch name count; with no lock source the answer says none", async () => {
+    const { repo } = setup({ activity: false });
+    mkdirSync(join(repo, "specs", "archive", "030-old-mirror"));
+    expect((await allocate(repo, "console-audit-log")).body).toMatchObject({ id: "031", folder: "specs/031-console-audit-log/", lockSource: "none" });
+
+    // A repository whose branch names a higher number: one past it, whatever the folders say.
+    const branched = setup({ activity: false }).repo;
+    gitIn(branched, "init", "-q", "-b", "main");
+    gitIn(branched, "-c", "user.name=Spectant Test", "-c", `user.email=${VIEWER_EMAIL}`, "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty", "-m", "empty");
+    gitIn(branched, "branch", "feature/057-tide-tables");
+    const res = await allocate(branched, "console-audit-log");
+    expect(res.body).toMatchObject({ id: "058", folder: "specs/058-console-audit-log/" });
+    expect(existsSync(join(branched, "specs", "058-console-audit-log", "spec.md"))).toBe(true);
+  });
+
+  test("allocate stale: a story changed since render is 409 StaleIdea with its path and raw hash now, nothing written", async () => {
+    const { repo } = setup();
+    const before = tree(repo);
+    const res = await allocate(repo, "console-audit-log", sha256("an older story"));
+    expect(res).toEqual({ status: 409, body: { error: "hash-mismatch", files: [STORY], expected: { idea: storyHash(repo) } } });
+    expect(changed(before, tree(repo))).toEqual([]);
+  });
+
+  test("allocate refused: a story the index does not name is 422 not-in-index, nothing written", async () => {
+    const { repo } = setup();
+    const before = tree(repo);
+    const res = await allocate(repo, "registry-webhooks");
+    expect(res).toEqual({ status: 422, body: { error: "allocate-refused", reason: "not-in-index", folder: "specs/010-registry-webhooks/" } });
+    expect(changed(before, tree(repo))).toEqual([]);
+  });
+
+  test("allocate refused: a path already at the folder's name is 422 folder-exists, nothing written", async () => {
+    // A plain file is no spec folder, so it takes no number; the folder the next number names is then occupied.
+    const { repo } = setup();
+    writeFileSync(join(repo, FOLDER), "not a folder\n");
+    const before = tree(repo);
+    const res = await allocate(repo, "console-audit-log");
+    expect(res).toEqual({ status: 422, body: { error: "allocate-refused", reason: "folder-exists", folder: `${FOLDER}/` } });
+    expect(changed(before, tree(repo))).toEqual([]);
+  });
+
+  test("allocate unknown: a slug that names no story is 404, nothing written", async () => {
+    const { repo } = setup();
+    const before = tree(repo);
+    for (const slug of ["tide-tables", "README", "../ideas/console-audit-log", ""]) {
+      expect({ slug, res: await allocate(repo, slug, "0".repeat(64)) }).toEqual({ slug, res: { status: 404, body: { error: "not-found" } } });
+    }
+    expect(changed(before, tree(repo))).toEqual([]);
+  });
+
+  test("allocate viewer: in a repository with a git address the creation event names the viewer's u: id", async () => {
+    const { repo } = setup();
+    gitIn(repo, "init", "-q", "-b", "main");
+    gitIn(repo, "config", "user.email", VIEWER_EMAIL);
+    const res = await allocate(repo, "console-audit-log");
+    expect(res.status).toBe(200);
+    const events = readFileSync(join(repo, FOLDER, "events.jsonl"), "utf8");
+    expect(JSON.parse(events.trimEnd())).toMatchObject({ actor: actorIdOf(VIEWER_EMAIL) });
   });
 });

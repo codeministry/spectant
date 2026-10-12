@@ -25,7 +25,9 @@ import type { ApiHandler } from "../server/src/http.ts";
 import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import {
+  type AllocateRefused,
   DOC_NAMES,
+  type IdeaAllocated,
   JSON_ANSWER,
   REVIEWED_HASHES_HEADER,
   SPEC_HASH_HEADER,
@@ -572,6 +574,85 @@ describe("the story route (T88, ISC-124.2)", () => {
     const res = await call(workspaceRoutes.idea("story-gone", "console-audit-log"), { handler });
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ slug: "story-gone", name: "story-gone", pathTail: "story-gone", readable: false, error: "missing", counts: null });
+  });
+});
+
+// The allocation route (T87, ISC-130.2): `POST /api/workspaces/:ws/ideas/:slug/allocate`, a workspace route served by
+// `dashboardApi` through `allocate-route.ts` and `writes.ts`'s `writeAllocate`, on a fresh harbor copy per test.
+describe("the allocation route (T87, ISC-130.2)", () => {
+  const sha = (bytes: Uint8Array | string): string => new Bun.CryptoHasher("sha256").update(bytes).digest("hex");
+  const STORY = "specs/ideas/console-audit-log.md";
+  const harborCopy = (): { repo: string; handler: ApiHandler } => {
+    const repo = join(mkdtempSync(join(root, "allocate-")), "harbor");
+    cpSync(HARBOR, repo, { recursive: true });
+    return { repo, handler: dashboardApi({ registry: registryWith(repo), services: () => Promise.resolve([]), lifeos: LIFEOS_ABSENT, now: () => LIVE_NOW }) };
+  };
+  const post = async (handler: ApiHandler, ws: string, slug: string, body: unknown, method = "POST"): Promise<Response> => {
+    const url = new URL(`http://127.0.0.1:7717${workspaceRoutes.allocate(ws, slug)}`);
+    const req = new Request(url.href, { method, headers: HOST, ...(method === "GET" ? {} : { body: typeof body === "string" ? body : JSON.stringify(body) }) });
+    const res = await handler(req, url);
+    if (res === null) throw new Error("the workspace routes declined the allocation");
+    return res;
+  };
+
+  test("accepted: the hash the story page sent allocates 010 and answers IdeaAllocated; the page is then gone", async () => {
+    const { repo, handler } = harborCopy();
+    const page = await call(workspaceRoutes.idea("harbor", "console-audit-log"), { handler });
+    const { hash } = (await page.json()) as WorkspaceRouteResponses["idea"];
+    expect(hash).toBe(sha(readFileSync(join(repo, STORY))));
+    const res = await post(handler, "harbor", "console-audit-log", { hash });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as IdeaAllocated;
+    expect(body).toEqual({
+      id: "010",
+      folder: "specs/010-console-audit-log/",
+      files: ["specs/010-console-audit-log/context.md", "specs/010-console-audit-log/spec.md", "specs/010-console-audit-log/events.jsonl"],
+      removed: STORY,
+      lockSource: "activity",
+    });
+    const event = JSON.parse(readFileSync(join(repo, "specs/010-console-audit-log/events.jsonl"), "utf8")) as Record<string, unknown>;
+    expect(event).toMatchObject({ ts: LIVE_NOW.toISOString(), from: null, to: "plan", actor: VIEWER_ACTOR_FALLBACK });
+    expect((await call(workspaceRoutes.idea("harbor", "console-audit-log"), { handler })).status).toBe(404);
+  });
+
+  test("stale hash: 409 hash-mismatch with the story's path and raw hash now", async () => {
+    const { repo, handler } = harborCopy();
+    const res = await post(handler, "harbor", "console-audit-log", { hash: sha("an older story") });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "hash-mismatch", files: [STORY], expected: { idea: sha(readFileSync(join(repo, STORY))) } });
+  });
+
+  test("refused: a story the index does not name is 422 allocate-refused not-in-index", async () => {
+    const { repo, handler } = harborCopy();
+    const res = await post(handler, "harbor", "registry-webhooks", { hash: sha(readFileSync(join(repo, "specs/ideas/registry-webhooks.md"))) });
+    expect(res.status).toBe(422);
+    expect((await res.json()) as AllocateRefused).toEqual({ error: "allocate-refused", reason: "not-in-index", folder: "specs/010-registry-webhooks/" });
+  });
+
+  test("an unknown workspace or story is 404; a body that is no AllocateRequest is 400", async () => {
+    const { handler } = harborCopy();
+    const hash = sha("x");
+    for (const [ws, slug] of [["nowhere", "console-audit-log"], ["harbor", "tide-tables"], ["harbor", "README"]] as const) {
+      const res = await post(handler, ws, slug, { hash });
+      expect({ ws, slug, status: res.status, body: await res.json() }).toEqual({ ws, slug, status: 404, body: { error: "not-found" } });
+    }
+    for (const bad of ["not json", {}, { hash: "short" }, { hash, actor: "u:1" }, [hash]]) {
+      const res = await post(handler, "harbor", "console-audit-log", bad);
+      expect({ bad, status: res.status, body: await res.json() }).toEqual({ bad, status: 400, body: { error: "invalid-body" } });
+    }
+  });
+
+  test("405 with Allow: POST for any other method; 403 for a foreign Host; nothing is written by either", async () => {
+    const { repo, handler } = harborCopy();
+    for (const method of ["GET", "PUT", "DELETE"]) {
+      const res = await post(handler, "harbor", "console-audit-log", {}, method);
+      expect({ method, status: res.status, allow: res.headers.get("allow") }).toEqual({ method, status: 405, allow: "POST" });
+    }
+    expect(allowForWorkspace("allocate")).toBe("POST");
+    const url = new URL(`http://127.0.0.1:7717${workspaceRoutes.allocate("harbor", "console-audit-log")}`);
+    const foreign = await handler(new Request(url.href, { method: "POST", headers: { Host: "evil.example" }, body: "{}" }), url);
+    expect(foreign?.status).toBe(403);
+    expect(readFileSync(join(repo, STORY), "utf8")).toBe(readFileSync(join(HARBOR, STORY), "utf8"));
   });
 });
 

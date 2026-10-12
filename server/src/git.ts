@@ -1,7 +1,8 @@
 // The timeline's commit source (T46, ISC-80): the commits touching a spec folder, read with `git log` and nothing else
 // that could write (ISC-15). `core/` runs no subprocess; the server reads here and passes the records in.
 //
-// Read-only by construction: only `rev-parse`, `log` and `config --get` (the identity, `userEmail`) run, all of which
+// Read-only by construction: only `rev-parse`, `log`, `config --get` (the identity, `userEmail`) and `for-each-ref`
+// (the branch names, `takenSpecNumbers`) run, all of which
 // never touch the index, never take a lock and never write an object; `GIT_OPTIONAL_LOCKS=0` covers any optional lock
 // a future git might take. The inherited
 // `GIT_DIR`, `GIT_WORK_TREE` and `GIT_INDEX_FILE` are dropped so the environment cannot redirect the read, pathspecs
@@ -11,6 +12,7 @@
 // and a cache keyed by root and folder that skips `git log` while `HEAD` is unchanged.
 import { lstatSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { specNumbersOf } from "../../core/src/allocate.ts";
 import type { CommitRecord } from "../../core/src/files.ts";
 
 /** A commit record, plus the touched paths inside the folder when `files` was asked for. */
@@ -250,6 +252,77 @@ export async function userEmail(root: string, options: UserEmailOptions = {}): P
     return await Promise.race([read(), deadline]);
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
+}
+
+// ── the numbers given out (T86, ISC-130.2) ───────────────────────────────────────────────────────────────────────
+
+export interface TakenNumbers {
+  /** Every spec number a ref name or the history names, ascending, each once; empty when `source` is `none`. */
+  readonly numbers: readonly number[];
+  /** `git` when both reads answered (even with nothing found), `none` when there was nothing to read or a read failed. */
+  readonly source: "git" | "none";
+  /** Why the source is `none`, for the server log; never shown as data. */
+  readonly diagnostic?: string;
+}
+
+/**
+ * The numbers branch names and history have given out in `root`'s repository, for `core/`'s `nextSpecNumber` beside
+ * the folders on disk (FORMAT.md § idea, Allocation). Two reads, both read-only:
+ *
+ * - `for-each-ref --format=%(refname) refs/heads/ refs/remotes/`: every local and remote-tracking ref; a path segment
+ *   of the `NNN-slug` folder shape (`feature/012-tide-tables`) takes its number. The plumbing form of `branch --list`.
+ * - `log --all --no-renames --diff-filter=A --name-only --format= -- specs`: every path ever added below `specs/` on
+ *   any ref; the folder segment of `specs/NNN-slug/…` and `specs/archive/NNN-slug/…` takes its number, so a spec
+ *   deleted or moved since still holds it. `--no-renames` makes an archive move an addition too.
+ *
+ * Folder segments are read by core's `specNumbersOf`, the one definition of the shape. Never throws: no repository
+ * root, no git, a failure or the deadline answer `source: 'none'` with no number; the folders on disk still count.
+ */
+export async function takenSpecNumbers(root: string, options: UserEmailOptions = {}): Promise<TakenNumbers> {
+  const runner = options.runner ?? defaultGitRunner;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const nothing = (diagnostic: string): TakenNumbers => ({ numbers: [], source: "none", diagnostic });
+  try {
+    lstatSync(join(root, ".git"));
+  } catch {
+    return nothing("not a git repository root");
+  }
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<TakenNumbers>((resolve) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      resolve(nothing(`git timed out after ${timeoutMs} ms`));
+    }, timeoutMs);
+  });
+  const read = async (): Promise<TakenNumbers> => {
+    const env = gitEnv(root);
+    const refs = await runner(["-C", root, "for-each-ref", "--format=%(refname)", "refs/heads/", "refs/remotes/"], env, controller.signal);
+    if (refs === null) return nothing("git not found on PATH");
+    if (refs.code !== 0) return nothing(`git for-each-ref exited ${refs.code}: ${firstLine(refs.stderr)}`);
+    const log = await runner(
+      ["-C", root, "--no-pager", "log", "--all", "--no-renames", "--diff-filter=A", "--name-only", "--format=", "--no-color", "--no-ext-diff", "--no-textconv", "--", "specs"],
+      env,
+      controller.signal,
+    );
+    if (log === null) return nothing("git not found on PATH");
+    if (log.code !== 0) return nothing(`git log exited ${log.code}: ${firstLine(log.stderr)}`);
+    const fromRefs = refs.stdout.split("\n").flatMap((name) => specNumbersOf(name.trim().split("/")));
+    const fromPaths = log.stdout.split("\n").flatMap((line) => {
+      const [top, first, second] = line.trim().split("/");
+      if (top !== "specs" || first === undefined) return [];
+      return specNumbersOf([first === "archive" ? (second ?? "") : first]);
+    });
+    return { numbers: [...new Set([...fromRefs, ...fromPaths])].sort((a, b) => a - b), source: "git" };
+  };
+  try {
+    return await Promise.race([read(), deadline]);
+  } catch (error) {
+    return nothing(`git read failed: ${error instanceof Error ? error.message : String(error)}`);
   } finally {
     clearTimeout(timer);
     controller.abort();

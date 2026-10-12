@@ -221,6 +221,17 @@ export function listActors(db: Database): ActorRow[] {
   return db.query<ActorRecord, []>(`SELECT ${ACTOR_COLUMNS} FROM actor ORDER BY id`).all().map(actorOf);
 }
 
+/**
+ * Replaces the whole table with `actors` in one immediate transaction (`PUT /api/actors`, T91): a row whose id is
+ * not among them is deleted, every other one upserted. A failure leaves the table as it was.
+ */
+export function replaceActors(db: Database, actors: readonly ActorRow[]): void {
+  db.transaction(() => {
+    db.run("DELETE FROM actor");
+    for (const actor of actors) upsertActor(db, actor);
+  }).immediate();
+}
+
 // ── the board_query table (migration 5, T90, ISC-129.1) ──────────────────────────────────────────────────────────────
 
 /** A workspace's remembered board query: the slug, the query string as the board sent it, the time it was set (ISO 8601). */

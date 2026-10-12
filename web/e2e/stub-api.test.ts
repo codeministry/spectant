@@ -913,7 +913,9 @@ describe('stub API matches the real server handlers byte for byte', () => {
     if (!handler) throw new Error('real handlers not loaded');
     // Every workspace route is a read (`WorkspaceRouteEntry.method` is `'GET'`); the stub serves those with a golden
     // family. The story route (`idea`, server T88) has none yet: its parity arrives with the stub's story route (T119).
-    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning', 'idea']);
+    // The board query (server T92) reads the database, not a golden, and the allocation (T87) is the family's one POST;
+    // the stub serves neither yet.
+    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning', 'idea', 'boardQuery', 'allocate']);
     const golden = WORKSPACE_ROUTE_TABLE.filter((entry) => entry.route in GOLDEN_FAMILY);
     expect(golden.map((entry) => entry.route)).toEqual(['planning']);
     for (const entry of golden) {

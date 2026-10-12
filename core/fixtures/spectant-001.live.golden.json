@@ -16,7 +16,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bash — bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4 → exit 0 (darwin-arm64 58.8 MB signed, darwin-x64 64.0 MB signed, linux-arm64 95.7 MB, linux-x64 baseline 95.3 MB; host binary serves /, main-*.js, /w/x from an empty dir), round 6, T11"
+        "note": "bash — bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4 → exit 0 (darwin-arm64 58.8 MB signed, darwin-x64 64.0 MB signed, linux-arm64 95.7 MB, linux-x64 baseline 95.3 MB; host binary serves /, main-*.js, /w/x from an empty dir), round 6, T11",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T2",
@@ -27,7 +29,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bash — test -f CLAUDE.md -a -f core/CLAUDE.md -a -f server/CLAUDE.md -a -f web/CLAUDE.md → exit 0 (round 2, T2–T5)"
+        "note": "bash — test -f CLAUDE.md -a -f core/CLAUDE.md -a -f server/CLAUDE.md -a -f web/CLAUDE.md → exit 0 (round 2, T2–T5)",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T3",
@@ -38,7 +42,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bash — test -f CLAUDE.md -a -f core/CLAUDE.md -a -f server/CLAUDE.md -a -f web/CLAUDE.md → exit 0 (round 2, T2–T5)"
+        "note": "bash — test -f CLAUDE.md -a -f core/CLAUDE.md -a -f server/CLAUDE.md -a -f web/CLAUDE.md → exit 0 (round 2, T2–T5)",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T4",
@@ -49,7 +55,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bash — test -f CLAUDE.md -a -f core/CLAUDE.md -a -f server/CLAUDE.md -a -f web/CLAUDE.md → exit 0 (round 2, T2–T5)"
+        "note": "bash — test -f CLAUDE.md -a -f core/CLAUDE.md -a -f server/CLAUDE.md -a -f web/CLAUDE.md → exit 0 (round 2, T2–T5)",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T5",
@@ -60,7 +68,9 @@
         "seam": false,
         "state": "closed",
         "tries": 0,
-        "note": "bash — test -f CLAUDE.md -a -f core/CLAUDE.md -a -f server/CLAUDE.md -a -f web/CLAUDE.md → exit 0 (round 2, T2–T5)"
+        "note": "bash — test -f CLAUDE.md -a -f core/CLAUDE.md -a -f server/CLAUDE.md -a -f web/CLAUDE.md → exit 0 (round 2, T2–T5)",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T6",
@@ -71,7 +81,9 @@
         "seam": true,
         "state": "closed",
         "tries": 1,
-        "note": "bash — bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4 → exit 0 (darwin-arm64 58.8 MB signed, darwin-x64 64.0 MB signed, linux-arm64 95.7 MB, linux-x64 baseline 95.3 MB; host binary serves /, main-*.js, /w/x from an empty dir), round 6, T11"
+        "note": "bash — bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4 → exit 0 (darwin-arm64 58.8 MB signed, darwin-x64 64.0 MB signed, linux-arm64 95.7 MB, linux-x64 baseline 95.3 MB; host binary serves /, main-*.js, /w/x from an empty dir), round 6, T11",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T7",
@@ -82,7 +94,9 @@
         "seam": false,
         "state": "closed",
         "tries": 0,
-        "note": "bash — bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4 → exit 0 (darwin-arm64 58.8 MB signed, darwin-x64 64.0 MB signed, linux-arm64 95.7 MB, linux-x64 baseline 95.3 MB; host binary serves /, main-*.js, /w/x from an empty dir), round 6, T11"
+        "note": "bash — bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4 → exit 0 (darwin-arm64 58.8 MB signed, darwin-x64 64.0 MB signed, linux-arm64 95.7 MB, linux-x64 baseline 95.3 MB; host binary serves /, main-*.js, /w/x from an empty dir), round 6, T11",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T8",
@@ -93,7 +107,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bash — bun run check:static → exit 0 (eslint 9.39.5 + angular-eslint 22.5.0 + typescript-eslint 8.70.1, stylelint 17.15.0, tsc 6.0.3; red on a throwaway @Input/*ngIf/| async/hex/literal-duration proof), round 5, T8"
+        "note": "bash — bun run check:static → exit 0 (eslint 9.39.5 + angular-eslint 22.5.0 + typescript-eslint 8.70.1, stylelint 17.15.0, tsc 6.0.3; red on a throwaway @Input/*ngIf/| async/hex/literal-duration proof), round 5, T8",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T9",
@@ -104,7 +120,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bash — bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4 → exit 0 (darwin-arm64 58.8 MB signed, darwin-x64 64.0 MB signed, linux-arm64 95.7 MB, linux-x64 baseline 95.3 MB; host binary serves /, main-*.js, /w/x from an empty dir), round 6, T11"
+        "note": "bash — bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4 → exit 0 (darwin-arm64 58.8 MB signed, darwin-x64 64.0 MB signed, linux-arm64 95.7 MB, linux-x64 baseline 95.3 MB; host binary serves /, main-*.js, /w/x from an empty dir), round 6, T11",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T10",
@@ -115,7 +133,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bash — bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4 → exit 0 (darwin-arm64 58.8 MB signed, darwin-x64 64.0 MB signed, linux-arm64 95.7 MB, linux-x64 baseline 95.3 MB; host binary serves /, main-*.js, /w/x from an empty dir), round 6, T11"
+        "note": "bash — bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4 → exit 0 (darwin-arm64 58.8 MB signed, darwin-x64 64.0 MB signed, linux-arm64 95.7 MB, linux-x64 baseline 95.3 MB; host binary serves /, main-*.js, /w/x from an empty dir), round 6, T11",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T11",
@@ -126,7 +146,9 @@
         "seam": true,
         "state": "closed",
         "tries": 1,
-        "note": "bash — bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4 → exit 0 (darwin-arm64 58.8 MB signed, darwin-x64 64.0 MB signed, linux-arm64 95.7 MB, linux-x64 baseline 95.3 MB; host binary serves /, main-*.js, /w/x from an empty dir), round 6, T11"
+        "note": "bash — bun run build && test $(ls dist/spectant-{darwin,linux}-{arm64,x64} | wc -l) -eq 4 → exit 0 (darwin-arm64 58.8 MB signed, darwin-x64 64.0 MB signed, linux-arm64 95.7 MB, linux-x64 baseline 95.3 MB; host binary serves /, main-*.js, /w/x from an empty dir), round 6, T11",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T12",
@@ -137,7 +159,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bash — bun run test:binary → exit 0, 6 pass (host binary alone in a mkdtemp dir, --port 0: / html, main-*.js immutable text/javascript, /w/x = index, 404 elsewhere, lsof loopback only, SIGTERM exit 0), round 7, T12"
+        "note": "bash — bun run test:binary → exit 0, 6 pass (host binary alone in a mkdtemp dir, --port 0: / html, main-*.js immutable text/javascript, /w/x = index, 404 elsewhere, lsof loopback only, SIGTERM exit 0), round 7, T12",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T13",
@@ -148,7 +172,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bash — bun run check:version → exit 0, 'check:version: ok 0.1.0' (root and web package.json agree; host binary prints exactly 'spectant 0.1.0\\n'; red on a 0.1.1 mismatch), round 7, T13"
+        "note": "bash — bun run check:version → exit 0, 'check:version: ok 0.1.0' (root and web package.json agree; host binary prints exactly 'spectant 0.1.0\\n'; red on a 0.1.1 mismatch), round 7, T13",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T14",
@@ -159,7 +185,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bash — bun run test:install:linux → exit 0, 14 checks on linux/amd64 (ubuntu:24.04, non-root, file:///release, ~/.local/bin fallback, PATH hint, --version, HEAD / main-*.js /w/x all 200), round 7, T14"
+        "note": "bash — bun run test:install:linux → exit 0, 14 checks on linux/amd64 (ubuntu:24.04, non-root, file:///release, ~/.local/bin fallback, PATH hint, --version, HEAD / main-*.js /w/x all 200), round 7, T14",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T15",
@@ -170,7 +198,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bash — bun run test:install:linux -- INSTALL_DIR=/opt/x/bin → exit 0, 19 checks on linux/amd64 (binary exactly at /opt/x/bin/spectant, nothing elsewhere, PATH hint names it; red with INSTALL_DIR ignored), round 8, T15"
+        "note": "bash — bun run test:install:linux -- INSTALL_DIR=/opt/x/bin → exit 0, 19 checks on linux/amd64 (binary exactly at /opt/x/bin/spectant, nothing elsewhere, PATH hint names it; red with INSTALL_DIR ignored), round 8, T15",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T16",
@@ -181,7 +211,9 @@
         "seam": false,
         "state": "operatorOpen",
         "tries": 0,
-        "reason": "operator lane — the principal's own action, never auto-dispatched"
+        "reason": "operator lane — the principal's own action, never auto-dispatched",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T17",
@@ -192,7 +224,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bun-test — bun test web/tests/theme-colors.test.ts → 12 pass, 0 fail (ΔE_OK×100 ≤ 0.5 for 23 tokens per theme; red on the placeholder, red on a 0.01 chroma nudge), round 5, T17"
+        "note": "bun-test — bun test web/tests/theme-colors.test.ts → 12 pass, 0 fail (ΔE_OK×100 ≤ 0.5 for 23 tokens per theme; red on the placeholder, red on a 0.01 chroma nudge), round 5, T17",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T18",
@@ -202,7 +236,9 @@
         "parallel": true,
         "seam": false,
         "state": "done",
-        "tries": 1
+        "tries": 1,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T19",
@@ -213,7 +249,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bun-test — bun test web/tests/fonts.test.ts -t \"local\" → exit 0 (Inter Variable 4.1 352 KB + JetBrains Mono 2.304 114 KB as woff2 under web/public/fonts, OFL texts beside them, @font-face local, copied into web/dist/browser/fonts), round 8, T19"
+        "note": "bun-test — bun test web/tests/fonts.test.ts -t \"local\" → exit 0 (Inter Variable 4.1 352 KB + JetBrains Mono 2.304 114 KB as woff2 under web/public/fonts, OFL texts beside them, @font-face local, copied into web/dist/browser/fonts), round 8, T19",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T20",
@@ -226,7 +264,9 @@
         "builder": "Engineer",
         "tries": 1,
         "reason": "[P], claim takeable, edges closed",
-        "note": "bun-test — bun test web/tests/fonts.test.ts -t \"external\" → exit 0, 13 pass (no external font/stylesheet URL under web/src or the build; red on a throwaway Google Fonts @import and on 13 synthetic offenders), round 9, T20"
+        "note": "bun-test — bun test web/tests/fonts.test.ts -t \"external\" → exit 0, 13 pass (no external font/stylesheet URL under web/src or the build; red on a throwaway Google Fonts @import and on 13 synthetic offenders), round 9, T20",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T21",
@@ -236,7 +276,9 @@
         "parallel": true,
         "seam": false,
         "state": "done",
-        "tries": 1
+        "tries": 1,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T22",
@@ -247,7 +289,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bun-test — bun test web/tests/icons.test.ts → exit 0, 11 pass (lucide-static pinned 1.48.0, icons.ts byte-identical to regeneration, no foreign name or raw svg under web/src; red on a hand-edited path, a 'rocket' name and a raw svg), round 8, T22"
+        "note": "bun-test — bun test web/tests/icons.test.ts → exit 0, 11 pass (lucide-static pinned 1.48.0, icons.ts byte-identical to regeneration, no foreign name or raw svg under web/src; red on a hand-edited path, a 'rocket' name and a raw svg), round 8, T22",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T23",
@@ -260,7 +304,9 @@
         "builder": "Engineer",
         "tries": 1,
         "reason": "[P], claim takeable, edges closed",
-        "note": "bun-test — bun test web/tests/i18n-parity.test.ts → exit 0, 17 pass (174 keys in en.json and de.json, 0 missing, 0 informal German, 0 param mismatches; Transloco 8.4.0 with a bundled loader; red on a dropped key, a dropped param and 'deinen'), round 9, T23"
+        "note": "bun-test — bun test web/tests/i18n-parity.test.ts → exit 0, 17 pass (174 keys in en.json and de.json, 0 missing, 0 informal German, 0 param mismatches; Transloco 8.4.0 with a bundled loader; red on a dropped key, a dropped param and 'deinen'), round 9, T23",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T24",
@@ -272,7 +318,9 @@
         "state": "done",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "[P], claim takeable, edges closed"
+        "reason": "[P], claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T25",
@@ -284,7 +332,9 @@
         "state": "done",
         "builder": "Engineer",
         "tries": 1,
-        "reason": "[P], claim takeable, edges closed"
+        "reason": "[P], claim takeable, edges closed",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T26",
@@ -295,7 +345,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "width 4 reached"
+        "reason": "width 4 reached",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T27",
@@ -306,7 +358,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "width 4 reached"
+        "reason": "width 4 reached",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T28",
@@ -317,7 +371,9 @@
         "seam": true,
         "state": "waiting",
         "tries": 0,
-        "reason": "after T24, T25, T26, T27 still open"
+        "reason": "after T24, T25, T26, T27 still open",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T29",
@@ -328,7 +384,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T28"
+        "reason": "behind open seam T28",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T30",
@@ -339,7 +397,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T28"
+        "reason": "behind open seam T28",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T31",
@@ -350,7 +410,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T28"
+        "reason": "behind open seam T28",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T35",
@@ -360,7 +422,9 @@
         "parallel": true,
         "seam": false,
         "state": "done",
-        "tries": 1
+        "tries": 1,
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T32",
@@ -371,7 +435,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "width 4 reached"
+        "reason": "width 4 reached",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T33",
@@ -382,7 +448,9 @@
         "seam": true,
         "state": "waiting",
         "tries": 0,
-        "reason": "after T32 still open"
+        "reason": "after T32 still open",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T34",
@@ -393,7 +461,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T33"
+        "reason": "behind open seam T33",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T36",
@@ -404,7 +474,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T33"
+        "reason": "behind open seam T33",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T37",
@@ -415,7 +487,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T33"
+        "reason": "behind open seam T33",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T38",
@@ -426,7 +500,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T33"
+        "reason": "behind open seam T33",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T39",
@@ -437,7 +513,9 @@
         "seam": true,
         "state": "waiting",
         "tries": 0,
-        "reason": "after T34, T36, T37, T38 still open"
+        "reason": "after T34, T36, T37, T38 still open",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T40",
@@ -448,7 +526,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T39"
+        "reason": "behind open seam T39",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T41",
@@ -459,7 +539,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T39"
+        "reason": "behind open seam T39",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T45",
@@ -470,7 +552,9 @@
         "seam": false,
         "state": "closed",
         "tries": 1,
-        "note": "bash — bun run check:single-core → exit 0, 0 hits (red on a throwaway split(\"---\") under server/), round 2, T45"
+        "note": "bash — bun run check:single-core → exit 0, 0 hits (red on a throwaway split(\"---\") under server/), round 2, T45",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T46",
@@ -481,7 +565,9 @@
         "seam": false,
         "state": "closed",
         "tries": 0,
-        "note": "bun-test — bun test tests/cli.test.ts -t \"data dir\" → 3 pass, 0 fail (round 2, T46)"
+        "note": "bun-test — bun test tests/cli.test.ts -t \"data dir\" → 3 pass, 0 fail (round 2, T46)",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T42",
@@ -492,7 +578,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "width 4 reached"
+        "reason": "width 4 reached",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T43",
@@ -503,7 +591,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "width 4 reached"
+        "reason": "width 4 reached",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T44",
@@ -514,7 +604,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "after T42 still open"
+        "reason": "after T42 still open",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T47",
@@ -525,7 +617,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T39"
+        "reason": "behind open seam T39",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T48",
@@ -536,7 +630,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "width 4 reached"
+        "reason": "width 4 reached",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T49",
@@ -547,7 +643,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "width 4 reached"
+        "reason": "width 4 reached",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T50",
@@ -558,7 +656,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "width 4 reached"
+        "reason": "width 4 reached",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T51",
@@ -569,7 +669,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T39"
+        "reason": "behind open seam T39",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T52",
@@ -580,7 +682,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T39"
+        "reason": "behind open seam T39",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T53",
@@ -591,7 +695,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "width 4 reached"
+        "reason": "width 4 reached",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T54",
@@ -602,7 +708,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "width 4 reached"
+        "reason": "width 4 reached",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T55",
@@ -613,7 +721,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "width 4 reached"
+        "reason": "width 4 reached",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T56",
@@ -624,7 +734,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "claim already closed — task should be [x]; strike or check it"
+        "reason": "claim already closed — task should be [x]; strike or check it",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T57",
@@ -635,7 +747,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T28, T39"
+        "reason": "behind open seam T28, T39",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T58",
@@ -646,7 +760,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "width 4 reached"
+        "reason": "width 4 reached",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T59",
@@ -657,7 +773,9 @@
         "seam": true,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T39"
+        "reason": "behind open seam T39",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T60",
@@ -668,7 +786,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T61",
@@ -679,7 +799,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T62",
@@ -690,7 +812,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T63",
@@ -701,7 +825,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T64",
@@ -712,7 +838,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T65",
@@ -723,7 +851,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T66",
@@ -734,7 +864,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T67",
@@ -745,7 +877,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T68",
@@ -756,7 +890,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T69",
@@ -767,7 +903,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "claim blocked by ISC-61"
+        "reason": "claim blocked by ISC-61",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T70",
@@ -778,7 +916,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "claim blocked by ISC-60"
+        "reason": "claim blocked by ISC-60",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T71",
@@ -789,7 +929,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "claim blocked by ISC-60"
+        "reason": "claim blocked by ISC-60",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T72",
@@ -800,7 +942,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "claim blocked by ISC-62"
+        "reason": "claim blocked by ISC-62",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T73",
@@ -811,7 +955,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T74",
@@ -822,7 +968,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T75",
@@ -833,7 +981,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T76",
@@ -844,7 +994,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T77",
@@ -855,7 +1007,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T78",
@@ -866,7 +1020,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T79",
@@ -877,7 +1033,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T80",
@@ -888,7 +1046,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T81",
@@ -899,7 +1059,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T82",
@@ -910,7 +1072,9 @@
         "seam": false,
         "state": "waiting",
         "tries": 0,
-        "reason": "behind open seam T59"
+        "reason": "behind open seam T59",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T83",
@@ -921,7 +1085,9 @@
         "seam": false,
         "state": "operatorOpen",
         "tries": 0,
-        "reason": "operator lane — the principal's own action, never auto-dispatched"
+        "reason": "operator lane — the principal's own action, never auto-dispatched",
+        "agent": null,
+        "subagent": null
       }
     ],
     "progress": {
@@ -948,7 +1114,9 @@
         "seam": false,
         "state": "operatorOpen",
         "tries": 0,
-        "reason": "operator lane — the principal's own action, never auto-dispatched"
+        "reason": "operator lane — the principal's own action, never auto-dispatched",
+        "agent": null,
+        "subagent": null
       },
       {
         "task": "T83",
@@ -959,7 +1127,9 @@
         "seam": false,
         "state": "operatorOpen",
         "tries": 0,
-        "reason": "operator lane — the principal's own action, never auto-dispatched"
+        "reason": "operator lane — the principal's own action, never auto-dispatched",
+        "agent": null,
+        "subagent": null
       }
     ],
     "staleAfterMs": 2700000

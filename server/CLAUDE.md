@@ -28,19 +28,38 @@ as every existing route answers (plan 002's `not_found` is superseded). `tests/s
 404 without fallback); `evidence.ts` serves evidence files, 403 outside `artifacts/`, `.evidence/` and `.design/` (the Design tab's images, spec 004). `writes.contract.ts` (T67) types the two
 POST writes; `writes.ts` (T68) performs them under `gate-route.ts` (T69) and `checkbox-route.ts` (T70), wired into `spec-routes.ts`; `tests/writes.test.ts` holds their probes. Commits come from `git.ts` with the process's one
 `CommitCache` (`commitCache` option); the timeline's ETag folds in `HEAD` when the workspace is a repository of its own.
-Spec 008's routes `allocate`, `actors` and `boardQuery` are declared in `PENDING_ROUTE_TABLE`, outside
-the registered tables, so until a handler lands they answer as unknown paths (404); the task that lands one moves its entry
-into the registered family. The story page `idea` (`GET`/`HEAD /api/workspaces/:ws/ideas/:slug`, T88) has moved into
-`WORKSPACE_ROUTE_TABLE` and is served by `api.ts` from the story folder alone; the stage move `transition` (`POST …/specs/:id/transition`, T83) is a registered spec route served by `transition-route.ts` through `writes.ts`, and the planning route passes the workflow and every active spec's stage and raw `spec.md` hash into `buildPlanning`: the `IdeaRef`, the page through
+Every route of spec 008 has its handler now; the pending family of the contract went with its last route, the bodies
+stay in § Spec 008 bodies. The story page `idea` (`GET`/`HEAD /api/workspaces/:ws/ideas/:slug`, T88) is served by
+`api.ts` from the story folder alone; the allocation `allocate` (`POST /api/workspaces/:ws/ideas/:slug/allocate`, T87) is the
+workspace family's one write, served by `allocate-route.ts` through `writes.ts`; the board query (`GET`/`HEAD`/`PUT
+/api/workspaces/:ws/board-query`, T92) lives in `WORKSPACE_ROUTE_TABLE` (`write: 'PUT'`) and is served from the `board_query`
+table alone (the `db` option; no 409, 404 for an unknown workspace); the actor names (`GET`/`HEAD`/`PUT /api/actors`, T91) are a
+route of their own, `ACTORS_PATH`, served by `api.ts`'s `actorsApi` over the `actor` table like `/api/settings` (PUT replaces
+the whole mapping); the stage move `transition` (`POST …/specs/:id/transition`, T83) is a registered spec route served by
+`transition-route.ts` through `writes.ts`, and the planning route passes the workflow and every active spec's stage and raw
+`spec.md` hash into `buildPlanning`:
 `markdown-docs.ts` and the raw sha256 of the file's bytes from one read, 404 for an unknown story or a workspace without stories. `writes.contract.ts` holds the four app writes in `WRITE_TABLE` and every file they may touch
-in `WRITE_PATHS`; the feature-level code-review mark is a fifth path, written by the CLI only.
+in `WRITE_PATHS`; the fifth path, `WRITE_PATHS.codeReviewFeature`, is the feature-level code-review mark, written by
+the CLI only (`spectant gate code-reviewed F<n> [--root DIR] [--yes]`, T93, `server/src/feature-gate.ts` over
+`writes.ts`' in-place primitives; no route, no `WRITE_TABLE` row): it refuses while a spec of the main feature holds an
+open claim, appends one `code-review → close` event per target, then writes the same `scope: F<n>` mark with the tree
+id of the worktree as it then stands, so the mark reads fresh while `.gates/` stays outside the tree. Without `--yes` it
+prints the plan and writes nothing; `tests/gates.test.ts` (`-t feature`) holds its probes.
 
 ## The write path (spec 002)
 
-The app writes exactly two things into a registered repository, both on a user action, both through `writes.ts` and
-typed by `writes.contract.ts`: the reviewed mark (`.gates/reviewed.json` in the old skill's byte format plus one
-`review → build` line appended to `events.jsonl`, actor `app`) and one task checkbox (one `[ ]` ↔ `[x]` flip on one
-line of `tasks.md`, line endings kept).
+The app writes exactly four things into a registered repository, each on a user action, each through `writes.ts` and
+typed by `writes.contract.ts` (`WRITE_TABLE`, `WRITE_PATHS`): the reviewed mark (`.gates/reviewed.json` in the old
+skill's byte format plus one `review → build` line appended to `events.jsonl`), one task checkbox (one `[ ]` ↔ `[x]`
+flip on one line of `tasks.md`, line endings kept), the stage move (`stage:` in `spec.md` plus one event line, spec
+008 T82) and the allocation of a story (spec 008 T86: `specs/NNN-slug/` created with `context.md`, `spec.md` and
+`events.jsonl`, and `specs/ideas/<slug>.md` removed; the index `README.md` is not touched, its `Spec` cell is the
+web's or the skill's to fill). Event actors are the viewer's `u:` id, `VIEWER_ACTOR_FALLBACK` without one. The CLI's
+feature-level code-review mark is a further path, never written by a route.
+
+- The allocation's number is one past the highest taken by a folder in `specs/` or `specs/archive/` and by a branch name
+  or a path added to history (`git.ts` `takenSpecNumbers`). A story has no claims, so the allocation never answers
+  423; its `lockSource` still names the source consulted. 422 `allocate-refused`: `not-in-index` or `folder-exists`.
 
 - The client sends the hashes it rendered (`X-Spectant-Reviewed-Hashes` for the three gate files, `X-Spectant-Tasks-Hash`
   for `tasks.md`); the server re-reads and re-hashes before writing. A mismatch is 409 `hash-mismatch` with the current
@@ -62,7 +81,7 @@ line of `tasks.md`, line endings kept).
 - Bind to `127.0.0.1` or `::1` only, never `0.0.0.0`. The app is a local single-user tool (ISC-1).
 - Make no outbound request. Loopback is the only network, and the dev-services probe checks local listeners only
   (ISC-2).
-- Never write into a registered repository beyond the two writes above: no other file, no `.git/` object, no index,
+- Never write into a registered repository beyond the four writes above: no other file, no `.git/` object, no index,
   no lock, and no shelling out to git for anything that writes. `tests/readonly.test.ts` hashes the fixture repo, `.git/` included, before and after
   (ISC-15).
 - The database holds only the registry, the settings and the notes (spec 002, `note` table from migration 2, `pinned` from migration 3: a note belongs to a workspace and carries at most one anchor — spec, claim or task — enforced by the schema's CHECK; removing a workspace orphans its notes), the actors (spec 008, `actor` table from migration 4: a `u:` id with a display name and its git addresses as a JSON array) and the board query (spec 008, `board_query` table from migration 5: the board's last query string per workspace slug), never anything a repository says. Deleting it must lose nothing
@@ -72,7 +91,7 @@ line of `tasks.md`, line endings kept).
 
 ## Layout
 
-- `server/src/cli.ts` (with `cli-notes.ts`: `import-notes`, `export-notes`, `db rollback`), `http.ts`, `api.ts`, `registry.ts`, `settings.ts`, `notes.ts` (the note store and its routes, spec 002), `paths.ts`, `open-browser.ts`,
+- `server/src/cli.ts` (with `cli-notes.ts`: `import-notes`, `export-notes`, `db rollback`; `feature-gate.ts`: `gate code-reviewed F<n>`), `http.ts`, `api.ts`, `registry.ts`, `settings.ts`, `notes.ts` (the note store and its routes, spec 002), `paths.ts`, `open-browser.ts`,
   `services.ts`, `assets.contract.ts`.
 - `server/embedded.gen.ts`: generated by `scripts/embed.ts` and never edited by hand. Regenerate it instead.
 - `scripts/build.ts`, `embed.ts`, `check-leak.ts`, `check-single-core.ts`, `check-version.ts`.
@@ -115,5 +134,6 @@ line of `tasks.md`, line endings kept).
 ## Git reads
 
 - `server/src/git.ts` `commitsFor(root, folder, {limit 200, timeoutMs 3000, files?, cache?})` runs only `rev-parse HEAD` and `git log -- <folder>` (optional locks off, literal pathspecs, discovery stops at the root), never throws: no repo, no git, failure or deadline → `source: 'none'` + `diagnostic`.
+- `takenSpecNumbers(root, {timeoutMs?, runner?})` runs only `for-each-ref --format=%(refname) refs/heads/ refs/remotes/` and `log --all --no-renames --diff-filter=A --name-only --format= -- specs` under the same environment and root rule, and answers the numbers of `NNN-slug` segments (core's `specNumbersOf`), ascending; never a throw, `source: 'none'` and no number on any failure (T86, ISC-130.2).
 - `userEmail(root, {timeoutMs?, runner?})` runs only `config --get user.email` under the same environment and root rule (repository config, then global; system config off) and answers the trimmed address or null, never a throw (T77, ISC-119); `core/`'s `actorIdOf` turns it into the `u:` id.
 - A `CommitCache` keyed by root and folder skips `git log` while `HEAD` is unchanged; the returned `head` belongs in the timeline route's ETag. No other git command is added without a read-only proof in `tests/git.test.ts` (ISC-15).

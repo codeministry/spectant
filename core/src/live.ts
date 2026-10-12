@@ -15,6 +15,9 @@
 //                     `running`, with the lock's source and session, `since`, `elapsedMs` (now − since) and `stale`
 //                     (no release for longer than `staleAfterMs`, 45 minutes by default). Only locks on this spec's
 //                     claims count; a claim held in both sources shows the frontier lock (the reading lists it last).
+//                     Who works it (spec 008, T66, ISC-131.1) comes from that lock's actor: `agent` the agent session
+//                     (`a:<kind>:<id>`, a sub-agent's parent id), `subagent` the `a:<kind>:<id>/<task>` ref when it
+//                     names this card's task. Every other card, and a person's or legacy session's lock, has both null.
 //
 // The frame adds the agents rail (one entry per session holding a lock here, oldest lock first) and the Needs you list
 // (question, concerns, open operator steps). Claims progress comes from spec.md's boxes, tasks progress from the cards.
@@ -22,9 +25,10 @@
 // Pure: texts, frames, a lock reading and the clock in, the frame out. No file system, no clock of its own, no Bun or
 // node API of its own (the reviewed mark's digest is gates.ts's `node:crypto` hash); the server reads the lock
 // sources (locks.ts) and passes `now`.
+import { parseActor } from './actor.ts';
 import type { Claim } from './claims.ts';
 import { countProgress, parseClaims } from './claims.ts';
-import type { AgentLockSource, CardState, ClaimLock, FrameCard, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, TaskRow } from './files.ts';
+import type { ActorRef, AgentLockSource, CardState, ClaimLock, FrameCard, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, TaskRow } from './files.ts';
 import { buildFrames, worstState } from './frames.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { reviewedGate } from './gates.ts';
@@ -61,12 +65,12 @@ export function buildLiveFrame(input: LiveFrameInput): LiveFrame {
   const held = new Map(locks.map((l) => [l.claim, l]));
 
   const overlaid = rows.length === 0 ? [...base] : overlayTasks(base, rows, claims, locks, spec, reviewedGate(files.texts).check.state);
-  const cards: LiveCard[] = overlaid.map((card) => {
+  const cards: LiveCard[] = overlaid.map((card): LiveCard => {
     const lock = held.get(card.claim);
-    if (lock === undefined || LANDED.has(card.state) || card.state === 'absent' || card.lane === OPERATOR) return card;
+    if (lock === undefined || LANDED.has(card.state) || card.state === 'absent' || card.lane === OPERATOR) return { ...card, agent: null, subagent: null };
     const elapsedMs = elapsed(now, lock.since);
     // In flight: the session is the reason, so a waiting or dispatch reason is dropped.
-    return ordered({ ...card, state: 'running', lock: { source: lock.source, session: lock.session }, since: lock.since, elapsedMs, stale: elapsedMs > staleAfterMs }, 'reason');
+    return ordered({ ...card, state: 'running', lock: { source: lock.source, session: lock.session }, since: lock.since, elapsedMs, stale: elapsedMs > staleAfterMs, ...workersOf(lock.actor, card.task) }, 'reason');
   });
 
   const present = cards.filter((c) => c.state !== 'absent');
@@ -144,10 +148,22 @@ function identity(row: TaskRow, text = row.text): Pick<FrameCard, 'task' | 'clai
 }
 
 /** A card in frames.ts's field order, then the live fields (stable JSON for the golden snapshots); `drop` left out. */
-function ordered(card: LiveCard, drop?: keyof LiveCard): LiveCard {
+function ordered<C extends FrameCard>(card: C, drop?: keyof LiveCard): C {
+  const fields = card as unknown as Partial<Record<keyof LiveCard, unknown>>;
   const out: Record<string, unknown> = {};
-  for (const key of CARD_KEYS) if (key !== drop && card[key] !== undefined) out[key] = card[key];
-  return out as unknown as LiveCard;
+  for (const key of CARD_KEYS) if (key !== drop && fields[key] !== undefined) out[key] = fields[key];
+  return out as unknown as C;
+}
+
+/**
+ * Who works a card under `lock` (T66): the agent session and, when the lock's actor is a sub-agent on this very task,
+ * that sub-agent. A sub-agent's parent is its own `id` (`a:<kind>:<id>`, actor.ts), read through the same grammar. A
+ * person or a legacy session is no agent, and a sub-agent on another task of the claim leaves `subagent` null here.
+ */
+function workersOf(actor: ActorRef, task: string): Pick<LiveCard, 'agent' | 'subagent'> {
+  if (actor.kind === 'agent') return { agent: actor, subagent: null };
+  if (actor.kind === 'subagent') return { agent: parseActor(actor.id), subagent: actor.task === task ? actor : null };
+  return { agent: null, subagent: null };
 }
 
 const CARD_KEYS: ReadonlyArray<keyof LiveCard> = [
@@ -168,6 +184,8 @@ const CARD_KEYS: ReadonlyArray<keyof LiveCard> = [
   'since',
   'elapsedMs',
   'stale',
+  'agent',
+  'subagent',
 ];
 
 /** `now − since` in milliseconds; 0 for a timestamp that does not parse or lies ahead of the clock. */

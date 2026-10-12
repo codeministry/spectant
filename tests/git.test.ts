@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { CommitCache, commitsFor, defaultGitRunner, type GitRunner, userEmail } from "../server/src/git.ts";
+import { CommitCache, commitsFor, defaultGitRunner, type GitRunner, takenSpecNumbers, userEmail } from "../server/src/git.ts";
 
 const FOLDER = "specs/010-x";
 
@@ -375,6 +375,84 @@ describe("userEmail reads the repository's git user.email (T77, ISC-119)", () =>
     expect(checksum(dir)).toBe(before);
     const beforeRepo = checksum(repo);
     await userEmail(repo);
+    expect(checksum(repo)).toBe(beforeRepo);
+  });
+});
+
+describe("takenSpecNumbers reads the spec numbers branch names and history have given out (T86, ISC-130.2)", () => {
+  /**
+   * A repository whose history added specs/003-a/ and specs/archive/002-b/, added and then deleted specs/005-gone/,
+   * with local branches main, feature/012-tide-tables, release/1.0 and fix/44-short (no three-digit folder segment),
+   * and a remote-tracking ref origin/feature/031-remote.
+   */
+  function numberedRepo(): string {
+    const dir = mkdtempSync(join(root, "numbers-"));
+    git(dir, "2026-01-01T00:00:00Z", "init", "-q", "-b", "main");
+    commit(dir, "2026-01-01T12:00:00Z", "spec 003", { "specs/003-a/spec.md": "# a\n", "specs/ideas/README.md": "# ideas\n" });
+    commit(dir, "2026-01-02T12:00:00Z", "archived 002", { "specs/archive/002-b/spec.md": "# b\n" });
+    commit(dir, "2026-01-03T12:00:00Z", "spec 005", { "specs/005-gone/spec.md": "# gone\n" });
+    git(dir, "2026-01-04T12:00:00Z", "rm", "-q", "-r", "--", "specs/005-gone");
+    git(dir, "2026-01-04T12:00:00Z", "commit", "-q", "-m", "drop 005");
+    for (const branch of ["feature/012-tide-tables", "release/1.0", "fix/44-short"]) git(dir, "2026-01-05T00:00:00Z", "branch", branch);
+    git(dir, "2026-01-05T00:00:00Z", "update-ref", "refs/remotes/origin/feature/031-remote", "HEAD");
+    return dir;
+  }
+
+  test("folders added anywhere in history (deleted or archived ones too) and branch segments, sorted and unique", async () => {
+    expect(await takenSpecNumbers(numberedRepo())).toEqual({ numbers: [2, 3, 5, 12, 31], source: "git" });
+    // The timeline repository: specs/010-x/ and specs/010-xy/ both give 10, once.
+    expect(await takenSpecNumbers(repo)).toEqual({ numbers: [10], source: "git" });
+  });
+
+  test("a repository without commits answers no number from git", async () => {
+    const empty = mkdtempSync(join(root, "numbers-empty-"));
+    git(empty, "2026-01-01T00:00:00Z", "init", "-q", "-b", "main");
+    expect(await takenSpecNumbers(empty)).toEqual({ numbers: [], source: "git" });
+  });
+
+  test("no repository root, git missing, a failing git, a throwing runner or the deadline → none, never a throw", async () => {
+    const { runner, calls } = countingRunner();
+    expect(await takenSpecNumbers(mkdtempSync(join(root, "numbers-plain-")), { runner })).toMatchObject({ numbers: [], source: "none" });
+    expect(await takenSpecNumbers(join(repo, "specs"), { runner })).toMatchObject({ numbers: [], source: "none" });
+    expect(calls).toEqual([]);
+    expect(await takenSpecNumbers(repo, { runner: () => Promise.resolve(null) })).toMatchObject({ numbers: [], source: "none" });
+    const failing: GitRunner = () => Promise.resolve({ code: 128, stdout: "", stderr: "fatal: broken\n" });
+    const failed = await takenSpecNumbers(repo, { runner: failing });
+    expect(failed).toMatchObject({ numbers: [], source: "none" });
+    expect(failed.diagnostic).toContain("fatal: broken");
+    expect(await takenSpecNumbers(repo, { runner: () => Promise.reject(new Error("spawn failed")) })).toMatchObject({ numbers: [], source: "none" });
+    const slow: GitRunner = () => new Promise(() => undefined);
+    expect(await takenSpecNumbers(repo, { runner: slow, timeoutMs: 20 })).toMatchObject({ numbers: [], source: "none" });
+  });
+
+  test("runs only for-each-ref over branches and remotes and an --all log of added specs/ paths, under the read-only environment", async () => {
+    const dir = numberedRepo();
+    const seen: Array<{ args: string[]; env: Record<string, string> }> = [];
+    const runner: GitRunner = (args, env, signal) => {
+      seen.push({ args: [...args], env });
+      return defaultGitRunner(args, env, signal);
+    };
+    await takenSpecNumbers(dir, { runner });
+    expect(seen.map((s) => s.args.slice(0, 4))).toEqual([
+      ["-C", dir, "for-each-ref", "--format=%(refname)"],
+      ["-C", dir, "--no-pager", "log"],
+    ]);
+    expect(seen[1]?.args).toContain("--all");
+    expect(seen[1]?.args).toContain("--diff-filter=A");
+    expect(seen[1]?.args.slice(-2)).toEqual(["--", "specs"]);
+    for (const s of seen) {
+      expect(s.env).toMatchObject({ GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_LITERAL_PATHSPECS: "1", GIT_CEILING_DIRECTORIES: dirname(dir) });
+    }
+  });
+
+  test("reading the numbers leaves the repository, .git/ included, byte- and mtime-identical (ISC-15)", async () => {
+    const dir = numberedRepo();
+    const before = checksum(dir);
+    await takenSpecNumbers(dir);
+    await takenSpecNumbers(dir, { timeoutMs: 1 });
+    expect(checksum(dir)).toBe(before);
+    const beforeRepo = checksum(repo);
+    await takenSpecNumbers(repo);
     expect(checksum(repo)).toBe(beforeRepo);
   });
 });

@@ -36,10 +36,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DashboardModel } from "../core/src/dashboard.ts";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
+import { dashboardApi } from "../server/src/api.ts";
 import { run } from "../server/src/cli.ts";
 import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { openRegistry } from "../server/src/registry.ts";
 import {
+  ACTORS_PATH,
   REVIEWED_HASHES_HEADER,
   type ReviewedHashes,
   SPEC_HASH_HEADER,
@@ -415,6 +417,129 @@ describe("ISC-130 with the transition: a refused move changes nothing, an accept
       expect(gitChanges(before, afterMove)).toEqual([]);
       expect(underGit(afterMove)).toEqual(underGit(before));
       expect(((await res.json()) as { hash: string }).hash).toBe(sha256(readFileSync(join(copy, loader, "spec.md"))));
+    } finally {
+      registry.close();
+    }
+  });
+});
+
+// The spec 008 reads (T97, ISC-132) under the same guard, through the served app (`spectant serve`, so the wiring is
+// proven too) on its own copy, `.git/` included: the planning tree, a story page, the actor names and the board query
+// (GET and PUT: both touch only the database, never the repository), the refused bodies of both, and one refused
+// drop (a 422 transition: 005 → build without a fresh reviewed mark) leave the copy byte-identical, every mtime kept.
+describe("ISC-132: the board's reads, the database routes and a refused drop leave the repository byte-identical", () => {
+  test("readonly: planning, idea, actors and board-query (GET and PUT) and a 422 transition change no byte, .git/ included", async () => {
+    const copy = join(mkdtempSync(join(root, "board-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    const before = snapshot(copy);
+    const indexBefore = readFileSync(join(copy, ".git", "index"));
+
+    const env = { XDG_DATA_HOME: mkdtempSync(join(root, "xdg-board-")) };
+    const lines: string[] = [];
+    const log = spyOn(console, "log").mockImplementation((...args: unknown[]) => void lines.push(args.join(" ")));
+    const stop = new AbortController();
+    try {
+      expect(await run(["add", copy], manifest(), { env })).toBe(0);
+      const done = run(["--port", "0", "--no-browser"], manifest(), { env, signal: stop.signal });
+      const deadline = Date.now() + 5_000;
+      let url = "";
+      while (url === "") {
+        url = /^spectant · (http:\/\/127\.0\.0\.1:\d+)$/.exec(lines.find((l) => l.startsWith("spectant · ")) ?? "")?.[1] ?? "";
+        if (Date.now() > deadline) throw new Error(`no URL line: ${lines.join(" | ")}`);
+        if (url === "") await Bun.sleep(5);
+      }
+      const put = (path: string, body: unknown): Promise<Response> =>
+        fetch(`${url}${path}`, { method: "PUT", body: typeof body === "string" ? body : JSON.stringify(body) });
+
+      // The board's reads: the planning tree and a story page, read, revalidated and HEAD.
+      for (const path of [workspaceRoutes.planning(SLUG), workspaceRoutes.idea(SLUG, "console-audit-log")]) {
+        const first = await fetch(`${url}${path}`);
+        expect({ path, status: first.status }).toEqual({ path, status: 200 });
+        const etag = first.headers.get("etag") ?? "";
+        expect((await fetch(`${url}${path}`, { headers: { "If-None-Match": etag } })).status).toBe(304);
+        expect((await fetch(`${url}${path}`, { method: "HEAD" })).status).toBe(200);
+      }
+
+      // The actor names: GET, a PUT round trip, a refused PUT. Synthetic names and addresses only.
+      const actor = { id: "u:3f9c0a7d", displayName: "Harbor Master", gitIdentities: ["harbor@example.org"] };
+      expect(await (await fetch(`${url}${ACTORS_PATH}`)).json()).toEqual([]);
+      expect(await (await put(ACTORS_PATH, [actor])).json()).toEqual([actor]);
+      expect(await (await fetch(`${url}${ACTORS_PATH}`)).json()).toEqual([actor]);
+      expect((await put(ACTORS_PATH, [{ ...actor, id: "a:claude:sess-1" }])).status).toBe(400);
+
+      // The board query: GET, a PUT round trip, a refused PUT, an unknown workspace.
+      const board = workspaceRoutes.boardQuery(SLUG);
+      expect(await (await fetch(`${url}${board}`)).json()).toEqual({ query: "" });
+      expect(await (await put(board, { query: "feature=F2&group=milestone" })).json()).toEqual({ query: "feature=F2&group=milestone" });
+      expect(await (await fetch(`${url}${board}`)).json()).toEqual({ query: "feature=F2&group=milestone" });
+      expect((await put(board, { query: "?feature=F2" })).status).toBe(400);
+      expect((await put(workspaceRoutes.boardQuery("nowhere"), { query: "" })).status).toBe(404);
+
+      // One refused drop: 005 → build without a fresh reviewed mark is a 422 that writes nothing.
+      const specHash = (await fetch(`${url}${specRoutes.spec(SLUG, "005")}`)).headers.get(SPEC_HASH_HEADER) ?? "";
+      expect(specHash).toMatch(/^[0-9a-f]{64}$/);
+      const drop = await fetch(`${url}${specRoutes.transition(SLUG, "005")}`, { method: "POST", body: JSON.stringify({ to: "build", hash: specHash }) });
+      expect(drop.status).toBe(422);
+
+      stop.abort();
+      expect(await done).toBe(0);
+    } finally {
+      stop.abort();
+      log.mockRestore();
+    }
+
+    const after = snapshot(copy);
+    expect(changed(before, after, { mtime: true })).toEqual([]);
+    expect(after.checksum).toBe(before.checksum);
+    expect(underGit(after)).toEqual(underGit(before));
+    expect(readFileSync(join(copy, ".git", "index")).equals(indexBefore)).toBe(true);
+  });
+});
+
+// The allocation (spec 008, T96, ISC-130.2) under the same guard, on its own copy (`.git/` included, so the git reads
+// of `takenSpecNumbers` and the viewer run): every refused allocation (400, 404, 409, 422) leaves the copy
+// byte-identical, an accepted one creates exactly the new folder with its three files and removes the story file, and
+// `.git/` never changes. The committed history names specs 001 to 009, so the story gets 010.
+describe("ISC-130.2 with the allocation: a refused one changes nothing, an accepted one only the new folder and the story", () => {
+  test("readonly: refused allocations leave the copy byte-identical; the accepted one creates three files and removes one", async () => {
+    const copy = join(mkdtempSync(join(root, "allocate-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    const registry = openRegistry(mkdtempSync(join(root, "data-allocate-")));
+    registry.add(copy);
+    const api = dashboardApi({ registry, services: () => Promise.resolve([]), lifeos: LIFEOS_ABSENT });
+    const call = async (path: string, method = "GET", body?: unknown): Promise<Response> => {
+      const url = new URL(`http://127.0.0.1:7717${path}`);
+      const init = body === undefined ? {} : { body: typeof body === "string" ? body : JSON.stringify(body) };
+      const res = await api(new Request(url.href, { method, headers: { Host: "127.0.0.1:7717" }, ...init }), url);
+      if (res === null) throw new Error(`the workspace routes declined ${path}`);
+      return res;
+    };
+    const storyHash = async (slug: string): Promise<string> => ((await (await call(workspaceRoutes.idea(SLUG, slug))).json()) as { hash: string }).hash;
+    const folder = "specs/010-console-audit-log";
+    const gitChanges = (a: Snapshot, b: Snapshot): string[] => changed(a, b, { mtime: true }).filter((p) => p === ".git" || p.startsWith(".git/"));
+
+    try {
+      const before = snapshot(copy);
+      // Refused: 409 (stale hash), 422 (registry-webhooks is not in the index), 404 (no such story), 400 (no request).
+      const refused: Array<[string, unknown, number]> = [
+        [workspaceRoutes.allocate(SLUG, "console-audit-log"), { hash: "0".repeat(64) }, 409],
+        [workspaceRoutes.allocate(SLUG, "registry-webhooks"), { hash: await storyHash("registry-webhooks") }, 422],
+        [workspaceRoutes.allocate(SLUG, "tide-tables"), { hash: "0".repeat(64) }, 404],
+        [workspaceRoutes.allocate(SLUG, "console-audit-log"), "not json", 400],
+      ];
+      for (const [path, body, status] of refused) expect({ path, status: (await call(path, "POST", body)).status }).toEqual({ path, status });
+      const afterRefused = snapshot(copy);
+      expect(changed(before, afterRefused, { mtime: true })).toEqual([]);
+      expect(afterRefused.checksum).toBe(before.checksum);
+
+      // Accepted: console-audit-log becomes 010 with context.md, spec.md and events.jsonl; its story file is removed.
+      const res = await call(workspaceRoutes.allocate(SLUG, "console-audit-log"), "POST", { hash: await storyHash("console-audit-log") });
+      expect(res.status).toBe(200);
+      const afterAllocate = snapshot(copy);
+      expect(changed(before, afterAllocate)).toEqual([folder, `${folder}/context.md`, `${folder}/events.jsonl`, `${folder}/spec.md`, "specs/ideas/console-audit-log.md"]);
+      expect(afterAllocate.entries.has("specs/ideas/console-audit-log.md")).toBe(false);
+      expect(gitChanges(before, afterAllocate)).toEqual([]);
+      expect(underGit(afterAllocate)).toEqual(underGit(before));
     } finally {
       registry.close();
     }
