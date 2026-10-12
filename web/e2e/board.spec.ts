@@ -1603,7 +1603,15 @@ test.describe('column heads', () => {
         return el.scrollTop;
       });
       expect(scrolled, 'the bands are taller than the board, so the scroller scrolls').toBeGreaterThan(0);
-      await expect.poll(async () => Math.round((await head.boundingBox())?.y ?? -1)).toBe(Math.round(before.y));
+      // Stuck flush with the scroller's top edge: no gap above the head through which a card would show.
+      const top = Math.round((await scroller.boundingBox())?.y ?? -1);
+      await expect.poll(async () => Math.round((await head.boundingBox())?.y ?? -1)).toBe(top);
+      const covered = await scroller.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const probes = [24, Math.round(r.width / 2), r.width - 40].map((x) => document.elementFromPoint(r.left + x, r.top + 4));
+        return probes.every((hit) => hit !== null && hit.closest('.grid[data-grouped] > section') !== null);
+      });
+      expect(covered, 'only column heads at the scroller top, no band or card').toBe(true);
     });
   }
 

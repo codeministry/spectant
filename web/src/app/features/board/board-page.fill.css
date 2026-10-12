@@ -36,13 +36,24 @@
   }
 
   /* With swimlanes a column section is a head-only grid item in row 1, too short for its head to stick inside it: the
-     section itself sticks to the scroller's top, over the bands scrolling under it. */
+     section itself sticks, flush with the scroller's top edge (a sticky box keeps clear of the scroller's 12 px padding,
+     so the inset is minus that padding), over the bands scrolling under it. A backdrop wider than the section covers
+     the column gap and the padding above, so no card shows through beside or above a head. */
   .grid[data-grouped] > .col,
   .grid[data-grouped] > .stub {
     position: sticky;
     z-index: 2;
-    inset-block-start: 0;
+    inset-block-start: -12px;
     background: var(--color-base-100);
+  }
+
+  .grid[data-grouped] > .col::before,
+  .grid[data-grouped] > .stub::before {
+    position: absolute;
+    z-index: -1;
+    inset: -12px -6px 0;
+    background: var(--color-base-100);
+    content: '';
   }
 
   /* Row 1 is only the heads: the sections do not stretch, and a stub there is a 40 px head (glyph and count, its name
