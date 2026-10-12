@@ -187,7 +187,7 @@
     <div class="gallery-anatomy" data-anatomy="glyph -icon"><ui-glyph state="taken" family="claim" /></div>
     @for (part of ['seg', 'seg button', 'seg button[aria-pressed]']; track part) {
       <div class="gallery-anatomy" [attr.data-anatomy]="part">
-        <ui-segmented [options]="anatomyPair" [(value)]="anatomyPairValue" label="Ag" />
+        <ui-segmented fill [options]="anatomyPair" [(value)]="anatomyPairValue" label="Ag" />
       </div>
     }
     <div class="gallery-anatomy" data-anatomy="kbd"><ui-kbd>K</ui-kbd></div>

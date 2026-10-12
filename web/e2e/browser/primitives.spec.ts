@@ -48,7 +48,7 @@
  * | kpi-tile (+ .eyebrow, .val, .val small) | `ui-kpi-tile` label `Ag`, value 12, denominator 3, meta `Ag` in a 960 px band of 120 px rows → its `ui-card` (the tile), `.eyebrow`, `.figure`, `.den` (T27) |
  * | glyph, glyph.take / taken / closed | `ui-glyph` claim states open / takeable / taken / closed (T28)   |
  * | glyph .icon                   | the `svg` inside the taken `ui-glyph` (T28)                        |
- * | seg, seg button, seg button[aria-pressed] | `ui-segmented` with two options → `.group`, the unchecked and the checked `.seg` (T28) |
+ * | seg, seg button, seg button[aria-pressed] | `ui-segmented fill` (the stretched form) with two options → `.group`, the unchecked and the checked `.seg` (T28) |
  * | kbd                           | `ui-kbd` → its `kbd`, content `K` (T28)                            |
  * | section-head                  | `ui-section-header` heading `Ag` → its `h2` (T28)                  |
  *
@@ -86,9 +86,9 @@ const SELECTOR: Record<string, string> = {
   'glyph.taken': 'ui-glyph',
   'glyph.closed': 'ui-glyph',
   'glyph .icon': 'ui-glyph svg',
-  seg: 'ui-segmented .group',
-  'seg button': 'ui-segmented .seg[aria-checked="false"]',
-  'seg button[aria-pressed]': 'ui-segmented .seg[aria-checked="true"]',
+  seg: 'ui-segmented[data-fill] .group',
+  'seg button': 'ui-segmented[data-fill] .seg[aria-checked="false"]',
+  'seg button[aria-pressed]': 'ui-segmented[data-fill] .seg[aria-checked="true"]',
   kbd: 'ui-kbd kbd',
   'section-head': 'ui-section-header h2',
 };

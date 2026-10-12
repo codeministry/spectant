@@ -1,5 +1,6 @@
 import {
   afterRenderEffect,
+  booleanAttribute,
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
@@ -87,21 +88,31 @@ const reducedMotion = () =>
  * the highlighted segment, the first in view unless the keyboard moved it; arrow keys (wrap-around), Home and End move
  * it and scroll along. More than five segments that overflow one line wrap into rows of five.
  *
- * Radio mode wears the prototype's `.seg` (spec 024, ISC-148): a grid of equal columns, 2 px padding, 1 px `--line`
- * border, 8 px radius on `--lane`; segments 28 px high, 6 px radius, 13 px `--muted`; the checked one `--card` with
- * `--shadow-hair` and `--text`. The focus ring is the global one (primitives.css).
+ * Radio mode wears the prototype's `.seg` (spec 024, ISC-148): 2 px padding, 1 px `--line` border, 8 px radius on
+ * `--lane`; segments 28 px high, 6 px radius, 13 px `--muted`; the checked one `--card` with `--shadow-hair` and
+ * `--text`. Two forms, as the prototype draws them:
+ *
+ * - default, the toolbar form (`.btool .seg`): columns as wide as their labels, segments `0 12px` with a 6 px gap
+ *   for a dot or an icon (the board's Lanes / Flow);
+ * - `fill`, the stretched form (the generic `.seg`): the group fills its container in equal columns and the
+ *   segments carry no inline padding (settings, the compact lane switch, a sheet's tabs, the note's Edit / Preview).
+ *
+ * The focus ring is the global one (primitives.css).
  */
 @Component({
   selector: 'ui-segmented',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[attr.data-mode]': 'mode()' },
+  host: { '[attr.data-mode]': 'mode()', '[attr.data-fill]': 'fill() ? "" : null' },
   styles: `
     :host { display: inline-flex; }
-    .group { display: inline-grid; grid-auto-columns: 1fr; grid-auto-flow: column; min-inline-size: 0; padding: 2px; border: 1px solid var(--line); border-radius: var(--radius-field); background: var(--lane); }
-    .seg { display: inline-flex; align-items: center; justify-content: center; block-size: 28px; border-radius: 6px; background: transparent; color: var(--muted-ink); font-size: 13px; cursor: pointer; transition: color var(--motion-duration-instant) var(--motion-ease-standard); }
+    .group { display: inline-grid; grid-auto-columns: auto; grid-auto-flow: column; min-inline-size: 0; padding: 2px; border: 1px solid var(--line); border-radius: var(--radius-field); background: var(--lane); }
+    .seg { display: inline-flex; gap: 6px; align-items: center; justify-content: center; block-size: 28px; padding: 0 12px; border-radius: 6px; background: transparent; color: var(--muted-ink); font-size: 13px; cursor: pointer; transition: color var(--motion-duration-instant) var(--motion-ease-standard); }
     .seg:hover { color: var(--color-base-content); }
     .seg[aria-checked='true'] { background: var(--color-base-100); color: var(--color-base-content); box-shadow: var(--shadow-hair); }
-    .seg .dot { margin-inline-end: 6px; }
+    :host([data-fill]) { display: flex; }
+    :host([data-fill]) .group { flex: 1 1 auto; grid-auto-columns: 1fr; }
+    :host([data-fill]) .seg { gap: normal; padding: 0; }
+    :host([data-fill]) .seg .dot { margin-inline-end: 6px; }
     /* The checked segment's own shadow outranks the zero-specificity global ring rule; keep the halo (ISC-64). */
     .seg[aria-checked='true']:focus-visible { box-shadow: 0 0 0 4px var(--focus-halo), var(--shadow-hair); }
     .dot { inline-size: 8px; block-size: 8px; border-radius: 50%; }
@@ -177,6 +188,8 @@ export class UiSegmented {
   /** Accessible name of the radio group or the strip's toolbar (translated). */
   readonly label = input<string>();
   readonly mode = input<SegmentedMode>('radio');
+  /** Radio mode: the stretched form (equal columns filling the container, no inline padding) instead of the toolbar form. */
+  readonly fill = input(false, { transform: booleanAttribute });
   /** Strip mode: the keys of the columns currently in view, in any order (see `watchColumns`). */
   readonly inView = input<readonly string[]>([]);
   /** Strip mode: the horizontal scroller whose `[data-col]` columns the segments scroll to. */

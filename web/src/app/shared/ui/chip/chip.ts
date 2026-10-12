@@ -3,7 +3,7 @@ import { UiIcon } from '../../icons/icon';
 import type { IconName } from '../../icons/icons';
 import { type Tone, toneInk, toneMark, toneTint } from '../tone';
 
-export type ChipVariant = 'status' | 'plain' | 'mono' | 'take' | 'pill' | 'count';
+export type ChipVariant = 'status' | 'small' | 'plain' | 'mono' | 'take' | 'pill' | 'count';
 
 /**
  * The prototype's chip family (spec 024 design.md § Fundament, `[data-ui="chip"]`, `.pill`, `.count-badge`; ISC-148):
@@ -11,6 +11,8 @@ export type ChipVariant = 'status' | 'plain' | 'mono' | 'take' | 'pill' | 'count
  * prototype's `CHIP_ICON`) and an optional accent dot. The variants:
  *
  * - `status` (default): 22 px, radius 6, 0 8 px, 11/600 upper case at .06em (stage, state, "stale");
+ * - `small`: the board card's state chip (`.schip`): 10/16 at 700, .05em, upper case, `1px 6px`, radius 4, one line that
+ *   ends in an ellipsis inside a narrow card header instead of wrapping;
  * - `plain`: the same box at 12/500, no upper case (the type chip "feature");
  * - `mono`: mono, no upper case (an ID or a key inside a chip row);
  * - `take`: mono 500 12/1, no upper case (the "take ISC-334" chip, lime with `hand`);
@@ -30,6 +32,7 @@ export type ChipVariant = 'status' | 'plain' | 'mono' | 'take' | 'pill' | 'count
   },
   styles: `
     :host { display: inline-flex; gap: 6px; align-items: center; min-inline-size: 0; block-size: 22px; padding-inline: 8px; border-radius: var(--radius-sm); background: var(--chip-tint); color: var(--chip-ink); font-size: 11px; font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: 0.06em; line-height: 20px; text-transform: uppercase; white-space: nowrap; }
+    :host([data-variant='small']) { display: inline-block; block-size: auto; max-inline-size: 100%; overflow: hidden; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; line-height: 16px; text-overflow: ellipsis; }
     :host([data-variant='plain']) { font-size: 12px; font-weight: 500; letter-spacing: normal; text-transform: none; }
     :host([data-variant='mono']) { font-family: var(--font-mono); letter-spacing: normal; text-transform: none; }
     :host([data-variant='take']) { font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: normal; line-height: 12px; text-transform: none; }

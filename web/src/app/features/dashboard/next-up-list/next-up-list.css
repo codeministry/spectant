@@ -57,6 +57,23 @@
   line-height: 20px;
 }
 
+/* Card form: the card has no padding (the rows carry their own), so the fold and the empty line inset themselves 12 px
+   like a next-row; the folded rows step back out to the card edges under a hairline. */
+:host([data-form='card']) .fold {
+  display: block;
+  padding-inline: 12px;
+  border-block-start: 1px solid var(--line);
+}
+
+:host([data-form='card']) .fold .entries {
+  margin-inline: -12px;
+  border-block-start: 1px solid var(--line);
+}
+
+:host([data-form='card']) .empty {
+  padding-inline: 12px;
+}
+
 .fog {
   color: var(--disp-ink);
 }

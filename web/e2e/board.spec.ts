@@ -345,13 +345,12 @@ const EVENTS = LIVE.cards.filter((c) => BEFORE.get(c.task) !== c.state).map((c) 
 const OPERATOR = LIVE.cards.filter((c) => c.lane === 'operator');
 
 test.describe('rail', () => {
-  const SESSION = { 'X-Spectant-Stub-Session': 'board-rail' };
-  test.beforeEach(async ({ request }) => {
-    await request.post('/api/__stub/reset', { headers: SESSION });
-  });
+  // One stub session per test: the collapsed-strip case stores `railCollapsed`, and a session shared with the
+  // cases running beside it (fullyParallel) would collapse their rail or reset it under them.
+  useStubSession('board-rail');
 
   test.describe('at 1440', () => {
-    test.use({ ...atWidth(1440), extraHTTPHeaders: SESSION });
+    test.use(atWidth(1440));
 
     test('rail: This frame, Needs you and Your steps are the rail blocks; a tick posts through the checkbox write', async ({ page }) => {
       await page.goto(BOARD);
@@ -414,7 +413,7 @@ test.describe('rail', () => {
   });
 
   test.describe('at 390', () => {
-    test.use({ ...atWidth(390), extraHTTPHeaders: SESSION });
+    test.use(atWidth(390));
 
     test('rail: the bottom bar names both counts and opens the sheet with both lists', async ({ page }) => {
       await page.goto(BOARD);

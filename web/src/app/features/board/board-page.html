@@ -46,6 +46,7 @@
         <!-- Compact (T124, ISC-129.2): the wrapping column switch, the sticky bar with the drop tray, one column. -->
         <div #colswitch class="colswitch">
           <ui-segmented
+            fill
             [options]="colOptions()"
             [value]="b.current ?? undefined"
             [label]="'board.workspace.compact.columns' | transloco"

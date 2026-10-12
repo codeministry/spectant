@@ -182,10 +182,6 @@ app-notes-area .notes-delete {
   margin-inline-start: auto;
 }
 
-app-notes-area .notes-view .seg {
-  padding-inline: 12px;
-}
-
 app-notes-area .notes-body {
   display: grid;
   gap: 16px;

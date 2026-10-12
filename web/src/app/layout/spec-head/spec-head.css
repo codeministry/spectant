@@ -412,6 +412,10 @@ h1 {
 
 :host([data-tier='compact']) .spec-id {
   margin-inline-end: 8px;
+
+  /* The mono id on the display font's baseline would grow the 28 px line box by a pixel; a 1 line-height keeps the
+     id inside the title's line, so the compact head keeps its 240 px budget (design 002). */
+  line-height: 1;
 }
 
 :host([data-tier='compact']) .spec-title {

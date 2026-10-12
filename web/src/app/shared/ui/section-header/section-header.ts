@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /**
  * Eyebrow + title header with a meta slot (`[meta]`, e.g. "6 · 15 archived") and an actions slot (`[actions]`). The
- * heading wears the prototype's `.section-head` (spec 024, ISC-148): 600 16/24, a baseline flex row with an 8 px gap;
+ * heading wears the prototype's `.section-head` (spec 024, ISC-148): 600 16/24, a baseline flex row with an 8 px gap,
+ * no minimum height and 16 px below;
  * the count (`.meta`) sits 8 px behind the title on its baseline but outside the heading, so the heading's accessible
  * name stays the title alone.
  * The heading takes `tabindex="-1"` so the `g` sequences can move focus to it (DS-APP-35). The title input is named
@@ -12,7 +13,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   selector: 'ui-section-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
-    :host { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-block-size: 48px; }
+    :host { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-block-end: 16px; }
     .text { flex: 0 1 auto; min-inline-size: 0; }
     .text, .meta { align-self: last baseline; }
     .title { display: flex; gap: 8px; align-items: baseline; min-inline-size: 0; }

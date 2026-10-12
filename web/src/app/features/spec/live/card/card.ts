@@ -20,7 +20,7 @@ export type CardDensity = 'comfortable' | 'compact';
  * states carries its glyph, its chip word (`states.card.*`) and its tone; no two share a (shape, tone) pair.
  *
  * Two densities, from the board's `?density` param:
- * - comfortable, three rows: glyph, mono id, claim chip, state chip; the text clamped to two lines; builder tag, flags
+ * - comfortable, three rows: glyph, mono id, claim chip, the small state chip (one line, ISC-148); the text clamped to two lines; builder tag, flags
  *   (parallel, seam, tries, note, stale) and the lock's session for work in flight (ISC-90); an absent card shows its
  *   strike note under the text instead of the note flag, in both densities (ISC-91, `live/recut.ts`);
  * - compact, two rows: glyph, id and state chip; the text clamped to two lines. Claim chip, builder, flags and session
@@ -38,6 +38,9 @@ export type CardDensity = 'comfortable' | 'compact';
     article { display: grid; gap: 4px; min-inline-size: 0; padding: 8px 8px 8px 12px; border: 1px solid var(--line); border-inline-start: 3px solid var(--edge); border-radius: var(--radius-field); background: var(--color-base-100); }
     :host([data-density='compact']) article { gap: 2px; padding-block: 4px; }
     .r1, .r3 { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-inline-size: 0; }
+    /* The header stays one line, as the prototype's .r1: the small state chip shrinks to an ellipsis instead. */
+    .r1 { flex-wrap: nowrap; gap: 6px; }
+    .r1 > ui-glyph, .r1 > .id, .r1 > .claim { flex: none; }
     .id { min-block-size: 24px; padding: 0 4px; border: 0; border-radius: 4px; background: none; color: var(--color-base-content); font-family: var(--font-mono); font-size: 13px; font-weight: 600; cursor: pointer; }
     .id:hover { text-decoration: underline; }
     .state { margin-inline-start: auto; }
@@ -71,7 +74,7 @@ export type CardDensity = 'comfortable' | 'compact';
         @if (density() === 'comfortable') {
           <ui-chip class="claim">{{ c.claim }}</ui-chip>
         }
-        <ui-state-chip class="state" [state]="c.state" family="card" />
+        <ui-state-chip small class="state" [state]="c.state" family="card" />
       </div>
       <p class="text">{{ c.text }}</p>
       @if (strikeNote(); as note) {

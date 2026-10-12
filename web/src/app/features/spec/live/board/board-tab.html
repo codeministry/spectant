@@ -122,7 +122,7 @@
     }
     @if (!wide() || state.zen()) {
       <ui-sheet [open]="barOpen()" tier="compact" [heading]="'board.bar.heading' | transloco" (openChange)="barOpen.set($event)">
-        <ui-segmented [options]="barTabs()" [value]="barTab()" [label]="'board.bar.heading' | transloco" (valueChange)="setBarTab($event)" />
+        <ui-segmented fill [options]="barTabs()" [value]="barTab()" [label]="'board.bar.heading' | transloco" (valueChange)="setBarTab($event)" />
         @if (barTab() === 'frame') {
           <app-this-frame [frame]="f" [events]="events()" [collapsible]="false" (opened)="openCard($event)" />
         } @else {

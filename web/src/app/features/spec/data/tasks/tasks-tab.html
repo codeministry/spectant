@@ -104,7 +104,7 @@
               <span class="text" [attr.title]="row.text">{{ row.text }}</span>
             }
           </span>
-          <span class="lane"><ui-chip data-lane>{{ row.lane }}</ui-chip></span>
+          <span class="lane"><ui-chip variant="plain" data-lane>{{ row.lane }}</ui-chip></span>
           <span class="path">
             @if (row.paths[0]; as first) {
               <span class="path-tail" data-path [attr.title]="row.paths.join(', ')">{{ tail(first) }}</span>
