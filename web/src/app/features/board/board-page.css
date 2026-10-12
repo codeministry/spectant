@@ -439,11 +439,31 @@ h1 {
     min-block-size: 0;
     overflow: auto;
     overscroll-behavior: contain;
+    scrollbar-width: thin;
   }
 
   .head {
     position: sticky;
     z-index: 1;
     inset-block-start: 0;
+  }
+
+  /* Without swimlanes each column scrolls its own cards, so the canvas itself shows no bar; with bands the grid is one
+     sheet and the scroller scrolls it. The columns grow to fill the width (`minmax(--board-col, 1fr)` tracks), so a
+     sideways bar appears only when even the design width does not fit. */
+  .grid:not([data-grouped]) {
+    block-size: 100%;
+  }
+
+  .grid:not([data-grouped]) .col {
+    min-block-size: 0;
+  }
+
+  .grid:not([data-grouped]) .col .cards {
+    min-block-size: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--track) transparent;
   }
 }

@@ -233,7 +233,7 @@ export class BoardPage {
 
   /** The track of each column: a stub's fixed width, or the 232 px column. */
   protected readonly tracks = computed(() =>
-    (this.board()?.columns ?? []).map((c) => (c.stub.kind === 'empty' ? 'var(--board-stub)' : 'var(--board-col)')).join(' '),
+    (this.board()?.columns ?? []).map((c) => (c.stub.kind === 'empty' ? 'var(--board-stub)' : 'minmax(var(--board-col), 1fr)')).join(' '),
   );
 
   protected readonly stripOptions = computed<readonly SegmentedOption[]>(() => {

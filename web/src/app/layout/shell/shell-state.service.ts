@@ -104,6 +104,8 @@ export class ShellState {
   readonly ws = computed(() => this.route().ws);
   readonly specId = computed(() => this.route().specId);
   readonly area = computed(() => this.route().area);
+  /** The workspace page of the route (`specs`, `board`, `features`, `milestones`, `idea`), null on spec and global routes. */
+  readonly wsPage = computed(() => this.route().wsPage);
   readonly tab = computed(() => this.route().tab);
   readonly notFound = computed(() => this.route().notFound);
 
