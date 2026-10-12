@@ -1123,7 +1123,8 @@
         "remove": "Filter {{label}} entfernen",
         "clear": "Zurücksetzen",
         "noMatch": "Keine Karte passt",
-        "clearAll": "Filter zurücksetzen"
+        "clearAll": "Filter zurücksetzen",
+        "all": "Alle"
       },
       "swimlanes": {
         "label": "Bahnen",
@@ -1191,7 +1192,15 @@
       "failed": "Das Board konnte nicht gelesen werden.",
       "stale": "veraltete Daten",
       "strip": "Stages · zu einer Spalte springen",
-      "columns": "Board-Spalten"
+      "columns": "Board-Spalten",
+      "compact": {
+        "columns": "Stages · eine Spalte anzeigen",
+        "segment": "{{stage}} {{count}}",
+        "prev": "Vorherige Spalte: {{stage}}",
+        "next": "Nächste Spalte: {{stage}}",
+        "back": "{{stage}}, {{count}} Karten · zurück zu den Stages",
+        "tray": "Ablageziele: die Stages"
+      }
     }
   },
   "matrix": {

@@ -281,3 +281,172 @@ h1 {
     border-color: CanvasText;
   }
 }
+
+/*
+ * Compact (< 640, T124, ISC-129.2; design 008 § Mobile): no strip and no scroller. The column switch is the radio
+ * `ui-segmented`, wrapped into rows of at most five 52 px segments, so ten stages take two rows and 358 px never
+ * overflow. Once it scrolls away a 44 px sticky bar (◂ · stage · ▸) takes its place under the 92 px compact header;
+ * the bar carries the drop tray, one placeholder per stage, laid out here and opened by the drag (T125). One column
+ * shows below; the page scrolls, the column never scrolls itself.
+ */
+.no-match .link,
+.empty-col .link {
+  min-block-size: 0;
+  block-size: auto;
+  padding-inline: 4px;
+}
+
+.colswitch {
+  min-inline-size: 0;
+  margin-block-end: 16px;
+  scroll-margin-block-start: 92px;
+}
+
+.colswitch ui-segmented {
+  display: block;
+}
+
+/*
+ * The radio group lays its segments out in one line; the board wraps them into rows of five. The primitive has no
+ * wrap option yet, so this reaches into its group (open question for the next `ui-segmented` change).
+ */
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+.colswitch ::ng-deep [role='radiogroup'] {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  inline-size: 100%;
+}
+
+/* stylelint-disable-next-line selector-pseudo-element-no-unknown -- Angular's emulated encapsulation piercing */
+.colswitch ::ng-deep [role='radio'] {
+  block-size: auto;
+  min-block-size: 52px;
+  padding-inline: 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.colbar {
+  position: sticky;
+  z-index: 3;
+  inset-block-start: 92px;
+  margin-block-end: 8px;
+}
+
+.barrow {
+  display: none;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  gap: 4px;
+  align-items: center;
+  block-size: 44px;
+  border-block-end: 1px solid var(--line);
+  background: var(--color-base-200);
+}
+
+.colbar[data-away] .barrow {
+  display: grid;
+}
+
+.barrow .prev {
+  transform: scaleX(-1);
+}
+
+.barname {
+  gap: 8px;
+  justify-content: center;
+  min-inline-size: 0;
+  block-size: 44px;
+  font-weight: 600;
+}
+
+.barname .sl,
+.slot .sl {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barname .count,
+.slot .count {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+/* The drop tray: the whole stage grid as drop-target placeholders (52 px, rows of five), hidden until a drag opens it. */
+.tray {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 100%;
+  display: none;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 0 0 var(--radius-box) var(--radius-box);
+  background: var(--color-base-100);
+}
+
+.tray[data-open] {
+  display: grid;
+}
+
+.slot {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-inline-size: 0;
+  min-block-size: 52px;
+  padding: 4px;
+  border: 1px dashed var(--line);
+  border-block-start: 2px solid var(--role, var(--line));
+  border-radius: var(--radius-field);
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.slot[data-current] {
+  border-color: var(--muted-ink);
+  color: var(--color-base-content);
+}
+
+.one {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+
+.one .band-head {
+  position: sticky;
+  z-index: 2;
+  inset-block-start: 136px;
+  margin-block-start: 8px;
+  background: var(--color-base-200);
+}
+
+.one .band-head + .cards {
+  border-radius: var(--radius-field);
+}
+
+.empty-col,
+.omitted {
+  margin: 0;
+  padding: 16px 8px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+@media (forced-colors: active) {
+  .slot {
+    border-color: CanvasText;
+  }
+}

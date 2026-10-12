@@ -279,14 +279,26 @@ const byBoardOrder = (a: BoardCard, b: BoardCard): number =>
   (a.kind === b.kind ? 0 : a.kind === 'spec' ? -1 : 1) ||
   (a.id ?? a.slug).localeCompare(b.id ?? b.slug);
 
+/** The four filter keys of the board query, in toolbar order. */
+export type BoardFilterKey = (typeof LIST_KEYS)[number];
+export const BOARD_FILTER_KEYS: readonly BoardFilterKey[] = LIST_KEYS;
+
+/** A card's value for one filter key, as the filter compares it: `none` / `unassigned` where the card has none. */
+export function cardFilterValue(card: Pick<BoardCard, 'kind' | 'type' | 'feature' | 'milestone' | 'assignee'>, key: BoardFilterKey): string {
+  switch (key) {
+    case 'feature':
+      return card.feature ?? NO_FEATURE;
+    case 'milestone':
+      return card.milestone ?? NO_MILESTONE;
+    case 'type':
+      return card.kind === 'idea' ? 'idea' : (card.type ?? '');
+    case 'assignee':
+      return card.assignee?.id ?? UNASSIGNED;
+  }
+}
+
 function passes(card: BoardCard, query: BoardQueryState): boolean {
-  const pass = (values: readonly string[], value: string): boolean => values.length === 0 || values.includes(value);
-  return (
-    pass(query.feature, card.feature ?? NO_FEATURE) &&
-    pass(query.milestone, card.milestone ?? NO_MILESTONE) &&
-    pass(query.type, card.kind === 'idea' ? 'idea' : (card.type ?? '')) &&
-    pass(query.assignee, card.assignee?.id ?? UNASSIGNED)
-  );
+  return LIST_KEYS.every((key) => query[key].length === 0 || (query[key] as readonly string[]).includes(cardFilterValue(card, key)));
 }
 
 /** The board of one workspace. */

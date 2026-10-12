@@ -80,6 +80,7 @@ import { createRequire } from 'node:module';
 import { basename, join } from 'node:path';
 
 import type {
+  ActorRef,
   AgentLockSource,
   CardState,
   ClaimLock,
@@ -172,8 +173,12 @@ import {
 export const STUB_STATES = ['two-workspaces', 'empty', 'unreadable'] as const;
 export type StubState = (typeof STUB_STATES)[number];
 
-/** The lock fixtures (ISC-85, ISC-86): no source, the repository's activity log (the goldens), a LifeOS frontier. */
-export const LOCK_STATES = ['none', 'activity', 'frontier'] as const;
+/**
+ * The lock fixtures (ISC-85, ISC-86): no source, the repository's activity log (the goldens), a LifeOS frontier; for
+ * who works a task (T149, ISC-131.1) the log's claim lines without their releases, and the golden's locks held by a
+ * person.
+ */
+export const LOCK_STATES = ['none', 'activity', 'frontier', 'claims', 'person'] as const;
 export type LockState = (typeof LOCK_STATES)[number];
 
 /** The scripted outcomes of the two writes (ISC-26, ISC-86). */
@@ -468,11 +473,108 @@ function without<T extends object>(value: T, keys: ReadonlyArray<keyof T>): T {
   return Object.fromEntries(Object.entries(value).filter(([key]) => !keys.includes(key as keyof T))) as T;
 }
 
-/** A lock-free copy of a live card: the running state goes back to waiting, the lock fields go. */
+/** A lock-free copy of a live card: the running state goes back to waiting, the lock fields go, and nobody works it. */
 function released(card: LiveCard): LiveCard {
-  const rest = without(card, ['lock', 'since', 'elapsedMs', 'stale']);
+  const rest = { ...without(card, ['lock', 'since', 'elapsedMs', 'stale']), agent: null, subagent: null };
   return card.state === 'running' ? { ...rest, state: 'waiting' } : rest;
 }
+
+/**
+ * Who works a card under a lock held by `actor` (spec 008, T66, ISC-131.1), as core's `live.ts` `workersOf` says it:
+ * an agent is the agent; a sub-agent names its parent session as the agent and itself as the sub-agent when its task is
+ * this card's; a person or a legacy session is no agent.
+ */
+function workersOf(actor: ActorRef, task: string): Pick<LiveCard, 'agent' | 'subagent'> {
+  if (actor.kind === 'agent') return { agent: actor, subagent: null };
+  if (actor.kind === 'subagent') return { agent: parseActor(actor.id), subagent: actor.task === task ? actor : null };
+  return { agent: null, subagent: null };
+}
+
+/** The person the `person` lock fixture puts on the golden's locks: the `u:` id harbor's planning golden already uses. */
+export const STUB_PERSON = 'u:3f9c0a7d';
+
+/**
+ * The claim lines of a fixture tree's `.spectant/activity.jsonl`, without its releases (the `claims` lock fixture): as
+ * `core/tests/live.test.ts` keeps only `event: "claim"` before core's reader, each line held since its `ts`, a later
+ * claim on the same claim taking it over. Empty without a log.
+ */
+function claimLines(root: string): ClaimLock[] {
+  let text: string;
+  try {
+    text = readFileSync(join(root, '.spectant', 'activity.jsonl'), 'utf8');
+  } catch {
+    return [];
+  }
+  const held = new Map<string, ClaimLock>();
+  for (const line of text.split('\n')) {
+    if (line.trim() === '') continue;
+    const entry = JSON.parse(line) as { event?: unknown; claim?: unknown; session?: unknown; ts?: unknown };
+    if (entry.event !== 'claim' || typeof entry.claim !== 'string' || typeof entry.session !== 'string' || typeof entry.ts !== 'string') continue;
+    held.delete(entry.claim);
+    held.set(entry.claim, { source: 'activity', claim: entry.claim, session: entry.session, actor: parseActor(entry.session), since: entry.ts });
+  }
+  return [...held.values()].sort((a, b) => byClaimId(a.claim, b.claim));
+}
+
+/** The rail's agents for `locks`, as core's `live.ts` `agentsOf`: one per source and session, oldest lock first. */
+function railOf(locks: readonly ClaimLock[], now: number, staleAfterMs: number): LiveAgent[] {
+  const groups = new Map<string, { session: string; source: AgentLockSource; claims: string[]; since: string }>();
+  for (const lock of locks) {
+    const key = `${lock.source}\u0000${lock.session}`;
+    const group = groups.get(key);
+    if (group === undefined) {
+      groups.set(key, { session: lock.session, source: lock.source, claims: [lock.claim], since: lock.since });
+      continue;
+    }
+    group.claims.push(lock.claim);
+    if (Date.parse(lock.since) < Date.parse(group.since)) group.since = lock.since;
+  }
+  return [...groups.values()]
+    .map((g): LiveAgent => {
+      const elapsedMs = Math.max(0, now - Date.parse(g.since));
+      return { session: g.session, source: g.source, claims: [...g.claims].sort(byClaimId), since: g.since, elapsedMs, stale: elapsedMs > staleAfterMs };
+    })
+    .sort((a, b) => b.elapsedMs - a.elapsedMs || a.session.localeCompare(b.session) || a.source.localeCompare(b.source));
+}
+
+/**
+ * The golden live frame under another set of activity `locks` (the `claims` and `person` fixtures): only locks on this
+ * spec's claims count; a card whose claim one holds is in flight with its lock, `since`, `elapsedMs`, `stale` and its
+ * workers, a landed one re-opened (as `core/tests/live.test.ts` unticks T4 and T25 for the claim lines); every other
+ * card is released. The operator lane and struck cards never run, as in core.
+ */
+function relocked(core: Core, live: LiveFrame, claims: ClaimViewModel, all: readonly ClaimLock[]): LiveFrame {
+  const ours = new Set([...claims.claims.map((c) => c.id), ...live.cards.map((c) => c.claim)]);
+  const locks = all.filter((l) => ours.has(l.claim));
+  const held = new Map(locks.map((l) => [l.claim, l]));
+  const now = Date.parse(live.ts);
+  const cards = live.cards.map((card): LiveCard => {
+    const lock = held.get(card.claim);
+    if (lock === undefined || card.state === 'absent' || card.lane === 'operator') return released(card);
+    const elapsedMs = Math.max(0, now - Date.parse(lock.since));
+    return {
+      ...without(card, ['reason']),
+      state: 'running',
+      lock: { source: lock.source, session: lock.session },
+      since: lock.since,
+      elapsedMs,
+      stale: elapsedMs > live.staleAfterMs,
+      ...workersOf(lock.actor, card.task),
+    };
+  });
+  return {
+    ...live,
+    cards,
+    worst: core.worstState(cards.map((c) => c.state)),
+    lockSource: 'activity',
+    locks,
+    agents: railOf(locks, now, live.staleAfterMs),
+    needsYou: NEEDS_YOU.flatMap((state) => cards.filter((c) => c.state === state)),
+  };
+}
+
+/** The Needs you list's states, in core's order (`live.ts` `NEEDS_YOU`). */
+const NEEDS_YOU: readonly CardState[] = ['question', 'concerns', 'operatorOpen'];
 
 /**
  * The session id of a lock the stub makes up (the frontier fixture's second session, a scripted 423's fallback): an
@@ -487,8 +589,10 @@ const LANDED_OR_GONE: ReadonlySet<CardState> = new Set<CardState>(['done', 'oper
  * The lock fixtures of one spec, from its golden live frame (built under the activity reading) and spec page.
  * `none`: no source, every lock released. `frontier`: every golden lock relabelled `frontier`, plus a synthetic
  * session on the first open claim no lock holds (a waiting or dispatched card's claim first, else any open claim).
+ * `claims`: the tree's activity claim lines without their releases (`claimLines`). `person`: the golden's locks held by
+ * `STUB_PERSON` instead. Every in-flight card names its workers as core does (`workersOf`).
  */
-function lockFixtures(core: Core, spec: SpecPageModel, live: LiveFrame, claims: ClaimViewModel): SpecGoldens['locked'] {
+function lockFixtures(core: Core, spec: SpecPageModel, live: LiveFrame, claims: ClaimViewModel, activityClaims: readonly ClaimLock[]): SpecGoldens['locked'] {
   const pageWith = (lockSource: LockSource, agents: readonly LiveAgent[], locks: readonly ClaimLock[]): SpecPageModel => {
     const newest = [...locks].sort((a, b) => (a.since < b.since ? 1 : a.since > b.since ? -1 : 0))[0] ?? null;
     return {
@@ -527,7 +631,15 @@ function lockFixtures(core: Core, spec: SpecPageModel, live: LiveFrame, claims: 
     cards = cards.map((c) => {
       if (c.claim !== claim || LANDED_OR_GONE.has(c.state) || c.lane === 'operator') return c;
       // In flight: the session is the reason, so a waiting or dispatch reason is dropped (as core's live.ts does).
-      return { ...without(c, ['reason']), state: 'running', lock: { source: 'frontier', session }, since, elapsedMs: SYNTHETIC_LOCK_AGE_MS, stale };
+      return {
+        ...without(c, ['reason']),
+        state: 'running',
+        lock: { source: 'frontier', session },
+        since,
+        elapsedMs: SYNTHETIC_LOCK_AGE_MS,
+        stale,
+        ...workersOf(parseActor(session), c.task),
+      };
     });
   }
   // A card the new lock set running no longer waits on the principal.
@@ -542,10 +654,16 @@ function lockFixtures(core: Core, spec: SpecPageModel, live: LiveFrame, claims: 
     needsYou,
   };
 
+  const claimsLive = relocked(core, live, claims, activityClaims);
+  const person = parseActor(STUB_PERSON);
+  const personLive = relocked(core, live, claims, live.locks.map((l) => ({ ...l, session: STUB_PERSON, actor: person })));
+
   return {
     none: { spec: pageWith('none', [], []), live: none },
     activity: { spec, live },
     frontier: { spec: pageWith('frontier', agents, locks), live: frontierLive },
+    claims: { spec: pageWith('activity', claimsLive.agents, claimsLive.locks), live: claimsLive },
+    person: { spec: pageWith('activity', personLive.agents, personLive.locks), live: personLive },
   };
 }
 
@@ -564,6 +682,7 @@ function readTree(core: Core, dir: string, golden: string): TreeGoldens {
     if (!Object.hasOwn(record, key)) throw new Error(`stub-api: ${golden}.${family}.golden.json has no ${key}`);
     return record[key] as T;
   };
+  const activityClaims = claimLines(join(dir, golden));
   return {
     golden,
     root: join(dir, golden),
@@ -587,7 +706,7 @@ function readTree(core: Core, dir: string, golden: string): TreeGoldens {
         tasks,
         docs: specDocs,
         frames: pick(families.frames, key, 'frames'),
-        locked: lockFixtures(core, spec, live, claims),
+        locked: lockFixtures(core, spec, live, claims, activityClaims),
         hashes,
       };
     }),

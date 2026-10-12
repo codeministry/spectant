@@ -17,127 +17,212 @@
     } @else {
       <p class="meta">{{ 'board.workspace.summary' | transloco: { cards: b.total, specs: b.specs, ideas: b.ideas } }}</p>
 
-      <div class="strip">
-        <ui-segmented
-          mode="strip"
-          [options]="stripOptions()"
-          [inView]="inView()"
-          [scroller]="scrollerEl()"
-          [label]="'board.workspace.strip' | transloco"
-        />
-      </div>
+      <app-board-filters [board]="b" (queryChange)="setQuery($event)" />
 
       @if (b.shown === 0) {
         <p class="no-match">
           {{ 'board.workspace.filter.noMatch' | transloco }} ·
-          <a class="link" [routerLink]="[]">{{ 'board.workspace.filter.clearAll' | transloco }}</a>
+          <button type="button" class="btn btn-sm btn-ghost link" data-clear (click)="clearFilters()">
+            {{ 'board.workspace.filter.clearAll' | transloco }}
+          </button>
         </p>
       }
 
-      <ui-card class="board-card" [padding]="0">
-        <div
-          #scroller
-          class="scroller"
-          role="region"
-          tabindex="0"
-          [attr.aria-label]="'board.workspace.columns' | transloco"
-          (scroll)="updateFades()"
-        >
-          <div class="grid" [style.grid-template-columns]="tracks()" [attr.data-grouped]="bands().length > 0 ? '' : null">
-            @for (column of b.columns; track column.stage; let i = $index) {
-              @let stage = column.stage;
-              @let label = 'stages.' + stage | transloco;
-              @if (column.stub.kind === 'empty') {
-                <section
-                  class="stub"
-                  data-stub
-                  [attr.data-col]="stage"
-                  [style.--role]="edges[stage]"
-                  [style.grid-column]="i + 1"
-                  [attr.aria-labelledby]="'col-' + stage"
-                >
-                  <ui-icon [name]="glyphs[stage]" [size]="16" />
-                  <span class="count">0</span>
-                  <h2 class="vlabel" [id]="'col-' + stage">{{ label }}</h2>
-                  <span class="vnote">
-                    @if (column.stub.hidden > 0) {
-                      {{ 'board.workspace.column.hiddenByFilters' | transloco: { count: column.stub.hidden } }}
-                    } @else {
-                      {{ 'board.workspace.column.empty' | transloco }}
-                    }
-                  </span>
-                </section>
-              } @else {
-                <section
-                  class="col"
-                  [attr.data-col]="stage"
-                  [style.--role]="edges[stage]"
-                  [style.grid-column]="i + 1"
-                  [attr.aria-label]="'board.workspace.column.name' | transloco: { stage: label, count: column.count, waiting: column.waitingOnYou }"
-                >
-                  <header class="head">
-                    <ui-icon [name]="glyphs[stage]" [size]="16" />
-                    <h2 [id]="'col-' + stage">{{ label }}</h2>
-                    @if (gateOf(stage); as gate) {
-                      <ui-term class="gate" [id]="'gate-' + stage" [hint]="gate | transloco"
-                        ><ui-icon name="shield-check" [size]="14" /><span class="vh">{{
-                          'board.workspace.column.fixedGate' | transloco
-                        }}</span></ui-term
-                      >
-                    }
-                    @if (waiting(stage)) {
-                      <ui-icon class="wait" name="hourglass" [size]="14" [label]="'board.workspace.column.waitingStage' | transloco" />
-                    }
-                    <span class="count" aria-hidden="true">{{ column.count }}</span>
-                  </header>
-                  @if (bands().length === 0) {
-                    <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + stage">
-                      @for (card of column.cards; track card.key) {
-                        <li><app-board-card [card]="card" [ws]="ws()" /></li>
-                      }
-                    </ul>
-                  }
-                </section>
-              }
-            }
+      @if (compact()) {
+        <!-- Compact (T124, ISC-129.2): the wrapping column switch, the sticky bar with the drop tray, one column. -->
+        <div #colswitch class="colswitch">
+          <ui-segmented
+            [options]="colOptions()"
+            [value]="b.current ?? undefined"
+            [label]="'board.workspace.compact.columns' | transloco"
+            (valueChange)="selectColumn($event)"
+          />
+        </div>
 
-            @for (band of bands(); track band.key; let r = $index) {
-              <div class="band-head" [style.grid-row]="2 + r * 2">
-                <h3 class="bh">
-                  @if (b.query.group === 'feature') {
-                    @if (band.key !== null) {
-                      <span class="mono">{{ band.key }}</span>
-                      <span class="name">{{ band.label }}</span>
-                    } @else {
-                      <span class="name">{{ 'board.workspace.swimlanes.noFeature' | transloco }}</span>
-                    }
-                  } @else {
-                    <ui-icon name="flag" [size]="14" />
-                    <span class="name">{{ band.label ?? ('board.workspace.filter.noMilestone' | transloco) }}</span>
-                    @if (band.target; as target) {
-                      <span class="mono muted">{{ target }}</span>
-                    }
-                  }
-                  <span class="n">{{ 'board.workspace.swimlanes.cards' | transloco: { count: band.count } }}</span>
-                </h3>
+        <div class="colbar" data-colbar [attr.data-away]="switchAway() ? '' : null">
+          @if (current(); as c) {
+            @let curLabel = 'stages.' + c.stage | transloco;
+            <div class="barrow">
+              <button
+                ui-icon-button
+                class="prev"
+                icon="chevron-right"
+                data-prev
+                [label]="'board.workspace.compact.prev' | transloco: { stage: neighbours().prev ? ('stages.' + neighbours().prev | transloco) : '' }"
+                [disabled]="neighbours().prev === null"
+                (click)="selectColumn(neighbours().prev)"
+              ></button>
+              <button
+                type="button"
+                class="btn btn-ghost barname"
+                data-back
+                [attr.aria-label]="'board.workspace.compact.back' | transloco: { stage: curLabel, count: c.cards.length }"
+                (click)="backToSwitch()"
+              >
+                <ui-icon [name]="glyphs[c.stage]" [size]="16" />
+                <span class="sl">{{ curLabel }}</span>
+                <span class="count">{{ c.cards.length }}</span>
+              </button>
+              <button
+                ui-icon-button
+                icon="chevron-right"
+                data-next
+                [label]="'board.workspace.compact.next' | transloco: { stage: neighbours().next ? ('stages.' + neighbours().next | transloco) : '' }"
+                [disabled]="neighbours().next === null"
+                (click)="selectColumn(neighbours().next)"
+              ></button>
+            </div>
+          }
+          <div
+            class="tray"
+            data-tray
+            role="group"
+            [attr.aria-label]="'board.workspace.compact.tray' | transloco"
+            [attr.data-open]="trayOpen() ? '' : null"
+            [attr.aria-hidden]="trayOpen() ? null : 'true'"
+          >
+            @for (column of b.columns; track column.stage) {
+              <div class="slot" [attr.data-drop-col]="column.stage" [attr.data-current]="column.stage === b.current ? '' : null" [style.--role]="edges[column.stage]">
+                <ui-icon [name]="glyphs[column.stage]" [size]="16" />
+                <span class="sl">{{ 'stages.' + column.stage | transloco }}</span>
+                <span class="count">{{ column.cards.length }}</span>
               </div>
-              @for (cell of band.cells; track cell.stage; let i = $index) {
-                <div class="cell" [class.stubcell]="cell.stub" [style.grid-row]="3 + r * 2" [style.grid-column]="i + 1">
-                  @if (cell.cards.length > 0) {
-                    <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + cell.stage">
-                      @for (card of cell.cards; track card.key) {
-                        <li><app-board-card [card]="card" [ws]="ws()" /></li>
-                      }
-                    </ul>
-                  }
-                </div>
-              }
             }
           </div>
         </div>
-        <span class="fade start" aria-hidden="true" [class.on]="fadeStart()"></span>
-        <span class="fade end" aria-hidden="true" [class.on]="fadeEnd()"></span>
-      </ui-card>
+
+        @if (current(); as c) {
+          @let stage = c.stage;
+          @let label = 'stages.' + stage | transloco;
+          <section
+            class="one"
+            [attr.data-col]="stage"
+            [style.--role]="edges[stage]"
+            [attr.aria-label]="'board.workspace.column.name' | transloco: { stage: label, count: c.count, waiting: c.waitingOnYou }"
+          >
+            <ng-container [ngTemplateOutlet]="head" [ngTemplateOutletContext]="{ $implicit: c, label: label }" />
+            @if (c.cards.length === 0) {
+              <p class="empty-col">
+                {{ 'board.workspace.column.emptyIn' | transloco: { stage: label } }}
+                @if (c.hidden > 0) {
+                  · {{ 'board.workspace.column.hiddenByFilters' | transloco: { count: c.hidden } }} ·
+                  <button type="button" class="btn btn-sm btn-ghost link" (click)="clearFilters()">{{ 'board.workspace.filter.clear' | transloco }}</button>
+                }
+              </p>
+            } @else if (c.bands.length === 0) {
+              <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + stage">
+                @for (card of c.cards; track card.key) {
+                  <li><app-board-card [card]="card" [ws]="ws()" /></li>
+                }
+              </ul>
+            } @else {
+              @for (band of c.bands; track band.key) {
+                <div class="band-head">
+                  <ng-container [ngTemplateOutlet]="bandHead" [ngTemplateOutletContext]="{ $implicit: band, group: b.query.group }" />
+                </div>
+                <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + stage">
+                  @for (card of band.cards; track card.key) {
+                    <li><app-board-card [card]="card" [ws]="ws()" /></li>
+                  }
+                </ul>
+              }
+              @if (c.bandsOmitted > 0) {
+                <p class="omitted">
+                  {{
+                    (b.query.group === 'feature' ? 'board.workspace.swimlanes.omittedFeatures' : 'board.workspace.swimlanes.omittedMilestones')
+                      | transloco: { count: c.bandsOmitted, stage: label }
+                  }}
+                </p>
+              }
+            }
+          </section>
+        }
+      } @else {
+        <div class="strip">
+          <ui-segmented
+            mode="strip"
+            [options]="stripOptions()"
+            [inView]="inView()"
+            [scroller]="scrollerEl()"
+            [label]="'board.workspace.strip' | transloco"
+          />
+        </div>
+
+        <ui-card class="board-card" [padding]="0">
+          <div
+            #scroller
+            class="scroller"
+            role="region"
+            tabindex="0"
+            [attr.aria-label]="'board.workspace.columns' | transloco"
+            (scroll)="updateFades()"
+          >
+            <div class="grid" [style.grid-template-columns]="tracks()" [attr.data-grouped]="bands().length > 0 ? '' : null">
+              @for (column of b.columns; track column.stage; let i = $index) {
+                @let stage = column.stage;
+                @let label = 'stages.' + stage | transloco;
+                @if (column.stub.kind === 'empty') {
+                  <section
+                    class="stub"
+                    data-stub
+                    [attr.data-col]="stage"
+                    [style.--role]="edges[stage]"
+                    [style.grid-column]="i + 1"
+                    [attr.aria-labelledby]="'col-' + stage"
+                  >
+                    <ui-icon [name]="glyphs[stage]" [size]="16" />
+                    <span class="count">0</span>
+                    <h2 class="vlabel" [id]="'col-' + stage">{{ label }}</h2>
+                    <span class="vnote">
+                      @if (column.stub.hidden > 0) {
+                        {{ 'board.workspace.column.hiddenByFilters' | transloco: { count: column.stub.hidden } }}
+                      } @else {
+                        {{ 'board.workspace.column.empty' | transloco }}
+                      }
+                    </span>
+                  </section>
+                } @else {
+                  <section
+                    class="col"
+                    [attr.data-col]="stage"
+                    [style.--role]="edges[stage]"
+                    [style.grid-column]="i + 1"
+                    [attr.aria-label]="'board.workspace.column.name' | transloco: { stage: label, count: column.count, waiting: column.waitingOnYou }"
+                  >
+                    <ng-container [ngTemplateOutlet]="head" [ngTemplateOutletContext]="{ $implicit: column, label: label }" />
+                    @if (bands().length === 0) {
+                      <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + stage">
+                        @for (card of column.cards; track card.key) {
+                          <li><app-board-card [card]="card" [ws]="ws()" /></li>
+                        }
+                      </ul>
+                    }
+                  </section>
+                }
+              }
+
+              @for (band of bands(); track band.key; let r = $index) {
+                <div class="band-head" [style.grid-row]="2 + r * 2">
+                  <ng-container [ngTemplateOutlet]="bandHead" [ngTemplateOutletContext]="{ $implicit: band, group: b.query.group }" />
+                </div>
+                @for (cell of band.cells; track cell.stage; let i = $index) {
+                  <div class="cell" [class.stubcell]="cell.stub" [style.grid-row]="3 + r * 2" [style.grid-column]="i + 1">
+                    @if (cell.cards.length > 0) {
+                      <ul class="cards" role="list" [attr.aria-labelledby]="'col-' + cell.stage">
+                        @for (card of cell.cards; track card.key) {
+                          <li><app-board-card [card]="card" [ws]="ws()" /></li>
+                        }
+                      </ul>
+                    }
+                  </div>
+                }
+              }
+            </div>
+          </div>
+          <span class="fade start" aria-hidden="true" [class.on]="fadeStart()"></span>
+          <span class="fade end" aria-hidden="true" [class.on]="fadeEnd()"></span>
+        </ui-card>
+      }
     }
   } @else {
     <div class="loading" aria-hidden="true">
@@ -154,3 +239,43 @@
     </div>
   }
 }
+
+<!-- A column head: stage glyph, label, the gate dfn on a fixed gate, the hourglass on a waiting stage, the full count. -->
+<ng-template #head let-raw let-label="label">
+  @let column = asColumn(raw);
+  <header class="head">
+    <ui-icon [name]="glyphs[column.stage]" [size]="16" />
+    <h2 [id]="'col-' + column.stage">{{ label }}</h2>
+    @if (gateOf(column.stage); as gate) {
+      <ui-term class="gate" [id]="'gate-' + column.stage" [hint]="gate | transloco"
+        ><ui-icon name="shield-check" [size]="14" /><span class="vh">{{ 'board.workspace.column.fixedGate' | transloco }}</span></ui-term
+      >
+    }
+    @if (waiting(column.stage)) {
+      <ui-icon class="wait" name="hourglass" [size]="14" [label]="'board.workspace.column.waitingStage' | transloco" />
+    }
+    <span class="count" aria-hidden="true">{{ column.count }}</span>
+  </header>
+</ng-template>
+
+<!-- A swimlane band head: the mono F-ID and name, or the flag, milestone name and target date; then the card count. -->
+<ng-template #bandHead let-rawBand let-group="group">
+  @let band = asBand(rawBand);
+  <h3 class="bh">
+    @if (group === 'feature') {
+      @if (band.key !== null) {
+        <span class="mono">{{ band.key }}</span>
+        <span class="name">{{ band.label }}</span>
+      } @else {
+        <span class="name">{{ 'board.workspace.swimlanes.noFeature' | transloco }}</span>
+      }
+    } @else {
+      <ui-icon name="flag" [size]="14" />
+      <span class="name">{{ band.label ?? ('board.workspace.filter.noMilestone' | transloco) }}</span>
+      @if (band.target; as target) {
+        <span class="mono muted">{{ target }}</span>
+      }
+    }
+    <span class="n">{{ 'board.workspace.swimlanes.cards' | transloco: { count: band.count } }}</span>
+  </h3>
+</ng-template>

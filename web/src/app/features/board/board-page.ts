@@ -1,15 +1,17 @@
-import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, type ElementRef, inject, signal, viewChild } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, effect, type ElementRef, inject, signal, untracked, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { WorkflowStage } from '../../../../../core/src/files';
-import { WAITING_STAGES } from '../../../../../core/src/stage';
+import { isWorkflowStage, WAITING_STAGES } from '../../../../../core/src/stage';
 import { FIXED_GATES } from '../../../../../core/src/workflow';
 import { NotFound } from '../../layout/not-found/not-found';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { UiIcon } from '../../shared/icons/icon';
 import type { IconName } from '../../shared/icons/icons';
+import { UiIconButton } from '../../shared/ui/button/icon-button';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { type SegmentedOption, UiSegmented, watchColumns } from '../../shared/ui/segmented/segmented';
@@ -17,7 +19,30 @@ import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../shared/ui/term/term';
 import { planningPageState } from '../planning/planning-page';
 import { BoardCard, CARD_EDGE } from './board-card';
-import { type BoardCard as BoardCardModel, type BoardModel, boardRowsOf, buildBoard, parseBoardQuery } from './board-model';
+import { BoardFilters, withoutFilters } from './board-filters';
+import {
+  type BoardCard as BoardCardModel,
+  type BoardColumn,
+  type BoardModel,
+  type BoardQueryState,
+  boardQueryParams,
+  boardQueryString,
+  boardRowsOf,
+  buildBoard,
+  parseBoardQuery,
+} from './board-model';
+
+/** Every key the board query owns: a navigation clears the ones the next query leaves out and keeps any other param. */
+const QUERY_KEYS = ['feature', 'milestone', 'type', 'assignee', 'group', 'col'] as const;
+
+/**
+ * The router `queryParams` that turn the URL's board query into `query`: its non-default keys, and null (removed) for
+ * every board key it leaves at its default, so a merge keeps foreign params and drops stale board ones.
+ */
+export function boardNavigationParams(query: BoardQueryState): Record<string, string | string[] | null> {
+  const params: Record<string, string | string[] | null> = Object.fromEntries(QUERY_KEYS.map((key) => [key, null]));
+  return { ...params, ...boardQueryParams(query) };
+}
 
 /** One glyph per workflow stage for the column head and the stub (design 008 § board, the prototype's set). */
 export const STAGE_GLYPHS: Readonly<Record<WorkflowStage, IconName>> = {
@@ -45,6 +70,11 @@ export const gateOf = (stage: WorkflowStage): string | null => (FIXED_GATES.incl
 
 const WAITING: ReadonlySet<string> = WAITING_STAGES;
 
+const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** What a band head shows, from a band across the board (medium, wide) or a band of the one column (compact). */
+type BandHead = Pick<BandRow, 'key' | 'label' | 'target' | 'count'>;
+
 /** A swimlane band across the whole board: its head and one cell per column, in column order. */
 interface BandRow {
   readonly key: string | null;
@@ -69,12 +99,33 @@ interface BandRow {
  * - With `?group=feature|milestone` the bands share the column grid: one 40 px full-width band head per band, the
  *   label sticking to the scroller's start, then one cell per column.
  *
- * The compact tier (< 640, one column through `ui-segmented` radio) is T124: `compact()` is its hook; until then the
- * scroller renders at every tier.
+ * The query (T123, ISC-129.1) is the URL's: `app-board-filters` emits the next query and `setQuery` navigates to it
+ * with `replaceUrl` (a filter click is no history entry). The bare route restores the workspace's remembered query
+ * (`ShellData.boardQuery`) once per workspace, and every other query the page shows is saved through
+ * `saveBoardQuery`, so the remembered query is always the last one viewed.
+ *
+ * The compact tier (< 640, T124, ISC-129.2) renders neither the strip nor the scroller: a wrapping `ui-segmented`
+ * radio picks the one visible column (`?col`, else the model's default), a 44 px sticky bar (◂ · stage · ▸) takes the
+ * control's place once it scrolled away, and the bar carries the drop tray, one placeholder per stage, which T125
+ * opens during a drag (`trayOpen`).
  */
 @Component({
   selector: 'app-board-page',
-  imports: [TranslocoPipe, RouterLink, NotFound, BoardCard, UiCard, UiEmptyState, UiIcon, UiSegmented, UiSkeleton, UiTerm],
+  imports: [
+    NgTemplateOutlet,
+    TranslocoPipe,
+    RouterLink,
+    NotFound,
+    BoardCard,
+    BoardFilters,
+    UiCard,
+    UiEmptyState,
+    UiIcon,
+    UiIconButton,
+    UiSegmented,
+    UiSkeleton,
+    UiTerm,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'board', '[attr.data-tier]': 'tier()' },
   templateUrl: './board-page.html',
@@ -86,10 +137,13 @@ export class BoardPage {
   private readonly transloco = inject(TranslocoService);
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly params = toSignal(this.route.queryParams, { initialValue: this.route.snapshot.queryParams });
+  /** The board query as the URL holds it (ISC-129.1). */
+  protected readonly query = computed(() => parseBoardQuery(this.params()));
 
   protected readonly tier = this.state.tier;
-  /** T124's hook: the compact tier shows one column through the segmented control instead of the scroller. */
+  /** The compact tier (T124) shows one column through the segmented control instead of the strip and the scroller. */
   protected readonly compact = computed(() => this.tier() === 'compact');
   protected readonly ws = computed(() => this.state.ws() ?? '');
   protected readonly name = computed(() => this.data.workspaceName(this.ws()));
@@ -102,6 +156,9 @@ export class BoardPage {
   protected readonly edges = CARD_EDGE;
   protected readonly gateOf = gateOf;
   protected readonly waiting = (stage: WorkflowStage): boolean => WAITING.has(stage);
+  /** Types the shared head templates' untyped outlet context (a column head, a band head). */
+  protected readonly asColumn = (column: BoardColumn): BoardColumn => column;
+  protected readonly asBand = (band: BandHead): BandHead => band;
 
   /** The board, once the planning tree and the dashboard rows have both answered; null while loading. */
   protected readonly board = computed<BoardModel | null>(() => {
@@ -112,9 +169,41 @@ export class BoardPage {
       planning,
       rows: boardRowsOf(dashboard.kind === 'ok' ? dashboard.body : null),
       actors: this.data.actorList(),
-      query: parseBoardQuery(this.params()),
+      query: this.query(),
     });
   });
+
+  /** The compact tier's visible column (the model's `current`: `?col`, else `build` with cards, else the first). */
+  protected readonly current = computed<BoardColumn | null>(() => {
+    const b = this.board();
+    return b?.columns.find((c) => c.stage === b.current) ?? null;
+  });
+
+  /** The columns before and after the visible one, for the sticky bar's ◂ and ▸; null at either end. */
+  protected readonly neighbours = computed(() => {
+    const stages = this.board()?.stages ?? [];
+    const current = this.board()?.current ?? null;
+    const i = current === null ? -1 : stages.indexOf(current);
+    return { prev: i > 0 ? (stages[i - 1] ?? null) : null, next: i >= 0 ? (stages[i + 1] ?? null) : null };
+  });
+
+  /** The compact column switch: one radio per column, its count in the label and the violet dot when it waits on you. */
+  protected readonly colOptions = computed<readonly SegmentedOption[]>(() => {
+    const lang = this.lang();
+    return (this.board()?.columns ?? []).map((c): SegmentedOption => {
+      const stage: string = this.transloco.translate(`stages.${c.stage}`, {}, lang);
+      const label: string = this.transloco.translate('board.workspace.compact.segment', { stage, count: c.cards.length }, lang);
+      return { key: c.stage, label, ...(c.waitingOnYou > 0 ? { tone: 'secondary' as const } : {}) };
+    });
+  });
+
+  /** The drop tray under the sticky bar; T125 opens it while a card is dragged. Closed, it is laid out but hidden. */
+  readonly trayOpen = signal(false);
+  /** The column switch has scrolled away under the header: the sticky bar shows in its place. */
+  protected readonly switchAway = signal(false);
+  private readonly switchRef = viewChild<ElementRef<HTMLElement>>('colswitch');
+  /** The workspace whose remembered query was already considered on this page; the bare route restores once. */
+  private restoredFor: string | null = null;
 
   /** The track of each column: a stub's fixed width, or the 232 px column. */
   protected readonly tracks = computed(() =>
@@ -178,6 +267,65 @@ export class BoardPage {
       this.board();
       this.updateFades();
     });
+    // The compact sticky bar: shown once the column switch has left the area under the 92 px compact header.
+    afterRenderEffect((onCleanup) => {
+      const el = this.switchRef()?.nativeElement;
+      if (!el || typeof IntersectionObserver !== 'function') {
+        this.switchAway.set(false);
+        return;
+      }
+      const observer = new IntersectionObserver((entries) => this.switchAway.set(entries.some((entry) => !entry.isIntersecting)), {
+        rootMargin: '-92px 0px 0px 0px',
+      });
+      observer.observe(el);
+      onCleanup(() => observer.disconnect());
+    });
+    // The remembered query (ISC-129.1): the bare route restores it once per workspace; any other query is saved.
+    effect(() => {
+      const ws = this.state.ws();
+      const remembered = this.data.boardQueryText();
+      const current = boardQueryString(this.query());
+      if (ws === null || remembered === null || this.data.boardQuery.isLoading()) return;
+      untracked(() => {
+        if (this.restoredFor !== ws) {
+          this.restoredFor = ws;
+          if (current === '' && remembered !== '') {
+            this.navigate(parseBoardQuery(remembered));
+            return;
+          }
+        }
+        if (current !== remembered) void this.data.saveBoardQuery(current);
+      });
+    });
+  }
+
+  /** Writes `query` to the URL, replacing the entry: a filter, lane or column change adds no history step. */
+  protected setQuery(query: BoardQueryState): void {
+    if (boardQueryString(query) === boardQueryString(this.query())) return;
+    this.navigate(query);
+  }
+
+  protected clearFilters(): void {
+    this.setQuery(withoutFilters(this.query()));
+  }
+
+  /** The compact switch, the bar's ◂ and ▸ and the tray (T125) pick the visible column through `?col`. */
+  protected selectColumn(key: string | null | undefined): void {
+    const b = this.board();
+    if (b === null || key === null || key === undefined || !isWorkflowStage(key) || key === b.current) return;
+    this.setQuery({ ...this.query(), col: key });
+  }
+
+  /** The bar's middle button: back to the whole column switch, its checked segment focused. */
+  protected backToSwitch(): void {
+    const el = this.switchRef()?.nativeElement;
+    if (!el) return;
+    if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' });
+    el.querySelector<HTMLElement>('[role="radio"][tabindex="0"]')?.focus({ preventScroll: true });
+  }
+
+  private navigate(query: BoardQueryState): void {
+    void this.router.navigate([], { relativeTo: this.route, queryParams: boardNavigationParams(query), queryParamsHandling: 'merge', replaceUrl: true });
   }
 
   /** The edge fades show only where the scroller has more to show on that side. */

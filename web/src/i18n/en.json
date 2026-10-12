@@ -1123,7 +1123,8 @@
         "remove": "Remove filter {{label}}",
         "clear": "Clear",
         "noMatch": "No cards match",
-        "clearAll": "Clear filters"
+        "clearAll": "Clear filters",
+        "all": "All"
       },
       "swimlanes": {
         "label": "Swimlanes",
@@ -1191,7 +1192,15 @@
       "failed": "The board could not be read.",
       "stale": "stale data",
       "strip": "Stages · jump to a column",
-      "columns": "Board columns"
+      "columns": "Board columns",
+      "compact": {
+        "columns": "Stages · show one column",
+        "segment": "{{stage}} {{count}}",
+        "prev": "Previous column: {{stage}}",
+        "next": "Next column: {{stage}}",
+        "back": "{{stage}}, {{count}} cards · back to the stages",
+        "tray": "Drop targets: the stages"
+      }
     }
   },
   "matrix": {

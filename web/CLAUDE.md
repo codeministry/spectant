@@ -134,3 +134,17 @@ what it sends, never by a hidden switch:
 `Allow: PUT`. Set the session on the context (`setExtraHTTPHeaders`), send the edited fixture file, reload, assert;
 reset after. Reason: the next read must show the changed table without touching the fixture tree, and the parse
 stays core's.
+
+## Driving who works a task from an e2e spec
+
+The agent and sub-agent chips (T135, ISC-131.1; `web/e2e/live.spec.ts`, `-g subagents`) read core's `LiveCard.agent` and
+`.subagent`; the stub fills them in every lock fixture as core's `live.ts` `workersOf` does. Pin the clock to
+`STUB_NOW` (`test.use({ clockAt: STUB_NOW })`) so a lock is stale exactly past `LIVE_STALE_MS`, and pick the holder with
+`X-Spectant-Stub-Locks`:
+
+- **agent, stale**: `activity` (default), harbor 002 T27 by `a:claude:sess-2`, 54 minutes without a release.
+- **agent, fresh**: `frontier`, harbor 002 T28 by `syntheticSession('002', 'ISC-75')`, 20 minutes.
+- **sub-agent**: `claims`, the fixture tree's activity claim lines without their releases, landed cards re-opened as
+  `core/tests/live.test.ts` does; harbor 002 T4 by `a:claude:sess-2/T4` under `a:claude:sess-2`, stale. Reason: the
+  golden log releases T4's claim, so no golden frame holds a sub-agent.
+- **person**: `person`, the golden's locks held by `STUB_PERSON` (`u:3f9c0a7d`); T27 runs and no agent chip shows.

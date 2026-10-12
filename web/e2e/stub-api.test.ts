@@ -627,6 +627,58 @@ describe('stub API: lock fixtures via X-Spectant-Stub-Locks', () => {
     expect((await live('frontier', 'lantern', '001')).lockSource).toBe('frontier');
   });
 
+  // Who works a task (T149, ISC-131.1): each fixture's in-flight cards name their agent and sub-agent as core's live.ts
+  // does (`workersOf`), so the board and the tasks tab render the chips from the stub as from the server.
+  const workers = (frame: LiveFrame): Array<[string, string | null, string | null, boolean | undefined]> =>
+    frame.cards.filter((c) => c.agent !== null || c.subagent !== null).map((c) => [c.task, c.agent?.raw ?? null, c.subagent?.raw ?? null, c.stale]);
+
+  test('workers: activity names a:claude:sess-2 on T27 (stale), frontier adds its own agent on T28 (fresh), none names nobody', async () => {
+    expect(workers(await live('activity'))).toEqual([['T27', 'a:claude:sess-2', null, true]]);
+    expect(workers(await live('frontier'))).toEqual([
+      ['T27', 'a:claude:sess-2', null, true],
+      ['T28', 'a:claude:stub-002-isc-75', null, false],
+    ]);
+    expect(workers(await live('none'))).toEqual([]);
+  });
+
+  test("claims: harbor's claim lines without their releases; T4 by the sub-agent a:claude:sess-2/T4 under its parent", async () => {
+    const frame = await live('claims');
+    expect(frame.lockSource).toBe('activity');
+    expect(frame.locks.map((l) => [l.claim, l.session, l.since])).toEqual([
+      ['ISC-53', 'a:claude:sess-2/T4', '2026-03-06T09:12:00Z'],
+      ['ISC-72', 'a:claude:sess-2', '2026-03-08T14:05:00Z'],
+      ['ISC-74', 'a:claude:sess-2', '2026-03-08T14:06:00Z'],
+    ]);
+    // As core/tests/live.test.ts re-opens T4 and T25, all three claims' cards are in flight, every lock stale at STUB_NOW.
+    expect(frame.cards.filter((c) => c.state === 'running').map((c) => c.task)).toEqual(['T4', 'T25', 'T27']);
+    expect(workers(frame)).toEqual([
+      ['T4', 'a:claude:sess-2', 'a:claude:sess-2/T4', true],
+      ['T25', 'a:claude:sess-2', null, true],
+      ['T27', 'a:claude:sess-2', null, true],
+    ]);
+    const t4 = frame.cards.find((c) => c.task === 'T4');
+    expect(t4?.subagent).toEqual({ raw: 'a:claude:sess-2/T4', kind: 'subagent', id: 'a:claude:sess-2', task: 'T4', legacy: false });
+    expect(t4?.elapsedMs).toBe(Date.parse(STUB_NOW) - Date.parse('2026-03-06T09:12:00Z'));
+    expect(frame.agents.map((a) => [a.session, a.claims])).toEqual([
+      ['a:claude:sess-2/T4', ['ISC-53']],
+      ['a:claude:sess-2', ['ISC-72', 'ISC-74']],
+    ]);
+    const spec = (await (await ask(specRoutes.spec(WS, '002'), { headers: { [LOCKS_HEADER]: 'claims' } })).json()) as SpecPageModel;
+    expect(spec.areas.live.agentsWorking).toBe(2);
+    expect(await lifeos('claims')).toEqual({ present: false });
+    // The log names only spec 002's claims: every other spec stays as its golden.
+    expect(workers(await live('claims', WS, '004'))).toEqual([]);
+  });
+
+  test('person: the golden lock held by the person u:3f9c0a7d; T27 runs, agent and sub-agent null', async () => {
+    const frame = await live('person');
+    expect(frame.locks.map((l) => [l.claim, l.session, l.actor.kind])).toEqual([['ISC-74', 'u:3f9c0a7d', 'person']]);
+    const t27 = frame.cards.find((c) => c.task === 'T27');
+    expect(t27).toMatchObject({ state: 'running', lock: { source: 'activity', session: 'u:3f9c0a7d' }, agent: null, subagent: null });
+    expect(workers(frame)).toEqual([]);
+    expect(frame.agents.map((a) => a.session)).toEqual(['u:3f9c0a7d']);
+  });
+
   test('an unknown lock state is a loud 400', async () => {
     const res = await ask(specRoutes.live(WS, '002'), { headers: { [LOCKS_HEADER]: 'sometimes' } });
     expect(res.status).toBe(400);
