@@ -35,6 +35,8 @@ import { readTree } from './helpers/read-tree.ts';
 const TRANSCRIPTS = join(import.meta.dir, 'fixtures', 'transcripts');
 const PROJECT = 'harbor';
 const WORKTREE_INFIX = '--claude-worktrees-agent-';
+/** What follows the project name in a spec worktree's project folder: `-` and exactly three digits. */
+const SPEC_WORKTREE = /^-\d{3}$/;
 const GOLDEN = join(import.meta.dir, 'fixtures', 'tokens.golden.jsonl');
 
 const byteOrder = (a: string, b: string): number => Buffer.compare(Buffer.from(a), Buffer.from(b));
@@ -47,13 +49,12 @@ function toolUseIdOf(path: string): string | null {
   return typeof id === 'string' && id !== '' ? id : null;
 }
 
-/** Every transcript of the project folder and its agent-worktree siblings, as the CLI's discovery lists them. */
-function transcriptsOf(root: string, project: string): TranscriptFile[] {
-  const folder = join(root, project);
+/** The main sessions of one project folder and their sub-agents; `prefix` goes before every label. */
+function sessionsOf(folder: string, prefix: string): TranscriptFile[] {
   const files: TranscriptFile[] = [];
   for (const name of sortedNames(folder)) {
     if (name.endsWith('.jsonl')) {
-      files.push({ role: 'main', session: name.slice(0, -'.jsonl'.length), label: name, text: readFileSync(join(folder, name), 'utf8') });
+      files.push({ role: 'main', session: name.slice(0, -'.jsonl'.length), label: `${prefix}${name}`, text: readFileSync(join(folder, name), 'utf8') });
       continue;
     }
     const subagents = join(folder, name, 'subagents');
@@ -64,13 +65,26 @@ function transcriptsOf(root: string, project: string): TranscriptFile[] {
       files.push({
         role: 'subagent',
         session: name,
-        label: `${name}/subagents/${file}`,
+        label: `${prefix}${name}/subagents/${file}`,
         text: readFileSync(join(subagents, file), 'utf8'),
         toolUseId: toolUseIdOf(join(subagents, `${match[1] ?? ''}.meta.json`)),
       });
     }
   }
+  return files;
+}
+
+/**
+ * Every transcript of the project folder, of its agent-worktree siblings and of its spec-worktree siblings
+ * (`<project>-NNN`, read like the project folder itself), as the CLI's discovery lists them.
+ */
+function transcriptsOf(root: string, project: string): TranscriptFile[] {
+  const files = sessionsOf(join(root, project), '');
   for (const sibling of sortedNames(root)) {
+    if (sibling.startsWith(project) && SPEC_WORKTREE.test(sibling.slice(project.length))) {
+      files.push(...sessionsOf(join(root, sibling), `../${sibling}/`));
+      continue;
+    }
     if (!sibling.startsWith(`${project}${WORKTREE_INFIX}`)) continue;
     for (const name of sortedNames(join(root, sibling))) {
       if (!name.endsWith('.jsonl')) continue;
@@ -98,10 +112,12 @@ function harborSpecs(): TokenSpecInput[] {
 const fixtureInput = (): TokenInput => ({ transcripts: transcriptsOf(TRANSCRIPTS, PROJECT), specs: harborSpecs() });
 
 describe('rows', () => {
-  test('the fixture is read as three transcripts: sub-agent with its toolUseId, main session, worktree session', () => {
+  test('the fixture is read as five transcripts: root sub-agent and session, agent worktree, spec worktree sub-agent and session', () => {
     const files = transcriptsOf(TRANSCRIPTS, PROJECT);
-    expect(files.map((f) => f.role)).toEqual(['subagent', 'main', 'worktree']);
-    expect(files[0]?.toolUseId).toBe('toolu_01HarborI1');
+    expect(files.map((f) => f.role)).toEqual(['subagent', 'main', 'worktree', 'subagent', 'main']);
+    expect(files.map((f) => f.toolUseId ?? null)).toEqual(['toolu_01HarborI1', null, null, 'toolu_01HarborT1', null]);
+    expect(files[3]?.session).toBe('3a7c9e21-6b4d-4f80-8e12-5d6c7b8a9f01');
+    expect(files[4]?.session).toBe(files[3]?.session);
   });
 
   test('a measuring run over the fixture transcript yields exactly the golden lines', () => {
@@ -233,22 +249,66 @@ function expectSumInvariant(input: TokenInput, run: TokenRun): void {
 // ─── ISC-135.1 · invocation windows (T9) ────────────────────────────────────────────────────────────────────────
 
 describe('invocation', () => {
-  test('a tool result does not end the window, a real user input does', () => {
+  test('tool results, prose prompts, task notifications and local-command output do not end the window', () => {
     const run = tokenRows({
       transcripts: [
         transcript('main', 'm', [
-          commandLine(at(0), '/spec-plan', '002'),
-          usageLine(at(1), 'r1', [1, 10, 100, 1000], ['toolu_a']),
-          toolResultLine(at(2), 'toolu_a'),
-          usageLine(at(3), 'r2', [2, 20, 200, 2000]),
-          userLine(at(4), [{ type: 'text', text: 'thanks, now something else' }]),
-          usageLine(at(5), 'r3', [4, 40, 400, 4000]),
+          usageLine(at(0), 'r0', [8, 80, 800, 8000]),
+          commandLine(at(1), '/spec-plan', '002'),
+          usageLine(at(2), 'r1', [1, 10, 100, 1000], ['toolu_a']),
+          toolResultLine(at(3), 'toolu_a'),
+          usageLine(at(4), 'r2', [2, 20, 200, 2000]),
+          userLine(at(5), [{ type: 'text', text: 'thanks, now something else' }]),
+          usageLine(at(6), 'r3', [4, 40, 400, 4000]),
+          userLine(at(7), '<task-notification>\n<task-id>t1</task-id>\n<status>completed</status>\n</task-notification>'),
+          usageLine(at(8), 'r4', [16, 160, 1600, 16000]),
+          userLine(at(9), '<local-command-stdout>ok</local-command-stdout>'),
+          usageLine(at(10), 'r5', [32, 320, 3200, 32000]),
         ]),
       ],
       specs: [specInput('002-alpha')],
     });
-    expect(invocationsOf(run).map((row) => [row.requests, ...countsOf(row)])).toEqual([[2, 3, 30, 300, 3000]]);
-    expect(unassignedOf(run).map((row) => [row.requests, ...countsOf(row)])).toEqual([[1, 4, 40, 400, 4000]]);
+    // The turn before the first command stays unassigned; everything after it belongs to the window.
+    expect(invocationsOf(run).map((row) => [row.requests, ...countsOf(row)])).toEqual([[5, 55, 550, 5500, 55000]]);
+    expect(unassignedOf(run).map((row) => [row.requests, ...countsOf(row)])).toEqual([[1, 8, 80, 800, 8000]]);
+  });
+
+  test('a non-/spec slash command ends the window and opens none; the turns after it stay unassigned', () => {
+    const run = tokenRows({
+      transcripts: [
+        transcript('main', 'm', [
+          commandLine(at(0), '/spec-plan', '002'),
+          usageLine(at(1), 'r1', [1, 0, 0, 0]),
+          commandLine(at(2), '/clear', ''),
+          usageLine(at(3), 'r2', [2, 0, 0, 0]),
+          userLine(at(4), 'a prose prompt opens nothing'),
+          usageLine(at(5), 'r3', [4, 0, 0, 0]),
+          commandLine(at(6), '/spec-tasks', '002'),
+          usageLine(at(7), 'r4', [8, 0, 0, 0]),
+          commandLine(at(8), '/model', 'opus'),
+          userLine(at(9), '<local-command-stdout>Set model to opus</local-command-stdout>'),
+          usageLine(at(10), 'r5', [16, 0, 0, 0]),
+        ]),
+      ],
+      specs: [specInput('002-alpha')],
+    });
+    expect(invocationsOf(run).map((row) => [row.id, row.command, row.requests, row.input])).toEqual([
+      ['a:claude:m#1', '/spec-plan', 1, 1],
+      ['a:claude:m#2', '/spec-tasks', 1, 8],
+    ]);
+    expect(unassignedOf(run).map((row) => [row.requests, row.input])).toEqual([[3, 22]]);
+  });
+
+  test('a window runs to the end of its session file and never into another session', () => {
+    const run = tokenRows({
+      transcripts: [
+        transcript('main', 'm', [commandLine(at(0), '/spec-plan', '002'), usageLine(at(1), 'r1', [1, 0, 0, 0]), userLine(at(2), 'more'), usageLine(at(30), 'r2', [2, 0, 0, 0])]),
+        transcript('main', 'n', [userLine(at(3), 'unrelated'), usageLine(at(4), 'r3', [4, 0, 0, 0])]),
+      ],
+      specs: [specInput('002-alpha')],
+    });
+    expect(invocationsOf(run).map((row) => [row.requests, row.input])).toEqual([[2, 3]]);
+    expect(unassignedOf(run).map((row) => [row.requests, row.input])).toEqual([[1, 4]]);
   });
 
   test('a meta line (the loaded skill text) does not end the window either', () => {
@@ -285,18 +345,21 @@ describe('invocation', () => {
         transcript('main', 'm', [
           commandLine(at(0), '/spec-implement', '002'),
           usageLine(at(1), 'r1', [1, 0, 0, 0], ['toolu_first']),
-          userLine(at(2), 'stop, plan the next one'),
-          commandLine(at(3), '/spec-plan', '003'),
-          usageLine(at(4), 'r2', [2, 0, 0, 0]),
+          userLine(at(2), 'also start one for the docs'),
+          usageLine(at(3), 'r1b', [1000, 0, 0, 0], ['toolu_late']),
+          commandLine(at(4), '/spec-plan', '003'),
+          usageLine(at(5), 'r2', [2, 0, 0, 0]),
         ]),
-        // The sub-agent keeps running after its invocation ended; its turns still belong to the first one.
-        transcript('subagent', 'm', [usageLine(at(5), 's1', [10, 0, 0, 0], ['toolu_nested']), usageLine(at(6), 's2', [20, 0, 0, 0])], 'toolu_first'),
-        transcript('subagent', 'm', [usageLine(at(7), 's3', [100, 0, 0, 0])], 'toolu_nested'),
+        // The sub-agents keep running after their invocation ended; their turns still belong to the first one,
+        // including the one started after a prose prompt inside the window.
+        transcript('subagent', 'm', [usageLine(at(6), 's1', [10, 0, 0, 0], ['toolu_nested']), usageLine(at(7), 's2', [20, 0, 0, 0])], 'toolu_first'),
+        transcript('subagent', 'm', [usageLine(at(8), 's3', [100, 0, 0, 0])], 'toolu_nested'),
+        transcript('subagent', 'm', [usageLine(at(9), 's4', [10000, 0, 0, 0])], 'toolu_late'),
       ],
       specs: [specInput('002-alpha'), specInput('003-beta')],
     });
     expect(invocationsOf(run).map((row) => [row.command, row.spec, row.requests, row.subagents, row.input])).toEqual([
-      ['/spec-implement', '002-alpha', 4, 2, 131],
+      ['/spec-implement', '002-alpha', 6, 3, 11131],
       ['/spec-plan', '003-beta', 1, 0, 2],
     ]);
     expect(unassignedOf(run).map((row) => row.requests)).toEqual([0]);
@@ -494,8 +557,7 @@ function compose(seed: number): Composed {
     for (let step = 0, steps = 4 + int(6); step < steps; step++) {
       const r = random();
       if (r < 0.25) {
-        lines.push(userLine(at(tick()), 'free text'));
-        owner = null;
+        lines.push(userLine(at(tick()), 'free text')); // a prose prompt continues the open window
       } else if (r < 0.35) {
         lines.push(commandLine(at(tick()), '/clear', ''));
         owner = null;
@@ -653,7 +715,7 @@ describe('unassigned', () => {
   test('all three at once: the run does not throw, names each finding, and the sums still hold', () => {
     const input: TokenInput = {
       transcripts: [
-        transcript('main', 'm', ['not json at all', commandLine(at(0), '/spec-plan', '404'), usageLine(at(1), 'r1', [1, 2, 3, 4]), userLine(at(2), 'bye'), usageLine(at(3), 'r2', [5, 6, 7, 8])]),
+        transcript('main', 'm', ['not json at all', commandLine(at(0), '/spec-plan', '404'), usageLine(at(1), 'r1', [1, 2, 3, 4]), commandLine(at(2), '/clear', ''), usageLine(at(3), 'r2', [5, 6, 7, 8])]),
         transcript('worktree', 'w', [userLine(at(4), 'nothing to count')]),
       ],
       specs: [specInput('002-alpha')],
@@ -741,7 +803,7 @@ describe('baseline', () => {
     const run = tokenRows(input);
     const baseline = baselineOfRun(run);
     expect(baseline.measured_through).toBe(newestUsageTs(input.transcripts));
-    expect(baseline.claude_code).toEqual(['2.1.38', '2.1.42']);
+    expect(baseline.claude_code).toEqual(['2.1.38', '2.1.40', '2.1.42']);
     const invocations = invocationsOf(run);
     expect(Object.keys(baseline.commands)).toEqual([...new Set(invocations.map((row) => row.command))].sort());
     for (const [command, entry] of Object.entries(baseline.commands)) {

@@ -58,7 +58,7 @@ export interface BaselineRow {
   readonly commands: Readonly<Record<string, BaselineCommand>>;
 }
 
-/** One `/spec` invocation: a slash command up to the next real user input, its sub-agents included. */
+/** One `/spec` invocation: a `/spec` command up to the next slash command or the end of its session, its sub-agents included. */
 export interface InvocationRow extends TokenCounters {
   readonly v: typeof TOKENS_VERSION;
   readonly kind: 'invocation';
@@ -189,7 +189,10 @@ export interface TranscriptCommand {
   readonly specNumber: string | null;
 }
 
-/** A real user input that is no command; it ends an open invocation. A tool result is not one. */
+/**
+ * A user line with a slash command that is no `/spec` command (`/clear`, `/model`, …); it ends an open invocation and
+ * opens none. Prose prompts, task notifications, local-command output, tool results and `isMeta` lines are no entry.
+ */
 export interface TranscriptInput {
   readonly type: 'input';
   readonly ts: string;
@@ -245,7 +248,7 @@ const stringOf = (value: unknown): string | null => (typeof value === 'string' &
 
 const countOf = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0);
 
-/** A `/spec` command name: `/spec` itself or `/spec-<name>`; any other slash command is an ordinary user input. */
+/** A `/spec` command name: `/spec` itself or `/spec-<name>`; any other slash command only ends a window. */
 const SPEC_COMMAND = /^\/spec(?:-[a-z0-9-]+)?$/;
 
 const COMMAND_NAME = /<command-name>\s*([^<\s]+)\s*<\/command-name>/;
@@ -272,9 +275,9 @@ function toolUseIdsOf(content: unknown): string[] {
 
 /**
  * Reads one transcript defensively: every line that is not JSON or carries nothing countable is skipped with a
- * diagnostic, never a throw (T5). Kept: `/spec` commands (name and spec number only), real user inputs (no `isMeta`
- * line, no tool result) and assistant lines with `usage`. Other line kinds (system, summary, snapshots) carry no
- * tokens and are passed over silently.
+ * diagnostic, never a throw (T5). Kept: `/spec` commands (name and spec number only), other slash commands (they end a
+ * window) and assistant lines with `usage`. Every other user line (prose, task notifications, local-command output,
+ * tool results, `isMeta` lines) and every other line kind (system, summary, snapshots) is passed over silently.
  */
 export function parseTranscript(file: TranscriptFile): ParsedTranscript {
   const entries: TranscriptEntry[] = [];
@@ -332,8 +335,11 @@ export function parseTranscript(file: TranscriptFile): ParsedTranscript {
       warn('tokens-timestamp-missing', 'The user line carries no `timestamp`; it is skipped.', line);
       return;
     }
+    // Only a slash command touches the window: a `/spec` one opens its own, any other ends the open one. Prose
+    // prompts, task notifications and the output of local commands carry no `<command-name>` and belong to it.
     const command = COMMAND_NAME.exec(text)?.[1] ?? null;
-    if (command !== null && SPEC_COMMAND.test(command)) {
+    if (command === null) return;
+    if (SPEC_COMMAND.test(command)) {
       const args = COMMAND_ARGS.exec(text)?.[1] ?? '';
       entries.push({ type: 'command', ts, command, specNumber: SPEC_NUMBER.exec(args)?.[1] ?? null });
     } else {
@@ -442,8 +448,9 @@ export function tokenRows(input: TokenInput): TokenRun {
     return slug;
   };
 
-  // Invocation windows in the sessions (main and worktree): a `/spec` command opens one, a real user input or the
-  // next command closes it. Every usage line gets the invocation open at it, every tool_use ID too.
+  // Invocation windows in the sessions (main and worktree): a `/spec` command opens one, the next slash command of any
+  // kind or the end of the session's file closes it. Every usage line gets the invocation open at it, every tool_use
+  // ID too.
   const invocations: Invocation[] = [];
   const perSession = new Map<string, number>();
   const lineInvocations = new Map<ParsedTranscript, Array<Invocation | null>>();

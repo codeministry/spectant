@@ -280,6 +280,37 @@ describe("tokens discovery", () => {
     ]);
   });
 
+  test("reads every spec-worktree sibling <folder>-NNN (exactly three digits) like the folder itself, sorted", () => {
+    const projects = temp("spectant-tokens-specwt-");
+    const folder = join(projects, "-r");
+    put(join(folder, "a.jsonl"), "A\n");
+    put(join(projects, "-r--claude-worktrees-agent-e00", "w.jsonl"), "W\n");
+    put(join(projects, "-r-012", "s.jsonl"), "S\n");
+    put(join(projects, "-r-012", "s", "subagents", "agent-1.jsonl"), "S1\n");
+    put(join(projects, "-r-012", "s", "subagents", "agent-1.meta.json"), JSON.stringify({ toolUseId: "toolu_9" }));
+    put(join(projects, "-r-012", "notes.txt"), "not a transcript\n");
+    put(join(projects, "-r-007", "t.jsonl"), "T\n");
+    // Not a spec worktree of this repository: four or two digits, letters, a worktree below a spec worktree, another
+    // repository's spec worktree, a suffix after the digits, and a plain file with a matching name.
+    put(join(projects, "-r-0123", "x.jsonl"), "X\n");
+    put(join(projects, "-r-12", "x.jsonl"), "X\n");
+    put(join(projects, "-r-abc", "x.jsonl"), "X\n");
+    put(join(projects, "-r-012--claude-worktrees-agent-f00", "x.jsonl"), "X\n");
+    put(join(projects, "-rx-012", "x.jsonl"), "X\n");
+    put(join(projects, "-r-012-sub", "x.jsonl"), "X\n");
+    put(join(projects, "-r-013"), "a file, not a folder\n");
+
+    const found = discoverTranscripts(folder);
+    expect(found.diagnostics).toEqual([]);
+    expect(found.files).toEqual([
+      { role: "main", session: "a", label: "a.jsonl", text: "A\n" },
+      { role: "worktree", session: "w", label: "../-r--claude-worktrees-agent-e00/w.jsonl", text: "W\n" },
+      { role: "main", session: "t", label: "../-r-007/t.jsonl", text: "T\n" },
+      { role: "subagent", session: "s", label: "../-r-012/s/subagents/agent-1.jsonl", text: "S1\n", toolUseId: "toolu_9" },
+      { role: "main", session: "s", label: "../-r-012/s.jsonl", text: "S\n" },
+    ]);
+  });
+
   test("a missing transcript folder is an error, not an empty run", () => {
     const projects = temp("spectant-tokens-missing-");
     expect(() => discoverTranscripts(join(projects, "-nowhere"))).toThrow(TranscriptFolderError);

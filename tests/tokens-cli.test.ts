@@ -76,7 +76,8 @@ function harborRoot(): string {
 
 /**
  * A copy of the transcript fixture under a temp `projects/` folder, the main folder `harbor` beside its worktree
- * sibling; answers the main folder, the one `--transcripts` names. `reverse` creates every folder and file in the
+ * and spec-worktree siblings (`harbor--claude-worktrees-agent-…`, `harbor-012`); answers the main folder, the one
+ * `--transcripts` names, and the run finds both siblings next to it. `reverse` creates every folder and file in the
  * opposite order, so whatever order the file system keeps entries in, the two copies start out differently.
  */
 function transcriptCopy(reverse = false): string {
@@ -467,7 +468,7 @@ describe("leak", () => {
       const root = harborRoot();
       expect(await measure(root, transcripts, true)).toBe(0);
       const text = tokensText(root);
-      expect(kindsOf(text).filter((kind) => kind === "invocation")).toHaveLength(6);
+      expect(kindsOf(text).filter((kind) => kind === "invocation")).toHaveLength(7);
       expect({ seed, leaked: baitsIn(text, [...planted, "zq", "bait.example"]) }).toEqual({ seed, leaked: [] });
       expect({ seed, findings: shapeFindings(text) }).toEqual({ seed, findings: [] });
     }

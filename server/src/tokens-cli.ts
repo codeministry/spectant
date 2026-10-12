@@ -5,8 +5,10 @@
  * 2. The transcript folder is `--transcripts DIR`, or `<config>/projects/<encoded root>/` with `<config>` the
  *    `$CLAUDE_CONFIG_DIR` or `~/.claude` and the root encoded as Claude Code encodes it (`encodeProjectPath`). Read
  *    from it: the main sessions `<session>.jsonl`, the sub-agents `<session>/subagents/agent-<id>.jsonl` with the
- *    `toolUseId` of their `agent-<id>.meta.json`, and the sessions of every sibling folder named exactly
- *    `<folder>--claude-worktrees-agent-<id>` (the repository's agent worktrees). A folder that cannot be read is exit 1;
+ *    `toolUseId` of their `agent-<id>.meta.json`, the sessions of every sibling folder named exactly
+ *    `<folder>--claude-worktrees-agent-<id>` (the repository's agent worktrees), and every sibling folder named exactly
+ *    `<folder>-NNN` with three digits (its spec worktrees `../<root>-NNN`), read like the folder itself: main sessions
+ *    and their sub-agents. A folder that cannot be read is exit 1;
  *    a single file that cannot be read is a diagnostic. Every list is sorted in byte order, so nothing depends on the
  *    order `readdir` happens to return.
  * 3. The repository side comes from the workspace loader (`readWorkspaceInput`): each spec folder's `events.jsonl` and
@@ -50,6 +52,12 @@ export const WORKTREE_INFIX = "--claude-worktrees-agent-";
 
 /** An agent worktree id: letters and digits only, so a folder of a path nested below a worktree is not taken for one. */
 const WORKTREE_ID = /^[A-Za-z0-9]+$/;
+
+/**
+ * What follows the encoded root in a spec worktree's project folder (`../<root>-NNN` encodes to `<encoded root>-NNN`):
+ * `-` and exactly three digits, so `-0123` and `-012--claude-worktrees-agent-<id>` are not one.
+ */
+const SPEC_WORKTREE_SUFFIX = /^-\d{3}$/;
 
 /** A sub-agent transcript's file name and the meta file beside it. */
 const SUBAGENT_FILE = /^(agent-.+)\.jsonl$/;
@@ -95,9 +103,10 @@ export interface TranscriptDiscovery {
 }
 
 /**
- * Every transcript of the project folder `folder` and of its agent worktrees' sibling folders, in a fixed order: the
- * folder's entries in byte order (a session's sub-agent folder `<session>` sorts before its `<session>.jsonl`), then
- * each worktree folder in byte order. Labels are paths relative to `folder`. Throws `TranscriptFolderError` when
+ * Every transcript of the project folder `folder` and of its agent and spec worktrees' sibling folders, in a fixed
+ * order: the folder's entries in byte order (a session's sub-agent folder `<session>` sorts before its
+ * `<session>.jsonl`), then each sibling folder in byte order, a spec worktree's entries read the same way as the
+ * folder's. Labels are paths relative to `folder`. Throws `TranscriptFolderError` when
  * `folder` itself cannot be listed.
  */
 export function discoverTranscripts(folder: string): TranscriptDiscovery {
@@ -123,17 +132,11 @@ export function discoverTranscripts(folder: string): TranscriptDiscovery {
     }
   };
 
-  for (const entry of entries) {
-    if (entry.isFile() && entry.name.endsWith(".jsonl")) {
-      const text = read(join(folder, entry.name), entry.name);
-      if (text !== null) files.push({ role: "main", session: entry.name.slice(0, -".jsonl".length), label: entry.name, text });
-    } else if (entry.isDirectory()) {
-      files.push(...subagentsOf(folder, entry.name, read));
-    }
-  }
+  files.push(...sessionsOf(folder, entries, "", read));
 
   const parent = dirname(folder);
   const prefix = `${basename(folder)}${WORKTREE_INFIX}`;
+  const isSpecWorktree = (name: string): boolean => name.startsWith(basename(folder)) && SPEC_WORKTREE_SUFFIX.test(name.slice(basename(folder).length));
   let siblings: Dirent[] = [];
   try {
     siblings = sortedEntries(parent);
@@ -145,7 +148,9 @@ export function discoverTranscripts(folder: string): TranscriptDiscovery {
     });
   }
   for (const sibling of siblings) {
-    if (!sibling.isDirectory() || !sibling.name.startsWith(prefix) || !WORKTREE_ID.test(sibling.name.slice(prefix.length))) continue;
+    if (!sibling.isDirectory()) continue;
+    const specWorktree = isSpecWorktree(sibling.name);
+    if (!specWorktree && (!sibling.name.startsWith(prefix) || !WORKTREE_ID.test(sibling.name.slice(prefix.length)))) continue;
     const dir = join(parent, sibling.name);
     let inner: Dirent[];
     try {
@@ -159,6 +164,10 @@ export function discoverTranscripts(folder: string): TranscriptDiscovery {
       });
       continue;
     }
+    if (specWorktree) {
+      files.push(...sessionsOf(dir, inner, `../${sibling.name}/`, read));
+      continue;
+    }
     for (const entry of inner) {
       if (!entry.isFile() || !entry.name.endsWith(".jsonl")) continue;
       const label = `../${sibling.name}/${entry.name}`;
@@ -169,8 +178,26 @@ export function discoverTranscripts(folder: string): TranscriptDiscovery {
   return { files, diagnostics };
 }
 
+/**
+ * The main sessions of one project folder (the repository's own or a spec worktree's) and their sub-agents, from its
+ * entries in byte order; `prefix` goes before every label (`""` for the folder itself, `../<sibling>/` otherwise).
+ */
+function sessionsOf(folder: string, entries: readonly Dirent[], prefix: string, read: (path: string, label: string) => string | null): TranscriptFile[] {
+  const files: TranscriptFile[] = [];
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+      const label = `${prefix}${entry.name}`;
+      const text = read(join(folder, entry.name), label);
+      if (text !== null) files.push({ role: "main", session: entry.name.slice(0, -".jsonl".length), label, text });
+    } else if (entry.isDirectory()) {
+      files.push(...subagentsOf(folder, entry.name, prefix, read));
+    }
+  }
+  return files;
+}
+
 /** The sub-agent transcripts of the session `session`, each with the `toolUseId` of its meta file or null. */
-function subagentsOf(folder: string, session: string, read: (path: string, label: string) => string | null): TranscriptFile[] {
+function subagentsOf(folder: string, session: string, prefix: string, read: (path: string, label: string) => string | null): TranscriptFile[] {
   const dir = join(folder, session, "subagents");
   let entries: Dirent[];
   try {
@@ -182,7 +209,7 @@ function subagentsOf(folder: string, session: string, read: (path: string, label
   for (const entry of entries) {
     const match = SUBAGENT_FILE.exec(entry.name);
     if (!entry.isFile() || match === null) continue;
-    const label = `${session}/subagents/${entry.name}`;
+    const label = `${prefix}${session}/subagents/${entry.name}`;
     const text = read(join(dir, entry.name), label);
     if (text !== null) files.push({ role: "subagent", session, label, text, toolUseId: toolUseIdOf(join(dir, `${match[1] ?? ""}.meta.json`)) });
   }

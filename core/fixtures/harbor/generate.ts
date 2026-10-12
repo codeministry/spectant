@@ -1465,6 +1465,8 @@ function generate() {
 const TRANSCRIPTS = join(ROOT, "..", "..", "tests", "fixtures", "transcripts");
 const TRANSCRIPT_PROJECT = "harbor";
 const WORKTREE_INFIX = "--claude-worktrees-agent-";
+/** What follows the project name in a spec worktree's project folder: `-` and exactly three digits. */
+const SPEC_WORKTREE = /^-\d{3}$/;
 
 const byteOrder = (a: string, b: string): number => Buffer.compare(Buffer.from(a), Buffer.from(b));
 const sortedNames = (dir: string): string[] => readdirSync(dir).sort(byteOrder);
@@ -1476,13 +1478,12 @@ function toolUseIdOf(path: string): string | null {
     return typeof id === "string" && id !== "" ? id : null;
 }
 
-/** The main sessions, their sub-agents and the agent-worktree sessions, in the order the CLI's discovery lists them. */
-function fixtureTranscripts(): TranscriptFile[] {
-    const folder = join(TRANSCRIPTS, TRANSCRIPT_PROJECT);
+/** The main sessions of one project folder and their sub-agents; `prefix` goes before every label. */
+function fixtureSessions(folder: string, prefix: string): TranscriptFile[] {
     const files: TranscriptFile[] = [];
     for (const name of sortedNames(folder)) {
         if (name.endsWith(".jsonl")) {
-            files.push({role: "main", session: name.slice(0, -".jsonl".length), label: name, text: readFileSync(join(folder, name), "utf-8")});
+            files.push({role: "main", session: name.slice(0, -".jsonl".length), label: `${prefix}${name}`, text: readFileSync(join(folder, name), "utf-8")});
             continue;
         }
         const subagents = join(folder, name, "subagents");
@@ -1490,11 +1491,24 @@ function fixtureTranscripts(): TranscriptFile[] {
         for (const file of sortedNames(subagents)) {
             const match = /^(agent-.+)\.jsonl$/.exec(file);
             if (match === null) continue;
-            files.push({role: "subagent", session: name, label: `${name}/subagents/${file}`,
+            files.push({role: "subagent", session: name, label: `${prefix}${name}/subagents/${file}`,
                 text: readFileSync(join(subagents, file), "utf-8"), toolUseId: toolUseIdOf(join(subagents, `${match[1] ?? ""}.meta.json`))});
         }
     }
+    return files;
+}
+
+/**
+ * The main sessions and their sub-agents, the agent-worktree sessions and the spec-worktree folders
+ * (`harbor-NNN`, read like the main folder), in the order the CLI's discovery lists them.
+ */
+function fixtureTranscripts(): TranscriptFile[] {
+    const files = fixtureSessions(join(TRANSCRIPTS, TRANSCRIPT_PROJECT), "");
     for (const sibling of sortedNames(TRANSCRIPTS)) {
+        if (sibling.startsWith(TRANSCRIPT_PROJECT) && SPEC_WORKTREE.test(sibling.slice(TRANSCRIPT_PROJECT.length))) {
+            files.push(...fixtureSessions(join(TRANSCRIPTS, sibling), `../${sibling}/`));
+            continue;
+        }
         if (!sibling.startsWith(`${TRANSCRIPT_PROJECT}${WORKTREE_INFIX}`)) continue;
         for (const name of sortedNames(join(TRANSCRIPTS, sibling))) {
             if (!name.endsWith(".jsonl")) continue;

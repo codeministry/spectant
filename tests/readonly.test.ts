@@ -55,7 +55,7 @@ import { tokensCommand } from "../server/src/tokens-cli.ts";
 import { WRITE_PATHS } from "../server/src/writes.contract.ts";
 
 const FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "harbor");
-/** The harbor transcripts: one main session with a sub-agent, and the sibling folder of one agent worktree. */
+/** The harbor transcripts: a main session with a sub-agent, beside the folders of an agent and a spec worktree. */
 const TRANSCRIPTS = join(import.meta.dir, "..", "core", "tests", "fixtures", "transcripts", "harbor");
 const SLUG = "harbor";
 const MARKED_SPEC = "004-retention-policies";
@@ -553,7 +553,7 @@ describe("ISC-130.2 with the allocation: a refused one changes nothing, an accep
 // The sixth write path (spec 009, T21, ISC-137.1) under the same guard: `spectant tokens` runs on its own copy against
 // the harbor transcripts. Without `--yes` it only prints the plan, and the copy stays byte-identical with every mtime
 // kept; with `--yes` exactly the files of `WRITE_PATHS.tokens` differ, and `.git/` never changes. The transcript folder
-// it reads (and its worktree sibling) is hashed too: the run reads it and writes nothing there.
+// it reads (and its worktree siblings) is hashed too: the run reads it and writes nothing there.
 describe("ISC-137.1 with the token measurement: a dry run changes nothing, `tokens --yes` only specs/tokens.jsonl", () => {
   test("readonly: tokens without --yes leaves the copy byte-identical; with --yes exactly WRITE_PATHS.tokens differs", async () => {
     const copy = join(mkdtempSync(join(root, "tokens-")), SLUG);
