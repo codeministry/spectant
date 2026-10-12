@@ -81,7 +81,8 @@ test.describe('status tab', () => {
   test('stage, next command, reasons and waiting rows equal the golden (ISC-79)', async ({ page }) => {
     await page.goto('/w/harbor/s/002/status');
     const tab = page.locator('app-status-tab');
-    await expect(tab.locator('[data-stage]')).toHaveAttribute('data-value', SPEC_002.head.stage);
+    // The stage chip of the status block; the stage track's segments carry `data-stage` too, keyed by their stage.
+    await expect(tab.locator('.stage-chip[data-stage]')).toHaveAttribute('data-value', SPEC_002.head.stage);
     await expect(tab.locator('[data-next-command]')).toContainText(SPEC_002.next.command ?? '');
     await expect(tab.locator('ui-reason .phrase')).toHaveText(SPEC_002.next.reasons[0] ?? '');
     await expect(tab.locator('[data-reason]')).toHaveText([...SPEC_002.next.reasons.slice(1)]);

@@ -169,6 +169,13 @@ test.describe('task checkbox', () => {
   const webOpen = golden.tasks.find((t) => t.lane !== 'operator' && t.state === 'open');
   const operatorOpen = golden.tasks.find((t) => t.lane === 'operator' && t.state === 'open');
   if (!webOpen || !operatorOpen) throw new Error('the golden needs an open task and an open operator task');
+  // The scripted 423 names the default (`activity`) fixture's lock on the task's claim: the live golden's, as is.
+  const LIVE = fileURLToPath(new URL('../../core/fixtures/harbor.live.golden.json', import.meta.url));
+  const liveLocks = (JSON.parse(readFileSync(LIVE, 'utf8')) as Record<string, { locks: Array<{ claim: string; session: string }> }>)[
+    'specs/002-web-console'
+  ]?.locks;
+  const webOpenLock = liveLocks?.find((l) => l.claim === webOpen.claim);
+  if (!webOpenLock) throw new Error(`harbor.live.golden.json holds no lock on ${webOpen.claim}`);
   const sessionOf = (testId: string) => `task-check-${testId}`;
 
   test.beforeEach(async ({ page }, info) => {
@@ -243,7 +250,7 @@ test.describe('task checkbox', () => {
     await row.locator('input[data-task-check]').click();
     const locked = row.locator('[data-check-locked]');
     await expect(locked).toBeVisible();
-    await expect(locked).toHaveText(/^\s*locked · spec-\S+\s*$/);
+    await expect(locked).toHaveText(`locked · ${webOpenLock.session}`);
     await expect(locked.locator('ui-icon')).toBeVisible();
     await expect(row.locator('input[data-task-check]')).not.toBeChecked();
   });

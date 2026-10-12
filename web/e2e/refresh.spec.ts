@@ -3,9 +3,18 @@
  * number of harbor's dashboard between two polls; Playwright's clock fires the refresh timer, and the node that held
  * the number shows the new one, with no navigation. `bun run e2e -- refresh -g in-place`.
  */
+import { readFileSync } from 'node:fs';
+
 import { atWidth, expect, FIXED_NOW, test } from './fixtures';
 
 const SESSION = 'X-Spectant-Stub-Session';
+// Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
+const HARBOR = JSON.parse(readFileSync(new URL('../../core/fixtures/harbor.golden.json', import.meta.url), 'utf8')) as {
+  kpis: { claims: { closed: number } };
+};
+/** The claims tile before and after one bump: the stub's `bumpDashboard` raises `kpis.claims.closed` by 1. */
+const BEFORE = String(HARBOR.kpis.claims.closed);
+const AFTER = String(HARBOR.kpis.claims.closed + 1);
 /** `DEFAULT_SETTINGS.refreshSeconds` in `src/app/core/settings.service.ts`, plus a second of slack. */
 const PAST_ONE_POLL_MS = 31_000;
 
@@ -22,7 +31,7 @@ test.describe('refresh', () => {
 
     await page.goto('/w/harbor');
     const value = page.locator('[data-kpi="claims"] .value');
-    await expect(value).toHaveText('55');
+    await expect(value).toHaveText(BEFORE);
     const node = await value.elementHandle();
 
     let navigations = 0;
@@ -33,9 +42,9 @@ test.describe('refresh', () => {
 
     await page.clock.fastForward(PAST_ONE_POLL_MS);
 
-    await expect.poll(() => node.evaluate((el) => el.textContent.trim())).toBe('56');
+    await expect.poll(() => node.evaluate((el) => el.textContent.trim())).toBe(AFTER);
     expect(await node.evaluate((el) => el.isConnected)).toBe(true);
-    await expect(value).toHaveText('56');
+    await expect(value).toHaveText(AFTER);
     expect(navigations).toBe(0);
   });
 });
@@ -68,7 +77,7 @@ test.describe('refresh cls', () => {
         await page.goto('/w/harbor');
         const tile = page.locator('.band [data-kpi="claims"]');
         const value = tile.locator('.value');
-        await expect(value).toHaveText('55');
+        await expect(value).toHaveText(BEFORE);
         await expect(tile).toBeInViewport();
         await expect(page.locator('[data-spec-row]').first()).toBeInViewport();
         await page.evaluate(() => document.fonts.ready);
@@ -95,7 +104,7 @@ test.describe('refresh cls', () => {
         expect((await request.post('/api/__stub/bump?ws=harbor', { headers })).status()).toBe(204);
         await page.clock.fastForward(PAST_ONE_POLL_MS);
 
-        await expect(value).toHaveText('56');
+        await expect(value).toHaveText(AFTER);
         await expect(tile).toHaveAttribute('data-tint', /^[ab]$/);
         // A screenshot needs a freshly painted frame, so any shift the swap or its mark caused has been reported.
         await page.screenshot();
