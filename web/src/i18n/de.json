@@ -12,6 +12,10 @@
     "claimsClosed": "{{closed}} von {{total}} Claims geschlossen",
     "noValue": "—"
   },
+  "demo": {
+    "chip": "demo",
+    "description": "Demodaten, bis der Kern sie liefert"
+  },
   "header": {
     "skipToSpecs": "Zu den Specs springen",
     "titlePrefix": "Specs",
@@ -808,6 +812,17 @@
         "missing": "fehlt",
         "warn": "Warnung",
         "na": "nicht zutreffend"
+      }
+    },
+    "context": {
+      "kinds": {
+        "operator": "Operator",
+        "manual": "manuell",
+        "question": "Frage"
+      },
+      "kbd": {
+        "step": "vorherige / nächste Spec",
+        "workspace": "Workspace"
       }
     }
   },

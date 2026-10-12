@@ -12,6 +12,10 @@
     "claimsClosed": "{{closed}} of {{total}} claims closed",
     "noValue": "—"
   },
+  "demo": {
+    "chip": "demo",
+    "description": "Demo data until the core delivers it"
+  },
   "header": {
     "skipToSpecs": "Skip to specs",
     "titlePrefix": "Specs",
@@ -808,6 +812,17 @@
         "missing": "missing",
         "warn": "warning",
         "na": "not applicable"
+      }
+    },
+    "context": {
+      "kinds": {
+        "operator": "operator",
+        "manual": "manual",
+        "question": "question"
+      },
+      "kbd": {
+        "step": "previous / next spec",
+        "workspace": "workspace"
       }
     }
   },
