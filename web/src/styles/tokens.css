@@ -25,6 +25,22 @@
 :root {
   --tier-compact-max: 639px;
   --tier-medium-max: 1119px;
+
+  /*
+   * The prototype's shape and layout tokens (spec 024, ISC-146), under its names and with its values;
+   * `web/tests/prototype-tokens.test.ts` compares each with the fixture. The space scale is the 8 px scale
+   * `web/CLAUDE.md` names; `--radius-card` is the 12 px card corner daisyUI's `--radius-box` also carries.
+   */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+  --radius-sm: 6px; /* chips, pills, small controls */
+  --radius: 8px; /* fields, buttons, popovers */
+  --radius-card: 12px; /* cards */
+  --rail: 352px; /* the right rail from the wide tier on */
 }
 
 /* Theme-independent helpers; declared on each theme element so a `var()` resolves against that theme. */
@@ -38,6 +54,9 @@
 
   /* Header surface (design.md § Header): the page at 85 % under a 12 px blur, the prototype's `--page-glass`. */
   --page-glass: color-mix(in srgb, var(--color-base-200) 85%, transparent);
+
+  /* The prototype's hairline shadow, in the theme's `--shadow-color` (its `--shadow-c`). */
+  --shadow-hair: 0 1px 2px var(--shadow-color);
 }
 
 [data-theme="spec-light"] {

@@ -27,21 +27,21 @@ const LATIN_RANGE =
 
 const FACES = [
   {
-    family: "Manrope Variable",
+    family: "Manrope",
     file: "manrope-variable.woff2",
     license: "LICENSE-Manrope.txt",
     weight: "200 800",
     range: LATIN_RANGE,
   },
   {
-    family: "Sora Variable",
+    family: "Sora",
     file: "sora-variable.woff2",
     license: "LICENSE-Sora.txt",
     weight: "100 800",
     range: LATIN_RANGE,
   },
   {
-    family: "JetBrains Mono Variable",
+    family: "JetBrains Mono",
     file: "jetbrains-mono-variable.woff2",
     license: "LICENSE-JetBrainsMono.txt",
     weight: "100 900",
@@ -102,9 +102,12 @@ describe("local", () => {
 
   test("fonts.css sets the text, display and mono stacks and tabular numbers on the body", () => {
     const css = read("src", "styles", "fonts.css");
-    expect(css).toMatch(/--font-sans:\s*"Manrope Variable",/);
-    expect(css).toMatch(/--font-display:\s*"Sora Variable",/);
-    expect(css).toMatch(/--font-mono:\s*"JetBrains Mono Variable",/);
+    // The prototype's stacks and names (spec 024, ISC-146); the app's names alias them.
+    expect(css).toMatch(/--font-ui:\s*"Manrope",/);
+    expect(css).toMatch(/--font-brand:\s*"Sora",/);
+    expect(css).toMatch(/--font-mono:\s*"JetBrains Mono",/);
+    expect(css).toMatch(/--font-sans:\s*var\(--font-ui\);/);
+    expect(css).toMatch(/--font-display:\s*var\(--font-brand\);/);
     expect(css).toMatch(/body\s*\{[^}]*font-family:\s*var\(--font-sans\)/);
     expect(css).toMatch(/body\s*\{[^}]*font-variant-numeric:\s*tabular-nums/);
     expect(css).toMatch(/h1\s*\{[^}]*font-family:\s*var\(--font-display\)/);
