@@ -12,8 +12,8 @@
  * Sources, relative to the root, each one optional:
  *
  *   roadmap   spectant-produktideen.md
- *   outline   specs/ideas/outline.md
- *   notes     specs/ideas/notizen.md
+ *   outline   specs/notes/outline.md
+ *   notes     specs/notes/notizen.md
  *   view      specs/001-app-skeleton/.design/prototype/spectant-ui/*.html          (the directory's files, not deeper)
  *   doc       specs/001-app-skeleton/.design/prototype/spectant-ui/docs/0[123]-*.md (docs 01 to 03)
  *
@@ -64,8 +64,8 @@ const IDEAS = 'specs/ideas';
 
 const HEADING_SOURCES: ReadonlyArray<readonly [SourceName, string]> = [
   ['roadmap', 'spectant-produktideen.md'],
-  ['outline', 'specs/ideas/outline.md'],
-  ['notes', 'specs/ideas/notizen.md'],
+  ['outline', 'specs/notes/outline.md'],
+  ['notes', 'specs/notes/notizen.md'],
 ];
 const SOURCE_NAMES: readonly SourceName[] = ['roadmap', 'outline', 'notes', 'view', 'doc'];
 

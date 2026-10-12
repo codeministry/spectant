@@ -21,7 +21,7 @@
  * - "No agent source" is `lockSource: 'none'`: on the 200 of both writes, and on the read side where it already is
  *   (`SpecPageModel.areas.live.lockSource`, `LiveFrame.lockSource`). No second field; `hasAgentSource` reads it and
  *   `NO_AGENT_SOURCE` is the page's words. With no source the write proceeds under the hash check alone (ISC-86).
- * - The event is `review → build` in the stage table's names (the reviewed mark moves the spec from waiting for review to building, as `derived-stages.ts` derives it), as ISC-24 fixes it (decided 2026-09-29), actor `app`.
+ * - The event is `review → build` in the stage table's names (the reviewed mark moves the spec from waiting for review to building, as `derived-stages.ts` derives it), as ISC-24 fixes it (decided 2026-09-29). Its actor is the viewer's `u:` id, `VIEWER_ACTOR_FALLBACK` without one (spec 008, T80; `app` before, now legacy).
  * - Both writes are refused by any lock on the spec (ISC-27 "an open claim on it"); the 423 names the task's own
  *   claim's lock first, then frontier over activity.
  * - A tick to the state the box already holds is a 200 with the unchanged line; the implementation writes nothing.
@@ -229,23 +229,31 @@ export function reviewedMarkText(at: string, hashes: ReviewedHashes): string {
 /** The transition the gate write records, in the stage table's names (ISC-24). */
 export const REVIEWED_EVENT = { from: 'review', to: 'build' } as const;
 
-/** Who the app's event lines name. */
+/**
+ * The actor the app's event lines named before spec 008 (T80). Outside the actor grammar, so it reads as legacy;
+ * no write records it any more, and the events already written with it stay readable.
+ */
 export const WRITE_ACTOR = 'app';
 
 /**
- * The actor the transition and the allocation record when the viewer has no `u:` id (no git address configured):
- * an agent id of the grammar, where `WRITE_ACTOR` reads as legacy. With an id, the event names the viewer.
+ * The actor every app write records when the viewer has no `u:` id (no git address configured): an agent id of the
+ * grammar, where `WRITE_ACTOR` reads as legacy. With an id, the event names the viewer.
  */
 export const VIEWER_ACTOR_FALLBACK = 'a:spectant:app';
+
+/** The actor an app write records: the viewer's `u:` id (`actorIdOf` of the git address), else the fallback. */
+export function writeActorOf(viewer: string | null): string {
+  return viewer ?? VIEWER_ACTOR_FALLBACK;
+}
 
 /** The event's `command`: the app's action, not a skill command it did not run. */
 export function reviewedEventCommand(specId: string): string {
   return `spectant mark-reviewed ${specId}`;
 }
 
-/** The one event the gate write appends. `ts` is the mark's `at`. */
-export function reviewedEvent(ts: string, specId: string): EventLine {
-  return { ts, ...REVIEWED_EVENT, command: reviewedEventCommand(specId), actor: WRITE_ACTOR };
+/** The one event the gate write appends. `ts` is the mark's `at`; `actor` is `writeActorOf(viewer)`. */
+export function reviewedEvent(ts: string, specId: string, actor: string): EventLine {
+  return { ts, ...REVIEWED_EVENT, command: reviewedEventCommand(specId), actor };
 }
 
 /**
@@ -384,7 +392,8 @@ const isFileList = (v: unknown): boolean =>
 function isReviewedEvent(v: unknown): boolean {
   if (!isRec(v)) return false;
   const check = validateEventLine(JSON.stringify(v));
-  return check.ok && v.from === REVIEWED_EVENT.from && v.to === REVIEWED_EVENT.to && v.actor === WRITE_ACTOR;
+  // The viewer's `u:` id or the fallback agent id: an actor of the grammar, never a legacy value (T80).
+  return check.ok && v.from === REVIEWED_EVENT.from && v.to === REVIEWED_EVENT.to && check.event.actorRef?.legacy === false;
 }
 
 function isClaimLock(v: unknown): v is ClaimLock {

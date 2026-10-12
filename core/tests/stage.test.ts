@@ -19,18 +19,24 @@ import type { CodeReviewMode, SpecFiles, SpecType, StageSource, Workflow, Workfl
 import { parseFrontmatter } from '../src/frontmatter.ts';
 import type { MarkState } from '../src/gates.ts';
 import {
+  SPEC_RULES,
   STAGE_RULES,
+  STORY_RULE,
   TRANSITIONS,
+  WAITING_STAGES,
   TYPE_NEEDS,
   WORKFLOW_STAGES,
   WORKFLOW_TYPES,
   allowedTransition,
   defaultWorkflowRow,
   fillReason,
+  fillsTemplate,
   nextCommand,
   nextCommandWithReason,
+  reasonOf,
   stageMismatchOf,
   stageOf,
+  storyStep,
   transitionsOf,
   type ClaimCounts,
   type Stage,
@@ -161,6 +167,7 @@ describe('stage per fixture spec equals the old derivation', () => {
       stageSource: 'derived',
       command: '/spec-implement 012',
       reason: 'ISC-334 is takeable',
+      row: 6,
     });
   });
 
@@ -201,8 +208,9 @@ const ALL_CLOSED: Partial<StageInput> = {
 };
 
 describe('STAGE_RULES is the status contract as data', () => {
-  test('ten rows in table order, each with its command', () => {
+  test('eleven rows in table order, each with its command', () => {
     expect(STAGE_RULES.map((r) => [r.stage, r.next])).toEqual([
+      ['idea', '/spec new'],
       ['done', null],
       ['plan', '/spec-plan'],
       ['tasks', '/spec-tasks'],
@@ -230,7 +238,7 @@ describe('STAGE_RULES is the status contract as data', () => {
 
   test('stageOf is the first rule that matches, nextCommand its command with the number', () => {
     const input = at({});
-    const first = STAGE_RULES.find((r) => r.when(input));
+    const first = SPEC_RULES.find((r) => r.when(input));
     expect(first?.stage).toBe(stageOf(input));
     expect(nextCommand(input)).toBe(`${first?.next ?? ''} 007`);
   });
@@ -274,6 +282,7 @@ describe('chore done', () => {
         stageSource: 'derived',
         command: null,
         reason: 'every claim of the chore is closed',
+        row: 7,
       });
     }
   });
@@ -423,9 +432,9 @@ const code = (text: string): string => `\`${text}\``;
 
 const TABLE_HEAD = ['| # | Stage | Condition | Next command | Reason |', '|---|-------|-----------|--------------|--------|'];
 
-/** A rule as the markdown row FORMAT.md must hold for it. */
+/** A rule as the markdown row FORMAT.md must hold for it: a spec row's command takes `NNN`, the story row's `<slug>`. */
 function renderRow(rule: StageRule, index: number): string {
-  const next = rule.next === null ? '—' : code(`${rule.next} NNN`);
+  const next = rule.next === null ? '—' : code(`${rule.next} ${rule.subject === 'story' ? '<slug>' : 'NNN'}`);
   return `| ${index + 1} | ${code(rule.stage)} | ${rule.condition} | ${next} | ${rule.reasons.map(code).join(' or ')} |`;
 }
 
@@ -450,15 +459,12 @@ describe('FORMAT.md holds STAGE_RULES verbatim', () => {
     expect(table.slice(0, 2)).toEqual(TABLE_HEAD);
   });
 
-  // A row FORMAT.md documents ahead of its rule is skipped here, every other row keeping its FORMAT.md number: `idea`
-  // (row 1) gets its rule with spec 008, T54; `close-pending` has its rule since T49.
-  const RULE_PENDING: ReadonlySet<string> = new Set(['idea']);
+  // Every row has its rule: `idea` (row 1) since spec 008, T54, `close-pending` since T49. No row is pending.
   const body = table.slice(TABLE_HEAD.length);
-  const ruleRows = body.flatMap((row, index) => (RULE_PENDING.has(row.split('|')[2]?.trim().replace(/`/g, '') ?? '') ? [] : [{ row, index }]));
 
-  test('one markdown row per rule, no more, no fewer, besides the rows whose rule is pending', () => {
-    expect(body.length - RULE_PENDING.size).toBe(STAGE_RULES.length);
-    expect(ruleRows).toHaveLength(STAGE_RULES.length);
+  test('one markdown row per rule, no more, no fewer: all eleven', () => {
+    expect(STAGE_RULES).toHaveLength(11);
+    expect(body).toHaveLength(STAGE_RULES.length);
   });
 
   test('the rows are numbered 1 to n without a gap', () => {
@@ -466,10 +472,8 @@ describe('FORMAT.md holds STAGE_RULES verbatim', () => {
   });
 
   STAGE_RULES.forEach((rule, i) => {
-    test(`row ${(ruleRows[i]?.index ?? i) + 1}: ${rule.stage}`, () => {
-      const documented = ruleRows[i];
-      expect(documented).toBeDefined();
-      expect(documented?.row).toBe(renderRow(rule, documented?.index ?? i));
+    test(`row ${i + 1}: ${rule.stage}`, () => {
+      expect(body[i]).toBe(renderRow(rule, i));
     });
   });
 
@@ -479,6 +483,88 @@ describe('FORMAT.md holds STAGE_RULES verbatim', () => {
     const names = new Set(STAGE_RULES.flatMap((r) => r.reasons.flatMap((t) => [...t.matchAll(/\{[a-zA-Z]+\}/g)].map((m) => m[0]))));
     expect(names.size).toBeGreaterThan(0);
     for (const name of names) expect(legend).toContain(`\`${name}\`:`);
+  });
+});
+
+// ─── Row 1, the story (spec 008, T54, ISC-124) ──────────────────────────────────────────────────────────────────────
+
+describe('the story row (T54)', () => {
+  test('a story stands in idea, its command is /spec new <slug>, its reason the row phrase', () => {
+    expect(storyStep('console-audit-log')).toEqual({
+      stage: 'idea',
+      command: '/spec new console-audit-log',
+      reason: 'the story is shaped but has no spec',
+      row: 1,
+    });
+    expect(reasonOf(storyStep('registry-webhooks'))).toBe(STORY_RULE.reasons[0] ?? '');
+  });
+
+  test('row 1 is the only story row, and no spec input ever lands in it', () => {
+    expect(STAGE_RULES.filter((r) => r.subject === 'story')).toEqual([STORY_RULE]);
+    expect(STAGE_RULES[0]).toBe(STORY_RULE);
+    expect(SPEC_RULES.map((r) => r.subject)).toEqual(Array.from(SPEC_RULES, () => 'spec'));
+    expect(SPEC_RULES.some((r) => (r.stage as string) === 'idea')).toBe(false);
+    for (const input of [at({}), at({ phase: 'complete' }), at({ hasPlan: false }), at({ ...ALL_CLOSED })]) {
+      expect(nextCommandWithReason(input).row).toBeGreaterThan(1);
+    }
+  });
+
+  test('the default workflow rows never list idea', () => {
+    for (const type of WORKFLOW_TYPES) expect(defaultWorkflowRow(type).stages).not.toContain('idea');
+  });
+});
+
+// ─── One reason phrase per waiting row (spec 008, T58, ISC-122.3) ──────────────────────────────────────────────────
+
+describe('reasonOf: one phrase per waiting row (T58)', () => {
+  const waiting: ReadonlyArray<[string, StageInput]> = [
+    ['review, missing', at({ reviewed: 'missing' })],
+    ['review, stale', at({ reviewed: 'stale' })],
+    ['blocked, open claims', at({ takeable: [], partition: { takeable: 0, open: 3, closed: 1, dropped: 0 } })],
+    ['blocked, no claims', at({ claims: { closed: 0, total: 0 }, takeable: [], partition: { takeable: 0, open: 0, closed: 0, dropped: 0 } })],
+    ['close-pending, one sibling', at({ ...ALL_CLOSED, codeReview: 'feature', featureSiblingsOpen: ['009'] })],
+    ['close-pending, many siblings', at({ ...ALL_CLOSED, codeReview: 'feature', featureSiblingsOpen: ['009', '010', '011'] })],
+    ['code-review, missing', at({ ...ALL_CLOSED })],
+    ['code-review, stale', at({ ...ALL_CLOSED, codeReviewed: 'stale' })],
+    ['close', at({ ...ALL_CLOSED, codeReviewed: 'fresh' })],
+  ];
+
+  test('the waiting rows are review, blocked, close-pending, code-review and close', () => {
+    expect([...WAITING_STAGES].sort()).toEqual(['blocked', 'close', 'close-pending', 'code-review', 'review']);
+  });
+
+  test('every waiting row is reached by the cases below', () => {
+    expect(new Set(waiting.map(([, input]) => stageOf(input)))).toEqual(new Set(WAITING_STAGES));
+  });
+
+  for (const [name, input] of waiting) {
+    test(`${name}: reasonOf is the row's filled phrase, exactly one template of the whole table`, () => {
+      const step = nextCommandWithReason(input);
+      const rule = STAGE_RULES[step.row - 1];
+      if (rule?.subject !== 'spec') throw new Error(`no spec row ${step.row}`);
+      expect(WAITING_STAGES.has(rule.stage)).toBe(true);
+      const { form = 0, values = {} } = rule.explain(input);
+      expect(reasonOf(step)).toBe(fillReason(rule.reasons[form] ?? '', values));
+      // One phrase: exactly one template of all eleven rows fills it, so no row yields two phrases joined.
+      const matching = STAGE_RULES.flatMap((r) => r.reasons).filter((t) => fillsTemplate(t, reasonOf(step)));
+      expect(matching).toEqual([rule.reasons[form] ?? '']);
+    });
+  }
+
+  const SAMPLE: Readonly<Record<string, string>> = { is: 'is', state: 'stale' };
+  test('every row of the table, its forms filled, matches exactly its own template', () => {
+    for (const rule of STAGE_RULES) {
+      for (const template of rule.reasons) {
+        const phrase = template.replace(/\{([a-zA-Z]+)\}/g, (_m, name: string) => SAMPLE[name] ?? 'x');
+        expect(STAGE_RULES.flatMap((r) => r.reasons).filter((t) => fillsTemplate(t, phrase))).toEqual([template]);
+      }
+    }
+  });
+
+  test('a reason that is no template of its row throws', () => {
+    const step = nextCommandWithReason(at({ reviewed: 'stale' }));
+    expect(() => reasonOf({ ...step, reason: `${step.reason}; 1 item waits on you` })).toThrow();
+    expect(() => reasonOf({ ...step, row: 99 })).toThrow();
   });
 });
 
@@ -801,6 +887,7 @@ describe('explicit stage (T47, ISC-120)', () => {
       stageSource: 'explicit',
       command: '/spec-review 007',
       reason: 'the reviewed mark is stale',
+      row: 5,
     });
   });
 
@@ -1013,6 +1100,7 @@ describe('close-pending (T49, ISC-122.2)', () => {
       stageSource: 'derived',
       command: null,
       reason: 'every claim is closed and F6 waits on spec 009',
+      row: 8,
     });
     expect(nextCommandWithReason(pending({ featureSiblingsOpen: ['005', '006'] })).reason).toBe('every claim is closed and F6 waits on specs 005 and 006');
     expect(nextCommandWithReason(pending({ featureSiblingsOpen: ['005', '006', '010', '011'] })).reason).toBe(

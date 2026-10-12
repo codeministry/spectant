@@ -2,7 +2,9 @@
  * One registered repository read into the dashboard model (T47, ISC-16; plan 001 § Interfaces "HTTP").
  *
  * `readWorkspaceInput` reads the texts `core/` builds from: `ISA.md`, `specs/constitution.md`, `specs/tldr.md`,
- * `specs/workflow.md` (parsed by `core/`'s `parseWorkflow`, carried beside the input, T78), and every text file kind
+ * `specs/workflow.md` (parsed by `core/`'s `parseWorkflow`, carried beside the input, T78), the story folder
+ * `specs/ideas/` (every `*.md` directly in it, `README.md` the index, as `core/`'s `readIdeas` takes it, T79), the
+ * viewer's actor id (`actorIdOf` over `git config --get user.email`, T80), and every text file kind
  * of every spec folder under `specs/` and `specs/archive/` (folders as `listSpecs` finds them). It
  * parses nothing: every parse is `core/`'s (ISC-5, `bun run check:single-core`). `loadDashboard` adds the local
  * services and calls `buildDashboard`. The lock sources are `core/`'s `readLockSources` (T51): the repository's
@@ -21,12 +23,14 @@ import { lstatSync, readFileSync, readlinkSync, readdirSync, statSync } from "no
 import { join } from "node:path";
 import { buildDashboard, devServiceLabels, toLocalService } from "../../core/src/dashboard.ts";
 import type { DashboardInput, DashboardModel, ProbedService } from "../../core/src/dashboard.ts";
+import { actorIdOf } from "../../core/src/actor-id.ts";
 import { FILE_KINDS, repoFilePath } from "../../core/src/files.ts";
-import type { FileDiagnostic, SpecFiles, TextFileKind, Workflow } from "../../core/src/files.ts";
+import type { FileDiagnostic, IdeaFiles, SpecFiles, TextFileKind, Workflow } from "../../core/src/files.ts";
 import { type TreeEntry, type TreeEntryMode, treeIdOf } from "../../core/src/gates.ts";
 import { readLockSources } from "../../core/src/locks.ts";
 import { type SpecRef, listSpecs } from "../../core/src/resolve.ts";
 import { parseWorkflow } from "../../core/src/workflow.ts";
+import { userEmail } from "./git.ts";
 
 /** Why a workspace cannot be read. Stable codes: the web app maps them to its own words. */
 export type UnreadableCode = "missing" | "not-a-directory" | "permission-denied" | "unreadable";
@@ -35,9 +39,18 @@ export type UnreadableCode = "missing" | "not-a-directory" | "permission-denied"
  * A readable workspace: the model's input, the workflow table (T78, ISC-122; the default table when `specs/workflow.md`
  * is missing) and the reading's own findings, each under its repository-relative file name. The input carries the
  * same workflow (`DashboardInput.workflow`), which decides row 7 of the stage table (`close-pending`, spec 008 T49).
+ * `ideas` is the story folder for `buildPlanning` (T79; `DashboardInput` has no field for it, so it rides beside the
+ * input as `workflow` does); `viewer` is the viewer's `u:` id, null without a configured git address (T80).
  */
 export type WorkspaceReading =
-  | { readable: true; input: DashboardInput; workflow: Workflow; diagnostics: readonly FileDiagnostic[] }
+  | {
+      readable: true;
+      input: DashboardInput;
+      workflow: Workflow;
+      ideas: IdeaFiles;
+      viewer: string | null;
+      diagnostics: readonly FileDiagnostic[];
+    }
   | { readable: false; error: UnreadableCode };
 
 export type DashboardLoad = { readable: true; model: DashboardModel } | { readable: false; error: UnreadableCode };
@@ -83,6 +96,34 @@ export function readIfExists(path: string): string | null {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
   }
+}
+
+/**
+ * The story folder `specs/ideas/` of the workspace at `root` as `readIdeas` takes it: every regular `*.md` file directly
+ * in it, file name to text (`README.md` included, the index). A missing folder is an empty record; any other read
+ * failure propagates. Which names are stories is `readIdeas`'s decision, not this one's.
+ */
+export function readIdeaFiles(root: string): IdeaFiles {
+  const dir = repoFilePath(root, "idea");
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
+    throw error;
+  }
+  const files: Record<string, string> = {};
+  for (const name of names.filter((n) => n.endsWith(".md")).sort()) {
+    const path = join(dir, name);
+    if (statSync(path).isFile()) files[name] = readFileSync(path, "utf8");
+  }
+  return files;
+}
+
+/** The viewer's actor id (`u:` + hash of `user.email`, core's `actorIdOf`), or null when no address is configured. */
+export async function viewerActorOf(root: string): Promise<string | null> {
+  const email = await userEmail(root);
+  return email === null ? null : actorIdOf(email);
 }
 
 function specFiles(dir: string, folder: string): SpecFiles {
@@ -148,6 +189,8 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
     return {
       readable: true,
       workflow,
+      ideas: readIdeaFiles(root),
+      viewer: await viewerActorOf(root),
       diagnostics: workflow.diagnostics.map((diagnostic) => ({ file: WORKFLOW_FILE, diagnostic })),
       input: {
         master: readIfExists(join(root, "ISA.md")),

@@ -1,4 +1,115 @@
 {
+  "workflow": {
+    "rows": [
+      {
+        "type": "feature",
+        "stages": [
+          "plan",
+          "review",
+          "tasks",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "project",
+        "stages": [
+          "plan",
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "infra",
+        "stages": [
+          "plan",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "refactor",
+        "stages": [
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "bug",
+        "stages": [
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "spike",
+        "stages": [
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "feature"
+      },
+      {
+        "type": "chore",
+        "stages": [
+          "review",
+          "build",
+          "done"
+        ],
+        "codeReview": "none"
+      }
+    ],
+    "source": "file",
+    "diagnostics": []
+  },
+  "stages": [
+    "idea",
+    "plan",
+    "review",
+    "tasks",
+    "build",
+    "blocked",
+    "close-pending",
+    "code-review",
+    "close",
+    "done"
+  ],
+  "stageCounts": {
+    "idea": 2,
+    "plan": 0,
+    "review": 2,
+    "tasks": 1,
+    "build": 2,
+    "blocked": 0,
+    "close-pending": 1,
+    "code-review": 1,
+    "close": 0,
+    "done": 1
+  },
   "features": [
     {
       "id": "F0",
@@ -38,7 +149,10 @@
           "slug": "006-partial-push",
           "title": "Stop a timed-out push from leaving a half-written manifest behind",
           "archived": false,
-          "stage": null,
+          "stage": "review",
+          "stageSource": "derived",
+          "priority": "P1",
+          "hash": "8850b9f79b8171b07dc5054e9b92d7ca9f8849c7fa06657a6b022e9fc8c76c80",
           "main": true,
           "held": 3
         }
@@ -339,6 +453,9 @@
           "title": "Mirror every listed manifest into the team registry with one command",
           "archived": true,
           "stage": null,
+          "stageSource": null,
+          "priority": "P3",
+          "hash": null,
           "main": true,
           "held": 46
         }
@@ -540,7 +657,10 @@
           "slug": "002-web-console",
           "title": "Show every sync run and its failures in a small web console",
           "archived": false,
-          "stage": null,
+          "stage": "build",
+          "stageSource": "explicit",
+          "priority": "P2",
+          "hash": "4a5d1af65764759f960d59dc983f6e7fd281416d246b1f8a3a4d87a32b968b66",
           "main": true,
           "held": 30
         }
@@ -656,7 +776,10 @@
           "slug": "003-config-loader",
           "title": "Read the config through one loader in the CLI, the API and the console",
           "archived": false,
-          "stage": null,
+          "stage": "tasks",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "2a621803f73719a721274b778fe1a6a5b08534689392928cc4cf6e386d7862ff",
           "main": true,
           "held": 13
         },
@@ -665,7 +788,10 @@
           "slug": "005-config-format-choice",
           "title": "Decide which config format version 2 uses",
           "archived": false,
-          "stage": null,
+          "stage": "review",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "862381cb959c50eced1eab6561be57c1d08ce19332c2444450af8a44fe60ba1e",
           "main": true,
           "held": 1
         }
@@ -867,7 +993,10 @@
           "slug": "004-retention-policies",
           "title": "Delete old manifests on a written schedule without touching referenced ones",
           "archived": false,
-          "stage": null,
+          "stage": "code-review",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "3bb5d81474bf932e7fb727837fc6c96ef622567e3e848659b1aa21403ccafa15",
           "main": true,
           "held": 30
         }
@@ -901,7 +1030,10 @@
           "slug": "007-rotate-mirror-token",
           "title": "Replace the push token without stopping a scheduled sync",
           "archived": false,
-          "stage": null,
+          "stage": "done",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "e017692bab9ecf6e34e2379b986f1c7ace3d361ed37d8073dca4f46c27cd60fa",
           "main": true,
           "held": 2
         }
@@ -947,7 +1079,10 @@
           "slug": "008-referrers-support",
           "title": "Find out which target registries answer the OCI referrers endpoint",
           "archived": false,
-          "stage": null,
+          "stage": "close-pending",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "c35f5b40bfbf6ec89ae3876ddbb0607b6cddc53f5f2e9d80fe2800f047f5938e",
           "main": true,
           "held": 2
         },
@@ -956,7 +1091,10 @@
           "slug": "009-chunked-upload-limits",
           "title": "Find the largest blob chunk each target registry accepts",
           "archived": false,
-          "stage": null,
+          "stage": "build",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "3924e9a54638a6a94bb0e251654f703cdde450aaa1e0d3aa3e896166c309e412",
           "main": true,
           "held": 2
         }
@@ -1009,7 +1147,10 @@
           "slug": "003-config-loader",
           "title": "Read the config through one loader in the CLI, the API and the console",
           "archived": false,
-          "stage": null,
+          "stage": "tasks",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "2a621803f73719a721274b778fe1a6a5b08534689392928cc4cf6e386d7862ff",
           "main": false,
           "held": 13
         }
@@ -1050,7 +1191,10 @@
           "slug": "002-web-console",
           "title": "Show every sync run and its failures in a small web console",
           "archived": false,
-          "stage": null,
+          "stage": "build",
+          "stageSource": "explicit",
+          "priority": "P2",
+          "hash": "4a5d1af65764759f960d59dc983f6e7fd281416d246b1f8a3a4d87a32b968b66",
           "main": false,
           "held": 30
         },
@@ -1059,7 +1203,10 @@
           "slug": "004-retention-policies",
           "title": "Delete old manifests on a written schedule without touching referenced ones",
           "archived": false,
-          "stage": null,
+          "stage": "code-review",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "3bb5d81474bf932e7fb727837fc6c96ef622567e3e848659b1aa21403ccafa15",
           "main": false,
           "held": 30
         },
@@ -1069,6 +1216,9 @@
           "title": "Mirror every listed manifest into the team registry with one command",
           "archived": true,
           "stage": null,
+          "stageSource": null,
+          "priority": "P3",
+          "hash": null,
           "main": false,
           "held": 46
         }

@@ -6,9 +6,9 @@ import { describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { SpecType, WorkflowRow } from '../src/files.ts';
-import { STAGE_RULES, TYPE_NEEDS } from '../src/stage.ts';
-import { DEFAULT_WORKFLOW, WORKFLOW_TYPES, defaultWorkflowRow, parseWorkflow } from '../src/workflow.ts';
+import type { SpecType, Workflow, WorkflowRow } from '../src/files.ts';
+import { STAGE_RULES, TYPE_NEEDS, WORKFLOW_STAGES } from '../src/stage.ts';
+import { DEFAULT_WORKFLOW, WORKFLOW_TYPES, boardStages, defaultWorkflowRow, parseWorkflow } from '../src/workflow.ts';
 
 const FIXTURES = join(import.meta.dir, '..', 'fixtures');
 const HARBOR = readFileSync(join(FIXTURES, 'harbor', 'specs', 'workflow.md'), 'utf8');
@@ -227,5 +227,37 @@ describe('parseWorkflow: the fixed gates (workflow-gate, T43)', () => {
   test('gate: every default row passes its own gate check', () => {
     const table = DEFAULT_WORKFLOW.map((r) => `| ${r.type} | ${r.stages.join(' · ')} | ${r.codeReview} |`).join('\n');
     expect(parseWorkflow(`${HEAD}${table}\n`)).toEqual({ rows: DEFAULT_WORKFLOW, source: 'file', diagnostics: [] });
+  });
+});
+
+// The board's columns (T44, ISC-129): the union of every type's stages in table order, the two detours right after
+// `build`, the story stage `idea` first. `bun test core/tests/workflow.test.ts -t boardStages` runs this block alone.
+describe('boardStages: the columns of the board', () => {
+  test('boardStages: the default table gives idea, the stage table order, and both detours after build', () => {
+    expect(boardStages(parseWorkflow(null))).toEqual(['idea', 'plan', 'tasks', 'review', 'build', 'blocked', 'close-pending', 'code-review', 'close', 'done']);
+  });
+
+  test("boardStages: harbor reviews a feature before its tasks, so review precedes tasks on its board", () => {
+    expect(rowOf(parseWorkflow(HARBOR).rows, 'feature')?.stages.slice(0, 3)).toEqual(['plan', 'review', 'tasks']);
+    expect(boardStages(parseWorkflow(HARBOR))).toEqual(['idea', 'plan', 'review', 'tasks', 'build', 'blocked', 'close-pending', 'code-review', 'close', 'done']);
+  });
+
+  test('boardStages: a table of one type holds its row, idea first and both detours, nothing else', () => {
+    const chore: Workflow = { rows: [defaultWorkflowRow('chore')], source: 'file', diagnostics: [] };
+    expect(boardStages(chore)).toEqual(['idea', 'review', 'build', 'blocked', 'close-pending', 'done']);
+  });
+
+  test('boardStages: a stage only a later row lists sits before its successor in that row, done stays last', () => {
+    const rows: WorkflowRow[] = [
+      { type: 'infra', stages: ['plan', 'review', 'build', 'done'], codeReview: 'none' },
+      { type: 'refactor', stages: ['tasks', 'review', 'build', 'code-review', 'done'], codeReview: 'spec' },
+    ];
+    expect(boardStages({ rows, source: 'file', diagnostics: [] })).toEqual(['idea', 'plan', 'tasks', 'review', 'build', 'blocked', 'close-pending', 'code-review', 'done']);
+  });
+
+  test('boardStages: each stage once, and the default board holds every WorkflowStage', () => {
+    const board = boardStages(parseWorkflow(null));
+    expect(new Set(board).size).toBe(board.length);
+    expect([...board].sort()).toEqual([...WORKFLOW_STAGES].sort());
   });
 });

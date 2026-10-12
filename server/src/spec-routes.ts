@@ -73,9 +73,10 @@ import {
   readSpecFiles,
   readWorkspaceInput,
   unreadableCode,
+  viewerActorOf,
   workspaceUnreadable,
 } from "./workspace-loader.ts";
-import { parseWriteBody } from "./writes.contract.ts";
+import { parseWriteBody, writeActorOf } from "./writes.contract.ts";
 import { gateHashes } from "./writes.ts";
 
 export type SpecRoutesOptions = {
@@ -228,7 +229,8 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
       case "gateReviewed": {
         const parsed = parseWriteBody("gateReviewed", await req.text());
         if (!parsed.ok) return json(req, 400, parsed.error);
-        const result = await writeGateReviewed({ root, ref, stateDir, now: clock(), body: parsed.body, constitution: constitution() });
+        const actor = writeActorOf(await viewerActorOf(root));
+        const result = await writeGateReviewed({ root, ref, stateDir, now: clock(), body: parsed.body, constitution: constitution(), actor });
         return json(req, result.status, result.body);
       }
       case "taskCheck": {

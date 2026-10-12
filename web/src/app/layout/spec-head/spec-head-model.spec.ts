@@ -72,7 +72,7 @@ describe('relativeTime (ISC-22)', () => {
 });
 
 describe('featurePlace (ISC-105)', () => {
-  const holder = (id: string, main: boolean): PlanningHolder => ({ id, slug: `${id}-x`, title: 'x', archived: false, main, held: 1, stage: null });
+  const holder = (id: string, main: boolean): PlanningHolder => ({ id, slug: `${id}-x`, title: 'x', archived: false, main, held: 1, stage: null, stageSource: null, priority: 'P3', hash: null });
   const feature = (id: string, holders: readonly PlanningHolder[], claims: readonly string[]): PlanningFeature => ({
     ideas: [],
     id,
@@ -89,6 +89,9 @@ describe('featurePlace (ISC-105)', () => {
    * rule), so 002 is no holder of F8.
    */
   const MODEL: PlanningModel = {
+    workflow: { rows: [], source: 'default', diagnostics: [] },
+    stages: [],
+    stageCounts: {},
     ideas: [],
     features: [
       feature('F0', [holder('002', false)], ['ISC-1']),

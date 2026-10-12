@@ -11,7 +11,8 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { cpSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { PlanningModel } from "../core/src/planning.ts";
+import type { PlanningHolder, PlanningModel } from "../core/src/planning.ts";
+import { DEFAULT_WORKFLOW, boardStages, parseWorkflow } from "../core/src/workflow.ts";
 // The day every planning golden is built at: one constant, so moving the goldens' clock moves this route test with it.
 import { PLANNING_NOW } from "../core/tests/helpers/planning-model.ts";
 import { dashboardApi } from "../server/src/api.ts";
@@ -32,18 +33,24 @@ const HOST = { Host: "127.0.0.1:7717" };
 const goldenText = (tree: string): string => readFileSync(join(FIXTURES, `${tree}.${GOLDEN_FAMILY.planning}.golden.json`), "utf8");
 
 /**
- * Until T79 (spec 008) the server passes no story folder to `buildPlanning`, so the route serves the golden without
- * its stories: every `ideas` list empty and no diagnostic keyed to `specs/ideas/`. T79 removes this pin and compares
- * the whole golden again.
+ * The server passes the story folder to `buildPlanning` (T79, spec 008), so the route serves the stories. It passes
+ * neither the workflow nor the spec states yet (T64 builds the golden with both), so until the task that wires them into
+ * the route lands it serves the default table and board, every holder without stage, source and hash, and a zero count
+ * per column; that task removes this pin and compares the whole golden again.
  */
-const servedBeforeT79 = (golden: string): string => {
+const servedBeforeWiring = (golden: string): string => {
   const model = JSON.parse(golden) as PlanningModel;
+  const workflow = { rows: DEFAULT_WORKFLOW, source: "default", diagnostics: [] };
+  const stages = boardStages(parseWorkflow(null));
+  const bare = <H extends PlanningHolder>(h: H): H => ({ ...h, stage: null, stageSource: null, hash: null });
   return JSON.stringify({
     ...model,
-    features: model.features.map((f) => ({ ...f, ideas: [] })),
-    milestones: model.milestones.map((m) => ({ ...m, ideas: [] })),
-    ideas: [],
-    diagnostics: model.diagnostics.filter((d) => !d.file.startsWith("specs/ideas/")),
+    workflow,
+    stages,
+    // without spec states every spec column is 0; `idea` counts the stories the route already serves (T79)
+    stageCounts: Object.fromEntries(stages.map((s) => [s, s === "idea" ? model.ideas.length : 0])),
+    features: model.features.map((f) => ({ ...f, holders: f.holders.map(bare) })),
+    milestones: model.milestones.map((m) => ({ ...m, specs: m.specs.map(bare) })),
   });
 };
 
@@ -90,19 +97,30 @@ describe("GET /api/workspaces/:ws/planning", () => {
     expect(res.headers.get("cache-control")).toBe("no-cache");
     expect(res.headers.get("etag")).toMatch(/^"[A-Za-z0-9_-]+"$/);
     const text = await res.text();
-    expect(text).toBe(servedBeforeT79(goldenText("harbor")));
+    expect(text).toBe(servedBeforeWiring(goldenText("harbor")));
     const body = JSON.parse(text) as WorkspaceRouteResponses["planning"];
     expect(body.features.length).toBeGreaterThan(0);
     // The pinned day puts Harbor 0.9 behind and Harbor 1.0 ahead: the golden's states, not today's.
     expect(body.milestones.map((m) => m.state)).toEqual(["late", "upcoming"]);
   });
 
-  test("lantern: the golden too, and `milestones` is empty (no spec carries one)", async () => {
+  test("harbor's two stories ride the planning answer (T79, ISC-124): the tree, its features and milestones list them", async () => {
+    const body = (await (await call(workspaceRoutes.planning("harbor"))).json()) as PlanningModel;
+    expect(body.ideas.map((i) => i.slug)).toEqual(["console-audit-log", "registry-webhooks"]);
+    expect(body.ideas.every((i) => i.path === `specs/ideas/${i.slug}.md`)).toBe(true);
+    const listed = [...body.features.flatMap((f) => f.ideas), ...body.milestones.flatMap((m) => m.ideas)].map((i) => i.slug);
+    expect(listed).toContain("registry-webhooks");
+  });
+
+  test("lantern: the golden too, `milestones` is empty (no spec carries one), and no story folder means no stories", async () => {
     const res = await call(workspaceRoutes.planning("lantern"));
     expect(res.status).toBe(200);
     const text = await res.text();
-    expect(text).toBe(JSON.stringify(JSON.parse(goldenText("lantern"))));
-    expect((JSON.parse(text) as PlanningModel).milestones).toEqual([]);
+    expect(text).toBe(servedBeforeWiring(goldenText("lantern")));
+    const body = JSON.parse(text) as PlanningModel;
+    expect(body.milestones).toEqual([]);
+    expect(body.ideas).toEqual([]);
+    expect(body.diagnostics.filter((d) => d.file.startsWith("specs/ideas/"))).toEqual([]);
   });
 
   test("HEAD: 200 with the same headers and no body", async () => {

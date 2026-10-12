@@ -38,9 +38,13 @@ const golden = (name: Name): DashboardModel => JSON.parse(readFileSync(join(FIXT
  * repository's `.spectant/activity.jsonl` (T51, ISC-37). harbor's log leaves ISC-74 of spec 002 claimed (ISC-72 is
  * claimed and released), so its model differs from the golden by exactly that lock: ISC-74 leaves 002's takeable list
  * and next reason, and the takeable count drops by one. lantern has no log and answers its golden unchanged.
+ *
+ * The goldens list harbor's two stories (`ideas`, spec 008 T70); the server's loader does not read `specs/ideas/` yet
+ * (a later task of spec 008), so until then the route answers no stories. Drop this override when the loader passes
+ * them in.
  */
 function expected(name: Name): DashboardModel {
-  const model = golden(name);
+  const model: DashboardModel = { ...golden(name), ideas: { count: 0, list: [] } };
   if (name !== "harbor") return model;
   return {
     ...model,

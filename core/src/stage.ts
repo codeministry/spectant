@@ -1,15 +1,17 @@
 // Stage per spec and the next command (T37, ISC-14), ported from the old SpecDashboard `stageOf()` and
 // `nextCommand()`: one fixed chain (plan, tasks, review, implement, code review, complete), derived from the files
-// on every read, never from the frontmatter `phase:` (which decides the first row's `done` and nothing else). A chore
+// on every read, never from the frontmatter `phase:` (which decides the `done` of row 2 and nothing else). A chore
 // (spec 008) leaves the chain early: once every claim is closed it is done without a code review.
 // FORMAT.md's stage table is held as data in STAGE_RULES, in table order, first match wins: every column (condition in
 // words, command, reason templates) is a field, and core/tests/stage.test.ts compares each rule with its markdown row
-// verbatim (spec 002 T11, ISC-79). A reason is always one of its row's templates, filled by `fillReason`.
+// verbatim (spec 002 T11, ISC-79). A reason is always one of its row's templates, filled by `fillReason`, and every surface
+// reads it through `reasonOf` (T58). Row 1, `idea`, is the story row (T54): a story file stands in it, its command takes
+// the slug where a spec row takes the number, and a spec folder is tried against SPEC_RULES, rows 2 to 11, only.
 //
 // Spec 008 adds the workflow's defaults and what derives from a row: the default table (T42, read by workflow.ts, which
 // imports it from here so the two modules form no import cycle), the allowed transitions (T45, ISC-29) and the explicit
 // stage, a frontmatter `stage:` that wins over the derived one when the last event agrees with it (T47, ISC-120), and
-// is one `stage-mismatch` diagnostic when it does not apply (T48). Row 7, `close-pending`, is the detour of
+// is one `stage-mismatch` diagnostic when it does not apply (T48). Row 8, `close-pending`, is the detour of
 // `code_review: feature` (T49): a spec whose claims are all closed waits there while a sibling of its main feature is open.
 import type { Diagnostic } from './diagnostics.ts';
 import type { CodeReviewMode, MarkState, SpecType, StageSource, Workflow, WorkflowRow, WorkflowStage } from './files.ts';
@@ -127,22 +129,47 @@ export interface ReasonFill {
 }
 
 /**
- * One row of FORMAT.md's stage table, every column as data: `core/tests/stage.test.ts` renders each rule as its
- * markdown row and compares it verbatim with FORMAT.md, so the contract and the code cannot disagree.
+ * What a row of the stage table stands for: a spec folder, whose command takes the spec number (FORMAT.md writes
+ * `NNN`), or a story file of `specs/ideas/` (row 1, `idea`), whose command takes its slug (FORMAT.md writes `<slug>`).
  */
-export interface StageRule {
-  readonly stage: Stage;
+export type StageSubject = 'spec' | 'story';
+
+/** The columns every row has. */
+interface StageRuleColumns {
+  readonly subject: StageSubject;
   /** The row's condition in words, as FORMAT.md's Condition cell. The rows before it are known not to match. */
   readonly condition: string;
-  /** The row's condition as code. */
-  readonly when: (input: StageInput) => boolean;
-  /** The command without the spec number (FORMAT.md writes it with `NNN`); null for `done`. */
+  /** The command without its argument (the spec number, or the story's slug); null where the row names none. */
   readonly next: string | null;
   /** The reasons this row can give, `{placeholder}` templates as FORMAT.md's Reason cell lists them. */
   readonly reasons: readonly string[];
+}
+
+/** A row a spec folder stands in: tried in table order over the spec's `StageInput`, first match wins. */
+export interface SpecStageRule extends StageRuleColumns {
+  readonly subject: 'spec';
+  readonly stage: Stage;
+  /** The row's condition as code. */
+  readonly when: (input: StageInput) => boolean;
   /** Which reason applies to `input` and what fills it; the reason is never free text. */
   readonly explain: (input: StageInput) => ReasonFill;
 }
+
+/**
+ * Row 1: every story file stands in `idea` (spec 008, T54), so the row needs no condition as code and its one reason no
+ * placeholder. A spec folder never matches it: a story has no folder yet, and a spec is never a story.
+ */
+export interface StoryStageRule extends StageRuleColumns {
+  readonly subject: 'story';
+  readonly stage: 'idea';
+  readonly next: string;
+}
+
+/**
+ * One row of FORMAT.md's stage table, every column as data: `core/tests/stage.test.ts` renders each rule as its
+ * markdown row and compares it verbatim with FORMAT.md, so the contract and the code cannot disagree.
+ */
+export type StageRule = SpecStageRule | StoryStageRule;
 
 /** Fills every `{placeholder}` of `template`; throws on one without a value, so no row emits a half-filled reason. */
 export function fillReason(template: string, values: Readonly<Record<string, string>>): string {
@@ -153,9 +180,19 @@ export function fillReason(template: string, values: Readonly<Record<string, str
   });
 }
 
-/** The status contract, FORMAT.md § "The stage table", first match wins. `blocked` is the fallback. */
-export const STAGE_RULES: readonly StageRule[] = [
+/** Row 1 of the stage table: a story, the stage before its spec folder exists (FORMAT.md § idea). */
+export const STORY_RULE: StoryStageRule = {
+  subject: 'story',
+  stage: 'idea',
+  condition: 'a story file under `specs/ideas/`, no folder yet',
+  next: '/spec new',
+  reasons: ['the story is shaped but has no spec'],
+};
+
+/** Rows 2 to 11, the rows a spec folder stands in, first match wins. `blocked` is the fallback. */
+export const SPEC_RULES: readonly SpecStageRule[] = [
   {
+    subject: 'spec',
     stage: 'done',
     condition: '`phase: complete`',
     when: (input) => input.phase === 'complete',
@@ -164,6 +201,7 @@ export const STAGE_RULES: readonly StageRule[] = [
     explain: () => ({}),
   },
   {
+    subject: 'spec',
     stage: 'plan',
     condition: 'the type needs `plan.md` and it is missing',
     when: (input) => needs(input, 'plan') && !input.hasPlan,
@@ -172,6 +210,7 @@ export const STAGE_RULES: readonly StageRule[] = [
     explain: (input) => ({ values: { type: input.type ?? 'typed' } }),
   },
   {
+    subject: 'spec',
     stage: 'tasks',
     condition: 'the type needs `tasks.md`, the spec has three or more claims, and `tasks.md` is missing',
     when: (input) => needs(input, 'tasks') && countsOf(input).total >= TASKS_THRESHOLD && !input.hasTasks,
@@ -180,6 +219,7 @@ export const STAGE_RULES: readonly StageRule[] = [
     explain: (input) => ({ values: { claims: plural(countsOf(input).total, 'claim') } }),
   },
   {
+    subject: 'spec',
     stage: 'review',
     condition: 'the reviewed mark is not fresh',
     when: (input) => input.reviewed !== 'fresh',
@@ -188,6 +228,7 @@ export const STAGE_RULES: readonly StageRule[] = [
     explain: (input) => ({ values: { state: input.reviewed } }),
   },
   {
+    subject: 'spec',
     stage: 'build',
     condition: 'at least one claim is takeable',
     when: (input) => countsOf(input).takeable > 0,
@@ -200,6 +241,7 @@ export const STAGE_RULES: readonly StageRule[] = [
     },
   },
   {
+    subject: 'spec',
     stage: 'done',
     condition: 'the type is `chore` and every claim is closed',
     when: (input) => input.type === 'chore' && countsOf(input).allClosed,
@@ -208,6 +250,7 @@ export const STAGE_RULES: readonly StageRule[] = [
     explain: () => ({}),
   },
   {
+    subject: 'spec',
     stage: 'close-pending',
     condition:
       "every claim is closed, the type's workflow has `code_review: feature`, and at least one other spec of the spec's main feature is still open",
@@ -217,6 +260,7 @@ export const STAGE_RULES: readonly StageRule[] = [
     explain: (input) => ({ values: { feature: input.mainFeature ?? 'the feature', siblings: siblingList(input.featureSiblingsOpen) } }),
   },
   {
+    subject: 'spec',
     stage: 'code-review',
     condition: 'every claim is closed and the code-reviewed mark is not fresh',
     when: (input) => countsOf(input).allClosed && input.codeReviewed !== 'fresh',
@@ -225,6 +269,7 @@ export const STAGE_RULES: readonly StageRule[] = [
     explain: (input) => ({ values: { state: input.codeReviewed } }),
   },
   {
+    subject: 'spec',
     stage: 'close',
     condition: 'every claim is closed and the code-reviewed mark is fresh',
     when: (input) => countsOf(input).allClosed && input.codeReviewed === 'fresh',
@@ -233,6 +278,7 @@ export const STAGE_RULES: readonly StageRule[] = [
     explain: () => ({}),
   },
   {
+    subject: 'spec',
     stage: 'blocked',
     condition: 'anything else: open claims none of which is takeable, or no claims yet',
     when: () => true,
@@ -245,11 +291,17 @@ export const STAGE_RULES: readonly StageRule[] = [
   },
 ];
 
-function ruleOf(input: StageInput): StageRule {
-  const rule = STAGE_RULES.find((r) => r.when(input));
-  if (!rule) throw new Error('STAGE_RULES has no fallback row');
+/** The status contract, FORMAT.md § "The stage table", in table order: the story row, then the spec rows. */
+export const STAGE_RULES: readonly StageRule[] = [STORY_RULE, ...SPEC_RULES];
+
+function ruleOf(input: StageInput): SpecStageRule {
+  const rule = SPEC_RULES.find((r) => r.when(input));
+  if (!rule) throw new Error('SPEC_RULES has no fallback row');
   return rule;
 }
+
+/** The row number FORMAT.md gives a rule: its 1-based place in STAGE_RULES. */
+const rowNumberOf = (rule: StageRule): number => STAGE_RULES.indexOf(rule) + 1;
 
 export interface NextStep {
   /** The explicit stage when one applies (`explicitStageOf`), else the matching row's. */
@@ -258,8 +310,20 @@ export interface NextStep {
   readonly stageSource: StageSource;
   /** E.g. `/spec-implement 002`; null where the row names none (`done`, `close-pending`). */
   readonly command: string | null;
-  /** One of the row's reasons, filled, e.g. `ISC-334 is takeable`. */
+  /** One of the row's reasons, filled, e.g. `ISC-334 is takeable`. Surfaces read it through `reasonOf`. */
   readonly reason: string;
+  /** The matching row's number in FORMAT.md's stage table, 2 to 11. */
+  readonly row: number;
+}
+
+/** A story's step (row 1): it stands in `idea`, and `/spec new <slug>` starts its spec. */
+export interface StoryStep {
+  readonly stage: 'idea';
+  /** E.g. `/spec new console-audit-log`. */
+  readonly command: string;
+  readonly reason: string;
+  /** Row 1. */
+  readonly row: number;
 }
 
 /**
@@ -278,7 +342,51 @@ export function nextCommandWithReason(input: StageInput): NextStep {
     stageSource: explicit === null ? 'derived' : 'explicit',
     command: rule.next === null ? null : `${rule.next} ${input.number}`,
     reason: fillReason(template, values),
+    row: rowNumberOf(rule),
   };
+}
+
+/** The step of a story file, `<slug>.md` under `specs/ideas/`: row 1 with the slug where a spec row has its number. */
+export function storyStep(slug: string): StoryStep {
+  return { stage: 'idea', command: `${STORY_RULE.next} ${slug}`, reason: STORY_RULE.reasons[0] ?? '', row: rowNumberOf(STORY_RULE) };
+}
+
+// ─── The one reason phrase (spec 008, T58, ISC-122.3) ───────────────────────────────────────────────────────────────
+
+/**
+ * The rows a spec waits in, on a person or on another spec: each shows why with exactly one phrase of its row, the same
+ * on every surface (the dashboard row, the spec head, the board).
+ */
+export const WAITING_STAGES: ReadonlySet<Stage> = new Set<Stage>(['review', 'blocked', 'close-pending', 'code-review', 'close']);
+
+const escapeRe = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** The placeholders with a closed set of values (FORMAT.md's legend); every other one is some non-empty text. */
+const CLOSED_PLACEHOLDERS: Readonly<Record<string, string>> = { is: '(?:is|are)', state: '(?:missing|stale)' };
+
+/**
+ * Whether `phrase` is `template` with every `{placeholder}` filled: `{is}` and `{state}` by one of their words, every
+ * other one by some non-empty text. The closed sets keep the templates apart (`{ids} {is} takeable` never reads
+ * `3 open claims, none takeable`).
+ */
+export function fillsTemplate(template: string, phrase: string): boolean {
+  const parts = template.split(/(\{[a-zA-Z]+\})/);
+  const pattern = parts.map((part, i) => (i % 2 === 0 ? escapeRe(part) : (CLOSED_PLACEHOLDERS[part.slice(1, -1)] ?? '.+'))).join('');
+  return new RegExp(`^${pattern}$`).test(phrase);
+}
+
+/**
+ * The one reason phrase of a step: its row's template, filled, which every surface shows unchanged (the dashboard row's
+ * `nextReason`, the spec head's `nextReason` and first `next.reasons` entry). It is exactly one of the row's
+ * templates, never two phrases joined and never free text; a step whose reason is not throws, since only code in
+ * `core/` builds steps and such a step is a defect there, not malformed input.
+ */
+export function reasonOf(step: NextStep | StoryStep): string {
+  const rule = STAGE_RULES[step.row - 1];
+  if (!rule?.reasons.some((template) => fillsTemplate(template, step.reason))) {
+    throw new Error(`stage row ${step.row}: "${step.reason}" is not one of its reasons`);
+  }
+  return step.reason;
 }
 
 /** The one command a spec needs next, e.g. `/spec-implement 002`; null for a complete spec. */
@@ -315,7 +423,7 @@ export const WORKFLOW_STAGES: readonly WorkflowStage[] = Object.keys(WORKFLOW_ST
 
 export const isWorkflowStage = (value: string): value is WorkflowStage => Object.hasOwn(WORKFLOW_STAGE_KEYS, value);
 
-const TABLE_STAGES: ReadonlySet<string> = new Set(STAGE_RULES.map((rule) => rule.stage));
+const TABLE_STAGES: ReadonlySet<string> = new Set(SPEC_RULES.map((rule) => rule.stage));
 const isStage = (value: string): value is Stage => TABLE_STAGES.has(value);
 
 /** The spec types in row order: FORMAT.md § workflow's default table. */
@@ -344,7 +452,7 @@ function defaultStages(type: SpecType | null): WorkflowStage[] {
     if (stage === 'tasks') return needs.tasks;
     return codeReview !== 'none' || !CODE_REVIEW_STAGES.has(stage);
   };
-  return [...STAGE_RULES.map((rule) => rule.stage).filter(keep), 'done'];
+  return [...SPEC_RULES.map((rule) => rule.stage).filter(keep), 'done'];
 }
 
 /** A type's default row (FORMAT.md § workflow). */

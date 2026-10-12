@@ -50,11 +50,15 @@ import {
   staleFiles,
   taskCheckRequest,
   tasksConflict,
+  writeActorOf,
   writeAnswerOf,
   writeRoutes,
   type WriteAnswer,
   type WriteRoute,
 } from "../server/src/writes.contract.ts";
+
+/** A synthetic viewer id of the actor grammar (`u:` + eight hex digits); no real address behind it. */
+const VIEWER = "u:3f9c0a7d";
 
 const ROOT = resolve(import.meta.dir, "..");
 const CONTRACT = join(ROOT, "server", "src", "writes.contract.ts");
@@ -132,20 +136,28 @@ describe("the reviewed mark and the event line", () => {
     expect(Object.keys((JSON.parse(text) as { files: Record<string, unknown> }).files)).toEqual([...REVIEWED_FILES]);
   });
 
-  test("one review → build line, actor app, that validateEventLine accepts without warnings", () => {
+  test("one review → build line, actor the viewer (T80), that validateEventLine accepts without warnings", () => {
     expect(REVIEWED_EVENT).toEqual({ from: "review", to: "build" });
-    expect(WRITE_ACTOR).toBe("app");
-    const event = reviewedEvent(TS, "002");
-    expect(event).toEqual({ ts: TS, from: "review", to: "build", command: reviewedEventCommand("002"), actor: "app" });
+    const event = reviewedEvent(TS, "002", VIEWER);
+    expect(event).toEqual({ ts: TS, from: "review", to: "build", command: reviewedEventCommand("002"), actor: VIEWER });
     const line = JSON.stringify(event);
     expect(line).not.toContain("\n");
     const v = validateEventLine(line, 1);
-    // The read side adds the parsed actor (spec 008, T61); `app` is outside the actor grammar, so it reads as legacy.
-    expect(v).toEqual({ ok: true, event: { ...event, actorRef: parseActor("app") }, warnings: [] });
+    // The read side adds the parsed actor (spec 008, T61); the viewer's `u:` id is a person of the grammar.
+    expect(v).toEqual({ ok: true, event: { ...event, actorRef: parseActor(VIEWER) }, warnings: [] });
+    expect(parseActor(VIEWER)).toMatchObject({ kind: "person", legacy: false });
+  });
+
+  test("writeActorOf: the viewer's u: id when configured, else the fallback agent id; never the legacy `app`", () => {
+    expect(writeActorOf(VIEWER)).toBe(VIEWER);
+    expect(writeActorOf(null)).toBe(VIEWER_ACTOR_FALLBACK);
+    expect(reviewedEvent(TS, "002", writeActorOf(null)).actor).toBe("a:spectant:app");
+    expect(WRITE_ACTOR).toBe("app");
+    expect(parseActor(writeActorOf(null)).legacy).toBe(false);
   });
 
   test("the appended bytes are exactly one line, a missing trailing newline repaired first", () => {
-    const event = reviewedEvent(TS, "002");
+    const event = reviewedEvent(TS, "002", VIEWER);
     const line = JSON.stringify(event);
     expect(eventAppendBytes("", event)).toBe(`${line}\n`);
     expect(eventAppendBytes('{"a":1}\n', event)).toBe(`${line}\n`);
@@ -208,11 +220,15 @@ describe("answers", () => {
   }
 
   test("writeAnswerOf types each valid body by status and refuses what does not fit", () => {
-    const event = reviewedEvent(TS, "002");
+    const event = reviewedEvent(TS, "002", VIEWER);
     const gateOk = { at: TS, hashes: HASHES, lockSource: "none" as const, event };
     const a = writeAnswerOf("gateReviewed", 200, gateOk);
     expect(a).toEqual({ status: 200, body: gateOk });
     expect(a && describeAnswer(a)).toBe("ok none");
+    const fallback = { ...gateOk, event: reviewedEvent(TS, "002", VIEWER_ACTOR_FALLBACK) };
+    expect(writeAnswerOf("gateReviewed", 200, fallback)).toEqual({ status: 200, body: fallback });
+    // The legacy `app` no longer fits a 200: every app write records an actor of the grammar (T80).
+    expect(writeAnswerOf("gateReviewed", 200, { ...gateOk, event: { ...event, actor: WRITE_ACTOR } })).toBeNull();
     expect(writeAnswerOf("gateReviewed", 200, { ...gateOk, event: { ...event, to: "nowhere" } })).toBeNull();
     expect(writeAnswerOf("gateReviewed", 200, { ...gateOk, lockSource: "maybe" })).toBeNull();
 

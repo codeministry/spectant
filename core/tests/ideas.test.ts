@@ -52,18 +52,46 @@ describe('ideas: story (T51, ISC-124)', () => {
     expect(skipped[0]).toMatchObject({ file: 'specs/ideas/loose-notes.md', diagnostic: { severity: 'warning', subject: 'loose-notes' } });
   });
 
+  test('story: a frontmatter block without status: idea is not a story: skipped with one file-keyed ideas-status warning', () => {
+    const exported = '---\n\n#### ToDos\n\n* sync\n\n---\n\n## Outline\n';
+    const reading = readIdeas({ ...harbor(), 'outline.md': exported, 'draft.md': '---\nstatus: draft\ntype: feature\n---\n## Goal\n\nA draft.\n' });
+    expect(reading.ideas.map((i) => i.slug)).toEqual(['console-audit-log', 'registry-webhooks']);
+    const skipped = reading.diagnostics.filter((d) => d.diagnostic.code === 'ideas-status');
+    expect(skipped.map((d) => [d.file, d.diagnostic.subject])).toEqual([
+      ['specs/ideas/draft.md', 'draft'],
+      ['specs/ideas/outline.md', 'outline'],
+    ]);
+    expect(skipped[0]?.diagnostic.message).toContain('status "draft"');
+    expect(skipped[1]?.diagnostic.message).toContain('has no `status` key');
+  });
+
   test('story: absent keys read as null and P3, an unknown type as null; frontmatter findings are carried per file', () => {
     const files = {
       'README.md': '| Story | Milestone | Priority | Spec |\n|---|---|---|---|\n| bare | — | P3 | — |\n| odd | — | P3 | — |\n',
       'bare.md': '---\nstatus: idea\n---\n## Goal (one sentence)\n<!-- one sentence -->\n\nA bare story.\n',
-      'odd.md': '---\ntype: epic\npriority: high\n---\nNo goal heading here.\n',
+      'odd.md': '---\nstatus: idea\ntype: epic\npriority: high\n---\nNo goal heading here.\n',
     };
     const reading = readIdeas(files);
     expect(reading.ideas).toEqual([
       { slug: 'bare', title: 'A bare story.', type: null, feature: null, milestone: null, priority: 'P3', path: 'specs/ideas/bare.md' },
       { slug: 'odd', title: 'odd', type: null, feature: null, milestone: null, priority: 'P3', path: 'specs/ideas/odd.md' },
     ]);
-    expect(codes(reading)).toEqual(['specs/ideas/odd.md: frontmatter-priority']);
+    expect(codes(reading)).toEqual(['specs/ideas/odd.md: frontmatter-priority', 'specs/ideas/odd.md: ideas-type epic']);
+  });
+
+  test('story: a type outside the seven spec types is one file-keyed ideas-type warning, the value as subject (T54)', () => {
+    const story = (type: string): string => `---\nstatus: idea\ntype: ${type}\n---\n## Goal (one sentence)\nA story.\n`;
+    const reading = readIdeas({ 'epic.md': story('epic'), 'typed.md': story('chore'), 'blank.md': '---\nstatus: idea\ntype:\n---\n' });
+    expect(reading.ideas.map((i) => [i.slug, i.type])).toEqual([
+      ['blank', null],
+      ['epic', null],
+      ['typed', 'chore'],
+    ]);
+    const typed = reading.diagnostics.filter((d) => d.diagnostic.code === 'ideas-type');
+    expect(typed).toHaveLength(1);
+    expect(typed[0]).toMatchObject({ file: 'specs/ideas/epic.md', diagnostic: { severity: 'warning', code: 'ideas-type', subject: 'epic' } });
+    // harbor's two stories are typed `feature`: no ideas-type there.
+    expect(readIdeas(harbor()).diagnostics.some((d) => d.diagnostic.code === 'ideas-type')).toBe(false);
   });
 
   test('story: an empty folder gives no ideas and no diagnostics', () => {
@@ -111,9 +139,9 @@ describe('ideas: index (T52, ISC-125)', () => {
         '| second-table | — | P3 | — |',
         '',
       ].join('\n'),
-      'linked.md': '---\nfeature: F1\n---\n',
-      'ticked.md': '---\nfeature: F1\n---\n',
-      'second-table.md': '---\nfeature: F2\n---\n',
+      'linked.md': '---\nstatus: idea\nfeature: F1\n---\n',
+      'ticked.md': '---\nstatus: idea\nfeature: F1\n---\n',
+      'second-table.md': '---\nstatus: idea\nfeature: F2\n---\n',
     };
     expect(readIdeas(files).diagnostics).toEqual([]);
   });

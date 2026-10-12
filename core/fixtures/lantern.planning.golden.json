@@ -1,4 +1,115 @@
 {
+  "workflow": {
+    "rows": [
+      {
+        "type": "feature",
+        "stages": [
+          "plan",
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "project",
+        "stages": [
+          "plan",
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "infra",
+        "stages": [
+          "plan",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "refactor",
+        "stages": [
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "bug",
+        "stages": [
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "spike",
+        "stages": [
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "chore",
+        "stages": [
+          "review",
+          "build",
+          "done"
+        ],
+        "codeReview": "none"
+      }
+    ],
+    "source": "default",
+    "diagnostics": []
+  },
+  "stages": [
+    "idea",
+    "plan",
+    "tasks",
+    "review",
+    "build",
+    "blocked",
+    "close-pending",
+    "code-review",
+    "close",
+    "done"
+  ],
+  "stageCounts": {
+    "idea": 0,
+    "plan": 0,
+    "tasks": 0,
+    "review": 0,
+    "build": 2,
+    "blocked": 0,
+    "close-pending": 0,
+    "code-review": 0,
+    "close": 0,
+    "done": 0
+  },
   "features": [
     {
       "id": "F0",
@@ -101,7 +212,10 @@
           "slug": "001-reading-list",
           "title": "Save a link once and find it again, online or offline",
           "archived": false,
-          "stage": null,
+          "stage": "build",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "d63418423d6b414d01eb4b676ed9700e5ee07d19f9be42d6068ab45837d61752",
           "main": true,
           "held": 8
         },
@@ -110,7 +224,10 @@
           "slug": "002-duplicate-links",
           "title": "Stop duplicate links and duplicate tags from entering the list",
           "archived": false,
-          "stage": null,
+          "stage": "build",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "13200c8a12785198c2a1d77b1f3347078e9ca0fa7fb1e837d85328f91b4c3281",
           "main": true,
           "held": 2
         }

@@ -752,12 +752,16 @@ in the planning tree.
 - the title is the first prose line under the heading that starts with `## Goal` (the prompt writes
   `## Goal (one sentence)`): the first non-empty line before the next heading that is not an HTML comment; a story
   without one is titled by its slug;
-- `type` other than the seven spec types reads as no type; `feature` and `milestone` are taken as written, trimmed;
+- `type` other than the seven spec types reads as no type and is one `ideas-type` warning (spec 008, T54), keyed to
+  the story file with the value as written as subject; a blank or absent `type` is no type without a warning;
+  `feature` and `milestone` are taken as written, trimmed;
   the frontmatter reader's own findings (`frontmatter-priority`, …) are carried, keyed to the story file;
 - the rest of the file is the prompt (Type, Repo, Problem, Vision, In, Out, Done means, Guard rails, and a
   `## Shaping record` where the story was shaped in a question round); it is rendered, never parsed;
 - a file in `specs/ideas/` without a frontmatter block is not a story: it is skipped with an `ideas-frontmatter`
-  warning (keyed to the file, the slug as subject), so notes may sit beside the stories;
+  warning (keyed to the file, the slug as subject), so notes may sit beside the stories; a frontmatter block whose
+  `status` is missing or not `idea` is not a story either (an export whose leading `---` is a thematic break, a
+  draft): skipped with an `ideas-status` warning, same key and subject;
 - `specs/ideas/README.md` is the index, never a story. It names every story file and the feature it belongs to, one
   table per feature block with the columns Story | Milestone | Priority | Spec; a row whose `Spec` cell names a spec
   (anything but blank or `—`) is a started story and needs no file. A story the index does not name, or a name in the
@@ -898,7 +902,14 @@ From `core/fixtures/harbor/specs/workflow.md`:
 ```
 
 **Derived:** the stages each spec may stand in and, from the union over the types in table order, the columns of the
-board (spec 008, T44); the transitions a spec may take (T45, `TRANSITIONS` and `allowedTransition` in `stage.ts`,
+board (spec 008, T44, `boardStages` in `workflow.ts`): a story's `idea` first, then every row's stages, each placed
+once at its first occurrence (a stage only a later row lists sits right before the first stage after it in that row
+already placed, so `done` stays last), and the two detours `blocked` and `close-pending` always present, right after
+`build`, the stage both leave from. The default table gives `idea · plan · tasks · review · build · blocked ·
+close-pending · code-review · close · done`; harbor's, whose `feature` row reviews before its tasks, `idea · plan ·
+review · tasks · build · blocked · close-pending · code-review · close · done`. The planning tree carries the board
+(`workflow`, `stages`, `stageCounts`: the stories in `idea`, each active spec in its dashboard stage); the transitions
+a spec may take (T45, `TRANSITIONS` and `allowedTransition` in `stage.ts`,
 listed in § The transition table below): each stage of the type's row to its successor in the row, `build → blocked`
 and `blocked → build` for every type, `build → close-pending` where the row has `code_review: feature` (T49), and
 `close-pending → code-review` where the row has `code-review`; every other pair, a backward move such as
@@ -914,10 +925,15 @@ detour of `code_review: feature` (spec 008, T22). "Closed" counts checked claims
 every claim line, tombstones included; "every claim closed" means none is open.
 Every next command carries its reason, one phrase the matching row names in its Reason column, never free text; the
 dashboard row shows it and the spec page leads its reasons with it (spec 002, ISC-79). `STAGE_RULES` holds every
-column of this table as data, and `core/tests/stage.test.ts` compares each rule with its row here, verbatim. Row 1 is
-written here ahead of its rule: `STAGE_RULES` gains `idea` with spec 008, T54; until then nothing stands in that stage
-on the dashboard and the test skips the row (`RULE_PENDING`), every other row keeping its number here. The
-`close-pending` row has its rule since T49.
+column of this table as data, and `core/tests/stage.test.ts` compares each rule with its row here, verbatim, all
+eleven. Row 1 is the story row (`STORY_RULE`, spec 008, T54): every story file stands in it, and `storyStep(slug)`
+gives its command and reason; a spec folder is tried against rows 2 to 11 only (`SPEC_RULES`). The `close-pending`
+row has its rule since T49.
+Each step carries its row's number, and every surface reads its reason through `reasonOf(step)` (T58, ISC-122.3): the
+dashboard row's `nextReason`, the spec head's `nextReason` and the first entry of the spec page's `next.reasons` are
+that one phrase, unchanged. A step waiting in `review`, `blocked`, `close-pending`, `code-review` or `close` shows
+exactly one phrase, one template of its row filled, never two joined; the further entries of `next.reasons` are the
+spec page's own facts, after it.
 
 | # | Stage | Condition | Next command | Reason |
 |---|-------|-----------|--------------|--------|

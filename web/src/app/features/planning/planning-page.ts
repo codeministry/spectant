@@ -1,14 +1,14 @@
 import { afterRenderEffect, computed, inject, type Signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
-import { STAGE_RULES, type Stage } from '../../../../../core/src/stage';
+import { SPEC_RULES, type Stage } from '../../../../../core/src/stage';
 import type { SpecRowView } from '../../layout/shell/shell-data.service';
 
 // What the Features and Milestones pages (spec 003, ISC-103 / ISC-104) share. A feature-local helper, not a
 // `shared/ui` primitive: it has exactly these two consumers.
 
-/** Core's stages: every one is the `stage` of one row of the stage table, so none is written here. */
-const STAGES: ReadonlySet<string> = new Set<string>(STAGE_RULES.map((rule) => rule.stage));
+/** Core's spec stages: the `stage` of each spec row of the stage table (a story's `idea` is none), none written here. */
+const STAGES: ReadonlySet<string> = new Set<string>(SPEC_RULES.map((rule) => rule.stage));
 export const isStage = (value: string): value is Stage => STAGES.has(value);
 
 /** The dashboard's stage per active spec: core leaves `holder.stage` null for whoever holds the rows to fill it in. */

@@ -44,6 +44,9 @@ const holder = (id: string, archived = false): Holder => ({
   main: false,
   held: 2,
   stage: null,
+  stageSource: null,
+  priority: 'P3',
+  hash: null,
 });
 
 const milestone = (name: string, target: string | null, state: Milestone['state'], specs: readonly Holder[]): Milestone => ({
@@ -72,6 +75,9 @@ const feature = (id: string, closed: number, total: number): PlanningBody['featu
 });
 
 const planning = (milestones: readonly Milestone[]): PlanningBody => ({
+  workflow: { rows: [], source: 'default', diagnostics: [] },
+  stages: [],
+  stageCounts: {},
   ideas: [],
   features: [feature('F1', 3, 5), feature('F2', 2, 4)],
   milestones,

@@ -183,7 +183,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const reading = await read(workspace.path);
     if (!reading.readable) return json(req, 409, summary(workspace, reading));
     const { master, specs, archived } = reading.input;
-    const model: WorkspaceRouteResponses["planning"] = buildPlanning({ master, specs, archived, now: today() });
+    const model: WorkspaceRouteResponses["planning"] = buildPlanning({ master, specs, archived, ideas: reading.ideas, now: today() });
     return json(req, 200, model);
   };
 

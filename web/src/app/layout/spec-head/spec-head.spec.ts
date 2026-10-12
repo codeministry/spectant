@@ -32,6 +32,9 @@ const holder = (id: string, slug: string, main: boolean, archived = false): Hold
   main,
   held: 1,
   stage: null,
+  stageSource: null,
+  priority: 'P3',
+  hash: null,
 });
 const feature = (id: string, name: string, holders: readonly Holder[], claims: readonly string[]): Feature => ({
   ideas: [],
@@ -59,6 +62,9 @@ const milestone = (name: string, slug: string, specs: readonly Holder[]): Milest
 
 /** 002 is main under F7 and also holds claims of F0 and F2; 001 is archived, main under F1. */
 const PLAN: PlanningBody = {
+  workflow: { rows: [], source: 'default', diagnostics: [] },
+  stages: [],
+  stageCounts: {},
   ideas: [],
   features: [
     feature('F0', 'Cross-cutting', [holder('002', '002-web-console', false)], ['ISC-1']),

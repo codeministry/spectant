@@ -35,9 +35,12 @@ const milestone = (name: string, target: string | null, state: Milestone['state'
   specs,
 });
 
-const HOLDER = { id: '002', slug: '002-web-console', title: 'Web console', archived: false, main: true, held: 4, stage: null };
+const HOLDER = { id: '002', slug: '002-web-console', title: 'Web console', archived: false, main: true, held: 4, stage: null, stageSource: null, priority: 'P3' as const, hash: null };
 
 const planning = (milestones: readonly Milestone[]): PlanningBody => ({
+  workflow: { rows: [], source: 'default', diagnostics: [] },
+  stages: [],
+  stageCounts: {},
   ideas: [],
   features: [
     { ideas: [], id: 'F0', name: 'Cross-cutting', why: null, closed: 0, total: 4, claims: [], holders: [], unheld: ['ISC-4'] },

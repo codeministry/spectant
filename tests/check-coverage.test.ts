@@ -75,8 +75,8 @@ function fullTree(extra: Record<string, string> = {}, rows?: string[]): Record<s
   ];
   return {
     'spectant-produktideen.md': ROADMAP,
-    'specs/ideas/outline.md': OUTLINE,
-    'specs/ideas/notizen.md': NOTES,
+    'specs/notes/outline.md': OUTLINE,
+    'specs/notes/notizen.md': NOTES,
     [`${PROTO}/board-flow.html`]: '<html></html>',
     [`${PROTO}/help.html`]: '<html></html>',
     [`${PROTO}/styles.css`]: 'body {}',
@@ -145,7 +145,7 @@ describe('check-coverage', () => {
   });
 
   test('an unmapped heading and an unmapped view fail by line, never by text', () => {
-    const extra = { 'specs/ideas/outline.md': `${OUTLINE}\n### Secret customer heading\n`, [`${PROTO}/zeta.html`]: '' };
+    const extra = { 'specs/notes/outline.md': `${OUTLINE}\n### Secret customer heading\n`, [`${PROTO}/zeta.html`]: '' };
     const { code, out } = run(tree(fullTree(extra)));
     expect(out).toContain('outline: 4 entries, 3 mapped');
     expect(out).toContain('outline:7: unmapped');
@@ -166,7 +166,7 @@ describe('check-coverage', () => {
   });
 
   test('some sources absent: checks the rest, lists the missing ones, keeps their rows', () => {
-    const { code, out } = run(tree(without(fullTree(), 'specs/ideas/notizen.md')));
+    const { code, out } = run(tree(without(fullTree(), 'specs/notes/notizen.md')));
     expect(out).toContain('notes: absent');
     expect(out).toContain('roadmap: 4 entries, 4 mapped');
     expect(out).not.toContain(': stale');

@@ -32,6 +32,7 @@ import type {
 import { DOC_FILES } from "../core/src/files.ts";
 import { REVIEWED_FILES, hashForGate } from "../core/src/gates.ts";
 import { docsFor } from "../core/src/markdown-docs.ts";
+import type { DashboardIdea, DashboardIdeas, DashboardModel } from "../core/src/dashboard.ts";
 import type { PlanningModel } from "../core/src/planning.ts";
 import type { EventLine, IdeaRef, TransitionPlan, WorkflowStage } from "../core/src/files.ts";
 import { WORKSPACES_PATH, type WorkspaceSummary, composeApi, dashboardApi } from "../server/src/api.ts";
@@ -335,7 +336,16 @@ describe("workspace routes (spec 003): planning beside the spec routes", () => {
   test("GOLDEN_FAMILY.planning names core/fixtures/<tree>.planning.golden.json, whose whole body is a PlanningModel", () => {
     expect(GOLDEN_FAMILY.planning).toBe("planning");
     const value = golden(GOLDEN_FAMILY.planning) as unknown as WorkspaceRouteResponses["planning"];
-    const spec = keysOf<PlanningModel>({ features: "req", milestones: "req", ideas: "req", recount: "req", diagnostics: "req" });
+    const spec = keysOf<PlanningModel>({
+      workflow: "req",
+      stages: "req",
+      stageCounts: "req",
+      features: "req",
+      milestones: "req",
+      ideas: "req",
+      recount: "req",
+      diagnostics: "req",
+    });
     expect(shapeProblems("planning", value, spec)).toEqual([]);
     expect(value.features.length).toBeGreaterThan(0);
   });
@@ -689,6 +699,24 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
 
 const HOST = { Host: "127.0.0.1:7717" };
 const workspace = { slug: "harbor", name: "harbor", path: join(FIXTURES, "harbor"), addedAt: "2026-03-01T00:00:00Z", position: 0 };
+
+describe("the dashboard golden (core/fixtures/<tree>.golden.json) is a DashboardModel, its stories included (T70)", () => {
+  test("dashboard → DashboardModel, ideas → DashboardIdeas, each story → DashboardIdea", () => {
+    const value = JSON.parse(readFileSync(join(FIXTURES, "harbor.golden.json"), "utf8")) as DashboardModel;
+    const model = keysOf<DashboardModel>({
+      kpis: "req", stageCounts: "req", specs: "req", nextUp: "req", warningGroups: "req", archive: "req", brief: "req",
+      services: "req", diagnostics: "req", ideas: "req",
+    });
+    const idea = keysOf<DashboardIdea>({ feature: "req", milestone: "req", slug: "req", title: "req", priority: "req" });
+    expect([
+      ...shapeProblems("dashboard", value, model),
+      ...shapeProblems("dashboard.ideas", value.ideas, keysOf<DashboardIdeas>({ count: "req", list: "req" })),
+      ...value.ideas.list.flatMap((entry, i) => shapeProblems(`dashboard.ideas.list[${i}]`, entry, idea)),
+    ]).toEqual([]);
+    expect(value.ideas.count).toBe(value.ideas.list.length);
+    expect(value.ideas.count).toBe(2);
+  });
+});
 
 describe("answers and errors are the API's existing convention", () => {
   test("JSON_ANSWER is what api.ts json() sends: content type, no-cache, strong sha256 base64url ETag", async () => {

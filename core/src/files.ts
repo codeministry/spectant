@@ -276,8 +276,8 @@ export type StageName = string;
 
 /**
  * Every stage a spec 008 workflow knows: the stage table's (`Stage`, which `dashboard.ts` counts; `close-pending`, the
- * detour of `code_review: feature`, among them since T49) plus `idea`, the stage of a story before it is a spec, kept
- * apart from `Stage` until its row exists (T54).
+ * detour of `code_review: feature`, among them since T49) plus `idea`, the stage of a story before it is a spec (row 1,
+ * `STORY_RULE`, T54), kept apart from `Stage`, the stages a spec folder stands in.
  */
 export type WorkflowStage = Stage | 'idea';
 

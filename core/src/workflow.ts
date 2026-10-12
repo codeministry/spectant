@@ -114,6 +114,33 @@ export function parseWorkflow(text: string | null): Workflow {
   return { rows, source: 'file', diagnostics };
 }
 
+/** The two detours every type has and no row lists, in the order the board shows them right after `build`. */
+const BOARD_DETOURS: readonly WorkflowStage[] = ['blocked', 'close-pending'];
+
+/**
+ * The columns of the board (T44, ISC-129, FORMAT.md § workflow): `idea` first, then the union of every row's stages
+ * in table order, with the detours `blocked` and `close-pending` right after `build`. A stage is placed once, at its
+ * first occurrence: one a later row adds sits right before the first stage after it in that row already placed (so
+ * `done`, last in every row, stays last), or at the end when none follows. Both detours are exits from `build`
+ * (`build → blocked`, `build → close-pending`, then `close-pending → code-review`), so they stand between `build` and
+ * what follows it; a workflow without `build` (only a hand-built one: `build` is a fixed gate) puts them before `done`,
+ * else last.
+ */
+export function boardStages(workflow: Workflow): readonly WorkflowStage[] {
+  const board: WorkflowStage[] = [];
+  for (const { stages } of workflow.rows) {
+    stages.forEach((stage, i) => {
+      if (stage === 'idea' || BOARD_DETOURS.includes(stage) || board.includes(stage)) return;
+      const next = stages.slice(i + 1).find((later) => board.includes(later));
+      board.splice(next === undefined ? board.length : board.indexOf(next), 0, stage);
+    });
+  }
+  const build = board.indexOf('build');
+  const done = board.indexOf('done');
+  board.splice(build >= 0 ? build + 1 : done >= 0 ? done : board.length, 0, ...BOARD_DETOURS);
+  return ['idea', ...board];
+}
+
 /** The 0-based line of the first `| type | stages | code_review |` header outside a fence; null when there is none. */
 function findHeader(lines: readonly string[]): number | null {
   let fenced = false;

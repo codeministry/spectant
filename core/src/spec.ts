@@ -266,6 +266,7 @@ export function buildSpecPage(input: SpecPageInput): SpecPageModel {
     stageSource: row.stageSource,
   };
 
+  // The stage phrase first and unchanged: the row's `nextReason` is `reasonOf(step)` (T69, ISC-122.3); the page's own facts follow.
   const reasons = [row.nextReason];
   if (PAST_REVIEW.has(row.stage)) reasons.push('the reviewed mark is fresh');
   if (row.stage !== 'done' && waitingOnYou.length > 0) {

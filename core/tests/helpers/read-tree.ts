@@ -58,6 +58,8 @@ export function readTreeAt(root: string, worktreeTree: string | null = null): Da
     archived: folders(join(root, 'specs', 'archive')),
     worktreeTree,
     workflow: parseWorkflow(readIfExists(join(root, 'specs', 'workflow.md'))),
+    // The stories for `DashboardModel.ideas` (spec 008, T70); an empty record without `specs/ideas/`.
+    ideas: ideaFilesAt(root),
   };
 }
 

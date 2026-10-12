@@ -40,6 +40,9 @@ const holder = (id: string, over: Partial<PlanningHolder> = {}): PlanningHolder 
   main: false,
   held: 1,
   stage: null,
+  stageSource: null,
+  priority: 'P3',
+  hash: null,
   ...over,
 });
 
@@ -84,6 +87,9 @@ const FEATURES: readonly PlanningFeature[] = [
 ];
 
 const planning = (features: readonly PlanningFeature[]): PlanningBody => ({
+  workflow: { rows: [], source: 'default', diagnostics: [] },
+  stages: [],
+  stageCounts: {},
   ideas: [],
   features,
   milestones: [],

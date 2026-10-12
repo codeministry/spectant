@@ -20,7 +20,16 @@ const milestone = (name: string, specs: Milestone['specs']): Milestone => ({
   features: [],
   specs,
 });
-const model = (milestones: readonly Milestone[]): PlanningBody => ({ ideas: [], features: [], milestones, recount: null, diagnostics: [] });
+const model = (milestones: readonly Milestone[]): PlanningBody => ({
+  workflow: { rows: [], source: 'default', diagnostics: [] },
+  stages: [],
+  stageCounts: {},
+  ideas: [],
+  features: [],
+  milestones,
+  recount: null,
+  diagnostics: [],
+});
 const holder = { id: '003', title: 'Planning', main: false, archived: false } as unknown as Milestone['specs'][number];
 
 function setUp(planning: (ws: string) => Promise<ApiResult<PlanningBody>>, initialWs: string | null) {

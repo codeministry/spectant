@@ -106,5 +106,9 @@
   "archive": [],
   "brief": null,
   "services": [],
-  "diagnostics": []
+  "diagnostics": [],
+  "ideas": {
+    "count": 0,
+    "list": []
+  }
 }

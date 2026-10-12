@@ -133,13 +133,30 @@ export function readIdeas(files: IdeaFiles): IdeasReading {
       diagnostics.push({ file: path, diagnostic: warning('ideas-frontmatter', `${path} has no frontmatter block, so it is not a story; it is skipped.`, slug) });
       continue;
     }
+    // A story says `status: idea`; a frontmatter block without it is some other note in the folder (a plan export, a
+    // working file whose leading `---` is a thematic break), not a story: skipped with one warning, never read as one.
+    const { status: rawStatus } = fm.values;
+    const status = keyValue(rawStatus);
+    if (status !== 'idea') {
+      const said = status === null ? 'has no `status` key' : `says status "${status}"`;
+      diagnostics.push({ file: path, diagnostic: warning('ideas-status', `${path} ${said}; a story says \`status: idea\`, so it is skipped.`, slug) });
+      continue;
+    }
     // `type` and `feature` are story keys, not spec keys, so the frontmatter reader leaves them in `rest`.
     const { type: rawType, feature } = fm.rest;
     const type = keyValue(rawType);
+    const known = SPEC_TYPES.find((t) => t === type) ?? null;
+    // A `type` outside the seven spec types reads as no type, and says so once (T54): keyed to the story, the value as subject.
+    if (type !== null && known === null) {
+      diagnostics.push({
+        file: path,
+        diagnostic: warning('ideas-type', `type "${type}" is not a spec type (${SPEC_TYPES.join(', ')}); the story reads as untyped.`, type),
+      });
+    }
     ideas.push({
       slug,
       title: goalLine(fm.body) ?? slug,
-      type: SPEC_TYPES.find((t) => t === type) ?? null,
+      type: known,
       feature: keyValue(feature),
       milestone: keyValue(fm.data.milestone),
       priority: fm.data.priority,

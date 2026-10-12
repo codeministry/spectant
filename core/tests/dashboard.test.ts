@@ -11,9 +11,11 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { buildDashboard, devServiceLabels, toLocalService } from '../src/dashboard.ts';
-import type { DashboardModel, DashboardSpecRow } from '../src/dashboard.ts';
+import type { DashboardInput, DashboardModel, DashboardSpecRow } from '../src/dashboard.ts';
 import type { LockReading } from '../src/files.ts';
 import { readLockSources } from '../src/locks.ts';
+import { buildSpecPage } from '../src/spec.ts';
+import { STAGE_RULES, WAITING_STAGES, fillsTemplate } from '../src/stage.ts';
 import { FIXTURES, fixtureTrees, readTree } from './helpers/read-tree.ts';
 
 const model = (name: string): DashboardModel => buildDashboard(readTree(name));
@@ -320,5 +322,82 @@ describe('taken and lock warnings (spec 002 T115, ISC-90)', () => {
 
   test('a spec without locks, or a model without a reading, has taken []', () => {
     for (const r of model('harbor').specs) expect(r.taken).toEqual([]);
+  });
+});
+
+// ─── One reason phrase on every surface (spec 008, T69, ISC-122.3) ─────────────────────────────────────────────────
+
+describe('reason: the dashboard row and the spec head carry the same phrase (T69)', () => {
+  const tree = readTree('harbor');
+  const dash = buildDashboard(tree);
+
+  test('harbor has a spec in every waiting row the fixture reaches', () => {
+    const waiting = new Set(dash.specs.filter((r) => WAITING_STAGES.has(r.stage)).map((r) => r.stage));
+    for (const stage of ['review', 'close-pending', 'code-review'] as const) expect(waiting.has(stage)).toBe(true);
+  });
+
+  for (const r of dash.specs) {
+    test(`${r.slug}: row nextReason = head nextReason = next.reasons[0], one phrase of its row`, () => {
+      const all = [...tree.specs, ...tree.archived];
+      const files = all.find((f) => f.folder === r.slug);
+      if (!files) throw new Error(`no folder ${r.slug}`);
+      const page = buildSpecPage({
+        files: { folder: r.slug, texts: { ...files.texts, ...(tree.master === null ? {} : { master: tree.master }), ...(tree.constitution === null ? {} : { constitution: tree.constitution }) } },
+        others: all.filter((f) => f !== files),
+        tldr: tree.tldr,
+        worktreeTree: tree.worktreeTree ?? null,
+        ...(tree.workflow ? { workflow: tree.workflow } : {}),
+      });
+      expect(page.head.nextReason).toBe(r.nextReason);
+      expect(page.next.reasons[0]).toBe(r.nextReason);
+      const templates = STAGE_RULES.flatMap((rule) => rule.reasons).filter((t) => fillsTemplate(t, r.nextReason));
+      expect(templates).toHaveLength(1);
+    });
+  }
+});
+
+// ─── The stories on the dashboard (spec 008, T70, ISC-124.2) ───────────────────────────────────────────────────────
+
+describe('ideas: the dashboard lists the stories (T70)', () => {
+  test('harbor: two stories with feature, milestone, slug, title and priority, in file-name order', () => {
+    expect(model('harbor').ideas).toEqual({
+      count: 2,
+      list: [
+        {
+          feature: 'F2',
+          milestone: 'Harbor 2.0',
+          slug: 'console-audit-log',
+          title: 'Every change made in the web console is written to an audit log a teammate can read back.',
+          priority: 'P3',
+        },
+        {
+          feature: 'F7',
+          milestone: 'Harbor 1.0',
+          slug: 'registry-webhooks',
+          title: 'A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.',
+          priority: 'P2',
+        },
+      ],
+    });
+  });
+
+  /** harbor's input as a reader that passes no story folder builds it: no `ideas` key at all. */
+  const harborWithoutIdeas = (): DashboardInput => {
+    const input: { -readonly [K in keyof DashboardInput]: DashboardInput[K] } = { ...readTree('harbor') };
+    delete input.ideas;
+    return input;
+  };
+
+  test('every other fixture, and an input without ideas, has none', () => {
+    for (const name of fixtureTrees().filter((n) => n !== 'harbor')) expect(model(name).ideas).toEqual({ count: 0, list: [] });
+    const withoutIdeas = harborWithoutIdeas();
+    expect(buildDashboard(withoutIdeas).ideas).toEqual({ count: 0, list: [] });
+  });
+
+  test('stories add no spec, claim or diagnostic to the dashboard', () => {
+    const withoutIdeas = harborWithoutIdeas();
+    const without = buildDashboard(withoutIdeas);
+    const withIdeas = model('harbor');
+    expect({ ...withIdeas, ideas: without.ideas }).toEqual(without);
   });
 });

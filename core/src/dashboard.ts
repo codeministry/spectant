@@ -26,6 +26,7 @@ import type {
   FileDiagnostic,
   FileKind,
   GateView,
+  IdeaFiles,
   LockDiagnostic,
   LockReading,
   Priority,
@@ -41,9 +42,10 @@ import type {
 import { parseFrontmatter } from './frontmatter.ts';
 import type { Progress } from './frontmatter.ts';
 import { gateState, readGateMark, reviewedGate } from './gates.ts';
+import { readIdeas } from './ideas.ts';
 import type { GateCheck, GateMarkReading, GateName, ReviewedFile } from './gates.ts';
 import { specIdOf, specSlugOf } from './spec-ref.ts';
-import { codeReviewOf, isWorkflowStage, nextCommandWithReason, stageMismatchOf } from './stage.ts';
+import { codeReviewOf, isWorkflowStage, nextCommandWithReason, reasonOf, stageMismatchOf } from './stage.ts';
 import type { Stage, StageInput } from './stage.ts';
 import { driftReport, hasDrift, heldLocks, mainFeatureOf, masterProgressMismatch, partitionClaims } from './status.ts';
 import type { DriftClass, DriftReport } from './status.ts';
@@ -159,6 +161,26 @@ export interface LocalService {
 /** A parse finding per file lives in `files.ts`, so `planning.ts` types it without reaching this module. */
 export type { FileDiagnostic } from './files.ts';
 
+/** A story of `specs/ideas/` as the dashboard's disclosure and the palette list it (spec 008, T70, ISC-124.2). */
+export interface DashboardIdea {
+  /** Frontmatter `feature:`, `F<n>`; null when the story belongs to no feature. */
+  readonly feature: string | null;
+  /** Frontmatter `milestone:`; null when the story belongs to no milestone. */
+  readonly milestone: string | null;
+  /** The file name without `.md`; `/spec new <slug>` starts its spec. */
+  readonly slug: string;
+  /** The first prose line under `## Goal`, else the slug. */
+  readonly title: string;
+  readonly priority: Priority;
+}
+
+/** The stories of the workspace, counted apart from specs and claims. */
+export interface DashboardIdeas {
+  readonly count: number;
+  /** In file-name order, as `readIdeas` lists them. */
+  readonly list: readonly DashboardIdea[];
+}
+
 export interface DashboardModel {
   readonly kpis: DashboardKpis;
   readonly stageCounts: Readonly<Record<Stage, number>>;
@@ -172,6 +194,11 @@ export interface DashboardModel {
   readonly brief: DashboardBrief | null;
   readonly services: readonly LocalService[];
   readonly diagnostics: readonly FileDiagnostic[];
+  /**
+   * The stories (`specs/ideas/`, stage `idea`, spec 008, T70), empty without any. Their `ideas-…` findings belong to
+   * the planning tree (`planning.ts`) and are not listed here a second time.
+   */
+  readonly ideas: DashboardIdeas;
 }
 
 /** Everything the model is built from, read by the caller; pure over it. */
@@ -195,6 +222,8 @@ export interface DashboardInput {
    * each spec's code review (row 7, `close-pending`, T49) and which stages may stand explicitly (T47).
    */
   readonly workflow?: Workflow;
+  /** The story folder `specs/ideas/` as `readIdeas` takes it (file name to text); absent or empty without stories. */
+  readonly ideas?: IdeaFiles;
 }
 
 /** The stage table's order, for the stage counts. */
@@ -477,7 +506,8 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     progress: doc.counted,
     tasks: f.texts.tasks === undefined ? null : (summary?.tasks ?? { landed: 0, total: 0 }),
     nextCommand: next.command,
-    nextReason: next.reason,
+    // The one phrase of the step, as every surface shows it (T58, T69, ISC-122.3); the spec head reads it from here.
+    nextReason: reasonOf(next),
     takeable: partition.takeable,
     taken,
     warnings,
@@ -608,5 +638,12 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     brief,
     services,
     diagnostics,
+    ideas: ideasOf(input.ideas),
   };
+}
+
+/** The stories for the disclosure and the palette: what each needs to be listed and started, nothing more. */
+function ideasOf(files: IdeaFiles | undefined): DashboardIdeas {
+  const list = readIdeas(files ?? {}).ideas.map(({ feature, milestone, slug, title, priority }) => ({ feature, milestone, slug, title, priority }));
+  return { count: list.length, list };
 }

@@ -26,7 +26,7 @@ import { parseFrontmatter, type FrontmatterResult } from './frontmatter.ts';
 import { specIdOf } from './spec-ref.ts';
 import { mainFeatureOf } from './status.ts';
 import {
-  STAGE_RULES,
+  SPEC_RULES,
   codeReviewOf,
   defaultWorkflowRow,
   fillReason,
@@ -89,15 +89,15 @@ function moveAllowed(lane: Lane, from: WorkflowStage, to: WorkflowStage): boolea
 
 /** The filled reason of the stage table row for `stage`, for the spec as it stands. */
 function phrase(stage: Stage, input: StageInput): string {
-  const rule = STAGE_RULES.find((r) => r.stage === stage);
-  if (!rule) throw new Error(`STAGE_RULES has no row ${stage}`);
+  const rule = SPEC_RULES.find((r) => r.stage === stage);
+  if (!rule) throw new Error(`SPEC_RULES has no row ${stage}`);
   const { form = 0, values = {} } = rule.explain(input);
   return fillReason(rule.reasons[form] ?? '', values);
 }
 
 /** The stage table's command for a stage, with the spec number; null where the row names none. */
 function commandOf(stage: WorkflowStage, number: string): string | null {
-  const next = STAGE_RULES.find((r) => r.stage === stage && r.next !== null)?.next;
+  const next = SPEC_RULES.find((r) => r.stage === stage && r.next !== null)?.next;
   return next === undefined || next === null ? null : `${next} ${number}`;
 }
 

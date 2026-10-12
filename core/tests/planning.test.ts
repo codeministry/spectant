@@ -3,23 +3,29 @@
 // "recount" (ISC-100.2), "archived" (ISC-100.3), "milestone format" (ISC-101), "unknown milestone" (ISC-101.1),
 // "no milestone" (ISC-101.2), "milestones" (ISC-102). T7 lays the seam; T8 adds "tree", T11 onward the others.
 import { describe, expect, test } from 'bun:test';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import * as core from '../src/index.ts';
 import type { PlanningInput, PlanningModel } from '../src/planning.ts';
+import { DEFAULT_WORKFLOW, boardStages, parseWorkflow } from '../src/workflow.ts';
 import { expectGolden, goldenPath, goldenText } from './helpers/golden.ts';
 import { buildDashboard } from '../src/dashboard.ts';
 import { specIdOf } from '../src/spec-ref.ts';
-import type { DashboardInput } from '../src/dashboard.ts';
+import type { DashboardInput, DashboardSpecRow } from '../src/dashboard.ts';
 import { diagnosticsOf, EXPECTED_WARNINGS } from './helpers/expected-warnings.ts';
-import { planningOf } from './helpers/planning-model.ts';
-import { fixtureTrees, readTree } from './helpers/read-tree.ts';
+import { planningModel, planningOf } from './helpers/planning-model.ts';
+import { FIXTURES, fixtureTrees, readTree } from './helpers/read-tree.ts';
 
 const UPDATE_COMMAND = 'bun test core/tests/golden.test.ts';
 
 describe('planning', () => {
   test('seam: buildPlanning returns the empty model for an empty input', () => {
-    const empty: PlanningModel = { features: [], milestones: [], ideas: [], recount: null, diagnostics: [] };
+    const workflow = { rows: core.DEFAULT_WORKFLOW, source: 'default' as const, diagnostics: [] };
+    const stages = core.boardStages(workflow);
+    const stageCounts = Object.fromEntries(stages.map((s) => [s, 0]));
+    const empty: PlanningModel = { workflow, stages, stageCounts, features: [], milestones: [], ideas: [], recount: null, diagnostics: [] };
     expect(core.buildPlanning({ master: null, specs: [], archived: [] })).toEqual(empty);
 
     // T18: PlanningInput repeats DashboardInput's fields instead of picking them (planning.ts types against no
@@ -231,7 +237,8 @@ describe('planning: archived', () => {
     const holder = archivedHolder();
     expect(holder?.stage).toBeNull();
     // The holder's whole shape is pinned: a next-command (or any other) field cannot sneak in silently.
-    expect(Object.keys(holder ?? {}).sort()).toEqual(['archived', 'held', 'id', 'main', 'slug', 'stage', 'title']);
+    expect(Object.keys(holder ?? {}).sort()).toEqual(['archived', 'hash', 'held', 'id', 'main', 'priority', 'slug', 'stage', 'stageSource', 'title']);
+    expect({ stageSource: holder?.stageSource, hash: holder?.hash }).toEqual({ stageSource: null, hash: null });
     for (const key of Object.keys(holder ?? {})) expect(key).not.toMatch(/next|command/i);
   });
 
@@ -252,7 +259,9 @@ describe('planning: archived', () => {
     const archived = [{ folder: '001-old', texts: { spec: tick(specOf('F0', [1, 2, 3])) } }];
     const model = core.buildPlanning({ master, specs: [], archived });
     const feature = model.features[0];
-    expect(feature?.holders).toEqual([{ id: '001', slug: '001-old', title: 'A spec', archived: true, main: true, held: 3, stage: null }]);
+    expect(feature?.holders).toEqual([
+      { id: '001', slug: '001-old', title: 'A spec', archived: true, stage: null, stageSource: null, priority: 'P3', hash: null, main: true, held: 3 },
+    ]);
     expect(feature?.unheld).toEqual([]);
     expect(feature?.claims.every((c) => c.holder === '001')).toBe(true);
     expect({ closed: feature?.closed, total: feature?.total }).toEqual({ closed: 2, total: 3 });
@@ -527,6 +536,8 @@ describe('planning: no milestone', () => {
 // state is derived (design 003 § Milestone states): `complete` when every counted claim is closed, `late` when the
 // target date lies before `now` otherwise, `upcoming` else. A row counting no claim (0/0) is never `complete`.
 describe('planning: milestones', () => {
+  /** An active holder's hash: a sha256 hex, its exact value pinned by the golden and by "planning: stages". */
+  const SHA256 = expect.stringMatching(/^[0-9a-f]{64}$/) as unknown as string;
   const HARBOR_MILESTONES: PlanningModel['milestones'] = [
     {
       name: 'Harbor 0.9',
@@ -538,7 +549,18 @@ describe('planning: milestones', () => {
       state: 'late',
       features: [{ id: 'F3', name: 'Config loader rewrite', closed: 0, total: 13 }],
       specs: [
-        { id: '003', slug: '003-config-loader', title: 'Read the config through one loader in the CLI, the API and the console', archived: false, stage: null, main: false, held: 13 },
+        {
+          id: '003',
+          slug: '003-config-loader',
+          title: 'Read the config through one loader in the CLI, the API and the console',
+          archived: false,
+          stage: 'tasks',
+          stageSource: 'derived',
+          priority: 'P3',
+          hash: SHA256,
+          main: false,
+          held: 13,
+        },
       ],
       ideas: [],
     },
@@ -556,9 +578,42 @@ describe('planning: milestones', () => {
         { id: 'F4', name: 'Retention policies', closed: 30, total: 30 },
       ],
       specs: [
-        { id: '002', slug: '002-web-console', title: 'Show every sync run and its failures in a small web console', archived: false, stage: null, main: false, held: 30 },
-        { id: '004', slug: '004-retention-policies', title: 'Delete old manifests on a written schedule without touching referenced ones', archived: false, stage: null, main: false, held: 30 },
-        { id: '001', slug: '001-manifest-sync', title: 'Mirror every listed manifest into the team registry with one command', archived: true, stage: null, main: false, held: 46 },
+        {
+          id: '002',
+          slug: '002-web-console',
+          title: 'Show every sync run and its failures in a small web console',
+          archived: false,
+          stage: 'build',
+          stageSource: 'explicit',
+          priority: 'P2',
+          hash: SHA256,
+          main: false,
+          held: 30,
+        },
+        {
+          id: '004',
+          slug: '004-retention-policies',
+          title: 'Delete old manifests on a written schedule without touching referenced ones',
+          archived: false,
+          stage: 'code-review',
+          stageSource: 'derived',
+          priority: 'P3',
+          hash: SHA256,
+          main: false,
+          held: 30,
+        },
+        {
+          id: '001',
+          slug: '001-manifest-sync',
+          title: 'Mirror every listed manifest into the team registry with one command',
+          archived: true,
+          stage: null,
+          stageSource: null,
+          priority: 'P3',
+          hash: null,
+          main: false,
+          held: 46,
+        },
       ],
       // The story registry-webhooks (F7) names Harbor 1.0 and adds no claim to its 101/106 (spec 008, T55).
       ideas: [
@@ -770,8 +825,8 @@ describe('planning: ideas', () => {
     const master = [masterOf([{ id: 'F0', name: 'Only', claims: [1] }]), '## Milestones', '', '- R1 · 2026-12-01 · A release', ''].join('\n');
     const ideas = {
       'README.md': '| Story | Milestone | Priority | Spec |\n|---|---|---|---|\n| stray | R1 | P3 | — |\n| none | — | P3 | — |\n',
-      'stray.md': '---\ntype: feature\nfeature: F9\nmilestone: R1\n---\n## Goal\nA stray story.\n',
-      'none.md': '---\ntype: chore\n---\n## Goal\nA story of no feature.\n',
+      'stray.md': '---\nstatus: idea\ntype: feature\nfeature: F9\nmilestone: R1\n---\n## Goal\nA stray story.\n',
+      'none.md': '---\nstatus: idea\ntype: chore\n---\n## Goal\nA story of no feature.\n',
     };
     const model = core.buildPlanning({ master, specs: [], archived: [], ideas, now: '2026-03-20' });
     expect(codesOf(model, 'unknown-feature', 'unknown-milestone')).toEqual(['specs/ideas/stray.md: unknown-feature F9']);
@@ -784,14 +839,14 @@ describe('planning: ideas', () => {
 
   test('ideas: a milestone the master lists on a skipped line is known: no warning, under no milestone', () => {
     const master = [masterOf([{ id: 'F0', name: 'Only', claims: [1] }]), '## Milestones', '', '- Later · someday · undated', ''].join('\n');
-    const ideas = { 'README.md': '| Story |\n|---|\n| later |\n', 'later.md': '---\nfeature: F0\nmilestone: Later\n---\n' };
+    const ideas = { 'README.md': '| Story |\n|---|\n| later |\n', 'later.md': '---\nstatus: idea\nfeature: F0\nmilestone: Later\n---\n' };
     const model = core.buildPlanning({ master, specs: [], archived: [], ideas });
     expect(codesOf(model, 'unknown-feature', 'unknown-milestone')).toEqual([]);
     expect(slugs(model.features[0]?.ideas)).toEqual(['later']);
   });
 
   test('ideas: without a master the stories are listed flat with the reader findings and no unknown-* warning', () => {
-    const ideas = { 'lone.md': '---\nfeature: F1\nmilestone: M\n---\n' };
+    const ideas = { 'lone.md': '---\nstatus: idea\nfeature: F1\nmilestone: M\n---\n' };
     const model = core.buildPlanning({ master: null, specs: [], archived: [], ideas });
     expect(slugs(model.ideas)).toEqual(['lone']);
     expect(codesOf(model, 'unknown-feature', 'unknown-milestone', 'ideas-index')).toEqual(['specs/ideas/README.md: ideas-index lone']);
@@ -801,5 +856,135 @@ describe('planning: ideas', () => {
     const model = planningOf(tree);
     expect(model.ideas).toEqual([]);
     expect(model.features.every((f) => f.ideas.length === 0) && model.milestones.every((m) => m.ideas.length === 0)).toBe(true);
+  });
+});
+
+// The board on the planning tree (spec 008, T64, ISC-129): the workflow, its board stages, the count per stage, and
+// per holder the dashboard's stage and source, the priority and the raw sha256 of spec.md. `-t "planning: stages"`.
+describe('planning: stages', () => {
+  /** The dashboard golden's rows of a tree, by folder slug: the values the holders must carry. */
+  type Row = Pick<DashboardSpecRow, 'stage' | 'stageSource' | 'priority'>;
+  const dashboardRows = (tree: string): Map<string, Row> => {
+    const golden = JSON.parse(readFileSync(goldenPath(tree, 'dashboard'), 'utf8')) as { specs: ReadonlyArray<Row & { slug: string }> };
+    return new Map(golden.specs.map((r) => [r.slug, { stage: r.stage, stageSource: r.stageSource, priority: r.priority }]));
+  };
+  const holdersOfModel = (model: PlanningModel) => [...model.features.flatMap((f) => f.holders), ...model.milestones.flatMap((m) => m.specs)];
+  const sum = (counts: Readonly<Partial<Record<string, number>>>): number => Object.values(counts).reduce<number>((n, c) => n + (c ?? 0), 0);
+
+  test("stages: harbor's active holders carry the stage, source and priority the dashboard golden shows, archived ones none", () => {
+    const model = planningOf('harbor');
+    const rows = dashboardRows('harbor');
+    const holders = holdersOfModel(model);
+    expect(holders.some((h) => !h.archived)).toBe(true);
+    for (const h of holders) {
+      if (h.archived) {
+        expect({ slug: h.slug, stage: h.stage, stageSource: h.stageSource, hash: h.hash }).toEqual({ slug: h.slug, stage: null, stageSource: null, hash: null });
+        continue;
+      }
+      const row = rows.get(h.slug);
+      expect({ slug: h.slug, known: row !== undefined }).toEqual({ slug: h.slug, known: true });
+      expect({ slug: h.slug, stage: h.stage, stageSource: h.stageSource, priority: h.priority }).toEqual({
+        slug: h.slug,
+        stage: row?.stage ?? null,
+        stageSource: row?.stageSource ?? null,
+        priority: row?.priority ?? 'P3',
+      });
+    }
+    // The explicit stage reaches the tree: harbor's 002 and 006 carry `stage:` (fixtures README).
+    const explicit = new Set(holders.filter((h) => h.stageSource === 'explicit').map((h) => h.slug));
+    expect(explicit.size).toBeGreaterThan(0);
+    expect([...explicit].every((slug) => rows.get(slug)?.stageSource === 'explicit')).toBe(true);
+  });
+
+  test("stages: an active holder's hash is the raw sha256 hex of its spec.md bytes, as the server's writes compare it", () => {
+    const holders = holdersOfModel(planningOf('harbor')).filter((h) => !h.archived);
+    for (const h of holders) {
+      const bytes = readFileSync(join(FIXTURES, 'harbor', 'specs', h.slug, 'spec.md'));
+      expect({ slug: h.slug, hash: h.hash }).toEqual({ slug: h.slug, hash: createHash('sha256').update(bytes).digest('hex') });
+    }
+  });
+
+  test('stages: harbor runs its workflow file, its board puts review before tasks, and the counts per stage add up', () => {
+    const model = planningOf('harbor');
+    expect(model.workflow).toEqual(readTree('harbor').workflow ?? parseWorkflow(null));
+    expect(model.workflow.source).toBe('file');
+    expect(model.stages).toEqual(boardStages(model.workflow));
+    expect(Object.keys(model.stageCounts)).toEqual([...model.stages]);
+    // Each active spec once, in its dashboard stage, and each story in idea.
+    const rows = dashboardRows('harbor');
+    expect(sum(model.stageCounts)).toBe(rows.size + model.ideas.length);
+    expect(model.stageCounts.idea).toBe(model.ideas.length);
+    for (const stage of model.stages.filter((s) => s !== 'idea')) {
+      expect({ stage, count: model.stageCounts[stage] }).toEqual({ stage, count: [...rows.values()].filter((r) => r.stage === stage).length });
+    }
+  });
+
+  test.each(fixtureTrees())('stages: %s, the counts per stage add up to its active specs and stories', (tree) => {
+    const model = planningOf(tree);
+    expect(sum(model.stageCounts)).toBe(dashboardRows(tree).size + model.ideas.length);
+  });
+
+  test('stages: lantern runs the default table and the default board', () => {
+    const model = planningOf('lantern');
+    expect(model.workflow).toEqual({ rows: DEFAULT_WORKFLOW, source: 'default', diagnostics: [] });
+    expect(model.stages).toEqual(['idea', 'plan', 'tasks', 'review', 'build', 'blocked', 'close-pending', 'code-review', 'close', 'done']);
+    const rows = dashboardRows('lantern');
+    for (const h of holdersOfModel(model).filter((x) => !x.archived)) expect([h.slug, h.stage]).toEqual([h.slug, rows.get(h.slug)?.stage ?? '']);
+  });
+
+  test('stages: without spec states from the caller every holder has no stage and no hash, and only stories are counted', () => {
+    const { master, specs, archived } = readTree('harbor');
+    const model = core.buildPlanning({ master, specs, archived, now: '2026-03-20' });
+    const holders = holdersOfModel(model);
+    expect(holders.length).toBeGreaterThan(0);
+    expect(holders.every((h) => h.stage === null && h.stageSource === null && h.hash === null)).toBe(true);
+    expect(model.workflow.source).toBe('default');
+    expect(sum(model.stageCounts)).toBe(0);
+    // The priority is the spec's own frontmatter, read in the tree: P3 when absent or invalid.
+    const rows = dashboardRows('harbor');
+    for (const h of holders.filter((x) => !x.archived)) expect([h.slug, h.priority]).toEqual([h.slug, rows.get(h.slug)?.priority ?? '']);
+  });
+});
+
+// ISC-124.1 (T56): a feature block with its `Why:` line and no claim is a feature of the tree, 0/0, without a finding.
+describe('planning: empty block', () => {
+  test('empty block: harbor F7 counts 0/0 with no diagnostic, its story under it', () => {
+    const model = planningOf('harbor');
+    const f7 = model.features.find((f) => f.id === 'F7');
+    expect(f7).toMatchObject({ id: 'F7', closed: 0, total: 0, claims: [], holders: [], unheld: [] });
+    expect(f7?.why).not.toBeNull();
+    expect(f7?.ideas.map((i) => i.slug)).toEqual(['registry-webhooks']);
+    expect(model.diagnostics.filter((d) => d.diagnostic.subject === 'F7' || d.diagnostic.message.includes('F7'))).toEqual([]);
+  });
+
+  test('empty block: a synthetic block with a Why: line, zero claims and no story is 0/0, and the tree has no diagnostic', () => {
+    const master = masterOf([
+      { id: 'F0', name: 'Base', claims: [1] },
+      { id: 'F7', name: 'Empty', claims: [] },
+    ]);
+    const model = core.buildPlanning({ master, specs: [folderOf('001-base', 'F0', [1])], archived: [], now: '2026-03-20' });
+    expect(model.features.find((f) => f.id === 'F7')).toMatchObject({ id: 'F7', why: 'Empty matters.', closed: 0, total: 0, claims: [], holders: [], unheld: [], ideas: [] });
+    expect(model.diagnostics).toEqual([]);
+    expect(model.recount).toEqual({ closed: 0, total: 1 });
+  });
+});
+
+// ISC-127 (T57): this repository's own backlog. `ISA.md` and `specs/` are untracked, so the test runs only in a
+// checkout that has them (skipped elsewhere, never passed); nothing from those files is quoted here, it reads them.
+describe('planning: backlog', () => {
+  const ROOT = join(import.meta.dir, '..', '..');
+  const present = existsSync(join(ROOT, 'specs', 'ideas')) && existsSync(join(ROOT, 'ISA.md'));
+
+  test.skipIf(!present)('backlog: the own tree holds F10 to F22 and three milestones, every story names both, zero unknown-*', () => {
+    const model = planningModel(ROOT);
+    const blocks = new Set(model.features.map((f) => f.id));
+    const wanted = Array.from({ length: 13 }, (_, i) => `F${i + 10}`);
+    expect(wanted.filter((id) => !blocks.has(id))).toEqual([]);
+    expect(model.milestones).toHaveLength(3);
+    const milestones = new Set(model.milestones.map((m) => m.name));
+    expect(model.ideas.length).toBeGreaterThan(0);
+    const stray = model.ideas.filter((i) => i.feature === null || !blocks.has(i.feature) || i.milestone === null || !milestones.has(i.milestone));
+    expect(stray.map((i) => i.slug)).toEqual([]);
+    expect(model.diagnostics.filter((d) => d.diagnostic.code.startsWith('unknown-')).map((d) => `${d.file}: ${d.diagnostic.code}`)).toEqual([]);
   });
 });

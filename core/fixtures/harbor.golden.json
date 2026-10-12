@@ -593,5 +593,24 @@
         "subject": "review"
       }
     }
-  ]
+  ],
+  "ideas": {
+    "count": 2,
+    "list": [
+      {
+        "feature": "F2",
+        "milestone": "Harbor 2.0",
+        "slug": "console-audit-log",
+        "title": "Every change made in the web console is written to an audit log a teammate can read back.",
+        "priority": "P3"
+      },
+      {
+        "feature": "F7",
+        "milestone": "Harbor 1.0",
+        "slug": "registry-webhooks",
+        "title": "A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.",
+        "priority": "P2"
+      }
+    ]
+  }
 }
