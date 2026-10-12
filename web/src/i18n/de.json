@@ -456,6 +456,9 @@
       "pending": "Einstellungen, Workspaces und Hilfe kommen mit späteren Tasks dieser Spec.",
       "back": "Zurück zu allen Workspaces"
     },
+    "eyebrow": {
+      "app": "App"
+    },
     "pages": {
       "specs": "Specs",
       "board": "Board",

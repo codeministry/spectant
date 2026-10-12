@@ -61,7 +61,7 @@ describe('OverviewPage (T65, ISC-16)', () => {
   it('heads the page with the workspace count and renders one column per workspace in list order', async () => {
     const { root, asked } = await render([entry('harbor'), entry('lantern')]);
     expect(root.getAttribute('data-page')).toBe('overview');
-    expect(text(root.querySelector('[data-overview-eyebrow]'))).toBe('All workspaces · 2');
+    expect(text(root.querySelector('[data-page-eyebrow]'))).toBe('All workspaces · 2');
     expect(root.querySelector('h1')).not.toBeNull();
     const columns = [...root.querySelectorAll('.overview [data-ui="workspace-column"]')];
     expect(columns.map((c) => c.getAttribute('data-ws'))).toEqual(['harbor', 'lantern']);

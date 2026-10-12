@@ -13,9 +13,9 @@ import { nextId } from '../../shared/ui/overlay/ids';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { ShellState } from '../shell/shell-state.service';
 import { follow, isCommitEnter } from './navigate';
-import { isCommand, isIdea } from './palette-groups';
+import { isClaim, isCommand, isIdea } from './palette-groups';
 import { PaletteIndex } from './palette-index';
-import { highlight, rankEntries, type Segment } from './palette-ranking';
+import { excerpt, highlight, rankGroups, type Segment } from './palette-ranking';
 import { PaletteRecent } from './palette-recent';
 
 interface PaletteOption {
@@ -23,8 +23,13 @@ interface PaletteOption {
   /** Position in the flat option order the arrows walk. */
   readonly index: number;
   readonly domId: string;
+  /** The label as shown: a claim line starts near its text hit (`excerpt`). */
+  readonly text: string;
   readonly label: readonly Segment[];
   readonly chip: readonly Segment[];
+  readonly ariaLabel: string;
+  /** A claim (spec 019): its status as a dot plus the state word. */
+  readonly status: { readonly word: string; readonly dot: string } | null;
   /** An idea (spec 008): the chip takes the idea chip's look. */
   readonly idea: boolean;
 }
@@ -40,8 +45,9 @@ interface PaletteGroup {
  * The command palette (ISC-60, T66; design.md § Command palette and keyboard): a combobox driving a grouped listbox
  * through `aria-activedescendant`, on `ui-dialog` (96 px from the top, 640 px) at medium and wide and on `ui-sheet` at
  * compact. Its groups are every `PALETTE_SOURCES` provider sorted by `order`; a group whose entries are empty, or that
- * the query filters to nothing, renders no heading at all. Recent shows only for an empty query. With a query the
- * groups follow their best match, so Enter lands on it (ranking in palette-ranking.ts).
+ * the query filters to nothing, renders no heading at all. Recent shows only for an empty query, Claims only with one.
+ * With a query the groups follow their best match, so Enter lands on it, and a claim-like query puts Claims first
+ * (ranking in palette-ranking.ts, `rankGroups`).
  *
  * Opened by ⌘K / Ctrl+K / `/` and the header trigger through `KeyboardService.paletteOpen`; mounted once by the app
  * root and deferred until the first open. Enter on a navigating entry follows its link through the router and remembers
@@ -74,23 +80,23 @@ export class CommandPalette {
 
   protected readonly groups = computed<readonly PaletteGroup[]>(() => {
     const query = this.query().trim();
-    const ranked = this.sources
-      .filter((source) => query === '' || source.id !== 'recent')
-      .map((source) => ({ source, matches: rankEntries(source.entries(), query) }))
-      .filter((group) => group.matches.length > 0);
-    if (query !== '') ranked.sort((a, b) => (b.matches[0]?.rank ?? 0) - (a.matches[0]?.rank ?? 0) || a.source.order - b.source.order);
     let index = 0;
-    return ranked.map(({ source, matches }) => ({
+    return rankGroups(this.sources, query).map(({ source, matches }) => ({
       id: source.id,
       labelKey: source.labelKey,
       headingId: `${this.listId}-${source.id}`,
       options: matches.map(({ entry }) => {
         const at = index++;
+        const claim = isClaim(entry) ? entry.claim : null;
+        const text = claim === null ? entry.label : excerpt(entry.label, query);
         return {
           entry,
           index: at,
           domId: `${this.listId}-o${String(at)}`,
-          label: highlight(entry.label, query),
+          text,
+          label: highlight(text, query),
+          ariaLabel: claim?.accessibleName ?? (entry.meta ? `${entry.label}, ${entry.meta}` : entry.label),
+          status: claim === null ? null : { word: claim.statusWord, dot: claim.dot },
           chip: highlight(entry.chip ?? '', query),
           idea: isIdea(entry),
         };

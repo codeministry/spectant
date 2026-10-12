@@ -429,3 +429,117 @@ test.describe('workspace first', () => {
     });
   }
 });
+
+// T21 · ISC-140.2: the header pills carry labels (design.md, every viewport § header pills, and across viewports). At
+// 390, 820 and 1440 every visible segment of `app-shell-nav` holds a visible label `[data-pill-label]` and its value
+// `[data-pill-value]`; no segment's text is a bare number. The labels are catalog values looked up by key name and
+// compared case-insensitively (the uppercase is CSS): `shell.pills.workspace`, `shell.pills.specs` on workspace pages,
+// `shell.pills.spec` on spec pages, `shell.pills.area`. On `/`, `/help` and `/settings` the spec and area pills are
+// absent, the workspace pill reads `shell.pills.all · n`, and no segment shows `0`. `bun run e2e -- breadcrumb -g pills`.
+const PILLS = 'app-shell-nav';
+type PillName = 'workspace' | 'spec' | 'area';
+/** The expected value of a pill: an exact catalog-backed text, or a pattern the value must match. */
+interface PillExpectation {
+  readonly label: string;
+  readonly value: { key: string; count: number } | { key: string } | { text: string } | { pattern: RegExp };
+}
+interface PillPage {
+  readonly name: string;
+  readonly path: string;
+  /** The pills that render; the others must be absent. */
+  readonly pills: Partial<Record<PillName, PillExpectation>>;
+}
+
+const DATA_AREA = SPEC_AREAS.find((area) => area.tabs.includes('claims'))?.id ?? 'data';
+const ALL_WORKSPACES: PillExpectation = { label: 'shell.pills.workspace', value: { key: 'shell.pills.all', count: WORKSPACE_NAMES.length } };
+const PILL_PAGES: readonly PillPage[] = [
+  {
+    name: 'workspace page',
+    path: `/w/${WORKSPACE}`,
+    pills: {
+      workspace: { label: 'shell.pills.workspace', value: { text: WORKSPACE } },
+      spec: { label: 'shell.pills.specs', value: { pattern: /^\s*\d+\s*$/u } },
+      area: { label: 'shell.pills.area', value: { key: 'shell.pages.specs' } },
+    },
+  },
+  {
+    name: 'spec page',
+    path: `/w/${WORKSPACE}/s/002/claims`,
+    pills: {
+      workspace: { label: 'shell.pills.workspace', value: { text: WORKSPACE } },
+      spec: { label: 'shell.pills.spec', value: { pattern: /^\s*002(\s|$)/u } },
+      area: { label: 'shell.pills.area', value: { key: `shell.areas.${DATA_AREA}` } },
+    },
+  },
+  { name: 'workspaces overview', path: '/', pills: { workspace: ALL_WORKSPACES } },
+  { name: 'help', path: '/help', pills: { workspace: ALL_WORKSPACES } },
+  { name: 'settings', path: '/settings', pills: { workspace: ALL_WORKSPACES } },
+];
+
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+/** The en catalog value at `key`; a missing key fails the test with its name rather than crashing the file. */
+const pillCatalog = (where: string, key: string): string => {
+  const value = lookup(catalogs.en, key);
+  expect(value, `${where}: the en catalog holds ${key}`).toBeDefined();
+  return value ?? '';
+};
+/** A whole-text, case-insensitive pattern for a catalog text. */
+const exactly = (text: string): RegExp => new RegExp(`^\\s*${escapeRegExp(text).replace(/\s+/gu, '\\s+')}\\s*$`, 'iu');
+const normalized = (text: string | null): string => (text ?? '').replace(/\s+/gu, ' ').trim();
+
+async function checkPills(page: Page, entry: PillPage): Promise<void> {
+  await page.goto(entry.path);
+  for (const name of ['workspace', 'spec', 'area'] as const) {
+    const where = `${entry.name} (${entry.path}), the ${name} pill`;
+    const segment = page.locator(`${PILLS} [data-control="${name}"]`);
+    const expected = entry.pills[name];
+    if (!expected) {
+      await expect(segment, `${where} is absent`).toHaveCount(0);
+      continue;
+    }
+    await expect(segment, `${where} renders once`).toHaveCount(1);
+    await expect(segment, `${where} is visible`).toBeVisible();
+
+    const label = segment.locator('[data-pill-label]');
+    await expect(label, `${where} carries one label`).toHaveCount(1);
+    await expect(label, `${where}: the label is visible`).toBeVisible();
+    await expect(label, `${where}: the label is ${expected.label}`).toHaveText(exactly(pillCatalog(where, expected.label)));
+
+    const value = segment.locator('[data-pill-value]');
+    await expect(value, `${where} carries one value`).toHaveCount(1);
+    await expect(value, `${where}: the value is visible`).toBeVisible();
+    const spec = expected.value;
+    if ('pattern' in spec) {
+      await expect(value, `${where}: the value`).toHaveText(spec.pattern);
+    } else if ('text' in spec) {
+      await expect(value, `${where}: the value`).toHaveText(exactly(spec.text));
+    } else if ('count' in spec) {
+      const all = pillCatalog(where, spec.key);
+      const pattern = new RegExp(`^\\s*${escapeRegExp(all)}\\s*·\\s*${String(spec.count)}\\s*$`, 'iu');
+      await expect(value, `${where}: the value is ${spec.key} · ${String(spec.count)}`).toHaveText(pattern);
+    } else {
+      await expect(value, `${where}: the value is ${spec.key}`).toHaveText(exactly(pillCatalog(where, spec.key)));
+    }
+
+    const text = normalized(await segment.textContent());
+    expect(text, `${where}: the segment is not a bare number`).not.toMatch(/^\d+$/u);
+    expect(text, `${where}: no catalog key in the segment`).not.toMatch(CATALOG_KEY);
+    if (entry.path === '/' || entry.path === '/help' || entry.path === '/settings') {
+      expect(text, `${where}: no 0 on an app page`).not.toMatch(/(^|[^\d])0([^\d]|$)/u);
+    }
+  }
+}
+
+test.describe('pills', () => {
+  for (const width of [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      for (const entry of PILL_PAGES) {
+        test(`pills carry labels: ${entry.name} (${entry.path}) at ${String(width)}`, async ({ page }) => {
+          await checkPills(page, entry);
+        });
+      }
+    });
+  }
+});

@@ -154,3 +154,26 @@ ui-dialog {
   padding: 24px 16px;
   color: var(--muted-ink);
 }
+
+/* A claim's status (spec 019): a dot in the claim glyph's tone plus the state word, never the colour alone. */
+.p-status {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.p-status .dot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+}
+
+@media (forced-colors: active) {
+  .p-status .dot {
+    forced-color-adjust: none;
+  }
+}

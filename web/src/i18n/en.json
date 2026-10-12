@@ -456,6 +456,9 @@
       "pending": "Settings, workspaces and help come with later tasks of this spec.",
       "back": "Back to all workspaces"
     },
+    "eyebrow": {
+      "app": "App"
+    },
     "pages": {
       "specs": "Specs",
       "board": "Board",

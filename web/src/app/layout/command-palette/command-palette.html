@@ -33,7 +33,7 @@
               [id]="option.domId"
               [attr.data-entry]="option.entry.id"
               [attr.aria-selected]="option.index === active()"
-              [attr.aria-label]="option.entry.meta ? option.entry.label + ', ' + option.entry.meta : option.entry.label"
+              [attr.aria-label]="option.ariaLabel"
               (pointermove)="active.set(option.index)"
               (click)="activate(option.entry)"
             >
@@ -55,10 +55,13 @@
               <span
                 class="grow"
                 [title]="option.entry.label"
-                [uiClamp]="option.entry.label"
+                [uiClamp]="option.text"
                 [uiClampPieces]="option.label"
                 [uiClampLines]="option.index === active() ? 3 : 1"
               ></span>
+              @if (option.status; as status) {
+                <span class="p-status"><span class="dot" aria-hidden="true" [style.background]="status.dot"></span>{{ status.word }}</span>
+              }
               @if (option.entry.meta; as meta) {
                 <span class="meta" [title]="meta" [uiClamp]="meta" [uiClampLines]="option.index === active() ? 3 : 1"></span>
               }

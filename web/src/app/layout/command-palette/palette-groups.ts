@@ -1,17 +1,21 @@
 import { computed, DOCUMENT, inject, type Provider, type Signal } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
+import type { ClaimGlyphState } from '../../../../../core/src/files';
 import { KeyboardService } from '../../core/keyboard.service';
 import { LanguageService } from '../../core/language.service';
 import { PALETTE_SOURCES, type PaletteEntry, type PaletteSource } from '../../core/palette-sources';
 import { SettingsService } from '../../core/settings.service';
 import { ThemeService } from '../../core/theme.service';
 import { writeClipboard } from '../../shared/ui/command-chip/command-chip';
+import { CLAIM_GLYPHS } from '../../shared/ui/glyph/states';
+import { toneMark } from '../../shared/ui/tone';
 import { ToastService } from '../../shared/ui/toast/toast';
 import { specLink, workspaceLink } from '../shell/areas';
 import { TECH_TABS, techLink } from '../shell/page-tabs';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { PaletteIndex } from './palette-index';
+import { CLAIMS_GROUP } from './palette-ranking';
 import { PaletteRecent } from './palette-recent';
 
 /**
@@ -57,6 +61,57 @@ function copier(): (command: string) => void {
 
 function recentSource(): PaletteSource {
   return source('recent', 10, inject(PaletteRecent).entries.asReadonly());
+}
+
+/**
+ * A claim hit (019 T4 · ISC-139): the palette draws its status as a dot in the claim glyph's tone plus the state word
+ * (`palette.claimStates.*`), and names the option with `palette.claimHit` and that word.
+ */
+export interface PaletteClaimEntry extends PaletteEntry {
+  readonly claim: {
+    readonly status: ClaimGlyphState;
+    readonly statusWord: string;
+    /** The dot's colour, a `var()` of the theme (the claim glyph's tone, `toneMark`). */
+    readonly dot: string;
+    readonly accessibleName: string;
+  };
+}
+
+export const isClaim = (entry: PaletteEntry): entry is PaletteClaimEntry =>
+  typeof (entry as Partial<PaletteClaimEntry>).claim === 'object';
+
+/** Before Next up (20): Recent shows only without a query and Claims only with one, so Claims never sits under it. */
+export const CLAIMS_ORDER = 15;
+
+/**
+ * The Claims group (T4): every claim of every readable workspace (the open one first, then the others in list order;
+ * each workspace's claims arrive once `PaletteIndex.claimsFor` has read them), its ISC as the chip, its line as the
+ * label and `<workspace> · <spec>` as the meta. Enter opens `/w/<ws>/s/<spec>/claims#claim-<ISC>`, where the claims tab
+ * scrolls to and focuses the card. Matching, the cap of eight hits and the lift for a claim-like query are the
+ * ranking's (`rankGroups`, `rankClaim`); the entries keep the claim's number and status word as keywords.
+ */
+function claimsSource(): PaletteSource {
+  const t = translator();
+  const index = inject(PaletteIndex);
+  const entries = computed<readonly PaletteEntry[]>(() =>
+    index.workspaces().flatMap((ws) =>
+      (index.claimsFor(ws.slug)() ?? []).map((claim): PaletteClaimEntry => {
+        const text = claim.text.replace(/\s+/gu, ' ').trim();
+        const statusWord = t(`palette.claimStates.${claim.status}`);
+        const hit = t('palette.claimHit', { claim: claim.isc, text, spec: claim.specId, workspace: ws.name });
+        return {
+          id: `claim:${claim.ws}:${claim.isc}`,
+          label: text,
+          meta: `${ws.name} · ${claim.specId}`,
+          chip: claim.isc,
+          link: `/w/${claim.ws}/s/${claim.specId}/claims#claim-${claim.isc}`,
+          keywords: [claim.isc.replace(/^ISC-/u, ''), statusWord],
+          claim: { status: claim.status, statusWord, dot: toneMark(CLAIM_GLYPHS[claim.status].tone), accessibleName: `${hit}, ${statusWord}` },
+        };
+      }),
+    ),
+  );
+  return { id: CLAIMS_GROUP, labelKey: `palette.groups.${CLAIMS_GROUP}`, order: CLAIMS_ORDER, entries };
 }
 
 function nextUpSource(): PaletteSource {
@@ -324,11 +379,11 @@ function archivedSource(): PaletteSource {
 
 /**
  * Spec 001's own palette groups (T66): Recent 10, Next up 20, Workspaces 30, Specs 40, Services 60, Actions 70,
- * Archived 80, plus spec 008's Ideas 45 and spec 023's Tech 57, each one provider line on `PALETTE_SOURCES` like any
- * other spec's group.
+ * Archived 80, plus spec 008's Ideas 45, spec 023's Tech 57 and spec 019's Claims 15, each one provider line on
+ * `PALETTE_SOURCES` like any other spec's group.
  */
 export function providePaletteGroups(): Provider[] {
-  return [recentSource, nextUpSource, workspacesSource, specsSource, ideasSource, techSource, servicesSource, actionsSource, archivedSource].map(
+  return [recentSource, claimsSource, nextUpSource,workspacesSource, specsSource, ideasSource, techSource, servicesSource, actionsSource, archivedSource].map(
     (factory) => ({ provide: PALETTE_SOURCES, useFactory: factory, multi: true }),
   );
 }
