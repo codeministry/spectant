@@ -14,6 +14,13 @@
  * document's path with `data-spec` and `data-state`, `[data-library-meta]`, `[data-library-evidence]` = the group key
  * with `[data-library-evidence-toggle]` (`aria-expanded`), `[data-library-evidence-count]` and
  * `[data-library-evidence-more]`, `[data-library-none]` (the empty state), `[data-library-error]`.
+ *
+ * Group `control` (T31, ISC-156.1): the card's first row `[data-library-controls]` shows the catalog's `missing` and
+ * `stale` counts as `[data-library-control="missing"|"stale"]` (`aria-pressed`, `aria-disabled` at zero) with their
+ * `[data-library-control-count]`; each such row carries its chip `[data-library-chip="missing"|"stale"]`, an `ok` row
+ * none. A click filters the list to exactly those documents (`?state=`), a second click lifts it, a reload keeps it; a
+ * zero count (a catalog without stale documents, intercepted in the test) filters nothing. A missing row opens the
+ * reader's empty state `[data-library-missing]`.
  */
 import { readFileSync } from 'node:fs';
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
@@ -22,9 +29,21 @@ import type { LibraryCatalog, LibraryDoc } from '../../core/src/files';
 import { atWidth, expect, test, WIDTHS } from './fixtures';
 import { LIBRARY_HEADER } from './stub-api';
 
+/** The two control counts of the card's first row, in their order (design.md 017 § Viewport-übergreifend). */
+const CONTROL_KEYS = ['missing', 'stale'] as const;
+type ControlKey = (typeof CONTROL_KEYS)[number];
+
 const read = (path: string): unknown => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
-const EN = read('../src/i18n/en.json') as { library: { meta: { image: string; prototype: string } } };
+const EN = read('../src/i18n/en.json') as {
+  library: {
+    meta: { image: string; prototype: string };
+    outdated: string;
+    missing: string;
+    control: Record<ControlKey, { word: string; one: string; other: string; none: string }>;
+    reader: { missingHeading: string };
+  };
+};
 
 const WS = 'harbor';
 const ROUTE = `/api/workspaces/${WS}/library`;
@@ -223,5 +242,145 @@ test.describe('list', () => {
       await expect(page.locator('[data-library-error]')).toHaveCount(0);
       await expect(page.locator(DEMO)).toHaveCount(0);
     });
+  });
+});
+
+const control = (page: Page, key: ControlKey): Locator => page.locator(`[data-library-controls] [data-library-control="${key}"]`);
+const stateParam = (page: Page): string | null => new URL(page.url()).searchParams.get('state');
+
+/** The paths of the rows that carry a chip of this state, in document order. */
+async function chipped(page: Page, key: ControlKey): Promise<string[]> {
+  return page.locator(`${ENTRY}:has([data-library-chip="${key}"])`).evaluateAll((els) => els.map((el) => el.getAttribute('data-library-entry') ?? ''));
+}
+
+const pathsOf = (docs: readonly LibraryDoc[]): string[] => docs.map((doc) => doc.path).sort();
+const shownPaths = async (page: Page): Promise<string[]> => (await rows(page)).map((row) => row.path ?? '').sort();
+
+/** What the control's accessible name says for this count (`none` at zero, else `one` / `other`). */
+function controlName(key: ControlKey, count: number): string {
+  const names = EN.library.control[key];
+  return template(count === 0 ? names.none : count === 1 ? names.one : names.other, { count });
+}
+
+test.describe('control', () => {
+  test.use(atWidth(WIDTHS.desktop));
+
+  test('the counts equal the catalog, every missing and stale row carries its chip, an ok row none', async ({ page, request }) => {
+    const catalog = await catalogOf(request);
+    const listed = catalog.docs.filter((doc) => doc.type !== 'evidence');
+    // Both cases must stand outside the collapsed evidence, or the chip assertions below prove nothing.
+    expect(catalog.docs.filter((doc) => doc.type === 'evidence' && doc.state !== 'ok')).toEqual([]);
+
+    await page.goto(PAGE);
+    await expect(page.locator(ENTRY)).toHaveCount(listed.length);
+    const controls = page.locator('[data-library-controls] [data-library-control]');
+    await expect(controls).toHaveCount(CONTROL_KEYS.length);
+    expect(await controls.evaluateAll((els) => els.map((el) => el.getAttribute('data-library-control')))).toEqual([...CONTROL_KEYS]);
+
+    for (const key of CONTROL_KEYS) {
+      const docs = catalog.docs.filter((doc) => doc.state === key);
+      expect(docs.length).toBeGreaterThan(0);
+      expect(catalog[key]).toBe(docs.length);
+      await expect(control(page, key).locator('[data-library-control-count]')).toHaveText(String(catalog[key]));
+      await expect(control(page, key)).toHaveAttribute('aria-pressed', 'false');
+      await expect(control(page, key)).not.toHaveAttribute('aria-disabled', 'true');
+      await expect(control(page, key)).toHaveAttribute('aria-label', controlName(key, catalog[key]));
+      expect((await chipped(page, key)).sort()).toEqual(pathsOf(docs));
+      for (const doc of docs) {
+        const row = page.locator(`[data-library-entry="${doc.path}"]`);
+        await expect(row).toHaveAttribute('data-state', key);
+        await expect(row.locator(`[data-library-chip="${key}"]`)).toHaveText(key === 'stale' ? EN.library.outdated : EN.library.missing);
+      }
+    }
+    // An ok row carries no chip at all.
+    expect(listed.filter((doc) => doc.state === 'ok').length).toBeGreaterThan(0);
+    await expect(page.locator(`${ENTRY}[data-state="ok"] [data-library-chip]`)).toHaveCount(0);
+    await expect(page.locator(`${ENTRY} [data-library-chip]`)).toHaveCount(catalog.missing + catalog.stale);
+  });
+
+  for (const key of CONTROL_KEYS) {
+    test(`a click on ${key} filters to exactly those documents, a second lifts it`, async ({ page, request }) => {
+      const catalog = await catalogOf(request);
+      const listed = catalog.docs.filter((doc) => doc.type !== 'evidence');
+      const docs = catalog.docs.filter((doc) => doc.state === key);
+      const other = CONTROL_KEYS.find((k) => k !== key) ?? key;
+      expect(docs.length).toBeGreaterThan(0);
+
+      await page.goto(PAGE);
+      await expect(page.locator(ENTRY)).toHaveCount(listed.length);
+
+      await control(page, key).click();
+      await expect(control(page, key)).toHaveAttribute('aria-pressed', 'true');
+      await expect(control(page, other)).toHaveAttribute('aria-pressed', 'false');
+      await expect(page.locator(ENTRY)).toHaveCount(docs.length);
+      expect(await shownPaths(page)).toEqual(pathsOf(docs));
+      await expect.poll(() => stateParam(page)).toBe(key);
+      // The counts stay the catalog's while filtering.
+      await expect(control(page, key).locator('[data-library-control-count]')).toHaveText(String(catalog[key]));
+      await expect(control(page, other).locator('[data-library-control-count]')).toHaveText(String(catalog[other]));
+
+      await control(page, key).click();
+      await expect(control(page, key)).toHaveAttribute('aria-pressed', 'false');
+      await expect(page.locator(ENTRY)).toHaveCount(listed.length);
+      expect(await shownPaths(page)).toEqual(pathsOf(listed));
+      await expect.poll(() => stateParam(page)).toBeNull();
+    });
+  }
+
+  test('a reload with ?state=stale keeps the filter pressed', async ({ page, request }) => {
+    const stale = (await catalogOf(request)).docs.filter((doc) => doc.state === 'stale');
+    await page.goto(`${PAGE}?state=stale`);
+    await expect(control(page, 'stale')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator(ENTRY)).toHaveCount(stale.length);
+    await page.reload();
+    await expect(control(page, 'stale')).toHaveAttribute('aria-pressed', 'true');
+    await expect(control(page, 'missing')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator(ENTRY)).toHaveCount(stale.length);
+    expect(await shownPaths(page)).toEqual(pathsOf(stale));
+    expect(stateParam(page)).toBe('stale');
+  });
+
+  test('a zero count is disabled and filters nothing', async ({ page, request }) => {
+    // The same catalog with every stale document read as ok: the count the route answers is then zero.
+    const catalog = await catalogOf(request);
+    const fresh: LibraryCatalog = { ...catalog, docs: catalog.docs.map((doc) => (doc.state === 'stale' ? { ...doc, state: 'ok' } : doc)), stale: 0 };
+    const listed = fresh.docs.filter((doc) => doc.type !== 'evidence');
+    await page.route(
+      (url) => url.pathname === ROUTE,
+      (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fresh) }),
+    );
+
+    await page.goto(PAGE);
+    await expect(page.locator(ENTRY)).toHaveCount(listed.length);
+    await expect(control(page, 'stale').locator('[data-library-control-count]')).toHaveText('0');
+    await expect(control(page, 'stale')).toHaveAttribute('aria-disabled', 'true');
+    await expect(control(page, 'stale')).toHaveAttribute('aria-pressed', 'false');
+    await expect(control(page, 'stale')).toHaveAttribute('aria-label', controlName('stale', 0));
+    await expect(page.locator(`${ENTRY} [data-library-chip="stale"]`)).toHaveCount(0);
+    await expect(control(page, 'missing')).not.toHaveAttribute('aria-disabled', 'true');
+
+    // Forced: Playwright refuses to click an aria-disabled button, a pointer does not.
+    await control(page, 'stale').click({ force: true });
+    await expect(control(page, 'stale')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator(ENTRY)).toHaveCount(listed.length);
+    expect(await shownPaths(page)).toEqual(pathsOf(listed));
+    expect(stateParam(page)).toBeNull();
+  });
+
+  test('a missing row opens the reader empty state', async ({ page, request }) => {
+    const missing = (await catalogOf(request)).docs.find((doc) => doc.state === 'missing');
+    if (missing === undefined) throw new Error('library.spec: no missing document in the catalog');
+    const file = missing.path.slice(missing.path.lastIndexOf('/') + 1);
+
+    await page.goto(`${PAGE}?state=missing`);
+    await page.locator(`[data-library-entry="${missing.path}"]`).click();
+    const empty = page.locator('[data-library-reader] [data-library-missing]');
+    await expect(empty).toBeVisible();
+    await expect(empty.locator('.title')).toHaveText(template(EN.library.reader.missingHeading, { file }));
+    await expect(page.locator('[data-library-reader] [data-library-prose]')).toHaveCount(0);
+    // The page names a command only for plan.md and tasks.md (T30); the stub's missing document is a design.md.
+    const command = missing.type === 'plan' || missing.type === 'tasks' ? `/spec-${missing.type} ${keyOf(missing.spec)}` : null;
+    if (command === null) await expect(empty.locator('ui-command-chip')).toHaveCount(0);
+    else await expect(empty.locator('ui-command-chip')).toContainText(command);
   });
 });
