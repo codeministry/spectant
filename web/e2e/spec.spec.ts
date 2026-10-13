@@ -435,3 +435,207 @@ test.describe('spec area library', () => {
     });
   }
 });
+
+/*
+ * Group `deep link` of spec 017 (T49, ISC-158.1): the former Docs and Evidence addresses of a spec land in its Library
+ * area. `bun run e2e -- spec -g "deep link"` is the claim's probe (it also runs ISC-76's three tests above).
+ * - Each former address `/w/harbor/s/<id>/<tab>` (plan, design, decisions, constitution, evidence) and the former Docs
+ *   area (`docs`, any path below it) lands on `/w/harbor/s/<id>/library` with exactly the selection written out in
+ *   `formerTargets` (not read from the app): plan and design open that document of the spec (its catalog path as
+ *   fragment, no `?doc=` left over), decisions the spec.md at its `## Decisions` section (`?section=decisions`, the
+ *   heading in view and focused), constitution the workspace's constitution, evidence the list filtered to evidence
+ *   (`?type=evidence`, the evidence subgroup open), `docs` the plain Library area. A kind the spec has no document of
+ *   (002 has no design.md) lands on the plain Library area with `?doc=` dropped.
+ * - Each is checked twice, by a direct load and by an in-app navigation without a page load (a history push the router
+ *   follows); either way one step back lands on the spec dashboard, never on the old address.
+ * - `g o`, the former Docs area's sequence, opens the Library area of the spec; no former Docs tab stands in the bar,
+ *   and the shortcut sheet lists no binding for one.
+ * Specs 002 (an evidence subgroup, no design.md) and 004 (a design.md, no evidence). The CLI's `-g` ignores case, so
+ * `-g library` runs these tests too.
+ */
+const DEEP_EN = JSON.parse(readFileSync(new URL('../src/i18n/en.json', import.meta.url), 'utf8')) as {
+  library: { types: Readonly<Record<string, string>>; filters: { all: string } };
+};
+const FORMER_TABS = ['plan', 'design', 'decisions', 'constitution', 'evidence'] as const;
+const FORMER_PATHS = [...FORMER_TABS, 'docs', 'docs/plan'] as const;
+type FormerPath = (typeof FORMER_PATHS)[number];
+
+type FormerLanding =
+  | { readonly kind: 'doc'; readonly doc: LibraryDoc; readonly decisions: boolean }
+  | { readonly kind: 'evidence'; readonly evidence: readonly LibraryDoc[] }
+  | { readonly kind: 'plain' };
+
+interface FormerTarget {
+  readonly query: Readonly<Record<string, string>>;
+  /** The fragment without `#`; `''` for none. */
+  readonly hash: string;
+  readonly landing: FormerLanding;
+}
+
+/** design.md 017 § Umleitungen, as T48 landed them: where each former address of spec `id` leads. */
+async function formerTargets(request: APIRequestContext, id: string): Promise<Record<FormerPath, FormerTarget>> {
+  const answer = await request.get(LIBRARY_ROUTE);
+  expect(answer.status()).toBe(200);
+  const catalog = (await answer.json()) as LibraryCatalog;
+  const own = catalog.docs.filter((doc) => doc.spec !== 'workspace' && libraryKey(doc.spec) === id);
+  const folder = own[0]?.spec;
+  if (folder === undefined) throw new Error(`spec.spec: harbor ${id} has no catalog documents`);
+  const byPath = (path: string): LibraryDoc | undefined => catalog.docs.find((doc) => doc.path === path);
+  const plain: FormerTarget = { query: {}, hash: '', landing: { kind: 'plain' } };
+  const ofKind = (kind: 'plan' | 'design'): FormerTarget => {
+    const doc = byPath(`${folder}/${kind}.md`);
+    return doc === undefined ? plain : { query: {}, hash: doc.path, landing: { kind: 'doc', doc, decisions: false } };
+  };
+  const spec = byPath(`${folder}/spec.md`);
+  const constitution = byPath('constitution.md');
+  if (spec === undefined || constitution === undefined) throw new Error(`spec.spec: harbor ${id} lacks spec.md or the constitution`);
+  return {
+    plan: ofKind('plan'),
+    design: ofKind('design'),
+    decisions: { query: { section: 'decisions' }, hash: spec.path, landing: { kind: 'doc', doc: spec, decisions: true } },
+    constitution: { query: {}, hash: constitution.path, landing: { kind: 'doc', doc: constitution, decisions: false } },
+    evidence: { query: { type: 'evidence' }, hash: '', landing: { kind: 'evidence', evidence: own.filter((doc) => doc.type === 'evidence') } },
+    docs: plain,
+    'docs/plan': plain,
+  };
+}
+
+test.describe('deep link of a former Docs or Evidence address', () => {
+  test.use(atWidth(1440));
+
+  const MARK = 'spectantE2eNoReload';
+  const READER = 'app-library-page [data-library-reader]';
+
+  /** The spec dashboard, rendered: where every navigation below starts and every step back returns to. */
+  async function atDashboard(page: Page, id: string): Promise<void> {
+    await page.goto(`/w/harbor/s/${id}`);
+    await expect(page.locator('app-spec-dashboard')).toBeVisible();
+  }
+
+  /** An in-app navigation to `path`: a history push the router follows, with no page load (the mark survives it). */
+  async function navigateInApp(page: Page, path: string): Promise<void> {
+    await page.evaluate(
+      ({ target, mark }) => {
+        (window as unknown as Record<string, unknown>)[mark] = true;
+        history.pushState(null, '', target);
+        dispatchEvent(new PopStateEvent('popstate', { state: null }));
+      },
+      { target: path, mark: MARK },
+    );
+  }
+
+  const noReload = (page: Page): Promise<unknown> => page.evaluate((mark) => (window as unknown as Record<string, unknown>)[mark], MARK);
+
+  async function expectLanding(page: Page, id: string, from: FormerPath, target: FormerTarget): Promise<void> {
+    const what = `/w/harbor/s/${id}/${from}`;
+    await expect(page.locator('app-library-page'), what).toHaveAttribute('data-scope', 'spec');
+    await expect(page, what).toHaveURL((url) => url.pathname === `/w/harbor/s/${id}/library` && !url.searchParams.has('doc'));
+    const url = new URL(page.url());
+    expect(Object.fromEntries(url.searchParams), `query of ${what}`).toEqual(target.query);
+    expect(url.hash, `fragment of ${what}`).toBe(target.hash === '' ? '' : `#${target.hash}`);
+
+    const current = page.locator(`${LIBRARY_ENTRY}[aria-current="true"]`);
+    const landing = target.landing;
+    switch (landing.kind) {
+      case 'doc': {
+        await expect(current, what).toHaveCount(1);
+        await expect(current, what).toHaveAttribute('data-library-entry', landing.doc.path);
+        await expect(page.locator(`${READER} .lib-reader-title`), what).toHaveText(landing.doc.title);
+        await expect(page.locator(`${READER} .lib-file`), what).toHaveText(`specs/${landing.doc.path}`);
+        if (landing.decisions) {
+          const heading = page.locator(`${READER} .docs-prose h2`).filter({ hasText: /^\s*Decisions\s*$/u });
+          await expect(heading, what).toHaveCount(1);
+          await expect(heading, what).toBeFocused();
+          await expect(heading, what).toBeInViewport();
+        }
+        break;
+      }
+      case 'evidence': {
+        const pill = page.locator('app-library-page [data-library-types]').getByRole('button', { name: DEEP_EN.library.types['evidence'] ?? '', exact: true });
+        if (landing.evidence.length === 0) {
+          // A spec without evidence (004): the filter names it all the same and lists nothing; no pill to press.
+          await expect(page.locator('app-library-page [data-library-types]'), what).toBeVisible();
+          await expect(pill, what).toHaveCount(0);
+          await expect(page.locator(LIBRARY_ENTRY), what).toHaveCount(0);
+          break;
+        }
+        await expect(pill, what).toHaveAttribute('aria-pressed', 'true');
+        const subgroup = page.locator(`app-library-page [data-library-evidence="${id}"]`);
+        await expect(subgroup.locator('[data-library-evidence-toggle]'), what).toHaveAttribute('aria-expanded', 'true');
+        await expect(subgroup.locator('[data-library-evidence-count]'), what).toHaveText(String(landing.evidence.length));
+        await expect(subgroup.locator('[data-library-entry]').first(), what).toBeVisible();
+        const rows = await libraryRows(page);
+        expect(rows.length, what).toBeGreaterThan(0);
+        const evidencePaths = new Set(landing.evidence.map((doc) => doc.path));
+        for (const row of rows) {
+          expect(row.evidence, `${what}: ${row.path ?? ''} stands in the evidence subgroup`).toBe(true);
+          expect(evidencePaths.has(row.path ?? ''), `${what}: ${row.path ?? ''} is evidence`).toBe(true);
+        }
+        break;
+      }
+      case 'plain': {
+        // Nothing named: the list unfiltered, and at this width the reader shows the first row, as on any plain visit.
+        const first = page.locator(LIBRARY_ENTRY).first();
+        await expect(first, what).toBeVisible();
+        await expect(current, what).toHaveCount(1);
+        await expect(current, what).toHaveAttribute('data-library-entry', (await first.getAttribute('data-library-entry')) ?? '');
+        // No type filter: the pill "All" is the pressed one.
+        await expect(page.locator('app-library-page [data-library-types] [aria-pressed="true"]'), what).toHaveText(DEEP_EN.library.filters.all);
+        break;
+      }
+    }
+  }
+
+  /** One step back lands on the spec dashboard and stays there: the old address was no history entry of its own. */
+  async function expectBackToDashboard(page: Page, id: string, from: FormerPath): Promise<void> {
+    await page.goBack();
+    await expect(page, `back from ${from}`).toHaveURL((url) => url.pathname === `/w/harbor/s/${id}` && url.search === '' && url.hash === '');
+    await expect(page.locator('app-spec-dashboard')).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe(`/w/harbor/s/${id}`);
+  }
+
+  for (const id of ['002', '004'] as const) {
+    for (const from of FORMER_PATHS) {
+      test(`${id}/${from} by a direct load lands in the Library area with its selection, and back skips it`, async ({ page, request }) => {
+        const target = (await formerTargets(request, id))[from];
+        await atDashboard(page, id);
+        await page.goto(`/w/harbor/s/${id}/${from}`);
+        await expectLanding(page, id, from, target);
+        await expectBackToDashboard(page, id, from);
+      });
+
+      test(`${id}/${from} by an in-app navigation lands in the Library area with its selection, and back skips it`, async ({ page, request }) => {
+        const target = (await formerTargets(request, id))[from];
+        await atDashboard(page, id);
+        await navigateInApp(page, `/w/harbor/s/${id}/${from}`);
+        await expectLanding(page, id, from, target);
+        expect(await noReload(page), 'no page load').toBe(true);
+        await expectBackToDashboard(page, id, from);
+        expect(await noReload(page), 'no page load').toBe(true);
+      });
+    }
+
+    test(`${id}: g o, the former Docs sequence, opens the Library area; no former Docs tab or binding is left`, async ({ page }) => {
+      await page.goto(`/w/harbor/s/${id}/status`);
+      await expect(page.locator('app-tab-bar a[aria-current="page"]')).toHaveAttribute('data-tab', 'status');
+
+      await page.keyboard.press('?');
+      const sheet = page.locator('app-shortcut-sheet dialog');
+      await expect(sheet).toBeVisible();
+      await expect(sheet.locator('[data-context="spec"] [data-binding="go-area-library"] kbd')).toHaveText(['g', 'o']);
+      for (const tab of FORMER_TABS) await expect(sheet.locator(`[data-binding="go-tab-${tab}"]`), tab).toHaveCount(0);
+      await expect(sheet.locator('[data-binding="go-docs"]')).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await expect(sheet).toBeHidden();
+
+      await page.keyboard.press('g');
+      await page.keyboard.press('o');
+      await expect(page).toHaveURL((url) => url.pathname === `/w/harbor/s/${id}/library` && url.search === '' && url.hash === '');
+      await expect(page.locator('app-library-page')).toHaveAttribute('data-scope', 'spec');
+      const tabs = page.locator('app-tab-bar a');
+      await expect(tabs).toHaveCount(1);
+      await expect(tabs.first()).toHaveAttribute('data-tab', 'library');
+      for (const tab of FORMER_TABS) await expect(page.locator(`app-tab-bar [data-tab="${tab}"]`), tab).toHaveCount(0);
+    });
+  }
+});
