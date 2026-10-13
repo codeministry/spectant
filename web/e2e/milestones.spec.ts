@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
 
 import type { PlanningModel } from '../../core/src/planning';
-import { atWidth, expect, FIXED_NOW, test, WIDTHS } from './fixtures';
+import { atWidth, expect, FIXED_NOW, test, WIDTHS, headerControl } from './fixtures';
 
 const read = (path: string): unknown => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
@@ -57,7 +57,9 @@ const open = async (page: Page, hash = ''): Promise<void> => {
 };
 const card = (page: Page, slug: string): Locator => page.locator(`ol.rows > li:has(article[id="m-${slug}"])`);
 const areaMenu = async (page: Page): Promise<Locator> => {
-  await page.locator('header [data-control="area"]').click();
+  // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
+  const area = page.locator('header [data-control="area"]');
+  await (await area.isVisible() ? area : await headerControl(page, 'area')).click();
   const menu = page.getByRole('navigation', { name: 'Areas' });
   await expect(menu).toBeVisible();
   return menu;
@@ -82,7 +84,8 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
 
     test('lantern’s area menu lists Specs, Board and Features only', async ({ page }) => {
       await page.goto('/w/lantern');
-      await expect(page.locator('header [data-control="area"]')).toBeVisible();
+      // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
+      await expect(await headerControl(page, 'area')).toBeVisible();
       const menu = await areaMenu(page);
       await expect(menu.locator('[data-page]')).toHaveCount(4);
       expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'tech']);

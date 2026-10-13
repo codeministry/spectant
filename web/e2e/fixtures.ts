@@ -9,7 +9,7 @@
  *   dashboard model is rendered and the fonts are loaded. Never wait on a timeout.
  * - `atWidth(width)` gives the `test.use` block for one of the baseline widths (390 / 820 / 1440) or any other.
  */
-import { test as base, expect, type Page } from '@playwright/test';
+import { test as base, expect, type Locator, type Page } from '@playwright/test';
 
 import { theme } from './env';
 
@@ -29,6 +29,19 @@ export function atWidth(width: number): { viewport: { width: number; height: num
 }
 
 /** Freeze `Date.now()` and `new Date()` at `iso`; timers keep running. Call before `page.goto`. */
+// spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13): below 1120 px the area, zen, settings and help
+// controls are entries of the header's overflow menu `⋯` (`data-tool="more"`), each carrying the same hook. Opens the
+// menu there and returns the control (`data-control`, or `data-tool` for help and assistant), ready to click or check.
+export async function headerControl(page: Page, name: string): Promise<Locator> {
+  const hook = name === 'help' || name === 'assistant' ? 'data-tool' : 'data-control';
+  const control = page.locator(`header [${hook}="${name}"]`);
+  if ((page.viewportSize()?.width ?? 1440) < 1120 && ['area', 'zen', 'settings', 'help', 'assistant'].includes(name)) {
+    await page.locator('header [data-tool="more"]').click();
+    await expect(control).toBeVisible();
+  }
+  return control;
+}
+
 export async function pinClock(page: Page, iso: string = FIXED_NOW): Promise<void> {
   await page.clock.setFixedTime(new Date(iso));
 }

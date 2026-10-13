@@ -60,7 +60,8 @@
 </div>
 
 <!-- Outside a workspace there is no area pill either; inside one it names the spec area or the workspace page. -->
-@if (inWorkspace()) {
+<!-- Below 1120 px the area switch is an entry of the overflow menu `⋯` instead (spec 024 T76). -->
+@if (inWorkspace() && wide()) {
   @if (specOpen()) {
     <button
       type="button"
@@ -117,5 +118,5 @@
 
 <!-- The lists, sheets and popovers load after first render; their overlay primitives stay out of the initial bundle. -->
 @defer (on immediate) {
-  <app-shell-menus #menus />
+  <app-shell-menus #menus [area]="areaEntry()" />
 }

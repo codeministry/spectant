@@ -383,7 +383,7 @@ test.describe('narrow board page', () => {
       // Stuck under the 64 px sticky header row, inside the viewport's width, and the page still fits.
       const box = await row.boundingBox();
       expect(box, 'bar box').not.toBeNull();
-      // spec 024: two-row header below 1120 / prototype palette rule (principal 2026-10-12): the sticky row is 64 px
+      // spec 024: one-row header on every width (principal 2026-10-13)
       expect(Math.round(box?.y ?? -1), 'bar top under the compact header').toBe(64);
       expect(box?.x ?? -1, 'bar left edge').toBeGreaterThanOrEqual(0);
       expect((box?.x ?? 0) + (box?.width ?? Infinity), 'bar right edge').toBeLessThanOrEqual(WIDTHS.phone + 0.5);

@@ -1,10 +1,10 @@
 /*
  * The rail-selects (prototype `.rail-select`, `.rail-divider`; spec 024 T34): Workspace · Spec · Area. From 1120 px they
- * sit on the header's brand rail after the logo; below 1120 px the host is its own bordered rail in header row 2.
+ * sit on the header's brand rail after the logo, on every width (spec 024 T76); below 1120 px without the Area select.
  *
  * Labelled selects (ISC-140.2): every segment is its 9 px mono label (`[data-pill-label]`) and its 13/650 value
- * (`[data-pill-value]`), inline on one baseline as in the prototype; at compact the label stacks over the value and the
- * chevrons go (prototype rule). Numbers and ids never shorten (`flex-shrink: 0`, `tabular-nums`); only names ellipsize.
+ * (`[data-pill-value]`), inline on one baseline as in the prototype, from 1120 px; below it the label lives only in the
+ * accessible name, and at compact the chevrons go (prototype rule). Numbers and ids never shorten (`flex-shrink: 0`, `tabular-nums`); only names ellipsize.
  */
 :host {
   display: flex;
@@ -164,55 +164,45 @@
   }
 }
 
-/* Below 1120 px: the host is header row 2's own brand rail (40 px, radius 10, 78 % card). */
+/*
+ * Below 1120 px (spec 024 T76, ISC-140.2 refined): one header row, so the visible labels go; each select keeps its label
+ * in its accessible name (`aria-label`). The spec shows its id and short name, the name ellipsizing first.
+ */
 @container header (width < 1120px) {
-  :host {
-    min-block-size: 40px;
-    border: 1px solid var(--line);
-    border-radius: calc(var(--radius) + 2px);
-    background: color-mix(in oklch, var(--color-base-100) 78%, transparent);
+  .pill-label {
+    display: none;
   }
 
-  .pickers::before {
-    display: none;
+  .pick {
+    padding-inline: 8px;
   }
 
   .ws-name {
     max-inline-size: 160px;
   }
+
+  .spec-title {
+    min-inline-size: 3ch;
+    max-inline-size: 140px;
+  }
 }
 
-/* Compact: the label over the value, no chevrons (prototype rule); the workspace name ellipsizes from 120 px. */
+/* Compact: no chevrons (prototype rule); the names ellipsize from 112 / 96 px. */
 @container header (width < 640px) {
-  .pill {
-    flex-direction: column;
-    gap: 0;
-    align-items: flex-start;
-  }
-
   .pick {
     gap: 4px;
-    padding-inline: 8px;
+    padding-inline: 6px;
   }
 
-  .pill-label {
-    line-height: 12px;
-  }
-
-  .pill-value {
-    line-height: 16px;
-  }
-
-  .spec-title,
   .chevron {
     display: none;
   }
 
   .ws-name {
-    max-inline-size: 120px;
+    max-inline-size: 112px;
   }
 
-  .area .pill-value {
-    font-size: 12px;
+  .spec-title {
+    max-inline-size: 96px;
   }
 }

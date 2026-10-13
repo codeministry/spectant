@@ -1,20 +1,40 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, computed, inject, Injector, input, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { KeyboardService } from '../../core/keyboard.service';
+import { LanguageService } from '../../core/language.service';
 import { SettingsService } from '../../core/settings.service';
+import { ThemeService } from '../../core/theme.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiChip } from '../../shared/ui/chip/chip';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiRovingItem, UiRovingList } from '../../shared/ui/roving-list.directive';
+import { type SegmentedOption, UiSegmented } from '../../shared/ui/segmented/segmented';
 import { AreaMenu } from '../area-menu/area-menu';
 import { specLink } from './areas';
 import { ShellData } from './shell-data.service';
 import { ShellState } from './shell-state.service';
 
-/** The header's three menus: the two pickers and the area menu. */
-export type MenuKind = 'workspace' | 'spec' | 'area';
+/**
+ * The header's menus: the two pickers, the area menu, the overflow menu `⋯` (below 1120 px) and the settings panel
+ * (spec 024 T76, T40).
+ */
+export type MenuKind = 'workspace' | 'spec' | 'area' | 'more' | 'settings';
+
+/** The menus with their own panel here (the area menu is `AreaMenu`'s). */
+type PanelKind = Exclude<MenuKind, 'area'>;
+
+/** The area entry the overflow menu shows below 1120 px, resolved by `ShellNav` as for its wide-tier pill. */
+export interface AreaEntry {
+  /** The current area or workspace page, or the disabled entry's label (translation key). */
+  readonly valueKey: string;
+  /** The accessible name (translation key; `area` / `page` take the translated value), as on the pill. */
+  readonly ariaKey: string;
+  /** Set when there is nothing to switch: the reason (translation key), shown as text. */
+  readonly reasonKey: string | null;
+}
 
 /** One row of the workspace picker. */
 interface WorkspaceEntry {
@@ -33,6 +53,9 @@ const specCountOf = (counts: unknown): number | null => {
   return typeof specs === 'number' ? specs : null;
 };
 
+const THEMES = ['system', 'light', 'dark'] as const;
+const LANGS = ['en', 'de'] as const;
+
 /**
  * The header's menus (ISC-73, ISC-76, ISC-97), loaded after first render (`@defer (on immediate)` in `ShellNav`) so the
  * overlay primitives and the list styles stay out of the initial bundle; until then a picker anchor simply navigates.
@@ -40,14 +63,31 @@ const specCountOf = (counts: unknown): number | null => {
  * - **Workspace picker**: "All workspaces", every workspace from `ShellData.workspaces()` as a link with its spec count
  *   (or "cannot be read"), the current one marked, and "Manage workspaces" → `/settings`.
  * - **Spec picker**: "All specs in …", then the workspace's specs (id, title, stage chip), the open one marked.
- * - Both are a `ui-popover` at medium and wide and a bottom `ui-sheet` at compact; focus lands on the current entry.
- * - **Area menu**: `app-area-menu` (`layout/area-menu/`, T37): a popover at medium and wide, a bottom sheet at compact.
+ * - **Area menu**: `app-area-menu` (`layout/area-menu/`, T37).
+ * - **Overflow menu** `⋯` (spec 024 T76, below 1120 px): Area, Zen, Assistant, Settings and Help, each item carrying the
+ *   `data-control` (or `data-tool`) of the header control it stands for. Area and Settings open their own panel,
+ *   anchored to `⋯`.
+ * - **Settings panel** (prototype `pop-settings`, T40): theme and language segmented, "Workspaces…" → `/settings`,
+ *   "Help & guide" → `/help`, and the single-key switch; every change goes through `/api/settings`.
+ * - Each is a `ui-popover` at medium and wide and a bottom `ui-sheet` at compact; focus lands on the current entry.
  *
  * The host is taken out of the header grid (`position: absolute`); the panels live in the top layer.
  */
 @Component({
   selector: 'app-shell-menus',
-  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiIcon, UiChip, UiPopover, UiSheet, UiRovingItem, UiRovingList, AreaMenu],
+  imports: [
+    NgTemplateOutlet,
+    RouterLink,
+    TranslocoPipe,
+    UiIcon,
+    UiChip,
+    UiPopover,
+    UiSheet,
+    UiRovingItem,
+    UiRovingList,
+    UiSegmented,
+    AreaMenu,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell-menus.html',
   styleUrl: './shell-menus.css',
@@ -55,7 +95,15 @@ const specCountOf = (counts: unknown): number | null => {
 export class ShellMenus {
   protected readonly state = inject(ShellState);
   protected readonly data = inject(ShellData);
+  protected readonly keyboard = inject(KeyboardService);
   private readonly settings = inject(SettingsService);
+  private readonly theme = inject(ThemeService);
+  private readonly language = inject(LanguageService);
+  private readonly transloco = inject(TranslocoService);
+  private readonly injector = inject(Injector);
+
+  /** The overflow menu's area entry; null outside a workspace, where the wide header shows no area pill either. */
+  readonly area = input<AreaEntry | null>(null);
 
   protected readonly compact = computed(() => this.state.tier() === 'compact');
   protected readonly singleKeys = computed(() => this.settings.settings().singleKeyShortcuts);
@@ -76,17 +124,31 @@ export class ShellMenus {
     }));
   });
 
-  /** Which picker's bottom sheet is open (compact only; the popovers keep their own state). */
-  protected readonly sheet = signal<MenuKind | null>(null);
+  protected readonly themeMode = this.theme.mode;
+  protected readonly lang = this.language.current;
+  protected readonly themeOptions = computed<readonly SegmentedOption[]>(() => {
+    this.language.current();
+    return THEMES.map((key) => ({ key, label: this.transloco.translate(`settings.theme.${key}`) }));
+  });
+  protected readonly langOptions: readonly SegmentedOption[] = LANGS.map((key) => ({ key, label: key.toUpperCase() }));
+
+  /** Which menu's bottom sheet is open (compact only; the popovers keep their own state). */
+  protected readonly sheet = signal<PanelKind | null>(null);
   private openAtPress: boolean | null = null;
+  /** The `⋯` trigger: the anchor of the area menu and the settings panel opened from the overflow menu. */
+  private moreTrigger: HTMLElement | null = null;
   private readonly workspacePopover = viewChild<UiPopover>('workspacePopover');
   private readonly specPopover = viewChild<UiPopover>('specPopover');
+  private readonly morePopover = viewChild<UiPopover>('morePopover');
+  private readonly settingsPopover = viewChild<UiPopover>('settingsPopover');
   private readonly areaMenu = viewChild(AreaMenu);
 
   readonly expanded = computed<Record<MenuKind, boolean>>(() => ({
     workspace: this.sheet() === 'workspace' || (this.workspacePopover()?.open() ?? false),
     spec: this.sheet() === 'spec' || (this.specPopover()?.open() ?? false),
     area: this.areaMenu()?.expanded() ?? false,
+    more: this.sheet() === 'more' || (this.morePopover()?.open() ?? false),
+    settings: this.sheet() === 'settings' || (this.settingsPopover()?.open() ?? false),
   }));
 
   /**
@@ -105,11 +167,8 @@ export class ShellMenus {
       this.close(kind);
       return;
     }
-    // WebKit does not focus a clicked link; the popover and the sheet return focus to whatever had it on open.
-    trigger.focus();
-    if (kind === 'area') this.areaMenu()?.show(trigger);
-    else if (this.compact()) this.sheet.set(kind);
-    else this.popover(kind)?.show(trigger);
+    if (kind === 'more') this.moreTrigger = trigger;
+    this.show(kind, trigger);
   }
 
   protected close(kind: MenuKind): void {
@@ -121,15 +180,70 @@ export class ShellMenus {
     this.popover(kind)?.close();
   }
 
-  protected sheetOpenChange(kind: MenuKind, open: boolean): void {
+  protected sheetOpenChange(kind: PanelKind, open: boolean): void {
     if (!open && this.sheet() === kind) this.sheet.set(null);
+  }
+
+  /** An overflow entry that opens its own panel (area menu, settings): the overflow menu gives way to it. */
+  protected openFromMore(kind: 'area' | 'settings'): void {
+    const trigger = this.moreTrigger;
+    const fromSheet = this.sheet() === 'more';
+    this.close('more');
+    if (trigger === null) return;
+    if (!fromSheet) {
+      this.show(kind, trigger);
+      return;
+    }
+    // A modal sheet keeps focus inside until it has closed; the next panel opens once focus is back on `⋯`, so it
+    // returns there when it closes.
+    afterNextRender(() => setTimeout(() => this.show(kind, trigger)), { injector: this.injector });
+  }
+
+  protected toggleZen(): void {
+    this.state.toggleZen();
+    this.close('more');
+  }
+
+  protected openShortcuts(): void {
+    this.close('more');
+    this.close('settings');
+    this.keyboard.openSheet();
+  }
+
+  protected setTheme(mode: string | undefined): void {
+    const next = THEMES.find((key) => key === mode);
+    if (next !== undefined) void this.theme.setMode(next);
+  }
+
+  protected setLanguage(lang: string | undefined): void {
+    const next = LANGS.find((key) => key === lang);
+    if (next === undefined) return;
+    this.language.set(next);
+    void this.settings.update({ language: next });
+  }
+
+  protected toggleSingleKeys(): void {
+    void this.settings.update({ singleKeyShortcuts: !this.singleKeys() });
   }
 
   protected specEntryLink(id: string): string[] {
     return specLink(this.state.ws() ?? '', id);
   }
 
-  private popover(kind: Exclude<MenuKind, 'area'>): UiPopover | undefined {
-    return { workspace: this.workspacePopover, spec: this.specPopover }[kind]();
+  private show(kind: MenuKind, trigger: HTMLElement): void {
+    // WebKit does not focus a clicked link; the popover and the sheet return focus to whatever had it on open.
+    trigger.focus();
+    if (kind === 'area') this.areaMenu()?.show(trigger);
+    else if (this.compact()) this.sheet.set(kind);
+    else this.popover(kind)?.show(trigger);
+  }
+
+  private popover(kind: PanelKind): UiPopover | undefined {
+    return {
+      workspace: this.workspacePopover,
+      spec: this.specPopover,
+      more: this.morePopover,
+      settings: this.settingsPopover,
+    }[kind]();
   }
 }

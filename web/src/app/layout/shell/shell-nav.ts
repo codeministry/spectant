@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { UiIcon } from '../../shared/icons/icon';
 import { specLink, workspacePageById } from './areas';
-import { type MenuKind, ShellMenus } from './shell-menus';
+import { type AreaEntry, type MenuKind, ShellMenus } from './shell-menus';
 import { ShellData } from './shell-data.service';
 import { ShellState } from './shell-state.service';
 
@@ -14,7 +14,7 @@ interface PickTarget {
   readonly fragment?: string;
 }
 
-const CLOSED: Record<MenuKind, boolean> = { workspace: false, spec: false, area: false };
+const CLOSED: Record<MenuKind, boolean> = { workspace: false, spec: false, area: false, more: false, settings: false };
 
 /**
  * A click the anchor itself should handle (new tab, new window, download, a non-primary button): the picker stays
@@ -25,7 +25,9 @@ export const navigatesNatively = (event: MouseEvent): boolean =>
 
 /**
  * The header's navigation group (ISC-73): workspace picker, spec picker and area-menu trigger. The host is a
- * flex rail: on the brand rail from 1120 px, its own bordered rail in header row 2 below (spec 024 T34).
+ * flex rail on the header's brand rail, one row on every width (spec 024 T76). Below 1120 px the area trigger is an
+ * entry of the overflow menu `⋯` (`areaEntry`, rendered by `ShellMenus`), and the header's `⋯` and settings
+ * buttons open their menus through `toggle` / `press` here, the one owner of the deferred menus.
  *
  * **Pickers.** Real anchors (`href` to the workspace, the open spec, or the workspace's spec list), so middle-click,
  * cmd/ctrl-click and "copy link" keep working; a plain click or Enter opens the picker instead (`ShellMenus`). They carry
@@ -39,9 +41,9 @@ export const navigatesNatively = (event: MouseEvent): boolean =>
  * carries their meaning. Outside a workspace (`/`, `/help`, `/settings`) the spec and area pills are not rendered
  * rather than showing `0`, and the workspace pill reads "All · n".
  *
- * Collapse order (design.md § Viewport-übergreifend): after the wordmark (`ShellBrand`), the spec title goes to its
- * id; numbers and ids never shorten, only names ellipsize. Labels sit inline before the value; compact stacks them
- * and drops the chevrons.
+ * Collapse order (design.md § Viewport-übergreifend): below 1120 px the visible labels go (ISC-140.2 refined: the label
+ * stays in the accessible name), then the wordmark (`ShellBrand`, below 640 px); the spec shows its id and short name,
+ * the name ellipsizing; numbers and ids never shorten.
  */
 @Component({
   selector: 'app-shell-nav',
@@ -94,7 +96,22 @@ export class ShellNav {
     this.state.ws() !== null && this.data.workspaceMissing() ? 'shell.area.needsWorkspace' : 'shell.area.needsSpec',
   );
   protected readonly areaKey = computed(() => `shell.areas.${this.state.area() ?? 'dashboard'}`);
-  protected readonly expanded = computed(() => this.menus()?.expanded() ?? CLOSED);
+  readonly expanded = computed(() => this.menus()?.expanded() ?? CLOSED);
+  /** From 1120 px (the wide tier) the full prototype header: the area pill sits on the rail. */
+  protected readonly wide = computed(() => this.state.tier() === 'wide');
+
+  /** The overflow menu's area entry, the same three states as the wide pill; null outside a workspace. */
+  protected readonly areaEntry = computed<AreaEntry | null>(() => {
+    if (!this.inWorkspace()) return null;
+    if (this.specOpen()) {
+      return { valueKey: this.areaKey(), ariaKey: 'shell.area.label', reasonKey: null };
+    }
+    const page = this.workspacePage();
+    if (page !== null) {
+      return { valueKey: page.labelKey, ariaKey: 'shell.area.pageLabel', reasonKey: null };
+    }
+    return { valueKey: 'shell.area.menu', ariaKey: 'shell.area.menu', reasonKey: this.areaReason() };
+  });
 
   /** `/w/:ws`, or `/` (all workspaces) when none is open. */
   protected readonly workspaceHref = computed(() => {
@@ -110,14 +127,18 @@ export class ShellNav {
     return this.href(id !== null && this.specOpen() ? { link: specLink(ws, id) } : { link: ['/w', ws], fragment: 'specs' });
   });
 
-  protected press(kind: MenuKind): void {
+  press(kind: MenuKind): void {
     this.menus()?.press(kind);
   }
 
   /** A trigger's click: a modified or non-primary click is left to the browser; a plain one toggles the menu. */
-  protected toggle(event: MouseEvent, kind: MenuKind): void {
+  toggle(event: MouseEvent, kind: MenuKind): void {
     const menus = this.menus();
-    if (menus === undefined || navigatesNatively(event)) return;
+    if (menus === undefined || navigatesNatively(event)) {
+      // Until the menus have loaded, the settings button still leads somewhere: the settings page.
+      if (menus === undefined && kind === 'settings') void this.router.navigate(['/settings']);
+      return;
+    }
     event.preventDefault();
     menus.toggle(kind, event.currentTarget as HTMLElement);
   }

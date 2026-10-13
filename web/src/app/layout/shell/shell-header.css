@@ -1,16 +1,12 @@
 /*
- * The shell header's grid (spec 024 T34, design.md § Viewport-übergreifend; prototype `[data-ui="header"]`). The host is
- * sticky and the `header` size container the parts query; the header's own tiers follow the `shell` container.
+ * The shell header's grid (spec 024 T34, T76; design.md § Viewport-übergreifend; prototype `[data-ui="header"]`). The
+ * host is sticky and the `header` size container the parts query; the header's own tiers follow the `shell` container.
  *
- * From 1120 px: one 64 px row, the prototype header unchanged: brand rail (brand · rail-selects on one bordered field),
- * the palette (field 36 px in a minmax(240px, 360px) track; the 40 px icon on spec pages below 1560 px), then status
- * group, zen, dot, settings, help.
- *
- * Below 1120 px: two rows. Row 1 (64 px) the logo rail, palette, status, dot, settings, help; row 2 (48 px) the
- * rail-selects and zen; the tab bar is the page's, sticky under it (T35). Row 1 stays, row 2 scrolls away under
- * it: the host sticks at -48 px, and every row-1 part spans all rows and sticks 12 px from the top, so it slides down
- * over row 2 inside the header's box (a grid item's sticky range is its grid area). `::before` is row 1's glass strip,
- * `::after` the glass behind the lower rows.
+ * One 64 px row on every width (principal 2026-10-13), every element 40 px tall (44 px at `pointer: coarse`).
+ * From 1120 px the prototype header unchanged: brand rail (brand · rail-selects on one bordered field), the palette (a
+ * field in a minmax(240px, 360px) track; the 40 px icon on spec pages below 1560 px), then status group, zen, dot,
+ * settings, help. Below 1120 px: the brand rail with the Workspace and Spec selects, the palette icon, the status group
+ * and the overflow menu `⋯`. The bottom hairline only after the page has scrolled (prototype `.scrolled`).
  */
 :host {
   position: sticky;
@@ -27,34 +23,21 @@
   align-items: center;
   padding-block-start: env(safe-area-inset-top);
   padding-inline: 32px;
-  border-block-end: 1px solid var(--line);
-}
-
-.shell-header::before,
-.shell-header::after {
-  z-index: 0;
-  pointer-events: none;
-  grid-column: 1 / -1;
-  margin-inline: -32px;
+  border-block-end: 1px solid transparent;
   background: var(--page-glass);
   /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  content: "";
+  transition: border-color var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
-.shell-header::before {
-  grid-row: 1;
-  align-self: stretch;
-}
-
-.shell-header::after {
-  display: none;
+.shell-header.scrolled {
+  border-block-end-color: var(--line);
 }
 
 /* The bordered brand rail: 40 px, radius 10, 78 % card (prototype `.brand-rail`). */
 .rail-field {
-  z-index: 1;
+  z-index: 0;
   grid-row: 1;
   grid-column: brand-start / nav-end;
   block-size: 40px;
@@ -64,12 +47,12 @@
 }
 
 .brand {
-  z-index: 2;
+  z-index: 1;
   grid-area: brand;
 }
 
 .nav {
-  z-index: 2;
+  z-index: 1;
   grid-area: nav;
 }
 
@@ -80,7 +63,7 @@
   align-items: center;
   justify-content: flex-start;
   inline-size: 100%;
-  block-size: 36px;
+  block-size: 40px;
   padding-inline: 12px 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -117,7 +100,7 @@
   }
 }
 
-/* The icon form (prototype `.palette-icon`): below 1120 px, and on spec pages below 1560 px. */
+/* The icon form (prototype `.palette-icon`): on spec pages below 1560 px (and below 1120 px, further down). */
 @container shell (width < 1560px) {
   .on-spec {
     grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) auto auto auto auto auto auto;
@@ -126,7 +109,6 @@
   .on-spec .palette {
     justify-content: center;
     inline-size: 40px;
-    block-size: 40px;
     padding-inline: 0;
   }
 
@@ -134,16 +116,6 @@
   .on-spec .palette-key {
     display: none;
   }
-}
-
-/* Every part paints above the glass strips (grid items honour z-index). */
-.palette,
-.live,
-.zen,
-.assistant,
-.settings,
-.help {
-  z-index: 1;
 }
 
 .live {
@@ -219,82 +191,35 @@
   stroke-width: 1.2;
 }
 
-/* 44 px hit areas on a coarse pointer (prototype rule), not by width. */
+/* Every element 44 px tall on a coarse pointer (prototype rule), not by width. */
 @media (pointer: coarse) {
+  .rail-field,
   .palette,
-  .assistant {
+  .assistant,
+  .zen,
+  .settings,
+  .help,
+  .more {
     min-inline-size: 44px;
-    min-block-size: 44px;
+    block-size: 44px;
   }
 }
 
-/* Below 1120 px: two rows (design.md § Viewport-übergreifend, principal 2026-10-12). */
+/* Below 1120 px: the shortened row (spec 024 T76): brand rail, palette icon, status group, `⋯`. */
 @container shell (width < 1120px) {
-  :host {
-    inset-block-start: -48px;
-  }
-
   .shell-header,
   .shell-header.on-spec {
-    grid-template:
-      "brand . palette live assistant settings help" 64px
-      "nav nav nav nav nav nav zen" 48px / auto minmax(0, 1fr) auto auto auto auto auto;
+    grid-template: "brand nav . palette live more" 64px / auto minmax(0, auto) minmax(0, 1fr) auto auto auto;
     padding-inline: 24px;
   }
 
-  .shell-header::before,
-  .shell-header::after {
-    margin-inline: -24px;
-  }
-
-  /* Row 1's glass strip, stuck on top of the rows that scroll under it. */
-  .shell-header::before {
-    position: sticky;
-    inset-block-start: 0;
-    z-index: 3;
-    grid-row: 1 / -1;
-    align-self: start;
-    block-size: 64px;
-  }
-
-  .shell-header::after {
-    display: block;
-    grid-row: 2 / -1;
-    align-self: stretch;
-  }
-
-  .r1 {
-    position: sticky;
-    inset-block-start: 12px;
-    z-index: 4;
-    grid-row: 1 / -1;
-    align-self: start;
-    margin-block-start: 12px;
-  }
-
-  .rail-field {
-    grid-row: 1 / -1;
-    grid-column: brand;
-  }
-
-  .brand {
-    z-index: 5;
-  }
-
-  .nav,
-  .zen {
-    z-index: 1;
-  }
-
-  .nav {
-    justify-self: start;
-    max-inline-size: 100%;
+  .more {
+    grid-area: more;
   }
 
   .palette {
     justify-content: center;
     inline-size: 40px;
-    block-size: 40px;
     padding-inline: 0;
   }
 
@@ -302,33 +227,17 @@
   .palette-key {
     display: none;
   }
-
-  @media (pointer: coarse) {
-    .r1 {
-      inset-block-start: 10px;
-      margin-block-start: 10px;
-    }
-  }
 }
 
 @container shell (width < 640px) {
   .shell-header,
   .shell-header.on-spec {
+    column-gap: 6px;
     padding-inline: 16px;
-  }
-
-  .shell-header::before,
-  .shell-header::after {
-    margin-inline: -16px;
-  }
-
-  /* Help lives in the settings page here. */
-  .help {
-    display: none;
   }
 }
 
-/* Zen (ISC-75): the tools go; brand, rail-selects and the pressed zen button stay. */
+/* Zen (ISC-75): the tools go; brand, rail-selects, the pressed zen button and the overflow menu stay. */
 :host([data-zen]) .tool {
   display: none;
 }

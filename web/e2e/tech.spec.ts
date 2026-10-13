@@ -6,7 +6,7 @@
  */
 import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
-import { atWidth, expect, test, WIDTHS } from './fixtures';
+import { atWidth, expect, test, WIDTHS, headerControl } from './fixtures';
 
 interface DocsSection {
   readonly id: string;
@@ -280,7 +280,9 @@ const fill = (template: string, params: Readonly<Record<string, string | number>
 const lanternUrl = (tab: Tab): RegExp => new RegExp(`/w/${LANTERN_WS}/tech/${tab}$`);
 
 async function openAreaMenu(page: Page): Promise<Locator> {
-  await page.locator('header [data-control="area"]').click();
+  // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
+  const area = page.locator('header [data-control="area"]');
+  await (await area.isVisible() ? area : await headerControl(page, 'area')).click();
   const menu = page.locator('nav[aria-label="Areas"]');
   await expect(menu).toBeVisible();
   return menu;
@@ -317,7 +319,8 @@ test.describe('reach', () => {
 
       test('the area menu lists Tech fifth with the KPI summary; it lands on overview, current in the menu and on the trigger', async ({ page }) => {
         await page.goto(`/w/${WS}`);
-        await expect(page.locator('header [data-control="area"]')).toBeVisible();
+        // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
+        await expect(await headerControl(page, 'area')).toBeVisible();
         let menu = await openAreaMenu(page);
         const entries = menu.locator('[data-page]');
         expect(await entries.evaluateAll((all) => all.map((el) => el.getAttribute('data-page')))).toEqual(['specs', 'board', 'features', 'milestones', 'tech']);

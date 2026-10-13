@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import type { Locator } from '@playwright/test';
 import type { Diagnostic } from '../../core/src/diagnostics.ts';
 import type { SpecPageModel } from '../../core/src/files.ts';
-import { atWidth, expect, test } from './fixtures';
+import { atWidth, expect, test, headerControl } from './fixtures';
 
 const GOLDEN = fileURLToPath(new URL('../../core/fixtures/harbor.spec.golden.json', import.meta.url));
 const HARBOR_002 = (JSON.parse(readFileSync(GOLDEN, 'utf8')) as Record<string, SpecPageModel>)['specs/002-web-console'];
@@ -32,7 +32,8 @@ for (const { width, tier } of TIERS) {
       await expect(page.locator('app-shell')).toHaveAttribute('data-tier', tier);
 
       const trigger = page.locator('header [data-control="area"]');
-      await expect(trigger).toHaveAccessibleName('Area: Data');
+      // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13): the label is read from the attribute, visible or not
+      await expect(trigger).toHaveAttribute('aria-label', 'Area: Data');
       await expect(trigger).toContainText('Data');
 
       const tabs = page.locator('app-tab-bar a');
@@ -43,7 +44,8 @@ for (const { width, tier } of TIERS) {
       if (tasks) await expect(page.locator('app-tab-bar [data-count="tasks"]')).toHaveText(`${String(tasks.landed)}/${String(tasks.total)}`);
       await expect(page.locator('app-tab-bar [data-count="evidence"]')).toHaveCount(0);
 
-      await trigger.click();
+      // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
+      await (await headerControl(page, 'area')).click();
       const menu = page.getByRole('navigation', { name: 'Areas' });
       await expect(menu).toBeVisible();
       await expect(trigger).toHaveAttribute('aria-expanded', 'true');
@@ -55,7 +57,8 @@ for (const { width, tier } of TIERS) {
 
     test('area menu shows Live enabled, linking to its Board, with no unbuilt reason', async ({ page }) => {
       await page.goto('/w/harbor/s/002/status');
-      await page.locator('header [data-control="area"]').click();
+      // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
+      await (await headerControl(page, 'area')).click();
       const menu = page.getByRole('navigation', { name: 'Areas' });
       await expect(menu).toBeVisible();
 
@@ -81,7 +84,8 @@ for (const { width, tier } of TIERS) {
       await page.locator('app-tab-bar a[data-tab="tasks"]').click();
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/tasks$/);
       await expect(page.locator('app-tab-bar a[aria-current="page"]')).toHaveAttribute('data-tab', 'tasks');
-      await expect(page.locator('header [data-control="area"]')).toHaveAccessibleName('Area: Data');
+      // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
+      await expect(page.locator('header [data-control="area"]')).toHaveAttribute('aria-label', 'Area: Data');
 
       await page.locator('app-tab-bar a[data-tab="evidence"]').click();
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/evidence$/);

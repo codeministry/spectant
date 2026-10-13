@@ -115,3 +115,175 @@
 @if (specOpen() || (state.ws() !== null && !data.workspaceMissing())) {
   <app-area-menu />
 }
+
+<!-- The overflow menu `⋯` (spec 024 T76): below 1120 px it holds the header controls the row has no room for. -->
+<ng-template #moreList>
+  <nav class="picker more" data-menu="more" [attr.aria-label]="'shell.more' | transloco">
+    <ul uiRovingList [singleKeys]="singleKeys()">
+      @if (area(); as entry) {
+        <li>
+          @if (entry.reasonKey; as reason) {
+            <button
+              uiRovingItem
+              type="button"
+              class="entry"
+              data-control="area"
+              aria-disabled="true"
+              [attr.aria-label]="'shell.area.menu' | transloco"
+            >
+              <ui-icon name="layers" />
+              <span class="entry-stack">
+                <span class="entry-name">{{ 'shell.pills.area' | transloco }}</span>
+                <span class="entry-meta">{{ reason | transloco }}</span>
+              </span>
+            </button>
+          } @else {
+            <button
+              uiRovingItem
+              type="button"
+              class="entry"
+              data-control="area"
+              aria-haspopup="dialog"
+              data-autofocus
+              [attr.aria-expanded]="expanded().area"
+              [attr.aria-label]="entry.ariaKey | transloco: { area: (entry.valueKey | transloco), page: (entry.valueKey | transloco) }"
+              (click)="openFromMore('area')"
+            >
+              <ui-icon name="layers" />
+              <span class="entry-name" data-pill-label>{{ 'shell.pills.area' | transloco }}</span>
+              <span class="entry-value" data-pill-value>{{ entry.valueKey | transloco }}</span>
+            </button>
+          }
+        </li>
+      }
+      <li>
+        <button
+          uiRovingItem
+          type="button"
+          class="entry"
+          data-control="zen"
+          [attr.aria-pressed]="state.zen()"
+          [attr.data-autofocus]="area() === null || area()?.reasonKey ? '' : null"
+          (click)="toggleZen()"
+        >
+          <ui-icon name="scan" />
+          <span class="entry-name">{{ 'shell.zen.toggle' | transloco }}</span>
+          @if (singleKeys()) {
+            <kbd class="entry-key">z</kbd>
+          }
+        </button>
+      </li>
+      <li>
+        <button
+          uiRovingItem
+          type="button"
+          class="entry"
+          data-tool="assistant"
+          aria-disabled="true"
+          aria-pressed="false"
+          [attr.aria-label]="'shell.assistant.trigger' | transloco"
+        >
+          <ui-icon name="bot" />
+          <span class="entry-stack">
+            <span class="entry-name">{{ 'shell.assistant.trigger' | transloco }}</span>
+            <span class="entry-meta">{{ 'shell.assistant.soon' | transloco }}</span>
+          </span>
+        </button>
+      </li>
+      <li>
+        <button
+          uiRovingItem
+          type="button"
+          class="entry"
+          data-control="settings"
+          aria-haspopup="dialog"
+          [attr.aria-label]="'shell.settings' | transloco"
+          (click)="openFromMore('settings')"
+        >
+          <ui-icon name="settings" />
+          <span class="entry-name">{{ 'settings.title' | transloco }}</span>
+        </button>
+      </li>
+      <li>
+        <button uiRovingItem type="button" class="entry" data-tool="help" aria-haspopup="dialog" (click)="openShortcuts()">
+          <ui-icon name="circle-help" />
+          <span class="entry-name">{{ 'shell.help' | transloco }}</span>
+        </button>
+      </li>
+    </ul>
+  </nav>
+</ng-template>
+
+<!-- The settings panel (prototype `pop-settings`, spec 024 T40). -->
+<ng-template #settingsPanel>
+  <div class="settings-panel" data-menu="settings">
+    <div class="setting">
+      <span class="setting-label" aria-hidden="true">{{ 'settings.theme.label' | transloco }}</span>
+      <ui-segmented
+        fill
+        data-setting="theme"
+        [label]="'settings.theme.label' | transloco"
+        [options]="themeOptions()"
+        [value]="themeMode()"
+        (valueChange)="setTheme($event)"
+      />
+    </div>
+    <div class="setting">
+      <span class="setting-label" aria-hidden="true">{{ 'settings.language.label' | transloco }}</span>
+      <ui-segmented
+        fill
+        data-setting="language"
+        [label]="'settings.language.label' | transloco"
+        [options]="langOptions"
+        [value]="lang()"
+        (valueChange)="setLanguage($event)"
+      />
+    </div>
+    <div class="pop-sep" role="presentation"></div>
+    <a class="entry" routerLink="/settings" data-settings-link="workspaces" (click)="close('settings')">
+      <ui-icon name="folder" />
+      <span class="entry-name">{{ 'shell.settingsPanel.workspaces' | transloco }}</span>
+    </a>
+    <a class="entry" routerLink="/help" data-settings-link="help" (click)="close('settings')">
+      <ui-icon name="circle-help" />
+      <span class="entry-name">{{ 'shell.settingsPanel.help' | transloco }}</span>
+    </a>
+    <div class="pop-sep" role="presentation"></div>
+    <div class="entry switch-row">
+      <span class="entry-name" aria-hidden="true">{{ 'settings.singleKey' | transloco }}</span>
+      <button
+        type="button"
+        class="switch"
+        role="switch"
+        data-setting="single-keys"
+        [attr.aria-checked]="singleKeys()"
+        [attr.aria-label]="'settings.singleKey' | transloco"
+        (click)="toggleSingleKeys()"
+      ></button>
+    </div>
+  </div>
+</ng-template>
+
+@if (compact()) {
+  <ui-sheet tier="compact" [label]="'shell.more' | transloco" [open]="sheet() === 'more'" (openChange)="sheetOpenChange('more', $event)">
+    <ng-container [ngTemplateOutlet]="moreList" />
+  </ui-sheet>
+  <ui-sheet
+    tier="compact"
+    [label]="'shell.settings' | transloco"
+    [open]="sheet() === 'settings'"
+    (openChange)="sheetOpenChange('settings', $event)"
+  >
+    <ng-container [ngTemplateOutlet]="settingsPanel" />
+  </ui-sheet>
+} @else {
+  <!-- From 1120 px the header shows these controls itself: no overflow menu, so every data-control stays unique. -->
+  @if (state.tier() === 'medium') {
+    <ui-popover #morePopover class="menu-popover" placement="end" [label]="'shell.more' | transloco">
+      <ng-container [ngTemplateOutlet]="moreList" />
+    </ui-popover>
+  }
+  <ui-popover #settingsPopover class="menu-popover" placement="end" [label]="'shell.settings' | transloco">
+    <ng-container [ngTemplateOutlet]="settingsPanel" />
+  </ui-popover>
+}

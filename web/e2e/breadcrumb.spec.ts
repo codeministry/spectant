@@ -428,6 +428,9 @@ test.describe('workspace first', () => {
 // compared case-insensitively (the uppercase is CSS): `shell.pills.workspace`, `shell.pills.specs` on workspace pages,
 // `shell.pills.spec` on spec pages, `shell.pills.area`. On `/`, `/help` and `/settings` the spec and area pills are
 // absent, the workspace pill reads `shell.pills.all · n`, and no segment shows `0`. `bun run e2e -- breadcrumb -g pills`.
+// ISC-140.2 refined (spec 024: one-row header on every width, principal 2026-10-13): the labels are visible from 1120 px;
+// below it the Workspace and Spec labels are part of the select's accessible name, and the Area select is the entry
+// of the overflow menu `⋯`, label and value visible there.
 const PILLS = 'app-shell-nav';
 type PillName = 'workspace' | 'spec' | 'area';
 /** The expected value of a pill: an exact catalog-backed text, or a pattern the value must match. */
@@ -479,11 +482,15 @@ const pillCatalog = (where: string, key: string): string => {
 const exactly = (text: string): RegExp => new RegExp(`^\\s*${escapeRegExp(text).replace(/\s+/gu, '\\s+')}\\s*$`, 'iu');
 const normalized = (text: string | null): string => (text ?? '').replace(/\s+/gu, ' ').trim();
 
-async function checkPills(page: Page, entry: PillPage): Promise<void> {
+async function checkPills(page: Page, entry: PillPage, width: number): Promise<void> {
   await page.goto(entry.path);
+  const wide = width >= 1120;
   for (const name of ['workspace', 'spec', 'area'] as const) {
     const where = `${entry.name} (${entry.path}), the ${name} pill`;
-    const segment = page.locator(`${PILLS} [data-control="${name}"]`);
+    // spec 024: one-row header on every width (principal 2026-10-13): below 1120 the area select is the overflow entry
+    const inMenu = name === 'area' && !wide;
+    const segment = page.locator(inMenu ? 'header [data-menu="more"] [data-control="area"]' : `${PILLS} [data-control="${name}"]`);
+    if (inMenu && entry.pills.area) await page.locator('header [data-tool="more"]').click();
     const expected = entry.pills[name];
     if (!expected) {
       await expect(segment, `${where} is absent`).toHaveCount(0);
@@ -494,8 +501,13 @@ async function checkPills(page: Page, entry: PillPage): Promise<void> {
 
     const label = segment.locator('[data-pill-label]');
     await expect(label, `${where} carries one label`).toHaveCount(1);
-    await expect(label, `${where}: the label is visible`).toBeVisible();
-    await expect(label, `${where}: the label is ${expected.label}`).toHaveText(exactly(pillCatalog(where, expected.label)));
+    // ISC-140.2 refined: visible from 1120 px, below it in the accessible name
+    await expect(label, `${where}: the label is visible`).toBeVisible({ visible: wide || inMenu });
+    if (!wide && !inMenu) {
+      const named = new RegExp(escapeRegExp(pillCatalog(where, expected.label)), 'iu');
+      await expect(segment, `${where}: the label is in the accessible name`).toHaveAccessibleName(named);
+    }
+    await expect(label, `${where}: the label is ${expected.label}`).toHaveText(exactly(pillCatalog(where, expected.label)), { useInnerText: false });
 
     const value = segment.locator('[data-pill-value]');
     await expect(value, `${where} carries one value`).toHaveCount(1);
@@ -529,7 +541,7 @@ test.describe('pills', () => {
 
       for (const entry of PILL_PAGES) {
         test(`pills carry labels: ${entry.name} (${entry.path}) at ${String(width)}`, async ({ page }) => {
-          await checkPills(page, entry);
+          await checkPills(page, entry, width);
         });
       }
     });

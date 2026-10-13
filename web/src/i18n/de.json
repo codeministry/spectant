@@ -502,6 +502,11 @@
       "interval": "Aktualisierungsintervall",
       "seconds": "{{seconds}} s",
       "off": "Aus"
+    },
+    "more": "Mehr",
+    "settingsPanel": {
+      "workspaces": "Workspaces …",
+      "help": "Hilfe und Anleitung"
     }
   },
   "notFound": {

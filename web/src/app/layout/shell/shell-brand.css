@@ -90,10 +90,10 @@
   }
 }
 
+/* The rail is 44 px on a coarse pointer (shell-header.css); the brand fills it inside its border. */
 @media (pointer: coarse) {
   .brand {
-    min-block-size: 44px;
-    margin-block: -2px;
+    block-size: 42px;
   }
 }
 

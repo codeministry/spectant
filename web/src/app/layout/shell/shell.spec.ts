@@ -430,17 +430,38 @@ describe('ShellComponent', () => {
       expect(spec.querySelector('[data-live-board]')?.textContent).toContain('Open the round board');
     });
 
-    it('links settings to the settings page, which renders inside the shell', async () => {
+    // spec 024 T40: the settings control opens the prototype settings popover; its "Workspaces…" entry leads to /settings.
+    it('opens the settings popover from the settings control, whose Workspaces entry leads to the settings page', async () => {
+      const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+      proto['showPopover'] = vi.fn();
+      proto['hidePopover'] = vi.fn(function (this: HTMLElement) {
+        this.dispatchEvent(Object.assign(new Event('toggle'), { newState: 'closed', oldState: 'open' }));
+      });
       setUp();
       const { root, harness } = await open('/w/harbor');
       const settings = control(root, 'settings');
-      expect(settings.tagName).toBe('A');
-      expect(settings.getAttribute('href')).toBe('/settings');
+      expect(settings.tagName).toBe('BUTTON');
+      expect(settings.getAttribute('aria-haspopup')).toBe('dialog');
       expect(settings.getAttribute('aria-disabled')).toBeNull();
       expect(settings.getAttribute('aria-label')).toBe('Settings and help');
 
-      settings.click();
-      await harness.fixture.whenStable();
+      try {
+        settings.click();
+        await harness.fixture.whenStable();
+        expect(settings.getAttribute('aria-expanded')).toBe('true');
+        const panel = root.querySelector('[data-menu="settings"]');
+        expect(panel?.querySelector('[data-setting="theme"] [role="radiogroup"]')?.getAttribute('aria-label')).toBe('Theme');
+        expect(panel?.querySelector('[data-setting="language"] [role="radiogroup"]')?.getAttribute('aria-label')).toBe('Language');
+        expect(panel?.querySelector('[data-setting="single-keys"]')?.getAttribute('role')).toBe('switch');
+        expect(panel?.querySelector('[data-settings-link="help"]')?.getAttribute('href')).toBe('/help');
+        const workspaces = panel?.querySelector<HTMLAnchorElement>('[data-settings-link="workspaces"]');
+        expect(workspaces?.getAttribute('href')).toBe('/settings');
+        workspaces?.click();
+        await harness.fixture.whenStable();
+      } finally {
+        delete proto['showPopover'];
+        delete proto['hidePopover'];
+      }
       expect(TestBed.inject(Router).url).toBe('/settings');
       const page = root.querySelector('[data-page="settings"]');
       expect(page?.querySelector('h1')?.textContent).toContain('Settings');
@@ -583,8 +604,9 @@ describe('ShellComponent', () => {
     it('opens the pickers as bottom sheets at compact, focused on the current entry', async () => {
       setUp(TWO);
       const { root, harness } = await open('/w/harbor/s/002', 390);
-      // The workspace and spec pickers, and the area menu (T37): all three are bottom sheets at compact.
-      expect(root.querySelectorAll('ui-sheet')).toHaveLength(3);
+      // The workspace and spec pickers, the area menu (T37), the overflow menu and the settings panel (spec 024 T76,
+      // T40): all five are bottom sheets at compact.
+      expect(root.querySelectorAll('ui-sheet')).toHaveLength(5);
       expect(root.querySelectorAll('ui-popover.picker-popover, ui-popover.area-popover')).toHaveLength(0);
       expect(root.querySelectorAll('header')).toHaveLength(1);
 

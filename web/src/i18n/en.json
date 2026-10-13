@@ -502,6 +502,11 @@
       "interval": "Refresh interval",
       "seconds": "{{seconds}} s",
       "off": "Off"
+    },
+    "more": "More",
+    "settingsPanel": {
+      "workspaces": "Workspaces…",
+      "help": "Help & guide"
     }
   },
   "notFound": {

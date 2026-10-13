@@ -1,13 +1,13 @@
-<header role="banner" class="shell-header" [class.on-spec]="specPage()">
+<header role="banner" class="shell-header" [class.on-spec]="specPage()" [class.scrolled]="scrolled()">
   <!-- The brand rail's bordered field (prototype `.brand-rail`): behind brand and rail-selects at wide, the logo below. -->
-  <span class="rail-field r1" aria-hidden="true"></span>
+  <span class="rail-field" aria-hidden="true"></span>
 
-  <app-shell-brand class="brand r1" />
-  <app-shell-nav class="nav" />
+  <app-shell-brand class="brand" />
+  <app-shell-nav #nav class="nav" />
 
   <button
     type="button"
-    class="palette tool r1"
+    class="palette tool"
     data-control="palette"
     aria-haspopup="dialog"
     aria-keyshortcuts="Meta+K Control+K /"
@@ -20,14 +20,14 @@
     <ui-kbd class="palette-key" aria-hidden="true">{{ 'shell.palette.key' | transloco }}</ui-kbd>
   </button>
 
-  <app-shell-live class="live tool r1" [link]="liveLink()" />
+  <app-shell-live class="live tool" [link]="liveLink()" />
 
+  @if (wide()) {
   <button
     ui-icon-button
     class="zen"
     data-control="zen"
     icon="scan"
-    [size]="state.tier() === 'wide' ? 'md' : 'sm'"
     [label]="'shell.zen.toggle' | transloco"
     [attr.aria-pressed]="state.zen()"
     (click)="state.toggleZen()"
@@ -36,7 +36,7 @@
   <!-- The assistant dot (prototype `assistant-toggle`): only the trigger's place and look; T53 builds the assistant. -->
   <button
     type="button"
-    class="assistant tool r1"
+    class="assistant tool"
     data-tool="assistant"
     aria-pressed="false"
     aria-disabled="true"
@@ -63,27 +63,41 @@
     </svg>
   </button>
 
-  <a
-    ui-button
-    variant="secondary"
-    class="settings tool r1 btn-square"
+  <button
+    ui-icon-button
+    class="settings tool"
     data-control="settings"
-    routerLink="/settings"
-    routerLinkActive
-    ariaCurrentWhenActive="page"
-    [attr.aria-label]="'shell.settings' | transloco"
+    icon="settings"
+    aria-haspopup="dialog"
+    [label]="'shell.settings' | transloco"
     [attr.title]="'shell.settings' | transloco"
-  >
-    <ui-icon name="settings" [size]="16" />
-  </a>
+    [attr.aria-expanded]="nav.expanded().settings"
+    (pointerdown)="nav.press('settings')"
+    (click)="nav.toggle($event, 'settings')"
+  ></button>
 
   <button
     ui-icon-button
-    class="help tool r1"
+    class="help tool"
     data-tool="help"
     icon="circle-help"
     aria-haspopup="dialog"
     [label]="'shell.help' | transloco"
     (click)="keyboard.sheetOpen.set(true)"
   ></button>
+  } @else {
+  <!-- Below 1120 px (spec 024 T76): area, zen, assistant, settings and help live in the overflow menu. -->
+  <button
+    ui-icon-button
+    class="more"
+    data-tool="more"
+    icon="ellipsis"
+    aria-haspopup="dialog"
+    [label]="'shell.more' | transloco"
+    [attr.title]="'shell.more' | transloco"
+    [attr.aria-expanded]="nav.expanded().more"
+    (pointerdown)="nav.press('more')"
+    (click)="nav.toggle($event, 'more')"
+  ></button>
+  }
 </header>
