@@ -127,10 +127,6 @@ app-library-page .lib-row[data-state='missing'] .lib-type {
   color: var(--muted-ink);
 }
 
-app-library-page .lib-missing-reader {
-  justify-self: stretch;
-}
-
 @media (forced-colors: active) {
   app-library-page .lib-ctl[aria-pressed='true'] {
     outline: 2px solid Highlight;

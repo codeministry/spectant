@@ -160,71 +160,14 @@
     }
 
     @if (wide() || current()) {
-      <div class="lib-reader" data-library-reader tabindex="-1" [attr.aria-label]="'library.reader.label' | transloco">
-        @if (current(); as doc) {
-          <div class="lib-reader-head">
-            @if (!wide()) {
-              <button ui-button variant="ghost" size="sm" type="button" class="lib-back" data-library-back (click)="back()">
-                <ui-icon name="arrow-left" [size]="16" />{{ 'library.reader.back' | transloco }}
-              </button>
-            }
-            <div class="lib-meta">
-              <span class="lib-type" [attr.data-type]="doc.type"><ui-icon [name]="typeIcon(doc)" [size]="12" />{{ 'library.types.' + doc.type | transloco }}</span>
-              <ui-chip variant="take" tone="accent">{{ chipLabel(doc.spec) }}</ui-chip>
-              <span class="lib-file">{{ filePath(doc) }}</span>
-              @if (doc.modified; as modified) {
-                <span class="lib-updated">{{ 'library.reader.updated' | transloco: { date: date(modified) } }}</span>
-              }
-            </div>
-            <h2 class="lib-reader-title">{{ doc.title }}</h2>
-            @if (openLink(doc); as link) {
-              <a ui-button [routerLink]="link" data-library-open>
-                {{ 'library.reader.open' | transloco: { spec: chipLabel(doc.spec) } }}<ui-icon name="arrow-right" [size]="16" />
-              </a>
-            }
-          </div>
-
-          @if (doc.state === 'stale') {
-            <ui-notice tone="warning" data-library-stale-notice>
-              <strong>{{ 'library.reader.staleHeading' | transloco }}</strong>
-            </ui-notice>
-          }
-
-          @if (doc.media === 'markdown' && doc.state !== 'missing') {
-            @if (pageFailed()) {
-              <ui-notice tone="error" icon="circle-alert">{{ 'library.reader.error' | transloco }}</ui-notice>
-            } @else if (prose(); as html) {
-              <article class="lib-prose" data-library-prose [innerHTML]="html"></article>
-            } @else if (pageLoading()) {
-              <div class="lib-loading" role="status" [attr.aria-label]="'library.reader.loading' | transloco">
-                <ui-skeleton />
-                <ui-skeleton />
-                <ui-skeleton width="64%" />
-              </div>
-            }
-          } @else if (doc.state === 'missing') {
-            <!-- Prototype `mutedTab` (pages.js): the empty state with the command that writes the file. -->
-            <ui-empty-state
-              class="lib-missing-reader"
-              data-library-missing
-              icon="file-x"
-              [heading]="'library.reader.missingHeading' | transloco: { file: fileName(doc.path) }"
-              [body]="(missingCommand(doc) ? 'library.reader.missingBody' : 'library.reader.missingBodyPlain') | transloco"
-            >
-              @if (missingCommand(doc); as command) {
-                <ui-command-chip [command]="command" [copyLabel]="'common.copyCommand' | transloco" />
-              }
-            </ui-empty-state>
-          } @else if (doc.media !== 'markdown') {
-            <figure class="lib-image" data-library-image>
-              <ui-icon [name]="typeIcon(doc)" [size]="24" />
-              <figcaption>{{ 'library.reader.image' | transloco: { file: filePath(doc) } }}</figcaption>
-            </figure>
-          }
-        } @else {
-          <ui-empty-state icon="book" [heading]="'library.reader.pick' | transloco" [body]="'library.reader.pickBody' | transloco" />
-        }
-      </div>
+      <app-library-reader
+        [workspace]="ws()"
+        [doc]="current()"
+        [docs]="docs()"
+        [wide]="wide()"
+        (back)="back()"
+        (pick)="open($event)"
+      />
     }
   </div>
 </ui-card>

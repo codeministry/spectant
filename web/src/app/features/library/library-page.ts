@@ -1,20 +1,28 @@
-import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, resource, ViewEncapsulation } from '@angular/core';
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  Injector,
+  linkedSignal,
+  resource,
+  ViewEncapsulation,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NgTemplateOutlet } from '@angular/common';
-import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
-import { ActivatedRoute, type ParamMap, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, type ParamMap, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { LibraryCatalog, LibraryDoc, LibraryDocType } from '../../../../../core/src/files';
+import type { LibraryCatalog, LibraryDoc } from '../../../../../core/src/files';
 import { ApiClient } from '../../core/api.service';
 import { NotFound } from '../../layout/not-found/not-found';
-import { specLink } from '../../layout/shell/areas';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { UiIcon } from '../../shared/icons/icon';
 import type { IconName } from '../../shared/icons/icons';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiCard } from '../../shared/ui/card/card';
-import { UiChip } from '../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../shared/ui/filter-chips/filter-chips';
@@ -44,41 +52,9 @@ import {
   WORKSPACE_SPEC,
 } from './library-model';
 
-/**
- * Each catalog type's tag icon (design.md 017 § Viewport-übergreifend, Mobile § 3): the Markdown kinds a page, tasks
- * the checklist, design the palette, a prototype the app window, the constitution the scale, tech the open book, an
- * idea the bulb. An image document draws `image` whatever its type (`typeIcon`).
- */
-const TYPE_ICON: Readonly<Record<LibraryDocType, IconName>> = {
-  spec: 'file-text',
-  plan: 'file-text',
-  tasks: 'list-checks',
-  design: 'palette',
-  context: 'file-text',
-  artifact: 'file-text',
-  evidence: 'file-text',
-  prototype: 'app-window',
-  constitution: 'scale',
-  tech: 'book-open',
-  tldr: 'file-text',
-  idea: 'lightbulb',
-};
+import { LibraryReader, shortDateParts, typeIcon } from './library-reader';
 
-export const typeIcon = (doc: Pick<LibraryDoc, 'type' | 'media'>): IconName => (doc.media === 'image' ? 'image' : TYPE_ICON[doc.type]);
-
-/**
- * A row's short date (design.md 017 § Viewport-übergreifend): day, month and time, the year only outside the current
- * one, in UTC as every other date of the app's fixtures. The two parts are joined by the catalogue's `library.date`,
- * so English reads "Oct 12, 14:02" and German "12.10. 14:02".
- */
-export function shortDateParts(iso: string, now: Date, locale: string): { readonly date: string; readonly time: string } {
-  const at = new Date(iso);
-  const year = at.getUTCFullYear() === now.getUTCFullYear() ? undefined : 'numeric';
-  const german = locale.startsWith('de');
-  const date = new Intl.DateTimeFormat(locale, german ? { day: '2-digit', month: '2-digit', year, timeZone: 'UTC' } : { month: 'short', day: 'numeric', year, timeZone: 'UTC' }).format(at);
-  const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }).format(at);
-  return { date, time };
-}
+export { fileName, missingCommand, shortDateParts, typeIcon } from './library-reader';
 
 /** The two control counts of the card's first row (design.md 017 § Viewport-übergreifend; ISC-156.1), in this order. */
 export type ControlKey = 'missing' | 'stale';
@@ -104,17 +80,6 @@ export function controlViews(catalog: Pick<LibraryCatalog, 'missing' | 'stale'>,
     return { key, count, icon: count === 0 ? 'circle-check' : CONTROL_ICON[key], pressed: state === key, labelKey: `library.control.${key}.${plural}` };
   });
 }
-
-/**
- * The command that writes a missing document (design.md 017 § 2.2): `/spec-plan 017` for plan.md, `/spec-tasks 017`
- * for tasks.md; core marks no other type missing, so every other answers null.
- */
-export function missingCommand(doc: Pick<LibraryDoc, 'type' | 'spec'>): string | null {
-  return doc.type === 'plan' || doc.type === 'tasks' ? `/spec-${doc.type} ${specKey(doc.spec)}` : null;
-}
-
-/** The file name of a document path (`017-x/plan.md` → `plan.md`). */
-const fileName = (path: string): string => path.slice(path.lastIndexOf('/') + 1);
 
 /** The server's full-text search waits this long after the last keystroke (title and path matches show at once). */
 export const SEARCH_DEBOUNCE_MS = 200;
@@ -193,8 +158,8 @@ interface GroupView {
  * replaces it whenever it changes from outside. The search matches titles and paths at once and, 200 ms after the
  * last keystroke, the full text through `ApiClient.librarySearch`; a row found by the server shows its snippet. The
  * state select (All · Outdated · Missing · Open) sits beside the spec select and writes the same `?state=` as the
- * control counts. The reader component is T34's; the reader here loads the chosen Markdown document through
- * `ApiClient.libraryDoc` and shows core's rendered prose.
+ * control counts. The chosen document is shown by `app-library-reader` (T34, ISC-156.3), which reports a followed
+ * cross reference back as a selection.
  *
  * The card's first row (`lib-head`, T30, ISC-156.1) holds the control counts "missing" (violet, `file-x`) and
  * "outdated" (orange, `triangle-alert`) from the catalog; a click sets `?state=missing|stale`, a second lifts it, and
@@ -203,21 +168,22 @@ interface GroupView {
  * the command that writes the file.
  *
  * From 1120 px (`wide`) list and reader sit side by side and the first match opens on its own; below, the page shows
- * the list or the reader, never both, and the reader's back button returns to the list.
+ * the list or the reader, never both: opening a document scrolls to the top and focuses the reader, and the reader's
+ * back button (or Escape) returns to the list at the scroll position it had and focuses the opened row (DS-APP-35).
+ * At wide a chosen document moves the focus to the reader without scrolling (design.md 017 § 7 Tastatur und Fokus).
  *
- * Not encapsulated: the prose is `[innerHTML]` from core's one renderer; every selector in the stylesheet starts with
- * `app-library-page`.
+ * Not encapsulated: the row template's type tag is shared with the reader's head; every selector in the stylesheet
+ * starts with `app-library-page`.
  */
 @Component({
   selector: 'app-library-page',
   imports: [
+    LibraryReader,
     NgTemplateOutlet,
     NotFound,
-    RouterLink,
     TranslocoPipe,
     UiButton,
     UiCard,
-    UiChip,
     UiCommandChip,
     UiEmptyState,
     UiFilterChips,
@@ -243,8 +209,11 @@ export class LibraryPage {
   private readonly data = inject(ShellData);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly transloco = inject(TranslocoService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private readonly injector = inject(Injector);
+  /** Below 1120 px: the list's scroll position and the row a document was opened from, for the way back (DS-APP-35). */
+  private listReturn: { readonly top: number; readonly path: string } | null = null;
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   protected readonly ws = computed(() => this.state.ws() ?? '');
@@ -292,8 +261,6 @@ export class LibraryPage {
   protected readonly spec = computed(() => this.filter().spec);
   protected readonly stateFilter = computed(() => this.filter().state);
   protected readonly stateOptions = STATE_FILTERS;
-  protected readonly missingCommand = missingCommand;
-  protected readonly fileName = fileName;
 
   /** The card's first row: the catalog's missing and stale counts, pressed while `?state=` names them (ISC-156.1). */
   protected readonly controls = computed<readonly ControlView[]>(() => {
@@ -382,37 +349,10 @@ export class LibraryPage {
     return first?.rows.at(0)?.doc ?? first?.evidence?.rows.at(0)?.doc ?? null;
   });
 
-  /** The current Markdown document as core renders it (`GET …/library/doc?path=`); idle for images, prototypes, missing. */
-  private readonly page = resource({
-    params: () => {
-      const doc = this.current();
-      const ws = this.state.ws();
-      return ws !== null && doc !== null && doc.media === 'markdown' && doc.state !== 'missing' ? { ws, path: doc.path } : undefined;
-    },
-    loader: ({ params }) => this.api.libraryDoc(params.ws, params.path),
-  });
-  protected readonly pageLoading = computed(() => this.page.isLoading());
-  protected readonly pageFailed = computed(() => {
-    if (this.page.status() === 'error') return true;
-    const result = this.page.hasValue() ? this.page.value() : undefined;
-    return result !== undefined && result.kind !== 'ok';
-  });
-
-  /** Core's renderer escapes every text and passes no raw HTML (see `UiDocProse`), so its output is trusted here. */
-  protected readonly prose = computed<SafeHtml | null>(() => {
-    const result = this.page.hasValue() ? this.page.value() : undefined;
-    return result?.kind === 'ok' ? this.sanitizer.bypassSecurityTrustHtml(result.body.html) : null;
-  });
-
   /** The group's label: "‹ws› · workspace-wide", else the spec's number and slug ("017 · workspace-library"). */
   protected groupLabel(spec: string): string {
     if (spec === WORKSPACE_SPEC) return this.transloco.translate('library.wsWide', { ws: this.wsName() });
     return `${specKey(spec)} · ${specSlug(spec)}`;
-  }
-
-  /** The spec chip of the reader: the number, or the workspace for a workspace-wide document. */
-  protected chipLabel(spec: string): string {
-    return spec === WORKSPACE_SPEC ? this.wsName() : specKey(spec);
   }
 
   protected date(iso: string | null): string {
@@ -423,11 +363,6 @@ export class LibraryPage {
   /** The document's file (or prototype folder) as the workspace names it: below `specs/`. */
   protected filePath(doc: Pick<LibraryDoc, 'path'>): string {
     return `specs/${doc.path}`;
-  }
-
-  /** The spec dashboard of the document's spec; none for a workspace-wide document. */
-  protected openLink(doc: LibraryDoc): string[] | null {
-    return doc.spec === WORKSPACE_SPEC ? null : specLink(this.ws(), specKey(doc.spec));
   }
 
   protected setQuery(value: string): void {
@@ -474,15 +409,42 @@ export class LibraryPage {
     this.evidenceBlocks.update((map) => new Map(map).set(key, (map.get(key) ?? 1) + 1));
   }
 
+  /**
+   * A row or a followed cross reference opens a document. Below 1120 px the list gives way to the reader: the list's
+   * scroll position and the row are kept for the way back (when the list is what was shown), the page scrolls to its
+   * top and the reader takes the focus; at wide the focus moves to the reader without scrolling.
+   */
   protected open(path: string): void {
+    const fromList = !this.wide() && this.current() === null;
+    if (fromList) this.listReturn = { top: window.scrollY, path };
     this.picked.set(path);
     this.write();
     if (!this.wide()) window.scrollTo({ top: 0 });
+    this.afterRender(() => this.host.querySelector<HTMLElement>('[data-library-reader]')?.focus({ preventScroll: true }));
   }
 
+  /**
+   * The reader's way back below 1120 px (DS-APP-35): the list at the scroll position it had and the focus on the row
+   * the document was opened from; the row of the document read last when a cross reference led elsewhere.
+   */
   protected back(): void {
+    const read = this.current()?.path ?? null;
+    const saved = this.listReturn;
+    this.listReturn = null;
     this.picked.set(null);
     this.write();
+    this.afterRender(() => {
+      if (saved !== null) window.scrollTo({ top: saved.top });
+      const row = (path: string | null | undefined): HTMLElement | null =>
+        path == null ? null : this.host.querySelector<HTMLElement>(`[data-library-entry="${CSS.escape(path)}"]`);
+      const same = row(read) ?? row(saved?.path);
+      // The row the list was left from is in view once the position is back; any other row scrolls into view.
+      same?.focus({ preventScroll: saved !== null && (read === saved.path || row(read) === null) });
+    });
+  }
+
+  private afterRender(write: () => void): void {
+    afterNextRender({ write }, { injector: this.injector });
   }
 
   /** The meta line under the title: the file (or folder) below `specs/`; an image says so, a prototype lists pages. */
