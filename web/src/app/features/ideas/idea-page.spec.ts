@@ -125,6 +125,15 @@ describe('IdeaPage (T131, ISC-124.2)', () => {
     expect(page.querySelector('form, input, textarea, select, button, [contenteditable]')).toBeNull();
   });
 
+  it('links “Show relations” to the detail sidebar on the idea: ?sel=idea:<slug>, the object named (spec 026, T28)', async () => {
+    setUp(stub);
+    const root = await open('/w/harbor/ideas/console-audit-log');
+    const link = root.querySelector<HTMLAnchorElement>('a[data-show-relations]');
+    expect(link?.getAttribute('data-ref')).toBe('idea:console-audit-log');
+    expect(link?.getAttribute('href')).toBe('/w/harbor/ideas/console-audit-log?sel=idea:console-audit-log');
+    expect(text(link)).toBe('Show relations');
+  });
+
   it('keeps the TOC as the Docs tab does below wide: a disclosure, still no form element', async () => {
     setUp(stub);
     const root = await open('/w/harbor/ideas/console-audit-log', 'medium');

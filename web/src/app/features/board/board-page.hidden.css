@@ -46,3 +46,9 @@
 :host([data-dragging]) .lane-hidden {
   pointer-events: none;
 }
+
+/* Spec 026 (T26): while the detail sidebar floats over the board, the scroller leaves room to scroll a card out from
+   under it, as the planning matrix does. */
+:host([data-has-selection]:not([data-tier='compact'])) .scroller {
+  padding-inline-end: calc(var(--rail) + 24px);
+}

@@ -94,6 +94,8 @@ describe('the drag configuration and the hints (T125, ISC-130)', () => {
   it('lifts a touch after 350 ms and a mouse at once, and never sorts', () => {
     expect(BOARD_DRAG_CONFIG.dragStartDelay).toEqual({ touch: 350, mouse: 0 });
     expect(BOARD_DRAG_CONFIG.sortingDisabled).toBe(true);
+    // Spec 026 T26 (ISC-171): a card lifts only after 4 px, so a click on its surface selects instead of fighting a drag.
+    expect(BOARD_DRAG_CONFIG.dragStartThreshold).toBe(4);
   });
 
   it('judges a column by the card: current, allowed by the table, a fixed gate, or not next', () => {

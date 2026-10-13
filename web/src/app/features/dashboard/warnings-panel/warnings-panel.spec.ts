@@ -56,7 +56,7 @@ describe('WarningsPanel', () => {
         const line = lines[i] as HTMLElement;
         expect(line.querySelector('ui-icon[data-icon="triangle-alert"]')).not.toBeNull();
         const link = line.querySelector('a[data-warning-link]') as HTMLAnchorElement;
-        expect(link.getAttribute('href')).toBe(`/?spec=${spec.id}`);
+        expect(link.getAttribute('href')).toBe(`/?sel=spec:${spec.id}`);
         expect(link.textContent.trim()).toBe(spec.id);
         expect(line.querySelector('[data-warning-text]')?.textContent.trim()).toBe(w.text);
         expect(line.querySelector('ui-command-chip code')?.textContent ?? null).toBe(w.command ?? null);
@@ -75,7 +75,7 @@ describe('WarningsPanel', () => {
       expect(line.closest(`[data-warning-spec="${spec.id}"]`)).not.toBeNull();
       // spec 024: prototype value (principal: Prototyp gilt immer)
       expect(line.querySelector('ui-icon[data-icon="cloud"]')).not.toBeNull();
-      expect(line.querySelector('a[data-warning-link]')?.getAttribute('href')).toBe(`/?spec=${spec.id}`);
+      expect(line.querySelector('a[data-warning-link]')?.getAttribute('href')).toBe(`/?sel=spec:${spec.id}`);
       expect(line.textContent).toContain(spec.fog === 1 ? '1 open fog item' : `${spec.fog} open fog items`);
     }
     expect(root.querySelector('[data-open-fog]')).toBeNull();

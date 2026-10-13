@@ -136,14 +136,14 @@ for (const width of [1440, 600, 390] as const) {
       await click(column, `workspace ${TARGET.ws}`);
       await expect(page).toHaveURL(new RegExp(`/w/${TARGET.ws}$`));
 
-      // The spec table opens a row in two steps: the first click previews it (`?spec=`), the second opens the spec: the
-      // row again, or below 1120 px the preview sheet's "Open spec" action, which covers the row.
+      // The spec table opens a row in two steps: the first click selects it for the detail sidebar (`?sel=spec:`, spec
+      // 026), the second opens the spec: the row again, or below 1120 px the sidebar's "Open spec", which may cover the row.
       const row = page.locator(`[data-panel="specs"] [data-spec-row="${TARGET.spec}"]`);
       await expect(row).toBeVisible();
       if (!(await wholly(row))) await steps.scrollTo(row);
       await click(row, `preview ${TARGET.spec}`);
-      await expect(page).toHaveURL((url) => url.searchParams.get('spec') === TARGET.spec);
-      const sheetOpen = page.locator(`[data-inspector-sheet] a[data-action="open-spec"][href="/w/${TARGET.ws}/s/${TARGET.spec}"]`);
+      await expect(page).toHaveURL((url) => url.searchParams.get('sel') === `spec:${TARGET.spec}`);
+      const sheetOpen = page.locator(`app-detail-sidebar a[data-open-spec][href="/w/${TARGET.ws}/s/${TARGET.spec}"]`);
       const sheeted = width < 1120;
       if (sheeted) await expect(sheetOpen).toBeVisible();
       const second = sheeted ? sheetOpen : row;

@@ -145,23 +145,9 @@
     "empty": "No specs yet",
     "noMatch": "No spec in {{phase}}",
     "clearFilter": "Clear filter",
-    "inspector": {
-      "label": "Spec details",
-      "claims": "Claims",
-      "percent": "{{percent}} %",
-      "nextCommand": "Next command",
-      "takeableClaims": "Takeable claims",
-      "warnings": "Warnings",
-      "fog": {
-        "one": "{{count}} open fog item",
-        "other": "{{count}} open fog items"
-      },
-      "previous": "Previous spec",
-      "next": "Next spec",
-      "stepHint": "previous / next spec",
-      "explore": "Explore spec {{id}}",
-      "openFog": "Open fog",
-      "open": "Open spec"
+    "fogCount": {
+      "one": "{{count}} open fog item",
+      "other": "{{count}} open fog items"
     },
     "agentWorking": "Agent {{session}} working",
     "ideas": {
@@ -2053,7 +2039,8 @@
       "hash": "hash"
     },
     "loading": "Loading story",
-    "error": "This story could not be loaded."
+    "error": "This story could not be loaded.",
+    "showRelations": "Show relations"
   },
   "types": {
     "feature": "feature",

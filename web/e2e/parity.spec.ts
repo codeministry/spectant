@@ -676,13 +676,13 @@ const viaPage =
     await (await headerControl(page, 'page')).click();
     await follow(`nav[aria-label="Pages"] [data-page="${id}"]`)(page);
   };
-/** The spec table opens a row in two steps: the first click previews it (`?spec=`), the second opens the spec. */
+/** The spec table opens a row in two steps: the first click selects it for the sidebar (`?sel=spec:`), the second opens the spec. */
 const openSpecRow =
   (id: string) =>
   async (page: Page): Promise<void> => {
     const row = page.locator(`[data-panel="specs"] [data-spec-row="${id}"]`);
     await row.click();
-    await expect(page).toHaveURL((url) => url.searchParams.get('spec') === id);
+    await expect(page).toHaveURL((url) => url.searchParams.get('sel') === `spec:${id}`);
     await row.click();
   };
 const tab = (id: string): ((page: Page) => Promise<void>) => follow(`app-tab-bar a[data-tab="${id}"]`);

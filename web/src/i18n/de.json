@@ -145,23 +145,9 @@
     "empty": "Noch keine Specs",
     "noMatch": "Keine Spec in {{phase}}",
     "clearFilter": "Filter zurücksetzen",
-    "inspector": {
-      "label": "Spec-Details",
-      "claims": "Claims",
-      "percent": "{{percent}} %",
-      "nextCommand": "Nächster Befehl",
-      "takeableClaims": "Nehmbare Claims",
-      "warnings": "Warnungen",
-      "fog": {
-        "one": "{{count}} offener Fog-Eintrag",
-        "other": "{{count}} offene Fog-Einträge"
-      },
-      "previous": "Vorherige Spec",
-      "next": "Nächste Spec",
-      "stepHint": "vorherige / nächste Spec",
-      "explore": "Spec {{id}} erkunden",
-      "openFog": "Offener Fog",
-      "open": "Spec öffnen"
+    "fogCount": {
+      "one": "{{count}} offener Fog-Eintrag",
+      "other": "{{count}} offene Fog-Einträge"
     },
     "agentWorking": "Agent {{session}} arbeitet",
     "ideas": {
@@ -2053,7 +2039,8 @@
       "hash": "Hash"
     },
     "loading": "Story wird geladen",
-    "error": "Diese Story konnte nicht geladen werden."
+    "error": "Diese Story konnte nicht geladen werden.",
+    "showRelations": "Zusammenhänge anzeigen"
   },
   "types": {
     "feature": "Feature",

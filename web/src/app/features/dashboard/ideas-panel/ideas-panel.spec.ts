@@ -1,9 +1,11 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import lantern from '../../../../../../core/fixtures/lantern.golden.json';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import { ShellData } from '../../../layout/shell/shell-data.service';
+import { ShellState } from '../../../layout/shell/shell-state.service';
 import { type DashboardIdeas, IdeasPanel } from './ideas-panel';
 
 // T138 · ISC-124.2: the dashboard lists the backlog's stories after the Specs panel in one collapsed disclosure
@@ -21,7 +23,7 @@ beforeEach(() => {
         preloadLangs: true,
       }),
     ],
-    providers: [provideRouter([])],
+    providers: [provideRouter([]), { provide: ShellData, useValue: { planningModel: () => null } }, { provide: ShellState, useValue: { tier: () => 'wide' } }],
   });
 });
 
@@ -87,5 +89,21 @@ describe('IdeasPanel (T138, ISC-124.2)', () => {
     expect(root.hasAttribute('data-ideas')).toBe(false);
     expect(root.querySelector('ui-disclosure')).toBeNull();
     expect(root.querySelector('ui-idea-chip')).toBeNull();
+  });
+});
+
+describe('IdeasPanel selection (spec 026, T28, ISC-171)', () => {
+  it('a plain click on a chip selects idea:<slug> and marks its row; the chip names the object', async () => {
+    const { root, settle } = await render(HARBOR);
+    const idea = HARBOR.list[0];
+    const link = root.querySelector<HTMLAnchorElement>(`li[data-idea="${idea.slug}"] a`);
+    expect(link?.getAttribute('data-ref')).toBe(`idea:${idea.slug}`);
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+    link?.dispatchEvent(event);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await settle();
+    expect(event.defaultPrevented).toBe(true);
+    expect(TestBed.inject(Router).url).toBe(`/?sel=idea:${idea.slug}`);
+    expect(root.querySelector(`li[data-idea="${idea.slug}"]`)?.getAttribute('data-selected')).toBe('row');
   });
 });

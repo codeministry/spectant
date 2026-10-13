@@ -100,8 +100,10 @@ describe('SpecTable (prototype port, T89)', () => {
   it('renders a row as id | title + description | agent dot, mini track, phase chip | meter + a/b', async () => {
     const { host } = await render();
     const [first, second] = [...host.querySelectorAll<HTMLAnchorElement>('[data-spec-row]')];
-    // T69: a row's first activation previews it (`?spec=<id>`); only the previewed row links to the spec page.
-    expect(first.getAttribute('href')).toMatch(/[?&]spec=002$/);
+    // T69, spec 026 T27: a row's first activation selects it for the detail sidebar (`?sel=spec:<id>`); only the
+    // selected row links to the spec page. The row names its object for the sidebar's focus return.
+    expect(first.getAttribute('href')).toMatch(/[?&]sel=spec:002$/);
+    expect(first.getAttribute('data-ref')).toBe('spec:002');
     expect(text(first.querySelector('.rid'))).toBe('002');
     expect(text(first.querySelector('.rtitle .t'))).toBe('Spec 002');
     expect(text(first.querySelector('.rtitle .d'))).toBe('Serves the dashboard.');
@@ -112,6 +114,15 @@ describe('SpecTable (prototype port, T89)', () => {
     expect(text(first.querySelector('.rmeter .frac'))).toBe('25/30');
     expect(second.querySelector('.rtitle .d')).toBeNull();
     expect(second.querySelector('.agent-dot')).toBeNull();
+  });
+
+  it('marks the row the sidebar shows with data-selected="row" and links it to the spec page (spec 026, T27)', async () => {
+    const { fixture, host } = await render();
+    fixture.componentRef.setInput('preview', '002');
+    await fixture.whenStable();
+    const first = host.querySelector<HTMLAnchorElement>('[data-spec-row="002"]');
+    expect(first?.getAttribute('data-selected')).toBe('row');
+    expect(first?.getAttribute('href')).toBe('/w/harbor/s/002');
   });
 
   it('keeps one tab stop on the rows and marks the first as selected', async () => {
