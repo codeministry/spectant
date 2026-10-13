@@ -168,6 +168,8 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
       others: [...input.specs, ...input.archived].filter((f) => f !== files),
       tldr: input.tldr,
       worktreeTree: input.worktreeTree,
+      // The dashboard reading's worktrees, so the head's chip is the row's (spec 027, ISC-175).
+      ...(input.worktrees === undefined ? {} : { worktrees: input.worktrees }),
       commits: (await commitsOf(root, ref)).commits,
       ...(input.locks ? { locks: input.locks } : {}),
       workflow: reading.workflow,

@@ -184,7 +184,7 @@ export async function plantWorktreeRepo(options: WorktreeRepoOptions = {}): Prom
   writeFileSync(join(spec, "src", "console.ts"), "// The web console: the sync runs.\nexport const runs = (): string[] => [\"nightly\"];\n");
   const firstPaths = ["src/console.ts"];
   if (trackedSpecs) {
-    replaceOnce(join(specFolder, "tasks.md"), /^- \[ \] T27 ·/m, "- [x] T27 ·");
+    replaceOnce(join(specFolder, "tasks.md"), /^- \[ \] T27 ·/m, "- [x] T27 ·"); // single-core: allow — the fixture ticks one box of a copied tasks.md; nothing is parsed
     firstPaths.push(`specs/${SPEC_FOLDER}/tasks.md`);
   }
   await git(DATES.first, spec, "add", "--", ...firstPaths);

@@ -31,7 +31,7 @@ const savedEnv: Record<string, string | undefined> = {};
 
 beforeAll(() => {
   parent = mkdtempSync(join(tmpdir(), "spectant-worktree-fixture-"));
-  const emptyConfig = join(parent, "gitconfig");
+  const emptyConfig = join(parent, "gitconfig"); // single-core: allow — a git log --format line, not markdown
   writeFileSync(emptyConfig, "");
   for (const key of ["GIT_CONFIG_GLOBAL", "GIT_CONFIG_NOSYSTEM", "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"]) {
     savedEnv[key] = process.env[key];
@@ -122,7 +122,7 @@ describe("the two shapes of specs/ (ISC-181, ISC-181.1)", () => {
     expect(copyTasks).not.toBe(mainTasks);
     expect(mainTasks).toContain("- [ ] T27 ·");
     expect(copyTasks).toContain("- [x] T27 ·");
-    expect(copyTasks.match(/^- \[x\]/gm)?.length).toBe((mainTasks.match(/^- \[x\]/gm)?.length ?? 0) + 1);
+    expect(copyTasks.match(/^- \[x\]/gm)?.length).toBe((mainTasks.match(/^- \[x\]/gm)?.length ?? 0) + 1); // single-core: allow — counts the fixture's ticked boxes; nothing is parsed
     expect(readFileSync(join(main, "spec.md"), "utf8")).toMatch(/^stage: build$/m);
     expect(readFileSync(join(copy, "spec.md"), "utf8")).toMatch(/^stage: code-review$/m);
     // The gate marks stay outside the tree in both, and the copy carries the main checkout's reviewed mark.
@@ -216,7 +216,7 @@ describe("deterministic and leak-free", () => {
     expect(lines).toHaveLength(4);
     const fixed = new Set<string>(Object.values(DATES).map((d) => new Date(d).toISOString()));
     for (const line of lines) {
-      const [an, ae, ad, cn, ce, cd] = line.split("|");
+      const [an, ae, ad, cn, ce, cd] = line.split("|"); // single-core: allow — a git log --format line, not markdown
       expect([an, ae, cn, ce]).toEqual([IDENTITY.name, IDENTITY.email, IDENTITY.name, IDENTITY.email]);
       expect(ad).toBe(cd);
       expect(fixed.has(new Date(ad ?? "").toISOString())).toBe(true);

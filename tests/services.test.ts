@@ -2,10 +2,10 @@
 // `lsof -F` output; "answers HTTP" is a real `Bun.serve` on an ephemeral loopback port, "nothing listens" is a port
 // freed right before the probe, and "answers but not HTTP" is a raw TCP listener that never replies.
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type DevService, listServices, type LsofRun, probeHttp } from "../server/src/services.ts";
+import { type DevService, type HttpProbe, listServices, type LsofRun, probeHttp } from "../server/src/services.ts";
 
 const cleanups: Array<() => void> = [];
 afterEach(() => {
@@ -116,6 +116,7 @@ describe("listServices (T48)", () => {
       { pid: 302, command: "node", binds: ["[::1]:4300"], cwd: repoRoot },
       { pid: 303, command: "java", binds: ["*:8080"], cwd: join(repoRoot, ".claude", "worktrees", "feature-a") },
       { pid: 304, command: "java", binds: ["10.0.0.5:8081"], cwd: repoRoot },
+      { pid: 305, command: "node", binds: ["127.0.0.1:4400"], cwd: join(repoRoot, ".worktrees", "027-x", "web") },
     ]);
 
     const found = await listServices({
@@ -128,12 +129,21 @@ describe("listServices (T48)", () => {
       },
     });
 
-    expect(found.map((s) => s.port)).toEqual([4200, 4300, 8080]);
+    expect(found.map((s) => s.port)).toEqual([4200, 4300, 4400, 8080]);
     expect(new Set(hosts)).toEqual(new Set(["127.0.0.1", "::1"]));
     const json = JSON.stringify(found);
     expect(json).not.toContain(root);
     expect(json).not.toContain("/");
-    for (const s of found) expect(Object.keys(s).sort()).toEqual(["kind", "label", "pid", "port", "worktree"]);
+    expect(json).not.toContain("\\\\");
+    expect(json).not.toContain("worktrees");
+    expect(json).not.toContain("027-x");
+    for (const s of found) {
+      const keys = ["kind", "label", "pid", "port", "worktree", ...(s.port === 4400 ? ["spec"] : [])];
+      expect(Object.keys(s).sort()).toEqual(keys.sort());
+      for (const value of Object.values(s)) if (typeof value === "string") expect(value).not.toMatch(/[/\\]|^\./u);
+    }
+    // The spec worktree's service carries a number, never its folder.
+    expect(found.find((s) => s.port === 4400)?.spec).toBe("027");
   });
 
   test("is empty, never a throw, when lsof is missing or fails", async () => {
@@ -158,6 +168,76 @@ describe("listServices (T48)", () => {
     const found = await listServices({ repoRoot: realpathSync(process.cwd()), labels: new Map([[port, "Test server"]]) });
     expect(found).toContainEqual({ port, label: "Test server", kind: "bun", pid: process.pid, worktree: false });
   }, 15_000);
+});
+
+describe("worktrees (T26, ISC-177)", () => {
+  /** Every listener answers: these tests are about where a process runs, not whether it speaks HTTP. */
+  const answers: HttpProbe = () => Promise.resolve(true);
+  const at = (pid: number, port: number, cwd: string): Listener => ({ pid, command: "node", binds: [`127.0.0.1:${port}`], cwd });
+
+  test("a listener in .worktrees/NNN-slug is a worktree service carrying that spec's number", async () => {
+    const root = tempRepo();
+    const repoRoot = join(root, "repo");
+    const runLsof = fakeLsof([
+      at(401, 4401, join(repoRoot, ".worktrees", "027-x", "web")),
+      at(402, 4402, join(repoRoot, ".worktrees", "027-x")),
+      at(403, 4403, join(repoRoot, "web")),
+    ]);
+
+    const found = await listServices({ repoRoot, labels: new Map(), runLsof, probe: answers });
+
+    expect(found).toEqual([
+      { port: 4401, label: "node", kind: "node", pid: 401, worktree: true, spec: "027" },
+      { port: 4402, label: "node", kind: "node", pid: 402, worktree: true, spec: "027" },
+      { port: 4403, label: "node", kind: "node", pid: 403, worktree: false },
+    ]);
+    expect(found.map((s) => "spec" in s)).toEqual([true, true, false]);
+  });
+
+  test("lsof's resolved cwd still names the spec when the workspace was registered through a symlink", async () => {
+    const root = tempRepo();
+    const linked = join(root, "linked");
+    symlinkSync(join(root, "repo"), linked);
+    const runLsof = fakeLsof([at(411, 4411, join(root, "repo", ".worktrees", "031-y", "server"))]);
+
+    const found = await listServices({ repoRoot: linked, labels: new Map(), runLsof, probe: answers });
+
+    expect(found).toEqual([{ port: 4411, label: "node", kind: "node", pid: 411, worktree: true, spec: "031" }]);
+  });
+
+  test("a builder worktree under .claude/worktrees and a .worktrees folder without a number are worktrees without a spec", async () => {
+    const root = tempRepo();
+    const repoRoot = join(root, "repo");
+    const runLsof = fakeLsof([
+      at(421, 4421, join(repoRoot, ".claude", "worktrees", "agent-1")),
+      at(422, 4422, join(repoRoot, ".worktrees", "scratch", "web")),
+      at(423, 4423, join(repoRoot, ".worktrees", "0271-wide")),
+      at(424, 4424, join(repoRoot, ".worktrees")),
+    ]);
+
+    const found = await listServices({ repoRoot, labels: new Map(), runLsof, probe: answers });
+
+    expect(found).toEqual([
+      { port: 4421, label: "node", kind: "node", pid: 421, worktree: true },
+      { port: 4422, label: "node", kind: "node", pid: 422, worktree: true },
+      { port: 4423, label: "node", kind: "node", pid: 423, worktree: true },
+      // The `.worktrees` folder itself is the main checkout's, not a worktree.
+      { port: 4424, label: "node", kind: "node", pid: 424, worktree: false },
+    ]);
+    expect(found.some((s) => "spec" in s)).toBe(false);
+  });
+
+  test("a .worktrees/NNN-slug outside the repository root is not listed", async () => {
+    const root = tempRepo();
+    const repoRoot = join(root, "repo");
+    const runLsof = fakeLsof([
+      at(431, 4431, join(root, "elsewhere", ".worktrees", "027-x")),
+      at(432, 4432, `${repoRoot}-027`),
+      at(433, 4433, join(`${repoRoot}-sibling`, ".worktrees", "027-x")),
+    ]);
+
+    expect(await listServices({ repoRoot, labels: new Map(), runLsof, probe: answers })).toEqual([]);
+  });
 });
 
 describe("probeHttp (T48)", () => {

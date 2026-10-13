@@ -1,22 +1,26 @@
 /**
  * Local dev services for the live indicator (T48, ISC-16): the TCP listeners a workspace's build left running.
  *
- * A service is a listener reachable on loopback whose process runs with its working directory inside the repository
- * or inside one of its worktrees under `<repoRoot>/.claude/worktrees/`, and that answers an HTTP request. Found on
- * every call from `lsof`, nothing recorded: a server stopped since is simply gone. One `lsof` pass for the listeners,
- * one for their working directories, then one parallel probe with a 300 ms timeout. No inference, no lock, nothing
- * written anywhere (ISC-15).
+ * A service is a listener reachable on loopback whose process runs with its working directory inside the repository,
+ * which includes its worktrees inside it, and that answers an HTTP request. Two worktree places count: a spec worktree
+ * `<repoRoot>/.worktrees/<name>` (spec 027, ISC-177) and a builder worktree `<repoRoot>/.claude/worktrees/<name>`, the
+ * Agent tool's. Found on every call from `lsof`, nothing recorded: a server stopped since is simply gone. One `lsof`
+ * pass for the listeners, one for their working directories, then one parallel probe with a 300 ms timeout. No
+ * inference, no lock, nothing written anywhere (ISC-15).
  *
  * ISC-2: the probe is a raw HTTP/1.0 request over `Bun.connect` to `127.0.0.1` or `::1` only. It is not `fetch`, so
  * no proxy variable and no redirect can carry it off the machine, and `probeHttp` refuses any other host outright.
  *
- * ISC-3: a `DevService` carries no path. Whether the process runs in a worktree is a boolean.
+ * ISC-3: a `DevService` carries no path. Whether the process runs in a worktree is a boolean; which spec worktree it
+ * runs in is that spec's three-digit number `spec`, read from the folder name with core's `SPEC_FOLDER`, never the
+ * folder or any other part of the path.
  *
  * When `lsof` is not on PATH, fails to spawn or exits non-zero, the result is `[]`, never a throw: a missing tool must
  * not break the dashboard.
  */
 import { realpathSync } from "node:fs";
 import { resolve, sep } from "node:path";
+import { SPEC_FOLDER } from "../../core/src/spec-ref.ts";
 
 export type DevServiceKind = "node" | "java" | "bun" | "python" | "other";
 
@@ -26,8 +30,13 @@ export type DevService = {
   label: string;
   kind: DevServiceKind;
   pid?: number;
-  /** True when the process runs inside `<repoRoot>/.claude/worktrees/<name>`. */
+  /** True when the process runs inside `<repoRoot>/.worktrees/<name>` or `<repoRoot>/.claude/worktrees/<name>`. */
   worktree?: boolean;
+  /**
+   * The spec number `NNN` when the process runs inside the spec worktree `<repoRoot>/.worktrees/NNN-slug` (spec 027,
+   * ISC-177); absent in a builder worktree, in a `.worktrees/<name>` whose name has no spec number, and outside both.
+   */
+  spec?: string;
 };
 
 /** Runs `lsof` with these arguments. Null when `lsof` is not on PATH. */
@@ -64,12 +73,12 @@ export async function listServices(options: ListServicesOptions): Promise<DevSer
     const cwds = parseCwds(cwdRun?.stdout ?? "");
 
     const roots = repoRoots(options.repoRoot);
-    const candidates: Array<Listener & { worktree: boolean; host: LoopbackHost }> = [];
+    const candidates: Array<Listener & Place & { host: LoopbackHost }> = [];
     for (const listener of listeners) {
       const cwd = cwds.get(listener.pid);
       const place = cwd === undefined ? null : locate(cwd, roots);
       const host = probeHost(listener.binds);
-      if (place && host) candidates.push({ ...listener, worktree: place === "worktree", host });
+      if (place && host) candidates.push({ ...listener, ...place, host });
     }
 
     const answers = await Promise.all(candidates.map((c) => probe(c.host, c.port).catch(() => false)));
@@ -78,7 +87,14 @@ export async function listServices(options: ListServicesOptions): Promise<DevSer
     candidates.forEach((c, i) => {
       if (!answers[i] || seen.has(c.port)) return;
       seen.add(c.port);
-      services.push({ port: c.port, label: labelFor(options.labels, c.port) ?? c.process, kind: kindOf(c.process), pid: c.pid, worktree: c.worktree });
+      services.push({
+        port: c.port,
+        label: labelFor(options.labels, c.port) ?? c.process,
+        kind: kindOf(c.process),
+        pid: c.pid,
+        worktree: c.worktree,
+        ...(c.spec === undefined ? {} : { spec: c.spec }),
+      });
     });
     return services.sort((a, b) => a.port - b.port);
   } catch {
@@ -183,13 +199,23 @@ function repoRoots(repoRoot: string): string[] {
   }
 }
 
-/** Where a working directory lies: in the repo, in one of its worktrees, or outside (null). */
-function locate(cwd: string, roots: string[]): "repo" | "worktree" | null {
+/** Where a listener's process runs: whether in a worktree, and the spec number a spec worktree's folder names. */
+type Place = { worktree: boolean; spec?: string };
+
+/**
+ * Where a working directory lies: in the repo's main checkout, in one of its worktrees, or outside (null). A worktree is
+ * `<root>/.worktrees/<name>` (a spec worktree; `spec` is `NNN` when `<name>` has the spec folder shape `NNN-slug`) or
+ * `<root>/.claude/worktrees/<name>` (a builder worktree, never a spec). The two folders themselves are the main checkout.
+ */
+function locate(cwd: string, roots: string[]): Place | null {
   for (const root of roots) {
     if (cwd !== root && !cwd.startsWith(root + sep)) continue;
-    const worktrees = [root, ".claude", "worktrees"].join(sep) + sep;
-    const name = cwd.startsWith(worktrees) ? cwd.slice(worktrees.length).split(sep)[0] : "";
-    return name ? "worktree" : "repo";
+    const [first = "", second = "", third = ""] = cwd === root ? [] : cwd.slice(root.length + sep.length).split(sep);
+    if (first === ".worktrees" && second) {
+      const spec = SPEC_FOLDER.exec(second)?.[1];
+      return spec === undefined ? { worktree: true } : { worktree: true, spec };
+    }
+    return { worktree: first === ".claude" && second === "worktrees" && third !== "" };
   }
   return null;
 }

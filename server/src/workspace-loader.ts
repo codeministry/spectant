@@ -15,6 +15,8 @@
  * writes it or an object (`GIT_OPTIONAL_LOCKS=0` keeps even an optional index refresh off). It runs only for a
  * repository root (`.git` directly in the folder) with at least one active spec that carries a code-reviewed mark;
  * anything else, or a git that is missing or fails, is `null`, which `core/` reads as "tree id unavailable".
+ * The worktrees (spec 027, ISC-175) come from `git.ts`'s read-only `worktree list`, `rev-list --count` and `status`
+ * (`readWorktrees`); `core/`'s `assignWorktrees` decides which spec each belongs to.
  *
  * An unreadable workspace (gone, not a directory, no permission) is a `{readable: false, error}` value with a stable
  * code, never a throw and never the OS message, which would carry the absolute path (ISC-3).
@@ -25,12 +27,13 @@ import { buildDashboard, devServiceLabels, toLocalService } from "../../core/src
 import type { DashboardInput, DashboardModel, ProbedService } from "../../core/src/dashboard.ts";
 import { actorIdOf } from "../../core/src/actor-id.ts";
 import { FILE_KINDS, repoFilePath } from "../../core/src/files.ts";
-import type { FileDiagnostic, IdeaFiles, SpecFiles, TextFileKind, Workflow } from "../../core/src/files.ts";
+import type { FileDiagnostic, IdeaFiles, SpecFiles, TextFileKind, Workflow, Worktree } from "../../core/src/files.ts";
 import { type TreeEntry, type TreeEntryMode, treeIdOf } from "../../core/src/gates.ts";
 import { readLockSources } from "../../core/src/locks.ts";
 import { type SpecRef, listSpecs } from "../../core/src/resolve.ts";
 import { parseWorkflow } from "../../core/src/workflow.ts";
-import { userEmail } from "./git.ts";
+import { type WorktreeAssignment, assignWorktrees } from "../../core/src/worktrees.ts";
+import { aheadOfMain, dirty, userEmail, worktreeList } from "./git.ts";
 
 /** Why a workspace cannot be read. Stable codes: the web app maps them to its own words. */
 export type UnreadableCode = "missing" | "not-a-directory" | "permission-denied" | "unreadable";
@@ -183,8 +186,10 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
     readdirSync(root); // a directory without read permission fails here, not as an empty workspace
     const specs: SpecFiles[] = [];
     const archived: SpecFiles[] = [];
-    for (const ref of listSpecs(root)) (ref.archived ? archived : specs).push(specFiles(ref.dir, ref.slug));
+    const refs = listSpecs(root);
+    for (const ref of refs) (ref.archived ? archived : specs).push(specFiles(ref.dir, ref.slug));
     const reviewed = specs.some((f) => f.texts.gateCodeReviewed !== undefined);
+    const worktrees = await readWorktrees(root, refs.map((ref) => ref.slug));
     const workflow = parseWorkflow(readIfExists(repoFilePath(root, "workflow")));
     return {
       readable: true,
@@ -199,6 +204,7 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
         specs,
         archived,
         worktreeTree: reviewed ? await worktreeTreeId(root) : null,
+        ...(worktrees === undefined ? {} : { worktrees }),
         locks: await readLockSources({ repoRoot: root, lifeosStateDir }),
         workflow,
       },
@@ -206,6 +212,33 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
   } catch (error) {
     return { readable: false, error: codeOf(error) };
   }
+}
+
+// ── the worktrees (spec 027) ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * The worktrees of the workspace at `root` (spec 027, T19, ISC-175): `git worktree list --porcelain`, assigned to the
+ * spec `folders` by `core/`'s `assignWorktrees`, with the chip's two git facts read inside each worktree of kind `spec`
+ * that belongs to a spec: `ahead` (`rev-list --count main..<branch>`) and `dirty` (`status --porcelain`), through
+ * `git.ts`, which never fetches and runs with `GIT_OPTIONAL_LOCKS=0`. A builder is counted and never read, and a
+ * worktree of no spec has no chip to fill, so both keep their nulls. One worktree after the other, each with its two
+ * reads side by side: a workspace has a handful. Undefined when git lists nothing beside the main checkout (no
+ * repository of its own, no git, a failure), so such an input is the same as before spec 027.
+ */
+async function readWorktrees(root: string, folders: readonly string[]): Promise<WorktreeAssignment | undefined> {
+  const assignment = assignWorktrees(await worktreeList(root), folders);
+  if (assignment.worktrees.length === 0) return undefined;
+  const worktrees: Worktree[] = [];
+  for (const worktree of assignment.worktrees) {
+    if (worktree.kind !== "spec" || worktree.spec === null) {
+      worktrees.push(worktree);
+      continue;
+    }
+    const at = join(root, worktree.path);
+    const [ahead, changed] = await Promise.all([aheadOfMain(at, worktree.branch), dirty(at)]);
+    worktrees.push({ ...worktree, ahead, dirty: changed });
+  }
+  return { ...assignment, worktrees };
 }
 
 /**

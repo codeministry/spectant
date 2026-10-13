@@ -13,7 +13,8 @@ import { createHash } from "node:crypto";
 import { chmodSync, cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import type { DashboardModel } from "../core/src/dashboard.ts";
+import { type DashboardModel, buildDashboard } from "../core/src/dashboard.ts";
+import type { SpecPageModel, Worktree } from "../core/src/files.ts";
 import { WORKSPACES_PATH, composeApi, dashboardApi } from "../server/src/api.ts";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
 import { run } from "../server/src/cli.ts";
@@ -23,7 +24,18 @@ import { type Registry, openRegistry } from "../server/src/registry.ts";
 import type { DevService } from "../server/src/services.ts";
 import { DEFAULT_SETTINGS, openSettings, settingsApi } from "../server/src/settings.ts";
 import { loadDashboard, readWorkspaceInput, worktreeTreeId } from "../server/src/workspace-loader.ts";
+import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
+import { specRoutesApi } from "../server/src/spec-routes.ts";
+import { specRoutes } from "../server/src/spec-routes.contract.ts";
 import { DEFAULT_WORKFLOW, parseWorkflow } from "../core/src/workflow.ts";
+import {
+  BUILDER_WORKTREE,
+  type PlantedWorktreeRepo,
+  SPEC_BRANCH,
+  SPEC_ID,
+  SPEC_WORKTREE,
+  plantWorktreeRepo,
+} from "./fixtures/worktree-repo.ts";
 
 const FIXTURES = join(import.meta.dir, "..", "core", "fixtures");
 const NAMES = ["harbor", "lantern"] as const;
@@ -474,6 +486,84 @@ describe("the reading carries the workflow (T78, ISC-122)", () => {
       const load = await loadDashboard(join(FIXTURES, name), null);
       if (!load.readable) throw new Error(`unreadable: ${load.error}`);
       expect(withoutServices(load.model)).toEqual(withoutServices(expected(name)));
+    }
+  });
+});
+
+describe("the loader reads the worktrees of a repository (spec 027, T19, ISC-175)", () => {
+  let planted: PlantedWorktreeRepo;
+
+  /** The chip of spec 002 as the row and the head carry it: the fixture's spec worktree with git's two facts. */
+  const chip = (): Worktree => ({
+    path: SPEC_WORKTREE,
+    branch: SPEC_BRANCH,
+    spec: SPEC_ID,
+    ahead: planted.expected.ahead,
+    dirty: planted.expected.dirty,
+    kind: "spec",
+  });
+
+  beforeAll(async () => {
+    planted = await plantWorktreeRepo({ parent: root });
+  });
+
+  test("worktree chip: the dashboard row of 002 carries its worktree, two ahead and dirty; every other row none, source main", async () => {
+    expect(planted.expected).toMatchObject({ ahead: 2, dirty: true, builders: 1, trackedSpecs: false });
+    const server = start(registryWith(planted.root));
+    const res = await get(server, `${WORKSPACES_PATH}/harbor/dashboard`);
+    expect(res.status).toBe(200);
+    const model = (await res.json()) as DashboardModel;
+    expect(model.specs.find((row) => row.id === SPEC_ID)?.worktree).toEqual(chip());
+    const others = model.specs.filter((row) => row.id !== SPEC_ID);
+    expect(others.length).toBeGreaterThan(0);
+    for (const row of others) expect(row.worktree).toBeNull();
+    // Untracked specs/ (a link in the worktree): every row is read from the main checkout (ISC-181.1).
+    for (const row of model.specs) expect([row.source, row.main]).toEqual(["main", null]);
+    expect(strings(model).filter(hasAbsolutePath)).toEqual([]);
+  });
+
+  test("worktree chip: the spec page head of 002 carries the row's chip; a spec without a worktree has none", async () => {
+    const handler = specRoutesApi({ registry: registryWith(planted.root), lifeos: LIFEOS_ABSENT });
+    const page = async (id: string): Promise<SpecPageModel> => {
+      const url = new URL(`http://127.0.0.1:7717${specRoutes.spec("harbor", id)}`);
+      const res = await handler(new Request(url.href, { headers: { Host: "127.0.0.1:7717" } }), url);
+      if (res === null) throw new Error(`the spec routes declined ${id}`);
+      expect(res.status).toBe(200);
+      return (await res.json()) as SpecPageModel;
+    };
+    const head = (await page(SPEC_ID)).head;
+    expect([head.worktree, head.source, head.main]).toEqual([chip(), "main", null]);
+    const other = (await page("001")).head;
+    expect([other.worktree, other.source, other.main]).toEqual([null, "main", null]);
+  });
+
+  test("the builder worktree is counted, never read: no ahead, no dirty; the chip leaves the counts as they were", async () => {
+    const reading = await readWorkspaceInput(planted.root);
+    if (!reading.readable) throw new Error(`unreadable: ${reading.error}`);
+    const assignment = reading.input.worktrees;
+    expect(assignment?.builders).toBe(planted.expected.builders);
+    expect(assignment?.diagnostics).toEqual([]);
+    expect(assignment?.worktrees.find((w) => w.kind === "builder")).toEqual({
+      path: BUILDER_WORKTREE,
+      branch: null,
+      spec: null,
+      ahead: null,
+      dirty: null,
+      kind: "builder",
+    });
+    // The worktree adds the chip and nothing else: the KPIs equal the model built from the same reading without it.
+    const withChip = buildDashboard(reading.input);
+    expect(withChip.kpis).toEqual(buildDashboard({ ...reading.input, worktrees: undefined }).kpis);
+    // The workspace list still counts from the model, without a services probe.
+    const list = (await (await get(start(registryWith(planted.root)), WORKSPACES_PATH)).json()) as ListEntry[];
+    expect(list.map((entry) => [entry.slug, entry.counts])).toEqual([["harbor", withChip.kpis]]);
+  });
+
+  test("a workspace that is no repository of its own has no worktrees: the input carries no field, as before spec 027", async () => {
+    for (const name of NAMES) {
+      const reading = await readWorkspaceInput(join(FIXTURES, name));
+      if (!reading.readable) throw new Error(`unreadable: ${reading.error}`);
+      expect("worktrees" in reading.input).toBe(false);
     }
   });
 });
