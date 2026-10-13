@@ -58,12 +58,8 @@
  *     trigger is a control, not a mock, and carries none; a workspace badge on these pages renders from core's data
  *     (the workspace name), never from the identity fixture, or it would need the chip.
  *
- *   Library `/w/:ws/library` (T50, T51; prototype `library.html`)
- *   - `[data-page="library"]`            the page root, itself `[data-demo]`; its h1 row is the `[data-demo-head]`.
- *   - `[data-library-entry]`             one row per document, value = the fixture's `id`, in `DEMO_LIBRARY` order
- *                                        while no filter is set.
- *   - `[data-library-search]`            the search input; filtering by an entry's title keeps that entry.
- *   - `[data-library-reader]`            the reader; choosing a row shows that entry's title in it.
+ *   Library `/w/:ws/library` (T50, T51; prototype `library.html`): no mock since spec 017 (T27, T28) renders the
+ *   server's catalog; its own suite is `web/e2e/library.spec.ts`.
  *   - `a[data-library-link]`             none: the prototype's rail link to the Library gave way to the PAGE select
  *                                        `header [data-control="page"]`, whose menu lists Library (spec 024 T80,
  *                                        ISC-150.2, principal 2026-10-13).
@@ -105,7 +101,6 @@ import { readFileSync } from 'node:fs';
 import type { BrowserContext, Locator, Page } from '@playwright/test';
 import type { SpecPageModel } from '../../core/src/files.ts';
 import { DEMO_ASSISTANT_FALLBACK, DEMO_ASSISTANT_REPLIES } from '../src/app/shared/demo/fixtures/assistant.ts';
-import { DEMO_LIBRARY } from '../src/app/shared/demo/fixtures/library.ts';
 import { DEMO_WORKSPACES } from '../src/app/shared/demo/fixtures/workspaces.ts';
 import type { IconName } from '../src/app/shared/icons/icons.ts';
 import { PROTOTYPE_ICON_MAP } from '../src/app/shared/icons/prototype-map.ts';
@@ -434,7 +429,7 @@ const DEMO_SESSION_HEADER = 'X-Spectant-Stub-Session';
 const DEMO_SESSION = 'parity-demo';
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
 /** No endpoint serves these yet: a mock that asks the API for one reads something other than its fixture. */
-const MOCK_API = /\/api\/.*(library|assistant|identit|upload)/iu;
+const MOCK_API = /\/api\/.*(assistant|identit|upload)/iu;
 
 interface DemoTraffic {
   readonly blocked: string[];
@@ -527,21 +522,6 @@ const useAssistant = async (page: Page): Promise<void> => {
 };
 
 const MOCK_HOSTS: readonly MockHost[] = [
-  {
-    name: 'Library',
-    route: '/w/harbor/library',
-    root: '[data-page="library"][data-demo]',
-    use: async (page) => {
-      const entries = page.locator('[data-library-entry]');
-      expect(await entries.evaluateAll((rows) => rows.map((row) => row.getAttribute('data-library-entry')))).toEqual(DEMO_LIBRARY.map((entry) => entry.id));
-      const pick = DEMO_LIBRARY[0];
-      if (!pick) throw new Error('DEMO_LIBRARY is empty');
-      await page.locator('[data-library-search]').fill(pick.title);
-      await expect(page.locator(`[data-library-entry="${pick.id}"]`)).toBeVisible();
-      await page.locator(`[data-library-entry="${pick.id}"]`).click();
-      await expect(page.locator('[data-library-reader]')).toContainText(pick.title);
-    },
-  },
   {
     name: 'Settings · Workspaces',
     route: '/settings/workspaces',

@@ -627,7 +627,7 @@
         "features": "{{count}} features · {{closed}}/{{total}} closed",
         "milestones": "{{count}} milestones · next {{next}}",
         "tech": "{{specs}} specs · {{fog}} open questions",
-        "library": "{{count}} documents · demo"
+        "library": "{{count}} documents"
       }
     },
     "assistant": {
@@ -2105,20 +2105,25 @@
       "stale": "Only outdated"
     },
     "types": {
+      "spec": "Spec",
       "plan": "Plan",
+      "tasks": "Tasks",
       "design": "Design",
-      "decisions": "Decisions",
-      "constitution": "Constitution",
+      "context": "Decisions",
+      "artifact": "Artifact",
       "evidence": "Evidence",
-      "notes": "Notes"
+      "prototype": "Prototype",
+      "constitution": "Constitution",
+      "tech": "Tech",
+      "tldr": "TL;DR",
+      "idea": "Idea"
     },
     "wsWide": "{{ws}} · workspace-wide",
     "count": "{{ws}} · {{shown}} of {{total}} documents · {{stale}} outdated",
     "outdated": "outdated",
-    "xrefTitle": "Shares references with {{count}} other documents",
     "none": {
-      "heading": "No curated documents in {{ws}} yet",
-      "body": "The library of a workspace collects plan, design, decisions, evidence and notes of its specs. They appear once a spec gets its first plan."
+      "heading": "No documents in {{ws}} yet",
+      "body": "The library collects specs, plans, designs, evidence and prototypes as soon as the first spec folder exists."
     },
     "empty": {
       "heading": "No document matches",
@@ -2133,18 +2138,23 @@
       "staleHeading": "Possibly outdated",
       "image": "Preview of {{file}}",
       "pick": "Pick a document",
-      "pickBody": "Every plan, design, decision, piece of evidence and note from all specs, in one place."
+      "pickBody": "Every spec, plan, design, piece of evidence and prototype from all specs, in one place.",
+      "loading": "Loading the document",
+      "error": "The document could not be read."
     },
-    "refs": {
-      "heading": "Cross references",
-      "none": "No references.",
-      "search": "Search all documents for {{ref}}",
-      "type": "Type",
-      "document": "Document",
-      "spec": "Spec",
-      "shared": "Shared references",
-      "sharedShort": "Shared:"
-    }
+    "evidence": {
+      "toggle": "Evidence",
+      "label": "{{count}} evidence files of {{spec}}",
+      "more": "Show {{count}} more"
+    },
+    "meta": {
+      "image": "Image · {{path}}",
+      "prototype": "{{count}} pages · {{pages}}",
+      "noDate": "—"
+    },
+    "loading": "Loading the library",
+    "error": "The library could not be read.",
+    "date": "{{date}}, {{time}}"
   },
   "orientation": {
     "backToBoard": "Back to board",

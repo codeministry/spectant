@@ -627,7 +627,7 @@
         "features": "{{count}} Features · {{closed}}/{{total}} geschlossen",
         "milestones": "{{count}} Meilensteine · nächster {{next}}",
         "tech": "{{specs}} Specs · {{fog}} offene Fragen",
-        "library": "{{count}} Dokumente · Demo"
+        "library": "{{count}} Dokumente"
       }
     },
     "assistant": {
@@ -2105,20 +2105,25 @@
       "stale": "Nur veraltete"
     },
     "types": {
+      "spec": "Spec",
       "plan": "Plan",
+      "tasks": "Tasks",
       "design": "Design",
-      "decisions": "Entscheidungen",
+      "context": "Entscheidungen",
+      "artifact": "Artefakt",
+      "evidence": "Beleg",
+      "prototype": "Prototyp",
       "constitution": "Constitution",
-      "evidence": "Nachweise",
-      "notes": "Notizen"
+      "tech": "Tech",
+      "tldr": "TL;DR",
+      "idea": "Idee"
     },
     "wsWide": "{{ws}} · workspaceweit",
     "count": "{{ws}} · {{shown}} von {{total}} Dokumenten · {{stale}} veraltet",
     "outdated": "veraltet",
-    "xrefTitle": "Teilt Verweise mit {{count}} anderen Dokumenten",
     "none": {
-      "heading": "Noch keine kuratierten Dokumente in {{ws}}",
-      "body": "Die Library eines Workspace sammelt Plan, Design, Entscheidungen, Evidence und Notizen seiner Specs. Sie erscheinen, sobald eine Spec ihren ersten Plan bekommt."
+      "heading": "Noch keine Dokumente in {{ws}}",
+      "body": "Die Library sammelt Specs, Pläne, Designs, Evidence und Prototypen, sobald der erste Spec-Ordner existiert."
     },
     "empty": {
       "heading": "Kein Dokument passt",
@@ -2133,18 +2138,23 @@
       "staleHeading": "Möglicherweise veraltet",
       "image": "Vorschau von {{file}}",
       "pick": "Wählen Sie ein Dokument",
-      "pickBody": "Jeder Plan, jedes Design, jede Entscheidung, jeder Nachweis und jede Notiz aller Specs an einem Ort."
+      "pickBody": "Jede Spec, jeder Plan, jedes Design, jede Evidence und jeder Prototyp aller Specs an einem Ort.",
+      "loading": "Das Dokument wird geladen",
+      "error": "Das Dokument konnte nicht gelesen werden."
     },
-    "refs": {
-      "heading": "Querverweise",
-      "none": "Keine Verweise.",
-      "search": "Alle Dokumente nach {{ref}} durchsuchen",
-      "type": "Typ",
-      "document": "Dokument",
-      "spec": "Spec",
-      "shared": "Gemeinsame Verweise",
-      "sharedShort": "Gemeinsam:"
-    }
+    "evidence": {
+      "toggle": "Evidence",
+      "label": "{{count}} Evidence-Dateien von {{spec}}",
+      "more": "{{count}} weitere zeigen"
+    },
+    "meta": {
+      "image": "Bild · {{path}}",
+      "prototype": "{{count}} Seiten · {{pages}}",
+      "noDate": "—"
+    },
+    "loading": "Die Library wird geladen",
+    "error": "Die Library konnte nicht gelesen werden.",
+    "date": "{{date}} {{time}}"
   },
   "orientation": {
     "backToBoard": "Zurück zum Board",

@@ -1,28 +1,43 @@
-<!-- The h1 row is the mock's one head (ISC-149.1): the page head, then the demo chip behind the h1. -->
-<div class="lib-head" data-demo-head>
+@if (missing()) {
+  <app-not-found />
+} @else if (unavailable()) {
+  <p class="lib-unavailable">{{ 'shell.unavailable' | transloco }}</p>
+} @else {
+<div class="lib-head">
   <ui-page-head
-    [segments]="[ws(), ('library.title' | transloco)]"
+    [segments]="[wsName(), ('library.title' | transloco)]"
     [back]="{ href: '/w/' + ws(), label: ('library.back' | transloco) }"
   >
     <div class="lib-h1" ngProjectAs="h1">
-      <ui-ws-badge size="page" [name]="ws()" aria-hidden="true" />
+      <ui-ws-badge size="page" [name]="wsName()" aria-hidden="true" />
       <h1 class="type-page-title" id="library" tabindex="-1">
-        {{ 'library.title' | transloco }}<span class="lib-ws"> · {{ ws() }}</span>
+        {{ 'library.title' | transloco }}<span class="lib-ws"> · {{ wsName() }}</span>
       </h1>
     </div>
   </ui-page-head>
-  <ui-chip variant="demo" />
 </div>
 
-@if (all().length === 0) {
-  <!-- Prototype `library.html?ws=…`: a workspace without curated documents, the empty state with the next command. -->
+@if (failed()) {
+  <ui-notice tone="error" icon="circle-alert" data-library-error>{{ 'library.error' | transloco }}</ui-notice>
+} @else if (catalog() === null) {
+  <ui-card class="lib-card" [padding]="0">
+    <div class="lib-loading" role="status" [attr.aria-label]="'library.loading' | transloco">
+      <ui-skeleton height="40px" />
+      <ui-skeleton width="72%" height="28px" />
+      <ui-skeleton />
+      <ui-skeleton />
+      <ui-skeleton width="56%" />
+    </div>
+  </ui-card>
+} @else if (docs().length === 0) {
+  <!-- Prototype `library.js`, the branch without data: a workspace without documents, the empty state with the next command. -->
   <ui-card class="lib-card lib-none" data-library-none>
     <ui-empty-state
       icon="book"
-      [heading]="'library.none.heading' | transloco: { ws: ws() }"
+      [heading]="'library.none.heading' | transloco: { ws: wsName() }"
       [body]="'library.none.body' | transloco"
     >
-      <ui-command-chip command="/spec-plan" [copyLabel]="'common.copyCommand' | transloco" />
+      <ui-command-chip command="/spec-bootstrap" [copyLabel]="'common.copyCommand' | transloco" />
     </ui-empty-state>
   </ui-card>
 } @else {
@@ -53,18 +68,19 @@
             <span class="type-eyebrow">{{ 'library.filters.spec' | transloco }}</span>
             <select data-library-spec [value]="spec()" (change)="setSpec($any($event.target).value)">
               <option value="all" [selected]="spec() === 'all'">{{ 'library.filters.allSpecs' | transloco }}</option>
-              @for (id of specs(); track id) {
-                <option [value]="id" [selected]="spec() === id">{{ specLabel(id) }}</option>
+              @for (option of specs(); track option.value) {
+                <option [value]="option.value" [selected]="spec() === option.value">{{ groupLabel(option.spec) }}</option>
               }
             </select>
           </label>
+          <!-- T32 replaces the toggle with the state select (All · Outdated · Missing · Open). -->
           <label class="lib-toggle">
             <input type="checkbox" data-library-stale [checked]="stale()" (change)="setStale($any($event.target).checked)" />
             {{ 'library.filters.stale' | transloco }}
           </label>
         </div>
         <p class="lib-count" aria-live="polite" data-library-count>
-          {{ 'library.count' | transloco: { ws: ws(), shown: shown().length, total: all().length, stale: staleCount() } }}
+          {{ 'library.count' | transloco: { ws: wsName(), shown: shownCount(), total: docs().length, stale: catalog()?.stale ?? 0 } }}
         </p>
 
         @if (groups().length === 0) {
@@ -77,57 +93,44 @@
             <button ui-button type="button" data-library-clear (click)="clear()">{{ 'library.empty.clear' | transloco }}</button>
           </ui-empty-state>
         } @else {
-          @for (group of groups(); track $index) {
-            <section class="lib-group" [attr.aria-label]="specLabel(group.spec)">
+          @for (view of groups(); track view.group.spec) {
+            <section class="lib-group" [attr.data-library-group]="view.group.key" [attr.aria-label]="groupLabel(view.group.spec)">
               <p class="lib-group-head type-eyebrow" aria-hidden="true">
-                <span>{{ specLabel(group.spec) }}</span><span>{{ group.rows.length }}</span>
+                <span>{{ groupLabel(view.group.spec) }}</span><span>{{ view.group.count }}</span>
               </p>
               <ul class="lib-rows">
-                @for (row of group.rows; track row.entry.id) {
-                  <li>
-                    <button
-                      type="button"
-                      class="lib-row"
-                      [attr.data-library-entry]="row.entry.id"
-                      [attr.aria-current]="current()?.id === row.entry.id ? 'true' : null"
-                      (click)="open(row.entry.id)"
-                    >
-                      <span class="lib-type" [attr.data-type]="row.entry.type">{{ 'library.types.' + row.entry.type | transloco }}</span>
-                      <span class="lib-title">
-                        @for (run of row.title; track $index) {
-                          @if (run.hit) {
-                            <mark>{{ run.text }}</mark>
-                          } @else {
-                            {{ run.text }}
-                          }
-                        }
-                      </span>
-                      <span class="lib-flags">
-                        <span class="lib-slot">
-                          @if (row.entry.stale; as why) {
-                            <span class="lib-stale" [attr.title]="why"><ui-icon name="triangle-alert" [size]="12" />{{ 'library.outdated' | transloco }}</span>
-                          }
-                        </span>
-                        <span class="lib-slot">
-                          @if (row.xrefs > 0) {
-                            <span class="lib-xref" [attr.title]="'library.xrefTitle' | transloco: { count: row.xrefs }">↔ {{ row.xrefs }}</span>
-                          }
-                        </span>
-                        <span class="lib-date">{{ date(row.entry.updated) }}</span>
-                      </span>
-                      <span class="lib-snippet">
-                        @for (run of row.snippet; track $index) {
-                          @if (run.hit) {
-                            <mark>{{ run.text }}</mark>
-                          } @else {
-                            {{ run.text }}
-                          }
-                        }
-                      </span>
-                    </button>
-                  </li>
+                @for (row of view.rows; track row.doc.path) {
+                  <li><ng-container [ngTemplateOutlet]="rowTpl" [ngTemplateOutletContext]="{ $implicit: row }" /></li>
                 }
               </ul>
+              @if (view.evidence; as evidence) {
+                <div class="lib-evidence" [attr.data-library-evidence]="view.group.key">
+                  <button
+                    type="button"
+                    class="lib-evidence-toggle"
+                    data-library-evidence-toggle
+                    [attr.aria-expanded]="evidence.open"
+                    [attr.aria-label]="'library.evidence.label' | transloco: { count: evidence.count, spec: groupLabel(view.group.spec) }"
+                    (click)="toggleEvidence(view.group.key, evidence.open)"
+                  >
+                    <span class="lib-type" data-type="evidence"><ui-icon name="file-text" [size]="12" />{{ 'library.evidence.toggle' | transloco }}</span>
+                    <span class="lib-evidence-count" data-library-evidence-count>{{ evidence.count }}</span>
+                    <ui-icon class="lib-chevron" name="chevron-right" [size]="14" />
+                  </button>
+                  @if (evidence.open) {
+                    <ul class="lib-rows">
+                      @for (row of evidence.rows; track row.doc.path) {
+                        <li><ng-container [ngTemplateOutlet]="rowTpl" [ngTemplateOutletContext]="{ $implicit: row }" /></li>
+                      }
+                    </ul>
+                    @if (evidence.rest > 0) {
+                      <button ui-button variant="ghost" size="sm" type="button" class="lib-more" data-library-evidence-more (click)="moreEvidence(view.group.key)">
+                        {{ 'library.evidence.more' | transloco: { count: evidence.next } }}
+                      </button>
+                    }
+                  }
+                </div>
+              }
             </section>
           }
         }
@@ -136,7 +139,7 @@
 
     @if (wide() || current()) {
       <div class="lib-reader" data-library-reader tabindex="-1" [attr.aria-label]="'library.reader.label' | transloco">
-        @if (current(); as entry) {
+        @if (current(); as doc) {
           <div class="lib-reader-head">
             @if (!wide()) {
               <button ui-button variant="ghost" size="sm" type="button" class="lib-back" data-library-back (click)="back()">
@@ -144,72 +147,45 @@
               </button>
             }
             <div class="lib-meta">
-              <span class="lib-type" [attr.data-type]="entry.type">{{ 'library.types.' + entry.type | transloco }}</span>
-              <ui-chip variant="take" tone="accent">{{ chipLabel(entry.spec) }}</ui-chip>
-              <span class="lib-file">{{ entry.file }}</span>
-              <span class="lib-updated">{{ 'library.reader.updated' | transloco: { date: date(entry.updated) } }}</span>
+              <span class="lib-type" [attr.data-type]="doc.type"><ui-icon [name]="typeIcon(doc)" [size]="12" />{{ 'library.types.' + doc.type | transloco }}</span>
+              <ui-chip variant="take" tone="accent">{{ chipLabel(doc.spec) }}</ui-chip>
+              <span class="lib-file">{{ filePath(doc) }}</span>
+              @if (doc.modified; as modified) {
+                <span class="lib-updated">{{ 'library.reader.updated' | transloco: { date: date(modified) } }}</span>
+              }
             </div>
-            <h2 class="lib-reader-title">{{ entry.title }}</h2>
-            @if (openLink(entry); as link) {
+            <h2 class="lib-reader-title">{{ doc.title }}</h2>
+            @if (openLink(doc); as link) {
               <a ui-button [routerLink]="link" data-library-open>
-                {{ 'library.reader.open' | transloco: { spec: entry.spec } }}<ui-icon name="arrow-right" [size]="16" />
+                {{ 'library.reader.open' | transloco: { spec: chipLabel(doc.spec) } }}<ui-icon name="arrow-right" [size]="16" />
               </a>
             }
           </div>
 
-          @if (entry.stale; as why) {
+          @if (doc.state === 'stale') {
             <ui-notice tone="warning" data-library-stale-notice>
-              <strong>{{ 'library.reader.staleHeading' | transloco }}</strong>&ngsp;<span class="lib-muted">{{ why }}</span>
+              <strong>{{ 'library.reader.staleHeading' | transloco }}</strong>
             </ui-notice>
           }
 
-          @if (isImage(entry)) {
-            <figure class="lib-image" data-library-image>
-              <ui-icon name="image" [size]="24" />
-              <figcaption>{{ 'library.reader.image' | transloco: { file: entry.file } }}</figcaption>
-            </figure>
-          }
-
-          <article class="lib-prose" data-library-prose [innerHTML]="prose()"></article>
-
-          <section class="lib-refs-block" data-library-refs [attr.aria-label]="'library.refs.heading' | transloco">
-            <p class="lib-refs-head type-eyebrow">
-              <span>{{ 'library.refs.heading' | transloco }}</span><span>{{ relatedDocs().length }}</span>
-            </p>
-            <div class="lib-refs">
-              @for (ref of entry.refs; track ref) {
-                <button
-                  type="button"
-                  class="lib-ref"
-                  [attr.data-library-ref]="ref"
-                  [attr.title]="'library.refs.search' | transloco: { ref }"
-                  (click)="searchRef(ref)"
-                >
-                  {{ ref }}
-                </button>
-              } @empty {
-                <span class="lib-muted">{{ 'library.refs.none' | transloco }}</span>
-              }
-            </div>
-            @if (relatedDocs().length > 0) {
-              <div class="lib-rel">
-                <div class="lib-rel-head" aria-hidden="true">
-                  <span>{{ 'library.refs.type' | transloco }}</span>
-                  <span>{{ 'library.refs.document' | transloco }}</span>
-                  <span>{{ 'library.refs.spec' | transloco }}</span>
-                  <span>{{ 'library.refs.shared' | transloco }}</span>
-                </div>
-                @for (rel of relatedDocs(); track rel.entry.id) {
-                  <button type="button" class="lib-rel-row" [attr.data-library-related]="rel.entry.id" (click)="open(rel.entry.id)">
-                    <span class="lib-type" [attr.data-type]="rel.entry.type">{{ 'library.types.' + rel.entry.type | transloco }}</span>
-                    <span class="lib-rel-title">{{ rel.entry.title }}</span>
-                    <span class="lib-rel-spec"><ui-chip variant="take" tone="accent">{{ chipLabel(rel.entry.spec) }}</ui-chip></span>
-                    <span class="lib-rel-refs" [attr.data-shared-label]="'library.refs.sharedShort' | transloco">{{ rel.shared }}</span>
-                  </button>
-                }
+          @if (doc.media === 'markdown' && doc.state !== 'missing') {
+            @if (pageFailed()) {
+              <ui-notice tone="error" icon="circle-alert">{{ 'library.reader.error' | transloco }}</ui-notice>
+            } @else if (prose(); as html) {
+              <article class="lib-prose" data-library-prose [innerHTML]="html"></article>
+            } @else if (pageLoading()) {
+              <div class="lib-loading" role="status" [attr.aria-label]="'library.reader.loading' | transloco">
+                <ui-skeleton />
+                <ui-skeleton />
+                <ui-skeleton width="64%" />
               </div>
             }
-          </section>
+          } @else if (doc.media !== 'markdown') {
+            <figure class="lib-image" data-library-image>
+              <ui-icon [name]="typeIcon(doc)" [size]="24" />
+              <figcaption>{{ 'library.reader.image' | transloco: { file: filePath(doc) } }}</figcaption>
+            </figure>
+          }
         } @else {
           <ui-empty-state icon="book" [heading]="'library.reader.pick' | transloco" [body]="'library.reader.pickBody' | transloco" />
         }
@@ -218,3 +194,49 @@
   </div>
 </ui-card>
 }
+}
+
+<!-- One document row (prototype `lib-row`): the type tag with its icon, the title, the flag line, the meta line. -->
+<ng-template #rowTpl let-row>
+  <button
+    type="button"
+    class="lib-row"
+    [attr.data-library-entry]="row.doc.path"
+    [attr.data-spec]="row.doc.spec"
+    [attr.data-state]="row.doc.state"
+    [attr.aria-current]="current()?.path === row.doc.path ? 'true' : null"
+    (click)="open(row.doc.path)"
+  >
+    <span class="lib-type" [attr.data-type]="row.doc.type"><ui-icon [name]="typeIcon(row.doc)" [size]="12" />{{ 'library.types.' + row.doc.type | transloco }}</span>
+    <span class="lib-title">
+      @for (run of row.title; track $index) {
+        @if (run.hit) {
+          <mark>{{ run.text }}</mark>
+        } @else {
+          {{ run.text }}
+        }
+      }
+    </span>
+    <span class="lib-flags">
+      <span class="lib-slot">
+        @if (row.doc.state === 'stale') {
+          <span class="lib-stale"><ui-icon name="triangle-alert" [size]="12" />{{ 'library.outdated' | transloco }}</span>
+        }
+      </span>
+      <!-- Slot 2: the cross references (T34). -->
+      <span class="lib-slot"></span>
+      <span class="lib-date">{{ date(row.doc.modified) }}</span>
+    </span>
+    @if (row.meta; as meta) {
+      <span class="lib-snippet" data-library-meta>
+        @for (run of meta; track $index) {
+          @if (run.hit) {
+            <mark>{{ run.text }}</mark>
+          } @else {
+            {{ run.text }}
+          }
+        }
+      </span>
+    }
+  </button>
+</ng-template>

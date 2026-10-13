@@ -6,7 +6,6 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { DASHBOARD_GO_KEY } from '../../core/keyboard-bindings';
 import { SettingsService } from '../../core/settings.service';
 import { boardRowsOf, boardSummaryOf, buildBoard } from '../../features/board/board-model';
-import { DemoData } from '../../shared/demo/demo-data';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiPopover } from '../../shared/ui/overlay/popover';
@@ -62,7 +61,6 @@ export class AreaMenu {
   private readonly data = inject(ShellData);
   private readonly settings = inject(SettingsService);
   private readonly transloco = inject(TranslocoService);
-  private readonly demo = inject(DemoData);
   private readonly injector = inject(Injector);
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
@@ -106,7 +104,8 @@ export class AreaMenu {
     features: this.featuresSummary(),
     milestones: this.milestonesSummary(),
     tech: this.techSummary(),
-    library: { count: this.demo.library().length },
+    // The catalog is read on the library page only (spec 017, T27); the menu has no source for its count yet.
+    library: null,
   }));
 
   /** The eyebrow head's key and params: the open spec's areas, else the workspace's pages. */

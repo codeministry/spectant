@@ -1,6 +1,6 @@
-/* The Library page (spec 024, T51): prototype `styles.css` § Library, with the app's token names
-   (`web/tests/prototype-token-map.ts`). Not encapsulated (the prose is `[innerHTML]`): every selector starts with
-   `app-library-page`. */
+/* The Library page (spec 024, T51; on the real catalog since spec 017, T27): prototype `styles.css` § Library, with
+   the app's token names (`web/tests/prototype-token-map.ts`). Not encapsulated (the prose is `[innerHTML]`): every
+   selector starts with `app-library-page`. */
 
 app-library-page {
   display: grid;
@@ -32,7 +32,12 @@ app-library-page .lib-ws {
   color: var(--muted-ink);
 }
 
-/* Prototype `.lib-types`: the type filters wrap onto a second row instead of scrolling out of the 380 px column. */
+app-library-page .lib-unavailable {
+  margin: 0;
+  color: var(--muted-ink);
+}
+
+/* Prototype `.lib-types`: from 640 px the type pills wrap onto a second row instead of scrolling out of the column. */
 app-library-page [data-library-types] .row {
   flex-wrap: wrap;
   overflow-x: visible;
@@ -43,8 +48,21 @@ app-library-page [data-library-types] .chip {
   border-radius: 6px;
 }
 
-app-library-page .lib-head ui-chip {
-  margin-block-end: 6px;
+/* Compact (design.md 017 Mobile § 3): one line scrolling in itself, the left edge flush with the search field (no
+   inset), a 16 px fade only at the trailing edge. */
+@container shell (width < 640px) {
+  app-library-page [data-library-types] .row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-inline: 0 16px;
+    mask-image: linear-gradient(90deg, black calc(100% - 16px), transparent);
+  }
+}
+
+app-library-page .lib-loading {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
 }
 
 app-library-page .lib-grid {
@@ -168,7 +186,7 @@ app-library-page .lib-rows {
 
 app-library-page .lib-row {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: 112px minmax(0, 1fr);
   gap: 4px 10px;
   inline-size: 100%;
   padding: 10px;
@@ -234,7 +252,11 @@ app-library-page mark {
 app-library-page .lib-type {
   --tc: var(--muted);
 
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
   place-self: start;
+  max-inline-size: 100%;
   padding-inline: 6px;
   border-inline-start: 3px solid var(--tc);
   border-radius: 6px;
@@ -243,24 +265,83 @@ app-library-page .lib-type {
   white-space: nowrap;
 }
 
-app-library-page .lib-type[data-type='plan'] { --tc: var(--color-primary); }
-app-library-page .lib-type[data-type='design'] { --tc: var(--color-success); }
-app-library-page .lib-type[data-type='decisions'] { --tc: var(--color-secondary); }
-app-library-page .lib-type[data-type='constitution'] { --tc: var(--muted); }
-app-library-page .lib-type[data-type='evidence'] { --tc: var(--color-accent); }
-app-library-page .lib-type[data-type='notes'] { --tc: var(--conc); }
+app-library-page .lib-type ui-icon {
+  flex-shrink: 0;
+}
+
+/* Type families (design.md 017 § Viewport-übergreifend): spec, plan, tasks cyan; design, prototype green; evidence
+   (and artifacts) lime; constitution, tech, TL;DR and context muted (the default); idea yellow. The label always
+   stands beside the colour. */
+app-library-page .lib-type:is([data-type='spec'], [data-type='plan'], [data-type='tasks']) { --tc: var(--color-primary); }
+app-library-page .lib-type:is([data-type='design'], [data-type='prototype']) { --tc: var(--color-success); }
+app-library-page .lib-type:is([data-type='evidence'], [data-type='artifact']) { --tc: var(--color-accent); }
+app-library-page .lib-type[data-type='idea'] { --tc: var(--conc); }
+
+/* A spec's evidence: one collapsed subgroup with its count (ISC-156), revealed in blocks of 50. */
+app-library-page .lib-evidence {
+  display: grid;
+  gap: 2px;
+  margin-block-start: 2px;
+}
+
+app-library-page .lib-evidence-toggle {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 14px;
+  gap: 10px;
+  align-items: center;
+  inline-size: calc(100% + 16px);
+  min-block-size: 36px;
+  margin-inline: -8px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted-ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--dur-hover) var(--ease);
+}
+
+app-library-page .lib-evidence-toggle:hover {
+  background: var(--color-base-300);
+}
+
+app-library-page .lib-evidence-toggle .lib-type {
+  color: var(--color-base-content);
+}
+
+app-library-page .lib-chevron {
+  transition: rotate var(--dur-pop) var(--ease);
+}
+
+app-library-page .lib-evidence-toggle[aria-expanded='true'] .lib-chevron {
+  rotate: 90deg;
+}
+
+app-library-page .lib-evidence-count {
+  color: var(--color-base-content);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+app-library-page .lib-more {
+  justify-self: start;
+}
+
+@media (pointer: coarse) {
+  app-library-page .lib-evidence-toggle {
+    min-block-size: 44px;
+  }
+}
 
 app-library-page .lib-stale {
   display: inline-flex;
   gap: 4px;
   align-items: center;
   color: var(--hover-text);
-  font-size: 12px;
-}
-
-app-library-page .lib-xref {
-  color: var(--ques-text);
-  font-family: var(--font-mono);
   font-size: 12px;
 }
 
@@ -361,115 +442,6 @@ app-library-page .lib-prose pre code {
   background: none;
 }
 
-app-library-page .lib-refs-block {
-  display: grid;
-  gap: 10px;
-  padding-block-start: 16px;
-  border-block-start: 1px solid var(--line);
-}
-
-app-library-page .lib-refs-head {
-  display: flex;
-  justify-content: space-between;
-  margin: 0;
-}
-
-app-library-page .lib-refs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-app-library-page .lib-ref {
-  block-size: 28px;
-  padding-inline: 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--color-base-300);
-  color: var(--color-base-content);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-app-library-page .lib-ref:hover {
-  border-color: var(--color-primary);
-}
-
-app-library-page .lib-rel {
-  display: grid;
-  gap: 2px;
-}
-
-app-library-page .lib-rel-head,
-app-library-page .lib-rel-row {
-  display: grid;
-  grid-template-columns: 90px minmax(0, 1fr) 94px minmax(96px, 160px);
-  gap: 10px;
-  align-items: center;
-  min-inline-size: 0;
-  padding: 8px;
-  text-align: start;
-}
-
-app-library-page .lib-rel-head {
-  border-block-end: 1px solid var(--line);
-  color: var(--muted-ink);
-  font: 600 11px/16px var(--font-ui);
-  text-transform: uppercase;
-}
-
-app-library-page .lib-rel-row {
-  inline-size: 100%;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-app-library-page .lib-rel-row:hover {
-  background: var(--color-base-300);
-}
-
-app-library-page .lib-rel-title,
-app-library-page .lib-rel-refs {
-  min-inline-size: 0;
-  overflow-wrap: anywhere;
-}
-
-app-library-page .lib-rel-refs {
-  color: var(--muted-ink);
-  font-size: 12px;
-}
-
-app-library-page .lib-rel-spec {
-  min-inline-size: 0;
-}
-
-@container shell (width < 1120px) {
-  app-library-page .lib-rel-head,
-  app-library-page .lib-rel-row {
-    grid-template-columns: 90px minmax(0, 1fr) 94px;
-  }
-
-  app-library-page .lib-rel-head span:last-child {
-    display: none;
-  }
-
-  app-library-page .lib-rel-refs {
-    grid-column: 2 / -1;
-  }
-
-  app-library-page .lib-rel-refs::before {
-    content: attr(data-shared-label) ' ';
-    color: var(--muted-ink);
-  }
-}
-
 @container shell (width < 640px) {
   app-library-page .lib-reader {
     padding: 16px;
@@ -477,19 +449,6 @@ app-library-page .lib-rel-spec {
 
   app-library-page .lib-date {
     font-size: 11px;
-  }
-
-  app-library-page .lib-rel-head,
-  app-library-page .lib-rel-row {
-    grid-template-columns: minmax(105px, 38%) minmax(0, 1fr);
-  }
-
-  app-library-page .lib-rel-head span:nth-child(3) {
-    display: none;
-  }
-
-  app-library-page .lib-rel-spec {
-    display: none;
   }
 }
 
