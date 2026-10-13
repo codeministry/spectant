@@ -6,7 +6,8 @@
 // (which has no `allowImportingTsExtensions`) never type-checks the server tree; their shapes are declared here.
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { Database } from 'bun:sqlite';
-import { readFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type {
@@ -599,6 +600,38 @@ describe('stub API: the library (spec 017, T3)', () => {
       const res = await ask(path, init);
       expect({ path, status: res.status, csp: res.headers.get('Content-Security-Policy') }).toEqual({ path, status, csp: PROTOTYPE_CSP });
       if (status === 405) expect(res.headers.get('Allow')).toBe(PROTOTYPE_ALLOW);
+    }
+  });
+
+  test('prototype fonts: Origin null gets a font with ACAO *, a foreign Origin 403, Origin null 403 for anything else', async () => {
+    // A copy of the fixtures with one font in the board, so the committed tree stays as it is.
+    const dir = mkdtempSync(join(tmpdir(), 'spectant-stub-fonts-'));
+    try {
+      cpSync(FIXTURES, dir, { recursive: true });
+      const fonts = join(dir, 'library', 'specs', '002-tide-board', '.design', 'prototype', 'board', 'fonts');
+      mkdirSync(fonts, { recursive: true });
+      writeFileSync(join(fonts, 'tide.woff2'), new Uint8Array([0x77, 0x4f, 0x46, 0x32]));
+      const withFont = stubApi({ fixturesDir: dir });
+      const send = (file: string, origin: string): Promise<Response> => call(withFont, request(proto(file), { headers: { Origin: origin } }));
+
+      const font = await send('fonts/tide.woff2', 'null');
+      expect([font.status, font.headers.get('Content-Type'), font.headers.get('Access-Control-Allow-Origin'), font.headers.get('Vary')]).toEqual([200, 'font/woff2', '*', 'Origin']);
+      expect([font.headers.get('Content-Security-Policy'), font.headers.get('X-Content-Type-Options')]).toEqual([PROTOTYPE_CSP, 'nosniff']);
+
+      const answers: ReadonlyArray<readonly [string, string]> = [
+        ['fonts/tide.woff2', 'https://evil.example'],
+        ['index.html', 'null'],
+        ['styles.css', 'null'],
+        ['app.js', 'null'],
+        ['fonts/missing.woff2', 'null'],
+      ];
+      for (const [file, origin] of answers) {
+        const res = await send(file, origin);
+        expect({ file, origin, status: res.status, acao: res.headers.get('Access-Control-Allow-Origin') }).toEqual({ file, origin, status: 403, acao: null });
+        expect([res.headers.get('Content-Security-Policy'), res.headers.get('X-Content-Type-Options')]).toEqual([PROTOTYPE_CSP, 'nosniff']);
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });

@@ -461,6 +461,7 @@ type Core = {
   listEvidence: (specDir: string) => Promise<EvidenceListing>;
   resolveEvidencePath: (specDir: string, requested: string, reach?: 'evidence' | 'tree') => Promise<EvidencePathResult>;
   mediaTypeOf: (name: string) => string;
+  prototypeMediaTypeOf: (name: string) => string;
   docsFor: (type: SpecType | null) => Readonly<Record<DocName, DocAvailability>>;
   worstState: (states: Iterable<CardState>) => CardState;
   parseWorkflow: (text: string | null) => Workflow;
@@ -477,7 +478,7 @@ type Core = {
 function loadCore(): Core {
   const load = createRequire(import.meta.url);
   const src = join(import.meta.dir, '..', '..', 'core', 'src');
-  const evidence = load(join(src, 'evidence.ts')) as Pick<Core, 'listEvidence' | 'resolveEvidencePath' | 'mediaTypeOf' | 'docsRenderOptions'>;
+  const evidence = load(join(src, 'evidence.ts')) as Pick<Core, 'listEvidence' | 'resolveEvidencePath' | 'mediaTypeOf' | 'prototypeMediaTypeOf' | 'docsRenderOptions'>;
   const docs = load(join(src, 'markdown-docs.ts')) as Pick<Core, 'docsFor' | 'renderDocsMarkdown'>;
   const frames = load(join(src, 'frames.ts')) as Pick<Core, 'worstState'>;
   const workflow = load(join(src, 'workflow.ts')) as Pick<Core, 'parseWorkflow' | 'boardStages'>;
@@ -487,6 +488,7 @@ function loadCore(): Core {
     listEvidence: evidence.listEvidence,
     resolveEvidencePath: evidence.resolveEvidencePath,
     mediaTypeOf: evidence.mediaTypeOf,
+    prototypeMediaTypeOf: evidence.prototypeMediaTypeOf,
     docsRenderOptions: evidence.docsRenderOptions,
     docsFor: docs.docsFor,
     renderDocsMarkdown: docs.renderDocsMarkdown,
@@ -870,12 +872,8 @@ const emptyStubCatalog = (): StubCatalog => ({ catalog: EMPTY_CATALOG, texts: ne
 /** plan.md's approach heading, as `core/src/tech.ts` reads it (its constant is not exported). */
 const APPROACH_HEADINGS: readonly string[] = ['Approach'];
 
-/** The media types a prototype page loads beyond core's evidence table, so its stylesheet and script are not refused under nosniff. */
-const PROTOTYPE_TYPES: ReadonlyMap<string, string> = new Map([
-  ['css', 'text/css'],
-  ['js', 'text/javascript'],
-  ['mjs', 'text/javascript'],
-]);
+/** The `Origin` a sandboxed prototype page sends (opaque); `prototypeFileRoute` answers it for a font alone. */
+const OPAQUE_ORIGIN = 'null';
 
 const isoMinutesBefore = (iso: string, minutes: number): string =>
   new Date(Date.parse(iso) - minutes * 60_000).toISOString().replace('.000Z', 'Z');
@@ -1280,14 +1278,29 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
    * `GET|HEAD /proto/:ws/:spec/:folder/*` (spec 017, ISC-159): one file of a `prototype` catalog document, through
    * core's resolver with the prototype's folder as the root (403 for what confinement refuses, 404 for no file), with
    * the evidence file's headers but inline and `PROTOTYPE_CSP`; every answer, errors included, carries that CSP. 404 for
-   * a path the contract does not match or a prototype the catalog does not list; 405 with `PROTOTYPE_ALLOW`.
+   * a path the contract does not match or a prototype the catalog does not list; 405 with `PROTOTYPE_ALLOW`. As
+   * `server/src/prototype.ts`: `Origin: null` (the sandboxed page) gets a font (`font/*`) with
+   * `Access-Control-Allow-Origin: *`, every other answer to it is 403 without that header; a font carries `Vary: Origin`.
    */
   const prototypeFileRoute = async (req: Request, pathname: string): Promise<Response> => {
-    const withCsp = (res: Response): Response => {
-      res.headers.set('Content-Security-Policy', PROTOTYPE_CSP);
-      return res;
-    };
-    if (!guarded(req)) return withCsp(workspaceJson(req, 403, { error: 'forbidden' }));
+    const opaque = req.headers.get('Origin') === OPAQUE_ORIGIN;
+    if (!opaque) return prototypeFileAnswer(req, pathname, false);
+    if (!isLoopbackHost(req.headers.get('Host'))) return prototypeForbidden(req);
+    const res = await prototypeFileAnswer(req, pathname, true);
+    return res.status === 200 || res.status === 304 ? res : prototypeForbidden(req);
+  };
+
+  const withCsp = (res: Response): Response => {
+    res.headers.set('Content-Security-Policy', PROTOTYPE_CSP);
+    res.headers.set('X-Content-Type-Options', 'nosniff');
+    return res;
+  };
+
+  const prototypeForbidden = (req: Request): Response => withCsp(workspaceJson(req, 403, { error: 'forbidden' }));
+
+  /** The prototype answer; `opaque` (a request from `Origin: null`) is answered for a font file alone. */
+  const prototypeFileAnswer = async (req: Request, pathname: string, opaque: boolean): Promise<Response> => {
+    if (!opaque && !guarded(req)) return prototypeForbidden(req);
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       return withCsp(workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: PROTOTYPE_ALLOW }));
     }
@@ -1308,12 +1321,20 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       const status = resolved.reason === 'not-found' || resolved.reason === 'not-a-file' ? 404 : 403;
       return withCsp(workspaceJson(req, status, { error: status === 403 ? 'forbidden' : 'not-found' }));
     }
-    const name = basename(resolved.path);
-    const extension = name.slice(name.lastIndexOf('.') + 1).toLowerCase();
-    const type = PROTOTYPE_TYPES.get(extension) ?? core.mediaTypeOf(name);
+    const type = core.prototypeMediaTypeOf(basename(resolved.path));
+    const font = type.startsWith('font/');
+    if (opaque && !font) return prototypeForbidden(req);
     const bytes = new Uint8Array(readFileSync(resolved.absolute));
-    const headers = { ...evidenceFileHeaders(type), 'Content-Disposition': 'inline', 'Content-Security-Policy': PROTOTYPE_CSP, ETag: strongEtag(bytes) };
-    if (matchesIfNoneMatch(req.headers.get('If-None-Match'), headers.ETag)) return new Response(null, { status: 304, headers });
+    const etag = strongEtag(bytes);
+    const headers: Record<string, string> = {
+      ...evidenceFileHeaders(type),
+      'Content-Disposition': 'inline',
+      'Content-Security-Policy': PROTOTYPE_CSP,
+      ETag: etag,
+      ...(font ? { Vary: 'Origin' } : {}),
+      ...(opaque ? { 'Access-Control-Allow-Origin': '*' } : {}),
+    };
+    if (matchesIfNoneMatch(req.headers.get('If-None-Match'), etag)) return new Response(null, { status: 304, headers });
     return new Response(req.method === 'HEAD' ? null : bytes, { headers });
   };
 

@@ -7,7 +7,11 @@
  *
  * Per request, in this order (the e2e stub's `prototypeFileRoute` answers the same way):
  *
- * - 403 `{error: "forbidden"}` for a non-loopback `Host` or a cross-site `Origin`, the guard of every route.
+ * - 403 `{error: "forbidden"}` for a non-loopback `Host` or a cross-site `Origin`, the guard of every route. The one
+ *   exception is `Origin: null`, the opaque origin of the sandboxed page itself: it is answered for a font alone
+ *   (`font/*` by `prototypeMediaTypeOf`), 200 or 304 with `Access-Control-Allow-Origin: *`, because a browser fetches
+ *   `@font-face` sources in CORS mode. Every other answer to `Origin: null` (HTML, styles, scripts, images, misses,
+ *   405, 409) is the same 403 without that header, so the sandboxed page reads nothing else by CORS.
  * - 405 with `Allow: PROTOTYPE_ALLOW` for any method but `GET` and `HEAD`.
  * - 404 for a path the contract does not match, an unknown workspace, or a spec that is no active spec folder
  *   (`specs/NNN-slug/`, exactly as `LibraryDoc.spec` names it; archived specs are no part of the catalog).
@@ -17,7 +21,8 @@
  *   a symlink out is refused. `outside` and `symlink-escape` are 403, `not-found` and `not-a-file` 404.
  * - 200 with the file's bytes streamed from its real path: `evidenceFileHeaders` for `prototypeMediaTypeOf(name)`
  *   (styles, scripts and fonts beside the evidence types, so `nosniff` does not refuse them), always `inline`, and a
- *   weak ETag `W/"<size>-<mtime ms>"` from one `stat`, 304 on a match. `HEAD` gets the headers alone.
+ *   weak ETag `W/"<size>-<mtime ms>"` from one `stat`, 304 on a match. `HEAD` gets the headers alone. A font answer
+ *   carries `Vary: Origin` either way, since its CORS header depends on the request's `Origin`.
  *
  * Every answer, errors included, carries `PROTOTYPE_CSP` (`sandbox` without `allow-same-origin`: the page runs on an
  * opaque origin and cannot call the app's API; `connect-src 'none'`) and `X-Content-Type-Options: nosniff`. No answer
@@ -58,6 +63,14 @@ function refuse(req: Request, status: number, body: unknown, extra: Record<strin
 
 const notFound = (req: Request): Response => refuse(req, 404, { error: "not-found" });
 
+const forbidden = (req: Request): Response => refuse(req, 403, { error: "forbidden" });
+
+/** The `Origin` a sandboxed page without `allow-same-origin` sends: its origin is opaque. */
+const OPAQUE_ORIGIN = "null";
+
+/** The media types `Origin: null` may load: a page's `@font-face` sources, fetched in CORS mode. */
+const isFontType = (mediaType: string): boolean => mediaType.startsWith("font/");
+
 /** The workspace's 409 body, as the library route sends it: the summary with the stable code, never the path. */
 function unavailable(workspace: { slug: string; name: string; path: string }, error: string): unknown {
   return { slug: workspace.slug, name: workspace.name, pathTail: basename(workspace.path), readable: false, error, counts: null };
@@ -67,7 +80,8 @@ function unavailable(workspace: { slug: string; name: string; path: string }, er
 export function prototypeApi(options: PrototypeApiOptions): ApiHandler {
   const { registry } = options;
 
-  const answer = async (req: Request, pathname: string): Promise<Response> => {
+  /** `opaque`: the request came from `Origin: null`, which is answered for a font file alone. */
+  const answer = async (req: Request, pathname: string, opaque: boolean): Promise<Response> => {
     const match = matchPrototypePath(pathname);
     if (match === null) return notFound(req);
     const { ws, spec, folder, file } = match.params;
@@ -90,6 +104,10 @@ export function prototypeApi(options: PrototypeApiOptions): ApiHandler {
         ? refuse(req, 403, { error: "forbidden" })
         : notFound(req);
     }
+    // The media type of the name asked for; a confined symlink serves its target's bytes.
+    const mediaType = prototypeMediaTypeOf(basename(hit.path));
+    const font = isFontType(mediaType);
+    if (opaque && !font) return forbidden(req);
     let size: number;
     let etag: string;
     try {
@@ -101,12 +119,13 @@ export function prototypeApi(options: PrototypeApiOptions): ApiHandler {
       // Gone between the check and the stat.
       return notFound(req);
     }
-    // The media type of the name asked for; a confined symlink serves its target's bytes.
-    const headers = {
-      ...evidenceFileHeaders(prototypeMediaTypeOf(basename(hit.path))),
+    const headers: Record<string, string> = {
+      ...evidenceFileHeaders(mediaType),
       "Content-Disposition": "inline",
       ...ALWAYS,
       ETag: etag,
+      ...(font ? { Vary: "Origin" } : {}),
+      ...(opaque ? { "Access-Control-Allow-Origin": "*" } : {}),
     };
     if (matchesIfNoneMatch(req.headers.get("If-None-Match"), etag)) return new Response(null, { status: 304, headers });
     if (req.method === "HEAD") return new Response(null, { status: 200, headers: { ...headers, "Content-Length": String(size) } });
@@ -117,12 +136,14 @@ export function prototypeApi(options: PrototypeApiOptions): ApiHandler {
   return (req, url) => {
     const { pathname } = url;
     if (!pathname.startsWith(PROTOTYPE_PREFIX)) return null;
-    if (!isLoopbackHost(req.headers.get("Host")) || !isLoopbackOrigin(req.headers.get("Origin"))) {
-      return refuse(req, 403, { error: "forbidden" });
-    }
+    const origin = req.headers.get("Origin");
+    const opaque = origin === OPAQUE_ORIGIN;
+    if (!isLoopbackHost(req.headers.get("Host")) || (!opaque && !isLoopbackOrigin(origin))) return forbidden(req);
     if (req.method !== "GET" && req.method !== "HEAD") {
-      return refuse(req, 405, { error: "method-not-allowed" }, { Allow: PROTOTYPE_ALLOW });
+      return opaque ? forbidden(req) : refuse(req, 405, { error: "method-not-allowed" }, { Allow: PROTOTYPE_ALLOW });
     }
-    return answer(req, pathname);
+    if (!opaque) return answer(req, pathname, false);
+    // `Origin: null` learns nothing but a font's bytes: every miss, 409 and refusal is the same 403.
+    return answer(req, pathname, true).then((res) => (res.status === 200 || res.status === 304 ? res : forbidden(req)));
   };
 }

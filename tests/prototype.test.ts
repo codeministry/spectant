@@ -1,12 +1,13 @@
 // The prototype route (spec 017 T20, ISC-159): `GET|HEAD /proto/:ws/:spec/:folder/*` served by `prototypeApi` through
 // the loopback server, outside `/api/`, so a page and the files it links by relative URL load from one folder.
-// This file holds the route's smoke test (`-t smoke`); the confinement probes (`-t traversal`, T21) and the CSP probes
-// (`-t csp`, T23) join it later.
+// This file holds the route's smoke test (`-t smoke`) and the opaque-origin font rule (`-t fonts`); the confinement
+// probes (`-t traversal`, T21) and the CSP probes (`-t csp`, T23) join it later.
 //
 // Fixture: a temp copy of `core/fixtures/library` registered as a workspace (002's `prototype/board` with two pages,
-// a stylesheet, a script and an image; 001's prototype directly in `.design/prototype/`). Nothing is ever written.
+// a stylesheet, a script and an image; 001's prototype directly in `.design/prototype/`), plus one font the `fonts`
+// probes add to the copy. The route itself never writes.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
@@ -111,5 +112,67 @@ describe("prototype route smoke", () => {
     const foreign = await get(page, { headers: { Origin: "https://example.com" } });
     expect(foreign.status).toBe(403);
     expect(foreign.headers.get("Content-Security-Policy")).toBe(PROTOTYPE_CSP);
+  });
+});
+
+describe("prototype route fonts", () => {
+  // The sandboxed page runs on an opaque origin, so its `@font-face` fetch (CORS mode) sends `Origin: null`.
+  const FONT = new Uint8Array([0x77, 0x4f, 0x46, 0x32, 0, 1, 0, 0]);
+  const board = (file: string): string => prototypeRoute(ws, "002-tide-board", "prototype/board", file);
+  const font = (): string => board("fonts/tide.woff2");
+
+  beforeAll(() => {
+    const dir = join(root, "shelf", "specs", "002-tide-board", ".design", "prototype", "board", "fonts");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "tide.woff2"), FONT);
+  });
+
+  test("fonts: Origin null gets a font with Access-Control-Allow-Origin *, Vary, the CSP and nosniff; 304 too", async () => {
+    const res = await get(font(), { headers: { Origin: "null" } });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("font/woff2");
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("Vary")).toBe("Origin");
+    expect(res.headers.get("Content-Security-Policy")).toBe(PROTOTYPE_CSP);
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(FONT);
+    const etag = res.headers.get("ETag") ?? "";
+    const again = await get(font(), { headers: { Origin: "null", "If-None-Match": etag } });
+    expect([again.status, again.headers.get("Access-Control-Allow-Origin")]).toEqual([304, "*"]);
+
+    // Without an Origin (the app itself) the font loads as before, without the CORS header.
+    const plain = await get(font());
+    expect([plain.status, plain.headers.get("Access-Control-Allow-Origin"), plain.headers.get("Vary")]).toEqual([200, null, "Origin"]);
+    await plain.arrayBuffer();
+  });
+
+  test("fonts: a foreign Origin is 403 even for a font", async () => {
+    for (const origin of ["https://evil.example", "http://evil.example", "null2"]) {
+      const res = await get(font(), { headers: { Origin: origin } });
+      expect({ origin, status: res.status, acao: res.headers.get("Access-Control-Allow-Origin") }).toEqual({ origin, status: 403, acao: null });
+      expect(res.headers.get("Content-Security-Policy")).toBe(PROTOTYPE_CSP);
+      expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+      await res.arrayBuffer();
+    }
+  });
+
+  test("fonts: Origin null is 403 without the CORS header for HTML, styles, scripts, images, misses and other methods", async () => {
+    const cases: Array<[string, RequestInit]> = [
+      [board("index.html"), {}],
+      [board("styles.css"), {}],
+      [board("app.js"), {}],
+      [board("img/badge.png"), {}],
+      [board("fonts/missing.woff2"), {}],
+      [prototypeRoute("no-such-workspace", "002-tide-board", "prototype/board", "fonts/tide.woff2"), {}],
+      [`/proto/${ws}/002-tide-board/prototype%2Fboard/..%252F..%252Fspec.md`, {}],
+      [font(), { method: "POST" }],
+    ];
+    for (const [path, init] of cases) {
+      const res = await get(path, { ...init, headers: { Origin: "null" } });
+      expect({ path, status: res.status, acao: res.headers.get("Access-Control-Allow-Origin") }).toEqual({ path, status: 403, acao: null });
+      expect(res.headers.get("Content-Security-Policy")).toBe(PROTOTYPE_CSP);
+      expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+      await res.arrayBuffer();
+    }
   });
 });
