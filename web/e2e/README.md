@@ -151,5 +151,5 @@ bun run test:visual:ci -- -u                   # record or update
 bun web/e2e/container.ts e2e palette           # any suite
 ```
 
-The container runs `linux/amd64` like CI; `E2E_PLATFORM=linux/arm64` gives a faster, non-authoritative look on Apple
-Silicon.
+The container runs `linux/arm64`, native on Apple Silicon; the baselines are arm64 renderings, and CI does not compare
+them. It uses every CPU Docker grants; `E2E_WORKERS=<n>` sets the worker count.

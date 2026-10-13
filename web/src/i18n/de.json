@@ -572,7 +572,7 @@
         "none": "Keine Agentenquelle"
       },
       "open": "{{source}}, Runden-Board öffnen",
-      "status": "Live-Status und Dev-Dienste · {{source}}",
+      "status": "Live-Status und Dev-Dienste · {{source}} · {{services}}",
       "updated": "Aktualisiert vor",
       "ago": "{{value}} {{unit}}",
       "heading": "Live",
@@ -580,7 +580,9 @@
       "board": "Round-Board öffnen",
       "services": "Dev-Dienste",
       "openService": "{{kind}} auf Port {{port}} in neuem Tab öffnen",
-      "noServices": "In diesem Workspace läuft kein Dev-Dienst."
+      "noServices": "In diesem Workspace läuft kein Dev-Dienst.",
+      "servicesUp": "{{count}} Dev-Dienst(e) aktiv",
+      "servicesDown": "Kein Dev-Dienst aktiv"
     },
     "zen": {
       "toggle": "Zen-Modus",

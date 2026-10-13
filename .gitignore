@@ -55,3 +55,6 @@ specs/notes/outline.md
 
 # planning is private: specs/ (constitution, ideas, every spec) stays on this machine and out of the public tree (principal, 2026-10-11)
 /specs/
+
+# spec worktrees inside the repo
+.worktrees/
