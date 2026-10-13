@@ -91,12 +91,13 @@
   --done-mark: oklch(61% 0.13 159.2); /* #219a66 */
 
   /*
-   * Filled buttons: the fill and the text on it. The primary #1c8ca8 under its #fdfaf9 content is 3.77:1, so the
-   * primary button takes the badge pair (4.57:1). Danger fills with the error ink #ca3063 (#fdfaf9 on it 4.91:1; the
-   * accent #e14775 gives 3.77:1). Warning keeps the accent #ad560c (4.92:1 under #fdfaf9).
+   * Filled buttons: the fill and the text on it. The primary is the prototype `.btn.primary`: `--cyan` #1c8ca8 under
+   * the page #f6f1ef (spec 024: prototype background (principal 2026-10-13), below 4.5:1, listed in
+   * `web/tests/contrast-exceptions.ts`). Danger fills with the error ink #ca3063 (#fdfaf9 on it 4.91:1; the accent
+   * #e14775 gives 3.77:1). Warning keeps the accent #ad560c (4.92:1 under #fdfaf9).
    */
-  --primary-fill: var(--badge-fill);
-  --primary-fill-ink: var(--badge-ink);
+  --primary-fill: var(--color-primary);
+  --primary-fill-ink: var(--color-base-200);
   --danger-fill: var(--fail-ink);
   --danger-fill-ink: var(--color-error-content);
   --warning-fill: var(--color-warning);
@@ -129,7 +130,8 @@
   /* The success dot passes on its tint (#a9dc9c on #2a3a2d). */
   --done-mark: var(--color-success);
 
-  /* Filled buttons keep the inherited accents under the page colour: primary 10.26, danger 5.69, warning 7.63. */
+  /* Filled buttons keep the inherited accents under the page colour (the prototype `.btn.primary`: `--cyan` under
+   * `--page`): primary 10.26, danger 5.69, warning 7.63. */
   --primary-fill: var(--color-primary);
   --primary-fill-ink: var(--color-primary-content);
   --danger-fill: var(--color-error);

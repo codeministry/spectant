@@ -155,7 +155,7 @@
   block-size: 24px;
   padding-inline: 8px;
   border-radius: 999px;
-  background: var(--held-t);
+  background: var(--color-base-300);
   color: var(--color-base-content);
   font-size: 12px;
   text-decoration: none;

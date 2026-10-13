@@ -23,11 +23,12 @@ export interface FilterOption {
     :host { display: block; min-inline-size: 0; }
     .row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
     .chip { flex-shrink: 0; gap: 8px; border-radius: 999px; font-weight: 500; white-space: nowrap; }
-    .chip[aria-pressed='true'] { --btn-bg: var(--disp-t); --btn-fg: var(--disp-ink); --btn-border: var(--color-primary); }
+    .chip[aria-pressed='true'] { --btn-bg: var(--color-base-300); --btn-fg: var(--color-base-content); --btn-border: var(--track); }
+    .chip:hover { --btn-bg: var(--color-base-300); }
     .dot { inline-size: 8px; block-size: 8px; border-radius: 50%; }
     .count { color: var(--muted-ink); font-variant-numeric: tabular-nums; }
-    /* On the selected chip's tint the muted count falls below 4.5:1 (4.44 light, 4.07 dark); it takes the chip's ink. */
-    .chip[aria-pressed='true'] .count { color: var(--disp-ink); }
+    /* The selected chip is the prototype's --raised (spec 024: prototype background (principal 2026-10-13)); its count
+     * stays muted, the neutral-chip pair of web/tests/contrast-exceptions.ts. */
     @container shell (width < 640px) {
       .row { mask-image: linear-gradient(90deg, transparent, black 16px, black calc(100% - 16px), transparent); padding-inline: 16px; }
     }

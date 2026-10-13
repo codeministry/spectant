@@ -99,7 +99,7 @@ ui-doc-prose .docs-prose pre {
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius-field);
-  background: var(--color-base-200);
+  background: var(--lane);
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 18px;

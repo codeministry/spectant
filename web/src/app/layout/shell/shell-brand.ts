@@ -85,12 +85,12 @@ export class ShellBrand {}
 
     @media (hover: hover) {
       .library-link:hover {
-        background: var(--color-base-200);
+        background: var(--color-base-300);
       }
     }
 
     .library-link.current {
-      background: var(--color-base-200);
+      background: var(--disp-t);
     }
 
     .book {

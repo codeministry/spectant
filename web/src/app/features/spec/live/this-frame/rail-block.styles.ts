@@ -12,7 +12,7 @@ export const RAIL_BLOCK_STYLES = `
   .title { font-size: 14px; font-weight: 600; line-height: var(--rail-line); }
   .rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin: 0; padding: 0; list-style: none; }
   .row { display: flex; gap: 8px; align-items: start; inline-size: 100%; min-block-size: 40px; padding: calc((40px - var(--rail-line)) / 2) 8px; border: 0; border-radius: var(--radius-field); background: none; color: var(--color-base-content); text-align: start; cursor: pointer; transition: background-color var(--motion-duration-fast) var(--motion-ease-standard); }
-  .row:hover { background: var(--color-base-200); }
+  .row:hover { background: var(--color-base-300); }
   .mono { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
   .text { flex: 1; min-inline-size: 0; font-size: 13px; line-height: var(--rail-line); overflow-wrap: anywhere; }
   .row > ui-glyph, .row > ui-state-chip { display: flex; flex: none; align-items: center; block-size: var(--rail-line); }

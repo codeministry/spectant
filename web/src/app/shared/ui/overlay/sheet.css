@@ -57,7 +57,7 @@
 }
 
 .sheet::backdrop {
-  background: oklch(0% 0 0 / 0.4);
+  background: var(--scrim);
 }
 
 .grip {
@@ -71,7 +71,7 @@
   inline-size: 32px;
   block-size: 4px;
   border-radius: 999px;
-  background: var(--track);
+  background: var(--line);
 }
 
 .head {

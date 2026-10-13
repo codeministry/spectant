@@ -25,6 +25,8 @@ export type ContrastException = {
   readonly ratio: number;
   /** The line it misses: 4.5 for text, 3 for marks. */
   readonly min: number;
+  /** A mark painted at this coverage over `surface` (the meter and ring track at 45 %); `fg` is the composited paint. */
+  readonly alpha?: number;
 };
 
 // Light accent text on its own tint (chips, the id chip, the danger and warning buttons, notices). On the card and
@@ -40,4 +42,19 @@ export const CONTRAST_EXCEPTIONS: readonly ContrastException[] = [
   // The neutral chip (the prototype's base chip): `--muted` text on `--raised` (daisyUI's `--color-base-300`), both themes.
   { tone: "--muted-ink", theme: "spec-light", surface: "--color-base-300", fg: "#706b6e", bg: "#ede7e5", ratio: 4.27, min: 4.5 },
   { tone: "--muted-ink", theme: "spec-dark", surface: "--color-base-300", fg: "#939293", bg: "#403e41", ratio: 3.41, min: 4.5 },
+  // spec 024: prototype background (principal 2026-10-13). The light primary button is the prototype `.btn.primary`:
+  // `--cyan` under `--page`.
+  { tone: "--primary-fill-ink", theme: "spec-light", surface: "--primary-fill", fg: "#f6f1ef", bg: "#1c8ca8", ratio: 3.49, min: 4.5 },
+  // spec 024: prototype background (principal 2026-10-13). The meter and ring track is the prototype's `--track` at
+  // 45 % (`color-mix(… 45%, transparent)`, opacity .45), on the card and the page of both themes.
+  { tone: "--track", theme: "spec-light", surface: "--color-base-100", fg: "#c9c5c7", bg: "#fdfaf9", ratio: 1.64, min: 3, alpha: 0.45 },
+  { tone: "--track", theme: "spec-light", surface: "--color-base-200", fg: "#c5c0c1", bg: "#f6f1ef", ratio: 1.6, min: 3, alpha: 0.45 },
+  { tone: "--track", theme: "spec-dark", surface: "--color-base-100", fg: "#524f53", bg: "#2d2a2e", ratio: 1.76, min: 3, alpha: 0.45 },
+  { tone: "--track", theme: "spec-dark", surface: "--color-base-200", fg: "#4c494c", bg: "#221f22", ratio: 1.84, min: 3, alpha: 0.45 },
+  // spec 024: prototype background (principal 2026-10-13). The pending stage-track segment is the prototype's `--track`
+  // at 55 %, on the card and the page of both themes.
+  { tone: "--track", theme: "spec-light", surface: "--color-base-100", fg: "#beb9bb", bg: "#fdfaf9", ratio: 1.86, min: 3, alpha: 0.55 },
+  { tone: "--track", theme: "spec-light", surface: "--color-base-200", fg: "#bbb5b7", bg: "#f6f1ef", ratio: 1.8, min: 3, alpha: 0.55 },
+  { tone: "--track", theme: "spec-dark", surface: "--color-base-100", fg: "#5a585b", bg: "#2d2a2e", ratio: 2, min: 3, alpha: 0.55 },
+  { tone: "--track", theme: "spec-dark", surface: "--color-base-200", fg: "#555356", bg: "#221f22", ratio: 2.13, min: 3, alpha: 0.55 },
 ];

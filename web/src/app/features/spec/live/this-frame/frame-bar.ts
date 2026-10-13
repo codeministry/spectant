@@ -24,7 +24,7 @@ import { ShellState } from '../../../../layout/shell/shell-state.service';
     :host([data-merged]) .main { min-block-size: 40px; flex-wrap: nowrap; white-space: nowrap; }
     .main:hover { background: var(--color-base-200); }
     .frame { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
-    .grab { position: absolute; inset-block-start: 3px; inset-inline-start: 50%; inline-size: 36px; block-size: 4px; border-radius: 2px; background: var(--track); translate: -50% 0; }
+    .grab { position: absolute; inset-block-start: 3px; inset-inline-start: 50%; inline-size: 36px; block-size: 4px; border-radius: 2px; background: var(--line); translate: -50% 0; }
     :host([data-merged]) .grab { display: none; }
     .count b { font-family: var(--font-mono); }
     .needs { margin-inline-start: auto; color: var(--hover-text); }

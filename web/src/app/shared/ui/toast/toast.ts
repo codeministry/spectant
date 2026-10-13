@@ -42,7 +42,7 @@ export class ToastService {
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .toast { z-index: 50; padding: 16px; }
-    .alert { max-inline-size: min(360px, calc(100vw - 32px)); border: 1px solid var(--line); background: var(--color-neutral); color: var(--color-neutral-content); font-size: 14px; animation: toast-in var(--motion-duration-fast) var(--motion-ease-emphasized); }
+    .alert { max-inline-size: min(360px, calc(100vw - 32px)); border: 1px solid var(--color-accent); background: var(--color-base-100); color: var(--color-base-content); font-size: 14px; animation: toast-in var(--motion-duration-fast) var(--motion-ease-emphasized); }
     @keyframes toast-in { from { opacity: 0; } }
   `,
   template: `

@@ -33,7 +33,7 @@
 }
 
 .entry[aria-current] {
-  background: var(--color-base-200);
+  background: var(--color-base-300);
   font-weight: 600;
 }
 
@@ -78,7 +78,7 @@
 
 @media (hover: hover) {
   a.entry:hover {
-    background: var(--color-base-200);
+    background: var(--color-base-300);
   }
 }
 
@@ -130,12 +130,12 @@
 }
 
 .more .entry[aria-pressed="true"] {
-  background: var(--color-base-200);
+  background: var(--color-base-300);
 }
 
 @media (hover: hover) {
   button.entry:not([aria-disabled="true"]):hover {
-    background: var(--color-base-200);
+    background: var(--color-base-300);
   }
 }
 

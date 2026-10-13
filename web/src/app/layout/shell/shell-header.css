@@ -92,7 +92,7 @@
 
 @media (hover: hover) {
   .palette:hover {
-    background: var(--color-base-200);
+    background: var(--color-base-300);
   }
 }
 
@@ -174,7 +174,7 @@
 
 @media (hover: hover) {
   .assistant:hover {
-    background: var(--color-base-200);
+    background: var(--color-base-300);
   }
 }
 

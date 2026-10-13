@@ -9,7 +9,9 @@
 // ISC-65, refined: text reaches 4.5:1 and the `--track` mark 3:1, except the pairs the DS-APP-32/33 adaptation names
 // with their measured ratio (`specs/constitution.md` § Adaptations). Measured: `--muted-ink` and every `--*-ink` on
 // the card (`--color-base-100`) and the page (`--color-base-200`), every accent ink also on its own `-t` tint (chips,
-// notices, the danger and warning buttons), `--badge-ink` on `--badge-fill`, `--track` on card and page. The pairs
+// notices, the danger and warning buttons), `--badge-ink` on `--badge-fill`, each filled button's ink on its fill,
+// `--track` on card and page, and `--track` at the prototype's 45 % and 55 % coverage (the meter and ring track, the pending
+// stage-track segment; spec 024: prototype background (principal 2026-10-13)) composited in sRGB on the surfaces it sits on. The pairs
 // below the line must equal `CONTRAST_EXCEPTIONS` (`contrast-exceptions.ts`) exactly, the list the browser spec reads
 // too. A `var()` value is resolved through the token block, then the shared block, then the theme block in
 // `styles.css`, as the cascade does on the element that carries `data-theme`.
@@ -193,7 +195,11 @@ const deltaE = (painted: Rgb, hex: string) => {
 };
 
 // ── ISC-65 refined: every measured pair, and the exact exception list. ──
-type Pair = { tone: string; surface: string; min: number };
+const TRACK_ALPHAS = [0.45, 0.55] as const;
+const TRACK_SURFACES = ["--color-base-100", "--color-base-200"] as const;
+const over = (fg: Rgb, bg: Rgb, alpha: number) => fg.map((c, i) => alpha * c + (1 - alpha) * (bg[i] ?? 0)) as Rgb;
+/** `alpha`: the mark painted at that coverage over the surface (source-over in sRGB, as the browser composites). */
+type Pair = { tone: string; surface: string; min: number; alpha?: number };
 const PAIRS: readonly Pair[] = [
   ...["--muted-ink", ...INKS].flatMap((tone) => {
     // Held text never sits on `--held-t`: the prototype's held chip is muted text on `--raised`. The neutral tone's
@@ -206,20 +212,26 @@ const PAIRS: readonly Pair[] = [
   { tone: "--badge-ink", surface: "--badge-fill", min: TEXT_MIN },
   { tone: "--track", surface: "--color-base-100", min: MARK_MIN },
   { tone: "--track", surface: "--color-base-200", min: MARK_MIN },
+  // Filled buttons: the light primary is the prototype `.btn.primary`, `--cyan` under `--page`.
+  ...["primary", "danger", "warning"].map((fill) => ({ tone: `--${fill}-fill-ink`, surface: `--${fill}-fill`, min: TEXT_MIN })),
+  // The meter and ring track at the prototype's 45 % and the pending stage-track segment at its 55 %, on the card and
+  // the page.
+  ...TRACK_ALPHAS.flatMap((alpha) => TRACK_SURFACES.map((surface) => ({ tone: "--track", surface, min: MARK_MIN, alpha }))),
 ];
 
-type Line = { tone: string; theme: string; surface: string; fg: string; bg: string; ratio: number; min: number };
+type Line = { tone: string; theme: string; surface: string; fg: string; bg: string; ratio: number; min: number; alpha?: number };
 /** One pair as both the measurement and the exception list print it. */
 const pairLine = (p: Line) =>
-  `${p.theme} ${p.tone} on ${p.surface}: ${p.fg} on ${p.bg} ${p.ratio.toFixed(2)} < ${String(p.min)}`;
+  `${p.theme} ${p.tone}${p.alpha === undefined ? "" : ` at ${String(p.alpha)}`} on ${p.surface}: ${p.fg} on ${p.bg} ${p.ratio.toFixed(2)} < ${String(p.min)}`;
 
 /** Every measured pair below its line, in both themes, sorted. */
 function measuredBelow(): string[] {
   return THEMES.flatMap((theme) =>
-    PAIRS.flatMap(({ tone, surface, min }) => {
-      const [fg, bg] = [resolve(theme, tone), resolve(theme, surface)];
+    PAIRS.flatMap(({ tone, surface, min, alpha }) => {
+      const bg = resolve(theme, surface);
+      const fg = alpha === undefined ? resolve(theme, tone) : over(quantise(resolve(theme, tone)), quantise(bg), alpha);
       const ratio = worstContrast(fg, bg);
-      return ratio < min ? [pairLine({ tone, theme, surface, fg: toHex(fg), bg: toHex(bg), ratio, min })] : [];
+      return ratio < min ? [pairLine({ tone, theme, surface, fg: toHex(fg), bg: toHex(bg), ratio, min, alpha })] : [];
     }),
   ).sort();
 }

@@ -19,9 +19,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     :host {
       display: block;
       border-radius: var(--radius-field);
-      background:
-        linear-gradient(90deg, transparent 40%, color-mix(in oklch, var(--color-base-100) 60%, transparent) 50%, transparent 60%)
-        var(--color-base-300);
+      background: linear-gradient(90deg, var(--color-base-300) 0%, var(--lane) 50%, var(--color-base-300) 100%);
       background-position: 150% 0;
       background-size: 200% 100%;
       animation: ui-shimmer var(--motion-duration-skeleton) linear infinite;

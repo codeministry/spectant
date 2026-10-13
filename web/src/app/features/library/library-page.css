@@ -330,7 +330,7 @@ app-library-page .lib-prose pre {
   overflow: auto;
   padding: 12px;
   border-radius: var(--radius-sm);
-  background: var(--color-base-300);
+  background: var(--lane);
 }
 
 app-library-page .lib-prose pre code {

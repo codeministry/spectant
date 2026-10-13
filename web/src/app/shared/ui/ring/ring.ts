@@ -7,8 +7,8 @@ let nextId = 0;
  * with round caps in a lime → cyan gradient (accent → primary) running top left to bottom right, the percentage as real
  * centred text (600, line-height 1: 22 px on the 112 px hero ring, 15 px on the prototype's `sm` rings 96 to 52, 11 px
  * on the 40 px row ring) with the `%` as a 12 px / 500 muted `small`, so forced colours and screen readers keep it.
- * The track is the full `--track`, not the prototype's 45 % opacity: at .45 it paints about 1.6:1 and the mark rule
- * (ISC-65, 3:1) holds it. Value changes morph `stroke-dashoffset` over `--motion-duration-slow` (the prototype's
+ * The track is the prototype's `--track` at opacity .45 (spec 024: prototype background (principal 2026-10-13));
+ * it paints below the 3:1 mark line, and `web/tests/contrast-exceptions.ts` lists the pairs. Value changes morph `stroke-dashoffset` over `--motion-duration-slow` (the prototype's
  * `--dur-morph`). `null` shows "—" (no specs yet).
  */
 @Component({
@@ -18,7 +18,7 @@ let nextId = 0;
   styles: `
     :host { display: inline-grid; flex-shrink: 0; place-items: center; inline-size: var(--ring-size); block-size: var(--ring-size); }
     svg { grid-area: 1 / 1; transform: rotate(-90deg); }
-    .track { fill: none; stroke: var(--track); }
+    .track { fill: none; stroke: var(--track); opacity: 0.45; }
     .bar { fill: none; transition: stroke-dashoffset var(--motion-duration-slow) var(--motion-ease-standard); }
     .from { stop-color: var(--color-accent); }
     .to { stop-color: var(--color-primary); }
@@ -29,7 +29,7 @@ let nextId = 0;
     :host([data-size='40']) .unit { font-size: 0.75em; }
     @media (forced-colors: active) {
       .bar { stroke: CanvasText; }
-      .track { stroke: GrayText; }
+      .track { stroke: GrayText; opacity: 1; }
     }
   `,
   template: `

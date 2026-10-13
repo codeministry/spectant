@@ -245,7 +245,7 @@ h2 {
 }
 
 .status[data-tone='held'], .status[data-tone='struck'] {
-  background: var(--held-t);
+  background: var(--color-base-300);
   border-color: transparent;
   color: var(--held-ink);
 }

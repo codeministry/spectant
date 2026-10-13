@@ -52,7 +52,7 @@
 @media (hover: hover) {
   a.part:hover,
   button.part:hover {
-    background: var(--color-base-200);
+    background: var(--color-base-300);
   }
 }
 

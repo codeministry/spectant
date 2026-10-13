@@ -36,6 +36,7 @@ export type CardDensity = 'comfortable' | 'compact';
   styles: `
     :host { display: block; min-inline-size: 0; }
     article { display: grid; gap: 4px; min-inline-size: 0; padding: 10px 12px 10px 14px; border: 1px solid var(--line); border-inline-start: 4px solid var(--edge); border-radius: var(--radius-field); background: var(--color-base-100); }
+    article:hover { background: var(--color-base-300); }
     :host([data-density='compact']) article { gap: 2px; padding: 6px 10px 6px 12px; }
     .r1, .r3 { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-inline-size: 0; }
     /* The header stays one line, as the prototype's .r1: the state word never shrinks, the claim chip gives way. */

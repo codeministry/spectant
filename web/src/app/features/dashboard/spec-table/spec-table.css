@@ -90,8 +90,7 @@
 .rows:focus-within .row-link[data-selected] {
   --row-id-ink: var(--disp-ink);
 
-  background: var(--disp-t);
-  box-shadow: inset 3px 0 0 var(--color-primary);
+  background: var(--color-base-300);
 }
 
 .empty {

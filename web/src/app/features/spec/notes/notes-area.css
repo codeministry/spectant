@@ -87,12 +87,11 @@ app-notes-area .notes-row {
 }
 
 app-notes-area .notes-row:hover {
-  background: var(--color-base-200);
+  background: var(--color-base-300);
 }
 
 app-notes-area .notes-row[aria-current='page'] {
-  background: var(--color-base-200);
-  box-shadow: inset 3px 0 0 var(--color-primary);
+  background: var(--disp-t);
 }
 
 app-notes-area .notes-row-top,
@@ -166,6 +165,7 @@ app-notes-area .notes-anchor-field {
 
 app-notes-area .notes-anchor-select {
   max-inline-size: 320px;
+  background: var(--lane);
 }
 
 app-notes-area .notes-local {
@@ -194,6 +194,7 @@ app-notes-area .notes-body[data-view='split'] {
 
 app-notes-area .notes-textarea {
   inline-size: 100%;
+  background: var(--lane);
   min-block-size: 480px;
   font-family: var(--font-mono);
   font-size: 14px;
@@ -259,7 +260,7 @@ app-notes-area .notes-preview pre {
   overflow-x: auto;
   padding: 16px;
   border-radius: var(--radius-field);
-  background: var(--color-base-200);
+  background: var(--lane);
 }
 
 app-notes-area .notes-preview blockquote {

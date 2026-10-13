@@ -165,7 +165,7 @@ td[data-kind] {
   block-size: 32px;
   padding: 0;
   text-align: start;
-  background: var(--color-base-200);
+  background: var(--color-base-100);
   border-block: 1px solid var(--matrix-line);
 }
 

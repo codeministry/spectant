@@ -12,7 +12,10 @@
   min-block-size: 48px;
   margin-block-end: 8px;
   padding-block: 8px;
-  background: var(--color-base-200);
+  background: var(--page-glass);
+  /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 
 .triggers,
@@ -136,7 +139,7 @@
 }
 
 .row:hover {
-  background: var(--color-base-200);
+  background: var(--color-base-300);
 }
 
 .row input {

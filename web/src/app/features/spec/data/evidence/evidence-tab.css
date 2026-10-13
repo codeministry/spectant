@@ -227,7 +227,7 @@ app-evidence-tab .evidence-prose code {
 app-evidence-tab .evidence-prose pre {
   padding: 16px;
   border-radius: var(--radius-field);
-  background: var(--color-base-200);
+  background: var(--lane);
   overflow-x: auto;
 }
 

@@ -215,7 +215,9 @@ function scan(): Scan {
 
   for (const meter of root.querySelectorAll('ui-meter[data-gallery^="meter"]')) {
     const name = meter.getAttribute('data-gallery') ?? 'meter';
-    const s = sample(`${name} track`, 'track', getComputedStyle(meter).backgroundColor, meter, meter.parentElement);
+    // The track is the meter's own background, so it is painted once, on top of the parent's chain: sampled at the
+    // meter it would be painted twice, which a translucent track (the prototype's 45 %, spec 024) cannot afford.
+    const s = sample(`${name} track`, 'track', getComputedStyle(meter).backgroundColor, meter.parentElement ?? meter, meter.parentElement);
     if (s) samples.push(s);
     for (const [i, part] of [...meter.querySelectorAll('.fill, .seg')].filter(sized).entries()) {
       const style = getComputedStyle(part);
@@ -233,7 +235,9 @@ function scan(): Scan {
     const name = track.getAttribute('data-gallery') ?? 'stage-track';
     for (const [i, bar] of [...track.querySelectorAll('.bar')].filter(sized).entries()) {
       const state = bar.getAttribute('data-state') ?? bar.parentElement?.getAttribute('data-state') ?? '?';
-      const s = sample(`${name} segment ${String(i)} (${state})`, 'segment', getComputedStyle(bar).backgroundColor, bar, bar.parentElement);
+      // Painted once on the parent's chain, like the meter track: the segment's colour is its own background, and the
+      // pending segment is translucent (the prototype's 55 %, spec 024).
+      const s = sample(`${name} segment ${String(i)} (${state})`, 'segment', getComputedStyle(bar).backgroundColor, bar.parentElement ?? bar, bar.parentElement);
       if (s) samples.push(s);
     }
   }
