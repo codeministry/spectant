@@ -1,5 +1,6 @@
 <ng-template #menu>
   <nav class="area-menu" [attr.data-tier]="state.tier()" [attr.aria-label]="'shell.area.menu' | transloco">
+    <p class="menu-head" data-menu-head>{{ head().key | transloco: head().params }}</p>
     <ul uiRovingList [singleKeys]="singleKeys()">
       @if (workspaceScope()) {
         @for (page of pages(); track page.id) {

@@ -245,7 +245,9 @@
       "language": "Sprache",
       "shortcuts": "Tastenkürzel anzeigen",
       "help": "Hilfe",
-      "openPort": "localhost:{{port}} öffnen"
+      "openPort": "localhost:{{port}} öffnen",
+      "library": "Library öffnen",
+      "settingsWorkspaces": "Einstellungen · Workspaces"
     },
     "noMatch": "Kein Treffer für „{{query}}“ · versuchen Sie eine Spec-ID wie {{example}}"
   },
@@ -457,7 +459,11 @@
         "docs": "Plan, Design, Entscheidungen, Verfassung",
         "notes": "Ihre Notizen zu dieser Spec"
       },
-      "unbuilt": "Kommt mit späteren Tasks dieser Spec"
+      "unbuilt": "Kommt mit späteren Tasks dieser Spec",
+      "head": {
+        "workspace": "{{workspace}} · Seiten",
+        "spec": "Spec {{spec}} · Bereiche"
+      }
     },
     "pills": {
       "workspace": "Workspace",
@@ -549,12 +555,14 @@
       "features": "Features",
       "milestones": "Meilensteine",
       "tech": "Tech",
+      "library": "Library",
       "summary": {
         "specs": "{{active}} aktiv · {{archived}} archiviert",
         "board": "{{stages}} Stages · {{cards}} Karten · {{waiting}} warten auf Sie",
         "features": "{{count}} Features · {{closed}}/{{total}} geschlossen",
         "milestones": "{{count}} Meilensteine · nächster {{next}}",
-        "tech": "{{specs}} Specs · {{fog}} offene Fragen"
+        "tech": "{{specs}} Specs · {{fog}} offene Fragen",
+        "library": "{{count}} Dokumente · Demo"
       }
     },
     "assistant": {

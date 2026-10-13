@@ -769,3 +769,178 @@ test.describe('routes', () => {
     expect(await badges.count()).toBe(await covers.count());
   });
 });
+
+/*
+ * Group `navigation` (ISC-150.1, T56): the app's navigation survives the port. Hooks it reads beyond the ones above:
+ *
+ *   - `nav[aria-label="Areas"]`         the scope-aware area menu, opened from `header [data-control="area"]`
+ *                                        (`headerControl`); a `ui-popover` from 640 px, a `ui-sheet` below.
+ *   - `[data-menu-head]`                 the menu's eyebrow head (prototype `.area-pop .pop-head`), naming the scope.
+ *   - `[data-page="<id>"]`               one entry per workspace page, in registry order, with `ui-icon[data-icon]`,
+ *                                        `.entry-name` and the summary `.sub`; `[data-area="<id>"]` per spec area.
+ *   - palette `[data-entry]`             `harbor` (Specs), `action/open-board`, `feature-F0`, `milestone-harbor-0-9`,
+ *                                        `tech/harbor`, `action/open-library`, `action/settings-workspaces`.
+ *   - shortcut sheet `[data-binding]`    `go-board`, `go-features`, `go-milestones` in the workspace context.
+ */
+const MENU_PAGES = [
+  { id: 'specs', icon: 'file-text', name: 'Specs', lands: (path: string) => path === '/w/harbor' },
+  { id: 'board', icon: 'square-kanban', name: 'Board', lands: (path: string) => path === '/w/harbor/board' },
+  { id: 'features', icon: 'layers', name: 'Features', lands: (path: string) => path === '/w/harbor/features' },
+  { id: 'milestones', icon: 'flag', name: 'Milestones', lands: (path: string) => path === '/w/harbor/milestones' },
+  { id: 'tech', icon: 'book-open', name: 'Tech', lands: (path: string) => path.startsWith('/w/harbor/tech') },
+  { id: 'library', icon: 'book', name: 'Library', lands: (path: string) => path === '/w/harbor/library' },
+] as const;
+
+const SPEC_MENU_AREAS = [
+  { id: 'dashboard', path: '/w/harbor/s/002' },
+  { id: 'status', path: '/w/harbor/s/002/status' },
+  { id: 'live', path: '/w/harbor/s/002/board' },
+  { id: 'data', path: '/w/harbor/s/002/claims' },
+  { id: 'docs', path: '/w/harbor/s/002/plan' },
+  { id: 'notes', path: '/w/harbor/s/002/notes' },
+] as const;
+
+const PALETTE_PLACES = [
+  { entry: 'harbor', query: 'harbor', lands: (path: string) => path === '/w/harbor' },
+  { entry: 'action/open-board', query: 'board', lands: (path: string) => path === '/w/harbor/board' },
+  { entry: 'feature-F0', query: 'F0', lands: (path: string) => path === '/w/harbor/features' },
+  { entry: 'milestone-harbor-0-9', query: 'harbor-0-9', lands: (path: string) => path === '/w/harbor/milestones' },
+  { entry: 'tech/harbor', query: 'tech', lands: (path: string) => path.startsWith('/w/harbor/tech') },
+  { entry: 'action/open-library', query: 'library', lands: (path: string) => path === '/w/harbor/library' },
+  { entry: 'action/settings-workspaces', query: 'settings', lands: (path: string) => path === '/settings/workspaces' },
+] as const;
+
+async function openAreaMenu(page: Page): Promise<Locator> {
+  await (await headerControl(page, 'area')).click();
+  const menu = page.getByRole('navigation', { name: 'Areas' });
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
+const ids = (list: Locator, attr: string): Promise<Array<string | null>> =>
+  list.evaluateAll((els, name) => els.map((el) => el.getAttribute(name)), attr);
+
+test.describe('navigation', () => {
+  for (const width of [390, 820, 1440] as const) {
+    test.describe(`area menu and palette at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      test('the workspace area menu lists every WORKSPACE_PAGES page with icon, name and summary, Library included', async ({ page }) => {
+        await page.goto('/w/harbor');
+        const menu = await openAreaMenu(page);
+        await expect(menu.locator(`xpath=ancestor::${width < 640 ? 'ui-sheet' : 'ui-popover'}`)).toHaveCount(1);
+        await expect(menu.locator('[data-menu-head]')).toBeVisible();
+        const entries = menu.locator('[data-page]');
+        await expect(entries).toHaveCount(MENU_PAGES.length);
+        expect(await ids(entries, 'data-page')).toEqual(MENU_PAGES.map((entry) => entry.id));
+        for (const entry of MENU_PAGES) {
+          const row = menu.locator(`[data-page="${entry.id}"]`);
+          await expect(row.locator('ui-icon'), entry.id).toHaveAttribute('data-icon', entry.icon);
+          await expect(row.locator('.entry-name'), entry.id).toHaveText(entry.name);
+          await expect(row.locator('.sub'), entry.id).toHaveText(/\S/u);
+        }
+        await expect(menu.locator('[aria-current="page"]')).toHaveCount(1);
+        await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('data-page', 'specs');
+      });
+
+      test('each workspace page entry navigates, and the menu then marks that page current', async ({ page }) => {
+        for (const entry of MENU_PAGES) {
+          await page.goto('/w/harbor');
+          await (await openAreaMenu(page)).locator(`[data-page="${entry.id}"]`).click();
+          await expect(page, entry.id).toHaveURL((url) => entry.lands(url.pathname));
+          // The trigger names the page; below 1120 it is an overflow entry, so it is read and clicked in one opening.
+          const trigger = await headerControl(page, 'area');
+          await expect(trigger, entry.id).toContainText(entry.name);
+          await trigger.click();
+          const menu = page.getByRole('navigation', { name: 'Areas' });
+          await expect(menu, entry.id).toBeVisible();
+          await expect(menu.locator('[aria-current="page"]'), entry.id).toHaveCount(1);
+          await expect(menu.locator('[aria-current="page"]'), entry.id).toHaveAttribute('data-page', entry.id);
+        }
+      });
+
+      test('a workspace without milestones lists no Milestones entry but keeps Library', async ({ page }) => {
+        await page.goto('/w/lantern');
+        const menu = await openAreaMenu(page);
+        expect(await ids(menu.locator('[data-page]'), 'data-page')).toEqual(['specs', 'board', 'features', 'tech', 'library']);
+      });
+
+      test('the spec area menu lists the six spec areas, each navigating', async ({ page }) => {
+        await page.goto('/w/harbor/s/002');
+        const menu = await openAreaMenu(page);
+        await expect(menu.locator('[data-menu-head]')).toBeVisible();
+        expect(await ids(menu.locator('[data-area]'), 'data-area')).toEqual(SPEC_MENU_AREAS.map((area) => area.id));
+        await expect(menu.locator('[data-page]')).toHaveCount(0);
+        for (const area of SPEC_MENU_AREAS) {
+          await page.goto('/w/harbor/s/002');
+          await (await openAreaMenu(page)).locator(`[data-area="${area.id}"]`).click();
+          await expect(page, area.id).toHaveURL((url) => url.pathname === area.path);
+        }
+      });
+
+      test('the palette lists every workspace page and every new route, each navigating', async ({ page }) => {
+        for (const place of PALETTE_PLACES) {
+          await page.goto('/w/harbor');
+          await expect(page.locator('header [data-control="palette"]')).toBeVisible();
+          await page.keyboard.press('Meta+k');
+          const palette = page.locator('app-command-palette dialog');
+          await expect(palette).toBeVisible();
+          // Filtered first, as a user finds it: the full list re-renders as its groups load.
+          await palette.getByRole('combobox').fill(place.query);
+          const option = palette.locator(`[role="option"][data-entry="${place.entry}"]`);
+          await expect(option, place.entry).toHaveCount(1);
+          await option.click();
+          await expect(page, place.entry).toHaveURL((url) => place.lands(url.pathname));
+        }
+      });
+    });
+  }
+
+  test.describe('settings and keys at 1440', () => {
+    test.use(atWidth(1440));
+
+    test('Settings · Workspaces is reached from the gear and from the Settings card', async ({ page }) => {
+      await page.goto('/w/harbor');
+      await viaSettings('workspaces')(page);
+      await expect(page).toHaveURL((url) => url.pathname === '/settings/workspaces');
+      await page.goto('/settings');
+      await follow('main a[href="/settings/workspaces"]')(page);
+      await expect(page).toHaveURL((url) => url.pathname === '/settings/workspaces');
+    });
+
+    test('a rail link reaches the Library from the workspace page', async ({ page }) => {
+      await page.goto('/w/harbor');
+      await follow('a[data-library-link]')(page);
+      await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/library');
+    });
+
+    for (const [key, path] of [
+      ['b', '/w/harbor/board'],
+      ['f', '/w/harbor/features'],
+      ['m', '/w/harbor/milestones'],
+    ] as const) {
+      test(`g ${key} navigates to ${path} from the workspace`, async ({ page }) => {
+        await page.goto('/w/harbor');
+        await expect(page.locator('[data-panel="specs"] [data-spec-row]').first()).toBeVisible();
+        await page.keyboard.press('g');
+        await page.keyboard.press(key);
+        await expect(page).toHaveURL((url) => url.pathname === path);
+      });
+    }
+
+    test('the shortcut sheet lists g b, g f and g m in the workspace context', async ({ page }) => {
+      await page.goto('/w/harbor');
+      await expect(page.locator('[data-panel="specs"] [data-spec-row]').first()).toBeVisible();
+      await page.keyboard.press('?');
+      const workspace = page.locator('app-shortcut-sheet dialog [data-context="workspace"]');
+      await expect(workspace).toBeVisible();
+      for (const [id, key] of [
+        ['go-board', 'b'],
+        ['go-features', 'f'],
+        ['go-milestones', 'm'],
+      ] as const) {
+        await expect(workspace.locator(`[data-binding="${id}"] kbd`), id).toHaveText(['g', key]);
+      }
+    });
+  });
+});

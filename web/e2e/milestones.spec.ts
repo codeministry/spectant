@@ -82,13 +82,14 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       await expect(page.locator('ol.rows')).toHaveCount(0);
     });
 
-    test('lantern’s area menu lists Specs, Board and Features only', async ({ page }) => {
+    test('lantern’s area menu lists Specs, Board, Features, Tech and Library, no Milestones', async ({ page }) => {
       await page.goto('/w/lantern');
       // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
       await expect(await headerControl(page, 'area')).toBeVisible();
       const menu = await areaMenu(page);
-      await expect(menu.locator('[data-page]')).toHaveCount(4);
-      expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'tech']);
+      // Spec 024 (T57, ISC-150.1): the Library is the sixth registry page.
+      await expect(menu.locator('[data-page]')).toHaveCount(5);
+      expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'tech', 'library']);
       await expect(menu.locator('[data-page="milestones"]')).toHaveCount(0);
     });
 
@@ -259,13 +260,14 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
 test.describe('milestones page: the area menu', () => {
   test.use(atWidth(WIDTHS.desktop));
 
-  test('harbor’s menu lists Specs, Board, Features, Milestones; on the page the trigger reads Milestones and its entry is current', async ({
+  test('harbor’s menu lists Specs, Board, Features, Milestones, Tech, Library; on the page the trigger reads Milestones and its entry is current', async ({
     page,
   }) => {
     await page.goto('/w/harbor');
     await expect(page.locator('header [data-control="area"]')).toBeVisible();
     let menu = await areaMenu(page);
-    expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'milestones', 'tech']);
+    // Spec 024 (T57, ISC-150.1): the Library is the sixth registry page.
+    expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'milestones', 'tech', 'library']);
     await menu.locator('[data-page="milestones"]').click();
     await expect(page).toHaveURL(/\/w\/harbor\/milestones$/u);
     await expect(page.locator('ol.rows > li').first()).toBeVisible();

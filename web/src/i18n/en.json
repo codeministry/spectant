@@ -245,7 +245,9 @@
       "language": "Language",
       "shortcuts": "Show shortcuts",
       "help": "Help",
-      "openPort": "Open localhost:{{port}}"
+      "openPort": "Open localhost:{{port}}",
+      "library": "Open the library",
+      "settingsWorkspaces": "Settings · Workspaces"
     },
     "noMatch": "No match for “{{query}}” · try a spec ID like {{example}}"
   },
@@ -457,7 +459,11 @@
         "docs": "Plan, design, decisions, constitution",
         "notes": "Your notes on this spec"
       },
-      "unbuilt": "Comes with this spec's later tasks"
+      "unbuilt": "Comes with this spec's later tasks",
+      "head": {
+        "workspace": "{{workspace}} · pages",
+        "spec": "Spec {{spec}} · areas"
+      }
     },
     "pills": {
       "workspace": "Workspace",
@@ -549,12 +555,14 @@
       "features": "Features",
       "milestones": "Milestones",
       "tech": "Tech",
+      "library": "Library",
       "summary": {
         "specs": "{{active}} active · {{archived}} archived",
         "board": "{{stages}} stages · {{cards}} cards · {{waiting}} wait on you",
         "features": "{{count}} features · {{closed}}/{{total}} closed",
         "milestones": "{{count}} milestones · next {{next}}",
-        "tech": "{{specs}} specs · {{fog}} open questions"
+        "tech": "{{specs}} specs · {{fog}} open questions",
+        "library": "{{count}} documents · demo"
       }
     },
     "assistant": {

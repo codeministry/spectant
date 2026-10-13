@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { SettingsService } from '../../core/settings.service';
 import { boardRowsOf, boardSummaryOf, buildBoard } from '../../features/board/board-model';
+import { DemoData } from '../../shared/demo/demo-data';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiPopover } from '../../shared/ui/overlay/popover';
@@ -35,8 +36,12 @@ const shortDate = (iso: string, locale: string): string =>
  * (only on a fine pointer that can hover). An area whose views are not built (`built: false`) is an `aria-disabled`
  * entry without a link, its reason as visible text. At workspace scope (a workspace open, no spec) it lists
  * `WORKSPACE_PAGES` instead: each entry a link to the page with its icon, its name and a summary from the dashboard
- * rows, its KPIs and the planning model. Milestones is absent, not disabled, while no spec carries a milestone (ISC-104). The
- * pages show no `g`-key hint while `g f` / `g m` are a proposal nothing binds.
+ * rows, its KPIs and the planning model; Library's counts the mock's documents and says so (spec 024, T57). Milestones is
+ * absent, not disabled, while no spec carries a milestone (ISC-104). The pages show no `g`-key hint.
+ *
+ * **Prototype anatomy (spec 024, T57, ISC-150.1).** The prototype's `.area-pop`: a card with an eyebrow head naming the
+ * scope (`Spec 002 · areas`, `<workspace> · pages`, `[data-menu-head]`), then the rows, the name bold over its meta line,
+ * the current row on the raised tint; 44 px rows (56 in the compact sheet).
  *
  * Either way the current entry carries `aria-current="page"` and takes focus on open. Router-driven: entries are route
  * links and the current one comes from `ShellState`; the only local state is whether the compact sheet is open.
@@ -53,6 +58,7 @@ export class AreaMenu {
   private readonly data = inject(ShellData);
   private readonly settings = inject(SettingsService);
   private readonly transloco = inject(TranslocoService);
+  private readonly demo = inject(DemoData);
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   protected readonly areas = SPEC_AREAS;
@@ -82,7 +88,16 @@ export class AreaMenu {
     features: this.featuresSummary(),
     milestones: this.milestonesSummary(),
     tech: this.techSummary(),
+    library: { count: this.demo.library().length },
   }));
+
+  /** The eyebrow head's key and params: the open spec's areas, else the workspace's pages. */
+  protected readonly head = computed(() => {
+    const ws = this.state.ws() ?? '';
+    return this.workspaceScope()
+      ? { key: 'shell.area.head.workspace', params: { workspace: this.data.workspaceName(ws) } }
+      : { key: 'shell.area.head.spec', params: { spec: this.state.specId() ?? '' } };
+  });
 
   protected readonly sheetOpen = signal(false);
   private readonly popover = viewChild<UiPopover>('popover');

@@ -310,7 +310,21 @@ function actionsSource(): PaletteSource {
           link: workspaceLink(here, 'board'),
           keywords: ['board', 'kanban', 'stages', 'cards'],
         });
+        // Spec 024 (T58, ISC-150.1): the Library, a menu page (a mock until spec 017).
+        actions.push({
+          id: 'action/open-library',
+          label: t('palette.actions.library'),
+          link: workspaceLink(here, 'library'),
+          keywords: ['library', 'docs', 'documents'],
+        });
       }
+      // Spec 024 (T58, ISC-150.1): Settings · Workspaces, also reached from the gear and the Settings card.
+      actions.push({
+        id: 'action/settings-workspaces',
+        label: t('palette.actions.settingsWorkspaces'),
+        link: ['/settings', 'workspaces'],
+        keywords: ['settings', 'workspaces', 'register', 'add'],
+      });
       actions.push({ id: 'action/help', label: t('palette.actions.help'), link: ['/help'], keywords: ['help', 'guide', 'glossary', 'workflow'] });
       const url = here === null ? '/' : `/w/${here}`;
       actions.push(
