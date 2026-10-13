@@ -45,7 +45,7 @@ const HARBOR = {
   archive: [{ id: '001', title: 'Manifest sync', type: 'feature' }],
 };
 
-type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'timeline' | 'claims' | 'docs' | 'tech' | 'library'>;
+type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'timeline' | 'claims' | 'library'>;
 
 function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
   return {
@@ -59,8 +59,6 @@ function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
     // The area views land one by one; the shell specs need only the catch-all answer for each.
     timeline: () => Promise.resolve({ kind: 'not-found', served: false }),
     claims: () => Promise.resolve({ kind: 'not-found', served: false }),
-    docs: () => Promise.resolve({ kind: 'not-found', served: false }),
-    tech: () => Promise.resolve({ kind: 'not-found', served: false }),
     library: () => Promise.resolve({ kind: 'not-found', served: false }),
     ...overrides,
   };

@@ -18,29 +18,26 @@
  *   folder; matched with the contract's `matchWorkspacePath`. The goldens are built at `2026-03-20`, so a live server
  *   answer can differ in the milestones' `state` alone. Same guards as the dashboard: 403, 405 with
  *   `allowForWorkspace(route)`, 404 `{error: "not-found"}` for an unknown slug, 409 with the list entry for the
- *   unreadable workspace; the lock and write headers change nothing here. The tech page (spec 023, T10, ISC-134.1):
- *   `GET|HEAD …/:ws/tech` is the whole `core/fixtures/<golden>.tech.golden.json` (`WORKSPACE_GOLDEN_FAMILY.tech`) under
- *   the same guards, and `GET|HEAD …/:ws/tech/asset?path=` the fixture tree's file under `specs/` with the evidence
- *   file's headers (`evidenceFileHeaders(mediaTypeOf(name))`, strong ETag over the bytes, 304, HEAD without a body):
+ *   unreadable workspace; the lock and write headers change nothing here.
+ * - The library (spec 017, T3, ISC-156), under the same guards: `GET|HEAD …/:ws/library/asset?path=` the fixture
+ *   tree's image under `specs/` with the evidence file's headers (`evidenceFileHeaders(mediaTypeOf(name))`, strong ETag over the bytes, 304, HEAD without a body):
  *   403 for a path that leaves `specs/` (a `..` segment, an absolute path, a backslash, a control character, a
- *   second encoding layer, a symlink out), 404 for no regular file.
- * - The library (spec 017, T3, ISC-156), under the same guards: `GET|HEAD …/:ws/library` the workspace's
+ *   second encoding layer, a symlink out, a file that is not an image), 404 for no regular file. `GET|HEAD …/:ws/library` the workspace's
  *   `LibraryCatalog`, core's `readCatalog` over the fixture tree made deterministic (`buildCatalog`: fixed times,
- *   group heads and fog lines from the spec and tech goldens) plus `STUB_LIBRARY` on harbor (a `stale` plan, a
+ *   group heads and fog lines from the spec goldens and `core/fixtures/<golden>.tech.golden.json`, `TECH_GOLDEN_FAMILY`) plus `STUB_LIBRARY` on harbor (a `stale` plan, a
  *   `missing` tasks.md, 57 evidence documents in 002, a prototype with two pages and a preview, the reader's prose
  *   cases appended to 002's T18 artifact); `…/library/doc?path=`
  *   one Markdown document of that catalog as core's `renderDocsMarkdown` page, 404 for any path it does not list as
- *   one; `…/library/search?q=` the `LibrarySearchResult` over those documents, `{query: '', hits: []}` for a blank `q`;
- *   `…/library/asset?path=` the tech asset's answer. `GET|HEAD /proto/:ws/:spec/:folder/*` (outside `/api`;
+ *   one; `…/library/search?q=` the `LibrarySearchResult` over those documents, `{query: '', hits: []}` for a blank `q`.
+ *   The tech page's routes (`…/tech`, `…/tech/asset`) went with spec 017 T51. `GET|HEAD /proto/:ws/:spec/:folder/*` (outside `/api`;
  *   `serve-dist.ts` forwards it here) one file of a catalog prototype through core's resolver, every answer with
  *   `PROTOTYPE_CSP`; on harbor's stub prototype also the stub-only page `STUB_LIBRARY.prototype.offline` (T40).
  * - Every route of `SPEC_ROUTE_TABLE` (`…/specs/:id…`): the per-spec value of the route's golden family
  *   (`core/fixtures/<golden>.<family>.golden.json`, keyed by `specs/<folder>`), `:id` resolved as `core/src/resolve.ts`
- *   does (`NNN`, folder or bare slug, archived folders too). 404 `NotFound` for an unknown workspace, spec or task, 404
- *   `DocMissing` (availability from core's `docsFor`) for a doc the spec lacks, 409 for the unreadable workspace, 405
- *   with `allowFor(route)`. The evidence listing and files come from the fixture tree's real `artifacts/` and
- *   `.evidence/` (files also from `.design/`, the Design tab's images) through core's `listEvidence` and
- *   `resolveEvidencePath` (403 for what confinement refuses). The two
+ *   does (`NNN`, folder or bare slug, archived folders too). 404 `NotFound` for an unknown workspace, spec or task, 409
+ *   for the unreadable workspace, 405 with `allowFor(route)`. The evidence files come from the fixture tree's real
+ *   `artifacts/` and `.evidence/` (also `.design/`) through core's `resolveEvidencePath` (403 for what confinement
+ *   refuses). The evidence listing and the Docs tabs went with spec 017 T53. The two
  *   hash headers carry deterministic fake sha256 hex values the client sends back with a write.
  * - Every JSON answer carries `Content-Type: application/json; charset=utf-8`, `Cache-Control: no-cache` and the strong
  *   ETag `"<sha256 base64url of the body>"` (`JSON_ANSWER`); a matching `If-None-Match` on a 200 is a 304. 405
@@ -89,7 +86,7 @@
  *
  * Nothing here reads the clock or the registry: every answer is a function of the fixture files and the request. The
  * goldens are read once when the stub is built, so a missing fixture fails at startup, not on a request. Core's
- * `listEvidence`, `resolveEvidencePath`, `docsFor` and `worstState` are loaded at runtime by a computed path, because
+ * `resolveEvidencePath`, `renderDocsMarkdown` and `worstState` are loaded at runtime by a computed path, because
  * the core modules they pull in do not type-check under this tsconfig; their shapes are declared below.
  */
 import { readFileSync, readdirSync } from 'node:fs';
@@ -102,10 +99,8 @@ import type {
   CardState,
   ClaimLock,
   ClaimViewModel,
-  DocAvailability,
   DocName,
   DocsPage,
-  EvidenceListing,
   EvidencePathResult,
   Frame,
   GateView,
@@ -118,7 +113,6 @@ import type {
   LockSource,
   SpecGroupHead,
   SpecPageModel,
-  SpecType,
   TaskRow,
   TaskStatus,
   TasksTab,
@@ -166,7 +160,6 @@ import {
   type LibrarySearchResult,
   type PrototypeRouteMatch,
   type Conflict,
-  type DocMissing,
   type GateReviewedResponse,
   type Locked,
   type ReviewedHashFile,
@@ -321,13 +314,17 @@ export function stubOfflinePrototypeHtml(): string {
 export const stubEvidencePath = (n: number): string => `${STUB_LIBRARY.evidence.spec}/.evidence/run-${String(n).padStart(2, '0')}/probe.md`;
 
 /**
- * The workspace routes with a whole-file golden family: the contract's `GOLDEN_FAMILY.planning` and the tech page's
- * `tech` (spec 023, `core/tests/golden.test.ts` `FAMILIES.tech`), which the contract's map does not name yet.
+ * The workspace routes with a whole-file golden family: the contract's `GOLDEN_FAMILY.planning`.
  */
 export const WORKSPACE_GOLDEN_FAMILY = {
   planning: GOLDEN_FAMILY.planning,
-  tech: 'tech',
 } as const satisfies Partial<Record<WorkspaceRouteName, string>>;
+
+/**
+ * The tech golden (`core/tests/golden.test.ts` `FAMILIES.tech`, core's `readTech`): no route since spec 017 T51, it
+ * still feeds the library catalog's group heads and fog lines (`buildCatalog`).
+ */
+export const TECH_GOLDEN_FAMILY = 'tech';
 
 /** The dashboard model with `kpis.claims.closed` raised by `by` (the bump hook); the golden itself is never touched. */
 export function bumpDashboard(model: unknown, by: number): unknown {
@@ -521,11 +518,9 @@ function settingsJson(req: Request, settings: Settings): Response {
 // ---- core at runtime ----------------------------------------------------------------------------------------------
 
 type Core = {
-  listEvidence: (specDir: string) => Promise<EvidenceListing>;
   resolveEvidencePath: (specDir: string, requested: string, reach?: 'evidence' | 'tree') => Promise<EvidencePathResult>;
   mediaTypeOf: (name: string) => string;
   prototypeMediaTypeOf: (name: string) => string;
-  docsFor: (type: SpecType | null) => Readonly<Record<DocName, DocAvailability>>;
   worstState: (states: Iterable<CardState>) => CardState;
   parseWorkflow: (text: string | null) => Workflow;
   boardStages: (workflow: Workflow) => PlanningModel['stages'];
@@ -541,19 +536,17 @@ type Core = {
 function loadCore(): Core {
   const load = createRequire(import.meta.url);
   const src = join(import.meta.dir, '..', '..', 'core', 'src');
-  const evidence = load(join(src, 'evidence.ts')) as Pick<Core, 'listEvidence' | 'resolveEvidencePath' | 'mediaTypeOf' | 'prototypeMediaTypeOf' | 'docsRenderOptions'>;
-  const docs = load(join(src, 'markdown-docs.ts')) as Pick<Core, 'docsFor' | 'renderDocsMarkdown'>;
+  const evidence = load(join(src, 'evidence.ts')) as Pick<Core, 'resolveEvidencePath' | 'mediaTypeOf' | 'prototypeMediaTypeOf' | 'docsRenderOptions'>;
+  const docs = load(join(src, 'markdown-docs.ts')) as Pick<Core, 'renderDocsMarkdown'>;
   const frames = load(join(src, 'frames.ts')) as Pick<Core, 'worstState'>;
   const workflow = load(join(src, 'workflow.ts')) as Pick<Core, 'parseWorkflow' | 'boardStages'>;
   const library = load(join(src, 'library.ts')) as Pick<Core, 'readCatalog'>;
   const archive = load(join(src, 'archive.ts')) as Pick<Core, 'levelTwoSection' | 'firstParagraph' | 'GOAL_HEADINGS'>;
   return {
-    listEvidence: evidence.listEvidence,
     resolveEvidencePath: evidence.resolveEvidencePath,
     mediaTypeOf: evidence.mediaTypeOf,
     prototypeMediaTypeOf: evidence.prototypeMediaTypeOf,
     docsRenderOptions: evidence.docsRenderOptions,
-    docsFor: docs.docsFor,
     renderDocsMarkdown: docs.renderDocsMarkdown,
     worstState: frames.worstState,
     parseWorkflow: workflow.parseWorkflow,
@@ -623,9 +616,9 @@ function readPlanning(dir: string, name: string): PlanningModel {
   return model as PlanningModel;
 }
 
-/** The tech route's body: the whole `<golden>.tech.golden.json` (`readTech`'s `TechModel`), read as it is. */
+/** The whole `<golden>.tech.golden.json` (`readTech`'s `TechModel`), read as it is, for the catalog. */
 function readTechGolden(dir: string, name: string): unknown {
-  const file = `${name}.${WORKSPACE_GOLDEN_FAMILY.tech}.golden.json`;
+  const file = `${name}.${TECH_GOLDEN_FAMILY}.golden.json`;
   const model = readJson(dir, file) as { pages?: unknown; specs?: unknown; diagnostics?: unknown };
   if (!('pages' in model) || typeof model.pages !== 'object' || !Array.isArray(model.specs) || !Array.isArray(model.diagnostics)) {
     throw new Error(`stub-api: ${file} has no pages, specs or diagnostics; is it a TechModel?`);
@@ -1187,7 +1180,6 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   const actorLists = new Map<string, ActorMapping[]>();
   const boardQueries = new Map<string, Map<string, string>>();
 
-  const evidence = new Map<string, Promise<EvidenceListing>>();
   const notebooks = new Map<string, { notes: Note[]; writes: number }>();
   const notebookOf = (req: Request): { notes: Note[]; writes: number } => {
     const id = sessionOf(req);
@@ -1231,15 +1223,15 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const found = (views.get(state) ?? view(state)).workspaces.get(match.params.ws);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
-    return workspaceJson(req, 200, match.route === 'tech' ? techs.get(match.params.ws) : planningOf(req, match.params.ws));
+    return workspaceJson(req, 200, planningOf(req, match.params.ws));
   };
 
   /**
-   * `GET|HEAD …/:ws/tech/asset?path=` (spec 023, T10): the guards of the family route above, then the fixture tree's
+   * `GET|HEAD …/:ws/library/asset?path=` (spec 017; formerly `…/tech/asset`, spec 023 T10): the guards of the family route above, then the fixture tree's
    * file under `specs/` through core's `resolveEvidencePath` with `reach: 'tree'`, images only, answered as the evidence file is: `evidenceFileHeaders` of core's
    * `mediaTypeOf`, a strong ETag over the bytes, 304 on a match, no body on HEAD.
    */
-  const techAssetRoute = async (req: Request, url: URL, state: StubState, match: WorkspaceRouteMatch): Promise<Response> => {
+  const libraryAssetRoute = async (req: Request, url: URL, state: StubState, match: WorkspaceRouteMatch): Promise<Response> => {
     if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowForWorkspace(match.route) });
@@ -1601,16 +1593,6 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     );
   };
 
-  const readEvidence = (tree: TreeGoldens, spec: SpecGoldens): Promise<EvidenceListing> => {
-    const id = `${tree.golden}\0${spec.key}`;
-    let listing = evidence.get(id);
-    if (!listing) {
-      listing = core.listEvidence(join(tree.root, spec.key));
-      evidence.set(id, listing);
-    }
-    return listing;
-  };
-
   const evidenceFile = async (req: Request, url: URL, tree: TreeGoldens, spec: SpecGoldens): Promise<Response> => {
     const resolved = await core.resolveEvidencePath(join(tree.root, spec.key), evidencePathQuery(url.search));
     if (!resolved.ok) {
@@ -1645,17 +1627,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
         const { tab, hash } = tasksTab(req, tree, spec);
         return workspaceJson(req, 200, tab, hash === null ? {} : { [TASKS_HASH_HEADER]: hash });
       }
-      case 'evidence':
-        return workspaceJson(req, 200, await readEvidence(tree, spec));
       case 'evidenceFile':
         return evidenceFile(req, url, tree, spec);
-      case 'docs': {
-        const name = match.params.name;
-        const page = name === 'constitution' ? tree.constitution : spec.docs[name];
-        if (page !== null) return workspaceJson(req, 200, page);
-        const missing: DocMissing = { error: 'not-found', doc: name, availability: core.docsFor(spec.spec.head.type)[name] };
-        return workspaceJson(req, 404, missing);
-      }
       case 'frames':
         return workspaceJson(req, 200, spec.frames);
       case 'live':
@@ -1892,8 +1865,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     // Every route of WORKSPACE_ROUTE_TABLE before the spec catch-all, which answers every other path under a workspace
     // with the server's JSON 404 (T119: the story page, the board query and the allocation joined the planning tree).
     const family = matchWorkspacePath(pathname);
-    if (family?.route === 'planning' || family?.route === 'tech') return workspaceFamilyRoute(req, requested, family);
-    if (family?.route === 'techAsset' || family?.route === 'libraryAsset') return techAssetRoute(req, url, requested, family);
+    if (family?.route === 'planning') return workspaceFamilyRoute(req, requested, family);
+    if (family?.route === 'libraryAsset') return libraryAssetRoute(req, url, requested, family);
     if (family?.route === 'library' || family?.route === 'libraryDoc' || family?.route === 'librarySearch') {
       const library = libraryStateOf(req);
       return library instanceof Response ? library : libraryRoute(req, url, requested, library, family);

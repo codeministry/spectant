@@ -135,7 +135,6 @@ describe('the Library area on a former Docs or Evidence address (T48, ISC-158.1)
       spec: () => Promise.resolve({ kind: 'not-found', served: false }),
       actors: () => Promise.resolve(ok([])),
       boardQuery: () => Promise.resolve(ok({ query: '' })),
-      tech: () => Promise.resolve({ kind: 'not-found', served: false }),
       library: () => Promise.resolve(ok(CATALOG)),
       libraryDoc: (_ws, path) => Promise.resolve(ok(path.endsWith('spec.md') ? SPEC_PAGE : page(`<p>${path}</p>`))),
       librarySearch: (_ws, q) => Promise.resolve(ok({ query: q, hits: [] })),

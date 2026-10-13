@@ -10,8 +10,8 @@
  */
 import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
-import type { ClaimViewModel, EvidenceListing, SpecPageModel } from '../../core/src/files.ts';
-import { type SpecRouteResponses, specRoutes } from '../../server/src/spec-routes.contract.ts';
+import type { ClaimViewModel, SpecPageModel } from '../../core/src/files.ts';
+import type { SpecRouteResponses } from '../../server/src/spec-routes.contract.ts';
 import { atWidth, expect, test } from './fixtures';
 
 type TasksBody = NonNullable<SpecRouteResponses['tasks']>;
@@ -221,32 +221,6 @@ for (const { width, tier } of TIERS) {
           await check(page, row);
         });
       }
-
-      // Evidence tab: the listing is the stub route's answer (core's `listEvidence` over the fixture tree), so the rows
-      // are read at run time: one [data-claim-group] per byClaim key plus `none` for the ungrouped files.
-      test(`${base}/evidence files per group`, async ({ page, request }) => {
-        test.skip(true, 'ISC-158.1 (spec 017, T48): the former Docs and Evidence tabs redirect into the Library area; T54 replaces this test there');
-        const answer = await request.get(specRoutes.evidence('harbor', id));
-        expect(answer.status()).toBe(200);
-        const listing = (await answer.json()) as EvidenceListing;
-        const groups: Array<[string, number]> = Object.entries(listing.byClaim).map(([claim, files]) => [claim, files.length]);
-        if (listing.ungrouped.length > 0) groups.push(['none', listing.ungrouped.length]);
-        await page.goto(`${base}/evidence`);
-        await expect(page.locator('app-evidence-tab [data-file]'), 'files ≠ evidence.results + raw').toHaveCount(
-          listing.results.length + listing.raw.length,
-        );
-        // spec 024: prototype value (principal: Prototyp gilt immer): folder groups (Results, Raw evidence), the claim as a chip on every file.
-        const both: Array<[string, number]> = [['results', listing.results.length], ['raw', listing.raw.length]];
-        const folders = both.filter(([, count]) => count !== 0);
-        await expect(page.locator('app-evidence-tab [data-evidence-group]'), 'groups ≠ non-empty results + raw').toHaveCount(folders.length);
-        for (const [key, count] of folders) {
-          const group = page.locator(`app-evidence-tab [data-evidence-group="${key}"]`);
-          await expect(group.locator('[data-file]'), `group ${key} files ≠ evidence.${key}.length`).toHaveCount(count);
-        }
-        for (const [key, count] of groups) {
-          await expect(page.locator(`app-evidence-tab [data-file][data-claim="${key}"]`), `claim ${key} files ≠ evidence.byClaim[${key}].length`).toHaveCount(count);
-        }
-      });
     }
   });
 }

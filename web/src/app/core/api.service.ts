@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { ClaimLock, DocName, DocsPage, LibraryCatalog, LibraryDoc, TechModel } from '../../../../core/src/files';
+import type { ClaimLock, DocsPage, LibraryCatalog, LibraryDoc } from '../../../../core/src/files';
 import {
   ACTORS_PATH,
   type ActorMapping,
@@ -16,7 +16,6 @@ import {
   isBoardQuery,
   SPEC_HASH_HEADER,
   type TransitionRequest,
-  type DocMissing,
   type GateReviewedRequest,
   type GateReviewedResponse,
   isUnavailable,
@@ -173,18 +172,11 @@ export const WORKSPACES_URL = SPEC_API_ROOT;
 export const dashboardUrl = (ws: string): string => `${SPEC_API_ROOT}/${encodeURIComponent(ws)}/dashboard`;
 export const planningUrl = (ws: string): string => workspaceRoutes.planning(ws);
 
-/** `GET …/docs/:name`: the page, or the typed 404 saying which doc is absent and whether the spec type has it. */
-export type DocsResult = ApiResult<DocsPage> | { readonly kind: 'doc-missing'; readonly body: DocMissing };
-
 /** `GET …/evidence/file?path=` read as text: the body, a refusal (403), or any other failure. */
 export type EvidenceTextResult =
   | { readonly kind: 'ok'; readonly text: string }
   | { readonly kind: 'refused' }
   | { readonly kind: 'error'; readonly status: number };
-
-const isDocMissing =(body: unknown): body is DocMissing =>
-  typeof body === 'object' && body !== null && (body as Partial<DocMissing>).error === 'not-found' &&
-  typeof (body as Partial<DocMissing>).doc === 'string' && typeof (body as Partial<DocMissing>).availability === 'object';
 
 const isContractNotFound = (body: unknown): boolean =>
   typeof body === 'object' && body !== null && (body as { error?: unknown }).error === 'not-found';
@@ -271,22 +263,6 @@ export class ApiClient {
   /** T111: one story of `specs/ideas/` (`IdeaPage`: the ref, the rendered page, the raw hash), ETag-cached. */
   idea(ws: string, slug: string): Promise<ApiResult<IdeaPage>> {
     return this.get(workspaceRoutes.idea(ws, slug));
-  }
-
-  /**
-   * The tech page (spec 023, T9, ISC-134.1): core's `TechModel` over `specs/tech.md` and the active spec folders, served
-   * as it is (`pages: null` without the file), ETag-cached like `planning()`.
-   */
-  tech(ws: string): Promise<ApiResult<TechModel>> {
-    return this.get(workspaceRoutes.tech(ws));
-  }
-
-  /**
-   * The URL of one image tech.md names (`…/tech/asset?path=`), `path` relative to `specs/` as written there
-   * (`.tech/architecture.png`). A URL, not a read: the browser loads it as an `<img>` source.
-   */
-  techAssetUrl(ws: string, path: string): string {
-    return workspaceRoutes.techAsset(ws, path);
   }
 
   /**
@@ -398,11 +374,6 @@ export class ApiClient {
     return this.get(specRoutes.claims(ws, id));
   }
 
-  /** The Evidence tab (ISC-83.1): core's `EvidenceListing`, served as it is. */
-  evidence(ws: string, id: string): Promise<ApiResult<SpecRouteResponses['evidence']>> {
-    return this.get(specRoutes.evidence(ws, id));
-  }
-
   /**
    * One evidence file as text (markdown, plain text, JSON) for the preview. The `path` is the listing's
    * `EvidenceFile.path`, encoded once by the contract's builder and never decoded here (ISC-83). A 403 answers
@@ -415,23 +386,6 @@ export class ApiClient {
     } catch (failure: unknown) {
       const status = failure instanceof HttpErrorResponse ? failure.status : 0;
       return status === 403 ? { kind: 'refused' } : { kind: 'error', status };
-    }
-  }
-
-  /**
-   * A Docs tab page (T59). A 404 whose body is the contract's `DocMissing` answers `doc-missing` with that body, so the
-   * tab can say whether the spec's type has the file (`availability`); any other failure answers as `get` does.
-   */
-  async docs(ws: string, id: string, name: DocName): Promise<DocsResult> {
-    try {
-      const body = await firstValueFrom(this.http.get<DocsPage>(specRoutes.docs(ws, id, name)));
-      return { kind: 'ok', body, etag: null, notModified: false };
-    } catch (failure: unknown) {
-      const error: unknown = failure instanceof HttpErrorResponse ? failure.error : null;
-      if (failure instanceof HttpErrorResponse && failure.status === 404 && isDocMissing(error)) {
-        return { kind: 'doc-missing', body: error };
-      }
-      return this.answer<DocsPage>(failure, undefined);
     }
   }
 

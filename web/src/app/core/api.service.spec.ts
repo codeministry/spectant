@@ -1,7 +1,7 @@
 import { HttpHeaders, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import type { DocsPage, LibraryCatalog, TechModel } from '../../../../core/src/files';
+import type { DocsPage, LibraryCatalog } from '../../../../core/src/files';
 import type { ActorMapping, IdeaPage, LibrarySearchResult } from '../../../../server/src/spec-routes.contract';
 import { ApiClient, type PlanningBody, planningUrl } from './api.service';
 
@@ -244,57 +244,6 @@ describe('ApiClient spec 008 routes', () => {
       await result;
       expect(api.specHash('harbor', '003')).toBe(HEX_A);
     });
-  });
-});
-
-describe('ApiClient tech routes (spec 023, T9, ISC-134.1)', () => {
-  let api: ApiClient;
-  let http: HttpTestingController;
-
-  beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
-    api = TestBed.inject(ApiClient);
-    http = TestBed.inject(HttpTestingController);
-  });
-
-  afterEach(() => http.verify());
-
-  const URL = '/api/workspaces/harbor/tech';
-  // Served as it is: a stand-in typed as the contract's body is enough.
-  const model = { pages: null, diagnostics: [], specs: [] } as unknown as TechModel;
-
-  it('GETs /api/workspaces/:ws/tech from the contract builder and replays it on a 304', async () => {
-    const first = api.tech('harbor');
-    http.expectOne(URL).flush(model, { headers: { ETag: '"t1"' } });
-    expect(await first).toEqual({ kind: 'ok', body: model, etag: '"t1"', notModified: false });
-
-    const second = api.tech('harbor');
-    const request = http.expectOne(URL);
-    expect(request.request.headers.get('If-None-Match')).toBe('"t1"');
-    request.flush(null, { status: 304, statusText: 'Not Modified' });
-    expect(await second).toEqual({ kind: 'ok', body: model, etag: '"t1"', notModified: true });
-  });
-
-  it('encodes the workspace once and maps the contract 404 to not-found, served', async () => {
-    const result = api.tech('a b');
-    http.expectOne('/api/workspaces/a%20b/tech').flush({ error: 'not-found' }, { status: 404, statusText: 'Not Found' });
-    expect(await result).toEqual({ kind: 'not-found', served: true });
-  });
-
-  it('maps the unreadable workspace 409 to unavailable and any other failure to error', async () => {
-    const summary = { slug: 'harbor', name: 'Harbor', pathTail: 'harbor', readable: false, error: 'missing', counts: null };
-    const unavailable = api.tech('harbor');
-    http.expectOne(URL).flush(summary, { status: 409, statusText: 'Conflict' });
-    expect(await unavailable).toEqual({ kind: 'unavailable', body: summary });
-
-    const failed = api.tech('harbor');
-    http.expectOne(URL).flush('boom', { status: 500, statusText: 'Server Error' });
-    expect(await failed).toEqual({ kind: 'error', status: 500 });
-  });
-
-  it('builds the asset URL from the contract, the path relative to specs/ encoded once, without a request', () => {
-    expect(api.techAssetUrl('harbor', '.tech/architecture.png')).toBe('/api/workspaces/harbor/tech/asset?path=.tech%2Farchitecture.png');
-    expect(api.techAssetUrl('a b', 'img/a b.svg')).toBe('/api/workspaces/a%20b/tech/asset?path=img%2Fa%20b.svg');
   });
 });
 

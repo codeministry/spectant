@@ -50,7 +50,7 @@ const CATALOG: LibraryCatalog = {
 const EMPTY: LibraryCatalog = { docs: [], groups: [], fog: [], missing: 0, stale: 0 };
 const PAGE: DocsPage = { html: '<p>Rendered</p>', toc: [], frontmatter: null, figures: [], sections: [], wordCount: 1 };
 
-type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'actors' | 'boardQuery' | 'tech' | 'library' | 'libraryDoc' | 'librarySearch'>;
+type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'actors' | 'boardQuery' | 'library' | 'libraryDoc' | 'librarySearch'>;
 
 let harness: RouterTestingHarness;
 /** Every search text the page sent to `librarySearch`, in order; reset per test. */
@@ -71,7 +71,6 @@ async function open(url: string, catalog: LibraryCatalog = CATALOG, tier: Tier =
     spec: () => Promise.resolve({ kind: 'not-found', served: false }),
     actors: () => Promise.resolve(ok([])),
     boardQuery: () => Promise.resolve(ok({ query: '' })),
-    tech: () => Promise.resolve({ kind: 'not-found', served: false }),
     library: () => Promise.resolve(ok(catalog)),
     libraryDoc: () => Promise.resolve(ok(PAGE)),
     librarySearch: (_ws, q) => {

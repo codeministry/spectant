@@ -14,7 +14,6 @@ import { join } from 'node:path';
 import type {
   ClaimViewModel,
   DocsPage,
-  EvidenceListing,
   LibraryCatalog,
   LibraryDocType,
   LiveFrame,
@@ -25,7 +24,6 @@ import {
   ACTORS_ALLOW,
   ACTORS_PATH,
   ACTORS_STATUSES,
-  DOC_NAMES,
   GOLDEN_FAMILY,
   JSON_ANSWER,
   type LibrarySearchResult,
@@ -315,57 +313,8 @@ describe('stub API: GET /api/workspaces/:slug/planning', () => {
   });
 });
 
-describe('stub API: GET /api/workspaces/:slug/tech (spec 023, T10)', () => {
-  // `WORKSPACE_GOLDEN_FAMILY.tech` is a whole-file family like planning: the body is the golden file itself.
-  const techText = (tree: string): string => goldenText(`${tree}.${WORKSPACE_GOLDEN_FAMILY.tech}`);
-
-  test.each(['harbor', 'lantern'])('%s: the body is the whole tech golden in the server serialization, JSON_ANSWER headers', async (name) => {
-    const res = await ask(workspaceRoutes.tech(name));
-    const body = await res.text();
-    expect(res.status).toBe(200);
-    expect(body).toBe(JSON.stringify(JSON.parse(techText(name))));
-    expect(res.headers.get('Content-Type')).toBe('application/json; charset=utf-8');
-    expect(res.headers.get('Cache-Control')).toBe('no-cache');
-    expect(res.headers.get('ETag')).toBe(`"${new Bun.CryptoHasher('sha256').update(body).digest('base64url')}"`);
-  });
-
-  test('harbor carries pages; lantern, without specs/tech.md, answers pages null', async () => {
-    const harbor = (await (await ask(workspaceRoutes.tech('harbor'))).json()) as { pages: Record<string, unknown> | null };
-    expect(harbor.pages).not.toBeNull();
-    expect(Object.keys(harbor.pages ?? {})).toContain('overview');
-    const lantern = (await (await ask(workspaceRoutes.tech('lantern'))).json()) as { pages: unknown };
-    expect(lantern.pages).toBeNull();
-  });
-
-  test('HEAD answers the headers without the body; a matching If-None-Match is a 304', async () => {
-    const get = await ask(workspaceRoutes.tech('harbor'));
-    const etag = get.headers.get('ETag') ?? '';
-    const head = await ask(workspaceRoutes.tech('harbor'), { method: 'HEAD' });
-    expect([head.status, head.headers.get('ETag'), await head.text()]).toEqual([200, etag, '']);
-    const revalidated = await ask(workspaceRoutes.tech('harbor'), { headers: { 'If-None-Match': etag } });
-    expect([revalidated.status, await revalidated.text()]).toEqual([304, '']);
-    expect((await ask(workspaceRoutes.tech('harbor'), { headers: { 'If-None-Match': '"stale"' } })).status).toBe(200);
-  });
-
-  test('404 unknown slug in every state, 405 with allowForWorkspace, 409 the unreadable summary, 403 cross-site', async () => {
-    for (const state of STUB_STATES) {
-      const res = await ask(workspaceRoutes.tech('nope'), { state });
-      expect([res.status, await res.json()]).toEqual([404, { error: 'not-found' }]);
-    }
-    expect((await ask(workspaceRoutes.tech('harbor'), { state: 'empty' })).status).toBe(404);
-    const post = await ask(workspaceRoutes.tech('harbor'), { method: 'POST', body: '{}' });
-    expect([post.status, post.headers.get('Allow'), await post.json()]).toEqual([405, allowForWorkspace('tech'), { error: 'method-not-allowed' }]);
-    const unreadable = await ask(workspaceRoutes.tech('lantern'), { state: 'unreadable' });
-    const dashboard = await ask('/api/workspaces/lantern/dashboard', { state: 'unreadable' });
-    expect([unreadable.status, await unreadable.text()]).toEqual([409, await dashboard.text()]);
-    expect((await ask(workspaceRoutes.tech('harbor'), { state: 'unreadable' })).status).toBe(200);
-    const crossSite = await ask(workspaceRoutes.tech('harbor'), { headers: { Origin: 'https://evil.example' } });
-    expect([crossSite.status, await crossSite.json()]).toEqual([403, { error: 'forbidden' }]);
-  });
-});
-
-describe('stub API: GET /api/workspaces/:slug/tech/asset?path= (spec 023, T10)', () => {
-  const asset = (ws: string, path: string): string => workspaceRoutes.techAsset(ws, path);
+describe('stub API: GET /api/workspaces/:slug/library/asset?path= (spec 017; formerly …/tech/asset, spec 023 T10)', () => {
+  const asset = (ws: string, path: string): string => workspaceRoutes.libraryAsset(ws, path);
   const bytesOf = (tree: string, path: string): Uint8Array<ArrayBuffer> => new Uint8Array(readFileSync(join(FIXTURES, tree, 'specs', path)));
 
   test('the image tech.md names: its bytes from the fixture tree with evidenceFileHeaders and a strong ETag; HEAD, 304', async () => {
@@ -403,7 +352,7 @@ describe('stub API: GET /api/workspaces/:slug/tech/asset?path= (spec 023, T10)',
     expect((await ask(asset('nope', 'tech/overview.png'))).status).toBe(404);
     expect((await ask(asset('harbor', 'tech/overview.png'), { state: 'empty' })).status).toBe(404);
     const put = await ask(asset('harbor', 'tech/overview.png'), { method: 'PUT', body: '{}' });
-    expect([put.status, put.headers.get('Allow')]).toEqual([405, allowForWorkspace('techAsset')]);
+    expect([put.status, put.headers.get('Allow')]).toEqual([405, allowForWorkspace('libraryAsset')]);
     const unreadable = await ask(asset('lantern', 'tech/overview.png'), { state: 'unreadable' });
     const dashboard = await ask('/api/workspaces/lantern/dashboard', { state: 'unreadable' });
     expect([unreadable.status, await unreadable.text()]).toEqual([409, await dashboard.text()]);
@@ -785,7 +734,6 @@ const CORE = join(import.meta.dir, '..', '..', 'core', 'src');
 const HEX64 = /^[0-9a-f]{64}$/;
 
 type EvidenceModule = {
-  listEvidence: (dir: string) => Promise<EvidenceListing>;
   mediaTypeOf: (name: string) => string;
 };
 const family = (tree: string, name: string): Json => golden(`${tree}.${name}`);
@@ -813,7 +761,7 @@ describe('stub API: every spec route answers its golden (harbor 002)', () => {
 
   test('the JSON read routes: 200, body deep-equal to the per-spec golden value, the JSON_ANSWER headers', async () => {
     for (const entry of SPEC_ROUTE_TABLE) {
-      if (entry.method !== 'GET' || ['evidence', 'evidenceFile', 'docs'].includes(entry.route)) continue;
+      if (entry.method !== 'GET' || entry.route === 'evidenceFile') continue;
       const build = specRoutes[entry.route] as (ws: string, id: string) => string;
       const res = await ask(build(WS, '002'));
       const body = await res.text();
@@ -824,42 +772,6 @@ describe('stub API: every spec route answers its golden (harbor 002)', () => {
       expect(res.headers.get('ETag')).toBe(`"${new Bun.CryptoHasher('sha256').update(body).digest('base64url')}"`);
       covered.add(entry.route);
     }
-  });
-
-  test('docs: each Docs tab from the docs golden, constitution top level, a missing file is 404 DocMissing', async () => {
-    const docs = family(WS, 'docs') as { constitution: unknown; specs: Record<string, Record<string, unknown>> };
-    for (const name of DOC_NAMES) {
-      const res = await ask(specRoutes.docs(WS, '002', name));
-      const value = name === 'constitution' ? docs.constitution : docs.specs[KEY]?.[name];
-      if (value === null) {
-        expect(res.status).toBe(404);
-        // harbor 002 is a feature: its missing design.md belongs to the type.
-        expect(await res.json()).toEqual({ error: 'not-found', doc: name, availability: { applies: true, command: '/spec-design' } });
-      } else {
-        expect(res.status).toBe(200);
-        expect(await res.json()).toEqual(value);
-      }
-    }
-    // A spike has no plan in its workflow: the reason says so.
-    const spike = await ask(specRoutes.docs(WS, '005', 'plan'));
-    expect(spike.status).toBe(404);
-    expect(await spike.json()).toEqual({ error: 'not-found', doc: 'plan', availability: { applies: false, command: '/spec-plan' } });
-    covered.add('docs');
-  });
-
-  test('evidence: the listing core builds from the real artifacts/ and .evidence/ of harbor 002', async () => {
-    const core = (await import(join(CORE, 'evidence.ts'))) as EvidenceModule;
-    const res = await ask(specRoutes.evidence(WS, '002'));
-    expect(res.status).toBe(200);
-    const listing = (await res.json()) as EvidenceListing;
-    expect(listing).toEqual(await core.listEvidence(SPEC_DIR));
-    expect(listing.results.map((f) => f.path)).toEqual([
-      'artifacts/T12-dashboard-model.md',
-      'artifacts/T13-routes.md',
-      'artifacts/T18-e2e-report.md',
-    ]);
-    expect(listing.raw.map((f) => f.path)).toEqual(['.evidence/bun-test-r3.log', '.evidence/dashboard.har', '.evidence/kpi-band-390.png']);
-    covered.add('evidence');
   });
 
   test('evidence/file: the bytes with evidenceFileHeaders, 403 for what confinement refuses, 404 for no file', async () => {
@@ -873,7 +785,7 @@ describe('stub API: every spec route answers its golden (harbor 002)', () => {
     }
     const refused = ['spec.md', '../003-config-loader/spec.md', '%2e%2e%2fspec.md', '%252e%252e%252fspec.md', '/etc/hosts', ''];
     for (const raw of refused) {
-      const res = await ask(`${specRoutes.evidence(WS, '002')}/file?path=${raw}`);
+      const res = await ask(`${specRoutes.evidenceFile(WS, '002', '').replace(/\?.*$/, '')}?path=${raw}`);
       expect({ raw, status: res.status }).toEqual({ raw, status: 403 });
       expect(await res.json()).toEqual({ error: 'forbidden' });
     }
@@ -1224,10 +1136,9 @@ describe('stub API: spec routes are deterministic', () => {
   test('two stubs answer the same bytes, tags and hash headers for every read route and lock state', async () => {
     const other = stubApi();
     const paths = [
-      ...SPEC_ROUTE_TABLE.filter((e) => e.method === 'GET' && !['evidenceFile', 'docs'].includes(e.route)).map((e) =>
+      ...SPEC_ROUTE_TABLE.filter((e) => e.method === 'GET' && e.route !== 'evidenceFile').map((e) =>
         (specRoutes[e.route] as (ws: string, id: string) => string)(WS, '002'),
       ),
-      ...DOC_NAMES.map((name) => specRoutes.docs(WS, '002', name)),
       specRoutes.evidenceFile(WS, '002', 'artifacts/T13-routes.md'),
       specRoutes.live('lantern', '001'),
       '/api/lifeos',
@@ -1357,9 +1268,9 @@ describe('stub API matches the real server handlers byte for byte', () => {
   test.each([...STUB_STATES])('every GET route of WORKSPACE_ROUTE_TABLE, state %s', async (state) => {
     const handler = real?.[state];
     if (!handler) throw new Error('real handlers not loaded');
-    // The routes with a golden family (`planning`, `tech`) are compared here, whole file to whole body. The story route,
+    // The route with a golden family (`planning`) is compared here, whole file to whole body. The story route,
     // the board query and the allocation (T119) have no family; their parity runs in "stub API board seam matches the real
-    // handlers". The tech asset serves the fixture tree's files, not a golden; its answers are pinned in its own block.
+    // handlers". The tech page's routes went with spec 017 T51.
     // The library routes (spec 017) have no golden and no server handler yet (`LIBRARY_AWAITING_HANDLER` in api.ts);
     // their answers are pinned in "stub API: the library".
     expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual([
@@ -1367,17 +1278,15 @@ describe('stub API matches the real server handlers byte for byte', () => {
       'idea',
       'boardQuery',
       'allocate',
-      'tech',
-      'techAsset',
       'library',
       'libraryDoc',
       'librarySearch',
       'libraryAsset',
     ]);
     const golden = WORKSPACE_ROUTE_TABLE.filter((entry) => entry.route in WORKSPACE_GOLDEN_FAMILY);
-    expect(golden.map((entry) => entry.route)).toEqual(['planning', 'tech']);
+    expect(golden.map((entry) => entry.route)).toEqual(['planning']);
     for (const entry of golden) {
-      const build = entry.route === 'tech' ? workspaceRoutes.tech : workspaceRoutes.planning;
+      const build = workspaceRoutes.planning;
       const cases: Array<[string, RequestInit]> = [
         [build('harbor'), {}],
         [build('lantern'), {}],
@@ -1803,9 +1712,7 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
       timeline: reads(specRoutes.timeline),
       claims: reads(specRoutes.claims),
       tasks: reads(specRoutes.tasks),
-      evidence: reads(specRoutes.evidence),
       evidenceFile: reads((ws, id) => specRoutes.evidenceFile(ws, id, 'artifacts/T12-dashboard-model.md')),
-      docs: reads((ws, id) => specRoutes.docs(ws, id, 'plan')),
       frames: reads(specRoutes.frames),
       live: reads(specRoutes.live),
       gateReviewed: writes((ws) => specRoutes.gateReviewed(ws, ws === 'lantern' ? '001' : '006'), { hashes: reviewed }),
@@ -1832,13 +1739,6 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
         ...writes((ws) => workspaceRoutes.allocate(ws, 'console-audit-log'), { hash: ideaHash }),
         [workspaceRoutes.allocate(WS, 'registry-webhooks'), { method: 'POST', body: JSON.stringify({ hash: storyHash('registry-webhooks') }) }],
       ],
-      tech: reads((ws) => workspaceRoutes.tech(ws)),
-      techAsset: [
-        ...reads((ws) => workspaceRoutes.techAsset(ws, 'tech/overview.png')),
-        [workspaceRoutes.techAsset(WS, '../constitution.md'), {}],
-        [workspaceRoutes.techAsset(WS, 'tech/nothing.png'), {}],
-        [workspaceRoutes.techAsset(WS, 'tech/overview.png'), { method: 'HEAD' }],
-      ],
       library: reads((ws) => workspaceRoutes.library(ws)),
       libraryDoc: [
         ...reads((ws) => workspaceRoutes.libraryDoc(ws, ws === 'lantern' ? '001-reading-list/plan.md' : '002-web-console/plan.md')),
@@ -1848,6 +1748,8 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
       libraryAsset: [
         ...reads((ws) => workspaceRoutes.libraryAsset(ws, 'tech/overview.png')),
         [workspaceRoutes.libraryAsset(WS, '../constitution.md'), {}],
+        [workspaceRoutes.libraryAsset(WS, 'tech/nothing.png'), {}],
+        [workspaceRoutes.libraryAsset(WS, 'tech/overview.png'), { method: 'HEAD' }],
       ],
     };
     // The table's routes stay pinned; every one of them is served now.
@@ -1856,8 +1758,6 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
       'idea',
       'boardQuery',
       'allocate',
-      'tech',
-      'techAsset',
       'library',
       'libraryDoc',
       'librarySearch',
