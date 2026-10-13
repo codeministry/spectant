@@ -8,7 +8,7 @@ app-library-page {
   min-inline-size: 0;
 }
 
-app-library-page .lib-head {
+app-library-page .lib-page-head {
   display: flex;
   gap: 12px;
   align-items: flex-end;
@@ -16,7 +16,7 @@ app-library-page .lib-head {
   min-inline-size: 0;
 }
 
-app-library-page .lib-head ui-page-head {
+app-library-page .lib-page-head ui-page-head {
   flex: 0 1 auto;
 }
 
@@ -220,7 +220,7 @@ app-library-page .lib-snippet {
 
 app-library-page .lib-flags {
   display: grid;
-  grid-template-columns: 74px 28px minmax(0, 1fr);
+  grid-template-columns: minmax(74px, max-content) 28px minmax(0, 1fr);
   gap: 8px;
   align-items: center;
   min-inline-size: 0;
@@ -335,14 +335,6 @@ app-library-page .lib-more {
   app-library-page .lib-evidence-toggle {
     min-block-size: 44px;
   }
-}
-
-app-library-page .lib-stale {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-  color: var(--hover-text);
-  font-size: 12px;
 }
 
 app-library-page .lib-reader {

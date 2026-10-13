@@ -2121,6 +2121,22 @@
     "wsWide": "{{ws}} · workspaceweit",
     "count": "{{ws}} · {{shown}} von {{total}} Dokumenten · {{stale}} veraltet",
     "outdated": "veraltet",
+    "control": {
+      "label": "Dokumentkontrolle",
+      "missing": {
+        "word": "fehlt",
+        "one": "{{count}} fehlendes Dokument zeigen",
+        "other": "{{count}} fehlende Dokumente zeigen",
+        "none": "Keine fehlenden Dokumente"
+      },
+      "stale": {
+        "word": "veraltet",
+        "one": "{{count}} veraltetes Dokument zeigen",
+        "other": "{{count}} veraltete Dokumente zeigen",
+        "none": "Keine veralteten Dokumente"
+      }
+    },
+    "missing": "fehlt",
     "none": {
       "heading": "Noch keine Dokumente in {{ws}}",
       "body": "Die Library sammelt Specs, Pläne, Designs, Evidence und Prototypen, sobald der erste Spec-Ordner existiert."
@@ -2140,7 +2156,9 @@
       "pick": "Wählen Sie ein Dokument",
       "pickBody": "Jede Spec, jeder Plan, jedes Design, jede Evidence und jeder Prototyp aller Specs an einem Ort.",
       "loading": "Das Dokument wird geladen",
-      "error": "Das Dokument konnte nicht gelesen werden."
+      "error": "Das Dokument konnte nicht gelesen werden.",
+      "missingHeading": "{{file}} fehlt noch",
+      "missingBody": "Die Stage der Spec verlangt dieses Dokument; das Kommando darunter legt es an."
     },
     "evidence": {
       "toggle": "Evidence",

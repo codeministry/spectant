@@ -1,9 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { Location } from '@angular/common';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { TranslocoTestingModule } from '@jsverse/transloco';
+import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
 import type { DocsPage, LibraryCatalog, LibraryDoc } from '../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
@@ -11,7 +12,7 @@ import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult } from '../../core/api.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import type { Tier } from '../../layout/shell/tier';
-import { shortDateParts, typeIcon } from './library-page';
+import { controlViews, missingCommand, shortDateParts, typeIcon } from './library-page';
 
 // T27 · ISC-156: the library page on the server's catalog: one row per document with its type icon, title, spec and
 // meta line, groups workspace-wide first and each spec once, a spec's evidence as one collapsed subgroup with its
@@ -53,7 +54,7 @@ type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' 
 
 let harness: RouterTestingHarness;
 
-async function open(url: string, catalog: LibraryCatalog = CATALOG, tier: Tier = 'medium'): Promise<HTMLElement> {
+async function open(url: string, catalog: LibraryCatalog = CATALOG, tier: Tier = 'medium', lang: 'en' | 'de' = 'en'): Promise<HTMLElement> {
   const api: FakeApi = {
     workspaces: () => Promise.resolve(ok([{ slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: null }])),
     dashboard: () => Promise.resolve(ok(dashboard)),
@@ -76,6 +77,7 @@ async function open(url: string, catalog: LibraryCatalog = CATALOG, tier: Tier =
     providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
   });
   TestBed.inject(ShellState).tier.set(tier);
+  TestBed.inject(TranslocoService).setActiveLang(lang);
   harness = await RouterTestingHarness.create();
   await harness.navigateByUrl(url);
   return settle();
@@ -196,6 +198,142 @@ describe('LibraryPage (T27, ISC-156)', () => {
     expect(text(page(root).querySelector('[data-library-reader] h2'))).toBe('Constitution');
     expect(text(page(root).querySelector('[data-library-prose]'))).toBe('Rendered');
     expect(page(root).querySelector('[data-library-open]')).toBeNull();
+  });
+});
+
+// T30 · ISC-156.1: the card's first row holds the control counts "missing" and "outdated" from the catalog; a click
+// filters the list to exactly those documents (`?state=`), a second lifts it, a zero count is disabled; rows carry the
+// chip of their state, a missing row is dimmed by colour and form, and its reader is the empty state with its command.
+const CONTROL: LibraryCatalog = {
+  docs: [
+    doc('002-web-console/spec.md', 'spec', 'Web console'),
+    doc('002-web-console/plan.md', 'plan', 'Approach', { state: 'stale' }),
+    doc('002-web-console/tasks.md', 'tasks', 'tasks.md', { state: 'missing', modified: null }),
+    doc('003-board/spec.md', 'spec', 'Board', { state: 'stale' }),
+    doc('003-board/plan.md', 'plan', 'plan.md', { state: 'missing', modified: null }),
+    doc('constitution.md', 'constitution', 'Constitution'),
+  ],
+  groups: [],
+  fog: [],
+  missing: 2,
+  stale: 2,
+};
+
+const control = (root: HTMLElement, key: string): HTMLButtonElement => {
+  const button = page(root).querySelector<HTMLButtonElement>(`[data-library-control="${key}"]`);
+  if (button === null) throw new Error(`no control ${key}`);
+  return button;
+};
+const stateParam = (): string | null => new URLSearchParams(TestBed.inject(Location).path().split('?')[1]?.split('#')[0] ?? '').get('state');
+
+describe('LibraryPage control counts (T30, ISC-156.1)', () => {
+  it('shows missing then outdated as the card’s first row, with the catalog’s numbers, icons and names', async () => {
+    const root = await open('/w/harbor/library', CONTROL);
+    const head = page(root).querySelector('[data-library-list] > .lib-head');
+    expect(head).not.toBeNull();
+    expect(head?.previousElementSibling).toBeNull();
+    expect(Array.from(head?.querySelectorAll('[data-library-control]') ?? []).map((b) => b.getAttribute('data-library-control'))).toEqual(['missing', 'stale']);
+    const missing = control(root, 'missing');
+    const stale = control(root, 'stale');
+    expect(missing.tagName).toBe('BUTTON');
+    expect(text(missing.querySelector('[data-library-control-count]'))).toBe('2');
+    expect(text(stale.querySelector('[data-library-control-count]'))).toBe('2');
+    expect(text(missing.querySelector('.lib-ctl-label'))).toBe('missing');
+    expect(text(stale.querySelector('.lib-ctl-label'))).toBe('outdated');
+    expect(missing.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('file-x');
+    expect(stale.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('triangle-alert');
+    expect(missing.getAttribute('aria-label')).toBe('Show 2 missing documents');
+    expect(stale.getAttribute('aria-label')).toBe('Show 2 outdated documents');
+    expect(missing.getAttribute('aria-pressed')).toBe('false');
+    expect(missing.hasAttribute('aria-disabled')).toBe(false);
+  });
+
+  it('names the counts in German, plural and singular', async () => {
+    const root = await open('/w/harbor/library', { ...CONTROL, stale: 1 }, 'medium', 'de');
+    expect(control(root, 'missing').getAttribute('aria-label')).toBe('2 fehlende Dokumente zeigen');
+    expect(control(root, 'stale').getAttribute('aria-label')).toBe('1 veraltetes Dokument zeigen');
+    expect(text(control(root, 'missing').querySelector('.lib-ctl-label'))).toBe('fehlt');
+    expect(text(control(root, 'stale').querySelector('.lib-ctl-label'))).toBe('veraltet');
+    expect(text(page(root).querySelector('[data-library-chip="missing"]'))).toBe('fehlt');
+  });
+
+  it('filters the list to exactly the counted documents, and a second click lifts the filter', async () => {
+    const root = await open('/w/harbor/library', CONTROL);
+    const all = entries(root);
+    control(root, 'missing').click();
+    await settle();
+    expect(control(root, 'missing').getAttribute('aria-pressed')).toBe('true');
+    expect(stateParam()).toBe('missing');
+    expect(entries(root)).toEqual(['002-web-console/tasks.md', '003-board/plan.md']);
+
+    control(root, 'stale').click();
+    await settle();
+    expect(control(root, 'missing').getAttribute('aria-pressed')).toBe('false');
+    expect(control(root, 'stale').getAttribute('aria-pressed')).toBe('true');
+    expect(stateParam()).toBe('stale');
+    expect(entries(root)).toEqual(['002-web-console/plan.md', '003-board/spec.md']);
+    expect(page(root).querySelector<HTMLInputElement>('[data-library-stale]')?.checked).toBe(true);
+
+    control(root, 'stale').click();
+    await settle();
+    expect(control(root, 'stale').getAttribute('aria-pressed')).toBe('false');
+    expect(stateParam()).toBeNull();
+    expect(entries(root)).toEqual(all);
+  });
+
+  it('reads the pressed count from the address', async () => {
+    const root = await open('/w/harbor/library?state=missing', CONTROL);
+    expect(control(root, 'missing').getAttribute('aria-pressed')).toBe('true');
+    expect(entries(root)).toEqual(['002-web-console/tasks.md', '003-board/plan.md']);
+  });
+
+  it('keeps a zero count standing: circle-check, aria-disabled, no filter, a singular name in both languages', async () => {
+    const root = await open('/w/harbor/library', { ...CATALOG, missing: 0, stale: 1 });
+    const missing = control(root, 'missing');
+    expect(text(missing.querySelector('[data-library-control-count]'))).toBe('0');
+    expect(missing.getAttribute('aria-disabled')).toBe('true');
+    expect(missing.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('circle-check');
+    expect(missing.getAttribute('aria-label')).toBe('No missing documents');
+    missing.click();
+    await settle();
+    expect(missing.getAttribute('aria-pressed')).toBe('false');
+    expect(stateParam()).toBeNull();
+    expect(control(root, 'stale').getAttribute('aria-label')).toBe('Show 1 outdated document');
+  });
+
+  it('picks the name by the count: none at zero, one, other', () => {
+    expect(controlViews({ missing: 5, stale: 0 }, 'all').map((view) => view.labelKey)).toEqual(['library.control.missing.other', 'library.control.stale.none']);
+    expect(controlViews({ missing: 1, stale: 3 }, 'stale').map((view) => [view.labelKey, view.pressed, view.icon])).toEqual([
+      ['library.control.missing.one', false, 'file-x'],
+      ['library.control.stale.other', true, 'triangle-alert'],
+    ]);
+  });
+
+  it('marks every stale and missing row with its chip and dims a missing row by colour and form', async () => {
+    const root = await open('/w/harbor/library', CONTROL);
+    const chips = (key: string): string[] =>
+      Array.from(page(root).querySelectorAll(`[data-library-chip="${key}"]`)).map((chip) => chip.closest('[data-library-entry]')?.getAttribute('data-library-entry') ?? '');
+    expect(chips('missing')).toEqual(['002-web-console/tasks.md', '003-board/plan.md']);
+    expect(chips('stale')).toEqual(['002-web-console/plan.md', '003-board/spec.md']);
+    const row = page(root).querySelector('[data-library-entry="003-board/plan.md"]');
+    expect(row?.getAttribute('data-state')).toBe('missing');
+    expect(text(row?.querySelector('[data-library-chip="missing"]'))).toBe('missing');
+    expect(row?.querySelector('[data-library-chip="missing"] ui-icon')?.getAttribute('data-icon')).toBe('file-x');
+    expect(text(row?.querySelector('.lib-date'))).toBe('');
+    // Present documents first, the missing one after them within the spec.
+    expect(entries(root).filter((path) => path.startsWith('003-'))).toEqual(['003-board/spec.md', '003-board/plan.md']);
+  });
+
+  it('opens a missing document as the empty state with the command that writes it', async () => {
+    const root = await open('/w/harbor/library#003-board/plan.md', CONTROL);
+    const reader = page(root).querySelector('[data-library-reader]');
+    const empty = reader?.querySelector('[data-library-missing]');
+    expect(empty).not.toBeNull();
+    expect(text(empty?.querySelector('.title'))).toBe('plan.md is missing');
+    expect(empty?.querySelector('ui-command-chip')?.textContent).toContain('/spec-plan 003');
+    expect(reader?.querySelector('[data-library-prose]')).toBeNull();
+    expect(missingCommand({ type: 'tasks', spec: '002-web-console' })).toBe('/spec-tasks 002');
+    expect(missingCommand({ type: 'design', spec: '002-web-console' })).toBeNull();
   });
 });
 

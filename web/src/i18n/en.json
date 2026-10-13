@@ -2121,6 +2121,22 @@
     "wsWide": "{{ws}} · workspace-wide",
     "count": "{{ws}} · {{shown}} of {{total}} documents · {{stale}} outdated",
     "outdated": "outdated",
+    "control": {
+      "label": "Document control",
+      "missing": {
+        "word": "missing",
+        "one": "Show {{count}} missing document",
+        "other": "Show {{count}} missing documents",
+        "none": "No missing documents"
+      },
+      "stale": {
+        "word": "outdated",
+        "one": "Show {{count}} outdated document",
+        "other": "Show {{count}} outdated documents",
+        "none": "No outdated documents"
+      }
+    },
+    "missing": "missing",
     "none": {
       "heading": "No documents in {{ws}} yet",
       "body": "The library collects specs, plans, designs, evidence and prototypes as soon as the first spec folder exists."
@@ -2140,7 +2156,9 @@
       "pick": "Pick a document",
       "pickBody": "Every spec, plan, design, piece of evidence and prototype from all specs, in one place.",
       "loading": "Loading the document",
-      "error": "The document could not be read."
+      "error": "The document could not be read.",
+      "missingHeading": "{{file}} is missing",
+      "missingBody": "The spec’s stage asks for this document; the command below writes it."
     },
     "evidence": {
       "toggle": "Evidence",

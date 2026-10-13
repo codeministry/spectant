@@ -77,6 +77,42 @@ export function shortDateParts(iso: string, now: Date, locale: string): { readon
   return { date, time };
 }
 
+/** The two control counts of the card's first row (design.md 017 § Viewport-übergreifend; ISC-156.1), in this order. */
+export type ControlKey = 'missing' | 'stale';
+
+/** One control count as drawn: its `?state=` value, the number, the icon, whether it filters now. */
+export interface ControlView {
+  readonly key: ControlKey;
+  readonly count: number;
+  /** `file-x` for missing, `triangle-alert` for stale; `circle-check` at zero. */
+  readonly icon: IconName;
+  readonly pressed: boolean;
+  /** The accessible name's key: `none` at zero, else `one` / `other` by the count. */
+  readonly labelKey: string;
+}
+
+const CONTROL_ICON: Readonly<Record<ControlKey, IconName>> = { missing: 'file-x', stale: 'triangle-alert' };
+
+/** The control counts of a catalog under the current `?state=`: missing first, then stale. */
+export function controlViews(catalog: Pick<LibraryCatalog, 'missing' | 'stale'>, state: LibraryFilter['state']): readonly ControlView[] {
+  return (['missing', 'stale'] as const).map((key) => {
+    const count = catalog[key];
+    const plural = count === 0 ? 'none' : count === 1 ? 'one' : 'other';
+    return { key, count, icon: count === 0 ? 'circle-check' : CONTROL_ICON[key], pressed: state === key, labelKey: `library.control.${key}.${plural}` };
+  });
+}
+
+/**
+ * The command that writes a missing document (design.md 017 § 2.2): `/spec-plan 017` for plan.md, `/spec-tasks 017`
+ * for tasks.md; core marks no other type missing, so every other answers null.
+ */
+export function missingCommand(doc: Pick<LibraryDoc, 'type' | 'spec'>): string | null {
+  return doc.type === 'plan' || doc.type === 'tasks' ? `/spec-${doc.type} ${specKey(doc.spec)}` : null;
+}
+
+/** The file name of a document path (`017-x/plan.md` → `plan.md`). */
+const fileName = (path: string): string => path.slice(path.lastIndexOf('/') + 1);
+
 /** A document as one list row: the highlighted title and meta line beside the document itself. */
 interface RowView {
   readonly doc: LibraryDoc;
@@ -110,8 +146,14 @@ interface GroupView {
  *
  * The filter is read once from the address (`?q=`, `?type=`, `?spec=`, `?state=` and the document as `#path`) and
  * kept there with `Location.replaceState`; the router-driven form, the server's full-text search and the state select
- * are T32's, the control counts T30's, the reader component T34's. The reader here loads the chosen Markdown document
- * through `ApiClient.libraryDoc` and shows core's rendered prose.
+ * are T32's, the reader component T34's. The reader here loads the chosen Markdown document through
+ * `ApiClient.libraryDoc` and shows core's rendered prose.
+ *
+ * The card's first row (`lib-head`, T30, ISC-156.1) holds the control counts "missing" (violet, `file-x`) and
+ * "outdated" (orange, `triangle-alert`) from the catalog; a click sets `?state=missing|stale`, a second lifts it, and
+ * at zero a count shows `circle-check` and filters nothing. Rows carry the chip of their state; a missing row is
+ * dimmed by colour and form (muted title, dashed type tag), never by opacity, and its reader is the empty state with
+ * the command that writes the file.
  *
  * From 1120 px (`wide`) list and reader sit side by side and the first match opens on its own; below, the page shows
  * the list or the reader, never both, and the reader's back button returns to the list.
@@ -146,7 +188,7 @@ interface GroupView {
     '[attr.data-reading]': 'current() ? "" : null',
   },
   templateUrl: './library-page.html',
-  styleUrl: './library-page.css',
+  styleUrls: ['./library-page.css', './library-page.control.css'],
 })
 export class LibraryPage {
   protected readonly state = inject(ShellState);
@@ -192,6 +234,14 @@ export class LibraryPage {
   protected readonly type = computed(() => this.filter().type);
   protected readonly spec = computed(() => this.filter().spec);
   protected readonly stale = computed(() => this.filter().state === 'stale');
+  protected readonly missingCommand = missingCommand;
+  protected readonly fileName = fileName;
+
+  /** The card's first row: the catalog's missing and stale counts, pressed while `?state=` names them (ISC-156.1). */
+  protected readonly controls = computed<readonly ControlView[]>(() => {
+    const catalog = this.catalog();
+    return catalog === null ? [] : controlViews(catalog, this.filter().state);
+  });
   /** The document picked by a person (row or `#path`), by its catalog path; null until one is. */
   private readonly picked = signal<string | null>(null);
   /** A spec's evidence subgroup opened or closed by hand, by group key; cleared whenever the filter changes. */
@@ -316,6 +366,15 @@ export class LibraryPage {
 
   protected setStale(value: boolean): void {
     this.update({ state: value ? 'stale' : 'all' });
+  }
+
+  /**
+   * A control count filters the list to exactly its documents (`?state=missing|stale`, the value the state select
+   * shows); a second click lifts it. At zero it is `aria-disabled` and sets nothing.
+   */
+  protected toggleControl(control: ControlView): void {
+    if (control.count === 0) return;
+    this.update({ state: control.pressed ? 'all' : control.key });
   }
 
   protected clear(): void {

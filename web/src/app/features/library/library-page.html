@@ -3,7 +3,7 @@
 } @else if (unavailable()) {
   <p class="lib-unavailable">{{ 'shell.unavailable' | transloco }}</p>
 } @else {
-<div class="lib-head">
+<div class="lib-page-head">
   <ui-page-head
     [segments]="[wsName(), ('library.title' | transloco)]"
     [back]="{ href: '/w/' + ws(), label: ('library.back' | transloco) }"
@@ -45,6 +45,24 @@
   <div class="lib-grid">
     @if (wide() || !current()) {
       <div class="lib-list" data-library-list>
+        <!-- The card's first row (design.md 017 § Viewport-übergreifend; ISC-156.1): missing, then outdated. -->
+        <div class="lib-head" role="group" data-library-controls [attr.aria-label]="'library.control.label' | transloco">
+          @for (control of controls(); track control.key) {
+            <button
+              type="button"
+              class="lib-ctl"
+              [attr.data-library-control]="control.key"
+              [attr.aria-pressed]="control.pressed"
+              [attr.aria-disabled]="control.count === 0 ? 'true' : null"
+              [attr.aria-label]="control.labelKey | transloco: { count: control.count }"
+              (click)="toggleControl(control)"
+            >
+              <ui-icon class="lib-ctl-icon" [name]="control.icon" [size]="16" />
+              <span class="lib-ctl-value" data-library-control-count>{{ control.count }}</span>
+              <span class="lib-ctl-label">{{ 'library.control.' + control.key + '.word' | transloco }}</span>
+            </button>
+          }
+        </div>
         <label class="lib-search">
           <ui-icon name="search" [size]="16" />
           <input
@@ -180,6 +198,19 @@
                 <ui-skeleton width="64%" />
               </div>
             }
+          } @else if (doc.state === 'missing') {
+            <!-- Prototype `mutedTab` (pages.js): the empty state with the command that writes the file. -->
+            <ui-empty-state
+              class="lib-missing-reader"
+              data-library-missing
+              icon="file-x"
+              [heading]="'library.reader.missingHeading' | transloco: { file: fileName(doc.path) }"
+              [body]="'library.reader.missingBody' | transloco"
+            >
+              @if (missingCommand(doc); as command) {
+                <ui-command-chip [command]="command" [copyLabel]="'common.copyCommand' | transloco" />
+              }
+            </ui-empty-state>
           } @else if (doc.media !== 'markdown') {
             <figure class="lib-image" data-library-image>
               <ui-icon [name]="typeIcon(doc)" [size]="24" />
@@ -220,12 +251,14 @@
     <span class="lib-flags">
       <span class="lib-slot">
         @if (row.doc.state === 'stale') {
-          <span class="lib-stale"><ui-icon name="triangle-alert" [size]="12" />{{ 'library.outdated' | transloco }}</span>
+          <span class="lib-stale" data-library-chip="stale"><ui-icon name="triangle-alert" [size]="12" />{{ 'library.outdated' | transloco }}</span>
+        } @else if (row.doc.state === 'missing') {
+          <span class="lib-missing" data-library-chip="missing"><ui-icon name="file-x" [size]="12" />{{ 'library.missing' | transloco }}</span>
         }
       </span>
       <!-- Slot 2: the cross references (T34). -->
       <span class="lib-slot"></span>
-      <span class="lib-date">{{ date(row.doc.modified) }}</span>
+      <span class="lib-date">{{ row.doc.state === 'missing' ? '' : date(row.doc.modified) }}</span>
     </span>
     @if (row.meta; as meta) {
       <span class="lib-snippet" data-library-meta>
