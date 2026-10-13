@@ -758,7 +758,7 @@ describe("ISC-160: the library, its reader, search, assets, prototypes and the o
 
       // The SPA shell for the library page and the old deep links the router redirects (ISC-157.1, ISC-158.1).
       const tabs = ["overview", "architecture", "status", "specs", "open"].map((tab) => `/w/${SHELF}/tech/${tab}`);
-      const deepLinks = ["plan", "design", "decisions", "constitution", "evidence"].map((tab) => `/w/${SHELF}/s/001/${tab}`);
+      const deepLinks = ["plan", "design", "decisions", "constitution", "evidence", "docs", "docs/plan"].map((tab) => `/w/${SHELF}/s/001/${tab}`);
       for (const page of [`/w/${SHELF}/library`, `/w/${SHELF}/tech`, ...tabs, ...deepLinks]) {
         const res = await fetch(`${url}${page}`);
         expect({ page, status: res.status }).toEqual({ page, status: 200 });
