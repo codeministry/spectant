@@ -1,7 +1,4 @@
 import { DOCUMENT, signal } from '@angular/core';
-import { ApiClient, type ApiResult } from './api.service';
-import { LockSourceService } from './lock-source.service';
-import { ShellState } from '../layout/shell/shell-state.service';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@jsverse/transloco';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -35,7 +32,7 @@ describe('diffDashboards', () => {
 describe('RefreshService', () => {
   const dashboardValue = signal<unknown>(undefined);
   const dashboardStatus = signal<'idle' | 'loading' | 'reloading' | 'resolved'>('resolved');
-  const reloads = { workspaces: vi.fn(), dashboard: vi.fn(), planning: vi.fn(), spec: vi.fn(), tech: vi.fn() };
+  const reloads = { workspaces: vi.fn(), dashboard: vi.fn(), planning: vi.fn(), spec: vi.fn() };
   const settings = signal({ ...DEFAULT_SETTINGS, refreshSeconds: 10 });
   let visibility: DocumentVisibilityState = 'visible';
 
@@ -57,7 +54,6 @@ describe('RefreshService', () => {
             dashboard: { reload: reloads.dashboard, value: dashboardValue, status: dashboardStatus },
             planning: { reload: reloads.planning },
             spec: { reload: reloads.spec },
-            tech: { reload: reloads.tech },
           },
         },
       ],
@@ -80,7 +76,6 @@ describe('RefreshService', () => {
     expect(reloads.dashboard).toHaveBeenCalledTimes(1);
     expect(reloads.planning).toHaveBeenCalledTimes(1);
     expect(reloads.spec).toHaveBeenCalledTimes(1);
-    expect(reloads.tech).toHaveBeenCalledTimes(1);
   });
 
   it('skips the timer while the page is hidden and refreshes when it becomes visible again', () => {
@@ -108,70 +103,5 @@ describe('RefreshService', () => {
     dashboardValue.set({ kind: 'ok', body: body(56, [{ id: '001', stage: 'plan' }, { id: '004', stage: 'plan' }]) });
     TestBed.tick();
     expect(service.announcement()).toBe(first);
-  });
-});
-
-describe('RefreshService and the tech model (spec 023)', () => {
-  const ok = <T>(value: T): ApiResult<T> => ({ kind: 'ok', body: value, etag: null, notModified: false });
-  const wsPage = signal<string | null>('tech');
-  const techCalls: string[] = [];
-
-  async function settle(): Promise<void> {
-    TestBed.tick();
-    for (let i = 0; i < 3; i++) await Promise.resolve();
-    TestBed.tick();
-  }
-
-  beforeEach(() => {
-    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-    techCalls.length = 0;
-    vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => 'visible');
-    const api = {
-      workspaces: () => Promise.resolve(ok([])),
-      dashboard: () => Promise.resolve(ok({ kpis: {}, specs: [], archive: [] })),
-      planning: () => Promise.resolve({ kind: 'not-found', served: false }),
-      spec: () => Promise.resolve({ kind: 'not-found', served: false }),
-      actors: () => Promise.resolve(ok([])),
-      boardQuery: () => Promise.resolve(ok({ query: '' })),
-      tech: (ws: string) => {
-        techCalls.push(ws);
-        return Promise.resolve(ok({ pages: null, specs: [] }));
-      },
-    };
-    TestBed.configureTestingModule({
-      providers: [
-        { provide: DOCUMENT, useValue: document },
-        { provide: SettingsService, useValue: { settings: signal({ ...DEFAULT_SETTINGS, refreshSeconds: 10 }) } },
-        { provide: TranslocoService, useValue: { translate: (key: string) => key } },
-        { provide: ApiClient, useValue: api },
-        { provide: ShellState, useValue: { ws: signal('harbor'), wsPage, specId: signal<string | null>(null) } },
-        { provide: LockSourceService, useValue: { connect: () => undefined } },
-      ],
-    });
-  });
-
-  afterEach(() => {
-    TestBed.resetTestingModule();
-    vi.useRealTimers();
-    vi.restoreAllMocks();
-  });
-
-  it('reloads the tech model on a refresh tick on the tech page', async () => {
-    wsPage.set('tech');
-    TestBed.inject(RefreshService);
-    await settle();
-    expect(techCalls).toEqual(['harbor']);
-    vi.advanceTimersByTime(10_000);
-    await settle();
-    expect(techCalls).toEqual(['harbor', 'harbor']);
-  });
-
-  it('fetches no tech model on a refresh tick on any other page', async () => {
-    wsPage.set('board');
-    TestBed.inject(RefreshService);
-    await settle();
-    vi.advanceTimersByTime(10_000);
-    await settle();
-    expect(techCalls).toEqual([]);
   });
 });

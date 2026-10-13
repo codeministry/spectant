@@ -1,5 +1,4 @@
 import type { IconName } from '../../shared/icons/icons';
-import type { TechTabId } from './page-tabs';
 
 /**
  * The spec page's areas and their tabs (design.md, ISC-76): the one registry the area menu, the tab bar, the routes
@@ -82,8 +81,8 @@ function must(key: string): never {
 /** Route data the shell reads (`ShellState.route`): which area and tab a route shows, or that it is the not-found page. */
 export interface ShellRouteData {
   readonly area?: AreaId;
-  /** A spec tab under `/w/:ws/s/:id`, or a tech tab on `page: 'tech'` (`ShellState.route().techTab`, spec 023). */
-  readonly tab?: TabId | TechTabId;
+  /** A spec tab under `/w/:ws/s/:id`. */
+  readonly tab?: TabId;
   /** The workspace-scope page a `w/:ws` route shows (`ShellState.route().wsPage`); absent means the spec list. */
   readonly page?: WorkspacePageId;
   readonly notFound?: boolean;
@@ -92,15 +91,15 @@ export interface ShellRouteData {
 /**
  * The workspace-scope pages, the counterpart of the spec areas one level up. `idea` (spec 008, `/w/:ws/ideas/:slug`)
  * is a read-only story page reached from a board card, the palette or a chip, never from the menu: it has no
- * `WORKSPACE_PAGES` entry, so the menu's pages are `WorkspaceMenuPageId`. `tech` (spec 023) is no menu page any more:
- * spec 017 folded it into the Library (T41, ISC-157.1), `/w/:ws/tech` and every `/w/:ws/tech/<tab>` redirect there
- * (`app.routes.ts`), and the id stays only for the old tech page's code until T50 removes it. `library` (spec 024,
+ * `WORKSPACE_PAGES` entry, so the menu's pages are `WorkspaceMenuPageId`. Spec 023's tech page is gone: spec 017
+ * folded it into the Library (T41, ISC-157.1, removed in T50), `/w/:ws/tech` and every `/w/:ws/tech/<tab>` redirect
+ * there (`app.routes.ts`). `library` (spec 024,
  * `/w/:ws/library`, on the real catalog since spec 017) stands where Tech stood, fifth after Milestones.
  */
-export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea' | 'tech' | 'library';
-export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea' | 'tech'>;
+export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea' | 'library';
+export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea'>;
 
-const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea', 'tech', 'library'];
+const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea', 'library'];
 
 export const isWorkspacePageId = (value: unknown): value is WorkspacePageId =>
   (WORKSPACE_PAGE_IDS as readonly unknown[]).includes(value);

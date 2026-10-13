@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { specLink, type TabId } from '../shell/areas';
-import { LibraryTabCount, type PageTab, TechTabCounts, techTabs } from '../shell/page-tabs';
+import { LibraryTabCount, type PageTab } from '../shell/page-tabs';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { TabBar, tabbedArea } from './tab-bar';
@@ -14,11 +14,10 @@ interface BarModel {
 
 /**
  * The prototype `tab-bar` band (spec 024, ISC-149, design.md § Viewport-übergreifend): a page puts the slot directly
- * under its head (the spec page, the tech page) and the slot sticks at top 64 on every width, under the one header row
+ * under its head (the spec page) and the slot sticks at top 64 on every width, under the one header row
  * from 1120 px and under header row 1 below, once row 2 has scrolled away. It carries the page glass, the hairline
- * across and the bar, and renders only when the route has tabs: an existing spec with a multi-tab area (tabs from
- * `SPEC_AREAS`) or the tech page (tabs from `TECH_TABS`, spec 023, ISC-134.1) unless it is the not-found page
- * (`ShellData.techMissing`, the page's own condition). Empty, it takes no room. The band keeps to the column (the
+ * across and the bar, and renders only when the route has tabs: an existing spec with a tabbed area (tabs from
+ * `SPEC_AREAS`). Empty, it takes no room. The band keeps to the column (the
  * prototype bleeds it 4 px each side; here that would scroll the compact page sideways), so the eyebrow starts flush.
  */
 @Component({
@@ -50,17 +49,12 @@ interface BarModel {
 export class TabBarSlot {
   private readonly state = inject(ShellState);
   private readonly data = inject(ShellData);
-  private readonly techCounts = inject(TechTabCounts);
   private readonly libraryCount = inject(LibraryTabCount);
 
   protected readonly bar = computed<BarModel | null>(() => {
     if (this.state.notFound()) return null;
     const ws = this.state.ws();
     if (ws === null) return null;
-    if (this.state.wsPage() === 'tech') {
-      if (this.data.techMissing()) return null;
-      return { tabs: techTabs(ws, this.techCounts.counts()), current: this.state.techTab(), labelKey: 'shell.pages.tech' };
-    }
     return this.specBar(ws);
   });
 

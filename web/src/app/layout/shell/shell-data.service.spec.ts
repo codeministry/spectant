@@ -227,39 +227,3 @@ describe('ShellData spec 008 (T112, ISC-129.1)', () => {
   });
 });
 
-describe('ShellData.tech (spec 023)', () => {
-  afterEach(() => TestBed.resetTestingModule());
-
-  it('loads the tech model only on the tech page, keyed by the workspace', async () => {
-    const { data, ws, wsPage, techCalls } = setUp(() => Promise.resolve(ok(model([]))), 'harbor');
-    await settle();
-    expect(techCalls).toEqual([]);
-    expect(data.tech.status()).toBe('idle');
-    wsPage.set('tech');
-    await settle();
-    expect(techCalls).toEqual(['harbor']);
-    expect(data.techModel()).toEqual({ pages: null, specs: [] });
-    ws.set('lantern');
-    await settle();
-    expect(techCalls).toEqual(['harbor', 'lantern']);
-    wsPage.set('board');
-    await settle();
-    expect(data.tech.status()).toBe('idle');
-    expect(data.techModel()).toBeNull();
-    expect(data.tech.reload()).toBe(false);
-    await settle();
-    expect(techCalls).toEqual(['harbor', 'lantern']);
-  });
-
-  it('flags the tech page missing on the tech route\'s served 404, not on the catch-all', async () => {
-    const served = setUp(() => Promise.resolve(ok(model([]))), 'harbor', { tech: () => Promise.resolve({ kind: 'not-found', served: true }) });
-    served.wsPage.set('tech');
-    await settle();
-    expect(served.data.techMissing()).toBe(true);
-    TestBed.resetTestingModule();
-    const unserved = setUp(() => Promise.resolve(ok(model([]))), 'harbor', { tech: () => Promise.resolve({ kind: 'not-found', served: false }) });
-    unserved.wsPage.set('tech');
-    await settle();
-    expect(unserved.data.techMissing()).toBe(false);
-  });
-});

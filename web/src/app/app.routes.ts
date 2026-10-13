@@ -3,7 +3,6 @@ import { type RedirectFunction, Router, type Routes } from '@angular/router';
 import { LEGACY_SPEC_REDIRECTS, SPEC_AREA_ROUTES } from './features/spec/spec-area.routes';
 import { SpecPage } from './features/spec/spec-page';
 import type { ShellRouteData } from './layout/shell/areas';
-import { TECH_TABS, type TechTabId } from './layout/shell/page-tabs';
 import { ShellComponent } from './layout/shell/shell';
 
 const notFound: ShellRouteData = { notFound: true };
@@ -15,12 +14,15 @@ const boardPage: ShellRouteData = { page: 'board' };
 const ideaPage: ShellRouteData = { page: 'idea' };
 const libraryPage: ShellRouteData = { page: 'library' };
 
+/** The former tech page's tabs (spec 023), each address of which redirects into the Library. */
+type FormerTechTab = 'overview' | 'architecture' | 'status' | 'specs' | 'open';
+
 /**
  * Where each former tech tab lives in the Library (spec 017, T42, ISC-157.1): Overview and Architecture are sections of
  * `tech.md` (the document as the fragment, the section as `?section=`), Status and Specs are the list itself, grouped by
  * spec, and Open is the filter "open" (`?state=open`). `/w/:ws/tech` alone is Overview, the old first tab.
  */
-export const TECH_REDIRECTS: Readonly<Record<TechTabId, { readonly queryParams: Readonly<Record<string, string>>; readonly fragment?: string }>> = {
+export const TECH_REDIRECTS: Readonly<Record<FormerTechTab, { readonly queryParams: Readonly<Record<string, string>>; readonly fragment?: string }>> = {
   overview: { queryParams: { section: 'overview' }, fragment: 'tech.md' },
   architecture: { queryParams: { section: 'architecture' }, fragment: 'tech.md' },
   status: { queryParams: {} },
@@ -34,7 +36,7 @@ export const TECH_REDIRECTS: Readonly<Record<TechTabId, { readonly queryParams: 
  * navigation replaces the entry it started from. The incoming query and fragment are dropped; the target names its own.
  */
 const techRedirect =
-  (tab: TechTabId): RedirectFunction =>
+  (tab: FormerTechTab): RedirectFunction =>
   ({ params }) => {
     const target = TECH_REDIRECTS[tab];
     return inject(Router).createUrlTree(['/w', params['ws'] ?? '', 'library'], {
@@ -97,9 +99,9 @@ export const routes: Routes = [
       },
       // Spec 023's tech page went into the Library (spec 017, T42, ISC-157.1): `/w/:ws/tech` and each of its five tabs
       // redirect there with the matching selection (`TECH_REDIRECTS`); any other path below it is not-found with the
-      // workspace still in the route. The old page stays in the codebase until T50 but no route reaches it.
+      // workspace still in the route. The old page itself is gone (T50).
       { path: 'w/:ws/tech', pathMatch: 'full', redirectTo: techRedirect('overview') },
-      ...TECH_TABS.map((tab) => ({ path: `w/:ws/tech/${tab}`, pathMatch: 'full' as const, redirectTo: techRedirect(tab) })),
+      ...(Object.keys(TECH_REDIRECTS) as FormerTechTab[]).map((tab) => ({ path: `w/:ws/tech/${tab}`, pathMatch: 'full' as const, redirectTo: techRedirect(tab) })),
       { path: 'w/:ws/tech', children: [{ path: '**', loadComponent: notFoundPage, data: notFound }] },
       // Spec 017 (T48, ISC-158.1): the former Docs and Evidence tabs redirect into the spec's Library area.
       ...LEGACY_SPEC_REDIRECTS,

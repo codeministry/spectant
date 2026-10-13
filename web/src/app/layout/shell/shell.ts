@@ -31,7 +31,7 @@ import { tierFor } from './tier';
     '[attr.data-zen]': "state.zen() ? '' : null",
     '[attr.data-rail-collapsed]': "state.railStrip() ? '' : null",
     // Outside a workspace (the overview `/`, settings) the page has no rail column at all (prototype `no-rail`); the
-    // workspace board (spec 008), the tech page (spec 023), the Library and a spec area marked `noRail` (the spec's
+    // workspace board (spec 008), the Library and a spec area marked `noRail` (the spec's
     // Library, spec 017) have nothing for the rail either and take the full width.
     '[attr.data-no-rail]': "noRail() ? '' : null",
     '(document:keydown)': 'onKeydown($event)',
@@ -45,7 +45,7 @@ export class ShellComponent {
   /** No rail column at all (prototype `no-rail`): outside a workspace, on the full-width workspace pages, in a `noRail` area. */
   protected readonly noRail = computed(() => {
     const page = this.state.wsPage();
-    return this.state.ws() === null || page === 'board' || page === 'tech' || page === 'library' || this.specAreaNoRail();
+    return this.state.ws() === null || page === 'board' || page === 'library' || this.specAreaNoRail();
   });
 
   /** The open spec area runs without the context column (`SpecArea.noRail`, the Library, spec 017 T46). */

@@ -622,7 +622,6 @@
       "board": "Board",
       "features": "Features",
       "milestones": "Meilensteine",
-      "tech": "Tech",
       "library": "Library",
       "summary": {
         "specs": "{{active}} aktiv · {{archived}} archiviert",
@@ -784,58 +783,18 @@
   },
   "docs": {
     "decisions": {
-      "goal": "Ziel",
-      "stillOpen": "Noch offen",
-      "locked": "festgelegt {{date}}",
-      "goalSource": "context.md · Ziel",
-      "signal": "Signal",
-      "signalLabel": "Signal {{n}} von 4",
-      "shapes": "Formen",
       "from": "Von",
       "offered": "Angeboten",
       "chosen": "Gewählt",
       "landedIn": "Gelandet in",
       "recommended": "empfohlen",
-      "waiting": "— wartet auf Sie",
-      "noQuestions": "Nur die Idee — im Gespräch geformt, keine Fragen festgehalten.",
-      "full": "Die ganze {{file}}"
-    },
-    "constitution": {
-      "lanes": "Lanes",
-      "lane": "Lane",
-      "paths": "Pfade",
-      "probe": "Lane-Probe",
-      "tier": "Gate-Tier · {{tier}}",
-      "lanesRegion": "Lanes-Tabelle, scrollt seitlich"
+      "waiting": "— wartet auf Sie"
     },
     "contents": "Auf dieser Seite",
-    "updated": "aktualisiert {{date}}",
     "tableRegion": "Tabelle {{index}}, seitlich scrollbar",
     "figureRegion": "Diagramm {{index}}, seitlich scrollbar",
     "imageMissing": "Bild ist in diesem Checkout nicht vorhanden",
-    "imageUnavailable": "Bild konnte nicht angezeigt werden",
-    "diagramMissing": {
-      "title": "Dieser Plan enthält kein Diagramm.",
-      "body": "Eine Mermaid-Abbildung des Ansatzes zeigt seine Struktur auf einen Blick."
-    },
-    "empty": {
-      "notApplicable": "Eine Spec vom Typ {{type}} hat keine {{file}}",
-      "noType": "Eine Spec ohne Typ hat keine {{file}}",
-      "notApplicableBody": "Dieser Spec-Typ verwendet die Datei nicht, daher gibt es hier nichts anzuzeigen.",
-      "missing": "Noch keine {{file}}",
-      "missingBody": "Legen Sie die Datei mit diesem Befehl an:",
-      "missingNoCommand": "Die Datei entsteht, sobald die Fragerunden der Spec festgehalten werden.",
-      "typesLink": "Welche Dateien jeder Typ hat →"
-    },
-    "error": "Dieses Dokument konnte nicht geladen werden.",
-    "loading": "Dokument wird geladen",
-    "design": {
-      "ist": "Ist",
-      "soll": "Soll",
-      "width": "{{width}} px",
-      "open": "{{viewport}} · {{side}} als Bild öffnen",
-      "noText": "Noch kein Soll-Text."
-    }
+    "imageUnavailable": "Bild konnte nicht angezeigt werden"
   },
   "tasks": {
     "filters": {
@@ -911,33 +870,6 @@
       "noHash": "schreibgeschützt · diese Liste kam ohne den Hash von tasks.md, ein Haken ließe sich nicht gegen die Datei prüfen",
       "ticked": "{{id}} in tasks.md abgehakt, Zeile {{line}}",
       "unticked": "Haken bei {{id}} in tasks.md entfernt, Zeile {{line}}"
-    }
-  },
-  "evidence": {
-    "loading": "Nachweise werden geladen",
-    "ungrouped": "Ohne Claim",
-    "groups": {
-      "results": "Ergebnisse",
-      "raw": "Rohbelege"
-    },
-    "claimLink": "Claim {{claim}}",
-    "count": "{{count}} Dateien",
-    "open": "{{path}} öffnen",
-    "imageAlt": "Nachweisbild {{name}}",
-    "size": {
-      "b": "{{value}} B",
-      "kb": "{{value}} KB",
-      "mb": "{{value}} MB"
-    },
-    "empty": {
-      "heading": "Noch keine Nachweise erfasst",
-      "body": "Diese Spec hat keine Dateien in artifacts/ oder .evidence/.",
-      "link": "Was als Nachweis zählt →"
-    },
-    "error": {
-      "refused": "Abgelehnt: außerhalb der Nachweisordner",
-      "failed": "Konnte nicht geladen werden",
-      "listing": "Die Nachweise konnten nicht geladen werden."
     }
   },
   "specDashboard": {
@@ -2018,79 +1950,6 @@
   },
   "live": {
     "taskActors": "Arbeitet an {{ task }}"
-  },
-  "tech": {
-    "title": "Tech",
-    "loading": "Tech-Seite wird geladen",
-    "error": "Die Tech-Seite konnte nicht geladen werden.",
-    "contents": "Inhalt",
-    "tabs": {
-      "overview": "Überblick",
-      "architecture": "Architektur",
-      "status": "Status",
-      "specs": "Specs",
-      "open": "Offen"
-    },
-    "eyebrowCount": "{{count}} Specs",
-    "subline": {
-      "file": "specs/tech.md · {{count}} Specs",
-      "noFile": "keine specs/tech.md · {{count}} Specs"
-    },
-    "section": {
-      "missing": "In specs/tech.md fehlt der Abschnitt {{key}}.",
-      "hint": "Führen Sie /spec-doc aus, um ihn zu entwerfen."
-    },
-    "empty": {
-      "title": "Noch keine tech.md",
-      "body": "Überblick und Architektur stammen aus specs/tech.md. Entwerfen Sie die Datei aus Claude Code:"
-    },
-    "status": {
-      "heading": "Status",
-      "caption": "Status jeder Spec",
-      "summary": {
-        "specs": "{{count}} Specs",
-        "open": "{{count}} offen",
-        "phase": "{{count}} {{phase}}",
-        "complete": "{{count}} abgeschlossen"
-      },
-      "legend": "Abgeschlossene Specs stehen am Ende.",
-      "columns": {
-        "spec": "Spec",
-        "title": "Titel",
-        "type": "Typ",
-        "stage": "Stage",
-        "claims": "Claims",
-        "tasks": "Tasks",
-        "fog": "Fog"
-      },
-      "claims": "{{closed}} von {{total}} Claims geschlossen",
-      "tasks": "{{landed}}/{{total}} Tasks",
-      "noTasks": "keine Tasks",
-      "fog": "{{count}} Fog",
-      "fogHint": "Fog zählt die Zeilen mit offenen Fragen (- fog:) in dieser Spec.",
-      "complete": "Abgeschlossen · {{count}}"
-    },
-    "specs": {
-      "goal": "Ziel",
-      "approach": "Ansatz",
-      "noPlan": "Noch keine plan.md",
-      "open": "Spec öffnen"
-    },
-    "links": {
-      "goal": "Ziel von {{id}}",
-      "plan": "Plan von {{id}}",
-      "status": "Status von {{id}}"
-    },
-    "open": {
-      "risks": "Risiken",
-      "noRisks": "Risiken stammen aus specs/tech.md.",
-      "questions": "Offene Fragen · {{lines}} Fog-Zeilen · {{specs}} offene Specs",
-      "none": "Keine offenen Fragen in offenen Specs."
-    },
-    "palette": {
-      "page": "Tech",
-      "tab": "Tech · {{tab}}"
-    }
   },
   "library": {
     "title": "Library",

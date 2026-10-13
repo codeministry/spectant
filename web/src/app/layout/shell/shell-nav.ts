@@ -101,13 +101,12 @@ export class ShellNav {
   /**
    * The workspace page the PAGE select names: Specs on a spec page, the board on a story page (`idea`, spec 008, no
    * menu page), else the route's page; null for a workspace the server does not know (`ShellState` is route-only and
-   * calls any `/w/:ws` the Specs page), so the select stays disabled there. `tech` is no menu page since spec 017
-   * (T41) and no route shows it; were one to, it would name the Library it went into.
+   * calls any `/w/:ws` the Specs page), so the select stays disabled there.
    */
   protected readonly workspacePage = computed(() => {
     if (!this.inWorkspace() || this.data.workspaceMissing()) return null;
     const id = this.specRoute() ? 'specs' : (this.state.route().wsPage ?? 'specs');
-    return workspacePageById(id === 'idea' ? 'board' : id === 'tech' ? 'library' : id);
+    return workspacePageById(id === 'idea' ? 'board' : id);
   });
   protected readonly areaKey = computed(() => `shell.areas.${this.state.area() ?? 'dashboard'}`);
   readonly expanded = computed(() => this.menus()?.expanded() ?? CLOSED);

@@ -21,7 +21,7 @@ import stylelint from "stylelint";
 
 const ROOT = join(import.meta.dir, "..", "..");
 const SRC = join(import.meta.dir, "..", "src");
-const FEATURES = ["app/features/board", "app/features/help", "app/features/ideas", "app/features/tech"];
+const FEATURES = ["app/features/board", "app/features/help", "app/features/ideas"];
 
 function filesUnder(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

@@ -622,7 +622,6 @@
       "board": "Board",
       "features": "Features",
       "milestones": "Milestones",
-      "tech": "Tech",
       "library": "Library",
       "summary": {
         "specs": "{{active}} active · {{archived}} archived",
@@ -784,58 +783,18 @@
   },
   "docs": {
     "decisions": {
-      "goal": "Goal",
-      "stillOpen": "Still open",
-      "locked": "locked {{date}}",
-      "goalSource": "context.md · Goal",
-      "signal": "signal",
-      "signalLabel": "Signal {{n}} of 4",
-      "shapes": "Shapes",
       "from": "From",
       "offered": "Offered",
       "chosen": "Chosen",
       "landedIn": "Landed in",
       "recommended": "recommended",
-      "waiting": "— waiting on you",
-      "noQuestions": "Idea only — shaped in conversation, no questions recorded.",
-      "full": "The whole {{file}}"
-    },
-    "constitution": {
-      "lanes": "Lanes",
-      "lane": "Lane",
-      "paths": "Paths",
-      "probe": "Lane probe",
-      "tier": "Gate tier · {{tier}}",
-      "lanesRegion": "Lanes table, scrolls sideways"
+      "waiting": "— waiting on you"
     },
     "contents": "On this page",
-    "updated": "updated {{date}}",
     "tableRegion": "Table {{index}}, scrolls sideways",
     "figureRegion": "Diagram {{index}}, scrolls sideways",
     "imageMissing": "Image not in this checkout",
-    "imageUnavailable": "Image could not be shown",
-    "diagramMissing": {
-      "title": "This plan has no diagram.",
-      "body": "A mermaid figure of the approach shows its shape at a glance."
-    },
-    "empty": {
-      "notApplicable": "A {{type}} has no {{file}}",
-      "noType": "A spec without a type has no {{file}}",
-      "notApplicableBody": "This spec type does not use the file, so there is nothing to show here.",
-      "missing": "No {{file}} yet",
-      "missingBody": "Create it with this command:",
-      "missingNoCommand": "It is written as the spec’s question rounds are recorded.",
-      "typesLink": "Which files each type has →"
-    },
-    "error": "This document could not be loaded.",
-    "loading": "Loading document",
-    "design": {
-      "ist": "Ist",
-      "soll": "Soll",
-      "width": "{{width}} px",
-      "open": "Open {{viewport}} · {{side}} screenshot",
-      "noText": "No target text yet."
-    }
+    "imageUnavailable": "Image could not be shown"
   },
   "tasks": {
     "filters": {
@@ -911,33 +870,6 @@
       "noHash": "read-only · this list came without the tasks.md hash, so a tick could not be checked against the file",
       "ticked": "{{id}} ticked in tasks.md, line {{line}}",
       "unticked": "{{id}} unticked in tasks.md, line {{line}}"
-    }
-  },
-  "evidence": {
-    "loading": "Loading evidence",
-    "ungrouped": "No claim",
-    "groups": {
-      "results": "Results",
-      "raw": "Raw evidence"
-    },
-    "claimLink": "Claim {{claim}}",
-    "count": "{{count}} files",
-    "open": "Open {{path}}",
-    "imageAlt": "Evidence image {{name}}",
-    "size": {
-      "b": "{{value}} B",
-      "kb": "{{value}} KB",
-      "mb": "{{value}} MB"
-    },
-    "empty": {
-      "heading": "No evidence recorded yet",
-      "body": "This spec has no files in artifacts/ or .evidence/.",
-      "link": "What counts as evidence →"
-    },
-    "error": {
-      "refused": "Refused: outside the evidence folders",
-      "failed": "Could not be loaded",
-      "listing": "The evidence could not be loaded."
     }
   },
   "specDashboard": {
@@ -2018,79 +1950,6 @@
   },
   "live": {
     "taskActors": "Working on {{ task }}"
-  },
-  "tech": {
-    "title": "Tech",
-    "loading": "Loading the tech page",
-    "error": "Could not load the tech page.",
-    "contents": "Contents",
-    "tabs": {
-      "overview": "Overview",
-      "architecture": "Architecture",
-      "status": "Status",
-      "specs": "Specs",
-      "open": "Open"
-    },
-    "eyebrowCount": "{{count}} specs",
-    "subline": {
-      "file": "specs/tech.md · {{count}} specs",
-      "noFile": "no specs/tech.md · {{count}} specs"
-    },
-    "section": {
-      "missing": "specs/tech.md has no {{key}} section.",
-      "hint": "Run /spec-doc to draft it."
-    },
-    "empty": {
-      "title": "No tech.md yet",
-      "body": "Overview and Architecture come from specs/tech.md. Draft it from Claude Code:"
-    },
-    "status": {
-      "heading": "Status",
-      "caption": "Status of every spec",
-      "summary": {
-        "specs": "{{count}} specs",
-        "open": "{{count}} open",
-        "phase": "{{count}} {{phase}}",
-        "complete": "{{count}} complete"
-      },
-      "legend": "Complete specs are listed last.",
-      "columns": {
-        "spec": "Spec",
-        "title": "Title",
-        "type": "Type",
-        "stage": "Stage",
-        "claims": "Claims",
-        "tasks": "Tasks",
-        "fog": "Fog"
-      },
-      "claims": "{{closed}} of {{total}} claims closed",
-      "tasks": "{{landed}}/{{total}} tasks",
-      "noTasks": "no tasks",
-      "fog": "{{count}} fog",
-      "fogHint": "Fog counts the open-question lines (- fog:) in this spec.",
-      "complete": "Complete · {{count}}"
-    },
-    "specs": {
-      "goal": "Goal",
-      "approach": "Approach",
-      "noPlan": "No plan.md yet",
-      "open": "Open spec"
-    },
-    "links": {
-      "goal": "Goal of {{id}}",
-      "plan": "Plan of {{id}}",
-      "status": "Status of {{id}}"
-    },
-    "open": {
-      "risks": "Risks",
-      "noRisks": "Risks come from specs/tech.md.",
-      "questions": "Open questions · {{lines}} fog lines · {{specs}} open specs",
-      "none": "No open questions in any open spec."
-    },
-    "palette": {
-      "page": "Tech",
-      "tab": "Tech · {{tab}}"
-    }
   },
   "library": {
     "title": "Library",
