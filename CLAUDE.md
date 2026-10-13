@@ -54,6 +54,9 @@ administration. The skill targets Claude Code first and is meant to work with ot
   compared with the one the client rendered (409 on a mismatch, the file byte-identical), lock sources consulted (423
   while a session holds the claim), then the target written in place with an fsync — no temp file, no git object,
   nothing else in the tree. `.gates/` and the allocated `specs/NNN-slug/` are the only directories a write may create.
+  The first three follow the spec's read source (spec 027): when `specs/NNN-slug/` is tracked and the spec has a
+  worktree of its own, they read and write that worktree's copy and leave the main checkout byte-identical
+  (`WRITE_TABLE[op].root`); the allocation always writes the main checkout.
   The fifth uses the same in-place primitives and is refused while a spec of the feature still holds an open claim.
   The sixth uses them too and takes its target from `WRITE_PATHS.tokens`; it belongs to no spec, so no claim holds it.
   The guard is `tests/readonly.test.ts`: it hashes a registered repository, `.git/` included, before and after every

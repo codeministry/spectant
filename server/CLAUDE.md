@@ -70,6 +70,12 @@ feature-level code-review mark is a further path, never written by a route.
   source at all the write proceeds under the hash check and the answer says `lockSource: 'none'`, which the page shows
   as "no agent source". Reason: an agent mid-claim must not race the user (ISC-27, ISC-86), and a missing source is
   reported, never guessed.
+- The reviewed mark, the tick and the stage move target the spec's read source (spec 027, T22, ISC-181): the route
+  passes `readSpecSource(root, ref).dir`, the worktree copy's folder when `specs/NNN-slug/` is tracked and the spec has
+  a worktree, so the file hashed and written is the one the client's hash came from; the lock sources stay at the
+  repository root, and a source that switched between render and write is the plain 409 with `files`. The allocation
+  always targets the main checkout (`WRITE_TABLE[op].root`). Reason: the main checkout stays byte-identical while a round
+  runs in the worktree (`tests/readonly.test.ts -t worktree-copy`).
 - The write goes straight to the target with an fsync: no temp file, no rename, no git object, and `.gates/` is the
   one directory the gate write may create. Reason: the read-only rule's carve-out names exactly these paths, and
   `tests/readonly.test.ts` hashes the whole repository, `.git/` included, before and after.

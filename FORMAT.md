@@ -1169,9 +1169,11 @@ applicable".
 ## Worktrees
 
 Read from git, never written by the app (spec 027, `worktrees.ts`). `core/src/worktrees.ts` assigns the worktrees,
-raises the mismatch warning and decides the read source; the server side — reading git (`ahead`, `dirty`,
-`ls-files`), switching the read source and the writes to the worktree copy — is still being built, and until it lands
-every spec is read from the main checkout. The rules below are the contract.
+raises the mismatch warning and decides the read source; the server reads git (`worktree list`, `rev-list --count`,
+`status --porcelain`, `ls-files`), computes the code-review tree id in the spec's worktree, reads a spec from its
+worktree copy when `core/` names that copy as the source, and points the app's three writes on an existing spec
+(reviewed mark, task checkbox, stage move) at the same copy, so the main checkout stays byte-identical; the allocation
+of a story always writes the main checkout. The rules below are the contract.
 
 The server reads one listing per registered repository, `git worktree list --porcelain`, and hands its text to
 `core/`, which decides which worktree belongs to which spec and never runs git itself. Every git call is a read: no

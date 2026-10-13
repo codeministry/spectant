@@ -42,6 +42,12 @@
  * (`specs/tokens.jsonl`, once per repository) is the sixth, `WRITE_PATHS.tokens`, written in place only by the CLI
  * `spectant tokens --yes` (spec 009, `tokens-cli.ts`) and likewise without a route or a row here.
  *
+ * Where a write lands (spec 027, T22, ISC-181; `WRITE_TABLE[op].root`): the three writes on an existing spec (reviewed
+ * mark, task checkbox, transition) resolve their `WRITE_PATHS` against the spec's read source, the main checkout or,
+ * when `specs/NNN-slug/` is tracked and the spec has a worktree of its own, that worktree's copy, the same copy the
+ * client's hash was rendered from; the main checkout then stays byte-identical. The allocation, the CLI's feature mark
+ * and the token measurement resolve theirs against the main checkout. The paths themselves do not change.
+ *
  * Browser-safe like its base: imports are `spec-routes.contract.ts`, `core/src/events.ts` and `core/src/files.ts` only
  * (no Bun, no Node). `core/src/gates.ts` is not imported, not even as types: it hashes with `node:crypto`, and a type
  * import still type-checks its module under the web tsconfig, which rejects it. `ReviewedFile` and `ReviewedMark` are
@@ -146,17 +152,26 @@ export interface WriteTableEntry {
    * false while its route has no handler (every one has since T87).
    */
   readonly registered: boolean;
+  /**
+   * What the write's `WRITE_PATHS` are relative to (spec 027, T22): `source`, the spec's read source (the main
+   * checkout, or the worktree copy when the spec is read from it), or `main`, always the main checkout.
+   */
+  readonly root: 'source' | 'main';
 }
 
-/** The four writes with their hash, 409, 422 and 423 forms (the header's table). */
+/** The four writes with their hash, 409, 422 and 423 forms and the root their paths resolve against (the header's table). */
 export const WRITE_TABLE = {
-  gateReviewed: { hashFrom: REVIEWED_HASHES_HEADER, hash: 'normalised', conflict: 'StaleGate', refused: null, locked: 'Locked', registered: true },
-  taskCheck: { hashFrom: TASKS_HASH_HEADER, hash: 'raw', conflict: 'StaleTasks', refused: null, locked: 'Locked', registered: true },
-  transition: { hashFrom: SPEC_HASH_HEADER, hash: 'raw', conflict: 'StaleSpec', refused: 'TransitionRefused', locked: 'Locked', registered: true },
-  allocate: { hashFrom: 'IdeaPage.hash', hash: 'raw', conflict: 'StaleIdea', refused: 'AllocateRefused', locked: 'Locked', registered: true },
+  gateReviewed: { hashFrom: REVIEWED_HASHES_HEADER, hash: 'normalised', conflict: 'StaleGate', refused: null, locked: 'Locked', registered: true, root: 'source' },
+  taskCheck: { hashFrom: TASKS_HASH_HEADER, hash: 'raw', conflict: 'StaleTasks', refused: null, locked: 'Locked', registered: true, root: 'source' },
+  transition: { hashFrom: SPEC_HASH_HEADER, hash: 'raw', conflict: 'StaleSpec', refused: 'TransitionRefused', locked: 'Locked', registered: true, root: 'source' },
+  allocate: { hashFrom: 'IdeaPage.hash', hash: 'raw', conflict: 'StaleIdea', refused: 'AllocateRefused', locked: 'Locked', registered: true, root: 'main' },
 } as const satisfies Record<WriteOperation, WriteTableEntry>;
 
-/** What one write may touch, repository-relative: `specs/NNN-slug/` is the spec folder, `<slug>` the story's slug. */
+/**
+ * What one write may touch, relative to the root `WRITE_TABLE[op].root` names: the spec's read source (the main
+ * checkout, or the worktree copy when the spec is read from it) for the three writes on an existing spec, the main
+ * checkout for the rest. `specs/NNN-slug/` is the spec folder, `<slug>` the story's slug.
+ */
 export interface WritePaths {
   /** Written in place, with an fsync; no temp file, no rename. */
   readonly writes: readonly string[];
