@@ -37,10 +37,16 @@ export function folders(dir: string): SpecFiles[] {
     });
 }
 
-/** The name of every fixture tree: each directory directly under `core/fixtures/`, in name order. */
+/**
+ * Fixture trees that are not dashboard trees: `library/` is the document catalog's workspace (spec 017,
+ * `core/tests/library.test.ts`), with no master and no golden snapshot.
+ */
+const NOT_DASHBOARD_TREES: ReadonlySet<string> = new Set(['library']);
+
+/** The name of every dashboard fixture tree: each directory directly under `core/fixtures/`, in name order. */
 export function fixtureTrees(): string[] {
   return readdirSync(FIXTURES, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
+    .filter((e) => e.isDirectory() && !NOT_DASHBOARD_TREES.has(e.name))
     .map((e) => e.name)
     .sort();
 }

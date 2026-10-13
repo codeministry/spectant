@@ -1,0 +1,4 @@
+{"ts":"2026-03-02T09:00:00Z","from":null,"to":"plan","command":"/spec-feature lighthouse-map","actor":"u:3f9c0a7d"}
+{"ts":"2026-03-03T10:00:00Z","from":"plan","to":"tasks","command":"/spec-plan 001","actor":"u:3f9c0a7d"}
+{"ts":"2026-03-04T10:00:00Z","from":"tasks","to":"review","command":"/spec-tasks 001","actor":"u:3f9c0a7d"}
+{"ts":"2026-03-12T09:00:00Z","from":"review","to":"build","command":"/spec-review 001","actor":"u:3f9c0a7d"}
