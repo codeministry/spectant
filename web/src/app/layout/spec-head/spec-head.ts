@@ -64,7 +64,7 @@ const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly icon: I
  *   (`ShellData.planningModel`) and left the breadcrumb with spec 024 (principal 2026-10-12).
  * - The row: `NNN · title` (mono cyan id, Sora 600 24/32, 20/28 at compact), the description muted and clamped with a
  *   "More…" disclosure, the meta line; on the right (below under 800 px) the next-command chip with copy, the shared gate
- *   button when the stage allows, and the notes pill (`file-text` + "n notes", violet tint).
+ *   button when the stage allows, and the notes pill (`sticky-note` (the prototype's `note`) + "n notes", violet tint).
  * - The agent banner (3 px orange edge, agent dot, `lock` "writes paused") while a lock source reports a lock (ISC-90);
  *   without one the "No agent source" note joins the meta lines when the server read no source (ISC-86).
  *
@@ -218,7 +218,7 @@ const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly icon: I
         }
         @if (notesLink(); as link) {
           <a class="notes-pill" data-notes-pill [routerLink]="link">
-            <ui-icon name="file-text" [size]="14" />
+            <ui-icon name="sticky-note" [size]="14" />
             @if (notes(); as count) {
               {{ 'specHead.notesCount' | transloco: { count } }}
             } @else {

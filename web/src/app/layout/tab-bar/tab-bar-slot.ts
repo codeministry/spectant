@@ -71,11 +71,25 @@ export class TabBarSlot {
     const counts = this.specCounts();
     const tabs = area.tabs.map((tab): PageTab => {
       const count = counts.get(tab);
-      const entry: PageTab = { id: tab, labelKey: `shell.tabs.${tab}`, link: specLink(ws, id, tab) };
+      const base: PageTab = { id: tab, labelKey: `shell.tabs.${tab}`, link: specLink(ws, id, tab) };
+      const entry: PageTab = this.emptyTabs().has(tab) ? { ...base, muted: true } : base;
       return count === undefined ? entry : { ...entry, count };
     });
     return { tabs, current: this.state.tab(), labelKey: `shell.areas.${area.id}` };
   }
+
+  /** Doc tabs whose file the spec does not have (`areas.docs`): the prototype dims them as `muted-tab`. */
+  private readonly emptyTabs = computed(() => {
+    const empty = new Set<TabId>();
+    const spec = this.data.spec.value();
+    if (spec?.kind !== 'ok') return empty;
+    const { docs } = spec.body.areas;
+    if (!docs.plan) empty.add('plan');
+    if (!docs.design) empty.add('design');
+    if (!docs.constitution) empty.add('constitution');
+    if (docs.decisions === 0) empty.add('decisions');
+    return empty;
+  });
 
   /** Counts from the spec model the shell already loaded (`areas.data`); Evidence has none there, so it shows none. */
   private readonly specCounts = computed(() => {

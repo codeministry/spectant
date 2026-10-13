@@ -38,6 +38,8 @@ const api = {
   workspaces: () => Promise.resolve(ok([])),
   dashboard: () => Promise.resolve(ok({ specs: Object.entries(TYPES).map(([id, type]) => ({ id, title: id, type, stage: 'plan' })) })),
   spec: () => Promise.resolve({ kind: 'not-found', served: false }),
+  // Decisions also reads the spec's fog from the Claims route for its "Still open" card (spec 024); none here.
+  claims: () => Promise.resolve({ kind: 'not-found', served: false }),
   docs,
 };
 

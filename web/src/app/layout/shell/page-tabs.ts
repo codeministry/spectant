@@ -14,6 +14,8 @@ export interface PageTab {
   readonly count?: string;
   /** The tab opens a new group: the bar draws the prototype's `tab-sep` before it (spec 024, ISC-149). */
   readonly sep?: true;
+  /** The tab has no content yet (a doc the spec does not have): the prototype's dimmed `muted-tab` (spec 024, ISC-149). */
+  readonly muted?: true;
 }
 
 /** The tech page's tabs in tab-bar order (`/w/:ws/tech/<tab>`); `/w/:ws/tech` redirects to the first. */

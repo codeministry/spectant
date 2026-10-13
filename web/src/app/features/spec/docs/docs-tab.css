@@ -150,3 +150,53 @@ app-docs-tab .design-shot-caption {
 }
 
 app-docs-tab .design-shot-caption .mono { font-family: var(--font-mono); }
+
+/* Decisions (spec 024): the prototype's goal card (violet edge, Sora quote) and the "Still open" fog card. */
+app-docs-tab .dec-goal {
+  margin-block-end: 16px;
+  border-inline-start: 3px solid var(--ques-ink);
+}
+
+app-docs-tab .dec-eyebrow,
+app-docs-tab .dec-meta {
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+app-docs-tab .dec-quote {
+  margin: 8px 0;
+  font: 500 18px/28px var(--font-brand);
+}
+
+app-docs-tab .dec-open {
+  margin-block-start: 16px;
+}
+
+app-docs-tab .dec-open-head {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+app-docs-tab .dec-fog {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-inline-start: 3px solid var(--ques-ink);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--ques-t);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+app-docs-tab .dec-fog ui-icon {
+  flex: none;
+  margin-block-start: 2px;
+  color: var(--ques-text);
+}

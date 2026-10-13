@@ -1,0 +1,204 @@
+/*
+ * Status partial: the rail from 1120 px (spec 024, the prototype's `whereCard` and `waitingCard`: `.rail-card`,
+ * `.ring-row`, `.big`, `.insp-block`, `.insp-chips`, `.o-line.warn-t`, `.gate-rows`, `.count-badge`, `.wait-line`,
+ * `.step-hint`). The template is declared in the Status tab and rendered by the shell's rail slot, so these rules
+ * reach it there. Also the Activity card's links and TL;DR box, and the dashed dependency chip of What is open.
+ */
+.sr {
+  display: grid;
+  gap: 16px;
+  min-inline-size: 0;
+}
+
+.sr-card {
+  gap: 12px;
+}
+
+.sr-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sr-eyebrow {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sr-ring-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.sr-big {
+  margin: 0;
+  font: 600 28px/36px var(--font-brand);
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-big small {
+  color: var(--muted-ink);
+  font-size: 16px;
+}
+
+.sr-meta {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.sr-next {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.sr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sr-warn {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  color: var(--hover-ink);
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.sr-warn code {
+  font-family: var(--font-mono);
+}
+
+.sr-gates,
+.sr-rows {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sr-gates {
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--line);
+}
+
+.sr-gate {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-block-size: 28px;
+  font-size: 13px;
+}
+
+.sr-gate-icon {
+  color: var(--muted-ink);
+}
+
+.sr-gate[data-tone='accent'] .sr-gate-icon {
+  color: var(--done-ink);
+}
+
+.sr-gate[data-tone='warning'] .sr-gate-icon {
+  color: var(--hover-ink);
+}
+
+.sr-gate-name {
+  flex: 1;
+}
+
+.sr-gate-value {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.sr-rows {
+  gap: 8px;
+}
+
+.sr-wait {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  padding-block: 8px;
+  border-block-end: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.sr-wait:last-child {
+  border-block-end: 0;
+}
+
+.sr-box,
+.sr-box:disabled {
+  border: 1.5px solid var(--ques-ink);
+  border-radius: 4px;
+  opacity: 1;
+}
+
+.sr-wait-icon {
+  color: var(--ques-text);
+}
+
+.sr-wait-link {
+  flex: 1 1 10rem;
+  min-inline-size: 0;
+  color: inherit;
+  overflow-wrap: anywhere;
+  text-decoration: underline dotted var(--muted-ink);
+  text-underline-offset: 3px;
+}
+
+@media (hover: hover) {
+  .sr-wait-link:hover {
+    color: var(--disp-ink);
+  }
+}
+
+.sr-ref {
+  font-family: var(--font-mono);
+}
+
+.sr-kbd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--line);
+  color: var(--muted-ink);
+  font-size: 12px;
+}
+
+.act-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.act-links a {
+  color: var(--disp-text);
+  font-weight: 500;
+}
+
+.act-brief {
+  display: block;
+  margin-block-start: 12px;
+}

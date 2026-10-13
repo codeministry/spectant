@@ -232,7 +232,11 @@
 
         <section class="card activity" data-section="activity">
           <ui-section-header [heading]="'status.activity.heading' | transloco">
-            <a actions class="link link-hover" [routerLink]="link('timeline')">{{ 'status.activity.all' | transloco }}</a>
+            <span actions class="act-links" data-activity-links>
+              <a class="link link-hover" [routerLink]="link('timeline')">{{ 'status.activity.all' | transloco }}</a>
+              <a class="link link-hover" data-activity-link="board" [routerLink]="link('board')">{{ 'status.activity.board' | transloco }}</a>
+              <a class="link link-hover" data-activity-link="report" [routerLink]="link('evidence')">{{ 'status.activity.report' | transloco }}</a>
+            </span>
           </ui-section-header>
           @if (activity(); as entries) {
             @if (entries.length === 0) {
@@ -258,8 +262,97 @@
           } @else {
             <p class="muted">{{ 'status.activity.error' | transloco }}</p>
           }
+          @if (brief(); as b) {
+            <app-brief class="act-brief" data-activity-brief [brief]="b" />
+          }
         </section>
       </div>
     }
   }
 }
+
+<!-- Where it stands and Waiting on you (the prototype's whereCard and waitingCard): the shell's rail from 1120 px. -->
+<ng-template #rail>
+  @if (model(); as m) {
+    <div class="sr" data-status-rail role="group" [attr.aria-label]="'specDashboard.context.label' | transloco">
+      <section class="card sr-card" data-rail-block="where" aria-labelledby="status-rail-where">
+        <h2 id="status-rail-where" class="sr-eyebrow">{{ 'status.where.heading' | transloco }}</h2>
+        <ui-stage-track size="labelled" [labels]="stageLabels()" [current]="stageCurrent()" [ariaLabel]="stageAria()" />
+        <div class="sr-ring-row">
+          <ui-ring aria-hidden="true" [value]="claimsRatio()" [size]="72" [stroke]="7" />
+          <div>
+            <p class="sr-big" data-rail-claims>{{ m.keyNumbers.claims.closed }}<small>/{{ m.keyNumbers.claims.total }}</small></p>
+            <p class="sr-meta">{{ 'status.rail.claimsClosed' | transloco }}</p>
+          </div>
+        </div>
+        @if (m.next.command; as command) {
+          <div class="sr-next" data-rail-next>
+            <span class="sr-eyebrow">{{ 'status.rail.next' | transloco }}</span>
+            <ui-command-chip
+              [command]="command"
+              [copyLabel]="'status.where.copy' | transloco"
+              [copiedLabel]="'status.where.copied' | transloco"
+              [manualHint]="'status.where.manual' | transloco"
+            />
+            @if (m.next.reasons[0]; as reason) {
+              <p class="sr-meta">{{ reason }}</p>
+            }
+          </div>
+        }
+        @if (firstTakeable(); as id) {
+          <div class="sr-chips"><ui-chip variant="take" tone="accent" icon="hand" data-rail-take>{{ 'status.rail.take' | transloco: { id } }}</ui-chip></div>
+        }
+        @for (warning of m.warnings; track $index) {
+          <p class="sr-warn" data-rail-warning [attr.data-warning]="warning.kind">
+            <ui-icon name="triangle-alert" [size]="16" />
+            <span>{{ warning.text }}@if (warning.command; as command) { · <code>{{ command }}</code>}</span>
+          </p>
+        }
+        <ul class="sr-gates">
+          @for (name of gateNames; track name) {
+            <li class="sr-gate" data-rail-gate [attr.data-gate]="name" [attr.data-tone]="gateTone(m.gates[name].state)" [title]="m.gates[name].detail">
+              <ui-icon class="sr-gate-icon" [name]="railGateIcon(m.gates[name].state)" [size]="16" />
+              <span class="sr-gate-name">{{ 'specDashboard.gates.names.' + name | transloco }}</span>
+              <span class="sr-gate-value">{{ 'specDashboard.gates.states.' + m.gates[name].state | transloco }}</span>
+            </li>
+          }
+        </ul>
+      </section>
+
+      <section class="card sr-card" data-rail-block="waiting" aria-labelledby="status-rail-waiting">
+        <div class="sr-head">
+          <h2 id="status-rail-waiting" class="sr-eyebrow">{{ 'specDashboard.waiting.heading' | transloco }}</h2>
+          <ui-chip data-count-badge variant="count" tone="secondary">{{ m.keyNumbers.waiting }}</ui-chip>
+        </div>
+        @if (m.waitingOnYou.length === 0) {
+          <p class="sr-meta">{{ 'specDashboard.waiting.none' | transloco }}</p>
+        } @else {
+          <ul class="sr-rows">
+            @for (item of m.waitingOnYou; track waitingKey(item)) {
+              <li class="sr-wait" data-rail-waiting [attr.data-waiting-kind]="item.kind">
+                @if (item.kind === 'operator') {
+                  <input
+                    type="checkbox"
+                    class="checkbox checkbox-xs sr-box"
+                    disabled
+                    [checked]="item.checked ?? false"
+                    [attr.aria-label]="'specDashboard.waiting.checkLabel' | transloco: { ref: item.ref }"
+                  />
+                } @else {
+                  <ui-icon class="sr-wait-icon" [name]="item.kind === 'question' ? 'circle-help' : 'circle-check'" [size]="16" />
+                }
+                <a class="sr-wait-link" [routerLink]="waitingLink(item)"><span class="sr-ref">{{ item.ref }}</span> · {{ item.title }}</a>
+                <ui-chip variant="plain">{{ 'specDashboard.context.kinds.' + item.kind | transloco }}</ui-chip>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <p class="sr-kbd" data-rail-kbd>
+        <ui-kbd>[</ui-kbd><ui-kbd>]</ui-kbd> {{ 'specDashboard.context.kbd.step' | transloco }} · <ui-kbd>Esc</ui-kbd>
+        {{ 'specDashboard.context.kbd.workspace' | transloco }}
+      </p>
+    </div>
+  }
+</ng-template>

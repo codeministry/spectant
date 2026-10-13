@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal, ViewEncapsulation } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { DocName, DocsPage } from '../../../../../../core/src/files';
 import { specRoutes } from '../../../../../../server/src/spec-routes.contract';
 import { ApiClient, type DocsResult } from '../../../core/api.service';
@@ -8,6 +8,7 @@ import { ShellData } from '../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
 import { type Tone, UiCard, UiChip, UiCommandChip, UiDialog, UiDocProse, UiEmptyState, UiNotice, UiSkeleton } from '../../../shared/ui';
+import { quoteIdea } from '../dashboard/dashboard-model';
 import { type DesignShot, type DesignViewport, designViewports } from './design-viewports';
 
 /** The file behind each Docs tab, as the empty state names it. */
@@ -46,10 +47,34 @@ export class DocsTab {
   private readonly data = inject(ShellData);
   private readonly api = inject(ApiClient);
   private readonly route = inject(ActivatedRoute);
+  private readonly transloco = inject(TranslocoService);
 
   /** The tab id from the route data; the four Docs tab ids are exactly the four `DocName`s. */
   protected readonly name: DocName = docName(this.route.snapshot.data['tab']);
   protected readonly fileName = DOC_FILE_NAMES[this.name];
+
+  /**
+   * Decisions only (spec 024, the prototype's `goal-card` and `fog-list`): the goal card quotes the spec's idea
+   * (`ideaQuote`, as the dashboard does) above context.md, and "Still open" lists the spec's fog (core's `FogView`
+   * from the Claims route) with the `cloud` icon below it. Both read core's models; nothing is parsed here.
+   */
+  protected readonly goal = computed(() => {
+    const spec = this.data.spec.value();
+    if (this.name !== 'decisions' || spec?.kind !== 'ok' || !spec.body.ideaQuote) return null;
+    return { quote: quoteIdea(spec.body.ideaQuote, this.transloco.getActiveLang()), source: spec.body.ideaSource };
+  });
+  private readonly claims = resource({
+    params: () => {
+      const ws = this.state.ws();
+      const id = this.state.specId();
+      return this.name === 'decisions' && ws !== null && id !== null ? { ws, id } : undefined;
+    },
+    loader: ({ params }) => this.api.claims(params.ws, params.id),
+  });
+  protected readonly fog = computed(() => {
+    const result = this.claims.value();
+    return result?.kind === 'ok' ? result.body.fog : [];
+  });
 
   protected readonly result = resource<DocsResult, { ws: string; id: string } | undefined>({
     params: () => {

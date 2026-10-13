@@ -56,7 +56,27 @@
     </div>
   }
 
+  @if (goal(); as g) {
+    <ui-card class="dec-goal" data-goal-card>
+      <span class="dec-eyebrow">{{ 'docs.decisions.goal' | transloco }}</span>
+      <blockquote class="dec-quote">{{ g.quote }}</blockquote>
+      <span class="dec-meta">{{ (g.source === 'task' ? 'specDashboard.idea.eyebrowTask' : 'specDashboard.idea.eyebrow') | transloco }}</span>
+    </ui-card>
+  }
+
   <ui-doc-prose [page]="page" [wide]="state.tier() === 'wide'" [assetUrl]="assetUrl()" />
+
+  @if (fog().length > 0) {
+    <ui-card class="dec-open" data-still-open>
+      <h3 class="dec-open-head">{{ 'docs.decisions.stillOpen' | transloco }}</h3>
+      @for (item of fog(); track $index) {
+        <p class="dec-fog" data-fog-line>
+          <ui-icon name="cloud" [size]="16" />
+          <span>{{ item.text }}@if (item.resolves; as resolves) { — {{ resolves }}}</span>
+        </p>
+      }
+    </ui-card>
+  }
 
   @if (viewports().length > 0) {
     @let current = shot();

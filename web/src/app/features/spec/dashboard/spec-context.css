@@ -131,3 +131,11 @@
   color: var(--muted-ink);
   font-size: 12px;
 }
+
+/* The prototype's `mini-box`: the operator step's box in the violet ink, square, not dimmed while read-only. */
+.wait-line .checkbox,
+.wait-line .checkbox:disabled {
+  border: 1.5px solid var(--ques-ink);
+  border-radius: 4px;
+  opacity: 1;
+}

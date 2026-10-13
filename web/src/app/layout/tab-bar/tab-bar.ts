@@ -36,6 +36,7 @@ export function tabbedArea(state: ShellState): SpecArea | null {
     a { display: inline-flex; flex-shrink: 0; gap: 6px; align-items: center; box-sizing: border-box; block-size: 44px; padding-inline: 12px; border-block-end: 2px solid transparent; color: var(--muted-ink); font-size: 14px; font-weight: 500; line-height: 20px; text-decoration: none; white-space: nowrap; transition: color var(--motion-duration-instant) var(--motion-ease-standard); }
     a[aria-current='page'] { border-block-end-color: var(--color-primary); color: var(--color-base-content); }
     @media (hover: hover) { a:hover { color: var(--color-base-content); } }
+    a.muted-tab { opacity: 0.55; }
     .count { padding-block: 3px; padding-inline: 6px; border-radius: 4px; background: var(--color-base-300); color: var(--muted-ink); font-family: var(--font-mono); font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1; }
   `,
   template: `
@@ -51,6 +52,8 @@ export function tabbedArea(state: ShellState): SpecArea | null {
               uiRovingItem
               [routerLink]="tab.link"
               [attr.data-tab]="tab.id"
+              [class.muted-tab]="tab.muted"
+              [attr.data-muted]="tab.muted ? '' : null"
               [attr.aria-current]="tab.id === current() ? 'page' : null"
               >{{ tab.labelKey | transloco }}
               @if (tab.count; as count) {
