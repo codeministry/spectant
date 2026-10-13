@@ -16,12 +16,15 @@ import type { Dirent } from 'node:fs';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { parseClaims } from './claims.ts';
 import { parseEvents } from './events.ts';
 import { mediaTypeOf } from './evidence.ts';
 import type { LibraryCatalog, LibraryDoc, LibraryDocType, LibraryMedia, TextFileKind } from './files.ts';
 import { DESIGN_ASSETS, FILE_KINDS, repoFilePath } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { listSpecs } from './resolve.ts';
+import type { Stage, StageInput } from './stage.ts';
+import { SPEC_RULES } from './stage.ts';
 
 /** The folder every catalog path is relative to, from the repository root. */
 const SPECS_DIR = 'specs';
@@ -239,11 +242,78 @@ async function specTime(root: string, spec: string, docs: readonly LibraryDoc[])
   return own?.modified == null ? null : Date.parse(own.modified);
 }
 
+/** The documents a spec's type can ask for (ISC-155.2), in the order of the spec's own files. */
+const NEEDED: ReadonlyArray<'plan' | 'tasks'> = ['plan', 'tasks'];
+
+/** Whether any row of the stage table for `stage` matches `input`, each row's condition taken on its own. */
+const rowMatches = (stage: Stage, input: StageInput): boolean => SPEC_RULES.some((rule) => rule.stage === stage && rule.when(input));
+
+/**
+ * The documents one active spec lacks (ISC-155.2), as `missing` entries: none for a spec without `spec.md` or a done
+ * one, else each of `plan.md` and `tasks.md` whose own row of the stage table (stage.ts, `plan` and `tasks`, over
+ * `TYPE_NEEDS` and the three-claim threshold) would stop the spec there. The input is the one the timeline replay
+ * builds from the files (derived-stages.ts): every claim line counts, dropped ones included, as the dashboard's
+ * partition counts them; the review and code-review marks decide no row asked here.
+ */
+async function missingOf(root: string, spec: string, docs: readonly LibraryDoc[]): Promise<LibraryDoc[]> {
+  let text: string;
+  try {
+    text = await readFile(join(root, SPECS_DIR, spec, FILE_KINDS.spec.path), 'utf-8');
+  } catch {
+    return [];
+  }
+  const fm = parseFrontmatter(text);
+  const total = parseClaims(text).claims.length;
+  const has = (kind: 'plan' | 'tasks'): boolean => docs.some((d) => d.spec === spec && d.path === `${spec}/${FILE_KINDS[kind].path}`);
+  const input: StageInput = {
+    number: spec.slice(0, 3),
+    type: fm.data.specType,
+    phase: fm.data.phase,
+    hasPlan: has('plan'),
+    hasTasks: has('tasks'),
+    claims: { closed: 0, total },
+    reviewed: 'missing',
+    codeReviewed: 'missing',
+    takeable: [],
+    partition: { takeable: 0, open: total, closed: 0, dropped: 0 },
+    explicitStage: null,
+    lastEventTo: null,
+    codeReview: 'spec',
+    mainFeature: null,
+    featureSiblingsOpen: [],
+  };
+  if (rowMatches('done', input)) return [];
+  return NEEDED.filter((kind) => rowMatches(kind, input)).map((kind): LibraryDoc => {
+    const path = `${spec}/${FILE_KINDS[kind].path}`;
+    return { path, type: kind, spec, title: path.slice(path.lastIndexOf('/') + 1), modified: null, state: 'missing', media: 'markdown' };
+  });
+}
+
+/** A spec's own Markdown files by their path below the spec folder, in catalog order (`SPEC_DOCS`). */
+const OWN_RANK: ReadonlyMap<string, number> = new Map(SPEC_DOCS.map((kind, i) => [FILE_KINDS[kind].path, i]));
+
+/**
+ * `docs` with each `missing` entry where its file would stand: among its spec's own files in `SPEC_DOCS` order, after
+ * every own file that comes before it, and before the spec's zones and prototypes.
+ */
+function placeMissing(docs: readonly LibraryDoc[], missing: readonly LibraryDoc[]): LibraryDoc[] {
+  const out = [...docs];
+  const rankOf = (d: LibraryDoc): number => (d.spec === WORKSPACE ? -1 : (OWN_RANK.get(d.path.slice(d.spec.length + 1)) ?? SPEC_DOCS.length));
+  for (const m of missing) {
+    const rank = rankOf(m);
+    const first = out.findIndex((d) => d.spec === m.spec);
+    let at = first < 0 ? out.length : first;
+    while (at < out.length && out[at]?.spec === m.spec && rankOf(out[at] as LibraryDoc) < rank) at++;
+    out.splice(at, 0, m);
+  }
+  return out;
+}
+
 /**
  * The state judgement over the finished list. `stale` (ISC-155.1): `plan.md`, `tasks.md` and `design.md` older than
  * the time of their spec, `tech.md` and `tldr.md` older than the newest time of any active spec; a document as old as
- * its source is fresh. ISC-155.2 adds the `missing` entries here; both read only what `readCatalog` already listed plus
- * each spec's `events.jsonl`.
+ * its source is fresh. `missing` (ISC-155.2): the entries `missingOf` adds for each active spec, placed by
+ * `placeMissing`. Both read only what `readCatalog` already listed plus each spec's `events.jsonl` and `spec.md`.
  */
 async function judge(root: string, specs: readonly string[], docs: readonly LibraryDoc[]): Promise<readonly LibraryDoc[]> {
   const times = new Map<string, number | null>(await Promise.all(specs.map(async (s) => [s, await specTime(root, s, docs)] as const)));
@@ -254,11 +324,13 @@ async function judge(root: string, specs: readonly string[], docs: readonly Libr
     if (d.spec === WORKSPACE) return FROM_NEWEST_SPEC.has(d.type) ? newest : null;
     return FROM_SPEC.has(d.path.slice(d.spec.length + 1)) ? (times.get(d.spec) ?? null) : null;
   };
-  return docs.map((d) => {
+  const judged = docs.map((d): LibraryDoc => {
     const source = sourceOf(d);
     const stale = d.state === 'ok' && d.modified !== null && source !== null && Date.parse(d.modified) < source;
     return stale ? { ...d, state: 'stale' } : d;
   });
+  const missing = await Promise.all(specs.map((s) => missingOf(root, s, docs)));
+  return placeMissing(judged, missing.flat());
 }
 
 /**

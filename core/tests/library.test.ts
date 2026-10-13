@@ -5,12 +5,13 @@
 // `modified` of each document is known and a checkout never changes a result. `readCatalog` only reads.
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 
-import type { LibraryCatalog, LibraryDoc } from '../src/files.ts';
+import type { LibraryCatalog, LibraryDoc, SpecType } from '../src/files.ts';
 import { readCatalog } from '../src/library.ts';
+import { stageOf, type StageInput } from '../src/stage.ts';
 import { FIXTURES } from './helpers/read-tree.ts';
 
 const FIXTURE = join(FIXTURES, 'library');
@@ -310,5 +311,149 @@ describe('stale (ISC-155.1)', () => {
     // Equal times are not "changed later": plan.md at the spec's last events.jsonl line, tldr.md at the newest spec.
     const level = { [`specs/${S1}/plan.md`]: '2026-03-12T09:00:00Z', 'specs/tldr.md': '2026-03-12T09:00:00Z' };
     expect(await staleOf(level)).toEqual([]);
+  });
+});
+
+// ISC-155.2: a spec that is not complete lists each document its type asks for and lacks as a `missing` entry, by the
+// stage table's own rule (stage.ts, rows `plan` and `tasks`): `plan.md` for feature, infra and project; `tasks.md` for
+// refactor, feature and project once the spec has three or more claim lines, dropped ones included. A complete spec
+// lists none. The fixture covers 002 (open feature) and 003 (complete refactor); a generated workspace covers every
+// type at two, three and four claims, open and complete.
+describe('missing (ISC-155.2)', () => {
+  const roots: string[] = [];
+
+  afterAll(() => {
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
+  });
+
+  /** A `missing` entry as the catalog carries it: the file that should exist, no time, the file name as title. */
+  const entry = (spec: string, kind: 'plan' | 'tasks'): LibraryDoc => ({
+    path: `${spec}/${kind}.md`,
+    type: kind,
+    spec,
+    title: `${kind}.md`,
+    modified: null,
+    state: 'missing',
+    media: 'markdown',
+  });
+
+  const missingOf = (catalog: LibraryCatalog): LibraryDoc[] => catalog.docs.filter((d) => d.state === 'missing');
+
+  test('missing: the fixture lists plan.md and tasks.md of the open feature 002, nothing of the complete 003', async () => {
+    const root = workspaceCopy();
+    roots.push(root);
+    const before = treeHash(root);
+    const catalog = await readCatalog(root);
+    expect(treeHash(root)).toEqual(before);
+    expect(missingOf(catalog)).toEqual([entry(S2, 'plan'), entry(S2, 'tasks')]);
+    expect(catalog.missing).toBe(2);
+    expect(catalog.stale).toBe(catalog.docs.filter((d) => d.state === 'stale').length);
+    // A missing entry stands where the file would: after spec.md, before context.md, in the spec's own order.
+    const own = catalog.docs.filter((d) => d.spec === S2 && /^[^/]+\/[^/]+\.md$/.test(d.path)).map((d) => d.path);
+    expect(own).toEqual([`${S2}/spec.md`, `${S2}/plan.md`, `${S2}/tasks.md`, `${S2}/context.md`]);
+  });
+
+  test('missing: a document that exists is no missing entry', async () => {
+    // 001 (feature, building) has both files; with plan.md removed it lacks exactly that one, listed after spec.md.
+    const root = workspaceCopy({}, [`specs/${S1}/plan.md`]);
+    roots.push(root);
+    const catalog = await readCatalog(root);
+    expect(missingOf(catalog).map((d) => d.path)).toEqual([`${S1}/plan.md`, `${S2}/plan.md`, `${S2}/tasks.md`]);
+    expect(catalog.missing).toBe(3);
+    const own = catalog.docs.filter((d) => d.spec === S1 && /^[^/]+\/[^/]+\.md$/.test(d.path)).map((d) => d.path);
+    expect(own).toEqual([`${S1}/spec.md`, `${S1}/plan.md`, `${S1}/tasks.md`, `${S1}/design.md`, `${S1}/context.md`]);
+  });
+
+  /** One generated spec: its type, its phase, its open claim lines and its dropped ones. */
+  interface Case {
+    readonly folder: string;
+    readonly type: string;
+    readonly phase: string;
+    readonly claims: number;
+    readonly dropped?: number;
+  }
+
+  function specText(c: Case): string {
+    const lines = Array.from({ length: c.claims }, (_, i) => `- [ ] ISC-${i + 1}: Claim ${i + 1} of the case holds.`);
+    for (let i = 0; i < (c.dropped ?? 0); i++) lines.push(`- [x] ISC-${c.claims + i + 1}: [DROPPED] Claim of the case.`);
+    return ['---', `slug: ${c.folder}`, `spec_type: ${c.type}`, `phase: ${c.phase}`, '---', '', `# ${c.folder}`, '', '## Claims', '', ...lines, ''].join(
+      '\n',
+    );
+  }
+
+  /** A workspace holding exactly `cases`, each with spec.md only. */
+  function generated(cases: readonly Case[]): string {
+    const root = mkdtempSync(join(tmpdir(), 'spectant-library-missing-'));
+    roots.push(root);
+    for (const c of cases) {
+      mkdirSync(join(root, 'specs', c.folder), { recursive: true });
+      writeFileSync(join(root, 'specs', c.folder, 'spec.md'), specText(c));
+    }
+    return root;
+  }
+
+  const TYPES: readonly SpecType[] = ['feature', 'project', 'infra', 'refactor', 'bug', 'spike', 'chore'];
+  /** The rule in the claim's own words: which types need plan.md, which need tasks.md from three claims on. */
+  const PLAN_TYPES: ReadonlySet<string> = new Set(['feature', 'infra', 'project']);
+  const TASKS_TYPES: ReadonlySet<string> = new Set(['refactor', 'feature', 'project']);
+
+  /** Every type at two, three and four claims, open and complete: folders `100-…` to `165-…`. */
+  const CASES: readonly Case[] = TYPES.flatMap((type, t) =>
+    [2, 3, 4].flatMap((claims, k) =>
+      ['implement', 'complete'].map(
+        (phase, p): Case => ({ folder: `${100 + t * 10 + k * 2 + p}-${type}-${claims}-${phase}`, type, phase, claims }),
+      ),
+    ),
+  );
+
+  test('missing: each type and claim count as the claim names them; complete specs list none', async () => {
+    const catalog = await readCatalog(generated(CASES));
+    const want = CASES.filter((c) => c.phase !== 'complete').flatMap((c) => [
+      ...(PLAN_TYPES.has(c.type) ? [entry(c.folder, 'plan')] : []),
+      ...(TASKS_TYPES.has(c.type) && c.claims >= 3 ? [entry(c.folder, 'tasks')] : []),
+    ]);
+    expect(missingOf(catalog)).toEqual(want);
+    expect(catalog.missing).toBe(want.length);
+    // A complete spec lists its spec.md and nothing else.
+    const complete = CASES.filter((c) => c.phase === 'complete').map((c) => c.folder);
+    expect(catalog.docs.filter((d) => complete.includes(d.spec)).map((d) => d.path)).toEqual(complete.map((f) => `${f}/spec.md`));
+  });
+
+  test('missing: equal to the stage rule of core/ for every type and claim count', async () => {
+    const catalog = await readCatalog(generated(CASES));
+    const missing = new Set(missingOf(catalog).map((d) => d.path));
+    for (const c of CASES) {
+      const input = (hasPlan: boolean, hasTasks: boolean): StageInput => ({
+        number: c.folder.slice(0, 3),
+        type: c.type as SpecType,
+        phase: c.phase,
+        hasPlan,
+        hasTasks,
+        claims: { closed: 0, total: c.claims },
+        reviewed: 'missing',
+        codeReviewed: 'missing',
+        takeable: [],
+        partition: { takeable: 0, open: c.claims, closed: 0, dropped: 0 },
+        explicitStage: null,
+        lastEventTo: null,
+        codeReview: 'spec',
+        mainFeature: null,
+        featureSiblingsOpen: [],
+      });
+      // The stage table stops at `plan` exactly when plan.md is needed and absent, at `tasks` likewise for tasks.md.
+      const got = { folder: c.folder, plan: missing.has(`${c.folder}/plan.md`), tasks: missing.has(`${c.folder}/tasks.md`) };
+      expect(got).toEqual({ folder: c.folder, plan: stageOf(input(false, true)) === 'plan', tasks: stageOf(input(true, false)) === 'tasks' });
+    }
+  });
+
+  test('missing: a dropped claim line counts toward the three-claim threshold; an unknown type needs nothing', async () => {
+    const cases: Case[] = [
+      { folder: '201-refactor-dropped', type: 'refactor', phase: 'implement', claims: 2, dropped: 1 },
+      { folder: '202-refactor-two', type: 'refactor', phase: 'implement', claims: 2 },
+      { folder: '203-untyped', type: 'unknown', phase: 'implement', claims: 5 },
+    ];
+    const catalog = await readCatalog(generated(cases));
+    expect(missingOf(catalog).map((d) => d.path)).toEqual(['201-refactor-dropped/tasks.md']);
+    expect(catalog.missing).toBe(1);
   });
 });

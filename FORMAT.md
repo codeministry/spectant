@@ -1313,8 +1313,16 @@ workspace without `specs/` has an empty catalog.
   active spec of the workspace; no other document derives from anything. A spec's time is the newest `ts` among the
   valid lines of its `events.jsonl` (read by `events.ts`), else its `spec.md` mtime; a document is stale when its
   `modified` is strictly older than that time, so one as old as its source is fresh, and archived specs count for
-  nothing. The catalog's `stale` is the number of stale documents. `missing` (the spec's type asks for it and it does
-  not exist, ISC-155.2) is judged by a later task of spec 017.
+  nothing. The catalog's `stale` is the number of stale documents.
+- **Missing** (ISC-155.2): for each active spec that is not done, `plan.md` and `tasks.md` are listed as entries with
+  state `missing` when the stage table above would stop the spec at the stage `plan` or `tasks` for them: `plan.md`
+  when the type is feature, infra or project and the file does not exist; `tasks.md` when the type is refactor,
+  feature or project, the spec has three or more claim lines (dropped ones included) and the file does not exist; each
+  row is taken on its own, so a spec lacking both lists both. A spec is done when a `done` row matches
+  (`phase: complete`); it lists no missing entry, nor does a spec without a known type or without `spec.md`. A missing
+  entry has the path, type and spec of the file that should exist, the file name as its title, `modified: null` and
+  media `markdown`, and stands where the file would among the spec's own files. The catalog's `missing` is the number
+  of these entries.
 
 The fixture `core/fixtures/library/` holds every case; its spec 002 `.design/` folder lists as one `design` image and
 one prototype, while `src/`, a code folder without pages, lists nothing:

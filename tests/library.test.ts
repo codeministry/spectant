@@ -87,7 +87,9 @@ describe("GET /api/workspaces/:ws/library", () => {
     expect(new Set(catalog.docs.map((d) => d.path)).size).toBe(catalog.docs.length);
     for (const doc of catalog.docs) {
       expect(doc.title).not.toBe("");
-      expect(doc.modified).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      // A `missing` entry (ISC-155.2) names a file that does not exist, so it has no time.
+      if (doc.state === "missing") expect(doc.modified).toBeNull();
+      else expect(doc.modified).toMatch(/^\d{4}-\d{2}-\d{2}T/);
       expect(doc.spec === "workspace" || /^\d{3}-/.test(doc.spec)).toBe(true);
     }
     expect(catalog.docs.filter((d) => d.type === "evidence" && d.spec === "001-lighthouse-map").map((d) => d.path)).toEqual([
