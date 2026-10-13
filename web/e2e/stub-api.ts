@@ -33,7 +33,7 @@
  *   one; `…/library/search?q=` the `LibrarySearchResult` over those documents, `{query: '', hits: []}` for a blank `q`;
  *   `…/library/asset?path=` the tech asset's answer. `GET|HEAD /proto/:ws/:spec/:folder/*` (outside `/api`;
  *   `serve-dist.ts` forwards it here) one file of a catalog prototype through core's resolver, every answer with
- *   `PROTOTYPE_CSP`.
+ *   `PROTOTYPE_CSP`; on harbor's stub prototype also the stub-only page `STUB_LIBRARY.prototype.offline` (T40).
  * - Every route of `SPEC_ROUTE_TABLE` (`…/specs/:id…`): the per-spec value of the route's golden family
  *   (`core/fixtures/<golden>.<family>.golden.json`, keyed by `specs/<folder>`), `:id` resolved as `core/src/resolve.ts`
  *   does (`NNN`, folder or bare slug, archived folders too). 404 `NotFound` for an unknown workspace, spec or task, 404
@@ -283,8 +283,39 @@ export const STUB_LIBRARY = {
     after: '004-retention-policies/.design/mobile-ist.png',
     preview: '004-retention-policies/.design/mobile-ist.png',
     source: ['library', 'specs', '002-tide-board', '.design', 'prototype', 'board'],
+    /**
+     * `offline` (T40, ISC-159.2): a page only the stub serves, in the prototype's folder but not among its catalog
+     * `pages` (so no fixture file carries an external URL): it names an external stylesheet, an external script and
+     * an `@font-face` source on hosts of the reserved `.example` TLD (RFC 2606). The prototype route's CSP must keep
+     * the browser from asking for any of them; `offline.spec.ts` opens it in a prototype tab under a guard that
+     * aborts and records every non-loopback request.
+     */
+    offline: {
+      file: 'offline.html',
+      external: {
+        stylesheet: 'https://cdn.example/prototype/theme.css',
+        script: 'https://cdn.example/prototype/widget.js',
+        font: 'https://fonts.example/far-sans.woff2',
+      },
+      family: 'Far Sans',
+    },
   },
 } as const;
+
+/** The stub-only prototype page `STUB_LIBRARY.prototype.offline` as it is served. */
+export function stubOfflinePrototypeHtml(): string {
+  const { external, family } = STUB_LIBRARY.prototype.offline;
+  return [
+    '<!doctype html>',
+    `<link rel="stylesheet" href="${external.stylesheet}">`,
+    `<style>@font-face { font-family: "${family}"; src: url("${external.font}") format("woff2"); } body { font-family: "${family}", sans-serif; }</style>`,
+    `<script src="${external.script}"></script>`,
+    '<title>Offline probe</title>',
+    '<h1>Offline probe</h1>',
+    '<p>Every resource of this page lives on a host outside the loopback.</p>',
+    '',
+  ].join('\n');
+}
 
 /** The path of the n-th synthetic evidence document (1-based): `002-web-console/.evidence/run-07/probe.md`. */
 export const stubEvidencePath = (n: number): string => `${STUB_LIBRARY.evidence.spec}/.evidence/run-${String(n).padStart(2, '0')}/probe.md`;
@@ -1349,16 +1380,27 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const stub = library === 'empty' ? emptyStubCatalog() : await catalogOf(match.params.ws, tree);
     const doc = stub.catalog.docs.find((d) => d.type === 'prototype' && d.spec === match.params.spec && prototypeFolderOf(d) === match.params.folder);
     const source = doc === undefined ? undefined : stub.prototypes.get(doc.path);
-    if (source === undefined) return withCsp(workspaceJson(req, 404, { error: 'not-found' }));
-    const resolved = await core.resolveEvidencePath(source, match.params.file, 'tree');
-    if (!resolved.ok) {
-      const status = resolved.reason === 'not-found' || resolved.reason === 'not-a-file' ? 404 : 403;
-      return withCsp(workspaceJson(req, status, { error: status === 403 ? 'forbidden' : 'not-found' }));
+    if (source === undefined || doc === undefined) return withCsp(workspaceJson(req, 404, { error: 'not-found' }));
+    const { offline } = STUB_LIBRARY.prototype;
+    const stubOnly = doc.path === STUB_LIBRARY.prototype.path && match.params.file === offline.file;
+    let name: string;
+    let read: () => Uint8Array<ArrayBuffer>;
+    if (stubOnly) {
+      name = offline.file;
+      read = () => new TextEncoder().encode(stubOfflinePrototypeHtml());
+    } else {
+      const resolved = await core.resolveEvidencePath(source, match.params.file, 'tree');
+      if (!resolved.ok) {
+        const status = resolved.reason === 'not-found' || resolved.reason === 'not-a-file' ? 404 : 403;
+        return withCsp(workspaceJson(req, status, { error: status === 403 ? 'forbidden' : 'not-found' }));
+      }
+      name = basename(resolved.path);
+      read = () => new Uint8Array(readFileSync(resolved.absolute));
     }
-    const type = core.prototypeMediaTypeOf(basename(resolved.path));
+    const type = core.prototypeMediaTypeOf(name);
     const font = type.startsWith('font/');
     if (opaque && !font) return prototypeForbidden(req);
-    const bytes = new Uint8Array(readFileSync(resolved.absolute));
+    const bytes = read();
     const etag = strongEtag(bytes);
     const headers: Record<string, string> = {
       ...evidenceFileHeaders(type),

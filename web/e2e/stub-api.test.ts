@@ -54,6 +54,7 @@ import {
   LOCK_STATES,
   STUB_LIBRARY,
   stubEvidencePath,
+  stubOfflinePrototypeHtml,
   type LockState,
   SESSION_HEADER,
   STATE_HEADER,
@@ -638,6 +639,21 @@ describe('stub API: the library (spec 017, T3)', () => {
       expect({ path, status: res.status, csp: res.headers.get('Content-Security-Policy') }).toEqual({ path, status, csp: PROTOTYPE_CSP });
       if (status === 405) expect(res.headers.get('Allow')).toBe(PROTOTYPE_ALLOW);
     }
+  });
+
+  test('prototype: the stub-only offline page (T40) names its external resources, carries the CSP and is no catalog page', async () => {
+    const { offline } = STUB_LIBRARY.prototype;
+    const res = await ask(proto(offline.file));
+    expect([res.status, res.headers.get('Content-Type'), res.headers.get('Content-Security-Policy')]).toEqual([200, 'text/html; charset=utf-8', PROTOTYPE_CSP]);
+    const html = await res.text();
+    expect(html).toBe(stubOfflinePrototypeHtml());
+    for (const url of Object.values(offline.external)) {
+      expect(html).toContain(url);
+      expect(new URL(url).hostname).toEndWith('.example');
+    }
+    const catalog = await catalogOf('harbor');
+    expect(catalog.docs.find((d) => d.type === 'prototype')?.pages).not.toContain(offline.file);
+    expect((await ask(prototypeRoute('harbor', '004-retention-policies', 'prototype', offline.file))).status).toBe(404);
   });
 
   test('prototype fonts: Origin null gets a font with ACAO *, a foreign Origin 403, Origin null 403 for anything else', async () => {
