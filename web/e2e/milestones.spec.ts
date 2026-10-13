@@ -81,16 +81,17 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       await expect(page.locator('ol.rows')).toHaveCount(0);
     });
 
-    test('lantern’s area menu lists Specs, Board, Features, Tech and Library, no Milestones', async ({ page }) => {
+    test('lantern’s area menu lists Specs, Board, Features and Library, no Milestones, no Tech', async ({ page }) => {
       await page.goto('/w/lantern');
       // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
       // spec 024: PAGE select (principal 2026-10-13)
       await expect(await headerControl(page, 'page')).toBeVisible();
       const menu = await areaMenu(page);
-      // Spec 024 (T57, ISC-150.1): the Library is the sixth registry page.
-      await expect(menu.locator('[data-page]')).toHaveCount(5);
-      expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'tech', 'library']);
+      // Spec 017 (T41, ISC-157.1): Tech left the PAGE menu for the Library.
+      await expect(menu.locator('[data-page]')).toHaveCount(4);
+      expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'library']);
       await expect(menu.locator('[data-page="milestones"]')).toHaveCount(0);
+      await expect(menu.locator('[data-page="tech"]')).toHaveCount(0);
     });
 
     test('lantern’s Features page and spec breadcrumb show no milestone', async ({ page }) => {
@@ -262,15 +263,15 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
 test.describe('milestones page: the area menu', () => {
   test.use(atWidth(WIDTHS.desktop));
 
-  test('harbor’s menu lists Specs, Board, Features, Milestones, Tech, Library; on the page the trigger reads Milestones and its entry is current', async ({
+  test('harbor’s menu lists Specs, Board, Features, Milestones, Library (no Tech); on the page the trigger reads Milestones and its entry is current', async ({
     page,
   }) => {
     await page.goto('/w/harbor');
     // spec 024: PAGE select (principal 2026-10-13)
     await expect(page.locator('header [data-control="page"]')).toBeVisible();
     let menu = await areaMenu(page);
-    // Spec 024 (T57, ISC-150.1): the Library is the sixth registry page.
-    expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'milestones', 'tech', 'library']);
+    // Spec 017 (T41, ISC-157.1): Tech left the PAGE menu for the Library.
+    expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'milestones', 'library']);
     await menu.locator('[data-page="milestones"]').click();
     await expect(page).toHaveURL(/\/w\/harbor\/milestones$/u);
     await expect(page.locator('ol.rows > li').first()).toBeVisible();
