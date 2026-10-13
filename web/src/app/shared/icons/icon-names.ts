@@ -125,4 +125,8 @@ export const ICON_NAMES = [
   'rotate-ccw',
   // Spec 024: the unheld claim line of the Features page (prototype `claim-line`).
   'circle',
+  // Spec 026: the detail sidebar's type chips (feature `boxes`, claim `circle-dot`) and its "Open spec" link.
+  'boxes',
+  'circle-dot',
+  'arrow-up-right',
 ] as const;

@@ -1781,6 +1781,27 @@
       "label": "Ideas · {{count}}"
     }
   },
+  "sidebar": {
+    "label": "Details",
+    "types": {
+      "milestone": "Milestone",
+      "feature": "Feature",
+      "spec": "Spec",
+      "claim": "Claim",
+      "idea": "Idea"
+    },
+    "parents": "Parents",
+    "children": "Children",
+    "blockers": "Blockers",
+    "more": "+{{count}} more",
+    "noBlockers": "No blockers",
+    "waiting": "open",
+    "claimsClosed": "claims closed",
+    "noClaims": "No claims yet",
+    "archived": "archived",
+    "openSpec": "Open spec",
+    "close": "Close details · Esc"
+  },
   "help": {
     "title": "Help",
     "eyebrow": "Guide",

@@ -3,7 +3,7 @@
 export { UiActorChip } from './actor-chip/actor-chip';
 export { UiCard } from './card/card';
 export { type ChipVariant, UiChip } from './chip/chip';
-export { CHIP_ICON, chipIcon } from './chip/chip-icons';
+export { CHIP_ICON, chipIcon, RELATION_ICON } from './chip/chip-icons';
 export { CLAMP_ELLIPSIS, type ClampPiece, fitWords, UiClamp } from './clamp/clamp';
 export { UiCommandChip, writeClipboard } from './command-chip/command-chip';
 export { UiEmptyState } from './empty-state/empty-state';
