@@ -36,7 +36,7 @@
       }
     </div>
 
-    <div class="progress" data-part="progress">
+    <div class="prog" data-part="progress">
       @if (percent() !== null) {
         <ui-ring [value]="percent()" [size]="64" [stroke]="6" />
         <div>
@@ -59,22 +59,7 @@
       </section>
     }
 
-    @if (children().length > 0) {
-      <section class="sec" data-section="children">
-        <h3 class="eyebrow">
-          <span>{{ 'sidebar.children' | transloco }}</span><span class="count" data-count>{{ children().length }}</span>
-        </h3>
-        @for (link of visibleChildren(); track link.entry.ref) {
-          <ng-container [ngTemplateOutlet]="row" [ngTemplateOutletContext]="{ $implicit: link }" />
-        }
-        @if (hiddenChildren() > 0) {
-          <button type="button" class="more" data-more (click)="allChildren.set(true)">
-            {{ 'sidebar.more' | transloco: { count: hiddenChildren() } }}
-          </button>
-        }
-      </section>
-    }
-
+    <!-- Blockers before children (ISC-171.1): the short section stays in the sheet's first screen, the capped list goes last. -->
     @if (blockers().length > 0 || blockable()) {
       <section class="sec" data-section="blockers">
         <h3 class="eyebrow">
@@ -87,6 +72,22 @@
           <ng-container [ngTemplateOutlet]="row" [ngTemplateOutletContext]="{ $implicit: link }" />
         } @empty {
           <p class="none"><ui-icon name="circle-check" [size]="14" />{{ 'sidebar.noBlockers' | transloco }}</p>
+        }
+      </section>
+    }
+
+    @if (children().length > 0) {
+      <section class="sec" data-section="children">
+        <h3 class="eyebrow">
+          <span>{{ 'sidebar.children' | transloco }}</span><span class="count" data-count>{{ children().length }}</span>
+        </h3>
+        @for (link of visibleChildren(); track link.entry.ref) {
+          <ng-container [ngTemplateOutlet]="row" [ngTemplateOutletContext]="{ $implicit: link }" />
+        }
+        @if (hiddenChildren() > 0) {
+          <button type="button" class="more" data-more (click)="allChildren.set(true)">
+            {{ 'sidebar.more' | transloco: { count: hiddenChildren() } }}
+          </button>
         }
       </section>
     }

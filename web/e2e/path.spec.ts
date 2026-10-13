@@ -170,3 +170,80 @@ for (const width of [1440, 600, 390] as const) {
     });
   });
 }
+
+/*
+ * Usage path P5 · details of a card (spec 026, ISC-171.1; notation of spec 018): from the workspace board with a named
+ * spec card to that spec's parents, children and blockers on screen, without a page change, at 1440, 600 and 390 px.
+ *
+ *   bun run e2e -- path -g P5
+ *
+ * One click (a tap at 390) on the card's title selects it: the address gains `?sel=spec:<id>` and stays on the board,
+ * and the detail sidebar opens floating (1440) or, below 640 (600 and 390), as the modal bottom sheet, the overlay form
+ * of the compact tier (design.md § Viewport-übergreifend). The goal holds only when each of the three
+ * relation sections — its heading and its first entry — is wholly on screen without a scroll inside the panel, so a
+ * scroll the person would need cannot hide: it would have to go through the counter.
+ *
+ * Target: harbor 002, the spec whose claims carry the fixture's open `(after: …)` edge.
+ */
+const P5 = { ws: 'harbor', spec: '002' } as const;
+const P5_REF = `spec:${P5.spec}`;
+const P5_BUDGET = { steps: 1, seconds: 1.5 } as const;
+const P5_PRESENTATION: Readonly<Record<number, string>> = { 1440: 'floating', 600: 'sheet', 390: 'sheet' };
+
+test.describe('P5 · step counter', () => {
+  test('P5 counter: one click is the shortest path and costs M + P + B = 2.65 s; one key would cost M + K = 1.63 s', () => {
+    const click = new StepRecorder();
+    click.click(`card ${P5.spec}`);
+    expect(click.count).toBe(1);
+    expect(klm(click.sequence)).toBe(2.65);
+    const key = new StepRecorder();
+    key.key('Enter');
+    expect(klm(key.sequence)).toBe(1.63);
+  });
+});
+
+for (const width of [1440, 600, 390] as const) {
+  const touch = width === 390;
+
+  test.describe(`P5 · details of a card @${width}`, () => {
+    test.use({ ...atWidth(width), hasTouch: touch });
+
+    test(`P5 card @${width}: one click on the spec card → its parents, children and blockers on screen, the board unchanged, in ≤ ${P5_BUDGET.steps} step and ≤ ${P5_BUDGET.seconds} s`, async ({ page }) => {
+      await page.goto(`/w/${P5.ws}/board`);
+      const card = page.locator(`a.title[data-ref="${P5_REF}"]`);
+      await expect(card).toBeVisible();
+      const steps = new StepCounter(page);
+
+      // The card must already be wholly on screen; a scroll to it is a counted step.
+      const onScreen = await card.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return r.top >= 0 && r.bottom <= window.innerHeight && r.left >= 0 && r.right <= window.innerWidth;
+      });
+      if (!onScreen) await steps.scrollTo(card);
+      if (touch) await steps.tapOn(card, `card ${P5.spec}`);
+      else await steps.clickOn(card, `card ${P5.spec}`);
+
+      // No page change: the same board path, only the selection added.
+      await expect(page).toHaveURL((url) => url.pathname === `/w/${P5.ws}/board` && url.searchParams.get('sel') === P5_REF);
+      await expect(page.locator('app-not-found')).toHaveCount(0);
+      const sidebar = page.locator('app-detail-sidebar[data-presentation]');
+      await expect(sidebar).toHaveAttribute('data-presentation', P5_PRESENTATION[width] ?? '');
+      await expect(sidebar.locator('[data-part="id"]')).toHaveText(P5.spec);
+
+      for (const name of ['parents', 'children', 'blockers'] as const) {
+        const section = sidebar.locator(`section[data-section="${name}"]`);
+        await expect(section, `${name} section`).toHaveCount(1);
+        await expect(section.locator('h3'), `${name} heading on screen`).toBeInViewport({ ratio: 1 });
+        await expect(section.locator('a.link, p.none').first(), `${name} first entry on screen`).toBeInViewport({ ratio: 1 });
+      }
+
+      const seconds = klm(steps.sequence);
+      test.info().annotations.push({
+        type: `P5 card @${width}`,
+        description: `${steps.count} steps, ${seconds} s KLM — ${trail(steps.sequence)}`,
+      });
+      expect.soft(steps.count, 'P5 steps').toBeLessThanOrEqual(P5_BUDGET.steps);
+      expect.soft(seconds, 'P5 KLM seconds').toBeLessThanOrEqual(P5_BUDGET.seconds);
+    });
+  });
+}

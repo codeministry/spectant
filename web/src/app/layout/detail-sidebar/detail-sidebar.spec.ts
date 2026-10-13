@@ -145,7 +145,7 @@ describe('DetailSidebar', () => {
     const fixture = await render();
     const host: HTMLElement = hostOf(fixture);
     const sections = qa(host, 'section[data-section]').map((s) => s.getAttribute('data-section'));
-    expect(sections).toEqual(['parents', 'children', 'blockers']);
+    expect(sections).toEqual(['parents', 'blockers', 'children']);
 
     const parents = qa(host, 'section[data-section="parents"] a[data-sel]').map((a) => a.getAttribute('data-sel'));
     expect(parents).toEqual(['feature:F25', 'feature:F7', 'milestone:v1-0']);

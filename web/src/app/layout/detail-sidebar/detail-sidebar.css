@@ -114,7 +114,8 @@
   margin-block-start: 8px;
 }
 
-.progress {
+/* Not `.progress`: daisyUI's global progress-bar class (8 px high, overflow hidden) would clip the ring. */
+.prog {
   display: flex;
   gap: 16px;
   align-items: center;
