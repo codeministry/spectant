@@ -139,16 +139,8 @@ function rowsFor(g: Goldens): readonly Row[] {
     { tab: '/claims', what: 'kind chip counts', golden: `claim-view.counts.{${KIND_CHIPS.join(',')}}`, selector: 'app-claims-tab [data-filter="kind"] button .count', kind: 'texts', want: KIND_CHIPS.map((key) => n(g.claims.counts[key])) },
     // Timeline tab.
     { tab: '/timeline', what: 'timeline entries', golden: 'timeline.length', selector: 'app-timeline-tab [data-entry]', kind: 'count', want: g.timeline.length },
-    // Docs: the decisions page renders core's prose HTML; no element carries one decision each.
-    {
-      tab: '/decisions',
-      what: 'decisions rows',
-      golden: 'spec.areas.docs.decisions',
-      selector: 'app-docs-tab[data-doc="decisions"] [data-decision]',
-      kind: 'count',
-      want: areas.docs.decisions,
-      fixme: 'app-docs-tab has no per-decision hook (e.g. [data-decision]); decisions.md renders as one prose [innerHTML] block',
-    },
+    // The former Docs decisions tab went with spec 017 (T52); the Library reader renders decisions.md as one prose
+    // block like any document, so its count stays with the Library tile above.
   ];
 
   const lanesWithRows = lanes.length > 0;

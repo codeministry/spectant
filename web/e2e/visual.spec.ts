@@ -1,11 +1,11 @@
 /**
- * The visual smoke set: six representative pages, light at 390, 820 and 1440 (one width per tier), dark at 1440 only,
- * since the dark theme changes colours, not layout. 24 baselines that catch an unintended visual change (a cascade
+ * The visual smoke set: five representative pages, light at 390, 820 and 1440 (one width per tier), dark at 1440 only,
+ * since the dark theme changes colours, not layout. 20 baselines that catch an unintended visual change (a cascade
  * side effect, a broken tier, a theme token) without pinning every view of every spec; behaviour and structure stay
- * with the e2e and browser tiers.
+ * with the e2e and browser tiers. The former Tech page went with spec 017; the Library's cases follow (T55).
  *
- *   bun run test:visual                       light, 18 baselines
- *   bun run test:visual -- --theme dark       dark, 6 baselines
+ *   bun run test:visual                       light, 15 baselines
+ *   bun run test:visual -- --theme dark       dark, 5 baselines
  *   bun run test:visual -- board              one page (the group names below)
  *
  * Baselines live under `__screenshots__/chromium/{light,dark}/visual.spec.ts/` and are recorded only in the pinned
@@ -37,13 +37,6 @@ const VIEWS: readonly View[] = [
   { name: 'dashboard', path: '/w/harbor', host: 'app-dashboard-page' },
   { name: 'board', path: '/w/harbor/s/002/board', host: 'app-board-tab' },
   { name: 'status', path: '/w/harbor/s/002/status', host: 'app-status-tab' },
-  {
-    name: 'tech',
-    path: '/w/harbor/tech/status',
-    host: 'app-tech-page',
-    drawn: (page) =>
-      expect(page.locator('app-tech-status-tab :is(table tr[data-spec], ul[data-stacked] a.row[data-spec])').first()).toBeVisible(),
-  },
   {
     name: 'help',
     path: '/help',

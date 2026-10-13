@@ -304,12 +304,16 @@ const openPaletteWithRecent = async (page: Page): Promise<void> => {
   await openPalette(page);
 };
 
-/** Icons the design (spec 024 design.md) names for a place the prototype drew without a key: Zen's focus corners. */
-const DESIGN_ICONS: readonly IconName[] = ['scan'];
+/**
+ * Icons the design names for a place the prototype drew without a key: Zen's focus corners (spec 024 design.md) and
+ * the Library's fog line (spec 017 design.md).
+ */
+const DESIGN_ICONS: readonly IconName[] = ['scan', 'cloud-fog'];
 
 const SHELL = 'Gemeinsam · Shell';
 const WORKSPACE_VIEW = 'workspace.html';
 const SPEC_VIEW = 'spec.html';
+const LIBRARY_VIEW = 'library.html';
 const DETAIL_VIEW = 'spec-detail.html';
 const BOARD_VIEW = 'board-live.html';
 
@@ -370,8 +374,11 @@ const ICON_PLACES: readonly IconPlace[] = [
   { section: DETAIL_VIEW, place: 'Claims notes badge', route: '/w/harbor/s/002/claims#claim-ISC-51', at: '[data-claim="ISC-51"] [data-link="notes"]', icon: 'sticky-note' },
   { section: DETAIL_VIEW, place: 'Claims verification line', route: '/w/harbor/s/002/claims#claim-ISC-51', at: '[data-claim="ISC-51"]', icon: 'circle-check' },
   { section: DETAIL_VIEW, place: 'Tasks helper line', route: '/w/harbor/s/002/tasks', at: '[data-page="tasks"] .helper', icon: 'lock' },
-  { section: DETAIL_VIEW, place: 'Evidence preview dialog close', route: '/w/harbor/s/002/evidence', open: click('[data-file="artifacts/T12-dashboard-model.md"]'), at: '[data-preview-close]', icon: 'x' },
-  { section: DETAIL_VIEW, place: 'Decisions still open fog', route: '/w/harbor/s/005/decisions', at: '[data-page="docs"]', icon: 'cloud' },
+  // Spec 017 (ISC-158): the former Evidence preview and Decisions fog live in the Library. An evidence file opens in
+  // the reader, whose single-column way out is the back button (no dialog, so no close); the still-open fog lines stand
+  // under the filter "open" with the `cloud-fog` of design.md 017.
+  { section: LIBRARY_VIEW, place: 'evidence in the reader back (single column)', width: 390, route: '/w/harbor/library#002-web-console/.evidence/kpi-band-390.png', at: '[data-library-reader] [data-library-back]', icon: 'arrow-left' },
+  { section: LIBRARY_VIEW, place: 'filter open fog line', route: '/w/harbor/library?state=open', at: '[data-library-fog-group] [data-library-fog-line]', icon: 'cloud-fog' },
   { section: 'notes.html', place: 'notes import notice close', route: '/w/harbor/s/002/notes', at: '[data-notes-import]', icon: 'x' },
   { section: 'notes.html', place: 'notes search', route: '/w/harbor/s/002/notes', at: '[data-notes-list] .notes-search', icon: 'search' },
   { section: 'notes.html', place: 'notes new', route: '/w/harbor/s/002/notes', at: '[data-notes-new]', icon: 'plus' },
@@ -406,10 +413,6 @@ test.describe('icons', () => {
       test.use(atWidth(spot.width ?? 1440));
 
       test(`${spot.place} renders ${spot.icon}`, async ({ page }) => {
-        test.skip(
-          /^\/w\/[^/]+\/s\/[^/]+\/(?:evidence|plan|design|decisions|constitution)$/u.test(spot.route),
-          'ISC-158.1 (spec 017, T48): the former Docs and Evidence tabs redirect into the Library area; T54 replaces this test there',
-        );
         await page.goto(spot.route);
         if (spot.open) await spot.open(page);
         const place = page.locator(spot.at).first();

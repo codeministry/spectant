@@ -706,6 +706,8 @@ const READER = '[data-library-reader]';
 const PROSE = `${READER} [data-library-prose]`;
 /** The stub's prose cases: harbor's T18 artifact with headings, a mermaid fence, an `.evidence/` image and two links. */
 const PROSE_DOC = STUB_LIBRARY.reader;
+/** The prose primitive's own copy (`docs.*`): a table region's label, a failed image's note. */
+const DOCS_EN = read('../src/i18n/en.json') as { docs: { tableRegion: string; imageUnavailable: string } };
 
 async function docPageOf(request: APIRequestContext, path: string): Promise<DocsPage> {
   const answer = await request.get(workspaceRoutes.libraryDoc(WS, path));
@@ -854,6 +856,47 @@ test.describe('reader', () => {
       await expect(page.locator(PROSE)).toBeVisible();
       await expect(page.locator(`${READER} [data-library-open]`)).toHaveCount(0);
     });
+
+    // Ported from the former Docs tab (spec 017): its constitution and design cases, now in the Library.
+    test('the constitution renders its tables as labelled, focusable scroll regions', async ({ page, request }) => {
+      const doc = docOf(await catalogOf(request), (d) => d.type === 'constitution' && d.media === 'markdown', 'constitution');
+      const served = await docPageOf(request, doc.path);
+      const tables = served.html.match(/class="mdtable"/gu)?.length ?? 0;
+      expect(tables, 'the constitution holds a table').toBeGreaterThan(0);
+
+      await page.goto(`${PAGE}#${doc.path}`);
+      await expect(page.locator(READER_TITLE)).toHaveText(squash(doc.title));
+      const regions = page.locator(`${PROSE} .docs-prose div.mdtable`);
+      await expect(regions).toHaveCount(tables);
+      for (let index = 0; index < tables; index++) {
+        const region = regions.nth(index);
+        await expect(region).toHaveAttribute('role', 'region');
+        await expect(region).toHaveAttribute('tabindex', '0');
+        await expect(region).toHaveAttribute('aria-label', template(DOCS_EN.docs.tableRegion, { index: index + 1 }));
+      }
+    });
+
+    test('a design image that fails to load becomes the missing figure with its own note, never a broken image', async ({ page, request }) => {
+      const design = docOf(await catalogOf(request), (d) => d.type === 'design' && d.media === 'markdown', 'design document');
+      const asset = /data-spec-asset="([^"]+)"/u.exec((await docPageOf(request, design.path)).html)?.[1];
+      if (asset === undefined) throw new Error('library.spec: the design document has no .design/ image');
+      const target = `${design.path.slice(0, design.path.lastIndexOf('/'))}/${asset}`;
+      // The file went away between the document's render and the image load.
+      await page.route(
+        (url) => url.pathname === `${ROUTE}/asset` && url.searchParams.get('path') === target,
+        (route) => route.fulfill({ status: 404, contentType: 'application/json; charset=utf-8', body: '{"error":"not-found"}' }),
+      );
+
+      await page.goto(`${PAGE}#${design.path}`);
+      await expect(page.locator(READER_TITLE)).toHaveText(squash(design.title));
+      const figure = page.locator(`${PROSE} figure.image-figure`).filter({ has: page.locator('.figure-missing') }).first();
+      await expect(figure).toHaveAttribute('data-missing', '');
+      await expect(figure).toHaveAttribute('data-unavailable', '');
+      await expect(figure.locator('img')).toHaveCount(0);
+      await expect(figure.locator('.figure-missing code')).toHaveText(asset);
+      await expect(figure.locator('.figure-missing-note')).toHaveText(DOCS_EN.docs.imageUnavailable);
+      await expect(page.locator(`${PROSE} img[data-spec-asset]`)).toHaveCount(0);
+    });
   });
 
   test.describe('phone', () => {
@@ -886,6 +929,23 @@ test.describe('reader', () => {
         await expect(row, way).toBeFocused();
         await expect.poll(() => address(page).doc, { message: way }).toBeNull();
       }
+    });
+
+    // Ported from the former Docs tab (spec 017).
+    test('at 390 px tables scroll inside their own region, the page never does; "On this page" folds above the prose', async ({ page, request }) => {
+      const doc = docOf(await catalogOf(request), (d) => d.type === 'constitution' && d.media === 'markdown', 'constitution');
+      await page.goto(`${PAGE}#${doc.path}`);
+      await expect(page.locator(READER_TITLE)).toHaveText(squash(doc.title));
+      const prose = page.locator(PROSE);
+      await expect(prose.locator('div.mdtable[role="region"]').first()).toBeVisible();
+      const overflow = await prose.evaluate((host) =>
+        [...host.querySelectorAll<HTMLElement>('div.mdtable')].map((region) => region.scrollWidth - region.clientWidth),
+      );
+      expect(overflow.some((width) => width > 0), 'a table wider than its region').toBe(true);
+      const pageOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(pageOverflow).toBeLessThanOrEqual(0);
+      await expect(prose.locator('ui-disclosure.docs-toc-fold')).toBeVisible();
+      await expect(prose.locator('nav.docs-toc')).toHaveCount(0);
     });
   });
 });
@@ -1260,6 +1320,23 @@ test.describe('tech', () => {
       expect(await fingerprint(page, { selector: `${groupHead} [data-library-head="goal"]` }), `goal of ${row.id}`).toEqual(prose?.goal);
       expect(await fingerprint(page, { selector: `${groupHead} [data-library-head="approach"] .lib-ghead-approach-body` }), `approach of ${row.id}`).toEqual(prose?.approach);
     }
+  });
+
+  // Ported from the former tech page (spec 017): its Overview tab loaded the image of tech.md through its own asset route.
+  test('tech · the overview images of tech.md load through the file route, decoded, as the former Overview tab', async ({ page }) => {
+    const images = (HARBOR.pages?.overview.figures ?? []).flatMap((figure) => (figure.kind === 'image' && figure.asset !== undefined ? [figure.asset] : []));
+    // Not vacuous: the golden overview holds an image.
+    expect(images.length).toBeGreaterThan(0);
+
+    await page.goto(`${PAGE}?section=overview#tech.md`);
+    const shown = page.locator(`${section('overview')} figure.image-figure img`);
+    await expect(shown).toHaveCount(images.length);
+    for (const [index, asset] of images.entries()) {
+      const img = shown.nth(index);
+      await expect(img).toHaveAttribute('src', workspaceRoutes.libraryAsset(WS, asset));
+      await expectDecoded(img);
+    }
+    await expect(page.locator(`${TECH_DOC} figure[data-unavailable]`)).toHaveCount(0);
   });
 
   test('tech · the filter open: every fog line of each open spec under its number, as the former Open tab', async ({ page }) => {
