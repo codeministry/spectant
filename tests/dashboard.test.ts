@@ -23,15 +23,16 @@ import { type RunningServer, serve } from "../server/src/http.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import type { DevService } from "../server/src/services.ts";
 import { DEFAULT_SETTINGS, openSettings, settingsApi } from "../server/src/settings.ts";
-import { loadDashboard, readWorkspaceInput, worktreeTreeId } from "../server/src/workspace-loader.ts";
+import { loadDashboard, readSpecFiles, readWorkspaceInput, worktreeTreeId } from "../server/src/workspace-loader.ts";
 import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
-import { specRoutes } from "../server/src/spec-routes.contract.ts";
+import { SPEC_HASH_HEADER, TASKS_HASH_HEADER, specRoutes } from "../server/src/spec-routes.contract.ts";
 import { DEFAULT_WORKFLOW, parseWorkflow } from "../core/src/workflow.ts";
 import {
   BUILDER_WORKTREE,
   type PlantedWorktreeRepo,
   SPEC_BRANCH,
+  SPEC_FOLDER,
   SPEC_ID,
   SPEC_WORKTREE,
   plantWorktreeRepo,
@@ -564,6 +565,103 @@ describe("the loader reads the worktrees of a repository (spec 027, T19, ISC-175
       const reading = await readWorkspaceInput(join(FIXTURES, name));
       if (!reading.readable) throw new Error(`unreadable: ${reading.error}`);
       expect("worktrees" in reading.input).toBe(false);
+    }
+  });
+});
+
+describe("the loader reads a tracked spec from its worktree copy (spec 027, T21, ISC-181)", () => {
+  let tracked: PlantedWorktreeRepo;
+  let untracked: PlantedWorktreeRepo;
+
+  beforeAll(async () => {
+    [tracked, untracked] = await Promise.all([
+      plantWorktreeRepo({ parent: root, trackedSpecs: true }),
+      plantWorktreeRepo({ parent: root }),
+    ]);
+  });
+
+  /** harbor's row of 002 as its golden has it: the main checkout's copy, untouched by the fixture. */
+  const mainRow = (): DashboardModel["specs"][number] => {
+    const row = golden("harbor").specs.find((r) => r.id === SPEC_ID);
+    if (row === undefined) throw new Error("harbor's golden has no 002");
+    return row;
+  };
+
+  /** Every file under `dir`, `.git/` and every worktree included, to its mode and sha256 (links to their target). */
+  function hashes(dir: string, out = new Map<string, string>(), prefix = ""): Map<string, string> {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      const key = `${prefix}${entry.name}`;
+      if (entry.isSymbolicLink()) out.set(key, `link:${readlinkSync(path)}`);
+      else if (entry.isDirectory()) hashes(path, out, `${key}/`);
+      else out.set(key, `${statSync(path).mode}:${createHash("sha256").update(readFileSync(path)).digest("hex")}`);
+    }
+    return out;
+  }
+
+  const sha256 = (path: string): string => createHash("sha256").update(readFileSync(path)).digest("hex");
+
+  /** One spec route of `id` in the workspace at `repo`, answered in-process. */
+  async function route(repo: string, path: string): Promise<Response> {
+    const handler = specRoutesApi({ registry: registryWith(repo), lifeos: LIFEOS_ABSENT });
+    const url = new URL(`http://127.0.0.1:7717${path}`);
+    const res = await handler(new Request(url.href, { headers: { Host: "127.0.0.1:7717" } }), url);
+    if (res === null) throw new Error(`the spec routes declined ${path}`);
+    expect(res.status).toBe(200);
+    return res;
+  }
+
+  test("worktree copy: with specs/ tracked, the row and the head of 002 read the copy's stage and tasks, name the source and carry main's", async () => {
+    expect(tracked.expected.trackedSpecs).toBe(true);
+    const before = hashes(tracked.base);
+    const copy = join(tracked.worktrees.spec, "specs", SPEC_FOLDER);
+    const main = { stage: mainRow().stage, progress: mainRow().progress };
+    expect(main.stage).toBe("build");
+
+    const res = await get(start(registryWith(tracked.root)), `${WORKSPACES_PATH}/harbor/dashboard`);
+    expect(res.status).toBe(200);
+    const model = (await res.json()) as DashboardModel;
+    const row = model.specs.find((r) => r.id === SPEC_ID);
+    // One more landed task, the copy's first commit (T27), beside the main checkout's stage and progress. The copy's
+    // `stage: code-review` (its second commit) is in the files read, but core derives harbor's 002 as `build` from
+    // either copy (stage source `derived`), so the row's stage is no witness of the source; the tasks and hashes are.
+    expect(row?.tasks).toEqual({ landed: (mainRow().tasks?.landed ?? 0) + 1, total: mainRow().tasks?.total ?? 0 });
+    expect([row?.source, row?.main]).toEqual(["worktree", main]);
+    for (const other of model.specs.filter((r) => r.id !== SPEC_ID)) expect([other.source, other.main]).toEqual(["main", null]);
+    expect(strings(model).filter(hasAbsolutePath)).toEqual([]);
+    const reading = await readWorkspaceInput(tracked.root);
+    if (!reading.readable) throw new Error(`unreadable: ${reading.error}`);
+    expect(reading.input.specs.find((f) => f.folder === SPEC_FOLDER)?.texts.spec).toBe(readFileSync(join(copy, "spec.md"), "utf8"));
+
+    // The head says the same, and the hashes the client renders are the copy's (plan § Risks: one source per CAS).
+    const pageRes = await route(tracked.root, specRoutes.spec("harbor", SPEC_ID));
+    const head = ((await pageRes.json()) as SpecPageModel).head;
+    expect([head.stage, head.source, head.main]).toEqual([row?.stage, "worktree", main]);
+    expect(pageRes.headers.get(SPEC_HASH_HEADER)).toBe(sha256(join(copy, "spec.md")));
+    expect(sha256(join(copy, "spec.md"))).not.toBe(sha256(join(tracked.root, "specs", SPEC_FOLDER, "spec.md")));
+    // The Tasks tab reads the same copy as the head's progress.
+    const tasksRes = await route(tracked.root, specRoutes.tasks("harbor", SPEC_ID));
+    expect(tasksRes.headers.get(TASKS_HASH_HEADER)).toBe(sha256(join(copy, "tasks.md")));
+
+    // Reading changes nothing: the main checkout, both worktrees and `.git/` stay byte-identical.
+    expect(hashes(tracked.base)).toEqual(before);
+  });
+
+  test("worktree copy: with specs/ untracked and linked, every spec reads from the main checkout, without a source entry", async () => {
+    expect(untracked.expected.trackedSpecs).toBe(false);
+    const reading = await readWorkspaceInput(untracked.root);
+    if (!reading.readable) throw new Error(`unreadable: ${reading.error}`);
+    expect(reading.input.perSpec?.[SPEC_FOLDER]?.source).toBeUndefined();
+    expect(reading.input.perSpec?.[SPEC_FOLDER]?.main).toBeUndefined();
+    const ref = { dir: join(untracked.root, "specs", SPEC_FOLDER), slug: SPEC_FOLDER };
+    expect(reading.input.specs.find((f) => f.folder === SPEC_FOLDER)).toEqual(readSpecFiles(ref));
+    const row = buildDashboard(reading.input).specs.find((r) => r.id === SPEC_ID);
+    expect([row?.stage, row?.source, row?.main]).toEqual([mainRow().stage, "main", null]);
+    // A workspace that is no repository of its own reads as before spec 027: no per-spec field at all.
+    for (const name of NAMES) {
+      const fixture = await readWorkspaceInput(join(FIXTURES, name));
+      if (!fixture.readable) throw new Error(`unreadable: ${fixture.error}`);
+      expect("perSpec" in fixture.input).toBe(false);
     }
   });
 });

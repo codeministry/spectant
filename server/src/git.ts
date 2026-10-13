@@ -4,7 +4,8 @@
 // Read-only by construction: only `rev-parse`, `log`, `config --get` (the identity, `userEmail`) and `for-each-ref`
 // (the branch names, `takenSpecNumbers`) and `worktree list --porcelain` (the worktrees, `worktreeList`) and
 // `rev-list --count` (a branch's distance to `main`, `aheadOfMain`) run, all of which never touch the index, never take
-// a lock and never write an object, plus `status --porcelain` (a worktree's uncommitted changes, `dirty`), which reads
+// a lock and never write an object, plus `ls-files` (the tracked paths of a spec folder, `trackedSpecPaths`), which
+// reads the index and never writes it, plus `status --porcelain` (a worktree's uncommitted changes, `dirty`), which reads
 // the index and would write a refreshed one back under an optional lock: `GIT_OPTIONAL_LOCKS=0` turns that write off,
 // as it covers any optional lock a future git might take, and `core.fsmonitor=false` keeps status from starting a
 // monitor daemon that would leave its socket in `.git/`. No command fetches or reaches the network. The inherited
@@ -353,6 +354,32 @@ export async function worktreeList(root: string, options: UserEmailOptions = {})
     const run = await runner(["-C", root, "worktree", "list", "--porcelain"], gitEnv(root), signal);
     // No git (null), a non-zero exit and an aborted run all read as no listing; a partial text is never handed on.
     return run?.code === 0 && !signal.aborted ? run.stdout : "";
+  });
+}
+
+/**
+ * The paths git tracks under the spec folder `specs/<folder>` in the main checkout at `root`, read with
+ * `ls-files -z -- specs/<folder>` and split on NUL: relative to the root, `/`-separated, unquoted. It is the answer
+ * `core/`'s `specSourceOf` decides a spec's read source on (spec 027, T21, ISC-181; FORMAT.md § Worktrees). `ls-files`
+ * reads the index and never writes it or takes a lock (`GIT_OPTIONAL_LOCKS=0` besides); the pathspec is literal. A
+ * symbolic link on the way, `specs` or the folder, lists as the link itself or fails ("beyond a symbolic link"), never
+ * as a path under the folder, so a linked `specs/` reads as untracked (ISC-181.1).
+ * Never throws: a folder that is no single plain name, no repository root, no git, a non-zero exit and the deadline
+ * answer the empty list, which `specSourceOf` reads as untracked.
+ */
+export async function trackedSpecPaths(root: string, folder: string, options: UserEmailOptions = {}): Promise<string[]> {
+  if (folder.includes("/") || normalizeFolder(folder) === null) return [];
+  const runner = options.runner ?? defaultGitRunner;
+  try {
+    lstatSync(join(root, ".git"));
+  } catch {
+    return [];
+  }
+  return readWithin<string[]>(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, [], async (signal) => {
+    const run = await runner(["-C", root, "ls-files", "-z", "--", `specs/${folder}`], gitEnv(root), signal);
+    // A partial listing is never handed on: a failed or killed run reads as untracked.
+    if (run?.code !== 0 || signal.aborted) return [];
+    return run.stdout.split("\0").filter((path) => path !== "");
   });
 }
 

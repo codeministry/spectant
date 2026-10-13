@@ -16,24 +16,27 @@
  * repository root (`.git` directly in the folder) with at least one active spec that carries a code-reviewed mark;
  * anything else, or a git that is missing or fails, is `null`, which `core/` reads as "tree id unavailable".
  * The worktrees (spec 027, ISC-175) come from `git.ts`'s read-only `worktree list`, `rev-list --count` and `status`
- * (`readWorktrees`); `core/`'s `assignWorktrees` decides which spec each belongs to.
+ * (`readWorktrees`); `core/`'s `assignWorktrees` decides which spec each belongs to. A spec with a worktree of its own
+ * is read per spec (`specSourceFor`): its code-reviewed mark compares with the tree id computed in that worktree
+ * (ISC-176), and when git tracks its folder (`ls-files`, `trackedSpecPaths`) its files come from the worktree's copy,
+ * with the main checkout's copy beside them (ISC-181); both go to `core/` as `DashboardInput.perSpec`.
  *
  * An unreadable workspace (gone, not a directory, no permission) is a `{readable: false, error}` value with a stable
  * code, never a throw and never the OS message, which would carry the absolute path (ISC-3).
  */
 import { lstatSync, readFileSync, readlinkSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { buildDashboard, devServiceLabels, toLocalService } from "../../core/src/dashboard.ts";
 import type { DashboardInput, DashboardModel, ProbedService } from "../../core/src/dashboard.ts";
 import { actorIdOf } from "../../core/src/actor-id.ts";
 import { FILE_KINDS, repoFilePath } from "../../core/src/files.ts";
-import type { FileDiagnostic, IdeaFiles, SpecFiles, TextFileKind, Workflow, Worktree } from "../../core/src/files.ts";
+import type { FileDiagnostic, IdeaFiles, SpecFiles, SpecRead, TextFileKind, Workflow, Worktree } from "../../core/src/files.ts";
 import { type TreeEntry, type TreeEntryMode, treeIdOf } from "../../core/src/gates.ts";
 import { readLockSources } from "../../core/src/locks.ts";
 import { type SpecRef, listSpecs } from "../../core/src/resolve.ts";
 import { parseWorkflow } from "../../core/src/workflow.ts";
-import { type WorktreeAssignment, assignWorktrees } from "../../core/src/worktrees.ts";
-import { aheadOfMain, dirty, userEmail, worktreeList } from "./git.ts";
+import { WORKTREE_COPY_KINDS, type WorktreeAssignment, assignWorktrees, specSourceOf } from "../../core/src/worktrees.ts";
+import { aheadOfMain, dirty, trackedSpecPaths, userEmail, worktreeList } from "./git.ts";
 
 /** Why a workspace cannot be read. Stable codes: the web app maps them to its own words. */
 export type UnreadableCode = "missing" | "not-a-directory" | "permission-denied" | "unreadable";
@@ -43,7 +46,9 @@ export type UnreadableCode = "missing" | "not-a-directory" | "permission-denied"
  * is missing) and the reading's own findings, each under its repository-relative file name. The input carries the
  * same workflow (`DashboardInput.workflow`), which decides row 7 of the stage table (`close-pending`, spec 008 T49).
  * `ideas` is the story folder for `buildPlanning` (T79; `DashboardInput` has no field for it, so it rides beside the
- * input as `workflow` does); `viewer` is the viewer's `u:` id, null without a configured git address (T80).
+ * input as `workflow` does); `viewer` is the viewer's `u:` id, null without a configured git address (T80). `copies`
+ * names, per active spec read from its worktree's copy (spec 027, ISC-181), the absolute folder of that copy, so the
+ * spec page hashes the same bytes it rendered; server-internal, it never reaches a response (ISC-3).
  */
 export type WorkspaceReading =
   | {
@@ -53,6 +58,7 @@ export type WorkspaceReading =
       ideas: IdeaFiles;
       viewer: string | null;
       diagnostics: readonly FileDiagnostic[];
+      copies: Readonly<Record<string, string>>;
     }
   | { readable: false; error: UnreadableCode };
 
@@ -186,10 +192,23 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
     readdirSync(root); // a directory without read permission fails here, not as an empty workspace
     const specs: SpecFiles[] = [];
     const archived: SpecFiles[] = [];
+    const perSpec: Record<string, SpecRead> = {};
+    const copies: Record<string, string> = {};
     const refs = listSpecs(root);
-    for (const ref of refs) (ref.archived ? archived : specs).push(specFiles(ref.dir, ref.slug));
-    const reviewed = specs.some((f) => f.texts.gateCodeReviewed !== undefined);
     const worktrees = await readWorktrees(root, refs.map((ref) => ref.slug));
+    for (const ref of refs) {
+      const main = specFiles(ref.dir, ref.slug);
+      if (ref.archived) {
+        archived.push(main);
+        continue;
+      }
+      const source = await specSourceFor(root, ref, main, worktrees);
+      specs.push(source.files);
+      if (source.read !== null) perSpec[ref.slug] = source.read;
+      if (source.copy !== null) copies[ref.slug] = source.copy;
+    }
+    // The main checkout's tree only where a marked spec compares with it: one without a tree of its own (ISC-176).
+    const reviewed = specs.some((f) => f.texts.gateCodeReviewed !== undefined && perSpec[f.folder]?.tree === undefined);
     const workflow = parseWorkflow(readIfExists(repoFilePath(root, "workflow")));
     return {
       readable: true,
@@ -197,6 +216,7 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
       ideas: readIdeaFiles(root),
       viewer: await viewerActorOf(root),
       diagnostics: workflow.diagnostics.map((diagnostic) => ({ file: WORKFLOW_FILE, diagnostic })),
+      copies,
       input: {
         master: readIfExists(join(root, "ISA.md")),
         constitution: readIfExists(join(root, "specs", "constitution.md")),
@@ -205,6 +225,7 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
         archived,
         worktreeTree: reviewed ? await worktreeTreeId(root) : null,
         ...(worktrees === undefined ? {} : { worktrees }),
+        ...(Object.keys(perSpec).length === 0 ? {} : { perSpec }),
         locks: await readLockSources({ repoRoot: root, lifeosStateDir }),
         workflow,
       },
@@ -239,6 +260,86 @@ async function readWorktrees(root: string, folders: readonly string[]): Promise<
     worktrees.push({ ...worktree, ahead, dirty: changed });
   }
   return { ...assignment, worktrees };
+}
+
+/** How the loader read one active spec (spec 027): its files, the `SpecRead` beside them, and the copy's folder. */
+interface SpecSourceReading {
+  /** The spec's files: the worktree copy's for `WORKTREE_COPY_KINDS` when the source is `worktree`, else main's. */
+  readonly files: SpecFiles;
+  /** What `core/` gets in `perSpec` / `read`; null when there is nothing to say (no worktree, no mark). */
+  readonly read: SpecRead | null;
+  /** The absolute folder of the worktree copy when the source is `worktree`, else null; never leaves the server. */
+  readonly copy: string | null;
+}
+
+/** A worktree path inside the repository: the only ones whose files are read (plan 027 § Risks, external paths). */
+const insideRepository = (path: string): boolean => !isAbsolute(path) && path !== ".." && !path.startsWith("../");
+
+/** Whether `path` holds its own `.git` (a linked worktree's is a file): a worktree git lists but that is gone is not read. */
+function hasGit(path: string): boolean {
+  try {
+    lstatSync(join(path, ".git"));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The spec folder read from two places: the kinds of `WORKTREE_COPY_KINDS` from the worktree's copy `copyDir`, every
+ * other kind of the folder from the main checkout's `mainDir` (FORMAT.md § Worktrees).
+ */
+function copyFiles(mainDir: string, copyDir: string, folder: string): SpecFiles {
+  const texts: Partial<Record<TextFileKind, string>> = {};
+  for (const kind of FOLDER_KINDS) {
+    const text = readIfExists(join(WORKTREE_COPY_KINDS.includes(kind) ? copyDir : mainDir, FILE_KINDS[kind].path));
+    if (text !== null) texts[kind] = text;
+  }
+  return { folder, texts };
+}
+
+/**
+ * How one active spec is read (spec 027, T20 and T21): `main`, its files as read from the main checkout, unless it has
+ * a worktree of kind `spec` of its own (the first in git's order, as the row's chip), inside the repository and present.
+ * Then the read source is `core/`'s `specSourceOf` over `git ls-files -z -- specs/<folder>` in the main checkout
+ * (`trackedSpecPaths`): with `worktree` the copy kinds come from `<worktree>/specs/<folder>/` and `main` rides beside
+ * them in `read.main`; a copy without a `spec.md` stays on main, so a spec never vanishes from the board (ISC-181). The
+ * code-reviewed mark of the files so read compares with the tree id computed in that worktree, `read.tree` (ISC-176);
+ * without a mark no tree is computed. A spec without such a worktree has no `read` and keeps the workspace's defaults.
+ */
+async function specSourceFor(
+  root: string,
+  ref: Pick<SpecRef, "id" | "slug" | "dir">,
+  main: SpecFiles,
+  assignment: WorktreeAssignment | undefined,
+): Promise<SpecSourceReading> {
+  const worktree = assignment?.worktrees.find((w) => w.kind === "spec" && w.spec === ref.id) ?? null;
+  if (worktree === null || !insideRepository(worktree.path) || !hasGit(join(root, worktree.path))) {
+    return { files: main, read: null, copy: null };
+  }
+  const at = join(root, worktree.path);
+  const source = specSourceOf({ folder: ref.slug, worktree, lsFiles: await trackedSpecPaths(root, ref.slug) });
+  const copyDir = join(at, "specs", ref.slug);
+  const copy = source === "worktree" ? copyFiles(ref.dir, copyDir, ref.slug) : null;
+  const files = copy?.texts.spec === undefined ? main : copy;
+  const read: SpecRead = {
+    ...(files === main ? {} : { source: "worktree" as const, main }),
+    ...(files.texts.gateCodeReviewed === undefined ? {} : { tree: await worktreeTreeId(at) }),
+  };
+  return { files, read: Object.keys(read).length === 0 ? null : read, copy: files === main ? null : copyDir };
+}
+
+/**
+ * One spec's files from its read source, for the routes that read a single spec (the spec page's tabs): the same
+ * decision `readWorkspaceInput` makes per spec, so a tab never reads another copy than the row and the head (ISC-181).
+ * `dir` is the folder the copy kinds were read from (the worktree copy's, or the main checkout's `ref.dir`).
+ */
+export async function readSpecSource(root: string, ref: SpecRef): Promise<{ files: SpecFiles; dir: string }> {
+  const main = specFiles(ref.dir, ref.slug);
+  if (ref.archived) return { files: main, dir: ref.dir };
+  const assignment = assignWorktrees(await worktreeList(root), listSpecs(root).map((r) => r.slug));
+  const source = await specSourceFor(root, ref, main, assignment);
+  return { files: source.files, dir: source.copy ?? ref.dir };
 }
 
 /**

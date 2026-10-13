@@ -73,7 +73,7 @@ import {
   type UnreadableCode,
   readBytesIfExists,
   readIfExists,
-  readSpecFiles,
+  readSpecSource,
   readWorkspaceInput,
   unreadableCode,
   viewerActorOf,
@@ -170,21 +170,25 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
       worktreeTree: input.worktreeTree,
       // The dashboard reading's worktrees, so the head's chip is the row's (spec 027, ISC-175).
       ...(input.worktrees === undefined ? {} : { worktrees: input.worktrees }),
+      // The row's own read of this spec: its worktree's tree id (ISC-176), its source and the main copy (ISC-181).
+      ...(input.perSpec?.[files.folder] === undefined ? {} : { read: input.perSpec[files.folder] }),
       commits: (await commitsOf(root, ref)).commits,
       ...(input.locks ? { locks: input.locks } : {}),
       workflow: reading.workflow,
     });
     // The same hashes the gate write and the transition recompute (`writes.ts`), so a render and its write can only
-    // differ by the files: the normalised gate hashes, and spec.md's raw bytes for the stage move (T83).
-    const specBytes = readBytesIfExists(specFilePath(ref.dir, "spec"));
+    // differ by the files: the normalised gate hashes, and spec.md's raw bytes for the stage move (T83). Both over the
+    // copy the page was read from, the worktree's when the source is `worktree` (plan 027 § Risks: one source per CAS).
+    const specBytes = readBytesIfExists(specFilePath(reading.copies[ref.slug] ?? ref.dir, "spec"));
     return json(req, 200, page, {
       [REVIEWED_HASHES_HEADER]: formatReviewedHashes(gateHashes(files.texts)),
       ...(specBytes === null ? {} : { [SPEC_HASH_HEADER]: rawSha256(specBytes) }),
     });
   }
 
-  function docs(req: Request, root: string, ref: SpecRef, files: SpecFiles, name: DocName): Response {
-    const path = name === "constitution" ? constitutionPath(root) : specFilePath(ref.dir, DOC_FILES[name]);
+  /** One docs tab; `dir` is the folder of the spec's read source (`readSpecSource`), the constitution the workspace's. */
+  function docs(req: Request, root: string, dir: string, files: SpecFiles, name: DocName): Response {
+    const path = name === "constitution" ? constitutionPath(root) : specFilePath(dir, DOC_FILES[name]);
     const text = readIfExists(path);
     if (text === null) {
       const type = parseFrontmatter(files.texts.spec ?? "").data.specType;
@@ -206,7 +210,9 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
     if (ref.kind !== "spec") return json(req, 404, NOT_FOUND);
     if (match.route === "spec") return specPage(req, root, ref);
 
-    const files = readSpecFiles(ref);
+    // The spec's read source, as the row and the head read it (spec 027, ISC-181): `dir` is the worktree copy's folder
+    // when the source is `worktree`. Evidence, artifacts and the writes stay on `ref.dir`.
+    const { files, dir } = await readSpecSource(root, ref);
     if (files.texts.spec === undefined) return json(req, 404, NOT_FOUND);
     const constitution = (): string | null => readIfExists(constitutionPath(root));
 
@@ -227,7 +233,7 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         return json(req, 200, buildClaimViews({ files, locks: await locksOf(root, clock()) }));
       case "tasks": {
         // One read of the raw bytes: the hash covers exactly the text that was parsed.
-        const bytes = readBytesIfExists(specFilePath(ref.dir, "tasks"));
+        const bytes = readBytesIfExists(specFilePath(dir, "tasks"));
         if (bytes === null) return json(req, 200, null);
         const text = constitution();
         const tab = parseTaskLines({
@@ -242,7 +248,7 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
       case "evidenceFile":
         return evidenceFileResponse(req, ref.dir, url.search);
       case "docs":
-        return docs(req, root, ref, files, match.params.name);
+        return docs(req, root, dir, files, match.params.name);
       case "frames":
         return json(req, 200, buildFrames(files));
       case "live": {
