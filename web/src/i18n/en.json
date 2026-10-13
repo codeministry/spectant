@@ -1719,6 +1719,26 @@
       "bare": "{{count}} features without a spec in {{lane}}",
       "openColumn": "{{id}} {{name}}, finished, show the column"
     },
+    "graph": {
+      "all": "All",
+      "filters": "Filters",
+      "archived": "Archived",
+      "specEdges": "Spec edges",
+      "rebundle": "Bundle again",
+      "bundleDone": "{{count}} features done",
+      "bundleNoSpec": "+{{count}} features without a spec",
+      "openBundle": "{{name}}, show the features",
+      "label": "Planning graph",
+      "drawing": "Drawing the graph…",
+      "failed": "The graph could not be drawn.",
+      "asTree": "Read as a tree",
+      "legend": {
+        "contains": "Contains",
+        "open": "Spec edge open",
+        "met": "Spec edge met",
+        "bundle": "Bundle, archived"
+      }
+    },
     "features": {
       "title": "Features in {{ws}}",
       "meta": "{{features}} features · {{closed}}/{{total}} claims closed · {{unheld}} unheld",

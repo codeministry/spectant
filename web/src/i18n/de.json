@@ -1719,6 +1719,26 @@
       "bare": "{{count}} Features ohne Spec in {{lane}}",
       "openColumn": "{{id}} {{name}}, fertig, Spalte aufklappen"
     },
+    "graph": {
+      "all": "Alle",
+      "filters": "Filter",
+      "archived": "Archivierte",
+      "specEdges": "Spec-Kanten",
+      "rebundle": "Wieder bündeln",
+      "bundleDone": "{{count}} Features erledigt",
+      "bundleNoSpec": "+{{count}} Features ohne Spec",
+      "openBundle": "{{name}}, Features anzeigen",
+      "label": "Planungsdiagramm",
+      "drawing": "Diagramm wird gezeichnet…",
+      "failed": "Das Diagramm konnte nicht gezeichnet werden.",
+      "asTree": "Als Baum lesen",
+      "legend": {
+        "contains": "Enthaltensein",
+        "open": "Spec-Kante offen",
+        "met": "Spec-Kante erfüllt",
+        "bundle": "Bündel, archiviert"
+      }
+    },
     "features": {
       "title": "Features in {{ws}}",
       "meta": "{{features}} Features · {{closed}}/{{total}} Claims geschlossen · {{unheld}} ohne Spec",
