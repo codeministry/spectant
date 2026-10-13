@@ -1,0 +1,244 @@
+<div
+  class="matrix"
+  data-lens-matrix
+  [attr.data-layout]="layout()"
+  [attr.data-has-selection]="hasSelection() ? '' : null"
+>
+  @if (hasMilestones() || hasDone()) {
+    <div class="tools">
+      @if (hasMilestones()) {
+        <div class="pills" role="group" [attr.aria-label]="'planning.matrix.pills' | transloco">
+          @for (l of lanes(); track l.key) {
+            <button type="button" class="pill" [attr.data-m]="l.param" [attr.aria-pressed]="active()?.key === l.key" (click)="pick(l)">
+              <ui-icon [name]="l.lane.ref === null ? 'circle-dashed' : 'flag'" [size]="14" />
+              <span class="pill-name">{{ l.lane.ref === null ? ('planning.tree.noMilestone' | transloco) : l.lane.name }}</span>
+              <span class="pill-count" data-pill-count>{{ l.lane.specCount }}</span>
+            </button>
+          }
+        </div>
+      }
+      @if (hasDone()) {
+        <button type="button" class="done-toggle" data-show-done [attr.aria-pressed]="showDone()" (click)="toggleDone()">
+          <ui-icon name="eye" [size]="14" />
+          {{ 'planning.matrix.showDone' | transloco }}
+        </button>
+      }
+    </div>
+  }
+
+  <ng-template #laneHead let-l>
+    @let lane = l.lane;
+    @let label = lane.ref === null ? ('planning.tree.noMilestone' | transloco) : lane.name;
+    <div class="lane-name" data-lane-name>{{ label }}</div>
+    <div class="lane-meta">
+      @if (lane.ref === null) {
+        <span>{{ 'planning.tree.noMilestoneMeta' | transloco }}</span>
+      } @else {
+        <span class="mono">{{ lane.target ?? ('planning.milestones.undated' | transloco) }}</span>
+      }
+      <span class="lane-count" [attr.data-spec-count]="lane.specCount">{{ 'planning.matrix.specs' | transloco: { count: lane.specCount } }}</span>
+    </div>
+    <div class="lane-progress">
+      <ui-meter
+        size="mini"
+        [value]="lane.closed"
+        [max]="lane.total"
+        [label]="'planning.milestones.meterLabel' | transloco: { name: label }"
+        [valueText]="'planning.features.valueText' | transloco: { closed: lane.closed, total: lane.total }"
+      />
+      <span class="num" data-num>{{ lane.closed }}/{{ lane.total }}</span>
+    </div>
+  </ng-template>
+
+  <ng-template #headInner let-l>
+    <span class="lane-icon"><ui-icon [name]="l.lane.ref === null ? 'circle-dashed' : 'flag'" [size]="16" /></span>
+    <span class="lane-text"><ng-container [ngTemplateOutlet]="laneHead" [ngTemplateOutletContext]="{ $implicit: l }" /></span>
+  </ng-template>
+
+  <ng-template #cardTpl let-v>
+    @let c = v.card;
+    <button
+      type="button"
+      class="tcard"
+      data-card
+      [attr.data-ref]="c.ref"
+      [attr.data-selected]="v.look"
+      [attr.data-archived]="c.archived ? '' : null"
+      [style.--edge]="v.edge"
+      (click)="select(c.ref)"
+    >
+      <span class="r1">
+        <ui-icon [name]="c.archived ? 'archive' : 'sparkles'" [size]="14" />
+        <span class="tid" data-card-id>{{ c.id }}</span>
+        @if (c.archived) {
+          <span class="chip archived" data-archived-chip>{{ 'planning.features.archived' | transloco }}</span>
+        } @else if (c.stage; as stage) {
+          <span class="chip stage" data-stage-chip [attr.data-stage]="stage">{{ 'stages.' + stage | transloco }}</span>
+        }
+      </span>
+      <span class="tt" data-card-title>{{ c.title }}</span>
+      <span class="r3">
+        <ui-meter
+          size="mini"
+          [value]="c.closed"
+          [max]="c.total"
+          [label]="'planning.features.meterLabel' | transloco: { id: c.id }"
+          [valueText]="'planning.features.valueText' | transloco: { closed: c.closed, total: c.total }"
+        />
+        <span class="num" data-num>{{ c.closed }}/{{ c.total }}</span>
+        @for (o of v.others; track o.ref) {
+          <span class="also" [attr.data-other-feature]="o.ref">{{ 'planning.matrix.otherChip' | transloco: { id: o.id } }}</span>
+        }
+      </span>
+    </button>
+  </ng-template>
+
+  <ng-template #bare let-l>
+    @for (b of l.bare; track b.ref) {
+      <button type="button" class="bare-chip" [attr.data-ref]="b.ref" [attr.data-selected]="b.look" (click)="select(b.ref)">{{ b.id }}</button>
+    }
+  </ng-template>
+
+  @if (layout() === 'single') {
+    @for (l of visible(); track l.key) {
+      <section class="single" [attr.data-lane]="l.key" [attr.aria-label]="l.lane.ref === null ? ('planning.tree.noMilestone' | transloco) : l.lane.name">
+        @if (l.lane.ref; as ref) {
+          <button type="button" class="lane-head single-head" data-lane-head [attr.data-ref]="ref" [attr.data-selected]="l.look" (click)="select(ref)">
+            <ng-container [ngTemplateOutlet]="headInner" [ngTemplateOutletContext]="{ $implicit: l }" />
+          </button>
+        } @else {
+          <div class="lane-head single-head none" data-lane-head>
+            <ng-container [ngTemplateOutlet]="headInner" [ngTemplateOutletContext]="{ $implicit: l }" />
+          </div>
+        }
+        @if (l.empty) {
+          <p class="lane-empty" data-lane-empty>{{ 'planning.matrix.noCards' | transloco: { lane: l.lane.ref === null ? ('planning.tree.noMilestone' | transloco) : l.lane.name } }}</p>
+        }
+        @for (v of columns(); track v.column.ref; let i = $index) {
+          @if (l.cells[i].length > 0) {
+            @if (v.folded) {
+              <button type="button" class="stripe-row" [attr.data-stripe]="v.column.ref" (click)="open(v.column.ref)">
+                <ui-icon name="eye" [size]="14" />
+                <span class="mono">{{ v.column.id }} · {{ v.column.closed }}/{{ v.column.total }}</span>
+                <span class="stripe-name">{{ v.column.name }}</span>
+              </button>
+            } @else {
+              <div class="lane-col" [attr.data-cell]="v.column.ref">
+                <div class="col-head-wrap" [attr.data-column]="v.column.ref">
+                  <button type="button" class="fh" [attr.data-ref]="v.column.ref" [attr.data-selected]="v.look" (click)="select(v.column.ref)">
+                    <span class="fid" data-column-id>{{ v.column.id }}</span>
+                    <span class="ft" data-column-name>{{ v.column.name }}</span>
+                    <span class="num" data-num>{{ v.column.closed }}/{{ v.column.total }}</span>
+                  </button>
+                </div>
+                @for (card of l.cells[i]; track card.card.ref) {
+                  <ng-container [ngTemplateOutlet]="cardTpl" [ngTemplateOutletContext]="{ $implicit: card }" />
+                }
+              </div>
+            }
+          }
+        }
+        @if (l.bare.length > 0) {
+          <details class="nospec" [attr.data-bare]="l.bare.length">
+            <summary>
+              <ui-icon name="chevron-down" [size]="14" />
+              {{ 'planning.matrix.bare' | transloco: { count: l.bare.length, lane: l.lane.ref === null ? ('planning.tree.noMilestone' | transloco) : l.lane.name } }}
+            </summary>
+            <div class="bare-chips"><ng-container [ngTemplateOutlet]="bare" [ngTemplateOutletContext]="{ $implicit: l }" /></div>
+          </details>
+        }
+      </section>
+    }
+  } @else {
+    <div class="wrap" data-matrix-scroll>
+      <div class="mx" role="presentation" [style.grid-template-columns]="tracks()">
+        <div class="heads">
+          @if (layout() === 'grid') {
+            <div class="corner" data-corner>
+              <span class="eyebrow">{{ 'planning.matrix.corner' | transloco }}</span>
+            </div>
+          }
+          @for (v of columns(); track v.column.ref) {
+            @if (v.folded) {
+              <button
+                type="button"
+                class="stripe head"
+                [attr.data-stripe]="v.column.ref"
+                [attr.aria-label]="'planning.matrix.openColumn' | transloco: { id: v.column.id, name: v.column.name }"
+                (click)="open(v.column.ref)"
+              >
+                <ui-icon name="eye" [size]="14" />
+                <span class="v">{{ v.column.id }} · {{ v.column.closed }}/{{ v.column.total }}</span>
+              </button>
+            } @else {
+              <div class="colhead" [attr.data-column]="v.column.ref" [attr.data-finished]="v.column.done ? '' : null" [attr.data-started]="v.column.closed > 0 ? '' : null">
+                <button type="button" class="fh" [attr.data-ref]="v.column.ref" [attr.data-selected]="v.look" (click)="select(v.column.ref)">
+                  <span class="fid" data-column-id>{{ v.column.id }}</span>
+                  <span class="ft" data-column-name>{{ v.column.name }}</span>
+                  <span class="fp">
+                    <ui-meter
+                      size="mini"
+                      [value]="v.column.closed"
+                      [max]="v.column.total"
+                      [label]="'planning.features.meterLabel' | transloco: { id: v.column.id }"
+                      [valueText]="'planning.features.valueText' | transloco: { closed: v.column.closed, total: v.column.total }"
+                    />
+                    <span class="num" data-num>{{ v.column.closed }}/{{ v.column.total }}</span>
+                  </span>
+                </button>
+              </div>
+            }
+          }
+        </div>
+
+        @for (l of lanes(); track l.key) {
+          <section
+            class="lane"
+            data-lane
+            [attr.data-lane]="l.key"
+            [attr.data-none]="l.lane.ref === null ? '' : null"
+            [attr.data-has-bare]="l.bare.length > 0 ? '' : null"
+            [attr.aria-label]="l.lane.ref === null ? ('planning.tree.noMilestone' | transloco) : l.lane.name"
+          >
+            <div class="lane-head" data-lane-head [attr.data-band]="layout() === 'bands' ? '' : null" [attr.data-selected]="l.look">
+              @if (l.lane.ref; as ref) {
+                <button type="button" class="lane-hit" [attr.data-ref]="ref" (click)="select(ref)">
+                  <ng-container [ngTemplateOutlet]="headInner" [ngTemplateOutletContext]="{ $implicit: l }" />
+                </button>
+              } @else {
+                <div class="lane-hit">
+                  <ng-container [ngTemplateOutlet]="headInner" [ngTemplateOutletContext]="{ $implicit: l }" />
+                </div>
+              }
+            </div>
+            @if (l.empty) {
+              <p class="lane-empty" data-lane-empty>
+                <span>{{ 'planning.matrix.noCards' | transloco: { lane: l.lane.ref === null ? ('planning.tree.noMilestone' | transloco) : l.lane.name } }}</span>
+              </p>
+            } @else {
+              @for (v of columns(); track v.column.ref; let i = $index) {
+                @if (v.folded) {
+                  <div class="stripe" aria-hidden="true"></div>
+                } @else {
+                  <div class="cell" [attr.data-cell]="v.column.ref" [attr.data-blank]="l.cells[i].length === 0 ? '' : null">
+                    @for (card of l.cells[i]; track card.card.ref) {
+                      <ng-container [ngTemplateOutlet]="cardTpl" [ngTemplateOutletContext]="{ $implicit: card }" />
+                    }
+                  </div>
+                }
+              }
+            }
+            @if (l.bare.length > 0) {
+              <div class="bare" [attr.data-bare]="l.bare.length">
+                <span class="bare-in">
+                  <span class="bare-label">{{ 'planning.matrix.bare' | transloco: { count: l.bare.length, lane: l.lane.ref === null ? ('planning.tree.noMilestone' | transloco) : l.lane.name } }}</span>
+                  <span class="bare-chips"><ng-container [ngTemplateOutlet]="bare" [ngTemplateOutletContext]="{ $implicit: l }" /></span>
+                </span>
+              </div>
+            }
+          </section>
+        }
+      </div>
+    </div>
+  }
+</div>

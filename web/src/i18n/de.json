@@ -1709,6 +1709,16 @@
         "graph": "{{milestones}} Meilensteine → {{features}} Features → {{specs}} Specs"
       }
     },
+    "matrix": {
+      "pills": "Meilensteine",
+      "showDone": "Fertige Features",
+      "specs": "{{count}} Specs",
+      "corner": "Meilenstein \\ Feature",
+      "otherChip": "+{{id}}",
+      "noCards": "Noch keine Specs in {{lane}}",
+      "bare": "{{count}} Features ohne Spec in {{lane}}",
+      "openColumn": "{{id}} {{name}}, fertig, Spalte aufklappen"
+    },
     "features": {
       "title": "Features in {{ws}}",
       "meta": "{{features}} Features · {{closed}}/{{total}} Claims geschlossen · {{unheld}} ohne Spec",

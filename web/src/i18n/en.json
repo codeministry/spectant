@@ -1709,6 +1709,16 @@
         "graph": "{{milestones}} milestones → {{features}} features → {{specs}} specs"
       }
     },
+    "matrix": {
+      "pills": "Milestones",
+      "showDone": "Finished features",
+      "specs": "{{count}} specs",
+      "corner": "Milestone \\ Feature",
+      "otherChip": "+{{id}}",
+      "noCards": "No specs yet in {{lane}}",
+      "bare": "{{count}} features without a spec in {{lane}}",
+      "openColumn": "{{id}} {{name}}, finished, show the column"
+    },
     "features": {
       "title": "Features in {{ws}}",
       "meta": "{{features}} features · {{closed}}/{{total}} claims closed · {{unheld}} unheld",
