@@ -44,6 +44,12 @@ export interface FeatureBlock {
   readonly name: string;
   /** The `Why:` line under the heading, without the prefix. */
   readonly why: string | null;
+  /**
+   * The `Milestone:` line under the heading, without the prefix: the name of a master `## Milestones` entry (spec 026).
+   * Optional while the seam stands (T1): the parser does not read the line yet and leaves the key out, so every
+   * existing feature block and test stays as it is; the parser task sets it on every block, null without the line.
+   */
+  readonly milestone?: string | null;
   readonly line: number;
   /** Claim IDs in the block, in file order. */
   readonly claims: readonly string[];

@@ -440,6 +440,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       ideas: "req",
       recount: "req",
       diagnostics: "req",
+      relations: "opt",
     });
     expect(shapeProblems("planning", value, spec)).toEqual([]);
     expect(value.features.length).toBeGreaterThan(0);

@@ -10,6 +10,7 @@
 // caller and rides it whole. Spec 023's tech.ts takes tech.md and the spec texts from the caller and rides it whole.
 export * from './files.ts';
 export type * from './diagnostics.ts';
+export type * from './relations.ts';
 export * from './frontmatter.ts';
 export * from './claims.ts';
 export * from './status.ts';

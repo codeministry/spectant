@@ -28,6 +28,7 @@ import { parseFrontmatter } from './frontmatter.ts';
 import { readIdeas } from './ideas.ts';
 import { milestoneSlug, parseMilestones } from './milestones.ts';
 import type { Milestone } from './milestones.ts';
+import type { RelationIndex } from './relations.ts';
 import type { Progress } from './frontmatter.ts';
 import { specIdOf, specSlugOf } from './spec-ref.ts';
 import { DEFAULT_WORKFLOW } from './stage.ts';
@@ -214,6 +215,12 @@ export interface PlanningModel {
    * `ideas-…` findings, a story's `unknown-feature` or `unknown-milestone`), per file.
    */
   readonly diagnostics: readonly FileDiagnostic[];
+  /**
+   * The relation index (spec 026, `relations.ts`): every milestone, feature, spec, claim and story by `<type>:<id>`,
+   * with parents, children and blockers. Optional while the seam stands (T1): `buildPlanning` leaves it out until the
+   * index builder lands, so every planning golden stays byte-unchanged.
+   */
+  readonly relations?: RelationIndex;
 }
 
 /**

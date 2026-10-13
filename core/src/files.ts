@@ -266,6 +266,14 @@ export interface FileDiagnostic {
   readonly diagnostic: Diagnostic;
 }
 
+/**
+ * The milestone codes of the planning tree's `FileDiagnostic` (`Diagnostic.code`), each a warning with the name as
+ * `subject`: `spec-milestone-unknown`, a spec's `milestone:` naming no master entry (spec 003);
+ * `feature-milestone-unknown`, a feature block's `Milestone:` line naming no master entry; `milestone-mismatch`, a
+ * spec whose `milestone:` differs from its main feature's `Milestone:` (both spec 026).
+ */
+export type PlanningMilestoneDiagnosticCode = 'spec-milestone-unknown' | 'feature-milestone-unknown' | 'milestone-mismatch';
+
 /** A commit touching the spec folder, as the server's read-only `git log` passes it in (core runs no subprocess). */
 export interface CommitRecord {
   readonly sha: string;
