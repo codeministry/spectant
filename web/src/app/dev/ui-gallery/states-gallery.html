@@ -1,0 +1,176 @@
+<!-- gallery: dev-only strings (see ui-gallery.ts). Prototype states.html (app.js pageStates, pages.js SPECTANT_STATES). -->
+<section class="gallery-group" data-gallery="states" aria-labelledby="g-states-gallery">
+  <p class="sg-eyebrow">Spectant · states</p>
+  <h2 id="g-states-gallery">States · gallery</h2>
+  <div class="sg-grid">
+    <section class="sg-mini sg-wide" data-gallery="states-loading">
+      <p class="sg-eyebrow">Loading · skeletons at final geometry (after 150 ms)</p>
+      <div class="sg-kpi">
+        <ui-card class="sg-span" [padding]="24">
+          <div class="sg-hero">
+            <ui-skeleton width="112px" height="112px" />
+            <div class="sg-col">
+              <ui-skeleton width="40%" height="12px" />
+              <ui-skeleton width="60%" height="40px" />
+              <ui-skeleton width="50%" height="12px" />
+            </div>
+          </div>
+        </ui-card>
+        @for (tile of [0, 1, 2]; track tile) {
+          <ui-card [padding]="16">
+            <div class="sg-col">
+              <ui-skeleton width="50%" height="12px" />
+              <ui-skeleton width="40%" height="32px" />
+              <ui-skeleton width="100%" height="6px" />
+            </div>
+          </ui-card>
+        }
+      </div>
+      <ui-card [padding]="0">
+        @for (row of [0, 1, 2]; track row) {
+          <div class="sg-skel-row">
+            <ui-skeleton width="32px" height="14px" />
+            <ui-skeleton width="45%" height="14px" />
+            <span class="sg-grow"></span>
+            <ui-skeleton width="88px" height="4px" />
+            <ui-skeleton width="64px" height="4px" />
+          </div>
+        }
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="states-no-specs">
+      <p class="sg-eyebrow">No specs yet</p>
+      <ui-card>
+        <ui-empty-state icon="layers" heading="No specs yet" body="This workspace has no specs in specs/. Scaffold the first one:">
+          <ui-command-chip command="/spec-new" />
+        </ui-empty-state>
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="states-nothing-ready">
+      <p class="sg-eyebrow">Nothing ready to build</p>
+      <ui-card>
+        <ui-empty-state icon="clock" heading="Nothing ready to build" body="Every active spec is still scoping. Plan one to make it takeable.">
+          <ui-command-chip command="/spec-plan 005" />
+        </ui-empty-state>
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="states-unreachable">
+      <p class="sg-eyebrow">Server unreachable</p>
+      <ui-notice tone="warning" icon="wifi-off">
+        <b>Can't reach Spectant at 127.0.0.1:7717.</b> The numbers below are from 14:31. Start it with
+        <code>spectant serve</code> · this page retries every 10 s.
+      </ui-notice>
+    </section>
+
+    <section class="sg-mini" data-gallery="states-no-warnings">
+      <p class="sg-eyebrow">No warnings</p>
+      <app-warnings-panel [specs]="[]" [kpis]="noWarnings" />
+    </section>
+
+    <section class="sg-mini" data-gallery="states-conflict">
+      <p class="sg-eyebrow">Conflict · 409, the file changed on disk</p>
+      <app-refusal-notice [refusal]="conflict" />
+      <app-refusal-notice [refusal]="locked" />
+    </section>
+
+    <section class="sg-mini" data-gallery="states-checkbox">
+      <p class="sg-eyebrow">Task checkbox</p>
+      <ui-card>
+        <div class="sg-row">
+          <label class="sg-item"><input type="checkbox" class="checkbox checkbox-sm" aria-label="T12 enabled" /><span class="sg-meta">enabled</span></label>
+          <label class="sg-item"><input type="checkbox" class="checkbox checkbox-sm" aria-label="T12 checked" checked /><span class="sg-meta">checked</span></label>
+          <span class="sg-item">
+            <span class="sg-hit">
+              <input type="checkbox" class="checkbox checkbox-sm sg-saving" aria-label="T12 saving" disabled />
+              <span class="loading loading-spinner loading-xs" role="status" aria-label="Saving T12…"></span>
+            </span>
+            <span class="sg-meta">saving</span>
+          </span>
+          <span class="sg-item">
+            <input type="checkbox" class="checkbox checkbox-sm" aria-label="T12 locked" disabled />
+            <span class="sg-meta"><ui-icon name="lock" [size]="14" /> locked · spec-002-ISC-333</span>
+          </span>
+          <span class="sg-item sg-conflict">
+            <input type="checkbox" class="checkbox checkbox-sm" aria-label="T12 conflict" disabled />
+            <span class="sg-meta">conflict · tasks.md changed on disk</span>
+          </span>
+        </div>
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="states-gate">
+      <p class="sg-eyebrow">Gate button</p>
+      <ui-card>
+        <div class="sg-col">
+          @for (gate of gates; track gate) {
+            <app-gallery-gate [state]="gate" />
+          }
+        </div>
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="states-agent-banner">
+      <p class="sg-eyebrow">Agent banner</p>
+      <div class="sg-banner" role="status">
+        <p class="sg-banner-line">
+          <span class="sg-agent-dot" aria-hidden="true"></span>
+          <span>Agent <code class="sg-mono">spec-002-ISC-333</code> is working on <code class="sg-mono">ISC-333</code> · since 4 min</span>
+        </p>
+        <span class="sg-paused"><ui-icon name="lock" [size]="14" /> writes paused</span>
+      </div>
+    </section>
+
+    <section class="sg-mini" data-gallery="states-timeline-empty">
+      <p class="sg-eyebrow">Timeline · empty (derived only)</p>
+      <ui-card><ui-empty-state icon="clock" heading="No events yet" body="Stage is derived from the files." /></ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="states-timeline-filtered">
+      <p class="sg-eyebrow">Timeline · filtered to nothing</p>
+      <ui-card><ui-empty-state icon="search" heading="No decisions recorded" body="Turn more filters on to see other entries." /></ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="states-claims-closed">
+      <p class="sg-eyebrow">Claims · all closed, no fog</p>
+      <ui-card>
+        <ui-empty-state icon="circle-check" heading="All claims closed, no fog" body="Ready for the code review.">
+          <ui-command-chip command="/spec-code-review 004" />
+        </ui-empty-state>
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="states-evidence-empty">
+      <p class="sg-eyebrow">Evidence empty</p>
+      <ui-card><ui-empty-state icon="layers" heading="No evidence recorded yet" body="Evidence appears with the first closed claim." /></ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="states-notes-empty">
+      <p class="sg-eyebrow">Notes empty + import notice</p>
+      <ui-notice tone="info" icon="sticky-note">
+        <b>Notes from the old pages?</b>
+        <ui-command-chip command="spectant import-notes <file>" />
+      </ui-notice>
+      <ui-card>
+        <ui-empty-state icon="sticky-note" heading="No notes yet · press n" body="Notes stay on this machine and are never written into the repository." />
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="states-no-plan">
+      <p class="sg-eyebrow">Spec type without plan</p>
+      <ui-card><ui-empty-state icon="layers" heading="Plan is not part of a refactor" body="A refactor goes from spec to tasks." /></ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="states-reduced-motion">
+      <p class="sg-eyebrow">Reduced motion · pulsing dot becomes a static ring</p>
+      <ui-card>
+        <div class="sg-row">
+          <span class="sg-item"><span class="sg-agent-dot" aria-hidden="true"></span><span class="sg-meta">motion</span></span>
+          <span class="sg-item"><span class="sg-agent-dot sg-still" aria-hidden="true"></span><span class="sg-meta">reduced</span></span>
+        </div>
+      </ui-card>
+    </section>
+  </div>
+</section>

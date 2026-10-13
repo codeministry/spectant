@@ -1,0 +1,273 @@
+/*
+ * The two state galleries of `/__ui` (states-gallery.ts, board-states-gallery.ts): the prototype's `.gallery` /
+ * `.bstates` grid of mini cards (eyebrow, note, body). Layout only; every colour is a theme token. The `sg-` prefix keeps
+ * clear of daisyUI's global component classes, as the gallery's own `gallery-` prefix does.
+ */
+:host {
+  display: block;
+}
+
+.gallery-group {
+  display: grid;
+  gap: 16px;
+}
+
+.gallery-group h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.sg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.sg-mini {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+.sg-wide {
+  grid-column: 1 / -1;
+}
+
+.sg-eyebrow {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.sg-note,
+.sg-meta {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.sg-mono {
+  font-family: var(--font-mono);
+}
+
+.sg-col {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+.sg-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+
+.sg-item {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sg-grow {
+  flex: 1;
+}
+
+/* Loading: the KPI band (hero over three tiles) and three spec rows at their final geometry. */
+.sg-kpi {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.sg-span {
+  grid-column: 1 / -1;
+}
+
+.sg-hero {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.sg-hero > .sg-col {
+  flex: 1;
+}
+
+.sg-skel-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  block-size: 64px;
+  padding: 0 16px;
+  border-block-end: 1px solid var(--line);
+}
+
+.sg-skel-row:last-child {
+  border-block-end: 0;
+}
+
+/* Task checkbox: the tasks tab's hit area, spinner over the dimmed box while saving. */
+.sg-hit {
+  display: inline-grid;
+  place-items: center;
+}
+
+.sg-hit > * {
+  grid-area: 1 / 1;
+}
+
+.sg-saving {
+  opacity: 0.4;
+}
+
+.sg-conflict .sg-meta {
+  color: var(--hover-text);
+}
+
+/* The agent banner, as the spec head's: 3 px warning edge, pulsing dot, "writes paused" on the right. */
+.sg-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-inline-start: 3px solid var(--color-warning);
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.sg-banner-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  margin: 0;
+}
+
+.sg-paused {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sg-agent-dot {
+  position: relative;
+  flex: none;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+
+.sg-agent-dot::after {
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--color-warning);
+  border-radius: 50%;
+  opacity: 0;
+  animation: sg-ping var(--motion-duration-skeleton) var(--motion-ease-standard) infinite;
+  content: '';
+}
+
+/* The reduced-motion form, shown side by side: a static ring instead of the pulse. */
+.sg-agent-dot.sg-still {
+  border: 2px solid var(--color-warning);
+  background: transparent;
+}
+
+.sg-agent-dot.sg-still::after {
+  display: none;
+}
+
+@keyframes sg-ping {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.6);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
+/* Board minis. */
+.sg-lane-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sg-lane-head h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sg-lane-dot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--color-primary);
+}
+
+.sg-warn-line {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  color: var(--hover-text);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* Released: the chip stays readable (text contrast); the prototype fades it out over 1200 ms, the label says so. */
+.sg-released app-agent-chip {
+  text-decoration: line-through;
+}
+
+.sg-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 8px;
+}
+
+.sg-spin {
+  display: inline-flex;
+  animation: sg-spin var(--motion-duration-skeleton) linear infinite;
+}
+
+@keyframes sg-spin {
+  to {
+    rotate: 1turn;
+  }
+}
+
+/* daisyUI delays the checkbox tick by 0.1 s, which the global reduced-motion switch (durations only) leaves running. */
+@media (prefers-reduced-motion: reduce) {
+  .sg-row .checkbox::before {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .sg-agent-dot,
+  .sg-lane-dot {
+    background: CanvasText;
+  }
+}

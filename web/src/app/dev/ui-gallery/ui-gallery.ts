@@ -13,6 +13,8 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
+import { BoardStatesGallery } from './board-states-gallery';
+import { StatesGallery } from './states-gallery';
 import { UiButton, type ButtonTone, type ButtonVariant } from '../../shared/ui/button/button';
 import { UiButtonGroup } from '../../shared/ui/button/button-group';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
@@ -71,6 +73,8 @@ import {
 @Component({
   selector: 'app-ui-gallery',
   imports: [
+    BoardStatesGallery,
+    StatesGallery,
     RouterLink,
     UiButton,
     UiButtonGroup,
