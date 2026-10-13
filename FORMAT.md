@@ -350,6 +350,8 @@ updated: 2026-09-28T12:40:00Z
 The repository constitution shared by every spec: binding rules, gates, lanes, conformance baseline. The dashboard
 reads `specs/constitution.md` at a fixed place (the frontmatter key `constitution:` is not used to find it). Its
 frontmatter parses like a spec's; `dev_services: <port>=<label>, …` names the local services on the live indicator.
+A service whose process runs in a worktree carries `worktree: true`, and one in the spec worktree `.worktrees/NNN-slug`
+also `spec`, that spec's number `NNN` (spec 027, ISC-177).
 The `## Lanes` table maps path prefixes to lanes for the task grammar (spec 002, T23). The Docs tab renders the rest.
 
 From `core/fixtures/harbor/specs/constitution.md`:
@@ -523,6 +525,24 @@ nothing is derived; without them `buildTimeline` reads the spec's own events.jso
 with the file shows its recorded transitions and a folder without it derives. The table above maps these names to
 ISC-24's `specified → planned → tasked → reviewed` wording.
 
+**Derived: the worktree entry** (`timeline.ts`, spec 027, T14, ISC-175.1). The timeline kind `worktree` comes from
+no file: the server passes the git state of the spec's worktree as `worktree: {merged: {at, commit} | null, removed,
+branch, path}` beside the commits, and `buildTimeline` turns it into at most one entry, `derived: true` and
+`actor: null` like a derived stage transition, without a body. Its two forms:
+
+- **merged** — the spec's branch is an ancestor of `main`: `ref: "merged"`, `ts` the merge commit's date, sorted by
+  that instant like any dated entry (after every other source at the same instant), title `Merged into main · <branch>`;
+- **removed** — the spec's worktree is gone while its branch is not merged: `ref: "removed"`, `ts: ""` and
+  `undated: true`, since git gives no date; by the undated rule it takes the instant of the entry before it, which for
+  a removal is the newest of the timeline, and sorts after every entry of that instant, title
+  `Worktree removed · <path>`.
+
+Each carries `worktree: {state, branch, path, commit}` (`commit` the merge commit's first seven characters, null on
+`removed`) for the web to word and render. Merged wins when both are given; an open branch (`merged: null`,
+`removed: false`), `null` or no input yields no entry and the timeline is byte-identical to one built without it.
+Nothing is written for either form: `events.jsonl` gets no line, since the merge is the principal's act in git, not a
+command of the skill.
+
 ## `gateReviewed` — `.gates/reviewed.json`
 
 The reviewed mark: `{gate: "reviewed", at, files: {"spec.md", "plan.md", "tasks.md"}}`, each file a sha256 hex of its
@@ -556,8 +576,9 @@ The code-reviewed mark: `{gate: "code-reviewed", at, tree, head?, branch?, note?
 either top-level `code` and `security` counts or nested `findings: {code, security}`. `tree` must be a git object id
 (40 or 64 hex) or the mark is unreadable. It is **fresh** only when `tree` equals the tree id of the current working
 tree, computed in memory as `git add -A && git write-tree` would print it without writing anything (SHA-1 object
-format only); an uncomputable tree reads as stale. `root` is informational and a public fixture never carries a
-machine path there.
+format only); an uncomputable tree reads as stale. For a spec with a worktree of its own (§ Worktrees) that working
+tree is the worktree's, not the main checkout's, so a change only in the main checkout leaves the mark fresh
+(ISC-176). `root` is informational and a public fixture never carries a machine path there.
 
 From `core/fixtures/harbor/specs/004-retention-policies/.gates/code-reviewed.json`:
 

@@ -609,6 +609,8 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
     const entry = keysOf<TimelineEntry>({
       ts: "req", kind: "req", derived: "req", title: "req", body: "opt", ref: "opt", id: "opt", actor: "opt",
       goalLock: "opt", from: "opt", to: "opt", command: "opt", undated: "opt", question: "opt", running: "opt",
+      // spec 027: the derived worktree entry's git facts (ISC-175.1)
+      worktree: "opt",
     });
     expect(Array.isArray(value) && value.length > 0).toBe(true);
     expect(value.flatMap((e, i) => [...shapeProblems(`timeline[${i}]`, e, entry), ...oneOf(`timeline[${i}].kind`, e.kind, TIMELINE_KINDS)])).toEqual([]);

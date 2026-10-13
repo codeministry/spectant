@@ -181,6 +181,11 @@ export interface LocalService {
   readonly label: string | null;
   /** True when the process runs inside one of the workspace's worktrees; absent when unknown. */
   readonly worktree?: boolean;
+  /**
+   * The spec number `NNN` when the process runs in the spec worktree `.worktrees/NNN-slug` (spec 027, ISC-177); absent
+   * in a builder worktree, in a worktree whose name is no spec, and outside every worktree.
+   */
+  readonly spec?: string;
 }
 
 /** A parse finding per file lives in `files.ts`, so `planning.ts` types it without reaching this module. */
@@ -317,9 +322,14 @@ export interface ProbedService {
   readonly kind: string;
   readonly label?: string;
   readonly worktree?: boolean;
+  /** The spec number `NNN` the server read from the worktree's folder name `.worktrees/NNN-slug` (spec 027, ISC-177). */
+  readonly spec?: string;
 }
 
-/** A probed listener as the model's LocalService: a loopback URL, labelled only when the constitution names the port. */
+/**
+ * A probed listener as the model's LocalService: a loopback URL, labelled only when the constitution names the port.
+ * `worktree` and `spec` pass through unchanged, and each stays absent when the probe left it out.
+ */
 export function toLocalService(service: ProbedService, labels: ReadonlyMap<number, string>): LocalService {
   return {
     port: service.port,
@@ -327,6 +337,7 @@ export function toLocalService(service: ProbedService, labels: ReadonlyMap<numbe
     process: service.kind,
     label: labels.get(service.port) ?? null,
     ...(service.worktree === undefined ? {} : { worktree: service.worktree }),
+    ...(service.spec === undefined ? {} : { spec: service.spec }),
   };
 }
 

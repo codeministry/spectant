@@ -607,7 +607,7 @@ export interface TimelineEntry {
   readonly body?: string;
   /**
    * What the entry points at: a round number (`3`), a question id (`R1.Q2`, `goal` for the goal lock), a gate name
-   * (`reviewed`, `code-reviewed`), a commit sha or a claim ID.
+   * (`reviewed`, `code-reviewed`), a commit sha, a claim ID, or the worktree entry's form (`merged`, `removed`).
    */
   readonly ref?: string;
   /**
@@ -630,13 +630,44 @@ export interface TimelineEntry {
   readonly command?: string;
   /**
    * Derived stage entries whose date the files do not give: `ts` is empty and the entry sorts right after the dated
-   * transition before it (derived-stages.ts).
+   * transition before it (derived-stages.ts). Also the `removed` worktree entry, which git does not date: it takes
+   * the newest instant of the timeline and sorts after every entry of it (timeline.ts, ISC-175.1).
    */
   readonly undated?: boolean;
   /** Decision entries from a `### Qn · …` block: its From / Offered / Chosen / Landed in (`context-log.ts`). */
   readonly question?: DecisionQuestion;
   /** Agent entries: true while the session's lock is held. */
   readonly running?: boolean;
+  /** Worktree entries (ISC-175.1): which form, and the git facts the web words and renders. */
+  readonly worktree?: TimelineWorktree;
+}
+
+/**
+ * The git facts of a `worktree` timeline entry (spec 027, ISC-175.1): `merged`, the spec's branch is an ancestor of
+ * `main`; `removed`, its worktree is gone while the branch is not merged. Each fact is null when the server gave none.
+ */
+export interface TimelineWorktree {
+  readonly state: 'merged' | 'removed';
+  /** The spec's branch without `refs/heads/`, e.g. `feature/027-worktree-live-view`. */
+  readonly branch: string | null;
+  /** The worktree's path relative to the workspace root, e.g. `.worktrees/027-worktree-live-view`. */
+  readonly path: string | null;
+  /** The merge commit's short sha (its first seven characters); null on `removed`. */
+  readonly commit: string | null;
+}
+
+/**
+ * The git state of the spec's worktree as the server reads it, the timeline's `worktree` input (spec 027, T14,
+ * ISC-175.1). Minimal and local to the timeline: spec 025's merge state of a branch (`mergedSpecBranches`, ISC-162.1)
+ * maps onto `merged`; this type does not depend on it. Neither merged nor removed (an open branch) yields no entry.
+ */
+export interface TimelineWorktreeInput {
+  /** The branch is an ancestor of `main`: `at` the merge commit's date (ISO 8601), `commit` its sha; null otherwise. */
+  readonly merged: { readonly at: string; readonly commit?: string } | null;
+  /** True when the spec's worktree is gone while its branch is not merged; `merged` wins when both are given. */
+  readonly removed: boolean;
+  readonly branch?: string | null;
+  readonly path?: string | null;
 }
 
 export interface TimelineInput {
@@ -647,6 +678,11 @@ export interface TimelineInput {
    * the stage entries and nothing is derived; absent or empty, the stage transitions are derived from the files.
    */
   readonly events?: readonly EventLine[];
+  /**
+   * The git state of the spec's worktree (ISC-175.1): merged or removed, one derived `worktree` entry; absent, null
+   * or open, none, and the timeline is unchanged. The entry is derived only: no event is written for it.
+   */
+  readonly worktree?: TimelineWorktreeInput | null;
 }
 
 /**

@@ -18,6 +18,7 @@ import { buildSpecPage } from '../src/spec.ts';
 import { STAGE_RULES, WAITING_STAGES, fillsTemplate } from '../src/stage.ts';
 import { assignWorktrees } from '../src/worktrees.ts';
 import type { WorktreeAssignment } from '../src/worktrees.ts';
+import { DASHBOARD_FAMILY, goldenPath, goldenText } from './helpers/golden.ts';
 import { FIXTURES, fixtureTrees, readTree } from './helpers/read-tree.ts';
 
 const model = (name: string): DashboardModel => buildDashboard(readTree(name));
@@ -220,6 +221,20 @@ describe('services', () => {
       ],
     });
     expect(m.services.map((s) => s.port)).toEqual([4200, 8080]);
+  });
+
+  test('a service in a spec worktree carries the spec number into the model, absent stays absent (spec 027, T15, ISC-177)', () => {
+    const labels = devServiceLabels(readTree('harbor').constitution ?? '');
+    const inSpec = toLocalService({ port: 4300, kind: 'node', label: 'node', worktree: true, spec: '027' }, labels);
+    expect(inSpec).toEqual({ port: 4300, url: 'http://localhost:4300', process: 'node', label: null, worktree: true, spec: '027' });
+    const inBuilder = toLocalService({ port: 4301, kind: 'bun', label: 'bun', worktree: true }, labels);
+    expect('spec' in inBuilder).toBe(false);
+
+    const m = buildDashboard({ ...readTree('lantern'), services: [inBuilder, inSpec] });
+    expect(m.services.map((s) => s.spec)).toEqual(['027', undefined]);
+    expect(m.services.map((s) => 'spec' in s)).toEqual([true, false]);
+    // No service names a spec in the fixtures, so the harbor golden stays byte-identical.
+    expect(goldenText(buildDashboard(readTree('harbor')))).toBe(readFileSync(goldenPath('harbor', DASHBOARD_FAMILY), 'utf8'));
   });
 });
 

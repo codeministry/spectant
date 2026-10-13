@@ -670,3 +670,120 @@ describe('sources merged in order, one entry per source event (T26, ISC-80)', ()
     ]);
   });
 });
+
+// ─── spec 027 · T14 · ISC-175.1: the derived worktree entry ──────────────────────────────────────────────────────
+
+// The git state of harbor 002's worktree as the server would pass it (spec 025's MergeState mapped onto it): branch
+// and path name the spec; `merged.at` is the merge commit's date, `merged.commit` its sha.
+const WT_BRANCH = 'feature/002-web-console';
+const WT_PATH = '.worktrees/002-web-console';
+const MERGE_SHA = 'abc1234def5678901234567890abcdef12345678';
+
+describe('worktree entry (spec 027, T14, ISC-175.1)', () => {
+  test('merged: one derived entry at the merge commit date, after an earlier event and before a later one', () => {
+    // 16:45Z lies between round 3 (16:30Z) and the second commit (17:00Z).
+    const entries = buildTimeline({
+      files: readFolder(HARBOR_002),
+      commits: COMMITS_HARBOR,
+      worktree: { merged: { at: '2026-03-08T16:45:00Z', commit: MERGE_SHA }, removed: false, branch: WT_BRANCH, path: WT_PATH },
+    });
+    const ids = entries.map((e) => e.id);
+    expect(ids.slice(0, 3)).toEqual([`commit-${COMMITS_HARBOR[1]?.sha ?? '?'}`, 'worktree-merged', 'round-3']);
+    expect(entries.filter((e) => e.kind === 'worktree')).toEqual([
+      {
+        ts: '2026-03-08T16:45:00Z',
+        kind: 'worktree',
+        derived: true,
+        title: `Merged into main · ${WT_BRANCH}`,
+        ref: 'merged',
+        id: 'worktree-merged',
+        actor: null,
+        worktree: { state: 'merged', branch: WT_BRANCH, path: WT_PATH, commit: 'abc1234' },
+      },
+    ]);
+    // Everything else is the timeline without the worktree, entry for entry.
+    const without = buildTimeline({ files: readFolder(HARBOR_002), commits: COMMITS_HARBOR });
+    expect(entries.filter((e) => e.kind !== 'worktree')).toEqual(without);
+  });
+
+  test('merged at an instant another entry shares, in another offset: sorts by the instant, after that entry', () => {
+    // 18:30+02:00 is 16:30Z, round 3's instant; the worktree source ranks after every other source.
+    const entries = buildTimeline({
+      files: readFolder(HARBOR_002),
+      commits: [],
+      worktree: { merged: { at: '2026-03-08T18:30:00+02:00' }, removed: false },
+    });
+    expect(entries.map((e) => e.id).slice(0, 3)).toEqual(['round-3', 'worktree-merged', 'stage-build']);
+    const merged = entries.find((e) => e.kind === 'worktree');
+    expect(merged).toMatchObject({ title: 'Merged into main', worktree: { state: 'merged', branch: null, path: null, commit: null } });
+  });
+
+  test('removed: one undated derived entry, at the newest instant after every entry of it, never both forms', () => {
+    const input = { files: readFolder(HARBOR_002), commits: COMMITS_HARBOR } as const;
+    const entries = buildTimeline({ ...input, worktree: { merged: null, removed: true, branch: WT_BRANCH, path: WT_PATH } });
+    // The removal follows everything recorded while the worktree lived: it takes the newest instant (the second commit)
+    // and, by the undated rule, is listed right beside it, never first, so it joins that entry's day group.
+    expect(entries.map((e) => e.id).slice(0, 3)).toEqual([`commit-${COMMITS_HARBOR[1]?.sha ?? '?'}`, 'worktree-removed', 'round-3']);
+    expect(entries.filter((e) => e.kind === 'worktree')).toEqual([
+      {
+        ts: '',
+        kind: 'worktree',
+        derived: true,
+        title: `Worktree removed · ${WT_PATH}`,
+        ref: 'removed',
+        id: 'worktree-removed',
+        actor: null,
+        undated: true,
+        worktree: { state: 'removed', branch: WT_BRANCH, path: WT_PATH, commit: null },
+      },
+    ]);
+    // Merged and removed together: the merge is the fact, the removal its cleanup — one entry, the merged one.
+    const both = buildTimeline({
+      ...input,
+      worktree: { merged: { at: '2026-03-08T16:45:00Z', commit: MERGE_SHA }, removed: true, branch: WT_BRANCH, path: WT_PATH },
+    });
+    expect(both.filter((e) => e.kind === 'worktree').map((e) => [e.ref, e.ts, e.undated])).toEqual([['merged', '2026-03-08T16:45:00Z', undefined]]);
+    // Alone in an empty timeline it is the only entry, still undated, titled without a path it was not given.
+    const alone = buildTimeline({ files: { folder: '009-empty', texts: {} }, commits: [], worktree: { merged: null, removed: true } });
+    expect(alone.map((e) => [e.id, e.ts, e.title, e.undated])).toEqual([['worktree-removed', '', 'Worktree removed', true]]);
+  });
+
+  test('derived even beside recorded events: the stages are the events, the worktree entry alone is derived', () => {
+    const entries = buildTimeline({
+      files: readFolder(HARBOR_002),
+      commits: [],
+      events: EVENTS_002,
+      worktree: { merged: { at: '2026-03-09T10:00:00Z', commit: MERGE_SHA }, removed: false, branch: WT_BRANCH },
+    });
+    expect(entries.filter((e) => e.derived).map((e) => e.id)).toEqual(['worktree-merged']);
+    expect(entries[0]?.id).toBe('worktree-merged');
+    expect(entries.filter((e) => e.kind === 'stage').every((e) => !e.derived && e.command !== undefined)).toBe(true);
+  });
+
+  test('open branch (neither merged nor removed), null or no worktree input: no entry, every harbor timeline byte-identical to its golden', () => {
+    const golden = JSON.parse(readFileSync(join(FIXTURES, 'harbor.timeline.golden.json'), 'utf8')) as Record<string, TimelineEntry[]>;
+    const keys = Object.keys(golden);
+    expect(keys.length).toBeGreaterThan(0);
+    for (const key of keys) {
+      const name = key.split('/').pop() ?? key;
+      const files = folders(join(FIXTURES, 'harbor', dirname(key))).find((f) => f.folder === name);
+      if (!files) throw new Error(`no harbor folder ${key}`);
+      const expected = JSON.stringify(golden[key]);
+      const inputs = [undefined, null, { merged: null, removed: false }, { merged: null, removed: false, branch: WT_BRANCH, path: WT_PATH }] as const;
+      for (const worktree of inputs) {
+        const entries = buildTimeline({ files, commits: [], ...(worktree === undefined ? {} : { worktree }) });
+        expect(entries.some((e) => e.kind === 'worktree')).toBe(false);
+        expect(JSON.stringify(entries)).toBe(expected);
+      }
+    }
+  });
+
+  test('nothing is written: the input files, events.jsonl text included, are left as they were', () => {
+    const files = folders(join(FIXTURES, 'harbor', 'specs')).find((f) => f.folder === '002-web-console');
+    if (!files?.texts.events) throw new Error('harbor 002 carries an events.jsonl since spec 008');
+    const before = JSON.stringify(files);
+    buildTimeline({ files, commits: [], worktree: { merged: { at: '2026-03-09T10:00:00Z' }, removed: false } });
+    buildTimeline({ files, commits: [], worktree: { merged: null, removed: true } });
+    expect(JSON.stringify(files)).toBe(before);
+  });
+});

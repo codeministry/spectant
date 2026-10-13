@@ -66,7 +66,11 @@ export interface GateMarkReading {
 export interface GateCurrent {
   /** The current text of spec.md, plan.md and tasks.md; an absent key means the file does not exist. */
   readonly texts?: Readonly<Partial<Record<ReviewedFile, string>>>;
-  /** The current worktree tree id, computed in memory by the caller; null or absent when it could not be computed. */
+  /**
+   * The tree id the code-reviewed mark is compared with, computed in memory by the caller: the tree id of the spec's
+   * worktree when it has one, else the main checkout's (spec 027, ISC-176). The caller chooses, this module compares
+   * what it gets. Null or absent when it could not be computed, which reads as stale, never as the other tree.
+   */
   readonly worktreeTree?: string | null;
 }
 
