@@ -74,6 +74,15 @@
  *   workspace's workflow file (T151, ISC-123): core's `parseWorkflow` reads the text, and that session's planning tree
  *   carries the result as its `workflow` until a reset, so the next read shows the changed table (body and ETag). 204;
  *   404 for a workspace the stub does not hold; 405 with `Allow: PUT` for another method.
+ * - `X-Spectant-Stub-Worktrees: off | on` lays the worktree overlay of spec 027 over harbor (T33, `stub-board.ts`;
+ *   absent: `off`, the goldens as they are): worktrees with branch, `ahead` and `dirty` on 002, 003 and 009 (003's a
+ *   branch mismatch, its warning on the row, the panel, the page and the counts), 002 read from its worktree copy with
+ *   the main copy beside it, runs in every state on harbor 002's live frame and its round group, and a `worktree`
+ *   timeline entry on 007 (merged) and 006 (removed).
+ * - `POST /api/__stub/bump-run?ws=<slug>&spec=<id>&task=<tid>` moves that task's run one run event on for that session
+ *   (T33): none → dispatched → building → patched → applied-open (`applied` once tasks.md ticked it); the last stays.
+ *   The live frame's body and ETag change as an activity log line would change them. 204; 404 for an unknown
+ *   workspace, spec or task, or an `absent` card; 405 with `Allow: POST` for another method. A reset drops it.
  *
  * Nothing here reads the clock or the registry: every answer is a function of the fixture files and the request. The
  * goldens are read once when the stub is built, so a missing fixture fails at startup, not on a request. Core's
@@ -104,6 +113,7 @@ import type {
   SpecPageModel,
   SpecType,
   TaskRow,
+  TaskRun,
   TaskStatus,
   TasksTab,
   TimelineEntry,
@@ -164,15 +174,23 @@ import {
 } from '../../server/src/notes.contract';
 import type { ApiHandler } from './serve-dist';
 import {
+  OVERLAY_GOLDEN,
+  STUB_RUNS,
+  STUB_TIMELINE_WORKTREES,
   type StoryFile,
+  advancedRun,
   allocatedPlanning,
   commandFor,
   holderOf,
   loadBoardCore,
   movedPlanning,
+  overlaidDashboard,
+  overlaidPage,
   readStories,
   refusalOf,
   rowFor,
+  withRuns,
+  withWorktreeEntry,
 } from './stub-board';
 
 /** The e2e states the spec names (ISC-16.1): two workspaces, none, and one whose directory cannot be read. */
@@ -198,6 +216,15 @@ export const WRITE_HEADER = 'X-Spectant-Stub-Write';
 export const RESET_PATH = '/api/__stub/reset';
 export const BUMP_PATH = '/api/__stub/bump';
 export const WORKFLOW_PATH = '/api/__stub/workflow';
+export const BUMP_RUN_PATH = '/api/__stub/bump-run';
+
+/**
+ * The worktree overlay of spec 027 (T33, `stub-board.ts`): `off`, the goldens as they are; `on`, harbor's worktree
+ * facts, runs and worktree timeline entries laid over them. Absent: `off`.
+ */
+export const WORKTREE_STATES = ['off', 'on'] as const;
+export type WorktreeState = (typeof WORKTREE_STATES)[number];
+export const WORKTREES_HEADER = 'X-Spectant-Stub-Worktrees';
 
 /**
  * The workspace routes with a whole-file golden family: the contract's `GOLDEN_FAMILY.planning` and the tech page's
@@ -738,6 +765,32 @@ function readTree(core: Core, dir: string, golden: string): TreeGoldens {
   };
 }
 
+/** The task ids tasks.md has ticked: a run of one is `applied`, and it leaves the round (core's `live.ts`). */
+function tickedOf(spec: SpecGoldens): ReadonlySet<string> {
+  return new Set((spec.tasks?.tasks ?? []).filter((t) => t.state === 'done').map((t) => t.id));
+}
+
+/** A tree with the worktree overlay of `stub-board.ts` (spec 027, T33) on every spec's page, live frames and timeline. */
+function overlaidTree(tree: TreeGoldens): TreeGoldens {
+  return {
+    ...tree,
+    specs: tree.specs.map((spec): SpecGoldens => {
+      const id = spec.folder.slice(0, 3);
+      const input = STUB_TIMELINE_WORKTREES[id];
+      const timeline = input === undefined ? spec.timeline : withWorktreeEntry(spec.timeline, input);
+      const runs = new Map((STUB_RUNS[id] ?? []).map((run): [string, TaskRun] => [run.task, run]));
+      const ticked = tickedOf(spec);
+      type Fixture = SpecGoldens['locked'][LockState];
+      const lay = (fixture: Fixture): Fixture => ({
+        spec: overlaidPage(fixture.spec, id, timeline.length - spec.timeline.length),
+        live: withRuns(fixture.live, runs, ticked),
+      });
+      const locked = Object.fromEntries(LOCK_STATES.map((s) => [s, lay(spec.locked[s])])) as Record<LockState, Fixture>;
+      return { ...spec, timeline, locked };
+    }),
+  };
+}
+
 const SPEC_FOLDER = /^(\d{3})-(.+)$/;
 const SPEC_ID = /^\d{3}$/;
 
@@ -795,19 +848,30 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   const trees = new Map(workspaces.map((w) => [w.slug, readTree(core, dir, w.golden)]));
   const plannings = new Map(workspaces.map((w) => [w.slug, readPlanning(dir, w.golden)]));
   const techs = new Map(workspaces.map((w) => [w.slug, readTechGolden(dir, w.golden)]));
+  // The worktree overlay (spec 027, T33): harbor's dashboard and spec goldens with its worktree facts, built once.
+  const overlays = (slug: string): boolean => workspaces.find((w) => w.slug === slug)?.golden === OVERLAY_GOLDEN;
+  const dashboardsOn = new Map(
+    [...dashboards].map(([slug, d]): [string, { model: unknown; kpis: unknown }] => {
+      if (!overlays(slug)) return [slug, d];
+      const model = overlaidDashboard(d.model) as { kpis: unknown };
+      return [slug, { model, kpis: model.kpis }];
+    }),
+  );
+  const treesOn = new Map([...trees].map(([slug, tree]): [string, TreeGoldens] => [slug, overlays(slug) ? overlaidTree(tree) : tree]));
+  const worktreesOn = (req: Request): boolean => req.headers.get(WORKTREES_HEADER) === 'on';
   const board = loadBoardCore();
   const stories = new Map(
     workspaces.map((w): [string, ReadonlyMap<string, StoryFile>] => [w.slug, readStories(board, join(dir, w.golden), readPlanning(dir, w.golden))]),
   );
 
-  const view = (state: StubState): StateView => {
+  const view = (state: StubState, on = false): StateView => {
     const listed = state === 'empty' ? [] : workspaces;
     const list: Summary[] = [];
     const byslug: StateView['workspaces'] = new Map();
     for (const w of listed) {
       const base = { slug: w.slug, name: w.name, pathTail: w.pathTail ?? w.golden };
-      const dashboard = dashboards.get(w.slug);
-      const tree = trees.get(w.slug);
+      const dashboard = (on ? dashboardsOn : dashboards).get(w.slug);
+      const tree = (on ? treesOn : trees).get(w.slug);
       if (!dashboard || !tree) continue;
       if (state === 'unreadable' && w.slug === unreadableSlug) {
         const summary: Summary = { ...base, readable: false, error: 'missing', counts: null };
@@ -821,6 +885,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return { list, workspaces: byslug };
   };
   const views = new Map(STUB_STATES.map((s) => [s, view(s)]));
+  const viewsOn = new Map(STUB_STATES.map((s) => [s, view(s, true)]));
+  const viewOf = (req: Request, state: StubState): StateView => (worktreesOn(req) ? viewsOn : views).get(state) ?? view(state, worktreesOn(req));
 
   const sessions = new Map<string, Settings>();
   const writes = new Map<string, SessionWrites>();
@@ -836,6 +902,38 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     own.set(slug, (own.get(slug) ?? 0) + 1);
     bumps.set(id, own);
     return new Response(null, { status: 204 });
+  };
+  /** Run bumps (T33) per session, then per `<slug>\0<spec key>\0<task>`: how many run events each task moved on. */
+  const runBumps = new Map<string, Map<string, number>>();
+  const bumpRunRoute = (req: Request, url: URL): Response => {
+    if (req.method !== 'POST') return settingsError(405, { error: 'method-not-allowed' }, { Allow: 'POST' });
+    const slug = url.searchParams.get('ws') ?? '';
+    const ref = url.searchParams.get('spec');
+    const tree = trees.get(slug);
+    const spec = tree && ref !== null ? resolveSpec(tree.specs, ref) : null;
+    const card = spec?.locked.activity.live.cards.find((c) => c.task === url.searchParams.get('task'));
+    if (!spec || !card || card.state === 'absent') return settingsError(404, { error: 'not-found' });
+    const id = sessionOf(req);
+    const own = runBumps.get(id) ?? new Map<string, number>();
+    const key = `${slug}\0${spec.key}\0${card.task}`;
+    own.set(key, (own.get(key) ?? 0) + 1);
+    runBumps.set(id, own);
+    return new Response(null, { status: 204 });
+  };
+  /** The live frame this session sees: the fixture's, each bumped task's run moved on by its bumps (T33). */
+  const liveOf = (req: Request, ws: string, spec: SpecGoldens, locks: LockState): LiveFrame => {
+    const live = spec.locked[locks].live;
+    const own = runBumps.get(sessionOf(req));
+    if (!own) return live;
+    const ticked = tickedOf(spec);
+    const runs = new Map<string, TaskRun>();
+    for (const card of live.cards) {
+      const steps = own.get(`${ws}\0${spec.key}\0${card.task}`) ?? 0;
+      const at = new Date(Date.parse(STUB_NOW) + steps * 60_000).toISOString().replace('.000Z', 'Z');
+      const run = steps === 0 ? null : advancedRun(card.run ?? null, card.task, steps, ticked.has(card.task), at);
+      if (run !== null && run !== card.run) runs.set(card.task, run);
+    }
+    return withRuns(live, runs, ticked);
   };
   const sessionOf = (req: Request): string => req.headers.get(SESSION_HEADER) ?? '';
   const settingsOf = (req: Request): Settings => sessions.get(sessionOf(req)) ?? defaults();
@@ -904,7 +1002,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: 'GET, HEAD' });
     }
-    const current = views.get(state) ?? view(state);
+    const current = viewOf(req, state);
     if (slugSegment === undefined) return workspaceJson(req, 200, current.list);
     let slug: string;
     try {
@@ -915,7 +1013,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const found = current.workspaces.get(slug);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
-    return workspaceJson(req, 200, bumpDashboard(dashboards.get(slug)?.model, bumpsOf(req, slug)));
+    return workspaceJson(req, 200, bumpDashboard((worktreesOn(req) ? dashboardsOn : dashboards).get(slug)?.model, bumpsOf(req, slug)));
   };
 
   /**
@@ -929,7 +1027,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowForWorkspace(match.route) });
     }
-    const found = (views.get(state) ?? view(state)).workspaces.get(match.params.ws);
+    const found = (viewOf(req, state)).workspaces.get(match.params.ws);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
     return workspaceJson(req, 200, match.route === 'tech' ? techs.get(match.params.ws) : planningOf(req, match.params.ws));
@@ -963,7 +1061,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
 
   /** The guard order every workspace route shares (`api.ts`): 404 unknown slug, 409 the unreadable summary, else the tree. */
   const readableTree = (req: Request, state: StubState, ws: string): TreeGoldens | Response => {
-    const found = (views.get(state) ?? view(state)).workspaces.get(ws);
+    const found = (viewOf(req, state)).workspaces.get(ws);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
     return found.tree;
@@ -995,7 +1093,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'PUT') {
       return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowForWorkspace('boardQuery') });
     }
-    if (!(views.get(state) ?? view(state)).workspaces.has(ws)) return workspaceJson(req, 404, { error: 'not-found' });
+    if (!(viewOf(req, state)).workspaces.has(ws)) return workspaceJson(req, 404, { error: 'not-found' });
     const own = boardQueries.get(sessionOf(req)) ?? new Map<string, string>();
     if (req.method !== 'PUT') return workspaceJson(req, 200, { query: own.get(ws) ?? '' } satisfies BoardQuery);
     const body = await readJson(req);
@@ -1206,7 +1304,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       case 'frames':
         return workspaceJson(req, 200, spec.frames);
       case 'live':
-        return workspaceJson(req, 200, spec.locked[locks].live);
+        return workspaceJson(req, 200, liveOf(req, match.params.ws, spec, locks));
       default:
         return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowFor(match.route) });
     }
@@ -1285,7 +1383,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const match = matchSpecRoute(url.pathname, req.method);
     if (path === null) return Response.json({ error: 'not found' }, { status: 404 });
     if (match === null) return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowFor(path.route) });
-    const found = (views.get(state) ?? view(state)).workspaces.get(match.params.ws);
+    const found = (viewOf(req, state)).workspaces.get(match.params.ws);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
     const spec = resolveSpec(found.tree.specs, match.params.id);
@@ -1349,7 +1447,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const match = matchNoteRoute(url.pathname, req.method);
     if (match === null) return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: noteAllowFor(url.pathname) ?? '' });
     const { ws } = match.params;
-    if (!(views.get(state) ?? view(state)).workspaces.has(ws)) return workspaceJson(req, 404, { error: 'not-found' });
+    if (!(viewOf(req, state)).workspaces.has(ws)) return workspaceJson(req, 404, { error: 'not-found' });
     const book = notebookOf(req);
     const stamp = (): string => new Date(Date.parse(STUB_NOW) + ++book.writes * 60_000).toISOString();
     const reachable = (note: Note, id: string): boolean => note.id === id && (note.workspace === ws || note.workspace === null);
@@ -1405,6 +1503,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       writes.delete(sessionOf(req));
       notebooks.delete(sessionOf(req));
       bumps.delete(sessionOf(req));
+      runBumps.delete(sessionOf(req));
       boards.delete(sessionOf(req));
       actorLists.delete(sessionOf(req));
       boardQueries.delete(sessionOf(req));
@@ -1412,6 +1511,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       return new Response(null, { status: 204 });
     }
     if (pathname === BUMP_PATH) return bumpRoute(req, url);
+    if (pathname === BUMP_RUN_PATH) return bumpRunRoute(req, url);
     if (pathname === WORKFLOW_PATH) return workflowRoute(req, url);
     if (pathname === SETTINGS_PATH) return settingsRoute(req);
     if (pathname === ACTORS_PATH) return actorsRoute(req);
@@ -1419,6 +1519,10 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const locks = req.headers.get(LOCKS_HEADER) ?? 'activity';
     if (!isOneOf(LOCK_STATES, locks)) {
       return settingsError(400, { error: 'unknown-stub-locks', locks, states: [...LOCK_STATES] });
+    }
+    const worktrees = req.headers.get(WORKTREES_HEADER) ?? 'off';
+    if (!isOneOf(WORKTREE_STATES, worktrees)) {
+      return settingsError(400, { error: 'unknown-stub-worktrees', worktrees, states: [...WORKTREE_STATES] });
     }
     if (pathname === LIFEOS_PATH) return lifeosRoute(req, locks);
 

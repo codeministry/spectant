@@ -62,6 +62,7 @@ byte, so a server contract change fails there first.
 | `GET/HEAD /api/lifeos` | `{present}`: true only under the `frontier` lock fixture |
 | `GET/HEAD/PUT /api/settings` | in memory from the schema defaults (`system`, `en`, 30, `true`, `false`), per session |
 | `POST /api/__stub/reset` | stub only: restores the settings and drops the writes of the request's session, 204 |
+| `POST /api/__stub/bump-run?ws=&spec=&task=` | stub only (spec 027, T33): moves that task's run one run event on for the request's session, none → `dispatched` → `building` → `patched` → `applied-open` (`applied` once tasks.md ticked it), the last stays; the live frame's body and ETag change. 204; 404 for an unknown workspace, spec or task or an `absent` card; 405 with `Allow: POST`; a reset drops it |
 
 Every JSON answer follows `JSON_ANSWER` (strong sha256 ETag, 304 on a match, `HEAD` without a body); 404 is
 `{error: "not-found"}` for an unknown workspace, spec or task, 405 carries `Allow: allowFor(route)`. `GET …/:id`
@@ -78,6 +79,7 @@ workers never race. An unknown value is always a loud 400, never a silent defaul
 | `X-Spectant-Stub-Locks` | `none`, `activity`, `frontier`, `claims`, `person` (see the lock fixtures) | `activity`, the goldens as they are |
 | `X-Spectant-Stub-Write` | `ok`, `stale`, `locked` (see the writes) | `ok` |
 | `X-Spectant-Stub-Session` | any id; scopes the settings and the writes | one shared session |
+| `X-Spectant-Stub-Worktrees` | `off`, `on` (the worktree overlay, below) | `off`, the goldens as they are |
 
 Lock fixtures, applied to `…/live` (the `LiveFrame`), the spec page's `areas.live` and `keyNumbers.rounds.agentsWorking`
 (under every fixture but `activity`), and `/api/lifeos`. Every in-flight card names its `agent` and `subagent` as
@@ -135,6 +137,28 @@ test('gate: stale answer', async ({ page }) => {
 `SESSION_HEADER`, `LOCKS_HEADER`, `WRITE_HEADER`, `STUB_STATES`, `LOCK_STATES`, `WRITE_OUTCOMES` and `STUB_NOW` from
 `./stub-api` rather than spelling the names. The stub reads no clock and no registry: every answer is a function of
 the fixture files and the request.
+
+## The worktree overlay (spec 027)
+
+`X-Spectant-Stub-Worktrees: on` lays harbor's worktree facts over its goldens (`stub-board.ts`, T33), in memory and
+never over the golden files; under `off` every answer stays the golden, so the parity half and every other suite see
+no change. Each fact has the shape core emits for it, typed by core's own types. Import `WORKTREES_HEADER`,
+`WORKTREE_STATES` and `BUMP_RUN_PATH` from `./stub-api`.
+
+| Harbor spec | Dashboard row and spec head | Elsewhere |
+|-------------|-----------------------------|-----------|
+| 002 | `.worktrees/002-web-console` on `feature/002-web-console`, `ahead: 2`, `dirty: true`; `source: 'worktree'`, `main: {stage: 'build', progress: 23/30}` | live: T26 `applied`, T27 `patched`, T28 `applied-open`, T29 `building`, T32 `dispatched`; `inRound` round 4, furthest along first |
+| 003 | `.worktrees/003-config-loader` on `feature/005-config-format-choice`, `ahead: 1`, clean: the path wins | one `worktree-branch-mismatch` warning (core's sentence, `ref` the path) on the row and the spec page, last in `warningGroups`; `kpis.warnings`, `attention` and the list's counts one higher |
+| 009 | `.worktrees/009-chunked-upload-limits`, `ahead: 0`, `dirty: false` | — |
+| 007 | `worktree: null` | timeline: a `worktree` entry `merged` at `2026-03-09T08:45:00Z` (commit `4f1c2ab`), between two dated entries |
+| 006 | `worktree: null` | timeline: a `worktree` entry `removed`, `undated`, `ts: ''`, after the entries of its newest instant |
+| every other spec, lantern | `worktree: null`, `source: 'main'`, `main: null`: no chip | — |
+
+`POST /api/__stub/bump-run?ws=harbor&spec=002&task=T32` with an `X-Spectant-Stub-Session` moves T32 from `dispatched` to
+`building` on that session's next `…/live` read, with a new ETag, so a refresh test sees a run chip change within one
+tick; T28 (`applied-open`) stays and its ETag holds. A bump applies under `off` too, where a task without a run starts
+at `dispatched`. Reason: the e2e suites `worktree -g chip|tasks`, the timeline and offline need these facts
+deterministically, and the fixture trees have no git to read them from.
 
 ## Browsers and the container
 

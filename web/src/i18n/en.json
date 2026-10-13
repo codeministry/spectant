@@ -2153,5 +2153,27 @@
     "copyCommand": "Copy {{command}}",
     "edgeAfter": "{{claim}} comes after {{target}}",
     "edgeBlockedBy": "{{claim}} is blocked by {{target}}"
+  },
+  "worktreeChip": {
+    "name": "Worktree {{path}}, branch {{branch}}",
+    "nameDetached": "Worktree {{path}}, detached HEAD",
+    "ahead": {
+      "one": "{{count}} commit ahead of main",
+      "other": "{{count}} commits ahead of main"
+    },
+    "dirty": "uncommitted changes",
+    "mismatch": "branch does not match the worktree",
+    "details": "Worktree",
+    "path": "Path",
+    "branch": "Branch",
+    "detached": "detached HEAD",
+    "commits": "Commits",
+    "changes": "Working tree",
+    "changesDirty": "Uncommitted changes",
+    "changesClean": "Clean",
+    "source": "Source",
+    "sourceWorktree": "Worktree copy",
+    "copyPath": "Copy path",
+    "copied": "Path copied"
   }
 }

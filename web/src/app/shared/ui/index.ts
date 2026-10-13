@@ -49,6 +49,7 @@ export { UiTerm } from './term/term';
 export { TYPE_GLYPHS, type TypeGlyphKind, UiTypeGlyph } from './type-glyph/type-glyph';
 export { TOAST_MS, ToastService, UiToast } from './toast/toast';
 export { type Tone, toneColor, toneInk, toneMark, toneTint } from './tone';
+export { UiWorktreeChip } from './worktree-chip/worktree-chip';
 export { UiWsBadge, type WsBadgeSize } from './ws-badge/ws-badge';
 export { UiWsCover } from './ws-badge/ws-cover';
 export { WS_ACCENT_TOKENS, type WsAccent, wsAccent, wsHash, wsMonogram, type WsPattern, wsPattern } from './ws-badge/ws-identity';

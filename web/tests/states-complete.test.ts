@@ -24,9 +24,10 @@ describe("state vocabulary (ISC-88)", () => {
     expect(new Set(WORDS).size).toBe(17);
   });
 
-  test("no two of the seventeen states share a glyph shape and tone", () => {
+  test("no two states share a glyph shape and tone (the seventeen plus the three run states of spec 027)", () => {
     const pairs = [...Object.values(CARD_GLYPHS), ...Object.values(CLAIM_GLYPHS)].map((g) => `${g.shape}/${g.tone}`);
-    expect(new Set(pairs).size).toBe(17);
+    expect(pairs).toHaveLength(20);
+    expect(new Set(pairs).size).toBe(pairs.length);
   });
 
   for (const [name, catalogue] of [["en", en], ["de", de]] as const) {
