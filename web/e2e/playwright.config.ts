@@ -22,6 +22,8 @@ import { suite, theme } from './env';
 
 const ci = Boolean(process.env['CI']);
 const inContainer = process.env['SPECTANT_E2E_CONTAINER'] === '1';
+const workersEnv = process.env['E2E_WORKERS'];
+const workers = workersEnv === undefined ? (ci ? 2 : inContainer ? '100%' : undefined) : /^\d+$/.test(workersEnv) ? Number(workersEnv) : workersEnv;
 
 /** Loopback only (ISC-2): the served app never binds a public interface. */
 export const DEFAULT_BASE_URL = 'http://127.0.0.1:4173';
@@ -41,7 +43,7 @@ if (updating && !inContainer) {
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const WEB = fileURLToPath(new URL('..', import.meta.url));
 
-// `visual.spec.ts` and every `visual-<page>.spec.ts` (spec 002: `visual-spec`, `visual-spec-notes`, `visual-board`).
+// `visual.spec.ts`, the visual smoke set; the pattern also admits a later `visual-<page>.spec.ts`.
 const VISUAL = /visual(-[a-z-]+)?\.spec\.ts$/;
 const BROWSER = /browser\/.*\.spec\.ts$/;
 const SMOKE = /smoke\.spec\.ts$/;
@@ -71,7 +73,8 @@ export default defineConfig({
   forbidOnly: ci,
   // A retry would hide exactly the nondeterminism the baselines exist to catch.
   retries: 0,
-  ...(ci ? { workers: 2 } : {}),
+  // CI keeps two; the local container takes every CPU Docker grants it; `E2E_WORKERS` overrides both.
+  ...(workers === undefined ? {} : { workers }),
   reporter: ci ? [['list'], ['html', { open: 'never', outputFolder: join(HERE, '.report') }]] : [['list']],
   timeout: 30_000,
   expect: {

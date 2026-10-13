@@ -7,14 +7,15 @@
  *
  * The repository is bind-mounted at /work; every workspace's `node_modules` and the Angular cache are masked with
  * anonymous volumes so the host's macOS binaries never reach Linux, and `bun install --frozen-lockfile` fills them
- * from a named cache volume. The platform is `linux/amd64` everywhere (Rosetta on Apple Silicon), because Chromium
- * on arm64 does not rasterise byte for byte like the amd64 CI runner; `E2E_PLATFORM` overrides it for a quick look.
+ * from a named cache volume. The platform is `linux/arm64` everywhere: native on Apple Silicon, no emulation, and
+ * Chromium rasterises differently per architecture, so the baselines are arm64 ones. `E2E_PLATFORM` overrides it.
+ * Playwright uses every CPU Docker grants (`E2E_WORKERS` overrides it, playwright.config.ts).
  */
 import { join } from 'node:path';
 
 const ROOT = join(import.meta.dir, '..', '..');
 const DOCKERFILE = join(import.meta.dir, 'Dockerfile');
-const PLATFORM = process.env['E2E_PLATFORM'] ?? 'linux/amd64';
+const PLATFORM = process.env['E2E_PLATFORM'] ?? 'linux/arm64';
 
 async function pinnedVersions(): Promise<{ image: string; pkg: string }> {
   const dockerfile = await Bun.file(DOCKERFILE).text();
@@ -71,7 +72,7 @@ if (import.meta.main) {
     'spectant-e2e-bun-cache:/root/.bun/install/cache',
     '--workdir',
     '/work',
-    ...['CI', 'E2E_THEME'].flatMap((name) => (process.env[name] === undefined ? [] : ['--env', name])),
+    ...['CI', 'E2E_THEME', 'E2E_WORKERS'].flatMap((name) => (process.env[name] === undefined ? [] : ['--env', name])),
     tag,
     'bash',
     '-c',
