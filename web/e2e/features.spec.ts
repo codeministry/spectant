@@ -329,7 +329,8 @@ for (const [lang, cat] of Object.entries(LANGS) as Array<[keyof typeof LANGS, Ca
 
       test(`vocabulary: the breadcrumb levels carry the ${lang} terms as aria-description`, async ({ page }) => {
         await page.goto('/w/harbor/s/002/claims#claim-ISC-51');
-        const feature = page.locator('[data-crumb="feature"]');
+        // spec 024: breadcrumb Workspace / Spec · Area, milestone/feature/priority in the chip row (principal 2026-10-12, design.md)
+        const feature = page.locator('app-spec-head [data-head-chip="feature"]');
         await expect(feature).toHaveAttribute('aria-description', cat.terms.feature);
         await expect(feature).toContainText(/^\s*F\d+/u);
         await expect(page.locator('[data-crumb="spec"]')).toHaveAttribute('aria-description', cat.terms.spec);

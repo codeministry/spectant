@@ -39,6 +39,7 @@ export const PRIORITY_LOOK: Readonly<Record<Priority, PriorityLook>> = {
   host: {
     '[attr.data-level]': 'level()',
     '[attr.data-unmarked]': 'unmarked() ? "" : null',
+    '[attr.data-mark]': 'mark() ? "" : null',
     '[style.--priority-tint]': 'tint()',
     '[style.--priority-ink]': 'look().ink',
   },
@@ -46,6 +47,8 @@ export const PRIORITY_LOOK: Readonly<Record<Priority, PriorityLook>> = {
     :host { display: inline-flex; flex: none; }
     .chip { display: inline-flex; flex: none; gap: 2px; align-items: center; box-sizing: border-box; block-size: 22px; padding-inline: 3px 6px; border: 1px solid transparent; border-radius: var(--radius-field); background: var(--priority-tint); color: var(--priority-ink); font-family: var(--font-mono); font-size: 11px; font-variant-numeric: tabular-nums; font-weight: 600; line-height: 1; white-space: nowrap; }
     :host([data-level="P3"]) .chip, :host([data-level="P4"]) .chip { border-color: var(--muted-ink); }
+    /* The spec head's pmark (spec 024 design.md, Breadcrumb): mono 10/14, framed in the hairline, muted, no glyph. */
+    :host([data-mark]) .chip { block-size: auto; padding: 0 4px; border-color: var(--line); border-radius: 4px; background: transparent; color: var(--muted-ink); font-size: 10px; line-height: 14px; }
     :host([data-unmarked]) .chip { border-style: dashed; }
     @media (forced-colors: active) {
       .chip { border-color: CanvasText; color: CanvasText; }
@@ -58,7 +61,9 @@ export const PRIORITY_LOOK: Readonly<Record<Priority, PriorityLook>> = {
       [attr.aria-label]="'priority.name' | transloco: { level: level() }"
       [title]="'priority.title' | transloco: { level: level(), hint: hintKey() | transloco }"
     >
-      <ui-icon [name]="look().icon" [size]="14" />
+      @if (!mark()) {
+        <ui-icon [name]="look().icon" [size]="14" />
+      }
       <span aria-hidden="true">{{ 'priority.' + level() | transloco }}</span>
     </span>
   `,
@@ -66,6 +71,8 @@ export const PRIORITY_LOOK: Readonly<Record<Priority, PriorityLook>> = {
 export class UiPriority {
   /** Frontmatter `priority:`; null or undefined reads as P3. */
   readonly value = input<Priority | null | undefined>(undefined);
+  /** The `pmark` look: the level as framed mono text only, once after the stage chip of the spec head (spec 024). */
+  readonly mark = input(false);
 
   protected readonly level = computed<Priority>(() => this.value() ?? DEFAULT_PRIORITY);
   protected readonly unmarked = computed(() => this.value() == null);

@@ -140,7 +140,8 @@ test.describe('spec head per tier', () => {
       const head = page.locator(HEAD);
       const crumbs = head.locator('[data-breadcrumb]');
       await expect(crumbs).toBeVisible();
-      await expect(crumbs.locator('[data-crumb="spec"]')).toHaveText('002 web-console');
+      // spec 024: breadcrumb Workspace / Spec · Area, milestone/feature/priority in the chip row (principal 2026-10-12, design.md)
+      await expect(crumbs.locator('[data-crumb="spec"]')).toHaveText('Spec 002');
       await expect(crumbs.locator('[data-crumb="area"]')).toHaveAttribute('aria-current', 'page');
       await expect(head.locator('.spec-title')).toHaveAttribute('title', 'Web console');
       await expect(head.locator('[data-head-actions] [data-head-command]')).toContainText('/spec-implement 002');
@@ -161,9 +162,10 @@ test.describe('spec head per tier', () => {
       await page.goto('/w/harbor/s/002/status');
       const head = page.locator(HEAD);
       await expect(head.locator('[data-head-command]')).toBeVisible();
-      await expect(head.locator('[data-breadcrumb] [data-crumb="spec"]')).toHaveText('002');
+      // spec 024: breadcrumb Workspace / Spec · Area, milestone/feature/priority in the chip row (principal 2026-10-12, design.md)
+      await expect(head.locator('[data-breadcrumb] [data-crumb="spec"]')).toHaveText('Spec 002');
       await expect(head.locator('[data-breadcrumb] [data-crumb]').first()).toHaveAttribute('data-crumb', 'workspace');
-      await expect(head.locator('[data-breadcrumb] [data-crumb="area"]')).toHaveCount(0);
+      await expect(head.locator('[data-breadcrumb] [data-crumb="area"]')).toHaveAttribute('aria-current', 'page');
       await expect(head.locator('[data-description]')).toBeVisible();
       const box = await head.boundingBox();
       const crumbs = await head.locator('[data-breadcrumb]').boundingBox();

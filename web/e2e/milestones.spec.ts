@@ -97,7 +97,8 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
 
       await page.goto(`/w/lantern/s/${lanternSpec}`);
       await expect(page.locator('app-spec-head [data-breadcrumb]')).toBeVisible();
-      await expect(page.locator('app-spec-head [data-crumb="milestone"]')).toHaveCount(0);
+      // spec 024: breadcrumb Workspace / Spec · Area, milestone/feature/priority in the chip row (principal 2026-10-12, design.md)
+      await expect(page.locator('app-spec-head [data-head-chip="milestone"]')).toHaveCount(0);
     });
   });
 

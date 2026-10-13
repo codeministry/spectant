@@ -944,8 +944,9 @@
   },
   "specHead": {
     "breadcrumb": "Breadcrumb",
-    "more": "more",
-    "less": "less",
+    "specCrumb": "Spec {{id}}",
+    "more": "More…",
+    "less": "Less",
     "notes": "Notes",
     "notesCount": "{{count}} notes",
     "updated": "updated {{time}}",

@@ -1,83 +1,16 @@
 /*
- * The spec head (design.md § Spec head, every spec area). Medium and wide: breadcrumb, then id + title + chips on one
- * baseline with the action cluster on the right (it wraps below when it does not fit), description, meta, then the
- * agent banner or the no-source line. Compact (≤ 240 px target): the breadcrumb in its short form (workspace first,
- * then ids only, no area crumb, no priority chip: it stays in the chip row; T39, T19), the milestone name at most 96 px,
- * title clamped to two lines, one wrapping chip row, description clamped with "more", meta at 12/16, the command chip
- * at full width.
- *
- * The breadcrumb (T40, ISC-105; T20, ISC-140.1): one line at every width, never wrapping, never scrolling. When it does
- * not fit the names truncate with an ellipsis in a fixed order: feature name first (flex-shrink 3), then milestone name
- * down to its flag (2), then the spec slug (1). The workspace, ids (F-id, spec id, claim or task id) and the priority
- * chip before the spec id at medium and wide (spec 008, ISC-118) are `flex: none` and never truncate. At compact, if
- * the ids still do not fit, milestone and feature give way to one `…` button (spec-head.ts). Full names stay in the
- * DOM, so accessible names keep the whole text. Separators are generated content only: `/` scope, `·` milestone to
- * feature, `›` down into the spec.
+ * The spec head, the prototype's `spec-head-unified` (spec 024 design.md § Spec-Kopf; `styles.css` `.spec-head-unified`,
+ * `.pill`, `[data-ui="agent-banner"]`, `.agent-dot`). This file holds the title row, description, meta, actions and
+ * the agent banner; the context line (breadcrumb and chip row) is `spec-head.context.css`, the compact tier and the
+ * one-column row under 800 px `spec-head.compact.css`.
  */
 :host {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   min-inline-size: 0;
   margin-block-end: 16px;
-}
-
-/* `overflow: hidden` is the safety net; the padding and negative margin keep the 2 px ring and 4 px halo of the
-   global focus style inside the clip box. */
-.crumbs ol {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  min-inline-size: 0;
-  margin: -6px;
-  padding: 6px;
-  overflow: hidden;
-  color: var(--muted-ink);
-  font-size: 13px;
-  line-height: 20px;
-  white-space: nowrap;
-  list-style: none;
-}
-
-.crumbs ol > li {
-  display: inline-flex;
-  flex: 0 1 auto;
-  gap: 4px;
-  align-items: center;
-  min-inline-size: 0;
-}
-
-/* Shrink weights: the higher the weight, the earlier a crumb gives up width. */
-.crumbs ol > li:has([data-crumb='feature']) {
-  flex-shrink: 3;
-}
-
-.crumbs ol > li:has([data-crumb='milestone']) {
-  flex-shrink: 2;
-}
-
-.crumbs ol > li:has([data-crumb='spec']) {
-  flex-shrink: 1;
-}
-
-/* The workspace crumb, the area crumb and the claim or task id hold their width. */
-.crumbs ol > li:has([data-crumb='workspace'], [data-crumb='area'], [data-crumb='claim'], [data-crumb='task']) {
-  flex-shrink: 0;
-}
-
-/* The separator grammar: "/" scope, "·" milestone to feature, "›" down. 8 px on both sides, never selectable. */
-.crumbs ol > li + li::before {
-  flex: none;
-  margin-inline: 4px;
-  content: '/';
-  user-select: none;
-}
-
-.crumbs ol > li[data-sep='dot']::before {
-  content: '·';
-}
-
-.crumbs ol > li[data-sep='down']::before {
-  content: '›';
+  padding-block: 12px 8px;
+  container: spec-head / inline-size;
 }
 
 .mono {
@@ -85,185 +18,29 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The full path in the bottom sheet: one 44 px row per level. */
-.crumb-path {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.crumb-path-entry {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  min-block-size: 44px;
-  color: inherit;
-}
-
-/* Ids are whole or absent: F0, 002, C-12, T3. */
-.crumbs .mono,
-.crumbs [data-crumb='claim'],
-.crumbs [data-crumb='task'] {
-  flex: none;
-}
-
-.crumbs a,
-.crumbs .unknown {
-  display: inline-flex;
-  flex: 0 1 auto;
-  gap: 4px;
-  align-items: center;
-  min-inline-size: 0;
-}
-
-.crumbs a {
-  color: inherit;
-  text-decoration: none;
-  text-decoration-style: solid;
-  text-underline-offset: 2px;
-}
-
-/* Underline on hover and keyboard focus only, solid, never dotted. */
-.crumbs a:is(:hover, :focus-visible) {
-  text-decoration-line: underline;
-}
-
-/* The three truncating names; the icons beside them keep their size. */
-.crumbs .name,
-.crumbs .crumb-slug {
-  flex: 0 1 auto;
-  min-inline-size: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.crumbs [data-crumb='feature'] .name {
-  max-inline-size: 240px;
-}
-
-.crumbs [data-crumb='milestone'] .name {
-  max-inline-size: 160px;
-}
-
-.crumbs .crumb-slug {
-  max-inline-size: 200px;
-}
-
-.crumbs ui-icon,
-.crumbs ui-priority {
-  flex: none;
-}
-
-/* "+N more": a 20 px pill at fine pointers; the 44 x 44 hit area grows from a pseudo-element, as the button primitive
-   does, so the row height does not change. */
-.crumb-more {
-  position: relative;
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  block-size: 20px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: none;
-  color: inherit;
-  cursor: pointer;
-}
-
-/* The workspace never truncates: its name holds its whole width at every tier. */
-.crumbs .ws-name {
-  flex: none;
-}
-
-/* The compact "…" that stands for milestone and feature: a 24 px glyph button whose 44 x 44 hit area grows from a
-   pseudo-element, so the row does not grow. */
-.crumb-collapse {
-  position: relative;
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  min-inline-size: 24px;
-  block-size: 20px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.crumb-collapse::before {
-  position: absolute;
-  inset: 50% auto auto 50%;
-  inline-size: 44px;
-  block-size: 44px;
-  transform: translate(-50%, -50%);
-  content: '';
-}
-
-.crumb-more-list {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding: 8px;
-  list-style: none;
-}
-
-.crumbs [aria-current] {
-  color: var(--color-base-content);
-}
-
-@media (pointer: coarse) {
-  .crumbs ol {
-    min-block-size: 44px;
-  }
-
-  .crumb-more::before {
-    position: absolute;
-    inset: 50% auto auto 50%;
-    inline-size: 44px;
-    block-size: 44px;
-    transform: translate(-50%, -50%);
-    content: '';
-  }
-}
-
-:host([data-tier='compact']) .crumbs [data-crumb='milestone'] .name {
-  max-inline-size: 96px;
-}
-
 .row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
   align-items: center;
-  justify-content: space-between;
 }
 
-.title-line {
-  display: flex;
-  flex: 1 1 320px;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  align-items: baseline;
+.sh-main {
+  display: grid;
+  gap: 4px;
   min-inline-size: 0;
 }
 
 h1 {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: baseline;
   min-inline-size: 0;
-  max-inline-size: 100%;
   margin: 0;
   font-family: var(--font-display);
   font-size: 24px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   line-height: 32px;
 }
 
@@ -271,7 +48,15 @@ h1 {
   flex: none;
   color: var(--disp-ink);
   font-family: var(--font-mono);
+  font-size: 15px;
   font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+}
+
+.sh-sep {
+  flex: none;
+  color: var(--muted-ink);
+  font-weight: 400;
 }
 
 .spec-title {
@@ -281,29 +66,48 @@ h1 {
   white-space: nowrap;
 }
 
-.chips,
 .actions {
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  justify-content: flex-end;
 }
 
+/* The notes pill: 28 px, violet tint, 12/600, `file-text` + "n notes"; never filled. */
 .notes-pill {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  block-size: 28px;
+  padding-inline: 10px;
+  border-radius: 999px;
+  background: var(--ques-t);
+  color: var(--ques-ink);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
   text-decoration: none;
+  white-space: nowrap;
 }
 
-/* "more" sits beside the clamped text, so the disclosure costs no row of its own. */
+.notes-pill:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .desc-block {
   display: flex;
   gap: 4px;
   align-items: flex-end;
+  min-inline-size: 0;
 }
 
 .desc {
+  min-inline-size: 0;
   max-inline-size: 80ch;
   margin: 0;
+  color: var(--muted-ink);
   font-size: 14px;
   line-height: 20px;
 }
@@ -312,24 +116,38 @@ h1 {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
 }
 
+/* "More…" in the violet text, beside the clamped line, so the disclosure costs no row of its own. */
 .more {
   flex: none;
-  padding-inline: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ques-ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
 }
 
-.meta {
+.more:hover {
+  text-decoration: underline;
+}
+
+.meta,
+.no-source {
   display: flex;
   flex-wrap: wrap;
   gap: 0 8px;
   margin: 0;
   color: var(--muted-ink);
-  font-size: 13px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
-  line-height: 20px;
+  line-height: 16px;
 }
 
 .meta span + span::before {
@@ -337,19 +155,20 @@ h1 {
   content: '·';
 }
 
-/* Agent banner: 40 px, the warning edge, the lock text left and "writes paused" right (ISC-90). */
+/* The agent banner: card, 3 px orange edge, agent dot, mono session, `lock` "writes paused" on the right (ISC-90). */
 .banner {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 16px;
+  gap: 4px 10px;
   align-items: center;
   justify-content: space-between;
-  min-block-size: 40px;
-  padding: 4px 16px;
+  padding: 8px 14px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-box);
+  border-inline-start: 3px solid var(--color-warning);
+  border-radius: var(--radius-field);
   background: var(--color-base-100);
-  box-shadow: inset 3px 0 0 var(--color-warning);
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .banner-line {
@@ -357,95 +176,68 @@ h1 {
   flex-wrap: wrap;
   gap: 4px 8px;
   align-items: center;
+  min-inline-size: 0;
   margin: 0;
-  font-size: 14px;
-  line-height: 20px;
 }
 
-.banner-dot {
+.agent-dot {
+  position: relative;
+  flex: none;
   inline-size: 8px;
   block-size: 8px;
-  border-radius: 999px;
+  border-radius: 50%;
   background: var(--color-warning);
+}
+
+.agent-dot::after {
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--color-warning);
+  border-radius: 50%;
+  opacity: 0;
+  animation: agent-ping var(--motion-duration-skeleton) var(--motion-ease-standard) infinite;
+  content: '';
+}
+
+@keyframes agent-ping {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.6);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
 }
 
 .paused-chip {
   display: inline-flex;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
-  color: var(--hover-ink);
+  color: var(--muted-ink);
   font-size: 12px;
   font-weight: 600;
   line-height: 16px;
 }
 
-/* No lock source: a 32 px muted line (ISC-86). */
-.no-source {
-  display: flex;
-  align-items: center;
-  min-block-size: 32px;
-  margin: 0;
-  color: var(--muted-ink);
-  font-size: 13px;
-  line-height: 20px;
-}
+@media (prefers-reduced-motion: reduce) {
+  .agent-dot {
+    border: 2px solid var(--color-warning);
+    background: transparent;
+  }
 
-:host([data-tier='compact']) {
-  margin-block-end: 8px;
-}
-
-:host([data-tier='compact']) .title-line {
-  display: grid;
-  flex-basis: 100%;
-  gap: 8px;
-}
-
-:host([data-tier='compact']) h1 {
-  display: -webkit-box;
-  overflow: hidden;
-  font-size: 20px;
-  line-height: 28px;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-}
-
-:host([data-tier='compact']) .spec-id {
-  margin-inline-end: 8px;
-
-  /* The mono id on the display font's baseline would grow the 28 px line box by a pixel; a 1 line-height keeps the
-     id inside the title's line, so the compact head keeps its 240 px budget (design 002). */
-  line-height: 1;
-}
-
-:host([data-tier='compact']) .spec-title {
-  white-space: normal;
-}
-
-:host([data-tier='compact']) .meta {
-  font-size: 12px;
-  line-height: 16px;
-}
-
-:host([data-tier='compact']) .command {
-  display: flex;
-  inline-size: 100%;
-}
-
-:host([data-tier='compact']) .banner {
-  display: grid;
-  justify-items: start;
-  padding: 8px 16px;
-}
-
-:host([data-tier='compact']) .no-source {
-  min-block-size: 24px;
-  font-size: 12px;
-  line-height: 16px;
+  .agent-dot::after {
+    display: none;
+  }
 }
 
 @media (forced-colors: active) {
-  .banner-dot {
+  .agent-dot {
     background: CanvasText;
+  }
+
+  .notes-pill {
+    border: 1px solid LinkText;
   }
 }

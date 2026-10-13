@@ -1,0 +1,73 @@
+/*
+ * The spec head under 800 px of its own width (prototype `@container shell (max-width: 799px)`): the row in one column,
+ * the actions below the title, start-aligned. The compact tier (< 640 px, design.md § Mobile): the chip row under the
+ * breadcrumb, start-aligned; the title Sora 600 20/28 on at most two lines; the description clamped to two lines.
+ */
+@container spec-head (width < 800px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .actions {
+    justify-content: flex-start;
+  }
+
+  .desc.clamped {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+}
+
+:host([data-tier='compact']) {
+  gap: 8px;
+  margin-block-end: 8px;
+  padding-block: 8px 4px;
+}
+
+:host([data-tier='compact']) .sh-context {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+:host([data-tier='compact']) .chips {
+  justify-content: flex-start;
+}
+
+:host([data-tier='compact']) .row {
+  gap: 8px;
+}
+
+:host([data-tier='compact']) h1 {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 20px;
+  line-height: 28px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* The mono id on the display font's baseline would grow the 28 px line box; a 1 line-height keeps it inside. */
+:host([data-tier='compact']) .spec-id {
+  margin-inline-end: 8px;
+  line-height: 1;
+}
+
+:host([data-tier='compact']) .sh-sep {
+  margin-inline-end: 8px;
+}
+
+:host([data-tier='compact']) .spec-title {
+  white-space: normal;
+}
+
+:host([data-tier='compact']) .banner {
+  padding: 8px 12px;
+}
+
+@media (pointer: coarse) {
+  .crumbs ol {
+    min-block-size: 44px;
+  }
+}

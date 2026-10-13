@@ -944,8 +944,9 @@
   },
   "specHead": {
     "breadcrumb": "Pfad",
-    "more": "mehr",
-    "less": "weniger",
+    "specCrumb": "Spec {{id}}",
+    "more": "Mehr…",
+    "less": "Weniger",
     "notes": "Notizen",
     "notesCount": "{{count}} Notizen",
     "updated": "aktualisiert {{time}}",

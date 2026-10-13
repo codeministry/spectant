@@ -1,0 +1,147 @@
+/*
+ * The spec head's context line (spec 024 design.md § Viewport-übergreifend, Breadcrumb; prototype `.sh-context`,
+ * `.context-path`, `.sh-labels`): the breadcrumb `← [badge] workspace / Spec NNN · Area` left in 12 px muted with cyan
+ * links, the current level muted 500; the chip row (type, stage, pmark, milestone, feature) right. Separators are
+ * generated content only: `/` scope, `·` spec to area, `›` down into a claim or task.
+ */
+.sh-context {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+/* `overflow: hidden` is the safety net; padding and negative margin keep the focus ring inside the clip box. */
+.crumbs ol {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  min-inline-size: 0;
+  margin: -6px;
+  padding: 6px;
+  overflow: hidden;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 20px;
+  white-space: nowrap;
+  list-style: none;
+}
+
+.crumbs ol > li {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.crumbs ol > li + li::before {
+  margin-inline: 8px;
+  content: '/';
+  user-select: none;
+}
+
+.crumbs ol > li[data-sep='dot']::before {
+  margin-inline: 6px;
+  content: '·';
+}
+
+.crumbs ol > li[data-sep='down']::before {
+  content: '›';
+}
+
+.crumbs a {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: var(--cyan-text);
+  text-decoration: none;
+}
+
+.crumbs a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-underline-offset: 3px;
+}
+
+.crumbs [aria-current] {
+  color: var(--muted-ink);
+  font-weight: 500;
+}
+
+/* The workspace badge, `.ws-badge.sm`: the monogram on the accent tint, as generated content beside the name. */
+.ws-badge {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 16px;
+  block-size: 16px;
+  border: 1px solid color-mix(in oklab, var(--color-primary) 45%, transparent);
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--color-primary) 22%, transparent);
+  color: var(--color-base-content);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ws-badge::before {
+  content: attr(data-mono);
+}
+
+.chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  min-inline-size: 0;
+}
+
+.chip-link {
+  display: inline-flex;
+  min-inline-size: 0;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  text-decoration: none;
+}
+
+.chip-link:hover ui-chip {
+  text-decoration: underline;
+}
+
+.label-name {
+  overflow: hidden;
+  max-inline-size: 160px;
+  text-overflow: ellipsis;
+}
+
+.head-more {
+  position: relative;
+  display: inline-flex;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+}
+
+.head-more-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+}
+
+@media (pointer: coarse) {
+  .head-more::before {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    inline-size: 44px;
+    block-size: 44px;
+    transform: translate(-50%, -50%);
+    content: '';
+  }
+}
