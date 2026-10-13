@@ -44,6 +44,7 @@ export const ICON_NAMES = [
   'search',
   'x',
   'chevron-right',
+  'chevron-left', // spec 024: the prototype's rail tab (`‹`, "Show side panel")
   'folder-plus',
   'archive',
   'keyboard',

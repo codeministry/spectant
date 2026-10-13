@@ -19,6 +19,7 @@ export type IconName =
   | 'check'
   | 'check-check'
   | 'chevron-down'
+  | 'chevron-left'
   | 'chevron-right'
   | 'chevron-up'
   | 'chevrons-up'
@@ -127,6 +128,7 @@ export const ICONS: Record<IconName, string> = {
   check: '<path d="M20 6 9 17l-5-5"/>',
   'check-check': '<path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/>',
   'chevron-down': '<path d="m6 9 6 6 6-6"/>',
+  'chevron-left': '<path d="m15 18-6-6 6-6"/>',
   'chevron-right': '<path d="m9 18 6-6-6-6"/>',
   'chevron-up': '<path d="m18 15-6-6-6 6"/>',
   'chevrons-up': '<path d="m17 11-5-5-5 5"/><path d="m17 18-5-5-5 5"/>',

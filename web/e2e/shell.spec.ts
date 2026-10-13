@@ -350,6 +350,11 @@ test.describe('zen', () => {
       const shell = page.locator('app-shell');
       const collapse = page.locator('aside.shell-rail [data-control="rail-collapse"]');
       await expect(collapse).toHaveAttribute('aria-expanded', 'true');
+      // spec 024: prototype rail fold with the app's counts (principal 2026-10-13): the `›` sits just outside the
+      // rail's top-left edge (prototype `.rail-tools`), not above the rail's content.
+      const [tool, rail] = await Promise.all([collapse.boundingBox(), page.locator('aside.shell-rail').boundingBox()]);
+      expect((tool?.x ?? 0) + (tool?.width ?? 0)).toBeLessThanOrEqual(rail?.x ?? 0);
+      expect(tool?.y ?? 0).toBeCloseTo(rail?.y ?? 0, 0);
 
       const stored = page.waitForResponse((res) => res.url().endsWith('/api/settings') && res.request().method() === 'PUT');
       await collapse.click();
@@ -359,8 +364,11 @@ test.describe('zen', () => {
       const strip = page.locator('aside.shell-rail[data-rail-strip]');
       await expect(strip).toBeVisible();
       await expect(page.locator('app-rail-slot')).toHaveCount(0);
-      // The column eases over 240 ms (`--motion-duration-base`); poll until it settles at the strip's 48 px.
-      await expect.poll(async () => (await strip.boundingBox())?.width).toBe(48);
+      // spec 024: prototype rail fold with the app's counts (principal 2026-10-13): focus moves to the `‹` tab.
+      await expect(page.locator('aside.shell-rail [data-control="rail-expand"]')).toBeFocused();
+      // spec 024: prototype rail fold with the app's counts (principal 2026-10-13): the column eases over 240 ms
+      // (`--dur-sheet`); poll until it settles at the prototype's 32 px track (`--rail-space`).
+      await expect.poll(async () => (await strip.boundingBox())?.width).toBe(32);
 
       await page.reload();
       await expect(shell).toHaveAttribute('data-rail-collapsed', '');
@@ -369,6 +377,8 @@ test.describe('zen', () => {
 
       await expand.click();
       await expect(shell).not.toHaveAttribute('data-rail-collapsed');
+      // spec 024: prototype rail fold with the app's counts (principal 2026-10-13): focus moves back to the `›`.
+      await expect(collapse).toBeFocused();
       await expect(page.locator('app-rail-slot')).toBeVisible();
       await page.reload();
       await expect(page.locator('app-rail-slot')).toBeVisible();
