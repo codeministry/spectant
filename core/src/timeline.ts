@@ -25,7 +25,7 @@ import type { CommitRecord, DecisionQuestion, SpecFiles, TimelineEntry, Timeline
 
 type RecordedKind = Exclude<TimelineKind, 'stage'>;
 
-const SOURCE_RANK: Readonly<Record<TimelineKind, number>> = { stage: -1, decision: 0, round: 1, gate: 2, commit: 3, note: 4, agent: 5 };
+const SOURCE_RANK: Readonly<Record<TimelineKind, number>> = { stage: -1, decision: 0, round: 1, gate: 2, commit: 3, note: 4, agent: 5, worktree: 6 };
 
 /** A note of the app's notes store anchored to the spec (or one of its claims or tasks), as the server passes it. */
 export interface TimelineNote {

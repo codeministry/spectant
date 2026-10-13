@@ -31,7 +31,8 @@ export const TIMELINE_KINDS: readonly TimelineKind[] = ['stage', 'decision', 'ro
 
 /**
  * One marker colour per source (prototype `.mk.*`): stage → disp, decision → ques, round → conc, gate → clos, commit →
- * track, note → a ques ring on its tint (the tint is the CSS's), agent → the prototype's orange (`--color-warning`).
+ * track, note → a ques ring on its tint (the tint is the CSS's), agent → the prototype's orange (`--color-warning`),
+ * worktree → neutral (spec 027).
  */
 const MARKER: Record<TimelineKind, string> = {
   stage: toneMark('primary'),
@@ -41,6 +42,7 @@ const MARKER: Record<TimelineKind, string> = {
   commit: 'var(--track)',
   note: toneMark('secondary'),
   agent: 'var(--color-warning)',
+  worktree: toneMark('neutral'),
 };
 
 /** A `Landed in` part that names a spec file opens that file's tab, as the Docs tab's file chips do. */

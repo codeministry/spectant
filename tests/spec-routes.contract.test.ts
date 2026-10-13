@@ -562,7 +562,7 @@ const golden = (family: string): Record<string, unknown> =>
   JSON.parse(readFileSync(join(FIXTURES, `harbor.${family}.golden.json`), "utf8")) as Record<string, unknown>;
 const SPEC_KEY = "specs/002-web-console";
 
-const TIMELINE_KINDS = { decision: true, round: true, gate: true, commit: true, stage: true, note: true, agent: true } satisfies Record<TimelineKind, true>;
+const TIMELINE_KINDS = { decision: true, round: true, gate: true, commit: true, stage: true, note: true, agent: true, worktree: true } satisfies Record<TimelineKind, true>;
 const FRAME_KINDS = { dispatch: true, result: true, live: true } satisfies Record<FrameKind, true>;
 const CARD_STATES = {
   waiting: true, dispatched: true, running: true, question: true, concerns: true, fail: true,

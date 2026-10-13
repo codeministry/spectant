@@ -424,8 +424,21 @@ export interface SpecGates {
   readonly diagrams: GateView;
 }
 
-/** `locks`: a lock source could not be read cleanly (spec 002 T115); see LockDiagnostic. */
-export type WarningKind = 'review' | 'diagrams' | 'closed' | 'fog' | 'drift' | 'locks';
+/**
+ * `locks`: a lock source could not be read cleanly (spec 002 T115); see LockDiagnostic. `worktree-branch-mismatch`: the
+ * path and the branch of the spec's worktree name two different specs, and the path won (spec 027, ISC-174.1).
+ * `activity-event-unknown`: `.spectant/activity.jsonl` holds an event that is neither `claim`, `release` nor a
+ * `RunEvent`; the file is read on (ISC-179).
+ */
+export type WarningKind =
+  | 'review'
+  | 'diagrams'
+  | 'closed'
+  | 'fog'
+  | 'drift'
+  | 'locks'
+  | 'worktree-branch-mismatch'
+  | 'activity-event-unknown';
 
 export interface SpecWarning {
   readonly kind: WarningKind;
@@ -485,16 +498,61 @@ export interface SpecPageInput {
   readonly workflow?: Workflow;
 }
 
+// ─── Worktrees (worktrees.ts) ────────────────────────────────────────────────────────────────────────────────────
+
+/** `builder`: a worktree under `.claude/worktrees/`, counted and never read; `spec`: every other worktree. */
+export type WorktreeKind = 'spec' | 'builder';
+
+/**
+ * One worktree of a workspace as `git worktree list --porcelain` lists it (spec 027, ISC-174). It belongs to the spec
+ * its path `.worktrees/NNN-slug` names, else to the one its branch `feature/`, `fix/`, `spike/` or `infra/` plus
+ * `NNN-slug` names; when the two name different specs the path wins (ISC-174.1). The server reads `ahead` and `dirty`
+ * in a spec worktree only, read-only, without a fetch and with `GIT_OPTIONAL_LOCKS=0` (ISC-175).
+ */
+export interface Worktree {
+  /** Relative to the workspace root, `/`-separated, e.g. `.worktrees/027-worktree-live-view`; never absolute. */
+  readonly path: string;
+  /** The checked-out branch without `refs/heads/`, e.g. `feature/027-worktree-live-view`; null on a detached HEAD. */
+  readonly branch: string | null;
+  /** The `NNN` of the spec the worktree belongs to; null when neither its path nor its branch names one. */
+  readonly spec: string | null;
+  /**
+   * Commits on `branch` that `main` lacks (`git rev-list --count main..<branch>`); null when not read: a builder, a
+   * detached HEAD.
+   */
+  readonly ahead: number | null;
+  /** True when `git status --porcelain` in the worktree prints anything; null when not read: a builder. */
+  readonly dirty: boolean | null;
+  readonly kind: WorktreeKind;
+}
+
+/**
+ * Where the app reads a spec's files (spec 027, ISC-181): `worktree`, the copy in the spec's worktree, only when
+ * `specs/NNN-slug/` is tracked and the spec has a worktree; `main`, the main checkout, otherwise, an untracked or
+ * symlinked `specs/` included (ISC-181.1).
+ */
+export type SpecSource = 'main' | 'worktree';
+
 // ─── Timeline (timeline.ts, derived-stages.ts, events.ts) ────────────────────────────────────────────────────────
 
-/** `note` and `agent` are the server's joins (the app's notes, the held lock sessions); every other kind is from the files. */
-export type TimelineKind = 'decision' | 'round' | 'gate' | 'commit' | 'stage' | 'note' | 'agent';
+/**
+ * `note`, `agent` and `worktree` are the server's joins (the app's notes, the held lock sessions, the git state of the
+ * spec's worktree: its branch merged into `main` or the worktree removed, spec 027, ISC-175.1); every other kind is
+ * from the files.
+ */
+export type TimelineKind = 'decision' | 'round' | 'gate' | 'commit' | 'stage' | 'note' | 'agent' | 'worktree';
 
 export interface TimelineEntry {
-  /** ISO 8601 as the source wrote it (a date alone is allowed); empty on an undated derived stage transition. */
+  /**
+   * ISO 8601 as the source wrote it (a date alone is allowed); empty on an undated derived stage transition and on a
+   * removed worktree.
+   */
   readonly ts: string;
   readonly kind: TimelineKind;
-  /** True for a stage transition inferred from the files; false for anything recorded. */
+  /**
+   * True for a stage transition inferred from the files and for a `worktree` entry, which no event records (ISC-175.1);
+   * false for anything recorded.
+   */
   readonly derived: boolean;
   readonly title: string;
   readonly body?: string;
@@ -641,6 +699,32 @@ export interface LockReadInput {
   readonly now?: Date;
 }
 
+/**
+ * The four run events of `.spectant/activity.jsonl` beside `claim` and `release` (spec 027, ISC-179), each with `task`,
+ * `session` and `worktree`: `dispatch` when the round's plan sends the task out, `build` when its builder starts in its
+ * worktree, `patch` when its patch is pulled, `apply` when the patch landed on the spec's branch.
+ */
+export type RunEvent = 'dispatch' | 'build' | 'patch' | 'apply';
+
+/**
+ * A task's state in an implement round, from its last run event: dispatched → building → patched → applied.
+ * `applied-open` is an `apply` whose task tasks.md has not ticked yet; the write-order's tick ends it (ISC-179.1).
+ */
+export type RunState = 'dispatched' | 'building' | 'patched' | 'applied' | 'applied-open';
+
+/** One task's run as its last run event in `.spectant/activity.jsonl` leaves it (spec 027, ISC-179). */
+export interface TaskRun {
+  /** Task id, `T12`. */
+  readonly task: string;
+  readonly state: RunState;
+  /** The last run event's session, as written. */
+  readonly session: string;
+  /** The last run event's worktree, as written. */
+  readonly worktree: string;
+  /** ISO 8601: the last run event's `ts`. */
+  readonly ts: string;
+}
+
 export interface FrameCard {
   /** Task id, `T12`. */
   readonly task: string;
@@ -775,6 +859,8 @@ export interface LiveCard extends FrameCard {
   readonly agent: ActorRef | null;
   /** The sub-agent working the task, `a:<kind>:<id>/<task>` naming this card's own task; null when none does (T66). */
   readonly subagent: ActorRef | null;
+  /** The task's run in the implement round (spec 027, ISC-179.1); null or absent when no run event names the task. */
+  readonly run?: TaskRun | null;
 }
 
 /** One session holding locks on this spec's claims: an entry of the "This frame" rail. */
