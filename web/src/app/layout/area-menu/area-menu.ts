@@ -13,6 +13,7 @@ import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiRovingItem, UiRovingList } from '../../shared/ui/roving-list.directive';
 import { areaPath, SPEC_AREAS, type SpecArea, specLink, WORKSPACE_PAGES, type WorkspaceMenuPageId, workspaceLink } from '../shell/areas';
+import { planningCounts } from '../../features/planning/planning-counts';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 
@@ -93,7 +94,8 @@ export class AreaMenu {
   /** The open workspace page; a story page counts as the board it is reached from, a spec page as Specs. */
   protected readonly currentPage = computed(() => {
     const id = this.state.specId() === null ? this.state.route().wsPage : null;
-    return id === 'idea' ? 'board' : (id ?? 'specs');
+    // Spec 026: the Features and Milestones routes left the menu; until T30 redirects them they read as Planning.
+    return id === 'idea' ? 'board' : id === 'features' || id === 'milestones' ? 'planning' : (id ?? 'specs');
   });
 
   /** Each page's summary params, from what has loaded; a page whose source has not answered gets null. */
@@ -103,6 +105,7 @@ export class AreaMenu {
         ? { active: this.data.specRows().length, archived: this.data.archiveRows().length }
         : null,
     board: this.boardSummary(),
+    planning: this.planningSummary(),
     features: this.featuresSummary(),
     milestones: this.milestonesSummary(),
     tech: this.techSummary(),
@@ -165,6 +168,14 @@ export class AreaMenu {
     const dashboard = this.data.dashboard.value();
     if (planning === null || dashboard?.kind !== 'ok') return null;
     return { ...boardSummaryOf(buildBoard({ planning, rows: boardRowsOf(dashboard.body) })) };
+  }
+
+  /** Planning (spec 026): the milestones some spec names and the features, as the page head counts them. */
+  private planningSummary(): SummaryParams {
+    const model = this.data.planningModel();
+    if (model === null) return null;
+    const counts = planningCounts(model);
+    return { milestones: counts.milestones, features: counts.features };
   }
 
   /** Features: the feature count and the master's recount of closed and total claims (ISC-100.2). */

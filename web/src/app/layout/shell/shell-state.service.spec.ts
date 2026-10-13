@@ -56,12 +56,12 @@ describe('ShellState.route().wsPage', () => {
 
   it("is 'board' on the workspace board, with no spec and no story (spec 008, ISC-129)", async () => {
     const route = await routeAt('/w/harbor/board?feature=F1&col=build');
-    expect(route).toEqual({ ws: 'harbor', specId: null, area: null, tab: null, techTab: null, wsPage: 'board', ideaSlug: null, notFound: false });
+    expect(route).toEqual({ ws: 'harbor', specId: null, area: null, tab: null, techTab: null, lens: null, wsPage: 'board', ideaSlug: null, notFound: false });
   });
 
   it("is 'idea' on a story page, with the story's slug from the URL", async () => {
     const route = await routeAt('/w/harbor/ideas/tide-tables');
-    expect(route).toEqual({ ws: 'harbor', specId: null, area: null, tab: null, techTab: null, wsPage: 'idea', ideaSlug: 'tide-tables', notFound: false });
+    expect(route).toEqual({ ws: 'harbor', specId: null, area: null, tab: null, techTab: null, lens: null, wsPage: 'idea', ideaSlug: 'tide-tables', notFound: false });
   });
 
   it('decodes an encoded story slug once, as the router does', async () => {

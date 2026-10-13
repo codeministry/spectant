@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import type { IconName } from '../../shared/icons/icons';
 
 /**
  * One tab of `app-tab-bar` (spec 023, ISC-134.1, DS-APP-27): the bar renders the list it is given, so the spec page
@@ -16,6 +17,10 @@ export interface PageTab {
   readonly sep?: true;
   /** The tab has no content yet (a doc the spec does not have): the prototype's dimmed `muted-tab` (spec 024, ISC-149). */
   readonly muted?: true;
+  /** An icon before the label (the planning lenses, spec 026). */
+  readonly icon?: IconName;
+  /** A switch keeps the query (`?sel=`, `?m=`): `queryParamsHandling: merge` (the planning lenses, spec 026). */
+  readonly keepQuery?: true;
 }
 
 /** The tech page's tabs in tab-bar order (`/w/:ws/tech/<tab>`); `/w/:ws/tech` redirects to the first. */
@@ -54,3 +59,21 @@ export function techTabs(ws: string, counts: TechTabCountValues = {}): PageTab[]
 export class TechTabCounts {
   readonly counts = signal<TechTabCountValues>({});
 }
+
+/**
+ * The planning page's lenses in tab-bar order (spec 026, ISC-167; `/w/:ws/planning/<lens>`, `/w/:ws/planning` opens the
+ * tree). Tabs are route links that keep `?sel=` and `?m=` (`keepQuery`), labelled `planning.page.lenses.<id>`.
+ */
+export const PLANNING_LENSES = ['tree', 'board', 'graph'] as const;
+export type PlanningLensId = (typeof PLANNING_LENSES)[number];
+
+export const isPlanningLensId = (value: unknown): value is PlanningLensId => (PLANNING_LENSES as readonly unknown[]).includes(value);
+
+const LENS_ICONS: Record<PlanningLensId, IconName> = { tree: 'list-tree', board: 'layout-grid', graph: 'share-2' };
+
+/** `['/w', ws, 'planning', lens]` as a router link. */
+export const planningLink = (ws: string, lens: PlanningLensId = 'tree'): string[] => ['/w', ws, 'planning', lens];
+
+/** The lens tabs of workspace `ws`, each with its icon, keeping the selection and milestone query on a switch. */
+export const planningTabs = (ws: string): PageTab[] =>
+  PLANNING_LENSES.map((id) => ({ id, labelKey: `planning.page.lenses.${id}`, link: planningLink(ws, id), icon: LENS_ICONS[id], keepQuery: true }));

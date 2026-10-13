@@ -13,7 +13,7 @@ import {
   type TabId,
   type WorkspacePageId,
 } from './areas';
-import { isTechTabId, type TechTabId } from './page-tabs';
+import { isPlanningLensId, isTechTabId, type PlanningLensId, type TechTabId } from './page-tabs';
 import type { Tier } from './tier';
 
 /** What the current route says, read once per navigation from the whole snapshot chain. */
@@ -25,6 +25,8 @@ export interface ShellRoute {
   readonly tab: TabId | null;
   /** The tech page's tab on `/w/:ws/tech/<tab>` (`wsPage` `tech`, spec 023); null on every other route. */
   readonly techTab: TechTabId | null;
+  /** The planning page's lens on `/w/:ws/planning/<lens>` (`wsPage` `planning`, spec 026); null on every other route. */
+  readonly lens: PlanningLensId | null;
   /** The workspace-scope page: route data `page`, else the spec list on `/w/:ws`, else null (spec routes, not-found). */
   readonly wsPage: WorkspacePageId | null;
   /** The story's slug on `/w/:ws/ideas/:slug` (`wsPage` `idea`, spec 008); null on every other route. */
@@ -49,9 +51,12 @@ function readRoute(root: ActivatedRouteSnapshot): ShellRoute {
   const wsPage = isWorkspacePageId(data.page) ? data.page : ws !== null && specId === null && !notFound ? 'specs' : null;
   const ideaSlug = wsPage === 'idea' ? (params['slug'] ?? null) : null;
   const tech = wsPage === 'tech';
-  const tab = !tech && isTabId(data.tab) ? data.tab : null;
+  const planning = wsPage === 'planning';
+  // `board` is a spec tab and a lens: on the planning page it is the lens only.
+  const tab = !tech && !planning && isTabId(data.tab) ? data.tab : null;
+  const lens = planning && isPlanningLensId(data.tab) ? data.tab : null;
   const techTab = tech && isTechTabId(data.tab) ? data.tab : null;
-  return { ws, specId, area, tab, techTab, wsPage, ideaSlug, notFound };
+  return { ws, specId, area, tab, techTab, lens, wsPage, ideaSlug, notFound };
 }
 
 /** An open `<dialog>` or popover owns Esc (the overlay primitives close it); the shell leaves the key alone then. */

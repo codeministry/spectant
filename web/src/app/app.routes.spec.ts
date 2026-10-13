@@ -35,7 +35,7 @@ describe('the tech page routes (spec 023, ISC-134.1)', () => {
     it(`resolves /w/:ws/tech/${tab} to the tech page on that tab`, async () => {
       const { url, route, component } = await at(`/w/harbor/tech/${tab}`);
       expect(url).toBe(`/w/harbor/tech/${tab}`);
-      expect(route).toEqual({ ws: 'harbor', specId: null, area: null, tab: null, techTab: tab, wsPage: 'tech', ideaSlug: null, notFound: false });
+      expect(route).toEqual({ ws: 'harbor', specId: null, area: null, tab: null, techTab: tab, lens: null, wsPage: 'tech', ideaSlug: null, notFound: false });
       expect(component).toBe(TechPage);
     });
   }

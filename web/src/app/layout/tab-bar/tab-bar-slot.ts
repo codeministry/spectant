@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { specLink, type TabId } from '../shell/areas';
-import { type PageTab, TechTabCounts, techTabs } from '../shell/page-tabs';
+import { type PageTab, planningTabs, TechTabCounts, techTabs } from '../shell/page-tabs';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { TabBar, tabbedArea } from './tab-bar';
@@ -59,6 +59,11 @@ export class TabBarSlot {
     if (this.state.wsPage() === 'tech') {
       if (this.data.techMissing()) return null;
       return { tabs: techTabs(ws, this.techCounts.counts()), current: this.state.techTab(), labelKey: 'shell.pages.tech' };
+    }
+    // Spec 026 (ISC-167): the planning page's lenses Tree, Matrix and Graph, unless it is the not-found page.
+    if (this.state.wsPage() === 'planning') {
+      if (this.data.workspaceMissing() || this.data.planningMissing()) return null;
+      return { tabs: planningTabs(ws), current: this.state.route().lens, labelKey: 'shell.pages.planning' };
     }
     return this.specBar(ws);
   });

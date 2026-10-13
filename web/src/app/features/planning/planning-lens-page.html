@@ -1,0 +1,52 @@
+@if (missing()) {
+  <app-not-found />
+} @else if (unavailable()) {
+  <p class="unavailable">{{ 'shell.unavailable' | transloco }}</p>
+} @else {
+  <!-- Prototype `page-head`: eyebrow `<WS> · PLANNING · n MILESTONES`, the workspace badge, h1 "Planning", the meta. -->
+  <ui-page-head
+    [segments]="[name(), ('shell.pages.planning' | transloco), counts() === null ? '' : ('planning.page.eyebrowCount' | transloco: { count: counts()?.milestones })]"
+  >
+    <div class="h1-row" ngProjectAs="h1">
+      <ui-ws-badge class="page-mark" size="page" [name]="name()" aria-hidden="true" />
+      <h1 class="type-page-title" id="planning" tabindex="-1">{{ 'shell.pages.planning' | transloco }}</h1>
+    </div>
+  </ui-page-head>
+  @if (counts(); as counts) {
+    <p class="meta" data-planning-meta>{{ 'planning.page.meta' | transloco: counts }}</p>
+  }
+
+  <app-tab-bar-slot />
+
+  @if (model(); as model) {
+    @if (!overviewInRail()) {
+      <details class="overview-block" data-overview-block>
+        <summary>{{ 'planning.page.overview' | transloco }}</summary>
+        <app-planning-overview [ws]="ws()" [model]="model" />
+      </details>
+    }
+    @switch (lens()) {
+      @case ('board') {
+        <app-planning-matrix [model]="model" />
+      }
+      @case ('graph') {
+        <app-planning-graph [model]="model" />
+      }
+      @default {
+        <app-planning-tree [model]="model" />
+      }
+    }
+  } @else {
+    <ui-card class="skeleton-card" aria-hidden="true">
+      <ui-skeleton width="40%" height="24px" />
+      <ui-skeleton height="8px" />
+      <ui-skeleton width="70%" />
+    </ui-card>
+  }
+}
+
+<ng-template #overview>
+  @if (model(); as model) {
+    <app-planning-overview [ws]="ws()" [model]="model" />
+  }
+</ng-template>

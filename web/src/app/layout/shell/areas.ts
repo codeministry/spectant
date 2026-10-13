@@ -1,5 +1,5 @@
 import type { IconName } from '../../shared/icons/icons';
-import type { TechTabId } from './page-tabs';
+import type { PlanningLensId, TechTabId } from './page-tabs';
 
 /**
  * The spec page's areas and their tabs (design.md, ISC-76): the one registry the area menu, the tab bar, the routes
@@ -73,7 +73,7 @@ function must(key: string): never {
 export interface ShellRouteData {
   readonly area?: AreaId;
   /** A spec tab under `/w/:ws/s/:id`, or a tech tab on `page: 'tech'` (`ShellState.route().techTab`, spec 023). */
-  readonly tab?: TabId | TechTabId;
+  readonly tab?: TabId | TechTabId | PlanningLensId;
   /** The workspace-scope page a `w/:ws` route shows (`ShellState.route().wsPage`); absent means the spec list. */
   readonly page?: WorkspacePageId;
   readonly notFound?: boolean;
@@ -86,10 +86,10 @@ export interface ShellRouteData {
  * in `TECH_TABS`) is a menu page, fifth after Milestones (T20). `library` (spec 024, `/w/:ws/library`, a mock until
  * spec 017) is the sixth (T57, ISC-150.1).
  */
-export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea' | 'tech' | 'library';
+export type WorkspacePageId = 'specs' | 'board' | 'planning' | 'features' | 'milestones' | 'idea' | 'tech' | 'library';
 export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea'>;
 
-const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea', 'tech', 'library'];
+const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'planning', 'features', 'milestones', 'idea', 'tech', 'library'];
 
 export const isWorkspacePageId = (value: unknown): value is WorkspacePageId =>
   (WORKSPACE_PAGE_IDS as readonly unknown[]).includes(value);
@@ -122,8 +122,9 @@ export const WORKSPACE_PAGES: readonly WorkspacePage[] = [
   // summary line counts through the board's own model (T116). `g b` is bound (T117, SHORTCUTS `go-board`): the
   // 2026-10-11 review found it free, the round board's `b` being a tab inside a spec, not a `g` sequence.
   { id: 'board', icon: 'square-kanban', labelKey: 'shell.pages.board', summaryKey: 'shell.pages.summary.board', goKey: 'b' },
-  { id: 'features', icon: 'layers', labelKey: 'shell.pages.features', summaryKey: 'shell.pages.summary.features', goKey: 'f' },
-  { id: 'milestones', icon: 'flag', labelKey: 'shell.pages.milestones', summaryKey: 'shell.pages.summary.milestones', goKey: 'm' },
+  // Spec 026 (ISC-167): Planning, one page with the lenses Tree, Matrix and Graph, replaces Features and Milestones in
+  // the menu; their routes stay until T30 turns them into redirects, and `g f` / `g m` keep reaching them.
+  { id: 'planning', icon: 'list-tree', labelKey: 'shell.pages.planning', summaryKey: 'shell.pages.summary.planning', goKey: 'p' },
   // Spec 023 (T20, ISC-134.2): the tech page, fifth after Milestones; `/w/:ws/tech` redirects to its first tab.
   { id: 'tech', icon: 'book-open', labelKey: 'shell.pages.tech', summaryKey: 'shell.pages.summary.tech', goKey: null },
   // Spec 024 (T57, ISC-150.1): the Library, sixth; a mock with the demo chip until spec 017, its summary counts the

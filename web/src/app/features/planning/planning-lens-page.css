@@ -1,0 +1,54 @@
+/* The planning page (spec 026, T15): head, lens bar, overview block, lens body. */
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+.h1-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.h1-row h1 {
+  margin: 0;
+}
+
+.meta {
+  margin-block: 0 16px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+.unavailable {
+  color: var(--muted-ink);
+}
+
+/* Below 1120 and on matrix and graph: the overview as a block like 024's "On this page", closed by default. */
+.overview-block {
+  margin-block-end: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.overview-block > summary {
+  display: flex;
+  align-items: center;
+  min-block-size: 44px;
+  padding-inline: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.overview-block > app-planning-overview {
+  padding: 0 16px 16px;
+}
+
+.skeleton-card {
+  display: grid;
+  gap: 8px;
+}

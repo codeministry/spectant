@@ -2,13 +2,14 @@ import { Routes } from '@angular/router';
 import { SPEC_AREA_ROUTES } from './features/spec/spec-area.routes';
 import { SpecPage } from './features/spec/spec-page';
 import type { ShellRouteData } from './layout/shell/areas';
-import { TECH_TABS, type TechTabId } from './layout/shell/page-tabs';
+import { PLANNING_LENSES, type PlanningLensId, TECH_TABS, type TechTabId } from './layout/shell/page-tabs';
 import { ShellComponent } from './layout/shell/shell';
 
 const notFound: ShellRouteData = { notFound: true };
 // Spec 024: the designed not-found page is a lazy chunk, so it does not weigh on the initial bundle (1 MB budget).
 const notFoundPage = () => import('./layout/not-found/not-found').then((m) => m.NotFound);
 const techTab = (tab: TechTabId): ShellRouteData => ({ page: 'tech', tab });
+const planningLens = (tab: PlanningLensId): ShellRouteData => ({ page: 'planning', tab });
 const featuresPage: ShellRouteData = { page: 'features' };
 const milestonesPage: ShellRouteData = { page: 'milestones' };
 const boardPage: ShellRouteData = { page: 'board' };
@@ -54,6 +55,20 @@ export const routes: Routes = [
         path: 'w/:ws/ideas/:slug',
         loadComponent: () => import('./features/ideas/idea-page').then((m) => m.IdeaPage),
         data: ideaPage,
+      },
+      // Spec 026 (ISC-167): the planning page, one route per lens like the tech page; `/w/:ws/planning` opens the tree.
+      // The lenses are componentless children of one lazy page, so a lens switch keeps the page (and its overview).
+      {
+        path: 'w/:ws/planning',
+        children: [
+          { path: '', redirectTo: 'tree', pathMatch: 'full' },
+          {
+            path: '',
+            loadComponent: () => import('./features/planning/planning-lens-page').then((m) => m.PlanningPage),
+            children: PLANNING_LENSES.map((lens) => ({ path: lens, children: [], data: planningLens(lens) })),
+          },
+          { path: '**', loadComponent: notFoundPage, data: notFound },
+        ],
       },
       // The workspace's planning pages (spec 003, ISC-103 / ISC-104): siblings of the spec list, reached through the
       // area menu at workspace scope; lazy, so they ship as one chunk that only these two routes load.

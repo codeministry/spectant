@@ -248,6 +248,7 @@
       "shortcuts": "Tastenkürzel anzeigen",
       "openAssistant": "Assistent öffnen",
       "help": "Hilfe",
+      "planning": "Planung öffnen",
       "openPort": "localhost:{{port}} öffnen",
       "library": "Library öffnen",
       "settingsWorkspaces": "Einstellungen · Workspaces"
@@ -619,6 +620,7 @@
     "pages": {
       "specs": "Specs",
       "board": "Board",
+      "planning": "Planung",
       "features": "Features",
       "milestones": "Meilensteine",
       "tech": "Tech",
@@ -626,6 +628,7 @@
       "summary": {
         "specs": "{{active}} aktiv · {{archived}} archiviert",
         "board": "{{stages}} Stages · {{cards}} Karten · {{waiting}} warten auf Sie",
+        "planning": "{{milestones}} Meilensteine · {{features}} Features",
         "features": "{{count}} Features · {{closed}}/{{total}} geschlossen",
         "milestones": "{{count}} Meilensteine · nächster {{next}}",
         "tech": "{{specs}} Specs · {{fog}} offene Fragen",
@@ -1685,6 +1688,27 @@
     }
   },
   "planning": {
+    "page": {
+      "lenses": {
+        "tree": "Baum",
+        "board": "Matrix",
+        "graph": "Diagramm"
+      },
+      "levels": {
+        "milestones": "Meilensteine",
+        "features": "Features",
+        "specs": "Specs",
+        "claims": "Claims"
+      },
+      "eyebrowCount": "{{count}} Meilensteine",
+      "meta": "{{milestones}} Meilensteine · {{features}} Features · {{closed}}/{{total}} Claims geschlossen",
+      "overview": "Übersicht",
+      "overviewEmpty": "Noch keine Spec nennt einen Meilenstein.",
+      "summary": {
+        "board": "{{lanes}} Swimlanes · {{columns}} Feature-Spalten",
+        "graph": "{{milestones}} Meilensteine → {{features}} Features → {{specs}} Specs"
+      }
+    },
     "features": {
       "title": "Features in {{ws}}",
       "meta": "{{features}} Features · {{closed}}/{{total}} Claims geschlossen · {{unheld}} ohne Spec",
