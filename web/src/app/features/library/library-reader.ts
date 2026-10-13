@@ -141,6 +141,94 @@ export function rewriteProse(html: string, links: ProseLinks, doc: Document = do
   return template.innerHTML;
 }
 
+/** The four sections of `specs/tech.md` (contract ISC-134), in the order the reader shows them; also their anchors. */
+export const TECH_SECTIONS = ['overview', 'stack', 'architecture', 'risks'] as const;
+export type TechSection = (typeof TECH_SECTIONS)[number];
+
+/**
+ * The heading words that name a section once the served page no longer carries its `<!-- section: key -->` marker
+ * (core's renderer drops HTML comments): English and German, lower case, diacritics and punctuation removed.
+ */
+const TECH_NAMES: Readonly<Record<TechSection, readonly string[]>> = {
+  overview: ['overview', 'uberblick', 'ueberblick', 'ubersicht', 'uebersicht'],
+  stack: ['stack', 'tech stack', 'technology stack', 'technologie stack', 'technologiestack'],
+  architecture: ['architecture', 'architektur'],
+  risks: ['risks', 'risk', 'risiken', 'risiko'],
+};
+
+const plainWords = (text: string): string =>
+  text
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+
+/** The section an h2 opens: its id is the key, or its text starts with one of the key's names; null for any other. */
+function sectionOf(heading: Element): TechSection | null {
+  const text = plainWords(heading.textContent);
+  return TECH_SECTIONS.find((key) => heading.id === key || TECH_NAMES[key].some((name) => text === name || text.startsWith(`${name} `))) ?? null;
+}
+
+/** tech.md as the reader shows it: the page with the four sections in order, and the keys the file has none for. */
+export interface TechReading {
+  readonly page: DocsPage;
+  readonly present: readonly TechSection[];
+  readonly missing: readonly TechSection[];
+}
+
+interface TechChunk {
+  readonly heading: Element;
+  key: TechSection | null;
+  readonly nodes: Node[];
+}
+
+/**
+ * The served tech.md page (one `DocsPage` of the whole file, the markers gone) as its four sections (ISC-157): the
+ * prose is cut at each h2; an h2 named after a section (`sectionOf`) opens it, any other h2 stays in the section before
+ * it. When no h2 names a section, the first four h2 are the four sections in contract order, as `/spec-doc` writes them.
+ * Each section becomes `<section data-library-tech-section="key">` with its h2's id set to the key (the stable anchor),
+ * in the order overview, stack, architecture, risks whatever the file's; prose before the first h2 stays in front,
+ * without the h1 (the reader's head shows the title). The contents list holds exactly the present sections. Parsed in
+ * an inert `template` and rebuilt from core's own nodes, so the output is as trusted as core's input.
+ */
+export function techReading(page: DocsPage, doc: Document = document): TechReading {
+  const template = doc.createElement('template');
+  template.innerHTML = page.html;
+  const lead: Node[] = [];
+  const chunks: TechChunk[] = [];
+  for (const node of [...template.content.childNodes]) {
+    const tag = node instanceof Element ? node.tagName : '';
+    if (tag === 'H2' && node instanceof Element) chunks.push({ heading: node, key: sectionOf(node), nodes: [node] });
+    else if (chunks.length > 0) chunks.at(-1)?.nodes.push(node);
+    else if (tag !== 'H1') lead.push(node);
+  }
+  if (chunks.every((chunk) => chunk.key === null)) {
+    for (const [at, chunk] of chunks.entries()) chunk.key = TECH_SECTIONS[at] ?? null;
+  }
+  const sections = new Map<TechSection, TechChunk>();
+  let last: Node[] = lead;
+  for (const chunk of chunks) {
+    if (chunk.key !== null && !sections.has(chunk.key)) {
+      sections.set(chunk.key, chunk);
+      last = chunk.nodes;
+    } else last.push(...chunk.nodes);
+  }
+  const out = doc.createElement('template');
+  out.content.append(...lead);
+  const present = TECH_SECTIONS.filter((key) => sections.has(key));
+  const toc = present.map((key) => {
+    const chunk = sections.get(key) as TechChunk;
+    chunk.heading.id = key;
+    const element = doc.createElement('section');
+    element.setAttribute('data-library-tech-section', key);
+    element.append(...chunk.nodes);
+    out.content.append(element);
+    return { level: 2, text: chunk.heading.textContent.trim(), anchor: key };
+  });
+  return { page: { ...page, html: out.innerHTML, toc }, present, missing: TECH_SECTIONS.filter((key) => !sections.has(key)) };
+}
+
 /** Where the reader stands: the workspace library, or a spec's Library area (no "Open in spec" there). */
 export type ReaderContext = 'workspace' | 'spec';
 
@@ -231,8 +319,11 @@ export class LibraryReader {
     return result !== undefined && result.kind !== 'ok';
   });
 
-  /** The served page with the reader's links (`rewriteProse`); its html changes only with the page or the catalog. */
-  protected readonly prose = computed<DocsPage | null>(() => {
+  /**
+   * The served page with the reader's links (`rewriteProse`); its html changes only with the page or the catalog.
+   * tech.md comes as its four sections (`techReading`), with the keys the file has no section for.
+   */
+  private readonly reading = computed<TechReading | null>(() => {
     const result = this.page.hasValue() ? this.page.value() : undefined;
     const doc = this.doc();
     if (result?.kind !== 'ok' || doc === null) return null;
@@ -243,7 +334,16 @@ export class LibraryReader {
       asset: (path) => this.api.libraryAssetUrl(ws, path),
       xref: (path) => untracked(() => this.xrefHref(path)),
     };
-    return { ...result.body, html: rewriteProse(result.body.html, links) };
+    const page = { ...result.body, html: rewriteProse(result.body.html, links) };
+    return doc.type === 'tech' ? techReading(page) : { page, present: [], missing: [] };
+  });
+  protected readonly prose = computed<DocsPage | null>(() => this.reading()?.page ?? null);
+  /** tech.md only: the sections the file has none for, named under the prose. */
+  protected readonly techMissing = computed<readonly TechSection[]>(() => this.reading()?.missing ?? []);
+  /** The placeholder of an absent `specs/tech.md` (the page lists it dimmed): the empty state with `/spec-doc`. */
+  protected readonly techAbsent = computed(() => {
+    const doc = this.doc();
+    return doc?.type === 'tech' && doc.state === 'missing';
   });
 
   /** `.design/` assets of a design document (`data-spec-asset`, relative to its folder) through the same file route. */

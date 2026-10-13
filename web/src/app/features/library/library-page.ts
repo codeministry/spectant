@@ -12,17 +12,26 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NgTemplateOutlet } from '@angular/common';
-import { ActivatedRoute, type ParamMap, Router } from '@angular/router';
+import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
+import { ActivatedRoute, type ParamMap, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { LibraryCatalog, LibraryDoc } from '../../../../../core/src/files';
+import type { LibraryCatalog, LibraryDoc, SpecGroupHead, SpecType } from '../../../../../core/src/files';
+import { renderDocsMarkdown } from '../../../../../core/src/markdown-docs';
+import type { Stage } from '../../../../../core/src/stage';
 import { ApiClient } from '../../core/api.service';
 import { NotFound } from '../../layout/not-found/not-found';
+import { specLink } from '../../layout/shell/areas';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
+import { STAGE_LOOK } from '../../layout/spec-head/spec-head';
 import { UiIcon } from '../../shared/icons/icon';
 import type { IconName } from '../../shared/icons/icons';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiCard } from '../../shared/ui/card/card';
+import { UiChip } from '../../shared/ui/chip/chip';
+import { UiMeter } from '../../shared/ui/meter/meter';
+import type { Tone } from '../../shared/ui/tone';
+import { TYPE_GLYPHS } from '../../shared/ui/type-glyph/type-glyph';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../shared/ui/filter-chips/filter-chips';
@@ -33,7 +42,10 @@ import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
 import {
   EVIDENCE_BLOCK,
   evidenceBlock,
+  type FogGroup,
+  fogGroups,
   filterParams,
+  matches,
   highlight,
   type LibraryFilter,
   type LibraryGroup,
@@ -81,6 +93,64 @@ export function controlViews(catalog: Pick<LibraryCatalog, 'missing' | 'stale'>,
   });
 }
 
+/**
+ * The row an absent `specs/tech.md` stands as (design.md 017 § 8, § Viewport-übergreifend): in the workspace-wide group,
+ * dimmed, without the "missing" flag and outside every count (ISC-155.2 names spec documents only); its reader is the
+ * empty state with `/spec-doc`. Core never marks a tech document missing, so `tech` with `missing` names this row alone.
+ */
+export const TECH_PLACEHOLDER: LibraryDoc = {
+  path: 'tech.md',
+  type: 'tech',
+  spec: WORKSPACE_SPEC,
+  title: 'tech.md',
+  modified: null,
+  state: 'missing',
+  media: 'markdown',
+};
+
+/** The tech placeholder when the catalog holds documents but no tech.md; null otherwise. */
+export const techPlaceholderOf = (catalog: Pick<LibraryCatalog, 'docs'>): LibraryDoc | null =>
+  catalog.docs.length === 0 || catalog.docs.some((doc) => doc.type === 'tech') ? null : TECH_PLACEHOLDER;
+
+/** Whether the list shows the placeholder under `filter`: as a tech document would, under the state "all" only. */
+export const showsPlaceholder = (filter: LibraryFilter): boolean => filter.state === 'all' && matches({ ...TECH_PLACEHOLDER, state: 'ok' }, filter);
+
+/** A spec group's head as drawn (ISC-157): core's values, the chips' looks, and Goal and Approach rendered once. */
+export interface GroupHeadView {
+  readonly head: SpecGroupHead;
+  /** The spec's number (`?spec=` form). */
+  readonly key: string;
+  readonly slug: string;
+  readonly typeIcon: IconName | undefined;
+  readonly stageTone: Tone;
+  readonly stageIcon: IconName | undefined;
+  /** The `## Goal` and the first paragraph of `## Approach` as the former tech tab Specs rendered them; null without. */
+  readonly goal: string | null;
+  readonly approach: string | null;
+}
+
+/**
+ * The head of a spec group from core's `SpecGroupHead`: type and stage chip looks (the spec head's `STAGE_LOOK`), the
+ * Goal and Approach sources through core's renderer with the ids the former tech tab gave them (`spec-NNN-goal-`).
+ */
+export function groupHeadView(head: SpecGroupHead): GroupHeadView {
+  const key = specKey(head.spec);
+  const type: SpecType | null = head.type;
+  const look = Object.hasOwn(STAGE_LOOK, head.stage) ? STAGE_LOOK[head.stage as Stage] : { tone: 'neutral' as const, icon: undefined };
+  const render = (source: string | null, part: string): string | null =>
+    source === null ? null : renderDocsMarkdown(source, { idPrefix: `spec-${key}-${part}-` }).html;
+  return {
+    head,
+    key,
+    slug: specSlug(head.spec),
+    typeIcon: type === null ? undefined : TYPE_GLYPHS[type],
+    stageTone: look.tone,
+    stageIcon: look.icon,
+    goal: render(head.goal, 'goal'),
+    approach: render(head.approach, 'approach'),
+  };
+}
+
 /** The server's full-text search waits this long after the last keystroke (title and path matches show at once). */
 export const SEARCH_DEBOUNCE_MS = 200;
 
@@ -125,6 +195,14 @@ interface RowView {
   readonly meta: readonly TextRun[] | null;
   /** The meta line is the server's full-text snippet, not the path. */
   readonly snippet: boolean;
+  /** The absent tech.md (`TECH_PLACEHOLDER`): dimmed, no flag, no `data-library-entry`, outside every count. */
+  readonly placeholder: boolean;
+}
+
+/** A group head with its Goal and Approach as trusted HTML (core's renderer escapes every text). */
+interface HeadDraw extends GroupHeadView {
+  readonly goalHtml: SafeHtml | null;
+  readonly approachHtml: SafeHtml | null;
 }
 
 /** A spec's evidence subgroup as shown: whether it is open, the revealed rows and how many still wait. */
@@ -139,6 +217,8 @@ interface EvidenceView {
 
 interface GroupView {
   readonly group: LibraryGroup;
+  /** A spec group's head; null for the workspace-wide group (it keeps its eyebrow) and a spec core has no head for. */
+  readonly head: HeadDraw | null;
   readonly rows: readonly RowView[];
   readonly evidence: EvidenceView | null;
 }
@@ -181,10 +261,13 @@ interface GroupView {
     LibraryReader,
     NgTemplateOutlet,
     NotFound,
+    RouterLink,
     TranslocoPipe,
     UiButton,
     UiCard,
+    UiChip,
     UiCommandChip,
+    UiMeter,
     UiEmptyState,
     UiFilterChips,
     UiIcon,
@@ -201,7 +284,7 @@ interface GroupView {
     '[attr.data-reading]': 'current() ? "" : null',
   },
   templateUrl: './library-page.html',
-  styleUrls: ['./library-page.css', './library-page.control.css'],
+  styleUrls: ['./library-page.css', './library-page.control.css', './library-page.heads.css'],
 })
 export class LibraryPage {
   protected readonly state = inject(ShellState);
@@ -212,6 +295,7 @@ export class LibraryPage {
   private readonly transloco = inject(TranslocoService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
+  private readonly sanitizer = inject(DomSanitizer);
   /** Below 1120 px: the list's scroll position and the row a document was opened from, for the way back (DS-APP-35). */
   private listReturn: { readonly top: number; readonly path: string } | null = null;
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
@@ -318,31 +402,61 @@ export class LibraryPage {
 
   protected readonly shownCount = computed(() => this.matched().reduce((sum, group) => sum + group.count, 0));
 
+  /** The absent tech.md's row, when the catalog has documents but no tech.md (never counted). */
+  private readonly placeholder = computed(() => {
+    const catalog = this.catalog();
+    return catalog === null ? null : techPlaceholderOf(catalog);
+  });
+
+  /** Each spec group's head by spec folder, rendered once per catalog (ISC-157). */
+  private readonly heads = computed<ReadonlyMap<string, HeadDraw>>(() => {
+    const trust = (html: string | null): SafeHtml | null => (html === null ? null : this.sanitizer.bypassSecurityTrustHtml(html));
+    return new Map(
+      (this.catalog()?.groups ?? []).map((head) => {
+        const view = groupHeadView(head);
+        return [head.spec, { ...view, goalHtml: trust(view.goal), approachHtml: trust(view.approach) }];
+      }),
+    );
+  });
+
   protected readonly groups = computed<readonly GroupView[]>(() => {
     const query = this.query();
     const hits = this.hits();
     const toggled = this.evidenceToggled();
     const blocks = this.evidenceBlocks();
+    const heads = this.heads();
     const row = (doc: LibraryDoc): RowView => {
       const snippet = hits?.get(doc.path);
       return snippet === undefined
-        ? { doc, title: highlight(doc.title, query), meta: this.metaRuns(doc, query), snippet: false }
-        : { doc, title: highlight(doc.title, query), meta: highlight(snippet, query), snippet: true };
+        ? { doc, title: highlight(doc.title, query), meta: this.metaRuns(doc, query), snippet: false, placeholder: false }
+        : { doc, title: highlight(doc.title, query), meta: highlight(snippet, query), snippet: true, placeholder: false };
     };
-    return this.matched().map((group) => {
+    const views = this.matched().map((group): GroupView => {
+      const head = group.spec === WORKSPACE_SPEC ? null : (heads.get(group.spec) ?? null);
       const evidence = group.evidence;
-      if (evidence === null) return { group, rows: group.docs.map(row), evidence: null };
+      if (evidence === null) return { group, head, rows: group.docs.map(row), evidence: null };
       const open = toggled.get(group.key) ?? evidence.open;
       const block = evidenceBlock(evidence, open ? (blocks.get(group.key) ?? 1) : 0);
       const rows = block.shown.map(row);
-      return { group, rows: group.docs.map(row), evidence: { count: evidence.count, open, rows, rest: block.rest, next: Math.min(block.rest, EVIDENCE_BLOCK) } };
+      return { group, head, rows: group.docs.map(row), evidence: { count: evidence.count, open, rows, rest: block.rest, next: Math.min(block.rest, EVIDENCE_BLOCK) } };
     });
+    const placeholder = this.placeholder();
+    return placeholder !== null && showsPlaceholder(this.filter()) ? this.withPlaceholder(views, placeholder) : views;
   });
+
+  /** The filter "open" (ISC-157): each open spec's fog lines under its number; empty under every other state. */
+  protected readonly fog = computed<readonly FogGroup[]>(() => {
+    const catalog = this.catalog();
+    return catalog === null || this.filter().state !== 'open' ? [] : fogGroups(catalog, this.filter());
+  });
+  protected readonly fogLines = computed(() => this.fog().reduce((sum, group) => sum + group.lines.length, 0));
 
   /** The reader's document: the picked one, else at wide the first row of the list (the prototype opens it on arrival). */
   protected readonly current = computed<LibraryDoc | null>(() => {
     const path = this.picked();
-    const picked = path === null ? undefined : this.docs().find((doc) => doc.path === path);
+    const placeholder = this.placeholder();
+    const known = placeholder === null ? this.docs() : [...this.docs(), placeholder];
+    const picked = path === null ? undefined : known.find((doc) => doc.path === path);
     if (picked) return picked;
     if (!this.wide()) return null;
     const first = this.groups().at(0);
@@ -436,11 +550,50 @@ export class LibraryPage {
     this.afterRender(() => {
       if (saved !== null) window.scrollTo({ top: saved.top });
       const row = (path: string | null | undefined): HTMLElement | null =>
-        path == null ? null : this.host.querySelector<HTMLElement>(`[data-library-entry="${CSS.escape(path)}"]`);
+        path == null
+          ? null
+          : this.host.querySelector<HTMLElement>(`[data-library-entry="${CSS.escape(path)}"], [data-library-placeholder="${CSS.escape(path)}"]`);
       const same = row(read) ?? row(saved?.path);
       // The row the list was left from is in view once the position is back; any other row scrolls into view.
       same?.focus({ preventScroll: saved !== null && (read === saved.path || row(read) === null) });
     });
+  }
+
+  /** The spec page a group head's number and slug lead to. */
+  protected specPage(key: string): string[] {
+    return specLink(this.ws(), key);
+  }
+
+  /** A group head's fog count leads to the filter "open" of that spec (`?state=open&spec=NNN`), no search, no type. */
+  protected fogParams(key: string): Record<string, string | null> {
+    return { state: 'open', spec: key, q: null, type: null };
+  }
+
+  /** A fog line opens its spec's spec.md, where `## Not yet specified` holds the line. */
+  protected openFog(spec: string): void {
+    this.open(`${spec}/spec.md`);
+  }
+
+  /**
+   * The tech placeholder in the workspace-wide group where tech.md would stand (after the constitution), the group
+   * added in front when no workspace-wide document matched; the group's count stays the catalog's.
+   */
+  private withPlaceholder(views: readonly GroupView[], doc: LibraryDoc): readonly GroupView[] {
+    const row: RowView = {
+      doc,
+      title: [{ text: doc.title, hit: false }],
+      meta: [{ text: this.transloco.translate('library.tech.notCreated', { path: this.filePath(doc) }), hit: false }],
+      snippet: false,
+      placeholder: true,
+    };
+    const workspace = views.find((view) => view.group.spec === WORKSPACE_SPEC);
+    if (workspace === undefined) {
+      const group: LibraryGroup = { spec: WORKSPACE_SPEC, key: WORKSPACE_SPEC, head: null, docs: [], evidence: null, count: 0 };
+      return [{ group, head: null, rows: [row], evidence: null }, ...views];
+    }
+    const at = workspace.rows.findIndex((shown) => shown.doc.type !== 'constitution');
+    const rows = at < 0 ? [...workspace.rows, row] : [...workspace.rows.slice(0, at), row, ...workspace.rows.slice(at)];
+    return views.map((view) => (view === workspace ? { ...view, rows } : view));
   }
 
   private afterRender(write: () => void): void {

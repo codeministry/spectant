@@ -13,7 +13,7 @@ import { ApiClient, type ApiResult } from '../../core/api.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { MERMAID_LOADER, type MermaidApi } from '../../shared/ui/doc-prose/mermaid';
-import { folderOf, LibraryReader, type ProseLinks, type ReaderContext, resolveRelative, rewriteProse } from './library-reader';
+import { folderOf, LibraryReader, type ProseLinks, type ReaderContext, resolveRelative, rewriteProse, techReading } from './library-reader';
 
 // T34 · ISC-156.3: the library's reader as its own component: Docs prose with its table of contents and mermaid as a
 // figure (ISC-154, ISC-154.1) through ui-doc-prose, an image document as a preview, relative images through the file
@@ -122,6 +122,45 @@ class ReaderHost {
   backs = 0;
   readonly selected: string[] = [];
 }
+
+// T36 · ISC-157: tech.md in the reader as its four sections, in contract order, each under its stable anchor.
+describe('techReading (T36, ISC-157)', () => {
+  const page = (html: string): DocsPage => ({ html, toc: [], frontmatter: null, figures: [], sections: [], wordCount: 1 });
+  const keys = (html: string): string[] => {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    return [...template.content.querySelectorAll('[data-library-tech-section]')].map((el) => `${el.getAttribute('data-library-tech-section') ?? ''}:${el.querySelector('h2')?.id ?? ''}`);
+  };
+
+  it('orders the named sections overview, stack, architecture, risks, drops the h1 and lists them as contents', () => {
+    const reading = techReading(
+      page(
+        '<h1 id="harbor">Harbor</h1><p>Lead.</p><h2 id="risks">Risks</h2><ul><li>R</li></ul><h2 id="architektur">Architektur</h2><h3 id="flow">Flow</h3><p>A</p>' +
+          '<h2 id="uberblick">Überblick</h2><p>O</p><h2 id="tech-stack">Tech stack</h2><table></table><h2 id="glossary">Glossary</h2><p>G</p>',
+      ),
+    );
+    expect(keys(reading.page.html)).toEqual(['overview:overview', 'stack:stack', 'architecture:architecture', 'risks:risks']);
+    expect(reading.page.html.startsWith('<p>Lead.</p>')).toBe(true);
+    expect(reading.page.html).not.toContain('<h1');
+    // An h2 that names no section stays in the section before it.
+    expect(reading.page.html).toMatch(/data-library-tech-section="stack">.*Glossary.*<\/section>/u);
+    expect(reading.page.toc).toEqual([
+      { level: 2, text: 'Überblick', anchor: 'overview' },
+      { level: 2, text: 'Tech stack', anchor: 'stack' },
+      { level: 2, text: 'Architektur', anchor: 'architecture' },
+      { level: 2, text: 'Risks', anchor: 'risks' },
+    ]);
+    expect(reading.missing).toEqual([]);
+  });
+
+  it('names the sections the file has none for, and takes the first four h2 in order when none is named', () => {
+    const partial = techReading(page('<h2 id="overview">Overview</h2><p>O</p><h2 id="risks">Risks</h2><p>R</p>'));
+    expect(partial.present).toEqual(['overview', 'risks']);
+    expect(partial.missing).toEqual(['stack', 'architecture']);
+    const unnamed = techReading(page('<h2 id="a">Was</h2><p>1</p><h2 id="b">Womit</h2><p>2</p><h2 id="c">Wie</h2><p>3</p><h2 id="d">Gefahren</h2><p>4</p>'));
+    expect(keys(unnamed.page.html)).toEqual(['overview:overview', 'stack:stack', 'architecture:architecture', 'risks:risks']);
+  });
+});
 
 describe('LibraryReader (T34, ISC-156.3)', () => {
   let fixture: ComponentFixture<ReaderHost>;

@@ -2167,6 +2167,34 @@
       "missingBody": "The spec’s stage asks for this document; the command below writes it.",
       "missingBodyPlain": "The spec’s stage asks for this document."
     },
+    "head": {
+      "docs": "{{count}} documents",
+      "fog": "{{count}} open",
+      "fogLabel": "Show the {{count}} open points of {{spec}}",
+      "claims": "Claims",
+      "claimsText": "{{closed}} of {{total}} claims closed",
+      "tasks": "Tasks",
+      "approach": "Approach"
+    },
+    "fog": {
+      "count": "{{lines}} open points in {{specs}} specs",
+      "meta": "spec.md · Not yet specified",
+      "noneHeading": "Nothing open",
+      "noneBody": "No spec still in progress carries a fog line."
+    },
+    "tech": {
+      "notCreated": "{{path}} · not created yet",
+      "emptyHeading": "No tech documentation yet",
+      "emptyBody": "Overview, stack, architecture and risks of the repository live in one file, specs/tech.md, which /spec-doc writes.",
+      "missing": "{{section}}: section missing in tech.md",
+      "missingLabel": "Sections missing in tech.md",
+      "sections": {
+        "overview": "Overview",
+        "stack": "Stack",
+        "architecture": "Architecture",
+        "risks": "Risks"
+      }
+    },
     "evidence": {
       "toggle": "Evidence",
       "label": "{{count}} evidence files of {{spec}}",

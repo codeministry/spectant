@@ -74,13 +74,16 @@
             (input)="setQuery($any($event.target).value)"
           />
         </label>
-        <ui-filter-chips
-          data-library-types
-          [options]="typeOptions()"
-          [value]="type()"
-          (valueChange)="setType($event)"
-          [label]="'library.filters.type' | transloco"
-        />
+        <!-- Under the filter "open" the type pills step aside: they filter nothing among fog lines (design.md 017 § 6). -->
+        @if (stateFilter() !== 'open') {
+          <ui-filter-chips
+            data-library-types
+            [options]="typeOptions()"
+            [value]="type()"
+            (valueChange)="setType($event)"
+            [label]="'library.filters.type' | transloco"
+          />
+        }
         <div class="lib-filters">
           <label class="lib-select">
             <span class="type-eyebrow">{{ 'library.filters.spec' | transloco }}</span>
@@ -102,10 +105,42 @@
           </label>
         </div>
         <p class="lib-count" aria-live="polite" data-library-count>
-          {{ 'library.count' | transloco: { ws: wsName(), shown: shownCount(), total: docs().length, stale: catalog()?.stale ?? 0, missing: catalog()?.missing ?? 0 } }}
+          @if (stateFilter() === 'open') {
+            {{ 'library.fog.count' | transloco: { lines: fogLines(), specs: fog().length } }}
+          } @else {
+            {{ 'library.count' | transloco: { ws: wsName(), shown: shownCount(), total: docs().length, stale: catalog()?.stale ?? 0, missing: catalog()?.missing ?? 0 } }}
+          }
         </p>
 
-        @if (groups().length === 0) {
+        @if (stateFilter() === 'open') {
+          <!-- The filter "open" (ISC-157; design.md 017 § 6): every fog line of each open spec under its number. -->
+          @for (group of fog(); track group.spec) {
+            <section class="lib-group" [attr.data-library-fog-group]="group.key" [attr.aria-label]="groupLabel(group.spec)">
+              <p class="lib-group-head type-eyebrow" aria-hidden="true">
+                <span>{{ groupLabel(group.spec) }}</span><span>{{ group.lines.length }}</span>
+              </p>
+              <ul class="lib-fog-lines">
+                @for (line of group.lines; track $index) {
+                  <li>
+                    <button type="button" class="lib-fog" [attr.data-library-fog-line]="group.key" (click)="openFog(group.spec)">
+                      <ui-icon class="lib-fog-icon" name="cloud-fog" [size]="14" />
+                      <span class="lib-fog-text">{{ line.text }}</span>
+                      <span class="lib-fog-meta">{{ 'library.fog.meta' | transloco }}</span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            </section>
+          } @empty {
+            <ui-empty-state
+              class="lib-empty"
+              data-library-fog-none
+              icon="circle-check"
+              [heading]="'library.fog.noneHeading' | transloco"
+              [body]="'library.fog.noneBody' | transloco"
+            />
+          }
+        } @else if (groups().length === 0) {
           <ui-empty-state
             class="lib-empty"
             icon="book"
@@ -117,9 +152,62 @@
         } @else {
           @for (view of groups(); track view.group.spec) {
             <section class="lib-group" [attr.data-library-group]="view.group.key" [attr.aria-label]="groupLabel(view.group.spec)">
-              <p class="lib-group-head type-eyebrow" aria-hidden="true">
-                <span>{{ groupLabel(view.group.spec) }}</span><span>{{ view.group.count }}</span>
-              </p>
+              @if (view.head; as head) {
+                <!-- The compact spec group head (ISC-157; design.md 017 § 5, § Viewport-übergreifend). -->
+                <div class="lib-ghead" data-library-group-head [attr.data-spec]="head.head.spec">
+                  <p class="lib-ghead-name">
+                    <a class="lib-ghead-link" [routerLink]="specPage(head.key)">
+                      <span class="lib-ghead-id">{{ head.key }}</span><span class="lib-ghead-dot" aria-hidden="true">·</span><span class="lib-ghead-slug">{{ head.slug }}</span>
+                    </a>
+                    <span class="lib-ghead-count" [attr.aria-label]="'library.head.docs' | transloco: { count: view.group.count }">{{ view.group.count }}</span>
+                  </p>
+                  <div class="lib-ghead-chips">
+                    @if (head.head.type; as type) {
+                      <ui-chip variant="plain" data-library-head="type" [icon]="head.typeIcon">{{ 'types.' + type | transloco }}</ui-chip>
+                    }
+                    <ui-chip data-library-head="stage" [tone]="head.stageTone" [icon]="head.stageIcon">{{ 'stages.' + head.head.stage | transloco }}</ui-chip>
+                    @if (head.head.fog > 0) {
+                      <a
+                        class="lib-ghead-fog"
+                        data-library-head="fog"
+                        [routerLink]="[]"
+                        [queryParams]="fogParams(head.key)"
+                        queryParamsHandling="merge"
+                        [attr.aria-label]="'library.head.fogLabel' | transloco: { count: head.head.fog, spec: head.key }"
+                      >
+                        <ui-icon name="cloud-fog" [size]="12" />{{ 'library.head.fog' | transloco: { count: head.head.fog } }}
+                      </a>
+                    }
+                  </div>
+                  <p class="lib-ghead-figures">
+                    <span class="lib-ghead-label">{{ 'library.head.claims' | transloco }}</span>
+                    <ui-meter
+                      class="lib-ghead-meter"
+                      [mini]="true"
+                      [value]="head.head.claimsClosed"
+                      [max]="head.head.claimsTotal"
+                      [valueText]="'library.head.claimsText' | transloco: { closed: head.head.claimsClosed, total: head.head.claimsTotal }"
+                      [label]="'library.head.claims' | transloco"
+                    />
+                    <span class="lib-ghead-num" data-library-head="claims">{{ head.head.claimsClosed }}/{{ head.head.claimsTotal }}</span>
+                    <span class="lib-ghead-label lib-ghead-tasks"><ui-icon name="list-checks" [size]="12" />{{ 'library.head.tasks' | transloco }}</span>
+                    <span class="lib-ghead-num" data-library-head="tasks">{{ head.head.tasksDone }}/{{ head.head.tasksTotal }}</span>
+                  </p>
+                  @if (head.goalHtml; as goal) {
+                    <div class="lib-ghead-goal" data-library-head="goal" [innerHTML]="goal"></div>
+                  }
+                  @if (head.approachHtml; as approach) {
+                    <details class="lib-ghead-approach" data-library-head="approach">
+                      <summary><ui-icon class="lib-chevron" name="chevron-right" [size]="14" />{{ 'library.head.approach' | transloco }}</summary>
+                      <div class="lib-ghead-approach-body" [innerHTML]="approach"></div>
+                    </details>
+                  }
+                </div>
+              } @else {
+                <p class="lib-group-head type-eyebrow" aria-hidden="true">
+                  <span>{{ groupLabel(view.group.spec) }}</span><span>{{ view.group.count }}</span>
+                </p>
+              }
               <ul class="lib-rows">
                 @for (row of view.rows; track row.doc.path) {
                   <li><ng-container [ngTemplateOutlet]="rowTpl" [ngTemplateOutletContext]="{ $implicit: row }" /></li>
@@ -179,9 +267,10 @@
   <button
     type="button"
     class="lib-row"
-    [attr.data-library-entry]="row.doc.path"
+    [attr.data-library-entry]="row.placeholder ? null : row.doc.path"
+    [attr.data-library-placeholder]="row.placeholder ? row.doc.path : null"
     [attr.data-spec]="row.doc.spec"
-    [attr.data-state]="row.doc.state"
+    [attr.data-state]="row.placeholder ? null : row.doc.state"
     [attr.aria-current]="current()?.path === row.doc.path ? 'true' : null"
     (click)="open(row.doc.path)"
   >
@@ -199,7 +288,7 @@
       <span class="lib-slot">
         @if (row.doc.state === 'stale') {
           <span class="lib-stale" data-library-chip="stale"><ui-icon name="triangle-alert" [size]="12" />{{ 'library.outdated' | transloco }}</span>
-        } @else if (row.doc.state === 'missing') {
+        } @else if (row.doc.state === 'missing' && !row.placeholder) {
           <span class="lib-missing" data-library-chip="missing"><ui-icon name="file-x" [size]="12" />{{ 'library.missing' | transloco }}</span>
         }
       </span>

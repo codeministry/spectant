@@ -530,3 +530,123 @@ describe('shortDateParts (T27)', () => {
     expect(shortDateParts('2025-03-07T09:05:00Z', now, 'de')).toEqual({ date: '07.03.2025', time: '09:05' });
   });
 });
+
+// T36 · ISC-157: a compact head per spec group (type, stage, claims with meter, tasks, fog count, Goal clamped, Approach
+// in a closed disclosure), the filter "open" with every fog line under its spec, and an absent tech.md as a dimmed row
+// outside every count whose reader is the empty state with /spec-doc.
+const HEADS: LibraryCatalog = {
+  ...CATALOG,
+  docs: [...CATALOG.docs, doc('003-board/spec.md', 'spec', 'Board'), doc('tech.md', 'tech', 'Harbor tech')],
+  groups: [
+    {
+      spec: '002-web-console',
+      type: 'feature',
+      stage: 'build',
+      claimsClosed: 3,
+      claimsTotal: 16,
+      tasksDone: 0,
+      tasksTotal: 12,
+      fog: 2,
+      goal: 'Every **workspace** has a library.',
+      approach: 'Read the catalog once.',
+    },
+    { spec: '003-board', type: null, stage: 'done', claimsClosed: 4, claimsTotal: 4, tasksDone: 2, tasksTotal: 2, fog: 0, goal: null, approach: null },
+  ],
+  fog: [
+    { spec: '002-web-console', text: 'Which reader width?' },
+    { spec: '002-web-console', text: 'Does `quota` apply?' },
+    { spec: '004-retention', text: 'How long?' },
+  ],
+};
+
+const head = (root: HTMLElement, key: string): Element | null => page(root).querySelector(`[data-library-group="${key}"] [data-library-group-head]`);
+
+describe('LibraryPage group heads, filter "open" and tech.md (T36, ISC-157)', () => {
+  it('heads each spec group with type, stage, claims, tasks, fog, Goal and Approach; the workspace keeps its eyebrow', async () => {
+    const root = await open('/w/harbor/library', HEADS);
+    expect(page(root).querySelector('[data-library-group="workspace"] [data-library-group-head]')).toBeNull();
+    expect(page(root).querySelector('[data-library-group="workspace"] .lib-group-head')).not.toBeNull();
+    const h = head(root, '002');
+    expect(text(h?.querySelector('.lib-ghead-link'))).toBe('002·web-console');
+    expect(h?.querySelector('.lib-ghead-link')?.getAttribute('href')).toBe('/w/harbor/s/002');
+    expect(text(h?.querySelector('[data-library-head="type"]'))).toBe('feature');
+    expect(h?.querySelector('[data-library-head="stage"]')?.getAttribute('data-tone')).toBe('primary');
+    expect(text(h?.querySelector('[data-library-head="claims"]'))).toBe('3/16');
+    expect(h?.querySelector('ui-meter')?.getAttribute('aria-valuetext')).toBe('3 of 16 claims closed');
+    expect(text(h?.querySelector('[data-library-head="tasks"]'))).toBe('0/12');
+    const fog = h?.querySelector('[data-library-head="fog"]');
+    expect(text(fog)).toBe('2 open');
+    expect(fog?.getAttribute('href')).toContain('state=open');
+    expect(fog?.getAttribute('href')).toContain('spec=002');
+    expect(h?.querySelector('[data-library-head="goal"] strong')?.textContent).toBe('workspace');
+    const approach = h?.querySelector<HTMLDetailsElement>('details[data-library-head="approach"]');
+    expect(approach?.open).toBe(false);
+    expect(text(approach?.querySelector('.lib-ghead-approach-body'))).toBe('Read the catalog once.');
+    // A done spec: no fog count, no Goal, no Approach, no type; the stage chip in its done tone, the meter full.
+    const done = head(root, '003');
+    expect(
+      done?.querySelector('[data-library-head="fog"], [data-library-head="goal"], [data-library-head="approach"], [data-library-head="type"]'),
+    ).toBeNull();
+    expect(done?.querySelector('[data-library-head="stage"]')?.getAttribute('data-tone')).toBe('success');
+    expect(done?.querySelector('ui-meter')?.hasAttribute('data-full')).toBe(true);
+  });
+
+  it('lists every fog line under its spec under the filter "open", hides the type pills, and opens the spec.md', async () => {
+    const root = await open('/w/harbor/library?state=open', HEADS);
+    expect(entries(root)).toEqual([]);
+    expect(page(root).querySelector('[data-library-types]')).toBeNull();
+    expect(Array.from(page(root).querySelectorAll('[data-library-fog-group]')).map((g) => g.getAttribute('data-library-fog-group'))).toEqual(['002', '004']);
+    const lines = Array.from(page(root).querySelectorAll('[data-library-fog-line]'));
+    expect(lines.map((line) => [line.getAttribute('data-library-fog-line'), text(line.querySelector('.lib-fog-text'))])).toEqual([
+      ['002', 'Which reader width?'],
+      ['002', 'Does `quota` apply?'],
+      ['004', 'How long?'],
+    ]);
+    expect(text(page(root).querySelector('[data-library-count]'))).toBe('3 open points in 2 specs');
+    (lines[0] as HTMLButtonElement).click();
+    await settle();
+    expect(address().fragment).toBe('002-web-console/spec.md');
+  });
+
+  it('narrows the fog lines by spec', async () => {
+    const root = await open('/w/harbor/library?state=open&spec=004', HEADS);
+    expect(page(root).querySelectorAll('[data-library-fog-line]')).toHaveLength(1);
+  });
+
+  it('says "Nothing open" when no open spec carries a fog line', async () => {
+    const none = await open('/w/harbor/library?state=open', CONTROL);
+    expect(text(page(none).querySelector('[data-library-fog-none] .title'))).toBe('Nothing open');
+  });
+
+  it('stands an absent tech.md dimmed in the workspace group, uncounted, its reader the empty state with /spec-doc', async () => {
+    const root = await open('/w/harbor/library', CONTROL);
+    const row = page(root).querySelector('[data-library-group="workspace"] [data-library-placeholder="tech.md"]');
+    expect(row).not.toBeNull();
+    expect(row?.hasAttribute('data-library-entry')).toBe(false);
+    expect(row?.hasAttribute('data-state')).toBe(false);
+    expect(row?.querySelector('[data-library-chip]')).toBeNull();
+    expect(text(row?.querySelector('[data-library-meta]'))).toBe('specs/tech.md · not created yet');
+    expect(text(page(root).querySelector('[data-library-count]'))).toContain('6 of 6 documents');
+    expect(control(root, 'missing').querySelector('[data-library-control-count]')?.textContent).toBe('2');
+    // After the constitution, where tech.md would stand.
+    const workspace = Array.from(page(root).querySelectorAll('[data-library-group="workspace"] .lib-row')).map(
+      (el) => el.getAttribute('data-library-entry') ?? el.getAttribute('data-library-placeholder'),
+    );
+    expect(workspace).toEqual(['constitution.md', 'tech.md']);
+    (row as HTMLButtonElement).click();
+    await settle();
+    const empty = page(root).querySelector('[data-library-reader] [data-library-tech-empty]');
+    expect(text(empty?.querySelector('.title'))).toBe('No tech documentation yet');
+    expect(empty?.querySelector('ui-command-chip')?.textContent).toContain('/spec-doc');
+  });
+
+  it('hides the tech placeholder under a filter a tech document would not pass', async () => {
+    const stale = await open('/w/harbor/library?state=stale', CONTROL);
+    expect(page(stale).querySelector('[data-library-placeholder]')).toBeNull();
+  });
+
+  it('draws no tech placeholder when tech.md is in the catalog', async () => {
+    const present = await open('/w/harbor/library', HEADS);
+    expect(page(present).querySelector('[data-library-placeholder]')).toBeNull();
+  });
+});

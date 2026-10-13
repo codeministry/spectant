@@ -2167,6 +2167,34 @@
       "missingBody": "Die Stage der Spec verlangt dieses Dokument; das Kommando darunter legt es an.",
       "missingBodyPlain": "Die Stage der Spec verlangt dieses Dokument."
     },
+    "head": {
+      "docs": "{{count}} Dokumente",
+      "fog": "{{count}} offen",
+      "fogLabel": "Die {{count}} offenen Punkte von {{spec}} zeigen",
+      "claims": "Claims",
+      "claimsText": "{{closed}} von {{total}} Claims geschlossen",
+      "tasks": "Tasks",
+      "approach": "Ansatz"
+    },
+    "fog": {
+      "count": "{{lines}} offene Punkte in {{specs}} Specs",
+      "meta": "spec.md · Not yet specified",
+      "noneHeading": "Nichts offen",
+      "noneBody": "Keine laufende Spec trägt eine fog-Zeile."
+    },
+    "tech": {
+      "notCreated": "{{path}} · noch nicht angelegt",
+      "emptyHeading": "Noch keine Tech-Dokumentation",
+      "emptyBody": "Überblick, Stack, Architektur und Risiken des Repositories stehen in einer Datei, specs/tech.md, die /spec-doc anlegt.",
+      "missing": "{{section}}: Abschnitt fehlt in tech.md",
+      "missingLabel": "In tech.md fehlende Abschnitte",
+      "sections": {
+        "overview": "Überblick",
+        "stack": "Stack",
+        "architecture": "Architektur",
+        "risks": "Risiken"
+      }
+    },
     "evidence": {
       "toggle": "Evidence",
       "label": "{{count}} Evidence-Dateien von {{spec}}",

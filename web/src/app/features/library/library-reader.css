@@ -81,6 +81,23 @@
   font-size: 12px;
 }
 
+/* tech.md: a section the file has none for (design.md 017 § 2b), muted, with `x`, not linked. */
+.lib-tech-missing {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted-ink);
+  font-size: 12px;
+}
+
+.lib-tech-missing li {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 .lib-missing-reader {
   justify-self: stretch;
 }

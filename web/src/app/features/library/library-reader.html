@@ -27,7 +27,18 @@
     </ui-notice>
   }
 
-  @if (doc.state === 'missing') {
+  @if (techAbsent()) {
+    <!-- design.md 017 § 8: no specs/tech.md yet, the empty state with the command that writes it. -->
+    <ui-empty-state
+      class="lib-missing-reader"
+      data-library-tech-empty
+      icon="book-open"
+      [heading]="'library.tech.emptyHeading' | transloco"
+      [body]="'library.tech.emptyBody' | transloco"
+    >
+      <ui-command-chip command="/spec-doc" [copyLabel]="'common.copyCommand' | transloco" />
+    </ui-empty-state>
+  } @else if (doc.state === 'missing') {
     <!-- Prototype `mutedTab` (pages.js): the empty state with the command that writes the file. -->
     <ui-empty-state
       class="lib-missing-reader"
@@ -45,6 +56,16 @@
       <ui-notice tone="error" icon="circle-alert">{{ 'library.reader.error' | transloco }}</ui-notice>
     } @else if (prose(); as page) {
       <ui-doc-prose class="lib-prose" data-library-prose [page]="page" [wide]="wide()" [assetUrl]="assetUrl()" />
+      @if (techMissing().length > 0) {
+        <!-- design.md 017 § 2b: a section tech.md has none for, muted and not linked. -->
+        <ul class="lib-tech-missing" data-library-tech-missing [attr.aria-label]="'library.tech.missingLabel' | transloco">
+          @for (key of techMissing(); track key) {
+            <li [attr.data-library-tech-section]="key" data-missing>
+              <ui-icon name="x" [size]="12" />{{ 'library.tech.missing' | transloco: { section: ('library.tech.sections.' + key | transloco) } }}
+            </li>
+          }
+        </ul>
+      }
     } @else if (loading()) {
       <div class="lib-loading" role="status" [attr.aria-label]="'library.reader.loading' | transloco">
         <ui-skeleton />
