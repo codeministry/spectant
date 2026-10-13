@@ -42,7 +42,8 @@ import type { NextUpForm } from './next-up-list';
     .link:hover { text-decoration: underline; text-underline-offset: 3px; }
     .next-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-inline-size: 0; }
     .next-foot .reason { flex: 1 1 100%; }
-    .take { font-family: var(--font-mono); font-size: 12px; }
+    /* Prototype [data-ui=chip].take: mono 500 12 px, no capitals, the hand glyph. */
+    ui-chip.take { font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
     .next-row { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 4px 8px; align-items: baseline; padding: 10px 12px; border-inline-start: 3px solid var(--color-primary); }
     .next-row .link { min-inline-size: 0; font-size: 14px; font-weight: 600; line-height: 20px; }
     .next-row .cmd { grid-column: 2; min-inline-size: 0; }
@@ -81,7 +82,7 @@ import type { NextUpForm } from './next-up-list';
         <div class="next-foot" data-next-foot>
           <ng-container [ngTemplateOutlet]="next" [ngTemplateOutletContext]="{ compact: false }" />
           @if (row().takeable[0]; as claim) {
-            <ui-chip class="take" tone="accent" data-next-takeable>{{ 'common.takeable' | transloco: { claim } }}</ui-chip>
+            <ui-chip class="take" tone="accent" icon="hand" data-next-takeable>{{ 'common.takeable' | transloco: { claim } }}</ui-chip>
           }
         </div>
       </ui-card>

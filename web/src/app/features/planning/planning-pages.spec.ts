@@ -98,7 +98,7 @@ describe('planning routes', () => {
   it('resolves /w/:ws/milestones to the Milestones page while a spec carries a milestone', async () => {
     setUp(ok(NAMED));
     const root = await open('/w/harbor/milestones');
-    expect(root.querySelector('[data-page="milestones"] h1#milestones')?.textContent).toBe('Milestones in harbor');
+    expect(root.querySelector('[data-page="milestones"] h1#milestones')?.textContent).toBe('Milestones · harbor');
     expect(root.querySelector('app-not-found')).toBeNull();
     expect(TestBed.inject(ShellState).route().wsPage).toBe('milestones');
   });

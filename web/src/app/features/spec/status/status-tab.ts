@@ -147,6 +147,14 @@ export class StatusTab {
     return result?.kind === 'ok' ? result.body.slice(0, ACTIVITY_LIMIT) : null;
   });
 
+  /** The prototype's `round-sum`: the newest round entry, its lead ("Round 3") bold, the rest after a middle dot. */
+  protected readonly roundSummary = computed(() => {
+    const round = this.activity()?.find((entry) => entry.kind === 'round');
+    if (!round) return null;
+    const [lead = '', ...rest] = round.title.split(' · ');
+    return { lead, rest: rest.join(' · '), ts: round.ts };
+  });
+
   protected link(tab: string): string[] {
     return specLink(this.state.ws() ?? '', this.state.specId() ?? '', tab);
   }

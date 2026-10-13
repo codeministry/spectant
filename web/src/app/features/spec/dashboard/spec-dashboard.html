@@ -87,7 +87,8 @@
 
         <div class="dash-2">
         <section class="card next" data-section="next">
-          <ui-section-header [heading]="'specDashboard.next.heading' | transloco" [eyebrow]="'specDashboard.next.eyebrow' | transloco" />
+          <!-- Prototype `.next-step` (spec 024): the eyebrow is the heading, "NEXT STEP · SINCE … VIA …", no h2 title. -->
+          <h2 class="next-eyebrow type-eyebrow" data-next-eyebrow>{{ nextEyebrow() }}</h2>
           @if (m.next.command; as command) {
             <ui-command-chip
               [command]="command"

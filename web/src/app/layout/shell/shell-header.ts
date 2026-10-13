@@ -8,7 +8,7 @@ import { AssistantPanel } from '../assistant/assistant-panel';
 import { AssistantDot } from '../assistant/assistant.service';
 import { Mascot } from '../assistant/mascot';
 import { areaById, areaPath, specLink } from './areas';
-import { ShellBrand, ShellLibraryLink } from './shell-brand';
+import { ShellBrand } from './shell-brand';
 import { ShellData } from './shell-data.service';
 import { ShellLive } from './shell-live';
 import { ShellNav } from './shell-nav';
@@ -18,10 +18,10 @@ import { ShellState } from './shell-state.service';
  * The shell header (ISC-73, spec 024 T34, T76): one `<header>`, one 64 px row on every width (principal 2026-10-13,
  * design.md § Viewport-übergreifend), every element in it 40 px tall (44 px at `pointer: coarse`).
  *
- * From 1120 px (the wide tier) the prototype header unchanged: the brand rail (logo, wordmark, Workspace · Spec · Area
- * rail-selects with their labels), the palette (a field, or the 40 px icon on spec pages below 1560 px), then status
+ * From 1120 px (the wide tier) the prototype header unchanged: the brand rail (logo, wordmark, Workspace · Page · Spec ·
+ * Area rail-selects with their labels; spec 024 T80), the palette (a field, or the 40 px icon on spec pages below 1560 px), then status
  * group, zen, the assistant dot (`AssistantPanel`, T53), settings (the settings popover, T40) and help. Below 1120 px the row is shortened: the
- * logo rail (ring only below 640 px) with the Workspace and Spec selects without visible labels, the palette icon, the
+ * logo rail (ring only below 640 px) with the Workspace, Page and Spec selects without visible labels, the palette icon, the
  * status group and the overflow menu `⋯` with Area, Zen, Assistant, Settings and Help (`ShellMenus`). The bottom
  * hairline shows only once the page has scrolled (prototype `[data-ui="header"].scrolled`).
  *
@@ -32,7 +32,7 @@ import { ShellState } from './shell-state.service';
  */
 @Component({
   selector: 'app-shell-header',
-  imports: [TranslocoPipe, UiIcon, UiIconButton, UiKbd, ShellBrand, ShellLibraryLink, ShellNav, ShellLive, Mascot, AssistantPanel],
+  imports: [TranslocoPipe, UiIcon, UiIconButton, UiKbd, ShellBrand, ShellNav, ShellLive, Mascot, AssistantPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell-header.html',
   styleUrl: './shell-header.css',
@@ -63,12 +63,6 @@ export class ShellHeader {
     const ws = this.state.ws();
     const id = this.state.specId();
     return ws === null || id === null || this.data.specMissing() ? null : specLink(ws, id, areaPath(areaById('live')));
-  });
-
-  /** The rail link to the workspace Library (prototype `.library-link`): from 1120 px, on every workspace page. */
-  protected readonly libraryLink = computed(() => {
-    const ws = this.state.ws();
-    return ws === null || !this.wide() ? null : `/w/${encodeURIComponent(ws)}/library`;
   });
 
   protected onScroll(): void {

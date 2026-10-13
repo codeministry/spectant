@@ -13,6 +13,13 @@
     block-size: calc(100dvh - 128px);
   }
 
+  /* The toolbar and the lane index keep their content height: as flex items with a min size (the toolbar's 48 px) or
+     an overflow (the index scrolls sideways) they would otherwise shrink under the fixed board height (spec 024). */
+  app-board-filters,
+  .lane-index {
+    flex: none;
+  }
+
   .board-card {
     display: flex;
     flex: 1 1 auto;

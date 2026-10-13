@@ -2,7 +2,7 @@
   @if (metaChips().length > 0 || updated()) {
     <div class="docs-meta" data-docs-meta>
       @for (chip of metaChips(); track chip.label) {
-        <ui-chip [tone]="chip.tone" [dot]="name !== 'constitution'">{{ chip.label }}</ui-chip>
+        <ui-chip [variant]="chip.plain ? 'plain' : 'status'" [tone]="chip.tone" [dot]="!chip.plain">{{ chip.label }}</ui-chip>
       }
       @if (updated(); as updated) {
         <span class="docs-updated">{{ 'docs.updated' | transloco: { date: updated } }}</span>
@@ -100,9 +100,10 @@
     </ui-dialog>
   }
 } @else if (empty(); as empty) {
+  <ui-card class="docs-empty-card">
   <ui-empty-state
     data-docs-empty
-    icon="file-text"
+    icon="file"
     [heading]="empty.key | transloco: empty.params"
     [body]="empty.bodyKey | transloco"
   >
@@ -114,7 +115,9 @@
         [manualHint]="'common.copyFallback' | transloco"
       />
     }
+    <a class="docs-types-link" routerLink="/help" fragment="workflows" data-docs-types-link>{{ 'docs.empty.typesLink' | transloco }}</a>
   </ui-empty-state>
+  </ui-card>
 } @else if (failed()) {
   <ui-notice tone="error" data-docs-error>{{ 'docs.error' | transloco }}</ui-notice>
 } @else {

@@ -302,24 +302,40 @@ const WORKSPACE_NAMES = ['harbor', 'lantern'];
 /** A dotted catalog key such as `shell.pages.board` or `header.switcher.allWorkspaces`. */
 const CATALOG_KEY = /\b[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+\b/u;
 
-/** A segment is the route's workspace or the catalog value at a key; `null` asserts only "no workspace named". */
-type Segment = { ws: true } | { key: string };
+/**
+ * A segment is the route's workspace, the catalog value at a key, a literal, or (spec 024: the prototype eyebrows carry
+ * a count, `HARBOR · BOARD · 12 CARDS`) a count with an optional unit word; `null` asserts only "no workspace named".
+ */
+type Segment = { ws: true } | { key: string } | { literal: string } | { count: true };
+const COUNT_SEGMENT = /^\d+( \p{L}+)?$/u;
 interface EyebrowPage {
   readonly name: string;
   readonly path: string;
   readonly segments: readonly Segment[] | null;
   /** The visible h1, where design.md fixes it. */
   readonly h1?: RegExp;
+  /**
+   * Spec 024 (prototype `spec-head-unified`): below 640 the idea's labels stack between the path and the h1, so at the
+   * compact tier the eyebrow-to-h1 gap leaves out this element's box and its 8 px row gap.
+   */
+  readonly compactBetween?: string;
 }
 
 const EYEBROW_PAGES: readonly EyebrowPage[] = [
   { name: 'workspaces', path: '/', segments: null },
-  { name: 'dashboard', path: `/w/${WORKSPACE}`, segments: [{ ws: true }, { key: 'shell.pages.specs' }], h1: /^\s*Specs(\s*·\s*\d+)?\s*$/u },
-  { name: 'board', path: `/w/${WORKSPACE}/board`, segments: [{ ws: true }, { key: 'shell.pages.board' }] },
-  { name: 'idea', path: `/w/${WORKSPACE}/ideas/${IDEA}`, segments: [{ ws: true }, { key: 'shell.pages.board' }, { key: 'ideas.title' }] },
-  { name: 'features', path: `/w/${WORKSPACE}/features`, segments: [{ ws: true }, { key: 'shell.pages.features' }] },
-  { name: 'milestones', path: `/w/${WORKSPACE}/milestones`, segments: [{ ws: true }, { key: 'shell.pages.milestones' }] },
-  { name: 'help', path: '/help', segments: [{ key: 'shell.eyebrow.app' }, { key: 'help.title' }] },
+  { name: 'dashboard', path: `/w/${WORKSPACE}`, segments: [{ ws: true }, { key: 'shell.pages.specs' }, { count: true }] /* spec 024: prototype value (principal: Prototyp gilt immer) */, h1: /^\s*Specs\s*·\s*\S+\s*$/u /* spec 024: prototype value (principal: Prototyp gilt immer) */ },
+  // spec 024: the prototype eyebrows of board, features and milestones end in their count; the idea's ends in its slug.
+  { name: 'board', path: `/w/${WORKSPACE}/board`, segments: [{ ws: true }, { key: 'shell.pages.board' }, { count: true }] },
+  {
+    name: 'idea',
+    path: `/w/${WORKSPACE}/ideas/${IDEA}`,
+    segments: [{ ws: true }, { key: 'shell.pages.board' }, { key: 'ideas.title' }, { literal: IDEA }],
+    compactBetween: '[data-idea-chips]',
+  },
+  { name: 'features', path: `/w/${WORKSPACE}/features`, segments: [{ ws: true }, { key: 'shell.pages.features' }, { count: true }] },
+  { name: 'milestones', path: `/w/${WORKSPACE}/milestones`, segments: [{ ws: true }, { key: 'shell.pages.milestones' }, { count: true }] },
+  // spec 024: prototype value (principal: Prototyp gilt immer) — the help eyebrow reads SPECTANT · GUIDE.
+  { name: 'help', path: '/help', segments: [{ key: 'shell.eyebrow.app' }, { key: 'help.eyebrow' }] },
   { name: 'settings', path: '/settings', segments: [{ key: 'shell.eyebrow.app' }, { key: 'settings.title' }] },
 ];
 
@@ -346,7 +362,11 @@ async function checkEyebrow(page: Page, entry: EyebrowPage, language: Language):
   await expect(h1, `${entry.name}: the h1 under the eyebrow is visible`).toBeVisible();
   if (entry.h1) await expect(h1, `${entry.name}: the h1`).toHaveText(entry.h1);
   const [top, head] = await Promise.all([eyebrow.boundingBox(), h1.boundingBox()]);
-  const gap = (head?.y ?? -Infinity) - ((top?.y ?? 0) + (top?.height ?? 0));
+  let gap = (head?.y ?? -Infinity) - ((top?.y ?? 0) + (top?.height ?? 0));
+  if (entry.compactBetween && (page.viewportSize()?.width ?? Infinity) < 640) {
+    const between = await page.locator(entry.compactBetween).boundingBox();
+    gap -= (between?.height ?? 0) + 8;
+  }
   expect(gap, `${entry.name}: the eyebrow sits directly above the h1`).toBeGreaterThanOrEqual(-1);
   expect(gap, `${entry.name}: the eyebrow sits directly above the h1`).toBeLessThanOrEqual(16);
 
@@ -355,11 +375,15 @@ async function checkEyebrow(page: Page, entry: EyebrowPage, language: Language):
   expect((await h1.textContent()) ?? '', `${entry.name}: no catalog key in the h1`).not.toMatch(CATALOG_KEY);
   const actual = segmentsOf(text);
   const global = entry.segments === null || entry.segments.every((segment) => !('ws' in segment));
+  const counted = entry.segments?.findIndex((segment) => 'count' in segment) ?? -1;
+  if (counted >= 0) expect(actual[counted] ?? '', `${entry.name}: the eyebrow ends in a count`).toMatch(COUNT_SEGMENT);
   if (global) for (const name of WORKSPACE_NAMES) expect(actual, `${entry.name}: no workspace in the eyebrow`).not.toContain(name);
   if (entry.segments === null) return;
 
   const expected = entry.segments.map((segment) => {
     if ('ws' in segment) return WORKSPACE;
+    if ('literal' in segment) return segment.literal;
+    if ('count' in segment) return actual[counted] ?? '';
     const value = lookup(catalogs[language], segment.key);
     expect(value, `${entry.name}: the ${language} catalog holds ${segment.key}`).toBeDefined();
     return (value ?? '').toLowerCase();
@@ -432,7 +456,8 @@ test.describe('workspace first', () => {
 // below it the Workspace and Spec labels are part of the select's accessible name, and the Area select is the entry
 // of the overflow menu `⋯`, label and value visible there.
 const PILLS = 'app-shell-nav';
-type PillName = 'workspace' | 'spec' | 'area';
+// spec 024: PAGE select (principal 2026-10-13): the PAGE select is the second pill; the Area pill only on a spec page
+type PillName = 'workspace' | 'page' | 'spec' | 'area';
 /** The expected value of a pill: an exact catalog-backed text, or a pattern the value must match. */
 interface PillExpectation {
   readonly label: string;
@@ -453,8 +478,8 @@ const PILL_PAGES: readonly PillPage[] = [
     path: `/w/${WORKSPACE}`,
     pills: {
       workspace: { label: 'shell.pills.workspace', value: { text: WORKSPACE } },
+      page: { label: 'shell.pills.page', value: { key: 'shell.pages.specs' } },
       spec: { label: 'shell.pills.specs', value: { pattern: /^\s*\d+\s*$/u } },
-      area: { label: 'shell.pills.area', value: { key: 'shell.pages.specs' } },
     },
   },
   {
@@ -462,6 +487,7 @@ const PILL_PAGES: readonly PillPage[] = [
     path: `/w/${WORKSPACE}/s/002/claims`,
     pills: {
       workspace: { label: 'shell.pills.workspace', value: { text: WORKSPACE } },
+      page: { label: 'shell.pills.page', value: { key: 'shell.pages.specs' } },
       spec: { label: 'shell.pills.spec', value: { pattern: /^\s*002(\s|$)/u } },
       area: { label: 'shell.pills.area', value: { key: `shell.areas.${DATA_AREA}` } },
     },
@@ -485,7 +511,7 @@ const normalized = (text: string | null): string => (text ?? '').replace(/\s+/gu
 async function checkPills(page: Page, entry: PillPage, width: number): Promise<void> {
   await page.goto(entry.path);
   const wide = width >= 1120;
-  for (const name of ['workspace', 'spec', 'area'] as const) {
+  for (const name of ['workspace', 'page', 'spec', 'area'] as const) {
     const where = `${entry.name} (${entry.path}), the ${name} pill`;
     // spec 024: one-row header on every width (principal 2026-10-13): below 1120 the area select is the overflow entry
     const inMenu = name === 'area' && !wide;
@@ -598,10 +624,16 @@ test.describe('polish', () => {
         expect(name, 'the back link names no catalog key').not.toMatch(CATALOG_KEY);
       });
 
-      test(`polish: every copy chip on the workspaces overview names its command at ${String(width)}`, async ({ page }) => {
+      // spec 024: overview without lists (principal 2026-10-13): Next up and its copy chips left `/` for the workspace
+      // dashboard, so the probe reads the Next up chips there (one per spec, as on `/` before; a row's reason chip
+      // repeats its spec's command by design) and asserts `/` holds none.
+      test(`polish: every copy chip on the workspace dashboard names its command, the overview has none, at ${String(width)}`, async ({ page }) => {
         await page.goto('/');
-        const chips = page.locator('ui-command-chip').filter({ visible: true });
-        await expect(chips.first(), 'the overview shows copy chips').toBeVisible();
+        await expect(page.locator('app-workspace-column').first()).toBeVisible();
+        await expect(page.locator('app-overview-page ui-command-chip'), 'the overview shows no copy chip').toHaveCount(0);
+        await page.goto(`/w/${WORKSPACE}`);
+        const chips = page.locator('app-next-up-list ui-command-chip').filter({ visible: true });
+        await expect(chips.first(), 'the workspace dashboard shows Next up copy chips').toBeVisible();
         const names: string[] = [];
         for (const chip of await chips.all()) {
           const command = normalized(await chip.locator('code').textContent());

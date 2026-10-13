@@ -98,7 +98,8 @@ describe('IdeaPage (T131, ISC-124.2)', () => {
 
     const h1 = page.querySelector('h1#idea');
     expect(h1?.getAttribute('tabindex')).toBe('-1');
-    expect(text(h1)).toBe(REF.title);
+    expect(text(h1)).toBe(REF.slug);
+    expect(text(page.querySelector('[data-idea-goal] blockquote'))).toBe(REF.title);
 
     const chips = page.querySelector('[data-idea-chips]') as HTMLElement;
     expect(chips.querySelector('[data-idea-chip="type"] ui-type-glyph')?.getAttribute('data-type')).toBe('feature');

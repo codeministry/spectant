@@ -40,14 +40,15 @@ async function openHarbor(page: Page): Promise<void> {
 test.describe('truncate table', () => {
   test.use(atWidth(390));
 
-  test('table: a long description is cut after two lines at a whole word, and more… / less toggle it in place', async ({ page }) => {
+  test('table: a long description is cut after one line at a whole word, and more… / less toggle it in place', async ({ page }) => {
     await openHarbor(page);
     const cut = page.locator('.row-link .d[data-clamp="cut"]');
     await expect(cut.first()).toBeVisible();
     const id = (await cut.first().getAttribute('id'))?.replace(/^desc-/u, '') ?? '';
     // Pinned by id: the `data-clamp="cut"` locator would move on to the next cut row once this one opens.
     const description = page.locator(`#desc-${id}`);
-    expectCutAtWord(await measure(description), 2);
+    // spec 024: one line (principal 2026-10-13, ISC-111 refined)
+    expectCutAtWord(await measure(description), 1);
 
     const more = page.locator(`[data-more="${id}"]`);
     await expect(more).toBeVisible();
@@ -59,7 +60,8 @@ test.describe('truncate table', () => {
     await expect(description).toHaveAttribute('data-clamp', 'open');
     const open = await measure(description);
     expect(open.shown).toBe(open.full);
-    expect(open.height).toBeGreaterThan(open.line * 2 + 1);
+    // spec 024: one line (principal 2026-10-13, ISC-111 refined)
+    expect(open.height).toBeGreaterThan(open.line * 1 + 1);
     await expect(more).toHaveAttribute('aria-expanded', 'true');
 
     await more.click();

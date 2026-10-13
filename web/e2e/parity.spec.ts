@@ -64,8 +64,9 @@
  *                                        while no filter is set.
  *   - `[data-library-search]`            the search input; filtering by an entry's title keeps that entry.
  *   - `[data-library-reader]`            the reader; choosing a row shows that entry's title in it.
- *   - `a[data-library-link]`             the prototype's rail link to the Library on workspace pages (visible at 1440
- *                                        on `/w/:ws`), pointing at `/w/:ws/library`.
+ *   - `a[data-library-link]`             none: the prototype's rail link to the Library gave way to the PAGE select
+ *                                        `header [data-control="page"]`, whose menu lists Library (spec 024 T80,
+ *                                        ISC-150.2, principal 2026-10-13).
  *
  *   Settings · Workspaces `/settings/workspaces` (T50, T52; prototype `workspaces.html`)
  *   - `[data-page="settings-workspaces"]` the page root, itself `[data-demo]`; its h1 row is the `[data-demo-head]`.
@@ -661,6 +662,13 @@ const viaSettings =
     await (await headerControl(page, 'settings')).click();
     await follow(`[data-menu="settings"] [data-settings-link="${entry}"]`)(page);
   };
+/** A page of the PAGE select's menu (spec 024 T80): the select, then the entry. // spec 024: PAGE select (principal 2026-10-13) */
+const viaPage =
+  (id: string) =>
+  async (page: Page): Promise<void> => {
+    await (await headerControl(page, 'page')).click();
+    await follow(`nav[aria-label="Pages"] [data-page="${id}"]`)(page);
+  };
 /** The spec table opens a row in two steps: the first click previews it (`?spec=`), the second opens the spec. */
 const openSpecRow =
   (id: string) =>
@@ -692,7 +700,8 @@ const VIEWS: readonly ViewPlace[] = [
   { view: 'board-matrix.html', route: '/w/harbor/s/002/matrix', hook: 'app-matrix-tab', link: { from: '/w/harbor/s/002/board', follow: tab('matrix'), lands: '/w/harbor/s/002/matrix' } },
   { view: 'board-states.html', route: '/__ui', hook: '[data-gallery="board-states"]' },
   { view: 'states.html', route: '/__ui', hook: '[data-gallery="states"]' },
-  { view: 'library.html', route: '/w/harbor/library', hook: '[data-page="library"] h1', link: { from: '/w/harbor', follow: follow('a[data-library-link]'), lands: '/w/harbor/library' } },
+  // spec 024: PAGE select (principal 2026-10-13): the Library is reached through the PAGE select's menu, the rail link is gone
+  { view: 'library.html', route: '/w/harbor/library', hook: '[data-page="library"] h1', link: { from: '/w/harbor', follow: viaPage('library'), lands: '/w/harbor/library' } },
   {
     view: 'notes.html',
     route: `/w/harbor/s/002/notes/${NOTE_002.id}`,
@@ -773,8 +782,10 @@ test.describe('routes', () => {
 /*
  * Group `navigation` (ISC-150.1, T56): the app's navigation survives the port. Hooks it reads beyond the ones above:
  *
- *   - `nav[aria-label="Areas"]`         the scope-aware area menu, opened from `header [data-control="area"]`
- *                                        (`headerControl`); a `ui-popover` from 640 px, a `ui-sheet` below.
+ *   - `nav[aria-label="Pages"]`         the page menu, opened from the PAGE select `header [data-control="page"]`
+ *                                        (spec 024 T80, ISC-150.2), second after the workspace on every width;
+ *   - `nav[aria-label="Areas"]`         the spec area menu, opened from `header [data-control="area"]` on a spec page
+ *                                        (`headerControl`); both a `ui-popover` from 640 px, a `ui-sheet` below.
  *   - `[data-menu-head]`                 the menu's eyebrow head (prototype `.area-pop .pop-head`), naming the scope.
  *   - `[data-page="<id>"]`               one entry per workspace page, in registry order, with `ui-icon[data-icon]`,
  *                                        `.entry-name` and the summary `.sub`; `[data-area="<id>"]` per spec area.
@@ -817,6 +828,14 @@ async function openAreaMenu(page: Page): Promise<Locator> {
   return menu;
 }
 
+// spec 024: PAGE select (principal 2026-10-13): the workspace pages are the PAGE select's menu, no longer the area menu's.
+async function openPageMenu(page: Page): Promise<Locator> {
+  await (await headerControl(page, 'page')).click();
+  const menu = page.getByRole('navigation', { name: 'Pages' });
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
 const ids = (list: Locator, attr: string): Promise<Array<string | null>> =>
   list.evaluateAll((els, name) => els.map((el) => el.getAttribute(name)), attr);
 
@@ -825,9 +844,10 @@ test.describe('navigation', () => {
     test.describe(`area menu and palette at ${String(width)}`, () => {
       test.use(atWidth(width));
 
-      test('the workspace area menu lists every WORKSPACE_PAGES page with icon, name and summary, Library included', async ({ page }) => {
+      test('the PAGE menu lists every WORKSPACE_PAGES page with icon, name and summary, Library included', async ({ page }) => {
         await page.goto('/w/harbor');
-        const menu = await openAreaMenu(page);
+        // spec 024: PAGE select (principal 2026-10-13)
+        const menu = await openPageMenu(page);
         await expect(menu.locator(`xpath=ancestor::${width < 640 ? 'ui-sheet' : 'ui-popover'}`)).toHaveCount(1);
         await expect(menu.locator('[data-menu-head]')).toBeVisible();
         const entries = menu.locator('[data-page]');
@@ -846,13 +866,14 @@ test.describe('navigation', () => {
       test('each workspace page entry navigates, and the menu then marks that page current', async ({ page }) => {
         for (const entry of MENU_PAGES) {
           await page.goto('/w/harbor');
-          await (await openAreaMenu(page)).locator(`[data-page="${entry.id}"]`).click();
+          // spec 024: PAGE select (principal 2026-10-13): the PAGE select names the page and stays in the row on every width
+          await (await openPageMenu(page)).locator(`[data-page="${entry.id}"]`).click();
           await expect(page, entry.id).toHaveURL((url) => entry.lands(url.pathname));
-          // The trigger names the page; below 1120 it is an overflow entry, so it is read and clicked in one opening.
-          const trigger = await headerControl(page, 'area');
+          const trigger = await headerControl(page, 'page');
           await expect(trigger, entry.id).toContainText(entry.name);
+          await expect(page.locator('header [data-control="area"]'), entry.id).toHaveCount(0);
           await trigger.click();
-          const menu = page.getByRole('navigation', { name: 'Areas' });
+          const menu = page.getByRole('navigation', { name: 'Pages' });
           await expect(menu, entry.id).toBeVisible();
           await expect(menu.locator('[aria-current="page"]'), entry.id).toHaveCount(1);
           await expect(menu.locator('[aria-current="page"]'), entry.id).toHaveAttribute('data-page', entry.id);
@@ -861,7 +882,8 @@ test.describe('navigation', () => {
 
       test('a workspace without milestones lists no Milestones entry but keeps Library', async ({ page }) => {
         await page.goto('/w/lantern');
-        const menu = await openAreaMenu(page);
+        // spec 024: PAGE select (principal 2026-10-13)
+        const menu = await openPageMenu(page);
         expect(await ids(menu.locator('[data-page]'), 'data-page')).toEqual(['specs', 'board', 'features', 'tech', 'library']);
       });
 
@@ -871,6 +893,14 @@ test.describe('navigation', () => {
         await expect(menu.locator('[data-menu-head]')).toBeVisible();
         expect(await ids(menu.locator('[data-area]'), 'data-area')).toEqual(SPEC_MENU_AREAS.map((area) => area.id));
         await expect(menu.locator('[data-page]')).toHaveCount(0);
+        // spec 024: PAGE select (principal 2026-10-13): on a spec page the PAGE select names Specs, its menu marks Specs current
+        await page.keyboard.press('Escape');
+        const pageSelect = await headerControl(page, 'page');
+        await expect(pageSelect).toContainText('Specs');
+        await expect(pageSelect).toHaveAccessibleName('Page: Specs');
+        const pages = await openPageMenu(page);
+        await expect(pages.locator('[aria-current="page"]')).toHaveAttribute('data-page', 'specs');
+        await expect(pages.locator('[data-area]')).toHaveCount(0);
         for (const area of SPEC_MENU_AREAS) {
           await page.goto('/w/harbor/s/002');
           await (await openAreaMenu(page)).locator(`[data-area="${area.id}"]`).click();
@@ -908,10 +938,30 @@ test.describe('navigation', () => {
       await expect(page).toHaveURL((url) => url.pathname === '/settings/workspaces');
     });
 
-    test('a rail link reaches the Library from the workspace page', async ({ page }) => {
+    // spec 024: PAGE select (principal 2026-10-13): the rail link gave way to the PAGE select, second in the row
+    test('the PAGE select reaches the Library from the workspace page; no rail link is left', async ({ page }) => {
       await page.goto('/w/harbor');
-      await follow('a[data-library-link]')(page);
+      await expect(page.locator('header [data-control="page"]')).toBeVisible();
+      await expect(page.locator('a[data-library-link]')).toHaveCount(0);
+      await viaPage('library')(page);
       await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/library');
+      await expect(page.locator('a[data-library-link]')).toHaveCount(0);
+    });
+
+    test('the header selects run Workspace · Page · Spec · Area, the Area select only on a spec page', async ({ page }) => {
+      const order = (): Promise<Array<string | null>> =>
+        page.locator('app-shell-nav [data-control]').evaluateAll((els) => els.map((el) => el.getAttribute('data-control')));
+      await page.goto('/w/harbor/s/002');
+      await expect(page.locator('header [data-control="area"]')).toBeVisible();
+      expect(await order()).toEqual(['workspace', 'page', 'spec', 'area']);
+      const labels = page.locator('app-shell-nav [data-control] [data-pill-label]');
+      await expect(labels).toHaveText([/^workspace$/iu, /^page$/iu, /^spec$/iu, /^area$/iu]);
+      await page.goto('/w/harbor');
+      await expect(page.locator('header [data-control="page"]')).toBeVisible();
+      expect(await order()).toEqual(['workspace', 'page', 'spec']);
+      // spec 024: PAGE select without trigger icon (principal 2026-10-13): eyebrow, name and chevron only
+      await expect(page.locator('header [data-control="page"] ui-icon')).toHaveCount(1);
+      await expect(page.locator('header [data-control="page"] ui-icon')).toHaveAttribute('data-icon', 'chevron-down');
     });
 
     for (const [key, path] of [

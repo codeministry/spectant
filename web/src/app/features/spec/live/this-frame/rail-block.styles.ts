@@ -10,6 +10,9 @@ export const RAIL_BLOCK_STYLES = `
   .block { display: grid; gap: 8px; min-inline-size: 0; padding: 12px 16px; border: 1px solid var(--line); border-radius: var(--radius-box); background: var(--color-base-100); }
   .head { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 14px; font-weight: 600; line-height: var(--rail-line); }
   .title { font-size: 14px; font-weight: 600; line-height: var(--rail-line); }
+  /* spec 024: the prototype .rail-card > .eyebrow, uppercase 11 px muted, the frame label or count in mono on the right. */
+  .eyebrow-head { display: flex; flex: 1; gap: 8px; align-items: center; justify-content: space-between; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .08em; line-height: 16px; text-transform: uppercase; }
+  .eyebrow-head .end { margin-inline-start: auto; font-family: var(--font-mono); font-weight: 600; }
   .rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin: 0; padding: 0; list-style: none; }
   .row { display: flex; gap: 8px; align-items: start; inline-size: 100%; min-block-size: 40px; padding: calc((40px - var(--rail-line)) / 2) 8px; border: 0; border-radius: var(--radius-field); background: none; color: var(--color-base-content); text-align: start; cursor: pointer; transition: background-color var(--motion-duration-fast) var(--motion-ease-standard); }
   .row:hover { background: var(--color-base-300); }

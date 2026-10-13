@@ -97,6 +97,9 @@ export function alertParts(sentence: string, session: string, claims: readonly s
     RAIL_BLOCK_STYLES,
     `
       .count { font-variant-numeric: tabular-nums; }
+      /* spec 024: the prototype .needs-card, a 3 px edge in orange on the card. */
+      .needs-card { border-inline-start: 3px solid var(--color-warning); }
+      @media (forced-colors: active) { .needs-card { border-inline-start-color: CanvasText; } }
       .edge { border-inline-start: 4px solid var(--edge); border-start-start-radius: 0; border-end-start-radius: 0; }
       .alert { display: flex; gap: 8px; align-items: start; padding: 8px 12px; border: 1px solid var(--line); border-inline-start: 4px solid var(--fail-ink); border-radius: var(--radius-field); background: var(--color-base-200); font-size: 13px; line-height: var(--rail-line); }
       .alert ui-icon { flex: none; margin-block-start: 2px; color: var(--fail-ink); }
@@ -109,10 +112,10 @@ export function alertParts(sentence: string, session: string, claims: readonly s
   ],
   template: `
     @if (framed()) {
-      <section class="block" aria-labelledby="needs-you-heading">
-        <h3 class="head" id="needs-you-heading">
+      <section class="block needs-card" aria-labelledby="needs-you-heading">
+        <h3 class="head eyebrow-head" id="needs-you-heading">
           {{ 'board.rail.needsYou' | transloco }}
-          <span class="badge badge-sm count" data-needs-count>{{ cards().length }}</span>
+          <span class="end count" data-needs-count>{{ cards().length }}</span>
         </h3>
         <ng-container [ngTemplateOutlet]="body" />
       </section>

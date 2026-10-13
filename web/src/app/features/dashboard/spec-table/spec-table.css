@@ -31,10 +31,17 @@
   min-inline-size: 0;
 }
 
+/* Prototype `.t-head .sort`: a bordered `.btn` (32 px, --border, --radius, --card) with `arrow-up-down`. */
 .sort {
-  gap: 4px;
+  --btn-bg: var(--color-base-100);
+  --btn-border: var(--line);
+  --btn-fg: var(--color-base-content);
+
+  gap: 8px;
   margin-inline-start: auto;
-  color: var(--muted-ink);
+  border-radius: var(--radius-field);
+  border-width: 1px;
+  border-style: solid;
 }
 
 .takeable-flag {
@@ -249,4 +256,30 @@
    bottom padding, and after "more…" the two margins collapse, so it follows that toggle directly. */
 .row-reason {
   margin: -8px 16px 8px 80px;
+}
+
+/* Spec 024 (principal 2026-10-13 "Hybrid", ISC-111 refined): the row's description is one muted line with "more…" at
+   its end. The button stays outside the row link and is anchored to the description cell's end edge (`--desc-<id>`,
+   set by the row); the row reserves the room at the line's end. Without anchor positioning it keeps its own line. */
+@supports (position-anchor: --a) {
+  .rows > li {
+    position: relative;
+  }
+
+  .row-more {
+    position: absolute;
+    right: anchor(right);
+    bottom: anchor(bottom);
+    display: inline-flex;
+    align-items: flex-end;
+    min-block-size: 20px;
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (pointer: coarse) {
+    .row-more {
+      min-block-size: 44px;
+    }
+  }
 }

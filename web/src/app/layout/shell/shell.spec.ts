@@ -114,13 +114,14 @@ describe('ShellComponent', () => {
     else Reflect.deleteProperty(globalThis, 'ResizeObserver');
   });
 
-  it('renders exactly one header with the eight data-control slots in a workspace, six outside one (ISC-140.2)', async () => {
+  it('renders exactly one header with the eight data-control slots on a spec page, six outside a workspace (ISC-140.2)', async () => {
     setUp();
     for (const url of ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/999', '/settings', '/nope']) {
       const { root } = await open(url);
       expect(root.querySelectorAll('header'), url).toHaveLength(1);
       const controls = [...root.querySelectorAll('header [data-control]')].map((el) => el.getAttribute('data-control'));
-      const pills = url.startsWith('/w/') ? ['workspace', 'spec', 'area'] : ['workspace'];
+      // spec 024: PAGE select (principal 2026-10-13): Workspace · Page · Spec, and the Area select only on a spec route
+      const pills = url.startsWith('/w/') ? ['workspace', 'page', 'spec', ...(url.includes('/s/') ? ['area'] : [])] : ['workspace'];
       expect(controls, url).toEqual(['brand', ...pills, 'palette', 'live', 'zen', 'settings']);
     }
   });
@@ -281,52 +282,56 @@ describe('ShellComponent', () => {
       expect(root.querySelector('header nav[aria-label="Areas"]')).toBeNull();
     });
 
-    it('keeps the area menu disabled with its reason for a workspace the server does not know', async () => {
+    it('keeps the page menu disabled with its reason for a workspace the server does not know', async () => {
       const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
       proto['showPopover'] = vi.fn();
       try {
         setUp();
         for (const url of ['/w/nope', '/w/nope/features']) {
           const { root, harness } = await open(url);
-          const area = control(root, 'area');
+          // spec 024: PAGE select (principal 2026-10-13): the workspace pages moved from the area select to the PAGE select
+          const area = control(root, 'page');
           expect(area.getAttribute('aria-disabled')).toBe('true');
           expect(area.getAttribute('title')).toBe('Open a workspace to switch pages');
-          expect(area.getAttribute('aria-label')).toBe('Areas');
+          expect(area.getAttribute('aria-label')).toBe('Pages');
           expect(area.textContent).not.toContain('Specs');
+          expect(root.querySelector('header [data-control="area"]')).toBeNull();
           area.click();
           await harness.fixture.whenStable();
           expect(root.querySelector('app-area-menu')).toBeNull();
-          expect(root.querySelector('header nav[aria-label="Areas"]')).toBeNull();
+          expect(root.querySelector('header nav[aria-label="Pages"]')).toBeNull();
         }
       } finally {
         delete proto['showPopover'];
       }
     });
 
-    it('enables the area trigger at workspace scope and names the current page', async () => {
+    it('enables the page trigger at workspace scope and names the current page', async () => {
       setUp();
       const { root } = await open('/w/harbor');
-      const area = control(root, 'area');
+      // spec 024: PAGE select (principal 2026-10-13)
+      const area = control(root, 'page');
       expect(area.getAttribute('aria-disabled')).toBeNull();
       expect(area.textContent).toContain('Specs');
       expect(area.getAttribute('aria-expanded')).toBe('false');
       expect(area.getAttribute('aria-label')).toBe('Page: Specs');
     });
 
-    it('names Tech with book-open on every tab of the tech page, enabled (spec 023, T20, ISC-134.2)', async () => {
+    it('names Tech on every tab of the tech page, enabled, without a trigger icon (spec 023 T20, ISC-134.2; spec 024 T80)', async () => {
       setUp();
       for (const url of ['/w/harbor/tech/overview', '/w/harbor/tech/open']) {
         const { root } = await open(url);
-        const area = control(root, 'area');
+        // spec 024: PAGE select (principal 2026-10-13)
+        const area = control(root, 'page');
         expect(area.getAttribute('aria-disabled'), url).toBeNull();
         expect(area.querySelector('.pick-text')?.textContent.trim(), url).toBe('Tech');
-        // The leading icon is `book-open`: its first path is the spine (`ICONS['book-open']`).
-        expect(area.querySelector('ui-icon path')?.getAttribute('d'), url).toBe('M12 5v16');
+        // spec 024: PAGE select without trigger icon (principal 2026-10-13): only the chevron, the menu row keeps `book-open`
+        expect(area.querySelector('ui-icon:not(.chevron)'), url).toBeNull();
         expect(area.getAttribute('aria-label'), url).toBe('Page: Tech');
       }
     });
 
-    it('opens the area menu at workspace scope: Specs and Features while no milestone exists', async () => {
+    it('opens the page menu at workspace scope: Specs and Features while no milestone exists', async () => {
       const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
       proto['showPopover'] = vi.fn();
       proto['hidePopover'] = vi.fn(function (this: HTMLElement) {
@@ -335,12 +340,13 @@ describe('ShellComponent', () => {
       try {
         setUp();
         const { root, harness } = await open('/w/harbor');
-        const trigger = control(root, 'area');
+        // spec 024: PAGE select (principal 2026-10-13)
+        const trigger = control(root, 'page');
         await harness.fixture.whenStable();
         trigger.click();
         await harness.fixture.whenStable();
         expect(trigger.getAttribute('aria-expanded')).toBe('true');
-        const entries = [...root.querySelectorAll('header nav[aria-label="Areas"] [data-page]')];
+        const entries = [...root.querySelectorAll('header nav[aria-label="Pages"] [data-page]')];
         expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'board', 'features', 'tech', 'library']);
         expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null, null, null, null]);
       } finally {
@@ -383,13 +389,14 @@ describe('ShellComponent', () => {
         expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual([null, null, null, 'page', null, null]);
         expect(entries.map((entry) => entry.getAttribute('aria-disabled'))).toEqual([null, null, null, null, null, null]);
         expect(entries.map((entry) => entry.querySelector('.dot')?.getAttribute('data-dot'))).toEqual([...AREA_IDS]);
+        // spec 024: prototype value (principal: Prototyp gilt immer) — pop-area's sublines name each area's tabs.
         expect(texts(nav?.querySelectorAll('[data-area] .sub') as NodeListOf<Element>)).toEqual([
-          'Where the spec stands at a glance',
-          'Stage, gates and timeline',
-          'Agents at work, round board and matrix',
-          'Claims, tasks and evidence',
-          'Plan, design, decisions, constitution',
-          'Your notes on this spec',
+          'overview · next step · gates',
+          'Status · Timeline',
+          'Board · Matrix',
+          'Claims · Tasks · Evidence',
+          'Plan · Design · Decisions · Constitution',
+          'Notes',
         ]);
         expect(texts(nav?.querySelectorAll('[data-area] .entry-name') as NodeListOf<Element>)).toEqual([
           'Dashboard',
@@ -474,9 +481,11 @@ describe('ShellComponent', () => {
       await harness.fixture.whenStable();
       const settingsPage = root.querySelector('[data-page="settings"]');
       expect(settingsPage?.querySelector('h1')?.textContent).toContain('Settings');
-      expect(settingsPage?.textContent).toContain('Settings, workspaces and help come with later tasks of this spec');
-      expect([...(settingsPage?.querySelectorAll('a') ?? [])].map((a) => a.getAttribute('href'))).toEqual(['/help', '/settings/workspaces', '/']);
-      expect(settingsPage?.querySelector('a[data-action="help"]')?.textContent.trim()).toBe('Help');
+      // spec 024 T60: the placeholder text gave way to the designed page; its card links to the workspace management
+      // and to the keyboard guide, and the shortcut sheet opens from the Keyboard card.
+      expect(settingsPage?.querySelector('a[data-action="workspaces"]')?.getAttribute('href')).toBe('/settings/workspaces');
+      expect(settingsPage?.querySelector('a[data-action="help"]')?.getAttribute('href')).toBe('/help#keys');
+      expect(settingsPage?.querySelector('button[data-action="shortcuts"]')).not.toBeNull();
       expect(root.querySelectorAll('header')).toHaveLength(1);
     });
 
@@ -552,16 +561,19 @@ describe('ShellComponent', () => {
       const list = root.querySelector('nav[data-picker="workspace"]');
       expect(list?.getAttribute('aria-label')).toBe('Workspaces');
       const entries = [...(list?.querySelectorAll<HTMLAnchorElement>('.picker-entry') ?? [])];
-      expect(entries.map((entry) => entry.getAttribute('href'))).toEqual(['/', '/w/harbor', '/w/lantern']);
-      expect(texts(list?.querySelectorAll('.entry-name') as NodeListOf<Element>)).toEqual(['All workspaces', 'harbor', 'lantern']);
-      expect(texts(list?.querySelectorAll('.entry-meta') as NodeListOf<Element>)).toEqual(['Specs: 3', 'Cannot be read']);
-      expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual([null, 'true', null]);
-      expect(document.activeElement).toBe(entries[1]);
+      // spec 024: prototype value (principal: Prototyp gilt immer) — pop-ws: the workspaces, then "Show all n workspaces".
+      expect(entries.map((entry) => entry.getAttribute('href'))).toEqual(['/w/harbor', '/w/lantern', '/']);
+      expect(list?.querySelector('.menu-head')?.textContent.trim()).toBe('All workspaces (2)');
+      expect(texts(list?.querySelectorAll('.entry-name') as NodeListOf<Element>)).toEqual(['harbor', 'lantern', 'Show all 2 workspaces']);
+      // spec 024: prototype value (principal: Prototyp gilt immer) — the bare count, as pop-ws shows it.
+      expect(texts(list?.querySelectorAll('.entry-meta') as NodeListOf<Element>)).toEqual(['3', 'Cannot be read']);
+      expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['true', null, null]);
+      expect(document.activeElement).toBe(entries[0]);
       const footer = list?.querySelector('[data-picker-footer]');
       expect(footer?.getAttribute('href')).toBe('/settings');
       expect(footer?.textContent).toContain('Manage workspaces');
 
-      entries[2]?.click();
+      entries[1]?.click();
       await harness.fixture.whenStable();
       expect(TestBed.inject(Router).url).toBe('/w/lantern');
       expect(picker.getAttribute('aria-expanded')).toBe('false');
@@ -592,7 +604,8 @@ describe('ShellComponent', () => {
       const list = root.querySelector('nav[data-picker="spec"]');
       expect(list?.getAttribute('aria-label')).toBe('Specs');
       expect(list?.querySelector('.picker-all')?.getAttribute('href')).toBe('/w/harbor#specs');
-      expect(list?.querySelector('.picker-all')?.textContent).toContain('All specs in harbor');
+      // spec 024: prototype value (principal: Prototyp gilt immer) — pop-specs ends with "Spec overview" (g s).
+      expect(list?.querySelector('.picker-all')?.textContent).toContain('Spec overview');
       const rows = [...(list?.querySelectorAll<HTMLAnchorElement>('[data-spec]') ?? [])];
       expect(rows.map((row) => row.getAttribute('data-spec'))).toEqual(['004', '002', '003']);
       expect(rows.map((row) => row.getAttribute('href'))).toEqual(['/w/harbor/s/004', '/w/harbor/s/002', '/w/harbor/s/003']);
@@ -613,9 +626,9 @@ describe('ShellComponent', () => {
     it('opens the pickers as bottom sheets at compact, focused on the current entry', async () => {
       setUp(TWO);
       const { root, harness } = await open('/w/harbor/s/002', 390);
-      // The workspace and spec pickers, the area menu (T37), the overflow menu and the settings panel (spec 024 T76,
-      // T40): all five are bottom sheets at compact.
-      expect(root.querySelectorAll('ui-sheet')).toHaveLength(5);
+      // The workspace and spec pickers, the page menu (spec 024 T80), the area menu (T37), the overflow menu and the
+      // settings panel (spec 024 T76, T40): all six are bottom sheets at compact. // spec 024: PAGE select (principal 2026-10-13)
+      expect(root.querySelectorAll('ui-sheet')).toHaveLength(6);
       expect(root.querySelectorAll('ui-popover.picker-popover, ui-popover.area-popover')).toHaveLength(0);
       expect(root.querySelectorAll('header')).toHaveLength(1);
 
@@ -643,7 +656,8 @@ describe('ShellComponent', () => {
       const keys = [...root.querySelectorAll('header nav[aria-label="Areas"] [data-area]')].map(
         (entry) => entry.querySelector('ui-kbd')?.textContent.trim() ?? null,
       );
-      expect(keys).toEqual([null, 'g s', 'g l', 'g d', 'g o', 'g n']);
+      // spec 024: prototype value (principal: Prototyp gilt immer) — pop-area names g h for the dashboard.
+      expect(keys).toEqual(['g h', 'g s', 'g l', 'g d', 'g o', 'g n']);
       expect(root.querySelector('header nav[aria-label="Areas"] ui-kbd')?.getAttribute('aria-hidden')).toBe('true');
     });
 

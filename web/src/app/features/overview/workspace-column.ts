@@ -1,16 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { UiIcon } from '../../shared/icons/icon';
 import { UiCard } from '../../shared/ui/card/card';
-import { UiChip } from '../../shared/ui/chip/chip';
-import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
-import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import type { MeterSegment } from '../../shared/ui/meter/meter';
 import { UiMeter } from '../../shared/ui/meter/meter';
 import { type RelativeUnit, relativeParts } from '../../shared/ui/relative-time/relative-time';
 import { UiRing } from '../../shared/ui/ring/ring';
-import { PHASE_TONES } from '../dashboard/spec-table/spec-table-model';
 import type { OverviewColumn } from './overview-model';
 import { WsIdentity } from './ws-identity';
 
@@ -20,14 +14,15 @@ const INTL_UNIT: Readonly<Record<RelativeUnit, Intl.RelativeTimeFormatUnit>> = {
 
 /**
  * One workspace on `/` (T65, prototype `app.js` `wsColumn`, tiles.md § index.html): the identity block (`WsIdentity`,
- * spec 024 T54: cover, then the ws-head with badge, name, path tail and "Updated n s ago"), the 2 × 2 kpi-strip (master ring + fraction, spec claims with the lime meter, specs
- * with the building / scoping split, warnings + open fog with the orange edge above 0), Next up (up to three rows with
- * the command chip and the cyan left border), the 40 px dense spec list and "Open <name> →". A workspace without
- * specs shows the no-specs empty state instead of the three lists. Renders the model as it is.
+ * spec 024 T54: cover, then the ws-head with badge, name, path tail and "Updated n s ago"; cover and name link to
+ * `/w/:ws`) and the 2 × 2 kpi-strip (master ring + fraction, spec claims with the lime meter, specs with the
+ * building / scoping split, warnings + open fog with the orange edge above 0). Spec 024 T79, a deliberate deviation
+ * (design.md § Übersicht, principal 2026-10-13): no Next up, no spec list and no open link here; those live on the
+ * workspace dashboard the column leads to. Renders the model as it is.
  */
 @Component({
   selector: 'app-workspace-column',
-  imports: [RouterLink, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiEmptyState, UiIcon, UiMeter, UiRing, WsIdentity],
+  imports: [TranslocoPipe, UiCard, UiMeter, UiRing, WsIdentity],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-ui': 'workspace-column', '[attr.data-ws]': 'column().slug' },
   templateUrl: './workspace-column.html',
@@ -39,9 +34,7 @@ export class WorkspaceColumn {
   private readonly transloco = inject(TranslocoService);
   private readonly now = signal(Date.now());
 
-  protected readonly phaseTones = PHASE_TONES;
   protected readonly kpis = computed(() => this.column().kpis);
-  protected readonly href = computed(() => ['/w', this.column().slug]);
 
   /** Whole percent of master claims closed, floored as the KPI band does; null without a master. */
   protected readonly masterPercent = computed(() => {

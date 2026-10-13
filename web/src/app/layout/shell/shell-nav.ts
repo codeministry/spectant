@@ -1,5 +1,5 @@
 import { LocationStrategy } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { UiIcon } from '../../shared/icons/icon';
@@ -14,7 +14,7 @@ interface PickTarget {
   readonly fragment?: string;
 }
 
-const CLOSED: Record<MenuKind, boolean> = { workspace: false, spec: false, area: false, more: false, settings: false };
+const CLOSED: Record<MenuKind, boolean> = { workspace: false, page: false, spec: false, area: false, more: false, settings: false };
 
 /**
  * A click the anchor itself should handle (new tab, new window, download, a non-primary button): the picker stays
@@ -24,22 +24,23 @@ export const navigatesNatively = (event: MouseEvent): boolean =>
   event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 
 /**
- * The header's navigation group (ISC-73): workspace picker, spec picker and area-menu trigger. The host is a
- * flex rail on the header's brand rail, one row on every width (spec 024 T76). Below 1120 px the area trigger is an
- * entry of the overflow menu `⋯` (`areaEntry`, rendered by `ShellMenus`), and the header's `⋯` and settings
- * buttons open their menus through `toggle` / `press` here, the one owner of the deferred menus.
+ * The header's navigation group (ISC-73): Workspace · Page · Spec · Area (spec 024 T80, ISC-150.2, principal
+ * 2026-10-13). The host is a flex rail on the header's brand rail, one row on every width (spec 024 T76). The PAGE
+ * select names the open workspace page (Specs on a spec page) and opens the workspace's pages; it stays in the row on
+ * every width. The Area select is there only on a spec page and lists the six spec areas; below 1120 px it is an entry
+ * of the overflow menu `⋯` (`areaEntry`, rendered by `ShellMenus`). The header's `⋯` and settings buttons open their
+ * menus through `toggle` / `press` here, the one owner of the deferred menus.
  *
  * **Pickers.** Real anchors (`href` to the workspace, the open spec, or the workspace's spec list), so middle-click,
  * cmd/ctrl-click and "copy link" keep working; a plain click or Enter opens the picker instead (`ShellMenus`). They carry
  * `href` rather than `routerLink`, because `RouterLink` navigates on every plain click and ignores `preventDefault`.
- * Until the deferred menus have loaded, a plain click navigates too. At workspace scope the area trigger names the
- * current page (design.md § Area menu); for a workspace the server does not know, or a spec it does not list, it is
- * `aria-disabled` with its reason.
+ * Until the deferred menus have loaded, a plain click navigates too. For a workspace the server does not know the PAGE
+ * select, and for a spec it does not list the Area select, is `aria-disabled` with its reason.
  *
- * **Pills (ISC-140.2).** Every segment carries a label (`[data-pill-label]`: Workspace, Specs or Spec, Area) and its
+ * **Pills (ISC-140.2).** Every segment carries a label (`[data-pill-label]`: Workspace, Page, Specs or Spec, Area) and its
  * value (`[data-pill-value]`), so no segment is a bare number; the picker segments have no leading icon, the label
  * carries their meaning. Outside a workspace (`/`, `/help`, `/settings`) the spec and area pills are not rendered
- * rather than showing `0`, and the workspace pill reads "All · n".
+ * rather than showing `0`, and the workspace pill reads "All · n"; the page pill is absent there too.
  *
  * Collapse order (design.md § Viewport-übergreifend): below 1120 px the visible labels go (ISC-140.2 refined: the label
  * stays in the accessible name), then the wordmark (`ShellBrand`, below 640 px); the spec shows its id and short name,
@@ -59,6 +60,21 @@ export class ShellNav {
   private readonly locationStrategy = inject(LocationStrategy);
   // A string locator: a value reference to ShellMenus outside the @defer block would pull it into the initial chunk.
   private readonly menus = viewChild<ShellMenus>('menus');
+  /** A menu clicked before the deferred menus had loaded; it opens as soon as they arrive (spec 024: no lost click). */
+  private pending: { readonly kind: MenuKind; readonly trigger: HTMLElement } | null = null;
+
+  constructor() {
+    effect(() => {
+      const menus = this.menus();
+      const pending = this.pending;
+      if (menus === undefined || pending === null) return;
+      this.pending = null;
+      // After the menus' own first render, so their popovers and sheets exist when the queued click opens one.
+      setTimeout(() => {
+        if (pending.trigger.isConnected) menus.toggle(pending.kind, pending.trigger);
+      });
+    });
+  }
 
   protected readonly workspaceName = computed(() => {
     const ws = this.state.ws();
@@ -80,37 +96,28 @@ export class ShellNav {
     return short === '' ? row.title : short;
   });
   protected readonly specOpen = computed(() => this.state.specId() !== null && !this.data.specMissing());
+  /** A spec route (`/w/:ws/s/:id/…`): only there is an Area select, enabled while the spec is listed. */
+  protected readonly specRoute = computed(() => this.state.specId() !== null);
   /**
-   * The workspace page the area trigger names; null without one, with a spec open, or for a workspace the server does
-   * not know (`ShellState` is route-only and calls any `/w/:ws` the Specs page), so the trigger stays disabled there.
+   * The workspace page the PAGE select names: Specs on a spec page, the board on a story page (`idea`, spec 008, no
+   * menu page), else the route's page; null for a workspace the server does not know (`ShellState` is route-only and
+   * calls any `/w/:ws` the Specs page), so the select stays disabled there.
    */
   protected readonly workspacePage = computed(() => {
-    const id = this.state.route().wsPage;
-    // A story page (`idea`) is no menu page: the trigger names the board it is reached from (spec 008). The tech page
-    // is one (spec 023, T20): the trigger shows `book-open` and "Tech" there.
-    if (id === null || this.specOpen() || this.data.workspaceMissing()) return null;
+    if (!this.inWorkspace() || this.data.workspaceMissing()) return null;
+    const id = this.specRoute() ? 'specs' : (this.state.route().wsPage ?? 'specs');
     return workspacePageById(id === 'idea' ? 'board' : id);
   });
-  /** The disabled trigger's reason: an unknown workspace has no pages to switch, elsewhere a spec is what is missing. */
-  protected readonly areaReason = computed(() =>
-    this.state.ws() !== null && this.data.workspaceMissing() ? 'shell.area.needsWorkspace' : 'shell.area.needsSpec',
-  );
   protected readonly areaKey = computed(() => `shell.areas.${this.state.area() ?? 'dashboard'}`);
   readonly expanded = computed(() => this.menus()?.expanded() ?? CLOSED);
   /** From 1120 px (the wide tier) the full prototype header: the area pill sits on the rail. */
   protected readonly wide = computed(() => this.state.tier() === 'wide');
 
-  /** The overflow menu's area entry, the same three states as the wide pill; null outside a workspace. */
+  /** The overflow menu's area entry, the same two states as the wide select; null off a spec page. */
   protected readonly areaEntry = computed<AreaEntry | null>(() => {
-    if (!this.inWorkspace()) return null;
-    if (this.specOpen()) {
-      return { valueKey: this.areaKey(), ariaKey: 'shell.area.label', reasonKey: null };
-    }
-    const page = this.workspacePage();
-    if (page !== null) {
-      return { valueKey: page.labelKey, ariaKey: 'shell.area.pageLabel', reasonKey: null };
-    }
-    return { valueKey: 'shell.area.menu', ariaKey: 'shell.area.menu', reasonKey: this.areaReason() };
+    if (!this.specRoute()) return null;
+    if (this.specOpen()) return { valueKey: this.areaKey(), ariaKey: 'shell.area.label', reasonKey: null };
+    return { valueKey: 'shell.area.menu', ariaKey: 'shell.area.menu', reasonKey: 'shell.area.needsSpec' };
   });
 
   /** `/w/:ws`, or `/` (all workspaces) when none is open. */
@@ -137,6 +144,11 @@ export class ShellNav {
     if (menus === undefined || navigatesNatively(event)) {
       // Until the menus have loaded, the settings button still leads somewhere: the settings page.
       if (menus === undefined && kind === 'settings') void this.router.navigate(['/settings']);
+      // A button trigger (PAGE, area) has no href to fall back on: its menu opens once the menus arrive.
+      else if (menus === undefined && !navigatesNatively(event) && event.currentTarget instanceof HTMLButtonElement) {
+        event.preventDefault();
+        this.pending = { kind, trigger: event.currentTarget };
+      }
       return;
     }
     event.preventDefault();

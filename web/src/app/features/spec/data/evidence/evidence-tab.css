@@ -242,3 +242,9 @@ app-evidence-tab .evidence-prose pre {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
 }
+
+/* Prototype `.open-link` under the empty state: "What counts as evidence →". */
+.open-link {
+  color: var(--disp-text);
+  font-weight: 500;
+}

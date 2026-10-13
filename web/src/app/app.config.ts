@@ -15,6 +15,7 @@ import { CATALOGUES, isLang, LANGS } from '../i18n/catalogues';
 import { routes } from './app.routes';
 import { LanguageService } from './core/language.service';
 import { PALETTE_SOURCES } from './core/palette-sources';
+import { startScrollTop } from './core/scroll-top';
 import { SettingsService } from './core/settings.service';
 import { ThemeService } from './core/theme.service';
 import { featuresPaletteSource, milestonesPaletteSource } from './features/planning/planning-palette';
@@ -64,6 +65,8 @@ export const appConfig: ApplicationConfig = {
       loader: BundledTranslocoLoader,
     }),
     provideAppInitializer(startSettings),
+    // Spec 024: a new page opens at its top (the dashboard's `?spec=` preview and anchors keep their scroll).
+    provideAppInitializer(startScrollTop),
     // Spec 001's command-palette groups (T66); other specs add theirs with their own provider lines after this one.
     ...providePaletteGroups(),
     // Palette groups contributed by their features (plan 001 § "palette groups"): spec 003's Features and Milestones.

@@ -4,9 +4,8 @@ import { CARD_EDGE } from '../board/board-card';
 import {
   type DiagramLabels,
   FIGURE,
-  ROLE_EDGE,
-  roleOf,
   SHIELD_CHECK,
+  STAGE_EDGE,
   transitionList,
   type WorkflowLayout,
   workflowLayout,
@@ -125,7 +124,7 @@ describe('workflowLayout', () => {
   });
 
   it('colours each node’s left edge by its stage’s role, the tokens the board’s card edges use', () => {
-    for (const stage of ALL_STAGES) expect(ROLE_EDGE[roleOf(stage)], stage).toBe(CARD_EDGE[stage]);
+    for (const stage of ALL_STAGES) expect(STAGE_EDGE[stage], stage).toBe(CARD_EDGE[stage]);
     const layout = workflowLayout(defaultWorkflowRow('feature'), LABELS);
     expect(node(layout, 'build').role).toBe('moving');
     expect(node(layout, 'review').role).toBe('waits');

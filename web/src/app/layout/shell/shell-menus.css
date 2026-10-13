@@ -9,6 +9,28 @@
   --ui-popover-width: 320px;
 }
 
+/* The prototype's `.pop-head eyebrow` and `.pop-sep` (pop-ws, pop-specs). */
+.menu-head {
+  margin: 0;
+  padding: 8px 12px 4px;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.picker-sep {
+  block-size: 1px;
+  margin-block: 4px;
+  background: var(--line);
+}
+
+.entry-kbd {
+  justify-self: end;
+}
+
 .picker ul {
   display: grid;
   gap: 4px;
@@ -42,11 +64,10 @@
   cursor: default;
 }
 
-.picker-all,
-.entry-id,
 .entry-check {
   color: var(--disp-ink);
 }
+
 
 .entry-name {
   overflow: hidden;
@@ -63,6 +84,7 @@
 }
 
 .entry-id {
+  color: var(--muted-ink);
   font-family: var(--font-mono);
   font-size: 12px;
   font-variant-numeric: tabular-nums;

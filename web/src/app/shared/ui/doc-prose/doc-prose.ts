@@ -1,12 +1,19 @@
 import {
   afterRenderEffect,
+  ApplicationRef,
   ChangeDetectionStrategy,
   Component,
+  type ComponentRef,
   computed,
+  createComponent,
   DestroyRef,
   type ElementRef,
+  EnvironmentInjector,
   inject,
+  Injector,
   input,
+  signal,
+  untracked,
   viewChild,
   ViewEncapsulation,
 } from '@angular/core';
@@ -16,8 +23,11 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { DocsPage, MermaidFigure } from '../../../../../../core/src/files';
 import { ThemeService } from '../../../core/theme.service';
+import { UiDialog } from '../overlay/dialog';
 import { UiDisclosure } from '../overlay/disclosure';
-import { accentMermaidNodes, fitMermaid, MERMAID_LOADER, type MermaidApi, mermaidConfig, themeVariables } from './mermaid';
+import { UiDiagramToolbar } from './diagram-toolbar';
+import { DiagramZoom, panWithMouse, zoomDiagram } from './diagram-zoom';
+import { accentMermaidNodes, capAtNaturalWidth, fitMermaid, MERMAID_LOADER, type MermaidApi, mermaidConfig, themeVariables } from './mermaid';
 
 let nextRenderId = 0;
 
@@ -27,14 +37,17 @@ let nextRenderId = 0;
  * disclosure above the prose otherwise), and enhances the figures in place: tables become labelled scroll regions,
  * missing images get a note, mermaid sources are drawn client-side from the lazily loaded pinned package and redrawn
  * when the theme changes. A drawn diagram scales to its container until its labels would fall below 12 px; past that
- * it keeps its natural width and scrolls sideways as a labelled region, like a table (`fitMermaid`). With `assetUrl`, spec-folder images (`data-spec-asset`) are pointed at that URL.
+ * it keeps its natural width and scrolls sideways as a labelled region, like a table (`fitMermaid`). Each drawn diagram
+ * carries the toolbar of ISC-154.1 (`ui-diagram-toolbar`, mounted into the figure): zoom in steps from 50 to 300 %,
+ * the zoomed figure scrolling inside its frame, and full screen in a modal `ui-dialog` drawing the same source again.
+ * With `assetUrl`, spec-folder images (`data-spec-asset`) are pointed at that URL.
  *
  * Not encapsulated: the prose is `[innerHTML]`, which Angular's emulated encapsulation cannot reach; every selector in
  * `doc-prose.css` starts with `ui-doc-prose`.
  */
 @Component({
   selector: 'ui-doc-prose',
-  imports: [NgTemplateOutlet, TranslocoPipe, UiDisclosure],
+  imports: [NgTemplateOutlet, TranslocoPipe, UiDialog, UiDiagramToolbar, UiDisclosure],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   templateUrl: './doc-prose.html',
@@ -48,6 +61,9 @@ export class UiDocProse {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly loadMermaid = inject(MERMAID_LOADER);
+  private readonly appRef = inject(ApplicationRef);
+  private readonly environment = inject(EnvironmentInjector);
+  private readonly injector = inject(Injector);
 
   readonly page = input.required<DocsPage>();
   /** The wide tier: the TOC is a sticky nav beside the prose instead of a disclosure above it. */
@@ -72,12 +88,41 @@ export class UiDocProse {
   /** Each drawn diagram box and its region name; the observer refits a box whenever its container width changes. */
   private readonly diagramLabels = new Map<Element, string>();
   private diagramResize: ResizeObserver | null = null;
+  /** Each enhanced figure's toolbar and zoom; a toolbar whose figure left the DOM (a new page) is destroyed. */
+  private readonly diagramTools = new Map<HTMLElement, { toolbar: ComponentRef<UiDiagramToolbar>; zoom: DiagramZoom }>();
+  /** The diagram shown full screen: its title, its source, the SVG once drawn, and its own zoom (fitted at 100 %). */
+  protected readonly fullscreen = signal<FullscreenDiagram | null>(null);
+  private readonly fullscreenFrame = viewChild<ElementRef<HTMLElement>>('fullscreenFrame');
+  private fullscreenResize: ResizeObserver | null = null;
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
       this.renderRun += 1;
       this.diagramResize?.disconnect();
       this.diagramLabels.clear();
+      this.fullscreenResize?.disconnect();
+      for (const { toolbar } of this.diagramTools.values()) toolbar.destroy();
+      this.diagramTools.clear();
+    });
+    afterRenderEffect({
+      write: () => {
+        const frame = this.fullscreenFrame()?.nativeElement;
+        const view = this.fullscreen();
+        if (!frame || !view?.svg) return;
+        // Mermaid's own output under `securityLevel: 'strict'`, as in the figure (drawMermaid).
+        frame.innerHTML = view.svg;
+        const drawn = frame.querySelector<SVGSVGElement>(':scope > svg');
+        if (drawn) {
+          accentMermaidNodes(drawn);
+          capAtNaturalWidth(drawn);
+        }
+        panWithMouse(frame);
+        untracked(() => view.zoom.refresh()); // the level is read, not tracked: a zoom step must not redraw
+        if (typeof ResizeObserver !== 'function') return;
+        this.fullscreenResize ??= new ResizeObserver(() => this.fullscreen()?.zoom.refresh());
+        this.fullscreenResize.disconnect();
+        this.fullscreenResize.observe(frame);
+      },
     });
     afterRenderEffect({
       write: () => {
@@ -114,7 +159,7 @@ export class UiDocProse {
    * Fits a drawn diagram to its container now (one measurement after the SVG landed) and again on every resize of its
    * box, so a tier change or a panel resize re-decides between scaling and the natural-width scroll region.
    */
-  private watchDiagram(box: HTMLElement, label: string): void {
+  private watchDiagram(box: HTMLElement, label: string, zoom: DiagramZoom): void {
     for (const known of this.diagramLabels.keys()) {
       if (known.isConnected) continue;
       this.diagramResize?.unobserve(known);
@@ -122,11 +167,15 @@ export class UiDocProse {
     }
     this.diagramLabels.set(box, label);
     fitMermaid(box, label);
+    zoom.refresh();
     if (typeof ResizeObserver !== 'function') return;
     this.diagramResize ??= new ResizeObserver((entries) => {
       for (const entry of entries) {
         const name = this.diagramLabels.get(entry.target);
-        if (name !== undefined && entry.target instanceof HTMLElement) fitMermaid(entry.target, name);
+        if (name === undefined || !(entry.target instanceof HTMLElement)) continue;
+        fitMermaid(entry.target, name);
+        const figure = entry.target.closest('figure');
+        if (figure instanceof HTMLElement) this.diagramTools.get(figure)?.zoom.refresh();
       }
     });
     this.diagramResize.observe(box);
@@ -143,6 +192,7 @@ export class UiDocProse {
     }
     if (run !== this.renderRun) return;
     mermaid.initialize(mermaidConfig(theme, themeVariables(host)));
+    this.releaseTools();
     for (const figure of figures) {
       const element = host.querySelector<HTMLElement>(`figure.mermaid-figure[data-figure="${figure.index}"]`);
       if (!element) continue;
@@ -158,16 +208,84 @@ export class UiDocProse {
         // Mermaid's own output under `securityLevel: 'strict'` (DOMPurify-cleaned, no HTML labels, no click handlers).
         target.innerHTML = svg;
         const drawn = target.querySelector<SVGSVGElement>(':scope > svg');
-        if (drawn) accentMermaidNodes(drawn); // the Help figure's left accent edge (ISC-154)
+        if (drawn) {
+          accentMermaidNodes(drawn); // the Help figure's left accent edge (ISC-154)
+          capAtNaturalWidth(drawn); // fitted to the column at 100 %, never upscaled
+        }
         element.setAttribute('data-rendered', '');
         const caption = (element.querySelector('figcaption')?.textContent ?? figure.caption).trim();
-        this.watchDiagram(target, caption === '' ? this.transloco.translate('docs.figureRegion', { index: figure.index }) : caption);
+        const zoom = this.mountToolbar(element, target, figure, caption);
+        this.watchDiagram(target, caption === '' ? this.transloco.translate('docs.figureRegion', { index: figure.index }) : caption, zoom);
         element.removeAttribute('data-render-error');
       } catch {
         element.setAttribute('data-render-error', '');
       }
     }
   }
+
+  /** Destroys the toolbars of figures that are gone (the page changed); the remaining ones stay. */
+  private releaseTools(): void {
+    for (const [figure, { toolbar }] of this.diagramTools) {
+      if (figure.isConnected) continue;
+      toolbar.destroy();
+      this.diagramTools.delete(figure);
+    }
+  }
+
+  /**
+   * Mounts the toolbar as the figure's first child, once per figure (a theme redraw keeps it and its level), and
+   * binds the frame's zoom and mouse pan. Returns the figure's zoom.
+   */
+  private mountToolbar(element: HTMLElement, frame: HTMLElement, figure: MermaidFigure, caption: string): DiagramZoom {
+    panWithMouse(frame);
+    const known = this.diagramTools.get(element);
+    if (known) return known.zoom;
+    const zoom = new DiagramZoom((factor) => {
+      const box = element.querySelector<HTMLElement>(':scope > .mermaid-svg');
+      if (box) zoomDiagram(box, factor, 'width');
+    });
+    const hostElement = element.ownerDocument.createElement('ui-diagram-toolbar');
+    element.prepend(hostElement);
+    const toolbar = createComponent(UiDiagramToolbar, {
+      environmentInjector: this.environment,
+      elementInjector: this.injector,
+      hostElement,
+    });
+    toolbar.setInput('zoom', zoom);
+    toolbar.instance.screenToggle.subscribe(() => void this.openFullscreen(figure.source, caption));
+    this.appRef.attachView(toolbar.hostView);
+    this.diagramTools.set(element, { toolbar, zoom });
+    return zoom;
+  }
+
+  /** Full screen: the dialog opens at once, the diagram is drawn again from its source under a fresh id. */
+  private async openFullscreen(source: string, caption: string): Promise<void> {
+    const zoom = new DiagramZoom((factor) => {
+      const frame = this.fullscreenFrame()?.nativeElement;
+      if (frame) zoomDiagram(frame, factor, 'contain');
+    });
+    const view: FullscreenDiagram = { title: caption || this.transloco.translate('docProse.diagram.label'), svg: null, zoom };
+    this.fullscreen.set(view);
+    try {
+      const mermaid = await this.loadMermaid();
+      const { svg } = await mermaid.render(`docs-mermaid-${++nextRenderId}`, source);
+      if (this.fullscreen() === view) this.fullscreen.set({ ...view, svg });
+    } catch {
+      // The figure in the page is still there; the dialog stays empty but closable.
+    }
+  }
+
+  /** The dialog's `open` model: any dismissal (Esc, backdrop, exit button) clears the full screen diagram. */
+  protected fullscreenChange(open: boolean): void {
+    if (!open) this.fullscreen.set(null);
+  }
+}
+
+/** The diagram shown in the full screen dialog. */
+interface FullscreenDiagram {
+  readonly title: string;
+  readonly svg: string | null;
+  readonly zoom: DiagramZoom;
 }
 
 /**

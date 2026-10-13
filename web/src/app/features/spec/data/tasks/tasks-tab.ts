@@ -18,11 +18,11 @@ import { ShellData } from '../../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../../shared/icons/icon';
 import { UiChip } from '../../../../shared/ui/chip/chip';
+import { chipIcon } from '../../../../shared/ui/chip/chip-icons';
 import { ToastService } from '../../../../shared/ui/toast/toast';
 import { type CheckEvent, type CheckState, checkBlock, IDLE, landedDelta, nextCheckState, rowChecked, withCheck } from './checkbox';
 import { UiEmptyState } from '../../../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../../../shared/ui/filter-chips/filter-chips';
-import { UiIdChip } from '../../../../shared/ui/id-chip/id-chip';
 import { UiRovingItem, UiRovingList } from '../../../../shared/ui/roving-list.directive';
 import type { FrameCard } from '../../../../../../../core/src/files';
 import { taskActorsOf } from '../../live/live-frame';
@@ -90,13 +90,14 @@ const probeText = (probe: string): string => (/^`[^`]*`$/.test(probe) ? probe.sl
  */
 @Component({
   selector: 'app-tasks-tab',
-  imports: [RouterLink, TaskActors, TranslocoPipe, UiChip, UiEmptyState, UiFilterChips, UiIcon, UiIdChip, UiRovingItem, UiRovingList],
+  imports: [RouterLink, TaskActors, TranslocoPipe, UiChip, UiEmptyState, UiFilterChips, UiIcon, UiRovingItem, UiRovingList],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'tasks' },
   templateUrl: './tasks-tab.html',
   styleUrl: './tasks-tab.css',
 })
 export class TasksTab {
+  protected readonly chipIcon = chipIcon;
   private readonly api = inject(ApiClient);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);

@@ -11,6 +11,7 @@ import { ShellState } from '../../layout/shell/shell-state.service';
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
+import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
 import { Brief, type BriefModel } from './brief/brief';
 import { ContextRail } from './context-rail/context-rail';
 import type { DashboardView } from './context-rail/dashboard-view';
@@ -41,7 +42,7 @@ import { holdNewRows, type ListQuery, listQueryParams, parseListQuery, readArchi
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [TranslocoPipe, NotFound, UiNotice, UiPageHead, UiSheet, KpiBand, Brief, ContextRail, SpecInspector, SpecTable, WarningsPanel, IdeasPanel],
+  imports: [TranslocoPipe, NotFound, UiNotice, UiPageHead, UiSheet, UiWsBadge, KpiBand, Brief, ContextRail, SpecInspector, SpecTable, WarningsPanel, IdeasPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.css',

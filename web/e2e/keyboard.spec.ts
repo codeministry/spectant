@@ -360,12 +360,17 @@ test.describe('keyboard help on the workspace dashboard', () => {
     await page.keyboard.press('g');
     await page.keyboard.press('a');
     await expect(page).toHaveURL(/\/$/);
+    // spec 024: overview without lists (principal 2026-10-13): a column holds no spec rows any more, so l and h step
+    // between the columns' workspace links (the cover link first).
     const columns = page.locator('app-workspace-column');
-    await expect(columns.nth(1).locator('a.d-row').nth(1)).toBeVisible();
-    await columns.nth(0).locator('a.d-row').nth(1).focus();
+    await expect(page.locator('app-workspace-column a.d-row')).toHaveCount(0);
+    const lead = (i: number) => columns.nth(i).locator('a[href]').first();
+    await expect(lead(1)).toBeVisible();
+    await expect(lead(1)).toHaveAttribute('href', /^\/w\/[^/]+$/);
+    await lead(0).focus();
     await page.keyboard.press('l');
-    await expect(columns.nth(1).locator('a.d-row').nth(1)).toBeFocused();
+    await expect(lead(1)).toBeFocused();
     await page.keyboard.press('h');
-    await expect(columns.nth(0).locator('a.d-row').nth(1)).toBeFocused();
+    await expect(lead(0)).toBeFocused();
   });
 });

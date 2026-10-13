@@ -12,6 +12,7 @@ import { DemoData, type DemoLibraryEntry, type DemoLibraryType } from '../../sha
 import { UiButton } from '../../shared/ui/button/button';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiChip } from '../../shared/ui/chip/chip';
+import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../shared/ui/filter-chips/filter-chips';
 import { UiNotice } from '../../shared/ui/notice/notice';
@@ -63,7 +64,7 @@ const isType = (value: string): value is DemoLibraryType => (LIBRARY_TYPES as re
  */
 @Component({
   selector: 'app-library-page',
-  imports: [RouterLink, TranslocoPipe, UiButton, UiCard, UiChip, UiEmptyState, UiFilterChips, UiIcon, UiNotice, UiPageHead],
+  imports: [RouterLink, TranslocoPipe, UiButton, UiCard, UiChip, UiEmptyState, UiFilterChips, UiIcon, UiNotice, UiPageHead, UiWsBadge],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {

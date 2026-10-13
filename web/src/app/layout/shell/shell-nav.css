@@ -1,5 +1,5 @@
 /*
- * The rail-selects (prototype `.rail-select`, `.rail-divider`; spec 024 T34): Workspace · Spec · Area. From 1120 px they
+ * The rail-selects (prototype `.rail-select`, `.rail-divider`; spec 024 T34): Workspace · Page · Spec · Area (T80). They
  * sit on the header's brand rail after the logo, on every width (spec 024 T76); below 1120 px without the Area select.
  *
  * Labelled selects (ISC-140.2): every segment is its 9 px mono label (`[data-pill-label]`) and its 13/650 value
@@ -18,7 +18,7 @@
   min-inline-size: 0;
 }
 
-/* The rail dividers, 1 × 18 px: logo | workspace (wide only), workspace | spec, spec | area. */
+/* The rail dividers, 1 × 18 px: logo | workspace (wide only), workspace | page, page | spec, spec | area. */
 .pickers::before,
 .pill-divider {
   flex-shrink: 0;
@@ -126,7 +126,8 @@
   max-inline-size: 180px;
 }
 
-.area .pill-value {
+.area .pill-value,
+.page .pill-value {
   color: var(--disp-text);
 }
 
@@ -138,19 +139,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The prototype's area select carries no dot; the workspace page's icon stays (spec 023, T20). */
+/* The prototype's area select carries no dot; the closed PAGE select no icon (spec 024 T80, principal 2026-10-13). */
 .area-dot {
   display: none;
 }
 
 .pick-id,
-.page-icon,
 .chevron {
   flex-shrink: 0;
-}
-
-.page-icon {
-  color: var(--disp-text);
 }
 
 .chevron {

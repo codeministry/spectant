@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import harbor from '../../../../../../core/fixtures/harbor.golden.json';
 import { CATALOGUES, LANGS } from '../../../../i18n/catalogues';
+import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { SpecTable } from './spec-table';
 import { DEFAULT_QUERY, type ListQuery, readArchiveRows, readSpecRows } from './spec-table-model';
 
@@ -174,7 +175,7 @@ describe('SpecTable (prototype port, T89)', () => {
 // `ui-priority` before the stage track (006 P1, 002 P2, every other row P3), and `ui-reason` under every row with the
 // golden's `nextReason` verbatim and its `nextCommand` as the chip, outside the row link.
 describe('SpecTable rows on the harbor golden (T136, T137)', () => {
-  const GOLDEN = harbor as unknown as { specs: ReadonlyArray<{ id: string; type: string; nextReason: string; nextCommand: string | null }> };
+  const GOLDEN = harbor as unknown as { specs: ReadonlyArray<{ id: string; type: string; stage: string; nextReason: string; nextCommand: string | null }> };
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -220,16 +221,25 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
     }
   });
 
-  it("puts every row's nextReason verbatim in ui-reason with its next command, outside the row link", async () => {
+  // spec 024 (principal 2026-10-13, "Hybrid"): only a waiting spec's row carries its reason, without the command chip,
+  // which moved to the rail (design B23/B24); ISC-122.3's phrase is unchanged.
+  it("puts a waiting row's nextReason verbatim in ui-reason outside the row link, and no reason in any other row", async () => {
     const host = await renderHarbor();
+    let waiting = 0;
     for (const spec of GOLDEN.specs) {
       const reason = host.querySelector<HTMLElement>(`ui-reason[data-reason="${spec.id}"]`);
+      if (!WAITING_STAGES.has(spec.stage as Stage)) {
+        expect(reason, spec.id).toBeNull();
+        continue;
+      }
+      waiting += 1;
       expect(reason, spec.id).not.toBeNull();
       expect(reason?.hasAttribute('data-compact')).toBe(true);
       expect(reason?.querySelector('.visually-hidden')?.textContent).toBe(spec.nextReason);
       expect(reason?.closest('a')).toBeNull();
       expect(reason?.parentElement).toBe(rowOf(host, spec.id).parentElement);
-      expect(reason?.querySelector('ui-command-chip code')?.textContent ?? null).toBe(spec.nextCommand);
+      expect(reason?.querySelector('ui-command-chip')).toBeNull();
     }
+    expect(waiting).toBeGreaterThan(0);
   });
 });

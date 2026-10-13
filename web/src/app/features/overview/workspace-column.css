@@ -1,5 +1,5 @@
-/* Prototype styles.css:465-483 (workspace-column, kpi-strip, dense-list, next-row, open-link); the ws-head and
-   its badge live in `ws-identity.ts` (T54). Colour names mapped to the app's roles: cyan → --color-primary / --disp-text, orange → --color-warning. */
+/* Prototype styles.css:465-483 (workspace-column, kpi-strip); the ws-head and its badge live in `ws-identity.ts` (T54).
+   Next up, the dense list and the open link are gone from `/` (spec 024 T79, principal 2026-10-13). */
 :host {
   display: flex;
   flex-direction: column;
@@ -54,92 +54,4 @@
   font-size: 16px;
   font-weight: 500;
   letter-spacing: 0;
-}
-
-.next {
-  display: grid;
-  gap: 8px;
-}
-
-.next-row {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  gap: 4px 8px;
-  padding: 10px 12px;
-  border-inline-start: 3px solid var(--color-primary);
-}
-
-.next-row + .next-row {
-  border-block-start: 1px solid var(--line);
-}
-
-.next-row .cmd {
-  grid-column: 2;
-  min-inline-size: 0;
-}
-
-.id {
-  color: var(--disp-text);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-
-.t {
-  overflow: hidden;
-  min-inline-size: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.empty-line {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 12px;
-  color: var(--muted-ink);
-}
-
-.empty-line ui-icon {
-  color: var(--done-text);
-}
-
-.d-row {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-  block-size: 40px;
-  padding-inline: 12px;
-  border-block-end: 1px solid var(--line);
-  color: inherit;
-  font-size: 13px;
-  text-decoration: none;
-}
-
-.d-row:last-child {
-  border-block-end: 0;
-}
-
-.d-row:hover {
-  background: var(--color-base-300);
-}
-
-.open-link {
-  align-self: start;
-  border-radius: var(--radius-field);
-  color: var(--disp-text);
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.open-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-@media (forced-colors: active) {
-  .next-row {
-    border-inline-start-color: CanvasText;
-  }
 }

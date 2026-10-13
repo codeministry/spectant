@@ -21,6 +21,7 @@ export const ICON_NAMES = [
   'lock',
   'maximize-2',
   'minimize-2',
+  'monitor',
   'moon',
   'notebook-pen',
   'panel-left-close',
@@ -101,6 +102,7 @@ export const ICON_NAMES = [
   'git-branch',
   'git-commit-horizontal',
   'hand',
+  'circle-pause',
   'image',
   'loader-circle',
   'message-circle-more',
@@ -117,4 +119,8 @@ export const ICON_NAMES = [
   'wifi-off',
   'workflow',
   'wrench',
+  // Spec 024: the mermaid diagram toolbar (ISC-154.1; maximize-2 and minimize-2 are above).
+  'zoom-in',
+  'zoom-out',
+  'rotate-ccw',
 ] as const;

@@ -32,6 +32,8 @@ export const MONO_GROUPS: ReadonlySet<string> = new Set(['nextUp', 'services']);
  */
 export function leadIcon(group: string, entry: PaletteEntry): IconName | null {
   if (group === 'recent') return 'clock';
+  // Next up leads with `terminal` and the command, as the prototype draws it; the id stays a search key.
+  if (group === 'nextUp') return 'terminal';
   if (entry.chip) return null;
   if (group === 'actions') return ACTION_ICONS[entry.id] ?? 'layers';
   return GROUP_ICONS[group] ?? null;

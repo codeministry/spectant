@@ -56,11 +56,10 @@ const open = async (page: Page, hash = ''): Promise<void> => {
   await expect(page.locator('ol.rows > li').first()).toBeVisible();
 };
 const card = (page: Page, slug: string): Locator => page.locator(`ol.rows > li:has(article[id="m-${slug}"])`);
+// spec 024: PAGE select (principal 2026-10-13): the workspace pages are the PAGE select's menu, in the row on every width
 const areaMenu = async (page: Page): Promise<Locator> => {
-  // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
-  const area = page.locator('header [data-control="area"]');
-  await (await area.isVisible() ? area : await headerControl(page, 'area')).click();
-  const menu = page.getByRole('navigation', { name: 'Areas' });
+  await (await headerControl(page, 'page')).click();
+  const menu = page.getByRole('navigation', { name: 'Pages' });
   await expect(menu).toBeVisible();
   return menu;
 };
@@ -85,7 +84,8 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
     test('lantern’s area menu lists Specs, Board, Features, Tech and Library, no Milestones', async ({ page }) => {
       await page.goto('/w/lantern');
       // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
-      await expect(await headerControl(page, 'area')).toBeVisible();
+      // spec 024: PAGE select (principal 2026-10-13)
+      await expect(await headerControl(page, 'page')).toBeVisible();
       const menu = await areaMenu(page);
       // Spec 024 (T57, ISC-150.1): the Library is the sixth registry page.
       await expect(menu.locator('[data-page]')).toHaveCount(5);
@@ -120,7 +120,7 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         await expect(article.locator('h2 ui-icon[name="flag"]')).toHaveCount(1);
         await expect(article.locator('h2 .name')).toHaveText(milestone.name);
       }
-      await expect(page.locator('h1')).toContainText('Milestones in harbor');
+      await expect(page.locator('h1')).toContainText('Milestones · harbor');
     });
 
     test('the date and state per row: golden state word, day count from the pinned clock', async ({ page }) => {
@@ -264,14 +264,15 @@ test.describe('milestones page: the area menu', () => {
     page,
   }) => {
     await page.goto('/w/harbor');
-    await expect(page.locator('header [data-control="area"]')).toBeVisible();
+    // spec 024: PAGE select (principal 2026-10-13)
+    await expect(page.locator('header [data-control="page"]')).toBeVisible();
     let menu = await areaMenu(page);
     // Spec 024 (T57, ISC-150.1): the Library is the sixth registry page.
     expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'milestones', 'tech', 'library']);
     await menu.locator('[data-page="milestones"]').click();
     await expect(page).toHaveURL(/\/w\/harbor\/milestones$/u);
     await expect(page.locator('ol.rows > li').first()).toBeVisible();
-    await expect(page.locator('header [data-control="area"]')).toContainText(en.shell.pages.milestones);
+    await expect(page.locator('header [data-control="page"]')).toContainText(en.shell.pages.milestones);
     menu = await areaMenu(page);
     await expect(menu.locator('[aria-current="page"]')).toHaveCount(1);
     await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('data-page', 'milestones');

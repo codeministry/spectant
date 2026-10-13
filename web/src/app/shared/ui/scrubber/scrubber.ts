@@ -46,7 +46,11 @@ const STEP_KEYS: Readonly<Partial<Record<string, (value: number, max: number) =>
   styles: `
     :host { display: flex; gap: 8px; align-items: center; min-inline-size: 0; block-size: 56px; }
     .step-buttons { display: flex; flex: none; gap: 4px; }
-    .step-button { inline-size: 32px; block-size: 32px; min-block-size: 32px; padding: 0; }
+    /* spec 024: the prototype .btn-icon.sm step buttons, 32 px on the card surface with a hairline border. */
+    .step-button { inline-size: 32px; block-size: 32px; min-block-size: 32px; padding: 0; border: 1px solid var(--line); border-radius: var(--radius-field); background: var(--color-base-100); }
+    /* No daisyUI button shadow at rest; the keyboard ring (primitives.css) stays. */
+    .step-button:not(:focus-visible) { box-shadow: none; }
+    .step-button:hover:not(:disabled) { background: var(--color-base-300); }
     .step-button svg { inline-size: 16px; block-size: 16px; fill: currentcolor; }
     .rail { position: relative; flex: 1; min-inline-size: 0; block-size: 32px; }
     .track, .fill { position: absolute; inset-block-start: 50%; block-size: 4px; margin-block-start: -2px; border-radius: 999px; }
@@ -73,13 +77,13 @@ const STEP_KEYS: Readonly<Partial<Record<string, (value: number, max: number) =>
   `,
   template: `
     <div class="step-buttons">
-      <button type="button" class="btn btn-ghost btn-square step-button" data-step="previous" [attr.aria-label]="'scrubber.previous' | transloco" [disabled]="value() <= 0" (click)="go(value() - 1)">
+      <button type="button" class="btn btn-square step-button" data-step="previous" [attr.aria-label]="'scrubber.previous' | transloco" [disabled]="value() <= 0" (click)="go(value() - 1)">
         <svg data-icon-exempt viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10.5 3.5 4.5 8l6 4.5z" /></svg>
       </button>
-      <button type="button" class="btn btn-ghost btn-square step-button" data-step="play" [attr.aria-label]="'scrubber.play' | transloco" [attr.aria-pressed]="playing()" (click)="playing.set(!playing())">
+      <button type="button" class="btn btn-square step-button" data-step="play" [attr.aria-label]="'scrubber.play' | transloco" [attr.aria-pressed]="playing()" (click)="playing.set(!playing())">
         <svg data-icon-exempt viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4.5 2.5v11l9-5.5z" /></svg>
       </button>
-      <button type="button" class="btn btn-ghost btn-square step-button" data-step="next" [attr.aria-label]="'scrubber.next' | transloco" [disabled]="value() >= max()" (click)="go(value() + 1)">
+      <button type="button" class="btn btn-square step-button" data-step="next" [attr.aria-label]="'scrubber.next' | transloco" [disabled]="value() >= max()" (click)="go(value() + 1)">
         <svg data-icon-exempt viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5.5 3.5 6 4.5-6 4.5z" /></svg>
       </button>
     </div>

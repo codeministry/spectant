@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal, ViewEncapsulation } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { DocName, DocsPage } from '../../../../../../core/src/files';
 import { specRoutes } from '../../../../../../server/src/spec-routes.contract';
@@ -35,7 +35,7 @@ const STATUS_TONE: Readonly<Record<string, Tone>> = { approved: 'success', draft
  */
 @Component({
   selector: 'app-docs-tab',
-  imports: [TranslocoPipe, UiCard, UiChip, UiCommandChip, UiDialog, UiDocProse, UiEmptyState, UiIcon, UiNotice, UiSkeleton],
+  imports: [RouterLink, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiDialog, UiDocProse, UiEmptyState, UiIcon, UiNotice, UiSkeleton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   templateUrl: './docs-tab.html',
@@ -143,17 +143,18 @@ export class DocsTab {
   }
 
   /** Frontmatter as chips: every key on the constitution, `status` (toned) elsewhere; `updated` is its own line. */
-  protected readonly metaChips = computed<ReadonlyArray<{ label: string; tone: Tone }>>(() => {
+  protected readonly metaChips = computed<ReadonlyArray<{ label: string; tone: Tone; plain: boolean }>>(() => {
     const front = this.page()?.frontmatter ?? null;
     if (front === null) return [];
     if (this.name === 'constitution') {
-      return Object.entries(front).map(([key, value]) => ({ label: `${key}: ${value}`, tone: 'neutral' }));
+      return Object.entries(front).map(([key, value]) => ({ label: `${key}: ${value}`, tone: 'neutral', plain: true }));
     }
     const status = front['status'];
-    const chips: Array<{ label: string; tone: Tone }> = status ? [{ label: status, tone: STATUS_TONE[status] ?? 'neutral' }] : [];
+    // `status: approved` as the prototype's Plan shows it (`h.chip("status: approved", "done")`).
+    const chips: Array<{ label: string; tone: Tone; plain: boolean }> = status ? [{ label: `status: ${status}`, tone: STATUS_TONE[status] ?? 'neutral', plain: false }] : [];
     // The design pass's own keys, plain, as the prototype's Design tab shows them.
     if (this.name === 'design') {
-      for (const key of DESIGN_KEYS) if (front[key]) chips.push({ label: `${key}: ${front[key]}`, tone: 'neutral' });
+      for (const key of DESIGN_KEYS) if (front[key]) chips.push({ label: `${key}: ${front[key]}`, tone: 'neutral', plain: true });
     }
     return chips;
   });

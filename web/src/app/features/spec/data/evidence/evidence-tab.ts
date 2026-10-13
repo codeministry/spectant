@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
+import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { EvidenceFile, EvidenceListing } from '../../../../../../../core/src/files';
 import { renderMarkdown } from '../../../../../../../core/src/markdown';
@@ -67,7 +68,7 @@ const ICON: Record<PreviewKind, IconName> = { image: 'layout-grid', markdown: 'b
  */
 @Component({
   selector: 'app-evidence-tab',
-  imports: [TranslocoPipe, UiEmptyState, UiIcon, UiIconButton],
+  imports: [RouterLink, TranslocoPipe, UiEmptyState, UiIcon, UiIconButton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: { 'data-view': 'evidence' },

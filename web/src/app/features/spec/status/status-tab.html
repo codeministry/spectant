@@ -184,7 +184,14 @@
           </ui-section-header>
           @if (open(); as o) {
             @if (o.claims.length === 0 && o.fog.length === 0) {
-              <p class="muted">{{ 'status.open.none' | transloco }}</p>
+              <div class="status-empty" data-status-empty>
+                <p class="status-empty-title"><ui-icon name="circle-check" [size]="16" />{{ 'status.open.allClosed' | transloco }}</p>
+                @if (m.next.command; as command) {
+                  <p class="muted">{{ 'status.open.readyFor' | transloco }} <code class="ref">{{ command }}</code></p>
+                } @else {
+                  <p class="muted">{{ 'status.open.none' | transloco }}</p>
+                }
+              </div>
             }
             @for (group of openGroups(); track group.state) {
               <div class="open-group" [attr.data-open-group]="group.state">
@@ -253,6 +260,12 @@
             @if (entries.length === 0) {
               <p class="muted">{{ 'status.activity.none' | transloco }}</p>
             } @else {
+              @if (roundSummary(); as round) {
+                <p class="round-sum" data-round-summary>
+                  <b>{{ round.lead }}</b>@if (round.rest) { · {{ round.rest }} }
+                  <time class="when" [attr.datetime]="round.ts || null">{{ time(round.ts) }}</time>
+                </p>
+              }
               <ul class="rows">
                 @for (entry of entries; track $index) {
                   <li class="activity-row" data-activity [attr.data-kind]="entry.kind">

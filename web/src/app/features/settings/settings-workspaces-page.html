@@ -49,7 +49,8 @@
       </div>
       <p class="hint">
         {{ 'settingsWorkspaces.add.hint' | transloco }}
-        <ui-kbd>Enter</ui-kbd>
+        <ui-kbd>↓</ui-kbd><ui-kbd>↑</ui-kbd><ui-kbd>Enter</ui-kbd> {{ 'settingsWorkspaces.add.completes' | transloco }}
+        <ui-kbd>~</ui-kbd> {{ 'settingsWorkspaces.add.expands' | transloco }}
       </p>
     </div>
 
@@ -83,7 +84,7 @@
             <span class="sdot" aria-hidden="true"></span>{{ 'settingsWorkspaces.status.' + state | transloco }}
           </div>
           <div class="ws-counts mono">
-            {{ 'settingsWorkspaces.row.counts' | transloco: { specs: row.specs, active: row.active } }} ·
+            {{ (row.specs === 1 ? 'settingsWorkspaces.row.countsOne' : 'settingsWorkspaces.row.counts') | transloco: { specs: row.specs, active: row.active } }} ·
             <ui-relative-time [date]="row.scanned" />
           </div>
           <button

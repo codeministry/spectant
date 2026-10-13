@@ -279,11 +279,10 @@ const fill = (template: string, params: Readonly<Record<string, string | number>
   Object.entries(params).reduce((text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)), template);
 const lanternUrl = (tab: Tab): RegExp => new RegExp(`/w/${LANTERN_WS}/tech/${tab}$`);
 
+// spec 024: PAGE select (principal 2026-10-13): the workspace pages are the PAGE select's menu, in the row on every width
 async function openAreaMenu(page: Page): Promise<Locator> {
-  // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
-  const area = page.locator('header [data-control="area"]');
-  await (await area.isVisible() ? area : await headerControl(page, 'area')).click();
-  const menu = page.locator('nav[aria-label="Areas"]');
+  await (await headerControl(page, 'page')).click();
+  const menu = page.locator('nav[aria-label="Pages"]');
   await expect(menu).toBeVisible();
   return menu;
 }
@@ -320,10 +319,11 @@ test.describe('reach', () => {
       test('the area menu lists Tech fifth with the KPI summary; it lands on overview, current in the menu and on the trigger', async ({ page }) => {
         await page.goto(`/w/${WS}`);
         // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
-        await expect(await headerControl(page, 'area')).toBeVisible();
+        // spec 024: PAGE select (principal 2026-10-13): Library sixth (T57)
+        await expect(await headerControl(page, 'page')).toBeVisible();
         let menu = await openAreaMenu(page);
         const entries = menu.locator('[data-page]');
-        expect(await entries.evaluateAll((all) => all.map((el) => el.getAttribute('data-page')))).toEqual(['specs', 'board', 'features', 'milestones', 'tech']);
+        expect(await entries.evaluateAll((all) => all.map((el) => el.getAttribute('data-page')))).toEqual(['specs', 'board', 'features', 'milestones', 'tech', 'library']);
         const tech = menu.locator('[data-page="tech"]');
         await expect(tech).toHaveAttribute('href', `/w/${WS}/tech`);
         await expect(tech.locator('.entry-name')).toHaveText(COPY.shell.pages.tech);
@@ -332,7 +332,7 @@ test.describe('reach', () => {
         await tech.click();
         await expect(page).toHaveURL(tabUrl('overview'));
         await expectOnlyPanel(page, 'overview');
-        await expect(page.locator('header [data-control="area"]')).toContainText(COPY.shell.pages.tech);
+        await expect(page.locator('header [data-control="page"]')).toContainText(COPY.shell.pages.tech);
         menu = await openAreaMenu(page);
         await expect(menu.locator('[aria-current="page"]')).toHaveCount(1);
         await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('data-page', 'tech');

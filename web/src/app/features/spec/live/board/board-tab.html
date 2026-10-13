@@ -27,6 +27,10 @@
         } @else {
           <div class="legend grow" role="group" data-legend [attr.aria-label]="'board.legend' | transloco">
             <ng-container [ngTemplateOutlet]="legendChips" />
+            <!-- spec 024: the prototype counts "n of m cards" and clears inside the legend (.legend .meta, .btn-icon.sm). -->
+            @if (filtered()) {
+              <ng-container [ngTemplateOutlet]="filteredTpl" />
+            }
           </div>
           <button
             type="button"
@@ -96,13 +100,8 @@
         </label>
       }
 
-      @if (filtered()) {
-        <p class="filtered" data-filtered>
-          <span class="mono">{{ 'board.filtered' | transloco: { shown: shownCards().length, total: allCards().length } }}</span>
-          <button type="button" class="btn btn-ghost btn-xs btn-square clear" data-clear-filters [attr.aria-label]="'board.filter.clear' | transloco" [attr.title]="'board.filter.clear' | transloco" (click)="clearFilters()">
-            <ui-icon name="x" [size]="14" />
-          </button>
-        </p>
+      @if (compact() && filtered()) {
+        <ng-container [ngTemplateOutlet]="filteredTpl" />
       }
 
       <div class="scrub">
@@ -235,6 +234,15 @@
   }
 </section>
 
+<ng-template #filteredTpl>
+  <p class="filtered" data-filtered>
+    <span class="mono">{{ 'board.filtered' | transloco: { shown: shownCards().length, total: allCards().length } }}</span>
+    <button type="button" class="btn-icon-sm clear" data-clear-filters [attr.aria-label]="'board.filter.clear' | transloco" [attr.title]="'board.filter.clear' | transloco" (click)="clearFilters()">
+      <ui-icon name="x" [size]="14" />
+    </button>
+  </p>
+</ng-template>
+
 <ng-template #legendChips>
   @for (item of legend(); track item.state) {
     <button type="button" class="lchip" [attr.data-legend-state]="item.state" [attr.aria-pressed]="item.pressed" (click)="toggleState(item.state)">
@@ -307,7 +315,7 @@
             }
           </div>
         } @else if (lane.needsYou.length === 0 && lane.total > 0 && !filtered()) {
-          <p class="lane-quiet" data-lane-quiet>{{ 'board.lane.quiet' | transloco }}</p>
+          <p class="lane-quiet" data-lane-quiet>{{ 'board.lane.quiet' | transloco }}@if (frame()?.kind !== 'dispatch' && nextCommand(); as next) {<span class="lane-next"> · {{ 'board.lane.next' | transloco }} <span class="mono">{{ next }}</span></span>}</p>
         }
         @if (lane.waiting.length > 0) {
           <div class="section" data-section="waiting">

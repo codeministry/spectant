@@ -72,6 +72,10 @@
   background: var(--held-ink);
 }
 
+.dot[data-dot="dashboard"] {
+  background: var(--color-primary);
+}
+
 .dot[data-dot="status"] {
   background: var(--color-warning);
 }

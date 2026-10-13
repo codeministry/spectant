@@ -29,7 +29,9 @@
     </div>
   }
   @case ('empty') {
-    <ui-empty-state icon="file-text" [heading]="'timeline.empty.heading' | transloco" [body]="'timeline.empty.body' | transloco" />
+    <ui-empty-state icon="clock" [heading]="'timeline.empty.heading' | transloco" [body]="'timeline.empty.body' | transloco">
+      <a class="open-link" data-empty-link routerLink="/help" fragment="moves">{{ 'timeline.empty.link' | transloco }}</a>
+    </ui-empty-state>
   }
   @case ('unserved') {
     <ui-empty-state icon="file-text" [heading]="'timeline.unserved.heading' | transloco" [body]="'timeline.unserved.body' | transloco" />
@@ -41,9 +43,10 @@
   }
   @case ('ok') {
     @if (days().length === 0) {
-      <ui-empty-state icon="file-text" [heading]="'timeline.filtered.heading' | transloco" [body]="'timeline.filtered.body' | transloco">
-        <button ui-button size="sm" (click)="clearKinds()">{{ 'timeline.filtered.clear' | transloco }}</button>
-      </ui-empty-state>
+      <p class="none-match" data-filtered-none>
+        {{ 'timeline.filtered.line' | transloco }}
+        <button ui-button variant="ghost" size="sm" (click)="clearKinds()">{{ 'timeline.filtered.clear' | transloco }}</button>
+      </p>
     } @else {
       <ol class="strand" uiRovingList [attr.aria-label]="'timeline.listLabel' | transloco">
         @for (day of days(); track day.key) {
@@ -96,7 +99,7 @@
                           · {{ row.entry.actor }}
                         }
                         @if (row.entry.derived) {
-                          <ui-chip data-derived-chip>{{ 'timeline.derived' | transloco }}</ui-chip>
+                          <ui-chip variant="plain" data-derived-chip>{{ 'timeline.derived' | transloco }}</ui-chip>
                         }
                       </span>
                     </ng-template>
@@ -110,7 +113,7 @@
                             <span class="body-line">{{ line }}</span>
                           }
                           @if (row.entry.kind === 'round') {
-                            <a class="board-link" data-open-board [routerLink]="boardLink()">{{ 'timeline.openBoard' | transloco }}</a>
+                            <a ui-button size="sm" class="board-link" data-open-board [routerLink]="boardLink()">{{ 'timeline.openBoard' | transloco }}</a>
                           }
                         </div>
                       </ui-disclosure>

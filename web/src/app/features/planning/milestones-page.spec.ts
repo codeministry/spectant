@@ -175,7 +175,7 @@ describe('MilestonesPage (T36, ISC-104)', () => {
     const root = await open('/w/harbor/milestones');
     const h1 = root.querySelector('h1#milestones');
     expect(h1?.getAttribute('tabindex')).toBe('-1');
-    expect(h1?.textContent.trim()).toBe('Milestones in harbor');
+    expect(h1?.textContent.trim()).toBe('Milestones · harbor');
     expect(h1?.querySelector('ui-term')).toBeNull();
     expect(root.querySelector('p.caption')?.textContent.trim()).toBe('Ordered by target date');
     // Three named rows; the earliest not complete is the late Harbor 0.9.

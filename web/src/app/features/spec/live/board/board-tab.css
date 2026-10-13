@@ -284,13 +284,13 @@
   color: var(--hover-text);
 }
 
+/* The prototype .empty-state: centred, 32 px, dashed. */
 .empty {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 8px;
-  align-items: center;
+  justify-items: center;
   margin: 0;
-  padding: 24px;
+  padding: 32px;
   border: 1px dashed var(--line);
   border-radius: var(--radius-card);
   color: var(--muted-ink);
@@ -437,12 +437,39 @@
   cursor: pointer;
 }
 
+/* The prototype .meta.lane-quiet: sans meta, the next command in mono. */
 .lane-quiet {
   margin: 0;
   color: var(--muted-ink);
-  font-family: var(--font-mono);
   font-size: 12px;
   line-height: 16px;
+}
+
+.lane-quiet .mono {
+  font-family: var(--font-mono);
+}
+
+/* The prototype .btn-icon.sm: 28 px, card surface, hairline border. */
+.btn-icon-sm {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 28px;
+  block-size: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.btn-icon-sm:hover {
+  background: var(--color-base-300);
+}
+
+.legend .filtered {
+  margin-inline-start: 4px;
 }
 
 .lane-stub {

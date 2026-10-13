@@ -25,3 +25,19 @@
     }
   </ol>
 </ng-template>
+
+<ui-dialog
+  class="diagram-dialog"
+  data-fullscreen
+  [open]="fullscreen() !== null"
+  (openChange)="fullscreenChange($event)"
+  [label]="fullscreen()?.title ?? ('docProse.diagram.label' | transloco)"
+>
+  @if (fullscreen(); as view) {
+    <div class="diagram-dialog-head">
+      <h2 class="diagram-dialog-title">{{ view.title }}</h2>
+      <ui-diagram-toolbar fullscreen [zoom]="view.zoom" (screenToggle)="fullscreenChange(false)" />
+    </div>
+    <div class="mermaid-svg diagram-dialog-frame" #fullscreenFrame></div>
+  }
+</ui-dialog>

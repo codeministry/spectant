@@ -110,6 +110,7 @@
     },
     "meta": "{{active}} aktiv · {{archived}} archiviert",
     "metaShort": "{{active}} · {{archived}} archiviert",
+    "countSegment": "{{count}} Specs",
     "typeMeta": "{{count}} {{type}} · {{archived}} archiviert",
     "filter": {
       "label": "Nach Phase filtern",
@@ -249,7 +250,9 @@
       "library": "Library öffnen",
       "settingsWorkspaces": "Einstellungen · Workspaces"
     },
-    "noMatch": "Kein Treffer für „{{query}}“ · versuchen Sie eine Spec-ID wie {{example}}"
+    "loading": "Index wird geladen …",
+    "noMatch": "Kein Treffer für „{{query}}“ · versuchen Sie eine Spec-ID wie {{example}}",
+    "wsSpecs": "{{count}} Specs"
   },
   "shortcuts": {
     "title": "Tastenkürzel",
@@ -313,6 +316,55 @@
       "de": "Deutsch"
     },
     "singleKey": "Einzeltasten-Kürzel",
+    "meta": "Im Datenverzeichnis der App gespeichert · gilt für jeden Workspace",
+    "actorsTable": {
+      "found": "Person-IDs in den Specs: {{ count }}",
+      "personId": "Person-ID",
+      "nameRequired": "Ein Anzeigename ist nötig",
+      "valid": "gültig"
+    },
+    "nav": {
+      "appearance": "Darstellung",
+      "actors": "Akteure",
+      "workspaces": "Workspaces",
+      "keyboard": "Tastatur",
+      "about": "Über"
+    },
+    "appearance": {
+      "intro": "Wie Spectant auf diesem Rechner aussieht. Nichts hier berührt ein Repository.",
+      "display": "Anzeige, noch nicht gespeichert",
+      "density": "Dichte",
+      "comfortable": "Bequem",
+      "compact": "Kompakt",
+      "reducedMotion": "Weniger Bewegung"
+    },
+    "workspacesCard": {
+      "registered": "{{ count }} registriert",
+      "readable": "{{ count }} lesbar",
+      "missing": "{{ count }} Ordner nicht gefunden",
+      "registry": "Register im Datenverzeichnis der App",
+      "manage": "Workspaces verwalten",
+      "manageMeta": "hinzufügen, umbenennen, umsortieren, entfernen"
+    },
+    "keyboard": {
+      "guide": "Ganze Anleitung",
+      "singleKeyHint": "Aus: nur ⌘K und Esc wirken.",
+      "palette": "Befehlspalette",
+      "dashboard": "Spec-Dashboard",
+      "step": "Vorige / nächste Spec",
+      "zen": "Zen-Modus",
+      "all": "Alle Kürzel"
+    },
+    "about": {
+      "loopback": "nur Loopback",
+      "guide": "Anleitung"
+    },
+    "states": {
+      "failedTitle": "Personen nicht gespeichert",
+      "conflictTitle": "Einstellungen in einem anderen Fenster geändert",
+      "conflictBody": "Nichts wurde geschrieben. Neu laden zeigt die gespeicherten Namen.",
+      "reload": "Neu laden"
+    },
     "actors": {
       "title": "Akteure",
       "intro": "Namen für die Personen-IDs in Ihren Specs, nur im Datenverzeichnis der App gespeichert. Eine ID ohne Namen erscheint als die ID selbst.",
@@ -339,6 +391,8 @@
       "namePlaceholder": "mein-repo",
       "button": "Hinzufügen",
       "hint": "Einen Pfad einfügen, der Name füllt sich selbst.",
+      "completes": "vervollständigt,",
+      "expands": "erweitert.",
       "nothing": "Demo: nichts wurde hinzugefügt, die Registry bleibt, wie sie ist."
     },
     "upload": {
@@ -355,6 +409,7 @@
       "reveal": "Zeigen",
       "relocate": "Neu verorten…",
       "counts": "{{specs}} Specs · {{active}} aktiv",
+      "countsOne": "{{specs}} Spec · {{active}} aktiv",
       "actions": "Aktionen für {{name}}"
     },
     "menu": {
@@ -435,29 +490,34 @@
       "countLabel": "Workspaces: {{count}}",
       "specCount": "Specs: {{count}}",
       "unreadable": "Nicht lesbar",
-      "manage": "Workspaces verwalten"
+      "manage": "Workspaces verwalten",
+      "head": "Alle Workspaces ({{count}})",
+      "showAll": "Alle {{count}} Workspaces zeigen"
     },
     "spec": {
       "label": "Spec: {{id}} {{title}}",
       "countLabel": "Specs: {{count}}",
       "all": "Alle Specs in {{workspace}}",
       "menu": "Specs",
-      "none": "Öffnen Sie einen Workspace, um eine Spec zu wählen"
+      "none": "Öffnen Sie einen Workspace, um eine Spec zu wählen",
+      "head": "Specs · {{workspace}}",
+      "overview": "Spec-Übersicht"
     },
     "area": {
       "label": "Bereich: {{area}}",
       "pageLabel": "Seite: {{page}}",
       "goKey": "g {{key}}",
       "menu": "Bereiche",
+      "pageMenu": "Seiten",
       "needsSpec": "Öffnen Sie eine Spec, um den Bereich zu wechseln",
       "needsWorkspace": "Öffnen Sie einen Workspace, um die Seite zu wechseln",
       "summary": {
-        "dashboard": "Der Stand der Spec auf einen Blick",
-        "status": "Phase, Gates und Zeitleiste",
-        "live": "Arbeitende Agenten, Runden-Board und Matrix",
-        "data": "Claims, Tasks und Belege",
-        "docs": "Plan, Design, Entscheidungen, Verfassung",
-        "notes": "Ihre Notizen zu dieser Spec"
+        "dashboard": "Überblick · nächster Schritt · Gates",
+        "status": "Status · Zeitleiste",
+        "live": "Board · Matrix",
+        "data": "Claims · Tasks · Belege",
+        "docs": "Plan · Design · Entscheidungen · Verfassung",
+        "notes": "Notizen"
       },
       "unbuilt": "Kommt mit späteren Tasks dieser Spec",
       "head": {
@@ -467,6 +527,7 @@
     },
     "pills": {
       "workspace": "Workspace",
+      "page": "Seite",
       "specs": "Specs",
       "spec": "Spec",
       "area": "Bereich",
@@ -568,11 +629,6 @@
     "assistant": {
       "trigger": "Assistent"
     },
-    "libraryLink": {
-      "label": "Library dieses Workspace",
-      "pill": "Library",
-      "value": "Docs"
-    },
     "refresh": {
       "now": "Jetzt aktualisieren",
       "interval": "Aktualisierungsintervall",
@@ -581,6 +637,7 @@
     },
     "more": "Mehr",
     "settingsPanel": {
+      "all": "Alle Einstellungen …",
       "workspaces": "Workspaces …",
       "help": "Hilfe und Anleitung"
     }
@@ -588,8 +645,16 @@
   "notFound": {
     "title": "Nicht gefunden",
     "body": "Unter diesem Namen ist kein Workspace, keine Spec und kein Tab registriert.",
-    "back": "Zu allen Workspaces",
-    "backWorkspace": "Zurück zu {{workspace}}"
+    "back": "Alle Workspaces",
+    "backWorkspace": "Zurück zu {{workspace}}",
+    "eyebrow": "404",
+    "nothing": "Unter dieser Adresse ist nichts",
+    "noPage": "Spectant hat keine Seite für",
+    "routeWhy": "Die Route ist unbekannt. Workspaces und Specs liegen nur unter",
+    "search": "Suche",
+    "specTitle": "Spec {{id}} ist nicht in {{workspace}}",
+    "nearest": "{{workspace}} hat keine Spec mit dieser ID. Die nächsten Specs:",
+    "dashboard": "Dashboard von {{workspace}}"
   },
   "timeline": {
     "filterLabel": "Nach Quelle filtern",
@@ -607,10 +672,12 @@
     "openBoard": "Runden-Board öffnen →",
     "empty": {
       "heading": "Noch keine Ereignisse",
-      "body": "Die Stage wird aus den Dateien abgeleitet."
+      "body": "Die Stage wird aus den Dateien abgeleitet.",
+      "link": "Wie sich eine Spec bewegt →"
     },
     "filtered": {
       "heading": "Keine Einträge aus diesen Quellen",
+      "line": "Für diesen Filter sind keine Einträge verzeichnet.",
       "body": "Setzen Sie die Filter zurück, um alle Einträge zu sehen.",
       "clear": "Filter zurücksetzen"
     },
@@ -690,13 +757,24 @@
     "error": "Die Claims konnten nicht geladen werden.",
     "loading": "Claims werden geladen …"
   },
+  "docProse": {
+    "diagram": {
+      "toolbar": "Diagramm-Steuerung",
+      "label": "Diagramm",
+      "zoomIn": "Vergrössern",
+      "zoomOut": "Verkleinern",
+      "reset": "Zoom zurücksetzen",
+      "fullscreen": "Vollbild",
+      "exitFullscreen": "Vollbild beenden"
+    }
+  },
   "docs": {
     "decisions": {
       "goal": "Ziel",
       "stillOpen": "Noch offen"
     },
     "contents": "Auf dieser Seite",
-    "updated": "Aktualisiert {{date}}",
+    "updated": "aktualisiert {{date}}",
     "tableRegion": "Tabelle {{index}}, seitlich scrollbar",
     "figureRegion": "Diagramm {{index}}, seitlich scrollbar",
     "imageMissing": "Bild ist in diesem Checkout nicht vorhanden",
@@ -711,7 +789,8 @@
       "notApplicableBody": "Dieser Spec-Typ verwendet die Datei nicht, daher gibt es hier nichts anzuzeigen.",
       "missing": "Noch keine {{file}}",
       "missingBody": "Legen Sie die Datei mit diesem Befehl an:",
-      "missingNoCommand": "Die Datei entsteht, sobald die Fragerunden der Spec festgehalten werden."
+      "missingNoCommand": "Die Datei entsteht, sobald die Fragerunden der Spec festgehalten werden.",
+      "typesLink": "Welche Dateien jeder Typ hat →"
     },
     "error": "Dieses Dokument konnte nicht geladen werden.",
     "loading": "Dokument wird geladen",
@@ -735,6 +814,7 @@
     "columns": {
       "task": "Task",
       "claim": "Claim",
+      "flags": "Flags",
       "title": "Titel",
       "lane": "Lane",
       "path": "Pfad",
@@ -809,8 +889,9 @@
       "mb": "{{value}} MB"
     },
     "empty": {
-      "heading": "Noch keine Nachweise",
-      "body": "Diese Spec hat keine Dateien in artifacts/ oder .evidence/."
+      "heading": "Noch keine Nachweise erfasst",
+      "body": "Diese Spec hat keine Dateien in artifacts/ oder .evidence/.",
+      "link": "Was als Nachweis zählt →"
     },
     "error": {
       "refused": "Abgelehnt: außerhalb der Nachweisordner",
@@ -846,6 +927,8 @@
     "next": {
       "heading": "Nächster Schritt",
       "eyebrow": "Was jetzt auszuführen ist",
+      "since": "seit {{time}}",
+      "sinceVia": "seit {{time}} über {{via}}",
       "copy": "Befehl kopieren",
       "copied": "Kopiert",
       "manual": "Markieren und ⌘C drücken",
@@ -1002,11 +1085,20 @@
       "changed": "Seit der Prüfung geändert",
       "done": "Geprüft {{time}}",
       "paused": "Schreiben pausiert: {{session}} hält eine Sperre",
-      "written": "Prüfmarke geschrieben {{time}}."
+      "written": "Prüfmarke geschrieben {{time}}.",
+      "remark": "Neu markieren",
+      "hint": {
+        "ready": "keine Prüfmarke · Freigabe für /spec-implement",
+        "stale": "geprüft {{time}} · seitdem geändert",
+        "paused": "gesperrt · {{session}} hält einen Claim · Schreiben pausiert"
+      }
     },
     "dialog": {
       "heading": "Als geprüft markieren",
-      "intro": "Die Marke hält diese drei Dateien so fest, wie Sie sie gelesen haben.",
+      "title": "Spec {{id}} freigeben für",
+      "intro": "Spectant schreibt .gates/reviewed.json mit diesen Hashes. Ändert sich später eine Datei, wird die Marke veraltet.",
+      "notYet": "Noch nicht",
+      "changed": "geändert",
       "absent": "fehlt",
       "noHashes": "Diese Seite hat keine Datei-Hashes. Bitte laden Sie die Spec zuerst neu.",
       "noAgentSource": "Keine Agentenquelle: Vor dem Schreiben wird keine Sperre geprüft.",
@@ -1014,7 +1106,7 @@
       "reload": "Neu laden",
       "locked": "{{session}} hält {{claim}}. Es wurde nichts geschrieben.",
       "error": "Die Marke konnte nicht geschrieben werden (Status {{status}}).",
-      "confirm": "Bestätigen",
+      "confirm": "Freigeben",
       "sending": "Wird geschrieben…",
       "checklist": {
         "legend": "Sie bestätigen",
@@ -1032,6 +1124,8 @@
       "claims": "Offene Claims",
       "fog": "Nebel",
       "none": "Nichts ist offen.",
+      "allClosed": "Alle Claims geschlossen, kein Nebel",
+      "readyFor": "Bereit für",
       "error": "Die offenen Claims konnten nicht gelesen werden.",
       "groups": {
         "takeable": "übernehmbar",
@@ -1091,15 +1185,16 @@
   },
   "notes": {
     "import": {
-      "text": "Notizen aus dem alten Dashboard lassen sich in die Notizen auf diesem Rechner übernehmen.",
+      "title": "Notizen aus den alten Seiten?",
+      "text": "Einmal importieren:",
       "dismiss": "Ausblenden"
     },
     "list": {
       "label": "Notizen",
       "search": "Notizen durchsuchen",
-      "new": "Neue Notiz",
-      "empty": "Hier gibt es noch keine Notizen",
-      "emptyBody": "Beginnen Sie mit „Neue Notiz“. Notizen bleiben auf diesem Rechner.",
+      "new": "Neu",
+      "empty": "Noch keine Notizen · drücken Sie n",
+      "emptyBody": "Notizen bleiben auf diesem Rechner und landen nie im Repository.",
       "failed": "Die Notizen konnten nicht geladen werden"
     },
     "filter": {
@@ -1113,6 +1208,8 @@
     "anchor": {
       "label": "Anker",
       "none": "Kein Anker",
+      "unanchored": "ohne Anker",
+      "kindSpec": "Spec",
       "spec": "Spec {{spec}}",
       "claims": "Claims",
       "tasks": "Tasks",
@@ -1127,10 +1224,10 @@
       "body": "Notiztext (Markdown)",
       "bodyPlaceholder": "In Markdown schreiben …",
       "local": "Lokal · bleibt auf diesem Rechner",
-      "delete": "Löschen",
+      "delete": "Notiz löschen",
       "missing": "Diese Notiz existiert nicht",
-      "none": "Keine Notiz geöffnet",
-      "noneBody": "Wählen Sie eine Notiz aus der Liste oder beginnen Sie eine neue.",
+      "none": "Keine Notiz gewählt",
+      "noneBody": "Wählen Sie links eine Notiz oder drücken Sie",
       "view": {
         "label": "Editor-Ansicht",
         "edit": "Bearbeiten",
@@ -1146,9 +1243,9 @@
     },
     "delete": {
       "heading": "Diese Notiz löschen?",
-      "body": "Die Notiz wird von diesem Rechner entfernt. Das lässt sich nicht rückgängig machen.",
-      "cancel": "Abbrechen",
-      "confirm": "Notiz löschen"
+      "body": "Sie existiert nur auf diesem Rechner — es gibt kein Rückgängig.",
+      "cancel": "Behalten",
+      "confirm": "Löschen"
     }
   },
   "board": {
@@ -1198,7 +1295,8 @@
       "show": "zeigen",
       "switch": "Lane",
       "showAll": "alle {{count}} zeigen",
-      "quiet": "nichts in Arbeit"
+      "quiet": "nichts in Arbeit",
+      "next": "als Nächstes"
     },
     "section": {
       "needsYou": "Wartet auf Sie",
@@ -1275,6 +1373,18 @@
     "workspace": {
       "title": "Board",
       "summary": "{{cards}} Karten · {{specs}} Specs · {{ideas}} Ideen",
+      "eyebrowCards": "{{count}} Karten",
+      "index": "Stages",
+      "indexPrev": "Vorherige Spalte",
+      "indexNext": "Nächste Spalte",
+      "sheetBar": "Dieses Board · {{count}} Karten",
+      "needsYou": "Wartet auf Sie",
+      "needsNone": "Nichts wartet auf Sie.",
+      "bandMeter": "{{done}} von {{count}} erledigt",
+      "search": {
+        "label": "Karten durchsuchen",
+        "placeholder": "ID, Titel, Feature"
+      },
       "open": "Board öffnen",
       "source": {
         "custom": "specs/workflow.md",
@@ -1312,6 +1422,7 @@
         "activeList": "Aktive Filter",
         "clear": "Zurücksetzen",
         "noMatch": "Keine Karte passt",
+        "noMatchBody": "Die Filter verbergen jede Karte.",
         "clearAll": "Filter zurücksetzen",
         "all": "Alle"
       },
@@ -1542,13 +1653,39 @@
       "valueText": "{{closed}} von {{total}} Claims geschlossen",
       "meterLabel": "{{id}} Claims geschlossen",
       "moreChips": "+{{count}} weitere",
+      "filter": {
+        "label": "Features filtern",
+        "all": "Alle",
+        "open": "offen",
+        "held": "alle gehalten",
+        "none": "Kein Feature passt zu diesem Filter."
+      },
+      "sort": {
+        "master": "Master-Reihenfolge",
+        "unheld": "Meiste ungehalten"
+      },
+      "rail": {
+        "label": "Kontext",
+        "milestones": "Meilensteine",
+        "mostUnheld": "Meiste ungehalten",
+        "noneUnheld": "Jeder Claim wird von einer Spec gehalten."
+      },
       "empty": {
         "heading": "Keine Feature-Blöcke in ISA.md",
-        "body": "Features stammen aus den ## Features-Blöcken des Masters."
+        "body": "Features stammen aus den ## Features-Blöcken des Masters.",
+        "copy": "/spec-feature kopieren"
       }
     },
     "milestones": {
-      "title": "Meilensteine in {{ws}}",
+      "title": "Meilensteine · {{ws}}",
+      "noFeature": "Noch kein Feature zugeordnet.",
+      "rail": {
+        "label": "Kontext",
+        "next": "Nächster Meilenstein",
+        "days": "{{days}} Tage",
+        "closed": "Claims geschlossen · {{name}}",
+        "mostOpen": "Meiste offene Claims"
+      },
       "meta": "{{count}} Meilensteine · nächster: {{name}}, {{date}}",
       "metaNone": "kein anstehender Meilenstein",
       "metaUndated": "{{count}} Meilensteine · nächster: {{name}}",
@@ -1586,6 +1723,7 @@
   },
   "help": {
     "title": "Hilfe",
+    "eyebrow": "Anleitung",
     "nav": {
       "label": "Abschnitte",
       "about": "Über Spectant",
@@ -1747,6 +1885,20 @@
     "noMilestone": "kein Meilenstein",
     "source": "{{path}} · schreibgeschützt · Hash {{hash}}",
     "allocateHint": "Sie teilen die Story zu, indem Sie sie auf dem Board in ihre erste Stage ziehen.",
+    "crumb": "Idee · {{slug}}",
+    "quote": "Die Idee",
+    "next": {
+      "title": "Nächster Schritt",
+      "why": "Die Idee hat noch keine Form — die Formrunde in Ihrem Agenten wählt mit Ihnen eine von drei Formen."
+    },
+    "contents": "Inhalt",
+    "record": {
+      "title": "Formprotokoll",
+      "slug": "Story-Slug",
+      "shape": "Form:",
+      "noShape": "noch nicht gewählt",
+      "hash": "Hash"
+    },
     "loading": "Story wird geladen",
     "error": "Diese Story konnte nicht geladen werden."
   },
@@ -1808,6 +1960,7 @@
       "specs": "Specs",
       "open": "Offen"
     },
+    "eyebrowCount": "{{count}} Specs",
     "subline": {
       "file": "specs/tech.md · {{count}} Specs",
       "noFile": "keine specs/tech.md · {{count}} Specs"

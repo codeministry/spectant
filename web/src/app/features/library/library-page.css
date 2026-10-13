@@ -20,6 +20,29 @@ app-library-page .lib-head ui-page-head {
   flex: 0 1 auto;
 }
 
+/* Prototype `page-head`: the workspace badge in front of the h1, the workspace in muted ink after the page name. */
+app-library-page .lib-h1 {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+app-library-page .lib-ws {
+  color: var(--muted-ink);
+}
+
+/* Prototype `.lib-types`: the type filters wrap onto a second row instead of scrolling out of the 380 px column. */
+app-library-page [data-library-types] .row {
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
+app-library-page [data-library-types] .chip {
+  border-color: var(--line);
+  border-radius: 6px;
+}
+
 app-library-page .lib-head ui-chip {
   margin-block-end: 6px;
 }

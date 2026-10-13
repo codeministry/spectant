@@ -271,3 +271,32 @@
     background: CanvasText;
   }
 }
+
+/* Konflikt (design.md § Zustands-Galerie · Konflikt): the two notices stacked, side by side from 640. */
+.sg-conflicts {
+  display: grid;
+  gap: 8px;
+}
+
+@container (width >= 640px) {
+  .sg-conflicts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.sg-notice-body {
+  display: grid;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.sg-notice-title {
+  color: var(--hover-ink);
+  font-weight: 600;
+}
+
+/* The notice's second line in the prototype's notice-warn ink (`--orange-text`, app `--hover-ink`): muted text on the
+   `--hover-t` tint stays under 4.5 in dark. */
+.sg-notice-body .sg-meta {
+  color: var(--hover-ink);
+}

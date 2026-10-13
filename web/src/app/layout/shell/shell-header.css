@@ -56,21 +56,6 @@
   grid-area: nav;
 }
 
-/* From 1120 px on a workspace page the rail ends in the Library link (prototype `.library-link`). */
-.shell-header.has-library {
-  grid-template: "brand nav library . palette live zen assistant settings help" 64px / auto minmax(0, auto) auto minmax(0, 1fr) minmax(240px, 360px) auto auto auto auto auto;
-}
-
-.has-library .rail-field {
-  grid-column: brand-start / library-end;
-}
-
-.library {
-  z-index: 1;
-  grid-area: library;
-  margin-inline-start: -8px;
-}
-
 .palette {
   display: inline-flex;
   grid-area: palette;
@@ -119,10 +104,6 @@
 @container shell (width < 1560px) {
   .on-spec {
     grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) auto auto auto auto auto auto;
-  }
-
-  .shell-header.on-spec.has-library {
-    grid-template-columns: auto minmax(0, auto) auto minmax(0, 1fr) auto auto auto auto auto auto;
   }
 
   .on-spec .palette {
@@ -227,4 +208,17 @@
 /* Zen (ISC-75): the tools go; brand, rail-selects, the pressed zen button and the overflow menu stay. */
 :host([data-zen]) .tool {
   display: none;
+}
+
+/* The prototype's pressed zen toggle (`html.zen [data-ui=zen-toggle]`): cyan border and ink, at the row's end. */
+:host([data-zen]) .zen {
+  grid-area: help;
+}
+
+.zen[aria-pressed="true"] {
+  --btn-bg: var(--color-base-100);
+
+  border-color: var(--color-primary);
+  background: var(--color-base-100);
+  color: var(--disp-text);
 }

@@ -117,31 +117,51 @@ for (const width of [1440, 600, 390] as const) {
       expect.soft(ist.seconds, 'palette KLM seconds').toBeLessThanOrEqual(BUDGET.palette.seconds);
     });
 
-    test(`P1 clicks @${width}: scroll to the spec row, open the spec, its claims, the card → visible and focused in ≤ ${BUDGET.clicks.steps} steps`, async ({ page }) => {
+    // spec 024: overview without lists (principal 2026-10-13): `/` no longer lists specs, so the click route goes
+    // through the workspace column to the workspace dashboard and its spec row. The budget is unchanged.
+    test(`P1 clicks @${width}: the workspace column, the spec row on its dashboard, the spec, its claims, the card → visible and focused in ≤ ${BUDGET.clicks.steps} steps`, async ({ page }) => {
       await page.goto('/');
-      const row = page.locator(`a.d-row[href="/w/${TARGET.ws}/s/${TARGET.spec}"]`);
-      await expect(row).toBeVisible();
+      await expect(page.locator('app-overview-page a[href*="/s/"]'), 'the overview lists no spec').toHaveCount(0);
+      const column = page.locator(`app-workspace-column[data-ws="${TARGET.ws}"] .ws-head a[href="/w/${TARGET.ws}"]`);
+      await expect(column).toBeVisible();
       const steps = new StepCounter(page);
       const click = (target: Locator, label: string) => (touch ? steps.tapOn(target, label) : steps.clickOn(target, label));
+      const wholly = (target: Locator) =>
+        target.evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          return r.top >= 0 && r.bottom <= window.innerHeight;
+        });
 
-      // The spec row sits below the first screen of the overview at every width.
-      await steps.scrollScreen();
-      await click(row, `${TARGET.ws} ${TARGET.spec}`);
+      if (!(await wholly(column))) await steps.scrollTo(column);
+      await click(column, `workspace ${TARGET.ws}`);
+      await expect(page).toHaveURL(new RegExp(`/w/${TARGET.ws}$`));
+
+      // The spec table opens a row in two steps: the first click previews it (`?spec=`), the second opens the spec: the
+      // row again, or below 1120 px the preview sheet's "Open spec" action, which covers the row.
+      const row = page.locator(`[data-panel="specs"] [data-spec-row="${TARGET.spec}"]`);
+      await expect(row).toBeVisible();
+      if (!(await wholly(row))) await steps.scrollTo(row);
+      await click(row, `preview ${TARGET.spec}`);
+      await expect(page).toHaveURL((url) => url.searchParams.get('spec') === TARGET.spec);
+      const sheetOpen = page.locator(`[data-inspector-sheet] a[data-action="open-spec"][href="/w/${TARGET.ws}/s/${TARGET.spec}"]`);
+      const sheeted = width < 1120;
+      if (sheeted) await expect(sheetOpen).toBeVisible();
+      const second = sheeted ? sheetOpen : row;
+      if (!(await wholly(second))) await steps.scrollTo(second);
+      await click(second, `spec ${TARGET.spec}`);
       await expect(page).toHaveURL(new RegExp(`/w/${TARGET.ws}/s/${TARGET.spec}$`));
 
       const claimsKpi = page.locator('[data-kpi="claims"] a');
       await expect(claimsKpi).toBeVisible();
+      // At 390 the spec page can open scrolled (the dashboard was scrolled to the row); bringing the KPI back counts.
+      if (!(await wholly(claimsKpi))) await steps.scrollTo(claimsKpi);
       await click(claimsKpi, 'kpi claims');
       await expect(page).toHaveURL(new RegExp(`/w/${TARGET.ws}/s/${TARGET.spec}/claims$`));
 
       await expect(claimCard(page)).toBeVisible();
       // spec 024: the prototype tab bar under the header (principal 2026-10-12) moves the list down; where the card is
       // not wholly on screen the scroll to it counts as a step. The budget is unchanged.
-      const wholly = await claimCard(page).evaluate((el) => {
-        const r = el.getBoundingClientRect();
-        return r.top >= 0 && r.bottom <= window.innerHeight;
-      });
-      if (!wholly) await steps.scrollTo(claimCard(page));
+      if (!(await wholly(claimCard(page)))) await steps.scrollTo(claimCard(page));
       await click(claimCard(page), TARGET.claim);
 
       await expectGoal(page, new RegExp(`/w/${TARGET.ws}/s/${TARGET.spec}/claims$`));

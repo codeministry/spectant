@@ -16,6 +16,19 @@ app-docs-tab .docs-updated {
 }
 app-docs-tab .docs-warning { margin-block-end: 16px; }
 
+/* The explained empty state in a card, with the prototype's `.open-link` to the type table. */
+app-docs-tab .docs-types-link {
+  align-self: start;
+  color: var(--disp-text);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+app-docs-tab .docs-types-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 app-docs-tab .docs-loading {
   display: grid;
   gap: 8px;
@@ -199,4 +212,34 @@ app-docs-tab .dec-fog ui-icon {
   flex: none;
   margin-block-start: 2px;
   color: var(--ques-text);
+}
+
+/* The prototype's `[data-ui="empty-state"]`: start-aligned, the icon bare in muted ink, the title 20/28. */
+app-docs-tab[data-page] .docs-empty-card ui-empty-state {
+  gap: 12px;
+  justify-items: start;
+  max-inline-size: 520px;
+  margin-inline: 0;
+  padding: 24px 16px;
+  text-align: start;
+}
+
+app-docs-tab[data-page] .docs-empty-card ui-empty-state .icon {
+  inline-size: auto;
+  block-size: auto;
+  margin: 0;
+  background: none;
+  color: var(--muted-ink);
+}
+
+app-docs-tab[data-page] .docs-empty-card ui-empty-state .title {
+  font-size: 20px;
+  line-height: 28px;
+}
+
+app-docs-tab[data-page] .docs-empty-card ui-empty-state .slot {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  margin: 0;
 }

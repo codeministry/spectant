@@ -23,6 +23,47 @@
     </span>
     <ui-icon class="chevron" name="chevron-down" [size]="14" />
   </a>
+  <!--
+    The PAGE select (spec 024 T80, ISC-150.2, principal 2026-10-13): second after the workspace, on every workspace route
+    and every width; it names the open workspace page (Specs on a spec page) and opens the workspace's pages.
+  -->
+  @if (inWorkspace()) {
+    <span class="pill-divider" aria-hidden="true"></span>
+    @if (workspacePage(); as page) {
+      <button
+        type="button"
+        class="pick page"
+        data-control="page"
+        aria-haspopup="dialog"
+        [attr.aria-expanded]="expanded().page"
+        [attr.aria-label]="'shell.area.pageLabel' | transloco: { page: (page.labelKey | transloco) }"
+        (pointerdown)="press('page')"
+        (click)="toggle($event, 'page')"
+      >
+        <!-- No icon on the closed select, as on the others (principal 2026-10-13); the menu rows carry them. -->
+        <span class="pill">
+          <span class="pill-label" data-pill-label>{{ 'shell.pills.page' | transloco }}</span>
+          <span class="pill-value pick-text" data-pill-value>{{ page.labelKey | transloco }}</span>
+        </span>
+        <ui-icon class="chevron" name="chevron-down" [size]="14" />
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="pick page"
+        data-control="page"
+        aria-disabled="true"
+        [attr.title]="'shell.area.needsWorkspace' | transloco"
+        [attr.aria-label]="'shell.area.pageMenu' | transloco"
+      >
+        <span class="pill">
+          <span class="pill-label" data-pill-label>{{ 'shell.pills.page' | transloco }}</span>
+          <span class="pill-value pick-text" data-pill-value>{{ 'shell.area.pageMenu' | transloco }}</span>
+        </span>
+        <ui-icon class="chevron" name="chevron-down" [size]="14" />
+      </button>
+    }
+  }
   <!-- Outside a workspace (`/`, `/help`, `/settings`) there is no spec pill rather than a `0` (ISC-140.2). -->
   @if (specHref(); as href) {
     <span class="pill-divider" aria-hidden="true"></span>
@@ -59,9 +100,9 @@
   }
 </div>
 
-<!-- Outside a workspace there is no area pill either; inside one it names the spec area or the workspace page. -->
+<!-- Only a spec page has an Area select: the six spec areas (spec 024 T80, ISC-150.2). -->
 <!-- Below 1120 px the area switch is an entry of the overflow menu `⋯` instead (spec 024 T76). -->
-@if (inWorkspace() && wide()) {
+@if (specRoute() && wide()) {
   @if (specOpen()) {
     <button
       type="button"
@@ -80,31 +121,13 @@
       </span>
       <ui-icon class="chevron" name="chevron-down" [size]="14" />
     </button>
-  } @else if (workspacePage(); as page) {
-    <button
-      type="button"
-      class="pick area"
-      data-control="area"
-      aria-haspopup="dialog"
-      [attr.aria-expanded]="expanded().area"
-      [attr.aria-label]="'shell.area.pageLabel' | transloco: { page: (page.labelKey | transloco) }"
-      (pointerdown)="press('area')"
-      (click)="toggle($event, 'area')"
-    >
-      <ui-icon class="page-icon" [name]="page.icon" />
-      <span class="pill">
-        <span class="pill-label" data-pill-label>{{ 'shell.pills.area' | transloco }}</span>
-        <span class="pill-value pick-text" data-pill-value>{{ page.labelKey | transloco }}</span>
-      </span>
-      <ui-icon class="chevron" name="chevron-down" [size]="14" />
-    </button>
   } @else {
     <button
       type="button"
       class="pick area"
       data-control="area"
       aria-disabled="true"
-      [attr.title]="areaReason() | transloco"
+      [attr.title]="'shell.area.needsSpec' | transloco"
       [attr.aria-label]="'shell.area.menu' | transloco"
     >
       <span class="pill">

@@ -1,11 +1,13 @@
-<app-help-nav [sections]="sections" />
-
-<ui-card class="head" [padding]="24">
-  <ui-page-head [segments]="[('shell.eyebrow.app' | transloco), ('help.title' | transloco)]">
-    <h1 class="type-page-title" id="help" tabindex="-1">{{ 'help.title' | transloco }}</h1>
+<div class="head">
+  <ui-page-head [segments]="[('shell.eyebrow.app' | transloco), ('help.eyebrow' | transloco)]">
+    <div class="h1-row" ngProjectAs="h1">
+      <h1 class="type-page-title" id="help" tabindex="-1">{{ 'help.title' | transloco }}</h1>
+      <span class="version type-page-title" data-help-version>· v{{ version }}</span>
+    </div>
   </ui-page-head>
-  <p class="subtitle">{{ 'help.subtitle' | transloco }}</p>
-</ui-card>
+</div>
+
+<app-help-nav [sections]="sections" />
 
 <section id="about" class="section" aria-labelledby="help-about">
   <!-- The About card (prototype help `.about-grid`, spec 024 sweep): the text with its meta row, beside the logo and two screenshots. -->

@@ -8,14 +8,17 @@ import { keyLabel } from '../../core/keyboard-bindings';
 import { KeyboardService } from '../../core/keyboard.service';
 import { PALETTE_SOURCES, type PaletteEntry, type PaletteSource } from '../../core/palette-sources';
 import { UiIcon } from '../../shared/icons/icon';
+import { UiChip } from '../../shared/ui/chip/chip';
+import { chipIcon } from '../../shared/ui/chip/chip-icons';
 import { UiClamp } from '../../shared/ui/clamp/clamp';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiDialog } from '../../shared/ui/overlay/dialog';
 import { nextId } from '../../shared/ui/overlay/ids';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
+import type { Tone } from '../../shared/ui/tone';
 import { ShellState } from '../shell/shell-state.service';
 import { follow, isCommitEnter } from './navigate';
-import { isClaim, isCommand, isIdea } from './palette-groups';
+import { hasPhase, isClaim, isCommand, isIdea } from './palette-groups';
 import { PaletteIndex } from './palette-index';
 import { excerpt, highlight, rankGroups, type Segment } from './palette-ranking';
 import { PaletteRecent } from './palette-recent';
@@ -38,7 +41,14 @@ interface PaletteOption {
   readonly icon: IconName | null;
   /** Next up and Services set their labels in mono, as the prototype does. */
   readonly mono: boolean;
+  /** A spec's phase chip (prototype `chip(x.chip, x.chip)`): its word, tone and icon; null on any other row. */
+  readonly phase: { readonly label: string; readonly tone: Tone; readonly icon: IconName | undefined } | null;
+  /** Next up leads with `terminal`, not the id chip. */
+  readonly showChip: boolean;
 }
+
+/** The phase tones of the dashboard's spec table (`PHASE_TONES`), for a spec row's chip. */
+const PHASE_TONE: Readonly<Partial<Record<string, Tone>>> = { scoping: 'secondary', building: 'primary', climbing: 'warning', complete: 'accent' };
 
 interface PaletteGroup {
   readonly id: string;
@@ -62,7 +72,7 @@ interface PaletteGroup {
  */
 @Component({
   selector: 'app-command-palette',
-  imports: [NgTemplateOutlet, TranslocoPipe, UiClamp, UiDialog, UiIcon, UiKbd, UiSheet],
+  imports: [NgTemplateOutlet, TranslocoPipe, UiChip, UiClamp, UiDialog, UiIcon, UiKbd, UiSheet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './command-palette.html',
   styleUrl: './command-palette.css',
@@ -84,7 +94,11 @@ export class CommandPalette {
   protected readonly query = signal('');
   protected readonly active = signal(0);
 
+  /** The sources have answered (`PaletteIndex.settled`): only then is the list drawn, complete and in its final order. */
+  protected readonly settled = this.index.settled;
+
   protected readonly groups = computed<readonly PaletteGroup[]>(() => {
+    if (!this.settled()) return [];
     const query = this.query().trim();
     let index = 0;
     return rankGroups(this.sources, query).map(({ source, matches }) => ({
@@ -101,12 +115,16 @@ export class CommandPalette {
           domId: `${this.listId}-o${String(at)}`,
           text,
           label: highlight(text, query),
-          ariaLabel: claim?.accessibleName ?? (entry.meta ? `${entry.label}, ${entry.meta}` : entry.label),
+          ariaLabel:
+            claim?.accessibleName ??
+            [entry.label, hasPhase(entry) ? entry.phaseLabel : null, entry.meta].filter((part) => part !== null && part !== undefined && part !== '').join(', '),
           status: claim === null ? null : { word: claim.statusWord, dot: claim.dot },
           chip: highlight(entry.chip ?? '', query),
           idea: isIdea(entry),
           icon: leadIcon(source.id, entry),
           mono: MONO_GROUPS.has(source.id),
+          phase: hasPhase(entry) ? { label: entry.phaseLabel, tone: PHASE_TONE[entry.phase] ?? 'neutral', icon: chipIcon(entry.phase) } : null,
+          showChip: source.id !== 'nextUp',
         };
       }),
     }));

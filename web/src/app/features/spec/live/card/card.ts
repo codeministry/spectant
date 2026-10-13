@@ -4,6 +4,7 @@ import type { FrameCard, LiveCard } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiChip } from '../../../../shared/ui/chip/chip';
+import { UiIcon } from '../../../../shared/icons/icon';
 import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
 import { glyphSpec, stateKey } from '../../../../shared/ui/glyph/states';
 import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
@@ -31,7 +32,7 @@ export type CardDensity = 'comfortable' | 'compact';
  */
 @Component({
   selector: 'app-board-card',
-  imports: [CardDetail, TranslocoPipe, UiChip, UiGlyph, UiStateChip],
+  imports: [CardDetail, TranslocoPipe, UiChip, UiGlyph, UiIcon, UiStateChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: block; min-inline-size: 0; }
@@ -53,7 +54,16 @@ export type CardDensity = 'comfortable' | 'compact';
     .text { display: -webkit-box; overflow: hidden; margin: 0; font-size: 13px; line-height: 20px; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
     .r3 { color: var(--muted-ink); font-size: 12px; line-height: 16px; }
     .r3:empty { display: none; }
-    .builder { font-weight: 600; }
+    /* spec 024: the prototype marks (.pmark, .seam), role tags with icon (.tag, .vdot) and the try chip (.try). */
+    .pmark, .seam { flex: none; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); font: 600 10px/14px var(--font-mono); }
+    .seam { padding: 0 5px; border-color: var(--color-primary); background: repeating-linear-gradient(135deg, var(--disp-t) 0 3px, transparent 3px 6px); color: var(--disp-text); }
+    .tag { display: inline-flex; gap: 3px; align-items: center; color: var(--muted); font-size: 11px; }
+    .vdot { display: inline-block; inline-size: 7px; block-size: 7px; margin-inline-start: 2px; border-radius: 50%; background: var(--muted); }
+    .vdot[data-verdict="pass"] { background: var(--color-accent); }
+    .vdot[data-verdict="concerns"] { background: var(--conc); }
+    .vdot[data-verdict="fail"] { background: var(--color-error); }
+    .vdot[data-verdict="skipped"] { border: 1.5px solid var(--muted); background: none; }
+    .try { padding: 0 5px; border-radius: 4px; background: var(--hover-t); color: var(--hover-text); font-family: var(--font-mono); font-size: 10px; }
     .session { font-family: var(--font-mono); overflow-wrap: anywhere; }
     .flag[data-flag='stale'] { color: var(--fail-ink); font-weight: 600; }
     .strike-note { margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
@@ -80,6 +90,8 @@ export type CardDensity = 'comfortable' | 'compact';
         @if (density() === 'comfortable') {
           <ui-chip class="claim">{{ c.claim }}</ui-chip>
         }
+        @if (c.parallel) {<span class="pmark" data-flag="parallel" [attr.title]="'board.card.parallel' | transloco">P</span>}
+        @if (c.seam) {<span class="seam" data-flag="seam">{{ 'board.card.seam' | transloco }}</span>}
         <ui-state-chip small class="state" [state]="c.state" family="card" />
       </div>
       <p class="text">{{ c.text }}</p>
@@ -89,7 +101,7 @@ export type CardDensity = 'comfortable' | 'compact';
         <p class="strike-note" data-strike-note>{{ 'board.card.struck' | transloco }}</p>
       }
       @if (density() === 'comfortable') {
-        <div class="r3">@if (c.builder) {<span class="builder" data-builder>{{ c.builder }}</span>}@if (c.parallel) {<span class="flag" data-flag="parallel">{{ 'board.card.parallel' | transloco }}</span>}@if (c.seam) {<span class="flag" data-flag="seam">{{ 'board.card.seam' | transloco }}</span>}@if (c.tries > 1) {<span class="flag" data-flag="tries">{{ 'board.card.tries' | transloco: { tries: c.tries } }}</span>}@if (c.note && strikeNote() === null) {<span class="flag" data-flag="note">{{ 'board.card.note' | transloco }}</span>}@if (stale()) {<span class="flag" data-flag="stale">{{ 'board.card.stale' | transloco }}</span>}@if (c.lock; as lock) {<span class="session" data-session>{{ 'board.card.session' | transloco: { session: lock.session } }}</span>}</div>
+        <div class="r3">@if (c.builder) {<span class="tag builder" data-builder><ui-icon name="wrench" [size]="12" />{{ c.builder }}</span>}@if (c.reader) {<span class="tag reader" data-reader><ui-icon name="eye" [size]="12" />{{ c.reader }}@if (c.verdict) {<i class="vdot" [attr.data-verdict]="c.verdict" [attr.title]="c.verdict"></i>}</span>}@if (c.tries > 1) {<span class="try" data-flag="tries">{{ 'board.card.tries' | transloco: { tries: c.tries } }}</span>}@if (c.note && strikeNote() === null) {<span class="flag" data-flag="note">{{ 'board.card.note' | transloco }}</span>}@if (stale()) {<span class="flag" data-flag="stale">{{ 'board.card.stale' | transloco }}</span>}@if (c.lock; as lock) {<span class="session" data-session>{{ 'board.card.session' | transloco: { session: lock.session } }}</span>}</div>
       }
     </article>
     @if (detailOpen()) {

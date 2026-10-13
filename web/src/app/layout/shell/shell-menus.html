@@ -1,19 +1,8 @@
 <!-- Picker lists: one template each, in a popover at medium and wide, in a bottom sheet at compact. -->
 <ng-template #workspaceList>
   <nav class="picker" data-picker="workspace" [attr.aria-label]="'shell.workspace.menu' | transloco">
+    <p class="menu-head" aria-hidden="true">{{ 'shell.workspace.head' | transloco: { count: workspaceEntries().length } }}</p>
     <ul uiRovingList [singleKeys]="singleKeys()">
-      <li>
-        <a
-          uiRovingItem
-          class="entry picker-entry picker-all"
-          routerLink="/"
-          [attr.data-autofocus]="state.ws() === null ? '' : null"
-          (click)="close('workspace')"
-        >
-          <ui-icon name="layout-grid" />
-          <span class="entry-name">{{ 'shell.workspace.all' | transloco }}</span>
-        </a>
-      </li>
       @for (entry of workspaceEntries(); track entry.slug) {
         <li>
           <a
@@ -25,11 +14,11 @@
             [attr.data-autofocus]="entry.current ? '' : null"
             (click)="close('workspace')"
           >
-            <ui-icon name="folder-git-2" />
+            <ui-ws-badge size="sm" [name]="entry.name" />
             <span class="entry-name">{{ entry.name }}</span>
             <span class="entry-meta">
               @if (entry.specs !== null) {
-                {{ 'shell.workspace.specCount' | transloco: { count: entry.specs } }}
+                {{ entry.specs }}
               } @else if (!entry.readable) {
                 {{ 'shell.workspace.unreadable' | transloco }}
               }
@@ -40,6 +29,22 @@
           </a>
         </li>
       }
+      <li class="picker-sep" role="presentation"></li>
+      <li>
+        <a
+          uiRovingItem
+          class="entry picker-entry picker-all"
+          routerLink="/"
+          [attr.data-autofocus]="state.ws() === null ? '' : null"
+          (click)="close('workspace')"
+        >
+          <ui-icon name="layers" [size]="16" />
+          <span class="entry-name">{{ 'shell.workspace.showAll' | transloco: { count: workspaceEntries().length } }}</span>
+          @if (singleKeys()) {
+            <ui-kbd class="entry-kbd" aria-hidden="true">g a</ui-kbd>
+          }
+        </a>
+      </li>
     </ul>
     <a class="entry picker-footer" routerLink="/settings" data-picker-footer (click)="close('workspace')">
       <ui-icon name="settings" [size]="16" />
@@ -50,22 +55,10 @@
 
 <ng-template #specList>
   <nav class="picker" data-picker="spec" [attr.aria-label]="'shell.spec.menu' | transloco">
+    @if (workspaceName(); as name) {
+      <p class="menu-head" aria-hidden="true">{{ 'shell.spec.head' | transloco: { workspace: name } }}</p>
+    }
     <ul uiRovingList [singleKeys]="singleKeys()">
-      @if (state.ws(); as ws) {
-        <li>
-          <a
-            uiRovingItem
-            class="entry picker-entry picker-all"
-            fragment="specs"
-            [routerLink]="['/w', ws]"
-            [attr.data-autofocus]="specOpen() ? null : ''"
-            (click)="close('spec')"
-          >
-            <ui-icon name="list-checks" />
-            <span class="entry-name">{{ 'shell.spec.all' | transloco: { workspace: workspaceName() } }}</span>
-          </a>
-        </li>
-      }
       @for (spec of data.specRows(); track spec.id) {
         @let current = specOpen() && spec.id === state.specId();
         <li>
@@ -80,9 +73,32 @@
           >
             <span class="entry-id">{{ spec.id }}</span>
             <span class="entry-name">{{ spec.title }}</span>
-            <ui-chip tone="neutral">{{ 'stages.' + spec.stage | transloco }}</ui-chip>
+            @if (spec.phase; as phase) {
+              <ui-chip [tone]="phaseTone(phase)" [icon]="phaseIcon(phase)">{{ 'phases.' + phase | transloco }}</ui-chip>
+            } @else {
+              <ui-chip tone="neutral">{{ 'stages.' + spec.stage | transloco }}</ui-chip>
+            }
             @if (current) {
               <ui-icon class="entry-check" name="check" [size]="16" />
+            }
+          </a>
+        </li>
+      }
+      @if (state.ws(); as ws) {
+        <li class="picker-sep" role="presentation"></li>
+        <li>
+          <a
+            uiRovingItem
+            class="entry picker-entry picker-all"
+            fragment="specs"
+            [routerLink]="['/w', ws]"
+            [attr.data-autofocus]="specOpen() ? null : ''"
+            (click)="close('spec')"
+          >
+            <ui-icon name="list" [size]="16" />
+            <span class="entry-name">{{ 'shell.spec.overview' | transloco }}</span>
+            @if (singleKeys()) {
+              <ui-kbd class="entry-kbd" aria-hidden="true">g s</ui-kbd>
             }
           </a>
         </li>
@@ -112,8 +128,12 @@
   </ui-popover>
 }
 
-@if (specOpen() || (state.ws() !== null && !data.workspaceMissing())) {
-  <app-area-menu />
+<!-- The PAGE select's menu (spec 024 T80): the workspace pages, on every route of a workspace the server knows. -->
+@if (state.ws() !== null && !data.workspaceMissing()) {
+  <app-area-menu #pageMenu scope="page" />
+}
+@if (specOpen()) {
+  <app-area-menu #areaMenu scope="spec" />
 }
 
 <!-- The overflow menu `⋯` (spec 024 T76): below 1120 px it holds the header controls the row has no room for. -->
@@ -146,7 +166,7 @@
               aria-haspopup="dialog"
               data-autofocus
               [attr.aria-expanded]="expanded().area"
-              [attr.aria-label]="entry.ariaKey | transloco: { area: (entry.valueKey | transloco), page: (entry.valueKey | transloco) }"
+              [attr.aria-label]="entry.ariaKey | transloco: { area: (entry.valueKey | transloco) }"
               (click)="openFromMore('area')"
             >
               <ui-icon name="layers" />
@@ -241,6 +261,11 @@
     <a class="entry" routerLink="/settings/workspaces" data-settings-link="workspaces" (click)="close('settings')">
       <ui-icon name="folder" />
       <span class="entry-name">{{ 'shell.settingsPanel.workspaces' | transloco }}</span>
+    </a>
+    <!-- The gear popover's "All settings…" (design.md § Settings): the settings page. -->
+    <a class="entry" routerLink="/settings" data-settings-link="all" (click)="close('settings')">
+      <ui-icon name="settings" />
+      <span class="entry-name">{{ 'shell.settingsPanel.all' | transloco }}</span>
     </a>
     <a class="entry" routerLink="/help" data-settings-link="help" (click)="close('settings')">
       <ui-icon name="circle-help" />

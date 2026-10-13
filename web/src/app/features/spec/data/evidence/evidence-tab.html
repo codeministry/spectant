@@ -1,6 +1,8 @@
 @if (model(); as model) {
   @if (groups().length === 0) {
-    <ui-empty-state [heading]="'evidence.empty.heading' | transloco" [body]="'evidence.empty.body' | transloco" icon="archive" />
+    <ui-empty-state [heading]="'evidence.empty.heading' | transloco" [body]="'evidence.empty.body' | transloco" icon="image">
+      <a class="open-link" data-empty-link routerLink="/help" fragment="glossary">{{ 'evidence.empty.link' | transloco }}</a>
+    </ui-empty-state>
   } @else {
     <div class="evidence-groups">
       @for (group of groups(); track group.key) {

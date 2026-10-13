@@ -33,7 +33,7 @@ const MARKER: Record<TimelineKind, string> = {
   decision: toneMark('secondary'),
   round: 'var(--conc)',
   gate: toneMark('accent'),
-  commit: 'var(--muted)',
+  commit: 'var(--track)',
 };
 
 /** The fragment prefix of a deep link to one entry: `#t/<id>`. */

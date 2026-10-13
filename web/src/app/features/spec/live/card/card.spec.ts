@@ -89,7 +89,9 @@ describe('BoardCard', () => {
     expect(article.querySelector('.r1 .claim')?.textContent.trim()).toBe('ISC-61');
     expect(article.querySelector('.r1 ui-state-chip[data-state="fail"]')?.textContent.trim()).toBe('fail');
     expect(article.querySelector('.text')?.textContent).toBe(base.text);
-    expect([...article.querySelectorAll('.r3 [data-builder], .r3 [data-flag]')].map((el) => el.textContent)).toEqual(['Engineer', 'parallel', 'try 2', 'note']);
+    // spec 024: prototype value (principal: Prototyp gilt immer) — the parallel mark sits in the head row as `P` (.pmark).
+    expect(article.querySelector('.r1 [data-flag="parallel"]')?.textContent.trim()).toBe('P');
+    expect([...article.querySelectorAll('.r3 [data-builder], .r3 [data-flag]')].map((el) => el.textContent)).toEqual(['Engineer', 'try 2', 'note']);
     expect(article.getAttribute('data-edge')).toBe('error');
     expect(article.style.getPropertyValue('--edge')).toMatch(/^var\(--/);
   });

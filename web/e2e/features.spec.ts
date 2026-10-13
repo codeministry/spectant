@@ -17,7 +17,7 @@ const read = (path: string): unknown => JSON.parse(readFileSync(new URL(path, im
 const golden = read('../../core/fixtures/harbor.planning.golden.json') as PlanningModel;
 type Catalogue = {
   terms: { feature: string; spec: string; claim: string; task: string };
-  shell: { pages: { specs: string; board: string; features: string; milestones: string; tech: string } };
+  shell: { pages: { specs: string; board: string; features: string; milestones: string; tech: string; library: string } };
   planning: { features: { valueText: string; unheld: string; allHeld: string; titleTerm: string; title: string } };
 };
 const en = read('../src/i18n/en.json') as Catalogue;
@@ -206,20 +206,22 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
 test.describe('features page: the area menu', () => {
   test.use(atWidth(WIDTHS.desktop));
 
-  test('the trigger reads Features; the workspace menu lists Specs, Board, Features, Milestones, Tech with Features current', async ({ page }) => {
+  test('the trigger reads Features; the workspace menu lists Specs, Board, Features, Milestones, Tech, Library with Features current', async ({ page }) => {
     await open(page);
-    const trigger = page.locator('header [data-control="area"]');
+    // spec 024: PAGE select (principal 2026-10-13): the workspace pages moved to the PAGE select, Library sixth (T57)
+    const trigger = page.locator('header [data-control="page"]');
     await expect(trigger).toContainText(en.shell.pages.features);
     await trigger.click();
-    const menu = page.getByRole('navigation', { name: 'Areas' });
+    const menu = page.getByRole('navigation', { name: 'Pages' });
     await expect(menu).toBeVisible();
-    await expect(menu.locator('[data-page]')).toHaveCount(5); // harbor has milestones; Tech is fifth (spec 023)
+    await expect(menu.locator('[data-page]')).toHaveCount(6); // harbor has milestones; Tech is fifth (spec 023), Library sixth
     await expect(menu.locator('[data-page] .entry-name')).toHaveText([
       en.shell.pages.specs,
       en.shell.pages.board,
       en.shell.pages.features,
       en.shell.pages.milestones,
       en.shell.pages.tech,
+      en.shell.pages.library,
     ]);
     await expect(menu.locator('[aria-current="page"]')).toHaveCount(1);
     await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('data-page', 'features');

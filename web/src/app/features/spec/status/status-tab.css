@@ -109,12 +109,18 @@ code {
 
 .reasons {
   display: grid;
-  gap: 4px;
   margin: 0;
-  padding-inline-start: 16px;
+  padding-inline-start: 18px;
   font-size: 14px;
   line-height: 20px;
   list-style: disc;
+  gap: 6px;
+}
+
+/* Prototype `.why`: 6 px between the reasons, the disc marker in cyan. */
+
+.reasons li::marker {
+  color: var(--color-primary);
 }
 
 .takeable {
@@ -252,8 +258,8 @@ code {
 .tasks-meter,
 .lane {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) 48px;
-  gap: 16px;
+  grid-template-columns: 72px minmax(0, 1fr) 40px;
+  gap: 10px;
   align-items: center;
   font-size: 14px;
   line-height: 20px;
@@ -319,13 +325,14 @@ code {
   }
 
   .gate-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px;
   }
 
   .gate {
     align-content: start;
-    padding: 8px 16px;
+    padding: 10px 12px;
+    font-size: 13px;
     border: 1px solid var(--line);
     border-radius: var(--radius-field);
     box-shadow: inset 3px 0 0 var(--gate-edge);
@@ -413,4 +420,51 @@ code {
 
 .held-row .ref {
   color: inherit;
+}
+
+/* Prototype `.act-line`: 13 px muted rows, 10 px gaps; `.round-sum` 14 px above them. */
+.activity-row {
+  gap: 4px 10px;
+  color: var(--muted-ink);
+  font-size: 13px;
+}
+
+.activity-row .row-text {
+  color: inherit;
+}
+
+.round-sum {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: baseline;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.round-sum b {
+  font-weight: 600;
+}
+
+/* Prototype `.status-empty`: "All claims closed, no fog" with the green check, then "Ready for <command>". */
+.status-empty {
+  display: grid;
+  gap: 8px;
+  padding: 16px 12px;
+}
+
+.status-empty-title {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.status-empty-title ui-icon {
+  color: var(--done-text);
 }

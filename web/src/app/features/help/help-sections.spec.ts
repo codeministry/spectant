@@ -75,7 +75,8 @@ describe('HelpPage sections (T162, ISC-133.1)', () => {
     setUp();
     const { root } = await open();
     expect(text(root.querySelector('.head h1'))).toBe('Help');
-    expect(text(root.querySelector('.head .subtitle'))).toBe('Spectant · the words, the workflows, the commands');
+    // spec 024: prototype value (principal: Prototyp gilt immer) — the page head shows "· v<version>" beside the h1.
+    expect(text(root.querySelector('.head [data-help-version]'))).toMatch(/^· v\d+\.\d+\.\d+/);
 
     const sections = [...root.querySelectorAll<HTMLElement>(':scope > section[aria-labelledby]')];
     expect(sections.map((s) => s.id)).toEqual(['about', 'moves', 'workflows', 'commands', 'glossary', 'start', 'keys']);
@@ -91,7 +92,8 @@ describe('HelpPage sections (T162, ISC-133.1)', () => {
     expect(text(root.querySelector('#about p'))).toContain('The files are the only source of truth');
 
     const nav = root.querySelector('app-help-nav');
-    expect(nav?.compareDocumentPosition(root.querySelector('.head') as Element)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    // spec 024: prototype value (principal: Prototyp gilt immer) — the page head sits above the anchor pills.
+    expect(nav?.compareDocumentPosition(root.querySelector('.head') as Element)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
     expect([...root.querySelectorAll('a[data-help-chip]')].map((a) => a.getAttribute('data-help-chip'))).toEqual(HELP_SECTIONS.map((s) => s.id));
   });
 

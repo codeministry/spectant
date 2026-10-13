@@ -110,6 +110,7 @@
     },
     "meta": "{{active}} active · {{archived}} archived",
     "metaShort": "{{active}} · {{archived}} archived",
+    "countSegment": "{{count}} specs",
     "typeMeta": "{{count}} {{type}} · {{archived}} archived",
     "filter": {
       "label": "Filter by phase",
@@ -249,7 +250,9 @@
       "library": "Open the library",
       "settingsWorkspaces": "Settings · Workspaces"
     },
-    "noMatch": "No match for “{{query}}” · try a spec ID like {{example}}"
+    "loading": "Loading the index …",
+    "noMatch": "No match for “{{query}}” · try a spec ID like {{example}}",
+    "wsSpecs": "{{count}} specs"
   },
   "shortcuts": {
     "title": "Keyboard shortcuts",
@@ -313,6 +316,55 @@
       "de": "Deutsch"
     },
     "singleKey": "Single-key shortcuts",
+    "meta": "Stored in the app's data directory · applies to every workspace",
+    "actorsTable": {
+      "found": "Person ids found in your specs: {{ count }}",
+      "personId": "Person id",
+      "nameRequired": "A display name is required",
+      "valid": "valid"
+    },
+    "nav": {
+      "appearance": "Appearance",
+      "actors": "Actors",
+      "workspaces": "Workspaces",
+      "keyboard": "Keyboard",
+      "about": "About"
+    },
+    "appearance": {
+      "intro": "How Spectant looks on this machine. Nothing here touches a repository.",
+      "display": "Display, not stored yet",
+      "density": "Density",
+      "comfortable": "Comfortable",
+      "compact": "Compact",
+      "reducedMotion": "Reduced motion"
+    },
+    "workspacesCard": {
+      "registered": "{{ count }} registered",
+      "readable": "{{ count }} readable",
+      "missing": "{{ count }} folder not found",
+      "registry": "registry in the app's data directory",
+      "manage": "Manage workspaces",
+      "manageMeta": "add, rename, re-order, remove"
+    },
+    "keyboard": {
+      "guide": "Full guide",
+      "singleKeyHint": "Off: only ⌘K and Esc work.",
+      "palette": "Command palette",
+      "dashboard": "Spec dashboard",
+      "step": "Previous / next spec",
+      "zen": "Zen mode",
+      "all": "All shortcuts"
+    },
+    "about": {
+      "loopback": "loopback only",
+      "guide": "Guide"
+    },
+    "states": {
+      "failedTitle": "Couldn't save actors",
+      "conflictTitle": "Settings changed in another window",
+      "conflictBody": "Nothing was written. Reload to see the stored names.",
+      "reload": "Reload"
+    },
     "actors": {
       "title": "Actors",
       "intro": "Names for the person ids in your specs, stored only in the app's data directory. An id without a name shows as the id itself.",
@@ -339,6 +391,8 @@
       "namePlaceholder": "my-repo",
       "button": "Add",
       "hint": "Paste a path to fill the name.",
+      "completes": "completes,",
+      "expands": "expands.",
       "nothing": "Demo: nothing was added, the registry stays as it is."
     },
     "upload": {
@@ -355,6 +409,7 @@
       "reveal": "Reveal",
       "relocate": "Relocate…",
       "counts": "{{specs}} specs · {{active}} active",
+      "countsOne": "{{specs}} spec · {{active}} active",
       "actions": "Actions for {{name}}"
     },
     "menu": {
@@ -435,29 +490,34 @@
       "countLabel": "Workspaces: {{count}}",
       "specCount": "Specs: {{count}}",
       "unreadable": "Cannot be read",
-      "manage": "Manage workspaces"
+      "manage": "Manage workspaces",
+      "head": "All workspaces ({{count}})",
+      "showAll": "Show all {{count}} workspaces"
     },
     "spec": {
       "label": "Spec: {{id}} {{title}}",
       "countLabel": "Specs: {{count}}",
       "all": "All specs in {{workspace}}",
       "menu": "Specs",
-      "none": "Open a workspace to pick a spec"
+      "none": "Open a workspace to pick a spec",
+      "head": "Specs · {{workspace}}",
+      "overview": "Spec overview"
     },
     "area": {
       "label": "Area: {{area}}",
       "pageLabel": "Page: {{page}}",
       "goKey": "g {{key}}",
       "menu": "Areas",
+      "pageMenu": "Pages",
       "needsSpec": "Open a spec to switch areas",
       "needsWorkspace": "Open a workspace to switch pages",
       "summary": {
-        "dashboard": "Where the spec stands at a glance",
-        "status": "Stage, gates and timeline",
-        "live": "Agents at work, round board and matrix",
-        "data": "Claims, tasks and evidence",
-        "docs": "Plan, design, decisions, constitution",
-        "notes": "Your notes on this spec"
+        "dashboard": "overview · next step · gates",
+        "status": "Status · Timeline",
+        "live": "Board · Matrix",
+        "data": "Claims · Tasks · Evidence",
+        "docs": "Plan · Design · Decisions · Constitution",
+        "notes": "Notes"
       },
       "unbuilt": "Comes with this spec's later tasks",
       "head": {
@@ -467,6 +527,7 @@
     },
     "pills": {
       "workspace": "Workspace",
+      "page": "Page",
       "specs": "Specs",
       "spec": "Spec",
       "area": "Area",
@@ -568,11 +629,6 @@
     "assistant": {
       "trigger": "Assistant"
     },
-    "libraryLink": {
-      "label": "Library of this workspace",
-      "pill": "Library",
-      "value": "Docs"
-    },
     "refresh": {
       "now": "Refresh now",
       "interval": "Refresh interval",
@@ -581,6 +637,7 @@
     },
     "more": "More",
     "settingsPanel": {
+      "all": "All settings…",
       "workspaces": "Workspaces…",
       "help": "Help & guide"
     }
@@ -588,8 +645,16 @@
   "notFound": {
     "title": "Not found",
     "body": "No registered workspace, spec or tab goes by that name.",
-    "back": "Go to all workspaces",
-    "backWorkspace": "Back to {{workspace}}"
+    "back": "All workspaces",
+    "backWorkspace": "Back to {{workspace}}",
+    "eyebrow": "404",
+    "nothing": "Nothing at this address",
+    "noPage": "Spectant has no page for",
+    "routeWhy": "The route is unknown. Workspaces and specs are only found under",
+    "search": "Search",
+    "specTitle": "Spec {{id}} is not in {{workspace}}",
+    "nearest": "{{workspace}} has no spec with that id. The nearest specs:",
+    "dashboard": "{{workspace}} dashboard"
   },
   "timeline": {
     "filterLabel": "Filter by source",
@@ -607,10 +672,12 @@
     "openBoard": "Open round board →",
     "empty": {
       "heading": "No events yet",
-      "body": "The stage is derived from the files."
+      "body": "The stage is derived from the files.",
+      "link": "How a spec moves →"
     },
     "filtered": {
       "heading": "No entries from these sources",
+      "line": "No entries recorded for this filter.",
       "body": "Clear the filters to see every entry.",
       "clear": "Clear filters"
     },
@@ -690,13 +757,24 @@
     "error": "The claims could not be loaded.",
     "loading": "Loading claims…"
   },
+  "docProse": {
+    "diagram": {
+      "toolbar": "Diagram controls",
+      "label": "Diagram",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "reset": "Reset zoom",
+      "fullscreen": "Full screen",
+      "exitFullscreen": "Exit full screen"
+    }
+  },
   "docs": {
     "decisions": {
       "goal": "Goal",
       "stillOpen": "Still open"
     },
     "contents": "On this page",
-    "updated": "Updated {{date}}",
+    "updated": "updated {{date}}",
     "tableRegion": "Table {{index}}, scrolls sideways",
     "figureRegion": "Diagram {{index}}, scrolls sideways",
     "imageMissing": "Image not in this checkout",
@@ -711,7 +789,8 @@
       "notApplicableBody": "This spec type does not use the file, so there is nothing to show here.",
       "missing": "No {{file}} yet",
       "missingBody": "Create it with this command:",
-      "missingNoCommand": "It is written as the spec’s question rounds are recorded."
+      "missingNoCommand": "It is written as the spec’s question rounds are recorded.",
+      "typesLink": "Which files each type has →"
     },
     "error": "This document could not be loaded.",
     "loading": "Loading document",
@@ -735,6 +814,7 @@
     "columns": {
       "task": "Task",
       "claim": "Claim",
+      "flags": "Flags",
       "title": "Title",
       "lane": "Lane",
       "path": "Path",
@@ -809,8 +889,9 @@
       "mb": "{{value}} MB"
     },
     "empty": {
-      "heading": "No evidence yet",
-      "body": "This spec has no files in artifacts/ or .evidence/."
+      "heading": "No evidence recorded yet",
+      "body": "This spec has no files in artifacts/ or .evidence/.",
+      "link": "What counts as evidence →"
     },
     "error": {
       "refused": "Refused: outside the evidence folders",
@@ -846,6 +927,8 @@
     "next": {
       "heading": "Next step",
       "eyebrow": "What to run now",
+      "since": "since {{time}}",
+      "sinceVia": "since {{time}} via {{via}}",
       "copy": "Copy command",
       "copied": "Copied",
       "manual": "Select and press ⌘C",
@@ -1002,11 +1085,20 @@
       "changed": "Changed since the review",
       "done": "Reviewed {{time}}",
       "paused": "Writes paused: {{session}} holds a lock",
-      "written": "Reviewed mark written {{time}}."
+      "written": "Reviewed mark written {{time}}.",
+      "remark": "Re-mark",
+      "hint": {
+        "ready": "no review mark · release for /spec-implement",
+        "stale": "reviewed {{time}} · changed since",
+        "paused": "locked · {{session}} holds a claim · writes paused"
+      }
     },
     "dialog": {
       "heading": "Mark as reviewed",
-      "intro": "The mark records these three files as you read them.",
+      "title": "Release spec {{id}} for",
+      "intro": "Spectant writes .gates/reviewed.json with these hashes. Editing a file later makes the mark stale.",
+      "notYet": "Not yet",
+      "changed": "changed",
       "absent": "absent",
       "noHashes": "This page holds no file hashes. Reload the spec first.",
       "noAgentSource": "No agent source: no lock is checked before the write.",
@@ -1014,7 +1106,7 @@
       "reload": "Reload",
       "locked": "{{session}} holds {{claim}}. Nothing was written.",
       "error": "The mark could not be written (status {{status}}).",
-      "confirm": "Confirm",
+      "confirm": "Release",
       "sending": "Writing…",
       "checklist": {
         "legend": "You confirm",
@@ -1032,6 +1124,8 @@
       "claims": "Open claims",
       "fog": "Fog",
       "none": "Nothing is open.",
+      "allClosed": "All claims closed, no fog",
+      "readyFor": "Ready for",
       "error": "The open claims could not be read.",
       "groups": {
         "takeable": "takeable",
@@ -1091,15 +1185,16 @@
   },
   "notes": {
     "import": {
-      "text": "Notes from the old dashboard can be imported into this machine’s notes.",
+      "title": "Notes from the old pages?",
+      "text": "Import them once:",
       "dismiss": "Dismiss"
     },
     "list": {
       "label": "Notes",
       "search": "Search notes",
-      "new": "New note",
-      "empty": "No notes here yet",
-      "emptyBody": "Start one with “New note”. Notes stay on this machine.",
+      "new": "New",
+      "empty": "No notes yet · press n",
+      "emptyBody": "Notes stay on this machine and are never written into the repository.",
       "failed": "The notes could not be loaded"
     },
     "filter": {
@@ -1113,6 +1208,8 @@
     "anchor": {
       "label": "Anchor",
       "none": "No anchor",
+      "unanchored": "unanchored",
+      "kindSpec": "spec",
       "spec": "Spec {{spec}}",
       "claims": "Claims",
       "tasks": "Tasks",
@@ -1127,10 +1224,10 @@
       "body": "Note text (Markdown)",
       "bodyPlaceholder": "Write in Markdown…",
       "local": "Local · stays on this machine",
-      "delete": "Delete",
+      "delete": "Delete note",
       "missing": "This note does not exist",
-      "none": "No note open",
-      "noneBody": "Pick a note from the list or start a new one.",
+      "none": "No note selected",
+      "noneBody": "Pick one on the left or press",
       "view": {
         "label": "Editor view",
         "edit": "Edit",
@@ -1146,9 +1243,9 @@
     },
     "delete": {
       "heading": "Delete this note?",
-      "body": "The note is removed from this machine. This cannot be undone.",
-      "cancel": "Cancel",
-      "confirm": "Delete note"
+      "body": "It exists only on this machine — there is no undo.",
+      "cancel": "Keep",
+      "confirm": "Delete"
     }
   },
   "board": {
@@ -1198,7 +1295,8 @@
       "show": "show",
       "switch": "Lane",
       "showAll": "show all {{count}}",
-      "quiet": "nothing in flight"
+      "quiet": "nothing in flight",
+      "next": "next"
     },
     "section": {
       "needsYou": "Needs you",
@@ -1275,6 +1373,18 @@
     "workspace": {
       "title": "Board",
       "summary": "{{cards}} cards · {{specs}} specs · {{ideas}} ideas",
+      "eyebrowCards": "{{count}} cards",
+      "index": "Stages",
+      "indexPrev": "Previous column",
+      "indexNext": "Next column",
+      "sheetBar": "This board · {{count}} cards",
+      "needsYou": "Needs you",
+      "needsNone": "Nothing waits on you.",
+      "bandMeter": "{{done}} of {{count}} done",
+      "search": {
+        "label": "Search cards",
+        "placeholder": "id, title, feature"
+      },
       "open": "Open board",
       "source": {
         "custom": "specs/workflow.md",
@@ -1312,6 +1422,7 @@
         "activeList": "Active filters",
         "clear": "Clear",
         "noMatch": "No cards match",
+        "noMatchBody": "Filters hide every card.",
         "clearAll": "Clear filters",
         "all": "All"
       },
@@ -1542,13 +1653,39 @@
       "valueText": "{{closed}} of {{total}} claims closed",
       "meterLabel": "{{id}} claims closed",
       "moreChips": "+{{count}} more",
+      "filter": {
+        "label": "Filter features",
+        "all": "All",
+        "open": "open",
+        "held": "all held",
+        "none": "No feature matches this filter."
+      },
+      "sort": {
+        "master": "Master order",
+        "unheld": "Most unheld"
+      },
+      "rail": {
+        "label": "Context",
+        "milestones": "Milestones",
+        "mostUnheld": "Most unheld",
+        "noneUnheld": "Every claim is held by a spec."
+      },
       "empty": {
         "heading": "No feature blocks in ISA.md",
-        "body": "Features come from the master's ## Features blocks."
+        "body": "Features come from the master's ## Features blocks.",
+        "copy": "Copy /spec-feature"
       }
     },
     "milestones": {
-      "title": "Milestones in {{ws}}",
+      "title": "Milestones · {{ws}}",
+      "noFeature": "No feature assigned yet.",
+      "rail": {
+        "label": "Context",
+        "next": "Next milestone",
+        "days": "{{days}} days",
+        "closed": "claims closed · {{name}}",
+        "mostOpen": "Most open claims"
+      },
       "meta": "{{count}} milestones · next: {{name}}, {{date}}",
       "metaNone": "no upcoming milestone",
       "metaUndated": "{{count}} milestones · next: {{name}}",
@@ -1586,6 +1723,7 @@
   },
   "help": {
     "title": "Help",
+    "eyebrow": "Guide",
     "nav": {
       "label": "Sections",
       "about": "About",
@@ -1747,6 +1885,20 @@
     "noMilestone": "no milestone",
     "source": "{{path}} · read-only · hash {{hash}}",
     "allocateHint": "Allocate it by dropping it into its first stage on the board.",
+    "crumb": "Idea · {{slug}}",
+    "quote": "The idea",
+    "next": {
+      "title": "Next step",
+      "why": "The idea has no shape yet — the shaping round in your agent picks one of three shapes with you."
+    },
+    "contents": "Contents",
+    "record": {
+      "title": "Shaping record",
+      "slug": "story slug",
+      "shape": "shape:",
+      "noShape": "not chosen yet",
+      "hash": "hash"
+    },
     "loading": "Loading story",
     "error": "This story could not be loaded."
   },
@@ -1808,6 +1960,7 @@
       "specs": "Specs",
       "open": "Open"
     },
+    "eyebrowCount": "{{count}} specs",
     "subline": {
       "file": "specs/tech.md · {{count}} specs",
       "noFile": "no specs/tech.md · {{count}} specs"

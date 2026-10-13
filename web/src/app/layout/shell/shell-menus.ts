@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { afterNextRender, ChangeDetectionStrategy, Component, computed, inject, Injector, input, signal, viewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { KeyboardService } from '../../core/keyboard.service';
@@ -8,6 +9,10 @@ import { SettingsService } from '../../core/settings.service';
 import { ThemeService } from '../../core/theme.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiChip } from '../../shared/ui/chip/chip';
+import { chipIcon } from '../../shared/ui/chip/chip-icons';
+import { UiKbd } from '../../shared/ui/kbd/kbd';
+import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
+import type { Tone } from '../../shared/ui/tone';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiRovingItem, UiRovingList } from '../../shared/ui/roving-list.directive';
@@ -20,19 +25,19 @@ import { ShellData } from './shell-data.service';
 import { ShellState } from './shell-state.service';
 
 /**
- * The header's menus: the two pickers, the area menu, the overflow menu `⋯` (below 1120 px) and the settings panel
- * (spec 024 T76, T40).
+ * The header's menus: the two pickers, the page menu (spec 024 T80), the area menu, the overflow menu `⋯` (below
+ * 1120 px) and the settings panel (spec 024 T76, T40).
  */
-export type MenuKind = 'workspace' | 'spec' | 'area' | 'more' | 'settings';
+export type MenuKind = 'workspace' | 'page' | 'spec' | 'area' | 'more' | 'settings';
 
-/** The menus with their own panel here (the area menu is `AreaMenu`'s). */
-type PanelKind = Exclude<MenuKind, 'area'>;
+/** The menus with their own panel here (the page and area menus are `AreaMenu`'s). */
+type PanelKind = Exclude<MenuKind, 'area' | 'page'>;
 
-/** The area entry the overflow menu shows below 1120 px, resolved by `ShellNav` as for its wide-tier pill. */
+/** The area entry the overflow menu shows below 1120 px on a spec page, resolved by `ShellNav` as for its wide pill. */
 export interface AreaEntry {
-  /** The current area or workspace page, or the disabled entry's label (translation key). */
+  /** The current area, or the disabled entry's label (translation key). */
   readonly valueKey: string;
-  /** The accessible name (translation key; `area` / `page` take the translated value), as on the pill. */
+  /** The accessible name (translation key; `area` takes the translated value), as on the pill. */
   readonly ariaKey: string;
   /** Set when there is nothing to switch: the reason (translation key), shown as text. */
   readonly reasonKey: string | null;
@@ -56,16 +61,22 @@ const specCountOf = (counts: unknown): number | null => {
 };
 
 const THEMES = ['system', 'light', 'dark'] as const;
+
+/** The phase tones of the dashboard's spec table (`PHASE_TONES`), for the spec picker's chip. */
+const PHASE_TONE: Readonly<Partial<Record<string, Tone>>> = { scoping: 'secondary', building: 'primary', climbing: 'warning', complete: 'accent' };
 const LANGS = ['en', 'de'] as const;
 
 /**
  * The header's menus (ISC-73, ISC-76, ISC-97), loaded after first render (`@defer (on immediate)` in `ShellNav`) so the
  * overlay primitives and the list styles stay out of the initial bundle; until then a picker anchor simply navigates.
  *
- * - **Workspace picker**: "All workspaces", every workspace from `ShellData.workspaces()` as a link with its spec count
- *   (or "cannot be read"), the current one marked, and "Manage workspaces" → `/settings`.
- * - **Spec picker**: "All specs in …", then the workspace's specs (id, title, stage chip), the open one marked.
- * - **Area menu**: `app-area-menu` (`layout/area-menu/`, T37).
+ * - **Workspace picker** (prototype `pop-ws`): the head "All workspaces (n)", every workspace from `ShellData.workspaces()`
+ *   as a link with its badge and spec count (or "cannot be read"), the current one marked, then "Show all n workspaces"
+ *   (`g a`) and "Manage workspaces" → `/settings`.
+ * - **Spec picker** (prototype `pop-specs`): the head "Specs · <workspace>", the workspace's specs (muted id, title, phase
+ *   chip, else the stage), the open one marked, then "Spec overview" (`g s`) → the dashboard's Specs panel.
+ * - **Page menu** (spec 024 T80, ISC-150.2): `app-area-menu scope="page"`, the workspace pages, on every workspace route.
+ * - **Area menu**: `app-area-menu` (`layout/area-menu/`, T37), the spec areas, on a spec page.
  * - **Overflow menu** `⋯` (spec 024 T76, below 1120 px): Area, Zen, Assistant, Settings and Help, each item carrying the
  *   `data-control` (or `data-tool`) of the header control it stands for. Area and Settings open their own panel,
  *   anchored to `⋯`.
@@ -83,6 +94,8 @@ const LANGS = ['en', 'de'] as const;
     TranslocoPipe,
     UiIcon,
     UiChip,
+    UiKbd,
+    UiWsBadge,
     UiPopover,
     UiSheet,
     UiRovingItem,
@@ -107,7 +120,7 @@ export class ShellMenus {
   private readonly transloco = inject(TranslocoService);
   private readonly injector = inject(Injector);
 
-  /** The overflow menu's area entry; null outside a workspace, where the wide header shows no area pill either. */
+  /** The overflow menu's area entry; null off a spec page, where the wide header shows no area select either. */
   readonly area = input<AreaEntry | null>(null);
 
   protected readonly compact = computed(() => this.state.tier() === 'compact');
@@ -131,11 +144,18 @@ export class ShellMenus {
 
   protected readonly themeMode = this.theme.mode;
   protected readonly lang = this.language.current;
+  /** The catalogue as loaded: the labels re-read once it arrives (a translate before that returns the key). */
+  private readonly catalogue = toSignal(this.transloco.selectTranslation());
   protected readonly themeOptions = computed<readonly SegmentedOption[]>(() => {
     this.language.current();
+    this.catalogue();
     return THEMES.map((key) => ({ key, label: this.transloco.translate(`settings.theme.${key}`) }));
   });
   protected readonly langOptions: readonly SegmentedOption[] = LANGS.map((key) => ({ key, label: key.toUpperCase() }));
+
+  /** The phase chip of a spec row (prototype `pop-specs`: `chip(phaseOf(s))`), its tone and icon. */
+  protected readonly phaseTone = (phase: string): Tone => PHASE_TONE[phase] ?? 'neutral';
+  protected readonly phaseIcon = chipIcon;
 
   /** Which menu's bottom sheet is open (compact only; the popovers keep their own state). */
   protected readonly sheet = signal<PanelKind | null>(null);
@@ -146,10 +166,12 @@ export class ShellMenus {
   private readonly specPopover = viewChild<UiPopover>('specPopover');
   private readonly morePopover = viewChild<UiPopover>('morePopover');
   private readonly settingsPopover = viewChild<UiPopover>('settingsPopover');
-  private readonly areaMenu = viewChild(AreaMenu);
+  private readonly areaMenu = viewChild<AreaMenu>('areaMenu');
+  private readonly pageMenu = viewChild<AreaMenu>('pageMenu');
 
   readonly expanded = computed<Record<MenuKind, boolean>>(() => ({
     workspace: this.sheet() === 'workspace' || (this.workspacePopover()?.open() ?? false),
+    page: this.pageMenu()?.expanded() ?? false,
     spec: this.sheet() === 'spec' || (this.specPopover()?.open() ?? false),
     area: this.areaMenu()?.expanded() ?? false,
     more: this.sheet() === 'more' || (this.morePopover()?.open() ?? false),
@@ -177,8 +199,8 @@ export class ShellMenus {
   }
 
   protected close(kind: MenuKind): void {
-    if (kind === 'area') {
-      this.areaMenu()?.close();
+    if (kind === 'area' || kind === 'page') {
+      this.menuOf(kind)?.close();
       return;
     }
     if (this.sheet() === kind) this.sheet.set(null);
@@ -247,12 +269,30 @@ export class ShellMenus {
     return specLink(this.state.ws() ?? '', id);
   }
 
-  private show(kind: MenuKind, trigger: HTMLElement): void {
+  private show(kind: MenuKind, trigger: HTMLElement, retry = true): void {
     // WebKit does not focus a clicked link; the popover and the sheet return focus to whatever had it on open.
     trigger.focus();
-    if (kind === 'area') this.areaMenu()?.show(trigger);
-    else if (this.compact()) this.sheet.set(kind);
-    else this.popover(kind)?.show(trigger);
+    // A click right after this deferred block mounted, before its panels rendered (spec 024): open after that render.
+    const later = (): void => {
+      if (retry) afterNextRender(() => this.show(kind, trigger, false), { injector: this.injector });
+    };
+    if (kind === 'area' || kind === 'page') {
+      const menu = this.menuOf(kind);
+      if (menu) menu.show(trigger);
+      else later();
+      return;
+    }
+    if (this.compact()) {
+      this.sheet.set(kind);
+      return;
+    }
+    const popover = this.popover(kind);
+    if (popover) popover.show(trigger);
+    else later();
+  }
+
+  private menuOf(kind: 'area' | 'page'): AreaMenu | undefined {
+    return kind === 'area' ? this.areaMenu() : this.pageMenu();
   }
 
   private popover(kind: PanelKind): UiPopover | undefined {

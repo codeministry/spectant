@@ -25,7 +25,7 @@ import { RAIL_BLOCK_STYLES } from './rail-block.styles';
     @if (collapsible()) {
       <section class="block" [attr.aria-label]="'board.rail.thisFrame' | transloco">
         <ui-disclosure [open]="open()" [count]="events().length" (openChange)="open.set($event)">
-          <span uiDisclosureSummary class="title">{{ 'board.rail.thisFrame' | transloco }}</span>
+          <span uiDisclosureSummary class="eyebrow-head">{{ 'board.rail.thisFrame' | transloco }}<span class="end" data-frame-label>{{ frame().label }}</span></span>
           <ng-container [ngTemplateOutlet]="body" />
         </ui-disclosure>
       </section>

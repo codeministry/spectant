@@ -9,7 +9,9 @@ import {
   Injector,
   signal,
 } from '@angular/core';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { PlanningFeature, PlanningHolder } from '../../../../../core/src/planning';
 import { NotFound } from '../../layout/not-found/not-found';
 import { ShellData } from '../../layout/shell/shell-data.service';
@@ -17,6 +19,9 @@ import { ShellState } from '../../layout/shell/shell-state.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiCard } from '../../shared/ui/card/card';
+import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
+import { type FilterOption, UiFilterChips } from '../../shared/ui/filter-chips/filter-chips';
+import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { UiIdeaChip } from '../../shared/ui/idea-chip/idea-chip';
 import { UiMeter } from '../../shared/ui/meter/meter';
@@ -64,7 +69,7 @@ const toggled = (set: ReadonlySet<string>, id: string): ReadonlySet<string> => {
  */
 @Component({
   selector: 'app-features-page',
-  imports: [TranslocoPipe, NotFound, UiButton, UiCard, UiEmptyState, UiIcon, UiIdeaChip, UiMeter, UiPageHead, UiSkeleton, UiTerm, SpecChip],
+  imports: [TranslocoPipe, RouterLink, NotFound, UiButton, UiCard, UiCommandChip, UiEmptyState, UiFilterChips, UiWsBadge, UiIcon, UiIdeaChip, UiMeter, UiPageHead, UiSkeleton, UiTerm, SpecChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'features', '[attr.data-tier]': 'tier()' },
   templateUrl: './features-page.html',
@@ -76,7 +81,12 @@ export class FeaturesPage {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
 
+  private readonly transloco = inject(TranslocoService);
+  /** The active catalog as a signal, so the filter labels follow a language switch. */
+  private readonly catalog = toSignal(this.transloco.selectTranslation(), { initialValue: {} });
+
   protected readonly tier = this.state.tier;
+  protected readonly wsName = computed(() => this.data.workspaceName(this.state.ws() ?? ''));
   protected readonly wide = computed(() => this.tier() === 'wide');
   protected readonly compact = computed(() => this.tier() === 'compact');
 
@@ -114,6 +124,54 @@ export class FeaturesPage {
   /** The master's recount (ISC-100.2); null only without a master, where no row renders and the sum is 0/0 anyway. */
   protected readonly recount = computed(() => this.model()?.recount ?? { closed: 0, total: 0 });
   protected readonly unheld = computed(() => this.rows().reduce((sum, row) => sum + row.feature.unheld.length, 0));
+
+  /** The eyebrow's count (prototype `<WS> · FEATURES · n`); empty while the tree loads. */
+  protected readonly eyebrowCount = computed(() => (this.model() === null ? '' : String(this.rows().length)));
+
+  /** The table head's filter (prototype `filter-chips` All / open / all held): open rows still have unheld claims. */
+  readonly filter = signal<string>('all');
+  /** The sort button: master order (the default) or the most unheld claims first, master order within a count. */
+  protected readonly sort = signal<'master' | 'unheld'>('master');
+
+  protected readonly filterOptions = computed<readonly FilterOption[]>(() => {
+    this.catalog();
+    const rows = this.rows();
+    const open = rows.filter((row) => row.feature.unheld.length > 0).length;
+    const t = (key: string): string => this.transloco.translate(`planning.features.filter.${key}`);
+    return [
+      { key: 'all', label: t('all'), count: rows.length },
+      { key: 'open', label: t('open'), count: open, tone: 'concern' },
+      { key: 'held', label: t('held'), count: rows.length - open, tone: 'success' },
+    ];
+  });
+
+  protected readonly shownRows = computed<readonly RowView[]>(() => {
+    const filter = this.filter();
+    const rows = this.rows().filter((row) =>
+      filter === 'open' ? row.feature.unheld.length > 0 : filter === 'held' ? row.feature.unheld.length === 0 : true,
+    );
+    if (this.sort() === 'master') return rows;
+    return rows
+      .map((row, index) => ({ row, index }))
+      .sort((a, b) => b.row.feature.unheld.length - a.row.feature.unheld.length || a.index - b.index)
+      .map(({ row }) => row);
+  });
+
+  /** The rail's `MILESTONES` block: the entries some spec names, as the Milestones page lists them. */
+  protected readonly railMilestones = computed(() => (this.model()?.milestones ?? []).filter((m) => m.specs.length > 0));
+  /** The rail's `MOST UNHELD` block: the five features with the most unheld claims, master order within a count. */
+  protected readonly mostUnheld = computed(() =>
+    (this.model()?.features ?? [])
+      .map((feature, index) => ({ feature, index }))
+      .filter(({ feature }) => feature.unheld.length > 0)
+      .sort((a, b) => b.feature.unheld.length - a.feature.unheld.length || a.index - b.index)
+      .slice(0, 5)
+      .map(({ feature }) => feature),
+  );
+
+  protected toggleSort(): void {
+    this.sort.update((sort) => (sort === 'master' ? 'unheld' : 'master'));
+  }
 
   /** Rows whose chip list was expanded past the compact limit. */
   protected readonly chipsOpen = signal<ReadonlySet<string>>(new Set());

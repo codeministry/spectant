@@ -91,6 +91,7 @@
             <button
               type="button"
               class="row-more"
+              [style.position-anchor]="'--desc-' + row.id"
               [attr.data-more]="row.id"
               [attr.aria-expanded]="moreOpen().has(row.id)"
               [attr.aria-controls]="'desc-' + row.id"
@@ -99,9 +100,10 @@
               {{ (moreOpen().has(row.id) ? 'brief.less' : 'brief.more') | transloco }}
             </button>
           }
-          <!-- The reason line, last (ISC-122.3): outside the row link too, since its command chip is a copy button. -->
-          @if (row.nextReason) {
-            <ui-reason class="row-reason" [attr.data-reason]="row.id" [compact]="true" [phrase]="row.nextReason" [command]="row.nextCommand" />
+          <!-- The reason line, last (ISC-122.3), only for a waiting spec (core's WAITING_STAGES) and without its command
+               chip: the command and the takeable claims live in the right column (spec 024, principal 2026-10-13 "Hybrid"). -->
+          @if (row.nextReason && isWaiting(row.stage)) {
+            <ui-reason class="row-reason" icon="circle-pause" [attr.data-reason]="row.id" [compact]="true" [phrase]="row.nextReason" />
           }
         </li>
       }

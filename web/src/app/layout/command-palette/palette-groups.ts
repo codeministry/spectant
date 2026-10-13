@@ -145,7 +145,15 @@ function nextUpSource(): PaletteSource {
   );
 }
 
+/** `counts.specs` read narrowly (`WorkspaceListEntry.counts` is untyped in web). */
+const specsOf = (counts: unknown): number | null => {
+  if (typeof counts !== 'object' || counts === null) return null;
+  const specs = (counts as Readonly<Record<string, unknown>>)['specs'];
+  return typeof specs === 'number' ? specs : null;
+};
+
 function workspacesSource(): PaletteSource {
+  const t = translator();
   const data = inject(ShellData);
   return source(
     'workspaces',
@@ -154,7 +162,8 @@ function workspacesSource(): PaletteSource {
       data.workspaceList().map((ws) => ({
         id: ws.slug,
         label: ws.name,
-        meta: ws.pathTail,
+        // The prototype's meta "6 specs"; the path tail stays a search key.
+        meta: specsOf(ws.counts) === null ? ws.pathTail : t('palette.wsSpecs', { count: specsOf(ws.counts) }),
         link: ['/w', ws.slug],
         keywords: [ws.slug, ws.pathTail],
       })),
@@ -162,7 +171,16 @@ function workspacesSource(): PaletteSource {
   );
 }
 
+/** A spec of the Specs group: its phase as the prototype's chip (`.chip.building` / `.chip.scoping`). */
+export interface PaletteSpecEntry extends PaletteEntry {
+  readonly phase: string;
+  readonly phaseLabel: string;
+}
+
+export const hasPhase = (entry: PaletteEntry): entry is PaletteSpecEntry => typeof (entry as Partial<PaletteSpecEntry>).phase === 'string';
+
 function specsSource(): PaletteSource {
+  const t = translator();
   const index = inject(PaletteIndex);
   return source(
     'specs',
@@ -172,7 +190,8 @@ function specsSource(): PaletteSource {
         ws.specs.map((spec) => ({
           id: `${ws.slug}/${spec.id}`,
           label: spec.title,
-          meta: spec.phase === null ? ws.name : `${spec.phase} · ${ws.name}`,
+          meta: ws.name,
+          ...(spec.phase === null ? {} : { phase: spec.phase, phaseLabel: t(`phases.${spec.phase}`) }),
           chip: spec.id,
           link: specLink(ws.slug, spec.id),
           keywords: [spec.id, spec.slug, ws.name],

@@ -14,6 +14,8 @@ export interface SpecRowView {
   readonly title: string;
   readonly type: string | null;
   readonly stage: string;
+  /** The dashboard row's phase (`building`, `scoping` …); absent when the row carries none. */
+  readonly phase?: string;
   /**
    * The dashboard row's `priority` (P3 for a missing or invalid key); null when the row carries none (archive rows).
    * Optional so hand-built rows in specs need not name it.
@@ -38,7 +40,18 @@ function rowsOf(body: unknown, key: 'specs' | 'archive'): SpecRowView[] {
     const stage = text(row['stage']) ?? (key === 'archive' ? 'done' : 'plan');
     const priority = PRIORITIES.find((level) => level === row['priority']) ?? null;
     const slug = text(row['slug']);
-    return [{ id, title: text(row['title']) ?? id, type: text(row['type']), stage, priority, ...(slug === null ? {} : { slug }) }];
+    const phase = text(row['phase']);
+    return [
+      {
+        id,
+        title: text(row['title']) ?? id,
+        type: text(row['type']),
+        stage,
+        priority,
+        ...(slug === null ? {} : { slug }),
+        ...(phase === null ? {} : { phase }),
+      },
+    ];
   });
 }
 

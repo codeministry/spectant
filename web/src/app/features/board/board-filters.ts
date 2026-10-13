@@ -81,7 +81,14 @@ export function withToggled(query: BoardQueryState, key: BoardFilterKey, value: 
 }
 
 /** The query without any filter value; the swimlane group and the visible column are not filters and stay. */
-export const withoutFilters = (query: BoardQueryState): BoardQueryState => ({ ...query, feature: [], milestone: [], type: [], assignee: [] });
+/** The query without the toolbar search (`q`). */
+export const withoutSearch = (query: BoardQueryState): BoardQueryState => {
+  const next: { -readonly [K in keyof BoardQueryState]: BoardQueryState[K] } = { ...query };
+  delete next.q;
+  return next;
+};
+
+export const withoutFilters = (query: BoardQueryState): BoardQueryState => ({ ...withoutSearch(query), feature: [], milestone: [], type: [], assignee: [] });
 
 const isGroup = (value: string): value is BoardGroup => BOARD_GROUPS.some((g) => g === value);
 
@@ -135,7 +142,7 @@ interface ActiveChip {
   selector: 'app-board-filters',
   imports: [TranslocoPipe, UiActorChip, UiButton, UiIcon, UiIconButton, UiPopover, UiPopoverTrigger, UiSegmented, UiTypeGlyph],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { 'data-toolbar': '' },
+  host: { 'data-toolbar': '', '(document:keydown)': 'hotkey($event)' },
   styleUrl: './board-filters.css',
   template: `
     <div class="triggers">
@@ -181,6 +188,19 @@ interface ActiveChip {
         </ui-popover>
       }
     </div>
+
+    <label class="bsearch" data-search>
+      <ui-icon name="search" [size]="14" />
+      <input
+        #search
+        type="search"
+        [value]="board().query.q ?? ''"
+        [placeholder]="'board.workspace.search.placeholder' | transloco"
+        [attr.aria-label]="'board.workspace.search.label' | transloco"
+        (input)="searchFor(search.value)"
+      />
+      <kbd aria-hidden="true">f</kbd>
+    </label>
 
     @if (chips().length > 0) {
       <ul class="chips" data-chips [attr.aria-label]="'board.workspace.filter.activeList' | transloco">
@@ -316,6 +336,23 @@ export class BoardFilters {
   protected group(value: string | undefined): void {
     if (value === undefined || !isGroup(value) || value === this.board().query.group) return;
     this.queryChange.emit({ ...this.board().query, group: value });
+  }
+
+  /** The toolbar search (spec 024): the whole next query with `q`, blank dropping it. */
+  protected searchFor(value: string): void {
+    const rest = withoutSearch(this.board().query);
+    this.queryChange.emit(value.trim() === '' ? rest : { ...rest, q: value });
+  }
+
+  /** `f` outside a text field focuses the search, as the kbd hint says. */
+  protected hotkey(event: KeyboardEvent): void {
+    if (event.key !== 'f' || event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (target && (target.isContentEditable || target.closest('input, textarea, select, [contenteditable]'))) return;
+    const input = this.host.querySelector<HTMLInputElement>('[data-search] input');
+    if (!input) return;
+    event.preventDefault();
+    input.focus();
   }
 
   protected clearAll(): BoardQueryState {

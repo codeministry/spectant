@@ -183,6 +183,19 @@ export function mermaidKeepsNaturalWidth(viewBoxWidth: number, containerWidth: n
   return (fontSize * containerWidth) / viewBoxWidth < MIN_DIAGRAM_LABEL_PX;
 }
 
+/**
+ * Caps a drawn diagram at its natural width (its `viewBox` width in px), never upscaled: mermaid draws its SVG
+ * `width="100%"`, and the `max-width` style its `useMaxWidth` would add does not survive into the page, so a small
+ * `viewBox` was stretched to the column (a 365-unit plan figure drawn 738 px wide and 2173 px tall). The cap is a
+ * custom property the stylesheet reads (`--mermaid-max-width`, doc-prose.css), so zooming (`zoomDiagram`) still
+ * overrides it inline. No `viewBox`: nothing to cap, the figure keeps scaling to its container.
+ */
+export function capAtNaturalWidth(svg: SVGSVGElement): void {
+  const natural = viewBoxWidth(svg);
+  if (natural > 0) svg.style.setProperty('--mermaid-max-width', `${String(natural)}px`);
+  else svg.style.removeProperty('--mermaid-max-width');
+}
+
 /** The width of an SVG's `viewBox` in user units, or 0 when it has none. */
 function viewBoxWidth(svg: SVGSVGElement): number {
   const parts = (svg.getAttribute('viewBox') ?? '').trim().split(/[\s,]+/);

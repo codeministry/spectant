@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, Injector, linkedSignal, resource, type Signal, signal, untracked } from '@angular/core';
+import { computed, inject, Injectable, Injector, linkedSignal, type Resource, resource, type Signal, signal, untracked } from '@angular/core';
 import type { ClaimGlyphState } from '../../../../../core/src/files';
 import { ApiClient, type DashboardBody } from '../../core/api.service';
 import { RefreshService } from '../../core/refresh.service';
@@ -116,6 +116,9 @@ async function mapLimited<T, R>(items: readonly T[], limit: number, task: (item:
  * open workspace's). Nothing loads before the palette first opens (`want()`); each later open reloads, so the lists
  * are as fresh as the dashboards. The open workspace always comes from `ShellData`'s own dashboard and leads the list.
  */
+/** A source has given its first answer (a value, kept while it reloads, or an error), or has nothing to load. */
+const answered = (source: Resource<unknown>): boolean => source.hasValue() || source.status() === 'error' || source.status() === 'idle';
+
 @Injectable({ providedIn: 'root' })
 export class PaletteIndex {
   private readonly api = inject(ApiClient);
@@ -170,6 +173,24 @@ export class PaletteIndex {
   });
 
   private readonly claimSets = new Map<string, Signal<readonly PaletteClaim[] | null>>();
+  private readonly claimLoads = new Map<string, Resource<readonly PaletteClaim[] | undefined>>();
+
+  /**
+   * Every source of the palette's groups has given its first answer since the first open: the shell's workspaces,
+   * dashboard, planning tree and tech page, the other workspaces' dashboards and every workspace's claims (spec 024
+   * T80). Until then the palette lists nothing, so its list never grows or re-orders under a pointer or a query
+   * (a click on Help landed on Library while the other workspaces' specs arrived above it). A reload keeps the last
+   * answer, so a later open or a live refresh does not empty the list again.
+   */
+  readonly settled = computed(() => {
+    if (!this.wanted() || !answered(this.others)) return false;
+    if (![this.data.workspaces, this.data.dashboard, this.data.planning, this.data.tech].every(answered)) return false;
+    return this.workspaces().every((ws) => {
+      this.claimsFor(ws.slug);
+      const load = this.claimLoads.get(ws.slug);
+      return load === undefined || answered(load);
+    });
+  });
 
   /**
    * T3 · ISC-139: every claim of every spec (active, then archived, each in file order) of workspace `ws`, for the
@@ -209,6 +230,7 @@ export class PaletteIndex {
         return perSpec.flat();
       },
     });
+    this.claimLoads.set(ws, loaded);
     // `undefined` while a load runs or failed (keep the last list), `null` while the workspace is unknown.
     return linkedSignal<readonly PaletteClaim[] | null | undefined, readonly PaletteClaim[] | null>({
       source: () => (loaded.hasValue() ? loaded.value() : loaded.status() === 'idle' ? null : undefined),

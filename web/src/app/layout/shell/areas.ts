@@ -95,8 +95,8 @@ export const isWorkspacePageId = (value: unknown): value is WorkspacePageId =>
   (WORKSPACE_PAGE_IDS as readonly unknown[]).includes(value);
 
 /**
- * A page of a workspace (`/w/:ws`, `/w/:ws/features`, `/w/:ws/milestones`): the registry the area menu, the palette and
- * the routes read, in menu order. It always holds every entry; `milestones` is only listed by the menu (and the
+ * A page of a workspace (`/w/:ws`, `/w/:ws/features`, `/w/:ws/milestones`): the registry the PAGE select's menu
+ * (spec 024 T80), the palette and the routes read, in menu order. It always holds every entry; `milestones` is only listed by the menu (and the
  * palette, and answered by the route) while `ShellData.hasMilestones` is true (ISC-104, T26), so the filtering lives
  * with the reader, not here.
  */
@@ -127,7 +127,7 @@ export const WORKSPACE_PAGES: readonly WorkspacePage[] = [
   // Spec 023 (T20, ISC-134.2): the tech page, fifth after Milestones; `/w/:ws/tech` redirects to its first tab.
   { id: 'tech', icon: 'book-open', labelKey: 'shell.pages.tech', summaryKey: 'shell.pages.summary.tech', goKey: null },
   // Spec 024 (T57, ISC-150.1): the Library, sixth; a mock with the demo chip until spec 017, its summary counts the
-  // mock's documents and says so. The prototype's rail link to it stays beside the menu (`ShellHeader`).
+  // mock's documents and says so. The PAGE select's menu reaches it (spec 024 T80, ISC-150.2: the rail link went).
   { id: 'library', icon: 'book', labelKey: 'shell.pages.library', summaryKey: 'shell.pages.summary.library', goKey: null },
 ];
 

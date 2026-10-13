@@ -42,6 +42,8 @@ export interface BoardQueryState {
   readonly open: readonly WorkflowStage[];
   /** Columns with cards the viewer folded (`?fold=`); such a column is open by default. */
   readonly fold: readonly WorkflowStage[];
+  /** Free text over id, slug, title and feature (`?q=`, spec 024 toolbar search); absent when blank. */
+  readonly q?: string;
 }
 
 export const EMPTY_BOARD_QUERY: BoardQueryState = { feature: [], milestone: [], type: [], assignee: [], group: 'none', col: null, open: [], fold: [] };
@@ -69,7 +71,9 @@ const distinct = (values: readonly string[]): string[] => [...new Set(values.fil
 export function parseBoardQuery(source: BoardQuerySource): BoardQueryState {
   const group = valuesOf(source, 'group').find(isGroup) ?? 'none';
   const col = valuesOf(source, 'col').find(isWorkflowStage) ?? null;
+  const q = valuesOf(source, 'q').map((v) => v.trim()).find((v) => v !== '');
   return {
+    ...(q === undefined ? {} : { q }),
     feature: distinct(valuesOf(source, 'feature')),
     milestone: distinct(valuesOf(source, 'milestone')),
     type: distinct(valuesOf(source, 'type')).filter(isCardType),
@@ -93,6 +97,7 @@ export function boardQueryParams(query: BoardQueryState): Record<string, string 
   }
   if (query.group !== 'none') params['group'] = query.group;
   if (query.col !== null) params['col'] = query.col;
+  if (query.q !== undefined && query.q.trim() !== '') params['q'] = query.q.trim();
   for (const key of ['open', 'fold'] as const) {
     const stages = distinct(query[key]);
     if (stages.length > 0) params[key] = stages;
@@ -110,7 +115,8 @@ export function boardQueryString(query: BoardQueryState): string {
 }
 
 /** How many filter values are set; the group and the column are not filters. */
-export const activeFilterCount = (query: BoardQueryState): number => LIST_KEYS.reduce((n, key) => n + query[key].length, 0);
+export const activeFilterCount = (query: BoardQueryState): number =>
+  LIST_KEYS.reduce((n, key) => n + query[key].length, 0) + (query.q !== undefined && query.q.trim() !== '' ? 1 : 0);
 
 // ─── The input ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -312,7 +318,16 @@ export function cardFilterValue(card: Pick<BoardCard, 'kind' | 'type' | 'feature
   }
 }
 
+/** The search's match: every word of `q` in the card's id, slug, title, feature or feature name, case-insensitive. */
+function found(card: BoardCard, q: string | undefined): boolean {
+  const words = (q ?? '').toLowerCase().split(/\s+/).filter((w) => w !== '');
+  if (words.length === 0) return true;
+  const text = [card.id ?? '', card.slug, card.title, card.feature ?? '', card.featureName ?? ''].join(' ').toLowerCase();
+  return words.every((w) => text.includes(w));
+}
+
 function passes(card: BoardCard, query: BoardQueryState): boolean {
+  if (!found(card, query.q)) return false;
   return LIST_KEYS.every((key) => query[key].length === 0 || (query[key] as readonly string[]).includes(cardFilterValue(card, key)));
 }
 

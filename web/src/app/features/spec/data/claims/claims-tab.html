@@ -15,14 +15,16 @@
         (valueChange)="setKind($event)"
         [label]="'claims.filters.kind' | transloco"
       />
-      <input
-        type="search"
-        class="input input-sm search"
-        [value]="search()"
-        [placeholder]="'claims.search.placeholder' | transloco"
-        [attr.aria-label]="'claims.search.label' | transloco"
-        (input)="setSearch($event)"
-      />
+      <label class="search">
+        <ui-icon name="search" [size]="16" />
+        <input
+          type="search"
+          [value]="search()"
+          [placeholder]="'claims.search.placeholder' | transloco"
+          [attr.aria-label]="'claims.search.label' | transloco"
+          (input)="setSearch($event)"
+        />
+      </label>
     </div>
     <p class="result" data-result aria-live="polite">
       {{ 'claims.result' | transloco: { shown: visible().length, total: model.counts.all } }}
@@ -75,11 +77,6 @@
               }
               @if (claim.lock; as lock) {
                 <ui-chip data-chip="lock" tone="primary" [dot]="true">{{ 'claims.states.taken' | transloco }}</ui-chip>
-                <span class="session" data-session>
-                  <span class="mono">{{ lock.session }}</span>
-                  <span class="muted">·</span>
-                  <ui-relative-time [date]="lock.since" [format]="elapsed" />
-                </span>
               }
               @let notes = noteCount(claim.id);
               @if (notes > 0) {
@@ -90,6 +87,9 @@
                   [attr.aria-label]="(notes === 1 ? 'claims.notes.one' : 'claims.notes.other') | transloco: { count: notes }"
                   ><ui-icon name="sticky-note" [size]="14" />{{ notes }}</a
                 >
+              }
+              @if (claim.state !== 'blocked' && !claim.lock) {
+                <ui-chip class="st" data-chip="state" [attr.data-st]="claim.state" [icon]="chipIcon(claim.state)">{{ 'claims.states.' + claim.state | transloco }}</ui-chip>
               }
             </div>
 
@@ -103,6 +103,15 @@
               </p>
             } @else {
               <p class="text-row"><span class="text">{{ claim.text }}</span></p>
+            }
+
+            @if (claim.lock; as lock) {
+              <p class="taken-line" data-session>
+                <span class="agent-dot" aria-hidden="true"></span>
+                <span class="mono">{{ lock.session }}</span>
+                <span class="muted">·</span>
+                <ui-relative-time class="muted" [date]="lock.since" [format]="elapsed" />
+              </p>
             }
 
             @if (claim.edges.length > 0) {
@@ -130,16 +139,15 @@
                 <dd>
                   <span>{{ probe.check }}</span>
                   @if (probe.threshold) {
-                    <span class="sep">·</span><span>{{ probe.threshold }}</span>
+                    <span class="muted">{{ probe.threshold }}</span>
                   }
                   @if (probe.tool) {
-                    <span class="sep">·</span><span class="tool">{{ plain(probe.tool) }}</span>
+                    <span class="tool muted">{{ plain(probe.tool) }}</span>
                   }
                   @if (severityColor(probe.severity); as color) {
-                    <span class="sep">·</span>
-                    <span class="severity"
+                    <span class="severity" [attr.title]="'claims.probe.severity' | transloco: { severity: probe.severity }"
                       ><span class="dot" aria-hidden="true" [style.background]="color"></span
-                      >{{ 'claims.probe.severity' | transloco: { severity: probe.severity } }}</span
+                      ><span class="sr-only">{{ 'claims.probe.severity' | transloco: { severity: probe.severity } }}</span></span
                     >
                   }
                 </dd>
@@ -149,7 +157,7 @@
             @if (claim.verification; as verification) {
               <p class="verification">
                 <ui-icon class="verification-icon" name="circle-check" [size]="14" />
-                <span class="verification-label">{{ 'claims.verification' | transloco }}</span>
+                <span class="verification-label sr-only">{{ 'claims.verification' | transloco }}</span>
                 @if (evidenceFile(verification); as file) {
                   <a class="link" data-link="evidence" [routerLink]="base() + '/evidence'" [fragment]="file">{{
                     plain(verification)

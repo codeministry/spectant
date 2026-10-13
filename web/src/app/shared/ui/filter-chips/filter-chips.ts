@@ -22,11 +22,17 @@ export interface FilterOption {
   styles: `
     :host { display: block; min-inline-size: 0; }
     .row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
-    .chip { flex-shrink: 0; gap: 8px; border-radius: 999px; font-weight: 500; white-space: nowrap; }
+    /* Prototype [data-ui=filter-chips] button: 28 px, 0 10 px, gap 6, 1 px --border (app --line), --radius-sm, 13 px muted. */
+    .chip {
+      --btn-border: var(--line); --btn-fg: var(--muted-ink);
+      flex-shrink: 0; gap: 6px; block-size: 28px; min-block-size: 28px; padding-inline: 10px; border-width: 1px; border-style: solid;
+      border-radius: var(--radius-sm); font-size: 13px; font-weight: 400; white-space: nowrap;
+    }
     .chip[aria-pressed='true'] { --btn-bg: var(--color-base-300); --btn-fg: var(--color-base-content); --btn-border: var(--track); }
     .chip:hover { --btn-bg: var(--color-base-300); }
     .dot { inline-size: 8px; block-size: 8px; border-radius: 50%; }
-    .count { color: var(--muted-ink); font-variant-numeric: tabular-nums; }
+    /* Prototype b: the count in --text 600. */
+    .count { color: var(--color-base-content); font-variant-numeric: tabular-nums; font-weight: 600; }
     /* The selected chip is the prototype's --raised (spec 024: prototype background (principal 2026-10-13)); its count
      * stays muted, the neutral-chip pair of web/tests/contrast-exceptions.ts. */
     @container shell (width < 640px) {

@@ -131,6 +131,8 @@ async function render(url: string, tier: Tier = 'wide'): Promise<HTMLElement> {
   await TestBed.inject(Router).navigateByUrl(url);
   TestBed.inject(ShellState).tier.set(tier);
   const fixture = TestBed.createComponent(AreaMenu);
+  // spec 024: PAGE select (principal 2026-10-13): the workspace pages are the page menu's scope, the areas the area menu's
+  fixture.componentRef.setInput('scope', url.includes('/s/') ? 'spec' : 'page');
   await fixture.whenStable();
   return fixture.nativeElement as HTMLElement;
 }

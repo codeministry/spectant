@@ -14,3 +14,26 @@
   font-size: 12px;
   line-height: 16px;
 }
+
+/* Prototype `page-head h1`: the 22 px workspace badge, "Specs", then "· <ws>" in muted 400. */
+.h1-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.page-mark {
+  flex: none;
+}
+
+.h1-row h1 {
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.h1-ws {
+  color: var(--muted-ink);
+  font-weight: 400;
+}

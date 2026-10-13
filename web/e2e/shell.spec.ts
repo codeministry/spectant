@@ -8,10 +8,15 @@ import type { Page } from '@playwright/test';
 import { atWidth, expect, test } from './fixtures';
 
 const ROUTES = ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/999', '/settings'] as const;
-const CONTROLS = ['brand', 'workspace', 'spec', 'area', 'palette', 'live', 'zen', 'settings'] as const;
-/** Outside a workspace the spec and area pills are left out rather than showing `0` (spec 019, ISC-140.2). */
+// spec 024: PAGE select (principal 2026-10-13): Workspace · Page · Spec · Area, the Area select only on a spec route
+const CONTROLS = ['brand', 'workspace', 'page', 'spec', 'area', 'palette', 'live', 'zen', 'settings'] as const;
+/** Outside a workspace the page, spec and area pills are left out rather than showing `0` (spec 019, ISC-140.2). */
 const controlsOn = (route: string): readonly string[] =>
-  route.startsWith('/w/') ? CONTROLS : CONTROLS.filter((control) => control !== 'spec' && control !== 'area');
+  route.includes('/s/')
+    ? CONTROLS
+    : route.startsWith('/w/')
+      ? CONTROLS.filter((control) => control !== 'area')
+      : CONTROLS.filter((control) => control !== 'page' && control !== 'spec' && control !== 'area');
 // spec 024: one-row header on every width (principal 2026-10-13): below 1120 the area, zen and settings controls are entries of the overflow
 // menu `⋯` (`data-tool="more"`), each carrying its `data-control`; `reveal` opens the menu first.
 const OVERFLOW = new Set<string>(['area', 'zen', 'settings']);
@@ -317,7 +322,7 @@ test.describe('zen', () => {
       await zen.click();
       await expect(zen).toHaveAttribute('aria-pressed', 'true');
       for (const tool of TOOLS) await expect(page.locator(`header [data-control="${tool}"]`), tool).toBeHidden();
-      for (const kept of ['brand', 'workspace', 'spec', 'area']) {
+      for (const kept of ['brand', 'workspace', 'page', 'spec', 'area']) {
         await expect(page.locator(`header [data-control="${kept}"]`), kept).toBeVisible();
       }
       await expect(head).toBeHidden();

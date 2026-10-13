@@ -84,12 +84,23 @@ blockquote {
   gap: 16px;
 }
 
+/* Prototype `.why`: 18 px indent, 6 px gap, cyan markers; the eyebrow heads the card (`.next-step`). */
 .reasons {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   margin: 0;
-  padding-inline-start: 20px;
+  padding-inline-start: 18px;
   list-style: disc;
+  color: var(--color-base-content);
+}
+
+.reasons li::marker {
+  color: var(--color-primary);
+}
+
+.next-eyebrow {
+  margin: 0;
+  color: var(--muted-ink);
 }
 
 .ref {

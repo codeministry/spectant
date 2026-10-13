@@ -28,26 +28,28 @@
   stroke-width: 3;
 }
 
+/* The prototype's ring has no track: the gap stays open around the dot (`logo-path.js`). */
 .mark-track {
-  stroke: var(--track);
+  stroke: none;
 }
 
 .mark-arc {
   stroke-linecap: round;
 }
 
+/* The logo's fixed brand colours on both themes (prototype `#sweep-h` #a6e22e → #78dce8, dot #ab9df2). */
 .mark-arc-a {
-  stroke: var(--clos-text);
+  stroke: oklch(84.1% 0.2044 127.3);
   stroke-dasharray: 40 60;
 }
 
 .mark-arc-b {
-  stroke: var(--disp-text);
+  stroke: oklch(83.8% 0.095 205.7);
   stroke-dasharray: 0 40 40 20;
 }
 
 .mark-dot {
-  fill: var(--ques-text);
+  fill: oklch(74.1% 0.121 290.7);
 }
 
 .wordmark {

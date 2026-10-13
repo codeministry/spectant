@@ -156,7 +156,8 @@ test.describe('ideas in the palette', () => {
     await expect(group.locator('[role="option"]')).toHaveCount(1);
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/w\/harbor\/ideas\/console-audit-log$/u);
-    await expect(page.locator('h1#idea')).toHaveText(STORY.title);
+    await expect(page.locator('h1#idea')).toHaveText(STORY.slug);
+    await expect(page.locator('[data-idea-goal] blockquote')).toHaveText(STORY.title);
   });
 });
 
@@ -170,7 +171,8 @@ test.describe('the idea page', () => {
 
     await page.goto(`/w/harbor/ideas/${STORY.slug}`);
     const host = page.locator('app-idea-page');
-    await expect(host.locator('h1#idea')).toHaveText(STORY.title);
+    await expect(host.locator('h1#idea')).toHaveText(STORY.slug);
+    await expect(host.locator('[data-idea-goal] blockquote')).toHaveText(STORY.title);
 
     const chips = host.locator('[data-idea-chips]');
     await expect(chips.locator('[data-idea-chip="stage"]')).toContainText(en.stages.idea);

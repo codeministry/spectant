@@ -9,13 +9,18 @@
   z-index: 10;
   display: block;
   border-block-end: 1px solid var(--line);
+
+  /* Prototype `.help-nav` spans the viewport: the hairline runs past the 1080 px column (ink overflow only). */
+  border-image: linear-gradient(var(--line), var(--line)) 0 0 1 0 / 0 0 1px 0 / 0 100vw;
   background: var(--page-glass);
   /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 
+/* The prototype numbers its chips "0 · About" … ; the number is generated content, so the link's name stays the label. */
 ul {
+  counter-reset: help-chip -1;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -27,16 +32,24 @@ ul {
 .chip {
   display: inline-flex;
   align-items: center;
-  block-size: 32px;
+  block-size: 30px;
   padding-inline: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-selector);
   color: var(--muted-ink);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 20px;
   text-decoration: none;
   white-space: nowrap;
+}
+
+li {
+  counter-increment: help-chip;
+}
+
+.chip::before {
+  content: counter(help-chip) "\00a0·\00a0";
 }
 
 .chip:hover {

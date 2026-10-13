@@ -11,8 +11,23 @@
   margin-inline: auto;
 }
 
+/* Prototype `page-head` over the anchor pills: no card, the version muted beside the h1. */
 .head {
-  margin-block: 24px;
+  margin-block: 24px 8px;
+}
+
+.h1-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.version {
+  color: var(--muted-ink);
+}
+
+app-help-nav {
+  margin-block-end: 24px;
 }
 
 h1 {

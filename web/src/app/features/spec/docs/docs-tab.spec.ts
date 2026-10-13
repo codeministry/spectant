@@ -86,7 +86,8 @@ describe('DocsTab', () => {
     expect(links).toEqual(plan.toc.map((entry) => `#${entry.anchor}`));
     for (const entry of plan.toc) expect(prose.querySelector(`[id="${entry.anchor}"]`)).not.toBeNull();
     expect(root.querySelector('[data-docs-meta]')?.textContent).toContain('approved');
-    expect(root.querySelector('[data-docs-meta]')?.textContent).toContain('Updated 2026-03-03');
+    // spec 024: prototype value (principal: Prototyp gilt immer) — the prototype's lower-case "updated …" meta.
+    expect(root.querySelector('[data-docs-meta]')?.textContent).toContain('updated 2026-03-03');
     const regions = [...prose.querySelectorAll('div.mdtable')];
     expect(regions).toHaveLength(2);
     for (const [index, region] of regions.entries()) {

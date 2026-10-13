@@ -6,6 +6,7 @@ import { LockSourceService } from '../../core/lock-source.service';
 import { RefreshService } from '../../core/refresh.service';
 import { SettingsService } from '../../core/settings.service';
 import { UiIcon } from '../../shared/icons/icon';
+import { UiChip } from '../../shared/ui/chip/chip';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { relativeParts } from '../../shared/ui/relative-time/relative-time';
 import { readWorkspace } from '../command-palette/palette-index';
@@ -30,7 +31,7 @@ type Pop = 'live' | 'interval';
  */
 @Component({
   selector: 'app-shell-live',
-  imports: [RouterLink, TranslocoPipe, UiIcon, UiPopover],
+  imports: [RouterLink, TranslocoPipe, UiChip, UiIcon, UiPopover],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="group">
@@ -119,6 +120,14 @@ type Pop = 'live' | 'interval';
         }
       </ui-popover>
       <ui-popover #intervalPop class="interval-pop" placement="end" [label]="'shell.refresh.interval' | transloco">
+        <!-- The prototype's "Off": the setting allows 5 to 3600 s only, so it is shown disabled with the demo chip; only
+             while the popover is open, so a page of real data carries no mock in its DOM (parity -g demo). -->
+        @if (intervalPop.open()) {
+          <button type="button" class="pop-item interval-off" data-interval="off" data-demo data-demo-head disabled>
+            <span class="grow">{{ 'shell.refresh.off' | transloco }}</span>
+            <ui-chip variant="demo" />
+          </button>
+        }
         @for (choice of intervals; track choice) {
           <button
             type="button"

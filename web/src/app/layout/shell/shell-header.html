@@ -1,12 +1,9 @@
-<header role="banner" class="shell-header" [class.on-spec]="specPage()" [class.scrolled]="scrolled()" [class.has-library]="libraryLink() !== null">
+<header role="banner" class="shell-header" [class.on-spec]="specPage()" [class.scrolled]="scrolled()">
   <!-- The brand rail's bordered field (prototype `.brand-rail`): behind brand and rail-selects at wide, the logo below. -->
   <span class="rail-field" aria-hidden="true"></span>
 
   <app-shell-brand class="brand" />
   <app-shell-nav #nav class="nav" />
-  @if (libraryLink(); as href) {
-    <app-shell-library-link class="library" [href]="href" />
-  }
 
   <button
     type="button"

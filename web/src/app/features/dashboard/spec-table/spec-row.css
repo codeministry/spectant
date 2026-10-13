@@ -187,3 +187,10 @@
     overflow: hidden;
   }
 }
+
+/* Spec 024: the room at the end of the one description line for the list's anchored "more…" (spec-table.css). */
+@supports (position-anchor: --a) {
+  :host(:not([data-density='dense'])) .d {
+    padding-inline-end: 56px;
+  }
+}

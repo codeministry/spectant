@@ -16,6 +16,7 @@ import { ApiClient } from '../../../../core/api.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../../shared/icons/icon';
 import { UiChip } from '../../../../shared/ui/chip/chip';
+import { chipIcon } from '../../../../shared/ui/chip/chip-icons';
 import { UiEmptyState } from '../../../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../../../shared/ui/filter-chips/filter-chips';
 import { UiIdChip } from '../../../../shared/ui/id-chip/id-chip';
@@ -92,6 +93,7 @@ interface FeatureGroup {
   styleUrl: './claims-tab.css',
 })
 export class ClaimsTab {
+  protected readonly chipIcon = chipIcon;
   private readonly api = inject(ApiClient);
   private readonly shell = inject(ShellState);
   private readonly router = inject(Router);

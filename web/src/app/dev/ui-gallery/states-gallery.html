@@ -71,9 +71,18 @@
     </section>
 
     <section class="sg-mini" data-gallery="states-conflict">
-      <p class="sg-eyebrow">Conflict · 409, the file changed on disk</p>
-      <app-refusal-notice [refusal]="conflict" />
-      <app-refusal-notice [refusal]="locked" />
+      <!-- design.md § Zustands-Galerie · Konflikt: prototype `notice warn` (3 px --hover edge, --hover-t tint,
+           triangle-alert), 409 stale with Reload and 423 locked with the session in mono, side by side from 640. -->
+      <p class="sg-eyebrow">Conflict · 409 stale · 423 locked</p>
+      <div class="sg-conflicts">
+        <ui-notice tone="warning" icon="triangle-alert" data-conflict="stale">
+          <span class="sg-notice-body"><b class="sg-notice-title">The file changed on disk</b><span class="sg-meta">Reload and try again.</span></span>
+          <button action type="button" class="btn btn-sm"><ui-icon name="refresh-cw" [size]="16" />Reload</button>
+        </ui-notice>
+        <ui-notice tone="warning" icon="triangle-alert" data-conflict="locked">
+          <span class="sg-notice-body"><b class="sg-notice-title">A session holds this claim</b><code class="sg-meta">spec-002-ISC-333</code></span>
+        </ui-notice>
+      </div>
     </section>
 
     <section class="sg-mini" data-gallery="states-checkbox">

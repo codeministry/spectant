@@ -89,7 +89,8 @@ describe('spec 008 routes (T115, ISC-129)', () => {
   it('resolves /w/:ws/ideas/:slug to the idea page with the story slug', async () => {
     const root = await open('/w/harbor/ideas/board-swimlanes');
     const page = root.querySelector('app-shell [data-page="idea"]');
-    expect(text(page?.querySelector('h1#idea'))).toBe('Swimlanes on the board');
+    expect(text(page?.querySelector('h1#idea'))).toBe('board-swimlanes');
+    expect(text(page?.querySelector('[data-idea-goal] blockquote'))).toBe('Swimlanes on the board');
     expect(page?.querySelector('[data-idea-chips]')).not.toBeNull();
     expect(root.querySelector('app-not-found')).toBeNull();
     expect(TestBed.inject(ShellState).route()).toMatchObject({ ws: 'harbor', wsPage: 'idea', ideaSlug: 'board-swimlanes', notFound: false });
@@ -109,7 +110,8 @@ describe('spec 008 routes (T115, ISC-129)', () => {
   it('resolves /help globally inside the shell, with no workspace in the route', async () => {
     const root = await open('/help');
     expect(root.querySelector('app-shell [data-page="help"]')).not.toBeNull();
-    expect(text(root.querySelector('[data-page="help"] ui-card h1#help'))).toBe('Help');
+    // spec 024: prototype value (principal: Prototyp gilt immer): the help head is the page head, no longer a card.
+    expect(text(root.querySelector('[data-page="help"] h1#help'))).toBe('Help');
     expect(root.querySelector('app-not-found')).toBeNull();
     expect(TestBed.inject(ShellState).route()).toMatchObject({ ws: null, wsPage: null, notFound: false });
   });
