@@ -39,7 +39,7 @@ const shortDate = (iso: string, locale: string): string =>
  * (only on a fine pointer that can hover). An area whose views are not built (`built: false`) is an `aria-disabled`
  * entry without a link, its reason as visible text. At page scope (`scope="page"`, nav "Pages", a workspace the
  * server knows, spec open or not) it lists `WORKSPACE_PAGES` instead; on a spec page Specs is the current one: each entry a link to the page with its icon, its name and a summary from the dashboard
- * rows, its KPIs and the planning model; Library's counts the mock's documents and says so (spec 024, T57). Milestones is
+ * rows, its KPIs and the planning model; Library's is a static line (spec 017, T27). Milestones is
  * absent, not disabled, while no spec carries a milestone (ISC-104). The pages show no `g`-key hint.
  *
  * **Prototype anatomy (spec 024, T57, ISC-150.1).** The prototype's `.area-pop`: a card with an eyebrow head naming the
@@ -104,8 +104,9 @@ export class AreaMenu {
     features: this.featuresSummary(),
     milestones: this.milestonesSummary(),
     tech: this.techSummary(),
-    // The catalog is read on the library page only (spec 017, T27); the menu has no source for its count yet.
-    library: null,
+    // A static line without params: the catalog is read on the library page only (spec 017, T27); its counts in the
+    // menu come later (ISC-157.1).
+    library: {},
   }));
 
   /** The eyebrow head's key and params: the open spec's areas, else the workspace's pages. */

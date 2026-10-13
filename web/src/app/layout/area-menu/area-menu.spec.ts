@@ -218,7 +218,7 @@ describe('AreaMenu', () => {
         '2 features · 5/9 closed',
         '2 milestones · next Nov 30',
         '3 specs · 7 open questions',
-        null,
+        'Every document, artifact and prototype',
       ]);
     });
 
@@ -276,7 +276,7 @@ describe('AreaMenu', () => {
       setUp({ kind: 'not-found', served: false });
       const entries = pages(await render('/w/harbor'));
       expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features', 'tech', 'library']);
-      expect(entries.map(sub)).toEqual(['3 active · 1 archived', null, null, '3 specs · 7 open questions', null]);
+      expect(entries.map(sub)).toEqual(['3 active · 1 archived', null, null, '3 specs · 7 open questions', 'Every document, artifact and prototype']);
       expect(entries.map((entry) => entry.textContent)).not.toContain('{{');
     });
 

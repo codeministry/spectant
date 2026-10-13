@@ -627,7 +627,7 @@
         "features": "{{count}} features · {{closed}}/{{total}} closed",
         "milestones": "{{count}} milestones · next {{next}}",
         "tech": "{{specs}} specs · {{fog}} open questions",
-        "library": "{{count}} documents"
+        "library": "Every document, artifact and prototype"
       }
     },
     "assistant": {

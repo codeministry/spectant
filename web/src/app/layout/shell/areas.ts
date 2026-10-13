@@ -126,8 +126,8 @@ export const WORKSPACE_PAGES: readonly WorkspacePage[] = [
   { id: 'milestones', icon: 'flag', labelKey: 'shell.pages.milestones', summaryKey: 'shell.pages.summary.milestones', goKey: 'm' },
   // Spec 023 (T20, ISC-134.2): the tech page, fifth after Milestones; `/w/:ws/tech` redirects to its first tab.
   { id: 'tech', icon: 'book-open', labelKey: 'shell.pages.tech', summaryKey: 'shell.pages.summary.tech', goKey: null },
-  // Spec 024 (T57, ISC-150.1): the Library, sixth; a mock with the demo chip until spec 017, its summary counts the
-  // mock's documents and says so. The PAGE select's menu reaches it (spec 024 T80, ISC-150.2: the rail link went).
+  // Spec 024 (T57, ISC-150.1): the Library, sixth; on the real catalog since spec 017 (T27), its summary a static line
+  // until the menu reads the catalog's counts (ISC-157.1). The PAGE select's menu reaches it (spec 024 T80, ISC-150.2: the rail link went).
   { id: 'library', icon: 'book', labelKey: 'shell.pages.library', summaryKey: 'shell.pages.summary.library', goKey: null },
 ];
 
