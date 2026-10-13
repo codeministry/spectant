@@ -616,6 +616,10 @@
     "loading": "Loading claims…"
   },
   "docs": {
+    "decisions": {
+      "goal": "Goal",
+      "stillOpen": "Still open"
+    },
     "contents": "On this page",
     "updated": "Updated {{date}}",
     "tableRegion": "Table {{index}}, scrolls sideways",
@@ -869,6 +873,11 @@
       "body": "The spec did not answer. Try again.",
       "retry": "Try again"
     },
+    "rail": {
+      "next": "Next",
+      "claimsClosed": "claims closed",
+      "take": "takeable {{id}}"
+    },
     "where": {
       "heading": "Where it stands",
       "claimsClosed": "{{closed}}/{{total}} claims closed",
@@ -960,6 +969,8 @@
     "activity": {
       "heading": "Activity",
       "all": "Open the timeline",
+      "board": "Live board",
+      "report": "Report",
       "none": "No activity yet.",
       "error": "The timeline could not be read.",
       "kinds": {
@@ -1092,6 +1103,7 @@
     "frame": {
       "scrubber": "Frame",
       "live": "Live",
+      "updated": "updated {{value}} {{unit}} ago",
       "history": "History · {{label}}",
       "backToLive": "Back to live",
       "recut": "re-cut",
@@ -1509,7 +1521,53 @@
     },
     "subtitle": "Spectant · the words, the workflows, the commands",
     "about": {
-      "body": "Spectant reads the Markdown specs of your registered repositories and shows them on one board. The files are the only source of truth: the app keeps a small registry and its settings, and writes a file only when you move a card or tick a task."
+      "body": "Spectant reads the Markdown specs of your registered repositories and shows them on one board. The files are the only source of truth: the app keeps a small registry and its settings, and writes a file only when you move a card or tick a task.",
+      "data": "data ~/.spectant",
+      "port": "port {{address}}",
+      "licence": "Apache-2.0 licence",
+      "visual": "Spectant at a glance",
+      "shotDashboard": "The workspace dashboard",
+      "shotBoard": "The round board of a spec"
+    },
+    "lifecycle": {
+      "label": "How a feature moves, in eight stages",
+      "continues": "continues",
+      "loops": "Loops",
+      "bands": {
+        "shape": {
+          "title": "Shape & plan",
+          "sub": "Files are written — no code yet"
+        },
+        "build": {
+          "title": "Build & finish",
+          "sub": "Agents work in rounds — you hold the gates"
+        }
+      },
+      "what": {
+        "idea": "A story is shaped into a goal.",
+        "plan": "Claims and fog are written down; the approach follows.",
+        "tasks": "Atomic tasks, one claim each.",
+        "review": "You release the spec for build.",
+        "build": "Agents take claims and close them on their probes.",
+        "code-review": "Code and security review of the tree.",
+        "close": "Every claim is closed; the spec closes.",
+        "done": "Phase complete, fog resolved."
+      },
+      "gates": {
+        "review": "your gate · reviewed mark",
+        "build": "your gate · manual steps, questions",
+        "code-review": "your gate · code-reviewed mark",
+        "close": "gate · every claim closed"
+      },
+      "loopBlocked": "blocked → back to build once you answer the question",
+      "loopStale": "stale code-reviewed mark → run /spec-code-review again",
+      "tones": {
+        "start": "start",
+        "files": "files written",
+        "gate": "your gate",
+        "agents": "agents at work",
+        "done": "done"
+      }
     },
     "moves": {
       "body": "A spec moves through the stages of its type. On the board you drag its card, or open Move to… from the grip; core runs the same transition either way and either moves it or says, under the card, what is missing.",

@@ -1,0 +1,256 @@
+/*
+ * The lifecycle bands (prototype help `.flow-canvas`, `.wf-*`; spec 024 sweep): a dotted canvas, two bands of four
+ * nodes with a 3 px top edge in the node's tone, arrows between them, the loops and the tone legend underneath.
+ */
+:host {
+  display: block;
+}
+
+.flow-canvas {
+  display: block;
+  margin-block: 24px;
+  background-image:
+    linear-gradient(90deg, var(--lane) 15px, transparent 15px),
+    linear-gradient(var(--lane) 15px, color-mix(in srgb, var(--track) 45%, transparent) 15px);
+  background-size: 16px 16px;
+}
+
+.flow-figure {
+  display: grid;
+  gap: 20px;
+  margin: 0;
+}
+
+[data-tone='start'] {
+  --wf-c: var(--teal);
+}
+
+[data-tone='files'] {
+  --wf-c: var(--color-primary);
+}
+
+[data-tone='gate'] {
+  --wf-c: var(--color-secondary);
+}
+
+[data-tone='agents'] {
+  --wf-c: var(--color-warning);
+}
+
+[data-tone='done'] {
+  --wf-c: var(--color-accent);
+}
+
+.wf-band {
+  display: grid;
+  gap: 12px;
+}
+
+.wf-band-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.eyebrow {
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wf-sub {
+  color: var(--muted-ink);
+  font-size: 13px;
+}
+
+.wf-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wf-node {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-block-start: 3px solid var(--wf-c);
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
+  font-size: 13px;
+}
+
+.wf-node p {
+  margin: 0;
+}
+
+.wf-node code {
+  color: var(--disp-text);
+  font-family: var(--font-mono);
+}
+
+.wf-num {
+  position: absolute;
+  inset-block-start: 10px;
+  inset-inline-end: 12px;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.wf-st {
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+.wf-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.wf-file ui-icon {
+  flex: none;
+}
+
+.wf-gate {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: var(--radius-selector);
+  background: var(--ques-t);
+  color: var(--ques-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Connectors: an arrow to the next node, down in one column, right from two. */
+.wf-node:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  inset-block-end: -22px;
+  inset-inline-start: 50%;
+  inline-size: 2px;
+  block-size: 16px;
+  background: var(--wf-c);
+}
+
+.wf-node:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  inset-block-end: -24px;
+  inset-inline-start: calc(50% - 4px);
+  border: 5px solid transparent;
+  border-block-end: 0;
+  border-block-start-color: var(--wf-c);
+}
+
+@container shell (width >= 640px) {
+  .wf-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .wf-node:not(:last-child)::after {
+    inset: 50% -24px auto auto;
+    inline-size: 18px;
+    block-size: 2px;
+  }
+
+  .wf-node:not(:last-child)::before {
+    inset: calc(50% - 5px) -26px auto auto;
+    border: 5px solid transparent;
+    border-inline-end: 0;
+    border-inline-start-color: var(--wf-c);
+  }
+
+  .wf-node:nth-child(2n)::after,
+  .wf-node:nth-child(2n)::before {
+    display: none;
+  }
+}
+
+@container shell (width >= 1120px) {
+  .wf-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .wf-node:nth-child(2n)::after,
+  .wf-node:nth-child(2n)::before {
+    display: block;
+  }
+
+  .wf-node:last-child::after,
+  .wf-node:last-child::before {
+    display: none;
+  }
+}
+
+.wf-turn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.wf-turn span {
+  flex: 1;
+  border-block-start: 2px dashed var(--color-primary);
+  opacity: 0.6;
+}
+
+.wf-loops {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  padding-block-start: 16px;
+  border-block-start: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.wf-loop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wf-loop ui-icon {
+  color: var(--hover-text);
+}
+
+.wf-legend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--muted-ink);
+}
+
+.wf-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wf-swatch {
+  flex: none;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: var(--radius-selector);
+  background: var(--wf-c);
+}

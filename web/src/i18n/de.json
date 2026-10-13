@@ -616,6 +616,10 @@
     "loading": "Claims werden geladen …"
   },
   "docs": {
+    "decisions": {
+      "goal": "Ziel",
+      "stillOpen": "Noch offen"
+    },
     "contents": "Auf dieser Seite",
     "updated": "Aktualisiert {{date}}",
     "tableRegion": "Tabelle {{index}}, seitlich scrollbar",
@@ -869,6 +873,11 @@
       "body": "Die Spec hat nicht geantwortet. Bitte versuchen Sie es erneut.",
       "retry": "Erneut versuchen"
     },
+    "rail": {
+      "next": "Als Nächstes",
+      "claimsClosed": "Claims geschlossen",
+      "take": "übernehmbar {{id}}"
+    },
     "where": {
       "heading": "Wo es steht",
       "claimsClosed": "{{closed}}/{{total}} Claims geschlossen",
@@ -960,6 +969,8 @@
     "activity": {
       "heading": "Aktivität",
       "all": "Zeitleiste öffnen",
+      "board": "Live-Board",
+      "report": "Bericht",
       "none": "Noch keine Aktivität.",
       "error": "Die Zeitleiste konnte nicht gelesen werden.",
       "kinds": {
@@ -1092,6 +1103,7 @@
     "frame": {
       "scrubber": "Frame",
       "live": "Live",
+      "updated": "aktualisiert vor {{value}} {{unit}}",
       "history": "Verlauf · {{label}}",
       "backToLive": "Zurück zu Live",
       "recut": "Neuschnitt",
@@ -1509,7 +1521,53 @@
     },
     "subtitle": "Spectant · die Begriffe, die Workflows, die Befehle",
     "about": {
-      "body": "Spectant liest die Markdown-Specs Ihrer registrierten Repositories und zeigt sie auf einem Board. Die Dateien sind die einzige Quelle der Wahrheit: Die App führt nur ein kleines Register und ihre Einstellungen und schreibt eine Datei nur dann, wenn Sie eine Karte verschieben oder einen Task abhaken."
+      "body": "Spectant liest die Markdown-Specs Ihrer registrierten Repositories und zeigt sie auf einem Board. Die Dateien sind die einzige Quelle der Wahrheit: Die App führt nur ein kleines Register und ihre Einstellungen und schreibt eine Datei nur dann, wenn Sie eine Karte verschieben oder einen Task abhaken.",
+      "data": "Daten ~/.spectant",
+      "port": "Port {{address}}",
+      "licence": "Lizenz Apache-2.0",
+      "visual": "Spectant auf einen Blick",
+      "shotDashboard": "Das Workspace-Dashboard",
+      "shotBoard": "Das Round-Board einer Spec"
+    },
+    "lifecycle": {
+      "label": "Wie sich ein Feature bewegt, in acht Stages",
+      "continues": "weiter",
+      "loops": "Schleifen",
+      "bands": {
+        "shape": {
+          "title": "Formen & planen",
+          "sub": "Dateien entstehen — noch kein Code"
+        },
+        "build": {
+          "title": "Bauen & abschliessen",
+          "sub": "Agenten arbeiten in Runden — Sie halten die Gates"
+        }
+      },
+      "what": {
+        "idea": "Eine Story wird zum Ziel geformt.",
+        "plan": "Claims und Nebel werden festgehalten; der Ansatz folgt.",
+        "tasks": "Atomare Tasks, je ein Claim.",
+        "review": "Sie geben die Spec zum Bauen frei.",
+        "build": "Agenten nehmen Claims und schliessen sie über ihre Proben.",
+        "code-review": "Code- und Security-Review des Arbeitsbaums.",
+        "close": "Jeder Claim ist geschlossen; die Spec schliesst.",
+        "done": "Phase abgeschlossen, Nebel aufgelöst."
+      },
+      "gates": {
+        "review": "Ihr Gate · Reviewed-Marke",
+        "build": "Ihr Gate · manuelle Schritte, Fragen",
+        "code-review": "Ihr Gate · Code-reviewed-Marke",
+        "close": "Gate · jeder Claim geschlossen"
+      },
+      "loopBlocked": "blocked → zurück zu Build, sobald Sie die Frage beantworten",
+      "loopStale": "veraltete Code-reviewed-Marke → /spec-code-review erneut ausführen",
+      "tones": {
+        "start": "Start",
+        "files": "Dateien geschrieben",
+        "gate": "Ihr Gate",
+        "agents": "Agenten am Werk",
+        "done": "fertig"
+      }
     },
     "moves": {
       "body": "Eine Spec durchläuft die Stages ihres Typs. Auf dem Board ziehen Sie ihre Karte oder öffnen „Verschieben nach…“ am Griff; core führt in beiden Fällen dieselbe Transition aus und verschiebt die Karte oder nennt unter ihr, was noch fehlt.",

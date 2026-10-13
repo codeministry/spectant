@@ -97,3 +97,66 @@ export const KEY_CONTEXTS: readonly KeyContext[] = SHORTCUT_CONTEXTS.map((contex
   }));
   return { id: context, groups, titled: groups.length > 1 };
 });
+
+/** A node colour of the lifecycle bands (prototype `WFC`): start, files written, your gate, agents at work, done. */
+export type LifecycleTone = 'start' | 'files' | 'gate' | 'agents' | 'done';
+
+/** One node of the lifecycle bands (prototype help `wf-node`, spec 024 sweep): a stage of a feature, in order. */
+export interface LifecycleNode {
+  readonly stage: WorkflowStage;
+  /** The command the stage table names for this stage (`STAGE_RULES[].next`), or null where it names none. */
+  readonly command: string | null;
+  /** The file that command writes, relative to the spec folder; the done node names the field it sets. */
+  readonly file: string;
+  readonly tone: LifecycleTone;
+  /** Whether the node carries a gate pill (`help.lifecycle.gates.<stage>`). */
+  readonly gate: boolean;
+}
+
+/** One band of the lifecycle: its catalogue key under `help.lifecycle.bands` and its four nodes. */
+export interface LifecycleBand {
+  readonly key: 'shape' | 'build';
+  readonly offset: number;
+  readonly nodes: readonly LifecycleNode[];
+}
+
+const commandOf = (stage: WorkflowStage): string | null =>
+  STAGE_RULES.find((rule) => rule.stage === stage && rule.next !== null)?.next ?? null;
+
+const node = (stage: WorkflowStage, file: string, tone: LifecycleTone, gate = false): LifecycleNode => ({
+  stage,
+  command: commandOf(stage),
+  file,
+  tone,
+  gate,
+});
+
+/**
+ * The lifecycle in two bands (prototype help "How a spec moves": "Shape & plan", "Build & finish"), the stages of
+ * `STAGE_CHAIN` with the command core's stage table names for each; the files are the ones those commands write.
+ */
+export const LIFECYCLE: readonly LifecycleBand[] = [
+  {
+    key: 'shape',
+    offset: 0,
+    nodes: [
+      node('idea', 'specs/ideas/<slug>.md', 'start'),
+      node('plan', 'plan.md', 'files'),
+      node('tasks', 'tasks.md', 'files'),
+      node('review', '.gates/reviewed.json', 'gate', true),
+    ],
+  },
+  {
+    key: 'build',
+    offset: 4,
+    nodes: [
+      node('build', 'tasks.md, events.jsonl', 'agents', true),
+      node('code-review', '.gates/code-reviewed.json', 'gate', true),
+      node('close', 'spec.md', 'files', true),
+      node('done', 'spec.md phase', 'done'),
+    ],
+  },
+];
+
+/** The lifecycle legend (prototype `.wf-legend`), one swatch per tone. */
+export const LIFECYCLE_TONES: readonly LifecycleTone[] = ['start', 'files', 'gate', 'agents', 'done'];
