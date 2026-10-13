@@ -1,0 +1,133 @@
+/*
+ * Spec dashboard partial: the Spec context (018-B14, the prototype's `.rail-card`, `.count-badge`, `.gate-rows`,
+ * `.step-hint`). The template is declared here and rendered by the shell's rail slot from 1120 px, so these rules
+ * reach it there too. Below 1120 it is `#waiting` at the end of the main column, clear of the sticky header.
+ */
+.context {
+  display: grid;
+  gap: 16px;
+  min-inline-size: 0;
+  scroll-margin-block-start: 88px;
+}
+
+.rail-card {
+  gap: 12px;
+}
+
+.block-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.block-head h2 {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.block-head .open {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.rows,
+.gate-rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wait-line,
+.warn-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.wait-icon {
+  color: var(--muted-ink);
+}
+
+.wait-link {
+  flex: 1 1 10rem;
+  min-inline-size: 0;
+  color: inherit;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .wait-link:hover {
+    color: var(--disp-ink);
+    text-decoration: underline;
+  }
+}
+
+.row-text {
+  flex: 1 1 10rem;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.warning-icon {
+  color: var(--hover-ink);
+}
+
+.gate-rows {
+  gap: 2px;
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--line);
+}
+
+.gate-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-block-size: 28px;
+  font-size: 13px;
+}
+
+.gate-icon {
+  color: var(--muted-ink);
+}
+
+.gate-row[data-tone='accent'] .gate-icon {
+  color: var(--done-ink);
+}
+
+.gate-row[data-tone='warning'] .gate-icon {
+  color: var(--hover-ink);
+}
+
+.gate-name {
+  flex: 1;
+}
+
+.gate-value {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.step-hint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--line);
+  color: var(--muted-ink);
+  font-size: 12px;
+}

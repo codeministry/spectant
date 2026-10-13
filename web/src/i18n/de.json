@@ -732,7 +732,9 @@
       "agentsWorking": "{{count}} Agenten arbeiten",
       "noAgent": "Kein Agent arbeitet",
       "gates": "Gates",
-      "waiting": "Wartet auf Sie"
+      "waiting": "Wartet auf Sie",
+      "waitingMeta": "Entscheidungen · Prüfungen · Gates",
+      "waitingNone": "nichts"
     },
     "idea": {
       "eyebrow": "Die Idee · spec.md § Goal",
@@ -825,6 +827,7 @@
       }
     },
     "context": {
+      "label": "Spec-Kontext",
       "kinds": {
         "operator": "Operator",
         "manual": "manuell",

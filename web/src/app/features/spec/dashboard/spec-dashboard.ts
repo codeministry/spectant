@@ -1,15 +1,19 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, type TemplateRef, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { GateState, SpecPageModel, WaitingItem } from '../../../../../../core/src/files';
 import { type AreaId, areaById, areaPath, specLink } from '../../../layout/shell/areas';
+import { RailContent } from '../../../layout/shell/rail-content';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
 import type { IconName } from '../../../shared/icons/icons';
+import { UiChip } from '../../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
 import { UiEmptyState } from '../../../shared/ui/empty-state/empty-state';
+import { UiKbd } from '../../../shared/ui/kbd/kbd';
 import { UiKpiTile } from '../../../shared/ui/kpi-tile/kpi-tile';
 import { type MeterSegment, UiMeter } from '../../../shared/ui/meter/meter';
 import { UiRing } from '../../../shared/ui/ring/ring';
@@ -17,6 +21,7 @@ import { UiSectionHeader } from '../../../shared/ui/section-header/section-heade
 import { UiSkeleton } from '../../../shared/ui/skeleton/skeleton';
 import { UiStageTrack } from '../../../shared/ui/stage-track/stage-track';
 import type { Tone } from '../../../shared/ui/tone';
+import { Brief, type BriefModel } from '../../dashboard/brief/brief';
 import { AreaPlaceholder } from '../area-placeholder';
 import { GATE_NAMES, GATE_TONE, quoteIdea, stageIndex, TRACK_STAGES } from './dashboard-model';
 
@@ -39,6 +44,15 @@ export interface AreaTile {
   /** A mono chip on the first line (the Live tile's session name), full text in `title`. */
   readonly mono?: string;
 }
+
+const GATE_ICON: Readonly<Record<GateState, IconName>> = {
+  ok: 'check',
+  fresh: 'check',
+  stale: 'triangle-alert',
+  warn: 'triangle-alert',
+  missing: 'x',
+  na: 'x',
+};
 
 type TileLine = readonly [string, Readonly<Record<string, unknown>>];
 const DOC_KEYS = ['plan', 'design', 'constitution'] as const;
@@ -82,20 +96,27 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
 /**
  * T53 · ISC-78 · ISC-72: the spec dashboard at `/w/:ws/s/:id`. It renders the spec payload the shell already loads
  * (`ShellData.spec`, `SpecPageModel`) as it is, or `AreaPlaceholder` while the spec route is unserved (a catch-all
- * 404). It shows the KPI band from `keyNumbers`, the idea quote, the next step with its
- * reasons and the stage track, Waiting on you, one bar per lane in the model's (constitution) order, the five area
- * tiles from `areas`, then warnings and gates. No number is counted here (ISC-72); layouts follow design.md per tier
- * through the shell's container queries.
+ * 404). It shows the KPI band from `keyNumbers`, the idea quote, the next step with its reasons and the stage track
+ * beside one bar per lane in the model's (constitution) order, the spec's TL;DR, the five area tiles from `areas`, and
+ * the Spec context (spec 024 T38, 018-B14): Waiting on you, Warnings and Gates. From 1120 px the Spec context is the
+ * shell's 352 px rail (registered with `RailContent`, the board's seam) with the key line below it; under 1120 px it
+ * is `#waiting`, the last block of the main column, so exactly one copy renders per width and the KPI "Waiting on you"
+ * jumps to it on this page. No number is counted here (ISC-72); layouts follow design.md per tier through the shell's
+ * container queries.
  */
 @Component({
   selector: 'app-spec-dashboard',
   imports: [
     AreaPlaceholder,
+    Brief,
+    NgTemplateOutlet,
     RouterLink,
     TranslocoPipe,
+    UiChip,
     UiCommandChip,
     UiEmptyState,
     UiIcon,
+    UiKbd,
     UiKpiTile,
     UiMeter,
     UiRing,
@@ -105,7 +126,7 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-dashboard.html',
-  styleUrl: './spec-dashboard.css',
+  styleUrls: ['./spec-dashboard.css', './spec-dashboard-tiles.css', './spec-context.css'],
   host: { 'data-page': 'spec-dashboard' },
 })
 export class SpecDashboard {
@@ -116,6 +137,10 @@ export class SpecDashboard {
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   protected readonly gateNames = GATE_NAMES;
+
+  /** From 1120 px the Spec context lives in the shell's rail; below it closes the main column. */
+  protected readonly wide = computed(() => this.state.tier() === 'wide');
+  private readonly contextTpl = viewChild<TemplateRef<unknown>>('context');
 
   readonly model = computed<SpecPageModel | null>(() => {
     const result = this.data.spec.value();
@@ -189,8 +214,35 @@ export class SpecDashboard {
     });
   });
 
+  /** The spec's slice of `specs/tldr.md` in the Brief's shape; null when no TL;DR item names this spec. */
+  protected readonly brief = computed<BriefModel | null>(() => {
+    const tldr = this.model()?.tldr;
+    return tldr?.brief ? { markdown: tldr.brief, generated: tldr.generated, stale: tldr.stale } : null;
+  });
+
+  constructor() {
+    inject(RailContent).register(
+      {
+        blocks: computed(() => (this.wide() && this.view() === 'ok' ? (this.contextTpl() ?? null) : null)),
+        bar: computed(() => null),
+        badges: computed(() => null),
+      },
+      inject(DestroyRef),
+    );
+  }
+
   protected gateTone(state: GateState): Tone {
     return GATE_TONE[state];
+  }
+
+  /** The prototype's gate-row icon: passed checks, stale or warning alerts, absent crosses. */
+  protected gateIcon(state: GateState): IconName {
+    return GATE_ICON[state];
+  }
+
+  /** A task waits on the board, a manual claim among the claims. */
+  protected waitingLink(item: WaitingItem): string[] {
+    return this.link(item.kind === 'manual' ? 'claims' : 'board');
   }
 
   protected waitingKey(item: WaitingItem): string {

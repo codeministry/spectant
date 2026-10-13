@@ -118,7 +118,7 @@ test.describe('dashboard', () => {
     await expect(band.locator('[data-kpi="round"] .figure')).toHaveText(`${rounds.count}`);
     await expect(band.locator('[data-kpi="gates"] .figure')).toHaveText(`${gates.ok}/${gates.total}`);
     await expect(band.locator('[data-kpi="waiting"] .figure')).toHaveText(`${waiting}`);
-    await expect(band.locator('[data-kpi="waiting"] a')).toHaveAttribute('href', `${DASHBOARD_BASE}/status#waiting`);
+    await expect(band.locator('[data-kpi="waiting"] a')).toHaveAttribute('href', `${DASHBOARD_BASE}#waiting`);
   });
 
   test('dashboard idea quote and next command equal the golden', async ({ page }) => {
