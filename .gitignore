@@ -57,3 +57,6 @@ specs/notes/outline.md
 /specs/
 # a spec worktree links `specs` to the main checkout's folder (symlink); a directory pattern never matches a link
 /specs
+
+# spec worktrees inside the repo
+.worktrees/

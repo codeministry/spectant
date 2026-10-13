@@ -1,73 +1,95 @@
 /**
- * Spec 001's visual baselines, ported to the Lovable prototype (tasks ⑤, principal 2026-09-29):
+ * The visual smoke set: six representative pages, light at 390, 820 and 1440 (one width per tier), dark at 1440 only,
+ * since the dark theme changes colours, not layout. 24 baselines that catch an unintended visual change (a cascade
+ * side effect, a broken tier, a theme token) without pinning every view of every spec; behaviour and structure stay
+ * with the e2e and browser tiers.
  *
- *   bun run test:visual -- dashboard                  T79 · ISC-17    the workspace dashboard `/w/harbor`, light
- *   bun run test:visual -- dashboard --theme dark     T80 · ISC-17.1  the same, dark
- *   bun run test:visual -- overview                   T81 · ISC-16.1  the overview `/` in three states, light
- *   bun run test:visual -- overview --theme dark      T82 · ISC-16.2  the same, dark
+ *   bun run test:visual                       light, 18 baselines
+ *   bun run test:visual -- --theme dark       dark, 6 baselines
+ *   bun run test:visual -- board              one page (the group names below)
  *
- * Each at 390, 820 and 1440, full page. Baselines live under `__screenshots__/chromium/{light,dark}/visual.spec.ts/`
- * and are recorded only in the pinned container (`bun run test:visual:ci -- dashboard overview -u`). The clock is
- * pinned by the fixtures (FIXED_NOW); each test runs in its own stub session, reset first; the overview's states come
- * from the stub's `X-Spectant-Stub-State` header (two workspaces, empty, one unreadable workspace).
+ * Baselines live under `__screenshots__/chromium/{light,dark}/visual.spec.ts/` and are recorded only in the pinned
+ * linux/arm64 container (`bun run test:visual:ci -- -u`). The clock is pinned by the fixtures (FIXED_NOW), the suite
+ * runs with reduced motion, and each test runs in its own stub session, reset first.
  */
-import type { APIRequestContext, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
+import { DEFAULT_WORKFLOW } from '../../core/src/stage';
 import { atWidth, expect, FIXED_NOW, test, theme, WIDTHS } from './fixtures';
 import { STATE_HEADER } from './stub-api';
 
 const SESSION = 'X-Spectant-Stub-Session';
 const SCREENSHOT = { fullPage: true, maxDiffPixelRatio: 0 } as const;
-const STATES = ['two-workspaces', 'empty', 'unreadable'] as const;
 
-async function session(page: Page, request: APIRequestContext, name: string, state?: string): Promise<void> {
-  const headers: Record<string, string> = { [SESSION]: name };
-  if (state !== undefined) headers[STATE_HEADER] = state;
-  await page.setExtraHTTPHeaders(headers);
-  const reset = await request.post('/api/__stub/reset', { headers: { [SESSION]: name } });
-  expect(reset.status()).toBe(204);
+interface View {
+  readonly name: string;
+  readonly path: string;
+  /** The page's host element; visible once the route rendered. */
+  readonly host: string;
+  /** The stub's `X-Spectant-Stub-State`, when the page needs one. */
+  readonly state?: string;
+  /** What must be drawn beyond the host before the capture (a late SVG, the first table row). */
+  readonly drawn?: (page: Page) => Promise<void>;
 }
 
+const VIEWS: readonly View[] = [
+  { name: 'overview', path: '/', host: 'app-overview-page', state: 'two-workspaces' },
+  { name: 'dashboard', path: '/w/harbor', host: 'app-dashboard-page' },
+  { name: 'board', path: '/w/harbor/s/002/board', host: 'app-board-tab' },
+  { name: 'status', path: '/w/harbor/s/002/status', host: 'app-status-tab' },
+  {
+    name: 'tech',
+    path: '/w/harbor/tech/status',
+    host: 'app-tech-page',
+    drawn: (page) =>
+      expect(page.locator('app-tech-status-tab :is(table tr[data-spec], ul[data-stacked] a.row[data-spec])').first()).toBeVisible(),
+  },
+  {
+    name: 'help',
+    path: '/help',
+    host: 'app-help-page',
+    // One rendered workflow figure per row of the default table, its nodes labelled from the catalogue.
+    drawn: async (page) => {
+      await expect(page.locator('figure[data-workflow-figure] [data-diagram][data-rendered] > .canvas > svg[role="img"]')).toHaveCount(
+        DEFAULT_WORKFLOW.length,
+      );
+      await expect(page.locator('figure[data-workflow-figure="feature"] [data-diagram] g[data-stage] text').first()).not.toHaveText(
+        /^stages\./,
+      );
+    },
+  },
+];
+
+const widths = theme === 'dark' ? [WIDTHS.desktop] : [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop];
+
 /** The page is settled: network quiet, fonts loaded, no skeleton or busy notice left, the theme the run asked for. */
-async function settle(page: Page, host: string): Promise<void> {
+async function settle(page: Page, view: View): Promise<void> {
   await page.waitForLoadState('networkidle');
-  await expect(page.locator(host)).toBeVisible();
+  await expect(page.locator(view.host)).toBeVisible();
   await expect(page.locator('ui-skeleton, [aria-busy="true"]')).toHaveCount(0);
   await expect(page.locator('html')).toHaveAttribute('data-theme', theme === 'dark' ? 'spec-dark' : 'spec-light');
+  await view.drawn?.(page);
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  // A relative time that moved would break the baseline, so prove the clock is frozen.
   expect(await page.evaluate(() => Date.now())).toBe(Date.parse(FIXED_NOW));
 }
 
-const widths = [WIDTHS.phone, WIDTHS.tablet, WIDTHS.desktop];
+for (const view of VIEWS) {
+  test.describe(view.name, () => {
+    for (const width of widths) {
+      test.describe(`at ${String(width)}`, () => {
+        test.use(atWidth(width));
 
-test.describe('dashboard', () => {
-  for (const width of widths) {
-    test.describe(`at ${String(width)}`, () => {
-      test.use(atWidth(width));
-
-      test(`dashboard ${String(width)}`, async ({ page, request }, info) => {
-        await session(page, request, `visual-dashboard-${info.testId}-${String(info.retry)}`);
-        await page.goto('/w/harbor');
-        await settle(page, 'app-dashboard-page');
-        await expect(page).toHaveScreenshot(`dashboard-${String(width)}.png`, SCREENSHOT);
-      });
-    });
-  }
-});
-
-test.describe('overview', () => {
-  for (const width of widths) {
-    test.describe(`at ${String(width)}`, () => {
-      test.use(atWidth(width));
-
-      for (const state of STATES) {
-        test(`overview ${state} ${String(width)}`, async ({ page, request }, info) => {
-          await session(page, request, `visual-overview-${info.testId}-${String(info.retry)}`, state);
-          await page.goto('/');
-          await settle(page, 'app-overview-page');
-          await expect(page).toHaveScreenshot(`overview-${state}-${String(width)}.png`, SCREENSHOT);
+        test(`${view.name} ${String(width)}`, async ({ page, request }, info) => {
+          const session = `visual-${view.name}-${info.testId}-${String(info.retry)}`;
+          await page.setExtraHTTPHeaders({ [SESSION]: session, ...(view.state === undefined ? {} : { [STATE_HEADER]: view.state }) });
+          const reset = await request.post('/api/__stub/reset', { headers: { [SESSION]: session } });
+          expect(reset.status()).toBe(204);
+          await page.goto(view.path);
+          await settle(page, view);
+          await expect(page).toHaveScreenshot(`${view.name}-${String(width)}.png`, SCREENSHOT);
         });
-      }
-    });
-  }
-});
+      });
+    }
+  });
+}

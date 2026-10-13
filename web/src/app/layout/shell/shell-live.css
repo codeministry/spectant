@@ -1,6 +1,6 @@
 /*
  * The status group (prototype `[data-ui="live-indicator"]`): one 40 px bordered group on the card, its parts split by
- * 1 px rules; 44 px on touch. The dot's three states; the text alternative carries the meaning.
+ * 1 px rules; 44 px on touch. The dot is lime while a dev service is up; the text alternative carries the meaning.
  */
 :host {
   display: block;
@@ -81,13 +81,8 @@
   background: var(--track);
 }
 
-.live:not([data-source="none"]) .live-dot {
+.live[data-services="up"] .live-dot {
   background: var(--clos-text);
-}
-
-.live[data-source="frontier"] .live-dot {
-  outline: 2px solid color-mix(in oklch, var(--clos-text) 40%, transparent);
-  outline-offset: 2px;
 }
 
 /* Below 640 px only the indicator: activity and the dot, no refresh, no interval (prototype rule). */
@@ -100,24 +95,6 @@
   .live {
     gap: 4px;
     padding-inline: 6px;
-  }
-}
-
-/* "Updated 12 s ago" from 1120 px, in place of the activity icon (prototype `.live-label`, `.live-ic`). */
-.live-label {
-  display: none;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-@container header (width >= 1120px) {
-  .live-label {
-    display: inline;
-  }
-
-  .live-ic {
-    display: none;
   }
 }
 
@@ -188,6 +165,10 @@
 
 .mono {
   font-family: var(--font-mono);
+}
+
+.updated {
+  font-variant-numeric: tabular-nums;
 }
 
 .pop-sep {
