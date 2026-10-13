@@ -20,12 +20,12 @@ type Pop = 'live' | 'interval';
 
 /**
  * The header's status group (prototype `[data-ui="live-indicator"]`, spec 024 T34, T40): one bordered 40 px group of
- * the live indicator, Refresh now and the refresh interval. The indicator (ISC-73) is `activity` with a 6 px dot in
- * three states from `LockSourceService.source` (none: the track colour; activity: lime; frontier: lime with an outline
- * ring), never colour alone, since its name carries the source; from 1120 px the label "Updated 12 s ago" (the refresh
- * service's `lastRefresh`) stands in for the icon, as in the prototype. The indicator opens the live popover (what is
- * read and how often, the agent source, the round board while a spec is open, the workspace's dev services or the
- * empty line); the interval opens the interval popover, which stores `settings.refreshSeconds`. Refresh calls
+ * the live indicator, Refresh now and the refresh interval. The indicator (ISC-73) is `activity` followed by a 6 px
+ * dot, lime while one of the workspace's dev services is up and the track colour otherwise, never colour alone, since
+ * its name carries the agent source and the service count. It stays this narrow at every width: "Updated 12 s ago"
+ * (the refresh service's `lastRefresh`) sits in the live popover, beside what is read and how often, the agent source,
+ * the round board while a spec is open and the workspace's dev services or the empty line. The interval opens the
+ * interval popover, which stores `settings.refreshSeconds`. Refresh calls
  * `RefreshService.refresh()` (as `r` and the palette do). Below 640 px only the indicator stays. The popovers load
  * after first render (`@defer`), like the header's menus.
  */
@@ -36,6 +36,10 @@ type Pop = 'live' | 'interval';
   template: `
     <div class="group">
       @let sourceText = 'shell.live.source.' + source() | transloco;
+      @let servicesText =
+        services().length === 0
+          ? ('shell.live.servicesDown' | transloco)
+          : ('shell.live.servicesUp' | transloco: { count: services().length });
       <button
         #liveTrigger
         type="button"
@@ -43,17 +47,15 @@ type Pop = 'live' | 'interval';
         data-control="live"
         aria-haspopup="dialog"
         [attr.data-source]="source()"
+        [attr.data-services]="services().length === 0 ? 'down' : 'up'"
         [attr.aria-expanded]="livePop()?.open() ?? false"
-        [attr.aria-label]="'shell.live.status' | transloco: { source: sourceText }"
-        [attr.title]="sourceText"
+        [attr.aria-label]="'shell.live.status' | transloco: { source: sourceText, services: servicesText }"
+        [attr.title]="sourceText + ' · ' + servicesText"
         (pointerdown)="press('live')"
         (click)="toggle('live', liveTrigger)"
       >
-        <ui-icon class="live-ic" name="activity" [size]="16" />
+        <ui-icon name="activity" [size]="16" />
         <span class="live-dot" aria-hidden="true"></span>
-        <span class="live-label" aria-hidden="true"
-          >{{ 'shell.live.updated' | transloco }} {{ 'shell.live.ago' | transloco: ago() }}</span
-        >
       </button>
       <button
         type="button"
@@ -89,6 +91,9 @@ type Pop = 'live' | 'interval';
         <div class="service" data-live-reading>
           <span class="status-dot" [attr.data-source]="source()" aria-hidden="true"></span>
           <span class="grow">{{ 'shell.live.reading' | transloco: { count: workspaceCount(), seconds: seconds() } }}</span>
+        </div>
+        <div class="service meta updated" data-live-updated>
+          {{ 'shell.live.updated' | transloco }} {{ 'shell.live.ago' | transloco: ago() }}
         </div>
         <div class="service meta" data-live-source>{{ sourceText }}</div>
         @if (link(); as target) {
@@ -167,7 +172,7 @@ export class ShellLive {
     return readWorkspace(ws, ws, result.body).services;
   });
 
-  /** The clock the label reads, every 10 s like `ui-relative-time` (design.md: "Updated 12 s ago" updates every 10 s). */
+  /** The clock the popover's "Updated" line reads, every 10 s like `ui-relative-time` (design.md: every 10 s). */
   private readonly now = signal(Date.now());
   /** "12 s ago": whole units since the refresh service's last refresh. */
   protected readonly ago = computed(() => relativeParts(this.refresher.lastRefresh(), Math.max(this.now(), this.refresher.lastRefresh())));

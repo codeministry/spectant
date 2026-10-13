@@ -426,13 +426,16 @@ describe('ShellComponent', () => {
       expect(indicator.getAttribute('data-source')).toBe('none');
       expect(workspace.querySelector('[data-live-board]')).toBeNull();
       expect(workspace.querySelector('[data-live-reading]')).not.toBeNull();
+      // The header stays narrow: icon and dot only; "Updated n s ago" is a line of the popover.
+      expect(indicator.textContent.trim()).toBe('');
+      expect(workspace.querySelector('[data-live-updated]')?.textContent.trim()).toMatch(/^Updated \d+ \S+ ago$/);
 
       const { root: spec } = await open('/w/harbor/s/002/status');
       const live = control(spec, 'live');
       expect(live.tagName).toBe('BUTTON');
       // Spec 008 (T116): the spec's board is the "Round board", never the workspace's "Board".
-      expect(live.getAttribute('title')).toBe('No agent source');
-      expect(live.getAttribute('aria-label')).toBe('Live status and dev services · No agent source');
+      expect(live.getAttribute('title')).toBe('No agent source · No dev service running');
+      expect(live.getAttribute('aria-label')).toBe('Live status and dev services · No agent source · No dev service running');
       expect(spec.querySelector('[data-live-board]')?.getAttribute('href')).toBe('/w/harbor/s/002/board');
       expect(spec.querySelector('[data-live-board]')?.textContent).toContain('Open the round board');
     });
@@ -659,6 +662,19 @@ describe('ShellComponent', () => {
       // spec 024: prototype value (principal: Prototyp gilt immer) — pop-area names g h for the dashboard.
       expect(keys).toEqual(['g h', 'g s', 'g l', 'g d', 'g o', 'g n']);
       expect(root.querySelector('header nav[aria-label="Areas"] ui-kbd')?.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('turns the live dot on while a dev service of the workspace is up, with a text alternative', async () => {
+      const services = [{ port: 4200, url: 'http://localhost:4200', label: 'web', process: 'bun' }];
+      setUp(fakeApi({ dashboard: (ws) => Promise.resolve(ws === 'harbor' ? ok({ ...HARBOR, services }) : { kind: 'not-found', served: true }) }));
+      const { root } = await open('/w/harbor');
+      const live = control(root, 'live');
+      expect(live.getAttribute('data-services')).toBe('up');
+      expect(live.getAttribute('aria-label')).toContain('1 dev service(s) running');
+      expect(root.querySelectorAll('[data-live-service]')).toHaveLength(1);
+
+      const { root: overview } = await open('/');
+      expect(control(overview, 'live').getAttribute('data-services')).toBe('down');
     });
 
     it('shows the live indicator state per lock source, with a text alternative', async () => {
