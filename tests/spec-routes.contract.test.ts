@@ -482,21 +482,25 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     for (const route of ["library", "libraryDoc", "librarySearch", "libraryAsset"] as const) expect(allowForWorkspace(route)).toBe("GET, HEAD");
   });
 
-  test("the library routes are declined by api.ts until their handlers land (T17, T18), never the planning fallback; library answers its catalog (T15)", async () => {
+  test("every library route has its handler in api.ts (T15, T17, T18), answered from the injected catalog, never the planning fallback", async () => {
     const api = dashboardApi({
       registry: { list: () => [workspace], get: (slug) => (slug === workspace.slug ? workspace : undefined) },
       loadWorkspace: () => Promise.resolve({ readable: false, error: "missing" }),
       loadCatalog: () => Promise.resolve({ readable: true, catalog: { docs: [], groups: [], fog: [], missing: 0, stale: 0 } }),
     });
-    for (const route of ["libraryDoc", "librarySearch", "libraryAsset"] as const) {
+    const answers: Record<string, { status: number | undefined; body: unknown }> = {};
+    for (const route of ["library", "libraryDoc", "librarySearch", "libraryAsset"] as const) {
       const url = new URL(WORKSPACE_ARGS[route]("harbor"), "http://127.0.0.1:7717");
-      expect({ route, answer: await api(new Request(url.href, { headers: HOST }), url) }).toEqual({ route, answer: null });
+      const answer = await api(new Request(url.href, { headers: HOST }), url);
+      answers[route] = { status: answer?.status, body: await answer?.json() };
     }
-    const url = new URL(WORKSPACE_ARGS.library("harbor"), "http://127.0.0.1:7717");
-    const answer = await api(new Request(url.href, { headers: HOST }), url);
-    expect({ status: answer?.status, body: await answer?.json() }).toEqual({
-      status: 200,
-      body: { docs: [], groups: [], fog: [], missing: 0, stale: 0 },
+    expect(answers).toEqual({
+      library: { status: 200, body: { docs: [], groups: [], fog: [], missing: 0, stale: 0 } },
+      // An empty catalog lists no document, so no path is ever read.
+      libraryDoc: { status: 404, body: { error: "not-found" } },
+      librarySearch: { status: 200, body: { query: "beacon", hits: [] } },
+      // harbor has no `specs/.tech/`: the techAsset answer under its new name.
+      libraryAsset: { status: 404, body: { error: "not-found" } },
     });
   });
 

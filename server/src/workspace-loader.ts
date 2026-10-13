@@ -8,7 +8,7 @@
  * of every spec folder under `specs/` and `specs/archive/` (folders as `listSpecs` finds them). It
  * parses nothing: every parse is `core/`'s (ISC-5, `bun run check:single-core`). `loadDashboard` adds the local
  * services and calls `buildDashboard`; `loadCatalog` loads the library's document catalog beside it (core's
- * `readCatalog`, spec 017). The lock sources are `core/`'s `readLockSources` (T51): the repository's
+ * `readCatalog` over the same input, spec 017; `loadCatalogDocs` without it). The lock sources are `core/`'s `readLockSources` (T51): the repository's
  * `.spectant/activity.jsonl`, plus the LifeOS frontier locks only when a LifeOS state directory is passed (ISC-37).
  *
  * Read-only (ISC-15): `node:fs` reads, no write, no temp file, no lock. The worktree tree id for the code-reviewed mark
@@ -234,8 +234,27 @@ export async function loadDashboard(root: string, probe: ServicesProbe | null, l
  * `json()`) changes with any edited, added or removed document and the web's polling revalidates to a 304 otherwise.
  * `readCatalog` reads a missing folder as an empty catalog, so the workspace root is checked first: a workspace that
  * cannot be read is its stable code, never an empty catalog. Read-only, like every load here.
+ *
+ * The group heads' stages come from the dashboard's own input (`readWorkspaceInput` with the same `lifeosStateDir`,
+ * worktree tree id and lock sources included), so a spec with a fresh code-reviewed mark stands at `close` in the
+ * library exactly as on the dashboard (spec 017 T13, ISC-157).
  */
-export async function loadCatalog(root: string): Promise<CatalogLoad> {
+export async function loadCatalog(root: string, lifeosStateDir: string | null = null): Promise<CatalogLoad> {
+  const reading = await readWorkspaceInput(root, lifeosStateDir);
+  if (!reading.readable) return reading;
+  try {
+    return { readable: true, catalog: await readCatalog(root, reading.input) };
+  } catch (error) {
+    return { readable: false, error: codeOf(error) };
+  }
+}
+
+/**
+ * The catalog's documents without the dashboard's reading: core's `readCatalog` over the files alone, for the routes
+ * that need the document list and never a stage (`libraryDoc`, `librarySearch`). The documents and their states do not
+ * depend on the dashboard input; skipping it keeps a search keystroke free of git calls and the worktree hash.
+ */
+export async function loadCatalogDocs(root: string): Promise<CatalogLoad> {
   const unreadable = workspaceUnreadable(root);
   if (unreadable !== null) return { readable: false, error: unreadable };
   try {
