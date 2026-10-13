@@ -32,14 +32,17 @@
   color: var(--muted-ink);
 }
 
-/* KPI band: 2-up, the hero across; 4-up from 640; hero beside four from 1120 (`.spec-kpis`). */
+/* KPI band (`.spec-kpis`, spec 024 T78): below 1120 the claims hero fills the first row (ring, value, meta; the meta at
+   the row's end from 640) and the four tiles follow 2 by 2, in one row from 640, so no row holds a single narrow tile;
+   from 1120 the hero sits beside the four. The hook is `.kpi-hero`, not `.hero`: daisyUI's `.hero` component centres its
+   children, which shrank the card to its content. */
 .kpi {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-.kpi .hero {
+.kpi .kpi-hero {
   grid-column: 1 / -1;
 }
 
@@ -113,7 +116,7 @@ blockquote {
     grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr));
   }
 
-  .kpi .hero {
+  .kpi .kpi-hero {
     grid-column: auto;
   }
 

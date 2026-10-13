@@ -19,9 +19,10 @@
       <div class="page">
         <section class="kpi" data-section="kpi" [attr.aria-label]="'specDashboard.kpi.label' | transloco">
           <ui-kpi-tile
-            class="hero"
+            class="kpi-hero"
             data-kpi="claims"
             variant="hero"
+            [wide]="true"
             [label]="'specDashboard.kpi.claims' | transloco"
             [value]="m.keyNumbers.claims.closed"
             [denominator]="m.keyNumbers.claims.total"

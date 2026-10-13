@@ -20,7 +20,7 @@ import type { Tone } from '../tone';
   selector: 'ui-kpi-tile',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [UiCard, UiIcon, RouterLink, NgTemplateOutlet],
-  host: { '[attr.data-variant]': 'variant()' },
+  host: { '[attr.data-variant]': 'variant()', '[attr.data-wide]': 'wide() ? "" : null' },
   styles: `
     :host { display: grid; min-inline-size: 0; }
     /* The card is the tile (the prototype's .kpi-tile): a column, 6 px apart, the meta line pushed to the foot. */
@@ -46,6 +46,12 @@ import type { Tone } from '../tone';
     :host([data-variant='hero']) .figure.long { font-size: 32px; line-height: 40px; }
     :host([data-variant='hero']) .figure.long .den { font-size: 16px; }
     :host([data-variant='sm']) .figure.long { font-size: 20px; line-height: 28px; }
+    /* wide (a hero across a whole band row, spec 024 T78): from 640 to 1119 the meta line moves to the row's end, level with
+       the ring, so the wide tile does not leave its right half empty; below 640 it stays under the value. */
+    @container shell (width >= 640px) and (width < 1120px) {
+      :host([data-wide]) .tile:has(> .visual:not(:empty)) { grid-template-columns: auto minmax(0, 1fr) auto; }
+      :host([data-wide]) .tile:has(> .visual:not(:empty)) > .meta { grid-column: 3; grid-row: 1 / span 4; align-self: center; margin-block-start: 0; text-align: end; }
+    }
   `,
   template: `
     <ui-card [accent]="accent()" [edge]="edge()" [glow]="glow()" [padding]="href() ? 0 : variant() === 'hero' ? 24 : 16" [interactive]="!!href()">
@@ -93,6 +99,8 @@ export class UiKpiTile {
   readonly edge = input<boolean>();
   /** The card's corner glow; unset, `ui-card` derives it from `accent`. */
   readonly glow = input<boolean>();
+  /** A hero laid across a whole band row (640 to 1119): the meta line sits at the row's end instead of under the value. */
+  readonly wide = input<boolean>(false);
 
   /** More than six digits across value and denominator: the fraction steps down one size. */
   protected readonly long = computed(
