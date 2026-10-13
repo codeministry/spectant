@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { ClaimLock, DocName, DocsPage, TechModel } from '../../../../core/src/files';
+import type { ClaimLock, DocName, DocsPage, LibraryCatalog, LibraryDoc, TechModel } from '../../../../core/src/files';
 import {
   ACTORS_PATH,
   type ActorMapping,
@@ -9,6 +9,9 @@ import {
   type AllocateRequest,
   type BoardQuery,
   type IdeaPage,
+  type LibrarySearchResult,
+  prototypeFolderOf,
+  prototypeRoute,
   isActorMappings,
   isBoardQuery,
   SPEC_HASH_HEADER,
@@ -284,6 +287,48 @@ export class ApiClient {
    */
   techAssetUrl(ws: string, path: string): string {
     return workspaceRoutes.techAsset(ws, path);
+  }
+
+  /**
+   * The workspace's library catalog (spec 017, T25, ISC-156): core's `LibraryCatalog`, metadata only, served as it is
+   * and ETag-cached like `planning()`. A workspace without `specs/` answers an empty catalog, not a 404.
+   */
+  library(ws: string): Promise<ApiResult<LibraryCatalog>> {
+    return this.get(workspaceRoutes.library(ws));
+  }
+
+  /**
+   * One Markdown document of the catalog, rendered as a Docs page (`DocsPage`), by its `LibraryDoc.path`. A path the
+   * catalog does not list as a present Markdown document is the contract's 404: `not-found`, served.
+   */
+  libraryDoc(ws: string, path: string): Promise<ApiResult<DocsPage>> {
+    return this.get(workspaceRoutes.libraryDoc(ws, path));
+  }
+
+  /**
+   * The server's search over titles and full text (`LibrarySearchResult`: the query as read, hits in catalog order).
+   * An empty or whitespace-only query answers `{query: '', hits: []}` without a request, as the server would.
+   */
+  librarySearch(ws: string, q: string): Promise<ApiResult<LibrarySearchResult>> {
+    if (q.trim() === '') return Promise.resolve({ kind: 'ok', body: { query: '', hits: [] }, etag: null, notModified: false });
+    return this.get(workspaceRoutes.librarySearch(ws, q));
+  }
+
+  /**
+   * The URL of one image below `specs/` (`…/library/asset?path=`), the successor of `techAssetUrl`. A URL, not a
+   * read: the browser loads it as an `<img>` source.
+   */
+  libraryAssetUrl(ws: string, path: string): string {
+    return workspaceRoutes.libraryAsset(ws, path);
+  }
+
+  /**
+   * The URL of one page of a `prototype` catalog document (`/proto/:ws/:spec/:folder/<page>`, outside `/api/`, opened
+   * in a new tab), `page` one of `doc.pages`. Null for a document that is no prototype folder. A path, no origin.
+   */
+  prototypeUrl(ws: string, doc: Pick<LibraryDoc, 'path' | 'spec' | 'type'>, page: string): string | null {
+    const folder = doc.type === 'prototype' ? prototypeFolderOf(doc) : null;
+    return folder === null ? null : prototypeRoute(ws, doc.spec, folder, page);
   }
 
   /** T111: the actor names (`GET /api/actors`), every stored `ActorMapping` ordered by id, ETag-cached. */

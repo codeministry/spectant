@@ -1,8 +1,8 @@
 import { HttpHeaders, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import type { TechModel } from '../../../../core/src/files';
-import type { ActorMapping, IdeaPage } from '../../../../server/src/spec-routes.contract';
+import type { DocsPage, LibraryCatalog, TechModel } from '../../../../core/src/files';
+import type { ActorMapping, IdeaPage, LibrarySearchResult } from '../../../../server/src/spec-routes.contract';
 import { ApiClient, type PlanningBody, planningUrl } from './api.service';
 
 const PLANNING_URL = '/api/workspaces/harbor/planning';
@@ -295,5 +295,73 @@ describe('ApiClient tech routes (spec 023, T9, ISC-134.1)', () => {
   it('builds the asset URL from the contract, the path relative to specs/ encoded once, without a request', () => {
     expect(api.techAssetUrl('harbor', '.tech/architecture.png')).toBe('/api/workspaces/harbor/tech/asset?path=.tech%2Farchitecture.png');
     expect(api.techAssetUrl('a b', 'img/a b.svg')).toBe('/api/workspaces/a%20b/tech/asset?path=img%2Fa%20b.svg');
+  });
+});
+
+describe('ApiClient library routes (spec 017, T25, ISC-156)', () => {
+  let api: ApiClient;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    api = TestBed.inject(ApiClient);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  const URL = '/api/workspaces/harbor/library';
+  const catalog: LibraryCatalog = { docs: [], groups: [], fog: [], missing: 0, stale: 0 };
+
+  it('GETs the catalog from the contract builder and replays it on a 304', async () => {
+    const first = api.library('harbor');
+    http.expectOne(URL).flush(catalog, { headers: { ETag: '"c1"' } });
+    expect(await first).toEqual({ kind: 'ok', body: catalog, etag: '"c1"', notModified: false });
+
+    const second = api.library('harbor');
+    const request = http.expectOne(URL);
+    expect(request.request.headers.get('If-None-Match')).toBe('"c1"');
+    request.flush(null, { status: 304, statusText: 'Not Modified' });
+    expect(await second).toEqual({ kind: 'ok', body: catalog, etag: '"c1"', notModified: true });
+  });
+
+  it('maps the contract 404 to not-found and the unreadable workspace 409 to unavailable', async () => {
+    const missing = api.library('a b');
+    http.expectOne('/api/workspaces/a%20b/library').flush({ error: 'not-found' }, { status: 404, statusText: 'Not Found' });
+    expect(await missing).toEqual({ kind: 'not-found', served: true });
+
+    const summary = { slug: 'harbor', name: 'Harbor', pathTail: 'harbor', readable: false, error: 'missing', counts: null };
+    const unavailable = api.library('harbor');
+    http.expectOne(URL).flush(summary, { status: 409, statusText: 'Conflict' });
+    expect(await unavailable).toEqual({ kind: 'unavailable', body: summary });
+  });
+
+  it('GETs one document by its catalog path, encoded once, and maps an unlisted path to not-found', async () => {
+    const page = { html: '<h1>Plan</h1>' } as unknown as DocsPage;
+    const read = api.libraryDoc('harbor', '017-workspace-library/plan.md');
+    http.expectOne(`${URL}/doc?path=017-workspace-library%2Fplan.md`).flush(page);
+    expect(await read).toEqual({ kind: 'ok', body: page, etag: null, notModified: false });
+
+    const unlisted = api.libraryDoc('harbor', '../secret.md');
+    http.expectOne(`${URL}/doc?path=..%2Fsecret.md`).flush({ error: 'not-found' }, { status: 404, statusText: 'Not Found' });
+    expect(await unlisted).toEqual({ kind: 'not-found', served: true });
+  });
+
+  it('GETs the search with q encoded once, and answers an empty query without a request', async () => {
+    const result: LibrarySearchResult = { query: 'a&b', hits: [{ path: 'tech.md', snippet: '… a&b …' }] };
+    const search = api.librarySearch('harbor', 'a&b');
+    http.expectOne(`${URL}/search?q=a%26b`).flush(result);
+    expect(await search).toEqual({ kind: 'ok', body: result, etag: null, notModified: false });
+
+    expect(await api.librarySearch('harbor', '   ')).toEqual({ kind: 'ok', body: { query: '', hits: [] }, etag: null, notModified: false });
+  });
+
+  it('builds the asset and prototype URLs without a request; a non-prototype has none', () => {
+    expect(api.libraryAssetUrl('harbor', '.tech/a b.png')).toBe(`${URL}/asset?path=.tech%2Fa%20b.png`);
+    const root = { path: '017-x/.design/prototype', spec: '017-x', type: 'prototype' as const };
+    expect(api.prototypeUrl('harbor', root, 'index.html')).toBe('/proto/harbor/017-x/prototype/index.html');
+    const nested = { path: '017-x/.design/prototype/board', spec: '017-x', type: 'prototype' as const };
+    expect(api.prototypeUrl('a b', nested, 'pages/two page.html')).toBe('/proto/a%20b/017-x/prototype%2Fboard/pages/two%20page.html');
+    expect(api.prototypeUrl('harbor', { path: '017-x/plan.md', spec: '017-x', type: 'plan' }, 'index.html')).toBeNull();
   });
 });

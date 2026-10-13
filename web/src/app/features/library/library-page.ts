@@ -19,21 +19,49 @@ import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../shared/ui/filter-chips/filter-chips';
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
-import {
-  highlight,
-  isImage,
-  LIBRARY_TYPES,
-  type LibraryFilter,
-  matches,
-  NO_FILTER,
-  related,
-  sharedRefs,
-  snippet,
-  specSlug,
-  specsOf,
-  type TextRun,
-  WORKSPACE_WIDE,
-} from './library-model';
+import { highlight, plainText, snippet, type TextRun } from './library-model';
+
+// ─── Demo bridge (until spec 017 T27) ────────────────────────────────────────────────────────────────────────────
+// The page still renders `DemoData.library`; `library-model.ts` works on core's `LibraryCatalog` since T26. These
+// helpers over `DemoLibraryEntry` are the former model's, kept here so the mock renders unchanged until T27 moves the
+// page onto the catalog and T28 removes the demo entries.
+
+const LIBRARY_TYPES: readonly DemoLibraryType[] = ['plan', 'design', 'decisions', 'constitution', 'evidence', 'notes'];
+const WORKSPACE_WIDE = 'ws';
+const IMAGE_FILE = /\.(png|jpe?g|webp|gif|avif|svg)$/iu;
+
+interface LibraryFilter {
+  readonly query: string;
+  readonly type: DemoLibraryType | 'all';
+  readonly spec: string;
+  readonly stale: boolean;
+}
+
+const NO_FILTER: LibraryFilter = { query: '', type: 'all', spec: 'all', stale: false };
+
+function specSlug(entry: DemoLibraryEntry): string | null {
+  return /(?:^|\/)specs\/\d+-([^/]+)\//u.exec(entry.file)?.[1] ?? null;
+}
+
+const isImage = (entry: DemoLibraryEntry): boolean => IMAGE_FILE.test(entry.file);
+
+function matches(entry: DemoLibraryEntry, filter: LibraryFilter): boolean {
+  const query = filter.query.trim().toLowerCase();
+  if (filter.type !== 'all' && entry.type !== filter.type) return false;
+  if (filter.spec !== 'all' && entry.spec !== filter.spec) return false;
+  if (filter.stale && entry.stale === undefined) return false;
+  if (query === '') return true;
+  return [entry.title, entry.file, plainText(entry.body), ...entry.refs].join(' ').toLowerCase().includes(query);
+}
+
+function related(entry: DemoLibraryEntry, all: readonly DemoLibraryEntry[]): readonly DemoLibraryEntry[] {
+  return all.filter((other) => other.id !== entry.id && other.refs.some((ref) => entry.refs.includes(ref)));
+}
+
+const sharedRefs = (entry: DemoLibraryEntry, other: DemoLibraryEntry): readonly string[] =>
+  other.refs.filter((ref) => entry.refs.includes(ref));
+
+const specsOf = (all: readonly DemoLibraryEntry[]): readonly string[] => [...new Set(all.map((entry) => entry.spec))];
 
 interface RowView {
   readonly entry: DemoLibraryEntry;
