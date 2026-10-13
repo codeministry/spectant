@@ -1,12 +1,13 @@
 /**
  * The one import every spec under `web/e2e/` uses instead of `@playwright/test` (T28 seam):
  *
- *   import { test, expect, atWidth, awaitReady } from './fixtures';   // `../fixtures` from `browser/`
+ *   import { test, expect, atWidth, awaitReady, menusReady } from './fixtures';   // `../fixtures` from `browser/`
  *
  * - The clock is pinned to `FIXED_NOW` before every test (option `clockAt`; `null` opts out, e.g. for a refresh
  *   spec that installs its own fake timers with `page.clock.install()`).
- * - `awaitReady(page)` is the only readiness wait: the app sets `data-ready="true"` on `<body>` once the first
- *   dashboard model is rendered and the fonts are loaded. Never wait on a timeout.
+ * - Readiness waits, never a timeout: `awaitReady(page)` once the app sets `data-ready="true"` on `<body>` (the first
+ *   dashboard model rendered, fonts loaded); `menusReady(page)` before opening a header picker or the settings panel,
+ *   which live in the deferred menus (before they mount, a click takes the control's fallback route).
  * - `atWidth(width)` gives the `test.use` block for one of the baseline widths (390 / 820 / 1440) or any other.
  */
 import { test as base, expect, type Locator, type Page } from '@playwright/test';
@@ -40,6 +41,15 @@ export async function headerControl(page: Page, name: string): Promise<Locator> 
     await expect(control).toBeVisible();
   }
   return control;
+}
+
+/**
+ * The header's menus (pickers, settings panel, area and PAGE menus) live in a deferred block; before it mounts a plain
+ * click on a picker or the settings button takes its fallback route instead of opening the panel. A test that opens one
+ * waits for the block first (the settings panel is part of it at every tier).
+ */
+export async function menusReady(page: Page): Promise<void> {
+  await page.locator('[data-menu="settings"]').first().waitFor({ state: 'attached' });
 }
 
 export async function pinClock(page: Page, iso: string = FIXED_NOW): Promise<void> {

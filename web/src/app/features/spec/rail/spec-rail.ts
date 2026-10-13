@@ -30,6 +30,8 @@ import { openClaims } from '../status/status-model';
   imports: [RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiKbd, UiRing, UiStageTrack],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-rail.html',
+  // While the take chip's claims load the rail says it is busy, so a reader (and a screenshot) waits for the settled rail.
+  host: { '[attr.aria-busy]': "claims.isLoading() || null" },
   styleUrl: './spec-rail.css',
 })
 export class SpecRail {
@@ -54,7 +56,7 @@ export class SpecRail {
   });
 
   /** The open claims, for the `take` chip (core's `ClaimViewModel`). */
-  private readonly claims = resource({ params: () => this.params(), loader: ({ params }) => this.api.claims(params.ws, params.id) });
+  protected readonly claims = resource({ params: () => this.params(), loader: ({ params }) => this.api.claims(params.ws, params.id) });
 
   /** The first takeable claim, the rail's `take` chip (prototype: "takeable ISC-334"). */
   protected readonly firstTakeable = computed(() => {

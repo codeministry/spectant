@@ -109,7 +109,7 @@ import { DEMO_LIBRARY } from '../src/app/shared/demo/fixtures/library.ts';
 import { DEMO_WORKSPACES } from '../src/app/shared/demo/fixtures/workspaces.ts';
 import type { IconName } from '../src/app/shared/icons/icons.ts';
 import { PROTOTYPE_ICON_MAP } from '../src/app/shared/icons/prototype-map.ts';
-import { atWidth, expect, headerControl, test } from './fixtures';
+import { atWidth, expect, headerControl, menusReady, test } from './fixtures';
 import { STUB_NOTES } from './stub-api';
 
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
@@ -296,6 +296,11 @@ const click =
     await page.locator(selector).first().click();
   };
 const openPalette = click('header [data-control="palette"]');
+/** The settings button, once the deferred menus have mounted (before that it leads to /settings, its fallback). */
+const openSettings = async (page: Page): Promise<void> => {
+  await menusReady(page);
+  await click('header [data-control="settings"]')(page);
+};
 /** The palette after one of its entries was chosen, so Recent has an entry. */
 const openPaletteWithRecent = async (page: Page): Promise<void> => {
   await openPalette(page);
@@ -323,8 +328,8 @@ const ICON_PLACES: readonly IconPlace[] = [
   { section: SHELL, place: 'settings', route: '/w/harbor', at: 'header [data-control="settings"]', icon: 'settings' },
   { section: SHELL, place: 'help', route: '/w/harbor', at: 'header [data-tool="help"]', icon: 'circle-help' },
   { section: SHELL, place: 'live popover board link', route: '/w/harbor/s/002', open: click('header [data-control="live"]'), at: '[data-live-board]', icon: 'arrow-right' },
-  { section: SHELL, place: 'settings popover workspaces', route: '/w/harbor', open: click('header [data-control="settings"]'), at: '[data-menu="settings"] [data-settings-link="workspaces"]', icon: 'folder' },
-  { section: SHELL, place: 'settings popover help', route: '/w/harbor', open: click('header [data-control="settings"]'), at: '[data-menu="settings"] [data-settings-link="help"]', icon: 'circle-help' },
+  { section: SHELL, place: 'settings popover workspaces', route: '/w/harbor', open: openSettings, at: '[data-menu="settings"] [data-settings-link="workspaces"]', icon: 'folder' },
+  { section: SHELL, place: 'settings popover help', route: '/w/harbor', open: openSettings, at: '[data-menu="settings"] [data-settings-link="help"]', icon: 'circle-help' },
 
   // Workspace dashboard: spec table, warnings list, palette (the prototype's Inspector rows)
   { section: WORKSPACE_VIEW, place: 'spec table foot', route: '/w/harbor', at: '[data-panel="specs"] [data-fold="archive"]', icon: 'layers' },
@@ -660,6 +665,7 @@ const follow =
 const viaSettings =
   (entry: string) =>
   async (page: Page): Promise<void> => {
+    await menusReady(page);
     await (await headerControl(page, 'settings')).click();
     await follow(`[data-menu="settings"] [data-settings-link="${entry}"]`)(page);
   };

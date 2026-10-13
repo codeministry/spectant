@@ -5,7 +5,7 @@
  * an unknown one the not-found page, decided from the dashboard.
  */
 import type { Page } from '@playwright/test';
-import { atWidth, expect, test } from './fixtures';
+import { atWidth, expect, menusReady, test } from './fixtures';
 
 const ROUTES = ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/999', '/settings'] as const;
 // spec 024: PAGE select (principal 2026-10-13): Workspace · Page · Spec · Area, the Area select only on a spec route
@@ -74,7 +74,7 @@ for (const { width, tier, tabBar } of TIERS) {
       // A plain click opens the picker; its entries are the links.
       await page.goto('/w/harbor/s/002');
       // The pickers open once the deferred menus have loaded (until then a plain click navigates, ShellNav).
-      await page.locator('[data-picker="workspace"]').first().waitFor({ state: 'attached' });
+      await menusReady(page);
       await control('workspace').click();
       await page.locator('[data-picker="workspace"] [data-workspace="harbor"]').click();
       await expect(page).toHaveURL(/\/w\/harbor$/);
@@ -114,6 +114,7 @@ for (const { width, tier, tabBar } of TIERS) {
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/board$/);
 
       // spec 024 T40/T52: settings opens the settings popover; its "Workspaces…" entry leads to /settings/workspaces
+      await menusReady(page);
       await reveal(page, width, 'settings');
       await control('settings').click();
       await page.locator('[data-menu="settings"] [data-settings-link="workspaces"]').click();
@@ -125,7 +126,7 @@ for (const { width, tier, tabBar } of TIERS) {
     test('header pickers open real lists: choose a workspace, then a spec (T36)', async ({ page }) => {
       const control = (name: string) => page.locator(`header [data-control="${name}"]`);
       await page.goto('/w/harbor/s/002');
-      await page.locator('[data-picker="workspace"]').first().waitFor({ state: 'attached' });
+      await menusReady(page);
 
       const workspace = control('workspace');
       await workspace.click();
@@ -159,7 +160,7 @@ for (const { width, tier, tabBar } of TIERS) {
       await page.goto('/w/harbor/s/002');
       const workspace = page.locator('header [data-control="workspace"]');
       await expect(workspace).toHaveAttribute('href', '/w/harbor');
-      await page.locator('[data-picker="workspace"]').first().waitFor({ state: 'attached' });
+      await menusReady(page);
       await workspace.click({ button: 'middle' });
       await expect(workspace).toHaveAttribute('aria-expanded', 'false');
     });
@@ -270,6 +271,8 @@ test.describe('header', () => {
         await page.goto('/w/harbor/s/002');
         // spec 024 T40/T52: the settings popover holds Help & guide (→ /help) and Workspaces… (→ /settings/workspaces);
         // the settings page itself, with its shortcuts action, is then opened at /settings.
+        // The settings panel lives in the deferred menus; before they mount the button leads to /settings (its fallback).
+        await menusReady(page);
         await reveal(page, width, 'settings');
         await page.locator('header [data-control="settings"]').click();
         await expect(page.locator('[data-menu="settings"] [data-settings-link="help"]')).toHaveAttribute('href', '/help');
