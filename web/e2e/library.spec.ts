@@ -43,7 +43,7 @@
 import { readFileSync } from 'node:fs';
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
 
-import type { DocsPage, LibraryCatalog, LibraryDoc } from '../../core/src/files';
+import type { DocsPage, LibraryCatalog, LibraryDoc, TechModel } from '../../core/src/files';
 import { type LibrarySearchResult, workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
 import { atWidth, expect, test, WIDTHS } from './fixtures';
 import { LIBRARY_HEADER, STUB_LIBRARY } from './stub-api';
@@ -878,5 +878,281 @@ test.describe('reader', () => {
         await expect.poll(() => address(page).doc, { message: way }).toBeNull();
       }
     });
+  });
+});
+
+/*
+ * Group `tech` (T37, ISC-157): the five former tech tabs, their content now in the library. `bun run e2e -- library -g tech`.
+ * Every expected value comes from the tech goldens (`core/fixtures/<ws>.tech.golden.json`, the old tech route's body)
+ * and is checked twice in the same run: against the golden itself and against the former tech page, which still
+ * renders it at `/w/:ws/tech/<tab>`. Content is compared as a prose fingerprint (`fingerprint`): each heading,
+ * paragraph, list item and table cell with its text, a figure as its kind and caption (its drawing differs by route).
+ * - Overview, Architecture, Open's risks: `specs/tech.md` in the reader as `section[data-library-tech-section]` in the
+ *   order overview, stack, architecture, risks; overview + stack equal the golden's overview page (ISC-134 joins them).
+ * - Status, Specs: each spec group head `[data-library-group-head]` carries the Status row's type, stage, claims, tasks
+ *   and fog (`[data-library-head=…]`) and the Specs card's Goal and first Approach paragraph.
+ * - Open: under `?state=open` every `- fog:` line of each open spec under its number (`[data-library-fog-group]`).
+ * - Without `specs/tech.md` (lantern, `pages: null`): the dimmed row `[data-library-placeholder="tech.md"]` opens the
+ *   empty state `[data-library-tech-empty]` with the `/spec-doc` chip, as the former Overview tab did.
+ */
+const TECH_SECTION_ORDER = ['overview', 'stack', 'architecture', 'risks'] as const;
+type TechSectionKey = (typeof TECH_SECTION_ORDER)[number];
+/** The command the empty state offers (`/spec-doc` writes `specs/tech.md`): named by the claim, in neither catalogue. */
+const DOC_COMMAND = '/spec-doc';
+
+const techGolden = (ws: string): TechModel => read(`../../core/fixtures/${ws}.tech.golden.json`) as TechModel;
+const TECH_EN = read('../src/i18n/en.json') as {
+  common: { noValue: string };
+  library: { tech: { emptyHeading: string; emptyBody: string } };
+};
+
+type Fingerprint = readonly string[];
+
+/**
+ * The prose fingerprint of `html` (parsed inert) or of the first element `selector` names: in document order, each
+ * h1–h6, p, li, th and td as `tag:text`, each figure as `figure:kind:caption` (not descended into: a drawn mermaid and
+ * a loaded image differ by route, their caption does not). An empty list when the selector matches nothing.
+ */
+async function fingerprint(page: Page, source: { html: string } | { selector: string }): Promise<Fingerprint> {
+  return page.evaluate((from) => {
+    let root: ParentNode | null;
+    if ('html' in from) {
+      const template = document.createElement('template');
+      template.innerHTML = from.html;
+      root = template.content;
+    } else {
+      root = document.querySelector(from.selector);
+    }
+    const out: string[] = [];
+    const norm = (text: string | null | undefined): string => (text ?? '').replace(/\s+/gu, ' ').trim();
+    const walk = (node: ParentNode): void => {
+      for (const child of Array.from(node.children)) {
+        const tag = child.tagName.toLowerCase();
+        if (tag === 'figure') {
+          const kind = child.classList.contains('mermaid-figure') ? 'mermaid' : child.classList.contains('image-figure') ? 'image' : 'other';
+          out.push(`figure:${kind}:${norm(child.querySelector('figcaption')?.textContent)}`);
+          continue;
+        }
+        if (/^(h[1-6]|p|li|th|td)$/u.test(tag)) out.push(`${tag}:${norm(child.textContent)}`);
+        walk(child);
+      }
+    };
+    if (root !== null) walk(root);
+    return out;
+  }, source);
+}
+
+/** One spec as the former Status tab and the library's group head show it. */
+interface HeadFigures {
+  readonly id: string;
+  readonly type: string;
+  readonly stage: string;
+  readonly claims: string;
+  /** `landed/total`; null where the Status tab shows no tasks. */
+  readonly tasks: string | null;
+  readonly fog: number;
+}
+
+test.describe('tech', () => {
+  test.use(atWidth(WIDTHS.desktop));
+
+  const HARBOR = techGolden(WS);
+  const LANTERN_WS = 'lantern';
+  const LANTERN = techGolden(LANTERN_WS);
+  const FOGGY = HARBOR.specs.filter((spec) => spec.phase !== 'complete' && spec.fog.length > 0);
+  const TECH_DOC = '[data-library-reader] [data-library-prose] .docs-prose';
+  const section = (key: TechSectionKey): string => `${TECH_DOC} > section[data-library-tech-section="${key}"]`;
+  const oldProse = (tab: string): string => `[data-tech-panel] [data-tech-tab="${tab}"] .docs-prose`;
+
+  test('tech.md: overview, stack, architecture and risks in contract order, each the golden content of the former Overview, Architecture and Open tabs', async ({ page, request }) => {
+    const pages = HARBOR.pages;
+    if (pages === null) throw new Error('library.spec: the harbor tech golden has no pages');
+    const catalog = await catalogOf(request);
+    const doc = docOf(catalog, (d) => d.type === 'tech', 'tech document');
+    expect(doc.path).toBe('tech.md');
+
+    // The golden pages and the former tabs, read first: the same fingerprints the library must show.
+    await page.goto(`/w/${WS}/tech/overview`);
+    const golden = {
+      overview: await fingerprint(page, { html: pages.overview.html }),
+      architecture: await fingerprint(page, { html: pages.architecture.html }),
+      risks: await fingerprint(page, { html: pages.risks.html }),
+    };
+    // Not vacuous: every golden page holds a heading and more.
+    for (const [key, print] of Object.entries(golden)) expect(print.length, `golden ${key}`).toBeGreaterThan(1);
+    const former: Record<keyof typeof golden, Fingerprint> = { overview: [], architecture: [], risks: [] };
+    for (const tab of ['overview', 'architecture'] as const) {
+      await page.goto(`/w/${WS}/tech/${tab}`);
+      await expect(page.locator(oldProse(tab))).toBeVisible();
+      former[tab] = await fingerprint(page, { selector: oldProse(tab) });
+    }
+    await page.goto(`/w/${WS}/tech/open`);
+    await expect(page.locator('[data-tech-risks] .docs-prose')).toBeVisible();
+    former.risks = await fingerprint(page, { selector: '[data-tech-risks] .docs-prose' });
+    expect(former, 'the former tabs render the golden').toEqual(golden);
+
+    // The library: the four sections in contract order, "On this page" naming exactly them, none reported missing.
+    await page.goto(`${PAGE}#${doc.path}`);
+    await expect(page.locator(TECH_DOC)).toBeVisible();
+    const sections = page.locator(`${TECH_DOC} > section[data-library-tech-section]`);
+    await expect(sections).toHaveCount(TECH_SECTION_ORDER.length);
+    expect(await sections.evaluateAll((els) => els.map((el) => el.getAttribute('data-library-tech-section')))).toEqual([...TECH_SECTION_ORDER]);
+    const toc = page.locator('[data-library-reader] [data-library-prose] nav.docs-toc .docs-toc-list a');
+    expect(await toc.evaluateAll((els) => els.map((el) => el.getAttribute('href')))).toEqual(TECH_SECTION_ORDER.map((key) => `#${key}`));
+    await expect(page.locator('[data-library-tech-missing]')).toHaveCount(0);
+    await expect(page.locator(`${TECH_DOC} figure.mermaid-figure .mermaid-svg svg`).first()).toBeVisible();
+
+    const shown: Record<TechSectionKey, Fingerprint> = { overview: [], stack: [], architecture: [], risks: [] };
+    for (const key of TECH_SECTION_ORDER) {
+      shown[key] = await fingerprint(page, { selector: section(key) });
+      expect(shown[key].length, `section ${key}`).toBeGreaterThan(0);
+    }
+    // Nothing of the file stands outside the four sections (the h1 is the reader's title).
+    const outside = await page.locator(TECH_DOC).evaluate((el) =>
+      Array.from(el.children)
+        .filter((child) => !child.matches('section[data-library-tech-section]'))
+        .map((child) => child.tagName.toLowerCase()),
+    );
+    expect(outside).toEqual([]);
+    expect({ overview: [...shown.overview, ...shown.stack], architecture: shown.architecture, risks: shown.risks }).toEqual(golden);
+  });
+
+  test('tech · group heads: type, stage, claims, tasks and fog of the former Status tab, Goal and Approach of the former Specs tab', async ({ page }) => {
+    const ids = HARBOR.specs.map((spec) => spec.id);
+    const norm = (text: string): string => text.replace(/\s+/gu, ' ').trim();
+
+    // The former Status tab, one row per spec of the golden.
+    await page.goto(`/w/${WS}/tech/status`);
+    const rowsShown = page.locator('[data-tech-tab="status"] table tr[data-spec]');
+    await expect(rowsShown).toHaveCount(ids.length);
+    const status: HeadFigures[] = await rowsShown.evaluateAll(
+      (trs, noValue) =>
+        trs.map((tr) => {
+          const cell = (col: string): string => (tr.querySelector(`td[data-col="${col}"]`)?.textContent ?? '').replace(/\s+/gu, ' ').trim();
+          const tasks = cell('tasks');
+          return {
+            id: tr.getAttribute('data-spec') ?? '',
+            type: cell('type'),
+            stage: cell('stage'),
+            claims: (tr.querySelector('td[data-col="claims"] .frac')?.textContent ?? '').trim(),
+            tasks: tasks.startsWith(noValue) ? null : tasks,
+            fog: Number(cell('fog')),
+          };
+        }),
+      TECH_EN.common.noValue,
+    );
+    expect(status.map((row) => row.id).toSorted()).toEqual(ids.toSorted());
+    // The golden's fog lines are the Status tab's fog count.
+    for (const spec of HARBOR.specs) expect(status.find((row) => row.id === spec.id)?.fog, `fog of ${spec.id}`).toBe(spec.fog.length);
+
+    // The former Specs tab: Goal and the first Approach paragraph per spec, each the golden's page.
+    await page.goto(`/w/${WS}/tech/specs`);
+    await expect(page.locator('[data-tech-tab="specs"] ui-card[data-tech-spec]')).toHaveCount(ids.length);
+    const formerProse = new Map<string, { goal: Fingerprint; approach: Fingerprint }>();
+    for (const spec of HARBOR.specs) {
+      const card = `[data-tech-tab="specs"] [data-tech-spec="${spec.id}"]`;
+      const goal = await fingerprint(page, { selector: `${card} [data-tech-goal] .docs-prose` });
+      const approach = await fingerprint(page, { selector: `${card} [data-tech-approach] .docs-prose` });
+      expect(goal, `golden goal of ${spec.id}`).toEqual(spec.goal === null ? [] : await fingerprint(page, { html: spec.goal.html }));
+      expect(approach, `golden approach of ${spec.id}`).toEqual(spec.approach === null ? [] : await fingerprint(page, { html: spec.approach.html }));
+      formerProse.set(spec.id, { goal, approach });
+    }
+    // Not vacuous: the fixture holds goals and approaches.
+    expect([...formerProse.values()].filter((p) => p.goal.length > 0).length).toBeGreaterThan(0);
+    expect([...formerProse.values()].filter((p) => p.approach.length > 0).length).toBeGreaterThan(0);
+
+    // The library: one head per spec, its figures and prose equal to the former tabs'.
+    await page.goto(PAGE);
+    const heads = page.locator('[data-library-group-head]');
+    await expect(heads).toHaveCount(ids.length);
+    const shown = await heads.evaluateAll((els) =>
+      els.map((el) => {
+        const field = (key: string): string | null => {
+          const node = el.querySelector(`[data-library-head="${key}"]`);
+          return node === null ? null : node.textContent.replace(/\s+/gu, ' ').trim();
+        };
+        const fog = field('fog');
+        return {
+          id: (el.querySelector('.lib-ghead-id')?.textContent ?? '').trim(),
+          spec: el.getAttribute('data-spec') ?? '',
+          type: field('type') ?? '',
+          stage: field('stage') ?? '',
+          claims: field('claims') ?? '',
+          tasks: field('tasks'),
+          fog: fog === null ? 0 : Number(/\d+/u.exec(fog)?.[0] ?? Number.NaN),
+        };
+      }),
+    );
+    expect(shown.map((head) => head.id)).toEqual(ids.toSorted());
+    for (const row of status) {
+      const head = shown.find((h) => h.id === row.id);
+      if (head === undefined) throw new Error(`library.spec: no group head for ${row.id}`);
+      const figures: HeadFigures = { id: head.id, type: norm(head.type), stage: norm(head.stage), claims: head.claims, tasks: head.tasks, fog: head.fog };
+      // A spec the Status tab shows without tasks has none in the head either: 0/0.
+      expect(figures, `the head of ${row.id}`).toEqual({ ...row, tasks: row.tasks ?? '0/0' });
+      const prose = formerProse.get(row.id);
+      const groupHead = `[data-library-group-head][data-spec="${head.spec}"]`;
+      expect(await fingerprint(page, { selector: `${groupHead} [data-library-head="goal"]` }), `goal of ${row.id}`).toEqual(prose?.goal);
+      expect(await fingerprint(page, { selector: `${groupHead} [data-library-head="approach"] .lib-ghead-approach-body` }), `approach of ${row.id}`).toEqual(prose?.approach);
+    }
+  });
+
+  test('tech · the filter open: every fog line of each open spec under its number, as the former Open tab', async ({ page }) => {
+    // Not vacuous: harbor holds an open spec with fog lines.
+    expect(FOGGY.length).toBeGreaterThan(0);
+
+    await page.goto(`/w/${WS}/tech/open`);
+    const former = page.locator('[data-tech-tab="open"] [data-fog-spec]');
+    await expect(former).toHaveCount(FOGGY.length);
+    const formerGroups = await former.evaluateAll((els) => els.map((el) => el.getAttribute('data-fog-spec')));
+    expect(formerGroups).toEqual(FOGGY.map((spec) => spec.id));
+    for (const spec of FOGGY) {
+      const links = page.locator(`[data-tech-tab="open"] [data-fog-spec="${spec.id}"] li a`);
+      await expect(links).toHaveCount(spec.fog.length);
+      for (const [index, line] of spec.fog.entries()) await expect(links.nth(index)).toContainText(line);
+    }
+
+    await page.goto(`${PAGE}?state=open`);
+    const groups = page.locator('[data-library-fog-group]');
+    await expect(groups).toHaveCount(FOGGY.length);
+    expect(await groups.evaluateAll((els) => els.map((el) => el.getAttribute('data-library-fog-group')))).toEqual(formerGroups);
+    for (const spec of FOGGY) {
+      await expect(page.locator(`[data-library-fog-group="${spec.id}"] [data-library-fog-line] .lib-fog-text`)).toHaveText([...spec.fog]);
+    }
+  });
+
+  test('tech · without tech.md: the dimmed tech.md row opens the empty state with the /spec-doc chip, as the former Overview tab', async ({ page, request }) => {
+    expect(LANTERN.pages, 'the lantern tech golden has no tech.md').toBeNull();
+    const answer = await request.get(`/api/workspaces/${LANTERN_WS}/library`);
+    expect(answer.status()).toBe(200);
+    const catalog = (await answer.json()) as LibraryCatalog;
+    expect(catalog.docs.length).toBeGreaterThan(0);
+    expect(catalog.docs.filter((doc) => doc.type === 'tech')).toEqual([]);
+
+    // The former Overview tab's empty state.
+    await page.goto(`/w/${LANTERN_WS}/tech/overview`);
+    const formerEmpty = page.locator('[data-tech-panel] ui-empty-state[data-tech-empty]');
+    await expect(formerEmpty).toBeVisible();
+    await expect(formerEmpty.locator('ui-command-chip code')).toHaveText(DOC_COMMAND);
+
+    await page.goto(`/w/${LANTERN_WS}/library`);
+    const row = page.locator('[data-library-group="workspace"] [data-library-placeholder="tech.md"]');
+    await expect(row).toHaveCount(1);
+    await expect(row).not.toHaveAttribute('data-library-entry');
+    await row.click();
+    const empty = page.locator('[data-library-reader] ui-empty-state[data-library-tech-empty]');
+    await expect(empty).toBeVisible();
+    await expect(empty.locator('.title')).toHaveText(TECH_EN.library.tech.emptyHeading);
+    await expect(empty.locator('.body')).toHaveText(TECH_EN.library.tech.emptyBody);
+    const chip = empty.locator('ui-command-chip');
+    await expect(chip).toHaveCount(1);
+    await expect(chip.locator('code')).toHaveText(DOC_COMMAND);
+    await expect(page.locator('[data-library-reader] [data-library-prose]')).toHaveCount(0);
+    await expect(page.locator('[data-library-reader] section[data-library-tech-section]')).toHaveCount(0);
+
+    // A workspace with tech.md lists it as a document and shows no placeholder.
+    await page.goto(PAGE);
+    await expect(page.locator('[data-library-entry="tech.md"]')).toHaveCount(1);
+    await expect(page.locator('[data-library-placeholder]')).toHaveCount(0);
   });
 });
