@@ -390,7 +390,9 @@ const ACTIVITY_FILE = '.spectant/activity.jsonl';
  * it names, else the activity file when it came from there.
  */
 function lockWarning(d: LockDiagnostic): SpecWarning {
-  const activity = d.code.startsWith('locks-activity');
+  // The activity log's diagnostics: the `locks-activity-*` codes and the unknown-event warning (spec 027, ISC-179),
+  // which carries the line it was raised at; everything else came from a frontier lock file.
+  const activity = d.code.startsWith('locks-activity') || d.code === 'activity-event-unknown';
   const where = activity ? `${ACTIVITY_FILE}${d.line === undefined ? '' : ` line ${d.line}`}` : 'LifeOS frontier locks';
   const ref = d.claim ?? (activity ? ACTIVITY_FILE : undefined);
   return { kind: 'locks', text: `${where}: ${d.message}`, ...(ref === undefined ? {} : { ref }) };

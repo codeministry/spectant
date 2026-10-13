@@ -270,7 +270,9 @@ describe('taken and lock warnings (spec 002 T115, ISC-90)', () => {
   test("harbor 002's row lists the ISC-74 activity lock with its session and since", async () => {
     const m = await withLocks(readLockSources({ repoRoot: HARBOR, now: NOW }));
     expect(row(m, '002').taken).toEqual([{ id: 'ISC-74', session: 'a:claude:sess-2', since: '2026-03-08T14:06:00Z', source: 'activity' }]);
-    expect(kinds(row(m, '002'))).toEqual([]);
+    // The one lock diagnostic, harbor's unknown `ponder` run event on ISC-75 (spec 027, ISC-179), lands on 002's row.
+    expect(row(m, '002').warnings.map((w) => [w.kind, w.ref])).toEqual([['locks', 'ISC-75']]);
+    expect(row(m, '002').warnings[0]?.text).toContain('"ponder"');
     for (const r of m.specs.filter((s) => s.id !== '002')) expect(r.taken).toEqual([]);
   });
 

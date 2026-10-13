@@ -18,6 +18,13 @@
 //    `{ts, event: "claim" | "release", claim, session, task?, worktree?}`, replayed in order. A claim without a later
 //    release by its holder is held since the claim line's `ts`.
 //
+//    The run events (spec 027, ISC-179): `{ts, event: "dispatch" | "build" | "patch" | "apply", task, session,
+//    worktree, claim?}`, one per step of a task in an implement round. A run event holds no claim; it is collected on
+//    the reading as `runs`, and `runStates` folds them into each task's last state (dispatched → building → patched →
+//    applied, `applied-open` while tasks.md has not ticked the task). A run event without `task`, `session`, `worktree`
+//    or `ts` is malformed and skipped. An event that is none of the six raises one `activity-event-unknown` warning per
+//    file, at its first line; that line and every later unknown one are skipped, and the file is read on.
+//
 // The reading names `frontier` when a LifeOS state directory exists, else `activity` when the log exists, else `none`.
 // With no state directory given, nothing outside `repoRoot` is touched (ISC-37).
 //
@@ -31,14 +38,25 @@ import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 import { legacyActorWarning, parseActor, type ActorSighting } from './actor.ts';
-import type { AgentLockSource, ClaimLock, LockDiagnostic, LockReadInput, LockReading } from './files.ts';
+import type { AgentLockSource, ClaimLock, LockDiagnostic, LockReadInput, LockReading, RunEvent, RunState, TaskRun } from './files.ts';
 
 /** LifeOS's default stale TTL for a frontier lock: a session silent this long has died or moved on. */
 export const FRONTIER_STALE_MS = 2 * 60 * 60 * 1000;
 
 const LOCK_SUFFIX = '.lock';
 
-const byClaim = (a: ClaimLock, b: ClaimLock) => a.claim.localeCompare(b.claim, 'en', { numeric: true });
+/** One run event as the reading carries it (`LockReading.runs`). */
+type RunLine = NonNullable<LockReading['runs']>[number];
+
+/** The state each run event leaves its task in; `apply` reads `applied-open` until tasks.md ticks the task. */
+const RUN_STATE: Readonly<Record<RunEvent, RunState>> = { dispatch: 'dispatched', build: 'building', patch: 'patched', apply: 'applied' };
+
+const isRunEvent = (event: string): event is RunEvent => Object.hasOwn(RUN_STATE, event);
+
+const byId = (a: string, b: string) => a.localeCompare(b, 'en', { numeric: true });
+const byClaim = (a: ClaimLock, b: ClaimLock) => byId(a.claim, b.claim);
+
+const filled = (value: unknown): value is string => typeof value === 'string' && value !== '';
 
 function errorCode(error: unknown): string {
   return typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
@@ -58,9 +76,11 @@ interface SourceRead {
   readonly present: boolean;
   readonly locks: ClaimLock[];
   readonly diagnostics: LockDiagnostic[];
+  /** The run events read, in file order; only the activity log carries them. */
+  readonly runs: RunLine[];
 }
 
-const ABSENT: SourceRead = { present: false, locks: [], diagnostics: [] };
+const ABSENT: SourceRead = { present: false, locks: [], diagnostics: [], runs: [] };
 
 async function isDirectory(path: string): Promise<boolean> {
   try {
@@ -85,7 +105,7 @@ async function readFrontier(repoRoot: string, stateDir: string, now: number): Pr
     if (errorCode(error) !== 'ENOENT') {
       diagnostics.push(warning('locks-frontier-unreadable', `The frontier lock directory for this ISA could not be read (${errorCode(error) || 'error'}).`));
     }
-    return { present: true, locks, diagnostics };
+    return { present: true, locks, diagnostics, runs: [] };
   }
 
   const claims = names
@@ -129,7 +149,7 @@ async function readFrontier(repoRoot: string, stateDir: string, now: number): Pr
     }
     locks.push({ source: 'frontier', claim, session, actor, since: ts });
   }
-  return { present: true, locks, diagnostics };
+  return { present: true, locks, diagnostics, runs: [] };
 }
 
 /** The claim a malformed activity entry still names, so its warning reaches that claim's row. */
@@ -141,12 +161,14 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
     text = await readFile(join(repoRoot, '.spectant', 'activity.jsonl'), 'utf8');
   } catch (error) {
     if (errorCode(error) === 'ENOENT' || errorCode(error) === 'ENOTDIR') return ABSENT;
-    return { present: false, locks: [], diagnostics: [warning('locks-activity-unreadable', `.spectant/activity.jsonl could not be read (${errorCode(error) || 'error'}).`)] };
+    return { present: false, locks: [], diagnostics: [warning('locks-activity-unreadable', `.spectant/activity.jsonl could not be read (${errorCode(error) || 'error'}).`)], runs: [] };
   }
 
   const held = new Map<string, ClaimLock>();
   const diagnostics: LockDiagnostic[] = [];
-  const actors: Array<ActorSighting & { readonly claim: string }> = [];
+  const runs: RunLine[] = [];
+  const actors: Array<ActorSighting & { readonly claim?: string }> = [];
+  let unknownSeen = false;
   text.split('\n').forEach((raw, index) => {
     const line = index + 1;
     if (raw.trim() === '') return;
@@ -162,11 +184,30 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
       return;
     }
     const { ts, event, claim, session } = entry;
-    if (event !== 'claim' && event !== 'release') {
-      diagnostics.push(warning('locks-activity-malformed', `The event is not "claim" or "release"; the line is skipped.`, { line, ...claimOf(entry) }));
+    if (!filled(event)) {
+      diagnostics.push(warning('locks-activity-malformed', 'The line names no event; it is skipped.', { line, ...claimOf(entry) }));
       return;
     }
-    if (typeof claim !== 'string' || claim === '' || typeof session !== 'string' || session === '' || typeof ts !== 'string' || ts === '') {
+    if (event !== 'claim' && event !== 'release' && !isRunEvent(event)) {
+      // One warning per file, at the first unknown event; it and every later unknown line are skipped, the rest is read.
+      if (!unknownSeen) {
+        unknownSeen = true;
+        const message = `The event ${JSON.stringify(event)} is none of claim, release, dispatch, build, patch or apply; this and any later line with an unknown event is skipped, and the file is read on.`;
+        diagnostics.push(warning('activity-event-unknown', message, { line, ...claimOf(entry) }));
+      }
+      return;
+    }
+    if (isRunEvent(event)) {
+      const { task, worktree } = entry;
+      if (!filled(task) || !filled(session) || !filled(worktree) || !filled(ts)) {
+        diagnostics.push(warning('locks-activity-malformed', `The ${event} line lacks a task, a session, a worktree or a ts; it is skipped.`, { line, ...claimOf(entry) }));
+        return;
+      }
+      actors.push({ ref: parseActor(session), line, ...claimOf(entry) });
+      runs.push({ event, task, session, worktree, ts, ...claimOf(entry) });
+      return;
+    }
+    if (!filled(claim) || !filled(session) || !filled(ts)) {
       diagnostics.push(warning('locks-activity-malformed', 'The line lacks a claim, a session or a ts; it is skipped.', { line, ...claimOf(entry) }));
       return;
     }
@@ -192,8 +233,23 @@ async function readActivity(repoRoot: string): Promise<SourceRead> {
   });
   const legacy = legacyActorWarning(actors, 'session');
   const first = actors.find((a) => a.ref.legacy);
-  if (legacy !== null && first !== undefined) diagnostics.push({ ...legacy, claim: first.claim });
-  return { present: true, locks: [...held.values()].sort(byClaim), diagnostics };
+  if (legacy !== null && first !== undefined) diagnostics.push({ ...legacy, ...(first.claim === undefined ? {} : { claim: first.claim }) });
+  return { present: true, locks: [...held.values()].sort(byClaim), diagnostics, runs };
+}
+
+/**
+ * Each task's run as its last run event leaves it (spec 027, ISC-179): one TaskRun per task that a run event of
+ * `reading` names, in task-ID order. The last event in file order decides, so a re-dispatch after an apply reads
+ * `dispatched` again; `apply` is `applied` when `ticked` (the ids tasks.md checks) holds the task, else `applied-open`.
+ * The run carries that last event's session, worktree and ts. Pure. Keyed by task id alone: the log is repository-wide,
+ * so a caller showing one spec passes only that spec's run lines.
+ */
+export function runStates(reading: LockReading, ticked: ReadonlySet<string>): readonly TaskRun[] {
+  const last = new Map<string, RunLine>();
+  for (const run of reading.runs ?? []) last.set(run.task, run);
+  return [...last.values()]
+    .sort((a, b) => byId(a.task, b.task))
+    .map(({ event, task, session, worktree, ts }) => ({ task, state: event === 'apply' && !ticked.has(task) ? 'applied-open' : RUN_STATE[event], session, worktree, ts }));
 }
 
 /**
@@ -216,5 +272,6 @@ export async function readLockSources(input: LockReadInput): Promise<LockReading
     // Activity first, frontier last: a last-wins consumer (status.ts `partitionClaims`) takes the frontier lock.
     locks: [...activity.locks, ...frontier.locks],
     diagnostics: [...frontier.diagnostics, ...activity.diagnostics],
+    runs: activity.runs,
   };
 }

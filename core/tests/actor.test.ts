@@ -87,7 +87,7 @@ describe('actor grammar on the harbor fixture', () => {
   test('every file carries actors and 0 values fall outside the three forms', () => {
     for (const { rel, actors } of scanned) expect({ rel, count: actors.length > 0 }).toEqual({ rel, count: true });
     const values = scanned.flatMap(({ rel, actors }) => actors.map((raw) => ({ rel, raw, ref: parseActor(raw) })));
-    expect(values.length).toBe(31); // 007's reviewed mark (spec 008, T50) added one
+    expect(values.length).toBe(40); // 007's reviewed mark (spec 008, T50) added one; the nine run-event lines of the activity log (spec 027, T8) nine more
     expect(values.filter(({ ref }) => ref.legacy).map(({ rel, raw }) => `${rel}: ${raw}`)).toEqual([]);
     const kinds = new Set(values.map(({ ref }) => ref.kind));
     expect([...kinds].sort()).toEqual(['agent', 'person', 'subagent']);

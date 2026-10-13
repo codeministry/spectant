@@ -1147,9 +1147,10 @@ applicable".
 
 ## Worktrees
 
-Read from git, never written by the app (spec 027, `worktrees.ts`). The module is not written yet: T3 assigns the
-worktrees, T5 adds the mismatch warning, T16 and T17 read git in the server and T21 and T22 switch the read source and
-the writes; until then every spec is read from the main checkout. The rules below are the contract those tasks build.
+Read from git, never written by the app (spec 027, `worktrees.ts`). `core/src/worktrees.ts` assigns the worktrees and
+raises the mismatch warning; the server side — reading git (`ahead`, `dirty`), switching the read source and the
+writes to the worktree copy — is still being built, and until it lands every spec is read from the main checkout. The
+rules below are the contract.
 
 The server reads one listing per registered repository, `git worktree list --porcelain`, and hands its text to
 `core/`, which decides which worktree belongs to which spec and never runs git itself. Every git call is a read: no
@@ -1242,7 +1243,8 @@ Read when present, never written by the app (spec 002, T20, `locks.ts`). Two sou
 - **LifeOS frontier locks**, lock files under the LifeOS state directory, read only when LifeOS is present; without
   LifeOS no LifeOS path is read (ISC-37).
 - **`.spectant/activity.jsonl`** at the repository root, written by the plugin's hooks: one JSON object per line,
-  `{ts, event: "claim" | "release", claim, session, task?, worktree?}`. A claim without a later release is open.
+  `{ts, event: "claim" | "release", claim, session, task?, worktree?}`. A claim without a later release is open. The
+  same file carries the four run events of an implement round (spec 027, ISC-179, below), which hold no claim.
 
 In both sources `session` is the actor that holds the claim, in the actor grammar (`events`, above): `a:<kind>:<id>`
 for an agent session, `a:<kind>:<id>/<task>` for a sub-agent on a task (`a:claude:sess-7/T12`, with `task: "T12"`), a
@@ -1265,13 +1267,49 @@ From `core/fixtures/harbor/.spectant/activity.jsonl`:
 {"ts":"2026-03-08T14:06:00Z","event":"claim","claim":"ISC-74","task":"T27","session":"a:claude:sess-2","worktree":"wt-7"}
 ```
 
+**Run events** (spec 027, ISC-179, `locks.ts` `runStates`). A sub-agent working a task in its own worktree writes
+nothing the main checkout shows until its patch lands, so the round reports each step of a task as a line of its own:
+`{ts, event: "dispatch" | "build" | "patch" | "apply", task, session, worktree, claim?}`. `dispatch` is written when
+the round's plan sends the task out, `build` when its builder starts in its worktree, `patch` when its patch is pulled,
+`apply` when the patch landed on the spec's branch. `task`, `session` (in the actor grammar above, legacy-checked like
+any other session) and `worktree` are required, as is `ts`; a run event that lacks one is a malformed line and is
+skipped. `claim` is optional and only names the claim; a run event never holds or releases it.
+
+Per task the last run event in file order decides its state: `dispatch` → `dispatched`, `build` → `building`, `patch`
+→ `patched`, `apply` → `applied` once `tasks.md` checks the task, else `applied-open` (the patch landed, the tick has
+not). A task dispatched again after an `apply` reads `dispatched` again. Each `TaskRun` carries that last event's
+`session`, `worktree` and `ts`. The log is repository-wide and keyed by task id, so whoever shows one spec passes only
+that spec's run lines.
+
+An event that is none of `claim`, `release` and the four run events is one `activity-event-unknown` warning per file,
+at the first such line, with the event quoted in its text and the line's claim when it names one; that line and every
+later line with an unknown event are skipped, and the lines after them are read as usual. A line with no event at all
+is a malformed line. In harbor 002, T26 ran all four steps and `tasks.md` checks it, so it reads `applied`; T28 ran
+them too, with one unknown `ponder` line between `build` and `patch`, and is not checked, so it reads `applied-open`.
+That `ponder` line is harbor's one lock diagnostic.
+
+From `core/fixtures/harbor/.spectant/activity.jsonl`:
+
+```json
+{"ts":"2026-03-08T15:54:00Z","event":"dispatch","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
+{"ts":"2026-03-08T15:55:00Z","event":"build","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
+{"ts":"2026-03-08T16:10:00Z","event":"patch","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
+{"ts":"2026-03-08T16:12:00Z","event":"apply","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
+{"ts":"2026-03-08T16:32:00Z","event":"dispatch","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+{"ts":"2026-03-08T16:33:00Z","event":"build","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+{"ts":"2026-03-08T16:35:00Z","event":"ponder","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+{"ts":"2026-03-08T16:40:00Z","event":"patch","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+{"ts":"2026-03-08T16:42:00Z","event":"apply","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+```
+
 A frontier lock is one file per held claim, `<state>/isa-locks/<hash>/<claim-id>.lock`, where `<state>` is the LifeOS
 state directory the caller passes and `<hash>` is the first 16 hex digits of sha1 over the real path of the
 repository's `ISA.md`; only that one directory is read. The file is a JSON object with `session` and `ts` required and
 `isa` (the ISA path the session used) optional; a lock whose `isa` resolves to another file, whose content is not that
 object, or whose `ts` is more than two hours old (LifeOS's stale TTL) is not counted and becomes a diagnostic, as do an
-activity line that is not a claim or release object, a release of a claim nobody holds and a release by a session that
-does not hold it. A claim held in both sources is listed once per source, activity first; the frontier entry wins.
+activity line that is not a JSON object with an event, a claim or release line without its claim, session or ts, a run
+event without its task, session, worktree or ts, an unknown event (once per file, above), a release of a claim nobody
+holds and a release by a session that does not hold it. A claim held in both sources is listed once per source, activity first; the frontier entry wins.
 
 ```json
 {"session":"spec-002-ISC-75","ts":"2026-03-08T15:30:00.000Z","isa":"/srv/repo/ISA.md"}

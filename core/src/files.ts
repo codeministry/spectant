@@ -680,6 +680,20 @@ export interface LockReading {
    * Never a throw. Optional so a hand-built reading (tests, other models) may omit it; `readLockSources` always sets it.
    */
   readonly diagnostics?: readonly LockDiagnostic[];
+  /**
+   * The run events of `.spectant/activity.jsonl` (spec 027, ISC-179), every well-formed one in file order: its event,
+   * task, session, worktree and ts as written, and the claim when the line names one. A run event holds no claim;
+   * `runStates` (locks.ts) folds them into each task's last state. Optional like `diagnostics`; `readLockSources`
+   * always sets it, `[]` when the log is absent or holds none.
+   */
+  readonly runs?: ReadonlyArray<{
+    readonly event: RunEvent;
+    readonly task: string;
+    readonly session: string;
+    readonly worktree: string;
+    readonly ts: string;
+    readonly claim?: string;
+  }>;
 }
 
 /**

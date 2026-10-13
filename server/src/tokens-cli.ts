@@ -6,9 +6,12 @@
  *    `$CLAUDE_CONFIG_DIR` or `~/.claude` and the root encoded as Claude Code encodes it (`encodeProjectPath`). Read
  *    from it: the main sessions `<session>.jsonl`, the sub-agents `<session>/subagents/agent-<id>.jsonl` with the
  *    `toolUseId` of their `agent-<id>.meta.json`, the sessions of every sibling folder named exactly
- *    `<folder>--claude-worktrees-agent-<id>` (the repository's agent worktrees), and every sibling folder named exactly
- *    `<folder>-NNN` with three digits (its spec worktrees `../<root>-NNN`), read like the folder itself: main sessions
- *    and their sub-agents. A folder that cannot be read is exit 1;
+ *    `<folder>--claude-worktrees-agent-<id>` (the repository's agent worktrees), and the spec worktrees' sibling
+ *    folders, each read like the folder itself (main sessions and their sub-agents): every one named exactly
+ *    `<folder>--worktrees-NNN-slug` with three digits and a kebab-case slug (a spec worktree `.worktrees/NNN-slug`
+ *    inside the repository) and every one named exactly `<folder>-NNN` with three digits (the older sibling layout
+ *    `../<root>-NNN`). The three patterns exclude one another, so no folder is read twice, and a nested agent worktree
+ *    `<folder>--worktrees-NNN-slug--claude-worktrees-agent-<id>` matches none. A folder that cannot be read is exit 1;
  *    a single file that cannot be read is a diagnostic. Every list is sorted in byte order, so nothing depends on the
  *    order `readdir` happens to return.
  * 3. The repository side comes from the workspace loader (`readWorkspaceInput`): each spec folder's `events.jsonl` and
@@ -59,6 +62,13 @@ const WORKTREE_ID = /^[A-Za-z0-9]+$/;
  */
 const SPEC_WORKTREE_SUFFIX = /^-\d{3}$/;
 
+/**
+ * What follows the encoded root in the project folder of a spec worktree inside the repository (`.worktrees/NNN-slug`
+ * encodes to `<encoded root>--worktrees-NNN-slug`): three digits and a kebab-case slug without `--`, so a nested agent
+ * worktree `…--worktrees-NNN-slug--claude-worktrees-agent-<id>` is not one, and `WORKTREE_INFIX` never overlaps it.
+ */
+const IN_REPO_SPEC_WORKTREE_SUFFIX = /^--worktrees-\d{3}-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 /** A sub-agent transcript's file name and the meta file beside it. */
 const SUBAGENT_FILE = /^(agent-.+)\.jsonl$/;
 
@@ -105,9 +115,9 @@ export interface TranscriptDiscovery {
 /**
  * Every transcript of the project folder `folder` and of its agent and spec worktrees' sibling folders, in a fixed
  * order: the folder's entries in byte order (a session's sub-agent folder `<session>` sorts before its
- * `<session>.jsonl`), then each sibling folder in byte order, a spec worktree's entries read the same way as the
- * folder's. Labels are paths relative to `folder`. Throws `TranscriptFolderError` when
- * `folder` itself cannot be listed.
+ * `<session>.jsonl`), then each sibling folder in byte order, a spec worktree's entries (`<folder>--worktrees-NNN-slug`
+ * or `<folder>-NNN`) read the same way as the folder's. Labels are paths relative to `folder`. Throws
+ * `TranscriptFolderError` when `folder` itself cannot be listed.
  */
 export function discoverTranscripts(folder: string): TranscriptDiscovery {
   let entries: Dirent[];
@@ -135,8 +145,13 @@ export function discoverTranscripts(folder: string): TranscriptDiscovery {
   files.push(...sessionsOf(folder, entries, "", read));
 
   const parent = dirname(folder);
-  const prefix = `${basename(folder)}${WORKTREE_INFIX}`;
-  const isSpecWorktree = (name: string): boolean => name.startsWith(basename(folder)) && SPEC_WORKTREE_SUFFIX.test(name.slice(basename(folder).length));
+  const base = basename(folder);
+  const prefix = `${base}${WORKTREE_INFIX}`;
+  const isSpecWorktree = (name: string): boolean => {
+    if (!name.startsWith(base)) return false;
+    const rest = name.slice(base.length);
+    return SPEC_WORKTREE_SUFFIX.test(rest) || IN_REPO_SPEC_WORKTREE_SUFFIX.test(rest);
+  };
   let siblings: Dirent[] = [];
   try {
     siblings = sortedEntries(parent);

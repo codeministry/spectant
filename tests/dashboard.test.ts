@@ -43,17 +43,30 @@ const golden = (name: Name): DashboardModel => JSON.parse(readFileSync(join(FIXT
  * (a later task of spec 008), so until then the route answers no stories. Drop this override when the loader passes
  * them in.
  */
+/**
+ * harbor's activity log carries one unknown event (`ponder`, line 12; spec 027, ISC-179): the reader skips it with one
+ * `activity-event-unknown` diagnostic per file, which the dashboard surfaces as a `locks` warning on spec 002 (the
+ * line's claim is ISC-75). The goldens are built without lock sources, so the route's model carries it on top.
+ */
+const PONDER_WARNING = {
+  kind: "locks",
+  ref: "ISC-75",
+  text: '.spectant/activity.jsonl line 12: The event "ponder" is none of claim, release, dispatch, build, patch or apply; this and any later line with an unknown event is skipped, and the file is read on.',
+} as const;
+
 function expected(name: Name): DashboardModel {
   const model: DashboardModel = { ...golden(name), ideas: { count: 0, list: [] } };
   if (name !== "harbor") return model;
   return {
     ...model,
-    kpis: { ...model.kpis, takeable: model.kpis.takeable - 1 },
+    kpis: { ...model.kpis, takeable: model.kpis.takeable - 1, warnings: model.kpis.warnings + 1, attention: model.kpis.attention + 1 },
+    warningGroups: [...model.warningGroups, { kind: "locks", items: [{ spec: "002", warning: PONDER_WARNING }] }],
     specs: model.specs.map((row) =>
       row.id !== "002"
         ? row
         : {
             ...row,
+            warnings: [...row.warnings, PONDER_WARNING],
             takeable: row.takeable.filter((id) => id !== "ISC-74"),
             nextReason: "ISC-75, ISC-76 and 1 more are takeable",
             // The route reads harbor's activity log; the golden is built without lock sources (T115).

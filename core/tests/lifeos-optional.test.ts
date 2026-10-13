@@ -159,7 +159,8 @@ describe('frontier locks (LifeOS present)', () => {
     const r = await readLockSources({ repoRoot: HARBOR, lifeosStateDir: missing, now: NOW });
     expect(r.sources).toEqual(['activity']);
     expect(r.source).toBe('activity');
-    expect(r.diagnostics).toEqual([]);
+    // Nothing from the absent state directory; the one diagnostic is harbor's unknown run event (spec 027, ISC-179).
+    expect(codes(r)).toEqual(['activity-event-unknown']);
   });
 });
 
@@ -169,7 +170,8 @@ describe('activity lines (.spectant/activity.jsonl)', () => {
     expect(r.source).toBe('activity');
     expect(r.sources).toEqual(['activity']);
     expect(r.locks).toEqual([{ source: 'activity', claim: 'ISC-74', session: 'a:claude:sess-2', actor: parseActor('a:claude:sess-2'), since: '2026-03-08T14:06:00Z' }]);
-    expect(r.diagnostics).toEqual([]);
+    // The run events hold no claim; the one diagnostic is the unknown `ponder` event of T28 (spec 027, ISC-179).
+    expect(r.diagnostics).toEqual([expect.objectContaining({ severity: 'warning', code: 'activity-event-unknown', line: 12, claim: 'ISC-75' })]);
   });
 
   test('malformed lines, unknown events and a release without a claim are diagnostics with line numbers', async () => {
@@ -187,9 +189,10 @@ describe('activity lines (.spectant/activity.jsonl)', () => {
       ['ISC-72', 'a:claude:s-72'],
       ['ISC-74', 'a:claude:s-74'],
     ]);
+    // Line 4's `heartbeat` is an unknown event since spec 027 (ISC-179): its own warning, the line skipped.
     expect((r.diagnostics ?? []).map((d) => [d.code, d.line])).toEqual([
       ['locks-activity-malformed', 2],
-      ['locks-activity-malformed', 4],
+      ['activity-event-unknown', 4],
       ['locks-activity-malformed', 5],
       ['locks-activity-release-unclaimed', 6],
     ]);
@@ -280,7 +283,7 @@ describe('neither source (ISC-37 anti-case)', () => {
     const paths = await touched(async () => {
       r = await readLockSources({ repoRoot: repo });
     });
-    expect(r).toEqual({ source: 'none', sources: [], locks: [] as ClaimLock[], diagnostics: [] });
+    expect(r).toEqual({ source: 'none', sources: [], locks: [] as ClaimLock[], diagnostics: [], runs: [] });
     expect(paths.length).toBeGreaterThan(0);
     for (const p of paths) expect(p.startsWith(repo + sep)).toBe(true);
   });
