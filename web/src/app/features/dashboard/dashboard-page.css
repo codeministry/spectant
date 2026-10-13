@@ -6,3 +6,11 @@
   align-content: start;
   min-inline-size: 0;
 }
+
+/* Prototype `.footer-note`: 12 px muted, closing the page. */
+.footer-note {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}

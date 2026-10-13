@@ -35,6 +35,10 @@
       <app-warnings-panel form="section" [specs]="view.specs" [kpis]="view.kpis" />
     }
   }
+  <!-- Prototype `.footer-note` of `pageWorkspace` (spec 024): where the page is read from. -->
+  @if (pathTail()) {
+    <p class="footer-note" data-footer-note>{{ 'overview.dashboardFooter' | transloco: { path: pathTail() } }}</p>
+  }
 }
 
 <ng-template #inspectorRail>

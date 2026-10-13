@@ -59,6 +59,8 @@ export class DashboardPage {
   protected readonly query = computed(() => parseListQuery(this.params()));
 
   protected readonly ws = computed(() => this.state.ws() ?? '');
+  /** The registry's path tail of the open workspace, for the prototype's footnote (spec 024); '' while unknown. */
+  protected readonly pathTail = computed(() => this.data.workspaceList().find((entry) => entry.slug === this.ws())?.pathTail ?? '');
   protected readonly body = computed(() => {
     const result = this.data.dashboard.value();
     return result?.kind === 'ok' ? result.body : null;

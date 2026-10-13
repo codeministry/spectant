@@ -23,11 +23,14 @@ export interface RailRegistration {
  * The rail's registration point (T88): a routed view that owns rail content (the board's This frame, Needs you and
  * Your steps) registers it here for its lifetime, and the shell's rail slot, rail toggle and zen footer render it.
  * Templates stay declared in the view, so their bindings keep the view's state; the shell only picks where they go.
- * One registration at a time: the routed view that registered last owns the rail until it is destroyed.
+ * Registrations stack: the one registered last owns the rail until it is destroyed, then the one below it takes over
+ * again. The spec page registers the spec rail (`app-spec-rail`) as the base for all its tabs; the spec dashboard and
+ * the live board register their own rail over it.
  */
 @Injectable({ providedIn: 'root' })
 export class RailContent {
-  private readonly current = signal<RailRegistration | null>(null);
+  private readonly stack = signal<readonly RailRegistration[]>([]);
+  private readonly current = computed(() => this.stack().at(-1) ?? null);
 
   readonly blocks = computed(() => this.current()?.blocks() ?? null);
   readonly bar = computed(() => this.current()?.bar() ?? null);
@@ -35,9 +38,9 @@ export class RailContent {
 
   /** Registers `registration` until `destroyRef` fires. */
   register(registration: RailRegistration, destroyRef: DestroyRef): void {
-    this.current.set(registration);
+    this.stack.update((stack) => [...stack, registration]);
     destroyRef.onDestroy(() => {
-      if (this.current() === registration) this.current.set(null);
+      this.stack.update((stack) => stack.filter((entry) => entry !== registration));
     });
   }
 }

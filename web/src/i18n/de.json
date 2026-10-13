@@ -188,7 +188,8 @@
       "hint": "Er erscheint hier bei der nächsten Aktualisierung"
     },
     "unreadable": "Dieser Workspace kann nicht gelesen werden",
-    "footer": "Läuft lokal unter {{origin}}"
+    "footer": "Läuft lokal unter {{origin}}",
+    "dashboardFooter": "Live aus den Specs in {{path}} gelesen"
   },
   "palette": {
     "label": "Befehlspalette",
@@ -964,7 +965,9 @@
         "blocked": "blockiert",
         "open": "offen"
       },
-      "waitsOn": "wartet auf {{ids}}"
+      "waitsOn": "wartet auf {{ids}}",
+      "held": "zurückgehalten · {{reason}}",
+      "heldBare": "zurückgehalten"
     },
     "activity": {
       "heading": "Aktivität",

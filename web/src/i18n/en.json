@@ -188,7 +188,8 @@
       "hint": "It appears here on the next refresh"
     },
     "unreadable": "This workspace cannot be read",
-    "footer": "Running locally at {{origin}}"
+    "footer": "Running locally at {{origin}}",
+    "dashboardFooter": "Rendered live from the specs in {{path}}"
   },
   "palette": {
     "label": "Command palette",
@@ -964,7 +965,9 @@
         "blocked": "blocked",
         "open": "open"
       },
-      "waitsOn": "waits on {{ids}}"
+      "waitsOn": "waits on {{ids}}",
+      "held": "held · {{reason}}",
+      "heldBare": "held"
     },
     "activity": {
       "heading": "Activity",

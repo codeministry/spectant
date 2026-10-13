@@ -134,6 +134,7 @@ code {
 .warning-row,
 .open-row,
 .fog-row,
+.held-row,
 .activity-row {
   display: flex;
   flex-wrap: wrap;
@@ -160,6 +161,7 @@ code {
 .warning-row .row-text,
 .open-row .row-text,
 .fog-row .row-text,
+.held-row .row-text,
 .activity-row .row-text {
   flex: 1 1 200px;
 }
@@ -398,4 +400,17 @@ code {
   flex: none;
   align-self: center;
   color: var(--muted-ink);
+}
+
+/* The prototype's `.o-line.held`: a held task, its clock and its reason in muted ink. */
+.held-row {
+  color: var(--muted-ink);
+}
+
+.held-icon {
+  align-self: center;
+}
+
+.held-row .ref {
+  color: inherit;
 }
