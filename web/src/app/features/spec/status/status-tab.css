@@ -109,12 +109,18 @@ code {
 
 .reasons {
   display: grid;
-  gap: 4px;
   margin: 0;
-  padding-inline-start: 16px;
+  padding-inline-start: 18px;
   font-size: 14px;
   line-height: 20px;
   list-style: disc;
+  gap: 6px;
+}
+
+/* Prototype `.why`: 6 px between the reasons, the disc marker in cyan. */
+
+.reasons li::marker {
+  color: var(--color-primary);
 }
 
 .takeable {
@@ -134,6 +140,7 @@ code {
 .warning-row,
 .open-row,
 .fog-row,
+.held-row,
 .activity-row {
   display: flex;
   flex-wrap: wrap;
@@ -160,6 +167,7 @@ code {
 .warning-row .row-text,
 .open-row .row-text,
 .fog-row .row-text,
+.held-row .row-text,
 .activity-row .row-text {
   flex: 1 1 200px;
 }
@@ -212,14 +220,6 @@ code {
   align-items: center;
 }
 
-.gate-dot {
-  inline-size: 8px;
-  block-size: 8px;
-  flex-shrink: 0;
-  border-radius: 999px;
-  background: var(--gate-edge);
-}
-
 .gate-name {
   font-weight: 600;
 }
@@ -258,8 +258,8 @@ code {
 .tasks-meter,
 .lane {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) 48px;
-  gap: 16px;
+  grid-template-columns: 72px minmax(0, 1fr) 40px;
+  gap: 10px;
   align-items: center;
   font-size: 14px;
   line-height: 20px;
@@ -325,13 +325,14 @@ code {
   }
 
   .gate-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px;
   }
 
   .gate {
     align-content: start;
-    padding: 8px 16px;
+    padding: 10px 12px;
+    font-size: 13px;
     border: 1px solid var(--line);
     border-radius: var(--radius-field);
     box-shadow: inset 3px 0 0 var(--gate-edge);
@@ -339,7 +340,131 @@ code {
 }
 
 @media (forced-colors: active) {
-  .gate-dot {
-    background: CanvasText;
+  .gate-icon {
+    color: CanvasText;
   }
+}
+
+/* T43: the prototype's gate-card icon, the open groups with their claim glyph, the fog line and the activity icons. */
+.gate-icon {
+  flex: none;
+  color: var(--muted-ink);
+}
+
+.gate:is([data-tone='accent'], [data-tone='warning']) .gate-icon {
+  color: var(--gate-edge);
+}
+
+.open-group {
+  display: grid;
+  gap: 4px;
+}
+
+.open-group + .open-group {
+  margin-block-start: 8px;
+}
+
+.glyph {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  align-self: center;
+  inline-size: 18px;
+  color: var(--muted-ink);
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.glyph[data-glyph='takeable'] {
+  color: var(--clos-text);
+}
+
+.glyph[data-glyph='taken'] {
+  color: var(--hover-text);
+}
+
+.dep {
+  padding: 4px 7px;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  color: var(--muted-ink);
+  font: 500 11px/1 var(--font-mono);
+  white-space: nowrap;
+}
+
+.fog-row {
+  padding: 8px 12px;
+  border-inline-start: 3px solid var(--ques-text);
+  border-radius: 0 var(--radius-field) var(--radius-field) 0;
+  background: var(--ques-t);
+}
+
+.fog-row .fog-icon {
+  color: var(--ques-text);
+}
+
+.act-icon {
+  flex: none;
+  align-self: center;
+  color: var(--muted-ink);
+}
+
+/* The prototype's `.o-line.held`: a held task, its clock and its reason in muted ink. */
+.held-row {
+  color: var(--muted-ink);
+}
+
+.held-icon {
+  align-self: center;
+}
+
+.held-row .ref {
+  color: inherit;
+}
+
+/* Prototype `.act-line`: 13 px muted rows, 10 px gaps; `.round-sum` 14 px above them. */
+.activity-row {
+  gap: 4px 10px;
+  color: var(--muted-ink);
+  font-size: 13px;
+}
+
+.activity-row .row-text {
+  color: inherit;
+}
+
+.round-sum {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: baseline;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.round-sum b {
+  font-weight: 600;
+}
+
+/* Prototype `.status-empty`: "All claims closed, no fog" with the green check, then "Ready for <command>". */
+.status-empty {
+  display: grid;
+  gap: 8px;
+  padding: 16px 12px;
+}
+
+.status-empty-title {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.status-empty-title ui-icon {
+  color: var(--done-text);
 }

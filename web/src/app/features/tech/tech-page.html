@@ -5,7 +5,19 @@
 } @else {
   <!-- The head holds for every tab and does not change on a tab switch (design.md § Seitenkopf). -->
   <div class="head">
-    <h1 id="tech" tabindex="-1">{{ 'tech.title' | transloco }}</h1>
+    <ui-page-head
+      [segments]="
+        model() === null
+          ? [wsName(), ('shell.pages.tech' | transloco)]
+          : [wsName(), ('shell.pages.tech' | transloco), ('tech.eyebrowCount' | transloco: { count: model()?.specs?.length ?? 0 })]
+      "
+    >
+      <div class="h1-row" ngProjectAs="h1">
+        <ui-ws-badge size="page" [name]="wsName()" aria-hidden="true" />
+        <h1 id="tech" tabindex="-1">{{ 'tech.title' | transloco }}</h1>
+        <span class="ws-suffix" aria-hidden="true">· {{ wsName() }}</span>
+      </div>
+    </ui-page-head>
     @if (model(); as m) {
       <p class="subline" data-subline>
         {{ (m.pages === null ? 'tech.subline.noFile' : 'tech.subline.file') | transloco: { count: m.specs.length } }}
@@ -15,7 +27,7 @@
     }
   </div>
 
-  <app-tab-bar-slot placement="main" />
+  <app-tab-bar-slot />
 
   <div class="panel" data-tech-panel>
     @if (failed()) {

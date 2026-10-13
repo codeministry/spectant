@@ -175,7 +175,9 @@ describe('MilestonesPage (T36, ISC-104)', () => {
     const root = await open('/w/harbor/milestones');
     const h1 = root.querySelector('h1#milestones');
     expect(h1?.getAttribute('tabindex')).toBe('-1');
-    expect(h1?.textContent.trim()).toBe('Milestones in harbor');
+    // spec 024: prototype value (principal: Prototyp gilt immer) — h1 "Milestones", the muted "· <ws>" beside it.
+    expect(h1?.textContent.trim()).toBe('Milestones');
+    expect(root.querySelector('.h1-row .ws-suffix')?.textContent.trim()).toBe('· harbor');
     expect(h1?.querySelector('ui-term')).toBeNull();
     expect(root.querySelector('p.caption')?.textContent.trim()).toBe('Ordered by target date');
     // Three named rows; the earliest not complete is the late Harbor 0.9.

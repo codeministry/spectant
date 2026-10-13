@@ -98,7 +98,8 @@ describe('IdeaPage (T131, ISC-124.2)', () => {
 
     const h1 = page.querySelector('h1#idea');
     expect(h1?.getAttribute('tabindex')).toBe('-1');
-    expect(text(h1)).toBe(REF.title);
+    expect(text(h1)).toBe(REF.slug);
+    expect(text(page.querySelector('[data-idea-goal] blockquote'))).toBe(REF.title);
 
     const chips = page.querySelector('[data-idea-chips]') as HTMLElement;
     expect(chips.querySelector('[data-idea-chip="type"] ui-type-glyph')?.getAttribute('data-type')).toBe('feature');
@@ -129,7 +130,7 @@ describe('IdeaPage (T131, ISC-124.2)', () => {
     const root = await open('/w/harbor/ideas/console-audit-log', 'medium');
     const page = root.querySelector('app-idea-page') as HTMLElement;
     expect(page.querySelector('nav.docs-toc')).toBeNull();
-    expect(text(page.querySelector('ui-disclosure.docs-toc-fold'))).toContain('Contents');
+    expect(text(page.querySelector('ui-disclosure.docs-toc-fold'))).toContain('On this page');
     expect(page.querySelector('form, input, textarea, select, [contenteditable]')).toBeNull();
   });
 

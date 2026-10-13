@@ -1,8 +1,8 @@
 /*
- * The Board tab (design.md § Live, ISC-87 to ISC-93). Wide and medium: the controls stick under the header and tab
- * bar; lanes on `repeat(auto-fit, minmax(232px, 1fr))`, each `align-self: start`, never scrolling on their own (ISC-93).
- * Compact: controls in flow, one lane per row with a sticky lane header, and a sticky 48 px bottom bar. Colours come
- * from the theme tokens, durations from motion.css.
+ * The Board tab in the prototype's anatomy (spec 024, T45; design.md § Viewport-übergreifend "Kanban bleibt"):
+ * `board-sticky` controls (toolbar `btool`, legend pills `lchip`, search `bsearch`, scrubber), lanes as `lane-col`
+ * on `--lane` with radius 12. From 640 the lanes run as 300 px columns in a horizontal scroller (`lanes-board`); below
+ * 640 one lane at a time with the lane switch (`lane-col.lane-on`). A lane never scrolls on its own (ISC-93).
  */
 :host {
   --board-sticky-top: 108px;
@@ -27,15 +27,26 @@
   white-space: nowrap;
 }
 
+.mono {
+  font-family: var(--font-mono);
+}
+
+.grow {
+  flex: 1;
+  min-inline-size: 0;
+}
+
 .controls {
   position: sticky;
   z-index: 2;
   inset-block-start: var(--board-sticky-top);
   display: grid;
-  gap: 4px;
+  gap: 8px;
   min-inline-size: 0;
-  padding-block: 4px;
-  background: var(--color-base-200);
+  padding-block: 8px 0;
+  border-block-end: 1px solid var(--line);
+  background: var(--page-glass);
+  backdrop-filter: blur(12px);
 }
 
 .toolbar {
@@ -46,29 +57,51 @@
   min-block-size: 48px;
 }
 
+.view-switch {
+  flex: none;
+}
+
+/* The prototype's `.legend` wraps: every pill stays whole, none is cut off or scrolled away. */
 .legend {
   display: flex;
-  flex: 1;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
   min-inline-size: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 
-.legend-chip {
+.lchip {
+  display: inline-flex;
   flex-shrink: 0;
   gap: 6px;
-  border-radius: 999px;
-  font-weight: 500;
+  align-items: center;
+  block-size: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: none;
+  color: var(--color-base-content);
+  font-size: 12px;
   white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-pop) var(--ease),
+    opacity var(--dur-pop) var(--ease);
 }
 
-.legend-chip[aria-pressed='true'] {
-  --btn-bg: var(--disp-t);
-  --btn-fg: var(--disp-ink);
+.lchip:hover {
+  background: var(--color-base-300);
 }
 
-.legend-chip[aria-pressed='false'] {
+.lchip i {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--track);
+}
+
+.lchip[aria-pressed='false'] {
+  opacity: 0.5;
   text-decoration: line-through;
 }
 
@@ -77,44 +110,130 @@
   font-variant-numeric: tabular-nums;
 }
 
-.legend-chip[aria-pressed='true'] .count {
-  color: var(--disp-ink);
-}
-
-.search {
-  flex: none;
-  inline-size: 200px;
-}
-
-.search-wide {
-  inline-size: 100%;
-}
-
-.density {
-  flex: none;
-  inline-size: 128px;
-}
-
 .tool {
   flex: none;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.tool[aria-pressed='true'] {
+  border-color: var(--track);
+  background: var(--color-base-300);
+}
+
+.lane-pop {
+  position-anchor: --board-lane-filter;
+  inset: auto;
+  inset-block-start: anchor(bottom);
+  inset-inline-end: anchor(right);
+  min-inline-size: 220px;
+  margin: 4px 0 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  box-shadow: var(--shadow-hair);
+}
+
+[data-lane-filter-open] {
+  anchor-name: --board-lane-filter;
+}
+
+.pop-head {
+  padding: 4px 8px 8px;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pop-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 36px;
+  padding: 0 8px;
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+.pop-item:hover {
+  background: var(--color-base-300);
+}
+
+.bsearch {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+  block-size: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--color-base-100);
+  color: var(--muted-ink);
+}
+
+.bsearch:focus-within {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.bsearch input {
+  inline-size: 150px;
+  border: 0;
+  background: none;
+  color: var(--color-base-content);
+  font-size: 13px;
+  outline: none;
+}
+
+.bsearch-wide {
+  display: flex;
+}
+
+.bsearch-wide input {
+  flex: 1;
+  inline-size: auto;
+}
+
+.density span {
+  font-size: 16px;
+  line-height: 1;
 }
 
 .filtered, .stop, .progress-line {
   margin: 0;
   color: var(--muted-ink);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 20px;
+}
+
+.filtered {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.progress-line {
+  font-family: var(--font-mono);
 }
 
 .scrub {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 8px 16px;
   align-items: center;
   min-inline-size: 0;
+  min-block-size: 56px;
+  padding-block-end: 8px;
 }
 
 .scrubber {
-  flex: 1;
+  flex: 1 1 380px;
+  min-inline-size: 0;
 }
 
 .frame-meta {
@@ -126,88 +245,163 @@
   justify-content: flex-end;
 }
 
-.history {
+.flabel {
   display: inline-flex;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
-}
-
-.back {
-  color: var(--disp-ink);
-}
-
-.empty {
-  margin: 0;
-  padding: 24px;
-  border: 1px dashed var(--line);
-  border-radius: var(--radius-box);
-  color: var(--muted-ink);
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.lanes {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
-  gap: 16px;
-  align-items: start;
-  min-inline-size: 0;
-}
-
-.lane {
-  display: grid;
-  gap: 8px;
-  align-self: start;
-  min-inline-size: 0;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-box);
-  background: var(--color-base-200);
-}
-
-.lane[data-lane='operator'] {
-  grid-column: 1 / -1;
-}
-
-.lane-head {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  min-inline-size: 0;
-  min-block-size: 32px;
-}
-
-.lane-dot {
-  flex: none;
-  inline-size: 8px;
-  block-size: 8px;
-  border-radius: 50%;
-  background: var(--color-primary);
-}
-
-.lane-name {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
-}
-
-.lane-count {
-  color: var(--muted-ink);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--color-base-300);
+  font-family: var(--font-mono);
   font-size: 12px;
   line-height: 16px;
 }
 
+.live-i {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: board-live-pulse var(--motion-duration-skeleton) var(--ease) infinite;
+}
+
+@keyframes board-live-pulse {
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-i { animation: none; }
+}
+
+.history {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* spec 024: the replay's frame label is the plain .flabel (no live pulse), then the prototype .hist-chip and the
+   "Back to live" .tb-btn (32 px, card ground, hairline shadow). */
+.hist-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--hover-t);
+  color: var(--hover-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+
+.back {
+  block-size: 32px;
+  min-block-size: 32px;
+  padding-inline: 10px;
+  background: var(--color-base-100);
+  box-shadow: var(--shadow-hair);
+  font-size: 13px;
+}
+
+/* The prototype .empty-state: centred, 32 px, dashed. */
+.empty {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  margin: 0;
+  padding: 32px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-card);
+  color: var(--muted-ink);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* From 640: the prototype's `lanes-board`, 300 px columns running sideways in one scroller. */
+.lanes {
+  display: grid;
+  grid-auto-columns: 300px;
+  grid-auto-flow: column;
+  gap: 12px;
+  align-items: start;
+  min-inline-size: 0;
+  padding-block-end: 8px;
+  overflow-x: auto;
+}
+
+.lane {
+  display: grid;
+  gap: 12px;
+  align-self: start;
+  min-inline-size: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--lane);
+}
+
+.lane[data-lane='operator'] {
+  background: var(--color-base-100);
+}
+
+.lane-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  gap: 4px 8px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.ldot {
+  display: inline-block;
+  flex: none;
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: 50%;
+  background: var(--lane-c, var(--color-primary));
+}
+
+.lane-name {
+  overflow: hidden;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lane-count {
+  color: var(--color-base-content);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.lane-waiting {
+  margin-inline-start: 4px;
+  color: var(--muted-ink);
+}
+
+.lane-hide {
+  inline-size: 24px;
+  min-block-size: 24px;
+  block-size: 24px;
+  opacity: 0.5;
+}
+
+.lane-hide:hover, .lane-hide:focus-visible {
+  opacity: 1;
+}
+
 .lane-meter {
-  flex: 1;
-  min-inline-size: 24px;
+  grid-column: 1 / -1;
 }
 
 .lane-toggle {
-  flex: none;
-  inline-size: 32px;
-  block-size: 32px;
-  min-block-size: 32px;
+  inline-size: 28px;
+  block-size: 28px;
+  min-block-size: 28px;
 }
 
 .lane-toggle ui-icon {
@@ -224,14 +418,92 @@
   min-inline-size: 0;
 }
 
+.lane-body {
+  gap: 12px;
+}
+
 .section h4 {
   margin: 0;
   color: var(--muted-ink);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 16px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.section h4 .count {
+  font-size: 11px;
+}
+
+.sec-needs h4 {
+  color: var(--hover-text);
+}
+
+.group-cards[data-clip] > :nth-child(n + 6) {
+  display: none;
+}
+
+.linkish {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--disp-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* The prototype .meta.lane-quiet: sans meta, the next command in mono. */
+.lane-quiet {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.lane-quiet .mono {
+  font-family: var(--font-mono);
+}
+
+/* The prototype .btn-icon.sm: 28 px, card surface, hairline border. */
+.btn-icon-sm {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 28px;
+  block-size: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.btn-icon-sm:hover {
+  background: var(--color-base-300);
+}
+
+.legend .filtered {
+  margin-inline-start: 4px;
+}
+
+.lane-stub {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  align-self: start;
+  block-size: 40px;
+  padding: 0 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-card);
+  background: none;
+  color: var(--muted-ink);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .reason {
@@ -241,12 +513,23 @@
   line-height: 20px;
 }
 
+.board-foot {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .lane-filter {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   margin: 0 0 16px;
   padding: 0;
   border: 0;
+}
+
+.lane-pop .lane-filter {
+  margin: 0;
 }
 
 .lane-filter legend {
@@ -266,14 +549,21 @@
   overflow: visible;
 }
 
+.lane-switch {
+  min-inline-size: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
 @container shell (width < 640px) {
   .controls {
     position: static;
+    border: 0;
     background: none;
+    backdrop-filter: none;
   }
 
   .scrub {
-    flex-wrap: wrap;
     gap: 4px;
   }
 
@@ -285,18 +575,30 @@
     justify-content: flex-start;
   }
 
+  /* One lane at a time (`lane-col.lane-on`); the others stay in the DOM for live updates and counts. */
   .lanes {
+    grid-auto-columns: auto;
+    grid-auto-flow: row;
     grid-template-columns: minmax(0, 1fr);
+    overflow: visible;
+  }
+
+  .lane:not([data-lane-on]) {
+    display: none;
   }
 
   .lane-head {
     position: sticky;
     z-index: 1;
     inset-block-start: 96px;
-    margin: -8px -8px 0;
-    padding: 4px 4px 4px 8px;
-    border-radius: var(--radius-box) var(--radius-box) 0 0;
-    background: var(--color-base-200);
+    margin: -12px -12px 0;
+    padding: 6px 4px 6px 12px;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+    background: var(--lane);
+  }
+
+  .lane-hide {
+    display: none;
   }
 
   .lane-toggle {
@@ -306,9 +608,13 @@
   }
 }
 
-/* Medium (design.md § Tablet): two lane columns of about 378 px at 820. */
-@container shell (640px <= width < 1120px) {
-  .lanes {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+@container shell (width < 640px) {
+  .frame-meta {
+    flex: 1 1 100%;
+    min-inline-size: 0;
+  }
+
+  .flabel {
+    overflow-wrap: anywhere;
   }
 }

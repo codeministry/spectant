@@ -58,7 +58,27 @@
         "level": 2
       }
     ],
-    "wordCount": 121
+    "wordCount": 121,
+    "constitution": {
+      "lanes": [],
+      "tiers": [
+        {
+          "tier": "static",
+          "command": "— (not defined; no source yet)",
+          "runsWhen": "before every claim closes"
+        },
+        {
+          "tier": "quick",
+          "command": "bun test",
+          "runsWhen": "at every implementation stop"
+        },
+        {
+          "tier": "full",
+          "command": "— (not defined; no source yet)",
+          "runsWhen": "before a spec is marked complete"
+        }
+      ]
+    }
   },
   "specs": {}
 }

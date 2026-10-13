@@ -12,7 +12,10 @@
   min-block-size: 48px;
   margin-block-end: 8px;
   padding-block: 8px;
-  background: var(--color-base-200);
+  background: var(--page-glass);
+  /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 
 .triggers,
@@ -136,7 +139,7 @@
 }
 
 .row:hover {
-  background: var(--color-base-200);
+  background: var(--color-base-300);
 }
 
 .row input {
@@ -181,3 +184,47 @@
     inset-block-start: 64px;
   }
 }
+
+/* The toolbar search (spec 024; prototype `.bsearch`): 32 px, `--line` border on `--color-base-100`, the kbd hint muted. */
+.bsearch {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  block-size: 32px;
+  padding-inline: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
+  color: var(--muted-ink);
+}
+
+.bsearch input {
+  inline-size: 150px;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--color-base-content);
+  font-size: 13px;
+}
+
+.bsearch:focus-within {
+  outline: 2px solid var(--disp);
+  outline-offset: 1px;
+}
+
+.bsearch kbd {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+@media (width <= 639px) {
+  .bsearch input {
+    inline-size: 90px;
+  }
+
+  .bsearch kbd {
+    display: none;
+  }
+}
+

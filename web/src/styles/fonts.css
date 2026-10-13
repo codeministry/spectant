@@ -23,7 +23,7 @@
  */
 
 @font-face {
-  font-family: "Manrope Variable";
+  font-family: Manrope;
   font-style: normal;
   font-weight: 200 800;
   font-display: swap;
@@ -34,7 +34,7 @@
 }
 
 @font-face {
-  font-family: "Sora Variable";
+  font-family: Sora;
   font-style: normal;
   font-weight: 100 800;
   font-display: swap;
@@ -45,18 +45,24 @@
 }
 
 @font-face {
-  font-family: "JetBrains Mono Variable";
+  font-family: "JetBrains Mono";
   font-style: normal;
   font-weight: 100 900;
   font-display: swap;
   src: url("/fonts/jetbrains-mono-variable.woff2") format("woff2");
 }
 
-/* Unlayered, so these win over the Tailwind theme layer; the `font-sans` / `font-mono` utilities follow them. */
+/*
+ * Unlayered, so these win over the Tailwind theme layer; the `font-sans` / `font-mono` utilities follow them. The
+ * stacks are the prototype's, under its names and with its values (spec 024, ISC-146; the faces carry the prototype's
+ * family names for that). `--font-sans` (Tailwind's name) and `--font-display` (the app's) alias them.
+ */
 :root {
-  --font-sans: "Manrope Variable", system-ui, -apple-system, "Segoe UI", roboto, "Helvetica Neue", arial, sans-serif;
-  --font-display: "Sora Variable", var(--font-sans);
-  --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", menlo, consolas, "Liberation Mono", monospace;
+  --font-ui: "Manrope", system-ui, sans-serif;
+  --font-brand: "Sora", "Manrope", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: var(--font-ui);
+  --font-display: var(--font-brand);
 }
 
 /* Every number is tabular (ISC-62.1): live values never shift layout. Mono is for IDs, commands, paths and counters. */

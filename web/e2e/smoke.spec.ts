@@ -40,7 +40,8 @@ const ROUTES = [
       const workspace = page.locator('[data-page="workspace"]');
       await expect(workspace).toBeVisible();
       await expect(workspace.locator('[data-page-eyebrow]')).toContainText('harbor');
-      await expect(workspace.getByRole('heading', { level: 1, name: 'Specs', exact: true })).toBeVisible();
+      // spec 024: prototype value (principal: Prototyp gilt immer): the h1 reads "Specs · <ws>".
+      await expect(workspace.getByRole('heading', { level: 1, name: 'Specs · harbor', exact: true })).toBeVisible();
       await expect(workspace.locator('h2#specs')).toBeVisible();
     },
   },

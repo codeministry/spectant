@@ -75,6 +75,7 @@ export class RefreshService {
   private readonly changedRowsState = signal<ReadonlySet<string>>(new Set());
   private readonly newSpecsState = signal(0);
   private readonly announcementState = signal<string | null>(null);
+  private readonly lastRefreshState = signal(Date.now());
 
   /** KPI paths (`claims.closed`) the last refresh changed: the value tint. */
   readonly changedKpis = this.changedKpisState.asReadonly();
@@ -84,6 +85,11 @@ export class RefreshService {
   readonly newSpecs = this.newSpecsState.asReadonly();
   /** The polite live-region text of the last refresh that changed something; null before one did. */
   readonly announcement = this.announcementState.asReadonly();
+  /**
+   * When the shell's data was last read (epoch ms): app start, then every settled reload of the dashboard and every
+   * `refresh()`. The header's "Updated 12 s ago" (spec 024 T40) reads it.
+   */
+  readonly lastRefresh = this.lastRefreshState.asReadonly();
 
   /** The dashboard body the refresh in flight started from; `undefined` while none is in flight. */
   private before: unknown;
@@ -99,8 +105,12 @@ export class RefreshService {
 
     effect(() => {
       const result = this.data.dashboard.value() as { kind?: string; body?: unknown } | undefined;
-      if (this.data.dashboard.status() === 'reloading') return;
-      untracked(() => this.settle(result?.kind === 'ok' ? result.body : undefined));
+      const status = this.data.dashboard.status();
+      if (status === 'reloading' || status === 'loading') return;
+      untracked(() => {
+        if (status === 'resolved') this.lastRefreshState.set(Date.now());
+        this.settle(result?.kind === 'ok' ? result.body : undefined);
+      });
     });
 
     const onVisibility = (): void => {
@@ -119,6 +129,7 @@ export class RefreshService {
     this.data.planning.reload();
     this.data.spec.reload();
     this.data.tech.reload();
+    this.lastRefreshState.set(Date.now());
   }
 
   private settle(after: unknown): void {

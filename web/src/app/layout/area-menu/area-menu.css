@@ -12,9 +12,21 @@
   --ui-popover-width: 320px;
 }
 
+/* The prototype's `.pop-head eyebrow`: the scope in 11 px caps, muted, above the rows. */
+.menu-head {
+  margin: 0;
+  padding: 8px 12px 4px;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
 .area-menu ul {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -54,10 +66,14 @@
 }
 
 .dot {
-  inline-size: 8px;
-  block-size: 8px;
+  inline-size: 10px;
+  block-size: 10px;
   border-radius: 50%;
   background: var(--held-ink);
+}
+
+.dot[data-dot="dashboard"] {
+  background: var(--color-primary);
 }
 
 .dot[data-dot="status"] {
@@ -89,7 +105,9 @@
   color: inherit;
 }
 
+/* The prototype's `<b>` name over its `small.meta` line. */
 .entry-name {
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

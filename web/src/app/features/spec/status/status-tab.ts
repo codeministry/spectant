@@ -11,13 +11,14 @@ import { ShellState } from '../../../layout/shell/shell-state.service';
 import { GateButton } from '../../../layout/spec-head/gate-button';
 import { type GateAction, gateAction, pathSegments } from '../../../layout/spec-head/spec-head-model';
 import { UiIcon } from '../../../shared/icons/icon';
-import { UiEmptyState } from '../../../shared/ui/empty-state/empty-state';
+import { UiButton } from '../../../shared/ui/button/button';
 import { UiMeter } from '../../../shared/ui/meter/meter';
+import { UiNotice } from '../../../shared/ui/notice/notice';
 import { UiRing } from '../../../shared/ui/ring/ring';
 import { UiSectionHeader } from '../../../shared/ui/section-header/section-header';
 import { UiSkeleton } from '../../../shared/ui/skeleton/skeleton';
-import { UiStateChip } from '../../../shared/ui/state-chip/state-chip';
 import type { Tone } from '../../../shared/ui/tone';
+import { Brief, type BriefModel } from '../../dashboard/brief/brief';
 import { AreaPlaceholder } from '../area-placeholder';
 import { GATE_NAMES, GATE_TONE } from '../dashboard/dashboard-model';
 import { StatusBlock } from './status-block';
@@ -27,6 +28,8 @@ import { openClaims } from './status-model';
 const ANCHORS = ['waiting', 'gates'] as const;
 /** Timeline entries shown under Activity; the Timeline tab holds the rest. */
 const ACTIVITY_LIMIT = 5;
+/** What is open, grouped as the prototype does: takeable, taken, blocked, then anything else still open. */
+const OPEN_ORDER: readonly string[] = ['takeable', 'taken', 'blocked', 'open'];
 
 /**
  * T54 · ISC-79 · ISC-85: the Status tab. It renders the spec payload the shell already loads (`ShellData.spec`) as it
@@ -34,29 +37,33 @@ const ACTIVITY_LIMIT = 5;
  * here. Compact stacks Where it stands → Waiting on you → Gates → Warnings → What is open → Activity;
  * medium keeps Where it stands · Waiting on you · What is open · Activity with the gates and warnings inside the first
  * card (two columns from 900); wide is the bento (Why this next step and Progress by lane beside Gates and What is
- * open, Activity across both), the rail holding Waiting on you and Warnings. The gate button and its dialog are the shared
+ * open, Activity across both), the rail holding Where it stands (stage track, ring, next command, first takeable claim,
+ * warnings, gate rows), Waiting on you and the key line: the shared `app-spec-rail`, which `SpecPage` registers for every
+ * spec-detail tab (spec 024: the prototype's `whereCard` and `waitingCard`). What is open ends with the held tasks and
+ * their hold reason from the Tasks route (the prototype's `.o-line.held`). The gate button and its dialog are the shared
  * `app-gate-button` (T78); the agent banner lives in the spec head above every area.
  */
 @Component({
   selector: 'app-status-tab',
   imports: [
+    UiButton,
+    UiNotice,
     AreaPlaceholder,
+    Brief,
     GateButton,
     NgTemplateOutlet,
     RouterLink,
     StatusBlock,
     TranslocoPipe,
-    UiEmptyState,
     UiIcon,
     UiMeter,
     UiRing,
     UiSectionHeader,
     UiSkeleton,
-    UiStateChip,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './status-tab.html',
-  styleUrl: './status-tab.css',
+  styleUrls: ['./status-tab.css', './status-rail.css'],
   host: { 'data-page': 'status', '[attr.data-tier]': 'tier()' },
 })
 export class StatusTab {
@@ -96,6 +103,8 @@ export class StatusTab {
 
   /** What is open: the open claims and the fog, from the Claims route (core's `ClaimViewModel`). */
   readonly claims = resource({ params: () => this.params(), loader: ({ params }) => this.api.claims(params.ws, params.id) });
+  /** What is open: the held tasks with their hold reason, from the Tasks route (core's `TaskRow`, `status: held`). */
+  readonly tasks = resource({ params: () => this.params(), loader: ({ params }) => this.api.tasks(params.ws, params.id) });
   /** Activity: the newest timeline entries (core's `TimelineEntry[]`, newest first). */
   readonly timeline = resource({ params: () => this.params(), loader: ({ params }) => this.api.timeline(params.ws, params.id) });
 
@@ -104,9 +113,48 @@ export class StatusTab {
     return result?.kind === 'ok' ? { claims: openClaims(result.body.claims), fog: result.body.fog } : null;
   });
 
+  /** The prototype's held line (`T16 held · seam T14 not landed`): every task a round held, with the round's reason. */
+  protected readonly held = computed(() => {
+    const result = this.tasks.value();
+    return result?.kind === 'ok' && result.body !== null ? result.body.tasks.filter((task) => task.status === 'held') : [];
+  });
+
+  protected readonly openGroups = computed(() => {
+    const claims = this.open()?.claims ?? [];
+    const states = [...OPEN_ORDER, ...new Set(claims.map((claim) => claim.state).filter((state) => !OPEN_ORDER.includes(state)))];
+    return states.map((state) => ({ state, claims: claims.filter((claim) => claim.state === state) })).filter((group) => group.claims.length > 0);
+  });
+
+  /** The prototype's claim glyph: ◐ takeable, ○ blocked or open; a taken claim shows the lock icon instead. */
+  protected glyph(state: string): string {
+    return state === 'takeable' ? '◐' : '○';
+  }
+
+  /** The prototype's gate-card icon: check passed, alert stale or warning, flag for a missing review mark, x otherwise. */
+  protected gateIcon(name: string, state: GateState): 'check' | 'triangle-alert' | 'flag' | 'x' {
+    if (state === 'ok' || state === 'fresh') return 'check';
+    if (state === 'stale' || state === 'warn') return 'triangle-alert';
+    return name === 'reviewed' && state === 'missing' ? 'flag' : 'x';
+  }
+
+  /** The prototype's activity icons: clock for a round, server for an agent, file for a note or decision, git otherwise. */
+  protected activityIcon(kind: string): 'clock' | 'server' | 'file' | 'git-commit-horizontal' {
+    if (kind === 'round') return 'clock';
+    if (kind === 'agent') return 'server';
+    return kind === 'note' || kind === 'decision' ? 'file' : 'git-commit-horizontal';
+  }
+
   protected readonly activity = computed(() => {
     const result = this.timeline.value();
     return result?.kind === 'ok' ? result.body.slice(0, ACTIVITY_LIMIT) : null;
+  });
+
+  /** The prototype's `round-sum`: the newest round entry, its lead ("Round 3") bold, the rest after a middle dot. */
+  protected readonly roundSummary = computed(() => {
+    const round = this.activity()?.find((entry) => entry.kind === 'round');
+    if (!round) return null;
+    const [lead = '', ...rest] = round.title.split(' · ');
+    return { lead, rest: rest.join(' · '), ts: round.ts };
   });
 
   protected link(tab: string): string[] {
@@ -149,6 +197,12 @@ export class StatusTab {
   }
 
   private landed: string | null = null;
+
+  /** The spec's slice of `specs/tldr.md` for the Activity card's TL;DR box; null when no TL;DR item names this spec. */
+  protected readonly brief = computed<BriefModel | null>(() => {
+    const tldr = this.model()?.tldr;
+    return tldr?.brief ? { markdown: tldr.brief, generated: tldr.generated, stale: tldr.stale } : null;
+  });
 
   constructor() {
     // A hash anchor (`#waiting`, `#gates`) moves focus to its section heading once, after the heading has rendered.

@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
+import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { EvidenceFile, EvidenceListing } from '../../../../../../../core/src/files';
 import { renderMarkdown } from '../../../../../../../core/src/markdown';
@@ -21,6 +22,7 @@ import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../../shared/icons/icon';
 import type { IconName } from '../../../../shared/icons/icons';
 import { UiIconButton } from '../../../../shared/ui/button/icon-button';
+import { UiChip } from '../../../../shared/ui/chip/chip';
 import { UiEmptyState } from '../../../../shared/ui/empty-state/empty-state';
 import { modalDialog } from '../../../../shared/ui/overlay/modal';
 
@@ -29,13 +31,11 @@ type PreviewKind = 'image' | 'markdown' | 'text' | 'none';
 /** Why a file shows as an error row: refused by confinement (listing or 403), or any other failed read. */
 type FileError = 'refused' | 'failed';
 
+/** The prototype's two evidence groups: `Results artifacts/` (cards) and `Raw evidence .evidence/` (rows). */
 interface EvidenceGroupView {
-  /** The claim ID, or `none` for the files no claim names. */
-  readonly key: string;
-  readonly claim: string | null;
-  readonly images: readonly EvidenceFile[];
+  readonly key: 'results' | 'raw';
+  readonly folder: string;
   readonly files: readonly EvidenceFile[];
-  readonly count: number;
 }
 
 type Preview =
@@ -50,12 +50,14 @@ export function previewKind(file: EvidenceFile): PreviewKind {
   return 'none';
 }
 
-const ICON: Record<PreviewKind, IconName> = { image: 'layout-grid', markdown: 'book-open', text: 'file-text', none: 'archive' };
+/** Prototype `h.I("file")`: every file that is not shown as its image carries the one file icon. */
+const ICON: Record<PreviewKind, IconName> = { image: 'image', markdown: 'file', text: 'file', none: 'file' };
 
 /**
- * The Evidence tab (ISC-83.1): the spec's `artifacts/` and `.evidence/` files as core's `listEvidence` groups them,
- * one open collapse per claim (the unclaimed files last). Images are a thumbnail grid, every other file a 56 px row
- * with its type icon, its name in mono and its size. A thumbnail or a markdown (or text) row opens one full-screen
+ * The Evidence tab (ISC-83.1, spec 024 prototype `tabEvidence`): the spec's files in the prototype's two groups,
+ * `Results artifacts/` as a card grid (image or file icon, name in mono, task · claim · size) and `Raw evidence
+ * .evidence/` as rows (image or file icon, name in mono, the claim as a `take` chip). Every file carries the claim core's
+ * `listEvidence` gave it as a chip that links to the claim card in the Claims tab (`data-claim`, `none` without one). A thumbnail or a markdown (or text) row opens one full-screen
  * native `<dialog>` driven by the modal primitive, with the path, the content fitted to width and a 44 px close
  * button. Markdown renders through core's one renderer (`core/src/markdown.ts`), never a second one.
  *
@@ -67,7 +69,7 @@ const ICON: Record<PreviewKind, IconName> = { image: 'layout-grid', markdown: 'b
  */
 @Component({
   selector: 'app-evidence-tab',
-  imports: [TranslocoPipe, UiEmptyState, UiIcon, UiIconButton],
+  imports: [RouterLink, TranslocoPipe, UiChip, UiEmptyState, UiIcon, UiIconButton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: { 'data-view': 'evidence' },
@@ -107,18 +109,30 @@ export class EvidenceTab {
     return this.listing.error() !== undefined || (result !== undefined && result.kind !== 'ok');
   });
 
-  /** Core's grouping as it is: `byClaim` in the spec's claim order, then `ungrouped`. Nothing is re-derived here. */
+  /** Core's two folders as it lists them (`results` = `artifacts/`, `raw` = `.evidence/`), each by path. */
   protected readonly groups = computed<readonly EvidenceGroupView[]>(() => {
     const model = this.model();
     if (!model) return [];
-    const view = (key: string, claim: string | null, files: readonly EvidenceFile[]): EvidenceGroupView => {
-      const isImage = (f: EvidenceFile) => previewKind(f) === 'image' && !f.refused;
-      return { key, claim, images: files.filter(isImage), files: files.filter((f) => !isImage(f)), count: files.length };
-    };
-    const groups = Object.entries(model.byClaim).map(([claim, files]) => view(claim, claim, files));
-    if (model.ungrouped.length > 0) groups.push(view('none', null, model.ungrouped));
+    const groups: EvidenceGroupView[] = [];
+    if (model.results.length > 0) groups.push({ key: 'results', folder: 'artifacts/', files: model.results });
+    if (model.raw.length > 0) groups.push({ key: 'raw', folder: '.evidence/', files: model.raw });
     return groups;
   });
+
+  /** The Claims tab, where a file's claim chip lands on `#claim-<id>`. */
+  protected readonly claimsLink = computed(() => {
+    const params = this.params();
+    return params ? ['/w', params.ws, 's', params.id, 'claims'] : null;
+  });
+
+  protected isImage(file: EvidenceFile): boolean {
+    return previewKind(file) === 'image' && !file.refused;
+  }
+
+  /** The card's meta line: task · claim · size (prototype `T12 · ISC-330 · 4.2 KB`). */
+  protected meta(file: EvidenceFile): string {
+    return [file.task, this.size(file.bytes)].filter((part) => part !== null).join(' · ');
+  }
 
   /** Files that became an error row on a read (403 or a failed image), keyed by path. */
   private readonly errors = signal<ReadonlyMap<string, FileError>>(new Map());

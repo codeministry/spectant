@@ -6,7 +6,7 @@
  */
 import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
-import { atWidth, expect, test, WIDTHS } from './fixtures';
+import { atWidth, expect, test, WIDTHS, headerControl } from './fixtures';
 
 interface DocsSection {
   readonly id: string;
@@ -85,7 +85,8 @@ test.describe('tabs', () => {
       await expect(page.locator('h1#tech')).toBeVisible();
       await expect(page.locator('[data-subline]')).toHaveText(EN.tech.subline.file.replace('{{count}}', String(TECH.specs.length)));
 
-      const bar = page.locator('app-tech-page app-tab-bar[data-placement="main"]');
+      // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+      const bar = page.locator('app-tech-page app-tab-bar');
       const links = bar.locator('a[data-tab]');
       await expect(links).toHaveCount(TABS.length);
       expect(await links.evaluateAll((all) => all.map((a) => a.getAttribute('data-tab')))).toEqual([...TABS]);
@@ -212,13 +213,15 @@ test.describe('tabs', () => {
   test.describe('compact', () => {
     test.use(atWidth(WIDTHS.phone));
 
-    test('the tabs sit in the header row, no tab scrolls sideways, Status stacks its rows', async ({ page }) => {
+    // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+    test('the tabs sit under the header, no tab scrolls sideways, Status stacks its rows', async ({ page }) => {
       await page.goto(`/w/${WS}/tech`);
       await expect(page).toHaveURL(tabUrl('overview'));
-      const bar = page.locator('header app-tab-bar[data-placement="header"]');
+      // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+      const bar = page.locator('app-tech-page app-tab-bar');
       await expect(bar.locator('a[data-tab]')).toHaveCount(TABS.length);
       await expect(page.locator('app-tab-bar')).toHaveCount(1);
-      await expect(page.locator('app-tech-page app-tab-bar')).toHaveCount(0);
+      await expect(page.locator('header app-tab-bar')).toHaveCount(0);
 
       for (const tab of TABS) {
         await bar.locator(`a[data-tab="${tab}"]`).click();
@@ -276,9 +279,10 @@ const fill = (template: string, params: Readonly<Record<string, string | number>
   Object.entries(params).reduce((text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)), template);
 const lanternUrl = (tab: Tab): RegExp => new RegExp(`/w/${LANTERN_WS}/tech/${tab}$`);
 
+// spec 024: PAGE select (principal 2026-10-13): the workspace pages are the PAGE select's menu, in the row on every width
 async function openAreaMenu(page: Page): Promise<Locator> {
-  await page.locator('header [data-control="area"]').click();
-  const menu = page.locator('nav[aria-label="Areas"]');
+  await (await headerControl(page, 'page')).click();
+  const menu = page.locator('nav[aria-label="Pages"]');
   await expect(menu).toBeVisible();
   return menu;
 }
@@ -314,10 +318,12 @@ test.describe('reach', () => {
 
       test('the area menu lists Tech fifth with the KPI summary; it lands on overview, current in the menu and on the trigger', async ({ page }) => {
         await page.goto(`/w/${WS}`);
-        await expect(page.locator('header [data-control="area"]')).toBeVisible();
+        // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
+        // spec 024: PAGE select (principal 2026-10-13): Library sixth (T57)
+        await expect(await headerControl(page, 'page')).toBeVisible();
         let menu = await openAreaMenu(page);
         const entries = menu.locator('[data-page]');
-        expect(await entries.evaluateAll((all) => all.map((el) => el.getAttribute('data-page')))).toEqual(['specs', 'board', 'features', 'milestones', 'tech']);
+        expect(await entries.evaluateAll((all) => all.map((el) => el.getAttribute('data-page')))).toEqual(['specs', 'board', 'features', 'milestones', 'tech', 'library']);
         const tech = menu.locator('[data-page="tech"]');
         await expect(tech).toHaveAttribute('href', `/w/${WS}/tech`);
         await expect(tech.locator('.entry-name')).toHaveText(COPY.shell.pages.tech);
@@ -326,7 +332,7 @@ test.describe('reach', () => {
         await tech.click();
         await expect(page).toHaveURL(tabUrl('overview'));
         await expectOnlyPanel(page, 'overview');
-        await expect(page.locator('header [data-control="area"]')).toContainText(COPY.shell.pages.tech);
+        await expect(page.locator('header [data-control="page"]')).toContainText(COPY.shell.pages.tech);
         menu = await openAreaMenu(page);
         await expect(menu.locator('[aria-current="page"]')).toHaveCount(1);
         await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('data-page', 'tech');
@@ -363,7 +369,8 @@ test.describe('empty', () => {
         await expect(page).toHaveURL(lanternUrl('overview'));
         await expect(page.locator('[data-subline]')).toHaveText(fill(COPY.tech.subline.noFile, { count: LANTERN.specs.length }));
 
-        const bar = page.locator(compact ? 'header app-tab-bar[data-placement="header"]' : 'app-tech-page app-tab-bar[data-placement="main"]');
+        // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+        const bar = page.locator('app-tech-page app-tab-bar');
         await expect(bar.locator('a[data-tab]')).toHaveCount(TABS.length);
         await expect(bar.locator('[aria-disabled], [disabled], [inert]')).toHaveCount(0);
 

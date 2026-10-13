@@ -14,25 +14,31 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* spec 024: the prototype .flow-grid: a 112 px lane column, then four columns; the heads on the lane ground with a
+   3 px underline in the column's colour; each band a row of cells under a hairline. */
 .flow {
   display: grid;
-  gap: 16px;
+  gap: 0;
   min-inline-size: 0;
 }
 
 .heads,
-.cols {
+.band {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: 112px repeat(4, minmax(0, 1fr));
+  gap: 0 16px;
   min-inline-size: 0;
+}
+
+.cols {
+  display: contents;
 }
 
 .heads {
   position: sticky;
   z-index: 1;
   inset-block-start: var(--flow-sticky-top);
-  padding-block: 4px;
+  padding-block: 4px 8px;
   background: var(--color-base-200);
 }
 
@@ -40,69 +46,59 @@
   display: flex;
   gap: 8px;
   align-items: baseline;
+  justify-content: space-between;
   min-inline-size: 0;
-  padding-inline: 8px;
-  color: var(--muted-ink);
-  font-size: 12px;
+  padding: 8px 12px;
+  border-block-end: 3px solid var(--track);
+  border-radius: var(--radius-field);
+  background: var(--lane);
+  color: var(--color-base-content);
+  font-size: 13px;
   font-weight: 600;
-  line-height: 24px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  line-height: 20px;
 }
 
+.head[data-head='inFlight'] { border-block-end-color: var(--color-primary); }
+.head[data-head='needsYou'] { border-block-end-color: var(--color-warning); }
+.head[data-head='landed'] { border-block-end-color: var(--color-accent); }
+
 .count {
-  color: var(--muted-ink);
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
-.band {
-  display: grid;
-  gap: 8px;
-  min-inline-size: 0;
-  padding: 0 8px 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-box);
-  background: var(--color-base-200);
-}
-
 .band-head {
-  position: sticky;
-  z-index: 1;
-  inset-block-start: calc(var(--flow-sticky-top) + 32px);
   display: flex;
-  gap: 8px;
-  align-items: center;
+  gap: 6px;
+  align-items: flex-start;
   min-inline-size: 0;
-  min-block-size: 32px;
-  margin-inline: -8px;
-  padding-inline: 8px;
-  border-radius: var(--radius-box) var(--radius-box) 0 0;
-  background: var(--color-base-200);
+  padding: 12px 0;
+  border-block-start: 1px solid var(--line);
+  font-size: 13px;
 }
 
 .band-dot {
   flex: none;
   inline-size: 8px;
   block-size: 8px;
+  margin-block-start: 6px;
   border-radius: 50%;
-  background: var(--color-primary);
-}
-
-.band[data-band='operator'] .band-dot {
-  background: var(--color-secondary);
+  background: var(--lane-c, var(--color-primary));
 }
 
 .band-name {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 20px;
+  overflow-wrap: anywhere;
 }
 
 .band-count {
-  color: var(--muted-ink);
+  color: var(--muted);
+  font-family: var(--font-mono);
   font-size: 12px;
-  line-height: 16px;
+  line-height: 20px;
 }
 
 .col {
@@ -110,6 +106,12 @@
   align-content: start;
   gap: 8px;
   min-inline-size: 0;
+  padding: 12px 0;
+  border-block-start: 1px solid var(--line);
+}
+
+app-your-steps.span {
+  margin-block-start: 16px;
 }
 
 .col > app-board-card {
@@ -146,13 +148,27 @@
 }
 
 /* Compact: one column under the segmented control, the band head sticky under the header (as the Lanes view). */
+@container shell (width < 1120px) {
+  .heads,
+  .band {
+    grid-template-columns: 72px repeat(4, minmax(0, 1fr));
+    gap: 0 8px;
+  }
+}
+
 @container shell (width < 640px) {
-  .cols {
+  .heads,
+  .band {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .band-head {
-    inset-block-start: 96px;
+    padding-block-end: 0;
+  }
+
+  .col {
+    padding-block-start: 8px;
+    border-block-start: 0;
   }
 }
 

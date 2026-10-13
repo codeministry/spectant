@@ -42,27 +42,30 @@ h2 {
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  font-size: 14px;
   line-height: 20px;
   cursor: pointer;
+  color: var(--muted-ink);
+  font-size: 13px;
 }
 
 /* Wide: 48 px rows on the design grid, checkbox · task · claim · title · lane · path · state · builder. */
 .columns, .row {
   display: grid;
-  grid-template-columns: 40px 56px 104px minmax(0, 1fr) 96px 160px 120px 88px;
-  gap: 0 8px;
   align-items: center;
+  grid-template-columns: 24px 44px 92px 56px minmax(0, 1fr) 76px minmax(0, 150px) 92px 64px;
+  gap: 0 10px;
 }
 
 .columns {
   padding-inline: 8px;
   color: var(--muted-ink);
-  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  line-height: 16px;
   text-transform: uppercase;
+  padding: 8px 16px 6px;
+  border-block-end: 1px solid var(--line);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  line-height: 1;
 }
 
 .rows {
@@ -75,10 +78,11 @@ h2 {
 
 .row {
   min-block-size: 48px;
-  padding: 4px 8px;
   border-block-end: 1px solid var(--line);
   scroll-margin-block-start: 120px;
   transition: background-color var(--motion-duration-highlight) var(--motion-ease-standard);
+  padding: 6px 16px;
+  font-size: 13px;
 }
 .row.is-target { background: var(--disp-t); }
 
@@ -106,14 +110,15 @@ h2 {
   place-items: center;
   inline-size: 44px;
   block-size: 44px;
-  margin-inline: -2px;
   cursor: pointer;
+  margin-inline: -10px;
 }
 .hit > * { grid-area: 1 / 1; }
 .hit:has(input:disabled) { cursor: not-allowed; }
 .hit:has(.spinner) input { opacity: 0.4; }
 
-.spinner { color: var(--disp-ink); }
+.spinner {
+  color: var(--muted-ink); }
 
 .check-note {
   display: inline-flex;
@@ -122,22 +127,7 @@ h2 {
   color: var(--muted-ink);
 }
 
-.check-alert {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  padding: 4px 8px;
-  border: 1px solid var(--conc-ink);
-  border-radius: 8px;
-  background: var(--conc-t);
-  color: var(--conc-ink);
-}
 
-.row[data-check='conflict'] {
-  outline: 2px solid var(--conc-ink);
-  outline-offset: -2px;
-}
 .row.is-written { animation: ui-tint-fade var(--motion-duration-highlight) var(--motion-ease-standard); }
 
 .edges a {
@@ -157,22 +147,22 @@ h2 {
 
 .text {
   overflow: hidden;
-  font-size: 14px;
   line-height: 20px;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 13px;
 }
 
 .flag {
   flex-shrink: 0;
-  padding-inline: 4px;
-  border: 1px solid var(--line);
   border-radius: 4px;
-  color: var(--muted-ink);
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 600;
   line-height: 16px;
+  padding-inline: 0;
+  border: 0;
+  color: var(--muted-ink);
+  font-weight: 500;
 }
 
 .path {
@@ -212,59 +202,35 @@ h2 {
   white-space: nowrap;
 }
 
-.status {
-  display: inline-flex;
-  align-items: center;
-  block-size: 24px;
-  padding-inline: 8px;
-  border-radius: 999px;
-  background: transparent;
-  border: 1px solid var(--line);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 16px;
-  white-space: nowrap;
-}
 
 .status[data-tone='closed'] {
   background: var(--clos-t);
-  border-color: transparent;
   color: var(--clos-ink);
 }
 
-.status[data-tone='done'] {
-  background: var(--done-t);
-  border-color: transparent;
-  color: var(--done-ink);
-}
 
 .status[data-tone='dispatched'] {
   background: var(--disp-t);
-  border-color: transparent;
   color: var(--disp-ink);
 }
 
 .status[data-tone='held'], .status[data-tone='struck'] {
-  background: var(--held-t);
-  border-color: transparent;
+  background: var(--color-base-300);
   color: var(--held-ink);
 }
 
 .status[data-tone='fail'] {
   background: var(--fail-t);
-  border-color: transparent;
   color: var(--fail-ink);
 }
 
 .status[data-tone='concerns'] {
   background: var(--conc-t);
-  border-color: transparent;
   color: var(--conc-ink);
 }
 
 .status[data-tone='question'] {
   background: var(--ques-t);
-  border-color: transparent;
   color: var(--ques-ink);
 }
 
@@ -272,26 +238,16 @@ h2 {
 .extra {
   display: flex;
   flex-wrap: wrap;
-  grid-column: 4 / -1;
   gap: 4px 16px;
   padding-block-end: 4px;
   color: var(--muted-ink);
   font-size: 12px;
   line-height: 16px;
+  grid-column: 3 / -1;
 }
 
 .row[data-state='struck'] .text, .row[data-state='struck'] .id { color: var(--muted-ink); }
 
-.done-hidden {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin: 0;
-  color: var(--muted-ink);
-  font-size: 13px;
-  line-height: 20px;
-}
 
 .helper {
   margin: 0;
@@ -299,6 +255,9 @@ h2 {
   font-size: 13px;
   line-height: 20px;
   text-wrap: pretty;
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 .helper + .helper { margin-block-start: -12px; }
 
@@ -311,9 +270,12 @@ h2 {
 
 .mapping {
   display: grid;
-  gap: 8px;
   min-inline-size: 0;
-  max-inline-size: 640px;
+  gap: 0;
+  max-inline-size: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--color-base-100);
 }
 
 .scroll {
@@ -365,6 +327,7 @@ th:nth-child(2), td:nth-child(2) { inline-size: 120px; }
     gap: 4px 8px;
     align-items: center;
     padding-block: 8px;
+  padding: 8px 12px;
   }
 
   .box {
@@ -409,7 +372,22 @@ th:nth-child(2), td:nth-child(2) { inline-size: 120px; }
 
   .extra {
     grid-row: 3;
-    grid-column: 2 / -1;
+  grid-column: 2 / -1;
+  }
+
+  .columns,
+  .row {
+    grid-template-columns: 40px auto auto minmax(0, max-content) minmax(0, 1fr) auto;
+    gap: 4px 8px;
+  }
+
+  .hit {
+    margin-inline: -2px;
+  }
+
+  .badges {
+    grid-row: 2;
+    grid-column: 5;
   }
 }
 
@@ -422,8 +400,175 @@ th:nth-child(2), td:nth-child(2) { inline-size: 120px; }
   }
   .claim, .lane, .path, .builder { grid-row: 3; }
   .extra { grid-row: 4; }
+
+  .badges {
+    grid-row: 3;
+  }
 }
 
 @media (forced-colors: active) {
   .status { border: 1px solid CanvasText; }
+}
+
+
+/* Sweep 2 (ISC-149): the prototype's task list — a card, the 9-column grid with Flags, 10.5 px head, 48 px rows. */
+.task-card {
+  min-inline-size: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--color-base-100);
+}
+
+.task-card .rows {
+  border-block-start: 0;
+}
+
+.task-card .row:last-child {
+  border-block-end: 0;
+}
+
+.badges {
+  display: flex;
+  gap: 4px;
+  min-inline-size: 0;
+}
+
+/* Prototype `[data-ui="seam-badge"]`: mono 11, muted; a seam in orange text. */
+
+.flag[data-flag='seam'] {
+  color: var(--hover-text);
+}
+
+/* Prototype `[data-ui="chip"].st-*`: 22 px, radius-sm, 11 px versal on a tint. */
+.status {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding-inline: 8px;
+  line-height: 16px;
+  white-space: nowrap;
+  block-size: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--color-base-300);
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.status[data-tone='done'] {
+  background: var(--clos-t);
+  color: var(--clos-ink);
+}
+
+/* Prototype `.cbx`: a 20 px box, 2 px track ring, lime when ticked; held dashed; locked and conflict orange. */
+.hit .checkbox {
+  --input-color: var(--color-accent);
+
+  inline-size: 20px;
+  block-size: 20px;
+  border: 2px solid var(--track);
+  border-radius: 5px;
+  background-color: var(--color-base-100);
+  color: var(--color-base-200);
+}
+
+.hit .checkbox:checked {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+}
+
+.hit .checkbox:disabled {
+  border-style: dashed;
+  opacity: 0.4;
+}
+
+.row:has([data-check-locked]) .hit .checkbox {
+  border-style: solid;
+  border-color: var(--color-warning);
+  background-color: var(--hover-t);
+  opacity: 1;
+}
+
+.row[data-check='conflict'] .hit .checkbox {
+  border-color: var(--color-warning);
+  outline: 3px solid var(--hover-t);
+}
+
+.check-alert {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--hover-t);
+  color: var(--hover-text);
+  font-size: 13px;
+}
+
+/* Prototype probe mapping: a card with a 15 px head and the `.tbl` rows. */
+
+.mapping h3 {
+  margin: 0;
+  padding: 12px 16px;
+  border-block-end: 1px solid var(--line);
+  font: 600 15px/24px var(--font-brand);
+}
+
+.mapping th {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.mapping th,
+.mapping td {
+  block-size: auto;
+  padding: 10px 16px;
+}
+
+.mapping tr:last-child td {
+  border-block-end: 0;
+}
+
+.box-lock {
+  z-index: 1;
+  color: var(--hover-text);
+  pointer-events: none;
+}
+
+/* Sweep 3 (ISC-149): prototype `.t-reason` (12 px muted, 8 px gap, 13 px leading icon) and `details.fold-row`. */
+.extra .sub,
+.extra .check-note {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.fold-row {
+  border-block-start: 1px solid var(--line);
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.fold-row summary {
+  padding: 12px 16px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.fold-row summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  padding: 8px 16px 16px;
 }

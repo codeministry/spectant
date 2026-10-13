@@ -63,18 +63,25 @@ function stylesheets(dir: string): string[] {
     .map((e) => join(e.parentPath, e.name));
 }
 
+// The prototype names hold the values (spec 024, ISC-146); the app names the components write alias them.
 const TOKENS: Record<string, string> = {
-  "--motion-duration-instant": "80ms",
-  "--motion-duration-fast": "160ms",
-  "--motion-duration-base": "240ms",
-  "--motion-duration-slow": "400ms",
-  "--motion-duration-highlight": "1200ms",
+  "--dur-hover": "80ms",
+  "--dur-pop": "160ms",
+  "--dur-sheet": "240ms",
+  "--dur-morph": "400ms",
+  "--dur-tint": "1200ms",
+  "--ease": "cubic-bezier(.2, 0, 0, 1)",
+  "--motion-duration-instant": "var(--dur-hover)",
+  "--motion-duration-fast": "var(--dur-pop)",
+  "--motion-duration-base": "var(--dur-sheet)",
+  "--motion-duration-slow": "var(--dur-morph)",
+  "--motion-duration-highlight": "var(--dur-tint)",
   "--motion-duration-skeleton": "1600ms",
-  "--motion-ease-standard": "cubic-bezier(.2, 0, 0, 1)",
+  "--motion-ease-standard": "var(--ease)",
   "--motion-ease-emphasized": "cubic-bezier(.05, .7, .1, 1)",
   "--motion-ease-exit": "cubic-bezier(.3, 0, 1, 1)",
 };
-const DURATIONS = Object.keys(TOKENS).filter((name) => name.startsWith("--motion-duration-"));
+const DURATIONS = Object.keys(TOKENS).filter((name) => /^--(motion-duration|dur)-/.test(name));
 
 /** motion.css without comments, read per test so a missing file fails each assertion rather than the load. */
 const motion = () => stripComments(readFileSync(MOTION, "utf8"));

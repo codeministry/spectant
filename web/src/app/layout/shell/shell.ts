@@ -31,7 +31,8 @@ import { tierFor } from './tier';
     '[attr.data-rail-collapsed]': "state.railStrip() ? '' : null",
     // Outside a workspace (the overview `/`, settings) the page has no rail column at all (prototype `no-rail`); the
     // workspace board (spec 008) and the tech page (spec 023) have nothing for the rail either and take the full width.
-    '[attr.data-no-rail]': "state.ws() === null || state.wsPage() === 'board' || state.wsPage() === 'tech' ? '' : null",
+    '[attr.data-no-rail]':
+      "state.ws() === null || state.wsPage() === 'board' || state.wsPage() === 'tech' || state.wsPage() === 'library' ? '' : null",
     '(document:keydown)': 'onKeydown($event)',
   },
 })

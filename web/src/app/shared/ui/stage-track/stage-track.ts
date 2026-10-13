@@ -46,7 +46,7 @@ interface Segment {
     :host { display: block; min-inline-size: 0; }
     .mini { display: inline-flex; gap: 2px; vertical-align: middle; }
     .mini .bar { inline-size: 16px; }
-    .bar { display: block; block-size: 4px; border-radius: 999px; background: var(--track); }
+    .bar { display: block; block-size: 4px; border-radius: 999px; background: color-mix(in srgb, var(--track) 55%, transparent); }
     [data-state='done'] > .bar, .bar[data-state='done'] { background: var(--color-accent); }
     [data-state='current'] > .bar, .bar[data-state='current'] { background: var(--color-primary); }
     [data-state='held'] > .bar, .bar[data-state='held'] { background: repeating-linear-gradient(90deg, var(--held) 0 6px, transparent 6px 8px); }

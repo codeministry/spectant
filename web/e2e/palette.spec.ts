@@ -57,6 +57,9 @@ async function openPalette(page: Page, path: string): Promise<void> {
   await expect(page.locator('header [data-control="palette"]')).toBeVisible();
   await page.keyboard.press('Meta+k');
   await expect(paletteOf(page)).toBeVisible();
+  // spec 024: PAGE select (principal 2026-10-13): the palette lists nothing until its sources have answered
+  // (`PaletteIndex.settled`, `aria-busy` on the listbox), then the whole list at once, so a snapshot is complete.
+  await expect(paletteOf(page).locator('[role="listbox"]')).not.toHaveAttribute('aria-busy', 'true');
 }
 
 test.describe('palette', () => {

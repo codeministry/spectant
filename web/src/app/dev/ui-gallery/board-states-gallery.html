@@ -1,0 +1,133 @@
+<!-- gallery: dev-only strings (see ui-gallery.ts). Prototype board-states.html (board.js statesPage). -->
+<section class="gallery-group" data-gallery="board-states" aria-labelledby="g-board-states">
+  <p class="sg-eyebrow">Spectant · spec 002 · board states</p>
+  <h2 id="g-board-states">Board states · gallery</h2>
+  <app-tab-bar class="sg-tabs" data-gallery-tabs [tabs]="specTabs" current="board" labelKey="shell.areas.live" />
+  <div class="sg-grid">
+    <section class="sg-mini" data-gallery="board-states-loading">
+      <p class="sg-eyebrow">Loading</p>
+      <p class="sg-note">Lanes and cards as skeletons at their final geometry.</p>
+      <ui-card>
+        <div class="sg-col">
+          <ui-skeleton width="30%" height="14px" />
+          @for (row of [0, 1, 2]; track row) {
+            <ui-skeleton height="56px" />
+          }
+        </div>
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="board-states-no-rounds">
+      <p class="sg-eyebrow">No rounds yet</p>
+      <p class="sg-note">Scrubber shows one hollow live tick; every task waits, grouped by reason.</p>
+      <ui-card>
+        <div class="sg-col">
+          <ui-scrubber [frames]="idleFrames" [(value)]="idleValue" ariaLabel="Frames, no rounds yet" />
+          <ui-disclosure [open]="true">
+            <span uiDisclosureSummary>plan not run yet · <code class="sg-mono">/spec-implement 002</code> starts round 1 · {{ waiting.length }}</span>
+            <div class="sg-col">
+              @for (card of waiting; track card.task) {
+                <app-board-card [card]="card" density="compact" />
+              }
+            </div>
+          </ui-disclosure>
+          <p class="sg-note">This frame · No rounds recorded</p>
+        </div>
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="board-states-quiet">
+      <p class="sg-eyebrow">Nothing in flight</p>
+      <p class="sg-note">Between rounds: Landed and Waiting only.</p>
+      <ui-card>
+        <div class="sg-col">
+          <header class="sg-lane-head"><span class="sg-lane-dot" aria-hidden="true"></span><h3>core</h3></header>
+          <p class="sg-note sg-mono">nothing in flight · next /spec-implement 002</p>
+          <p class="sg-eyebrow">Landed {{ landed.length }}</p>
+          @for (card of landed; track card.task) {
+            <app-board-card [card]="card" density="compact" />
+          }
+        </div>
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="board-states-stale">
+      <p class="sg-eyebrow">Stale agent</p>
+      <p class="sg-note">Claim without release older than 30 min: stale flag and warning line; the card keeps In flight.</p>
+      <ui-card>
+        <div class="sg-col">
+          <p class="sg-warn-line">
+            <ui-icon name="triangle-alert" [size]="16" />
+            <span><b class="sg-mono">spec-002-ISC-336</b> has held ISC-336 for 47 min without a release</span>
+          </p>
+          <app-board-card [card]="staleCard" />
+        </div>
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="board-states-agents">
+      <p class="sg-eyebrow">Agent states</p>
+      <p class="sg-note">active · stale · released (fades 1200 ms) · locked by LifeOS</p>
+      <ui-card>
+        <div class="sg-row">
+          <app-agent-chip session="spec-002-ISC-333" [since]="activeSince" />
+          <app-agent-chip session="spec-002-ISC-336" [since]="staleSince" [stale]="true" />
+          <span class="sg-item sg-released"><app-agent-chip session="spec-002-ISC-331" /><span class="sg-meta">released</span></span>
+          <span class="sg-item sg-meta"><ui-icon name="lock" [size]="14" /> locked · spec-002-ISC-333</span>
+        </div>
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="board-states-recut">
+      <p class="sg-eyebrow">Re-cut marker</p>
+      <p class="sg-note">tasks.md renumbered between rounds; the board does not pretend continuity.</p>
+      <ui-card>
+        <div class="sg-col">
+          <ui-scrubber [frames]="recutFrames" [markers]="recutMarkers" [(value)]="recutValue" ariaLabel="Frames with a re-cut" />
+          <p class="sg-note">tasks re-cut after R2 · 28 → 26 · T27 T28 struck</p>
+        </div>
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="board-states-filtered">
+      <p class="sg-eyebrow">Filtered to nothing</p>
+      <p class="sg-note">Legend or search leaves no card.</p>
+      <ui-card>
+        <ui-empty-state icon="search" heading="No cards match.">
+          <button ui-button size="sm" variant="outline">Clear filters</button>
+        </ui-empty-state>
+      </ui-card>
+    </section>
+
+    <section class="sg-mini sg-wide" data-gallery="board-states-every">
+      <p class="sg-eyebrow">Every task state</p>
+      <p class="sg-note">Glyph and chip text, never colour alone.</p>
+      <ui-card>
+        <div class="sg-cards">
+          @for (card of everyState; track card.state) {
+            <app-board-card [card]="card" density="compact" />
+          }
+        </div>
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="board-states-compact">
+      <p class="sg-eyebrow">Compact tier</p>
+      <p class="sg-note">Lanes stacked; This frame and Needs you live in a bottom sheet opened from a 40 px bar.</p>
+      <ui-card>
+        <app-frame-bar label="R3" [live]="true" [thisFrame]="4" [needsYou]="2" [index]="6" [last]="6" />
+      </ui-card>
+    </section>
+
+    <section class="sg-mini" data-gallery="board-states-reduced-motion">
+      <p class="sg-eyebrow">Reduced motion</p>
+      <p class="sg-note">No FLIP, no pulsing, no spin; the running glyph is a static quarter ring.</p>
+      <ui-card>
+        <div class="sg-row">
+          <span class="sg-item"><span class="sg-spin"><ui-glyph state="running" family="card" [size]="20" /></span><span class="sg-meta">motion</span></span>
+          <span class="sg-item"><ui-glyph state="running" family="card" [size]="20" /><span class="sg-meta">reduced</span></span>
+        </div>
+      </ui-card>
+    </section>
+  </div>
+</section>

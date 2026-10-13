@@ -1,11 +1,9 @@
-<header role="banner" class="shell-header">
-  <!-- The left group's one bordered rail field (medium, wide: brand · pickers · area), drawn behind them. -->
+<header role="banner" class="shell-header" [class.on-spec]="specPage()" [class.scrolled]="scrolled()">
+  <!-- The brand rail's bordered field (prototype `.brand-rail`): behind brand and rail-selects at wide, the logo below. -->
   <span class="rail-field" aria-hidden="true"></span>
 
   <app-shell-brand class="brand" />
-  <app-shell-nav />
-
-  <app-tab-bar-slot class="tabs" placement="header" />
+  <app-shell-nav #nav class="nav" />
 
   <button
     type="button"
@@ -24,27 +22,74 @@
 
   <app-shell-live class="live tool" [link]="liveLink()" />
 
+  @if (wide()) {
   <button
     ui-icon-button
     class="zen"
     data-control="zen"
-    [icon]="state.zen() ? 'minimize-2' : 'maximize-2'"
+    icon="scan"
     [label]="'shell.zen.toggle' | transloco"
     [attr.aria-pressed]="state.zen()"
     (click)="state.toggleZen()"
   ></button>
 
-  <a
-    ui-button
-    variant="ghost"
-    class="settings tool btn-square"
-    data-control="settings"
-    routerLink="/settings"
-    routerLinkActive
-    ariaCurrentWhenActive="page"
-    [attr.aria-label]="'shell.settings' | transloco"
-    [attr.title]="'shell.settings' | transloco"
+  <!-- The assistant dot (prototype `assistant-toggle`, spec 024 T53): opens the mocked panel, `aria-pressed` while open. -->
+  <button
+    #dotTrigger
+    type="button"
+    class="assistant tool"
+    data-tool="assistant"
+    aria-haspopup="dialog"
+    [attr.aria-pressed]="assistant.open()"
+    [attr.aria-label]="'shell.assistant.trigger' | transloco"
+    [attr.title]="'shell.assistant.trigger' | transloco"
+    (click)="assistant.toggle(dotTrigger)"
   >
-    <ui-icon name="settings" [size]="16" />
-  </a>
+    <app-mascot [size]="24" [state]="assistant.thinking() ? 'thinking' : 'idle'" />
+  </button>
+
+  <button
+    ui-icon-button
+    class="settings tool"
+    data-control="settings"
+    icon="settings"
+    aria-haspopup="dialog"
+    [label]="'shell.settings' | transloco"
+    [attr.title]="'shell.settings' | transloco"
+    [attr.aria-expanded]="nav.expanded().settings"
+    (pointerdown)="nav.press('settings')"
+    (click)="nav.toggle($event, 'settings')"
+  ></button>
+
+  <button
+    ui-icon-button
+    class="help tool"
+    data-tool="help"
+    icon="circle-help"
+    aria-haspopup="dialog"
+    [label]="'shell.help' | transloco"
+    (click)="keyboard.sheetOpen.set(true)"
+  ></button>
+  } @else {
+  <!-- Below 1120 px (spec 024 T76): area, zen, assistant, settings and help live in the overflow menu. -->
+  <button
+    ui-icon-button
+    class="more"
+    data-tool="more"
+    icon="ellipsis"
+    aria-haspopup="dialog"
+    [label]="'shell.more' | transloco"
+    [attr.title]="'shell.more' | transloco"
+    [attr.aria-expanded]="nav.expanded().more"
+    (pointerdown)="nav.press('more')"
+    (click)="nav.toggle($event, 'more')"
+  ></button>
+  }
 </header>
+
+<!-- The mocked panel renders only while open (a closed panel is not in the DOM, ISC-149.1). -->
+@if (assistant.open()) {
+  @defer (on immediate) {
+    <app-assistant-panel />
+  }
+}

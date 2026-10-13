@@ -1,0 +1,19 @@
+/*
+ * Status partial: the Activity card's links and TL;DR box, and the dashed dependency chip of What is open. The rail
+ * (Where it stands, Waiting on you) moved to `features/spec/rail/spec-rail`, shared by every spec-detail tab.
+ */
+.act-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.act-links a {
+  color: var(--disp-text);
+  font-weight: 500;
+}
+
+.act-brief {
+  display: block;
+  margin-block-start: 12px;
+}

@@ -9,14 +9,28 @@
     }
   } @else {
     <p class="hint" data-matrix-hint>{{ 'matrix.hint' | transloco }}</p>
+    <ui-scrubber
+      class="mx-scrubber"
+      data-matrix-scrubber
+      [frames]="stops()"
+      [markers]="markers()"
+      [value]="current()"
+      [playing]="playing()"
+      [ariaLabel]="'board.frame.scrubber' | transloco"
+      (valueChange)="setFrame($event)"
+      (playingChange)="playing.set($event)"
+    />
     <div class="card border border-base-300 bg-base-100 frame-card">
       <div class="scroll" role="region" tabindex="0" data-matrix-region [attr.aria-label]="'matrix.region' | transloco">
         <table class="grid" data-matrix>
           <thead>
             <tr>
               <th scope="col" class="task corner">{{ 'matrix.task' | transloco }}</th>
+              <th scope="col" class="meta-col">{{ 'matrix.claim' | transloco }}</th>
+              <th scope="col" class="mx-lane-mark" [attr.aria-label]="'matrix.laneMark' | transloco"></th>
+              <th scope="col" class="meta-col">{{ 'matrix.lane' | transloco }}</th>
               @for (column of matrix().columns; track $index) {
-                <th scope="col" data-column [attr.data-kind]="column.kind" [attr.data-frame]="column.frame" [attr.aria-label]="columnNames()[$index]" [attr.title]="columnNames()[$index]">
+                <th scope="col" data-column [attr.data-kind]="column.kind" [attr.data-frame]="column.frame" [attr.data-current]="column.frame === current() ? '' : null" [attr.aria-label]="columnNames()[$index]" [attr.title]="columnNames()[$index]">
                   @switch (column.kind) {
                     @case ('result') {
                       <span aria-hidden="true">{{ column.label }}</span>
@@ -29,23 +43,18 @@
               }
             </tr>
           </thead>
-          @for (group of groups(); track group.lane) {
+          @for (group of groups(); track group.lane; let gi = $index) {
             <tbody [attr.data-lane]="group.lane">
-              <tr class="lane-row">
-                <th scope="rowgroup" [attr.colspan]="matrix().columns.length + 1">
-                  <span class="lane-name" data-lane-name>{{ group.lane }}</span>
-                </th>
-              </tr>
               @for (row of group.rows; track row.detail.task) {
                 <tr [attr.data-row]="row.detail.task">
                   <th scope="row" class="task" [attr.title]="row.detail.text">
                     <span class="task-in">
                       <span class="id">{{ row.detail.task }}</span>
-                      @if (state.tier() === 'wide') {
-                        <span class="claim">{{ row.detail.claim }}</span>
-                      }
                     </span>
                   </th>
+                  <th scope="row" class="meta-col claim">{{ row.detail.claim }}</th>
+                  <th scope="row" class="mx-lane-mark"><span class="mx-ldot" aria-hidden="true" [style.background]="laneDot(gi)"></span></th>
+                  <th scope="row" class="meta-col" data-lane-name>{{ group.lane }}</th>
                   @for (cell of row.cells; track cell.column) {
                     @let column = matrix().columns[cell.column];
                     @let query = column === undefined ? null : queryOf(column);
@@ -68,6 +77,47 @@
           }
         </table>
       </div>
+      <p class="mx-legend" data-matrix-legend>
+        @for (s of legendStates; track s) {
+          @if (!$first) {<span aria-hidden="true"> · </span>}
+          <span class="mx-legend-item"><ui-glyph [state]="s" family="card" [size]="14" />{{ stateKey(s, 'card') | transloco }}</span>
+        }
+      </p>
     </div>
+  }
+
+  @if (frame(); as f) {
+    <ng-template #railBlocks>
+      <app-this-frame [frame]="f" [events]="events()" (opened)="openCard($event)" />
+      <app-needs-you [frame]="f" [cards]="needsYou()" (opened)="openCard($event)" />
+    </ng-template>
+    <ng-template #frameBar>
+      <app-frame-bar
+        [label]="f.label"
+        [live]="isLive()"
+        [thisFrame]="events().length"
+        [needsYou]="needsYou().length"
+        [index]="current()"
+        [last]="lastIndex()"
+        (step)="setFrame($event)"
+        (opened)="barOpen.set(true)"
+      />
+    </ng-template>
+    @if (!wide() && !state.zen()) {
+      <ng-container [ngTemplateOutlet]="frameBar" />
+    }
+    @if (!wide() || state.zen()) {
+      <ui-sheet [open]="barOpen()" tier="compact" [heading]="'board.bar.heading' | transloco" (openChange)="barOpen.set($event)">
+        <ui-segmented fill [options]="barTabs()" [value]="barTab()" [label]="'board.bar.heading' | transloco" (valueChange)="setBarTab($event)" />
+        @if (barTab() === 'frame') {
+          <app-this-frame [frame]="f" [events]="events()" [collapsible]="false" (opened)="openCard($event)" />
+        } @else {
+          <app-needs-you [frame]="f" [cards]="needsYou()" [framed]="false" (opened)="openCard($event)" />
+        }
+      </ui-sheet>
+    }
+    @if (selected(); as c) {
+      <app-card-detail [card]="c" [history]="selectedHistory()" [open]="true" (openChange)="closeDetail($event)" />
+    }
   }
 </section>

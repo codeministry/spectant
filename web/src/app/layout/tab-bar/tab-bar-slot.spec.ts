@@ -9,7 +9,7 @@ import { ApiClient, type ApiResult } from '../../core/api.service';
 import { ShellState } from '../shell/shell-state.service';
 import { TabBarSlot } from './tab-bar-slot';
 
-// Spec 023: the header slot renders no tech tabs over the not-found page, on the same condition the tech page uses
+// Spec 023: the slot renders no tech tabs over the not-found page, on the same condition the tech page uses
 // (`ShellData.techMissing`: the workspace or the tech route answered the contract's 404).
 
 const STUB = {
@@ -26,7 +26,7 @@ const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notMod
 @Component({
   selector: 'app-slot-host',
   imports: [TabBarSlot],
-  template: `<header><app-tab-bar-slot placement="header" /></header><main><app-tab-bar-slot placement="main" /></main>`,
+  template: `<header></header><main><app-tab-bar-slot /></main>`,
 })
 class SlotHost {}
 
@@ -52,9 +52,9 @@ async function at(url: string): Promise<HTMLElement> {
 describe('TabBarSlot over the tech not-found page (spec 023)', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('renders the tech tabs in the header at compact for a known workspace', async () => {
+  it('renders the tech tabs at compact for a known workspace', async () => {
     const root = await at('/w/harbor/tech/overview');
-    expect(root.querySelectorAll('header app-tab-bar')).toHaveLength(1);
+    expect(root.querySelectorAll('main app-tab-bar')).toHaveLength(1);
   });
 
   it('renders no bar at compact when the workspace is unknown', async () => {

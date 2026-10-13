@@ -1,5 +1,6 @@
 <ng-template #menu>
-  <nav class="area-menu" [attr.data-tier]="state.tier()" [attr.aria-label]="'shell.area.menu' | transloco">
+  <nav class="area-menu" [attr.data-tier]="state.tier()" [attr.aria-label]="menuKey() | transloco">
+    <p class="menu-head" data-menu-head>{{ head().key | transloco: head().params }}</p>
     <ul uiRovingList [singleKeys]="singleKeys()">
       @if (workspaceScope()) {
         @for (page of pages(); track page.id) {
@@ -29,7 +30,7 @@
           <ng-template #body>
             <span class="dot" aria-hidden="true" [attr.data-dot]="area.id"></span>
             <span class="entry-name">{{ 'shell.areas.' + area.id | transloco }}</span>
-            @if (area.goKey; as key) {
+            @if (area.goKey ?? dashboardKey(area.id); as key) {
               <ui-kbd class="area-key" aria-hidden="true">{{ 'shell.area.goKey' | transloco: { key } }}</ui-kbd>
             }
             @if (!area.built) {
@@ -77,11 +78,11 @@
 </ng-template>
 
 @if (compact()) {
-  <ui-sheet tier="compact" [(open)]="sheetOpen" [label]="'shell.area.menu' | transloco">
+  <ui-sheet tier="compact" [(open)]="sheetOpen" [label]="menuKey() | transloco">
     <ng-container [ngTemplateOutlet]="menu" />
   </ui-sheet>
 } @else {
-  <ui-popover #popover class="area-popover" placement="start" [label]="'shell.area.menu' | transloco">
+  <ui-popover #popover class="area-popover" placement="start" [label]="menuKey() | transloco">
     <ng-container [ngTemplateOutlet]="menu" />
   </ui-popover>
 }

@@ -1,7 +1,7 @@
 /*
  * Warnings (T64, ported in T90 from the prototype's `styles.css`: `.rail-block > .eyebrow` l.415, warnings-panel
  * `.w-group` / `.w-line` l.403-408, `.fog-line` l.660-663, `.empty-line` l.409-410). Tokens only; spacing on the 8 px
- * scale; the orange callout edge and the violet fog edge are the inherited 3 px exceptions.
+ * scale; the orange callout edge is the inherited 3 px exception.
  */
 :host {
   display: block;
@@ -125,20 +125,9 @@
   line-clamp: 2;
 }
 
-/* Fog line: the violet left edge on the violet tint; text on the tint takes the `-ink` colours. */
-.fog-line {
-  padding: 10px 12px;
-  border-inline-start: 3px solid var(--color-secondary);
-  border-radius: 0 var(--radius-field) var(--radius-field) 0;
-  background: var(--ques-t);
-}
-
+/* Fog line: the prototype's `.w-line.fog`, a plain line whose `cloud` icon is violet. */
 .fog-line .cloud {
-  color: var(--ques-ink);
-}
-
-.fog-line .spec {
-  color: var(--disp-ink);
+  color: var(--color-secondary);
 }
 
 .empty {
@@ -153,8 +142,7 @@
 }
 
 @media (forced-colors: active) {
-  .callout,
-  .fog-line {
+  .callout {
     border-inline-start-color: CanvasText;
   }
 }

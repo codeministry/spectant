@@ -59,9 +59,9 @@ ui-dialog {
   block-size: 32px;
   padding: 0 16px 6px;
   color: var(--muted-ink);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   line-height: 16px;
   text-transform: uppercase;
 }
@@ -84,8 +84,20 @@ ui-dialog {
 }
 
 .p-item[aria-selected="true"] {
-  background: var(--color-base-200);
+  background: var(--color-base-300);
   box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+/* The lead icon (prototype `.p-item .icon`): muted, 20 px, before the label or the chip. */
+.p-lead {
+  flex: none;
+  color: var(--muted-ink);
+}
+
+/* Next up commands and service ports in mono (prototype `.p-item .grow.mono`). */
+.p-item .grow.mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
 }
 
 /* Label and meta are cut at a whole word by `uiClamp`: one line, three on the highlighted option (ISC-111.2). */

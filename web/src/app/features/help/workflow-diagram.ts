@@ -43,14 +43,23 @@ const ROLE: Readonly<Record<WorkflowStage, StageRole>> = {
   done: 'done',
 };
 
-/** The role's edge token: the same the board's cards carry (`CARD_EDGE`, board-card.ts), held equal by the spec. */
+/** The role's edge token for the legend: build, review and done match the board's cards (`CARD_EDGE`, board-card.ts). */
 export const ROLE_EDGE: Readonly<Record<StageRole, string>> = {
-  idea: 'var(--track)',
-  queued: 'var(--line)',
+  idea: 'var(--teal)',
+  queued: 'var(--track)',
   moving: 'var(--color-primary)',
   waits: 'var(--color-secondary)',
   detour: 'var(--held)',
   done: 'var(--color-accent)',
+};
+
+/**
+ * A node's left edge per stage: the same token the board's card carries (`CARD_EDGE`, board-card.ts), held equal by
+ * the spec. Spec 024: the prototype board colours a blocked column red, so blocked leaves its detour role's grey.
+ */
+export const STAGE_EDGE: Readonly<Record<WorkflowStage, string>> = {
+  ...(Object.fromEntries(Object.entries(ROLE).map(([stage, role]) => [stage, ROLE_EDGE[role]])) as Record<WorkflowStage, string>),
+  blocked: 'var(--color-error)',
 };
 
 export const roleOf = (stage: WorkflowStage): StageRole => ROLE[stage];
@@ -195,7 +204,7 @@ export function workflowLayout(row: WorkflowRow, labels: DiagramLabels): Workflo
       detour,
       gate: detour ? null : (gateInto.get(stage) ?? null),
       role,
-      edge: ROLE_EDGE[role],
+      edge: STAGE_EDGE[stage],
       // The 3 px edge bar sits at the left, so the label centres in the room right of it.
       textX: x + width / 2 + 4,
       textY: y + FIGURE.nodeHeight / 2,

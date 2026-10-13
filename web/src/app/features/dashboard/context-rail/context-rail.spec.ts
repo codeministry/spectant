@@ -94,11 +94,12 @@ describe('ContextRail', () => {
     expect(page.querySelector('app-warnings-panel')?.getAttribute('data-form')).toBe('section');
   });
 
-  it('renders the warnings as a callout at compact', async () => {
+  it('renders the warnings as the section right after Next up at compact (018-B15)', async () => {
     tier.set('compact');
     const { page } = await render();
     expect(page.querySelector('app-next-up-list')?.getAttribute('data-form')).toBe('card');
-    expect(page.querySelector('app-warnings-panel')?.getAttribute('data-form')).toBe('callout');
+    expect(page.querySelector('app-warnings-panel')?.getAttribute('data-form')).toBe('section');
+    expect(page.querySelector('app-next-up-list + app-warnings-panel')).not.toBeNull();
   });
 
   it('moves between rail and inline when the tier changes', async () => {

@@ -487,7 +487,8 @@ export interface SpecPageInput {
 
 // ─── Timeline (timeline.ts, derived-stages.ts, events.ts) ────────────────────────────────────────────────────────
 
-export type TimelineKind = 'decision' | 'round' | 'gate' | 'commit' | 'stage';
+/** `note` and `agent` are the server's joins (the app's notes, the held lock sessions); every other kind is from the files. */
+export type TimelineKind = 'decision' | 'round' | 'gate' | 'commit' | 'stage' | 'note' | 'agent';
 
 export interface TimelineEntry {
   /** ISO 8601 as the source wrote it (a date alone is allowed); empty on an undated derived stage transition. */
@@ -525,6 +526,10 @@ export interface TimelineEntry {
    * transition before it (derived-stages.ts).
    */
   readonly undated?: boolean;
+  /** Decision entries from a `### Qn · …` block: its From / Offered / Chosen / Landed in (`context-log.ts`). */
+  readonly question?: DecisionQuestion;
+  /** Agent entries: true while the session's lock is held. */
+  readonly running?: boolean;
 }
 
 export interface TimelineInput {
@@ -1132,6 +1137,71 @@ export interface DocsPage {
   readonly sections: readonly DocsSection[];
   /** Words of prose: code blocks and diagram sources not counted. */
   readonly wordCount: number;
+  /** The Decisions tab only (context.md): the goal lock and the question rounds (`context-log.ts`). */
+  readonly decisions?: DecisionLog;
+  /** The Decisions tab only: spec.md's `principal_stated_goal_signal` (1–4), when the frontmatter carries one. */
+  readonly goalSignal?: number;
+  /** The Constitution tab only: the lanes table and the gate tiers (`context-log.ts`). */
+  readonly constitution?: ConstitutionView;
+}
+
+/** One offered answer of a context.md question; the `(recommended)` / `(empfohlen)` mark is lifted into `recommended`. */
+export interface DecisionOption {
+  readonly text: string;
+  readonly recommended: boolean;
+}
+
+/** A `### Qn · …` block of context.md. */
+export interface DecisionQuestion {
+  /** The number after `Q`; null for an unnumbered `### Q · …`. */
+  readonly n: string | null;
+  readonly title: string;
+  /** The `- From:` line (the command or the asking task), when the block has one. */
+  readonly from: string | null;
+  readonly offered: readonly DecisionOption[];
+  readonly chosen: string | null;
+  /** `- Landed in:` split on top-level commas, backticks dropped: claim IDs, files, headings. */
+  readonly landedIn: readonly string[];
+}
+
+/** A `## Round …` of context.md. */
+export interface DecisionRound {
+  /** `round-<index>`, unique within the log. */
+  readonly id: string;
+  /** The header without its date: `Round 2 — before the plan`. */
+  readonly title: string;
+  readonly date: string | null;
+  /** Round 0's `- Shapes offered:` line, split like an offer; empty elsewhere. */
+  readonly shapes: readonly DecisionOption[];
+  /** The `- Chosen:` line that answers the shapes; null without shapes. */
+  readonly shapeChosen: string | null;
+  readonly questions: readonly DecisionQuestion[];
+}
+
+/** context.md as the Decisions tab's cards. */
+export interface DecisionLog {
+  /** `## Goal — confirmed <ts>`: its first paragraph and the timestamp; null without the block. */
+  readonly goal: { readonly text: string; readonly confirmed: string } | null;
+  readonly rounds: readonly DecisionRound[];
+}
+
+/** A row of the constitution's `## Lanes` table. */
+export interface ConstitutionLane {
+  readonly lane: string;
+  readonly paths: readonly string[];
+  readonly probe: string | null;
+}
+
+/** A row of the constitution's `## Gates` table: one tier of the verification ladder. */
+export interface GateTier {
+  readonly tier: string;
+  readonly command: string;
+  readonly runsWhen: string;
+}
+
+export interface ConstitutionView {
+  readonly lanes: readonly ConstitutionLane[];
+  readonly tiers: readonly GateTier[];
 }
 
 /** Whether a Docs tab belongs to a spec type's workflow, and the command that writes its file (no spec number). */

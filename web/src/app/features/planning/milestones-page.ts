@@ -13,6 +13,8 @@ import { UiChip } from '../../shared/ui/chip/chip';
 import { UiIdeaChip } from '../../shared/ui/idea-chip/idea-chip';
 import { UiMeter } from '../../shared/ui/meter/meter';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
+import { UiRing } from '../../shared/ui/ring/ring';
+import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../shared/ui/term/term';
 import { fragmentTarget, installArrival, planningPageState, stagesByRow } from './planning-page';
@@ -38,6 +40,10 @@ const DAY_MS = 86_400_000;
 const utcDay = (iso: string): Date => new Date(`${iso}T00:00:00Z`);
 
 interface RowView {
+  /** The next milestone: the first one in target order that is not complete (cyan edge with the glow). */
+  readonly next: boolean;
+  /** Closed share in percent for the ring; null without claims. */
+  readonly pct: number | null;
   readonly milestone: PlanningMilestone;
   /** The `Intl` medium date of the target in the UI language; null for an undated entry. */
   readonly date: string | null;
@@ -62,7 +68,7 @@ interface RowView {
  */
 @Component({
   selector: 'app-milestones-page',
-  imports: [TranslocoPipe, RouterLink, NotFound, UiButton, UiCard, UiChip, UiIcon, UiIdeaChip, UiMeter, UiPageHead, UiSkeleton, UiTerm, SpecChip],
+  imports: [TranslocoPipe, RouterLink, NotFound, UiButton, UiCard, UiChip, UiIcon, UiIdeaChip, UiMeter, UiPageHead, UiRing, UiSkeleton, UiTerm, UiWsBadge, SpecChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'milestones', '[attr.data-tier]': 'tier()' },
   templateUrl: './milestones-page.html',
@@ -79,6 +85,7 @@ export class MilestonesPage {
   protected readonly name = computed(() => this.data.workspaceName(this.ws()));
   protected readonly tier = this.state.tier;
   protected readonly wide = computed(() => this.tier() === 'wide');
+  protected readonly compact = computed(() => this.tier() === 'compact');
 
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
   private readonly dateFormat = computed(
@@ -94,7 +101,7 @@ export class MilestonesPage {
 
   private readonly stages = computed(() => stagesByRow(this.data.specRows()));
 
-  protected readonly rows = computed<readonly RowView[]>(() => {
+  private readonly baseRows = computed<readonly RowView[]>(() => {
     const stages = this.stages();
     const format = this.dateFormat();
     const today = utcDay(this.today()).getTime();
@@ -106,6 +113,8 @@ export class MilestonesPage {
         const ahead = target === null ? null : Math.round((target.getTime() - today) / DAY_MS);
         return {
           milestone,
+          next: false,
+          pct: milestone.total > 0 ? (100 * milestone.closed) / milestone.total : null,
           date: target === null ? null : format.format(target),
           days: ahead === null ? null : Math.max(0, milestone.state === 'late' ? -ahead : ahead),
           complete: milestone.state === 'complete',
@@ -115,6 +124,28 @@ export class MilestonesPage {
         };
       });
   });
+
+  /** The eyebrow's count (prototype `<WS> · MILESTONES · n`); empty while the tree loads. */
+  protected readonly eyebrowCount = computed(() => (this.model() === null ? '' : String(this.rows().length)));
+
+  /** The rows with the next milestone marked. */
+  protected readonly shown = computed<readonly RowView[]>(() => {
+    const rows = this.baseRows();
+    const next = rows.findIndex((row) => !row.complete);
+    return rows.map((row, index) => (index === next ? { ...row, next: true } : row));
+  });
+
+  /** The rail's `NEXT MILESTONE` block. */
+  protected readonly nextRow = computed(() => this.rows().find((row) => row.next) ?? null);
+  /** Its three features with the most open claims, master order within a count. */
+  protected readonly mostOpen = computed(() =>
+    (this.nextRow()?.milestone.features ?? [])
+      .map((feature, index) => ({ feature, index }))
+      .filter(({ feature }) => feature.total > feature.closed)
+      .sort((a, b) => b.feature.total - b.feature.closed - (a.feature.total - a.feature.closed) || a.index - b.index)
+      .slice(0, 3)
+      .map(({ feature }) => feature),
+  );
 
   /** The summary: the count and the next milestone, the earliest not complete (the model sorts by target). */
   protected readonly meta = computed(() => {
@@ -126,6 +157,8 @@ export class MilestonesPage {
       ? { key: 'planning.milestones.metaUndated', params }
       : { key: 'planning.milestones.meta', params: { ...params, date: next.date } };
   });
+
+  protected readonly rows = this.shown;
 
   protected readonly target = fragmentTarget();
 

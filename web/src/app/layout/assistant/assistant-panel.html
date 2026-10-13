@@ -1,0 +1,98 @@
+<section
+  #panel
+  popover="manual"
+  class="as-panel"
+  role="dialog"
+  data-assistant
+  data-demo
+  [attr.aria-label]="'assistant.label' | transloco"
+  (keydown)="onKeydown($event)"
+>
+  <header class="as-head" data-demo-head>
+    <app-mascot class="as-avatar" [size]="28" [state]="dot.thinking() ? 'thinking' : 'idle'" />
+    <span class="as-id">
+      <b>{{ 'assistant.name' | transloco }}</b>
+      <small>{{ 'assistant.context' | transloco }}</small>
+    </span>
+    <ui-chip variant="demo" />
+    <span class="as-push"></span>
+    <button
+      ui-icon-button
+      size="sm"
+      data-assistant-new
+      icon="plus"
+      [label]="'assistant.new' | transloco"
+      [attr.title]="'assistant.new' | transloco"
+      (click)="restart()"
+    ></button>
+    <button
+      ui-icon-button
+      size="sm"
+      data-assistant-close
+      icon="x"
+      [label]="'assistant.close' | transloco"
+      title="Esc"
+      (click)="dot.close()"
+    ></button>
+  </header>
+
+  <div #log class="as-log" aria-live="polite">
+    @if (dot.messages().length === 0) {
+      <div class="as-msg dot">
+        <app-mascot class="as-ava" [size]="22" state="happy" />
+        <div class="as-bubble">
+          <p>{{ 'assistant.intro' | transloco }}</p>
+          <p class="as-note">{{ 'assistant.introNote' | transloco }}</p>
+        </div>
+      </div>
+    }
+    @for (message of dot.messages(); track $index) {
+      @if (message.from === 'you') {
+        <div class="as-msg you">
+          <div class="as-bubble">{{ message.text }}</div>
+        </div>
+      } @else {
+        <div class="as-msg dot">
+          <app-mascot class="as-ava" [size]="22" />
+          <div class="as-bubble" data-assistant-reply>
+            {{ message.text }}
+          </div>
+        </div>
+      }
+    }
+    @if (dot.thinking()) {
+      <div class="as-msg dot">
+        <app-mascot class="as-ava" [size]="22" state="thinking" />
+        <div class="as-bubble" [attr.aria-label]="'assistant.thinking' | transloco">
+          <span class="as-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="as-chips" role="group" [attr.aria-label]="'assistant.suggestions' | transloco">
+    @for (entry of suggestions(); track entry.prompt) {
+      <button type="button" class="as-chip" data-assistant-suggestion (click)="ask(entry.prompt)">{{ entry.prompt }}</button>
+    }
+  </div>
+
+  <form class="as-input" (submit)="send($event)">
+    <input
+      #input
+      type="text"
+      autocomplete="off"
+      data-assistant-input
+      [placeholder]="'assistant.placeholder' | transloco"
+      [attr.aria-label]="'assistant.input' | transloco"
+    />
+    <button type="submit" class="as-send" data-assistant-send [attr.aria-label]="'assistant.send' | transloco">
+      <ui-icon name="rocket" [size]="16" />
+    </button>
+  </form>
+
+  <footer class="as-foot">
+    {{ 'assistant.foot' | transloco }}
+    <span class="as-push"></span>
+    <ui-kbd>a</ui-kbd>
+  </footer>
+</section>

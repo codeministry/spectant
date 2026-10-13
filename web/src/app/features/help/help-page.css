@@ -1,7 +1,7 @@
 /*
  * The Help page (spec 008, T162, ISC-133.1): one centred column of at most 1080 px (the shell body's padding is the
  * gutter: 16 px compact, 24 px medium, 32 px wide), the sticky section nav, the page head, then the sections in nav
- * order. A section lands below the 64 px header and the nav (92 px header at compact), its heading focused.
+ * order. A section lands below the 64 px header and the nav (the 64 px sticky row at compact too), its heading focused.
  */
 :host {
   --help-scroll-margin: 128px;
@@ -11,28 +11,49 @@
   margin-inline: auto;
 }
 
+/* Prototype `page-head` over the anchor pills: no card, the version muted beside the h1. */
 .head {
-  margin-block: 24px;
+  margin-block: 24px 8px;
+}
+
+.h1-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.version {
+  color: var(--muted-ink);
+}
+
+app-help-nav {
+  margin-block-end: 24px;
 }
 
 h1 {
   margin: 0;
 }
 
-.subtitle {
-  margin: 4px 0 0;
-  color: var(--muted-ink);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 20px;
-}
-
+/* Prototype `.section-head` (16/24 600, 16 px below) in the help face (`.help h2`: Sora). */
 h2 {
   margin: 0 0 16px;
-  font-size: 18px;
+  font-family: var(--font-brand);
+  font-size: 16px;
   font-weight: 600;
   line-height: 24px;
+}
+
+.vh {
+  position: absolute;
+  overflow: hidden;
+  clip-path: inset(50%);
+  inline-size: 1px;
+  block-size: 1px;
+  white-space: nowrap;
+}
+
+app-help-lifecycle + .tbl-card {
+  margin-block-start: 16px;
 }
 
 h3 {
@@ -66,10 +87,6 @@ h4 {
   margin: 0;
   font-size: 15px;
   line-height: 24px;
-}
-
-.lead {
-  color: var(--muted-ink);
 }
 
 code {
@@ -186,82 +203,19 @@ code {
 
 /* Commands: one row per command of the stage table. */
 
-.commands {
-  inline-size: 100%;
-  margin-block-start: 16px;
-  border-collapse: collapse;
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.commands caption {
-  margin-block-end: 8px;
-  color: var(--muted-ink);
-  font-size: 13px;
-  text-align: start;
-}
-
-.commands :is(th, td) {
-  padding: 8px;
-  border-block-end: 1px solid var(--line);
-  text-align: start;
+.commands .command {
+  inline-size: 24%;
   vertical-align: middle;
 }
 
-.commands thead th {
-  color: var(--muted-ink);
+.commands .file {
+  color: var(--muted);
+  font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 600;
-  line-height: 16px;
-}
-
-.commands .command {
-  inline-size: 34%;
+  overflow-wrap: anywhere;
 }
 
 /* Getting started and Keyboard. */
-
-.steps {
-  display: grid;
-  gap: 8px;
-  max-inline-size: 72ch;
-  margin: 16px 0 0;
-  padding-inline-start: 24px;
-  font-size: 15px;
-  line-height: 24px;
-}
-
-.keys-context {
-  margin-block-start: 24px;
-}
-
-.keys-group + .keys-group {
-  margin-block-start: 16px;
-}
-
-.keys {
-  margin: 0;
-}
-
-.key-row {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 16px;
-  align-items: baseline;
-  padding-block: 8px;
-  border-block-end: 1px solid var(--line);
-}
-
-.key-row dt {
-  display: flex;
-  gap: 4px;
-}
-
-.key-row dd {
-  margin: 0;
-  font-size: 14px;
-  line-height: 20px;
-}
 
 @container shell (width < 640px) {
   :host {
@@ -285,8 +239,12 @@ code {
   }
 
   .commands tr {
-    padding-block: 8px;
+    padding: 10px 16px;
     border-block-end: 1px solid var(--line);
+  }
+
+  .commands tbody tr:last-child {
+    border-block-end: 0;
   }
 
   .commands :is(th, td) {
@@ -299,9 +257,20 @@ code {
     margin-block-start: 4px;
   }
 
-  .key-row {
-    grid-template-columns: 72px minmax(0, 1fr);
-    gap: 12px;
+  .commands .file {
+    display: flex;
+    gap: 8px;
+    margin-block-start: 4px;
+  }
+
+  .commands .file::before {
+    flex: none;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    content: attr(data-label);
   }
 }
 
@@ -384,37 +353,14 @@ figcaption {
 
 /* Glossary (ISC-116) */
 
-.glossary {
-  inline-size: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.glossary caption {
-  margin-block-end: 8px;
-  color: var(--muted-ink);
-  font-size: 13px;
-  text-align: start;
-}
-
-.glossary :is(th, td) {
-  padding: 12px 8px;
-  border-block-end: 1px solid var(--line);
-  text-align: start;
-  vertical-align: top;
-}
-
-.glossary thead th {
-  color: var(--muted-ink);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 16px;
-}
-
 .glossary .term {
   inline-size: 22%;
   font-weight: 600;
+}
+
+/* Prototype `.gloss dt:target`: the term a link lands on lights up in the cyan tint. */
+.glossary tr:target {
+  background: var(--disp-t);
 }
 
 .glossary .term dfn {
@@ -450,7 +396,7 @@ figcaption {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
-    padding-block: 12px;
+    padding: 10px 16px;
     border-block-end: 1px solid var(--line);
   }
 
@@ -481,4 +427,136 @@ figcaption {
 
 figure.workflow-figure {
   min-inline-size: 0;
+}
+
+/*
+ * About (prototype help `.about-grid`, `.about-visual`, `.about-logo`, `.shot`, `.meta-row`; spec 024 sweep): the text
+ * with its mono meta row, and beside it from 640 px the logo lock-up over two screenshots of the app in this theme.
+ */
+.about-grid {
+  display: grid;
+  gap: 24px;
+}
+
+.about-grid > * {
+  min-inline-size: 0;
+}
+
+.about-text {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.about-text h2 {
+  margin: 0;
+}
+
+.meta-row {
+  margin: 0;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.about-visual {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.about-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-base-content);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.about-logo .mark {
+  inline-size: 40px;
+  block-size: 40px;
+  fill: none;
+  stroke-width: 3;
+}
+
+.about-logo .mark-track {
+  stroke: var(--track);
+}
+
+.about-logo .mark-arc {
+  stroke-linecap: round;
+}
+
+.about-logo .mark-arc-a {
+  stroke: var(--clos-text);
+  stroke-dasharray: 40 60;
+}
+
+.about-logo .mark-arc-b {
+  stroke: var(--disp-text);
+  stroke-dasharray: 0 40 40 20;
+}
+
+.about-logo .mark-dot {
+  fill: var(--ques-text);
+}
+
+.wm-accent {
+  color: var(--clos-text);
+}
+
+.shot {
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
+}
+
+.shot img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+}
+
+.shot .t-dark,
+.shot-b {
+  display: none;
+}
+
+:host-context([data-theme='spec-dark']) .shot .t-dark {
+  display: block;
+}
+
+:host-context([data-theme='spec-dark']) .shot .t-light {
+  display: none;
+}
+
+@container shell (width >= 640px) {
+  .about-grid {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .about-visual {
+    padding-block-end: 40px;
+  }
+
+  .shot-a {
+    inline-size: 82%;
+  }
+
+  .shot-b {
+    display: block;
+    position: absolute;
+    inset-inline-end: 0;
+    inset-block-end: 0;
+    inline-size: 62%;
+  }
 }

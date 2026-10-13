@@ -8,10 +8,12 @@ export interface MeterSegment {
 }
 
 /**
- * A bar meter (design.md § KPI band, spec rows): single (`value / max`; the fill is a lime → cyan gradient or a
- * tone and morphs `transform` only) or split (proportional `segments`, e.g. specs per phase). 6 px tall, 4 px `mini`,
- * 8 px `lg` (`size`; the `mini` boolean stays and wins),
- * track in `--track`, fully rounded. Pass `label` (translated): it names the meter for assistive technology, and
+ * A bar meter, the prototype's `[data-ui="meter"]` (spec 024 design.md § Fundament: "Meter"): single (`value / max`;
+ * the fill is solid cyan, lime once the meter is full, or a tone, and morphs `transform` only) or split (proportional
+ * `segments` with 2 px gaps on no track, each segment rounded 3 px, e.g. specs per phase). 6 px tall, 4 px `mini` (the
+ * prototype's `thin`), 8 px `lg` (`size`; the `mini` boolean stays and wins), radius 3. The track is the
+ * prototype's `--track` mixed 45 % into transparent (spec 024: prototype background (principal 2026-10-13)); it paints
+ * below the 3:1 mark line, and `web/tests/contrast-exceptions.ts` lists the pairs. Pass `label` (translated): it names the meter for assistive technology, and
  * `valueText` (translated, single mode only) for `aria-valuetext`, e.g. "3 of 4 claims closed".
  */
 @Component({
@@ -27,14 +29,16 @@ export interface MeterSegment {
     '[attr.data-size]': 'effectiveSize() === "default" ? null : effectiveSize()',
     '[attr.data-mini]': 'effectiveSize() === "mini" ? "" : null',
     '[attr.data-split]': 'segments() ? "" : null',
+    '[attr.data-full]': '!segments() && !tone() && full() ? "" : null',
   },
   styles: `
-    :host { display: flex; overflow: hidden; min-inline-size: 0; block-size: 6px; border-radius: 999px; background: var(--track); }
+    :host { display: flex; overflow: hidden; min-inline-size: 0; block-size: 6px; border-radius: 3px; background: color-mix(in srgb, var(--track) 45%, transparent); }
     :host([data-mini]) { block-size: 4px; }
     :host([data-size="lg"]) { block-size: 8px; }
-    :host([data-split]) { gap: 2px; }
-    .fill { flex: 1; background: linear-gradient(90deg, var(--color-accent), var(--color-primary)); transform-origin: left center; transition: transform var(--motion-duration-slow) var(--motion-ease-standard); }
-    .seg { min-inline-size: 0; }
+    :host([data-split]) { gap: 2px; background: none; }
+    .fill { flex: 1; background: var(--color-primary); transform-origin: left center; transition: transform var(--motion-duration-slow) var(--motion-ease-standard); }
+    :host([data-full]) .fill { background: var(--color-accent); }
+    .seg { min-inline-size: 0; border-radius: 3px; }
     @media (forced-colors: active) {
       :host { border: 1px solid CanvasText; }
       .fill, .seg { background: CanvasText; }
@@ -66,9 +70,11 @@ export class UiMeter {
     const tone = this.tone();
     return tone ? toneColor(tone) : null;
   });
-  protected readonly transform = computed(() => {
+  private readonly ratio = computed(() => {
     const max = this.max();
-    const ratio = max > 0 ? Math.min(1, Math.max(0, this.value() / max)) : 0;
-    return `scaleX(${ratio})`;
+    return max > 0 ? Math.min(1, Math.max(0, this.value() / max)) : 0;
   });
+  /** The prototype's `lime` fill: a meter whose value reached its max. */
+  protected readonly full = computed(() => this.ratio() === 1);
+  protected readonly transform = computed(() => `scaleX(${this.ratio()})`);
 }

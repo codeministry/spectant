@@ -82,7 +82,7 @@ describe('BoardCard (T122, ISC-129)', () => {
     const c = cardOf('registry-webhooks');
     const card = host.querySelector<HTMLElement>('ui-card');
     expect(card?.hasAttribute('data-dashed')).toBe(true);
-    expect(card?.style.getPropertyValue('--edge')).toBe('var(--track)');
+    expect(card?.style.getPropertyValue('--edge')).toBe('var(--teal)');
     expect(host.querySelector('.num')).toBeNull();
     expect(text(host.querySelector('.idea .slug'))).toBe('registry-webhooks');
     expect(host.querySelector('.idea ui-icon')).not.toBeNull();

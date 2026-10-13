@@ -34,6 +34,8 @@ export type GlyphShape =
 export interface GlyphSpec {
   readonly shape: GlyphShape;
   readonly tone: Tone;
+  /** The glyph's own ink where the prototype draws it apart from the state chip (`.glyph.taken` is orange). */
+  readonly ink?: Tone;
 }
 
 // `Record` keeps both tables exhaustive: a new state in core fails the type check here first.
@@ -54,8 +56,9 @@ export const CARD_GLYPHS: Readonly<Record<CardState, GlyphSpec>> = {
 export const CLAIM_GLYPHS: Readonly<Record<ClaimGlyphState, GlyphSpec>> = {
   open: { shape: 'ring', tone: 'neutral' },
   takeable: { shape: 'ring-plus', tone: 'accent' },
-  taken: { shape: 'lock', tone: 'primary' },
-  blocked: { shape: 'ring-slash', tone: 'warning' },
+  taken: { shape: 'lock', tone: 'primary', ink: 'warning' },
+  // Neutral like the prototype's `.st-blocked` chip (--raised / --muted; spec 024 ISC-148).
+  blocked: { shape: 'ring-slash', tone: 'neutral' },
   closed: { shape: 'disc', tone: 'accent' },
   dropped: { shape: 'ring-minus', tone: 'neutral' },
 };

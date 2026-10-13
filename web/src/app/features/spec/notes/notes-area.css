@@ -1,4 +1,5 @@
-/* Not encapsulated (the preview is [innerHTML]): every selector starts with app-notes-area. */
+/* Not encapsulated (the preview is [innerHTML]): every selector starts with app-notes-area, the anchor picker's too
+ * (the popover and the sheet keep it in this host's DOM). */
 app-notes-area {
   display: flex;
   flex-direction: column;
@@ -6,38 +7,41 @@ app-notes-area {
   min-inline-size: 0;
 }
 
+/* The prototype's notepad card (`.notepad`): one card, list above the editor; from 1120 px a 320 px list beside it. */
 app-notes-area .notes-card {
   display: flex;
   flex-direction: column;
-  gap: 24px;
   min-inline-size: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--color-base-100);
 }
 
 app-notes-area .notes-list,
 app-notes-area .notes-editor {
   display: flex;
   flex-direction: column;
-  gap: 16px;
   min-inline-size: 0;
 }
 
-/* Wide: one card, a 320 px list and the editor filling the rest. */
-app-notes-area[data-tier='wide'] .notes-card {
-  display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
-  gap: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-box);
-  background: var(--color-base-100);
-}
-
-app-notes-area[data-tier='wide'] .notes-list {
-  border-inline-end: 1px solid var(--line);
+app-notes-area .notes-list {
+  gap: 10px;
   padding: 16px;
 }
 
-app-notes-area[data-tier='wide'] .notes-editor {
-  padding: 24px;
+app-notes-area .notes-editor {
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+app-notes-area[data-mode='split'] .notes-card {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  min-block-size: 560px;
+}
+
+app-notes-area[data-mode='split'] .notes-list {
+  border-inline-end: 1px solid var(--line);
 }
 
 app-notes-area .notes-list-head {
@@ -49,12 +53,32 @@ app-notes-area .notes-list-head {
 app-notes-area .notes-search {
   flex: 1;
   min-inline-size: 0;
+  block-size: 36px;
   gap: 8px;
+  border-color: var(--line);
+  border-radius: var(--radius);
+  background: var(--color-base-100);
   color: var(--muted-ink);
 }
 
 app-notes-area .notes-search input {
   color: var(--color-base-content);
+}
+
+/* Filter chips as the prototype's `[data-ui="filter-chips"]`: 28 px, radius-sm, framed, wrapping. */
+app-notes-area[data-view] ui-filter-chips .row {
+  flex-wrap: wrap;
+  padding-inline: 0;
+  mask-image: none;
+}
+
+app-notes-area[data-view] ui-filter-chips .chip {
+  min-block-size: 28px;
+  block-size: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
 }
 
 app-notes-area .notes-new {
@@ -67,111 +91,127 @@ app-notes-area[data-tier='compact'] .notes-new {
 }
 
 app-notes-area .notes-rows {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
+  display: grid;
+  gap: 2px;
+  margin: 0 -8px;
   padding: 0;
   list-style: none;
 }
 
+/* A row as the prototype's `.np-row`: title, then anchor chip and time, then the body's first line. */
 app-notes-area .notes-row {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  display: grid;
   gap: 4px;
-  min-block-size: 64px;
-  padding: 8px;
-  border-radius: var(--radius-field);
+  padding: 10px;
+  border-radius: var(--radius);
   color: inherit;
   text-decoration: none;
 }
 
 app-notes-area .notes-row:hover {
-  background: var(--color-base-200);
+  background: var(--color-base-300);
 }
 
 app-notes-area .notes-row[aria-current='page'] {
-  background: var(--color-base-200);
-  box-shadow: inset 3px 0 0 var(--color-primary);
-}
-
-app-notes-area .notes-row-top,
-app-notes-area .notes-row-bottom {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  min-inline-size: 0;
+  background: var(--disp-t);
 }
 
 app-notes-area .notes-row-title {
-  flex: 1;
   overflow: hidden;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-app-notes-area .notes-row-time {
-  flex: none;
+app-notes-area .notes-row-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+app-notes-area .notes-row-time,
+app-notes-area .notes-anchor-none,
+app-notes-area .notes-row-line {
   color: var(--muted-ink);
-  font-size: 12px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 
-app-notes-area .notes-anchor {
-  flex: none;
-}
-
-app-notes-area .notes-anchor-none,
-app-notes-area .notes-row-line {
-  overflow: hidden;
-  color: var(--muted-ink);
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
+app-notes-area .notes-anchor,
 app-notes-area .notes-anchor-none {
   flex: none;
 }
 
+app-notes-area .notes-row-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
 app-notes-area .notes-back {
   align-self: flex-start;
+  gap: 6px;
   min-block-size: 44px;
   display: inline-flex;
   align-items: center;
 }
 
+app-notes-area .notes-top {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* The prototype's `.ne-title`: borderless, Sora 600 20/28. */
 app-notes-area .notes-title {
-  inline-size: 100%;
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 24px;
+  flex: 1;
+  min-inline-size: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-base-content);
+  font: 600 20px/28px var(--font-brand);
+  outline: 0;
+}
+
+app-notes-area .notes-title:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+app-notes-area .notes-view {
+  flex: none;
 }
 
 app-notes-area .notes-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: 10px;
   align-items: center;
   color: var(--muted-ink);
   font-size: 13px;
 }
 
-app-notes-area .notes-anchor-field {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
+app-notes-area .notes-anchor-trigger,
+app-notes-area .notes-return {
+  gap: 6px;
 }
 
-app-notes-area .notes-anchor-select {
-  max-inline-size: 320px;
+app-notes-area .notes-return {
+  color: var(--disp-text);
 }
 
+/* The prototype's `.badge-local`: a framed 12 px pill. */
 app-notes-area .notes-local {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
 }
 
 app-notes-area .notes-save {
@@ -180,10 +220,7 @@ app-notes-area .notes-save {
 
 app-notes-area .notes-delete {
   margin-inline-start: auto;
-}
-
-app-notes-area .notes-view .seg {
-  padding-inline: 12px;
+  color: var(--muted-ink);
 }
 
 app-notes-area .notes-body {
@@ -196,13 +233,23 @@ app-notes-area .notes-body[data-view='split'] {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
+/* The prototype's `#ne-body`: framed, lane-coloured, mono 14/22. */
 app-notes-area .notes-textarea {
   inline-size: 100%;
-  min-block-size: 480px;
+  min-block-size: 360px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--lane);
+  color: var(--color-base-content);
   font-family: var(--font-mono);
   font-size: 14px;
   line-height: 22px;
   resize: vertical;
+}
+
+app-notes-area .notes-textarea:focus-visible {
+  outline: 2px solid var(--color-primary);
 }
 
 /* Compact: at least 12 lines at 16 px, so iOS never zooms into the field. */
@@ -212,11 +259,13 @@ app-notes-area[data-tier='compact'] .notes-textarea {
   line-height: 24px;
 }
 
+/* The preview as the prototype's `.md`: 15/26, Sora headings, code on raised, pre on lane. */
 app-notes-area .notes-preview {
   max-inline-size: 72ch;
   min-inline-size: 0;
+  padding: 4px 0;
   font-size: 15px;
-  line-height: 24px;
+  line-height: 26px;
   overflow-wrap: anywhere;
 }
 
@@ -226,20 +275,22 @@ app-notes-area .notes-preview > :first-child {
 
 app-notes-area .notes-preview :is(h1, h2, h3, h4) {
   margin: 24px 0 8px;
-  font-weight: 700;
-  line-height: 1.3;
+  font-family: var(--font-brand);
+  font-weight: 600;
 }
 
 app-notes-area .notes-preview h1 {
   font-size: 22px;
+  line-height: 30px;
 }
 
-app-notes-area .notes-preview h2 {
-  font-size: 18px;
+app-notes-area .notes-preview :is(h2, h3, h4) {
+  font-size: 17px;
+  line-height: 26px;
 }
 
 app-notes-area .notes-preview :is(p, ul, ol, blockquote, pre) {
-  margin: 0 0 16px;
+  margin: 0 0 12px;
 }
 
 app-notes-area .notes-preview :is(ul, ol) {
@@ -255,15 +306,24 @@ app-notes-area .notes-preview ol {
 }
 
 app-notes-area .notes-preview code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--color-base-300);
   font-family: var(--font-mono);
   font-size: 13px;
 }
 
 app-notes-area .notes-preview pre {
   overflow-x: auto;
-  padding: 16px;
-  border-radius: var(--radius-field);
-  background: var(--color-base-200);
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--lane);
+}
+
+app-notes-area .notes-preview pre code {
+  padding: 0;
+  background: none;
 }
 
 app-notes-area .notes-preview blockquote {
@@ -287,36 +347,137 @@ app-notes-area .notes-confirm-actions {
   justify-content: flex-end;
 }
 
+app-notes-area .notes-none-hint {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  color: var(--muted-ink);
+}
+
+/* The prototype's `.btn.danger`: red tint, red ink, red frame. */
+app-notes-area .notes-danger {
+  border-color: var(--color-error);
+  background: var(--fail-t);
+  color: var(--fail-text);
+}
+
+/* The anchor picker as the prototype's `.anchor-pop` (search on lane, `.pop-item` rows, id in mono). */
+app-notes-area .notes-anchor-pop {
+  --ui-popover-width: 280px;
+}
+
+app-notes-area .notes-anchor-search {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  block-size: 34px;
+  margin-block-end: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--lane);
+  color: var(--muted-ink);
+}
+
+app-notes-area .notes-anchor-search input {
+  flex: 1;
+  min-inline-size: 0;
+  border: 0;
+  background: none;
+  color: var(--color-base-content);
+  outline: 0;
+}
+
 app-notes-area .notes-picker {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin: 16px 0 0;
+  gap: 2px;
+  max-block-size: 320px;
+  margin: 0;
   padding: 0;
+  overflow-y: auto;
   list-style: none;
 }
 
 app-notes-area .notes-pick {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   inline-size: 100%;
-  min-block-size: 44px;
-  padding: 8px 16px;
+  min-block-size: 36px;
+  padding: 6px 8px;
   border: 0;
-  border-radius: var(--radius-field);
+  border-radius: var(--radius-sm);
   background: none;
   color: inherit;
   font: inherit;
   text-align: start;
 }
 
+app-notes-area .notes-pick:hover,
 app-notes-area .notes-pick[aria-pressed='true'] {
-  background: var(--color-base-200);
-  font-weight: 600;
+  background: var(--color-base-300);
+}
+
+app-notes-area .notes-pick-id {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+app-notes-area .notes-pick-kind {
+  color: var(--muted-ink);
+  font-size: 12px;
 }
 
 app-notes-area .notes-pick-group {
-  padding: 8px 16px 0;
+  padding: 8px 8px 2px;
   color: var(--muted-ink);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+@media (pointer: coarse) {
+  app-notes-area .notes-pick { min-block-size: 44px; }
+}
+
+
+/* The prototype's small `[data-ui="empty-state"]` in the list and the editor: start-aligned, bare muted icon, 15/24. */
+app-notes-area[data-view] ui-empty-state {
+  gap: 8px;
+  justify-items: start;
+  max-inline-size: 520px;
+  margin-inline: 0;
+  padding: 16px 12px;
+  text-align: start;
+}
+
+app-notes-area[data-view] ui-empty-state .icon {
+  inline-size: auto;
+  block-size: auto;
+  margin: 0;
+  background: none;
+  color: var(--muted-ink);
+}
+
+app-notes-area[data-view] ui-empty-state .title {
+  font-size: 15px;
+  line-height: 24px;
+}
+
+app-notes-area[data-view] .notes-editor ui-empty-state {
+  gap: 12px;
+  padding: 24px 16px;
+}
+
+app-notes-area[data-view] .notes-editor ui-empty-state .title {
+  font-size: 20px;
+  line-height: 28px;
 }

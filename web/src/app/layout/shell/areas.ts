@@ -83,19 +83,20 @@ export interface ShellRouteData {
  * The workspace-scope pages, the counterpart of the spec areas one level up. `idea` (spec 008, `/w/:ws/ideas/:slug`)
  * is a read-only story page reached from a board card, the palette or a chip, never from the menu: it has no
  * `WORKSPACE_PAGES` entry, so the menu's pages are `WorkspaceMenuPageId`. `tech` (spec 023, `/w/:ws/tech/<tab>`, tabs
- * in `TECH_TABS`) is a menu page, fifth after Milestones (T20).
+ * in `TECH_TABS`) is a menu page, fifth after Milestones (T20). `library` (spec 024, `/w/:ws/library`, a mock until
+ * spec 017) is the sixth (T57, ISC-150.1).
  */
-export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea' | 'tech';
+export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea' | 'tech' | 'library';
 export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea'>;
 
-const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea', 'tech'];
+const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea', 'tech', 'library'];
 
 export const isWorkspacePageId = (value: unknown): value is WorkspacePageId =>
   (WORKSPACE_PAGE_IDS as readonly unknown[]).includes(value);
 
 /**
- * A page of a workspace (`/w/:ws`, `/w/:ws/features`, `/w/:ws/milestones`): the registry the area menu, the palette and
- * the routes read, in menu order. It always holds every entry; `milestones` is only listed by the menu (and the
+ * A page of a workspace (`/w/:ws`, `/w/:ws/features`, `/w/:ws/milestones`): the registry the PAGE select's menu
+ * (spec 024 T80), the palette and the routes read, in menu order. It always holds every entry; `milestones` is only listed by the menu (and the
  * palette, and answered by the route) while `ShellData.hasMilestones` is true (ISC-104, T26), so the filtering lives
  * with the reader, not here.
  */
@@ -107,10 +108,10 @@ export interface WorkspacePage {
   /** Transloco key of the one-line summary the menu shows under the name: `shell.pages.summary.<id>`. */
   readonly summaryKey: string;
   /**
-   * The second key of the page's `g` sequence. Board's `g b` is bound (`SHORTCUTS` reads it, T117); `g f` and `g m`
-   * are still a proposal (design.md § Keyboard, plan.md § Open Points) that `/spec-review 003` decides, and nothing
-   * binds them. Specs has none: `g s` is Status inside a spec and no workspace-scope binding exists; Tech has none
-   * either (spec 023 plan.md: no `g` key yet).
+   * The second key of the page's `g` sequence, read by `SHORTCUTS`: Board's `g b` (spec 008, T117), Features' `g f`
+   * and Milestones' `g m` (spec 024, T58, ISC-150.1). Specs has none: `g s` is Status inside a spec and no
+   * workspace-scope binding exists; Tech has none (spec 023 plan.md); Library has none either, since the prototype's
+   * `g b` for it is the app's Board.
    */
   readonly goKey: string | null;
 }
@@ -125,6 +126,9 @@ export const WORKSPACE_PAGES: readonly WorkspacePage[] = [
   { id: 'milestones', icon: 'flag', labelKey: 'shell.pages.milestones', summaryKey: 'shell.pages.summary.milestones', goKey: 'm' },
   // Spec 023 (T20, ISC-134.2): the tech page, fifth after Milestones; `/w/:ws/tech` redirects to its first tab.
   { id: 'tech', icon: 'book-open', labelKey: 'shell.pages.tech', summaryKey: 'shell.pages.summary.tech', goKey: null },
+  // Spec 024 (T57, ISC-150.1): the Library, sixth; a mock with the demo chip until spec 017, its summary counts the
+  // mock's documents and says so. The PAGE select's menu reaches it (spec 024 T80, ISC-150.2: the rail link went).
+  { id: 'library', icon: 'book', labelKey: 'shell.pages.library', summaryKey: 'shell.pages.summary.library', goKey: null },
 ];
 
 /** A menu page's entry. */

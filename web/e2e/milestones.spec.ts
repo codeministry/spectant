@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
 
 import type { PlanningModel } from '../../core/src/planning';
-import { atWidth, expect, FIXED_NOW, test, WIDTHS } from './fixtures';
+import { atWidth, expect, FIXED_NOW, test, WIDTHS, headerControl } from './fixtures';
 
 const read = (path: string): unknown => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
@@ -56,9 +56,10 @@ const open = async (page: Page, hash = ''): Promise<void> => {
   await expect(page.locator('ol.rows > li').first()).toBeVisible();
 };
 const card = (page: Page, slug: string): Locator => page.locator(`ol.rows > li:has(article[id="m-${slug}"])`);
+// spec 024: PAGE select (principal 2026-10-13): the workspace pages are the PAGE select's menu, in the row on every width
 const areaMenu = async (page: Page): Promise<Locator> => {
-  await page.locator('header [data-control="area"]').click();
-  const menu = page.getByRole('navigation', { name: 'Areas' });
+  await (await headerControl(page, 'page')).click();
+  const menu = page.getByRole('navigation', { name: 'Pages' });
   await expect(menu).toBeVisible();
   return menu;
 };
@@ -80,12 +81,15 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       await expect(page.locator('ol.rows')).toHaveCount(0);
     });
 
-    test('lantern’s area menu lists Specs, Board and Features only', async ({ page }) => {
+    test('lantern’s area menu lists Specs, Board, Features, Tech and Library, no Milestones', async ({ page }) => {
       await page.goto('/w/lantern');
-      await expect(page.locator('header [data-control="area"]')).toBeVisible();
+      // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
+      // spec 024: PAGE select (principal 2026-10-13)
+      await expect(await headerControl(page, 'page')).toBeVisible();
       const menu = await areaMenu(page);
-      await expect(menu.locator('[data-page]')).toHaveCount(4);
-      expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'tech']);
+      // Spec 024 (T57, ISC-150.1): the Library is the sixth registry page.
+      await expect(menu.locator('[data-page]')).toHaveCount(5);
+      expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'tech', 'library']);
       await expect(menu.locator('[data-page="milestones"]')).toHaveCount(0);
     });
 
@@ -97,7 +101,8 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
 
       await page.goto(`/w/lantern/s/${lanternSpec}`);
       await expect(page.locator('app-spec-head [data-breadcrumb]')).toBeVisible();
-      await expect(page.locator('app-spec-head [data-crumb="milestone"]')).toHaveCount(0);
+      // spec 024: breadcrumb Workspace / Spec · Area, milestone/feature/priority in the chip row (principal 2026-10-12, design.md)
+      await expect(page.locator('app-spec-head [data-head-chip="milestone"]')).toHaveCount(0);
     });
   });
 
@@ -115,7 +120,9 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         await expect(article.locator('h2 ui-icon[name="flag"]')).toHaveCount(1);
         await expect(article.locator('h2 .name')).toHaveText(milestone.name);
       }
-      await expect(page.locator('h1')).toContainText('Milestones in harbor');
+      // spec 024: prototype value (principal: Prototyp gilt immer) — h1 "Milestones", the muted "· <ws>" beside it.
+      await expect(page.locator('h1')).toHaveText('Milestones');
+      await expect(page.locator('.h1-row .ws-suffix')).toHaveText('· harbor');
     });
 
     test('the date and state per row: golden state word, day count from the pinned clock', async ({ page }) => {
@@ -255,17 +262,19 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
 test.describe('milestones page: the area menu', () => {
   test.use(atWidth(WIDTHS.desktop));
 
-  test('harbor’s menu lists Specs, Board, Features, Milestones; on the page the trigger reads Milestones and its entry is current', async ({
+  test('harbor’s menu lists Specs, Board, Features, Milestones, Tech, Library; on the page the trigger reads Milestones and its entry is current', async ({
     page,
   }) => {
     await page.goto('/w/harbor');
-    await expect(page.locator('header [data-control="area"]')).toBeVisible();
+    // spec 024: PAGE select (principal 2026-10-13)
+    await expect(page.locator('header [data-control="page"]')).toBeVisible();
     let menu = await areaMenu(page);
-    expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'milestones', 'tech']);
+    // Spec 024 (T57, ISC-150.1): the Library is the sixth registry page.
+    expect(await pageNames(menu)).toEqual(['specs', 'board', 'features', 'milestones', 'tech', 'library']);
     await menu.locator('[data-page="milestones"]').click();
     await expect(page).toHaveURL(/\/w\/harbor\/milestones$/u);
     await expect(page.locator('ol.rows > li').first()).toBeVisible();
-    await expect(page.locator('header [data-control="area"]')).toContainText(en.shell.pages.milestones);
+    await expect(page.locator('header [data-control="page"]')).toContainText(en.shell.pages.milestones);
     menu = await areaMenu(page);
     await expect(menu.locator('[aria-current="page"]')).toHaveCount(1);
     await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('data-page', 'milestones');

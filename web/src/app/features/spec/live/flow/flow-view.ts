@@ -6,7 +6,9 @@ import { prefersReducedMotion } from '../../../../core/motion';
 import type { Tier } from '../../../../layout/shell/tier';
 import { type SegmentedOption, UiSegmented } from '../../../../shared/ui/segmented/segmented';
 import { BoardCard } from '../board/board-card';
-import type { BoardSection, LaneView } from '../board/board-model';
+import type { FrameCard } from '../../../../../../../core/src/files';
+import { type BoardSection, LANE_COLORS, type LaneView, OPERATOR_LANE } from '../board/board-model';
+import { YourSteps } from '../this-frame/your-steps';
 import { type CardPlace, FLOW_COLUMNS, flipMoves, flowBands, flowCounts, resolveColumn } from './flow-model';
 
 /**
@@ -21,7 +23,7 @@ import { type CardPlace, FLOW_COLUMNS, flipMoves, flowBands, flowCounts, resolve
  */
 @Component({
   selector: 'app-flow-view',
-  imports: [BoardCard, TranslocoPipe, UiSegmented],
+  imports: [BoardCard, TranslocoPipe, UiSegmented, YourSteps],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-tier]': 'tier()' },
   templateUrl: './flow-view.html',
@@ -34,6 +36,8 @@ export class FlowView {
   readonly frame = input.required<number>();
   readonly density = input<'comfortable' | 'compact'>('comfortable');
   readonly tier = input<Tier>('wide');
+  /** The operator steps at wide: drawn as the prototype's checklist across all columns (`.op.span`) in place of a band. */
+  readonly steps = input<readonly FrameCard[] | null>(null);
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly router = inject(Router);
@@ -52,7 +56,8 @@ export class FlowView {
   /** At compact only the bands with a card in the chosen column; wider, every band. */
   protected readonly shownBands = computed(() => {
     const column = this.column();
-    return this.compact() ? this.bands().filter((band) => band.columns[column].length > 0) : this.bands();
+    const bands = this.steps() === null ? this.bands() : this.bands().filter((band) => band.name !== OPERATOR_LANE);
+    return this.compact() ? bands.filter((band) => band.columns[column].length > 0) : bands;
   });
   protected readonly segments = computed<readonly SegmentedOption[]>(() => {
     this.lang();
@@ -108,6 +113,13 @@ export class FlowView {
         el.style.transform = '';
       }
     });
+  }
+
+  /** The lane dot, in the board's lane colours by lane order. */
+  protected laneColor(name: string): string {
+    if (name === OPERATOR_LANE) return 'var(--muted)';
+    const i = Math.max(0, this.lanes().findIndex((l) => l.name === name));
+    return LANE_COLORS[i % LANE_COLORS.length] ?? 'var(--color-primary)';
   }
 
   protected setColumn(column: string | undefined): void {

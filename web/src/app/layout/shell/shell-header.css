@@ -1,8 +1,12 @@
 /*
- * The shell header's grid (design.md § Header, ISC-73): 64 px, sticky, the page glass under a 12 px blur; the host is the
- * `header` size container the parts query. Medium and wide: one row, brand · pickers · area on one bordered 40 px rail
- * field, the tools right. Compact (< 640): two rows, 48 + 44: ring, pickers pill, palette, live, settings; then the area
- * trigger, the tab strip and zen. The palette trigger is a 240 px field from a 1280 px header, an icon below.
+ * The shell header's grid (spec 024 T34, T76; design.md § Viewport-übergreifend; prototype `[data-ui="header"]`). The
+ * host is sticky and the `header` size container the parts query; the header's own tiers follow the `shell` container.
+ *
+ * One 64 px row on every width (principal 2026-10-13), every element 40 px tall (44 px at `pointer: coarse`).
+ * From 1120 px the prototype header unchanged: brand rail (brand · rail-selects on one bordered field), the palette (a
+ * field in a minmax(240px, 360px) track; the 40 px icon on spec pages below 1560 px), then status group, zen, dot,
+ * settings, help. Below 1120 px: the brand rail with the Workspace and Spec selects, the palette icon, the status group
+ * and the overflow menu `⋯`. The bottom hairline only after the page has scrolled (prototype `.scrolled`).
  */
 :host {
   position: sticky;
@@ -14,29 +18,32 @@
 
 .shell-header {
   display: grid;
-  grid-template-areas: "brand pickers area . palette live zen settings";
-  grid-template-columns: auto minmax(0, auto) minmax(0, auto) minmax(0, 1fr) auto auto auto auto;
-  gap: 8px;
+  grid-template: "brand nav . palette live zen assistant settings help" 64px / auto minmax(0, auto) minmax(0, 1fr) minmax(240px, 360px) auto auto auto auto auto;
+  column-gap: 8px;
   align-items: center;
-  min-block-size: 64px;
   padding-block-start: env(safe-area-inset-top);
   padding-inline: 32px;
-  border-block-end: 1px solid var(--line);
+  border-block-end: 1px solid transparent;
   background: var(--page-glass);
   /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
+  transition: border-color var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
-/* One bordered field behind the left group; the parts stack above it by `z-index`. */
+.shell-header.scrolled {
+  border-block-end-color: var(--line);
+}
+
+/* The bordered brand rail: 40 px, radius 10, 78 % card (prototype `.brand-rail`). */
 .rail-field {
   z-index: 0;
   grid-row: 1;
-  grid-column: brand-start / area-end;
+  grid-column: brand-start / nav-end;
   block-size: 40px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-field);
-  background: var(--color-base-100);
+  border-radius: calc(var(--radius) + 2px);
+  background: color-mix(in oklch, var(--color-base-100) 78%, transparent);
 }
 
 .brand {
@@ -44,10 +51,9 @@
   grid-area: brand;
 }
 
-.tabs {
-  display: none;
-  grid-area: tabs;
-  min-inline-size: 0;
+.nav {
+  z-index: 1;
+  grid-area: nav;
 }
 
 .palette {
@@ -55,51 +61,60 @@
   grid-area: palette;
   gap: 8px;
   align-items: center;
-  justify-content: center;
-  inline-size: 40px;
+  justify-content: flex-start;
+  inline-size: 100%;
   block-size: 40px;
+  padding-inline: 12px 8px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-field);
+  border-radius: var(--radius);
   background: var(--color-base-100);
   color: var(--muted-ink);
   font: inherit;
   font-size: 14px;
   cursor: pointer;
+  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
-.palette-text,
+@media (hover: hover) {
+  .palette:hover {
+    background: var(--color-base-300);
+  }
+}
+
+.palette-text {
+  overflow: hidden;
+  flex: 1;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .palette-key {
   display: none;
 }
 
-@container header (width >= 1280px) {
-  .palette {
-    justify-content: flex-start;
-    inline-size: 240px;
-    padding-inline: 12px;
-  }
-
-  .palette-text {
-    display: inline;
-    overflow: hidden;
-    flex: 1;
-    text-align: start;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* `⌘K` only in the field form, and only where a keyboard is likely. */
-  @media (any-hover: hover) and (any-pointer: fine) {
-    .palette-key {
-      display: inline-flex;
-    }
+/* `⌘K` only in the field form, and only where a keyboard is likely. */
+@media (any-hover: hover) and (any-pointer: fine) {
+  .palette-key {
+    display: inline-flex;
   }
 }
 
-@media (pointer: coarse) {
-  .palette {
-    min-inline-size: 44px;
-    min-block-size: 44px;
+/* The icon form (prototype `.palette-icon`): on spec pages below 1560 px (and below 1120 px, further down). */
+@container shell (width < 1560px) {
+  .on-spec {
+    grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) auto auto auto auto auto auto;
+  }
+
+  .on-spec .palette {
+    justify-content: center;
+    inline-size: 40px;
+    padding-inline: 0;
+  }
+
+  .on-spec .palette-text,
+  .on-spec .palette-key {
+    display: none;
   }
 }
 
@@ -115,32 +130,95 @@
   grid-area: settings;
 }
 
-@container header (width < 1120px) {
-  .shell-header {
+.help {
+  grid-area: help;
+}
+
+/* The dot trigger: a prototype `.btn-icon` with the mascot, 24 px. */
+.assistant {
+  display: inline-grid;
+  grid-area: assistant;
+  place-items: center;
+  inline-size: 40px;
+  block-size: 40px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  cursor: pointer;
+}
+
+.assistant[aria-pressed="true"] {
+  border-color: var(--color-secondary);
+}
+
+@media (hover: hover) {
+  .assistant:hover {
+    background: var(--color-base-300);
+  }
+}
+
+/* Every element 44 px tall on a coarse pointer (prototype rule), not by width. */
+@media (pointer: coarse) {
+  .rail-field,
+  .palette,
+  .assistant,
+  .zen,
+  .settings,
+  .help,
+  .more {
+    min-inline-size: 44px;
+    block-size: 44px;
+  }
+}
+
+/* Below 1120 px: the shortened row (spec 024 T76): brand rail, palette icon, status group, `⋯`. */
+@container shell (width < 1120px) {
+  .shell-header,
+  .shell-header.on-spec {
+    grid-template: "brand nav . palette live more" 64px / auto minmax(0, auto) minmax(0, 1fr) auto auto auto;
     padding-inline: 24px;
   }
-}
 
-@container header (width < 640px) {
-  .shell-header {
-    grid-template:
-      "brand pickers pickers palette live settings" 48px
-      "area area tabs tabs tabs zen" 44px / 44px auto minmax(0, 1fr) auto auto auto;
-    row-gap: 0;
-    padding-inline: 16px;
+  .more {
+    grid-area: more;
   }
 
-  /* The pill hugs its segments and carries its own border (ShellNav). */
-  .rail-field {
+  .palette {
+    justify-content: center;
+    inline-size: 40px;
+    padding-inline: 0;
+  }
+
+  .palette-text,
+  .palette-key {
     display: none;
   }
+}
 
-  .tabs {
-    display: block;
+@container shell (width < 640px) {
+  .shell-header,
+  .shell-header.on-spec {
+    column-gap: 6px;
+    padding-inline: 16px;
   }
 }
 
-/* Zen (ISC-75): the tools go; brand, pickers, area trigger and the pressed zen button stay. */
+/* Zen (ISC-75): the tools go; brand, rail-selects, the pressed zen button and the overflow menu stay. */
 :host([data-zen]) .tool {
   display: none;
+}
+
+/* The prototype's pressed zen toggle (`html.zen [data-ui=zen-toggle]`): cyan border and ink, at the row's end. */
+:host([data-zen]) .zen {
+  grid-area: help;
+}
+
+.zen[aria-pressed="true"] {
+  --btn-bg: var(--color-base-100);
+
+  border-color: var(--color-primary);
+  background: var(--color-base-100);
+  color: var(--disp-text);
 }

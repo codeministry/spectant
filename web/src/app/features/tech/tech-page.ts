@@ -7,6 +7,8 @@ import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { TabBarSlot } from '../../layout/tab-bar/tab-bar-slot';
 import { UiNotice } from '../../shared/ui/notice/notice';
+import { UiPageHead } from '../../shared/ui/page-head/page-head';
+import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { TechDocsTab } from './tech-docs-tab';
 import { TechOpenTab } from './tech-open-tab';
@@ -39,7 +41,7 @@ export function techTabCounts(model: TechModel): TechTabCountValues {
  */
 @Component({
   selector: 'app-tech-page',
-  imports: [NotFound, TabBarSlot, TechDocsTab, TechOpenTab, TechSpecsTab, TechStatusTab, TranslocoPipe, UiNotice, UiSkeleton],
+  imports: [NotFound, TabBarSlot, TechDocsTab, TechOpenTab, TechSpecsTab, TechStatusTab, TranslocoPipe, UiNotice, UiPageHead, UiSkeleton, UiWsBadge],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'tech', '[attr.data-tab]': 'tab()' },
   styleUrl: './tech-page.css',
@@ -53,6 +55,9 @@ export class TechPage {
   /** The model as `ShellData.tech` serves it (refreshed with the shell); null while loading and for every answer but `ok`. */
   readonly model = this.data.techModel;
   private readonly result = this.data.techResult;
+
+  /** The workspace's display name for the page head (prototype `page-head`: badge, h1 "Tech", "· <ws>"). */
+  protected readonly wsName = computed(() => this.data.workspaceName(this.state.ws() ?? ''));
 
   protected readonly tab = computed<TechTabId>(() => this.state.techTab() ?? 'overview');
 

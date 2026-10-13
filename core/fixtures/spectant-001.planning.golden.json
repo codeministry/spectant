@@ -120,54 +120,63 @@
       "claims": [
         {
           "id": "ISC-1",
+          "text": "the app's HTTP server listens on any address other than 127.0.0.1 or ::1.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-2",
+          "text": "with no AI feature switched on, starting the app, adding a workspace, browsing every page and performing every write makes an outbound network request.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-3",
+          "text": "a tracked file contains a customer name, an absolute home path or personal data (generic leak classes plus a private word list kept outside the repo).",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-4",
+          "text": "The repository root holds the Apache-2.0 `LICENSE` and a `THIRD_PARTY_NOTICES.md` naming the bundled assets and the LifeOS (MIT) origin of the ISA format.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-5",
+          "text": "the repository holds more than one implementation of frontmatter, claim or stage parsing; the app and the plugin both import `core/`.",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-6",
+          "text": "Every fixture under `core/fixtures/` parses without error to its golden JSON snapshot.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-7",
+          "text": "Deleting the data directory loses only the workspace registry, notes and pins; after re-adding a workspace its specs view equals the view before deletion.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-5.1",
+          "text": "A `CLAUDE.md` exists at the root plus in `core/`, `server/`, `web/`, each lane file naming its probe (root: only what applies everywhere).",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-5.2",
+          "text": "`bun run check:static` runs ESLint with the Angular rules, Stylelint with `color-no-hex` and `tsc --noEmit`, all at zero warnings.",
           "closed": true,
           "dropped": false,
           "holder": "001"
@@ -200,228 +209,266 @@
       "claims": [
         {
           "id": "ISC-8",
+          "text": "`bun run build` produces four binaries: darwin-arm64, darwin-x64, linux-arm64, linux-x64.",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-8.1",
+          "text": "The compiled host binary, copied to an empty directory, passes the embedded-app smoke (`/` → HTML, hashed `main-*.js` → JavaScript, `/w/x` → `index.html`).",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-9",
+          "text": "The host binary's `--version` prints the version in `package.json`.",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-10",
+          "text": "In a clean Ubuntu x64 container, the install script pointed at a local release directory puts `spectant` on PATH and `spectant --version` exits 0.",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-11",
+          "text": "For a fresh user on macOS arm64, the install one-liner puts `spectant` on PATH and `spectant --version` exits 0.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-12",
+          "text": "The install script writes the binary to `INSTALL_DIR` when that variable is set.",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-13",
+          "text": "`spectant add <repo>`, `spectant list` and `spectant remove <repo>` round-trip a workspace through the registry.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-14",
+          "text": "For copies of the principal's real spec trees, every spec's stage on the dashboard equals the stage the old skill derives, and the probe fails when no tree was compared.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-15",
+          "text": "adding a workspace or opening any page changes a byte inside the registered repository, `.git/` included.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-16",
+          "text": "One dashboard lists the specs of two registered workspaces side by side.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-16.1",
+          "text": "The overview's committed visual baseline (light, three widths, states: two workspaces, empty, unreadable workspace) passes on Linux CI.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-16.2",
+          "text": "The same baseline passes in the dark theme.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-17",
+          "text": "The dashboard's committed visual baseline (Playwright `toHaveScreenshot`, light theme, 390/820/1440) passes on Linux CI with pinned Chromium.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-17.1",
+          "text": "The same baseline passes in the dark theme.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-18",
+          "text": "the daisyUI themes `spec-light` and `spec-dark` carry the old pages' light and dark colour values as their tokens, so the look is inherited rather than re-invented.",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-18.2",
+          "text": "every icon the app renders comes from the old pages' pinned Lucide set.",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-18.1",
+          "text": "In the default system mode the theme follows `prefers-color-scheme`, also when it changes while the page is open.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-18.3",
+          "text": "A chosen light or dark mode, stored server-side, is still applied after a reload on a different port.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-19",
+          "text": "The dashboard renders and navigates inside the cmux web view.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-19.1",
+          "text": "Playwright's WebKit project renders `/` and `/w/:ws` with zero console errors.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-20",
+          "text": "`spectant` without arguments listens on 7717 or the next free port, prints the URL, and opens the browser unless `--no-browser` is given.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-21",
+          "text": "The data directory is `$XDG_DATA_HOME/spectant` when that variable is set and `~/.spectant/` otherwise.",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-22",
+          "text": "Every UI string key exists in both the English and the German catalogue.",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-60",
+          "text": "⌘K / Ctrl+K opens a command palette listing every workspace plus every spec.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-60.1",
+          "text": "Typing in the palette narrows the list to matching entries.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-60.2",
+          "text": "Enter in the palette navigates to the highlighted entry.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-61",
+          "text": "In a spec list, ↓/↑ (also j/k) move the selection.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-61.1",
+          "text": "Enter opens the selected spec.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-61.2",
+          "text": "`?` opens the shortcut sheet.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-62",
+          "text": "After the auto-refresh timer fires with a changed number on disk, the DOM node holding that number shows the new value with no navigation event.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-62.1",
+          "text": "The same refresh produces a cumulative layout shift of 0.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-63",
+          "text": "At a 600 px wide container (the cmux side panel) the dashboard has no horizontal overflow: `scrollWidth` equals `clientWidth`.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-63.1",
+          "text": "At the same width a workspace column in the overview has no horizontal overflow.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-64",
+          "text": "Every interactive element shows the brand focus ring under keyboard focus, in both themes.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-65",
+          "text": "Text reaches 4.5:1 and marks (ring track, bars, legend dots) 3:1 against their surface, in both themes.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-66",
+          "text": "under `prefers-reduced-motion: reduce` any animation or transition longer than 0 ms runs.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-67",
+          "text": "the app ships Inter Variable plus JetBrains Mono as local assets.",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-67.1",
+          "text": "a stylesheet declares a font URL outside the app's own origin.",
           "closed": true,
           "dropped": false,
           "holder": "001"

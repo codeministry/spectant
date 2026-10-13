@@ -1,12 +1,13 @@
 /*
- * The Features page (design.md § Features page, every viewport). Page head: H1 Sora 24/32, the meta line 13/20 muted
- * with tabular counts, 24 px to the first row. Rows: one card each, 16 px apart at wide and 8 px below.
+ * The Features page in the prototype look (spec 024 design.md § Features, `.design/prototype/features.html`).
+ * Page head: eyebrow `<WS> · FEATURES · n`, the workspace badge, h1 + "· <ws>", the meta line 13/20 muted.
+ * Body: one card in the anatomy of the specs table (`spec-table`): the head `t-head` with the filter chips and the
+ * sort button, then the rows (`feat`), each one a flat `ui-card` divided by a hairline, hover `--raised` at 55 %.
  *
- * Wide: the row is two stacks on `minmax(0,1fr) 240px`, gap 32 — left the H2 (17/24), the Why line and the chips,
- * right the 160 x 6 meter with the fraction on the heading's first line box and the unheld line 8 px below.
- * Medium and compact: the stacks dissolve (`display: contents`) into one column — heading and fraction on one row
- * (`minmax(0,1fr) auto`), the meter at full width and 8 px high, then Why, chips and the unheld line (compact moves
- * the unheld line up under the meter, design § Mobile). Every grid and flex child sets `min-inline-size: 0`.
+ * Row (wide): `48px minmax(0,1fr) auto` — F-ID mono in cyan-text | title 15/24 600 + the Why as one muted line with
+ * an ellipsis, the spec chips beside the title — then the side: meter + mono fraction and the held glyph (lime
+ * "all held" or yellow-text "n unheld" with the chevron). Medium and compact: the side moves under the title,
+ * indented to it. Wide adds the rail (`context-rail`, 352 px): MILESTONES and MOST UNHELD.
  */
 :host {
   display: block;
@@ -15,10 +16,8 @@
 
 .title {
   display: flex;
-  gap: 8px;
-  align-items: flex-end;
   min-inline-size: 0;
-  margin-block-end: 8px;
+  margin-block-end: 4px;
 }
 
 ui-page-head {
@@ -26,19 +25,38 @@ ui-page-head {
   min-inline-size: 0;
 }
 
+.h1-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.page-mark {
+  flex: none;
+}
+
+.ws-suffix {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--muted-ink);
+  font: 600 24px/32px var(--font-brand);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The glossary trigger beside the h1: centred on the title's 32 px line, 44 x 44 under a coarse pointer. */
 .info {
   display: inline-flex;
   flex: none;
   padding: 4px;
-  margin-block-end: 4px;
   color: var(--muted-ink);
 }
 
 @media (pointer: coarse) {
   .info {
     padding: 14px;
-    margin: 0 -10px -10px;
+    margin: -10px;
   }
 }
 
@@ -52,6 +70,7 @@ ui-page-head {
 }
 
 h1 {
+  flex: none;
   margin: 0;
 }
 
@@ -78,14 +97,88 @@ h1 {
 .n,
 .id,
 .fraction,
-.ids {
+.t-count,
+.num,
+.fid {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
+/* Main column plus the 352 px rail at wide (prototype `.page` with `context-rail`). */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+:host([data-tier='wide']) .layout {
+  grid-template-columns: minmax(0, 1fr) 352px;
+  gap: 32px;
+}
+
+.table,
+.empty-card {
+  min-inline-size: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--color-base-100);
+}
+
+.empty-card {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding-block-end: 16px;
+}
+
+.empty-command {
+  padding-inline: 16px;
+}
+
+/* Prototype `t-head`: title + count, the filter chips, the sort button on the right. */
+.t-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  min-inline-size: 0;
+  padding: 12px var(--space-3, 16px);
+  border-block-end: 1px solid var(--line);
+  background: var(--lane);
+}
+
+.t-title {
+  display: inline-flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0;
+  font: 600 15px/24px var(--font-brand);
+}
+
+.t-count {
+  color: var(--muted-ink);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.t-filter {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.t-sort {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+.t-sort[aria-pressed='true'] {
+  background: var(--color-base-300);
+}
+
 .rows {
   display: grid;
-  gap: 16px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -95,11 +188,33 @@ h1 {
   min-inline-size: 0;
 }
 
-/* The arrival outline: 2 px primary around the card the fragment names, fading over the slow token. Under reduced
+:where(.rows > li:not(:last-child)) {
+  border-block-end: 1px solid var(--line);
+}
+
+.none {
+  padding: 16px;
+  color: var(--muted-ink);
+  font-size: 13px;
+}
+
+/* A row is a flat card inside the table card: no own border, radius or surface. */
+ui-card.row-card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+ui-card.row-card:hover {
+  background: color-mix(in srgb, var(--color-base-300) 55%, transparent);
+}
+
+/* The arrival outline: 2 px primary around the row the fragment names, fading over the slow token. Under reduced
    motion every duration is 0 ms (motion.css), so the outline is set statically instead. */
 ui-card[data-arrived] {
   outline: 2px solid transparent;
-  outline-offset: 2px;
+  outline-offset: -2px;
   animation: features-arrival var(--motion-duration-slow) var(--motion-ease-standard);
 }
 
@@ -121,11 +236,11 @@ ui-card[data-arrived] {
 
 article {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 240px;
-  gap: 32px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 24px;
   align-items: start;
-  padding: 16px 24px;
-  border-radius: inherit;
+  min-block-size: 64px;
+  padding: 12px var(--space-3, 16px);
   scroll-margin-block: 96px;
 }
 
@@ -134,38 +249,45 @@ article:focus {
   outline: none;
 }
 
-.main,
-.side {
-  display: flex;
-  flex-direction: column;
+/* The title stack: the F-ID column (48 px) and the title column; Why, chips and ideas line up under the title. */
+.main {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 4px 12px;
+  align-content: start;
   min-inline-size: 0;
 }
 
+.main > :not(h2) {
+  grid-column: 2;
+}
+
 h2 {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 8px;
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: baseline;
   min-inline-size: 0;
   margin: 0;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 24px;
 }
 
 h2 .id {
-  flex: none;
   color: var(--disp-ink);
-}
-
-h2 .id::after {
-  margin-inline-start: 8px;
-  color: var(--muted-ink);
-  content: '·';
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
 }
 
 h2 .name {
+  display: -webkit-box;
   min-inline-size: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow-wrap: anywhere;
 }
 
@@ -174,7 +296,6 @@ h2 .name {
   gap: 4px;
   align-items: flex-end;
   min-inline-size: 0;
-  margin-block-start: 4px;
 }
 
 .why {
@@ -187,9 +308,16 @@ h2 .name {
   overflow-wrap: anywhere;
 }
 
+/* Wide and medium: the Why is one muted line with an ellipsis (its full text in the title); compact: two lines. */
 .why.clamped {
-  display: -webkit-box;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host([data-tier='compact']) .why.clamped {
+  display: -webkit-box;
+  white-space: normal;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -200,40 +328,46 @@ h2 .name {
   padding-inline: 0;
 }
 
+/* Spec chips: mono ID + mini stage chip, wrapping (prototype `f-specs`). */
 .holders {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
+  align-items: center;
   min-inline-size: 0;
-  margin: 12px 0 0;
+  margin: 4px 0 0;
   padding: 0;
   list-style: none;
 }
 
 .holders > li {
-  display: flex;
+  display: inline-flex;
   min-inline-size: 0;
+  max-inline-size: 100%;
 }
 
-/* The block's stories after its specs (T139): a muted "Ideas · n" label, then the idea chips; no claim count. */
 .ideas {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  align-items: center;
   min-inline-size: 0;
-  margin-block-start: 12px;
+  margin-block-start: 4px;
 }
 
 .ideas-label {
   color: var(--muted-ink);
   font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   line-height: 16px;
-  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
 }
 
 .ideas ul {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   min-inline-size: 0;
   margin: 0;
   padding: 0;
@@ -241,43 +375,49 @@ h2 .name {
 }
 
 .ideas li {
-  display: flex;
+  display: inline-flex;
   min-inline-size: 0;
   max-inline-size: 100%;
 }
 
 .more-chips {
-  min-block-size: 28px;
-  block-size: 28px;
-  border-radius: 999px;
   font-size: 12px;
-  line-height: 16px;
+}
+
+/* The side: meter + fraction, then the held glyph (prototype `f-meter`, `f-held`). */
+.side {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: flex-end;
+  min-inline-size: 0;
+  padding-block-start: 2px;
 }
 
 .progress {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
-  justify-content: flex-end;
-  min-block-size: 24px;
 }
 
 .progress ui-meter {
-  flex: none;
-  inline-size: 160px;
+  inline-size: 64px;
 }
 
 .fraction {
   display: inline-flex;
   gap: 4px;
   align-items: center;
+  min-inline-size: 40px;
+  justify-content: flex-end;
+  color: var(--muted-ink);
   font-size: 13px;
   line-height: 20px;
   white-space: nowrap;
 }
 
 .fraction.done {
-  color: var(--done-ink);
+  color: var(--clos-ink);
 }
 
 .fraction.muted {
@@ -285,11 +425,15 @@ h2 .name {
 }
 
 .unheld {
-  margin: 8px 0 0;
-  color: var(--muted-ink);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  line-height: 20px;
+  min-inline-size: 112px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+p.unheld {
+  color: var(--clos-ink);
   text-align: end;
 }
 
@@ -299,8 +443,11 @@ details.unheld {
 
 details.unheld summary {
   display: inline-flex;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
+  justify-content: flex-end;
+  inline-size: 100%;
+  min-block-size: 24px;
   cursor: pointer;
   list-style: none;
 }
@@ -310,6 +457,7 @@ details.unheld summary::-webkit-details-marker {
 }
 
 details.unheld .chevron {
+  color: var(--muted-ink);
   transition: rotate var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
@@ -317,13 +465,36 @@ details.unheld[open] .chevron {
   rotate: 180deg;
 }
 
-.ids {
-  margin: 4px 0 0;
-  color: var(--color-base-content);
-  font-size: 12px;
-  line-height: 16px;
-  overflow-wrap: anywhere;
+/* Prototype `.claim-line`: 16 px glyph | 64 px ISC id (mono 12, cyan-text) | text 13/20, indented to the title. */
+.claim-lines {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0 0 0 60px;
+  list-style: none;
 }
+
+.claim-line {
+  display: grid;
+  grid-template-columns: 16px 64px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.claim-line ui-icon {
+  margin-block-start: 3px;
+  color: var(--muted-ink);
+}
+
+.cid {
+  color: var(--disp-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
 
 @media (pointer: coarse) {
   details.unheld summary {
@@ -336,100 +507,158 @@ details.unheld[open] .chevron {
   gap: 12px;
 }
 
-/* Medium and compact: one column, the stacks dissolved into the article's grid. */
-:host(:not([data-tier='wide'])) .rows {
-  gap: 8px;
-}
-
+/* Medium and compact: the side moves under the title, indented to it, the meter grows to the free width. */
 :host(:not([data-tier='wide'])) article {
-  grid-template-areas:
-    'head fraction'
-    'meter meter'
-    'why why'
-    'chips chips'
-    'unheld unheld';
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0 16px;
-  padding: 16px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
-:host(:not([data-tier='wide'])) :is(.main, .side, .progress) {
-  display: contents;
+:host(:not([data-tier='wide'])) .side {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  padding-inline-start: 60px;
 }
 
-:host(:not([data-tier='wide'])) h2 {
-  grid-area: head;
-}
-
-:host(:not([data-tier='wide'])) .fraction {
-  grid-area: fraction;
-  place-self: start end;
-  line-height: 24px;
+:host(:not([data-tier='wide'])) .progress {
+  flex: 1 1 160px;
 }
 
 :host(:not([data-tier='wide'])) .progress ui-meter {
+  flex: 1 1 auto;
+  inline-size: auto;
+}
+
+:host([data-tier='compact']) .main {
+  grid-template-columns: 36px minmax(0, 1fr);
+}
+
+:host([data-tier='compact']) .side {
+  padding-inline-start: 48px;
+}
+
+:host([data-tier='compact']) .ws-suffix {
+  display: none;
+}
+
+/* The rail (prototype `context-rail`, `rail-block`, `mini-row`). */
+.rail {
+  display: grid;
+  gap: 24px;
+  min-inline-size: 0;
+}
+
+.rail-block {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+.rail-eyebrow {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  color: var(--muted-ink);
+}
+
+.rail-card {
+  display: grid;
+}
+
+.mini-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 64px 40px;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 32px;
+  color: inherit;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+:where(.mini-row:hover) .t {
+  text-decoration: underline;
+}
+
+.mini-row ui-icon {
+  color: var(--muted-ink);
+}
+
+.mini-row .t {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-row .num {
+  color: var(--muted-ink);
+  font-size: 12px;
+  text-align: end;
+}
+
+.mini-row .num.warn {
+  color: var(--conc-ink);
+}
+
+.mini-row .fid {
+  color: var(--disp-ink);
+  font-size: 12px;
+}
+
+@media (pointer: coarse) {
+  .mini-row {
+    min-block-size: 44px;
+  }
+}
+
+.rail-empty {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+}
+
+/* Compact (design § Mobile): the value closes the title row on the right, the 6 px bar runs at full width under the
+   row, the held line follows; the side's wrappers dissolve into the row grid (plain divs, no role to lose). */
+:host([data-tier='compact']) article {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'main frac'
+    'meter meter'
+    'held held';
+  gap: 8px 12px;
+}
+
+:host([data-tier='compact']) :is(.side, .progress) {
+  display: contents;
+}
+
+:host([data-tier='compact']) article > .main {
+  grid-area: main;
+}
+
+:host([data-tier='compact']) .fraction {
+  grid-area: frac;
+  align-self: start;
+  padding-block-start: 2px;
+}
+
+:host([data-tier='compact']) .progress ui-meter {
   grid-area: meter;
   inline-size: auto;
-  margin-block-start: 8px;
-}
-
-:host(:not([data-tier='wide'])) .why-block {
-  grid-area: why;
-  margin-block-start: 8px;
-}
-
-:host(:not([data-tier='wide'])) .holders {
-  grid-area: chips;
-  margin-block-start: 8px;
-}
-
-:host(:not([data-tier='wide'])) .unheld {
-  grid-area: unheld;
-  justify-self: start;
-  text-align: start;
-}
-
-:host([data-tier='compact']) article {
-  grid-template-areas:
-    'head fraction'
-    'meter meter'
-    'unheld unheld'
-    'why why'
-    'chips chips';
-}
-
-:host([data-tier='compact']) h2 {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 8px;
-  font-size: 15px;
-}
-
-:host([data-tier='compact']) h2 .id {
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 20px;
-}
-
-:host([data-tier='compact']) h2 .id::after {
-  content: none;
-}
-
-:host([data-tier='compact']) h2 .name {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
 }
 
 :host([data-tier='compact']) .unheld {
-  font-size: 12px;
-  line-height: 16px;
+  grid-area: held;
+  justify-self: start;
+  padding-inline-start: 48px;
 }
 
-@media (forced-colors: active) {
-  ui-card[data-arrived] {
-    outline-color: Highlight;
-  }
+:host([data-tier='compact']) p.unheld {
+  text-align: start;
+}
+
+/* Wide: the meter is the prototype's 64 px `meter thin`, never wider than its column. */
+:host([data-tier='wide']) .progress ui-meter {
+  display: block;
+  flex: none;
+  overflow: hidden;
 }

@@ -34,7 +34,9 @@ if (!HARBOR_002_NOTE) throw new Error('STUB_NOTES holds no harbor 002 note');
 const PAGES: ReadonlyArray<{ readonly path: string; readonly tab?: string }> = [
   { path: '/' },
   { path: '/w/harbor' },
+  { path: '/w/harbor/library' },
   { path: '/settings' },
+  { path: '/settings/workspaces' },
   { path: SPEC },
   ...TAB_IDS.map((tab) => ({ path: `${SPEC}/${tab}`, tab })),
   { path: `${SPEC}/notes/${HARBOR_002_NOTE.id}`, tab: 'notes' },
@@ -171,6 +173,7 @@ for (const theme of ['light', 'dark'] as const) {
         await page.locator('app-spec-head [data-gate-action]').click();
         const dialog = page.locator('app-spec-head [data-gate-dialog]');
         const reviewed = answered(page, 'POST', /\/gate\/reviewed$/u);
+        for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
         await dialog.locator('[data-confirm]').click();
         expect((await reviewed).status()).toBe(200);
         await expect(page.locator('app-spec-head [data-gate-written]')).toBeVisible();

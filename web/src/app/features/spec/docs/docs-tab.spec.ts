@@ -38,6 +38,8 @@ const api = {
   workspaces: () => Promise.resolve(ok([])),
   dashboard: () => Promise.resolve(ok({ specs: Object.entries(TYPES).map(([id, type]) => ({ id, title: id, type, stage: 'plan' })) })),
   spec: () => Promise.resolve({ kind: 'not-found', served: false }),
+  // Decisions also reads the spec's fog from the Claims route for its "Still open" card (spec 024); none here.
+  claims: () => Promise.resolve({ kind: 'not-found', served: false }),
   docs,
 };
 
@@ -84,7 +86,8 @@ describe('DocsTab', () => {
     expect(links).toEqual(plan.toc.map((entry) => `#${entry.anchor}`));
     for (const entry of plan.toc) expect(prose.querySelector(`[id="${entry.anchor}"]`)).not.toBeNull();
     expect(root.querySelector('[data-docs-meta]')?.textContent).toContain('approved');
-    expect(root.querySelector('[data-docs-meta]')?.textContent).toContain('Updated 2026-03-03');
+    // spec 024: prototype value (principal: Prototyp gilt immer) — the prototype's lower-case "updated …" meta.
+    expect(root.querySelector('[data-docs-meta]')?.textContent).toContain('updated 2026-03-03');
     const regions = [...prose.querySelectorAll('div.mdtable')];
     expect(regions).toHaveLength(2);
     for (const [index, region] of regions.entries()) {
@@ -115,7 +118,7 @@ describe('DocsTab', () => {
     const root = await open('/w/harbor/s/003/plan');
     expect(root.querySelector('[data-diagram-missing]')?.textContent).toContain('This plan has no diagram.');
     expect(root.querySelector('nav.docs-toc')).toBeNull();
-    expect(root.querySelector('ui-disclosure.docs-toc-fold')?.textContent).toContain('Contents');
+    expect(root.querySelector('ui-disclosure.docs-toc-fold')?.textContent).toContain('On this page');
   });
 
   it('marks an image that is not in this checkout', async () => {
@@ -155,5 +158,31 @@ describe('DocsTab', () => {
     expect(chips).toContain('repo: harbor');
     expect(chips).toContain('design_track: app');
     expect(root.querySelector('[data-diagram-missing]')).toBeNull();
+  });
+
+  it('shows the constitution lanes and gate tiers and the context.md question rounds as cards (spec 024, ISC-149)', async () => {
+    let root = await open('/w/harbor/s/002/constitution');
+    expect([...root.querySelectorAll('[data-lane-row] td:first-child')].map((td) => td.textContent.trim())).toEqual(['cli', 'api', 'web']);
+    expect([...root.querySelectorAll('[data-gate-tier]')].map((card) => card.getAttribute('data-gate-tier'))).toEqual(['static', 'quick', 'full']);
+    expect(root.querySelector('[data-gate-tier].is-first')?.getAttribute('data-gate-tier')).toBe('static');
+    const base = GOLDEN.specs[SPEC_KEYS['002'] ?? '']?.decisions;
+    if (!base) throw new Error('harbor 002 has a context.md');
+    overrides = {
+      '002/decisions': {
+        ...base,
+        decisions: {
+          goal: { text: 'One page.', confirmed: '2026-03-03T10:00:00Z' },
+          rounds: [{ id: 'round-0', title: 'Round 1 — before the plan', date: '2026-03-03', shapes: [], shapeChosen: null, questions: [{ n: '1', title: 'Poll or push?', from: '/spec-plan', offered: [{ text: 'ETag', recommended: true }, { text: 'SSE', recommended: false }], chosen: 'ETag', landedIn: ['plan.md', 'ISC-3'] }] }],
+        },
+      },
+    };
+    root = await open('/w/harbor/s/002/decisions');
+    expect(root.querySelector('[data-goal-card] blockquote')?.textContent).toContain('One page.');
+    const block = root.querySelector('[data-decision-block]');
+    expect(block?.querySelector('h4')?.textContent).toContain('Q1');
+    expect(block?.querySelector('[data-recommended]')?.closest('li')?.textContent).toContain('ETag');
+    expect([...(block?.querySelectorAll('[data-file-chip]') ?? [])].map((chip) => chip.tagName)).toEqual(['A', 'SPAN']);
+    expect(root.querySelector('[data-decisions-full]')).not.toBeNull();
+    overrides = {};
   });
 });

@@ -16,9 +16,6 @@ import {
 import { isTechTabId, type TechTabId } from './page-tabs';
 import type { Tier } from './tier';
 
-/** Where the tab bar renders: header row 2 at compact, under the spec head at medium and wide (plan 002, T35). */
-export type TabBarPlacement = 'header' | 'main';
-
 /** What the current route says, read once per navigation from the whole snapshot chain. */
 export interface ShellRoute {
   readonly ws: string | null;
@@ -84,7 +81,6 @@ export class ShellState {
   readonly railCollapsed = computed(() => this.settings.settings().railCollapsed);
   /** The rail shows as its 48 px strip only at wide, where it is a column; medium stacks it as page content. */
   readonly railStrip = computed(() => this.tier() === 'wide' && this.railCollapsed());
-  readonly tabBarPlacement = computed<TabBarPlacement>(() => (this.tier() === 'compact' ? 'header' : 'main'));
 
   private readonly lastWorkspace = signal<string | null>(null);
   /**

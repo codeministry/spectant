@@ -4,8 +4,8 @@
  * Day labels stick under the header and tab bar. Colours come from the theme tokens, durations from motion.css.
  */
 :host {
-  --time-col: 56px;
-  --rail-col: 24px;
+  --time-col: 48px;
+  --rail-col: 12px;
   --sticky-top: 108px;
 
   display: block;
@@ -14,30 +14,46 @@
 
 .filters {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   margin-block-end: 16px;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
+/* Prototype `[data-ui="timeline-filter"] button`: 30 px pills, 12 px muted text on a hairline, pressed on the card. */
 .filter {
+  --btn-bg: transparent;
+  --btn-fg: var(--muted-ink);
+  --btn-border: var(--line);
+
   flex-shrink: 0;
-  gap: 8px;
+  gap: 6px;
+  block-size: 30px;
+  min-block-size: 30px;
+  padding-inline: 10px;
+  border: 1px solid var(--btn-border);
   border-radius: 999px;
+  color: var(--btn-fg);
+  font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
 }
 
 .filter[aria-pressed='true'] {
-  --btn-bg: var(--disp-t);
-  --btn-fg: var(--disp-ink);
-  --btn-border: var(--color-primary);
+  --btn-bg: var(--color-base-100);
+  --btn-fg: var(--color-base-content);
+  --btn-border: var(--track);
+
+  background: var(--btn-bg);
 }
 
 .dot {
-  inline-size: 8px;
-  block-size: 8px;
+  box-sizing: border-box;
+  inline-size: 12px;
+  block-size: 12px;
+  border: 2px solid var(--marker);
   border-radius: 50%;
+  background: var(--marker);
 }
 
 .count {
@@ -68,17 +84,35 @@
   list-style: none;
 }
 
+/* Prototype `.tl`: one 2 px strand through the marker column, from the first day to the last entry. */
+.strand {
+  position: relative;
+  padding-inline-start: 8px;
+}
+
+.strand::before {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(8px + var(--rail-col) / 2 - 1px);
+  inline-size: 2px;
+  background: var(--line);
+  content: '';
+}
+
 .day + .day {
   margin-block-start: 16px;
 }
 
+/* Prototype `.tl-day .eyebrow`: a sticky eyebrow on the page surface, 28 px in from the strand. */
 .day-label {
   position: sticky;
-  z-index: 1;
+  z-index: 2;
   inset-block-start: var(--sticky-top);
-  margin: 0;
-  padding-block: 8px;
-  background: var(--color-base-100);
+  inline-size: fit-content;
+  margin: 12px 0 8px 20px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--color-base-200);
   color: var(--muted-ink);
   font-size: 12px;
   font-weight: 600;
@@ -87,60 +121,65 @@
   text-transform: uppercase;
 }
 
+/* Prototype `.tl-entry`: marker | time | entry | anchor, 12 px apart, 8 px above and below. */
 .entry {
   display: grid;
   position: relative;
-  grid-template-columns: var(--time-col) var(--rail-col) minmax(0, 1fr);
-  gap: 8px;
+  grid-template-areas: 'marker time main';
+  grid-template-columns: var(--rail-col) var(--time-col) minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
-  min-block-size: 48px;
+  padding-block: 8px;
+  padding-inline-end: 32px;
   border-radius: 8px;
   outline-offset: 2px;
   transition: background-color var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
-/* The rail: a 2 px line through the marker column, continuous from entry to entry. */
-.entry::before {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: calc(var(--time-col) + 8px + var(--rail-col) / 2 - 1px);
-  inline-size: 2px;
-  background: var(--line);
-  content: '';
-}
 
 .entry[data-highlighted] {
   background: var(--disp-t);
 }
 
 .time {
-  padding-block-start: 14px;
+  grid-area: time;
   color: var(--muted-ink);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
   line-height: 20px;
-  text-align: end;
 }
 
 .marker {
   position: relative;
   z-index: 1;
   justify-self: center;
+  grid-area: marker;
+  box-sizing: border-box;
   inline-size: 12px;
   block-size: 12px;
-  margin-block-start: 18px;
+  margin-block-start: 4px;
   border: 2px solid var(--marker);
   border-radius: 50%;
   background: var(--marker);
+  outline: 4px solid var(--color-base-200);
 }
 
+/* Prototype `.mk.commit`: a smaller 8 px dot on the track colour. */
+.entry[data-kind='commit'] .marker {
+  inline-size: 8px;
+  block-size: 8px;
+  margin-block-start: 6px;
+}
+
+/* Prototype `.tl-entry.dashed > .mk`: a derived transition is a dashed cyan ring. */
 .marker[data-derived] {
-  border-style: dashed;
-  background: var(--color-base-100);
+  border: 2px dashed var(--color-primary);
+  background: transparent;
 }
 
 .main {
+  grid-area: main;
   min-inline-size: 0;
 }
 
@@ -148,8 +187,8 @@
   display: grid;
   gap: 2px;
   min-inline-size: 0;
-  padding-block: 12px;
 }
+
 
 ui-disclosure .head {
   padding-block: 0;
@@ -178,10 +217,15 @@ ui-disclosure .head {
   font-family: var(--font-mono);
 }
 
+/* Prototype `.tl-body`: the round or decision body on its own card under the summary. */
 .body {
   display: grid;
-  gap: 4px;
-  padding-block: 4px 12px;
+  gap: 8px;
+  margin-block-start: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--color-base-100);
   font-size: 13px;
   line-height: 20px;
 }
@@ -193,8 +237,21 @@ ui-disclosure .head {
 
 .board-link {
   justify-self: start;
-  margin-block-start: 4px;
-  color: var(--disp-ink);
+}
+
+.none-match {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.open-link {
+  color: var(--disp-text);
   font-weight: 500;
 }
 
@@ -231,4 +288,129 @@ ui-disclosure .head {
   .marker[data-derived] {
     background: Canvas;
   }
+}
+
+/* The prototype's hover anchor: `#` links the entry's `#t/<id>`, shown on hover or focus. */
+.entry-anchor {
+  position: absolute;
+  inset-block-start: 12px;
+  inset-inline-end: 8px;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.entry:is(:hover, :focus-within) .entry-anchor {
+  opacity: 1;
+}
+
+/* Prototype `.tl-entry .small-t`: a commit's title in small mono. */
+.entry[data-kind='commit'] .title {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* Prototype `.tl.empty-tl::before`: without a recorded event the strand is dashed, 6 px on, 6 px off. */
+.strand.is-dashed::before {
+  background: repeating-linear-gradient(var(--line) 0 6px, transparent 6px 12px);
+}
+
+/* Prototype `.mk.note`: the ques tint inside a 2 px ques ring (the filter dot and the strand marker). */
+.dot[data-kind='note'],
+.entry[data-kind='note'] .marker {
+  background: var(--ques-t);
+}
+
+/* Prototype `.pulse-mk`: a running agent's marker sends an orange ring out once a beat — drawn as an outline that
+   widens and fades (the glow guard keeps box-shadow flat); still under reduced motion. */
+.marker[data-running] {
+  outline: 2px solid var(--color-warning);
+  outline-offset: 0;
+  animation: pulse-mk var(--motion-duration-pulse) var(--motion-ease-standard) infinite;
+}
+
+@keyframes pulse-mk {
+  70%,
+  100% {
+    outline-color: transparent;
+    outline-offset: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marker[data-running] {
+    animation: none;
+  }
+}
+
+/* Prototype `.qa`: a 90 px label column of small caps, the value beside it; the files as `.file-chip`. */
+.qa {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.qa dt {
+  padding-block-start: 2px;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.qa dd {
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.qa ul {
+  margin: 0;
+  padding-inline-start: 16px;
+}
+
+.qa .mono {
+  font-family: var(--font-mono);
+}
+
+.qa .wait {
+  color: var(--muted-ink);
+}
+
+.rec {
+  display: inline-block;
+  margin-inline-start: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--clos-t);
+  color: var(--clos-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.file-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--color-base-300);
+  color: var(--disp-ink);
+  font: 500 12px/18px var(--font-mono);
+  text-decoration: none;
 }

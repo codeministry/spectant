@@ -13,6 +13,8 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
+import { BoardStatesGallery } from './board-states-gallery';
+import { StatesGallery } from './states-gallery';
 import { UiButton, type ButtonTone, type ButtonVariant } from '../../shared/ui/button/button';
 import { UiButtonGroup } from '../../shared/ui/button/button-group';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
@@ -25,6 +27,12 @@ import {
   UiChip,
   UiCommandChip,
   UiDialog,
+  UiGlyph,
+  UiStateChip,
+  type ChipVariant,
+  type GlyphFamily,
+  type GlyphState,
+  chipIcon,
   UiDisclosure,
   UiEmptyState,
   UiFilterChips,
@@ -65,6 +73,8 @@ import {
 @Component({
   selector: 'app-ui-gallery',
   imports: [
+    BoardStatesGallery,
+    StatesGallery,
     RouterLink,
     UiButton,
     UiButtonGroup,
@@ -73,6 +83,8 @@ import {
     UiChip,
     UiCommandChip,
     UiDialog,
+    UiGlyph,
+    UiStateChip,
     UiDisclosure,
     UiEmptyState,
     UiFilterChips,
@@ -117,6 +129,34 @@ export class UiGallery {
     { key: 'dark', label: 'Dark', tone: 'secondary' },
   ];
   protected readonly segment = signal('light');
+
+  // Prototype anatomy (ISC-148): the fixture's chip parts and the app chip that stands for each (primitives.spec.ts).
+  protected readonly chipIcon = chipIcon;
+  protected readonly anatomyChips: ReadonlyArray<{ part: string; tone: Tone; variant: ChipVariant; icon: ReturnType<typeof chipIcon> }> = [
+    { part: 'chip', tone: 'neutral', variant: 'status', icon: chipIcon('lane-chip') },
+    { part: 'chip-building', tone: 'primary', variant: 'status', icon: chipIcon('building') },
+    { part: 'chip-scoping', tone: 'secondary', variant: 'status', icon: chipIcon('scoping') },
+    { part: 'chip-done', tone: 'success', variant: 'status', icon: chipIcon('done') },
+    { part: 'chip-stale', tone: 'warning', variant: 'status', icon: chipIcon('stale') },
+    { part: 'chip-warn', tone: 'warning', variant: 'status', icon: chipIcon('warn') },
+    { part: 'chip-plain', tone: 'neutral', variant: 'plain', icon: chipIcon('feature') },
+    { part: 'chip-take', tone: 'accent', variant: 'take', icon: chipIcon('take') },
+    { part: 'chip-mono-chip', tone: 'neutral', variant: 'mono', icon: undefined },
+  ];
+  protected readonly anatomyStates: ReadonlyArray<{ part: string; state: GlyphState; family: GlyphFamily }> = [
+    { part: 'chip-st-closed', state: 'closed', family: 'claim' },
+    { part: 'chip-st-takeable', state: 'takeable', family: 'claim' },
+    { part: 'chip-st-taken', state: 'taken', family: 'claim' },
+    { part: 'chip-st-blocked', state: 'blocked', family: 'claim' },
+    { part: 'chip-st-concerns', state: 'concerns', family: 'card' },
+    { part: 'chip-st-question', state: 'question', family: 'card' },
+    { part: 'chip-st-fail', state: 'fail', family: 'card' },
+  ];
+  protected readonly anatomyPair: readonly SegmentedOption[] = [
+    { key: 'a', label: 'Ag' },
+    { key: 'b', label: 'Ag' },
+  ];
+  protected readonly anatomyPairValue = signal('a');
 
   protected readonly split: readonly MeterSegment[] = [
     { key: 'complete', count: 3, tone: 'accent' },

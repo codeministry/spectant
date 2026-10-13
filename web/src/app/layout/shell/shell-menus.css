@@ -9,6 +9,28 @@
   --ui-popover-width: 320px;
 }
 
+/* The prototype's `.pop-head eyebrow` and `.pop-sep` (pop-ws, pop-specs). */
+.menu-head {
+  margin: 0;
+  padding: 8px 12px 4px;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.picker-sep {
+  block-size: 1px;
+  margin-block: 4px;
+  background: var(--line);
+}
+
+.entry-kbd {
+  justify-self: end;
+}
+
 .picker ul {
   display: grid;
   gap: 4px;
@@ -33,7 +55,7 @@
 }
 
 .entry[aria-current] {
-  background: var(--color-base-200);
+  background: var(--color-base-300);
   font-weight: 600;
 }
 
@@ -42,11 +64,10 @@
   cursor: default;
 }
 
-.picker-all,
-.entry-id,
 .entry-check {
   color: var(--disp-ink);
 }
+
 
 .entry-name {
   overflow: hidden;
@@ -63,6 +84,7 @@
 }
 
 .entry-id {
+  color: var(--muted-ink);
   font-family: var(--font-mono);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -78,12 +100,134 @@
 
 @media (hover: hover) {
   a.entry:hover {
-    background: var(--color-base-200);
+    background: var(--color-base-300);
   }
 }
 
 @media (pointer: coarse) {
   .entry {
     min-block-size: 44px;
+  }
+}
+
+/* The overflow menu and the settings panel (prototype `[data-ui="popover"]`, `pop-settings`; spec 024 T76, T40). */
+.menu-popover {
+  --ui-popover-width: 280px;
+}
+
+.more .entry,
+.settings-panel .entry {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  inline-size: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.more .entry[aria-disabled="true"] {
+  cursor: default;
+}
+
+.entry-stack {
+  display: grid;
+  min-inline-size: 0;
+}
+
+.entry-value {
+  overflow: hidden;
+  color: var(--disp-text);
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-key {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.more .entry[aria-pressed="true"] {
+  background: var(--color-base-300);
+}
+
+@media (hover: hover) {
+  button.entry:not([aria-disabled="true"]):hover {
+    background: var(--color-base-300);
+  }
+}
+
+.settings-panel {
+  display: grid;
+}
+
+.setting {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+}
+
+.setting-label {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pop-sep {
+  block-size: 1px;
+  margin-block: 8px;
+  background: var(--line);
+}
+
+.switch-row {
+  cursor: default;
+}
+
+/* The prototype's `.switch`: 32 × 18, a 14 px knob, `--badge` when on. */
+.switch {
+  position: relative;
+  inline-size: 32px;
+  block-size: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: var(--track);
+  cursor: pointer;
+  transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.switch::after {
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-start: 2px;
+  inline-size: 14px;
+  block-size: 14px;
+  border-radius: 50%;
+  background: var(--color-base-100);
+  content: "";
+  transition: translate var(--motion-duration-instant) var(--motion-ease-standard);
+}
+
+.switch[aria-checked="true"] {
+  background: var(--badge-fill);
+}
+
+.switch[aria-checked="true"]::after {
+  translate: 14px 0;
+}
+
+@media (pointer: coarse) {
+  /* The switch keeps its look and gets a 44 px hit area. */
+  .switch::before {
+    position: absolute;
+    inset: -13px -6px;
+    content: "";
   }
 }

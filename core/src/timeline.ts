@@ -14,13 +14,41 @@
 // as `Date.parse` epochs, not as strings: `git log --format=%cI` prints the committer's offset (`08:00:00+02:00`), and
 // mixed precision (`…29Z` vs `…29.277Z`) breaks a lexical compare as well. A `ts` that does not parse sorts after
 // every one that does, lexically among its peers.
+//
+// The server joins two sources the files do not hold (spec 024, the prototype's `.mk.note` and `.mk.agent`): the
+// app's notes of the spec (`note`, at the note's creation) and the lock sessions holding one of its claims (`agent`,
+// at the lock's `since`, `running` while held). They sort after every file source of the same instant.
+import { blocksOf, parseQuestion, QUESTION_HEADER } from './context-log.ts';
 import { deriveStages, GOAL_HEADER, ROUND_HEADER, stageInstants } from './derived-stages.ts';
 import { parseEvents } from './events.ts';
-import type { CommitRecord, SpecFiles, TimelineEntry, TimelineInput, TimelineKind } from './files.ts';
+import type { CommitRecord, DecisionQuestion, SpecFiles, TimelineEntry, TimelineInput, TimelineKind } from './files.ts';
 
 type RecordedKind = Exclude<TimelineKind, 'stage'>;
 
-const SOURCE_RANK: Readonly<Record<TimelineKind, number>> = { stage: -1, decision: 0, round: 1, gate: 2, commit: 3 };
+const SOURCE_RANK: Readonly<Record<TimelineKind, number>> = { stage: -1, decision: 0, round: 1, gate: 2, commit: 3, note: 4, agent: 5 };
+
+/** A note of the app's notes store anchored to the spec (or one of its claims or tasks), as the server passes it. */
+export interface TimelineNote {
+  readonly id: string;
+  readonly title: string;
+  readonly body: string;
+  /** ISO 8601. */
+  readonly created: string;
+}
+
+/** A held lock on one of the spec's claims, as the server reads it from the lock sources. */
+export interface TimelineSession {
+  readonly claim: string;
+  readonly session: string;
+  /** ISO 8601. */
+  readonly since: string;
+}
+
+/** The files' input plus the server's joins; both default to none, so a files-only timeline is unchanged. */
+export interface TimelineActivityInput extends TimelineInput {
+  readonly notes?: readonly TimelineNote[];
+  readonly sessions?: readonly TimelineSession[];
+}
 
 /** An entry before ordering, with its id base (made unique after sorting). */
 interface Draft {
@@ -31,6 +59,8 @@ interface Draft {
   readonly body?: string;
   readonly actor?: string;
   readonly goalLock?: true;
+  readonly question?: DecisionQuestion;
+  readonly running?: true;
 }
 
 /** An entry placed for sorting: the instant it sorts at, its source rank and its position within the source. */
@@ -40,12 +70,14 @@ interface Placed {
   readonly seq: number;
 }
 
-export function buildTimeline(input: TimelineInput): TimelineEntry[] {
+export function buildTimeline(input: TimelineActivityInput): TimelineEntry[] {
   const drafts: Draft[] = [
     ...decisionsOf(input.files.texts.context),
     ...roundsOf(input.files.texts.rounds),
     ...gatesOf(input.files),
     ...commitsOf(input.commits),
+    ...notesOf(input.notes ?? []),
+    ...sessionsOf(input.sessions ?? []),
   ];
   const recorded = input.files.texts.events;
   const events = input.events ?? (recorded === undefined ? undefined : parseEvents(recorded).events);
@@ -79,12 +111,14 @@ function recordedEntry(draft: Draft): TimelineEntry {
     ref: draft.ref,
     ...(draft.actor === undefined ? {} : { actor: draft.actor }),
     ...(draft.goalLock ? { goalLock: true } : {}),
+    ...(draft.question === undefined ? {} : { question: draft.question }),
+    ...(draft.running ? { running: true } : {}),
   };
 }
 
 /** The entry with its id, keys in one fixed order for every kind (the golden snapshots compare bytes). */
 function withId(entry: TimelineEntry, id: string): TimelineEntry {
-  const { ts, kind, derived, title, body, ref, actor, goalLock, from, to, command, undated } = entry;
+  const { ts, kind, derived, title, body, ref, actor, goalLock, from, to, command, undated, question, running } = entry;
   return {
     ts,
     kind,
@@ -98,6 +132,8 @@ function withId(entry: TimelineEntry, id: string): TimelineEntry {
     ...(to === undefined ? {} : { from: from ?? null, to }),
     ...(command === undefined ? {} : { command }),
     ...(undated ? { undated: true } : {}),
+    ...(question === undefined ? {} : { question }),
+    ...(running ? { running: true } : {}),
   };
 }
 
@@ -121,32 +157,7 @@ function oneLine(text: string): string {
 // ─── context.md ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 // GOAL_HEADER and ROUND_HEADER live in derived-stages.ts, which dates the creation from the same headers.
-/** `### Qn · <question>`; the number is optional (`### Q · …` in build rounds). */
-const QUESTION_HEADER = /^### Q(\d*)\s*·\s*(.+?)\s*$/;
 const FROM_LINE = /^-\s+From:\s*(.+?)\s*$/;
-const FENCE = /^\s*(```|~~~)/;
-
-interface Block {
-  header: string;
-  lines: string[];
-}
-
-/** Splits context.md into `##`/`###` blocks, ignoring headers inside fenced code. */
-function blocksOf(text: string): Block[] {
-  const blocks: Block[] = [];
-  let current: Block | null = null;
-  let fenced = false;
-  for (const line of text.split(/\r?\n/)) {
-    if (FENCE.test(line)) fenced = !fenced;
-    if (!fenced && /^#{2,3} /.test(line)) {
-      current = { header: line, lines: [] };
-      blocks.push(current);
-    } else {
-      current?.lines.push(line);
-    }
-  }
-  return blocks;
-}
 
 function bodyOf(lines: readonly string[]): string | undefined {
   const body = lines.join('\n').trim();
@@ -189,6 +200,7 @@ function decisionsOf(text: string | undefined): Draft[] {
       ref: `R${round.n}.Q${q[1] === undefined || q[1] === '' ? String(round.ordinal) : q[1]}`,
       ...(body ? { body } : {}),
       ...(actor ? { actor } : {}),
+      question: parseQuestion(block, q[1] ?? ''),
     });
   }
   return out;
@@ -312,4 +324,19 @@ function commitsOf(commits: readonly CommitRecord[]): Draft[] {
     title: oneLine(c.subject.split(/\r?\n/, 1)[0] ?? '') || c.sha.slice(0, 7),
     ref: c.sha,
   }));
+}
+
+// ─── the server's joins: notes and lock sessions ─────────────────────────────────────────────────────────────────
+
+/** One entry per note: titled by its title, else its body's first line; the body is the note's Markdown. */
+function notesOf(notes: readonly TimelineNote[]): Draft[] {
+  return notes.map((note) => {
+    const title = oneLine(note.title) || oneLine(note.body.split(/\r?\n/, 1)[0] ?? '');
+    return { kind: 'note', ts: note.created, title, ref: note.id, ...(note.body.trim() === '' ? {} : { body: note.body.trim() }) };
+  });
+}
+
+/** One running agent entry per held lock: the claim it works on, the session as the actor. */
+function sessionsOf(sessions: readonly TimelineSession[]): Draft[] {
+  return sessions.map((s) => ({ kind: 'agent', ts: s.since, title: s.claim, ref: s.claim, actor: s.session, running: true }));
 }

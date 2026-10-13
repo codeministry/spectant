@@ -1,0 +1,155 @@
+/*
+ * The workspace board's prototype parity (spec 024, ISC-151; design § Workspace-Board and § Viewport-übergreifend
+ * "Kanban bleibt"; prototype `workspace-board.html`), split from board-page.css for the per-file style budget: the
+ * workspace badge and the muted suffix beside the h1, the swimlane head's mini meter, the position fades' arrows and
+ * the compact sheet bar with its "Needs you" sheet.
+ */
+.h1-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.page-mark {
+  flex: none;
+}
+
+.ws-suffix {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--muted-ink);
+  font-family: var(--font-brand);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host([data-tier='compact']) .ws-suffix {
+  display: none;
+}
+
+/* The swimlane head's mini meter (design § Desktop "Mini-Balken"): the band's done cards of all its cards. */
+.bmeter {
+  flex: none;
+  inline-size: 48px;
+}
+
+/* The position fades' arrows (design § Tablet: "btn-icon ghost mit chevronDown nach links und rechts gedreht"). */
+.lstep {
+  position: absolute;
+  z-index: 3;
+  inset-block-start: 50%;
+  border: 1px solid var(--line);
+  background: var(--color-base-100);
+  translate: 0 -50%;
+}
+
+.lstep.prev {
+  inset-inline-start: 4px;
+  rotate: 90deg;
+}
+
+.lstep.next {
+  inset-inline-end: 4px;
+  rotate: -90deg;
+}
+
+/* Compact: the prototype's `.sheet-bar` (40 px, glass, grab, "Needs you" in the hover text colour), sticky at the
+   bottom of the viewport; 44 px under a coarse pointer. */
+.sheet-bar {
+  position: sticky;
+  z-index: 5;
+  inset-block-end: 0;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  inline-size: 100%;
+  block-size: 40px;
+  margin-block-start: 16px;
+  padding: 0 16px;
+  border: 0;
+  border-block-start: 1px solid var(--line);
+  background: var(--page-glass);
+  /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: var(--color-base-content);
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.sheet-bar .grab {
+  flex: none;
+  inline-size: 32px;
+  block-size: 4px;
+  border-radius: var(--radius-selector);
+  background: var(--line);
+}
+
+.sheet-bar .needs-n {
+  margin-inline-start: auto;
+  color: var(--hover-text);
+}
+
+@media (pointer: coarse) {
+  .sheet-bar {
+    block-size: 44px;
+  }
+}
+
+.needs-none {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.needs-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.needs-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0 8px;
+  align-content: center;
+  min-block-size: 44px;
+  padding: 6px 8px;
+  border-radius: var(--radius-field);
+  color: var(--color-base-content);
+  font-size: 13px;
+  line-height: 20px;
+  text-decoration: none;
+}
+
+.needs-row:hover {
+  background: var(--color-base-300);
+}
+
+.needs-row .mono {
+  color: var(--disp-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.needs-row .nt {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.needs-row .nr {
+  grid-column: 2;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}

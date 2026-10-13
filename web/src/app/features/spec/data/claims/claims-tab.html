@@ -15,14 +15,16 @@
         (valueChange)="setKind($event)"
         [label]="'claims.filters.kind' | transloco"
       />
-      <input
-        type="search"
-        class="input input-sm search"
-        [value]="search()"
-        [placeholder]="'claims.search.placeholder' | transloco"
-        [attr.aria-label]="'claims.search.label' | transloco"
-        (input)="setSearch($event)"
-      />
+      <label class="search">
+        <ui-icon name="search" [size]="16" />
+        <input
+          type="search"
+          [value]="search()"
+          [placeholder]="'claims.search.placeholder' | transloco"
+          [attr.aria-label]="'claims.search.label' | transloco"
+          (input)="setSearch($event)"
+        />
+      </label>
     </div>
     <p class="result" data-result aria-live="polite">
       {{ 'claims.result' | transloco: { shown: visible().length, total: model.counts.all } }}
@@ -30,11 +32,134 @@
   </div>
 
   @if (groups().length === 0) {
-    <ui-empty-state [heading]="'claims.empty.heading' | transloco" [body]="'claims.empty.body' | transloco" icon="filter" />
-    <button type="button" class="btn btn-sm btn-ghost clear" (click)="clear()">{{ 'claims.clear' | transloco }}</button>
+    <!-- Prototype `.none-match`: one muted line, Clear beside it. -->
+    <p class="none-match" data-none-match>
+      {{ 'claims.noneMatch' | transloco }}
+      <button ui-button variant="ghost" size="sm" type="button" class="clear" (click)="clear()">{{ 'claims.clear' | transloco }}</button>
+    </p>
   }
 
   <div class="groups" uiRovingList>
+    <ng-template #card let-claim>
+      <article
+        class="claim-card"
+        uiRovingItem
+        [id]="'claim-' + claim.id"
+        [attr.data-claim]="claim.id"
+        [attr.data-state]="claim.state"
+        [attr.data-kind]="claim.kind"
+        [class.is-target]="target() === claim.id"
+        [attr.aria-labelledby]="'claim-' + claim.id + '-id'"
+      >
+        <div class="head">
+          <span class="glyph" role="img" [attr.aria-label]="'claims.states.' + claim.state | transloco">
+            @if (claim.state === 'taken') {
+              <ui-icon name="lock" [size]="14" />
+            } @else {
+              {{ glyphOf(claim) }}
+            }
+          </span>
+          <ui-id-chip [id]="'claim-' + claim.id + '-id'">{{ claim.id }}</ui-id-chip>
+          @if (claim.kind !== 'normal') {
+            <ui-chip data-chip="kind" tone="secondary">{{ 'claims.kinds.' + claim.kind | transloco }}</ui-chip>
+          }
+          @if (claim.state === 'blocked') {
+            <ui-chip data-chip="blocked" tone="error">{{ 'claims.states.blocked' | transloco }}</ui-chip>
+          }
+          @if (claim.lock; as lock) {
+            <ui-chip data-chip="lock" tone="primary" [dot]="true">{{ 'claims.states.taken' | transloco }}</ui-chip>
+          }
+          @let notes = noteCount(claim.id);
+          @if (notes > 0) {
+            <a
+              class="badge badge-sm notes"
+              data-link="notes"
+              [routerLink]="base() + '/notes'"
+              [attr.aria-label]="(notes === 1 ? 'claims.notes.one' : 'claims.notes.other') | transloco: { count: notes }"
+              ><ui-icon name="sticky-note" [size]="14" />{{ notes }}</a
+            >
+          }
+          @if (claim.state !== 'blocked' && !claim.lock) {
+            <ui-chip class="st" data-chip="state" [attr.data-st]="claim.state" [icon]="chipIcon(claim.state)">{{ 'claims.states.' + claim.state | transloco }}</ui-chip>
+          }
+        </div>
+
+        @if (claim.state === 'dropped') {
+          <p class="text-row">
+            <s class="text">{{ claim.text }}</s>
+            @if (claim.dropped?.note; as note) {
+              <span class="muted"> — {{ note }}</span>
+            }
+            <a class="link" data-link="decisions" [routerLink]="base() + '/decisions'">{{ 'claims.dropped.see' | transloco }}</a>
+          </p>
+        } @else {
+          <p class="text-row"><span class="text">{{ claim.text }}</span></p>
+        }
+
+        @if (claim.lock; as lock) {
+          <p class="taken-line" data-session>
+            <span class="agent-dot" aria-hidden="true"></span>
+            <span class="mono">{{ lock.session }}</span>
+            <span class="muted">·</span>
+            <ui-relative-time class="muted" [date]="lock.since" [format]="elapsed" />
+          </p>
+        }
+
+        @if (claim.edges.length > 0) {
+          <ul class="edges">
+            @for (edge of claim.edges; track edge) {
+              <li>
+                <a
+                  class="edge"
+                  [class.is-blocking]="claim.blockedBy.includes(edge)"
+                  [attr.data-edge]="edge"
+                  [attr.aria-label]="(claim.blockedBy.includes(edge) ? 'orientation.edgeBlockedBy' : 'orientation.edgeAfter') | transloco: { claim: claim.id, target: edge }"
+                  [routerLink]="claimsPath()"
+                  [fragment]="'claim-' + edge"
+                  queryParamsHandling="preserve"
+                  >{{ (claim.blockedBy.includes(edge) ? 'claims.edges.blockedBy' : 'claims.edges.after') | transloco: { id: edge } }}</a
+                >
+              </li>
+            }
+          </ul>
+        }
+
+        @if (claim.probe; as probe) {
+          <dl class="probe" [attr.aria-label]="'claims.probe.label' | transloco">
+            <dt><ui-chip>{{ probe.type }}</ui-chip></dt>
+            <dd>
+              <span>{{ probe.check }}</span>
+              @if (probe.threshold) {
+                <span class="muted">{{ probe.threshold }}</span>
+              }
+              @if (probe.tool) {
+                <span class="tool muted">{{ plain(probe.tool) }}</span>
+              }
+              @if (severityColor(probe.severity); as color) {
+                <span class="severity" [attr.title]="'claims.probe.severity' | transloco: { severity: probe.severity }"
+                  ><span class="dot" aria-hidden="true" [style.background]="color"></span
+                  ><span class="sr-only">{{ 'claims.probe.severity' | transloco: { severity: probe.severity } }}</span></span
+                >
+              }
+            </dd>
+          </dl>
+        }
+
+        @if (claim.verification; as verification) {
+          <p class="verification">
+            <ui-icon class="verification-icon" name="circle-check" [size]="14" />
+            <span class="verification-label sr-only">{{ 'claims.verification' | transloco }}</span>
+            @if (evidenceFile(verification); as file) {
+              <a class="link" data-link="evidence" [routerLink]="base() + '/evidence'" [fragment]="file">{{
+                plain(verification)
+              }}</a>
+            } @else {
+              <span>{{ plain(verification) }}</span>
+            }
+          </p>
+        }
+      </article>
+    </ng-template>
     @for (group of groups(); track group.key) {
       <section class="group" [attr.data-feature]="group.key" [attr.aria-labelledby]="'feature-' + group.key">
         <ui-section-header
@@ -42,119 +167,24 @@
           [headingId]="'feature-' + group.key"
           [heading]="group.id === null ? ('claims.ungrouped' | transloco) : group.id + ' · ' + group.title"
         >
-          <span meta>{{ group.claims.length }}</span>
+          <span meta>{{ group.claims.length + group.closed.length }}</span>
         </ui-section-header>
         @if (group.why) {
           <p class="why">{{ 'claims.why' | transloco }} {{ group.why }}</p>
         }
         @for (claim of group.claims; track claim.id) {
-          <article
-            class="card"
-            uiRovingItem
-            [id]="'claim-' + claim.id"
-            [attr.data-claim]="claim.id"
-            [attr.data-state]="claim.state"
-            [attr.data-kind]="claim.kind"
-            [class.is-target]="target() === claim.id"
-            [attr.aria-labelledby]="'claim-' + claim.id + '-id'"
-          >
-            <div class="head">
-              <span class="glyph" role="img" [attr.aria-label]="'claims.states.' + claim.state | transloco">{{
-                glyph[claim.state]
-              }}</span>
-              <ui-id-chip [id]="'claim-' + claim.id + '-id'">{{ claim.id }}</ui-id-chip>
-              @if (claim.kind !== 'normal') {
-                <ui-chip data-chip="kind" tone="secondary">{{ 'claims.kinds.' + claim.kind | transloco }}</ui-chip>
-              }
-              @if (claim.state === 'blocked') {
-                <ui-chip data-chip="blocked" tone="error">{{ 'claims.states.blocked' | transloco }}</ui-chip>
-              }
-              @if (claim.lock; as lock) {
-                <ui-chip data-chip="lock" tone="primary" [dot]="true">{{ 'claims.states.taken' | transloco }}</ui-chip>
-                <span class="session" data-session>
-                  <span class="mono">{{ lock.session }}</span>
-                  <span class="muted">·</span>
-                  <ui-relative-time [date]="lock.since" [format]="elapsed" />
-                </span>
-              }
-              @let notes = noteCount(claim.id);
-              @if (notes > 0) {
-                <a
-                  class="badge badge-sm notes"
-                  data-link="notes"
-                  [routerLink]="base() + '/notes'"
-                  [attr.aria-label]="(notes === 1 ? 'claims.notes.one' : 'claims.notes.other') | transloco: { count: notes }"
-                  >{{ notes }}</a
-                >
+          <ng-container [ngTemplateOutlet]="card" [ngTemplateOutletContext]="{ $implicit: claim }" />
+        }
+        @if (group.closed.length > 0) {
+          <!-- Prototype `.fold`: the All view folds a feature's closed claims into one row, so open work stays in view. -->
+          <details class="fold-row" data-fold [open]="foldOpen(group)">
+            <summary>{{ 'claims.fold' | transloco: { n: group.closed.length } }}</summary>
+            <div class="fold-body">
+              @for (claim of group.closed; track claim.id) {
+                <ng-container [ngTemplateOutlet]="card" [ngTemplateOutletContext]="{ $implicit: claim }" />
               }
             </div>
-
-            @if (claim.state === 'dropped') {
-              <p class="text-row">
-                <s class="text">{{ claim.text }}</s>
-                @if (claim.dropped?.note; as note) {
-                  <span class="muted"> — {{ note }}</span>
-                }
-                <a class="link" data-link="decisions" [routerLink]="base() + '/decisions'">{{ 'claims.dropped.see' | transloco }}</a>
-              </p>
-            } @else {
-              <p class="text-row"><span class="text">{{ claim.text }}</span></p>
-            }
-
-            @if (claim.edges.length > 0) {
-              <ul class="edges">
-                @for (edge of claim.edges; track edge) {
-                  <li>
-                    <a
-                      class="edge"
-                      [class.is-blocking]="claim.blockedBy.includes(edge)"
-                      [attr.data-edge]="edge"
-                      [attr.aria-label]="(claim.blockedBy.includes(edge) ? 'orientation.edgeBlockedBy' : 'orientation.edgeAfter') | transloco: { claim: claim.id, target: edge }"
-                      [routerLink]="claimsPath()"
-                      [fragment]="'claim-' + edge"
-                      queryParamsHandling="preserve"
-                      >{{ (claim.blockedBy.includes(edge) ? 'claims.edges.blockedBy' : 'claims.edges.after') | transloco: { id: edge } }}</a
-                    >
-                  </li>
-                }
-              </ul>
-            }
-
-            @if (claim.probe; as probe) {
-              <dl class="probe" [attr.aria-label]="'claims.probe.label' | transloco">
-                <dt><ui-chip>{{ probe.type }}</ui-chip></dt>
-                <dd>
-                  <span>{{ probe.check }}</span>
-                  @if (probe.threshold) {
-                    <span class="sep">·</span><span>{{ probe.threshold }}</span>
-                  }
-                  @if (probe.tool) {
-                    <span class="sep">·</span><span class="tool">{{ plain(probe.tool) }}</span>
-                  }
-                  @if (severityColor(probe.severity); as color) {
-                    <span class="sep">·</span>
-                    <span class="severity"
-                      ><span class="dot" aria-hidden="true" [style.background]="color"></span
-                      >{{ 'claims.probe.severity' | transloco: { severity: probe.severity } }}</span
-                    >
-                  }
-                </dd>
-              </dl>
-            }
-
-            @if (claim.verification; as verification) {
-              <p class="verification">
-                <span class="label">{{ 'claims.verification' | transloco }}</span>
-                @if (evidenceFile(verification); as file) {
-                  <a class="link" data-link="evidence" [routerLink]="base() + '/evidence'" [fragment]="file">{{
-                    plain(verification)
-                  }}</a>
-                } @else {
-                  <span>{{ plain(verification) }}</span>
-                }
-              </p>
-            }
-          </article>
+          </details>
         }
       </section>
     }

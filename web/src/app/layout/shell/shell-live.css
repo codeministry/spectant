@@ -1,32 +1,80 @@
-/* The live indicator: 40 px, 44 px on touch; three dot states, the text alternative carries the meaning. */
+/*
+ * The status group (prototype `[data-ui="live-indicator"]`): one 40 px bordered group on the card, its parts split by
+ * 1 px rules; 44 px on touch. The dot's three states; the text alternative carries the meaning.
+ */
 :host {
   display: block;
 }
 
-.live {
+.group {
   display: inline-flex;
+  align-items: stretch;
+  block-size: 40px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--color-base-100);
+  color: var(--muted-ink);
+}
+
+.part {
+  display: inline-flex;
+  gap: 8px;
   align-items: center;
   justify-content: center;
-  inline-size: 40px;
-  block-size: 40px;
-  border-radius: var(--radius-field);
+  min-inline-size: 38px;
+  padding-inline: 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
   transition: background-color var(--motion-duration-instant) var(--motion-ease-standard);
 }
 
+.part:first-child {
+  border-start-start-radius: inherit;
+  border-end-start-radius: inherit;
+}
+
+.part:last-child {
+  border-start-end-radius: inherit;
+  border-end-end-radius: inherit;
+}
+
+.part + .part {
+  border-inline-start: 1px solid var(--line);
+}
+
+.refresh {
+  cursor: pointer;
+}
+
 @media (hover: hover) {
-  a.live:hover {
-    background: var(--color-base-200);
+  a.part:hover,
+  button.part:hover {
+    background: var(--color-base-300);
   }
 }
 
+.seconds {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 @media (pointer: coarse) {
-  .live {
-    inline-size: 44px;
+  .group {
     block-size: 44px;
+  }
+
+  .part {
+    min-inline-size: 44px;
   }
 }
 
 .live-dot {
+  flex-shrink: 0;
   inline-size: 6px;
   block-size: 6px;
   border-radius: 50%;
@@ -34,12 +82,130 @@
 }
 
 .live:not([data-source="none"]) .live-dot {
-  background: var(--clos-ink);
+  background: var(--clos-text);
 }
 
 .live[data-source="frontier"] .live-dot {
-  outline: 2px solid color-mix(in oklch, var(--clos-ink) 40%, transparent);
+  outline: 2px solid color-mix(in oklch, var(--clos-text) 40%, transparent);
   outline-offset: 2px;
+}
+
+/* Below 640 px only the indicator: activity and the dot, no refresh, no interval (prototype rule). */
+@container header (width < 640px) {
+  .refresh,
+  .interval {
+    display: none;
+  }
+
+  .live {
+    gap: 4px;
+    padding-inline: 6px;
+  }
+}
+
+/* "Updated 12 s ago" from 1120 px, in place of the activity icon (prototype `.live-label`, `.live-ic`). */
+.live-label {
+  display: none;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@container header (width >= 1120px) {
+  .live-label {
+    display: inline;
+  }
+
+  .live-ic {
+    display: none;
+  }
+}
+
+/* The popovers' contents (prototype `pop-live`, `pop-interval`: `.pop-head`, `.service`, `.pop-item`, `.pop-sep`). */
+.live-pop {
+  --ui-popover-width: 300px;
+}
+
+.interval-pop {
+  --ui-popover-width: 160px;
+}
+
+.pop-head {
+  padding: 8px 8px 4px;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pop-item,
+.service {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.pop-item {
+  inline-size: 100%;
+  min-block-size: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--color-base-content);
+  font-family: inherit;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.service-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.pop-item:hover,
+.pop-item[aria-current="true"],
+.service-link:hover {
+  background: var(--color-base-300);
+}
+
+.grow {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta,
+.go {
+  color: var(--muted-ink);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.pop-sep {
+  block-size: 1px;
+  margin: var(--space-2) 0;
+  background: var(--line);
+}
+
+.status-dot {
+  flex: none;
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+.status-dot[data-source="none"] {
+  background: var(--track);
 }
 
 .visually-hidden {

@@ -22,9 +22,7 @@
   @default {
     <section class="section">
       <ui-section-header [heading]="'warnings.title' | transloco" [headingId]="headingId">
-        @if (count() > 0) {
-          <span meta><ng-container [ngTemplateOutlet]="summaryText" /></span>
-        }
+        <span meta class="count" data-warnings-count>{{ count() }}</span>
       </ui-section-header>
       <ui-card [padding]="0">
         <ng-container [ngTemplateOutlet]="lines" />
@@ -57,7 +55,7 @@
   <ul class="groups">
     @for (spec of groups(); track spec.id) {
       <li class="group" [attr.data-warning-spec]="spec.id">
-        @for (warning of spec.warnings; track $index) {
+        @for (warning of textLines(spec); track $index) {
           <div class="line" [attr.data-warning-kind]="warning.kind">
             <ui-icon class="warn-icon" data-icon="triangle-alert" name="triangle-alert" [size]="16" [label]="'warnings.icon' | transloco" />
             <ng-container [ngTemplateOutlet]="specLink" [ngTemplateOutletContext]="{ $implicit: spec }" />
@@ -76,7 +74,7 @@
         }
         @if (spec.fog > 0) {
           <div class="line fog-line" [attr.data-fog-line]="spec.id">
-            <ui-icon class="cloud" data-icon="cloud-fog" name="cloud-fog" [size]="16" />
+            <ui-icon class="cloud" data-icon="cloud" name="cloud" [size]="16" />
             <ng-container [ngTemplateOutlet]="specLink" [ngTemplateOutletContext]="{ $implicit: spec }" />
             <span class="text">{{ (spec.fog === 1 ? 'specs.inspector.fog.one' : 'specs.inspector.fog.other') | transloco: { count: spec.fog } }}</span>
           </div>

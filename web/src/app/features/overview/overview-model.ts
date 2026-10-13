@@ -1,3 +1,5 @@
+import { wsMonogram } from '../../shared/ui/ws-badge/ws-identity';
+
 /** How many Next up rows a workspace column shows (tiles.md § index.html: "up to 3"). */
 export const NEXT_UP_LIMIT = 3;
 
@@ -82,8 +84,5 @@ export function readColumn(
 
 /** The workspace badge's monogram (prototype `identity.js` `mono`): first letters of two words, else two letters. */
 export function monogram(name: string): string {
-  const words = name.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
-  if (words.length === 0) return '?';
-  const lead = words.length > 1 ? words.slice(0, 2).map((word) => word.charAt(0)).join('') : words.join('').slice(0, 2);
-  return lead.toUpperCase();
+  return wsMonogram(name);
 }

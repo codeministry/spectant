@@ -98,7 +98,9 @@ describe('planning routes', () => {
   it('resolves /w/:ws/milestones to the Milestones page while a spec carries a milestone', async () => {
     setUp(ok(NAMED));
     const root = await open('/w/harbor/milestones');
-    expect(root.querySelector('[data-page="milestones"] h1#milestones')?.textContent).toBe('Milestones in harbor');
+    // spec 024: prototype value (principal: Prototyp gilt immer) — h1 "Milestones", the muted "· <ws>" beside it.
+    expect(root.querySelector('[data-page="milestones"] h1#milestones')?.textContent).toBe('Milestones');
+    expect(root.querySelector('[data-page="milestones"] .ws-suffix')?.textContent).toBe('· harbor');
     expect(root.querySelector('app-not-found')).toBeNull();
     expect(TestBed.inject(ShellState).route().wsPage).toBe('milestones');
   });

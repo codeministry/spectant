@@ -14,7 +14,9 @@
       [id]="'desc-' + row().id"
       [title]="description"
       [uiClamp]="description"
+      [uiClampLines]="1"
       [uiClampExpanded]="descriptionExpanded()"
+      [style.anchor-name]="'--desc-' + row().id"
     ></span>
   }
 </span>

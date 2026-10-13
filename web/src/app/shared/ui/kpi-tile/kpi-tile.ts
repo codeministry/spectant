@@ -7,10 +7,12 @@ import { UiCard } from '../card/card';
 import type { Tone } from '../tone';
 
 /**
- * A KPI tile (design.md § Desktop Soll, KPI band): eyebrow label, a tabular value with an optional muted
- * denominator, a meta line, a projected visual (`[visual]`, e.g. a `ui-ring`) and trailing content (a meter).
- * With `href` (plus optional `queryParams` and `fragment`) the whole tile is one router link and hover raises the card
- * glow. The fraction never wraps and steps down one size past six digits, so live numbers cannot reflow the band
+ * A KPI tile (design.md § Desktop Soll, KPI band; the prototype's `.kpi-tile`, spec 024 ISC-148): the card itself is
+ * the tile, 16 px padding (24 for the hero), a column 6 px apart: eyebrow label (600 11/16 .08em uppercase, muted),
+ * the tabular value (600 32/40 -.02em) with an optional denominator (16/500, muted), a meta line at the foot, a
+ * projected visual (`[visual]`, e.g. a `ui-ring`, which puts the column beside it) and trailing content (a meter).
+ * With `href` (plus optional `queryParams` and `fragment`) the whole tile is one router link (the anchor is the
+ * card's whole box, so the padding is clickable too) and hover raises the card glow. The fraction never wraps and steps down one size past six digits, so live numbers cannot reflow the band
  * (ISC-62.1). `accent`, `edge` and `glow` go to the card as they are: `edge` / `glow` set the prototype's variants
  * explicitly (a hero glows without an edge), and an `accent` alone keeps `ui-card`'s rule of turning both on.
  */
@@ -18,29 +20,41 @@ import type { Tone } from '../tone';
   selector: 'ui-kpi-tile',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [UiCard, UiIcon, RouterLink, NgTemplateOutlet],
-  host: { '[attr.data-variant]': 'variant()' },
+  host: { '[attr.data-variant]': 'variant()', '[attr.data-wide]': 'wide() ? "" : null' },
   styles: `
-    :host { display: block; min-inline-size: 0; }
-    ui-card { block-size: 100%; }
-    .tile { display: flex; gap: 16px; align-items: center; block-size: 100%; padding: 16px; color: inherit; text-decoration: none; }
-    :host([data-variant='hero']) .tile { padding: 24px; }
-    .body { display: grid; flex: 1; gap: 4px; align-content: center; min-inline-size: 0; }
-    .eyebrow { display: flex; gap: 8px; align-items: center; min-inline-size: 0; color: var(--muted-ink); font-size: 11px; font-weight: 600; line-height: 16px; letter-spacing: 0.08em; text-transform: uppercase; hyphens: none; }
-    .eyebrow-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .figure { font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .value { font-size: 32px; font-weight: 600; line-height: 40px; }
-    .den, .meta { color: var(--muted-ink); }
-    .den { font-size: 16px; line-height: 24px; }
-    .meta { font-size: 12px; font-variant-numeric: tabular-nums; line-height: 16px; }
-    :host([data-variant='hero']) .value { font-size: 40px; line-height: 48px; }
-    :host([data-variant='hero']) .den { font-size: 20px; line-height: 28px; }
-    :host([data-variant='sm']) .value, .long .value { font-size: 28px; line-height: 32px; }
-    :host([data-variant='hero']) .long .value { font-size: 32px; line-height: 40px; }
-    :host([data-variant='hero']) .long .den { font-size: 16px; line-height: 24px; }
-    :host([data-variant='sm']) .long .value { font-size: 20px; line-height: 28px; }
+    :host { display: grid; min-inline-size: 0; }
+    /* The card is the tile (the prototype's .kpi-tile): a column, 6 px apart, the meta line pushed to the foot. */
+    ui-card { display: flex; flex-direction: column; gap: 6px; }
+    .visual:empty { display: none; }
+    .visual { display: flex; grid-row: 1 / span 4; align-items: center; }
+    /* The tile fills the card. A link tile's anchor is the whole card, padding included (the card itself has none), so it
+       is a real box that can be scrolled to, is wholly in view with the card, and wears the global focus ring at the
+       card's edge. */
+    .tile { display: flex; flex: 1 1 auto; flex-direction: column; gap: 6px; min-inline-size: 0; color: inherit; text-decoration: none; }
+    a.tile { padding: 16px; border-radius: var(--radius-box); }
+    :host([data-variant='hero']) a.tile { padding: 24px; }
+    .tile:has(> .visual:not(:empty)) { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; align-content: center; }
+    .eyebrow { display: flex; align-items: center; color: var(--muted-ink); font-size: 11px; font-weight: 600; line-height: 16px; letter-spacing: 0.08em; text-transform: uppercase; hyphens: none; }
+    .eyebrow ui-icon { margin-inline-end: 8px; }
+    .eyebrow-text { overflow: hidden; min-inline-size: 0; text-overflow: ellipsis; white-space: nowrap; }
+    .figure { font-size: 32px; font-variant-numeric: tabular-nums; font-weight: 600; line-height: 40px; letter-spacing: -0.02em; white-space: nowrap; }
+    .den { color: var(--muted-ink); font-size: 16px; font-weight: 500; letter-spacing: normal; }
+    .meta { margin-block-start: auto; color: var(--muted-ink); font-size: 12px; font-variant-numeric: tabular-nums; line-height: 16px; }
+    :host([data-variant='hero']) .figure { font-size: 40px; line-height: 48px; }
+    :host([data-variant='hero']) .den { font-size: 20px; }
+    :host([data-variant='sm']) .figure, .figure.long { font-size: 28px; line-height: 32px; }
+    :host([data-variant='hero']) .figure.long { font-size: 32px; line-height: 40px; }
+    :host([data-variant='hero']) .figure.long .den { font-size: 16px; }
+    :host([data-variant='sm']) .figure.long { font-size: 20px; line-height: 28px; }
+    /* wide (a hero across a whole band row, spec 024 T78): from 640 to 1119 the meta line moves to the row's end, level with
+       the ring, so the wide tile does not leave its right half empty; below 640 it stays under the value. */
+    @container shell (width >= 640px) and (width < 1120px) {
+      :host([data-wide]) .tile:has(> .visual:not(:empty)) { grid-template-columns: auto minmax(0, 1fr) auto; }
+      :host([data-wide]) .tile:has(> .visual:not(:empty)) > .meta { grid-column: 3; grid-row: 1 / span 4; align-self: center; margin-block-start: 0; text-align: end; }
+    }
   `,
   template: `
-    <ui-card [accent]="accent()" [edge]="edge()" [glow]="glow()" [padding]="0" [interactive]="!!href()">
+    <ui-card [accent]="accent()" [edge]="edge()" [glow]="glow()" [padding]="href() ? 0 : variant() === 'hero' ? 24 : 16" [interactive]="!!href()">
       @if (href(); as link) {
         <a class="tile" [routerLink]="link" [queryParams]="queryParams()" [fragment]="fragment()"><ng-container [ngTemplateOutlet]="body" /></a>
       } @else {
@@ -48,25 +62,23 @@ import type { Tone } from '../tone';
       }
     </ui-card>
     <ng-template #body>
-      <ng-content select="[visual]" />
-      <span class="body">
-        <span class="eyebrow" [title]="label()">
-          @if (icon(); as name) {
-            <ui-icon [name]="name" [size]="14" />
-          }
-          <span class="eyebrow-text">{{ label() }}</span>
-        </span>
-        <span class="figure" [class.long]="long()">
-          <span class="value">{{ value() }}</span>
-          @if (denominator() !== undefined) {
-            <span class="den">/{{ denominator() }}</span>
-          }
-        </span>
-        @if (meta()) {
-          <span class="meta">{{ meta() }}</span>
+      <span class="visual"><ng-content select="[visual]" /></span>
+      <span class="eyebrow" [title]="label()">
+        @if (icon(); as name) {
+          <ui-icon [name]="name" [size]="14" />
         }
-        <ng-content />
+        <span class="eyebrow-text">{{ label() }}</span>
       </span>
+      <span class="figure" [class.long]="long()">
+        <span class="value">{{ value() }}</span>
+        @if (denominator() !== undefined) {
+          <span class="den">/{{ denominator() }}</span>
+        }
+      </span>
+      @if (meta()) {
+        <span class="meta">{{ meta() }}</span>
+      }
+      <ng-content />
     </ng-template>
   `,
 })
@@ -87,6 +99,8 @@ export class UiKpiTile {
   readonly edge = input<boolean>();
   /** The card's corner glow; unset, `ui-card` derives it from `accent`. */
   readonly glow = input<boolean>();
+  /** A hero laid across a whole band row (640 to 1119): the meta line sits at the row's end instead of under the value. */
+  readonly wide = input<boolean>(false);
 
   /** More than six digits across value and denominator: the fraction steps down one size. */
   protected readonly long = computed(

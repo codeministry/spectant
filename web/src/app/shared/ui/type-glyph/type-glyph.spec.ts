@@ -24,11 +24,11 @@ describe('UiTypeGlyph (ISC-129)', () => {
     return { fixture, host: fixture.nativeElement as HTMLElement };
   }
 
-  it('maps each spec type and idea to its own Lucide icon', () => {
+  it('maps each spec type and idea to its own Lucide icon, the prototype CHIP_ICON where it names one', () => {
     expect(TYPE_GLYPHS).toEqual({
-      feature: 'puzzle',
+      feature: 'sparkles',
       bug: 'bug',
-      refactor: 'refresh-ccw-dot',
+      refactor: 'shuffle',
       spike: 'flask-conical',
       infra: 'server',
       project: 'folder-kanban',

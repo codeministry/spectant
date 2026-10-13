@@ -12,62 +12,102 @@
     </a>
   </div>
 } @else {
-  <ui-page-head [segments]="[ws(), ('shell.pages.milestones' | transloco)]">
-    <h1 class="type-page-title" id="milestones" tabindex="-1">{{ 'planning.milestones.title' | transloco: { ws: name() } }}</h1>
+  <!-- Prototype `page-head`: eyebrow `<WS> · MILESTONES · n`, the workspace badge, h1 "Milestones" with "· <ws>" beside it, the meta. -->
+  <ui-page-head [segments]="[name(), ('shell.pages.milestones' | transloco), eyebrowCount()]">
+    <div class="h1-row" ngProjectAs="h1">
+      <ui-ws-badge class="page-mark" size="page" [name]="name()" aria-hidden="true" />
+      <h1 class="type-page-title" id="milestones" tabindex="-1">{{ 'shell.pages.milestones' | transloco }}</h1>
+      <span class="ws-suffix" aria-hidden="true">· {{ name() }}</span>
+    </div>
   </ui-page-head>
 
   @if (model() !== null) {
-    <p class="caption">{{ 'planning.milestones.caption' | transloco }}</p>
-    <p class="meta">{{ meta().key | transloco: meta().params }}</p>
+    <div class="head-meta">
+      <p class="caption">{{ 'planning.milestones.caption' | transloco }}</p>
+      <p class="meta">{{ meta().key | transloco: meta().params }}</p>
+    </div>
 
-    <ol class="rows">
-      @for (row of rows(); track row.milestone.slug) {
-        @let m = row.milestone;
-        @let anchor = 'm-' + m.slug;
-        <li>
-          <ui-card [padding]="0" [attr.data-arrived]="target() === anchor ? '' : null">
-            <article [id]="anchor" tabindex="-1" [attr.aria-labelledby]="anchor + '-name'">
-              <div class="main">
-                <h2 [id]="anchor + '-name'">
-                  <ui-icon class="flag" name="flag" [size]="16" />
-                  <span class="name">{{ m.name }}</span>
-                </h2>
+    <div class="layout">
+      <ol class="rows">
+        @for (row of rows(); track row.milestone.slug) {
+          @let m = row.milestone;
+          @let anchor = 'm-' + m.slug;
+          <li>
+            <!-- Prototype `card edge`: the next milestone cyan with the glow, a reached one lime, the later ones track. -->
+            <ui-card
+              class="ms-card"
+              [padding]="0"
+              [edge]="true"
+              [glow]="row.next"
+              [style.--edge]="row.complete ? 'var(--color-accent)' : row.next ? 'var(--color-primary)' : 'var(--track)'"
+              [attr.data-next]="row.next ? '' : null"
+              [attr.data-arrived]="target() === anchor ? '' : null"
+            >
+              <article [id]="anchor" tabindex="-1" [attr.aria-labelledby]="anchor + '-name'">
+                <div class="main">
+                  <div class="ms-head">
+                    <h2 [id]="anchor + '-name'">
+                      <ui-icon class="flag" name="flag" [size]="16" />
+                      <span class="name">{{ m.name }}</span>
+                    </h2>
 
-                <p class="date-line">
-                  @if (row.date !== null) {
-                    <time [attr.datetime]="m.target">{{ row.date }}</time>
-                  }
-                  @switch (m.state) {
-                    @case ('late') {
-                      <ui-chip tone="warning">
-                        <ui-icon name="clock-alert" [size]="14" />
-                        {{ 'planning.milestones.state.late' | transloco: { days: row.days ?? 0 } }}
-                      </ui-chip>
-                    }
-                    @case ('complete') {
-                      <ui-chip tone="success">
-                        <ui-icon name="circle-check" [size]="14" />
-                        {{ 'planning.milestones.state.complete' | transloco }}
-                      </ui-chip>
-                    }
-                    @default {
-                      <span class="relative">
-                        @if (row.days !== null) {
-                          {{ 'planning.milestones.state.upcoming' | transloco: { days: row.days } }}
-                        } @else {
-                          {{ 'planning.milestones.undated' | transloco }}
+                    <p class="date-line">
+                      @if (row.date !== null) {
+                        <time [attr.datetime]="m.target">{{ row.date }}</time>
+                      }
+                      @switch (m.state) {
+                        @case ('late') {
+                          <ui-chip tone="warning">
+                            <ui-icon name="clock-alert" [size]="14" />
+                            {{ 'planning.milestones.state.late' | transloco: { days: row.days ?? 0 } }}
+                          </ui-chip>
                         }
+                        @case ('complete') {
+                          <ui-chip tone="success">
+                            <ui-icon name="circle-check" [size]="14" />
+                            {{ 'planning.milestones.state.complete' | transloco }}
+                          </ui-chip>
+                        }
+                        @default {
+                          <span class="relative">
+                            @if (row.days !== null) {
+                              {{ 'planning.milestones.state.upcoming' | transloco: { days: row.days } }}
+                            } @else {
+                              {{ 'planning.milestones.undated' | transloco }}
+                            }
+                          </span>
+                        }
+                      }
+                    </p>
+
+                    <div class="side">
+                      @if (!compact() && m.total > 0) {
+                        <ui-ring class="ring" aria-hidden="true" [value]="row.pct" [size]="wide() ? 56 : 64" [stroke]="6" />
+                      }
+                      <span class="fraction" [class.done]="row.complete" [class.muted]="m.total === 0">
+                        @if (row.complete) {
+                          <ui-icon name="circle-check" [size]="14" />
+                        }
+                        {{ m.closed }}/{{ m.total }}
                       </span>
-                    }
+                    </div>
+                  </div>
+
+                  <div class="progress">
+                    <ui-meter
+                      [value]="m.closed"
+                      [max]="m.total"
+                      size="mini"
+                      [label]="'planning.milestones.meterLabel' | transloco: { name: m.name }"
+                      [valueText]="'planning.features.valueText' | transloco: { closed: m.closed, total: m.total }"
+                    />
+                  </div>
+
+                  @if (m.description; as description) {
+                    <p class="desc" [title]="description">{{ description }}</p>
                   }
-                </p>
 
-                @if (m.description; as description) {
-                  <p class="desc" [title]="description">{{ description }}</p>
-                }
-
-                <dl class="chip-rows">
-                  @if (m.features.length > 0) {
+                  <dl class="chip-rows">
                     <div class="chip-row features">
                       <dt>
                         <ui-term [id]="anchor + '-features-term'" [hint]="'terms.feature' | transloco">{{
@@ -75,75 +115,103 @@
                         }}</ui-term>
                       </dt>
                       <dd>
-                        <ul>
-                          @for (feature of m.features; track feature.id) {
-                            <li>
-                              <a
-                                class="feature-chip"
-                                [routerLink]="['/w', ws(), 'features']"
-                                [fragment]="feature.id"
-                                [attr.aria-label]="
-                                  'planning.milestones.featureChip'
-                                    | transloco: { id: feature.id, name: feature.name, closed: feature.closed, total: feature.total }
-                                "
-                              >
-                                <span class="id">{{ feature.id }}</span>
-                                <span class="name" [title]="feature.name">{{ feature.name }}</span>
-                                <span class="count">{{ feature.closed }}/{{ feature.total }}</span>
-                              </a>
-                            </li>
-                          }
-                        </ul>
-                      </dd>
-                    </div>
-                  }
-                  <div class="chip-row specs">
-                    <dt>{{ 'planning.milestones.specs' | transloco }}</dt>
-                    <dd>
-                      <ul>
-                        @for (holder of row.specs; track holder.slug) {
-                          <li><app-spec-chip [ws]="ws()" [holder]="holder" feature="" /></li>
+                        @if (m.features.length > 0) {
+                          <ul class="ms-feats">
+                            @for (feature of m.features; track feature.id) {
+                              <li>
+                                <a
+                                  class="feature-chip"
+                                  [routerLink]="['/w', ws(), 'features']"
+                                  [fragment]="feature.id"
+                                  [attr.aria-label]="
+                                    'planning.milestones.featureChip'
+                                      | transloco: { id: feature.id, name: feature.name, closed: feature.closed, total: feature.total }
+                                  "
+                                >
+                                  <span class="id">{{ feature.id }}</span>
+                                  <span class="name" [title]="feature.name">{{ feature.name }}</span>
+                                  <span class="bar" aria-hidden="true"
+                                    ><i
+                                      [class.full]="feature.total > 0 && feature.closed === feature.total"
+                                      [style.inline-size.%]="feature.total > 0 ? (100 * feature.closed) / feature.total : 0"
+                                    ></i
+                                  ></span>
+                                  <span class="count">{{ feature.closed }}/{{ feature.total }}</span>
+                                </a>
+                              </li>
+                            }
+                          </ul>
+                        } @else {
+                          <p class="ms-empty" data-ms-empty>{{ 'planning.milestones.noFeature' | transloco }}</p>
                         }
-                      </ul>
-                    </dd>
-                  </div>
-                  @if (m.ideas.length > 0) {
-                    <div class="chip-row ideas" [attr.data-ideas]="m.ideas.length">
-                      <dt data-ideas-label>{{ 'planning.ideas.label' | transloco: { count: m.ideas.length } }}</dt>
+                      </dd>
+                    </div>
+                    <div class="chip-row specs">
+                      <dt>{{ 'planning.milestones.specs' | transloco }}</dt>
                       <dd>
-                        <ul>
-                          @for (idea of m.ideas; track idea.slug) {
-                            <li><ui-idea-chip [ws]="ws()" [slug]="idea.slug" [title]="idea.title" /></li>
+                        <ul class="ms-specs">
+                          @for (holder of row.specs; track holder.slug) {
+                            <li><app-spec-chip [ws]="ws()" [holder]="holder" feature="" /></li>
                           }
                         </ul>
                       </dd>
                     </div>
-                  }
-                </dl>
-              </div>
-
-              <div class="side">
-                <div class="progress">
-                  <ui-meter
-                    [value]="m.closed"
-                    [max]="m.total"
-                    [size]="wide() ? 'default' : 'lg'"
-                    [label]="'planning.milestones.meterLabel' | transloco: { name: m.name }"
-                    [valueText]="'planning.features.valueText' | transloco: { closed: m.closed, total: m.total }"
-                  />
-                  <span class="fraction" [class.done]="row.complete" [class.muted]="m.total === 0">
-                    @if (row.complete) {
-                      <ui-icon name="circle-check" [size]="14" />
+                    @if (m.ideas.length > 0) {
+                      <div class="chip-row ideas" [attr.data-ideas]="m.ideas.length">
+                        <dt data-ideas-label>{{ 'planning.ideas.label' | transloco: { count: m.ideas.length } }}</dt>
+                        <dd>
+                          <ul>
+                            @for (idea of m.ideas; track idea.slug) {
+                              <li><ui-idea-chip [ws]="ws()" [slug]="idea.slug" [title]="idea.title" /></li>
+                            }
+                          </ul>
+                        </dd>
+                      </div>
                     }
-                    {{ m.closed }}/{{ m.total }}
-                  </span>
+                  </dl>
+                </div>
+              </article>
+            </ui-card>
+          </li>
+        }
+      </ol>
+
+      @if (wide() && nextRow(); as next) {
+        <!-- Prototype `context-rail`: NEXT MILESTONE with the 96 ring, the days and the features with the most open claims. -->
+        <aside class="rail" data-milestones-rail [attr.aria-label]="'planning.milestones.rail.label' | transloco">
+          <section class="rail-block" data-rail-block="next-milestone">
+            <h2 class="rail-eyebrow type-eyebrow">
+              <span>{{ 'planning.milestones.rail.next' | transloco }}</span>
+              @if (next.days !== null && next.milestone.state !== 'late') {
+                <span>{{ 'planning.milestones.rail.days' | transloco: { days: next.days } }}</span>
+              }
+            </h2>
+            <ui-card class="rail-card" [padding]="16">
+              <div class="ring-row">
+                <ui-ring aria-hidden="true" [value]="next.pct" [size]="96" [stroke]="8" />
+                <div>
+                  <div class="big">{{ next.milestone.closed }}<small>/{{ next.milestone.total }}</small></div>
+                  <div class="rail-meta">{{ 'planning.milestones.rail.closed' | transloco: { name: next.milestone.name } }}</div>
                 </div>
               </div>
-            </article>
-          </ui-card>
-        </li>
+              @if (mostOpen().length > 0) {
+                <p class="rail-eyebrow type-eyebrow sub">{{ 'planning.milestones.rail.mostOpen' | transloco }}</p>
+                @for (feature of mostOpen(); track feature.id) {
+                  <a class="mini-row" [routerLink]="['/w', ws(), 'features']" [fragment]="feature.id">
+                    <span class="fid">{{ feature.id }}</span>
+                    <span class="t">{{ feature.name }}</span>
+                    <span class="bar" aria-hidden="true"
+                      ><i [style.inline-size.%]="feature.total > 0 ? (100 * feature.closed) / feature.total : 0"></i
+                    ></span>
+                    <span class="num">{{ feature.closed }}/{{ feature.total }}</span>
+                  </a>
+                }
+              }
+            </ui-card>
+          </section>
+        </aside>
       }
-    </ol>
+    </div>
   } @else {
     <div class="rows" aria-hidden="true">
       @for (slot of [0, 1, 2]; track slot) {

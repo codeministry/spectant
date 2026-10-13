@@ -3,10 +3,13 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { UiCard } from '../../shared/ui/card/card';
 import { RailContent } from './rail-content';
+import { ShellState } from './shell-state.service';
 
 /**
  * The context rail's slot: the blocks the current view registered with `RailContent` (the board's This frame, Needs
- * you and Your steps, T88), else an empty placeholder card until T54 (Where it stands, Waiting on you) fills it.
+ * you and Your steps, T88; the spec rail of every spec-detail tab, spec 024), else at wide an empty placeholder card for
+ * a view that registers nothing. Below 1120 px a view without blocks shows nothing here (the prototype's rail is
+ * `only-wide`; each tab keeps its own inline blocks).
  */
 @Component({
   selector: 'app-rail-slot',
@@ -24,7 +27,7 @@ import { RailContent } from './rail-content';
       <div class="blocks" data-rail-blocks>
         <ng-container [ngTemplateOutlet]="blocks" />
       </div>
-    } @else {
+    } @else if (state.tier() === 'wide') {
       <ui-card [padding]="24">
         <h2>{{ 'shell.rail.label' | transloco }}</h2>
         <p>{{ 'shell.rail.pending' | transloco }}</p>
@@ -34,4 +37,5 @@ import { RailContent } from './rail-content';
 })
 export class RailSlot {
   protected readonly content = inject(RailContent);
+  protected readonly state = inject(ShellState);
 }

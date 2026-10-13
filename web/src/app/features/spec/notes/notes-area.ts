@@ -9,8 +9,10 @@ import {
   resource,
   signal,
   untracked,
+  viewChild,
   ViewEncapsulation,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink } from '@angular/router';
@@ -23,15 +25,18 @@ import { SettingsService } from '../../../core/settings.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiButton } from '../../../shared/ui/button/button';
+import { UiIconButton } from '../../../shared/ui/button/icon-button';
 import {
   type FilterOption,
   type SegmentedOption,
+  UiChip,
+  UiCommandChip,
   UiDialog,
   UiEmptyState,
   UiFilterChips,
-  UiIdChip,
   UiKbd,
   UiNotice,
+  UiPopover,
   UiSegmented,
   UiSheet,
 } from '../../../shared/ui';
@@ -84,7 +89,24 @@ interface AnchorGroup {
  */
 @Component({
   selector: 'app-notes-area',
-  imports: [RouterLink, TranslocoPipe, UiButton, UiDialog, UiEmptyState, UiFilterChips, UiIcon, UiIdChip, UiKbd, UiNotice, UiSegmented, UiSheet],
+  imports: [
+    NgTemplateOutlet,
+    RouterLink,
+    TranslocoPipe,
+    UiButton,
+    UiChip,
+    UiCommandChip,
+    UiDialog,
+    UiEmptyState,
+    UiFilterChips,
+    UiIcon,
+    UiIconButton,
+    UiKbd,
+    UiNotice,
+    UiPopover,
+    UiSegmented,
+    UiSheet,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: { 'data-view': 'notes', '[attr.data-tier]': 'tier()', '[attr.data-mode]': 'mode()' },
@@ -248,7 +270,14 @@ export class NotesArea {
     return { value, label: label?.text ?? value };
   });
   protected readonly anchorChip = computed(() => anchorLabel(this.draft().anchor, this.spec()));
+  /** The anchor picker (prototype `anchor-pop`): a popover from 640 px, the bottom sheet below (design.md § Viewport-übergreifend). */
   protected readonly pickerOpen = signal(false);
+  protected readonly popOpen = signal(false);
+  private readonly anchorPop = viewChild<UiPopover>('anchorPop');
+  /** The return button's spec (prototype `note-return`): the anchor's spec, else this one. */
+  protected readonly returnSpec = computed(() => this.draft().anchor?.spec ?? this.spec());
+  /** The CLI command the import notice offers (`server/src/cli.ts`). */
+  protected readonly importCommand = 'spectant import-notes <file>';
   protected readonly pickerSearch = signal('');
   protected readonly pickerGroups = computed(() => {
     const needle = this.pickerSearch().trim().toLowerCase();
@@ -305,9 +334,15 @@ export class NotesArea {
     this.timer = setTimeout(() => void this.flush(), AUTOSAVE_MS);
   }
 
+  protected openPicker(trigger: HTMLElement): void {
+    if (this.tier() === 'compact') this.pickerOpen.set(true);
+    else this.anchorPop()?.show(trigger);
+  }
+
   protected pickAnchor(value: string): void {
     this.edit({ anchor: anchorFromValue(value) });
     this.pickerOpen.set(false);
+    this.anchorPop()?.close();
   }
 
   protected async dismissImport(): Promise<void> {

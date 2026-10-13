@@ -1,19 +1,8 @@
 <!-- Picker lists: one template each, in a popover at medium and wide, in a bottom sheet at compact. -->
 <ng-template #workspaceList>
   <nav class="picker" data-picker="workspace" [attr.aria-label]="'shell.workspace.menu' | transloco">
+    <p class="menu-head" aria-hidden="true">{{ 'shell.workspace.head' | transloco: { count: workspaceEntries().length } }}</p>
     <ul uiRovingList [singleKeys]="singleKeys()">
-      <li>
-        <a
-          uiRovingItem
-          class="entry picker-entry picker-all"
-          routerLink="/"
-          [attr.data-autofocus]="state.ws() === null ? '' : null"
-          (click)="close('workspace')"
-        >
-          <ui-icon name="layout-grid" />
-          <span class="entry-name">{{ 'shell.workspace.all' | transloco }}</span>
-        </a>
-      </li>
       @for (entry of workspaceEntries(); track entry.slug) {
         <li>
           <a
@@ -25,11 +14,11 @@
             [attr.data-autofocus]="entry.current ? '' : null"
             (click)="close('workspace')"
           >
-            <ui-icon name="folder-git-2" />
+            <ui-ws-badge size="sm" [name]="entry.name" />
             <span class="entry-name">{{ entry.name }}</span>
             <span class="entry-meta">
               @if (entry.specs !== null) {
-                {{ 'shell.workspace.specCount' | transloco: { count: entry.specs } }}
+                {{ entry.specs }}
               } @else if (!entry.readable) {
                 {{ 'shell.workspace.unreadable' | transloco }}
               }
@@ -40,6 +29,22 @@
           </a>
         </li>
       }
+      <li class="picker-sep" role="presentation"></li>
+      <li>
+        <a
+          uiRovingItem
+          class="entry picker-entry picker-all"
+          routerLink="/"
+          [attr.data-autofocus]="state.ws() === null ? '' : null"
+          (click)="close('workspace')"
+        >
+          <ui-icon name="layers" [size]="16" />
+          <span class="entry-name">{{ 'shell.workspace.showAll' | transloco: { count: workspaceEntries().length } }}</span>
+          @if (singleKeys()) {
+            <ui-kbd class="entry-kbd" aria-hidden="true">g a</ui-kbd>
+          }
+        </a>
+      </li>
     </ul>
     <a class="entry picker-footer" routerLink="/settings" data-picker-footer (click)="close('workspace')">
       <ui-icon name="settings" [size]="16" />
@@ -50,22 +55,10 @@
 
 <ng-template #specList>
   <nav class="picker" data-picker="spec" [attr.aria-label]="'shell.spec.menu' | transloco">
+    @if (workspaceName(); as name) {
+      <p class="menu-head" aria-hidden="true">{{ 'shell.spec.head' | transloco: { workspace: name } }}</p>
+    }
     <ul uiRovingList [singleKeys]="singleKeys()">
-      @if (state.ws(); as ws) {
-        <li>
-          <a
-            uiRovingItem
-            class="entry picker-entry picker-all"
-            fragment="specs"
-            [routerLink]="['/w', ws]"
-            [attr.data-autofocus]="specOpen() ? null : ''"
-            (click)="close('spec')"
-          >
-            <ui-icon name="list-checks" />
-            <span class="entry-name">{{ 'shell.spec.all' | transloco: { workspace: workspaceName() } }}</span>
-          </a>
-        </li>
-      }
       @for (spec of data.specRows(); track spec.id) {
         @let current = specOpen() && spec.id === state.specId();
         <li>
@@ -80,9 +73,32 @@
           >
             <span class="entry-id">{{ spec.id }}</span>
             <span class="entry-name">{{ spec.title }}</span>
-            <ui-chip tone="neutral">{{ 'stages.' + spec.stage | transloco }}</ui-chip>
+            @if (spec.phase; as phase) {
+              <ui-chip [tone]="phaseTone(phase)" [icon]="phaseIcon(phase)">{{ 'phases.' + phase | transloco }}</ui-chip>
+            } @else {
+              <ui-chip tone="neutral">{{ 'stages.' + spec.stage | transloco }}</ui-chip>
+            }
             @if (current) {
               <ui-icon class="entry-check" name="check" [size]="16" />
+            }
+          </a>
+        </li>
+      }
+      @if (state.ws(); as ws) {
+        <li class="picker-sep" role="presentation"></li>
+        <li>
+          <a
+            uiRovingItem
+            class="entry picker-entry picker-all"
+            fragment="specs"
+            [routerLink]="['/w', ws]"
+            [attr.data-autofocus]="specOpen() ? null : ''"
+            (click)="close('spec')"
+          >
+            <ui-icon name="list" [size]="16" />
+            <span class="entry-name">{{ 'shell.spec.overview' | transloco }}</span>
+            @if (singleKeys()) {
+              <ui-kbd class="entry-kbd" aria-hidden="true">g s</ui-kbd>
             }
           </a>
         </li>
@@ -112,6 +128,185 @@
   </ui-popover>
 }
 
-@if (specOpen() || (state.ws() !== null && !data.workspaceMissing())) {
-  <app-area-menu />
+<!-- The PAGE select's menu (spec 024 T80): the workspace pages, on every route of a workspace the server knows. -->
+@if (state.ws() !== null && !data.workspaceMissing()) {
+  <app-area-menu #pageMenu scope="page" />
+}
+@if (specOpen()) {
+  <app-area-menu #areaMenu scope="spec" />
+}
+
+<!-- The overflow menu `⋯` (spec 024 T76): below 1120 px it holds the header controls the row has no room for. -->
+<ng-template #moreList>
+  <nav class="picker more" data-menu="more" [attr.aria-label]="'shell.more' | transloco">
+    <ul uiRovingList [singleKeys]="singleKeys()">
+      @if (area(); as entry) {
+        <li>
+          @if (entry.reasonKey; as reason) {
+            <button
+              uiRovingItem
+              type="button"
+              class="entry"
+              data-control="area"
+              aria-disabled="true"
+              [attr.aria-label]="'shell.area.menu' | transloco"
+            >
+              <ui-icon name="layers" />
+              <span class="entry-stack">
+                <span class="entry-name">{{ 'shell.pills.area' | transloco }}</span>
+                <span class="entry-meta">{{ reason | transloco }}</span>
+              </span>
+            </button>
+          } @else {
+            <button
+              uiRovingItem
+              type="button"
+              class="entry"
+              data-control="area"
+              aria-haspopup="dialog"
+              data-autofocus
+              [attr.aria-expanded]="expanded().area"
+              [attr.aria-label]="entry.ariaKey | transloco: { area: (entry.valueKey | transloco) }"
+              (click)="openFromMore('area')"
+            >
+              <ui-icon name="layers" />
+              <span class="entry-name" data-pill-label>{{ 'shell.pills.area' | transloco }}</span>
+              <span class="entry-value" data-pill-value>{{ entry.valueKey | transloco }}</span>
+            </button>
+          }
+        </li>
+      }
+      <li>
+        <button
+          uiRovingItem
+          type="button"
+          class="entry"
+          data-control="zen"
+          [attr.aria-pressed]="state.zen()"
+          [attr.data-autofocus]="area() === null || area()?.reasonKey ? '' : null"
+          (click)="toggleZen()"
+        >
+          <ui-icon name="scan" />
+          <span class="entry-name">{{ 'shell.zen.toggle' | transloco }}</span>
+          @if (singleKeys()) {
+            <kbd class="entry-key">z</kbd>
+          }
+        </button>
+      </li>
+      <li>
+        <button
+          uiRovingItem
+          type="button"
+          class="entry"
+          data-tool="assistant"
+          aria-haspopup="dialog"
+          [attr.aria-pressed]="assistant.open()"
+          [attr.aria-label]="'shell.assistant.trigger' | transloco"
+          (click)="openAssistant()"
+        >
+          <app-mascot [size]="16" />
+          <span class="entry-name">{{ 'shell.assistant.trigger' | transloco }}</span>
+        </button>
+      </li>
+      <li>
+        <button
+          uiRovingItem
+          type="button"
+          class="entry"
+          data-control="settings"
+          aria-haspopup="dialog"
+          [attr.aria-label]="'shell.settings' | transloco"
+          (click)="openFromMore('settings')"
+        >
+          <ui-icon name="settings" />
+          <span class="entry-name">{{ 'settings.title' | transloco }}</span>
+        </button>
+      </li>
+      <li>
+        <button uiRovingItem type="button" class="entry" data-tool="help" aria-haspopup="dialog" (click)="openShortcuts()">
+          <ui-icon name="circle-help" />
+          <span class="entry-name">{{ 'shell.help' | transloco }}</span>
+        </button>
+      </li>
+    </ul>
+  </nav>
+</ng-template>
+
+<!-- The settings panel (prototype `pop-settings`, spec 024 T40). -->
+<ng-template #settingsPanel>
+  <div class="settings-panel" data-menu="settings">
+    <div class="setting">
+      <span class="setting-label" aria-hidden="true">{{ 'settings.theme.label' | transloco }}</span>
+      <ui-segmented
+        fill
+        data-setting="theme"
+        [label]="'settings.theme.label' | transloco"
+        [options]="themeOptions()"
+        [value]="themeMode()"
+        (valueChange)="setTheme($event)"
+      />
+    </div>
+    <div class="setting">
+      <span class="setting-label" aria-hidden="true">{{ 'settings.language.label' | transloco }}</span>
+      <ui-segmented
+        fill
+        data-setting="language"
+        [label]="'settings.language.label' | transloco"
+        [options]="langOptions"
+        [value]="lang()"
+        (valueChange)="setLanguage($event)"
+      />
+    </div>
+    <div class="pop-sep" role="presentation"></div>
+    <a class="entry" routerLink="/settings/workspaces" data-settings-link="workspaces" (click)="close('settings')">
+      <ui-icon name="folder" />
+      <span class="entry-name">{{ 'shell.settingsPanel.workspaces' | transloco }}</span>
+    </a>
+    <!-- The gear popover's "All settings…" (design.md § Settings): the settings page. -->
+    <a class="entry" routerLink="/settings" data-settings-link="all" (click)="close('settings')">
+      <ui-icon name="settings" />
+      <span class="entry-name">{{ 'shell.settingsPanel.all' | transloco }}</span>
+    </a>
+    <a class="entry" routerLink="/help" data-settings-link="help" (click)="close('settings')">
+      <ui-icon name="circle-help" />
+      <span class="entry-name">{{ 'shell.settingsPanel.help' | transloco }}</span>
+    </a>
+    <div class="pop-sep" role="presentation"></div>
+    <div class="entry switch-row">
+      <span class="entry-name" aria-hidden="true">{{ 'settings.singleKey' | transloco }}</span>
+      <button
+        type="button"
+        class="switch"
+        role="switch"
+        data-setting="single-keys"
+        [attr.aria-checked]="singleKeys()"
+        [attr.aria-label]="'settings.singleKey' | transloco"
+        (click)="toggleSingleKeys()"
+      ></button>
+    </div>
+  </div>
+</ng-template>
+
+@if (compact()) {
+  <ui-sheet tier="compact" [label]="'shell.more' | transloco" [open]="sheet() === 'more'" (openChange)="sheetOpenChange('more', $event)">
+    <ng-container [ngTemplateOutlet]="moreList" />
+  </ui-sheet>
+  <ui-sheet
+    tier="compact"
+    [label]="'shell.settings' | transloco"
+    [open]="sheet() === 'settings'"
+    (openChange)="sheetOpenChange('settings', $event)"
+  >
+    <ng-container [ngTemplateOutlet]="settingsPanel" />
+  </ui-sheet>
+} @else {
+  <!-- From 1120 px the header shows these controls itself: no overflow menu, so every data-control stays unique. -->
+  @if (state.tier() === 'medium') {
+    <ui-popover #morePopover class="menu-popover" placement="end" [label]="'shell.more' | transloco">
+      <ng-container [ngTemplateOutlet]="moreList" />
+    </ui-popover>
+  }
+  <ui-popover #settingsPopover class="menu-popover" placement="end" [label]="'shell.settings' | transloco">
+    <ng-container [ngTemplateOutlet]="settingsPanel" />
+  </ui-popover>
 }

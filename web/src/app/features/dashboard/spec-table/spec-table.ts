@@ -27,6 +27,7 @@ import { UiSheet } from '../../../shared/ui/overlay/sheet';
 import { UiRovingItem, UiRovingList } from '../../../shared/ui/roving-list.directive';
 import { toneMark } from '../../../shared/ui/tone';
 import { specSlugOf } from '../../../../../../core/src/spec-ref';
+import { type Stage, WAITING_STAGES } from '../../../../../../core/src/stage';
 import { TRACK_STAGES } from '../../spec/dashboard/dashboard-model';
 import { SpecRow } from './spec-row';
 import {
@@ -160,6 +161,11 @@ export class SpecTable {
     const row = this.host.nativeElement.querySelector<HTMLElement>(`[data-spec-row="${CSS.escape(id)}"]`);
     row?.focus();
     return row !== null;
+  }
+
+  /** A waiting spec (core's `WAITING_STAGES`) is the only one whose row carries its reason line (ISC-122.3, spec 024). */
+  protected isWaiting(stage: string): boolean {
+    return WAITING_STAGES.has(stage as Stage);
   }
 
   protected readonly stageLabels = computed(() => {

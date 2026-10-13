@@ -4,7 +4,7 @@
 /*
  * Compact (< 640, T124, ISC-129.2; design 008 § Mobile): no strip and no scroller. The column switch is the radio
  * `ui-segmented`, wrapped into rows of at most five 52 px segments, so ten stages take two rows and 358 px never
- * overflow. Once it scrolls away a 44 px sticky bar (◂ · stage · ▸) takes its place under the 92 px compact header;
+ * overflow. Once it scrolls away a 44 px sticky bar (◂ · stage · ▸) takes its place under the 64 px sticky header row;
  * the bar carries the drop tray, one placeholder per stage, laid out here and opened by the drag (T125). One column
  * shows below; the page scrolls, the column never scrolls itself.
  */
@@ -18,7 +18,7 @@
 .colswitch {
   min-inline-size: 0;
   margin-block-end: 16px;
-  scroll-margin-block-start: 92px;
+  scroll-margin-block-start: 64px;
 }
 
 .colswitch ui-segmented {
@@ -52,7 +52,7 @@
 .colbar {
   position: sticky;
   z-index: 3;
-  inset-block-start: 92px;
+  inset-block-start: 64px;
   margin-block-end: 8px;
 }
 

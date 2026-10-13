@@ -47,7 +47,9 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       const gate = page.locator(GATE);
       await expect(gate).toHaveAttribute('data-state', 'done');
       // The time is `Intl` in the UI language; its date part carries the year of `gates.reviewed.at`.
-      await expect(gate).toContainText(/Reviewed .*2026/u);
+      // spec 024: prototype value (principal: Prototyp gilt immer) — the time and the session stand in the `.gate-hint` under the button.
+      await expect(gate).toContainText(/Re-mark/u);
+      await expect(page.locator(`${HEAD} [data-gate-hint]`)).toContainText(/Reviewed .*2026/u);
     });
 
     test.describe('under a frontier lock', () => {
@@ -58,10 +60,12 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         const gate = page.locator(GATE);
         await expect(gate).toHaveAttribute('data-state', 'paused');
         await expect(gate).toBeDisabled();
-        await expect(gate).toContainText(/a:claude:(?:sess-2|stub-002-isc-\d+)/u);
+        // spec 024: prototype value (principal: Prototyp gilt immer) — the time and the session stand in the `.gate-hint` under the button.
+        const hint = page.locator(`${HEAD} [data-gate-hint]`);
+        await expect(hint).toContainText(/a:claude:(?:sess-2|stub-002-isc-\d+)/u);
         const banner = page.locator(`${HEAD} [data-agent-banner]`);
         await expect(banner).toBeVisible();
-        const session = (await gate.textContent()) ?? '';
+        const session = (await hint.textContent()) ?? '';
         const named = /a:claude:(?:sess-2|stub-002-isc-\d+)/u.exec(session)?.[0] ?? '';
         await expect(banner.locator('[data-session]')).toHaveText(named);
         await expect(banner.locator('[data-writes-paused]')).toBeVisible();
@@ -93,6 +97,8 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         await expect(files.locator('.file')).toHaveText(['spec.md', 'plan.md', 'tasks.md']);
         for (const hash of await files.locator('[data-hash]').all()) await expect(hash).toHaveText(/^([0-9a-f]{12}|absent)$/u);
         await expect(files.locator('[data-hash]').first()).toHaveText(/^[0-9a-f]{12}$/u);
+        await expect(dialog.locator('[data-confirm]')).toBeDisabled();
+        for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
         await dialog.locator('[data-confirm]').click();
         await expect(dialog).toBeHidden();
         await expect(page.locator(`${HEAD} [data-gate-written]`)).toBeVisible();
@@ -107,6 +113,7 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         await page.goto('/w/harbor/s/003');
         await page.locator(GATE).click();
         const dialog = page.locator(DIALOG);
+        for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
         await dialog.locator('[data-confirm]').click();
         const alert = dialog.locator('[data-write-conflict]');
         await expect(alert).toBeVisible();
@@ -123,6 +130,7 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         await page.goto('/w/harbor/s/003');
         await page.locator(GATE).click();
         const dialog = page.locator(DIALOG);
+        for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
         await dialog.locator('[data-confirm]').click();
         await expect(dialog.locator('[data-write-locked]')).toContainText(/a:claude:stub-003-isc-\d+/u);
         await expect(page.locator(`${HEAD} [data-gate-written]`)).toHaveCount(0);
@@ -140,7 +148,8 @@ test.describe('spec head per tier', () => {
       const head = page.locator(HEAD);
       const crumbs = head.locator('[data-breadcrumb]');
       await expect(crumbs).toBeVisible();
-      await expect(crumbs.locator('[data-crumb="spec"]')).toHaveText('002 web-console');
+      // spec 024: breadcrumb Workspace / Spec · Area, milestone/feature/priority in the chip row (principal 2026-10-12, design.md)
+      await expect(crumbs.locator('[data-crumb="spec"]')).toHaveText('Spec 002');
       await expect(crumbs.locator('[data-crumb="area"]')).toHaveAttribute('aria-current', 'page');
       await expect(head.locator('.spec-title')).toHaveAttribute('title', 'Web console');
       await expect(head.locator('[data-head-actions] [data-head-command]')).toContainText('/spec-implement 002');
@@ -161,15 +170,22 @@ test.describe('spec head per tier', () => {
       await page.goto('/w/harbor/s/002/status');
       const head = page.locator(HEAD);
       await expect(head.locator('[data-head-command]')).toBeVisible();
-      await expect(head.locator('[data-breadcrumb] [data-crumb="spec"]')).toHaveText('002');
+      // spec 024: breadcrumb Workspace / Spec · Area, milestone/feature/priority in the chip row (principal 2026-10-12, design.md)
+      await expect(head.locator('[data-breadcrumb] [data-crumb="spec"]')).toHaveText('Spec 002');
       await expect(head.locator('[data-breadcrumb] [data-crumb]').first()).toHaveAttribute('data-crumb', 'workspace');
-      await expect(head.locator('[data-breadcrumb] [data-crumb="area"]')).toHaveCount(0);
+      await expect(head.locator('[data-breadcrumb] [data-crumb="area"]')).toHaveAttribute('aria-current', 'page');
       await expect(head.locator('[data-description]')).toBeVisible();
       const box = await head.boundingBox();
       const crumbs = await head.locator('[data-breadcrumb]').boundingBox();
       const crumbRow = (crumbs?.height ?? 0) + 8;
+      // spec 024: prototype value (principal: Prototyp gilt immer; ISC-105 "Prototyp, ISC-105 anpassen") — the prototype's
+      // `.gate-btn` carries its 11 px `.gate-hint` line under the button (2 px gap, at most one 16 px line), measured like
+      // the crumb row on top of the 240 px budget.
+      const hint = await head.locator('[data-gate-hint]').boundingBox();
+      expect(hint?.height ?? 0).toBeLessThanOrEqual(16);
+      const hintRow = hint === null ? 0 : hint.height + 2;
       expect(crumbs?.height ?? Infinity).toBeLessThanOrEqual(44);
-      expect((box?.height ?? Infinity) - crumbRow).toBeLessThanOrEqual(240);
+      expect((box?.height ?? Infinity) - crumbRow - hintRow).toBeLessThanOrEqual(240);
     });
   });
 });

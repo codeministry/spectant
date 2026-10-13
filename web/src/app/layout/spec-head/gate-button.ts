@@ -6,7 +6,9 @@ import { REVIEWED_HASH_FILES, type ReviewedHashFile } from '../../../../../serve
 import { ApiClient } from '../../core/api.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiNotice } from '../../shared/ui/notice/notice';
-import { UiSheet } from '../../shared/ui/overlay/sheet';
+import { UiChip } from '../../shared/ui/chip/chip';
+import { UiKbd } from '../../shared/ui/kbd/kbd';
+import { UiDialog } from '../../shared/ui/overlay/dialog';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { type GateAction, gateAction, pathSegments, shortHash } from './spec-head-model';
@@ -32,108 +34,105 @@ type WriteState =
  */
 @Component({
   selector: 'app-gate-button',
-  imports: [TranslocoPipe, UiIcon, UiNotice, UiSheet],
+  imports: [TranslocoPipe, UiChip, UiIcon, UiKbd, UiNotice, UiDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-size]': 'size()' },
   styles: `
     :host { display: grid; gap: 8px; min-inline-size: 0; }
-    :host([data-size='inline']) { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
-    .gate-button { display: flex; gap: 8px; align-items: center; justify-content: center; inline-size: 100%; min-block-size: 48px; margin: 0; }
-    :host([data-size='inline']) .gate-button { inline-size: auto; min-block-size: 32px; }
-    .gate-button.stale { border-color: var(--color-warning); color: var(--hover-ink); }
-    .gate-button.done {
-      padding: 8px 16px; border: 1px solid var(--color-accent); border-radius: var(--radius-field);
-      color: var(--clos-ink); font-weight: 600;
-    }
-    :host([data-size='inline']) .gate-button.done { padding: 4px 8px; font-size: 13px; line-height: 20px; }
-    .gate-button[data-state='paused'] { color: var(--color-base-content); }
-    /* The paused label carries a session id of any length (actor grammar, spec 008): it wraps and breaks inside the id
-       instead of pushing the head past a 390 px viewport. */
-    .gate-button[data-state='paused'] { block-size: auto; white-space: normal; overflow-wrap: anywhere; text-align: start; max-inline-size: 100%; }
-    .changed { display: grid; gap: 4px; min-inline-size: 0; }
-    :host([data-size='inline']) .changed { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
-    .changed-label { margin: 0; color: var(--hover-ink); font-size: 12px; font-weight: 600; line-height: 16px; }
-    .files { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
-    :host([data-size='inline']) .files { display: flex; flex-wrap: wrap; gap: 4px 8px; }
-    .files code { font-size: 12px; line-height: 16px; overflow-wrap: normal; word-break: normal; }
-    .dialog-body { display: grid; gap: 16px; padding: 16px 16px 0; }
-    .intro { margin: 0; font-size: 14px; line-height: 20px; }
-    .hashed { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-    .hashed li { display: flex; flex-wrap: wrap; gap: 4px 16px; justify-content: space-between; }
-    .hash { color: var(--muted-ink); font-variant-numeric: tabular-nums; }
+    /* Prototype .gate-btn: the button with its 11 px hint under it, right-aligned in the head, left in a column. */
+    .gate-btn { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; min-inline-size: 0; }
+    :host([data-size='block']) .gate-btn { align-items: stretch; }
+    .gate-button { display: inline-flex; gap: 8px; align-items: center; justify-content: center; min-block-size: 32px; margin: 0; }
+    :host([data-size='block']) .gate-button { inline-size: 100%; min-block-size: 48px; }
+    /* The primary fill of ui-button (light #007e9a, principal 2026-10-13 "Sichere Werte behalten"), not daisyUI's raw primary. */
+    .btn-primary { --btn-color: var(--primary-fill); --btn-fg: var(--primary-fill-ink); }
+    /* stale: prototype orange (--orange edge, --orange-t fill, --orange-text ink). */
+    .gate-button.stale { --btn-bg: var(--hover-t); --btn-border: var(--hover); --btn-fg: var(--hover-ink); }
+    /* done: the prototype's muted "Re-mark". */
+    .gate-button.done { --btn-fg: var(--muted-ink); font-weight: 500; }
+    .gate-hint { color: var(--muted-ink); font-size: 11px; line-height: 16px; overflow-wrap: anywhere; text-align: end; }
+    :host([data-size='block']) .gate-hint { text-align: start; }
+    .changed { display: flex; flex-wrap: wrap; gap: 2px 8px; justify-content: flex-end; margin: 0; padding: 0; list-style: none; }
+    :host([data-size='block']) .changed { justify-content: flex-start; }
+    .changed code { font-size: 11px; line-height: 16px; overflow-wrap: normal; word-break: normal; }
+    /* Prototype [data-ui=confirm-dialog]: 520 px, 96 px from the top, card, radius-card, scrim with blur 4. */
+    ui-dialog { --ui-dialog-size: 520px; --ui-dialog-top: 96px; --ui-dialog-padding: 24px; }
+    .dialog-body { display: grid; gap: 16px; }
+    .title { margin: 0; font: 600 17px/26px var(--font-brand); }
+    .title code { font-size: 15px; }
+    .intro { margin: 0; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
+    .files { margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--radius-field); list-style: none; }
+    .file-row { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; padding: 8px 12px; border-block-end: 1px solid var(--line); }
+    .file-row:last-child { border-block-end: 0; }
+    .file { flex: 1; min-inline-size: 0; font-size: 13px; }
+    .hash-meta { color: var(--muted-ink); font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
     .muted { margin: 0; color: var(--muted-ink); }
-    .confirm-bar { position: sticky; inset-block-end: 0; padding: 16px 0; background: var(--color-base-100); }
+    .notice-title { display: block; font-weight: 600; }
+    /* The prototype's "You confirm" checklist (spec-review-gate.html): three ticks before the mark can be written. */
+    .checklist { display: grid; gap: 8px; min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+    .checklist legend { margin-block-end: 4px; padding: 0; color: var(--muted-ink); }
+    .check-line { display: flex; gap: 8px; align-items: center; font-size: 14px; line-height: 20px; cursor: pointer; }
+    .check-line input { flex: none; inline-size: 16px; block-size: 16px; margin: 0; accent-color: var(--color-primary); }
+    @media (pointer: coarse) { .check-line { min-block-size: 44px; } }
+    .dlg-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    /* Prototype .btn: 1 px --border on the card for the secondary "Not yet". */
+    .dlg-actions [data-not-yet] { --btn-bg: var(--color-base-100); --btn-border: var(--line); border-width: 1px; border-style: solid; }
   `,
   template: `
     @if (model(); as m) {
-      @switch (action()) {
-        @case ('paused') {
-          <button type="button" class="btn gate-button" [class.btn-sm]="inline()" data-gate-action data-state="paused" disabled>
-            <ui-icon name="lock" [size]="16" />
-            <span>{{ 'status.gate.paused' | transloco: { session: lock()?.session ?? '' } }}</span>
-          </button>
-        }
-        @case ('done') {
-          <p class="gate-button done" data-gate-action data-state="done">
-            <ui-icon name="circle-check" [size]="16" />
-            <span>{{ 'status.gate.done' | transloco: { time: time(m.gates.reviewed.at) } }}</span>
-          </p>
-        }
-        @case ('stale') {
-          <button
-            type="button"
-            class="btn btn-outline gate-button stale"
-            [class.btn-sm]="inline()"
-            data-gate-action
-            data-state="stale"
-            (click)="openDialog()"
-          >
-            {{ 'status.gate.stale' | transloco }}
-          </button>
-          @if (m.gates.reviewed.files?.length) {
-            <div class="changed">
-              <p class="changed-label">{{ 'status.gate.changed' | transloco }}</p>
-              <ul class="files" data-changed-files>
+      <span class="gate-btn" data-ui="mark-reviewed" [attr.data-gate-state]="action()">
+        @switch (action()) {
+          @case ('paused') {
+            <button type="button" class="btn btn-primary btn-sm gate-button" data-gate-action data-state="paused" disabled>
+              <ui-icon name="lock" [size]="16" />
+              {{ 'status.gate.ready' | transloco }}
+            </button>
+            <span class="gate-hint" data-gate-hint>{{ 'status.gate.hint.paused' | transloco: { session: lock()?.session ?? '' } }}</span>
+          }
+          @case ('done') {
+            <button type="button" class="btn btn-sm gate-button done" data-gate-action data-state="done" (click)="openDialog()">
+              <ui-icon name="check" [size]="16" />
+              {{ 'status.gate.remark' | transloco }}
+            </button>
+            <span class="gate-hint" data-gate-hint>{{ 'status.gate.done' | transloco: { time: time(m.gates.reviewed.at) } }}</span>
+          }
+          @case ('stale') {
+            <button type="button" class="btn btn-sm gate-button stale" data-gate-action data-state="stale" (click)="openDialog()">
+              <ui-icon name="triangle-alert" [size]="16" />
+              {{ 'status.gate.stale' | transloco }}
+            </button>
+            <span class="gate-hint" data-gate-hint>{{ 'status.gate.hint.stale' | transloco: { time: time(m.gates.reviewed.at) } }}</span>
+            @if (m.gates.reviewed.files?.length) {
+              <ul class="changed" data-changed-files [attr.aria-label]="'status.gate.changed' | transloco">
                 @for (file of m.gates.reviewed.files; track file) {
                   <li><code>@for (segment of segments(file); track $index) { <span>{{ segment }}</span><wbr /> }</code></li>
                 }
               </ul>
-            </div>
+            }
+          }
+          @default {
+            <button type="button" class="btn btn-primary btn-sm gate-button" data-gate-action data-state="ready" (click)="openDialog()">
+              <ui-icon name="flag" [size]="16" />
+              {{ 'status.gate.ready' | transloco }}
+            </button>
+            <span class="gate-hint" data-gate-hint>{{ 'status.gate.hint.ready' | transloco }}</span>
           }
         }
-        @default {
-          <button type="button" class="btn btn-primary gate-button" [class.btn-sm]="inline()" data-gate-action data-state="ready" (click)="openDialog()">
-            {{ 'status.gate.ready' | transloco }}
-          </button>
-        }
-      }
+      </span>
       @if (written(); as at) {
         <ui-notice tone="info" icon="circle-check" data-gate-written>{{ 'status.gate.written' | transloco: { time: time(at) } }}</ui-notice>
       }
 
-      <ui-sheet [(open)]="dialogOpen" [tier]="tier()" [heading]="'status.dialog.heading' | transloco">
+      <ui-dialog [(open)]="dialogOpen" [label]="'status.dialog.heading' | transloco">
         <div class="dialog-body" data-gate-dialog>
+          <h2 class="title">{{ 'status.dialog.title' | transloco: { id: specId() ?? '' } }} <code>/spec-implement</code>?</h2>
           <p class="intro">{{ 'status.dialog.intro' | transloco }}</p>
-          <ul class="hashed">
-            @for (file of hashFiles; track file) {
-              <li data-hashed-file [attr.data-file]="file">
-                <code class="file">{{ hashFileNames[file] }}</code>
-                <code class="hash" data-hash>{{ short(file) ?? ('status.dialog.absent' | transloco) }}</code>
-              </li>
-            }
-          </ul>
-          @if (hashes() === null) {
-            <p class="muted">{{ 'status.dialog.noHashes' | transloco }}</p>
-          }
-          @if (m.areas.live.lockSource === 'none') {
-            <ui-notice tone="info" icon="activity" data-no-agent-source>{{ 'status.dialog.noAgentSource' | transloco }}</ui-notice>
-          }
           @switch (write().kind) {
             @case ('conflict') {
-              <ui-notice tone="error" data-write-conflict>
-                {{ 'status.dialog.conflict' | transloco }}
+              <ui-notice tone="error" icon="triangle-alert" data-write-conflict>
+                <span class="notice-title">{{ 'status.dialog.conflict' | transloco }}</span>
                 <button action type="button" class="btn btn-sm" data-reload (click)="reloadSpec()">
-                  <ui-icon name="rotate-cw" [size]="16" />
+                  <ui-icon name="refresh-cw" [size]="16" />
                   {{ 'status.dialog.reload' | transloco }}
                 </button>
               </ui-notice>
@@ -155,20 +154,59 @@ type WriteState =
               }
             }
           }
-          <div class="confirm-bar">
+          <ul class="files">
+            @for (file of hashFiles; track file) {
+              <li class="file-row" data-hashed-file [attr.data-file]="file">
+                <code class="file">{{ hashFileNames[file] }}</code>
+                <span class="hash-meta">@if (short(file)) {sha256 }<code data-hash>{{ short(file) ?? ('status.dialog.absent' | transloco) }}</code></span>
+                @if (changedFile(m, hashFileNames[file])) {
+                  <ui-chip tone="warning" data-file-changed>{{ 'status.dialog.changed' | transloco }}</ui-chip>
+                }
+              </li>
+            }
+          </ul>
+          @if (hashes() === null) {
+            <p class="muted">{{ 'status.dialog.noHashes' | transloco }}</p>
+          }
+          @if (m.areas.live.lockSource === 'none') {
+            <ui-notice tone="info" icon="activity" data-no-agent-source>{{ 'status.dialog.noAgentSource' | transloco }}</ui-notice>
+          }
+          <fieldset class="checklist" data-gate-checklist>
+            <legend class="type-eyebrow">{{ 'status.dialog.checklist.legend' | transloco }}</legend>
+            @for (item of checkItems; track item; let i = $index, first = $first) {
+              <label class="check-line">
+                <input
+                  type="checkbox"
+                  data-gate-check
+                  [attr.data-autofocus]="first ? '' : null"
+                  [checked]="checks()[i]"
+                  [disabled]="write().kind === 'conflict'"
+                  (change)="toggleCheck(i)"
+                />
+                <span>{{ 'status.dialog.checklist.' + item | transloco }}</span>
+              </label>
+            }
+          </fieldset>
+          <div class="dlg-actions">
+            <button type="button" class="btn btn-sm" data-not-yet (click)="dialogOpen.set(false)">
+              {{ 'status.dialog.notYet' | transloco }}
+              <!-- Only while open: a closed dialog's key hint would be the page's first, hidden kbd. -->
+              @if (dialogOpen()) {
+                <ui-kbd>Esc</ui-kbd>
+              }
+            </button>
             <button
               type="button"
-              class="btn btn-primary btn-block"
+              class="btn btn-primary btn-sm"
               data-confirm
-              data-autofocus
-              [disabled]="hashes() === null || write().kind === 'sending'"
+              [disabled]="hashes() === null || write().kind === 'sending' || !allChecked()"
               (click)="confirm()"
             >
               {{ (write().kind === 'sending' ? 'status.dialog.sending' : 'status.dialog.confirm') | transloco }}
             </button>
           </div>
         </div>
-      </ui-sheet>
+      </ui-dialog>
     }
   `,
 })
@@ -181,7 +219,7 @@ export class GateButton {
   private readonly transloco = inject(TranslocoService);
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
-  protected readonly tier = this.state.tier;
+  protected readonly specId = this.state.specId;
   protected readonly inline = computed(() => this.size() === 'inline');
   protected readonly hashFiles = HASH_FILES;
   protected readonly hashFileNames = REVIEWED_HASH_FILES;
@@ -213,6 +251,19 @@ export class GateButton {
     return shortHash(this.hashes()?.[file] ?? null);
   }
 
+  /** The "You confirm" checklist: UI confirmation only; the write path below is unchanged and runs once all three are ticked. */
+  /** A hashed file the stale mark names as changed (prototype chip `changed` in the dialog's file rows). */
+  protected changedFile(m: SpecPageModel, name: string): boolean {
+    return m.gates.reviewed.state === 'stale' && (m.gates.reviewed.files ?? []).some((file) => file === name || file.endsWith(`/${name}`));
+  }
+
+  protected readonly checkItems = ['claims', 'approach', 'anchored'] as const;
+  protected readonly checks = signal<readonly boolean[]>(this.checkItems.map(() => false));
+  protected readonly allChecked = computed(() => this.checks().every(Boolean));
+  protected toggleCheck(index: number): void {
+    this.checks.update((checks) => checks.map((checked, i) => (i === index ? !checked : checked)));
+  }
+
   protected readonly dialogOpen = signal(false);
   protected readonly write = signal<WriteState>({ kind: 'idle' });
   /** The `at` of the mark this button wrote, shown as the success line until the page is left. */
@@ -227,13 +278,14 @@ export class GateButton {
 
   protected openDialog(): void {
     this.write.set({ kind: 'idle' });
+    this.checks.set(this.checkItems.map(() => false));
     this.dialogOpen.set(true);
   }
 
   protected async confirm(): Promise<void> {
     const params = this.params();
     const hashes = this.hashes();
-    if (!params || !hashes || this.write().kind === 'sending') return;
+    if (!params || !hashes || !this.allChecked() || this.write().kind === 'sending') return;
     this.write.set({ kind: 'sending' });
     const result = await this.api.gateReviewed(params.ws, params.id, hashes);
     switch (result.kind) {

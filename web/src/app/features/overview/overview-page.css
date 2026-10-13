@@ -63,8 +63,47 @@
   white-space: nowrap;
 }
 
+/* Prototype `[data-ui=notice] b` over the muted body. */
+.notice-title {
+  display: block;
+}
+
 .reason {
-  color: inherit;
+  display: block;
+  color: var(--muted);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* The h1's muted count, as the prototype's `h1 span` (`Workspaces · 3`). */
+.h1-sub {
+  color: var(--muted-ink);
+  font-weight: 400;
+}
+
+/* Prototype `[data-ui=empty-state]`: start-aligned, 48 × 24 px inset, 12 px gaps, at most 520 px wide. */
+.empty {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  max-inline-size: 520px;
+  padding: var(--space-6) var(--space-4);
+}
+
+.empty-icon {
+  color: var(--muted);
+}
+
+.empty-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.empty-body {
+  margin: 0;
+  color: var(--muted);
 }
 
 .strip-skeleton {
@@ -75,4 +114,12 @@
 
 .loading-note {
   margin: 0;
+}
+
+/* Prototype `.footer-note`: 12 px muted, below the columns. */
+.footer-note {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
 }

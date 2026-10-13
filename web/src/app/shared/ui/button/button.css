@@ -5,7 +5,8 @@
 :host {
   font-size: 0.875rem;
   line-height: 1.25rem;
-  font-weight: 500;
+  font-weight: 400;
+  border-radius: var(--radius);
 
   /* Colour only, at the instant token; daisyUI's transform and shadow transitions are dropped. */
   transition-property: color, background-color, border-color;
@@ -13,8 +14,46 @@
   transition-timing-function: var(--motion-ease-standard);
 }
 
+/*
+ * The prototype's `.btn`: 32 px tall, 0 12 px, an 8 px gap, radius 8 (`size="md"`, the default). `size="sm"` is the
+ * prototype's small control step, 28 px and 0 10 px. daisyUI's `--size` height is overridden here, unlayered.
+ */
 :host(.ui-button) {
+  gap: var(--space-2);
   min-inline-size: 40px;
+  block-size: 32px;
+  padding-inline: 12px;
+}
+
+:host(.ui-button.btn-sm) {
+  block-size: 28px;
+  padding-inline: 10px;
+}
+
+/*
+ * The prototype's icon buttons. `size="md"` is `.btn-icon`: 40 x 40, 1 px `--line` border, radius 8, `--card`,
+ * `--raised` on hover (the secondary variant below). `size="sm"` is `.quiet-icon`: 32 x 32, no border, radius 6,
+ * `--muted` at rest, an 8 % tint of the text colour and the text colour on hover.
+ */
+:host(.ui-icon-button) {
+  inline-size: 40px;
+  block-size: 40px;
+  padding: 0;
+}
+
+:host(.ui-icon-button[data-variant="ghost"]) {
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--muted-ink);
+}
+
+@media (hover: hover) {
+  :host(.ui-icon-button[data-variant="ghost"]:not([aria-disabled="true"]):hover) {
+    --btn-bg: color-mix(in oklab, var(--color-base-content) 8%, transparent);
+
+    color: var(--color-base-content);
+  }
 }
 
 /* Nothing moves: daisyUI nudges a pressed button down half a pixel. */
@@ -46,6 +85,15 @@
 :host([data-variant="primary"]) {
   --btn-color: var(--primary-fill);
   --btn-fg: var(--primary-fill-ink);
+
+  font-weight: 600;
+}
+
+/* The prototype's `.btn.primary:hover`: the fill mixed 15 % toward the text colour. */
+@media (hover: hover) {
+  :host([data-variant="primary"]:not([data-tone], [aria-disabled="true"]):hover) {
+    --btn-bg: color-mix(in srgb, var(--primary-fill) 85%, var(--color-base-content));
+  }
 }
 
 :host([data-tone="warning"]:not([data-variant="secondary"])) {
@@ -107,7 +155,8 @@
 
 /*
  * WCAG 2.5.8 (target size): a 32 px control is below the 44 px touch target, so under a coarse pointer an invisible
- * `::before` grows the hit area to at least 44 × 44 around the visual box, which itself stays 32 / 40 px. Fine
+ * `::before` grows the hit area to at least 44 × 44 around the visual box (the prototype's `.btn-icon::after`), which
+ * itself stays 28 / 32 / 40 px (design.md, Tablet: "Die sichtbaren 40 px bzw. 26 px bleiben"). Fine
  * pointers keep the visual box as the target. In a joined group the pseudo keeps the segment's width
  * (button-group.css) so neighbouring segments never overlap.
  */

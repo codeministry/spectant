@@ -6,6 +6,7 @@ import type { SpecWarning } from '../../../../../../core/src/files';
 import { specLink, type TabId } from '../../../layout/shell/areas';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiButton } from '../../../shared/ui/button/button';
+import { UiCard } from '../../../shared/ui/card/card';
 import { UiChip } from '../../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
 import { UiKbd } from '../../../shared/ui/kbd/kbd';
@@ -32,7 +33,7 @@ export type InspectorForm = 'rail' | 'sheet';
  */
 @Component({
   selector: 'app-spec-inspector',
-  imports: [RouterLink, TranslocoPipe, UiButton, UiChip, UiCommandChip, UiIcon, UiKbd, UiMeter, UiStageTrack],
+  imports: [RouterLink, TranslocoPipe, UiButton, UiCard, UiChip, UiCommandChip, UiIcon, UiKbd, UiMeter, UiStageTrack],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-inspector.html',
   styleUrl: './spec-inspector.css',
@@ -67,6 +68,10 @@ export class SpecInspector {
     const index = Math.min(this.stageCurrent(), labels.length - 1);
     return this.transloco.translate('stages.position', { index: index + 1, total: labels.length, stage: labels[index] ?? '' });
   });
+  /** The warning lines, less the open-fog warning when the fog line says it (prototype `warningsPanel`). */
+  protected readonly warningLines = computed(() =>
+    this.row().fog > 0 ? this.warnings().filter((warning) => warning.kind !== 'fog') : this.warnings(),
+  );
   protected readonly percent = computed(() => {
     const { closed, total } = this.row();
     return total > 0 ? Math.round((closed / total) * 100) : 0;

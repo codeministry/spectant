@@ -8,6 +8,7 @@ import { join, relative, sep } from 'node:path';
 import { docsRenderOptions } from '../../src/evidence.ts';
 import { DOC_FILES, specFilePath } from '../../src/files.ts';
 import type { DocName, DocsPage } from '../../src/files.ts';
+import { parseFrontmatter } from '../../src/frontmatter.ts';
 import { renderDocsMarkdown } from '../../src/markdown-docs.ts';
 import { listSpecs } from '../../src/resolve.ts';
 
@@ -16,7 +17,10 @@ const FOLDER_DOCS = (Object.keys(DOC_FILES) as DocName[]).filter((name) => name 
 function page(root: string, path: string, name: DocName): DocsPage | null {
   if (!existsSync(path)) return null;
   // The server's own options (`docsRenderOptions`), so the golden is what the route renders.
-  return renderDocsMarkdown(readFileSync(path, 'utf8'), docsRenderOptions(root, path, name));
+  // The Decisions tab adds spec.md's goal signal, as the server's docs route does.
+  const spec = join(path, '..', 'spec.md');
+  const goalSignal = name === 'decisions' && existsSync(spec) ? parseFrontmatter(readFileSync(spec, 'utf8')).data.principalStatedGoalSignal : null;
+  return renderDocsMarkdown(readFileSync(path, 'utf8'), { ...docsRenderOptions(root, path, name), goalSignal });
 }
 
 export function docsModel(root: string): unknown {

@@ -2,7 +2,7 @@
  * app-brief, ported from the prototype's `[data-ui="brief"]` (`styles.css:342-349`). Not encapsulated because the
  * prose is `[innerHTML]`: every selector starts with `app-brief`. A `ui-card` without top edge or glow, with the violet
  * (`--color-secondary`) 3 px left border; a real border, so forced colours keep it. The header wraps at 390 px, the
- * command chip pushed to the end; the body clips to three lines until "More" expands it.
+ * command chip pushed to the end; the body clips to two lines until "More" expands it.
  */
 app-brief {
   display: block;
@@ -56,8 +56,8 @@ app-brief .brief-prose[data-clipped] {
   overflow: hidden;
   padding-block-end: 0;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 app-brief .brief-prose[data-clipped] > * {
@@ -138,7 +138,7 @@ app-brief .brief-prose pre {
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius-field);
-  background: var(--color-base-200);
+  background: var(--lane);
   font-size: 12px;
   line-height: 18px;
 }

@@ -59,7 +59,7 @@ test.describe('at 1440', () => {
     await chips.filter({ hasText: 'Unanchored' }).click();
     await expect(page).toHaveURL(/[?&]filter=unanchored(&|$)/);
     await expect(rows(page)).toHaveCount(0);
-    // The editor pane's "No note open" is an empty state too at wide; narrow to the list's.
+    // The editor pane's "No note selected" is an empty state too at wide; narrow to the list's.
     await expect(area(page).locator('[data-notes-list] ui-empty-state')).toBeVisible();
     await chips.filter({ hasText: 'Workspace' }).click();
     await expect(rows(page)).toHaveCount(SEEDED.length);
@@ -109,10 +109,12 @@ test.describe('at 1440', () => {
   test('the anchor picker sets a claim anchor', async ({ page }) => {
     const target = note('spec');
     await page.goto(`${BASE}/${target.id}`);
-    const select = area(page).locator('[data-anchor-select]');
-    await expect(select.locator('option[value="claim:002:ISC-52"]')).toHaveCount(1);
+    // spec 024: prototype value (principal: Prototyp gilt immer) — the anchor button opens the `anchor-pop` popover.
+    await area(page).locator('[data-anchor-trigger]').click();
+    const pop = area(page).locator('[data-anchor-pop]');
+    await expect(pop.locator('[data-value="claim:002:ISC-52"]')).toHaveCount(1);
     const put = page.waitForRequest(isWrite('PUT'));
-    await select.selectOption('claim:002:ISC-52');
+    await pop.locator('[data-value="claim:002:ISC-52"]').click();
     expect((await put).postDataJSON()).toEqual({ anchor: { kind: 'claim', spec: '002', id: 'ISC-52' }, title: target.title, body: target.body });
     await expect(rows(page).first().locator('[data-anchor]')).toHaveText('ISC-52');
   });
@@ -123,7 +125,8 @@ test.describe('at 1440', () => {
     await area(page).locator('[data-note-delete]').click();
     const dialog = page.locator('[data-note-confirm] dialog');
     await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    // spec 024: prototype value (principal: Prototyp gilt immer) — the prototype's confirm dialog says "Keep".
+    await dialog.getByRole('button', { name: 'Keep' }).click();
     await expect(dialog).toBeHidden();
     await expect(rows(page)).toHaveCount(SEEDED.length);
 
@@ -160,7 +163,8 @@ test.describe('claim card badge', () => {
   test('the claim card badge shows the seeded note count on ISC-51 and on no other card', async ({ page }) => {
     const seeded = note('claim');
     expect(seeded.anchor).toEqual({ kind: 'claim', spec: '002', id: 'ISC-51' });
-    await page.goto(CLAIMS);
+    // spec 024 (principal 2026-10-13, claims fold): ISC-51 sits behind its group's fold; the deep link opens it.
+    await page.goto(`${CLAIMS}#claim-ISC-51`);
     await expect(page.locator('app-claims-tab [data-claim]').first()).toBeVisible();
     await expect(badgeOf(page, 'ISC-51')).toHaveText('1');
     await expect(badgeOf(page, 'ISC-51')).toHaveAttribute('aria-label', '1 note');
@@ -184,7 +188,9 @@ test.describe('claim card badge', () => {
     await posted;
     await expect(page).toHaveURL(/\/notes\/00000000-0000-4000-8000-\d{12}$/);
     const put = page.waitForRequest(isWrite('PUT'));
-    await area(page).locator('[data-anchor-select]').selectOption('claim:002:ISC-52');
+    // spec 024: prototype value (principal: Prototyp gilt immer) — the anchor button opens the `anchor-pop` popover.
+    await area(page).locator('[data-anchor-trigger]').click();
+    await area(page).locator('[data-anchor-pop] [data-value="claim:002:ISC-52"]').click();
     expect(((await put).postDataJSON() as { anchor: unknown }).anchor).toEqual({ kind: 'claim', spec: '002', id: 'ISC-52' });
     await expect(area(page).locator('[data-save-state]')).toHaveText(/^saved · \d{2}:\d{2}$/);
 

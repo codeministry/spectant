@@ -101,15 +101,19 @@ describe('EvidenceTab', () => {
     delete proto['close'];
   });
 
-  it('groups every file under its claim, in the listing order, the unclaimed ones last', async () => {
+  it('groups every file under its folder (Results, Raw evidence) and marks each with its claim', async () => {
     const { root } = await open(LISTING);
-    const groups = [...root.querySelectorAll<HTMLElement>('[data-claim-group]')].map((g) => g.dataset['claimGroup']);
-    expect(groups).toEqual(['ISC-1', 'ISC-2', 'none']);
+    // spec 024: prototype value (principal: Prototyp gilt immer): the prototype groups by folder and shows the claim as a chip on every file.
+    const groups = [...root.querySelectorAll<HTMLElement>('[data-evidence-group]')].map((g) => g.dataset['evidenceGroup']);
+    expect(groups).toEqual(['results', 'raw']);
     for (const f of [REPORT, SHOT, LOG, HAR, ESCAPED]) expect(row(root, f.path)).not.toBeNull();
-    expect(root.querySelector(`[data-claim-group="ISC-1"] [data-file="${SHOT.path}"][data-thumb]`)).not.toBeNull();
-    expect(root.querySelector(`[data-claim-group="ISC-2"] [data-file="${LOG.path}"]`)?.textContent).toContain('run.log');
-    // Groups are collapses, open by default.
-    expect(root.querySelector<HTMLDetailsElement>('[data-claim-group="ISC-1"]')?.open).toBe(true);
+    expect(root.querySelector(`[data-evidence-group="results"] [data-file="${REPORT.path}"][data-claim="ISC-1"]`)).not.toBeNull();
+    expect(root.querySelector(`[data-evidence-group="raw"] [data-file="${SHOT.path}"][data-thumb][data-claim="ISC-1"]`)).not.toBeNull();
+    expect(root.querySelector(`[data-evidence-group="raw"] [data-file="${LOG.path}"][data-claim="ISC-2"]`)?.textContent).toContain('run.log');
+    expect(root.querySelector(`[data-file="${HAR.path}"]`)?.getAttribute('data-claim')).toBe('none');
+    // The claim chip links to the claim card in the Claims tab.
+    const links = [...root.querySelectorAll<HTMLAnchorElement>('[data-claim-link]')].map((a) => a.getAttribute('href'));
+    expect(links).toContain('/w/harbor/s/002/claims#claim-ISC-2');
   });
 
   it('shows the size of a file row', async () => {
@@ -157,7 +161,7 @@ describe('EvidenceTab', () => {
 
   it('shows the empty state when the spec has no evidence', async () => {
     const { root } = await open(EMPTY);
-    expect(root.querySelector('[data-claim-group]')).toBeNull();
+    expect(root.querySelector('[data-evidence-group]')).toBeNull();
     expect(root.querySelector('ui-empty-state')?.textContent).toContain('No evidence');
   });
 });

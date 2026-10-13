@@ -4,15 +4,28 @@
  * `bun run e2e -- shell` (`-g header` for the claim's probe). Against the stub API: a known spec renders its tab's view and
  * an unknown one the not-found page, decided from the dashboard.
  */
-import { atWidth, expect, test } from './fixtures';
+import type { Page } from '@playwright/test';
+import { atWidth, expect, menusReady, test } from './fixtures';
 
 const ROUTES = ['/', '/w/harbor', '/w/harbor/s/002', '/w/harbor/s/002/status', '/w/harbor/s/999', '/settings'] as const;
-const CONTROLS = ['brand', 'workspace', 'spec', 'area', 'palette', 'live', 'zen', 'settings'] as const;
-/** Outside a workspace the spec and area pills are left out rather than showing `0` (spec 019, ISC-140.2). */
+// spec 024: PAGE select (principal 2026-10-13): Workspace · Page · Spec · Area, the Area select only on a spec route
+const CONTROLS = ['brand', 'workspace', 'page', 'spec', 'area', 'palette', 'live', 'zen', 'settings'] as const;
+/** Outside a workspace the page, spec and area pills are left out rather than showing `0` (spec 019, ISC-140.2). */
 const controlsOn = (route: string): readonly string[] =>
-  route.startsWith('/w/') ? CONTROLS : CONTROLS.filter((control) => control !== 'spec' && control !== 'area');
+  route.includes('/s/')
+    ? CONTROLS
+    : route.startsWith('/w/')
+      ? CONTROLS.filter((control) => control !== 'area')
+      : CONTROLS.filter((control) => control !== 'page' && control !== 'spec' && control !== 'area');
+// spec 024: one-row header on every width (principal 2026-10-13): below 1120 the area, zen and settings controls are entries of the overflow
+// menu `⋯` (`data-tool="more"`), each carrying its `data-control`; `reveal` opens the menu first.
+const OVERFLOW = new Set<string>(['area', 'zen', 'settings']);
+const reveal = async (page: Page, width: number, name: string): Promise<void> => {
+  if (width < 1120 && OVERFLOW.has(name)) await page.locator('header [data-tool="more"]').click();
+};
 const TIERS = [
-  { width: 390, tier: 'compact', tabBar: 'header' },
+  // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+  { width: 390, tier: 'compact', tabBar: 'main' },
   { width: 820, tier: 'medium', tabBar: 'main' },
   { width: 1440, tier: 'wide', tabBar: 'main' },
 ] as const;
@@ -26,7 +39,12 @@ for (const { width, tier, tabBar } of TIERS) {
         await page.goto(route);
         await expect(page.locator('app-shell')).toHaveAttribute('data-tier', tier);
         await expect(page.locator('header')).toHaveCount(1);
-        for (const control of controlsOn(route)) {
+        for (const control of controlsOn(route).filter((name) => width >= 1120 || !OVERFLOW.has(name))) {
+          await expect(page.locator(`header [data-control="${control}"]`), control).toBeVisible();
+        }
+        // spec 024: one-row header on every width (principal 2026-10-13)
+        await reveal(page, width, 'zen');
+        for (const control of controlsOn(route).filter((name) => OVERFLOW.has(name))) {
           await expect(page.locator(`header [data-control="${control}"]`), control).toBeVisible();
         }
       });
@@ -36,6 +54,11 @@ for (const { width, tier, tabBar } of TIERS) {
       await page.goto('/w/harbor/s/002/status');
       await expect(page.locator('app-tab-bar')).toHaveCount(1);
       await expect(page.locator(`${tabBar} app-tab-bar`)).toHaveCount(1);
+      // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+      await expect(page.locator('header app-tab-bar')).toHaveCount(0);
+      const band = page.locator('app-tab-bar-slot');
+      await expect(band).toHaveCSS('position', 'sticky');
+      await expect(band).toHaveCSS('top', '64px');
       await expect(page.locator('app-tab-bar a[aria-current="page"]')).toHaveAttribute('data-tab', 'status');
     });
 
@@ -50,6 +73,8 @@ for (const { width, tier, tabBar } of TIERS) {
 
       // A plain click opens the picker; its entries are the links.
       await page.goto('/w/harbor/s/002');
+      // The pickers open once the deferred menus have loaded (until then a plain click navigates, ShellNav).
+      await menusReady(page);
       await control('workspace').click();
       await page.locator('[data-picker="workspace"] [data-workspace="harbor"]').click();
       await expect(page).toHaveURL(/\/w\/harbor$/);
@@ -61,6 +86,9 @@ for (const { width, tier, tabBar } of TIERS) {
 
       await page.goto('/w/harbor/s/002/status');
       const area = control('area');
+      // spec 024: one-row header on every width (principal 2026-10-13): the area menu returns focus to its trigger, `⋯` below 1120
+      const areaTrigger = width < 1120 ? page.locator('header [data-tool="more"]') : area;
+      await reveal(page, width, 'area');
       await area.click();
       const menu = page.getByRole('navigation', { name: 'Areas' });
       await expect(menu).toBeVisible();
@@ -70,27 +98,35 @@ for (const { width, tier, tabBar } of TIERS) {
       await menu.locator('[data-area="data"]').click();
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/claims$/);
       await expect(menu).toBeHidden();
-      await expect(area).toBeFocused();
+      await expect(areaTrigger).toBeFocused();
 
+      await reveal(page, width, 'area');
       await area.click();
       await expect(menu).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(menu).toBeHidden();
-      await expect(area).toBeFocused();
+      await expect(areaTrigger).toBeFocused();
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/claims$/);
 
+      // spec 024 T40: the indicator opens the live popover (prototype `pop-live`); its round-board entry leads there.
       await control('live').click();
+      await page.locator('[data-live-board]').click();
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/board$/);
 
+      // spec 024 T40/T52: settings opens the settings popover; its "Workspaces…" entry leads to /settings/workspaces
+      await menusReady(page);
+      await reveal(page, width, 'settings');
       await control('settings').click();
-      await expect(page).toHaveURL(/\/settings$/);
-      await expect(page.locator('[data-page="settings"] h1')).toBeVisible();
+      await page.locator('[data-menu="settings"] [data-settings-link="workspaces"]').click();
+      await expect(page).toHaveURL(/\/settings\/workspaces$/);
+      await expect(page.locator('[data-page="settings-workspaces"] h1')).toBeVisible();
       await expect(page.locator('header')).toHaveCount(1);
     });
 
     test('header pickers open real lists: choose a workspace, then a spec (T36)', async ({ page }) => {
       const control = (name: string) => page.locator(`header [data-control="${name}"]`);
       await page.goto('/w/harbor/s/002');
+      await menusReady(page);
 
       const workspace = control('workspace');
       await workspace.click();
@@ -124,12 +160,12 @@ for (const { width, tier, tabBar } of TIERS) {
       await page.goto('/w/harbor/s/002');
       const workspace = page.locator('header [data-control="workspace"]');
       await expect(workspace).toHaveAttribute('href', '/w/harbor');
-      await page.locator('[data-picker="workspace"]').first().waitFor({ state: 'attached' });
+      await menusReady(page);
       await workspace.click({ button: 'middle' });
       await expect(workspace).toHaveAttribute('aria-expanded', 'false');
     });
 
-    test('one header row at medium and wide, two at compact; the pill hugs its 40 px segments (T36)', async ({ page }) => {
+    test('one header row on every width, every element 40 px tall; the rail hugs its 40 px segments (T36, spec 024)', async ({ page }) => {
       await page.goto('/w/harbor/s/002/status');
       const header = page.locator('header');
       await expect(header).toHaveCount(1);
@@ -138,19 +174,24 @@ for (const { width, tier, tabBar } of TIERS) {
       const brand = await box('header [data-control="brand"]');
       const area = await box('header [data-control="area"]');
       const pickers = await box('header .pickers');
-      if (width < 640) {
-        expect(head.height).toBeGreaterThanOrEqual(92);
-        expect(head.height).toBeLessThanOrEqual(93);
-        expect(area.y).toBeGreaterThanOrEqual(brand.y + brand.height - 1);
-        expect(pickers.height).toBeLessThanOrEqual(42);
-      } else {
-        expect(head.height).toBeGreaterThanOrEqual(64);
-        expect(head.height).toBeLessThanOrEqual(65);
-        expect(Math.abs(area.y - brand.y)).toBeLessThan(12);
+      // spec 024: one-row header on every width (principal 2026-10-13)
+      expect(head.height).toBeGreaterThanOrEqual(64);
+      // spec 024: one-row header on every width (principal 2026-10-13)
+      expect(head.height).toBeLessThanOrEqual(65);
+      expect(pickers.height).toBeLessThanOrEqual(42);
+      if (width >= 1120) expect(Math.abs(area.y - brand.y)).toBeLessThan(12);
+      // spec 024: one-row header on every width (principal 2026-10-13): every element of the row is 40 px tall and on its centre line
+      const tools = width >= 1120 ? ['[data-control="zen"]', '[data-tool="assistant"]', '[data-control="settings"]', '[data-tool="help"]'] : ['[data-tool="more"]'];
+      for (const selector of ['.rail-field', '[data-control="palette"]', 'app-shell-live .group', ...tools]) {
+        const part = await box(`header ${selector}`);
+        expect(Math.round(part.height), selector).toBe(40);
+        expect(Math.abs(part.y + part.height / 2 - (head.y + 32)), selector).toBeLessThan(1.5);
       }
       const palette = await box('header [data-control="palette"]');
-      expect(Math.round(palette.width)).toBe(width >= 1280 ? 240 : 40);
-      await expect(page.locator('header .palette-key')).toBeVisible({ visible: width >= 1280 });
+      // spec 024: prototype palette rule (principal 2026-10-12): a spec page keeps the 40 px icon below 1560
+      expect(Math.round(palette.width)).toBe(40);
+      // spec 024: prototype palette rule (principal 2026-10-12)
+      await expect(page.locator('header .palette-key')).toBeHidden();
     });
 
     test('a known spec tab renders its own view, never the placeholder or not-found', async ({ page }) => {
@@ -191,7 +232,7 @@ test.describe('header', () => {
           const header = page.locator('header');
           for (const control of controlsOn(route)) {
             await expect(header.locator(`[data-control="${control}"]`), control).toHaveCount(1);
-            await expect(header.locator(`[data-control="${control}"]`), control).toBeVisible();
+            if (wide || !OVERFLOW.has(control)) await expect(header.locator(`[data-control="${control}"]`), control).toBeVisible();
           }
 
           const spec = header.locator('[data-control="spec"]');
@@ -200,9 +241,10 @@ test.describe('header', () => {
             await expect(id).toHaveText('002');
             await expect(id).toBeVisible();
             await expect(id).toHaveCSS('font-family', /mono/i);
-            await expect(spec.locator('.spec-title')).toBeVisible({ visible: wide });
+            // spec 024: one-row header on every width (principal 2026-10-13): id and short name on every width, the name ellipsizing
+            await expect(spec.locator('.spec-title')).toBeVisible();
             // The name comes from the dashboard row (`ShellData.currentRow`), not from the spec head's title.
-            if (wide) await expect(spec.locator('.spec-title')).toHaveText(/^(?!002$)\S.*\S$/);
+            await expect(spec.locator('.spec-title')).toHaveText(/^(?!002$)\S.*\S$/);
             await expect(spec).toHaveAttribute('aria-label', /002/);
           } else if (!route.startsWith('/w/')) {
             await expect(spec).toHaveCount(0);
@@ -215,8 +257,11 @@ test.describe('header', () => {
           const palette = header.locator('[data-control="palette"]');
           await expect(palette).toHaveAttribute('aria-label', /\S/);
           await expect(palette.locator('ui-icon')).toBeVisible();
-          await expect(palette.locator('.palette-text')).toBeVisible({ visible: wide });
-          await expect(palette.locator('.palette-key')).toBeVisible({ visible: wide });
+          // spec 024: prototype palette rule (principal 2026-10-12): the field at wide off spec pages, the icon on spec pages below 1560
+          const field = wide && !SPEC_OPEN.has(route);
+          await expect(palette.locator('.palette-text')).toBeVisible({ visible: field });
+          // spec 024: prototype palette rule (principal 2026-10-12)
+          await expect(palette.locator('.palette-key')).toBeVisible({ visible: field });
 
           await expect(header.locator('[data-control="settings"]')).toHaveAttribute('aria-label', /help/i);
         });
@@ -224,8 +269,16 @@ test.describe('header', () => {
 
       test(`header settings control reaches help at ${String(width)}`, async ({ page }) => {
         await page.goto('/w/harbor/s/002');
+        // spec 024 T40/T52: the settings popover holds Help & guide (→ /help) and Workspaces… (→ /settings/workspaces);
+        // the settings page itself, with its shortcuts action, is then opened at /settings.
+        // The settings panel lives in the deferred menus; before they mount the button leads to /settings (its fallback).
+        await menusReady(page);
+        await reveal(page, width, 'settings');
         await page.locator('header [data-control="settings"]').click();
-        await expect(page).toHaveURL(/\/settings$/);
+        await expect(page.locator('[data-menu="settings"] [data-settings-link="help"]')).toHaveAttribute('href', '/help');
+        await page.locator('[data-menu="settings"] [data-settings-link="workspaces"]').click();
+        await expect(page).toHaveURL(/\/settings\/workspaces$/);
+        await page.goto('/settings');
         const help = page.locator('[data-page="settings"] [data-action="shortcuts"]');
         await expect(help).toBeVisible();
         await help.click();
@@ -272,7 +325,7 @@ test.describe('zen', () => {
       await zen.click();
       await expect(zen).toHaveAttribute('aria-pressed', 'true');
       for (const tool of TOOLS) await expect(page.locator(`header [data-control="${tool}"]`), tool).toBeHidden();
-      for (const kept of ['brand', 'workspace', 'spec', 'area']) {
+      for (const kept of ['brand', 'workspace', 'page', 'spec', 'area']) {
         await expect(page.locator(`header [data-control="${kept}"]`), kept).toBeVisible();
       }
       await expect(head).toBeHidden();
@@ -283,8 +336,11 @@ test.describe('zen', () => {
       await expect(footer.locator('[data-zen-part="title"]')).toHaveText('Web console');
       await expect(footer.locator('[data-zen-part="claims"]')).toContainText('25/30');
       await expect(footer.locator('ui-command-chip')).toContainText('/spec-implement 002');
+      // The bar slides in from 8 px below (prototype `zen-statusbar`); measure it once its entry has finished.
+      await footer.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
       const box = await footer.boundingBox();
-      expect(box?.height).toBe(40);
+      // spec 024: prototype value (principal: Prototyp gilt immer) — the prototype `zen-statusbar` is 36 px.
+      expect(box?.height).toBe(36);
       expect(Math.round((box?.y ?? 0) + (box?.height ?? 0))).toBe(900);
       // The main column takes the full width once the rail is gone (1440 - 2 × 32).
       expect((await page.locator('main').boundingBox())?.width).toBe(1376);
@@ -307,6 +363,11 @@ test.describe('zen', () => {
       const shell = page.locator('app-shell');
       const collapse = page.locator('aside.shell-rail [data-control="rail-collapse"]');
       await expect(collapse).toHaveAttribute('aria-expanded', 'true');
+      // spec 024: prototype rail fold with the app's counts (principal 2026-10-13): the `›` sits just outside the
+      // rail's top-left edge (prototype `.rail-tools`), not above the rail's content.
+      const [tool, rail] = await Promise.all([collapse.boundingBox(), page.locator('aside.shell-rail').boundingBox()]);
+      expect((tool?.x ?? 0) + (tool?.width ?? 0)).toBeLessThanOrEqual(rail?.x ?? 0);
+      expect(tool?.y ?? 0).toBeCloseTo(rail?.y ?? 0, 0);
 
       const stored = page.waitForResponse((res) => res.url().endsWith('/api/settings') && res.request().method() === 'PUT');
       await collapse.click();
@@ -316,8 +377,11 @@ test.describe('zen', () => {
       const strip = page.locator('aside.shell-rail[data-rail-strip]');
       await expect(strip).toBeVisible();
       await expect(page.locator('app-rail-slot')).toHaveCount(0);
-      // The column eases over 240 ms (`--motion-duration-base`); poll until it settles at the strip's 48 px.
-      await expect.poll(async () => (await strip.boundingBox())?.width).toBe(48);
+      // spec 024: prototype rail fold with the app's counts (principal 2026-10-13): focus moves to the `‹` tab.
+      await expect(page.locator('aside.shell-rail [data-control="rail-expand"]')).toBeFocused();
+      // spec 024: prototype rail fold with the app's counts (principal 2026-10-13): the column eases over 240 ms
+      // (`--dur-sheet`); poll until it settles at the prototype's 32 px track (`--rail-space`).
+      await expect.poll(async () => (await strip.boundingBox())?.width).toBe(32);
 
       await page.reload();
       await expect(shell).toHaveAttribute('data-rail-collapsed', '');
@@ -326,6 +390,8 @@ test.describe('zen', () => {
 
       await expand.click();
       await expect(shell).not.toHaveAttribute('data-rail-collapsed');
+      // spec 024: prototype rail fold with the app's counts (principal 2026-10-13): focus moves back to the `›`.
+      await expect(collapse).toBeFocused();
       await expect(page.locator('app-rail-slot')).toBeVisible();
       await page.reload();
       await expect(page.locator('app-rail-slot')).toBeVisible();
@@ -336,13 +402,16 @@ test.describe('zen', () => {
     test.use(atWidth(390));
     session('zen-compact');
 
-    test('zen at compact: the footer bar replaces the spec head, both header rows stay', async ({ page }) => {
+    test('zen at compact: the footer bar replaces the spec head, the header row stays', async ({ page }) => {
       await page.goto('/w/harbor/s/002/status');
       const zen = page.locator('header [data-control="zen"]');
+      // spec 024: one-row header on every width (principal 2026-10-13): zen is an entry of the overflow menu
+      await reveal(page, 390, 'zen');
       await zen.click();
       await expect(page.locator('app-spec-page .spec-head')).toBeHidden();
       for (const tool of TOOLS) await expect(page.locator(`header [data-control="${tool}"]`), tool).toBeHidden();
-      await expect(page.locator('header app-tab-bar')).toBeVisible();
+      // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+      await expect(page.locator('main app-tab-bar')).toBeVisible();
       const footer = page.locator('[data-zen-footer]');
       await expect(footer).toBeVisible();
       await expect(footer.locator('[data-zen-part="id"]')).toHaveText('002');
@@ -351,6 +420,7 @@ test.describe('zen', () => {
       await expect(footer.locator('[data-zen-part="title"]')).toBeHidden();
       expect((await footer.boundingBox())?.width).toBe(390);
 
+      await reveal(page, 390, 'zen');
       await zen.click();
       await expect(page.locator('app-spec-page .spec-head')).toBeVisible();
       await expect(footer).toHaveCount(0);

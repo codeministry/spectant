@@ -14,9 +14,9 @@ import { ShellState } from '../shell/shell-state.service';
 import type { Tier } from '../shell/tier';
 import { SpecHead } from './spec-head';
 
-// T39 · ISC-105: the spec head's breadcrumb over the planning tree (design § The breadcrumb). The e2e (T41) proves it
-// in the real app; these specs pin the levels, links, the "+n" popover, the archived and unknown-milestone forms and
-// the compact short form against a hand-built planning model.
+// T39 · ISC-105, T36 · ISC-149: the spec head's breadcrumb (`workspace / Spec NNN · Area`) and its planning chips (spec 024
+// design.md: milestone, feature and priority in the chip row). The e2e proves it in the real app; these specs pin the
+// levels, links, the "+n" popover, the archived and unknown-milestone forms against a hand-built planning model.
 
 type Feature = PlanningBody['features'][number];
 type Holder = Feature['holders'][number];
@@ -45,7 +45,7 @@ const feature = (id: string, name: string, holders: readonly Holder[], claims: r
   why: null,
   closed: 0,
   total: claims.length,
-  claims: claims.map((claim) => ({ id: claim, closed: false, dropped: false, holder: holders[0]?.id ?? null })),
+  claims: claims.map((claim) => ({ id: claim, text: '', closed: false, dropped: false, holder: holders[0]?.id ?? null })),
   holders,
   unheld: [],
 });
@@ -141,72 +141,55 @@ const crumb = (root: HTMLElement, name: string): HTMLElement | null => nav(root)
 const crumbs = (root: HTMLElement): Array<string | null> =>
   [...nav(root).querySelectorAll('ol > li [data-crumb]')].map((el) => el.getAttribute('data-crumb'));
 const seps = (root: HTMLElement): Array<string | null> => [...nav(root).querySelectorAll('ol > li')].map((li) => li.getAttribute('data-sep'));
+const chip = (root: HTMLElement, name: string): HTMLElement | null => root.querySelector<HTMLElement>(`[data-head-chips] [data-head-chip="${name}"]`);
+const chipNames = (root: HTMLElement): Array<string | null> =>
+  [...root.querySelectorAll('[data-head-chips] [data-head-chip]')].map((el) => el.getAttribute('data-head-chip'));
 const text = (el: Element | null): string => (el?.textContent ?? '').replace(/\s+/gu, ' ').trim();
 
-describe('SpecHead breadcrumb (T39, ISC-105)', () => {
-  it('renders milestone · feature › spec › area under the workspace, each level linking to its page', async () => {
-    setUp();
-    const root = await open('/w/harbor/s/002/status');
-    expect(nav(root).getAttribute('aria-label')).toBe(en.planning.breadcrumb.label);
-    expect(crumbs(root)).toEqual(['workspace', 'milestone', 'feature', 'spec', 'area']);
-    expect(seps(root)).toEqual([null, 'scope', 'dot', 'down', 'down']);
+describe('SpecHead breadcrumb (T39, ISC-105; T36, ISC-149)', () => {
+  for (const tier of ['wide', 'medium', 'compact'] as const) {
+    it(`renders workspace / Spec NNN · Area on every tier, the workspace first (${tier})`, async () => {
+      setUp();
+      const root = await open('/w/harbor/s/002/status', tier);
+      expect(nav(root).getAttribute('aria-label')).toBe(en.planning.breadcrumb.label);
+      expect(crumbs(root)).toEqual(['workspace', 'spec', 'area']);
+      expect(seps(root)).toEqual([null, 'scope', 'dot']);
+      const ws = crumb(root, 'workspace');
+      expect(ws?.getAttribute('href')).toBe('/w/harbor');
+      expect(text(ws)).toBe('harbor');
+      expect(ws?.querySelector('ui-icon[name="arrow-left"]')).not.toBeNull();
+      expect(ws?.querySelector('.ws-badge')?.getAttribute('data-mono')).toBe('HA');
+      const spec = crumb(root, 'spec');
+      expect(spec?.getAttribute('href')).toBe('/w/harbor/s/002');
+      expect(text(spec)).toBe('Spec 002');
+      expect(spec?.getAttribute('aria-description')).toBe(en.terms.spec);
+      expect(crumb(root, 'area')?.getAttribute('aria-current')).toBe('page');
+      expect(nav(root).querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+      // Milestone, feature and priority left the breadcrumb for the chip row (spec 024, principal 2026-10-12).
+      expect(nav(root).querySelector('[data-crumb="milestone"], [data-crumb="feature"], ui-priority')).toBeNull();
+    });
+  }
 
-    const ms = crumb(root, 'milestone');
-    expect(ms?.getAttribute('href')).toBe('/w/harbor/milestones#m-v0-3');
-    expect(text(ms)).toBe('v0.3');
-    expect(ms?.querySelector('ui-icon[name="flag"]')).not.toBeNull();
-
-    const feat = crumb(root, 'feature');
-    expect(feat?.getAttribute('href')).toBe('/w/harbor/features#F7');
-    expect(text(feat)).toBe('F7 Planning');
-    expect(feat?.getAttribute('aria-description')).toBe(en.terms.feature);
-
-    const spec = crumb(root, 'spec');
-    expect(spec?.getAttribute('href')).toBe('/w/harbor/s/002');
-    expect(text(spec)).toBe('002 web-console');
-    expect(spec?.getAttribute('aria-description')).toBe(en.terms.spec);
-    // T40: the slug is its own truncating span; the id beside it is not.
-    expect(spec?.querySelector('.crumb-slug')?.textContent).toBe('web-console');
-    expect(spec?.querySelector('.mono')?.textContent).toBe('002');
-
-    expect(crumb(root, 'area')?.getAttribute('aria-current')).toBe('page');
-  });
-
-  it('adds a "+2" chip button after the main feature whose popover lists the other held blocks as links', async () => {
-    setUp();
-    const root = await open('/w/harbor/s/002/status');
-    const more = nav(root).querySelector<HTMLButtonElement>('button[data-crumb-more]');
-    expect(text(more)).toBe('+2');
-    expect(more?.getAttribute('aria-label')).toBe(en.planning.breadcrumb.more.replace('{{count}}', '2'));
-    const panelId = more?.getAttribute('aria-controls') ?? '';
-    const links = [...nav(root).querySelectorAll<HTMLAnchorElement>(`[id="${panelId}"] a`)];
-    expect(links.map((a) => a.getAttribute('href'))).toEqual(['/w/harbor/features#F0', '/w/harbor/features#F2']);
-    expect(links.map(text)).toEqual(['F0 Cross-cutting', 'F2 Web console']);
-  });
-
-  it("puts an open claim last with aria-current, its own block as the feature, and turns the area into a link", async () => {
+  it('puts an open claim last with aria-current and turns the area into a link', async () => {
     setUp();
     const root = await open('/w/harbor/s/002/claims#claim-ISC-1');
-    expect(crumbs(root)).toEqual(['workspace', 'milestone', 'feature', 'spec', 'area', 'claim']);
-    expect(crumb(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/features#F0');
-    const others = nav(root).querySelectorAll<HTMLAnchorElement>('ui-popover a');
-    expect([...others].map((a) => a.getAttribute('href'))).toEqual(['/w/harbor/features#F2', '/w/harbor/features#F7']);
-
+    expect(crumbs(root)).toEqual(['workspace', 'spec', 'area', 'claim']);
+    expect(seps(root)).toEqual([null, 'scope', 'dot', 'down']);
     const area = crumb(root, 'area');
     expect(area?.tagName).toBe('A');
     expect(area?.getAttribute('href')).toBe('/w/harbor/s/002/claims');
     expect(area?.hasAttribute('aria-current')).toBe(false);
-
     const claim = crumb(root, 'claim');
     expect(text(claim)).toBe('ISC-1');
     expect(claim?.getAttribute('aria-current')).toBe('page');
     expect(claim?.getAttribute('href')).toBe('/w/harbor/s/002/claims#claim-ISC-1');
     expect(claim?.getAttribute('aria-description')).toBe(en.terms.claim);
+    expect(crumb(root, 'spec')?.hasAttribute('aria-current')).toBe(false);
   });
 
   it('puts an open task last on the tasks tab', async () => {
     setUp();
-    const root = await open('/w/harbor/s/002/tasks#task-T12');
+    const root = await open('/w/harbor/s/002/tasks#task-T12', 'compact');
     const task = crumb(root, 'task');
     expect(text(task)).toBe('T12');
     expect(task?.getAttribute('aria-current')).toBe('page');
@@ -217,107 +200,69 @@ describe('SpecHead breadcrumb (T39, ISC-105)', () => {
   it('marks an archived spec with the archive glyph and an accessible name ending "archived"', async () => {
     setUp();
     const root = await open('/w/harbor/s/001/status');
-    expect(crumbs(root)).toEqual(['workspace', 'feature', 'spec', 'area']);
-    expect(seps(root)).toEqual([null, 'scope', 'down', 'down']);
+    expect(crumbs(root)).toEqual(['workspace', 'spec', 'area']);
     const spec = crumb(root, 'spec');
     expect(spec?.querySelector('ui-icon[name="archive"]')).not.toBeNull();
-    expect(spec?.getAttribute('aria-label')).toBe(`001 manifest-sync, ${en.planning.breadcrumb.archived}`);
-    expect(crumb(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/features#F1');
-    expect(nav(root).querySelector('button[data-crumb-more]')).toBeNull();
+    expect(spec?.getAttribute('aria-label')).toBe(`Spec 001, ${en.planning.breadcrumb.archived}`);
+    expect(chip(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/features#F1');
+    expect(root.querySelector('button[data-head-more]')).toBeNull();
   });
 
-  it('shows an unknown milestone as plain text with triangle-alert, not a link', async () => {
-    setUp(
-      ok({
-        ...PLAN,
-        milestones: [],
-        diagnostics: [
-          {
-            file: 'specs/002-web-console/spec.md',
-            diagnostic: { severity: 'warning', code: 'spec-milestone-unknown', message: 'milestone "v9" is not in the master\'s ## Milestones block', subject: 'v9' },
-          },
-        ],
-      }),
-    );
+  it('keeps the three levels when the planning tree is not loaded, and no planning chips', async () => {
+    setUp(unserved);
     const root = await open('/w/harbor/s/002/status');
-    const ms = crumb(root, 'milestone');
-    expect(ms?.tagName).not.toBe('A');
-    expect(ms?.querySelector('ui-icon[name="triangle-alert"]')).not.toBeNull();
-    expect(text(ms)).toBe('v9');
-    expect(ms?.getAttribute('aria-description')).toBe(en.planning.breadcrumb.unknownMilestone);
+    expect(crumbs(root)).toEqual(['workspace', 'spec', 'area']);
+    expect(chipNames(root)).toEqual(['type', 'stage', 'priority']);
   });
+});
 
-  it('returns at compact in the short form: the workspace first (T19, ISC-140.1), no area, the spec as its mono id', async () => {
+describe('SpecHead chip row (T36, ISC-149)', () => {
+  it('reads type, stage, pmark, milestone, feature in order, each planning chip linking to its page', async () => {
     setUp();
-    const root = await open('/w/harbor/s/002/claims#claim-ISC-100', 'compact');
-    expect(crumbs(root)).toEqual(['workspace', 'milestone', 'feature', 'spec', 'claim']);
-    expect(seps(root)).toEqual([null, 'scope', 'dot', 'down', 'down']);
-    expect(crumb(root, 'workspace')?.getAttribute('href')).toBe('/w/harbor');
-    expect(nav(root).querySelector('[data-crumb-priority]')).toBeNull(); // the priority stays in the chip row
-    expect(text(crumb(root, 'feature'))).toBe('F7');
-    expect(text(crumb(root, 'spec'))).toBe('002');
-    expect(text(crumb(root, 'claim'))).toBe('ISC-100');
+    const root = await open('/w/harbor/s/002/status');
+    expect(chipNames(root)).toEqual(['type', 'stage', 'priority', 'milestone', 'feature']);
+    const type = chip(root, 'type');
+    expect(type?.getAttribute('data-variant')).toBe('plain');
+    expect(type?.querySelector('ui-icon')).not.toBeNull();
+    expect(text(type)).toBe('feature');
+    const stage = chip(root, 'stage');
+    expect(stage?.querySelector('ui-icon')).not.toBeNull();
+    expect(text(stage)).toBe(en.stages.build);
+    expect(chip(root, 'priority')?.hasAttribute('data-mark')).toBe(true);
+
+    const ms = chip(root, 'milestone');
+    expect(ms?.getAttribute('href')).toBe('/w/harbor/milestones#m-v0-3');
+    expect(text(ms)).toBe('v0.3');
+    expect(ms?.querySelector('ui-chip ui-icon')).not.toBeNull();
+    expect(ms?.querySelector('ui-chip')?.getAttribute('data-tone')).toBe('neutral');
+    const feat = chip(root, 'feature');
+    expect(feat?.getAttribute('href')).toBe('/w/harbor/features#F7');
+    expect(text(feat)).toBe('F7');
+    expect(feat?.getAttribute('title')).toBe('Planning');
+    expect(feat?.getAttribute('aria-description')).toBe(en.terms.feature);
   });
 
-  // Compact drops the area crumb, so without a leaf the spec crumb is the last level and carries `aria-current` on
-  // every area, not only the dashboard.
-  it('marks the spec crumb current at compact on a non-dashboard area without a leaf', async () => {
+  it('adds a "+2" chip button after the main feature whose popover lists the other held blocks as links', async () => {
     setUp();
-    const root = await open('/w/harbor/s/002/status', 'compact');
-    expect(crumb(root, 'area')).toBeNull();
-    expect(crumb(root, 'spec')?.getAttribute('aria-current')).toBe('page');
-    expect(nav(root).querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+    const root = await open('/w/harbor/s/002/status');
+    const more = root.querySelector<HTMLButtonElement>('[data-head-chips] button[data-head-more]');
+    expect(text(more)).toBe('+2');
+    expect(more?.getAttribute('aria-label')).toBe(en.planning.breadcrumb.more.replace('{{count}}', '2'));
+    const panelId = more?.getAttribute('aria-controls') ?? '';
+    const links = [...root.querySelectorAll<HTMLAnchorElement>(`[id="${panelId}"] a`)];
+    expect(links.map((a) => a.getAttribute('href'))).toEqual(['/w/harbor/features#F0', '/w/harbor/features#F2']);
+    expect(links.map(text)).toEqual(['F0 Cross-cutting', 'F2 Web console']);
   });
 
-  it('marks the leaf current at compact when a claim is open, never the spec crumb', async () => {
+  it('takes the open claim’s own block as the feature chip', async () => {
     setUp();
-    const root = await open('/w/harbor/s/002/claims#claim-ISC-51', 'compact');
-    expect(crumb(root, 'claim')?.getAttribute('aria-current')).toBe('page');
-    expect(crumb(root, 'spec')?.hasAttribute('aria-current')).toBe(false);
-    expect(nav(root).querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+    const root = await open('/w/harbor/s/002/claims#claim-ISC-1');
+    expect(chip(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/features#F0');
+    const others = root.querySelectorAll<HTMLAnchorElement>('[data-head-chips] ui-popover a');
+    expect([...others].map((a) => a.getAttribute('href'))).toEqual(['/w/harbor/features#F2', '/w/harbor/features#F7']);
   });
 
-  it('leaves the spec crumb uncurrent at medium, where the area crumb carries it', async () => {
-    setUp();
-    const root = await open('/w/harbor/s/002/status', 'medium');
-    expect(crumb(root, 'spec')?.hasAttribute('aria-current')).toBe(false);
-    expect(crumb(root, 'area')?.getAttribute('aria-current')).toBe('page');
-  });
-
-  // The route's `:id` is every form the server resolves (`core/src/resolve.ts` `resolveSpec`): `NNN`, the folder
-  // `NNN-slug` or the bare slug. The spec route answers not-found here, so the head never learns the model's id and
-  // must match the planning holders by the form in the URL alone.
-  for (const [form, ref] of [
-    ['folder', '002-web-console'],
-    ['bare slug', 'web-console'],
-  ] as const) {
-    it(`renders the milestone and feature crumbs for the ${form} form in the URL`, async () => {
-      setUp();
-      const root = await open(`/w/harbor/s/${ref}/status`);
-      expect(crumbs(root)).toEqual(['workspace', 'milestone', 'feature', 'spec', 'area']);
-      expect(crumb(root, 'milestone')?.getAttribute('href')).toBe('/w/harbor/milestones#m-v0-3');
-      expect(crumb(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/features#F7');
-      expect(text(nav(root).querySelector('button[data-crumb-more]'))).toBe('+2');
-      expect(text(crumb(root, 'spec'))).toBe('002 web-console');
-    });
-  }
-
-  for (const [form, ref] of [
-    ['folder', '001-manifest-sync'],
-    ['bare slug', 'manifest-sync'],
-  ] as const) {
-    it(`marks an archived spec archived for the ${form} form in the URL`, async () => {
-      setUp();
-      const root = await open(`/w/harbor/s/${ref}/status`);
-      expect(crumbs(root)).toEqual(['workspace', 'feature', 'spec', 'area']);
-      const spec = crumb(root, 'spec');
-      expect(spec?.querySelector('ui-icon[name="archive"]')).not.toBeNull();
-      expect(spec?.getAttribute('aria-label')).toBe(`001 manifest-sync, ${en.planning.breadcrumb.archived}`);
-      expect(crumb(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/features#F1');
-    });
-  }
-
-  it('finds an unknown milestone for the bare-slug form in the URL', async () => {
+  it('shows an unknown milestone as a warning chip with triangle-alert, not a link', async () => {
     setUp(
       ok({
         ...PLAN,
@@ -331,56 +276,78 @@ describe('SpecHead breadcrumb (T39, ISC-105)', () => {
       }),
     );
     const root = await open('/w/harbor/s/web-console/status');
-    expect(text(crumb(root, 'milestone'))).toBe('v9');
+    const ms = chip(root, 'milestone');
+    expect(ms?.tagName).not.toBe('A');
+    expect(ms?.querySelector('ui-chip ui-icon')).not.toBeNull();
+    expect(ms?.querySelector('ui-chip')?.getAttribute('data-tone')).toBe('warning');
+    expect(text(ms)).toBe('v9');
+    expect(ms?.getAttribute('aria-description')).toBe(en.planning.breadcrumb.unknownMilestone);
   });
 
-  it('keeps the three levels of today when the planning tree is not loaded', async () => {
-    setUp(unserved);
-    const root = await open('/w/harbor/s/002/status');
-    expect(crumbs(root)).toEqual(['workspace', 'spec', 'area']);
-    expect(crumb(root, 'workspace')?.getAttribute('href')).toBe('/w/harbor');
-    expect(crumb(root, 'area')?.getAttribute('aria-current')).toBe('page');
-  });
+  // The route's `:id` is every form the server resolves (`core/src/resolve.ts` `resolveSpec`): `NNN`, the folder
+  // `NNN-slug` or the bare slug. The spec route answers not-found here, so the head must match the planning holders
+  // by the form in the URL alone.
+  for (const [form, ref] of [
+    ['folder', '002-web-console'],
+    ['bare slug', 'web-console'],
+  ] as const) {
+    it(`renders the milestone and feature chips for the ${form} form in the URL`, async () => {
+      setUp();
+      const root = await open(`/w/harbor/s/${ref}/status`);
+      expect(chip(root, 'milestone')?.getAttribute('href')).toBe('/w/harbor/milestones#m-v0-3');
+      expect(chip(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/features#F7');
+      expect(text(root.querySelector('button[data-head-more]'))).toBe('+2');
+      expect(text(crumb(root, 'spec'))).toBe('Spec 002');
+    });
+  }
+
+  for (const [form, ref] of [
+    ['folder', '001-manifest-sync'],
+    ['bare slug', 'manifest-sync'],
+  ] as const) {
+    it(`marks an archived spec archived for the ${form} form in the URL`, async () => {
+      setUp();
+      const root = await open(`/w/harbor/s/${ref}/status`);
+      const spec = crumb(root, 'spec');
+      expect(spec?.querySelector('ui-icon[name="archive"]')).not.toBeNull();
+      expect(spec?.getAttribute('aria-label')).toBe(`Spec 001, ${en.planning.breadcrumb.archived}`);
+      expect(chip(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/features#F1');
+    });
+  }
 });
 
-// T134 · ISC-118: `ui-priority` in the head's chip row after type and stage, and in the breadcrumb before the spec id,
-// against the harbor spec golden (006 P1; 003 P3; 005's invalid `priority: high`, which core reads as P3).
-describe('SpecHead priority (T134, ISC-118)', () => {
+// T134 · ISC-118, T36 · ISC-149: the priority exactly once in the head, as `pmark` after the stage chip, against the
+// harbor spec golden (006 P1; 003 P3; 005's invalid `priority: high`, which core reads as P3).
+describe('SpecHead priority (T134, ISC-118; T36, ISC-149)', () => {
   const GOLDEN = specGolden as unknown as Record<string, { head: Record<string, unknown> }>;
   const bodyOf = (folder: string) => ok(GOLDEN[`specs/${folder}`]);
-  const crumbPriority = (root: HTMLElement): HTMLElement | null => nav(root).querySelector<HTMLElement>('[data-crumb-priority]');
   const headPriority = (root: HTMLElement): HTMLElement | null => root.querySelector<HTMLElement>('[data-head-chip="priority"]');
 
-  // At compact the breadcrumb drops the priority (T20, ISC-140.1); the short-form case asserts it is gone there.
-  for (const tier of ['wide', 'medium'] as const) {
-    it(`shows P1 before the spec id in the breadcrumb and after type and stage in the head (${tier})`, async () => {
+  for (const tier of ['wide', 'medium', 'compact'] as const) {
+    it(`shows P1 once, as the pmark right after the stage chip (${tier})`, async () => {
       setUp(unserved, () => bodyOf('006-partial-push'));
       const root = await open('/w/harbor/s/006/status', tier);
-      const chip = crumbPriority(root);
-      expect(chip?.getAttribute('data-level')).toBe('P1');
-      expect(chip?.nextElementSibling?.getAttribute('data-crumb')).toBe('spec');
-      expect(chip?.closest('li')?.querySelector('[data-crumb="spec"]')).not.toBeNull();
-      expect(chip?.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('priority P1');
-      expect(text(chip)).toBe('P1');
-      const chips = [...root.querySelectorAll('.chips [data-head-chip]')].map((el) => el.getAttribute('data-head-chip'));
-      expect(chips).toEqual(['type', 'stage', 'priority']);
-      expect(headPriority(root)?.getAttribute('data-level')).toBe('P1');
+      expect(root.querySelectorAll('ui-priority')).toHaveLength(1);
+      const mark = headPriority(root);
+      expect(mark?.getAttribute('data-level')).toBe('P1');
+      expect(mark?.hasAttribute('data-mark')).toBe(true);
+      expect(mark?.previousElementSibling?.getAttribute('data-head-chip')).toBe('stage');
+      expect(mark?.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('priority P1');
+      expect(mark?.querySelector('ui-icon')).toBeNull();
+      expect(text(mark)).toBe('P1');
     });
   }
 
   it('shows the P3 core delivers for a spec without a priority key as a solid P3', async () => {
     setUp(unserved, () => bodyOf('003-config-loader'));
     const root = await open('/w/harbor/s/003/status');
-    for (const chip of [crumbPriority(root), headPriority(root)]) {
-      expect(chip?.getAttribute('data-level')).toBe('P3');
-      expect(chip?.hasAttribute('data-unmarked')).toBe(false);
-    }
+    expect(headPriority(root)?.getAttribute('data-level')).toBe('P3');
+    expect(headPriority(root)?.hasAttribute('data-unmarked')).toBe(false);
   });
 
   it("reads 005's invalid priority as P3; the head carries no warning indicator, the diagnostic stays core's", async () => {
     setUp(unserved, () => bodyOf('005-config-format-choice'));
     const root = await open('/w/harbor/s/005/status');
-    expect(crumbPriority(root)?.getAttribute('data-level')).toBe('P3');
     expect(headPriority(root)?.getAttribute('data-level')).toBe('P3');
     expect(root.querySelector('[data-warning], [data-head-chip="warning"]')).toBeNull();
   });
@@ -388,12 +355,11 @@ describe('SpecHead priority (T134, ISC-118)', () => {
   it('falls back to the dashboard row, then draws an unmarked P3 when no source names a priority', async () => {
     setUp(unserved, () => unserved, { specs: [{ id: '002', title: 'Web console', type: 'feature', stage: 'build', priority: 'P2' }], archive: [] });
     const fromRow = await open('/w/harbor/s/002/status');
-    expect(crumbPriority(fromRow)?.getAttribute('data-level')).toBe('P2');
+    expect(headPriority(fromRow)?.getAttribute('data-level')).toBe('P2');
     TestBed.resetTestingModule();
     setUp(unserved);
     const none = await open('/w/harbor/s/002/status');
-    expect(crumbPriority(none)?.getAttribute('data-level')).toBe('P3');
-    expect(crumbPriority(none)?.hasAttribute('data-unmarked')).toBe(true);
+    expect(headPriority(none)?.getAttribute('data-level')).toBe('P3');
     expect(headPriority(none)?.hasAttribute('data-unmarked')).toBe(true);
   });
 });

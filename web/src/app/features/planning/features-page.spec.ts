@@ -78,6 +78,10 @@ const FEATURES: readonly PlanningFeature[] = [
       holder('006'),
       holder('001', { archived: true }),
     ],
+    claims: [
+      { id: 'ISC-12', text: 'the console lists every run', closed: false, dropped: false, holder: null },
+      { id: 'ISC-13', text: 'a failed run links its log', closed: false, dropped: false, holder: null },
+    ],
     unheld: ['ISC-12', 'ISC-13'],
   }),
   feature('F3', 'Config loader rewrite', {
@@ -230,7 +234,15 @@ describe('FeaturesPage (T32, ISC-103)', () => {
     const details = row(root, 'F2').querySelector('details.unheld');
     expect(details?.querySelector('summary')?.textContent.trim()).toBe('2 unheld');
     expect(details?.querySelector('summary ui-icon')).not.toBeNull();
-    expect(details?.querySelector('.ids')?.textContent.trim()).toBe('ISC-12, ISC-13');
+    // spec 024: prototype value (principal: Prototyp gilt immer) — the unheld claims open as claim lines (glyph | id | text).
+    const disclosure = details as HTMLDetailsElement;
+    disclosure.open = true;
+    disclosure.dispatchEvent(new Event('toggle'));
+    await settle();
+    const lines = [...row(root, 'F2').querySelectorAll('.claim-line')];
+    expect(lines.map((line) => line.querySelector('.cid')?.textContent.trim())).toEqual(['ISC-12', 'ISC-13']);
+    expect(lines.map((line) => line.querySelector('.ctext')?.textContent.trim())).toEqual(['the console lists every run', 'a failed run links its log']);
+    expect(lines.every((line) => line.querySelector('ui-icon[name="circle"]') !== null)).toBe(true);
 
     const held = row(root, 'F1').querySelector('.unheld');
     expect(held?.tagName).toBe('P');

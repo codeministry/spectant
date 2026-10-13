@@ -7,6 +7,7 @@ import {
   inject,
   resource,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -14,7 +15,10 @@ import type { ClaimGlyphState, ClaimView, ClaimViewModel } from '../../../../../
 import { type NoteCounts, noteCountFor } from '../../../../../../../server/src/notes.contract';
 import { ApiClient } from '../../../../core/api.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
+import { UiIcon } from '../../../../shared/icons/icon';
+import { UiButton } from '../../../../shared/ui/button/button';
 import { UiChip } from '../../../../shared/ui/chip/chip';
+import { chipIcon } from '../../../../shared/ui/chip/chip-icons';
 import { UiEmptyState } from '../../../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../../../shared/ui/filter-chips/filter-chips';
 import { UiIdChip } from '../../../../shared/ui/id-chip/id-chip';
@@ -32,7 +36,7 @@ type KindKey = (typeof KIND_KEYS)[number];
 const OPEN_STATES: ReadonlySet<ClaimGlyphState> = new Set(['open', 'takeable', 'taken', 'blocked']);
 
 /** One glyph per state; blocked shares open's ring and adds a chip, taken adds the lock chip and its session
- * (spec 001 prompt 2). TODO: a lucide `lock` icon replaces the taken glyph once it is in ICON_NAMES (shared lane). */
+ * (spec 001 prompt 2); the template draws taken as the lucide `lock` (spec 024, prototype `tabClaims`). */
 const GLYPH: Record<ClaimGlyphState, string> = {
   open: '○',
   takeable: '◐',
@@ -61,7 +65,10 @@ interface FeatureGroup {
   readonly id: string | null;
   readonly title: string | null;
   readonly why: string | null;
+  /** The cards shown; on the folded All view the feature's claims that are not closed. */
   readonly claims: readonly ClaimView[];
+  /** The All view without a search only (prototype `.fold`): the closed claims behind the `+ N more` row. */
+  readonly closed: readonly ClaimView[];
 }
 
 /**
@@ -70,14 +77,21 @@ interface FeatureGroup {
  * the URL: `?state=takeable&kind=anti&q=…`), the fog list at the end. Counts are the payload's `counts`, never
  * recounted here (ISC-72). `#claim-ISC-…` scrolls to, focuses and highlights its card.
  */
+/** A feature group folds its closed claims from this many on, keeping the last `FOLD_KEEP` in view. */
+const FOLD_FROM = 6;
+const FOLD_KEEP = 3;
+
 @Component({
   selector: 'app-claims-tab',
   imports: [
+    NgTemplateOutlet,
     RouterLink,
     TranslocoPipe,
+    UiButton,
     UiChip,
     UiEmptyState,
     UiFilterChips,
+    UiIcon,
     UiIdChip,
     UiRelativeTime,
     UiRovingItem,
@@ -90,6 +104,7 @@ interface FeatureGroup {
   styleUrl: './claims-tab.css',
 })
 export class ClaimsTab {
+  protected readonly chipIcon = chipIcon;
   private readonly api = inject(ApiClient);
   private readonly shell = inject(ShellState);
   private readonly router = inject(Router);
@@ -177,15 +192,19 @@ export class ClaimsTab {
     if (!model) return [];
     const visible = this.visible();
     const known = new Set(model.features.map((f) => f.id));
-    const groups: FeatureGroup[] = model.features.map((f) => ({
-      key: f.id,
-      id: f.id,
-      title: f.title,
-      why: f.why,
-      claims: visible.filter((c) => c.feature === f.id),
-    }));
-    groups.push({ key: 'none', id: null, title: null, why: null, claims: visible.filter((c) => c.feature === null || !known.has(c.feature)) });
-    return groups.filter((g) => g.claims.length > 0);
+    // Prototype `.fold`: only the unfiltered All view folds the closed claims; any filter or search shows every match.
+    const fold = this.state() === 'all' && this.kind() === 'all' && this.search().trim() === '';
+    // Principal 2026-10-13 ("Fold ab 6 geschlossenen"): a group folds only from six closed claims, and its last three
+    // closed ones (file order) stay in view, so the click path to a claim (ISC-139.1) keeps its budget.
+    const group = (key: string, id: string | null, title: string | null, why: string | null, claims: readonly ClaimView[]): FeatureGroup => {
+      const closed = claims.filter((c) => c.state === 'closed');
+      if (!fold || closed.length < FOLD_FROM) return { key, id, title, why, claims, closed: [] };
+      const folded = new Set(closed.slice(0, -FOLD_KEEP));
+      return { key, id, title, why, claims: claims.filter((c) => !folded.has(c)), closed: claims.filter((c) => folded.has(c)) };
+    };
+    const groups: FeatureGroup[] = model.features.map((f) => group(f.id, f.id, f.title, f.why, visible.filter((c) => c.feature === f.id)));
+    groups.push(group('none', null, null, null, visible.filter((c) => c.feature === null || !known.has(c.feature))));
+    return groups.filter((g) => g.claims.length + g.closed.length > 0);
   });
 
   /** The claim a `#claim-ISC-…` fragment names. */
@@ -243,6 +262,16 @@ export class ClaimsTab {
   protected setSearch(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.navigate({ q: value.trim() === '' ? null : value }, true);
+  }
+
+  protected glyphOf(claim: ClaimView): string {
+    return this.glyph[claim.state];
+  }
+
+  /** A fold opens on its own when the deep-linked claim sits behind it. */
+  protected foldOpen(group: FeatureGroup): boolean {
+    const target = this.target();
+    return target !== null && group.closed.some((c) => c.id === target);
   }
 
   protected clear(): void {

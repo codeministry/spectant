@@ -99,7 +99,13 @@
         <span aria-hidden="true">{{ 'common.noValue' | transloco }}</span><span class="sr">{{ 'tech.status.noTasks' | transloco }}</span>
       }
     </td>
-    <td data-col="fog" [attr.data-has]="row.fog > 0 ? '' : null">{{ row.fog }}</td>
+    <td data-col="fog" [attr.data-has]="row.fog > 0 ? '' : null">
+      @if (row.fog > 0) {
+        <span class="fog-n"><ui-icon name="cloud-fog" [size]="14" />{{ row.fog }}</span>
+      } @else {
+        {{ row.fog }}
+      }
+    </td>
   </tr>
 </ng-template>
 
@@ -118,7 +124,7 @@
         row.tasks ? ('tech.status.tasks' | transloco: row.tasks) : ('tech.status.noTasks' | transloco)
       }}</span>
       @if (row.fog > 0) {
-        <span class="mono fogw" data-field="fog">{{ 'tech.status.fog' | transloco: { count: row.fog } }}</span>
+        <span class="mono fogw" data-field="fog"><ui-icon name="cloud-fog" [size]="14" />{{ 'tech.status.fog' | transloco: { count: row.fog } }}</span>
       }
     </span>
     <span class="claims r-claims">

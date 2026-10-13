@@ -7,13 +7,15 @@ import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { type CheckEvent, type CheckState, checkBlock, IDLE, nextCheckState, rowChecked } from '../../data/tasks/checkbox';
 import type { TasksBody } from '../../data/tasks/tasks-tab';
 import { BoardCard } from '../board/board-card';
-import { RAIL_BLOCK_STYLES } from './rail-block.styles';
 
 type TaskRow = NonNullable<TasksBody>['tasks'][number];
 
 /**
- * "Your steps" (T88, ISC-87; design.md § Live, Rail): the operator lane's cards as 40 px checklist rows at wide, the
- * lane's single home there. Each box is the guarded task write of T80: the same `checkbox.ts` state machine and
+ * "Your steps" (T88, ISC-87; design.md § Live · Operator-Lane (Principal 2026-10-13)): the operator lane at wide as the
+ * prototype draws it, its own lane in the grid (`.lane.op`; in Flow the row across all columns, `.op.span`): the lane
+ * head (dot, `operator`, "Your steps · n of m done"), then one checklist row per step, a box and the step as a compact
+ * 36 px card (`density="step"`: glyph, id, text, state chip, 4 px edge), so every frame card stays an
+ * `article[data-card]` (ISC-88). Each box is the guarded task write of T80: the same `checkbox.ts` state machine and
  * `ApiClient.taskCheck` the Tasks tab runs (saving, written, locked, conflict, failed), against the tasks.md hash of
  * this component's own read of `…/tasks`, so no second state machine exists. A card without a tasks.md row (the list
  * not read yet) shows the frame's state, disabled.
@@ -23,49 +25,58 @@ type TaskRow = NonNullable<TasksBody>['tasks'][number];
   imports: [BoardCard, TranslocoPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-your-steps': '' },
-  styles: [
-    RAIL_BLOCK_STYLES,
-    `
-      .step { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; align-items: center; min-block-size: 40px; }
-      .note { grid-column: 2; margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; }
-      .note[data-tone='fail'] { color: var(--fail-ink); }
-      .checkbox { justify-self: center; }
-      @media (pointer: coarse) { .step { min-block-size: 44px; } }
-    `,
-  ],
+  styles: `
+    :host { display: grid; gap: 8px; align-self: start; min-inline-size: 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--color-base-100); }
+    .op { display: grid; gap: 8px; min-inline-size: 0; }
+    .op-head { display: flex; gap: 8px; align-items: center; min-inline-size: 0; }
+    .ldot { flex: none; inline-size: 10px; block-size: 10px; border-radius: 50%; background: var(--muted-ink); }
+    .op-name { margin: 0; font-family: var(--font-mono); font-size: 13px; font-weight: 600; line-height: 20px; }
+    .op-count { margin-inline-start: auto; color: var(--color-base-content); font-family: var(--font-mono); font-size: 12px; line-height: 16px; white-space: nowrap; }
+    .rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin: 0; padding: 0; list-style: none; }
+    .step { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; align-items: center; min-block-size: 40px; }
+    .checkbox { justify-self: center; }
+    .note { grid-column: 2; margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; }
+    .note[data-tone='fail'] { color: var(--fail-ink); }
+    .empty { margin: 0; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
+    @media (pointer: coarse) { .step { min-block-size: 44px; } }
+  `,
   template: `
-    <section class="block" aria-labelledby="your-steps-heading">
-      <h3 class="head" id="your-steps-heading">{{ 'board.rail.yourSteps' | transloco }}</h3>
-      @if (cards().length > 0) {
-        <ul class="rows">
-          @for (c of cards(); track c.task) {
-            @let state = checkOf(c.task);
-            @let row = rowOf(c.task);
-            <li class="step" [attr.data-step]="c.task" [attr.data-check]="state.kind">
-                <input
-                  type="checkbox"
-                  class="checkbox checkbox-sm"
-                  [checked]="checked(c)"
-                  [disabled]="row === null || blocked(row)"
-                  [attr.aria-label]="'board.rail.stepCheck' | transloco: { task: c.task }"
-                  (change)="onChange(c.task, $event)"
-                />
-                <app-board-card [card]="c" density="compact" />
-                @if (state.kind === 'saving') {
-                  <p class="note" data-step-note="saving"><span class="loading loading-spinner loading-xs" aria-hidden="true"></span> {{ 'board.rail.stepSaving' | transloco }}</p>
-                } @else if (state.kind === 'locked') {
-                  <p class="note" data-step-note="locked">{{ 'board.rail.stepLocked' | transloco: { session: state.session } }}</p>
-                } @else if (state.kind === 'conflict') {
-                  <p class="note" data-tone="fail" role="alert" data-step-note="conflict">{{ 'board.rail.stepConflict' | transloco }}</p>
-                } @else if (state.kind === 'failed') {
-                  <p class="note" data-tone="fail" role="alert" data-step-note="failed">{{ 'board.rail.stepFailed' | transloco }}</p>
-                }
-            </li>
-          }
-        </ul>
-      } @else {
-        <p class="empty">{{ 'board.rail.stepsEmpty' | transloco }}</p>
-      }
+    <section class="op" data-steps-lane aria-labelledby="your-steps-heading">
+      <div class="op-head">
+        <span class="ldot" aria-hidden="true"></span>
+        <h3 class="op-name" id="your-steps-heading">operator</h3>
+        <span class="op-count" data-steps-count>{{ 'board.rail.stepsDone' | transloco: { done: done(), total: cards().length } }}</span>
+      </div>
+    @if (cards().length > 0) {
+      <ul class="rows">
+        @for (c of cards(); track c.task) {
+          @let state = checkOf(c.task);
+          @let row = rowOf(c.task);
+          <li class="step" [attr.data-step]="c.task" [attr.data-check]="state.kind">
+            <input
+              type="checkbox"
+              class="checkbox checkbox-sm checkbox-success"
+              [checked]="checked(c)"
+              [disabled]="row === null || blocked(row)"
+              [attr.aria-label]="'board.rail.stepCheck' | transloco: { task: c.task }"
+              (change)="onChange(c.task, $event)"
+            />
+            <app-board-card [card]="c" density="step" />
+            @if (state.kind === 'saving') {
+              <p class="note" data-step-note="saving"><span class="loading loading-spinner loading-xs" aria-hidden="true"></span> {{ 'board.rail.stepSaving' | transloco }}</p>
+            } @else if (state.kind === 'locked') {
+              <p class="note" data-step-note="locked">{{ 'board.rail.stepLocked' | transloco: { session: state.session } }}</p>
+            } @else if (state.kind === 'conflict') {
+              <p class="note" data-tone="fail" role="alert" data-step-note="conflict">{{ 'board.rail.stepConflict' | transloco }}</p>
+            } @else if (state.kind === 'failed') {
+              <p class="note" data-tone="fail" role="alert" data-step-note="failed">{{ 'board.rail.stepFailed' | transloco }}</p>
+            }
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="empty">{{ 'board.rail.stepsEmpty' | transloco }}</p>
+    }
     </section>
   `,
 })
@@ -99,6 +110,9 @@ export class YourSteps {
     source: () => this.tasks.value(),
     computation: () => new Map(),
   });
+
+  /** The steps ticked, the writes of this view included. */
+  protected readonly done = computed(() => this.cards().filter((c) => this.checked(c)).length);
 
   protected rowOf(task: string): TaskRow | null {
     return this.rows().get(task) ?? null;

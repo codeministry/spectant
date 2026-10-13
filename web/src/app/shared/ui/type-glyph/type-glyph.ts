@@ -3,19 +3,22 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import type { SpecType } from '../../../../../../core/src/files';
 import { UiIcon } from '../../icons/icon';
 import type { IconName } from '../../icons/icons';
+import { CHIP_ICON } from '../chip/chip-icons';
 
 /** What a type glyph stands for: a spec type from `spec_type:`, or an idea, which has no spec folder yet. */
 export type TypeGlyphKind = SpecType | 'idea';
 
 /**
- * One Lucide icon per type (spec 008, ISC-129). `chore` takes the broom, not a wrench: the task board's builder tag
+ * One Lucide icon per type (spec 008, ISC-129). The four types the prototype names take its `CHIP_ICON` icon (spec 024,
+ * design.md § Fundament, Icons): feature the sparkles, bug the bug (`bugfix`), refactor the shuffle, spike the flask.
+ * The rest have no prototype icon and keep theirs; `chore` takes the broom, not a wrench: the task board's builder tag
  * owns the wrench, and two meanings must not share a shape.
  */
 export const TYPE_GLYPHS: Readonly<Record<TypeGlyphKind, IconName>> = {
-  feature: 'puzzle',
-  bug: 'bug',
-  refactor: 'refresh-ccw-dot',
-  spike: 'flask-conical',
+  feature: CHIP_ICON.feature,
+  bug: CHIP_ICON.bugfix,
+  refactor: CHIP_ICON.refactor,
+  spike: CHIP_ICON.spike,
   infra: 'server',
   project: 'folder-kanban',
   chore: 'brush-cleaning',
@@ -24,7 +27,8 @@ export const TYPE_GLYPHS: Readonly<Record<TypeGlyphKind, IconName>> = {
 
 /**
  * The type glyph of a board card, a dashboard row, the palette and the Features / Milestones chips (DS-APP-26). It
- * draws in `currentColor`, so the consumer's ink decides the tone. By default the icon is an image named by the type
+ * draws in `currentColor` at stroke 2, as the prototype's `.icon`, so the consumer's ink decides the tone; 12 px is the
+ * prototype's chip icon (`[data-ui=chip] .icon`). By default the icon is an image named by the type
  * word from `types.*`; set `decorative` where the word stands visibly beside it (a filter chip), so it is not read twice.
  */
 @Component({
@@ -45,8 +49,8 @@ export const TYPE_GLYPHS: Readonly<Record<TypeGlyphKind, IconName>> = {
 })
 export class UiTypeGlyph {
   readonly type = input.required<TypeGlyphKind>();
-  /** 16 on cards and rows (the board card's glyph); 14 and 20 match `ui-glyph`'s sizes. */
-  readonly size = input<14 | 16 | 20>(16);
+  /** 16 on cards and rows (the board card's glyph); 12 the chip icon; 14 and 20 match `ui-glyph`'s sizes. */
+  readonly size = input<12 | 14 | 16 | 20>(16);
   readonly decorative = input(false);
 
   protected readonly icon = computed(() => TYPE_GLYPHS[this.type()]);

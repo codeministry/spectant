@@ -13,9 +13,9 @@ export type ContextRailInline = 'all' | 'next-up' | 'warnings';
 /**
  * The dashboard's context rail (T64, design.md § Desktop): Next up, then Warnings, nothing else. At wide it registers
  * both as rail blocks with spec 002's seam (`RailContent`, rendered by the shell's `app-rail-slot`), the way the board
- * does, plus the collapsed strip's two counts; below wide it renders them in place as cards — Next up as one card,
- * Warnings as the `#warnings` section (medium) or a collapsed callout (compact). `inline` lets the page split the two
- * parts across its slots below wide (Next up under the Brief, Warnings after the Specs at medium).
+ * does, plus the collapsed strip's two counts; below wide it renders them in place — Next up as one card, then
+ * Warnings as the `#warnings` section after it at compact and medium alike (018-B15). `inline` lets a page split the
+ * two parts across its slots below wide (the dashboard puts Warnings after the Specs, the prototype's `#warnings-n`).
  */
 @Component({
   selector: 'app-context-rail',
@@ -36,7 +36,7 @@ export type ContextRailInline = 'all' | 'next-up' | 'warnings';
         <app-next-up-list form="card" [specs]="model().specs" [ids]="model().nextUp" />
       }
       @if (inline() !== 'next-up') {
-        <app-warnings-panel [form]="tier() === 'compact' ? 'callout' : 'section'" [specs]="model().specs" [kpis]="model().kpis" />
+        <app-warnings-panel form="section" [specs]="model().specs" [kpis]="model().kpis" />
       }
     }
   `,

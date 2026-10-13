@@ -10,18 +10,20 @@
     <app-area-placeholder />
   }
   @case ('error') {
-    <ui-empty-state icon="triangle-alert" [heading]="'status.error.heading' | transloco" [body]="'status.error.body' | transloco">
-      <button type="button" class="btn btn-sm" (click)="reload()">{{ 'status.error.retry' | transloco }}</button>
-    </ui-empty-state>
+    <!-- Spec 024 (prototype states gallery): the area's error is the inline notice, red edge, Retry in its slot. -->
+    <ui-notice tone="error" data-status-error>
+      <strong>{{ 'status.error.heading' | transloco }}</strong> {{ 'status.error.body' | transloco }}
+      <button action ui-button size="sm" type="button" (click)="reload()">{{ 'status.error.retry' | transloco }}</button>
+    </ui-notice>
   }
   @case ('ok') {
     @if (model(); as m) {
       <ng-template #gateBlock>
-        <ul class="gate-list">
+        <ul class="gate-list" data-icon-place="status-gates">
           @for (name of gateNames; track name) {
             <li class="gate" [attr.data-gate]="name" [attr.data-state]="m.gates[name].state" [attr.data-tone]="gateTone(m.gates[name].state)">
               <span class="gate-head">
-                <span class="gate-dot" aria-hidden="true"></span>
+                <ui-icon class="gate-icon" [name]="gateIcon(name, m.gates[name].state)" [size]="16" />
                 <span class="gate-name">{{ 'status.gates.names.' + name | transloco }}</span>
                 <span class="gate-state">{{ 'status.gates.states.' + m.gates[name].state | transloco }}</span>
               </span>
@@ -58,7 +60,7 @@
         }
       </ng-template>
 
-      <div class="page">
+      <div class="page status-grid">
         <section class="card where" data-section="where">
           <ui-section-header [heading]="(tier() === 'wide' ? 'status.why.heading' : 'status.where.heading') | transloco" />
           <div class="where-body">
@@ -184,29 +186,59 @@
           </ui-section-header>
           @if (open(); as o) {
             @if (o.claims.length === 0 && o.fog.length === 0) {
-              <p class="muted">{{ 'status.open.none' | transloco }}</p>
-            }
-            @if (o.claims.length > 0) {
-              <ul class="rows" [attr.aria-label]="'status.open.claims' | transloco">
-                @for (claim of o.claims; track claim.id) {
-                  <li class="open-row" data-open-claim [attr.data-state]="claim.state">
-                    <code class="ref">{{ claim.id }}</code>
-                    <ui-state-chip [state]="claim.state" family="claim" />
-                    <span class="row-text clamp">{{ claim.text }}</span>
-                  </li>
+              <div class="status-empty" data-status-empty>
+                <p class="status-empty-title"><ui-icon name="circle-check" [size]="16" />{{ 'status.open.allClosed' | transloco }}</p>
+                @if (m.next.command; as command) {
+                  <p class="muted">{{ 'status.open.readyFor' | transloco }} <code class="ref">{{ command }}</code></p>
+                } @else {
+                  <p class="muted">{{ 'status.open.none' | transloco }}</p>
                 }
-              </ul>
+              </div>
+            }
+            @for (group of openGroups(); track group.state) {
+              <div class="open-group" [attr.data-open-group]="group.state">
+                <p class="sub">{{ 'status.open.groups.' + group.state | transloco }} · {{ group.claims.length }}</p>
+                <ul class="rows" [attr.aria-label]="'status.open.groups.' + group.state | transloco">
+                  @for (claim of group.claims; track claim.id) {
+                    <li class="open-row" data-open-claim [attr.data-state]="claim.state">
+                      <span class="glyph" [attr.data-glyph]="claim.state" aria-hidden="true">
+                        @if (claim.state === 'taken') {
+                          <ui-icon name="lock" [size]="14" />
+                        } @else {
+                          {{ glyph(claim.state) }}
+                        }
+                      </span>
+                      <code class="ref">{{ claim.id }}</code>
+                      <span class="row-text clamp">{{ claim.text }}</span>
+                      @if (claim.blockedBy.length > 0) {
+                        <span class="dep" data-waits-on>{{ 'status.open.waitsOn' | transloco: { ids: claim.blockedBy.join(', ') } }}</span>
+                      }
+                    </li>
+                  }
+                </ul>
+              </div>
             }
             @if (o.fog.length > 0) {
               <p class="sub">{{ 'status.open.fog' | transloco }}</p>
               <ul class="rows">
                 @for (fog of o.fog; track $index) {
                   <li class="fog-row" data-fog>
-                    <ui-icon class="fog-icon" name="cloud-fog" [size]="16" />
+                    <ui-icon class="fog-icon" name="cloud" [size]="16" />
                     <span class="row-text">{{ fog.text }}</span>
                     @if (fog.resolves; as resolves) {
                       <span class="muted resolves">{{ resolves }}</span>
                     }
+                  </li>
+                }
+              </ul>
+            }
+            @if (held().length > 0) {
+              <ul class="rows" data-held-list>
+                @for (task of held(); track task.id) {
+                  <li class="held-row" data-held-task [attr.data-task]="task.id">
+                    <ui-icon class="held-icon" name="clock" [size]="16" />
+                    <code class="ref">{{ task.id }}</code>
+                    <span class="row-text">{{ task.reason ? ('status.open.held' | transloco: { reason: task.reason }) : ('status.open.heldBare' | transloco) }}</span>
                   </li>
                 }
               </ul>
@@ -220,15 +252,26 @@
 
         <section class="card activity" data-section="activity">
           <ui-section-header [heading]="'status.activity.heading' | transloco">
-            <a actions class="link link-hover" [routerLink]="link('timeline')">{{ 'status.activity.all' | transloco }}</a>
+            <span actions class="act-links" data-activity-links>
+              <a class="link link-hover" [routerLink]="link('timeline')">{{ 'status.activity.all' | transloco }}</a>
+              <a class="link link-hover" data-activity-link="board" [routerLink]="link('board')">{{ 'status.activity.board' | transloco }}</a>
+              <a class="link link-hover" data-activity-link="report" [routerLink]="link('evidence')">{{ 'status.activity.report' | transloco }}</a>
+            </span>
           </ui-section-header>
           @if (activity(); as entries) {
             @if (entries.length === 0) {
               <p class="muted">{{ 'status.activity.none' | transloco }}</p>
             } @else {
+              @if (roundSummary(); as round) {
+                <p class="round-sum" data-round-summary>
+                  <b>{{ round.lead }}</b>@if (round.rest) { · {{ round.rest }} }
+                  <time class="when" [attr.datetime]="round.ts || null">{{ time(round.ts) }}</time>
+                </p>
+              }
               <ul class="rows">
                 @for (entry of entries; track $index) {
                   <li class="activity-row" data-activity [attr.data-kind]="entry.kind">
+                    <ui-icon class="act-icon" [name]="activityIcon(entry.kind)" [size]="16" />
                     <span class="kind">{{ 'status.activity.kinds.' + entry.kind | transloco }}</span>
                     @if (entry.id; as id) {
                       <a class="row-text link link-hover" [routerLink]="link('timeline')" [fragment]="'t/' + id">{{ entry.title }}</a>
@@ -244,6 +287,9 @@
             <ui-skeleton height="96px" />
           } @else {
             <p class="muted">{{ 'status.activity.error' | transloco }}</p>
+          }
+          @if (brief(); as b) {
+            <app-brief class="act-brief" data-activity-brief [brief]="b" />
           }
         </section>
       </div>

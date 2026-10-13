@@ -16,9 +16,439 @@ app-docs-tab .docs-updated {
 }
 app-docs-tab .docs-warning { margin-block-end: 16px; }
 
+/* The explained empty state in a card, with the prototype's `.open-link` to the type table. */
+app-docs-tab .docs-types-link {
+  align-self: start;
+  color: var(--disp-text);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+app-docs-tab .docs-types-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 app-docs-tab .docs-loading {
   display: grid;
   gap: 8px;
   max-inline-size: 72ch;
 }
 
+app-docs-tab .docs-loading-chips {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-block-end: 8px;
+}
+
+
+/* Design tab: one Ist/Soll card per viewport (ISC-149, prototype `.design-vp`, `.ist-soll`, `.thumb`, `.mock`). */
+app-docs-tab .design-viewports {
+  display: grid;
+  gap: 16px;
+  margin-block-end: 24px;
+  container-type: inline-size;
+}
+
+app-docs-tab .design-vp-head {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0;
+  padding: 16px 16px 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+app-docs-tab .design-vp-head a {
+  color: inherit;
+  text-decoration: none;
+}
+
+app-docs-tab .design-vp-head a:hover { color: var(--disp-ink); }
+
+app-docs-tab .design-vp-width {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+app-docs-tab .ist-soll {
+  display: grid;
+  grid-template-columns: 120px 120px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 16px;
+}
+
+@container (max-width: 520px) {
+  app-docs-tab .ist-soll { grid-template-columns: 1fr 1fr; }
+  app-docs-tab .soll-text { grid-column: 1 / -1; }
+}
+
+app-docs-tab .design-thumb {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  inline-size: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: zoom-in;
+}
+
+app-docs-tab .design-thumb:disabled { cursor: default; }
+
+app-docs-tab .design-thumb:focus-visible {
+  border-radius: 8px;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+app-docs-tab .design-shot {
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 3 / 4;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--lane);
+  object-fit: cover;
+  object-position: top;
+}
+
+app-docs-tab .design-shot.is-ist {
+  filter: grayscale(1);
+  opacity: 0.7;
+}
+
+app-docs-tab .design-shot-empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted-ink);
+}
+
+app-docs-tab .design-eyebrow {
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+app-docs-tab .soll-text p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+
+app-docs-tab .design-dialog { --ui-dialog-size: 860px; }
+
+app-docs-tab .design-shot-big {
+  display: block;
+  inline-size: 100%;
+  max-block-size: 70vh;
+  margin-block-end: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  object-fit: contain;
+  background: var(--lane);
+}
+
+app-docs-tab .design-shot-caption {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+app-docs-tab .design-shot-caption .mono { font-family: var(--font-mono); }
+
+/* Decisions (spec 024): the prototype's goal card (violet edge, Sora quote) and the "Still open" fog card. */
+app-docs-tab .dec-goal {
+  margin-block-end: 16px;
+  padding: 16px;
+  border-inline-start: 3px solid var(--ques-ink);
+}
+
+/* The prototype's .meta line under the quote: source and lock time, sentence case. */
+app-docs-tab .dec-meta {
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+app-docs-tab .dec-eyebrow {
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+app-docs-tab .dec-quote {
+  margin: 8px 0;
+  font: 500 18px/28px var(--font-brand);
+}
+
+app-docs-tab .dec-open {
+  margin-block-start: 16px;
+}
+
+app-docs-tab .dec-open-head {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+app-docs-tab .dec-fog {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-inline-start: 3px solid var(--ques-ink);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--ques-t);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+app-docs-tab .dec-fog ui-icon {
+  flex: none;
+  margin-block-start: 2px;
+  color: var(--ques-text);
+}
+
+/* The prototype's `[data-ui="empty-state"]`: start-aligned, the icon bare in muted ink, the title 20/28. */
+app-docs-tab[data-page] .docs-empty-card ui-empty-state {
+  gap: 12px;
+  justify-items: start;
+  max-inline-size: 520px;
+  margin-inline: 0;
+  padding: 24px 16px;
+  text-align: start;
+}
+
+app-docs-tab[data-page] .docs-empty-card ui-empty-state .icon {
+  inline-size: auto;
+  block-size: auto;
+  margin: 0;
+  background: none;
+  color: var(--muted-ink);
+}
+
+app-docs-tab[data-page] .docs-empty-card ui-empty-state .title {
+  font-size: 20px;
+  line-height: 28px;
+}
+
+app-docs-tab[data-page] .docs-empty-card ui-empty-state .slot {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  margin: 0;
+}
+
+/* Decisions: one section per round, one card per question (prototype decision-round, decision-block, .qa). */
+app-docs-tab .dec-round {
+  display: grid;
+  gap: 12px;
+  margin-block-end: 24px;
+}
+
+app-docs-tab .dec-round-head {
+  margin: 0;
+  font: 600 15px/24px var(--font-brand);
+}
+
+app-docs-tab .dec-block { padding: 16px; }
+
+app-docs-tab .dec-q {
+  margin: 0 0 12px;
+  font: 600 15px/24px var(--font-brand);
+}
+
+app-docs-tab .dec-q .mono,
+app-docs-tab .dec-qa .mono { font-family: var(--font-mono); }
+
+app-docs-tab .dec-qa {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+app-docs-tab .dec-qa dt {
+  padding-block-start: 2px;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+app-docs-tab .dec-qa dd {
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+app-docs-tab .dec-qa ul {
+  margin: 0;
+  padding-inline-start: 16px;
+}
+
+app-docs-tab .dec-rec {
+  display: inline-block;
+  margin-inline-start: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--clos-t);
+  color: var(--clos-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+app-docs-tab .dec-wait,
+app-docs-tab .dec-none { color: var(--muted-ink); }
+
+app-docs-tab .dec-none {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+app-docs-tab .dec-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+app-docs-tab .dec-file {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--color-base-300);
+  color: var(--disp-ink);
+  font: 500 12px/18px var(--font-mono);
+  text-decoration: none;
+}
+
+app-docs-tab a.dec-file:hover { text-decoration: underline; }
+app-docs-tab .dec-full { margin-block-start: 16px; }
+
+/* Constitution: the lanes card and the gate tiers (prototype tabConstitution, .c-head, .tbl, .tier-grid). */
+app-docs-tab .con-lanes { margin-block-end: 12px; }
+
+app-docs-tab .con-head {
+  padding: 12px 16px;
+  border-block-end: 1px solid var(--line);
+}
+
+app-docs-tab .con-head h3,
+app-docs-tab .con-tier h3 {
+  margin: 0;
+  font: 600 15px/24px var(--font-brand);
+}
+
+app-docs-tab .con-scroll { overflow-x: auto; }
+
+app-docs-tab .con-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+app-docs-tab .con-table :is(th, td) {
+  padding: 10px 16px;
+  border-block-end: 1px solid var(--line);
+  text-align: start;
+  vertical-align: top;
+}
+
+app-docs-tab .con-table th {
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+app-docs-tab .con-table tr:last-child td { border-block-end: 0; }
+app-docs-tab .con-table .mono { font-family: var(--font-mono); }
+
+app-docs-tab .con-tiers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-block: 12px 24px;
+}
+
+app-docs-tab .con-tier {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 16px;
+}
+
+/* The cheapest tier carries the prototype's 2 px cyan top edge (.card.sblock::before with --edge: var(--cyan)). */
+app-docs-tab .con-tier.is-first::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  block-size: 2px;
+  background: var(--color-primary);
+}
+
+app-docs-tab .con-why {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-inline-start: 18px;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+app-docs-tab .con-why li::marker { color: var(--color-primary); }
+
+app-docs-tab .con-why .mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+/* Prototype `.sig` in the goal card's meta line: four 6 px dots, 3 px apart, the signal's count filled violet. */
+app-docs-tab .dec-sig {
+  display: inline-flex;
+  gap: 3px;
+  vertical-align: middle;
+}
+
+app-docs-tab .dec-sig i {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background: var(--track);
+}
+
+app-docs-tab .dec-sig i.is-on { background: var(--color-secondary); }
+
+@media (forced-colors: active) {
+  app-docs-tab .dec-sig i { border: 1px solid CanvasText; }
+  app-docs-tab .dec-sig i.is-on { background: CanvasText; }
+}

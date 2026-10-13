@@ -1,0 +1,177 @@
+<ui-page-head [segments]="[('settings.title' | transloco), ('settingsWorkspaces.title' | transloco)]">
+  <h1 class="type-page-title" data-demo-head>
+    {{ 'settingsWorkspaces.title' | transloco }}
+    <span class="count">{{ 'settingsWorkspaces.registered' | transloco: { count: count() } }}</span>
+    <ui-chip variant="demo" />
+  </h1>
+</ui-page-head>
+
+<div class="narrow">
+  <ui-card [padding]="0">
+    <div class="add-row" data-ws-add-row>
+      <div class="add-fields">
+        <label class="path-field">
+          <ui-icon name="folder" />
+          <input
+            #pathInput
+            class="mono"
+            data-ws-add-path
+            spellcheck="false"
+            autocomplete="off"
+            [placeholder]="'settingsWorkspaces.add.pathPlaceholder' | transloco"
+            [attr.aria-label]="'settingsWorkspaces.add.path' | transloco"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-controls="ws-path-list"
+            [attr.aria-expanded]="popShown()"
+            [attr.aria-activedescendant]="popShown() && sel() >= 0 ? 'ws-path-opt-' + sel() : null"
+            [value]="path()"
+            (input)="setPath(pathInput.value)"
+            (focus)="popOpen.set(true)"
+            (blur)="popOpen.set(false)"
+            (keydown)="onPathKey($event)"
+          />
+        </label>
+        <label class="name-field">
+          <span class="type-eyebrow">{{ 'settingsWorkspaces.add.name' | transloco }}</span>
+          <input
+            #nameInput
+            data-ws-add-name
+            autocomplete="off"
+            [placeholder]="'settingsWorkspaces.add.namePlaceholder' | transloco"
+            [attr.aria-label]="'settingsWorkspaces.add.nameLabel' | transloco"
+            [value]="name()"
+            (input)="name.set(nameInput.value)"
+          />
+        </label>
+        <button ui-button variant="primary" data-ws-add (click)="add()">
+          <ui-icon name="plus" />
+          {{ 'settingsWorkspaces.add.button' | transloco }}
+        </button>
+      </div>
+      <div class="check-line" aria-live="polite">
+        @if (tried()) {
+          <span class="sdot" aria-hidden="true"></span>{{ 'settingsWorkspaces.add.nothing' | transloco }}
+        }
+      </div>
+      <p class="hint">
+        {{ 'settingsWorkspaces.add.hint' | transloco }}
+        <ui-kbd>↓</ui-kbd><ui-kbd>↑</ui-kbd><ui-kbd>Enter</ui-kbd> {{ 'settingsWorkspaces.add.completes' | transloco }}
+        <ui-kbd>~</ui-kbd> {{ 'settingsWorkspaces.add.expands' | transloco }}
+      </p>
+      <!-- Prototype `.path-pop`: the folders under the typed segment, the rest of each name marked in cyan-text. -->
+      <div
+        class="path-pop"
+        id="ws-path-list"
+        role="listbox"
+        data-ws-path-list
+        [attr.aria-label]="'settingsWorkspaces.add.completions' | transloco"
+        [hidden]="!popShown()"
+      >
+        @for (item of completions(); track item.path; let i = $index) {
+          <div
+            class="pop-item"
+            role="option"
+            [id]="'ws-path-opt-' + i"
+            [attr.data-path]="item.path"
+            [attr.aria-selected]="i === sel()"
+            tabindex="-1"
+            (mousedown)="$event.preventDefault()"
+            (click)="pick(item.path)"
+            (keydown.enter)="pick(item.path)"
+          >
+            <span class="mono">{{ item.head }}<mark>{{ item.tail }}</mark></span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="upload-off" data-demo data-demo-head>
+      <ui-icon name="image" />
+      <span class="grow">{{ 'settingsWorkspaces.upload.text' | transloco }}</span>
+      <button ui-button data-identity-upload disabled>
+        <ui-icon name="image" />
+        {{ 'settingsWorkspaces.upload.button' | transloco }}
+      </button>
+      <ui-chip variant="demo" />
+    </div>
+
+    <ul class="ws-list" role="list">
+      @for (row of rows(); track row.name; let i = $index) {
+        @let tone = accent(i);
+        @let state = status(row);
+        <li class="ws-row" [attr.data-ws-row]="row.name" [style.--ws]="tone.color" [style.--ws-text]="tone.text">
+          <span class="grip" aria-hidden="true"><ui-icon name="grip-vertical" /></span>
+          <div class="ws-id">
+            <span class="ws-shot" [title]="'settingsWorkspaces.upload.off' | transloco" aria-hidden="true"></span>
+            <span class="ws-name"><span class="ws-initials" aria-hidden="true">{{ initials(row.name) }}</span>{{ row.name }}</span>
+          </div>
+          <div class="ws-path">
+            <span class="mono path-tail">{{ row.path }}</span>
+            <button type="button" class="reveal">
+              {{ (state === 'missing' ? 'settingsWorkspaces.row.relocate' : 'settingsWorkspaces.row.reveal') | transloco }}
+            </button>
+          </div>
+          <div class="ws-status" [attr.data-status]="state">
+            <span class="sdot" aria-hidden="true"></span>{{ 'settingsWorkspaces.status.' + state | transloco }}
+          </div>
+          <div class="ws-counts mono">
+            {{ (row.specs === 1 ? 'settingsWorkspaces.row.countsOne' : 'settingsWorkspaces.row.counts') | transloco: { specs: row.specs, active: row.active } }} ·
+            <ui-relative-time [date]="row.scanned" />
+          </div>
+          <button
+            ui-icon-button
+            icon="ellipsis"
+            size="sm"
+            class="row-menu"
+            [label]="'settingsWorkspaces.row.actions' | transloco: { name: row.name }"
+            [uiPopoverTrigger]="menu"
+          ></button>
+          <ui-popover #menu placement="end" class="row-pop" [label]="'settingsWorkspaces.row.actions' | transloco: { name: row.name }">
+            <button type="button" class="pop-item" data-row-act="rename" (click)="menu.close()">
+              <span class="grow">{{ 'settingsWorkspaces.menu.rename' | transloco }}</span><ui-kbd>e</ui-kbd>
+            </button>
+            <button type="button" class="pop-item" data-row-act="rescan" (click)="menu.close()">
+              <span class="grow">{{ 'settingsWorkspaces.menu.rescan' | transloco }}</span>
+            </button>
+            <button type="button" class="pop-item" data-row-act="open" (click)="menu.close()">
+              <span class="grow">{{ 'settingsWorkspaces.menu.open' | transloco }}</span>
+            </button>
+            <div class="pop-sep" role="presentation"></div>
+            <button type="button" class="pop-item danger" data-row-act="remove" (click)="askRemove(row, menu)">
+              <span class="grow">{{ 'settingsWorkspaces.menu.remove' | transloco }}</span>
+            </button>
+          </ui-popover>
+        </li>
+      }
+    </ul>
+
+    <div class="ws-foot">
+      <span class="meta">{{ 'settingsWorkspaces.foot' | transloco }}</span>
+      <ui-command-chip [command]="command" [copyLabel]="'common.copyCommand' | transloco" />
+    </div>
+  </ui-card>
+</div>
+
+@if (compact()) {
+  <!-- Prototype `.fab.only-compact`: below 640 the add action floats at the bottom right and focuses the path field. -->
+  <button ui-button variant="primary" class="ws-fab" data-ws-fab (click)="pathInput.focus()">
+    <ui-icon name="plus" />
+    {{ 'settingsWorkspaces.add.fab' | transloco }}
+  </button>
+}
+
+<ui-dialog
+  [(open)]="removeOpen"
+  [heading]="'settingsWorkspaces.remove.title' | transloco: { name: removing()?.name ?? '' }"
+  data-ws-remove-dialog
+>
+  <p class="dlg-text">{{ 'settingsWorkspaces.remove.body' | transloco }}</p>
+  <div class="dlg-acts">
+    <button ui-button (click)="removeOpen.set(false)">{{ 'settingsWorkspaces.remove.cancel' | transloco }}</button>
+    <button ui-button variant="primary" tone="danger" (click)="removeOpen.set(false)">
+      <ui-icon name="trash" />
+      {{ 'settingsWorkspaces.remove.confirm' | transloco }}
+    </button>
+  </div>
+</ui-dialog>

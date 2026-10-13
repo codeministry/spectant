@@ -4,8 +4,13 @@
   <p class="unavailable">{{ 'shell.unavailable' | transloco }}</p>
 } @else {
   <div class="title-row">
-    <ui-page-head [segments]="[ws(), ('shell.pages.board' | transloco)]">
-      <h1 class="type-page-title" id="board" tabindex="-1">{{ 'board.workspace.title' | transloco }}</h1>
+    <ui-page-head [segments]="eyebrow()">
+      <!-- The prototype head (spec 024): the workspace badge, "Board" and the muted "· <ws>" suffix outside the h1. -->
+      <div class="h1-row" ngProjectAs="h1">
+        <ui-ws-badge class="page-mark" size="page" data-board-badge [name]="name()" aria-hidden="true" />
+        <h1 class="type-page-title" id="board" tabindex="-1">{{ 'board.workspace.title' | transloco }}</h1>
+        <span class="ws-suffix" aria-hidden="true">· {{ name() }}</span>
+      </div>
     </ui-page-head>
     @if (workflowSource(); as source) {
       <!-- The workflow the columns come from (ISC-122): the workspace's own table, or the default one when the file is missing. -->
@@ -22,6 +27,7 @@
         [heading]="'board.workspace.empty.noSpecs' | transloco: { ws: name() }"
         [body]="'board.workspace.empty.body' | transloco"
       >
+        <ui-command-chip command="/spec-idea" data-empty-command />
         <a class="link" routerLink="/help" fragment="getting-started">{{ 'board.workspace.empty.gettingStarted' | transloco }}</a>
       </ui-empty-state>
     } @else {
@@ -34,18 +40,21 @@
       <app-allocate-dialog [ws]="ws()" (closed)="focusGrip($event)" />
 
       @if (b.shown === 0) {
-        <p class="no-match">
-          {{ 'board.workspace.filter.noMatch' | transloco }} ·
-          <button type="button" class="btn btn-sm btn-ghost link" data-clear (click)="clearFilters()">
-            {{ 'board.workspace.filter.clearAll' | transloco }}
-          </button>
-        </p>
+        <!-- Filtered empty (spec 024, design § Workspace-Board): the small empty state with "Clear filters". -->
+        <ui-card class="no-match" data-no-match [padding]="0">
+          <ui-empty-state icon="filter" [heading]="'board.workspace.filter.noMatch' | transloco" [body]="'board.workspace.filter.noMatchBody' | transloco">
+            <button type="button" class="btn btn-sm" data-clear (click)="clearFilters()">
+              {{ 'board.workspace.filter.clearAll' | transloco }}
+            </button>
+          </ui-empty-state>
+        </ui-card>
       }
 
       @if (compact()) {
         <!-- Compact (T124, ISC-129.2): the wrapping column switch, the sticky bar with the drop tray, one column. -->
         <div #colswitch class="colswitch">
           <ui-segmented
+            fill
             [options]="colOptions()"
             [value]="b.current ?? undefined"
             [label]="'board.workspace.compact.columns' | transloco"
@@ -194,7 +203,42 @@
             }
           </section>
         }
+
+        <!-- Compact (spec 024, design § Mobile "Unteres Sheet Needs you"; prototype `.sheet-bar`): the sticky bottom bar opens the cards waiting on you. -->
+        <button type="button" class="sheet-bar" data-sheet-bar aria-haspopup="dialog" (click)="needsOpen.set(true)">
+          <span class="grab" aria-hidden="true"></span>
+          <span>{{ 'board.workspace.sheetBar' | transloco: { count: b.total } }}</span>
+          <span class="needs-n">{{ 'board.rail.needsYouCount' | transloco: { count: needsYou().length } }}</span>
+        </button>
+        <ui-sheet [(open)]="needsOpen" [heading]="'board.workspace.needsYou' | transloco">
+          @if (needsYou().length === 0) {
+            <p class="needs-none">{{ 'board.workspace.needsNone' | transloco }}</p>
+          } @else {
+            <ul class="needs-list" data-needs-list role="list">
+              @for (card of needsYou(); track card.key) {
+                <li>
+                  <a class="needs-row" [routerLink]="cardLink(card)" (click)="needsOpen.set(false)">
+                    <span class="mono">{{ card.id ?? card.slug }}</span>
+                    <span class="nt">{{ card.title }}</span>
+                    <span class="nr">{{ card.reason ?? ('stages.' + card.stage | transloco) }}</span>
+                  </a>
+                </li>
+              }
+            </ul>
+          }
+        </ui-sheet>
       } @else {
+        @if (tier() === 'medium') {
+          <!-- Medium (spec 024, ISC-151): the lane index over the scroll-snap columns, scrolling sideways, with counts. -->
+          <div class="lane-index" data-lane-index>
+            <ui-segmented
+              [options]="colOptions()"
+              [value]="firstInView()"
+              [label]="'board.workspace.index' | transloco"
+              (valueChange)="selectIndex($event)"
+            />
+          </div>
+        }
         <ui-card class="board-card" [padding]="0">
           @let hidden = hiddenRight();
           @if (hidden.length > 0) {
@@ -254,7 +298,6 @@
                     [style.grid-column]="i + 1"
                     [attr.aria-labelledby]="'col-' + stage"
                   >
-                    <ui-icon [name]="glyphs[stage]" [size]="16" />
                     <button
                       type="button"
                       class="btn btn-ghost btn-xs fold"
@@ -263,7 +306,7 @@
                       [attr.aria-label]="'board.workspace.column.unfold' | transloco: { stage: label }"
                       (click)="toggleFold(column)"
                     >
-                      <ui-icon name="unfold-horizontal" [size]="14" />
+                      <ui-icon name="eye" [size]="14" />
                     </button>
                     <span class="count" [attr.data-morph]="drag.morph().includes(stage) ? '' : null">{{ column.cards.length }}</span>
                     <ng-container [ngTemplateOutlet]="hintTpl" [ngTemplateOutletContext]="{ $implicit: stage }" />
@@ -368,6 +411,13 @@
           </div>
           <span class="fade start" aria-hidden="true" [class.on]="fadeStart()"></span>
           <span class="fade end" aria-hidden="true" [class.on]="fadeEnd()"></span>
+          <!-- The position fades' arrows (spec 024, design § Workspace-Board Tablet): one column back or on, shown while the scroller has more on that side. -->
+          @if (fadeStart()) {
+            <button ui-icon-button icon="chevron-down" class="lstep prev" data-lane-step="prev" [label]="'board.workspace.indexPrev' | transloco" (click)="stepColumn(-1)"></button>
+          }
+          @if (fadeEnd()) {
+            <button ui-icon-button icon="chevron-down" class="lstep next" data-lane-step="next" [label]="'board.workspace.indexNext' | transloco" (click)="stepColumn(1)"></button>
+          }
         </ui-card>
       }
     }
@@ -434,6 +484,17 @@
       }
     }
     <span class="n">{{ (band.count === 1 ? 'board.workspace.swimlanes.cards.one' : 'board.workspace.swimlanes.cards.other') | transloco: { count: band.count } }}</span>
+    @let done = bandDone(band);
+    @if (done !== null) {
+      <ui-meter
+      class="bmeter"
+      data-band-meter
+      [mini]="true"
+      [value]="done"
+      [max]="band.count"
+      [label]="'board.workspace.bandMeter' | transloco: { done: done, count: band.count }"
+      />
+    }
   </h3>
 </ng-template>
 

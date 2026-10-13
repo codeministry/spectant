@@ -15,11 +15,15 @@ import { UiIcon } from '../../shared/icons/icon';
 import type { IconName } from '../../shared/icons/icons';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
 import { UiCard } from '../../shared/ui/card/card';
+import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
+import { UiMeter } from '../../shared/ui/meter/meter';
+import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { type SegmentedOption, UiSegmented } from '../../shared/ui/segmented/segmented';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../shared/ui/term/term';
+import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
 import { planningPageState } from '../planning/planning-page';
 import { BoardCard, CARD_EDGE } from './board-card';
 import { BoardDrag, type BoardDropEvent, provideBoardDrag, withMoves } from './board-drag';
@@ -154,13 +158,17 @@ interface BandRow {
     BoardCard,
     BoardFilters,
     UiCard,
+    UiCommandChip,
     UiEmptyState,
     UiIcon,
     UiIconButton,
+    UiMeter,
     UiPageHead,
     UiSegmented,
+    UiSheet,
     UiSkeleton,
     UiTerm,
+    UiWsBadge,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   hostDirectives: [CdkDropListGroup],
@@ -170,7 +178,7 @@ interface BandRow {
     '[attr.data-tier]': 'tier()',
     '[attr.data-dragging]': 'drag.dragging() ? "" : null' },
   templateUrl: './board-page.html',
-  styleUrls: ['./board-page.css', './board-page.compact.css', './board-page.drag.css', './board-page.fill.css', './board-page.hidden.css'],
+  styleUrls: ['./board-page.css', './board-page.compact.css', './board-page.drag.css', './board-page.fill.css', './board-page.hidden.css', './board-page.parity.css'],
 })
 export class BoardPage {
   protected readonly state = inject(ShellState);
@@ -245,8 +253,32 @@ export class BoardPage {
     });
   });
 
+  /**
+   * The page eyebrow (spec 024, ISC-151; design § Workspace-Board): `<WS> · BOARD · n CARDS`, the count once the board
+   * is built.
+   */
+  protected readonly eyebrow = computed<readonly string[]>(() => {
+    const lang = this.lang();
+    const page: string = this.transloco.translate('shell.pages.board', {}, lang);
+    const b = this.board();
+    if (b === null) return [this.ws(), page];
+    return [this.ws(), page, this.transloco.translate('board.workspace.eyebrowCards', { count: b.total }, lang)];
+  });
+
+  /**
+   * Medium only (spec 024, design § Viewport-übergreifend "Kanban bleibt"): the lane index over the scroll-snap
+   * scroller, the compact switch's segmented as a position marker. Its value is the first column in view (measured with
+   * the overflow line); picking a segment scrolls that column to the scroller's start.
+   */
+  protected readonly firstInView = signal<string | undefined>(undefined);
+
   /** The drop tray under the sticky bar; T125 opens it while a card is dragged. Closed, it is laid out but hidden. */
   readonly trayOpen = signal(false);
+
+  /** Compact (spec 024, design § Mobile): the bottom sheet with the cards waiting on you, opened from the sheet bar. */
+  protected readonly needsOpen = signal(false);
+  /** The cards waiting on the principal, in board order (the sheet bar's count and the sheet's rows). */
+  protected readonly needsYou = computed(() => this.board()?.cards.filter((c) => c.waitsOnYou) ?? []);
   /** The column switch has scrolled away under the header: the sticky bar shows in its place. */
   protected readonly switchAway = signal(false);
   private readonly switchRef = viewChild<ElementRef<HTMLElement>>('colswitch');
@@ -353,7 +385,7 @@ export class BoardPage {
       observer.observe(el);
       onCleanup(() => observer.disconnect());
     });
-    // The compact sticky bar: shown once the column switch has left the area under the 92 px compact header.
+    // The compact sticky bar: shown once the column switch has left the area under the 64 px sticky header row (spec 024).
     afterRenderEffect((onCleanup) => {
       const el = this.switchRef()?.nativeElement;
       if (!el || typeof IntersectionObserver !== 'function') {
@@ -361,7 +393,7 @@ export class BoardPage {
         return;
       }
       const observer = new IntersectionObserver((entries) => this.switchAway.set(entries.some((entry) => !entry.isIntersecting)), {
-        rootMargin: '-92px 0px 0px 0px',
+        rootMargin: '-64px 0px 0px 0px',
       });
       observer.observe(el);
       onCleanup(() => observer.disconnect());
@@ -489,15 +521,20 @@ export class BoardPage {
   private measureHidden(): void {
     const el = this.scrollerEl();
     const hidden = new Set<WorkflowStage>();
+    let first: string | undefined;
     if (el && untracked(this.tier) === 'medium') {
-      const right = el.getBoundingClientRect().right - 1;
+      const box = el.getBoundingClientRect();
+      const right = box.right - 1;
       for (const section of el.querySelectorAll<HTMLElement>(':scope > .grid > section[data-col]')) {
         const stage = section.dataset['col'];
         const head = section.querySelector<HTMLElement>(':scope > header') ?? section;
-        if (stage !== undefined && isWorkflowStage(stage) && head.getBoundingClientRect().left >= right) hidden.add(stage);
+        const rect = head.getBoundingClientRect();
+        if (stage !== undefined && isWorkflowStage(stage) && rect.left >= right) hidden.add(stage);
+        if (first === undefined && stage !== undefined && rect.right > box.left + 24) first = stage;
       }
     }
     this.rightOfView.set(hidden);
+    this.firstInView.set(first);
   }
 
   /** Scrolls the column of `stage` to the scroller's start (the overflow line's entries, a lane's hint). */
@@ -505,6 +542,37 @@ export class BoardPage {
     const section = this.scrollerEl()?.querySelector<HTMLElement>(`:scope > .grid > section[data-col="${stage}"]`);
     if (!section || typeof section.scrollIntoView !== 'function') return;
     section.scrollIntoView({ inline: 'start', block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
+  }
+
+  /** A card's page: the idea page for a story, the spec page otherwise (the same target as the card title). */
+  protected cardLink(card: BoardCardModel): string[] {
+    return card.kind === 'idea' ? ['/w', this.ws(), 'ideas', card.slug] : ['/w', this.ws(), 's', card.id ?? card.slug];
+  }
+
+  /** A swimlane's done cards, the mini meter's value (spec 024, design § Workspace-Board Desktop "Mini-Balken"). */
+  protected bandDone(band: BandHead): number | null {
+    if (!('cells' in band)) return null;
+    const cells = (band as BandRow).cells;
+    return cells.find((c) => c.stage === 'done')?.cards.length ?? 0;
+  }
+
+  /**
+   * The position fades' arrows (spec 024): scroll one column back or on from the first column in view, measured
+   * against the scroller's start edge, so it works on every tier where the scroller overflows.
+   */
+  protected stepColumn(dir: 1 | -1): void {
+    const el = this.scrollerEl();
+    if (!el) return;
+    const start = el.getBoundingClientRect().left + 24;
+    const sections = [...el.querySelectorAll<HTMLElement>(':scope > .grid > section[data-col]')];
+    const at = Math.max(0, sections.findIndex((s) => s.getBoundingClientRect().right > start));
+    const stage = sections[Math.min(sections.length - 1, Math.max(0, at + dir))]?.dataset['col'];
+    if (stage !== undefined && isWorkflowStage(stage)) this.showColumn(stage);
+  }
+
+  /** The lane index picked a column (medium): it scrolls to the scroller's start and the index follows the scroll. */
+  protected selectIndex(key: string | undefined): void {
+    if (key !== undefined && isWorkflowStage(key)) this.showColumn(key);
   }
 
   /** The edge fades show only where the scroller has more to show on that side. */

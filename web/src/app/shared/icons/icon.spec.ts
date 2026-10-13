@@ -14,6 +14,7 @@ describe('UiIcon', () => {
     expect(svg?.getAttribute('role')).toBeNull();
     expect(svg?.getAttribute('width')).toBe('16');
     expect(svg?.getAttribute('stroke')).toBe('currentColor');
+    expect((fixture.nativeElement as HTMLElement).getAttribute('data-icon')).toBe('circle-check');
   });
 
   it('becomes an image with an accessible name when labelled', async () => {

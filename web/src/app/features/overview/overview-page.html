@@ -1,5 +1,5 @@
 <ui-page-head [segments]="[('header.switcher.allWorkspaces' | transloco: { count: count() })]">
-  <h1 class="type-page-title">{{ 'shell.workspace.menu' | transloco }}</h1>
+  <h1 class="type-page-title">{{ 'shell.workspace.menu' | transloco }} <span class="h1-sub">· {{ count() }}</span></h1>
 </ui-page-head>
 
 @if (list(); as list) {
@@ -17,9 +17,9 @@
                 <span class="path">{{ slot.entry.pathTail }}</span>
               </div>
               <ui-notice tone="warning">
-                <strong>{{ 'overview.unreadable' | transloco }}</strong>
+                <strong class="notice-title">{{ 'overview.unreadable' | transloco }}</strong>
                 @if (slot.reason; as reason) {
-                  · <span class="reason">{{ reason }}</span>
+                  <span class="reason">{{ reason }}</span>
                 }
               </ui-notice>
             </section>
@@ -39,15 +39,19 @@
       }
     </div>
   } @else {
+    <!-- Prototype `?state=empty`: a card holding `[data-ui=empty-state]`, start-aligned, `folder` icon, 20/28 title. -->
     <ui-card [padding]="0">
-      <ui-empty-state icon="folder-plus" [heading]="'overview.empty.title' | transloco" [body]="'overview.empty.hint' | transloco">
+      <div class="empty" data-overview-empty>
+        <ui-icon class="empty-icon" name="folder" [size]="16" />
+        <h2 class="empty-title">{{ 'overview.empty.title' | transloco }}</h2>
+        <p class="empty-body">{{ 'overview.empty.hint' | transloco }}</p>
         <ui-command-chip
           [command]="'overview.empty.command' | transloco"
           [copyLabel]="'common.copyCommand' | transloco"
           [copiedLabel]="'common.copied' | transloco: { command: 'overview.empty.command' | transloco }"
           [manualHint]="'common.copyFallback' | transloco"
         />
-      </ui-empty-state>
+      </div>
     </ui-card>
   }
 } @else if (failed()) {
@@ -55,3 +59,5 @@
 } @else {
   <p class="loading-note type-meta">{{ 'common.loading' | transloco }}</p>
 }
+
+<p class="footer-note" data-footer-note>{{ 'overview.footer' | transloco: { origin } }}</p>

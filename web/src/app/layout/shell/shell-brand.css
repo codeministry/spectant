@@ -1,4 +1,8 @@
-/* The living ring and the wordmark (design.md § Wordmark, § Shell header): 28 px ring below wide, 24 px at wide. */
+/*
+ * The living ring and the wordmark (prototype `.brand-mark`, `.logo`, `.wm-accent`; spec 024 T34): a 27 px ring, the
+ * Sora wordmark 16/650 with "ant" in the violet-to-lime gradient (resting on lime, sweeping to violet on hover or
+ * keyboard focus). Below 640 px the ring stands alone, centred in its 40 px rail.
+ */
 :host {
   display: block;
   min-inline-size: 0;
@@ -6,61 +10,79 @@
 
 .brand {
   display: inline-flex;
-  gap: 8px;
+  gap: 5px;
   align-items: center;
-  min-block-size: 44px;
-  min-inline-size: 44px;
-  padding-inline: 8px 12px;
+  block-size: 38px;
+  margin-block: 1px;
+  padding-inline: 3px 11px;
+  border-radius: var(--radius);
   color: var(--color-base-content);
   text-decoration: none;
 }
 
 .mark {
   flex-shrink: 0;
-  inline-size: 28px;
-  block-size: 28px;
+  inline-size: 27px;
+  block-size: 27px;
   fill: none;
   stroke-width: 3;
 }
 
+/* The prototype's ring has no track: the gap stays open around the dot (`logo-path.js`). */
 .mark-track {
-  stroke: var(--track);
+  stroke: none;
 }
 
 .mark-arc {
-  stroke: var(--clos-ink);
-  stroke-dasharray: 80 20;
   stroke-linecap: round;
 }
 
+/* The logo's fixed brand colours on both themes (prototype `#sweep-h` #a6e22e → #78dce8, dot #ab9df2). */
+.mark-arc-a {
+  stroke: oklch(84.1% 0.2044 127.3);
+  stroke-dasharray: 40 60;
+}
+
+.mark-arc-b {
+  stroke: oklch(83.8% 0.095 205.7);
+  stroke-dasharray: 0 40 40 20;
+}
+
 .mark-dot {
-  fill: var(--ques-ink);
+  fill: oklch(74.1% 0.121 290.7);
 }
 
 .wordmark {
   font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 24px;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1;
   white-space: nowrap;
 }
 
 .wordmark-tail {
-  color: var(--clos-ink);
+  background: linear-gradient(90deg, var(--ques-text) 0%, var(--ques-text) 45%, var(--clos-text) 55%, var(--clos-text) 100%);
+  background-position: 100% 0%;
+  background-size: 200% 100%;
+  color: transparent;
+  /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-/* The ring turns once and "ant" takes the violet on hover or keyboard focus; never under reduced motion. */
+/* The ring turns once and "ant" sweeps to violet on hover or keyboard focus; never under reduced motion. */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .brand:is(:hover, :focus-visible) .mark {
     animation: mark-spin var(--motion-duration-highlight) var(--motion-ease-emphasized) both;
   }
 
   .wordmark-tail {
-    transition: color var(--motion-duration-highlight) var(--motion-ease-emphasized);
+    transition: background-position var(--motion-duration-highlight) var(--motion-ease-emphasized);
   }
 
   .brand:is(:hover, :focus-visible) .wordmark-tail {
-    color: var(--ques-ink);
+    background-position: 0% 0%;
   }
 }
 
@@ -70,21 +92,22 @@
   }
 }
 
-@container header (width >= 1120px) {
-  .mark {
-    inline-size: 24px;
-    block-size: 24px;
+/* The rail is 44 px on a coarse pointer (shell-header.css); the brand fills it inside its border. */
+@media (pointer: coarse) {
+  .brand {
+    block-size: 42px;
   }
 }
 
-/* Collapse order, step 1: the wordmark text goes first (below 800); compact shows the ring alone, centred. */
-@container header (width < 800px) {
+@container header (width < 640px) {
   .wordmark {
     display: none;
   }
 
   .brand {
     justify-content: center;
+    inline-size: 38px;
+    margin-inline: 1px;
     padding-inline: 0;
   }
 }

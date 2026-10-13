@@ -58,8 +58,32 @@ test.describe('docs', () => {
       await expect(images).toHaveCount(1);
       await expect.poll(() => images.evaluateAll((all) => all.map((img) => (img as HTMLImageElement).naturalWidth))).toEqual([4]);
       const evidence = requested.filter((url) => url.pathname.endsWith('/specs/004/evidence/file'));
-      expect(evidence.map((url) => url.searchParams.get('path'))).toEqual(['.design/mobile-ist.png']);
+      // The prose figure and the viewport card's thumbnail show the same file: one path, never a second route.
+      expect([...new Set(evidence.map((url) => url.searchParams.get('path')))]).toEqual(['.design/mobile-ist.png']);
       expect(requested.filter((url) => url.pathname.startsWith('/.design/'))).toEqual([]);
+    });
+
+    test('design: Ist/Soll viewport cards with the Soll text and a screenshot dialog (ISC-149)', async ({ page }) => {
+      await page.goto('/w/harbor/s/004/design');
+      await page.locator('app-docs-tab').first().waitFor(); // the shell sets no data-ready on spec routes yet
+      const tab = page.locator('app-docs-tab[data-doc="design"]');
+      const cards = tab.locator('[data-design-viewport]');
+      await expect(cards).toHaveCount(1);
+      const card = cards.first();
+      await expect(card).toHaveAttribute('data-viewport', 'phone');
+      await expect(card.locator('.design-vp-head')).toContainText('Phone');
+      await expect(card.locator('.soll-text')).toContainText('The preview opens as a sheet over the list');
+      await expect(card.locator('[data-thumb="ist"] img')).toBeVisible();
+      await expect(card.locator('[data-thumb="soll"]')).toBeDisabled();
+      await card.locator('[data-thumb="ist"]').click();
+      const dialog = page.locator('[data-design-dialog] dialog');
+      await expect(dialog).toBeVisible();
+      await expect(dialog.locator('img.design-shot-big')).toBeVisible();
+      await expect(dialog).toContainText('.design/mobile-ist.png');
+      await page.keyboard.press('Escape');
+      await expect(dialog).toBeHidden();
+      // The full document stays below the cards.
+      await expect(tab.locator('.docs-prose h2#phone')).toHaveText('Phone');
     });
 
     test('design image: a screenshot that fails to load becomes the missing figure with its own note, never a broken image', async ({ page }) => {

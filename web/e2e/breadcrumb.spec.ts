@@ -2,9 +2,9 @@
  * T41 · ISC-105: the breadcrumb of the spec head on every spec route, archived specs included, at 390 and 1440, against
  * the stub API (`core/fixtures/harbor.planning.golden.json`). `bun run e2e -- breadcrumb`.
  *
- * The levels are `milestone · feature › spec › area › claim or task`; the compact tier returns the short form
- * `harbor / ⚑ Harbor 1.0 · F2 › 002 › ISC-51` (the workspace first since T19 · ISC-140.1, no area, the spec as its mono
- * id). "Links resolve" splits in two:
+ * Since spec 024 (T36 · ISC-149) the levels are `workspace / Spec NNN · area › claim or task` on every tier; milestone,
+ * feature and priority sit in the head's chip row beside it (spec 024: breadcrumb Workspace / Spec · Area,
+ * milestone/feature/priority in the chip row (principal 2026-10-12, design.md)). "Links resolve" splits in two:
  * workspace, spec, area, claim and task links are clicked and must land; the feature and milestone links point at the
  * Features and Milestones pages, so their `href` is asserted and they are clicked at the end to land on the focused
  * card and row.
@@ -39,8 +39,6 @@ const M10 = milestoneOf('002');
 if (!F2 || !F1 || !F3 || !M10 || !holds('F2', '002') || !holds('F1', '001') || milestoneOf('001')?.slug !== M10.slug) {
   throw new Error('harbor.planning.golden.json no longer places 002 in F2 and 001 in F1, both in one milestone');
 }
-const specs = planning.features.flatMap((f) => f.holders).filter((h) => h.id === '002' || h.id === '001');
-const slugOf = (id: string): string => (specs.find((h) => h.id === id)?.slug ?? '').slice(id.length + 1);
 
 /** Every tab route of the built spec areas, with the area that owns it. */
 const TAB_ROUTES = SPEC_AREAS.filter((area) => area.built && area.tabs.length > 0).flatMap((area) =>
@@ -61,6 +59,11 @@ const servePlanningWithSpecInF3 = async (page: Page): Promise<void> => {
 };
 const item = (page: Page, name: string): Locator => page.locator(`${NAV} li:has([data-crumb="${name}"])`);
 
+// spec 024: breadcrumb Workspace / Spec · Area, milestone/feature/priority in the chip row (principal 2026-10-12, design.md)
+const SPEC_CRUMB = (id: string): string => `Spec ${id}`;
+const headChip = (page: Page, name: string): Locator => page.locator(`${HEAD} [data-head-chips] [data-head-chip="${name}"]`);
+const HEAD_MORE = `${HEAD} [data-head-chips] [data-head-more]`;
+
 for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
   const compact = width === WIDTHS.phone;
 
@@ -70,51 +73,45 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
     test('the spec dashboard: levels in order, with their separators', async ({ page }) => {
       await page.goto('/w/harbor/s/002');
       await expect(page.locator(NAV)).toBeVisible();
-      await expect(page.locator(`${NAV} ol > li`)).toHaveCount(compact ? 4 : 5);
-
-      await expect(crumb(page, 'milestone')).toHaveText(M10.name);
-      await expect(crumb(page, 'feature')).toHaveText(compact ? F2.id : `${F2.id} ${F2.name}`);
-      await expect(crumb(page, 'spec')).toHaveText(compact ? '002' : `002 ${slugOf('002')}`);
-      await expect(page.locator(`${NAV} [data-crumb-more]`)).toHaveCount(0); // 002 holds F2 only
+      // spec 024: breadcrumb Workspace / Spec · Area, milestone/feature/priority in the chip row (principal 2026-10-12, design.md)
+      await expect(page.locator(`${NAV} ol > li`)).toHaveCount(3);
+      await expect(crumb(page, 'milestone')).toHaveCount(0);
+      await expect(crumb(page, 'feature')).toHaveCount(0);
+      await expect(page.locator(`${NAV} ui-priority`)).toHaveCount(0);
+      await expect(headChip(page, 'milestone')).toHaveText(M10.name);
+      await expect(headChip(page, 'feature')).toHaveText(F2.id);
+      await expect(crumb(page, 'spec')).toHaveText(SPEC_CRUMB('002'));
+      await expect(page.locator(HEAD_MORE)).toHaveCount(0); // 002 holds F2 only
 
       await expect(crumb(page, 'workspace')).toHaveText('harbor'); // every tier since T19 · ISC-140.1
-      await expect(item(page, 'milestone')).toHaveAttribute('data-sep', 'scope');
-      if (compact) {
-        await expect(crumb(page, 'area')).toHaveCount(0);
-        await expect(crumb(page, 'spec')).toHaveAttribute('aria-current', 'page'); // the spec is the last crumb
-      } else {
-        await expect(crumb(page, 'area')).toHaveText(en.shell.areas['dashboard'] ?? '');
-        await expect(crumb(page, 'area')).toHaveAttribute('aria-current', 'page');
-        await expect(item(page, 'area')).toHaveAttribute('data-sep', 'down');
-        await expect(crumb(page, 'spec')).not.toHaveAttribute('aria-current');
-      }
-      await expect(item(page, 'feature')).toHaveAttribute('data-sep', 'dot');
-      await expect(item(page, 'spec')).toHaveAttribute('data-sep', 'down');
+      await expect(item(page, 'spec')).toHaveAttribute('data-sep', 'scope');
+      await expect(crumb(page, 'area')).toHaveText(en.shell.areas['dashboard'] ?? '');
+      await expect(crumb(page, 'area')).toHaveAttribute('aria-current', 'page');
+      await expect(item(page, 'area')).toHaveAttribute('data-sep', 'dot');
+      await expect(crumb(page, 'spec')).not.toHaveAttribute('aria-current');
       await expect(crumb(page, 'claim')).toHaveCount(0);
       await expect(crumb(page, 'task')).toHaveCount(0);
     });
 
-    test('the order in the DOM is milestone, feature, spec, area', async ({ page }) => {
+    test('the order in the DOM is workspace, spec, area', async ({ page }) => {
       await page.goto('/w/harbor/s/002/status');
-      await expect(page.locator(`${NAV} ol > li`)).toHaveCount(compact ? 4 : 5);
+      // spec 024: breadcrumb Workspace / Spec · Area, milestone/feature/priority in the chip row (principal 2026-10-12, design.md)
+      await expect(page.locator(`${NAV} ol > li`)).toHaveCount(3);
       const names = await page.locator(`${NAV} [data-crumb]`).evaluateAll((els) => els.map((el) => el.getAttribute('data-crumb')));
-      expect(names).toEqual(compact ? ['workspace', 'milestone', 'feature', 'spec'] : ['workspace', 'milestone', 'feature', 'spec', 'area']);
+      expect(names).toEqual(['workspace', 'spec', 'area']);
     });
 
     for (const { area, tab, first } of TAB_ROUTES) {
-      test(`every spec route: ${tab} shows the breadcrumb${compact ? '' : ` with the ${area} area`}`, async ({ page }) => {
+      test(`every spec route: ${tab} shows the breadcrumb with the ${area} area`, async ({ page }) => {
         await page.goto(`/w/harbor/s/002/${tab}`);
         await expect(page.locator(NAV)).toBeVisible();
-        await expect(crumb(page, 'milestone')).toHaveText(M10.name);
-        await expect(crumb(page, 'feature')).toContainText(F2.id);
+        // spec 024: breadcrumb Workspace / Spec · Area, milestone/feature/priority in the chip row (principal 2026-10-12, design.md)
+        await expect(headChip(page, 'milestone')).toHaveText(M10.name);
+        await expect(headChip(page, 'feature')).toContainText(F2.id);
         await expect(crumb(page, 'spec')).toContainText('002');
-        if (compact) {
-          await expect(crumb(page, 'area')).toHaveCount(0);
-        } else {
-          const label = en.shell.areas[area] ?? '';
-          await expect(page.locator(`${NAV} [data-crumb="area"][aria-current="page"]`)).toHaveText(label);
-          if (first) await expect(page).toHaveURL(new RegExp(`/w/harbor/s/002/${tab}$`, 'u'));
-        }
+        const label = en.shell.areas[area] ?? '';
+        await expect(page.locator(`${NAV} [data-crumb="area"][aria-current="page"]`)).toHaveText(label);
+        if (first) await expect(page).toHaveURL(new RegExp(`/w/harbor/s/002/${tab}$`, 'u'));
       });
     }
 
@@ -125,15 +122,13 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       await expect(leaf).toHaveAttribute('aria-current', 'page');
       await expect(item(page, 'claim')).toHaveAttribute('data-sep', 'down');
       await expect(leaf).toHaveAttribute('href', '/w/harbor/s/002/claims#claim-ISC-51');
-      await expect(crumb(page, 'feature')).toContainText(F2.id); // ISC-51 sits in F2
+      await expect(headChip(page, 'feature')).toContainText(F2.id); // ISC-51 sits in F2
       await expect(crumb(page, 'spec')).not.toHaveAttribute('aria-current');
       await expect(page.locator(`${NAV} [aria-current="page"]`)).toHaveCount(1);
       await expect(page.locator(`${NAV} li:last-child [data-crumb]`)).toHaveAttribute('data-crumb', 'claim');
-      if (!compact) {
-        // The area is no longer the current level: a link to the tab, not a plain span.
-        await expect(crumb(page, 'area')).toHaveAttribute('href', '/w/harbor/s/002/claims');
-        await expect(crumb(page, 'area')).not.toHaveAttribute('aria-current');
-      }
+      // The area is no longer the current level: a link to the tab, not a plain span.
+      await expect(crumb(page, 'area')).toHaveAttribute('href', '/w/harbor/s/002/claims');
+      await expect(crumb(page, 'area')).not.toHaveAttribute('aria-current');
     });
 
     test('a task in the Tasks tab is the last crumb', async ({ page }) => {
@@ -164,18 +159,19 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         await expect(page.locator('[data-page="spec-dashboard"]')).toBeVisible();
         const archived = en.planning.breadcrumb.archived;
         const spec = crumb(page, 'spec');
-        await expect(spec).toHaveAttribute('aria-label', compact ? `001, ${archived}` : `001 ${slugOf('001')}, ${archived}`);
+        // spec 024: breadcrumb Workspace / Spec · Area, milestone/feature/priority in the chip row (principal 2026-10-12, design.md)
+        await expect(spec).toHaveAttribute('aria-label', `${SPEC_CRUMB('001')}, ${archived}`);
         await expect(spec.locator('ui-icon')).toHaveCount(1); // the archive glyph
-        await expect(crumb(page, 'milestone')).toHaveText(M10.name);
-        await expect(crumb(page, 'feature')).toHaveText(compact ? F1.id : `${F1.id} ${F1.name}`);
-        await expect(item(page, 'spec')).toHaveAttribute('data-sep', 'down');
+        await expect(headChip(page, 'milestone')).toHaveText(M10.name);
+        await expect(headChip(page, 'feature')).toHaveText(F1.id);
+        await expect(item(page, 'spec')).toHaveAttribute('data-sep', 'scope');
       });
 
       test('001 keeps the breadcrumb on its tab routes', async ({ page }) => {
         for (const tab of ['status', 'claims', 'tasks'] as const) {
           await page.goto(`/w/harbor/s/001/${tab}`);
           await expect(crumb(page, 'spec')).toHaveAttribute('aria-label', /archived$/u);
-          await expect(crumb(page, 'feature')).toContainText(F1.id);
+          await expect(headChip(page, 'feature')).toContainText(F1.id);
         }
       });
     });
@@ -186,38 +182,36 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002$/u);
       await expect(page.locator('[data-page="spec-dashboard"]')).toBeVisible();
 
-      if (!compact) {
-        await page.goto('/w/harbor/s/002/tasks#task-T27');
-        await crumb(page, 'area').click();
-        await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/claims$/u); // the Data area opens on its first tab, no fragment
-        await expect(page.locator('app-claims-tab')).toBeVisible();
-        await expect(crumb(page, 'task')).toHaveCount(0);
-      }
+      await page.goto('/w/harbor/s/002/tasks#task-T27');
+      await crumb(page, 'area').click();
+      await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/claims$/u); // the Data area opens on its first tab, no fragment
+      await expect(page.locator('app-claims-tab')).toBeVisible();
+      await expect(crumb(page, 'task')).toHaveCount(0);
     });
 
-    test('the feature and milestone links point at their pages', async ({ page }) => {
+    test('the feature and milestone chips point at their pages', async ({ page }) => {
       await page.goto('/w/harbor/s/002');
-      await expect(crumb(page, 'milestone')).toHaveAttribute('href', `/w/harbor/milestones#m-${M10.slug}`);
-      await expect(crumb(page, 'feature')).toHaveAttribute('href', `/w/harbor/features#${F2.id}`);
+      await expect(headChip(page, 'milestone')).toHaveAttribute('href', `/w/harbor/milestones#m-${M10.slug}`);
+      await expect(headChip(page, 'feature')).toHaveAttribute('href', `/w/harbor/features#${F2.id}`);
       await expect(crumb(page, 'spec')).toHaveAttribute('href', '/w/harbor/s/002');
       await page.goto('/w/harbor/s/001');
-      await expect(crumb(page, 'milestone')).toHaveAttribute('href', `/w/harbor/milestones#m-${M10.slug}`);
-      await expect(crumb(page, 'feature')).toHaveAttribute('href', `/w/harbor/features#${F1.id}`);
+      await expect(headChip(page, 'milestone')).toHaveAttribute('href', `/w/harbor/milestones#m-${M10.slug}`);
+      await expect(headChip(page, 'feature')).toHaveAttribute('href', `/w/harbor/features#${F1.id}`);
     });
 
     test('the "+n" chip lists the other blocks a spec holds, each linking to its card', async ({ page }) => {
       await servePlanningWithSpecInF3(page);
       await page.goto('/w/harbor/s/002');
-      const more = page.locator(`${NAV} [data-crumb-more]`);
+      const more = page.locator(HEAD_MORE);
       await expect(more).toHaveText('+1');
       await expect(more).toHaveAttribute('aria-expanded', 'false');
       await more.click();
       await expect(more).toHaveAttribute('aria-expanded', 'true');
-      const links = page.locator('.crumb-more-list a');
+      const links = page.locator('.head-more-list a');
       await expect(links).toHaveCount(1);
       await expect(links.first()).toHaveAttribute('href', `/w/harbor/features#${F3.id}`);
       await expect(links.first()).toContainText(`${F3.id} ${F3.name}`);
-      await expect(crumb(page, 'feature')).toHaveAttribute('href', `/w/harbor/features#${F2.id}`); // the main block stays the crumb
+      await expect(headChip(page, 'feature')).toHaveAttribute('href', `/w/harbor/features#${F2.id}`); // the main block stays the chip
     });
 
     test('the workspace link resolves', async ({ page }) => {
@@ -245,27 +239,25 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       expect(pageOverflow).toBeLessThanOrEqual(0);
       const items = await page.locator(`${NAV} ol > li`).evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
       for (const height of items) expect(height).toBeLessThanOrEqual(box?.height ?? 0);
-      const milestone = await crumb(page, 'milestone').locator('.name').boundingBox();
-      expect(milestone?.width ?? Infinity).toBeLessThanOrEqual(96);
     });
   });
 }
 
-// The click-and-land cases: a crumb opens its card or row on the Features and Milestones pages.
+// The click-and-land cases: a planning chip opens its card or row on the Features and Milestones pages.
 test.describe('feature and milestone links land', () => {
   test.use(atWidth(WIDTHS.desktop));
 
-  test('the milestone crumb opens its row on the Milestones page', async ({ page }) => {
+  test('the milestone chip opens its row on the Milestones page', async ({ page }) => {
     await page.goto('/w/harbor/s/002');
-    await crumb(page, 'milestone').click();
+    await headChip(page, 'milestone').click();
     await expect(page).toHaveURL(new RegExp(`/w/harbor/milestones#m-${M10.slug}$`, 'u'));
     await expect(page.locator(`article#m-${M10.slug}`)).toBeFocused();
     await expect(page.locator(`article#m-${M10.slug}`)).toBeInViewport();
   });
 
-  test('the feature crumb opens its card on the Features page', async ({ page }) => {
+  test('the feature chip opens its card on the Features page', async ({ page }) => {
     await page.goto('/w/harbor/s/002');
-    await crumb(page, 'feature').click();
+    await headChip(page, 'feature').click();
     await expect(page).toHaveURL(new RegExp(`/w/harbor/features#${F2.id}$`, 'u'));
     await expect(page.locator(`article#${F2.id}`)).toBeFocused();
     expect(await page.evaluate(() => document.activeElement?.id)).toBe(F2.id);
@@ -275,8 +267,8 @@ test.describe('feature and milestone links land', () => {
   test('a "+n" list link opens the other block’s card', async ({ page }) => {
     await servePlanningWithSpecInF3(page);
     await page.goto('/w/harbor/s/002');
-    await page.locator(`${NAV} [data-crumb-more]`).click();
-    await page.locator('.crumb-more-list a').first().click();
+    await page.locator(HEAD_MORE).click();
+    await page.locator('.head-more-list a').first().click();
     await expect(page).toHaveURL(new RegExp(`/w/harbor/features#${F3.id}$`, 'u'));
     await expect(page.locator(`article#${F3.id}`)).toBeFocused();
     expect(await page.evaluate(() => document.activeElement?.id)).toBe(F3.id);
@@ -310,24 +302,40 @@ const WORKSPACE_NAMES = ['harbor', 'lantern'];
 /** A dotted catalog key such as `shell.pages.board` or `header.switcher.allWorkspaces`. */
 const CATALOG_KEY = /\b[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+\b/u;
 
-/** A segment is the route's workspace or the catalog value at a key; `null` asserts only "no workspace named". */
-type Segment = { ws: true } | { key: string };
+/**
+ * A segment is the route's workspace, the catalog value at a key, a literal, or (spec 024: the prototype eyebrows carry
+ * a count, `HARBOR · BOARD · 12 CARDS`) a count with an optional unit word; `null` asserts only "no workspace named".
+ */
+type Segment = { ws: true } | { key: string } | { literal: string } | { count: true };
+const COUNT_SEGMENT = /^\d+( \p{L}+)?$/u;
 interface EyebrowPage {
   readonly name: string;
   readonly path: string;
   readonly segments: readonly Segment[] | null;
   /** The visible h1, where design.md fixes it. */
   readonly h1?: RegExp;
+  /**
+   * Spec 024 (prototype `spec-head-unified`): below 640 the idea's labels stack between the path and the h1, so at the
+   * compact tier the eyebrow-to-h1 gap leaves out this element's box and its 8 px row gap.
+   */
+  readonly compactBetween?: string;
 }
 
 const EYEBROW_PAGES: readonly EyebrowPage[] = [
   { name: 'workspaces', path: '/', segments: null },
-  { name: 'dashboard', path: `/w/${WORKSPACE}`, segments: [{ ws: true }, { key: 'shell.pages.specs' }], h1: /^\s*Specs(\s*·\s*\d+)?\s*$/u },
-  { name: 'board', path: `/w/${WORKSPACE}/board`, segments: [{ ws: true }, { key: 'shell.pages.board' }] },
-  { name: 'idea', path: `/w/${WORKSPACE}/ideas/${IDEA}`, segments: [{ ws: true }, { key: 'shell.pages.board' }, { key: 'ideas.title' }] },
-  { name: 'features', path: `/w/${WORKSPACE}/features`, segments: [{ ws: true }, { key: 'shell.pages.features' }] },
-  { name: 'milestones', path: `/w/${WORKSPACE}/milestones`, segments: [{ ws: true }, { key: 'shell.pages.milestones' }] },
-  { name: 'help', path: '/help', segments: [{ key: 'shell.eyebrow.app' }, { key: 'help.title' }] },
+  { name: 'dashboard', path: `/w/${WORKSPACE}`, segments: [{ ws: true }, { key: 'shell.pages.specs' }, { count: true }] /* spec 024: prototype value (principal: Prototyp gilt immer) */, h1: /^\s*Specs\s*·\s*\S+\s*$/u /* spec 024: prototype value (principal: Prototyp gilt immer) */ },
+  // spec 024: the prototype eyebrows of board, features and milestones end in their count; the idea's ends in its slug.
+  { name: 'board', path: `/w/${WORKSPACE}/board`, segments: [{ ws: true }, { key: 'shell.pages.board' }, { count: true }] },
+  {
+    name: 'idea',
+    path: `/w/${WORKSPACE}/ideas/${IDEA}`,
+    segments: [{ ws: true }, { key: 'shell.pages.board' }, { key: 'ideas.title' }, { literal: IDEA }],
+    compactBetween: '[data-idea-chips]',
+  },
+  { name: 'features', path: `/w/${WORKSPACE}/features`, segments: [{ ws: true }, { key: 'shell.pages.features' }, { count: true }] },
+  { name: 'milestones', path: `/w/${WORKSPACE}/milestones`, segments: [{ ws: true }, { key: 'shell.pages.milestones' }, { count: true }] },
+  // spec 024: prototype value (principal: Prototyp gilt immer) — the help eyebrow reads SPECTANT · GUIDE.
+  { name: 'help', path: '/help', segments: [{ key: 'shell.eyebrow.app' }, { key: 'help.eyebrow' }] },
   { name: 'settings', path: '/settings', segments: [{ key: 'shell.eyebrow.app' }, { key: 'settings.title' }] },
 ];
 
@@ -354,7 +362,11 @@ async function checkEyebrow(page: Page, entry: EyebrowPage, language: Language):
   await expect(h1, `${entry.name}: the h1 under the eyebrow is visible`).toBeVisible();
   if (entry.h1) await expect(h1, `${entry.name}: the h1`).toHaveText(entry.h1);
   const [top, head] = await Promise.all([eyebrow.boundingBox(), h1.boundingBox()]);
-  const gap = (head?.y ?? -Infinity) - ((top?.y ?? 0) + (top?.height ?? 0));
+  let gap = (head?.y ?? -Infinity) - ((top?.y ?? 0) + (top?.height ?? 0));
+  if (entry.compactBetween && (page.viewportSize()?.width ?? Infinity) < 640) {
+    const between = await page.locator(entry.compactBetween).boundingBox();
+    gap -= (between?.height ?? 0) + 8;
+  }
   expect(gap, `${entry.name}: the eyebrow sits directly above the h1`).toBeGreaterThanOrEqual(-1);
   expect(gap, `${entry.name}: the eyebrow sits directly above the h1`).toBeLessThanOrEqual(16);
 
@@ -363,11 +375,15 @@ async function checkEyebrow(page: Page, entry: EyebrowPage, language: Language):
   expect((await h1.textContent()) ?? '', `${entry.name}: no catalog key in the h1`).not.toMatch(CATALOG_KEY);
   const actual = segmentsOf(text);
   const global = entry.segments === null || entry.segments.every((segment) => !('ws' in segment));
+  const counted = entry.segments?.findIndex((segment) => 'count' in segment) ?? -1;
+  if (counted >= 0) expect(actual[counted] ?? '', `${entry.name}: the eyebrow ends in a count`).toMatch(COUNT_SEGMENT);
   if (global) for (const name of WORKSPACE_NAMES) expect(actual, `${entry.name}: no workspace in the eyebrow`).not.toContain(name);
   if (entry.segments === null) return;
 
   const expected = entry.segments.map((segment) => {
     if ('ws' in segment) return WORKSPACE;
+    if ('literal' in segment) return segment.literal;
+    if ('count' in segment) return actual[counted] ?? '';
     const value = lookup(catalogs[language], segment.key);
     expect(value, `${entry.name}: the ${language} catalog holds ${segment.key}`).toBeDefined();
     return (value ?? '').toLowerCase();
@@ -436,8 +452,12 @@ test.describe('workspace first', () => {
 // compared case-insensitively (the uppercase is CSS): `shell.pills.workspace`, `shell.pills.specs` on workspace pages,
 // `shell.pills.spec` on spec pages, `shell.pills.area`. On `/`, `/help` and `/settings` the spec and area pills are
 // absent, the workspace pill reads `shell.pills.all · n`, and no segment shows `0`. `bun run e2e -- breadcrumb -g pills`.
+// ISC-140.2 refined (spec 024: one-row header on every width, principal 2026-10-13): the labels are visible from 1120 px;
+// below it the Workspace and Spec labels are part of the select's accessible name, and the Area select is the entry
+// of the overflow menu `⋯`, label and value visible there.
 const PILLS = 'app-shell-nav';
-type PillName = 'workspace' | 'spec' | 'area';
+// spec 024: PAGE select (principal 2026-10-13): the PAGE select is the second pill; the Area pill only on a spec page
+type PillName = 'workspace' | 'page' | 'spec' | 'area';
 /** The expected value of a pill: an exact catalog-backed text, or a pattern the value must match. */
 interface PillExpectation {
   readonly label: string;
@@ -458,8 +478,8 @@ const PILL_PAGES: readonly PillPage[] = [
     path: `/w/${WORKSPACE}`,
     pills: {
       workspace: { label: 'shell.pills.workspace', value: { text: WORKSPACE } },
+      page: { label: 'shell.pills.page', value: { key: 'shell.pages.specs' } },
       spec: { label: 'shell.pills.specs', value: { pattern: /^\s*\d+\s*$/u } },
-      area: { label: 'shell.pills.area', value: { key: 'shell.pages.specs' } },
     },
   },
   {
@@ -467,6 +487,7 @@ const PILL_PAGES: readonly PillPage[] = [
     path: `/w/${WORKSPACE}/s/002/claims`,
     pills: {
       workspace: { label: 'shell.pills.workspace', value: { text: WORKSPACE } },
+      page: { label: 'shell.pills.page', value: { key: 'shell.pages.specs' } },
       spec: { label: 'shell.pills.spec', value: { pattern: /^\s*002(\s|$)/u } },
       area: { label: 'shell.pills.area', value: { key: `shell.areas.${DATA_AREA}` } },
     },
@@ -487,11 +508,15 @@ const pillCatalog = (where: string, key: string): string => {
 const exactly = (text: string): RegExp => new RegExp(`^\\s*${escapeRegExp(text).replace(/\s+/gu, '\\s+')}\\s*$`, 'iu');
 const normalized = (text: string | null): string => (text ?? '').replace(/\s+/gu, ' ').trim();
 
-async function checkPills(page: Page, entry: PillPage): Promise<void> {
+async function checkPills(page: Page, entry: PillPage, width: number): Promise<void> {
   await page.goto(entry.path);
-  for (const name of ['workspace', 'spec', 'area'] as const) {
+  const wide = width >= 1120;
+  for (const name of ['workspace', 'page', 'spec', 'area'] as const) {
     const where = `${entry.name} (${entry.path}), the ${name} pill`;
-    const segment = page.locator(`${PILLS} [data-control="${name}"]`);
+    // spec 024: one-row header on every width (principal 2026-10-13): below 1120 the area select is the overflow entry
+    const inMenu = name === 'area' && !wide;
+    const segment = page.locator(inMenu ? 'header [data-menu="more"] [data-control="area"]' : `${PILLS} [data-control="${name}"]`);
+    if (inMenu && entry.pills.area) await page.locator('header [data-tool="more"]').click();
     const expected = entry.pills[name];
     if (!expected) {
       await expect(segment, `${where} is absent`).toHaveCount(0);
@@ -502,8 +527,13 @@ async function checkPills(page: Page, entry: PillPage): Promise<void> {
 
     const label = segment.locator('[data-pill-label]');
     await expect(label, `${where} carries one label`).toHaveCount(1);
-    await expect(label, `${where}: the label is visible`).toBeVisible();
-    await expect(label, `${where}: the label is ${expected.label}`).toHaveText(exactly(pillCatalog(where, expected.label)));
+    // ISC-140.2 refined: visible from 1120 px, below it in the accessible name
+    await expect(label, `${where}: the label is visible`).toBeVisible({ visible: wide || inMenu });
+    if (!wide && !inMenu) {
+      const named = new RegExp(escapeRegExp(pillCatalog(where, expected.label)), 'iu');
+      await expect(segment, `${where}: the label is in the accessible name`).toHaveAccessibleName(named);
+    }
+    await expect(label, `${where}: the label is ${expected.label}`).toHaveText(exactly(pillCatalog(where, expected.label)), { useInnerText: false });
 
     const value = segment.locator('[data-pill-value]');
     await expect(value, `${where} carries one value`).toHaveCount(1);
@@ -537,7 +567,7 @@ test.describe('pills', () => {
 
       for (const entry of PILL_PAGES) {
         test(`pills carry labels: ${entry.name} (${entry.path}) at ${String(width)}`, async ({ page }) => {
-          await checkPills(page, entry);
+          await checkPills(page, entry, width);
         });
       }
     });
@@ -594,10 +624,16 @@ test.describe('polish', () => {
         expect(name, 'the back link names no catalog key').not.toMatch(CATALOG_KEY);
       });
 
-      test(`polish: every copy chip on the workspaces overview names its command at ${String(width)}`, async ({ page }) => {
+      // spec 024: overview without lists (principal 2026-10-13): Next up and its copy chips left `/` for the workspace
+      // dashboard, so the probe reads the Next up chips there (one per spec, as on `/` before; a row's reason chip
+      // repeats its spec's command by design) and asserts `/` holds none.
+      test(`polish: every copy chip on the workspace dashboard names its command, the overview has none, at ${String(width)}`, async ({ page }) => {
         await page.goto('/');
-        const chips = page.locator('ui-command-chip').filter({ visible: true });
-        await expect(chips.first(), 'the overview shows copy chips').toBeVisible();
+        await expect(page.locator('app-workspace-column').first()).toBeVisible();
+        await expect(page.locator('app-overview-page ui-command-chip'), 'the overview shows no copy chip').toHaveCount(0);
+        await page.goto(`/w/${WORKSPACE}`);
+        const chips = page.locator('app-next-up-list ui-command-chip').filter({ visible: true });
+        await expect(chips.first(), 'the workspace dashboard shows Next up copy chips').toBeVisible();
         const names: string[] = [];
         for (const chip of await chips.all()) {
           const command = normalized(await chip.locator('code').textContent());

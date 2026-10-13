@@ -31,10 +31,17 @@
   min-inline-size: 0;
 }
 
+/* Prototype `.t-head .sort`: a bordered `.btn` (32 px, --border, --radius, --card) with `arrow-up-down`. */
 .sort {
-  gap: 4px;
+  --btn-bg: var(--color-base-100);
+  --btn-border: var(--line);
+  --btn-fg: var(--color-base-content);
+
+  gap: 8px;
   margin-inline-start: auto;
-  color: var(--muted-ink);
+  border-radius: var(--radius-field);
+  border-width: 1px;
+  border-style: solid;
 }
 
 .takeable-flag {
@@ -90,8 +97,7 @@
 .rows:focus-within .row-link[data-selected] {
   --row-id-ink: var(--disp-ink);
 
-  background: var(--disp-t);
-  box-shadow: inset 3px 0 0 var(--color-primary);
+  background: var(--color-base-300);
 }
 
 .empty {
@@ -137,20 +143,21 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The sort menu, in the popover and the sheet (prototype `.pop-item`). */
+/* The sort menu, in the popover and the sheet (prototype `.pop-item`). The prototype popover is at least 240 px wide; the panel's 8 px padding is part of that. */
 .sort-menu {
   display: grid;
   gap: 2px;
-  min-inline-size: 160px;
+  min-inline-size: 222px;
 }
 
 .pop-item {
   display: flex;
+  gap: var(--space-2);
   align-items: center;
   inline-size: 100%;
   min-block-size: 36px;
   padding: 6px 8px;
-  border-radius: var(--radius-field);
+  border-radius: var(--radius-sm);
   color: var(--color-base-content);
   font-size: 13px;
   text-align: start;
@@ -184,19 +191,34 @@
   block-size: 0;
 }
 
+/* Prototype `.new-pill`: 28 px on the badge fill, 12/500, fading in on the popover token. */
 .pending-pill {
-  --btn-bg: var(--color-primary);
-  --btn-fg: var(--color-primary-content);
-  --btn-border: var(--color-primary);
-
   position: absolute;
-  z-index: 1;
+  z-index: 2;
   inset-block-start: 16px;
   inset-inline-start: 50%;
-  translate: -50% 0;
-  border-radius: 999px;
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  block-size: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--badge);
+  color: var(--color-neutral-content);
+  font-size: 12px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  cursor: pointer;
+  translate: -50% 0;
+  transition: opacity var(--dur-pop) var(--ease);
+}
+
+@starting-style {
+  .pending-pill {
+    opacity: 0;
+  }
 }
 
 .row-link[data-changed]::before {
@@ -250,4 +272,30 @@
    bottom padding, and after "more…" the two margins collapse, so it follows that toggle directly. */
 .row-reason {
   margin: -8px 16px 8px 80px;
+}
+
+/* Spec 024 (principal 2026-10-13 "Hybrid", ISC-111 refined): the row's description is one muted line with "more…" at
+   its end. The button stays outside the row link and is anchored to the description cell's end edge (`--desc-<id>`,
+   set by the row); the row reserves the room at the line's end. Without anchor positioning it keeps its own line. */
+@supports (position-anchor: --a) {
+  .rows > li {
+    position: relative;
+  }
+
+  .row-more {
+    position: absolute;
+    right: anchor(right);
+    bottom: anchor(bottom);
+    display: inline-flex;
+    align-items: flex-end;
+    min-block-size: 20px;
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (pointer: coarse) {
+    .row-more {
+      min-block-size: 44px;
+    }
+  }
 }

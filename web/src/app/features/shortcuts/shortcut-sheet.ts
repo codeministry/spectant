@@ -13,9 +13,10 @@ import {
 } from '../../core/keyboard-bindings';
 import { KeyboardService } from '../../core/keyboard.service';
 import { SettingsService } from '../../core/settings.service';
-import { ShellState } from '../../layout/shell/shell-state.service';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
-import { UiSheet } from '../../shared/ui/overlay/sheet';
+import { UiIconButton } from '../../shared/ui/button/icon-button';
+import { UiIcon } from '../../shared/icons/icon';
+import { UiDialog } from '../../shared/ui/overlay/dialog';
 
 interface SheetGroup {
   readonly id: ShortcutGroup;
@@ -39,71 +40,85 @@ const CONTEXTS: readonly SheetContext[] = SHORTCUT_CONTEXTS.map((context) => {
 });
 
 /**
- * The shortcut sheet (ISC-97, T102; spec 001 T67): every binding of `SHORTCUTS`, per context (workspace, spec,
- * everywhere) and group, each with its key caps. Opened by `?` and from the settings help entry through
- * `KeyboardService.sheetOpen`; mounted once by the app root. A side sheet at medium and wide, a bottom sheet at compact,
- * and listed on every tier even where key hints are hidden (design.md).
+ * The shortcut sheet (ISC-97, T102; spec 001 T67; spec 024 aligns it with the prototype `#dlg-keys`): every binding of
+ * `SHORTCUTS`, per context (workspace, spec, everywhere) and group, each row the action left and its key caps right,
+ * the rows in the prototype `.keys` grid (two columns from 528 px, 32 px apart). Opened by `?` and from the settings
+ * help entry through `KeyboardService.sheetOpen`; mounted once by the app root. A centred 640 px dialog 96 px from the
+ * top on every tier (prototype `[data-ui="dialog"]`), listed on every tier even where key hints are hidden.
  */
 @Component({
   selector: 'app-shortcut-sheet',
-  imports: [RouterLink, TranslocoPipe, UiKbd, UiSheet],
+  imports: [RouterLink, TranslocoPipe, UiDialog, UiIcon, UiIconButton, UiKbd],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
-    .off { margin: 0 0 16px; color: var(--muted-ink); font-size: 14px; line-height: 20px; }
-    .context + .context { margin-block-start: 32px; }
-    .group + .group { margin-block-start: 16px; }
-    h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; line-height: 20px; }
-    h4 { margin: 0 0 8px; color: var(--muted-ink); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; line-height: 16px; text-transform: uppercase; }
-    dl { margin: 0; }
-    .row { display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: baseline; padding-block: 6px; border-block-end: 1px solid var(--line); }
-    .row:last-child { border-block-end: 0; }
-    dt { display: flex; gap: 4px; }
-    dd { margin: 0; font-size: 14px; line-height: 20px; }
-    .footer { margin: 32px 0 0; padding-block-start: 16px; border-block-start: 1px solid var(--line); }
-    .footer a { display: inline-flex; align-items: center; min-block-size: 44px; color: var(--disp-ink); font-size: 14px; }
+    ui-dialog { --ui-dialog-size: 640px; --ui-dialog-top: 96px; --ui-dialog-padding: 0; }
+    .sheet { display: flex; flex-direction: column; max-block-size: calc(100dvh - 130px); min-block-size: 0; }
+    .sheet-head { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 24px 24px 0; }
+    h2 { margin: 0; font-size: 16px; font-weight: 600; line-height: 24px; }
+    .sheet-scroll { min-block-size: 0; overflow: auto; padding: 16px 24px 24px; }
+    .off { margin: 0 0 16px; color: var(--muted); font-size: 13px; line-height: 20px; }
+    .context + .context { margin-block-start: 24px; }
+    .group + .group { margin-block-start: 12px; }
+    h3, h4 { margin: 0 0 4px; color: var(--muted); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; line-height: 16px; text-transform: uppercase; }
+    h4 { font-weight: 500; letter-spacing: 0.04em; }
+    .keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0 32px; }
+    .row { display: flex; gap: 16px; align-items: center; justify-content: space-between; min-block-size: 37px; padding-block: 8px; border-block-end: 1px solid var(--line); font-size: 13px; line-height: 20px; }
+    .action { min-inline-size: 0; }
+    .k { display: inline-flex; flex: none; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+    .footer { margin: 16px 0 0; }
+    .footer a { display: inline-flex; gap: 4px; align-items: center; min-block-size: 24px; color: var(--disp-text); font-size: 13px; font-weight: 500; }
+    .footer a:hover { text-decoration: underline; }
   `,
   template: `
-    <ui-sheet [tier]="tier()" [heading]="'shortcuts.title' | transloco" [(open)]="keyboard.sheetOpen">
-      @if (!singleKeys()) {
-        <p class="off" data-shortcuts-off>{{ 'shortcuts.off' | transloco }}</p>
-      }
-      @for (context of contexts; track context.id) {
-        <section class="context" [attr.data-context]="context.id">
-          <h3>{{ 'shortcuts.contexts.' + context.id | transloco }}</h3>
-          @for (group of context.groups; track group.id) {
-            <section class="group" [attr.data-group]="group.id">
-              @if (context.titled) {
-                <h4>{{ 'shortcuts.groups.' + group.id | transloco }}</h4>
-              }
-              <dl>
-                @for (binding of group.bindings; track binding.id) {
-                  <div class="row" [attr.data-binding]="binding.id">
-                    <dt>
-                      @for (key of binding.keys; track $index) {
-                        <ui-kbd>{{ keyLabel(key) }}</ui-kbd>
-                      }
-                    </dt>
-                    <dd>{{ binding.label | transloco: { target: binding.target ? (binding.target | transloco) : '' } }}</dd>
+    <ui-dialog [label]="'shortcuts.title' | transloco" [(open)]="keyboard.sheetOpen">
+      <div class="sheet" data-ui="shortcut-sheet">
+        <div class="sheet-head">
+          <h2>{{ 'shortcuts.title' | transloco }}</h2>
+          <button ui-icon-button icon="x" size="sm" [label]="'common.close' | transloco" (click)="keyboard.sheetOpen.set(false)"></button>
+        </div>
+        <div class="sheet-scroll">
+          @if (!singleKeys()) {
+            <p class="off" data-shortcuts-off>{{ 'shortcuts.off' | transloco }}</p>
+          }
+          @for (context of contexts; track context.id) {
+            <section class="context" [attr.data-context]="context.id">
+              <h3>{{ 'shortcuts.contexts.' + context.id | transloco }}</h3>
+              @for (group of context.groups; track group.id) {
+                <section class="group" [attr.data-group]="group.id">
+                  @if (context.titled) {
+                    <h4>{{ 'shortcuts.groups.' + group.id | transloco }}</h4>
+                  }
+                  <div class="keys">
+                    @for (binding of group.bindings; track binding.id) {
+                      <div class="row" [attr.data-binding]="binding.id">
+                        <span class="action">{{ binding.label | transloco: { target: binding.target ? (binding.target | transloco) : '' } }}</span>
+                        <span class="k">
+                          @for (key of binding.keys; track $index) {
+                            <ui-kbd>{{ keyLabel(key) }}</ui-kbd>
+                          }
+                        </span>
+                      </div>
+                    }
                   </div>
-                }
-              </dl>
+                </section>
+              }
             </section>
           }
-        </section>
-      }
-      <p class="footer">
-        <a routerLink="/help" data-sheet-help (click)="keyboard.sheetOpen.set(false)">{{ 'help.title' | transloco }}</a>
-      </p>
-    </ui-sheet>
+          <p class="footer">
+            <a routerLink="/help" data-sheet-help (click)="keyboard.sheetOpen.set(false)"
+              >{{ 'settings.keyboard.guide' | transloco }}<ui-icon name="arrow-right" [size]="14"
+            /></a>
+          </p>
+        </div>
+      </div>
+    </ui-dialog>
   `,
 })
 export class ShortcutSheet {
   protected readonly keyboard = inject(KeyboardService);
-  private readonly shell = inject(ShellState);
   private readonly settings = inject(SettingsService);
 
   protected readonly contexts = CONTEXTS;
   protected readonly keyLabel = keyLabel;
-  protected readonly tier = computed(() => this.shell.tier());
   protected readonly singleKeys = computed(() => this.settings.settings().singleKeyShortcuts);
 }

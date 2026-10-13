@@ -20,7 +20,7 @@
       />
       <ui-kbd aria-hidden="true">{{ escLabel }}</ui-kbd>
     </div>
-    <div class="p-list" role="listbox" [id]="listId" [attr.aria-label]="'palette.results' | transloco">
+    <div class="p-list" role="listbox" [id]="listId" [attr.aria-label]="'palette.results' | transloco" [attr.aria-busy]="settled() ? null : 'true'">
       @for (group of groups(); track group.id) {
         <div role="group" class="p-section" [attr.data-group]="group.id" [attr.aria-labelledby]="group.headingId">
           <div role="presentation" class="p-group" [id]="group.headingId">{{ group.labelKey | transloco }}</div>
@@ -37,7 +37,10 @@
               (pointermove)="active.set(option.index)"
               (click)="activate(option.entry)"
             >
-              @if (option.entry.chip) {
+              @if (option.icon; as icon) {
+                <ui-icon class="p-lead" [name]="icon" />
+              }
+              @if (option.entry.chip && option.showChip) {
                 <span class="p-chip" [class.p-idea]="option.idea">
                   @if (option.idea) {
                     <ui-icon name="lightbulb" [size]="12" />
@@ -54,6 +57,7 @@
               <!-- One line cut at a whole word; the highlighted option up to three (ISC-111.2). No control inside an option. -->
               <span
                 class="grow"
+                [class.mono]="option.mono"
                 [title]="option.entry.label"
                 [uiClamp]="option.text"
                 [uiClampPieces]="option.label"
@@ -65,11 +69,21 @@
               @if (option.entry.meta; as meta) {
                 <span class="meta" [title]="meta" [uiClamp]="meta" [uiClampLines]="option.index === active() ? 3 : 1"></span>
               }
+              @if (isDemo(option.entry)) {
+                <ui-chip class="p-demo" variant="demo" data-demo />
+              }
+              @if (option.phase; as phase) {
+                <ui-chip class="p-phase" aria-hidden="true" [tone]="phase.tone" [icon]="phase.icon">{{ phase.label }}</ui-chip>
+              }
             </button>
           }
         </div>
       } @empty {
-        <p class="p-empty" role="presentation">{{ 'palette.noMatch' | transloco: { query: query(), example: example() } }}</p>
+        @if (settled()) {
+          <p class="p-empty" role="presentation">{{ 'palette.noMatch' | transloco: { query: query(), example: example() } }}</p>
+        } @else {
+          <p class="p-empty" role="presentation" data-palette-loading>{{ 'palette.loading' | transloco }}</p>
+        }
       }
     </div>
   </div>

@@ -2,7 +2,8 @@
 // (spec 002's shell).
 export { UiActorChip } from './actor-chip/actor-chip';
 export { UiCard } from './card/card';
-export { UiChip } from './chip/chip';
+export { type ChipVariant, UiChip } from './chip/chip';
+export { CHIP_ICON, chipIcon } from './chip/chip-icons';
 export { CLAMP_ELLIPSIS, type ClampPiece, fitWords, UiClamp } from './clamp/clamp';
 export { UiCommandChip, writeClipboard } from './command-chip/command-chip';
 export { UiEmptyState } from './empty-state/empty-state';
@@ -48,3 +49,6 @@ export { UiTerm } from './term/term';
 export { TYPE_GLYPHS, type TypeGlyphKind, UiTypeGlyph } from './type-glyph/type-glyph';
 export { TOAST_MS, ToastService, UiToast } from './toast/toast';
 export { type Tone, toneColor, toneInk, toneMark, toneTint } from './tone';
+export { UiWsBadge, type WsBadgeSize } from './ws-badge/ws-badge';
+export { UiWsCover } from './ws-badge/ws-cover';
+export { WS_ACCENT_TOKENS, type WsAccent, wsAccent, wsHash, wsMonogram, type WsPattern, wsPattern } from './ws-badge/ws-identity';

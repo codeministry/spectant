@@ -95,15 +95,15 @@ function rowsFor(g: Goldens): readonly Row[] {
     { tab: '', what: 'kpi agents working', golden: 'spec.keyNumbers.rounds.agentsWorking', selector: `${kpi} [data-kpi="round"] .meta`, kind: 'text', want: k.rounds.agentsWorking > 0 ? `${n(k.rounds.agentsWorking)} agents working` : 'No agent working' },
     { tab: '', what: 'kpi gates ok/total', golden: 'spec.keyNumbers.gates.ok/total', selector: `${kpi} [data-kpi="gates"] .figure`, kind: 'text', want: pair(k.gates.ok, k.gates.total) },
     { tab: '', what: 'kpi waiting', golden: 'spec.keyNumbers.waiting', selector: `${kpi} [data-kpi="waiting"] .figure`, kind: 'text', want: n(k.waiting) },
-    // Spec dashboard: waiting, lanes, warnings and gates sections.
-    { tab: '', what: 'waiting header count', golden: 'spec.keyNumbers.waiting', selector: `${dash} [data-section="waiting"] span[meta]`, kind: 'text', want: n(k.waiting) },
-    { tab: '', what: 'waiting rows', golden: 'spec.waitingOnYou.length', selector: `${dash} [data-section="waiting"] .waiting-row`, kind: 'count', want: g.spec.waitingOnYou.length },
+    // Spec dashboard: lanes, and the Spec context (main column below 1120 px, the rail from 1120: one copy per width).
+    { tab: '', what: 'waiting header count', golden: 'spec.keyNumbers.waiting', selector: '[data-spec-context] [data-context-block="waiting"] [data-count-badge]', kind: 'text', want: n(k.waiting) },
+    { tab: '', what: 'waiting rows', golden: 'spec.waitingOnYou.length', selector: '[data-spec-context] [data-context-block="waiting"] [data-waiting-item]', kind: 'count', want: g.spec.waitingOnYou.length },
     { tab: '', what: 'lanes rows', golden: 'spec.lanes.length', selector: `${dash} [data-lane]`, kind: 'count', want: lanes.length },
-    { tab: '', what: 'warnings header count', golden: 'spec.areas.status.warnings', selector: `${dash} [data-section="warnings"] span[meta]`, kind: 'text', want: n(areas.status.warnings) },
-    { tab: '', what: 'warnings rows', golden: 'spec.warnings.length', selector: `${dash} [data-section="warnings"] [data-warning]`, kind: 'count', want: g.spec.warnings.length },
-    { tab: '', what: 'gates rows', golden: 'spec.keyNumbers.gates.total', selector: `${dash} [data-section="gates"] [data-gate]`, kind: 'count', want: k.gates.total },
+    { tab: '', what: 'warnings header count', golden: 'spec.areas.status.warnings', selector: '[data-spec-context] [data-context-block="warnings"] [data-count-badge]', kind: 'text', want: n(areas.status.warnings) },
+    { tab: '', what: 'warnings rows', golden: 'spec.warnings.length', selector: '[data-spec-context] [data-context-block="warnings"] [data-context-warning]', kind: 'count', want: g.spec.warnings.length },
+    { tab: '', what: 'gates rows', golden: 'spec.keyNumbers.gates.total', selector: '[data-spec-context] [data-context-block="gates"] [data-gate-row]', kind: 'count', want: k.gates.total },
     // core counts a gate ok when its state is `fresh` or `ok` (`keyNumbers.gates.ok` in core/src/spec.ts).
-    { tab: '', what: 'gates rows ok', golden: 'spec.keyNumbers.gates.ok', selector: `${dash} [data-section="gates"] [data-gate]:is([data-state="fresh"], [data-state="ok"])`, kind: 'count', want: k.gates.ok },
+    { tab: '', what: 'gates rows ok', golden: 'spec.keyNumbers.gates.ok', selector: '[data-spec-context] [data-context-block="gates"] [data-gate-row]:is([data-state="fresh"], [data-state="ok"])', kind: 'count', want: k.gates.ok },
     // Spec dashboard: the area tiles' numbers.
     { tab: '', what: 'status tile timeline entries', golden: 'spec.areas.status.timelineEntries', selector: tile('status', 0), kind: 'text', want: `${n(areas.status.timelineEntries)} timeline entries` },
     { tab: '', what: 'status tile warnings', golden: 'spec.areas.status.warnings', selector: tile('status', 1), kind: 'text', want: `${n(areas.status.warnings)} warnings` },
@@ -234,11 +234,16 @@ for (const { width, tier } of TIERS) {
         await expect(page.locator('app-evidence-tab [data-file]'), 'files ≠ evidence.results + raw').toHaveCount(
           listing.results.length + listing.raw.length,
         );
-        await expect(page.locator('app-evidence-tab [data-claim-group]'), 'groups ≠ evidence.byClaim + ungrouped').toHaveCount(groups.length);
+        // spec 024: prototype value (principal: Prototyp gilt immer): folder groups (Results, Raw evidence), the claim as a chip on every file.
+        const both: Array<[string, number]> = [['results', listing.results.length], ['raw', listing.raw.length]];
+        const folders = both.filter(([, count]) => count !== 0);
+        await expect(page.locator('app-evidence-tab [data-evidence-group]'), 'groups ≠ non-empty results + raw').toHaveCount(folders.length);
+        for (const [key, count] of folders) {
+          const group = page.locator(`app-evidence-tab [data-evidence-group="${key}"]`);
+          await expect(group.locator('[data-file]'), `group ${key} files ≠ evidence.${key}.length`).toHaveCount(count);
+        }
         for (const [key, count] of groups) {
-          const group = page.locator(`app-evidence-tab [data-claim-group="${key}"]`);
-          await expect(group.locator('[data-file]'), `group ${key} files ≠ evidence.byClaim[${key}].length`).toHaveCount(count);
-          await expect(group.locator('.evidence-count').first(), `group ${key} count ≠ evidence.byClaim[${key}].length`).toContainText(n(count));
+          await expect(page.locator(`app-evidence-tab [data-file][data-claim="${key}"]`), `claim ${key} files ≠ evidence.byClaim[${key}].length`).toHaveCount(count);
         }
       });
     }

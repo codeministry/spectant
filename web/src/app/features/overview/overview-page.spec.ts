@@ -66,7 +66,17 @@ describe('OverviewPage (T65, ISC-16)', () => {
     const columns = [...root.querySelectorAll('.overview [data-ui="workspace-column"]')];
     expect(columns.map((c) => c.getAttribute('data-ws'))).toEqual(['harbor', 'lantern']);
     expect([...asked].sort()).toEqual(['harbor', 'lantern']);
-    expect(root.querySelector('.ws-cover, img')).toBeNull();
+    // T54 (spec 024): one identity cover per column, a mock with its chip in the ws-head; the fixture holds no image
+    // for harbor or lantern, so each shows the name pattern and no <img> appears.
+    const covers = [...root.querySelectorAll('[data-ws-cover]')];
+    expect(covers.map((cover) => cover.closest('[data-ui="workspace-column"]')?.getAttribute('data-ws'))).toEqual(['harbor', 'lantern']);
+    for (const cover of covers) {
+      const mock = cover.closest('[data-demo]');
+      expect(mock?.querySelector('[data-demo-head] [data-demo-chip]')).not.toBeNull();
+      expect(cover.querySelector('svg path')).not.toBeNull();
+    }
+    expect(root.querySelectorAll('[data-ws-badge]').length).toBe(covers.length);
+    expect(root.querySelector('img')).toBeNull();
   });
 
   it('shows the ws-head: badge, name as h2, mono path and the updated time', async () => {
@@ -101,19 +111,22 @@ describe('OverviewPage (T65, ISC-16)', () => {
     expect(strip('lantern')?.querySelector('[data-kpi="warnings"]')?.hasAttribute('data-edge')).toBe(false);
   });
 
-  it('lists up to three Next up rows with their command chips, the dense spec list and the open link', async () => {
-    const { root } = await render([entry('harbor')]);
-    const column = root.querySelector('[data-ws="harbor"]');
-    const next = [...(column?.querySelectorAll('.next-row') ?? [])];
-    expect(next.map((row) => row.getAttribute('data-next'))).toEqual(['004', '005', '006']);
-    expect(next[0]?.querySelector('ui-command-chip')).not.toBeNull();
-    const rows = [...(column?.querySelectorAll('.dense-list .d-row') ?? [])];
-    expect(rows.map((row) => text(row.querySelector('.id')))).toEqual(harbor.specs.map((spec) => spec.id));
-    expect(rows[0]?.getAttribute('href')).toBe('/w/harbor/s/004');
-    expect(text(rows[0]?.querySelector('ui-chip'))).toBe('building');
-    const open = column?.querySelector('a.open-link');
-    expect(text(open)).toBe('Open harbor →');
-    expect(open?.getAttribute('href')).toBe('/w/harbor');
+  // spec 024: overview without lists (principal 2026-10-13)
+  it('shows per workspace only its identity and the four tiles: no Next up, no spec list, no open link; cover and name lead to the workspace', async () => {
+    const { root } = await render([entry('harbor'), entry('lantern')]);
+    for (const ws of ['harbor', 'lantern']) {
+      const column = root.querySelector(`.overview [data-ws="${ws}"]`);
+      expect(column).not.toBeNull();
+      expect(column?.querySelectorAll('[data-ui="kpi-tile"]').length).toBe(4);
+      expect(column?.querySelector('.next, .next-row, [data-next], .dense-list, .d-row, a.open-link, ui-command-chip, ui-empty-state')).toBeNull();
+      expect(text(column)).not.toContain('Next up');
+      expect(column?.querySelector('a[href*="/s/"]')).toBeNull();
+      const links = [...(column?.querySelectorAll('a[href]') ?? [])];
+      expect(links.map((link) => link.getAttribute('href'))).toEqual([`/w/${ws}`, `/w/${ws}`]);
+      expect(column?.querySelector('a [data-ws-cover]')).not.toBeNull();
+      expect(column?.querySelector('.ws-head a h2')).not.toBeNull();
+    }
+    expect(root.querySelector('[data-footer-note]')).not.toBeNull();
   });
 
   it('shows an unreadable workspace as a notice in its column and loads no dashboard for it', async () => {
@@ -128,7 +141,8 @@ describe('OverviewPage (T65, ISC-16)', () => {
   it('shows the empty state with the add command when no workspace is registered', async () => {
     const { root } = await render([]);
     expect(root.querySelector('[data-ui="workspace-column"]')).toBeNull();
-    const empty = root.querySelector('ui-empty-state');
+    // spec 024: prototype value (principal: Prototyp gilt immer) — the prototype's own empty-state markup.
+    const empty = root.querySelector('[data-overview-empty]');
     expect(text(empty)).toContain('Add your first workspace');
     expect(empty?.querySelector('ui-command-chip')).not.toBeNull();
   });

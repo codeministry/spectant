@@ -43,6 +43,7 @@
       }
     </div>
     <div class="gallery-row">
+      <ui-chip variant="demo" data-gallery="chip-demo" />
       <ui-id-chip data-gallery="id-chip">ISC-334</ui-id-chip>
       <ui-kbd data-gallery="kbd">⌘K</ui-kbd>
       <ui-kbd data-gallery="kbd-esc">Esc</ui-kbd>
@@ -150,6 +151,53 @@
       <p class="gallery-copy">Hidden content. <button ui-button size="sm" data-gallery="disclosure-closed-content">Hidden</button></p>
     </ui-disclosure>
   </section>
+
+  <!--
+    Prototype anatomy (ISC-148, spec 024 T24): one 640 px block per part of the prototype fixture, keyed by the part's name with '.' as '-'
+    (web/tests/fixtures/prototype-reference.json → primitives), with the extractor's placeholder content, so
+    content-dependent sizes compare. Measured by web/e2e/browser/primitives.spec.ts, which maps each part to its element.
+  -->
+  <section class="gallery-group" aria-labelledby="g-anatomy">
+    <h2 id="g-anatomy">Prototype anatomy</h2>
+    <div class="gallery-anatomy" data-anatomy="card"><ui-card [padding]="0">Ag</ui-card></div>
+    <div class="gallery-anatomy" data-anatomy="card-edge"><ui-card [padding]="0" edge>Ag</ui-card></div>
+    <div class="gallery-anatomy" data-anatomy="card-edge::before"><ui-card [padding]="0" edge>Ag</ui-card></div>
+    <div class="gallery-anatomy" data-anatomy="card-glow"><ui-card [padding]="0" glow>Ag</ui-card></div>
+    <div class="gallery-anatomy" data-anatomy="card-glow::after"><ui-card [padding]="0" glow>Ag</ui-card></div>
+    @for (chip of anatomyChips; track chip.part) {
+      <div class="gallery-anatomy" [attr.data-anatomy]="chip.part">
+        <ui-chip [tone]="chip.tone" [variant]="chip.variant" [icon]="chip.icon">Ag</ui-chip>
+      </div>
+    }
+    @for (chip of anatomyStates; track chip.part) {
+      <div class="gallery-anatomy" [attr.data-anatomy]="chip.part"><ui-state-chip [state]="chip.state" [family]="chip.family" /></div>
+    }
+    <div class="gallery-anatomy" data-anatomy="chip -icon"><ui-chip tone="primary" [icon]="chipIcon('building')">Ag</ui-chip></div>
+    <div class="gallery-anatomy" data-anatomy="command-chip"><ui-command-chip command="ab" /></div>
+    <div class="gallery-anatomy" data-anatomy="pill"><ui-chip tone="secondary" variant="pill" icon="file-text">Ag</ui-chip></div>
+    <div class="gallery-anatomy" data-anatomy="badge"><ui-chip tone="secondary" variant="count">3</ui-chip></div>
+    @for (part of ['kpi-tile', 'kpi-tile -eyebrow', 'kpi-tile -val', 'kpi-tile -val small']; track part) {
+      <div class="gallery-anatomy" [attr.data-anatomy]="part">
+        <div class="gallery-kpi-band"><ui-kpi-tile label="Ag" [value]="12" [denominator]="3" meta="Ag" /></div>
+      </div>
+    }
+    <div class="gallery-anatomy" data-anatomy="glyph"><ui-glyph state="open" family="claim" /></div>
+    <div class="gallery-anatomy" data-anatomy="glyph-take"><ui-glyph state="takeable" family="claim" /></div>
+    <div class="gallery-anatomy" data-anatomy="glyph-taken"><ui-glyph state="taken" family="claim" /></div>
+    <div class="gallery-anatomy" data-anatomy="glyph-closed"><ui-glyph state="closed" family="claim" /></div>
+    <div class="gallery-anatomy" data-anatomy="glyph -icon"><ui-glyph state="taken" family="claim" /></div>
+    @for (part of ['seg', 'seg button', 'seg button[aria-pressed]']; track part) {
+      <div class="gallery-anatomy" [attr.data-anatomy]="part">
+        <ui-segmented fill [options]="anatomyPair" [(value)]="anatomyPairValue" label="Ag" />
+      </div>
+    }
+    <div class="gallery-anatomy" data-anatomy="kbd"><ui-kbd>K</ui-kbd></div>
+    <div class="gallery-anatomy" data-anatomy="section-head"><ui-section-header heading="Ag" /></div>
+  </section>
+
+  <!-- State galleries (spec 024 T55): prototype states.html and board-states.html, with the app's own components. -->
+  <app-states-gallery />
+  <app-board-states-gallery />
 
   <section class="gallery-group gallery-overlays" aria-labelledby="g-overlays">
     <h2 id="g-overlays">Overlays</h2>

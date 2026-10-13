@@ -4,6 +4,7 @@ import type { ClaimGlyphState } from '../../../../../core/src/files';
 import { KeyboardService } from '../../core/keyboard.service';
 import { LanguageService } from '../../core/language.service';
 import { PALETTE_SOURCES, type PaletteEntry, type PaletteSource } from '../../core/palette-sources';
+import { AssistantDot } from '../assistant/assistant.service';
 import { SettingsService } from '../../core/settings.service';
 import { ThemeService } from '../../core/theme.service';
 import { writeClipboard } from '../../shared/ui/command-chip/command-chip';
@@ -25,6 +26,8 @@ import { PaletteRecent } from './palette-recent';
  */
 export interface PaletteCommandEntry extends PaletteEntry {
   readonly run: () => void;
+  /** The action drives a `DemoData` mock (spec 024): the row carries the demo chip. */
+  readonly demo?: true;
 }
 
 export const isCommand = (entry: PaletteEntry): entry is PaletteCommandEntry =>
@@ -145,7 +148,15 @@ function nextUpSource(): PaletteSource {
   );
 }
 
+/** `counts.specs` read narrowly (`WorkspaceListEntry.counts` is untyped in web). */
+const specsOf = (counts: unknown): number | null => {
+  if (typeof counts !== 'object' || counts === null) return null;
+  const specs = (counts as Readonly<Record<string, unknown>>)['specs'];
+  return typeof specs === 'number' ? specs : null;
+};
+
 function workspacesSource(): PaletteSource {
+  const t = translator();
   const data = inject(ShellData);
   return source(
     'workspaces',
@@ -154,7 +165,8 @@ function workspacesSource(): PaletteSource {
       data.workspaceList().map((ws) => ({
         id: ws.slug,
         label: ws.name,
-        meta: ws.pathTail,
+        // The prototype's meta "6 specs"; the path tail stays a search key.
+        meta: specsOf(ws.counts) === null ? ws.pathTail : t('palette.wsSpecs', { count: specsOf(ws.counts) }),
         link: ['/w', ws.slug],
         keywords: [ws.slug, ws.pathTail],
       })),
@@ -162,7 +174,16 @@ function workspacesSource(): PaletteSource {
   );
 }
 
+/** A spec of the Specs group: its phase as the prototype's chip (`.chip.building` / `.chip.scoping`). */
+export interface PaletteSpecEntry extends PaletteEntry {
+  readonly phase: string;
+  readonly phaseLabel: string;
+}
+
+export const hasPhase = (entry: PaletteEntry): entry is PaletteSpecEntry => typeof (entry as Partial<PaletteSpecEntry>).phase === 'string';
+
 function specsSource(): PaletteSource {
+  const t = translator();
   const index = inject(PaletteIndex);
   return source(
     'specs',
@@ -172,7 +193,8 @@ function specsSource(): PaletteSource {
         ws.specs.map((spec) => ({
           id: `${ws.slug}/${spec.id}`,
           label: spec.title,
-          meta: spec.phase === null ? ws.name : `${spec.phase} · ${ws.name}`,
+          meta: ws.name,
+          ...(spec.phase === null ? {} : { phase: spec.phase, phaseLabel: t(`phases.${spec.phase}`) }),
           chip: spec.id,
           link: specLink(ws.slug, spec.id),
           keywords: [spec.id, spec.slug, ws.name],
@@ -274,6 +296,7 @@ function servicesSource(): PaletteSource {
 
 function actionsSource(): PaletteSource {
   const t = translator();
+  const assistant = inject(AssistantDot);
   const index = inject(PaletteIndex);
   const state = inject(ShellState);
   const keyboard = inject(KeyboardService);
@@ -310,7 +333,21 @@ function actionsSource(): PaletteSource {
           link: workspaceLink(here, 'board'),
           keywords: ['board', 'kanban', 'stages', 'cards'],
         });
+        // Spec 024 (T58, ISC-150.1): the Library, a menu page (a mock until spec 017).
+        actions.push({
+          id: 'action/open-library',
+          label: t('palette.actions.library'),
+          link: workspaceLink(here, 'library'),
+          keywords: ['library', 'docs', 'documents'],
+        });
       }
+      // Spec 024 (T58, ISC-150.1): Settings · Workspaces, also reached from the gear and the Settings card.
+      actions.push({
+        id: 'action/settings-workspaces',
+        label: t('palette.actions.settingsWorkspaces'),
+        link: ['/settings', 'workspaces'],
+        keywords: ['settings', 'workspaces', 'register', 'add'],
+      });
       actions.push({ id: 'action/help', label: t('palette.actions.help'), link: ['/help'], keywords: ['help', 'guide', 'glossary', 'workflow'] });
       const url = here === null ? '/' : `/w/${here}`;
       actions.push(
@@ -340,6 +377,16 @@ function actionsSource(): PaletteSource {
           run: () => {
             // Stored like the settings page's choice; `startSettings` applies it to Transloco.
             void settings.update({ language: language.current() === 'en' ? 'de' : 'en' });
+          },
+        } satisfies PaletteCommandEntry,
+        {
+          id: 'action/open-assistant',
+          label: t('palette.actions.openAssistant'),
+          link: url,
+          keywords: ['assistant', 'chat', 'dot', 'ask'],
+          demo: true,
+          run: () => {
+            assistant.show(null);
           },
         } satisfies PaletteCommandEntry,
         {

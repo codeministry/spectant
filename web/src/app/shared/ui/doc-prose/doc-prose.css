@@ -8,57 +8,62 @@ ui-doc-prose .docs-layout {
 }
 
 ui-doc-prose[data-wide] .docs-layout {
-  grid-template-columns: minmax(0, 1fr) 200px;
+  grid-template-columns: minmax(0, 1fr) 180px;
   gap: 32px;
   align-items: start;
 }
 
 ui-doc-prose .docs-toc {
   position: sticky;
-  inset-block-start: 80px;
+  inset-block-start: 128px;
   font-size: 13px;
   line-height: 20px;
 }
 
 ui-doc-prose .docs-toc-title {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   color: var(--muted-ink);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  line-height: 16px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
 }
 
 ui-doc-prose .docs-toc-list {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 ui-doc-prose .docs-toc-list [data-level='3'] { padding-inline-start: 16px; }
 
+/* The prototype's [data-ui="toc"] a: muted, a 2 px rule on the left; hover in the cyan text tone. */
 ui-doc-prose .docs-toc-list a {
-  color: var(--color-base-content);
+  display: block;
+  padding: 2px 0 2px 10px;
+  border-inline-start: 2px solid var(--line);
+  color: var(--muted-ink);
   text-decoration: none;
   overflow-wrap: anywhere;
 }
 
 ui-doc-prose .docs-toc-list a:hover {
-  color: var(--disp-ink);
-  text-decoration: underline;
+  border-inline-start-color: var(--color-primary);
+  color: var(--disp-text);
 }
 
 ui-doc-prose .docs-prose {
   min-inline-size: 0;
   font-size: 15px;
-  line-height: 24px;
+  line-height: 26px;
   overflow-wrap: anywhere;
 }
 ui-doc-prose .docs-prose > :is(p, ul, ol, blockquote, h1, h2, h3, h4) { max-inline-size: 72ch; }
 
 ui-doc-prose .docs-prose :is(h1, h2, h3, h4) {
-  margin: 32px 0 8px;
+  margin: 24px 0 8px;
   font-family: var(--font-display);
   font-weight: 600;
   scroll-margin-block-start: 80px;
@@ -67,19 +72,19 @@ ui-doc-prose .docs-prose :is(h1, h2, h3, h4) {
 ui-doc-prose .docs-prose h1 {
   margin-block-start: 0;
   font-size: 22px;
-  line-height: 32px;
+  line-height: 30px;
 }
 
 ui-doc-prose .docs-prose h2 {
-  font-size: 18px;
-  line-height: 28px;
+  font-size: 17px;
+  line-height: 26px;
 }
 
 ui-doc-prose .docs-prose h3 {
   font-size: 16px;
   line-height: 24px;
 }
-ui-doc-prose .docs-prose :is(p, ul, ol) { margin: 0 0 16px; }
+ui-doc-prose .docs-prose :is(p, ul, ol) { margin: 0 0 12px; }
 
 ui-doc-prose .docs-prose blockquote {
   margin: 0 0 16px;
@@ -89,24 +94,33 @@ ui-doc-prose .docs-prose blockquote {
 }
 
 ui-doc-prose .docs-prose code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--color-base-300);
   font-family: var(--font-mono);
-  font-size: 0.9em;
+  font-size: 13px;
+}
+
+ui-doc-prose .docs-prose pre code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
 }
 
 ui-doc-prose .docs-prose pre {
   margin: 0 0 16px;
-  padding: 16px;
+  padding: 14px 16px;
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius-field);
-  background: var(--color-base-200);
+  background: var(--lane);
   font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 18px;
+  font-size: 13px;
+  line-height: 20px;
 }
 
 ui-doc-prose .docs-prose .mdtable {
-  margin: 0 0 16px;
+  margin: 0 0 12px;
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius-field);
@@ -115,47 +129,65 @@ ui-doc-prose .docs-prose .mdtable {
 ui-doc-prose .docs-prose table {
   inline-size: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 20px;
 }
 
 ui-doc-prose .docs-prose :is(th, td) {
-  padding: 8px 12px;
+  padding: 10px 16px;
   border-block-end: 1px solid var(--line);
   text-align: start;
   vertical-align: top;
 }
 
+/* The prototype's .tbl th: an 11 px muted eyebrow on the card, no header fill. */
 ui-doc-prose .docs-prose th {
-  background: var(--color-base-200);
+  color: var(--muted-ink);
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 ui-doc-prose .docs-prose tr:last-child td { border-block-end: 0; }
 
 ui-doc-prose .docs-prose figure {
-  margin: 0 0 16px;
+  margin: 16px 0;
   padding: 16px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-box);
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
 }
 
 ui-doc-prose .docs-prose figcaption {
   margin-block-start: 8px;
   color: var(--muted-ink);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: 12px;
+  line-height: 18px;
 }
 ui-doc-prose .docs-prose figure[data-rendered] > pre.mermaid { display: none; }
 
 ui-doc-prose .docs-prose .mermaid-svg {
-  overflow-x: auto;
+  overflow: auto;
   text-align: center;
 }
 
+/* At 100 %: the column's width at most, and never wider than the diagram's natural width (capAtNaturalWidth). */
 ui-doc-prose .docs-prose .mermaid-svg svg {
-  max-inline-size: 100%;
+  max-inline-size: min(100%, var(--mermaid-max-width, 100%));
   block-size: auto;
+}
+
+/*
+ * The Help workflow figure's anatomy on every drawn diagram (ISC-154, `features/help/workflow-figure.css`). Colours
+ * (`--track` node border, edges and arrowheads), the 13 px label size and the 1 px border come in through mermaid's
+ * theme variables (`mermaid.ts`), because mermaid's own `#id`-scoped sheet outranks a page rule for them; the label
+ * weight, the 1.5 px edge and the left accent edge (`accentMermaidNodes`) go into that sheet as `DIAGRAM_CSS`. What
+ * mermaid does not style at all is set here: the card radius of a node's outline and of a cluster (8, the Help `rx`).
+ */
+ui-doc-prose .docs-prose .mermaid-svg :is(.node > rect, .node > g:not(.node-accent) > rect, .cluster > rect) {
+  rx: 8px;
+  ry: 8px;
 }
 
 /* Scaled to the container its labels would drop below 12 px: natural width, scrolling inside the figure (fitMermaid). */
@@ -194,4 +226,151 @@ ui-doc-prose .docs-prose .figure-missing {
     inline-size: max-content;
     min-inline-size: 100%;
   }
+}
+
+/*
+ * The diagram toolbar (ISC-154.1, design.md § Mermaid-Werkzeugleiste): top right in the figure, 8 px in, on the glass
+ * surface. A fine pointer sees it on hover or focus-within (`--dur-hover`); a coarse pointer and reduced motion always.
+ */
+ui-doc-prose .docs-prose figure.mermaid-figure { position: relative; }
+
+ui-doc-prose .docs-prose figure.mermaid-figure > ui-diagram-toolbar {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: 8px;
+  inset-inline-end: 8px;
+}
+
+ui-doc-prose .diagram-toolbar {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--page-glass);
+  /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  opacity: 0;
+  transition: opacity var(--dur-hover) var(--ease);
+}
+
+ui-doc-prose ui-diagram-toolbar[data-fullscreen] .diagram-toolbar { opacity: 1; }
+ui-doc-prose figure.mermaid-figure:is(:hover, :focus-within) .diagram-toolbar { opacity: 1; }
+
+@media (pointer: coarse), (prefers-reduced-motion: reduce) {
+  ui-doc-prose .diagram-toolbar { opacity: 1; }
+}
+
+ui-doc-prose .diagram-tool {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 28px;
+  block-size: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-hover) var(--ease),
+    color var(--dur-hover) var(--ease);
+}
+
+ui-doc-prose .diagram-tool:hover:not([aria-disabled='true']) {
+  background: var(--color-base-300);
+  color: var(--color-base-content);
+}
+
+ui-doc-prose .diagram-tool[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (pointer: coarse) {
+  ui-doc-prose .diagram-tool {
+    inline-size: 44px;
+    block-size: 44px;
+  }
+}
+
+ui-doc-prose .diagram-zoom-level {
+  min-inline-size: 6ch;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+ui-doc-prose .diagram-tool-rule {
+  inline-size: 1px;
+  block-size: 16px;
+  margin-inline: 2px;
+  background: var(--line);
+}
+
+/* Zoomed (zoomDiagram): the SVG has its own width, the frame scrolls both ways, a mouse drag pans (panWithMouse). */
+ui-doc-prose .mermaid-svg[data-zoomed] { cursor: grab; }
+ui-doc-prose .mermaid-svg[data-zoomed][data-panning] { cursor: grabbing; }
+
+ui-doc-prose .docs-prose .mermaid-svg[data-zoomed] {
+  max-block-size: 70dvh;
+  overscroll-behavior: contain;
+}
+
+ui-doc-prose .docs-prose .mermaid-svg[data-zoomed] svg {
+  display: block;
+  margin-inline: auto;
+}
+
+/* Full screen: `ui-dialog`'s full-surface shape on `--color-base-200`, the diagram fitted into the rest of the height. */
+ui-doc-prose ui-dialog.diagram-dialog dialog.dialog { background: var(--color-base-200); }
+
+ui-doc-prose ui-dialog.diagram-dialog .body {
+  flex: 1 1 auto;
+  padding: 16px;
+}
+
+ui-doc-prose .diagram-dialog-head {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+ui-doc-prose .diagram-dialog-title {
+  min-inline-size: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Centred while it fits; `safe` falls back to the start edge once zoomed past the frame, so no part is out of reach. */
+ui-doc-prose .diagram-dialog-frame {
+  display: grid;
+  flex: 1 1 auto;
+  place-items: safe center;
+  min-block-size: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+ui-doc-prose .diagram-dialog .mermaid-svg.diagram-dialog-frame svg {
+  display: block;
+  block-size: auto;
+  margin: auto;
+}
+
+ui-doc-prose .diagram-dialog-frame :is(.node > rect, .node > g:not(.node-accent) > rect, .cluster > rect) {
+  rx: 8px;
+  ry: 8px;
 }

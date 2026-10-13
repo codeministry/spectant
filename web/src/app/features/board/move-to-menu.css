@@ -52,7 +52,7 @@
 }
 
 .entry[aria-current] {
-  background: var(--color-base-200);
+  background: var(--color-base-300);
   color: var(--disp-ink);
   font-weight: 600;
 }
@@ -64,7 +64,7 @@
 
 @media (hover: hover) {
   .entry:not([aria-disabled='true']):hover {
-    background: var(--color-base-200);
+    background: var(--color-base-300);
   }
 }
 

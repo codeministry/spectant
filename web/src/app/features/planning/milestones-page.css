@@ -1,38 +1,71 @@
 /*
- * The Milestones page (design.md § Milestones page, every viewport). Page head: H1 Sora 24/32, the caption and the
- * summary 13/20 muted, 24 px to the first row. Rows: the Features row's card and grid, 16 px apart at wide and 8 px
- * below.
- *
- * Wide: two stacks on `minmax(0,1fr) 240px`, gap 32 — left the H2 (flag + name 17/24), the date line (13/20), the
- * description and the two chip rows (a fixed 72 px muted label, the chips wrapping beside it), right the 160 x 6 meter
- * with the fraction. Medium and compact dissolve the stacks (`display: contents`) into one column: heading and
- * fraction on one row, the date line, the meter at full width, the description, the chip rows; compact turns the chip
- * labels into 11/16 uppercase eyebrows above their chips. Every grid and flex child sets `min-inline-size: 0`.
+ * The Milestones page in the prototype look (spec 024 design.md § Milestones, `.design/prototype/milestones.html`).
+ * Page head: eyebrow `<WS> · MILESTONES · n`, the workspace badge, h1 "Milestones · <ws>", then the caption and the
+ * meta on one muted line. Body: one `card edge` per milestone (`ms-card`): the next one cyan with the glow, a reached
+ * one lime, the later ones track. Head `ms-head`: flag + name 18/24 600, the date in mono, the relative day count as
+ * a plain chip (late: the warning chip, complete: the success chip), right the ring 56 (64 at medium, none at
+ * compact) and the mono fraction. Then the thin meter, the description (2 lines), FEATURES as rows in two columns
+ * (F-ID | title | bar 64 | count) and SPECS as 32 px chips. Wide adds the rail with NEXT MILESTONE.
  */
 :host {
   display: block;
   min-inline-size: 0;
 }
 
+.h1-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+/* Prototype `h1 span`: the muted "· <ws>" beside the h1, outside it (as on Features). */
+.ws-suffix {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--muted-ink);
+  font: 600 24px/32px var(--font-brand);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host([data-tier='compact']) .ws-suffix {
+  display: none;
+}
+
+.page-mark {
+  flex: none;
+}
+
 h1 {
-  margin: 0 0 4px;
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .unavailable {
   color: var(--muted-ink);
 }
 
-.caption,
-.meta {
-  margin: 0;
+.head-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  margin: 4px 0 24px;
   color: var(--muted-ink);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   line-height: 20px;
 }
 
+.caption,
 .meta {
-  margin-block-end: 24px;
+  margin: 0;
+}
+
+.meta::before {
+  margin-inline-end: 8px;
+  content: '·';
 }
 
 .absent {
@@ -51,19 +84,36 @@ h1 {
   line-height: 20px;
 }
 
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+:host([data-tier='wide']) .layout {
+  grid-template-columns: minmax(0, 1fr) 352px;
+  gap: 32px;
+}
+
 .rows {
   display: grid;
   gap: 16px;
+  min-inline-size: 0;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+:host([data-tier='compact']) .rows {
+  gap: 12px;
 }
 
 .rows > li {
   min-inline-size: 0;
 }
 
-/* The arrival outline, as on the Features page. */
+/* The arrival outline: 2 px primary around the card the fragment names, fading over the slow token. */
 ui-card[data-arrived] {
   outline: 2px solid transparent;
   outline-offset: 2px;
@@ -86,36 +136,45 @@ ui-card[data-arrived] {
   }
 }
 
-article {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 240px;
-  gap: 32px;
-  align-items: start;
-  padding: 16px 24px;
-  border-radius: inherit;
-  scroll-margin-block: 96px;
+ui-card.ms-card {
+  overflow: hidden;
+  border-radius: var(--radius-card);
 }
 
-article:focus {
+:where(article):focus {
   outline: none;
 }
 
-.main,
-.side {
+article {
+  padding: 24px;
+  scroll-margin-block: 96px;
+}
+
+:host([data-tier='compact']) article {
+  padding: 16px;
+}
+
+.main {
+  display: grid;
+  gap: 12px;
+  min-inline-size: 0;
+}
+
+.ms-head {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
   min-inline-size: 0;
 }
 
 h2 {
-  display: flex;
+  display: inline-flex;
   gap: 8px;
   align-items: center;
   min-inline-size: 0;
   margin: 0;
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 24px;
+  font: 600 18px/24px var(--font-brand);
 }
 
 h2 .flag {
@@ -129,68 +188,99 @@ h2 .name {
 }
 
 .date-line {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
-  gap: 4px 0;
+  gap: 8px 12px;
   align-items: center;
-  min-inline-size: 0;
-  margin: 4px 0 0;
+  margin: 0;
   color: var(--muted-ink);
   font-size: 13px;
-  font-variant-numeric: tabular-nums;
   line-height: 20px;
 }
 
-.date-line time {
-  color: var(--color-base-content);
-  white-space: nowrap;
+time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
-.date-line time::after {
-  margin-inline: 8px;
-  color: var(--muted-ink);
-  content: '·';
-}
-
+/* Prototype `chip plain` for the relative day count: 12/500, the neutral tint, no caps. */
 .relative {
+  display: inline-flex;
+  align-items: center;
+  block-size: 22px;
+  padding-inline: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-base-300);
+  color: var(--color-base-content);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
   white-space: nowrap;
+}
+
+.side {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  margin-inline-start: auto;
+}
+
+.fraction {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font: 600 15px/20px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fraction.done {
+  color: var(--clos-ink);
+}
+
+.fraction.muted {
+  color: var(--muted-ink);
+  font-weight: 400;
+}
+
+.progress ui-meter {
+  display: block;
 }
 
 .desc {
   display: -webkit-box;
-  overflow: hidden;
-  min-inline-size: 0;
   max-inline-size: 72ch;
-  margin: 4px 0 0;
-  color: var(--muted-ink);
-  font-size: 13px;
-  line-height: 20px;
-  overflow-wrap: anywhere;
+  margin: 0;
+  overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+  color: var(--muted-ink);
+  font-size: 14px;
+  line-height: 20px;
 }
 
 .chip-rows {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   min-inline-size: 0;
-  margin: 12px 0 0;
+  margin: 0;
 }
 
 .chip-row {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 8px;
-  align-items: start;
+  gap: 4px;
   min-inline-size: 0;
 }
 
+/* The eyebrows FEATURES / SPECS / IDEAS (prototype `.eyebrow`). */
 .chip-row dt {
-  padding-block: 6px;
   color: var(--muted-ink);
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   line-height: 16px;
+  text-transform: uppercase;
 }
 
 .chip-row dd {
@@ -209,101 +299,102 @@ h2 .name {
 }
 
 .chip-row li {
-  display: flex;
-  min-inline-size: 0;
-  max-inline-size: 100%;
-}
-
-/* A feature chip: the spec chip's metrics (28 px pill, 12/16, 8 px padding), mono id, the name cut at 200 px. */
-.feature-chip {
-  position: relative;
   display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  box-sizing: border-box;
   min-inline-size: 0;
   max-inline-size: 100%;
-  block-size: 28px;
-  padding-inline: 8px;
-  border: 1px solid var(--color-base-300);
-  border-radius: 999px;
-  color: var(--color-base-content);
-  font-size: 12px;
-  line-height: 16px;
-  text-decoration: none;
-  white-space: nowrap;
 }
 
-.feature-chip .id,
-.feature-chip .count,
-.fraction {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+/* FEATURES as rows in two columns from 720 px of card (prototype `ms-feats`, `ms-feat`). */
+.chip-row ul.ms-feats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 24px;
+}
+
+:host([data-tier='wide']) .chip-row ul.ms-feats,
+:host([data-tier='medium']) .chip-row ul.ms-feats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ms-feats li {
+  display: block;
+}
+
+.feature-chip {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 64px 40px;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 36px;
+  border-block-end: 1px solid var(--line);
+  color: inherit;
+  font-size: 13px;
+  text-decoration: none;
 }
 
 .feature-chip .id {
-  flex: none;
   color: var(--disp-ink);
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
 
 .feature-chip .name {
-  overflow: hidden;
   min-inline-size: 0;
-  max-inline-size: 200px;
+  overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.feature-chip .count {
-  flex: none;
-  color: var(--muted-ink);
-}
-
-.feature-chip .count::before {
-  margin-inline-end: 4px;
-  content: '·';
-}
-
-@media (pointer: coarse) {
-  .feature-chip::before {
-    position: absolute;
-    inset: 50% auto auto 50%;
-    inline-size: 100%;
-    min-inline-size: 44px;
-    block-size: 44px;
-    transform: translate(-50%, -50%);
-    content: '';
-  }
-}
-
-.progress {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: flex-end;
-  min-block-size: 24px;
-}
-
-.progress ui-meter {
-  flex: none;
-  inline-size: 160px;
-}
-
-.fraction {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-  font-size: 13px;
-  line-height: 20px;
   white-space: nowrap;
 }
 
-.fraction.done {
-  color: var(--done-ink);
+.feature-chip .count,
+.mini-row .num {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
 }
 
-.fraction.muted {
+/* The decorative 6 px bar on the track at 45 % (prototype `meter thin`); the row's name carries the numbers. */
+.bar {
+  display: block;
+  block-size: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--track) 45%, transparent);
+}
+
+.bar > i {
+  display: block;
+  block-size: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+}
+
+.bar > i.full {
+  background: var(--color-accent);
+}
+
+@media (pointer: coarse) {
+  .feature-chip {
+    min-block-size: 44px;
+  }
+}
+
+.ms-empty {
+  margin: 0;
   color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* SPECS as 32 px chips on the lane surface (prototype `ms-spec`). */
+.ms-specs li {
+  align-items: center;
+  min-block-size: 32px;
+  padding: 0 8px 0 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--lane);
 }
 
 .skeleton-card {
@@ -311,96 +402,85 @@ h2 .name {
   gap: 12px;
 }
 
-/* Medium and compact: one column, the stacks dissolved into the article's grid. */
-:host(:not([data-tier='wide'])) .rows {
+/* The rail (prototype `context-rail`, `next-ms`). */
+.rail {
+  display: grid;
+  gap: 24px;
+  min-inline-size: 0;
+}
+
+.rail-block {
+  display: grid;
   gap: 8px;
 }
 
-:host(:not([data-tier='wide'])) article {
-  grid-template-areas:
-    'head fraction'
-    'date date'
-    'meter meter'
-    'desc desc'
-    'chips chips';
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0 16px;
-  padding: 16px;
+.rail-eyebrow {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  color: var(--muted-ink);
 }
 
-:host(:not([data-tier='wide'])) :is(.main, .side, .progress) {
-  display: contents;
+.rail-eyebrow.sub {
+  margin-block-start: 16px;
 }
 
-:host(:not([data-tier='wide'])) h2 {
-  grid-area: head;
+.ring-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
 }
 
-:host(:not([data-tier='wide'])) .date-line {
-  grid-area: date;
+.big {
+  font: 600 28px/32px var(--font-brand);
+  font-variant-numeric: tabular-nums;
 }
 
-:host(:not([data-tier='wide'])) .fraction {
-  grid-area: fraction;
-  place-self: start end;
-  line-height: 24px;
-}
-
-:host(:not([data-tier='wide'])) .progress ui-meter {
-  grid-area: meter;
-  inline-size: auto;
-  margin-block-start: 8px;
-}
-
-:host(:not([data-tier='wide'])) .desc {
-  grid-area: desc;
-  margin-block-start: 8px;
-}
-
-:host(:not([data-tier='wide'])) .chip-rows {
-  grid-area: chips;
-}
-
-:host([data-tier='compact']) h2 {
-  align-items: flex-start;
+.big small {
+  color: var(--muted-ink);
   font-size: 15px;
 }
 
-:host([data-tier='compact']) h2 .flag {
-  margin-block-start: 4px;
+.rail-meta {
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
 }
 
-:host([data-tier='compact']) h2 .name {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+.mini-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 64px 40px;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 32px;
+  color: inherit;
+  font-size: 13px;
+  text-decoration: none;
 }
 
-:host([data-tier='compact']) .date-line {
+:where(.mini-row:hover) .t {
+  text-decoration: underline;
+}
+
+.mini-row .fid {
+  color: var(--disp-ink);
+  font-family: var(--font-mono);
   font-size: 12px;
-  line-height: 16px;
 }
 
-:host([data-tier='compact']) .chip-row {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 4px;
+.mini-row .t {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-:host([data-tier='compact']) .chip-row dt {
-  padding-block: 0;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-@media (forced-colors: active) {
-  ui-card[data-arrived] {
-    outline-color: Highlight;
+@media (pointer: coarse) {
+  .mini-row {
+    min-block-size: 44px;
   }
+}
 
-  .feature-chip {
-    border-color: CanvasText;
-  }
+.feature-chip:hover .name {
+  text-decoration: underline;
 }

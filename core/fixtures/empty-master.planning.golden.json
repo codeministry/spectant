@@ -120,6 +120,7 @@
       "claims": [
         {
           "id": "ISC-3",
+          "text": "building a digest makes an outbound network request.",
           "closed": false,
           "dropped": false,
           "holder": null
@@ -140,12 +141,14 @@
       "claims": [
         {
           "id": "ISC-1",
+          "text": "Every note file in the configured folder from the week before is read.",
           "closed": false,
           "dropped": false,
           "holder": null
         },
         {
           "id": "ISC-2",
+          "text": "The digest fits in 60 lines.",
           "closed": false,
           "dropped": false,
           "holder": null

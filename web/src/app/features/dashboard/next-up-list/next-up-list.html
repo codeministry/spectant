@@ -1,14 +1,15 @@
 <!--
-  Card form (below wide): one card, the section header, then next-rows. Rail form (wide, prototype `.rail-block`): the
+  Card form (below wide, prototype `.section-head` over a `.card` of `.next-row`s, app.js l.395): the section header,
+  then one unpadded card of next-rows flush with its edges. Rail form (wide, prototype `.rail-block`): the
   eyebrow heading with the count, then one next-card per entry.
 -->
 @if (form() === 'card') {
-  <ui-card [padding]="16">
-    <ui-section-header [heading]="'nextUp.title' | transloco" [headingId]="headingId">
-      @if (total() > 0) {
-        <span meta class="count" data-next-count>{{ total() }}</span>
-      }
-    </ui-section-header>
+  <ui-section-header [heading]="'nextUp.title' | transloco" [headingId]="headingId">
+    @if (total() > 0) {
+      <span meta class="count" data-next-count>{{ total() }}</span>
+    }
+  </ui-section-header>
+  <ui-card [padding]="0">
     <ng-container [ngTemplateOutlet]="body" />
   </ui-card>
 } @else {
@@ -38,9 +39,19 @@
         </ol>
       </ui-disclosure>
     }
+  } @else if (form() === 'card') {
+    <ng-container [ngTemplateOutlet]="empty" />
   } @else {
-    <p class="empty" data-next-empty>
-      <span>{{ 'nextUp.empty' | transloco }}</span>
+    <ui-card [padding]="0"><ng-container [ngTemplateOutlet]="empty" /></ui-card>
+  }
+</ng-template>
+
+<!-- Prototype `emptySmall("Nothing ready to build", …, "clock")`: icon, 15/24 title and the muted hint in a card. -->
+<ng-template #empty>
+    <div class="empty" data-next-empty>
+      <ui-icon class="empty-icon" name="clock" [size]="16" />
+      <h3 class="empty-title">{{ 'nextUp.empty' | transloco }}</h3>
+      <p class="empty-hint">{{ 'nextUp.emptyHint' | transloco }}</p>
       @if (fogWaiting() > 0) {
         <a
           class="fog"
@@ -50,6 +61,5 @@
           queryParamsHandling="merge"
         >{{ (fogWaiting() === 1 ? 'nextUp.waitOnFog.one' : 'nextUp.waitOnFog.other') | transloco: { count: fogWaiting() } }}</a>
       }
-    </p>
-  }
+    </div>
 </ng-template>

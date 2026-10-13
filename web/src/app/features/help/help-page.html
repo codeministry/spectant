@@ -1,20 +1,77 @@
+<div class="head">
+  <ui-page-head [segments]="[('shell.eyebrow.app' | transloco), ('help.eyebrow' | transloco)]">
+    <div class="h1-row" ngProjectAs="h1">
+      <h1 class="type-page-title" id="help" tabindex="-1">{{ 'help.title' | transloco }}</h1>
+      <span class="version type-page-title" data-help-version>· v{{ version }}</span>
+    </div>
+  </ui-page-head>
+</div>
+
 <app-help-nav [sections]="sections" />
 
-<ui-card class="head" [padding]="24">
-  <ui-page-head [segments]="[('shell.eyebrow.app' | transloco), ('help.title' | transloco)]">
-    <h1 class="type-page-title" id="help" tabindex="-1">{{ 'help.title' | transloco }}</h1>
-  </ui-page-head>
-  <p class="subtitle">{{ 'help.subtitle' | transloco }}</p>
-</ui-card>
-
 <section id="about" class="section" aria-labelledby="help-about">
-  <h2 id="help-about" tabindex="-1">{{ 'help.nav.about' | transloco }}</h2>
-  <p class="prose">{{ 'help.about.body' | transloco }}</p>
+  <!-- The About card (prototype help `.about-grid`, spec 024 sweep): the text with its meta row, beside the logo and two screenshots. -->
+  <ui-card class="about-grid" [padding]="24">
+    <div class="about-text">
+      <h2 id="help-about" tabindex="-1">{{ 'help.nav.about' | transloco }}</h2>
+      <p class="prose">{{ 'help.about.body' | transloco }}</p>
+      <p class="meta-row" data-about-meta>
+        v{{ version }} · {{ 'help.about.data' | transloco }} · {{ 'help.about.port' | transloco: { address } }} ·
+        {{ 'help.about.licence' | transloco }}
+      </p>
+    </div>
+    <aside class="about-visual" data-about-visual [attr.aria-label]="'help.about.visual' | transloco">
+      <div class="about-logo" aria-hidden="true">
+        <svg class="mark" viewBox="0 0 28 28" focusable="false" data-icon-exempt>
+          <!-- The logo, as in the shell brand; not a lucide icon (data-icon-exempt, ISC-18.2). -->
+          <circle class="mark-track" cx="14" cy="14" r="11" />
+          <circle class="mark-arc mark-arc-a" cx="14" cy="14" r="11" pathLength="100" transform="rotate(-24 14 14)" />
+          <circle class="mark-arc mark-arc-b" cx="14" cy="14" r="11" pathLength="100" transform="rotate(-24 14 14)" />
+          <circle class="mark-dot" cx="19.5" cy="4.47" r="2.6" />
+        </svg>
+        <span>{{ 'shell.wordmark.lead' | transloco }}<span class="wm-accent">{{ 'shell.wordmark.tail' | transloco }}</span></span>
+      </div>
+      <span class="shot shot-a" data-about-shot="dashboard">
+        <img class="t-light" src="help/dash-light.jpg" width="720" height="450" [alt]="'help.about.shotDashboard' | transloco" />
+        <img class="t-dark" src="help/dash-dark.jpg" width="720" height="450" [alt]="'help.about.shotDashboard' | transloco" />
+      </span>
+      <span class="shot shot-b" data-about-shot="board">
+        <img class="t-light" src="help/board-light.jpg" width="720" height="450" [alt]="'help.about.shotBoard' | transloco" />
+        <img class="t-dark" src="help/board-dark.jpg" width="720" height="450" [alt]="'help.about.shotBoard' | transloco" />
+      </span>
+    </aside>
+  </ui-card>
 </section>
 
 <section id="moves" class="section" aria-labelledby="help-moves">
-  <h2 id="help-moves" tabindex="-1">{{ 'help.nav.moves' | transloco }}</h2>
-  <p class="prose lead">{{ 'help.moves.body' | transloco }}</p>
+  <h2 class="section-head" id="help-moves" tabindex="-1">{{ 'help.nav.moves' | transloco }}</h2>
+  <app-help-lifecycle />
+  <!-- Prototype type table (`.card` > `.tbl`): which of spec.md, plan.md and tasks.md each type has (core TYPE_NEEDS). -->
+  <ui-card class="tbl-card" [padding]="0">
+    <table class="tbl" data-type-table role="table">
+      <caption class="vh">{{ 'help.types.caption' | transloco }}</caption>
+      <thead role="rowgroup">
+        <tr role="row">
+          <th scope="col" role="columnheader">{{ 'help.types.columns.type' | transloco }}</th>
+          <th scope="col" role="columnheader">spec.md</th>
+          <th scope="col" role="columnheader">plan.md</th>
+          <th scope="col" role="columnheader">tasks.md</th>
+          <th scope="col" role="columnheader">{{ 'help.types.columns.skips' | transloco }}</th>
+        </tr>
+      </thead>
+      <tbody role="rowgroup">
+        @for (row of typeFiles; track row.type) {
+          <tr role="row" [attr.data-type-row]="row.type">
+            <td role="cell" class="mono">{{ row.type }}</td>
+            <td role="cell">✓</td>
+            <td role="cell">{{ row.plan ? '✓' : '—' }}</td>
+            <td role="cell">{{ row.tasks ? '✓' : '—' }}</td>
+            <td role="cell">{{ row.skips.length ? row.skips.join(', ') : '—' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </ui-card>
   <ol class="chain" data-stage-chain [attr.aria-label]="'help.moves.chain' | transloco">
     @for (stage of chain; track stage; let last = $last) {
       <li [attr.data-stage]="stage">
@@ -120,14 +177,18 @@
 </section>
 
 <section id="commands" class="section" aria-labelledby="help-commands">
-  <h2 id="help-commands" tabindex="-1">{{ 'help.nav.commands' | transloco }}</h2>
-  <p class="prose lead">{{ 'help.commands.lead' | transloco }}</p>
-  <table class="commands" data-commands role="table">
-    <caption>{{ 'help.commands.caption' | transloco }}</caption>
+  <h2 class="section-head" id="help-commands" tabindex="-1">{{ 'help.nav.commands' | transloco }}</h2>
+  <ui-card class="tbl-card" [padding]="0">
+  <div class="tbl-scroll">
+  <table class="tbl commands" data-commands role="table">
+    <caption class="vh">{{ 'help.commands.caption' | transloco }}</caption>
     <thead role="rowgroup">
       <tr role="row">
         <th scope="col" role="columnheader">{{ 'help.commands.columns.command' | transloco }}</th>
         <th scope="col" role="columnheader">{{ 'help.commands.columns.purpose' | transloco }}</th>
+        <th scope="col" role="columnheader">{{ 'help.commands.columns.needs' | transloco }}</th>
+        <th scope="col" role="columnheader">{{ 'help.commands.columns.writes' | transloco }}</th>
+        <th scope="col" role="columnheader">{{ 'help.commands.columns.then' | transloco }}</th>
       </tr>
     </thead>
     <tbody role="rowgroup">
@@ -142,17 +203,22 @@
             />
           </td>
           <td role="cell" class="purpose">{{ 'help.commands.list.' + row.key | transloco }}</td>
+          <td role="cell" class="file" [attr.data-label]="'help.commands.columns.needs' | transloco">{{ row.needs ?? '—' }}</td>
+          <td role="cell" class="file" [attr.data-label]="'help.commands.columns.writes' | transloco">{{ row.writes ?? '—' }}</td>
+          <td role="cell" class="file" [attr.data-label]="'help.commands.columns.then' | transloco">{{ row.then ?? '—' }}</td>
         </tr>
       }
     </tbody>
   </table>
+  </div>
+  </ui-card>
 </section>
 
 <section id="glossary" class="section" aria-labelledby="help-glossary">
-  <ui-card [padding]="24">
-    <h2 id="help-glossary" tabindex="-1">{{ 'help.glossary.heading' | transloco }}</h2>
+  <h2 class="section-head" id="help-glossary" tabindex="-1">{{ 'help.glossary.heading' | transloco }}</h2>
+  <ui-card class="tbl-card" [padding]="0">
     <table class="glossary" data-glossary role="table">
-      <caption>{{ 'help.glossary.caption' | transloco }}</caption>
+      <caption class="vh">{{ 'help.glossary.caption' | transloco }}</caption>
       <thead role="rowgroup">
         <tr role="row">
           <th scope="col" role="columnheader">{{ 'help.glossary.columns.term' | transloco }}</th>
@@ -180,42 +246,42 @@
 </section>
 
 <section id="start" class="section" aria-labelledby="help-start">
-  <h2 id="help-start" tabindex="-1">{{ 'help.nav.gettingStarted' | transloco }}</h2>
-  <p class="prose lead">{{ 'help.start.lead' | transloco }}</p>
-  <ol class="steps" data-start-steps>
+  <h2 class="section-head" id="help-start" tabindex="-1">{{ 'help.nav.gettingStarted' | transloco }}</h2>
+  <ol class="start-steps" data-start-steps>
     @for (step of steps; track step) {
       @let text = 'help.start.steps.' + step | transloco;
       <!-- One line on purpose, as in the glossary: the code spans sit flush against their words. -->
-      <li [attr.data-step]="step">@for (span of spans(text); track $index) {@if (span.code) {<code>{{ span.text }}</code>} @else {<span>{{ span.text }}</span>}}</li>
+      <li class="start-step" [attr.data-step]="step">@for (span of spans(text); track $index) {@if (span.code) {<code>{{ span.text }}</code>} @else {<span>{{ span.text }}</span>}}</li>
     }
   </ol>
 </section>
 
 <section id="keys" class="section" aria-labelledby="help-keys">
-  <h2 id="help-keys" tabindex="-1">{{ 'help.nav.keyboard' | transloco }}</h2>
-  <p class="prose lead">{{ 'help.keyboard.lead' | transloco }}</p>
+  <h2 class="section-head" id="help-keys" tabindex="-1">{{ 'help.nav.keyboard' | transloco }}</h2>
   @for (context of keyContexts; track context.id) {
     <div class="keys-context" [attr.data-context]="context.id">
       <h3>{{ 'shortcuts.contexts.' + context.id | transloco }}</h3>
+      <ui-card class="tbl-card" [padding]="0">
       @for (group of context.groups; track group.id) {
         <div class="keys-group" [attr.data-group]="group.id">
           @if (context.titled) {
             <h4>{{ 'shortcuts.groups.' + group.id | transloco }}</h4>
           }
-          <dl class="keys">
+          <div class="keys-grid">
             @for (binding of group.bindings; track binding.id) {
               <div class="key-row" [attr.data-binding]="binding.id">
-                <dt>
+                <span class="action">{{ binding.label | transloco: { target: binding.target ? (binding.target | transloco) : '' } }}</span>
+                <span class="k">
                   @for (key of binding.keys; track $index) {
                     <ui-kbd>{{ keyLabel(key) }}</ui-kbd>
                   }
-                </dt>
-                <dd>{{ binding.label | transloco: { target: binding.target ? (binding.target | transloco) : '' } }}</dd>
+                </span>
               </div>
             }
-          </dl>
+          </div>
         </div>
       }
+      </ui-card>
     </div>
   }
 </section>

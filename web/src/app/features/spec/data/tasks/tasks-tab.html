@@ -37,10 +37,12 @@
       </p>
     </div>
 
+    <div class="task-card">
     <div class="columns" aria-hidden="true">
       <span></span>
       <span>{{ 'tasks.columns.task' | transloco }}</span>
       <span>{{ 'tasks.columns.claim' | transloco }}</span>
+      <span>{{ 'tasks.columns.flags' | transloco }}</span>
       <span>{{ 'tasks.columns.title' | transloco }}</span>
       <span>{{ 'tasks.columns.lane' | transloco }}</span>
       <span>{{ 'tasks.columns.path' | transloco }}</span>
@@ -76,6 +78,9 @@
                   [attr.aria-describedby]="checkLine(row) ? 'task-' + row.id + '-check tasks-helper' : 'tasks-helper'"
                   (change)="tick(row, box.checked)"
                 />
+                @if (checkLine(row)?.kind === 'locked') {
+                  <ui-icon class="box-lock" name="lock" [size]="11" aria-hidden="true" />
+                }
                 @if (checkOf(row.id).kind === 'saving') {
                   <span
                     class="spinner loading loading-spinner loading-xs"
@@ -89,22 +94,24 @@
           </span>
           <span class="id">{{ row.id }}</span>
           <span class="claim">
-            <a data-claim [routerLink]="[...specLink(), 'claims']" [fragment]="'claim-' + row.claim"><ui-id-chip>{{ row.claim }}</ui-id-chip></a>
+            <a data-claim [routerLink]="[...specLink(), 'claims']" [fragment]="'claim-' + row.claim"><ui-chip variant="take" icon="hand">{{ row.claim }}</ui-chip></a>
           </span>
-          <span class="title">
+          <span class="badges">
             @if (row.flags.parallel) {
               <span class="flag" data-flag="parallel" [attr.title]="'tasks.flags.parallelLabel' | transloco">{{ 'tasks.flags.parallel' | transloco }}</span>
             }
             @if (row.flags.seam) {
               <span class="flag" data-flag="seam" [attr.title]="'tasks.flags.seamLabel' | transloco">{{ 'tasks.flags.seam' | transloco }}</span>
             }
+          </span>
+          <span class="title">
             @if (row.state === 'struck') {
               <s class="text">{{ row.text }}</s>
             } @else {
               <span class="text" [attr.title]="row.text">{{ row.text }}</span>
             }
           </span>
-          <span class="lane"><ui-chip data-lane>{{ row.lane }}</ui-chip></span>
+          <span class="lane"><ui-chip variant="plain" icon="git-branch" data-lane>{{ row.lane }}</ui-chip></span>
           <span class="path">
             @if (row.paths[0]; as first) {
               <span class="path-tail" data-path [attr.title]="row.paths.join(', ')">{{ tail(first) }}</span>
@@ -115,7 +122,7 @@
               <span class="path-note">{{ row.pathNote }}</span>
             }
           </span>
-          <span class="state"><span class="status" [attr.data-tone]="row.status">{{ 'tasks.status.' + row.status | transloco }}</span></span>
+          <span class="state"><span class="status" [attr.data-tone]="row.status">@if (chipIcon(row.status); as ic) {<ui-icon [name]="ic" [size]="12" />}{{ 'tasks.status.' + row.status | transloco }}</span></span>
           <span class="builder">
             @if (row.builder) {
               <span data-builder>{{ row.builder }}</span>
@@ -130,11 +137,12 @@
                 @switch (line.kind) {
                   @case ('locked') {
                     <span class="check-note" data-check-locked [id]="'task-' + row.id + '-check'">
-                      <ui-icon name="lock" [size]="14" />{{ 'tasks.check.locked' | transloco: { session: line.session } }}
+                      <ui-icon name="lock" [size]="13" />{{ 'tasks.check.locked' | transloco: { session: line.session } }}
                     </span>
                   }
                   @case ('conflict') {
                     <span class="check-alert" role="alert" data-check-conflict [id]="'task-' + row.id + '-check'">
+                      <ui-icon name="triangle-alert" [size]="14" />
                       <span>{{ 'tasks.check.conflict' | transloco }}</span>
                       <button type="button" class="btn btn-xs" data-check-reload (click)="reloadTasks(row)">
                         {{ 'tasks.check.reload' | transloco }}
@@ -160,7 +168,7 @@
                 </span>
               }
               @if (sub(row); as sub) {
-                <span class="sub" data-sub>{{ sub.key | transloco: { text: sub.text } }}</span>
+                <span class="sub" data-sub>@if (subIcon(row); as icon) {<ui-icon [name]="icon" [size]="13" />}{{ sub.key | transloco: { text: sub.text } }}</span>
               }
             </span>
           }
@@ -169,18 +177,23 @@
     </ul>
 
     @if (hidden(); as hidden) {
-      <p class="done-hidden" data-done-hidden>
-        {{ 'tasks.doneHidden' | transloco: hidden }}
-        <button type="button" class="btn btn-xs btn-ghost" (click)="setQuery('hideDone', null)">{{ 'tasks.show' | transloco }}</button>
-      </p>
+      <!-- Prototype `details.fold-row`: "+ 16 more done · T1–T11, T20–T26" closes the card; Show brings the rows back. -->
+      <details class="fold-row" data-done-hidden>
+        <summary>{{ 'tasks.doneHidden' | transloco: hidden }}</summary>
+        <p class="fold-body">
+          {{ 'tasks.doneHiddenBody' | transloco }}
+          <button type="button" class="btn btn-xs btn-ghost" (click)="setQuery('hideDone', null)">{{ 'tasks.show' | transloco }}</button>
+        </p>
+      </details>
     }
+    </div>
 
-    <p class="helper" id="tasks-helper">{{ 'tasks.helper' | transloco }}</p>
+    <p class="helper" id="tasks-helper"><ui-icon name="lock" [size]="14" />{{ 'tasks.helper' | transloco }}</p>
   </section>
 
   @if (mapping().length > 0) {
     <section class="mapping" aria-labelledby="tasks-mapping-heading">
-      <h2 id="tasks-mapping-heading">{{ 'tasks.mapping.title' | transloco }}</h2>
+      <h3 id="tasks-mapping-heading">{{ 'tasks.mapping.title' | transloco }}</h3>
       <div class="scroll" role="region" tabindex="0" [attr.aria-label]="'tasks.mapping.region' | transloco">
         <table>
           <thead>

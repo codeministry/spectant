@@ -1,10 +1,12 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, computed, inject, Injector, input, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { DASHBOARD_GO_KEY } from '../../core/keyboard-bindings';
 import { SettingsService } from '../../core/settings.service';
 import { boardRowsOf, boardSummaryOf, buildBoard } from '../../features/board/board-model';
+import { DemoData } from '../../shared/demo/demo-data';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiPopover } from '../../shared/ui/overlay/popover';
@@ -26,17 +28,24 @@ const shortDate = (iso: string, locale: string): string =>
   new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));
 
 /**
- * The area menu (ISC-76, design.md § Area menu and tab bar), opened from the header's `data-control="area"` trigger
- * (`ShellNav`, through `ShellMenus`). A native `popover` (`ui-popover`) at medium and wide; a bottom sheet (`ui-sheet`:
+ * The area menu and the page menu (ISC-76, design.md § Area menu and tab bar): one anatomy, two scopes (`scope`). The
+ * area menu opens from the header's `data-control="area"` select on a spec page, the page menu from the PAGE select
+ * `data-control="page"` on every workspace route (spec 024 T80, ISC-150.2, principal 2026-10-13); both through
+ * `ShellMenus`. A native `popover` (`ui-popover`) at medium and wide; a bottom sheet (`ui-sheet`:
  * 56 px rows, at most 75dvh, grab handle) at compact. The same `<nav>` in both, never `role="menu"`.
  *
- * **Scope-aware (spec 003, T26).** At spec scope it lists the six areas of `SPEC_AREAS` in registry order: each entry
+ * **Two scopes (spec 003 T26; spec 024 T80).** At spec scope (`scope="spec"`, nav "Areas") it lists the six areas of
+ * `SPEC_AREAS` in registry order: each entry
  * shows its area dot, its name, a one-line subline (the area's summary; at compact its tab list) and its `g`-key hint
  * (only on a fine pointer that can hover). An area whose views are not built (`built: false`) is an `aria-disabled`
- * entry without a link, its reason as visible text. At workspace scope (a workspace open, no spec) it lists
- * `WORKSPACE_PAGES` instead: each entry a link to the page with its icon, its name and a summary from the dashboard
- * rows, its KPIs and the planning model. Milestones is absent, not disabled, while no spec carries a milestone (ISC-104). The
- * pages show no `g`-key hint while `g f` / `g m` are a proposal nothing binds.
+ * entry without a link, its reason as visible text. At page scope (`scope="page"`, nav "Pages", a workspace the
+ * server knows, spec open or not) it lists `WORKSPACE_PAGES` instead; on a spec page Specs is the current one: each entry a link to the page with its icon, its name and a summary from the dashboard
+ * rows, its KPIs and the planning model; Library's counts the mock's documents and says so (spec 024, T57). Milestones is
+ * absent, not disabled, while no spec carries a milestone (ISC-104). The pages show no `g`-key hint.
+ *
+ * **Prototype anatomy (spec 024, T57, ISC-150.1).** The prototype's `.area-pop`: a card with an eyebrow head naming the
+ * scope (`Spec 002 · areas`, `<workspace> · pages`, `[data-menu-head]`), then the rows, the name bold over its meta line,
+ * the current row on the raised tint; 44 px rows (56 in the compact sheet).
  *
  * Either way the current entry carries `aria-current="page"` and takes focus on open. Router-driven: entries are route
  * links and the current one comes from `ShellState`; the only local state is whether the compact sheet is open.
@@ -53,24 +62,39 @@ export class AreaMenu {
   private readonly data = inject(ShellData);
   private readonly settings = inject(SettingsService);
   private readonly transloco = inject(TranslocoService);
+  private readonly demo = inject(DemoData);
+  private readonly injector = inject(Injector);
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+
+  /** Which list the menu holds: the open spec's areas, or the workspace's pages (the PAGE select, spec 024 T80). */
+  readonly scope = input<'spec' | 'page'>('spec');
 
   protected readonly areas = SPEC_AREAS;
   protected readonly compact = computed(() => this.state.tier() === 'compact');
   protected readonly singleKeys = computed(() => this.settings.settings().singleKeyShortcuts);
+  /** The dashboard has no `goKey` of its own; `g h` reaches it, and the prototype's pop-area names it. */
+  protected readonly dashboardKey = (id: string): string | null => (id === 'dashboard' ? DASHBOARD_GO_KEY : null);
   protected readonly currentArea = computed(() => this.state.area() ?? 'dashboard');
   private readonly specOpen = computed(() => this.state.specId() !== null && !this.data.specMissing());
 
+  /** The page menu lists the workspace's pages (`pages`). */
+  protected readonly workspaceScope = computed(() => this.scope() === 'page');
+  /** The nav's accessible name: "Areas" for the spec areas, "Pages" for the workspace pages. */
+  protected readonly menuKey = computed(() => (this.workspaceScope() ? 'shell.area.pageMenu' : 'shell.area.menu'));
   /**
-   * A workspace is open and no spec: the menu lists the workspace's pages instead of the spec areas. Not for a
-   * workspace the server does not know (`workspaceMissing`): its pages would all link into not-found.
+   * The registry in menu order, Milestones only while a spec carries one (ISC-104); none for a workspace the server
+   * does not know (`workspaceMissing`), whose pages would all link into not-found.
    */
-  protected readonly workspaceScope = computed(
-    () => this.state.ws() !== null && this.state.specId() === null && !this.data.workspaceMissing(),
+  protected readonly pages = computed(() =>
+    this.state.ws() === null || this.data.workspaceMissing()
+      ? []
+      : WORKSPACE_PAGES.filter((page) => page.id !== 'milestones' || this.data.hasMilestones()),
   );
-  /** The registry in menu order, Milestones only while a spec carries one (ISC-104). */
-  protected readonly pages = computed(() => WORKSPACE_PAGES.filter((page) => page.id !== 'milestones' || this.data.hasMilestones()));
-  protected readonly currentPage = computed(() => this.state.route().wsPage);
+  /** The open workspace page; a story page counts as the board it is reached from, a spec page as Specs. */
+  protected readonly currentPage = computed(() => {
+    const id = this.state.specId() === null ? this.state.route().wsPage : null;
+    return id === 'idea' ? 'board' : (id ?? 'specs');
+  });
 
   /** Each page's summary params, from what has loaded; a page whose source has not answered gets null. */
   protected readonly summaries = computed<Record<WorkspaceMenuPageId, SummaryParams>>(() => ({
@@ -82,7 +106,16 @@ export class AreaMenu {
     features: this.featuresSummary(),
     milestones: this.milestonesSummary(),
     tech: this.techSummary(),
+    library: { count: this.demo.library().length },
   }));
+
+  /** The eyebrow head's key and params: the open spec's areas, else the workspace's pages. */
+  protected readonly head = computed(() => {
+    const ws = this.state.ws() ?? '';
+    return this.workspaceScope()
+      ? { key: 'shell.area.head.workspace', params: { workspace: this.data.workspaceName(ws) } }
+      : { key: 'shell.area.head.spec', params: { spec: this.state.specId() ?? '' } };
+  });
 
   protected readonly sheetOpen = signal(false);
   private readonly popover = viewChild<UiPopover>('popover');
@@ -91,8 +124,18 @@ export class AreaMenu {
 
   /** Opens the menu: the popover anchored to `trigger` at medium and wide, the bottom sheet at compact. */
   show(trigger: HTMLElement): void {
-    if (this.compact()) this.sheetOpen.set(true);
-    else this.popover()?.show(trigger);
+    if (this.compact()) {
+      this.sheetOpen.set(true);
+      return;
+    }
+    const popover = this.popover();
+    if (popover) {
+      popover.show(trigger);
+      return;
+    }
+    // A click that arrives right after the deferred menus mounted, before this menu's first render (spec 024): the
+    // popover opens once it exists instead of the click being lost.
+    afterNextRender(() => this.popover()?.show(trigger), { injector: this.injector });
   }
 
   close(): void {

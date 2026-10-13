@@ -93,7 +93,11 @@ function expectNewestFirst(entries: readonly TimelineEntry[]): void {
 describe("timeline route (T50, ISC-36)", () => {
   test("without events.jsonl: harbor 002's stage transitions are derived, in date order among decisions, rounds and gates", async () => {
     const { dir, handler } = workspace("dock");
-    const { entries } = await body(await timeline(handler, "dock", "002"));
+    const { entries: all } = await body(await timeline(handler, "dock", "002"));
+    // Spec 024: the route joins the held locks as running `agent` entries (and the app's notes as `note`) onto core's file
+    // timeline; harbor's live fixture holds ISC-74 for sess-2, the store has no note for 002.
+    expect(all.filter((e) => e.kind === "agent").map((e) => ({ ref: e.ref, running: e.running }))).toEqual([{ ref: "ISC-74", running: true }]);
+    const entries = all.filter((e) => e.kind !== "note" && e.kind !== "agent");
     // The route answers exactly what core builds from the files without events.jsonl.
     const built = buildTimeline({ files: readSpecFiles({ dir: join(dir, KEY), slug: "002-web-console" }), commits: [] });
     expect(entries).toEqual(JSON.parse(JSON.stringify(built)) as TimelineEntry[]);
@@ -146,7 +150,7 @@ describe("timeline route (T50, ISC-36)", () => {
   test("with events.jsonl: the recorded transitions in order with their source, nothing derived, the invalid line dropped", async () => {
     const { dir, handler } = workspace("quay");
     const folder = join(dir, "specs", "002-web-console");
-    const derived = (await body(await timeline(handler, "quay", "002"))).entries;
+    const derived = (await body(await timeline(handler, "quay", "002"))).entries.filter((e) => e.kind !== "note" && e.kind !== "agent");
     const text = `${EVENTS.map((e) => JSON.stringify(e)).join("\n")}\n`;
     writeFileSync(join(folder, "events.jsonl"), text);
 
@@ -159,7 +163,8 @@ describe("timeline route (T50, ISC-36)", () => {
       { severity: "warning", code: "actor-legacy", line: 1 },
     ]);
 
-    const { entries } = await body(await timeline(handler, "quay", "002"));
+    // Spec 024: the server's joins (`agent` for held locks, `note`) sit beside core's file timeline; compared without them.
+    const entries = (await body(await timeline(handler, "quay", "002"))).entries.filter((e) => e.kind !== "note" && e.kind !== "agent");
     const stages = stagesOf(entries);
     expect(entries.some((e) => e.derived)).toBe(false);
     // Oldest last in the list; each carries the event's source: its actor, its command, its instant.

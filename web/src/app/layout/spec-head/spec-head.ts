@@ -1,26 +1,28 @@
-import { NgTemplateOutlet } from '@angular/common';
 import {
   afterRenderEffect,
   ChangeDetectionStrategy,
   Component,
   computed,
-  DestroyRef,
   ElementRef,
   inject,
-  linkedSignal,
   signal,
   viewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { Priority, SpecPageModel } from '../../../../../core/src/files';
+import type { Priority, SpecPageModel, SpecType } from '../../../../../core/src/files';
+import type { Stage } from '../../../../../core/src/stage';
+import { monogram } from '../../features/overview/overview-model';
 import { UiIcon } from '../../shared/icons/icon';
+import type { IconName } from '../../shared/icons/icons';
 import { UiChip } from '../../shared/ui/chip/chip';
+import { chipIcon } from '../../shared/ui/chip/chip-icons';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiPopover, UiPopoverTrigger } from '../../shared/ui/overlay/popover';
-import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiPriority } from '../../shared/ui/priority/priority';
+import type { Tone } from '../../shared/ui/tone';
+import { TYPE_GLYPHS } from '../../shared/ui/type-glyph/type-glyph';
 import { areaById, areaPath, specLink, workspaceLink } from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
@@ -34,250 +36,203 @@ import {
   milestonePlace,
   openItem,
   relativeTime,
-  slugName,
 } from './spec-head-model';
 
+/** The stage chip's tone and prototype icon (`CHIP_ICON`: scoping compass, tasked list, building hammer, …). */
+const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly icon: IconName | undefined }>> = {
+  plan: { tone: 'secondary', icon: chipIcon('scoping') },
+  tasks: { tone: 'secondary', icon: chipIcon('tasked') },
+  review: { tone: 'secondary', icon: chipIcon('code-reviewed') },
+  build: { tone: 'primary', icon: chipIcon('building') },
+  blocked: { tone: 'error', icon: chipIcon('blocked') },
+  'code-review': { tone: 'primary', icon: chipIcon('code-reviewed') },
+  'close-pending': { tone: 'primary', icon: chipIcon('done') },
+  close: { tone: 'success', icon: chipIcon('closed') },
+  done: { tone: 'success', icon: chipIcon('done') },
+};
+
 /**
- * T78 · ISC-85 · ISC-86 · ISC-22: the spec head above the tab bar on every spec area (design.md § Spec head).
+ * T36 · ISC-149: the spec head above the tab bar on every spec area, the prototype's `spec-head-unified`
+ * (`pages.js` `specHeader()`; spec 024 design.md § Spec-Kopf per viewport and § Viewport-übergreifend, Breadcrumb).
  *
- * - Row 1, every tier: the breadcrumb (T39, ISC-105; design § The breadcrumb). Medium and wide:
- *   `← workspace / ⚑ milestone · F2 name +n › NNN slug › area › ISC-51`; compact returns it in the short form
- *   `workspace / ⚑ milestone · F2 +n › NNN › ISC-51` (no area: the row-2 trigger carries it). The workspace is the
- *   first entry at every tier (T19, ISC-140.1). The milestone and feature levels come from the planning tree
- *   (`ShellData.planningModel`), so without it the line is the levels of the workspace and spec 002. The claim or
- *   task level is the one the open Claims or Tasks tab names by fragment. Each `<li>` names the separator drawn before
- *   it in `data-sep` (`scope` "/", `dot` "·", `down` "›"). At medium and wide the spec level opens with `ui-priority`
- *   before the id, never truncated (spec 008, ISC-118); at compact the priority shows only in the chip row.
- *   Shortening when the row is short: the feature name first down to its id, then the milestone down to its flag; at
- *   compact, if it still does not fit, milestone and feature collapse into one `…` button that opens the full path in
- *   a bottom sheet (`ui-sheet`). The workspace and the last entry never shorten.
- * - Row 2: mono id and the Sora title (ellipsis with `title`), the type, stage and priority chips; the cluster on the right
- *   holds the next-command chip with copy (the canonical copy target of the page), the notes pill and, when the stage
- *   allows, the shared gate button. At compact the chips wrap under the title and the command chip goes full width.
- * - Row 3: the description (the idea quote, clamped to two lines with a "more" disclosure at compact) and the meta
- *   line with `Intl` relative times in the UI language.
- * - The agent banner when a lock source reports a lock (ISC-90), else the muted "No agent source" line when the
- *   server read none (ISC-86).
+ * - The context line: the breadcrumb `← [badge] workspace / Spec NNN · Area › ISC-51` on every tier (the workspace
+ *   first, spec 019 ISC-140.1; the claim or task the open Claims or Tasks tab names by fragment as the last level). Each
+ *   `<li>` names the separator drawn before it in `data-sep` (`scope` "/", `dot` "·", `down` "›"). Beside it (below it
+ *   at compact) the chip row: the type chip `plain` with its type icon, the stage chip with the stage icon, the
+ *   priority exactly once as `pmark` after the stage chip, the milestone chip with `flag` and the feature chip (its id;
+ *   "+n" opens the other blocks the spec holds). Milestone and feature come from the planning tree
+ *   (`ShellData.planningModel`) and left the breadcrumb with spec 024 (principal 2026-10-12).
+ * - The row: `NNN · title` (mono cyan id, Sora 600 24/32, 20/28 at compact), the description muted and clamped with a
+ *   "More…" disclosure, the meta line; on the right (below under 800 px) the next-command chip with copy, the shared gate
+ *   button when the stage allows, and the notes pill (`sticky-note` (the prototype's `note`) + "n notes", violet tint).
+ * - The agent banner (3 px orange edge, agent dot, `lock` "writes paused") while a lock source reports a lock (ISC-90);
+ *   without one the "No agent source" note joins the meta lines when the server read no source (ISC-86).
  *
  * Values come from the spec payload, the dashboard row until it answers. The host carries `spec-head`, the class the
  * zen footer hides.
  */
 @Component({
   selector: 'app-spec-head',
-  imports: [GateButton, NgTemplateOutlet, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiPriority, UiSheet],
+  imports: [GateButton, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiPriority],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrl: './spec-head.css',
+  styleUrls: ['./spec-head.css', './spec-head.context.css', './spec-head.compact.css'],
   host: { class: 'spec-head', '[attr.data-tier]': 'tier()' },
   template: `
-    <nav class="crumbs" data-breadcrumb [attr.aria-label]="'planning.breadcrumb.label' | transloco">
-      <ol #crumbList>
-        <li>
-          <a [routerLink]="workspaceLink()" data-crumb="workspace">
-            @if (!compact()) {
-              <ui-icon name="arrow-left" [size]="16" />
-            }
-            <span class="ws-name">{{ workspaceName() }}</span>
-          </a>
-        </li>
-        @if (collapsed()) {
-          <li data-sep="scope">
-            <button
-              type="button"
-              class="crumb-collapse"
-              data-crumb-collapse
-              aria-haspopup="dialog"
-              [attr.aria-expanded]="pathOpen()"
-              [attr.aria-label]="'planning.breadcrumb.label' | transloco"
-              (click)="pathOpen.set(true)"
-            >
-              …
-            </button>
-            <ui-sheet tier="compact" [label]="'planning.breadcrumb.label' | transloco" [(open)]="pathOpen">
-              <ul class="crumb-path" data-crumb-path>
-                @if (milestoneCrumb(); as milestone) {
-                  <li>
-                    @if (milestone.known) {
-                      <a class="crumb-path-entry" [routerLink]="milestonesLink()" [fragment]="'m-' + milestone.slug" (click)="pathOpen.set(false)">
-                        <ui-icon name="flag" [size]="12" />
-                        {{ milestone.name }}
-                      </a>
-                    } @else {
-                      <span class="crumb-path-entry" [attr.aria-description]="'planning.breadcrumb.unknownMilestone' | transloco">
-                        <ui-icon name="triangle-alert" [size]="12" />
-                        {{ milestone.name }}
-                      </span>
-                    }
-                  </li>
-                }
-                @for (feature of collapsedFeatures(); track feature.id) {
-                  <li>
-                    <a
-                      class="crumb-path-entry"
-                      [routerLink]="featuresLink()"
-                      [fragment]="feature.id"
-                      [attr.aria-description]="'terms.feature' | transloco"
-                      (click)="pathOpen.set(false)"
-                    >
-                      <span class="mono">{{ feature.id }}</span> {{ feature.name }}
-                    </a>
-                  </li>
-                }
-              </ul>
-            </ui-sheet>
-          </li>
-        }
-        @if (!collapsed() && milestoneCrumb(); as milestone) {
-          <li [attr.data-sep]="seps().milestone">
-            @if (milestone.known) {
-              <a [routerLink]="milestonesLink()" [fragment]="'m-' + milestone.slug" data-crumb="milestone">
-                <ui-icon name="flag" [size]="12" />
-                <span class="name">{{ milestone.name }}</span>
-              </a>
-            } @else {
-              <span class="unknown" data-crumb="milestone" [attr.aria-description]="'planning.breadcrumb.unknownMilestone' | transloco">
-                <ui-icon name="triangle-alert" [size]="12" />
-                @if (milestone.name; as name) {
-                  <span class="name">{{ name }}</span>
-                }
-              </span>
-            }
-          </li>
-        }
-        @if (!collapsed() && featureCrumb(); as feature) {
-          <li [attr.data-sep]="seps().feature">
-            <a [routerLink]="featuresLink()" [fragment]="feature.id" data-crumb="feature" [attr.aria-description]="'terms.feature' | transloco">
-              <span class="mono">{{ feature.id }}</span>
-              @if (!compact()) {
-                <span class="name"> {{ feature.name }}</span>
-              }
+    <div class="sh-context">
+      <nav class="crumbs" data-breadcrumb [attr.aria-label]="'planning.breadcrumb.label' | transloco">
+        <ol>
+          <li>
+            <a [routerLink]="workspaceLink()" data-crumb="workspace">
+              <ui-icon name="arrow-left" [size]="14" />
+              <span class="ws-badge" aria-hidden="true" [attr.data-mono]="workspaceMono()"></span>
+              <span class="ws-name">{{ workspaceName() }}</span>
             </a>
-            @if (otherFeatures().length; as count) {
-              <button
-                type="button"
-                class="crumb-more"
-                data-crumb-more
-                [attr.aria-label]="'planning.breadcrumb.more' | transloco: { count }"
-                [uiPopoverTrigger]="more"
-              >
-                <ui-chip>+{{ count }}</ui-chip>
-              </button>
-              <ui-popover #more [label]="'planning.breadcrumb.more' | transloco: { count }">
-                <ul class="crumb-more-list">
-                  @for (other of otherFeatures(); track other.id) {
-                    <li>
-                      <a [routerLink]="featuresLink()" [fragment]="other.id" [attr.aria-description]="'terms.feature' | transloco">
-                        <span class="mono">{{ other.id }}</span> {{ other.name }}
-                      </a>
-                    </li>
-                  }
-                </ul>
-              </ui-popover>
-            }
           </li>
-        }
-        <li [attr.data-sep]="seps().spec">
-          @if (!compact()) {
-            <ui-priority data-crumb-priority [value]="priority()" />
-          }
-          <a
-            [routerLink]="specHome()"
-            data-crumb="spec"
-            [attr.aria-current]="specCurrent() ? 'page' : null"
-            [attr.aria-label]="archived() ? specArchivedName() : null"
-            [attr.aria-description]="'terms.spec' | transloco"
-          >
-            @if (archived()) {
-              <ui-icon name="archive" [size]="12" />
-            }
-            <span class="mono">{{ id() }}</span>
-            @if (!compact()) {
-              &ngsp;<span class="crumb-slug">{{ slug() }}</span>
-            }
-          </a>
-        </li>
-        @if (!compact()) {
-          <li data-sep="down">
+          <li data-sep="scope">
+            <a
+              [routerLink]="specHome()"
+              data-crumb="spec"
+              [attr.aria-label]="archived() ? specArchivedName() : null"
+              [attr.aria-description]="'terms.spec' | transloco"
+            >
+              @if (archived()) {
+                <ui-icon name="archive" [size]="12" />
+              }
+              {{ 'specHead.specCrumb' | transloco: { id: id() } }}
+            </a>
+          </li>
+          <li data-sep="dot">
             @if (leaf()) {
               <a [routerLink]="areaLink()" data-crumb="area">{{ 'shell.areas.' + state.area() | transloco }}</a>
             } @else {
               <span aria-current="page" data-crumb="area">{{ 'shell.areas.' + state.area() | transloco }}</span>
             }
           </li>
+          @if (leaf(); as item) {
+            <li data-sep="down">
+              <a
+                class="mono"
+                aria-current="page"
+                [routerLink]="leafLink()"
+                [fragment]="item.kind + '-' + item.id"
+                [attr.data-crumb]="item.kind"
+                [attr.aria-description]="'terms.' + item.kind | transloco"
+                >{{ item.id }}</a
+              >
+            </li>
+          }
+        </ol>
+      </nav>
+
+      <div class="chips" data-head-chips>
+        @if (type(); as type) {
+          <ui-chip variant="plain" data-head-chip="type" [icon]="typeIcon()">{{ 'types.' + type | transloco }}</ui-chip>
         }
-        @if (leaf(); as item) {
-          <li data-sep="down">
-            <a
-              class="mono"
-              aria-current="page"
-              [routerLink]="leafLink()"
-              [fragment]="item.kind + '-' + item.id"
-              [attr.data-crumb]="item.kind"
-              [attr.aria-description]="'terms.' + item.kind | transloco"
-              >{{ item.id }}</a
-            >
-          </li>
+        <ui-chip data-head-chip="stage" [tone]="stageLook().tone" [icon]="stageLook().icon">{{ 'stages.' + stage() | transloco }}</ui-chip>
+        <ui-priority data-head-chip="priority" [mark]="true" [value]="priority()" />
+        @if (milestoneChip(); as milestone) {
+          @if (milestone.known) {
+            <a class="chip-link" data-head-chip="milestone" [routerLink]="milestonesLink()" [fragment]="'m-' + milestone.slug">
+              <ui-chip variant="plain" icon="flag"><span class="label-name">{{ milestone.name }}</span></ui-chip>
+            </a>
+          } @else {
+            <span class="chip-link" data-head-chip="milestone" [attr.aria-description]="'planning.breadcrumb.unknownMilestone' | transloco">
+              <ui-chip variant="plain" tone="warning" icon="triangle-alert"><span class="label-name">{{ milestone.name }}</span></ui-chip>
+            </span>
+          }
         }
-      </ol>
-    </nav>
+        @if (featureChip(); as feature) {
+          <a
+            class="chip-link"
+            data-head-chip="feature"
+            [routerLink]="featuresLink()"
+            [fragment]="feature.id"
+            [attr.title]="feature.name"
+            [attr.aria-description]="'terms.feature' | transloco"
+          >
+            <ui-chip variant="mono">{{ feature.id }}</ui-chip>
+          </a>
+          @if (otherFeatures().length; as count) {
+            <button type="button" class="head-more" data-head-more [attr.aria-label]="'planning.breadcrumb.more' | transloco: { count }" [uiPopoverTrigger]="more">
+              <ui-chip variant="count">+{{ count }}</ui-chip>
+            </button>
+            <ui-popover #more [label]="'planning.breadcrumb.more' | transloco: { count }">
+              <ul class="head-more-list">
+                @for (other of otherFeatures(); track other.id) {
+                  <li>
+                    <a [routerLink]="featuresLink()" [fragment]="other.id" [attr.aria-description]="'terms.feature' | transloco">
+                      <span class="mono">{{ other.id }}</span> {{ other.name }}
+                    </a>
+                  </li>
+                }
+              </ul>
+            </ui-popover>
+          }
+        }
+      </div>
+    </div>
 
     <div class="row">
-      <div class="title-line">
+      <div class="sh-main">
         <h1 id="spec-title">
           <span class="spec-id">{{ id() }}</span>
           @if (title(); as title) {
+            <span class="sh-sep" aria-hidden="true">·</span>
             <span class="spec-title" [attr.title]="title">{{ title }}</span>
           }
         </h1>
-        <span class="chips">
-          @if (type(); as type) {
-            <ui-chip data-head-chip="type">{{ type }}</ui-chip>
-          }
-          <ui-chip tone="primary" [dot]="true" data-head-chip="stage">{{ 'stages.' + stage() | transloco }}</ui-chip>
-          <ui-priority data-head-chip="priority" [value]="priority()" />
-          @if (compact()) {
-            <ng-container [ngTemplateOutlet]="notesPill" />
-            @if (showGate()) {
-              <app-gate-button size="inline" />
+        @if (description(); as description) {
+          <div class="desc-block">
+            <p #desc class="desc" data-description [class.clamped]="!expanded()">{{ description }}</p>
+            @if (expanded() || overflowing()) {
+              <button type="button" class="more" data-more [attr.aria-expanded]="expanded()" (click)="expanded.set(!expanded())">
+                {{ (expanded() ? 'specHead.less' : 'specHead.more') | transloco }}
+              </button>
             }
-          }
-        </span>
+          </div>
+        }
+        @if (meta().length > 0) {
+          <p class="meta" data-meta>
+            @for (part of meta(); track $index) {
+              <span>{{ part }}</span>
+            }
+          </p>
+        }
+        @if (!lock() && lockSource() === 'none') {
+          <p class="no-source" data-no-source-line>{{ 'specHead.noSource' | transloco }}</p>
+        }
       </div>
-      @if (!compact()) {
-        <div class="actions" data-head-actions>
-          <ng-container [ngTemplateOutlet]="commandChip" />
-          <ng-container [ngTemplateOutlet]="notesPill" />
-          @if (showGate()) {
-            <app-gate-button size="inline" />
-          }
-        </div>
-      }
+      <div class="actions" data-head-actions>
+        @if (command(); as command) {
+          <ui-command-chip
+            class="command"
+            data-head-command
+            [command]="command"
+            [copyLabel]="'common.copyCommand' | transloco"
+            [copiedLabel]="'common.copied' | transloco: { command }"
+            [manualHint]="'common.copyFallback' | transloco"
+          />
+        }
+        @if (showGate()) {
+          <app-gate-button size="inline" />
+        }
+        @if (notesLink(); as link) {
+          <a class="notes-pill" data-notes-pill [routerLink]="link">
+            <ui-icon name="sticky-note" [size]="14" />
+            @if (notes(); as count) {
+              {{ 'specHead.notesCount' | transloco: { count } }}
+            } @else {
+              {{ 'specHead.notes' | transloco }}
+            }
+          </a>
+        }
+      </div>
     </div>
 
-    @if (description(); as description) {
-      <div class="desc-block">
-        <p #desc class="desc" data-description [class.clamped]="compact() && !expanded()">{{ description }}</p>
-        @if (compact() && (expanded() || overflowing())) {
-          <button type="button" class="btn btn-link btn-xs more" data-more [attr.aria-expanded]="expanded()" (click)="expanded.set(!expanded())">
-            {{ (expanded() ? 'specHead.less' : 'specHead.more') | transloco }}
-          </button>
-        }
-      </div>
-    }
-    @if (meta().length > 0) {
-      <p class="meta" data-meta>
-        @for (part of meta(); track $index) {
-          <span>{{ part }}</span>
-        }
-      </p>
-    }
-    @if (compact()) {
-      <ng-container [ngTemplateOutlet]="commandChip" />
-    }
-
     @if (lock(); as held) {
-      <div class="banner" data-agent-banner>
+      <div class="banner" data-agent-banner role="status">
         <p class="banner-line">
-          <span class="banner-dot" aria-hidden="true"></span>
+          <span class="agent-dot" aria-hidden="true"></span>
           <code class="session" data-session>{{ held.session }}</code>
           <span>{{ 'specHead.agent.on' | transloco: { claim: held.claim, time: ago(held.since) } }}</span>
         </p>
@@ -286,33 +241,7 @@ import {
           {{ 'specHead.agent.paused' | transloco }}
         </span>
       </div>
-    } @else if (lockSource() === 'none') {
-      <p class="no-source" data-no-source-line>{{ 'specHead.noSource' | transloco }}</p>
     }
-
-    <ng-template #commandChip>
-      @if (command(); as command) {
-        <ui-command-chip
-          class="command"
-          data-head-command
-          [command]="command"
-          [copyLabel]="'common.copyCommand' | transloco"
-          [copiedLabel]="'common.copied' | transloco: { command }"
-          [manualHint]="'common.copyFallback' | transloco"
-        />
-      }
-    </ng-template>
-    <ng-template #notesPill>
-      @if (notesLink(); as link) {
-        <a class="badge badge-secondary notes-pill" data-notes-pill [routerLink]="link">
-          @if (notes(); as count) {
-            {{ 'specHead.notesCount' | transloco: { count } }}
-          } @else {
-            {{ 'specHead.notes' | transloco }}
-          }
-        </a>
-      }
-    </ng-template>
   `,
 })
 export class SpecHead {
@@ -323,7 +252,6 @@ export class SpecHead {
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   protected readonly tier = this.state.tier;
-  protected readonly compact = computed(() => this.tier() === 'compact');
 
   private readonly body = computed<SpecPageModel | null>(() => {
     const spec = this.data.spec.value();
@@ -337,12 +265,16 @@ export class SpecHead {
   protected readonly id = computed(() => this.body()?.head.id ?? this.holder()?.id ?? this.ref());
   protected readonly title = computed(() => this.body()?.head.title ?? this.row()?.title ?? null);
   protected readonly type = computed(() => this.body()?.head.type ?? this.row()?.type ?? null);
+  protected readonly typeIcon = computed(() => {
+    const type = this.type();
+    return type !== null && Object.hasOwn(TYPE_GLYPHS, type) ? TYPE_GLYPHS[type as SpecType] : undefined;
+  });
   protected readonly stage = computed(() => this.body()?.head.stage ?? this.row()?.stage ?? 'plan');
+  protected readonly stageLook = computed(() => (Object.hasOwn(STAGE_LOOK, this.stage()) ? STAGE_LOOK[this.stage() as Stage] : STAGE_LOOK.plan));
   /** `priority:` as core reads it (P3 for a missing or invalid key); null until a source answers, drawn as unmarked P3. */
   protected readonly priority = computed<Priority | null>(
     () => this.body()?.head.priority ?? this.row()?.priority ?? this.holder()?.priority ?? null,
   );
-  protected readonly slug = computed(() => slugName(this.body()?.head.slug ?? this.holder()?.slug ?? ''));
   protected readonly command = computed(() => this.body()?.head.nextCommand ?? null);
   protected readonly notes = computed(() => this.body()?.areas.notes.count ?? null);
   protected readonly description = computed(() => this.body()?.ideaQuote ?? null);
@@ -354,10 +286,12 @@ export class SpecHead {
     const ws = this.state.ws();
     return this.data.workspaceList().find((entry) => entry.slug === ws)?.name ?? ws ?? '';
   });
+  /** The workspace badge's monogram, drawn as generated content so the crumb's text stays the workspace name. */
+  protected readonly workspaceMono = computed(() => monogram(this.workspaceName()));
   protected readonly workspaceLink = computed(() => workspaceLink(this.state.ws() ?? '', 'specs'));
   protected readonly specHome = computed(() => specLink(this.state.ws() ?? '', this.id()));
 
-  // ─── Breadcrumb (T39, ISC-105) ──────────────────────────────────────────────────────────────────────────────
+  // ─── Breadcrumb and planning chips ──────────────────────────────────────────────────────────────────────────
   private readonly plan = this.data.planningModel;
   /** Re-read on every navigation (`ShellState.route` follows `NavigationEnd`), fragment-only ones included. */
   private readonly fragment = computed(() => {
@@ -370,7 +304,7 @@ export class SpecHead {
     const plan = this.plan();
     return plan === null ? null : holderOf(plan, this.ref());
   });
-  protected readonly milestoneCrumb = computed<MilestonePlace | null>(() => {
+  protected readonly milestoneChip = computed<MilestonePlace | null>(() => {
     const plan = this.plan();
     return plan === null ? null : milestonePlace(plan, this.ref());
   });
@@ -379,7 +313,7 @@ export class SpecHead {
     const leaf = this.leaf();
     return plan === null ? { crumb: null, others: [] } : featurePlace(plan, this.ref(), leaf?.kind === 'claim' ? leaf.id : null);
   });
-  protected readonly featureCrumb = computed(() => this.features().crumb);
+  protected readonly featureChip = computed(() => this.features().crumb);
   protected readonly otherFeatures = computed(() => this.features().others);
   /** Archived per the dashboard's archive rows, or the planning holder's flag while the dashboard has not answered. */
   protected readonly archived = computed(() => {
@@ -387,46 +321,11 @@ export class SpecHead {
     return this.data.archiveRows().some((row) => row.id === id) || (this.holder()?.archived ?? false);
   });
   protected readonly specArchivedName = computed(() => {
-    const name = this.compact() ? this.id() : `${this.id()} ${this.slug()}`.trim();
     // `translate` reads no signal: the language is read here so the name follows a language switch.
-    return `${name}, ${this.transloco.translate('planning.breadcrumb.archived', {}, this.lang())}`;
+    const lang = this.lang();
+    const name = this.transloco.translate('specHead.specCrumb', { id: this.id() }, lang);
+    return `${name}, ${this.transloco.translate('planning.breadcrumb.archived', {}, lang)}`;
   });
-  /**
-   * At compact the area crumb is dropped, so with no claim or task open the spec crumb is the last level and current
-   * on every area; at medium and wide the area crumb (or the leaf) carries `aria-current` instead.
-   */
-  protected readonly specCurrent = computed(() => this.compact() && this.leaf() === null);
-  /** The separator before each level: "/" leaves the workspace scope, "·" joins milestone and feature, "›" descends. */
-  protected readonly seps = computed(() => {
-    const lead = 'scope';
-    const milestone = this.milestoneCrumb() !== null;
-    return {
-      milestone: lead,
-      feature: milestone ? 'dot' : lead,
-      spec: milestone || this.featureCrumb() !== null || this.collapsed() ? 'down' : lead,
-    };
-  });
-
-  // ─── Shortening (T19, ISC-140.1) ────────────────────────────────────────────────────────────────────────────
-  private readonly crumbList = viewChild<ElementRef<HTMLOListElement>>('crumbList');
-  /** The inline size of the spec head, followed by a `ResizeObserver`; a change re-measures the fit. */
-  private readonly rowWidth = signal(0);
-  /**
-   * At compact, when the row does not fit even with the feature as its id and the milestone down to its flag, milestone
-   * and feature collapse into one `…` button that opens the full path in a bottom sheet. Reset on every navigation,
-   * tier or width change, then measured again after render; workspace and the last entry never collapse.
-   */
-  protected readonly collapsed = linkedSignal<readonly unknown[], boolean>({
-    source: () => [this.compact(), this.state.route(), this.rowWidth(), this.plan()],
-    computation: () => false,
-  });
-  protected readonly pathOpen = signal(false);
-  /** The sheet's feature lines: the crumb's feature, then the other blocks the spec holds. */
-  protected readonly collapsedFeatures = computed(() => {
-    const crumb = this.featureCrumb();
-    return crumb === null ? this.otherFeatures() : [crumb, ...this.otherFeatures()];
-  });
-  private readonly collapsible = computed(() => this.milestoneCrumb() !== null || this.featureCrumb() !== null);
   protected readonly milestonesLink = computed(() => workspaceLink(this.state.ws() ?? '', 'milestones'));
   protected readonly featuresLink = computed(() => workspaceLink(this.state.ws() ?? '', 'features'));
   protected readonly areaLink = computed(() => {
@@ -462,30 +361,13 @@ export class SpecHead {
   private readonly desc = viewChild<ElementRef<HTMLElement>>('desc');
 
   constructor() {
-    // The "more" disclosure shows only when the two-line clamp actually cuts the description.
+    // The "More…" disclosure shows only when the clamp (one line wide, two below) actually cuts the description.
     afterRenderEffect(() => {
       const el = this.desc()?.nativeElement;
-      if (!el || !this.compact() || this.expanded()) return;
+      this.tier();
+      if (!el || this.expanded()) return;
       this.description();
       this.overflowing.set(el.scrollHeight > el.clientHeight + 1);
     });
-
-    // The compact fit: collapse milestone and feature when an item's content, or the row itself, overflows.
-    afterRenderEffect(() => {
-      const list = this.crumbList()?.nativeElement;
-      if (!list || !this.compact() || this.collapsed() || !this.collapsible()) return;
-      this.state.route();
-      this.rowWidth();
-      const items = [...list.children] as HTMLElement[];
-      const overflows = list.scrollWidth > list.clientWidth + 1 || items.some((li) => li.scrollWidth > li.clientWidth + 1);
-      if (overflows) this.collapsed.set(true);
-    });
-
-    const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-    if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver(() => this.rowWidth.set(Math.round(host.getBoundingClientRect().width)));
-      observer.observe(host);
-      inject(DestroyRef).onDestroy(() => observer.disconnect());
-    }
   }
 }

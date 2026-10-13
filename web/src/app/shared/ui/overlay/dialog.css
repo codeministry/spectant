@@ -48,7 +48,7 @@
 
 /* 40 % black (design.md § Command palette); the scrim is the opaque fallback where `backdrop-filter` is missing. */
 .dialog::backdrop {
-  background: oklch(0% 0 0 / 0.4);
+  background: var(--scrim);
   /* stylelint-disable-next-line property-no-vendor-prefix -- WebKit 17 (cmux) needs the prefix, web/CLAUDE.md */
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);

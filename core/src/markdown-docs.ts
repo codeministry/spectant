@@ -6,6 +6,7 @@
 // Mermaid is not rendered here. Each fence becomes `<figure data-figure="n"><pre class="mermaid">…</pre>`, its source
 // escaped, and the web app draws it client-side with the pinned mermaid package.
 import type { DESIGN_ASSETS, DocAvailability, DocName, DocsPage, SpecType } from './files.ts';
+import { parseConstitutionView, parseDecisionLog } from './context-log.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { renderMarkdown } from './markdown.ts';
 import { TYPE_NEEDS } from './stage.ts';
@@ -20,6 +21,10 @@ export interface DocsOptions {
   readonly assetExists?: (src: string, asset: string | null) => boolean;
   /** The folder whose images load through the spec's evidence file route (`markdown.ts`): the Design tab's `.design`. */
   readonly specAssets?: ReadonlyArray<typeof DESIGN_ASSETS | '*'>;
+  /** Which Docs tab the page is for: `decisions` adds the question rounds, `constitution` the lanes and gate tiers. */
+  readonly doc?: DocName;
+  /** The Decisions tab: spec.md's `principal_stated_goal_signal`; kept on the page only as an integer 1–4. */
+  readonly goalSignal?: number | null;
 }
 
 const ENTITIES: Readonly<Record<string, string>> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" };
@@ -33,6 +38,8 @@ function countWords(html: string): number {
     .replace(/&(?:amp|lt|gt|quot|#39);/g, (e) => ENTITIES[e] ?? ' ');
   return text.match(/[\p{L}\p{N}]+(?:[-'’][\p{L}\p{N}]+)*/gu)?.length ?? 0;
 }
+
+const isSignal = (value: number | null | undefined): value is number => Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 4;
 
 /** One Docs tab page from the text of plan.md, design.md, context.md or the constitution. */
 export function renderDocsMarkdown(markdown: string, options?: DocsOptions): DocsPage {
@@ -50,6 +57,9 @@ export function renderDocsMarkdown(markdown: string, options?: DocsOptions): Doc
     figures: rendered.figures,
     sections: rendered.toc.map((entry) => ({ id: entry.anchor, heading: entry.text, level: entry.level })),
     wordCount: countWords(rendered.html),
+    ...(options?.doc === 'decisions' ? { decisions: parseDecisionLog(fm.body) } : {}),
+    ...(options?.doc === 'decisions' && isSignal(options.goalSignal) ? { goalSignal: options.goalSignal } : {}),
+    ...(options?.doc === 'constitution' ? { constitution: parseConstitutionView(fm.body) } : {}),
   };
 }
 

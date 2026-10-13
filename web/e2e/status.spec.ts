@@ -127,6 +127,7 @@ test.describe('status tab', () => {
       await expect(dialog).toBeVisible();
       await expect(dialog.locator('[data-hashed-file]')).toHaveCount(3);
       await expect(dialog.locator('[data-no-agent-source]')).toBeVisible();
+      for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
       await dialog.locator('[data-confirm]').click();
       await expect(page.locator('app-status-tab [data-gate-written]')).toBeVisible();
       await expect(dialog).toBeHidden();
@@ -141,6 +142,7 @@ test.describe('status tab', () => {
       await page.goto('/w/harbor/s/003/status');
       await page.locator('app-status-tab [data-gate-action]').click();
       const dialog = page.locator('app-status-tab [data-gate-dialog]');
+      for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
       await dialog.locator('[data-confirm]').click();
       const alert = dialog.locator('[data-write-conflict]');
       await expect(alert).toBeVisible();
@@ -158,7 +160,8 @@ test.describe('status tab', () => {
       const button = page.locator('app-status-tab [data-gate-action]');
       await expect(button).toHaveAttribute('data-state', 'paused');
       await expect(button).toBeDisabled();
-      await expect(button).toContainText(/a:claude:(?:sess-2|stub-002-isc-\d+)/u);
+      // spec 024: prototype value (principal: Prototyp gilt immer) — the time and the session stand in the `.gate-hint` under the button.
+      await expect(page.locator('app-status-tab [data-gate-hint]')).toContainText(/a:claude:(?:sess-2|stub-002-isc-\d+)/u);
       // The agent banner moved to the spec head, above every area (T78).
       await expect(page.locator('app-spec-head [data-writes-paused]')).toBeVisible();
     });

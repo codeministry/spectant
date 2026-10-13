@@ -46,7 +46,7 @@ const BOARD = '/w/harbor/s/002/board';
 const SESSION_HEADER = 'X-Spectant-Stub-Session';
 /** The stub's lock fixture with sessions, agents and a stale agent (`web/e2e/stub-api.ts` `lockFixtures`). */
 const FRONTIER_LOCKS = { 'X-Spectant-Stub-Locks': 'frontier' } as const;
-/** Every card of the board: the lanes, and at wide the operator steps in the shell rail's "Your steps" (T88). */
+/** Every card of the board: the lanes, at wide the operator steps' own checklist lane "Your steps" (T88, spec 024). */
 const CARDS = ':is(app-board-tab, app-rail-slot) article[data-card]';
 const statesOf = (cards: ReadonlyArray<{ state: CardState }>): string[] => [...new Set(cards.map((c) => c.state))].sort();
 
@@ -67,7 +67,8 @@ test.describe('states', () => {
       const glyph = card.locator('.r1 > ui-glyph');
       pairs.add(`${String(await glyph.getAttribute('data-shape'))}/${String(await glyph.getAttribute('data-tone'))}`);
       const edge = await card.evaluate((el) => getComputedStyle(el).borderInlineStartWidth);
-      expect(edge, state).toBe('3px');
+      // spec 024: prototype value (principal: Prototyp gilt immer)
+      expect(edge, state).toBe('4px');
     }
     expect(pairs.size).toBe(statesOf(LIVE.cards).length);
   });
@@ -101,7 +102,8 @@ test.describe('states', () => {
     if (!last) throw new Error('the frames golden is empty');
     await page.locator('ui-scrubber [data-step="previous"]').click();
     await expect(page).toHaveURL(new RegExp(`[?&]frame=${String(last.index)}(&|$)`));
-    await expect(page.locator('[data-frame-chip="history"]')).toContainText(`History · ${last.label}`);
+    // spec 024: prototype value (principal: Prototyp gilt immer) — the replay label reads "R2 · result", the chip "history".
+    await expect(page.locator('[data-frame-chip="history"] [data-frame-label]')).toHaveText(`${last.label} · ${last.kind}`);
     await expect(page.locator(CARDS)).toHaveCount(last.cards.length);
     await expect(page.locator('ui-scrubber input[type="range"]')).toHaveAttribute('aria-valuetext', last.label);
 
@@ -166,6 +168,8 @@ for (const [width, locks] of OVERFLOW) {
     test(`no horizontal overflow and no lane scrolling on its own at ${String(width)}`, async ({ page }) => {
       await page.goto(BOARD);
       await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
+      // Spec 024: cards may still be settling (the 240 ms FLIP of a frame step); measure once finite animations are done.
+      await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished)));
       const page_ = await page.evaluate(() => {
         const root = document.scrollingElement ?? document.documentElement;
         return { scroll: root.scrollWidth, client: root.clientWidth };
@@ -225,11 +229,16 @@ test.describe('flow', () => {
     await expect(page.locator(FLOW_CARDS)).toHaveCount(LIVE.cards.length);
     const rendered = await page.locator(FLOW_CARDS).evaluateAll((cards) => cards.map((c) => c.getAttribute('data-card') ?? ''));
     expect(rendered.sort()).toEqual(LIVE.cards.map((c) => c.task).sort());
+    // spec 024: prototype value (principal: Prototyp gilt immer): at wide the operator steps are the row across all columns
+    // (`.op.span`, design.md § Live · Operator-Lane), not a band; every other card sits in its band and column.
     for (const c of LIVE.cards) {
-      await expect(page.locator(`app-flow-view [data-band="${c.lane}"] [data-column="${COLUMN_OF[c.state]}"] article[data-card="${c.task}"]`)).toHaveCount(1);
+      const at = c.lane === 'operator' ? `app-flow-view app-your-steps.span [data-step="${c.task}"]` : `app-flow-view [data-band="${c.lane}"] [data-column="${COLUMN_OF[c.state]}"]`;
+      await expect(page.locator(`${at} article[data-card="${c.task}"]`)).toHaveCount(1);
     }
+    const steps = LIVE.cards.filter((c) => c.lane === 'operator');
+    await expect(page.locator('app-flow-view app-your-steps.span [data-steps-count]')).toHaveText(new RegExp(`^Your steps · \\d+ of ${String(steps.length)} done$`));
 
-    const order = bandOrder(LIVE.cards);
+    const order = bandOrder(LIVE.cards).filter((lane) => lane !== 'operator');
     expect(await page.locator('app-flow-view [data-band]').evaluateAll((els) => els.map((el) => el.getAttribute('data-band')))).toEqual(order);
     for (const lane of order) {
       const cards = LIVE.cards.filter((c) => c.lane === lane);
@@ -345,15 +354,14 @@ const EVENTS = LIVE.cards.filter((c) => BEFORE.get(c.task) !== c.state).map((c) 
 const OPERATOR = LIVE.cards.filter((c) => c.lane === 'operator');
 
 test.describe('rail', () => {
-  const SESSION = { 'X-Spectant-Stub-Session': 'board-rail' };
-  test.beforeEach(async ({ request }) => {
-    await request.post('/api/__stub/reset', { headers: SESSION });
-  });
+  // One stub session per test: the collapsed-strip case stores `railCollapsed`, and a session shared with the
+  // cases running beside it (fullyParallel) would collapse their rail or reset it under them.
+  useStubSession('board-rail');
 
   test.describe('at 1440', () => {
-    test.use({ ...atWidth(1440), extraHTTPHeaders: SESSION });
+    test.use(atWidth(1440));
 
-    test('rail: This frame, Needs you and Your steps are the rail blocks; a tick posts through the checkbox write', async ({ page }) => {
+    test('rail: This frame and Needs you are the rail blocks, Your steps the operator lane; a tick posts through the checkbox write', async ({ page }) => {
       await page.goto(BOARD);
       await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
       const rail = page.locator('aside.shell-rail [data-rail-blocks]');
@@ -366,14 +374,21 @@ test.describe('rail', () => {
       const edge = await rail.locator('app-needs-you [data-needs-card]').first().evaluate((el) => getComputedStyle(el).borderInlineStartWidth);
       expect(edge).toBe('4px');
 
-      const steps = await rail.locator('app-your-steps [data-step]').evaluateAll((rows) => rows.map((r) => r.getAttribute('data-step')));
+      // spec 024: prototype value (principal: Prototyp gilt immer): design.md § Live · Operator-Lane (Principal 2026-10-13), the
+      // operator steps are their own lane in the grid, each a compact 36 px card; the Needs you card lists them (.op-mini).
+      const lane = page.locator('app-board-tab [data-lanes] app-your-steps');
+      const steps = await lane.locator('[data-step]').evaluateAll((rows) => rows.map((r) => r.getAttribute('data-step')));
       expect(steps).toEqual(OPERATOR.map((c) => c.task));
-      // The operator lane lives only in the rail at wide.
+      await expect(rail.locator('app-your-steps')).toHaveCount(0);
+      await expect(rail.locator('app-needs-you [data-op-mini]')).toHaveCount(OPERATOR.length);
       await expect(page.locator('[data-lanes] section[data-lane="operator"]')).toHaveCount(0);
+      for (const height of await lane.locator('article[data-card]').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))) {
+        expect(height).toBe(36);
+      }
 
       const open = OPERATOR.find((c) => c.state === 'operatorOpen');
       if (!open) throw new Error('the live golden holds no open operator step');
-      const row = rail.locator(`app-your-steps [data-step="${open.task}"]`);
+      const row = lane.locator(`[data-step="${open.task}"]`);
       const box = row.locator('input[type="checkbox"]');
       await expect(box).toBeEnabled();
       await expect(box).not.toBeChecked();
@@ -414,7 +429,7 @@ test.describe('rail', () => {
   });
 
   test.describe('at 390', () => {
-    test.use({ ...atWidth(390), extraHTTPHeaders: SESSION });
+    test.use(atWidth(390));
 
     test('rail: the bottom bar names both counts and opens the sheet with both lists', async ({ page }) => {
       await page.goto(BOARD);
@@ -505,7 +520,8 @@ test.describe('rail text', () => {
   test('rail text: the state chip centres on the first text line', async ({ page }) => {
     await page.goto(BOARD);
     await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
-    const rows = await chipOffsets(page.locator(ROWS));
+    // spec 024: prototype value (principal: Prototyp gilt immer): This frame's rows are the compact .fevents lines without a chip.
+    const rows = await chipOffsets(page.locator('aside.shell-rail app-needs-you [data-needs-card]'));
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) expect(row.offset, row.task).toBeLessThanOrEqual(0.5);
   });
@@ -598,7 +614,11 @@ for (const lang of ['en', 'de'] as const) {
         const { sheet, needsYou } = await openRailSheet(page);
         const frameRows = sheet.locator('app-this-frame [data-frame-event]');
         await expectSheetFits(page, frameRows);
-        for (const row of await chipOffsets(frameRows)) expect(row.offset, row.task).toBeLessThanOrEqual(0.5);
+        // spec 024: prototype value (principal: Prototyp gilt immer): This frame's rows are the compact .fevents lines without a chip;
+        // each still names its card.
+        const named = await frameRows.evaluateAll((els) => els.map((el) => [el.getAttribute('data-frame-event'), el.querySelector('.fid')?.textContent]));
+        expect(named.length).toBeGreaterThan(0);
+        for (const [task, id] of named) expect(id).toBe(task);
 
         await needsYou.click();
         await expect(sheet.locator('app-needs-you [data-stale-agent]').first()).toBeVisible();
@@ -615,7 +635,7 @@ for (const lang of ['en', 'de'] as const) {
 test.describe('rail sheet on a coarse pointer', () => {
   test.use({ ...atWidth(820), hasTouch: true, isMobile: true, extraHTTPHeaders: FRONTIER_LOCKS });
 
-  test('rail sheet: on a coarse pointer each row is at least 44 px and its chip centres on the first line', async ({ page }) => {
+  test('rail sheet: on a coarse pointer each row is at least 44 px, a Needs you row with its chip centred on the first line', async ({ page }) => {
     const { sheet, needsYou } = await openRailSheet(page);
     const check = async (rows: Locator): Promise<void> => {
       const measured = await chipOffsets(rows);
@@ -625,7 +645,12 @@ test.describe('rail sheet on a coarse pointer', () => {
         expect(row.height, row.task).toBeGreaterThanOrEqual(44);
       }
     };
-    await check(sheet.locator('app-this-frame [data-frame-event]'));
+    // spec 024: prototype value (principal: Prototyp gilt immer): This frame's rows are the compact .fevents lines without a chip;
+    // each keeps its 44 px target and opens the card detail.
+    const frameRows = sheet.locator('app-this-frame [data-frame-event]');
+    const heights = await frameRows.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+    expect(heights.length).toBeGreaterThan(0);
+    for (const height of heights) expect(height).toBeGreaterThanOrEqual(44);
     await needsYou.click();
     await expect(sheet.locator('app-needs-you [data-needs-card]').first()).toBeVisible();
     await check(sheet.locator('app-needs-you [data-needs-card]'));

@@ -8,8 +8,8 @@ const lookup = (catalogue: unknown, key: string): unknown =>
   key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], catalogue);
 
 describe('WORKSPACE_PAGES', () => {
-  it('holds exactly Specs, Board, Features, Milestones and Tech, in that order (spec 008, ISC-129; spec 023, ISC-134.2)', () => {
-    expect(WORKSPACE_PAGES.map((page) => page.id)).toEqual(['specs', 'board', 'features', 'milestones', 'tech']);
+  it('holds exactly Specs, Board, Features, Milestones, Tech and Library, in that order (spec 008, ISC-129; spec 023, ISC-134.2; spec 024, ISC-150.1)', () => {
+    expect(WORKSPACE_PAGES.map((page) => page.id)).toEqual(['specs', 'board', 'features', 'milestones', 'tech', 'library']);
   });
 
   it('uses an icon from ICON_NAMES for every page', () => {
@@ -27,8 +27,8 @@ describe('WORKSPACE_PAGES', () => {
     }
   });
 
-  it('records go keys as candidates only: b, f and m, none for specs (g s is Status) and none for tech', () => {
-    expect(WORKSPACE_PAGES.map((page) => page.goKey)).toEqual([null, 'b', 'f', 'm', null]);
+  it('records the bound go keys b, f and m, none for specs (g s is Status), tech or library (the prototype’s g b is Board)', () => {
+    expect(WORKSPACE_PAGES.map((page) => page.goKey)).toEqual([null, 'b', 'f', 'm', null, null]);
   });
 
   it('looks a page up by id, tech included', () => {
@@ -36,6 +36,7 @@ describe('WORKSPACE_PAGES', () => {
     expect(workspacePageById('features').icon).toBe('layers');
     expect(workspacePageById('milestones').icon).toBe('flag');
     expect(workspacePageById('tech')).toMatchObject({ icon: 'book-open', labelKey: 'shell.pages.tech', summaryKey: 'shell.pages.summary.tech' });
+    expect(workspacePageById('library')).toMatchObject({ icon: 'book', labelKey: 'shell.pages.library', summaryKey: 'shell.pages.summary.library' });
   });
 
   it('knows the story page as a page id, but lists it in no menu entry', () => {

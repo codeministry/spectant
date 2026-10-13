@@ -31,7 +31,7 @@ export const WARNINGS_HEADING = 'warnings';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './warnings-panel.html',
   styleUrl: './warnings-panel.css',
-  host: { 'data-warnings': '', '[attr.data-form]': 'form()' },
+  host: { 'data-warnings': '', 'data-warnings-list': '', '[attr.data-form]': 'form()' },
 })
 export class WarningsPanel {
   /** The model's active rows (`DashboardModel.specs`), in action order. */
@@ -45,4 +45,12 @@ export class WarningsPanel {
   /** Specs carrying at least one warning, for "in n specs". */
   protected readonly warned = computed(() => this.specs().filter((row) => row.warnings.length > 0).length);
   protected readonly count = computed(() => this.kpis().warnings);
+
+  /**
+   * The text lines of a group: its warnings, less the open-fog warning when the spec has a fog line, so open fog is
+   * said once, by the fog line (prototype `warningsPanel`: `warn` lines, then one `fog` line).
+   */
+  protected textLines(spec: DashboardSpecRow): DashboardSpecRow['warnings'] {
+    return spec.fog > 0 ? spec.warnings.filter((warning) => warning.kind !== 'fog') : spec.warnings;
+  }
 }

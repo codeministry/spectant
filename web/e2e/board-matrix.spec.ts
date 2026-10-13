@@ -101,7 +101,8 @@ for (const width of [1440, 390]) {
       await expect(cell).toHaveAttribute('aria-label', `T27, R2 result: ${EN.states.card[r2.cards.find((c) => c.task === 'T27')?.state ?? 'waiting']}`);
       await cell.click();
       await expect(page).toHaveURL(new RegExp(`${BOARD}\\?frame=${String(r2.index)}$`));
-      await expect(page.locator('[data-frame-chip="history"]')).toContainText('History · R2');
+      // spec 024: prototype value (principal: Prototyp gilt immer) — the replay label reads "R2 · result".
+      await expect(page.locator('[data-frame-chip="history"] [data-frame-label]')).toHaveText('R2 · result');
 
       await page.goto(MATRIX);
       await page.locator('tr[data-row="T27"] td[data-kind="live"] a').click();

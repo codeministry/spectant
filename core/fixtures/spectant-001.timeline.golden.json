@@ -57,7 +57,35 @@
       "title": "Pixel parity to the old dashboard or a modern surface?",
       "body": "- Offered: keep the identity, drop pixel parity (recommended) | 001 pixel-identical, fancy from 002 | parity first, redesign later\n- Chosen: keep the identity, drop pixel parity\n- Landed in: § Vision, § Constraints, § Goal, ISC-17/17.1 re-worded, ISC-60 … ISC-67.1 added, the threshold fog line died; a second design pass ran with full-page captures",
       "ref": "R3.Q1",
-      "id": "decision-R3.Q1"
+      "id": "decision-R3.Q1",
+      "question": {
+        "n": "1",
+        "title": "Pixel parity to the old dashboard or a modern surface?",
+        "from": null,
+        "offered": [
+          {
+            "text": "keep the identity, drop pixel parity",
+            "recommended": true
+          },
+          {
+            "text": "001 pixel-identical, fancy from 002",
+            "recommended": false
+          },
+          {
+            "text": "parity first, redesign later",
+            "recommended": false
+          }
+        ],
+        "chosen": "keep the identity, drop pixel parity",
+        "landedIn": [
+          "§ Vision",
+          "§ Constraints",
+          "§ Goal",
+          "ISC-17/17.1 re-worded",
+          "ISC-60 … ISC-67.1 added",
+          "the threshold fog line died; a second design pass ran with full-page captures"
+        ]
+      }
     },
     {
       "ts": "2026-09-28T12:00:00Z",
@@ -66,7 +94,30 @@
       "title": "How does a spec open (Enter in the list or the palette)?",
       "body": "- Offered: route `/w/:ws/s/:id` with rail inspector / side sheet / full-screen sheet (recommended) | in-place row expansion via `?spec=` | route at wide, expansion at compact\n- Chosen: route with inspector / sheet\n- Landed in: design.md § Routes and state; Decisions",
       "ref": "R3.Q2",
-      "id": "decision-R3.Q2"
+      "id": "decision-R3.Q2",
+      "question": {
+        "n": "2",
+        "title": "How does a spec open (Enter in the list or the palette)?",
+        "from": null,
+        "offered": [
+          {
+            "text": "route /w/:ws/s/:id with rail inspector / side sheet / full-screen sheet",
+            "recommended": true
+          },
+          {
+            "text": "in-place row expansion via ?spec=",
+            "recommended": false
+          },
+          {
+            "text": "route at wide, expansion at compact",
+            "recommended": false
+          }
+        ],
+        "chosen": "route with inspector / sheet",
+        "landedIn": [
+          "design.md § Routes and state; Decisions"
+        ]
+      }
     },
     {
       "ts": "2026-09-28T12:00:00Z",
@@ -75,7 +126,30 @@
       "title": "Where does \"Next up\" live, and does the TL;DR bar stay?",
       "body": "- Offered: own surface plus stage and command in every row, TL;DR kept as a collapsed Brief (recommended) | only in the rows, TL;DR dropped | only an own surface\n- Chosen: own surface plus rows, Brief kept\n- Landed in: design.md § Section disposition",
       "ref": "R3.Q3",
-      "id": "decision-R3.Q3"
+      "id": "decision-R3.Q3",
+      "question": {
+        "n": "3",
+        "title": "Where does \"Next up\" live, and does the TL;DR bar stay?",
+        "from": null,
+        "offered": [
+          {
+            "text": "own surface plus stage and command in every row, TL;DR kept as a collapsed Brief",
+            "recommended": true
+          },
+          {
+            "text": "only in the rows, TL;DR dropped",
+            "recommended": false
+          },
+          {
+            "text": "only an own surface",
+            "recommended": false
+          }
+        ],
+        "chosen": "own surface plus rows, Brief kept",
+        "landedIn": [
+          "design.md § Section disposition"
+        ]
+      }
     },
     {
       "ts": "2026-09-28T12:00:00Z",
@@ -84,7 +158,26 @@
       "title": "Minimum width of a workspace column in the overview?",
       "body": "- Offered: 360 px capped at three columns (recommended) | 560 px\n- Chosen: 360 px, three columns max\n- Landed in: design.md § Grid rules; ISC-16.1 states\n\nA same-vendor second look (Forge without Codex credentials) added eleven findings; the ones still valid after Q1\nlanded in ISC-2, ISC-8, ISC-14, ISC-15, ISC-18.1, ISC-18.3, ISC-5.1, ISC-5.2, ISC-8.1, ISC-16.1/16.2, ISC-19.1 and in\nplan.md § Risks. The full record is in `.evidence/review-2026-09-28.md`.",
       "ref": "R3.Q4",
-      "id": "decision-R3.Q4"
+      "id": "decision-R3.Q4",
+      "question": {
+        "n": "4",
+        "title": "Minimum width of a workspace column in the overview?",
+        "from": null,
+        "offered": [
+          {
+            "text": "360 px capped at three columns",
+            "recommended": true
+          },
+          {
+            "text": "560 px",
+            "recommended": false
+          }
+        ],
+        "chosen": "360 px, three columns max",
+        "landedIn": [
+          "design.md § Grid rules; ISC-16.1 states"
+        ]
+      }
     },
     {
       "ts": "2026-09-28T11:52:47.185Z",
@@ -138,7 +231,30 @@
       "title": "In which order do we build 001?",
       "body": "- Offered: end-to-end skeleton first, then parity harness, core and API, dashboard (recommended) | contract first, binary and installer last | UI parity first against mock JSON\n- Chosen: end-to-end skeleton first\n- Landed in: plan.md § Approach\n\nNo further questions: the repo and design.md answered the rest (Playwright is the house e2e tool, FE-TST-03; no binding row is departed from).",
       "ref": "R2.Q1",
-      "id": "decision-R2.Q1"
+      "id": "decision-R2.Q1",
+      "question": {
+        "n": "1",
+        "title": "In which order do we build 001?",
+        "from": null,
+        "offered": [
+          {
+            "text": "end-to-end skeleton first, then parity harness, core and API, dashboard",
+            "recommended": true
+          },
+          {
+            "text": "contract first, binary and installer last",
+            "recommended": false
+          },
+          {
+            "text": "UI parity first against mock JSON",
+            "recommended": false
+          }
+        ],
+        "chosen": "end-to-end skeleton first",
+        "landedIn": [
+          "plan.md § Approach"
+        ]
+      }
     },
     {
       "ts": "2026-09-28T10:48:24.607Z",
@@ -189,7 +305,30 @@
       "title": "Which goal does spec 001 have?",
       "body": "- Offered: install plus dashboard over two workspaces (recommended) | narrower: locally built, one workspace | wider: plus a read-only review page\n- Chosen: install plus dashboard over two workspaces\n- Landed in: § Goal; F0 and F1 projected\n\nNo further gaps the repository could not close; the screenshot threshold is fog to be measured, not a question.",
       "ref": "R1.Q1",
-      "id": "decision-R1.Q1"
+      "id": "decision-R1.Q1",
+      "question": {
+        "n": "1",
+        "title": "Which goal does spec 001 have?",
+        "from": null,
+        "offered": [
+          {
+            "text": "install plus dashboard over two workspaces",
+            "recommended": true
+          },
+          {
+            "text": "narrower: locally built, one workspace",
+            "recommended": false
+          },
+          {
+            "text": "wider: plus a read-only review page",
+            "recommended": false
+          }
+        ],
+        "chosen": "install plus dashboard over two workspaces",
+        "landedIn": [
+          "§ Goal; F0 and F1 projected"
+        ]
+      }
     },
     {
       "ts": "2026-09-28T07:30:00Z",
@@ -198,7 +337,31 @@
       "title": "Where does the app live?",
       "body": "- Offered: own repository, the other plugin project slims down (recommended) | everything in the plugin repository | own repository, the other project paused\n- Chosen: own repository (later refined: the skill moves here too, the other project is abandoned)\n- Landed in: master § Constraints, Decisions",
       "ref": "R0.Q1",
-      "id": "decision-R0.Q1"
+      "id": "decision-R0.Q1",
+      "question": {
+        "n": "1",
+        "title": "Where does the app live?",
+        "from": null,
+        "offered": [
+          {
+            "text": "own repository, the other plugin project slims down",
+            "recommended": true
+          },
+          {
+            "text": "everything in the plugin repository",
+            "recommended": false
+          },
+          {
+            "text": "own repository, the other project paused",
+            "recommended": false
+          }
+        ],
+        "chosen": "own repository (later refined: the skill moves here too, the other project is abandoned)",
+        "landedIn": [
+          "master § Constraints",
+          "Decisions"
+        ]
+      }
     },
     {
       "ts": "2026-09-28T07:30:00Z",
@@ -207,7 +370,31 @@
       "title": "Which stack does the app run on?",
       "body": "- Offered: Bun + TypeScript single binary (recommended) | Go like radar | Spring Boot + Angular\n- Chosen: Bun + TypeScript single binary\n- Landed in: master § Constraints; ISC-8, ISC-9",
       "ref": "R0.Q2",
-      "id": "decision-R0.Q2"
+      "id": "decision-R0.Q2",
+      "question": {
+        "n": "2",
+        "title": "Which stack does the app run on?",
+        "from": null,
+        "offered": [
+          {
+            "text": "Bun + TypeScript single binary",
+            "recommended": true
+          },
+          {
+            "text": "Go like radar",
+            "recommended": false
+          },
+          {
+            "text": "Spring Boot + Angular",
+            "recommended": false
+          }
+        ],
+        "chosen": "Bun + TypeScript single binary",
+        "landedIn": [
+          "master § Constraints; ISC-8",
+          "ISC-9"
+        ]
+      }
     },
     {
       "ts": "2026-09-28T07:30:00Z",
@@ -216,7 +403,30 @@
       "title": "What may the app write into repositories?",
       "body": "- Offered: reads Markdown, writes only its database (recommended) | light writes too | the app drives the skill\n- Chosen: light writes too (review mark, task checkboxes) with conflict detection\n- Landed in: master F2 (not this spec); ISC-15 holds this spec read-only",
       "ref": "R0.Q3",
-      "id": "decision-R0.Q3"
+      "id": "decision-R0.Q3",
+      "question": {
+        "n": "3",
+        "title": "What may the app write into repositories?",
+        "from": null,
+        "offered": [
+          {
+            "text": "reads Markdown, writes only its database",
+            "recommended": true
+          },
+          {
+            "text": "light writes too",
+            "recommended": false
+          },
+          {
+            "text": "the app drives the skill",
+            "recommended": false
+          }
+        ],
+        "chosen": "light writes too (review mark, task checkboxes) with conflict detection",
+        "landedIn": [
+          "master F2 (not this spec); ISC-15 holds this spec read-only"
+        ]
+      }
     },
     {
       "ts": "2026-09-28T07:30:00Z",
@@ -225,7 +435,62 @@
       "title": "Name",
       "body": "- Offered: Sextant (recommended) | Plumb | Keel | later — rejected; second round: Spectant | Specmate | Specora | Specwright | Specular | Speculo | Spekta | Specto\n- Chosen: Spectant, the principal's own coinage\n- Landed in: master § Constraints; ISC-57 (name search, release slice)",
       "ref": "R0.Q4",
-      "id": "decision-R0.Q4"
+      "id": "decision-R0.Q4",
+      "question": {
+        "n": "4",
+        "title": "Name",
+        "from": null,
+        "offered": [
+          {
+            "text": "Sextant",
+            "recommended": true
+          },
+          {
+            "text": "Plumb",
+            "recommended": false
+          },
+          {
+            "text": "Keel",
+            "recommended": false
+          },
+          {
+            "text": "later — rejected; second round: Spectant",
+            "recommended": false
+          },
+          {
+            "text": "Specmate",
+            "recommended": false
+          },
+          {
+            "text": "Specora",
+            "recommended": false
+          },
+          {
+            "text": "Specwright",
+            "recommended": false
+          },
+          {
+            "text": "Specular",
+            "recommended": false
+          },
+          {
+            "text": "Speculo",
+            "recommended": false
+          },
+          {
+            "text": "Spekta",
+            "recommended": false
+          },
+          {
+            "text": "Specto",
+            "recommended": false
+          }
+        ],
+        "chosen": "Spectant, the principal's own coinage",
+        "landedIn": [
+          "master § Constraints; ISC-57 (name search, release slice)"
+        ]
+      }
     }
   ]
 }

@@ -17,8 +17,18 @@
 }
 
 .search {
-  inline-size: 100%;
   min-block-size: 32px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-self: end;
+  inline-size: min(100%, 240px);
+  block-size: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--color-base-100);
+  color: var(--muted-ink);
 }
 
 .result {
@@ -43,37 +53,42 @@
 }
 
 .why {
-  margin: 0 0 8px;
   color: var(--muted-ink);
   font-size: 13px;
   line-height: 20px;
+  margin: -6px 0 4px;
 }
 
-.card {
+.claim-card {
   display: grid;
-  gap: 8px;
-  padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 12px;
   background: var(--color-base-100);
   scroll-margin-block: 96px;
   transition: background-color var(--motion-duration-highlight) var(--motion-ease-standard);
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius-card);
 }
 
-.card.is-target {
+.claim-card.is-target {
   border-color: var(--color-primary);
   background: var(--disp-t);
 }
 
-.card[data-state='dropped'] .text {
+.claim-card[data-state='dropped'] .text {
   color: var(--muted-ink);
 }
 
+/* Aligned columns (ISC-149, prototype `.cc-top`): glyph | ID | the rest; the rows below line up under the text. */
 .head {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 8px 10px;
   align-items: center;
+}
+
+.head > ui-id-chip {
+  min-inline-size: 84px;
 }
 
 .glyph {
@@ -84,17 +99,17 @@
   line-height: 20px;
 }
 
-.card[data-state='takeable'] .glyph,
-.card[data-state='taken'] .glyph {
+.claim-card[data-state='takeable'] .glyph,
+.claim-card[data-state='taken'] .glyph {
   color: var(--disp-ink);
 }
 
-.card[data-state='closed'] .glyph {
+.claim-card[data-state='closed'] .glyph {
   color: var(--done-ink);
 }
 
-.card[data-state='blocked'] .glyph {
-  color: var(--fail-ink);
+.claim-card[data-state='blocked'] .glyph {
+  color: var(--muted-ink);
 }
 
 .session {
@@ -114,6 +129,7 @@
 
 .notes {
   display: inline-flex;
+  gap: 3px;
   align-items: center;
   block-size: 20px;
   margin-inline-start: auto;
@@ -149,7 +165,7 @@
   block-size: 24px;
   padding-inline: 8px;
   border-radius: 999px;
-  background: var(--held-t);
+  background: var(--color-base-300);
   color: var(--color-base-content);
   font-size: 12px;
   text-decoration: none;
@@ -162,6 +178,9 @@
 
 .probe {
   display: grid;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--lane);
   grid-template-columns: auto minmax(0, 1fr);
   gap: 8px;
   align-items: start;
@@ -177,6 +196,10 @@
 
 .probe dd {
   overflow-wrap: anywhere;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
 }
 
 .sep {
@@ -197,13 +220,18 @@
 }
 
 .verification {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   margin: 0;
-  font-size: 13px;
-  line-height: 20px;
   overflow-wrap: anywhere;
+  gap: 0 8px;
+  color: var(--clos-text);
+  font-size: 12px;
+  line-height: 18px;
 }
 
-.verification .label {
+.verification-label {
   margin-inline-end: 8px;
   color: var(--muted-ink);
   font-size: 11px;
@@ -219,6 +247,7 @@
 
 .verification .link {
   margin-inline-start: 0;
+  color: inherit;
 }
 
 .muted {
@@ -256,7 +285,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .card {
+  .claim-card {
     padding: 16px 8px;
   }
 }
@@ -265,4 +294,150 @@
   .dot {
     background: CanvasText;
   }
+}
+
+.text-row,
+.edges,
+.probe,
+.verification {
+  margin-inline-start: 26px;
+}
+
+.verification-icon {
+  flex: none;
+}
+
+@container (max-width: 520px) {
+  .text-row,
+  .edges,
+  .probe,
+  .verification {
+    margin-inline-start: 0;
+  }
+
+  .taken-line {
+    margin-inline-start: 0;
+  }
+
+  .search {
+    justify-self: stretch;
+    inline-size: 100%;
+  }
+}
+
+/* Sweep 2 (ISC-149): the prototype's claim card, probe row, verification line and search field. */
+
+.claim-card[data-state='taken'] {
+  border-color: var(--color-warning);
+}
+
+.claim-card[data-state='takeable'] .glyph,
+.claim-card[data-state='closed'] .glyph {
+  color: var(--clos-text);
+}
+
+.claim-card[data-state='taken'] .glyph {
+  color: var(--hover-text);
+}
+
+/* Prototype `stateChip`: the claim's state as an `st-*` chip at the end of the top row. */
+.head > .st {
+  margin-inline-start: auto;
+}
+
+.notes + .st {
+  margin-inline-start: 0;
+}
+
+.head > .st[data-st='closed'],
+.head > .st[data-st='takeable'] {
+  background: var(--clos-t);
+  color: var(--clos-ink);
+}
+
+.head > [data-chip='blocked'] {
+  background: var(--color-base-300);
+  color: var(--muted-ink);
+}
+
+/* Prototype `.taken-line`: agent dot, session in mono, since. */
+.taken-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  margin: 0 0 0 26px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.agent-dot {
+  inline-size: 8px;
+  block-size: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+
+.search:focus-within {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.search input {
+  flex: 1;
+  min-inline-size: 0;
+  border: 0;
+  background: none;
+  outline: 0;
+  color: var(--color-base-content);
+  font: inherit;
+  font-size: 14px;
+}
+
+.sr-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Prototype `.none-match`: one muted line with Clear beside it. */
+.none-match {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* Prototype `.fold` / `.fold-row`: a muted summary line; opened, the closed cards follow it. */
+.fold-row > summary {
+  padding: 4px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.fold-row > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold-row > summary:focus-visible {
+  border-radius: var(--radius-field);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.fold-body {
+  display: grid;
+  gap: 8px;
+  padding-block-start: 8px;
 }

@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, resource } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -17,8 +18,19 @@ import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
 import { UiTypeGlyph } from '../../shared/ui/type-glyph/type-glyph';
+import { HelpLifecycle } from './help-lifecycle';
 import { HelpNav } from './help-nav';
-import { HELP_COMMANDS, HELP_SECTIONS, HELP_TYPES, KEY_CONTEXTS, LEGEND, STAGE_CHAIN, START_STEPS } from './help-sections';
+import { version } from '../../../../package.json';
+import {
+  HELP_COMMAND_ROWS,
+  HELP_SECTIONS,
+  HELP_TYPE_FILES,
+  HELP_TYPES,
+  KEY_CONTEXTS,
+  LEGEND,
+  STAGE_CHAIN,
+  START_STEPS,
+} from './help-sections';
 import { type DiagramLabels, type DiagramTransition, transitionList, type WorkflowLayout, workflowLayout } from './workflow-diagram';
 import { WorkflowFigure } from './workflow-figure';
 
@@ -69,11 +81,11 @@ const sameRow = (a: WorkflowRow, b: WorkflowRow): boolean =>
  */
 @Component({
   selector: 'app-help-page',
-  imports: [HelpNav, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiIcon, UiKbd, UiPageHead, UiTypeGlyph, WorkflowFigure],
+  imports: [HelpLifecycle, HelpNav, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiIcon, UiKbd, UiPageHead, UiTypeGlyph, WorkflowFigure],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'help' },
   templateUrl: './help-page.html',
-  styleUrl: './help-page.css',
+  styleUrls: ['./help-page.css', './help-tables.css'],
 })
 export class HelpPage {
   private readonly shell = inject(ShellState);
@@ -91,10 +103,14 @@ export class HelpPage {
   protected readonly chain = STAGE_CHAIN;
   protected readonly types = HELP_TYPES;
   protected readonly legend = LEGEND;
-  protected readonly commands = HELP_COMMANDS;
+  protected readonly commands = HELP_COMMAND_ROWS;
+  protected readonly typeFiles = HELP_TYPE_FILES;
   protected readonly steps = START_STEPS;
   protected readonly keyContexts = KEY_CONTEXTS;
   protected readonly keyLabel = keyLabel;
+  /** The About meta row (prototype `.meta-row`): the app version and the loopback address this page is served from. */
+  protected readonly version = version;
+  protected readonly address = inject(DOCUMENT).location.host;
 
   /**
    * The active language once its catalogue has loaded; undefined until the first one has. `translate()` answers a key

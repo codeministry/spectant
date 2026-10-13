@@ -17,7 +17,7 @@ const read = (path: string): unknown => JSON.parse(readFileSync(new URL(path, im
 const golden = read('../../core/fixtures/harbor.planning.golden.json') as PlanningModel;
 type Catalogue = {
   terms: { feature: string; spec: string; claim: string; task: string };
-  shell: { pages: { specs: string; board: string; features: string; milestones: string; tech: string } };
+  shell: { pages: { specs: string; board: string; features: string; milestones: string; tech: string; library: string } };
   planning: { features: { valueText: string; unheld: string; allHeld: string; titleTerm: string; title: string } };
 };
 const en = read('../src/i18n/en.json') as Catalogue;
@@ -96,10 +96,12 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         await expect(row.locator('p.unheld')).toHaveCount(0);
         await details.locator('> summary').click();
         await expect(details).toHaveAttribute('open', '');
-        const ids = details.locator('.ids');
-        await expect(ids).toBeVisible();
-        const listed = (await ids.innerText()).split(/[\s,]+/u).filter(Boolean);
-        expect(listed).toEqual(feature.unheld);
+        // spec 024: prototype value (principal: Prototyp gilt immer) — claim lines glyph | ISC id | the master's text.
+        const lines = row.locator('.claim-line');
+        await expect(lines.first()).toBeVisible();
+        expect(await lines.locator('.cid').allInnerTexts()).toEqual(feature.unheld);
+        const texts = feature.claims.filter((c) => feature.unheld.includes(c.id)).map((c) => c.text);
+        expect(await lines.locator('.ctext').allInnerTexts()).toEqual(texts);
       }
       for (const feature of allHeld) {
         const row = card(page, feature.id);
@@ -167,7 +169,13 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       expect(en.terms.feature).toBe('Epic in a ticket tracker');
       const describedBy = await term.locator('dfn').getAttribute('aria-describedby');
       await expect(term.locator('[role="tooltip"]')).toHaveAttribute('id', describedBy ?? 'missing');
-      await expect(page.locator('p.meta ui-term dfn')).toHaveText('claims');
+      await expect(page.locator('p.meta dfn#features-claims-term')).toHaveText('claims');
+      // spec 024 (B29): "unheld" in the meta is a glossary term with its popover, as in the prototype's `button.term`.
+      const unheld = page.locator('p.meta ui-term:has(dfn#features-unheld-term)');
+      await expect(unheld.locator('dfn')).toHaveText('unheld');
+      await expect(unheld.locator('[role="tooltip"]')).toHaveText(
+        'A master claim that no spec has taken on yet. It closes only once a spec holds it and its probe passes.',
+      );
     });
 
     test('an anchor opens the card: focused, marked as arrived', async ({ page }) => {
@@ -206,20 +214,22 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
 test.describe('features page: the area menu', () => {
   test.use(atWidth(WIDTHS.desktop));
 
-  test('the trigger reads Features; the workspace menu lists Specs, Board, Features, Milestones, Tech with Features current', async ({ page }) => {
+  test('the trigger reads Features; the workspace menu lists Specs, Board, Features, Milestones, Tech, Library with Features current', async ({ page }) => {
     await open(page);
-    const trigger = page.locator('header [data-control="area"]');
+    // spec 024: PAGE select (principal 2026-10-13): the workspace pages moved to the PAGE select, Library sixth (T57)
+    const trigger = page.locator('header [data-control="page"]');
     await expect(trigger).toContainText(en.shell.pages.features);
     await trigger.click();
-    const menu = page.getByRole('navigation', { name: 'Areas' });
+    const menu = page.getByRole('navigation', { name: 'Pages' });
     await expect(menu).toBeVisible();
-    await expect(menu.locator('[data-page]')).toHaveCount(5); // harbor has milestones; Tech is fifth (spec 023)
+    await expect(menu.locator('[data-page]')).toHaveCount(6); // harbor has milestones; Tech is fifth (spec 023), Library sixth
     await expect(menu.locator('[data-page] .entry-name')).toHaveText([
       en.shell.pages.specs,
       en.shell.pages.board,
       en.shell.pages.features,
       en.shell.pages.milestones,
       en.shell.pages.tech,
+      en.shell.pages.library,
     ]);
     await expect(menu.locator('[aria-current="page"]')).toHaveCount(1);
     await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('data-page', 'features');
@@ -296,7 +306,7 @@ for (const [lang, cat] of Object.entries(LANGS) as Array<[keyof typeof LANGS, Ca
         await expect.poll(async () => (await page.locator('h1').innerText()).replace(/\s+/gu, ' ').trim()).toBe(cat.shell.pages.features);
         await hintOpens(page, h1Term, cat.terms.feature);
 
-        const claimTerm = page.locator('p.meta ui-term');
+        const claimTerm = page.locator('p.meta ui-term:has(dfn#features-claims-term)');
         await expect(claimTerm.locator('dfn')).toBeVisible();
         await hintOpens(page, claimTerm, cat.terms.claim);
       });
@@ -329,7 +339,8 @@ for (const [lang, cat] of Object.entries(LANGS) as Array<[keyof typeof LANGS, Ca
 
       test(`vocabulary: the breadcrumb levels carry the ${lang} terms as aria-description`, async ({ page }) => {
         await page.goto('/w/harbor/s/002/claims#claim-ISC-51');
-        const feature = page.locator('[data-crumb="feature"]');
+        // spec 024: breadcrumb Workspace / Spec · Area, milestone/feature/priority in the chip row (principal 2026-10-12, design.md)
+        const feature = page.locator('app-spec-head [data-head-chip="feature"]');
         await expect(feature).toHaveAttribute('aria-description', cat.terms.feature);
         await expect(feature).toContainText(/^\s*F\d+/u);
         await expect(page.locator('[data-crumb="spec"]')).toHaveAttribute('aria-description', cat.terms.spec);

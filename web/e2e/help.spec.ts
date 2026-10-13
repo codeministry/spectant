@@ -29,6 +29,7 @@ type Stage = 'plan' | 'tasks' | 'review' | 'build' | 'code-review' | 'close' | '
 interface Catalogue {
   readonly stages: Readonly<Record<Stage, string>>;
   readonly palette: { readonly actions: { readonly help: string } };
+  readonly settings: { readonly keyboard: { readonly guide: string } };
   readonly help: {
     readonly title: string;
     readonly glossary: { readonly columns: { readonly term: string } };
@@ -138,7 +139,8 @@ test.describe('glossary', () => {
     await expect(page.locator('header [data-control="palette"]')).toBeVisible();
     await page.keyboard.press('?');
     const link = page.locator('app-shortcut-sheet dialog [data-sheet-help]');
-    await expect(link).toHaveText(en.help.title);
+    // spec 024: prototype value (principal: Prototyp gilt immer) — the sheet ends on "Full guide →".
+    await expect(link).toHaveText(en.settings.keyboard.guide);
     await link.click();
     await expect(page).toHaveURL(/\/help$/);
     await expect(page.locator('app-shortcut-sheet dialog')).toBeHidden();

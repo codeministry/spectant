@@ -37,6 +37,9 @@ const withWarnings = (model: DashboardModel) => model.specs.filter((r) => r.warn
 const withNotes = (model: DashboardModel) => model.specs.filter((r) => r.warnings.length > 0 || r.fog > 0);
 
 describe('WarningsPanel', () => {
+  // Open fog is said once, by the spec's fog line: a fog-kind warning of a spec with open fog gets no text line.
+  const said = (spec: (typeof HARBOR.specs)[number]) => spec.warnings.filter((w) => !(spec.fog > 0 && w.kind === 'fog'));
+
   it('groups the lines by spec in model order, one line per model warning, under a focusable heading', async () => {
     const root = await render(HARBOR);
     const heading = root.querySelector('#warnings') as HTMLElement;
@@ -48,8 +51,8 @@ describe('WarningsPanel', () => {
     for (const spec of withWarnings(HARBOR)) {
       const group = root.querySelector(`[data-warning-spec="${spec.id}"]`) as HTMLElement;
       const lines = [...group.querySelectorAll('[data-warning-kind]')];
-      expect(lines.map((i) => i.getAttribute('data-warning-kind'))).toEqual(spec.warnings.map((w) => w.kind));
-      spec.warnings.forEach((w, i) => {
+      expect(lines.map((i) => i.getAttribute('data-warning-kind'))).toEqual(said(spec).map((w) => w.kind));
+      said(spec).forEach((w, i) => {
         const line = lines[i] as HTMLElement;
         expect(line.querySelector('ui-icon[data-icon="triangle-alert"]')).not.toBeNull();
         const link = line.querySelector('a[data-warning-link]') as HTMLAnchorElement;
@@ -70,7 +73,8 @@ describe('WarningsPanel', () => {
     for (const spec of foggy) {
       const line = root.querySelector(`[data-fog-line="${spec.id}"]`) as HTMLElement;
       expect(line.closest(`[data-warning-spec="${spec.id}"]`)).not.toBeNull();
-      expect(line.querySelector('ui-icon[data-icon="cloud-fog"]')).not.toBeNull();
+      // spec 024: prototype value (principal: Prototyp gilt immer)
+      expect(line.querySelector('ui-icon[data-icon="cloud"]')).not.toBeNull();
       expect(line.querySelector('a[data-warning-link]')?.getAttribute('href')).toBe(`/?spec=${spec.id}`);
       expect(line.textContent).toContain(spec.fog === 1 ? '1 open fog item' : `${spec.fog} open fog items`);
     }
@@ -78,7 +82,7 @@ describe('WarningsPanel', () => {
   });
 
   it("states the model's warning count and the specs they sit in", async () => {
-    const root = await render(HARBOR);
+    const root = await render(HARBOR, 'callout');
     const specs = withWarnings(HARBOR).length;
     expect(root.querySelector('[data-warnings-summary]')?.textContent.trim()).toBe(`${HARBOR.kpis.warnings} warnings in ${specs} specs`);
   });

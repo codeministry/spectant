@@ -35,7 +35,7 @@
 }
 
 .insp-id {
-  color: var(--cyan-text);
+  color: var(--disp-text);
 }
 
 .insp-title {
@@ -63,29 +63,65 @@
   gap: 8px;
 }
 
-.insp-warnings {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 13px;
+/* Takeable claims: the prototype's `.chip.take`, mono 12/500 without the eyebrow casing. */
+.insp-take {
+  font-family: var(--font-mono);
+  text-transform: none;
+  letter-spacing: 0;
 }
 
-.insp-warnings li {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
+/* The spec's warnings: the prototype's `warningsPanel([s])` (`.w-group`, `.w-line`, `.w-line.fog`, `.empty-line`). */
+.insp-w-group {
+  display: grid;
+  gap: 6px;
+  padding: 12px var(--space-3);
+}
+
+.insp-w-line {
+  display: grid;
+  grid-template-columns: 16px 40px minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: start;
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.insp-w-line ui-icon {
+  margin-block-start: 2px;
+}
+
+.insp-w-id {
+  color: var(--disp-text);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .insp-warn-icon {
-  flex: none;
   color: var(--color-warning);
+}
+
+.insp-fog-icon {
+  color: var(--color-secondary);
+}
+
+.insp-w-empty {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 0;
+  padding: var(--space-3);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.insp-ok-icon {
+  color: var(--done-text);
 }
 
 .insp-explore {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   border-block-start: 1px solid var(--line);
   padding-block-start: 16px;
 }
@@ -93,7 +129,7 @@
 .insp-explore-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .insp-explore-item {
@@ -102,9 +138,9 @@
   justify-content: space-between;
   gap: 4px;
   min-inline-size: 0;
-  padding: 8px 10px;
+  padding: 9px 10px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-field);
+  border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
   color: inherit;
@@ -117,11 +153,14 @@
 }
 
 .insp-explore-item ui-icon {
-  color: var(--muted-ink);
+  color: var(--muted);
 }
 
+/* Prototype `.step-hint`: a hairline above, 16 px under it. */
 .insp-step {
   justify-content: flex-start;
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--line);
   font-size: 12px;
   color: var(--muted-ink);
 }

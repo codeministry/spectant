@@ -8,7 +8,7 @@
  */
 :host {
   --board-col: 232px;
-  --board-stub: 48px;
+  --board-stub: 44px;
 
   display: block;
   min-inline-size: 0;
@@ -16,7 +16,6 @@
 
 :host([data-tier='wide']) {
   --board-col: 152px;
-  --board-stub: 56px;
 }
 
 /* The page head (T163, ISC-140): `ui-page-head` (eyebrow over the "Board" h1) with the workflow source chip beside
@@ -70,7 +69,24 @@ h1 {
   line-height: 20px;
 }
 
+/* The lane index at medium (spec 024): one row of segments that scrolls sideways, its scrollbar hidden. */
+.lane-index {
+  display: flex;
+  overflow-x: auto;
+  margin-block-end: 8px;
+  scrollbar-width: none;
+}
+
+.lane-index ui-segmented {
+  flex: none;
+}
+
+.lane-index::-webkit-scrollbar {
+  display: none;
+}
+
 .no-match {
+  display: block;
   margin: 0 0 16px;
   font-size: 13px;
   line-height: 20px;
@@ -118,11 +134,9 @@ h1 {
   display: flex;
   gap: 6px;
   align-items: center;
-  block-size: 40px;
-  padding-inline: 10px;
+  block-size: 36px;
+  padding-inline: 8px;
   border-block-end: 2px solid var(--role, var(--line));
-  border-radius: var(--radius-field) var(--radius-field) 0 0;
-  background: var(--lane);
   color: var(--muted-ink);
 }
 
@@ -169,8 +183,6 @@ h1 {
   gap: 8px;
   margin: 0;
   padding: 8px;
-  border-radius: 0 0 var(--radius-field) var(--radius-field);
-  background: color-mix(in srgb, var(--lane) 60%, transparent);
   list-style: none;
 }
 
@@ -180,7 +192,7 @@ h1 {
   min-block-size: 240px;
   padding-block: 10px;
   border: 1px dashed var(--line);
-  border-block-start: 2px solid var(--role, var(--line));
+  border-radius: var(--radius-box);
   color: var(--muted-ink);
 }
 

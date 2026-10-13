@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { UiIcon } from '../../icons/icon';
+import type { IconName } from '../../icons/icons';
 import { UiClamp } from '../clamp/clamp';
 import { UiCommandChip } from '../command-chip/command-chip';
 
@@ -37,7 +38,7 @@ import { UiCommandChip } from '../command-chip/command-chip';
   `,
   template: `
     <span class="line">
-      <ui-icon name="hourglass" [size]="14" [label]="'reason.glyph' | transloco" />
+      <ui-icon [name]="icon()" [size]="14" [label]="'reason.glyph' | transloco" />
       @if (block()) {
         <span class="phrase">{{ phrase() }}</span>
       } @else {
@@ -69,6 +70,8 @@ export class UiReason {
   /** The next command (`/spec-review 008`); null for no chip (close-pending, a refusal without a command). */
   readonly command = input<string | null>(null);
   /** One line: the row and card variant; otherwise two. */
+  /** The glyph before the phrase: the hourglass, or `circle-pause` on the Specs table's waiting row (spec 024). */
+  readonly icon = input<IconName>('hourglass');
   readonly compact = input(false);
   /**
    * The status block's variant (T132): the whole phrase in 15/24, wrapping and never clamped, read once as plain text,

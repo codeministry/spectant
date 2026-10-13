@@ -12,20 +12,20 @@ import { type TypeGlyphKind, UiTypeGlyph } from '../../shared/ui/type-glyph/type
 import type { BoardCard as BoardCardModel } from './board-model';
 
 /**
- * The 4 px inline-start edge per stage (design 008 § board card): violet for a wait on you (review, code-review,
- * close), grey for a wait on another spec or a claim (blocked, close-pending), cyan in motion (build), lime done, the
- * hairline for plan and tasks, the track grey for a story. The edge never carries the meaning alone: the reason line
- * says it in words.
+ * The inline-start edge per stage, in the prototype's role colours (spec 024, design § Workspace-Board): teal for an
+ * idea, the track grey for plan and tasks, violet for a wait on you (review, code-review, close), cyan in motion
+ * (build), red for blocked, the held grey for close-pending, lime done. The edge never carries the meaning alone: the
+ * reason line says it in words.
  */
 export const CARD_EDGE: Readonly<Record<WorkflowStage, string>> = {
-  idea: 'var(--track)',
-  plan: 'var(--line)',
-  tasks: 'var(--line)',
+  idea: 'var(--teal)',
+  plan: 'var(--track)',
+  tasks: 'var(--track)',
   review: 'var(--color-secondary)',
   'code-review': 'var(--color-secondary)',
   close: 'var(--color-secondary)',
   build: 'var(--color-primary)',
-  blocked: 'var(--held)',
+  blocked: 'var(--color-error)',
   'close-pending': 'var(--held)',
   done: 'var(--color-accent)',
 };
@@ -90,6 +90,18 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
     ui-reason { position: relative; z-index: 1; }
     .grip { position: relative; z-index: 1; display: grid; place-items: center; align-self: center; inline-size: 44px; block-size: 44px; padding: 0; border: 0; border-radius: var(--radius-field); background: none; color: var(--muted-ink); cursor: grab; }
     .grip:active { cursor: grabbing; }
+    /* The prototype's wb-grip (spec 024): shown on hover and focus where a fine pointer can hover; always on touch. */
+    @media (hover: hover) and (pointer: fine) {
+      .grip { opacity: 0; transition: opacity var(--dur-hover) var(--ease); }
+      :host(:hover) .grip, :host(:focus-within) .grip, :host(.cdk-drag-preview) .grip { opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) { .grip { transition: none; } }
+    /* Below 640 the prototype hides the drag grip and shows the card menu "Move to" (quiet-icon wb-move, ellipsis). */
+    .i-move { display: none; }
+    :host-context([data-tier='compact']) .grip { align-self: start; margin-block-start: -8px; opacity: 1; cursor: pointer; }
+    :host-context([data-tier='compact']) .grip:hover { background: var(--color-base-300); color: var(--color-base-content); }
+    :host-context([data-tier='compact']) .i-grip { display: none; }
+    :host-context([data-tier='compact']) .i-move { display: inline-grid; }
     .vh { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     @media (forced-colors: active) {
       .title:focus-visible::after { outline-color: Highlight; }
@@ -156,7 +168,8 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
           (click)="moveMenu.emit(grip)"
           #grip
         >
-          <ui-icon name="grip-vertical" [size]="16" />
+          <ui-icon class="i-grip" name="grip-vertical" [size]="16" />
+          <ui-icon class="i-move" name="ellipsis" [size]="16" />
         </button>
       </article>
     </ui-card>

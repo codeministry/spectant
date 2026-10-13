@@ -1,5 +1,5 @@
 import type { SpecType, WorkflowStage } from '../../../../../core/src/files';
-import { STAGE_RULES, defaultWorkflowRow, WORKFLOW_TYPES } from '../../../../../core/src/stage';
+import { STAGE_RULES, defaultWorkflowRow, TYPE_NEEDS, WORKFLOW_TYPES } from '../../../../../core/src/stage';
 import {
   GROUP_CONTEXT,
   type Shortcut,
@@ -96,4 +96,103 @@ export const KEY_CONTEXTS: readonly KeyContext[] = SHORTCUT_CONTEXTS.map((contex
     bindings: SHORTCUTS.filter((binding) => binding.group === id),
   }));
   return { id: context, groups, titled: groups.length > 1 };
+});
+
+/** A node colour of the lifecycle bands (prototype `WFC`): start, files written, your gate, agents at work, done. */
+export type LifecycleTone = 'start' | 'files' | 'gate' | 'agents' | 'done';
+
+/** One node of the lifecycle bands (prototype help `wf-node`, spec 024 sweep): a stage of a feature, in order. */
+export interface LifecycleNode {
+  readonly stage: WorkflowStage;
+  /** The command the stage table names for this stage (`STAGE_RULES[].next`), or null where it names none. */
+  readonly command: string | null;
+  /** The file that command writes, relative to the spec folder; the done node names the field it sets. */
+  readonly file: string;
+  readonly tone: LifecycleTone;
+  /** Whether the node carries a gate pill (`help.lifecycle.gates.<stage>`). */
+  readonly gate: boolean;
+}
+
+/** One band of the lifecycle: its catalogue key under `help.lifecycle.bands` and its four nodes. */
+export interface LifecycleBand {
+  readonly key: 'shape' | 'build';
+  readonly offset: number;
+  readonly nodes: readonly LifecycleNode[];
+}
+
+const commandOf = (stage: WorkflowStage): string | null =>
+  STAGE_RULES.find((rule) => rule.stage === stage && rule.next !== null)?.next ?? null;
+
+const node = (stage: WorkflowStage, file: string, tone: LifecycleTone, gate = false): LifecycleNode => ({
+  stage,
+  command: commandOf(stage),
+  file,
+  tone,
+  gate,
+});
+
+/**
+ * The lifecycle in two bands (prototype help "How a spec moves": "Shape & plan", "Build & finish"), the stages of
+ * `STAGE_CHAIN` with the command core's stage table names for each; the files are the ones those commands write.
+ */
+export const LIFECYCLE: readonly LifecycleBand[] = [
+  {
+    key: 'shape',
+    offset: 0,
+    nodes: [
+      node('idea', 'specs/ideas/<slug>.md', 'start'),
+      node('plan', 'plan.md', 'files'),
+      node('tasks', 'tasks.md', 'files'),
+      node('review', '.gates/reviewed.json', 'gate', true),
+    ],
+  },
+  {
+    key: 'build',
+    offset: 4,
+    nodes: [
+      node('build', 'tasks.md, events.jsonl', 'agents', true),
+      node('code-review', '.gates/code-reviewed.json', 'gate', true),
+      node('close', 'spec.md', 'files', true),
+      node('done', 'spec.md phase', 'done'),
+    ],
+  },
+];
+
+/** The lifecycle legend (prototype `.wf-legend`), one swatch per tone. */
+export const LIFECYCLE_TONES: readonly LifecycleTone[] = ['start', 'files', 'gate', 'agents', 'done'];
+
+/** One row of the prototype type table (help "How a spec moves"): which of spec.md, plan.md and tasks.md a type has. */
+export interface HelpTypeFiles {
+  readonly type: SpecType;
+  readonly plan: boolean;
+  readonly tasks: boolean;
+  /** The files the type skips, by stage name (`plan`, `tasks`), or empty. */
+  readonly skips: readonly string[];
+}
+
+/** The type table from core's `TYPE_NEEDS`, in `WORKFLOW_TYPES` order; every type has a spec.md. */
+export const HELP_TYPE_FILES: readonly HelpTypeFiles[] = WORKFLOW_TYPES.map((type) => {
+  const { plan, tasks } = TYPE_NEEDS[type];
+  return { type, plan, tasks, skips: [...(plan ? [] : ['plan']), ...(tasks ? [] : ['tasks'])] };
+});
+
+/** A command row of the prototype commands table: what it needs, what it writes and the command after it. */
+export interface HelpCommandRow extends HelpCommand {
+  readonly needs: string | null;
+  readonly writes: string | null;
+  readonly then: string | null;
+}
+
+const LIFECYCLE_NODES: readonly LifecycleNode[] = LIFECYCLE.flatMap((band) => band.nodes);
+
+/** `HELP_COMMANDS` with the lifecycle around each: the previous node's file, its own file, the next node's command. */
+export const HELP_COMMAND_ROWS: readonly HelpCommandRow[] = HELP_COMMANDS.map((row) => {
+  const at = LIFECYCLE_NODES.findIndex((n) => n.command === row.command);
+  const here = at < 0 ? undefined : LIFECYCLE_NODES[at];
+  return {
+    ...row,
+    needs: at > 0 ? (LIFECYCLE_NODES[at - 1]?.file ?? null) : null,
+    writes: here?.file ?? null,
+    then: at < 0 ? null : (LIFECYCLE_NODES.slice(at + 1).find((n) => n.command !== null)?.command ?? null),
+  };
 });

@@ -116,10 +116,26 @@ describe('ClaimsTab (ISC-81)', () => {
   describe('against the harbor 002 golden', () => {
     beforeEach(() => setUp(HARBOR_002));
 
-    it('renders one card per claim of the golden, in file order', async () => {
+    // spec 024: prototype value (principal: Prototyp gilt immer) — the All view folds each feature's closed claims behind
+    // its `+ N more` row (from six closed, the last three stay), so a group lists the rest first, then the folded ones.
+    it('renders one card per claim of the golden, per feature in file order with the closed ones folded last', async () => {
       const { root } = await open('/w/harbor/s/002/claims');
       expect(root.tagName).toBe('APP-CLAIMS-TAB');
-      expect(cards(root).map((c) => c.dataset['claim'])).toEqual(HARBOR_002.claims.map((c) => c.id));
+      const known = new Set(HARBOR_002.features.map((f) => f.id));
+      const groups = [
+        ...HARBOR_002.features.map((f) => HARBOR_002.claims.filter((c) => c.feature === f.id)),
+        HARBOR_002.claims.filter((c) => c.feature === null || !known.has(c.feature)),
+      ];
+      // Principal 2026-10-13: a group folds from six closed claims and keeps its last three closed ones in place.
+      const expected = groups.flatMap((g) => {
+        const closed = g.filter((c) => c.state === 'closed');
+        if (closed.length < 6) return g;
+        const folded = new Set(closed.slice(0, -3));
+        return [...g.filter((c) => !folded.has(c)), ...g.filter((c) => folded.has(c))];
+      });
+      expect(cards(root).map((c) => c.dataset['claim'])).toEqual(expected.map((c) => c.id));
+      expect(expected).toHaveLength(HARBOR_002.claims.length);
+      expect(root.querySelectorAll('details[data-fold]').length).toBeGreaterThan(0);
     });
 
     it('shows filter chip counts equal to the golden counts', async () => {
