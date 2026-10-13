@@ -111,7 +111,7 @@ a warning (nested YAML is not part of the format); a repeated key warns and the 
 | `principal_stated_goal_signal` | number | — |
 | `context_sufficient`, `interview_invoked` | `true` or `false` | — |
 | `archived_reason`, `archived` | text, `YYYY-MM-DD` | the archive listing |
-| `milestone` | text | matched by name against the master's `## Milestones` entries (`master`, below); a name no entry carries warns `spec-milestone-unknown` and the spec still parses; without the key the spec belongs to no milestone |
+| `milestone` | text | matched by name against the master's `## Milestones` entries (`master`, below); a name no entry carries warns `spec-milestone-unknown` and the spec still parses; a name other than the `Milestone:` line of the spec's main feature (the first word of `isa_feature`) warns `milestone-mismatch` on the spec (`master`, below); without the key the spec belongs to no milestone |
 | `priority` | `P1`, `P2`, `P3` or `P4` | the urgency, shown on the dashboard row, the spec head and the breadcrumb; a missing key reads as `P3` without a diagnostic, any other value is a `frontmatter-priority` warning and the file still parses; a story's frontmatter takes the same key (Ideas, below); read from spec 008, T39 on (`SpecFrontmatter.priority`, `SpecHead.priority`), on the dashboard row from T67 (`DashboardSpecRow.priority`, the head's value) |
 | `stage` | a stage of the spec type's workflow (`specs/workflow.md`, below, or the default) | the explicit stage: when present it wins over the derived stage and must equal the last `to` of `events.jsonl`; a value outside the type's workflow, or one the last event contradicts, is a `stage-mismatch` diagnostic and the derived stage applies; without the key the stage derives from the files as before and is marked derived (`stageSource`, ISC-36); spec 008, T40 reads the key as text (`SpecFrontmatter.stage`, unvalidated) and T47 applies it (`explicitStageOf` in `stage.ts`): a value that is a stage of the type's row and equals the last event's `to` replaces the stage, and the dashboard row and the spec head carry `stageSource: explicit`; the next command and its reason stay the stage table's, since they say what the files still need; `blocked` and `close-pending`, which no row lists, never apply explicitly; T48 adds the diagnostic (`stageMismatchOf` in `stage.ts`): a value outside the type's row, or one the last event's `to` contradicts (a file without any event included, since nothing enters the value), is exactly one `warning` `stage-mismatch` on `spec.md`, at the key's line, `subject` the value as written |
 
@@ -141,7 +141,8 @@ skipped. The claim section is the first of `## Features`, `## Claims`, `## Crite
 inside a fenced block are neither claims nor headings.
 
 - A feature block opens with `### F<n>[.<m>] · <name>` (`·`, `:`, `—`, `–` or `-`, or no separator) and may carry one
-  `Why:` line before its first claim. Another heading of level three or less ends the block; level four does not.
+  `Why:` line before its first claim; in the master, one `Milestone: <name>` line directly under `Why:` assigns the
+  feature to a milestone (`master`, below). Another heading of level three or less ends the block; level four does not.
 - A claim line is `- [ ] <ID>: <text>`, checked as `[x]` or `[X]`, indented for a nested leaf. The ID is
   `ISC-<n>[.<m>…]`, a domain form (`H-AVAIL`) or a short form (`C4`, `EQ-12`); the separator after it may be `:`,
   `—`, `–`, `-` or nothing. Trailing marks `⟨?: …⟩` / `⟨resolved: …⟩` are lifted off first, then one trailing
@@ -743,10 +744,48 @@ From `core/fixtures/harbor/ISA.md`:
 - Harbor 1.0 · 2026-05-14 · First release a teammate can install.
 ```
 
+**Milestone lines** (optional, spec 026; `claims.ts` reads the line into `FeatureBlock.milestone`, `planning.ts` places
+the feature). A master feature block may carry one line `Milestone: <name>` directly under its `Why:` line:
+
+- the name is taken as written, trimmed, and matched against the `## Milestones` entries by name, the same way a spec's
+  `milestone:` key matches; the feature then sits under that milestone in the planning tree, Milestone › Feature ›
+  Spec › Claim;
+- a feature without the line sits in the "no milestone" group, which is shown last, after every milestone;
+- a line naming no entry of the block is one `feature-milestone-unknown` warning, the name as its subject; the feature
+  then sits in the "no milestone" group and parsing continues;
+- a milestone's progress is the sum, closed over total, of the features whose line names it; a master with no
+  `Milestone:` line anywhere keeps the count above, over the specs whose `milestone:` names it, so an existing master
+  parses and counts as before;
+- a spec whose `milestone:` differs from the line of its main feature (the first word of `isa_feature`) is one
+  `milestone-mismatch` warning, reported on the spec; nothing is reassigned, the feature's line decides where the
+  feature sits.
+
+A master feature block without the line, which falls into the "no milestone" group, and one with it.
+
+From `core/fixtures/milestone-lines/ISA.md`:
+
+```markdown
+### F0 · Cross-cutting
+Why: what would break trust in any release — a signal lost on the way or a contact detail in the repository.
+
+- [ ] ISC-1: Anti: a signal accepted by the intake is dropped before it is routed.
+- [ ] ISC-2: Anti: a tracked file contains a phone number or a personal address.
+
+### F1 · Signal intake
+Why: every monitoring tool can hand its signals to one endpoint.
+Milestone: Beacon 0.5
+
+- [x] ISC-3: The intake accepts a signal over HTTP and answers within 200 ms.
+- [x] ISC-4: A signal without a source is refused with a reason.
+- [x] ISC-5: The same signal sent twice within a minute is stored once. (after: ISC-3)
+```
+
 **Derived:** the master fraction (the hero number), the reference for every spec's drift, and its fog lines in the
 attention count. **Derived: the planning tree** (spec 003, `planning.ts`): the features from the master's blocks, each
 claim with the spec folder that holds it, active or archived; and the milestones from the `## Milestones` block
-together with the specs' `milestone:` keys, each with its progress, closed over total, across every feature it touches.
+together with the features' `Milestone:` lines and the specs' `milestone:` keys, each with its progress, closed over
+total: the sum of its features where the master carries `Milestone:` lines, otherwise across every feature its specs
+touch.
 
 ## `idea` — `../ideas/`, one `specs/ideas/<slug>.md` per story
 

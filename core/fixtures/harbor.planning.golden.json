@@ -1292,6 +1292,7 @@
       "closed": 0,
       "total": 13,
       "state": "late",
+      "featureIds": [],
       "features": [
         {
           "id": "F3",
@@ -1325,6 +1326,7 @@
       "closed": 101,
       "total": 106,
       "state": "upcoming",
+      "featureIds": [],
       "features": [
         {
           "id": "F1",
@@ -1403,6 +1405,16 @@
         }
       ]
     }
+  ],
+  "unassignedFeatures": [
+    "F0",
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6",
+    "F7"
   ],
   "ideas": [
     {

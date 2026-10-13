@@ -437,6 +437,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       stageCounts: "req",
       features: "req",
       milestones: "req",
+      unassignedFeatures: "opt",
       ideas: "req",
       recount: "req",
       diagnostics: "req",

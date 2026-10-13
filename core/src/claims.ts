@@ -45,11 +45,12 @@ export interface FeatureBlock {
   /** The `Why:` line under the heading, without the prefix. */
   readonly why: string | null;
   /**
-   * The `Milestone:` line under the heading, without the prefix: the name of a master `## Milestones` entry (spec 026).
-   * Optional while the seam stands (T1): the parser does not read the line yet and leaves the key out, so every
-   * existing feature block and test stays as it is; the parser task sets it on every block, null without the line.
+   * The `Milestone:` line under `Why:`, without the prefix and trimmed: the name of a master `## Milestones` entry
+   * (spec 026, T3). Read from the first non-blank line after the `Why:` line, before the block's first claim; null
+   * without that line, and null in a block without a `Why:` line. Whether the name is an entry of the block is the
+   * planning tree's question (`planning.ts`), not the parser's.
    */
-  readonly milestone?: string | null;
+  readonly milestone: string | null;
   readonly line: number;
   /** Claim IDs in the block, in file order. */
   readonly claims: readonly string[];
@@ -103,6 +104,7 @@ const RULE = /^---\s*$/;
 const HEADING = /^(#{1,6})\s+(.*?)\s*$/;
 const FEATURE_HEADING = /^###\s+(F\d+(?:\.\d+)?)\b\s*(?:[·:—–-]\s*)?(.*?)\s*$/;
 const WHY_LINE = /^Why:\s*(.*?)\s*$/;
+const MILESTONE_LINE = /^Milestone:\s*(.*?)\s*$/;
 const FENCE = /^\s*(```|~~~)/;
 
 const TRAILING_MARK = /\s*⟨[^⟨⟩]*⟩\s*$/;
@@ -289,7 +291,10 @@ export function parseClaims(text: string): ClaimsDocument {
   const lines = scanLines(text);
   const diagnostics: Diagnostic[] = [];
   const claims: Claim[] = [];
-  const features: Array<{ id: string; name: string; why: string | null; line: number; claims: string[] }> = [];
+  const features: Array<{ id: string; name: string; why: string | null; milestone: string | null; line: number; claims: string[] }> = [];
+  // The block whose `Why:` line came last with nothing but blank lines since: the one block a `Milestone:` line may
+  // still name (spec 026, T3). Cleared by any other line, so the line counts only directly under `Why:`.
+  let underWhy: (typeof features)[number] | null = null;
   let idlessBoxes = 0;
 
   const start = lines.findIndex((l) => !l.fenced && CLAIM_HEADING.test(l.text));
@@ -314,9 +319,20 @@ export function parseClaims(text: string): ClaimsDocument {
       if (LEVEL_TWO.test(line.text) || RULE.test(line.text)) break;
       const lineNo = i + 1;
 
+      if (underWhy !== null && line.text.trim() !== '') {
+        const named = MILESTONE_LINE.exec(line.text);
+        const block = underWhy;
+        underWhy = null;
+        if (named) {
+          const name = named[1] ?? '';
+          block.milestone = name === '' ? null : name;
+          continue;
+        }
+      }
+
       const featureHead = FEATURE_HEADING.exec(line.text);
       if (featureHead) {
-        current = { id: featureHead[1] ?? '', name: featureHead[2] ?? '', why: null, line: lineNo, claims: [] };
+        current = { id: featureHead[1] ?? '', name: featureHead[2] ?? '', why: null, milestone: null, line: lineNo, claims: [] };
         features.push(current);
         continue;
       }
@@ -328,6 +344,7 @@ export function parseClaims(text: string): ClaimsDocument {
       const why = current?.why === null && current.claims.length === 0 ? WHY_LINE.exec(line.text) : null;
       if (current && why) {
         current.why = why[1] ?? '';
+        underWhy = current;
         continue;
       }
 

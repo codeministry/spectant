@@ -177,6 +177,14 @@ export interface PlanningMilestone {
   readonly total: number;
   /** Derived from `closed`, `total`, `target` and the input's `now`; see `MilestoneState`. */
   readonly state: MilestoneState;
+  /**
+   * The feature blocks whose `Milestone:` line names this entry (spec 026, ISC-166), in master order: the explicit
+   * assignment, each block under at most one milestone. Empty when no line names it, as in every master without
+   * `Milestone:` lines. Unlike `features`, it moves no count: progress still comes from the specs' `milestone:`.
+   * `buildPlanning` always sets it; the type leaves it optional only so the web lane's hand-built planning stubs stay
+   * valid until spec 026's tree lens reads it (then it becomes required, as `FeatureBlock.milestone` did in T3).
+   */
+  readonly featureIds?: readonly string[];
   /** The features the milestone's specs hold claims of, in master order. */
   readonly features: readonly PlanningMilestoneFeature[];
   /** Specs whose `milestone:` names this entry, archived ones included (last), `main` always false. */
@@ -200,6 +208,14 @@ export interface PlanningModel {
   readonly features: readonly PlanningFeature[];
   /** Target date ascending, undated last; empty when the master has no `## Milestones` block. */
   readonly milestones: readonly PlanningMilestone[];
+  /**
+   * The no-milestone group (spec 026, ISC-166), shown after every milestone: the ids of the feature blocks no
+   * milestone's `featureIds` lists, in master order. A block lands here without a `Milestone:` line, or when its line
+   * names no valid entry of the `## Milestones` block (an unknown name, or one on a line `parseMilestones` skipped).
+   * Every block of `features` is in exactly one milestone's `featureIds` or here; empty without a master. Always set
+   * by `buildPlanning`, optional in the type for the same reason as `PlanningMilestone.featureIds`.
+   */
+  readonly unassignedFeatures?: readonly string[];
   /**
    * Every story of `specs/ideas/` (spec 008, T55), in file-name order: also those the tree lists under no feature or
    * milestone (none named, or an `unknown-feature` or `unknown-milestone` one). Empty without stories.
@@ -403,6 +419,7 @@ function planningMilestone(entry: Milestone, blocks: readonly ResolvedBlock[], f
     closed,
     total,
     state: milestoneState(closed, total, entry.target, now),
+    featureIds: blocks.filter(({ block }) => block.milestone === entry.name).map(({ block }) => block.id),
     features,
     specs: [...members].map((f): PlanningHolder => ({
       ...f.holder,
@@ -466,7 +483,7 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
   const stages = boardStages(workflow);
   const folders = readFolders(input.specs, input.archived, new Map((input.specStates ?? []).map((s) => [s.slug, s])), input.locks?.locks ?? []);
   const board = { workflow, stages, stageCounts: stageCounts(stages, folders, ideas.length) };
-  if (input.master === null) return { ...board, features: [], milestones: [], ideas, recount: null, diagnostics: stories.diagnostics };
+  if (input.master === null) return { ...board, features: [], milestones: [], unassignedFeatures: [], ideas, recount: null, diagnostics: stories.diagnostics };
   const master = parseClaims(input.master);
   const claimById = new Map<string, Claim>();
   for (const claim of master.claims) if (!claimById.has(claim.id)) claimById.set(claim.id, claim);
@@ -493,10 +510,14 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
   );
   const now = input.now ?? new Date().toISOString().slice(0, 10);
   const byTarget = [...parsed.milestones].sort((a, b) => (a.target < b.target ? -1 : a.target > b.target ? 1 : 0));
+  // A feature's `Milestone:` line matches an entry as a spec's `milestone:` does: the exact name of a valid entry. A
+  // name on a skipped line, or no entry at all, leaves the feature in the no-milestone group (T6 adds the warning).
+  const valid = new Set(parsed.milestones.map((m) => m.name));
   return {
     ...board,
     features: blocks.map((block) => planningFeature(block, folders, ideas)),
     milestones: byTarget.map((entry) => planningMilestone(entry, blocks, folders, ideas, now)),
+    unassignedFeatures: master.features.filter((f) => f.milestone === null || !valid.has(f.milestone)).map((f) => f.id),
     ideas,
     recount: master.counted,
     diagnostics: [

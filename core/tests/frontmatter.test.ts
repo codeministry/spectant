@@ -28,7 +28,8 @@ describe('fixtures', () => {
   const files = markdownFiles();
 
   test('the corpus holds the spec and master files the parsers are measured on', () => {
-    expect(files.filter((f) => f.endsWith('/spec.md') || f.endsWith('/ISA.md')).length).toBe(20);
+    // 20, plus milestone-lines' master and its three specs (spec 026).
+    expect(files.filter((f) => f.endsWith('/spec.md') || f.endsWith('/ISA.md')).length).toBe(24);
   });
 
   test.each(files)('%s parses without an error diagnostic', (rel) => {

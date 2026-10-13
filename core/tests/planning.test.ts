@@ -25,7 +25,7 @@ describe('planning', () => {
     const workflow = { rows: core.DEFAULT_WORKFLOW, source: 'default' as const, diagnostics: [] };
     const stages = core.boardStages(workflow);
     const stageCounts = Object.fromEntries(stages.map((s) => [s, 0]));
-    const empty: PlanningModel = { workflow, stages, stageCounts, features: [], milestones: [], ideas: [], recount: null, diagnostics: [] };
+    const empty: PlanningModel = { workflow, stages, stageCounts, features: [], milestones: [], unassignedFeatures: [], ideas: [], recount: null, diagnostics: [] };
     expect(core.buildPlanning({ master: null, specs: [], archived: [] })).toEqual(empty);
 
     // T18: PlanningInput repeats DashboardInput's fields instead of picking them (planning.ts types against no
@@ -548,6 +548,8 @@ describe('planning: milestones', () => {
       closed: 0,
       total: 13,
       state: 'late',
+      // harbor's master carries no `Milestone:` line (spec 026): the explicit assignment is empty, the counts unchanged.
+      featureIds: [],
       features: [{ id: 'F3', name: 'Config loader rewrite', closed: 0, total: 13 }],
       specs: [
         {
@@ -574,6 +576,7 @@ describe('planning: milestones', () => {
       closed: 101,
       total: 106,
       state: 'upcoming',
+      featureIds: [],
       features: [
         { id: 'F1', name: 'Manifest sync', closed: 46, total: 46 },
         { id: 'F2', name: 'Web console', closed: 25, total: 30 },
@@ -663,7 +666,8 @@ describe('planning: milestones', () => {
   test.each(fixtureTrees())('milestones: %s equals the milestones of its planning golden', (tree) => {
     const golden = JSON.parse(readFileSync(goldenPath(tree, 'planning'), 'utf8')) as PlanningModel;
     expect(planningOf(tree).milestones).toEqual(golden.milestones);
-    expect(golden.milestones).toEqual(tree === 'harbor' ? HARBOR_MILESTONES : []);
+    // milestone-lines (spec 026) pins its own milestones in "planning: feature-milestone".
+    if (tree !== 'milestone-lines') expect(golden.milestones).toEqual(tree === 'harbor' ? HARBOR_MILESTONES : []);
   });
 
   test('milestones: lantern, with no block and no milestone key, has none', () => {
@@ -708,8 +712,8 @@ describe('planning: milestones', () => {
     const master = masterWith([{ id: 'F0', name: 'Only', claims: [1] }], [['Nobody', '2026-01-10', 'Passed, empty.'], ['Later', '2026-12-01']]);
     const model = core.buildPlanning({ master, specs: [], archived: [], now: '2026-03-20' });
     expect(model.milestones).toEqual([
-      { name: 'Nobody', slug: 'nobody', target: '2026-01-10', description: 'Passed, empty.', closed: 0, total: 0, state: 'late', features: [], specs: [], ideas: [] },
-      { name: 'Later', slug: 'later', target: '2026-12-01', description: null, closed: 0, total: 0, state: 'upcoming', features: [], specs: [], ideas: [] },
+      { name: 'Nobody', slug: 'nobody', target: '2026-01-10', description: 'Passed, empty.', closed: 0, total: 0, state: 'late', featureIds: [], features: [], specs: [], ideas: [] },
+      { name: 'Later', slug: 'later', target: '2026-12-01', description: null, closed: 0, total: 0, state: 'upcoming', featureIds: [], features: [], specs: [], ideas: [] },
     ]);
   });
 
@@ -972,6 +976,100 @@ describe('planning: empty block', () => {
     expect(model.features.find((f) => f.id === 'F7')).toMatchObject({ id: 'F7', why: 'Empty matters.', closed: 0, total: 0, claims: [], holders: [], unheld: [], ideas: [] });
     expect(model.diagnostics).toEqual([]);
     expect(model.recount).toEqual({ closed: 0, total: 1 });
+  });
+});
+
+// ISC-166 (spec 026, T2): a feature block names its milestone on a line `Milestone: <name>` directly under `Why:`, and
+// the tree hangs each feature under exactly the milestone its line names: `PlanningMilestone.featureIds`, in master
+// order. A feature without the line, or whose line names no entry of the `## Milestones` block (until T6 adds the
+// warning), sits in the trailing no-milestone group `PlanningModel.unassignedFeatures`. The assignment moves no number:
+// a milestone's specs and progress still come from the specs' `milestone:` (the sum over features is T7).
+describe('planning: feature-milestone', () => {
+  const trees = fixtureTrees();
+  const header = (body: readonly string[]): string => ['# M', '', '## Features', '', ...body, '', '## Milestones', '', '- Kite 1.0 · 2026-04-01 · First', ''].join('\n');
+
+  test('feature-milestone: the parser reads Milestone: directly under Why: into FeatureBlock.milestone, null without the line', () => {
+    const doc = core.parseClaims(
+      header([
+        '### F1 · Named',
+        'Why: one reason.',
+        'Milestone: Kite 1.0',
+        '',
+        '- [ ] ISC-1: a',
+        '',
+        '### F2 · Plain',
+        'Why: another reason.',
+        '',
+        '- [ ] ISC-2: b',
+        '',
+        '### F3 · Late line',
+        'Why: a third reason.',
+        '',
+        '- [ ] ISC-3: c',
+        'Milestone: Kite 1.0',
+        '',
+        '### F4 · No why',
+        'Milestone: Kite 1.0',
+        '- [ ] ISC-4: d',
+        '',
+        '### F5 · Padded',
+        'Why: a fifth reason.',
+        'Milestone:   Kite 1.0   ',
+        '- [ ] ISC-5: e',
+      ]),
+    );
+    expect(doc.features.map((f) => ({ id: f.id, why: f.why, milestone: f.milestone, claims: f.claims }))).toEqual([
+      { id: 'F1', why: 'one reason.', milestone: 'Kite 1.0', claims: ['ISC-1'] },
+      { id: 'F2', why: 'another reason.', milestone: null, claims: ['ISC-2'] },
+      // After a claim the line is prose, not the block's milestone.
+      { id: 'F3', why: 'a third reason.', milestone: null, claims: ['ISC-3'] },
+      // Without a Why: line there is nothing for the line to stand under.
+      { id: 'F4', why: null, milestone: null, claims: ['ISC-4'] },
+      { id: 'F5', why: 'a fifth reason.', milestone: 'Kite 1.0', claims: ['ISC-5'] },
+    ]);
+    // The line is not a claim and not a diagnostic.
+    expect(doc.claims.map((c) => c.id)).toEqual(['ISC-1', 'ISC-2', 'ISC-3', 'ISC-4', 'ISC-5']);
+    expect(doc.diagnostics).toEqual([]);
+  });
+
+  test('feature-milestone: milestone-lines hangs F1 under Beacon 0.5, F2 under Beacon 1.0, and F0 and F3 in the no-milestone group', () => {
+    const model = planningOf('milestone-lines');
+    expect(model.features.map((f) => f.id)).toEqual(['F0', 'F1', 'F2', 'F3']);
+    expect(model.milestones.map((m) => ({ name: m.name, featureIds: m.featureIds }))).toEqual([
+      { name: 'Beacon 0.5', featureIds: ['F1'] },
+      { name: 'Beacon 1.0', featureIds: ['F2'] },
+    ]);
+    // F0 has no line; F3 names Beacon 2.0, which the block does not list.
+    expect(model.unassignedFeatures).toEqual(['F0', 'F3']);
+    // No silent re-hang: 002 names Beacon 0.5 and stays a spec of it, though its main feature F2 names Beacon 1.0; the
+    // progress is still the specs' (T7 sums the features).
+    const byName = new Map(model.milestones.map((m) => [m.name, m]));
+    expect(byName.get('Beacon 0.5')?.specs.map((s) => s.id)).toEqual(['001', '002']);
+    expect(byName.get('Beacon 0.5')).toMatchObject({ closed: 3, total: 7 });
+    expect(byName.get('Beacon 1.0')?.specs).toEqual([]);
+    expect(byName.get('Beacon 1.0')).toMatchObject({ closed: 0, total: 0 });
+  });
+
+  test('feature-milestone: a master without Milestone: lines puts every feature in the no-milestone group and keeps every milestone', () => {
+    // harbor: a ## Milestones block, no line; lantern: neither.
+    const harbor = planningOf('harbor');
+    expect(harbor.milestones.map((m) => m.featureIds)).toEqual([[], []]);
+    expect(harbor.unassignedFeatures).toEqual(harbor.features.map((f) => f.id));
+    const lantern = planningOf('lantern');
+    expect(lantern.milestones).toEqual([]);
+    expect(lantern.unassignedFeatures).toEqual(['F0', 'F1']);
+    expect(core.buildPlanning({ master: null, specs: [], archived: [] }).unassignedFeatures).toEqual([]);
+  });
+
+  test.each(trees)('feature-milestone: %s puts every feature in exactly one group and equals its planning golden', (tree) => {
+    const model = planningOf(tree);
+    // buildPlanning always sets both fields (optional only in the type): `undefined` here would fail the comparison.
+    expect(model.unassignedFeatures).toBeDefined();
+    expect(model.milestones.filter((m) => m.featureIds === undefined)).toEqual([]);
+    const placed = [...model.milestones.flatMap((m) => m.featureIds ?? []), ...(model.unassignedFeatures ?? [])];
+    expect([...placed].sort()).toEqual(model.features.map((f) => f.id).sort());
+    expect(new Set(placed).size).toBe(placed.length);
+    expectGolden(goldenPath(tree, 'planning'), goldenText(model), UPDATE_COMMAND);
   });
 });
 

@@ -1,0 +1,201 @@
+{
+  "specs/001-signal-intake": {
+    "claims": [
+      {
+        "id": "ISC-3",
+        "text": "The intake accepts a signal over HTTP and answers within 200 ms.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": null,
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 24
+      },
+      {
+        "id": "ISC-4",
+        "text": "A signal without a source is refused with a reason.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": null,
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 25
+      },
+      {
+        "id": "ISC-5",
+        "text": "The same signal sent twice within a minute is stored once.",
+        "feature": null,
+        "state": "closed",
+        "kind": "normal",
+        "edges": [
+          "ISC-3"
+        ],
+        "blockedBy": [],
+        "probe": null,
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 26
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 3,
+      "open": 0,
+      "takeable": 0,
+      "taken": 0,
+      "blocked": 0,
+      "closed": 3,
+      "dropped": 0,
+      "normal": 3,
+      "anti": 0,
+      "antecedent": 0
+    }
+  },
+  "specs/002-alert-routing": {
+    "claims": [
+      {
+        "id": "ISC-6",
+        "text": "A signal is routed to the person on call for its service.",
+        "feature": null,
+        "state": "open",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": null,
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 24
+      },
+      {
+        "id": "ISC-7",
+        "text": "A service without a rota routes to the fallback contact.",
+        "feature": null,
+        "state": "blocked",
+        "kind": "normal",
+        "edges": [
+          "ISC-6"
+        ],
+        "blockedBy": [
+          "ISC-6"
+        ],
+        "probe": null,
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 25
+      },
+      {
+        "id": "ISC-8",
+        "text": "The routing decision is recorded with the signal.",
+        "feature": null,
+        "state": "open",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": null,
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 26
+      },
+      {
+        "id": "ISC-1",
+        "text": "a signal accepted by the intake is dropped before it is routed.",
+        "feature": null,
+        "state": "open",
+        "kind": "anti",
+        "edges": [],
+        "blockedBy": [],
+        "probe": null,
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 27
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 4,
+      "open": 4,
+      "takeable": 0,
+      "taken": 0,
+      "blocked": 1,
+      "closed": 0,
+      "dropped": 0,
+      "normal": 3,
+      "anti": 1,
+      "antecedent": 0
+    }
+  },
+  "specs/003-escalation-chains": {
+    "claims": [
+      {
+        "id": "ISC-9",
+        "text": "An unacknowledged signal escalates to the next level after its timeout.",
+        "feature": null,
+        "state": "open",
+        "kind": "normal",
+        "edges": [],
+        "blockedBy": [],
+        "probe": null,
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 23
+      },
+      {
+        "id": "ISC-10",
+        "text": "The last level of a chain repeats until someone acknowledges.",
+        "feature": null,
+        "state": "blocked",
+        "kind": "normal",
+        "edges": [
+          "ISC-9"
+        ],
+        "blockedBy": [
+          "ISC-9"
+        ],
+        "probe": null,
+        "verification": null,
+        "lock": null,
+        "dropped": null,
+        "noteCount": 0,
+        "line": 24
+      }
+    ],
+    "features": [],
+    "fog": [],
+    "counts": {
+      "all": 2,
+      "open": 2,
+      "takeable": 0,
+      "taken": 0,
+      "blocked": 1,
+      "closed": 0,
+      "dropped": 0,
+      "normal": 2,
+      "anti": 0,
+      "antecedent": 0
+    }
+  }
+}

@@ -229,8 +229,8 @@ describe('claim lines', () => {
       '- [x] ISC-80: prunes',
     ]);
     expect(d.features).toEqual([
-      { id: 'F3', name: 'Config loader rewrite', why: 'one loader for all.', line: 5, claims: ['ISC-70'] },
-      { id: 'F4', name: 'Retention', why: null, line: 10, claims: ['ISC-80'] },
+      { id: 'F3', name: 'Config loader rewrite', why: 'one loader for all.', milestone: null, line: 5, claims: ['ISC-70'] },
+      { id: 'F4', name: 'Retention', why: null, milestone: null, line: 10, claims: ['ISC-80'] },
     ]);
     expect(d.claims.map((c) => c.feature)).toEqual(['F3', 'F4']);
   });
