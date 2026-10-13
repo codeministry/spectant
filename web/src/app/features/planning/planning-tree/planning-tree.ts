@@ -9,6 +9,7 @@ import {
   inject,
   Injector,
   input,
+  linkedSignal,
   signal,
 } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
@@ -83,7 +84,14 @@ export class PlanningTree {
   });
 
   private readonly roots = computed(() => buildTree(this.model()));
-  private readonly path = computed(() => pathTo(this.roots(), this.selection.selected()));
+  /**
+   * The rows the selection opens: the path to the selected object, kept when the selection closes, so the row Escape
+   * returns focus to is still rendered (ISC-171).
+   */
+  private readonly path = linkedSignal<ReadonlySet<string>, ReadonlySet<string>>({
+    source: computed(() => pathTo(this.roots(), this.selection.selected())),
+    computation: (path, previous) => (path.size === 0 && this.selection.selected() === null && previous ? previous.value : path),
+  });
   /** What the user opened or closed by hand, by row key; wins over the default and the selection's path. */
   private readonly overrides = signal<ReadonlyMap<string, boolean>>(new Map());
   /** The row holding the roving tab stop once the user moved it. */

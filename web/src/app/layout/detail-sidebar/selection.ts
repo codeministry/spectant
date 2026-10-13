@@ -1,4 +1,4 @@
-import { computed, type DestroyRef, DOCUMENT, inject, Injectable, signal } from '@angular/core';
+import { afterNextRender, computed, type DestroyRef, DOCUMENT, inject, Injectable, Injector, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, map } from 'rxjs';
@@ -87,6 +87,7 @@ export class DetailSelection {
   private readonly doc = inject(DOCUMENT);
   private readonly state = inject(ShellState);
   private readonly data = inject(ShellData);
+  private readonly injector = inject(Injector);
   private readonly docks = signal(0);
 
   private readonly param = toSignal(
@@ -127,7 +128,11 @@ export class DetailSelection {
     const ref = this.selected();
     if (ref === null) return;
     await this.router.navigate([], { queryParams: { [SEL_PARAM]: null }, queryParamsHandling: 'merge', replaceUrl: true });
-    this.doc.querySelector<HTMLElement>(refSelector(ref))?.focus();
+    const focus = (): void => this.doc.querySelector<HTMLElement>(refSelector(ref))?.focus();
+    focus();
+    // The sheet (compact) is a modal dialog: until the closing render removes it the page is inert, and on its destroy
+    // it hands focus back to its opener (the body after a reload). Focus the object again once that render is done.
+    afterNextRender(focus, { injector: this.injector });
   }
 
   private readParam(): string | null {
