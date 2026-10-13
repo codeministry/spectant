@@ -123,4 +123,6 @@ export const ICON_NAMES = [
   'zoom-in',
   'zoom-out',
   'rotate-ccw',
+  // Spec 024: the unheld claim line of the Features page (prototype `claim-line`).
+  'circle',
 ] as const;

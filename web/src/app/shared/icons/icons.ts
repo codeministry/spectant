@@ -23,6 +23,7 @@ export type IconName =
   | 'chevron-right'
   | 'chevron-up'
   | 'chevrons-up'
+  | 'circle'
   | 'circle-alert'
   | 'circle-check'
   | 'circle-dashed'
@@ -137,6 +138,7 @@ export const ICONS: Record<IconName, string> = {
   'chevron-right': '<path d="m9 18 6-6-6-6"/>',
   'chevron-up': '<path d="m18 15-6-6-6 6"/>',
   'chevrons-up': '<path d="m17 11-5-5-5 5"/><path d="m17 18-5-5-5 5"/>',
+  circle: '<circle cx="12" cy="12" r="10"/>',
   'circle-alert': '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
   'circle-check': '<circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/>',
   'circle-dashed': '<path d="M10.1 2.182a10 10 0 0 1 3.8 0"/><path d="M13.9 21.818a10 10 0 0 1-3.8 0"/><path d="M17.609 3.721a10 10 0 0 1 2.69 2.7"/><path d="M2.182 13.9a10 10 0 0 1 0-3.8"/><path d="M20.279 17.609a10 10 0 0 1-2.7 2.69"/><path d="M21.818 10.1a10 10 0 0 1 0 3.8"/><path d="M3.721 6.391a10 10 0 0 1 2.7-2.69"/><path d="M6.391 20.279a10 10 0 0 1-2.69-2.7"/>',

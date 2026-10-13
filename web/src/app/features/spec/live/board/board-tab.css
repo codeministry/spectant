@@ -279,9 +279,27 @@
   align-items: center;
 }
 
-.history .flabel {
+/* spec 024: the replay's frame label is the plain .flabel (no live pulse), then the prototype .hist-chip and the
+   "Back to live" .tb-btn (32 px, card ground, hairline shadow). */
+.hist-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
   background: var(--hover-t);
   color: var(--hover-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+
+.back {
+  block-size: 32px;
+  min-block-size: 32px;
+  padding-inline: 10px;
+  background: var(--color-base-100);
+  box-shadow: var(--shadow-hair);
+  font-size: 13px;
 }
 
 /* The prototype .empty-state: centred, 32 px, dashed. */

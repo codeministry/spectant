@@ -69,7 +69,36 @@
         "level": 2
       }
     ],
-    "wordCount": 151
+    "wordCount": 151,
+    "constitution": {
+      "lanes": [
+        {
+          "lane": "web",
+          "paths": [
+            "src/",
+            "tests/"
+          ],
+          "probe": "bun test"
+        }
+      ],
+      "tiers": [
+        {
+          "tier": "static",
+          "command": "bun run check:static",
+          "runsWhen": "before every claim closes"
+        },
+        {
+          "tier": "quick",
+          "command": "bun run verify:quick",
+          "runsWhen": "at every implementation stop"
+        },
+        {
+          "tier": "full",
+          "command": "bun run verify",
+          "runsWhen": "before a spec is marked complete"
+        }
+      ]
+    }
   },
   "specs": {
     "specs/001-reading-list": {
@@ -170,7 +199,23 @@
             "level": 2
           }
         ],
-        "wordCount": 40
+        "wordCount": 40,
+        "decisions": {
+          "goal": {
+            "text": "A reader saves a link in one step, finds it again by title or tag, and reads it offline.",
+            "confirmed": "2026-03-03T09:30:00Z"
+          },
+          "rounds": [
+            {
+              "id": "round-0",
+              "title": "Round 1 — no gaps the repo could not close",
+              "date": "2026-03-03T09:30:00Z",
+              "shapes": [],
+              "shapeChosen": null,
+              "questions": []
+            }
+          ]
+        }
       }
     },
     "specs/002-duplicate-links": {
@@ -214,7 +259,23 @@
             "level": 2
           }
         ],
-        "wordCount": 37
+        "wordCount": 37,
+        "decisions": {
+          "goal": {
+            "text": "Saving a known link or a known tag again changes nothing in the list.",
+            "confirmed": "2026-03-06T10:20:00Z"
+          },
+          "rounds": [
+            {
+              "id": "round-0",
+              "title": "Round 1 — no gaps the repo could not close",
+              "date": "2026-03-06T10:20:00Z",
+              "shapes": [],
+              "shapeChosen": null,
+              "questions": []
+            }
+          ]
+        }
       }
     }
   }

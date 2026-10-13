@@ -69,6 +69,9 @@
               @if (option.entry.meta; as meta) {
                 <span class="meta" [title]="meta" [uiClamp]="meta" [uiClampLines]="option.index === active() ? 3 : 1"></span>
               }
+              @if (isDemo(option.entry)) {
+                <ui-chip class="p-demo" variant="demo" data-demo />
+              }
               @if (option.phase; as phase) {
                 <ui-chip class="p-phase" aria-hidden="true" [tone]="phase.tone" [icon]="phase.icon">{{ phase.label }}</ui-chip>
               }

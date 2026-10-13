@@ -5,6 +5,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import type { TechModel } from '../../../../../core/src/files';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
+import { UiIcon } from '../../shared/icons/icon';
 import { UiChip } from '../../shared/ui/chip/chip';
 import { UiMeter } from '../../shared/ui/meter/meter';
 import { UiTerm } from '../../shared/ui/term/term';
@@ -90,7 +91,7 @@ export function statusSummary(body: unknown): StatusSummary {
  */
 @Component({
   selector: 'app-tech-status-tab',
-  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiChip, UiMeter, UiTerm, UiTypeGlyph],
+  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiChip, UiIcon, UiMeter, UiTerm, UiTypeGlyph],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './tech-status-tab.css',
   templateUrl: './tech-status-tab.html',

@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { DashboardRowView as DashboardSpecRow } from '../context-rail/dashboard-view';
+import { UiIcon } from '../../../shared/icons/icon';
 import { UiCard } from '../../../shared/ui/card/card';
 import { UiDisclosure } from '../../../shared/ui/overlay/disclosure';
 import { UiSectionHeader } from '../../../shared/ui/section-header/section-header';
@@ -25,7 +26,7 @@ export const NEXT_UP_HEADING = 'next-up';
  */
 @Component({
   selector: 'app-next-up-list',
-  imports: [NextUpEntry, NgTemplateOutlet, RouterLink, TranslocoPipe, UiCard, UiDisclosure, UiSectionHeader],
+  imports: [NextUpEntry, NgTemplateOutlet, RouterLink, TranslocoPipe, UiCard, UiDisclosure, UiIcon, UiSectionHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './next-up-list.html',
   styleUrl: './next-up-list.css',

@@ -30,6 +30,7 @@ ui-card { overflow: hidden; }
 
 /* Add row */
 .add-row {
+  position: relative;
   display: grid;
   gap: 8px;
   padding: 16px;
@@ -299,6 +300,40 @@ ui-card { overflow: hidden; }
   justify-content: flex-end;
   gap: 8px;
   margin-block-start: 24px;
+}
+
+/* Prototype `.path-pop`: the completion list under the path field, the selected option on --raised. */
+.path-pop {
+  position: absolute;
+  inset-block-start: 60px;
+  inset-inline-start: 16px;
+  z-index: 10;
+  inline-size: min(520px, calc(100% - 32px));
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--color-base-100);
+}
+
+.path-pop[hidden] { display: none; }
+.path-pop .pop-item { cursor: pointer; }
+.path-pop .pop-item[aria-selected='true'] { background: var(--color-base-300); }
+
+.path-pop mark {
+  background: none;
+  color: var(--disp-text);
+  font-weight: 600;
+}
+
+/* Prototype `.fab`: fixed bottom right, 48 px, fully round. */
+.ws-fab {
+  position: fixed;
+  inset-block-end: 16px;
+  inset-inline-end: 16px;
+  z-index: 20;
+  min-block-size: 48px;
+  padding-inline: 18px;
+  border-radius: 999px;
 }
 
 @container shell (width < 640px) {

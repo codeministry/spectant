@@ -96,10 +96,12 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         await expect(row.locator('p.unheld')).toHaveCount(0);
         await details.locator('> summary').click();
         await expect(details).toHaveAttribute('open', '');
-        const ids = details.locator('.ids');
-        await expect(ids).toBeVisible();
-        const listed = (await ids.innerText()).split(/[\s,]+/u).filter(Boolean);
-        expect(listed).toEqual(feature.unheld);
+        // spec 024: prototype value (principal: Prototyp gilt immer) — claim lines glyph | ISC id | the master's text.
+        const lines = row.locator('.claim-line');
+        await expect(lines.first()).toBeVisible();
+        expect(await lines.locator('.cid').allInnerTexts()).toEqual(feature.unheld);
+        const texts = feature.claims.filter((c) => feature.unheld.includes(c.id)).map((c) => c.text);
+        expect(await lines.locator('.ctext').allInnerTexts()).toEqual(texts);
       }
       for (const feature of allHeld) {
         const row = card(page, feature.id);
@@ -167,7 +169,13 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       expect(en.terms.feature).toBe('Epic in a ticket tracker');
       const describedBy = await term.locator('dfn').getAttribute('aria-describedby');
       await expect(term.locator('[role="tooltip"]')).toHaveAttribute('id', describedBy ?? 'missing');
-      await expect(page.locator('p.meta ui-term dfn')).toHaveText('claims');
+      await expect(page.locator('p.meta dfn#features-claims-term')).toHaveText('claims');
+      // spec 024 (B29): "unheld" in the meta is a glossary term with its popover, as in the prototype's `button.term`.
+      const unheld = page.locator('p.meta ui-term:has(dfn#features-unheld-term)');
+      await expect(unheld.locator('dfn')).toHaveText('unheld');
+      await expect(unheld.locator('[role="tooltip"]')).toHaveText(
+        'A master claim that no spec has taken on yet. It closes only once a spec holds it and its probe passes.',
+      );
     });
 
     test('an anchor opens the card: focused, marked as arrived', async ({ page }) => {
@@ -298,7 +306,7 @@ for (const [lang, cat] of Object.entries(LANGS) as Array<[keyof typeof LANGS, Ca
         await expect.poll(async () => (await page.locator('h1').innerText()).replace(/\s+/gu, ' ').trim()).toBe(cat.shell.pages.features);
         await hintOpens(page, h1Term, cat.terms.feature);
 
-        const claimTerm = page.locator('p.meta ui-term');
+        const claimTerm = page.locator('p.meta ui-term:has(dfn#features-claims-term)');
         await expect(claimTerm.locator('dfn')).toBeVisible();
         await hintOpens(page, claimTerm, cat.terms.claim);
       });

@@ -137,7 +137,7 @@
                 @switch (line.kind) {
                   @case ('locked') {
                     <span class="check-note" data-check-locked [id]="'task-' + row.id + '-check'">
-                      <ui-icon name="lock" [size]="14" />{{ 'tasks.check.locked' | transloco: { session: line.session } }}
+                      <ui-icon name="lock" [size]="13" />{{ 'tasks.check.locked' | transloco: { session: line.session } }}
                     </span>
                   }
                   @case ('conflict') {
@@ -168,7 +168,7 @@
                 </span>
               }
               @if (sub(row); as sub) {
-                <span class="sub" data-sub>{{ sub.key | transloco: { text: sub.text } }}</span>
+                <span class="sub" data-sub>@if (subIcon(row); as icon) {<ui-icon [name]="icon" [size]="13" />}{{ sub.key | transloco: { text: sub.text } }}</span>
               }
             </span>
           }
@@ -176,14 +176,17 @@
       }
     </ul>
 
-    </div>
-
     @if (hidden(); as hidden) {
-      <p class="done-hidden" data-done-hidden>
-        {{ 'tasks.doneHidden' | transloco: hidden }}
-        <button type="button" class="btn btn-xs btn-ghost" (click)="setQuery('hideDone', null)">{{ 'tasks.show' | transloco }}</button>
-      </p>
+      <!-- Prototype `details.fold-row`: "+ 16 more done · T1–T11, T20–T26" closes the card; Show brings the rows back. -->
+      <details class="fold-row" data-done-hidden>
+        <summary>{{ 'tasks.doneHidden' | transloco: hidden }}</summary>
+        <p class="fold-body">
+          {{ 'tasks.doneHiddenBody' | transloco }}
+          <button type="button" class="btn btn-xs btn-ghost" (click)="setQuery('hideDone', null)">{{ 'tasks.show' | transloco }}</button>
+        </p>
+      </details>
     }
+    </div>
 
     <p class="helper" id="tasks-helper"><ui-icon name="lock" [size]="14" />{{ 'tasks.helper' | transloco }}</p>
   </section>

@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { BoardCard } from '../../features/spec/live/card/card';
 import { AgentChip } from '../../features/spec/live/this-frame/agent-chip';
 import { FrameBar } from '../../features/spec/live/this-frame/frame-bar';
+import type { PageTab } from '../../layout/shell/page-tabs';
+import { TabBar } from '../../layout/tab-bar/tab-bar';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiCard, UiDisclosure, UiEmptyState, UiGlyph, UiSkeleton } from '../../shared/ui';
@@ -27,12 +29,14 @@ import {
  */
 @Component({
   selector: 'app-board-states-gallery',
-  imports: [AgentChip, BoardCard, FrameBar, UiButton, UiCard, UiDisclosure, UiEmptyState, UiGlyph, UiIcon, UiScrubber, UiSkeleton],
+  imports: [AgentChip, BoardCard, FrameBar, UiButton, UiCard, UiDisclosure, UiEmptyState, UiGlyph, UiIcon, UiScrubber, UiSkeleton, TabBar],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './board-states-gallery.html',
   styleUrl: './state-galleries.css',
 })
 export class BoardStatesGallery {
+  /** The spec's Live tab bar over the gallery, as the prototype's `tabBar(h, s, "board")`; the tabs stay on `/__ui`. */
+  protected readonly specTabs: readonly PageTab[] = (['board', 'matrix'] as const).map((id) => ({ id, labelKey: `shell.tabs.${id}`, link: ['/__ui'] }));
   protected readonly idleFrames = IDLE_FRAMES;
   protected readonly idleValue = signal(0);
   protected readonly recutFrames = RECUT_FRAMES;

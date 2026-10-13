@@ -55,6 +55,8 @@ interface Layout {
 }
 
 async function layout(page: Page): Promise<Layout> {
+  // Spec 024: cards may still be settling (the 240 ms FLIP of a frame step); measure once finite animations are done.
+  await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished)));
   return page.evaluate((selector) => {
     const root = document.scrollingElement ?? document.documentElement;
     const lanes = [...document.querySelectorAll<HTMLElement>(selector)];

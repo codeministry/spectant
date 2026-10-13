@@ -197,6 +197,7 @@ export function docsRenderOptions(root: string, docPath: string, name: DocName):
       }
     },
     ...(design ? { specAssets: [DESIGN_ASSETS] } : {}),
+    doc: name,
   };
 }
 

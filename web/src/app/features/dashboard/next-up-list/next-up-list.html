@@ -39,9 +39,19 @@
         </ol>
       </ui-disclosure>
     }
+  } @else if (form() === 'card') {
+    <ng-container [ngTemplateOutlet]="empty" />
   } @else {
-    <p class="empty" data-next-empty>
-      <span>{{ 'nextUp.empty' | transloco }}</span>
+    <ui-card [padding]="0"><ng-container [ngTemplateOutlet]="empty" /></ui-card>
+  }
+</ng-template>
+
+<!-- Prototype `emptySmall("Nothing ready to build", …, "clock")`: icon, 15/24 title and the muted hint in a card. -->
+<ng-template #empty>
+    <div class="empty" data-next-empty>
+      <ui-icon class="empty-icon" name="clock" [size]="16" />
+      <h3 class="empty-title">{{ 'nextUp.empty' | transloco }}</h3>
+      <p class="empty-hint">{{ 'nextUp.emptyHint' | transloco }}</p>
       @if (fogWaiting() > 0) {
         <a
           class="fog"
@@ -51,6 +61,5 @@
           queryParamsHandling="merge"
         >{{ (fogWaiting() === 1 ? 'nextUp.waitOnFog.one' : 'nextUp.waitOnFog.other') | transloco: { count: fogWaiting() } }}</a>
       }
-    </p>
-  }
+    </div>
 </ng-template>

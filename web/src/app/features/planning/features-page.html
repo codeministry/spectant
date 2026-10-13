@@ -35,7 +35,11 @@
           <span class="n">{{ recount().closed }}/{{ recount().total }}</span>&ngsp;<ui-term id="features-claims-term" [hint]="'terms.claim' | transloco">{{ 'planning.features.metaWords.claims' | transloco }}</ui-term>
           {{ 'planning.features.metaWords.closed' | transloco }}
         </span>
-        <span><span class="n">{{ unheld() }}</span> {{ 'planning.features.metaWords.unheld' | transloco }}</span>
+        <span
+          ><span class="n">{{ unheld() }}</span>&ngsp;<ui-term id="features-unheld-term" [hint]="'planning.features.unheldHint' | transloco">{{
+            'planning.features.metaWords.unheld' | transloco
+          }}</ui-term></span
+        >
       </p>
 
       <div class="layout">
@@ -153,18 +157,34 @@
                       </div>
 
                       @if (feature.unheld.length > 0) {
-                        <details class="unheld">
-                          <summary>
+                        <details
+                          class="unheld"
+                          [open]="unheldOpen().has(feature.id)"
+                          (toggle)="setUnheldOpen(feature.id, $any($event.target).open)"
+                        >
+                          <summary [attr.aria-controls]="unheldOpen().has(feature.id) ? 'f-' + feature.id + '-unheld' : null">
                             <ui-icon name="circle-dashed" [size]="12" />
                             {{ 'planning.features.unheld' | transloco: { count: feature.unheld.length } }}
                             <ui-icon class="chevron" name="chevron-down" [size]="14" />
                           </summary>
-                          <p class="ids">{{ feature.unheld.join(', ') }}</p>
                         </details>
                       } @else {
                         <p class="unheld">{{ 'planning.features.allHeld' | transloco }}</p>
                       }
                     </div>
+
+                    @if (unheldOpen().has(feature.id)) {
+                      <!-- Prototype `f-body` `claim-line`: glyph | ISC id in mono cyan-text | the master's claim text, indented to the title. -->
+                      <ul class="claim-lines" [id]="'f-' + feature.id + '-unheld'" [attr.aria-label]="'planning.features.unheldClaims' | transloco: { id: feature.id }">
+                        @for (claim of unheldClaims(feature); track claim.id) {
+                          <li class="claim-line" [attr.data-claim]="claim.id">
+                            <ui-icon name="circle" [size]="14" />
+                            <span class="cid">{{ claim.id }}</span>
+                            <span class="ctext">{{ claim.text }}</span>
+                          </li>
+                        }
+                      </ul>
+                    }
                   </article>
                 </ui-card>
               </li>

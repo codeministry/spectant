@@ -2,7 +2,7 @@ import { Injectable, type Signal, signal } from '@angular/core';
 import { DEMO_ASSISTANT_FALLBACK, DEMO_ASSISTANT_REPLIES, type DemoAssistantReply } from './fixtures/assistant';
 import { DEMO_IDENTITIES, type DemoIdentity } from './fixtures/identity';
 import { DEMO_LIBRARY, type DemoLibraryEntry } from './fixtures/library';
-import { DEMO_WORKSPACES, type DemoWorkspaceRow } from './fixtures/workspaces';
+import { DEMO_FOLDERS, DEMO_WORKSPACES, type DemoWorkspaceRow } from './fixtures/workspaces';
 
 /**
  * The one door to demo data (spec 024, ISC-149.1): every element the app shows before its spec delivers the real thing
@@ -34,6 +34,17 @@ export type { DemoWorkspaceRow } from './fixtures/workspaces';
 export class DemoData {
   readonly library: Signal<readonly DemoLibraryEntry[]> = signal(DEMO_LIBRARY).asReadonly();
   readonly workspaces: Signal<readonly DemoWorkspaceRow[]> = signal(DEMO_WORKSPACES).asReadonly();
+  /** The folders the add row's path completion offers (prototype `.path-pop`). */
+  readonly folders: Signal<readonly string[]> = signal(DEMO_FOLDERS).asReadonly();
+
+  /**
+   * A workspace's library, as the prototype's `library.html?ws=…` splits it: the fixture's documents belong to the
+   * first registered workspace (`home`); every other one shows "No curated documents … yet". While the list loads
+   * (`home` undefined) the documents show, so the page never flashes the empty state.
+   */
+  libraryOf(ws: string, home: string | undefined): readonly DemoLibraryEntry[] {
+    return home === undefined || ws === home ? DEMO_LIBRARY : [];
+  }
   readonly assistantSuggestions: Signal<readonly DemoAssistantReply[]> = signal(DEMO_ASSISTANT_REPLIES).asReadonly();
   readonly identities: Signal<readonly DemoIdentity[]> = signal(DEMO_IDENTITIES).asReadonly();
 

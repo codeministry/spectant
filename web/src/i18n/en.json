@@ -174,6 +174,7 @@
     "showAll": "Show all {{count}}",
     "badge": "Next up: {{count}}",
     "empty": "Nothing ready to build",
+    "emptyHint": "Every active spec is waiting on scoping. Run /spec-plan on a specified spec to get one moving.",
     "waitOnFog": {
       "one": "{{count}} spec waits on fog",
       "other": "{{count}} specs wait on fog"
@@ -205,7 +206,7 @@
     "empty": {
       "title": "Add your first workspace",
       "command": "spectant add <path-to-repo>",
-      "hint": "It appears here on the next refresh"
+      "hint": "Point Spectant at a Git repository that holds Markdown specs. It reads them locally and shows it here on the next refresh."
     },
     "unreadable": "This workspace cannot be read",
     "footer": "Running locally at {{origin}}",
@@ -245,6 +246,7 @@
       "theme": "Theme",
       "language": "Language",
       "shortcuts": "Show shortcuts",
+      "openAssistant": "Open assistant",
       "help": "Help",
       "openPort": "Open localhost:{{port}}",
       "library": "Open the library",
@@ -390,6 +392,8 @@
       "nameLabel": "Display name",
       "namePlaceholder": "my-repo",
       "button": "Add",
+      "fab": "Add workspace",
+      "completions": "Matching folders",
       "hint": "Paste a path to fill the name.",
       "completes": "completes,",
       "expands": "expands.",
@@ -665,9 +669,14 @@
       "decision": "Decision",
       "round": "Round",
       "gate": "Gate",
-      "commit": "Commit"
+      "commit": "Commit",
+      "note": "Note",
+      "agent": "Agent"
     },
     "derived": "derived",
+    "derivedHint": "Inferred from the files: no recorded event names this stage.",
+    "guide": "More in the guide →",
+    "running": "running {{n}} min",
     "dateUnknown": "date unknown",
     "openBoard": "Open round board →",
     "empty": {
@@ -754,6 +763,8 @@
       "body": "Change the filters or the search to see more claims."
     },
     "clear": "Clear filters",
+    "noneMatch": "No claim matches this filter.",
+    "fold": "+ {{n}} more closed claims",
     "error": "The claims could not be loaded.",
     "loading": "Loading claims…"
   },
@@ -771,7 +782,28 @@
   "docs": {
     "decisions": {
       "goal": "Goal",
-      "stillOpen": "Still open"
+      "stillOpen": "Still open",
+      "locked": "locked {{date}}",
+      "goalSource": "context.md · Goal",
+      "signal": "signal",
+      "signalLabel": "Signal {{n}} of 4",
+      "shapes": "Shapes",
+      "from": "From",
+      "offered": "Offered",
+      "chosen": "Chosen",
+      "landedIn": "Landed in",
+      "recommended": "recommended",
+      "waiting": "— waiting on you",
+      "noQuestions": "Idea only — shaped in conversation, no questions recorded.",
+      "full": "The whole {{file}}"
+    },
+    "constitution": {
+      "lanes": "Lanes",
+      "lane": "Lane",
+      "paths": "Paths",
+      "probe": "Lane probe",
+      "tier": "Gate tier · {{tier}}",
+      "lanesRegion": "Lanes table, scrolls sideways"
     },
     "contents": "On this page",
     "updated": "updated {{date}}",
@@ -849,7 +881,8 @@
       "operator": "your step · tick it when done",
       "struck": "{{text}}"
     },
-    "doneHidden": "{{count}} done hidden · {{ids}}",
+    "doneHidden": "+ {{count}} more done · {{ids}}",
+    "doneHiddenBody": "Hidden to keep the open work in view.",
     "show": "Show",
     "helper": "Ticking a task only writes the box in tasks.md — it never closes a claim. Writes pause while an agent holds a claim on this spec.",
     "mapping": {
@@ -880,6 +913,11 @@
   "evidence": {
     "loading": "Loading evidence",
     "ungrouped": "No claim",
+    "groups": {
+      "results": "Results",
+      "raw": "Raw evidence"
+    },
+    "claimLink": "Claim {{claim}}",
     "count": "{{count}} files",
     "open": "Open {{path}}",
     "imageAlt": "Evidence image {{name}}",
@@ -1280,6 +1318,13 @@
       "updated": "updated {{value}} {{unit}} ago",
       "history": "History · {{label}}",
       "backToLive": "Back to live",
+      "replay": "{{label}} · {{kind}}",
+      "historyChip": "history",
+      "kinds": {
+        "dispatch": "dispatch",
+        "result": "result",
+        "live": "live"
+      },
       "recut": "re-cut",
       "recutTitle": "Re-cut before {{frame}}: {{struck}} struck, {{changed}} changed, {{added}} added",
       "stop": "Round stopped: {{reason}}"
@@ -1328,7 +1373,13 @@
       "note": "Note",
       "claim": "Claim",
       "history": "State across frames",
-      "historyEmpty": "No frame holds this task yet."
+      "historyEmpty": "No frame holds this task yet.",
+      "probe": "Probe",
+      "agent": "Agent",
+      "openClaim": "Open claim",
+      "evidence": "Evidence",
+      "timeline": "Timeline entry",
+      "step": "previous / next card"
     },
     "rail": {
       "thisFrameCount": "This frame {{count}}",
@@ -1345,7 +1396,9 @@
       "stepLocked": "Locked by session {{session}}",
       "stepConflict": "tasks.md changed on disk; nothing was written. Reload the round board.",
       "stepFailed": "The write failed; tick again to retry.",
-      "stepsEmpty": "No operator step in this frame."
+      "stepsEmpty": "No operator step in this frame.",
+      "stepsDone": "Your steps · {{done}} of {{total}} done",
+      "showStep": "Show {{task}} on the board"
     },
     "bar": {
       "heading": "Frame lists"
@@ -1528,6 +1581,9 @@
     }
   },
   "matrix": {
+    "claim": "Claim",
+    "lane": "Lane",
+    "laneMark": "Lane marker",
     "region": "Matrix: tasks by frame",
     "hint": "Select a cell to open the round board at that frame.",
     "task": "Task",
@@ -1631,6 +1687,8 @@
       "title": "Features in {{ws}}",
       "meta": "{{features}} features · {{closed}}/{{total}} claims closed · {{unheld}} unheld",
       "unheld": "{{count}} unheld",
+      "unheldHint": "A master claim that no spec has taken on yet. It closes only once a spec holds it and its probe passes.",
+      "unheldClaims": "Unheld claims of {{id}}",
       "allHeld": "all held",
       "why": "Why",
       "holders": "Specs holding claims of {{id}}",
@@ -1797,12 +1855,22 @@
       "detour": "detour",
       "gate": "fixed gate"
     },
+    "types": {
+      "caption": "The files each spec type has",
+      "columns": {
+        "type": "Type",
+        "skips": "Skips"
+      }
+    },
     "commands": {
       "lead": "Spec work starts in the AI chat with the Spec skill; the board shows the command a waiting card needs.",
       "caption": "The commands of the Spec skill, as the stage table names them",
       "columns": {
         "command": "Command",
-        "purpose": "What it does"
+        "purpose": "What it does",
+        "needs": "Needs",
+        "writes": "Writes",
+        "then": "Then"
       },
       "list": {
         "spec-new": "Turn a shaped story under specs/ideas/ into a spec folder.",
@@ -2048,6 +2116,10 @@
     "count": "{{ws}} · {{shown}} of {{total}} documents · {{stale}} outdated",
     "outdated": "outdated",
     "xrefTitle": "Shares references with {{count}} other documents",
+    "none": {
+      "heading": "No curated documents in {{ws}} yet",
+      "body": "The library of a workspace collects plan, design, decisions, evidence and notes of its specs. They appear once a spec gets its first plan."
+    },
     "empty": {
       "heading": "No document matches",
       "body": "Try another word or clear the filters.",

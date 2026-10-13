@@ -19,22 +19,32 @@ import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiButton } from '../../../../shared/ui/button/button';
 import { UiChip } from '../../../../shared/ui/chip/chip';
 import { UiEmptyState } from '../../../../shared/ui/empty-state/empty-state';
+import { UiNotice } from '../../../../shared/ui/notice/notice';
 import { UiDisclosure } from '../../../../shared/ui/overlay/disclosure';
 import { UiRovingItem, UiRovingList } from '../../../../shared/ui/roving-list.directive';
 import { UiSkeleton } from '../../../../shared/ui/skeleton/skeleton';
+import { UiTerm } from '../../../../shared/ui/term/term';
 import { toneMark } from '../../../../shared/ui/tone';
 
-/** The sources in chip order (design.md § Status, tablet). `Note` and `Agent` join once `TimelineKind` carries them. */
-export const TIMELINE_KINDS: readonly TimelineKind[] = ['stage', 'decision', 'round', 'gate', 'commit'];
+/** The sources in chip order (design.md § Status, tablet; prototype `tabTimeline`): the files' five, then the server's joins. */
+export const TIMELINE_KINDS: readonly TimelineKind[] = ['stage', 'decision', 'round', 'gate', 'commit', 'note', 'agent'];
 
-/** One marker colour per source: stage → disp, decision → ques, round → conc, gate → clos, commit → muted. */
+/**
+ * One marker colour per source (prototype `.mk.*`): stage → disp, decision → ques, round → conc, gate → clos, commit →
+ * track, note → a ques ring on its tint (the tint is the CSS's), agent → the prototype's orange (`--color-warning`).
+ */
 const MARKER: Record<TimelineKind, string> = {
   stage: toneMark('primary'),
   decision: toneMark('secondary'),
   round: 'var(--conc)',
   gate: toneMark('accent'),
   commit: 'var(--track)',
+  note: toneMark('secondary'),
+  agent: 'var(--color-warning)',
 };
+
+/** A `Landed in` part that names a spec file opens that file's tab, as the Docs tab's file chips do. */
+const FILE_TABS: Readonly<Record<string, string>> = { 'spec.md': 'status', 'plan.md': 'plan', 'design.md': 'design', 'tasks.md': 'tasks', 'context.md': 'decisions' };
 
 /** The fragment prefix of a deep link to one entry: `#t/<id>`. */
 const FRAGMENT = 't/';
@@ -97,7 +107,7 @@ export function parseKinds(value: string | null): readonly TimelineKind[] {
  */
 @Component({
   selector: 'app-timeline-tab',
-  imports: [NgTemplateOutlet, TranslocoPipe, RouterLink, UiButton, UiChip, UiDisclosure, UiEmptyState, UiRovingItem, UiRovingList, UiSkeleton],
+  imports: [NgTemplateOutlet, TranslocoPipe, RouterLink, UiButton, UiChip, UiDisclosure, UiEmptyState, UiNotice, UiRovingItem, UiRovingList, UiSkeleton, UiTerm],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './timeline-tab.html',
   styleUrl: './timeline-tab.css',
@@ -113,6 +123,19 @@ export class TimelineTab {
 
   protected readonly kinds = TIMELINE_KINDS;
   protected readonly markerColor = (kind: TimelineKind): string => MARKER[kind];
+  protected fileTab(part: string): string | null {
+    return FILE_TABS[part] ?? null;
+  }
+  /** A running agent's minutes since its lock (prototype `· running 4 min`), at render time, never below 0. */
+  protected runningMinutes(ts: string): number {
+    const since = Date.parse(ts);
+    return Number.isFinite(since) ? Math.max(0, Math.floor((Date.now() - since) / 60_000)) : 0;
+  }
+  /** A decision's structured body: shown as the prototype's `.qa` list when the question records any field. */
+  protected hasQa(entry: TimelineEntry): boolean {
+    const q = entry.question;
+    return q !== undefined && (q.from !== null || q.offered.length > 0 || q.chosen !== null || q.landedIn.length > 0);
+  }
 
   readonly timeline = resource({
     params: () => {
@@ -149,6 +172,12 @@ export class TimelineTab {
     const selected = this.selected();
     const shown = selected.length === 0 ? this.entries() : this.entries().filter((entry) => selected.includes(entry.kind));
     return groupByDay(shown);
+  });
+
+  /** No recorded event yet: every entry is a stage transition derived from the files (prototype `empty-tl`). */
+  protected readonly derivedOnly = computed(() => {
+    const entries = this.entries();
+    return entries.length > 0 && entries.every((entry) => entry.derived);
   });
 
   /** `loading` only before the first answer; a reload keeps the list on screen. */

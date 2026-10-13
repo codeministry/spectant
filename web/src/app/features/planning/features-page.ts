@@ -12,7 +12,7 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { PlanningFeature, PlanningHolder } from '../../../../../core/src/planning';
+import type { PlanningClaim, PlanningFeature, PlanningHolder } from '../../../../../core/src/planning';
 import { NotFound } from '../../layout/not-found/not-found';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
@@ -214,6 +214,24 @@ export class FeaturesPage {
       },
       { injector: this.injector },
     );
+  }
+
+  /** The rows whose unheld claims are expanded (the `details.unheld` disclosure); the claim lines render under the row. */
+  protected readonly unheldOpen = signal<ReadonlySet<string>>(new Set());
+
+  protected setUnheldOpen(id: string, open: boolean): void {
+    if (this.unheldOpen().has(id) === open) return;
+    this.unheldOpen.update((set) => {
+      const next = new Set(set);
+      if (open) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  /** A feature's unheld claims with the master's text, in master order (`PlanningFeature.unheld` names their ids). */
+  protected unheldClaims(feature: PlanningFeature): ReadonlyArray<Pick<PlanningClaim, 'id' | 'text'>> {
+    return feature.unheld.map((id) => ({ id, text: feature.claims.find((claim) => claim.id === id)?.text ?? '' }));
   }
 
   protected toggleWhy(id: string): void {

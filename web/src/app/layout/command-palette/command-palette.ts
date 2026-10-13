@@ -182,6 +182,11 @@ export class CommandPalette {
     if (id !== undefined) this.document.getElementById(id)?.scrollIntoView({ block: 'nearest' });
   }
 
+  /** An action that drives a `DemoData` mock (spec 024): its row carries the demo chip. */
+  protected isDemo(entry: PaletteEntry): boolean {
+    return (entry as { demo?: unknown }).demo === true;
+  }
+
   protected activate(entry: PaletteEntry): void {
     this.keyboard.paletteOpen.set(false);
     if (isCommand(entry)) {

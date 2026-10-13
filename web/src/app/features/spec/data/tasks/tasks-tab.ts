@@ -248,6 +248,13 @@ export class TasksTab {
     return null;
   }
 
+  /** Prototype `.t-reason`: the reason line leads with `flag` on the principal's own step, `lock` on a hold. */
+  protected subIcon(row: TaskRowView): 'flag' | 'lock' | null {
+    if (row.state === 'struck') return null;
+    if (row.lane === 'operator' && row.state === 'open' && !(REASONED.has(row.status) && row.reason !== null)) return 'flag';
+    return row.status === 'held' ? 'lock' : null;
+  }
+
   protected checkOf(id: string): CheckState {
     return this.checks().get(id) ?? IDLE;
   }

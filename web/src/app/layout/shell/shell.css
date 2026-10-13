@@ -42,6 +42,7 @@
 @container shell (width >= 1120px) {
   .shell-body {
     grid-template-columns: minmax(0, 1fr) 352px;
+    column-gap: 32px; /* prototype `.page` gap `--space-5` beside `--rail` */
     align-items: start;
     padding-inline: 32px;
     transition:

@@ -11,6 +11,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { nextId } from '../overlay/ids';
 
 /** Gap between the term and its hint, on the 8 px scale; mirrored by `margin-block` in term.css. */
@@ -54,10 +55,16 @@ const toMs = (value: string): number => {
  *   `--ui-term-top` / `--ui-term-left`, computed here from the term's `getBoundingClientRect()` on open.
  *
  * `id` names the `<dfn>`; the hint is `<id>-hint` (`hintId`), for a consumer that wants to describe another element by it.
+ *
+ * With `guide` (a glossary key, spec 024: the prototype's `.term-pop` closing `.open-link`) the hint ends in a link to
+ * the glossary row `/help#term-<key>`, labelled `guideLabel`. A popover with a link is no tooltip: the term becomes a
+ * disclosure button (`aria-expanded`, `aria-controls`), Enter or Space opens it and moves focus to the link, Tab from
+ * the term reaches the link too, Esc closes it and returns focus to the term, and focus leaving both closes it.
  */
 @Component({
   selector: 'ui-term',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RouterLink],
   styleUrl: './term.css',
   host: {
     '[attr.id]': 'null',
@@ -67,18 +74,38 @@ const toMs = (value: string): number => {
     '(pointerdown)': 'pressed = true',
     '(click)': 'onClick()',
     '(focusin)': 'onFocusIn()',
-    '(focusout)': 'onFocusOut()',
+    '(focusout)': 'onFocusOut($event)',
+    '(keydown.enter)': 'onActivate($event)',
+    '(keydown.space)': 'onActivate($event)',
     '(keydown.escape)': 'onEscape($event)',
   },
   template: `
-    <dfn #term tabindex="0" [id]="termId()" [attr.aria-describedby]="hintId()"><ng-content /></dfn>
-    <span #panel class="hint" role="tooltip" [id]="hintId()" [attr.popover]="kind" (toggle)="onToggle($event)">{{ hint() }}</span>
+    <dfn
+      #term
+      tabindex="0"
+      [id]="termId()"
+      [attr.aria-describedby]="hintId()"
+      [attr.role]="guide() ? 'button' : null"
+      [attr.aria-expanded]="guide() ? open() : null"
+      [attr.aria-controls]="guide() ? hintId() : null"
+      ><ng-content
+    /></dfn>
+    <span #panel class="hint" [attr.role]="guide() ? null : 'tooltip'" [id]="hintId()" [attr.popover]="kind" (toggle)="onToggle($event)"
+      ><span class="hint-text">{{ hint() }}</span
+      >@if (guide(); as key) {<a #link class="open-link" data-term-guide routerLink="/help" [fragment]="'term-' + key" (click)="onFocusOut(null)">{{
+          guideLabel()
+        }}</a>}</span
+    >
   `,
 })
 export class UiTerm {
   /** The common term, already translated by the caller. */
   readonly hint = input.required<string>();
   readonly id = input<string>();
+  /** The glossary key of the help page's row (`term-<key>`); null keeps the plain tooltip. */
+  readonly guide = input<string | null>(null);
+  /** The link's text, already translated by the caller ("More in the guide →"). */
+  readonly guideLabel = input('');
 
   private readonly fallbackId = nextId('ui-term');
   protected readonly termId = computed(() => this.id() ?? this.fallbackId);
@@ -93,6 +120,8 @@ export class UiTerm {
   protected readonly kind = popoverKind(this.doc.createElement('span'));
   private readonly term = viewChild.required<ElementRef<HTMLElement>>('term');
   private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
+  private readonly link = viewChild<ElementRef<HTMLElement>>('link');
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private reason: 'hover' | 'focus' | 'tap' | null = null;
   private timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -141,10 +170,22 @@ export class UiTerm {
     this.show('focus');
   }
 
-  protected onFocusOut(): void {
+  protected onFocusOut(event: FocusEvent | null): void {
     this.pressed = false;
     this.cancel();
+    // Guide mode: focus moving between the term and its link keeps the popover open.
+    const next = event?.relatedTarget;
+    if (this.guide() && next instanceof Node && this.host.nativeElement.contains(next)) return;
     this.hide();
+  }
+
+  /** Guide mode: Enter or Space on the term opens the popover and moves focus to its link (a disclosure). */
+  protected onActivate(event: Event): void {
+    if (!this.guide() || event.target !== this.term().nativeElement) return;
+    event.preventDefault();
+    this.cancel();
+    this.show('tap');
+    this.link()?.nativeElement.focus();
   }
 
   protected onEscape(event: Event): void {
@@ -153,7 +194,10 @@ export class UiTerm {
     // Stopped so an enclosing popover, sheet or dialog does not close on the same key.
     event.preventDefault();
     event.stopPropagation();
+    const fromLink = this.link()?.nativeElement === this.doc.activeElement;
     this.hide();
+    // Focus that was inside the popover returns to the term.
+    if (fromLink) this.term().nativeElement.focus();
   }
 
   /** The platform closed it (Esc, light dismiss, another hint opening): follow, without a second `hidePopover()`. */

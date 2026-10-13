@@ -43,7 +43,7 @@ const EN = JSON.parse(readFileSync(fileURLToPath(new URL('../src/i18n/en.json', 
 };
 
 const BOARD = '/w/harbor/s/002/board';
-/** Every card of the board: the lanes, and at wide the operator steps in the shell rail's "Your steps". */
+/** Every card of the board: the lanes, at wide the operator steps' own checklist lane "Your steps" (spec 024). */
 const CARDS = ':is(app-board-tab, app-rail-slot) article[data-card]';
 const ALL_FRAMES: ReadonlyArray<Frame | LiveFrame> = [...FRAMES, LIVE];
 const urlOf = (frame: Frame | LiveFrame, compact: boolean): string => {

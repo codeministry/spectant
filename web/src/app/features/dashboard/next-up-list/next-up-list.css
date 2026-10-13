@@ -45,16 +45,25 @@
   padding-block-start: 16px;
 }
 
+/* Prototype `[data-ui=empty-state].small`: start-aligned, 24 × 16 px inset, 8 px gaps, at most 520 px wide. */
 .empty {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  align-items: baseline;
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  max-inline-size: 520px;
+  padding: var(--space-4) var(--space-3);
+}
+
+.empty-title {
   margin: 0;
-  padding-block: 8px;
-  color: var(--muted-ink);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.empty-hint {
+  margin: 0;
+  color: var(--muted);
 }
 
 /* Card form: the card has no padding (the rows carry their own), so the fold and the empty line inset themselves 12 px
@@ -70,16 +79,7 @@
   border-block-start: 1px solid var(--line);
 }
 
-:host([data-form='card']) .empty {
-  padding-inline: 12px;
-}
-
 .fog {
-  color: var(--disp-ink);
-}
-
-.fog::before {
-  content: '·' / '';
-  margin-inline-end: 8px;
-  color: var(--muted-ink);
+  color: var(--disp-text);
+  font-size: 13px;
 }

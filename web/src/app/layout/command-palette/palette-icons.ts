@@ -17,6 +17,7 @@ const ACTION_ICONS: Readonly<Partial<Record<string, IconName>>> = {
   'action/copy-next': 'copy',
   'action/open-board': 'layers',
   'action/help': 'circle-help',
+  'action/open-assistant': 'message-circle-more',
   'action/refresh': 'refresh-cw',
   'action/theme': 'settings',
   'action/language': 'settings',

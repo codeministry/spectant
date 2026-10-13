@@ -9,6 +9,7 @@ import { RailContent } from '../../../layout/shell/rail-content';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
+import { UiTerm } from '../../../shared/ui/term/term';
 import type { IconName } from '../../../shared/icons/icons';
 import { UiChip } from '../../../shared/ui/chip/chip';
 import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
@@ -107,6 +108,7 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
   selector: 'app-spec-dashboard',
   imports: [
     AreaPlaceholder,
+    UiTerm,
     Brief,
     NgTemplateOutlet,
     RouterLink,

@@ -22,8 +22,9 @@ import { HelpLifecycle } from './help-lifecycle';
 import { HelpNav } from './help-nav';
 import { version } from '../../../../package.json';
 import {
-  HELP_COMMANDS,
+  HELP_COMMAND_ROWS,
   HELP_SECTIONS,
+  HELP_TYPE_FILES,
   HELP_TYPES,
   KEY_CONTEXTS,
   LEGEND,
@@ -84,7 +85,7 @@ const sameRow = (a: WorkflowRow, b: WorkflowRow): boolean =>
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'help' },
   templateUrl: './help-page.html',
-  styleUrl: './help-page.css',
+  styleUrls: ['./help-page.css', './help-tables.css'],
 })
 export class HelpPage {
   private readonly shell = inject(ShellState);
@@ -102,7 +103,8 @@ export class HelpPage {
   protected readonly chain = STAGE_CHAIN;
   protected readonly types = HELP_TYPES;
   protected readonly legend = LEGEND;
-  protected readonly commands = HELP_COMMANDS;
+  protected readonly commands = HELP_COMMAND_ROWS;
+  protected readonly typeFiles = HELP_TYPE_FILES;
   protected readonly steps = START_STEPS;
   protected readonly keyContexts = KEY_CONTEXTS;
   protected readonly keyLabel = keyLabel;

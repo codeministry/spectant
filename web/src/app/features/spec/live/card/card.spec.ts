@@ -1,4 +1,5 @@
 import { signal } from '@angular/core';
+import { provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import type { CardState, FrameCard, FrameKind } from '../../../../../../../core/src/files';
@@ -60,6 +61,7 @@ describe('BoardCard', () => {
         }),
       ],
       providers: [
+        provideRouter([]),
         { provide: ShellState, useValue: { ws: signal('harbor'), specId: signal('002'), tier } },
         {
           provide: ApiClient,

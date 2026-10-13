@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, resource, signal, type TemplateRef, untracked, viewChild } from '@angular/core';
+import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, resource, signal, type TemplateRef, untracked, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -19,12 +19,13 @@ import { UiSheet } from '../../../../shared/ui/overlay/sheet';
 import { UiScrubber } from '../../../../shared/ui/scrubber/scrubber';
 import { type SegmentedOption, UiSegmented } from '../../../../shared/ui/segmented/segmented';
 import { toneMark } from '../../../../shared/ui/tone';
+import { prefersReducedMotion } from '../../../../core/motion';
+import { CardContext } from '../card/card-context';
 import { CardDetail } from '../card/card-detail';
 import { cardHistory } from '../card/card-history';
 import { FlowView } from '../flow/flow-view';
-import { agentOfCard, type CardAgent, taskActorsOf } from '../live-frame';
+import { taskActorsOf } from '../live-frame';
 import { TaskActors } from '../task-actors/task-actors';
-import { AgentChip } from '../this-frame/agent-chip';
 import { FrameBar } from '../this-frame/frame-bar';
 import { NeedsYou } from '../this-frame/needs-you';
 import { ThisFrame } from '../this-frame/this-frame';
@@ -37,6 +38,7 @@ import {
   type LaneView,
   matchesQuery,
   needsYouOf,
+  LANE_COLORS,
   OPERATOR_LANE,
   parseList,
   recutMarkers,
@@ -47,7 +49,7 @@ import {
 
 type AnyFrame = Frame | LiveFrame;
 type Density = 'comfortable' | 'compact';
-const LANE_COLORS = ['var(--color-primary)', 'var(--color-secondary)', 'var(--conc)', 'var(--color-success)', 'var(--color-warning)'] as const;
+
 type BarTab = 'frame' | 'needs';
 
 /** How long a played frame stays on screen before the next one. */
@@ -71,7 +73,6 @@ const PLAY_STEP_MS = 1200;
 @Component({
   selector: 'app-board-tab',
   imports: [
-    AgentChip,
     BoardCard,
     CardDetail,
     FlowView,
@@ -91,6 +92,7 @@ const PLAY_STEP_MS = 1200;
     UiSheet,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [CardContext],
   host: { 'data-page': 'board', '[attr.data-tier]': 'tier()', '(document:keydown)': 'onKey($event)' },
   templateUrl: './board-tab.html',
   styleUrl: './board-tab.css',
@@ -166,7 +168,7 @@ export class BoardTab {
   });
   protected readonly filtered = computed(() => this.shownCards().length !== this.allCards().length);
   protected readonly lanes = computed(() => buildLanes(this.order(), this.shownCards()));
-  /** The lanes in the grid: at wide the operator lane is "Your steps" in the rail. */
+  /** The lanes in the grid: at wide the operator lane is "Your steps", its own checklist lane (`stepCards`). */
   protected readonly gridLanes = computed(() => (this.wide() ? this.lanes().filter((l) => l.name !== OPERATOR_LANE) : this.lanes()));
   protected readonly operatorLane = computed(() => (this.wide() ? (this.lanes().find((l) => l.name === OPERATOR_LANE) ?? null) : null));
 
@@ -202,6 +204,12 @@ export class BoardTab {
 
   /** Your steps at wide (T88): the operator lane's cards of the frame, board order. */
   protected readonly operatorCards = computed(() => this.allCards().filter((c) => c.lane === OPERATOR_LANE));
+  /** spec 024 (design.md § Live · Operator-Lane): the operator lane drawn at wide as the checklist lane of the grid (Lanes) or the
+   * row across all columns (Flow), after the board's filters; null when none is shown. */
+  protected readonly stepCards = computed<readonly FrameCard[] | null>(() => {
+    const lane = this.operatorLane();
+    return lane === null ? null : this.shownCards().filter((c) => c.lane === OPERATOR_LANE);
+  });
   /** The rail blocks and the bottom bar, declared in this template and rendered by the shell (`RailContent`). */
   private readonly railBlocks = viewChild<TemplateRef<unknown>>('railBlocks');
   private readonly frameBar = viewChild<TemplateRef<unknown>>('frameBar');
@@ -268,6 +276,45 @@ export class BoardTab {
       onCleanup(() => clearTimeout(timer));
     });
 
+    // spec 024 (prototype board.js render): the frame label for the card detail, the .changed tint for the cards whose
+    // state changed with a frame change, and a 240 ms FLIP of the Lanes view's cards (none under reduced motion).
+    const context = inject(CardContext);
+    const host = inject<ElementRef<HTMLElement>>(ElementRef);
+    let shownIndex: number | null = null;
+    effect(() => {
+      const f = this.frame();
+      const index = this.index();
+      context.frameLabel.set(f?.label ?? null);
+      if (f === null) return;
+      const events = untracked(() => this.events());
+      context.changed.set(shownIndex !== null && shownIndex !== index ? new Set(events.map((c) => c.task)) : new Set());
+      shownIndex = index;
+    });
+    let places = new Map<string, DOMRect>();
+    let placedIndex: number | null = null;
+    afterRenderEffect(() => {
+      const index = this.index();
+      this.lanes();
+      const next = new Map<string, DOMRect>();
+      const els = [...host.nativeElement.querySelectorAll<HTMLElement>('[data-lanes] article[data-card]')];
+      for (const el of els) next.set(el.dataset['card'] ?? '', el.getBoundingClientRect());
+      // Only a one-frame step animates (the scrubber, ← →): the first load lands on the live frame from frame 0, and a
+      // jump across many frames would fly cards across lanes (and widen a lane while it runs).
+      const move = placedIndex !== null && Math.abs(placedIndex - index) === 1 && !prefersReducedMotion();
+      if (move) {
+        for (const el of els) {
+          const before = places.get(el.dataset['card'] ?? '');
+          const after = next.get(el.dataset['card'] ?? '');
+          if (before === undefined || after === undefined) continue;
+          const dx = before.left - after.left;
+          const dy = before.top - after.top;
+          if (dx !== 0 || dy !== 0) el.animate([{ transform: `translate(${String(dx)}px, ${String(dy)}px)` }, { transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.2,0,0,1)' });
+        }
+      }
+      places = next;
+      placedIndex = index;
+    });
+
     // T88: This frame, Needs you and Your steps go to the shell's rail at wide; the bar below wide and in zen.
     inject(RailContent).register(
       {
@@ -277,11 +324,6 @@ export class BoardTab {
       },
       inject(DestroyRef),
     );
-  }
-
-  /** The agent holding a card in flight (T85, ISC-90): session, since, stale. */
-  protected agentOf(card: FrameCard): CardAgent | null {
-    return agentOfCard(card);
   }
 
   /** Whether core named an agent or sub-agent for the card (T135, ISC-131.1); only live cards carry them. */

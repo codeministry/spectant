@@ -70,7 +70,50 @@
         "level": 2
       }
     ],
-    "wordCount": 214
+    "wordCount": 214,
+    "constitution": {
+      "lanes": [
+        {
+          "lane": "cli",
+          "paths": [
+            "cli/"
+          ],
+          "probe": "bun test cli/"
+        },
+        {
+          "lane": "api",
+          "paths": [
+            "api/",
+            "tests/"
+          ],
+          "probe": "bun test api/"
+        },
+        {
+          "lane": "web",
+          "paths": [
+            "web/"
+          ],
+          "probe": "bun run --cwd web test"
+        }
+      ],
+      "tiers": [
+        {
+          "tier": "static",
+          "command": "bun run check:static",
+          "runsWhen": "before every claim closes"
+        },
+        {
+          "tier": "quick",
+          "command": "bun run verify:quick",
+          "runsWhen": "at every implementation stop"
+        },
+        {
+          "tier": "full",
+          "command": "bun run verify",
+          "runsWhen": "before a spec is marked complete"
+        }
+      ]
+    }
   },
   "specs": {
     "specs/002-web-console": {
@@ -171,7 +214,23 @@
             "level": 2
           }
         ],
-        "wordCount": 50
+        "wordCount": 50,
+        "decisions": {
+          "goal": {
+            "text": "A teammate opens the console, finds any mirrored repository in two steps, and sees each sync run with its failures, on a phone-sized screen and with the keyboard alone.",
+            "confirmed": "2026-03-03T10:00:00Z"
+          },
+          "rounds": [
+            {
+              "id": "round-0",
+              "title": "Round 1 — no gaps the repo could not close",
+              "date": "2026-03-03T10:00:00Z",
+              "shapes": [],
+              "shapeChosen": null,
+              "questions": []
+            }
+          ]
+        }
       }
     },
     "specs/003-config-loader": {
@@ -264,7 +323,23 @@
             "level": 2
           }
         ],
-        "wordCount": 48
+        "wordCount": 48,
+        "decisions": {
+          "goal": {
+            "text": "The CLI, the API and the console read their configuration through one loader, and the effective config for every case in the snapshot corpus is unchanged.",
+            "confirmed": "2026-03-06T09:00:00Z"
+          },
+          "rounds": [
+            {
+              "id": "round-0",
+              "title": "Round 1 — no gaps the repo could not close",
+              "date": "2026-03-06T09:00:00Z",
+              "shapes": [],
+              "shapeChosen": null,
+              "questions": []
+            }
+          ]
+        }
       }
     },
     "specs/004-retention-policies": {
@@ -415,7 +490,23 @@
             "level": 2
           }
         ],
-        "wordCount": 45
+        "wordCount": 45,
+        "decisions": {
+          "goal": {
+            "text": "A team writes its retention policy once, sees its effect before anything goes, and no manifest that a tag still references is ever deleted.",
+            "confirmed": "2026-03-04T08:30:00Z"
+          },
+          "rounds": [
+            {
+              "id": "round-0",
+              "title": "Round 1 — no gaps the repo could not close",
+              "date": "2026-03-04T08:30:00Z",
+              "shapes": [],
+              "shapeChosen": null,
+              "questions": []
+            }
+          ]
+        }
       }
     },
     "specs/005-config-format-choice": {
@@ -459,7 +550,23 @@
             "level": 2
           }
         ],
-        "wordCount": 39
+        "wordCount": 39,
+        "decisions": {
+          "goal": {
+            "text": "A recorded decision names the config format for version 2 and the one trade-off that decided it.",
+            "confirmed": "2026-03-07T13:00:00Z"
+          },
+          "rounds": [
+            {
+              "id": "round-0",
+              "title": "Round 1 — no gaps the repo could not close",
+              "date": "2026-03-07T13:00:00Z",
+              "shapes": [],
+              "shapeChosen": null,
+              "questions": []
+            }
+          ]
+        }
       }
     },
     "specs/006-partial-push": {
@@ -503,7 +610,23 @@
             "level": 2
           }
         ],
-        "wordCount": 42
+        "wordCount": 42,
+        "decisions": {
+          "goal": {
+            "text": "A push interrupted at any point leaves the target registry exactly as it was before the push started.",
+            "confirmed": "2026-03-08T09:00:00Z"
+          },
+          "rounds": [
+            {
+              "id": "round-0",
+              "title": "Round 1 — no gaps the repo could not close",
+              "date": "2026-03-08T09:00:00Z",
+              "shapes": [],
+              "shapeChosen": null,
+              "questions": []
+            }
+          ]
+        }
       }
     },
     "specs/007-rotate-mirror-token": {
@@ -552,7 +675,23 @@
             "level": 2
           }
         ],
-        "wordCount": 45
+        "wordCount": 45,
+        "decisions": {
+          "goal": {
+            "text": "A recorded table says which target registry answers the referrers endpoint, and a decision names the fallback for the ones that do not.",
+            "confirmed": "2026-03-08T13:00:00Z"
+          },
+          "rounds": [
+            {
+              "id": "round-0",
+              "title": "Round 1 — no gaps the repo could not close",
+              "date": "2026-03-08T13:00:00Z",
+              "shapes": [],
+              "shapeChosen": null,
+              "questions": []
+            }
+          ]
+        }
       }
     },
     "specs/009-chunked-upload-limits": {
@@ -596,7 +735,23 @@
             "level": 2
           }
         ],
-        "wordCount": 40
+        "wordCount": 40,
+        "decisions": {
+          "goal": {
+            "text": "A recorded table names each target registry's chunk limit, and Harbor never picks a chunk larger than it.",
+            "confirmed": "2026-03-08T13:30:00Z"
+          },
+          "rounds": [
+            {
+              "id": "round-0",
+              "title": "Round 1 — no gaps the repo could not close",
+              "date": "2026-03-08T13:30:00Z",
+              "shapes": [],
+              "shapeChosen": null,
+              "questions": []
+            }
+          ]
+        }
       }
     },
     "specs/archive/001-manifest-sync": {
@@ -697,7 +852,23 @@
             "level": 2
           }
         ],
-        "wordCount": 37
+        "wordCount": 37,
+        "decisions": {
+          "goal": {
+            "text": "`harbor sync` mirrors every listed manifest with an identical digest, and a second run uploads nothing.",
+            "confirmed": "2026-03-02T09:00:00Z"
+          },
+          "rounds": [
+            {
+              "id": "round-0",
+              "title": "Round 1 — no gaps the repo could not close",
+              "date": "2026-03-02T09:00:00Z",
+              "shapes": [],
+              "shapeChosen": null,
+              "questions": []
+            }
+          ]
+        }
       }
     }
   }

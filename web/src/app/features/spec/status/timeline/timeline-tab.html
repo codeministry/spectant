@@ -9,7 +9,7 @@
       [attr.aria-pressed]="isPressed(kind)"
       (click)="toggleKind(kind)"
     >
-      <span class="dot" aria-hidden="true" [style.background]="markerColor(kind)"></span>
+      <span class="dot" aria-hidden="true" [attr.data-kind]="kind" [style.--marker]="markerColor(kind)"></span>
       {{ 'timeline.kinds.' + kind | transloco }}
       <span class="count">{{ counts()[kind] }}</span>
     </button>
@@ -37,9 +37,11 @@
     <ui-empty-state icon="file-text" [heading]="'timeline.unserved.heading' | transloco" [body]="'timeline.unserved.body' | transloco" />
   }
   @case ('error') {
-    <ui-empty-state icon="triangle-alert" [heading]="'timeline.error.heading' | transloco" [body]="'timeline.error.body' | transloco">
-      <button ui-button size="sm" (click)="reload()">{{ 'timeline.error.retry' | transloco }}</button>
-    </ui-empty-state>
+    <!-- Spec 024 (prototype states gallery): the inline error notice, red edge, Retry in its slot. -->
+    <ui-notice tone="error" data-timeline-error>
+      <strong>{{ 'timeline.error.heading' | transloco }}</strong> {{ 'timeline.error.body' | transloco }}
+      <button action ui-button size="sm" type="button" (click)="reload()">{{ 'timeline.error.retry' | transloco }}</button>
+    </ui-notice>
   }
   @case ('ok') {
     @if (days().length === 0) {
@@ -48,7 +50,7 @@
         <button ui-button variant="ghost" size="sm" (click)="clearKinds()">{{ 'timeline.filtered.clear' | transloco }}</button>
       </p>
     } @else {
-      <ol class="strand" uiRovingList [attr.aria-label]="'timeline.listLabel' | transloco">
+      <ol class="strand" [class.is-dashed]="derivedOnly()" uiRovingList [attr.aria-label]="'timeline.listLabel' | transloco">
         @for (day of days(); track day.key) {
           <li class="day" [attr.data-day]="day.key">
             <h3 class="day-label">{{ dayLabel(day) ?? ('timeline.dateUnknown' | transloco) }}</h3>
@@ -76,6 +78,7 @@
                     class="marker"
                     aria-hidden="true"
                     [attr.data-derived]="row.entry.derived ? '' : null"
+                    [attr.data-running]="row.entry.running ? '' : null"
                     [style.--marker]="markerColor(row.entry.kind)"
                   ></span>
                   <a
@@ -98,8 +101,15 @@
                         @if (row.entry.actor) {
                           · {{ row.entry.actor }}
                         }
+                        @if (row.entry.running) {
+                          · <span data-running-label>{{ 'timeline.running' | transloco: { n: runningMinutes(row.entry.ts) } }}</span>
+                        }
                         @if (row.entry.derived) {
-                          <ui-chip variant="plain" data-derived-chip>{{ 'timeline.derived' | transloco }}</ui-chip>
+                          <ui-chip variant="plain" data-derived-chip
+                            ><ui-term [hint]="'timeline.derivedHint' | transloco" guide="derived" [guideLabel]="'timeline.guide' | transloco">{{
+                              'timeline.derived' | transloco
+                            }}</ui-term></ui-chip
+                          >
                         }
                       </span>
                     </ng-template>
@@ -109,8 +119,50 @@
                           <ng-container [ngTemplateOutlet]="head" />
                         </span>
                         <div class="body">
-                          @for (line of lines(body); track $index) {
-                            <span class="body-line">{{ line }}</span>
+                          @if (hasQa(row.entry) && row.entry.question; as q) {
+                            <!-- Prototype `.tl-body .qa`: From · Offered · Chosen · Landed in, the files as chips. -->
+                            <dl class="qa" data-decision-qa>
+                              @if (q.from; as from) {
+                                <dt>{{ 'docs.decisions.from' | transloco }}</dt>
+                                <dd class="mono">{{ from }}</dd>
+                              }
+                              @if (q.offered.length > 0) {
+                                <dt>{{ 'docs.decisions.offered' | transloco }}</dt>
+                                <dd>
+                                  <ul>
+                                    @for (o of q.offered; track $index) {
+                                      <li>{{ o.text }}@if (o.recommended) {
+                                          <span class="rec" data-recommended>{{ 'docs.decisions.recommended' | transloco }}</span>
+                                        }</li>
+                                    }
+                                  </ul>
+                                </dd>
+                              }
+                              <dt>{{ 'docs.decisions.chosen' | transloco }}</dt>
+                              <dd>
+                                @if (q.chosen; as chosen) {
+                                  “{{ chosen }}”
+                                } @else {
+                                  <span class="wait">{{ 'docs.decisions.waiting' | transloco }}</span>
+                                }
+                              </dd>
+                              @if (q.landedIn.length > 0) {
+                                <dt>{{ 'docs.decisions.landedIn' | transloco }}</dt>
+                                <dd class="files">
+                                  @for (part of q.landedIn; track $index) {
+                                    @if (fileTab(part); as tab) {
+                                      <a class="file-chip" data-file-chip [routerLink]="['..', tab]">{{ part }}</a>
+                                    } @else {
+                                      <span class="file-chip" data-file-chip>{{ part }}</span>
+                                    }
+                                  }
+                                </dd>
+                              }
+                            </dl>
+                          } @else {
+                            @for (line of lines(body); track $index) {
+                              <span class="body-line">{{ line }}</span>
+                            }
                           }
                           @if (row.entry.kind === 'round') {
                             <a ui-button size="sm" class="board-link" data-open-board [routerLink]="boardLink()">{{ 'timeline.openBoard' | transloco }}</a>
@@ -129,6 +181,12 @@
           </li>
         }
       </ol>
+      @if (derivedOnly()) {
+        <!-- Prototype `.tl.empty-tl`: only the derived stage stands on a dashed strand, the empty state below it. -->
+        <ui-empty-state icon="clock" data-derived-only [heading]="'timeline.empty.heading' | transloco" [body]="'timeline.empty.body' | transloco">
+          <a class="open-link" data-empty-link routerLink="/help" fragment="moves">{{ 'timeline.empty.link' | transloco }}</a>
+        </ui-empty-state>
+      }
     }
   }
 }

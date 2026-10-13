@@ -366,8 +366,9 @@ const ICON_PLACES: readonly IconPlace[] = [
   { section: DETAIL_VIEW, place: 'Status where it stands take chip', route: '/w/harbor/s/002/status', at: '[data-spec-rail] [data-rail-take]', icon: 'hand' },
   { section: DETAIL_VIEW, place: 'Status waiting manual', route: '/w/harbor/s/002/status', at: '[data-rail-waiting][data-waiting-kind="manual"]', icon: 'circle-check' },
   { section: DETAIL_VIEW, place: 'Status waiting question', route: '/w/harbor/s/002/status', at: '[data-rail-waiting][data-waiting-kind="question"]', icon: 'circle-help' },
-  { section: DETAIL_VIEW, place: 'Claims notes badge', route: '/w/harbor/s/002/claims', at: '[data-claim="ISC-51"] [data-link="notes"]', icon: 'sticky-note' },
-  { section: DETAIL_VIEW, place: 'Claims verification line', route: '/w/harbor/s/002/claims', at: '[data-claim="ISC-51"]', icon: 'circle-check' },
+  // spec 024 (principal 2026-10-13, claims fold): ISC-51 is an older closed claim behind its group's fold; the deep link opens it.
+  { section: DETAIL_VIEW, place: 'Claims notes badge', route: '/w/harbor/s/002/claims#claim-ISC-51', at: '[data-claim="ISC-51"] [data-link="notes"]', icon: 'sticky-note' },
+  { section: DETAIL_VIEW, place: 'Claims verification line', route: '/w/harbor/s/002/claims#claim-ISC-51', at: '[data-claim="ISC-51"]', icon: 'circle-check' },
   { section: DETAIL_VIEW, place: 'Tasks helper line', route: '/w/harbor/s/002/tasks', at: '[data-page="tasks"] .helper', icon: 'lock' },
   { section: DETAIL_VIEW, place: 'Evidence preview dialog close', route: '/w/harbor/s/002/evidence', open: click('[data-file="artifacts/T12-dashboard-model.md"]'), at: '[data-preview-close]', icon: 'x' },
   { section: DETAIL_VIEW, place: 'Decisions still open fog', route: '/w/harbor/s/005/decisions', at: '[data-page="docs"]', icon: 'cloud' },

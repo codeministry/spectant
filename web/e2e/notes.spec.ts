@@ -163,7 +163,8 @@ test.describe('claim card badge', () => {
   test('the claim card badge shows the seeded note count on ISC-51 and on no other card', async ({ page }) => {
     const seeded = note('claim');
     expect(seeded.anchor).toEqual({ kind: 'claim', spec: '002', id: 'ISC-51' });
-    await page.goto(CLAIMS);
+    // spec 024 (principal 2026-10-13, claims fold): ISC-51 sits behind its group's fold; the deep link opens it.
+    await page.goto(`${CLAIMS}#claim-ISC-51`);
     await expect(page.locator('app-claims-tab [data-claim]').first()).toBeVisible();
     await expect(badgeOf(page, 'ISC-51')).toHaveText('1');
     await expect(badgeOf(page, 'ISC-51')).toHaveAttribute('aria-label', '1 note');

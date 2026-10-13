@@ -120,7 +120,9 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         await expect(article.locator('h2 ui-icon[name="flag"]')).toHaveCount(1);
         await expect(article.locator('h2 .name')).toHaveText(milestone.name);
       }
-      await expect(page.locator('h1')).toContainText('Milestones · harbor');
+      // spec 024: prototype value (principal: Prototyp gilt immer) — h1 "Milestones", the muted "· <ws>" beside it.
+      await expect(page.locator('h1')).toHaveText('Milestones');
+      await expect(page.locator('.h1-row .ws-suffix')).toHaveText('· harbor');
     });
 
     test('the date and state per row: golden state word, day count from the pinned clock', async ({ page }) => {

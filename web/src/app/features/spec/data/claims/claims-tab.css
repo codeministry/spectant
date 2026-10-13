@@ -403,3 +403,41 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Prototype `.none-match`: one muted line with Clear beside it. */
+.none-match {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* Prototype `.fold` / `.fold-row`: a muted summary line; opened, the closed cards follow it. */
+.fold-row > summary {
+  padding: 4px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.fold-row > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold-row > summary:focus-visible {
+  border-radius: var(--radius-field);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.fold-body {
+  display: grid;
+  gap: 8px;
+  padding-block-start: 8px;
+}

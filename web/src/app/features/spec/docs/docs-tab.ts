@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, resource, signal, ViewEncapsulation } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { DocName, DocsPage } from '../../../../../../core/src/files';
+import type { ConstitutionView, DecisionLog, DocName, DocsPage } from '../../../../../../core/src/files';
 import { specRoutes } from '../../../../../../server/src/spec-routes.contract';
 import { ApiClient, type DocsResult } from '../../../core/api.service';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
-import { type Tone, UiCard, UiChip, UiCommandChip, UiDialog, UiDocProse, UiEmptyState, UiNotice, UiSkeleton } from '../../../shared/ui';
+import { type Tone, UiCard, UiChip, UiCommandChip, UiDialog, UiDisclosure, UiDocProse, UiEmptyState, UiNotice, UiSkeleton } from '../../../shared/ui';
 import { quoteIdea } from '../dashboard/dashboard-model';
 import { type DesignShot, type DesignViewport, designViewports } from './design-viewports';
 
@@ -23,6 +23,10 @@ export const DOC_FILE_NAMES: Readonly<Record<DocName, string>> = {
 const DESIGN_KEYS = ['design_track', 'viewports'] as const;
 const DOC_NAMES = new Set<string>(Object.keys(DOC_FILE_NAMES));
 const STATUS_TONE: Readonly<Record<string, Tone>> = { approved: 'success', draft: 'warning', superseded: 'neutral' };
+/** The prototype's `chipIcon` for a plan status: `status: approved` carries `check-circle` (CHIP_ICON.approved). */
+const STATUS_ICON: Readonly<Record<string, 'circle-check'>> = { approved: 'circle-check' };
+/** A `Landed in` part that names a spec file opens that file's tab, as the prototype's `file-chip` links do. */
+const FILE_TABS: Readonly<Record<string, string>> = { 'spec.md': 'status', 'plan.md': 'plan', 'design.md': 'design', 'tasks.md': 'tasks', 'context.md': 'decisions' };
 
 /**
  * One view for the four Docs tabs (T59, ISC-84): `plan`, `design`, `decisions` (the spec's `context.md`) and
@@ -35,7 +39,7 @@ const STATUS_TONE: Readonly<Record<string, Tone>> = { approved: 'success', draft
  */
 @Component({
   selector: 'app-docs-tab',
-  imports: [RouterLink, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiDialog, UiDocProse, UiEmptyState, UiIcon, UiNotice, UiSkeleton],
+  imports: [RouterLink, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiDialog, UiDisclosure, UiDocProse, UiEmptyState, UiIcon, UiNotice, UiSkeleton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   templateUrl: './docs-tab.html',
@@ -58,11 +62,37 @@ export class DocsTab {
    * (`ideaQuote`, as the dashboard does) above context.md, and "Still open" lists the spec's fog (core's `FogView`
    * from the Claims route) with the `cloud` icon below it. Both read core's models; nothing is parsed here.
    */
-  protected readonly goal = computed(() => {
+  protected readonly goal = computed<{ quote: string; source: 'task' | 'spec' | 'context'; locked: string | null } | null>(() => {
+    if (this.name !== 'decisions') return null;
+    // context.md's goal lock first (prototype `goal-card`: the locked goal sentence and its time), else the idea.
+    const lock = this.log()?.goal ?? null;
+    if (lock !== null) return { quote: lock.text, source: 'context', locked: lock.confirmed.slice(0, 10) };
     const spec = this.data.spec.value();
-    if (this.name !== 'decisions' || spec?.kind !== 'ok' || !spec.body.ideaQuote) return null;
-    return { quote: quoteIdea(spec.body.ideaQuote, this.transloco.getActiveLang()), source: spec.body.ideaSource };
+    if (spec?.kind !== 'ok' || !spec.body.ideaQuote) return null;
+    return { quote: quoteIdea(spec.body.ideaQuote, this.transloco.getActiveLang()), source: spec.body.ideaSource === 'task' ? 'task' : 'spec', locked: null };
   });
+
+  /**
+   * Decisions (prototype `tabDecisions`): core's question rounds of context.md as `decision-round` sections with
+   * one `decision-block` card per question; null when the log records no question and no shapes, and the tab shows
+   * the file as prose, as before. The whole file stays reachable below the cards.
+   */
+  /** spec.md's `principal_stated_goal_signal` (1–4) through core's docs model: the prototype's four-dot `.sig` bar. */
+  protected readonly signal = computed(() => (this.name === 'decisions' ? (this.page()?.goalSignal ?? null) : null));
+  protected readonly signalSteps = [1, 2, 3, 4] as const;
+
+  protected readonly log = computed<DecisionLog | null>(() => {
+    const log = this.page()?.decisions ?? null;
+    return log?.rounds.some((r) => r.questions.length > 0 || r.shapes.length > 0) ? log : null;
+  });
+  /** Constitution (prototype `tabConstitution`): core's lanes table and gate tiers, above the full document. */
+  protected readonly constitution = computed<ConstitutionView | null>(() => {
+    const view = this.name === 'constitution' ? (this.page()?.constitution ?? null) : null;
+    return view !== null && (view.lanes.length > 0 || view.tiers.length > 0) ? view : null;
+  });
+  protected fileTab(part: string): string | null {
+    return FILE_TABS[part] ?? null;
+  }
   private readonly claims = resource({
     params: () => {
       const ws = this.state.ws();
@@ -143,7 +173,7 @@ export class DocsTab {
   }
 
   /** Frontmatter as chips: every key on the constitution, `status` (toned) elsewhere; `updated` is its own line. */
-  protected readonly metaChips = computed<ReadonlyArray<{ label: string; tone: Tone; plain: boolean }>>(() => {
+  protected readonly metaChips = computed<ReadonlyArray<{ label: string; tone: Tone; plain: boolean; icon?: 'circle-check' }>>(() => {
     const front = this.page()?.frontmatter ?? null;
     if (front === null) return [];
     if (this.name === 'constitution') {
@@ -151,7 +181,8 @@ export class DocsTab {
     }
     const status = front['status'];
     // `status: approved` as the prototype's Plan shows it (`h.chip("status: approved", "done")`).
-    const chips: Array<{ label: string; tone: Tone; plain: boolean }> = status ? [{ label: `status: ${status}`, tone: STATUS_TONE[status] ?? 'neutral', plain: false }] : [];
+    const icon = status ? STATUS_ICON[status] : undefined;
+    const chips: Array<{ label: string; tone: Tone; plain: boolean; icon?: 'circle-check' }> = status ? [{ label: `status: ${status}`, tone: STATUS_TONE[status] ?? 'neutral', plain: false, ...(icon ? { icon } : {}) }] : [];
     // The design pass's own keys, plain, as the prototype's Design tab shows them.
     if (this.name === 'design') {
       for (const key of DESIGN_KEYS) if (front[key]) chips.push({ label: `${key}: ${front[key]}`, tone: 'neutral', plain: true });

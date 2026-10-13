@@ -6,12 +6,14 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { renderMarkdown } from '../../../../../core/src/markdown';
 import { specLink } from '../../layout/shell/areas';
+import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { DemoData, type DemoLibraryEntry, type DemoLibraryType } from '../../shared/demo/demo-data';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiChip } from '../../shared/ui/chip/chip';
+import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiWsBadge } from '../../shared/ui/ws-badge/ws-badge';
 import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../shared/ui/filter-chips/filter-chips';
@@ -64,7 +66,7 @@ const isType = (value: string): value is DemoLibraryType => (LIBRARY_TYPES as re
  */
 @Component({
   selector: 'app-library-page',
-  imports: [RouterLink, TranslocoPipe, UiButton, UiCard, UiChip, UiEmptyState, UiFilterChips, UiIcon, UiNotice, UiPageHead, UiWsBadge],
+  imports: [RouterLink, TranslocoPipe, UiButton, UiCard, UiChip, UiCommandChip, UiEmptyState, UiFilterChips, UiIcon, UiNotice, UiPageHead, UiWsBadge],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {
@@ -87,7 +89,8 @@ export class LibraryPage {
   protected readonly ws = computed(() => this.state.ws() ?? '');
   protected readonly wide = computed(() => this.state.tier() === 'wide');
   protected readonly types = LIBRARY_TYPES;
-  protected readonly all = this.demo.library;
+  private readonly data = inject(ShellData);
+  protected readonly all = computed(() => this.demo.libraryOf(this.ws(), this.data.workspaceList()[0]?.slug));
   protected readonly specs = computed(() => specsOf(this.all()));
   protected readonly staleCount = computed(() => this.all().filter((entry) => entry.stale !== undefined).length);
 

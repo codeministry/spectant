@@ -124,7 +124,8 @@
             >
           } @else {
             <span class="history" data-frame-chip="history">
-              <span class="flabel">{{ 'board.frame.history' | transloco: { label: f.label } }}</span>
+              <span class="flabel" data-frame-label>{{ 'board.frame.replay' | transloco: { label: f.label, kind: ('board.frame.kinds.' + f.kind | transloco) } }}</span>
+              <span class="hist-chip" data-history-chip>{{ 'board.frame.historyChip' | transloco }}</span>
               <button type="button" class="btn btn-sm tool back" data-back-to-live (click)="setFrame(lastIndex())">{{ 'board.frame.backToLive' | transloco }}</button>
             </span>
           }
@@ -139,7 +140,7 @@
     </div>
 
     @if (view() === 'flow') {
-      <app-flow-view [lanes]="lanes()" [frame]="index()" [density]="density()" [tier]="tier()" />
+      <app-flow-view [lanes]="lanes()" [frame]="index()" [density]="density()" [tier]="tier()" [steps]="stepCards()" />
     } @else {
       @if (compact() && gridLanes().length > 1) {
         <div class="lane-switch">
@@ -157,6 +158,10 @@
             }
           </p>
         }
+        @if (stepCards(); as steps) {
+          <!-- spec 024 (design.md § Live · Operator-Lane): at wide the operator steps are their own lane in the grid. -->
+          <app-your-steps [cards]="steps" />
+        }
         @for (lane of hiddenLaneNames(); track lane) {
           <button type="button" class="lane-stub" data-lane-stub [attr.data-stub-lane]="lane" (click)="toggleLaneFilter(lane)">
             <span class="ldot" aria-hidden="true" [style.background]="laneColor(lane)"></span>
@@ -171,14 +176,11 @@
       <span class="mono">rounds.jsonl</span> {{ 'board.foot.live' | transloco }} <span class="mono">.spectant/activity.jsonl</span>.
     </p>
 
-    <!-- This frame, Needs you and Your steps (T88): the shell's rail at wide (registered with RailContent); below wide
+    <!-- This frame and Needs you (T88): the shell's rail at wide (registered with RailContent); below wide
          the bottom bar and its sheet; in zen the bar renders inside the zen footer, so there is one bar. -->
     <ng-template #railBlocks>
       <app-this-frame [frame]="f" [events]="events()" (opened)="openCard($event)" />
-      <app-needs-you [frame]="f" [cards]="needsYou()" (opened)="openCard($event)" />
-      @if (view() === 'lanes' && operatorLane()) {
-        <app-your-steps [cards]="operatorCards()" />
-      }
+      <app-needs-you [frame]="f" [cards]="needsYou()" [steps]="operatorLane() ? operatorCards() : []" (opened)="openCard($event)" />
     </ng-template>
     <ng-template #frameBar>
       <app-frame-bar
@@ -306,9 +308,6 @@
             <h4>{{ 'board.section.inFlight' | transloco }} <span class="count mono">{{ lane.inFlight.length }}</span></h4>
             @for (c of lane.inFlight; track c.task) {
               <app-board-card [card]="c" [density]="density()" />
-              @if (agentOf(c); as agent) {
-                <app-agent-chip class="in-flight-agent" [attr.data-agent-of]="c.task" [session]="agent.session" [since]="agent.since" [stale]="agent.stale" />
-              }
               @if (hasTaskActors(c)) {
                 <app-task-actors class="in-flight-actors" [card]="c" />
               }

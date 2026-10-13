@@ -174,6 +174,7 @@
     "showAll": "Alle {{count}} anzeigen",
     "badge": "Als Nächstes: {{count}}",
     "empty": "Nichts bereit zum Bauen",
+    "emptyHint": "Jede aktive Spec wartet noch auf das Scoping. Führen Sie /spec-plan für eine spezifizierte Spec aus, um eine in Gang zu bringen.",
     "waitOnFog": {
       "one": "{{count}} Spec wartet auf Fog",
       "other": "{{count}} Specs warten auf Fog"
@@ -205,7 +206,7 @@
     "empty": {
       "title": "Fügen Sie Ihren ersten Workspace hinzu",
       "command": "spectant add <pfad-zum-repo>",
-      "hint": "Er erscheint hier bei der nächsten Aktualisierung"
+      "hint": "Richten Sie Spectant auf ein Git-Repository mit Markdown-Specs. Es liest sie lokal und zeigt den Workspace hier bei der nächsten Aktualisierung."
     },
     "unreadable": "Dieser Workspace kann nicht gelesen werden",
     "footer": "Läuft lokal unter {{origin}}",
@@ -245,6 +246,7 @@
       "theme": "Farbschema",
       "language": "Sprache",
       "shortcuts": "Tastenkürzel anzeigen",
+      "openAssistant": "Assistent öffnen",
       "help": "Hilfe",
       "openPort": "localhost:{{port}} öffnen",
       "library": "Library öffnen",
@@ -390,6 +392,8 @@
       "nameLabel": "Anzeigename",
       "namePlaceholder": "mein-repo",
       "button": "Hinzufügen",
+      "fab": "Workspace hinzufügen",
+      "completions": "Passende Ordner",
       "hint": "Einen Pfad einfügen, der Name füllt sich selbst.",
       "completes": "vervollständigt,",
       "expands": "erweitert.",
@@ -665,9 +669,14 @@
       "decision": "Entscheidung",
       "round": "Runde",
       "gate": "Gate",
-      "commit": "Commit"
+      "commit": "Commit",
+      "note": "Notiz",
+      "agent": "Agent"
     },
     "derived": "abgeleitet",
+    "derivedHint": "Aus den Dateien geschlossen: kein aufgezeichnetes Ereignis nennt diese Stage.",
+    "guide": "Mehr in der Anleitung →",
+    "running": "läuft seit {{n}} min",
     "dateUnknown": "Datum unbekannt",
     "openBoard": "Runden-Board öffnen →",
     "empty": {
@@ -754,6 +763,8 @@
       "body": "Ändern Sie die Filter oder die Suche, um weitere Claims zu sehen."
     },
     "clear": "Filter zurücksetzen",
+    "noneMatch": "Kein Claim passt zu diesem Filter.",
+    "fold": "+ {{n}} weitere geschlossene Claims",
     "error": "Die Claims konnten nicht geladen werden.",
     "loading": "Claims werden geladen …"
   },
@@ -771,7 +782,28 @@
   "docs": {
     "decisions": {
       "goal": "Ziel",
-      "stillOpen": "Noch offen"
+      "stillOpen": "Noch offen",
+      "locked": "festgelegt {{date}}",
+      "goalSource": "context.md · Ziel",
+      "signal": "Signal",
+      "signalLabel": "Signal {{n}} von 4",
+      "shapes": "Formen",
+      "from": "Von",
+      "offered": "Angeboten",
+      "chosen": "Gewählt",
+      "landedIn": "Gelandet in",
+      "recommended": "empfohlen",
+      "waiting": "— wartet auf Sie",
+      "noQuestions": "Nur die Idee — im Gespräch geformt, keine Fragen festgehalten.",
+      "full": "Die ganze {{file}}"
+    },
+    "constitution": {
+      "lanes": "Lanes",
+      "lane": "Lane",
+      "paths": "Pfade",
+      "probe": "Lane-Probe",
+      "tier": "Gate-Tier · {{tier}}",
+      "lanesRegion": "Lanes-Tabelle, scrollt seitlich"
     },
     "contents": "Auf dieser Seite",
     "updated": "aktualisiert {{date}}",
@@ -849,7 +881,8 @@
       "operator": "Ihr Schritt · haken Sie ihn ab, wenn er erledigt ist",
       "struck": "{{text}}"
     },
-    "doneHidden": "{{count}} erledigte ausgeblendet · {{ids}}",
+    "doneHidden": "+ {{count}} weitere erledigt · {{ids}}",
+    "doneHiddenBody": "Ausgeblendet, damit die offene Arbeit im Blick bleibt.",
     "show": "Anzeigen",
     "helper": "Ein Häkchen schreibt nur das Kästchen in tasks.md — es schließt nie einen Claim. Schreibvorgänge pausieren, solange ein Agent einen Claim dieser Spec hält.",
     "mapping": {
@@ -880,6 +913,11 @@
   "evidence": {
     "loading": "Nachweise werden geladen",
     "ungrouped": "Ohne Claim",
+    "groups": {
+      "results": "Ergebnisse",
+      "raw": "Rohbelege"
+    },
+    "claimLink": "Claim {{claim}}",
     "count": "{{count}} Dateien",
     "open": "{{path}} öffnen",
     "imageAlt": "Nachweisbild {{name}}",
@@ -1280,6 +1318,13 @@
       "updated": "aktualisiert vor {{value}} {{unit}}",
       "history": "Verlauf · {{label}}",
       "backToLive": "Zurück zu Live",
+      "replay": "{{label}} · {{kind}}",
+      "historyChip": "Verlauf",
+      "kinds": {
+        "dispatch": "Auftrag",
+        "result": "Ergebnis",
+        "live": "live"
+      },
       "recut": "Neuschnitt",
       "recutTitle": "Neuschnitt vor {{frame}}: {{struck}} gestrichen, {{changed}} geändert, {{added}} hinzugefügt",
       "stop": "Runde angehalten: {{reason}}"
@@ -1328,7 +1373,13 @@
       "note": "Notiz",
       "claim": "Claim",
       "history": "Zustand über die Frames",
-      "historyEmpty": "Noch kein Frame enthält diesen Task."
+      "historyEmpty": "Noch kein Frame enthält diesen Task.",
+      "probe": "Probe",
+      "agent": "Agent",
+      "openClaim": "Claim öffnen",
+      "evidence": "Belege",
+      "timeline": "Eintrag in der Zeitleiste",
+      "step": "vorige / nächste Karte"
     },
     "rail": {
       "thisFrameCount": "Dieser Frame {{count}}",
@@ -1345,7 +1396,9 @@
       "stepLocked": "Gesperrt durch Sitzung {{session}}",
       "stepConflict": "tasks.md wurde auf der Platte geändert; nichts wurde geschrieben. Bitte laden Sie das Runden-Board neu.",
       "stepFailed": "Das Schreiben ist fehlgeschlagen; setzen Sie den Haken erneut.",
-      "stepsEmpty": "Kein Operator-Schritt in diesem Frame."
+      "stepsEmpty": "Kein Operator-Schritt in diesem Frame.",
+      "stepsDone": "Ihre Schritte · {{done}} von {{total}} erledigt",
+      "showStep": "{{task}} auf dem Board zeigen"
     },
     "bar": {
       "heading": "Frame-Listen"
@@ -1528,6 +1581,9 @@
     }
   },
   "matrix": {
+    "claim": "Claim",
+    "lane": "Lane",
+    "laneMark": "Lane-Marke",
     "region": "Matrix: Tasks nach Frame",
     "hint": "Wählen Sie eine Zelle, um das Runden-Board in diesem Frame zu öffnen.",
     "task": "Task",
@@ -1631,6 +1687,8 @@
       "title": "Features in {{ws}}",
       "meta": "{{features}} Features · {{closed}}/{{total}} Claims geschlossen · {{unheld}} ohne Spec",
       "unheld": "{{count}} ohne Spec",
+      "unheldHint": "Ein Claim des Masters, den noch keine Spec übernommen hat. Er schliesst erst, wenn eine Spec ihn hält und seine Probe besteht.",
+      "unheldClaims": "Claims ohne Spec von {{id}}",
       "allHeld": "alle in Specs",
       "why": "Warum",
       "holders": "Specs mit Claims von {{id}}",
@@ -1797,12 +1855,22 @@
       "detour": "Umweg",
       "gate": "festes Gate"
     },
+    "types": {
+      "caption": "Die Dateien jedes Spec-Typs",
+      "columns": {
+        "type": "Typ",
+        "skips": "Entfällt"
+      }
+    },
     "commands": {
       "lead": "Die Arbeit an einer Spec beginnt im KI-Chat mit dem Spec-Skill; das Board zeigt den Befehl, den eine wartende Karte braucht.",
       "caption": "Die Befehle des Spec-Skills, wie die Stage-Tabelle sie nennt",
       "columns": {
         "command": "Befehl",
-        "purpose": "Was er tut"
+        "purpose": "Was er tut",
+        "needs": "Braucht",
+        "writes": "Schreibt",
+        "then": "Danach"
       },
       "list": {
         "spec-new": "Macht aus einer ausgearbeiteten Story unter specs/ideas/ einen Spec-Ordner.",
@@ -2048,6 +2116,10 @@
     "count": "{{ws}} · {{shown}} von {{total}} Dokumenten · {{stale}} veraltet",
     "outdated": "veraltet",
     "xrefTitle": "Teilt Verweise mit {{count}} anderen Dokumenten",
+    "none": {
+      "heading": "Noch keine kuratierten Dokumente in {{ws}}",
+      "body": "Die Library eines Workspace sammelt Plan, Design, Entscheidungen, Evidence und Notizen seiner Specs. Sie erscheinen, sobald eine Spec ihren ersten Plan bekommt."
+    },
     "empty": {
       "heading": "Kein Dokument passt",
       "body": "Versuchen Sie ein anderes Wort, oder setzen Sie die Filter zurück.",

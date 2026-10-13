@@ -35,6 +35,13 @@ app-docs-tab .docs-loading {
   max-inline-size: 72ch;
 }
 
+app-docs-tab .docs-loading-chips {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-block-end: 8px;
+}
+
 
 /* Design tab: one Ist/Soll card per viewport (ISC-149, prototype `.design-vp`, `.ist-soll`, `.thumb`, `.mock`). */
 app-docs-tab .design-viewports {
@@ -167,11 +174,18 @@ app-docs-tab .design-shot-caption .mono { font-family: var(--font-mono); }
 /* Decisions (spec 024): the prototype's goal card (violet edge, Sora quote) and the "Still open" fog card. */
 app-docs-tab .dec-goal {
   margin-block-end: 16px;
+  padding: 16px;
   border-inline-start: 3px solid var(--ques-ink);
 }
 
-app-docs-tab .dec-eyebrow,
+/* The prototype's .meta line under the quote: source and lock time, sentence case. */
 app-docs-tab .dec-meta {
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+app-docs-tab .dec-eyebrow {
   color: var(--muted-ink);
   font-size: 11px;
   font-weight: 600;
@@ -242,4 +256,199 @@ app-docs-tab[data-page] .docs-empty-card ui-empty-state .slot {
   gap: 12px;
   justify-items: start;
   margin: 0;
+}
+
+/* Decisions: one section per round, one card per question (prototype decision-round, decision-block, .qa). */
+app-docs-tab .dec-round {
+  display: grid;
+  gap: 12px;
+  margin-block-end: 24px;
+}
+
+app-docs-tab .dec-round-head {
+  margin: 0;
+  font: 600 15px/24px var(--font-brand);
+}
+
+app-docs-tab .dec-block { padding: 16px; }
+
+app-docs-tab .dec-q {
+  margin: 0 0 12px;
+  font: 600 15px/24px var(--font-brand);
+}
+
+app-docs-tab .dec-q .mono,
+app-docs-tab .dec-qa .mono { font-family: var(--font-mono); }
+
+app-docs-tab .dec-qa {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+app-docs-tab .dec-qa dt {
+  padding-block-start: 2px;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+app-docs-tab .dec-qa dd {
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+app-docs-tab .dec-qa ul {
+  margin: 0;
+  padding-inline-start: 16px;
+}
+
+app-docs-tab .dec-rec {
+  display: inline-block;
+  margin-inline-start: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--clos-t);
+  color: var(--clos-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+app-docs-tab .dec-wait,
+app-docs-tab .dec-none { color: var(--muted-ink); }
+
+app-docs-tab .dec-none {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+app-docs-tab .dec-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+app-docs-tab .dec-file {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--color-base-300);
+  color: var(--disp-ink);
+  font: 500 12px/18px var(--font-mono);
+  text-decoration: none;
+}
+
+app-docs-tab a.dec-file:hover { text-decoration: underline; }
+app-docs-tab .dec-full { margin-block-start: 16px; }
+
+/* Constitution: the lanes card and the gate tiers (prototype tabConstitution, .c-head, .tbl, .tier-grid). */
+app-docs-tab .con-lanes { margin-block-end: 12px; }
+
+app-docs-tab .con-head {
+  padding: 12px 16px;
+  border-block-end: 1px solid var(--line);
+}
+
+app-docs-tab .con-head h3,
+app-docs-tab .con-tier h3 {
+  margin: 0;
+  font: 600 15px/24px var(--font-brand);
+}
+
+app-docs-tab .con-scroll { overflow-x: auto; }
+
+app-docs-tab .con-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+app-docs-tab .con-table :is(th, td) {
+  padding: 10px 16px;
+  border-block-end: 1px solid var(--line);
+  text-align: start;
+  vertical-align: top;
+}
+
+app-docs-tab .con-table th {
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+app-docs-tab .con-table tr:last-child td { border-block-end: 0; }
+app-docs-tab .con-table .mono { font-family: var(--font-mono); }
+
+app-docs-tab .con-tiers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-block: 12px 24px;
+}
+
+app-docs-tab .con-tier {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 16px;
+}
+
+/* The cheapest tier carries the prototype's 2 px cyan top edge (.card.sblock::before with --edge: var(--cyan)). */
+app-docs-tab .con-tier.is-first::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  block-size: 2px;
+  background: var(--color-primary);
+}
+
+app-docs-tab .con-why {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-inline-start: 18px;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+app-docs-tab .con-why li::marker { color: var(--color-primary); }
+
+app-docs-tab .con-why .mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+/* Prototype `.sig` in the goal card's meta line: four 6 px dots, 3 px apart, the signal's count filled violet. */
+app-docs-tab .dec-sig {
+  display: inline-flex;
+  gap: 3px;
+  vertical-align: middle;
+}
+
+app-docs-tab .dec-sig i {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background: var(--track);
+}
+
+app-docs-tab .dec-sig i.is-on { background: var(--color-secondary); }
+
+@media (forced-colors: active) {
+  app-docs-tab .dec-sig i { border: 1px solid CanvasText; }
+  app-docs-tab .dec-sig i.is-on { background: CanvasText; }
 }

@@ -61,9 +61,11 @@
 </ng-template>
 
 @if (!railHolds()) {
+  <!-- Prototype `[data-ui=sheet]`: a full-height side sheet from the inline end at every width below wide (480 px,
+       the full width under 640). -->
   <ui-sheet
     data-inspector-sheet
-    [tier]="state.tier() === 'compact' ? 'compact' : 'medium'"
+    tier="medium"
     [open]="sheetOpen()"
     (openChange)="sheetChange($event)"
     [label]="'specs.inspector.label' | transloco"

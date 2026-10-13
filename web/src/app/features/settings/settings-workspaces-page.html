@@ -20,9 +20,16 @@
             autocomplete="off"
             [placeholder]="'settingsWorkspaces.add.pathPlaceholder' | transloco"
             [attr.aria-label]="'settingsWorkspaces.add.path' | transloco"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-controls="ws-path-list"
+            [attr.aria-expanded]="popShown()"
+            [attr.aria-activedescendant]="popShown() && sel() >= 0 ? 'ws-path-opt-' + sel() : null"
             [value]="path()"
             (input)="setPath(pathInput.value)"
-            (keydown.enter)="add()"
+            (focus)="popOpen.set(true)"
+            (blur)="popOpen.set(false)"
+            (keydown)="onPathKey($event)"
           />
         </label>
         <label class="name-field">
@@ -52,6 +59,31 @@
         <ui-kbd>↓</ui-kbd><ui-kbd>↑</ui-kbd><ui-kbd>Enter</ui-kbd> {{ 'settingsWorkspaces.add.completes' | transloco }}
         <ui-kbd>~</ui-kbd> {{ 'settingsWorkspaces.add.expands' | transloco }}
       </p>
+      <!-- Prototype `.path-pop`: the folders under the typed segment, the rest of each name marked in cyan-text. -->
+      <div
+        class="path-pop"
+        id="ws-path-list"
+        role="listbox"
+        data-ws-path-list
+        [attr.aria-label]="'settingsWorkspaces.add.completions' | transloco"
+        [hidden]="!popShown()"
+      >
+        @for (item of completions(); track item.path; let i = $index) {
+          <div
+            class="pop-item"
+            role="option"
+            [id]="'ws-path-opt-' + i"
+            [attr.data-path]="item.path"
+            [attr.aria-selected]="i === sel()"
+            tabindex="-1"
+            (mousedown)="$event.preventDefault()"
+            (click)="pick(item.path)"
+            (keydown.enter)="pick(item.path)"
+          >
+            <span class="mono">{{ item.head }}<mark>{{ item.tail }}</mark></span>
+          </div>
+        }
+      </div>
     </div>
 
     <div class="upload-off" data-demo data-demo-head>
@@ -120,6 +152,14 @@
     </div>
   </ui-card>
 </div>
+
+@if (compact()) {
+  <!-- Prototype `.fab.only-compact`: below 640 the add action floats at the bottom right and focuses the path field. -->
+  <button ui-button variant="primary" class="ws-fab" data-ws-fab (click)="pathInput.focus()">
+    <ui-icon name="plus" />
+    {{ 'settingsWorkspaces.add.fab' | transloco }}
+  </button>
+}
 
 <ui-dialog
   [(open)]="removeOpen"

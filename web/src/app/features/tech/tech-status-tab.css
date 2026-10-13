@@ -177,8 +177,13 @@ thead th,
   line-height: 16px;
 }
 
-.fogw {
-  color: var(--ques-ink);
+/* Prototype `.t-row .tm .fog`: the `cloud-fog` icon 14 px, 4 px to the count, in --violet-text (app --ques-text). */
+.fogw,
+.fog-n {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--ques-text);
   font-weight: 600;
 }
 
@@ -249,7 +254,7 @@ td[data-col='type'] {
 }
 
 td[data-col='fog'][data-has] {
-  color: var(--ques-ink);
+  color: var(--ques-text);
   font-weight: 600;
 }
 

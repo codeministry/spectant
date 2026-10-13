@@ -10,9 +10,11 @@
     <app-area-placeholder />
   }
   @case ('error') {
-    <ui-empty-state icon="triangle-alert" [heading]="'status.error.heading' | transloco" [body]="'status.error.body' | transloco">
-      <button type="button" class="btn btn-sm" (click)="reload()">{{ 'status.error.retry' | transloco }}</button>
-    </ui-empty-state>
+    <!-- Spec 024 (prototype states gallery): the area's error is the inline notice, red edge, Retry in its slot. -->
+    <ui-notice tone="error" data-status-error>
+      <strong>{{ 'status.error.heading' | transloco }}</strong> {{ 'status.error.body' | transloco }}
+      <button action ui-button size="sm" type="button" (click)="reload()">{{ 'status.error.retry' | transloco }}</button>
+    </ui-notice>
   }
   @case ('ok') {
     @if (model(); as m) {

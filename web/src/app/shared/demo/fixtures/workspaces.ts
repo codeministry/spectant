@@ -11,6 +11,19 @@ export interface DemoWorkspaceRow {
   readonly state: 'ok' | 'missing';
 }
 
+/** The folders the add row's path completion offers (prototype `FOLDERS`, `.path-pop`), a trailing `/` for a parent. */
+export const DEMO_FOLDERS: readonly string[] = Object.freeze([
+  '~/Development/',
+  '~/Development/oss/',
+  '~/Development/oss/spectant',
+  '~/Development/oss/sample-lib',
+  '~/Development/work/',
+  '~/Development/work/example-app',
+  '~/Development/archive/',
+  '~/Downloads/',
+  '~/Documents/',
+]);
+
 export const DEMO_WORKSPACES: readonly DemoWorkspaceRow[] = Object.freeze([
   { name: 'spectant', path: 'oss/spectant', specs: 24, active: 3, scanned: '2026-03-07T14:02:00Z', state: 'ok' },
   { name: 'example-app', path: 'work/example-app', specs: 6, active: 2, scanned: '2026-03-07T13:40:00Z', state: 'ok' },

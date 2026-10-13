@@ -2,7 +2,7 @@
   @if (metaChips().length > 0 || updated()) {
     <div class="docs-meta" data-docs-meta>
       @for (chip of metaChips(); track chip.label) {
-        <ui-chip [variant]="chip.plain ? 'plain' : 'status'" [tone]="chip.tone" [dot]="!chip.plain">{{ chip.label }}</ui-chip>
+        <ui-chip [variant]="chip.plain ? 'plain' : 'status'" [tone]="chip.tone" [icon]="chip.icon" [dot]="!chip.plain && !chip.icon">{{ chip.label }}</ui-chip>
       }
       @if (updated(); as updated) {
         <span class="docs-updated">{{ 'docs.updated' | transloco: { date: updated } }}</span>
@@ -60,11 +60,141 @@
     <ui-card class="dec-goal" data-goal-card>
       <span class="dec-eyebrow">{{ 'docs.decisions.goal' | transloco }}</span>
       <blockquote class="dec-quote">{{ g.quote }}</blockquote>
-      <span class="dec-meta">{{ (g.source === 'task' ? 'specDashboard.idea.eyebrowTask' : 'specDashboard.idea.eyebrow') | transloco }}</span>
+      <span class="dec-meta"
+        >{{ (g.source === 'context' ? 'docs.decisions.goalSource' : g.source === 'task' ? 'specDashboard.idea.eyebrowTask' : 'specDashboard.idea.eyebrow') | transloco }}@if (signal(); as s) {
+          · {{ 'docs.decisions.signal' | transloco }}
+          <span class="dec-sig" data-goal-signal role="img" [attr.aria-label]="'docs.decisions.signalLabel' | transloco: { n: s }"
+            >@for (n of signalSteps; track n) {<i [class.is-on]="n <= s"></i>}</span
+          >
+          {{ s }}
+        }@if (g.locked; as locked) {
+          · {{ 'docs.decisions.locked' | transloco: { date: locked } }}
+        }</span
+      >
     </ui-card>
   }
 
-  <ui-doc-prose [page]="page" [wide]="state.tier() === 'wide'" [assetUrl]="assetUrl()" />
+  @if (constitution(); as c) {
+    @if (c.lanes.length > 0) {
+      <ui-card class="con-lanes" data-constitution-lanes>
+        <div class="con-head"><h3>{{ 'docs.constitution.lanes' | transloco }}</h3></div>
+        <div class="con-scroll" role="region" tabindex="0" [attr.aria-label]="'docs.constitution.lanesRegion' | transloco">
+          <table class="con-table">
+            <thead>
+              <tr>
+                <th scope="col">{{ 'docs.constitution.lane' | transloco }}</th>
+                <th scope="col">{{ 'docs.constitution.paths' | transloco }}</th>
+                <th scope="col">{{ 'docs.constitution.probe' | transloco }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (lane of c.lanes; track lane.lane) {
+                <tr data-lane-row>
+                  <td class="mono">{{ lane.lane }}</td>
+                  <td class="mono">{{ lane.paths.join(', ') }}</td>
+                  <td>{{ lane.probe ?? '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </ui-card>
+    }
+    @if (c.tiers.length > 0) {
+      <div class="con-tiers" data-gate-tiers>
+        @for (t of c.tiers; track t.tier; let first = $first) {
+          <ui-card class="con-tier" [class.is-first]="first" [attr.data-gate-tier]="t.tier">
+            <h3>{{ 'docs.constitution.tier' | transloco: { tier: t.tier } }}</h3>
+            <ul class="con-why">
+              <li class="mono">{{ t.command }}</li>
+              <li>{{ t.runsWhen }}</li>
+            </ul>
+          </ui-card>
+        }
+      </div>
+    }
+  }
+
+  @if (log(); as log) {
+    @for (round of log.rounds; track round.id) {
+      <section class="dec-round" data-decision-round [attr.data-round]="round.id">
+        <h3 class="dec-round-head">{{ round.title }}</h3>
+        @if (round.shapes.length > 0) {
+          <ui-card class="dec-block" data-decision-block data-shapes>
+            <h4 class="dec-q">{{ 'docs.decisions.shapes' | transloco }}</h4>
+            <dl class="dec-qa">
+              <dt>{{ 'docs.decisions.offered' | transloco }}</dt>
+              <dd>
+                <ul>
+                  @for (o of round.shapes; track $index) {
+                    <li>{{ o.text }}@if (o.recommended) {
+                        <span class="dec-rec" data-recommended>{{ 'docs.decisions.recommended' | transloco }}</span>
+                      }</li>
+                  }
+                </ul>
+              </dd>
+              <dt>{{ 'docs.decisions.chosen' | transloco }}</dt>
+              <dd>
+                @if (round.shapeChosen; as chosen) {
+                  “{{ chosen }}”
+                } @else {
+                  <span class="dec-wait">{{ 'docs.decisions.waiting' | transloco }}</span>
+                }
+              </dd>
+            </dl>
+          </ui-card>
+        }
+        @for (q of round.questions; track $index) {
+          <ui-card class="dec-block" data-decision-block>
+            <h4 class="dec-q"><span class="mono">Q{{ q.n ?? $index + 1 }}</span> {{ q.title }}</h4>
+            <dl class="dec-qa">
+              @if (q.from; as from) {
+                <dt>{{ 'docs.decisions.from' | transloco }}</dt>
+                <dd class="mono">{{ from }}</dd>
+              }
+              @if (q.offered.length > 0) {
+                <dt>{{ 'docs.decisions.offered' | transloco }}</dt>
+                <dd>
+                  <ul>
+                    @for (o of q.offered; track $index) {
+                      <li>{{ o.text }}@if (o.recommended) {
+                          <span class="dec-rec" data-recommended>{{ 'docs.decisions.recommended' | transloco }}</span>
+                        }</li>
+                    }
+                  </ul>
+                </dd>
+              }
+              <dt>{{ 'docs.decisions.chosen' | transloco }}</dt>
+              <dd>
+                @if (q.chosen; as chosen) {
+                  “{{ chosen }}”
+                } @else {
+                  <span class="dec-wait">{{ 'docs.decisions.waiting' | transloco }}</span>
+                }
+              </dd>
+              @if (q.landedIn.length > 0) {
+                <dt>{{ 'docs.decisions.landedIn' | transloco }}</dt>
+                <dd class="dec-files">
+                  @for (part of q.landedIn; track $index) {
+                    @if (fileTab(part); as tab) {
+                      <a class="dec-file" data-file-chip [routerLink]="['..', tab]">{{ part }}</a>
+                    } @else {
+                      <span class="dec-file" data-file-chip>{{ part }}</span>
+                    }
+                  }
+                </dd>
+              }
+            </dl>
+          </ui-card>
+        }
+        @if (round.shapes.length === 0 && round.questions.length === 0) {
+          <p class="dec-none">{{ 'docs.decisions.noQuestions' | transloco }}</p>
+        }
+      </section>
+    }
+  } @else {
+    <ui-doc-prose [page]="page" [wide]="state.tier() === 'wide'" [assetUrl]="assetUrl()" />
+  }
 
   @if (fog().length > 0) {
     <ui-card class="dec-open" data-still-open>
@@ -76,6 +206,13 @@
         </p>
       }
     </ui-card>
+  }
+
+  @if (log() !== null) {
+    <ui-disclosure class="dec-full" data-decisions-full>
+      <span uiDisclosureSummary>{{ 'docs.decisions.full' | transloco: { file: fileName } }}</span>
+      <ui-doc-prose [page]="page" [wide]="false" [assetUrl]="assetUrl()" />
+    </ui-disclosure>
   }
 
   @if (viewports().length > 0) {
@@ -119,9 +256,11 @@
   </ui-empty-state>
   </ui-card>
 } @else if (failed()) {
-  <ui-notice tone="error" data-docs-error>{{ 'docs.error' | transloco }}</ui-notice>
+  <ui-notice tone="error" data-docs-error><strong class="mono">{{ fileName }}</strong> {{ 'docs.error' | transloco }}</ui-notice>
 } @else {
+  <!-- Skeletons at the document's final geometry (prototype states gallery): the chip row, the h1, prose lines. -->
   <div class="docs-loading" role="status" [attr.aria-label]="'docs.loading' | transloco">
+    <div class="docs-loading-chips"><ui-skeleton width="120px" height="22px" /><ui-skeleton width="96px" height="12px" /></div>
     <ui-skeleton width="40%" height="28px" />
     <ui-skeleton height="16px" />
     <ui-skeleton height="16px" />

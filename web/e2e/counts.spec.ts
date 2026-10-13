@@ -234,11 +234,16 @@ for (const { width, tier } of TIERS) {
         await expect(page.locator('app-evidence-tab [data-file]'), 'files ≠ evidence.results + raw').toHaveCount(
           listing.results.length + listing.raw.length,
         );
-        await expect(page.locator('app-evidence-tab [data-claim-group]'), 'groups ≠ evidence.byClaim + ungrouped').toHaveCount(groups.length);
+        // spec 024: prototype value (principal: Prototyp gilt immer): folder groups (Results, Raw evidence), the claim as a chip on every file.
+        const both: Array<[string, number]> = [['results', listing.results.length], ['raw', listing.raw.length]];
+        const folders = both.filter(([, count]) => count !== 0);
+        await expect(page.locator('app-evidence-tab [data-evidence-group]'), 'groups ≠ non-empty results + raw').toHaveCount(folders.length);
+        for (const [key, count] of folders) {
+          const group = page.locator(`app-evidence-tab [data-evidence-group="${key}"]`);
+          await expect(group.locator('[data-file]'), `group ${key} files ≠ evidence.${key}.length`).toHaveCount(count);
+        }
         for (const [key, count] of groups) {
-          const group = page.locator(`app-evidence-tab [data-claim-group="${key}"]`);
-          await expect(group.locator('[data-file]'), `group ${key} files ≠ evidence.byClaim[${key}].length`).toHaveCount(count);
-          await expect(group.locator('.evidence-count').first(), `group ${key} count ≠ evidence.byClaim[${key}].length`).toContainText(n(count));
+          await expect(page.locator(`app-evidence-tab [data-file][data-claim="${key}"]`), `claim ${key} files ≠ evidence.byClaim[${key}].length`).toHaveCount(count);
         }
       });
     }

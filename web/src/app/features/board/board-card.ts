@@ -96,6 +96,12 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
       :host(:hover) .grip, :host(:focus-within) .grip, :host(.cdk-drag-preview) .grip { opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) { .grip { transition: none; } }
+    /* Below 640 the prototype hides the drag grip and shows the card menu "Move to" (quiet-icon wb-move, ellipsis). */
+    .i-move { display: none; }
+    :host-context([data-tier='compact']) .grip { align-self: start; margin-block-start: -8px; opacity: 1; cursor: pointer; }
+    :host-context([data-tier='compact']) .grip:hover { background: var(--color-base-300); color: var(--color-base-content); }
+    :host-context([data-tier='compact']) .i-grip { display: none; }
+    :host-context([data-tier='compact']) .i-move { display: inline-grid; }
     .vh { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     @media (forced-colors: active) {
       .title:focus-visible::after { outline-color: Highlight; }
@@ -162,7 +168,8 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
           (click)="moveMenu.emit(grip)"
           #grip
         >
-          <ui-icon name="grip-vertical" [size]="16" />
+          <ui-icon class="i-grip" name="grip-vertical" [size]="16" />
+          <ui-icon class="i-move" name="ellipsis" [size]="16" />
         </button>
       </article>
     </ui-card>

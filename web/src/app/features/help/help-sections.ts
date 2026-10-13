@@ -1,5 +1,5 @@
 import type { SpecType, WorkflowStage } from '../../../../../core/src/files';
-import { STAGE_RULES, defaultWorkflowRow, WORKFLOW_TYPES } from '../../../../../core/src/stage';
+import { STAGE_RULES, defaultWorkflowRow, TYPE_NEEDS, WORKFLOW_TYPES } from '../../../../../core/src/stage';
 import {
   GROUP_CONTEXT,
   type Shortcut,
@@ -160,3 +160,39 @@ export const LIFECYCLE: readonly LifecycleBand[] = [
 
 /** The lifecycle legend (prototype `.wf-legend`), one swatch per tone. */
 export const LIFECYCLE_TONES: readonly LifecycleTone[] = ['start', 'files', 'gate', 'agents', 'done'];
+
+/** One row of the prototype type table (help "How a spec moves"): which of spec.md, plan.md and tasks.md a type has. */
+export interface HelpTypeFiles {
+  readonly type: SpecType;
+  readonly plan: boolean;
+  readonly tasks: boolean;
+  /** The files the type skips, by stage name (`plan`, `tasks`), or empty. */
+  readonly skips: readonly string[];
+}
+
+/** The type table from core's `TYPE_NEEDS`, in `WORKFLOW_TYPES` order; every type has a spec.md. */
+export const HELP_TYPE_FILES: readonly HelpTypeFiles[] = WORKFLOW_TYPES.map((type) => {
+  const { plan, tasks } = TYPE_NEEDS[type];
+  return { type, plan, tasks, skips: [...(plan ? [] : ['plan']), ...(tasks ? [] : ['tasks'])] };
+});
+
+/** A command row of the prototype commands table: what it needs, what it writes and the command after it. */
+export interface HelpCommandRow extends HelpCommand {
+  readonly needs: string | null;
+  readonly writes: string | null;
+  readonly then: string | null;
+}
+
+const LIFECYCLE_NODES: readonly LifecycleNode[] = LIFECYCLE.flatMap((band) => band.nodes);
+
+/** `HELP_COMMANDS` with the lifecycle around each: the previous node's file, its own file, the next node's command. */
+export const HELP_COMMAND_ROWS: readonly HelpCommandRow[] = HELP_COMMANDS.map((row) => {
+  const at = LIFECYCLE_NODES.findIndex((n) => n.command === row.command);
+  const here = at < 0 ? undefined : LIFECYCLE_NODES[at];
+  return {
+    ...row,
+    needs: at > 0 ? (LIFECYCLE_NODES[at - 1]?.file ?? null) : null,
+    writes: here?.file ?? null,
+    then: at < 0 ? null : (LIFECYCLE_NODES.slice(at + 1).find((n) => n.command !== null)?.command ?? null),
+  };
+});

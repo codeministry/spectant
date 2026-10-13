@@ -74,7 +74,7 @@
         }
         @if (spec.fog > 0) {
           <div class="line fog-line" [attr.data-fog-line]="spec.id">
-            <ui-icon class="cloud" data-icon="cloud-fog" name="cloud-fog" [size]="16" />
+            <ui-icon class="cloud" data-icon="cloud" name="cloud" [size]="16" />
             <ng-container [ngTemplateOutlet]="specLink" [ngTemplateOutletContext]="{ $implicit: spec }" />
             <span class="text">{{ (spec.fog === 1 ? 'specs.inspector.fog.one' : 'specs.inspector.fog.other') | transloco: { count: spec.fog } }}</span>
           </div>

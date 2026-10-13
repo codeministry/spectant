@@ -48,9 +48,12 @@
 }
 
 .dot {
+  box-sizing: border-box;
   inline-size: 12px;
   block-size: 12px;
+  border: 2px solid var(--marker);
   border-radius: 50%;
+  background: var(--marker);
 }
 
 .count {
@@ -310,4 +313,104 @@ ui-disclosure .head {
   color: var(--muted-ink);
   font-family: var(--font-mono);
   font-size: 12px;
+}
+
+/* Prototype `.tl.empty-tl::before`: without a recorded event the strand is dashed, 6 px on, 6 px off. */
+.strand.is-dashed::before {
+  background: repeating-linear-gradient(var(--line) 0 6px, transparent 6px 12px);
+}
+
+/* Prototype `.mk.note`: the ques tint inside a 2 px ques ring (the filter dot and the strand marker). */
+.dot[data-kind='note'],
+.entry[data-kind='note'] .marker {
+  background: var(--ques-t);
+}
+
+/* Prototype `.pulse-mk`: a running agent's marker sends an orange ring out once a beat — drawn as an outline that
+   widens and fades (the glow guard keeps box-shadow flat); still under reduced motion. */
+.marker[data-running] {
+  outline: 2px solid var(--color-warning);
+  outline-offset: 0;
+  animation: pulse-mk var(--motion-duration-pulse) var(--motion-ease-standard) infinite;
+}
+
+@keyframes pulse-mk {
+  70%,
+  100% {
+    outline-color: transparent;
+    outline-offset: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marker[data-running] {
+    animation: none;
+  }
+}
+
+/* Prototype `.qa`: a 90 px label column of small caps, the value beside it; the files as `.file-chip`. */
+.qa {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.qa dt {
+  padding-block-start: 2px;
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.qa dd {
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.qa ul {
+  margin: 0;
+  padding-inline-start: 16px;
+}
+
+.qa .mono {
+  font-family: var(--font-mono);
+}
+
+.qa .wait {
+  color: var(--muted-ink);
+}
+
+.rec {
+  display: inline-block;
+  margin-inline-start: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--clos-t);
+  color: var(--clos-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.file-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--color-base-300);
+  color: var(--disp-ink);
+  font: 500 12px/18px var(--font-mono);
+  text-decoration: none;
 }

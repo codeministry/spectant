@@ -210,6 +210,8 @@ const PAIRS: readonly Pair[] = [
     return ["--color-base-100", "--color-base-200", ...tint].map((surface) => ({ tone, surface, min: TEXT_MIN }));
   }),
   { tone: "--badge-ink", surface: "--badge-fill", min: TEXT_MIN },
+  // spec 024: prototype background (principal 2026-10-13). The Decisions tab's `.file-chip`: `--cyan-text` on `--raised`.
+  { tone: "--disp-ink", surface: "--color-base-300", min: TEXT_MIN },
   { tone: "--track", surface: "--color-base-100", min: MARK_MIN },
   { tone: "--track", surface: "--color-base-200", min: MARK_MIN },
   // Filled buttons: the light primary is the prototype `.btn.primary`, `--cyan` under `--page`.

@@ -11,6 +11,7 @@
     />
   } @else {
     <div class="heads" aria-hidden="true">
+      <span></span>
       @for (col of allColumns; track col) {
         <div class="head" data-column-head [attr.data-head]="col">
           {{ 'board.flow.columns.' + col | transloco }} <span class="count">{{ counts()[col] }}</span>
@@ -20,7 +21,7 @@
   }
 
   @for (band of shownBands(); track band.name) {
-    <section class="band" [attr.data-band]="band.name" [attr.aria-labelledby]="'flow-band-' + band.name">
+    <section class="band" [attr.data-band]="band.name" [style.--lane-c]="laneColor(band.name)" [attr.aria-labelledby]="'flow-band-' + band.name">
       <div class="band-head" data-band-head>
         <span class="band-dot" aria-hidden="true"></span>
         <h3 class="band-name" [id]="'flow-band-' + band.name">{{ band.name }}</h3>
@@ -38,5 +39,8 @@
     </section>
   } @empty {
     <p class="empty" data-empty>{{ 'board.flow.empty' | transloco }}</p>
+  }
+  @if (steps(); as steps) {
+    <app-your-steps class="span" [cards]="steps" />
   }
 </div>

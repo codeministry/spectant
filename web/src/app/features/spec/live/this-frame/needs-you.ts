@@ -97,6 +97,12 @@ export function alertParts(sentence: string, session: string, claims: readonly s
     RAIL_BLOCK_STYLES,
     `
       .count { font-variant-numeric: tabular-nums; }
+      .op-eb { margin: 8px 0 0; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .08em; line-height: 16px; text-transform: uppercase; }
+      /* The id, then the text, the reason under it: a long reason never squeezes the text to nothing. */
+      .op-mini { display: grid; box-sizing: border-box; grid-template-columns: auto minmax(0, 1fr); min-inline-size: 0; gap: 2px 8px; align-items: start; inline-size: 100%; min-block-size: 32px; padding: 6px 0; border: 0; border-block-start: 1px solid var(--line); background: none; color: inherit; font: inherit; font-size: 13px; text-align: start; cursor: pointer; }
+      .op-mini:hover { background: var(--lane); }
+      .op-mini:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+      .op-mini .why { grid-column: 2; min-inline-size: 0; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
       /* spec 024: the prototype .needs-card, a 3 px edge in orange on the card. */
       .needs-card { border-inline-start: 3px solid var(--color-warning); }
       @media (forced-colors: active) { .needs-card { border-inline-start-color: CanvasText; } }
@@ -166,10 +172,27 @@ export function alertParts(sentence: string, session: string, claims: readonly s
       } @else {
         <p class="empty">{{ 'board.rail.emptyNeeds' | transloco }}</p>
       }
+      @if (steps().length > 0) {
+        <p class="op-eb" data-needs-steps>{{ 'board.rail.yourSteps' | transloco }}</p>
+        @for (s of steps(); track s.task) {
+          <button type="button" class="op-mini" [attr.data-op-mini]="s.task" [attr.title]="'board.rail.showStep' | transloco: { task: s.task }" (click)="showStep(s.task)">
+            <span class="mono">{{ s.task }}</span><span class="text">{{ s.text }}</span>@if (s.reason) {<span class="why">{{ s.reason }}</span>}
+          </button>
+        }
+      }
     </ng-template>
   `,
 })
 export class NeedsYou {
+  /** The open operator steps (prototype "Your steps" in the Needs you card); each row points at its step on the board. */
+  readonly steps = input<readonly FrameCard[]>([]);
+
+  protected showStep(task: string): void {
+    const row = document.querySelector<HTMLElement>(`[data-step="${CSS.escape(task)}"]`);
+    row?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    row?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
+  }
+
   readonly frame = input.required<Frame | LiveFrame>();
   /** The frame's Needs you list (`needsYouOf`), in the model's order. */
   readonly cards = input.required<readonly FrameCard[]>();

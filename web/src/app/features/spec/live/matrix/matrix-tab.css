@@ -25,7 +25,7 @@
 }
 
 :host([data-tier='wide']) {
-  --matrix-first: 224px;
+  --matrix-first: 64px;
   --matrix-dispatch: 16px;
   --matrix-result: 28px;
   --matrix-live: 40px;
@@ -247,4 +247,65 @@ th[data-current] {
   display: inline-flex;
   gap: 4px;
   align-items: center;
+}
+
+/* spec 024: the prototype .matrix: Task (fixed), Claim, the lane marker and Lane as columns, the frames after them;
+   the heads 11 px muted, the frame on screen raised; a struck cell hatched on the raised ground; the legend a meta line. */
+
+.grid > thead > tr > th {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+thead th[data-current] {
+  background: var(--color-base-300);
+  color: var(--color-base-content);
+}
+
+th.meta-col,
+.meta-col {
+  position: static;
+  inline-size: auto;
+  max-inline-size: none;
+  padding: 4px 8px;
+  border-block-end: 1px solid var(--matrix-line);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: start;
+  white-space: nowrap;
+}
+
+th.claim {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.mx-lane-mark {
+  inline-size: 20px;
+  padding-inline: 2px;
+  border-block-end: 1px solid var(--matrix-line);
+  text-align: center;
+}
+
+.mx-lane-mark .mx-ldot {
+  display: inline-block;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
+td[data-state='absent'] {
+  background: repeating-linear-gradient(135deg, transparent 0 4px, var(--color-base-300) 4px 6px);
+  color: var(--muted);
+}
+
+p.mx-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  margin: 0;
+  padding: 8px 12px;
+  color: var(--muted);
+  font-size: 12px;
 }

@@ -143,20 +143,21 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The sort menu, in the popover and the sheet (prototype `.pop-item`). */
+/* The sort menu, in the popover and the sheet (prototype `.pop-item`). The prototype popover is at least 240 px wide; the panel's 8 px padding is part of that. */
 .sort-menu {
   display: grid;
   gap: 2px;
-  min-inline-size: 160px;
+  min-inline-size: 222px;
 }
 
 .pop-item {
   display: flex;
+  gap: var(--space-2);
   align-items: center;
   inline-size: 100%;
   min-block-size: 36px;
   padding: 6px 8px;
-  border-radius: var(--radius-field);
+  border-radius: var(--radius-sm);
   color: var(--color-base-content);
   font-size: 13px;
   text-align: start;
@@ -190,19 +191,34 @@
   block-size: 0;
 }
 
+/* Prototype `.new-pill`: 28 px on the badge fill, 12/500, fading in on the popover token. */
 .pending-pill {
-  --btn-bg: var(--color-primary);
-  --btn-fg: var(--color-primary-content);
-  --btn-border: var(--color-primary);
-
   position: absolute;
-  z-index: 1;
+  z-index: 2;
   inset-block-start: 16px;
   inset-inline-start: 50%;
-  translate: -50% 0;
-  border-radius: 999px;
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  block-size: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--badge);
+  color: var(--color-neutral-content);
+  font-size: 12px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  cursor: pointer;
+  translate: -50% 0;
+  transition: opacity var(--dur-pop) var(--ease);
+}
+
+@starting-style {
+  .pending-pill {
+    opacity: 0;
+  }
 }
 
 .row-link[data-changed]::before {

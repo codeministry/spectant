@@ -26,7 +26,21 @@ test.describe('claims', () => {
     await page.goto('/w/harbor/s/002/claims');
     await expect(page.locator('app-claims-tab [data-claim]')).toHaveCount(CLAIMS.claims.length);
     const ids = await page.locator('app-claims-tab [data-claim]').evaluateAll((cards) => cards.map((c) => c.getAttribute('data-claim')));
-    expect(ids).toEqual(CLAIMS.claims.map((c) => c.id));
+    // spec 024 (principal 2026-10-13, claims fold): a feature group from six closed claims folds all but its last three
+    // closed ones behind `+ N more`, so those come last in the group; the order is otherwise the file's.
+    const known = new Set(CLAIMS.features.map((f) => f.id));
+    const groups = [
+      ...CLAIMS.features.map((f) => CLAIMS.claims.filter((c) => c.feature === f.id)),
+      CLAIMS.claims.filter((c) => c.feature === null || !known.has(c.feature)),
+    ];
+    const expected = groups.flatMap((g) => {
+      const closed = g.filter((c) => c.state === 'closed');
+      if (closed.length < 6) return g;
+      const folded = new Set(closed.slice(0, -3));
+      return [...g.filter((c) => !folded.has(c)), ...g.filter((c) => folded.has(c))];
+    });
+    expect(expected).toHaveLength(CLAIMS.claims.length);
+    expect(ids).toEqual(expected.map((c) => c.id));
     for (const feature of CLAIMS.features) {
       await expect(page.locator(`app-claims-tab [data-feature="${feature.id}"] ui-section-header`)).toContainText(feature.title);
     }
@@ -301,13 +315,19 @@ test.describe('evidence', () => {
     expect(all.length).toBeGreaterThan(0);
     await page.goto('/w/harbor/s/002/evidence');
     await expect(page.locator('app-evidence-tab [data-file]')).toHaveCount(all.length);
+    // spec 024: prototype value (principal: Prototyp gilt immer): files sit in their folder group and carry their claim as a chip.
+    for (const [group, files] of [['results', body.results], ['raw', body.raw]] as const) {
+      for (const file of files) {
+        await expect(page.locator(`app-evidence-tab [data-evidence-group="${group}"] [data-file="${file.path}"]`)).toHaveCount(1);
+      }
+    }
     for (const [claim, files] of Object.entries(body.byClaim)) {
       for (const file of files) {
-        await expect(page.locator(`app-evidence-tab [data-claim-group="${claim}"] [data-file="${file.path}"]`)).toHaveCount(1);
+        await expect(page.locator(`app-evidence-tab [data-file="${file.path}"][data-claim="${claim}"]`)).toHaveCount(1);
       }
     }
     for (const file of body.ungrouped) {
-      await expect(page.locator(`app-evidence-tab [data-claim-group="none"] [data-file="${file.path}"]`)).toHaveCount(1);
+      await expect(page.locator(`app-evidence-tab [data-file="${file.path}"][data-claim="none"]`)).toHaveCount(1);
     }
   });
 

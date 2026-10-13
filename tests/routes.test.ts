@@ -164,6 +164,14 @@ function readRoutes(): Array<{ route: SpecRouteName; path: string; body: () => u
   ];
 }
 
+/** A timeline answer without the server's joined entries (spec 024: `note` and `agent`). */
+function withoutJoins(value: unknown): unknown {
+  const fileOnly = (entries: ReadonlyArray<{ kind: string }>) => entries.filter((e) => e.kind !== "note" && e.kind !== "agent");
+  if (Array.isArray(value)) return fileOnly(value as Array<{ kind: string }>);
+  const answer = value as { entries: Array<{ kind: string }> };
+  return { ...answer, entries: fileOnly(answer.entries) };
+}
+
 describe("every read route of harbor 002", () => {
   test("answers 200 with its golden family's value, JSON_ANSWER headers, no absolute path", async () => {
     for (const { route, path, body } of readRoutes()) {
@@ -174,7 +182,10 @@ describe("every read route of harbor 002", () => {
       const text = await res.text();
       expect(res.headers.get("etag")).toBe(`"${new Bun.CryptoHasher("sha256").update(text).digest("base64url")}"`);
       const value: unknown = JSON.parse(text);
-      expect({ route, path, value }).toEqual({ route, path, value: JSON.parse(JSON.stringify(await body())) });
+      // Spec 024: the timeline route joins the app's notes and the held locks (kinds `note`, `agent`) onto core's file
+      // timeline; the golden family is core's part, the joins are asserted in timeline.test.ts.
+      const fileOnly = route === "timeline" ? withoutJoins(value) : value;
+      expect({ route, path, value: fileOnly }).toEqual({ route, path, value: JSON.parse(JSON.stringify(await body())) });
       const leaks = strings(value).filter((s) => /^\/[^\s/]+\//.test(s) || [homedir(), tmpdir(), FIXTURES].some((d) => s.includes(d)));
       expect({ path, leaks }).toEqual({ path, leaks: [] });
     }

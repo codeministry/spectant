@@ -42,6 +42,9 @@ export const CONTRAST_EXCEPTIONS: readonly ContrastException[] = [
   // The neutral chip (the prototype's base chip): `--muted` text on `--raised` (daisyUI's `--color-base-300`), both themes.
   { tone: "--muted-ink", theme: "spec-light", surface: "--color-base-300", fg: "#706b6e", bg: "#ede7e5", ratio: 4.27, min: 4.5 },
   { tone: "--muted-ink", theme: "spec-dark", surface: "--color-base-300", fg: "#939293", bg: "#403e41", ratio: 3.41, min: 4.5 },
+  // spec 024: prototype background (principal 2026-10-13). The Decisions tab's file chip is the prototype `.file-chip`:
+  // `--cyan-text` on `--raised`, light only.
+  { tone: "--disp-ink", theme: "spec-light", surface: "--color-base-300", fg: "#027892", bg: "#ede7e5", ratio: 4.18, min: 4.5 },
   // spec 024: prototype background (principal 2026-10-13). The light primary button is the prototype `.btn.primary`:
   // `--cyan` under `--page`.
   { tone: "--primary-fill-ink", theme: "spec-light", surface: "--primary-fill", fg: "#f6f1ef", bg: "#1c8ca8", ratio: 3.49, min: 4.5 },

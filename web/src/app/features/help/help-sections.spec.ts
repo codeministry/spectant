@@ -166,7 +166,8 @@ describe('HelpPage sections (T162, ISC-133.1)', () => {
       const key = HELP_COMMANDS[i]?.key ?? '';
       expect(text(row.querySelector('.purpose'))).toBe(en.help.commands.list[key]);
     }
-    expect([...root.querySelectorAll('#commands thead th')].map(text)).toEqual(['Command', 'What it does']);
+    // spec 024: prototype value (principal: Prototyp gilt immer) — the prototype table adds Needs, Writes and Then.
+    expect([...root.querySelectorAll('#commands thead th')].map(text)).toEqual(['Command', 'What it does', 'Needs', 'Writes', 'Then']);
   });
 
   it('lists the getting-started steps with their code spans', async () => {
@@ -184,7 +185,8 @@ describe('HelpPage sections (T162, ISC-133.1)', () => {
     const transloco = TestBed.inject(TranslocoService);
     const rows = [...root.querySelectorAll('#keys [data-binding]')];
     expect(rows.map((row) => row.getAttribute('data-binding'))).toEqual(SHORTCUTS.map((s) => s.id));
-    expect(rows.map((row) => text(row.querySelector('dd')))).toEqual(
+    // spec 024: prototype value (principal: Prototyp gilt immer) — `.keys-grid` rows, the action left in `.action`.
+    expect(rows.map((row) => text(row.querySelector('.action')))).toEqual(
       SHORTCUTS.map((s) => transloco.translate(s.label, { target: s.target === undefined ? '' : String(transloco.translate(s.target)) })),
     );
     expect(rows.map((row) => [...row.querySelectorAll('ui-kbd')].map(text))).toEqual(SHORTCUTS.map((s) => s.keys.map(keyLabel)));

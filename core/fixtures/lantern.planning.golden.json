@@ -120,12 +120,14 @@
       "claims": [
         {
           "id": "ISC-1",
+          "text": "the app makes an outbound request that no sync the reader started asked for.",
           "closed": false,
           "dropped": false,
           "holder": null
         },
         {
           "id": "ISC-2",
+          "text": "a tracked file contains an absolute home path or personal data.",
           "closed": false,
           "dropped": false,
           "holder": null
@@ -147,60 +149,70 @@
       "claims": [
         {
           "id": "ISC-3",
+          "text": "A link is saved from the address bar in one step.",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-4",
+          "text": "A saved link is still listed after a reload.",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-5",
+          "text": "A saved link gets the page title fetched at save time.",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-6",
+          "text": "Tags are stored with a link and restored with it.",
           "closed": true,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-7",
+          "text": "Typing in the search box narrows the list to titles that match.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-8",
+          "text": "Typing a tag narrows the list to links carrying it.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-9",
+          "text": "A saved article's text is readable with the network switched off.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-10",
+          "text": "The reading view has no horizontal overflow at 390 px.",
           "closed": false,
           "dropped": false,
           "holder": "001"
         },
         {
           "id": "ISC-11",
+          "text": "saving the same link twice creates a second entry.",
           "closed": false,
           "dropped": false,
           "holder": "002"
         },
         {
           "id": "ISC-12",
+          "text": "a tag with a trailing space is stored as a second, different tag.",
           "closed": false,
           "dropped": false,
           "holder": "002"

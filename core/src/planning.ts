@@ -47,6 +47,8 @@ export type MilestoneState = 'upcoming' | 'late' | 'complete';
 export interface PlanningClaim {
   /** `ISC-100.1`, as written in the master. */
   readonly id: string;
+  /** The master line's claim text (`Claim.text`); empty when the block names an id the master lists no line for. */
+  readonly text: string;
   /** The master's checkbox is ticked. */
   readonly closed: boolean;
   /** A `[DROPPED …]` tombstone: resolved but not achieved, so it counts in neither closed nor total. */
@@ -314,6 +316,7 @@ function readFolders(
 /** A claim of a feature block with the folder that holds it (the first in `readFolders` order that lists it). */
 interface ResolvedClaim {
   readonly id: string;
+  readonly text: string;
   readonly closed: boolean;
   readonly dropped: boolean;
   readonly folder: Folder | undefined;
@@ -330,7 +333,13 @@ function resolveBlock(block: FeatureBlock, claimById: ReadonlyMap<string, Claim>
     block,
     claims: block.claims.map((id) => {
       const claim = claimById.get(id);
-      return { id, closed: claim?.checked ?? false, dropped: claim?.dropped ?? false, folder: folders.find((f) => f.ids.has(id)) };
+      return {
+        id,
+        text: claim?.text ?? '',
+        closed: claim?.checked ?? false,
+        dropped: claim?.dropped ?? false,
+        folder: folders.find((f) => f.ids.has(id)),
+      };
     }),
   };
 }
@@ -344,7 +353,7 @@ function planningFeature({ block, claims: resolved }: ResolvedBlock, folders: re
     why: block.why,
     closed: live.filter((c) => c.closed).length,
     total: live.length,
-    claims: resolved.map(({ id, closed, dropped, folder }): PlanningClaim => ({ id, closed, dropped, holder: folder?.holder.id ?? null })),
+    claims: resolved.map(({ id, text, closed, dropped, folder }): PlanningClaim => ({ id, text, closed, dropped, holder: folder?.holder.id ?? null })),
     holders: folders.flatMap((f): PlanningHolder[] => {
       const held = live.filter((c) => c.folder === f).length;
       return held === 0 ? [] : [{ ...f.holder, main: f.feature === block.id, held }];

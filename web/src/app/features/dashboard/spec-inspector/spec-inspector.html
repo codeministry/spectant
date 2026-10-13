@@ -55,7 +55,7 @@
     <span class="type-eyebrow">{{ 'specs.inspector.takeableClaims' | transloco }}</span>
     <div class="insp-chips">
       @for (claim of row().takeable; track claim) {
-        <ui-chip tone="success">{{ claim }}</ui-chip>
+        <ui-chip class="insp-take" tone="success">{{ claim }}</ui-chip>
       }
     </div>
   </div>
@@ -63,16 +63,32 @@
 
 <div class="insp-block" data-inspector="warnings">
   <span class="type-eyebrow">{{ 'specs.inspector.warnings' | transloco }} · {{ warnings().length }}</span>
-  @if (warnings().length > 0) {
-    <ul class="insp-warnings">
-      @for (warning of warnings(); track $index) {
-        <li>
-          <ui-icon class="insp-warn-icon" name="triangle-alert" [size]="16" />
-          <span>{{ warning.text }}</span>
-        </li>
-      }
-    </ul>
-  }
+  <!-- Prototype `warningsPanel([s])`: the spec's warning lines and its fog line in a card, or "No warnings". -->
+  <ui-card class="insp-warn-card" [padding]="0">
+    @if (warningLines().length > 0 || row().fog > 0) {
+      <div class="insp-w-group">
+        @for (warning of warningLines(); track $index) {
+          <div class="insp-w-line" data-inspector-warning>
+            <ui-icon class="insp-warn-icon" name="triangle-alert" [size]="16" />
+            <span class="insp-w-id">{{ row().id }}</span>
+            <span>{{ warning.text }}</span>
+          </div>
+        }
+        @if (row().fog > 0) {
+          <div class="insp-w-line insp-w-fog" data-inspector-fog>
+            <ui-icon class="insp-fog-icon" name="cloud" [size]="16" />
+            <span class="insp-w-id">{{ row().id }}</span>
+            <span>{{ (row().fog === 1 ? 'specs.inspector.fog.one' : 'specs.inspector.fog.other') | transloco: { count: row().fog } }}</span>
+          </div>
+        }
+      </div>
+    } @else {
+      <p class="insp-w-empty" data-inspector-no-warnings>
+        <ui-icon class="insp-ok-icon" name="circle-check" [size]="16" />
+        <span>{{ 'warnings.empty' | transloco }}</span>
+      </p>
+    }
+  </ui-card>
 </div>
 
 <nav class="insp-explore" [attr.aria-label]="'specs.inspector.explore' | transloco: { id: row().id }">
@@ -81,7 +97,7 @@
     @for (tab of exploreTabs; track tab) {
       <a class="insp-explore-item" [routerLink]="tabLink(tab)">
         <span>{{ 'shell.tabs.' + tab | transloco }}</span>
-        <ui-icon name="chevron-right" [size]="14" />
+        <ui-icon name="arrow-right" [size]="13" />
       </a>
     }
   </div>

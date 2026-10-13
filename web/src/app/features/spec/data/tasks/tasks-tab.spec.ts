@@ -168,7 +168,8 @@ describe('TasksTab', () => {
     const done = GOLDEN.tasks.filter((t) => t.state === 'done').length;
     expect(rows(root)).toHaveLength(GOLDEN.counts.rows - done);
     const footer = root.querySelector('[data-done-hidden]');
-    expect(footer?.textContent).toContain(`${String(done)} done hidden`);
+    // spec 024: prototype value (principal: Prototyp gilt immer): the fold row "+ 16 more done · T1–T11, T20–T26".
+    expect(footer?.textContent).toContain(`+ ${String(done)} more done`);
     expect(footer?.textContent).toContain('T1–T26');
     footer?.querySelector('button')?.click();
     await harness.fixture.whenStable();

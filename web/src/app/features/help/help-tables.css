@@ -1,0 +1,144 @@
+/*
+ * The Help page tables, steps and key rows (spec 024, prototype help): `.tbl` in a `.card` for the type, command and
+ * glossary tables, the numbered `.steps` cards and the `.keys-grid`. A second stylesheet of HelpPage, so each file stays
+ * inside the 8 kB component-style budget.
+ */
+
+/* Prototype `.tbl` in a `.card`: 13 px rows, 10/16 cells on hairlines, 11 px uppercase muted heads, no last line. */
+.tbl-card {
+  display: block;
+  overflow: hidden;
+}
+
+.tbl-scroll {
+  overflow-x: auto;
+}
+
+.tbl,
+.glossary {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.tbl th,
+.tbl td,
+.glossary th,
+.glossary td {
+  padding: 10px 16px;
+  border-block-end: 1px solid var(--line);
+  text-align: start;
+  vertical-align: top;
+}
+
+.tbl thead th,
+.glossary thead th {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.glossary tbody th,
+.glossary tbody td {
+  font-size: 14px;
+}
+
+.tbl tbody tr:last-child td,
+.glossary tbody tr:last-child th,
+.glossary tbody tr:last-child td {
+  border-block-end: 0;
+}
+
+.tbl .mono {
+  font-family: var(--font-mono);
+}
+
+/* Getting started: prototype `.steps` (own names: daisyUI owns `.steps`), numbered cards (a 24 px cyan-tinted counter). */
+.start-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+/* Block, not grid: the text and code spans of a step flow as one line of prose under the counter. */
+.start-step {
+  display: block;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+  font-size: 14px;
+  line-height: 20px;
+  counter-increment: step;
+}
+
+.start-step::before {
+  display: grid;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 24px;
+  border-radius: var(--radius-selector);
+  background: var(--disp-t);
+  color: var(--disp-text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  margin-block-end: 8px;
+  content: counter(step);
+}
+
+/* Keyboard: prototype `.keys-grid` in a card, action left and the keys right, 10/16 rows on hairlines. */
+.keys-context + .keys-context {
+  margin-block-start: 24px;
+}
+
+.keys-context h3 {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.keys-group h4 {
+  margin: 0;
+  padding: 12px 16px 4px;
+}
+
+.keys-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.key-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-block-end: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.key-row .action {
+  min-inline-size: 0;
+}
+
+.key-row .k {
+  display: inline-flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}

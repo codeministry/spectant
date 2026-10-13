@@ -100,7 +100,69 @@
         "level": 2
       }
     ],
-    "wordCount": 1293
+    "wordCount": 1293,
+    "constitution": {
+      "lanes": [
+        {
+          "lane": "core",
+          "paths": [
+            "core/",
+            "FORMAT.md"
+          ],
+          "probe": "bun test core/"
+        },
+        {
+          "lane": "server",
+          "paths": [
+            "server/",
+            "scripts/",
+            "tests/",
+            "install.sh"
+          ],
+          "probe": "bun test tests/"
+        },
+        {
+          "lane": "web",
+          "paths": [
+            "web/"
+          ],
+          "probe": "bun run --cwd web test"
+        },
+        {
+          "lane": "plugin",
+          "paths": [
+            "plugin/",
+            ".claude-plugin/"
+          ],
+          "probe": "bun test plugin/"
+        },
+        {
+          "lane": "repo",
+          "paths": [
+            "root files (package.json, LICENSE, THIRD_PARTY_NOTICES.md, README.md, CLAUDE.md)",
+            ".github/"
+          ],
+          "probe": "bun run check:static"
+        }
+      ],
+      "tiers": [
+        {
+          "tier": "static",
+          "command": "— (not defined; see Conformance baseline) · target bun run check:static",
+          "runsWhen": "before every claim closes"
+        },
+        {
+          "tier": "quick",
+          "command": "— (not defined; see Conformance baseline) · target bun run verify:quick",
+          "runsWhen": "at every implementation stop"
+        },
+        {
+          "tier": "full",
+          "command": "— (not defined; see Conformance baseline) · target bun run verify (adds the browser tier test:browser, the Playwright suites e2e and test:visual in both themes, and the four-target build)",
+          "runsWhen": "before a spec is marked complete"
+        }
+      ]
+    }
   },
   "specs": {
     "specs/001-app-skeleton": {
@@ -643,7 +705,337 @@
             "level": 2
           }
         ],
-        "wordCount": 2306
+        "wordCount": 2306,
+        "decisions": {
+          "goal": {
+            "text": "A fresh macOS or Linux user installs spectant with one line, registers two workspaces and sees their specs side by side on a read-only dashboard that looks like the old Spec dashboard in its light and its dark theme, with nothing leaving the machine and nothing written into either repository.",
+            "confirmed": "2026-09-28T09:40:00Z"
+          },
+          "rounds": [
+            {
+              "id": "round-0",
+              "title": "Round 0 — shaping the idea",
+              "date": "2026-09-28T07:30:00Z",
+              "shapes": [
+                {
+                  "text": "cut the skill first inside another repository (narrow)",
+                  "recommended": false
+                },
+                {
+                  "text": "companion app plus skill cut (obvious, recommended)",
+                  "recommended": false
+                },
+                {
+                  "text": "companion as an MCP service (different). Chosen: companion app plus skill cut.",
+                  "recommended": false
+                }
+              ],
+              "shapeChosen": null,
+              "questions": [
+                {
+                  "n": "1",
+                  "title": "Where does the app live?",
+                  "from": null,
+                  "offered": [
+                    {
+                      "text": "own repository, the other plugin project slims down",
+                      "recommended": true
+                    },
+                    {
+                      "text": "everything in the plugin repository",
+                      "recommended": false
+                    },
+                    {
+                      "text": "own repository, the other project paused",
+                      "recommended": false
+                    }
+                  ],
+                  "chosen": "own repository (later refined: the skill moves here too, the other project is abandoned)",
+                  "landedIn": [
+                    "master § Constraints",
+                    "Decisions"
+                  ]
+                },
+                {
+                  "n": "2",
+                  "title": "Which stack does the app run on?",
+                  "from": null,
+                  "offered": [
+                    {
+                      "text": "Bun + TypeScript single binary",
+                      "recommended": true
+                    },
+                    {
+                      "text": "Go like radar",
+                      "recommended": false
+                    },
+                    {
+                      "text": "Spring Boot + Angular",
+                      "recommended": false
+                    }
+                  ],
+                  "chosen": "Bun + TypeScript single binary",
+                  "landedIn": [
+                    "master § Constraints; ISC-8",
+                    "ISC-9"
+                  ]
+                },
+                {
+                  "n": "3",
+                  "title": "What may the app write into repositories?",
+                  "from": null,
+                  "offered": [
+                    {
+                      "text": "reads Markdown, writes only its database",
+                      "recommended": true
+                    },
+                    {
+                      "text": "light writes too",
+                      "recommended": false
+                    },
+                    {
+                      "text": "the app drives the skill",
+                      "recommended": false
+                    }
+                  ],
+                  "chosen": "light writes too (review mark, task checkboxes) with conflict detection",
+                  "landedIn": [
+                    "master F2 (not this spec); ISC-15 holds this spec read-only"
+                  ]
+                },
+                {
+                  "n": "4",
+                  "title": "Name",
+                  "from": null,
+                  "offered": [
+                    {
+                      "text": "Sextant",
+                      "recommended": true
+                    },
+                    {
+                      "text": "Plumb",
+                      "recommended": false
+                    },
+                    {
+                      "text": "Keel",
+                      "recommended": false
+                    },
+                    {
+                      "text": "later — rejected; second round: Spectant",
+                      "recommended": false
+                    },
+                    {
+                      "text": "Specmate",
+                      "recommended": false
+                    },
+                    {
+                      "text": "Specora",
+                      "recommended": false
+                    },
+                    {
+                      "text": "Specwright",
+                      "recommended": false
+                    },
+                    {
+                      "text": "Specular",
+                      "recommended": false
+                    },
+                    {
+                      "text": "Speculo",
+                      "recommended": false
+                    },
+                    {
+                      "text": "Spekta",
+                      "recommended": false
+                    },
+                    {
+                      "text": "Specto",
+                      "recommended": false
+                    }
+                  ],
+                  "chosen": "Spectant, the principal's own coinage",
+                  "landedIn": [
+                    "master § Constraints; ISC-57 (name search, release slice)"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "round-1",
+              "title": "Round 1 — before the spec",
+              "date": "2026-09-28T09:40:00Z",
+              "shapes": [],
+              "shapeChosen": null,
+              "questions": [
+                {
+                  "n": "1",
+                  "title": "Which goal does spec 001 have?",
+                  "from": null,
+                  "offered": [
+                    {
+                      "text": "install plus dashboard over two workspaces",
+                      "recommended": true
+                    },
+                    {
+                      "text": "narrower: locally built, one workspace",
+                      "recommended": false
+                    },
+                    {
+                      "text": "wider: plus a read-only review page",
+                      "recommended": false
+                    }
+                  ],
+                  "chosen": "install plus dashboard over two workspaces",
+                  "landedIn": [
+                    "§ Goal; F0 and F1 projected"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "round-2",
+              "title": "Round 2 — before the plan",
+              "date": "2026-09-28T10:55:00Z",
+              "shapes": [],
+              "shapeChosen": null,
+              "questions": [
+                {
+                  "n": "1",
+                  "title": "In which order do we build 001?",
+                  "from": null,
+                  "offered": [
+                    {
+                      "text": "end-to-end skeleton first, then parity harness, core and API, dashboard",
+                      "recommended": true
+                    },
+                    {
+                      "text": "contract first, binary and installer last",
+                      "recommended": false
+                    },
+                    {
+                      "text": "UI parity first against mock JSON",
+                      "recommended": false
+                    }
+                  ],
+                  "chosen": "end-to-end skeleton first",
+                  "landedIn": [
+                    "plan.md § Approach"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "round-3",
+              "title": "Round 3 — review before implement",
+              "date": "2026-09-28T12:00:00Z",
+              "shapes": [],
+              "shapeChosen": null,
+              "questions": [
+                {
+                  "n": "1",
+                  "title": "Pixel parity to the old dashboard or a modern surface?",
+                  "from": null,
+                  "offered": [
+                    {
+                      "text": "keep the identity, drop pixel parity",
+                      "recommended": true
+                    },
+                    {
+                      "text": "001 pixel-identical, fancy from 002",
+                      "recommended": false
+                    },
+                    {
+                      "text": "parity first, redesign later",
+                      "recommended": false
+                    }
+                  ],
+                  "chosen": "keep the identity, drop pixel parity",
+                  "landedIn": [
+                    "§ Vision",
+                    "§ Constraints",
+                    "§ Goal",
+                    "ISC-17/17.1 re-worded",
+                    "ISC-60 … ISC-67.1 added",
+                    "the threshold fog line died; a second design pass ran with full-page captures"
+                  ]
+                },
+                {
+                  "n": "2",
+                  "title": "How does a spec open (Enter in the list or the palette)?",
+                  "from": null,
+                  "offered": [
+                    {
+                      "text": "route /w/:ws/s/:id with rail inspector / side sheet / full-screen sheet",
+                      "recommended": true
+                    },
+                    {
+                      "text": "in-place row expansion via ?spec=",
+                      "recommended": false
+                    },
+                    {
+                      "text": "route at wide, expansion at compact",
+                      "recommended": false
+                    }
+                  ],
+                  "chosen": "route with inspector / sheet",
+                  "landedIn": [
+                    "design.md § Routes and state; Decisions"
+                  ]
+                },
+                {
+                  "n": "3",
+                  "title": "Where does \"Next up\" live, and does the TL;DR bar stay?",
+                  "from": null,
+                  "offered": [
+                    {
+                      "text": "own surface plus stage and command in every row, TL;DR kept as a collapsed Brief",
+                      "recommended": true
+                    },
+                    {
+                      "text": "only in the rows, TL;DR dropped",
+                      "recommended": false
+                    },
+                    {
+                      "text": "only an own surface",
+                      "recommended": false
+                    }
+                  ],
+                  "chosen": "own surface plus rows, Brief kept",
+                  "landedIn": [
+                    "design.md § Section disposition"
+                  ]
+                },
+                {
+                  "n": "4",
+                  "title": "Minimum width of a workspace column in the overview?",
+                  "from": null,
+                  "offered": [
+                    {
+                      "text": "360 px capped at three columns",
+                      "recommended": true
+                    },
+                    {
+                      "text": "560 px",
+                      "recommended": false
+                    }
+                  ],
+                  "chosen": "360 px, three columns max",
+                  "landedIn": [
+                    "design.md § Grid rules; ISC-16.1 states"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "round-4",
+              "title": "Round 4 — build",
+              "date": "2026-09-28",
+              "shapes": [],
+              "shapeChosen": null,
+              "questions": []
+            }
+          ]
+        }
       }
     }
   }

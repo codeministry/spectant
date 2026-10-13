@@ -11,26 +11,26 @@ dfn {
   font-style: normal;
   text-decoration: underline dotted var(--muted-ink);
   text-decoration-thickness: 1px;
-  text-underline-offset: 4px;
+  text-underline-offset: 3px;
   cursor: help;
 }
 
 .hint {
   position: fixed;
   inset: auto;
-  max-inline-size: min(280px, calc(100vw - 16px));
+  inline-size: min(280px, calc(100vw - 16px));
   margin: 0;
-  padding: 4px 8px;
+  padding: 12px 14px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-field);
+  border-radius: var(--radius-box);
   background: var(--color-base-100);
   color: var(--color-base-content);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-hair);
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-style: normal;
-  font-weight: 500;
-  line-height: 16px;
+  font-weight: 400;
+  line-height: 20px;
   text-align: start;
   text-transform: none;
   letter-spacing: normal;
@@ -70,12 +70,27 @@ dfn {
   }
 }
 
-@media (forced-colors: active) {
-  dfn {
-    text-decoration-color: CanvasText;
-  }
-
-  .hint {
-    border-color: CanvasText;
-  }
+/* Guide mode (prototype `.term-pop p` + `.open-link`): the hint, 8 px, then the cyan link to the glossary row. */
+.hint-text {
+  display: block;
 }
+
+.open-link {
+  display: inline-block;
+  margin-block-start: 8px;
+  color: var(--disp-text);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.open-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.open-link:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+

@@ -19,6 +19,20 @@
   min-inline-size: 0;
 }
 
+/* Prototype `h1 span`: the muted "· <ws>" beside the h1, outside it (as on Features). */
+.ws-suffix {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--muted-ink);
+  font: 600 24px/32px var(--font-brand);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:host([data-tier='compact']) .ws-suffix {
+  display: none;
+}
+
 .page-mark {
   flex: none;
 }

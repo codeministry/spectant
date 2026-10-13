@@ -97,7 +97,6 @@ h1 {
 .n,
 .id,
 .fraction,
-.ids,
 .t-count,
 .num,
 .fid {
@@ -466,15 +465,36 @@ details.unheld[open] .chevron {
   rotate: 180deg;
 }
 
-.ids {
-  max-inline-size: 32ch;
-  margin: 6px 0 0;
-  color: var(--disp-ink);
-  font-size: 12px;
-  line-height: 18px;
-  white-space: normal;
-  overflow-wrap: anywhere;
+/* Prototype `.claim-line`: 16 px glyph | 64 px ISC id (mono 12, cyan-text) | text 13/20, indented to the title. */
+.claim-lines {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0 0 0 60px;
+  list-style: none;
 }
+
+.claim-line {
+  display: grid;
+  grid-template-columns: 16px 64px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.claim-line ui-icon {
+  margin-block-start: 3px;
+  color: var(--muted-ink);
+}
+
+.cid {
+  color: var(--disp-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
 
 @media (pointer: coarse) {
   details.unheld summary {

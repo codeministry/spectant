@@ -7,128 +7,206 @@ app-evidence-tab {
 
 app-evidence-tab .evidence-groups {
   display: grid;
-  gap: 16px;
+  gap: 24px;
 }
 
-app-evidence-tab .evidence-group {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-box);
-  background: var(--color-base-100);
-}
-
-app-evidence-tab .evidence-summary {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  min-block-size: 48px;
-}
-
-app-evidence-tab .evidence-claim {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-app-evidence-tab .evidence-count,
-app-evidence-tab .evidence-muted,
-app-evidence-tab .evidence-size {
+app-evidence-tab .evidence-muted {
   color: var(--muted-ink);
   font-size: 12px;
 }
 
-app-evidence-tab .evidence-content {
+/* Prototype `[data-ui="evidence-group"]`: a 15 px brand heading with the folder in mono beside it. */
+app-evidence-tab .ev-group {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
-app-evidence-tab .evidence-thumbs,
-app-evidence-tab .evidence-rows {
-  display: grid;
+app-evidence-tab .ev-group h3 {
+  display: flex;
   gap: 8px;
+  align-items: baseline;
+  margin: 0;
+  font: 600 15px/24px var(--font-brand);
+}
+
+app-evidence-tab .ev-folder {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+app-evidence-tab .ev-grid,
+app-evidence-tab .ev-rows {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* Compact: two ~171 px squares across; wider tiers auto-fill (design.md, Tablet 180 px, Desktop 200 px). */
-app-evidence-tab .evidence-thumbs {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+/* Prototype `.ev-grid` / `.ev-card`: cards of at least 220 px, 14 px padding, the image well 130 px high. */
+app-evidence-tab .ev-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
 
-app-evidence-tab .evidence-thumb {
+app-evidence-tab .ev-card {
   display: grid;
-  gap: 4px;
+  align-content: start;
+  justify-items: start;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--color-base-100);
+}
+
+app-evidence-tab .ev-open {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
   inline-size: 100%;
+  min-inline-size: 0;
   padding: 0;
   border: 0;
   background: none;
   color: inherit;
-  text-align: start;
-  cursor: zoom-in;
-}
-
-app-evidence-tab .evidence-thumb img {
-  inline-size: 100%;
-  aspect-ratio: 1;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-field);
-  background: var(--lane);
-  object-fit: contain;
-}
-
-app-evidence-tab .evidence-row {
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-  inline-size: 100%;
-  min-block-size: 56px;
-  padding: 8px;
-  border: 0;
-  border-radius: var(--radius-field);
-  background: none;
-  color: inherit;
+  font: inherit;
   text-align: start;
   text-decoration: none;
   cursor: pointer;
 }
 
-app-evidence-tab button.evidence-row:hover,
-app-evidence-tab a.evidence-row:hover {
-  background: var(--hover-t);
+app-evidence-tab .ev-open[data-thumb] {
+  cursor: zoom-in;
 }
 
-app-evidence-tab .evidence-row[aria-busy='true'] {
+app-evidence-tab .ev-open[aria-busy='true'] {
   cursor: progress;
 }
 
-app-evidence-tab .evidence-name {
+app-evidence-tab .ev-icon {
+  color: var(--muted-ink);
+}
+
+app-evidence-tab .ev-image {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  block-size: 130px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--lane);
+}
+
+app-evidence-tab .ev-image img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+
+app-evidence-tab .ev-name {
+  min-inline-size: 0;
+  color: var(--color-base-content);
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 20px;
   overflow-wrap: anywhere;
 }
 
-app-evidence-tab .evidence-error {
+app-evidence-tab .ev-meta {
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+app-evidence-tab .ev-claim {
+  display: inline-flex;
+  min-block-size: 24px;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+
+/* Prototype `.raw-row` inside one card: 34 px icon column, the name, the claim chip; 10 × 16 px, ruled. */
+app-evidence-tab .ev-rows {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--color-base-100);
+}
+
+app-evidence-tab .raw-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 16px;
+  border-block-end: 1px solid var(--line);
+}
+
+app-evidence-tab .raw-row:last-child {
+  border-block-end: 0;
+}
+
+app-evidence-tab .raw-row .ev-open {
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+app-evidence-tab .raw-row .ev-icon {
+  justify-self: center;
+}
+
+app-evidence-tab .raw-row .ev-image {
+  inline-size: 34px;
+  block-size: 34px;
+}
+
+app-evidence-tab .raw-row .ev-meta {
+  display: none;
+}
+
+app-evidence-tab .raw-row .ev-error .ev-meta {
+  display: inline;
+  grid-column: 2;
+}
+
+app-evidence-tab .ev-error {
+  padding: 8px;
+  border-radius: var(--radius-sm);
   background: var(--fail-t);
   color: var(--fail-ink);
   cursor: default;
 }
 
-app-evidence-tab .evidence-reason {
-  font-size: 12px;
+app-evidence-tab .ev-error .ev-name {
+  color: inherit;
+}
+
+app-evidence-tab .ev-reason {
+  color: inherit;
   font-weight: 600;
 }
 
-/* The preview: full screen, the content fitted to width in one readable column. */
+/* Prototype `.ev-card:hover, .raw-row:hover`: the raised surface. */
+app-evidence-tab .ev-card:has(.ev-open:hover),
+app-evidence-tab .raw-row:has(.ev-open:hover) {
+  background: var(--color-base-300);
+}
+
+/* Prototype `#dlg-ev.wide-dlg`: a centred card up to 860 px, 24 px padding, the head with a mono title. */
 app-evidence-tab .evidence-preview {
-  inline-size: 100%;
+  inline-size: min(860px, calc(100vw - 32px));
   max-inline-size: none;
-  block-size: 100dvh;
-  max-block-size: none;
-  margin: 0;
-  padding: 0;
-  border: 0;
+  max-block-size: calc(100dvh - 32px);
+  margin: auto;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
   background: var(--color-base-100);
   color: var(--color-base-content);
 }
@@ -136,6 +214,7 @@ app-evidence-tab .evidence-preview {
 app-evidence-tab .evidence-preview[open] {
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
 app-evidence-tab .evidence-preview::backdrop {
@@ -147,16 +226,14 @@ app-evidence-tab .evidence-preview-head {
   gap: 16px;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
-  border-block-end: 1px solid var(--line);
 }
 
 app-evidence-tab .evidence-preview-path {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
-  line-height: 20px;
+  line-height: 24px;
   overflow-wrap: anywhere;
 }
 
@@ -168,19 +245,34 @@ app-evidence-tab .evidence-preview-close {
 
 app-evidence-tab .evidence-preview-body {
   flex: 1;
+  min-block-size: 0;
   inline-size: 100%;
-  max-inline-size: 960px;
-  margin-inline: auto;
-  padding: 16px;
   overflow: auto;
 }
 
-app-evidence-tab .evidence-preview-body img {
+/* Prototype `.ev-preview`: the image centred, at most 68 dvh, ruled, with its caption below. */
+app-evidence-tab .ev-preview {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  margin: 0;
+}
+
+app-evidence-tab .ev-preview img {
   display: block;
   max-inline-size: 100%;
+  max-block-size: min(68dvh, 760px);
+  inline-size: auto;
   block-size: auto;
-  margin-inline: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   background: var(--lane);
+}
+
+app-evidence-tab .ev-preview figcaption {
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
 }
 
 app-evidence-tab .evidence-text {
@@ -229,18 +321,6 @@ app-evidence-tab .evidence-prose pre {
   border-radius: var(--radius-field);
   background: var(--lane);
   overflow-x: auto;
-}
-
-@container shell (width >= 640px) {
-  app-evidence-tab .evidence-thumbs {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  }
-}
-
-@container shell (width >= 1120px) {
-  app-evidence-tab .evidence-thumbs {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  }
 }
 
 /* Prototype `.open-link` under the empty state: "What counts as evidence →". */

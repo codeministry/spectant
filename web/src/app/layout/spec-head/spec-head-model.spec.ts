@@ -80,7 +80,7 @@ describe('featurePlace (ISC-105)', () => {
     why: null,
     closed: 0,
     total: claims.length,
-    claims: claims.map((claim) => ({ id: claim, closed: false, dropped: false, holder: holders[0]?.id ?? null })),
+    claims: claims.map((claim) => ({ id: claim, text: '', closed: false, dropped: false, holder: holders[0]?.id ?? null })),
     holders,
     unheld: [],
   });

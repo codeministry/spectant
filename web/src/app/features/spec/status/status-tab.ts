@@ -11,8 +11,9 @@ import { ShellState } from '../../../layout/shell/shell-state.service';
 import { GateButton } from '../../../layout/spec-head/gate-button';
 import { type GateAction, gateAction, pathSegments } from '../../../layout/spec-head/spec-head-model';
 import { UiIcon } from '../../../shared/icons/icon';
-import { UiEmptyState } from '../../../shared/ui/empty-state/empty-state';
+import { UiButton } from '../../../shared/ui/button/button';
 import { UiMeter } from '../../../shared/ui/meter/meter';
+import { UiNotice } from '../../../shared/ui/notice/notice';
 import { UiRing } from '../../../shared/ui/ring/ring';
 import { UiSectionHeader } from '../../../shared/ui/section-header/section-header';
 import { UiSkeleton } from '../../../shared/ui/skeleton/skeleton';
@@ -45,6 +46,8 @@ const OPEN_ORDER: readonly string[] = ['takeable', 'taken', 'blocked', 'open'];
 @Component({
   selector: 'app-status-tab',
   imports: [
+    UiButton,
+    UiNotice,
     AreaPlaceholder,
     Brief,
     GateButton,
@@ -52,7 +55,6 @@ const OPEN_ORDER: readonly string[] = ['takeable', 'taken', 'blocked', 'open'];
     RouterLink,
     StatusBlock,
     TranslocoPipe,
-    UiEmptyState,
     UiIcon,
     UiMeter,
     UiRing,

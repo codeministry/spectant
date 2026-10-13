@@ -4,6 +4,7 @@ import type { ClaimGlyphState } from '../../../../../core/src/files';
 import { KeyboardService } from '../../core/keyboard.service';
 import { LanguageService } from '../../core/language.service';
 import { PALETTE_SOURCES, type PaletteEntry, type PaletteSource } from '../../core/palette-sources';
+import { AssistantDot } from '../assistant/assistant.service';
 import { SettingsService } from '../../core/settings.service';
 import { ThemeService } from '../../core/theme.service';
 import { writeClipboard } from '../../shared/ui/command-chip/command-chip';
@@ -25,6 +26,8 @@ import { PaletteRecent } from './palette-recent';
  */
 export interface PaletteCommandEntry extends PaletteEntry {
   readonly run: () => void;
+  /** The action drives a `DemoData` mock (spec 024): the row carries the demo chip. */
+  readonly demo?: true;
 }
 
 export const isCommand = (entry: PaletteEntry): entry is PaletteCommandEntry =>
@@ -293,6 +296,7 @@ function servicesSource(): PaletteSource {
 
 function actionsSource(): PaletteSource {
   const t = translator();
+  const assistant = inject(AssistantDot);
   const index = inject(PaletteIndex);
   const state = inject(ShellState);
   const keyboard = inject(KeyboardService);
@@ -373,6 +377,16 @@ function actionsSource(): PaletteSource {
           run: () => {
             // Stored like the settings page's choice; `startSettings` applies it to Transloco.
             void settings.update({ language: language.current() === 'en' ? 'de' : 'en' });
+          },
+        } satisfies PaletteCommandEntry,
+        {
+          id: 'action/open-assistant',
+          label: t('palette.actions.openAssistant'),
+          link: url,
+          keywords: ['assistant', 'chat', 'dot', 'ask'],
+          demo: true,
+          run: () => {
+            assistant.show(null);
           },
         } satisfies PaletteCommandEntry,
         {

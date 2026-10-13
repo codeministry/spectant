@@ -44,7 +44,7 @@ import { docsFor, renderDocsMarkdown } from "../../core/src/markdown-docs.ts";
 import { type SpecRef, resolveSpec } from "../../core/src/resolve.ts";
 import { buildSpecPage } from "../../core/src/spec.ts";
 import { parseTaskLines } from "../../core/src/tasks.ts";
-import { buildTimeline } from "../../core/src/timeline.ts";
+import { buildTimeline, type TimelineNote, type TimelineSession } from "../../core/src/timeline.ts";
 import { json } from "./api.ts";
 import { writeTaskCheck } from "./checkbox-route.ts";
 import { evidenceFileResponse } from "./evidence.ts";
@@ -52,6 +52,7 @@ import { writeGateReviewed } from "./gate-route.ts";
 import { CommitCache, type CommitsResult, commitsFor } from "./git.ts";
 import type { ApiHandler } from "./http.ts";
 import type { LifeosDetection } from "./lifeos.ts";
+import type { NoteStore } from "./notes.ts";
 import type { Registry, Workspace } from "./registry.ts";
 import { isLoopbackHost, isLoopbackOrigin } from "./settings.ts";
 import {
@@ -93,6 +94,11 @@ export type SpecRoutesOptions = {
    * per `specRoutesApi` by default.
    */
   commitCache?: CommitCache;
+  /**
+   * The app's notes store (read only here): the timeline joins the spec's notes as `note` entries (spec 024). Absent,
+   * the timeline carries no note.
+   */
+  notes?: Pick<NoteStore, "list">;
 };
 
 /** Any path under `/api/workspaces/:ws/specs`: the spec routes own it, so an unknown tab is their 404, not the server's. */
@@ -184,7 +190,9 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
       return json(req, 404, missing);
     }
     // Existence only, confined to the workspace; the Design tab loads `.design/` through the evidence file route.
-    const page = renderDocsMarkdown(text, docsRenderOptions(root, path, name));
+    // The Decisions tab's goal card shows spec.md's signal (spec 024); the docs model keeps it only as 1–4.
+    const goalSignal = name === "decisions" ? parseFrontmatter(files.texts.spec ?? "").data.principalStatedGoalSignal : null;
+    const page = renderDocsMarkdown(text, { ...docsRenderOptions(root, path, name), goalSignal });
     return json(req, 200, page);
   }
 
@@ -203,7 +211,12 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
     switch (match.route) {
       case "timeline": {
         const { commits, head } = await commitsOf(root, ref);
-        const timeline = buildTimeline({ files, commits });
+        // The joins the files do not hold (spec 024): the spec's notes, and the sessions holding one of its claims.
+        const notes: TimelineNote[] = (options.notes?.list(workspace.slug, { spec: ref.id }) ?? []).map((n) => ({ id: n.id, title: n.title, body: n.body, created: n.created }));
+        const sessions: TimelineSession[] = buildClaimViews({ files, locks: await locksOf(root, clock()) }).claims.flatMap((c) =>
+          c.lock === null ? [] : [{ claim: c.id, session: c.lock.session, since: c.lock.since }],
+        );
+        const timeline = buildTimeline({ files, commits, notes, sessions });
         // With a HEAD the ETag covers it too, so a new commit revalidates even where the body would not change; without
         // one (no repository of its own) it is the plain body hash of every other route.
         return json(req, 200, timeline, head === null ? {} : { ETag: timelineEtag(timeline, head) });

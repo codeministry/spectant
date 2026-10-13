@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { ShellState } from '../../layout/shell/shell-state.service';
 import { DemoData, type DemoWorkspaceRow } from '../../shared/demo/demo-data';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiButton } from '../../shared/ui/button/button';
@@ -54,12 +55,31 @@ const ACCENTS: ReadonlyArray<{ readonly color: string; readonly text: string }> 
   styleUrl: './settings-workspaces-page.css',
 })
 export class SettingsWorkspacesPage {
-  protected readonly rows = inject(DemoData).workspaces;
+  private readonly demo = inject(DemoData);
+  protected readonly rows = this.demo.workspaces;
+  /** Below 640 the add action is the floating button (prototype `.fab.only-compact`). */
+  private readonly shell = inject(ShellState);
+  protected readonly compact = computed(() => this.shell.tier() === 'compact');
   protected readonly count = computed(() => this.rows().length);
 
   /** What the add row's path and name fields hold; local to the page, never stored. */
   protected readonly path = signal('');
   protected readonly name = signal('');
+  /** The path completion (prototype `.path-pop`): open while the field has focus, the highlighted option or -1. */
+  readonly popOpen = signal(false);
+  protected readonly sel = signal(-1);
+  /** Up to six demo folders under the typed segment, other than the typed path itself (prototype `complete()`). */
+  protected readonly completions = computed(() => {
+    const value = this.path();
+    const head = value.slice(0, value.lastIndexOf('/') + 1);
+    return this.demo
+      .folders()
+      .filter((folder) => folder.startsWith(head) && folder !== value)
+      .slice(0, 6)
+      .map((folder) => ({ path: folder, head, tail: folder.slice(head.length) }));
+  });
+  protected readonly popShown = computed(() => this.popOpen() && this.completions().length > 0);
+
   /** Set once Add was pressed: the check line says the mock adds nothing. */
   protected readonly tried = signal(false);
 
@@ -85,9 +105,36 @@ export class SettingsWorkspacesPage {
   /** The path field fills an empty name with the path's last segment, as the prototype does. */
   protected setPath(value: string): void {
     this.path.set(value);
+    this.sel.set(-1);
     this.tried.set(false);
     const tail = value.split('/').filter(Boolean).pop() ?? '';
     this.name.set(tail);
+  }
+
+  /** ↓ ↑ move through the completions, Enter takes the highlighted one or adds, Esc closes the list. */
+  protected onPathKey(event: KeyboardEvent): void {
+    const count = this.completions().length;
+    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && count > 0) {
+      event.preventDefault();
+      this.popOpen.set(true);
+      this.sel.update((sel) => (sel + (event.key === 'ArrowDown' ? 1 : -1) + count + (sel < 0 && event.key === 'ArrowUp' ? 1 : 0)) % count);
+    } else if (event.key === 'Enter') {
+      const item = this.popShown() ? this.completions()[this.sel()] : undefined;
+      if (item) {
+        event.preventDefault();
+        this.pick(item.path);
+      } else this.add();
+    } else if (event.key === 'Escape' && this.popShown()) {
+      event.preventDefault();
+      this.popOpen.set(false);
+    }
+  }
+
+  /** A completion taken: the path and the name follow it, the list shows what lies below it. */
+  protected pick(folder: string): void {
+    this.setPath(folder);
+    this.sel.set(-1);
+    this.popOpen.set(true);
   }
 
   /** The mock's Add: it says it added nothing, and the rows stay as they are. */

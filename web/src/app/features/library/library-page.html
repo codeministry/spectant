@@ -14,6 +14,18 @@
   <ui-chip variant="demo" />
 </div>
 
+@if (all().length === 0) {
+  <!-- Prototype `library.html?ws=…`: a workspace without curated documents, the empty state with the next command. -->
+  <ui-card class="lib-card lib-none" data-library-none>
+    <ui-empty-state
+      icon="book"
+      [heading]="'library.none.heading' | transloco: { ws: ws() }"
+      [body]="'library.none.body' | transloco"
+    >
+      <ui-command-chip command="/spec-plan" [copyLabel]="'common.copyCommand' | transloco" />
+    </ui-empty-state>
+  </ui-card>
+} @else {
 <ui-card class="lib-card" [padding]="0">
   <div class="lib-grid">
     @if (wide() || !current()) {
@@ -205,3 +217,4 @@
     }
   </div>
 </ui-card>
+}

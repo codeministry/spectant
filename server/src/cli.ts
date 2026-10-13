@@ -225,13 +225,14 @@ function serveUntilSignal(manifest: EmbeddedManifest, command: Command & { kind:
   try {
     const lifeos = detectLifeos(options.env ?? process.env);
     // One commit cache for the process (T46): the timeline and the spec page skip `git log` while HEAD is unchanged.
-    const specs = specRoutesApi({ registry, lifeos, commitCache: new CommitCache() });
+    const notes = openNotes(db);
+    const specs = specRoutesApi({ registry, lifeos, commitCache: new CommitCache(), notes });
     const api = composeApi(
       settingsApi(openSettings(db)),
       actorsApi(db),
       lifeosApi(lifeos),
       dashboardApi({ registry, lifeos, db }),
-      notesApi({ store: openNotes(db), registry }),
+      notesApi({ store: notes, registry }),
       specs,
     );
     server = serveWithFallback({ manifest, port: command.port, strict: command.strictPort, api });

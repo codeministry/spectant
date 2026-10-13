@@ -23,6 +23,7 @@
   --motion-duration-slow: var(--dur-morph); /* prototype --dur-morph */
   --motion-duration-highlight: var(--dur-tint); /* prototype --dur-tint */
   --motion-duration-skeleton: 1600ms; /* skeleton sweep, one pass (the prototype has no skeleton) */
+  --motion-duration-pulse: 1600ms; /* prototype `.pulse-mk`: a running marker's ring, one beat */
   --motion-ease-standard: var(--ease); /* prototype --ease */
   --motion-ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1); /* entries: palette, dialog, sheet, popover in */
   --motion-ease-exit: cubic-bezier(0.3, 0, 1, 1); /* exits: dialog, sheet, popover out */
@@ -51,6 +52,7 @@
     --motion-duration-slow: 0ms;
     --motion-duration-highlight: 0ms;
     --motion-duration-skeleton: 0ms;
+    --motion-duration-pulse: 0ms;
   }
 
   *,
