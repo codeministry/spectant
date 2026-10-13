@@ -593,6 +593,8 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
         uncommittedFiles: "req",
         // spec 008: optional until their fill-ins (T39, T47, T65) set them.
         priority: "opt", stageSource: "opt", assignee: "opt",
+        // spec 027: the spec's worktree, its read source and the main copy's stage and progress (ISC-175, ISC-181)
+        worktree: "opt", source: "opt", main: "opt",
       })),
       ...shapeProblems("spec.keyNumbers", value.keyNumbers, keysOf<KeyNumbers>({
         claims: "req", tasks: "req", rounds: "req", gates: "req", waiting: "req",

@@ -2,16 +2,19 @@
 // that could write (ISC-15). `core/` runs no subprocess; the server reads here and passes the records in.
 //
 // Read-only by construction: only `rev-parse`, `log`, `config --get` (the identity, `userEmail`) and `for-each-ref`
-// (the branch names, `takenSpecNumbers`) and `worktree list --porcelain` (the worktrees, `worktreeList`) run, all of which
-// never touch the index, never take a lock and never write an object; `GIT_OPTIONAL_LOCKS=0` covers any optional lock
-// a future git might take. The inherited
+// (the branch names, `takenSpecNumbers`) and `worktree list --porcelain` (the worktrees, `worktreeList`) and
+// `rev-list --count` (a branch's distance to `main`, `aheadOfMain`) run, all of which never touch the index, never take
+// a lock and never write an object, plus `status --porcelain` (a worktree's uncommitted changes, `dirty`), which reads
+// the index and would write a refreshed one back under an optional lock: `GIT_OPTIONAL_LOCKS=0` turns that write off,
+// as it covers any optional lock a future git might take, and `core.fsmonitor=false` keeps status from starting a
+// monitor daemon that would leave its socket in `.git/`. No command fetches or reaches the network. The inherited
 // `GIT_DIR`, `GIT_WORK_TREE` and `GIT_INDEX_FILE` are dropped so the environment cannot redirect the read, pathspecs
 // are literal, and discovery stops at the root: a directory without its own `.git` is not read, even inside a repository.
 //
 // Bounded: at most `limit` commits, one deadline for the whole call (the child is killed, the call answers `none`),
 // and a cache keyed by root and folder that skips `git log` while `HEAD` is unchanged.
 import { lstatSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import { specNumbersOf } from "../../core/src/allocate.ts";
 import type { CommitRecord } from "../../core/src/files.ts";
 
@@ -352,6 +355,67 @@ export async function worktreeList(root: string, options: UserEmailOptions = {})
     return run?.code === 0 && !signal.aborted ? run.stdout : "";
   });
 }
+
+/**
+ * How many commits `branch` holds that `main` does not, read in the worktree at `worktreePath` (absolute) with
+ * `rev-list --count main..<branch> --`: the worktree chip's distance to `main` (spec 027, T17, ISC-175). The base is
+ * the local `main` by name, as ISC-175 names it; a repository without one answers null, so its chip shows no count.
+ * `rev-list` reads refs and objects only: no index, no lock, no fetch, no network; the trailing `--` keeps a file of
+ * the branch's name from turning the range into a pathspec.
+ * Never throws: a detached worktree (`branch` null), a name that is no plain branch name (revision syntax, an option,
+ * whitespace), a relative path and a path without its `.git` (the worktree is gone) answer null without spawning git;
+ * no git, a non-zero exit (an unknown branch, a pruned gitdir), an output that is no count and the deadline answer null.
+ */
+export async function aheadOfMain(worktreePath: string, branch: string | null, options: UserEmailOptions = {}): Promise<number | null> {
+  if (branch === null || !isPlainBranchName(branch) || !hasOwnGit(worktreePath)) return null;
+  const runner = options.runner ?? defaultGitRunner;
+  return readWithin<number | null>(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, null, async (signal) => {
+    const run = await runner(["-C", worktreePath, "rev-list", "--count", `main..${branch}`, "--"], gitEnv(worktreePath), signal);
+    if (run?.code !== 0 || signal.aborted) return null;
+    const count = run.stdout.trim();
+    return /^\d+$/.test(count) ? Number(count) : null;
+  });
+}
+
+/**
+ * Whether the worktree at `worktreePath` (absolute) has uncommitted changes, read with `status --porcelain`: true when
+ * git lists any change, a modified tracked file or an untracked one, false when it lists none (spec 027, T17,
+ * ISC-175). Untracked files are read in git's `normal` mode, set explicitly so a `status.showUntrackedFiles` of `all`
+ * in the user's config cannot make the read walk every untracked directory and one of `no` cannot hide a new file;
+ * never `--untracked-files=all`. `GIT_OPTIONAL_LOCKS=0` keeps status from writing the refreshed index back, and
+ * `core.fsmonitor=false` from starting a monitor daemon. No cache: the index's mtime does not move when a file in the
+ * tree is edited, so a cache keyed on it would keep answering false for a worktree an agent is writing in.
+ * Never throws: a relative path or a path without its `.git` (the worktree is gone) answer null without spawning git;
+ * no git, a non-zero exit (a pruned gitdir) and the deadline answer null.
+ */
+export async function dirty(worktreePath: string, options: UserEmailOptions = {}): Promise<boolean | null> {
+  if (!hasOwnGit(worktreePath)) return null;
+  const runner = options.runner ?? defaultGitRunner;
+  return readWithin<boolean | null>(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, null, async (signal) => {
+    const args = ["-C", worktreePath, "-c", "core.fsmonitor=false", "status", "--porcelain", "--untracked-files=normal"];
+    const run = await runner(args, gitEnv(worktreePath), signal);
+    // A failed or killed status may have printed part of a listing; only a complete one answers.
+    if (run?.code !== 0 || signal.aborted) return null;
+    return run.stdout.trim() !== "";
+  });
+}
+
+/** An absolute path with its own `.git` (a linked worktree's is a file): the root rule of the worktree reads. */
+function hasOwnGit(path: string): boolean {
+  if (!isAbsolute(path)) return false;
+  try {
+    lstatSync(join(path, ".git"));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Revision syntax, whitespace and control characters: what a plain branch name never holds (git-check-ref-format). */
+const NOT_IN_BRANCH = /\.\.|@\{|[\s~^:?*[\\]|\p{Cc}/u;
+
+/** A name git could take as one branch and nothing else: not empty, no option, no revision syntax. */
+const isPlainBranchName = (name: string): boolean => name !== "" && !name.startsWith("-") && !NOT_IN_BRANCH.test(name);
 
 /**
  * `read` under one deadline: `fallback` when the deadline passes first (the signal aborts, which kills the child) or

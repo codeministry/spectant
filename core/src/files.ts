@@ -15,7 +15,9 @@
 // per kind below, and scripts/check-format-doc.ts (T3) compares the two.
 
 import type { Diagnostic } from './diagnostics.ts';
+import type { Progress } from './frontmatter.ts';
 import type { Stage } from './stage.ts';
+import type { WorktreeAssignment } from './worktrees.ts';
 
 // ─── File kinds ──────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -332,6 +334,15 @@ export interface SpecHead {
    * `assignee.ts`), null when unassigned. `spec.ts` always sets it; the type keeps it optional, as `priority`.
    */
   readonly assignee?: ActorRef | null;
+  /**
+   * The spec's worktree, the dashboard row's `worktree` (spec 027, T12, ISC-175): the chip's branch, `ahead` and
+   * `dirty`; null without one, and then no chip. `spec.ts` always sets it, as the two below; the type keeps them optional.
+   */
+  readonly worktree?: Worktree | null;
+  /** Where the spec's files were read, the row's `source` (ISC-181): `main` unless its tracked copy in the worktree. */
+  readonly source?: SpecSource;
+  /** The main checkout's stage and progress when `source` is `worktree`, the row's `main`; null otherwise. */
+  readonly main?: MainCopy | null;
 }
 
 /** Where the idea quote came from: the first sentence of `## Goal`, or frontmatter `task:`. */
@@ -490,8 +501,15 @@ export interface SpecPageInput {
   readonly others?: readonly SpecFiles[];
   /** `specs/tldr.md`; absent or null when the workspace has none. */
   readonly tldr?: string | null;
-  /** The worktree tree id for the code-reviewed mark, as the dashboard gets it; absent or null when not computed. */
+  /**
+   * The main checkout's tree id for the code-reviewed mark, as the dashboard gets it; absent or null when not computed.
+   * `read.tree`, the tree of the spec's own worktree, takes its place when given (spec 027, ISC-176).
+   */
   readonly worktreeTree?: string | null;
+  /** The workspace's worktrees as `assignWorktrees` assigned them, `ahead` and `dirty` read; absent means none (spec 027). */
+  readonly worktrees?: WorktreeAssignment;
+  /** How the server read this spec: its worktree's tree id, its read source and the main copy (spec 027); absent, none. */
+  readonly read?: SpecRead;
   /** Commits touching the spec folder, for the Status tile's timeline count; absent means none were read. */
   readonly commits?: readonly CommitRecord[];
   /** `specs/workflow.md` as read, as the dashboard gets it (row 7, the explicit stage); absent, the default table. */
@@ -532,6 +550,37 @@ export interface Worktree {
  * symlinked `specs/` included (ISC-181.1).
  */
 export type SpecSource = 'main' | 'worktree';
+
+/**
+ * How the server read one spec, beside its files (spec 027, T12): the facts only git has, handed to the dashboard per
+ * spec folder (`DashboardInput.perSpec`) and to the spec page (`SpecPageInput.read`). Every field is optional; an
+ * absent one keeps what a spec without a worktree has.
+ */
+export interface SpecRead {
+  /**
+   * The tree id for the code-reviewed mark, computed in the spec's worktree when it has one (ISC-176); null when it
+   * could not be computed. Absent: the workspace's own `worktreeTree`, the main checkout's, as before spec 027.
+   */
+  readonly tree?: string | null;
+  /** Where the spec's files were read (`specSourceOf`, ISC-181); absent means `main`. */
+  readonly source?: SpecSource;
+  /**
+   * The main checkout's copy of the spec folder when `source` is `worktree`: its stage and claim progress go beside the
+   * worktree copy's as `main` (the head's source note, design 027 § B). Ignored when `source` is `main`.
+   */
+  readonly main?: SpecFiles;
+}
+
+/**
+ * The main checkout's stage and claim progress of a spec whose files are read from its worktree's copy (spec 027,
+ * ISC-181): "read from the worktree · main: ‹stage› · n/m". Computed by `core/` from `SpecRead.main` with the main
+ * checkout's tree, never by the server.
+ */
+export interface MainCopy {
+  readonly stage: Stage;
+  /** Live claims, closed over total, as the row's `progress`. */
+  readonly progress: Progress;
+}
 
 // ─── Timeline (timeline.ts, derived-stages.ts, events.ts) ────────────────────────────────────────────────────────
 

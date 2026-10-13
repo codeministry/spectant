@@ -21,14 +21,29 @@
 // `git ls-files -z -- specs/NNN-slug` printed in the main checkout, and returns `worktree` only when the worktree is a
 // spec worktree of that spec and one listed path lies under `specs/NNN-slug/`; `main` otherwise. The worktrees come
 // from the listings above, so the source is decided on what `assignWorktrees` really builds. `-t source` runs ISC-181's
-// core part, `-t untracked` the pure part of ISC-181.1 (an untracked or symlinked `specs/` keeps `main`).
+// core part, `-t untracked` ISC-181.1 (an untracked or symlinked `specs/` keeps `main`).
+//
+// `symlink-specs.porcelain` is this repository's own layout: `specs/` untracked in the main checkout, and every spec
+// worktree `.worktrees/NNN-slug` holding `specs` as a symbolic link to it. Its sidecar `symlink-specs.ls-files` is what
+// `git ls-files -z -- specs/NNN-slug` prints in that main checkout, verbatim; git lists tracked paths only, so the
+// answer is empty for every spec folder. The anti-claim's second half reads the harbor fixture tree, which has no
+// tracked `specs/` either, with one spec worktree per spec: every spec keeps `main`, and the dashboard, spec and live
+// families built from what the source picks are byte-identical to the committed goldens (`fixtures.test.ts`,
+// `golden.test.ts`), compared without ever rewriting one. `buildDashboard` takes no worktrees yet; once it does (T12,
+// T19), the same assertion moves onto that input.
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join, relative, sep } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 
-import { FILE_KINDS, type Worktree } from '../src/files.ts';
+import { buildDashboard, type DashboardInput } from '../src/dashboard.ts';
+import { FILE_KINDS, type SpecFiles, type Worktree } from '../src/files.ts';
+import { buildLiveFrame } from '../src/live.ts';
+import { readLockSources } from '../src/locks.ts';
+import { listSpecs } from '../src/resolve.ts';
+import { buildSpecPage } from '../src/spec.ts';
 import { assignWorktrees, specSourceOf, WORKTREE_COPY_KINDS } from '../src/worktrees.ts';
-import { goldenText } from './helpers/golden.ts';
+import { DASHBOARD_FAMILY, goldenMismatch, goldenPath, goldenText } from './helpers/golden.ts';
+import { FIXTURES, readTreeAt } from './helpers/read-tree.ts';
 
 const DIR = join(import.meta.dir, '..', 'fixtures', 'worktrees');
 
@@ -63,8 +78,8 @@ const recordPaths = (text: string): string[] =>
     .map((line) => line.slice('worktree '.length));
 
 describe('assign: worktrees from git worktree list --porcelain to the specs of the workspace (ISC-174)', () => {
-  test('the fixture holds the three listings: spec worktrees, a path-branch conflict, builders', () => {
-    expect(LISTINGS).toEqual(['builders', 'conflict', 'spec-worktrees']);
+  test('the fixture holds the four listings: spec worktrees, a path-branch conflict, builders, a linked specs/', () => {
+    expect(LISTINGS).toEqual(['builders', 'conflict', 'spec-worktrees', 'symlink-specs']);
   });
 
   test.each(LISTINGS)('%s.porcelain has the shape git prints: main first, one blank line after every record', (name) => {
@@ -206,6 +221,91 @@ describe('source: where the app reads a spec, the main checkout or the copy in i
   });
 });
 
+/** What `git ls-files -z -- specs/NNN-slug` printed for a listing's specs (its `.ls-files` sidecar), split on NUL. */
+const lsFilesOf = (listing: string): string[] =>
+  read(`${listing}.ls-files`)
+    .split('\0')
+    .filter((path) => path !== '');
+
+const HARBOR = join(FIXTURES, 'harbor');
+
+/** harbor as the main checkout holds it: `readTreeAt`, the reader behind its committed goldens. */
+const HARBOR_MAIN = readTreeAt(HARBOR);
+
+/** Every spec folder of harbor, active ones first, then the archived ones. */
+const HARBOR_FOLDERS = [...HARBOR_MAIN.specs, ...HARBOR_MAIN.archived].map((files) => files.folder);
+
+/** harbor laid out like this repository: one spec worktree `.worktrees/NNN-slug` per spec folder and one builder. */
+const HARBOR_LISTING = [
+  { path: '/srv/repo', branch: 'main' },
+  ...HARBOR_FOLDERS.map((folder) => ({ path: `/srv/repo/.worktrees/${folder}`, branch: `feature/${folder}` })),
+  { path: '/srv/repo/.claude/worktrees/agent-4c7e0a3d', branch: 'worktree-agent-4c7e0a3d' },
+]
+  .map(({ path, branch }, i) => `worktree ${path}\nHEAD ${i.toString(16).padStart(40, '0')}\nbranch refs/heads/${branch}\n\n`)
+  .join('');
+
+/** The copy a spec keeps in its worktree before the merge: the main checkout's files with every open task ticked. */
+const tickedCopy = (files: SpecFiles): SpecFiles => ({
+  folder: files.folder,
+  texts:
+    files.texts.tasks === undefined ? files.texts : { ...files.texts, tasks: files.texts.tasks.replaceAll('- [ ]', '- [x]') },
+});
+
+/** harbor's input with each spec read from where `specSourceOf` points on git's answer `lsFiles(folder)`. */
+function harborReadFrom(lsFiles: (folder: string) => readonly string[]): DashboardInput {
+  const { worktrees } = assignWorktrees(HARBOR_LISTING, HARBOR_FOLDERS);
+  const pick = (files: SpecFiles): SpecFiles => {
+    const worktree = worktrees.find((w) => w.path === `.worktrees/${files.folder}`) ?? null;
+    const source = specSourceOf({ folder: files.folder, worktree, lsFiles: lsFiles(files.folder) });
+    return source === 'worktree' ? tickedCopy(files) : files;
+  };
+  return { ...HARBOR_MAIN, specs: HARBOR_MAIN.specs.map(pick), archived: HARBOR_MAIN.archived.map(pick) };
+}
+
+/** The clock and lock reading of the `live` family in golden.test.ts. */
+const LIVE_NOW = new Date('2026-03-08T15:00:00Z');
+const HARBOR_LOCKS = await readLockSources({ repoRoot: HARBOR });
+
+/** The families the anti-claim names, as golden text, built from `input` the way the golden tests build harbor's. */
+function harborFamilies(input: DashboardInput): Record<string, string> {
+  const all = [...input.specs, ...input.archived];
+  const byFolder = new Map(all.map((files) => [files.folder, files]));
+  const keyed = <T,>(build: (files: SpecFiles) => T): Record<string, T> =>
+    Object.fromEntries(
+      listSpecs(HARBOR).map((ref) => [
+        relative(HARBOR, ref.dir).split(sep).join('/'),
+        build(byFolder.get(basename(ref.dir)) as SpecFiles),
+      ]),
+    );
+  const master = input.master === null ? {} : { master: input.master };
+  const constitution = input.constitution === null ? {} : { constitution: input.constitution };
+  return {
+    [DASHBOARD_FAMILY]: goldenText(buildDashboard(input)),
+    spec: goldenText(
+      keyed((files) =>
+        buildSpecPage({
+          files: { folder: files.folder, texts: { ...files.texts, ...master, ...constitution } },
+          others: all.filter((other) => other !== files),
+          tldr: input.tldr,
+          ...(input.workflow ? { workflow: input.workflow } : {}),
+        }),
+      ),
+    ),
+    live: goldenText(
+      keyed((files) =>
+        buildLiveFrame({
+          files: { folder: files.folder, texts: { ...files.texts, ...constitution } },
+          locks: HARBOR_LOCKS,
+          now: LIVE_NOW,
+        }),
+      ),
+    ),
+  };
+}
+
+/** The golden families of harbor the anti-claim holds byte-identical. */
+const HARBOR_GOLDEN_FAMILIES: string[] = [DASHBOARD_FAMILY, 'spec', 'live'];
+
 describe('untracked: an untracked or symlinked specs/ keeps every spec on the main checkout (ISC-181.1)', () => {
   test('every spec worktree of the fixture keeps main when git lists nothing under its folder', () => {
     for (const name of SPECS) {
@@ -225,5 +325,41 @@ describe('untracked: an untracked or symlinked specs/ keeps every spec on the ma
     const worktree = worktreeOf('spec-worktrees', '012');
     const lsFiles = ['specs/012-harbor-old/spec.md', 'specs/012-harbor.md', 'docs/specs/012-harbor/spec.md'];
     expect(specSourceOf({ folder: '012-harbor', worktree, lsFiles })).toBe('main');
+  });
+
+  test('this repository: spec worktrees with specs linked to the untracked specs/ of main keep main', () => {
+    const { worktrees, builders } = assignWorktrees(read('symlink-specs.porcelain'), SPECS);
+    expect(builders).toBe(1);
+    const own = worktrees.filter((w) => w.kind === 'spec' && w.spec !== null);
+    expect(own.map((w) => w.path)).toEqual(['.worktrees/012-harbor', '.worktrees/016-audit']);
+    expect(read('symlink-specs.ls-files')).toBe('');
+    for (const worktree of own) {
+      const folder = SPECS.find((name) => name.slice(0, 3) === worktree.spec) ?? '';
+      expect(specSourceOf({ folder, worktree, lsFiles: lsFilesOf('symlink-specs') })).toBe('main');
+      // The same worktree reads its copy once git tracks the folder, so `main` above comes from git's answer alone.
+      expect(specSourceOf({ folder, worktree, lsFiles: [`specs/${folder}/spec.md`] })).toBe('worktree');
+    }
+  });
+
+  test('harbor without a tracked specs/ and a spec worktree per spec: every spec keeps main', () => {
+    const { worktrees } = assignWorktrees(HARBOR_LISTING, HARBOR_FOLDERS);
+    for (const folder of HARBOR_FOLDERS) {
+      const worktree = worktrees.find((w) => w.path === `.worktrees/${folder}`) ?? null;
+      expect(worktree).toMatchObject({ kind: 'spec', spec: folder.slice(0, 3) });
+      expect(specSourceOf({ folder, worktree, lsFiles: lsFilesOf('symlink-specs') })).toBe('main');
+    }
+  });
+
+  test.each(HARBOR_GOLDEN_FAMILIES)('harbor %s golden: byte-identical with the worktrees present', (family) => {
+    const built = harborFamilies(harborReadFrom(() => lsFilesOf('symlink-specs')))[family] ?? '';
+    expect(goldenMismatch(readFileSync(goldenPath('harbor', family), 'utf8'), built)).toBeNull();
+  });
+
+  test('the comparison bites: a tracked specs/ would read the ticked worktree copies and move every family', () => {
+    const tracked = harborFamilies(harborReadFrom((folder) => [`specs/${folder}/spec.md`]));
+    for (const family of HARBOR_GOLDEN_FAMILIES) {
+      const built = tracked[family] ?? '';
+      expect(goldenMismatch(readFileSync(goldenPath('harbor', family), 'utf8'), built)).not.toBeNull();
+    }
   });
 });

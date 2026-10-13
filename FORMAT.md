@@ -1238,6 +1238,50 @@ its `specs/` is untracked and linked into every spec worktree, so the worktree's
 the source does not change (ISC-181.1). The repository kinds (`constitution`, `master`, `idea`, `workflow`, `tokens`)
 are read from the main checkout in every case.
 
+**In the dashboard model** (`core/src/dashboard.ts`, ISC-175, ISC-176, ISC-181). The server hands `buildDashboard`
+the assignment above as `worktrees`, with `ahead` and `dirty` read, and per spec folder a `SpecRead`
+(`core/src/files.ts`) in `perSpec`: `tree`, the tree id computed in the spec's worktree for the code-reviewed mark;
+`source`, as `specSourceOf` decided it; and `main`, the main checkout's copy of the folder when the source is
+`worktree`. The spec page takes the same assignment as `worktrees` and the spec's own `SpecRead` as `read`. Every row
+of the dashboard and the head of the spec page carry three fields from them, and the two never disagree:
+
+- `worktree`: the first worktree of kind `spec` assigned to the spec, in git's order, with its `path`, `branch`,
+  `ahead` and `dirty`, the data of the worktree chip; null when the spec has none, and then there is no chip.
+- `source`: `main` or `worktree`; `main` when `perSpec` names none.
+- `main`: the `stage` and claim `progress` of the main checkout's copy, which `core/` builds from `SpecRead.main` with
+  the main checkout's tree, for the source note beside the worktree copy's; null unless `source` is `worktree`.
+
+A spec without an entry in `perSpec`, or with an entry without `tree`, compares its code-reviewed mark with the
+workspace's `worktreeTree`, the main checkout's, as before spec 027. Each `worktree-branch-mismatch` diagnostic
+becomes one warning of that kind on the row its `subject` names, whatever the spec's phase, with `ref` the worktree's
+path, and the warnings panel lists it as a group of its own after `locks`. With the listing above, `012` read from its
+worktree's copy, two commits ahead and with uncommitted changes, and `015` on the branch of another spec carry:
+
+```json
+{
+  "id": "012",
+  "worktree": { "path": ".worktrees/012-harbor", "branch": "feature/012-harbor", "spec": "012", "ahead": 2, "dirty": true, "kind": "spec" },
+  "source": "worktree",
+  "main": { "stage": "plan", "progress": { "closed": 3, "total": 15 } }
+}
+{
+  "id": "015",
+  "worktree": { "path": ".worktrees/015-beacon", "branch": "feature/014-lantern", "spec": "015", "ahead": 0, "dirty": false, "kind": "spec" },
+  "source": "main",
+  "main": null,
+  "warnings": [
+    {
+      "kind": "worktree-branch-mismatch",
+      "text": "Worktree .worktrees/015-beacon is on branch feature/014-lantern, which names spec 014; its path names spec 015, and the path wins.",
+      "ref": ".worktrees/015-beacon"
+    }
+  ]
+}
+```
+
+A spec without a worktree carries `"worktree": null`, `"source": "main"` and `"main": null`, every spec of every
+fixture snapshot among them.
+
 ## Activity and lock lines
 
 Read when present, never written by the app (spec 002, T20, `locks.ts`). Two sources can hold a claim:

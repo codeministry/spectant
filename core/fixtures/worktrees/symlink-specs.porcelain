@@ -1,0 +1,17 @@
+worktree /srv/repo
+HEAD 0b5e8d1a4c7f2e9b6d3a0c8f5e2b9d6a3c0f7e14
+branch refs/heads/main
+
+worktree /srv/repo/.worktrees/012-harbor
+HEAD 4a7d0c3f6e9b2d5a8c1f4e7b0d3a6c9f2e5b8d25
+branch refs/heads/feature/012-harbor
+
+worktree /srv/repo/.worktrees/016-audit
+HEAD 9c2f5b8e1d4a7c0f3b6e9d2a5c8f1b4e7d0a3c36
+branch refs/heads/feature/016-audit
+
+worktree /srv/repo/.claude/worktrees/agent-6d9a2c5f8b1e4d7a0
+HEAD 4a7d0c3f6e9b2d5a8c1f4e7b0d3a6c9f2e5b8d25
+branch refs/heads/worktree-agent-6d9a2c5f8b1e4d7a0
+locked claude agent agent-6d9a2c5f8b1e4d7a0 (pid 4243 start Mon Mar 16 11:00:00 2026)
+

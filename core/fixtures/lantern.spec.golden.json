@@ -16,7 +16,10 @@
       "uncommittedFiles": null,
       "priority": "P3",
       "stageSource": "derived",
-      "assignee": null
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     "keyNumbers": {
       "claims": {
@@ -146,7 +149,10 @@
         "kind": "legacy",
         "id": "principal",
         "legacy": true
-      }
+      },
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     "keyNumbers": {
       "claims": {

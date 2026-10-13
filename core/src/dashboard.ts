@@ -31,15 +31,19 @@ import type {
   IdeaFiles,
   LockDiagnostic,
   LockReading,
+  MainCopy,
   Priority,
   SpecFiles,
   SpecGates,
+  SpecRead,
+  SpecSource,
   SpecType,
   SpecWarning,
   StageSource,
   WarningKind,
   Workflow,
   WorkflowStage,
+  Worktree,
 } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import type { Progress } from './frontmatter.ts';
@@ -52,6 +56,7 @@ import type { Stage, StageInput } from './stage.ts';
 import { driftReport, hasDrift, heldLocks, mainFeatureOf, masterProgressMismatch, partitionClaims } from './status.ts';
 import type { DriftClass, DriftReport } from './status.ts';
 import { parseTldr, tldrState } from './tldr.ts';
+import type { WorktreeAssignment } from './worktrees.ts';
 
 /** The key numbers above the spec list. */
 export interface DashboardKpis {
@@ -136,6 +141,19 @@ export interface DashboardSpecRow {
   readonly lastRound: string | null;
   /** The first prose paragraph under `## Goal`, on one line. */
   readonly goal: string;
+  /**
+   * The spec's worktree with the git facts of its chip, branch, `ahead` and `dirty` (spec 027, T12, ISC-175): the first
+   * worktree of kind `spec` that `DashboardInput.worktrees` assigns to this spec, in git's order; null without one, and
+   * then no chip. Additive: null on every row of an input without worktrees.
+   */
+  readonly worktree: Worktree | null;
+  /** Where the row's files were read (`SpecRead.source`, ISC-181); `main` unless the server read its worktree copy. */
+  readonly source: SpecSource;
+  /**
+   * The main checkout's stage and claim progress beside the worktree copy's (the source note, ISC-181), computed from
+   * `SpecRead.main` with the workspace's tree; null unless `source` is `worktree` and the main copy has a spec.md.
+   */
+  readonly main: MainCopy | null;
 }
 
 /** Warnings of one kind across specs, for the warnings panel. */
@@ -220,8 +238,23 @@ export interface DashboardInput {
   readonly specs: readonly SpecFiles[];
   /** Folders under `specs/archive/`. */
   readonly archived: readonly SpecFiles[];
-  /** The worktree tree id computed in memory for the code-reviewed mark; null when it could not be computed. */
+  /**
+   * The main checkout's tree id, computed in memory for the code-reviewed mark; null when it could not be computed. It
+   * is every spec's tree unless `perSpec` names one of the spec's own (spec 027, ISC-176).
+   */
   readonly worktreeTree?: string | null;
+  /**
+   * The workspace's worktrees as `assignWorktrees` (`worktrees.ts`) assigned them, `ahead` and `dirty` read by the server
+   * in each spec worktree (spec 027, T12, ISC-175). Each row takes its spec's worktree; each `worktree-branch-mismatch`
+   * diagnostic becomes a warning on the row its `subject` names. Absent: no worktree, no chip, as before spec 027.
+   */
+  readonly worktrees?: WorktreeAssignment;
+  /**
+   * How the server read each spec, keyed by folder name (`NNN-slug`): its own tree id, its read source and the main
+   * checkout's copy (`SpecRead`). A folder without an entry, and every field an entry leaves out, keeps the defaults:
+   * the workspace's `worktreeTree`, source `main`, no main copy. Additive (spec 027, T12).
+   */
+  readonly perSpec?: Readonly<Record<string, SpecRead>>;
   readonly locks?: LockReading;
   readonly services?: readonly LocalService[];
   /**
@@ -245,8 +278,11 @@ export const ACTION_ORDER: readonly Stage[] = ['close', 'code-review', 'review',
 /** Stages counted as building on the KPI split (`close-pending` waits on a sibling's build); every other but done is scoping. */
 const BUILDING: ReadonlySet<Stage> = new Set<Stage>(['build', 'blocked', 'code-review', 'close-pending']);
 
-/** Warning kinds in the order the old dashboard listed them on a row. */
-const WARNING_ORDER: readonly WarningKind[] = ['drift', 'review', 'diagrams', 'closed', 'fog', 'locks'];
+/**
+ * Warning kinds in the order the old dashboard listed them on a row; the worktree mismatch (spec 027, ISC-174.1), a
+ * git fact rather than a file's, is its own group, last.
+ */
+const WARNING_ORDER: readonly WarningKind[] = ['drift', 'review', 'diagrams', 'closed', 'fog', 'locks', 'worktree-branch-mismatch'];
 
 const NEXT_UP = 3;
 
@@ -372,11 +408,24 @@ interface SpecContext {
   readonly lockDiagnostics: readonly LockDiagnostic[];
   /** Claim IDs of the active folders: a lock diagnostic naming one of them lands on its row only. */
   readonly activeIds: ReadonlySet<string>;
+  /** The main checkout's tree: every spec's unless `perSpec` names its own. */
   readonly worktreeTree: string | null;
+  /** How the server read each spec, by folder (spec 027, T12). */
+  readonly perSpec: Readonly<Record<string, SpecRead>>;
+  /** The workspace's worktrees, builders included. */
+  readonly worktrees: readonly Worktree[];
+  /** The `worktree-branch-mismatch` diagnostics, routed to the row their `subject` names. */
+  readonly worktreeDiagnostics: readonly Diagnostic[];
   readonly workflow: Workflow | undefined;
   /** Main feature → the ids of its open active specs (row 7's siblings), in folder order. */
   readonly openByFeature: ReadonlyMap<string, readonly string[]>;
 }
+
+/**
+ * Which copy of a spec folder a row is built from: `own`, the files the server read (the worktree's copy when the
+ * source is `worktree`), or `main`, the main checkout's copy, built only for its stage and progress (spec 027, T12).
+ */
+type RowCopy = 'own' | 'main';
 
 /** Whether an active spec holds a feature's code review back (row 7): not `phase: complete`, at least one open claim. */
 function holdsFeatureOpen(phase: string | null, doc: ClaimsDocument): boolean {
@@ -398,6 +447,21 @@ function lockWarning(d: LockDiagnostic): SpecWarning {
   return { kind: 'locks', text: `${where}: ${d.message}`, ...(ref === undefined ? {} : { ref }) };
 }
 
+/**
+ * A `worktree-branch-mismatch` diagnostic as a row warning (spec 027, ISC-174.1): `assignWorktrees`'s sentence, which
+ * names both specs and the branch, and `ref` the worktree's path; the chip turns to the warning tone on it.
+ */
+function worktreeWarning(d: Diagnostic, worktree: Worktree | null): SpecWarning {
+  return { kind: 'worktree-branch-mismatch', text: d.message, ...(worktree === null ? {} : { ref: worktree.path }) };
+}
+
+/** The main checkout's stage and progress of a spec read from its worktree: its own row, with the workspace's tree. */
+function mainCopyOf(files: SpecFiles, ctx: SpecContext): MainCopy | null {
+  // The main copy's findings are not listed: the page and the row show the worktree copy, and its files are the ones read.
+  const mainRow = specRow(files, ctx, [], 'main');
+  return mainRow === null ? null : { stage: mainRow.stage, progress: mainRow.progress };
+}
+
 function heldElsewhere(ctx: SpecContext, folder: string): Set<string> {
   const held = new Set<string>();
   for (const [other, ids] of ctx.idsByFolder) if (other !== folder) ids.forEach((id) => held.add(id));
@@ -405,7 +469,7 @@ function heldElsewhere(ctx: SpecContext, folder: string): Set<string> {
 }
 
 /** One active spec's row, or null (with a diagnostic) for a folder without spec.md. */
-function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]): DashboardSpecRow | null {
+function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], copy: RowCopy = 'own'): DashboardSpecRow | null {
   const note = (kind: FileKind, list: readonly Diagnostic[]) => list.forEach((diagnostic) => diagnostics.push({ file: fileOf('specs', f.folder, kind), diagnostic }));
   const spec = f.texts.spec;
   if (spec === undefined) {
@@ -413,6 +477,8 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     return null;
   }
   const id = specIdOf(f.folder) ?? f.folder;
+  // How the server read the spec (spec 027, T12); the main copy is the main checkout's, so it takes none of it.
+  const read: SpecRead = copy === 'own' ? (ctx.perSpec[f.folder] ?? {}) : {};
   const plan = f.texts.plan ?? null;
   const fm = parseFrontmatter(spec);
   const doc = parseClaims(spec);
@@ -428,7 +494,9 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
   const codeMark = readMark('code-reviewed', f.texts.gateCodeReviewed);
   note('gateReviewed', reviewedMark?.diagnostics ?? []);
   note('gateCodeReviewed', codeMark?.diagnostics ?? []);
-  const codeReviewed = gateState('code-reviewed', codeMark?.mark ?? null, { worktreeTree: ctx.worktreeTree });
+  // The tree of the spec's own worktree when the server computed one (ISC-176), else the main checkout's.
+  const tree = read.tree === undefined ? ctx.worktreeTree : read.tree;
+  const codeReviewed = gateState('code-reviewed', codeMark?.mark ?? null, { worktreeTree: tree });
 
   const { specType: type, phase } = fm.data;
   // The explicit stage needs the last recorded transition; the events' own diagnostics belong to the timeline.
@@ -501,6 +569,13 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
       if (d.claim === undefined || !ctx.activeIds.has(d.claim) || ids.has(d.claim)) warnings.push(lockWarning(d));
     }
   }
+  // The worktree (spec 027, T12): a git fact, so it holds whatever the phase, like drift. The main copy has none.
+  const worktree = copy === 'own' ? (ctx.worktrees.find((w) => w.kind === 'spec' && w.spec === id) ?? null) : null;
+  if (copy === 'own') {
+    for (const d of ctx.worktreeDiagnostics) if (d.subject === id) warnings.push(worktreeWarning(d, worktree));
+  }
+  const source: SpecSource = read.source ?? 'main';
+  const main = source === 'worktree' && read.main !== undefined ? mainCopyOf(read.main, ctx) : null;
 
   // The archive listing's summary of a folder (title fallback, task counts, goal) serves an active folder as well.
   const summary = listArchive([f])[0];
@@ -532,6 +607,9 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[]):
     updated: fm.data.updated,
     lastRound: rounds.ts,
     goal: summary?.goal ?? '',
+    worktree,
+    source,
+    main,
   };
 }
 
@@ -592,6 +670,9 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     lockDiagnostics: input.locks?.diagnostics ?? [],
     activeIds,
     worktreeTree: input.worktreeTree ?? null,
+    perSpec: input.perSpec ?? {},
+    worktrees: input.worktrees?.worktrees ?? [],
+    worktreeDiagnostics: input.worktrees?.diagnostics ?? [],
     workflow: input.workflow,
     openByFeature,
   };

@@ -16,7 +16,10 @@
       "uncommittedFiles": null,
       "priority": "P3",
       "stageSource": "derived",
-      "assignee": null
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     "keyNumbers": {
       "claims": {
@@ -164,7 +167,10 @@
       "uncommittedFiles": null,
       "priority": "P3",
       "stageSource": "derived",
-      "assignee": null
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     "keyNumbers": {
       "claims": {
@@ -294,7 +300,10 @@
       "uncommittedFiles": null,
       "priority": "P3",
       "stageSource": "derived",
-      "assignee": null
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     "keyNumbers": {
       "claims": {
