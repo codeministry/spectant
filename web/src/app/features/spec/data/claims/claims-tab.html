@@ -49,7 +49,7 @@
         }
         @for (claim of group.claims; track claim.id) {
           <article
-            class="card"
+            class="claim-card"
             uiRovingItem
             [id]="'claim-' + claim.id"
             [attr.data-claim]="claim.id"
@@ -59,9 +59,13 @@
             [attr.aria-labelledby]="'claim-' + claim.id + '-id'"
           >
             <div class="head">
-              <span class="glyph" role="img" [attr.aria-label]="'claims.states.' + claim.state | transloco">{{
-                glyph[claim.state]
-              }}</span>
+              <span class="glyph" role="img" [attr.aria-label]="'claims.states.' + claim.state | transloco">
+                @if (claim.state === 'taken') {
+                  <ui-icon name="lock" [size]="14" />
+                } @else {
+                  {{ glyph[claim.state] }}
+                }
+              </span>
               <ui-id-chip [id]="'claim-' + claim.id + '-id'">{{ claim.id }}</ui-id-chip>
               @if (claim.kind !== 'normal') {
                 <ui-chip data-chip="kind" tone="secondary">{{ 'claims.kinds.' + claim.kind | transloco }}</ui-chip>
@@ -84,7 +88,7 @@
                   data-link="notes"
                   [routerLink]="base() + '/notes'"
                   [attr.aria-label]="(notes === 1 ? 'claims.notes.one' : 'claims.notes.other') | transloco: { count: notes }"
-                  >{{ notes }}</a
+                  ><ui-icon name="sticky-note" [size]="14" />{{ notes }}</a
                 >
               }
             </div>
@@ -144,7 +148,8 @@
 
             @if (claim.verification; as verification) {
               <p class="verification">
-                <span class="label">{{ 'claims.verification' | transloco }}</span>
+                <ui-icon class="verification-icon" name="circle-check" [size]="14" />
+                <span class="verification-label">{{ 'claims.verification' | transloco }}</span>
                 @if (evidenceFile(verification); as file) {
                   <a class="link" data-link="evidence" [routerLink]="base() + '/evidence'" [fragment]="file">{{
                     plain(verification)

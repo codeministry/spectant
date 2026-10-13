@@ -129,7 +129,7 @@ describe('IdeaPage (T131, ISC-124.2)', () => {
     const root = await open('/w/harbor/ideas/console-audit-log', 'medium');
     const page = root.querySelector('app-idea-page') as HTMLElement;
     expect(page.querySelector('nav.docs-toc')).toBeNull();
-    expect(text(page.querySelector('ui-disclosure.docs-toc-fold'))).toContain('Contents');
+    expect(text(page.querySelector('ui-disclosure.docs-toc-fold'))).toContain('On this page');
     expect(page.querySelector('form, input, textarea, select, [contenteditable]')).toBeNull();
   });
 

@@ -14,6 +14,7 @@ import type { ClaimGlyphState, ClaimView, ClaimViewModel } from '../../../../../
 import { type NoteCounts, noteCountFor } from '../../../../../../../server/src/notes.contract';
 import { ApiClient } from '../../../../core/api.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
+import { UiIcon } from '../../../../shared/icons/icon';
 import { UiChip } from '../../../../shared/ui/chip/chip';
 import { UiEmptyState } from '../../../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../../../shared/ui/filter-chips/filter-chips';
@@ -32,7 +33,7 @@ type KindKey = (typeof KIND_KEYS)[number];
 const OPEN_STATES: ReadonlySet<ClaimGlyphState> = new Set(['open', 'takeable', 'taken', 'blocked']);
 
 /** One glyph per state; blocked shares open's ring and adds a chip, taken adds the lock chip and its session
- * (spec 001 prompt 2). TODO: a lucide `lock` icon replaces the taken glyph once it is in ICON_NAMES (shared lane). */
+ * (spec 001 prompt 2); the template draws taken as the lucide `lock` (spec 024, prototype `tabClaims`). */
 const GLYPH: Record<ClaimGlyphState, string> = {
   open: '○',
   takeable: '◐',
@@ -78,6 +79,7 @@ interface FeatureGroup {
     UiChip,
     UiEmptyState,
     UiFilterChips,
+    UiIcon,
     UiIdChip,
     UiRelativeTime,
     UiRovingItem,

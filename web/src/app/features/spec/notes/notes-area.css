@@ -316,3 +316,15 @@ app-notes-area .notes-pick-group {
   font-weight: 600;
   text-transform: uppercase;
 }
+
+/* Prototype icons beside the labels (ISC-149): back, anchor, delete, import dismiss. */
+app-notes-area .notes-back,
+app-notes-area .notes-meta-label,
+app-notes-area .notes-anchor-trigger {
+  gap: 6px;
+}
+
+app-notes-area .notes-meta-label {
+  display: inline-flex;
+  align-items: center;
+}

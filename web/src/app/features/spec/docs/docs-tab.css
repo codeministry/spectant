@@ -22,3 +22,131 @@ app-docs-tab .docs-loading {
   max-inline-size: 72ch;
 }
 
+
+/* Design tab: one Ist/Soll card per viewport (ISC-149, prototype `.design-vp`, `.ist-soll`, `.thumb`, `.mock`). */
+app-docs-tab .design-viewports {
+  display: grid;
+  gap: 16px;
+  margin-block-end: 24px;
+  container-type: inline-size;
+}
+
+app-docs-tab .design-vp-head {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0;
+  padding: 16px 16px 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+app-docs-tab .design-vp-head a {
+  color: inherit;
+  text-decoration: none;
+}
+
+app-docs-tab .design-vp-head a:hover { color: var(--disp-ink); }
+
+app-docs-tab .design-vp-width {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+app-docs-tab .ist-soll {
+  display: grid;
+  grid-template-columns: 120px 120px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 16px;
+}
+
+@container (max-width: 520px) {
+  app-docs-tab .ist-soll { grid-template-columns: 1fr 1fr; }
+  app-docs-tab .soll-text { grid-column: 1 / -1; }
+}
+
+app-docs-tab .design-thumb {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  inline-size: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: zoom-in;
+}
+
+app-docs-tab .design-thumb:disabled { cursor: default; }
+
+app-docs-tab .design-thumb:focus-visible {
+  border-radius: 8px;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+app-docs-tab .design-shot {
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 3 / 4;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--lane);
+  object-fit: cover;
+  object-position: top;
+}
+
+app-docs-tab .design-shot.is-ist {
+  filter: grayscale(1);
+  opacity: 0.7;
+}
+
+app-docs-tab .design-shot-empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted-ink);
+}
+
+app-docs-tab .design-eyebrow {
+  color: var(--muted-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+app-docs-tab .soll-text p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+
+app-docs-tab .design-dialog { --ui-dialog-size: 860px; }
+
+app-docs-tab .design-shot-big {
+  display: block;
+  inline-size: 100%;
+  max-block-size: 70vh;
+  margin-block-end: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  object-fit: contain;
+  background: var(--lane);
+}
+
+app-docs-tab .design-shot-caption {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+app-docs-tab .design-shot-caption .mono { font-family: var(--font-mono); }

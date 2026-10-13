@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, resource, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, resource, signal, ViewEncapsulation } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { DocName, DocsPage } from '../../../../../../core/src/files';
@@ -6,7 +6,9 @@ import { specRoutes } from '../../../../../../server/src/spec-routes.contract';
 import { ApiClient, type DocsResult } from '../../../core/api.service';
 import { ShellData } from '../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
-import { type Tone, UiChip, UiCommandChip, UiDocProse, UiEmptyState, UiNotice, UiSkeleton } from '../../../shared/ui';
+import { UiIcon } from '../../../shared/icons/icon';
+import { type Tone, UiCard, UiChip, UiCommandChip, UiDialog, UiDocProse, UiEmptyState, UiNotice, UiSkeleton } from '../../../shared/ui';
+import { type DesignShot, type DesignViewport, designViewports } from './design-viewports';
 
 /** The file behind each Docs tab, as the empty state names it. */
 export const DOC_FILE_NAMES: Readonly<Record<DocName, string>> = {
@@ -16,6 +18,8 @@ export const DOC_FILE_NAMES: Readonly<Record<DocName, string>> = {
   constitution: 'constitution.md',
 };
 
+/** The design.md frontmatter keys shown as plain chips on the Design tab. */
+const DESIGN_KEYS = ['design_track', 'viewports'] as const;
 const DOC_NAMES = new Set<string>(Object.keys(DOC_FILE_NAMES));
 const STATUS_TONE: Readonly<Record<string, Tone>> = { approved: 'success', draft: 'warning', superseded: 'neutral' };
 
@@ -30,7 +34,7 @@ const STATUS_TONE: Readonly<Record<string, Tone>> = { approved: 'success', draft
  */
 @Component({
   selector: 'app-docs-tab',
-  imports: [TranslocoPipe, UiChip, UiCommandChip, UiDocProse, UiEmptyState, UiNotice, UiSkeleton],
+  imports: [TranslocoPipe, UiCard, UiChip, UiCommandChip, UiDialog, UiDocProse, UiEmptyState, UiIcon, UiNotice, UiSkeleton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   templateUrl: './docs-tab.html',
@@ -85,6 +89,34 @@ export class DocsTab {
     return this.name === 'plan' && page !== null && !page.figures.some((figure) => figure.kind === 'mermaid');
   });
 
+  /**
+   * The Design tab's Ist/Soll viewport cards (ISC-149, prototype `tabDesign`), above the full document; empty for
+   * every other tab and for a design.md without paired Ist/Soll sections.
+   */
+  protected readonly viewports = computed<readonly DesignViewport[]>(() => {
+    const page = this.page();
+    return this.name === 'design' && page !== null ? designViewports(page.html) : [];
+  });
+  /** The screenshot the dialog shows, with its viewport and side; null while the dialog is closed. */
+  protected readonly shot = signal<{ viewport: DesignViewport; side: 'ist' | 'soll'; image: DesignShot } | null>(null);
+  protected readonly shotOpen = signal(false);
+  protected readonly sides = ['ist', 'soll'] as const;
+  /** Thumbnails whose image failed to load (`viewport-id:side`): they fall back to the placeholder. */
+  protected readonly brokenShots = signal<ReadonlySet<string>>(new Set());
+
+  protected openShot(viewport: DesignViewport, side: 'ist' | 'soll'): void {
+    const image = viewport[side];
+    if (image === null) return;
+    this.shot.set({ viewport, side, image });
+    this.shotOpen.set(true);
+  }
+  protected shotBroken(viewport: DesignViewport, side: 'ist' | 'soll'): void {
+    this.brokenShots.update((set) => new Set(set).add(`${viewport.id}:${side}`));
+  }
+  protected shotShown(viewport: DesignViewport, side: 'ist' | 'soll'): boolean {
+    return viewport[side] !== null && !this.brokenShots().has(`${viewport.id}:${side}`);
+  }
+
   /** Frontmatter as chips: every key on the constitution, `status` (toned) elsewhere; `updated` is its own line. */
   protected readonly metaChips = computed<ReadonlyArray<{ label: string; tone: Tone }>>(() => {
     const front = this.page()?.frontmatter ?? null;
@@ -93,7 +125,12 @@ export class DocsTab {
       return Object.entries(front).map(([key, value]) => ({ label: `${key}: ${value}`, tone: 'neutral' }));
     }
     const status = front['status'];
-    return status ? [{ label: status, tone: STATUS_TONE[status] ?? 'neutral' }] : [];
+    const chips: Array<{ label: string; tone: Tone }> = status ? [{ label: status, tone: STATUS_TONE[status] ?? 'neutral' }] : [];
+    // The design pass's own keys, plain, as the prototype's Design tab shows them.
+    if (this.name === 'design') {
+      for (const key of DESIGN_KEYS) if (front[key]) chips.push({ label: `${key}: ${front[key]}`, tone: 'neutral' });
+    }
+    return chips;
   });
   protected readonly updated = computed(() => (this.name === 'constitution' ? null : (this.page()?.frontmatter?.['updated'] ?? null)));
 

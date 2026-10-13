@@ -115,7 +115,7 @@ describe('DocsTab', () => {
     const root = await open('/w/harbor/s/003/plan');
     expect(root.querySelector('[data-diagram-missing]')?.textContent).toContain('This plan has no diagram.');
     expect(root.querySelector('nav.docs-toc')).toBeNull();
-    expect(root.querySelector('ui-disclosure.docs-toc-fold')?.textContent).toContain('Contents');
+    expect(root.querySelector('ui-disclosure.docs-toc-fold')?.textContent).toContain('On this page');
   });
 
   it('marks an image that is not in this checkout', async () => {

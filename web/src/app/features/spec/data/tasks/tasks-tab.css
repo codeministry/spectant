@@ -427,3 +427,10 @@ th:nth-child(2), td:nth-child(2) { inline-size: 120px; }
 @media (forced-colors: active) {
   .status { border: 1px solid CanvasText; }
 }
+
+/* Prototype `.helper` and the conflict note lead with their icon (ISC-149). */
+.helper ui-icon {
+  display: inline-block;
+  margin-inline-end: 6px;
+  vertical-align: -2px;
+}

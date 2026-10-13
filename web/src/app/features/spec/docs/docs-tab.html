@@ -17,7 +17,68 @@
     </ui-notice>
   }
 
+  @if (viewports().length > 0) {
+    <div class="design-viewports" data-design-viewports>
+      @for (vp of viewports(); track vp.id) {
+        <ui-card class="design-vp" data-design-viewport [attr.data-viewport]="vp.id">
+          <h3 class="design-vp-head">
+            <a [href]="'#' + vp.id">{{ vp.name }}</a>
+            @if (vp.width; as width) {
+              <span class="design-vp-width">{{ 'docs.design.width' | transloco: { width } }}</span>
+            }
+          </h3>
+          <div class="ist-soll">
+            @for (side of sides; track side) {
+              @let image = vp[side];
+              <button
+                type="button"
+                class="design-thumb"
+                [attr.data-thumb]="side"
+                [disabled]="image === null"
+                [attr.aria-label]="'docs.design.open' | transloco: { viewport: vp.name, side: ('docs.design.' + side | transloco) }"
+                (click)="openShot(vp, side)"
+              >
+                @if (image !== null && shotShown(vp, side) && assetUrl(); as url) {
+                  <img class="design-shot" [class.is-ist]="side === 'ist'" [src]="url(image.path)" alt="" loading="lazy" (error)="shotBroken(vp, side)" />
+                } @else {
+                  <span class="design-shot design-shot-empty" [class.is-ist]="side === 'ist'"><ui-icon name="image" [size]="20" /></span>
+                }
+                <span class="design-eyebrow">{{ 'docs.design.' + side | transloco }}</span>
+              </button>
+            }
+            <div class="soll-text">
+              <span class="design-eyebrow">{{ 'docs.design.soll' | transloco }}</span>
+              <p>{{ vp.sollText || ('docs.design.noText' | transloco) }}</p>
+            </div>
+          </div>
+        </ui-card>
+      }
+    </div>
+  }
+
   <ui-doc-prose [page]="page" [wide]="state.tier() === 'wide'" [assetUrl]="assetUrl()" />
+
+  @if (viewports().length > 0) {
+    @let current = shot();
+    <ui-dialog
+      [(open)]="shotOpen"
+      class="design-dialog"
+      [heading]="current ? current.viewport.name + ' · ' + ('docs.design.' + current.side | transloco) : ''"
+      data-design-dialog
+    >
+      @if (current !== null) {
+        @if (assetUrl(); as url) {
+          <img class="design-shot-big" [src]="url(current.image.path)" [alt]="current.image.alt" />
+        }
+        <p class="design-shot-caption">
+          @if (current.image.alt) {
+            {{ current.image.alt }} ·
+          }
+          <span class="mono">{{ current.image.path }}</span>
+        </p>
+      }
+    </ui-dialog>
+  }
 } @else if (empty(); as empty) {
   <ui-empty-state
     data-docs-empty

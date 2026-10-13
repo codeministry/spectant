@@ -1,7 +1,7 @@
 @if (!importDismissed()) {
-  <ui-notice class="notes-import" tone="info" icon="archive" data-notes-import>
+  <ui-notice class="notes-import" tone="info" icon="sticky-note" data-notes-import>
     {{ 'notes.import.text' | transloco }}
-    <button action ui-button variant="ghost" size="sm" (click)="dismissImport()">{{ 'notes.import.dismiss' | transloco }}</button>
+    <button action ui-button variant="ghost" size="sm" (click)="dismissImport()"><ui-icon name="x" [size]="14" />{{ 'notes.import.dismiss' | transloco }}</button>
   </ui-notice>
 }
 
@@ -21,7 +21,7 @@
           />
         </label>
         <a ui-button class="notes-new" variant="primary" [size]="wide() ? 'sm' : 'md'" [routerLink]="link('new')" queryParamsHandling="preserve" data-notes-new>
-          {{ 'notes.list.new' | transloco }}
+          <ui-icon name="plus" [size]="16" />{{ 'notes.list.new' | transloco }}
           @if (wide()) {
             <ui-kbd>n</ui-kbd>
           }
@@ -61,7 +61,7 @@
             </li>
           } @empty {
             <li class="notes-empty">
-              <ui-empty-state icon="notebook-pen" [heading]="'notes.list.empty' | transloco" [body]="'notes.list.emptyBody' | transloco" />
+              <ui-empty-state icon="sticky-note" [heading]="'notes.list.empty' | transloco" [body]="'notes.list.emptyBody' | transloco" />
             </li>
           }
         </ul>
@@ -73,7 +73,7 @@
     <section class="notes-editor" data-notes-editor [attr.aria-label]="'notes.editor.label' | transloco">
       @if (!wide()) {
         <a class="notes-back link" [routerLink]="link()" queryParamsHandling="preserve" data-notes-back>
-          {{ 'notes.editor.back' | transloco: { count: notes().length } }}
+          <ui-icon name="arrow-left" [size]="14" />{{ 'notes.editor.back' | transloco: { count: notes().length } }}
         </a>
       }
       @if (editing()) {
@@ -92,7 +92,7 @@
         <div class="notes-meta">
           @if (tier() === 'compact') {
             <button type="button" class="btn btn-sm btn-outline notes-anchor-trigger" data-anchor-trigger (click)="pickerOpen.set(true)">
-              {{ 'notes.anchor.label' | transloco }}:
+              <ui-icon name="anchor" [size]="14" />{{ 'notes.anchor.label' | transloco }}:
               @if (anchorChip(); as chip) {
                 {{ chip.kind === 'spec' ? ('notes.anchor.spec' | transloco: { spec: chip.text }) : chip.text }}
               } @else {
@@ -101,7 +101,7 @@
             </button>
           } @else {
             <label class="notes-anchor-field">
-              <span class="notes-meta-label">{{ 'notes.anchor.label' | transloco }}</span>
+              <span class="notes-meta-label"><ui-icon name="anchor" [size]="14" />{{ 'notes.anchor.label' | transloco }}</span>
               <select class="select select-sm notes-anchor-select" data-anchor-select [value]="anchorValue()" #anchorSelect (change)="pickAnchor(anchorSelect.value)">
                 <option value="" [selected]="anchorValue() === ''">{{ 'notes.anchor.none' | transloco }}</option>
                 <option [value]="'spec:' + spec()" [selected]="anchorValue() === 'spec:' + spec()">{{ 'notes.anchor.spec' | transloco: { spec: spec() } }}</option>
@@ -121,7 +121,7 @@
           <span class="notes-local"><ui-icon name="lock" [size]="14" />{{ 'notes.editor.local' | transloco }}</span>
           <span class="notes-save" data-save-state [attr.data-state]="saveState().kind" role="status">{{ saveText() }}</span>
           <button type="button" ui-button variant="ghost" size="sm" tone="danger" class="notes-delete" data-note-delete (click)="confirmOpen.set(true)">
-            {{ 'notes.editor.delete' | transloco }}
+            <ui-icon name="trash" [size]="14" />{{ 'notes.editor.delete' | transloco }}
           </button>
         </div>
 
@@ -144,9 +144,9 @@
           }
         </div>
       } @else if (noteId() !== null && loaded()) {
-        <ui-empty-state icon="notebook-pen" [heading]="'notes.editor.missing' | transloco" />
+        <ui-empty-state icon="sticky-note" [heading]="'notes.editor.missing' | transloco" />
       } @else if (wide()) {
-        <ui-empty-state icon="notebook-pen" [heading]="'notes.editor.none' | transloco" [body]="'notes.editor.noneBody' | transloco" />
+        <ui-empty-state icon="sticky-note" [heading]="'notes.editor.none' | transloco" [body]="'notes.editor.noneBody' | transloco" />
       }
     </section>
   }

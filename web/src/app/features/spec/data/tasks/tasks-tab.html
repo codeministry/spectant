@@ -135,6 +135,7 @@
                   }
                   @case ('conflict') {
                     <span class="check-alert" role="alert" data-check-conflict [id]="'task-' + row.id + '-check'">
+                      <ui-icon name="triangle-alert" [size]="14" />
                       <span>{{ 'tasks.check.conflict' | transloco }}</span>
                       <button type="button" class="btn btn-xs" data-check-reload (click)="reloadTasks(row)">
                         {{ 'tasks.check.reload' | transloco }}
@@ -175,7 +176,7 @@
       </p>
     }
 
-    <p class="helper" id="tasks-helper">{{ 'tasks.helper' | transloco }}</p>
+    <p class="helper" id="tasks-helper"><ui-icon name="lock" [size]="14" />{{ 'tasks.helper' | transloco }}</p>
   </section>
 
   @if (mapping().length > 0) {

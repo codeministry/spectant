@@ -49,7 +49,7 @@
   line-height: 20px;
 }
 
-.card {
+.claim-card {
   display: grid;
   gap: 8px;
   padding: 16px;
@@ -60,20 +60,25 @@
   transition: background-color var(--motion-duration-highlight) var(--motion-ease-standard);
 }
 
-.card.is-target {
+.claim-card.is-target {
   border-color: var(--color-primary);
   background: var(--disp-t);
 }
 
-.card[data-state='dropped'] .text {
+.claim-card[data-state='dropped'] .text {
   color: var(--muted-ink);
 }
 
+/* Aligned columns (ISC-149, prototype `.cc-top`): glyph | ID | the rest; the rows below line up under the text. */
 .head {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 8px 10px;
   align-items: center;
+}
+
+.head > ui-id-chip {
+  min-inline-size: 84px;
 }
 
 .glyph {
@@ -84,16 +89,16 @@
   line-height: 20px;
 }
 
-.card[data-state='takeable'] .glyph,
-.card[data-state='taken'] .glyph {
+.claim-card[data-state='takeable'] .glyph,
+.claim-card[data-state='taken'] .glyph {
   color: var(--disp-ink);
 }
 
-.card[data-state='closed'] .glyph {
+.claim-card[data-state='closed'] .glyph {
   color: var(--done-ink);
 }
 
-.card[data-state='blocked'] .glyph {
+.claim-card[data-state='blocked'] .glyph {
   color: var(--fail-ink);
 }
 
@@ -114,6 +119,7 @@
 
 .notes {
   display: inline-flex;
+  gap: 3px;
   align-items: center;
   block-size: 20px;
   margin-inline-start: auto;
@@ -162,6 +168,9 @@
 
 .probe {
   display: grid;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--lane);
   grid-template-columns: auto minmax(0, 1fr);
   gap: 8px;
   align-items: start;
@@ -197,13 +206,18 @@
 }
 
 .verification {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  align-items: center;
   margin: 0;
+  color: var(--done-ink);
   font-size: 13px;
   line-height: 20px;
   overflow-wrap: anywhere;
 }
 
-.verification .label {
+.verification-label {
   margin-inline-end: 8px;
   color: var(--muted-ink);
   font-size: 11px;
@@ -219,6 +233,7 @@
 
 .verification .link {
   margin-inline-start: 0;
+  color: inherit;
 }
 
 .muted {
@@ -256,7 +271,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .card {
+  .claim-card {
     padding: 16px 8px;
   }
 }
@@ -264,5 +279,25 @@
 @media (forced-colors: active) {
   .dot {
     background: CanvasText;
+  }
+}
+
+.text-row,
+.edges,
+.probe,
+.verification {
+  margin-inline-start: 26px;
+}
+
+.verification-icon {
+  flex: none;
+}
+
+@container (max-width: 520px) {
+  .text-row,
+  .edges,
+  .probe,
+  .verification {
+    margin-inline-start: 0;
   }
 }
