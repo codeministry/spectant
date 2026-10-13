@@ -1676,7 +1676,7 @@ test.describe('allocate', () => {
   });
 });
 
-// Marcello 2026-10-13: the column heads are the board's one header and stay on screen while the cards scroll, in the
+// principal 2026-10-13: the column heads are the board's one header and stay on screen while the cards scroll, in the
 // swimlane views too, one head high; any column folds and opens by hand, the choice in the URL (`?fold=`, `?open=`).
 test.describe('column heads', () => {
   useStubSession('board-heads');
