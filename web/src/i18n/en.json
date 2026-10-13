@@ -187,7 +187,8 @@
       "command": "spectant add <path-to-repo>",
       "hint": "It appears here on the next refresh"
     },
-    "unreadable": "This workspace cannot be read"
+    "unreadable": "This workspace cannot be read",
+    "footer": "Running locally at {{origin}}"
   },
   "palette": {
     "label": "Command palette",

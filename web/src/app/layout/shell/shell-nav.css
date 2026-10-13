@@ -173,13 +173,10 @@
     display: none;
   }
 
-  .pick {
-    padding-inline: 8px;
-  }
-
   /* Both names may shrink below their text so the ellipsis shows instead of a hard clip (principal 2026-10-13). */
   .pick {
     min-inline-size: 0;
+    padding-inline: 8px;
   }
 
   .ws-name {

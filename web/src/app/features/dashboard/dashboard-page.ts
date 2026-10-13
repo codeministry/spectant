@@ -94,7 +94,7 @@ export class DashboardPage {
   protected readonly archive = computed(() => readArchiveRows(this.body()));
   /** The backlog's stories (`DashboardModel.ideas`), none while the body lacks the block. */
   protected readonly ideas = computed(() => readIdeas(this.body()));
-  /** The warnings sit in the rail at wide, after the Specs panel below it. */
+  /** The rail holds Next up and the warnings at wide; below it Next up follows the Brief and the warnings follow the Specs panel. */
   protected readonly railHolds = computed(() => this.state.tier() === 'wide');
 
   private readonly table = viewChild(SpecTable);

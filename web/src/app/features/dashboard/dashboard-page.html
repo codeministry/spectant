@@ -28,9 +28,11 @@
   @if (ideas().count > 0) {
     <app-ideas-panel [ws]="ws()" [ideas]="ideas()" />
   }
+  <!-- Below wide the Warnings list (018-B15) is the section after Next up and the Specs panel, where the prototype's
+       `pageWorkspace` puts `#warnings-n`; at wide it is the rail block after Next up. -->
   @if (view(); as view) {
     @if (!railHolds()) {
-      <app-warnings-panel [form]="state.tier() === 'compact' ? 'callout' : 'section'" [specs]="view.specs" [kpis]="view.kpis" />
+      <app-warnings-panel form="section" [specs]="view.specs" [kpis]="view.kpis" />
     }
   }
 }
