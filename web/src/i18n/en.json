@@ -547,7 +547,8 @@
       "heading": "The timeline could not be loaded",
       "body": "The server answered with an error.",
       "retry": "Try again"
-    }
+    },
+    "anchor": "Link to this entry"
   },
   "claims": {
     "filters": {
@@ -615,7 +616,7 @@
     "loading": "Loading claims…"
   },
   "docs": {
-    "contents": "Contents",
+    "contents": "On this page",
     "updated": "Updated {{date}}",
     "tableRegion": "Table {{index}}, scrolls sideways",
     "figureRegion": "Diagram {{index}}, scrolls sideways",
@@ -634,7 +635,14 @@
       "missingNoCommand": "It is written as the spec’s question rounds are recorded."
     },
     "error": "This document could not be loaded.",
-    "loading": "Loading document"
+    "loading": "Loading document",
+    "design": {
+      "ist": "Ist",
+      "soll": "Soll",
+      "width": "{{width}} px",
+      "open": "Open {{viewport}} · {{side}} screenshot",
+      "noText": "No target text yet."
+    }
   },
   "tasks": {
     "filters": {
@@ -923,7 +931,13 @@
       "locked": "{{session}} holds {{claim}}. Nothing was written.",
       "error": "The mark could not be written (status {{status}}).",
       "confirm": "Confirm",
-      "sending": "Writing…"
+      "sending": "Writing…",
+      "checklist": {
+        "legend": "You confirm",
+        "claims": "I read every claim",
+        "approach": "The approach in spec.md is accepted",
+        "anchored": "Every task is anchored to a claim"
+      }
     },
     "warnings": {
       "heading": "Warnings",
@@ -934,7 +948,14 @@
       "claims": "Open claims",
       "fog": "Fog",
       "none": "Nothing is open.",
-      "error": "The open claims could not be read."
+      "error": "The open claims could not be read.",
+      "groups": {
+        "takeable": "takeable",
+        "taken": "taken",
+        "blocked": "blocked",
+        "open": "open"
+      },
+      "waitsOn": "waits on {{ids}}"
     },
     "activity": {
       "heading": "Activity",

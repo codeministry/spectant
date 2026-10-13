@@ -21,7 +21,7 @@
           @for (name of gateNames; track name) {
             <li class="gate" [attr.data-gate]="name" [attr.data-state]="m.gates[name].state" [attr.data-tone]="gateTone(m.gates[name].state)">
               <span class="gate-head">
-                <span class="gate-dot" aria-hidden="true"></span>
+                <ui-icon class="gate-icon" [name]="gateIcon(name, m.gates[name].state)" [size]="16" />
                 <span class="gate-name">{{ 'status.gates.names.' + name | transloco }}</span>
                 <span class="gate-state">{{ 'status.gates.states.' + m.gates[name].state | transloco }}</span>
               </span>
@@ -58,7 +58,7 @@
         }
       </ng-template>
 
-      <div class="page">
+      <div class="page status-grid">
         <section class="card where" data-section="where">
           <ui-section-header [heading]="(tier() === 'wide' ? 'status.why.heading' : 'status.where.heading') | transloco" />
           <div class="where-body">
@@ -186,23 +186,35 @@
             @if (o.claims.length === 0 && o.fog.length === 0) {
               <p class="muted">{{ 'status.open.none' | transloco }}</p>
             }
-            @if (o.claims.length > 0) {
-              <ul class="rows" [attr.aria-label]="'status.open.claims' | transloco">
-                @for (claim of o.claims; track claim.id) {
-                  <li class="open-row" data-open-claim [attr.data-state]="claim.state">
-                    <code class="ref">{{ claim.id }}</code>
-                    <ui-state-chip [state]="claim.state" family="claim" />
-                    <span class="row-text clamp">{{ claim.text }}</span>
-                  </li>
-                }
-              </ul>
+            @for (group of openGroups(); track group.state) {
+              <div class="open-group" [attr.data-open-group]="group.state">
+                <p class="sub">{{ 'status.open.groups.' + group.state | transloco }} · {{ group.claims.length }}</p>
+                <ul class="rows" [attr.aria-label]="'status.open.groups.' + group.state | transloco">
+                  @for (claim of group.claims; track claim.id) {
+                    <li class="open-row" data-open-claim [attr.data-state]="claim.state">
+                      <span class="glyph" [attr.data-glyph]="claim.state" aria-hidden="true">
+                        @if (claim.state === 'taken') {
+                          <ui-icon name="lock" [size]="14" />
+                        } @else {
+                          {{ glyph(claim.state) }}
+                        }
+                      </span>
+                      <code class="ref">{{ claim.id }}</code>
+                      <span class="row-text clamp">{{ claim.text }}</span>
+                      @if (claim.blockedBy.length > 0) {
+                        <span class="dep" data-waits-on>{{ 'status.open.waitsOn' | transloco: { ids: claim.blockedBy.join(', ') } }}</span>
+                      }
+                    </li>
+                  }
+                </ul>
+              </div>
             }
             @if (o.fog.length > 0) {
               <p class="sub">{{ 'status.open.fog' | transloco }}</p>
               <ul class="rows">
                 @for (fog of o.fog; track $index) {
                   <li class="fog-row" data-fog>
-                    <ui-icon class="fog-icon" name="cloud-fog" [size]="16" />
+                    <ui-icon class="fog-icon" name="cloud" [size]="16" />
                     <span class="row-text">{{ fog.text }}</span>
                     @if (fog.resolves; as resolves) {
                       <span class="muted resolves">{{ resolves }}</span>
@@ -229,6 +241,7 @@
               <ul class="rows">
                 @for (entry of entries; track $index) {
                   <li class="activity-row" data-activity [attr.data-kind]="entry.kind">
+                    <ui-icon class="act-icon" [name]="activityIcon(entry.kind)" [size]="16" />
                     <span class="kind">{{ 'status.activity.kinds.' + entry.kind | transloco }}</span>
                     @if (entry.id; as id) {
                       <a class="row-text link link-hover" [routerLink]="link('timeline')" [fragment]="'t/' + id">{{ entry.title }}</a>

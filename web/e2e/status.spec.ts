@@ -127,6 +127,7 @@ test.describe('status tab', () => {
       await expect(dialog).toBeVisible();
       await expect(dialog.locator('[data-hashed-file]')).toHaveCount(3);
       await expect(dialog.locator('[data-no-agent-source]')).toBeVisible();
+      for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
       await dialog.locator('[data-confirm]').click();
       await expect(page.locator('app-status-tab [data-gate-written]')).toBeVisible();
       await expect(dialog).toBeHidden();
@@ -141,6 +142,7 @@ test.describe('status tab', () => {
       await page.goto('/w/harbor/s/003/status');
       await page.locator('app-status-tab [data-gate-action]').click();
       const dialog = page.locator('app-status-tab [data-gate-dialog]');
+      for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
       await dialog.locator('[data-confirm]').click();
       const alert = dialog.locator('[data-write-conflict]');
       await expect(alert).toBeVisible();

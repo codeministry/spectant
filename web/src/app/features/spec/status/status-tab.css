@@ -212,14 +212,6 @@ code {
   align-items: center;
 }
 
-.gate-dot {
-  inline-size: 8px;
-  block-size: 8px;
-  flex-shrink: 0;
-  border-radius: 999px;
-  background: var(--gate-edge);
-}
-
 .gate-name {
   font-weight: 600;
 }
@@ -339,7 +331,68 @@ code {
 }
 
 @media (forced-colors: active) {
-  .gate-dot {
-    background: CanvasText;
+  .gate-icon {
+    color: CanvasText;
   }
+}
+
+/* T43: the prototype's gate-card icon, the open groups with their claim glyph, the fog line and the activity icons. */
+.gate-icon {
+  flex: none;
+  color: var(--muted-ink);
+}
+
+.gate:is([data-tone='accent'], [data-tone='warning']) .gate-icon {
+  color: var(--gate-edge);
+}
+
+.open-group {
+  display: grid;
+  gap: 4px;
+}
+
+.open-group + .open-group {
+  margin-block-start: 8px;
+}
+
+.glyph {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  align-self: center;
+  inline-size: 18px;
+  color: var(--muted-ink);
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.glyph[data-glyph='takeable'] {
+  color: var(--clos-text);
+}
+
+.glyph[data-glyph='taken'] {
+  color: var(--hover-text);
+}
+
+.dep {
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.fog-row {
+  padding: 8px 12px;
+  border-inline-start: 3px solid var(--ques-text);
+  border-radius: 0 var(--radius-field) var(--radius-field) 0;
+  background: var(--ques-t);
+}
+
+.fog-row .fog-icon {
+  color: var(--ques-text);
+}
+
+.act-icon {
+  flex: none;
+  align-self: center;
+  color: var(--muted-ink);
 }

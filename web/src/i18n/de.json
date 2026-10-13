@@ -547,7 +547,8 @@
       "heading": "Die Zeitleiste konnte nicht geladen werden",
       "body": "Der Server hat mit einem Fehler geantwortet.",
       "retry": "Erneut versuchen"
-    }
+    },
+    "anchor": "Link zu diesem Eintrag"
   },
   "claims": {
     "filters": {
@@ -615,7 +616,7 @@
     "loading": "Claims werden geladen …"
   },
   "docs": {
-    "contents": "Inhalt",
+    "contents": "Auf dieser Seite",
     "updated": "Aktualisiert {{date}}",
     "tableRegion": "Tabelle {{index}}, seitlich scrollbar",
     "figureRegion": "Diagramm {{index}}, seitlich scrollbar",
@@ -634,7 +635,14 @@
       "missingNoCommand": "Die Datei entsteht, sobald die Fragerunden der Spec festgehalten werden."
     },
     "error": "Dieses Dokument konnte nicht geladen werden.",
-    "loading": "Dokument wird geladen"
+    "loading": "Dokument wird geladen",
+    "design": {
+      "ist": "Ist",
+      "soll": "Soll",
+      "width": "{{width}} px",
+      "open": "{{viewport}} · {{side}} als Bild öffnen",
+      "noText": "Noch kein Soll-Text."
+    }
   },
   "tasks": {
     "filters": {
@@ -923,7 +931,13 @@
       "locked": "{{session}} hält {{claim}}. Es wurde nichts geschrieben.",
       "error": "Die Marke konnte nicht geschrieben werden (Status {{status}}).",
       "confirm": "Bestätigen",
-      "sending": "Wird geschrieben…"
+      "sending": "Wird geschrieben…",
+      "checklist": {
+        "legend": "Sie bestätigen",
+        "claims": "Ich habe jeden Claim gelesen",
+        "approach": "Der Ansatz in spec.md ist angenommen",
+        "anchored": "Jeder Task hängt an einem Claim"
+      }
     },
     "warnings": {
       "heading": "Warnungen",
@@ -934,7 +948,14 @@
       "claims": "Offene Claims",
       "fog": "Nebel",
       "none": "Nichts ist offen.",
-      "error": "Die offenen Claims konnten nicht gelesen werden."
+      "error": "Die offenen Claims konnten nicht gelesen werden.",
+      "groups": {
+        "takeable": "übernehmbar",
+        "taken": "vergeben",
+        "blocked": "blockiert",
+        "open": "offen"
+      },
+      "waitsOn": "wartet auf {{ids}}"
     },
     "activity": {
       "heading": "Aktivität",

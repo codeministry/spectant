@@ -27,6 +27,8 @@ import { openClaims } from './status-model';
 const ANCHORS = ['waiting', 'gates'] as const;
 /** Timeline entries shown under Activity; the Timeline tab holds the rest. */
 const ACTIVITY_LIMIT = 5;
+/** What is open, grouped as the prototype does: takeable, taken, blocked, then anything else still open. */
+const OPEN_ORDER: readonly string[] = ['takeable', 'taken', 'blocked', 'open'];
 
 /**
  * T54 · ISC-79 · ISC-85: the Status tab. It renders the spec payload the shell already loads (`ShellData.spec`) as it
@@ -103,6 +105,31 @@ export class StatusTab {
     const result = this.claims.value();
     return result?.kind === 'ok' ? { claims: openClaims(result.body.claims), fog: result.body.fog } : null;
   });
+
+  protected readonly openGroups = computed(() => {
+    const claims = this.open()?.claims ?? [];
+    const states = [...OPEN_ORDER, ...new Set(claims.map((claim) => claim.state).filter((state) => !OPEN_ORDER.includes(state)))];
+    return states.map((state) => ({ state, claims: claims.filter((claim) => claim.state === state) })).filter((group) => group.claims.length > 0);
+  });
+
+  /** The prototype's claim glyph: ◐ takeable, ○ blocked or open; a taken claim shows the lock icon instead. */
+  protected glyph(state: string): string {
+    return state === 'takeable' ? '◐' : '○';
+  }
+
+  /** The prototype's gate-card icon: check passed, alert stale or warning, flag for a missing review mark, x otherwise. */
+  protected gateIcon(name: string, state: GateState): 'check' | 'triangle-alert' | 'flag' | 'x' {
+    if (state === 'ok' || state === 'fresh') return 'check';
+    if (state === 'stale' || state === 'warn') return 'triangle-alert';
+    return name === 'reviewed' && state === 'missing' ? 'flag' : 'x';
+  }
+
+  /** The prototype's activity icons: clock for a round, server for an agent, file for a note or decision, git otherwise. */
+  protected activityIcon(kind: string): 'clock' | 'server' | 'file' | 'git-commit-horizontal' {
+    if (kind === 'round') return 'clock';
+    if (kind === 'agent') return 'server';
+    return kind === 'note' || kind === 'decision' ? 'file' : 'git-commit-horizontal';
+  }
 
   protected readonly activity = computed(() => {
     const result = this.timeline.value();

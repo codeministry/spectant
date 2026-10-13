@@ -94,6 +94,7 @@
   gap: 8px;
   align-items: start;
   min-block-size: 48px;
+  padding-inline-end: 32px;
   border-radius: 8px;
   outline-offset: 2px;
   transition: background-color var(--motion-duration-fast) var(--motion-ease-standard);
@@ -231,4 +232,22 @@ ui-disclosure .head {
   .marker[data-derived] {
     background: Canvas;
   }
+}
+
+/* The prototype's hover anchor: `#` links the entry's `#t/<id>`, shown on hover or focus. */
+.entry-anchor {
+  position: absolute;
+  inset-block-start: 12px;
+  inset-inline-end: 8px;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.entry:is(:hover, :focus-within) .entry-anchor {
+  opacity: 1;
 }

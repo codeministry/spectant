@@ -174,3 +174,16 @@
     display: none;
   }
 }
+
+/* Prototype styles.css 524: below 520 px the mini stage track leaves the row, so the phase chip never runs under the
+   meter (the stage stays in the chip and in the row's accessible name). */
+@container specs (width < 520px) {
+  :host(:not([data-density='dense'])) ui-stage-track {
+    display: none;
+  }
+
+  :host(:not([data-density='dense'])) .rtrack {
+    gap: 8px;
+    overflow: hidden;
+  }
+}

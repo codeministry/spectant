@@ -63,6 +63,14 @@ type WriteState =
     .hash { color: var(--muted-ink); font-variant-numeric: tabular-nums; }
     .muted { margin: 0; color: var(--muted-ink); }
     .confirm-bar { position: sticky; inset-block-end: 0; padding: 16px 0; background: var(--color-base-100); }
+    /* The prototype's "You confirm" checklist (spec-review-gate.html): three ticks before the mark can be written. */
+    .checklist { display: grid; gap: 4px; min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+    .checklist legend {
+      margin-block-end: 4px; padding: 0; color: var(--muted-ink); font-size: 12px; font-weight: 600; line-height: 16px;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .check-line { display: flex; gap: 8px; align-items: center; min-block-size: 32px; font-size: 14px; line-height: 20px; cursor: pointer; }
+    .check-line input { flex: none; inline-size: 16px; block-size: 16px; margin: 0; accent-color: var(--color-primary); }
   `,
   template: `
     @if (model(); as m) {
@@ -155,13 +163,28 @@ type WriteState =
               }
             }
           }
+          <fieldset class="checklist" data-gate-checklist>
+            <legend>{{ 'status.dialog.checklist.legend' | transloco }}</legend>
+            @for (item of checkItems; track item; let i = $index, first = $first) {
+              <label class="check-line">
+                <input
+                  type="checkbox"
+                  data-gate-check
+                  [attr.data-autofocus]="first ? '' : null"
+                  [checked]="checks()[i]"
+                  [disabled]="write().kind === 'conflict'"
+                  (change)="toggleCheck(i)"
+                />
+                <span>{{ 'status.dialog.checklist.' + item | transloco }}</span>
+              </label>
+            }
+          </fieldset>
           <div class="confirm-bar">
             <button
               type="button"
               class="btn btn-primary btn-block"
               data-confirm
-              data-autofocus
-              [disabled]="hashes() === null || write().kind === 'sending'"
+              [disabled]="hashes() === null || write().kind === 'sending' || !allChecked()"
               (click)="confirm()"
             >
               {{ (write().kind === 'sending' ? 'status.dialog.sending' : 'status.dialog.confirm') | transloco }}
@@ -213,6 +236,14 @@ export class GateButton {
     return shortHash(this.hashes()?.[file] ?? null);
   }
 
+  /** The "You confirm" checklist: UI confirmation only; the write path below is unchanged and runs once all three are ticked. */
+  protected readonly checkItems = ['claims', 'approach', 'anchored'] as const;
+  protected readonly checks = signal<readonly boolean[]>(this.checkItems.map(() => false));
+  protected readonly allChecked = computed(() => this.checks().every(Boolean));
+  protected toggleCheck(index: number): void {
+    this.checks.update((checks) => checks.map((checked, i) => (i === index ? !checked : checked)));
+  }
+
   protected readonly dialogOpen = signal(false);
   protected readonly write = signal<WriteState>({ kind: 'idle' });
   /** The `at` of the mark this button wrote, shown as the success line until the page is left. */
@@ -227,13 +258,14 @@ export class GateButton {
 
   protected openDialog(): void {
     this.write.set({ kind: 'idle' });
+    this.checks.set(this.checkItems.map(() => false));
     this.dialogOpen.set(true);
   }
 
   protected async confirm(): Promise<void> {
     const params = this.params();
     const hashes = this.hashes();
-    if (!params || !hashes || this.write().kind === 'sending') return;
+    if (!params || !hashes || !this.allChecked() || this.write().kind === 'sending') return;
     this.write.set({ kind: 'sending' });
     const result = await this.api.gateReviewed(params.ws, params.id, hashes);
     switch (result.kind) {

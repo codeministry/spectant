@@ -93,6 +93,8 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         await expect(files.locator('.file')).toHaveText(['spec.md', 'plan.md', 'tasks.md']);
         for (const hash of await files.locator('[data-hash]').all()) await expect(hash).toHaveText(/^([0-9a-f]{12}|absent)$/u);
         await expect(files.locator('[data-hash]').first()).toHaveText(/^[0-9a-f]{12}$/u);
+        await expect(dialog.locator('[data-confirm]')).toBeDisabled();
+        for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
         await dialog.locator('[data-confirm]').click();
         await expect(dialog).toBeHidden();
         await expect(page.locator(`${HEAD} [data-gate-written]`)).toBeVisible();
@@ -107,6 +109,7 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         await page.goto('/w/harbor/s/003');
         await page.locator(GATE).click();
         const dialog = page.locator(DIALOG);
+        for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
         await dialog.locator('[data-confirm]').click();
         const alert = dialog.locator('[data-write-conflict]');
         await expect(alert).toBeVisible();
@@ -123,6 +126,7 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         await page.goto('/w/harbor/s/003');
         await page.locator(GATE).click();
         const dialog = page.locator(DIALOG);
+        for (const box of await dialog.locator('[data-gate-check]').all()) await box.check();
         await dialog.locator('[data-confirm]').click();
         await expect(dialog.locator('[data-write-locked]')).toContainText(/a:claude:stub-003-isc-\d+/u);
         await expect(page.locator(`${HEAD} [data-gate-written]`)).toHaveCount(0);

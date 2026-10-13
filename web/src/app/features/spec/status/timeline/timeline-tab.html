@@ -75,6 +75,15 @@
                     [attr.data-derived]="row.entry.derived ? '' : null"
                     [style.--marker]="markerColor(row.entry.kind)"
                   ></span>
+                  <a
+                    class="entry-anchor"
+                    data-entry-anchor
+                    tabindex="-1"
+                    [routerLink]="[]"
+                    [fragment]="'t/' + row.key"
+                    [attr.aria-label]="'timeline.anchor' | transloco"
+                    >#</a
+                  >
                   <div class="main">
                     <ng-template #head>
                       <span class="title">{{ row.entry.title }}</span>
