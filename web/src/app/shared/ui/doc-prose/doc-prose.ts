@@ -17,7 +17,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { DocsPage, MermaidFigure } from '../../../../../../core/src/files';
 import { ThemeService } from '../../../core/theme.service';
 import { UiDisclosure } from '../overlay/disclosure';
-import { fitMermaid, MERMAID_LOADER, type MermaidApi, mermaidConfig, themeVariables } from './mermaid';
+import { accentMermaidNodes, fitMermaid, MERMAID_LOADER, type MermaidApi, mermaidConfig, themeVariables } from './mermaid';
 
 let nextRenderId = 0;
 
@@ -157,6 +157,8 @@ export class UiDocProse {
         }
         // Mermaid's own output under `securityLevel: 'strict'` (DOMPurify-cleaned, no HTML labels, no click handlers).
         target.innerHTML = svg;
+        const drawn = target.querySelector<SVGSVGElement>(':scope > svg');
+        if (drawn) accentMermaidNodes(drawn); // the Help figure's left accent edge (ISC-154)
         element.setAttribute('data-rendered', '');
         const caption = (element.querySelector('figcaption')?.textContent ?? figure.caption).trim();
         this.watchDiagram(target, caption === '' ? this.transloco.translate('docs.figureRegion', { index: figure.index }) : caption);

@@ -158,6 +158,18 @@ ui-doc-prose .docs-prose .mermaid-svg svg {
   block-size: auto;
 }
 
+/*
+ * The Help workflow figure's anatomy on every drawn diagram (ISC-154, `features/help/workflow-figure.css`). Colours
+ * (`--track` node border, edges and arrowheads), the 13 px label size and the 1 px border come in through mermaid's
+ * theme variables (`mermaid.ts`), because mermaid's own `#id`-scoped sheet outranks a page rule for them; the label
+ * weight, the 1.5 px edge and the left accent edge (`accentMermaidNodes`) go into that sheet as `DIAGRAM_CSS`. What
+ * mermaid does not style at all is set here: the card radius of a node's outline and of a cluster (8, the Help `rx`).
+ */
+ui-doc-prose .docs-prose .mermaid-svg :is(.node > rect, .node > g:not(.node-accent) > rect, .cluster > rect) {
+  rx: 8px;
+  ry: 8px;
+}
+
 /* Scaled to the container its labels would drop below 12 px: natural width, scrolling inside the figure (fitMermaid). */
 ui-doc-prose .docs-prose .mermaid-svg[data-natural] {
   text-align: start;
