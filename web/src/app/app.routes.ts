@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { type RedirectFunction, Router, type Routes } from '@angular/router';
-import { SPEC_AREA_ROUTES } from './features/spec/spec-area.routes';
+import { LEGACY_SPEC_REDIRECTS, SPEC_AREA_ROUTES } from './features/spec/spec-area.routes';
 import { SpecPage } from './features/spec/spec-page';
 import type { ShellRouteData } from './layout/shell/areas';
 import { TECH_TABS, type TechTabId } from './layout/shell/page-tabs';
@@ -101,6 +101,8 @@ export const routes: Routes = [
       { path: 'w/:ws/tech', pathMatch: 'full', redirectTo: techRedirect('overview') },
       ...TECH_TABS.map((tab) => ({ path: `w/:ws/tech/${tab}`, pathMatch: 'full' as const, redirectTo: techRedirect(tab) })),
       { path: 'w/:ws/tech', children: [{ path: '**', loadComponent: notFoundPage, data: notFound }] },
+      // Spec 017 (T48, ISC-158.1): the former Docs and Evidence tabs redirect into the spec's Library area.
+      ...LEGACY_SPEC_REDIRECTS,
       { path: 'w/:ws/s/:id', component: SpecPage, children: SPEC_AREA_ROUTES },
       { path: '**', loadComponent: notFoundPage, data: notFound },
     ],

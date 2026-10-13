@@ -406,6 +406,10 @@ test.describe('icons', () => {
       test.use(atWidth(spot.width ?? 1440));
 
       test(`${spot.place} renders ${spot.icon}`, async ({ page }) => {
+        test.skip(
+          /^\/w\/[^/]+\/s\/[^/]+\/(?:evidence|plan|design|decisions|constitution)$/u.test(spot.route),
+          'ISC-158.1 (spec 017, T48): the former Docs and Evidence tabs redirect into the Library area; T54 replaces this test there',
+        );
         await page.goto(spot.route);
         if (spot.open) await spot.open(page);
         const place = page.locator(spot.at).first();

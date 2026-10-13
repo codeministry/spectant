@@ -6,6 +6,7 @@
 import { atWidth, expect, test, WIDTHS } from './fixtures';
 
 test.describe('docs', () => {
+  test.skip(true, 'ISC-158.1 (spec 017, T48): the former Docs and Evidence tabs redirect into the Library area; T54 replaces this test there');
   test.describe('wide', () => {
     test.use(atWidth(WIDTHS.desktop));
 

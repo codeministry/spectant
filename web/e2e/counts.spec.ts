@@ -225,6 +225,7 @@ for (const { width, tier } of TIERS) {
       // Evidence tab: the listing is the stub route's answer (core's `listEvidence` over the fixture tree), so the rows
       // are read at run time: one [data-claim-group] per byClaim key plus `none` for the ungrouped files.
       test(`${base}/evidence files per group`, async ({ page, request }) => {
+        test.skip(true, 'ISC-158.1 (spec 017, T48): the former Docs and Evidence tabs redirect into the Library area; T54 replaces this test there');
         const answer = await request.get(specRoutes.evidence('harbor', id));
         expect(answer.status()).toBe(200);
         const listing = (await answer.json()) as EvidenceListing;

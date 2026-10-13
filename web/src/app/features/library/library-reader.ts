@@ -173,6 +173,19 @@ function sectionOf(heading: Element): TechSection | null {
 
 export const isTechSection = (value: unknown): value is TechSection => (TECH_SECTIONS as readonly unknown[]).includes(value);
 
+/** `?section=decisions`: the `## Decisions` section of a spec.md (spec 017, T48, ISC-158.1). */
+export const DECISIONS_SECTION = 'decisions';
+const DECISIONS_NAMES: readonly string[] = ['decisions', 'entscheidungen'];
+
+/** The drawn `## Decisions` heading of a spec.md: the h2 whose text (English or German) or id names it; null without. */
+export function decisionsHeading(root: ParentNode): HTMLElement | null {
+  const named = (heading: Element): boolean => {
+    const text = plainWords(heading.textContent);
+    return DECISIONS_NAMES.some((name) => text === name || text.startsWith(`${name} `) || heading.id === name || heading.id.endsWith(`-${name}`));
+  };
+  return [...root.querySelectorAll<HTMLElement>('.docs-prose h2')].find(named) ?? null;
+}
+
 /** tech.md as the reader shows it: the page with the four sections in order, and the keys the file has none for. */
 export interface TechReading {
   readonly page: DocsPage;
@@ -300,10 +313,15 @@ export class LibraryReader {
   /** A cross reference was followed: the catalog path of its document. */
   readonly pick = output<string>();
 
-  /** The section of tech.md the address names (`?section=`); null for any other value and any other document. */
-  private readonly section = computed<TechSection | null>(() => {
+  /**
+   * The section the address names (`?section=`): one of tech.md's four, or `decisions`, the `## Decisions` section of a
+   * spec.md (the former Decisions tab redirects there, spec 017, T48, ISC-158.1); null for any other value or document.
+   */
+  private readonly section = computed<TechSection | typeof DECISIONS_SECTION | null>(() => {
     const value = this.params().get('section');
-    return this.doc()?.type === 'tech' && isTechSection(value) ? value : null;
+    const type = this.doc()?.type;
+    if (type === 'tech' && isTechSection(value)) return value;
+    return type === 'spec' && value === DECISIONS_SECTION ? value : null;
   });
   /** The document and section the reader last jumped to, so the jump happens once per pair. */
   private jumped: string | null = null;
@@ -403,7 +421,10 @@ export class LibraryReader {
         }
         const key = `${this.doc()?.path ?? ''}#${section}`;
         if (this.jumped === key) return;
-        const heading = this.host.querySelector<HTMLElement>(`section[data-library-tech-section="${section}"] > h2`);
+        const heading =
+          section === DECISIONS_SECTION
+            ? decisionsHeading(this.host)
+            : this.host.querySelector<HTMLElement>(`section[data-library-tech-section="${section}"] > h2`);
         if (heading === null) return;
         this.jumped = key;
         heading.setAttribute('tabindex', '-1');

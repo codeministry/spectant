@@ -10,6 +10,7 @@ import {
   Injector,
   linkedSignal,
   resource,
+  untracked,
   ViewEncapsulation,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -506,6 +507,19 @@ export class LibraryPage {
       tabCount.value.set(spec === null || ws === null || catalog === null ? null : { ws, spec, count: catalog.docs.length });
     });
     inject(DestroyRef).onDestroy(() => tabCount.value.set(null));
+    // A former Docs tab's redirect names the spec's document by its kind (`?doc=plan|design|spec`, spec 017, T48,
+    // ISC-158.1): only the catalog knows the spec's folder, so once it is here the document is picked by its path and
+    // the address carries that path as fragment, `?doc=` dropped and `?section=` kept, replacing the history entry.
+    effect(() => {
+      const kind = this.params().get('doc');
+      const catalog = this.catalog();
+      if (kind === null || catalog === null || !this.specScoped()) return;
+      const doc = catalog.docs.find((entry) => entry.spec !== WORKSPACE_SPEC && entry.path === `${entry.spec}/${kind}.md`);
+      untracked(() => {
+        if (doc !== undefined) this.picked.set(doc.path);
+        this.write();
+      });
+    });
   }
 
   /** The group's label: "‹ws› · workspace-wide", else the spec's number and slug ("017 · workspace-library"). */
@@ -665,11 +679,13 @@ export class LibraryPage {
    * The shown filter and document into the address: the list's params merged into the others, the document as the
    * fragment (none without one), replacing the history entry so a keystroke is no step of its own. A change of the
    * document (`docChanged`) drops `?section=`, which names a section of the document it was set for (spec 017, T42).
+   * `?doc=` (a former Docs tab's redirect, T48) is always dropped: the fragment names the document from here on.
    */
   private write(docChanged = false): void {
+    const params = { ...addressParams(this.filter()), doc: null };
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: docChanged ? { ...addressParams(this.filter()), section: null } : addressParams(this.filter()),
+      queryParams: docChanged ? { ...params, section: null } : params,
       queryParamsHandling: 'merge',
       fragment: this.picked() ?? undefined,
       replaceUrl: true,

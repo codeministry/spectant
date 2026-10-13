@@ -301,6 +301,7 @@ test.describe('task checkbox', () => {
  * dialog; a path the stub refuses (403) is an error row, never a preview (ISC-83).
  */
 test.describe('evidence', () => {
+  test.skip(true, 'ISC-158.1 (spec 017, T48): the former Docs and Evidence tabs redirect into the Library area; T54 replaces this test there');
   const PREVIEW = 'app-evidence-tab dialog[data-preview]';
 
   async function listing(request: APIRequestContext): Promise<EvidenceListing> {

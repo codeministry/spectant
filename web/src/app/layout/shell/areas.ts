@@ -18,7 +18,7 @@ export type AreaId = (typeof AREA_IDS)[number];
 
 /**
  * The former tabs of the Docs area and Data's Evidence (spec 017, ISC-158.1): no area lists them any more, but their
- * routes still answer until T48 redirects each into the Library area; meanwhile they count as the Library area.
+ * addresses redirect into the Library area (T48, `LEGACY_SPEC_REDIRECTS`); the ids stay for the links that name them.
  */
 export const LEGACY_TAB_IDS = ['evidence', 'plan', 'design', 'decisions', 'constitution'] as const;
 export type LegacyTabId = (typeof LEGACY_TAB_IDS)[number];
@@ -62,7 +62,7 @@ export const areaById = (id: AreaId): SpecArea => SPEC_AREAS.find((area) => area
 
 const isLegacyTab = (tab: TabId): boolean => (LEGACY_TAB_IDS as readonly TabId[]).includes(tab);
 
-/** The area a tab belongs to; a former Docs or Evidence tab (`LEGACY_TAB_IDS`) counts as the Library until T48. */
+/** The area a tab belongs to; a former Docs or Evidence tab (`LEGACY_TAB_IDS`) counts as the Library. */
 export const areaOfTab = (tab: TabId): SpecArea =>
   SPEC_AREAS.find((area) => area.tabs.includes(tab)) ?? (isLegacyTab(tab) ? areaById('library') : must(tab));
 

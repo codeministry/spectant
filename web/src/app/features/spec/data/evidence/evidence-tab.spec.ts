@@ -8,7 +8,7 @@ import { afterEach, beforeEach, vi } from 'vitest';
 import type { EvidenceFile, EvidenceListing } from '../../../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
 import { ApiClient, type ApiResult, type EvidenceTextResult } from '../../../../core/api.service';
-import { SPEC_AREA_ROUTES } from '../../spec-area.routes';
+import { EvidenceTab } from './evidence-tab';
 
 const ok = <T>(body: T): ApiResult<T> => ({ kind: 'ok', body, etag: null, notModified: false });
 
@@ -54,7 +54,9 @@ function setUp(listing: EvidenceListing): void {
       }),
     ],
     providers: [
-      provideRouter([{ path: 'w/:ws/s/:id', children: SPEC_AREA_ROUTES }]),
+      // Spec 017 (T48, ISC-158.1): `…/evidence` redirects into the Library area; the tab, unreachable until T52 removes
+      // it, is mounted here on its own route.
+      provideRouter([{ path: 'w/:ws/s/:id', children: [{ path: 'evidence', component: EvidenceTab, data: { area: 'library', tab: 'evidence' } }] }]),
       provideHttpClient(),
       provideHttpClientTesting(),
       { provide: ApiClient, useValue: api },

@@ -360,6 +360,17 @@ describe('KeyboardService', () => {
       expect(inSpec.navigate).toHaveBeenCalledWith(['/w', 'harbor', 's', '002', 'library']);
     });
 
+    it('g o, the former Docs area key, opens the Library area and never a former Docs tab (spec 017, T48, ISC-158.1)', () => {
+      const inSpec = setup();
+      inSpec.press('g');
+      inSpec.press('o');
+      expect(inSpec.navigate).toHaveBeenCalledTimes(1);
+      expect(inSpec.navigate).toHaveBeenCalledWith(['/w', 'harbor', 's', '002', 'library']);
+      for (const tab of ['plan', 'design', 'decisions', 'constitution', 'docs']) {
+        expect(inSpec.navigate).not.toHaveBeenCalledWith(['/w', 'harbor', 's', '002', tab]);
+      }
+    });
+
     it('keeps g s and g n on the spec areas inside a spec', () => {
       const { press, navigate } = setup();
       document.body.innerHTML = '<h2 id="specs">S</h2>';
