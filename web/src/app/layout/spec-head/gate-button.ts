@@ -111,6 +111,7 @@ type WriteState =
         }
         @default {
           <button type="button" class="btn btn-primary gate-button" [class.btn-sm]="inline()" data-gate-action data-state="ready" (click)="openDialog()">
+            <ui-icon name="flag" [size]="16" />
             {{ 'status.gate.ready' | transloco }}
           </button>
         }

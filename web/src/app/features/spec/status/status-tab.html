@@ -17,7 +17,7 @@
   @case ('ok') {
     @if (model(); as m) {
       <ng-template #gateBlock>
-        <ul class="gate-list">
+        <ul class="gate-list" data-icon-place="status-gates">
           @for (name of gateNames; track name) {
             <li class="gate" [attr.data-gate]="name" [attr.data-state]="m.gates[name].state" [attr.data-tone]="gateTone(m.gates[name].state)">
               <span class="gate-head">
