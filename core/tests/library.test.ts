@@ -9,10 +9,14 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, 
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 
+import { buildDashboard, type DashboardInput } from '../src/dashboard.ts';
 import type { LibraryCatalog, LibraryDoc, SpecType } from '../src/files.ts';
 import { readCatalog } from '../src/library.ts';
+import { readLockSources } from '../src/locks.ts';
+import { renderDocsMarkdown } from '../src/markdown-docs.ts';
 import { stageOf, type StageInput } from '../src/stage.ts';
-import { FIXTURES } from './helpers/read-tree.ts';
+import { readTech } from '../src/tech.ts';
+import { FIXTURES, readTreeAt } from './helpers/read-tree.ts';
 
 const FIXTURE = join(FIXTURES, 'library');
 
@@ -455,5 +459,123 @@ describe('missing (ISC-155.2)', () => {
     const catalog = await readCatalog(generated(cases));
     expect(missingOf(catalog).map((d) => d.path)).toEqual(['201-refactor-dropped/tasks.md']);
     expect(catalog.missing).toBe(1);
+  });
+});
+
+// ISC-157: one group head per active spec and the open fog lines, the former tech page's Status, Specs and Open tabs.
+// Type, stage, claims and tasks are the dashboard row's, fog count, goal, approach and fog lines the tech page's, so
+// each head is compared with both models over the same tree rather than with a second derivation.
+describe('groups (ISC-157)', () => {
+  const roots: string[] = [];
+  afterAll(() => {
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
+  });
+
+  /** The library fixture with fog lines: two in the open 002, one in the complete 003 (never shown). */
+  function foggy(): string {
+    const root = workspaceCopy();
+    roots.push(root);
+    const addFog = (spec: string, lines: readonly string[]): void => {
+      const path = join(root, 'specs', spec, 'spec.md');
+      const text = readFileSync(path, 'utf-8').replace('## Not yet specified\n', `## Not yet specified\n\n${lines.map((l) => `- fog: ${l}`).join('\n')}\n`);
+      writeFileSync(path, text);
+    };
+    addFog(S2, ['Which tide source counts for a river harbour.', 'How far ahead the board looks.']);
+    addFog(S3, ['Whether the night palette shares the table.']);
+    return root;
+  }
+
+  /** The dashboard input a server would read for `root`: the test helper's tree plus the repository's own locks. */
+  async function serverInput(root: string, worktreeTree: string | null = null): Promise<DashboardInput> {
+    return { ...readTreeAt(root, worktreeTree), locks: await readLockSources({ repoRoot: root, lifeosStateDir: null }) };
+  }
+
+  test('groups: one head per active spec in number order with type, stage, claims, tasks, fog, goal and approach', async () => {
+    const root = foggy();
+    const before = treeHash(root);
+    const catalog = await readCatalog(root);
+    expect(catalog.groups).toEqual([
+      {
+        spec: S1,
+        type: 'feature',
+        stage: 'review',
+        claimsClosed: 2,
+        claimsTotal: 3,
+        tasksDone: 2,
+        tasksTotal: 3,
+        fog: 0,
+        goal: 'Every lighthouse in the list stands on the map at its position.',
+        approach: 'Read the list once, project each position onto the tile grid.',
+      },
+      { spec: S2, type: 'feature', stage: 'plan', claimsClosed: 0, claimsTotal: 3, tasksDone: 0, tasksTotal: 0, fog: 2, goal: 'The tide board shows high and low water of the next day for every harbour.', approach: null },
+      { spec: S3, type: 'refactor', stage: 'done', claimsClosed: 3, claimsTotal: 3, tasksDone: 0, tasksTotal: 0, fog: 0, goal: 'Every buoy colour comes from one table; the map looks the same.', approach: null },
+      { spec: S4, type: 'bug', stage: 'review', claimsClosed: 0, claimsTotal: 1, tasksDone: 0, tasksTotal: 0, fog: 0, goal: 'The fog horn interval reads in seconds.', approach: null },
+    ]);
+    // The filter "open": every fog line of a spec not complete, under its folder; the complete 003 adds none.
+    expect(catalog.fog).toEqual([
+      { spec: S2, text: 'Which tide source counts for a river harbour.' },
+      { spec: S2, text: 'How far ahead the board looks.' },
+    ]);
+    expect(treeHash(root)).toEqual(before);
+  });
+
+  test('groups: equal the dashboard rows and the tech model of the same tree (library, harbor, lantern)', async () => {
+    for (const root of [foggy(), join(FIXTURES, 'harbor'), join(FIXTURES, 'lantern')]) {
+      const input = await serverInput(root);
+      const catalog = await readCatalog(root);
+      const rows = buildDashboard(input).specs;
+      const tech = readTech({ specs: input.specs });
+      expect(catalog.groups.map((g) => g.spec)).toEqual(rows.map((r) => r.slug).sort());
+      expect(catalog.groups.map((g) => g.spec)).toEqual(tech.specs.map((s) => s.slug));
+      for (const g of catalog.groups) {
+        const row = rows.find((r) => r.slug === g.spec);
+        const spec = tech.specs.find((s) => s.slug === g.spec);
+        expect({ spec: g.spec, type: g.type, stage: g.stage, claims: [g.claimsClosed, g.claimsTotal], tasks: [g.tasksDone, g.tasksTotal] }).toEqual({
+          spec: row?.slug ?? '',
+          type: row?.type ?? null,
+          stage: row?.stage ?? '',
+          claims: [row?.progress.closed ?? -1, row?.progress.total ?? -1],
+          tasks: [row?.tasks?.landed ?? 0, row?.tasks?.total ?? 0],
+        });
+        // Goal and approach are the Markdown the tech page renders: rendered the same way, they are its pages.
+        const id = spec?.id ?? '';
+        const page = (text: string | null, part: string) => (text === null ? null : renderDocsMarkdown(text, { idPrefix: `spec-${id}-${part}-` }));
+        expect({ spec: g.spec, fog: g.fog, goal: page(g.goal, 'goal'), approach: page(g.approach, 'approach') }).toEqual({
+          spec: spec?.slug ?? '',
+          fog: spec?.fog.length ?? -1,
+          goal: spec?.goal ?? null,
+          approach: spec?.approach ?? null,
+        });
+      }
+      expect(catalog.fog).toEqual(tech.specs.flatMap((s) => s.fog.map((text) => ({ spec: s.slug, text }))));
+    }
+    // The fixtures carry what the tabs show: fog lines, goals and approaches.
+    const harbor = await readCatalog(join(FIXTURES, 'harbor'));
+    expect(harbor.fog.length).toBeGreaterThan(0);
+    expect(harbor.groups.filter((g) => g.approach !== null).length).toBeGreaterThan(0);
+  });
+
+  test('groups: the server reading decides the stage, a fresh code-reviewed mark included', async () => {
+    const root = join(FIXTURES, 'harbor');
+    const mark = JSON.parse(readFileSync(join(root, 'specs', '004-retention-policies', '.gates', 'code-reviewed.json'), 'utf-8')) as { tree?: string };
+    const input = await serverInput(root, mark.tree ?? null);
+    const want = buildDashboard(input).specs.map((r) => [r.slug, r.stage]).sort();
+    const given = (await readCatalog(root, input)).groups;
+    expect(given.map((g) => [g.spec, g.stage])).toEqual(want);
+    expect(given.find((g) => g.spec === '004-retention-policies')?.stage).toBe('close');
+    // Without the tree id the mark proves nothing and reads stale, as the dashboard reads it then.
+    const without = buildDashboard(await serverInput(root)).specs.map((r) => [r.slug, r.stage]).sort();
+    const read = (await readCatalog(root)).groups;
+    expect(read.map((g) => [g.spec, g.stage])).toEqual(without);
+    expect(read.find((g) => g.spec === '004-retention-policies')?.stage).toBe('code-review');
+  });
+
+  test('groups: a workspace without specs has no head and no fog line; a folder without spec.md has no head', async () => {
+    const empty = mkdtempSync(join(tmpdir(), 'spectant-library-'));
+    roots.push(empty);
+    expect(await readCatalog(empty)).toMatchObject({ groups: [], fog: [] });
+    const root = workspaceCopy({}, ['specs/004-fog-horn/spec.md']);
+    roots.push(root);
+    expect((await readCatalog(root)).groups.map((g) => g.spec)).toEqual([S1, S2, S3]);
   });
 });

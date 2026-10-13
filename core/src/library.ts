@@ -11,20 +11,25 @@
 // Titles: the H1, else frontmatter `title:` (through `frontmatter.ts`, no second parser), else the file name; a
 // prototype is named after its folder. `modified` is the file's mtime as ISO 8601, a prototype's its newest file.
 // Every present document is listed `ok`; `stale` (ISC-155.1) and `missing` (ISC-155.2) are judged over the finished
-// list in `judge`, the one place the later tasks extend.
+// list in `judge`, the one place the later tasks extend. The group heads and open fog lines (ISC-157) come from the
+// dashboard model and the tech page's sources in `groupsOf`.
 import type { Dirent } from 'node:fs';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { parseClaims } from './claims.ts';
+import { buildDashboard, type DashboardInput } from './dashboard.ts';
 import { parseEvents } from './events.ts';
 import { mediaTypeOf } from './evidence.ts';
-import type { LibraryCatalog, LibraryDoc, LibraryDocType, LibraryMedia, TextFileKind } from './files.ts';
+import type { LibraryCatalog, LibraryDoc, LibraryDocType, LibraryFogLine, LibraryMedia, SpecFiles, SpecGroupHead, TextFileKind } from './files.ts';
 import { DESIGN_ASSETS, FILE_KINDS, repoFilePath } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
+import { readLockSources } from './locks.ts';
 import { listSpecs } from './resolve.ts';
 import type { Stage, StageInput } from './stage.ts';
 import { SPEC_RULES } from './stage.ts';
+import { techSourcesOf } from './tech.ts';
+import { parseWorkflow } from './workflow.ts';
 
 /** The folder every catalog path is relative to, from the repository root. */
 const SPECS_DIR = 'specs';
@@ -333,24 +338,101 @@ async function judge(root: string, specs: readonly string[], docs: readonly Libr
   return placeMissing(judged, missing.flat());
 }
 
+/** The text file kinds inside a spec folder, as the server's workspace loader reads each folder. */
+const FOLDER_KINDS = (Object.keys(FILE_KINDS) as TextFileKind[]).filter((kind) => !FILE_KINDS[kind].directory && !FILE_KINDS[kind].path.startsWith('..'));
+
+/** A file's text, or null when it cannot be read (absent, a directory, vanished). */
+async function textOf(path: string): Promise<string | null> {
+  try {
+    return await readFile(path, 'utf-8');
+  } catch {
+    return null;
+  }
+}
+
+/** The texts of one active spec folder, a missing file an absent key, as `buildDashboard` and `readTech` take them. */
+async function specFilesOf(root: string, spec: string): Promise<SpecFiles> {
+  const texts: Partial<Record<TextFileKind, string>> = {};
+  await Promise.all(
+    FOLDER_KINDS.map(async (kind) => {
+      const text = await textOf(join(root, SPECS_DIR, spec, FILE_KINDS[kind].path));
+      if (text !== null) texts[kind] = text;
+    }),
+  );
+  return { folder: spec, texts };
+}
+
+/**
+ * The part of the dashboard model's input a stage depends on, read from the files when the caller passes none: the
+ * active spec folders, `specs/workflow.md` through `parseWorkflow` and the repository's own lock source through
+ * `readLockSources` (no LifeOS directory). The worktree tree id needs git, which `core/` never runs, so it is null here
+ * and a code-reviewed mark reads stale; the server passes its own reading, which carries it.
+ */
+async function stageInputOf(root: string, specs: readonly string[]): Promise<DashboardInput> {
+  return {
+    master: null,
+    constitution: null,
+    tldr: null,
+    specs: await Promise.all(specs.map((s) => specFilesOf(root, s))),
+    archived: [],
+    worktreeTree: null,
+    locks: await readLockSources({ repoRoot: root, lifeosStateDir: null }),
+    workflow: parseWorkflow(await textOf(repoFilePath(root, 'workflow'))),
+  };
+}
+
+/**
+ * The group heads and the open fog lines (ISC-157): what the former tech page's Status, Specs and Open tabs showed,
+ * taken from the same two models, never derived again. Type, stage, claims and tasks are the dashboard row's
+ * (`buildDashboard` over `input`), the fog count, goal, approach and fog lines the tech page's (`techSourcesOf`, the
+ * Markdown sources `readTech` renders). One head per active spec with a row (a folder without spec.md has none), in
+ * folder order; the fog lines of each spec not complete under its folder, in the same order.
+ */
+function groupsOf(input: DashboardInput): { groups: SpecGroupHead[]; fog: LibraryFogLine[] } {
+  const rows = new Map(buildDashboard(input).specs.map((row) => [row.slug, row]));
+  const folders = [...input.specs].sort((a, b) => byName(a.folder, b.folder));
+  const groups: SpecGroupHead[] = [];
+  const fog: LibraryFogLine[] = [];
+  for (const f of folders) {
+    const row = rows.get(f.folder);
+    if (row === undefined || f.texts.spec === undefined) continue;
+    const sources = techSourcesOf(f.texts.spec, f.texts.plan);
+    const tasks = row.tasks ?? { landed: 0, total: 0 };
+    groups.push({
+      spec: f.folder,
+      type: row.type,
+      stage: row.stage,
+      claimsClosed: row.progress.closed,
+      claimsTotal: row.progress.total,
+      tasksDone: tasks.landed,
+      tasksTotal: tasks.total,
+      fog: sources.fog.length,
+      goal: sources.goal,
+      approach: sources.approach,
+    });
+    fog.push(...sources.fog.map((text): LibraryFogLine => ({ spec: f.folder, text })));
+  }
+  return { groups, fog };
+}
+
 /**
  * The document catalog of the workspace at `root` (the repository root holding `specs/`): the workspace documents,
- * then each active spec in number order with its documents. Metadata only, never the content. A workspace without
- * `specs/` has an empty catalog. Reads only.
+ * then each active spec in number order with its documents, plus one group head per active spec and the open fog
+ * lines. Metadata only, never a document's content (goal and approach are the heads' own short Markdown). A workspace
+ * without `specs/` has an empty catalog. `input` is the dashboard model's input as the server read it for the same
+ * workspace (`readWorkspaceInput`), so the heads' stages equal the dashboard's to the code-reviewed mark; without it
+ * the stage input is read from the files (`stageInputOf`). Its active specs are those `listSpecs` finds. Reads only.
  */
-export async function readCatalog(root: string): Promise<LibraryCatalog> {
+export async function readCatalog(root: string, input?: DashboardInput): Promise<LibraryCatalog> {
   const specs = listSpecs(root).filter((s) => !s.archived);
-  const perSpec = await Promise.all(specs.map((s) => specDocs(root, s.slug)));
-  const docs = await judge(
-    root,
-    specs.map((s) => s.slug),
-    [...(await workspaceDocs(root)), ...perSpec.flat()],
-  );
+  const slugs = specs.map((s) => s.slug);
+  const perSpec = await Promise.all(slugs.map((s) => specDocs(root, s)));
+  const docs = await judge(root, slugs, [...(await workspaceDocs(root)), ...perSpec.flat()]);
+  const { groups, fog } = groupsOf(input ?? (await stageInputOf(root, slugs)));
   return {
     docs,
-    // The group heads (ISC-157) and the open fog lines come with their own tasks.
-    groups: [],
-    fog: [],
+    groups,
+    fog,
     missing: docs.filter((d) => d.state === 'missing').length,
     stale: docs.filter((d) => d.state === 'stale').length,
   };

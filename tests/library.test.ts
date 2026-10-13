@@ -101,8 +101,11 @@ describe("GET /api/workspaces/:ws/library", () => {
     expect(text).not.toContain(root);
     expect(text).not.toContain("archive/");
     expect(text).not.toContain("000-first-light");
+    // The group heads carry a spec's goal and first approach paragraph as their own short Markdown (ISC-157); the
+    // document entries carry no text.
+    const entries = JSON.stringify(catalog.docs);
     const plan = readFileSync(join(shelf, "specs", "001-lighthouse-map", "plan.md"), "utf8").split("\n").filter((l) => l.length > 40);
-    for (const line of plan) expect(text).not.toContain(line);
+    for (const line of plan) expect(entries).not.toContain(line);
   });
 
   test("a workspace without documents: 200 and an empty catalog", async () => {
