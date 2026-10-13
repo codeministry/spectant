@@ -432,5 +432,634 @@
     "closed": 31,
     "total": 32
   },
-  "diagnostics": []
+  "diagnostics": [],
+  "relations": {
+    "feature:F40": {
+      "ref": "feature:F40",
+      "type": "feature",
+      "id": "F40",
+      "title": "Installable as a PWA",
+      "closed": 9,
+      "total": 10,
+      "parents": [],
+      "children": [
+        "spec:012",
+        "claim:ISC-327",
+        "claim:ISC-328",
+        "claim:ISC-329",
+        "claim:ISC-330",
+        "claim:ISC-331",
+        "claim:ISC-332",
+        "claim:ISC-333",
+        "claim:ISC-334",
+        "claim:ISC-335",
+        "claim:ISC-336"
+      ],
+      "blockers": []
+    },
+    "feature:F41": {
+      "ref": "feature:F41",
+      "type": "feature",
+      "id": "F41",
+      "title": "The debt behind v0.5.0 is paid down without a change in behaviour",
+      "closed": 14,
+      "total": 14,
+      "parents": [],
+      "children": [
+        "spec:013",
+        "claim:ISC-337",
+        "claim:ISC-338",
+        "claim:ISC-339",
+        "claim:ISC-340",
+        "claim:ISC-341",
+        "claim:ISC-342",
+        "claim:ISC-343",
+        "claim:ISC-344",
+        "claim:ISC-345",
+        "claim:ISC-346",
+        "claim:ISC-347",
+        "claim:ISC-348",
+        "claim:ISC-349",
+        "claim:ISC-350",
+        "claim:ISC-351"
+      ],
+      "blockers": []
+    },
+    "feature:F50": {
+      "ref": "feature:F50",
+      "type": "feature",
+      "id": "F50",
+      "title": "Chat turn status, bulk delete, and the cited row in view",
+      "closed": 8,
+      "total": 8,
+      "parents": [],
+      "children": [
+        "spec:022",
+        "claim:ISC-473",
+        "claim:ISC-474",
+        "claim:ISC-475",
+        "claim:ISC-476",
+        "claim:ISC-477",
+        "claim:ISC-478",
+        "claim:ISC-479",
+        "claim:ISC-480"
+      ],
+      "blockers": []
+    },
+    "spec:012": {
+      "ref": "spec:012",
+      "type": "spec",
+      "id": "012",
+      "title": "Installable as a PWA: manifest, icons, colours, an offline shell and an update toast",
+      "closed": 9,
+      "total": 10,
+      "parents": [
+        "feature:F40"
+      ],
+      "children": [
+        "claim:ISC-327",
+        "claim:ISC-328",
+        "claim:ISC-329",
+        "claim:ISC-330",
+        "claim:ISC-331",
+        "claim:ISC-332",
+        "claim:ISC-333",
+        "claim:ISC-334",
+        "claim:ISC-335",
+        "claim:ISC-336"
+      ],
+      "blockers": [],
+      "stage": "build"
+    },
+    "spec:022": {
+      "ref": "spec:022",
+      "type": "spec",
+      "id": "022",
+      "title": "The chat says what happened to a turn, deletes many conversations at once, and brings a cited row into view",
+      "closed": 8,
+      "total": 8,
+      "parents": [
+        "feature:F50"
+      ],
+      "children": [
+        "claim:ISC-473",
+        "claim:ISC-474",
+        "claim:ISC-475",
+        "claim:ISC-476",
+        "claim:ISC-477",
+        "claim:ISC-478",
+        "claim:ISC-479",
+        "claim:ISC-480"
+      ],
+      "blockers": [],
+      "stage": "done"
+    },
+    "spec:013": {
+      "ref": "spec:013",
+      "type": "spec",
+      "id": "013",
+      "title": "The debt behind v0.5.0 is paid down without a change in behaviour: notes, docs, compose, version, leaks, and the Lombok sweep",
+      "closed": 14,
+      "total": 14,
+      "parents": [
+        "feature:F41"
+      ],
+      "children": [
+        "claim:ISC-337",
+        "claim:ISC-338",
+        "claim:ISC-339",
+        "claim:ISC-340",
+        "claim:ISC-341",
+        "claim:ISC-342",
+        "claim:ISC-343",
+        "claim:ISC-344",
+        "claim:ISC-345",
+        "claim:ISC-346",
+        "claim:ISC-347",
+        "claim:ISC-348",
+        "claim:ISC-349",
+        "claim:ISC-350",
+        "claim:ISC-351"
+      ],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-327": {
+      "ref": "claim:ISC-327",
+      "type": "claim",
+      "id": "ISC-327",
+      "title": "A web app manifest linked from `index.html` names the app, sets `start_url` and `scope` to `/` and `display` to `standalone`, and takes `theme_color` and `background_color` from the dark theme's surface, so an installed window opens on the app's own colour before the first paint.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:012",
+        "feature:F40"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-328": {
+      "ref": "claim:ISC-328",
+      "type": "claim",
+      "id": "ISC-328",
+      "title": "Every icon the manifest names is rendered from `brand/mark.svg` by `build-favicon.sh` and nothing else: 192 and 512 any-purpose icons on the round plate, a 512 maskable icon whose mark stays inside the safe zone of a square plate, and a 180 square opaque `apple-touch-icon`; a second run leaves `git diff` empty, and a test holds every named icon to an existing file of the stated size.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:012",
+        "feature:F40"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-329": {
+      "ref": "claim:ISC-329",
+      "type": "claim",
+      "id": "ISC-329",
+      "title": "A service worker, registered in production builds only, caches the app shell — the index, the bundles, the styles, the fonts, the icons, the i18n catalogs and the help assets — and nothing under `/api/`, so no data response is ever served from cache.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:012",
+        "feature:F40"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-330": {
+      "ref": "claim:ISC-330",
+      "type": "claim",
+      "id": "ISC-330",
+      "title": "With the shell cached and no network, the installed app opens on its shell and the screens show their existing error state instead of a blank page or the browser's offline page.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:012",
+        "feature:F40"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-331": {
+      "ref": "claim:ISC-331",
+      "type": "claim",
+      "id": "ISC-331",
+      "title": "When the worker has a new version ready, a toast from the feedback system offers to reload; activating it activates the update and reloads, dismissing it leaves the running version, and the toast appears once per version.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:012",
+        "feature:F40"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-332": {
+      "ref": "claim:ISC-332",
+      "type": "claim",
+      "id": "ISC-332",
+      "title": "nginx serves `index.html`, `ngsw.json` and the manifest with `Cache-Control: no-cache` and the hashed bundles as immutable, so a deploy is picked up on the worker's next check and never held by a stale shell.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:012",
+        "feature:F40"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-333": {
+      "ref": "claim:ISC-333",
+      "type": "claim",
+      "id": "ISC-333",
+      "title": "The browser's `theme-color` follows the active app theme: the inline theme script writes it before the first paint and the theme store updates it when the preference changes, so an installed window's title bar matches the surface in both themes.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:012",
+        "feature:F40"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-334": {
+      "ref": "claim:ISC-334",
+      "type": "claim",
+      "id": "ISC-334",
+      "title": "Under `security.auth: oidc` the sign-in redirect completes inside the installed window and returns to the app; the window is never left on the identity provider's page.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:012",
+        "feature:F40"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-335": {
+      "ref": "claim:ISC-335",
+      "type": "claim",
+      "id": "ISC-335",
+      "title": "the worker caches a response from `/api/`, or the manifest, an icon or the worker configuration names a configured value such as a portal, a sender or a model.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:012",
+        "feature:F40"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-336": {
+      "ref": "claim:ISC-336",
+      "type": "claim",
+      "id": "ISC-336",
+      "title": "`docs/decisions/frontend-design-system.md` records the manifest, the icon set, the caching policy and the update flow, `CHANGELOG.md` § Unreleased names the installable app, `README.md` says how to install it, and `WorkingNotesStaySmallTest` stays green.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:012",
+        "feature:F40"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-337": {
+      "ref": "claim:ISC-337",
+      "type": "claim",
+      "id": "ISC-337",
+      "title": "Each of the three working-notes files stands at or under 85 % of its `WorkingNotesStaySmallTest` budget, every paragraph moved out lands in the `docs/decisions/` file the root table names for that topic, and each rule it argued keeps one line with a pointer in the notes.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-338": {
+      "ref": "claim:ISC-338",
+      "type": "claim",
+      "id": "ISC-338",
+      "title": "No tracked file says Spotless is switched off: `README.md` § What does not work yet no longer lists the formatting gate, `docs/DEVELOPMENT.md` and the `release.yml` comment describe the gate that runs, and `CLAUDE.md` and `.dockerignore` name `config/` where they named `config/local/`.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-339": {
+      "ref": "claim:ISC-339",
+      "type": "claim",
+      "id": "ISC-339",
+      "title": "`.env.example` carries a line for every `${…}` placeholder the shipped defaults, `application.yaml`, `docker-compose.yml` and `frontend/proxy.conf.js` read and none for a name nothing reads, the four operator-config keys excepted only while `docs/CONFIGURATION.md` names them; `EnvExampleTest` compares the sets and fails in either direction.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-340": {
+      "ref": "claim:ISC-340",
+      "type": "claim",
+      "id": "ISC-340",
+      "title": "`docker-compose.yml` gives `api` and `web` a healthcheck, `web` waits for `api` to be healthy as `api` already waits for `postgres`, and every service carries `restart: unless-stopped`; `docker compose ps` on a fresh stack reports all three services healthy.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-341": {
+      "ref": "claim:ISC-341",
+      "type": "claim",
+      "id": "ISC-341",
+      "title": "The frontend image's build stage names the bun version `packageManager` pins, its runtime stage serves as a non-root user, and the backend image's dependency warm-up fails the build when Gradle fails; both images build.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-342": {
+      "ref": "claim:ISC-342",
+      "type": "claim",
+      "id": "ISC-342",
+      "title": "The jar carries the Gradle version through Spring Boot's build info, `leadgen.version` defaults to it and `LEADGEN_VERSION` from the image tag still wins when set, the HTTP user agent names the running version, and no file under `backend/src` spells the version as a literal.",
+      "closed": 0,
+      "total": 0,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-343": {
+      "ref": "claim:ISC-343",
+      "type": "claim",
+      "id": "ISC-343",
+      "title": "`ShortlistPage` removes its media-query listener when destroyed and the ask panel's request is torn down with the component; a spec that destroys each and then fires the event or answers the request observes no write.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-344": {
+      "ref": "claim:ISC-344",
+      "type": "claim",
+      "id": "ISC-344",
+      "title": "Route titles and the document title resolve through a `TitleStrategy` from the catalogs plus one brand constant, the manual store's fallback sentences are catalog keys, and the parity spec fails on a catalog key no source file references.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-345": {
+      "ref": "claim:ISC-345",
+      "type": "claim",
+      "id": "ISC-345",
+      "title": "`angular.json` declares the `lg` prefix, `experimentalDecorators` is off, and `bun run check:static`, `bun run test` and `bun run build` stay green; `@angular/forms` stays declared, because `@angular/cdk` 22 lists it as a required peer.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-346": {
+      "ref": "claim:ISC-346",
+      "type": "claim",
+      "id": "ISC-346",
+      "title": "Every backend class whose constructor did nothing but assign its fields carries `@RequiredArgsConstructor` and declares no constructor, the `JdbcClient` Boot configures is injected where a constructor built one from a `DataSource`, `IngestService` looks a connector up in its injected list rather than building a map in its constructor, at most 31 `this.<field> = <param>;` assignments remain under `backend/src/main` (from 171, counted binary-safe), each in a constructor that does work, has a sibling constructor, calls `super`, or is hand-built by a test, and the suite is green with no test file changed.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-347": {
+      "ref": "claim:ISC-347",
+      "type": "claim",
+      "id": "ISC-347",
+      "title": "`IngestReport` is assembled through a Lombok builder at one site in `IngestService`, no `new IngestReport(` remains under `backend/src/main`, and its JSON shape is unchanged, so `IngestControllerTest` and `LastRunQueryServiceTest` pass without a change.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-348": {
+      "ref": "claim:ISC-348",
+      "type": "claim",
+      "id": "ISC-348",
+      "title": "The `leadgen.*` keys `@Value` reads today (`version`, `ingest-cron`, `security.allow-open-bind`) and the two poll intervals bind on the existing `ConfigProperties` record, `@Value` appears nowhere under `backend/src/main`, `StatusController` loses its hand-written constructor, and `StatusControllerTest`, `SecurityConfigTest` and `ScheduledPassTest` pass unchanged.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-349": {
+      "ref": "claim:ISC-349",
+      "type": "claim",
+      "id": "ISC-349",
+      "title": "One `ModelChoice` in `llm/` answers \"the first scoring choice, or none without a model\" for the classifier, the field extractor, both judges and the LLM extractor; `scoringChoices()` is read from that one place, and `ScoringWithoutAModelTest` stays green.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-350": {
+      "ref": "claim:ISC-350",
+      "type": "claim",
+      "id": "ISC-350",
+      "title": "a request mapping under `/api/v1`, a response field, a migration file, the meaning of a configuration key, or the AOT and native-image compatibility of the service changes — transitively, through every claim of F41; the controller tests pass unchanged, `git diff --stat` under `db/migration` is empty, `processAot` runs green, `LeadGenRuntimeHintsTest` is green, and `backend/smoke/smoke.sh` passes against the built image.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-351": {
+      "ref": "claim:ISC-351",
+      "type": "claim",
+      "id": "ISC-351",
+      "title": "`CHANGELOG.md` § Unreleased names the paid-down debt, `docs/decisions/configuration.md` records where the version comes from and what `.env.example` is held to, and `WorkingNotesStaySmallTest` stays green.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:013",
+        "feature:F41"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-473": {
+      "ref": "claim:ISC-473",
+      "type": "claim",
+      "id": "ISC-473",
+      "title": "A turn that ends `INCOMPLETE` stores its reason — `MODEL`, `BUDGET` or `ROUNDS` — in a nullable `chat_turn.end_reason` added by an expand-only `V36`, every other ending stores null, and `TurnView` carries it as `endReason`, so a reloaded incomplete turn names the same reason its live `error` event did and a turn stored before `V36` names none.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:022",
+        "feature:F50"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-474": {
+      "ref": "claim:ISC-474",
+      "type": "claim",
+      "id": "ISC-474",
+      "title": "Hover or keyboard focus on an answer's glyph plays the living mark's turn and opens a status popover beside it naming the turn's state — done, working, writing, incomplete with its reason (model, budget, tool rounds, or no reason stored) or stopped — with the tool steps' count, the duration from start to finish where both are known and the model where known, the same for a streaming turn and a reloaded one; moving away or Escape closes it.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:022",
+        "feature:F50"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-475": {
+      "ref": "claim:ISC-475",
+      "type": "claim",
+      "id": "ISC-475",
+      "title": "The glyph is a focusable control whose accessible name states the turn's state, the popover's words come only from the i18n catalogs with `i18n-parity.spec.ts` green in both languages, and under `prefers-reduced-motion` the popover still opens while the mark does not turn.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:022",
+        "feature:F50"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-476": {
+      "ref": "claim:ISC-476",
+      "type": "claim",
+      "id": "ISC-476",
+      "title": "Hover or keyboard focus on the empty chat's plate mark plays the same turn and opens a popover with the chat's own status — the chat model in force, today's model calls against the daily ceiling, and the tool-round bound — read from a read-only `GET /api/v1/chat/status` when the popover opens, and the endpoint answers 404 where no chat model is configured, as the rest of the chat does.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:022",
+        "feature:F50"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-477": {
+      "ref": "claim:ISC-477",
+      "type": "claim",
+      "id": "ISC-477",
+      "title": "One request deletes an explicit list of conversation ids: every streaming turn in them is stopped first, as the single delete does, the conversations go in one transaction, the answer names the ids deleted, an unknown id is skipped rather than failing the rest, and an empty or missing list is a 400 — there is no path that deletes conversations without naming them.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:022",
+        "feature:F50"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-478": {
+      "ref": "claim:ISC-478",
+      "type": "claim",
+      "id": "ISC-478",
+      "title": "The conversation list has a select mode: a control in the list's head turns it on, each row shows a checkbox, `Select all` selects exactly the rows shown (with a search active, the hits), a count follows the selection, and `Delete N` opens one confirmation naming N with Cancel focused first; confirming sends one request, the rows leave the list, an open conversation among them leaves the thread for a new one, and the mode ends.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:022",
+        "feature:F50"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-479": {
+      "ref": "claim:ISC-479",
+      "type": "claim",
+      "id": "ISC-479",
+      "title": "Opening an offer from a chat citation onto the shortlist leaves its marked row fully inside the list pane when the row is in the loaded page, by scrolling the pane alone and never the document; a row outside the loaded page scrolls nothing and the detail still opens.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:022",
+        "feature:F50"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-480": {
+      "ref": "claim:ISC-480",
+      "type": "claim",
+      "id": "ISC-480",
+      "title": "the single delete, the ⋯ menu, rename and search behave as before; the catalogs keep parity; the bulk request's record has a hint in `LeadGenRuntimeHints` where binding reaches it by reflection; `docs/DATA-MODEL.md` names `end_reason`, `docs/decisions/chat.md` records the status popovers, the status endpoint and the bulk delete, `CHANGELOG.md` § Unreleased names all three and the row scroll, and `WorkingNotesStaySmallTest` stays green.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:022",
+        "feature:F50"
+      ],
+      "children": [],
+      "blockers": []
+    }
+  }
 }

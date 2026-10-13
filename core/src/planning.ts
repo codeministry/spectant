@@ -13,7 +13,7 @@
 // is derived from the files on each read; nothing is stored.
 //
 // `buildPlanning` is pure over text the caller read and parses nothing itself: it composes `assignee.ts`, `claims.ts`,
-// `events.ts`, `frontmatter.ts`, `ideas.ts`, `milestones.ts` and `status.ts`. Malformed input becomes a FileDiagnostic, never a
+// `events.ts`, `frontmatter.ts`, `ideas.ts`, `milestones.ts` and `status.ts`, and hands the tree to `relations.ts` for its index. Malformed input becomes a FileDiagnostic, never a
 // throw. Its runtime imports are browser-safe parsers the barrel already exports (never `gates.ts` or `dashboard.ts`
 // at runtime), so the barrel exports it whole and the web bundle may import it. Its type graph is browser-clean too
 // (T18): it types against `files.ts`, `claims.ts`, `frontmatter.ts`, `milestones.ts`, `stage.ts` and `status.ts` only, never
@@ -29,6 +29,7 @@ import { parseFrontmatter } from './frontmatter.ts';
 import { readIdeas } from './ideas.ts';
 import { milestoneSlug, parseMilestones } from './milestones.ts';
 import type { Milestone } from './milestones.ts';
+import { buildRelations } from './relations.ts';
 import type { RelationIndex } from './relations.ts';
 import type { Progress } from './frontmatter.ts';
 import { specIdOf, specSlugOf } from './spec-ref.ts';
@@ -243,8 +244,9 @@ export interface PlanningModel {
   readonly diagnostics: readonly FileDiagnostic[];
   /**
    * The relation index (spec 026, `relations.ts`): every milestone, feature, spec, claim and story by `<type>:<id>`,
-   * with parents, children and blockers. Optional while the seam stands (T1): `buildPlanning` leaves it out until the
-   * index builder lands, so every planning golden stays byte-unchanged.
+   * with parents, children and blockers, as `buildRelations` derives it from this tree, every spec folder and the
+   * master's `(after: …)` edges. `buildPlanning` always sets it (T10); the type leaves it optional only so the web
+   * lane's hand-built planning stubs stay valid until the detail sidebar reads it, as with `featureIds`.
    */
   readonly relations?: RelationIndex;
 }
@@ -509,7 +511,11 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
   const stages = boardStages(workflow);
   const folders = readFolders(input.specs, input.archived, new Map((input.specStates ?? []).map((s) => [s.slug, s])), input.locks?.locks ?? []);
   const board = { workflow, stages, stageCounts: stageCounts(stages, folders, ideas.length) };
-  if (input.master === null) return { ...board, features: [], milestones: [], unassignedFeatures: [], ideas, recount: null, diagnostics: stories.diagnostics };
+  const specs = folders.map((f) => f.holder);
+  if (input.master === null) {
+    const relations = buildRelations({ features: [], milestones: [], ideas, specs });
+    return { ...board, features: [], milestones: [], unassignedFeatures: [], ideas, recount: null, diagnostics: stories.diagnostics, relations };
+  }
   const master = parseClaims(input.master);
   const claimById = new Map<string, Claim>();
   for (const claim of master.claims) if (!claimById.has(claim.id)) claimById.set(claim.id, claim);
@@ -580,10 +586,13 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
           },
         ],
   );
+  const features = blocks.map((block) => planningFeature(block, folders, ideas));
+  const milestones = byTarget.map((entry) => planningMilestone(entry, blocks, folders, ideas, now, byLines));
+  const after = Object.fromEntries([...claimById].flatMap(([id, claim]) => (claim.after.length === 0 ? [] : [[id, claim.after]])));
   return {
     ...board,
-    features: blocks.map((block) => planningFeature(block, folders, ideas)),
-    milestones: byTarget.map((entry) => planningMilestone(entry, blocks, folders, ideas, now, byLines)),
+    features,
+    milestones,
     unassignedFeatures: master.features.filter((f) => f.milestone === null || !valid.has(f.milestone)).map((f) => f.id),
     ideas,
     recount: master.counted,
@@ -596,5 +605,6 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
       ...stories.diagnostics,
       ...unknownIdeaNames(ideas, new Set(master.features.map((f) => f.id)), entries),
     ],
+    relations: buildRelations({ features, milestones, ideas, specs, after }),
   };
 }

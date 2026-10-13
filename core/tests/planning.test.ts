@@ -25,7 +25,7 @@ describe('planning', () => {
     const workflow = { rows: core.DEFAULT_WORKFLOW, source: 'default' as const, diagnostics: [] };
     const stages = core.boardStages(workflow);
     const stageCounts = Object.fromEntries(stages.map((s) => [s, 0]));
-    const empty: PlanningModel = { workflow, stages, stageCounts, features: [], milestones: [], unassignedFeatures: [], ideas: [], recount: null, diagnostics: [] };
+    const empty: PlanningModel = { workflow, stages, stageCounts, features: [], milestones: [], unassignedFeatures: [], ideas: [], recount: null, diagnostics: [], relations: {} };
     expect(core.buildPlanning({ master: null, specs: [], archived: [] })).toEqual(empty);
 
     // T18: PlanningInput repeats DashboardInput's fields instead of picking them (planning.ts types against no

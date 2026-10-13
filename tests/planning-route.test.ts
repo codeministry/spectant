@@ -54,7 +54,7 @@ let api: ApiHandler;
 beforeAll(() => {
   root = mkdtempSync(join(tmpdir(), "spectant-planning-"));
   api = dashboardApi({
-    registry: registryWith(join(FIXTURES, "harbor"), join(FIXTURES, "lantern")),
+    registry: registryWith(join(FIXTURES, "harbor"), join(FIXTURES, "lantern"), join(FIXTURES, "milestone-lines")),
     services: () => Promise.resolve([]),
     today: () => PLANNING_NOW,
   });
@@ -105,6 +105,46 @@ describe("GET /api/workspaces/:ws/planning", () => {
     expect(body.milestones).toEqual([]);
     expect(body.ideas).toEqual([]);
     expect(body.diagnostics.filter((d) => d.file.startsWith("specs/ideas/"))).toEqual([]);
+  });
+
+  // Spec 026 (T11, ISC-171): the one planning answer carries the relation index and the feature assignment per
+  // milestone; the sidebar reads them from here, no second route.
+  test("milestone-lines: the golden too, with each milestone's features and the relation index of the cascade", async () => {
+    const res = await call(workspaceRoutes.planning("milestone-lines"));
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toBe(compact(goldenText("milestone-lines")));
+    const body = JSON.parse(text) as PlanningModel;
+    expect(body.milestones.map((m) => [m.slug, m.featureIds])).toEqual([
+      ["beacon-0-5", ["F1"]],
+      ["beacon-1-0", ["F2"]],
+    ]);
+    expect(body.unassignedFeatures).toEqual(["F0", "F3"]);
+    const relations = body.relations ?? {};
+    expect(relations["milestone:beacon-1-0"]?.children).toEqual(["feature:F2"]);
+    expect(relations["feature:F2"]?.parents).toEqual(["milestone:beacon-1-0"]);
+    expect(relations["spec:002"]?.parents).toEqual(["feature:F2", "feature:F0"]);
+    expect(relations["claim:ISC-7"]?.blockers).toEqual(["claim:ISC-6"]);
+    const refs = new Set(Object.keys(relations));
+    const dangling = Object.values(relations).flatMap((r) => [...r.parents, ...r.children, ...r.blockers].filter((ref) => !refs.has(ref)));
+    expect(dangling).toEqual([]);
+  });
+
+  test("harbor: every spec folder, archived ones marked, active ones with the board's stage, rides the index", async () => {
+    const body = (await (await call(workspaceRoutes.planning("harbor"))).json()) as PlanningModel;
+    const relations = body.relations ?? {};
+    const specs = Object.values(relations).filter((r) => r.type === "spec");
+    expect(specs.map((s) => s.id).toSorted()).toEqual(["001", "002", "003", "004", "005", "006", "007", "008", "009"]);
+    expect(relations["spec:001"]).toMatchObject({ archived: true, parents: ["feature:F1"] });
+    expect(relations["spec:002"]?.stage).toBe("build");
+    expect(relations["idea:registry-webhooks"]?.parents).toEqual(["feature:F7", "milestone:harbor-1-0"]);
+  });
+
+  test("no new route: the index has no path of its own, so the server's JSON 404 applies", () => {
+    for (const path of ["relations", "planning/relations"]) {
+      const url = new URL(`http://127.0.0.1:7717/api/workspaces/harbor/${path}`);
+      expect(api(new Request(url.href, { headers: HOST }), url)).toBeNull();
+    }
   });
 
   test("HEAD: 200 with the same headers and no body", async () => {

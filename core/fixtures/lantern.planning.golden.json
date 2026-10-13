@@ -265,5 +265,255 @@
     "closed": 4,
     "total": 12
   },
-  "diagnostics": []
+  "diagnostics": [],
+  "relations": {
+    "feature:F0": {
+      "ref": "feature:F0",
+      "type": "feature",
+      "id": "F0",
+      "title": "Cross-cutting",
+      "closed": 0,
+      "total": 2,
+      "parents": [],
+      "children": [
+        "claim:ISC-1",
+        "claim:ISC-2"
+      ],
+      "blockers": []
+    },
+    "feature:F1": {
+      "ref": "feature:F1",
+      "type": "feature",
+      "id": "F1",
+      "title": "Reading list",
+      "closed": 4,
+      "total": 10,
+      "parents": [],
+      "children": [
+        "spec:001",
+        "spec:002",
+        "claim:ISC-3",
+        "claim:ISC-4",
+        "claim:ISC-5",
+        "claim:ISC-6",
+        "claim:ISC-7",
+        "claim:ISC-8",
+        "claim:ISC-9",
+        "claim:ISC-10",
+        "claim:ISC-11",
+        "claim:ISC-12"
+      ],
+      "blockers": []
+    },
+    "spec:001": {
+      "ref": "spec:001",
+      "type": "spec",
+      "id": "001",
+      "title": "Save a link once and find it again, online or offline",
+      "closed": 4,
+      "total": 8,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [
+        "claim:ISC-3",
+        "claim:ISC-4",
+        "claim:ISC-5",
+        "claim:ISC-6",
+        "claim:ISC-7",
+        "claim:ISC-8",
+        "claim:ISC-9",
+        "claim:ISC-10"
+      ],
+      "blockers": [],
+      "stage": "build"
+    },
+    "spec:002": {
+      "ref": "spec:002",
+      "type": "spec",
+      "id": "002",
+      "title": "Stop duplicate links and duplicate tags from entering the list",
+      "closed": 0,
+      "total": 2,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [
+        "claim:ISC-11",
+        "claim:ISC-12"
+      ],
+      "blockers": [],
+      "stage": "build"
+    },
+    "claim:ISC-1": {
+      "ref": "claim:ISC-1",
+      "type": "claim",
+      "id": "ISC-1",
+      "title": "the app makes an outbound request that no sync the reader started asked for.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-2": {
+      "ref": "claim:ISC-2",
+      "type": "claim",
+      "id": "ISC-2",
+      "title": "a tracked file contains an absolute home path or personal data.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-3": {
+      "ref": "claim:ISC-3",
+      "type": "claim",
+      "id": "ISC-3",
+      "title": "A link is saved from the address bar in one step.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-4": {
+      "ref": "claim:ISC-4",
+      "type": "claim",
+      "id": "ISC-4",
+      "title": "A saved link is still listed after a reload.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-5": {
+      "ref": "claim:ISC-5",
+      "type": "claim",
+      "id": "ISC-5",
+      "title": "A saved link gets the page title fetched at save time.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-6": {
+      "ref": "claim:ISC-6",
+      "type": "claim",
+      "id": "ISC-6",
+      "title": "Tags are stored with a link and restored with it.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-7": {
+      "ref": "claim:ISC-7",
+      "type": "claim",
+      "id": "ISC-7",
+      "title": "Typing in the search box narrows the list to titles that match.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-8": {
+      "ref": "claim:ISC-8",
+      "type": "claim",
+      "id": "ISC-8",
+      "title": "Typing a tag narrows the list to links carrying it.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-7"
+      ]
+    },
+    "claim:ISC-9": {
+      "ref": "claim:ISC-9",
+      "type": "claim",
+      "id": "ISC-9",
+      "title": "A saved article's text is readable with the network switched off.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-10": {
+      "ref": "claim:ISC-10",
+      "type": "claim",
+      "id": "ISC-10",
+      "title": "The reading view has no horizontal overflow at 390 px.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-9"
+      ]
+    },
+    "claim:ISC-11": {
+      "ref": "claim:ISC-11",
+      "type": "claim",
+      "id": "ISC-11",
+      "title": "saving the same link twice creates a second entry.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-12": {
+      "ref": "claim:ISC-12",
+      "type": "claim",
+      "id": "ISC-12",
+      "title": "a tag with a trailing space is stored as a second, different tag.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    }
+  }
 }

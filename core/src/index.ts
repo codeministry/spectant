@@ -8,9 +8,10 @@
 // readers and planners (workflow.ts, ideas.ts, actor.ts, transition.ts, allocate.ts) take their texts from the caller and ride the barrel whole;
 // glossary.ts is literal data and rides it too. Spec 009's tokens.ts takes transcript and repository texts from the
 // caller and rides it whole. Spec 023's tech.ts takes tech.md and the spec texts from the caller and rides it whole.
+// Spec 026's relations.ts builds its index from the planning tree alone (type-only imports) and rides it whole.
 export * from './files.ts';
 export type * from './diagnostics.ts';
-export type * from './relations.ts';
+export * from './relations.ts';
 export * from './frontmatter.ts';
 export * from './claims.ts';
 export * from './status.ts';

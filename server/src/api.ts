@@ -27,6 +27,9 @@
  * `allowForWorkspace`, 404, 409 with the workspace's summary. The milestone states compare target dates with today's
  * local date (`options.today`), so a stub or golden built at a fixed day differs from a live answer in `state` alone.
  * It lives here rather than in its own handler because it shares this handler's registry, guard and 409 summary.
+ * Spec 026 (T11, ISC-171): the same answer carries each milestone's feature assignment (`featureIds`, the no-milestone
+ * group `unassignedFeatures`) and the relation index `relations` that `buildPlanning` derives (`core/src/relations.ts`);
+ * the detail sidebar reads both from here, so there is no relations route and nothing new is read or written.
  *
  * The story route (spec 008 T88, ISC-124.2): `GET /api/workspaces/:ws/ideas/:slug` → `IdeaPage`, matched by the same
  * `matchWorkspacePath` with the same guard order. It reads the story folder alone (`readIdeaFiles`), never the whole
