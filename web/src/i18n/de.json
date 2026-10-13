@@ -2160,7 +2160,6 @@
       "updated": "geändert {{date}}",
       "open": "In Spec {{spec}} öffnen",
       "staleHeading": "Möglicherweise veraltet",
-      "image": "Vorschau von {{file}}",
       "pick": "Wählen Sie ein Dokument",
       "pickBody": "Jede Spec, jeder Plan, jedes Design, jede Evidence und jeder Prototyp aller Specs an einem Ort.",
       "loading": "Das Dokument wird geladen",
@@ -2209,7 +2208,14 @@
     },
     "loading": "Die Library wird geladen",
     "error": "Die Library konnte nicht gelesen werden.",
-    "date": "{{date}} {{time}}"
+    "date": "{{date}} {{time}}",
+    "prototype": {
+      "pages": "Seiten",
+      "open": "{{file}}, öffnet in neuem Tab",
+      "preview": "Vorschau · {{file}}",
+      "previewAlt": "Screenshot des Prototyps {{title}}",
+      "foot": "Öffnet schreibgeschützt in neuem Tab · nur lokale Dateien"
+    }
   },
   "orientation": {
     "backToBoard": "Zurück zum Board",

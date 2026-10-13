@@ -78,12 +78,9 @@
     <figure class="lib-img" data-library-preview>
       <img [src]="src" [alt]="doc.title" />
     </figure>
-  } @else {
-    <!-- A prototype keeps this placeholder until its card (T38, ISC-159). -->
-    <figure class="lib-image" data-library-image>
-      <ui-icon [name]="typeIcon(doc)" [size]="24" />
-      <figcaption>{{ 'library.reader.image' | transloco: { file: filePath(doc) } }}</figcaption>
-    </figure>
+  } @else if (doc.media === 'prototype') {
+    <!-- design.md 017 § 9, § 2.6, § 2c: the page list, the preview from .design/, each page in a new tab (T38). -->
+    <app-prototype-card [workspace]="workspace()" [doc]="doc" />
   }
 } @else {
   <ui-empty-state icon="book" [heading]="'library.reader.pick' | transloco" [body]="'library.reader.pickBody' | transloco" />

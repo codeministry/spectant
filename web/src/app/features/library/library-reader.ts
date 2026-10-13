@@ -29,6 +29,7 @@ import { UiEmptyState } from '../../shared/ui/empty-state/empty-state';
 import { UiNotice } from '../../shared/ui/notice/notice';
 import { UiSkeleton } from '../../shared/ui/skeleton/skeleton';
 import { specKey, WORKSPACE_SPEC } from './library-model';
+import { PrototypeCard } from './prototype-card';
 
 /**
  * Each catalog type's tag icon (design.md 017 § Viewport-übergreifend, Mobile § 3): the Markdown kinds a page, tasks
@@ -243,8 +244,9 @@ export type ReaderContext = 'workspace' | 'spec';
  *   `href` the library address with the current filters and the target's path as fragment.
  * - An image document as a preview `[data-library-preview]`: the image at its natural size up to the column, alt its
  *   title, from the same file route.
- * - A prototype keeps its placeholder (the prototype card is T38's); a missing document is the empty state with the
- *   command that writes it.
+ * - A prototype as its card (`app-prototype-card`, T38, ISC-159): the page list, each page in a new tab on the server's
+ *   read route, and the preview from the spec's `.design/`; a missing document is the empty state with the command
+ *   that writes it.
  *
  * "Open in spec" leads to the spec dashboard and is left out for workspace-wide documents and in the spec context.
  * Below 1120 px the back button (and Escape) emits `back`; the page restores the list. The table of contents scrolls
@@ -252,7 +254,7 @@ export type ReaderContext = 'workspace' | 'spec';
  */
 @Component({
   selector: 'app-library-reader',
-  imports: [RouterLink, TranslocoPipe, UiButton, UiChip, UiCommandChip, UiDocProse, UiEmptyState, UiIcon, UiNotice, UiSkeleton],
+  imports: [PrototypeCard, RouterLink, TranslocoPipe, UiButton, UiChip, UiCommandChip, UiDocProse, UiEmptyState, UiIcon, UiNotice, UiSkeleton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'lib-reader',

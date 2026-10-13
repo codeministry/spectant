@@ -170,12 +170,13 @@ describe('LibraryReader (T34, ISC-156.3)', () => {
   beforeEach(() => {
     requested = [];
     rendered = [];
-    const api: Pick<ApiClient, 'libraryDoc' | 'libraryAssetUrl'> = {
+    const api: Pick<ApiClient, 'libraryDoc' | 'libraryAssetUrl' | 'prototypeUrl'> = {
       libraryDoc: (_ws, path) => {
         requested.push(path);
         return Promise.resolve(ok(path === PLAN.path ? PLAN_PAGE : { ...PLAN_PAGE, html: '<p>Other</p>', toc: [], figures: [] }));
       },
       libraryAssetUrl: assetUrl,
+      prototypeUrl: (ws, d, page) => ApiClient.prototype.prototypeUrl(ws, d, page),
     };
     const mermaid: MermaidApi = {
       initialize: () => undefined,
@@ -274,10 +275,13 @@ describe('LibraryReader (T34, ISC-156.3)', () => {
     expect(reader.querySelector('[data-library-prose]')).toBeNull();
   });
 
-  it('keeps the prototype placeholder until the prototype card', async () => {
+  it('shows a prototype as its card with the page list (T38, ISC-159)', async () => {
     const reader = await render((host) => host.doc.set(PROTO));
-    expect(reader.querySelector('[data-library-image]')).not.toBeNull();
+    expect(reader.querySelector('app-prototype-card[data-library-prototype]')).not.toBeNull();
+    expect(reader.querySelector('a[data-library-prototype-page="index.html"]')?.getAttribute('href')).toBe('/proto/harbor/002-web-console/prototype%2Fboard/index.html');
+    expect(reader.querySelector('[data-library-image]')).toBeNull();
     expect(reader.querySelector('[data-library-preview]')).toBeNull();
+    expect(requested).toEqual([]);
   });
 
   it('leads a spec document to its spec page, never a workspace-wide one, never in the spec context', async () => {
@@ -337,6 +341,7 @@ describe('LibraryPage with the reader below 1120 px (T34)', () => {
       libraryDoc: () => Promise.resolve(ok({ ...PLAN_PAGE, toc: [], figures: [], html: '<p>See <a href="../constitution.md">the rules</a>.</p>' })),
       librarySearch: (_ws, q) => Promise.resolve(ok({ query: q, hits: [] })),
       libraryAssetUrl: assetUrl,
+      prototypeUrl: (ws, d, page) => ApiClient.prototype.prototypeUrl(ws, d, page),
     };
     TestBed.configureTestingModule({
       imports: [TranslocoTestingModule.forRoot({ langs: CATALOGUES, translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en' }, preloadLangs: true })],
