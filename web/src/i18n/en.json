@@ -2102,7 +2102,13 @@
       "all": "All",
       "spec": "Spec",
       "allSpecs": "All specs",
-      "stale": "Only outdated"
+      "state": "State"
+    },
+    "states": {
+      "all": "All",
+      "stale": "Outdated",
+      "missing": "Missing",
+      "open": "Open"
     },
     "types": {
       "spec": "Spec",
@@ -2119,7 +2125,7 @@
       "idea": "Idea"
     },
     "wsWide": "{{ws}} · workspace-wide",
-    "count": "{{ws}} · {{shown}} of {{total}} documents · {{stale}} outdated",
+    "count": "{{ws}} · {{shown}} of {{total}} documents · {{stale}} outdated · {{missing}} missing",
     "outdated": "outdated",
     "control": {
       "label": "Document control",
@@ -2158,7 +2164,8 @@
       "loading": "Loading the document",
       "error": "The document could not be read.",
       "missingHeading": "{{file}} is missing",
-      "missingBody": "The spec’s stage asks for this document; the command below writes it."
+      "missingBody": "The spec’s stage asks for this document; the command below writes it.",
+      "missingBodyPlain": "The spec’s stage asks for this document."
     },
     "evidence": {
       "toggle": "Evidence",

@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject, resource, signal, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, resource, ViewEncapsulation } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Location, NgTemplateOutlet } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, type ParamMap, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { LibraryCatalog, LibraryDoc, LibraryDocType } from '../../../../../core/src/files';
 import { ApiClient } from '../../core/api.service';
@@ -30,9 +30,12 @@ import {
   type LibraryFilter,
   type LibraryGroup,
   libraryGroups,
+  type LibraryStateFilter,
   NO_FILTER,
   parseFilter,
   PILL_TYPES,
+  type SearchHits,
+  STATE_FILTERS,
   specKey,
   specOptions,
   specSlug,
@@ -113,11 +116,50 @@ export function missingCommand(doc: Pick<LibraryDoc, 'type' | 'spec'>): string |
 /** The file name of a document path (`017-x/plan.md` → `plan.md`). */
 const fileName = (path: string): string => path.slice(path.lastIndexOf('/') + 1);
 
+/** The server's full-text search waits this long after the last keystroke (title and path matches show at once). */
+export const SEARCH_DEBOUNCE_MS = 200;
+
+/** Resolves after `ms`, rejects as soon as `signal` aborts (a newer search text superseded this one). */
+function pause(ms: number, signal: AbortSignal): Promise<void> {
+  const aborted = (): Error => new DOMException('The search text changed', 'AbortError');
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(aborted());
+      return;
+    }
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+        reject(aborted());
+      },
+      { once: true },
+    );
+  });
+}
+
+/**
+ * The query params that write `filter` into the address, the ones the list owns (`q`, `type`, `spec`, `state`); a
+ * default is `null`, which removes the param. Every other param is left as it is (`queryParamsHandling: merge`).
+ */
+export function addressParams(filter: LibraryFilter): Readonly<Record<'q' | 'type' | 'spec' | 'state', string | null>> {
+  const params = filterParams(filter);
+  return { q: params['q'] ?? null, type: params['type'] ?? null, spec: params['spec'] ?? null, state: params['state'] ?? null };
+}
+
+const sameFilter = (a: LibraryFilter, b: LibraryFilter): boolean => a.query === b.query && a.type === b.type && a.spec === b.spec && a.state === b.state;
+
+/** The filter a route's query params name. */
+const filterOf = (params: ParamMap): LibraryFilter => parseFilter((name) => params.get(name));
+
 /** A document as one list row: the highlighted title and meta line beside the document itself. */
 interface RowView {
   readonly doc: LibraryDoc;
   readonly title: readonly TextRun[];
   readonly meta: readonly TextRun[] | null;
+  /** The meta line is the server's full-text snippet, not the path. */
+  readonly snippet: boolean;
 }
 
 /** A spec's evidence subgroup as shown: whether it is open, the revealed rows and how many still wait. */
@@ -144,9 +186,14 @@ interface GroupView {
  * that reveals blocks of 50 and opens under a search or the type filter Evidence. A workspace without one document is
  * the empty state with `/spec-bootstrap`. No demo chip and no demo data.
  *
- * The filter is read once from the address (`?q=`, `?type=`, `?spec=`, `?state=` and the document as `#path`) and
- * kept there with `Location.replaceState`; the router-driven form, the server's full-text search and the state select
- * are T32's, the reader component T34's. The reader here loads the chosen Markdown document through
+ * The filter and the chosen document live in the address (T32, ISC-156.2): `?q=`, `?type=`, `?spec=`, `?state=` and
+ * the document's path as the fragment `#path`. The page reads them from the route as signals and writes every change
+ * back with `router.navigate` (`queryParamsHandling: merge`, `replaceUrl`), so reload, back and forward land on the
+ * same selection. The shown filter is a `linkedSignal` of the address: a keystroke filters at once, and the address
+ * replaces it whenever it changes from outside. The search matches titles and paths at once and, 200 ms after the
+ * last keystroke, the full text through `ApiClient.librarySearch`; a row found by the server shows its snippet. The
+ * state select (All · Outdated · Missing · Open) sits beside the spec select and writes the same `?state=` as the
+ * control counts. The reader component is T34's; the reader here loads the chosen Markdown document through
  * `ApiClient.libraryDoc` and shows core's rendered prose.
  *
  * The card's first row (`lib-head`, T30, ISC-156.1) holds the control counts "missing" (violet, `file-x`) and
@@ -194,7 +241,8 @@ export class LibraryPage {
   protected readonly state = inject(ShellState);
   private readonly api = inject(ApiClient);
   private readonly data = inject(ShellData);
-  private readonly location = inject(Location);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly transloco = inject(TranslocoService);
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
@@ -229,11 +277,21 @@ export class LibraryPage {
   protected readonly docs = computed<readonly LibraryDoc[]>(() => this.catalog()?.docs ?? []);
   protected readonly specs = computed(() => specOptions(this.docs()));
 
-  private readonly filter = signal<LibraryFilter>(NO_FILTER);
+  /** The route's query params and fragment as signals (the router is the one source of the list's state). */
+  private readonly params = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
+  private readonly fragment = toSignal(this.route.fragment, { initialValue: this.route.snapshot.fragment });
+  /** The filter the address names (`?q=`, `?type=`, `?spec=`, `?state=`). */
+  private readonly addressFilter = computed(() => filterOf(this.params()), { equal: sameFilter });
+  /**
+   * The filter as shown: the address's, set ahead of it by a person's change (so a keystroke filters before the
+   * navigation lands) and replaced by it whenever the address changes, by that navigation, back, forward or a link.
+   */
+  private readonly filter = linkedSignal<LibraryFilter>(() => this.addressFilter());
   protected readonly query = computed(() => this.filter().query);
   protected readonly type = computed(() => this.filter().type);
   protected readonly spec = computed(() => this.filter().spec);
-  protected readonly stale = computed(() => this.filter().state === 'stale');
+  protected readonly stateFilter = computed(() => this.filter().state);
+  protected readonly stateOptions = STATE_FILTERS;
   protected readonly missingCommand = missingCommand;
   protected readonly fileName = fileName;
 
@@ -242,12 +300,37 @@ export class LibraryPage {
     const catalog = this.catalog();
     return catalog === null ? [] : controlViews(catalog, this.filter().state);
   });
-  /** The document picked by a person (row or `#path`), by its catalog path; null until one is. */
-  private readonly picked = signal<string | null>(null);
+  /** The document picked by a person (row or `#path`), by its catalog path; null until one is. Follows the fragment. */
+  private readonly picked = linkedSignal<string | null>(() => {
+    const fragment = this.fragment();
+    return fragment === null || fragment === '' ? null : fragment;
+  });
   /** A spec's evidence subgroup opened or closed by hand, by group key; cleared whenever the filter changes. */
-  private readonly evidenceToggled = signal<ReadonlyMap<string, boolean>>(new Map());
-  /** How many blocks of 50 each open evidence subgroup reveals, by group key; one until "Show more". */
-  private readonly evidenceBlocks = signal<ReadonlyMap<string, number>>(new Map());
+  private readonly evidenceToggled = linkedSignal<LibraryFilter, ReadonlyMap<string, boolean>>({ source: this.filter, computation: () => new Map() });
+  /** How many blocks of 50 each open evidence subgroup reveals, by group key; one until "Show more"; cleared likewise. */
+  private readonly evidenceBlocks = linkedSignal<LibraryFilter, ReadonlyMap<string, number>>({ source: this.filter, computation: () => new Map() });
+
+  /**
+   * The server's full-text search (`GET …/library/search?q=`), started `SEARCH_DEBOUNCE_MS` after the last change of
+   * the search text; a newer text aborts the wait. Idle without a text.
+   */
+  private readonly search = resource({
+    params: () => {
+      const ws = this.state.ws();
+      const q = this.query().trim();
+      return ws !== null && q !== '' ? { ws, q } : undefined;
+    },
+    loader: async ({ params, abortSignal }) => {
+      await pause(SEARCH_DEBOUNCE_MS, abortSignal);
+      return this.api.librarySearch(params.ws, params.q);
+    },
+  });
+  /** The server's hits for exactly the current search text (path → snippet); null while none has answered for it. */
+  protected readonly hits = computed<SearchHits | null>(() => {
+    const result = this.search.hasValue() ? this.search.value() : undefined;
+    if (result?.kind !== 'ok' || result.body.query !== this.query().trim()) return null;
+    return new Map(result.body.hits.map((hit) => [hit.path, hit.snippet]));
+  });
 
   /** The active catalogue: the chip labels are translated here, so they follow its (lazy) arrival and every switch. */
   private readonly translation = toSignal(this.transloco.selectTranslation());
@@ -263,16 +346,22 @@ export class LibraryPage {
 
   private readonly matched = computed(() => {
     const catalog = this.catalog();
-    return catalog === null ? [] : libraryGroups(catalog, this.filter());
+    return catalog === null ? [] : libraryGroups(catalog, this.filter(), this.hits());
   });
 
   protected readonly shownCount = computed(() => this.matched().reduce((sum, group) => sum + group.count, 0));
 
   protected readonly groups = computed<readonly GroupView[]>(() => {
     const query = this.query();
+    const hits = this.hits();
     const toggled = this.evidenceToggled();
     const blocks = this.evidenceBlocks();
-    const row = (doc: LibraryDoc): RowView => ({ doc, title: highlight(doc.title, query), meta: this.metaRuns(doc, query) });
+    const row = (doc: LibraryDoc): RowView => {
+      const snippet = hits?.get(doc.path);
+      return snippet === undefined
+        ? { doc, title: highlight(doc.title, query), meta: this.metaRuns(doc, query), snippet: false }
+        : { doc, title: highlight(doc.title, query), meta: highlight(snippet, query), snippet: true };
+    };
     return this.matched().map((group) => {
       const evidence = group.evidence;
       if (evidence === null) return { group, rows: group.docs.map(row), evidence: null };
@@ -314,13 +403,6 @@ export class LibraryPage {
     const result = this.page.hasValue() ? this.page.value() : undefined;
     return result?.kind === 'ok' ? this.sanitizer.bypassSecurityTrustHtml(result.body.html) : null;
   });
-
-  constructor() {
-    const snapshot = inject(ActivatedRoute).snapshot;
-    this.filter.set(parseFilter((name) => snapshot.queryParamMap.get(name)));
-    const path = snapshot.fragment;
-    if (path) this.picked.set(path);
-  }
 
   /** The group's label: "‹ws› · workspace-wide", else the spec's number and slug ("017 · workspace-library"). */
   protected groupLabel(spec: string): string {
@@ -364,8 +446,10 @@ export class LibraryPage {
     this.update({ spec: value });
   }
 
-  protected setStale(value: boolean): void {
-    this.update({ state: value ? 'stale' : 'all' });
+  /** The state select: `?state=` all, stale, missing or open (fog); an unknown value changes nothing. */
+  protected setState(value: string): void {
+    const state = STATE_FILTERS.find((option): option is LibraryStateFilter => option === value);
+    if (state !== undefined) this.update({ state });
   }
 
   /**
@@ -379,8 +463,7 @@ export class LibraryPage {
 
   protected clear(): void {
     this.filter.set(NO_FILTER);
-    this.resetEvidence();
-    this.sync();
+    this.write();
   }
 
   protected toggleEvidence(key: string, open: boolean): void {
@@ -393,13 +476,13 @@ export class LibraryPage {
 
   protected open(path: string): void {
     this.picked.set(path);
-    this.sync();
+    this.write();
     if (!this.wide()) window.scrollTo({ top: 0 });
   }
 
   protected back(): void {
     this.picked.set(null);
-    this.sync();
+    this.write();
   }
 
   /** The meta line under the title: the file (or folder) below `specs/`; an image says so, a prototype lists pages. */
@@ -415,21 +498,20 @@ export class LibraryPage {
 
   private update(change: Partial<LibraryFilter>): void {
     this.filter.update((filter) => ({ ...filter, ...change }));
-    this.resetEvidence();
-    this.sync();
+    this.write();
   }
 
-  private resetEvidence(): void {
-    this.evidenceToggled.set(new Map());
-    this.evidenceBlocks.set(new Map());
-  }
-
-  /** The filter and `#path` follow the state, replacing the history entry; the router does not navigate. */
-  private sync(): void {
-    const params = new URLSearchParams(filterParams(this.filter()));
-    const path = this.location.path(false).split(/[?#]/u)[0] ?? '';
-    const search = params.toString();
-    const doc = this.picked();
-    this.location.replaceState(`${path}${search ? `?${search}` : ''}${doc ? `#${doc}` : ''}`);
+  /**
+   * The shown filter and document into the address: the list's params merged into the others, the document as the
+   * fragment (none without one), replacing the history entry so a keystroke is no step of its own.
+   */
+  private write(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: addressParams(this.filter()),
+      queryParamsHandling: 'merge',
+      fragment: this.picked() ?? undefined,
+      replaceUrl: true,
+    });
   }
 }

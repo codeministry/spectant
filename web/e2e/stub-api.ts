@@ -27,7 +27,7 @@
  * - The library (spec 017, T3, ISC-156), under the same guards: `GET|HEAD …/:ws/library` the workspace's
  *   `LibraryCatalog`, core's `readCatalog` over the fixture tree made deterministic (`buildCatalog`: fixed times,
  *   group heads and fog lines from the spec and tech goldens) plus `STUB_LIBRARY` on harbor (a `stale` plan, a
- *   `missing` design.md, 57 evidence documents in 002, a prototype with two pages and a preview); `…/library/doc?path=`
+ *   `missing` tasks.md, 57 evidence documents in 002, a prototype with two pages and a preview); `…/library/doc?path=`
  *   one Markdown document of that catalog as core's `renderDocsMarkdown` page, 404 for any path it does not list as
  *   one; `…/library/search?q=` the `LibrarySearchResult` over those documents, `{query: '', hits: []}` for a blank `q`;
  *   `…/library/asset?path=` the tech asset's answer. `GET|HEAD /proto/:ws/:spec/:folder/*` (outside `/api`;
@@ -237,14 +237,15 @@ export const EMPTY_CATALOG: LibraryCatalog = { docs: [], groups: [], fog: [], mi
 
 /**
  * What the stub adds to harbor's catalog, so one workspace carries every case the library page draws (T3): a `stale`
- * plan, a `missing` design.md of a feature spec, more than 50 evidence documents in one spec (the collapsed subgroup
- * that loads in blocks) and a prototype with two pages and a preview. The evidence documents are Markdown the stub
+ * plan, a `missing` tasks.md (the one core reports for harbor, ISC-155.2: 003 has a plan but no tasks; core marks
+ * only plan.md and tasks.md missing), more than 50 evidence documents in one spec (the collapsed subgroup that loads
+ * in blocks) and a prototype with two pages and a preview. The evidence documents are Markdown the stub
  * holds; the prototype's files are the library fixture's `002-tide-board/.design/prototype/board/` (two HTML pages,
  * CSS, script, image), served under harbor's `004-retention-policies/.design/prototype/board`.
  */
 export const STUB_LIBRARY = {
   stale: '004-retention-policies/plan.md',
-  missing: { path: '002-web-console/design.md', after: '002-web-console/tasks.md' },
+  missing: { path: '003-config-loader/tasks.md', type: 'tasks', after: '003-config-loader/plan.md' },
   evidence: { spec: '002-web-console', count: 56, after: '002-web-console/.evidence/kpi-band-390.png' },
   prototype: {
     path: '004-retention-policies/.design/prototype/board',
@@ -923,7 +924,7 @@ async function buildCatalog(core: Core, dir: string, tree: TreeGoldens, tech: Te
     if (staleDoc === undefined) throw new Error(`stub-api: the stale document ${stale} is not in the catalog`);
     docs[at] = { ...staleDoc, state: 'stale', modified: heads.get(staleDoc.spec)?.started ?? STUB_NOW };
     insertAfter(docs, missing.after, [
-      { path: missing.path, type: 'design', spec: specOfPath(missing.path), title: basename(missing.path), modified: null, state: 'missing', media: 'markdown' },
+      { path: missing.path, type: missing.type, spec: specOfPath(missing.path), title: basename(missing.path), modified: null, state: 'missing', media: 'markdown' },
     ]);
     const runs = Array.from({ length: evidence.count }, (_, i): LibraryDoc => {
       const n = i + 1;

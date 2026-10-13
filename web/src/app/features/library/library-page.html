@@ -91,14 +91,18 @@
               }
             </select>
           </label>
-          <!-- T32 replaces the toggle with the state select (All · Outdated · Missing · Open). -->
-          <label class="lib-toggle">
-            <input type="checkbox" data-library-stale [checked]="stale()" (change)="setStale($any($event.target).checked)" />
-            {{ 'library.filters.stale' | transloco }}
+          <!-- The state select (design.md 017 § Viewport-übergreifend): the spec select's anatomy, the same ?state= as the control counts. -->
+          <label class="lib-select">
+            <span class="type-eyebrow">{{ 'library.filters.state' | transloco }}</span>
+            <select data-library-state-select [value]="stateFilter()" (change)="setState($any($event.target).value)">
+              @for (option of stateOptions; track option) {
+                <option [value]="option" [selected]="stateFilter() === option">{{ 'library.states.' + option | transloco }}</option>
+              }
+            </select>
           </label>
         </div>
         <p class="lib-count" aria-live="polite" data-library-count>
-          {{ 'library.count' | transloco: { ws: wsName(), shown: shownCount(), total: docs().length, stale: catalog()?.stale ?? 0 } }}
+          {{ 'library.count' | transloco: { ws: wsName(), shown: shownCount(), total: docs().length, stale: catalog()?.stale ?? 0, missing: catalog()?.missing ?? 0 } }}
         </p>
 
         @if (groups().length === 0) {
@@ -205,7 +209,7 @@
               data-library-missing
               icon="file-x"
               [heading]="'library.reader.missingHeading' | transloco: { file: fileName(doc.path) }"
-              [body]="'library.reader.missingBody' | transloco"
+              [body]="(missingCommand(doc) ? 'library.reader.missingBody' : 'library.reader.missingBodyPlain') | transloco"
             >
               @if (missingCommand(doc); as command) {
                 <ui-command-chip [command]="command" [copyLabel]="'common.copyCommand' | transloco" />
@@ -244,7 +248,7 @@
         @if (run.hit) {
           <mark>{{ run.text }}</mark>
         } @else {
-          {{ run.text }}
+          <ng-container>{{ run.text }}</ng-container>
         }
       }
     </span>
@@ -261,12 +265,12 @@
       <span class="lib-date">{{ row.doc.state === 'missing' ? '' : date(row.doc.modified) }}</span>
     </span>
     @if (row.meta; as meta) {
-      <span class="lib-snippet" data-library-meta>
+      <span class="lib-snippet" data-library-meta [attr.data-library-snippet]="row.snippet ? '' : null">
         @for (run of meta; track $index) {
           @if (run.hit) {
             <mark>{{ run.text }}</mark>
           } @else {
-            {{ run.text }}
+            <ng-container>{{ run.text }}</ng-container>
           }
         }
       </span>

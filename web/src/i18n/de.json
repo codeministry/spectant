@@ -2102,7 +2102,13 @@
       "all": "Alle",
       "spec": "Spec",
       "allSpecs": "Alle Specs",
-      "stale": "Nur veraltete"
+      "state": "Zustand"
+    },
+    "states": {
+      "all": "Alle",
+      "stale": "Veraltet",
+      "missing": "Fehlt",
+      "open": "Offen"
     },
     "types": {
       "spec": "Spec",
@@ -2119,7 +2125,7 @@
       "idea": "Idee"
     },
     "wsWide": "{{ws}} · workspaceweit",
-    "count": "{{ws}} · {{shown}} von {{total}} Dokumenten · {{stale}} veraltet",
+    "count": "{{ws}} · {{shown}} von {{total}} Dokumenten · {{stale}} veraltet · {{missing}} fehlen",
     "outdated": "veraltet",
     "control": {
       "label": "Dokumentkontrolle",
@@ -2158,7 +2164,8 @@
       "loading": "Das Dokument wird geladen",
       "error": "Das Dokument konnte nicht gelesen werden.",
       "missingHeading": "{{file}} fehlt noch",
-      "missingBody": "Die Stage der Spec verlangt dieses Dokument; das Kommando darunter legt es an."
+      "missingBody": "Die Stage der Spec verlangt dieses Dokument; das Kommando darunter legt es an.",
+      "missingBodyPlain": "Die Stage der Spec verlangt dieses Dokument."
     },
     "evidence": {
       "toggle": "Evidence",

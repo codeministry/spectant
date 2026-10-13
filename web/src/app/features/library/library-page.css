@@ -150,18 +150,6 @@ app-library-page .lib-select select {
   font-size: 13px;
 }
 
-app-library-page .lib-toggle {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  block-size: 34px;
-  font-size: 13px;
-}
-
-app-library-page .lib-toggle input {
-  accent-color: var(--color-primary);
-}
-
 app-library-page .lib-count {
   margin: 0;
   color: var(--muted-ink);
@@ -332,7 +320,8 @@ app-library-page .lib-more {
 }
 
 @media (pointer: coarse) {
-  app-library-page .lib-evidence-toggle {
+  app-library-page .lib-evidence-toggle,
+  app-library-page .lib-select select {
     min-block-size: 44px;
   }
 }

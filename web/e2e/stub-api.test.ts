@@ -7,6 +7,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -424,7 +425,17 @@ describe('stub API: the library (spec 017, T3)', () => {
     expect(new Set(catalog.docs.map((doc) => doc.type))).toEqual(new Set(TYPES));
     expect(catalog.docs.filter((doc) => doc.state === 'stale').map((doc) => doc.path)).toEqual([STUB_LIBRARY.stale]);
     const missing = catalog.docs.filter((doc) => doc.state === 'missing');
-    expect(missing.map((doc) => [doc.path, doc.modified])).toEqual([[STUB_LIBRARY.missing.path, null]]);
+    expect(missing.map((doc) => [doc.path, doc.type, doc.modified])).toEqual([[STUB_LIBRARY.missing.path, STUB_LIBRARY.missing.type, null]]);
+    // The stub's missing entry is exactly the one core's readCatalog reports for the fixture tree (ISC-155.2: only
+    // plan.md and tasks.md are ever missing).
+    // Loaded by a computed path, as the stub loads core, so `tsc -p web/e2e` never walks core's module graph.
+    const { readCatalog } = createRequire(import.meta.url)(join(import.meta.dir, '..', '..', 'core', 'src', 'library.ts')) as {
+      readCatalog: (root: string) => Promise<LibraryCatalog>;
+    };
+    const core = await readCatalog(join(FIXTURES, 'harbor'));
+    expect(core.docs.filter((doc) => doc.state === 'missing').map((doc) => [doc.path, doc.type])).toEqual([[STUB_LIBRARY.missing.path, STUB_LIBRARY.missing.type]]);
+    const at = catalog.docs.findIndex((doc) => doc.path === STUB_LIBRARY.missing.path);
+    expect(catalog.docs[at - 1]?.path).toBe(STUB_LIBRARY.missing.after);
     expect([catalog.missing, catalog.stale]).toEqual([1, 1]);
     expect(catalog.docs.filter((doc) => doc.state !== 'missing').every((doc) => typeof doc.modified === 'string')).toBe(true);
     expect(new Set(catalog.docs.map((doc) => doc.path)).size).toBe(catalog.docs.length);

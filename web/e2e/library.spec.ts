@@ -8,7 +8,7 @@
  * workspace without one document (`X-Spectant-Stub-Library: empty`) shows the empty state.
  *
  * Every expected value comes from the route's answer (the stub's `STUB_LIBRARY` on harbor: 57 evidence documents in
- * 002, a stale plan, a missing design.md, a prototype) and `src/i18n/en.json`, never a literal count.
+ * 002, a stale plan, a missing tasks.md, a prototype) and `src/i18n/en.json`, never a literal count.
  *
  * Page hooks: `[data-library-group]` = the group key (`workspace` or the spec number), `[data-library-entry]` = the
  * document's path with `data-spec` and `data-state`, `[data-library-meta]`, `[data-library-evidence]` = the group key
@@ -378,9 +378,8 @@ test.describe('control', () => {
     await expect(empty).toBeVisible();
     await expect(empty.locator('.title')).toHaveText(template(EN.library.reader.missingHeading, { file }));
     await expect(page.locator('[data-library-reader] [data-library-prose]')).toHaveCount(0);
-    // The page names a command only for plan.md and tasks.md (T30); the stub's missing document is a design.md.
-    const command = missing.type === 'plan' || missing.type === 'tasks' ? `/spec-${missing.type} ${keyOf(missing.spec)}` : null;
-    if (command === null) await expect(empty.locator('ui-command-chip')).toHaveCount(0);
-    else await expect(empty.locator('ui-command-chip')).toContainText(command);
+    // Core marks only plan.md and tasks.md missing (ISC-155.2), and each has the command that writes it.
+    expect(['plan', 'tasks']).toContain(missing.type);
+    await expect(empty.locator('ui-command-chip')).toContainText(`/spec-${missing.type} ${keyOf(missing.spec)}`);
   });
 });

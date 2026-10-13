@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Location } from '@angular/common';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
@@ -12,7 +12,7 @@ import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult } from '../../core/api.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import type { Tier } from '../../layout/shell/tier';
-import { controlViews, missingCommand, shortDateParts, typeIcon } from './library-page';
+import { addressParams, controlViews, missingCommand, SEARCH_DEBOUNCE_MS, shortDateParts, typeIcon } from './library-page';
 
 // T27 · ISC-156: the library page on the server's catalog: one row per document with its type icon, title, spec and
 // meta line, groups workspace-wide first and each spec once, a spec's evidence as one collapsed subgroup with its
@@ -50,9 +50,18 @@ const CATALOG: LibraryCatalog = {
 const EMPTY: LibraryCatalog = { docs: [], groups: [], fog: [], missing: 0, stale: 0 };
 const PAGE: DocsPage = { html: '<p>Rendered</p>', toc: [], frontmatter: null, figures: [], sections: [], wordCount: 1 };
 
-type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'actors' | 'boardQuery' | 'tech' | 'library' | 'libraryDoc'>;
+type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'actors' | 'boardQuery' | 'tech' | 'library' | 'libraryDoc' | 'librarySearch'>;
 
 let harness: RouterTestingHarness;
+/** Every search text the page sent to `librarySearch`, in order; reset per test. */
+let searched: string[] = [];
+/** The server's full-text hits the fake answers for any search text (path → snippet); reset per test. */
+let serverHits: Record<string, string> = {};
+
+beforeEach(() => {
+  searched = [];
+  serverHits = {};
+});
 
 async function open(url: string, catalog: LibraryCatalog = CATALOG, tier: Tier = 'medium', lang: 'en' | 'de' = 'en'): Promise<HTMLElement> {
   const api: FakeApi = {
@@ -65,6 +74,10 @@ async function open(url: string, catalog: LibraryCatalog = CATALOG, tier: Tier =
     tech: () => Promise.resolve({ kind: 'not-found', served: false }),
     library: () => Promise.resolve(ok(catalog)),
     libraryDoc: () => Promise.resolve(ok(PAGE)),
+    librarySearch: (_ws, q) => {
+      searched.push(q);
+      return Promise.resolve(ok({ query: q.trim(), hits: Object.entries(serverHits).map(([path, snippet]) => ({ path, snippet })) }));
+    },
   };
   TestBed.configureTestingModule({
     imports: [
@@ -272,7 +285,7 @@ describe('LibraryPage control counts (T30, ISC-156.1)', () => {
     expect(control(root, 'stale').getAttribute('aria-pressed')).toBe('true');
     expect(stateParam()).toBe('stale');
     expect(entries(root)).toEqual(['002-web-console/plan.md', '003-board/spec.md']);
-    expect(page(root).querySelector<HTMLInputElement>('[data-library-stale]')?.checked).toBe(true);
+    expect(page(root).querySelector<HTMLSelectElement>('[data-library-state-select]')?.value).toBe('stale');
 
     control(root, 'stale').click();
     await settle();
@@ -334,6 +347,177 @@ describe('LibraryPage control counts (T30, ISC-156.1)', () => {
     expect(reader?.querySelector('[data-library-prose]')).toBeNull();
     expect(missingCommand({ type: 'tasks', spec: '002-web-console' })).toBe('/spec-tasks 002');
     expect(missingCommand({ type: 'design', spec: '002-web-console' })).toBeNull();
+  });
+});
+
+// T32 · ISC-156.2: search text, type, spec, state and the chosen document live in the address (`?q=`, `?type=`,
+// `?spec=`, `?state=`, `#path`), read from the route and written through the router, so a reload or a navigation lands
+// on the same selection; the state select (All · Outdated · Missing · Open) replaces "Only outdated"; the search
+// matches titles and paths at once and the full text through the server after a debounce, with its snippet.
+const address = (): { readonly params: URLSearchParams; readonly fragment: string | null } => {
+  const router = TestBed.inject(Router);
+  const tree = router.parseUrl(router.url);
+  const map = tree.queryParamMap;
+  return { params: new URLSearchParams(map.keys.map((key) => [key, map.get(key) ?? ''])), fragment: tree.fragment };
+};
+const select = (root: HTMLElement, hook: string): HTMLSelectElement => {
+  const el = page(root).querySelector<HTMLSelectElement>(`[${hook}]`);
+  if (el === null) throw new Error(`no select ${hook}`);
+  return el;
+};
+const choose = async (root: HTMLElement, hook: string, value: string): Promise<void> => {
+  const el = select(root, hook);
+  el.value = value;
+  el.dispatchEvent(new Event('change'));
+  await settle();
+};
+const searchBox = (root: HTMLElement): HTMLInputElement => {
+  const el = page(root).querySelector<HTMLInputElement>('[data-library-search]');
+  if (el === null) throw new Error('no search box');
+  return el;
+};
+/** A keystroke: the input event and one change detection, without waiting for the debounce or the router. */
+const type = (root: HTMLElement, value: string): void => {
+  const box = searchBox(root);
+  box.value = value;
+  box.dispatchEvent(new Event('input'));
+  harness.fixture.detectChanges();
+};
+const afterDebounce = async (): Promise<HTMLElement> => {
+  await new Promise((resolve) => setTimeout(resolve, SEARCH_DEBOUNCE_MS + 50));
+  return settle();
+};
+
+describe('LibraryPage address, state select and search (T32, ISC-156.2)', () => {
+  it('restores search text, type, spec, state and the document from the address on arrival', async () => {
+    const root = await open('/w/harbor/library?q=approach&type=plan&spec=002&state=stale#002-web-console/plan.md', CONTROL, 'wide');
+    expect(searchBox(root).value).toBe('approach');
+    expect(select(root, 'data-library-spec').value).toBe('002');
+    expect(select(root, 'data-library-state-select').value).toBe('stale');
+    expect(entries(root)).toEqual(['002-web-console/plan.md']);
+    expect(text(page(root).querySelector('[data-library-reader] h2'))).toBe('Approach');
+    expect(page(root).querySelector('[data-library-entry="002-web-console/plan.md"]')?.getAttribute('aria-current')).toBe('true');
+    expect(control(root, 'stale').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('writes each change through the router, keeps foreign params, and follows a navigation from outside', async () => {
+    const root = await open('/w/harbor/library?keep=1', CONTROL, 'wide');
+    await choose(root, 'data-library-state-select', 'missing');
+    expect(address().params.get('state')).toBe('missing');
+    expect(control(root, 'missing').getAttribute('aria-pressed')).toBe('true');
+
+    await choose(root, 'data-library-spec', '003');
+    expect(entries(root)).toEqual(['003-board/plan.md']);
+    page(root).querySelector<HTMLButtonElement>('[data-library-entry="003-board/plan.md"]')?.click();
+    await settle();
+    expect(address().fragment).toBe('003-board/plan.md');
+    expect(Object.fromEntries(address().params)).toEqual({ keep: '1', spec: '003', state: 'missing' });
+
+    // Reload: the same address lands on the same selection.
+    await harness.navigateByUrl('/w/harbor');
+    await harness.navigateByUrl(`/w/harbor/library?keep=1&spec=003&state=missing#003-board/plan.md`);
+    await settle();
+    expect(entries(root)).toEqual(['003-board/plan.md']);
+    expect(select(root, 'data-library-state-select').value).toBe('missing');
+    expect(text(page(root).querySelector('[data-library-missing] .title'))).toBe('plan.md is missing');
+
+    // A navigation from outside (back, forward, a link) replaces the shown filter.
+    await harness.navigateByUrl('/w/harbor/library?type=spec');
+    await settle();
+    expect(select(root, 'data-library-state-select').value).toBe('all');
+    expect(select(root, 'data-library-spec').value).toBe('all');
+    expect(entries(root)).toEqual(['002-web-console/spec.md', '003-board/spec.md']);
+    expect(control(root, 'missing').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('offers the state select All · Outdated · Missing · Open beside the spec select, in place of "Only outdated"', async () => {
+    const root = await open('/w/harbor/library', CONTROL);
+    const state = select(root, 'data-library-state-select');
+    expect(Array.from(state.options).map((option) => [option.value, text(option)])).toEqual([
+      ['all', 'All'],
+      ['stale', 'Outdated'],
+      ['missing', 'Missing'],
+      ['open', 'Open'],
+    ]);
+    expect(state.closest('label')?.classList.contains('lib-select')).toBe(true);
+    expect(text(state.closest('label')?.querySelector('.type-eyebrow'))).toBe('State');
+    expect(state.closest('.lib-filters')).toBe(select(root, 'data-library-spec').closest('.lib-filters'));
+    expect(page(root).querySelector('[data-library-stale], input[type="checkbox"]')).toBeNull();
+
+    control(root, 'stale').click();
+    await settle();
+    expect(select(root, 'data-library-state-select').value).toBe('stale');
+    await choose(root, 'data-library-state-select', 'open');
+    expect(address().params.get('state')).toBe('open');
+    expect(entries(root)).toEqual([]);
+    expect(control(root, 'stale').getAttribute('aria-pressed')).toBe('false');
+    await choose(root, 'data-library-state-select', 'all');
+    expect(address().params.has('state')).toBe(false);
+  });
+
+  it('names the states and the count line in German', async () => {
+    const root = await open('/w/harbor/library', CONTROL, 'medium', 'de');
+    expect(Array.from(select(root, 'data-library-state-select').options).map((option) => text(option))).toEqual(['Alle', 'Veraltet', 'Fehlt', 'Offen']);
+    expect(text(page(root).querySelector('[data-library-count]'))).toBe('harbor · 6 von 6 Dokumenten · 2 veraltet · 2 fehlen');
+  });
+
+  it('names the missing documents in the count line', async () => {
+    const root = await open('/w/harbor/library?state=stale', CONTROL);
+    expect(text(page(root).querySelector('[data-library-count]'))).toBe('harbor · 2 of 6 documents · 2 outdated · 2 missing');
+  });
+
+  it('matches titles and paths at once and the full text after the debounce, with one request for the last text', async () => {
+    serverHits = { '002-web-console/spec.md': 'the console renders the board of every spec' };
+    const root = await open('/w/harbor/library', CONTROL);
+    for (const value of ['b', 'bo', 'boa', 'board']) type(root, value);
+    expect(entries(root)).toEqual(['003-board/spec.md', '003-board/plan.md']);
+    expect(searched).toEqual([]);
+
+    await afterDebounce();
+    expect(searched).toEqual(['board']);
+    expect(address().params.get('q')).toBe('board');
+    expect(entries(root)).toEqual(['002-web-console/spec.md', '003-board/spec.md', '003-board/plan.md']);
+    const hit = page(root).querySelector('[data-library-entry="002-web-console/spec.md"] [data-library-meta]');
+    expect(hit?.hasAttribute('data-library-snippet')).toBe(true);
+    expect(text(hit)).toBe('the console renders the board of every spec');
+    expect(text(hit?.querySelector('mark'))).toBe('board');
+    const titleOnly = page(root).querySelector('[data-library-entry="003-board/spec.md"] [data-library-meta]');
+    expect(titleOnly?.hasAttribute('data-library-snippet')).toBe(false);
+    expect(text(titleOnly)).toBe('specs/003-board/spec.md');
+  });
+
+  it('sends no request for a blank search text and drops the hits of the last one', async () => {
+    serverHits = { '002-web-console/spec.md': 'the board' };
+    const root = await open('/w/harbor/library?q=board', CONTROL);
+    await afterDebounce();
+    expect(searched).toEqual(['board']);
+    expect(entries(root)).toContain('002-web-console/spec.md');
+
+    type(root, '  ');
+    await afterDebounce();
+    expect(searched).toEqual(['board']);
+    expect(page(root).querySelector('[data-library-snippet]')).toBeNull();
+    expect(entries(root)).toHaveLength(CONTROL.docs.length);
+  });
+
+  it('promises a command in the missing reader only when there is one', async () => {
+    const odd: LibraryCatalog = { ...CONTROL, docs: [...CONTROL.docs, doc('003-board/design.md', 'design', 'design.md', { state: 'missing', modified: null })], missing: 3 };
+    const root = await open('/w/harbor/library#003-board/design.md', odd);
+    const empty = page(root).querySelector('[data-library-missing]');
+    expect(text(empty)).toContain('The spec’s stage asks for this document.');
+    expect(text(empty)).not.toContain('command');
+    expect(empty?.querySelector('ui-command-chip')).toBeNull();
+
+    await harness.navigateByUrl('/w/harbor/library#003-board/plan.md');
+    await settle();
+    const withCommand = page(root).querySelector('[data-library-missing]');
+    expect(text(withCommand)).toContain('the command below writes it');
+    expect(withCommand?.querySelector('ui-command-chip')?.textContent).toContain('/spec-plan 003');
+  });
+
+  it('writes a default as null, so the router removes its param', () => {
+    expect(addressParams({ query: '', type: 'all', spec: 'all', state: 'all' })).toEqual({ q: null, type: null, spec: null, state: null });
+    expect(addressParams({ query: 'x', type: 'plan', spec: '017', state: 'open' })).toEqual({ q: 'x', type: 'plan', spec: '017', state: 'open' });
   });
 });
 
