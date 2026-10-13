@@ -9,7 +9,8 @@
 // is opened for writing, symlinks are not followed, dot files are skipped as in the evidence listing.
 //
 // Titles: the H1, else frontmatter `title:` (through `frontmatter.ts`, no second parser), else the file name; a
-// prototype is named after its folder. `modified` is the file's mtime as ISO 8601, a prototype's its newest file.
+// prototype is named after its folder. `modified` is the file's mtime as ISO 8601, a prototype's its newest file. A
+// prototype's `preview` (ISC-159) is a screenshot directly in its spec's `.design/` whose name contains `prototype`.
 // Every present document is listed `ok`; `stale` (ISC-155.1) and `missing` (ISC-155.2) are judged over the finished
 // list in `judge`, the one place the later tasks extend. The group heads and open fog lines (ISC-157) come from the
 // dashboard model and the tech page's sources in `groupsOf`.
@@ -168,24 +169,70 @@ async function newestBelow(dir: string): Promise<string | null> {
   return newest === null ? null : new Date(newest).toISOString();
 }
 
+/** The word a prototype screenshot's name contains (spec 017 § Constraints), lower case. */
+const PREVIEW_WORD = 'prototype';
+
+/** The viewport prefixes of a screenshot's name, in the order a preview prefers them. */
+const VIEWPORTS: readonly string[] = ['desktop-', 'tablet-', 'mobile-'];
+
+/**
+ * The preview candidates of a spec (ISC-159): the image files directly in its `.design/` whose name contains
+ * `prototype`, case-insensitive, in name order. Subfolders, prototype folders included, never count; dot files and
+ * symbolic links are skipped as everywhere in the catalog.
+ */
+async function previewCandidates(specDir: string): Promise<string[]> {
+  return (await entriesOf(join(specDir, DESIGN_ASSETS)))
+    .filter((e) => e.isFile() && mediaOf(e.name) === 'image' && e.name.toLowerCase().includes(PREVIEW_WORD))
+    .map((e) => e.name)
+    .sort(byName);
+}
+
+/**
+ * The preview of one prototype (ISC-159), as a path relative to `specs/`, or null without a candidate. A prototype in
+ * a subfolder `.design/prototype/<sub>` keeps only the candidates whose name contains <sub> when there are any; then a
+ * name starting with `desktop-` wins over `tablet-`, over `mobile-`, over any other; within one viewport the exact
+ * `<viewport>prototype.<ext>` (`prototype.<ext>` without one) wins; then name order.
+ */
+function previewOf(candidates: readonly string[], rel: string, spec: string): string | null {
+  const sub = rel === `${spec}/${PROTOTYPE_ROOT}` ? null : rel.slice(rel.lastIndexOf('/') + 1).toLowerCase();
+  const own = sub === null ? [] : candidates.filter((name) => name.toLowerCase().includes(sub));
+  const pool = own.length > 0 ? own : candidates;
+  const tierOf = (lower: string): number => {
+    const at = VIEWPORTS.findIndex((v) => lower.startsWith(v));
+    return at < 0 ? VIEWPORTS.length : at;
+  };
+  const rank = (name: string): readonly [number, number] => {
+    const lower = name.toLowerCase();
+    const tier = tierOf(lower);
+    const stem = lower.slice(0, lower.lastIndexOf('.'));
+    return [tier, stem === `${VIEWPORTS[tier] ?? ''}${PREVIEW_WORD}` ? 0 : 1];
+  };
+  const best = [...pool].sort((a, b) => {
+    const [ta, ea] = rank(a);
+    const [tb, eb] = rank(b);
+    return ta - tb || ea - eb || byName(a, b);
+  })[0];
+  return best === undefined ? null : `${spec}/${DESIGN_ASSETS}/${best}`;
+}
+
 /**
  * The prototypes in or below `dir` (relative path `rel` from `specs/`): a folder holding HTML pages directly is one
  * document and everything below it belongs to it; a folder without pages is no document and none of its files is
- * an entry, while each of its subfolders is judged by the same rule.
+ * an entry, while each of its subfolders is judged by the same rule. `candidates` are the spec's preview candidates.
  */
-async function prototypesIn(dir: string, rel: string, spec: string): Promise<LibraryDoc[]> {
+async function prototypesIn(dir: string, rel: string, spec: string, candidates: readonly string[]): Promise<LibraryDoc[]> {
   const entries = await entriesOf(dir);
   const pages = entries.filter((e) => e.isFile() && isPage(e.name)).map((e) => e.name).sort(byName);
   if (pages.length > 0) {
     const modified = await newestBelow(dir);
     if (modified === null) return [];
     const title = rel.slice(rel.lastIndexOf('/') + 1);
-    // `preview` (the screenshot in the spec's `.design/`) is ISC-159's to judge; left out here.
-    return [{ path: rel, type: 'prototype', spec, title, modified, state: 'ok', media: 'prototype', pages }];
+    const preview = previewOf(candidates, rel, spec);
+    return [{ path: rel, type: 'prototype', spec, title, modified, state: 'ok', media: 'prototype', pages, preview }];
   }
   const out: LibraryDoc[] = [];
   for (const entry of entries) {
-    if (entry.isDirectory()) out.push(...(await prototypesIn(join(dir, entry.name), `${rel}/${entry.name}`, spec)));
+    if (entry.isDirectory()) out.push(...(await prototypesIn(join(dir, entry.name), `${rel}/${entry.name}`, spec, candidates)));
   }
   return out;
 }
@@ -208,7 +255,8 @@ async function specDocs(root: string, spec: string): Promise<LibraryDoc[]> {
     );
     zoned.push(...docs.filter((d): d is LibraryDoc => d !== null).sort(byPath));
   }
-  const prototypes = (await prototypesIn(join(specDir, PROTOTYPE_ROOT), prototypeRoot, spec)).sort(byPath);
+  const candidates = await previewCandidates(specDir);
+  const prototypes = (await prototypesIn(join(specDir, PROTOTYPE_ROOT), prototypeRoot, spec, candidates)).sort(byPath);
 
   return [...own.filter((d): d is LibraryDoc => d !== null), ...zoned, ...prototypes];
 }

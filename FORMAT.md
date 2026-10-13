@@ -1302,6 +1302,13 @@ workspace without `specs/` has an empty catalog.
   names of those pages in name order, and every file below it, pages, styles, scripts, Markdown and images alike,
   belongs to it and is no entry of its own. A folder without HTML pages is no document and none of its own files is
   listed; each of its subfolders is judged by the same rule.
+- **Preview** (ISC-159): each prototype carries `preview`, a screenshot path relative to `specs/`, or null. The
+  candidates are the image files directly in the spec's `.design/` whose name contains `prototype`, case-insensitive;
+  images in subfolders, prototype folders included, never count. A prototype in a subfolder `.design/prototype/<sub>`
+  (its deepest folder name) keeps only the candidates whose name also contains <sub>, when there are any. Then a
+  name starting with `desktop-` wins over `tablet-`, over `mobile-`, over any other name; within one viewport the
+  exact `<viewport>-prototype.<ext>` (`prototype.<ext>` without a viewport) wins over a longer name such as
+  `desktop-prototype-help.png`; then name order. The screenshot stays a `design` image of its own as well.
 - **Archived specs** never appear: nothing below `specs/archive/` is listed.
 - **Skipped:** dot files and dot folders inside the listed folders, and symbolic links there, which are neither listed
   nor followed.
@@ -1330,6 +1337,7 @@ one prototype, while `src/`, a code folder without pages, lists nothing:
 ```text
 002-tide-board/.design/prototype-board.png        design     image
 002-tide-board/.design/prototype/board            prototype  pages: detail.html, index.html
+                                                             preview: 002-tide-board/.design/prototype-board.png
 ```
 
 From `core/fixtures/library/specs/002-tide-board/.design/prototype/src/README.md`:

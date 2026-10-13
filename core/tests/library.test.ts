@@ -579,3 +579,94 @@ describe('groups (ISC-157)', () => {
     expect((await readCatalog(root)).groups.map((g) => g.spec)).toEqual([S1, S2, S3]);
   });
 });
+
+// ISC-159: a prototype document's preview is a screenshot directly in its spec's `.design/` whose name contains
+// `prototype`. Images in subfolders or inside a prototype folder never count. Among the candidates a prototype in
+// `.design/prototype/<sub>` prefers names containing <sub>, then a `desktop-`, `tablet-`, `mobile-` name in that order,
+// within one viewport the exact `<viewport>-prototype.<ext>`, then name order.
+describe('preview (ISC-159)', () => {
+  const roots: string[] = [];
+
+  afterAll(() => {
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
+  });
+
+  /**
+   * The preview of every prototype of a fresh copy, by path; `added` writes files (path from the workspace root) into
+   * the copy, `removed` deletes them from it. Reading changes no byte of the copy.
+   */
+  async function previewsOf(added: readonly string[] = [], removed: readonly string[] = []): Promise<Record<string, string | null>> {
+    const root = workspaceCopy({}, removed);
+    roots.push(root);
+    for (const path of added) {
+      mkdirSync(join(root, path, '..'), { recursive: true });
+      writeFileSync(join(root, path), path.endsWith('.html') ? '<!doctype html><title>x</title>' : 'x');
+    }
+    const before = treeHash(root);
+    const catalog = await readCatalog(root);
+    expect(treeHash(root)).toEqual(before);
+    const out: Record<string, string | null> = {};
+    for (const d of catalog.docs.filter((doc) => doc.type === 'prototype')) {
+      expect(d.preview).not.toBeUndefined();
+      out[d.path] = d.preview ?? null;
+    }
+    return out;
+  }
+
+  const P1 = `${S1}/.design/prototype`;
+  const P2 = `${S2}/.design/prototype/board`;
+  const in1 = (names: readonly string[]): string[] => names.map((n) => `specs/${S1}/.design/${n}`);
+
+  test('preview: the fixture screenshot prototype-board.png belongs to 002; 001 has no candidate and reads null', async () => {
+    expect(await previewsOf()).toEqual({ [P1]: null, [P2]: `${S2}/.design/prototype-board.png` });
+  });
+
+  test('preview: no candidate is null; a subfolder image, a Markdown file or a dot file named prototype is none', async () => {
+    const design = `specs/${S2}/.design`;
+    const added = [`${design}/views/desktop-prototype.png`, `${design}/prototype-notes.md`, `${design}/.prototype.png`];
+    expect(await previewsOf(added, [`${design}/prototype-board.png`])).toEqual({ [P1]: null, [P2]: null });
+  });
+
+  test('preview: images inside a prototype folder never count, at any depth', async () => {
+    const added = [
+      `specs/${S1}/.design/prototype/prototype.png`,
+      `specs/${S1}/.design/prototype/assets/desktop-prototype.png`,
+      `specs/${S2}/.design/prototype/board/img/desktop-prototype.png`,
+      `specs/${S2}/.design/prototype/src/prototype.png`,
+    ];
+    expect(await previewsOf(added)).toEqual({ [P1]: null, [P2]: `${S2}/.design/prototype-board.png` });
+  });
+
+  test('preview: desktop before tablet before mobile before any other name, case-insensitive', async () => {
+    const all = ['a-prototype.png', 'mobile-prototype.png', 'tablet-prototype.png', 'Desktop-Prototype.PNG'];
+    expect((await previewsOf(in1(all)))[P1]).toBe(`${S1}/.design/Desktop-Prototype.PNG`);
+    const rest = ['a-prototype.png', 'mobile-prototype.png', 'tablet-prototype.webp'];
+    expect((await previewsOf(in1(rest)))[P1]).toBe(`${S1}/.design/tablet-prototype.webp`);
+    expect((await previewsOf(in1(['b-prototype.png', 'a-prototype.jpg'])))[P1]).toBe(`${S1}/.design/a-prototype.jpg`);
+  });
+
+  test('preview: the exact <viewport>-prototype.<ext> wins over a longer name of the same viewport', async () => {
+    // The shape of real repositories: `desktop-prototype-help.png` sorts before `desktop-prototype.png` by name.
+    const real = ['desktop-prototype-help.png', 'desktop-prototype.png', 'mobile-prototype.png'];
+    expect((await previewsOf(in1(real)))[P1]).toBe(`${S1}/.design/desktop-prototype.png`);
+    expect((await previewsOf(in1(['mobile-prototype-a.png', 'mobile-prototype.png'])))[P1]).toBe(`${S1}/.design/mobile-prototype.png`);
+  });
+
+  test('preview: a prototype subfolder prefers names containing its folder name, else the whole candidate set', async () => {
+    const design = `specs/${S2}/.design`;
+    const added = [
+      `${design}/desktop-prototype.png`,
+      `${design}/mobile-prototype-board.png`,
+      `${design}/prototype/list/index.html`,
+      `${design}/desktop-prototype-list.png`,
+      `${design}/tablet-prototype-list.png`,
+      `${design}/prototype/detail/index.html`,
+    ];
+    expect(await previewsOf(added)).toEqual({
+      [P1]: null,
+      [P2]: `${S2}/.design/mobile-prototype-board.png`,
+      [`${S2}/.design/prototype/detail`]: `${S2}/.design/desktop-prototype.png`,
+      [`${S2}/.design/prototype/list`]: `${S2}/.design/desktop-prototype-list.png`,
+    });
+  });
+});
