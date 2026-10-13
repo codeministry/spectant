@@ -9,6 +9,17 @@
     }
   } @else {
     <p class="hint" data-matrix-hint>{{ 'matrix.hint' | transloco }}</p>
+    <ui-scrubber
+      class="mx-scrubber"
+      data-matrix-scrubber
+      [frames]="stops()"
+      [markers]="markers()"
+      [value]="current()"
+      [playing]="playing()"
+      [ariaLabel]="'board.frame.scrubber' | transloco"
+      (valueChange)="setFrame($event)"
+      (playingChange)="playing.set($event)"
+    />
     <div class="card border border-base-300 bg-base-100 frame-card">
       <div class="scroll" role="region" tabindex="0" data-matrix-region [attr.aria-label]="'matrix.region' | transloco">
         <table class="grid" data-matrix>
@@ -16,7 +27,7 @@
             <tr>
               <th scope="col" class="task corner">{{ 'matrix.task' | transloco }}</th>
               @for (column of matrix().columns; track $index) {
-                <th scope="col" data-column [attr.data-kind]="column.kind" [attr.data-frame]="column.frame" [attr.aria-label]="columnNames()[$index]" [attr.title]="columnNames()[$index]">
+                <th scope="col" data-column [attr.data-kind]="column.kind" [attr.data-frame]="column.frame" [attr.data-current]="column.frame === current() ? '' : null" [attr.aria-label]="columnNames()[$index]" [attr.title]="columnNames()[$index]">
                   @switch (column.kind) {
                     @case ('result') {
                       <span aria-hidden="true">{{ column.label }}</span>
@@ -33,7 +44,7 @@
             <tbody [attr.data-lane]="group.lane">
               <tr class="lane-row">
                 <th scope="rowgroup" [attr.colspan]="matrix().columns.length + 1">
-                  <span class="lane-name" data-lane-name>{{ group.lane }}</span>
+                  <span class="lane-name" data-lane-name><span class="mx-ldot" aria-hidden="true" [style.background]="laneDot($index)"></span>{{ group.lane }}</span>
                 </th>
               </tr>
               @for (row of group.rows; track row.detail.task) {
@@ -68,6 +79,11 @@
           }
         </table>
       </div>
+      <p class="mx-legend" data-matrix-legend>
+        @for (s of legendStates; track s) {
+          <span class="mx-legend-item"><ui-glyph [state]="s" family="card" [size]="14" />{{ stateKey(s, 'card') | transloco }}</span>
+        }
+      </p>
     </div>
   }
 </section>

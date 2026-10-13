@@ -16,12 +16,16 @@ import {
   viewChild,
   viewChildren,
 } from '@angular/core';
+import { type IconName } from '../../icons/icons';
+import { UiIcon } from '../../icons/icon';
 import { type Tone, toneColor } from '../tone';
 
 export interface SegmentedOption {
   readonly key: string;
   readonly label: string;
   readonly tone?: Tone;
+  /** Radio mode: a 14 px icon before the label (the board view switch: `rows-3` Lanes, `workflow` Flow). */
+  readonly icon?: IconName;
   /** Strip mode: the tabular number under the label (cards in the column). */
   readonly count?: number;
   /** Strip mode: the segment's full accessible name, translated by the host ("Review, 2 cards, 1 waits on you"). */
@@ -101,9 +105,11 @@ const reducedMotion = () =>
  */
 @Component({
   selector: 'ui-segmented',
+  imports: [UiIcon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-mode]': 'mode()', '[attr.data-fill]': 'fill() ? "" : null' },
   styles: `
+    .seg-icon { flex: none; margin-inline-end: 6px; vertical-align: -2px; }
     :host { display: inline-flex; }
     .group { display: inline-grid; grid-auto-columns: auto; grid-auto-flow: column; min-inline-size: 0; padding: 2px; border: 1px solid var(--line); border-radius: var(--radius-field); background: var(--lane); }
     .seg { display: inline-flex; gap: 6px; align-items: center; justify-content: center; block-size: 28px; padding: 0 12px; border-radius: 6px; background: transparent; color: var(--muted-ink); font-size: 13px; cursor: pointer; transition: color var(--motion-duration-instant) var(--motion-ease-standard); }
@@ -174,6 +180,9 @@ const reducedMotion = () =>
           >
             @if (option.tone; as tone) {
               <span class="dot" aria-hidden="true" [style.background]="color(tone)"></span>
+            }
+            @if (option.icon; as icon) {
+              <ui-icon class="seg-icon" [name]="icon" [size]="14" />
             }
             {{ option.label }}
           </button>

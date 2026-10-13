@@ -113,7 +113,8 @@ for (const width of [600, 390] as const) {
     test(`board at ${String(width)}: the sticky lane headers stay within the viewport while the page scrolls`, async ({ page }) => {
       await page.goto(BOARD);
       await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
-      const lanes = page.locator(LANES);
+      // Below 640 one lane shows at a time (spec 024, design.md "Kanban bleibt", correction 2): scroll the shown one.
+      const lanes = page.locator(`${LANES}:visible`);
       const last = lanes.last();
       await last.scrollIntoViewIfNeeded();
       await page.mouse.wheel(0, 200);

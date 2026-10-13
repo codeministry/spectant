@@ -1079,7 +1079,8 @@
     "density": {
       "label": "Card density",
       "comfortable": "Comfortable",
-      "compact": "Compact"
+      "compact": "Compact",
+      "toggle": "Compact cards"
     },
     "filter": {
       "open": "Filter",
@@ -1101,7 +1102,14 @@
     "lane": {
       "counts": "{{landed}}/{{total}}",
       "meter": "{{lane}}: cards by section",
-      "toggle": "Show or hide lane {{lane}}"
+      "toggle": "Show or hide lane {{lane}}",
+      "waiting": "· {{count}} waiting",
+      "hide": "Hide lane {{lane}}",
+      "hidden": "{{lane}} · hidden",
+      "show": "show",
+      "switch": "Lane",
+      "showAll": "show all {{count}}",
+      "quiet": "nothing in flight"
     },
     "section": {
       "needsYou": "Needs you",
@@ -1312,6 +1320,11 @@
         "back": "{{stage}}, {{count}} cards · back to the stages",
         "tray": "Drop targets: the stages"
       }
+    },
+    "foot": {
+      "before": "A record, not an authority —",
+      "after": "is. Rounds from",
+      "live": "· live from"
     }
   },
   "matrix": {

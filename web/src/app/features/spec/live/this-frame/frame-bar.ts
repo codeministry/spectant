@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { UiKbd } from '../../../../shared/ui/kbd/kbd';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 
 /**
@@ -10,19 +11,24 @@ import { ShellState } from '../../../../layout/shell/shell-state.service';
  */
 @Component({
   selector: 'app-frame-bar',
-  imports: [TranslocoPipe],
+  imports: [TranslocoPipe, UiKbd],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-bottom-bar': '', '[attr.data-merged]': "state.zen() ? '' : null" },
   styles: `
-    :host { position: sticky; z-index: 2; inset-block-end: 0; display: flex; gap: 4px; align-items: center; min-inline-size: 0; min-block-size: 48px; padding-block-end: env(safe-area-inset-bottom, 0); border-block-start: 1px solid var(--line); background: var(--color-base-100); }
+    :host { position: sticky; z-index: 2; inset-block-end: 0; display: flex; gap: 4px; align-items: center; min-inline-size: 0; min-block-size: 48px; padding-block-end: env(safe-area-inset-bottom, 0); border-block-start: 1px solid var(--line); background: var(--page-glass); backdrop-filter: blur(12px); }
     :host([data-merged]) { position: static; flex: 1 1 auto; min-block-size: 0; padding: 0; border: 0; background: none; }
     .step { flex: none; inline-size: 44px; block-size: 44px; }
     :host([data-merged]) .step { inline-size: 40px; block-size: 40px; }
     .step svg { inline-size: 16px; block-size: 16px; fill: currentcolor; }
-    .main { display: flex; flex: 1; flex-wrap: wrap; gap: 0 12px; align-items: center; justify-content: center; min-inline-size: 0; min-block-size: 44px; border: 0; border-radius: var(--radius-field); background: none; color: var(--color-base-content); font-size: 13px; line-height: 20px; cursor: pointer; transition: background-color var(--motion-duration-instant) var(--motion-ease-standard); }
+    .main { position: relative; display: flex; flex: 1; flex-wrap: wrap; gap: 0 12px; align-items: center; justify-content: flex-start; padding: 0 8px; min-inline-size: 0; min-block-size: 44px; border: 0; border-radius: var(--radius-field); background: none; color: var(--color-base-content); font-size: 13px; line-height: 20px; cursor: pointer; transition: background-color var(--motion-duration-instant) var(--motion-ease-standard); }
     :host([data-merged]) .main { min-block-size: 40px; flex-wrap: nowrap; white-space: nowrap; }
     .main:hover { background: var(--color-base-200); }
-    .frame { font-weight: 600; }
+    .frame { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+    .grab { position: absolute; inset-block-start: 3px; inset-inline-start: 50%; inline-size: 36px; block-size: 4px; border-radius: 2px; background: var(--track); translate: -50% 0; }
+    :host([data-merged]) .grab { display: none; }
+    .count b { font-family: var(--font-mono); }
+    .needs { margin-inline-start: auto; color: var(--hover-text); }
+    ui-kbd { flex: none; }
     .count { font-variant-numeric: tabular-nums; }
   `,
   template: `
@@ -30,9 +36,11 @@ import { ShellState } from '../../../../layout/shell/shell-state.service';
       <svg data-icon-exempt viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10.5 3.5 4.5 8l6 4.5z" /></svg>
     </button>
     <button type="button" class="main" data-bar-open (click)="opened.emit()">
+      <span class="grab" aria-hidden="true"></span>
       <span class="frame">{{ live() ? ('board.frame.live' | transloco) : label() }}</span>
       <span class="count" data-bar-count="thisFrame">{{ 'board.rail.thisFrameCount' | transloco: { count: thisFrame() } }}</span>
-      <span class="count" data-bar-count="needsYou">{{ 'board.rail.needsYouCount' | transloco: { count: needsYou() } }}</span>
+      <span class="count needs" data-bar-count="needsYou">{{ 'board.rail.needsYouCount' | transloco: { count: needsYou() } }}</span>
+      <ui-kbd aria-hidden="true">o</ui-kbd>
     </button>
     <button type="button" class="btn btn-ghost btn-square step" data-bar-step="next" [attr.aria-label]="'scrubber.next' | transloco" [disabled]="index() >= last()" (click)="step.emit(index() + 1)">
       <svg data-icon-exempt viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5.5 3.5 6 4.5-6 4.5z" /></svg>

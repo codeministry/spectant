@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, resource } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -6,7 +6,10 @@ import type { Frame, MatrixCell, MatrixColumn } from '../../../../../../../core/
 import { ApiClient } from '../../../../core/api.service';
 import { ShellData } from '../../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
+import type { CardState } from '../../../../../../../core/src/files';
 import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
+import { UiScrubber } from '../../../../shared/ui/scrubber/scrubber';
+import { recutMarkers, scrubberStops } from '../board/board-model';
 import { stateKey } from '../../../../shared/ui/glyph/states';
 import { boardQuery, glyphOf, laneGroups, matrixOf } from './matrix-model';
 
@@ -23,7 +26,7 @@ import { boardQuery, glyphOf, laneGroups, matrixOf } from './matrix-model';
  */
 @Component({
   selector: 'app-matrix-tab',
-  imports: [RouterLink, TranslocoPipe, UiGlyph],
+  imports: [RouterLink, TranslocoPipe, UiGlyph, UiScrubber],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'matrix', '[attr.data-tier]': 'state.tier()' },
   templateUrl: './matrix-tab.html',
@@ -69,6 +72,28 @@ export class MatrixTab {
     this.lang();
     return this.matrix().columns.map((column) => this.columnName(column));
   });
+
+  /** The scrubber over the matrix (prototype `board-matrix.html`): it marks the current frame's column. */
+  protected readonly stops = computed(() => scrubberStops(this.frames(), this.state.tier() === 'compact'));
+  protected readonly markers = computed(() => {
+    this.lang();
+    return recutMarkers(this.frames(), this.transloco.translate('board.frame.recut'), (counts) => this.transloco.translate('board.frame.recutTitle', counts));
+  });
+  private readonly picked = signal<number | null>(null);
+  protected readonly current = computed(() => this.picked() ?? Math.max(0, this.frames().length - 1));
+  protected readonly playing = signal(false);
+  /** The legend row under the grid: glyph and word per state, in the prototype's order. */
+  protected readonly legendStates: readonly CardState[] = ['waiting', 'dispatched', 'question', 'concerns', 'fail', 'done', 'closed'];
+  protected readonly stateKey = stateKey;
+
+  /** The lane dot of a lane group: the board's lane colours in constitution order. */
+  protected laneDot(i: number): string {
+    return ['var(--color-primary)', 'var(--color-secondary)', 'var(--conc)', 'var(--color-success)', 'var(--color-warning)'][i % 5] ?? 'var(--color-primary)';
+  }
+
+  protected setFrame(index: number): void {
+    this.picked.set(index);
+  }
 
   protected readonly glyphOf = glyphOf;
   protected readonly queryOf = boardQuery;

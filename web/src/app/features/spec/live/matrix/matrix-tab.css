@@ -211,3 +211,40 @@ td[data-kind='dispatch'] ui-glyph {
     background: GrayText;
   }
 }
+
+/* Spec 024, T45: the prototype's scrubber over the matrix, the current frame's column, lane dots, the legend row. */
+.mx-scrubber {
+  min-inline-size: 0;
+}
+
+th[data-current] {
+  background: var(--color-base-300);
+  color: var(--color-base-content);
+}
+
+.mx-ldot {
+  display: inline-block;
+  inline-size: 8px;
+  block-size: 8px;
+  margin-inline-end: 6px;
+  border-radius: 50%;
+  vertical-align: 1px;
+}
+
+.mx-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 8px 12px;
+  border-block-start: 1px solid var(--line);
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.mx-legend-item {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}

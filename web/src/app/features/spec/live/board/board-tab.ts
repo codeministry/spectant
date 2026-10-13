@@ -9,8 +9,7 @@ import { type RailBadge, RailContent } from '../../../../layout/shell/rail-conte
 import { ShellData } from '../../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../../shared/icons/icon';
-import { UiChip } from '../../../../shared/ui/chip/chip';
-import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
+import { UiKbd } from '../../../../shared/ui/kbd/kbd';
 import { glyphSpec, stateKey } from '../../../../shared/ui/glyph/states';
 import { type MeterSegment, UiMeter } from '../../../../shared/ui/meter/meter';
 import { UiDisclosure } from '../../../../shared/ui/overlay/disclosure';
@@ -46,6 +45,7 @@ import {
 
 type AnyFrame = Frame | LiveFrame;
 type Density = 'comfortable' | 'compact';
+const LANE_COLORS = ['var(--color-primary)', 'var(--color-secondary)', 'var(--conc)', 'var(--color-success)', 'var(--color-warning)'] as const;
 type BarTab = 'frame' | 'needs';
 
 /** How long a played frame stays on screen before the next one. */
@@ -80,9 +80,8 @@ const PLAY_STEP_MS = 1200;
     ThisFrame,
     TranslocoPipe,
     YourSteps,
-    UiChip,
+    UiKbd,
     UiDisclosure,
-    UiGlyph,
     UiIcon,
     UiMeter,
     UiScrubber,
@@ -90,7 +89,7 @@ const PLAY_STEP_MS = 1200;
     UiSheet,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { 'data-page': 'board', '[attr.data-tier]': 'tier()' },
+  host: { 'data-page': 'board', '[attr.data-tier]': 'tier()', '(document:keydown)': 'onKey($event)' },
   templateUrl: './board-tab.html',
   styleUrl: './board-tab.css',
 })
@@ -177,8 +176,8 @@ export class BoardTab {
   protected readonly viewOptions = computed<readonly SegmentedOption[]>(() => {
     this.lang();
     return [
-      { key: 'lanes', label: this.transloco.translate('board.view.lanes') },
-      { key: 'flow', label: this.transloco.translate('board.view.flow') },
+      { key: 'lanes', label: this.transloco.translate('board.view.lanes'), icon: 'rows-3' },
+      { key: 'flow', label: this.transloco.translate('board.view.flow'), icon: 'workflow' },
     ];
   });
   protected readonly barTabs = computed<readonly SegmentedOption[]>(() => {
@@ -205,6 +204,19 @@ export class BoardTab {
     ];
   });
 
+  /** Compact (design.md § Viewport-übergreifend, correction 2): one lane at a time, picked with the lane switch. */
+  private readonly pickedLane = signal<string | null>(null);
+  protected readonly currentLane = computed(() => {
+    const lanes = this.gridLanes();
+    const picked = this.pickedLane();
+    if (picked !== null && lanes.some((l) => l.name === picked)) return picked;
+    return (lanes.find((l) => l.needsYou.length > 0) ?? lanes.find((l) => l.inFlight.length > 0) ?? lanes.at(0))?.name ?? null;
+  });
+  protected readonly laneOptions = computed<readonly SegmentedOption[]>(() => this.gridLanes().map((l) => ({ key: l.name, label: l.name })));
+  /** Lanes hidden with the lane filter: a stub "core · hidden · show" in their place (prototype `.lane-stub`). */
+  protected readonly hiddenLaneNames = computed(() => this.order().filter((lane) => this.hiddenLanes().has(lane)));
+  /** Landed sections the viewer opened past the first five cards. */
+  protected readonly landedAll = signal<ReadonlySet<string>>(new Set());
   protected readonly playing = signal(false);
   protected readonly filterOpen = signal(false);
   protected readonly searchOpen = signal(false);
@@ -263,9 +275,33 @@ export class BoardTab {
     this.setQuery({ view: view === 'flow' ? 'flow' : 'lanes' });
   }
 
-  protected setDensity(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    this.setQuery({ density: value === 'compact' ? 'compact' : null });
+  protected toggleDensity(): void {
+    this.setQuery({ density: this.density() === 'compact' ? null : 'compact' });
+  }
+
+  protected pickLane(lane: string | undefined): void {
+    this.pickedLane.set(lane ?? null);
+  }
+
+  protected showAllLanded(lane: string): void {
+    this.landedAll.update((set) => new Set(set).add(lane));
+  }
+
+  /** The lane dot: the prototype's lane colours in constitution order (cyan, violet, yellow, green, orange). */
+  protected laneColor(lane: string): string {
+    if (lane === OPERATOR_LANE) return 'var(--muted-ink)';
+    const i = Math.max(0, this.order().indexOf(lane));
+    return LANE_COLORS[i % LANE_COLORS.length] ?? 'var(--color-primary)';
+  }
+
+  /** `o` opens This frame / Needs you below wide (prototype `.sheet-bar kbd`); `f` is the shell's search key. */
+  protected onKey(event: KeyboardEvent): void {
+    if (event.key !== 'o' || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (this.wide() && !this.state.zen()) return;
+    const target = event.target as HTMLElement | null;
+    if (target !== null && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return;
+    event.preventDefault();
+    this.barOpen.set(true);
   }
 
   protected setSearch(event: Event): void {

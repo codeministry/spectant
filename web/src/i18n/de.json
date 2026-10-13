@@ -1079,7 +1079,8 @@
     "density": {
       "label": "Kartendichte",
       "comfortable": "Luftig",
-      "compact": "Kompakt"
+      "compact": "Kompakt",
+      "toggle": "Kompakte Karten"
     },
     "filter": {
       "open": "Filter",
@@ -1101,7 +1102,14 @@
     "lane": {
       "counts": "{{landed}}/{{total}}",
       "meter": "{{lane}}: Karten nach Abschnitt",
-      "toggle": "Bahn {{lane}} ein- oder ausblenden"
+      "toggle": "Bahn {{lane}} ein- oder ausblenden",
+      "waiting": "· {{count}} wartend",
+      "hide": "Lane {{lane}} ausblenden",
+      "hidden": "{{lane}} · ausgeblendet",
+      "show": "zeigen",
+      "switch": "Lane",
+      "showAll": "alle {{count}} zeigen",
+      "quiet": "nichts in Arbeit"
     },
     "section": {
       "needsYou": "Wartet auf Sie",
@@ -1312,6 +1320,11 @@
         "back": "{{stage}}, {{count}} Karten · zurück zu den Stages",
         "tray": "Ablageziele: die Stages"
       }
+    },
+    "foot": {
+      "before": "Eine Aufzeichnung, keine Autorität —",
+      "after": "ist es. Runden aus",
+      "live": "· live aus"
     }
   },
   "matrix": {
