@@ -1,1 +1,3 @@
-body { font-family: sans-serif; }
+/* Manrope under the SIL OFL 1.1 (fonts/LICENSE-Manrope.txt): a copy of the app's own web/public/fonts file. */
+@font-face { font-family: "Tide Sans"; src: url("fonts/manrope-variable.woff2") format("woff2"); font-display: block; }
+body { font-family: "Tide Sans", sans-serif; }

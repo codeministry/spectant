@@ -39,12 +39,21 @@
  * document; at 390 px the back button `[data-library-back]` restores the rows and focuses the opened one. The prose
  * cases come from the stub's `STUB_LIBRARY.reader` (harbor's T18 artifact with an appendix), every image is checked
  * loaded with a natural width above 0.
+ *
+ * Group `prototype` (T39, ISC-159): a `prototype` document opens in the reader as its card `[data-library-prototype]`:
+ * one row `[data-library-prototype-page]` per catalog page (`index.html` first), each an `<a target="_blank"
+ * rel="noopener">` on the server's read route `/proto/:ws/:spec/:folder/<page>`, and the preview
+ * `[data-library-prototype-preview]` from the library's file route, decoded. Each link opens a new tab without an
+ * opener on that route; the tab's answer carries the CSP with `sandbox`, every request of the tab to `/proto/` (the
+ * page, its stylesheet, script, image and font) answers 200, the font (fetched from the opaque origin `null`) with
+ * `Access-Control-Allow-Origin: *`, and the page's `@font-face` face is loaded and set on its body. The stub's prototype
+ * is the library fixture's `002-tide-board/.design/prototype/board` (`STUB_LIBRARY.prototype`).
  */
 import { readFileSync } from 'node:fs';
-import type { APIRequestContext, Locator, Page } from '@playwright/test';
+import type { APIRequestContext, BrowserContext, Locator, Page, Request, Response } from '@playwright/test';
 
 import type { DocsPage, LibraryCatalog, LibraryDoc, TechModel } from '../../core/src/files';
-import { type LibrarySearchResult, workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
+import { type LibrarySearchResult, PROTOTYPE_PREFIX, prototypeFolderOf, prototypeRoute, workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
 import { atWidth, expect, test, WIDTHS } from './fixtures';
 import { LIBRARY_HEADER, STUB_LIBRARY } from './stub-api';
 
@@ -878,6 +887,173 @@ test.describe('reader', () => {
         await expect.poll(() => address(page).doc, { message: way }).toBeNull();
       }
     });
+  });
+});
+
+// ---- prototype (T39, ISC-159) -------------------------------------------------------------------------------------
+
+const PROTOTYPE_CARD = `${READER} [data-library-prototype]`;
+const PROTOTYPE_PAGE = `${PROTOTYPE_CARD} [data-library-prototype-page]`;
+/** The page a prototype opens on, listed first (design.md 017 § 9); the rest in the catalog's order. */
+const ENTRY_PAGE = 'index.html';
+
+/** The `/proto/` answers and failures of a context, recorded from before a tab opens, so its first request counts too. */
+function protoTraffic(context: BrowserContext): { answers: Response[]; failed: string[]; stop: () => void } {
+  const answers: Response[] = [];
+  const failed: string[] = [];
+  const isProto = (url: string): boolean => new URL(url).pathname.startsWith(PROTOTYPE_PREFIX);
+  const onResponse = (r: Response): void => {
+    if (isProto(r.url())) answers.push(r);
+  };
+  const onFailed = (r: Request): void => {
+    if (isProto(r.url())) failed.push(`${r.url()}: ${r.failure()?.errorText ?? 'failed'}`);
+  };
+  context.on('response', onResponse);
+  context.on('requestfailed', onFailed);
+  return {
+    answers,
+    failed,
+    stop: () => {
+      context.off('response', onResponse);
+      context.off('requestfailed', onFailed);
+    },
+  };
+}
+
+/** What an opened prototype page loaded: its local stylesheets, scripts and images, and its font faces with their status. */
+interface TabLoad {
+  readonly resources: string[];
+  readonly faces: Array<{ family: string; status: string }>;
+  readonly bodyFont: string;
+  readonly opener: boolean;
+  readonly origin: string;
+}
+
+async function tabLoad(tab: Page): Promise<TabLoad> {
+  return tab.evaluate(async () => {
+    await document.fonts.ready;
+    const resources = [...document.querySelectorAll('link[rel="stylesheet"][href], script[src], img[src]')].map((el) =>
+      el instanceof HTMLLinkElement ? el.href : el instanceof HTMLScriptElement || el instanceof HTMLImageElement ? el.src : '',
+    );
+    return {
+      resources,
+      faces: [...document.fonts].map((face) => ({ family: face.family.replace(/^["']|["']$/gu, ''), status: face.status })),
+      bodyFont: getComputedStyle(document.body).fontFamily,
+      opener: window.opener !== null,
+      origin: window.origin,
+    };
+  });
+}
+
+test.describe('prototype', () => {
+  test.use(atWidth(WIDTHS.desktop));
+
+  /** The stub's prototype document: pages from the fixture folder, the preview from harbor's `.design/`. */
+  async function prototypeDoc(request: APIRequestContext): Promise<{ doc: LibraryDoc; folder: string; pages: string[] }> {
+    const catalog = await catalogOf(request);
+    const doc = docOf(catalog, (d) => d.type === 'prototype' && d.path === STUB_LIBRARY.prototype.path, 'prototype document');
+    const folder = prototypeFolderOf(doc);
+    if (folder === null) throw new Error(`library.spec: ${doc.path} names no prototype folder`);
+    const pages = doc.pages ?? [];
+    // The fixture must hold the case, or the assertions below prove nothing: an entry page, a second page, a preview.
+    expect(pages).toContain(ENTRY_PAGE);
+    expect(pages.length).toBeGreaterThan(1);
+    expect(doc.preview).toBe(STUB_LIBRARY.prototype.preview);
+    return { doc, folder, pages: [...pages.filter((p) => p === ENTRY_PAGE), ...pages.filter((p) => p !== ENTRY_PAGE)] };
+  }
+
+  test('every catalog page a row, its link opening a new tab without opener on the read route, the preview decoded', async ({ page, request }) => {
+    const { doc, folder, pages } = await prototypeDoc(request);
+    const preview = doc.preview ?? '';
+    const loaded = assetLoaded(page, preview);
+
+    await page.goto(`${PAGE}#${doc.path}`);
+    await expect(page.locator(READER_TITLE)).toHaveText(squash(doc.title));
+    await expect(page.locator(PROTOTYPE_CARD)).toHaveCount(1);
+    await expect(page.locator(PROSE)).toHaveCount(0);
+
+    // One row per catalog page, the entry page first, each a link on the server's read route.
+    const links = page.locator(PROTOTYPE_PAGE);
+    await expect(links).toHaveCount(pages.length);
+    expect(await links.evaluateAll((els) => els.map((el) => el.getAttribute('data-library-prototype-page')))).toEqual(pages);
+    await expect(page.locator(`${PROTOTYPE_CARD} .proto-count`)).toHaveText(String(pages.length));
+    for (const [i, file] of pages.entries()) {
+      const link = links.nth(i);
+      await expect(link).toHaveJSProperty('tagName', 'A');
+      await expect(link).toHaveAttribute('href', prototypeRoute(WS, doc.spec, folder, file));
+      await expect(link).toHaveAttribute('target', '_blank');
+      await expect(link).toHaveAttribute('rel', 'noopener');
+      await expect(link).toContainText(file);
+    }
+
+    // The preview: the screenshot core names, from the library's file route, decoded.
+    const img = page.locator(`${PROTOTYPE_CARD} [data-library-prototype-preview] img`);
+    await expect(img).toHaveAttribute('src', workspaceRoutes.libraryAsset(WS, preview));
+    const answer = await loaded;
+    expect([answer.status(), answer.headers()['content-type']]).toEqual([200, 'image/png']);
+    await expectDecoded(img);
+  });
+
+  test('each page opens in a new tab, sandboxed, and loads its local stylesheet, script, image and font with 200', async ({ page, context, request }) => {
+    const { doc, folder, pages } = await prototypeDoc(request);
+    await page.goto(`${PAGE}#${doc.path}`);
+    await expect(page.locator(PROTOTYPE_PAGE)).toHaveCount(pages.length);
+
+    const types = new Set<string>();
+    let faces = 0;
+    for (const file of pages) {
+      const route = prototypeRoute(WS, doc.spec, folder, file);
+      const traffic = protoTraffic(context);
+      const [tab] = await Promise.all([context.waitForEvent('page'), page.locator(`${PROTOTYPE_PAGE}[data-library-prototype-page="${file}"]`).click()]);
+      await tab.waitForLoadState('load');
+      expect(new URL(tab.url()).pathname, file).toBe(route);
+      // The app stays where it was; the page is a tab of its own.
+      expect(new URL(page.url()).pathname).toBe(PAGE);
+
+      // Every font face of the page loads; wait for it before reading the traffic, so the font's answer is in.
+      await expect.poll(async () => (await tabLoad(tab)).faces.map((f) => f.status), { message: file }).not.toContain('loading');
+      const load = await tabLoad(tab);
+      traffic.stop();
+
+      // A new tab without opener, on an opaque origin (the CSP's sandbox), its answer carrying that CSP.
+      expect(load.opener, `${file}: window.opener`).toBe(false);
+      expect(load.origin, `${file}: origin`).toBe('null');
+      const main = traffic.answers.find((r) => new URL(r.url()).pathname === route && r.request().resourceType() === 'document');
+      if (main === undefined) throw new Error(`library.spec: no document answer for ${route}`);
+      expect(main.status()).toBe(200);
+      expect(main.headers()['content-security-policy'] ?? '').toMatch(/(^|;)\s*sandbox\b/u);
+
+      // Every request of the tab to /proto/ answers 200, nothing fails, and every resource the page names is among them.
+      expect(traffic.failed, `${file}: failed requests`).toEqual([]);
+      expect(traffic.answers.map((r) => [new URL(r.url()).pathname, r.status()]).filter(([, status]) => status !== 200), file).toEqual([]);
+      const answered = new Set(traffic.answers.map((r) => new URL(r.url()).pathname));
+      for (const url of load.resources) {
+        const path = new URL(url).pathname;
+        expect(path.startsWith(PROTOTYPE_PREFIX), `${file}: ${url} is local`).toBe(true);
+        expect(answered.has(path), `${file}: ${path} answered`).toBe(true);
+      }
+      for (const r of traffic.answers) types.add((r.headers()['content-type'] ?? '').split(';')[0] ?? '');
+
+      // The font: fetched from the opaque origin, answered for it with ACAO *, its face loaded and set on the body.
+      const fonts = traffic.answers.filter((r) => r.request().resourceType() === 'font');
+      expect(fonts.length, `${file}: font requests`).toBeGreaterThan(0);
+      for (const font of fonts) {
+        expect(font.request().headers()['origin'], `${file}: font Origin`).toBe('null');
+        expect(font.headers()['access-control-allow-origin'], `${file}: font ACAO`).toBe('*');
+      }
+      expect(load.faces.length, `${file}: @font-face faces`).toBeGreaterThan(0);
+      for (const face of load.faces) {
+        expect(face.status, `${file}: ${face.family}`).toBe('loaded');
+        expect(load.bodyFont.startsWith(`"${face.family}"`) || load.bodyFont.startsWith(face.family), `${file}: body font ${load.bodyFont}`).toBe(true);
+        expect(await tab.evaluate((family) => document.fonts.check(`16px "${family}"`), face.family)).toBe(true);
+      }
+      faces += load.faces.length;
+      await tab.close();
+    }
+
+    // Across the pages: an HTML page, a stylesheet, a script, an image and a font, each answered 200.
+    expect([...types].sort()).toEqual(expect.arrayContaining(['font/woff2', 'image/png', 'text/css', 'text/html', 'text/javascript']));
+    expect(faces).toBeGreaterThan(0);
   });
 });
 
