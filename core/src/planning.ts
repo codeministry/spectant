@@ -7,7 +7,8 @@
 // held by the spec folder whose spec.md lists its id, active or archived; a spec belongs to every feature whose
 // claims it holds, and the first word of its `isa_feature` (`mainFeatureOf` in `status.ts`) names its main feature.
 // Milestones come from the master's `## Milestones` block (`milestones.ts`) and group specs by their `milestone:`
-// frontmatter, across features. The stories of `specs/ideas/` (spec 008, T55) sit beside them: under the feature
+// frontmatter, across features; a feature block's `Milestone:` line (spec 026) hangs the block under one, and once the
+// master carries any such line a milestone's progress is the sum of its blocks. The stories of `specs/ideas/` (spec 008, T55) sit beside them: under the feature
 // their `feature:` names and the milestone their `milestone:` names, counted apart so no fraction changes. Every count
 // is derived from the files on each read; nothing is stored.
 //
@@ -149,19 +150,23 @@ export interface PlanningFeature {
   readonly ideas: readonly IdeaRef[];
 }
 
-/** A feature's share of one milestone: the claims of that block held by the milestone's specs. */
+/**
+ * A feature's share of one milestone. Where the master carries `Milestone:` lines (spec 026, ISC-166.2): a block whose
+ * line names the milestone, with every live claim of the block. Otherwise: the claims of that block held by the
+ * milestone's specs.
+ */
 export interface PlanningMilestoneFeature {
   /** `F2`. */
   readonly id: string;
   /** The heading after `F2 ·`. */
   readonly name: string;
-  /** Closed claims of this block held by the milestone's specs, dropped claims excluded. */
+  /** Closed claims of this share, dropped claims excluded. */
   readonly closed: number;
-  /** Claims of this block held by the milestone's specs, dropped claims excluded. */
+  /** Claims of this share, dropped claims excluded. */
   readonly total: number;
 }
 
-/** One entry of the master's `## Milestones` block, with the progress of every spec that names it. */
+/** One entry of the master's `## Milestones` block, with its progress over its features' lines or over the specs naming it. */
 export interface PlanningMilestone {
   /** As written before the first ` · `; specs name it in `milestone:`. */
   readonly name: string;
@@ -171,21 +176,24 @@ export interface PlanningMilestone {
   readonly target: string | null;
   /** The text after the date; null when the line has none. */
   readonly description: string | null;
-  /** Closed claims held by the milestone's specs across all features, dropped claims excluded. */
+  /** Closed claims summed over `features`, dropped claims excluded. */
   readonly closed: number;
-  /** Claims held by the milestone's specs across all features, dropped claims excluded. */
+  /** Claims summed over `features`, dropped claims excluded. */
   readonly total: number;
   /** Derived from `closed`, `total`, `target` and the input's `now`; see `MilestoneState`. */
   readonly state: MilestoneState;
   /**
    * The feature blocks whose `Milestone:` line names this entry (spec 026, ISC-166), in master order: the explicit
    * assignment, each block under at most one milestone. Empty when no line names it, as in every master without
-   * `Milestone:` lines. Unlike `features`, it moves no count: progress still comes from the specs' `milestone:`.
+   * `Milestone:` lines. Where the master carries any line, these blocks are `features` and their sum the progress.
    * `buildPlanning` always sets it; the type leaves it optional only so the web lane's hand-built planning stubs stay
    * valid until spec 026's tree lens reads it (then it becomes required, as `FeatureBlock.milestone` did in T3).
    */
   readonly featureIds?: readonly string[];
-  /** The features the milestone's specs hold claims of, in master order. */
+  /**
+   * The milestone's shares per feature block, in master order: the blocks of `featureIds` where the master carries any
+   * `Milestone:` line, otherwise the blocks the milestone's specs hold claims of.
+   */
   readonly features: readonly PlanningMilestoneFeature[];
   /** Specs whose `milestone:` names this entry, archived ones included (last), `main` always false. */
   readonly specs: readonly PlanningHolder[];
@@ -227,7 +235,9 @@ export interface PlanningModel {
    */
   readonly recount: Progress | null;
   /**
-   * Parse findings met on the way (a malformed milestone line, a `milestone:` naming no entry, the story reader's
+   * Parse findings met on the way (a malformed milestone line, a `milestone:` or `Milestone:` line naming no entry
+   * (`spec-milestone-unknown`, `feature-milestone-unknown`), a spec's `milestone:` other than its main feature's line
+   * (`milestone-mismatch`), the story reader's
    * `ideas-…` findings, a story's `unknown-feature` or `unknown-milestone`), per file.
    */
   readonly diagnostics: readonly FileDiagnostic[];
@@ -398,17 +408,33 @@ function milestoneState(closed: number, total: number, target: string, now: stri
   return target < now ? 'late' : 'upcoming';
 }
 
+/** The live claims of `claims` as a milestone's share of one block, closed over total. */
+const shareOf = (block: FeatureBlock, claims: readonly ResolvedClaim[]): PlanningMilestoneFeature => ({
+  id: block.id,
+  name: block.name,
+  closed: claims.filter((c) => c.closed).length,
+  total: claims.length,
+});
+
 /**
- * One entry of the `## Milestones` block with the folders naming it (active then archived, `readFolders` order) and the
- * live claims they hold, per feature block in master order. A claim counts for the folder that wins it (the feature
- * rule), so a claim a milestone's spec lists but another folder holds counts for neither the spec nor the milestone.
+ * One entry of the `## Milestones` block with the folders naming it (active then archived, `readFolders` order) and its
+ * progress per feature block in master order, summed. Two ways to count (spec 026, ISC-166.2), chosen once per master:
+ *
+ * - `byLines` (the master carries at least one `Milestone:` line): the features whose line names this entry, each with
+ *   every live claim of its block, whoever holds it. The specs naming the entry are still listed, but move no count.
+ * - otherwise (ISC-102): the live claims the entry's folders hold, per block they touch. A claim counts for the folder
+ *   that wins it (the feature rule), so a claim a milestone's spec lists but another folder holds counts for neither.
+ *
+ * Either way `closed` and `total` are the sum over `features`, and the state is derived from them.
  */
-function planningMilestone(entry: Milestone, blocks: readonly ResolvedBlock[], folders: readonly Folder[], ideas: readonly IdeaRef[], now: string): PlanningMilestone {
+function planningMilestone(entry: Milestone, blocks: readonly ResolvedBlock[], folders: readonly Folder[], ideas: readonly IdeaRef[], now: string, byLines: boolean): PlanningMilestone {
   const members = new Set(folders.filter((f) => f.milestone === entry.name));
-  const features = blocks.flatMap(({ block, claims }): PlanningMilestoneFeature[] => {
-    const held = claims.filter((c) => !c.dropped && c.folder !== undefined && members.has(c.folder));
-    return held.length === 0 ? [] : [{ id: block.id, name: block.name, closed: held.filter((c) => c.closed).length, total: held.length }];
-  });
+  const features = byLines
+    ? blocks.filter(({ block }) => block.milestone === entry.name).map(({ block, claims }) => shareOf(block, claims.filter((c) => !c.dropped)))
+    : blocks.flatMap(({ block, claims }): PlanningMilestoneFeature[] => {
+        const held = claims.filter((c) => !c.dropped && c.folder !== undefined && members.has(c.folder));
+        return held.length === 0 ? [] : [shareOf(block, held)];
+      });
   const closed = features.reduce((n, f) => n + f.closed, 0);
   const total = features.reduce((n, f) => n + f.total, 0);
   return {
@@ -511,19 +537,62 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
   const now = input.now ?? new Date().toISOString().slice(0, 10);
   const byTarget = [...parsed.milestones].sort((a, b) => (a.target < b.target ? -1 : a.target > b.target ? 1 : 0));
   // A feature's `Milestone:` line matches an entry as a spec's `milestone:` does: the exact name of a valid entry. A
-  // name on a skipped line, or no entry at all, leaves the feature in the no-milestone group (T6 adds the warning).
+  // name on a skipped line, or no entry at all, leaves the feature in the no-milestone group.
   const valid = new Set(parsed.milestones.map((m) => m.name));
+  // ISC-166.1: a line naming no entry is one warning on the master at the block's heading, the name as subject. A name
+  // on a skipped line is known (`entries`), as for a spec: the master's own warning names the cause.
+  // ISC-166.2: one `Milestone:` line anywhere switches every milestone to the sum of its features; without a single
+  // line the master counts over the specs' `milestone:` as before (ISC-102), so an existing master reads unchanged.
+  const byLines = master.features.some((f) => f.milestone !== null);
+  // A spec whose known `milestone:` differs from the known line of its main feature is one warning on the spec; nothing
+  // is reassigned. An unknown name on either side already has its own warning, an absent one is never a warning, and an
+  // archived spec is never warned (`PlanningHolder.archived`). Without any line no block names a milestone: no warning.
+  const blockById = new Map(master.features.map((f) => [f.id, f]));
+  const mismatches = folders.flatMap((f): FileDiagnostic[] => {
+    const line = f.feature === null ? null : (blockById.get(f.feature)?.milestone ?? null);
+    return f.holder.archived || f.milestone === null || line === null || !entries.has(f.milestone) || !entries.has(line) || line === f.milestone
+      ? []
+      : [
+          {
+            file: f.file,
+            diagnostic: {
+              severity: 'warning',
+              code: 'milestone-mismatch',
+              message: `milestone "${f.milestone}" differs from "${line}", the milestone line of the spec's main feature ${f.feature ?? ''}`,
+              subject: f.milestone,
+            },
+          },
+        ];
+  });
+  const unknownFeatureMilestones = master.features.flatMap((f): FileDiagnostic[] =>
+    f.milestone === null || entries.has(f.milestone)
+      ? []
+      : [
+          {
+            file: MASTER_FILE,
+            diagnostic: {
+              severity: 'warning',
+              code: 'feature-milestone-unknown',
+              message: `feature ${f.id} names milestone "${f.milestone}", which is not in the master's ## Milestones block`,
+              line: f.line,
+              subject: f.milestone,
+            },
+          },
+        ],
+  );
   return {
     ...board,
     features: blocks.map((block) => planningFeature(block, folders, ideas)),
-    milestones: byTarget.map((entry) => planningMilestone(entry, blocks, folders, ideas, now)),
+    milestones: byTarget.map((entry) => planningMilestone(entry, blocks, folders, ideas, now, byLines)),
     unassignedFeatures: master.features.filter((f) => f.milestone === null || !valid.has(f.milestone)).map((f) => f.id),
     ideas,
     recount: master.counted,
     diagnostics: [
       ...master.diagnostics.map((diagnostic) => ({ file: MASTER_FILE, diagnostic })),
       ...parsed.diagnostics.map((diagnostic) => ({ file: MASTER_FILE, diagnostic })),
+      ...unknownFeatureMilestones,
       ...unknownMilestones,
+      ...mismatches,
       ...stories.diagnostics,
       ...unknownIdeaNames(ideas, new Set(master.features.map((f) => f.id)), entries),
     ],

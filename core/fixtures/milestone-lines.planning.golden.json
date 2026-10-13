@@ -295,28 +295,16 @@
       "target": "2026-03-12",
       "description": "Signals arrive at one endpoint.",
       "closed": 3,
-      "total": 7,
-      "state": "late",
+      "total": 3,
+      "state": "complete",
       "featureIds": [
         "F1"
       ],
       "features": [
         {
-          "id": "F0",
-          "name": "Cross-cutting",
-          "closed": 0,
-          "total": 1
-        },
-        {
           "id": "F1",
           "name": "Signal intake",
           "closed": 3,
-          "total": 3
-        },
-        {
-          "id": "F2",
-          "name": "Alert routing",
-          "closed": 0,
           "total": 3
         }
       ],
@@ -356,12 +344,19 @@
       "target": "2026-04-30",
       "description": "Every signal reaches the person on call.",
       "closed": 0,
-      "total": 0,
+      "total": 3,
       "state": "upcoming",
       "featureIds": [
         "F2"
       ],
-      "features": [],
+      "features": [
+        {
+          "id": "F2",
+          "name": "Alert routing",
+          "closed": 0,
+          "total": 3
+        }
+      ],
       "specs": [],
       "ideas": []
     }
@@ -375,5 +370,25 @@
     "closed": 3,
     "total": 10
   },
-  "diagnostics": []
+  "diagnostics": [
+    {
+      "file": "ISA.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "feature-milestone-unknown",
+        "message": "feature F3 names milestone \"Beacon 2.0\", which is not in the master's ## Milestones block",
+        "line": 45,
+        "subject": "Beacon 2.0"
+      }
+    },
+    {
+      "file": "specs/002-alert-routing/spec.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "milestone-mismatch",
+        "message": "milestone \"Beacon 0.5\" differs from \"Beacon 1.0\", the milestone line of the spec's main feature F2",
+        "subject": "Beacon 0.5"
+      }
+    }
+  ]
 }
