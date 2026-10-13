@@ -1217,7 +1217,13 @@
       "on": "an {{claim}} · {{time}}",
       "paused": "Schreiben pausiert"
     },
-    "noSource": "Keine Agentenquelle · Schreibvorgänge prüfen nur den Datei-Hash"
+    "noSource": "Keine Agentenquelle · Schreibvorgänge prüfen nur den Datei-Hash",
+    "source": {
+      "read": "Gelesen aus dem Worktree",
+      "main": "main:",
+      "equal": "main gleich",
+      "absent": "noch nicht auf main"
+    }
   },
   "refresh": {
     "newSpecs": "{{count}} neu",

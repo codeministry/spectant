@@ -1217,7 +1217,13 @@
       "on": "on {{claim}} · {{time}}",
       "paused": "writes paused"
     },
-    "noSource": "No agent source · writes check the file hash only"
+    "noSource": "No agent source · writes check the file hash only",
+    "source": {
+      "read": "Read from the worktree",
+      "main": "main:",
+      "equal": "main equal",
+      "absent": "not on main yet"
+    }
   },
   "refresh": {
     "newSpecs": "{{count}} new",
