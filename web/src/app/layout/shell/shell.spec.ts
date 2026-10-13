@@ -44,7 +44,7 @@ const HARBOR = {
   archive: [{ id: '001', title: 'Manifest sync', type: 'feature' }],
 };
 
-type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'timeline' | 'claims' | 'docs' | 'tech'>;
+type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'timeline' | 'claims' | 'docs' | 'tech' | 'library'>;
 
 function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
   return {
@@ -60,6 +60,7 @@ function fakeApi(overrides: Partial<FakeApi> = {}): FakeApi {
     claims: () => Promise.resolve({ kind: 'not-found', served: false }),
     docs: () => Promise.resolve({ kind: 'not-found', served: false }),
     tech: () => Promise.resolve({ kind: 'not-found', served: false }),
+    library: () => Promise.resolve({ kind: 'not-found', served: false }),
     ...overrides,
   };
 }
@@ -126,7 +127,7 @@ describe('ShellComponent', () => {
     }
   });
 
-  it('drops the rail column (data-no-rail) outside a workspace, on the board and on the tech page (spec 023)', async () => {
+  it('drops the rail column (data-no-rail) outside a workspace, on the board and on the Library the tech addresses lead to (spec 023, spec 017)', async () => {
     setUp();
     const noRail = async (url: string): Promise<boolean> => (await open(url)).root.querySelector('app-shell')?.hasAttribute('data-no-rail') ?? false;
     for (const url of ['/', '/settings', '/w/harbor/board', '/w/harbor/tech/overview', '/w/harbor/tech/status']) {
@@ -317,17 +318,17 @@ describe('ShellComponent', () => {
       expect(area.getAttribute('aria-label')).toBe('Page: Specs');
     });
 
-    it('names Tech on every tab of the tech page, enabled, without a trigger icon (spec 023 T20, ISC-134.2; spec 024 T80)', async () => {
+    it('names Library on every former tech address, enabled, without a trigger icon (spec 017 T42, ISC-157.1; spec 024 T80)', async () => {
       setUp();
-      for (const url of ['/w/harbor/tech/overview', '/w/harbor/tech/open']) {
+      for (const url of ['/w/harbor/tech/overview', '/w/harbor/tech/open', '/w/harbor/library']) {
         const { root } = await open(url);
         // spec 024: PAGE select (principal 2026-10-13)
         const area = control(root, 'page');
         expect(area.getAttribute('aria-disabled'), url).toBeNull();
-        expect(area.querySelector('.pick-text')?.textContent.trim(), url).toBe('Tech');
-        // spec 024: PAGE select without trigger icon (principal 2026-10-13): only the chevron, the menu row keeps `book-open`
+        expect(area.querySelector('.pick-text')?.textContent.trim(), url).toBe('Library');
+        // spec 024: PAGE select without trigger icon (principal 2026-10-13): only the chevron, the menu row keeps `book`
         expect(area.querySelector('ui-icon:not(.chevron)'), url).toBeNull();
-        expect(area.getAttribute('aria-label'), url).toBe('Page: Tech');
+        expect(area.getAttribute('aria-label'), url).toBe('Page: Library');
       }
     });
 
@@ -347,8 +348,8 @@ describe('ShellComponent', () => {
         await harness.fixture.whenStable();
         expect(trigger.getAttribute('aria-expanded')).toBe('true');
         const entries = [...root.querySelectorAll('header nav[aria-label="Pages"] [data-page]')];
-        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'board', 'features', 'tech', 'library']);
-        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null, null, null, null]);
+        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'board', 'features', 'library']);
+        expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null, null, null]);
       } finally {
         delete proto['showPopover'];
         delete proto['hidePopover'];

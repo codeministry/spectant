@@ -9,6 +9,7 @@ import harborTech from '../../../../../core/fixtures/harbor.tech.golden.json';
 import type { TechModel } from '../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
+import { withTechPage } from './tech-page.testing';
 import { ApiClient, type ApiResult } from '../../core/api.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import type { Tier } from '../../layout/shell/tier';
@@ -42,7 +43,7 @@ async function open(tier: Tier = 'wide', tech: TechModel = HARBOR): Promise<HTML
         preloadLangs: true,
       }),
     ],
-    providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
+    providers: [provideRouter(withTechPage(routes)), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
   });
   TestBed.inject(ShellState).tier.set(tier);
   harness = await RouterTestingHarness.create();

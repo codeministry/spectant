@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { routes } from '../../app.routes';
+import { withTechPage } from '../../features/tech/tech-page.testing';
 import { ApiClient } from '../../core/api.service';
 import { TECH_TABS, TechTabCounts, techTabs } from '../shell/page-tabs';
 import { ShellState } from '../shell/shell-state.service';
@@ -25,7 +26,7 @@ const notServedApi = new Proxy({}, { get: () => () => Promise.resolve({ kind: 'n
 function setUp(): void {
   TestBed.configureTestingModule({
     imports: [TranslocoTestingModule.forRoot({ langs: STUB, translocoConfig: { availableLangs: ['en'], defaultLang: 'en' }, preloadLangs: true })],
-    providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: notServedApi }],
+    providers: [provideRouter(withTechPage(routes)), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: notServedApi }],
   });
 }
 

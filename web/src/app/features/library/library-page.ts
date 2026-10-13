@@ -532,7 +532,7 @@ export class LibraryPage {
     const fromList = !this.wide() && this.current() === null;
     if (fromList) this.listReturn = { top: window.scrollY, path };
     this.picked.set(path);
-    this.write();
+    this.write(true);
     if (!this.wide()) window.scrollTo({ top: 0 });
     this.afterRender(() => this.host.querySelector<HTMLElement>('[data-library-reader]')?.focus({ preventScroll: true }));
   }
@@ -546,7 +546,7 @@ export class LibraryPage {
     const saved = this.listReturn;
     this.listReturn = null;
     this.picked.set(null);
-    this.write();
+    this.write(true);
     this.afterRender(() => {
       if (saved !== null) window.scrollTo({ top: saved.top });
       const row = (path: string | null | undefined): HTMLElement | null =>
@@ -618,12 +618,13 @@ export class LibraryPage {
 
   /**
    * The shown filter and document into the address: the list's params merged into the others, the document as the
-   * fragment (none without one), replacing the history entry so a keystroke is no step of its own.
+   * fragment (none without one), replacing the history entry so a keystroke is no step of its own. A change of the
+   * document (`docChanged`) drops `?section=`, which names a section of the document it was set for (spec 017, T42).
    */
-  private write(): void {
+  private write(docChanged = false): void {
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: addressParams(this.filter()),
+      queryParams: docChanged ? { ...addressParams(this.filter()), section: null } : addressParams(this.filter()),
       queryParamsHandling: 'merge',
       fragment: this.picked() ?? undefined,
       replaceUrl: true,

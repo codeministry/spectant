@@ -377,3 +377,99 @@ describe('LibraryPage with the reader below 1120 px (T34)', () => {
     expect(document.activeElement?.getAttribute('data-library-entry')).toBe('constitution.md');
   });
 });
+
+// T42 · ISC-157.1: the former tech tabs Overview and Architecture land on tech.md at their section (`?section=`), the
+// reader scrolls there and focuses its heading; opening another document drops the section from the address.
+describe('LibraryPage on a former tech address (T42, ISC-157.1)', () => {
+  const TECH = doc('tech.md', 'tech', 'Tech');
+  const CATALOG: LibraryCatalog = { docs: [TECH, ...DOCS], groups: [], fog: [], missing: 0, stale: 0 };
+  const TECH_PAGE: DocsPage = {
+    html: ['Overview', 'Stack', 'Architecture', 'Risks'].map((name) => `<h2 id="${name.toLowerCase()}">${name}</h2><p>${name} text</p>`).join('\n'),
+    toc: [],
+    frontmatter: null,
+    figures: [],
+    sections: [],
+    wordCount: 8,
+  };
+  let harness: RouterTestingHarness;
+  let jumped: string[];
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function settle(): Promise<HTMLElement> {
+    for (let i = 0; i < 4; i += 1) {
+      await harness.fixture.whenStable();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    harness.fixture.detectChanges();
+    return harness.fixture.nativeElement as HTMLElement;
+  }
+
+  async function land(url: string, tier: 'medium' | 'wide'): Promise<HTMLElement> {
+    const api: Partial<ApiClient> = {
+      workspaces: () => Promise.resolve(ok([{ slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: null }])),
+      dashboard: () => Promise.resolve(ok(dashboard)),
+      planning: () => Promise.resolve({ kind: 'not-found', served: false }),
+      spec: () => Promise.resolve({ kind: 'not-found', served: false }),
+      actors: () => Promise.resolve(ok([])),
+      boardQuery: () => Promise.resolve(ok({ query: '' })),
+      tech: () => Promise.resolve({ kind: 'not-found', served: false }),
+      library: () => Promise.resolve(ok(CATALOG)),
+      libraryDoc: (_ws, path) => Promise.resolve(ok(path === TECH.path ? TECH_PAGE : { ...PLAN_PAGE, toc: [], figures: [], html: '<p>Other</p>' })),
+      librarySearch: (_ws, q) => Promise.resolve(ok({ query: q, hits: [] })),
+      libraryAssetUrl: assetUrl,
+      prototypeUrl: (ws, d, page) => ApiClient.prototype.prototypeUrl(ws, d, page),
+    };
+    TestBed.configureTestingModule({
+      imports: [TranslocoTestingModule.forRoot({ langs: CATALOGUES, translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en' }, preloadLangs: true })],
+      providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
+    });
+    TestBed.inject(ShellState).tier.set(tier);
+    jumped = [];
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+    Element.prototype.scrollIntoView = function (this: Element): void {
+      jumped.push(this.id);
+    };
+    harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl(url);
+    return settle();
+  }
+
+  for (const tier of ['medium', 'wide'] as const) {
+    it(`opens tech.md at the Architecture section from /tech/architecture, the heading focused (${tier})`, async () => {
+      const root = await land('/w/harbor/tech/architecture', tier);
+      expect(TestBed.inject(Router).url).toBe('/w/harbor/library?section=architecture#tech.md');
+      // Below 1120 px the address lands in the reader directly, no list beside it.
+      if (tier === 'medium') expect(root.querySelector('[data-library-list]')).toBeNull();
+      expect(root.querySelector('.lib-reader-title')?.textContent.trim()).toBe('Tech');
+      expect(jumped).toEqual(['architecture']);
+      expect(document.activeElement?.id).toBe('architecture');
+      expect(document.activeElement?.closest('[data-library-tech-section]')?.getAttribute('data-library-tech-section')).toBe('architecture');
+    });
+  }
+
+  it('opens tech.md at the Overview section from /tech, and jumps once, not again on a later render', async () => {
+    await land('/w/harbor/tech', 'wide');
+    expect(TestBed.inject(Router).url).toBe('/w/harbor/library?section=overview#tech.md');
+    expect(jumped).toEqual(['overview']);
+    harness.fixture.detectChanges();
+    await settle();
+    expect(jumped).toEqual(['overview']);
+  });
+
+  it('drops the section from the address when another document opens', async () => {
+    const root = await land('/w/harbor/tech/overview', 'wide');
+    root.querySelector<HTMLButtonElement>(`[data-library-entry="${PLAN.path}"]`)?.click();
+    await settle();
+    const url = new URL(TestBed.inject(Router).url, 'http://x');
+    expect(url.searchParams.has('section')).toBe(false);
+    expect(url.hash).toBe(`#${PLAN.path}`);
+  });
+
+  it('ignores a section on any document but tech.md', async () => {
+    await land(`/w/harbor/library?section=architecture#${PLAN.path}`, 'wide');
+    expect(jumped).toEqual([]);
+  });
+});

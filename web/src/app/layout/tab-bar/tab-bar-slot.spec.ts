@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { routes } from '../../app.routes';
+import { withTechPage } from '../../features/tech/tech-page.testing';
 import { ApiClient, type ApiResult } from '../../core/api.service';
 import { ShellState } from '../shell/shell-state.service';
 import { TabBarSlot } from './tab-bar-slot';
@@ -39,7 +40,7 @@ async function at(url: string): Promise<HTMLElement> {
   const api = new Proxy({}, { get: (_, key: string) => answers[key] ?? (() => Promise.resolve(NOT_SERVED)) });
   TestBed.configureTestingModule({
     imports: [TranslocoTestingModule.forRoot({ langs: STUB, translocoConfig: { availableLangs: ['en'], defaultLang: 'en' }, preloadLangs: true })],
-    providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
+    providers: [provideRouter(withTechPage(routes)), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
   });
   await TestBed.inject(Router).navigateByUrl(url);
   TestBed.inject(ShellState).tier.set('compact');

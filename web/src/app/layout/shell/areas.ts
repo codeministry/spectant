@@ -82,12 +82,13 @@ export interface ShellRouteData {
 /**
  * The workspace-scope pages, the counterpart of the spec areas one level up. `idea` (spec 008, `/w/:ws/ideas/:slug`)
  * is a read-only story page reached from a board card, the palette or a chip, never from the menu: it has no
- * `WORKSPACE_PAGES` entry, so the menu's pages are `WorkspaceMenuPageId`. `tech` (spec 023, `/w/:ws/tech/<tab>`, tabs
- * in `TECH_TABS`) is a menu page, fifth after Milestones (T20). `library` (spec 024, `/w/:ws/library`, a mock until
- * spec 017) is the sixth (T57, ISC-150.1).
+ * `WORKSPACE_PAGES` entry, so the menu's pages are `WorkspaceMenuPageId`. `tech` (spec 023) is no menu page any more:
+ * spec 017 folded it into the Library (T41, ISC-157.1), `/w/:ws/tech` and every `/w/:ws/tech/<tab>` redirect there
+ * (`app.routes.ts`), and the id stays only for the old tech page's code until T50 removes it. `library` (spec 024,
+ * `/w/:ws/library`, on the real catalog since spec 017) stands where Tech stood, fifth after Milestones.
  */
 export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea' | 'tech' | 'library';
-export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea'>;
+export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea' | 'tech'>;
 
 const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea', 'tech', 'library'];
 
@@ -109,9 +110,9 @@ export interface WorkspacePage {
   readonly summaryKey: string;
   /**
    * The second key of the page's `g` sequence, read by `SHORTCUTS`: Board's `g b` (spec 008, T117), Features' `g f`
-   * and Milestones' `g m` (spec 024, T58, ISC-150.1). Specs has none: `g s` is Status inside a spec and no
-   * workspace-scope binding exists; Tech has none (spec 023 plan.md); Library has none either, since the prototype's
-   * `g b` for it is the app's Board.
+   * and Milestones' `g m` (spec 024, T58, ISC-150.1), Library's `g o` (spec 017, T41, ISC-157.1: the key that opens
+   * the documents inside a spec, Docs today, opens them at workspace scope; the prototype's `g b` is the app's Board).
+   * Specs has none: `g s` is Status inside a spec and no workspace-scope binding exists.
    */
   readonly goKey: string | null;
 }
@@ -124,11 +125,9 @@ export const WORKSPACE_PAGES: readonly WorkspacePage[] = [
   { id: 'board', icon: 'square-kanban', labelKey: 'shell.pages.board', summaryKey: 'shell.pages.summary.board', goKey: 'b' },
   { id: 'features', icon: 'layers', labelKey: 'shell.pages.features', summaryKey: 'shell.pages.summary.features', goKey: 'f' },
   { id: 'milestones', icon: 'flag', labelKey: 'shell.pages.milestones', summaryKey: 'shell.pages.summary.milestones', goKey: 'm' },
-  // Spec 023 (T20, ISC-134.2): the tech page, fifth after Milestones; `/w/:ws/tech` redirects to its first tab.
-  { id: 'tech', icon: 'book-open', labelKey: 'shell.pages.tech', summaryKey: 'shell.pages.summary.tech', goKey: null },
-  // Spec 024 (T57, ISC-150.1): the Library, sixth; on the real catalog since spec 017 (T27), its summary a static line
-  // until the menu reads the catalog's counts (ISC-157.1). The PAGE select's menu reaches it (spec 024 T80, ISC-150.2: the rail link went).
-  { id: 'library', icon: 'book', labelKey: 'shell.pages.library', summaryKey: 'shell.pages.summary.library', goKey: null },
+  // Spec 017 (T41, ISC-157.1): the Library where Tech stood, fifth after Milestones; Tech's content is in it and its
+  // routes redirect there. The summary counts the catalog's documents, outdated and missing ones (`AreaMenu`).
+  { id: 'library', icon: 'book', labelKey: 'shell.pages.library', summaryKey: 'shell.pages.summary.library', goKey: 'o' },
 ];
 
 /** A menu page's entry. */

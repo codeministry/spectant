@@ -8,8 +8,8 @@ const lookup = (catalogue: unknown, key: string): unknown =>
   key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], catalogue);
 
 describe('WORKSPACE_PAGES', () => {
-  it('holds exactly Specs, Board, Features, Milestones, Tech and Library, in that order (spec 008, ISC-129; spec 023, ISC-134.2; spec 024, ISC-150.1)', () => {
-    expect(WORKSPACE_PAGES.map((page) => page.id)).toEqual(['specs', 'board', 'features', 'milestones', 'tech', 'library']);
+  it('holds exactly Specs, Board, Features, Milestones and Library, in that order, no Tech (spec 008, ISC-129; spec 024, ISC-150.1; spec 017, ISC-157.1)', () => {
+    expect(WORKSPACE_PAGES.map((page) => page.id)).toEqual(['specs', 'board', 'features', 'milestones', 'library']);
   });
 
   it('uses an icon from ICON_NAMES for every page', () => {
@@ -27,16 +27,15 @@ describe('WORKSPACE_PAGES', () => {
     }
   });
 
-  it('records the bound go keys b, f and m, none for specs (g s is Status), tech or library (the prototype’s g b is Board)', () => {
-    expect(WORKSPACE_PAGES.map((page) => page.goKey)).toEqual([null, 'b', 'f', 'm', null, null]);
+  it('records the bound go keys b, f, m and o (Library, spec 017 T41), none for specs (g s is Status)', () => {
+    expect(WORKSPACE_PAGES.map((page) => page.goKey)).toEqual([null, 'b', 'f', 'm', 'o']);
   });
 
-  it('looks a page up by id, tech included', () => {
+  it('looks a page up by id, Library with the book icon where Tech stood', () => {
     expect(workspacePageById('board').icon).toBe('square-kanban');
     expect(workspacePageById('features').icon).toBe('layers');
     expect(workspacePageById('milestones').icon).toBe('flag');
-    expect(workspacePageById('tech')).toMatchObject({ icon: 'book-open', labelKey: 'shell.pages.tech', summaryKey: 'shell.pages.summary.tech' });
-    expect(workspacePageById('library')).toMatchObject({ icon: 'book', labelKey: 'shell.pages.library', summaryKey: 'shell.pages.summary.library' });
+    expect(workspacePageById('library')).toMatchObject({ icon: 'book', labelKey: 'shell.pages.library', summaryKey: 'shell.pages.summary.library', goKey: 'o' });
   });
 
   it('knows the story page as a page id, but lists it in no menu entry', () => {
@@ -52,6 +51,6 @@ describe('workspaceLink', () => {
     expect(workspaceLink('harbor', 'board')).toEqual(['/w', 'harbor', 'board']);
     expect(workspaceLink('harbor', 'features')).toEqual(['/w', 'harbor', 'features']);
     expect(workspaceLink('harbor', 'milestones')).toEqual(['/w', 'harbor', 'milestones']);
-    expect(workspaceLink('harbor', 'tech')).toEqual(['/w', 'harbor', 'tech']);
+    expect(workspaceLink('harbor', 'library')).toEqual(['/w', 'harbor', 'library']);
   });
 });

@@ -8,6 +8,10 @@ import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
 import { atWidth, expect, test, WIDTHS, headerControl } from './fixtures';
 
+// Superseded by spec 017 (T42, ISC-157.1): `/w/:ws/tech` and every tab redirect to the Library, so the tech page these
+// tests drive is unreachable; its content is checked in `library.spec.ts` (`-g tech`, `-g redirect`). T54 removes this file.
+test.skip(true, 'superseded by ISC-157.1: /w/:ws/tech redirects to the Library (spec 017, T42); T54 removes this file');
+
 interface DocsSection {
   readonly id: string;
   readonly heading: string;

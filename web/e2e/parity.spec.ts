@@ -777,7 +777,8 @@ test.describe('routes', () => {
  *   - `[data-page="<id>"]`               one entry per workspace page, in registry order, with `ui-icon[data-icon]`,
  *                                        `.entry-name` and the summary `.sub`; `[data-area="<id>"]` per spec area.
  *   - palette `[data-entry]`             `harbor` (Specs), `action/open-board`, `feature-F0`, `milestone-harbor-0-9`,
- *                                        `tech/harbor`, `action/open-library`, `action/settings-workspaces`.
+ *                                        `action/open-library`, `action/settings-workspaces` (spec 017 T43, ISC-157.1:
+ *                                        no Tech entry any more, Tech went into the Library).
  *   - shortcut sheet `[data-binding]`    `go-board`, `go-features`, `go-milestones` in the workspace context.
  */
 const MENU_PAGES = [
@@ -785,7 +786,7 @@ const MENU_PAGES = [
   { id: 'board', icon: 'square-kanban', name: 'Board', lands: (path: string) => path === '/w/harbor/board' },
   { id: 'features', icon: 'layers', name: 'Features', lands: (path: string) => path === '/w/harbor/features' },
   { id: 'milestones', icon: 'flag', name: 'Milestones', lands: (path: string) => path === '/w/harbor/milestones' },
-  { id: 'tech', icon: 'book-open', name: 'Tech', lands: (path: string) => path.startsWith('/w/harbor/tech') },
+  // spec 017 (T41, ISC-157.1): Tech went into the Library, which stands where Tech stood.
   { id: 'library', icon: 'book', name: 'Library', lands: (path: string) => path === '/w/harbor/library' },
 ] as const;
 
@@ -803,7 +804,6 @@ const PALETTE_PLACES = [
   { entry: 'action/open-board', query: 'board', lands: (path: string) => path === '/w/harbor/board' },
   { entry: 'feature-F0', query: 'F0', lands: (path: string) => path === '/w/harbor/features' },
   { entry: 'milestone-harbor-0-9', query: 'harbor-0-9', lands: (path: string) => path === '/w/harbor/milestones' },
-  { entry: 'tech/harbor', query: 'tech', lands: (path: string) => path.startsWith('/w/harbor/tech') },
   { entry: 'action/open-library', query: 'library', lands: (path: string) => path === '/w/harbor/library' },
   { entry: 'action/settings-workspaces', query: 'settings', lands: (path: string) => path === '/settings/workspaces' },
 ] as const;
@@ -871,7 +871,7 @@ test.describe('navigation', () => {
         await page.goto('/w/lantern');
         // spec 024: PAGE select (principal 2026-10-13)
         const menu = await openPageMenu(page);
-        expect(await ids(menu.locator('[data-page]'), 'data-page')).toEqual(['specs', 'board', 'features', 'tech', 'library']);
+        expect(await ids(menu.locator('[data-page]'), 'data-page')).toEqual(['specs', 'board', 'features', 'library']);
       });
 
       test('the spec area menu lists the six spec areas, each navigating', async ({ page }) => {

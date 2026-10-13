@@ -333,6 +333,25 @@ describe('KeyboardService', () => {
       expect(allWorkspaces.navigate).not.toHaveBeenCalled();
     });
 
+    it('g o opens the Library from any workspace page; inside a spec g o stays Docs (spec 017, T43, ISC-157.1)', () => {
+      const binding = SHORTCUTS.find((b) => b.id === 'go-library');
+      expect(binding?.keys).toEqual([GO_PREFIX, 'o']);
+      expect(binding && GROUP_CONTEXT[binding.group]).toBe('workspace');
+      expect(binding?.target).toBe('shell.pages.library');
+      expect(SHORTCUTS.some((b) => b.id.includes('tech') || b.target?.includes('tech'))).toBe(false);
+      for (const url of ['/w/harbor', '/w/harbor/board', '/w/harbor/library']) {
+        const { press, navigate } = setup({ url, specId: null });
+        press('g');
+        expect(press('o').defaultPrevented, url).toBe(true);
+        expect(navigate, url).toHaveBeenCalledWith(['/w', 'harbor', 'library']);
+        TestBed.resetTestingModule();
+      }
+      const inSpec = setup();
+      inSpec.press('g');
+      inSpec.press('o');
+      expect(inSpec.navigate).toHaveBeenCalledWith(specLink('harbor', '002', areaPath(areaById('docs'))));
+    });
+
     it('keeps g s and g n on the spec areas inside a spec', () => {
       const { press, navigate } = setup();
       document.body.innerHTML = '<h2 id="specs">S</h2>';

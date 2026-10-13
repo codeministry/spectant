@@ -171,6 +171,8 @@ function sectionOf(heading: Element): TechSection | null {
   return TECH_SECTIONS.find((key) => heading.id === key || TECH_NAMES[key].some((name) => text === name || text.startsWith(`${name} `))) ?? null;
 }
 
+export const isTechSection = (value: unknown): value is TechSection => (TECH_SECTIONS as readonly unknown[]).includes(value);
+
 /** tech.md as the reader shows it: the page with the four sections in order, and the keys the file has none for. */
 export interface TechReading {
   readonly page: DocsPage;
@@ -250,7 +252,10 @@ export type ReaderContext = 'workspace' | 'spec';
  *
  * "Open in spec" leads to the spec dashboard and is left out for workspace-wide documents and in the spec context.
  * Below 1120 px the back button (and Escape) emits `back`; the page restores the list. The table of contents scrolls
- * in place: the library's fragment holds the document's path, so a heading anchor never replaces it.
+ * in place: the library's fragment holds the document's path, so a heading anchor never replaces it. A section of
+ * tech.md is named in the address beside it as `?section=<key>` (spec 017, T42: the former tech tabs Overview and
+ * Architecture redirect there): once that section is drawn the reader scrolls to it and focuses its heading, once per
+ * document and section, so a later filter change does not pull the page back.
  */
 @Component({
   selector: 'app-library-reader',
@@ -294,6 +299,14 @@ export class LibraryReader {
   readonly back = output();
   /** A cross reference was followed: the catalog path of its document. */
   readonly pick = output<string>();
+
+  /** The section of tech.md the address names (`?section=`); null for any other value and any other document. */
+  private readonly section = computed<TechSection | null>(() => {
+    const value = this.params().get('section');
+    return this.doc()?.type === 'tech' && isTechSection(value) ? value : null;
+  });
+  /** The document and section the reader last jumped to, so the jump happens once per pair. */
+  private jumped: string | null = null;
 
   protected readonly typeIcon = typeIcon;
   protected readonly missingCommand = missingCommand;
@@ -379,6 +392,25 @@ export class LibraryReader {
         }
       },
     });
+    // `?section=` scrolls to that section of tech.md and focuses its heading once it is drawn (spec 017, T42).
+    afterRenderEffect({
+      write: () => {
+        const section = this.section();
+        this.prose();
+        if (section === null) {
+          this.jumped = null;
+          return;
+        }
+        const key = `${this.doc()?.path ?? ''}#${section}`;
+        if (this.jumped === key) return;
+        const heading = this.host.querySelector<HTMLElement>(`section[data-library-tech-section="${section}"] > h2`);
+        if (heading === null) return;
+        this.jumped = key;
+        heading.setAttribute('tabindex', '-1');
+        heading.scrollIntoView({ block: 'start' });
+        heading.focus({ preventScroll: true });
+      },
+    });
     // The table of contents scrolls in place, ahead of ui-doc-prose's own jump, which would put the heading's anchor
     // into the fragment that names the document (capture phase on the host: the link's own listener never runs).
     const toc = (event: MouseEvent): void => {
@@ -431,9 +463,9 @@ export class LibraryReader {
     this.back.emit();
   }
 
-  /** The library address of a catalog document: this page, its query params as they stand, the path as fragment. */
+  /** The library address of a catalog document: this page, its filters as they stand, the path as fragment, no section. */
   private xrefHref(path: string): string {
-    const tree = this.router.createUrlTree([], { relativeTo: this.route, queryParamsHandling: 'preserve', fragment: path });
+    const tree = this.router.createUrlTree([], { relativeTo: this.route, queryParams: { section: null }, queryParamsHandling: 'merge', fragment: path });
     return this.locationStrategy.prepareExternalUrl(this.router.serializeUrl(tree));
   }
 }

@@ -137,8 +137,9 @@ const workspaceShortcuts: Shortcut[] = [
     target: 'shell.pages.board',
   },
   // Spec 024 (T58, ISC-150.1): `g f` Features and `g m` Milestones, the second keys read from the page registry; both
-  // free in the workspace context (`f` and `m` alone are single keys, not `g` sequences).
-  ...(['features', 'milestones'] as const).map(
+  // free in the workspace context (`f` and `m` alone are single keys, not `g` sequences). Spec 017 (T43, ISC-157.1):
+  // `g o` the Library, where Tech stood; inside a spec `g o` stays the Docs area (one binding per context).
+  ...(['features', 'milestones', 'library'] as const).map(
     (page): Shortcut => ({
       id: `go-${page}`,
       keys: [GO_PREFIX, workspacePageById(page).goKey ?? page.charAt(0)],

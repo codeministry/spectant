@@ -10,6 +10,7 @@ import type { TechModel } from '../../../../../core/src/files';
 import type { Unavailable } from '../../../../../server/src/spec-routes.contract';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
+import { withTechPage } from './tech-page.testing';
 import { ApiClient, type ApiResult } from '../../core/api.service';
 import { TECH_TABS, TechTabCounts } from '../../layout/shell/page-tabs';
 import { ShellData } from '../../layout/shell/shell-data.service';
@@ -48,7 +49,7 @@ async function open(url: string, tech: (ws: string) => Promise<ApiResult<TechMod
         preloadLangs: true,
       }),
     ],
-    providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
+    providers: [provideRouter(withTechPage(routes)), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
   });
   TestBed.inject(ShellState).tier.set(tier);
   harness = await RouterTestingHarness.create();

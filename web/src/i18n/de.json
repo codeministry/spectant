@@ -628,8 +628,8 @@
         "board": "{{stages}} Stages · {{cards}} Karten · {{waiting}} warten auf Sie",
         "features": "{{count}} Features · {{closed}}/{{total}} geschlossen",
         "milestones": "{{count}} Meilensteine · nächster {{next}}",
-        "tech": "{{specs}} Specs · {{fog}} offene Fragen",
-        "library": "Alle Dokumente, Artefakte und Prototypen"
+        "library": "{{docs}} Dokumente · {{stale}} veraltet · {{missing}} fehlen",
+        "libraryLoading": "Alle Dokumente, Artefakte und Prototypen"
       }
     },
     "assistant": {
