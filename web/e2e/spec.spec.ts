@@ -69,7 +69,8 @@ for (const { width, tier } of TIERS) {
         await expect(entry, area).toHaveAttribute('href', '/w/harbor/s/002/board');
       }
 
-      const rows = await menu.locator('[data-area]').evaluateAll((entries) => entries.map((entry) => entry.getBoundingClientRect().height));
+      // The layout height, not the painted box: the sheet may still be mid-transform when the rows are measured.
+      const rows = await menu.locator('[data-area]').evaluateAll((entries) => entries.map((entry) => (entry as HTMLElement).offsetHeight));
       for (const height of rows) expect(height).toBeGreaterThanOrEqual(tier === 'compact' ? 56 : 44);
       if (tier === 'compact') {
         await expect(page.locator('dialog[open]')).toHaveCount(1);
