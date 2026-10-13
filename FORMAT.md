@@ -46,6 +46,7 @@ A repository root holds the master `ISA.md` (untracked in a public repository) a
 `specs/constitution.md`, optionally `specs/tldr.md` and `specs/tech.md`, one folder per spec `specs/NNN-slug/`, and closed specs under
 `specs/archive/NNN-slug/`. A spec folder name is three digits, a hyphen and a slug (`^\d{3}-.+$`); other names are
 ignored, and symbolic links are not followed. A folder without `spec.md` is not a spec: it gets a diagnostic, no row.
+Where `specs/` is tracked in git, a spec with its own worktree is read from that worktree's copy instead (§ Worktrees).
 
 A ref names exactly one folder or nothing (`resolve.ts`): `002`, `002-web-console` or `web-console`, active and
 archived folders alike; no match or more than one match is `not_found`, never another spec.
@@ -1000,15 +1001,16 @@ of its kind or holds a value of the wrong shape is left out with a diagnostic na
 name is dropped with a diagnostic and the line kept. Reading never throws.
 
 The whole file of the harbor fixture: one measuring run without earlier baseline lines over the transcript fixture (a
-main session with one sub-agent, an agent-worktree session, and a spec-worktree session with one sub-agent); every
-kind appears, in the line order above. It is
+main session with one sub-agent, an agent-worktree session, a spec-worktree session `../<root>-NNN` with one sub-agent,
+and a spec-worktree session `.worktrees/NNN-slug` inside the repository); every kind appears, in the line order above.
+It is
 written by `core/fixtures/harbor/generate.ts` through `tokenRows` and `serializeTokens`, and
 `core/tests/tokens.test.ts` (group `roundtrip`) holds it to the golden and reads it back into the same bytes.
 
 From `core/fixtures/harbor/specs/tokens.jsonl`:
 
 ```jsonl
-{"v":1,"kind":"baseline","measured_through":"2026-03-08T17:01:00.700Z","claude_code":["2.1.38","2.1.40","2.1.42"],"commands":{"/spec-idea":{"count":1,"input":9,"output":850,"cache_read":43200,"cache_write":5200,"mean":{"input":9,"output":850,"cache_read":43200,"cache_write":5200}},"/spec-implement":{"count":3,"input":47,"output":4130,"cache_read":125000,"cache_write":32400,"mean":{"input":16,"output":1377,"cache_read":41667,"cache_write":10800}},"/spec-plan":{"count":1,"input":18,"output":1380,"cache_read":59400,"cache_write":3000,"mean":{"input":18,"output":1380,"cache_read":59400,"cache_write":3000}},"/spec-review":{"count":1,"input":6,"output":510,"cache_read":10500,"cache_write":3200,"mean":{"input":6,"output":510,"cache_read":10500,"cache_write":3200}},"/spec-tasks":{"count":1,"input":17,"output":3075,"cache_read":83800,"cache_write":13800,"mean":{"input":17,"output":3075,"cache_read":83800,"cache_write":13800}}}}
+{"v":1,"kind":"baseline","measured_through":"2026-03-09T08:00:15.000Z","claude_code":["2.1.38","2.1.40","2.1.42"],"commands":{"/spec-idea":{"count":1,"input":9,"output":850,"cache_read":43200,"cache_write":5200,"mean":{"input":9,"output":850,"cache_read":43200,"cache_write":5200}},"/spec-implement":{"count":3,"input":47,"output":4130,"cache_read":125000,"cache_write":32400,"mean":{"input":16,"output":1377,"cache_read":41667,"cache_write":10800}},"/spec-plan":{"count":2,"input":28,"output":2130,"cache_read":85800,"cache_write":5900,"mean":{"input":14,"output":1065,"cache_read":42900,"cache_write":2950}},"/spec-review":{"count":1,"input":6,"output":510,"cache_read":10500,"cache_write":3200,"mean":{"input":6,"output":510,"cache_read":10500,"cache_write":3200}},"/spec-tasks":{"count":1,"input":17,"output":3075,"cache_read":83800,"cache_write":13800,"mean":{"input":17,"output":3075,"cache_read":83800,"cache_write":13800}}}}
 {"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#1","command":"/spec-review","spec":"002-web-console","ts":"2026-03-04T08:30:00.020Z","requests":1,"subagents":0,"input":6,"output":510,"cache_read":10500,"cache_write":3200}
 {"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#2","command":"/spec-plan","spec":"003-config-loader","ts":"2026-03-06T08:10:00.250Z","requests":3,"subagents":0,"input":18,"output":1380,"cache_read":59400,"cache_write":3000}
 {"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#3","command":"/spec-implement","spec":"002-web-console","ts":"2026-03-06T08:40:00.600Z","requests":4,"subagents":1,"input":20,"output":2290,"cache_read":54100,"cache_write":12200}
@@ -1016,11 +1018,12 @@ From `core/fixtures/harbor/specs/tokens.jsonl`:
 {"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#4","command":"/spec-implement","spec":"002-web-console","ts":"2026-03-07T10:30:00.900Z","requests":2,"subagents":0,"input":12,"output":760,"cache_read":54900,"cache_write":3300}
 {"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#5","command":"/spec-idea","spec":null,"ts":"2026-03-07T12:05:00.000Z","requests":2,"subagents":0,"input":9,"output":850,"cache_read":43200,"cache_write":5200}
 {"v":1,"kind":"invocation","id":"a:claude:9c8b7a65-4321-4fed-8cba-0987654321ab#1","command":"/spec-implement","spec":"002-web-console","ts":"2026-03-08T17:00:00.300Z","requests":2,"subagents":0,"input":15,"output":1080,"cache_read":16000,"cache_write":16900}
+{"v":1,"kind":"invocation","id":"a:claude:7d2e4f60-1a3b-4c5d-8e9f-0a1b2c3d4e5f#1","command":"/spec-plan","spec":"003-config-loader","ts":"2026-03-09T08:00:00.500Z","requests":2,"subagents":0,"input":10,"output":750,"cache_read":26400,"cache_write":2900}
 {"v":1,"kind":"spec","spec":"002-web-console","requests":9,"input":53,"output":4640,"cache_read":135500,"cache_write":35600}
-{"v":1,"kind":"spec","spec":"003-config-loader","requests":9,"input":35,"output":4455,"cache_read":143200,"cache_write":16800}
+{"v":1,"kind":"spec","spec":"003-config-loader","requests":11,"input":45,"output":5205,"cache_read":169600,"cache_write":19700}
 {"v":1,"kind":"stage","spec":"002-web-console","stage":"review","requests":1,"input":6,"output":510,"cache_read":10500,"cache_write":3200}
 {"v":1,"kind":"stage","spec":"002-web-console","stage":"build","requests":8,"input":47,"output":4130,"cache_read":125000,"cache_write":32400}
-{"v":1,"kind":"stage","spec":"003-config-loader","stage":"tasks","requests":9,"input":35,"output":4455,"cache_read":143200,"cache_write":16800}
+{"v":1,"kind":"stage","spec":"003-config-loader","stage":"tasks","requests":11,"input":45,"output":5205,"cache_read":169600,"cache_write":19700}
 {"v":1,"kind":"round","spec":"002-web-console","round":1,"requests":4,"input":20,"output":2290,"cache_read":54100,"cache_write":12200}
 {"v":1,"kind":"round","spec":"002-web-console","round":2,"requests":2,"input":12,"output":760,"cache_read":54900,"cache_write":3300}
 {"v":1,"kind":"unassigned","requests":2,"input":14,"output":220,"cache_read":18000,"cache_write":1800}
@@ -1141,6 +1144,96 @@ applicable".
 | `evidence_without_close` | a `## Verification` line names a claim that is still open |
 | `missing_in_spec` | a claim of the master's `isa_feature` block is held by no spec folder, active or archived (dropped ones excepted) |
 | `anchors_missing_at_complete` | at `phase: complete` with a `principal_stated_goal`: Test Strategy rows with an empty or missing `anchors_to` |
+
+## Worktrees
+
+Read from git, never written by the app (spec 027, `worktrees.ts`). The module is not written yet: T3 assigns the
+worktrees, T5 adds the mismatch warning, T16 and T17 read git in the server and T21 and T22 switch the read source and
+the writes; until then every spec is read from the main checkout. The rules below are the contract those tasks build.
+
+The server reads one listing per registered repository, `git worktree list --porcelain`, and hands its text to
+`core/`, which decides which worktree belongs to which spec and never runs git itself. Every git call is a read: no
+fetch, nothing written, `GIT_OPTIONAL_LOCKS=0`. The listing holds one block per worktree, blocks separated by a blank
+line: `worktree <absolute path>`, `HEAD <sha>`, then `branch refs/heads/<name>` or `detached`, plus lines such as
+`locked` or `prunable` that change nothing here. The first block is the main checkout, the repository root itself: it
+is no spec's worktree. Every other block becomes one `Worktree` (`core/src/files.ts`): `path` relative to the repository
+root and `/`-separated, `branch` without `refs/heads/` (null when detached), `spec` (the `NNN` it belongs to, or
+null) and `kind` (`builder` or `spec`).
+
+- **Builder worktrees.** A worktree under `.claude/worktrees/`, where the Agent tool puts one per sub-agent task, is a
+  `builder`. It is counted and never read: no file, no `rev-list`, no `status`, and its `spec`, `ahead` and `dirty` are
+  null whatever its branch. What a builder does is known only from its lines in `.spectant/activity.jsonl` (§ Activity
+  and lock lines). Every other worktree is of kind `spec`, whether or not it names one.
+- **By path.** A worktree at `.worktrees/NNN-slug` of the repository, the folder name a spec folder would carry, belongs
+  to spec `NNN`.
+- **By branch.** Otherwise a branch `feature/`, `fix/`, `spike/` or `infra/` followed by `NNN-slug` names spec `NNN`.
+  The path rule needs the worktree inside the repository, so a worktree elsewhere, such as the older sibling layout
+  `../<root>-NNN`, is assigned by its branch alone.
+- **Path against branch.** When path and branch name two different specs, the path wins and the spec of the path
+  carries exactly one `worktree-branch-mismatch` warning (ISC-174.1): the folder is the newer convention, and the branch
+  may be the base branch of another spec.
+- **No number.** A worktree whose path and branch name no spec belongs to none and raises nothing.
+
+For a `spec` worktree that belongs to a spec the server then reads, in that worktree alone, `ahead`, the commits on its
+branch that `main` lacks (`git rev-list --count main..<branch>`, null when detached), and `dirty`, whether
+`git status --porcelain` prints anything (ISC-175).
+
+An example: a repository at `/srv/repo` with its main checkout, four spec-kind worktrees and one builder lists
+these blocks:
+
+```text
+worktree /srv/repo
+HEAD 3f9a1c0d5e7b2a4c6e8f0a1b3c5d7e9f2a4b6c8d
+branch refs/heads/main
+
+worktree /srv/repo/.worktrees/012-harbor
+HEAD 8b2e4d6f0a1c3e5a7c9e1b3d5f7a9c1e3b5d7f9a
+branch refs/heads/feature/012-harbor
+
+worktree /srv/repo/.worktrees/hotfix
+HEAD 1c3e5a7c9e1b3d5f7a9c1e3b5d7f9a8b2e4d6f0a
+branch refs/heads/fix/013-anchor-chain
+
+worktree /srv/repo/.worktrees/015-beacon
+HEAD 5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f
+branch refs/heads/feature/014-lantern
+
+worktree /srv/repo/.worktrees/scratch
+HEAD 7a9c1e3b5d7f9a8b2e4d6f0a1c3e5a7c9e1b3d5f
+branch refs/heads/feature/cleanup
+
+worktree /srv/repo/.claude/worktrees/agent-a1b2c3d4
+HEAD 8b2e4d6f0a1c3e5a7c9e1b3d5f7a9c1e3b5d7f9a
+branch refs/heads/worktree-agent-a1b2c3d4
+locked claude agent agent-a1b2c3d4
+```
+
+They are assigned as follows; the main checkout `/srv/repo` is not among the worktrees.
+
+| `path` | `branch` | `kind` | `spec` | Why |
+|--------|----------|--------|--------|-----|
+| `.worktrees/012-harbor` | `feature/012-harbor` | `spec` | `012` | path and branch agree |
+| `.worktrees/hotfix` | `fix/013-anchor-chain` | `spec` | `013` | by branch; the path names no spec |
+| `.worktrees/015-beacon` | `feature/014-lantern` | `spec` | `015` | the path wins; 015 carries one `worktree-branch-mismatch` |
+| `.worktrees/scratch` | `feature/cleanup` | `spec` | null | no number in path or branch; no warning |
+| `.claude/worktrees/agent-a1b2c3d4` | `worktree-agent-a1b2c3d4` | `builder` | null | counted, never read |
+
+**The read source** (`SpecSource`, ISC-181). A spec's files come from one place, `main` or `worktree`. The source is
+`worktree` only when the spec has a worktree and its folder `specs/NNN-slug/` is tracked in git, which the server asks
+with `git ls-files specs/NNN-slug` in the main checkout. Then `spec.md`, `plan.md`, `tasks.md`, `context.md`,
+`design.md`, `events.jsonl`, `rounds.jsonl` and `.gates/` are read from the worktree's copy,
+`<worktree>/specs/NNN-slug/`, and the spec header names that source with the main checkout's stage and progress beside
+it. The three in-place writes to an
+existing spec, the reviewed mark, a task checkbox and a stage transition, go to that same copy under the same hash check
+against the file of that copy; the main checkout stays byte-identical. A write whose source changed since the client
+rendered it, because a worktree appeared or vanished, is a 409. Allocating an idea creates a spec that has no worktree
+yet, so it always writes in the main checkout.
+
+Everywhere else the source stays `main`, as before spec 027: the spec has no worktree, its folder is untracked, or
+`specs/` is a symbolic link, which `git ls-files` does not list as the folder. Spectant's own repository is that case:
+its `specs/` is untracked and linked into every spec worktree, so the worktree's copy is the main checkout's file and
+the source does not change (ISC-181.1). The repository kinds (`constitution`, `master`, `idea`, `workflow`, `tokens`)
+are read from the main checkout in every case.
 
 ## Activity and lock lines
 

@@ -1,0 +1,36 @@
+worktree /srv/repo
+HEAD 5d41c0a9e3b2f7d86a1c4e9b0f3a2d7c6e5b8a14
+branch refs/heads/main
+
+worktree /srv/repo/.worktrees/012-harbor
+HEAD 8e2f1a7c3b9d0e6f4a5c2b1d8e7f6a3c9b0d2e41
+branch refs/heads/feature/012-harbor
+
+worktree /srv/repo/.worktrees/014-export
+HEAD 2b7c9e1f4a0d3c8b6e5f1a2d9c7b4e0f3a8d6c52
+branch refs/heads/export-rework
+
+worktree /srv/repo/.worktrees/099-retired
+HEAD 9f0e3d6c2b8a1f7e5d4c0b9a3e2f1d8c7b6a5e63
+branch refs/heads/feature/099-retired
+
+worktree /srv/repo/.worktrees/infra-ci
+HEAD 6a3d8f2e0c7b9a1d4f5e3c2b8a0d7f6e1c9b4a74
+branch refs/heads/infra/016-audit
+
+worktree /srv/repo/.worktrees/scratch
+HEAD 5d41c0a9e3b2f7d86a1c4e9b0f3a2d7c6e5b8a14
+detached
+
+worktree /srv/repo-013
+HEAD 1c8e4b7a2f9d0c3e6b5a8f1d2e7c4b9a0f3e6d85
+branch refs/heads/fix/013-relay
+
+worktree /srv/repo-017
+HEAD 7e9a2c5f8b1d4e0a3c6f9b2e5d8a1c4f7b0e3d96
+branch refs/heads/chore/017-tidy
+
+worktree /srv/repo-018
+HEAD 3f6b9e2d5a8c1f4b7e0d3a6c9f2b5e8d1a4c7fa7
+branch refs/heads/spike/018-probe
+

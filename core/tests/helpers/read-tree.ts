@@ -37,10 +37,14 @@ export function folders(dir: string): SpecFiles[] {
     });
 }
 
-/** The name of every fixture tree: each directory directly under `core/fixtures/`, in name order. */
+/**
+ * The name of every fixture tree: each directory directly under `core/fixtures/` that is a repository root with a
+ * `specs/` folder, in name order. A directory without one holds input of another kind, such as the
+ * `git worktree list --porcelain` listings in `worktrees/` (spec 027), and is no tree.
+ */
 export function fixtureTrees(): string[] {
   return readdirSync(FIXTURES, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
+    .filter((e) => e.isDirectory() && existsSync(join(FIXTURES, e.name, 'specs')))
     .map((e) => e.name)
     .sort();
 }
