@@ -54,7 +54,7 @@ import type { APIRequestContext, BrowserContext, Locator, Page, Request, Respons
 
 import type { DocsPage, LibraryCatalog, LibraryDoc, TechModel } from '../../core/src/files';
 import { type LibrarySearchResult, PROTOTYPE_PREFIX, prototypeFolderOf, prototypeRoute, workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
-import { atWidth, expect, test, WIDTHS } from './fixtures';
+import { atWidth, expect, headerControl, menusReady, test, WIDTHS } from './fixtures';
 import { LIBRARY_HEADER, STUB_LIBRARY } from './stub-api';
 
 /** The two control counts of the card's first row, in their order (design.md 017 § Viewport-übergreifend). */
@@ -1305,5 +1305,247 @@ test.describe('tech', () => {
     await page.goto(PAGE);
     await expect(page.locator('[data-library-entry="tech.md"]')).toHaveCount(1);
     await expect(page.locator('[data-library-placeholder]')).toHaveCount(0);
+  });
+});
+
+/*
+ * Group `redirect` (T44, ISC-157.1): the former tech page lives in the Library. `bun run e2e -- library -g redirect`.
+ * - Each former address, `/w/:ws/tech` and its five tabs, lands on `/w/:ws/library` with exactly the selection its tab
+ *   stood for (`REDIRECTS`, written out here, not read from the app): Overview (and the bare address) and Architecture
+ *   open `tech.md` in the reader at that section (`?section=<key>#tech.md`; the section in view, its heading focused,
+ *   the `tech.md` row current), Status and Specs the document rows grouped by spec with nothing picked (no query, no
+ *   fragment; at 1440 the reader shows the first row, as on any visit without one), Open the filter "open"
+ *   (`?state=open`, the fog groups, the state select on `open`).
+ * - Each is checked twice: by a direct load, and by an in-app navigation without a page load (a history push the router
+ *   follows, as it would follow a link; no link to the old page is left in the app). Either way the old address is no
+ *   history entry of its own (the redirect replaces it): one step back lands on the page before, and stays there.
+ * - Any other path below the old page is not-found.
+ * - Tech is gone and the Library stands in its place in all three ways in: the PAGE select's menu (its entries, the
+ *   Library's summary counting the catalog), the palette (no Tech group, no Tech entry; "tech" finds "Open the library"
+ *   with its `book` icon) and the shortcut sheet (`g o` → Library in the workspace context, no Tech row; `g o` from a
+ *   workspace page lands on the Library).
+ * Test titles avoid the other groups' names in lower case (`list`, `control`, `search`, `reader`, `tech`, `prototype`),
+ * so each `-g` keeps its own count.
+ */
+type RedirectSelection = { readonly kind: 'section'; readonly key: 'overview' | 'architecture' } | { readonly kind: 'grouped' } | { readonly kind: 'open' };
+
+interface TechRedirect {
+  /** The former address below `/w/:ws/tech`, `''` the bare one. */
+  readonly from: string;
+  readonly query: Readonly<Record<string, string>>;
+  /** The fragment without `#`; `''` for none. */
+  readonly hash: string;
+  readonly selection: RedirectSelection;
+}
+
+/** design.md 017 § Umleitungen, as T42 landed them: where each former tech address leads. */
+const REDIRECTS: readonly TechRedirect[] = [
+  { from: '', query: { section: 'overview' }, hash: 'tech.md', selection: { kind: 'section', key: 'overview' } },
+  { from: '/overview', query: { section: 'overview' }, hash: 'tech.md', selection: { kind: 'section', key: 'overview' } },
+  { from: '/architecture', query: { section: 'architecture' }, hash: 'tech.md', selection: { kind: 'section', key: 'architecture' } },
+  { from: '/status', query: {}, hash: '', selection: { kind: 'grouped' } },
+  { from: '/specs', query: {}, hash: '', selection: { kind: 'grouped' } },
+  { from: '/open', query: { state: 'open' }, hash: '', selection: { kind: 'open' } },
+];
+
+const REDIRECT_EN = read('../src/i18n/en.json') as {
+  shell: { pages: Readonly<Record<string, string>> & { summary: { library: string } } };
+  palette: { actions: { library: string } };
+  shortcuts: { actions: { goTo: string } };
+};
+
+test.describe('redirect', () => {
+  test.use(atWidth(WIDTHS.desktop));
+
+  const WORKSPACE = `/w/${WS}`;
+  const OLD = `${WORKSPACE}/tech`;
+  const TECH_DOC = '[data-library-reader] [data-library-prose] .docs-prose';
+  const FOGGY = techGolden(WS).specs.filter((spec) => spec.phase !== 'complete' && spec.fog.length > 0);
+  const MARK = 'spectantE2eNoReload';
+  const PAGE_IDS = ['specs', 'board', 'features', 'milestones', 'library'] as const;
+  const pageName = (id: string): string => REDIRECT_EN.shell.pages[id] ?? id;
+  const heading = (page: Page): Locator => page.locator('app-library-page h1#library');
+
+  /** The workspace page, rendered: the page every navigation below starts from and every step back returns to. */
+  async function atWorkspace(page: Page): Promise<void> {
+    await page.goto(WORKSPACE);
+    await expect(page.locator('[data-panel="specs"] [data-spec-row]').first()).toBeVisible();
+  }
+
+  /** An in-app navigation to `path`: a history push the router follows, with no page load (the mark survives it). */
+  async function navigateInApp(page: Page, path: string): Promise<void> {
+    await page.evaluate(
+      ({ target, mark }) => {
+        (window as unknown as Record<string, unknown>)[mark] = true;
+        history.pushState(null, '', target);
+        dispatchEvent(new PopStateEvent('popstate', { state: null }));
+      },
+      { target: path, mark: MARK },
+    );
+  }
+
+  const noReload = (page: Page): Promise<unknown> => page.evaluate((mark) => (window as unknown as Record<string, unknown>)[mark], MARK);
+
+  /** The landing address: the Library's path with exactly the expected query and fragment. */
+  async function expectLanding(page: Page, redirect: TechRedirect): Promise<void> {
+    await expect(page).toHaveURL((url) => url.pathname === PAGE);
+    const url = new URL(page.url());
+    expect(Object.fromEntries(url.searchParams), `query of ${OLD}${redirect.from}`).toEqual(redirect.query);
+    expect(url.hash, `fragment of ${OLD}${redirect.from}`).toBe(redirect.hash === '' ? '' : `#${redirect.hash}`);
+  }
+
+  /** The selection the landing shows. */
+  async function expectSelection(page: Page, redirect: TechRedirect, catalog: LibraryCatalog): Promise<void> {
+    const what = `${OLD}${redirect.from}`;
+    await expect(heading(page), what).toBeVisible();
+    const current = page.locator(`${ENTRY}[aria-current="true"]`);
+    const selection = redirect.selection;
+    switch (selection.kind) {
+      case 'section': {
+        await expect(current, what).toHaveCount(1);
+        await expect(current, what).toHaveAttribute('data-library-entry', 'tech.md');
+        const section = page.locator(`${TECH_DOC} > section[data-library-tech-section="${selection.key}"]`);
+        await expect(section, what).toBeInViewport();
+        await expect(section.locator('> h2'), what).toBeFocused();
+        break;
+      }
+      case 'grouped': {
+        // The document rows with nothing picked, grouped by spec: the workspace-wide group first, then one per spec in
+        // ascending number, a head for each active spec. Nothing picked: at this width the reader shows the list's first
+        // row, as on any visit without a fragment, and no section of tech.md is jumped to.
+        const first = page.locator(ENTRY).first();
+        await expect(first, what).toBeVisible();
+        await expect(current, what).toHaveCount(1);
+        await expect(current, what).toHaveAttribute('data-library-entry', (await first.getAttribute('data-library-entry')) ?? '');
+        await expect(page.locator(`${TECH_DOC} section[data-library-tech-section] > h2:focus`), what).toHaveCount(0);
+        await expect(page.locator('[data-library-fog-group]'), what).toHaveCount(0);
+        const groups = await page.locator('[data-library-group]').evaluateAll((els) => els.map((el) => el.getAttribute('data-library-group') ?? ''));
+        const specKeys = [...new Set(catalog.docs.map((doc) => keyOf(doc.spec)).filter((key) => key !== 'workspace'))].toSorted();
+        expect(specKeys.length, 'the catalog spans more than one spec').toBeGreaterThan(1);
+        expect(groups, what).toEqual(['workspace', ...specKeys]);
+        await expect(page.locator('[data-library-group-head]'), what).toHaveCount(catalog.groups.length);
+        break;
+      }
+      case 'open': {
+        expect(FOGGY.length, 'harbor holds an open spec with fog lines').toBeGreaterThan(0);
+        await expect(page.locator('[data-library-state-select]'), what).toHaveValue('open');
+        const fog = page.locator('[data-library-fog-group]');
+        await expect(fog, what).toHaveCount(FOGGY.length);
+        expect(await fog.evaluateAll((els) => els.map((el) => el.getAttribute('data-library-fog-group'))), what).toEqual(FOGGY.map((spec) => spec.id));
+        await expect(current, what).toHaveCount(0);
+        break;
+      }
+    }
+  }
+
+  /** One step back lands on the workspace page and stays there: the old address was no history entry of its own. */
+  async function expectBackToWorkspace(page: Page, redirect: TechRedirect): Promise<void> {
+    await page.goBack();
+    await expect(page, `back from ${OLD}${redirect.from}`).toHaveURL((url) => url.pathname === WORKSPACE && url.search === '' && url.hash === '');
+    await expect(page.locator('[data-panel="specs"] [data-spec-row]').first()).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe(WORKSPACE);
+  }
+
+  for (const redirect of REDIRECTS) {
+    const label = `Tech${redirect.from}`;
+
+    test(`a direct load of ${label} lands on the Library with its selection, and back skips it`, async ({ page, request }) => {
+      const catalog = await catalogOf(request);
+      await atWorkspace(page);
+      await page.goto(`${OLD}${redirect.from}`);
+      await expectLanding(page, redirect);
+      await expectSelection(page, redirect, catalog);
+      await expectBackToWorkspace(page, redirect);
+    });
+
+    test(`an in-app navigation to ${label} lands on the Library with its selection, and back skips it`, async ({ page, request }) => {
+      const catalog = await catalogOf(request);
+      await atWorkspace(page);
+      await navigateInApp(page, `${OLD}${redirect.from}`);
+      await expectLanding(page, redirect);
+      await expectSelection(page, redirect, catalog);
+      expect(await noReload(page), 'no page load').toBe(true);
+      await expectBackToWorkspace(page, redirect);
+      expect(await noReload(page), 'no page load').toBe(true);
+    });
+  }
+
+  test('any other path below the former Tech page is not-found', async ({ page }) => {
+    for (const path of [`${OLD}/nope`, `${OLD}/overview/more`]) {
+      await page.goto(path);
+      await expect(page.locator('app-not-found'), path).toBeVisible();
+      await expect(page, path).toHaveURL((url) => url.pathname === path);
+    }
+  });
+
+  test('the PAGE select names Specs, Board, Features, Milestones and Library with its catalog counts, no Tech', async ({ page, request }) => {
+    const catalog = await catalogOf(request);
+    await page.goto(OLD);
+    await expect(page).toHaveURL((url) => url.pathname === PAGE);
+    await expect(heading(page)).toBeVisible();
+    await menusReady(page);
+    const trigger = await headerControl(page, 'page');
+    await expect(trigger).toContainText(pageName('library'));
+    await trigger.click();
+    const menu = page.getByRole('navigation', { name: 'Pages' });
+    await expect(menu).toBeVisible();
+    const entries = menu.locator('[data-page]');
+    await expect(entries).toHaveCount(PAGE_IDS.length);
+    expect(await entries.evaluateAll((els) => els.map((el) => el.getAttribute('data-page')))).toEqual([...PAGE_IDS]);
+    await expect(menu.locator('.entry-name')).toHaveText(PAGE_IDS.map(pageName));
+    await expect(menu.locator('[data-page="tech"]')).toHaveCount(0);
+    await expect(menu.getByText(pageName('tech'), { exact: true })).toHaveCount(0);
+    const library = menu.locator('[data-page="library"]');
+    await expect(library).toHaveAttribute('aria-current', 'page');
+    await expect(library.locator('ui-icon')).toHaveAttribute('data-icon', 'book');
+    // The summary counts the catalog: every document, the outdated and the missing ones.
+    expect(catalog.stale + catalog.missing, 'the catalog holds outdated or missing documents').toBeGreaterThan(0);
+    await expect(library.locator('.sub')).toHaveText(
+      template(REDIRECT_EN.shell.pages.summary.library, { docs: catalog.docs.length, stale: catalog.stale, missing: catalog.missing }),
+    );
+  });
+
+  test('the palette has no Tech group or entry; the word Tech finds Open the library with its book icon, which opens it', async ({ page }) => {
+    await atWorkspace(page);
+    await page.keyboard.press('Meta+k');
+    const palette = page.locator('app-command-palette dialog');
+    await expect(palette).toBeVisible();
+    // The whole index, settled: no Tech group, no Tech entry anywhere, the library action among the actions.
+    await expect(palette.getByRole('listbox')).not.toHaveAttribute('aria-busy', 'true');
+    await expect(palette.locator('[data-entry="action/open-library"]')).toHaveCount(1);
+    await expect(palette.locator('[data-group="tech"]')).toHaveCount(0);
+    await expect(palette.locator('[role="option"][data-entry^="tech"]')).toHaveCount(0);
+    await expect(palette.locator('.p-group').getByText(pageName('tech'), { exact: true })).toHaveCount(0);
+
+    await palette.getByRole('combobox').fill('tech');
+    const option = palette.locator('[role="option"][data-entry="action/open-library"]');
+    await expect(option).toHaveCount(1);
+    await expect(option).toContainText(REDIRECT_EN.palette.actions.library);
+    await expect(option.locator('ui-icon.p-lead')).toHaveAttribute('data-icon', 'book');
+    await expect(palette.locator('[role="option"][data-entry^="tech"]')).toHaveCount(0);
+    await expect(palette.locator('[data-group="tech"]')).toHaveCount(0);
+    await option.click();
+    await expect(page).toHaveURL((url) => url.pathname === PAGE);
+    await expect(heading(page)).toBeVisible();
+  });
+
+  test('the shortcut sheet names g o for the Library in the workspace context and no Tech row; g o opens the Library', async ({ page }) => {
+    await atWorkspace(page);
+    await page.keyboard.press('?');
+    const sheet = page.locator('app-shortcut-sheet dialog');
+    await expect(sheet).toBeVisible();
+    const row = sheet.locator('[data-context="workspace"] [data-binding="go-library"]');
+    await expect(row.locator('kbd')).toHaveText(['g', 'o']);
+    await expect(row.locator('.action')).toHaveText(template(REDIRECT_EN.shortcuts.actions.goTo, { target: pageName('library') }));
+    await expect(sheet.locator('[data-binding*="tech"]')).toHaveCount(0);
+    const techRow = template(REDIRECT_EN.shortcuts.actions.goTo, { target: pageName('tech') });
+    await expect(sheet.locator('[data-binding] .action').getByText(techRow, { exact: true })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(sheet).toBeHidden();
+
+    await page.keyboard.press('g');
+    await page.keyboard.press('o');
+    await expect(page).toHaveURL((url) => url.pathname === PAGE && url.search === '' && url.hash === '');
+    await expect(heading(page)).toBeVisible();
   });
 });
