@@ -39,13 +39,77 @@
  *                                        `[data-warning-link]` (text: the id), each `[data-warning-text]` and the
  *                                        command as `ui-command-chip`.
  *   - `[data-warnings-empty]`            the "No warnings" line when no spec has one.
+ *
+ * Group `demo` (ISC-149.1) and group `routes` (ISC-150): hook contract for T49–T55. Both groups run at 1440 unless a
+ * test names another width; the `demo` tests run in their own stub session and only read.
+ *
+ *   The mock convention (`web/src/app/shared/demo/demo-data.ts`)
+ *   - `[data-demo]`                      the root of every mocked block, item or whole mocked page; rendered only
+ *                                        while the mock is on screen (a closed assistant panel is not in the DOM).
+ *   - `[data-demo-head]`                 the root's own head row: the section head or eyebrow row of a block, the h1
+ *                                        row of a whole mocked page, the `as-head` of the assistant. Exactly one per
+ *                                        root (heads inside a nested `[data-demo]` belong to that one); the root
+ *                                        itself may carry it when the mocked item is a single row.
+ *   - `[data-demo-chip]`                 `<ui-chip variant="demo">` (the chip's host sets it). Exactly one visible chip
+ *                                        per visible root whose nearest `[data-demo]` is that root, inside that
+ *                                        root's `[data-demo-head]`. No chip outside a `[data-demo]`.
+ *   - Real pages carry no `[data-demo]` and no chip: the spec dashboard `/w/:ws/s/:id` and the status tab
+ *     `/w/:ws/s/:id/status` (Spec context, gates, warnings and waiting items are core's). The header's assistant
+ *     trigger is a control, not a mock, and carries none; a workspace badge on these pages renders from core's data
+ *     (the workspace name), never from the identity fixture, or it would need the chip.
+ *
+ *   Library `/w/:ws/library` (T50, T51; prototype `library.html`)
+ *   - `[data-page="library"]`            the page root, itself `[data-demo]`; its h1 row is the `[data-demo-head]`.
+ *   - `[data-library-entry]`             one row per document, value = the fixture's `id`, in `DEMO_LIBRARY` order
+ *                                        while no filter is set.
+ *   - `[data-library-search]`            the search input; filtering by an entry's title keeps that entry.
+ *   - `[data-library-reader]`            the reader; choosing a row shows that entry's title in it.
+ *   - `a[data-library-link]`             the prototype's rail link to the Library on workspace pages (visible at 1440
+ *                                        on `/w/:ws`), pointing at `/w/:ws/library`.
+ *
+ *   Settings · Workspaces `/settings/workspaces` (T50, T52; prototype `workspaces.html`)
+ *   - `[data-page="settings-workspaces"]` the page root, itself `[data-demo]`; its h1 row is the `[data-demo-head]`.
+ *   - `[data-ws-row]`                    one row per registered workspace, value = the fixture's `name`, in
+ *                                        `DEMO_WORKSPACES` order; the rows never change (the mock writes nothing).
+ *   - `[data-ws-add-path]`, `[data-ws-add]`  the add row's path field and its Add button (a no-op, or disabled).
+ *   - `[data-identity-upload]`           the identity image upload control: disabled, inside a `[data-demo]`.
+ *   - Reached in the app from the settings popover's `[data-settings-link="workspaces"]` (today it points at
+ *     `/settings`) and from the Settings page's card link `main a[href="/settings/workspaces"]`.
+ *
+ *   Assistant dot (T53; prototype `assistant.js`)
+ *   - The trigger `header [data-tool="assistant"]` (an overflow-menu entry below 1120, see `headerControl`) opens it;
+ *     today it is `aria-disabled` and opens nothing.
+ *   - `[data-assistant]`                 the panel (from 640) or full-screen sheet (below), itself `[data-demo]`; its
+ *                                        `as-head` is the `[data-demo-head]`.
+ *   - `[data-assistant-suggestion]`      one chip per `DEMO_ASSISTANT_REPLIES` entry, text = its `prompt`, in order.
+ *   - `[data-assistant-input]`, `[data-assistant-send]`  the prompt field and the send button.
+ *   - `[data-assistant-reply]`           one per answer of dot; the last one holds the fixture's reply (the matching
+ *                                        suggestion's, else `DEMO_ASSISTANT_FALLBACK`).
+ *   - `[data-assistant-apply]`           Apply on a write proposal, where one is shown: it writes nothing.
+ *   - `[data-assistant-close]`           the `x` in the head; closing removes the panel.
+ *
+ *   Workspace identity images (T54; prototype `identity.js`)
+ *   - `[data-ws-cover]`                  the screenshot or name pattern beside a workspace's name on `/`, one per
+ *                                        workspace column, each inside a `[data-demo]`.
+ *   - `[data-ws-badge]`                  the badge (logo or initials on the accent tint), 30 px in each column head on `/`.
+ *
+ *   State galleries (T55; prototype `states.html`, `board-states.html`)
+ *   - `/__ui` holds the sections `[data-gallery="states"]` and `[data-gallery="board-states"]`.
+ *
+ *   The views the app has today are reached through hooks other specs hold already: the `app-*` hosts, `app-tab-bar
+ *   a[data-tab]`, `[data-area-tile]`, `app-spec-head [data-gate-action]` and `[data-gate-dialog]`, `[data-frame-chip]`,
+ *   `ui-segmented[data-control="view"]`, `[data-ui="command-palette"]`, `[data-settings-link]`.
  */
 import { readFileSync } from 'node:fs';
-import type { Locator, Page } from '@playwright/test';
+import type { BrowserContext, Locator, Page } from '@playwright/test';
 import type { SpecPageModel } from '../../core/src/files.ts';
+import { DEMO_ASSISTANT_FALLBACK, DEMO_ASSISTANT_REPLIES } from '../src/app/shared/demo/fixtures/assistant.ts';
+import { DEMO_LIBRARY } from '../src/app/shared/demo/fixtures/library.ts';
+import { DEMO_WORKSPACES } from '../src/app/shared/demo/fixtures/workspaces.ts';
 import type { IconName } from '../src/app/shared/icons/icons.ts';
 import { PROTOTYPE_ICON_MAP } from '../src/app/shared/icons/prototype-map.ts';
-import { atWidth, expect, test } from './fixtures';
+import { atWidth, expect, headerControl, test } from './fixtures';
+import { STUB_NOTES } from './stub-api';
 
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
 const read = (file: string): unknown => JSON.parse(readFileSync(new URL(`../../core/fixtures/${file}`, import.meta.url), 'utf8'));
@@ -350,4 +414,358 @@ test.describe('icons', () => {
       });
     });
   }
+});
+
+/*
+ * Group `demo` (ISC-149.1): every mocked element carries the demo chip in its head, reads its fixture and nothing
+ * else, writes nothing and calls no host outside loopback. `bun run e2e -- parity -g demo` plus `bun run e2e --
+ * offline` is the claim's probe; the static half (no `ApiClient`, no write method, frozen fixtures) is
+ * `web/tests/demo-readonly.test.ts`. The network guard is the offline spec's: a `context.route('**')` handler lets
+ * loopback http(s) through and aborts everything else, a request listener records what the open mock makes.
+ */
+const DEMO_SESSION_HEADER = 'X-Spectant-Stub-Session';
+const DEMO_SESSION = 'parity-demo';
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
+/** No endpoint serves these yet: a mock that asks the API for one reads something other than its fixture. */
+const MOCK_API = /\/api\/.*(library|assistant|identit|upload)/iu;
+
+interface DemoTraffic {
+  readonly blocked: string[];
+  readonly seen: Array<{ readonly method: string; readonly url: string }>;
+}
+
+async function guardNetwork(context: BrowserContext): Promise<DemoTraffic> {
+  const traffic: DemoTraffic = { blocked: [], seen: [] };
+  await context.route('**', async (route) => {
+    const url = new URL(route.request().url());
+    if ((url.protocol === 'http:' || url.protocol === 'https:') && LOOPBACK_HOSTS.has(url.hostname)) return route.continue();
+    traffic.blocked.push(url.href);
+    return route.abort('blockedbyclient');
+  });
+  await context.routeWebSocket(/.*/u, (ws) => {
+    const url = new URL(ws.url());
+    if (!LOOPBACK_HOSTS.has(url.hostname)) {
+      traffic.blocked.push(url.href);
+      return ws.close();
+    }
+    return ws.connectToServer();
+  });
+  context.on('request', (req) => traffic.seen.push({ method: req.method(), url: req.url() }));
+  return traffic;
+}
+
+/**
+ * The chip rule over every visible `[data-demo]` of the page: one own head, one own visible chip inside it; and no chip
+ * outside a `[data-demo]`. Returns the defects as readable lines, so a failure names the root.
+ */
+async function chipDefects(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const shown = (el: Element): boolean => {
+      const box = el.getBoundingClientRect();
+      return box.width > 0 && box.height > 0 && el.checkVisibility({ opacityProperty: true, visibilityProperty: true });
+    };
+    const name = (el: Element): string => `${el.tagName.toLowerCase()}${el.getAttribute('data-page') ? `[data-page=${el.getAttribute('data-page') ?? ''}]` : ''}`;
+    const defects: string[] = [];
+    for (const root of Array.from(document.querySelectorAll('[data-demo]')).filter(shown)) {
+      const own = (el: Element): boolean => el.closest('[data-demo]') === root;
+      const heads = [root, ...Array.from(root.querySelectorAll('[data-demo-head]'))].filter((el) => el.hasAttribute('data-demo-head') && (el === root || own(el)));
+      const chips = Array.from(root.querySelectorAll('[data-demo-chip]')).filter(own);
+      const head = heads[0];
+      if (heads.length !== 1) defects.push(`${name(root)}: ${String(heads.length)} heads`);
+      if (chips.length !== 1) defects.push(`${name(root)}: ${String(chips.length)} chips`);
+      for (const chip of chips) {
+        if (!shown(chip)) defects.push(`${name(root)}: chip not visible`);
+        if (head && !head.contains(chip)) defects.push(`${name(root)}: chip outside its head`);
+      }
+    }
+    const orphans = Array.from(document.querySelectorAll('[data-demo-chip]')).filter((chip) => chip.closest('[data-demo]') === null);
+    if (orphans.length > 0) defects.push(`${String(orphans.length)} chips outside any [data-demo]`);
+    return defects;
+  });
+}
+
+const storage = (page: Page): Promise<string> => page.evaluate(() => JSON.stringify(Object.entries(localStorage).sort()));
+
+interface MockHost {
+  readonly name: string;
+  readonly route: string;
+  readonly width?: number;
+  /** Opens the mock on the route (the assistant opens from the header). */
+  readonly open?: (page: Page) => Promise<void>;
+  /** The mocked roots the view must show (each a `[data-demo]` or inside one). */
+  readonly root: string;
+  /** Shows the fixture and uses the mock the way a person would; nothing of it may write or leave the machine. */
+  readonly use: (page: Page) => Promise<void>;
+}
+
+const openAssistant = async (page: Page): Promise<void> => {
+  const trigger = await headerControl(page, 'assistant');
+  // Today the trigger is only the dot's place (aria-disabled); fail on that rather than wait out the click.
+  await expect(trigger).not.toHaveAttribute('aria-disabled', 'true');
+  await trigger.click();
+};
+
+const useAssistant = async (page: Page): Promise<void> => {
+  const panel = page.locator('[data-assistant]');
+  await expect(panel.locator('[data-assistant-suggestion]')).toHaveText(DEMO_ASSISTANT_REPLIES.map((entry) => entry.prompt));
+  const first = DEMO_ASSISTANT_REPLIES[0];
+  if (!first) throw new Error('DEMO_ASSISTANT_REPLIES is empty');
+  await panel.locator('[data-assistant-suggestion]').first().click();
+  await expect(panel.locator('[data-assistant-reply]').last()).toContainText(first.reply);
+  await panel.locator('[data-assistant-input]').fill('Anything else?');
+  await panel.locator('[data-assistant-send]').click();
+  await expect(panel.locator('[data-assistant-reply]').last()).toContainText(DEMO_ASSISTANT_FALLBACK);
+  const apply = panel.locator('[data-assistant-apply]');
+  if ((await apply.count()) > 0) await apply.first().click();
+};
+
+const MOCK_HOSTS: readonly MockHost[] = [
+  {
+    name: 'Library',
+    route: '/w/harbor/library',
+    root: '[data-page="library"][data-demo]',
+    use: async (page) => {
+      const entries = page.locator('[data-library-entry]');
+      expect(await entries.evaluateAll((rows) => rows.map((row) => row.getAttribute('data-library-entry')))).toEqual(DEMO_LIBRARY.map((entry) => entry.id));
+      const pick = DEMO_LIBRARY[0];
+      if (!pick) throw new Error('DEMO_LIBRARY is empty');
+      await page.locator('[data-library-search]').fill(pick.title);
+      await expect(page.locator(`[data-library-entry="${pick.id}"]`)).toBeVisible();
+      await page.locator(`[data-library-entry="${pick.id}"]`).click();
+      await expect(page.locator('[data-library-reader]')).toContainText(pick.title);
+    },
+  },
+  {
+    name: 'Settings · Workspaces',
+    route: '/settings/workspaces',
+    root: '[data-page="settings-workspaces"][data-demo]',
+    use: async (page) => {
+      const names = (): Promise<Array<string | null>> => page.locator('[data-ws-row]').evaluateAll((rows) => rows.map((row) => row.getAttribute('data-ws-row')));
+      expect(await names()).toEqual(DEMO_WORKSPACES.map((row) => row.name));
+      const upload = page.locator('[data-identity-upload]').first();
+      await expect(upload).toBeDisabled();
+      expect(await upload.evaluate((el) => el.closest('[data-demo]') !== null)).toBe(true);
+      await page.locator('[data-ws-add-path]').fill('oss/new-repo');
+      const add = page.locator('[data-ws-add]');
+      if (await add.isEnabled()) await add.click();
+      expect(await names()).toEqual(DEMO_WORKSPACES.map((row) => row.name));
+    },
+  },
+  { name: 'assistant dot', route: '/w/harbor/s/002', open: openAssistant, root: '[data-assistant][data-demo]', use: useAssistant },
+  { name: 'assistant dot', route: '/w/harbor/s/002', width: 390, open: openAssistant, root: '[data-assistant][data-demo]', use: useAssistant },
+  {
+    name: 'identity images',
+    route: '/',
+    root: '[data-ws-cover]',
+    use: async (page) => {
+      const covers = page.locator('[data-ws-cover]');
+      expect(await covers.count()).toBeGreaterThan(0);
+      expect(await covers.evaluateAll((all) => all.filter((cover) => cover.closest('[data-demo]') === null).length)).toBe(0);
+    },
+  },
+];
+
+/** Real pages that may hold a mock somewhere (the chip rule holds wherever one is), each with the hook that says it rendered. */
+const SAMPLE_PAGES: ReadonlyArray<{ readonly route: string; readonly ready: string }> = [
+  { route: '/w/harbor', ready: 'app-dashboard-page h1' },
+  { route: '/settings', ready: '[data-page="settings"] h1' },
+  { route: '/help', ready: 'app-help-page h1' },
+  { route: '/w/harbor/s/002/board', ready: 'app-board-tab section.board' },
+];
+
+/** Pages with real data only: no `[data-demo]`, no chip. */
+const REAL_ONLY: ReadonlyArray<{ readonly route: string; readonly ready: string }> = [
+  { route: '/w/harbor/s/002', ready: '[data-spec-context]' },
+  { route: '/w/harbor/s/002/status', ready: 'app-status-tab' },
+];
+
+test.describe('demo', () => {
+  test.use({ ...atWidth(1440), extraHTTPHeaders: { [DEMO_SESSION_HEADER]: DEMO_SESSION } });
+  test.beforeEach(async ({ request }) => {
+    await request.post('/api/__stub/reset', { headers: { [DEMO_SESSION_HEADER]: DEMO_SESSION } });
+  });
+
+  for (const host of MOCK_HOSTS) {
+    test.describe(`${host.name} at ${String(host.width ?? 1440)}`, () => {
+      if (host.width) test.use(atWidth(host.width));
+
+      test(`${host.name} carries the chip in its head, shows its fixture, writes nothing and stays on loopback`, async ({ page, context }) => {
+        const traffic = await guardNetwork(context);
+        await page.goto(host.route);
+        if (host.open) await host.open(page);
+        await expect(page.locator(host.root).first()).toBeVisible();
+        expect(await chipDefects(page)).toEqual([]);
+
+        const from = traffic.seen.length;
+        const stored = await storage(page);
+        await host.use(page);
+        expect(await chipDefects(page)).toEqual([]);
+
+        const made = traffic.seen.slice(from);
+        expect(made.filter((req) => req.method !== 'GET').map((req) => `${req.method} ${req.url}`)).toEqual([]);
+        expect(made.filter((req) => MOCK_API.test(new URL(req.url).pathname)).map((req) => req.url)).toEqual([]);
+        expect(await storage(page)).toBe(stored);
+        expect(traffic.blocked).toEqual([]);
+      });
+    });
+  }
+
+  for (const { route, ready } of SAMPLE_PAGES) {
+    test(`${route}: every mock on the page carries its chip, no chip stands alone`, async ({ page }) => {
+      await page.goto(route);
+      await expect(page.locator(ready).first()).toBeVisible();
+      expect(await chipDefects(page)).toEqual([]);
+    });
+  }
+
+  for (const { route, ready } of REAL_ONLY) {
+    test(`${route}: real data only, no mock and no chip`, async ({ page }) => {
+      await page.goto(route);
+      await expect(page.locator(ready).first()).toBeVisible();
+      await expect(page.locator('[data-demo]')).toHaveCount(0);
+      await expect(page.locator('[data-demo-chip]')).toHaveCount(0);
+    });
+  }
+});
+
+/*
+ * Group `routes` (ISC-150): each of the 19 prototype views (`spectant-ui/*.html`, inventoried in the parity table) has a
+ * reachable counterpart in the app. A place is reachable when its route renders inside the one shell, without the
+ * not-found page, and its hook is visible (after `open`, for a view that is an overlay or a state of a page); where the
+ * prototype links the view, its in-app link leads there too. `bun run e2e -- parity -g routes` is the probe: 19 of 19.
+ * The assistant dot and the identity images are no HTML views of their own; their two tests close the claim's second
+ * half.
+ */
+const NOTE_002 = STUB_NOTES.find((note) => note.workspace === 'harbor' && note.anchor?.spec === '002');
+if (!NOTE_002) throw new Error('STUB_NOTES holds no harbor 002 note');
+
+interface ViewPlace {
+  readonly view: string;
+  readonly route: string;
+  readonly hook: string;
+  readonly open?: (page: Page) => Promise<void>;
+  /** The in-app way there: start page, the link to follow, the path it lands on. */
+  readonly link?: { readonly from: string; readonly follow: (page: Page) => Promise<void>; readonly lands: string };
+}
+
+const follow =
+  (selector: string) =>
+  async (page: Page): Promise<void> => {
+    const link = page.locator(selector).first();
+    await expect(link).toBeVisible();
+    await link.click();
+  };
+const viaSettings =
+  (entry: string) =>
+  async (page: Page): Promise<void> => {
+    await (await headerControl(page, 'settings')).click();
+    await follow(`[data-menu="settings"] [data-settings-link="${entry}"]`)(page);
+  };
+/** The spec table opens a row in two steps: the first click previews it (`?spec=`), the second opens the spec. */
+const openSpecRow =
+  (id: string) =>
+  async (page: Page): Promise<void> => {
+    const row = page.locator(`[data-panel="specs"] [data-spec-row="${id}"]`);
+    await row.click();
+    await expect(page).toHaveURL((url) => url.searchParams.get('spec') === id);
+    await row.click();
+  };
+const tab = (id: string): ((page: Page) => Promise<void>) => follow(`app-tab-bar a[data-tab="${id}"]`);
+
+const VIEWS: readonly ViewPlace[] = [
+  { view: 'index.html', route: '/', hook: 'app-overview-page h1', link: { from: '/w/harbor', follow: follow('header [data-control="brand"]'), lands: '/' } },
+  { view: 'workspace.html', route: '/w/harbor', hook: 'app-dashboard-page h1', link: { from: '/', follow: follow('main a[href="/w/harbor"]'), lands: '/w/harbor' } },
+  { view: 'spec.html', route: '/w/harbor/s/002', hook: 'app-spec-dashboard', link: { from: '/w/harbor', follow: openSpecRow('002'), lands: '/w/harbor/s/002' } },
+  { view: 'spec-detail.html', route: '/w/harbor/s/002/status', hook: 'app-status-tab', link: { from: '/w/harbor/s/002', follow: follow('[data-area-tile="status"] a, a[data-area-tile="status"]'), lands: '/w/harbor/s/002/status' } },
+  { view: 'spec-review-gate.html', route: '/w/harbor/s/003/status', open: follow('app-spec-head [data-gate-action]'), hook: 'app-spec-head [data-gate-dialog]' },
+  { view: 'spec-tasks.html', route: '/w/harbor/s/002/tasks', hook: 'app-tasks-tab', link: { from: '/w/harbor/s/002/claims', follow: tab('tasks'), lands: '/w/harbor/s/002/tasks' } },
+  { view: 'spec-timeline.html', route: '/w/harbor/s/002/timeline', hook: 'app-timeline-tab', link: { from: '/w/harbor/s/002/status', follow: tab('timeline'), lands: '/w/harbor/s/002/timeline' } },
+  { view: 'spec-board.html', route: '/w/harbor/s/002/board', hook: 'app-board-tab section.board', link: { from: '/w/harbor/s/002/matrix', follow: tab('board'), lands: '/w/harbor/s/002/board' } },
+  { view: 'board-live.html', route: '/w/harbor/s/002/board', hook: 'app-board-tab section.board[data-view="lanes"]' },
+  {
+    view: 'board-flow.html',
+    route: '/w/harbor/s/002/board?view=flow',
+    hook: 'app-board-tab section.board[data-view="flow"] app-flow-view',
+    link: { from: '/w/harbor/s/002/board', follow: follow('app-board-tab ui-segmented[data-control="view"] [role="radio"]:has-text("Flow")'), lands: '/w/harbor/s/002/board' },
+  },
+  { view: 'board-history.html', route: '/w/harbor/s/002/board?frame=0', hook: 'app-board-tab [data-frame-chip="history"]' },
+  { view: 'board-matrix.html', route: '/w/harbor/s/002/matrix', hook: 'app-matrix-tab', link: { from: '/w/harbor/s/002/board', follow: tab('matrix'), lands: '/w/harbor/s/002/matrix' } },
+  { view: 'board-states.html', route: '/__ui', hook: '[data-gallery="board-states"]' },
+  { view: 'states.html', route: '/__ui', hook: '[data-gallery="states"]' },
+  { view: 'library.html', route: '/w/harbor/library', hook: '[data-page="library"] h1', link: { from: '/w/harbor', follow: follow('a[data-library-link]'), lands: '/w/harbor/library' } },
+  {
+    view: 'notes.html',
+    route: `/w/harbor/s/002/notes/${NOTE_002.id}`,
+    hook: '[data-notes-editor]',
+    link: { from: '/w/harbor/s/002/notes', follow: follow(`[data-notes-list] a[href$="/notes/${NOTE_002.id}"]`), lands: `/w/harbor/s/002/notes/${NOTE_002.id}` },
+  },
+  { view: 'workspaces.html', route: '/settings/workspaces', hook: '[data-page="settings-workspaces"] h1', link: { from: '/w/harbor', follow: viaSettings('workspaces'), lands: '/settings/workspaces' } },
+  { view: 'help.html', route: '/help', hook: 'app-help-page h1', link: { from: '/w/harbor', follow: viaSettings('help'), lands: '/help' } },
+  { view: 'palette.html', route: '/w/harbor', open: follow('header [data-control="palette"]'), hook: '[data-ui="command-palette"]' },
+];
+
+/** The route rendered inside the shell (the dev gallery has none) and is not the not-found page. */
+async function reached(page: Page, place: ViewPlace): Promise<void> {
+  if (!place.route.startsWith('/__ui')) await expect(page.locator('app-shell')).toHaveCount(1);
+  await expect(page.locator('app-not-found, [data-page="not-found"]')).toHaveCount(0);
+  if (place.open) await place.open(page);
+  await expect(page.locator(place.hook).first()).toBeVisible();
+}
+
+test.describe('routes', () => {
+  test.use(atWidth(1440));
+
+  test('the table names each of the 19 prototype views once', () => {
+    const views = VIEWS.map((place) => place.view);
+    expect(views).toHaveLength(19);
+    expect(new Set(views).size).toBe(19);
+  });
+
+  for (const place of VIEWS) {
+    test(`${place.view} is reachable at ${place.route}`, async ({ page }) => {
+      await page.goto(place.route);
+      await reached(page, place);
+    });
+
+    const link = place.link;
+    if (link) {
+      test(`${place.view} is reachable by its in-app link from ${link.from}`, async ({ page }) => {
+        await page.goto(link.from);
+        await link.follow(page);
+        await expect(page).toHaveURL((url) => url.pathname === link.lands);
+        await reached(page, { ...place, open: undefined });
+      });
+    }
+  }
+
+  test('the Settings page links Settings · Workspaces', async ({ page }) => {
+    await page.goto('/settings');
+    await follow('main a[href="/settings/workspaces"]')(page);
+    await expect(page).toHaveURL((url) => url.pathname === '/settings/workspaces');
+  });
+
+  for (const width of [1440, 390] as const) {
+    test.describe(`assistant.js at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      test('the assistant dot opens from the header trigger and closes again', async ({ page }) => {
+        await page.goto('/w/harbor/s/002');
+        await openAssistant(page);
+        const panel = page.locator('[data-assistant]');
+        await expect(panel).toBeVisible();
+        await panel.locator('[data-assistant-close]').click();
+        await expect(panel).toHaveCount(0);
+      });
+    });
+  }
+
+  test('identity.js: the overview shows a badge and an image beside each workspace name', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('app-overview-page h1')).toBeVisible();
+    const covers = page.locator('[data-ws-cover]');
+    const badges = page.locator('[data-ws-badge]');
+    await expect(covers.first()).toBeVisible();
+    await expect(badges.first()).toBeVisible();
+    expect(await badges.count()).toBe(await covers.count());
+  });
 });
