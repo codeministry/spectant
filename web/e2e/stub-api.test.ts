@@ -535,6 +535,32 @@ describe('stub API: the library (spec 017, T3)', () => {
     }
   });
 
+  test('libraryDoc: the reader document carries a TOC, a mermaid figure, a relative .evidence/ image and catalog cross references (T35)', async () => {
+    const { reader } = STUB_LIBRARY;
+    const catalog = await catalogOf('harbor');
+    const entry = catalog.docs.find((doc) => doc.path === reader.path);
+    // The catalog entry stays core's: the same title as the file's first heading, an artifact, Markdown.
+    expect([entry?.type, entry?.media, entry?.state, entry?.title]).toEqual(['artifact', 'markdown', 'ok', 'T18 — e2e report']);
+    const page = (await (await ask(workspaceRoutes.libraryDoc('harbor', reader.path))).json()) as DocsPage;
+    expect(page.html).toContain('T18 — e2e report');
+    expect(page.toc.map((entry) => [entry.level, entry.text])).toEqual([
+      [2, 'Reading path'],
+      [2, 'Captured band'],
+      [2, 'Related records'],
+    ]);
+    expect(page.figures.map((figure) => figure.kind)).toEqual(['mermaid', 'image']);
+    expect(page.html).toContain('<img src="../.evidence/kpi-band-390.png"');
+    expect(page.html).toContain('href="T13-routes.md"');
+    expect(page.html).toContain('href="../plan.md"');
+    // Every cross reference names a catalog document, and the image is a fixture file the asset route serves.
+    for (const xref of reader.xrefs) expect(catalog.docs.find((doc) => doc.path === xref)?.media).toBe('markdown');
+    const image = await ask(workspaceRoutes.libraryAsset('harbor', reader.image));
+    expect([image.status, image.headers.get('Content-Type')]).toEqual([200, 'image/png']);
+    expect(new Uint8Array(await image.arrayBuffer())).toEqual(new Uint8Array(readFileSync(join(FIXTURES, 'harbor', 'specs', reader.image))));
+    // The two words the e2e search group relies on stay out of the appendix.
+    expect(reader.appendix.toLowerCase()).not.toMatch(/quota|manifest/u);
+  });
+
   test('librarySearch: the trimmed query and its hits in catalog order with a plain-text snippet; blank is no hit', async () => {
     for (const q of ['', '   ']) {
       expect(await (await ask(workspaceRoutes.librarySearch('harbor', q))).json()).toEqual({ query: '', hits: [] });

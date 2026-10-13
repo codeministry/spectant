@@ -27,7 +27,8 @@
  * - The library (spec 017, T3, ISC-156), under the same guards: `GET|HEAD …/:ws/library` the workspace's
  *   `LibraryCatalog`, core's `readCatalog` over the fixture tree made deterministic (`buildCatalog`: fixed times,
  *   group heads and fog lines from the spec and tech goldens) plus `STUB_LIBRARY` on harbor (a `stale` plan, a
- *   `missing` tasks.md, 57 evidence documents in 002, a prototype with two pages and a preview); `…/library/doc?path=`
+ *   `missing` tasks.md, 57 evidence documents in 002, a prototype with two pages and a preview, the reader's prose
+ *   cases appended to 002's T18 artifact); `…/library/doc?path=`
  *   one Markdown document of that catalog as core's `renderDocsMarkdown` page, 404 for any path it does not list as
  *   one; `…/library/search?q=` the `LibrarySearchResult` over those documents, `{query: '', hits: []}` for a blank `q`;
  *   `…/library/asset?path=` the tech asset's answer. `GET|HEAD /proto/:ws/:spec/:folder/*` (outside `/api`;
@@ -242,8 +243,38 @@ export const EMPTY_CATALOG: LibraryCatalog = { docs: [], groups: [], fog: [], mi
  * in blocks) and a prototype with two pages and a preview. The evidence documents are Markdown the stub
  * holds; the prototype's files are the library fixture's `002-tide-board/.design/prototype/board/` (two HTML pages,
  * CSS, script, image), served under harbor's `004-retention-policies/.design/prototype/board`.
+ *
+ * `reader` (T35, ISC-156.3): the reader's prose cases in one document no fixture file holds together. The stub serves
+ * harbor's `T18-e2e-report.md` artifact with `appendix` after its own text: level-2 headings for the table of
+ * contents, a mermaid fence, a relative image under `.evidence/` (a file of the fixture tree, so the asset route serves
+ * its bytes) and two relative links to other catalog documents. The catalog entry (path, title) stays core's, so the
+ * list draws exactly what it drew before.
  */
 export const STUB_LIBRARY = {
+  reader: {
+    path: '002-web-console/artifacts/T18-e2e-report.md',
+    image: '002-web-console/.evidence/kpi-band-390.png',
+    xrefs: ['002-web-console/artifacts/T13-routes.md', '002-web-console/plan.md'],
+    appendix: [
+      '',
+      '## Reading path',
+      '',
+      '```mermaid',
+      'flowchart LR',
+      '  rows[Rows] --> reader[Reader]',
+      '  reader --> spec[Spec page]',
+      '```',
+      '',
+      '## Captured band',
+      '',
+      '![The KPI band at 390](../.evidence/kpi-band-390.png)',
+      '',
+      '## Related records',
+      '',
+      'The route table stands in [T13 — routes](T13-routes.md); the approach in [the plan](../plan.md).',
+      '',
+    ].join('\n'),
+  },
   stale: '004-retention-policies/plan.md',
   missing: { path: '003-config-loader/tasks.md', type: 'tasks', after: '003-config-loader/plan.md' },
   evidence: { spec: '002-web-console', count: 56, after: '002-web-console/.evidence/kpi-band-390.png' },
@@ -918,7 +949,9 @@ async function buildCatalog(core: Core, dir: string, tree: TreeGoldens, tech: Te
   );
 
   if (tree.golden === 'harbor') {
-    const { stale, missing, evidence, prototype } = STUB_LIBRARY;
+    const { reader, stale, missing, evidence, prototype } = STUB_LIBRARY;
+    if (!docs.some((doc) => doc.path === reader.path)) throw new Error(`stub-api: the reader document ${reader.path} is not in the catalog`);
+    texts.set(reader.path, `${readFileSync(join(tree.root, 'specs', ...reader.path.split('/')), 'utf8')}${reader.appendix}`);
     const at = docs.findIndex((doc) => doc.path === stale);
     const staleDoc = docs[at];
     if (staleDoc === undefined) throw new Error(`stub-api: the stale document ${stale} is not in the catalog`);

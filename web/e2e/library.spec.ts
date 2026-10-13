@@ -29,14 +29,24 @@
  * `?type=`, `?spec=`, `?state=`, `#path`); a reload and a step back from another page restore the same input, filters,
  * rows and selection. The full-text word is one the stub's search finds while no title or path of the catalog holds it;
  * the test checks both against the routes before it relies on them.
+ *
+ * Group `reader` (T35, ISC-156.3): the reader `[data-library-reader]` shows a Markdown document as Docs prose
+ * `[data-library-prose]` with "On this page" for its headings and a mermaid fence as a drawn figure with its toolbar
+ * (ISC-154, ISC-154.1); an image document as the preview `[data-library-preview]`; a relative image of the prose (an
+ * `.evidence/` file, and a design document's `.design/` asset) loads through the library's file route
+ * `…/library/asset?path=`; a relative link to another catalog document `[data-library-xref]` opens that document in
+ * place (`#path`); "Open in spec" `[data-library-open]` leads to the spec page and is absent for a workspace-wide
+ * document; at 390 px the back button `[data-library-back]` restores the rows and focuses the opened one. The prose
+ * cases come from the stub's `STUB_LIBRARY.reader` (harbor's T18 artifact with an appendix), every image is checked
+ * loaded with a natural width above 0.
  */
 import { readFileSync } from 'node:fs';
 import type { APIRequestContext, Locator, Page } from '@playwright/test';
 
-import type { LibraryCatalog, LibraryDoc } from '../../core/src/files';
+import type { DocsPage, LibraryCatalog, LibraryDoc } from '../../core/src/files';
 import { type LibrarySearchResult, workspaceRoutes } from '../../server/src/spec-routes.contract.ts';
 import { atWidth, expect, test, WIDTHS } from './fixtures';
-import { LIBRARY_HEADER } from './stub-api';
+import { LIBRARY_HEADER, STUB_LIBRARY } from './stub-api';
 
 /** The two control counts of the card's first row, in their order (design.md 017 § Viewport-übergreifend). */
 const CONTROL_KEYS = ['missing', 'stale'] as const;
@@ -50,7 +60,7 @@ const EN = read('../src/i18n/en.json') as {
     outdated: string;
     missing: string;
     control: Record<ControlKey, { word: string; one: string; other: string; none: string }>;
-    reader: { missingHeading: string };
+    reader: { missingHeading: string; open: string; back: string };
     types: Record<string, string>;
     filters: { all: string };
   };
@@ -378,7 +388,8 @@ test.describe('control', () => {
     expect(stateParam(page)).toBeNull();
   });
 
-  test('a missing row opens the reader empty state', async ({ page, request }) => {
+  // Named without "reader", so `-g reader` runs the reader group alone.
+  test('a missing row opens the empty state with the command that writes it', async ({ page, request }) => {
     const missing = (await catalogOf(request)).docs.find((doc) => doc.state === 'missing');
     if (missing === undefined) throw new Error('library.spec: no missing document in the catalog');
     const file = missing.path.slice(missing.path.lastIndexOf('/') + 1);
@@ -677,5 +688,195 @@ test.describe('search', () => {
         await expect.poll(() => new URL(page.url()).pathname).toBe(specPage);
       }
     }
+  });
+});
+
+// ---- reader (T35, ISC-156.3) --------------------------------------------------------------------------------------
+
+const READER = '[data-library-reader]';
+const PROSE = `${READER} [data-library-prose]`;
+/** The stub's prose cases: harbor's T18 artifact with headings, a mermaid fence, an `.evidence/` image and two links. */
+const PROSE_DOC = STUB_LIBRARY.reader;
+
+async function docPageOf(request: APIRequestContext, path: string): Promise<DocsPage> {
+  const answer = await request.get(workspaceRoutes.libraryDoc(WS, path));
+  expect(answer.status()).toBe(200);
+  return (await answer.json()) as DocsPage;
+}
+
+function docOf(catalog: LibraryCatalog, wanted: (doc: LibraryDoc) => boolean, what: string): LibraryDoc {
+  const doc = catalog.docs.find(wanted);
+  if (doc === undefined) throw new Error(`library.spec: no ${what} in the catalog`);
+  return doc;
+}
+
+/** Resolves with the page's own request of the library's file route for exactly `path`. */
+const assetLoaded = (page: Page, path: string): ReturnType<Page['waitForResponse']> =>
+  page.waitForResponse((r) => {
+    const url = new URL(r.url());
+    return url.pathname === `${ROUTE}/asset` && url.searchParams.get('path') === path && r.request().method() === 'GET';
+  });
+
+/** The image is decoded: complete, with a natural width above 0 (a broken image is complete at width 0). */
+async function expectDecoded(img: Locator): Promise<void> {
+  await img.scrollIntoViewIfNeeded();
+  await expect.poll(() => img.evaluate((el: HTMLImageElement) => (el.complete ? el.naturalWidth : 0))).toBeGreaterThan(0);
+}
+
+test.describe('reader', () => {
+  test.describe('wide', () => {
+    test.use(atWidth(WIDTHS.desktop));
+
+    test('a Markdown document as Docs prose: "On this page" for its headings, mermaid as a drawn figure with its toolbar', async ({ page, request }) => {
+      const catalog = await catalogOf(request);
+      const doc = docOf(catalog, (d) => d.path === PROSE_DOC.path, 'reader document');
+      const served = await docPageOf(request, doc.path);
+      // The fixture must hold the cases, or the assertions below prove nothing.
+      expect(served.toc.length).toBeGreaterThan(1);
+      expect(served.figures.filter((figure) => figure.kind === 'mermaid')).toHaveLength(1);
+
+      await page.goto(`${PAGE}#${doc.path}`);
+      await expect(page.locator(READER_TITLE)).toHaveText(squash(doc.title));
+      await expect(page.locator(PROSE)).toBeVisible();
+      await expect(page.locator(`${PROSE} .docs-prose h1`)).toHaveText(squash(doc.title));
+
+      // "On this page": one entry per heading of the served page, each pointing at its heading.
+      const toc = page.locator(`${PROSE} nav.docs-toc .docs-toc-list a`);
+      await expect(toc).toHaveText(served.toc.map((entry) => entry.text));
+      expect(await toc.evaluateAll((els) => els.map((el) => el.getAttribute('href')))).toEqual(served.toc.map((entry) => `#${entry.anchor}`));
+      for (const entry of served.toc) await expect(page.locator(`${PROSE} .docs-prose [id="${entry.anchor}"]`)).toHaveText(entry.text);
+      // An entry scrolls in place: the heading takes the focus, the fragment keeps naming the document.
+      const last = served.toc.at(-1);
+      if (last === undefined) throw new Error('library.spec: the reader document has no heading');
+      await toc.last().click();
+      await expect(page.locator(`${PROSE} [id="${last.anchor}"]`)).toBeFocused();
+      await expect(page.locator(`${PROSE} [id="${last.anchor}"]`)).toBeInViewport();
+      expect(address(page).doc).toBe(doc.path);
+
+      // The mermaid fence as a figure: drawn client-side, captioned, with its toolbar (ISC-154, ISC-154.1).
+      const figure = page.locator(`${PROSE} figure.mermaid-figure`);
+      await expect(figure).toHaveCount(1);
+      await expect(figure.locator('.mermaid-svg svg')).toBeVisible();
+      await expect(figure).toHaveAttribute('data-rendered', '');
+      await expect(figure).not.toHaveAttribute('data-render-error', '');
+      await expect(figure.locator('figcaption')).toHaveText(served.toc[0]?.text ?? '');
+      const toolbar = figure.locator('ui-diagram-toolbar [role="toolbar"]');
+      await expect(toolbar).toHaveCount(1);
+      await figure.hover();
+      await expect(toolbar).toBeVisible();
+      await expect(toolbar.locator('button')).not.toHaveCount(0);
+      await expect(toolbar.locator('[data-zoom-level]')).toHaveText('100 %');
+    });
+
+    test('an image document shows its preview from the file route with a natural width above 0', async ({ page, request }) => {
+      const catalog = await catalogOf(request);
+      const doc = docOf(catalog, (d) => d.media === 'image' && d.type !== 'evidence', 'image document outside the evidence');
+      const loaded = assetLoaded(page, doc.path);
+
+      await page.goto(`${PAGE}#${doc.path}`);
+      await expect(page.locator(READER_TITLE)).toHaveText(squash(doc.title));
+      const img = page.locator(`${READER} [data-library-preview] img`);
+      await expect(img).toHaveAttribute('src', workspaceRoutes.libraryAsset(WS, doc.path));
+      await expect(img).toHaveAttribute('alt', doc.title);
+      const answer = await loaded;
+      expect([answer.status(), answer.headers()['content-type']]).toEqual([200, 'image/png']);
+      await expectDecoded(img);
+      await expect(page.locator(PROSE)).toHaveCount(0);
+    });
+
+    test('a relative image of the prose loads through the file route: an .evidence/ file and a design .design/ asset', async ({ page, request }) => {
+      const loaded = assetLoaded(page, PROSE_DOC.image);
+      await page.goto(`${PAGE}#${PROSE_DOC.path}`);
+      const img = page.locator(`${PROSE} figure.image-figure img`);
+      await expect(img).toHaveCount(1);
+      await expect(img).toHaveAttribute('src', workspaceRoutes.libraryAsset(WS, PROSE_DOC.image));
+      await img.scrollIntoViewIfNeeded();
+      expect((await loaded).status()).toBe(200);
+      await expectDecoded(img);
+      await expect(page.locator(`${PROSE} figure[data-unavailable]`)).toHaveCount(0);
+
+      // A design document's `.design/` image (`data-spec-asset`) takes the same route, relative to its folder.
+      const catalog = await catalogOf(request);
+      const design = docOf(catalog, (d) => d.type === 'design' && d.media === 'markdown', 'design document');
+      const served = await docPageOf(request, design.path);
+      const asset = /data-spec-asset="([^"]+)"/u.exec(served.html)?.[1];
+      if (asset === undefined) throw new Error('library.spec: the design document has no .design/ image');
+      const target = `${design.path.slice(0, design.path.lastIndexOf('/'))}/${asset}`;
+      const designLoaded = assetLoaded(page, target);
+      await page.goto(`${PAGE}#${design.path}`);
+      await expect(page.locator(READER_TITLE)).toHaveText(squash(design.title));
+      const designImg = page.locator(`${PROSE} img[data-spec-asset]`);
+      await expect(designImg).toHaveAttribute('src', workspaceRoutes.libraryAsset(WS, target));
+      await designImg.scrollIntoViewIfNeeded();
+      expect((await designLoaded).status()).toBe(200);
+      await expectDecoded(designImg);
+    });
+
+    test('a cross reference opens its document in place; Open in spec leads to the spec page, a workspace-wide document has none', async ({ page, request }) => {
+      const catalog = await catalogOf(request);
+      const [xref] = PROSE_DOC.xrefs;
+      const target = docOf(catalog, (d) => d.path === xref, 'cross reference target');
+
+      await page.goto(`${PAGE}#${PROSE_DOC.path}`);
+      // Every relative link to a catalog document is a cross reference, its href that document's reader anchor.
+      const links = page.locator(`${PROSE} a[data-library-xref]`);
+      await expect(links).toHaveCount(PROSE_DOC.xrefs.length);
+      expect(await links.evaluateAll((els) => els.map((el) => el.getAttribute('data-library-xref')))).toEqual([...PROSE_DOC.xrefs]);
+      const link = page.locator(`${PROSE} a[data-library-xref="${target.path}"]`);
+      const href = new URL((await link.getAttribute('href')) ?? '', page.url());
+      expect([href.pathname, decodeURIComponent(href.hash.slice(1))]).toEqual([PAGE, target.path]);
+
+      await link.click();
+      await expect(page.locator(READER_TITLE)).toHaveText(squash(target.title));
+      await expect.poll(() => address(page)).toEqual(addressOf({}, target.path));
+      await expect(page.locator(`[data-library-entry="${target.path}"]`)).toHaveAttribute('aria-current', 'true');
+      await expect(page.locator(`${PROSE} .docs-prose h1`)).toHaveText(squash(target.title));
+
+      // "Open in spec NNN" on a spec's document leads to that spec's page.
+      const open = page.locator(`${READER} [data-library-open]`);
+      await expect(open).toHaveText(template(EN.library.reader.open, { spec: keyOf(target.spec) }));
+      await open.click();
+      await expect.poll(() => new URL(page.url()).pathname).toBe(`/w/${WS}/s/${keyOf(target.spec)}`);
+
+      // A workspace-wide document has none.
+      const shared = docOf(catalog, (d) => d.spec === 'workspace' && d.media === 'markdown' && d.state === 'ok', 'workspace-wide document');
+      await page.goto(`${PAGE}#${shared.path}`);
+      await expect(page.locator(READER_TITLE)).toHaveText(squash(shared.title));
+      await expect(page.locator(PROSE)).toBeVisible();
+      await expect(page.locator(`${READER} [data-library-open]`)).toHaveCount(0);
+    });
+  });
+
+  test.describe('phone', () => {
+    test.use(atWidth(WIDTHS.phone));
+
+    test('at 390 px a row opens the reader alone; back and Escape restore the rows and focus the opened one', async ({ page, request }) => {
+      const catalog = await catalogOf(request);
+      const doc = docOf(catalog, (d) => d.path === PROSE_DOC.path, 'reader document');
+      const row = page.locator(`[data-library-entry="${doc.path}"]`);
+      const rowsShown = page.locator('[data-library-list]');
+
+      await page.goto(PAGE);
+      await expect(page.locator(READER)).toHaveCount(0);
+      for (const way of ['back', 'Escape']) {
+        await row.click();
+        await expect(page.locator(READER_TITLE)).toHaveText(squash(doc.title));
+        await expect(page.locator(PROSE)).toBeVisible();
+        await expect(rowsShown).toHaveCount(0);
+        await expect.poll(() => address(page).doc).toBe(doc.path);
+
+        if (way === 'back') {
+          const back = page.locator(`${READER} [data-library-back]`);
+          await expect(back).toHaveText(EN.library.reader.back);
+          await back.click();
+        } else {
+          await page.locator(READER).press('Escape');
+        }
+        await expect(rowsShown, way).toBeVisible();
+        await expect(page.locator(READER), way).toHaveCount(0);
+        await expect(row, way).toBeFocused();
+        await expect.poll(() => address(page).doc, { message: way }).toBeNull();
+      }
+    });
   });
 });
