@@ -37,17 +37,17 @@
 }
 
 .mark-arc-a {
-  stroke: var(--lime-text);
+  stroke: var(--clos-text);
   stroke-dasharray: 40 60;
 }
 
 .mark-arc-b {
-  stroke: var(--cyan-text);
+  stroke: var(--disp-text);
   stroke-dasharray: 0 40 40 20;
 }
 
 .mark-dot {
-  fill: var(--violet-text);
+  fill: var(--ques-text);
 }
 
 .wordmark {
@@ -59,7 +59,7 @@
 }
 
 .wordmark-tail {
-  background: linear-gradient(90deg, var(--violet-text) 0%, var(--violet-text) 45%, var(--lime-text) 55%, var(--lime-text) 100%);
+  background: linear-gradient(90deg, var(--ques-text) 0%, var(--ques-text) 45%, var(--clos-text) 55%, var(--clos-text) 100%);
   background-position: 100% 0%;
   background-size: 200% 100%;
   color: transparent;

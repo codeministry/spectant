@@ -36,7 +36,6 @@ const TILE_AREAS: ReadonlyArray<{ readonly id: Exclude<AreaId, 'dashboard'>; rea
 
 export interface AreaTile {
   readonly id: Exclude<AreaId, 'dashboard'>;
-  readonly icon: IconName;
   readonly link: string[];
   readonly hint: string;
   /** Two translated meta lines, their numbers read from `SpecPageModel.areas`. */
@@ -205,7 +204,6 @@ export class SpecDashboard {
       const lock = id === 'live' ? model.areas.live.lock : null;
       return {
         id,
-        icon: area.icon,
         link: this.link(areaPath(area)),
         hint: `g ${key}`,
         lines: tileLines(model, id, t).map(([line, params]) => t(line, params)),

@@ -82,11 +82,11 @@
 }
 
 .live:not([data-source="none"]) .live-dot {
-  background: var(--lime-text);
+  background: var(--clos-text);
 }
 
 .live[data-source="frontier"] .live-dot {
-  outline: 2px solid color-mix(in oklch, var(--lime-text) 40%, transparent);
+  outline: 2px solid color-mix(in oklch, var(--clos-text) 40%, transparent);
   outline-offset: 2px;
 }
 

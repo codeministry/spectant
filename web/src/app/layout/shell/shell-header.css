@@ -177,33 +177,46 @@
   cursor: default;
 }
 
+/*
+ * The prototype's mascot keeps its own colours in both themes: lime #a6e22e into cyan #78dce8, the violet dot #ab9df2,
+ * eyes and mouth #221f22 (`assistant.js`). Ring 5 wide on r 15, turned -17°; 20 px in the 40 px trigger.
+ */
 .mascot {
-  inline-size: 24px;
-  block-size: 24px;
-  fill: none;
-  stroke-width: 3;
+  --m-lime: oklch(84.1% 0.2044 127.3); /* #a6e22e */
+  --m-cyan: oklch(83.8% 0.095 205.7); /* #78dce8 */
+  --m-violet: oklch(74.1% 0.121 290.7); /* #ab9df2 */
+  --m-ink: oklch(24.4% 0.007 325.8); /* #221f22 */
+
+  inline-size: 20px;
+  block-size: 20px;
+  overflow: visible;
+}
+
+.m-rings {
+  transform: rotate(-17deg);
+  transform-origin: 24px 24px;
 }
 
 .m-ring {
-  stroke-linecap: round;
-}
-
-.m-ring-a {
-  stroke: var(--lime-text);
-  stroke-dasharray: 40 60;
-}
-
-.m-ring-b {
-  stroke: var(--cyan-text);
-  stroke-dasharray: 0 40 40 20;
+  fill: none;
+  stroke: color-mix(in oklch, var(--m-lime) var(--m-mix), var(--m-cyan));
+  stroke-dasharray: 1.04 6.96;
+  stroke-width: 5;
 }
 
 .m-dot {
-  fill: var(--violet-text);
+  fill: var(--m-violet);
 }
 
 .m-eye {
-  fill: var(--color-base-100);
+  fill: var(--m-ink);
+}
+
+.m-mouth {
+  fill: none;
+  stroke: var(--m-ink);
+  stroke-linecap: round;
+  stroke-width: 1.2;
 }
 
 /* 44 px hit areas on a coarse pointer (prototype rule), not by width. */

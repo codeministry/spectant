@@ -54,7 +54,7 @@
   display: inline-flex;
   gap: 5px;
   align-items: center;
-  color: var(--cyan-text);
+  color: var(--disp-text);
   text-decoration: none;
 }
 

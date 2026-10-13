@@ -19,6 +19,8 @@ export interface SpecRowView {
    * Optional so hand-built rows in specs need not name it.
    */
   readonly priority?: Priority | null;
+  /** The folder name (`002-web-console`); the header's spec pill shows it without the `NNN-` prefix. Absent on hand-built rows. */
+  readonly slug?: string;
 }
 
 const PRIORITIES: readonly Priority[] = ['P1', 'P2', 'P3', 'P4'];
@@ -35,7 +37,8 @@ function rowsOf(body: unknown, key: 'specs' | 'archive'): SpecRowView[] {
     if (id === null) return [];
     const stage = text(row['stage']) ?? (key === 'archive' ? 'done' : 'plan');
     const priority = PRIORITIES.find((level) => level === row['priority']) ?? null;
-    return [{ id, title: text(row['title']) ?? id, type: text(row['type']), stage, priority }];
+    const slug = text(row['slug']);
+    return [{ id, title: text(row['title']) ?? id, type: text(row['type']), stage, priority, ...(slug === null ? {} : { slug }) }];
   });
 }
 

@@ -32,9 +32,10 @@
       aria-haspopup="dialog"
       [attr.href]="href"
       [attr.aria-expanded]="expanded().spec"
+      [attr.title]="specOpen() ? row()?.title : null"
       [attr.aria-label]="
         specOpen()
-          ? ('shell.spec.label' | transloco: { id: state.specId(), title: row()?.title ?? '' })
+          ? ('shell.spec.label' | transloco: { id: state.specId(), title: specName() ?? '' })
           : ('shell.spec.countLabel' | transloco: { count: specCount() })
       "
       (pointerdown)="press('spec')"
@@ -45,8 +46,8 @@
         @if (specOpen()) {
           <span class="pill-value" data-pill-value>
             <span class="pick-id">{{ state.specId() }}</span>
-            @if (row(); as row) {
-              &ngsp;<span class="pick-text spec-title">{{ row.title }}</span>
+            @if (specName(); as name) {
+              &ngsp;<span class="pick-text spec-title">{{ name }}</span>
             }
           </span>
         } @else {

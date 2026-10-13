@@ -144,7 +144,7 @@
           @for (tile of tiles(); track tile.id) {
             <a class="card tile" [attr.data-area-tile]="tile.id" [routerLink]="tile.link">
               <span class="tile-head">
-                <ui-icon class="tile-icon" [name]="tile.icon" [size]="16" />
+                <span class="area-ic" [attr.data-area-dot]="tile.id" aria-hidden="true"></span>
                 <span class="tile-name">{{ 'specDashboard.areas.' + tile.id | transloco }}</span>
                 <ui-kbd class="hint" aria-hidden="true">{{ tile.hint }}</ui-kbd>
               </span>

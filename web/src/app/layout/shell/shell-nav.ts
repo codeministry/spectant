@@ -67,6 +67,16 @@ export class ShellNav {
   /** A workspace in the route: the spec and area pills render only then (ISC-140.2). */
   protected readonly inWorkspace = computed(() => this.state.ws() !== null);
   protected readonly row = this.data.currentRow;
+  /**
+   * The open spec's short name (prototype `.specs-select`: `002` + `web-console`, spec 024 T74): the folder slug without
+   * its `NNN-` prefix, else the title for a row without a slug. The full title stays the pill's tooltip.
+   */
+  protected readonly specName = computed(() => {
+    const row = this.row();
+    if (row === null) return null;
+    const short = row.slug?.replace(/^\d+-/, '') ?? '';
+    return short === '' ? row.title : short;
+  });
   protected readonly specOpen = computed(() => this.state.specId() !== null && !this.data.specMissing());
   /**
    * The workspace page the area trigger names; null without one, with a spec open, or for a workspace the server does

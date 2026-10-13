@@ -43,13 +43,23 @@
     [attr.aria-label]="'shell.assistant.trigger' | transloco"
     [attr.title]="'shell.assistant.soon' | transloco"
   >
-    <svg class="mascot" viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon-exempt>
-      <!-- The mascot, not a lucide icon (data-icon-exempt, ISC-18.2): the ring lime to cyan, the violet dot with eyes. -->
-      <circle class="m-ring m-ring-a" cx="12" cy="12" r="9" pathLength="100" transform="rotate(-24 12 12)" />
-      <circle class="m-ring m-ring-b" cx="12" cy="12" r="9" pathLength="100" transform="rotate(-24 12 12)" />
-      <circle class="m-dot" cx="16.5" cy="4.2" r="3.4" />
-      <circle class="m-eye" cx="15.4" cy="3.9" r="0.6" />
-      <circle class="m-eye" cx="17.6" cy="3.9" r="0.6" />
+    <svg class="mascot" viewBox="0 0 48 48" aria-hidden="true" focusable="false" data-icon-exempt>
+      <!-- The mascot (prototype `assistant.js` `mascot("idle", 20)`), not a lucide icon (data-icon-exempt, ISC-18.2): -->
+      <!-- the ring lime to cyan, top left to bottom right, and the violet dot with eyes and mouth in its gap. -->
+      <g class="m-rings">
+      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="0" style="--m-mix: 4%" />
+      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="-1" style="--m-mix: 4%" />
+      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="-2" style="--m-mix: 31%" />
+      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="-3" style="--m-mix: 69%" />
+      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="-4" style="--m-mix: 96%" />
+      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="-5" style="--m-mix: 96%" />
+      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="-6" style="--m-mix: 69%" />
+      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="-7" style="--m-mix: 31%" />
+      </g>
+      <circle class="m-dot" cx="31.5" cy="11" r="7.5" />
+      <circle class="m-eye" cx="29.3" cy="10" r="1.15" />
+      <circle class="m-eye" cx="33.7" cy="10" r="1.15" />
+      <path class="m-mouth" d="M29.5 13.4c.9 1.2 3.1 1.2 4 0" />
     </svg>
   </button>
 

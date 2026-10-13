@@ -119,7 +119,7 @@
 
 /* The spec's name in violet (prototype `.specs-select`, `.spec-name`), the area's in cyan (`.area-select`). */
 [data-control="spec"] .pill-value {
-  color: var(--violet-text);
+  color: var(--ques-text);
 }
 
 .spec-title {
@@ -127,7 +127,7 @@
 }
 
 .area .pill-value {
-  color: var(--cyan-text);
+  color: var(--disp-text);
 }
 
 .pick-id {
@@ -150,7 +150,7 @@
 }
 
 .page-icon {
-  color: var(--cyan-text);
+  color: var(--disp-text);
 }
 
 .chevron {
