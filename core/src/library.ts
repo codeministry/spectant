@@ -10,12 +10,13 @@
 //
 // Titles: the H1, else frontmatter `title:` (through `frontmatter.ts`, no second parser), else the file name; a
 // prototype is named after its folder. `modified` is the file's mtime as ISO 8601, a prototype's its newest file.
-// Every present document is `ok` here; `stale` (ISC-155.1) and `missing` (ISC-155.2) are judged over the finished
+// Every present document is listed `ok`; `stale` (ISC-155.1) and `missing` (ISC-155.2) are judged over the finished
 // list in `judge`, the one place the later tasks extend.
 import type { Dirent } from 'node:fs';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { parseEvents } from './events.ts';
 import { mediaTypeOf } from './evidence.ts';
 import type { LibraryCatalog, LibraryDoc, LibraryDocType, LibraryMedia, TextFileKind } from './files.ts';
 import { DESIGN_ASSETS, FILE_KINDS, repoFilePath } from './files.ts';
@@ -215,12 +216,49 @@ async function workspaceDocs(root: string): Promise<LibraryDoc[]> {
   return [...fixed, ...ideas].filter((d): d is LibraryDoc => d !== null);
 }
 
+/** A spec's own documents that derive from its `spec.md` (ISC-155.1), by path below the spec folder. */
+const FROM_SPEC: ReadonlySet<string> = new Set((['plan', 'tasks', 'design'] as const).map((kind) => FILE_KINDS[kind].path));
+
+/** The workspace documents that derive from the newest spec of the workspace (ISC-155.1). */
+const FROM_NEWEST_SPEC: ReadonlySet<LibraryDocType> = new Set<LibraryDocType>(['tech', 'tldr']);
+
 /**
- * The state judgement over the finished list: today every present document stays `ok`. ISC-155.1 sets `stale` here
- * and ISC-155.2 adds the `missing` entries; both read only what `readCatalog` already listed plus the spec texts.
+ * The time of one spec in ms (ISC-155.1): its newest valid `events.jsonl` line (read through `events.ts`), else the
+ * mtime of its `spec.md` from the listed documents; null when it has neither.
  */
-function judge(docs: readonly LibraryDoc[]): readonly LibraryDoc[] {
-  return docs;
+async function specTime(root: string, spec: string, docs: readonly LibraryDoc[]): Promise<number | null> {
+  let text = '';
+  try {
+    text = await readFile(join(root, SPECS_DIR, spec, FILE_KINDS.events.path), 'utf-8');
+  } catch {
+    // No events.jsonl: the spec.md mtime stands in.
+  }
+  const stamps = parseEvents(text).events.map((e) => Date.parse(e.ts));
+  if (stamps.length > 0) return Math.max(...stamps);
+  const own = docs.find((d) => d.spec === spec && d.path === `${spec}/${FILE_KINDS.spec.path}`);
+  return own?.modified == null ? null : Date.parse(own.modified);
+}
+
+/**
+ * The state judgement over the finished list. `stale` (ISC-155.1): `plan.md`, `tasks.md` and `design.md` older than
+ * the time of their spec, `tech.md` and `tldr.md` older than the newest time of any active spec; a document as old as
+ * its source is fresh. ISC-155.2 adds the `missing` entries here; both read only what `readCatalog` already listed plus
+ * each spec's `events.jsonl`.
+ */
+async function judge(root: string, specs: readonly string[], docs: readonly LibraryDoc[]): Promise<readonly LibraryDoc[]> {
+  const times = new Map<string, number | null>(await Promise.all(specs.map(async (s) => [s, await specTime(root, s, docs)] as const)));
+  const known = [...times.values()].filter((t): t is number => t !== null);
+  const newest = known.length > 0 ? Math.max(...known) : null;
+
+  const sourceOf = (d: LibraryDoc): number | null => {
+    if (d.spec === WORKSPACE) return FROM_NEWEST_SPEC.has(d.type) ? newest : null;
+    return FROM_SPEC.has(d.path.slice(d.spec.length + 1)) ? (times.get(d.spec) ?? null) : null;
+  };
+  return docs.map((d) => {
+    const source = sourceOf(d);
+    const stale = d.state === 'ok' && d.modified !== null && source !== null && Date.parse(d.modified) < source;
+    return stale ? { ...d, state: 'stale' } : d;
+  });
 }
 
 /**
@@ -231,7 +269,11 @@ function judge(docs: readonly LibraryDoc[]): readonly LibraryDoc[] {
 export async function readCatalog(root: string): Promise<LibraryCatalog> {
   const specs = listSpecs(root).filter((s) => !s.archived);
   const perSpec = await Promise.all(specs.map((s) => specDocs(root, s.slug)));
-  const docs = judge([...(await workspaceDocs(root)), ...perSpec.flat()]);
+  const docs = await judge(
+    root,
+    specs.map((s) => s.slug),
+    [...(await workspaceDocs(root)), ...perSpec.flat()],
+  );
   return {
     docs,
     // The group heads (ISC-157) and the open fog lines come with their own tasks.

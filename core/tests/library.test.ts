@@ -72,12 +72,18 @@ function timeOf(path: string): number {
   return DEFAULT_TIME + index * 60_000;
 }
 
-/** The fixture copied to a temp directory with every time from `TIMES`. */
-function workspaceCopy(): string {
+/**
+ * The fixture copied to a temp directory with every time from `TIMES`; `overrides` sets other times on named files
+ * (path from the workspace root) and `removed` deletes files from the copy, never from the fixture.
+ */
+function workspaceCopy(overrides: Readonly<Record<string, string>> = {}, removed: readonly string[] = []): string {
   const root = mkdtempSync(join(tmpdir(), 'spectant-library-'));
   cpSync(FIXTURE, root, { recursive: true });
+  for (const path of removed) rmSync(join(root, path));
   for (const path of FILES) {
-    const at = new Date(timeOf(path));
+    if (removed.includes(path)) continue;
+    const named = overrides[path];
+    const at = new Date(named === undefined ? timeOf(path) : Date.parse(named));
     utimesSync(join(root, path), at, at);
   }
   for (const dir of [...directoriesBelow(root), root]) {
@@ -242,5 +248,67 @@ describe('catalog (ISC-155)', () => {
 
   test('catalog: reading changes no byte of the workspace', () => {
     expect(treeHash(root)).toEqual(before);
+  });
+});
+
+// ISC-155.1: a document is `stale` when a file it derives from changed later. plan.md, tasks.md and design.md derive
+// from the spec.md of their spec, tech.md and tldr.md from the newest spec of the workspace. A spec's time is its newest
+// events.jsonl line, its spec.md mtime only without one. Each case reads its own copy with the times it needs.
+describe('stale (ISC-155.1)', () => {
+  const roots: string[] = [];
+
+  /** The paths of the stale documents of a fresh copy, sorted; every other present document must be `ok`. */
+  async function staleOf(overrides: Readonly<Record<string, string>> = {}, removed: readonly string[] = []): Promise<string[]> {
+    const root = workspaceCopy(overrides, removed);
+    roots.push(root);
+    const before = treeHash(root);
+    const catalog = await readCatalog(root);
+    expect(treeHash(root)).toEqual(before);
+    const present = catalog.docs.filter((d) => d.state !== 'missing');
+    expect(present.filter((d) => d.state !== 'ok' && d.state !== 'stale').map((d) => d.path)).toEqual([]);
+    expect(catalog.stale).toBe(catalog.docs.filter((d) => d.state === 'stale').length);
+    return present
+      .filter((d) => d.state === 'stale')
+      .map((d) => d.path)
+      .sort();
+  }
+
+  afterAll(() => {
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
+  });
+
+  test('stale: plan.md older than its spec and tldr.md older than the newest spec; every fresh document ok', async () => {
+    // 001's time is its last events.jsonl line 2026-03-12T09:00Z: plan.md (03-05) is stale, tasks.md and design.md
+    // (03-13) are not, nor are the images in its `.design/` folder, which derive from nothing. The newest spec is 001,
+    // so tldr.md (03-08) is stale and tech.md (03-14) is not. 002 has no plan, tasks or design; 003 and 004 neither.
+    expect(await staleOf()).toEqual([`${S1}/plan.md`, 'tldr.md']);
+  });
+
+  test('stale: a spec.md changed after its last events.jsonl line makes neither its documents nor tech.md stale', async () => {
+    // spec.md's mtime is newer than tasks.md, design.md and tech.md; the events.jsonl line decides, not the mtime.
+    expect(await staleOf({ [`specs/${S1}/spec.md`]: '2026-03-14T12:00:00Z' })).toEqual([`${S1}/plan.md`, 'tldr.md']);
+  });
+
+  test('stale: a plan.md newer than spec.md but older than the last events.jsonl line is stale', async () => {
+    const overrides = { [`specs/${S1}/spec.md`]: '2026-03-02T00:00:00Z', [`specs/${S1}/plan.md`]: '2026-03-11T00:00:00Z' };
+    expect(await staleOf(overrides)).toEqual([`${S1}/plan.md`, 'tldr.md']);
+  });
+
+  test('stale: without events.jsonl the spec.md mtime is the spec time', async () => {
+    // 001 without events.jsonl: its time is spec.md's mtime (03-12T08:00), so a plan.md from 03-12T08:30 is fresh.
+    const plan = { [`specs/${S1}/plan.md`]: '2026-03-12T08:30:00Z' };
+    expect(await staleOf(plan, [`specs/${S1}/events.jsonl`])).toEqual(['tldr.md']);
+    // 004 has no events.jsonl: its spec.md from 03-14T10:00 is the newest spec, newer than tech.md (03-14T09:00).
+    expect(await staleOf({ [`specs/${S4}/spec.md`]: '2026-03-14T10:00:00Z' })).toEqual([`${S1}/plan.md`, 'tech.md', 'tldr.md']);
+  });
+
+  test('stale: an archived spec is no spec of the workspace for tech.md and tldr.md', async () => {
+    expect(await staleOf({ 'specs/archive/000-first-light/spec.md': '2026-03-20T00:00:00Z' })).toEqual([`${S1}/plan.md`, 'tldr.md']);
+  });
+
+  test('stale: a document level with its source is fresh', async () => {
+    // Equal times are not "changed later": plan.md at the spec's last events.jsonl line, tldr.md at the newest spec.
+    const level = { [`specs/${S1}/plan.md`]: '2026-03-12T09:00:00Z', 'specs/tldr.md': '2026-03-12T09:00:00Z' };
+    expect(await staleOf(level)).toEqual([]);
   });
 });

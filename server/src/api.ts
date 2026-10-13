@@ -65,6 +65,14 @@
  * the real `specs/` reachable, images only. 200 with the bytes and the evidence headers (ETag, 304), 403 for `..`, a
  * second encoding, an absolute path, a symlink out or another media type, 404 for a missing file or workspace.
  *
+ * The library catalog (spec 017 T15, ISC-156): `GET`/`HEAD /api/workspaces/:ws/library` → `LibraryCatalog`, matched by
+ * the same `matchWorkspacePath` with the planning route's guard order and statuses (403, 405 with `allowForWorkspace`,
+ * 404 unknown workspace, 409 with the summary when the folder cannot be read). It answers core's `readCatalog` through
+ * `loadCatalog` (`workspace-loader.ts`) as it is: metadata only (path, type, spec, title, modified, state), never a
+ * document's content and never an absolute path, since every catalog path is relative to `specs/`. Nothing is cached;
+ * the ETag is `json()`'s body hash and each entry carries its mtime, so any change to a document is a new tag. The
+ * other library routes (`libraryDoc`, `librarySearch`, `libraryAsset`) are declined until their handlers land.
+ *
  * Lock sources (T51, ISC-37): both routes read the repository's `.spectant/activity.jsonl`, and the LifeOS frontier
  * locks only when `options.lifeos` is present, so the counts in the list and the dashboard agree.
  *
@@ -104,10 +112,12 @@ import {
   matchWorkspacePath,
 } from "./spec-routes.contract.ts";
 import {
+  type CatalogLoad,
   type DashboardLoad,
   type ServicesProbe,
   type UnreadableCode,
   type WorkspaceReading,
+  loadCatalog,
   loadDashboard,
   readBytesIfExists,
   readIdeaFiles,
@@ -126,7 +136,6 @@ const ALLOW = "GET, HEAD";
 
 /** The library routes whose handler has not landed yet (spec 017 T2); answered as any unknown path until then. */
 const LIBRARY_AWAITING_HANDLER: ReadonlySet<WorkspaceRouteName> = new Set<WorkspaceRouteName>([
-  "library",
   "libraryDoc",
   "librarySearch",
   "libraryAsset",
@@ -154,6 +163,8 @@ export type DashboardApiOptions = {
    * starts from. Whoever injects `loadWorkspace` injects this too, so both workspace routes answer from one source.
    */
   readWorkspace?: (root: string) => Promise<WorkspaceReading>;
+  /** Reads one workspace's document catalog for the library route (spec 017 T15); `loadCatalog` by default. */
+  loadCatalog?: (root: string) => Promise<CatalogLoad>;
   /** Probes the local listeners for the dashboard route; `listServices` (lsof) by default. */
   services?: ServicesProbe;
   /**
@@ -292,6 +303,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   const read = options.readWorkspace ?? readWorkspaceInput;
   const services = options.services ?? defaultServices;
   const stateDir = options.lifeos?.stateDir ?? null;
+  const catalogOf = options.loadCatalog ?? loadCatalog;
   const today = options.today ?? (() => localDate());
   const clock = options.now ?? (() => new Date());
 
@@ -346,6 +358,16 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       if (typeof (error as NodeJS.ErrnoException | null)?.code !== "string") throw error;
       return json(req, 409, summary(workspace, { readable: false, error: unreadableCode(error) }));
     }
+  };
+
+  // The catalog as core's readCatalog builds it, metadata only, never reshaped (header).
+  const library = async (req: Request, slug: string): Promise<Response> => {
+    const workspace = registry.get(slug);
+    if (!workspace) return json(req, 404, { error: "not-found" });
+    const loaded = await catalogOf(workspace.path);
+    if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
+    const body: WorkspaceRouteResponses["library"] = loaded.catalog;
+    return json(req, 200, body);
   };
 
   // One image below specs/, through the evidence file route's resolver and answer (header).
@@ -431,7 +453,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const { db } = options;
     if (workspaceRoute?.route === "boardQuery" && db === undefined) return null;
     // Registered in the contract ahead of their handlers (spec 017 T2): declined, so the server's JSON 404 applies
-    // instead of the planning fallback below. Each handler task (T15, T17, T18) drops its name here.
+    // instead of the planning fallback below. Each handler task (T17, T18) drops its name here; `library` went with T15.
     if (workspaceRoute !== null && LIBRARY_AWAITING_HANDLER.has(workspaceRoute.route)) return null;
     if (!isLoopbackHost(req.headers.get("Host")) || !isLoopbackOrigin(req.headers.get("Origin"))) {
       return json(req, 403, { error: "forbidden" });
@@ -447,6 +469,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     }
     if (workspaceRoute?.route === "idea") return idea(req, workspaceRoute.params.ws, workspaceRoute.params.slug);
     if (workspaceRoute?.route === "tech") return tech(req, workspaceRoute.params.ws);
+    if (workspaceRoute?.route === "library") return library(req, workspaceRoute.params.ws);
     if (workspaceRoute?.route === "techAsset") return techAsset(req, workspaceRoute.params.ws, url.search);
     if (workspaceRoute) return planning(req, workspaceRoute.params.ws);
     if (!match) return list(req);

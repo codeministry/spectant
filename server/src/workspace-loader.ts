@@ -7,7 +7,8 @@
  * viewer's actor id (`actorIdOf` over `git config --get user.email`, T80), and every text file kind
  * of every spec folder under `specs/` and `specs/archive/` (folders as `listSpecs` finds them). It
  * parses nothing: every parse is `core/`'s (ISC-5, `bun run check:single-core`). `loadDashboard` adds the local
- * services and calls `buildDashboard`. The lock sources are `core/`'s `readLockSources` (T51): the repository's
+ * services and calls `buildDashboard`; `loadCatalog` loads the library's document catalog beside it (core's
+ * `readCatalog`, spec 017). The lock sources are `core/`'s `readLockSources` (T51): the repository's
  * `.spectant/activity.jsonl`, plus the LifeOS frontier locks only when a LifeOS state directory is passed (ISC-37).
  *
  * Read-only (ISC-15): `node:fs` reads, no write, no temp file, no lock. The worktree tree id for the code-reviewed mark
@@ -25,8 +26,9 @@ import { buildDashboard, devServiceLabels, toLocalService } from "../../core/src
 import type { DashboardInput, DashboardModel, ProbedService } from "../../core/src/dashboard.ts";
 import { actorIdOf } from "../../core/src/actor-id.ts";
 import { FILE_KINDS, repoFilePath } from "../../core/src/files.ts";
-import type { FileDiagnostic, IdeaFiles, SpecFiles, TextFileKind, Workflow } from "../../core/src/files.ts";
+import type { FileDiagnostic, IdeaFiles, LibraryCatalog, SpecFiles, TextFileKind, Workflow } from "../../core/src/files.ts";
 import { type TreeEntry, type TreeEntryMode, treeIdOf } from "../../core/src/gates.ts";
+import { readCatalog } from "../../core/src/library.ts";
 import { readLockSources } from "../../core/src/locks.ts";
 import { type SpecRef, listSpecs } from "../../core/src/resolve.ts";
 import { parseWorkflow } from "../../core/src/workflow.ts";
@@ -54,6 +56,9 @@ export type WorkspaceReading =
   | { readable: false; error: UnreadableCode };
 
 export type DashboardLoad = { readable: true; model: DashboardModel } | { readable: false; error: UnreadableCode };
+
+/** The document catalog of one workspace (spec 017), or why the workspace cannot be read. */
+export type CatalogLoad = { readable: true; catalog: LibraryCatalog } | { readable: false; error: UnreadableCode };
 
 /** The local listeners of one workspace, given its root and the constitution's port labels. */
 export type ServicesProbe = (repoRoot: string, labels: ReadonlyMap<number, string>) => Promise<readonly ProbedService[]>;
@@ -220,6 +225,24 @@ export async function loadDashboard(root: string, probe: ServicesProbe | null, l
   const labels = input.constitution === null ? new Map<number, string>() : devServiceLabels(input.constitution);
   const probed = probe === null ? [] : await probe(root, labels).catch(() => []);
   return { readable: true, model: buildDashboard({ ...input, services: probed.map((s) => toLocalService(s, labels)) }) };
+}
+
+/**
+ * The document catalog of the workspace at `root` (spec 017 T14, ISC-156), loaded beside the model: core's
+ * `readCatalog` as it is, metadata only, never a file's content. Nothing is cached, as for the model: each call reads
+ * the files again, and every entry carries its `modified` time and title, so the route's body-hash ETag (`api.ts`
+ * `json()`) changes with any edited, added or removed document and the web's polling revalidates to a 304 otherwise.
+ * `readCatalog` reads a missing folder as an empty catalog, so the workspace root is checked first: a workspace that
+ * cannot be read is its stable code, never an empty catalog. Read-only, like every load here.
+ */
+export async function loadCatalog(root: string): Promise<CatalogLoad> {
+  const unreadable = workspaceUnreadable(root);
+  if (unreadable !== null) return { readable: false, error: unreadable };
+  try {
+    return { readable: true, catalog: await readCatalog(root) };
+  } catch (error) {
+    return { readable: false, error: codeOf(error) };
+  }
 }
 
 // ── the worktree tree id ──────────────────────────────────────────────────────────────────────────────

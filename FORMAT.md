@@ -1308,8 +1308,13 @@ workspace without `specs/` has an empty catalog.
 - **Title:** for Markdown, the first `#` heading outside fenced code, after the frontmatter; else frontmatter `title:`
   (`frontmatter.ts`); else the file name. An image is titled by its file name, a prototype by its folder name.
 - **Modified:** the file's mtime as ISO 8601; a prototype's is the newest mtime of the files below its folder.
-- **State:** every listed document is `ok` today. `stale` (a file it derives from changed later, ISC-155.1) and
-  `missing` (the spec's type asks for it and it does not exist, ISC-155.2) are judged by later tasks of spec 017.
+- **State:** a listed document is `ok` unless it is `stale` (ISC-155.1): a file it derives from changed later.
+  `plan.md`, `tasks.md` and `design.md` derive from their spec, `specs/tech.md` and `specs/tldr.md` from the newest
+  active spec of the workspace; no other document derives from anything. A spec's time is the newest `ts` among the
+  valid lines of its `events.jsonl` (read by `events.ts`), else its `spec.md` mtime; a document is stale when its
+  `modified` is strictly older than that time, so one as old as its source is fresh, and archived specs count for
+  nothing. The catalog's `stale` is the number of stale documents. `missing` (the spec's type asks for it and it does
+  not exist, ISC-155.2) is judged by a later task of spec 017.
 
 The fixture `core/fixtures/library/` holds every case; its spec 002 `.design/` folder lists as one `design` image and
 one prototype, while `src/`, a code folder without pages, lists nothing:
