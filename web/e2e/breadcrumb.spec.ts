@@ -189,14 +189,14 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       await expect(crumb(page, 'task')).toHaveCount(0);
     });
 
-    test('the feature and milestone chips point at their pages', async ({ page }) => {
+    test('the feature and milestone chips point at the planning tree', async ({ page }) => {
       await page.goto('/w/harbor/s/002');
-      await expect(headChip(page, 'milestone')).toHaveAttribute('href', `/w/harbor/milestones#m-${M10.slug}`);
-      await expect(headChip(page, 'feature')).toHaveAttribute('href', `/w/harbor/features#${F2.id}`);
+      await expect(headChip(page, 'milestone')).toHaveAttribute('href', `/w/harbor/planning/tree?sel=milestone:${M10.slug}`);
+      await expect(headChip(page, 'feature')).toHaveAttribute('href', `/w/harbor/planning/tree?sel=feature:${F2.id}`);
       await expect(crumb(page, 'spec')).toHaveAttribute('href', '/w/harbor/s/002');
       await page.goto('/w/harbor/s/001');
-      await expect(headChip(page, 'milestone')).toHaveAttribute('href', `/w/harbor/milestones#m-${M10.slug}`);
-      await expect(headChip(page, 'feature')).toHaveAttribute('href', `/w/harbor/features#${F1.id}`);
+      await expect(headChip(page, 'milestone')).toHaveAttribute('href', `/w/harbor/planning/tree?sel=milestone:${M10.slug}`);
+      await expect(headChip(page, 'feature')).toHaveAttribute('href', `/w/harbor/planning/tree?sel=feature:${F1.id}`);
     });
 
     test('the "+n" chip lists the other blocks a spec holds, each linking to its card', async ({ page }) => {
@@ -209,9 +209,9 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       await expect(more).toHaveAttribute('aria-expanded', 'true');
       const links = page.locator('.head-more-list a');
       await expect(links).toHaveCount(1);
-      await expect(links.first()).toHaveAttribute('href', `/w/harbor/features#${F3.id}`);
+      await expect(links.first()).toHaveAttribute('href', `/w/harbor/planning/tree?sel=feature:${F3.id}`);
       await expect(links.first()).toContainText(`${F3.id} ${F3.name}`);
-      await expect(headChip(page, 'feature')).toHaveAttribute('href', `/w/harbor/features#${F2.id}`); // the main block stays the chip
+      await expect(headChip(page, 'feature')).toHaveAttribute('href', `/w/harbor/planning/tree?sel=feature:${F2.id}`); // the main block stays the chip
     });
 
     test('the workspace link resolves', async ({ page }) => {
@@ -243,35 +243,33 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
   });
 }
 
-// The click-and-land cases: a planning chip opens its card or row on the Features and Milestones pages.
+// The click-and-land cases (spec 026, ISC-167.1): a planning chip selects its object on the planning tree.
 test.describe('feature and milestone links land', () => {
   test.use(atWidth(WIDTHS.desktop));
 
-  test('the milestone chip opens its row on the Milestones page', async ({ page }) => {
+  test('the milestone chip selects its milestone on the planning tree', async ({ page }) => {
     await page.goto('/w/harbor/s/002');
     await headChip(page, 'milestone').click();
-    await expect(page).toHaveURL(new RegExp(`/w/harbor/milestones#m-${M10.slug}$`, 'u'));
-    await expect(page.locator(`article#m-${M10.slug}`)).toBeFocused();
-    await expect(page.locator(`article#m-${M10.slug}`)).toBeInViewport();
+    await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/planning/tree' && url.searchParams.get('sel') === `milestone:${M10.slug}`);
+    await expect(page.locator('[data-lens="tree"] [role="treeitem"]:focus')).toHaveAttribute('data-ref', `milestone:${M10.slug}`);
+    await expect(page.locator('[data-lens="tree"] [role="treeitem"]:focus')).toBeInViewport();
   });
 
-  test('the feature chip opens its card on the Features page', async ({ page }) => {
+  test('the feature chip selects its feature on the planning tree', async ({ page }) => {
     await page.goto('/w/harbor/s/002');
     await headChip(page, 'feature').click();
-    await expect(page).toHaveURL(new RegExp(`/w/harbor/features#${F2.id}$`, 'u'));
-    await expect(page.locator(`article#${F2.id}`)).toBeFocused();
-    expect(await page.evaluate(() => document.activeElement?.id)).toBe(F2.id);
-    await expect(page.locator(`article#${F2.id}`)).toBeInViewport();
+    await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/planning/tree' && url.searchParams.get('sel') === `feature:${F2.id}`);
+    await expect(page.locator('[data-lens="tree"] [role="treeitem"]:focus')).toHaveAttribute('data-ref', `feature:${F2.id}`);
+    await expect(page.locator('[data-lens="tree"] [role="treeitem"]:focus')).toBeInViewport();
   });
 
-  test('a "+n" list link opens the other block’s card', async ({ page }) => {
+  test('a "+n" list link selects the other block on the planning tree', async ({ page }) => {
     await servePlanningWithSpecInF3(page);
     await page.goto('/w/harbor/s/002');
     await page.locator(HEAD_MORE).click();
     await page.locator('.head-more-list a').first().click();
-    await expect(page).toHaveURL(new RegExp(`/w/harbor/features#${F3.id}$`, 'u'));
-    await expect(page.locator(`article#${F3.id}`)).toBeFocused();
-    expect(await page.evaluate(() => document.activeElement?.id)).toBe(F3.id);
+    await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/planning/tree' && url.searchParams.get('sel') === `feature:${F3.id}`);
+    await expect(page.locator('[data-lens="tree"] [role="treeitem"]:focus')).toHaveAttribute('data-ref', `feature:${F3.id}`);
   });
 });
 
@@ -332,8 +330,6 @@ const EYEBROW_PAGES: readonly EyebrowPage[] = [
     segments: [{ ws: true }, { key: 'shell.pages.board' }, { key: 'ideas.title' }, { literal: IDEA }],
     compactBetween: '[data-idea-chips]',
   },
-  { name: 'features', path: `/w/${WORKSPACE}/features`, segments: [{ ws: true }, { key: 'shell.pages.features' }, { count: true }] },
-  { name: 'milestones', path: `/w/${WORKSPACE}/milestones`, segments: [{ ws: true }, { key: 'shell.pages.milestones' }, { count: true }] },
   // spec 024: prototype value (principal: Prototyp gilt immer) — the help eyebrow reads SPECTANT · GUIDE.
   { name: 'help', path: '/help', segments: [{ key: 'shell.eyebrow.app' }, { key: 'help.eyebrow' }] },
   { name: 'settings', path: '/settings', segments: [{ key: 'shell.eyebrow.app' }, { key: 'settings.title' }] },
@@ -661,11 +657,11 @@ test.describe('polish', () => {
         expect(repeated(names), 'no two edge links share an accessible name').toEqual([]);
       });
 
-      test(`polish: the Features h1 holds no glossary hint at ${String(width)}`, async ({ page }) => {
-        await page.goto(`/w/${WORKSPACE}/features`);
-        const title = lookup(catalogs.en, 'shell.pages.features');
+      test(`polish: the Planning h1 holds no glossary hint at ${String(width)}`, async ({ page }) => {
+        await page.goto(`/w/${WORKSPACE}/planning/tree`);
+        const title = lookup(catalogs.en, 'shell.pages.planning');
         const hint = lookup(catalogs.en, 'terms.feature');
-        expect(title, 'the en catalog holds shell.pages.features').toBeDefined();
+        expect(title, 'the en catalog holds shell.pages.planning').toBeDefined();
         expect(hint, 'the en catalog holds terms.feature').toBeDefined();
 
         const h1 = page.getByRole('heading', { level: 1 });
@@ -701,8 +697,6 @@ const RELOAD_ROUTES: ReadonlyArray<{ readonly path: string; readonly indicator: 
   { path: `/w/${WORKSPACE}`, indicator: 'eyebrow' },
   { path: `/w/${WORKSPACE}/board`, indicator: 'eyebrow' },
   { path: `/w/${WORKSPACE}/ideas/${IDEA}`, indicator: 'eyebrow' },
-  { path: `/w/${WORKSPACE}/features`, indicator: 'eyebrow' },
-  { path: `/w/${WORKSPACE}/milestones`, indicator: 'eyebrow' },
   { path: '/help', indicator: 'eyebrow' },
   { path: '/settings', indicator: 'eyebrow' },
   { path: `/w/${WORKSPACE}/s/002`, indicator: 'crumbs' },

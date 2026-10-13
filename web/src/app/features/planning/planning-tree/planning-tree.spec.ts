@@ -38,6 +38,7 @@ const hasMilestoneParent = (model: PlanningModel, featureId: string): boolean =>
 class FakeSelection {
   readonly current = signal<RelationRef | null>(null);
   readonly selected = this.current.asReadonly();
+  readonly heldFocus = signal<RelationRef | null>(null);
   readonly picks: RelationRef[] = [];
   dock(): void {
     /* the tree docks the sidebar; nothing to record here */

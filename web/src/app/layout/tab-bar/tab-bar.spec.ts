@@ -131,7 +131,7 @@ describe('TabBarSlot on the tech page', () => {
   });
 
   it('renders no bar on an unknown tech tab or another workspace page', async () => {
-    for (const url of ['/w/harbor/tech/nope', '/w/harbor/milestones', '/w/harbor']) {
+    for (const url of ['/w/harbor/tech/nope', '/w/harbor/board', '/w/harbor']) {
       const { root } = await at(url, 'wide');
       expect(root.querySelector('app-tab-bar'), url).toBeNull();
       TestBed.resetTestingModule();

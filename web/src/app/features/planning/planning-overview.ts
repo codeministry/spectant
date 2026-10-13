@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, InjectionToken, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { PlanningMilestone, PlanningModel } from '../../../../../core/src/planning';
@@ -6,7 +6,21 @@ import { UiIcon } from '../../shared/icons/icon';
 import { UiCard } from '../../shared/ui/card/card';
 import { UiMeter } from '../../shared/ui/meter/meter';
 import { UiRing } from '../../shared/ui/ring/ring';
-import { MILESTONES_TODAY } from './milestones-page';
+
+const pad2 = (n: number): string => String(n).padStart(2, '0');
+
+/**
+ * Today as `YYYY-MM-DD`: the local calendar day, the one the server's `localDate()` derives `state` on
+ * (`server/src/api.ts`), never the UTC day, which differs around midnight. A function, read whenever the overview
+ * recomputes; tests pin it. Moved here from the retired Milestones page (spec 026, T30).
+ */
+export const MILESTONES_TODAY = new InjectionToken<() => string>('MILESTONES_TODAY', {
+  providedIn: 'root',
+  factory: () => () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+  },
+});
 
 const DAY_MS = 86_400_000;
 const utcDay = (iso: string): number => new Date(`${iso}T00:00:00Z`).getTime();
@@ -16,8 +30,8 @@ export const namedMilestones = (model: PlanningModel): readonly PlanningMileston
   model.milestones.filter((milestone) => milestone.specs.length > 0);
 
 /**
- * The next milestone's three features with the most open claims, master order within a count: the old Milestones
- * page's rail rule (`MilestonesPage.mostOpen`), kept here so the overview and that page agree until T30 removes it.
+ * The next milestone's three features with the most open claims, master order within a count: the retired Milestones
+ * page's rail rule, which the overview carries on (spec 026, T30).
  */
 export const mostOpenFeatures = (milestone: PlanningMilestone | null): PlanningMilestone['features'] =>
   (milestone?.features ?? [])

@@ -1,5 +1,5 @@
 /**
- * T38 · ISC-103.1: the Features and Milestones pages in a narrow container. `bun run e2e -- narrow-planning` is the
+ * T38 · ISC-103.1: the planning tree (spec 026 retired the Features and Milestones pages) in a narrow container. `bun run e2e -- narrow-planning` is the
  * claim's probe. At the 600 px cmux panel (and the 390 phone for good measure), on harbor (rows) and lantern (the
  * Features rows and the absent Milestones page):
  *
@@ -14,10 +14,8 @@ import type { Page } from '@playwright/test';
 import { atWidth, expect, pinClock, test, WIDTHS } from './fixtures';
 
 const PAGES = [
-  { name: 'harbor features', url: '/w/harbor/features', host: 'app-features-page', rows: true },
-  { name: 'harbor milestones', url: '/w/harbor/milestones', host: 'app-milestones-page', rows: true },
-  { name: 'lantern features', url: '/w/lantern/features', host: 'app-features-page', rows: true },
-  { name: 'lantern milestones (absent)', url: '/w/lantern/milestones', host: 'app-milestones-page', rows: false },
+  { name: 'harbor planning tree', url: '/w/harbor/planning/tree', host: 'app-planning-page' },
+  { name: 'lantern planning tree (no milestones)', url: '/w/lantern/planning/tree', host: 'app-planning-page' },
 ] as const;
 
 interface Layout {
@@ -62,8 +60,7 @@ for (const width of [WIDTHS.panel, WIDTHS.phone]) {
         await page.goto(target.url);
         const host = page.locator(target.host);
         await expect(host).toBeVisible();
-        if (target.rows) await expect(host.locator('ol.rows > li').first()).toBeVisible();
-        else await expect(host.locator('app-not-found')).toBeVisible();
+        await expect(host.locator('[role="treeitem"]').first()).toBeVisible();
 
         const result = await layout(page, target.host);
         expect(result.viewport).toBe(width);

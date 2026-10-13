@@ -203,7 +203,7 @@ test.describe('palette', () => {
       await expect(palette.locator('[data-group="milestones"]')).toHaveCount(0);
     });
 
-    test('levels: a feature name filters to its entry and Enter lands on its card', async ({ page }) => {
+    test('levels: a feature name filters to its entry and Enter lands on it in the planning tree', async ({ page }) => {
       const feature = planningGolden('harbor').features.find((f) => f.name === 'Web console');
       if (feature === undefined) throw new Error('harbor golden has no "Web console" feature');
       await openPalette(page, '/w/harbor');
@@ -211,19 +211,19 @@ test.describe('palette', () => {
       const option = paletteOf(page).locator(`[data-group="features"] [data-entry="feature-${feature.id}"]`);
       await expect(option).toBeVisible();
       await page.keyboard.press('Enter');
-      await expect(page).toHaveURL(new RegExp(`/w/harbor/features#${feature.id}$`));
-      await expect(page.locator(`article#${feature.id}`)).toBeFocused();
+      await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/planning/tree' && url.searchParams.get('sel') === `feature:${feature.id}`);
+      await expect(page.locator('[data-lens="tree"] [role="treeitem"]:focus')).toHaveAttribute('data-ref', `feature:${feature.id}`);
     });
 
-    test('levels: a milestone name filters to its entry and Enter lands on its row', async ({ page }) => {
+    test('levels: a milestone name filters to its entry and Enter lands on it in the planning tree', async ({ page }) => {
       const milestone = planningGolden('harbor').milestones.find((m) => m.name === 'Harbor 1.0');
       if (milestone === undefined) throw new Error('harbor golden has no "Harbor 1.0" milestone');
       await openPalette(page, '/w/harbor');
       await paletteOf(page).getByRole('combobox').fill('Harbor 1.0');
       await expect(paletteOf(page).locator(`[data-group="milestones"] [data-entry="milestone-${milestone.slug}"]`)).toBeVisible();
       await page.keyboard.press('Enter');
-      await expect(page).toHaveURL(new RegExp(`/w/harbor/milestones#m-${milestone.slug}$`));
-      await expect(page.locator(`article#m-${milestone.slug}`)).toBeFocused();
+      await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/planning/tree' && url.searchParams.get('sel') === `milestone:${milestone.slug}`);
+      await expect(page.locator('[data-lens="tree"] [role="treeitem"]:focus')).toHaveAttribute('data-ref', `milestone:${milestone.slug}`);
     });
   });
 

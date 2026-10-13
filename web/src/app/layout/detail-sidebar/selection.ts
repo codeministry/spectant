@@ -100,6 +100,11 @@ export class DetailSelection {
 
   /** The ref in `?sel=`, whether or not the index holds it. */
   readonly selected = computed(() => parseSel(this.param()));
+  /**
+   * The ref whose own element in the view keeps the focus the sidebar would otherwise move to its title: the tree's
+   * arrival row (a `?sel=` deep link or an old-address redirect, ISC-167.1). Null when no view holds one.
+   */
+  readonly heldFocus = signal<RelationRef | null>(null);
   readonly index = computed<RelationIndex | null>(() => this.data.planningModel()?.relations ?? null);
   /** The selected entry; null without a selection, before the index arrives, or for a ref it does not hold. */
   readonly entry = computed<Relation | null>(() => {

@@ -323,7 +323,7 @@ test.describe('reach', () => {
         await expect(await headerControl(page, 'page')).toBeVisible();
         let menu = await openAreaMenu(page);
         const entries = menu.locator('[data-page]');
-        expect(await entries.evaluateAll((all) => all.map((el) => el.getAttribute('data-page')))).toEqual(['specs', 'board', 'features', 'milestones', 'tech', 'library']);
+        expect(await entries.evaluateAll((all) => all.map((el) => el.getAttribute('data-page')))).toEqual(['specs', 'board', 'planning', 'tech', 'library']);
         const tech = menu.locator('[data-page="tech"]');
         await expect(tech).toHaveAttribute('href', `/w/${WS}/tech`);
         await expect(tech.locator('.entry-name')).toHaveText(COPY.shell.pages.tech);

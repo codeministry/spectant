@@ -122,12 +122,12 @@ describe('planning palette sources', () => {
     ]);
   });
 
-  it('lists one feature per block in master order, linking to its card with id, name and count', async () => {
+  it('lists one feature per block in master order, linking to its tree row with id, name and count', async () => {
     setUp(ok(NAMED));
     const features = byId(await open('/w/harbor'), 'features');
     expect(features.entries().map((entry) => [entry.id, entry.label, entry.chip, entry.meta, entry.link])).toEqual([
-      ['feature-F0', 'Cross-cutting', 'F0', '0/4', '/w/harbor/features#F0'],
-      ['feature-F2', 'Web console', 'F2', '25/30', '/w/harbor/features#F2'],
+      ['feature-F0', 'Cross-cutting', 'F0', '0/4', '/w/harbor/planning/tree?sel=feature:F0'],
+      ['feature-F2', 'Web console', 'F2', '25/30', '/w/harbor/planning/tree?sel=feature:F2'],
     ]);
     expect(features.entries()[1]?.keywords).toContain('epic');
   });
@@ -136,7 +136,7 @@ describe('planning palette sources', () => {
     setUp(ok(NAMED));
     const milestones = byId(await open('/w/harbor'), 'milestones');
     expect(milestones.entries().map((entry) => [entry.id, entry.label, entry.chip, entry.meta, entry.link])).toEqual([
-      ['milestone-harbor-1-0', 'Harbor 1.0', undefined, '2026-11-30 · upcoming', '/w/harbor/milestones#m-harbor-1-0'],
+      ['milestone-harbor-1-0', 'Harbor 1.0', undefined, '2026-11-30 · upcoming', '/w/harbor/planning/tree?sel=milestone:harbor-1-0'],
     ]);
   });
 
@@ -174,7 +174,7 @@ describe('planning palette sources', () => {
   it('serialises the link through the router, so a slug the URL grammar cannot take verbatim is encoded', async () => {
     setUp(ok(NAMED));
     const sources = await open('/w/100%25');
-    expect(byId(sources, 'features').entries().map((entry) => entry.link)).toEqual(['/w/100%25/features#F0', '/w/100%25/features#F2']);
-    expect(byId(sources, 'milestones').entries().map((entry) => entry.link)).toEqual(['/w/100%25/milestones#m-harbor-1-0']);
+    expect(byId(sources, 'features').entries().map((entry) => entry.link)).toEqual(['/w/100%25/planning/tree?sel=feature:F0', '/w/100%25/planning/tree?sel=feature:F2']);
+    expect(byId(sources, 'milestones').entries().map((entry) => entry.link)).toEqual(['/w/100%25/planning/tree?sel=milestone:harbor-1-0']);
   });
 });

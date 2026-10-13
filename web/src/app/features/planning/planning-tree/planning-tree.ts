@@ -146,21 +146,35 @@ export class PlanningTree {
   });
 
   constructor() {
-    this.selection.dock(inject(DestroyRef));
-    // A deep link (or a selection made elsewhere) opens the path above; once rendered, the row scrolls into view.
+    const destroyRef = inject(DestroyRef);
+    this.selection.dock(destroyRef);
+    destroyRef.onDestroy(() => this.selection.heldFocus.set(null));
+    // A deep link (or a selection made elsewhere) opens the path above; once rendered, the row scrolls into view. The
+    // selection the tree arrives with, before the user picks a row here (a `?sel=` link, the old `/features#F<n>` and
+    // `/milestones#m-<slug>` redirects, ISC-167.1), also takes the focus, and the sidebar leaves it there.
     effect(() => {
       const ref = this.selection.selected();
       if (ref === null) return;
+      const arrival = this.arriving;
+      this.arriving = false;
+      if (arrival) this.selection.heldFocus.set(ref);
       afterNextRender(
         () => {
           const row = this.rowOf(ref);
+          if (row === null) return;
           // A DOM emulation may lack scrollIntoView; the browser always has it.
-          if (row !== null && 'scrollIntoView' in row) row.scrollIntoView({ block: 'nearest' });
+          if ('scrollIntoView' in row) row.scrollIntoView({ block: 'nearest' });
+          if (!arrival) return;
+          this.focusKey.set(row.dataset['key'] ?? null);
+          row.focus({ preventScroll: true });
         },
         { injector: this.injector },
       );
     });
   }
+
+  /** True until the tree sees its first selection or the user picks a row: that selection is the arrival. */
+  private arriving = true;
 
   protected toggle(row: TreeRow, event?: Event): void {
     event?.stopPropagation();
@@ -175,6 +189,7 @@ export class PlanningTree {
 
   /** The row's own target: select its object; the group, which has none, toggles. */
   protected activate(row: TreeRow): void {
+    this.arriving = false;
     this.focusKey.set(row.key);
     if (row.node.ref === null) this.toggle(row);
     else void this.selection.select(row.node.ref);

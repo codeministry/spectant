@@ -821,8 +821,8 @@ const SPEC_MENU_AREAS = [
 const PALETTE_PLACES = [
   { entry: 'harbor', query: 'harbor', lands: (path: string) => path === '/w/harbor' },
   { entry: 'action/open-board', query: 'board', lands: (path: string) => path === '/w/harbor/board' },
-  { entry: 'feature-F0', query: 'F0', lands: (path: string) => path === '/w/harbor/features' },
-  { entry: 'milestone-harbor-0-9', query: 'harbor-0-9', lands: (path: string) => path === '/w/harbor/milestones' },
+  { entry: 'feature-F0', query: 'F0', lands: (path: string) => path === '/w/harbor/planning/tree' },
+  { entry: 'milestone-harbor-0-9', query: 'harbor-0-9', lands: (path: string) => path === '/w/harbor/planning/tree' },
   { entry: 'tech/harbor', query: 'tech', lands: (path: string) => path.startsWith('/w/harbor/tech') },
   { entry: 'action/open-library', query: 'library', lands: (path: string) => path === '/w/harbor/library' },
   { entry: 'action/settings-workspaces', query: 'settings', lands: (path: string) => path === '/settings/workspaces' },
@@ -973,8 +973,8 @@ test.describe('navigation', () => {
 
     for (const [key, path] of [
       ['b', '/w/harbor/board'],
-      ['f', '/w/harbor/features'],
-      ['m', '/w/harbor/milestones'],
+      ['f', '/w/harbor/planning/tree'],
+      ['m', '/w/harbor/planning/tree'],
     ] as const) {
       test(`g ${key} navigates to ${path} from the workspace`, async ({ page }) => {
         await page.goto('/w/harbor');

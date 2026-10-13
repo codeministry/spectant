@@ -134,9 +134,15 @@ test.describe('planning: lenses', () => {
     await page.keyboard.press('p');
     await expect(page).toHaveURL(/\/w\/harbor\/planning\/tree$/u);
     await expect(page.locator('[data-page="planning"] h1')).toBeVisible();
-    await page.keyboard.press('g');
-    await page.keyboard.press('f');
-    await expect(page).toHaveURL(/\/w\/harbor\/features$/u);
+    // T30 (ISC-167.1): `g f` and `g m` stay as aliases of the old routes, which land on the tree.
+    for (const key of ['f', 'm']) {
+      await page.goto('/w/harbor');
+      await expect(page.locator('header [data-control="page"]')).toBeVisible();
+      await page.keyboard.press('g');
+      await page.keyboard.press(key);
+      await expect(page).toHaveURL(/\/w\/harbor\/planning\/tree$/u);
+      await expect(page.locator('[data-lens="tree"]')).toBeVisible();
+    }
   });
 
   test('lenses: the palette finds the planning page', async ({ page }) => {
@@ -172,4 +178,100 @@ test.describe('planning: lenses', () => {
       await page.request.post(RESET_PATH, { headers });
     }
   });
+});
+
+/**
+ * T31 · ISC-167.1 (`bun run e2e -- planning -g redirect`): the old addresses `/w/:ws/features[#F<n>]` and
+ * `/w/:ws/milestones[#m-<slug>]` land on the tree lens; with an anchor the named object is in `?sel=`, its row is
+ * visible and focused, and the sidebar shows it. The spec head's feature and milestone chips (ISC-105) and the
+ * palette's Features and Milestones entries (ISC-106) point at the same addresses.
+ */
+const REDIRECT_FEATURE = harbor.features.find((feature) => feature.id === 'F2');
+const REDIRECT_MILESTONE = harbor.milestones.find((milestone) => milestone.name === 'Harbor 1.0');
+if (REDIRECT_FEATURE === undefined || REDIRECT_MILESTONE === undefined) throw new Error('the harbor planning golden lost F2 or Harbor 1.0');
+const featureRef = `feature:${REDIRECT_FEATURE.id}`;
+const milestoneRef = `milestone:${REDIRECT_MILESTONE.slug}`;
+const treeAt = (ref: string): string => `/w/harbor/planning/tree?sel=${ref}`;
+const sidebarOf = (page: Page): Locator => page.locator('app-detail-sidebar[data-presentation]');
+
+/** The tree landed with `ref` selected: its row visible, focused and marked, the sidebar open on the object. */
+async function expectSelectedOnTree(page: Page, ref: string, name: string): Promise<void> {
+  await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/planning/tree' && url.searchParams.get('sel') === ref && url.hash === '');
+  await expect(page.locator('[data-lens="tree"]')).toBeVisible();
+  const focused = page.locator('[data-lens="tree"] [role="treeitem"]:focus');
+  await expect(focused).toHaveAttribute('data-ref', ref);
+  await expect(focused).toHaveAttribute('data-selected', 'row');
+  await expect(focused).toBeInViewport();
+  await expect(sidebarOf(page)).toBeVisible();
+  await expect(sidebarOf(page)).toContainText(name);
+}
+
+test.describe('planning: redirect', () => {
+  test.use(atWidth(WIDTHS.desktop));
+
+  for (const path of ['/w/harbor/features', '/w/harbor/milestones']) {
+    test(`redirect: ${path} without an anchor lands on the tree, nothing selected`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/planning/tree' && url.search === '' && url.hash === '');
+      await expect(page.locator('[data-lens="tree"]')).toBeVisible();
+      await expect(lensTab(page, 'tree')).toHaveAttribute('aria-current', 'page');
+      await expect(sidebarOf(page)).toHaveCount(0);
+    });
+  }
+
+  test('redirect: /features#F<n> selects the feature on the tree: visible, focused, in the sidebar', async ({ page }) => {
+    await page.goto(`/w/harbor/features#${REDIRECT_FEATURE.id}`);
+    await expectSelectedOnTree(page, featureRef, REDIRECT_FEATURE.name);
+  });
+
+  test('redirect: /milestones#m-<slug> selects the milestone on the tree: visible, focused, in the sidebar', async ({ page }) => {
+    await page.goto(`/w/harbor/milestones#m-${REDIRECT_MILESTONE.slug}`);
+    await expectSelectedOnTree(page, milestoneRef, REDIRECT_MILESTONE.name);
+  });
+
+  test('redirect: an anchor that names no object lands on the plain tree', async ({ page }) => {
+    await page.goto('/w/harbor/features#nothing-here');
+    await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/planning/tree' && url.search === '' && url.hash === '');
+    await expect(page.locator('[data-lens="tree"]')).toBeVisible();
+  });
+
+  test('redirect: Back after a redirect does not return to the old address', async ({ page }) => {
+    await page.goto('/w/harbor');
+    await expect(page.locator('header [data-control="page"]')).toBeVisible();
+    await page.goto(`/w/harbor/features#${REDIRECT_FEATURE.id}`);
+    await expectSelectedOnTree(page, featureRef, REDIRECT_FEATURE.name);
+    await page.goBack();
+    await expect(page).toHaveURL((url) => url.pathname === '/w/harbor');
+  });
+
+  test('redirect: the spec head chips point at the tree and land on their object', async ({ page }) => {
+    const chip = (kind: string): Locator => page.locator(`[data-head-chip="${kind}"]`).first();
+    await page.goto('/w/harbor/s/002');
+    await expect(chip('milestone')).toHaveAttribute('href', treeAt(milestoneRef));
+    await expect(chip('feature')).toHaveAttribute('href', treeAt(featureRef));
+    await chip('feature').click();
+    await expectSelectedOnTree(page, featureRef, REDIRECT_FEATURE.name);
+    await page.goto('/w/harbor/s/002');
+    await chip('milestone').click();
+    await expectSelectedOnTree(page, milestoneRef, REDIRECT_MILESTONE.name);
+  });
+
+  for (const kind of ['feature', 'milestone'] as const) {
+    test(`redirect: the palette's ${kind} entry lands on the tree with the ${kind} selected`, async ({ page }) => {
+      const [entry, ref, name] =
+        kind === 'feature'
+          ? [`feature-${REDIRECT_FEATURE.id}`, featureRef, REDIRECT_FEATURE.name]
+          : [`milestone-${REDIRECT_MILESTONE.slug}`, milestoneRef, REDIRECT_MILESTONE.name];
+      await page.goto('/w/harbor');
+      await expect(page.locator('header [data-control="palette"]')).toBeVisible();
+      await page.keyboard.press('Meta+k');
+      const palette = page.locator('app-command-palette dialog');
+      await expect(palette).toBeVisible();
+      await palette.getByRole('combobox').fill(name);
+      const option = palette.locator(`[data-group="${kind}s"] [data-entry="${entry}"]`);
+      await expect(option).toBeVisible();
+      await option.click();
+      await expectSelectedOnTree(page, ref, name);
+    });
+  }
 });

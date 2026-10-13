@@ -23,7 +23,7 @@ import { UiPopover, UiPopoverTrigger } from '../../shared/ui/overlay/popover';
 import { UiPriority } from '../../shared/ui/priority/priority';
 import type { Tone } from '../../shared/ui/tone';
 import { TYPE_GLYPHS } from '../../shared/ui/type-glyph/type-glyph';
-import { areaById, areaPath, specLink, workspaceLink } from '../shell/areas';
+import { areaById, areaPath, planningTreeLink, specLink, workspaceLink } from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { GateButton } from './gate-button';
@@ -132,7 +132,7 @@ const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly icon: I
         <ui-priority data-head-chip="priority" [mark]="true" [value]="priority()" />
         @if (milestoneChip(); as milestone) {
           @if (milestone.known) {
-            <a class="chip-link" data-head-chip="milestone" [routerLink]="milestonesLink()" [fragment]="'m-' + milestone.slug">
+            <a class="chip-link" data-head-chip="milestone" [routerLink]="treeLink()" [queryParams]="{ sel: 'milestone:' + milestone.slug }">
               <ui-chip variant="plain" icon="flag"><span class="label-name">{{ milestone.name }}</span></ui-chip>
             </a>
           } @else {
@@ -145,8 +145,8 @@ const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly icon: I
           <a
             class="chip-link"
             data-head-chip="feature"
-            [routerLink]="featuresLink()"
-            [fragment]="feature.id"
+            [routerLink]="treeLink()"
+            [queryParams]="{ sel: 'feature:' + feature.id }"
             [attr.title]="feature.name"
             [attr.aria-description]="'terms.feature' | transloco"
           >
@@ -160,7 +160,7 @@ const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly icon: I
               <ul class="head-more-list">
                 @for (other of otherFeatures(); track other.id) {
                   <li>
-                    <a [routerLink]="featuresLink()" [fragment]="other.id" [attr.aria-description]="'terms.feature' | transloco">
+                    <a [routerLink]="treeLink()" [queryParams]="{ sel: 'feature:' + other.id }" [attr.aria-description]="'terms.feature' | transloco">
                       <span class="mono">{{ other.id }}</span> {{ other.name }}
                     </a>
                   </li>
@@ -326,8 +326,11 @@ export class SpecHead {
     const name = this.transloco.translate('specHead.specCrumb', { id: this.id() }, lang);
     return `${name}, ${this.transloco.translate('planning.breadcrumb.archived', {}, lang)}`;
   });
-  protected readonly milestonesLink = computed(() => workspaceLink(this.state.ws() ?? '', 'milestones'));
-  protected readonly featuresLink = computed(() => workspaceLink(this.state.ws() ?? '', 'features'));
+  /**
+   * Spec 026 (ISC-167.1): the milestone and feature chips land on the planning tree with their object in `?sel=`, the
+   * address the old `/milestones#m-<slug>` and `/features#F<n>` now redirect to.
+   */
+  protected readonly treeLink = computed(() => planningTreeLink(this.state.ws() ?? ''));
   protected readonly areaLink = computed(() => {
     const area = this.state.area();
     return specLink(this.state.ws() ?? '', this.id(), area === null ? '' : areaPath(areaById(area)));

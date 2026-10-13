@@ -146,14 +146,14 @@ const workspaceShortcuts: Shortcut[] = [
     target: 'shell.pages.planning',
   },
   // Spec 024 (T58, ISC-150.1): `g f` Features and `g m` Milestones; both free in the workspace context (`f` and `m`
-  // alone are single keys, not `g` sequences). Spec 026: they left the page registry for Planning and stay as aliases
-  // of their routes until T30 turns those into redirects to the tree.
+  // alone are single keys, not `g` sequences). Spec 026 (ISC-167.1): they left the page registry for Planning and stay
+  // as aliases of the old routes, which redirect to the tree, so they open the tree directly.
   ...(['features', 'milestones'] as const).map(
     (page): Shortcut => ({
       id: `go-${page}`,
       keys: [GO_PREFIX, page.charAt(0)],
       group: 'workspace',
-      action: { kind: 'go-page', page },
+      action: { kind: 'go-page', page: 'planning' },
       label: 'shortcuts.actions.goTo',
       target: `shell.pages.${page}`,
     }),

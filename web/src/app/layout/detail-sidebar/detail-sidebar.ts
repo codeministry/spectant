@@ -9,6 +9,7 @@ import {
   inject,
   input,
   linkedSignal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -122,13 +123,15 @@ export class DetailSidebar {
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
 
   constructor() {
-    // A new selection moves focus to the title in the non-modal presentations (the sheet's dialog focuses it itself).
+    // A new selection moves focus to the title in the non-modal presentations (the sheet's dialog focuses it itself),
+    // unless the view holds the focus on the object's own element (the tree's arrival row, ISC-167.1).
     let focused: RelationRef | null = null;
     afterRenderEffect(() => {
       const entry = this.shown();
       const title = this.title();
       if (!entry || !title || this.presentation() === 'sheet' || entry.ref === focused) return;
       focused = entry.ref;
+      if (untracked(this.selection.heldFocus) === entry.ref) return;
       title.nativeElement.focus({ preventScroll: true });
     });
   }

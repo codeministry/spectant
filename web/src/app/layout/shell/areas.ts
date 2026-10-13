@@ -137,3 +137,17 @@ export const workspacePageById = (id: WorkspaceMenuPageId): WorkspacePage => WOR
 
 /** `['/w', ws]` for Specs (the workspace root), else `['/w', ws, page]`, as a router link. */
 export const workspaceLink = (ws: string, page: WorkspaceMenuPageId): string[] => (page === 'specs' ? ['/w', ws] : ['/w', ws, page]);
+
+/** `['/w', ws, 'planning', 'tree']`, the planning page's tree lens as a router link (spec 026, ISC-167). */
+export const planningTreeLink = (ws: string): string[] => ['/w', ws, 'planning', 'tree'];
+
+/**
+ * The `?sel=` ref an old planning anchor names (spec 026, ISC-167.1): `F<n>` on `/features` is `feature:F<n>`,
+ * `m-<slug>` on `/milestones` is `milestone:<slug>`; any other anchor names nothing.
+ */
+export function anchorRef(page: 'features' | 'milestones', fragment: string | null): string | null {
+  if (fragment === null) return null;
+  if (page === 'features') return /^F\d+$/u.test(fragment) ? `feature:${fragment}` : null;
+  const slug = /^m-(.+)$/u.exec(fragment)?.[1];
+  return slug === undefined ? null : `milestone:${slug}`;
+}
