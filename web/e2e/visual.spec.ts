@@ -1,11 +1,11 @@
 /**
- * The visual smoke set: five representative pages, light at 390, 820 and 1440 (one width per tier), dark at 1440 only,
- * since the dark theme changes colours, not layout. 20 baselines that catch an unintended visual change (a cascade
+ * The visual smoke set: six representative pages, light at 390, 820 and 1440 (one width per tier), dark at 1440 only,
+ * since the dark theme changes colours, not layout. 24 baselines that catch an unintended visual change (a cascade
  * side effect, a broken tier, a theme token) without pinning every view of every spec; behaviour and structure stay
- * with the e2e and browser tiers. The former Tech page went with spec 017; the Library's cases follow (T55).
+ * with the e2e and browser tiers.
  *
- *   bun run test:visual                       light, 15 baselines
- *   bun run test:visual -- --theme dark       dark, 5 baselines
+ *   bun run test:visual                       light, 18 baselines
+ *   bun run test:visual -- --theme dark       dark, 6 baselines
  *   bun run test:visual -- board              one page (the group names below)
  *
  * Baselines live under `__screenshots__/chromium/{light,dark}/visual.spec.ts/` and are recorded only in the pinned
@@ -16,7 +16,7 @@ import type { Page } from '@playwright/test';
 
 import { DEFAULT_WORKFLOW } from '../../core/src/stage';
 import { atWidth, expect, FIXED_NOW, test, theme, WIDTHS } from './fixtures';
-import { STATE_HEADER } from './stub-api';
+import { STATE_HEADER, STUB_LIBRARY } from './stub-api';
 
 const SESSION = 'X-Spectant-Stub-Session';
 const SCREENSHOT = { fullPage: true, maxDiffPixelRatio: 0 } as const;
@@ -49,6 +49,22 @@ const VIEWS: readonly View[] = [
       await expect(page.locator('figure[data-workflow-figure="feature"] [data-diagram] g[data-stage] text').first()).not.toHaveText(
         /^stages\./,
       );
+    },
+  },
+  {
+    name: 'library',
+    // The stub's prototype picked and the list narrowed to its spec, so the group head stands above the fold of the
+    // list's own scroll: at 1440 the list (control counts, the spec's group head) sits beside the reader with the
+    // prototype card; below the wide tier the reader takes the list's place, and the image shows the card alone.
+    path: `/w/harbor/library?spec=${STUB_LIBRARY.prototype.path.slice(0, 3)}#${STUB_LIBRARY.prototype.path}`,
+    host: 'app-library-page',
+    drawn: async (page) => {
+      const preview = page.locator('[data-library-prototype] [data-library-prototype-preview] img');
+      await expect(preview).toBeVisible();
+      await expect.poll(() => preview.evaluate((img: HTMLImageElement) => (img.complete ? img.naturalWidth : 0))).toBeGreaterThan(0);
+      if ((page.viewportSize()?.width ?? 0) < WIDTHS.desktop) return;
+      await expect(page.locator('[data-library-controls] [data-library-control] [data-library-control-count]')).toHaveCount(2);
+      await expect(page.locator('[data-library-group-head] [data-library-head="claims"]').first()).toBeVisible();
     },
   },
 ];
