@@ -1132,6 +1132,12 @@
         "subagent": null
       }
     ],
-    "staleAfterMs": 2700000
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
   }
 }

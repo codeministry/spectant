@@ -2,7 +2,7 @@
 // that could write (ISC-15). `core/` runs no subprocess; the server reads here and passes the records in.
 //
 // Read-only by construction: only `rev-parse`, `log`, `config --get` (the identity, `userEmail`) and `for-each-ref`
-// (the branch names, `takenSpecNumbers`) run, all of which
+// (the branch names, `takenSpecNumbers`) and `worktree list --porcelain` (the worktrees, `worktreeList`) run, all of which
 // never touch the index, never take a lock and never write an object; `GIT_OPTIONAL_LOCKS=0` covers any optional lock
 // a future git might take. The inherited
 // `GIT_DIR`, `GIT_WORK_TREE` and `GIT_INDEX_FILE` are dropped so the environment cannot redirect the read, pathspecs
@@ -323,6 +323,53 @@ export async function takenSpecNumbers(root: string, options: UserEmailOptions =
     return await Promise.race([read(), deadline]);
   } catch (error) {
     return nothing(`git read failed: ${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
+}
+
+// ── the worktrees (spec 027, T16, ISC-174, ISC-175) ──────────────────────────────────────────────────────────────
+
+/**
+ * The raw text of `git worktree list --porcelain` in `root`'s repository: the main checkout's record first, then every
+ * linked worktree's in git's order, unparsed and untrimmed. `core/`'s `assignWorktrees` reads it and decides which
+ * worktree belongs to which spec (FORMAT.md § Worktrees); the server only reads. One call, `worktree list`, which takes
+ * no lock and writes nothing (a stale worktree is marked `prunable`, never pruned); no fetch, no network.
+ * Never throws: no repository root, no git, a failure or the deadline answer the empty string, which
+ * `assignWorktrees` reads as no worktrees.
+ */
+export async function worktreeList(root: string, options: UserEmailOptions = {}): Promise<string> {
+  const runner = options.runner ?? defaultGitRunner;
+  try {
+    lstatSync(join(root, ".git"));
+  } catch {
+    return "";
+  }
+  return readWithin(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, "", async (signal) => {
+    const run = await runner(["-C", root, "worktree", "list", "--porcelain"], gitEnv(root), signal);
+    // No git (null), a non-zero exit and an aborted run all read as no listing; a partial text is never handed on.
+    return run?.code === 0 && !signal.aborted ? run.stdout : "";
+  });
+}
+
+/**
+ * `read` under one deadline: `fallback` when the deadline passes first (the signal aborts, which kills the child) or
+ * when `read` throws. The bound the worktree reads share.
+ */
+async function readWithin<T>(timeoutMs: number, fallback: T, read: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<T>((resolve) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      resolve(fallback);
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([read(controller.signal), deadline]);
+  } catch {
+    return fallback;
   } finally {
     clearTimeout(timer);
     controller.abort();

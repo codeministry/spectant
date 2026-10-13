@@ -18,9 +18,18 @@
 //                     Who works it (spec 008, T66, ISC-131.1) comes from that lock's actor: `agent` the agent session
 //                     (`a:<kind>:<id>`, a sub-agent's parent id), `subagent` the `a:<kind>:<id>/<task>` ref when it
 //                     names this card's task. Every other card, and a person's or legacy session's lock, has both null.
+//   4. runs           (spec 027, ISC-179.1) every card but an `absent` one whose task a run event of this spec names
+//                     carries `run`, the TaskRun `runStates` (locks.ts) folds from the reading's run lines: `apply`
+//                     reads `applied` once tasks.md checks the task, else `applied-open`. The log is repository-wide
+//                     and keyed by task id, so a run line counts here only for a task of this spec (a tasks.md line,
+//                     else a carried card) and, when it names a claim, only when that claim is the task's own. The run
+//                     is additive: the card's state stays what layers 1–3 made it. A card without a run has no `run`.
 //
-// The frame adds the agents rail (one entry per session holding a lock here, oldest lock first) and the Needs you list
-// (question, concerns, open operator steps). Claims progress comes from spec.md's boxes, tasks progress from the cards.
+// The frame adds the agents rail (one entry per session holding a lock here, oldest lock first), the Needs you list
+// (question, concerns, open operator steps) and the round group `inRound`: the cards with a run whose task tasks.md has
+// not ticked, furthest along first, with their counts per lane and in total. A ticked card keeps its run (`applied`),
+// but its landed state wins and it has left the group. Only this frame carries runs; frames.ts's frames never do.
+// Claims progress comes from spec.md's boxes, tasks progress from the cards.
 //
 // Pure: texts, frames, a lock reading and the clock in, the frame out. No file system, no clock of its own, no Bun or
 // node API of its own (the reviewed mark's digest is gates.ts's `node:crypto` hash); the server reads the lock
@@ -28,11 +37,12 @@
 import { parseActor } from './actor.ts';
 import type { Claim } from './claims.ts';
 import { countProgress, parseClaims } from './claims.ts';
-import type { ActorRef, AgentLockSource, CardState, ClaimLock, FrameCard, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, TaskRow } from './files.ts';
+import type { ActorRef, AgentLockSource, CardState, ClaimLock, FrameCard, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, LiveRound, LockReading, RunCounts, RunState, TaskRow, TaskRun } from './files.ts';
 import { buildFrames, worstState } from './frames.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { reviewedGate } from './gates.ts';
 import type { MarkState } from './gates.ts';
+import { runStates } from './locks.ts';
 import { heldLocks } from './status.ts';
 import { takeableSet } from './takeable.ts';
 import { parseTaskLines } from './tasks.ts';
@@ -65,12 +75,21 @@ export function buildLiveFrame(input: LiveFrameInput): LiveFrame {
   const held = new Map(locks.map((l) => [l.claim, l]));
 
   const overlaid = rows.length === 0 ? [...base] : overlayTasks(base, rows, claims, locks, spec, reviewedGate(files.texts).check.state);
-  const cards: LiveCard[] = overlaid.map((card): LiveCard => {
+  /** Layer 3: a held lock puts a card in flight. */
+  const lockLayer = (card: FrameCard): LiveCard => {
     const lock = held.get(card.claim);
     if (lock === undefined || LANDED.has(card.state) || card.state === 'absent' || card.lane === OPERATOR) return { ...card, agent: null, subagent: null };
     const elapsedMs = elapsed(now, lock.since);
     // In flight: the session is the reason, so a waiting or dispatch reason is dropped.
     return ordered({ ...card, state: 'running', lock: { source: lock.source, session: lock.session }, since: lock.since, elapsedMs, stale: elapsedMs > staleAfterMs, ...workersOf(lock.actor, card.task) }, 'reason');
+  };
+  // Layer 4: the run, after every other field (CARD_KEYS order).
+  const ticked = new Set(rows.filter((r) => r.state === 'done').map((r) => r.id));
+  const runs = specRuns(reading, rows, overlaid, ticked);
+  const cards: LiveCard[] = overlaid.map((card): LiveCard => {
+    const live = lockLayer(card);
+    const run = card.state === 'absent' ? undefined : runs.get(card.task);
+    return run === undefined ? live : { ...live, run };
   });
 
   const present = cards.filter((c) => c.state !== 'absent');
@@ -93,6 +112,34 @@ export function buildLiveFrame(input: LiveFrameInput): LiveFrame {
     agents: agentsOf(locks, now, staleAfterMs),
     needsYou: NEEDS_YOU.flatMap((state) => cards.filter((c) => c.state === state)),
     staleAfterMs,
+    inRound: roundOf(cards.filter((c) => c.run && !ticked.has(c.task)), last?.round ?? null),
+  };
+}
+
+/**
+ * Layer 4: this spec's runs by task id. A run line counts for a task of this spec (a tasks.md line, else a carried
+ * card) and, when it names a claim, only when that claim is the task's own, so another spec's `T26` stays out; a line
+ * without a claim is matched by its task id alone. tasks.md's checked boxes decide `applied` over `applied-open`.
+ */
+function specRuns(reading: LockReading, rows: readonly TaskRow[], cards: readonly FrameCard[], ticked: ReadonlySet<string>): Map<string, TaskRun> {
+  const claimOf = new Map<string, string>(rows.length === 0 ? cards.map((c) => [c.task, c.claim]) : rows.map((r) => [r.id, r.claim]));
+  const ours = (reading.runs ?? []).filter((r) => claimOf.has(r.task) && (r.claim === undefined || r.claim === claimOf.get(r.task)));
+  return new Map(runStates({ ...reading, runs: ours }, ticked).map((run) => [run.task, run]));
+}
+
+/** The run states the round counts, in run order; the group lists them reversed, furthest along first. */
+const ROUND_STATES: readonly RunState[] = ['dispatched', 'building', 'patched', 'applied-open'];
+
+/** The group "in round n" over `cards` (board order): `round` is the round after the last recorded one. */
+function roundOf(cards: readonly LiveCard[], lastRound: number | null): LiveRound {
+  const stateOf = (c: LiveCard): RunState | undefined => c.run?.state;
+  const counts = (of: readonly LiveCard[]): RunCounts => Object.fromEntries(ROUND_STATES.map((s) => [s, of.filter((c) => stateOf(c) === s).length] as const).filter(([, n]) => n > 0));
+  const lanes = [...new Set(cards.map((c) => c.lane))];
+  return {
+    round: cards.length === 0 ? null : (lastRound ?? 0) + 1,
+    cards: [...ROUND_STATES].reverse().flatMap((s) => cards.filter((c) => stateOf(c) === s)),
+    lanes: Object.fromEntries(lanes.map((lane) => [lane, counts(cards.filter((c) => c.lane === lane))])),
+    total: counts(cards),
   };
 }
 
@@ -186,6 +233,7 @@ const CARD_KEYS: ReadonlyArray<keyof LiveCard> = [
   'stale',
   'agent',
   'subagent',
+  'run',
 ];
 
 /** `now − since` in milliseconds; 0 for a timestamp that does not parse or lies ahead of the clock. */

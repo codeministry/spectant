@@ -15,11 +15,19 @@
 // The goldens beside the listings in core/fixtures/worktrees/ are hand-written: two-space JSON, keys sorted, one
 // trailing newline. The model is compared with them byte for byte after its keys are sorted the same way, so the order
 // in which `worktrees.ts` builds an object does not matter. `-t assign` runs ISC-174, `-t mismatch` ISC-174.1.
+//
+// Spec 027, ISC-181 and ISC-181.1: where a spec's files are read. `specSourceOf({ folder, worktree, lsFiles })` takes
+// the spec folder (`NNN-slug`), the worktree `assignWorktrees` gave the spec (or null) and the paths the server's
+// `git ls-files -z -- specs/NNN-slug` printed in the main checkout, and returns `worktree` only when the worktree is a
+// spec worktree of that spec and one listed path lies under `specs/NNN-slug/`; `main` otherwise. The worktrees come
+// from the listings above, so the source is decided on what `assignWorktrees` really builds. `-t source` runs ISC-181's
+// core part, `-t untracked` the pure part of ISC-181.1 (an untracked or symlinked `specs/` keeps `main`).
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 
-import { assignWorktrees } from '../src/worktrees.ts';
+import { FILE_KINDS, type Worktree } from '../src/files.ts';
+import { assignWorktrees, specSourceOf, WORKTREE_COPY_KINDS } from '../src/worktrees.ts';
 import { goldenText } from './helpers/golden.ts';
 
 const DIR = join(import.meta.dir, '..', 'fixtures', 'worktrees');
@@ -128,5 +136,94 @@ describe('mismatch: the path and the branch of a worktree name two different spe
     const plain = assignWorktrees(read('spec-worktrees.porcelain'), SPECS);
     expect(plain.worktrees.find((w) => w.path === '.worktrees/scratch')).toMatchObject({ kind: 'spec', spec: null });
     expect(plain.diagnostics).toEqual([]);
+  });
+});
+
+/** The worktree `assignWorktrees` gives spec `id` in a listing of the fixture; null when it gives none. */
+function worktreeOf(listing: string, id: string): Worktree | null {
+  return assignWorktrees(read(`${listing}.porcelain`), SPECS).worktrees.find((w) => w.spec === id) ?? null;
+}
+
+/** The first builder of the fixture, as `assignWorktrees` builds it: kind `builder`, `spec` null. */
+function firstBuilder(): Worktree {
+  const builder = assignWorktrees(read('builders.porcelain'), SPECS).worktrees.find((w) => w.kind === 'builder');
+  if (builder === undefined) throw new Error('builders.porcelain lists no builder');
+  return builder;
+}
+
+/** What `git ls-files -z -- specs/012-harbor` prints, split on NUL, when the folder is tracked. */
+const HARBOR_TRACKED = [
+  'specs/012-harbor/.gates/reviewed.json',
+  'specs/012-harbor/events.jsonl',
+  'specs/012-harbor/plan.md',
+  'specs/012-harbor/spec.md',
+  'specs/012-harbor/tasks.md',
+] as const;
+
+describe('source: where the app reads a spec, the main checkout or the copy in its worktree (ISC-181)', () => {
+  test('a tracked folder and a spec worktree of that spec read from the worktree', () => {
+    const worktree = worktreeOf('spec-worktrees', '012');
+    expect(worktree).toMatchObject({ path: '.worktrees/012-harbor', kind: 'spec', spec: '012' });
+    expect(specSourceOf({ folder: '012-harbor', worktree, lsFiles: HARBOR_TRACKED })).toBe('worktree');
+  });
+
+  test('a tracked folder without a worktree reads from main', () => {
+    expect(worktreeOf('spec-worktrees', '015')).toBeNull();
+    expect(specSourceOf({ folder: '015-ledger', worktree: null, lsFiles: ['specs/015-ledger/spec.md'] })).toBe('main');
+  });
+
+  test('an empty ls-files answer reads from main even with a spec worktree', () => {
+    const worktree = worktreeOf('spec-worktrees', '012');
+    expect(specSourceOf({ folder: '012-harbor', worktree, lsFiles: [] })).toBe('main');
+  });
+
+  test('a builder worktree only reads from main, whatever its branch names', () => {
+    const builder = firstBuilder();
+    expect(specSourceOf({ folder: '012-harbor', worktree: builder, lsFiles: HARBOR_TRACKED })).toBe('main');
+    const onSpecBranch = { ...builder, branch: 'feature/012-harbor' };
+    expect(specSourceOf({ folder: '012-harbor', worktree: onSpecBranch, lsFiles: HARBOR_TRACKED })).toBe('main');
+  });
+
+  test('a worktree that belongs to another spec reads from main', () => {
+    const relay = worktreeOf('spec-worktrees', '013');
+    expect(relay).toMatchObject({ kind: 'spec', spec: '013' });
+    expect(specSourceOf({ folder: '012-harbor', worktree: relay, lsFiles: HARBOR_TRACKED })).toBe('main');
+  });
+
+  test('the copy holds the eight the claim names: five Markdown files, two logs and .gates/', () => {
+    const paths = WORKTREE_COPY_KINDS.map((kind) => FILE_KINDS[kind].path.replace(/^\.gates\/.*$/u, '.gates/'));
+    expect([...new Set(paths)]).toEqual([
+      'spec.md',
+      'plan.md',
+      'tasks.md',
+      'context.md',
+      'design.md',
+      'events.jsonl',
+      'rounds.jsonl',
+      '.gates/',
+    ]);
+    for (const kind of WORKTREE_COPY_KINDS) expect(FILE_KINDS[kind].scope).toBe('spec');
+  });
+});
+
+describe('untracked: an untracked or symlinked specs/ keeps every spec on the main checkout (ISC-181.1)', () => {
+  test('every spec worktree of the fixture keeps main when git lists nothing under its folder', () => {
+    for (const name of SPECS) {
+      const worktree = worktreeOf('spec-worktrees', name.slice(0, 3));
+      expect(specSourceOf({ folder: name, worktree, lsFiles: [] })).toBe('main');
+    }
+  });
+
+  test('a linked specs/ or spec folder: git lists the link itself, never a file under specs/NNN-slug/', () => {
+    const worktree = worktreeOf('spec-worktrees', '012');
+    for (const lsFiles of [['specs'], ['specs/012-harbor'], ['']]) {
+      expect(specSourceOf({ folder: '012-harbor', worktree, lsFiles })).toBe('main');
+    }
+  });
+
+  test('a sibling folder that shares the name as a prefix counts for nothing', () => {
+    const worktree = worktreeOf('spec-worktrees', '012');
+    const lsFiles = ['specs/012-harbor-old/spec.md', 'specs/012-harbor.md', 'docs/specs/012-harbor/spec.md'];
+    expect(specSourceOf({ folder: '012-harbor', worktree, lsFiles })).toBe('main');
   });
 });

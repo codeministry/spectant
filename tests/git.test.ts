@@ -12,8 +12,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { CommitCache, commitsFor, defaultGitRunner, type GitRunner, takenSpecNumbers, userEmail } from "../server/src/git.ts";
+import { basename, dirname, join } from "node:path";
+import { assignWorktrees } from "../core/src/worktrees.ts";
+import { CommitCache, commitsFor, defaultGitRunner, type GitRunner, takenSpecNumbers, userEmail, worktreeList } from "../server/src/git.ts";
 
 const FOLDER = "specs/010-x";
 
@@ -454,6 +455,97 @@ describe("takenSpecNumbers reads the spec numbers branch names and history have 
     const beforeRepo = checksum(repo);
     await takenSpecNumbers(repo);
     expect(checksum(repo)).toBe(beforeRepo);
+  });
+});
+
+describe("worktreeList reads the raw `git worktree list --porcelain` text (spec 027, T16, ISC-174, ISC-175)", () => {
+  /**
+   * A repository with one commit on main and two linked worktrees inside it: `.worktrees/027-x` on the new branch
+   * `feature/027-x` and `.worktrees/detached` on a detached HEAD. Uncommitted state in the linked worktree too, so a
+   * reader that refreshed an index or took a lock there would show in the hash.
+   */
+  function worktreeRepo(): string {
+    const dir = mkdtempSync(join(root, "worktrees-"));
+    git(dir, "2026-01-01T00:00:00Z", "init", "-q", "-b", "main");
+    commit(dir, "2026-01-01T12:00:00Z", "spec 027", { "specs/027-x/spec.md": "# x\n" });
+    git(dir, "2026-01-02T00:00:00Z", "worktree", "add", "-q", "-b", "feature/027-x", ".worktrees/027-x");
+    git(dir, "2026-01-02T00:00:00Z", "worktree", "add", "-q", "--detach", ".worktrees/detached");
+    writeFileSync(join(dir, ".worktrees/027-x/specs/027-x/plan.md"), "# uncommitted\n");
+    const future = new Date("2030-01-01T00:00:00Z");
+    utimesSync(join(dir, ".worktrees/027-x/specs/027-x/spec.md"), future, future);
+    return dir;
+  }
+
+  const records = (text: string): string[] => text.split("\n").filter((line) => line.startsWith("worktree "));
+
+  test("the main checkout and both linked worktrees, three records in git's own order and bytes", async () => {
+    const dir = worktreeRepo();
+    const text = await worktreeList(dir);
+    // Exactly what git prints for the same listing (the helper trims, so compare without the closing blank line).
+    expect(text.trimEnd()).toBe(git(dir, "2026-01-03T00:00:00Z", "worktree", "list", "--porcelain"));
+    const paths = records(text).map((line) => line.slice("worktree ".length));
+    expect(paths).toHaveLength(3);
+    expect(paths[0]?.endsWith(`/${basename(dir)}`)).toBe(true);
+    expect(paths.slice(1).map((p) => p.slice(p.indexOf("/.worktrees/") + 1)).sort()).toEqual([".worktrees/027-x", ".worktrees/detached"]);
+    expect(text).toContain("branch refs/heads/main\n");
+    expect(text).toContain("branch refs/heads/feature/027-x\n");
+    expect(text).toContain("\ndetached\n");
+  });
+
+  test("core's assignWorktrees takes the text as it is: the branch worktree is spec 027, the detached one no spec", async () => {
+    const dir = worktreeRepo();
+    const { worktrees, builders, diagnostics } = assignWorktrees(await worktreeList(dir), ["027-x"]);
+    expect(builders).toBe(0);
+    expect(diagnostics).toEqual([]);
+    expect([...worktrees].sort((a, b) => a.path.localeCompare(b.path))).toEqual([
+      { path: ".worktrees/027-x", branch: "feature/027-x", spec: "027", ahead: null, dirty: null, kind: "spec" },
+      { path: ".worktrees/detached", branch: null, spec: null, ahead: null, dirty: null, kind: "spec" },
+    ]);
+  });
+
+  test("runs only `worktree list --porcelain`, rooted at the repository, under the read-only environment, no fetch", async () => {
+    const dir = worktreeRepo();
+    const seen: Array<{ args: string[]; env: Record<string, string> }> = [];
+    const runner: GitRunner = (args, env, signal) => {
+      seen.push({ args: [...args], env });
+      return defaultGitRunner(args, env, signal);
+    };
+    expect(records(await worktreeList(dir, { runner }))).toHaveLength(3);
+    expect(seen.map((s) => s.args)).toEqual([["-C", dir, "worktree", "list", "--porcelain"]]);
+    expect(seen[0]?.env).toMatchObject({ GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0", GIT_CEILING_DIRECTORIES: dirname(dir) });
+  });
+
+  test("a directory that is no repository root → empty, git never spawned", async () => {
+    const { runner, calls } = countingRunner();
+    expect(await worktreeList(mkdtempSync(join(root, "worktrees-plain-")), { runner })).toBe("");
+    expect(await worktreeList(join(repo, "specs"), { runner })).toBe("");
+    expect(calls).toEqual([]);
+  });
+
+  test("no git on PATH, a failing git, a throwing runner or the deadline → empty, never a throw", async () => {
+    const dir = worktreeRepo();
+    const savedPath = process.env.PATH;
+    process.env.PATH = mkdtempSync(join(root, "no-git-"));
+    try {
+      expect(await worktreeList(dir)).toBe("");
+    } finally {
+      if (savedPath === undefined) Reflect.deleteProperty(process.env, "PATH");
+      else process.env.PATH = savedPath;
+    }
+    expect(await worktreeList(dir, { runner: () => Promise.resolve(null) })).toBe("");
+    expect(await worktreeList(dir, { runner: () => Promise.resolve({ code: 128, stdout: "worktree /x\n", stderr: "fatal: broken\n" }) })).toBe("");
+    expect(await worktreeList(dir, { runner: () => Promise.reject(new Error("spawn failed")) })).toBe("");
+    const slow: GitRunner = () => new Promise(() => undefined);
+    expect(await worktreeList(dir, { runner: slow, timeoutMs: 20 })).toBe("");
+  });
+
+  test("reading the listing leaves the repository and its worktrees, .git/ included, byte- and mtime-identical (ISC-182)", async () => {
+    const dir = worktreeRepo();
+    const before = checksum(dir);
+    await worktreeList(dir);
+    await worktreeList(dir, { timeoutMs: 1 });
+    await worktreeList(join(dir, ".worktrees/027-x"));
+    expect(checksum(dir)).toBe(before);
   });
 });
 

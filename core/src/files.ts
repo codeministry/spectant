@@ -873,7 +873,10 @@ export interface LiveCard extends FrameCard {
   readonly agent: ActorRef | null;
   /** The sub-agent working the task, `a:<kind>:<id>/<task>` naming this card's own task; null when none does (T66). */
   readonly subagent: ActorRef | null;
-  /** The task's run in the implement round (spec 027, ISC-179.1); null or absent when no run event names the task. */
+  /**
+   * The task's run in the implement round (spec 027, ISC-179.1); null or absent when no run event of this spec names the
+   * task. `buildLiveFrame` leaves it absent then, and on an `absent` card. Set on the live frame's cards only.
+   */
   readonly run?: TaskRun | null;
 }
 
@@ -902,6 +905,33 @@ export interface LiveFrame extends Frame {
   readonly needsYou: readonly LiveCard[];
   /** The threshold `stale` was computed with. */
   readonly staleAfterMs: number;
+  /**
+   * The implement round as its run events show it (spec 027, ISC-179.1). Optional so a hand-built frame may omit it;
+   * `buildLiveFrame` always sets it. Historical frames never carry run states.
+   */
+  readonly inRound?: LiveRound;
+}
+
+/**
+ * How many cards are in each run state (spec 027, ISC-179.1): only states above 0, in run order (dispatched, building,
+ * patched, applied-open). `applied` never counts: a ticked task has left the round.
+ */
+export type RunCounts = Partial<Readonly<Record<RunState, number>>>;
+
+/**
+ * The live frame's group "in round n" (spec 027, ISC-179.1): the cards whose run chip shows, which are the cards with a
+ * run whose task tasks.md has not ticked. A ticked card keeps its `run` (state `applied`), but its landed card state
+ * wins, so it is in none of these fields.
+ */
+export interface LiveRound {
+  /** n: the round the write-order has not recorded yet, the live frame's `round` + 1 (1 without one); null when empty. */
+  readonly round: number | null;
+  /** The cards of the round, furthest along first (applied-open, patched, building, dispatched), board order within. */
+  readonly cards: readonly LiveCard[];
+  /** Per lane with a card in the round, in board order of first appearance: its counts, for the lane head. */
+  readonly lanes: Readonly<Record<string, RunCounts>>;
+  /** The board's counts, for the toolbar. */
+  readonly total: RunCounts;
 }
 
 export interface LiveFrameInput {

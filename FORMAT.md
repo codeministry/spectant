@@ -1147,10 +1147,10 @@ applicable".
 
 ## Worktrees
 
-Read from git, never written by the app (spec 027, `worktrees.ts`). `core/src/worktrees.ts` assigns the worktrees and
-raises the mismatch warning; the server side — reading git (`ahead`, `dirty`), switching the read source and the
-writes to the worktree copy — is still being built, and until it lands every spec is read from the main checkout. The
-rules below are the contract.
+Read from git, never written by the app (spec 027, `worktrees.ts`). `core/src/worktrees.ts` assigns the worktrees,
+raises the mismatch warning and decides the read source; the server side — reading git (`ahead`, `dirty`,
+`ls-files`), switching the read source and the writes to the worktree copy — is still being built, and until it lands
+every spec is read from the main checkout. The rules below are the contract.
 
 The server reads one listing per registered repository, `git worktree list --porcelain`, and hands its text to
 `core/`, which decides which worktree belongs to which spec and never runs git itself. Every git call is a read: no
@@ -1220,18 +1220,20 @@ They are assigned as follows; the main checkout `/srv/repo` is not among the wor
 | `.claude/worktrees/agent-a1b2c3d4` | `worktree-agent-a1b2c3d4` | `builder` | null | counted, never read |
 
 **The read source** (`SpecSource`, ISC-181). A spec's files come from one place, `main` or `worktree`. The source is
-`worktree` only when the spec has a worktree and its folder `specs/NNN-slug/` is tracked in git, which the server asks
-with `git ls-files specs/NNN-slug` in the main checkout. Then `spec.md`, `plan.md`, `tasks.md`, `context.md`,
-`design.md`, `events.jsonl`, `rounds.jsonl` and `.gates/` are read from the worktree's copy,
+`worktree` only when the spec has a worktree of kind `spec` assigned to it (a builder never counts) and its folder
+`specs/NNN-slug/` is tracked in git. The server asks git with `git ls-files -z -- specs/NNN-slug` in the main checkout
+and hands the listed paths, split on NUL, to `specSourceOf` (`core/src/worktrees.ts`), which counts the folder as
+tracked when one of them lies under `specs/NNN-slug/`. Then the kinds in `WORKTREE_COPY_KINDS`, `spec.md`, `plan.md`,
+`tasks.md`, `context.md`, `design.md`, `events.jsonl`, `rounds.jsonl` and `.gates/`, are read from the worktree's copy,
 `<worktree>/specs/NNN-slug/`, and the spec header names that source with the main checkout's stage and progress beside
-it. The three in-place writes to an
-existing spec, the reviewed mark, a task checkbox and a stage transition, go to that same copy under the same hash check
-against the file of that copy; the main checkout stays byte-identical. A write whose source changed since the client
-rendered it, because a worktree appeared or vanished, is a 409. Allocating an idea creates a spec that has no worktree
-yet, so it always writes in the main checkout.
+it. The three in-place writes to an existing spec, the reviewed mark, a task checkbox and a stage transition, go to
+that same copy under the same hash check against the file of that copy; the main checkout stays byte-identical. A
+write whose source changed since the client rendered it, because a worktree appeared or vanished, is a 409.
+Allocating an idea creates a spec that has no worktree yet, so it always writes in the main checkout.
 
 Everywhere else the source stays `main`, as before spec 027: the spec has no worktree, its folder is untracked, or
-`specs/` is a symbolic link, which `git ls-files` does not list as the folder. Spectant's own repository is that case:
+`specs/` or the folder is a symbolic link, which git lists, if at all, as the link itself (`specs`, `specs/NNN-slug`),
+never as a path under the folder. Spectant's own repository is that case:
 its `specs/` is untracked and linked into every spec worktree, so the worktree's copy is the main checkout's file and
 the source does not change (ISC-181.1). The repository kinds (`constitution`, `master`, `idea`, `workflow`, `tokens`)
 are read from the main checkout in every case.
@@ -1332,6 +1334,20 @@ lock a person (`u:`) or a legacy session holds, since neither is an agent; a sub
 leaves `subagent` `null`. In harbor 002, T27 is worked by `a:claude:sess-2` with no sub-agent. The frame names the reading's source (`frontier`,
 `activity`, `none`), lists the sessions holding locks here, and carries the Needs you cards (question, concerns, open
 operator steps). The clock is the caller's: the frame's `ts` is the time it was built.
+
+Last, the run events (spec 027, ISC-179.1): every card but an `absent` one whose task a run event of this spec names
+carries `run`, the task's `TaskRun` (`{task, state, session, worktree, ts}`, above); a card without one has no `run`
+field. The log is repository-wide and keyed by task id, so a run line counts for a spec only when its task is one of
+the spec's tasks and, when the line names a claim, that claim is the task's own; a line without a claim is matched by
+its task id alone. The run is additive, the card's `state` stays what the layers above made it. The frame's `inRound`
+is the group "in round n": `cards` holds the cards with a run whose task `tasks.md` has not checked, furthest along
+first (`applied-open`, `patched`, `building`, `dispatched`), board order within each; `lanes` counts them per lane, in
+board order, and `total` for the whole board, both only for states above 0 and in run order; `round` is the round the
+write-order has not recorded yet, the frame's `round` + 1 (1 without `rounds.jsonl`), and `null` when no card is in it.
+Once `tasks.md` checks a task its run reads `applied`, its landed card state wins and it leaves the group. Only the
+live frame carries runs; the frames of `rounds.jsonl` never do. In harbor 002, T28 is `waiting` with run
+`applied-open` and is the one card of round 4; T26 is `closed` with run `applied`; harbor 004's own T26 and T28 carry
+no run, since the log's lines name 002's claims.
 
 **Derived: the dashboard row's locks** (spec 002, T115, `dashboard.ts`), from the same reading and the same
 per-claim selection as the live frame, so the row and the board name the same session. `taken` lists every claim of the

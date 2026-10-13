@@ -17,10 +17,20 @@
 //     `subject` and the record's `worktree` line as its `line`.
 //   - `ahead` and `dirty` stay null: the server reads them in each spec worktree, with git, read-only (ISC-175).
 //
+// It also decides where a spec's files are read (ISC-181, ISC-181.1), `specSourceOf`. The server hands it the spec
+// folder, the worktree assigned above (or null) and the paths `git ls-files -z -- specs/NNN-slug` printed in the main
+// checkout; core never asks git and never looks at a file:
+//
+//   - The source is `worktree` only when the worktree is of kind `spec`, belongs to this spec, and git listed at least
+//     one path under `specs/NNN-slug/`. Then the kinds in `WORKTREE_COPY_KINDS` come from the worktree's copy.
+//   - Everything else is `main`: no worktree, a builder, a worktree of another spec, an empty answer. A symbolic link
+//     is listed as itself, `specs` or `specs/NNN-slug` without a slash after it, never as a path under the folder, so
+//     an untracked or linked `specs/` keeps `main`, Spectant's own repository included.
+//
 // Pure and browser-safe like `planning.ts`: text in, model out, no file system, no git, no Node or Bun API. Malformed
 // lines are skipped, never thrown on: a listing git did not print yields no worktrees rather than an empty page.
 import type { Diagnostic } from './diagnostics.ts';
-import type { WarningKind, Worktree } from './files.ts';
+import type { FileKind, SpecSource, WarningKind, Worktree } from './files.ts';
 import { SPEC_FOLDER, specIdOf } from './spec-ref.ts';
 
 /** The worktrees of one workspace, assigned to its specs. */
@@ -144,4 +154,50 @@ export function assignWorktrees(porcelain: string, specs: readonly string[]): Wo
     worktrees.push({ path, branch: record.branch, spec: pathSpec ?? branchSpec, ahead: null, dirty: null, kind: 'spec' });
   }
   return { worktrees, builders, diagnostics };
+}
+
+// ─── The read source (ISC-181, ISC-181.1) ────────────────────────────────────────────────────────────────────────
+
+/** The folder of the repository that holds the spec folders, `specs/NNN-slug`. */
+const SPECS = 'specs';
+
+/**
+ * The file kinds read from the worktree's copy `<worktree>/specs/NNN-slug/` when the source is `worktree`: the eight
+ * ISC-181 names, `spec.md`, `plan.md`, `tasks.md`, `context.md`, `design.md`, `events.jsonl`, `rounds.jsonl` and
+ * `.gates/` (both marks). Every other kind, the repository kinds and `artifacts/` and `.evidence/` among them, stays on
+ * the main checkout.
+ */
+export const WORKTREE_COPY_KINDS: readonly FileKind[] = [
+  'spec',
+  'plan',
+  'tasks',
+  'context',
+  'design',
+  'events',
+  'rounds',
+  'gateReviewed',
+  'gateCodeReviewed',
+];
+
+/** What `specSourceOf` decides on: one spec, its worktree and git's answer about its folder. */
+export interface SpecSourceInput {
+  /** The spec folder name, `NNN-slug`. */
+  readonly folder: string;
+  /** The worktree `assignWorktrees` gave the spec; null when it has none. */
+  readonly worktree: Worktree | null;
+  /**
+   * The paths `git ls-files -z -- specs/NNN-slug` printed in the main checkout, split on NUL: relative to the
+   * repository root, `/`-separated, unquoted. Empty when the folder is untracked.
+   */
+  readonly lsFiles: readonly string[];
+}
+
+/**
+ * Where the app reads the spec's files: `worktree` only when the spec has a spec worktree of its own and git tracks a
+ * path under `specs/NNN-slug/`; `main` otherwise, an untracked or symlinked `specs/` included (ISC-181.1).
+ */
+export function specSourceOf({ folder, worktree, lsFiles }: SpecSourceInput): SpecSource {
+  const own = worktree !== null && worktree.kind === 'spec' && worktree.spec !== null && worktree.spec === specIdOf(folder);
+  const under = `${SPECS}/${folder}/`;
+  return own && lsFiles.some((path) => path.startsWith(under)) ? 'worktree' : 'main';
 }
