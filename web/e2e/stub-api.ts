@@ -24,6 +24,15 @@
  *   file's headers (`evidenceFileHeaders(mediaTypeOf(name))`, strong ETag over the bytes, 304, HEAD without a body):
  *   403 for a path that leaves `specs/` (a `..` segment, an absolute path, a backslash, a control character, a
  *   second encoding layer, a symlink out), 404 for no regular file.
+ * - The library (spec 017, T3, ISC-156), under the same guards: `GET|HEAD …/:ws/library` the workspace's
+ *   `LibraryCatalog`, core's `readCatalog` over the fixture tree made deterministic (`buildCatalog`: fixed times,
+ *   group heads and fog lines from the spec and tech goldens) plus `STUB_LIBRARY` on harbor (a `stale` plan, a
+ *   `missing` design.md, 57 evidence documents in 002, a prototype with two pages and a preview); `…/library/doc?path=`
+ *   one Markdown document of that catalog as core's `renderDocsMarkdown` page, 404 for any path it does not list as
+ *   one; `…/library/search?q=` the `LibrarySearchResult` over those documents, `{query: '', hits: []}` for a blank `q`;
+ *   `…/library/asset?path=` the tech asset's answer. `GET|HEAD /proto/:ws/:spec/:folder/*` (outside `/api`;
+ *   `serve-dist.ts` forwards it here) one file of a catalog prototype through core's resolver, every answer with
+ *   `PROTOTYPE_CSP`.
  * - Every route of `SPEC_ROUTE_TABLE` (`…/specs/:id…`): the per-spec value of the route's golden family
  *   (`core/fixtures/<golden>.<family>.golden.json`, keyed by `specs/<folder>`), `:id` resolved as `core/src/resolve.ts`
  *   does (`NNN`, folder or bare slug, archived folders too). 404 `NotFound` for an unknown workspace, spec or task, 404
@@ -65,6 +74,8 @@
  * - `X-Spectant-Stub-Write: ok | stale | locked` scripts the two writes (absent: `ok`). `ok` answers as the server
  *   does: 200 when the hashes sent equal the ones the stub last sent, else 409; `stale` is always 409 `Conflict`,
  *   `locked` always 423 `Locked`. The board writes (transition, allocate) honour it the same way.
+ * - `X-Spectant-Stub-Library: catalog | empty` picks the library (absent: `catalog`): `empty` answers every readable
+ *   workspace with `EMPTY_CATALOG`, a workspace without one document (the `empty` state lists no workspace at all).
  * - `X-Spectant-Stub-Session: <id>` scopes the settings and the writes (absent: one shared session);
  *   `POST /api/__stub/reset` restores that session's settings and notes and drops its writes and bumps (204).
  * - `POST /api/__stub/bump?ws=<slug>` changes that workspace's dashboard for that session between two polls (T68,
@@ -80,7 +91,7 @@
  * `listEvidence`, `resolveEvidencePath`, `docsFor` and `worstState` are loaded at runtime by a computed path, because
  * the core modules they pull in do not type-check under this tsconfig; their shapes are declared below.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { basename, join } from 'node:path';
 
@@ -97,15 +108,20 @@ import type {
   EvidencePathResult,
   Frame,
   GateView,
+  LibraryCatalog,
+  LibraryDoc,
+  LibraryFogLine,
   LiveAgent,
   LiveCard,
   LiveFrame,
   LockSource,
+  SpecGroupHead,
   SpecPageModel,
   SpecType,
   TaskRow,
   TaskStatus,
   TasksTab,
+  TechModel,
   TimelineEntry,
   Workflow,
 } from '../../core/src/files';
@@ -140,6 +156,14 @@ import {
   matchSpecPath,
   matchSpecRoute,
   matchWorkspacePath,
+  matchPrototypePath,
+  prototypeFolderOf,
+  PROTOTYPE_ALLOW,
+  PROTOTYPE_CSP,
+  PROTOTYPE_PREFIX,
+  type LibrarySearchHit,
+  type LibrarySearchResult,
+  type PrototypeRouteMatch,
   type Conflict,
   type DocMissing,
   type GateReviewedResponse,
@@ -198,6 +222,40 @@ export const WRITE_HEADER = 'X-Spectant-Stub-Write';
 export const RESET_PATH = '/api/__stub/reset';
 export const BUMP_PATH = '/api/__stub/bump';
 export const WORKFLOW_PATH = '/api/__stub/workflow';
+
+/**
+ * The library fixtures (spec 017, ISC-156): the workspace's catalog, or none at all. The `empty` workspace state lists
+ * no workspace, so every library route there is a 404 as on the server; a readable workspace without one document is
+ * this header's `empty` (the page's empty state, `/spec-bootstrap`).
+ */
+export const LIBRARY_STATES = ['catalog', 'empty'] as const;
+export type StubLibraryState = (typeof LIBRARY_STATES)[number];
+export const LIBRARY_HEADER = 'X-Spectant-Stub-Library';
+
+/** The catalog of a workspace without one document: what `readCatalog` returns for a tree with no spec folder. */
+export const EMPTY_CATALOG: LibraryCatalog = { docs: [], groups: [], fog: [], missing: 0, stale: 0 };
+
+/**
+ * What the stub adds to harbor's catalog, so one workspace carries every case the library page draws (T3): a `stale`
+ * plan, a `missing` design.md of a feature spec, more than 50 evidence documents in one spec (the collapsed subgroup
+ * that loads in blocks) and a prototype with two pages and a preview. The evidence documents are Markdown the stub
+ * holds; the prototype's files are the library fixture's `002-tide-board/.design/prototype/board/` (two HTML pages,
+ * CSS, script, image), served under harbor's `004-retention-policies/.design/prototype/board`.
+ */
+export const STUB_LIBRARY = {
+  stale: '004-retention-policies/plan.md',
+  missing: { path: '002-web-console/design.md', after: '002-web-console/tasks.md' },
+  evidence: { spec: '002-web-console', count: 56, after: '002-web-console/.evidence/kpi-band-390.png' },
+  prototype: {
+    path: '004-retention-policies/.design/prototype/board',
+    after: '004-retention-policies/.design/mobile-ist.png',
+    preview: '004-retention-policies/.design/mobile-ist.png',
+    source: ['library', 'specs', '002-tide-board', '.design', 'prototype', 'board'],
+  },
+} as const;
+
+/** The path of the n-th synthetic evidence document (1-based): `002-web-console/.evidence/run-07/probe.md`. */
+export const stubEvidencePath = (n: number): string => `${STUB_LIBRARY.evidence.spec}/.evidence/run-${String(n).padStart(2, '0')}/probe.md`;
 
 /**
  * The workspace routes with a whole-file golden family: the contract's `GOLDEN_FAMILY.planning` and the tech page's
@@ -407,17 +465,39 @@ type Core = {
   worstState: (states: Iterable<CardState>) => CardState;
   parseWorkflow: (text: string | null) => Workflow;
   boardStages: (workflow: Workflow) => PlanningModel['stages'];
+  readCatalog: (root: string) => Promise<LibraryCatalog>;
+  renderDocsMarkdown: (markdown: string, options?: unknown) => DocsPage;
+  docsRenderOptions: (root: string, docPath: string, name: DocName) => unknown;
+  levelTwoSection: (text: string, headings: readonly string[]) => string | null;
+  firstParagraph: (section: string) => string | null;
+  GOAL_HEADINGS: readonly string[];
 };
 
 /** Core's pure functions, loaded by a computed path so `tsc -p web/e2e` never walks core's module graph. */
 function loadCore(): Core {
   const load = createRequire(import.meta.url);
   const src = join(import.meta.dir, '..', '..', 'core', 'src');
-  const evidence = load(join(src, 'evidence.ts')) as Pick<Core, 'listEvidence' | 'resolveEvidencePath' | 'mediaTypeOf'>;
-  const docs = load(join(src, 'markdown-docs.ts')) as Pick<Core, 'docsFor'>;
+  const evidence = load(join(src, 'evidence.ts')) as Pick<Core, 'listEvidence' | 'resolveEvidencePath' | 'mediaTypeOf' | 'docsRenderOptions'>;
+  const docs = load(join(src, 'markdown-docs.ts')) as Pick<Core, 'docsFor' | 'renderDocsMarkdown'>;
   const frames = load(join(src, 'frames.ts')) as Pick<Core, 'worstState'>;
   const workflow = load(join(src, 'workflow.ts')) as Pick<Core, 'parseWorkflow' | 'boardStages'>;
-  return { ...evidence, ...docs, ...frames, parseWorkflow: workflow.parseWorkflow, boardStages: workflow.boardStages };
+  const library = load(join(src, 'library.ts')) as Pick<Core, 'readCatalog'>;
+  const archive = load(join(src, 'archive.ts')) as Pick<Core, 'levelTwoSection' | 'firstParagraph' | 'GOAL_HEADINGS'>;
+  return {
+    listEvidence: evidence.listEvidence,
+    resolveEvidencePath: evidence.resolveEvidencePath,
+    mediaTypeOf: evidence.mediaTypeOf,
+    docsRenderOptions: evidence.docsRenderOptions,
+    docsFor: docs.docsFor,
+    renderDocsMarkdown: docs.renderDocsMarkdown,
+    worstState: frames.worstState,
+    parseWorkflow: workflow.parseWorkflow,
+    boardStages: workflow.boardStages,
+    readCatalog: library.readCatalog,
+    levelTwoSection: archive.levelTwoSection,
+    firstParagraph: archive.firstParagraph,
+    GOAL_HEADINGS: archive.GOAL_HEADINGS,
+  };
 }
 
 // ---- the goldens --------------------------------------------------------------------------------------------------
@@ -772,6 +852,152 @@ function marked(row: TaskRow, checked: boolean): TaskRow {
   return checked ? { ...row, state: 'done', status: 'done' } : { ...row, state: 'open', status: 'open' };
 }
 
+// ---- the library (spec 017, T3) -----------------------------------------------------------------------------------
+
+/** One workspace's catalog as the stub serves it, and what the document, search and prototype routes read behind it. */
+type StubCatalog = {
+  catalog: LibraryCatalog;
+  /** The Markdown the stub holds for its synthetic documents, by `LibraryDoc.path`. */
+  texts: ReadonlyMap<string, string>;
+  /** Each prototype document's folder on disk, by `LibraryDoc.path`. */
+  prototypes: ReadonlyMap<string, string>;
+  /** The rendered pages, filled on first read. */
+  pages: Map<string, DocsPage>;
+};
+
+const emptyStubCatalog = (): StubCatalog => ({ catalog: EMPTY_CATALOG, texts: new Map(), prototypes: new Map(), pages: new Map() });
+
+/** plan.md's approach heading, as `core/src/tech.ts` reads it (its constant is not exported). */
+const APPROACH_HEADINGS: readonly string[] = ['Approach'];
+
+/** The media types a prototype page loads beyond core's evidence table, so its stylesheet and script are not refused under nosniff. */
+const PROTOTYPE_TYPES: ReadonlyMap<string, string> = new Map([
+  ['css', 'text/css'],
+  ['js', 'text/javascript'],
+  ['mjs', 'text/javascript'],
+]);
+
+const isoMinutesBefore = (iso: string, minutes: number): string =>
+  new Date(Date.parse(iso) - minutes * 60_000).toISOString().replace('.000Z', 'Z');
+
+function readTextOrNull(path: string): string | null {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+function insertAfter(docs: LibraryDoc[], anchor: string, entries: readonly LibraryDoc[]): void {
+  const at = docs.findIndex((doc) => doc.path === anchor);
+  if (at === -1) throw new Error(`stub-api: the library anchor ${anchor} is not in the catalog`);
+  docs.splice(at + 1, 0, ...entries);
+}
+
+/** `NNN-slug` of a path relative to `specs/`. */
+const specOfPath = (path: string): string => path.split('/')[0] ?? path;
+
+/**
+ * One workspace's catalog: core's `readCatalog` over the fixture tree for the documents (path, type, spec, title,
+ * media, pages), then made deterministic as a golden is: `modified` is the spec's frontmatter `updated:` (a workspace
+ * document `STUB_NOW`), every present document `ok` and core's own `missing` entries dropped, so a checkout's mtimes
+ * never change an answer. The group heads come from the spec and tech goldens (type, stage, claims, tasks, fog) and the
+ * fixture's spec.md and plan.md through core's section reader (goal, approach as Markdown source); the fog lines are
+ * the tech golden's. Harbor then gets `STUB_LIBRARY`.
+ */
+async function buildCatalog(core: Core, dir: string, tree: TreeGoldens, tech: TechModel): Promise<StubCatalog> {
+  const raw = await core.readCatalog(tree.root);
+  const active = tree.specs.filter((s) => s.key === `specs/${s.folder}`).sort((a, b) => (a.folder < b.folder ? -1 : a.folder > b.folder ? 1 : 0));
+  const heads = new Map(active.map((s) => [s.folder, s.spec.head]));
+  const updatedOf = (spec: string): string => heads.get(spec)?.updated ?? STUB_NOW;
+  const docs: LibraryDoc[] = raw.docs
+    .filter((doc) => doc.state !== 'missing')
+    .map((doc) => ({ ...doc, state: 'ok', modified: doc.spec === 'workspace' ? STUB_NOW : updatedOf(doc.spec) }));
+  const texts = new Map<string, string>();
+  const prototypes = new Map<string, string>(
+    docs.filter((doc) => doc.type === 'prototype').map((doc) => [doc.path, join(tree.root, 'specs', ...doc.path.split('/'))]),
+  );
+
+  if (tree.golden === 'harbor') {
+    const { stale, missing, evidence, prototype } = STUB_LIBRARY;
+    const at = docs.findIndex((doc) => doc.path === stale);
+    const staleDoc = docs[at];
+    if (staleDoc === undefined) throw new Error(`stub-api: the stale document ${stale} is not in the catalog`);
+    docs[at] = { ...staleDoc, state: 'stale', modified: heads.get(staleDoc.spec)?.started ?? STUB_NOW };
+    insertAfter(docs, missing.after, [
+      { path: missing.path, type: 'design', spec: specOfPath(missing.path), title: basename(missing.path), modified: null, state: 'missing', media: 'markdown' },
+    ]);
+    const runs = Array.from({ length: evidence.count }, (_, i): LibraryDoc => {
+      const n = i + 1;
+      const path = stubEvidencePath(n);
+      const title = `Probe run ${String(n).padStart(2, '0')}`;
+      texts.set(path, `# ${title}\n\nThe probe of run ${n} passed against the console build of round ${1 + (n % 3)}.\n`);
+      return { path, type: 'evidence', spec: evidence.spec, title, modified: isoMinutesBefore(updatedOf(evidence.spec), n * 10), state: 'ok', media: 'markdown' };
+    });
+    insertAfter(docs, evidence.after, runs);
+    const source = join(dir, ...prototype.source);
+    const pages = readdirSync(source, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.html'))
+      .map((entry) => entry.name)
+      .sort();
+    const spec = specOfPath(prototype.path);
+    insertAfter(docs, prototype.after, [
+      { path: prototype.path, type: 'prototype', spec, title: basename(prototype.path), modified: updatedOf(spec), state: 'ok', media: 'prototype', pages, preview: prototype.preview },
+    ]);
+    prototypes.set(prototype.path, source);
+  }
+
+  const fogOf = new Map(tech.specs.map((s) => [s.slug, s.fog]));
+  const groups = active.map((s): SpecGroupHead => {
+    const folder = join(tree.root, 'specs', s.folder);
+    const goal = core.levelTwoSection(readTextOrNull(join(folder, 'spec.md')) ?? '', core.GOAL_HEADINGS)?.trim() ?? '';
+    const plan = readTextOrNull(join(folder, 'plan.md'));
+    const section = plan === null ? null : core.levelTwoSection(plan, APPROACH_HEADINGS);
+    const { claims, tasks } = s.spec.keyNumbers;
+    return {
+      spec: s.folder,
+      type: s.spec.head.type,
+      stage: s.spec.head.stage,
+      claimsClosed: claims.closed,
+      claimsTotal: claims.total,
+      tasksDone: tasks.landed,
+      tasksTotal: tasks.total,
+      fog: fogOf.get(s.folder)?.length ?? 0,
+      goal: goal === '' ? null : goal,
+      approach: section === null ? null : core.firstParagraph(section),
+    };
+  });
+  const fog = tech.specs.flatMap((s) => s.fog.map((text): LibraryFogLine => ({ spec: s.slug, text })));
+  const catalog: LibraryCatalog = {
+    docs,
+    groups,
+    fog,
+    missing: docs.filter((doc) => doc.state === 'missing').length,
+    stale: docs.filter((doc) => doc.state === 'stale').length,
+  };
+  return { catalog, texts, prototypes, pages: new Map() };
+}
+
+/** The Docs tab a catalog document renders as: the constitution's and the Design tab's own options, else a plain page. */
+const docNameOf = (type: LibraryDoc['type']): DocName => (type === 'constitution' ? 'constitution' : type === 'design' ? 'design' : 'plan');
+
+const ENTITY: Readonly<Record<string, string>> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" };
+
+/** A rendered page as plain text: tags dropped, the five entities decoded, whitespace collapsed. */
+const plainTextOf = (page: DocsPage): string =>
+  page.html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&(?:amp|lt|gt|quot|#39);/g, (entity) => ENTITY[entity] ?? ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/** The plain text around a match at `at`: 40 characters before it and 60 after, an ellipsis where the text is cut. */
+function snippetAt(text: string, at: number, length: number): string {
+  const start = Math.max(0, at - 40);
+  const end = Math.min(text.length, at + length + 60);
+  return `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`;
+}
+
 // ---- the stub ------------------------------------------------------------------------------------------------------
 
 type SessionWrites = { reviewed: Map<string, GateView>; marks: Map<string, Map<string, boolean>> };
@@ -795,6 +1021,16 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   const trees = new Map(workspaces.map((w) => [w.slug, readTree(core, dir, w.golden)]));
   const plannings = new Map(workspaces.map((w) => [w.slug, readPlanning(dir, w.golden)]));
   const techs = new Map(workspaces.map((w) => [w.slug, readTechGolden(dir, w.golden)]));
+  /** Each workspace's catalog, built on first read (core's `readCatalog` is async) and then held: one per stub. */
+  const catalogs = new Map<string, Promise<StubCatalog>>();
+  const catalogOf = (slug: string, tree: TreeGoldens): Promise<StubCatalog> => {
+    let found = catalogs.get(slug);
+    if (found === undefined) {
+      found = buildCatalog(core, dir, tree, techs.get(slug) as TechModel);
+      catalogs.set(slug, found);
+    }
+    return found;
+  };
   const board = loadBoardCore();
   const stories = new Map(
     workspaces.map((w): [string, ReadonlyMap<string, StoryFile>] => [w.slug, readStories(board, join(dir, w.golden), readPlanning(dir, w.golden))]),
@@ -943,7 +1179,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   const techAssetRoute = async (req: Request, url: URL, state: StubState, match: WorkspaceRouteMatch): Promise<Response> => {
     if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
     if (req.method !== 'GET' && req.method !== 'HEAD') {
-      return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowForWorkspace('techAsset') });
+      return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowForWorkspace(match.route) });
     }
     const tree = readableTree(req, state, match.params.ws);
     if (tree instanceof Response) return tree;
@@ -957,6 +1193,126 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     if (!type.startsWith('image/')) return workspaceJson(req, 403, { error: 'forbidden' });
     const bytes = new Uint8Array(readFileSync(resolved.absolute));
     const headers = { ...evidenceFileHeaders(type), ETag: strongEtag(bytes) };
+    if (matchesIfNoneMatch(req.headers.get('If-None-Match'), headers.ETag)) return new Response(null, { status: 304, headers });
+    return new Response(req.method === 'HEAD' ? null : bytes, { headers });
+  };
+
+  /** The `X-Spectant-Stub-Library` value of a request, or its loud 400. */
+  const libraryStateOf = (req: Request): StubLibraryState | Response => {
+    const value = req.headers.get(LIBRARY_HEADER) ?? 'catalog';
+    return isOneOf(LIBRARY_STATES, value) ? value : settingsError(400, { error: 'unknown-stub-library', library: value, states: [...LIBRARY_STATES] });
+  };
+
+  /** One Markdown document of the catalog rendered as a Docs page; null for a path the catalog does not list as one. */
+  const libraryPage = (stub: StubCatalog, tree: TreeGoldens, raw: string): DocsPage | null => {
+    let path: string;
+    try {
+      path = decodeURIComponent(raw);
+    } catch {
+      return null;
+    }
+    const doc = stub.catalog.docs.find((d) => d.path === path && isReadable(d));
+    return doc === undefined ? null : renderDoc(stub, tree, doc);
+  };
+  const isReadable = (doc: LibraryDoc): boolean => doc.media === 'markdown' && doc.state !== 'missing';
+  const renderDoc = (stub: StubCatalog, tree: TreeGoldens, doc: LibraryDoc): DocsPage => {
+    const cached = stub.pages.get(doc.path);
+    if (cached) return cached;
+    const absolute = join(tree.root, 'specs', ...doc.path.split('/'));
+    const text = stub.texts.get(doc.path) ?? readFileSync(absolute, 'utf8');
+    const page = core.renderDocsMarkdown(text, core.docsRenderOptions(tree.root, absolute, docNameOf(doc.type)));
+    stub.pages.set(doc.path, page);
+    return page;
+  };
+
+  /**
+   * The search over the catalog's Markdown documents, in catalog order: case-insensitive, the first match in the
+   * rendered text (as plain text) gives the snippet, else a match in the title gives the title. An empty or blank `q`
+   * is `{query: '', hits: []}`.
+   */
+  const librarySearch = (stub: StubCatalog, tree: TreeGoldens, q: string): LibrarySearchResult => {
+    const query = q.trim();
+    if (query === '') return { query: '', hits: [] };
+    const needle = query.toLowerCase();
+    const hits = stub.catalog.docs.flatMap((doc): LibrarySearchHit[] => {
+      if (!isReadable(doc)) return [];
+      const text = plainTextOf(renderDoc(stub, tree, doc));
+      const at = text.toLowerCase().indexOf(needle);
+      if (at !== -1) return [{ path: doc.path, snippet: snippetAt(text, at, needle.length) }];
+      return doc.title.toLowerCase().includes(needle) ? [{ path: doc.path, snippet: doc.title }] : [];
+    });
+    return { query, hits };
+  };
+
+  /**
+   * `GET|HEAD …/:ws/library`, `…/library/doc?path=` and `…/library/search?q=` (spec 017, T3): the guards of the family
+   * routes (403, 405 with `allowForWorkspace`, 404 unknown slug, 409 the unreadable summary), then the workspace's
+   * catalog (`EMPTY_CATALOG` under `X-Spectant-Stub-Library: empty`), one of its Markdown documents as a Docs page (404
+   * for any path the catalog does not list as one, never a read of the path), or the search result.
+   */
+  const libraryRoute = async (
+    req: Request,
+    url: URL,
+    state: StubState,
+    library: StubLibraryState,
+    match: Extract<WorkspaceRouteMatch, { route: 'library' | 'libraryDoc' | 'librarySearch' }>,
+  ): Promise<Response> => {
+    if (!guarded(req)) return workspaceJson(req, 403, { error: 'forbidden' });
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      return workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: allowForWorkspace(match.route) });
+    }
+    const tree = readableTree(req, state, match.params.ws);
+    if (tree instanceof Response) return tree;
+    const stub = library === 'empty' ? emptyStubCatalog() : await catalogOf(match.params.ws, tree);
+    switch (match.route) {
+      case 'library':
+        return workspaceJson(req, 200, stub.catalog);
+      case 'libraryDoc': {
+        const page = libraryPage(stub, tree, evidencePathQuery(url.search));
+        return page === null ? workspaceJson(req, 404, { error: 'not-found' }) : workspaceJson(req, 200, page);
+      }
+      case 'librarySearch':
+        return workspaceJson(req, 200, librarySearch(stub, tree, url.searchParams.get('q') ?? ''));
+    }
+  };
+
+  /**
+   * `GET|HEAD /proto/:ws/:spec/:folder/*` (spec 017, ISC-159): one file of a `prototype` catalog document, through
+   * core's resolver with the prototype's folder as the root (403 for what confinement refuses, 404 for no file), with
+   * the evidence file's headers but inline and `PROTOTYPE_CSP`; every answer, errors included, carries that CSP. 404 for
+   * a path the contract does not match or a prototype the catalog does not list; 405 with `PROTOTYPE_ALLOW`.
+   */
+  const prototypeFileRoute = async (req: Request, pathname: string): Promise<Response> => {
+    const withCsp = (res: Response): Response => {
+      res.headers.set('Content-Security-Policy', PROTOTYPE_CSP);
+      return res;
+    };
+    if (!guarded(req)) return withCsp(workspaceJson(req, 403, { error: 'forbidden' }));
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      return withCsp(workspaceJson(req, 405, { error: 'method-not-allowed' }, { Allow: PROTOTYPE_ALLOW }));
+    }
+    const match: PrototypeRouteMatch | null = matchPrototypePath(pathname);
+    if (match === null) return withCsp(workspaceJson(req, 404, { error: 'not-found' }));
+    const state = req.headers.get(STATE_HEADER) ?? defaultState;
+    if (!isOneOf(STUB_STATES, state)) return withCsp(settingsError(400, { error: 'unknown-stub-state', state, states: [...STUB_STATES] }));
+    const library = libraryStateOf(req);
+    if (library instanceof Response) return withCsp(library);
+    const tree = readableTree(req, state, match.params.ws);
+    if (tree instanceof Response) return withCsp(tree);
+    const stub = library === 'empty' ? emptyStubCatalog() : await catalogOf(match.params.ws, tree);
+    const doc = stub.catalog.docs.find((d) => d.type === 'prototype' && d.spec === match.params.spec && prototypeFolderOf(d) === match.params.folder);
+    const source = doc === undefined ? undefined : stub.prototypes.get(doc.path);
+    if (source === undefined) return withCsp(workspaceJson(req, 404, { error: 'not-found' }));
+    const resolved = await core.resolveEvidencePath(source, match.params.file, 'tree');
+    if (!resolved.ok) {
+      const status = resolved.reason === 'not-found' || resolved.reason === 'not-a-file' ? 404 : 403;
+      return withCsp(workspaceJson(req, status, { error: status === 403 ? 'forbidden' : 'not-found' }));
+    }
+    const name = basename(resolved.path);
+    const extension = name.slice(name.lastIndexOf('.') + 1).toLowerCase();
+    const type = PROTOTYPE_TYPES.get(extension) ?? core.mediaTypeOf(name);
+    const bytes = new Uint8Array(readFileSync(resolved.absolute));
+    const headers = { ...evidenceFileHeaders(type), 'Content-Disposition': 'inline', 'Content-Security-Policy': PROTOTYPE_CSP, ETag: strongEtag(bytes) };
     if (matchesIfNoneMatch(req.headers.get('If-None-Match'), headers.ETag)) return new Response(null, { status: 304, headers });
     return new Response(req.method === 'HEAD' ? null : bytes, { headers });
   };
@@ -1415,6 +1771,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     if (pathname === WORKFLOW_PATH) return workflowRoute(req, url);
     if (pathname === SETTINGS_PATH) return settingsRoute(req);
     if (pathname === ACTORS_PATH) return actorsRoute(req);
+    if (pathname.startsWith(PROTOTYPE_PREFIX)) return prototypeFileRoute(req, pathname);
 
     const locks = req.headers.get(LOCKS_HEADER) ?? 'activity';
     if (!isOneOf(LOCK_STATES, locks)) {
@@ -1439,7 +1796,11 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     // with the server's JSON 404 (T119: the story page, the board query and the allocation joined the planning tree).
     const family = matchWorkspacePath(pathname);
     if (family?.route === 'planning' || family?.route === 'tech') return workspaceFamilyRoute(req, requested, family);
-    if (family?.route === 'techAsset') return techAssetRoute(req, url, requested, family);
+    if (family?.route === 'techAsset' || family?.route === 'libraryAsset') return techAssetRoute(req, url, requested, family);
+    if (family?.route === 'library' || family?.route === 'libraryDoc' || family?.route === 'librarySearch') {
+      const library = libraryStateOf(req);
+      return library instanceof Response ? library : libraryRoute(req, url, requested, library, family);
+    }
     if (family?.route === 'idea') return ideaRoute(req, requested, family);
     if (family?.route === 'boardQuery') return boardQueryRoute(req, requested, family.params.ws);
     const write = req.headers.get(WRITE_HEADER) ?? 'ok';

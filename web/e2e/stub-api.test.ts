@@ -11,7 +11,10 @@ import { join } from 'node:path';
 
 import type {
   ClaimViewModel,
+  DocsPage,
   EvidenceListing,
+  LibraryCatalog,
+  LibraryDocType,
   LiveFrame,
   SpecPageModel,
   TasksTab,
@@ -23,6 +26,11 @@ import {
   DOC_NAMES,
   GOLDEN_FAMILY,
   JSON_ANSWER,
+  type LibrarySearchResult,
+  PROTOTYPE_ALLOW,
+  PROTOTYPE_CSP,
+  prototypeFolderOf,
+  prototypeRoute,
   REVIEWED_HASHES_HEADER,
   type ReviewedHashes,
   SPEC_HASH_HEADER,
@@ -38,8 +46,12 @@ import {
   workspaceRoutes,
 } from '../../server/src/spec-routes.contract';
 import {
+  EMPTY_CATALOG,
+  LIBRARY_HEADER,
   LOCKS_HEADER,
   LOCK_STATES,
+  STUB_LIBRARY,
+  stubEvidencePath,
   type LockState,
   SESSION_HEADER,
   STATE_HEADER,
@@ -394,6 +406,200 @@ describe('stub API: GET /api/workspaces/:slug/tech/asset?path= (spec 023, T10)',
     expect([unreadable.status, await unreadable.text()]).toEqual([409, await dashboard.text()]);
     const crossSite = await ask(asset('harbor', 'tech/overview.png'), { headers: { Origin: 'https://evil.example' } });
     expect([crossSite.status, await crossSite.json()]).toEqual([403, { error: 'forbidden' }]);
+  });
+});
+
+describe('stub API: the library (spec 017, T3)', () => {
+  const TYPES: readonly LibraryDocType[] = ['spec', 'plan', 'tasks', 'design', 'context', 'artifact', 'evidence', 'prototype', 'constitution', 'tech', 'tldr', 'idea'];
+  const catalogOf = async (ws: string, init?: Parameters<typeof request>[1]): Promise<LibraryCatalog> =>
+    (await (await ask(workspaceRoutes.library(ws), init)).json()) as LibraryCatalog;
+  const proto = (file: string): string => prototypeRoute('harbor', '004-retention-policies', 'prototype/board', file);
+  const BOARD = join(FIXTURES, 'library', 'specs', '002-tide-board', '.design', 'prototype', 'board');
+
+  test('harbor: every document type, one stale and one missing entry, the counts match the docs', async () => {
+    const res = await ask(workspaceRoutes.library('harbor'));
+    expect([res.status, res.headers.get('Content-Type'), res.headers.get('Cache-Control')]).toEqual([200, JSON_ANSWER.contentType, JSON_ANSWER.cacheControl]);
+    const catalog = (await res.json()) as LibraryCatalog;
+    expect(new Set(catalog.docs.map((doc) => doc.type))).toEqual(new Set(TYPES));
+    expect(catalog.docs.filter((doc) => doc.state === 'stale').map((doc) => doc.path)).toEqual([STUB_LIBRARY.stale]);
+    const missing = catalog.docs.filter((doc) => doc.state === 'missing');
+    expect(missing.map((doc) => [doc.path, doc.modified])).toEqual([[STUB_LIBRARY.missing.path, null]]);
+    expect([catalog.missing, catalog.stale]).toEqual([1, 1]);
+    expect(catalog.docs.filter((doc) => doc.state !== 'missing').every((doc) => typeof doc.modified === 'string')).toBe(true);
+    expect(new Set(catalog.docs.map((doc) => doc.path)).size).toBe(catalog.docs.length);
+  });
+
+  test('harbor: more than 50 evidence documents in one spec, and a prototype with two pages and a preview', async () => {
+    const catalog = await catalogOf('harbor');
+    const evidence = catalog.docs.filter((doc) => doc.type === 'evidence' && doc.spec === STUB_LIBRARY.evidence.spec);
+    expect(evidence.length).toBe(STUB_LIBRARY.evidence.count + 1);
+    expect(evidence.length).toBeGreaterThan(50);
+    expect(evidence.map((doc) => doc.path)).toContain(stubEvidencePath(STUB_LIBRARY.evidence.count));
+    const prototypes = catalog.docs.filter((doc) => doc.type === 'prototype');
+    expect(prototypes.map((doc) => [doc.path, doc.spec, doc.media, doc.pages, doc.preview])).toEqual([
+      [STUB_LIBRARY.prototype.path, '004-retention-policies', 'prototype', ['detail.html', 'index.html'], STUB_LIBRARY.prototype.preview],
+    ]);
+    expect(prototypes.map((doc) => prototypeFolderOf(doc))).toEqual(['prototype/board']);
+    expect(catalog.docs.map((doc) => doc.path)).toContain(STUB_LIBRARY.prototype.preview);
+  });
+
+  test('group heads: one per active spec in number order, from the goldens; fog lines are the tech golden\'s', async () => {
+    for (const ws of ['harbor', 'lantern']) {
+      const catalog = await catalogOf(ws);
+      const specs = Object.entries(family(ws, 'spec'))
+        .filter(([key]) => !key.startsWith('specs/archive/'))
+        .map(([, value]) => value as SpecPageModel);
+      expect(catalog.groups.map((g) => g.spec)).toEqual(specs.map((s) => s.head.slug).sort());
+      for (const group of catalog.groups) {
+        const spec = specs.find((s) => s.head.slug === group.spec);
+        expect(group).toMatchObject({
+          type: spec?.head.type,
+          stage: spec?.head.stage,
+          claimsClosed: spec?.keyNumbers.claims.closed,
+          claimsTotal: spec?.keyNumbers.claims.total,
+          tasksDone: spec?.keyNumbers.tasks.landed,
+          tasksTotal: spec?.keyNumbers.tasks.total,
+        });
+      }
+      const tech = family(ws, 'tech') as { specs: Array<{ slug: string; fog: string[] }> };
+      expect(catalog.fog).toEqual(tech.specs.flatMap((s) => s.fog.map((text) => ({ spec: s.slug, text }))));
+      expect(catalog.groups.map((g) => g.fog)).toEqual(catalog.groups.map((g) => tech.specs.find((s) => s.slug === g.spec)?.fog.length ?? 0));
+    }
+    const harbor = await catalogOf('harbor');
+    expect(harbor.fog.length).toBeGreaterThan(0);
+    const web = harbor.groups.find((g) => g.spec === '002-web-console');
+    expect(web?.goal).toStartWith('A teammate opens the console');
+    expect(web?.approach).toStartWith('Serve a static Angular build');
+  });
+
+  test('deterministic: two stubs answer the same bytes and tags; HEAD and 304', async () => {
+    const other = stubApi();
+    for (const ws of ['harbor', 'lantern']) {
+      const a = await ask(workspaceRoutes.library(ws));
+      const b = await call(other, request(workspaceRoutes.library(ws)));
+      expect([b.status, b.headers.get('ETag'), await b.text()]).toEqual([a.status, a.headers.get('ETag'), await a.text()]);
+    }
+    const etag = (await ask(workspaceRoutes.library('harbor'))).headers.get('ETag') ?? '';
+    const head = await ask(workspaceRoutes.library('harbor'), { method: 'HEAD' });
+    expect([head.status, head.headers.get('ETag'), await head.text()]).toEqual([200, etag, '']);
+    expect((await ask(workspaceRoutes.library('harbor'), { headers: { 'If-None-Match': etag } })).status).toBe(304);
+  });
+
+  test('X-Spectant-Stub-Library: empty is a workspace without documents; an unknown value is a 400', async () => {
+    expect(await catalogOf('harbor', { headers: { [LIBRARY_HEADER]: 'empty' } })).toEqual(EMPTY_CATALOG);
+    const search = await ask(workspaceRoutes.librarySearch('harbor', 'console'), { headers: { [LIBRARY_HEADER]: 'empty' } });
+    expect(await search.json()).toEqual({ query: 'console', hits: [] });
+    expect((await ask(workspaceRoutes.libraryDoc('harbor', '002-web-console/plan.md'), { headers: { [LIBRARY_HEADER]: 'empty' } })).status).toBe(404);
+    expect((await ask(proto('index.html'), { headers: { [LIBRARY_HEADER]: 'empty' } })).status).toBe(404);
+    const unknown = await ask(workspaceRoutes.library('harbor'), { headers: { [LIBRARY_HEADER]: 'nope' } });
+    expect([unknown.status, ((await unknown.json()) as { error: string }).error]).toEqual([400, 'unknown-stub-library']);
+  });
+
+  test('the workspace guards: 404 unknown or in the empty state, 409 unreadable, 405, 403 cross-site', async () => {
+    for (const path of [workspaceRoutes.library('nope'), workspaceRoutes.libraryDoc('nope', 'tech.md'), workspaceRoutes.librarySearch('nope', 'x')]) {
+      expect((await ask(path)).status).toBe(404);
+    }
+    expect((await ask(workspaceRoutes.library('harbor'), { state: 'empty' })).status).toBe(404);
+    const unreadable = await ask(workspaceRoutes.library('lantern'), { state: 'unreadable' });
+    const dashboard = await ask('/api/workspaces/lantern/dashboard', { state: 'unreadable' });
+    expect([unreadable.status, await unreadable.text()]).toEqual([409, await dashboard.text()]);
+    const post = await ask(workspaceRoutes.librarySearch('harbor', 'x'), { method: 'POST', body: '{}' });
+    expect([post.status, post.headers.get('Allow')]).toEqual([405, allowForWorkspace('librarySearch')]);
+    const crossSite = await ask(workspaceRoutes.library('harbor'), { headers: { Origin: 'https://evil.example' } });
+    expect([crossSite.status, await crossSite.json()]).toEqual([403, { error: 'forbidden' }]);
+  });
+
+  test('libraryDoc: a Markdown document of the catalog as a Docs page; 404 for anything the catalog does not list as one', async () => {
+    const plan = await ask(workspaceRoutes.libraryDoc('harbor', '002-web-console/plan.md'));
+    expect(plan.status).toBe(200);
+    expect(((await plan.json()) as DocsPage).html).toContain('Serve a static Angular build');
+    const run = (await (await ask(workspaceRoutes.libraryDoc('harbor', stubEvidencePath(7)))).json()) as DocsPage;
+    expect(run.html).toContain('Probe run 07');
+    const tech = await ask(workspaceRoutes.libraryDoc('harbor', 'tech.md'));
+    expect(tech.status).toBe(200);
+    for (const path of [STUB_LIBRARY.missing.path, STUB_LIBRARY.prototype.path, STUB_LIBRARY.prototype.preview, 'workflow.md', '../README.md', '%E0%A4%A', '']) {
+      const res = await ask(workspaceRoutes.libraryDoc('harbor', path));
+      expect({ path, status: res.status, body: (await res.json()) as unknown }).toEqual({ path, status: 404, body: { error: 'not-found' } });
+    }
+  });
+
+  test('librarySearch: the trimmed query and its hits in catalog order with a plain-text snippet; blank is no hit', async () => {
+    for (const q of ['', '   ']) {
+      expect(await (await ask(workspaceRoutes.librarySearch('harbor', q))).json()).toEqual({ query: '', hits: [] });
+    }
+    expect(await (await ask('/api/workspaces/harbor/library/search')).json()).toEqual({ query: '', hits: [] });
+    const result = (await (await ask(workspaceRoutes.librarySearch('harbor', '  RETENTION  '))).json()) as LibrarySearchResult;
+    expect(result.query).toBe('RETENTION');
+    expect(result.hits.length).toBeGreaterThan(0);
+    const order = (await catalogOf('harbor')).docs.map((doc) => doc.path);
+    const positions = result.hits.map((hit) => order.indexOf(hit.path));
+    expect(positions.every((p) => p >= 0)).toBe(true);
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+    for (const hit of result.hits) {
+      expect(hit.snippet.toLowerCase()).toContain('retention');
+      expect(hit.snippet).not.toMatch(/<[a-z]/);
+    }
+    const runs = (await (await ask(workspaceRoutes.librarySearch('harbor', 'probe run 42'))).json()) as LibrarySearchResult;
+    expect(runs.hits.map((hit) => hit.path)).toEqual([stubEvidencePath(42)]);
+    expect(((await (await ask(workspaceRoutes.librarySearch('harbor', 'zzz-nothing'))).json()) as LibrarySearchResult).hits).toEqual([]);
+  });
+
+  test('libraryAsset: the prototype preview as image bytes, with the tech asset\'s headers', async () => {
+    const res = await ask(workspaceRoutes.libraryAsset('harbor', STUB_LIBRARY.prototype.preview));
+    expect([res.status, res.headers.get('Content-Type')]).toEqual([200, 'image/png']);
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(new Uint8Array(readFileSync(join(FIXTURES, 'harbor', 'specs', STUB_LIBRARY.prototype.preview))));
+    expect((await ask(workspaceRoutes.libraryAsset('harbor', 'tech.md'))).status).toBe(403);
+  });
+
+  test('prototype: every page and its local files with PROTOTYPE_CSP, inline; 304; HEAD', async () => {
+    const catalog = await catalogOf('harbor');
+    const doc = catalog.docs.find((d) => d.type === 'prototype');
+    for (const page of doc?.pages ?? []) {
+      const res = await ask(proto(page));
+      expect([res.status, res.headers.get('Content-Type'), res.headers.get('Content-Security-Policy'), res.headers.get('Content-Disposition')]).toEqual([
+        200,
+        'text/html; charset=utf-8',
+        PROTOTYPE_CSP,
+        'inline',
+      ]);
+      expect(await res.text()).toBe(readFileSync(join(BOARD, page), 'utf8'));
+    }
+    const files: ReadonlyArray<readonly [string, string]> = [
+      ['styles.css', 'text/css; charset=utf-8'],
+      ['app.js', 'text/javascript; charset=utf-8'],
+      ['img/badge.png', 'image/png'],
+    ];
+    for (const [file, type] of files) {
+      const res = await ask(proto(file));
+      expect({ file, status: res.status, type: res.headers.get('Content-Type') }).toEqual({ file, status: 200, type });
+    }
+    const etag = (await ask(proto('index.html'))).headers.get('ETag') ?? '';
+    const revalidated = await ask(proto('index.html'), { headers: { 'If-None-Match': etag } });
+    expect([revalidated.status, revalidated.headers.get('Content-Security-Policy')]).toEqual([304, PROTOTYPE_CSP]);
+    const head = await ask(proto('index.html'), { method: 'HEAD' });
+    expect([head.status, await head.text()]).toEqual([200, '']);
+  });
+
+  test('prototype: refusals and misses carry the CSP too: 403, 404, 405, 409', async () => {
+    const cases: Array<[string, Parameters<typeof request>[1], number]> = [
+      ['/proto/harbor/004-retention-policies/prototype%2Fboard/..%2F..%2Fspec.md', {}, 403],
+      ['/proto/harbor/004-retention-policies/prototype%2Fboard/%252e%252e/x', {}, 403],
+      [proto('index.html'), { headers: { Origin: 'https://evil.example' } }, 403],
+      [proto('nothing.html'), {}, 404],
+      [prototypeRoute('harbor', '004-retention-policies', 'prototype', 'index.html'), {}, 404],
+      [prototypeRoute('harbor', '002-web-console', 'prototype/board', 'index.html'), {}, 404],
+      [prototypeRoute('nope', '004-retention-policies', 'prototype/board', 'index.html'), {}, 404],
+      ['/proto/harbor/004-retention-policies/design/index.html', {}, 404],
+      ['/proto/harbor', {}, 404],
+      [proto('index.html'), { state: 'empty' }, 404],
+      [proto('index.html'), { method: 'POST', body: '{}' }, 405],
+      [prototypeRoute('lantern', '001-reading-list', 'prototype', 'index.html'), { state: 'unreadable' }, 409],
+    ];
+    for (const [path, init, status] of cases) {
+      const res = await ask(path, init);
+      expect({ path, status: res.status, csp: res.headers.get('Content-Security-Policy') }).toEqual({ path, status, csp: PROTOTYPE_CSP });
+      if (status === 405) expect(res.headers.get('Allow')).toBe(PROTOTYPE_ALLOW);
+    }
   });
 });
 
@@ -1068,7 +1274,20 @@ describe('stub API matches the real server handlers byte for byte', () => {
     // The routes with a golden family (`planning`, `tech`) are compared here, whole file to whole body. The story route,
     // the board query and the allocation (T119) have no family; their parity runs in "stub API board seam matches the real
     // handlers". The tech asset serves the fixture tree's files, not a golden; its answers are pinned in its own block.
-    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning', 'idea', 'boardQuery', 'allocate', 'tech', 'techAsset']);
+    // The library routes (spec 017) have no golden and no server handler yet (`LIBRARY_AWAITING_HANDLER` in api.ts);
+    // their answers are pinned in "stub API: the library".
+    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual([
+      'planning',
+      'idea',
+      'boardQuery',
+      'allocate',
+      'tech',
+      'techAsset',
+      'library',
+      'libraryDoc',
+      'librarySearch',
+      'libraryAsset',
+    ]);
     const golden = WORKSPACE_ROUTE_TABLE.filter((entry) => entry.route in WORKSPACE_GOLDEN_FAMILY);
     expect(golden.map((entry) => entry.route)).toEqual(['planning', 'tech']);
     for (const entry of golden) {
@@ -1534,9 +1753,30 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
         [workspaceRoutes.techAsset(WS, 'tech/nothing.png'), {}],
         [workspaceRoutes.techAsset(WS, 'tech/overview.png'), { method: 'HEAD' }],
       ],
+      library: reads((ws) => workspaceRoutes.library(ws)),
+      libraryDoc: [
+        ...reads((ws) => workspaceRoutes.libraryDoc(ws, ws === 'lantern' ? '001-reading-list/plan.md' : '002-web-console/plan.md')),
+        [workspaceRoutes.libraryDoc(WS, '002-web-console/design.md'), {}],
+      ],
+      librarySearch: reads((ws) => workspaceRoutes.librarySearch(ws, 'console')),
+      libraryAsset: [
+        ...reads((ws) => workspaceRoutes.libraryAsset(ws, 'tech/overview.png')),
+        [workspaceRoutes.libraryAsset(WS, '../constitution.md'), {}],
+      ],
     };
     // The table's routes stay pinned; every one of them is served now.
-    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning', 'idea', 'boardQuery', 'allocate', 'tech', 'techAsset']);
+    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual([
+      'planning',
+      'idea',
+      'boardQuery',
+      'allocate',
+      'tech',
+      'techAsset',
+      'library',
+      'libraryDoc',
+      'librarySearch',
+      'libraryAsset',
+    ]);
     for (const entry of WORKSPACE_ROUTE_TABLE) {
       expect({ route: entry.route, ...(await statusesOf(workspace[entry.route] ?? [])) }).toEqual({
         route: entry.route,

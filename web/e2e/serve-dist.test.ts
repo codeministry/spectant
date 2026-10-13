@@ -56,4 +56,10 @@ describe('serve-dist', () => {
     expect(await (await fetch(at('/api/settings'))).json()).toEqual({ path: '/api/settings' });
     expect((await fetch(at('/api/settings', plain))).status).toBe(404);
   });
+
+  test('routes the prototype route /proto/ to the same handler (spec 017)', async () => {
+    const path = '/proto/harbor/004-retention-policies/prototype%2Fboard/index.html';
+    expect(await (await fetch(at(path))).json()).toEqual({ path });
+    expect((await fetch(at(path, plain))).status).toBe(404);
+  });
 });
