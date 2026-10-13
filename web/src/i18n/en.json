@@ -12,6 +12,21 @@
     "claimsClosed": "{{closed}} of {{total}} claims closed",
     "noValue": "—"
   },
+  "assistant": {
+    "label": "Assistant dot",
+    "name": "dot",
+    "context": "Spectant assistant",
+    "new": "New conversation",
+    "close": "Close assistant",
+    "intro": "Hi, I'm dot, the little violet dot from the Spectant ring. I answer questions from your spec files and the live board, and I propose writes that you always confirm.",
+    "introNote": "Demo build: I answer from fixtures only, nothing is sent anywhere.",
+    "thinking": "dot is thinking",
+    "suggestions": "Suggestions",
+    "placeholder": "Ask dot about this spec…",
+    "input": "Ask the assistant",
+    "send": "Send",
+    "foot": "Demo answers from fixtures — nothing leaves the page."
+  },
   "demo": {
     "chip": "demo",
     "description": "Demo data until the core delivers it"
@@ -177,6 +192,10 @@
     "empty": "No warnings",
     "icon": "Warning"
   },
+  "identity": {
+    "open": "Open {{workspace}}",
+    "screenshot": "Screenshot of {{workspace}}"
+  },
   "overview": {
     "title": "All workspaces",
     "eyebrow": "Spectant · {{workspaces}} workspaces · {{specs}} specs",
@@ -306,6 +325,49 @@
       "saved": "Actors saved.",
       "failed": "The actors could not be saved (status {{ status }})."
     }
+  },
+  "settingsWorkspaces": {
+    "title": "Workspaces",
+    "registered": "· {{count}} registered",
+    "add": {
+      "path": "Repository path",
+      "pathPlaceholder": "~/code/my-repo",
+      "name": "Name",
+      "nameLabel": "Display name",
+      "namePlaceholder": "my-repo",
+      "button": "Add",
+      "hint": "Paste a path to fill the name.",
+      "nothing": "Demo: nothing was added, the registry stays as it is."
+    },
+    "upload": {
+      "text": "Identity images (screenshot and logo) are picked in the app; the upload is disabled in this mock.",
+      "button": "Upload screenshot",
+      "off": "Screenshot upload is disabled in the mock"
+    },
+    "status": {
+      "ok": "readable",
+      "empty": "no specs yet",
+      "missing": "folder not found"
+    },
+    "row": {
+      "reveal": "Reveal",
+      "relocate": "Relocate…",
+      "counts": "{{specs}} specs · {{active}} active",
+      "actions": "Actions for {{name}}"
+    },
+    "menu": {
+      "rename": "Rename",
+      "rescan": "Re-scan",
+      "open": "Open dashboard",
+      "remove": "Remove…"
+    },
+    "remove": {
+      "title": "Remove {{name}}?",
+      "body": "Spectant forgets the workspace. The folder and its specs stay untouched.",
+      "cancel": "Cancel",
+      "confirm": "Remove"
+    },
+    "foot": "Registry lives in the app's data directory · the CLI does the same:"
   },
   "states": {
     "unreachable": "Can't reach spectant on {{host}}",
@@ -496,8 +558,12 @@
       }
     },
     "assistant": {
-      "trigger": "Assistant",
-      "soon": "The assistant comes with a later version"
+      "trigger": "Assistant"
+    },
+    "libraryLink": {
+      "label": "Library of this workspace",
+      "pill": "Library",
+      "value": "Docs"
     },
     "refresh": {
       "now": "Refresh now",
@@ -1792,6 +1858,59 @@
     "palette": {
       "page": "Tech",
       "tab": "Tech · {{tab}}"
+    }
+  },
+  "library": {
+    "title": "Library",
+    "heading": "Library · {{ws}}",
+    "back": "Back to the dashboard",
+    "search": {
+      "placeholder": "Search titles and full text",
+      "label": "Search all documents"
+    },
+    "filters": {
+      "type": "Document type",
+      "all": "All",
+      "spec": "Spec",
+      "allSpecs": "All specs",
+      "stale": "Only outdated"
+    },
+    "types": {
+      "plan": "Plan",
+      "design": "Design",
+      "decisions": "Decisions",
+      "constitution": "Constitution",
+      "evidence": "Evidence",
+      "notes": "Notes"
+    },
+    "wsWide": "{{ws}} · workspace-wide",
+    "count": "{{ws}} · {{shown}} of {{total}} documents · {{stale}} outdated",
+    "outdated": "outdated",
+    "xrefTitle": "Shares references with {{count}} other documents",
+    "empty": {
+      "heading": "No document matches",
+      "body": "Try another word or clear the filters.",
+      "clear": "Clear filters"
+    },
+    "reader": {
+      "label": "Reader",
+      "back": "Library",
+      "updated": "updated {{date}}",
+      "open": "Open in spec {{spec}}",
+      "staleHeading": "Possibly outdated",
+      "image": "Preview of {{file}}",
+      "pick": "Pick a document",
+      "pickBody": "Every plan, design, decision, piece of evidence and note from all specs, in one place."
+    },
+    "refs": {
+      "heading": "Cross references",
+      "none": "No references.",
+      "search": "Search all documents for {{ref}}",
+      "type": "Type",
+      "document": "Document",
+      "spec": "Spec",
+      "shared": "Shared references",
+      "sharedShort": "Shared:"
     }
   },
   "orientation": {

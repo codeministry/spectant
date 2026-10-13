@@ -39,6 +39,8 @@ type WriteState =
     :host { display: grid; gap: 8px; min-inline-size: 0; }
     :host([data-size='inline']) { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
     .gate-button { display: flex; gap: 8px; align-items: center; justify-content: center; inline-size: 100%; min-block-size: 48px; margin: 0; }
+    /* The primary fill of ui-button (light #007e9a, principal 2026-10-13 "Sichere Werte behalten"), not daisyUI's raw primary. */
+    .btn-primary { --btn-color: var(--primary-fill); --btn-fg: var(--primary-fill-ink); }
     :host([data-size='inline']) .gate-button { inline-size: auto; min-block-size: 32px; }
     .gate-button.stale { border-color: var(--color-warning); color: var(--hover-ink); }
     .gate-button.done {

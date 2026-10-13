@@ -1,0 +1,316 @@
+/* Workspace management, prototype `workspaces.html` (styles.css 945-979, 1584-1603; extra.css 115-117). */
+:host { display: block; }
+ui-page-head { margin-block-end: 16px; }
+
+h1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+h1 .count {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.narrow {
+  inline-size: 100%;
+  max-inline-size: 1040px;
+  margin-inline: auto;
+}
+.mono { font-family: var(--font-mono); }
+
+.grow {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+ui-card { overflow: hidden; }
+
+/* Add row */
+.add-row {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-block-end: 1px solid var(--line);
+  background: var(--lane);
+}
+
+.add-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.path-field,
+.name-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  block-size: 40px;
+  padding-inline: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--color-base-100);
+  color: var(--muted);
+}
+
+.path-field {
+  flex: 1 1 360px;
+  min-inline-size: 0;
+}
+
+.path-field:focus-within,
+.name-field:focus-within { border-color: var(--color-primary); }
+
+.path-field input,
+.name-field input {
+  min-inline-size: 0;
+  border: 0;
+  background: none;
+  outline: 0;
+  color: var(--color-base-content);
+  font-size: 14px;
+}
+.path-field input { flex: 1; }
+.name-field input { inline-size: 120px; }
+
+.add-fields button {
+  block-size: 40px;
+  min-block-size: 40px;
+}
+
+.check-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-block-size: 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+@media (pointer: coarse) {
+  .path-field, .name-field, .add-fields button {
+    block-size: 44px;
+    min-block-size: 44px;
+  }
+}
+
+/* Identity upload, disabled in the mock */
+.upload-off {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 12px var(--space-3);
+  border-block-end: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Rows */
+.ws-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) auto 32px;
+  gap: 12px;
+  align-items: center;
+  min-block-size: 56px;
+  padding: 8px 16px;
+  border-block-end: 1px solid var(--line);
+}
+.ws-row:hover { background: var(--lane); }
+
+.grip {
+  display: grid;
+  color: var(--muted);
+  cursor: grab;
+}
+
+.ws-id,
+.ws-path {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+.ws-shot {
+  position: relative;
+  flex: none;
+  inline-size: 64px;
+  aspect-ratio: 16 / 10;
+  margin-inline-end: 2px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-block-start: 2px solid var(--ws);
+  border-radius: var(--radius-sm);
+  background:
+    repeating-linear-gradient(135deg, color-mix(in oklab, var(--ws) 38%, transparent) 0 1px, transparent 1px 10px),
+    color-mix(in oklab, var(--ws) 12%, var(--color-base-100));
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.ws-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.ws-initials {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 22px;
+  block-size: 22px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--ws) 22%, transparent);
+  border: 1px solid color-mix(in oklab, var(--ws) 45%, transparent);
+  color: var(--ws-text);
+  font: 700 10px/1 var(--font-ui);
+  letter-spacing: 0.02em;
+}
+
+.path-tail {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reveal {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--disp-text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+.reveal:hover { text-decoration: underline; }
+
+.ws-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sdot {
+  flex: none;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.ws-status[data-status='ok'] { color: var(--clos-text); }
+.ws-status[data-status='ok'] .sdot { background: var(--color-accent); }
+.ws-status[data-status='missing'] { color: var(--fail-text); }
+.ws-status[data-status='missing'] .sdot { background: var(--color-error); }
+
+.ws-counts {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Row menu (projected into ui-popover) */
+.row-pop { --ui-popover-width: 220px; }
+
+.pop-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  inline-size: 100%;
+  min-block-size: 36px;
+  padding-inline: 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-base-content);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  text-align: start;
+}
+
+.pop-item:hover,
+.pop-item:focus-visible { background: var(--color-base-300); }
+.pop-item.danger { color: var(--fail-text); }
+
+.pop-sep {
+  block-size: 1px;
+  margin-block: 4px;
+  background: var(--line);
+}
+
+@media (pointer: coarse) {
+  .pop-item { min-block-size: 44px;
+  };
+}
+
+/* Foot */
+.ws-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Remove dialog */
+.dlg-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.dlg-acts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-block-start: 24px;
+}
+
+@container shell (width < 640px) {
+  .ws-row {
+    grid-template-columns: 20px minmax(0, 1fr) 32px;
+    row-gap: 4px;
+  }
+  .ws-path, .ws-status, .ws-counts { grid-column: 2; }
+
+  .ws-row > .row-menu {
+    grid-row: 1;
+    grid-column: 3;
+  }
+  .ws-counts { white-space: normal; }
+}

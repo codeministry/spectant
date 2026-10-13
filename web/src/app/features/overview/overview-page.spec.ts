@@ -66,7 +66,17 @@ describe('OverviewPage (T65, ISC-16)', () => {
     const columns = [...root.querySelectorAll('.overview [data-ui="workspace-column"]')];
     expect(columns.map((c) => c.getAttribute('data-ws'))).toEqual(['harbor', 'lantern']);
     expect([...asked].sort()).toEqual(['harbor', 'lantern']);
-    expect(root.querySelector('.ws-cover, img')).toBeNull();
+    // T54 (spec 024): one identity cover per column, a mock with its chip in the ws-head; the fixture holds no image
+    // for harbor or lantern, so each shows the name pattern and no <img> appears.
+    const covers = [...root.querySelectorAll('[data-ws-cover]')];
+    expect(covers.map((cover) => cover.closest('[data-ui="workspace-column"]')?.getAttribute('data-ws'))).toEqual(['harbor', 'lantern']);
+    for (const cover of covers) {
+      const mock = cover.closest('[data-demo]');
+      expect(mock?.querySelector('[data-demo-head] [data-demo-chip]')).not.toBeNull();
+      expect(cover.querySelector('svg path')).not.toBeNull();
+    }
+    expect(root.querySelectorAll('[data-ws-badge]').length).toBe(covers.length);
+    expect(root.querySelector('img')).toBeNull();
   });
 
   it('shows the ws-head: badge, name as h2, mono path and the updated time', async () => {

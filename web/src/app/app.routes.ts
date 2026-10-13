@@ -1,6 +1,4 @@
 import { Routes } from '@angular/router';
-import { OverviewPage } from './features/overview/overview-page';
-import { SettingsPage } from './features/placeholders/settings-page';
 import { DashboardPage } from './features/dashboard/dashboard-page';
 import { SPEC_AREA_ROUTES } from './features/spec/spec-area.routes';
 import { SpecPage } from './features/spec/spec-page';
@@ -15,6 +13,7 @@ const featuresPage: ShellRouteData = { page: 'features' };
 const milestonesPage: ShellRouteData = { page: 'milestones' };
 const boardPage: ShellRouteData = { page: 'board' };
 const ideaPage: ShellRouteData = { page: 'idea' };
+const libraryPage: ShellRouteData = { page: 'library' };
 
 export const routes: Routes = [
   // The primitives gallery the browser tier measures (T29 to T31). Lazy, so it ships as a separate chunk that only
@@ -25,9 +24,15 @@ export const routes: Routes = [
     path: '',
     component: ShellComponent,
     children: [
-      { path: '', component: OverviewPage },
-      // The header's gear leads here until T40/T41 bring the settings popover and help.
-      { path: 'settings', component: SettingsPage },
+      // Spec 024: the overview and settings are lazy chunks, so the identity covers and the settings cards stay out of
+      // the initial bundle (its 1 MB budget in angular.json).
+      { path: '', loadComponent: () => import('./features/overview/overview-page').then((m) => m.OverviewPage) },
+      { path: 'settings', loadComponent: () => import('./features/placeholders/settings-page').then((m) => m.SettingsPage) },
+      // Spec 024 (T52): the workspace management, a mock until the registry's spec; lazy, its own chunk.
+      {
+        path: 'settings/workspaces',
+        loadComponent: () => import('./features/settings/settings-workspaces-page').then((m) => m.SettingsWorkspacesPage),
+      },
       // Spec 008 (ISC-116): help is global like settings, inside the shell and outside any workspace; lazy, its own chunk.
       { path: 'help', loadComponent: () => import('./features/help/help-page').then((m) => m.HelpPage) },
       { path: 'w/:ws', component: DashboardPage },
@@ -37,6 +42,12 @@ export const routes: Routes = [
         path: 'w/:ws/board',
         loadComponent: () => import('./features/board/board-page').then((m) => m.BoardPage),
         data: boardPage,
+      },
+      // Spec 024 (T50, T51): the workspace's Library, a mock until spec 017 delivers the documents; lazy, its own chunk.
+      {
+        path: 'w/:ws/library',
+        loadComponent: () => import('./features/library/library-page').then((m) => m.LibraryPage),
+        data: libraryPage,
       },
       {
         path: 'w/:ws/ideas/:slug',

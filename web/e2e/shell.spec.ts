@@ -108,12 +108,12 @@ for (const { width, tier, tabBar } of TIERS) {
       await page.locator('[data-live-board]').click();
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/board$/);
 
-      // spec 024 T40: settings opens the settings popover; its "Workspaces…" entry leads to /settings
+      // spec 024 T40/T52: settings opens the settings popover; its "Workspaces…" entry leads to /settings/workspaces
       await reveal(page, width, 'settings');
       await control('settings').click();
       await page.locator('[data-menu="settings"] [data-settings-link="workspaces"]').click();
-      await expect(page).toHaveURL(/\/settings$/);
-      await expect(page.locator('[data-page="settings"] h1')).toBeVisible();
+      await expect(page).toHaveURL(/\/settings\/workspaces$/);
+      await expect(page.locator('[data-page="settings-workspaces"] h1')).toBeVisible();
       await expect(page.locator('header')).toHaveCount(1);
     });
 
@@ -263,12 +263,14 @@ test.describe('header', () => {
 
       test(`header settings control reaches help at ${String(width)}`, async ({ page }) => {
         await page.goto('/w/harbor/s/002');
-        // spec 024 T40: the settings popover holds Help & guide and Workspaces…, which leads to the settings page
+        // spec 024 T40/T52: the settings popover holds Help & guide (→ /help) and Workspaces… (→ /settings/workspaces);
+        // the settings page itself, with its shortcuts action, is then opened at /settings.
         await reveal(page, width, 'settings');
         await page.locator('header [data-control="settings"]').click();
         await expect(page.locator('[data-menu="settings"] [data-settings-link="help"]')).toHaveAttribute('href', '/help');
         await page.locator('[data-menu="settings"] [data-settings-link="workspaces"]').click();
-        await expect(page).toHaveURL(/\/settings$/);
+        await expect(page).toHaveURL(/\/settings\/workspaces$/);
+        await page.goto('/settings');
         const help = page.locator('[data-page="settings"] [data-action="shortcuts"]');
         await expect(help).toBeVisible();
         await help.click();

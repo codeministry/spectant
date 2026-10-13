@@ -34,7 +34,9 @@ if (!HARBOR_002_NOTE) throw new Error('STUB_NOTES holds no harbor 002 note');
 const PAGES: ReadonlyArray<{ readonly path: string; readonly tab?: string }> = [
   { path: '/' },
   { path: '/w/harbor' },
+  { path: '/w/harbor/library' },
   { path: '/settings' },
+  { path: '/settings/workspaces' },
   { path: SPEC },
   ...TAB_IDS.map((tab) => ({ path: `${SPEC}/${tab}`, tab })),
   { path: `${SPEC}/notes/${HARBOR_002_NOTE.id}`, tab: 'notes' },

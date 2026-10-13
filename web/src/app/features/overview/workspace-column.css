@@ -1,5 +1,5 @@
-/* Prototype styles.css:465-483 (workspace-column, ws-head, kpi-strip, dense-list, next-row, open-link) and :1584 / :469
-   (ws-badge, lg). Colour names mapped to the app's roles: cyan → --color-primary / --disp-text, orange → --color-warning. */
+/* Prototype styles.css:465-483 (workspace-column, kpi-strip, dense-list, next-row, open-link); the ws-head and
+   its badge live in `ws-identity.ts` (T54). Colour names mapped to the app's roles: cyan → --color-primary / --disp-text, orange → --color-warning. */
 :host {
   display: flex;
   flex-direction: column;
@@ -12,70 +12,6 @@
   min-inline-size: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.ws-head {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-  min-block-size: 56px;
-  border-block-end: 1px solid var(--line);
-}
-
-.ws-head a {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  min-inline-size: 0;
-  border-radius: var(--radius-field);
-  color: inherit;
-  text-decoration: none;
-}
-
-.ws-head h2 {
-  overflow: hidden;
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 24px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ws-head a:hover h2 {
-  color: var(--disp-text);
-}
-
-.ws-head .meta {
-  flex: none;
-  white-space: nowrap;
-}
-
-.path {
-  overflow: hidden;
-  min-inline-size: 0;
-  color: var(--muted-ink);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* The `lg` workspace badge: a primary tint with the primary ink and a 45 % ring, the monogram in the brand face. */
-.ws-badge {
-  display: inline-grid;
-  flex: none;
-  place-items: center;
-  inline-size: 30px;
-  block-size: 30px;
-  border-radius: 8px;
-  background: color-mix(in oklab, var(--color-primary) 22%, transparent);
-  border: 1px solid color-mix(in oklab, var(--color-primary) 45%, transparent);
-  color: var(--disp-ink);
-  font: 700 12px/1 var(--font-display);
-  letter-spacing: 0.02em;
 }
 
 [data-ui='kpi-strip'] {

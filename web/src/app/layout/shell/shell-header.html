@@ -1,9 +1,12 @@
-<header role="banner" class="shell-header" [class.on-spec]="specPage()" [class.scrolled]="scrolled()">
+<header role="banner" class="shell-header" [class.on-spec]="specPage()" [class.scrolled]="scrolled()" [class.has-library]="libraryLink() !== null">
   <!-- The brand rail's bordered field (prototype `.brand-rail`): behind brand and rail-selects at wide, the logo below. -->
   <span class="rail-field" aria-hidden="true"></span>
 
   <app-shell-brand class="brand" />
   <app-shell-nav #nav class="nav" />
+  @if (libraryLink(); as href) {
+    <app-shell-library-link class="library" [href]="href" />
+  }
 
   <button
     type="button"
@@ -33,34 +36,19 @@
     (click)="state.toggleZen()"
   ></button>
 
-  <!-- The assistant dot (prototype `assistant-toggle`): only the trigger's place and look; T53 builds the assistant. -->
+  <!-- The assistant dot (prototype `assistant-toggle`, spec 024 T53): opens the mocked panel, `aria-pressed` while open. -->
   <button
+    #dotTrigger
     type="button"
     class="assistant tool"
     data-tool="assistant"
-    aria-pressed="false"
-    aria-disabled="true"
+    aria-haspopup="dialog"
+    [attr.aria-pressed]="assistant.open()"
     [attr.aria-label]="'shell.assistant.trigger' | transloco"
-    [attr.title]="'shell.assistant.soon' | transloco"
+    [attr.title]="'shell.assistant.trigger' | transloco"
+    (click)="assistant.toggle(dotTrigger)"
   >
-    <svg class="mascot" viewBox="0 0 48 48" aria-hidden="true" focusable="false" data-icon-exempt>
-      <!-- The mascot (prototype `assistant.js` `mascot("idle", 20)`), not a lucide icon (data-icon-exempt, ISC-18.2): -->
-      <!-- the ring lime to cyan, top left to bottom right, and the violet dot with eyes and mouth in its gap. -->
-      <g class="m-rings">
-      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="0" style="--m-mix: 4%" />
-      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="-1" style="--m-mix: 4%" />
-      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="-2" style="--m-mix: 31%" />
-      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="-3" style="--m-mix: 69%" />
-      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="-4" style="--m-mix: 96%" />
-      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="-5" style="--m-mix: 96%" />
-      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="-6" style="--m-mix: 69%" />
-      <circle class="m-ring" cx="24" cy="24" r="15" pathLength="8" stroke-dashoffset="-7" style="--m-mix: 31%" />
-      </g>
-      <circle class="m-dot" cx="31.5" cy="11" r="7.5" />
-      <circle class="m-eye" cx="29.3" cy="10" r="1.15" />
-      <circle class="m-eye" cx="33.7" cy="10" r="1.15" />
-      <path class="m-mouth" d="M29.5 13.4c.9 1.2 3.1 1.2 4 0" />
-    </svg>
+    <app-mascot [size]="24" [state]="assistant.thinking() ? 'thinking' : 'idle'" />
   </button>
 
   <button
@@ -101,3 +89,10 @@
   ></button>
   }
 </header>
+
+<!-- The mocked panel renders only while open (a closed panel is not in the DOM, ISC-149.1). -->
+@if (assistant.open()) {
+  @defer (on immediate) {
+    <app-assistant-panel />
+  }
+}

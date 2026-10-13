@@ -13,6 +13,8 @@ import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiRovingItem, UiRovingList } from '../../shared/ui/roving-list.directive';
 import { type SegmentedOption, UiSegmented } from '../../shared/ui/segmented/segmented';
 import { AreaMenu } from '../area-menu/area-menu';
+import { AssistantDot } from '../assistant/assistant.service';
+import { Mascot } from '../assistant/mascot';
 import { specLink } from './areas';
 import { ShellData } from './shell-data.service';
 import { ShellState } from './shell-state.service';
@@ -87,6 +89,7 @@ const LANGS = ['en', 'de'] as const;
     UiRovingList,
     UiSegmented,
     AreaMenu,
+    Mascot,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell-menus.html',
@@ -96,6 +99,8 @@ export class ShellMenus {
   protected readonly state = inject(ShellState);
   protected readonly data = inject(ShellData);
   protected readonly keyboard = inject(KeyboardService);
+  /** The assistant dot (T53): its overflow entry opens the panel, focus returns to `⋯`. */
+  protected readonly assistant = inject(AssistantDot);
   private readonly settings = inject(SettingsService);
   private readonly theme = inject(ThemeService);
   private readonly language = inject(LanguageService);
@@ -197,6 +202,18 @@ export class ShellMenus {
     // A modal sheet keeps focus inside until it has closed; the next panel opens once focus is back on `⋯`, so it
     // returns there when it closes.
     afterNextRender(() => setTimeout(() => this.show(kind, trigger)), { injector: this.injector });
+  }
+
+  /** The overflow entry of the assistant dot: the menu gives way, the panel opens once focus is back on `⋯`. */
+  protected openAssistant(): void {
+    const trigger = this.moreTrigger;
+    const fromSheet = this.sheet() === 'more';
+    this.close('more');
+    if (!fromSheet) {
+      this.assistant.show(trigger);
+      return;
+    }
+    afterNextRender(() => setTimeout(() => this.assistant.show(trigger)), { injector: this.injector });
   }
 
   protected toggleZen(): void {

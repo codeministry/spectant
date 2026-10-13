@@ -11,22 +11,23 @@ import { UiMeter } from '../../shared/ui/meter/meter';
 import { type RelativeUnit, relativeParts } from '../../shared/ui/relative-time/relative-time';
 import { UiRing } from '../../shared/ui/ring/ring';
 import { PHASE_TONES } from '../dashboard/spec-table/spec-table-model';
-import { monogram, type OverviewColumn } from './overview-model';
+import type { OverviewColumn } from './overview-model';
+import { WsIdentity } from './ws-identity';
 
 /** How often "Updated n s ago" re-reads the clock (design.md: every 10 s). */
 const TICK_MS = 10_000;
 const INTL_UNIT: Readonly<Record<RelativeUnit, Intl.RelativeTimeFormatUnit>> = { s: 'second', min: 'minute', h: 'hour', d: 'day' };
 
 /**
- * One workspace on `/` (T65, prototype `app.js` `wsColumn`, tiles.md § index.html): the ws-head (monogram badge, name,
- * path tail, "Updated n s ago"), the 2 × 2 kpi-strip (master ring + fraction, spec claims with the lime meter, specs
+ * One workspace on `/` (T65, prototype `app.js` `wsColumn`, tiles.md § index.html): the identity block (`WsIdentity`,
+ * spec 024 T54: cover, then the ws-head with badge, name, path tail and "Updated n s ago"), the 2 × 2 kpi-strip (master ring + fraction, spec claims with the lime meter, specs
  * with the building / scoping split, warnings + open fog with the orange edge above 0), Next up (up to three rows with
  * the command chip and the cyan left border), the 40 px dense spec list and "Open <name> →". A workspace without
- * specs shows the no-specs empty state instead of the three lists. Renders the model as it is; no cover image.
+ * specs shows the no-specs empty state instead of the three lists. Renders the model as it is.
  */
 @Component({
   selector: 'app-workspace-column',
-  imports: [RouterLink, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiEmptyState, UiIcon, UiMeter, UiRing],
+  imports: [RouterLink, TranslocoPipe, UiCard, UiChip, UiCommandChip, UiEmptyState, UiIcon, UiMeter, UiRing, WsIdentity],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-ui': 'workspace-column', '[attr.data-ws]': 'column().slug' },
   templateUrl: './workspace-column.html',
@@ -39,7 +40,6 @@ export class WorkspaceColumn {
   private readonly now = signal(Date.now());
 
   protected readonly phaseTones = PHASE_TONES;
-  protected readonly badge = computed(() => monogram(this.column().name));
   protected readonly kpis = computed(() => this.column().kpis);
   protected readonly href = computed(() => ['/w', this.column().slug]);
 

@@ -1,13 +1,8 @@
 @let c = column();
 @let k = kpis();
-<div class="ws-head">
-  <a [routerLink]="href()">
-    <span class="ws-badge" aria-hidden="true">{{ badge() }}</span>
-    <h2>{{ c.name }}</h2>
-    <span class="path">{{ c.pathTail }}</span>
-  </a>
+<app-ws-identity [name]="c.name" [slug]="c.slug" [pathTail]="c.pathTail">
   <span class="meta type-meta" data-updated>{{ 'header.live.updated' | transloco: { time: ago() } }}</span>
-</div>
+</app-ws-identity>
 
 <div data-ui="kpi-strip">
   <ui-card data-ui="kpi-tile" data-kpi="master" [padding]="0">

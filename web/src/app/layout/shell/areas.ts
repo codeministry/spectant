@@ -83,12 +83,13 @@ export interface ShellRouteData {
  * The workspace-scope pages, the counterpart of the spec areas one level up. `idea` (spec 008, `/w/:ws/ideas/:slug`)
  * is a read-only story page reached from a board card, the palette or a chip, never from the menu: it has no
  * `WORKSPACE_PAGES` entry, so the menu's pages are `WorkspaceMenuPageId`. `tech` (spec 023, `/w/:ws/tech/<tab>`, tabs
- * in `TECH_TABS`) is a menu page, fifth after Milestones (T20).
+ * in `TECH_TABS`) is a menu page, fifth after Milestones (T20). `library` (spec 024, `/w/:ws/library`, a mock) is no
+ * menu page until T57 gives it its `WORKSPACE_PAGES` entry.
  */
-export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea' | 'tech';
-export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea'>;
+export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea' | 'tech' | 'library';
+export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea' | 'library'>;
 
-const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea', 'tech'];
+const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea', 'tech', 'library'];
 
 export const isWorkspacePageId = (value: unknown): value is WorkspacePageId =>
   (WORKSPACE_PAGE_IDS as readonly unknown[]).includes(value);

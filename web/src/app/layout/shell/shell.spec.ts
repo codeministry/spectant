@@ -430,8 +430,9 @@ describe('ShellComponent', () => {
       expect(spec.querySelector('[data-live-board]')?.textContent).toContain('Open the round board');
     });
 
-    // spec 024 T40: the settings control opens the prototype settings popover; its "Workspaces…" entry leads to /settings.
-    it('opens the settings popover from the settings control, whose Workspaces entry leads to the settings page', async () => {
+    // spec 024 T40, T52: the settings control opens the prototype settings popover; its "Workspaces…" entry leads to
+    // the workspace management at /settings/workspaces.
+    it('opens the settings popover from the settings control, whose Workspaces entry leads to the workspace management', async () => {
       const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
       proto['showPopover'] = vi.fn();
       proto['hidePopover'] = vi.fn(function (this: HTMLElement) {
@@ -455,19 +456,27 @@ describe('ShellComponent', () => {
         expect(panel?.querySelector('[data-setting="single-keys"]')?.getAttribute('role')).toBe('switch');
         expect(panel?.querySelector('[data-settings-link="help"]')?.getAttribute('href')).toBe('/help');
         const workspaces = panel?.querySelector<HTMLAnchorElement>('[data-settings-link="workspaces"]');
-        expect(workspaces?.getAttribute('href')).toBe('/settings');
+        expect(workspaces?.getAttribute('href')).toBe('/settings/workspaces');
         workspaces?.click();
         await harness.fixture.whenStable();
       } finally {
         delete proto['showPopover'];
         delete proto['hidePopover'];
       }
-      expect(TestBed.inject(Router).url).toBe('/settings');
-      const page = root.querySelector('[data-page="settings"]');
-      expect(page?.querySelector('h1')?.textContent).toContain('Settings');
-      expect(page?.textContent).toContain('Settings, workspaces and help come with later tasks of this spec');
-      expect([...(page?.querySelectorAll('a') ?? [])].map((a) => a.getAttribute('href'))).toEqual(['/help', '/']);
-      expect(page?.querySelector('a[data-action="help"]')?.textContent.trim()).toBe('Help');
+      await harness.fixture.whenStable();
+      expect(TestBed.inject(Router).url).toBe('/settings/workspaces');
+      const page = root.querySelector('[data-page="settings-workspaces"]');
+      expect(page?.hasAttribute('data-demo')).toBe(true);
+      expect(page?.querySelector('h1')?.textContent).toContain('Workspaces');
+
+      // The Settings page itself, with its card links to help and the workspace management (T52).
+      await TestBed.inject(Router).navigateByUrl('/settings');
+      await harness.fixture.whenStable();
+      const settingsPage = root.querySelector('[data-page="settings"]');
+      expect(settingsPage?.querySelector('h1')?.textContent).toContain('Settings');
+      expect(settingsPage?.textContent).toContain('Settings, workspaces and help come with later tasks of this spec');
+      expect([...(settingsPage?.querySelectorAll('a') ?? [])].map((a) => a.getAttribute('href'))).toEqual(['/help', '/settings/workspaces', '/']);
+      expect(settingsPage?.querySelector('a[data-action="help"]')?.textContent.trim()).toBe('Help');
       expect(root.querySelectorAll('header')).toHaveLength(1);
     });
 

@@ -179,15 +179,13 @@
           type="button"
           class="entry"
           data-tool="assistant"
-          aria-disabled="true"
-          aria-pressed="false"
+          aria-haspopup="dialog"
+          [attr.aria-pressed]="assistant.open()"
           [attr.aria-label]="'shell.assistant.trigger' | transloco"
+          (click)="openAssistant()"
         >
-          <ui-icon name="bot" />
-          <span class="entry-stack">
-            <span class="entry-name">{{ 'shell.assistant.trigger' | transloco }}</span>
-            <span class="entry-meta">{{ 'shell.assistant.soon' | transloco }}</span>
-          </span>
+          <app-mascot [size]="16" />
+          <span class="entry-name">{{ 'shell.assistant.trigger' | transloco }}</span>
         </button>
       </li>
       <li>
@@ -240,7 +238,7 @@
       />
     </div>
     <div class="pop-sep" role="presentation"></div>
-    <a class="entry" routerLink="/settings" data-settings-link="workspaces" (click)="close('settings')">
+    <a class="entry" routerLink="/settings/workspaces" data-settings-link="workspaces" (click)="close('settings')">
       <ui-icon name="folder" />
       <span class="entry-name">{{ 'shell.settingsPanel.workspaces' | transloco }}</span>
     </a>

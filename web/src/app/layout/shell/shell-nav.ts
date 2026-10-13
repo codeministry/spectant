@@ -89,7 +89,8 @@ export class ShellNav {
     // A story page (`idea`) is no menu page: the trigger names the board it is reached from (spec 008). The tech page
     // is one (spec 023, T20): the trigger shows `book-open` and "Tech" there.
     if (id === null || this.specOpen() || this.data.workspaceMissing()) return null;
-    return workspacePageById(id === 'idea' ? 'board' : id);
+    // The Library (spec 024) names the workspace dashboard it is reached from until T57 makes it a menu page.
+    return workspacePageById(id === 'idea' ? 'board' : id === 'library' ? 'specs' : id);
   });
   /** The disabled trigger's reason: an unknown workspace has no pages to switch, elsewhere a spec is what is missing. */
   protected readonly areaReason = computed(() =>

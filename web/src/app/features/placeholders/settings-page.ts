@@ -36,6 +36,7 @@ import { ActorsSection } from '../settings/actors-section';
         {{ 'shortcuts.title' | transloco }}
       </button>
       <a routerLink="/help" data-action="help">{{ 'help.title' | transloco }}</a>
+      <a routerLink="/settings/workspaces" data-action="workspaces">{{ 'settingsWorkspaces.title' | transloco }}</a>
     </ui-card>
     <app-actors-section />
     <a routerLink="/">{{ 'shell.settingsPage.back' | transloco }}</a>

@@ -12,6 +12,21 @@
     "claimsClosed": "{{closed}} von {{total}} Claims geschlossen",
     "noValue": "—"
   },
+  "assistant": {
+    "label": "Assistent dot",
+    "name": "dot",
+    "context": "Spectant-Assistent",
+    "new": "Neue Unterhaltung",
+    "close": "Assistent schließen",
+    "intro": "Hallo, ich bin dot, der kleine violette Punkt aus dem Spectant-Ring. Ich beantworte Fragen aus Ihren Spec-Dateien und dem Live-Board und schlage Schreibschritte vor, die Sie immer bestätigen.",
+    "introNote": "Demo-Version: Ich antworte nur aus Fixtures, nichts wird gesendet.",
+    "thinking": "dot denkt nach",
+    "suggestions": "Vorschläge",
+    "placeholder": "Fragen Sie dot zu diesem Spec…",
+    "input": "Fragen Sie den Assistenten",
+    "send": "Senden",
+    "foot": "Demo-Antworten aus Fixtures — nichts verlässt die Seite."
+  },
   "demo": {
     "chip": "demo",
     "description": "Demodaten, bis der Kern sie liefert"
@@ -177,6 +192,10 @@
     "empty": "Keine Warnungen",
     "icon": "Warnung"
   },
+  "identity": {
+    "open": "{{workspace}} öffnen",
+    "screenshot": "Bildschirmfoto von {{workspace}}"
+  },
   "overview": {
     "title": "Alle Workspaces",
     "eyebrow": "Spectant · {{workspaces}} Workspaces · {{specs}} Specs",
@@ -306,6 +325,49 @@
       "saved": "Akteure gespeichert.",
       "failed": "Die Akteure konnten nicht gespeichert werden (Status {{ status }})."
     }
+  },
+  "settingsWorkspaces": {
+    "title": "Workspaces",
+    "registered": "· {{count}} registriert",
+    "add": {
+      "path": "Repository-Pfad",
+      "pathPlaceholder": "~/code/mein-repo",
+      "name": "Name",
+      "nameLabel": "Anzeigename",
+      "namePlaceholder": "mein-repo",
+      "button": "Hinzufügen",
+      "hint": "Einen Pfad einfügen, der Name füllt sich selbst.",
+      "nothing": "Demo: nichts wurde hinzugefügt, die Registry bleibt, wie sie ist."
+    },
+    "upload": {
+      "text": "Identitätsbilder (Screenshot und Logo) wählt man in der App; der Upload ist in diesem Mock abgeschaltet.",
+      "button": "Screenshot hochladen",
+      "off": "Der Screenshot-Upload ist im Mock abgeschaltet"
+    },
+    "status": {
+      "ok": "lesbar",
+      "empty": "noch keine Specs",
+      "missing": "Ordner nicht gefunden"
+    },
+    "row": {
+      "reveal": "Zeigen",
+      "relocate": "Neu verorten…",
+      "counts": "{{specs}} Specs · {{active}} aktiv",
+      "actions": "Aktionen für {{name}}"
+    },
+    "menu": {
+      "rename": "Umbenennen",
+      "rescan": "Neu einlesen",
+      "open": "Dashboard öffnen",
+      "remove": "Entfernen…"
+    },
+    "remove": {
+      "title": "{{name}} entfernen?",
+      "body": "Spectant vergisst den Workspace. Der Ordner und seine Specs bleiben unberührt.",
+      "cancel": "Abbrechen",
+      "confirm": "Entfernen"
+    },
+    "foot": "Die Registry liegt im Datenverzeichnis der App · die CLI kann dasselbe:"
   },
   "states": {
     "unreachable": "Spectant ist auf {{host}} nicht erreichbar",
@@ -496,8 +558,12 @@
       }
     },
     "assistant": {
-      "trigger": "Assistent",
-      "soon": "Der Assistent kommt mit einer späteren Version"
+      "trigger": "Assistent"
+    },
+    "libraryLink": {
+      "label": "Library dieses Workspace",
+      "pill": "Library",
+      "value": "Docs"
     },
     "refresh": {
       "now": "Jetzt aktualisieren",
@@ -1792,6 +1858,59 @@
     "palette": {
       "page": "Tech",
       "tab": "Tech · {{tab}}"
+    }
+  },
+  "library": {
+    "title": "Library",
+    "heading": "Library · {{ws}}",
+    "back": "Zurück zum Dashboard",
+    "search": {
+      "placeholder": "Titel und Volltext durchsuchen",
+      "label": "Alle Dokumente durchsuchen"
+    },
+    "filters": {
+      "type": "Dokumenttyp",
+      "all": "Alle",
+      "spec": "Spec",
+      "allSpecs": "Alle Specs",
+      "stale": "Nur veraltete"
+    },
+    "types": {
+      "plan": "Plan",
+      "design": "Design",
+      "decisions": "Entscheidungen",
+      "constitution": "Constitution",
+      "evidence": "Nachweise",
+      "notes": "Notizen"
+    },
+    "wsWide": "{{ws}} · workspaceweit",
+    "count": "{{ws}} · {{shown}} von {{total}} Dokumenten · {{stale}} veraltet",
+    "outdated": "veraltet",
+    "xrefTitle": "Teilt Verweise mit {{count}} anderen Dokumenten",
+    "empty": {
+      "heading": "Kein Dokument passt",
+      "body": "Versuchen Sie ein anderes Wort, oder setzen Sie die Filter zurück.",
+      "clear": "Filter zurücksetzen"
+    },
+    "reader": {
+      "label": "Leser",
+      "back": "Library",
+      "updated": "geändert {{date}}",
+      "open": "In Spec {{spec}} öffnen",
+      "staleHeading": "Möglicherweise veraltet",
+      "image": "Vorschau von {{file}}",
+      "pick": "Wählen Sie ein Dokument",
+      "pickBody": "Jeder Plan, jedes Design, jede Entscheidung, jeder Nachweis und jede Notiz aller Specs an einem Ort."
+    },
+    "refs": {
+      "heading": "Querverweise",
+      "none": "Keine Verweise.",
+      "search": "Alle Dokumente nach {{ref}} durchsuchen",
+      "type": "Typ",
+      "document": "Dokument",
+      "spec": "Spec",
+      "shared": "Gemeinsame Verweise",
+      "sharedShort": "Gemeinsam:"
     }
   },
   "orientation": {

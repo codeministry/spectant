@@ -56,6 +56,21 @@
   grid-area: nav;
 }
 
+/* From 1120 px on a workspace page the rail ends in the Library link (prototype `.library-link`). */
+.shell-header.has-library {
+  grid-template: "brand nav library . palette live zen assistant settings help" 64px / auto minmax(0, auto) auto minmax(0, 1fr) minmax(240px, 360px) auto auto auto auto auto;
+}
+
+.has-library .rail-field {
+  grid-column: brand-start / library-end;
+}
+
+.library {
+  z-index: 1;
+  grid-area: library;
+  margin-inline-start: -8px;
+}
+
 .palette {
   display: inline-flex;
   grid-area: palette;
@@ -106,6 +121,10 @@
     grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) auto auto auto auto auto auto;
   }
 
+  .shell-header.on-spec.has-library {
+    grid-template-columns: auto minmax(0, auto) auto minmax(0, 1fr) auto auto auto auto auto auto;
+  }
+
   .on-spec .palette {
     justify-content: center;
     inline-size: 40px;
@@ -146,49 +165,17 @@
   border-radius: var(--radius);
   background: var(--color-base-100);
   color: var(--color-base-content);
-  cursor: default;
+  cursor: pointer;
 }
 
-/*
- * The prototype's mascot keeps its own colours in both themes: lime #a6e22e into cyan #78dce8, the violet dot #ab9df2,
- * eyes and mouth #221f22 (`assistant.js`). Ring 5 wide on r 15, turned -17°; 20 px in the 40 px trigger.
- */
-.mascot {
-  --m-lime: oklch(84.1% 0.2044 127.3); /* #a6e22e */
-  --m-cyan: oklch(83.8% 0.095 205.7); /* #78dce8 */
-  --m-violet: oklch(74.1% 0.121 290.7); /* #ab9df2 */
-  --m-ink: oklch(24.4% 0.007 325.8); /* #221f22 */
-
-  inline-size: 20px;
-  block-size: 20px;
-  overflow: visible;
+.assistant[aria-pressed="true"] {
+  border-color: var(--color-secondary);
 }
 
-.m-rings {
-  transform: rotate(-17deg);
-  transform-origin: 24px 24px;
-}
-
-.m-ring {
-  fill: none;
-  stroke: color-mix(in oklch, var(--m-lime) var(--m-mix), var(--m-cyan));
-  stroke-dasharray: 1.04 6.96;
-  stroke-width: 5;
-}
-
-.m-dot {
-  fill: var(--m-violet);
-}
-
-.m-eye {
-  fill: var(--m-ink);
-}
-
-.m-mouth {
-  fill: none;
-  stroke: var(--m-ink);
-  stroke-linecap: round;
-  stroke-width: 1.2;
+@media (hover: hover) {
+  .assistant:hover {
+    background: var(--color-base-200);
+  }
 }
 
 /* Every element 44 px tall on a coarse pointer (prototype rule), not by width. */

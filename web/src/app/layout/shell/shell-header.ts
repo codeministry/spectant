@@ -4,8 +4,11 @@ import { KeyboardService } from '../../core/keyboard.service';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
+import { AssistantPanel } from '../assistant/assistant-panel';
+import { AssistantDot } from '../assistant/assistant.service';
+import { Mascot } from '../assistant/mascot';
 import { areaById, areaPath, specLink } from './areas';
-import { ShellBrand } from './shell-brand';
+import { ShellBrand, ShellLibraryLink } from './shell-brand';
 import { ShellData } from './shell-data.service';
 import { ShellLive } from './shell-live';
 import { ShellNav } from './shell-nav';
@@ -17,7 +20,7 @@ import { ShellState } from './shell-state.service';
  *
  * From 1120 px (the wide tier) the prototype header unchanged: the brand rail (logo, wordmark, Workspace · Spec · Area
  * rail-selects with their labels), the palette (a field, or the 40 px icon on spec pages below 1560 px), then status
- * group, zen, the assistant dot, settings (the settings popover, T40) and help. Below 1120 px the row is shortened: the
+ * group, zen, the assistant dot (`AssistantPanel`, T53), settings (the settings popover, T40) and help. Below 1120 px the row is shortened: the
  * logo rail (ring only below 640 px) with the Workspace and Spec selects without visible labels, the palette icon, the
  * status group and the overflow menu `⋯` with Area, Zen, Assistant, Settings and Help (`ShellMenus`). The bottom
  * hairline shows only once the page has scrolled (prototype `[data-ui="header"].scrolled`).
@@ -29,7 +32,7 @@ import { ShellState } from './shell-state.service';
  */
 @Component({
   selector: 'app-shell-header',
-  imports: [TranslocoPipe, UiIcon, UiIconButton, UiKbd, ShellBrand, ShellNav, ShellLive],
+  imports: [TranslocoPipe, UiIcon, UiIconButton, UiKbd, ShellBrand, ShellLibraryLink, ShellNav, ShellLive, Mascot, AssistantPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell-header.html',
   styleUrl: './shell-header.css',
@@ -41,6 +44,8 @@ import { ShellState } from './shell-state.service';
 export class ShellHeader {
   protected readonly state = inject(ShellState);
   protected readonly keyboard = inject(KeyboardService);
+  /** The assistant dot (T53): the trigger toggles its mocked panel, which renders after the header while open. */
+  protected readonly assistant = inject(AssistantDot);
   private readonly data = inject(ShellData);
   private readonly view = inject(DOCUMENT).defaultView;
 
@@ -58,6 +63,12 @@ export class ShellHeader {
     const ws = this.state.ws();
     const id = this.state.specId();
     return ws === null || id === null || this.data.specMissing() ? null : specLink(ws, id, areaPath(areaById('live')));
+  });
+
+  /** The rail link to the workspace Library (prototype `.library-link`): from 1120 px, on every workspace page. */
+  protected readonly libraryLink = computed(() => {
+    const ws = this.state.ws();
+    return ws === null || !this.wide() ? null : `/w/${encodeURIComponent(ws)}/library`;
   });
 
   protected onScroll(): void {
