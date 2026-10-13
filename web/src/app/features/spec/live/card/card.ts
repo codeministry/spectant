@@ -16,7 +16,7 @@ export type CardDensity = 'comfortable' | 'compact';
 
 /**
  * One board card (design.md § Live, card anatomy; ISC-88), the same in the Lanes and the Flow view: an `<article>`
- * named "T14, ISC-333, in flight, web" with a 3 px inline-start edge in the state's tone. Every one of the eleven
+ * named "T14, ISC-333, in flight, web" with a 4 px inline-start edge (prototype `.tcard`) in the state's tone. Every one of the eleven
  * states carries its glyph, its chip word (`states.card.*`) and its tone; no two share a (shape, tone) pair.
  *
  * Two densities, from the board's `?density` param:
@@ -35,8 +35,8 @@ export type CardDensity = 'comfortable' | 'compact';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: block; min-inline-size: 0; }
-    article { display: grid; gap: 4px; min-inline-size: 0; padding: 8px 8px 8px 12px; border: 1px solid var(--line); border-inline-start: 3px solid var(--edge); border-radius: var(--radius-field); background: var(--color-base-100); }
-    :host([data-density='compact']) article { gap: 2px; padding-block: 4px; }
+    article { display: grid; gap: 4px; min-inline-size: 0; padding: 10px 12px 10px 14px; border: 1px solid var(--line); border-inline-start: 4px solid var(--edge); border-radius: var(--radius-field); background: var(--color-base-100); }
+    :host([data-density='compact']) article { gap: 2px; padding: 6px 10px 6px 12px; }
     .r1, .r3 { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-inline-size: 0; }
     /* The header stays one line, as the prototype's .r1: the state word never shrinks, the claim chip gives way. */
     .r1 { flex-wrap: nowrap; gap: 6px; }

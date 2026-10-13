@@ -1,15 +1,24 @@
-import { ChangeDetectionStrategy, Component, computed, inject, resource, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, resource, signal, type TemplateRef, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { Frame, MatrixCell, MatrixColumn } from '../../../../../../../core/src/files';
+import type { Frame, FrameCard, LiveFrame, MatrixCell, MatrixColumn } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
+import { type RailBadge, RailContent } from '../../../../layout/shell/rail-content';
 import { ShellData } from '../../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import type { CardState } from '../../../../../../../core/src/files';
 import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
+import { UiSheet } from '../../../../shared/ui/overlay/sheet';
 import { UiScrubber } from '../../../../shared/ui/scrubber/scrubber';
-import { recutMarkers, scrubberStops } from '../board/board-model';
+import { type SegmentedOption, UiSegmented } from '../../../../shared/ui/segmented/segmented';
+import { frameEvents, needsYouOf, recutMarkers, scrubberStops } from '../board/board-model';
+import { CardDetail } from '../card/card-detail';
+import { cardHistory } from '../card/card-history';
+import { FrameBar } from '../this-frame/frame-bar';
+import { NeedsYou } from '../this-frame/needs-you';
+import { ThisFrame } from '../this-frame/this-frame';
 import { stateKey } from '../../../../shared/ui/glyph/states';
 import { boardQuery, glyphOf, laneGroups, matrixOf } from './matrix-model';
 
@@ -26,9 +35,9 @@ import { boardQuery, glyphOf, laneGroups, matrixOf } from './matrix-model';
  */
 @Component({
   selector: 'app-matrix-tab',
-  imports: [RouterLink, TranslocoPipe, UiGlyph, UiScrubber],
+  imports: [CardDetail, FrameBar, NeedsYou, NgTemplateOutlet, RouterLink, ThisFrame, TranslocoPipe, UiGlyph, UiScrubber, UiSegmented, UiSheet],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { 'data-page': 'matrix', '[attr.data-tier]': 'state.tier()' },
+  host: { 'data-page': 'matrix', '[attr.data-tier]': 'state.tier()', '(document:keydown)': 'onKey($event)' },
   templateUrl: './matrix-tab.html',
   styleUrl: './matrix-tab.css',
 })
@@ -48,7 +57,7 @@ export class MatrixTab {
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
   /** Every frame on the scrubber: the history, then the live frame. */
-  private readonly frames = computed<readonly Frame[]>(() => {
+  private readonly frames = computed<ReadonlyArray<Frame | LiveFrame>>(() => {
     const history = this.framesResult.value();
     const live = this.liveResult.value();
     return [...(history?.kind === 'ok' ? history.body : []), ...(live?.kind === 'ok' ? [live.body] : [])];
@@ -86,13 +95,90 @@ export class MatrixTab {
   protected readonly legendStates: readonly CardState[] = ['waiting', 'dispatched', 'question', 'concerns', 'fail', 'done', 'closed'];
   protected readonly stateKey = stateKey;
 
+  /**
+   * The prototype renders the matrix inside the round board (`board-matrix.html`), so it keeps the board's rail and
+   * bottom bar: This frame and Needs you of the scrubbed frame in the shell rail at wide, the 48 px bar with Kbd `o`
+   * and its sheet below wide and in zen (the same components the board registers).
+   */
+  protected readonly wide = computed(() => this.state.tier() === 'wide');
+  protected readonly frame = computed<Frame | LiveFrame | null>(() => this.frames()[this.current()] ?? null);
+  protected readonly isLive = computed(() => this.frame()?.kind === 'live');
+  protected readonly lastIndex = computed(() => Math.max(0, this.frames().length - 1));
+  protected readonly events = computed(() => {
+    const frame = this.frame();
+    return frame === null ? [] : frameEvents(this.frames()[this.current() - 1] ?? null, frame);
+  });
+  protected readonly needsYou = computed(() => {
+    const frame = this.frame();
+    return frame === null ? [] : needsYouOf(frame);
+  });
+  protected readonly barOpen = signal(false);
+  protected readonly barTab = signal<'frame' | 'needs'>('frame');
+  protected readonly barTabs = computed<readonly SegmentedOption[]>(() => {
+    this.lang();
+    return [
+      { key: 'frame', label: this.transloco.translate('board.rail.thisFrameCount', { count: this.events().length }) },
+      { key: 'needs', label: this.transloco.translate('board.rail.needsYouCount', { count: this.needsYou().length }) },
+    ];
+  });
+  protected readonly selected = signal<FrameCard | null>(null);
+  protected readonly selectedHistory = computed(() => {
+    const card = this.selected();
+    return card === null ? null : cardHistory(this.frames(), card);
+  });
+  private readonly railBlocks = viewChild<TemplateRef<unknown>>('railBlocks');
+  private readonly frameBar = viewChild<TemplateRef<unknown>>('frameBar');
+  private readonly railBadges = computed<readonly RailBadge[]>(() => {
+    this.lang();
+    const thisFrame = this.events().length;
+    const needsYou = this.needsYou().length;
+    return [
+      { key: 'thisFrame', count: thisFrame, label: this.transloco.translate('board.rail.badgeThisFrame', { count: thisFrame }) },
+      { key: 'needsYou', count: needsYou, label: this.transloco.translate('board.rail.badgeNeedsYou', { count: needsYou }) },
+    ];
+  });
+
+  constructor() {
+    inject(RailContent).register(
+      {
+        blocks: computed(() => (this.wide() ? (this.railBlocks() ?? null) : null)),
+        bar: computed(() => this.frameBar() ?? null),
+        badges: this.railBadges,
+      },
+      inject(DestroyRef),
+    );
+  }
+
+  /** `o` opens This frame / Needs you below wide (prototype `.sheet-bar kbd`), as on the board. */
+  protected onKey(event: KeyboardEvent): void {
+    if (event.key !== 'o' || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (this.wide() && !this.state.zen()) return;
+    const target = event.target as HTMLElement | null;
+    if (target !== null && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return;
+    event.preventDefault();
+    this.barOpen.set(true);
+  }
+
+  protected openCard(card: FrameCard): void {
+    this.barOpen.set(false);
+    this.selected.set(card);
+  }
+
+  protected closeDetail(open: boolean): void {
+    if (!open) this.selected.set(null);
+  }
+
+  protected setBarTab(tab: string | undefined): void {
+    this.barTab.set(tab === 'needs' ? 'needs' : 'frame');
+  }
+
   /** The lane dot of a lane group: the board's lane colours in constitution order. */
   protected laneDot(i: number): string {
     return ['var(--color-primary)', 'var(--color-secondary)', 'var(--conc)', 'var(--color-success)', 'var(--color-warning)'][i % 5] ?? 'var(--color-primary)';
   }
 
   protected setFrame(index: number): void {
-    this.picked.set(index);
+    this.picked.set(Math.min(this.lastIndex(), Math.max(0, index)));
   }
 
   protected readonly glyphOf = glyphOf;

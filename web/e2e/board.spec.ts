@@ -67,7 +67,8 @@ test.describe('states', () => {
       const glyph = card.locator('.r1 > ui-glyph');
       pairs.add(`${String(await glyph.getAttribute('data-shape'))}/${String(await glyph.getAttribute('data-tone'))}`);
       const edge = await card.evaluate((el) => getComputedStyle(el).borderInlineStartWidth);
-      expect(edge, state).toBe('3px');
+      // spec 024: prototype value (principal: Prototyp gilt immer)
+      expect(edge, state).toBe('4px');
     }
     expect(pairs.size).toBe(statesOf(LIVE.cards).length);
   });

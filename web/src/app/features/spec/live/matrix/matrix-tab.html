@@ -86,4 +86,39 @@
       </p>
     </div>
   }
+
+  @if (frame(); as f) {
+    <ng-template #railBlocks>
+      <app-this-frame [frame]="f" [events]="events()" (opened)="openCard($event)" />
+      <app-needs-you [frame]="f" [cards]="needsYou()" (opened)="openCard($event)" />
+    </ng-template>
+    <ng-template #frameBar>
+      <app-frame-bar
+        [label]="f.label"
+        [live]="isLive()"
+        [thisFrame]="events().length"
+        [needsYou]="needsYou().length"
+        [index]="current()"
+        [last]="lastIndex()"
+        (step)="setFrame($event)"
+        (opened)="barOpen.set(true)"
+      />
+    </ng-template>
+    @if (!wide() && !state.zen()) {
+      <ng-container [ngTemplateOutlet]="frameBar" />
+    }
+    @if (!wide() || state.zen()) {
+      <ui-sheet [open]="barOpen()" tier="compact" [heading]="'board.bar.heading' | transloco" (openChange)="barOpen.set($event)">
+        <ui-segmented fill [options]="barTabs()" [value]="barTab()" [label]="'board.bar.heading' | transloco" (valueChange)="setBarTab($event)" />
+        @if (barTab() === 'frame') {
+          <app-this-frame [frame]="f" [events]="events()" [collapsible]="false" (opened)="openCard($event)" />
+        } @else {
+          <app-needs-you [frame]="f" [cards]="needsYou()" [framed]="false" (opened)="openCard($event)" />
+        }
+      </ui-sheet>
+    }
+    @if (selected(); as c) {
+      <app-card-detail [card]="c" [history]="selectedHistory()" [open]="true" (openChange)="closeDetail($event)" />
+    }
+  }
 </section>

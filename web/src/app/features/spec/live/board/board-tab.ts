@@ -1,15 +1,17 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, resource, signal, type TemplateRef, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, resource, signal, type TemplateRef, untracked, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { CardState, Frame, FrameCard, LiveFrame } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
+import { RefreshService } from '../../../../core/refresh.service';
 import { type RailBadge, RailContent } from '../../../../layout/shell/rail-content';
 import { ShellData } from '../../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../../shared/icons/icon';
 import { UiKbd } from '../../../../shared/ui/kbd/kbd';
+import { relativeParts } from '../../../../shared/ui/relative-time/relative-time';
 import { glyphSpec, stateKey } from '../../../../shared/ui/glyph/states';
 import { type MeterSegment, UiMeter } from '../../../../shared/ui/meter/meter';
 import { UiDisclosure } from '../../../../shared/ui/overlay/disclosure';
@@ -100,6 +102,7 @@ export class BoardTab {
   private readonly transloco = inject(TranslocoService);
   protected readonly state = inject(ShellState);
   private readonly data = inject(ShellData);
+  private readonly refresher = inject(RefreshService);
 
   private readonly params = computed(() => {
     const ws = this.state.ws();
@@ -131,6 +134,10 @@ export class BoardTab {
   protected readonly index = computed(() => resolveFrameIndex(this.query().get('frame'), this.lastIndex()));
   protected readonly frame = computed<AnyFrame | null>(() => this.frames()[this.index()] ?? null);
   protected readonly isLive = computed(() => this.frame()?.kind === 'live');
+  /** The clock the Live label reads, every 10 s like the header's "Updated 12 s ago". */
+  private readonly now = signal(Date.now());
+  /** "Live · updated 12 s ago" (prototype `.flabel`): whole units since the refresh service's last refresh. */
+  protected readonly ago = computed(() => relativeParts(this.refresher.lastRefresh(), Math.max(this.now(), this.refresher.lastRefresh())));
   private readonly previous = computed<AnyFrame | null>(() => this.frames()[this.index() - 1] ?? null);
 
   protected readonly view = computed(() => (this.query().get('view') === 'flow' ? 'flow' : 'lanes'));
@@ -233,6 +240,17 @@ export class BoardTab {
   private readonly collapsedLanes = signal<ReadonlySet<string>>(new Set());
 
   constructor() {
+    // The Live label's clock, and the live frame re-read on every refresh (ETag: a 304 costs no body), so "updated
+    // n s ago" names when this board was last read.
+    const clock = setInterval(() => this.now.set(Date.now()), 10_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(clock));
+    let firstRefresh = true;
+    effect(() => {
+      this.refresher.lastRefresh();
+      if (firstRefresh) firstRefresh = false;
+      else untracked(() => this.liveResult.reload());
+    });
+
     // Playback: one frame per step until the live frame, then stop. The timer is the I/O boundary here.
     effect((onCleanup) => {
       if (!this.playing()) return;

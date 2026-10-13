@@ -61,13 +61,13 @@
   flex: none;
 }
 
+/* The prototype's `.legend` wraps: every pill stays whole, none is cut off or scrolled away. */
 .legend {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
   min-inline-size: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 
 .lchip {

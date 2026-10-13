@@ -118,7 +118,11 @@
         />
         <div class="frame-meta">
           @if (isLive()) {
-            <span class="flabel" data-frame-chip="live"><i class="live-i" aria-hidden="true"></i>{{ 'board.frame.live' | transloco }}</span>
+            <span class="flabel" data-frame-chip="live"
+              ><i class="live-i" aria-hidden="true"></i>{{ 'board.frame.live' | transloco }}<span class="updated" data-frame-updated>
+                · {{ 'board.frame.updated' | transloco: ago() }}</span
+              ></span
+            >
           } @else {
             <span class="history" data-frame-chip="history">
               <span class="flabel">{{ 'board.frame.history' | transloco: { label: f.label } }}</span>
@@ -328,7 +332,7 @@
           </div>
         }
         @if (lane.landed.length > 0) {
-          @let clipped = !wide() && lane.landed.length > 5 && !landedAll().has(lane.name);
+          @let clipped = lane.landed.length > 5 && !landedAll().has(lane.name);
           <div class="section" data-section="landed">
             <h4>{{ 'board.section.landed' | transloco }} <span class="count mono">{{ lane.landed.length }}</span></h4>
             <div class="group-cards" [attr.data-clip]="clipped ? '' : null">

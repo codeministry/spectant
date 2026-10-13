@@ -4,7 +4,7 @@
  * Every frame of the scrubber (each `?frame=i` of `core/fixtures/harbor.frames.golden.json`, then live from
  * `harbor.live.golden.json`) in both densities (`?density=compact` and the default) is rendered, and every card is read
  * back: the union of the rendered glyph states equals exactly the eleven `CardState`s, each state shows its
- * `states.card.*` word in the chip, its (shape, tone) pair is its own, and its 3 px inline-start edge is the state's
+ * `states.card.*` word in the chip, its (shape, tone) pair is its own, and its 4 px inline-start edge is the state's
  * colour: one colour per tone, the same wherever the state shows, and different for every other tone. Opening one card's
  * detail by its id button lists the card's state history across the frames, as the goldens give it. `board.spec.ts`
  * covers the live frame; this file covers the whole fixture.
@@ -65,7 +65,7 @@ interface Seen {
 test.describe('states', () => {
   test.use(atWidth(1440));
 
-  test('states: every frame in both densities renders all eleven states with glyph, chip word, own shape and tone, state-coloured 3 px edge', async ({ page }) => {
+  test('states: every frame in both densities renders all eleven states with glyph, chip word, own shape and tone, state-coloured 4 px edge', async ({ page }) => {
     test.setTimeout(120_000);
     const seen: Seen[] = [];
     for (const frame of ALL_FRAMES) {
@@ -102,7 +102,8 @@ test.describe('states', () => {
     for (const s of seen) {
       expect(s.glyph, `glyph of a ${s.state} card`).toBe(s.state);
       expect(s.chip, `chip of ${s.state}`).toBe(EN.states.card[s.state as CardState]);
-      expect(s.edgeWidth, `edge of ${s.state}`).toBe('3px');
+      // spec 024: prototype value (principal: Prototyp gilt immer)
+      expect(s.edgeWidth, `edge of ${s.state}`).toBe('4px');
       const first = byState.get(s.state);
       if (first === undefined) byState.set(s.state, s);
       // A state looks the same in every frame and both densities.
@@ -142,7 +143,11 @@ test.describe('states', () => {
 
     await page.goto(BOARD);
     await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
-    await page.locator(`${CARDS}[data-card="${card.task}"] button.id`).click();
+    // spec 024: prototype value (principal: Prototyp gilt immer) — Landed clips past five cards at every tier, so a
+    // clipped card is reached through its lane's "show all n" first.
+    const id = page.locator(`${CARDS}[data-card="${card.task}"] button.id`);
+    if (!(await id.isVisible())) await page.locator(`[data-lane="${card.lane}"] [data-show-all]`).click();
+    await id.click();
     const detail = page.locator(`dialog[open] [data-card-detail][data-task="${card.task}"]`);
     await expect(detail).toBeVisible();
     const rows = detail.locator('[data-history] li');
