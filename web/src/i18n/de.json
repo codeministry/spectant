@@ -436,7 +436,16 @@
         "activity": "Agentenquelle: Aktivitätsprotokoll",
         "none": "Keine Agentenquelle"
       },
-      "open": "{{source}}, Runden-Board öffnen"
+      "open": "{{source}}, Runden-Board öffnen",
+      "status": "Live-Status und Dev-Dienste · {{source}}",
+      "updated": "Aktualisiert vor",
+      "ago": "{{value}} {{unit}}",
+      "heading": "Live",
+      "reading": "Liest {{count}} Workspace(s) · alle {{seconds}} s",
+      "board": "Round-Board öffnen",
+      "services": "Dev-Dienste",
+      "openService": "{{kind}} auf Port {{port}} in neuem Tab öffnen",
+      "noServices": "In diesem Workspace läuft kein Dev-Dienst."
     },
     "zen": {
       "toggle": "Zen-Modus",

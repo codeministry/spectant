@@ -85,7 +85,9 @@ for (const { width, tier, tabBar } of TIERS) {
       await expect(area).toBeFocused();
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/claims$/);
 
+      // spec 024 T40: the indicator opens the live popover (prototype `pop-live`); its round-board entry leads there.
       await control('live').click();
+      await page.locator('[data-live-board]').click();
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/board$/);
 
       await control('settings').click();

@@ -410,18 +410,24 @@ describe('ShellComponent', () => {
       }
     });
 
-    it('links the live indicator to the live board only while a spec is open', async () => {
+    it('opens the live popover from the indicator, with the round board only while a spec is open (spec 024 T40)', async () => {
       setUp();
       const { root: workspace } = await open('/w/harbor');
-      expect(control(workspace, 'live').tagName).toBe('SPAN');
+      const indicator = control(workspace, 'live');
+      expect(indicator.tagName).toBe('BUTTON');
+      expect(indicator.getAttribute('aria-haspopup')).toBe('dialog');
+      expect(indicator.getAttribute('data-source')).toBe('none');
+      expect(workspace.querySelector('[data-live-board]')).toBeNull();
+      expect(workspace.querySelector('[data-live-reading]')).not.toBeNull();
 
       const { root: spec } = await open('/w/harbor/s/002/status');
       const live = control(spec, 'live');
-      expect(live.tagName).toBe('A');
-      expect(live.getAttribute('href')).toBe('/w/harbor/s/002/board');
+      expect(live.tagName).toBe('BUTTON');
       // Spec 008 (T116): the spec's board is the "Round board", never the workspace's "Board".
-      expect(live.getAttribute('title')).toBe('No agent source, open the round board');
-      expect(live.getAttribute('data-source')).toBe('none');
+      expect(live.getAttribute('title')).toBe('No agent source');
+      expect(live.getAttribute('aria-label')).toBe('Live status and dev services · No agent source');
+      expect(spec.querySelector('[data-live-board]')?.getAttribute('href')).toBe('/w/harbor/s/002/board');
+      expect(spec.querySelector('[data-live-board]')?.textContent).toContain('Open the round board');
     });
 
     it('links settings to the settings page, which renders inside the shell', async () => {
@@ -619,7 +625,8 @@ describe('ShellComponent', () => {
         await harness.fixture.whenStable();
         const live = control(root, 'live');
         expect(live.getAttribute('data-source'), source).toBe(source);
-        expect(live.querySelector('.visually-hidden')?.textContent, source).toContain(
+        // spec 024 T40: the indicator is the live popover's trigger; its name carries the source.
+        expect(live.getAttribute('aria-label'), source).toContain(
           { none: 'No agent source', activity: 'activity log', frontier: 'LifeOS frontier locks' }[source],
         );
       }

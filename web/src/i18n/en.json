@@ -436,7 +436,16 @@
         "activity": "Agent source: activity log",
         "none": "No agent source"
       },
-      "open": "{{source}}, open the round board"
+      "open": "{{source}}, open the round board",
+      "status": "Live status and dev services · {{source}}",
+      "updated": "Updated",
+      "ago": "{{value}} {{unit}} ago",
+      "heading": "Live",
+      "reading": "Reading {{count}} workspace(s) · every {{seconds}} s",
+      "board": "Open the round board",
+      "services": "Dev services",
+      "openService": "Open {{kind}} on port {{port}} in a new tab",
+      "noServices": "No dev service is running in this workspace."
     },
     "zen": {
       "toggle": "Zen mode",

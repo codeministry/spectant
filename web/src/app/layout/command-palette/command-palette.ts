@@ -1,3 +1,5 @@
+import type { IconName } from '../../shared/icons/icons';
+import { leadIcon, MONO_GROUPS } from './palette-icons';
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, DOCUMENT, effect, inject, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
@@ -32,6 +34,10 @@ interface PaletteOption {
   readonly status: { readonly word: string; readonly dot: string } | null;
   /** An idea (spec 008): the chip takes the idea chip's look. */
   readonly idea: boolean;
+  /** The prototype's lead icon for the row (palette-icons.ts), or null where the chip leads. */
+  readonly icon: IconName | null;
+  /** Next up and Services set their labels in mono, as the prototype does. */
+  readonly mono: boolean;
 }
 
 interface PaletteGroup {
@@ -99,6 +105,8 @@ export class CommandPalette {
           status: claim === null ? null : { word: claim.statusWord, dot: claim.dot },
           chip: highlight(entry.chip ?? '', query),
           idea: isIdea(entry),
+          icon: leadIcon(source.id, entry),
+          mono: MONO_GROUPS.has(source.id),
         };
       }),
     }));

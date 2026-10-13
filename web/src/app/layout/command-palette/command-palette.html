@@ -37,6 +37,9 @@
               (pointermove)="active.set(option.index)"
               (click)="activate(option.entry)"
             >
+              @if (option.icon; as icon) {
+                <ui-icon class="p-lead" [name]="icon" />
+              }
               @if (option.entry.chip) {
                 <span class="p-chip" [class.p-idea]="option.idea">
                   @if (option.idea) {
@@ -54,6 +57,7 @@
               <!-- One line cut at a whole word; the highlighted option up to three (ISC-111.2). No control inside an option. -->
               <span
                 class="grow"
+                [class.mono]="option.mono"
                 [title]="option.entry.label"
                 [uiClamp]="option.text"
                 [uiClampPieces]="option.label"
