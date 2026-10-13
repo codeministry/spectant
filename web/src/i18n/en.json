@@ -1803,6 +1803,14 @@
     },
     "ideas": {
       "label": "Ideas · {{count}}"
+    },
+    "tree": {
+      "label": "Planning tree: milestones, features, specs and claims",
+      "noMilestone": "No milestone",
+      "noMilestoneMeta": "Features without a Milestone: line",
+      "noMilestones": "The master names no milestones.",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all"
     }
   },
   "sidebar": {

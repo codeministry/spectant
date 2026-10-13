@@ -1803,6 +1803,14 @@
     },
     "ideas": {
       "label": "Ideen · {{count}}"
+    },
+    "tree": {
+      "label": "Planungsbaum: Meilensteine, Features, Specs und Claims",
+      "noMilestone": "ohne Meilenstein",
+      "noMilestoneMeta": "Features ohne Meilenstein-Zeile im Master",
+      "noMilestones": "Der Master nennt keine Meilensteine.",
+      "expandAll": "Alle aufklappen",
+      "collapseAll": "Alle zuklappen"
     }
   },
   "sidebar": {
