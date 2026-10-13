@@ -96,6 +96,7 @@ import {
   ACTORS_ALLOW,
   ACTORS_PATH,
   type ActorsResponse,
+  type WorkspaceRouteName,
   type WorkspaceRouteResponses,
   allowForWorkspace,
   isActorMappings,
@@ -122,6 +123,14 @@ export const WORKSPACES_PATH = "/api/workspaces";
 
 const DASHBOARD_PATH = /^\/api\/workspaces\/([^/]+)\/dashboard$/;
 const ALLOW = "GET, HEAD";
+
+/** The library routes whose handler has not landed yet (spec 017 T2); answered as any unknown path until then. */
+const LIBRARY_AWAITING_HANDLER: ReadonlySet<WorkspaceRouteName> = new Set<WorkspaceRouteName>([
+  "library",
+  "libraryDoc",
+  "librarySearch",
+  "libraryAsset",
+]);
 
 /** One entry of `GET /api/workspaces`, and the body of a 409 dashboard answer. */
 export type WorkspaceSummary = {
@@ -421,6 +430,9 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     if (pathname !== WORKSPACES_PATH && !match && !workspaceRoute) return null;
     const { db } = options;
     if (workspaceRoute?.route === "boardQuery" && db === undefined) return null;
+    // Registered in the contract ahead of their handlers (spec 017 T2): declined, so the server's JSON 404 applies
+    // instead of the planning fallback below. Each handler task (T15, T17, T18) drops its name here.
+    if (workspaceRoute !== null && LIBRARY_AWAITING_HANDLER.has(workspaceRoute.route)) return null;
     if (!isLoopbackHost(req.headers.get("Host")) || !isLoopbackOrigin(req.headers.get("Origin"))) {
       return json(req, 403, { error: "forbidden" });
     }
