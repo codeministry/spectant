@@ -12,7 +12,8 @@ const CONTROLS = ['brand', 'workspace', 'spec', 'area', 'palette', 'live', 'zen'
 const controlsOn = (route: string): readonly string[] =>
   route.startsWith('/w/') ? CONTROLS : CONTROLS.filter((control) => control !== 'spec' && control !== 'area');
 const TIERS = [
-  { width: 390, tier: 'compact', tabBar: 'header' },
+  // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+  { width: 390, tier: 'compact', tabBar: 'main' },
   { width: 820, tier: 'medium', tabBar: 'main' },
   { width: 1440, tier: 'wide', tabBar: 'main' },
 ] as const;
@@ -36,6 +37,11 @@ for (const { width, tier, tabBar } of TIERS) {
       await page.goto('/w/harbor/s/002/status');
       await expect(page.locator('app-tab-bar')).toHaveCount(1);
       await expect(page.locator(`${tabBar} app-tab-bar`)).toHaveCount(1);
+      // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+      await expect(page.locator('header app-tab-bar')).toHaveCount(0);
+      const band = page.locator('app-tab-bar-slot');
+      await expect(band).toHaveCSS('position', 'sticky');
+      await expect(band).toHaveCSS('top', '64px');
       await expect(page.locator('app-tab-bar a[aria-current="page"]')).toHaveAttribute('data-tab', 'status');
     });
 
@@ -354,7 +360,8 @@ test.describe('zen', () => {
       await zen.click();
       await expect(page.locator('app-spec-page .spec-head')).toBeHidden();
       for (const tool of TOOLS) await expect(page.locator(`header [data-control="${tool}"]`), tool).toBeHidden();
-      await expect(page.locator('header app-tab-bar')).toBeVisible();
+      // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+      await expect(page.locator('main app-tab-bar')).toBeVisible();
       const footer = page.locator('[data-zen-footer]');
       await expect(footer).toBeVisible();
       await expect(footer.locator('[data-zen-part="id"]')).toHaveText('002');

@@ -35,7 +35,7 @@ const labels = (root: Element) => [...root.querySelectorAll('a')].map((a) => a.t
 @Component({
   selector: 'app-bar-host',
   imports: [TabBar],
-  template: `<app-tab-bar [tabs]="tabs" current="status" labelKey="shell.pages.tech" placement="main" />`,
+  template: `<app-tab-bar [tabs]="tabs" current="status" labelKey="shell.pages.tech" />`,
 })
 class BarHost {
   readonly tabs = techTabs('harbor', { status: 22, open: 0 });
@@ -44,7 +44,7 @@ class BarHost {
 @Component({
   selector: 'app-slot-host',
   imports: [TabBarSlot],
-  template: `<header><app-tab-bar-slot placement="header" /></header><main><app-tab-bar-slot placement="main" /></main>`,
+  template: `<header></header><main><app-tab-bar-slot /></main>`,
 })
 class SlotHost {}
 
@@ -54,7 +54,7 @@ describe('techTabs (page-tabs registry)', () => {
     expect(techTabs('harbor')).toEqual([
       { id: 'overview', labelKey: 'tech.tabs.overview', link: ['/w', 'harbor', 'tech', 'overview'] },
       { id: 'architecture', labelKey: 'tech.tabs.architecture', link: ['/w', 'harbor', 'tech', 'architecture'] },
-      { id: 'status', labelKey: 'tech.tabs.status', link: ['/w', 'harbor', 'tech', 'status'] },
+      { id: 'status', labelKey: 'tech.tabs.status', link: ['/w', 'harbor', 'tech', 'status'], sep: true },
       { id: 'specs', labelKey: 'tech.tabs.specs', link: ['/w', 'harbor', 'tech', 'specs'] },
       { id: 'open', labelKey: 'tech.tabs.open', link: ['/w', 'harbor', 'tech', 'open'] },
     ]);
@@ -81,6 +81,11 @@ describe('TabBar with a given tab list', () => {
       ['open', '0'],
     ]);
     expect(root.querySelector('nav')?.getAttribute('aria-label')).toBe('Tech tabs');
+    // Spec 024 (ISC-149): the prototype anatomy, the area eyebrow first and one `tab-sep` before the live group.
+    expect(root.querySelector('nav > [data-area-eyebrow]')?.textContent.trim()).toBe('Tech');
+    expect(root.querySelectorAll('.tab-sep')).toHaveLength(1);
+    expect(root.querySelector('.tab-sep + a')?.getAttribute('data-tab')).toBe('status');
+    expect(root.querySelector('[data-count]')?.tagName).toBe('SMALL');
   });
 });
 
@@ -97,13 +102,14 @@ describe('TabBarSlot on the tech page', () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
-  it('renders the tech tabs in the header at compact and nowhere else', async () => {
+  // Spec 024 (ISC-149): the prototype tab bar under the header on every width, never in the header.
+  it('renders the tech tabs in the page at compact, never in the header', async () => {
     const { root } = await at('/w/harbor/tech/architecture', 'compact');
     expect(root.querySelectorAll('app-tab-bar')).toHaveLength(1);
-    const header = root.querySelector('header app-tab-bar');
-    expect(header?.getAttribute('data-placement')).toBe('header');
-    expect(labels(header as Element)).toEqual(['Overview', 'Architecture', 'Status', 'Specs', 'Open']);
-    expect(header?.querySelector('[aria-current="page"]')?.getAttribute('data-tab')).toBe('architecture');
+    expect(root.querySelector('header app-tab-bar')).toBeNull();
+    const main = root.querySelector('main app-tab-bar');
+    expect(labels(main as Element)).toEqual(['Overview', 'Architecture', 'Status', 'Specs', 'Open']);
+    expect(main?.querySelector('[aria-current="page"]')?.getAttribute('data-tab')).toBe('architecture');
   });
 
   for (const tier of ['medium', 'wide'] as const) {
@@ -112,7 +118,6 @@ describe('TabBarSlot on the tech page', () => {
       expect(root.querySelectorAll('app-tab-bar')).toHaveLength(1);
       expect(root.querySelector('header app-tab-bar')).toBeNull();
       const main = root.querySelector('main app-tab-bar');
-      expect(main?.getAttribute('data-placement')).toBe('main');
       expect(main?.querySelector('[aria-current="page"]')?.getAttribute('href')).toBe('/w/harbor/tech/open');
     });
   }

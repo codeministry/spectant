@@ -148,11 +148,13 @@ describe('ShellComponent', () => {
     }
   });
 
-  it('puts the tab bar in the header at compact and in main at medium and wide', async () => {
+  // Spec 024 (ISC-149): the prototype tab bar under the header on every width (principal 2026-10-12, design.md).
+  it('puts the tab bar in main under the header on every width, never in the header', async () => {
     setUp();
     const { root, harness } = await open('/w/harbor/s/002/status', 390);
     expect(root.querySelectorAll('app-tab-bar')).toHaveLength(1);
-    expect(root.querySelector('header app-tab-bar')).not.toBeNull();
+    expect(root.querySelector('main app-tab-bar')).not.toBeNull();
+    expect(root.querySelector('header app-tab-bar')).toBeNull();
 
     for (const width of [820, 1440]) {
       FakeResizeObserver.last?.resize(width);

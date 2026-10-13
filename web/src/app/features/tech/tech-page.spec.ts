@@ -107,14 +107,15 @@ describe('TechPage (T14, ISC-134.1)', () => {
     expect(techTabCounts(model)).toEqual({ status: 2, specs: 2, open: 3 });
   });
 
-  it('mounts the tab bar under the head at wide and medium and leaves it to the header at compact', async () => {
+  // Spec 024 (ISC-149): the prototype tab bar under the header on every width, compact included.
+  it('mounts the tab bar under the head on every tier, compact included', async () => {
     const root = await open('/w/harbor/tech/status', undefined, 'medium');
-    expect(page(root)?.querySelector('app-tab-bar-slot[data-placement="main"] app-tab-bar')).not.toBeNull();
+    expect(page(root)?.querySelector('app-tab-bar-slot app-tab-bar')).not.toBeNull();
     TestBed.inject(ShellState).tier.set('compact');
     await harness.fixture.whenStable();
     harness.fixture.detectChanges();
-    expect(page(root)?.querySelector('app-tab-bar')).toBeNull();
-    expect(root.querySelector('header app-tab-bar')).not.toBeNull();
+    expect(page(root)?.querySelector('app-tab-bar-slot app-tab-bar')).not.toBeNull();
+    expect(root.querySelector('header app-tab-bar')).toBeNull();
     expect(root.querySelectorAll('app-tab-bar')).toHaveLength(1);
   });
 

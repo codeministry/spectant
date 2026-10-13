@@ -6,7 +6,6 @@ import { UiIcon } from '../../shared/icons/icon';
 import { UiButton } from '../../shared/ui/button/button';
 import { UiIconButton } from '../../shared/ui/button/icon-button';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
-import { TabBarSlot } from '../tab-bar/tab-bar-slot';
 import { areaById, areaPath, specLink } from './areas';
 import { ShellBrand } from './shell-brand';
 import { ShellData } from './shell-data.service';
@@ -19,14 +18,14 @@ import { ShellState } from './shell-state.service';
  * the brand rail (logo, wordmark, Workspace · Spec · Area rail-selects), the palette (a field, or the 40 px icon on spec
  * pages below 1560 px), then status group, zen, the assistant dot, settings and help. Below 1120 px two rows (design.md
  * § Viewport-übergreifend): row 1 (64, sticky) the logo rail, palette, status, dot, settings, help; row 2 (48, scrolls
- * away under row 1) the rail-selects and zen; at compact the tab-bar slot is a third row until T35 moves it. Every
+ * away under row 1) the rail-selects and zen. The tab bar is no header row: it sits under the header in the page (T35). Every
  * control carries `data-control` so later tasks replace it in place; the tools spec 024 adds (refresh, interval,
  * assistant, help) carry `data-tool`, keeping the `data-control` set of ISC-140.2. The parts own their styles: `ShellBrand`,
  * `ShellNav` (rail-selects and the deferred `ShellMenus`), `ShellLive` (the status group).
  */
 @Component({
   selector: 'app-shell-header',
-  imports: [RouterLink, RouterLinkActive, TranslocoPipe, UiIcon, UiButton, UiIconButton, UiKbd, TabBarSlot, ShellBrand, ShellNav, ShellLive],
+  imports: [RouterLink, RouterLinkActive, TranslocoPipe, UiIcon, UiButton, UiIconButton, UiKbd, ShellBrand, ShellNav, ShellLive],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell-header.html',
   styleUrl: './shell-header.css',

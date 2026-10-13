@@ -7,7 +7,7 @@
  * group, zen, dot, settings, help.
  *
  * Below 1120 px: two rows. Row 1 (64 px) the logo rail, palette, status, dot, settings, help; row 2 (48 px) the
- * rail-selects and zen; at compact a third row holds the tab-bar slot (until T35). Row 1 stays, row 2 scrolls away under
+ * rail-selects and zen; the tab bar is the page's, sticky under it (T35). Row 1 stays, row 2 scrolls away under
  * it: the host sticks at -48 px, and every row-1 part spans all rows and sticks 12 px from the top, so it slides down
  * over row 2 inside the header's box (a grid item's sticky range is its grid area). `::before` is row 1's glass strip,
  * `::after` the glass behind the lower rows.
@@ -71,12 +71,6 @@
 .nav {
   z-index: 2;
   grid-area: nav;
-}
-
-.tabs {
-  display: none;
-  grid-area: tabs;
-  min-inline-size: 0;
 }
 
 .palette {
@@ -148,8 +142,7 @@
 .zen,
 .assistant,
 .settings,
-.help,
-.tabs {
+.help {
   z-index: 1;
 }
 
@@ -232,8 +225,7 @@
   .shell-header.on-spec {
     grid-template:
       "brand . palette live assistant settings help" 64px
-      "nav nav nav nav nav nav zen" 48px
-      "tabs tabs tabs tabs tabs tabs tabs" auto / auto minmax(0, 1fr) auto auto auto auto auto;
+      "nav nav nav nav nav nav zen" 48px / auto minmax(0, 1fr) auto auto auto auto auto;
     padding-inline: 24px;
   }
 
@@ -277,8 +269,7 @@
   }
 
   .nav,
-  .zen,
-  .tabs {
+  .zen {
     z-index: 1;
   }
 
@@ -318,11 +309,7 @@
     margin-inline: -16px;
   }
 
-  /* The tab-bar slot is row 3 only while it holds a bar (a spec tab); help lives in the settings page there. */
-  .tabs:has(app-tab-bar) {
-    display: block;
-  }
-
+  /* Help lives in the settings page here. */
   .help {
     display: none;
   }

@@ -12,6 +12,8 @@ export interface PageTab {
   /** The tab's route, as a router link. */
   readonly link: readonly string[];
   readonly count?: string;
+  /** The tab opens a new group: the bar draws the prototype's `tab-sep` before it (spec 024, ISC-149). */
+  readonly sep?: true;
 }
 
 /** The tech page's tabs in tab-bar order (`/w/:ws/tech/<tab>`); `/w/:ws/tech` redirects to the first. */
@@ -26,18 +28,25 @@ export const techLink = (ws: string, tab: TechTabId): string[] => ['/w', ws, 'te
 /** The figures a tech tab may carry (design.md: Status and Specs count specs, Open counts fog lines); the page fills them. */
 export type TechTabCountValues = Partial<Record<TechTabId, number>>;
 
-/** The tech tabs of workspace `ws` with their label keys `tech.tabs.<id>`, links and the counts given (zero included). */
+/** The first live tech tab: `tab-sep` parts the curated pages (Overview, Architecture) from the live ones (design.md). */
+const TECH_LIVE_FIRST: TechTabId = 'status';
+
+/**
+ * The tech tabs of workspace `ws` with their label keys `tech.tabs.<id>`, links and the counts given (zero included);
+ * Status opens the live group (`sep`).
+ */
 export function techTabs(ws: string, counts: TechTabCountValues = {}): PageTab[] {
   return TECH_TABS.map((id) => {
     const count = counts[id];
-    const tab: PageTab = { id, labelKey: `tech.tabs.${id}`, link: techLink(ws, id) };
+    const link: PageTab = { id, labelKey: `tech.tabs.${id}`, link: techLink(ws, id) };
+    const tab: PageTab = id === TECH_LIVE_FIRST ? { ...link, sep: true } : link;
     return count === undefined ? tab : { ...tab, count: String(count) };
   });
 }
 
 /**
- * Where the tech page puts its tab counts for the tab bar (T14): the bar renders in the header slot at compact, outside
- * the page, so the figures travel through this one signal rather than an input. Empty until the page sets it.
+ * Where the tech page puts its tab counts for the tab bar (T14): the bar's slot reads the shell's route state, not the
+ * page's inputs, so the figures travel through this one signal. Empty until the page sets it.
  */
 @Injectable({ providedIn: 'root' })
 export class TechTabCounts {

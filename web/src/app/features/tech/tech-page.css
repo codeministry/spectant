@@ -1,7 +1,8 @@
 /*
  * The tech page frame (spec 023, T14, ISC-134.1; design.md § Seitenkopf, Tabs): one centred column of at most
  * 1080 px like the Help page (the shell body's padding is the gutter; full width at compact), the head 24 px below the
- * header and 16 px above the tab bar, the bar sticky under the 64 px header at medium and wide, 24 px to the panel.
+ * header and 16 px above the tab bar, the bar sticky under the header on every width (spec 024, the slot's own
+ * styles), 24 px to the panel.
  */
 :host {
   display: block;
@@ -33,20 +34,6 @@ h1 {
 .subline-skeleton {
   display: block;
   margin-block-start: 4px;
-}
-
-/* The main slot: rendered at medium and wide only (the slot is empty at compact, where the header holds the bar). */
-app-tab-bar-slot {
-  position: sticky;
-  inset-block-start: 64px;
-  z-index: 1;
-  margin-block-end: 24px;
-  border-block-end: 1px solid var(--line);
-  background: var(--color-base-100);
-}
-
-app-tab-bar-slot:empty {
-  display: none;
 }
 
 .panel {

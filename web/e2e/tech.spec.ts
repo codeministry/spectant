@@ -85,7 +85,8 @@ test.describe('tabs', () => {
       await expect(page.locator('h1#tech')).toBeVisible();
       await expect(page.locator('[data-subline]')).toHaveText(EN.tech.subline.file.replace('{{count}}', String(TECH.specs.length)));
 
-      const bar = page.locator('app-tech-page app-tab-bar[data-placement="main"]');
+      // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+      const bar = page.locator('app-tech-page app-tab-bar');
       const links = bar.locator('a[data-tab]');
       await expect(links).toHaveCount(TABS.length);
       expect(await links.evaluateAll((all) => all.map((a) => a.getAttribute('data-tab')))).toEqual([...TABS]);
@@ -212,13 +213,15 @@ test.describe('tabs', () => {
   test.describe('compact', () => {
     test.use(atWidth(WIDTHS.phone));
 
-    test('the tabs sit in the header row, no tab scrolls sideways, Status stacks its rows', async ({ page }) => {
+    // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+    test('the tabs sit under the header, no tab scrolls sideways, Status stacks its rows', async ({ page }) => {
       await page.goto(`/w/${WS}/tech`);
       await expect(page).toHaveURL(tabUrl('overview'));
-      const bar = page.locator('header app-tab-bar[data-placement="header"]');
+      // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+      const bar = page.locator('app-tech-page app-tab-bar');
       await expect(bar.locator('a[data-tab]')).toHaveCount(TABS.length);
       await expect(page.locator('app-tab-bar')).toHaveCount(1);
-      await expect(page.locator('app-tech-page app-tab-bar')).toHaveCount(0);
+      await expect(page.locator('header app-tab-bar')).toHaveCount(0);
 
       for (const tab of TABS) {
         await bar.locator(`a[data-tab="${tab}"]`).click();
@@ -363,7 +366,8 @@ test.describe('empty', () => {
         await expect(page).toHaveURL(lanternUrl('overview'));
         await expect(page.locator('[data-subline]')).toHaveText(fill(COPY.tech.subline.noFile, { count: LANTERN.specs.length }));
 
-        const bar = page.locator(compact ? 'header app-tab-bar[data-placement="header"]' : 'app-tech-page app-tab-bar[data-placement="main"]');
+        // spec 024: prototype tab bar under the header on every width (principal 2026-10-12, design.md)
+        const bar = page.locator('app-tech-page app-tab-bar');
         await expect(bar.locator('a[data-tab]')).toHaveCount(TABS.length);
         await expect(bar.locator('[aria-disabled], [disabled], [inert]')).toHaveCount(0);
 
