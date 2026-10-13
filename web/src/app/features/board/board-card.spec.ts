@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
 import planningGolden from '../../../../../core/fixtures/harbor.planning.golden.json';
+import type { Worktree } from '../../../../../core/src/files';
 import type { PlanningModel } from '../../../../../core/src/planning';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { BoardCard } from './board-card';
@@ -23,7 +24,7 @@ const cardOf = (key: string): BoardCardModel => {
   return found;
 };
 
-async function render(key: string): Promise<HTMLElement> {
+async function render(key: string, card: BoardCardModel = cardOf(key)): Promise<HTMLElement> {
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -35,7 +36,7 @@ async function render(key: string): Promise<HTMLElement> {
     providers: [provideRouter([])],
   });
   const fixture = TestBed.createComponent(BoardCard);
-  fixture.componentRef.setInput('card', cardOf(key));
+  fixture.componentRef.setInput('card', card);
   fixture.componentRef.setInput('ws', 'harbor');
   await fixture.whenStable();
   return fixture.nativeElement as HTMLElement;
@@ -121,5 +122,65 @@ describe('BoardCard (T122, ISC-129)', () => {
   it('a story\'s grip is named by its slug', async () => {
     const host = await render('registry-webhooks');
     expect(host.querySelector('[data-grip]')?.getAttribute('aria-label')).toBe('Move registry-webhooks');
+  });
+});
+
+// T36 · ISC-175 (spec 027, design.md § Viewport-übergreifend 6, Mobile G, Desktop 7): a spec with a worktree shows the
+// compact, non-interactive worktree chip in the assignee row, before the assignee pill; the row's
+// `worktree-branch-mismatch` warning turns it to the warning tone; a spec without a worktree and a story show none.
+describe('BoardCard worktree chip (T36, ISC-175)', () => {
+  const WORKTREE_002: Worktree = { path: '.worktrees/002-web-console', branch: 'feature/002-web-console', spec: '002', ahead: 2, dirty: true, kind: 'spec' };
+  const WORKTREE_003: Worktree = { path: '.worktrees/003-config-loader', branch: 'feature/005-config-format-choice', spec: '003', ahead: 1, dirty: false, kind: 'spec' };
+  const MISMATCH = { kind: 'worktree-branch-mismatch', text: 'branch names another spec', ref: WORKTREE_003.path };
+  const rows = (dashboard.specs as unknown as readonly BoardRow[]).map((row): BoardRow => {
+    if (row.id === '002') return { ...row, worktree: WORKTREE_002 };
+    if (row.id === '003') return { ...row, worktree: WORKTREE_003, warnings: [...(row.warnings ?? []), MISMATCH] };
+    return row;
+  });
+  const board = buildBoard({ planning: planningGolden as unknown as PlanningModel, rows });
+  const withWorktrees = (key: string): BoardCardModel => {
+    const found = board.cards.find((c) => c.id === key || c.slug === key);
+    if (!found) throw new Error(`no card ${key}`);
+    return found;
+  };
+
+  it('the board model carries the row\'s worktree and its mismatch onto the card, null and false elsewhere', () => {
+    expect(withWorktrees('002')).toMatchObject({ worktree: WORKTREE_002, worktreeMismatch: false });
+    expect(withWorktrees('003')).toMatchObject({ worktree: WORKTREE_003, worktreeMismatch: true });
+    expect(withWorktrees('004')).toMatchObject({ worktree: null, worktreeMismatch: false });
+    expect(withWorktrees('registry-webhooks')).toMatchObject({ worktree: null, worktreeMismatch: false });
+  });
+
+  it('002: the compact chip, not a button, in the assignee row before the pill, ↑2 and ± and the sentence', async () => {
+    const host = await render('002', withWorktrees('002'));
+    const chip = host.querySelector<HTMLElement>('.r3 .who > ui-worktree-chip');
+    expect(chip).not.toBeNull();
+    expect(chip?.dataset['form']).toBe('compact');
+    expect(chip?.hasAttribute('data-mismatch')).toBe(false);
+    expect(chip?.querySelector('button')).toBeNull();
+    expect(chip?.querySelector('ui-popover, ui-sheet')).toBeNull();
+    expect(text(chip?.querySelector('.ahead'))).toBe('↑2');
+    expect(text(chip?.querySelector('.dirty'))).toBe('±');
+    expect(text(chip?.querySelector('.vh'))).toBe(
+      'Worktree .worktrees/002-web-console, branch feature/002-web-console, 2 commits ahead of main, uncommitted changes',
+    );
+    expect(chip?.querySelector('ui-chip')?.getAttribute('data-tone')).toBe('neutral');
+    const row = [...(host.querySelector('.r3 .who')?.children ?? [])].map((el) => el.localName);
+    if (row.includes('ui-actor-chip')) expect(row.indexOf('ui-worktree-chip')).toBe(row.indexOf('ui-actor-chip') - 1);
+  });
+
+  it('003: the row\'s worktree-branch-mismatch warning gives the chip the warning tone', async () => {
+    const host = await render('003', withWorktrees('003'));
+    const chip = host.querySelector<HTMLElement>('.r3 .who > ui-worktree-chip');
+    expect(chip?.hasAttribute('data-mismatch')).toBe(true);
+    expect(chip?.querySelector('ui-chip')?.getAttribute('data-tone')).toBe('warning');
+    expect(chip?.querySelector('.dirty')).toBeNull();
+    expect(text(chip?.querySelector('.ahead'))).toBe('↑1');
+  });
+
+  it('004 without a worktree and a story show no chip', async () => {
+    expect((await render('004', withWorktrees('004'))).querySelector('ui-worktree-chip')).toBeNull();
+    TestBed.resetTestingModule();
+    expect((await render('registry-webhooks', withWorktrees('registry-webhooks'))).querySelector('ui-worktree-chip')).toBeNull();
   });
 });
