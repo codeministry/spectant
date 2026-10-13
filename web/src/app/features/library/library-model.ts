@@ -215,6 +215,30 @@ export function libraryGroups(catalog: LibraryCatalog, filter: LibraryFilter, hi
   });
 }
 
+/**
+ * The catalog of one spec's Library area (spec 017, T46, ISC-158; design.md § Viewport-übergreifend): the documents of
+ * the spec whose number is `spec` (`specKey` form), its missing entries and its evidence included, plus the workspace's
+ * constitution; no group head (the spec head above already carries stage, goal and figures); the fog lines of that
+ * spec only; and the control counts of the spec's own documents, the constitution outside them.
+ */
+export function specScope(catalog: LibraryCatalog, spec: string): LibraryCatalog {
+  const own = catalog.docs.filter((doc) => doc.spec !== WORKSPACE_SPEC && specKey(doc.spec) === spec);
+  const constitution = catalog.docs.filter((doc) => doc.spec === WORKSPACE_SPEC && doc.type === 'constitution');
+  return {
+    docs: [...own, ...constitution],
+    groups: [],
+    fog: catalog.fog.filter((line) => specKey(line.spec) === spec),
+    missing: own.filter((doc) => doc.state === 'missing').length,
+    stale: own.filter((doc) => doc.state === 'stale').length,
+  };
+}
+
+/** The spec area's order (design.md 017, Tablet 2.7): the spec's own group first, the workspace-wide one after it. */
+export const specFirst = (groups: readonly LibraryGroup[]): readonly LibraryGroup[] => [
+  ...groups.filter((group) => group.spec !== WORKSPACE_SPEC),
+  ...groups.filter((group) => group.spec === WORKSPACE_SPEC),
+];
+
 /** The revealed part of an evidence subgroup after `blocks` blocks of `EVIDENCE_BLOCK`, and how many still wait. */
 export function evidenceBlock(group: EvidenceGroup, blocks: number): { readonly shown: readonly LibraryDoc[]; readonly rest: number } {
   const shown = group.docs.slice(0, Math.max(0, blocks) * EVIDENCE_BLOCK);

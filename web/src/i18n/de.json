@@ -519,8 +519,8 @@
         "dashboard": "Überblick · nächster Schritt · Gates",
         "status": "Status · Zeitleiste",
         "live": "Board · Matrix",
-        "data": "Claims · Tasks · Belege",
-        "docs": "Plan · Design · Entscheidungen · Verfassung",
+        "data": "Claims · Tasks",
+        "library": "Spec · Plan · Tasks · Design · Belege · Prototyp",
         "notes": "Notizen"
       },
       "unbuilt": "Kommt mit späteren Tasks dieser Spec",
@@ -542,7 +542,7 @@
       "status": "Status",
       "live": "Live",
       "data": "Daten",
-      "docs": "Doku",
+      "library": "Library",
       "notes": "Notizen"
     },
     "tabs": {
@@ -557,6 +557,7 @@
       "design": "Design",
       "decisions": "Entscheidungen",
       "constitution": "Verfassung",
+      "library": "Dokumente",
       "notes": "Notizen"
     },
     "tabBar": "Tabs: {{area}}",
@@ -1006,7 +1007,7 @@
         "tasks": "{{landed}}/{{total}} Tasks erledigt",
         "noTasks": "Noch keine tasks.md"
       },
-      "docs": {
+      "library": {
         "present": "{{names}}",
         "none": "Noch kein Plan, Design oder Constitution",
         "decisions": "{{count}} Entscheidungen"
@@ -1026,7 +1027,7 @@
       "status": "Status",
       "live": "Live",
       "data": "Daten",
-      "docs": "Dokumente",
+      "library": "Library",
       "notes": "Notizen"
     },
     "warnings": {

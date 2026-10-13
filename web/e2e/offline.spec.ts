@@ -25,7 +25,7 @@
  */
 import type { BrowserContext, Page, Request } from '@playwright/test';
 import { prototypeRoute } from '../../server/src/spec-routes.contract.ts';
-import { TAB_IDS } from '../src/app/layout/shell/areas';
+import { LEGACY_TAB_IDS, TAB_IDS } from '../src/app/layout/shell/areas';
 import { atWidth, expect, test } from './fixtures';
 import { STUB_LIBRARY, STUB_NOTES } from './stub-api';
 
@@ -37,6 +37,8 @@ const OWN_ORIGIN_TYPES = new Set(['font', 'script', 'stylesheet']);
 const HARBOR_002_NOTE = STUB_NOTES.find((note) => note.workspace === 'harbor' && note.anchor?.spec === '002');
 if (!HARBOR_002_NOTE) throw new Error('STUB_NOTES holds no harbor 002 note');
 
+const isLegacy = (tab: string): boolean => (LEGACY_TAB_IDS as readonly string[]).includes(tab);
+
 /** Every page of the app, in visiting order; `tab` is the tab bar's current tab on a spec route. */
 const PAGES: ReadonlyArray<{ readonly path: string; readonly tab?: string }> = [
   { path: '/' },
@@ -45,7 +47,9 @@ const PAGES: ReadonlyArray<{ readonly path: string; readonly tab?: string }> = [
   { path: '/settings' },
   { path: '/settings/workspaces' },
   { path: SPEC },
-  ...TAB_IDS.map((tab) => ({ path: `${SPEC}/${tab}`, tab })),
+  // The former Docs and Evidence tabs (spec 017) still answer until T48 redirects them, but no tab bar names them:
+  // they are visited for the network check without a current tab.
+  ...TAB_IDS.map((tab) => ({ path: `${SPEC}/${tab}`, ...(isLegacy(tab) ? {} : { tab }) })),
   { path: `${SPEC}/notes/${HARBOR_002_NOTE.id}`, tab: 'notes' },
 ];
 

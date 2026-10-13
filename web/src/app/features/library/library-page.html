@@ -3,6 +3,8 @@
 } @else if (unavailable()) {
   <p class="lib-unavailable">{{ 'shell.unavailable' | transloco }}</p>
 } @else {
+<!-- In spec scope (spec 017, T46) the spec head above is the page's head: no workspace head of its own. -->
+@if (!specScoped()) {
 <div class="lib-page-head">
   <ui-page-head
     [segments]="[wsName(), ('library.title' | transloco)]"
@@ -16,6 +18,7 @@
     </div>
   </ui-page-head>
 </div>
+}
 
 @if (failed()) {
   <ui-notice tone="error" icon="circle-alert" data-library-error>{{ 'library.error' | transloco }}</ui-notice>
@@ -85,15 +88,18 @@
           />
         }
         <div class="lib-filters">
-          <label class="lib-select">
-            <span class="type-eyebrow">{{ 'library.filters.spec' | transloco }}</span>
-            <select data-library-spec [value]="spec()" (change)="setSpec($any($event.target).value)">
-              <option value="all" [selected]="spec() === 'all'">{{ 'library.filters.allSpecs' | transloco }}</option>
-              @for (option of specs(); track option.value) {
-                <option [value]="option.value" [selected]="spec() === option.value">{{ groupLabel(option.spec) }}</option>
-              }
-            </select>
-          </label>
+          <!-- No spec select in spec scope (spec 017, T46): the list is that spec's; the state select takes the row. -->
+          @if (!specScoped()) {
+            <label class="lib-select">
+              <span class="type-eyebrow">{{ 'library.filters.spec' | transloco }}</span>
+              <select data-library-spec [value]="spec()" (change)="setSpec($any($event.target).value)">
+                <option value="all" [selected]="spec() === 'all'">{{ 'library.filters.allSpecs' | transloco }}</option>
+                @for (option of specs(); track option.value) {
+                  <option [value]="option.value" [selected]="spec() === option.value">{{ groupLabel(option.spec) }}</option>
+                }
+              </select>
+            </label>
+          }
           <!-- The state select (design.md 017 § Viewport-übergreifend): the spec select's anatomy, the same ?state= as the control counts. -->
           <label class="lib-select">
             <span class="type-eyebrow">{{ 'library.filters.state' | transloco }}</span>
@@ -253,6 +259,7 @@
         [doc]="current()"
         [docs]="docs()"
         [wide]="wide()"
+        [context]="specScoped() ? 'spec' : 'workspace'"
         (back)="back()"
         (pick)="open($event)"
       />

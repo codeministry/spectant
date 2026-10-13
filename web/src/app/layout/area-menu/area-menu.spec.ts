@@ -337,18 +337,18 @@ describe('AreaMenu', () => {
   });
 
   describe('at spec scope', () => {
-    it('keeps the six areas unchanged, milestones or not', async () => {
+    it('keeps the six areas, Library where Docs stood (spec 017, ISC-158), milestones or not', async () => {
       setUp(ok(WITH_MILESTONES));
       const root = await render('/w/harbor/s/002/claims');
       expect(pages(root)).toHaveLength(0);
       const entries = [...root.querySelectorAll<HTMLElement>('nav [data-area]')];
-      expect(attr(entries, 'data-area')).toEqual(['dashboard', 'status', 'live', 'data', 'docs', 'notes']);
+      expect(attr(entries, 'data-area')).toEqual(['dashboard', 'status', 'live', 'data', 'library', 'notes']);
       expect(attr(entries, 'href')).toEqual([
         '/w/harbor/s/002',
         '/w/harbor/s/002/status',
         '/w/harbor/s/002/board',
         '/w/harbor/s/002/claims',
-        '/w/harbor/s/002/plan',
+        '/w/harbor/s/002/library',
         '/w/harbor/s/002/notes',
       ]);
       expect(attr(entries, 'aria-current')).toEqual([null, null, null, 'page', null, null]);
@@ -357,7 +357,7 @@ describe('AreaMenu', () => {
         'status',
         'live',
         'data',
-        'docs',
+        'library',
         'notes',
       ]);
     });

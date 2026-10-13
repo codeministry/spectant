@@ -519,8 +519,8 @@
         "dashboard": "overview · next step · gates",
         "status": "Status · Timeline",
         "live": "Board · Matrix",
-        "data": "Claims · Tasks · Evidence",
-        "docs": "Plan · Design · Decisions · Constitution",
+        "data": "Claims · Tasks",
+        "library": "Spec · Plan · Tasks · Design · Evidence · Prototype",
         "notes": "Notes"
       },
       "unbuilt": "Comes with this spec's later tasks",
@@ -542,7 +542,7 @@
       "status": "Status",
       "live": "Live",
       "data": "Data",
-      "docs": "Docs",
+      "library": "Library",
       "notes": "Notes"
     },
     "tabs": {
@@ -557,6 +557,7 @@
       "design": "Design",
       "decisions": "Decisions",
       "constitution": "Constitution",
+      "library": "Documents",
       "notes": "Notes"
     },
     "tabBar": "{{area}} tabs",
@@ -1006,7 +1007,7 @@
         "tasks": "{{landed}}/{{total}} tasks landed",
         "noTasks": "No tasks.md yet"
       },
-      "docs": {
+      "library": {
         "present": "{{names}}",
         "none": "No plan, design or constitution yet",
         "decisions": "{{count}} decisions"
@@ -1026,7 +1027,7 @@
       "status": "Status",
       "live": "Live",
       "data": "Data",
-      "docs": "Docs",
+      "library": "Library",
       "notes": "Notes"
     },
     "warnings": {

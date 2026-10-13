@@ -54,3 +54,29 @@ export function techTabs(ws: string, counts: TechTabCountValues = {}): PageTab[]
 export class TechTabCounts {
   readonly counts = signal<TechTabCountValues>({});
 }
+
+/** The figure of the spec area Library's one tab, Documents, and the spec it was counted for. */
+export interface LibraryTabCountValue {
+  readonly ws: string;
+  /** The spec id of the route (`/w/:ws/s/:id/library`). */
+  readonly spec: string;
+  /** The documents the spec's Library lists: the spec's own, its missing entries and the constitution. */
+  readonly count: number;
+}
+
+/**
+ * Where the library page in spec scope puts the count of its one tab, Documents (spec 017, T45, ISC-158, design.md §
+ * Viewport-übergreifend: the eyebrow LIBRARY and one tab with its count). The spec model carries no document count and
+ * the catalog is the page's own read, so the figure travels through this signal as the tech page's did; the bar shows
+ * it only for the spec it names, so a figure of the spec left behind never shows on the next one. Null until set.
+ */
+@Injectable({ providedIn: 'root' })
+export class LibraryTabCount {
+  readonly value = signal<LibraryTabCountValue | null>(null);
+
+  /** The count for `ws` and `spec`, as the tab shows it; null while none was counted for exactly that spec. */
+  countFor(ws: string, spec: string): string | null {
+    const value = this.value();
+    return value !== null && value.ws === ws && value.spec === spec ? String(value.count) : null;
+  }
+}

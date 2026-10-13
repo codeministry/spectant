@@ -11,6 +11,7 @@ import { ApiClient, type ApiResult } from '../../core/api.service';
 import { KeyboardService } from '../../core/keyboard.service';
 import { LockSourceService } from '../../core/lock-source.service';
 import { navigatesNatively } from './shell-nav';
+import type { LibraryCatalog, LibraryDoc } from '../../../../../core/src/files';
 import { AREA_IDS } from './areas';
 import { tierFor } from './tier';
 
@@ -127,10 +128,10 @@ describe('ShellComponent', () => {
     }
   });
 
-  it('drops the rail column (data-no-rail) outside a workspace, on the board and on the Library the tech addresses lead to (spec 023, spec 017)', async () => {
+  it('drops the rail column (data-no-rail) outside a workspace, on the board, on the Library the tech addresses lead to and in the spec area Library (spec 023, spec 017)', async () => {
     setUp();
     const noRail = async (url: string): Promise<boolean> => (await open(url)).root.querySelector('app-shell')?.hasAttribute('data-no-rail') ?? false;
-    for (const url of ['/', '/settings', '/w/harbor/board', '/w/harbor/tech/overview', '/w/harbor/tech/status']) {
+    for (const url of ['/', '/settings', '/w/harbor/board', '/w/harbor/tech/overview', '/w/harbor/tech/status', '/w/harbor/s/002/library']) {
       expect(await noRail(url), url).toBe(true);
     }
     for (const url of ['/w/harbor', '/w/harbor/features', '/w/harbor/s/002', '/w/harbor/s/002/status']) {
@@ -171,7 +172,7 @@ describe('ShellComponent', () => {
     setUp();
     const { root } = await open('/w/harbor/s/002/claims');
     const links = root.querySelectorAll('app-tab-bar a');
-    expect(texts(links)).toEqual(['Claims', 'Tasks', 'Evidence']);
+    expect(texts(links)).toEqual(['Claims', 'Tasks']);
     expect(links[0].getAttribute('aria-current')).toBe('page');
     expect(links[1].getAttribute('aria-current')).toBeNull();
     expect(links[1].getAttribute('href')).toBe('/w/harbor/s/002/tasks');
@@ -183,9 +184,49 @@ describe('ShellComponent', () => {
     expect(root.querySelector('app-tab-bar')).toBeNull();
     expect(root.querySelector('[data-page="placeholder"]')?.getAttribute('data-area')).toBe('dashboard');
 
-    const { root: docs } = await open('/w/harbor/s/002/docs');
-    expect(TestBed.inject(Router).url).toBe('/w/harbor/s/002/plan');
-    expect(texts(docs.querySelectorAll('app-tab-bar a'))).toEqual(['Plan', 'Design', 'Decisions', 'Constitution']);
+    const { root: data } = await open('/w/harbor/s/002/data');
+    expect(TestBed.inject(Router).url).toBe('/w/harbor/s/002/claims');
+    expect(texts(data.querySelectorAll('app-tab-bar a'))).toEqual(['Claims', 'Tasks']);
+  });
+
+  it('gives the Library area its bar with one tab, Documents, counting the spec list, and no rail (spec 017, T45, T46, ISC-158)', async () => {
+    const doc = (spec: string, path: string, type: LibraryDoc['type'], state: LibraryDoc['state'] = 'ok'): LibraryDoc => ({
+      path,
+      type,
+      spec,
+      title: path,
+      modified: state === 'missing' ? null : '2026-10-01T10:00:00Z',
+      state,
+      media: 'markdown',
+    });
+    const catalog: LibraryCatalog = {
+      docs: [
+        doc('workspace', 'constitution.md', 'constitution'),
+        doc('workspace', 'tech.md', 'tech'),
+        doc('002-web-console', '002-web-console/spec.md', 'spec'),
+        doc('002-web-console', '002-web-console/plan.md', 'plan', 'stale'),
+        doc('002-web-console', '002-web-console/tasks.md', 'tasks', 'missing'),
+        doc('003-config-loader', '003-config-loader/spec.md', 'spec'),
+      ],
+      groups: [],
+      fog: [],
+      missing: 1,
+      stale: 1,
+    };
+    setUp(fakeApi({ library: () => Promise.resolve(ok(catalog)) }));
+    const { root } = await open('/w/harbor/s/002/library');
+    const bar = root.querySelector('app-tab-bar');
+    expect(bar?.querySelector('[data-area-eyebrow]')?.textContent.trim()).toBe('Library');
+    const tabs = [...(bar?.querySelectorAll('a') ?? [])];
+    expect(tabs.map((tab) => tab.getAttribute('data-tab'))).toEqual(['library']);
+    expect(tabs[0]?.getAttribute('aria-current')).toBe('page');
+    expect(tabs[0]?.getAttribute('href')).toBe('/w/harbor/s/002/library');
+    expect(tabs[0]?.textContent).toContain('Documents');
+    // spec.md, plan.md, the missing tasks.md and the constitution: 4, not the workspace's 6.
+    expect(tabs[0]?.querySelector('[data-count="library"]')?.textContent.trim()).toBe('4');
+    expect(root.querySelector('app-library-page')?.getAttribute('data-scope')).toBe('spec');
+    expect(root.querySelector('app-shell')?.hasAttribute('data-no-rail')).toBe(true);
+    expect(root.querySelector('.shell-rail')).toBeNull();
   });
 
   it('shows the placeholder, the spec head and the rail while the stub serves no spec route', async () => {
@@ -377,14 +418,14 @@ describe('ShellComponent', () => {
         const nav = root.querySelector('header nav[aria-label="Areas"]');
         expect(nav?.getAttribute('aria-label')).toBe('Areas');
         const entries = [...(nav?.querySelectorAll('[data-area]') ?? [])];
-        expect(entries.map((entry) => entry.getAttribute('data-area'))).toEqual(['dashboard', 'status', 'live', 'data', 'docs', 'notes']);
+        expect(entries.map((entry) => entry.getAttribute('data-area'))).toEqual(['dashboard', 'status', 'live', 'data', 'library', 'notes']);
         expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A', 'A', 'A', 'A', 'A']);
         expect(entries.map((entry) => entry.getAttribute('href'))).toEqual([
           '/w/harbor/s/002',
           '/w/harbor/s/002/status',
           '/w/harbor/s/002/board',
           '/w/harbor/s/002/claims',
-          '/w/harbor/s/002/plan',
+          '/w/harbor/s/002/library',
           '/w/harbor/s/002/notes',
         ]);
         expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual([null, null, null, 'page', null, null]);
@@ -395,8 +436,8 @@ describe('ShellComponent', () => {
           'overview · next step · gates',
           'Status · Timeline',
           'Board · Matrix',
-          'Claims · Tasks · Evidence',
-          'Plan · Design · Decisions · Constitution',
+          'Claims · Tasks',
+          'Spec · Plan · Tasks · Design · Evidence · Prototype',
           'Notes',
         ]);
         expect(texts(nav?.querySelectorAll('[data-area] .entry-name') as NodeListOf<Element>)).toEqual([
@@ -404,13 +445,13 @@ describe('ShellComponent', () => {
           'Status',
           'Live',
           'Data',
-          'Docs',
+          'Library',
           'Notes',
         ]);
 
         (entries[4] as HTMLElement).click();
         await harness.fixture.whenStable();
-        expect(TestBed.inject(Router).url).toBe('/w/harbor/s/002/plan');
+        expect(TestBed.inject(Router).url).toBe('/w/harbor/s/002/library');
         expect(trigger.getAttribute('aria-expanded')).toBe('false');
       } finally {
         delete proto['showPopover'];

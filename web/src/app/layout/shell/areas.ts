@@ -6,28 +6,24 @@ import type { TechTabId } from './page-tabs';
  * and (T102) the `g` sequences read. Order is menu order; each area's tabs are in tab-bar order.
  *
  * - `dashboard` has no tabs: it is `/w/:ws/s/:id` itself (ISC-78).
- * - An area whose id is not one of its tabs (`live`, `data`, `docs`) also answers `/w/:ws/s/:id/<area>` by redirecting
- *   to its first tab, so a deep link or a `g` key can name the area alone.
+ * - An area whose id is not one of its tabs (`live`, `data`) also answers `/w/:ws/s/:id/<area>` by redirecting to its
+ *   first tab, so a deep link or a `g` key can name the area alone.
+ * - `library` (spec 017, T45, ISC-158) stands where Docs stood: one tab, Documents, at `/w/:ws/s/:id/library`, the
+ *   workspace Library's component narrowed to the spec. Data keeps Claims and Tasks; the evidence is in the Library.
  * - `built: false` marks an area whose tabs are not built yet; the area menu shows it disabled with its reason (the
  *   mark on ISC-76) and the route still resolves to the placeholder, so a deep link never 404s on a known tab.
  */
-export const AREA_IDS = ['dashboard', 'status', 'live', 'data', 'docs', 'notes'] as const;
+export const AREA_IDS = ['dashboard', 'status', 'live', 'data', 'library', 'notes'] as const;
 export type AreaId = (typeof AREA_IDS)[number];
 
-export const TAB_IDS = [
-  'status',
-  'timeline',
-  'board',
-  'matrix',
-  'claims',
-  'tasks',
-  'evidence',
-  'plan',
-  'design',
-  'decisions',
-  'constitution',
-  'notes',
-] as const;
+/**
+ * The former tabs of the Docs area and Data's Evidence (spec 017, ISC-158.1): no area lists them any more, but their
+ * routes still answer until T48 redirects each into the Library area; meanwhile they count as the Library area.
+ */
+export const LEGACY_TAB_IDS = ['evidence', 'plan', 'design', 'decisions', 'constitution'] as const;
+export type LegacyTabId = (typeof LEGACY_TAB_IDS)[number];
+
+export const TAB_IDS = ['status', 'timeline', 'board', 'matrix', 'claims', 'tasks', 'library', 'notes', ...LEGACY_TAB_IDS] as const;
 export type TabId = (typeof TAB_IDS)[number];
 
 export interface SpecArea {
@@ -40,21 +36,35 @@ export interface SpecArea {
    * as a hint in the area menu. The binding is T102's; the dashboard has none yet (the prototype names none).
    */
   readonly goKey: string | null;
+  /**
+   * The tab bar shows although the area has one tab (spec 017, design.md § Viewport-übergreifend): the Library's
+   * eyebrow and its one tab Documents with its count. Without it a one-tab area (Notes) has no bar.
+   */
+  readonly singleTabBar?: true;
+  /**
+   * The area runs without the context column (prototype `no-rail`, spec 017 design.md § Viewport-übergreifend), so
+   * the Library's list and reader have the width of the workspace Library.
+   */
+  readonly noRail?: true;
 }
 
 export const SPEC_AREAS: readonly SpecArea[] = [
   { id: 'dashboard', tabs: [], icon: 'layout-dashboard', built: true, goKey: null },
   { id: 'status', tabs: ['status', 'timeline'], icon: 'activity', built: true, goKey: 's' },
   { id: 'live', tabs: ['board', 'matrix'], icon: 'square-kanban', built: true, goKey: 'l' },
-  { id: 'data', tabs: ['claims', 'tasks', 'evidence'], icon: 'table', built: true, goKey: 'd' },
-  { id: 'docs', tabs: ['plan', 'design', 'decisions', 'constitution'], icon: 'file-text', built: true, goKey: 'o' },
+  { id: 'data', tabs: ['claims', 'tasks'], icon: 'table', built: true, goKey: 'd' },
+  // Spec 017 (T45, ISC-158): the Library where Docs stood, with Docs' `g o`; one tab, Documents, at `…/library`.
+  { id: 'library', tabs: ['library'], icon: 'book', built: true, goKey: 'o', singleTabBar: true, noRail: true },
   { id: 'notes', tabs: ['notes'], icon: 'notebook-pen', built: true, goKey: 'n' },
 ];
 
 export const areaById = (id: AreaId): SpecArea => SPEC_AREAS.find((area) => area.id === id) ?? must(id);
 
-/** The area a tab belongs to. */
-export const areaOfTab = (tab: TabId): SpecArea => SPEC_AREAS.find((area) => area.tabs.includes(tab)) ?? must(tab);
+const isLegacyTab = (tab: TabId): boolean => (LEGACY_TAB_IDS as readonly TabId[]).includes(tab);
+
+/** The area a tab belongs to; a former Docs or Evidence tab (`LEGACY_TAB_IDS`) counts as the Library until T48. */
+export const areaOfTab = (tab: TabId): SpecArea =>
+  SPEC_AREAS.find((area) => area.tabs.includes(tab)) ?? (isLegacyTab(tab) ? areaById('library') : must(tab));
 
 /** The path of an area under `/w/:ws/s/:id`: '' for the dashboard, else its first tab. */
 export const areaPath = (area: SpecArea): string => area.tabs[0] ?? '';
@@ -111,7 +121,7 @@ export interface WorkspacePage {
   /**
    * The second key of the page's `g` sequence, read by `SHORTCUTS`: Board's `g b` (spec 008, T117), Features' `g f`
    * and Milestones' `g m` (spec 024, T58, ISC-150.1), Library's `g o` (spec 017, T41, ISC-157.1: the key that opens
-   * the documents inside a spec, Docs today, opens them at workspace scope; the prototype's `g b` is the app's Board).
+   * the documents inside a spec, the Library area since T45, opens them at workspace scope; the prototype's `g b` is the app's Board).
    * Specs has none: `g s` is Status inside a spec and no workspace-scope binding exists.
    */
   readonly goKey: string | null;

@@ -3,6 +3,8 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
+  effect,
   ElementRef,
   inject,
   Injector,
@@ -21,6 +23,7 @@ import type { Stage } from '../../../../../core/src/stage';
 import { ApiClient } from '../../core/api.service';
 import { NotFound } from '../../layout/not-found/not-found';
 import { specLink } from '../../layout/shell/areas';
+import { LibraryTabCount } from '../../layout/shell/page-tabs';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { STAGE_LOOK } from '../../layout/spec-head/spec-head';
@@ -56,8 +59,10 @@ import {
   PILL_TYPES,
   type SearchHits,
   STATE_FILTERS,
+  specFirst,
   specKey,
   specOptions,
+  specScope,
   specSlug,
   type TextRun,
   typePills,
@@ -252,6 +257,12 @@ interface GroupView {
  * back button (or Escape) returns to the list at the scroll position it had and focuses the opened row (DS-APP-35).
  * At wide a chosen document moves the focus to the reader without scrolling (design.md 017 § 7 Tastatur und Fokus).
  *
+ * The same component is the spec area Library at `/w/:ws/s/:id/library` (spec 017, T46, ISC-158): the route's spec id
+ * narrows the catalog to that spec's documents, its missing entries and evidence included, plus the constitution
+ * (`specScope`), the spec's group first and without its head (the spec head carries it), no spec select, the control
+ * counts of the spec alone, no "Open in spec" in the reader (`context` `spec`), no page head of its own; the shell
+ * draws no rail there (`SpecArea.noRail`) and the tab bar's Documents count is this list's (`LibraryTabCount`).
+ *
  * Not encapsulated: the row template's type tag is shared with the reader's head; every selector in the stylesheet
  * starts with `app-library-page`.
  */
@@ -282,6 +293,7 @@ interface GroupView {
     'data-page': 'library',
     '[attr.data-tier]': 'state.tier()',
     '[attr.data-reading]': 'current() ? "" : null',
+    '[attr.data-scope]': 'specScoped() ? "spec" : "workspace"',
   },
   templateUrl: './library-page.html',
   styleUrls: ['./library-page.css', './library-page.control.css', './library-page.heads.css'],
@@ -305,16 +317,28 @@ export class LibraryPage {
   protected readonly wide = computed(() => this.state.tier() === 'wide');
   protected readonly typeIcon = typeIcon;
 
+  /**
+   * The spec the page is narrowed to (spec 017, T46, ISC-158): the route's spec id under `/w/:ws/s/:id/library`, the
+   * spec area Library; null on `/w/:ws/library`, the workspace's. One component, two scopes, read from the route.
+   */
+  protected readonly scopeSpec = computed(() => this.state.specId());
+  protected readonly specScoped = computed(() => this.scopeSpec() !== null);
+
   /** The catalog read (`GET …/:ws/library`), keyed by the workspace. */
   private readonly read = resource({
     params: () => this.state.ws() ?? undefined,
     loader: ({ params }) => this.api.library(params),
   });
   private readonly result = computed(() => (this.read.hasValue() ? this.read.value() : undefined));
-  /** The catalog as served; null while loading and for every answer but `ok`. */
+  /**
+   * The catalog as served, in spec scope narrowed to the spec's documents plus the constitution (`specScope`); null
+   * while loading and for every answer but `ok`.
+   */
   protected readonly catalog = computed<LibraryCatalog | null>(() => {
     const result = this.result();
-    return result?.kind === 'ok' ? result.body : null;
+    if (result?.kind !== 'ok') return null;
+    const spec = this.scopeSpec();
+    return spec === null ? result.body : specScope(result.body, spec);
   });
   /** The workspace or the library route answered the contract's 404. */
   protected readonly missing = computed(() => {
@@ -333,8 +357,14 @@ export class LibraryPage {
   /** The route's query params and fragment as signals (the router is the one source of the list's state). */
   private readonly params = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
   private readonly fragment = toSignal(this.route.fragment, { initialValue: this.route.snapshot.fragment });
-  /** The filter the address names (`?q=`, `?type=`, `?spec=`, `?state=`). */
-  private readonly addressFilter = computed(() => filterOf(this.params()), { equal: sameFilter });
+  /** The filter the address names (`?q=`, `?type=`, `?spec=`, `?state=`); in spec scope there is no spec select and no `?spec=`. */
+  private readonly addressFilter = computed(
+    () => {
+      const filter = filterOf(this.params());
+      return this.specScoped() ? { ...filter, spec: 'all' } : filter;
+    },
+    { equal: sameFilter },
+  );
   /**
    * The filter as shown: the address's, set ahead of it by a person's change (so a keystroke filters before the
    * navigation lands) and replaced by it whenever the address changes, by that navigation, back, forward or a link.
@@ -395,17 +425,20 @@ export class LibraryPage {
     ];
   });
 
+  /** The matching groups; in spec scope the spec's own group first, the constitution's after it. */
   private readonly matched = computed(() => {
     const catalog = this.catalog();
-    return catalog === null ? [] : libraryGroups(catalog, this.filter(), this.hits());
+    if (catalog === null) return [];
+    const groups = libraryGroups(catalog, this.filter(), this.hits());
+    return this.specScoped() ? specFirst(groups) : groups;
   });
 
   protected readonly shownCount = computed(() => this.matched().reduce((sum, group) => sum + group.count, 0));
 
-  /** The absent tech.md's row, when the catalog has documents but no tech.md (never counted). */
+  /** The absent tech.md's row, when the catalog has documents but no tech.md (never counted); none in spec scope. */
   private readonly placeholder = computed(() => {
     const catalog = this.catalog();
-    return catalog === null ? null : techPlaceholderOf(catalog);
+    return catalog === null || this.specScoped() ? null : techPlaceholderOf(catalog);
   });
 
   /** Each spec group's head by spec folder, rendered once per catalog (ISC-157). */
@@ -462,6 +495,18 @@ export class LibraryPage {
     const first = this.groups().at(0);
     return first?.rows.at(0)?.doc ?? first?.evidence?.rows.at(0)?.doc ?? null;
   });
+
+  constructor() {
+    // The spec area's one tab, Documents, counts what this page lists (spec 017, T45): the bar reads it from here.
+    const tabCount = inject(LibraryTabCount);
+    effect(() => {
+      const spec = this.scopeSpec();
+      const ws = this.state.ws();
+      const catalog = this.catalog();
+      tabCount.value.set(spec === null || ws === null || catalog === null ? null : { ws, spec, count: catalog.docs.length });
+    });
+    inject(DestroyRef).onDestroy(() => tabCount.value.set(null));
+  }
 
   /** The group's label: "‹ws› · workspace-wide", else the spec's number and slug ("017 · workspace-library"). */
   protected groupLabel(spec: string): string {

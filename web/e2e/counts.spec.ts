@@ -110,7 +110,7 @@ function rowsFor(g: Goldens): readonly Row[] {
     { tab: '', what: 'live tile agents working', golden: 'spec.areas.live.agentsWorking', selector: tile('live', 0), kind: 'text', want: areas.live.agentsWorking > 0 ? `${n(areas.live.agentsWorking)} agents working` : 'No agent working' },
     { tab: '', what: 'data tile claims', golden: 'spec.areas.data.claims.closed/total', selector: tile('data', 0), kind: 'text', want: `${pair(areas.data.claims.closed, areas.data.claims.total)} claims closed` },
     { tab: '', what: 'data tile tasks', golden: 'spec.areas.data.tasks.landed/total', selector: tile('data', 1), kind: 'text', want: areas.data.tasks ? `${pair(areas.data.tasks.landed, areas.data.tasks.total)} tasks landed` : 'No tasks.md yet' },
-    { tab: '', what: 'docs tile decisions', golden: 'spec.areas.docs.decisions', selector: tile('docs', 1), kind: 'text', want: `${n(areas.docs.decisions)} decisions` },
+    { tab: '', what: 'library tile decisions', golden: 'spec.areas.docs.decisions', selector: tile('library', 1), kind: 'text', want: `${n(areas.docs.decisions)} decisions` },
     { tab: '', what: 'notes tile board rounds', golden: 'spec.areas.board.rounds', selector: tile('notes', 1), kind: 'text', want: `${n(areas.board.rounds)} rounds on the board` },
     // The tab bar of the Data area.
     { tab: '/claims', what: 'tab bar claims closed/total', golden: 'spec.areas.data.claims.closed/total', selector: 'app-tab-bar [data-count="claims"]', kind: 'text', want: pair(areas.data.claims.closed, areas.data.claims.total) },

@@ -37,8 +37,9 @@ for (const { width, tier } of TIERS) {
       await expect(trigger).toContainText('Data');
 
       const tabs = page.locator('app-tab-bar a');
-      await expect(tabs).toHaveCount(3);
-      expect(await tabs.evaluateAll((links) => links.map((link) => link.getAttribute('data-tab')))).toEqual(['claims', 'tasks', 'evidence']);
+      // Spec 017 (T45, ISC-158): Data holds exactly Claims and Tasks; the evidence is in the Library area.
+      await expect(tabs).toHaveCount(2);
+      expect(await tabs.evaluateAll((links) => links.map((link) => link.getAttribute('data-tab')))).toEqual(['claims', 'tasks']);
       await expect(page.locator('app-tab-bar a[aria-current="page"]')).toHaveAttribute('data-tab', 'claims');
       await expect(page.locator('app-tab-bar [data-count="claims"]')).toHaveText(`${String(claims.closed)}/${String(claims.total)}`);
       if (tasks) await expect(page.locator('app-tab-bar [data-count="tasks"]')).toHaveText(`${String(tasks.landed)}/${String(tasks.total)}`);
@@ -88,8 +89,8 @@ for (const { width, tier } of TIERS) {
       // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
       await expect(page.locator('header [data-control="area"]')).toHaveAttribute('aria-label', 'Area: Data');
 
-      await page.locator('app-tab-bar a[data-tab="evidence"]').click();
-      await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/evidence$/);
+      await page.locator('app-tab-bar a[data-tab="claims"]').click();
+      await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/claims$/);
       await page.goBack();
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/tasks$/);
       await expect(page.locator('app-tab-bar a[aria-current="page"]')).toHaveAttribute('data-tab', 'tasks');
@@ -107,7 +108,8 @@ const AREA_TILES = [
   ['status', `${DASHBOARD_BASE}/status`],
   ['live', `${DASHBOARD_BASE}/board`],
   ['data', `${DASHBOARD_BASE}/claims`],
-  ['docs', `${DASHBOARD_BASE}/plan`],
+  // Spec 017 (T45, ISC-158): the Library tile where the Docs tile stood.
+  ['library', `${DASHBOARD_BASE}/library`],
   ['notes', `${DASHBOARD_BASE}/notes`],
 ] as const;
 

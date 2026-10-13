@@ -12,8 +12,10 @@ import {
   NO_FILTER,
   parseFilter,
   snippet,
+  specFirst,
   specKey,
   specOptions,
+  specScope,
   specSlug,
   typePills,
 } from './library-model';
@@ -244,5 +246,56 @@ describe('library model (spec 017, T26)', () => {
       expect(runs.find((run) => run.hit)?.text).toBe('needle');
       expect(runs.at(-1)).toEqual({ text: '…', hit: false });
     });
+  });
+});
+
+describe('the spec area scope (T46, ISC-158)', () => {
+  const catalog: LibraryCatalog = {
+    docs: [
+      doc('constitution.md', { type: 'constitution' }),
+      doc('tech.md', { type: 'tech' }),
+      doc('ideas/webhooks.md', { type: 'idea' }),
+      doc('002-web-console/spec.md'),
+      doc('002-web-console/plan.md', { type: 'plan', state: 'stale' }),
+      doc('002-web-console/tasks.md', { type: 'tasks', state: 'missing', modified: null }),
+      doc('002-web-console/.evidence/run-001/probe.md', { type: 'evidence' }),
+      doc('003-board/spec.md', { state: 'stale' }),
+      doc('003-board/plan.md', { type: 'plan', state: 'missing', modified: null }),
+      doc('1002-later/spec.md'),
+    ],
+    groups: [head('002-web-console'), head('003-board')],
+    fog: [
+      { spec: '002-web-console', text: 'Which width?' },
+      { spec: '003-board', text: 'Which column?' },
+    ],
+    missing: 2,
+    stale: 2,
+  };
+
+  it('keeps the spec’s documents, missing entries and evidence, plus the constitution, and counts the spec alone', () => {
+    const scoped = specScope(catalog, '002');
+    expect(scoped.docs.map((entry) => entry.path)).toEqual([
+      '002-web-console/spec.md',
+      '002-web-console/plan.md',
+      '002-web-console/tasks.md',
+      '002-web-console/.evidence/run-001/probe.md',
+      'constitution.md',
+    ]);
+    expect(scoped.groups).toEqual([]);
+    expect(scoped.fog).toEqual([{ spec: '002-web-console', text: 'Which width?' }]);
+    expect({ missing: scoped.missing, stale: scoped.stale }).toEqual({ missing: 1, stale: 1 });
+  });
+
+  it('matches the spec by its whole number, never by a prefix', () => {
+    expect(specScope(catalog, '1002').docs.map((entry) => entry.path)).toEqual(['1002-later/spec.md', 'constitution.md']);
+    expect(specScope(catalog, '999').docs.map((entry) => entry.path)).toEqual(['constitution.md']);
+  });
+
+  it('puts the spec group first and the workspace-wide group after it', () => {
+    const groups = specFirst(libraryGroups(specScope(catalog, '002'), NO_FILTER));
+    expect(groups.map((group) => group.key)).toEqual(['002', 'workspace']);
+    expect(groups[0]?.docs.map((entry) => entry.path)).toEqual(['002-web-console/spec.md', '002-web-console/plan.md', '002-web-console/tasks.md']);
+    expect(groups[0]?.evidence?.count).toBe(1);
+    expect(groups[0]?.head).toBeNull();
   });
 });

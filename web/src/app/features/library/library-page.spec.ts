@@ -650,3 +650,54 @@ describe('LibraryPage group heads, filter "open" and tech.md (T36, ISC-157)', ()
     expect(page(present).querySelector('[data-library-placeholder]')).toBeNull();
   });
 });
+
+// T46 · ISC-158: the same component as the spec area Library at `/w/:ws/s/:id/library`, narrowed to that spec: its
+// documents with the missing entries and the evidence, plus the constitution; its group first and headless; no spec
+// select and no page head of its own; control counts of the spec alone; no "Open in spec" in the reader.
+const SCOPED: LibraryCatalog = {
+  ...HEADS,
+  docs: [...CONTROL.docs, doc('002-web-console/.evidence/run-001/probe.md', 'evidence', 'Probe run 1'), doc('tech.md', 'tech', 'Harbor tech')],
+  missing: 2,
+  stale: 2,
+};
+
+describe('LibraryPage in the spec area (T46, ISC-158)', () => {
+  it('lists the spec’s documents and missing entries first, then the constitution; no other spec and no tech', async () => {
+    const root = await open('/w/harbor/s/002/library', SCOPED);
+    const host = page(root);
+    expect(host.getAttribute('data-scope')).toBe('spec');
+    expect(Array.from(host.querySelectorAll('[data-library-group]')).map((group) => group.getAttribute('data-library-group'))).toEqual(['002', 'workspace']);
+    expect(entries(root)).toEqual(['002-web-console/spec.md', '002-web-console/plan.md', '002-web-console/tasks.md', 'constitution.md']);
+    expect(host.querySelector('[data-library-evidence="002"] [data-library-evidence-count]')?.textContent).toBe('1');
+    expect(host.querySelector('[data-library-placeholder]')).toBeNull();
+    // The spec head above carries stage, goal and figures: the spec's own group keeps only its eyebrow.
+    expect(head(root, '002')).toBeNull();
+    expect(host.querySelector('[data-library-group="002"] .lib-group-head')).not.toBeNull();
+  });
+
+  it('has no spec select and no page head, counts only the spec and keeps the state select', async () => {
+    const root = await open('/w/harbor/s/002/library?spec=003', SCOPED);
+    const host = page(root);
+    expect(host.querySelector('[data-library-spec]')).toBeNull();
+    expect(host.querySelector('[data-library-state-select]')).not.toBeNull();
+    expect(host.querySelector('ui-page-head, .lib-page-head')).toBeNull();
+    // `?spec=` names no other spec here: the list stays the spec's.
+    expect(entries(root)).toContain('002-web-console/spec.md');
+    expect(control(root, 'missing').querySelector('[data-library-control-count]')?.textContent).toBe('1');
+    expect(control(root, 'stale').querySelector('[data-library-control-count]')?.textContent).toBe('1');
+    expect(text(host.querySelector('[data-library-count]'))).toContain('5 of 5 documents');
+  });
+
+  it('opens a document in the reader without "Open in spec" (data-context spec)', async () => {
+    const root = await open('/w/harbor/s/002/library#002-web-console/plan.md', SCOPED);
+    const reader = page(root).querySelector('app-library-reader');
+    expect(reader?.getAttribute('data-context')).toBe('spec');
+    expect(page(root).querySelector('[data-library-open]')).toBeNull();
+  });
+
+  it('shows the fog lines of the spec alone under the filter "open"', async () => {
+    const root = await open('/w/harbor/s/002/library?state=open', SCOPED);
+    const groups = Array.from(page(root).querySelectorAll('[data-library-fog-group]')).map((group) => group.getAttribute('data-library-fog-group'));
+    expect(groups).toEqual(['002']);
+  });
+});

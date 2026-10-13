@@ -20,6 +20,8 @@ export const VIEW_LOADERS: Partial<Record<TabId | 'dashboard', () => Promise<Typ
   design: () => import('./docs/docs-tab').then((m) => m.DocsTab),
   decisions: () => import('./docs/docs-tab').then((m) => m.DocsTab),
   constitution: () => import('./docs/docs-tab').then((m) => m.DocsTab),
+  // Spec 017 (T46, ISC-158): the workspace Library's own component, narrowed to the spec by the route's spec id.
+  library: () => import('../library/library-page').then((m) => m.LibraryPage),
   tasks: () => import('./data/tasks/tasks-tab').then((m) => m.TasksTab),
   notes: () => import('./notes/notes-area').then((m) => m.NotesArea),
   board: () => import('./live/board/board-tab').then((m) => m.BoardTab),
@@ -40,7 +42,8 @@ const isTab = (id: string): boolean => (TAB_IDS as readonly string[]).includes(i
 export const SPEC_AREA_ROUTES: Routes = [
   { path: '', ...view('dashboard'), data: data({ area: 'dashboard' }) },
   ...TAB_IDS.map((tab) => ({ path: tab, ...view(tab), data: data({ area: areaOfTab(tab).id, tab }), ...(tab === 'notes' ? NOTE_CHILDREN : {}) })),
-  // `live`, `data`, `docs` are not tab ids: the area name alone opens its first tab (`status` and `notes` are tabs).
+  // `live` and `data` are not tab ids: the area name alone opens its first tab (`status`, `library` and `notes` are
+  // tabs). The former Docs and Evidence tabs keep their routes, in the Library area, until T48 redirects them.
   ...SPEC_AREAS.filter((area) => area.tabs.length > 0 && !isTab(area.id)).map((area) => ({
     path: area.id,
     redirectTo: area.tabs[0] ?? '',

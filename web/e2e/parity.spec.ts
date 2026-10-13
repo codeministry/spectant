@@ -795,7 +795,8 @@ const SPEC_MENU_AREAS = [
   { id: 'status', path: '/w/harbor/s/002/status' },
   { id: 'live', path: '/w/harbor/s/002/board' },
   { id: 'data', path: '/w/harbor/s/002/claims' },
-  { id: 'docs', path: '/w/harbor/s/002/plan' },
+  // Spec 017 (T45, ISC-158): the Library where Docs stood, its one tab at …/library.
+  { id: 'library', path: '/w/harbor/s/002/library' },
   { id: 'notes', path: '/w/harbor/s/002/notes' },
 ] as const;
 

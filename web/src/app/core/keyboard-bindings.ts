@@ -1,4 +1,4 @@
-import { type AreaId, SPEC_AREAS, type TabId, type WorkspaceMenuPageId, workspacePageById } from '../layout/shell/areas';
+import { type AreaId, SPEC_AREAS, type TabId, WORKSPACE_PAGES, type WorkspaceMenuPageId, workspacePageById } from '../layout/shell/areas';
 
 /**
  * The app's keyboard bindings (ISC-97, T102) as data: `KeyboardService` dispatches from this table, the shortcut sheet
@@ -22,16 +22,13 @@ export const DASHBOARD_GO_KEY = 'h';
 
 /**
  * Second keys for the tabs an area key does not already reach (`g s` `g l` `g d` `g o` `g n` open each area on its
- * first tab: status, board, claims, plan, notes). None clashes with an area key or with another tab.
+ * first tab: status, board, claims, library, notes). None clashes with an area key or with another tab. The former
+ * Docs and Evidence tabs lost theirs with spec 017 (T45, ISC-158): their documents are in the Library area, `g o`.
  */
 export const TAB_GO_KEYS: Readonly<Partial<Record<TabId, string>>> = {
   timeline: 't',
   matrix: 'x',
   tasks: 'k',
-  evidence: 'e',
-  design: 'i',
-  decisions: 'r',
-  constitution: 'c',
 };
 
 export const SHORTCUT_GROUPS = ['workspace', 'navigate', 'spec', 'board', 'general'] as const;
@@ -90,8 +87,14 @@ export interface Shortcut {
   readonly target?: string;
 }
 
+/**
+ * An area's binding id: `go-<area>`, or `go-area-<area>` where a workspace page has the same name (the Library, spec
+ * 017 T45: `go-library` is the workspace page's `g o`), so every id in the sheet stays unique.
+ */
+const areaBindingId = (area: AreaId): string => (WORKSPACE_PAGES.some((page) => page.id === area) ? `go-area-${area}` : `go-${area}`);
+
 const areaShortcuts: Shortcut[] = SPEC_AREAS.map((area) => ({
-  id: `go-${area.id}`,
+  id: areaBindingId(area.id),
   keys: [GO_PREFIX, area.goKey ?? DASHBOARD_GO_KEY],
   group: 'navigate',
   action: { kind: 'go-area', area: area.id },
@@ -138,7 +141,7 @@ const workspaceShortcuts: Shortcut[] = [
   },
   // Spec 024 (T58, ISC-150.1): `g f` Features and `g m` Milestones, the second keys read from the page registry; both
   // free in the workspace context (`f` and `m` alone are single keys, not `g` sequences). Spec 017 (T43, ISC-157.1):
-  // `g o` the Library, where Tech stood; inside a spec `g o` stays the Docs area (one binding per context).
+  // `g o` the Library, where Tech stood; inside a spec `g o` opens the Library area (T45; one binding per context).
   ...(['features', 'milestones', 'library'] as const).map(
     (page): Shortcut => ({
       id: `go-${page}`,

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { specLink, type TabId } from '../shell/areas';
-import { type PageTab, TechTabCounts, techTabs } from '../shell/page-tabs';
+import { LibraryTabCount, type PageTab, TechTabCounts, techTabs } from '../shell/page-tabs';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { TabBar, tabbedArea } from './tab-bar';
@@ -51,6 +51,7 @@ export class TabBarSlot {
   private readonly state = inject(ShellState);
   private readonly data = inject(ShellData);
   private readonly techCounts = inject(TechTabCounts);
+  private readonly libraryCount = inject(LibraryTabCount);
 
   protected readonly bar = computed<BarModel | null>(() => {
     if (this.state.notFound()) return null;
@@ -69,29 +70,19 @@ export class TabBarSlot {
     const area = tabbedArea(this.state);
     if (id === null || area === null || this.data.specMissing()) return null;
     const counts = this.specCounts();
+    const library = this.libraryCount.countFor(ws, id);
     const tabs = area.tabs.map((tab): PageTab => {
-      const count = counts.get(tab);
-      const base: PageTab = { id: tab, labelKey: `shell.tabs.${tab}`, link: specLink(ws, id, tab) };
-      const entry: PageTab = this.emptyTabs().has(tab) ? { ...base, muted: true } : base;
+      const count = tab === 'library' ? (library ?? undefined) : counts.get(tab);
+      const entry: PageTab = { id: tab, labelKey: `shell.tabs.${tab}`, link: specLink(ws, id, tab) };
       return count === undefined ? entry : { ...entry, count };
     });
     return { tabs, current: this.state.tab(), labelKey: `shell.areas.${area.id}` };
   }
 
-  /** Doc tabs whose file the spec does not have (`areas.docs`): the prototype dims them as `muted-tab`. */
-  private readonly emptyTabs = computed(() => {
-    const empty = new Set<TabId>();
-    const spec = this.data.spec.value();
-    if (spec?.kind !== 'ok') return empty;
-    const { docs } = spec.body.areas;
-    if (!docs.plan) empty.add('plan');
-    if (!docs.design) empty.add('design');
-    if (!docs.constitution) empty.add('constitution');
-    if (docs.decisions === 0) empty.add('decisions');
-    return empty;
-  });
-
-  /** Counts from the spec model the shell already loaded (`areas.data`); Evidence has none there, so it shows none. */
+  /**
+   * Counts from the spec model the shell already loaded (`areas.data`); the Library's Documents count comes from the
+   * library page (`LibraryTabCount`, spec 017), which holds the catalog.
+   */
   private readonly specCounts = computed(() => {
     const counts = new Map<TabId, string>();
     const spec = this.data.spec.value();
