@@ -463,6 +463,8 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       recount: "req",
       diagnostics: "req",
       relations: "opt",
+      // Spec 025 (ISC-170.1): the resolved spec edges, absent without any (no golden tree carries one).
+      specEdges: "opt",
     });
     expect(shapeProblems("planning", value, spec)).toEqual([]);
     expect(value.features.length).toBeGreaterThan(0);

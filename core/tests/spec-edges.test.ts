@@ -17,6 +17,7 @@ import { parseClaims } from '../src/claims.ts';
 import { affectedPaths, buildDashboard, sharedFilesOf, specOverlaps } from '../src/dashboard.ts';
 import { buildLiveFrame } from '../src/live.ts';
 import { buildPlanning } from '../src/planning.ts';
+import { type GraphLens, planningGraph } from '../src/relations.ts';
 import { buildSpecPage } from '../src/spec.ts';
 import type { DashboardInput, OverlapSpec } from '../src/dashboard.ts';
 import { hashForGate } from '../src/gates.ts';
@@ -690,5 +691,84 @@ describe('spec edges: waits (ISC-163)', () => {
     const free = viewAt(MERGED_002).claims.find((c) => c.id === 'ISC-9');
     expect(free?.state).toBe('takeable');
     expect(free?.waitsOn).toBeUndefined();
+  });
+});
+
+// ─── graph (ISC-170.1) ───────────────────────────────────────────────────────────────────────────────────────────
+
+// The Diagram lens of spec 026 draws each spec pair joined by a spec edge as one `spec-edge` arrow from the waiting spec
+// to its blocker, `open` or `met` as `resolveEdges` resolved the pair (open while any of its edges is open). The edges
+// ride in the planning model (`PlanningModel.specEdges`, absent without any), so the view derives the arrows from the
+// body the route serves. A master over the edges tree: F1 (001, 002) in Transit 1.0, F2 (003 to 007) in Transit 2.0.
+describe('spec edges: graph (ISC-170.1)', () => {
+  const MASTER = [
+    '# Master',
+    '',
+    '## Features',
+    '',
+    '### F1 · Stops',
+    'Why: riders start at a stop.',
+    'Milestone: Transit 1.0',
+    '',
+    ...['- [x] ISC-1: a.', '- [x] ISC-2: b.', '- [x] ISC-3: c.', '- [ ] ISC-4: d.'],
+    '',
+    '### F2 · Routes',
+    'Why: routes join the stops.',
+    'Milestone: Transit 2.0',
+    '',
+    ...[5, 6, 7, 8, 9, 10, 11, 12, 13].map((n) => `- [${n === 8 ? 'x' : ' '}] ISC-${n}: claim ${n}.`),
+    '',
+    '## Milestones',
+    '',
+    '- Transit 1.0 · 2026-05-01 · Stops first.',
+    '- Transit 2.0 · 2026-09-01 · Routes next.',
+    '',
+  ].join('\n');
+  const planningAt = (rows?: readonly MergeState[]) =>
+    buildPlanning({ master: MASTER, specs: TREE.specs, archived: TREE.archived, ...(rows === undefined ? {} : { specEdges: resolveEdges(TREE, rows).edges }) });
+  const arrows = (graph: GraphLens): string[] => graph.edges.filter((e) => e.kind === 'spec-edge').map((e) => `${e.from} → ${e.to} ${e.state ?? '?'}`);
+  const ALL_BASE = ['s_003 → s_002 open', 's_003 → s_001 met', 's_004 → s_002 open', 's_005 → s_006 open', 's_006 → s_005 open'];
+
+  test('graph: an open and a met spec edge, one arrow per spec pair from the waiting spec to its blocker', () => {
+    const graph = planningGraph(planningAt(BASE));
+    // 003 waits on 002 (claim and task) and on the archived 001; 005 and 006 form a cycle, which stays open; 007's 042
+    // names no spec and draws no arrow.
+    expect(arrows(graph)).toEqual(ALL_BASE);
+    const ids = graph.nodes.map((n) => n.id);
+    for (const e of graph.edges) expect([ids.includes(e.from), ids.includes(e.to)]).toEqual([true, true]);
+    expect(graph.nodes.some((n) => n.ghost === true || n.id === 's_042')).toBe(false);
+    // The arrows add to the hierarchy and take nothing from it; a contains edge carries no state.
+    const plain = planningGraph(planningAt());
+    expect(graph.nodes).toEqual(plain.nodes);
+    expect(graph.edges.filter((e) => e.kind === 'contains')).toEqual([...plain.edges]);
+    expect(graph.edges.filter((e) => e.kind === 'contains').every((e) => e.state === undefined)).toBe(true);
+    // 002 merged: both of its arrows are met.
+    expect(arrows(planningGraph(planningAt(MERGED_002)))).toEqual(['s_003 → s_002 met', 's_003 → s_001 met', 's_004 → s_002 met', 's_005 → s_006 open', 's_006 → s_005 open']);
+    // The served body carries the edges: the graph of the JSON round trip is the same.
+    expect(planningGraph(JSON.parse(JSON.stringify(planningAt(BASE))) as ReturnType<typeof planningAt>)).toEqual(graph);
+  });
+
+  test('graph: a blocker outside the drawn lanes stands as a ghost node, once, in its own lane', () => {
+    const model = planningAt(BASE);
+    const routes = planningGraph(model, { milestone: 'milestone:transit-2-0' });
+    expect(arrows(routes)).toEqual(ALL_BASE);
+    expect(routes.nodes.filter((n) => n.ghost === true).map((n) => [n.id, n.kind, n.ref, n.lane, n.title, n.archived === true])).toEqual([
+      ['s_002', 'spec', 'spec:002', 'milestone:transit-1-0', 'Find a stop by name as the rider types', false],
+      ['s_001', 'spec', 'spec:001', 'milestone:transit-1-0', 'Import the published timetable once a day', true],
+    ]);
+    // Archived hidden: 001 is no card any more, so its met arrow ends at a ghost; 002 is drawn.
+    const live = planningGraph(model, { archived: false });
+    expect(live.nodes.filter((n) => n.ghost === true).map((n) => n.id)).toEqual(['s_001']);
+    expect(arrows(live)).toContain('s_003 → s_001 met');
+    // The stops lane alone draws no spec that waits: no arrow, no ghost.
+    const stops = planningGraph(model, { milestone: 'milestone:transit-1-0' });
+    expect([arrows(stops), stops.nodes.filter((n) => n.ghost === true)]).toEqual([[], []]);
+  });
+
+  test('graph: without spec edges the graph has no spec-edge arrow and the model carries no edges', () => {
+    expect(planningAt().specEdges).toBeUndefined();
+    expect(buildPlanning({ master: MASTER, specs: TREE.specs, archived: TREE.archived, specEdges: [] }).specEdges).toBeUndefined();
+    expect(planningAt(BASE).specEdges).toEqual(resolveEdges(TREE, BASE).edges);
+    expect(arrows(planningGraph(planningAt()))).toEqual([]);
   });
 });

@@ -1102,8 +1102,8 @@ async function edgeVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state:
     return { slug: row.slug, stage: row.stage, stageSource: row.stageSource, waits: row.waits, ...hash };
   });
   const { master, specs, archived, workflow, constitution, tldr } = input;
-  const planning = edge.buildPlanning({ master, specs, archived, ideas: edge.ideaFilesAt(base.root), now: edge.PLANNING_NOW, ...(workflow ? { workflow } : {}), specStates });
   const edges = edge.resolveEdges({ specs, archived, constitution }, mergeState).edges;
+  const planning = edge.buildPlanning({ master, specs, archived, ideas: edge.ideaFilesAt(base.root), now: edge.PLANNING_NOW, ...(workflow ? { workflow } : {}), specStates, specEdges: edges });
   const locks = await edge.readLockSources({ repoRoot: base.root });
   const all = new Map([...specs, ...archived].map((f): [string, SpecFiles] => [f.folder, f]));
   const activityClaims = claimLines(base.root);

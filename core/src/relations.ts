@@ -270,8 +270,8 @@ export interface MatrixLens {
   readonly unplaced: readonly RelationRef[];
 }
 
-/** The planning body both derivations read: the tree's lists and its index. A `PlanningModel` is one. */
-export type LensInput = Pick<PlanningModel, 'features' | 'milestones' | 'unassignedFeatures' | 'relations'>;
+/** The planning body both derivations read: the tree's lists, its index and its spec edges. A `PlanningModel` is one. */
+export type LensInput = Pick<PlanningModel, 'features' | 'milestones' | 'unassignedFeatures' | 'relations' | 'specEdges'>;
 
 /** One lane while it is laid out: its features (master order) and its cards by column feature. */
 interface LaneDraft {
@@ -382,16 +382,25 @@ export interface LensNode {
   readonly bundle?: 'done' | 'no-spec';
   /** A bundle's features, master order; a tap expands them (`GraphLensOptions.expand`). */
   readonly members?: readonly RelationRef[];
+  /**
+   * A spec node drawn only as the end of a `spec-edge` arrow (spec 025, ISC-170.1): the blocker is not drawn by the
+   * options (another lane, archived hidden, inside a collapsed bundle). It carries its own `lane`, so the view can
+   * label it with that lane (`024 ↗ Pro`). Absent on every other node.
+   */
+  readonly ghost?: true;
 }
 
 /**
- * One edge, `from` the parent `to` the child: `contains` for lane › feature, lane › bundle and feature › spec. The
- * `spec-edge` kind is spec 025's (`after: NNN`, ISC-170.1); no edge of that kind is derived yet.
+ * One edge. `contains`: `from` the parent `to` the child, for lane › feature, lane › bundle and feature › spec.
+ * `spec-edge` (spec 025, ISC-170.1): `from` the drawn spec that waits (`s_<NNN>`) `to` its blocker (`s_<blocker>`), one
+ * per spec pair, however many claims and tasks carry an `(after: NNN)` on it.
  */
 export interface LensEdge {
   readonly from: string;
   readonly to: string;
   readonly kind: 'contains' | 'spec-edge';
+  /** A `spec-edge`'s state: `open` while any spec edge of the pair is open (`SpecEdge.state`), else `met`; absent on `contains`. */
+  readonly state?: 'open' | 'met';
 }
 
 /** The Diagram lens: nodes in drawing order (per lane the lane node, its features each with its specs, then its bundles). */
@@ -470,7 +479,52 @@ export function planningGraph(model: LensInput, options: GraphLensOptions = {}):
       hang(id);
     }
   }
-  // Seam for spec 025 (ISC-170.1): a drawn spec's own edges (`after: NNN`, its card's `blockers`) join `edges` here as
-  // `{ from: 's_<NNN>', to: 's_<blocker>', kind: 'spec-edge' }`; a blocker outside the drawn lanes as a ghost node.
+  edges.push(...specArrows(model, lanes, nodes));
   return { nodes, edges };
+}
+
+/**
+ * The `spec-edge` arrows of the graph (spec 025, ISC-170.1), after the hierarchy: per spec pair of `model.specEdges`,
+ * in edge order, one arrow `s_<NNN> → s_<blocker>` from a spec drawn as a node of its own, `open` while any edge of the
+ * pair is. A blocker not drawn is appended to `nodes` once as a ghost spec node, from its card in whichever lane holds
+ * it (its index entry when no lane does). A number no spec carries (`042`) has no entry, so no node and no arrow: the
+ * `spec-edge-unknown` warning and the card's `waits on 042` name it.
+ */
+function specArrows(model: LensInput, lanes: readonly LaneDraft[], nodes: LensNode[]): LensEdge[] {
+  const drawn = new Set(nodes.filter((n) => n.kind === 'spec').map((n) => n.id));
+  const placed = new Map(lanes.flatMap((lane) => [...lane.cards.values()].flat().map((card) => [card.ref, { lane: lane.ref, card }] as const)));
+  const pairs = new Map<string, LensEdge>();
+  for (const edge of model.specEdges ?? []) {
+    const from = `s_${safe(edge.fromSpec)}`;
+    const to = `s_${safe(edge.toSpec)}`;
+    if (!drawn.has(from)) continue;
+    const key = `${from} ${to}`;
+    const known = pairs.get(key);
+    if (known !== undefined) {
+      if (edge.state === 'open' && known.state === 'met') pairs.set(key, { ...known, state: 'open' });
+      continue;
+    }
+    if (!drawn.has(to) && !nodes.some((n) => n.id === to)) {
+      const ref = refOf('spec', edge.toSpec);
+      const at = placed.get(ref);
+      const entry = model.relations?.[ref];
+      if (at === undefined && entry === undefined) continue;
+      const card = at?.card;
+      const archived = card?.archived ?? entry?.archived === true;
+      nodes.push({
+        id: to,
+        kind: 'spec',
+        ref,
+        lane: at?.lane ?? null,
+        title: card?.title ?? entry?.title ?? null,
+        closed: card?.closed ?? entry?.closed ?? 0,
+        total: card?.total ?? entry?.total ?? 0,
+        stage: card?.stage ?? entry?.stage ?? null,
+        ...(archived ? { archived: true as const } : {}),
+        ghost: true,
+      });
+    }
+    pairs.set(key, { from, to, kind: 'spec-edge', state: edge.state });
+  }
+  return [...pairs.values()];
 }

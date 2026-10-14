@@ -24,7 +24,7 @@ import { parseClaims } from './claims.ts';
 import type { Claim, FeatureBlock } from './claims.ts';
 import { parseEvents } from './events.ts';
 import { specFilePath } from './files.ts';
-import type { ActorRef, ClaimLock, FileDiagnostic, IdeaFiles, IdeaRef, LockReading, Priority, SpecFiles, SpecWait, StageSource, Workflow, WorkflowStage } from './files.ts';
+import type { ActorRef, ClaimLock, FileDiagnostic, IdeaFiles, IdeaRef, LockReading, Priority, SpecEdge, SpecFiles, SpecWait, StageSource, Workflow, WorkflowStage } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { readIdeas } from './ideas.ts';
 import { milestoneSlug, parseMilestones } from './milestones.ts';
@@ -258,6 +258,12 @@ export interface PlanningModel {
    * lane's hand-built planning stubs stay valid until the detail sidebar reads it, as with `featureIds`.
    */
   readonly relations?: RelationIndex;
+  /**
+   * The spec edges of the active specs (spec 025, ISC-170.1), `PlanningInput.specEdges` as the caller resolved them
+   * (`resolveEdges`, open or met), for the Diagram lens's `spec-edge` arrows (`planningGraph`). Absent when the caller
+   * passed none or an empty list, so a workspace without spec edges serves the body it served before.
+   */
+  readonly specEdges?: readonly SpecEdge[];
 }
 
 /**
@@ -294,6 +300,13 @@ export interface PlanningInput {
    * holder's `assignee` (T65); absent, the assignee comes from the events alone.
    */
   readonly locks?: LockReading;
+  /**
+   * The workspace's spec edges as `resolveEdges(…).edges` resolved them against the server's merge state (spec 025,
+   * ISC-170.1); `resolveEdges` needs the merge state, which only the caller reads from git, so the tree takes its
+   * result rather than resolving. Carried unchanged as `PlanningModel.specEdges`; absent, the diagram draws no
+   * `spec-edge` arrow.
+   */
+  readonly specEdges?: readonly SpecEdge[];
 }
 
 /** The file every master diagnostic names, as the dashboard names it. */
@@ -524,7 +537,7 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
   const specs = folders.map((f) => f.holder);
   if (input.master === null) {
     const relations = buildRelations({ features: [], milestones: [], ideas, specs });
-    return { ...board, features: [], milestones: [], unassignedFeatures: [], ideas, recount: null, diagnostics: stories.diagnostics, relations };
+    return { ...board, features: [], milestones: [], unassignedFeatures: [], ideas, recount: null, diagnostics: stories.diagnostics, relations, ...specEdgesOf(input) };
   }
   const master = parseClaims(input.master);
   const claimById = new Map<string, Claim>();
@@ -616,5 +629,11 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
       ...unknownIdeaNames(ideas, new Set(master.features.map((f) => f.id)), entries),
     ],
     relations: buildRelations({ features, milestones, ideas, specs, after }),
+    ...specEdgesOf(input),
   };
+}
+
+/** `PlanningModel.specEdges`: the caller's resolved spec edges, absent when there are none (spec 025, ISC-170.1). */
+function specEdgesOf(input: PlanningInput): { specEdges?: readonly SpecEdge[] } {
+  return input.specEdges === undefined || input.specEdges.length === 0 ? {} : { specEdges: input.specEdges };
 }
