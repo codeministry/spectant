@@ -20,7 +20,10 @@
  * (`readWorktrees`); `core/`'s `assignWorktrees` decides which spec each belongs to. A spec with a worktree of its own
  * is read per spec (`specSourceFor`): its code-reviewed mark compares with the tree id computed in that worktree
  * (ISC-176), and when git tracks its folder (`ls-files`, `trackedSpecPaths`) its files come from the worktree's copy,
- * with the main checkout's copy beside them (ISC-181); both go to `core/` as `DashboardInput.perSpec`.
+ * with the main checkout's copy beside them (ISC-181); both go to `core/` as `DashboardInput.perSpec`. A spec worktree
+ * whose branch is merged into `main` or whose folder is gone is no longer the spec's: it is left out, so no chip shows
+ * and the spec reads from the main checkout again, and the timeline carries the derived entry instead
+ * (`timelineWorktreeOf`, ISC-175.1).
  *
  * An unreadable workspace (gone, not a directory, no permission) is a `{readable: false, error}` value with a stable
  * code, never a throw and never the OS message, which would carry the absolute path (ISC-3).
@@ -31,7 +34,7 @@ import { buildDashboard, devServiceLabels, toLocalService } from "../../core/src
 import type { DashboardInput, DashboardModel, ProbedService } from "../../core/src/dashboard.ts";
 import { actorIdOf } from "../../core/src/actor-id.ts";
 import { FILE_KINDS, repoFilePath } from "../../core/src/files.ts";
-import type { FileDiagnostic, IdeaFiles, LibraryCatalog, MergeState, SpecFiles, SpecRead, TextFileKind, Workflow, Worktree } from "../../core/src/files.ts";
+import type { FileDiagnostic, IdeaFiles, LibraryCatalog, MergeState, SpecFiles, SpecRead, TextFileKind, TimelineWorktreeInput, Workflow, Worktree } from "../../core/src/files.ts";
 import { parseFrontmatter } from "../../core/src/frontmatter.ts";
 import { specIdOf } from "../../core/src/spec-ref.ts";
 import { type TreeEntry, type TreeEntryMode, treeIdOf } from "../../core/src/gates.ts";
@@ -39,8 +42,8 @@ import { readCatalog } from "../../core/src/library.ts";
 import { readLockSources } from "../../core/src/locks.ts";
 import { type SpecRef, listSpecs } from "../../core/src/resolve.ts";
 import { parseWorkflow } from "../../core/src/workflow.ts";
-import { WORKTREE_COPY_KINDS, type WorktreeAssignment, assignWorktrees, specSourceOf } from "../../core/src/worktrees.ts";
-import { type SpecBranch, aheadOfMain, dirty, mergedSpecBranches, trackedSpecPaths, userEmail, worktreeList } from "./git.ts";
+import { WORKTREE_COPY_KINDS, type WorktreeAssignment, assignWorktrees, mainBranchOf, specSourceOf } from "../../core/src/worktrees.ts";
+import { type SpecBranch, aheadOfMain, dirty, mergeCommitOf, mergedSpecBranches, trackedSpecPaths, userEmail, worktreeList } from "./git.ts";
 
 /** Why a workspace cannot be read. Stable codes: the web app maps them to its own words. */
 export type UnreadableCode = "missing" | "not-a-directory" | "permission-denied" | "unreadable";
@@ -238,7 +241,8 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
     const perSpec: Record<string, SpecRead> = {};
     const copies: Record<string, string> = {};
     const refs = listSpecs(root);
-    const worktrees = await readWorktrees(root, refs.map((ref) => ref.slug));
+    const branches = (await mergedSpecBranches(root)).branches;
+    const worktrees = await readWorktrees(root, refs.map((ref) => ref.slug), branches);
     for (const ref of refs) {
       const main = specFiles(ref.dir, ref.slug);
       if (ref.archived) {
@@ -253,7 +257,7 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
     // The main checkout's tree only where a marked spec compares with it: one without a tree of its own (ISC-176).
     const reviewed = specs.some((f) => f.texts.gateCodeReviewed !== undefined && perSpec[f.folder]?.tree === undefined);
     const workflow = parseWorkflow(readIfExists(repoFilePath(root, "workflow")));
-    const mergeState = mergeStateOf(specs, archived, (await mergedSpecBranches(root)).branches);
+    const mergeState = mergeStateOf(specs, archived, branches);
     return {
       readable: true,
       workflow,
@@ -289,23 +293,65 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
  * that belongs to a spec: `ahead` (`rev-list --count main..<branch>`) and `dirty` (`status --porcelain`), through
  * `git.ts`, which never fetches and runs with `GIT_OPTIONAL_LOCKS=0`. A builder is counted and never read, and a
  * worktree of no spec has no chip to fill, so both keep their nulls. One worktree after the other, each with its two
- * reads side by side: a workspace has a handful. Undefined when git lists nothing beside the main checkout (no
- * repository of its own, no git, a failure), so such an input is the same as before spec 027.
+ * reads side by side: a workspace has a handful. A spec's worktree that has ended is left out (ISC-175.1): its branch is
+ * one of `branches` read as merged, or its folder is gone while git still lists it (`prunable`). Undefined when git
+ * lists nothing beside the main checkout (no repository of its own, no git, a failure) or nothing is left, so such an
+ * input is the same as before spec 027.
  */
-async function readWorktrees(root: string, folders: readonly string[]): Promise<WorktreeAssignment | undefined> {
+async function readWorktrees(root: string, folders: readonly string[], branches: readonly SpecBranch[]): Promise<WorktreeAssignment | undefined> {
   const assignment = assignWorktrees(await worktreeList(root), folders);
-  if (assignment.worktrees.length === 0) return undefined;
+  const merged = new Set(branches.filter((b) => b.merged).map((b) => b.branch));
   const worktrees: Worktree[] = [];
   for (const worktree of assignment.worktrees) {
     if (worktree.kind !== "spec" || worktree.spec === null) {
       worktrees.push(worktree);
       continue;
     }
+    if (ended(root, worktree, merged)) continue;
     const at = join(root, worktree.path);
     const [ahead, changed] = await Promise.all([aheadOfMain(at, worktree.branch), dirty(at)]);
     worktrees.push({ ...worktree, ahead, dirty: changed });
   }
-  return { ...assignment, worktrees };
+  return worktrees.length === 0 ? undefined : { ...assignment, worktrees };
+}
+
+/** A spec worktree that is no longer the spec's: its branch merged into `main`, or its folder gone (ISC-175.1). */
+function ended(root: string, worktree: Worktree, merged: ReadonlySet<string>): boolean {
+  return (worktree.branch !== null && merged.has(worktree.branch)) || !hasGit(join(root, worktree.path));
+}
+
+/**
+ * The timeline's `worktree` input for the spec folder `folder` at `root` (spec 027, T25, ISC-175.1), from git alone:
+ *
+ * - `merged` when one of the spec's branches is merged into `main` (`mergedSpecBranches`, ISC-162.1), dated by its merge
+ *   commit (`mergeCommitOf`); a merge commit git cannot name gives no entry rather than an undated one.
+ * - `removed` when the spec has a branch, none merged, and no live worktree carries the spec: git lists none, or only
+ *   one whose folder is gone, whose path the entry then names. A branch checked out in the main checkout is worked on
+ *   there and counts as open. A branch that never had a worktree reads as removed too (principal, 2026-10-14): spec
+ *   work runs in a worktree of its own.
+ * - null otherwise: no branch (nothing to say), or the worktree lives (the branch is open).
+ *
+ * Nothing is written: the entry is derived on every read, `events.jsonl` stays byte-identical.
+ */
+export async function timelineWorktreeOf(root: string, folder: string): Promise<TimelineWorktreeInput | null> {
+  const spec = specIdOf(folder);
+  if (spec === null) return null;
+  const own = (await mergedSpecBranches(root)).branches.filter((b) => b.spec === spec);
+  if (own.length === 0) return null;
+  const porcelain = await worktreeList(root);
+  const mine = assignWorktrees(porcelain, [folder]).worktrees.filter((w) => w.kind === "spec" && w.spec === spec);
+  const live = mine.find((w) => hasGit(join(root, w.path)));
+  const merged = own.find((b) => b.merged);
+  if (merged !== undefined) {
+    const commit = await mergeCommitOf(root, merged.branch);
+    if (commit === null) return null;
+    const path = (mine.find((w) => w.branch === merged.branch) ?? live)?.path ?? null;
+    return { merged: commit, removed: false, branch: merged.branch, path };
+  }
+  const main = mainBranchOf(porcelain);
+  if (live !== undefined || own.some((b) => b.branch === main)) return null;
+  const branch = own[0]?.branch ?? null;
+  return { merged: null, removed: true, branch, path: mine[0]?.path ?? null };
 }
 
 /** How the loader read one active spec (spec 027): its files, the `SpecRead` beside them, and the copy's folder. */

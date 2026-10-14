@@ -1308,6 +1308,15 @@ For a `spec` worktree that belongs to a spec the server then reads, in that work
 branch that `main` lacks (`git rev-list --count main..<branch>`, null when detached), and `dirty`, whether
 `git status --porcelain` prints anything (ISC-175).
 
+A spec worktree has ended when its branch is merged into `main` (the merge state of § Spec edges, ISC-162.1) or when
+git still lists it but its folder is gone (`prunable`): the server leaves it out of the reading, so no chip shows and
+the spec reads from the main checkout again (ISC-175.1). The spec's timeline then carries one derived `worktree`
+entry, never a line in `events.jsonl`: `merged`, dated by the merge commit (the oldest commit on `main`'s
+first-parent line with the branch's tip as an ancestor and a second parent), or `removed`, undated, when the spec has a
+branch, none merged, that no live worktree carries and that is not the main checkout's branch (`mainBranchOf`, the
+first block's `branch`); `removed` names the worktree's path while git still lists it. A branch that never had a
+worktree reads as removed too: spec work runs in a worktree of its own.
+
 An example: a repository at `/srv/repo` with its main checkout, four spec-kind worktrees and one builder lists
 these blocks:
 

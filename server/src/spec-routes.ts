@@ -11,7 +11,7 @@
  * | route | answer |
  * |-------|--------|
  * | spec | `buildSpecPage` over the dashboard's own reading (`readWorkspaceInput`), so page and row agree (ISC-72); headers `X-Spectant-Reviewed-Hashes` and `X-Spectant-Spec-Hash` (raw sha256 of spec.md) |
- * | timeline | `buildTimeline({files, commits})`, commits from `git.ts` `commitsFor`; ETag over body and `HEAD` |
+ * | timeline | `buildTimeline({files, commits, worktree})`, commits from `git.ts` `commitsFor`, the worktree from `timelineWorktreeOf`; ETag over body and `HEAD` |
  * | claims | `buildClaimViews({files, locks, specEdges})`, the spec edges resolved over the workspace reading (spec 025) |
  * | tasks | `parseTaskLines` or `null` without tasks.md; header `X-Spectant-Tasks-Hash` (sha256 hex of the raw bytes) |
  * | evidenceFile | `evidenceFileResponse` (`evidence.ts`): 403 outside `artifacts/`, `.evidence/` and `.design/`, 404 no file |
@@ -73,6 +73,7 @@ import {
   readIfExists,
   readSpecSource,
   readWorkspaceInput,
+  timelineWorktreeOf,
   unreadableCode,
   viewerActorOf,
   workspaceUnreadable,
@@ -223,7 +224,9 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         const sessions: TimelineSession[] = buildClaimViews({ files, locks: await locksOf(root, clock()) }).claims.flatMap((c) =>
           c.lock === null ? [] : [{ claim: c.id, session: c.lock.session, since: c.lock.since }],
         );
-        const timeline = buildTimeline({ files, commits, notes, sessions });
+        // The spec worktree's end from git (spec 027, ISC-175.1): merged into `main` or removed, one derived entry.
+        const worktree = await timelineWorktreeOf(root, ref.slug);
+        const timeline = buildTimeline({ files, commits, notes, sessions, worktree });
         // With a HEAD the ETag covers it too, so a new commit revalidates even where the body would not change; without
         // one (no repository of its own) it is the plain body hash of every other route.
         return json(req, 200, timeline, head === null ? {} : { ETag: timelineEtag(timeline, head) });
