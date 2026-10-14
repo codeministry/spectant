@@ -73,8 +73,12 @@ Run the cheapest tier that proves the change, and climb before a claim or spec c
 | Tier | Command | Runs when |
 |------|---------|-----------|
 | static | `bun run check:static` | before every claim closes (lint, stylelint, `tsc --noEmit`, zero warnings) |
-| quick | `bun run verify:quick` | at every implementation stop |
-| full | `bun run verify` | before a spec is marked complete (browser tier, e2e, visual baselines, four-target build) |
+| quick | `bun run verify:quick` | at every implementation stop, and before a spec is marked complete |
+| full | `bun run verify` | before a feature or milestone completes (browser tier, e2e, visual baselines, four-target build) |
+
+A single spec closes on its claims and the quick tier. The full tier, the code review and the security review
+(`/spec-code-review`) are optional per spec and run once, when its feature or milestone completes; CI still runs the
+quick tier, the browser tier, e2e and the build on every pull request and every push to `main`.
 
 ## Lane notes
 

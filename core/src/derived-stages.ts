@@ -34,7 +34,7 @@
 // Undated: a transition whose date the files do not give has `ts: ''` and `undated: true`, and `stageInstants`
 // places it right after the last dated transition before it. A date without a time (`2026-09-24`) that falls on the
 // day of the transition before it sorts right after that transition too, since the day is all it says.
-import type { EventLine, SpecFiles, StageName, TimelineEntry } from './files.ts';
+import type { CodeReviewMode, EventLine, SpecFiles, StageName, TimelineEntry } from './files.ts';
 import { parseClaims } from './claims.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { stageOf, type Stage } from './stage.ts';
@@ -55,7 +55,7 @@ interface Dated {
   readonly source: string;
 }
 
-export function deriveStages(files: SpecFiles, events?: readonly EventLine[]): TimelineEntry[] {
+export function deriveStages(files: SpecFiles, events?: readonly EventLine[], codeReview: CodeReviewMode = 'spec'): TimelineEntry[] {
   if (events !== undefined && events.length > 0) return events.map(fromEvent);
   const spec = files.texts.spec;
   if (spec === undefined) return [];
@@ -103,6 +103,11 @@ export function deriveStages(files: SpecFiles, events?: readonly EventLine[]): T
   if (current() === 'review') {
     const reviewed = markAt(files.texts.gateReviewed);
     if (reviewed !== undefined) step('build', dated(reviewed, '.gates/reviewed.json', '`at`'));
+  }
+  // Spec 028 (ISC-183.2): under `code_review: none` the row has no code-review, so close follows build once every
+  // claim is closed; a mark set anyway dates nothing, and the files give no date for the last close.
+  if (current() === 'build' && codeReview === 'none' && type !== 'chore' && allClosed(spec)) {
+    step('close', { ts: null, source: 'every claim closed; the workflow has no code review, the files give no date' });
   }
   if (current() === 'build') {
     const codeReviewed = markAt(files.texts.gateCodeReviewed);

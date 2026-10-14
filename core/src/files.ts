@@ -772,6 +772,11 @@ export interface TimelineInput {
    * or open, none, and the timeline is unchanged. The entry is derived only: no event is written for it.
    */
   readonly worktree?: TimelineWorktreeInput | null;
+  /**
+   * The code review of the spec's type under the workspace's workflow (spec 028, ISC-183.2): under `none` the derived
+   * stages step `build → close` once every claim is closed, without a code-review entry. Absent, `spec`, as before.
+   */
+  readonly codeReview?: CodeReviewMode;
 }
 
 /**

@@ -207,6 +207,25 @@ describe('planTransition: the fixed gates (T71, ISC-121)', () => {
   });
 });
 
+// Spec 028 (ISC-183.2): under `code_review: none` the type's row lists no code-review, so build moves straight to close.
+describe('planTransition: code_review none (ISC-183.2)', () => {
+  const NONE_WF: Workflow = parseWorkflow(
+    ['| type | stages | code_review |', '|------|--------|-------------|', '| spike | review · build · close · done | none |', ''].join('\n'),
+  );
+
+  test('code_review none: build → close is accepted with every claim closed and no code-reviewed mark', () => {
+    expect(NONE_WF.diagnostics).toEqual([]);
+    const p = accepted(plan(harbor008AtBuild(), 'close', { workflow: NONE_WF }));
+    expect([p.from, p.to, p.event.from, p.event.to]).toEqual(['build', 'close', 'build', 'close']);
+    expect(p.specText).toContain('\nstage: close\n');
+  });
+
+  test('code_review none: build → code-review is refused, the row lists no such stage', () => {
+    const p = refused(plan(harbor008AtBuild(), 'code-review', { workflow: NONE_WF }));
+    expect(p.reason).toContain('lists no move build → code-review');
+  });
+});
+
 describe('planTransition: a refused move (T71, T72, ISC-31)', () => {
   test('a move the workflow does not list is refused: backward, skip, standing still', () => {
     const files = harbor('002-web-console');

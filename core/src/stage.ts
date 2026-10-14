@@ -290,8 +290,8 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
     stage: 'code-review',
-    condition: 'every claim is closed and the code-reviewed mark is not fresh',
-    when: (input) => countsOf(input).allClosed && input.codeReviewed !== 'fresh',
+    condition: "every claim is closed, the type's workflow has a code review, and the code-reviewed mark is not fresh",
+    when: (input) => countsOf(input).allClosed && input.codeReview !== 'none' && input.codeReviewed !== 'fresh',
     next: '/spec-code-review',
     reasons: ['every claim is closed and the code-reviewed mark is {state}'],
     explain: (input) => ({ values: { state: input.codeReviewed } }),
@@ -299,11 +299,12 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
     stage: 'close',
-    condition: 'every claim is closed and the code-reviewed mark is fresh',
-    when: (input) => countsOf(input).allClosed && input.codeReviewed === 'fresh',
+    condition: "every claim is closed and either the code-reviewed mark is fresh or the type's workflow has `code_review: none`",
+    when: (input) => countsOf(input).allClosed && (input.codeReviewed === 'fresh' || input.codeReview === 'none'),
     next: '/spec-complete',
-    reasons: ['every claim is closed and code-reviewed'],
-    explain: () => ({}),
+    reasons: ['every claim is closed and code-reviewed', 'every claim is closed and the workflow has no code review'],
+    // Spec 028 (ISC-183.1): under `none` the mode picks the phrase, so a voluntary mark changes nothing.
+    explain: (input) => ({ form: input.codeReview === 'none' ? 1 : 0 }),
   },
   {
     subject: 'spec',

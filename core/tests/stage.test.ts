@@ -303,6 +303,50 @@ describe('chore done', () => {
   });
 });
 
+// Spec 028 (ISC-183): under `code_review: none` a spec of any type but chore goes from build to close once every
+// claim is closed, without a code-reviewed mark; row 9 (`code-review`) applies only where the type has a code review.
+describe('code_review none', () => {
+  const NO_REVIEW_TYPES = WORKFLOW_TYPES.filter((type) => type !== 'chore');
+
+  test('code_review none: every type but chore stands on close with every claim closed and no mark', () => {
+    for (const type of NO_REVIEW_TYPES) {
+      expect(nextCommandWithReason(at({ type, codeReview: 'none', ...ALL_CLOSED, codeReviewed: 'missing' }))).toEqual({
+        stage: 'close',
+        stageSource: 'derived',
+        command: '/spec-complete 007',
+        reason: 'every claim is closed and the workflow has no code review',
+        row: 10,
+      });
+    }
+  });
+
+  test('code_review none: the chore row still wins', () => {
+    const chore = at({ type: 'chore', hasPlan: false, hasTasks: false, codeReview: 'none', ...ALL_CLOSED });
+    expect(nextCommandWithReason(chore).stage).toBe('done');
+    expect(nextCommandWithReason(chore).row).toBe(7);
+  });
+
+  test('code_review none: an open claim keeps the spec in build, a stale reviewed mark in review', () => {
+    expect(stageOf(at({ codeReview: 'none' }))).toBe('build');
+    expect(stageOf(at({ codeReview: 'none', ...ALL_CLOSED, reviewed: 'stale' }))).toBe('review');
+  });
+
+  test('code_review none: spec and feature still stop on code-review without a fresh mark', () => {
+    expect(stageOf(at({ codeReview: 'spec', ...ALL_CLOSED }))).toBe('code-review');
+    expect(stageOf(at({ codeReview: 'feature', ...ALL_CLOSED }))).toBe('code-review');
+  });
+
+  // ISC-183.1: `/spec-code-review` stays callable; the mark it writes changes nothing under `none`.
+  test('voluntary mark: a fresh or stale code-reviewed mark under none gives the same stage, reason and command', () => {
+    for (const type of NO_REVIEW_TYPES) {
+      const without = nextCommandWithReason(at({ type, codeReview: 'none', ...ALL_CLOSED, codeReviewed: 'missing' }));
+      for (const codeReviewed of ['fresh', 'stale'] as const) {
+        expect(nextCommandWithReason(at({ type, codeReview: 'none', ...ALL_CLOSED, codeReviewed }))).toEqual(without);
+      }
+    }
+  });
+});
+
 describe('the type router decides plan and tasks', () => {
   test('bug and spike never wait for plan.md or tasks.md', () => {
     for (const type of ['bug', 'spike'] as const) {
@@ -1182,5 +1226,39 @@ describe('chore done on harbor (T50, ISC-117.1)', () => {
       ['review', 'build', '2026-03-09T09:00:00Z'],
       ['build', 'done', ''],
     ]);
+  });
+});
+
+// ─── The derived timeline under `code_review: none` (spec 028, ISC-183.2) ─────────────────────────────────────────
+
+describe('none timeline (ISC-183.2)', () => {
+  // Harbor 008: a spike, reviewed, every claim closed, no code-reviewed mark.
+  const harbor008 = (): SpecFiles => {
+    const files = readTree('harbor').specs.find((f) => f.folder === '008-referrers-support');
+    if (!files) throw new Error('harbor 008 missing');
+    return files;
+  };
+  const mark = readFileSync(join(FIXTURES, 'harbor', 'specs', '004-retention-policies', '.gates', 'code-reviewed.json'), 'utf8');
+  const steps = (files: SpecFiles, mode?: CodeReviewMode): Array<[string | null | undefined, string | undefined, string]> =>
+    deriveStages(files, undefined, mode).map((e) => [e.from, e.to, e.ts]);
+
+  test('none timeline: every claim closed steps build → close, undated, and no code-review entry', () => {
+    expect(steps(harbor008(), 'none')).toEqual([
+      [null, 'review', '2026-03-08T13:00:00Z'],
+      ['review', 'build', '2026-03-08T14:00:00Z'],
+      ['build', 'close', ''],
+    ]);
+  });
+
+  test('none timeline: a voluntary code-reviewed mark adds no code-review step', () => {
+    const files = harbor008();
+    const marked: SpecFiles = { ...files, texts: { ...files.texts, gateCodeReviewed: mark } };
+    expect(steps(marked, 'none')).toEqual(steps(files, 'none'));
+  });
+
+  test('none timeline: without the mode, or under spec, the timeline is what it was', () => {
+    const files = harbor008();
+    expect(steps(files)).toEqual(steps(files, 'spec'));
+    expect(steps(files).map(([, to]) => to)).toEqual(['review', 'build']);
   });
 });

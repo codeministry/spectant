@@ -97,7 +97,7 @@ export function buildTimeline(input: TimelineActivityInput): TimelineEntry[] {
   ];
   const recorded = input.files.texts.events;
   const events = input.events ?? (recorded === undefined ? undefined : parseEvents(recorded).events);
-  const stages = deriveStages(input.files, events);
+  const stages = deriveStages(input.files, events, input.codeReview);
   const instants = stageInstants(stages);
   const placed: Placed[] = [
     ...drafts.map((draft, seq) => ({ entry: recordedEntry(draft), at: Date.parse(draft.ts), seq })),

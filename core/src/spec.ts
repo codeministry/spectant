@@ -37,6 +37,7 @@ import type {
 } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { parseTaskLines } from './tasks.ts';
+import { codeReviewOf } from './stage.ts';
 import { buildTimeline } from './timeline.ts';
 import { parseTldr, tldrState } from './tldr.ts';
 
@@ -216,7 +217,9 @@ export function buildSpecPage(input: SpecPageInput): SpecPageModel {
   const doc = parseClaims(spec);
 
   // Timeline: round count, decisions, the Status tile's entries (commits only when the server passed them in).
-  const timeline = buildTimeline({ files: input.files, commits: input.commits ?? [] });
+  // Under `code_review: none` the derived stages step build → close (spec 028, ISC-183.2), as the row reads it.
+  const codeReview = codeReviewOf(fm.data.specType, input.workflow);
+  const timeline = buildTimeline({ files: input.files, commits: input.commits ?? [], codeReview });
   const rounds = timeline.filter((e) => e.kind === 'round');
   const roundNumbers = rounds.map((e) => Number(e.ref)).filter((n) => Number.isFinite(n));
   const newest = newestRoundLine(texts.rounds);

@@ -34,8 +34,9 @@
  */
 import { basename, join, relative, sep } from "node:path";
 import { buildClaimViews } from "../../core/src/claim-view.ts";
-import { specFilePath } from "../../core/src/files.ts";
+import { repoFilePath, specFilePath } from "../../core/src/files.ts";
 import type { LockReading, SpecEdge, SpecFiles } from "../../core/src/files.ts";
+import { parseFrontmatter } from "../../core/src/frontmatter.ts";
 import { resolveEdges } from "../../core/src/spec-edges.ts";
 import { buildFrames } from "../../core/src/frames.ts";
 import { buildLiveFrame } from "../../core/src/live.ts";
@@ -43,7 +44,9 @@ import { readLockSources } from "../../core/src/locks.ts";
 import { type SpecRef, resolveSpec } from "../../core/src/resolve.ts";
 import { buildSpecPage } from "../../core/src/spec.ts";
 import { parseTaskLines } from "../../core/src/tasks.ts";
+import { codeReviewOf } from "../../core/src/stage.ts";
 import { buildTimeline, type TimelineNote, type TimelineSession } from "../../core/src/timeline.ts";
+import { parseWorkflow } from "../../core/src/workflow.ts";
 import { json } from "./api.ts";
 import { writeTaskCheck } from "./checkbox-route.ts";
 import { evidenceFileResponse } from "./evidence.ts";
@@ -226,7 +229,11 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         );
         // The spec worktree's end from git (spec 027, ISC-175.1): merged into `main` or removed, one derived entry.
         const worktree = await timelineWorktreeOf(root, ref.slug);
-        const timeline = buildTimeline({ files, commits, notes, sessions, worktree });
+        // The type's code review under `specs/workflow.md` (spec 028, ISC-183.2): under `none` the derived stages step
+        // build → close without a code-review entry, as the row reads it.
+        const workflow = parseWorkflow(readIfExists(repoFilePath(root, "workflow")));
+        const codeReview = codeReviewOf(parseFrontmatter(files.texts.spec ?? "").data.specType, workflow);
+        const timeline = buildTimeline({ files, commits, notes, sessions, worktree, codeReview });
         // With a HEAD the ETag covers it too, so a new commit revalidates even where the body would not change; without
         // one (no repository of its own) it is the plain body hash of every other route.
         return json(req, 200, timeline, head === null ? {} : { ETag: timelineEtag(timeline, head) });

@@ -568,7 +568,9 @@ at their own `created:`, else at the context.md round titled "before the plan" o
 `updated:` is its last edit and never dates a transition); `review → build` at the reviewed mark's `at`;
 `build → code-review` (always undated) and `code-review → close` at the code-reviewed mark's `at`; `→ done` with
 `phase: complete` at `completed:`, else `updated:`; without it, a chore whose claims are all closed steps
-`build → done` by the stage table's chore row, always undated (spec 008, T50). The first round changes no stage (`build` before and after) and is
+`build → done` by the stage table's chore row, always undated (spec 008, T50); under `code_review: none`
+(`TimelineInput.codeReview`, spec 028) a spec whose claims are all closed steps `build → close`, always undated, and
+a code-reviewed mark adds no step. The first round changes no stage (`build` before and after) and is
 its own round entry. A transition the files do not date carries `ts: ""` and `undated: true` and sorts right after the
 dated transition before it, as does a date without a time that falls on that transition's day. When the caller passes
 the validated events.jsonl lines, they are the stage entries (`derived: false`, with their `actor` and `command`) and
@@ -993,7 +995,9 @@ The file holds one Markdown table `| type | stages | code_review |`, one row per
   `build`, `code-review`, `close`, `done`; `blocked` and `close-pending` are detours every type has and no row lists;
 - `code_review` is `spec` (one code-reviewed mark per spec, as today), `feature` (one code review for every spec of the
   spec's main feature: a spec whose claims are all closed waits in the intermediate stage `close-pending` while a sibling
-  of that feature is still open, row 8 of the stage table) or `none` (no code-reviewed mark at all);
+  of that feature is still open, row 8 of the stage table) or `none` (no code-reviewed mark at all: the row lists no
+  `code-review`, and a spec whose claims are all closed stands on `close` with `/spec-complete`, row 10 of the stage
+  table; a mark set anyway changes neither its stage nor its reason);
 - a type the file has no row for runs its default row; without the file every type runs the default table.
 
 The reader never rejects the file. What it cannot use is one `workflow-…` diagnostic, and the type concerned runs its
@@ -1171,8 +1175,8 @@ spec page's own facts, after it.
 | 6 | `build` | at least one claim is takeable and not all open work waits on an open spec edge | `/spec-implement NNN` | `{ids} {is} takeable` |
 | 7 | `done` | the type is `chore` and every claim is closed | — | `every claim of the chore is closed` |
 | 8 | `close-pending` | every claim is closed, the type's workflow has `code_review: feature`, and at least one other spec of the spec's main feature is still open | — | `every claim is closed and {feature} waits on {siblings}` |
-| 9 | `code-review` | every claim is closed and the code-reviewed mark is not fresh | `/spec-code-review NNN` | `every claim is closed and the code-reviewed mark is {state}` |
-| 10 | `close` | every claim is closed and the code-reviewed mark is fresh | `/spec-complete NNN` | `every claim is closed and code-reviewed` |
+| 9 | `code-review` | every claim is closed, the type's workflow has a code review, and the code-reviewed mark is not fresh | `/spec-code-review NNN` | `every claim is closed and the code-reviewed mark is {state}` |
+| 10 | `close` | every claim is closed and either the code-reviewed mark is fresh or the type's workflow has `code_review: none` | `/spec-complete NNN` | `every claim is closed and code-reviewed` or `every claim is closed and the workflow has no code review` |
 | 11 | `blocked` | anything else: all open work waits on an open spec edge, open claims none of which is takeable, or no claims yet | `/spec-status NNN` | `{open}, none takeable` or `no claims yet` or `waits on {specs}` |
 
 The Next command column writes `NNN` for the spec's number. A story has no number yet, so row 1 writes `<slug>`, the
