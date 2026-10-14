@@ -5,7 +5,7 @@
 // Fixture: a temp copy of `core/fixtures/library` (every zone, a prototype, an archived spec), a workspace without
 // `specs/` (the empty state) and a registered folder that is removed (409). Nothing in a workspace is ever written.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { docsRenderOptions } from "../core/src/evidence.ts";
@@ -16,6 +16,7 @@ import { dashboardApi } from "../server/src/api.ts";
 import type { ApiHandler } from "../server/src/http.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import { type WorkspaceRouteResponses, allowForWorkspace, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
+import { SPEC_FOLDER, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
 const LIBRARY = join(import.meta.dir, "..", "core", "fixtures", "library");
 const HOST = { Host: "127.0.0.1:7717" };
@@ -415,4 +416,52 @@ describe("read-only: the reader, the search and the asset", () => {
     }
     expect([fingerprint(shelf), fingerprint(bare)]).toEqual(before);
   });
+});
+
+describe("the library reads a spec's own documents from its read source (spec 027, ISC-181)", () => {
+  /** A time of the copy's tasks.md alone, so the catalog shows which file it listed. */
+  const COPY_TIME = new Date("2030-01-01T00:00:00Z");
+
+  for (const trackedSpecs of [true, false]) {
+    const what = trackedSpecs ? "tracked: 002's spec.md, plan.md and tasks.md from the worktree copy" : "untracked: from the main checkout";
+    test(`library worktree-copy: specs/ ${what}, the catalog's time from the same file, every byte kept`, async () => {
+      const planted = await plantWorktreeRepo({ parent: realpathSync(root), trackedSpecs });
+      const reg = openRegistry(mkdtempSync(join(root, "data-")));
+      try {
+        const ws = reg.add(planted.root).slug;
+        const handler = dashboardApi({ registry: reg, services: () => Promise.resolve([]) });
+        const get = async (path: string): Promise<Response> => {
+          const url = new URL(`http://127.0.0.1:7717${path}`);
+          const res = await handler(new Request(url.href, { headers: HOST }), url);
+          if (res === null) throw new Error(`the workspace routes declined ${path}`);
+          return res;
+        };
+        const main = join(planted.root, "specs", SPEC_FOLDER);
+        const copy = join(planted.worktrees.spec, "specs", SPEC_FOLDER);
+        const source = trackedSpecs ? copy : main;
+        if (trackedSpecs) {
+          // The copy differs where the fixture says: one more ticked task, `stage: code-review`.
+          expect(readFileSync(join(copy, "tasks.md"), "utf8")).not.toBe(readFileSync(join(main, "tasks.md"), "utf8"));
+          expect(readFileSync(join(copy, "spec.md"), "utf8")).toContain("stage: code-review");
+          utimesSync(join(copy, "tasks.md"), COPY_TIME, COPY_TIME);
+        }
+        const before = fingerprint(planted.root);
+        for (const name of ["spec.md", "plan.md", "tasks.md"]) {
+          const res = await get(workspaceRoutes.libraryDoc(ws, `${SPEC_FOLDER}/${name}`));
+          // Read from the source, rendered against the main checkout's path, where `artifacts/` and `.design/` stay.
+          const page = renderDocsMarkdown(readFileSync(join(source, name), "utf8"), docsRenderOptions(planted.root, join(main, name), "plan"));
+          expect({ name, status: res.status, body: await res.text() }).toEqual({ name, status: 200, body: JSON.stringify(page) });
+        }
+        const catalog = (await (await get(workspaceRoutes.library(ws))).json()) as WorkspaceRouteResponses["library"];
+        const tasks = catalog.docs.find((d) => d.path === `${SPEC_FOLDER}/tasks.md`);
+        expect(tasks?.modified).toBe(statSync(join(source, "tasks.md")).mtime.toISOString());
+        expect(tasks?.modified === COPY_TIME.toISOString()).toBe(trackedSpecs);
+        expect(JSON.stringify(catalog)).not.toContain(planted.base);
+        expect(fingerprint(planted.root)).toEqual(before);
+      } finally {
+        reg.close();
+        rmSync(planted.base, { recursive: true, force: true });
+      }
+    }, 60_000);
+  }
 });

@@ -66,8 +66,14 @@ export type WorkspaceReading =
 
 export type DashboardLoad = { readable: true; model: DashboardModel } | { readable: false; error: UnreadableCode };
 
-/** The document catalog of one workspace (spec 017), or why the workspace cannot be read. */
-export type CatalogLoad = { readable: true; catalog: LibraryCatalog } | { readable: false; error: UnreadableCode };
+/**
+ * The document catalog of one workspace (spec 017), or why the workspace cannot be read. `copies` are the worktree
+ * copies the catalog read its specs' own files from (`WorkspaceReading.copies`, spec 027, ISC-181), so the reader opens
+ * the same file; server-internal, never part of a response (ISC-3), absent from a loader that names none.
+ */
+export type CatalogLoad =
+  | { readable: true; catalog: LibraryCatalog; copies?: Readonly<Record<string, string>> }
+  | { readable: false; error: UnreadableCode };
 
 /** The local listeners of one workspace, given its root and the constitution's port labels. */
 export type ServicesProbe = (repoRoot: string, labels: ReadonlyMap<number, string>) => Promise<readonly ProbedService[]>;
@@ -310,13 +316,15 @@ function copyFiles(mainDir: string, copyDir: string, folder: string): SpecFiles 
  * (`trackedSpecPaths`): with `worktree` the copy kinds come from `<worktree>/specs/<folder>/` and `main` rides beside
  * them in `read.main`; a copy without a `spec.md` stays on main, so a spec never vanishes from the board (ISC-181). The
  * code-reviewed mark of the files so read compares with the tree id computed in that worktree, `read.tree` (ISC-176);
- * without a mark no tree is computed. A spec without such a worktree has no `read` and keeps the workspace's defaults.
+ * without a mark no tree is computed, nor with `withTree` false (the library's reader needs the copy alone). A spec
+ * without such a worktree has no `read` and keeps the workspace's defaults.
  */
 async function specSourceFor(
   root: string,
   ref: Pick<SpecRef, "id" | "slug" | "dir">,
   main: SpecFiles,
   assignment: WorktreeAssignment | undefined,
+  withTree = true,
 ): Promise<SpecSourceReading> {
   const worktree = assignment?.worktrees.find((w) => w.kind === "spec" && w.spec === ref.id) ?? null;
   if (worktree === null || !insideRepository(worktree.path) || !hasGit(join(root, worktree.path))) {
@@ -329,7 +337,7 @@ async function specSourceFor(
   const files = copy?.texts.spec === undefined ? main : copy;
   const read: SpecRead = {
     ...(files === main ? {} : { source: "worktree" as const, main }),
-    ...(files.texts.gateCodeReviewed === undefined ? {} : { tree: await worktreeTreeId(at) }),
+    ...(!withTree || files.texts.gateCodeReviewed === undefined ? {} : { tree: await worktreeTreeId(at) }),
   };
   return { files, read: Object.keys(read).length === 0 ? null : read, copy: files === main ? null : copyDir };
 }
@@ -345,6 +353,24 @@ export async function readSpecSource(root: string, ref: SpecRef): Promise<{ file
   const assignment = assignWorktrees(await worktreeList(root), listSpecs(root).map((r) => r.slug));
   const source = await specSourceFor(root, ref, main, assignment);
   return { files: source.files, dir: source.copy ?? ref.dir };
+}
+
+/**
+ * The worktree copies of the workspace at `root` (spec 027, ISC-181): per active spec read from its worktree's copy,
+ * the copy's absolute folder, by the per-spec decision `readWorkspaceInput` makes (`specSourceFor`), without the tree
+ * ids and the chip's git facts: one `git worktree list`, one `git ls-files` per spec worktree, no hash. Empty when no
+ * spec has a worktree. For the library's reader and search, which need the documents and never a stage.
+ */
+async function readCopies(root: string): Promise<Record<string, string>> {
+  const refs = listSpecs(root);
+  const assignment = assignWorktrees(await worktreeList(root), refs.map((ref) => ref.slug));
+  const copies: Record<string, string> = {};
+  for (const ref of refs) {
+    if (ref.archived || !assignment.worktrees.some((w) => w.kind === "spec" && w.spec === ref.id)) continue;
+    const source = await specSourceFor(root, ref, specFiles(ref.dir, ref.slug), assignment, false);
+    if (source.copy !== null) copies[ref.slug] = source.copy;
+  }
+  return copies;
 }
 
 /**
@@ -371,13 +397,14 @@ export async function loadDashboard(root: string, probe: ServicesProbe | null, l
  *
  * The group heads' stages come from the dashboard's own input (`readWorkspaceInput` with the same `lifeosStateDir`,
  * worktree tree id and lock sources included), so a spec with a fresh code-reviewed mark stands at `close` in the
- * library exactly as on the dashboard (spec 017 T13, ISC-157).
+ * library exactly as on the dashboard (spec 017 T13, ISC-157). A spec's own files come from the read source the reading
+ * chose (`reading.copies`, spec 027, ISC-181), so the library lists the documents the spec page renders.
  */
 export async function loadCatalog(root: string, lifeosStateDir: string | null = null): Promise<CatalogLoad> {
   const reading = await readWorkspaceInput(root, lifeosStateDir);
   if (!reading.readable) return reading;
   try {
-    return { readable: true, catalog: await readCatalog(root, reading.input) };
+    return { readable: true, catalog: await readCatalog(root, reading.input, { copies: reading.copies }), copies: reading.copies };
   } catch (error) {
     return { readable: false, error: codeOf(error) };
   }
@@ -386,13 +413,16 @@ export async function loadCatalog(root: string, lifeosStateDir: string | null = 
 /**
  * The catalog's documents without the dashboard's reading: core's `readCatalog` over the files alone, for the routes
  * that need the document list and never a stage (`libraryDoc`, `librarySearch`). The documents and their states do not
- * depend on the dashboard input; skipping it keeps a search keystroke free of git calls and the worktree hash.
+ * depend on the dashboard input; skipping it keeps a search keystroke free of the worktree hash and the chip's git
+ * facts. Only the worktree copies are read (`readCopies`), so a spec's own documents come from the same read source as
+ * in `loadCatalog` (spec 027, ISC-181).
  */
 export async function loadCatalogDocs(root: string): Promise<CatalogLoad> {
   const unreadable = workspaceUnreadable(root);
   if (unreadable !== null) return { readable: false, error: unreadable };
   try {
-    return { readable: true, catalog: await readCatalog(root) };
+    const copies = await readCopies(root);
+    return { readable: true, catalog: await readCatalog(root, undefined, { copies }), copies };
   } catch (error) {
     return { readable: false, error: codeOf(error) };
   }

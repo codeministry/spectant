@@ -70,7 +70,8 @@
  * The reader and the search (spec 017 T17, T18, ISC-156.2, ISC-156.3), with the same guard order and statuses, read the
  * catalog's documents alone (`loadCatalogDocs`, no git call). A document is one the catalog lists as Markdown and not
  * `missing`; its file is reached only by its listed path, through core's `resolveEvidencePath` with `specs/` as the
- * root (`reach: 'tree'`), so a request never names a file and a symlink out of `specs/` is never read.
+ * root (`reach: 'tree'`), so a request never names a file and a symlink out of `specs/` is never read. A spec's own file
+ * read from its worktree copy (spec 027, ISC-181) is reached the same way below that copy's folder (`catalogSourceOf`).
  * - `libraryDoc`, `GET …/library/doc?path=` (the raw query value, decoded once): the document rendered as its Docs tab
  *   renders it, `renderDocsMarkdown` with `docsRenderOptions` (the constitution's and the Design tab's own options by
  *   type, else a plain page), so relative images confined to the workspace and `.design/` assets resolve as on a Docs
@@ -100,6 +101,7 @@ import { parseActor } from "../../core/src/actor.ts";
 import { allocateAnswer } from "./allocate-route.ts";
 import { type DashboardKpis, buildDashboard } from "../../core/src/dashboard.ts";
 import { docsRenderOptions, resolveEvidencePath } from "../../core/src/evidence.ts";
+import { catalogSourceOf } from "../../core/src/library.ts";
 import { type DocName, type DocsPage, type LibraryDoc, repoFilePath, specFilePath } from "../../core/src/files.ts";
 import { readIdeas } from "../../core/src/ideas.ts";
 import { renderDocsMarkdown } from "../../core/src/markdown-docs.ts";
@@ -369,18 +371,22 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
    * The catalog's readable Markdown document at the decoded `path`, and its real file through core's confinement
    * (`resolveEvidencePath` with `specs/` as the root, `reach: 'tree'`): null for a path the catalog does not list as
    * one, or whose real path leaves `specs/` (a symlink out). Only a listed path is ever resolved, so a request alone
-   * never names a file.
+   * never names a file. A spec's own file comes from its worktree copy when `copies` names one (core's
+   * `catalogSourceOf`, spec 027, ISC-181), confined to that copy's folder the same way.
    */
   const catalogFile = async (
     root: string,
     docs: readonly LibraryDoc[],
     path: string,
+    copies: Readonly<Record<string, string>> | undefined,
   ): Promise<{ doc: LibraryDoc; absolute: string; logical: string } | null> => {
     const doc = docs.find((d) => d.path === path && isReadableDoc(d));
     if (doc === undefined) return null;
     const specs = join(root, "specs");
-    const hit = await resolveEvidencePath(specs, rawPathOf(doc.path), "tree");
-    // The logical path (not the real one) feeds the render options, whose confinement is lexical under `root`.
+    const source = catalogSourceOf(root, doc, copies);
+    const hit = await resolveEvidencePath(source.dir, rawPathOf(source.rel), "tree");
+    // The logical path (not the real one) feeds the render options, whose confinement is lexical under `root`; it stays
+    // the main checkout's, where a copy's relative images resolve (`artifacts/` and `.design/` are never read from a copy).
     return hit.ok ? { doc, absolute: hit.absolute, logical: join(specs, ...doc.path.split("/")) } : null;
   };
 
@@ -400,7 +406,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     } catch {
       return json(req, 404, { error: "not-found" });
     }
-    const file = await catalogFile(workspace.path, loaded.catalog.docs, path);
+    const file = await catalogFile(workspace.path, loaded.catalog.docs, path, loaded.copies);
     if (file === null) return json(req, 404, { error: "not-found" });
     let source: string;
     try {
@@ -423,10 +429,11 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     root: string,
     docs: readonly LibraryDoc[],
     doc: LibraryDoc,
+    copies: Readonly<Record<string, string>> | undefined,
     previous: ReadonlyMap<string, SearchText>,
     seen: Map<string, SearchText>,
   ): Promise<string | null> => {
-    const file = await catalogFile(root, docs, doc.path);
+    const file = await catalogFile(root, docs, doc.path, copies);
     if (file === null) return null;
     try {
       const stat = statSync(file.absolute);
@@ -461,7 +468,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     const hits: LibrarySearchHit[] = [];
     for (const doc of loaded.catalog.docs) {
       if (!isReadableDoc(doc)) continue;
-      const text = await searchTextOf(root, loaded.catalog.docs, doc, previous, seen);
+      const text = await searchTextOf(root, loaded.catalog.docs, doc, loaded.copies, previous, seen);
       const at = text === null ? -1 : text.toLowerCase().indexOf(needle);
       if (text !== null && at !== -1) hits.push({ path: doc.path, snippet: snippetAt(text, at, needle.length) });
       else if (doc.title.toLowerCase().includes(needle)) hits.push({ path: doc.path, snippet: doc.title });
