@@ -19,6 +19,13 @@
  *   open" with its box empty. A `bump-run` turns T32's chip within one refresh tick, on the board and on the Tasks
  *   tab, with one polite announcement per tick. Without the header only the golden's own run lines show (harbor's
  *   activity log: T26 applied and ticked, T28 applied-open): one card in the round, no chip on T27, T29 or T32.
+ *
+ * - "timeline" (ISC-175.1, T41; `bun run e2e -- worktree.spec -g timeline`): 007's strand holds the derived entry
+ *   "Merged into main" with its branch, the subline with commit 4f1c2ab and the merge commit's time, between two dated
+ *   entries; 006's holds "Worktree removed" with its path, undated ("no date" at 1440, "—" with the words for screen
+ *   readers at 390 and 820) in the day group of the entry before it. Both carry the dashed marker with their glyph
+ *   (git-merge, folder-x) and the derived chip, no chevron; the Worktree pill closes the filter row with its count and
+ *   narrows the strand to the entry. Without the header neither entry nor the pill shows.
  */
 import type { Locator, Page } from '@playwright/test';
 import { atWidth, expect, FIXED_NOW, test, WIDTHS } from './fixtures';
@@ -295,6 +302,90 @@ test.describe('tasks', () => {
       await expect(taskRow(page, 'T28')).toBeAttached();
       await expect(page.locator('app-tasks-tab app-run-chip')).toHaveText(['applied, open']);
       await expect(taskRow(page, 'T28').locator('[data-run-session]')).toHaveText('wt-9');
+    });
+  });
+});
+
+/** The overlay's worktree entries (ISC-175.1): 007 merged at 2026-03-09T08:45:00Z (commit 4f1c2ab), 006 removed. */
+const timelineOf = (id: string): string => `/w/harbor/s/${id}/timeline`;
+const worktreeEntry = (page: Page): Locator => page.locator('app-timeline-tab [data-entry][data-kind="worktree"]');
+const worktreePill = (page: Page): Locator => page.locator('app-timeline-tab [data-filter="worktree"]');
+
+test.describe('timeline', () => {
+  test.describe('with the worktree overlay', () => {
+    test.use({ ...atWidth(WIDTHS.desktop), extraHTTPHeaders: ON });
+
+    test('timeline: 007 shows the merged entry with branch, commit and merge time, derived, without a chevron', async ({ page }) => {
+      await page.goto(timelineOf('007'));
+      const entry = worktreeEntry(page);
+      await expect(entry).toHaveCount(1);
+      await expect(entry.locator('[data-worktree-title]')).toHaveText('Merged into main');
+      await expect(entry.locator('[data-worktree-ref]')).toHaveText('feature/007-rotate-mirror-token');
+      await expect(entry.locator('.meta')).toContainText('Worktree · derived from git, commit 4f1c2ab');
+      await expect(entry.locator('[data-worktree-commit]')).toHaveText('4f1c2ab');
+      await expect(entry.locator('.time time')).toHaveAttribute('datetime', '2026-03-09T08:45:00Z');
+      await expect(entry.locator('.marker[data-derived] ui-icon')).toHaveAttribute('data-icon', 'git-merge');
+      await expect(entry.locator('[data-derived-chip]')).toBeVisible();
+      await expect(entry.locator('ui-disclosure, button[aria-expanded]')).toHaveCount(0);
+      // Between two dated entries: neither the first nor the last of the strand.
+      const ids = await page.locator('app-timeline-tab [data-entry]').evaluateAll((els) => els.map((el) => el.getAttribute('data-kind')));
+      expect(ids.indexOf('worktree')).toBeGreaterThan(0);
+      expect(ids.indexOf('worktree')).toBeLessThan(ids.length - 1);
+      // The pill closes the row and counts the one entry; pressed, it leaves only that entry.
+      await expect(page.locator('app-timeline-tab [data-filter]').last()).toHaveAttribute('data-filter', 'worktree');
+      await expect(worktreePill(page)).toContainText('Worktree');
+      await expect(worktreePill(page).locator('.count')).toHaveText('1');
+      await worktreePill(page).click();
+      await expect(page.locator('app-timeline-tab [data-entry]')).toHaveCount(1);
+      await expect(page).toHaveURL(/kinds=worktree/u);
+    });
+
+    test('timeline: 006 shows the removed entry undated with its path, the folder-x glyph and no chevron', async ({ page }) => {
+      await page.goto(timelineOf('006'));
+      const entry = worktreeEntry(page);
+      await expect(entry).toHaveCount(1);
+      await expect(entry.locator('[data-worktree-title]')).toHaveText('Worktree removed');
+      await expect(entry.locator('[data-worktree-ref]')).toHaveText('.worktrees/006-partial-push');
+      await expect(entry.locator('.time [data-no-date]')).toHaveText('no date');
+      await expect(entry.locator('.time [data-no-date]')).toBeVisible();
+      await expect(entry.locator('.time time')).toHaveCount(0);
+      await expect(entry.locator('.marker[data-derived] ui-icon')).toHaveAttribute('data-icon', 'folder-x');
+      await expect(entry.locator('[data-derived-chip]')).toBeVisible();
+      await expect(entry.locator('ui-disclosure, button[aria-expanded]')).toHaveCount(0);
+      await expect(entry.locator('.meta')).not.toContainText('commit');
+      // The undated rule: it stands in the day group of the entry before it, never in a group of its own.
+      await expect(page.locator('app-timeline-tab [data-day="undated"]')).toHaveCount(0);
+      await expect(worktreePill(page).locator('.count')).toHaveText('1');
+    });
+  });
+
+  for (const width of [WIDTHS.phone, WIDTHS.tablet]) {
+    test.describe(`at ${String(width)}`, () => {
+      test.use({ ...atWidth(width), extraHTTPHeaders: ON });
+
+      test(`timeline: at ${String(width)} the removed entry's time column reads "—" with "no date" for screen readers, inside the row`, async ({ page }) => {
+        await page.goto(timelineOf('006'));
+        const entry = worktreeEntry(page);
+        await expect(entry.locator('.time [data-no-date-dash]')).toBeVisible();
+        await expect(entry.locator('.time [data-no-date-dash]')).toHaveText('—');
+        await expect(entry.locator('.time [data-no-date]')).toHaveText('no date');
+        const box = await entry.locator('.main').evaluate((el) => el.getBoundingClientRect().right);
+        expect(box).toBeLessThanOrEqual(width);
+        await expect(worktreePill(page)).toBeAttached();
+      });
+    });
+  }
+
+  test.describe('without the worktree overlay', () => {
+    test.use(atWidth(WIDTHS.desktop));
+
+    test('timeline: no worktree entry on 007 or 006 and no Worktree pill', async ({ page }) => {
+      for (const id of ['007', '006']) {
+        await page.goto(timelineOf(id));
+        await expect(page.locator('app-timeline-tab [data-entry]').first()).toBeVisible();
+        await expect(worktreeEntry(page)).toHaveCount(0);
+        await expect(worktreePill(page)).toHaveCount(0);
+      }
     });
   });
 });

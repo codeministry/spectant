@@ -20,14 +20,20 @@ import { UiButton } from '../../../../shared/ui/button/button';
 import { UiChip } from '../../../../shared/ui/chip/chip';
 import { UiEmptyState } from '../../../../shared/ui/empty-state/empty-state';
 import { UiNotice } from '../../../../shared/ui/notice/notice';
+import { UiIcon } from '../../../../shared/icons/icon';
+import type { IconName } from '../../../../shared/icons/icons';
 import { UiDisclosure } from '../../../../shared/ui/overlay/disclosure';
 import { UiRovingItem, UiRovingList } from '../../../../shared/ui/roving-list.directive';
 import { UiSkeleton } from '../../../../shared/ui/skeleton/skeleton';
 import { UiTerm } from '../../../../shared/ui/term/term';
 import { toneMark } from '../../../../shared/ui/tone';
 
-/** The sources in chip order (design.md § Status, tablet; prototype `tabTimeline`): the files' five, then the server's joins. */
-export const TIMELINE_KINDS: readonly TimelineKind[] = ['stage', 'decision', 'round', 'gate', 'commit', 'note', 'agent'];
+/**
+ * The sources in chip order (design.md § Status, tablet; prototype `tabTimeline`): the files' five, then the server's
+ * joins; `worktree` last, after Agent (spec 027 design.md § Viewport-übergreifend 5), its pill shown only while the
+ * strand holds a worktree entry or the filter names it.
+ */
+export const TIMELINE_KINDS: readonly TimelineKind[] = ['stage', 'decision', 'round', 'gate', 'commit', 'note', 'agent', 'worktree'];
 
 /**
  * One marker colour per source (prototype `.mk.*`): stage → disp, decision → ques, round → conc, gate → clos, commit →
@@ -44,6 +50,9 @@ const MARKER: Record<TimelineKind, string> = {
   agent: 'var(--color-warning)',
   worktree: toneMark('neutral'),
 };
+
+/** The glyph inside a worktree entry's marker (spec 027, ISC-175.1): merged into main, or the worktree removed. */
+const WORKTREE_GLYPH: Readonly<Record<'merged' | 'removed', IconName>> = { merged: 'git-merge', removed: 'folder-x' };
 
 /** A `Landed in` part that names a spec file opens that file's tab, as the Docs tab's file chips do. */
 const FILE_TABS: Readonly<Record<string, string>> = { 'spec.md': 'status', 'plan.md': 'plan', 'design.md': 'design', 'tasks.md': 'tasks', 'context.md': 'decisions' };
@@ -105,11 +114,12 @@ export function parseKinds(value: string | null): readonly TimelineKind[] {
  * T55 · ISC-80 · ISC-36: the Status area's Timeline tab. One strand, newest first, grouped by local day with sticky
  * labels; source filters as toggle chips kept in `?kinds=`; an entry with a body expands in place (round entries add
  * "Open board"); a derived stage transition carries a dashed marker and a `derived` chip; `#t/<id>` scrolls to,
- * highlights and opens that entry. Entries are one roving list: arrows move, Enter toggles the entry's body.
+ * highlights and opens that entry. A `worktree` entry (spec 027, ISC-175.1) is worded here from its git facts, derived
+ * like a stage transition, its glyph in the dashed marker, without a body. Entries are one roving list: arrows move, Enter toggles the entry's body.
  */
 @Component({
   selector: 'app-timeline-tab',
-  imports: [NgTemplateOutlet, TranslocoPipe, RouterLink, UiButton, UiChip, UiDisclosure, UiEmptyState, UiNotice, UiRovingItem, UiRovingList, UiSkeleton, UiTerm],
+  imports: [NgTemplateOutlet, TranslocoPipe, RouterLink, UiButton, UiChip, UiDisclosure, UiIcon, UiEmptyState, UiNotice, UiRovingItem, UiRovingList, UiSkeleton, UiTerm],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './timeline-tab.html',
   styleUrl: './timeline-tab.css',
@@ -123,8 +133,16 @@ export class TimelineTab {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly transloco = inject(TranslocoService);
 
-  protected readonly kinds = TIMELINE_KINDS;
   protected readonly markerColor = (kind: TimelineKind): string => MARKER[kind];
+  protected worktreeGlyph(entry: TimelineEntry): IconName | null {
+    return entry.worktree ? WORKTREE_GLYPH[entry.worktree.state] : null;
+  }
+  /** What a worktree entry's title names after its words: the branch when merged, the worktree's path when removed. */
+  protected worktreeRef(entry: TimelineEntry): string | null {
+    const worktree = entry.worktree;
+    if (worktree === undefined) return null;
+    return worktree.state === 'merged' ? worktree.branch : worktree.path;
+  }
   protected fileTab(part: string): string | null {
     return FILE_TABS[part] ?? null;
   }
@@ -170,6 +188,10 @@ export class TimelineTab {
     for (const entry of this.entries()) counts[entry.kind] += 1;
     return counts;
   });
+  /** The pills in row order; Worktree only while an entry of it exists or the filter names it (spec 027). */
+  protected readonly shownKinds = computed(() =>
+    TIMELINE_KINDS.filter((kind) => kind !== 'worktree' || this.counts().worktree > 0 || this.isPressed(kind)),
+  );
   readonly days = computed(() => {
     const selected = this.selected();
     const shown = selected.length === 0 ? this.entries() : this.entries().filter((entry) => selected.includes(entry.kind));

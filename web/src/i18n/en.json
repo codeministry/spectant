@@ -683,7 +683,16 @@
       "gate": "Gate",
       "commit": "Commit",
       "note": "Note",
-      "agent": "Agent"
+      "agent": "Agent",
+      "worktree": "Worktree"
+    },
+    "worktree": {
+      "merged": "Merged into main",
+      "removed": "Worktree removed",
+      "fromGit": "derived from git",
+      "fromGitCommit": "derived from git, commit",
+      "noDate": "no date",
+      "derivedHint": "Read from git: no recorded event names this merge or removal."
     },
     "derived": "derived",
     "derivedHint": "Inferred from the files: no recorded event names this stage.",

@@ -178,6 +178,29 @@
   background: transparent;
 }
 
+/* Spec 027 (design.md § Viewport-übergreifend 5): a worktree entry's marker is the derived dashed ring in the neutral
+   tone, grown to 20 px so its 12 px glyph fits: git-merge when merged into main, folder-x when the worktree is gone. */
+.entry[data-kind='worktree'] .marker {
+  display: grid;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  margin-block-start: 0;
+  border-color: var(--marker);
+  color: var(--marker);
+}
+
+/* A worktree title's branch or path: mono, muted, cut at its end (the title keeps one line, below). */
+.ref {
+  color: var(--muted-ink);
+  font-size: 13px;
+}
+
+/* An undated worktree entry: "—" below wide with "no date" for screen readers, the words themselves at wide. */
+.no-date-dash {
+  display: none;
+}
+
 .main {
   grid-area: main;
   min-inline-size: 0;
@@ -270,6 +293,21 @@ ui-disclosure .head {
   }
 }
 
+@container shell (width < 1120px) {
+  .no-date-dash {
+    display: inline;
+  }
+
+  .no-date {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 @media (pointer: coarse) {
   .board-link {
     display: inline-flex;
@@ -313,6 +351,11 @@ ui-disclosure .head {
   color: var(--muted-ink);
   font-family: var(--font-mono);
   font-size: 12px;
+}
+
+/* Spec 027: a worktree title keeps one line at every width, so its branch or path is cut at the end, not wrapped. */
+.entry[data-kind='worktree'] .title {
+  white-space: nowrap;
 }
 
 /* Prototype `.tl.empty-tl::before`: without a recorded event the strand is dashed, 6 px on, 6 px off. */

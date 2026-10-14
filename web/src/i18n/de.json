@@ -683,7 +683,16 @@
       "gate": "Gate",
       "commit": "Commit",
       "note": "Notiz",
-      "agent": "Agent"
+      "agent": "Agent",
+      "worktree": "Worktree"
+    },
+    "worktree": {
+      "merged": "Gemerged in main",
+      "removed": "Worktree entfernt",
+      "fromGit": "aus git abgeleitet",
+      "fromGitCommit": "aus git abgeleitet, Commit",
+      "noDate": "ohne Datum",
+      "derivedHint": "Aus git gelesen: kein aufgezeichnetes Ereignis nennt diesen Merge oder das Entfernen."
     },
     "derived": "abgeleitet",
     "derivedHint": "Aus den Dateien geschlossen: kein aufgezeichnetes Ereignis nennt diese Stage.",

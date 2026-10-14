@@ -125,4 +125,7 @@ export const ICON_NAMES = [
   'rotate-ccw',
   // Spec 024: the unheld claim line of the Features page (prototype `claim-line`).
   'circle',
+  // Spec 027: the timeline's worktree markers, merged into main and worktree removed (ISC-175.1).
+  'git-merge',
+  'folder-x',
 ] as const;

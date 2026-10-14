@@ -3,7 +3,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { TranslocoTestingModule } from '@jsverse/transloco';
+import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import type { TimelineEntry } from '../../../../../../../core/src/files';
 import golden from '../../../../../../../core/fixtures/harbor.timeline.golden.json';
 import { CATALOGUES, LANGS } from '../../../../../i18n/catalogues';
@@ -173,5 +173,107 @@ describe('TimelineTab (T55, ISC-80, ISC-36)', () => {
     const root = await open('/w/harbor/s/002/timeline');
     expect(entries(root)).toHaveLength(0);
     expect(root.querySelector('ui-empty-state')?.textContent).toContain('No events yet');
+  });
+});
+
+/** Spec 027 (ISC-175.1): the worktree entries core derives from git, as the stub's overlay serves them for 007 and 006. */
+const MERGED: TimelineEntry = {
+  ts: '2026-03-09T08:45:00Z',
+  kind: 'worktree',
+  derived: true,
+  title: 'Merged into main · feature/007-rotate-mirror-token',
+  ref: 'merged',
+  id: 'worktree-merged',
+  actor: null,
+  worktree: { state: 'merged', branch: 'feature/007-rotate-mirror-token', path: '.worktrees/007-rotate-mirror-token', commit: '4f1c2ab' },
+};
+const REMOVED: TimelineEntry = {
+  ts: '',
+  kind: 'worktree',
+  derived: true,
+  title: 'Worktree removed · .worktrees/006-partial-push',
+  ref: 'removed',
+  id: 'worktree-removed',
+  actor: null,
+  undated: true,
+  worktree: { state: 'removed', branch: 'feature/006-partial-push', path: '.worktrees/006-partial-push', commit: null },
+};
+/** Harbor 002's strand with the removed entry after its newest entry and the merged one at the end. */
+const WITH_WORKTREES: readonly TimelineEntry[] = [HARBOR_002[0], REMOVED, ...HARBOR_002.slice(1), MERGED];
+const text = (el: Element | null | undefined): string => (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
+
+describe('TimelineTab worktree entries (spec 027, ISC-175.1)', () => {
+  afterEach(() => {
+    harness = null;
+  });
+
+  it('shows no Worktree pill while the strand holds no worktree entry', async () => {
+    setUp();
+    const root = await open('/w/harbor/s/002/timeline');
+    expect(chip(root, 'worktree')).toBeNull();
+  });
+
+  it('adds the Worktree pill at the end of the row, counting the worktree entries, and filters by it', async () => {
+    setUp(WITH_WORKTREES);
+    const root = await open('/w/harbor/s/002/timeline');
+    const pills = [...root.querySelectorAll<HTMLElement>('[data-filter]')];
+    expect(pills.at(-1)?.dataset['filter']).toBe('worktree');
+    expect(text(pills.at(-1))).toBe('Worktree 2');
+    expect(chip(root, 'worktree')?.querySelector('.dot')?.getAttribute('style')).toContain('--marker: var(--muted)');
+
+    chip(root, 'worktree')?.click();
+    await harness?.fixture.whenStable();
+    expect(entries(root).map((el) => el.dataset['id'])).toEqual(['worktree-removed', 'worktree-merged']);
+    expect(TestBed.inject(Router).url).toContain('kinds=worktree');
+  });
+
+  it('words a merged entry from its fields: title with the branch in mono, the subline with the short commit', async () => {
+    setUp(WITH_WORKTREES);
+    const root = await open('/w/harbor/s/002/timeline');
+    const merged = root.querySelector<HTMLElement>('[data-id="worktree-merged"]');
+    expect(merged?.dataset['kind']).toBe('worktree');
+    expect(text(merged?.querySelector('.title [data-worktree-title]'))).toBe('Merged into main');
+    expect(text(merged?.querySelector('.title .mono[data-worktree-ref]'))).toBe('feature/007-rotate-mirror-token');
+    expect(text(merged?.querySelector('.meta'))).toContain('Worktree · derived from git, commit 4f1c2ab');
+    expect(text(merged?.querySelector('.meta .mono[data-worktree-commit]'))).toBe('4f1c2ab');
+    expect(merged?.querySelector('time')?.getAttribute('datetime')).toBe(MERGED.ts);
+  });
+
+  it('marks both entries derived: dashed marker with the git-merge or folder-x glyph, derived chip, no chevron', async () => {
+    setUp(WITH_WORKTREES);
+    const root = await open('/w/harbor/s/002/timeline');
+    for (const [id, glyph] of [
+      ['worktree-merged', 'git-merge'],
+      ['worktree-removed', 'folder-x'],
+    ] as const) {
+      const row = root.querySelector<HTMLElement>(`[data-id="${id}"]`);
+      expect(row?.querySelector('.marker')?.hasAttribute('data-derived'), id).toBe(true);
+      expect(row?.querySelector('.marker ui-icon')?.getAttribute('data-icon'), id).toBe(glyph);
+      expect(row?.querySelector('[data-derived-chip]'), id).not.toBeNull();
+      expect(row?.querySelector('ui-disclosure, button[aria-expanded]'), id).toBeNull();
+    }
+  });
+
+  it('words a removed entry undated: "no date" in the time column, the path in mono, in the group of the entry before it', async () => {
+    setUp(WITH_WORKTREES);
+    const root = await open('/w/harbor/s/002/timeline');
+    const removed = root.querySelector<HTMLElement>('[data-id="worktree-removed"]');
+    expect(text(removed?.querySelector('.title [data-worktree-title]'))).toBe('Worktree removed');
+    expect(text(removed?.querySelector('.title .mono[data-worktree-ref]'))).toBe('.worktrees/006-partial-push');
+    expect(text(removed?.querySelector('.time [data-no-date]'))).toBe('no date');
+    expect(removed?.querySelector('.time time')).toBeNull();
+    expect(text(removed?.querySelector('.meta'))).not.toContain('commit');
+    const groupOf = (id: string) => root.querySelector(`[data-id="${id}"]`)?.closest('[data-day]');
+    expect(groupOf('worktree-removed')).toBe(groupOf(HARBOR_002[0]?.id ?? ''));
+  });
+
+  it('words both entries in German', async () => {
+    setUp(WITH_WORKTREES);
+    TestBed.inject(TranslocoService).setActiveLang('de');
+    const root = await open('/w/harbor/s/002/timeline');
+    expect(text(root.querySelector('[data-id="worktree-merged"] [data-worktree-title]'))).toBe('Gemerged in main');
+    expect(text(root.querySelector('[data-id="worktree-merged"] .meta'))).toContain('Worktree · aus git abgeleitet, Commit 4f1c2ab');
+    expect(text(root.querySelector('[data-id="worktree-removed"] [data-worktree-title]'))).toBe('Worktree entfernt');
+    expect(text(root.querySelector('[data-id="worktree-removed"] [data-no-date]'))).toBe('ohne Datum');
   });
 });
