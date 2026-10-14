@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, input, model, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
@@ -11,6 +11,7 @@ import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiMeter } from '../../../shared/ui/meter/meter';
 import { CARD_EDGE } from '../../board/board-card';
+import { hasArchivedSpecs } from '../planning-counts';
 
 /** The milestone choice of matrix and graph in the address (`?m=<slug>`, `none` for the no-milestone lane). */
 export const M_PARAM = 'm';
@@ -56,7 +57,8 @@ interface ViewLane {
  * Tiers (design.md § Across viewports): below 640 one swimlane at a time, picked by the milestone pills (`?m=`,
  * shared with the graph, default the next due milestone); from 640 every lane stacked under a full band row; from 1120 a
  * sticky left head column. The grid scrolls in its own container (`overflow-x: auto`), never the page. Finished
- * features fold to 44 px stripes until opened (a stripe opens its column, "Finished features" opens all). A card selects
+ * features fold to 44 px stripes until opened (a stripe opens its column, "Finished features" opens all); archived
+ * cards stay hidden until "Archived" shows them, a toggle the page shares across its lenses. A card selects
  * its spec, a lane head its milestone, a column head its feature (`DetailSelection.select`). The matrix never docks the
  * sidebar: it floats over the lens only while something is selected, and the grid leaves room to scroll a card out
  * from under it.
@@ -71,6 +73,8 @@ interface ViewLane {
 })
 export class PlanningMatrix {
   readonly model = input.required<PlanningModel>();
+  /** Archived cards shown (the archive toggle), off by default. */
+  readonly archived = model(false);
 
   private readonly selection = inject(DetailSelection);
   private readonly state = inject(ShellState);
@@ -94,7 +98,8 @@ export class PlanningMatrix {
     return tier === 'compact' ? 'single' : tier === 'medium' ? 'bands' : 'grid';
   });
 
-  private readonly matrix = computed(() => planningMatrix(this.model()));
+  private readonly matrix = computed(() => planningMatrix(this.model(), { archived: this.archived() }));
+  protected readonly hasArchived = computed(() => hasArchivedSpecs(this.model()));
   protected readonly hasMilestones = computed(() => this.model().milestones.length > 0);
   protected readonly hasDone = computed(() => this.matrix().columns.some((c) => c.done));
   protected readonly hasSelection = computed(() => this.selection.selected() !== null);
@@ -159,6 +164,10 @@ export class PlanningMatrix {
 
   protected toggleDone(): void {
     this.showDone.update((on) => !on);
+  }
+
+  protected toggleArchived(): void {
+    this.archived.update((on) => !on);
   }
 
   protected open(ref: RelationRef): void {

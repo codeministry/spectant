@@ -285,6 +285,20 @@ describe('relations: matrix', () => {
     ]);
   });
 
+  test('matrix archived: archived false lays no archived card, drops a column only they held and counts its feature as bare', () => {
+    const model = planningOf('harbor');
+    const matrix = core.planningMatrix(model, { archived: false });
+    expect(matrix.lanes.flatMap((l) => l.cells.flat()).some((c) => c.archived)).toBe(false);
+    expect(matrix.columns.map((c) => c.id)).toEqual(['F0', 'F2', 'F3', 'F4', 'F5', 'F6']);
+    expect(matrix.lanes.map((l) => [l.closed, l.total, l.specCount, l.bare])).toEqual([
+      [0, 13, 1, []],
+      [101, 106, 2, ['feature:F1']],
+      [5, 10, 5, ['feature:F7']],
+    ]);
+    // The default options are the counted state: archived cards drawn.
+    expect(core.planningMatrix(model, { archived: true })).toEqual(core.planningMatrix(model));
+  });
+
   test('matrix: a tree without milestones is one no-milestone lane; no master, one empty lane', () => {
     const lantern = core.planningMatrix(planningOf('lantern'));
     expect(laneRefs(lantern)).toEqual([null]);

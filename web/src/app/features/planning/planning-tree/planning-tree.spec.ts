@@ -16,8 +16,8 @@ import { PlanningTree } from './planning-tree';
 
 // T17 · ISC-168: the tree lens against every planning golden, with and without milestones. Every number a row shows
 // is the relation index's own (`closed/total` of the golden's `relations[ref]`), milestones stand in the model's
-// target order, the "No milestone" group comes last, archived specs carry the chip, and a workspace without
-// milestones starts at the features. Probe: `bun run --cwd web test -- --filter "planning-tree"`.
+// target order, the "No milestone" group comes last, archived specs stay hidden until the archive toggle shows them
+// and then carry the chip, and a workspace without milestones starts at the features. Probe: `bun run --cwd web test -- --filter "planning-tree"`.
 
 const FIXTURES = {
   'empty-master': emptyMaster,
@@ -129,8 +129,35 @@ describe('planning-tree', () => {
         expect(rows(el, 'claim')).toHaveLength(0);
       });
 
+      it('hides archived specs until the archive toggle shows them, offered only when the model holds one', async () => {
+        const { el, stable } = await render(model);
+        el.querySelector<HTMLButtonElement>('[data-expand-all]')?.click();
+        await stable();
+        const archived = Object.values(index(model)).filter((r) => r.type === 'spec' && r.archived === true);
+        const toggle = el.querySelector<HTMLButtonElement>('[data-show-archived]');
+        expect(rows(el, 'spec').some((row) => row.hasAttribute('data-archived-row'))).toBe(false);
+        if (archived.length === 0) {
+          expect(toggle).toBeNull();
+          return;
+        }
+        expect(toggle?.textContent).toContain(en.planning.page.showArchived);
+        expect(toggle?.getAttribute('aria-pressed')).toBe('false');
+        toggle?.click();
+        await stable();
+        expect(toggle?.getAttribute('aria-pressed')).toBe('true');
+        // A feature that held only archived specs had nothing to open before; expand again to reach it.
+        el.querySelector<HTMLButtonElement>('[data-expand-all]')?.click();
+        await stable();
+        const shown = new Set(rows(el, 'spec').filter((row) => row.hasAttribute('data-archived-row')).map((row) => row.dataset['ref']));
+        // Every archived spec a feature holds shows again (a spec without a feature has no row in any case).
+        const held = archived.filter((r) => r.parents.some((parent) => parent.startsWith('feature:'))).map((r) => r.ref);
+        expect([...shown].sort()).toEqual(held.sort());
+      });
+
       it('expands every level with closed/total from the golden and marks archived specs with the chip', async () => {
         const { el, stable } = await render(model);
+        el.querySelector<HTMLButtonElement>('[data-show-archived]')?.click();
+        await stable();
         el.querySelector<HTMLButtonElement>('[data-expand-all]')?.click();
         await stable();
         const specs = rows(el, 'spec');

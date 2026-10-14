@@ -1678,6 +1678,7 @@
       "meta": "{{milestones}} milestones · {{features}} features · {{closed}}/{{total}} claims closed",
       "overview": "Overview",
       "overviewEmpty": "No spec names a milestone yet.",
+      "showArchived": "Archived",
       "summary": {
         "board": "{{lanes}} swimlanes · {{columns}} feature columns",
         "graph": "{{milestones}} milestones → {{features}} features → {{specs}} specs"
@@ -1696,7 +1697,6 @@
     "graph": {
       "all": "All",
       "filters": "Filters",
-      "archived": "Archived",
       "specEdges": "Spec edges",
       "rebundle": "Bundle again",
       "bundleDone": "{{count}} features done",

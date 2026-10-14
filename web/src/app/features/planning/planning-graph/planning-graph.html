@@ -14,7 +14,7 @@
     <div class="graph-pills graph-chips" role="group" [attr.aria-label]="'planning.graph.filters' | transloco">
       <button type="button" class="graph-pill" data-filter="archived" [attr.aria-pressed]="archived()" (click)="toggleArchived()">
         <ui-icon name="archive" [size]="14" />
-        {{ 'planning.graph.archived' | transloco }}
+        {{ 'planning.page.showArchived' | transloco }}
       </button>
       <button type="button" class="graph-pill" data-filter="edges" [attr.aria-pressed]="edges()" (click)="toggleEdges()">
         <ui-icon name="share-2" [size]="14" />

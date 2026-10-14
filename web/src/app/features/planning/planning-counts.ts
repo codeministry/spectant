@@ -24,3 +24,7 @@ export function planningCounts(model: PlanningModel): PlanningCounts {
     total,
   };
 }
+
+/** Whether the model holds an archived spec: the planning lenses offer their archive toggle only then. */
+export const hasArchivedSpecs = (model: PlanningModel): boolean =>
+  Object.values(model.relations ?? {}).some((relation) => relation.type === 'spec' && relation.archived === true);

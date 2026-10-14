@@ -274,6 +274,15 @@ export interface MatrixLens {
   readonly unplaced: readonly RelationRef[];
 }
 
+/** What the matrix shows; every field absent is the counted state of ISC-169. */
+export interface MatrixLensOptions {
+  /**
+   * Archived specs drawn (default true); false lays them on no card, so a column only they held drops and their
+   * features count as bare, as the planning page's archive toggle does.
+   */
+  readonly archived?: boolean;
+}
+
 /** The planning body both derivations read: the tree's lists, its index and its spec edges. A `PlanningModel` is one. */
 export type LensInput = Pick<PlanningModel, 'features' | 'milestones' | 'unassignedFeatures' | 'relations' | 'specEdges'>;
 
@@ -292,7 +301,7 @@ interface LaneDraft {
  * features: a milestone's `features`; the no-milestone lane's `unassignedFeatures` with lines, otherwise the features
  * no milestone lists; then every feature that holds a card there. Cards in the index's spec order, active ones first.
  */
-function layLanes(model: LensInput): { lanes: LaneDraft[]; unplaced: RelationRef[]; byLines: boolean } {
+function layLanes(model: LensInput, archived = true): { lanes: LaneDraft[]; unplaced: RelationRef[]; byLines: boolean } {
   const byLines = model.milestones.some((m) => (m.featureIds ?? []).length > 0);
   const lanes: LaneDraft[] = model.milestones.map((m) => ({ ref: refOf('milestone', m.slug), milestone: m, features: m.features.map((f) => refOf('feature', f.id)), cards: new Map() }));
   const listed = new Set(model.milestones.flatMap((m) => m.features.map((f) => f.id)));
@@ -302,7 +311,7 @@ function layLanes(model: LensInput): { lanes: LaneDraft[]; unplaced: RelationRef
   const laneOfSpec = new Map(model.milestones.flatMap((m, i) => m.specs.map((s) => [refOf('spec', s.id), lanes[i]] as const)));
   const unplaced: RelationRef[] = [];
   const specs = Object.values(model.relations ?? {}).filter((r) => r.type === 'spec');
-  for (const spec of [...specs.filter((s) => s.archived !== true), ...specs.filter((s) => s.archived === true)]) {
+  for (const spec of [...specs.filter((s) => s.archived !== true), ...(archived ? specs.filter((s) => s.archived === true) : [])]) {
     const [main, ...others] = spec.parents.filter((p) => p.startsWith('feature:'));
     if (main === undefined) {
       unplaced.push(spec.ref);
@@ -327,10 +336,11 @@ const sumOf = (items: ReadonlyArray<{ readonly closed: number; readonly total: n
 /**
  * The Matrix lens of a planning model (spec 026, T18 and T20; ISC-169, ISC-169.1): one lane per milestone in target
  * order plus the no-milestone lane last, one column per feature holding a card, master order, and per spec exactly one
- * card, in its lane and its main feature's column, its other features as chips. The lane rule is `layLanes`'.
+ * card, in its lane and its main feature's column, its other features as chips. The lane rule is `layLanes`'. The
+ * default options are the counted state; the view's own default (archived hidden) is a filter of the same derivation.
  */
-export function planningMatrix(model: LensInput): MatrixLens {
-  const { lanes, unplaced, byLines } = layLanes(model);
+export function planningMatrix(model: LensInput, options: MatrixLensOptions = {}): MatrixLens {
+  const { lanes, unplaced, byLines } = layLanes(model, options.archived ?? true);
   const columns = model.features.flatMap((f): LensColumn[] => {
     const ref = refOf('feature', f.id);
     const cards = lanes.flatMap((l) => l.cards.get(ref) ?? []);

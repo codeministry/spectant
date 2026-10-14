@@ -27,13 +27,13 @@
     }
     @switch (lens()) {
       @case ('board') {
-        <app-planning-matrix [model]="model" />
+        <app-planning-matrix [model]="model" [(archived)]="showArchived" />
       }
       @case ('graph') {
-        <app-planning-graph [model]="model" />
+        <app-planning-graph [model]="model" [(archived)]="showArchived" />
       }
       @default {
-        <app-planning-tree [model]="model" />
+        <app-planning-tree [model]="model" [(archived)]="showArchived" />
       }
     }
   } @else {

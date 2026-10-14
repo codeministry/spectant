@@ -20,7 +20,8 @@ import { PlanningMatrix } from './planning-matrix';
 // T19 · ISC-169 and T21 · ISC-169.1: the matrix lens against every planning golden. Every lane, column, card and
 // number the lens draws is `planningMatrix` of the golden's own (core derives it, `core/tests/relations.test.ts` proves
 // it equal to the live tree's); the view adds only layout: one swimlane at a time over the milestone pills below 640,
-// all lanes from 640, finished features folded to 44 px stripes until opened. Probes:
+// all lanes from 640, finished features folded to 44 px stripes until opened, archived cards hidden until the archive
+// toggle shows them. Probes:
 // `bun run --cwd web test -- --filter "planning-matrix"` and `… --filter "planning-matrix multi"`.
 
 const FIXTURES = {
@@ -105,8 +106,15 @@ function expectCard(node: HTMLElement, card: LensCard): void {
   expect([...node.querySelectorAll('[data-other-feature]')].map((chip) => chip.getAttribute('data-other-feature'))).toEqual(card.otherFeatures);
 }
 
-/** The wide grid with every finished column opened: the whole matrix of the golden, cell by cell. */
+/** The wide grid with archived cards and every finished column shown: the whole matrix of the golden, cell by cell. */
 async function expectWholeMatrix(r: Rendered, matrix: MatrixLens): Promise<void> {
+  const archive = r.el.querySelector<HTMLButtonElement>('[data-show-archived]');
+  if (matrix.lanes.some((l) => l.cells.flat().some((c) => c.archived))) {
+    expect(archive?.getAttribute('aria-pressed')).toBe('false');
+    archive?.click();
+    await r.stable();
+    expect(archive?.getAttribute('aria-pressed')).toBe('true');
+  }
   const toggle = r.el.querySelector<HTMLButtonElement>('[data-show-done]');
   if (matrix.columns.some((c) => c.done)) {
     expect(toggle).not.toBeNull();
@@ -182,7 +190,7 @@ describe('planning-matrix', () => {
 
   it('finished features fold to 44 px stripes without cards until opened; a stripe opens its column', async () => {
     const model = harbor as unknown as PlanningModel;
-    const matrix = planningMatrix(model);
+    const matrix = planningMatrix(model, { archived: false });
     const done = matrix.columns.filter((c) => c.done);
     expect(done.length).toBeGreaterThan(0);
     const r = await render(model, 'wide');
@@ -197,8 +205,34 @@ describe('planning-matrix', () => {
     expect(r.el.querySelector(`button[data-stripe="${done[0].ref}"]`)).toBeNull();
   });
 
+  it('archived cards stay hidden until the archive toggle shows them; a column only they hold drops with them', async () => {
+    const model = harbor as unknown as PlanningModel;
+    const hidden = planningMatrix(model, { archived: false });
+    const archived = planningMatrix(model).lanes.flatMap((l) => l.cells.flat()).filter((c) => c.archived);
+    expect(archived.length).toBeGreaterThan(0);
+    const r = await render(model, 'wide');
+    r.el.querySelector<HTMLButtonElement>('[data-show-done]')?.click();
+    await r.stable();
+    const toggle = r.el.querySelector<HTMLButtonElement>('[data-show-archived]');
+    expect(text(toggle)).toBe(en.planning.page.showArchived);
+    expect(toggle?.getAttribute('aria-pressed')).toBe('false');
+    expect(cardsIn(r.el).some((c) => c.hasAttribute('data-archived'))).toBe(false);
+    expect([...r.el.querySelectorAll('[data-column]')].map((h) => h.getAttribute('data-column'))).toEqual(hidden.columns.map((c) => c.ref));
+    toggle?.click();
+    await r.stable();
+    expect(toggle?.getAttribute('aria-pressed')).toBe('true');
+    expect(cardsIn(r.el).filter((c) => c.hasAttribute('data-archived')).map((c) => c.getAttribute('data-ref'))).toEqual(archived.map((c) => c.ref));
+  });
+
+  it('offers no archive toggle when the workspace holds no archived spec', async () => {
+    const r = await render(lantern as unknown as PlanningModel, 'wide');
+    expect(r.el.querySelector('[data-show-archived]')).toBeNull();
+  });
+
   it('archived cards are marked by a dashed border and the archived chip, never by opacity', async () => {
     const r = await render(harbor as unknown as PlanningModel, 'wide');
+    r.el.querySelector<HTMLButtonElement>('[data-show-archived]')?.click();
+    await r.stable();
     r.el.querySelector<HTMLButtonElement>('[data-show-done]')?.click();
     await r.stable();
     const archived = cardsIn(r.el).filter((c) => c.hasAttribute('data-archived'));

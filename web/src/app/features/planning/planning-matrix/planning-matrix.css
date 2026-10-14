@@ -11,12 +11,13 @@
   min-inline-size: 0;
 }
 
-/* Tools: the milestone pills (scrolling inside their row) and the "Finished features" switch. */
+/* Tools: the milestone pills (scrolling inside their row, growing), then the "Finished features" and "Archived" switches at the end. */
 .tools {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  justify-content: flex-end;
   min-inline-size: 0;
 }
 
@@ -58,10 +59,6 @@
   font-family: var(--font-mono);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-}
-
-.done-toggle {
-  margin-inline-start: auto;
 }
 
 .mono,

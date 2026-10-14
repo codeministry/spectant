@@ -54,17 +54,18 @@ function claimNodes(index: RelationIndex, refs: readonly RelationRef[], parentKe
 }
 
 /**
- * A feature with its specs (active first, archived under them) and their claims, then the feature's claims no spec
- * holds, so every live claim of the block shows once under it. Every number is the index entry's own.
+ * A feature with its specs (active first, archived under them unless `archived` is false) and their claims, then the
+ * feature's claims no spec holds, so every live claim of the block shows once under it. Every number is the index
+ * entry's own; a hidden archived spec takes its claims with it, the feature's numbers stay.
  */
-function featureNode(index: RelationIndex, ref: RelationRef, parentKey: string | null): TreeNode | null {
+function featureNode(index: RelationIndex, ref: RelationRef, parentKey: string | null, archived: boolean): TreeNode | null {
   const entry = of(index, ref);
   if (entry === undefined) return null;
   const key = parentKey === null ? ref : `${parentKey}/${ref}`;
   const specRefs = typed(entry, 'spec');
   const specs = specRefs
     .map((spec) => of(index, spec))
-    .filter((spec): spec is Relation => spec !== undefined)
+    .filter((spec): spec is Relation => spec !== undefined && (archived || spec.archived !== true))
     .sort((a, b) => Number(a.archived === true) - Number(b.archived === true))
     .map((spec) => leaf(spec, `${key}/${spec.ref}`, 'spec', claimNodes(index, typed(spec, 'claim'), `${key}/${spec.ref}`)));
   const unheld = typed(entry, 'claim').filter((claim) => !(of(index, claim)?.parents ?? []).some((parent) => parent.startsWith('spec:')));
@@ -75,24 +76,25 @@ function featureNode(index: RelationIndex, ref: RelationRef, parentKey: string |
  * The cascade of the tree lens (spec 026, ISC-168), read from the planning model's relation index so the tree, the
  * sidebar and the other lenses count alike: the milestones in the model's order (target ascending, undated last), each
  * with the features the index lists under it, then the "No milestone" group of the features no milestone lists, only
- * when it is not empty. A model without milestones starts at the features, in master order.
+ * when it is not empty. A model without milestones starts at the features, in master order. `archived` false (the
+ * page's archive toggle off) leaves archived specs out; the counts stay the index's.
  */
-export function buildTree(model: PlanningModel): readonly TreeNode[] {
+export function buildTree(model: PlanningModel, archived = true): readonly TreeNode[] {
   const index = model.relations ?? {};
   const featureRefs = model.features.map((feature): RelationRef => `feature:${feature.id}`);
-  if (model.milestones.length === 0) return featureRefs.flatMap((ref) => featureNode(index, ref, null) ?? []);
+  if (model.milestones.length === 0) return featureRefs.flatMap((ref) => featureNode(index, ref, null, archived) ?? []);
 
   const roots: TreeNode[] = [];
   for (const milestone of model.milestones) {
     const ref: RelationRef = `milestone:${milestone.slug}`;
     const entry = of(index, ref);
     if (entry === undefined) continue;
-    const features = typed(entry, 'feature').flatMap((feature) => featureNode(index, feature, ref) ?? []);
+    const features = typed(entry, 'feature').flatMap((feature) => featureNode(index, feature, ref, archived) ?? []);
     roots.push(leaf(entry, ref, 'milestone', features, milestone.target));
   }
   const loose = featureRefs
     .filter((ref) => !(of(index, ref)?.parents ?? []).some((parent) => parent.startsWith('milestone:')))
-    .flatMap((ref) => featureNode(index, ref, 'group') ?? []);
+    .flatMap((ref) => featureNode(index, ref, 'group', archived) ?? []);
   if (loose.length > 0) {
     roots.push({
       key: 'group',

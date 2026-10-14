@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal, type TemplateRef, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, type TemplateRef, untracked, viewChild } from '@angular/core';
+import { DetailSelection } from '../../layout/detail-sidebar/selection';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { NotFound } from '../../layout/not-found/not-found';
 import { RailContent } from '../../layout/shell/rail-content';
@@ -26,7 +27,9 @@ import { PlanningTree } from './planning-tree/planning-tree';
  * The overview (the old Milestones page's next milestone, milestone list and most open claims) sits in the rail at wide
  * on the tree while nothing is selected (the page registers it with `RailContent`; the docked sidebar replaces it on a
  * selection), else in the collapsible "Overview" block above the tree, closed by default. Matrix and graph have
- * neither rail nor overview: they take the full width. The planning helpers the old pages share stay in
+ * neither rail nor overview: they take the full width. Every lens hides archived specs until its archive toggle shows
+ * them; the page holds that toggle, so it stays as set across lens switches, and turns it on when the selection is an
+ * archived spec, so a deep link or a palette pick still finds its row. The planning helpers the old pages share stay in
  * `planning-page.ts`.
  */
 @Component({
@@ -54,12 +57,21 @@ export class PlanningPage {
     return model === null ? null : planningCounts(model);
   });
 
+  /** Archived specs shown in every lens (each lens's archive toggle), off by default. */
+  protected readonly showArchived = signal(false);
+
   /** The overview stands in the rail: the tree lens at wide with the rail open; on the tree elsewhere it is the block. */
   protected readonly overviewInRail = computed(() => this.lens() === 'tree' && this.state.tier() === 'wide' && !this.state.railStrip());
 
   private readonly overview = viewChild<TemplateRef<unknown>>('overview');
 
   constructor() {
+    const selection = inject(DetailSelection);
+    effect(() => {
+      const ref = selection.selected();
+      const model = this.model();
+      if (ref !== null && model?.relations?.[ref]?.archived === true && ref.startsWith('spec:')) untracked(() => this.showArchived.set(true));
+    });
     inject(RailContent).register(
       {
         blocks: computed(() => (this.lens() === 'tree' ? (this.overview() ?? null) : null)),
