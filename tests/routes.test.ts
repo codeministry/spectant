@@ -12,11 +12,10 @@ import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { listEvidence } from "../core/src/evidence.ts";
-import type { ClaimViewModel, DocName, SpecPageModel } from "../core/src/files.ts";
+import type { ClaimViewModel, SpecPageModel } from "../core/src/files.ts";
 import { hashForGate } from "../core/src/gates.ts";
 import { buildTimeline } from "../core/src/timeline.ts";
-import { docsFor, renderDocsMarkdown } from "../core/src/markdown-docs.ts";
+import { renderDocsMarkdown } from "../core/src/markdown-docs.ts";
 import { composeApi, dashboardApi } from "../server/src/api.ts";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
 import { run } from "../server/src/cli.ts";
@@ -26,7 +25,6 @@ import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import {
   type AllocateRefused,
-  DOC_NAMES,
   type IdeaAllocated,
   JSON_ANSWER,
   REVIEWED_HASHES_HEADER,
@@ -147,18 +145,11 @@ function strings(value: unknown, out: string[] = []): string[] {
 
 /** The read routes of harbor 002 and the golden-derived body each must answer. */
 function readRoutes(): Array<{ route: SpecRouteName; path: string; body: () => unknown }> {
-  const docs = golden("harbor", "docs") as { constitution: unknown; specs: Record<string, Record<string, unknown>> };
   return [
     { route: "spec", path: specRoutes.spec("harbor", "002"), body: expectedSpecPage },
     { route: "timeline", path: specRoutes.timeline("harbor", "002"), body: () => golden("harbor", "timeline")[KEY] },
     { route: "claims", path: specRoutes.claims("harbor", "002"), body: expectedClaims },
     { route: "tasks", path: specRoutes.tasks("harbor", "002"), body: () => golden("harbor", "tasks")[KEY] },
-    { route: "evidence", path: specRoutes.evidence("harbor", "002"), body: () => listEvidence(SPEC_DIR) },
-    ...DOC_NAMES.filter((name) => name !== "design").map((name) => ({
-      route: "docs" as const,
-      path: specRoutes.docs("harbor", "002", name),
-      body: () => (name === "constitution" ? docs.constitution : docs.specs[KEY]?.[name]),
-    })),
     { route: "frames", path: specRoutes.frames("harbor", "002"), body: () => golden("harbor", "frames")[KEY] },
     { route: "live", path: specRoutes.live("harbor", "002"), body: () => golden("harbor", "live")[KEY] },
   ];
@@ -321,11 +312,12 @@ describe("not found", () => {
       specRoutes.spec("twin", "002"),
       specRoutes.live("twin", "002"),
       specRoutes.spec("twin", "007"),
-      specRoutes.docs("twin", "007-no-spec", "plan"),
       specRoutes.evidenceFile("harbor", "099", "artifacts/T13-routes.md"),
       "/api/workspaces/harbor/specs/002/unknown",
-      "/api/workspaces/harbor/specs/002/docs/spec",
-      "/api/workspaces/harbor/specs/002/docs/context",
+      // The removed evidence listing and Docs tabs (spec 017, T53) are unknown paths like any other.
+      "/api/workspaces/harbor/specs/002/evidence",
+      "/api/workspaces/harbor/specs/002/docs/plan",
+      "/api/workspaces/harbor/specs/002/docs/constitution",
       "/api/workspaces/harbor/specs/002/",
       "/api/workspaces/harbor/specs",
       "/api/workspaces/harbor/specs/%E0%A4%A",
@@ -339,17 +331,6 @@ describe("not found", () => {
     // The twin's other specs still answer: only the ambiguous ref is refused.
     expect((await call(specRoutes.spec("twin", "002-web-console"))).status).toBe(200);
     expect((await call(specRoutes.spec("twin", "second-console"))).status).toBe(200);
-  });
-
-  test("not found: an absent doc is 404 DocMissing with the type-aware availability, never another doc", async () => {
-    const res = await call(specRoutes.docs("harbor", "002", "design"));
-    expect(res.status).toBe(404);
-    const body = (await res.json()) as { error: string; doc: DocName; availability: unknown };
-    expect(body).toEqual({ error: "not-found", doc: "design", availability: docsFor("feature").design });
-    const plan = await call(specRoutes.docs("harbor", "005", "plan"));
-    expect(plan.status).toBe(404);
-    const type = (golden("harbor", "spec")["specs/005-config-format-choice"] as SpecPageModel).head.type;
-    expect(await plan.json()).toEqual({ error: "not-found", doc: "plan", availability: docsFor(type).plan });
   });
 
   test("not found: a path outside the spec routes is declined for the server's own 404", () => {

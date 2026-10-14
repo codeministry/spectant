@@ -177,14 +177,14 @@ export class PaletteIndex {
 
   /**
    * Every source of the palette's groups has given its first answer since the first open: the shell's workspaces,
-   * dashboard, planning tree and tech page, the other workspaces' dashboards and every workspace's claims (spec 024
+   * dashboard and planning tree, the other workspaces' dashboards and every workspace's claims (spec 024
    * T80). Until then the palette lists nothing, so its list never grows or re-orders under a pointer or a query
    * (a click on Help landed on Library while the other workspaces' specs arrived above it). A reload keeps the last
    * answer, so a later open or a live refresh does not empty the list again.
    */
   readonly settled = computed(() => {
     if (!this.wanted() || !answered(this.others)) return false;
-    if (![this.data.workspaces, this.data.dashboard, this.data.planning, this.data.tech].every(answered)) return false;
+    if (![this.data.workspaces, this.data.dashboard, this.data.planning].every(answered)) return false;
     return this.workspaces().every((ws) => {
       this.claimsFor(ws.slug);
       const load = this.claimLoads.get(ws.slug);

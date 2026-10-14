@@ -214,7 +214,7 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
 test.describe('features page: the area menu', () => {
   test.use(atWidth(WIDTHS.desktop));
 
-  test('the trigger reads Features; the workspace menu lists Specs, Board, Features, Milestones, Tech, Library with Features current', async ({ page }) => {
+  test('the trigger reads Features; the workspace menu lists Specs, Board, Features, Milestones, Library with Features current, no Tech', async ({ page }) => {
     await open(page);
     // spec 024: PAGE select (principal 2026-10-13): the workspace pages moved to the PAGE select, Library sixth (T57)
     const trigger = page.locator('header [data-control="page"]');
@@ -222,15 +222,16 @@ test.describe('features page: the area menu', () => {
     await trigger.click();
     const menu = page.getByRole('navigation', { name: 'Pages' });
     await expect(menu).toBeVisible();
-    await expect(menu.locator('[data-page]')).toHaveCount(6); // harbor has milestones; Tech is fifth (spec 023), Library sixth
+    // Spec 017 (T41, ISC-157.1): Tech left the PAGE menu for the Library; harbor has milestones, so five pages.
+    await expect(menu.locator('[data-page]')).toHaveCount(5);
     await expect(menu.locator('[data-page] .entry-name')).toHaveText([
       en.shell.pages.specs,
       en.shell.pages.board,
       en.shell.pages.features,
       en.shell.pages.milestones,
-      en.shell.pages.tech,
       en.shell.pages.library,
     ]);
+    await expect(menu.locator('[data-page="tech"]')).toHaveCount(0);
     await expect(menu.locator('[aria-current="page"]')).toHaveCount(1);
     await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('data-page', 'features');
   });

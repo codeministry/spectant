@@ -1,10 +1,10 @@
-import { DemoData } from '../../shared/demo/demo-data';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, type Routes } from '@angular/router';
-import { TranslocoTestingModule } from '@jsverse/transloco';
+import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
+import type { LibraryCatalog, LibraryDoc } from '../../../../../core/src/files';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { ApiClient, type ApiResult, type PlanningBody } from '../../core/api.service';
 import { ShellState } from '../shell/shell-state.service';
@@ -22,7 +22,6 @@ const ROUTES: Routes = [
   { path: 'w/:ws', component: Blank },
   { path: 'w/:ws/features', component: Blank, data: { page: 'features' } },
   { path: 'w/:ws/milestones', component: Blank, data: { page: 'milestones' } },
-  { path: 'w/:ws/tech/architecture', component: Blank, data: { page: 'tech', tab: 'architecture' } },
   { path: 'w/:ws/library', component: Blank, data: { page: 'library' } },
   { path: 'w/:ws/s/:id', component: Blank },
   { path: 'w/:ws/s/:id/claims', component: Blank, data: { area: 'data', tab: 'claims' } },
@@ -37,7 +36,6 @@ const DASHBOARD = {
     { id: '003', title: 'Config loader', type: 'refactor', stage: 'tasks' },
   ],
   archive: [{ id: '001', title: 'Manifest sync', type: 'feature' }],
-  // The Tech line's figures (T20): the SPECS tile and the open fog lines of ATTENTION, as core's dashboard counts them.
   kpis: { specs: 3, fog: 7, warnings: 2, attention: 9 },
 };
 
@@ -102,18 +100,33 @@ const WITH_MILESTONES = planning([
   UNNAMED,
 ]);
 
-type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec'>;
+type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec' | 'library'>;
 
-function fakeApi(plan: ApiResult<PlanningBody>, dashboard: unknown): FakeApi {
+/** A catalog of 52 documents, 3 outdated and 5 missing (design.md 017 § 1): only the counts and the list's length matter. */
+const doc = (n: number): LibraryDoc => ({
+  path: `017-x/doc-${String(n)}.md`,
+  type: 'artifact',
+  spec: '017-x',
+  title: `doc ${String(n)}`,
+  modified: null,
+  state: 'ok',
+  media: 'markdown',
+});
+const CATALOG: LibraryCatalog = { docs: Array.from({ length: 52 }, (_, n) => doc(n)), groups: [], fog: [], missing: 5, stale: 3 };
+
+type LibraryAnswer = () => Promise<ApiResult<LibraryCatalog>>;
+
+function fakeApi(plan: ApiResult<PlanningBody>, dashboard: unknown, library: LibraryAnswer = () => Promise.resolve(ok(CATALOG))): FakeApi {
   return {
     workspaces: () => Promise.resolve(ok([{ slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: null }])),
     dashboard: (ws) => Promise.resolve(ws === 'harbor' ? ok(dashboard) : { kind: 'not-found', served: true }),
     planning: () => Promise.resolve(plan),
     spec: () => Promise.resolve({ kind: 'not-found', served: false }),
+    library: vi.fn(library),
   };
 }
 
-function setUp(plan: ApiResult<PlanningBody>, dashboard: unknown = DASHBOARD): void {
+function setUp(plan: ApiResult<PlanningBody>, dashboard: unknown = DASHBOARD, api: FakeApi = fakeApi(plan, dashboard)): void {
   TestBed.configureTestingModule({
     imports: [
       TranslocoTestingModule.forRoot({
@@ -122,18 +135,27 @@ function setUp(plan: ApiResult<PlanningBody>, dashboard: unknown = DASHBOARD): v
         preloadLangs: true,
       }),
     ],
-    providers: [provideRouter(ROUTES), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: fakeApi(plan, dashboard) }],
+    providers: [provideRouter(ROUTES), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: api }],
   });
 }
 
-/** Navigates to `url`, then renders the menu at `tier`; the popover's and the sheet's content is in the DOM while shut. */
-async function render(url: string, tier: Tier = 'wide'): Promise<HTMLElement> {
+/**
+ * Navigates to `url`, then renders the menu at `tier`; the popover's and the sheet's content is in the DOM while shut.
+ * `open` opens it as the PAGE select does (the popover's `showPopover` stubbed), which is when it reads the catalog.
+ */
+async function render(url: string, tier: Tier = 'wide', open = false): Promise<HTMLElement> {
   await TestBed.inject(Router).navigateByUrl(url);
   TestBed.inject(ShellState).tier.set(tier);
   const fixture = TestBed.createComponent(AreaMenu);
   // spec 024: PAGE select (principal 2026-10-13): the workspace pages are the page menu's scope, the areas the area menu's
   fixture.componentRef.setInput('scope', url.includes('/s/') ? 'spec' : 'page');
   await fixture.whenStable();
+  if (open) {
+    const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+    proto['showPopover'] ??= vi.fn();
+    fixture.componentInstance.show(document.createElement('button'));
+    await fixture.whenStable();
+  }
   return fixture.nativeElement as HTMLElement;
 }
 
@@ -154,44 +176,35 @@ describe('AreaMenu', () => {
       setUp(ok(planning([UNNAMED])));
       const root = await render('/w/harbor');
       const entries = pages(root);
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features', 'tech', 'library']);
-      expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A', 'A', 'A', 'A']);
-      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/board', '/w/harbor/features', '/w/harbor/tech', '/w/harbor/library']);
-      expect(attr(entries, 'aria-disabled')).toEqual([null, null, null, null, null]);
-      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Board', 'Features', 'Tech', 'Library']);
+      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features', 'library']);
+      expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A', 'A', 'A']);
+      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/board', '/w/harbor/features', '/w/harbor/library']);
+      expect(attr(entries, 'aria-disabled')).toEqual([null, null, null, null]);
+      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Board', 'Features', 'Library']);
       expect(root.querySelectorAll('nav [data-area]')).toHaveLength(0);
     });
 
-    it('adds the Milestones entry, fourth, as soon as a spec carries a milestone; Tech stays fifth (T20, ISC-134.2)', async () => {
+    it('adds the Milestones entry, fourth, as soon as a spec carries a milestone; Library stands fifth, where Tech stood (spec 017 T41)', async () => {
       setUp(ok(WITH_MILESTONES));
       const entries = pages(await render('/w/harbor'));
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features', 'milestones', 'tech', 'library']);
-      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/board', '/w/harbor/features', '/w/harbor/milestones', '/w/harbor/tech', '/w/harbor/library']);
-      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual([
-        'Specs',
-        'Board',
-        'Features',
-        'Milestones',
-        'Tech',
-        'Library',
-      ]);
-      // The Tech entry's icon is `book-open` (its first path is the spine).
-      expect(entries[4]?.querySelector('ui-icon path')?.getAttribute('d')).toBe('M12 5v16');
+      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features', 'milestones', 'library']);
+      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/board', '/w/harbor/features', '/w/harbor/milestones', '/w/harbor/library']);
+      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Board', 'Features', 'Milestones', 'Library']);
+      expect(entries[4]?.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('book');
     });
 
     it("counts an archived spec's milestone", async () => {
       setUp(ok(planning([milestone('Harbor 0.9', '2026-08-01', 'complete', [holder('001', true)])])));
-      expect(attr(pages(await render('/w/harbor')), 'data-page')).toEqual(['specs', 'board', 'features', 'milestones', 'tech', 'library']);
+      expect(attr(pages(await render('/w/harbor')), 'data-page')).toEqual(['specs', 'board', 'features', 'milestones', 'library']);
     });
 
     it('marks the current page with aria-current and gives it focus on open', async () => {
       setUp(ok(WITH_MILESTONES));
       const cases: Array<[string, Array<string | null>]> = [
-        ['/w/harbor', ['page', null, null, null, null, null]],
-        ['/w/harbor/features', [null, null, 'page', null, null, null]],
-        ['/w/harbor/milestones', [null, null, null, 'page', null, null]],
-        ['/w/harbor/tech/architecture', [null, null, null, null, 'page', null]],
-        ['/w/harbor/library', [null, null, null, null, null, 'page']],
+        ['/w/harbor', ['page', null, null, null, null]],
+        ['/w/harbor/features', [null, null, 'page', null, null]],
+        ['/w/harbor/milestones', [null, null, null, 'page', null]],
+        ['/w/harbor/library', [null, null, null, null, 'page']],
       ];
       for (const [url, current] of cases) {
         const entries = pages(await render(url));
@@ -210,38 +223,71 @@ describe('AreaMenu', () => {
       expect(root.querySelector('nav ui-kbd')).toBeNull();
     });
 
-    it('renders the summaries from the dashboard rows and the planning model', async () => {
+    it('renders the summaries from the dashboard rows, the planning model and, once opened, the catalog', async () => {
       setUp(ok(WITH_MILESTONES));
-      const entries = pages(await render('/w/harbor'));
+      const entries = pages(await render('/w/harbor', 'wide', true));
       expect(entries.map(sub)).toEqual([
         '3 active · 1 archived',
         '0 stages · 0 cards · 0 wait on you',
         '2 features · 5/9 closed',
         '2 milestones · next Nov 30',
-        '3 specs · 7 open questions',
-        `${String(TestBed.inject(DemoData).library().length)} documents · demo`,
+        '52 documents · 3 outdated · 5 missing',
       ]);
     });
 
-    it('counts the Tech line from the dashboard KPIs: the spec count and open fog lines, not specs with fog (T20)', async () => {
-      const kpis = (DASHBOARD_GOLDEN as unknown as { kpis: { specs: number; fog: number } }).kpis;
-      setUp(ok(PLANNING_GOLDEN as unknown as PlanningBody), DASHBOARD_GOLDEN);
-      expect(pages(await render('/w/harbor')).at(-2)?.querySelector('.sub')?.textContent.trim()).toBe(
-        `${String(kpis.specs)} specs · ${String(kpis.fog)} open questions`,
-      );
+    it('counts the Library line from the catalog in German too (spec 017 T41, ISC-157.1)', async () => {
+      setUp(ok(WITH_MILESTONES));
+      TestBed.inject(TranslocoService).setActiveLang('de');
+      expect(pages(await render('/w/harbor', 'wide', true)).map(sub).at(-1)).toBe('52 Dokumente · 3 veraltet · 5 fehlen');
     });
 
-    it('shows the same Tech line at compact as at medium and wide', async () => {
+    it('reads the catalog only once the menu opens, and once per workspace', async () => {
+      const api = fakeApi(ok(WITH_MILESTONES), DASHBOARD);
+      setUp(ok(WITH_MILESTONES), DASHBOARD, api);
+      await TestBed.inject(Router).navigateByUrl('/w/harbor');
+      TestBed.inject(ShellState).tier.set('compact');
+      const fixture = TestBed.createComponent(AreaMenu);
+      fixture.componentRef.setInput('scope', 'page');
+      await fixture.whenStable();
+      expect(api.library).not.toHaveBeenCalled();
+      expect(pages(fixture.nativeElement as HTMLElement).map(sub).at(-1)).toBe('Every document, artifact and prototype');
+      for (let round = 0; round < 3; round++) {
+        fixture.componentInstance.show(document.createElement('button'));
+        await fixture.whenStable();
+        fixture.componentInstance.close();
+        await fixture.whenStable();
+      }
+      expect(api.library).toHaveBeenCalledTimes(1);
+      expect(api.library).toHaveBeenCalledWith('harbor');
+      expect(pages(fixture.nativeElement as HTMLElement).map(sub).at(-1)).toBe('52 documents · 3 outdated · 5 missing');
+    });
+
+    it('keeps the static Library line while the catalog loads and after it fails, never an empty row', async () => {
+      let answer: (result: ApiResult<LibraryCatalog>) => void = () => undefined;
+      const pending = new Promise<ApiResult<LibraryCatalog>>((resolve) => {
+        answer = resolve;
+      });
+      setUp(ok(WITH_MILESTONES), DASHBOARD, fakeApi(ok(WITH_MILESTONES), DASHBOARD, () => pending));
+      await TestBed.inject(Router).navigateByUrl('/w/harbor');
+      TestBed.inject(ShellState).tier.set('compact');
+      const fixture = TestBed.createComponent(AreaMenu);
+      fixture.componentRef.setInput('scope', 'page');
+      await fixture.whenStable();
+      fixture.componentInstance.show(document.createElement('button'));
+      fixture.detectChanges();
+      const root = fixture.nativeElement as HTMLElement;
+      expect(pages(root).map(sub).at(-1)).toBe('Every document, artifact and prototype');
+      answer({ kind: 'error', status: 500 });
+      await fixture.whenStable();
+      expect(pages(root).map(sub).at(-1)).toBe('Every document, artifact and prototype');
+    });
+
+    it('shows the same Library line at compact as at medium and wide', async () => {
       for (const tier of ['compact', 'medium', 'wide'] as const) {
         TestBed.resetTestingModule();
         setUp(ok(WITH_MILESTONES));
-        expect(pages(await render('/w/harbor/tech/architecture', tier)).map(sub).at(-2), tier).toBe('3 specs · 7 open questions');
+        expect(pages(await render('/w/harbor/library', tier, true)).map(sub).at(-1), tier).toBe('52 documents · 3 outdated · 5 missing');
       }
-    });
-
-    it('leaves the Tech line out while the dashboard carries no KPIs', async () => {
-      setUp(ok(WITH_MILESTONES), { specs: DASHBOARD.specs, archive: DASHBOARD.archive });
-      expect(pages(await render('/w/harbor')).map(sub).at(-2)).toBeNull();
     });
 
     it('counts the Board line through the board model: stages, cards and cards waiting on you (T116, ISC-129)', async () => {
@@ -276,8 +322,8 @@ describe('AreaMenu', () => {
     it('leaves the Features summary out while the planning model is not loaded, rather than a broken template', async () => {
       setUp({ kind: 'not-found', served: false });
       const entries = pages(await render('/w/harbor'));
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features', 'tech', 'library']);
-      expect(entries.map(sub)).toEqual(['3 active · 1 archived', null, null, '3 specs · 7 open questions', `${String(TestBed.inject(DemoData).library().length)} documents · demo`]);
+      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features', 'library']);
+      expect(entries.map(sub)).toEqual(['3 active · 1 archived', null, null, 'Every document, artifact and prototype']);
       expect(entries.map((entry) => entry.textContent)).not.toContain('{{');
     });
 
@@ -285,24 +331,24 @@ describe('AreaMenu', () => {
       setUp(ok(WITH_MILESTONES));
       const root = await render('/w/harbor/features', 'compact');
       expect(root.querySelector('ui-sheet nav')?.getAttribute('data-tier')).toBe('compact');
-      expect(attr(pages(root), 'data-page')).toEqual(['specs', 'board', 'features', 'milestones', 'tech', 'library']);
-      expect(attr(pages(root), 'aria-current')).toEqual([null, null, 'page', null, null, null]);
+      expect(attr(pages(root), 'data-page')).toEqual(['specs', 'board', 'features', 'milestones', 'library']);
+      expect(attr(pages(root), 'aria-current')).toEqual([null, null, 'page', null, null]);
     });
   });
 
   describe('at spec scope', () => {
-    it('keeps the six areas unchanged, milestones or not', async () => {
+    it('keeps the six areas, Library where Docs stood (spec 017, ISC-158), milestones or not', async () => {
       setUp(ok(WITH_MILESTONES));
       const root = await render('/w/harbor/s/002/claims');
       expect(pages(root)).toHaveLength(0);
       const entries = [...root.querySelectorAll<HTMLElement>('nav [data-area]')];
-      expect(attr(entries, 'data-area')).toEqual(['dashboard', 'status', 'live', 'data', 'docs', 'notes']);
+      expect(attr(entries, 'data-area')).toEqual(['dashboard', 'status', 'live', 'data', 'library', 'notes']);
       expect(attr(entries, 'href')).toEqual([
         '/w/harbor/s/002',
         '/w/harbor/s/002/status',
         '/w/harbor/s/002/board',
         '/w/harbor/s/002/claims',
-        '/w/harbor/s/002/plan',
+        '/w/harbor/s/002/library',
         '/w/harbor/s/002/notes',
       ]);
       expect(attr(entries, 'aria-current')).toEqual([null, null, null, 'page', null, null]);
@@ -311,7 +357,7 @@ describe('AreaMenu', () => {
         'status',
         'live',
         'data',
-        'docs',
+        'library',
         'notes',
       ]);
     });

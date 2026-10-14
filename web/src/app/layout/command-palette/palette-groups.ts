@@ -12,7 +12,6 @@ import { CLAIM_GLYPHS } from '../../shared/ui/glyph/states';
 import { toneMark } from '../../shared/ui/tone';
 import { ToastService } from '../../shared/ui/toast/toast';
 import { specLink, workspaceLink } from '../shell/areas';
-import { TECH_TABS, techLink } from '../shell/page-tabs';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { PaletteIndex } from './palette-index';
@@ -245,32 +244,6 @@ function ideasSource(): PaletteSource {
   );
 }
 
-/** After Milestones (55), before Services (60). */
-export const TECH_ORDER = 57;
-
-/**
- * The Tech group (spec 023, T21, ISC-134.2): the open workspace's tech page (`/w/:ws/tech`, which opens its first tab)
- * and one entry per tab, `Tech · <Tab>` (`/w/:ws/tech/<tab>`), in tab-bar order. The tab id and its label are keywords,
- * so "arch" ranks `Tech · Architecture` on the ID tiers. Empty outside a workspace the server knows.
- */
-function techSource(): PaletteSource {
-  const t = translator();
-  const state = inject(ShellState);
-  const data = inject(ShellData);
-  const entries = computed<readonly PaletteEntry[]>(() => {
-    const ws = state.ws();
-    if (ws === null || data.workspaceMissing()) return [];
-    const meta = data.workspaceName(ws);
-    const page: PaletteEntry = { id: `tech/${ws}`, label: t('tech.palette.page'), meta, link: workspaceLink(ws, 'tech'), keywords: ['tech'] };
-    const tabs = TECH_TABS.map((tab): PaletteEntry => {
-      const name = t(`tech.tabs.${tab}`);
-      return { id: `tech/${ws}/${tab}`, label: t('tech.palette.tab', { tab: name }), meta, link: techLink(ws, tab), keywords: ['tech', tab, name] };
-    });
-    return [page, ...tabs];
-  });
-  return { id: 'tech', labelKey: 'tech.title', order: TECH_ORDER, entries };
-}
-
 function servicesSource(): PaletteSource {
   const index = inject(PaletteIndex);
   const view = inject(DOCUMENT).defaultView;
@@ -333,12 +306,13 @@ function actionsSource(): PaletteSource {
           link: workspaceLink(here, 'board'),
           keywords: ['board', 'kanban', 'stages', 'cards'],
         });
-        // Spec 024 (T58, ISC-150.1): the Library, a menu page (a mock until spec 017).
+        // Spec 024 (T58, ISC-150.1): the Library, a menu page; since spec 017 (T43, ISC-157.1) it also stands for the
+        // former Tech group, whose words stay search keys so "tech" or "architecture" still finds where it went.
         actions.push({
           id: 'action/open-library',
           label: t('palette.actions.library'),
           link: workspaceLink(here, 'library'),
-          keywords: ['library', 'docs', 'documents'],
+          keywords: ['library', 'docs', 'documents', 'tech', 'architecture'],
         });
       }
       // Spec 024 (T58, ISC-150.1): Settings · Workspaces, also reached from the gear and the Settings card.
@@ -426,11 +400,12 @@ function archivedSource(): PaletteSource {
 
 /**
  * Spec 001's own palette groups (T66): Recent 10, Next up 20, Workspaces 30, Specs 40, Services 60, Actions 70,
- * Archived 80, plus spec 008's Ideas 45, spec 023's Tech 57 and spec 019's Claims 15, each one provider line on
- * `PALETTE_SOURCES` like any other spec's group.
+ * Archived 80, plus spec 008's Ideas 45 and spec 019's Claims 15, each one provider line on `PALETTE_SOURCES` like any
+ * other spec's group. Spec 023's Tech group went with the tech page into the Library (spec 017, T43, ISC-157.1): the
+ * Library is the Actions group's "Open library".
  */
 export function providePaletteGroups(): Provider[] {
-  return [recentSource, claimsSource, nextUpSource,workspacesSource, specsSource, ideasSource, techSource, servicesSource, actionsSource, archivedSource].map(
+  return [recentSource, claimsSource, nextUpSource, workspacesSource, specsSource, ideasSource, servicesSource, actionsSource, archivedSource].map(
     (factory) => ({ provide: PALETTE_SOURCES, useFactory: factory, multi: true }),
   );
 }

@@ -1,7 +1,8 @@
 // The read-only invariant (T52, ISC-15): adding a workspace and opening every page leaves the registered repository
 // byte-identical, `.git/` included. Since spec 002 it also guards the two writes (last describe): every read route and
 // every refused write (400, 404, 409, 423) leaves it byte-identical, an accepted reviewed mark changes exactly
-// `.gates/reviewed.json` and `events.jsonl`, an accepted tick exactly `tasks.md`, and `.git/` never changes.
+// `.gates/reviewed.json` and `events.jsonl`, an accepted tick exactly `tasks.md`, and `.git/` never changes. Since
+// spec 017 the library's routes, the prototype route and the SPA shell of the old deep links are guarded too (`-t library`).
 //
 // The fixture `core/fixtures/harbor` has no `.git`, so the test builds a real repository from a copy of it and plants
 // the state a careless implementation would disturb: a commit, a staged-but-uncommitted file (index differs from HEAD),
@@ -35,6 +36,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DashboardModel } from "../core/src/dashboard.ts";
+import { hashForGate } from "../core/src/gates.ts";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
 import { dashboardApi } from "../server/src/api.ts";
 import { run } from "../server/src/cli.ts";
@@ -46,7 +48,10 @@ import {
   type ReviewedHashes,
   SPEC_HASH_HEADER,
   TASKS_HASH_HEADER,
+  type WorkspaceRouteResponses,
   parseReviewedHashes,
+  prototypeFolderOf,
+  prototypeRoute,
   specRoutes,
   workspaceRoutes,
 } from "../server/src/spec-routes.contract.ts";
@@ -340,7 +345,7 @@ describe("ISC-15 with the writes: refused writes change nothing, an accepted one
     try {
       const before = snapshot(copy);
       for (const id of ["002", "004"]) {
-        for (const path of [specRoutes.spec, specRoutes.timeline, specRoutes.claims, specRoutes.tasks, specRoutes.evidence, specRoutes.frames, specRoutes.live]) {
+        for (const path of [specRoutes.spec, specRoutes.timeline, specRoutes.claims, specRoutes.tasks, specRoutes.frames, specRoutes.live]) {
           expect((await call(path(SLUG, id))).status).toBe(200);
         }
       }
@@ -500,22 +505,90 @@ describe("ISC-132: the board's reads, the database routes and a refused drop lea
   });
 });
 
-// The tech page (spec 023 T8, ISC-134.3) under the same guard, through the served app on its own copy, `.git/`
-// included: harbor carries `specs/tech.md` and the image it names (`specs/tech/overview.png`), so the tech model, the
-// served image, a missing one and a refused `..` are read, revalidated and HEAD, and the copy stays byte-identical.
-describe("ISC-134.3: the tech page and its assets leave the repository byte-identical", () => {
-  test("readonly: tech, a served image, a missing one and a refused .. (GET and HEAD) change no byte, .git/ included", async () => {
-    const copy = join(mkdtempSync(join(root, "tech-")), SLUG);
-    cpSync(repo, copy, { recursive: true });
-    expect(lstatSync(join(copy, "specs", "tech.md")).isFile()).toBe(true);
-    expect(lstatSync(join(copy, "specs", "tech", "overview.png")).isFile()).toBe(true);
+// The library (spec 017 T24, ISC-160) under the same guard, through the served app, `.git/` included. Its workspace is
+// a real repository built from `core/fixtures/library` (every catalog zone, a stale plan.md and tldr.md, documents a
+// spec's type asks for and that are missing, prototypes with a preview screenshot, `.evidence/` and `artifacts/` files,
+// an archived spec) with the planted git state of the harbor repository above: a commit, a staged file, a modified
+// tracked file, a tracked file with stale stat data, an untracked and two ignored files. One spec more, a bug reviewed
+// on its spec.md, carries a code-reviewed mark naming this worktree's tree (excluded through `.git/info/exclude`): the
+// catalog's group head reads it `close` only when the library route ran the dashboard's git path (worktree tree id,
+// lock sources) and computed the id right; core alone reads it `code-review`.
+//
+// The redirects of ISC-157.1 (`/w/:ws/tech`, `/w/:ws/tech/<tab>`) and ISC-158.1 (`/w/:ws/s/:id/<tab>` for plan, design,
+// decisions, constitution and evidence) are the Angular router's, in the browser: the server answers each of them with
+// the SPA shell and nothing else, and the page they land on reads the library routes probed here. Both are fetched too.
+const LIBRARY_FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "library");
+const SHELF = "shelf";
+const PIER = "005-pier-lamp";
+
+/** `core/fixtures/library` as a repository with the planted state, and the pier spec's fresh code-reviewed mark. */
+function buildLibraryRepository(dir: string): void {
+  cpSync(LIBRARY_FIXTURE, dir, { recursive: true });
+  // Stale (ISC-155.1): 001's plan.md older than its last events.jsonl line (03-12), tldr.md older than the newest spec.
+  for (const [path, at] of [
+    ["specs/001-lighthouse-map/plan.md", "2026-03-05T00:00:00Z"],
+    ["specs/tldr.md", "2026-03-08T00:00:00Z"],
+  ] as const) {
+    utimesSync(join(dir, path), new Date(at), new Date(at));
+  }
+  // A bug reviewed on its current spec.md: only the code review stands between it and close.
+  const pier = join(dir, "specs", PIER);
+  mkdirSync(join(pier, ".gates"), { recursive: true });
+  const spec = ["---", "task: pier lamp", `slug: ${PIER}`, "spec_type: bug", "phase: build", "---", "", "# 005 — Pier lamp", "", "## Goal", "", "The pier lamp blinks.", "", "## Claims", "", "- [x] ISC-1: It blinks.", ""].join("\n");
+  writeFileSync(join(pier, "spec.md"), spec);
+  const reviewed = { gate: "reviewed", at: "2026-03-13T10:00:00Z", files: { "spec.md": hashForGate("spec.md", spec), "plan.md": null, "tasks.md": null } };
+  writeFileSync(join(pier, ".gates", "reviewed.json"), `${JSON.stringify(reviewed, null, 2)}\n`);
+  writeFileSync(join(dir, "README.md"), "# shelf\n");
+  writeFileSync(join(dir, "CHANGES.md"), "# changes\n");
+
+  git(dir, "init", "-q", "-b", "main");
+  writeFileSync(join(dir, ".gitignore"), "*.log\nbuild/\n");
+  appendFileSync(join(dir, ".git", "info", "exclude"), `specs/${PIER}/.gates/code-reviewed.json\n`);
+  git(dir, "add", "-A");
+  git(dir, "commit", "-q", "-m", "library fixture");
+
+  writeFileSync(join(dir, "staged.md"), "# staged, not committed\n");
+  git(dir, "add", "staged.md");
+  appendFileSync(join(dir, "README.md"), "modified after the commit\n");
+  const future = new Date("2030-01-01T00:00:00Z");
+  utimesSync(join(dir, "CHANGES.md"), future, future);
+  mkdirSync(join(dir, "notes"));
+  writeFileSync(join(dir, "notes", "untracked.md"), "# untracked\n");
+  writeFileSync(join(dir, "debug.log"), "ignored by *.log\n");
+  mkdirSync(join(dir, "build"));
+  writeFileSync(join(dir, "build", "out.txt"), "ignored by build/\n");
+
+  const scratch = `${dir}-write-tree`;
+  cpSync(dir, scratch, { recursive: true });
+  git(scratch, "add", "-A");
+  const tree = git(scratch, "write-tree");
+  rmSync(scratch, { recursive: true, force: true });
+  const mark = { gate: "code-reviewed", at: "2026-03-13T11:00:00Z", tree, head: null, code: 0, security: 0 };
+  writeFileSync(join(pier, ".gates", "code-reviewed.json"), `${JSON.stringify(mark, null, 2)}\n`);
+}
+
+describe("ISC-160: the library, its reader, search, assets, prototypes and the old deep links leave the repository byte-identical", () => {
+  test("readonly: library catalog, every Markdown doc, searches, images, prototype pages and fonts, refusals and the SPA shell change no byte, .git/ included", async () => {
+    const copy = join(mkdtempSync(join(root, "library-")), SHELF);
+    buildLibraryRepository(copy);
+    // The planted state is armed here too: a plain `git status` on a copy rewrites its index.
+    const probe = `${copy}-status`;
+    cpSync(copy, probe, { recursive: true });
+    const probeBefore = snapshot(probe);
+    git(probe, "status", "--porcelain");
+    expect(changed(probeBefore, snapshot(probe))).toContain(".git/index");
+    rmSync(probe, { recursive: true, force: true });
+
     const before = snapshot(copy);
     const indexBefore = readFileSync(join(copy, ".git", "index"));
+    const indexMtimeBefore = lstatSync(join(copy, ".git", "index")).mtimeMs;
 
-    const env = { XDG_DATA_HOME: mkdtempSync(join(root, "xdg-tech-")) };
+    const env = { XDG_DATA_HOME: mkdtempSync(join(root, "xdg-library-")) };
     const lines: string[] = [];
     const log = spyOn(console, "log").mockImplementation((...args: unknown[]) => void lines.push(args.join(" ")));
     const stop = new AbortController();
+    let catalog: WorkspaceRouteResponses["library"];
+    const readTypes = new Set<string>();
     try {
       expect(await run(["add", copy], manifest(), { env })).toBe(0);
       const done = run(["--port", "0", "--no-browser"], manifest(), { env, signal: stop.signal });
@@ -526,24 +599,109 @@ describe("ISC-134.3: the tech page and its assets leave the repository byte-iden
         if (Date.now() > deadline) throw new Error(`no URL line: ${lines.join(" | ")}`);
         if (url === "") await Bun.sleep(5);
       }
-
-      // The tech model and the served image: read, revalidated and HEAD.
-      for (const path of [workspaceRoutes.tech(SLUG), workspaceRoutes.techAsset(SLUG, "tech/overview.png")]) {
-        const first = await fetch(`${url}${path}`);
+      /** GET 200 (body drained), the same with its ETag 304, HEAD 200; `headers` go with all three. */
+      const read = async (path: string, headers: Record<string, string> = {}): Promise<Response> => {
+        const first = await fetch(`${url}${path}`, { headers });
         expect({ path, status: first.status }).toEqual({ path, status: 200 });
-        await first.arrayBuffer();
+        const body = new Response(await first.arrayBuffer(), { headers: first.headers });
         const etag = first.headers.get("etag") ?? "";
-        expect((await fetch(`${url}${path}`, { headers: { "If-None-Match": etag } })).status).toBe(304);
-        expect((await fetch(`${url}${path}`, { method: "HEAD" })).status).toBe(200);
+        expect({ path, etag: etag !== "" }).toEqual({ path, etag: true });
+        expect({ path, status: (await fetch(`${url}${path}`, { headers: { ...headers, "If-None-Match": etag } })).status }).toEqual({ path, status: 304 });
+        expect({ path, status: (await fetch(`${url}${path}`, { method: "HEAD", headers })).status }).toEqual({ path, status: 200 });
+        return body;
+      };
+      /** Each request answers the expected status, its body drained. */
+      const refused = async (cases: ReadonlyArray<readonly [string, number, RequestInit?]>): Promise<void> => {
+        for (const [path, status, init] of cases) {
+          const res = await fetch(`${url}${path}`, init);
+          await res.arrayBuffer();
+          expect({ path, method: init?.method ?? "GET", status: res.status }).toEqual({ path, method: init?.method ?? "GET", status });
+        }
+      };
+
+      // The catalog, first, so its git path is the first to run: read, revalidated and HEAD.
+      catalog = (await (await read(workspaceRoutes.library(SHELF))).json()) as WorkspaceRouteResponses["library"];
+
+      // The reader: every Markdown document the catalog lists as readable, each read, revalidated and HEAD.
+      const readable = catalog.docs.filter((d) => d.media === "markdown" && d.state !== "missing");
+      for (const doc of readable) {
+        await read(workspaceRoutes.libraryDoc(SHELF, doc.path));
+        readTypes.add(doc.type);
       }
 
-      // A missing image and a refused `..`, GET and HEAD.
-      for (const [path, status] of [
-        [workspaceRoutes.techAsset(SLUG, "tech/gone.png"), 404],
-        [workspaceRoutes.techAsset(SLUG, "../README.md"), 403],
-      ] as const) {
-        expect({ path, status: (await fetch(`${url}${path}`)).status }).toEqual({ path, status });
-        expect({ path, status: (await fetch(`${url}${path}`, { method: "HEAD" })).status }).toEqual({ path, status });
+      // The search: hits, no hits, case, a blank query, and the same query again from the text cache.
+      for (const q of ["lighthouse", "tide", "LIGHTHOUSE", "no such words anywhere", "", "   ", "lighthouse"]) {
+        await read(workspaceRoutes.librarySearch(SHELF, q));
+      }
+      const hits = (await (await fetch(`${url}${workspaceRoutes.librarySearch(SHELF, "lighthouse")}`)).json()) as WorkspaceRouteResponses["librarySearch"];
+      expect(hits.hits.length).toBeGreaterThan(0);
+
+      // The images: every prototype's preview, an `.evidence/`, an `artifacts/` and a `.design/` image, and `tech/`.
+      const prototypes = catalog.docs.filter((d) => d.type === "prototype");
+      const previews = prototypes.flatMap((d) => (d.preview == null ? [] : [d.preview]));
+      expect(previews.length).toBeGreaterThan(0);
+      for (const image of [
+        ...previews,
+        "001-lighthouse-map/.evidence/ISC-1/map.png",
+        "001-lighthouse-map/artifacts/map-overview.png",
+        "001-lighthouse-map/.design/views/mobile.png",
+        "tech/arch.png",
+      ]) {
+        await read(workspaceRoutes.libraryAsset(SHELF, image));
+      }
+
+      // The prototypes: every page the catalog lists, and the files a page links, a font by `Origin: null` included.
+      for (const doc of prototypes) {
+        const folder = prototypeFolderOf(doc);
+        expect({ path: doc.path, folder: folder !== null }).toEqual({ path: doc.path, folder: true });
+        for (const page of doc.pages ?? []) await read(prototypeRoute(SHELF, doc.spec, folder ?? "", page));
+      }
+      const board = (file: string): string => prototypeRoute(SHELF, "002-tide-board", "prototype/board", file);
+      for (const file of ["styles.css", "app.js", "img/badge.png", "notes.md", "fonts/manrope-variable.woff2"]) await read(board(file));
+      const font = await read(board("fonts/manrope-variable.woff2"), { Origin: "null" });
+      expect(font.headers.get("Access-Control-Allow-Origin")).toBe("*");
+
+      // Refused: unknown workspace, missing or unlisted document, traversal, other media, other methods, foreign origins.
+      const missingDoc = catalog.docs.find((d) => d.state === "missing");
+      expect(missingDoc).toBeDefined();
+      await refused([
+        [workspaceRoutes.library("nowhere"), 404],
+        [workspaceRoutes.library(SHELF), 405, { method: "POST" }],
+        [workspaceRoutes.library(SHELF), 403, { headers: { Origin: "https://example.com" } }],
+        [workspaceRoutes.libraryDoc(SHELF, missingDoc?.path ?? ""), 404],
+        [workspaceRoutes.libraryDoc(SHELF, "../README.md"), 404],
+        [workspaceRoutes.libraryDoc(SHELF, "archive/000-first-light/spec.md"), 404],
+        [workspaceRoutes.libraryDoc(SHELF, "tech/arch.png"), 404],
+        [workspaceRoutes.libraryDoc(SHELF, "001-lighthouse-map/spec.md"), 405, { method: "PUT", body: "{}" }],
+        [workspaceRoutes.libraryDoc("nowhere", "001-lighthouse-map/spec.md"), 404],
+        [workspaceRoutes.librarySearch(SHELF, "lighthouse"), 405, { method: "POST", body: "{}" }],
+        [workspaceRoutes.librarySearch("nowhere", "lighthouse"), 404],
+        [workspaceRoutes.libraryAsset(SHELF, "tech/gone.png"), 404],
+        [workspaceRoutes.libraryAsset(SHELF, "../README.md"), 403],
+        [`${workspaceRoutes.library(SHELF)}/asset?path=%252e%252e%2FREADME.md`, 403],
+        [workspaceRoutes.libraryAsset(SHELF, "001-lighthouse-map/artifacts/data.json"), 403],
+        [workspaceRoutes.libraryAsset(SHELF, "001-lighthouse-map/plan.md"), 403],
+        [workspaceRoutes.libraryAsset(SHELF, "tech/arch.png"), 405, { method: "DELETE" }],
+        [board("missing.html"), 404],
+        [board("..%2F..%2Fspec.md"), 403],
+        [board("..%252F..%252Fspec.md"), 403],
+        [board("%2Fetc%2Fpasswd"), 403],
+        [board("index.html"), 405, { method: "POST", body: "x" }],
+        [board("index.html"), 403, { headers: { Origin: "null" } }],
+        [board("index.html"), 403, { headers: { Origin: "https://example.com" } }],
+        [prototypeRoute(SHELF, "000-first-light", "prototype", "index.html"), 404],
+        [prototypeRoute(SHELF, "009-nowhere", "prototype", "index.html"), 404],
+        [prototypeRoute("nowhere", "002-tide-board", "prototype/board", "index.html"), 404],
+        [`/proto/${SHELF}/002-tide-board/views/mobile.png`, 404],
+      ]);
+
+      // The SPA shell for the library page and the old deep links the router redirects (ISC-157.1, ISC-158.1).
+      const tabs = ["overview", "architecture", "status", "specs", "open"].map((tab) => `/w/${SHELF}/tech/${tab}`);
+      const deepLinks = ["plan", "design", "decisions", "constitution", "evidence", "docs", "docs/plan"].map((tab) => `/w/${SHELF}/s/001/${tab}`);
+      for (const page of [`/w/${SHELF}/library`, `/w/${SHELF}/tech`, ...tabs, ...deepLinks]) {
+        const res = await fetch(`${url}${page}`);
+        expect({ page, status: res.status }).toEqual({ page, status: 200 });
+        expect(await res.text()).toContain("<title>spectant</title>");
       }
 
       stop.abort();
@@ -553,11 +711,21 @@ describe("ISC-134.3: the tech page and its assets leave the repository byte-iden
       log.mockRestore();
     }
 
+    // The catalog is the fixture's: stale and missing documents, and the git path ran and computed the right id.
+    expect(catalog.stale).toBeGreaterThan(0);
+    expect(catalog.missing).toBeGreaterThan(0);
+    expect(catalog.docs.find((d) => d.path === "001-lighthouse-map/plan.md")?.state).toBe("stale");
+    expect(catalog.groups.find((g) => g.spec === PIER)?.stage).toBe("close");
+    // Every Markdown kind of the catalog went through the reader.
+    const kinds = ["artifact", "constitution", "context", "design", "evidence", "idea", "plan", "spec", "tasks", "tech", "tldr"];
+    expect(kinds.filter((kind) => !readTypes.has(kind))).toEqual([]);
+
     const after = snapshot(copy);
     expect(changed(before, after, { mtime: true })).toEqual([]);
     expect(after.checksum).toBe(before.checksum);
     expect(underGit(after)).toEqual(underGit(before));
     expect(readFileSync(join(copy, ".git", "index")).equals(indexBefore)).toBe(true);
+    expect(lstatSync(join(copy, ".git", "index")).mtimeMs).toBe(indexMtimeBefore);
   });
 });
 

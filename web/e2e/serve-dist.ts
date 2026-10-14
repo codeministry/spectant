@@ -7,13 +7,15 @@
  * A static server of its own rather than the `spectant` binary: the binary embeds `web/dist` only after
  * `scripts/build.ts` compiles it, which would put a four-target build in front of every e2e run. The `/api` it
  * answers is a seam: `serveDist({ api })` takes a fetch handler; the entry below plugs in `stubApi()` (`stub-api.ts`),
- * the real `/api` contract fed from `core/fixtures/*.golden.json`. Without a handler, `/api/*` is a 404.
+ * the real `/api` contract fed from `core/fixtures/*.golden.json`. The prototype route `/proto/…` (spec 017) takes the
+ * same seam. Without a handler, `/api/*` and `/proto/*` are a 404.
  *
  * Loopback only (ISC-2), no path outside the root is ever read, and every unknown path without a file extension
  * falls back to `index.html`, so the router-driven URLs (`/w/:ws`, `/w/:ws/s/:id`) load on reload.
  */
 import { extname, join, resolve, sep } from 'node:path';
 
+import { PROTOTYPE_PREFIX } from '../../server/src/spec-routes.contract';
 import { stubApi } from './stub-api';
 
 export type ApiHandler = (request: Request, url: URL) => Response | Promise<Response>;
@@ -39,7 +41,8 @@ export function serveDist(options: ServeDistOptions = {}): ReturnType<typeof Bun
     port,
     async fetch(request) {
       const url = new URL(request.url);
-      if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
+      // The prototype route (spec 017) sits outside `/api` on the real server too, so it goes through the same seam.
+      if (url.pathname === '/api' || url.pathname.startsWith('/api/') || url.pathname.startsWith(PROTOTYPE_PREFIX)) {
         if (api) return api(request, url);
         return Response.json({ error: 'no stub API is wired into serve-dist' }, { status: 404 });
       }

@@ -53,11 +53,13 @@ byte, so a server contract change fails there first.
 | `GET/HEAD /api/workspaces` | `[{slug, name, pathTail, readable, error?, counts}]`, harbor then lantern |
 | `GET/HEAD /api/workspaces/:slug/dashboard` | the golden model; 404 unknown slug, 409 the unreadable workspace |
 | `GET/HEAD /api/workspaces/:slug/planning` and every route of `WORKSPACE_ROUTE_TABLE` | the whole golden file of the route's family, `core/fixtures/<fixture>.planning.golden.json` (`GOLDEN_FAMILY.planning`, not keyed by folder), matched with `matchWorkspacePath`; built at `2026-03-20`, so a live server can differ in the milestones' `state` alone; 404 unknown slug, 405 with `allowForWorkspace(route)`, 409 the unreadable workspace |
-| `GET/HEAD /api/workspaces/:slug/tech` | the whole tech golden, `core/fixtures/<fixture>.tech.golden.json` (`WORKSPACE_GOLDEN_FAMILY.tech` in `stub-api.ts`; harbor has pages, lantern `pages: null`), compared byte for byte with the real handler; 404 unknown slug, 405 with `allowForWorkspace('tech')`, 409 the unreadable workspace |
-| `GET/HEAD /api/workspaces/:slug/tech/asset?path=` | the fixture tree's file under `specs/` (harbor `tech/overview.png`) with `evidenceFileHeaders` of core's `mediaTypeOf` and a strong ETag over the bytes; 403 for a path that leaves `specs/` (`..`, absolute, backslash, a second encoding layer, a symlink out), 404 for no file, then the guards of `…/tech` |
+| `GET/HEAD /api/workspaces/:slug/library` | the workspace's `LibraryCatalog`: core's `readCatalog` over the fixture tree made deterministic (fixed times, group heads and fog lines from the spec goldens and `core/fixtures/<fixture>.tech.golden.json`), plus `STUB_LIBRARY` on harbor; `EMPTY_CATALOG` under `X-Spectant-Stub-Library: empty`; 404 unknown slug, 405 with `allowForWorkspace(route)`, 409 the unreadable workspace |
+| `GET/HEAD …/:slug/library/doc?path=` | one Markdown document of that catalog as core's `renderDocsMarkdown` page; 404 for any path the catalog does not list as one |
+| `GET/HEAD …/:slug/library/search?q=` | the `LibrarySearchResult` over the catalog's documents; `{query: '', hits: []}` for a blank `q` |
+| `GET/HEAD …/:slug/library/asset?path=` | the fixture tree's image under `specs/` (harbor `tech/overview.png`) with `evidenceFileHeaders` of core's `mediaTypeOf` and a strong ETag over the bytes; 403 for a path that leaves `specs/` (`..`, absolute, backslash, a second encoding layer, a symlink out) or a file that is not an image, 404 for no file |
+| `GET/HEAD /proto/:ws/:spec/:folder/*` | one file of a catalog prototype through core's resolver, every answer with `PROTOTYPE_CSP` (forwarded by `serve-dist.ts`) |
 | `GET/HEAD …/:ws/specs/:id` and every read route of `SPEC_ROUTE_TABLE` (`server/src/spec-routes.contract.ts`) | the per-spec value of the route's golden family, `core/fixtures/<tree>.<family>.golden.json` (`GOLDEN_FAMILY`, plus `live`); `:id` is `NNN`, the folder or the bare slug, archived specs too |
-| `…/docs/:name` | the docs golden; 404 `DocMissing` with core's `docsFor` availability when the spec has no such file |
-| `…/evidence`, `…/evidence/file?path=` | core's `listEvidence` / `resolveEvidencePath` over the fixture tree's real `artifacts/` and `.evidence/`; the file with `evidenceFileHeaders`, 403 for what confinement refuses, 404 for no file |
+| `…/evidence/file?path=` | core's `resolveEvidencePath` over the fixture tree's real `artifacts/` and `.evidence/`; the file with `evidenceFileHeaders`, 403 for what confinement refuses, 404 for no file |
 | `POST …/gate/reviewed`, `POST …/tasks/:tid/check` | the two writes, validated with the contract's `is…Request` (400), outcome scripted per request (below) |
 | `GET/HEAD /api/lifeos` | `{present}`: true only under the `frontier` lock fixture |
 | `GET/HEAD/PUT /api/settings` | in memory from the schema defaults (`system`, `en`, 30, `true`, `false`), per session |
@@ -77,6 +79,7 @@ workers never race. An unknown value is always a loud 400, never a silent defaul
 | `X-Spectant-Stub-State` | `two-workspaces` (harbor, lantern), `empty` (no workspace), `unreadable` (lantern `readable: false`, `error: 'missing'`, `counts: null`, its dashboard, planning and spec routes 409) | `two-workspaces` |
 | `X-Spectant-Stub-Locks` | `none`, `activity`, `frontier`, `claims`, `person` (see the lock fixtures) | `activity`, the goldens as they are |
 | `X-Spectant-Stub-Write` | `ok`, `stale`, `locked` (see the writes) | `ok` |
+| `X-Spectant-Stub-Library` | `catalog`, `empty` (every readable workspace answers `EMPTY_CATALOG`, a workspace without one document) | `catalog` |
 | `X-Spectant-Stub-Session` | any id; scopes the settings and the writes | one shared session |
 
 Lock fixtures, applied to `…/live` (the `LiveFrame`), the spec page's `areas.live` and `keyNumbers.rounds.agentsWorking`

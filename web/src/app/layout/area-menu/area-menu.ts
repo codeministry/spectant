@@ -1,27 +1,41 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { afterNextRender, ChangeDetectionStrategy, Component, computed, inject, Injector, input, signal, viewChild } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, computed, inject, Injector, input, resource, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { ApiClient } from '../../core/api.service';
 import { DASHBOARD_GO_KEY } from '../../core/keyboard-bindings';
 import { SettingsService } from '../../core/settings.service';
 import { boardRowsOf, boardSummaryOf, buildBoard } from '../../features/board/board-model';
-import { DemoData } from '../../shared/demo/demo-data';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiKbd } from '../../shared/ui/kbd/kbd';
 import { UiPopover } from '../../shared/ui/overlay/popover';
 import { UiSheet } from '../../shared/ui/overlay/sheet';
 import { UiRovingItem, UiRovingList } from '../../shared/ui/roving-list.directive';
-import { areaPath, SPEC_AREAS, type SpecArea, specLink, WORKSPACE_PAGES, type WorkspaceMenuPageId, workspaceLink } from '../shell/areas';
+import {
+  areaPath,
+  SPEC_AREAS,
+  type SpecArea,
+  specLink,
+  WORKSPACE_PAGES,
+  type WorkspaceMenuPageId,
+  workspaceLink,
+  workspacePageById,
+} from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 
 /** The params of a workspace page's summary key (`shell.pages.summary.<id>`); null leaves the summary line out. */
 type SummaryParams = Readonly<Record<string, string | number>> | null;
 
-type Loose = Readonly<Record<string, unknown>>;
-const isLoose = (value: unknown): value is Loose => typeof value === 'object' && value !== null;
-const count = (value: unknown): number | null => (typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null);
+/** A summary line as drawn: its catalogue key (the page's `summaryKey`, or a stand-in while its source loads) and params. */
+interface SummaryLine {
+  readonly key: string;
+  readonly params: Readonly<Record<string, string | number>>;
+}
+
+/** The Library's line while the catalog has not answered: a static line, so the menu row never stands without one. */
+export const LIBRARY_SUMMARY_LOADING = 'shell.pages.summary.libraryLoading';
 
 /** `Nov 30` for an ISO date, read as a calendar day (UTC), so no time zone moves it a day. */
 const shortDate = (iso: string, locale: string): string =>
@@ -40,7 +54,8 @@ const shortDate = (iso: string, locale: string): string =>
  * (only on a fine pointer that can hover). An area whose views are not built (`built: false`) is an `aria-disabled`
  * entry without a link, its reason as visible text. At page scope (`scope="page"`, nav "Pages", a workspace the
  * server knows, spec open or not) it lists `WORKSPACE_PAGES` instead; on a spec page Specs is the current one: each entry a link to the page with its icon, its name and a summary from the dashboard
- * rows, its KPIs and the planning model; Library's counts the mock's documents and says so (spec 024, T57). Milestones is
+ * rows, its KPIs and the planning model; Library's counts the catalog's documents, outdated and missing ones (spec 017,
+ * T41, ISC-157.1), the catalog read once per workspace on the menu's first open, a static line until it answers. Milestones is
  * absent, not disabled, while no spec carries a milestone (ISC-104). The pages show no `g`-key hint.
  *
  * **Prototype anatomy (spec 024, T57, ISC-150.1).** The prototype's `.area-pop`: a card with an eyebrow head naming the
@@ -60,9 +75,9 @@ const shortDate = (iso: string, locale: string): string =>
 export class AreaMenu {
   protected readonly state = inject(ShellState);
   private readonly data = inject(ShellData);
+  private readonly api = inject(ApiClient);
   private readonly settings = inject(SettingsService);
   private readonly transloco = inject(TranslocoService);
-  private readonly demo = inject(DemoData);
   private readonly injector = inject(Injector);
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
@@ -96,8 +111,24 @@ export class AreaMenu {
     return id === 'idea' ? 'board' : (id ?? 'specs');
   });
 
+  /** The page menu has been opened once: only then does it read the catalog for Library's line. */
+  private readonly opened = signal(false);
+
+  /**
+   * The open workspace's catalog for Library's summary (`GET …/:ws/library`): idle until the page menu first opens,
+   * then read once per workspace (the resource keeps its value while the workspace stays the same, so a later open
+   * sends nothing).
+   */
+  private readonly catalog = resource({
+    params: () => {
+      const ws = this.state.ws();
+      return this.workspaceScope() && this.opened() && ws !== null ? ws : undefined;
+    },
+    loader: ({ params }) => this.api.library(params),
+  });
+
   /** Each page's summary params, from what has loaded; a page whose source has not answered gets null. */
-  protected readonly summaries = computed<Record<WorkspaceMenuPageId, SummaryParams>>(() => ({
+  private readonly summaryParams = computed<Record<WorkspaceMenuPageId, SummaryParams>>(() => ({
     specs:
       this.data.dashboard.value()?.kind === 'ok'
         ? { active: this.data.specRows().length, archived: this.data.archiveRows().length }
@@ -105,9 +136,27 @@ export class AreaMenu {
     board: this.boardSummary(),
     features: this.featuresSummary(),
     milestones: this.milestonesSummary(),
-    tech: this.techSummary(),
-    library: { count: this.demo.library().length },
+    library: this.librarySummary(),
   }));
+
+  /**
+   * Each page's summary line; null leaves it out. Library always has one: its counts once the catalog answered, the
+   * static line before (and for any answer but `ok`).
+   */
+  protected readonly summaries = computed<Record<WorkspaceMenuPageId, SummaryLine | null>>(() => {
+    const params = this.summaryParams();
+    const line = (id: WorkspaceMenuPageId): SummaryLine | null => {
+      const values = params[id];
+      return values === null ? null : { key: workspacePageById(id).summaryKey, params: values };
+    };
+    return {
+      specs: line('specs'),
+      board: line('board'),
+      features: line('features'),
+      milestones: line('milestones'),
+      library: line('library') ?? { key: LIBRARY_SUMMARY_LOADING, params: {} },
+    };
+  });
 
   /** The eyebrow head's key and params: the open spec's areas, else the workspace's pages. */
   protected readonly head = computed(() => {
@@ -124,6 +173,7 @@ export class AreaMenu {
 
   /** Opens the menu: the popover anchored to `trigger` at medium and wide, the bottom sheet at compact. */
   show(trigger: HTMLElement): void {
+    this.opened.set(true);
     if (this.compact()) {
       this.sheetOpen.set(true);
       return;
@@ -174,19 +224,11 @@ export class AreaMenu {
     return { count: model.features.length, closed: model.recount.closed, total: model.recount.total };
   }
 
-  /**
-   * Tech (spec 023, T20): the workspace's spec count and its open fog lines, both as the dashboard's KPIs carry them
-   * (`kpis.specs`, the SPECS tile; `kpis.fog`, the open-fog half of ATTENTION: lines over the master and the active
-   * specs, not specs with fog). Null until the dashboard answers with both.
-   */
-  private techSummary(): SummaryParams {
-    const result = this.data.dashboard.value();
-    if (result?.kind !== 'ok' || !isLoose(result.body)) return null;
-    const kpis = result.body['kpis'];
-    if (!isLoose(kpis)) return null;
-    const specs = count(kpis['specs']);
-    const fog = count(kpis['fog']);
-    return specs === null || fog === null ? null : { specs, fog };
+  /** Library (spec 017, T41, ISC-157.1): the catalog's documents, the outdated and the missing ones; null until it answers. */
+  private librarySummary(): SummaryParams {
+    const result = this.catalog.hasValue() ? this.catalog.value() : undefined;
+    if (result?.kind !== 'ok') return null;
+    return { docs: result.body.docs.length, stale: result.body.stale, missing: result.body.missing };
   }
 
   /**

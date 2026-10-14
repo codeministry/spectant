@@ -14,8 +14,7 @@
  * `assets.contract.ts` and `core/src/files.ts`, both pure.
  *
  * Params: `:ws` is the workspace slug, `:id` the spec ref as `core/src/resolve.ts` `resolveSpec` reads it (`002`,
- * `002-web-console` or `web-console`; the web uses the dashboard row's `id`, `NNN`), `:name` a `DocName`, `:tid` a task
- * id (`T12`). Builders percent-encode each segment once; `matchSpecPath` decodes each segment once, so `%2541` arrives
+ * `002-web-console` or `web-console`; the web uses the dashboard row's `id`, `NNN`), `:tid` a task id (`T12`). Builders percent-encode each segment once; `matchSpecPath` decodes each segment once, so `%2541` arrives
  * as `%41`, never as `A`. The evidence file's `path` travels in the query and is passed on raw
  * (`evidencePathQuery`): `resolveEvidencePath` in `core/src/evidence.ts` decodes it exactly once and refuses a second
  * layer.
@@ -41,6 +40,14 @@
  * `SPEC_ROUTE_TABLE` with its handler (T83, `transition-route.ts`), `idea` (T88), `boardQuery` (T92) and `allocate` (T87,
  * the family's one write) into `WORKSPACE_ROUTE_TABLE`; `actors` (T91) is a route of its own, `ACTORS_PATH`, beside
  * `/api/settings`. The pending family went with its last route; the bodies stay in § Spec 008 bodies.
+ *
+ * The library (spec 017, T2, ISC-156; plan 017 § Interfaces): four workspace routes, `library` (the catalog,
+ * metadata only), `libraryDoc` (one Markdown document of the catalog as a `DocsPage`), `librarySearch` (title and
+ * full text) and `libraryAsset` (one image below `specs/`). The library replaces the tech page's routes `tech` and
+ * `techAsset` (T51) and the spec routes `evidence` (the listing) and `docs/:name` (T53); `evidenceFile` stays.
+ * Beside them `prototype`, `/proto/:ws/:spec/:folder/*`, deliberately outside
+ * `/api/` so the relative links of a prototype's HTML (`styles.css`, `fonts/…`) resolve without rewriting; it is a
+ * family of its own (§ Prototype route), not a workspace route, because its tail is a path of any depth.
  */
 import { API_PREFIX } from './assets.contract.ts';
 import { FILE_KINDS } from '../../core/src/files.ts';
@@ -48,19 +55,17 @@ import type { PlanningModel } from '../../core/src/planning.ts';
 import type {
   ClaimLock,
   ClaimViewModel,
-  DocAvailability,
-  DocName,
   DocsPage,
   EventLine,
-  EvidenceListing,
   FileKind,
   Frame,
   IdeaRef,
+  LibraryCatalog,
+  LibraryDoc,
   LiveFrame,
   LockSource,
   SpecPageModel,
   TasksTab,
-  TechModel,
   TimelineEntry,
   WorkflowStage,
 } from '../../core/src/files.ts';
@@ -70,17 +75,12 @@ import type {
 /** The workspace routes' root; equal to `WORKSPACES_PATH` in `api.ts` (pinned by the contract test). */
 export const SPEC_API_ROOT = `${API_PREFIX}workspaces`;
 
-/** The Docs tabs a `…/docs/:name` route serves, in tab order. Any other name is no route. */
-export const DOC_NAMES: readonly DocName[] = ['plan', 'design', 'decisions', 'constitution'];
-
 export type SpecRouteName =
   | 'spec'
   | 'timeline'
   | 'claims'
   | 'tasks'
-  | 'evidence'
   | 'evidenceFile'
-  | 'docs'
   | 'frames'
   | 'live'
   | 'gateReviewed'
@@ -98,10 +98,8 @@ export interface SpecRouteParams {
   timeline: SpecParams;
   claims: SpecParams;
   tasks: SpecParams;
-  evidence: SpecParams;
   /** The file's `path` is a query value: `evidencePathQuery(url.search)`. */
   evidenceFile: SpecParams;
-  docs: SpecParams & { readonly name: DocName };
   frames: SpecParams;
   live: SpecParams;
   gateReviewed: SpecParams;
@@ -121,10 +119,8 @@ export const specRoutes = {
   timeline: (ws: string, id: string): string => `${base(ws, id)}/timeline`,
   claims: (ws: string, id: string): string => `${base(ws, id)}/claims`,
   tasks: (ws: string, id: string): string => `${base(ws, id)}/tasks`,
-  evidence: (ws: string, id: string): string => `${base(ws, id)}/evidence`,
   /** `path` is relative to the spec folder, as `EvidenceFile.path` gives it (`artifacts/T12-dashboard-model.md`). */
   evidenceFile: (ws: string, id: string, path: string): string => `${base(ws, id)}/evidence/file?path=${enc(path)}`,
-  docs: (ws: string, id: string, name: DocName): string => `${base(ws, id)}/docs/${name}`,
   frames: (ws: string, id: string): string => `${base(ws, id)}/frames`,
   live: (ws: string, id: string): string => `${base(ws, id)}/live`,
   gateReviewed: (ws: string, id: string): string => `${base(ws, id)}/gate/reviewed`,
@@ -138,7 +134,7 @@ export interface SpecRouteEntry {
   readonly route: SpecRouteName;
   /** `GET` routes also answer `HEAD` (same headers, no body). */
   readonly method: SpecRouteMethod;
-  /** The path pattern; `:ws`, `:id`, `:name` and `:tid` are params. The evidence file adds the query `?path=`. */
+  /** The path pattern; `:ws`, `:id` and `:tid` are params. The evidence file adds the query `?path=`. */
   readonly pattern: string;
   /** Every status the route answers, ascending. */
   readonly statuses: readonly number[];
@@ -169,9 +165,7 @@ export const SPEC_ROUTE_TABLE: readonly SpecRouteEntry[] = [
   { route: 'timeline', method: 'GET', pattern: `${P}/timeline`, statuses: READ, response: 'TimelineEntry[]' },
   { route: 'claims', method: 'GET', pattern: `${P}/claims`, statuses: READ, response: 'ClaimViewModel' },
   { route: 'tasks', method: 'GET', pattern: `${P}/tasks`, statuses: READ, response: 'TasksTab | null' },
-  { route: 'evidence', method: 'GET', pattern: `${P}/evidence`, statuses: READ, response: 'EvidenceListing' },
   { route: 'evidenceFile', method: 'GET', pattern: `${P}/evidence/file`, statuses: READ, response: 'file bytes' },
-  { route: 'docs', method: 'GET', pattern: `${P}/docs/:name`, statuses: READ, response: 'DocsPage' },
   { route: 'frames', method: 'GET', pattern: `${P}/frames`, statuses: READ, response: 'Frame[]' },
   { route: 'live', method: 'GET', pattern: `${P}/live`, statuses: READ, response: 'LiveFrame' },
   { route: 'gateReviewed', method: 'POST', pattern: `${P}/gate/reviewed`, statuses: WRITE, response: 'GateReviewedResponse' },
@@ -188,8 +182,7 @@ const COMPILED = SPEC_ROUTE_TABLE.map((entry) => ({ entry, segments: entry.patte
 
 /**
  * The route a pathname names, whatever the method; null for any other path. Takes `URL.pathname` (still
- * percent-encoded). Each param segment is decoded once; a malformed escape, an empty segment or a doc name outside
- * `DOC_NAMES` is no match.
+ * percent-encoded). Each param segment is decoded once; a malformed escape or an empty segment is no match.
  */
 export function matchSpecPath(pathname: string): SpecRouteMatch | null {
   const parts = pathname.split('/').slice(1);
@@ -203,7 +196,7 @@ export function matchSpecPath(pathname: string): SpecRouteMatch | null {
 
 /**
  * The decoded params of a pathname's segments against a pattern's, or null. A literal segment must be equal; a param
- * segment is decoded once, and a malformed escape, an empty segment or a `:name` outside `DOC_NAMES` is no match.
+ * segment is decoded once, and a malformed escape or an empty segment is no match.
  * Shared by both route families, so a slug decodes the same way in each.
  */
 function matchSegments(segments: readonly string[], parts: readonly string[]): Record<string, string> | null {
@@ -216,7 +209,7 @@ function matchSegments(segments: readonly string[], parts: readonly string[]): R
       continue;
     }
     const value = decodeOnce(part);
-    if (value === null || (segment === ':name' && !(DOC_NAMES as readonly string[]).includes(value))) return null;
+    if (value === null) return null;
     params[segment.slice(1)] = value;
   }
   return params;
@@ -256,11 +249,18 @@ export function evidencePathQuery(search: string): string {
 
 /**
  * The routes that name a whole workspace (spec 003): the planning tree, and one story of `specs/ideas/` (spec 008,
- * T88). The tech page (spec 023, ISC-134.1): `tech`, `readTech` over `specs/tech.md` and the
- * active spec folders, and `techAsset`, one image tech.md names, by the query `?path=` relative to `specs/` (served by
- * `api.ts` through the evidence resolver with `specs/` as its root, images only). The dashboard is one too but lives in `api.ts` (header).
+ * T88). The dashboard is one too but lives in `api.ts` (header). The library (spec 017, T2): `library`, `libraryDoc`,
+ * `librarySearch` and `libraryAsset` (header), which replaced the tech page's `tech` and `techAsset` (T51).
  */
-export type WorkspaceRouteName = 'planning' | 'idea' | 'boardQuery' | 'allocate' | 'tech' | 'techAsset';
+export type WorkspaceRouteName =
+  | 'planning'
+  | 'idea'
+  | 'boardQuery'
+  | 'allocate'
+  | 'library'
+  | 'libraryDoc'
+  | 'librarySearch'
+  | 'libraryAsset';
 
 export interface WorkspaceParams {
   readonly ws: string;
@@ -277,9 +277,13 @@ export interface WorkspaceRouteParams {
   idea: StoryParams;
   boardQuery: WorkspaceParams;
   allocate: StoryParams;
-  tech: WorkspaceParams;
+  library: WorkspaceParams;
+  /** The document's `path` is a query value, `LibraryDoc.path` (relative to `specs/`): `evidencePathQuery(url.search)`. */
+  libraryDoc: WorkspaceParams;
+  /** The search text `q` is a query value, read with `URLSearchParams` (it names no file, so no once-decode rule). */
+  librarySearch: WorkspaceParams;
   /** The image's `path` is a query value, relative to `specs/`: `evidencePathQuery(url.search)`. */
-  techAsset: WorkspaceParams;
+  libraryAsset: WorkspaceParams;
 }
 
 /** What `matchWorkspacePath` returns: the route and its decoded params, discriminated by `route`. */
@@ -293,9 +297,12 @@ export const workspaceRoutes = {
   idea: (ws: string, slug: string): string => `${SPEC_API_ROOT}/${enc(ws)}/ideas/${enc(slug)}`,
   boardQuery: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/board-query`,
   allocate: (ws: string, slug: string): string => `${SPEC_API_ROOT}/${enc(ws)}/ideas/${enc(slug)}/allocate`,
-  tech: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/tech`,
-  /** `path` is relative to `specs/`, as tech.md names the image (`.tech/architecture.png`); it travels raw like the evidence file's. */
-  techAsset: (ws: string, path: string): string => `${SPEC_API_ROOT}/${enc(ws)}/tech/asset?path=${enc(path)}`,
+  library: (ws: string): string => `${SPEC_API_ROOT}/${enc(ws)}/library`,
+  /** `path` is a catalog document's `LibraryDoc.path` (`017-workspace-library/plan.md`, `tech.md`); it travels raw. */
+  libraryDoc: (ws: string, path: string): string => `${SPEC_API_ROOT}/${enc(ws)}/library/doc?path=${enc(path)}`,
+  librarySearch: (ws: string, q: string): string => `${SPEC_API_ROOT}/${enc(ws)}/library/search?q=${enc(q)}`,
+  /** `path` is relative to `specs/`, as a workspace document names the image (`.tech/architecture.png`); it travels raw like the evidence file's. */
+  libraryAsset: (ws: string, path: string): string => `${SPEC_API_ROOT}/${enc(ws)}/library/asset?path=${enc(path)}`,
 } as const satisfies Record<WorkspaceRouteName, (...args: never[]) => string>;
 
 /**
@@ -328,8 +335,10 @@ export const WORKSPACE_ROUTE_TABLE: readonly WorkspaceRouteEntry[] = [
   { route: 'idea', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/ideas/:slug`, statuses: READ, response: 'IdeaPage' },
   { route: 'boardQuery', method: 'GET', write: 'PUT', pattern: `${SPEC_API_ROOT}/:ws/board-query`, statuses: BOARD_QUERY_STATUSES, request: 'BoardQuery', response: 'BoardQuery' },
   { route: 'allocate', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, statuses: REFUSABLE_WRITE, request: 'AllocateRequest', response: 'IdeaAllocated' },
-  { route: 'tech', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/tech`, statuses: READ, response: 'TechModel' },
-  { route: 'techAsset', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/tech/asset`, statuses: READ, response: 'file bytes' },
+  { route: 'library', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library`, statuses: READ, response: 'LibraryCatalog' },
+  { route: 'libraryDoc', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library/doc`, statuses: READ, response: 'DocsPage' },
+  { route: 'librarySearch', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library/search`, statuses: READ, response: 'LibrarySearchResult' },
+  { route: 'libraryAsset', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library/asset`, statuses: READ, response: 'file bytes' },
 ];
 
 const WORKSPACE_ENTRIES = new Map(WORKSPACE_ROUTE_TABLE.map((entry) => [entry.route, entry]));
@@ -360,6 +369,97 @@ export function matchWorkspacePath(pathname: string): WorkspaceRouteMatch | null
   return null;
 }
 
+// ─── Prototype route (spec 017) ──────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The prototype route (spec 017, ISC-159): `GET`/`HEAD /proto/:ws/:spec/:folder/*` serves one file of a `prototype`
+ * catalog document, outside `/api/` so a page's relative links resolve against the folder without rewriting.
+ *
+ * - `:ws` the workspace slug, `:spec` the spec folder (`LibraryDoc.spec`, `NNN-slug`), each decoded once.
+ * - `:folder` the prototype's folder relative to the spec's `.design/`, decoded once from one segment: `prototype` for
+ *   a prototype in `.design/prototype/` itself, `prototype/board` (sent as `prototype%2Fboard`) for one below it
+ *   (`prototypeFolderOf`). Relative to `.design/` rather than `.design/prototype/` so the root folder has a name.
+ *   Anything not `prototype` or below it is no match.
+ * - `*` the file below the folder (`LibraryDoc.pages` entries, or what a page links), passed on raw like
+ *   `evidencePathQuery`: core's resolver decodes it exactly once and refuses a second layer, `..`, an absolute path and
+ *   a symlink out (ISC-159.1).
+ *
+ * Every answer carries `PROTOTYPE_CSP` (ISC-159.2). The route is no workspace route: its tail is a path of any depth,
+ * which `matchSegments` does not match, and it sits outside `SPEC_API_ROOT`.
+ */
+export const PROTOTYPE_PREFIX = '/proto/';
+
+/** The prototype root below a spec's `.design/`; every `:folder` is this or below it. */
+export const PROTOTYPE_FOLDER_ROOT = 'prototype';
+
+/** The decoded `ws`, `spec` and `folder`, and the still percent-encoded `file` (segments joined by `/`). */
+export interface PrototypeParams {
+  readonly ws: string;
+  readonly spec: string;
+  readonly folder: string;
+  readonly file: string;
+}
+
+export interface PrototypeRouteMatch {
+  readonly route: 'prototype';
+  readonly params: PrototypeParams;
+}
+
+/**
+ * The URL of one file of a prototype. `folder` as `prototypeFolderOf` gives it, `file` relative to the folder
+ * (`index.html`, `pages/two.html`); each of its segments is encoded once, the slashes kept, so the page's relative
+ * links resolve. A path, no origin.
+ */
+export function prototypeRoute(ws: string, spec: string, folder: string, file: string): string {
+  return `${PROTOTYPE_PREFIX}${enc(ws)}/${enc(spec)}/${enc(folder)}/${file.split('/').map(enc).join('/')}`;
+}
+
+/** The `:folder` of a `prototype` catalog document (`doc.path` minus `<spec>/.design/`); null for any other path. */
+export function prototypeFolderOf(doc: Pick<LibraryDoc, 'path' | 'spec'>): string | null {
+  const head = `${doc.spec}/.design/`;
+  if (!doc.path.startsWith(head)) return null;
+  const folder = doc.path.slice(head.length);
+  return isPrototypeFolder(folder) ? folder : null;
+}
+
+function isPrototypeFolder(folder: string): boolean {
+  return folder === PROTOTYPE_FOLDER_ROOT || folder.startsWith(`${PROTOTYPE_FOLDER_ROOT}/`);
+}
+
+/** 200 or 304 by ETag; 403 host guard or a refused path; 404 unknown workspace, spec or file; 405; 409 unreadable workspace. */
+export const PROTOTYPE_ROUTE = {
+  route: 'prototype',
+  method: 'GET',
+  pattern: `${PROTOTYPE_PREFIX}:ws/:spec/:folder/*`,
+  statuses: READ,
+  response: 'file bytes',
+} as const;
+
+export const PROTOTYPE_ALLOW = 'GET, HEAD';
+
+/**
+ * The Content-Security-Policy of every prototype answer (plan 017 § Risks): the page's own files and inline code
+ * only, no fetch, and a sandbox without `allow-same-origin`, so the page runs on an opaque origin and cannot call the
+ * app's API.
+ */
+export const PROTOTYPE_CSP = "default-src 'self' 'unsafe-inline' data: blob:; connect-src 'none'; sandbox allow-scripts allow-popups";
+
+/**
+ * The prototype route a pathname names, whatever the method; null for any other path. Takes `URL.pathname` (still
+ * percent-encoded). `ws`, `spec` and `folder` are decoded once (a malformed escape or an empty segment is no match,
+ * a folder outside `prototype` too); the tail needs at least one segment and is returned raw. The server checks the
+ * method itself (405 with `PROTOTYPE_ALLOW`).
+ */
+export function matchPrototypePath(pathname: string): PrototypeRouteMatch | null {
+  if (!pathname.startsWith(PROTOTYPE_PREFIX)) return null;
+  const parts = pathname.slice(PROTOTYPE_PREFIX.length).split('/');
+  if (parts.length < 4) return null;
+  const [ws, spec, folder] = parts.slice(0, 3).map(decodeOnce);
+  const file = parts.slice(3).join('/');
+  if (ws == null || spec == null || folder == null || file === '' || !isPrototypeFolder(folder)) return null;
+  return { route: 'prototype', params: { ws, spec, folder, file } };
+}
+
 // ─── Answers ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -381,10 +481,8 @@ export interface SpecRouteResponses {
   claims: ClaimViewModel;
   /** Null when the spec has no tasks.md (200, not 404: a spec before its tasks stage is still a spec). */
   tasks: TasksTab | null;
-  evidence: EvidenceListing;
   /** The file's bytes with `evidenceFileHeaders(mediaTypeOf(name))`. */
   evidenceFile: Blob;
-  docs: DocsPage;
   frames: readonly Frame[];
   live: LiveFrame;
   gateReviewed: GateReviewedResponse;
@@ -404,10 +502,36 @@ export interface WorkspaceRouteResponses {
   /** The database's row for the workspace, never a file; `{query: ''}` when none is stored. `PUT` answers the same. */
   boardQuery: BoardQuery;
   allocate: IdeaAllocated;
-  /** `readTech` over `specs/tech.md` and the active spec folders, as it is; `pages: null` without the file. */
-  tech: TechModel;
-  /** The image's bytes with `evidenceFileHeaders(mediaTypeOf(name))`, as the evidence file route sends them. */
-  techAsset: Blob;
+  /** core's `readCatalog` over the workspace, as it is: metadata only, never a document's content. */
+  library: LibraryCatalog;
+  /**
+   * One Markdown document of the catalog (`media: 'markdown'`, `state` not `missing`), rendered by `markdown-docs.ts`
+   * as the former Docs tabs rendered it. A path the catalog does not list as such a document is 404, never a read of the path.
+   */
+  libraryDoc: DocsPage;
+  librarySearch: LibrarySearchResult;
+  /** The image's bytes with `evidenceFileHeaders(mediaTypeOf(name))`, as the evidence file route sends them; `specs/` the root, images only. */
+  libraryAsset: Blob;
+}
+
+/**
+ * One search hit: the catalog document it names (`LibraryDoc.path`, so the web finds the entry in the catalog it holds)
+ * and a snippet of plain text around the first match, in the title or the full text. Plain text, never HTML: the web
+ * marks the match itself.
+ */
+export interface LibrarySearchHit {
+  readonly path: LibraryDoc['path'];
+  readonly snippet: string;
+}
+
+/**
+ * 200 of `GET …/library/search?q=`: the search text as the server read it (trimmed), so the web drops an answer to a
+ * query it has moved past, and the hits over the catalog's Markdown documents in catalog order. An empty or
+ * whitespace-only `q` answers `{query: '', hits: []}`, not 400.
+ */
+export interface LibrarySearchResult {
+  readonly query: string;
+  readonly hits: readonly LibrarySearchHit[];
 }
 
 /** The body of each workspace route that takes one (`WorkspaceRouteEntry.write` or a POST route). */
@@ -439,8 +563,6 @@ export const GOLDEN_FAMILY = {
   timeline: 'timeline',
   claims: 'claim-view',
   tasks: 'tasks',
-  /** `constitution` at the top level, `plan`, `design` and `decisions` per spec; null means 404 `DocMissing`. */
-  docs: 'docs',
   frames: 'frames',
   /**
    * The whole file is the `PlanningModel`, built with a fixed `now` so milestone states hold still; the server
@@ -467,15 +589,9 @@ export const API_ERRORS = [
 ] as const;
 export type ApiError = (typeof API_ERRORS)[number];
 
-/** 404: unknown workspace, spec, doc file or task, or an evidence path that names no file. Never a fallback body. */
+/** 404: unknown workspace, spec, document or task, or an evidence path that names no file. Never a fallback body. */
 export interface NotFound {
   readonly error: 'not-found';
-}
-
-/** 404 on `…/docs/:name` when the file does not exist: which doc, and whether the spec's type has it (`docsFor`). */
-export interface DocMissing extends NotFound {
-  readonly doc: DocName;
-  readonly availability: DocAvailability;
 }
 
 /** 403: a foreign `Host` or cross-site `Origin`, or an evidence path refused as `outside` or `symlink-escape`. */
@@ -528,7 +644,6 @@ export type SpecRouteError<R extends SpecRouteName> =
   | Forbidden
   | MethodNotAllowed
   | Unavailable
-  | (R extends 'docs' ? DocMissing : never)
   | (R extends 'gateReviewed' ? InvalidBody | Conflict<ReviewedHashes> | Locked : never)
   | (R extends 'taskCheck' ? InvalidBody | Conflict<{ readonly tasks: string }> | Locked : never)
   | (R extends 'transition' ? InvalidBody | Conflict<{ readonly spec: string }> | TransitionRefused | Locked : never);

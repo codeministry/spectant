@@ -4,14 +4,16 @@
 // This file is the core half of the ISC-83 probe `bun test tests/evidence.test.ts -t "traversal"`: the `traversal`
 // test below proves the confinement rules on a temp copy of harbor, and the server's route test (T47) joins under
 // `tests/evidence.test.ts` with the same name to prove the 403. The listing runs against harbor 002, whose synthetic
-// `artifacts/` and `.evidence/` come from `core/fixtures/harbor/generate.ts`.
+// `artifacts/` and `.evidence/` come from `core/fixtures/harbor/generate.ts`. The prototype root (spec 017, T19,
+// ISC-159.1) runs on a temp copy of the library fixture: its tests are the core half of
+// `bun test tests/prototype.test.ts -t traversal`.
 import { afterAll, describe, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
 import { cpSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 
-import { listEvidence, resolveEvidencePath } from '../src/evidence.ts';
+import { listEvidence, mediaTypeOf, prototypeMediaTypeOf, resolveEvidencePath, resolvePrototypePath } from '../src/evidence.ts';
 import type { EvidenceFile } from '../src/files.ts';
 import { FIXTURES } from './helpers/read-tree.ts';
 
@@ -254,5 +256,141 @@ describe('resolveEvidencePath', () => {
 
   test('a missing spec folder resolves nothing', async () => {
     expect(await resolveEvidencePath(join(tmpdir(), 'spectant-evidence-no-such-dir'), 'artifacts/x.md')).toEqual({ ok: false, reason: 'not-found' });
+  });
+});
+
+// ─── The prototype root (spec 017, T19, ISC-159.1) ─────────────────────────────────────────────────────────────────
+
+const LIBRARY = join(FIXTURES, 'library');
+
+/** A temp copy of the library fixture; `spec` is 002-tide-board (prototype `board`), `other` 001-lighthouse-map. */
+function libraryCopy(): { root: string; spec: string; other: string } {
+  const root = mkdtempSync(join(tmpdir(), 'spectant-prototype-'));
+  temps.push(root);
+  cpSync(LIBRARY, root, { recursive: true });
+  return { root, spec: join(root, 'specs', '002-tide-board'), other: join(root, 'specs', '001-lighthouse-map') };
+}
+
+describe('resolvePrototypePath', () => {
+  test('traversal: nothing outside the requested folder below the spec own .design/prototype/ resolves, and nothing is written', async () => {
+    const { root, spec, other } = libraryCopy();
+    const board = join(spec, '.design', 'prototype', 'board');
+    // symlinks inside the board folder: up to spec.md, to the sibling code folder, to another spec's prototype page
+    // (absolute), dangling out of the tree, and dangling but inside
+    symlinkSync('../../../spec.md', join(board, 'escape.md'));
+    symlinkSync('../src/main.ts', join(board, 'sibling.ts'));
+    symlinkSync(join(other, '.design', 'prototype', 'index.html'), join(board, 'other.html'));
+    symlinkSync('../../../../../../nowhere.html', join(board, 'dangling.html'));
+    symlinkSync('not-there.css', join(board, 'missing-link.css'));
+    // a folder below .design/prototype/ that is itself a symlink to another spec's prototype
+    symlinkSync(join(other, '.design', 'prototype'), join(spec, '.design', 'prototype', 'alias'));
+    const before = treeHash(root);
+
+    const refused: Array<[string, string, string]> = [
+      // the file tail: decoded once, then lexically clean or refused
+      ['prototype/board', '../index.html', 'outside'],
+      ['prototype/board', 'img/../../src/main.ts', 'outside'],
+      ['prototype/board', '..%2F..%2F..%2Fspec.md', 'outside'],
+      ['prototype/board', '%2e%2e/%2e%2e/%2e%2e/spec.md', 'outside'],
+      ['prototype/board', '%252e%252e/%252e%252e/spec.md', 'outside'],
+      ['prototype/board', 'index%252ehtml', 'outside'],
+      ['prototype/board', 'img/%E0%A4%A', 'outside'],
+      ['prototype/board', join(spec, 'spec.md'), 'outside'],
+      ['prototype/board', join(board, 'index.html'), 'outside'],
+      ['prototype/board', '/etc/passwd', 'outside'],
+      ['prototype/board', 'C:/Windows/win.ini', 'outside'],
+      ['prototype/board', 'img\\..\\..\\spec.md', 'outside'],
+      ['prototype/board', 'index.html\u0000.png', 'outside'],
+      ['prototype/board', 'index.html%00', 'outside'],
+      ['prototype/board', '', 'outside'],
+      // the folder: `prototype` or a canonical path below it, already decoded once by the route
+      ['', 'index.html', 'outside'],
+      ['.', 'prototype/board/index.html', 'outside'],
+      ['..', '002-tide-board/spec.md', 'outside'],
+      ['views', 'index.html', 'outside'],
+      ['prototype-board', 'index.html', 'outside'],
+      ['prototype/..', 'spec.md', 'outside'],
+      ['prototype/../..', 'spec.md', 'outside'],
+      ['prototype/../../../001-lighthouse-map/.design/prototype', 'index.html', 'outside'],
+      ['prototype/./board', 'index.html', 'outside'],
+      ['prototype//board', 'index.html', 'outside'],
+      ['prototype/', 'board/index.html', 'outside'],
+      ['/prototype/board', 'index.html', 'outside'],
+      [join(other, '.design', 'prototype'), 'index.html', 'outside'],
+      ['prototype%2Fboard', 'index.html', 'outside'],
+      ['prototype/%2e%2e', 'spec.md', 'outside'],
+      ['prototype\\board', 'index.html', 'outside'],
+      ['prototype/board\u0000', 'index.html', 'outside'],
+      // symlinks: out of the folder, to a sibling folder, to another spec, dangling out, and a symlinked folder
+      ['prototype/board', 'escape.md', 'symlink-escape'],
+      ['prototype/board', 'sibling.ts', 'symlink-escape'],
+      ['prototype/board', 'other.html', 'symlink-escape'],
+      ['prototype/board', 'dangling.html', 'symlink-escape'],
+      ['prototype/alias', 'index.html', 'symlink-escape'],
+      // absences
+      ['prototype/board', 'missing-link.css', 'not-found'],
+      ['prototype/board', 'nope.html', 'not-found'],
+      ['prototype/nope', 'index.html', 'not-found'],
+      ['prototype/board/index.html', 'x.css', 'not-found'],
+      ['prototype/board', 'img', 'not-a-file'],
+    ];
+    const got = await Promise.all(
+      refused.map(async ([folder, file]) => [folder, file, await resolvePrototypePath(spec, folder, file)] as const),
+    );
+    expect(got.map(([folder, file, r]) => [folder, file, r.ok ? 'ok' : r.reason])).toEqual(refused);
+
+    // the folder's own files, at any depth below it, each relative to the folder
+    const real = realpathSync(board);
+    expect(await resolvePrototypePath(spec, 'prototype/board', 'index.html')).toEqual({ ok: true, absolute: join(real, 'index.html'), path: 'index.html' });
+    expect(await resolvePrototypePath(spec, 'prototype/board', 'img%2Fbadge.png')).toMatchObject({ ok: true, path: 'img/badge.png' });
+    expect(await resolvePrototypePath(spec, 'prototype/board', './styles.css')).toMatchObject({ ok: true, path: 'styles.css' });
+    expect(await resolvePrototypePath(other, 'prototype', 'assets/logo.png')).toMatchObject({ ok: true, path: 'assets/logo.png' });
+    // `prototype` itself is a folder too: everything below .design/prototype/ belongs to it
+    expect(await resolvePrototypePath(spec, 'prototype', 'board/app.js')).toEqual({ ok: true, absolute: join(real, 'app.js'), path: 'board/app.js' });
+
+    expect(treeHash(root)).toBe(before);
+  });
+
+  test('a .design/ or .design/prototype/ that is itself a symlink resolves nothing, even into another spec of the tree', async () => {
+    const { spec, other } = libraryCopy();
+    rmSync(join(other, '.design', 'prototype'), { recursive: true });
+    symlinkSync(join(spec, '.design', 'prototype', 'board'), join(other, '.design', 'prototype'));
+    expect(await resolvePrototypePath(other, 'prototype', 'index.html')).toEqual({ ok: false, reason: 'symlink-escape' });
+    rmSync(join(spec, '.design'), { recursive: true });
+    symlinkSync(join(other, '.design'), join(spec, '.design'));
+    expect(await resolvePrototypePath(spec, 'prototype', 'index.html')).toEqual({ ok: false, reason: 'symlink-escape' });
+  });
+
+  test('a spec folder reached through a symlink still confines to its real path', async () => {
+    const { root, spec } = libraryCopy();
+    const alias = join(root, 'alias-002');
+    symlinkSync(spec, alias);
+    expect(await resolvePrototypePath(alias, 'prototype/board', 'detail.html')).toMatchObject({ ok: true, path: 'detail.html' });
+    expect(await resolvePrototypePath(alias, 'prototype/board', '../../../spec.md')).toEqual({ ok: false, reason: 'outside' });
+    expect(await resolvePrototypePath(join(tmpdir(), 'spectant-prototype-no-such-dir'), 'prototype', 'index.html')).toEqual({ ok: false, reason: 'not-found' });
+  });
+});
+
+describe('prototypeMediaTypeOf', () => {
+  test('a prototype page loads its styles, scripts and fonts with their own types; evidence serving keeps its table', () => {
+    const names = ['styles.css', 'app.js', 'module.mjs', 'index.html', 'page.HTM', 'face.woff', 'face.woff2', 'face.ttf', 'face.otf', 'badge.png', 'logo.svg', 'data.json', 'main.ts', 'blob.bin'];
+    expect(names.map((name) => [name, prototypeMediaTypeOf(name)])).toEqual([
+      ['styles.css', 'text/css'],
+      ['app.js', 'text/javascript'],
+      ['module.mjs', 'text/javascript'],
+      ['index.html', 'text/html'],
+      ['page.HTM', 'text/html'],
+      ['face.woff', 'font/woff'],
+      ['face.woff2', 'font/woff2'],
+      ['face.ttf', 'font/ttf'],
+      ['face.otf', 'font/otf'],
+      ['badge.png', 'image/png'],
+      ['logo.svg', 'image/svg+xml'],
+      ['data.json', 'application/json'],
+      ['main.ts', 'application/octet-stream'],
+      ['blob.bin', 'application/octet-stream'],
+    ]);
+    // the evidence route and the catalog read `mediaTypeOf`, which stays as it was
+    expect(['styles.css', 'app.js', 'face.woff2', 'page.htm'].map(mediaTypeOf)).toEqual(Array<string>(4).fill('application/octet-stream'));
   });
 });

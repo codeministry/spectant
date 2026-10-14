@@ -6,9 +6,9 @@
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { Locator } from '@playwright/test';
+import type { APIRequestContext, Locator, Page } from '@playwright/test';
 import type { Diagnostic } from '../../core/src/diagnostics.ts';
-import type { SpecPageModel } from '../../core/src/files.ts';
+import type { LibraryCatalog, LibraryDoc, SpecPageModel } from '../../core/src/files.ts';
 import { atWidth, expect, test, headerControl } from './fixtures';
 
 const GOLDEN = fileURLToPath(new URL('../../core/fixtures/harbor.spec.golden.json', import.meta.url));
@@ -37,8 +37,9 @@ for (const { width, tier } of TIERS) {
       await expect(trigger).toContainText('Data');
 
       const tabs = page.locator('app-tab-bar a');
-      await expect(tabs).toHaveCount(3);
-      expect(await tabs.evaluateAll((links) => links.map((link) => link.getAttribute('data-tab')))).toEqual(['claims', 'tasks', 'evidence']);
+      // Spec 017 (T45, ISC-158): Data holds exactly Claims and Tasks; the evidence is in the Library area.
+      await expect(tabs).toHaveCount(2);
+      expect(await tabs.evaluateAll((links) => links.map((link) => link.getAttribute('data-tab')))).toEqual(['claims', 'tasks']);
       await expect(page.locator('app-tab-bar a[aria-current="page"]')).toHaveAttribute('data-tab', 'claims');
       await expect(page.locator('app-tab-bar [data-count="claims"]')).toHaveText(`${String(claims.closed)}/${String(claims.total)}`);
       if (tasks) await expect(page.locator('app-tab-bar [data-count="tasks"]')).toHaveText(`${String(tasks.landed)}/${String(tasks.total)}`);
@@ -88,8 +89,8 @@ for (const { width, tier } of TIERS) {
       // spec 024: one-row header, overflow menu below 1120 (principal 2026-10-13)
       await expect(page.locator('header [data-control="area"]')).toHaveAttribute('aria-label', 'Area: Data');
 
-      await page.locator('app-tab-bar a[data-tab="evidence"]').click();
-      await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/evidence$/);
+      await page.locator('app-tab-bar a[data-tab="claims"]').click();
+      await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/claims$/);
       await page.goBack();
       await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/tasks$/);
       await expect(page.locator('app-tab-bar a[aria-current="page"]')).toHaveAttribute('data-tab', 'tasks');
@@ -107,7 +108,8 @@ const AREA_TILES = [
   ['status', `${DASHBOARD_BASE}/status`],
   ['live', `${DASHBOARD_BASE}/board`],
   ['data', `${DASHBOARD_BASE}/claims`],
-  ['docs', `${DASHBOARD_BASE}/plan`],
+  // Spec 017 (T45, ISC-158): the Library tile where the Docs tile stood.
+  ['library', `${DASHBOARD_BASE}/library`],
   ['notes', `${DASHBOARD_BASE}/notes`],
 ] as const;
 
@@ -239,4 +241,401 @@ test.describe('priority warning', () => {
     await page.goto('/w/harbor');
     await expectPriorityChip(page.locator(ROW_PRIORITY('005')), 'P3', 'row 005 beside its warning');
   });
+});
+
+// ── T47: the spec area Library (spec 017, ISC-158) ─────────────────────────────────────────────────────────────
+
+/**
+ * `bun run e2e -- spec -g library`. The spec page's areas are exactly Dashboard · Status · Live · Data · Library · Notes,
+ * Data holds exactly Claims and Tasks, and `/w/:ws/s/:id/library` is the workspace Library's component
+ * (`app-library-page`, `data-scope="spec"`) narrowed to the spec: its rows are the spec's catalog documents, its missing
+ * entries and its evidence subgroup included, plus the workspace's constitution, nothing else; the one tab Documents
+ * counts them; the control counts are the spec's own; no rail, no spec select, no group head, and the reader leaves
+ * "Open in spec" out. Every expected value comes from the stub's library route (`STUB_LIBRARY` on harbor) and
+ * `src/i18n/en.json`, never a literal count. The three specs cover an evidence subgroup (002), a missing entry (003)
+ * and a stale one (004); a test checks the fixture holds each before the others rely on it.
+ */
+const EN = JSON.parse(readFileSync(new URL('../src/i18n/en.json', import.meta.url), 'utf8')) as {
+  shell: { areas: Record<string, string>; tabs: Record<string, string> };
+};
+const AREA_ORDER = ['dashboard', 'status', 'live', 'data', 'library', 'notes'] as const;
+const LIBRARY_ROUTE = '/api/workspaces/harbor/library';
+const LIBRARY_ENTRY = 'app-library-page [data-library-entry]';
+const LIBRARY_SPECS = ['002', '003', '004'] as const;
+
+/** The group key of a catalog document: the spec folder's number, `workspace` as it is. */
+const libraryKey = (spec: string): string => /^(\d+)-/u.exec(spec)?.[1] ?? spec;
+
+/** The documents the spec area Library of `id` must list: the spec's own, then the workspace's constitution. */
+async function specLibraryDocs(request: APIRequestContext, id: string): Promise<{ own: LibraryDoc[]; expected: LibraryDoc[] }> {
+  const answer = await request.get(LIBRARY_ROUTE);
+  expect(answer.status()).toBe(200);
+  const catalog = (await answer.json()) as LibraryCatalog;
+  const own = catalog.docs.filter((doc) => doc.spec !== 'workspace' && libraryKey(doc.spec) === id);
+  const constitution = catalog.docs.filter((doc) => doc.spec === 'workspace' && doc.type === 'constitution');
+  expect(own.length, `harbor ${id} has catalog documents`).toBeGreaterThan(0);
+  expect(constitution, 'harbor has exactly one constitution').toHaveLength(1);
+  return { own, expected: [...own, ...constitution] };
+}
+
+/** Every row the spec area Library draws: path, spec, state, and whether it stands in an evidence subgroup. */
+const libraryRows = (page: Page) =>
+  page.locator(LIBRARY_ENTRY).evaluateAll((els) =>
+    els.map((el) => ({
+      path: el.getAttribute('data-library-entry'),
+      spec: el.getAttribute('data-spec'),
+      state: el.getAttribute('data-state'),
+      evidence: el.closest('[data-library-evidence]') !== null,
+    })),
+  );
+
+const byPathOf = <T extends { path: string | null }>(list: readonly T[]): T[] => [...list].sort((a, b) => (a.path ?? '').localeCompare(b.path ?? ''));
+
+test.describe('spec area library', () => {
+  test.describe('at 1440', () => {
+    test.use(atWidth(1440));
+
+    test('library: the fixture covers an evidence subgroup, a missing and a stale entry across the probed specs', async ({ request }) => {
+      const owns = await Promise.all(LIBRARY_SPECS.map(async (id) => (await specLibraryDocs(request, id)).own));
+      const all = owns.flat();
+      expect(all.filter((doc) => doc.type === 'evidence').length, 'an evidence subgroup').toBeGreaterThan(0);
+      expect(all.filter((doc) => doc.state === 'missing').length, 'a missing entry').toBeGreaterThan(0);
+      expect(all.filter((doc) => doc.state === 'stale').length, 'a stale entry').toBeGreaterThan(0);
+    });
+
+    for (const id of LIBRARY_SPECS) {
+      test(`library: ${id} lists exactly its own documents plus the constitution, counted in the tab and the controls, no rail`, async ({
+        page,
+        request,
+      }) => {
+        const { own, expected } = await specLibraryDocs(request, id);
+        const evidence = own.filter((doc) => doc.type === 'evidence');
+
+        const answered = page.waitForResponse((r) => new URL(r.url()).pathname === LIBRARY_ROUTE && r.request().method() === 'GET');
+        await page.goto(`/w/harbor/s/${id}/library`);
+        expect((await answered).status()).toBe(200);
+
+        // The workspace Library's own component, in spec scope, without a rail, a spec select or a group head.
+        const library = page.locator('app-library-page');
+        await expect(library).toHaveAttribute('data-scope', 'spec');
+        await expect(page.locator('app-shell')).toHaveAttribute('data-no-rail', '');
+        await expect(page.locator('aside.shell-rail')).toHaveCount(0);
+        await expect(library.locator('[data-library-spec]')).toHaveCount(0);
+        await expect(library.locator('[data-library-group-head]')).toHaveCount(0);
+
+        // The tab bar: the eyebrow Library and one tab, Documents, current, with the count of the listed documents.
+        await expect(page.locator('app-tab-bar [data-area-eyebrow]')).toHaveText(EN.shell.areas['library'] ?? '');
+        const tabs = page.locator('app-tab-bar a');
+        await expect(tabs).toHaveCount(1);
+        await expect(tabs.first()).toHaveAttribute('data-tab', 'library');
+        await expect(tabs.first()).toHaveAttribute('aria-current', 'page');
+        await expect(tabs.first()).toContainText(EN.shell.tabs['library'] ?? '');
+        await expect(page.locator('app-tab-bar [data-count="library"]')).toHaveText(String(expected.length));
+
+        // The control counts are the spec's own missing and stale documents (the constitution is outside them).
+        for (const key of ['missing', 'stale'] as const) {
+          const count = own.filter((doc) => doc.state === key).length;
+          await expect(library.locator(`[data-library-control="${key}"] [data-library-control-count]`), key).toHaveText(String(count));
+        }
+
+        // The spec's group first, the workspace-wide one (the constitution) after it.
+        const groups = library.locator('[data-library-group]');
+        await expect(groups).toHaveCount(2);
+        expect(await groups.evaluateAll((els) => els.map((el) => el.getAttribute('data-library-group')))).toEqual([id, 'workspace']);
+
+        // The evidence subgroup, collapsed with its count, then opened block by block until every document stands.
+        const subgroup = library.locator(`[data-library-evidence="${id}"]`);
+        await expect(subgroup).toHaveCount(evidence.length === 0 ? 0 : 1);
+        if (evidence.length > 0) {
+          await expect(subgroup.locator('[data-library-evidence-count]')).toHaveText(String(evidence.length));
+          const toggle = subgroup.locator('[data-library-evidence-toggle]');
+          await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+          await expect(page.locator(LIBRARY_ENTRY)).toHaveCount(expected.length - evidence.length);
+          await toggle.click();
+          await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+          const more = subgroup.locator('[data-library-evidence-more]');
+          while ((await more.count()) > 0) {
+            const before = await subgroup.locator('[data-library-entry]').count();
+            await more.click();
+            await expect(subgroup.locator('[data-library-entry]')).not.toHaveCount(before);
+          }
+          await expect(subgroup.locator('[data-library-entry]')).toHaveCount(evidence.length);
+        }
+
+        // Exactly the spec's documents plus the constitution, each once, with its spec and state.
+        await expect(page.locator(LIBRARY_ENTRY)).toHaveCount(expected.length);
+        expect(byPathOf(await libraryRows(page))).toEqual(
+          byPathOf(expected.map((doc) => ({ path: doc.path, spec: doc.spec, state: doc.state, evidence: doc.type === 'evidence' }))),
+        );
+        for (const doc of own.filter((d) => d.state !== 'ok')) {
+          await expect(library.locator(`[data-library-entry="${doc.path}"] [data-library-chip="${doc.state}"]`), doc.path).toHaveCount(1);
+        }
+
+        // At wide the first document opens in the reader, in the spec context: no "Open in spec".
+        const reader = library.locator('[data-library-reader]');
+        await expect(reader).toHaveAttribute('data-context', 'spec');
+        await expect(reader.locator('[data-library-open]')).toHaveCount(0);
+      });
+    }
+
+    test('library: a spec document offers "Open in spec" in the workspace Library, not in the spec area', async ({ page, request }) => {
+      const { own } = await specLibraryDocs(request, '002');
+      const doc = own.find((d) => d.type === 'spec');
+      if (doc === undefined) throw new Error('spec.spec: harbor 002 has no spec.md in the catalog');
+
+      await page.goto(`/w/harbor/library#${doc.path}`);
+      await expect(page.locator('[data-library-reader]')).toHaveAttribute('data-context', 'workspace');
+      await expect(page.locator('[data-library-reader] [data-library-open]')).toHaveCount(1);
+
+      await page.goto(`/w/harbor/s/002/library#${doc.path}`);
+      await expect(page.locator('app-library-page')).toHaveAttribute('data-scope', 'spec');
+      await expect(page.locator('[data-library-reader]')).toHaveAttribute('data-context', 'spec');
+      await expect(page.locator('[data-library-reader]')).toBeVisible();
+      await expect(page.locator('[data-library-reader] [data-library-open]')).toHaveCount(0);
+    });
+  });
+
+  for (const width of [390, 1440] as const) {
+    test.describe(`area menu at ${String(width)}`, () => {
+      test.use(atWidth(width));
+
+      test('library: the areas are exactly Dashboard · Status · Live · Data · Library · Notes, Library current; Data opens Claims and Tasks', async ({
+        page,
+      }) => {
+        await page.goto('/w/harbor/s/002/library');
+        await expect(page.locator('app-library-page')).toHaveAttribute('data-scope', 'spec');
+        await expect(page.locator('header [data-control="area"]')).toHaveAttribute('aria-label', `Area: ${EN.shell.areas['library'] ?? ''}`);
+
+        await (await headerControl(page, 'area')).click();
+        const menu = page.getByRole('navigation', { name: 'Areas' });
+        await expect(menu).toBeVisible();
+        const entries = menu.locator('[data-area]');
+        await expect(entries).toHaveCount(AREA_ORDER.length);
+        expect(await entries.evaluateAll((els) => els.map((el) => el.getAttribute('data-area')))).toEqual([...AREA_ORDER]);
+        await expect(entries.locator('.entry-name')).toHaveText(AREA_ORDER.map((area) => EN.shell.areas[area] ?? ''));
+        await expect(menu.locator('[aria-current="page"]')).toHaveCount(1);
+        await expect(menu.locator('[aria-current="page"]')).toHaveAttribute('data-area', 'library');
+        await expect(menu.locator('[data-area="library"]')).toHaveAttribute('href', '/w/harbor/s/002/library');
+        await expect(menu.locator('[data-area="data"]')).toHaveAttribute('href', '/w/harbor/s/002/claims');
+        await expect(menu.locator('[data-area][aria-disabled]')).toHaveCount(0);
+        if (width === 390) {
+          // The compact sheet lists each area's tabs: Data exactly Claims and Tasks, Library its one tab Documents.
+          await expect(menu.locator('[data-area="data"] .tab-list > span')).toHaveText([EN.shell.tabs['claims'] ?? '', EN.shell.tabs['tasks'] ?? '']);
+          await expect(menu.locator('[data-area="library"] .tab-list > span')).toHaveText([EN.shell.tabs['library'] ?? '']);
+        }
+
+        await menu.locator('[data-area="data"]').click();
+        await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/claims$/u);
+        const tabs = page.locator('app-tab-bar a');
+        await expect(tabs).toHaveCount(2);
+        expect(await tabs.evaluateAll((links) => links.map((link) => link.getAttribute('data-tab')))).toEqual(['claims', 'tasks']);
+        await expect(page.locator('app-library-page')).toHaveCount(0);
+        if (width === 1440) await expect(page.locator('aside.shell-rail')).toHaveCount(1);
+      });
+    });
+  }
+});
+
+/*
+ * Group `deep link` of spec 017 (T49, ISC-158.1): the former Docs and Evidence addresses of a spec land in its Library
+ * area. `bun run e2e -- spec -g "deep link"` is the claim's probe (it also runs ISC-76's three tests above).
+ * - Each former address `/w/harbor/s/<id>/<tab>` (plan, design, decisions, constitution, evidence) and the former Docs
+ *   area (`docs`, any path below it) lands on `/w/harbor/s/<id>/library` with exactly the selection written out in
+ *   `formerTargets` (not read from the app): plan and design open that document of the spec (its catalog path as
+ *   fragment, no `?doc=` left over), decisions the spec.md at its `## Decisions` section (`?section=decisions`, the
+ *   heading in view and focused), constitution the workspace's constitution, evidence the list filtered to evidence
+ *   (`?type=evidence`, the evidence subgroup open), `docs` the plain Library area. A kind the spec has no document of
+ *   (002 has no design.md) lands on the plain Library area with `?doc=` dropped.
+ * - Each is checked twice, by a direct load and by an in-app navigation without a page load (a history push the router
+ *   follows); either way one step back lands on the spec dashboard, never on the old address.
+ * - `g o`, the former Docs area's sequence, opens the Library area of the spec; no former Docs tab stands in the bar,
+ *   and the shortcut sheet lists no binding for one.
+ * Specs 002 (an evidence subgroup, no design.md) and 004 (a design.md, no evidence). The CLI's `-g` ignores case, so
+ * `-g library` runs these tests too.
+ */
+const DEEP_EN = JSON.parse(readFileSync(new URL('../src/i18n/en.json', import.meta.url), 'utf8')) as {
+  library: { types: Readonly<Record<string, string>>; filters: { all: string } };
+};
+const FORMER_TABS = ['plan', 'design', 'decisions', 'constitution', 'evidence'] as const;
+const FORMER_PATHS = [...FORMER_TABS, 'docs', 'docs/plan'] as const;
+type FormerPath = (typeof FORMER_PATHS)[number];
+
+type FormerLanding =
+  | { readonly kind: 'doc'; readonly doc: LibraryDoc; readonly decisions: boolean }
+  | { readonly kind: 'evidence'; readonly evidence: readonly LibraryDoc[] }
+  | { readonly kind: 'plain' };
+
+interface FormerTarget {
+  readonly query: Readonly<Record<string, string>>;
+  /** The fragment without `#`; `''` for none. */
+  readonly hash: string;
+  readonly landing: FormerLanding;
+}
+
+/** design.md 017 § Umleitungen, as T48 landed them: where each former address of spec `id` leads. */
+async function formerTargets(request: APIRequestContext, id: string): Promise<Record<FormerPath, FormerTarget>> {
+  const answer = await request.get(LIBRARY_ROUTE);
+  expect(answer.status()).toBe(200);
+  const catalog = (await answer.json()) as LibraryCatalog;
+  const own = catalog.docs.filter((doc) => doc.spec !== 'workspace' && libraryKey(doc.spec) === id);
+  const folder = own[0]?.spec;
+  if (folder === undefined) throw new Error(`spec.spec: harbor ${id} has no catalog documents`);
+  const byPath = (path: string): LibraryDoc | undefined => catalog.docs.find((doc) => doc.path === path);
+  const plain: FormerTarget = { query: {}, hash: '', landing: { kind: 'plain' } };
+  const ofKind = (kind: 'plan' | 'design'): FormerTarget => {
+    const doc = byPath(`${folder}/${kind}.md`);
+    return doc === undefined ? plain : { query: {}, hash: doc.path, landing: { kind: 'doc', doc, decisions: false } };
+  };
+  const spec = byPath(`${folder}/spec.md`);
+  const constitution = byPath('constitution.md');
+  if (spec === undefined || constitution === undefined) throw new Error(`spec.spec: harbor ${id} lacks spec.md or the constitution`);
+  return {
+    plan: ofKind('plan'),
+    design: ofKind('design'),
+    decisions: { query: { section: 'decisions' }, hash: spec.path, landing: { kind: 'doc', doc: spec, decisions: true } },
+    constitution: { query: {}, hash: constitution.path, landing: { kind: 'doc', doc: constitution, decisions: false } },
+    evidence: { query: { type: 'evidence' }, hash: '', landing: { kind: 'evidence', evidence: own.filter((doc) => doc.type === 'evidence') } },
+    docs: plain,
+    'docs/plan': plain,
+  };
+}
+
+test.describe('deep link of a former Docs or Evidence address', () => {
+  test.use(atWidth(1440));
+
+  const MARK = 'spectantE2eNoReload';
+  const READER = 'app-library-page [data-library-reader]';
+
+  /** The spec dashboard, rendered: where every navigation below starts and every step back returns to. */
+  async function atDashboard(page: Page, id: string): Promise<void> {
+    await page.goto(`/w/harbor/s/${id}`);
+    await expect(page.locator('app-spec-dashboard')).toBeVisible();
+  }
+
+  /** An in-app navigation to `path`: a history push the router follows, with no page load (the mark survives it). */
+  async function navigateInApp(page: Page, path: string): Promise<void> {
+    await page.evaluate(
+      ({ target, mark }) => {
+        (window as unknown as Record<string, unknown>)[mark] = true;
+        history.pushState(null, '', target);
+        dispatchEvent(new PopStateEvent('popstate', { state: null }));
+      },
+      { target: path, mark: MARK },
+    );
+  }
+
+  const noReload = (page: Page): Promise<unknown> => page.evaluate((mark) => (window as unknown as Record<string, unknown>)[mark], MARK);
+
+  async function expectLanding(page: Page, id: string, from: FormerPath, target: FormerTarget): Promise<void> {
+    const what = `/w/harbor/s/${id}/${from}`;
+    await expect(page.locator('app-library-page'), what).toHaveAttribute('data-scope', 'spec');
+    await expect(page, what).toHaveURL((url) => url.pathname === `/w/harbor/s/${id}/library` && !url.searchParams.has('doc'));
+    const url = new URL(page.url());
+    expect(Object.fromEntries(url.searchParams), `query of ${what}`).toEqual(target.query);
+    expect(url.hash, `fragment of ${what}`).toBe(target.hash === '' ? '' : `#${target.hash}`);
+
+    const current = page.locator(`${LIBRARY_ENTRY}[aria-current="true"]`);
+    const landing = target.landing;
+    switch (landing.kind) {
+      case 'doc': {
+        await expect(current, what).toHaveCount(1);
+        await expect(current, what).toHaveAttribute('data-library-entry', landing.doc.path);
+        await expect(page.locator(`${READER} .lib-reader-title`), what).toHaveText(landing.doc.title);
+        await expect(page.locator(`${READER} .lib-file`), what).toHaveText(`specs/${landing.doc.path}`);
+        if (landing.decisions) {
+          const heading = page.locator(`${READER} .docs-prose h2`).filter({ hasText: /^\s*Decisions\s*$/u });
+          await expect(heading, what).toHaveCount(1);
+          await expect(heading, what).toBeFocused();
+          await expect(heading, what).toBeInViewport();
+        }
+        break;
+      }
+      case 'evidence': {
+        const pill = page.locator('app-library-page [data-library-types]').getByRole('button', { name: DEEP_EN.library.types['evidence'] ?? '', exact: true });
+        if (landing.evidence.length === 0) {
+          // A spec without evidence (004): the filter names it all the same and lists nothing; no pill to press.
+          await expect(page.locator('app-library-page [data-library-types]'), what).toBeVisible();
+          await expect(pill, what).toHaveCount(0);
+          await expect(page.locator(LIBRARY_ENTRY), what).toHaveCount(0);
+          break;
+        }
+        await expect(pill, what).toHaveAttribute('aria-pressed', 'true');
+        const subgroup = page.locator(`app-library-page [data-library-evidence="${id}"]`);
+        await expect(subgroup.locator('[data-library-evidence-toggle]'), what).toHaveAttribute('aria-expanded', 'true');
+        await expect(subgroup.locator('[data-library-evidence-count]'), what).toHaveText(String(landing.evidence.length));
+        await expect(subgroup.locator('[data-library-entry]').first(), what).toBeVisible();
+        const rows = await libraryRows(page);
+        expect(rows.length, what).toBeGreaterThan(0);
+        const evidencePaths = new Set(landing.evidence.map((doc) => doc.path));
+        for (const row of rows) {
+          expect(row.evidence, `${what}: ${row.path ?? ''} stands in the evidence subgroup`).toBe(true);
+          expect(evidencePaths.has(row.path ?? ''), `${what}: ${row.path ?? ''} is evidence`).toBe(true);
+        }
+        break;
+      }
+      case 'plain': {
+        // Nothing named: the list unfiltered, and at this width the reader shows the first row, as on any plain visit.
+        const first = page.locator(LIBRARY_ENTRY).first();
+        await expect(first, what).toBeVisible();
+        await expect(current, what).toHaveCount(1);
+        await expect(current, what).toHaveAttribute('data-library-entry', (await first.getAttribute('data-library-entry')) ?? '');
+        // No type filter: the pill "All" is the pressed one.
+        await expect(page.locator('app-library-page [data-library-types] [aria-pressed="true"]'), what).toHaveText(DEEP_EN.library.filters.all);
+        break;
+      }
+    }
+  }
+
+  /** One step back lands on the spec dashboard and stays there: the old address was no history entry of its own. */
+  async function expectBackToDashboard(page: Page, id: string, from: FormerPath): Promise<void> {
+    await page.goBack();
+    await expect(page, `back from ${from}`).toHaveURL((url) => url.pathname === `/w/harbor/s/${id}` && url.search === '' && url.hash === '');
+    await expect(page.locator('app-spec-dashboard')).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe(`/w/harbor/s/${id}`);
+  }
+
+  for (const id of ['002', '004'] as const) {
+    for (const from of FORMER_PATHS) {
+      test(`${id}/${from} by a direct load lands in the Library area with its selection, and back skips it`, async ({ page, request }) => {
+        const target = (await formerTargets(request, id))[from];
+        await atDashboard(page, id);
+        await page.goto(`/w/harbor/s/${id}/${from}`);
+        await expectLanding(page, id, from, target);
+        await expectBackToDashboard(page, id, from);
+      });
+
+      test(`${id}/${from} by an in-app navigation lands in the Library area with its selection, and back skips it`, async ({ page, request }) => {
+        const target = (await formerTargets(request, id))[from];
+        await atDashboard(page, id);
+        await navigateInApp(page, `/w/harbor/s/${id}/${from}`);
+        await expectLanding(page, id, from, target);
+        expect(await noReload(page), 'no page load').toBe(true);
+        await expectBackToDashboard(page, id, from);
+        expect(await noReload(page), 'no page load').toBe(true);
+      });
+    }
+
+    test(`${id}: g o, the former Docs sequence, opens the Library area; no former Docs tab or binding is left`, async ({ page }) => {
+      await page.goto(`/w/harbor/s/${id}/status`);
+      await expect(page.locator('app-tab-bar a[aria-current="page"]')).toHaveAttribute('data-tab', 'status');
+
+      await page.keyboard.press('?');
+      const sheet = page.locator('app-shortcut-sheet dialog');
+      await expect(sheet).toBeVisible();
+      await expect(sheet.locator('[data-context="spec"] [data-binding="go-area-library"] kbd')).toHaveText(['g', 'o']);
+      for (const tab of FORMER_TABS) await expect(sheet.locator(`[data-binding="go-tab-${tab}"]`), tab).toHaveCount(0);
+      await expect(sheet.locator('[data-binding="go-docs"]')).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await expect(sheet).toBeHidden();
+
+      await page.keyboard.press('g');
+      await page.keyboard.press('o');
+      await expect(page).toHaveURL((url) => url.pathname === `/w/harbor/s/${id}/library` && url.search === '' && url.hash === '');
+      await expect(page.locator('app-library-page')).toHaveAttribute('data-scope', 'spec');
+      const tabs = page.locator('app-tab-bar a');
+      await expect(tabs).toHaveCount(1);
+      await expect(tabs.first()).toHaveAttribute('data-tab', 'library');
+      for (const tab of FORMER_TABS) await expect(page.locator(`app-tab-bar [data-tab="${tab}"]`), tab).toHaveCount(0);
+    });
+  }
 });

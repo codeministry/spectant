@@ -125,4 +125,9 @@ export const ICON_NAMES = [
   'rotate-ccw',
   // Spec 024: the unheld claim line of the Features page (prototype `claim-line`).
   'circle',
+  // Spec 017: the library's type tags (design.md § Viewport-übergreifend): design and prototype.
+  'palette',
+  'app-window',
+  // Spec 017: the library's missing documents (design.md § Viewport-übergreifend: control count, chip, reader).
+  'file-x',
 ] as const;

@@ -55,15 +55,34 @@
  * (400, 404 unknown story, 409 stale story, 422 refused, 200). The lock source is `options.lifeos`'s, as on the reads;
  * the clock is `options.now`.
  *
- * The tech page (spec 023, ISC-134.1): `GET`/`HEAD /api/workspaces/:ws/tech` → `TechModel`, matched by the same
- * `matchWorkspacePath` with the planning route's guard order and statuses. It reads the workspace as the planning route
- * does (`readWorkspaceInput`), then `specs/tech.md` (absent: `tech` undefined, so `pages: null`), and answers
- * core's `readTech` over that text and the active spec folders as it is. An image tech.md names counts as present only
- * when it is a regular file whose real path stays under the real `specs/` (existence only, never a read or a write).
- * Its asset route `techAsset` (T7, ISC-134.3), `GET`/`HEAD …/tech/asset?path=` relative to `specs/`, is the evidence
- * file route (`evidence.ts`) with the workspace's `specs/` as the root: the same once-decoded resolver, every file below
- * the real `specs/` reachable, images only. 200 with the bytes and the evidence headers (ETag, 304), 403 for `..`, a
- * second encoding, an absolute path, a symlink out or another media type, 404 for a missing file or workspace.
+ * The library catalog (spec 017 T15, ISC-156): `GET`/`HEAD /api/workspaces/:ws/library` → `LibraryCatalog`, matched by
+ * the same `matchWorkspacePath` with the planning route's guard order and statuses (403, 405 with `allowForWorkspace`,
+ * 404 unknown workspace, 409 with the summary when the folder cannot be read). It answers core's `readCatalog` through
+ * `loadCatalog` (`workspace-loader.ts`) as it is: metadata only (path, type, spec, title, modified, state), never a
+ * document's content and never an absolute path, since every catalog path is relative to `specs/`. Nothing is cached;
+ * the ETag is `json()`'s body hash and each entry carries its mtime, so any change to a document is a new tag. The
+ * catalog is read over the dashboard's own input (`readWorkspaceInput`, LifeOS locks under `options.lifeos`), so a
+ * group head's stage equals the dashboard row's, a fresh code-reviewed mark included.
+ *
+ * The reader and the search (spec 017 T17, T18, ISC-156.2, ISC-156.3), with the same guard order and statuses, read the
+ * catalog's documents alone (`loadCatalogDocs`, no git call). A document is one the catalog lists as Markdown and not
+ * `missing`; its file is reached only by its listed path, through core's `resolveEvidencePath` with `specs/` as the
+ * root (`reach: 'tree'`), so a request never names a file and a symlink out of `specs/` is never read.
+ * - `libraryDoc`, `GET …/library/doc?path=` (the raw query value, decoded once): the document rendered as its Docs tab
+ *   renders it, `renderDocsMarkdown` with `docsRenderOptions` (the constitution's and the Design tab's own options by
+ *   type, else a plain page), so relative images confined to the workspace and `.design/` assets resolve as on a Docs
+ *   tab. 404 for any path the catalog does not list as such a document, never a read of the path.
+ * - `librarySearch`, `GET …/library/search?q=`: the trimmed query, case-insensitive, over each document's rendered page
+ *   as plain text, else its title; hits in catalog order, the snippet 40 characters before the first match and 60
+ *   after with an ellipsis where cut, or the title for a title-only match. A blank `q` is `{query: '', hits: []}`,
+ *   never 400. The plain texts are cached in memory per workspace by catalog path, size and mtime; a search keeps only
+ *   the entries of the catalog it read.
+ * - `libraryAsset`, `GET …/library/asset?path=`: one image below `specs/`, the evidence file route (`evidence.ts`) with
+ *   the workspace's `specs/` as the root: the same once-decoded resolver, every file below the real `specs/` reachable,
+ *   images only. 200 with the bytes and the evidence headers (ETag, 304), 403 for `..`, a second encoding, an absolute
+ *   path, a symlink out or another media type, 404 for a missing file or workspace.
+ * The tech page's routes (`…/tech`, `…/tech/asset`) went with spec 017 T51: the library replaces them (ISC-157.1),
+ * and a request to either is the unmatched API path's 404.
  *
  * Lock sources (T51, ISC-37): both routes read the repository's `.spectant/activity.jsonl`, and the LifeOS frontier
  * locks only when `options.lifeos` is present, so the counts in the list and the dashboard agree.
@@ -72,18 +91,17 @@
  * the unreadable codes replace OS messages, which would name the path.
  */
 import type { Database } from "bun:sqlite";
-import { realpathSync, statSync } from "node:fs";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { parseActor } from "../../core/src/actor.ts";
 import { allocateAnswer } from "./allocate-route.ts";
 import { type DashboardKpis, buildDashboard } from "../../core/src/dashboard.ts";
-import { docsRenderOptions } from "../../core/src/evidence.ts";
-import { repoFilePath, specFilePath } from "../../core/src/files.ts";
+import { docsRenderOptions, resolveEvidencePath } from "../../core/src/evidence.ts";
+import { type DocName, type DocsPage, type LibraryDoc, repoFilePath, specFilePath } from "../../core/src/files.ts";
 import { readIdeas } from "../../core/src/ideas.ts";
 import { renderDocsMarkdown } from "../../core/src/markdown-docs.ts";
 import { type PlanningSpecState, buildPlanning } from "../../core/src/planning.ts";
 import { listSpecs } from "../../core/src/resolve.ts";
-import { readTech } from "../../core/src/tech.ts";
 import { getBoardQuery, listActors, replaceActors, setBoardQuery } from "./db.ts";
 import { evidenceFileResponse } from "./evidence.ts";
 import type { ApiHandler } from "./http.ts";
@@ -96,21 +114,25 @@ import {
   ACTORS_ALLOW,
   ACTORS_PATH,
   type ActorsResponse,
+  type LibrarySearchHit,
   type WorkspaceRouteResponses,
   allowForWorkspace,
+  evidencePathQuery,
   isActorMappings,
   isBoardQuery,
   matchWorkspacePath,
 } from "./spec-routes.contract.ts";
 import {
+  type CatalogLoad,
   type DashboardLoad,
   type ServicesProbe,
   type UnreadableCode,
   type WorkspaceReading,
+  loadCatalog,
+  loadCatalogDocs,
   loadDashboard,
   readBytesIfExists,
   readIdeaFiles,
-  readIfExists,
   readWorkspaceInput,
   unreadableCode,
   workspaceUnreadable,
@@ -122,6 +144,43 @@ export const WORKSPACES_PATH = "/api/workspaces";
 
 const DASHBOARD_PATH = /^\/api\/workspaces\/([^/]+)\/dashboard$/;
 const ALLOW = "GET, HEAD";
+
+/** Characters of plain text a search snippet keeps before and after the match (spec 017, as the e2e stub cuts it). */
+const SNIPPET_BEFORE = 40;
+const SNIPPET_AFTER = 60;
+
+const ENTITY: Readonly<Record<string, string>> = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'" };
+
+/**
+ * A rendered page as plain text: tags dropped, the five entities the renderer writes decoded, whitespace collapsed.
+ * The renderer escapes every text and emits only its own tags, so this is its exact text, never a parse of the file.
+ */
+function plainTextOf(page: DocsPage): string {
+  return page.html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&(?:amp|lt|gt|quot|#39);/g, (entity) => ENTITY[entity] ?? " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** The plain text around a match at `at`: 40 characters before it and 60 after, an ellipsis where the text is cut. */
+function snippetAt(text: string, at: number, length: number): string {
+  const start = Math.max(0, at - SNIPPET_BEFORE);
+  const end = Math.min(text.length, at + length + SNIPPET_AFTER);
+  return `${start > 0 ? "…" : ""}${text.slice(start, end).trim()}${end < text.length ? "…" : ""}`;
+}
+
+/** A catalog document the reader and the search read: Markdown, and a file that exists (not `missing`). */
+const isReadableDoc = (doc: LibraryDoc): boolean => doc.media === "markdown" && doc.state !== "missing";
+
+/** The Docs tab a catalog document renders as: the constitution's and the Design tab's own options, else a plain page. */
+const docNameOf = (type: LibraryDoc["type"]): DocName => (type === "constitution" ? "constitution" : type === "design" ? "design" : "plan");
+
+/** A catalog path (decoded, `/`-separated) as the raw query value core's resolver decodes once. */
+const rawPathOf = (path: string): string => path.split("/").map(encodeURIComponent).join("/");
+
+/** One document's search text with the file version it was taken from; a changed size or mtime renders it again. */
+type SearchText = { readonly mtimeMs: number; readonly size: number; readonly text: string };
 
 /** One entry of `GET /api/workspaces`, and the body of a 409 dashboard answer. */
 export type WorkspaceSummary = {
@@ -145,6 +204,12 @@ export type DashboardApiOptions = {
    * starts from. Whoever injects `loadWorkspace` injects this too, so both workspace routes answer from one source.
    */
   readWorkspace?: (root: string) => Promise<WorkspaceReading>;
+  /**
+   * Reads one workspace's document catalog for the library routes (spec 017 T15, T17, T18): `loadCatalog` by default
+   * for the catalog (the dashboard's input, so the heads' stages agree), `loadCatalogDocs` for the reader and the
+   * search, which need the documents alone. An injected loader answers all three.
+   */
+  loadCatalog?: (root: string, lifeosStateDir?: string | null) => Promise<CatalogLoad>;
   /** Probes the local listeners for the dashboard route; `listServices` (lsof) by default. */
   services?: ServicesProbe;
   /**
@@ -234,42 +299,6 @@ function specStatesOf(root: string, reading: Extract<WorkspaceReading, { readabl
   });
 }
 
-/**
- * Whether an image tech.md names exists: a regular file whose real path stays under the real `specs/` of `root`, its
- * `src` taken as written and decoded once (as the browser would request it). Existence only, `realpath` and `stat`:
- * never a read, never a write. core already flags a `src` that leaves `specs/` lexically; this adds the symlink check.
- */
-function specsAssetExists(root: string): (src: string) => boolean {
-  let realSpecs: string | null | undefined;
-  return (src) => {
-    if (realSpecs === undefined) {
-      try {
-        realSpecs = realpathSync(join(root, "specs"));
-      } catch {
-        realSpecs = null;
-      }
-    }
-    if (realSpecs === null) return false;
-    let decoded: string;
-    try {
-      decoded = decodeURIComponent(src);
-    } catch {
-      return false;
-    }
-    for (const candidate of new Set([src, decoded])) {
-      try {
-        const real = realpathSync(resolve(realSpecs, candidate));
-        const rel = relative(realSpecs, real);
-        const inside = rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
-        if (inside && statSync(real).isFile()) return true;
-      } catch {
-        // Missing or unreadable: the other spelling, else missing.
-      }
-    }
-    return false;
-  };
-}
-
 const defaultServices: ServicesProbe = (repoRoot, labels) => listServices({ repoRoot, labels });
 
 /**
@@ -283,6 +312,10 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   const read = options.readWorkspace ?? readWorkspaceInput;
   const services = options.services ?? defaultServices;
   const stateDir = options.lifeos?.stateDir ?? null;
+  const catalogOf = options.loadCatalog ?? loadCatalog;
+  const docsOf = options.loadCatalog ?? loadCatalogDocs;
+  // The search text of each Markdown document, by workspace root and catalog path; each search keeps only what it saw.
+  const searchTexts = new Map<string, Map<string, SearchText>>();
   const today = options.today ?? (() => localDate());
   const clock = options.now ?? (() => new Date());
 
@@ -319,28 +352,125 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     return json(req, 200, model);
   };
 
-  // The planning route's reading, then specs/tech.md; the model as readTech builds it, never reshaped (header).
-  const tech = async (req: Request, slug: string): Promise<Response> => {
+  // The catalog as core's readCatalog builds it, metadata only, never reshaped (header).
+  const library = async (req: Request, slug: string): Promise<Response> => {
     const workspace = registry.get(slug);
     if (!workspace) return json(req, 404, { error: "not-found" });
-    const reading = await read(workspace.path);
-    if (!reading.readable) return json(req, 409, summary(workspace, reading));
+    const loaded = await catalogOf(workspace.path, stateDir);
+    if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
+    const body: WorkspaceRouteResponses["library"] = loaded.catalog;
+    return json(req, 200, body);
+  };
+
+  /**
+   * The catalog's readable Markdown document at the decoded `path`, and its real file through core's confinement
+   * (`resolveEvidencePath` with `specs/` as the root, `reach: 'tree'`): null for a path the catalog does not list as
+   * one, or whose real path leaves `specs/` (a symlink out). Only a listed path is ever resolved, so a request alone
+   * never names a file.
+   */
+  const catalogFile = async (
+    root: string,
+    docs: readonly LibraryDoc[],
+    path: string,
+  ): Promise<{ doc: LibraryDoc; absolute: string; logical: string } | null> => {
+    const doc = docs.find((d) => d.path === path && isReadableDoc(d));
+    if (doc === undefined) return null;
+    const specs = join(root, "specs");
+    const hit = await resolveEvidencePath(specs, rawPathOf(doc.path), "tree");
+    // The logical path (not the real one) feeds the render options, whose confinement is lexical under `root`.
+    return hit.ok ? { doc, absolute: hit.absolute, logical: join(specs, ...doc.path.split("/")) } : null;
+  };
+
+  /** A catalog document rendered as its Docs tab renders it: `renderDocsMarkdown` with `docsRenderOptions`. */
+  const renderCatalogDoc = (root: string, file: { doc: LibraryDoc; logical: string }, source: string): DocsPage =>
+    renderDocsMarkdown(source, docsRenderOptions(root, file.logical, docNameOf(file.doc.type)));
+
+  // One Markdown document of the catalog as a Docs page; 404 for anything the catalog does not list as one (header).
+  const libraryDoc = async (req: Request, slug: string, search: string): Promise<Response> => {
+    const workspace = registry.get(slug);
+    if (!workspace) return json(req, 404, { error: "not-found" });
+    const loaded = await docsOf(workspace.path, stateDir);
+    if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
+    let path: string;
     try {
-      const text = readIfExists(join(workspace.path, "specs", "tech.md"));
-      const model: WorkspaceRouteResponses["tech"] = readTech({
-        ...(text === null ? {} : { tech: text }),
-        specs: reading.input.specs,
-        assetExists: specsAssetExists(workspace.path),
-      });
-      return json(req, 200, model);
+      path = decodeURIComponent(evidencePathQuery(search));
+    } catch {
+      return json(req, 404, { error: "not-found" });
+    }
+    const file = await catalogFile(workspace.path, loaded.catalog.docs, path);
+    if (file === null) return json(req, 404, { error: "not-found" });
+    let source: string;
+    try {
+      source = readFileSync(file.absolute, "utf8");
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException | null)?.code;
+      if (typeof code !== "string") throw error;
+      if (code === "ENOENT") return json(req, 404, { error: "not-found" }); // gone since the catalog was read
+      return json(req, 409, summary(workspace, { readable: false, error: unreadableCode(error) }));
+    }
+    const body: WorkspaceRouteResponses["libraryDoc"] = renderCatalogDoc(workspace.path, file, source);
+    return json(req, 200, body);
+  };
+
+  /**
+   * The search text of one catalog document: its rendered page as plain text, from the cache while the file's size and
+   * mtime are unchanged, else rendered again. Null when the file cannot be resolved or read; the title still matches.
+   */
+  const searchTextOf = async (
+    root: string,
+    docs: readonly LibraryDoc[],
+    doc: LibraryDoc,
+    previous: ReadonlyMap<string, SearchText>,
+    seen: Map<string, SearchText>,
+  ): Promise<string | null> => {
+    const file = await catalogFile(root, docs, doc.path);
+    if (file === null) return null;
+    try {
+      const stat = statSync(file.absolute);
+      const cached = previous.get(doc.path);
+      const entry =
+        cached?.mtimeMs === stat.mtimeMs && cached.size === stat.size
+          ? cached
+          : { mtimeMs: stat.mtimeMs, size: stat.size, text: plainTextOf(renderCatalogDoc(root, file, readFileSync(file.absolute, "utf8"))) };
+      seen.set(doc.path, entry);
+      return entry.text;
     } catch (error) {
       if (typeof (error as NodeJS.ErrnoException | null)?.code !== "string") throw error;
-      return json(req, 409, summary(workspace, { readable: false, error: unreadableCode(error) }));
+      return null;
     }
   };
 
+  // Title and full text of the catalog's Markdown documents, case-insensitive, hits in catalog order (header).
+  const librarySearch = async (req: Request, slug: string, q: string): Promise<Response> => {
+    const workspace = registry.get(slug);
+    if (!workspace) return json(req, 404, { error: "not-found" });
+    const loaded = await docsOf(workspace.path, stateDir);
+    if (!loaded.readable) return json(req, 409, summary(workspace, loaded));
+    const query = q.trim();
+    if (query === "") {
+      const empty: WorkspaceRouteResponses["librarySearch"] = { query: "", hits: [] };
+      return json(req, 200, empty);
+    }
+    const root = workspace.path;
+    const needle = query.toLowerCase();
+    const previous = searchTexts.get(root) ?? new Map<string, SearchText>();
+    const seen = new Map<string, SearchText>();
+    const hits: LibrarySearchHit[] = [];
+    for (const doc of loaded.catalog.docs) {
+      if (!isReadableDoc(doc)) continue;
+      const text = await searchTextOf(root, loaded.catalog.docs, doc, previous, seen);
+      const at = text === null ? -1 : text.toLowerCase().indexOf(needle);
+      if (text !== null && at !== -1) hits.push({ path: doc.path, snippet: snippetAt(text, at, needle.length) });
+      else if (doc.title.toLowerCase().includes(needle)) hits.push({ path: doc.path, snippet: doc.title });
+    }
+    // Only the documents of this catalog stay cached: a removed or renamed document leaves the cache with it.
+    searchTexts.set(root, seen);
+    const body: WorkspaceRouteResponses["librarySearch"] = { query, hits };
+    return json(req, 200, body);
+  };
+
   // One image below specs/, through the evidence file route's resolver and answer (header).
-  const techAsset = (req: Request, slug: string, search: string): Promise<Response> | Response => {
+  const libraryAsset = (req: Request, slug: string, search: string): Promise<Response> | Response => {
     const workspace = registry.get(slug);
     if (!workspace) return json(req, 404, { error: "not-found" });
     return evidenceFileResponse(req, join(workspace.path, "specs"), search, {
@@ -434,8 +564,10 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       return json(req, 405, { error: "method-not-allowed" }, { Allow: allow });
     }
     if (workspaceRoute?.route === "idea") return idea(req, workspaceRoute.params.ws, workspaceRoute.params.slug);
-    if (workspaceRoute?.route === "tech") return tech(req, workspaceRoute.params.ws);
-    if (workspaceRoute?.route === "techAsset") return techAsset(req, workspaceRoute.params.ws, url.search);
+    if (workspaceRoute?.route === "library") return library(req, workspaceRoute.params.ws);
+    if (workspaceRoute?.route === "libraryDoc") return libraryDoc(req, workspaceRoute.params.ws, url.search);
+    if (workspaceRoute?.route === "librarySearch") return librarySearch(req, workspaceRoute.params.ws, url.searchParams.get("q") ?? "");
+    if (workspaceRoute?.route === "libraryAsset") return libraryAsset(req, workspaceRoute.params.ws, url.search);
     if (workspaceRoute) return planning(req, workspaceRoute.params.ws);
     if (!match) return list(req);
     let slug: string;

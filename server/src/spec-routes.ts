@@ -14,11 +14,12 @@
  * | timeline | `buildTimeline({files, commits})`, commits from `git.ts` `commitsFor`; ETag over body and `HEAD` |
  * | claims | `buildClaimViews({files, locks})` |
  * | tasks | `parseTaskLines` or `null` without tasks.md; header `X-Spectant-Tasks-Hash` (sha256 hex of the raw bytes) |
- * | evidence | `listEvidence(specDir, {specText})` |
  * | evidenceFile | `evidenceFileResponse` (`evidence.ts`): 403 outside `artifacts/`, `.evidence/` and `.design/`, 404 no file |
- * | docs/:name | `renderDocsMarkdown` with `docsRenderOptions`: images confined to the workspace, the Design tab's `.design/` images through evidenceFile; 404 `DocMissing` with `docsFor(type)[name]` |
  * | frames | `buildFrames(files)` |
  * | live | `buildLiveFrame({files + constitution, locks, now})` |
+ *
+ * The evidence listing (`…/evidence`) and the Docs tabs (`…/docs/:name`) went with spec 017 T53: the library reads and
+ * renders every document (`api.ts`), and a request to either is the unmatched API path's 404.
  *
  * Inputs follow the golden families (`core/tests/golden.test.ts`), so a fixture's answer is its golden value: the
  * folder's own texts for timeline, claims and frames; the constitution added for tasks and live; master and
@@ -33,14 +34,11 @@
  */
 import { basename, join, relative, sep } from "node:path";
 import { buildClaimViews } from "../../core/src/claim-view.ts";
-import { docsRenderOptions, listEvidence } from "../../core/src/evidence.ts";
-import { DOC_FILES, specFilePath } from "../../core/src/files.ts";
-import type { DocName, LockReading, SpecFiles } from "../../core/src/files.ts";
+import { specFilePath } from "../../core/src/files.ts";
+import type { LockReading, SpecFiles } from "../../core/src/files.ts";
 import { buildFrames } from "../../core/src/frames.ts";
-import { parseFrontmatter } from "../../core/src/frontmatter.ts";
 import { buildLiveFrame } from "../../core/src/live.ts";
 import { readLockSources } from "../../core/src/locks.ts";
-import { docsFor, renderDocsMarkdown } from "../../core/src/markdown-docs.ts";
 import { type SpecRef, resolveSpec } from "../../core/src/resolve.ts";
 import { buildSpecPage } from "../../core/src/spec.ts";
 import { parseTaskLines } from "../../core/src/tasks.ts";
@@ -56,7 +54,6 @@ import type { NoteStore } from "./notes.ts";
 import type { Registry, Workspace } from "./registry.ts";
 import { isLoopbackHost, isLoopbackOrigin } from "./settings.ts";
 import {
-  type DocMissing,
   type NotFound,
   REVIEWED_HASHES_HEADER,
   SPEC_API_ROOT,
@@ -181,21 +178,6 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
     });
   }
 
-  function docs(req: Request, root: string, ref: SpecRef, files: SpecFiles, name: DocName): Response {
-    const path = name === "constitution" ? constitutionPath(root) : specFilePath(ref.dir, DOC_FILES[name]);
-    const text = readIfExists(path);
-    if (text === null) {
-      const type = parseFrontmatter(files.texts.spec ?? "").data.specType;
-      const missing: DocMissing = { error: "not-found", doc: name, availability: docsFor(type)[name] };
-      return json(req, 404, missing);
-    }
-    // Existence only, confined to the workspace; the Design tab loads `.design/` through the evidence file route.
-    // The Decisions tab's goal card shows spec.md's signal (spec 024); the docs model keeps it only as 1–4.
-    const goalSignal = name === "decisions" ? parseFrontmatter(files.texts.spec ?? "").data.principalStatedGoalSignal : null;
-    const page = renderDocsMarkdown(text, { ...docsRenderOptions(root, path, name), goalSignal });
-    return json(req, 200, page);
-  }
-
   async function answer(req: Request, url: URL, match: SpecRouteMatch, workspace: Workspace): Promise<Response> {
     const root = workspace.path;
     const unreadable = workspaceUnreadable(root);
@@ -235,12 +217,8 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         });
         return json(req, 200, tab, { [TASKS_HASH_HEADER]: new Bun.CryptoHasher("sha256").update(bytes).digest("hex") });
       }
-      case "evidence":
-        return json(req, 200, await listEvidence(ref.dir, { specText: files.texts.spec }));
       case "evidenceFile":
         return evidenceFileResponse(req, ref.dir, url.search);
-      case "docs":
-        return docs(req, root, ref, files, match.params.name);
       case "frames":
         return json(req, 200, buildFrames(files));
       case "live": {

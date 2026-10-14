@@ -1,0 +1,220 @@
+/* The library's spec group heads, fog lines and tech placeholder (spec 017, T36, ISC-157; design.md 017 § 5, § 6,
+   § 8, § Viewport-übergreifend). Split from `library-page.css` for the per-file style budget; every selector starts with
+   `app-library-page`, as there. */
+
+/* The compact head: no card, no surface, a hairline above every group but the first. */
+app-library-page .lib-ghead {
+  display: grid;
+  gap: 6px;
+  min-inline-size: 0;
+  padding: 16px 2px 8px;
+}
+
+app-library-page .lib-group + .lib-group .lib-ghead {
+  border-block-start: 1px solid var(--line);
+}
+
+app-library-page .lib-ghead-name {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  min-inline-size: 0;
+  margin: 0;
+}
+
+app-library-page .lib-ghead-link {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  min-inline-size: 0;
+  color: var(--color-base-content);
+  text-decoration: none;
+}
+
+app-library-page .lib-ghead-id {
+  color: var(--disp-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+app-library-page .lib-ghead-dot {
+  color: var(--muted-ink);
+}
+
+app-library-page .lib-ghead-slug {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+app-library-page .lib-ghead-link:hover .lib-ghead-slug {
+  text-decoration: underline;
+}
+
+app-library-page .lib-ghead-count,
+app-library-page .lib-ghead-num {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+app-library-page .lib-ghead-num {
+  color: var(--color-base-content);
+}
+
+app-library-page .lib-ghead-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+app-library-page .lib-ghead-fog {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--ques-text);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+app-library-page .lib-ghead-fog:hover {
+  text-decoration: underline;
+}
+
+app-library-page .lib-ghead-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+}
+
+app-library-page .lib-ghead-label {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--muted-ink);
+  font-size: 12px;
+}
+
+app-library-page .lib-ghead-tasks {
+  margin-inline-start: 8px;
+}
+
+app-library-page .lib-ghead-meter {
+  inline-size: 64px;
+}
+
+/* Goal: 13/20, two lines at most. */
+app-library-page .lib-ghead-goal {
+  display: -webkit-box;
+  overflow: hidden;
+  max-block-size: 40px;
+  font-size: 13px;
+  line-height: 20px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+app-library-page .lib-ghead-goal :is(p, ul, ol),
+app-library-page .lib-ghead-approach-body :is(p, ul, ol) {
+  margin: 0;
+}
+
+app-library-page .lib-ghead-approach summary {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  min-block-size: 32px;
+  color: var(--muted-ink);
+  font-size: 13px;
+  list-style: none;
+  cursor: pointer;
+}
+
+app-library-page .lib-ghead-approach summary::-webkit-details-marker {
+  display: none;
+}
+
+app-library-page .lib-ghead-approach[open] .lib-chevron {
+  rotate: 90deg;
+}
+
+app-library-page .lib-ghead-approach-body {
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+@media (pointer: coarse) {
+  app-library-page .lib-ghead-approach summary {
+    min-block-size: 44px;
+  }
+}
+
+/* The filter "open": one button per fog line, violet left edge, no surface. */
+app-library-page .lib-fog-lines {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+app-library-page .lib-fog {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 2px 8px;
+  inline-size: 100%;
+  padding: 10px;
+  border: 0;
+  border-inline-start: 3px solid var(--color-secondary);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-base-content);
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--dur-hover) var(--ease);
+}
+
+app-library-page .lib-fog:hover {
+  background: var(--color-base-300);
+}
+
+app-library-page .lib-fog-icon {
+  color: var(--ques-text);
+  line-height: 20px;
+}
+
+app-library-page .lib-fog-meta {
+  grid-column: 2;
+  color: var(--muted-ink);
+  font-size: 12px;
+}
+
+/* The absent tech.md: dimmed by colour and form like a missing row, but without its flag. */
+app-library-page .lib-row[data-library-placeholder] .lib-title {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+app-library-page .lib-row[data-library-placeholder] .lib-type {
+  border: 1px dashed var(--line);
+  border-inline-start: 3px dashed var(--track);
+  background: transparent;
+  color: var(--muted-ink);
+}

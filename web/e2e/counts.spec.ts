@@ -10,8 +10,8 @@
  */
 import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
-import type { ClaimViewModel, EvidenceListing, SpecPageModel } from '../../core/src/files.ts';
-import { type SpecRouteResponses, specRoutes } from '../../server/src/spec-routes.contract.ts';
+import type { ClaimViewModel, SpecPageModel } from '../../core/src/files.ts';
+import type { SpecRouteResponses } from '../../server/src/spec-routes.contract.ts';
 import { atWidth, expect, test } from './fixtures';
 
 type TasksBody = NonNullable<SpecRouteResponses['tasks']>;
@@ -110,7 +110,7 @@ function rowsFor(g: Goldens): readonly Row[] {
     { tab: '', what: 'live tile agents working', golden: 'spec.areas.live.agentsWorking', selector: tile('live', 0), kind: 'text', want: areas.live.agentsWorking > 0 ? `${n(areas.live.agentsWorking)} agents working` : 'No agent working' },
     { tab: '', what: 'data tile claims', golden: 'spec.areas.data.claims.closed/total', selector: tile('data', 0), kind: 'text', want: `${pair(areas.data.claims.closed, areas.data.claims.total)} claims closed` },
     { tab: '', what: 'data tile tasks', golden: 'spec.areas.data.tasks.landed/total', selector: tile('data', 1), kind: 'text', want: areas.data.tasks ? `${pair(areas.data.tasks.landed, areas.data.tasks.total)} tasks landed` : 'No tasks.md yet' },
-    { tab: '', what: 'docs tile decisions', golden: 'spec.areas.docs.decisions', selector: tile('docs', 1), kind: 'text', want: `${n(areas.docs.decisions)} decisions` },
+    { tab: '', what: 'library tile decisions', golden: 'spec.areas.docs.decisions', selector: tile('library', 1), kind: 'text', want: `${n(areas.docs.decisions)} decisions` },
     { tab: '', what: 'notes tile board rounds', golden: 'spec.areas.board.rounds', selector: tile('notes', 1), kind: 'text', want: `${n(areas.board.rounds)} rounds on the board` },
     // The tab bar of the Data area.
     { tab: '/claims', what: 'tab bar claims closed/total', golden: 'spec.areas.data.claims.closed/total', selector: 'app-tab-bar [data-count="claims"]', kind: 'text', want: pair(areas.data.claims.closed, areas.data.claims.total) },
@@ -139,16 +139,8 @@ function rowsFor(g: Goldens): readonly Row[] {
     { tab: '/claims', what: 'kind chip counts', golden: `claim-view.counts.{${KIND_CHIPS.join(',')}}`, selector: 'app-claims-tab [data-filter="kind"] button .count', kind: 'texts', want: KIND_CHIPS.map((key) => n(g.claims.counts[key])) },
     // Timeline tab.
     { tab: '/timeline', what: 'timeline entries', golden: 'timeline.length', selector: 'app-timeline-tab [data-entry]', kind: 'count', want: g.timeline.length },
-    // Docs: the decisions page renders core's prose HTML; no element carries one decision each.
-    {
-      tab: '/decisions',
-      what: 'decisions rows',
-      golden: 'spec.areas.docs.decisions',
-      selector: 'app-docs-tab[data-doc="decisions"] [data-decision]',
-      kind: 'count',
-      want: areas.docs.decisions,
-      fixme: 'app-docs-tab has no per-decision hook (e.g. [data-decision]); decisions.md renders as one prose [innerHTML] block',
-    },
+    // The former Docs decisions tab went with spec 017 (T52); the Library reader renders decisions.md as one prose
+    // block like any document, so its count stays with the Library tile above.
   ];
 
   const lanesWithRows = lanes.length > 0;
@@ -221,31 +213,6 @@ for (const { width, tier } of TIERS) {
           await check(page, row);
         });
       }
-
-      // Evidence tab: the listing is the stub route's answer (core's `listEvidence` over the fixture tree), so the rows
-      // are read at run time: one [data-claim-group] per byClaim key plus `none` for the ungrouped files.
-      test(`${base}/evidence files per group`, async ({ page, request }) => {
-        const answer = await request.get(specRoutes.evidence('harbor', id));
-        expect(answer.status()).toBe(200);
-        const listing = (await answer.json()) as EvidenceListing;
-        const groups: Array<[string, number]> = Object.entries(listing.byClaim).map(([claim, files]) => [claim, files.length]);
-        if (listing.ungrouped.length > 0) groups.push(['none', listing.ungrouped.length]);
-        await page.goto(`${base}/evidence`);
-        await expect(page.locator('app-evidence-tab [data-file]'), 'files ≠ evidence.results + raw').toHaveCount(
-          listing.results.length + listing.raw.length,
-        );
-        // spec 024: prototype value (principal: Prototyp gilt immer): folder groups (Results, Raw evidence), the claim as a chip on every file.
-        const both: Array<[string, number]> = [['results', listing.results.length], ['raw', listing.raw.length]];
-        const folders = both.filter(([, count]) => count !== 0);
-        await expect(page.locator('app-evidence-tab [data-evidence-group]'), 'groups ≠ non-empty results + raw').toHaveCount(folders.length);
-        for (const [key, count] of folders) {
-          const group = page.locator(`app-evidence-tab [data-evidence-group="${key}"]`);
-          await expect(group.locator('[data-file]'), `group ${key} files ≠ evidence.${key}.length`).toHaveCount(count);
-        }
-        for (const [key, count] of groups) {
-          await expect(page.locator(`app-evidence-tab [data-file][data-claim="${key}"]`), `claim ${key} files ≠ evidence.byClaim[${key}].length`).toHaveCount(count);
-        }
-      });
     }
   });
 }

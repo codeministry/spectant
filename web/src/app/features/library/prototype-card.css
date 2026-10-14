@@ -1,0 +1,126 @@
+/* The prototype card in the library's reader (spec 017, T38, ISC-159; design.md 017 Mobile § 9, Tablet § 2.6, Desktop
+   § 2c): a preview figure, the eyebrow with the page count, the page list and a read-only footer. Below 1120 px one
+   column in a bordered list with hairlines between the rows; from 1120 px (shell container) two columns. A row is the
+   same on every width: `app-window`, the file name in mono, `external-link`, at least 44 px high. */
+
+:host {
+  display: block;
+  min-inline-size: 0;
+}
+
+.proto-card {
+  display: grid;
+  gap: 12px;
+}
+
+/* `figure.ev-preview`: 1 px border, radius 6, the screenshot contained on the lane surface. */
+.proto-preview {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.proto-preview img {
+  display: block;
+  inline-size: 100%;
+  max-block-size: 320px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--lane);
+}
+
+.proto-caption {
+  margin: 0;
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.proto-eyebrow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+
+.proto-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.proto-pages {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  list-style: none;
+}
+
+.proto-pages li + li {
+  border-block-start: 1px solid var(--line);
+}
+
+.proto-page {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 16px;
+  gap: 10px;
+  align-items: center;
+  min-block-size: 44px;
+  padding: 8px 12px;
+  color: var(--color-base-content);
+  text-decoration: none;
+}
+
+.proto-page:hover {
+  background: var(--color-base-300);
+}
+
+.proto-page-icon {
+  color: var(--muted);
+}
+
+.proto-file {
+  min-inline-size: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proto-foot {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+}
+
+/* Desktop § 2c: from 1120 px two columns, no frame, each row its own rounded hover target. */
+@container shell (width >= 1120px) {
+  .proto-preview img {
+    max-block-size: 420px;
+    object-fit: cover;
+    object-position: top;
+    border-radius: var(--radius);
+  }
+
+  .proto-pages {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px 8px;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .proto-pages li + li {
+    border-block-start: 0;
+  }
+
+  .proto-page {
+    padding: 8px 10px;
+    border-radius: var(--radius);
+  }
+}

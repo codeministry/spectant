@@ -19,7 +19,7 @@
  * No answer carries a path: the error bodies are the fixed codes, and the file's own name travels only as the media
  * type (ISC-3). Read-only: `stat` and one open for reading (ISC-15).
  *
- * The tech asset route (spec 023 T7, ISC-134.3) answers through the same function with the workspace's `specs/` as the
+ * The library's asset route (spec 017; formerly the tech asset route, spec 023 T7) answers through the same function with the workspace's `specs/` as the
  * root, `reach: 'tree'` (any file below it) and `serves` admitting images only: a file of another media type is 403.
  */
 import { statSync } from "node:fs";

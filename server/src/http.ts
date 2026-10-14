@@ -3,10 +3,12 @@
  *
  * It serves the embedded web build from an `EmbeddedManifest` that the caller passes in. This module never imports
  * `server/embedded.gen.ts`: a fresh checkout has none, and only the compiled CLI entry binds it. The JSON API plugs
- * in through `ServeOptions.api`; this module implements no `/api/` route of its own.
+ * in through `ServeOptions.api`; this module implements no `/api/` route of its own, and no prototype route either.
  *
  * Request handling, in order:
- * 1. a path under `API_PREFIX` goes to `api` (any method); no handler, or a `null` answer, is a JSON 404;
+ * 1. a path under `API_PREFIX`, or under `PROTOTYPE_PREFIX` (spec 017: `/proto/…` sits outside `/api/` so a prototype
+ *    page's relative links resolve; `prototype.ts` answers it), goes to `api` (any method); no handler, or a `null`
+ *    answer, is a JSON 404;
  * 2. any method other than GET or HEAD is 405;
  * 3. an exact `path` match in the manifest serves that file with its content type, `cacheControlFor(immutable)` and
  *    a weak ETag, 304 on a matching `If-None-Match`;
@@ -24,6 +26,7 @@ import {
   contentTypeFor,
   isSpaRoute,
 } from "./assets.contract.ts";
+import { PROTOTYPE_PREFIX } from "./spec-routes.contract.ts";
 
 /** The only address the server binds (ISC-1). Never `0.0.0.0` or `::`: Spectant is a local single-user tool. */
 export const LOOPBACK_HOST = "127.0.0.1";
@@ -136,7 +139,9 @@ export function serve(opts: ServeOptions): RunningServer {
       const url = new URL(req.url);
       const { pathname } = url;
 
-      if (pathname.startsWith(API_PREFIX)) return (await api?.(req, url)) ?? notFoundJson();
+      if (pathname.startsWith(API_PREFIX) || pathname.startsWith(PROTOTYPE_PREFIX)) {
+        return (await api?.(req, url)) ?? notFoundJson();
+      }
 
       if (req.method !== "GET" && req.method !== "HEAD") {
         return new Response("method not allowed\n", {
