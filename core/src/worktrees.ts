@@ -156,6 +156,15 @@ export function assignWorktrees(porcelain: string, specs: readonly string[]): Wo
   return { worktrees, builders, diagnostics };
 }
 
+/**
+ * The branch checked out in the main checkout, the listing's first record, without `refs/heads/`: null on a detached
+ * HEAD or an empty listing. The server tells by it whether a spec branch without a worktree is still worked on in the
+ * main checkout (spec 027, T25, ISC-175.1).
+ */
+export function mainBranchOf(porcelain: string): string | null {
+  return parseRecords(porcelain)[0]?.branch ?? null;
+}
+
 // ─── The read source (ISC-181, ISC-181.1) ────────────────────────────────────────────────────────────────────────
 
 /** The folder of the repository that holds the spec folders, `specs/NNN-slug`. */

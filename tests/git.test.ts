@@ -20,6 +20,7 @@ import {
   commitsFor,
   defaultGitRunner,
   dirty,
+  mergeCommitOf,
   type GitRunner,
   takenSpecNumbers,
   userEmail,
@@ -762,5 +763,84 @@ describe("this repository (integration)", () => {
     // A depth-1 checkout shows only the tip commit, whatever its subject; the round-commit subjects are proven on the
     // temp repositories above, so here only a full clone may expect one.
     if (result.commits.length > 1) expect(result.commits.some((c) => /round \d+/.test(c.subject))).toBe(true);
+  });
+});
+
+describe("mergeCommitOf names the commit that merged a spec branch into main (spec 027, T25, ISC-175.1)", () => {
+  /**
+   * main: a → b → m1 → M (merge of feature/001-x: x1 → x2) → m2. `feature/002-ff` sits at m1 on main's first-parent
+   * line, `feature/003-open` one commit past m2, unmerged.
+   */
+  function mergeRepo(): { dir: string; merge: string } {
+    const dir = mkdtempSync(join(root, "merge-commit-"));
+    git(dir, "2026-02-01T00:00:00Z", "init", "-q", "-b", "main");
+    commit(dir, "2026-02-01T00:00:00Z", "a", { "a.txt": "a\n" });
+    commit(dir, "2026-02-02T00:00:00Z", "b", { "b.txt": "b\n" });
+    git(dir, "2026-02-03T00:00:00Z", "switch", "-q", "-c", "feature/001-x");
+    commit(dir, "2026-02-03T00:00:00Z", "x1", { "x1.txt": "x1\n" });
+    commit(dir, "2026-02-04T00:00:00Z", "x2", { "x2.txt": "x2\n" });
+    git(dir, "2026-02-05T00:00:00Z", "switch", "-q", "main");
+    commit(dir, "2026-02-05T00:00:00Z", "m1", { "m1.txt": "m1\n" });
+    git(dir, "2026-02-06T10:00:00Z", "merge", "-q", "--no-ff", "-m", "merge 001", "feature/001-x");
+    const merge = git(dir, "2026-02-06T10:00:00Z", "rev-parse", "HEAD");
+    commit(dir, "2026-02-07T00:00:00Z", "m2", { "m2.txt": "m2\n" });
+    git(dir, "2026-02-08T00:00:00Z", "branch", "feature/002-ff", "main~2");
+    git(dir, "2026-02-08T00:00:00Z", "switch", "-q", "-c", "feature/003-open");
+    commit(dir, "2026-02-08T00:00:00Z", "o1", { "o1.txt": "o1\n" });
+    git(dir, "2026-02-08T00:00:00Z", "switch", "-q", "main");
+    return { dir, merge };
+  }
+
+  test("merged: the merge commit on main's first-parent line with its committer date", async () => {
+    const { dir, merge } = mergeRepo();
+    const found = await mergeCommitOf(dir, "feature/001-x");
+    expect(found?.commit).toBe(merge);
+    expect(Date.parse(found?.at ?? "")).toBe(Date.parse("2026-02-06T10:00:00Z"));
+  });
+
+  test("a tip on main's first-parent line, an open branch, an unknown or unplain name → null", async () => {
+    const { dir } = mergeRepo();
+    expect(await mergeCommitOf(dir, "feature/002-ff")).toBeNull();
+    expect(await mergeCommitOf(dir, "feature/003-open")).toBeNull();
+    expect(await mergeCommitOf(dir, "feature/004-none")).toBeNull();
+    const { runner, calls } = countingRunner();
+    expect(await mergeCommitOf(dir, "main..feature/001-x", { runner })).toBeNull();
+    expect(await mergeCommitOf(dir, "-x", { runner })).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
+  test("runs only for-each-ref, rev-list --first-parent and log --ancestry-path, rooted, under the read-only environment", async () => {
+    const { dir } = mergeRepo();
+    const seen: Array<{ args: string[]; env: Record<string, string> }> = [];
+    const runner: GitRunner = (args, env, signal) => {
+      seen.push({ args: [...args], env });
+      return defaultGitRunner(args, env, signal);
+    };
+    expect(await mergeCommitOf(dir, "feature/001-x", { runner })).not.toBeNull();
+    expect(seen.map((s) => s.args)).toEqual([
+      ["-C", dir, "for-each-ref", "--format=%(objectname)", "refs/heads/feature/001-x"],
+      ["-C", dir, "rev-list", "--first-parent", "refs/heads/main", "--"],
+      ["-C", dir, "log", "--ancestry-path", "--format=%H %cI %P", "refs/heads/feature/001-x..refs/heads/main", "--"],
+    ]);
+    for (const s of seen) expect(s.env).toMatchObject({ GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0", GIT_CEILING_DIRECTORIES: dirname(dir) });
+  });
+
+  test("no repository root, a failing or throwing runner and the deadline → null, never a throw", async () => {
+    const { dir } = mergeRepo();
+    const { runner, calls } = countingRunner();
+    expect(await mergeCommitOf(mkdtempSync(join(root, "merge-plain-")), "feature/001-x", { runner })).toBeNull();
+    expect(calls).toEqual([]);
+    expect(await mergeCommitOf(dir, "feature/001-x", { runner: () => Promise.resolve(null) })).toBeNull();
+    expect(await mergeCommitOf(dir, "feature/001-x", { runner: () => Promise.resolve({ code: 128, stdout: "", stderr: "fatal\n" }) })).toBeNull();
+    expect(await mergeCommitOf(dir, "feature/001-x", { runner: () => Promise.reject(new Error("spawn failed")) })).toBeNull();
+    expect(await mergeCommitOf(dir, "feature/001-x", { runner: () => new Promise(() => undefined), timeoutMs: 20 })).toBeNull();
+  });
+
+  test("reading the merge commit leaves the repository, .git/ included, byte- and mtime-identical (ISC-15)", async () => {
+    const { dir } = mergeRepo();
+    const before = checksum(dir);
+    for (const branch of ["feature/001-x", "feature/002-ff", "feature/003-open"]) await mergeCommitOf(dir, branch);
+    await mergeCommitOf(dir, "feature/001-x", { timeoutMs: 1 });
+    expect(checksum(dir)).toBe(before);
   });
 });

@@ -668,3 +668,52 @@ export async function mergedSpecBranches(root: string, options: MergedBranchesOp
     return result;
   });
 }
+
+/** The merge commit that brought a branch into `main`: its full sha and its committer date (ISO 8601). */
+export interface MergeCommit {
+  readonly commit: string;
+  readonly at: string;
+}
+
+/**
+ * The commit that merged `branch` into `main` in `root`'s repository (spec 027, T25, ISC-175.1): the oldest commit on `main`'s first-parent line that has the branch's tip as
+ * an ancestor and two or more parents, with its committer date, the moment `main` received the merge. Three reads:
+ * `for-each-ref --format=%(objectname) refs/heads/<branch>` for the tip, `rev-list --first-parent refs/heads/main --`
+ * for that line and `log --ancestry-path --format=%H %cI %P refs/heads/<branch>..refs/heads/main --` for the commits
+ * that descend from the tip, newest first; the last of those on the line with a second parent is the merge commit. A
+ * tip on the line itself (fresh, or fast-forwarded into `main`) was brought in by no merge and answers null, as
+ * `mergedSpecBranches` reads it unmerged. All three read refs and objects only: no index, no lock (`GIT_OPTIONAL_LOCKS=0` besides), no fetch, no network; the refs are full names, so
+ * neither a tag nor a file of the branch's name is read instead.
+ * Never throws: a name that is no plain branch name, no repository root, no git, a non-zero exit, no merge commit and
+ * the deadline answer null.
+ */
+export async function mergeCommitOf(root: string, branch: string, options: UserEmailOptions = {}): Promise<MergeCommit | null> {
+  if (!isPlainBranchName(branch)) return null;
+  const runner = options.runner ?? defaultGitRunner;
+  try {
+    lstatSync(join(root, ".git"));
+  } catch {
+    return null;
+  }
+  return readWithin<MergeCommit | null>(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, null, async (signal) => {
+    const env = gitEnv(root);
+    // Read through a call each time: the flag turns true while a run is awaited, which a narrowed property would hide.
+    const aborted = (): boolean => signal.aborted;
+    const ref = await runner(["-C", root, "for-each-ref", "--format=%(objectname)", `refs/heads/${branch}`], env, signal);
+    const tip = ref?.code === 0 && !aborted() ? ref.stdout.trim() : "";
+    if (!SHA.test(tip)) return null;
+    const line = await runner(["-C", root, "rev-list", "--first-parent", MAIN_REF, "--"], env, signal);
+    if (line?.code !== 0 || aborted()) return null;
+    const firstParent = new Set(line.stdout.split("\n").filter((sha) => SHA.test(sha)));
+    if (firstParent.has(tip)) return null;
+    const range = `refs/heads/${branch}..${MAIN_REF}`;
+    const path = await runner(["-C", root, "log", "--ancestry-path", "--format=%H %cI %P", range, "--"], env, signal);
+    if (path?.code !== 0 || aborted()) return null;
+    let merge: MergeCommit | null = null;
+    for (const entry of path.stdout.split("\n")) {
+      const [commit = "", at = "", ...parents] = entry.trim().split(" ");
+      if (firstParent.has(commit) && at !== "" && parents.length >= 2) merge = { commit, at };
+    }
+    return merge;
+  });
+}
