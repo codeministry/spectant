@@ -97,3 +97,7 @@
   overflow: auto;
   overscroll-behavior: contain;
 }
+
+:host([data-flush]) .body {
+  padding: 0;
+}

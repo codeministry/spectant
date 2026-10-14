@@ -1,12 +1,14 @@
 import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject, resource, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { IdeaPage as IdeaPageBody } from '../../../../../server/src/spec-routes.contract';
 import { ApiClient, type ApiResult } from '../../core/api.service';
+import { DetailSelection, selectedLook } from '../../layout/detail-sidebar/selection';
 import { NotFound } from '../../layout/not-found/not-found';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { UiIcon } from '../../shared/icons/icon';
+import { UiButton } from '../../shared/ui/button/button';
 import { UiCard, UiChip, UiDocProse, UiNotice, UiPriority, UiSkeleton, UiTypeGlyph } from '../../shared/ui';
 import { UiPageHead } from '../../shared/ui/page-head/page-head';
 
@@ -26,9 +28,10 @@ import { UiPageHead } from '../../shared/ui/page-head/page-head';
  */
 @Component({
   selector: 'app-idea-page',
-  imports: [NotFound, TranslocoPipe, UiCard, UiChip, UiDocProse, UiIcon, UiNotice, UiPageHead, UiPriority, UiSkeleton, UiTypeGlyph],
+  imports: [NotFound, RouterLink, TranslocoPipe, UiButton, UiCard, UiChip, UiDocProse, UiIcon, UiNotice, UiPageHead, UiPriority, UiSkeleton, UiTypeGlyph],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'idea', '[attr.data-tier]': 'state.tier()' },
+  styleUrls: ['../../layout/detail-sidebar/selection.css'],
   styles: `
     :host { display: block; min-inline-size: 0; }
     .head { display: grid; gap: 12px; margin-block-end: 24px; padding-block-end: 16px; border-block-end: 1px solid var(--line); }
@@ -39,6 +42,7 @@ import { UiPageHead } from '../../shared/ui/page-head/page-head';
     .sh-context .chips { justify-content: flex-end; }
     :host([data-tier='compact']) .sh-context { grid-template-columns: minmax(0, 1fr); gap: 8px; }
     :host([data-tier='compact']) .sh-context .chips { justify-content: flex-start; }
+    .sh-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-inline-size: 0; }
     .sh-row { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; min-inline-size: 0; }
     .sh-main { display: grid; gap: 4px; min-inline-size: 0; }
     h1 { margin: 0; font-family: var(--font-brand); font-size: 24px; font-weight: 600; line-height: 32px; overflow-wrap: anywhere; }
@@ -127,7 +131,22 @@ import { UiPageHead } from '../../shared/ui/page-head/page-head';
             <h1 id="idea" tabindex="-1">{{ story.idea.slug }}</h1>
             <p class="hint source" data-idea-source>{{ 'ideas.source' | transloco: { path: story.idea.path, hash: shortHash() } }}</p>
           </div>
-          <code class="cmd" data-idea-command>{{ command() }}</code>
+          <div class="sh-actions">
+            <!-- Spec 026 (T28, ISC-171): the idea's relations (feature and milestone parents) in the detail sidebar. -->
+            <a
+              ui-button
+              data-show-relations
+              [routerLink]="[]"
+              [queryParams]="{ sel: ref() }"
+              queryParamsHandling="merge"
+              [replaceUrl]="true"
+              [attr.data-ref]="ref()"
+              [attr.data-selected]="look()"
+            >
+              <ui-icon name="panel-right-open" [size]="16" />{{ 'ideas.showRelations' | transloco }}
+            </a>
+            <code class="cmd" data-idea-command>{{ command() }}</code>
+          </div>
         </div>
       </div>
 
@@ -205,6 +224,10 @@ export class IdeaPage {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
   protected readonly slug = computed(() => this.state.route().ideaSlug ?? '');
+  private readonly selection = inject(DetailSelection);
+  /** The idea as the detail sidebar names it (spec 026, T28): `idea:<slug>`; the head link selects it (`?sel=`). */
+  protected readonly ref = computed(() => `idea:${this.slug()}` as const);
+  protected readonly look = computed(() => selectedLook(this.selection, this.ref(), 'card'));
   /** The board the back link leads to (ISC-142). */
   protected readonly boardPath = computed(() => `/w/${this.state.ws() ?? ''}/board`);
   /** The shaping command the Next step card names (prototype `next-step`). */

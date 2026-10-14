@@ -13,8 +13,6 @@
  * file's worker (an allocation removes a story) never reaches these trees.
  */
 import { readFileSync } from 'node:fs';
-import type { Page } from '@playwright/test';
-
 import type { PlanningModel } from '../../core/src/planning';
 import { atWidth, expect, test, WIDTHS } from './fixtures';
 import { RESET_PATH, SESSION_HEADER } from './stub-api';
@@ -56,49 +54,6 @@ test.beforeEach(async ({ page, request }, info) => {
 });
 test.afterEach(async ({ request }) => {
   await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
-});
-
-/** The slug and visible text of every `ui-idea-chip` under `scope`, in document order. */
-const chipsIn = async (page: Page, scope: string): Promise<Array<{ href: string | null; text: string; title: string | null }>> =>
-  page.locator(`${scope} ui-idea-chip a`).evaluateAll((els) =>
-    els.map((el) => ({ href: el.getAttribute('href'), text: el.textContent.trim(), title: el.getAttribute('title') })),
-  );
-
-const chipOf = (slug: string, title: string) => ({ href: `/w/harbor/ideas/${slug}`, text: title, title: slug });
-
-test.describe('ideas on the planning pages', () => {
-  test('the Features page shows each story on its feature block, F2 and F7', async ({ page }) => {
-    await page.goto('/w/harbor/features');
-    await expect(page.locator('ol.rows > li').first()).toBeVisible();
-    expect(withIdeas.map((f) => f.id)).toEqual(['F2', 'F7']);
-    for (const feature of planning.features) {
-      const row = page.locator(`ol.rows > li:has(article[id="${feature.id}"])`);
-      const block = row.locator('[data-ideas]');
-      if (feature.ideas.length === 0) {
-        await expect(block).toHaveCount(0);
-        continue;
-      }
-      await expect(block).toHaveAttribute('data-ideas', String(feature.ideas.length));
-      await expect(block.locator('[data-ideas-label]')).toHaveText(template(en.planning.ideas.label, { count: feature.ideas.length }));
-      expect(await chipsIn(page, `ol.rows > li:has(article[id="${feature.id}"]) [data-ideas]`)).toEqual(
-        feature.ideas.map((idea) => chipOf(idea.slug, idea.title)),
-      );
-    }
-    await expect(page.locator('ol.rows ui-idea-chip')).toHaveCount(ideas.length);
-  });
-
-  test('the Milestones page shows the story of Harbor 1.0 and no other', async ({ page }) => {
-    await page.goto('/w/harbor/milestones');
-    await expect(page.locator('h1#milestones')).toBeVisible();
-    expect(milestonesWithIdeas.map((m) => m.name)).toEqual(['Harbor 1.0']);
-    const expected = milestonesWithIdeas.flatMap((m) => m.ideas.map((idea) => chipOf(idea.slug, idea.title)));
-    await expect(page.locator('[data-ideas]')).toHaveCount(milestonesWithIdeas.length);
-    const block = page.locator('[data-ideas]');
-    await expect(block).toHaveAttribute('data-ideas', String(expected.length));
-    await expect(block.locator('[data-ideas-label]')).toHaveText(template(en.planning.ideas.label, { count: expected.length }));
-    expect(await chipsIn(page, '[data-ideas]')).toEqual(expected);
-    await expect(page.locator('ui-idea-chip')).toHaveCount(expected.length);
-  });
 });
 
 test.describe('ideas on the dashboard', () => {

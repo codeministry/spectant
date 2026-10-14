@@ -1,0 +1,298 @@
+/*
+ * The tree lens (spec 026, ISC-168; design.md § Baum and § Viewport-übergreifend): one card holding a flat WAI-ARIA tree.
+ * Each level indents 16 px and draws a 1 px guide line in `--border` per ancestor, so the cascade reads without colour.
+ * The row grid: guides, chevron (24 px, 44 px hit area), content, a 64 px meter, the fraction in its own 56 px column.
+ */
+:host {
+  display: grid;
+  gap: 16px;
+  min-inline-size: 0;
+}
+
+.t-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: baseline;
+}
+
+section {
+  display: block;
+}
+
+h2 {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+[data-count] {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.expand-all {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 44px;
+  padding-inline: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.expand-all:hover {
+  background: var(--lane);
+}
+
+.meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+}
+
+.tree {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--color-base-100);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto 24px minmax(0, 1fr) 64px 56px;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 44px;
+  padding-inline: 8px 16px;
+  border-block-start: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.row:first-child {
+  border-block-start: 0;
+}
+
+.row:hover:not([data-selected]) {
+  background: var(--lane);
+}
+
+.row[data-kind="milestone"] {
+  min-block-size: 56px;
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.row[data-kind="group"] {
+  min-block-size: 56px;
+  border-block-start-style: dashed;
+  box-shadow: inset 3px 0 0 var(--track);
+}
+
+.row[data-kind="feature"] {
+  min-block-size: 48px;
+}
+
+.row[data-kind="claim"] {
+  grid-template-columns: auto 24px minmax(0, 1fr);
+  min-block-size: 40px;
+}
+
+.guides {
+  display: flex;
+  align-self: stretch;
+  margin-block: -1px;
+}
+
+.guides i {
+  inline-size: 16px;
+  margin-inline-start: 4px;
+  border-inline-start: 1px solid var(--border);
+}
+
+.chev {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 24px;
+  color: var(--muted-ink);
+}
+
+.chev[data-toggle]::before {
+  position: absolute;
+  inset: -10px;
+  content: '';
+}
+
+.chev ui-icon {
+  transition: transform var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.row[aria-expanded="true"] > .chev ui-icon {
+  transform: rotate(90deg);
+}
+
+.main {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.title {
+  overflow: hidden;
+  min-inline-size: 0;
+  color: var(--color-base-content);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.muted,
+.sub {
+  color: var(--muted-ink);
+}
+
+.date {
+  flex: none;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.date.sub {
+  flex: 0 1 auto;
+  overflow: hidden;
+  font-family: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kind {
+  flex: none;
+  color: var(--muted-ink);
+}
+
+.row[data-kind="milestone"] .kind {
+  color: var(--cyan-text);
+}
+
+.fid {
+  flex: none;
+  min-inline-size: 40px;
+  color: var(--cyan-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.done,
+.claim-glyph[data-closed] {
+  flex: none;
+  color: var(--lime-text);
+}
+
+.claim-glyph {
+  flex: none;
+  color: var(--muted-ink);
+}
+
+.cid {
+  flex: none;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.text {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.chip {
+  flex: none;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--color-base-content);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 18px;
+  text-transform: uppercase;
+}
+
+.chip.stage {
+  border-color: transparent;
+  background: var(--disp-t);
+  color: var(--disp-ink);
+}
+
+/* Archived is never opacity (design.md § Viewport-übergreifend): a dashed chip, the text stays in the text colour. */
+.chip.archived {
+  border-style: dashed;
+}
+
+.num {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.row[data-full] .num {
+  color: var(--lime-text);
+}
+
+@container shell (inline-size < 640px) {
+  .row {
+    grid-template-columns: auto 24px minmax(0, 1fr) 48px;
+    padding-inline-end: 8px;
+  }
+
+  .row .bar {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .row[data-kind="milestone"],
+  .row[data-kind="group"] {
+    border-inline-start: 3px solid CanvasText;
+  }
+}

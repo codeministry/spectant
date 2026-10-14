@@ -255,7 +255,7 @@
             <span actions class="act-links" data-activity-links>
               <a class="link link-hover" [routerLink]="link('timeline')">{{ 'status.activity.all' | transloco }}</a>
               <a class="link link-hover" data-activity-link="board" [routerLink]="link('board')">{{ 'status.activity.board' | transloco }}</a>
-              <a class="link link-hover" data-activity-link="report" [routerLink]="link('evidence')">{{ 'status.activity.report' | transloco }}</a>
+              <a class="link link-hover" data-activity-link="report" [routerLink]="link('library')" [queryParams]="{ type: 'evidence' }">{{ 'status.activity.report' | transloco }}</a>
             </span>
           </ui-section-header>
           @if (activity(); as entries) {

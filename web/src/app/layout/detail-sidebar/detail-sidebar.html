@@ -1,0 +1,131 @@
+@if (shown(); as entry) {
+  @if (presentation() === 'sheet') {
+    <ui-sheet tier="compact" [flush]="true" [open]="true" [label]="'sidebar.label' | transloco" (openChange)="sheetChange($event)">
+      <div class="panel">
+        <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{ $implicit: entry }" />
+      </div>
+    </ui-sheet>
+  } @else {
+    <aside class="panel" role="complementary" [attr.aria-labelledby]="titleId">
+      <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{ $implicit: entry }" />
+    </aside>
+  }
+}
+
+<ng-template #body let-entry>
+  <div class="head">
+    <span class="type" data-part="type" [attr.data-type]="entry.type">
+      <ui-icon [name]="typeIcon()" [size]="12" />{{ 'sidebar.types.' + entry.type | transloco }}
+    </span>
+    <span class="id" data-part="id">{{ entry.id }}</span>
+    <span class="grow"></span>
+    <button ui-icon-button data-close icon="x" size="sm" [label]="'sidebar.close' | transloco" (click)="close()"></button>
+  </div>
+
+  <div class="body">
+    <div>
+      <h2 #title class="title" data-part="title" data-autofocus tabindex="-1" [id]="titleId">{{ entry.title }}</h2>
+      @if (entry.archived || entry.stage) {
+        <div class="meta">
+          @if (entry.archived) {
+            <ui-chip data-part="archived" variant="plain" icon="archive">{{ 'sidebar.archived' | transloco }}</ui-chip>
+          } @else if (entry.stage) {
+            <ui-chip data-part="stage">{{ 'stages.' + entry.stage | transloco }}</ui-chip>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="prog" data-part="progress">
+      @if (percent() !== null) {
+        <ui-ring [value]="percent()" [size]="64" [stroke]="6" />
+        <div>
+          <b class="fraction">{{ entry.closed }}<small>/{{ entry.total }}</small></b>
+          <div class="muted">{{ 'sidebar.claimsClosed' | transloco }}</div>
+        </div>
+      } @else {
+        <p class="muted">{{ 'sidebar.noClaims' | transloco }}</p>
+      }
+    </div>
+
+    @if (parents().length > 0) {
+      <section class="sec" data-section="parents">
+        <h3 class="eyebrow">
+          <span>{{ 'sidebar.parents' | transloco }}</span><span class="count" data-count>{{ parents().length }}</span>
+        </h3>
+        @for (link of parents(); track link.entry.ref) {
+          <ng-container [ngTemplateOutlet]="row" [ngTemplateOutletContext]="{ $implicit: link }" />
+        }
+      </section>
+    }
+
+    <!-- Blockers before children (ISC-171.1): the short section stays in the sheet's first screen, the capped list goes last. -->
+    @if (blockers().length > 0 || blockable()) {
+      <section class="sec" data-section="blockers">
+        <h3 class="eyebrow">
+          <span>{{ 'sidebar.blockers' | transloco }}</span>
+          @if (blockers().length > 0) {
+            <span class="count" data-count>{{ blockers().length }}</span>
+          }
+        </h3>
+        @for (link of blockers(); track link.entry.ref) {
+          <ng-container [ngTemplateOutlet]="row" [ngTemplateOutletContext]="{ $implicit: link }" />
+        } @empty {
+          <p class="none"><ui-icon name="circle-check" [size]="14" />{{ 'sidebar.noBlockers' | transloco }}</p>
+        }
+      </section>
+    }
+
+    @if (children().length > 0) {
+      <section class="sec" data-section="children">
+        <h3 class="eyebrow">
+          <span>{{ 'sidebar.children' | transloco }}</span><span class="count" data-count>{{ children().length }}</span>
+        </h3>
+        @for (link of visibleChildren(); track link.entry.ref) {
+          <ng-container [ngTemplateOutlet]="row" [ngTemplateOutletContext]="{ $implicit: link }" />
+        }
+        @if (hiddenChildren() > 0) {
+          <button type="button" class="more" data-more (click)="allChildren.set(true)">
+            {{ 'sidebar.more' | transloco: { count: hiddenChildren() } }}
+          </button>
+        }
+      </section>
+    }
+  </div>
+
+  @if (specPage(); as page) {
+    <div class="foot">
+      <a ui-button variant="primary" data-open-spec [routerLink]="page">
+        <ui-icon name="arrow-up-right" [size]="16" />{{ 'sidebar.openSpec' | transloco }}
+      </a>
+    </div>
+  }
+</ng-template>
+
+<ng-template #row let-link>
+  <a
+    class="link"
+    [class.blk]="link.blocker"
+    [attr.data-blocker]="link.blocker ? '' : null"
+    [attr.data-sel]="link.entry.ref"
+    [routerLink]="[]"
+    [queryParams]="link.params"
+    queryParamsHandling="merge"
+    [replaceUrl]="true"
+  >
+    <span class="lid"><ui-icon [name]="link.icon" [size]="14" />{{ link.entry.id }}</span>
+    <span class="lt">{{ link.entry.title }}</span>
+    <span class="lr">
+      @if (link.blocker) {
+        {{ 'sidebar.waiting' | transloco }}
+      } @else if (link.entry.archived) {
+        {{ 'sidebar.archived' | transloco }}
+      } @else if (link.entry.stage) {
+        {{ 'stages.' + link.entry.stage | transloco }}
+      } @else if (link.entry.total > 0) {
+        {{ link.entry.closed }}/{{ link.entry.total }}
+      }
+    </span>
+    <ui-icon class="chev" name="chevron-right" [size]="14" />
+  </a>
+</ng-template>

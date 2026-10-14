@@ -27,8 +27,34 @@ interface TechSections {
 
 type TechKey = keyof TechSections;
 
-/** The heading of plan.md's approach section. */
-const APPROACH_HEADINGS: readonly string[] = ['Approach'];
+/** The heading of plan.md's approach section; the library's group heads read it too (spec 017). */
+export const APPROACH_HEADINGS: readonly string[] = ['Approach'];
+
+/**
+ * The Markdown sources the tech page renders for one spec, before rendering: the `## Goal` section trimmed, the first
+ * paragraph of plan.md's `## Approach`, each null when there is no prose, and the `- fog:` lines, none for a spec whose
+ * phase is `complete`. The library's group heads and open fog lines (spec 017, ISC-157) take the same values.
+ */
+export interface TechSources {
+  readonly goal: string | null;
+  readonly approach: string | null;
+  readonly fog: readonly string[];
+}
+
+const proseOrNull = (text: string | null): string | null => {
+  const trimmed = text?.trim() ?? '';
+  return trimmed === '' ? null : trimmed;
+};
+
+/** One spec's tech sources from its spec.md and plan.md texts. */
+export function techSourcesOf(spec: string, plan: string | undefined): TechSources {
+  const approach = plan === undefined ? null : levelTwoSection(plan, APPROACH_HEADINGS);
+  return {
+    goal: proseOrNull(levelTwoSection(spec, GOAL_HEADINGS)),
+    approach: proseOrNull(approach === null ? null : firstParagraph(approach)),
+    fog: parseFrontmatter(spec).data.phase === 'complete' ? [] : parseClaims(spec).fog.map((line) => line.text),
+  };
+}
 
 /**
  * Whether an image path, as written in tech.md, stays inside `specs/` once resolved against it: no absolute path, no
@@ -93,8 +119,7 @@ function techSpec(f: SpecFiles): TechSpec | null {
   if (spec === undefined) return null;
   const id = specIdOf(f.folder) ?? f.folder;
   const { specType, phase } = parseFrontmatter(spec).data;
-  const plan = f.texts.plan;
-  const approach = plan === undefined ? null : levelTwoSection(plan, APPROACH_HEADINGS);
+  const sources = techSourcesOf(spec, f.texts.plan);
   return {
     id,
     slug: f.folder,
@@ -102,9 +127,9 @@ function techSpec(f: SpecFiles): TechSpec | null {
     title: specTitle(listArchive([f])[0], f.folder),
     type: specType,
     phase,
-    goal: pageOf(levelTwoSection(spec, GOAL_HEADINGS), `spec-${id}-goal-`),
-    approach: pageOf(approach === null ? null : firstParagraph(approach), `spec-${id}-approach-`),
-    fog: phase === 'complete' ? [] : parseClaims(spec).fog.map((line) => line.text),
+    goal: pageOf(sources.goal, `spec-${id}-goal-`),
+    approach: pageOf(sources.approach, `spec-${id}-approach-`),
+    fog: [...sources.fog],
   };
 }
 

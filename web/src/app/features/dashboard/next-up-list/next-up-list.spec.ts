@@ -46,7 +46,7 @@ describe('NextUpList', () => {
     for (const id of HARBOR.nextUp) {
       const entry = primary.querySelector(`[data-next-entry="${id}"]`) as HTMLElement;
       expect(entry.querySelector('ui-command-chip code')?.textContent).toBe(row(id).nextCommand);
-      expect(entry.querySelector('a[data-next-link]')?.getAttribute('href')).toBe(`/?spec=${id}`);
+      expect(entry.querySelector('a[data-next-link]')?.getAttribute('href')).toBe(`/?sel=spec:${id}`);
       expect(entry.textContent).toContain(row(id).title);
     }
   });

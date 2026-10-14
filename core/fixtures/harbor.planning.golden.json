@@ -1292,6 +1292,7 @@
       "closed": 0,
       "total": 13,
       "state": "late",
+      "featureIds": [],
       "features": [
         {
           "id": "F3",
@@ -1325,6 +1326,7 @@
       "closed": 101,
       "total": 106,
       "state": "upcoming",
+      "featureIds": [],
       "features": [
         {
           "id": "F1",
@@ -1404,6 +1406,16 @@
       ]
     }
   ],
+  "unassignedFeatures": [
+    "F0",
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6",
+    "F7"
+  ],
   "ideas": [
     {
       "slug": "console-audit-log",
@@ -1447,5 +1459,2451 @@
         "subject": "Harbor 2.0"
       }
     }
-  ]
+  ],
+  "relations": {
+    "milestone:harbor-0-9": {
+      "ref": "milestone:harbor-0-9",
+      "type": "milestone",
+      "id": "harbor-0-9",
+      "title": "Harbor 0.9",
+      "closed": 0,
+      "total": 13,
+      "parents": [],
+      "children": [
+        "feature:F3"
+      ],
+      "blockers": []
+    },
+    "milestone:harbor-1-0": {
+      "ref": "milestone:harbor-1-0",
+      "type": "milestone",
+      "id": "harbor-1-0",
+      "title": "Harbor 1.0",
+      "closed": 101,
+      "total": 106,
+      "parents": [],
+      "children": [
+        "feature:F1",
+        "feature:F2",
+        "feature:F4",
+        "idea:registry-webhooks"
+      ],
+      "blockers": []
+    },
+    "feature:F0": {
+      "ref": "feature:F0",
+      "type": "feature",
+      "id": "F0",
+      "title": "Cross-cutting",
+      "closed": 0,
+      "total": 4,
+      "parents": [],
+      "children": [
+        "spec:006",
+        "claim:ISC-1",
+        "claim:ISC-2",
+        "claim:ISC-3",
+        "claim:ISC-4"
+      ],
+      "blockers": []
+    },
+    "feature:F1": {
+      "ref": "feature:F1",
+      "type": "feature",
+      "id": "F1",
+      "title": "Manifest sync",
+      "closed": 46,
+      "total": 46,
+      "parents": [
+        "milestone:harbor-1-0"
+      ],
+      "children": [
+        "spec:001",
+        "claim:ISC-5",
+        "claim:ISC-6",
+        "claim:ISC-7",
+        "claim:ISC-8",
+        "claim:ISC-9",
+        "claim:ISC-10",
+        "claim:ISC-11",
+        "claim:ISC-12",
+        "claim:ISC-13",
+        "claim:ISC-14",
+        "claim:ISC-15",
+        "claim:ISC-16",
+        "claim:ISC-17",
+        "claim:ISC-18",
+        "claim:ISC-19",
+        "claim:ISC-20",
+        "claim:ISC-21",
+        "claim:ISC-22",
+        "claim:ISC-23",
+        "claim:ISC-24",
+        "claim:ISC-25",
+        "claim:ISC-26",
+        "claim:ISC-27",
+        "claim:ISC-28",
+        "claim:ISC-29",
+        "claim:ISC-30",
+        "claim:ISC-31",
+        "claim:ISC-32",
+        "claim:ISC-33",
+        "claim:ISC-34",
+        "claim:ISC-35",
+        "claim:ISC-36",
+        "claim:ISC-37",
+        "claim:ISC-38",
+        "claim:ISC-39",
+        "claim:ISC-40",
+        "claim:ISC-41",
+        "claim:ISC-42",
+        "claim:ISC-43",
+        "claim:ISC-44",
+        "claim:ISC-45",
+        "claim:ISC-46",
+        "claim:ISC-47",
+        "claim:ISC-48",
+        "claim:ISC-49",
+        "claim:ISC-50"
+      ],
+      "blockers": []
+    },
+    "feature:F2": {
+      "ref": "feature:F2",
+      "type": "feature",
+      "id": "F2",
+      "title": "Web console",
+      "closed": 25,
+      "total": 30,
+      "parents": [
+        "milestone:harbor-1-0"
+      ],
+      "children": [
+        "spec:002",
+        "claim:ISC-51",
+        "claim:ISC-52",
+        "claim:ISC-53",
+        "claim:ISC-54",
+        "claim:ISC-55",
+        "claim:ISC-56",
+        "claim:ISC-57",
+        "claim:ISC-58",
+        "claim:ISC-59",
+        "claim:ISC-60",
+        "claim:ISC-60.1",
+        "claim:ISC-60.2",
+        "claim:ISC-61",
+        "claim:ISC-62",
+        "claim:ISC-63",
+        "claim:ISC-64",
+        "claim:ISC-65",
+        "claim:ISC-66",
+        "claim:ISC-67",
+        "claim:ISC-68",
+        "claim:ISC-69",
+        "claim:ISC-70",
+        "claim:ISC-71",
+        "claim:ISC-72",
+        "claim:ISC-73",
+        "claim:ISC-74",
+        "claim:ISC-75",
+        "claim:ISC-76",
+        "claim:ISC-77",
+        "claim:ISC-78",
+        "idea:console-audit-log"
+      ],
+      "blockers": []
+    },
+    "feature:F3": {
+      "ref": "feature:F3",
+      "type": "feature",
+      "id": "F3",
+      "title": "Config loader rewrite",
+      "closed": 0,
+      "total": 14,
+      "parents": [
+        "milestone:harbor-0-9"
+      ],
+      "children": [
+        "spec:003",
+        "spec:005",
+        "claim:ISC-81",
+        "claim:ISC-82",
+        "claim:ISC-83",
+        "claim:ISC-84",
+        "claim:ISC-85",
+        "claim:ISC-86",
+        "claim:ISC-87",
+        "claim:ISC-88",
+        "claim:ISC-89",
+        "claim:ISC-90",
+        "claim:ISC-91",
+        "claim:ISC-92",
+        "claim:ISC-93",
+        "claim:ISC-94"
+      ],
+      "blockers": []
+    },
+    "feature:F4": {
+      "ref": "feature:F4",
+      "type": "feature",
+      "id": "F4",
+      "title": "Retention policies",
+      "closed": 30,
+      "total": 30,
+      "parents": [
+        "milestone:harbor-1-0"
+      ],
+      "children": [
+        "spec:004",
+        "claim:ISC-95",
+        "claim:ISC-96",
+        "claim:ISC-97",
+        "claim:ISC-98",
+        "claim:ISC-99",
+        "claim:ISC-100",
+        "claim:ISC-101",
+        "claim:ISC-102",
+        "claim:ISC-103",
+        "claim:ISC-104",
+        "claim:ISC-105",
+        "claim:ISC-106",
+        "claim:ISC-107",
+        "claim:ISC-108",
+        "claim:ISC-109",
+        "claim:ISC-110",
+        "claim:ISC-111",
+        "claim:ISC-112",
+        "claim:ISC-113",
+        "claim:ISC-114",
+        "claim:ISC-115",
+        "claim:ISC-116",
+        "claim:ISC-117",
+        "claim:ISC-118",
+        "claim:ISC-119",
+        "claim:ISC-120",
+        "claim:ISC-121",
+        "claim:ISC-122",
+        "claim:ISC-123",
+        "claim:ISC-124"
+      ],
+      "blockers": []
+    },
+    "feature:F5": {
+      "ref": "feature:F5",
+      "type": "feature",
+      "id": "F5",
+      "title": "Mirror credentials",
+      "closed": 2,
+      "total": 2,
+      "parents": [],
+      "children": [
+        "spec:007",
+        "claim:ISC-126",
+        "claim:ISC-127"
+      ],
+      "blockers": []
+    },
+    "feature:F6": {
+      "ref": "feature:F6",
+      "type": "feature",
+      "id": "F6",
+      "title": "Registry compatibility",
+      "closed": 3,
+      "total": 4,
+      "parents": [],
+      "children": [
+        "spec:008",
+        "spec:009",
+        "claim:ISC-128",
+        "claim:ISC-129",
+        "claim:ISC-130",
+        "claim:ISC-131"
+      ],
+      "blockers": []
+    },
+    "feature:F7": {
+      "ref": "feature:F7",
+      "type": "feature",
+      "id": "F7",
+      "title": "Registry webhooks",
+      "closed": 0,
+      "total": 0,
+      "parents": [],
+      "children": [
+        "idea:registry-webhooks"
+      ],
+      "blockers": []
+    },
+    "spec:002": {
+      "ref": "spec:002",
+      "type": "spec",
+      "id": "002",
+      "title": "Show every sync run and its failures in a small web console",
+      "closed": 25,
+      "total": 30,
+      "parents": [
+        "feature:F2"
+      ],
+      "children": [
+        "claim:ISC-51",
+        "claim:ISC-52",
+        "claim:ISC-53",
+        "claim:ISC-54",
+        "claim:ISC-55",
+        "claim:ISC-56",
+        "claim:ISC-57",
+        "claim:ISC-58",
+        "claim:ISC-59",
+        "claim:ISC-60",
+        "claim:ISC-60.1",
+        "claim:ISC-60.2",
+        "claim:ISC-61",
+        "claim:ISC-62",
+        "claim:ISC-63",
+        "claim:ISC-64",
+        "claim:ISC-65",
+        "claim:ISC-66",
+        "claim:ISC-67",
+        "claim:ISC-68",
+        "claim:ISC-69",
+        "claim:ISC-70",
+        "claim:ISC-71",
+        "claim:ISC-72",
+        "claim:ISC-73",
+        "claim:ISC-74",
+        "claim:ISC-75",
+        "claim:ISC-76",
+        "claim:ISC-77",
+        "claim:ISC-78"
+      ],
+      "blockers": [],
+      "stage": "build"
+    },
+    "spec:003": {
+      "ref": "spec:003",
+      "type": "spec",
+      "id": "003",
+      "title": "Read the config through one loader in the CLI, the API and the console",
+      "closed": 0,
+      "total": 13,
+      "parents": [
+        "feature:F3"
+      ],
+      "children": [
+        "claim:ISC-81",
+        "claim:ISC-82",
+        "claim:ISC-83",
+        "claim:ISC-84",
+        "claim:ISC-85",
+        "claim:ISC-86",
+        "claim:ISC-87",
+        "claim:ISC-88",
+        "claim:ISC-89",
+        "claim:ISC-90",
+        "claim:ISC-91",
+        "claim:ISC-92",
+        "claim:ISC-93"
+      ],
+      "blockers": [],
+      "stage": "tasks"
+    },
+    "spec:004": {
+      "ref": "spec:004",
+      "type": "spec",
+      "id": "004",
+      "title": "Delete old manifests on a written schedule without touching referenced ones",
+      "closed": 30,
+      "total": 30,
+      "parents": [
+        "feature:F4"
+      ],
+      "children": [
+        "claim:ISC-95",
+        "claim:ISC-96",
+        "claim:ISC-97",
+        "claim:ISC-98",
+        "claim:ISC-99",
+        "claim:ISC-100",
+        "claim:ISC-101",
+        "claim:ISC-102",
+        "claim:ISC-103",
+        "claim:ISC-104",
+        "claim:ISC-105",
+        "claim:ISC-106",
+        "claim:ISC-107",
+        "claim:ISC-108",
+        "claim:ISC-109",
+        "claim:ISC-110",
+        "claim:ISC-111",
+        "claim:ISC-112",
+        "claim:ISC-113",
+        "claim:ISC-114",
+        "claim:ISC-115",
+        "claim:ISC-116",
+        "claim:ISC-117",
+        "claim:ISC-118",
+        "claim:ISC-119",
+        "claim:ISC-120",
+        "claim:ISC-121",
+        "claim:ISC-122",
+        "claim:ISC-123",
+        "claim:ISC-124"
+      ],
+      "blockers": [],
+      "stage": "code-review"
+    },
+    "spec:005": {
+      "ref": "spec:005",
+      "type": "spec",
+      "id": "005",
+      "title": "Decide which config format version 2 uses",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F3"
+      ],
+      "children": [
+        "claim:ISC-94"
+      ],
+      "blockers": [],
+      "stage": "review"
+    },
+    "spec:006": {
+      "ref": "spec:006",
+      "type": "spec",
+      "id": "006",
+      "title": "Stop a timed-out push from leaving a half-written manifest behind",
+      "closed": 0,
+      "total": 3,
+      "parents": [
+        "feature:F0"
+      ],
+      "children": [
+        "claim:ISC-1",
+        "claim:ISC-2",
+        "claim:ISC-3"
+      ],
+      "blockers": [],
+      "stage": "review"
+    },
+    "spec:007": {
+      "ref": "spec:007",
+      "type": "spec",
+      "id": "007",
+      "title": "Replace the push token without stopping a scheduled sync",
+      "closed": 2,
+      "total": 2,
+      "parents": [
+        "feature:F5"
+      ],
+      "children": [
+        "claim:ISC-126",
+        "claim:ISC-127"
+      ],
+      "blockers": [],
+      "stage": "done"
+    },
+    "spec:008": {
+      "ref": "spec:008",
+      "type": "spec",
+      "id": "008",
+      "title": "Find out which target registries answer the OCI referrers endpoint",
+      "closed": 2,
+      "total": 2,
+      "parents": [
+        "feature:F6"
+      ],
+      "children": [
+        "claim:ISC-128",
+        "claim:ISC-129"
+      ],
+      "blockers": [],
+      "stage": "close-pending"
+    },
+    "spec:009": {
+      "ref": "spec:009",
+      "type": "spec",
+      "id": "009",
+      "title": "Find the largest blob chunk each target registry accepts",
+      "closed": 1,
+      "total": 2,
+      "parents": [
+        "feature:F6"
+      ],
+      "children": [
+        "claim:ISC-130",
+        "claim:ISC-131"
+      ],
+      "blockers": [],
+      "stage": "build"
+    },
+    "spec:001": {
+      "ref": "spec:001",
+      "type": "spec",
+      "id": "001",
+      "title": "Mirror every listed manifest into the team registry with one command",
+      "closed": 46,
+      "total": 46,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [
+        "claim:ISC-5",
+        "claim:ISC-6",
+        "claim:ISC-7",
+        "claim:ISC-8",
+        "claim:ISC-9",
+        "claim:ISC-10",
+        "claim:ISC-11",
+        "claim:ISC-12",
+        "claim:ISC-13",
+        "claim:ISC-14",
+        "claim:ISC-15",
+        "claim:ISC-16",
+        "claim:ISC-17",
+        "claim:ISC-18",
+        "claim:ISC-19",
+        "claim:ISC-20",
+        "claim:ISC-21",
+        "claim:ISC-22",
+        "claim:ISC-23",
+        "claim:ISC-24",
+        "claim:ISC-25",
+        "claim:ISC-26",
+        "claim:ISC-27",
+        "claim:ISC-28",
+        "claim:ISC-29",
+        "claim:ISC-30",
+        "claim:ISC-31",
+        "claim:ISC-32",
+        "claim:ISC-33",
+        "claim:ISC-34",
+        "claim:ISC-35",
+        "claim:ISC-36",
+        "claim:ISC-37",
+        "claim:ISC-38",
+        "claim:ISC-39",
+        "claim:ISC-40",
+        "claim:ISC-41",
+        "claim:ISC-42",
+        "claim:ISC-43",
+        "claim:ISC-44",
+        "claim:ISC-45",
+        "claim:ISC-46",
+        "claim:ISC-47",
+        "claim:ISC-48",
+        "claim:ISC-49",
+        "claim:ISC-50"
+      ],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-1": {
+      "ref": "claim:ISC-1",
+      "type": "claim",
+      "id": "ISC-1",
+      "title": "a failed push leaves a partial manifest visible in the target registry.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:006",
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-2": {
+      "ref": "claim:ISC-2",
+      "type": "claim",
+      "id": "ISC-2",
+      "title": "Every command exits non-zero when any repository in the run failed.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:006",
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-3": {
+      "ref": "claim:ISC-3",
+      "type": "claim",
+      "id": "ISC-3",
+      "title": "a registry credential appears in a log line, an error message or the sync history.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:006",
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-4": {
+      "ref": "claim:ISC-4",
+      "type": "claim",
+      "id": "ISC-4",
+      "title": "The API and the web console bind to loopback unless `--listen` names another address.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-5": {
+      "ref": "claim:ISC-5",
+      "type": "claim",
+      "id": "ISC-5",
+      "title": "`harbor sync` copies a single-platform manifest to the target registry with an identical digest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-6": {
+      "ref": "claim:ISC-6",
+      "type": "claim",
+      "id": "ISC-6",
+      "title": "`harbor sync` copies a multi-platform index to the target registry with an identical digest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-7": {
+      "ref": "claim:ISC-7",
+      "type": "claim",
+      "id": "ISC-7",
+      "title": "`harbor sync` copies a manifest pinned by digest to the target registry with an identical digest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-8": {
+      "ref": "claim:ISC-8",
+      "type": "claim",
+      "id": "ISC-8",
+      "title": "`harbor sync` copies a manifest referenced by tag to the target registry with an identical digest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-9": {
+      "ref": "claim:ISC-9",
+      "type": "claim",
+      "id": "ISC-9",
+      "title": "`harbor sync` copies an attestation attached to a manifest to the target registry with an identical digest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-10": {
+      "ref": "claim:ISC-10",
+      "type": "claim",
+      "id": "ISC-10",
+      "title": "`harbor sync` copies a signature artifact to the target registry with an identical digest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-11": {
+      "ref": "claim:ISC-11",
+      "type": "claim",
+      "id": "ISC-11",
+      "title": "`harbor sync` copies a manifest larger than 4 MB to the target registry with an identical digest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-12": {
+      "ref": "claim:ISC-12",
+      "type": "claim",
+      "id": "ISC-12",
+      "title": "`harbor sync` copies a blob already present in the target to the target registry with an identical digest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-13": {
+      "ref": "claim:ISC-13",
+      "type": "claim",
+      "id": "ISC-13",
+      "title": "`harbor sync` copies a layer shared by two manifests to the target registry with an identical digest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-14": {
+      "ref": "claim:ISC-14",
+      "type": "claim",
+      "id": "ISC-14",
+      "title": "`harbor sync` copies a manifest whose source answers 404 to the target registry with an identical digest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-15": {
+      "ref": "claim:ISC-15",
+      "type": "claim",
+      "id": "ISC-15",
+      "title": "`harbor sync` copies a registry that answers 429 to the target registry with an identical digest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-16": {
+      "ref": "claim:ISC-16",
+      "type": "claim",
+      "id": "ISC-16",
+      "title": "`harbor sync` copies an empty repository to the target registry with an identical digest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-17": {
+      "ref": "claim:ISC-17",
+      "type": "claim",
+      "id": "ISC-17",
+      "title": "A dry run over a single-platform manifest prints the planned push and writes nothing.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-18": {
+      "ref": "claim:ISC-18",
+      "type": "claim",
+      "id": "ISC-18",
+      "title": "A dry run over a multi-platform index prints the planned push and writes nothing.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-19": {
+      "ref": "claim:ISC-19",
+      "type": "claim",
+      "id": "ISC-19",
+      "title": "A dry run over a manifest pinned by digest prints the planned push and writes nothing.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-20": {
+      "ref": "claim:ISC-20",
+      "type": "claim",
+      "id": "ISC-20",
+      "title": "A dry run over a manifest referenced by tag prints the planned push and writes nothing.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-21": {
+      "ref": "claim:ISC-21",
+      "type": "claim",
+      "id": "ISC-21",
+      "title": "A dry run over an attestation attached to a manifest prints the planned push and writes nothing.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-22": {
+      "ref": "claim:ISC-22",
+      "type": "claim",
+      "id": "ISC-22",
+      "title": "A dry run over a signature artifact prints the planned push and writes nothing.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-23": {
+      "ref": "claim:ISC-23",
+      "type": "claim",
+      "id": "ISC-23",
+      "title": "A dry run over a manifest larger than 4 MB prints the planned push and writes nothing.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-24": {
+      "ref": "claim:ISC-24",
+      "type": "claim",
+      "id": "ISC-24",
+      "title": "A dry run over a blob already present in the target prints the planned push and writes nothing.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-25": {
+      "ref": "claim:ISC-25",
+      "type": "claim",
+      "id": "ISC-25",
+      "title": "A dry run over a layer shared by two manifests prints the planned push and writes nothing.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-26": {
+      "ref": "claim:ISC-26",
+      "type": "claim",
+      "id": "ISC-26",
+      "title": "A dry run over a manifest whose source answers 404 prints the planned push and writes nothing.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-27": {
+      "ref": "claim:ISC-27",
+      "type": "claim",
+      "id": "ISC-27",
+      "title": "A dry run over a registry that answers 429 prints the planned push and writes nothing.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-28": {
+      "ref": "claim:ISC-28",
+      "type": "claim",
+      "id": "ISC-28",
+      "title": "A dry run over an empty repository prints the planned push and writes nothing.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-29": {
+      "ref": "claim:ISC-29",
+      "type": "claim",
+      "id": "ISC-29",
+      "title": "syncing a single-platform manifest twice uploads a byte the second time.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-30": {
+      "ref": "claim:ISC-30",
+      "type": "claim",
+      "id": "ISC-30",
+      "title": "syncing a multi-platform index twice uploads a byte the second time.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-31": {
+      "ref": "claim:ISC-31",
+      "type": "claim",
+      "id": "ISC-31",
+      "title": "syncing a manifest pinned by digest twice uploads a byte the second time.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-32": {
+      "ref": "claim:ISC-32",
+      "type": "claim",
+      "id": "ISC-32",
+      "title": "syncing a manifest referenced by tag twice uploads a byte the second time.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-33": {
+      "ref": "claim:ISC-33",
+      "type": "claim",
+      "id": "ISC-33",
+      "title": "syncing an attestation attached to a manifest twice uploads a byte the second time.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-34": {
+      "ref": "claim:ISC-34",
+      "type": "claim",
+      "id": "ISC-34",
+      "title": "syncing a signature artifact twice uploads a byte the second time.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-35": {
+      "ref": "claim:ISC-35",
+      "type": "claim",
+      "id": "ISC-35",
+      "title": "syncing a manifest larger than 4 MB twice uploads a byte the second time.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-36": {
+      "ref": "claim:ISC-36",
+      "type": "claim",
+      "id": "ISC-36",
+      "title": "syncing a blob already present in the target twice uploads a byte the second time.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-37": {
+      "ref": "claim:ISC-37",
+      "type": "claim",
+      "id": "ISC-37",
+      "title": "syncing a layer shared by two manifests twice uploads a byte the second time.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-38": {
+      "ref": "claim:ISC-38",
+      "type": "claim",
+      "id": "ISC-38",
+      "title": "syncing a manifest whose source answers 404 twice uploads a byte the second time.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-39": {
+      "ref": "claim:ISC-39",
+      "type": "claim",
+      "id": "ISC-39",
+      "title": "syncing a registry that answers 429 twice uploads a byte the second time.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-40": {
+      "ref": "claim:ISC-40",
+      "type": "claim",
+      "id": "ISC-40",
+      "title": "syncing an empty repository twice uploads a byte the second time.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-41": {
+      "ref": "claim:ISC-41",
+      "type": "claim",
+      "id": "ISC-41",
+      "title": "The sync log names a single-platform manifest with its source and target reference.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-42": {
+      "ref": "claim:ISC-42",
+      "type": "claim",
+      "id": "ISC-42",
+      "title": "The sync log names a multi-platform index with its source and target reference.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-43": {
+      "ref": "claim:ISC-43",
+      "type": "claim",
+      "id": "ISC-43",
+      "title": "The sync log names a manifest pinned by digest with its source and target reference.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-44": {
+      "ref": "claim:ISC-44",
+      "type": "claim",
+      "id": "ISC-44",
+      "title": "The sync log names a manifest referenced by tag with its source and target reference.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-45": {
+      "ref": "claim:ISC-45",
+      "type": "claim",
+      "id": "ISC-45",
+      "title": "The sync log names an attestation attached to a manifest with its source and target reference.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-46": {
+      "ref": "claim:ISC-46",
+      "type": "claim",
+      "id": "ISC-46",
+      "title": "The sync log names a signature artifact with its source and target reference.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-47": {
+      "ref": "claim:ISC-47",
+      "type": "claim",
+      "id": "ISC-47",
+      "title": "The sync log names a manifest larger than 4 MB with its source and target reference.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-48": {
+      "ref": "claim:ISC-48",
+      "type": "claim",
+      "id": "ISC-48",
+      "title": "The sync log names a blob already present in the target with its source and target reference.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-49": {
+      "ref": "claim:ISC-49",
+      "type": "claim",
+      "id": "ISC-49",
+      "title": "The sync log names a layer shared by two manifests with its source and target reference.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-50": {
+      "ref": "claim:ISC-50",
+      "type": "claim",
+      "id": "ISC-50",
+      "title": "The sync log names a manifest whose source answers 404 with its source and target reference.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [],
+      "archived": true
+    },
+    "claim:ISC-51": {
+      "ref": "claim:ISC-51",
+      "type": "claim",
+      "id": "ISC-51",
+      "title": "The registry list renders from the API with no console error.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-52": {
+      "ref": "claim:ISC-52",
+      "type": "claim",
+      "id": "ISC-52",
+      "title": "The repository view renders from the API with no console error.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-53": {
+      "ref": "claim:ISC-53",
+      "type": "claim",
+      "id": "ISC-53",
+      "title": "The tag table renders from the API with no console error.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-54": {
+      "ref": "claim:ISC-54",
+      "type": "claim",
+      "id": "ISC-54",
+      "title": "The digest detail panel renders from the API with no console error.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-55": {
+      "ref": "claim:ISC-55",
+      "type": "claim",
+      "id": "ISC-55",
+      "title": "The sync history renders from the API with no console error.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-56": {
+      "ref": "claim:ISC-56",
+      "type": "claim",
+      "id": "ISC-56",
+      "title": "The settings page renders from the API with no console error.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-57": {
+      "ref": "claim:ISC-57",
+      "type": "claim",
+      "id": "ISC-57",
+      "title": "The search box renders from the API with no console error.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-58": {
+      "ref": "claim:ISC-58",
+      "type": "claim",
+      "id": "ISC-58",
+      "title": "The empty state renders from the API with no console error.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-59": {
+      "ref": "claim:ISC-59",
+      "type": "claim",
+      "id": "ISC-59",
+      "title": "The error banner renders from the API with no console error.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-60": {
+      "ref": "claim:ISC-60",
+      "type": "claim",
+      "id": "ISC-60",
+      "title": "The theme switch renders from the API with no console error.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-60.1": {
+      "ref": "claim:ISC-60.1",
+      "type": "claim",
+      "id": "ISC-60.1",
+      "title": "The theme switch follows the system colour scheme until a mode is chosen.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-60.2": {
+      "ref": "claim:ISC-60.2",
+      "type": "claim",
+      "id": "ISC-60.2",
+      "title": "A chosen colour mode survives a reload of the console.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-61": {
+      "ref": "claim:ISC-61",
+      "type": "claim",
+      "id": "ISC-61",
+      "title": "The tag table stays usable at 390 px without horizontal scrolling.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-62": {
+      "ref": "claim:ISC-62",
+      "type": "claim",
+      "id": "ISC-62",
+      "title": "The digest detail panel stays usable at 390 px without horizontal scrolling.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-63": {
+      "ref": "claim:ISC-63",
+      "type": "claim",
+      "id": "ISC-63",
+      "title": "The sync history stays usable at 390 px without horizontal scrolling.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-64": {
+      "ref": "claim:ISC-64",
+      "type": "claim",
+      "id": "ISC-64",
+      "title": "The settings page stays usable at 390 px without horizontal scrolling.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-65": {
+      "ref": "claim:ISC-65",
+      "type": "claim",
+      "id": "ISC-65",
+      "title": "The search box stays usable at 390 px without horizontal scrolling.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-66": {
+      "ref": "claim:ISC-66",
+      "type": "claim",
+      "id": "ISC-66",
+      "title": "The empty state stays usable at 390 px without horizontal scrolling.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-67": {
+      "ref": "claim:ISC-67",
+      "type": "claim",
+      "id": "ISC-67",
+      "title": "The error banner stays usable at 390 px without horizontal scrolling.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-68": {
+      "ref": "claim:ISC-68",
+      "type": "claim",
+      "id": "ISC-68",
+      "title": "The theme switch stays usable at 390 px without horizontal scrolling.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-69": {
+      "ref": "claim:ISC-69",
+      "type": "claim",
+      "id": "ISC-69",
+      "title": "Every interactive element in the registry list is reachable by keyboard and shows a focus ring.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-70": {
+      "ref": "claim:ISC-70",
+      "type": "claim",
+      "id": "ISC-70",
+      "title": "Every interactive element in the repository view is reachable by keyboard and shows a focus ring.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-71": {
+      "ref": "claim:ISC-71",
+      "type": "claim",
+      "id": "ISC-71",
+      "title": "Every interactive element in the tag table is reachable by keyboard and shows a focus ring.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-72": {
+      "ref": "claim:ISC-72",
+      "type": "claim",
+      "id": "ISC-72",
+      "title": "Every interactive element in the digest detail panel is reachable by keyboard and shows a focus ring.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-73": {
+      "ref": "claim:ISC-73",
+      "type": "claim",
+      "id": "ISC-73",
+      "title": "Every interactive element in the sync history is reachable by keyboard and shows a focus ring.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-74": {
+      "ref": "claim:ISC-74",
+      "type": "claim",
+      "id": "ISC-74",
+      "title": "Every interactive element in the settings page is reachable by keyboard and shows a focus ring.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-75": {
+      "ref": "claim:ISC-75",
+      "type": "claim",
+      "id": "ISC-75",
+      "title": "Every interactive element in the search box is reachable by keyboard and shows a focus ring.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-76": {
+      "ref": "claim:ISC-76",
+      "type": "claim",
+      "id": "ISC-76",
+      "title": "Every interactive element in the empty state is reachable by keyboard and shows a focus ring.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-77": {
+      "ref": "claim:ISC-77",
+      "type": "claim",
+      "id": "ISC-77",
+      "title": "Every interactive element in the error banner is reachable by keyboard and shows a focus ring.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-78": {
+      "ref": "claim:ISC-78",
+      "type": "claim",
+      "id": "ISC-78",
+      "title": "Every interactive element in the theme switch is reachable by keyboard and shows a focus ring.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-77"
+      ]
+    },
+    "claim:ISC-81": {
+      "ref": "claim:ISC-81",
+      "type": "claim",
+      "id": "ISC-81",
+      "title": "The loader reads the project file through one code path.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-82": {
+      "ref": "claim:ISC-82",
+      "type": "claim",
+      "id": "ISC-82",
+      "title": "the project file produces a different effective config than before the rewrite.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-81"
+      ]
+    },
+    "claim:ISC-83": {
+      "ref": "claim:ISC-83",
+      "type": "claim",
+      "id": "ISC-83",
+      "title": "The loader reads the user file through one code path.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-84": {
+      "ref": "claim:ISC-84",
+      "type": "claim",
+      "id": "ISC-84",
+      "title": "the user file produces a different effective config than before the rewrite.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-83"
+      ]
+    },
+    "claim:ISC-85": {
+      "ref": "claim:ISC-85",
+      "type": "claim",
+      "id": "ISC-85",
+      "title": "The loader reads environment overrides through one code path.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-86": {
+      "ref": "claim:ISC-86",
+      "type": "claim",
+      "id": "ISC-86",
+      "title": "environment overrides produces a different effective config than before the rewrite.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-85"
+      ]
+    },
+    "claim:ISC-87": {
+      "ref": "claim:ISC-87",
+      "type": "claim",
+      "id": "ISC-87",
+      "title": "The loader reads command-line flags through one code path.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-88": {
+      "ref": "claim:ISC-88",
+      "type": "claim",
+      "id": "ISC-88",
+      "title": "command-line flags produces a different effective config than before the rewrite.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-87"
+      ]
+    },
+    "claim:ISC-89": {
+      "ref": "claim:ISC-89",
+      "type": "claim",
+      "id": "ISC-89",
+      "title": "The loader reads a missing file through one code path.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-90": {
+      "ref": "claim:ISC-90",
+      "type": "claim",
+      "id": "ISC-90",
+      "title": "a missing file produces a different effective config than before the rewrite.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-89"
+      ]
+    },
+    "claim:ISC-91": {
+      "ref": "claim:ISC-91",
+      "type": "claim",
+      "id": "ISC-91",
+      "title": "The loader reads an unknown key through one code path.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-92": {
+      "ref": "claim:ISC-92",
+      "type": "claim",
+      "id": "ISC-92",
+      "title": "an unknown key produces a different effective config than before the rewrite.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-91"
+      ]
+    },
+    "claim:ISC-93": {
+      "ref": "claim:ISC-93",
+      "type": "claim",
+      "id": "ISC-93",
+      "title": "The loader reads a duplicated key through one code path.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-94": {
+      "ref": "claim:ISC-94",
+      "type": "claim",
+      "id": "ISC-94",
+      "title": "the config format for version 2 is chosen and recorded as a decision.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:005",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-95": {
+      "ref": "claim:ISC-95",
+      "type": "claim",
+      "id": "ISC-95",
+      "title": "For keep-last-N, the retention engine evaluates every repository and logs one verdict per manifest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-96": {
+      "ref": "claim:ISC-96",
+      "type": "claim",
+      "id": "ISC-96",
+      "title": "For keep-newer-than, the retention engine evaluates every repository and logs one verdict per manifest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-97": {
+      "ref": "claim:ISC-97",
+      "type": "claim",
+      "id": "ISC-97",
+      "title": "For keep-by-tag-pattern, the retention engine evaluates every repository and logs one verdict per manifest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-98": {
+      "ref": "claim:ISC-98",
+      "type": "claim",
+      "id": "ISC-98",
+      "title": "For a protected tag, the retention engine evaluates every repository and logs one verdict per manifest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-99": {
+      "ref": "claim:ISC-99",
+      "type": "claim",
+      "id": "ISC-99",
+      "title": "For an untagged manifest, the retention engine evaluates every repository and logs one verdict per manifest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-100": {
+      "ref": "claim:ISC-100",
+      "type": "claim",
+      "id": "ISC-100",
+      "title": "For a policy preview, the retention engine evaluates every repository and logs one verdict per manifest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-101": {
+      "ref": "claim:ISC-101",
+      "type": "claim",
+      "id": "ISC-101",
+      "title": "For a policy conflict, the retention engine evaluates every repository and logs one verdict per manifest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-102": {
+      "ref": "claim:ISC-102",
+      "type": "claim",
+      "id": "ISC-102",
+      "title": "For a scheduled run, the retention engine evaluates every repository and logs one verdict per manifest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-103": {
+      "ref": "claim:ISC-103",
+      "type": "claim",
+      "id": "ISC-103",
+      "title": "For a manual run, the retention engine evaluates every repository and logs one verdict per manifest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-104": {
+      "ref": "claim:ISC-104",
+      "type": "claim",
+      "id": "ISC-104",
+      "title": "For a policy file with comments, the retention engine evaluates every repository and logs one verdict per manifest.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-105": {
+      "ref": "claim:ISC-105",
+      "type": "claim",
+      "id": "ISC-105",
+      "title": "keep-last-N deletes a manifest that another tag still references.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-106": {
+      "ref": "claim:ISC-106",
+      "type": "claim",
+      "id": "ISC-106",
+      "title": "keep-newer-than deletes a manifest that another tag still references.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-107": {
+      "ref": "claim:ISC-107",
+      "type": "claim",
+      "id": "ISC-107",
+      "title": "keep-by-tag-pattern deletes a manifest that another tag still references.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-108": {
+      "ref": "claim:ISC-108",
+      "type": "claim",
+      "id": "ISC-108",
+      "title": "a protected tag deletes a manifest that another tag still references.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-109": {
+      "ref": "claim:ISC-109",
+      "type": "claim",
+      "id": "ISC-109",
+      "title": "an untagged manifest deletes a manifest that another tag still references.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-110": {
+      "ref": "claim:ISC-110",
+      "type": "claim",
+      "id": "ISC-110",
+      "title": "a policy preview deletes a manifest that another tag still references.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-111": {
+      "ref": "claim:ISC-111",
+      "type": "claim",
+      "id": "ISC-111",
+      "title": "a policy conflict deletes a manifest that another tag still references.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-112": {
+      "ref": "claim:ISC-112",
+      "type": "claim",
+      "id": "ISC-112",
+      "title": "a scheduled run deletes a manifest that another tag still references.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-113": {
+      "ref": "claim:ISC-113",
+      "type": "claim",
+      "id": "ISC-113",
+      "title": "a manual run deletes a manifest that another tag still references.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-114": {
+      "ref": "claim:ISC-114",
+      "type": "claim",
+      "id": "ISC-114",
+      "title": "a policy file with comments deletes a manifest that another tag still references.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-115": {
+      "ref": "claim:ISC-115",
+      "type": "claim",
+      "id": "ISC-115",
+      "title": "The console shows the effect of keep-last-N before anything is deleted.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-116": {
+      "ref": "claim:ISC-116",
+      "type": "claim",
+      "id": "ISC-116",
+      "title": "The console shows the effect of keep-newer-than before anything is deleted.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-117": {
+      "ref": "claim:ISC-117",
+      "type": "claim",
+      "id": "ISC-117",
+      "title": "The console shows the effect of keep-by-tag-pattern before anything is deleted.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-118": {
+      "ref": "claim:ISC-118",
+      "type": "claim",
+      "id": "ISC-118",
+      "title": "The console shows the effect of a protected tag before anything is deleted.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-119": {
+      "ref": "claim:ISC-119",
+      "type": "claim",
+      "id": "ISC-119",
+      "title": "The console shows the effect of an untagged manifest before anything is deleted.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-120": {
+      "ref": "claim:ISC-120",
+      "type": "claim",
+      "id": "ISC-120",
+      "title": "The console shows the effect of a policy preview before anything is deleted.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-121": {
+      "ref": "claim:ISC-121",
+      "type": "claim",
+      "id": "ISC-121",
+      "title": "The console shows the effect of a policy conflict before anything is deleted.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-122": {
+      "ref": "claim:ISC-122",
+      "type": "claim",
+      "id": "ISC-122",
+      "title": "The console shows the effect of a scheduled run before anything is deleted.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-123": {
+      "ref": "claim:ISC-123",
+      "type": "claim",
+      "id": "ISC-123",
+      "title": "The console shows the effect of a manual run before anything is deleted.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-124": {
+      "ref": "claim:ISC-124",
+      "type": "claim",
+      "id": "ISC-124",
+      "title": "The console shows the effect of a policy file with comments before anything is deleted.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:004",
+        "feature:F4"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-126": {
+      "ref": "claim:ISC-126",
+      "type": "claim",
+      "id": "ISC-126",
+      "title": "`harbor token rotate` replaces the push token in the credential store, and the next scheduled run uses it without a restart.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:007",
+        "feature:F5"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-127": {
+      "ref": "claim:ISC-127",
+      "type": "claim",
+      "id": "ISC-127",
+      "title": "a sync started after the rotation authenticates with the old token.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:007",
+        "feature:F5"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-128": {
+      "ref": "claim:ISC-128",
+      "type": "claim",
+      "id": "ISC-128",
+      "title": "A recorded table names, for each of the four target registries in the test matrix, whether it answers the OCI referrers endpoint.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:008",
+        "feature:F6"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-129": {
+      "ref": "claim:ISC-129",
+      "type": "claim",
+      "id": "ISC-129",
+      "title": "A decision row names the fallback Harbor uses on a registry without the referrers endpoint.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:008",
+        "feature:F6"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-130": {
+      "ref": "claim:ISC-130",
+      "type": "claim",
+      "id": "ISC-130",
+      "title": "A recorded table names the largest chunk each target registry in the test matrix accepts in a chunked blob upload.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:009",
+        "feature:F6"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-131": {
+      "ref": "claim:ISC-131",
+      "type": "claim",
+      "id": "ISC-131",
+      "title": "Harbor picks a chunk size for a registry that is larger than the limit the spike recorded for it.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:009",
+        "feature:F6"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "idea:console-audit-log": {
+      "ref": "idea:console-audit-log",
+      "type": "idea",
+      "id": "console-audit-log",
+      "title": "Every change made in the web console is written to an audit log a teammate can read back.",
+      "closed": 0,
+      "total": 0,
+      "parents": [
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "idea:registry-webhooks": {
+      "ref": "idea:registry-webhooks",
+      "type": "idea",
+      "id": "registry-webhooks",
+      "title": "A push to an upstream repository triggers a sync of that repository within a minute, without waiting for the schedule.",
+      "closed": 0,
+      "total": 0,
+      "parents": [
+        "feature:F7",
+        "milestone:harbor-1-0"
+      ],
+      "children": [],
+      "blockers": []
+    }
+  }
 }

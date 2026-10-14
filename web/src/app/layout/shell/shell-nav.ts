@@ -106,7 +106,8 @@ export class ShellNav {
   protected readonly workspacePage = computed(() => {
     if (!this.inWorkspace() || this.data.workspaceMissing()) return null;
     const id = this.specRoute() ? 'specs' : (this.state.route().wsPage ?? 'specs');
-    return workspacePageById(id === 'idea' ? 'board' : id);
+    // Spec 026: the Features and Milestones routes left the menu; until T30 redirects them they read as Planning.
+    return workspacePageById(id === 'idea' ? 'board' : id === 'features' || id === 'milestones' ? 'planning' : id);
   });
   protected readonly areaKey = computed(() => `shell.areas.${this.state.area() ?? 'dashboard'}`);
   readonly expanded = computed(() => this.menus()?.expanded() ?? CLOSED);

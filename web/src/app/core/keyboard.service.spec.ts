@@ -2,7 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { DefaultUrlSerializer, Router } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
-import { areaById, areaPath, SPEC_AREAS, specLink, TAB_IDS, type TabId } from '../layout/shell/areas';
+import { areaById, areaPath, SPEC_AREAS, specLink, type TabId } from '../layout/shell/areas';
 import { PaletteIndex } from '../layout/command-palette/palette-index';
 import { RefreshService } from './refresh.service';
 import { ShellData } from '../layout/shell/shell-data.service';
@@ -103,7 +103,7 @@ describe('KeyboardService', () => {
       }
     });
 
-    it('reaches every area and every tab through a g sequence', () => {
+    it('reaches every area and every tab of an area through a g sequence (the former Docs and Evidence tabs: g o, spec 017)', () => {
       const go = SHORTCUTS.filter((binding) => binding.keys[0] === GO_PREFIX && binding.keys.length === 2);
       for (const area of SPEC_AREAS) {
         expect(
@@ -111,7 +111,7 @@ describe('KeyboardService', () => {
           area.id,
         ).toBe(true);
       }
-      for (const tab of TAB_IDS) {
+      for (const tab of SPEC_AREAS.flatMap((area) => area.tabs)) {
         const reached = go.some(
           (binding) =>
             (binding.action.kind === 'go-tab' && binding.action.tab === tab) ||
@@ -119,6 +119,13 @@ describe('KeyboardService', () => {
         );
         expect(reached, tab).toBe(true);
       }
+    });
+
+    it('gives every binding its own id, the Library area beside the Library page (spec 017, T45)', () => {
+      const ids = SHORTCUTS.map((binding) => binding.id);
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(SHORTCUTS.find((binding) => binding.id === 'go-area-library')?.action).toEqual({ kind: 'go-area', area: 'library' });
+      expect(SHORTCUTS.find((binding) => binding.id === 'go-library')?.action).toEqual({ kind: 'go-page', page: 'library' });
     });
 
     it('lists [ ], v, z, the arrows, m, n, f, ? and Esc', () => {
@@ -331,6 +338,37 @@ describe('KeyboardService', () => {
       allWorkspaces.press('g');
       allWorkspaces.press('b');
       expect(allWorkspaces.navigate).not.toHaveBeenCalled();
+    });
+
+    it('g o opens the Library from any workspace page; inside a spec g o opens the Library area (spec 017, T43, T45, ISC-157.1, ISC-158)', () => {
+      const binding = SHORTCUTS.find((b) => b.id === 'go-library');
+      expect(binding?.keys).toEqual([GO_PREFIX, 'o']);
+      expect(binding && GROUP_CONTEXT[binding.group]).toBe('workspace');
+      expect(binding?.target).toBe('shell.pages.library');
+      expect(SHORTCUTS.some((b) => b.id.includes('tech') || b.target?.includes('tech'))).toBe(false);
+      for (const url of ['/w/harbor', '/w/harbor/board', '/w/harbor/library']) {
+        const { press, navigate } = setup({ url, specId: null });
+        press('g');
+        expect(press('o').defaultPrevented, url).toBe(true);
+        expect(navigate, url).toHaveBeenCalledWith(['/w', 'harbor', 'library']);
+        TestBed.resetTestingModule();
+      }
+      const inSpec = setup();
+      inSpec.press('g');
+      inSpec.press('o');
+      expect(inSpec.navigate).toHaveBeenCalledWith(specLink('harbor', '002', areaPath(areaById('library'))));
+      expect(inSpec.navigate).toHaveBeenCalledWith(['/w', 'harbor', 's', '002', 'library']);
+    });
+
+    it('g o, the former Docs area key, opens the Library area and never a former Docs tab (spec 017, T48, ISC-158.1)', () => {
+      const inSpec = setup();
+      inSpec.press('g');
+      inSpec.press('o');
+      expect(inSpec.navigate).toHaveBeenCalledTimes(1);
+      expect(inSpec.navigate).toHaveBeenCalledWith(['/w', 'harbor', 's', '002', 'library']);
+      for (const tab of ['plan', 'design', 'decisions', 'constitution', 'docs']) {
+        expect(inSpec.navigate).not.toHaveBeenCalledWith(['/w', 'harbor', 's', '002', tab]);
+      }
     });
 
     it('keeps g s and g n on the spec areas inside a spec', () => {

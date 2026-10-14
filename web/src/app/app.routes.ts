@@ -1,19 +1,56 @@
-import { Routes } from '@angular/router';
-import { SPEC_AREA_ROUTES } from './features/spec/spec-area.routes';
+import { inject } from '@angular/core';
+import { type RedirectFunction, Router, type Routes } from '@angular/router';
+import { LEGACY_SPEC_REDIRECTS, SPEC_AREA_ROUTES } from './features/spec/spec-area.routes';
 import { SpecPage } from './features/spec/spec-page';
-import type { ShellRouteData } from './layout/shell/areas';
-import { TECH_TABS, type TechTabId } from './layout/shell/page-tabs';
+import { anchorRef, planningTreeLink, type ShellRouteData } from './layout/shell/areas';
+import { PLANNING_LENSES, type PlanningLensId } from './layout/shell/page-tabs';
 import { ShellComponent } from './layout/shell/shell';
 
 const notFound: ShellRouteData = { notFound: true };
 // Spec 024: the designed not-found page is a lazy chunk, so it does not weigh on the initial bundle (1 MB budget).
 const notFoundPage = () => import('./layout/not-found/not-found').then((m) => m.NotFound);
-const techTab = (tab: TechTabId): ShellRouteData => ({ page: 'tech', tab });
-const featuresPage: ShellRouteData = { page: 'features' };
-const milestonesPage: ShellRouteData = { page: 'milestones' };
+const planningLens = (tab: PlanningLensId): ShellRouteData => ({ page: 'planning', tab });
+/** The redirect of an old planning page to the tree lens, its anchor as `?sel=` when it names an object. */
+const toTree =
+  (page: 'features' | 'milestones'): RedirectFunction =>
+  ({ params, fragment }) => {
+    const sel = anchorRef(page, fragment);
+    return inject(Router).createUrlTree(planningTreeLink(String(params['ws'])), sel === null ? {} : { queryParams: { sel } });
+  };
 const boardPage: ShellRouteData = { page: 'board' };
 const ideaPage: ShellRouteData = { page: 'idea' };
 const libraryPage: ShellRouteData = { page: 'library' };
+
+/** The former tech page's tabs (spec 023), each address of which redirects into the Library. */
+type FormerTechTab = 'overview' | 'architecture' | 'status' | 'specs' | 'open';
+
+/**
+ * Where each former tech tab lives in the Library (spec 017, T42, ISC-157.1): Overview and Architecture are sections of
+ * `tech.md` (the document as the fragment, the section as `?section=`), Status and Specs are the list itself, grouped by
+ * spec, and Open is the filter "open" (`?state=open`). `/w/:ws/tech` alone is Overview, the old first tab.
+ */
+export const TECH_REDIRECTS: Readonly<Record<FormerTechTab, { readonly queryParams: Readonly<Record<string, string>>; readonly fragment?: string }>> = {
+  overview: { queryParams: { section: 'overview' }, fragment: 'tech.md' },
+  architecture: { queryParams: { section: 'architecture' }, fragment: 'tech.md' },
+  status: { queryParams: {} },
+  specs: { queryParams: {} },
+  open: { queryParams: { state: 'open' } },
+};
+
+/**
+ * The redirect of a former tech address to the Library. A route-level redirect, so the tech page never renders and the
+ * old address never becomes a history entry of its own: the navigation lands on the Library URL, and the first load's
+ * navigation replaces the entry it started from. The incoming query and fragment are dropped; the target names its own.
+ */
+const techRedirect =
+  (tab: FormerTechTab): RedirectFunction =>
+  ({ params }) => {
+    const target = TECH_REDIRECTS[tab];
+    return inject(Router).createUrlTree(['/w', params['ws'] ?? '', 'library'], {
+      queryParams: target.queryParams,
+      ...(target.fragment === undefined ? {} : { fragment: target.fragment }),
+    });
+  };
 
 export const routes: Routes = [
   // The primitives gallery the browser tier measures (T29 to T31). Lazy, so it ships as a separate chunk that only
@@ -55,33 +92,33 @@ export const routes: Routes = [
         loadComponent: () => import('./features/ideas/idea-page').then((m) => m.IdeaPage),
         data: ideaPage,
       },
-      // The workspace's planning pages (spec 003, ISC-103 / ISC-104): siblings of the spec list, reached through the
-      // area menu at workspace scope; lazy, so they ship as one chunk that only these two routes load.
+      // Spec 026 (ISC-167): the planning page, one route per lens like the tech page; `/w/:ws/planning` opens the tree.
+      // The lenses are componentless children of one lazy page, so a lens switch keeps the page (and its overview).
       {
-        path: 'w/:ws/features',
-        loadComponent: () => import('./features/planning/features-page').then((m) => m.FeaturesPage),
-        data: featuresPage,
-      },
-      {
-        path: 'w/:ws/milestones',
-        loadComponent: () => import('./features/planning/milestones-page').then((m) => m.MilestonesPage),
-        data: milestonesPage,
-      },
-      // Spec 023 (ISC-134.1): the tech page, one route per tab like a spec area; `/w/:ws/tech` opens the first tab. The
-      // tabs are componentless children of one lazy page, so a tab switch keeps the page; an unknown tab falls past
-      // them to not-found with the workspace still in the route.
-      {
-        path: 'w/:ws/tech',
+        path: 'w/:ws/planning',
         children: [
-          { path: '', redirectTo: TECH_TABS[0], pathMatch: 'full' },
+          { path: '', redirectTo: 'tree', pathMatch: 'full' },
           {
             path: '',
-            loadComponent: () => import('./features/tech/tech-page').then((m) => m.TechPage),
-            children: TECH_TABS.map((tab) => ({ path: tab, children: [], data: techTab(tab) })),
+            loadComponent: () => import('./features/planning/planning-lens-page').then((m) => m.PlanningPage),
+            children: PLANNING_LENSES.map((lens) => ({ path: lens, children: [], data: planningLens(lens) })),
           },
           { path: '**', loadComponent: notFoundPage, data: notFound },
         ],
       },
+      // Spec 026 (ISC-167.1): the old Features and Milestones pages (spec 003) are redirects to the tree lens; an anchor
+      // naming a feature (`#F8`) or a milestone (`#m-<slug>`) becomes `?sel=`, so the tree opens the path, focuses the
+      // row and the sidebar shows the object. A redirect replaces the old address, so Back skips it.
+      { path: 'w/:ws/features', pathMatch: 'full', redirectTo: toTree('features') },
+      { path: 'w/:ws/milestones', pathMatch: 'full', redirectTo: toTree('milestones') },
+      // Spec 023's tech page went into the Library (spec 017, T42, ISC-157.1): `/w/:ws/tech` and each of its five tabs
+      // redirect there with the matching selection (`TECH_REDIRECTS`); any other path below it is not-found with the
+      // workspace still in the route. The old page itself is gone (T50).
+      { path: 'w/:ws/tech', pathMatch: 'full', redirectTo: techRedirect('overview') },
+      ...(Object.keys(TECH_REDIRECTS) as FormerTechTab[]).map((tab) => ({ path: `w/:ws/tech/${tab}`, pathMatch: 'full' as const, redirectTo: techRedirect(tab) })),
+      { path: 'w/:ws/tech', children: [{ path: '**', loadComponent: notFoundPage, data: notFound }] },
+      // Spec 017 (T48, ISC-158.1): the former Docs and Evidence tabs redirect into the spec's Library area.
+      ...LEGACY_SPEC_REDIRECTS,
       { path: 'w/:ws/s/:id', component: SpecPage, children: SPEC_AREA_ROUTES },
       { path: '**', loadComponent: notFoundPage, data: notFound },
     ],

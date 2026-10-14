@@ -17,8 +17,8 @@
             >
               <ui-icon class="entry-icon" [name]="page.icon" />
               <span class="entry-name">{{ page.labelKey | transloco }}</span>
-              @if (summaries()[page.id]; as params) {
-                <span class="sub">{{ page.summaryKey | transloco: params }}</span>
+              @if (summaries()[page.id]; as summary) {
+                <span class="sub">{{ summary.key | transloco: summary.params }}</span>
               }
             </a>
           </li>

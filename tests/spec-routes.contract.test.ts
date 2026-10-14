@@ -4,7 +4,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { listEvidence } from "../core/src/evidence.ts";
 import type {
   CardState,
   ClaimGlyphState,
@@ -13,8 +12,6 @@ import type {
   ClaimViewCounts,
   ClaimViewModel,
   DocsPage,
-  EvidenceFile,
-  EvidenceListing,
   Frame,
   FrameCard,
   FrameKind,
@@ -29,12 +26,10 @@ import type {
   TimelineEntry,
   TimelineKind,
 } from "../core/src/files.ts";
-import { DOC_FILES } from "../core/src/files.ts";
 import { REVIEWED_FILES, hashForGate } from "../core/src/gates.ts";
-import { docsFor } from "../core/src/markdown-docs.ts";
 import type { DashboardIdea, DashboardIdeas, DashboardModel } from "../core/src/dashboard.ts";
 import type { PlanningModel } from "../core/src/planning.ts";
-import type { EventLine, IdeaRef, TechModel, TransitionPlan, WorkflowStage } from "../core/src/files.ts";
+import type { EventLine, IdeaRef, LibraryCatalog, LibraryDoc, TransitionPlan, WorkflowStage } from "../core/src/files.ts";
 import { WORKSPACES_PATH, type WorkspaceSummary, dashboardApi } from "../server/src/api.ts";
 import type { ActorRow } from "../server/src/db.ts";
 import {
@@ -53,7 +48,17 @@ import {
   type IdeaAllocated,
   type IdeaPage,
   type InvalidBody,
+  type LibrarySearchHit,
+  type LibrarySearchResult,
   type Locked,
+  PROTOTYPE_ALLOW,
+  PROTOTYPE_CSP,
+  PROTOTYPE_FOLDER_ROOT,
+  PROTOTYPE_PREFIX,
+  PROTOTYPE_ROUTE,
+  matchPrototypePath,
+  prototypeFolderOf,
+  prototypeRoute,
   REFUSAL_ERRORS,
   SPEC_HASH_HEADER,
   TASKS_HASH_HEADER,
@@ -66,7 +71,6 @@ import {
   isBoardQuery,
   isTransitionRequest,
   API_ERRORS,
-  DOC_NAMES,
   type Forbidden,
   GOLDEN_FAMILY,
   JSON_ANSWER,
@@ -149,9 +153,7 @@ const built: Record<SpecRouteName, (ws: string, id: string) => string> = {
   timeline: specRoutes.timeline,
   claims: specRoutes.claims,
   tasks: specRoutes.tasks,
-  evidence: specRoutes.evidence,
   evidenceFile: (ws, id) => specRoutes.evidenceFile(ws, id, "artifacts/T12 model.md"),
-  docs: (ws, id) => specRoutes.docs(ws, id, "decisions"),
   frames: specRoutes.frames,
   live: specRoutes.live,
   gateReviewed: specRoutes.gateReviewed,
@@ -173,7 +175,6 @@ describe("builders and matcher", () => {
           expect({ route, ws, id, got: match?.route }).toEqual({ route, ws, id, got: route });
           expect(match?.params.ws).toBe(ws);
           expect(match?.params.id).toBe(id);
-          if (match?.route === "docs") expect(match.params.name).toBe("decisions");
           if (match?.route === "taskCheck") expect(match.params.tid).toBe("T12");
         }
       }
@@ -184,7 +185,6 @@ describe("builders and matcher", () => {
     expect(SPEC_API_ROOT).toBe(WORKSPACES_PATH);
     expect(specRoutes.spec("harbor", "002")).toBe("/api/workspaces/harbor/specs/002");
     expect(specRoutes.timeline("harbor", "002")).toBe("/api/workspaces/harbor/specs/002/timeline");
-    expect(specRoutes.docs("harbor", "002", "plan")).toBe("/api/workspaces/harbor/specs/002/docs/plan");
     expect(specRoutes.gateReviewed("harbor", "002")).toBe("/api/workspaces/harbor/specs/002/gate/reviewed");
     expect(specRoutes.taskCheck("harbor", "002", "T7")).toBe("/api/workspaces/harbor/specs/002/tasks/T7/check");
     expect(specRoutes.evidenceFile("harbor", "002", "artifacts/a b.md")).toBe(
@@ -208,9 +208,10 @@ describe("builders and matcher", () => {
       "/api/workspaces/harbor/specs/002/",
       "/api/workspaces//specs/002",
       "/api/workspaces/harbor/specs/002/unknown",
-      "/api/workspaces/harbor/specs/002/docs",
-      "/api/workspaces/harbor/specs/002/docs/spec",
-      "/api/workspaces/harbor/specs/002/docs/context",
+      // The evidence listing and the Docs tabs went with spec 017 T53: no route any more.
+      "/api/workspaces/harbor/specs/002/evidence",
+      "/api/workspaces/harbor/specs/002/docs/plan",
+      "/api/workspaces/harbor/specs/002/docs/constitution",
       "/api/workspaces/harbor/specs/002/evidence/file/x",
       "/api/workspaces/harbor/specs/002/tasks/T1",
       "/api/workspaces/harbor/specs/002/gate",
@@ -233,38 +234,6 @@ describe("builders and matcher", () => {
     expect(matchSpecPath(write)?.route).toBe("gateReviewed");
     expect(allowFor("claims")).toBe("GET, HEAD");
     expect(allowFor("taskCheck")).toBe("POST");
-  });
-
-  test("the docs names are the Docs tabs of core: DOC_FILES and docsFor", () => {
-    expect(DOC_NAMES.map(String).sort()).toEqual(Object.keys(DOC_FILES).sort());
-    expect(DOC_NAMES.map(String).sort()).toEqual(Object.keys(docsFor("feature")).sort());
-    for (const name of DOC_NAMES) expect(matchSpecPath(specRoutes.docs("w", "001", name))?.route).toBe("docs");
-  });
-
-  test("the table lists every builder exactly once, with a pattern its builder matches", () => {
-    const routes = SPEC_ROUTE_TABLE.map((entry): string => entry.route);
-    expect(routes.length).toBe(new Set(routes).size);
-    expect([...routes].sort()).toEqual(Object.keys(specRoutes).sort());
-    for (const entry of SPEC_ROUTE_TABLE) {
-      expect(entry.pattern.startsWith(`${SPEC_API_ROOT}/:ws/specs/:id`)).toBe(true);
-      expect(entry.statuses).toEqual([...entry.statuses].sort((a, b) => a - b));
-      expect(entry.statuses).toContain(200);
-      expect(entry.statuses).toContain(404);
-      if (entry.method === "POST") for (const status of [400, 409, 423]) expect(entry.statuses).toContain(status);
-    }
-  });
-
-  test("the transition is registered (T83): POST only, the refusable write's statuses, no longer a pending path", () => {
-    const entry = SPEC_ROUTE_TABLE.find((e) => e.route === "transition");
-    expect(entry).toEqual({
-      route: "transition",
-      method: "POST",
-      pattern: `${SPEC_API_ROOT}/:ws/specs/:id/transition`,
-      statuses: [200, 400, 403, 404, 405, 409, 422, 423],
-      response: "TransitionWritten",
-    });
-    expect(allowFor("transition")).toBe("POST");
-    expect(matchSpecRoute(specRoutes.transition("harbor", "002"), "GET")).toBeNull();
   });
 
   test("the evidence path travels raw and core decodes it once", () => {
@@ -292,16 +261,30 @@ const workspaceErrors: Equal<WorkspaceRouteError,NotFound | Forbidden | MethodNo
 // The board query (T92) reads the database alone: no 409, and its PUT adds 400.
 const boardQueryErrors: Equal<WorkspaceRouteError<"boardQuery">, NotFound | Forbidden | MethodNotAllowed | InvalidBody> = true;
 const boardQueryBodies: Equal<[WorkspaceRouteResponses["boardQuery"], WorkspaceRouteRequests["boardQuery"]], [BoardQuery, BoardQuery]> = true;
-const workspaceFamilies: Equal<Extract<keyof typeof GOLDEN_FAMILY, WorkspaceRouteName>, Exclude<WorkspaceRouteName, "idea" | "boardQuery" | "allocate" | "tech" | "techAsset">> = true;
+const workspaceFamilies: Equal<
+  Extract<keyof typeof GOLDEN_FAMILY, WorkspaceRouteName>,
+  Exclude<WorkspaceRouteName, "idea" | "boardQuery" | "allocate" | "library" | "libraryDoc" | "librarySearch" | "libraryAsset">
+> = true;
 // The allocation (T87) is the family's one write: the read errors plus its write answers.
 const allocateErrors: Equal<
   WorkspaceRouteError<"allocate">,
   NotFound | Forbidden | MethodNotAllowed | Unavailable | InvalidBody | Conflict<{ readonly idea: string }> | AllocateRefused | Locked
 > = true;
 const allocateIsCore: Equal<WorkspaceRouteResponses["allocate"], IdeaAllocated> = true;
-// The tech page (spec 023, ISC-134.1): core's TechModel as it is; its asset answers bytes like the evidence file.
-const techIsCore: Equal<[WorkspaceRouteResponses["tech"], WorkspaceRouteResponses["techAsset"]], [TechModel, Blob]> = true;
-const techErrors: Equal<[WorkspaceRouteError<"tech">, WorkspaceRouteError<"techAsset">], [WorkspaceRouteError, WorkspaceRouteError]> = true;
+// The library (spec 017, T2): the catalog and the document are core's types as they are; the asset answers bytes like
+// the evidence file; a search hit names a catalog document by its path; every route has the read errors.
+const libraryIsCore: Equal<
+  [WorkspaceRouteResponses["library"], WorkspaceRouteResponses["libraryDoc"], WorkspaceRouteResponses["libraryAsset"]],
+  [LibraryCatalog, DocsPage, Blob]
+> = true;
+const searchIsTheContracts: Equal<
+  [WorkspaceRouteResponses["librarySearch"], LibrarySearchResult["hits"][number], LibrarySearchHit["path"]],
+  [LibrarySearchResult, LibrarySearchHit, LibraryDoc["path"]]
+> = true;
+const libraryErrors: Equal<
+  [WorkspaceRouteError<"library">, WorkspaceRouteError<"libraryDoc">, WorkspaceRouteError<"librarySearch">, WorkspaceRouteError<"libraryAsset">],
+  [WorkspaceRouteError, WorkspaceRouteError, WorkspaceRouteError, WorkspaceRouteError]
+> = true;
 
 /** One call per workspace builder, with a story slug where the route takes one. */
 const WORKSPACE_ARGS: Record<WorkspaceRouteName, (ws: string) => string> = {
@@ -309,14 +292,16 @@ const WORKSPACE_ARGS: Record<WorkspaceRouteName, (ws: string) => string> = {
   idea: (ws) => workspaceRoutes.idea(ws, "console-audit-log"),
   boardQuery: (ws) => workspaceRoutes.boardQuery(ws),
   allocate: (ws) => workspaceRoutes.allocate(ws, "console-audit-log"),
-  tech: (ws) => workspaceRoutes.tech(ws),
-  techAsset: (ws) => workspaceRoutes.techAsset(ws, ".tech/architecture.png"),
+  library: (ws) => workspaceRoutes.library(ws),
+  libraryDoc: (ws) => workspaceRoutes.libraryDoc(ws, "001-lighthouse-map/plan.md"),
+  librarySearch: (ws) => workspaceRoutes.librarySearch(ws, "beacon"),
+  libraryAsset: (ws) => workspaceRoutes.libraryAsset(ws, ".tech/architecture.png"),
 };
 
 describe("workspace routes (spec 003, 008): planning and the story page beside the spec routes", () => {
   test("compile-time pins: PlanningModel and IdeaPage's parts are core's, every route has a 200 type and an error union", () => {
-    expect([planningIsCore, ideaIsCore, ideaPartsAreCore, workspaceResponsesCoverRoutes, workspaceErrors, boardQueryErrors, boardQueryBodies, workspaceFamilies, allocateErrors, allocateIsCore, techIsCore, techErrors]).toEqual([
-      true, true, true, true, true, true, true, true, true, true, true, true,
+    expect([planningIsCore, ideaIsCore, ideaPartsAreCore, workspaceResponsesCoverRoutes, workspaceErrors, boardQueryErrors, boardQueryBodies, workspaceFamilies, allocateErrors, allocateIsCore, libraryIsCore, searchIsTheContracts, libraryErrors]).toEqual([
+      true, true, true, true, true, true, true, true, true, true, true, true, true,
     ]);
   });
 
@@ -328,9 +313,10 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     expect(workspaceRoutes.idea("my repo", "a/b")).toBe("/api/workspaces/my%20repo/ideas/a%2Fb");
     expect(workspaceRoutes.boardQuery("häfen")).toBe("/api/workspaces/h%C3%A4fen/board-query");
     expect(workspaceRoutes.allocate("my repo", "a/b")).toBe("/api/workspaces/my%20repo/ideas/a%2Fb/allocate");
-    expect(workspaceRoutes.tech("harbor")).toBe("/api/workspaces/harbor/tech");
-    expect(workspaceRoutes.tech("my repo")).toBe("/api/workspaces/my%20repo/tech");
-    expect(workspaceRoutes.techAsset("harbor", ".tech/a b.png")).toBe("/api/workspaces/harbor/tech/asset?path=.tech%2Fa%20b.png");
+    expect(workspaceRoutes.library("my repo")).toBe("/api/workspaces/my%20repo/library");
+    expect(workspaceRoutes.libraryDoc("harbor", "001-x/plan.md")).toBe("/api/workspaces/harbor/library/doc?path=001-x%2Fplan.md");
+    expect(workspaceRoutes.librarySearch("harbor", "a&b c")).toBe("/api/workspaces/harbor/library/search?q=a%26b%20c");
+    expect(workspaceRoutes.libraryAsset("harbor", ".tech/a b.png")).toBe("/api/workspaces/harbor/library/asset?path=.tech%2Fa%20b.png");
   });
 
   test("every builder round-trips through matchWorkspacePath, each param decoded exactly once", () => {
@@ -345,12 +331,19 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       }
       const board = new URL(workspaceRoutes.boardQuery(ws), "http://127.0.0.1:7717");
       expect({ ws, match: matchWorkspacePath(board.pathname) }).toEqual({ ws, match: { route: "boardQuery", params: { ws } } });
-      const tech = new URL(workspaceRoutes.tech(ws), "http://127.0.0.1:7717");
-      expect({ ws, match: matchWorkspacePath(tech.pathname) }).toEqual({ ws, match: { route: "tech", params: { ws } } });
       for (const path of [".tech/architecture.png", "a b+c%41.svg", "ü/ö.png"]) {
-        const asset = new URL(workspaceRoutes.techAsset(ws, path), "http://127.0.0.1:7717");
-        expect({ ws, path, match: matchWorkspacePath(asset.pathname) }).toEqual({ ws, path, match: { route: "techAsset", params: { ws } } });
-        expect(decodeURIComponent(evidencePathQuery(asset.search))).toBe(path);
+        for (const route of ["libraryDoc", "libraryAsset"] as const) {
+          const file = new URL(workspaceRoutes[route](ws, path), "http://127.0.0.1:7717");
+          expect({ ws, path, match: matchWorkspacePath(file.pathname) }).toEqual({ ws, path, match: { route, params: { ws } } });
+          expect(decodeURIComponent(evidencePathQuery(file.search))).toBe(path);
+        }
+      }
+      const library = new URL(workspaceRoutes.library(ws), "http://127.0.0.1:7717");
+      expect({ ws, match: matchWorkspacePath(library.pathname) }).toEqual({ ws, match: { route: "library", params: { ws } } });
+      for (const q of ["beacon", "a&b c", "100% +x", "häfen"]) {
+        const search = new URL(workspaceRoutes.librarySearch(ws, q), "http://127.0.0.1:7717");
+        expect({ ws, q, match: matchWorkspacePath(search.pathname) }).toEqual({ ws, q, match: { route: "librarySearch", params: { ws } } });
+        expect(search.searchParams.get("q")).toBe(q);
       }
     }
     expect(matchWorkspacePath("/api/workspaces/a%2541/planning")?.params).toEqual({ ws: "a%41" });
@@ -373,10 +366,15 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       "/api/workspaces/harbor/ideas/x/allocate/",
       "/api/workspaces/harbor/ideas/x/allocate/more",
       "/api/workspaces/harbor/ideas//allocate",
-      "/api/workspaces//tech",
-      "/api/workspaces/harbor/tech/",
-      "/api/workspaces/harbor/tech/asset/",
-      "/api/workspaces/harbor/tech/other",
+      // The tech page's routes went with spec 017 T51: no route any more.
+      "/api/workspaces/harbor/tech",
+      "/api/workspaces/harbor/tech/asset",
+      "/api/workspaces//library",
+      "/api/workspaces/harbor/library/",
+      "/api/workspaces/harbor/library/doc/",
+      "/api/workspaces/harbor/library/other",
+      "/api/workspaces/harbor/library/search/more",
+      "/proto/harbor/001-x/prototype/index.html",
       "/api/workspaces/harbor/dashboard",
       "/api/workspacesx/harbor/planning",
       "/api/lifeos",
@@ -410,8 +408,10 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       ["idea", "GET", `${SPEC_API_ROOT}/:ws/ideas/:slug`, null, null, "IdeaPage"],
       ["boardQuery", "GET", `${SPEC_API_ROOT}/:ws/board-query`, "PUT", "BoardQuery", "BoardQuery"],
       ["allocate", "POST", `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, null, "AllocateRequest", "IdeaAllocated"],
-      ["tech", "GET", `${SPEC_API_ROOT}/:ws/tech`, null, null, "TechModel"],
-      ["techAsset", "GET", `${SPEC_API_ROOT}/:ws/tech/asset`, null, null, "file bytes"],
+      ["library", "GET", `${SPEC_API_ROOT}/:ws/library`, null, null, "LibraryCatalog"],
+      ["libraryDoc", "GET", `${SPEC_API_ROOT}/:ws/library/doc`, null, null, "DocsPage"],
+      ["librarySearch", "GET", `${SPEC_API_ROOT}/:ws/library/search`, null, null, "LibrarySearchResult"],
+      ["libraryAsset", "GET", `${SPEC_API_ROOT}/:ws/library/asset`, null, null, "file bytes"],
     ]);
   });
 
@@ -420,8 +420,29 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
     expect(allowForWorkspace("idea")).toBe("GET, HEAD");
     expect(allowForWorkspace("boardQuery")).toBe("GET, HEAD, PUT");
     expect(allowForWorkspace("allocate")).toBe("POST");
-    expect(allowForWorkspace("tech")).toBe("GET, HEAD");
-    expect(allowForWorkspace("techAsset")).toBe("GET, HEAD");
+    for (const route of ["library", "libraryDoc", "librarySearch", "libraryAsset"] as const) expect(allowForWorkspace(route)).toBe("GET, HEAD");
+  });
+
+  test("every library route has its handler in api.ts (T15, T17, T18), answered from the injected catalog, never the planning fallback", async () => {
+    const api = dashboardApi({
+      registry: { list: () => [workspace], get: (slug) => (slug === workspace.slug ? workspace : undefined) },
+      loadWorkspace: () => Promise.resolve({ readable: false, error: "missing" }),
+      loadCatalog: () => Promise.resolve({ readable: true, catalog: { docs: [], groups: [], fog: [], missing: 0, stale: 0 } }),
+    });
+    const answers: Record<string, { status: number | undefined; body: unknown }> = {};
+    for (const route of ["library", "libraryDoc", "librarySearch", "libraryAsset"] as const) {
+      const url = new URL(WORKSPACE_ARGS[route]("harbor"), "http://127.0.0.1:7717");
+      const answer = await api(new Request(url.href, { headers: HOST }), url);
+      answers[route] = { status: answer?.status, body: await answer?.json() };
+    }
+    expect(answers).toEqual({
+      library: { status: 200, body: { docs: [], groups: [], fog: [], missing: 0, stale: 0 } },
+      // An empty catalog lists no document, so no path is ever read.
+      libraryDoc: { status: 404, body: { error: "not-found" } },
+      librarySearch: { status: 200, body: { query: "beacon", hits: [] } },
+      // harbor has no `specs/.tech/`: the image is missing.
+      libraryAsset: { status: 404, body: { error: "not-found" } },
+    });
   });
 
   test("IdeaPage's key list (no golden family yet)", () => {
@@ -437,12 +458,86 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       stageCounts: "req",
       features: "req",
       milestones: "req",
+      unassignedFeatures: "opt",
       ideas: "req",
       recount: "req",
       diagnostics: "req",
+      relations: "opt",
     });
     expect(shapeProblems("planning", value, spec)).toEqual([]);
     expect(value.features.length).toBeGreaterThan(0);
+  });
+});
+
+// ─── prototype route (spec 017, T2) ──────────────────────────────────────────────────────────────────────────────
+
+describe("prototype route (spec 017): /proto/:ws/:spec/:folder/* outside /api, the tail raw", () => {
+  test("the pattern, the method and the statuses: a read outside API_PREFIX, GET and HEAD only, every answer under the CSP", () => {
+    expect(PROTOTYPE_ROUTE).toEqual({ route: "prototype", method: "GET", pattern: "/proto/:ws/:spec/:folder/*", statuses: [200, 304, 403, 404, 405, 409], response: "file bytes" });
+    expect(PROTOTYPE_PREFIX.startsWith("/api/")).toBe(false);
+    expect(PROTOTYPE_ALLOW).toBe("GET, HEAD");
+    expect(PROTOTYPE_CSP).toContain("sandbox allow-scripts");
+    expect(PROTOTYPE_CSP).not.toContain("allow-same-origin");
+    expect(PROTOTYPE_CSP).toContain("connect-src 'none'");
+    expect(PROTOTYPE_CSP).not.toMatch(/https?:/);
+  });
+
+  test("the folder is relative to .design/: `prototype` for the root folder, `prototype/<sub>` below it", () => {
+    const doc = (spec: string, path: string): Pick<LibraryDoc, "path" | "spec"> => ({ spec, path });
+    expect(PROTOTYPE_FOLDER_ROOT).toBe("prototype");
+    expect(prototypeFolderOf(doc("001-lighthouse-map", "001-lighthouse-map/.design/prototype"))).toBe("prototype");
+    expect(prototypeFolderOf(doc("002-tide-board", "002-tide-board/.design/prototype/board"))).toBe("prototype/board");
+    expect(prototypeFolderOf(doc("002-tide-board", "002-tide-board/.design/prototypes"))).toBeNull();
+    expect(prototypeFolderOf(doc("002-tide-board", "001-lighthouse-map/.design/prototype"))).toBeNull();
+    expect(prototypeFolderOf(doc("002-tide-board", "002-tide-board/plan.md"))).toBeNull();
+  });
+
+  test("the builder encodes each segment once and keeps the file's slashes, so relative links resolve in the folder", () => {
+    expect(prototypeRoute("harbor", "001-lighthouse-map", "prototype", "index.html")).toBe("/proto/harbor/001-lighthouse-map/prototype/index.html");
+    expect(prototypeRoute("my repo", "002-tide-board", "prototype/board", "pages/a b.html")).toBe("/proto/my%20repo/002-tide-board/prototype%2Fboard/pages/a%20b.html");
+    const page = new URL(prototypeRoute("harbor", "002-tide-board", "prototype/board", "index.html"), "http://127.0.0.1:7717");
+    expect(new URL("styles.css", page).pathname).toBe("/proto/harbor/002-tide-board/prototype%2Fboard/styles.css");
+    expect(new URL("fonts/a.woff2", page).pathname).toBe("/proto/harbor/002-tide-board/prototype%2Fboard/fonts/a.woff2");
+  });
+
+  test("every builder round-trips through matchPrototypePath: ws, spec and folder decoded once, the file raw", () => {
+    for (const ws of WS) {
+      for (const folder of ["prototype", "prototype/board", "prototype/a b"]) {
+        for (const file of ["index.html", "assets/logo.svg", "a b+c%41.html", "ü/ö.css"]) {
+          const url = new URL(prototypeRoute(ws, "002-tide-board", folder, file), "http://127.0.0.1:7717");
+          const match = matchPrototypePath(url.pathname);
+          expect({ ws, folder, file, match: match && { ...match, params: { ...match.params, file: "" } } }).toEqual({
+            ws, folder, file, match: { route: "prototype", params: { ws, spec: "002-tide-board", folder, file: "" } },
+          });
+          expect(decodeURIComponent(match?.params.file ?? "")).toBe(file);
+        }
+      }
+    }
+    expect(matchPrototypePath("/proto/harbor/001-x/prototype/a%252e%252e/x.html")?.params.file).toBe("a%252e%252e/x.html");
+    expect(matchPrototypePath("/proto/harbor/001-x/prototype/..%2F..%2Fspec.md")?.params.file).toBe("..%2F..%2Fspec.md");
+  });
+
+  test("anything else is null: too few segments, an empty or malformed segment, a folder outside prototype, any API path", () => {
+    for (const path of [
+      "/proto",
+      "/proto/",
+      "/proto/harbor/001-x/prototype",
+      "/proto/harbor/001-x/prototype/",
+      "/proto//001-x/prototype/index.html",
+      "/proto/harbor//prototype/index.html",
+      "/proto/harbor/001-x//index.html",
+      "/proto/%E0%A4%A/001-x/prototype/index.html",
+      "/proto/harbor/001-x/artifacts/index.html",
+      "/proto/harbor/001-x/prototypes/index.html",
+      "/proto/harbor/001-x/..%2Fprototype/index.html",
+      "/protox/harbor/001-x/prototype/index.html",
+      "/api/proto/harbor/001-x/prototype/index.html",
+      workspaceRoutes.library("harbor"),
+    ]) {
+      expect({ path, match: matchPrototypePath(path) }).toEqual({ path, match: null });
+    }
+    expect(matchWorkspacePath(prototypeRoute("harbor", "001-x", "prototype", "index.html"))).toBeNull();
+    expect(matchSpecPath(prototypeRoute("harbor", "001-x", "prototype", "index.html"))).toBeNull();
   });
 });
 
@@ -652,17 +747,6 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
     expect(value.tasks.length).toBeGreaterThan(0);
   });
 
-  test("docs → DocsPage for every present doc; an absent one is null (the route's 404 DocMissing)", () => {
-    const family = golden("docs") as { constitution: unknown; specs: Record<string, Record<string, unknown>> };
-    const page = keysOf<DocsPage>({ html: "req", toc: "req", frontmatter: "req", figures: "req", sections: "req", wordCount: "req", decisions: "opt", goalSignal: "opt", constitution: "opt" });
-    const perSpec = family.specs[SPEC_KEY] ?? {};
-    // The per-spec family holds every DocName but the shared constitution, which sits at the top level.
-    expect(Object.keys(perSpec).sort()).toEqual(DOC_NAMES.filter((n) => n !== "constitution").sort());
-    const present: Array<[string, unknown]> = [["constitution", family.constitution], ...Object.entries(perSpec).filter(([, v]) => v !== null)];
-    expect(present.length).toBeGreaterThan(1);
-    expect(present.flatMap(([name, value]) => shapeProblems(`docs.${name}`, value as SpecRouteResponses["docs"], page))).toEqual([]);
-  });
-
   test("frames → Frame[]", () => {
     const value = golden("frames")[SPEC_KEY] as SpecRouteResponses["frames"];
     const frame = keysOf<Frame>({
@@ -684,18 +768,6 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
     ).toEqual([]);
   });
 
-  test("evidence → EvidenceListing (no golden family yet: core's listing of the same folder)", async () => {
-    const value: SpecRouteResponses["evidence"] = await listEvidence(join(FIXTURES, "harbor", "specs", "002-web-console"));
-    const file = keysOf<EvidenceFile>({
-      group: "req", path: "req", name: "req", bytes: "req", mediaType: "req", task: "req", claim: "req", symlink: "opt", refused: "opt",
-    });
-    const all = [...value.results, ...value.raw];
-    expect(all.length).toBeGreaterThan(0);
-    expect([
-      ...shapeProblems("evidence", value, keysOf<EvidenceListing>({ results: "req", raw: "req", byClaim: "req", ungrouped: "req", diagnostics: "req" })),
-      ...all.flatMap((f, i) => shapeProblems(`evidence[${i}]`, f, file)),
-    ]).toEqual([]);
-  });
 });
 
 // ─── answers, errors, writes ─────────────────────────────────────────────────────────────────────────────────────

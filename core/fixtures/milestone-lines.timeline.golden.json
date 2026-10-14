@@ -1,0 +1,56 @@
+{
+  "specs/001-signal-intake": [
+    {
+      "ts": "2026-03-05T15:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "plan → done",
+      "body": "- Derived from: `phase: complete`, spec.md `updated:`",
+      "ref": "done",
+      "id": "stage-done",
+      "actor": null,
+      "from": "plan",
+      "to": "done"
+    },
+    {
+      "ts": "2026-03-03T09:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → plan",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": null,
+      "from": null,
+      "to": "plan"
+    }
+  ],
+  "specs/002-alert-routing": [
+    {
+      "ts": "2026-03-06T09:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → plan",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": null,
+      "from": null,
+      "to": "plan"
+    }
+  ],
+  "specs/003-escalation-chains": [
+    {
+      "ts": "2026-03-08T09:00:00Z",
+      "kind": "stage",
+      "derived": true,
+      "title": "created → plan",
+      "body": "- Derived from: spec.md `started:`",
+      "ref": "plan",
+      "id": "stage-plan",
+      "actor": null,
+      "from": null,
+      "to": "plan"
+    }
+  ]
+}

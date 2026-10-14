@@ -1,33 +1,29 @@
 import type { IconName } from '../../shared/icons/icons';
-import type { TechTabId } from './page-tabs';
+import type { PlanningLensId } from './page-tabs';
 
 /**
  * The spec page's areas and their tabs (design.md, ISC-76): the one registry the area menu, the tab bar, the routes
  * and (T102) the `g` sequences read. Order is menu order; each area's tabs are in tab-bar order.
  *
  * - `dashboard` has no tabs: it is `/w/:ws/s/:id` itself (ISC-78).
- * - An area whose id is not one of its tabs (`live`, `data`, `docs`) also answers `/w/:ws/s/:id/<area>` by redirecting
- *   to its first tab, so a deep link or a `g` key can name the area alone.
+ * - An area whose id is not one of its tabs (`live`, `data`) also answers `/w/:ws/s/:id/<area>` by redirecting to its
+ *   first tab, so a deep link or a `g` key can name the area alone.
+ * - `library` (spec 017, T45, ISC-158) stands where Docs stood: one tab, Documents, at `/w/:ws/s/:id/library`, the
+ *   workspace Library's component narrowed to the spec. Data keeps Claims and Tasks; the evidence is in the Library.
  * - `built: false` marks an area whose tabs are not built yet; the area menu shows it disabled with its reason (the
  *   mark on ISC-76) and the route still resolves to the placeholder, so a deep link never 404s on a known tab.
  */
-export const AREA_IDS = ['dashboard', 'status', 'live', 'data', 'docs', 'notes'] as const;
+export const AREA_IDS = ['dashboard', 'status', 'live', 'data', 'library', 'notes'] as const;
 export type AreaId = (typeof AREA_IDS)[number];
 
-export const TAB_IDS = [
-  'status',
-  'timeline',
-  'board',
-  'matrix',
-  'claims',
-  'tasks',
-  'evidence',
-  'plan',
-  'design',
-  'decisions',
-  'constitution',
-  'notes',
-] as const;
+/**
+ * The former tabs of the Docs area and Data's Evidence (spec 017, ISC-158.1): no area lists them any more, but their
+ * addresses redirect into the Library area (T48, `LEGACY_SPEC_REDIRECTS`); the ids stay for the links that name them.
+ */
+export const LEGACY_TAB_IDS = ['evidence', 'plan', 'design', 'decisions', 'constitution'] as const;
+export type LegacyTabId = (typeof LEGACY_TAB_IDS)[number];
+
+export const TAB_IDS = ['status', 'timeline', 'board', 'matrix', 'claims', 'tasks', 'library', 'notes', ...LEGACY_TAB_IDS] as const;
 export type TabId = (typeof TAB_IDS)[number];
 
 export interface SpecArea {
@@ -40,21 +36,35 @@ export interface SpecArea {
    * as a hint in the area menu. The binding is T102's; the dashboard has none yet (the prototype names none).
    */
   readonly goKey: string | null;
+  /**
+   * The tab bar shows although the area has one tab (spec 017, design.md § Viewport-übergreifend): the Library's
+   * eyebrow and its one tab Documents with its count. Without it a one-tab area (Notes) has no bar.
+   */
+  readonly singleTabBar?: true;
+  /**
+   * The area runs without the context column (prototype `no-rail`, spec 017 design.md § Viewport-übergreifend), so
+   * the Library's list and reader have the width of the workspace Library.
+   */
+  readonly noRail?: true;
 }
 
 export const SPEC_AREAS: readonly SpecArea[] = [
   { id: 'dashboard', tabs: [], icon: 'layout-dashboard', built: true, goKey: null },
   { id: 'status', tabs: ['status', 'timeline'], icon: 'activity', built: true, goKey: 's' },
   { id: 'live', tabs: ['board', 'matrix'], icon: 'square-kanban', built: true, goKey: 'l' },
-  { id: 'data', tabs: ['claims', 'tasks', 'evidence'], icon: 'table', built: true, goKey: 'd' },
-  { id: 'docs', tabs: ['plan', 'design', 'decisions', 'constitution'], icon: 'file-text', built: true, goKey: 'o' },
+  { id: 'data', tabs: ['claims', 'tasks'], icon: 'table', built: true, goKey: 'd' },
+  // Spec 017 (T45, ISC-158): the Library where Docs stood, with Docs' `g o`; one tab, Documents, at `…/library`.
+  { id: 'library', tabs: ['library'], icon: 'book', built: true, goKey: 'o', singleTabBar: true, noRail: true },
   { id: 'notes', tabs: ['notes'], icon: 'notebook-pen', built: true, goKey: 'n' },
 ];
 
 export const areaById = (id: AreaId): SpecArea => SPEC_AREAS.find((area) => area.id === id) ?? must(id);
 
-/** The area a tab belongs to. */
-export const areaOfTab = (tab: TabId): SpecArea => SPEC_AREAS.find((area) => area.tabs.includes(tab)) ?? must(tab);
+const isLegacyTab = (tab: TabId): boolean => (LEGACY_TAB_IDS as readonly TabId[]).includes(tab);
+
+/** The area a tab belongs to; a former Docs or Evidence tab (`LEGACY_TAB_IDS`) counts as the Library. */
+export const areaOfTab = (tab: TabId): SpecArea =>
+  SPEC_AREAS.find((area) => area.tabs.includes(tab)) ?? (isLegacyTab(tab) ? areaById('library') : must(tab));
 
 /** The path of an area under `/w/:ws/s/:id`: '' for the dashboard, else its first tab. */
 export const areaPath = (area: SpecArea): string => area.tabs[0] ?? '';
@@ -72,8 +82,8 @@ function must(key: string): never {
 /** Route data the shell reads (`ShellState.route`): which area and tab a route shows, or that it is the not-found page. */
 export interface ShellRouteData {
   readonly area?: AreaId;
-  /** A spec tab under `/w/:ws/s/:id`, or a tech tab on `page: 'tech'` (`ShellState.route().techTab`, spec 023). */
-  readonly tab?: TabId | TechTabId;
+  /** A spec tab under `/w/:ws/s/:id`, or a lens on `page: 'planning'` (`ShellState.route().lens`, spec 026). */
+  readonly tab?: TabId | PlanningLensId;
   /** The workspace-scope page a `w/:ws` route shows (`ShellState.route().wsPage`); absent means the spec list. */
   readonly page?: WorkspacePageId;
   readonly notFound?: boolean;
@@ -82,14 +92,15 @@ export interface ShellRouteData {
 /**
  * The workspace-scope pages, the counterpart of the spec areas one level up. `idea` (spec 008, `/w/:ws/ideas/:slug`)
  * is a read-only story page reached from a board card, the palette or a chip, never from the menu: it has no
- * `WORKSPACE_PAGES` entry, so the menu's pages are `WorkspaceMenuPageId`. `tech` (spec 023, `/w/:ws/tech/<tab>`, tabs
- * in `TECH_TABS`) is a menu page, fifth after Milestones (T20). `library` (spec 024, `/w/:ws/library`, a mock until
- * spec 017) is the sixth (T57, ISC-150.1).
+ * `WORKSPACE_PAGES` entry, so the menu's pages are `WorkspaceMenuPageId`. Spec 023's tech page is gone: spec 017
+ * folded it into the Library (T41, ISC-157.1, removed in T50), `/w/:ws/tech` and every `/w/:ws/tech/<tab>` redirect
+ * there (`app.routes.ts`). `library` (spec 024,
+ * `/w/:ws/library`, on the real catalog since spec 017) stands where Tech stood, fifth after Milestones.
  */
-export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea' | 'tech' | 'library';
+export type WorkspacePageId = 'specs' | 'board' | 'planning' | 'features' | 'milestones' | 'idea' | 'library';
 export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea'>;
 
-const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea', 'tech', 'library'];
+const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'planning', 'features', 'milestones', 'idea', 'library'];
 
 export const isWorkspacePageId = (value: unknown): value is WorkspacePageId =>
   (WORKSPACE_PAGE_IDS as readonly unknown[]).includes(value);
@@ -109,9 +120,9 @@ export interface WorkspacePage {
   readonly summaryKey: string;
   /**
    * The second key of the page's `g` sequence, read by `SHORTCUTS`: Board's `g b` (spec 008, T117), Features' `g f`
-   * and Milestones' `g m` (spec 024, T58, ISC-150.1). Specs has none: `g s` is Status inside a spec and no
-   * workspace-scope binding exists; Tech has none (spec 023 plan.md); Library has none either, since the prototype's
-   * `g b` for it is the app's Board.
+   * and Milestones' `g m` (spec 024, T58, ISC-150.1), Library's `g o` (spec 017, T41, ISC-157.1: the key that opens
+   * the documents inside a spec, the Library area since T45, opens them at workspace scope; the prototype's `g b` is the app's Board).
+   * Specs has none: `g s` is Status inside a spec and no workspace-scope binding exists.
    */
   readonly goKey: string | null;
 }
@@ -122,13 +133,12 @@ export const WORKSPACE_PAGES: readonly WorkspacePage[] = [
   // summary line counts through the board's own model (T116). `g b` is bound (T117, SHORTCUTS `go-board`): the
   // 2026-10-11 review found it free, the round board's `b` being a tab inside a spec, not a `g` sequence.
   { id: 'board', icon: 'square-kanban', labelKey: 'shell.pages.board', summaryKey: 'shell.pages.summary.board', goKey: 'b' },
-  { id: 'features', icon: 'layers', labelKey: 'shell.pages.features', summaryKey: 'shell.pages.summary.features', goKey: 'f' },
-  { id: 'milestones', icon: 'flag', labelKey: 'shell.pages.milestones', summaryKey: 'shell.pages.summary.milestones', goKey: 'm' },
-  // Spec 023 (T20, ISC-134.2): the tech page, fifth after Milestones; `/w/:ws/tech` redirects to its first tab.
-  { id: 'tech', icon: 'book-open', labelKey: 'shell.pages.tech', summaryKey: 'shell.pages.summary.tech', goKey: null },
-  // Spec 024 (T57, ISC-150.1): the Library, sixth; a mock with the demo chip until spec 017, its summary counts the
-  // mock's documents and says so. The PAGE select's menu reaches it (spec 024 T80, ISC-150.2: the rail link went).
-  { id: 'library', icon: 'book', labelKey: 'shell.pages.library', summaryKey: 'shell.pages.summary.library', goKey: null },
+  // Spec 026 (ISC-167, ISC-167.1): Planning, one page with the lenses Tree, Matrix and Graph, replaces Features and
+  // Milestones in the menu; their routes redirect to the tree, and `g f` / `g m` open it.
+  { id: 'planning', icon: 'list-tree', labelKey: 'shell.pages.planning', summaryKey: 'shell.pages.summary.planning', goKey: 'p' },
+  // Spec 017 (T41, ISC-157.1): the Library where Tech stood, after Planning; Tech's content is in it and its routes
+  // redirect there. The summary counts the catalog's documents, outdated and missing ones (`AreaMenu`).
+  { id: 'library', icon: 'book', labelKey: 'shell.pages.library', summaryKey: 'shell.pages.summary.library', goKey: 'o' },
 ];
 
 /** A menu page's entry. */
@@ -136,3 +146,17 @@ export const workspacePageById = (id: WorkspaceMenuPageId): WorkspacePage => WOR
 
 /** `['/w', ws]` for Specs (the workspace root), else `['/w', ws, page]`, as a router link. */
 export const workspaceLink = (ws: string, page: WorkspaceMenuPageId): string[] => (page === 'specs' ? ['/w', ws] : ['/w', ws, page]);
+
+/** `['/w', ws, 'planning', 'tree']`, the planning page's tree lens as a router link (spec 026, ISC-167). */
+export const planningTreeLink = (ws: string): string[] => ['/w', ws, 'planning', 'tree'];
+
+/**
+ * The `?sel=` ref an old planning anchor names (spec 026, ISC-167.1): `F<n>` on `/features` is `feature:F<n>`,
+ * `m-<slug>` on `/milestones` is `milestone:<slug>`; any other anchor names nothing.
+ */
+export function anchorRef(page: 'features' | 'milestones', fragment: string | null): string | null {
+  if (fragment === null) return null;
+  if (page === 'features') return /^F\d+$/u.test(fragment) ? `feature:${fragment}` : null;
+  const slug = /^m-(.+)$/u.exec(fragment)?.[1];
+  return slug === undefined ? null : `milestone:${slug}`;
+}

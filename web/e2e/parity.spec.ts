@@ -58,12 +58,8 @@
  *     trigger is a control, not a mock, and carries none; a workspace badge on these pages renders from core's data
  *     (the workspace name), never from the identity fixture, or it would need the chip.
  *
- *   Library `/w/:ws/library` (T50, T51; prototype `library.html`)
- *   - `[data-page="library"]`            the page root, itself `[data-demo]`; its h1 row is the `[data-demo-head]`.
- *   - `[data-library-entry]`             one row per document, value = the fixture's `id`, in `DEMO_LIBRARY` order
- *                                        while no filter is set.
- *   - `[data-library-search]`            the search input; filtering by an entry's title keeps that entry.
- *   - `[data-library-reader]`            the reader; choosing a row shows that entry's title in it.
+ *   Library `/w/:ws/library` (T50, T51; prototype `library.html`): no mock since spec 017 (T27, T28) renders the
+ *   server's catalog; its own suite is `web/e2e/library.spec.ts`.
  *   - `a[data-library-link]`             none: the prototype's rail link to the Library gave way to the PAGE select
  *                                        `header [data-control="page"]`, whose menu lists Library (spec 024 T80,
  *                                        ISC-150.2, principal 2026-10-13).
@@ -105,7 +101,6 @@ import { readFileSync } from 'node:fs';
 import type { BrowserContext, Locator, Page } from '@playwright/test';
 import type { SpecPageModel } from '../../core/src/files.ts';
 import { DEMO_ASSISTANT_FALLBACK, DEMO_ASSISTANT_REPLIES } from '../src/app/shared/demo/fixtures/assistant.ts';
-import { DEMO_LIBRARY } from '../src/app/shared/demo/fixtures/library.ts';
 import { DEMO_WORKSPACES } from '../src/app/shared/demo/fixtures/workspaces.ts';
 import type { IconName } from '../src/app/shared/icons/icons.ts';
 import { PROTOTYPE_ICON_MAP } from '../src/app/shared/icons/prototype-map.ts';
@@ -309,12 +304,16 @@ const openPaletteWithRecent = async (page: Page): Promise<void> => {
   await openPalette(page);
 };
 
-/** Icons the design (spec 024 design.md) names for a place the prototype drew without a key: Zen's focus corners. */
-const DESIGN_ICONS: readonly IconName[] = ['scan'];
+/**
+ * Icons the design names for a place the prototype drew without a key: Zen's focus corners (spec 024 design.md) and
+ * the Library's fog line (spec 017 design.md).
+ */
+const DESIGN_ICONS: readonly IconName[] = ['scan', 'cloud-fog'];
 
 const SHELL = 'Gemeinsam · Shell';
 const WORKSPACE_VIEW = 'workspace.html';
 const SPEC_VIEW = 'spec.html';
+const LIBRARY_VIEW = 'library.html';
 const DETAIL_VIEW = 'spec-detail.html';
 const BOARD_VIEW = 'board-live.html';
 
@@ -375,8 +374,11 @@ const ICON_PLACES: readonly IconPlace[] = [
   { section: DETAIL_VIEW, place: 'Claims notes badge', route: '/w/harbor/s/002/claims#claim-ISC-51', at: '[data-claim="ISC-51"] [data-link="notes"]', icon: 'sticky-note' },
   { section: DETAIL_VIEW, place: 'Claims verification line', route: '/w/harbor/s/002/claims#claim-ISC-51', at: '[data-claim="ISC-51"]', icon: 'circle-check' },
   { section: DETAIL_VIEW, place: 'Tasks helper line', route: '/w/harbor/s/002/tasks', at: '[data-page="tasks"] .helper', icon: 'lock' },
-  { section: DETAIL_VIEW, place: 'Evidence preview dialog close', route: '/w/harbor/s/002/evidence', open: click('[data-file="artifacts/T12-dashboard-model.md"]'), at: '[data-preview-close]', icon: 'x' },
-  { section: DETAIL_VIEW, place: 'Decisions still open fog', route: '/w/harbor/s/005/decisions', at: '[data-page="docs"]', icon: 'cloud' },
+  // Spec 017 (ISC-158): the former Evidence preview and Decisions fog live in the Library. An evidence file opens in
+  // the reader, whose single-column way out is the back button (no dialog, so no close); the still-open fog lines stand
+  // under the filter "open" with the `cloud-fog` of design.md 017.
+  { section: LIBRARY_VIEW, place: 'evidence in the reader back (single column)', width: 390, route: '/w/harbor/library#002-web-console/.evidence/kpi-band-390.png', at: '[data-library-reader] [data-library-back]', icon: 'arrow-left' },
+  { section: LIBRARY_VIEW, place: 'filter open fog line', route: '/w/harbor/library?state=open', at: '[data-library-fog-group] [data-library-fog-line]', icon: 'cloud-fog' },
   { section: 'notes.html', place: 'notes import notice close', route: '/w/harbor/s/002/notes', at: '[data-notes-import]', icon: 'x' },
   { section: 'notes.html', place: 'notes search', route: '/w/harbor/s/002/notes', at: '[data-notes-list] .notes-search', icon: 'search' },
   { section: 'notes.html', place: 'notes new', route: '/w/harbor/s/002/notes', at: '[data-notes-new]', icon: 'plus' },
@@ -434,7 +436,7 @@ const DEMO_SESSION_HEADER = 'X-Spectant-Stub-Session';
 const DEMO_SESSION = 'parity-demo';
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
 /** No endpoint serves these yet: a mock that asks the API for one reads something other than its fixture. */
-const MOCK_API = /\/api\/.*(library|assistant|identit|upload)/iu;
+const MOCK_API = /\/api\/.*(assistant|identit|upload)/iu;
 
 interface DemoTraffic {
   readonly blocked: string[];
@@ -527,21 +529,6 @@ const useAssistant = async (page: Page): Promise<void> => {
 };
 
 const MOCK_HOSTS: readonly MockHost[] = [
-  {
-    name: 'Library',
-    route: '/w/harbor/library',
-    root: '[data-page="library"][data-demo]',
-    use: async (page) => {
-      const entries = page.locator('[data-library-entry]');
-      expect(await entries.evaluateAll((rows) => rows.map((row) => row.getAttribute('data-library-entry')))).toEqual(DEMO_LIBRARY.map((entry) => entry.id));
-      const pick = DEMO_LIBRARY[0];
-      if (!pick) throw new Error('DEMO_LIBRARY is empty');
-      await page.locator('[data-library-search]').fill(pick.title);
-      await expect(page.locator(`[data-library-entry="${pick.id}"]`)).toBeVisible();
-      await page.locator(`[data-library-entry="${pick.id}"]`).click();
-      await expect(page.locator('[data-library-reader]')).toContainText(pick.title);
-    },
-  },
   {
     name: 'Settings · Workspaces',
     route: '/settings/workspaces',
@@ -676,13 +663,13 @@ const viaPage =
     await (await headerControl(page, 'page')).click();
     await follow(`nav[aria-label="Pages"] [data-page="${id}"]`)(page);
   };
-/** The spec table opens a row in two steps: the first click previews it (`?spec=`), the second opens the spec. */
+/** The spec table opens a row in two steps: the first click selects it for the sidebar (`?sel=spec:`), the second opens the spec. */
 const openSpecRow =
   (id: string) =>
   async (page: Page): Promise<void> => {
     const row = page.locator(`[data-panel="specs"] [data-spec-row="${id}"]`);
     await row.click();
-    await expect(page).toHaveURL((url) => url.searchParams.get('spec') === id);
+    await expect(page).toHaveURL((url) => url.searchParams.get('sel') === `spec:${id}`);
     await row.click();
   };
 const tab = (id: string): ((page: Page) => Promise<void>) => follow(`app-tab-bar a[data-tab="${id}"]`);
@@ -797,15 +784,16 @@ test.describe('routes', () => {
  *   - `[data-page="<id>"]`               one entry per workspace page, in registry order, with `ui-icon[data-icon]`,
  *                                        `.entry-name` and the summary `.sub`; `[data-area="<id>"]` per spec area.
  *   - palette `[data-entry]`             `harbor` (Specs), `action/open-board`, `feature-F0`, `milestone-harbor-0-9`,
- *                                        `tech/harbor`, `action/open-library`, `action/settings-workspaces`.
+ *                                        `action/open-library`, `action/settings-workspaces` (spec 017 T43, ISC-157.1:
+ *                                        no Tech entry any more, Tech went into the Library).
  *   - shortcut sheet `[data-binding]`    `go-board`, `go-features`, `go-milestones` in the workspace context.
  */
 const MENU_PAGES = [
   { id: 'specs', icon: 'file-text', name: 'Specs', lands: (path: string) => path === '/w/harbor' },
   { id: 'board', icon: 'square-kanban', name: 'Board', lands: (path: string) => path === '/w/harbor/board' },
-  { id: 'features', icon: 'layers', name: 'Features', lands: (path: string) => path === '/w/harbor/features' },
-  { id: 'milestones', icon: 'flag', name: 'Milestones', lands: (path: string) => path === '/w/harbor/milestones' },
-  { id: 'tech', icon: 'book-open', name: 'Tech', lands: (path: string) => path.startsWith('/w/harbor/tech') },
+  // spec 026 (T15, ISC-167): one Planning entry replaces Features and Milestones and lands on the tree lens.
+  { id: 'planning', icon: 'list-tree', name: 'Planning', lands: (path: string) => path === '/w/harbor/planning/tree' },
+  // spec 017 (T41, ISC-157.1): Tech went into the Library, which stands where Tech stood.
   { id: 'library', icon: 'book', name: 'Library', lands: (path: string) => path === '/w/harbor/library' },
 ] as const;
 
@@ -814,16 +802,16 @@ const SPEC_MENU_AREAS = [
   { id: 'status', path: '/w/harbor/s/002/status' },
   { id: 'live', path: '/w/harbor/s/002/board' },
   { id: 'data', path: '/w/harbor/s/002/claims' },
-  { id: 'docs', path: '/w/harbor/s/002/plan' },
+  // Spec 017 (T45, ISC-158): the Library where Docs stood, its one tab at …/library.
+  { id: 'library', path: '/w/harbor/s/002/library' },
   { id: 'notes', path: '/w/harbor/s/002/notes' },
 ] as const;
 
 const PALETTE_PLACES = [
   { entry: 'harbor', query: 'harbor', lands: (path: string) => path === '/w/harbor' },
   { entry: 'action/open-board', query: 'board', lands: (path: string) => path === '/w/harbor/board' },
-  { entry: 'feature-F0', query: 'F0', lands: (path: string) => path === '/w/harbor/features' },
-  { entry: 'milestone-harbor-0-9', query: 'harbor-0-9', lands: (path: string) => path === '/w/harbor/milestones' },
-  { entry: 'tech/harbor', query: 'tech', lands: (path: string) => path.startsWith('/w/harbor/tech') },
+  { entry: 'feature-F0', query: 'F0', lands: (path: string) => path === '/w/harbor/planning/tree' },
+  { entry: 'milestone-harbor-0-9', query: 'harbor-0-9', lands: (path: string) => path === '/w/harbor/planning/tree' },
   { entry: 'action/open-library', query: 'library', lands: (path: string) => path === '/w/harbor/library' },
   { entry: 'action/settings-workspaces', query: 'settings', lands: (path: string) => path === '/settings/workspaces' },
 ] as const;
@@ -887,11 +875,11 @@ test.describe('navigation', () => {
         }
       });
 
-      test('a workspace without milestones lists no Milestones entry but keeps Library', async ({ page }) => {
+      test('a workspace without milestones lists Planning and keeps Library', async ({ page }) => {
         await page.goto('/w/lantern');
-        // spec 024: PAGE select (principal 2026-10-13)
+        // spec 024: PAGE select (principal 2026-10-13); spec 026: Planning in place of Features and Milestones
         const menu = await openPageMenu(page);
-        expect(await ids(menu.locator('[data-page]'), 'data-page')).toEqual(['specs', 'board', 'features', 'tech', 'library']);
+        expect(await ids(menu.locator('[data-page]'), 'data-page')).toEqual(['specs', 'board', 'planning', 'library']);
       });
 
       test('the spec area menu lists the six spec areas, each navigating', async ({ page }) => {
@@ -973,8 +961,8 @@ test.describe('navigation', () => {
 
     for (const [key, path] of [
       ['b', '/w/harbor/board'],
-      ['f', '/w/harbor/features'],
-      ['m', '/w/harbor/milestones'],
+      ['f', '/w/harbor/planning/tree'],
+      ['m', '/w/harbor/planning/tree'],
     ] as const) {
       test(`g ${key} navigates to ${path} from the workspace`, async ({ page }) => {
         await page.goto('/w/harbor');

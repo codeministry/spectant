@@ -30,9 +30,10 @@ test.describe('keyboard', () => {
     await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/claims$/);
     await expect(page.locator('main :is(h1, h2):focus')).toHaveCount(1);
 
+    // Spec 017 (T45, ISC-158): the former Docs key opens the Library area; Evidence has no key of its own any more.
     await page.keyboard.press('g');
-    await page.keyboard.press('e');
-    await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/evidence$/);
+    await page.keyboard.press('o');
+    await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/library$/);
 
     await page.keyboard.press('g');
     await page.keyboard.press('h');
@@ -216,19 +217,20 @@ test.describe('keyboard on a coarse pointer', () => {
 });
 
 /**
- * ISC-61.1 (spec 001, T69): Enter on the selected row of the Specs panel opens the spec preview — the query state
- * `?spec=<id>` on `/w/:ws`, shown by the inspector in the rail at wide and in a side sheet at medium — Enter again (or
- * the Open button) opens the spec page, `[` `]` step through the list, and Esc from the preview clears the query and
- * puts focus back on the row. `bun run e2e -- keyboard -g enter`.
+ * ISC-61.1 (spec 001, T69), since spec 026 (T27, ISC-171) through the detail sidebar: Enter on the selected row of the
+ * Specs panel selects the spec — `?sel=spec:<id>` on `/w/:ws`, the sidebar docked in the rail at wide and over the page
+ * at medium — Enter again (or the sidebar's "Open spec") opens the spec page, `[` `]` step through the list, and Esc
+ * closes the sidebar and puts focus back on the row. `bun run e2e -- keyboard -g enter`.
  */
 test.describe('keyboard: Enter opens the selected spec', () => {
   test.use(atWidth(1440));
 
   const rowsOf = (page: Page) => page.locator('[data-panel="specs"] [data-spec-row]');
   const rowOf = (page: Page, id: string) => page.locator(`[data-panel="specs"] [data-spec-row="${id}"]`);
-  const inspectorOf = (page: Page) => page.locator('app-spec-inspector');
+  const sidebarId = (page: Page) => page.locator('app-detail-sidebar [data-part="id"]');
+  const selUrl = (id: string): RegExp => new RegExp(`/w/harbor\\?sel=spec(?::|%3A)${id}$`);
 
-  test('enter previews the selected spec, enter again opens it, Esc returns to the row', async ({ page }) => {
+  test('enter selects the spec for the sidebar, enter again opens it, Esc returns to the row', async ({ page }) => {
     const dashboard = page.waitForResponse((response) => response.url().endsWith('/harbor/dashboard') && response.ok());
     await page.goto('/w/harbor');
     const body = (await (await dashboard).json()) as { specs?: Array<{ id: string }> };
@@ -242,47 +244,45 @@ test.describe('keyboard: Enter opens the selected spec', () => {
     await expect(rowOf(page, id)).toBeFocused();
 
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(new RegExp(`/w/harbor\\?spec=${id}$`));
-    await expect(inspectorOf(page)).toBeVisible();
-    await expect(inspectorOf(page)).toHaveAttribute('data-spec', id);
+    await expect(page).toHaveURL(selUrl(id));
+    await expect(sidebarId(page)).toHaveText(id);
 
+    await rowOf(page, id).focus();
     await page.keyboard.press(']');
-    await expect(page).toHaveURL(new RegExp(`/w/harbor\\?spec=${next}$`));
-    await expect(inspectorOf(page)).toHaveAttribute('data-spec', next);
+    await expect(page).toHaveURL(selUrl(next));
+    await expect(sidebarId(page)).toHaveText(next);
     await page.keyboard.press('[');
-    await expect(page).toHaveURL(new RegExp(`/w/harbor\\?spec=${id}$`));
+    await expect(page).toHaveURL(selUrl(id));
 
     await page.keyboard.press('Escape');
     await expect(page).toHaveURL(/\/w\/harbor$/);
-    await expect(inspectorOf(page)).toHaveCount(0);
+    await expect(sidebarId(page)).toHaveCount(0);
     await expect(rowOf(page, id)).toBeFocused();
 
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(new RegExp(`/w/harbor\\?spec=${id}$`));
-    // The previewed row now links to the spec page (rendered after the URL commits).
+    await expect(page).toHaveURL(selUrl(id));
+    // The selected row now links to the spec page (rendered after the URL commits).
     await expect(rowOf(page, id)).toHaveAttribute('aria-expanded', 'true');
-    await expect(rowOf(page, id)).toBeFocused();
+    await rowOf(page, id).focus();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(new RegExp(`/w/harbor/s/${id}$`));
   });
 
-  test('enter at medium previews in a side sheet whose Open button leads to the spec page', async ({ page }) => {
+  test('enter at medium shows the sidebar over the page, whose "Open spec" leads to the spec page', async ({ page }) => {
     await page.setViewportSize({ width: 820, height: 900 });
     await page.goto('/w/harbor');
     const row = rowsOf(page).first();
     const id = (await row.getAttribute('data-spec-row')) ?? '';
     await row.focus();
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(new RegExp(`/w/harbor\\?spec=${id}$`));
-    const sheet = page.locator('ui-sheet[data-inspector-sheet] dialog');
-    await expect(sheet).toBeVisible();
-    await expect(sheet.locator('app-spec-inspector')).toHaveAttribute('data-spec', id);
+    await expect(page).toHaveURL(selUrl(id));
+    await expect(sidebarId(page)).toHaveText(id);
     await page.keyboard.press('Escape');
     await expect(page).toHaveURL(/\/w\/harbor$/);
     await expect(rowOf(page, id)).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(sheet).toBeVisible();
-    await sheet.locator('[data-action="open-spec"]').click();
+    await expect(sidebarId(page)).toHaveText(id);
+    await page.locator('app-detail-sidebar [data-open-spec]').click();
     await expect(page).toHaveURL(new RegExp(`/w/harbor/s/${id}$`));
   });
 });

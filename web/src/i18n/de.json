@@ -145,23 +145,9 @@
     "empty": "Noch keine Specs",
     "noMatch": "Keine Spec in {{phase}}",
     "clearFilter": "Filter zurücksetzen",
-    "inspector": {
-      "label": "Spec-Details",
-      "claims": "Claims",
-      "percent": "{{percent}} %",
-      "nextCommand": "Nächster Befehl",
-      "takeableClaims": "Nehmbare Claims",
-      "warnings": "Warnungen",
-      "fog": {
-        "one": "{{count}} offener Fog-Eintrag",
-        "other": "{{count}} offene Fog-Einträge"
-      },
-      "previous": "Vorherige Spec",
-      "next": "Nächste Spec",
-      "stepHint": "vorherige / nächste Spec",
-      "explore": "Spec {{id}} erkunden",
-      "openFog": "Offener Fog",
-      "open": "Spec öffnen"
+    "fogCount": {
+      "one": "{{count}} offener Fog-Eintrag",
+      "other": "{{count}} offene Fog-Einträge"
     },
     "agentWorking": "Agent {{session}} arbeitet",
     "ideas": {
@@ -248,6 +234,7 @@
       "shortcuts": "Tastenkürzel anzeigen",
       "openAssistant": "Assistent öffnen",
       "help": "Hilfe",
+      "planning": "Planung öffnen",
       "openPort": "localhost:{{port}} öffnen",
       "library": "Library öffnen",
       "settingsWorkspaces": "Einstellungen · Workspaces"
@@ -529,8 +516,8 @@
         "dashboard": "Überblick · nächster Schritt · Gates",
         "status": "Status · Zeitleiste",
         "live": "Board · Matrix",
-        "data": "Claims · Tasks · Belege",
-        "docs": "Plan · Design · Entscheidungen · Verfassung",
+        "data": "Claims · Tasks",
+        "library": "Spec · Plan · Tasks · Design · Belege · Prototyp",
         "notes": "Notizen"
       },
       "unbuilt": "Kommt mit späteren Tasks dieser Spec",
@@ -552,7 +539,7 @@
       "status": "Status",
       "live": "Live",
       "data": "Daten",
-      "docs": "Doku",
+      "library": "Library",
       "notes": "Notizen"
     },
     "tabs": {
@@ -567,6 +554,7 @@
       "design": "Design",
       "decisions": "Entscheidungen",
       "constitution": "Verfassung",
+      "library": "Dokumente",
       "notes": "Notizen"
     },
     "tabBar": "Tabs: {{area}}",
@@ -629,17 +617,18 @@
     "pages": {
       "specs": "Specs",
       "board": "Board",
+      "planning": "Planung",
       "features": "Features",
       "milestones": "Meilensteine",
-      "tech": "Tech",
       "library": "Library",
       "summary": {
         "specs": "{{active}} aktiv · {{archived}} archiviert",
         "board": "{{stages}} Stages · {{cards}} Karten · {{waiting}} warten auf Sie",
+        "planning": "{{milestones}} Meilensteine · {{features}} Features",
         "features": "{{count}} Features · {{closed}}/{{total}} geschlossen",
         "milestones": "{{count}} Meilensteine · nächster {{next}}",
-        "tech": "{{specs}} Specs · {{fog}} offene Fragen",
-        "library": "{{count}} Dokumente · Demo"
+        "library": "{{docs}} Dokumente · {{stale}} veraltet · {{missing}} fehlen",
+        "libraryLoading": "Alle Dokumente, Artefakte und Prototypen"
       }
     },
     "assistant": {
@@ -802,58 +791,18 @@
   },
   "docs": {
     "decisions": {
-      "goal": "Ziel",
-      "stillOpen": "Noch offen",
-      "locked": "festgelegt {{date}}",
-      "goalSource": "context.md · Ziel",
-      "signal": "Signal",
-      "signalLabel": "Signal {{n}} von 4",
-      "shapes": "Formen",
       "from": "Von",
       "offered": "Angeboten",
       "chosen": "Gewählt",
       "landedIn": "Gelandet in",
       "recommended": "empfohlen",
-      "waiting": "— wartet auf Sie",
-      "noQuestions": "Nur die Idee — im Gespräch geformt, keine Fragen festgehalten.",
-      "full": "Die ganze {{file}}"
-    },
-    "constitution": {
-      "lanes": "Lanes",
-      "lane": "Lane",
-      "paths": "Pfade",
-      "probe": "Lane-Probe",
-      "tier": "Gate-Tier · {{tier}}",
-      "lanesRegion": "Lanes-Tabelle, scrollt seitlich"
+      "waiting": "— wartet auf Sie"
     },
     "contents": "Auf dieser Seite",
-    "updated": "aktualisiert {{date}}",
     "tableRegion": "Tabelle {{index}}, seitlich scrollbar",
     "figureRegion": "Diagramm {{index}}, seitlich scrollbar",
     "imageMissing": "Bild ist in diesem Checkout nicht vorhanden",
-    "imageUnavailable": "Bild konnte nicht angezeigt werden",
-    "diagramMissing": {
-      "title": "Dieser Plan enthält kein Diagramm.",
-      "body": "Eine Mermaid-Abbildung des Ansatzes zeigt seine Struktur auf einen Blick."
-    },
-    "empty": {
-      "notApplicable": "Eine Spec vom Typ {{type}} hat keine {{file}}",
-      "noType": "Eine Spec ohne Typ hat keine {{file}}",
-      "notApplicableBody": "Dieser Spec-Typ verwendet die Datei nicht, daher gibt es hier nichts anzuzeigen.",
-      "missing": "Noch keine {{file}}",
-      "missingBody": "Legen Sie die Datei mit diesem Befehl an:",
-      "missingNoCommand": "Die Datei entsteht, sobald die Fragerunden der Spec festgehalten werden.",
-      "typesLink": "Welche Dateien jeder Typ hat →"
-    },
-    "error": "Dieses Dokument konnte nicht geladen werden.",
-    "loading": "Dokument wird geladen",
-    "design": {
-      "ist": "Ist",
-      "soll": "Soll",
-      "width": "{{width}} px",
-      "open": "{{viewport}} · {{side}} als Bild öffnen",
-      "noText": "Noch kein Soll-Text."
-    }
+    "imageUnavailable": "Bild konnte nicht angezeigt werden"
   },
   "tasks": {
     "filters": {
@@ -931,33 +880,6 @@
       "unticked": "Haken bei {{id}} in tasks.md entfernt, Zeile {{line}}"
     }
   },
-  "evidence": {
-    "loading": "Nachweise werden geladen",
-    "ungrouped": "Ohne Claim",
-    "groups": {
-      "results": "Ergebnisse",
-      "raw": "Rohbelege"
-    },
-    "claimLink": "Claim {{claim}}",
-    "count": "{{count}} Dateien",
-    "open": "{{path}} öffnen",
-    "imageAlt": "Nachweisbild {{name}}",
-    "size": {
-      "b": "{{value}} B",
-      "kb": "{{value}} KB",
-      "mb": "{{value}} MB"
-    },
-    "empty": {
-      "heading": "Noch keine Nachweise erfasst",
-      "body": "Diese Spec hat keine Dateien in artifacts/ oder .evidence/.",
-      "link": "Was als Nachweis zählt →"
-    },
-    "error": {
-      "refused": "Abgelehnt: außerhalb der Nachweisordner",
-      "failed": "Konnte nicht geladen werden",
-      "listing": "Die Nachweise konnten nicht geladen werden."
-    }
-  },
   "specDashboard": {
     "loading": "Spec-Übersicht wird geladen",
     "error": {
@@ -1025,7 +947,7 @@
         "tasks": "{{landed}}/{{total}} Tasks erledigt",
         "noTasks": "Noch keine tasks.md"
       },
-      "docs": {
+      "library": {
         "present": "{{names}}",
         "none": "Noch kein Plan, Design oder Constitution",
         "decisions": "{{count}} Entscheidungen"
@@ -1045,7 +967,7 @@
       "status": "Status",
       "live": "Live",
       "data": "Daten",
-      "docs": "Dokumente",
+      "library": "Library",
       "notes": "Notizen"
     },
     "warnings": {
@@ -1713,6 +1635,57 @@
     }
   },
   "planning": {
+    "page": {
+      "lenses": {
+        "tree": "Baum",
+        "board": "Matrix",
+        "graph": "Diagramm"
+      },
+      "levels": {
+        "milestones": "Meilensteine",
+        "features": "Features",
+        "specs": "Specs",
+        "claims": "Claims"
+      },
+      "eyebrowCount": "{{count}} Meilensteine",
+      "meta": "{{milestones}} Meilensteine · {{features}} Features · {{closed}}/{{total}} Claims geschlossen",
+      "overview": "Übersicht",
+      "overviewEmpty": "Noch keine Spec nennt einen Meilenstein.",
+      "summary": {
+        "board": "{{lanes}} Swimlanes · {{columns}} Feature-Spalten",
+        "graph": "{{milestones}} Meilensteine → {{features}} Features → {{specs}} Specs"
+      }
+    },
+    "matrix": {
+      "pills": "Meilensteine",
+      "showDone": "Fertige Features",
+      "specs": "{{count}} Specs",
+      "corner": "Meilenstein \\ Feature",
+      "otherChip": "+{{id}}",
+      "noCards": "Noch keine Specs in {{lane}}",
+      "bare": "{{count}} Features ohne Spec in {{lane}}",
+      "openColumn": "{{id}} {{name}}, fertig, Spalte aufklappen"
+    },
+    "graph": {
+      "all": "Alle",
+      "filters": "Filter",
+      "archived": "Archivierte",
+      "specEdges": "Spec-Kanten",
+      "rebundle": "Wieder bündeln",
+      "bundleDone": "{{count}} Features erledigt",
+      "bundleNoSpec": "+{{count}} Features ohne Spec",
+      "openBundle": "{{name}}, Features anzeigen",
+      "label": "Planungsdiagramm",
+      "drawing": "Diagramm wird gezeichnet…",
+      "failed": "Das Diagramm konnte nicht gezeichnet werden.",
+      "asTree": "Als Baum lesen",
+      "legend": {
+        "contains": "Enthaltensein",
+        "open": "Spec-Kante offen",
+        "met": "Spec-Kante erfüllt",
+        "bundle": "Bündel, archiviert"
+      }
+    },
     "features": {
       "title": "Features in {{ws}}",
       "meta": "{{features}} Features · {{closed}}/{{total}} Claims geschlossen · {{unheld}} ohne Spec",
@@ -1807,7 +1780,36 @@
     },
     "ideas": {
       "label": "Ideen · {{count}}"
+    },
+    "tree": {
+      "label": "Planungsbaum: Meilensteine, Features, Specs und Claims",
+      "noMilestone": "ohne Meilenstein",
+      "noMilestoneMeta": "Features ohne Meilenstein-Zeile im Master",
+      "noMilestones": "Der Master nennt keine Meilensteine.",
+      "expandAll": "Alle aufklappen",
+      "collapseAll": "Alle zuklappen"
     }
+  },
+  "sidebar": {
+    "label": "Details",
+    "types": {
+      "milestone": "Meilenstein",
+      "feature": "Feature",
+      "spec": "Spec",
+      "claim": "Claim",
+      "idea": "Idee"
+    },
+    "parents": "Eltern",
+    "children": "Kinder",
+    "blockers": "Blocker",
+    "more": "+{{count}} weitere",
+    "noBlockers": "Keine Blocker",
+    "waiting": "offen",
+    "claimsClosed": "Claims geschlossen",
+    "noClaims": "Noch keine Claims",
+    "archived": "archiviert",
+    "openSpec": "Spec öffnen",
+    "close": "Details schließen · Esc"
   },
   "help": {
     "title": "Hilfe",
@@ -1998,7 +2000,8 @@
       "hash": "Hash"
     },
     "loading": "Story wird geladen",
-    "error": "Diese Story konnte nicht geladen werden."
+    "error": "Diese Story konnte nicht geladen werden.",
+    "showRelations": "Zusammenhänge anzeigen"
   },
   "types": {
     "feature": "Feature",
@@ -2048,79 +2051,6 @@
     "inRound": "In der Runde {{round}}",
     "runChanged": "{{task}}: {{state}}"
   },
-  "tech": {
-    "title": "Tech",
-    "loading": "Tech-Seite wird geladen",
-    "error": "Die Tech-Seite konnte nicht geladen werden.",
-    "contents": "Inhalt",
-    "tabs": {
-      "overview": "Überblick",
-      "architecture": "Architektur",
-      "status": "Status",
-      "specs": "Specs",
-      "open": "Offen"
-    },
-    "eyebrowCount": "{{count}} Specs",
-    "subline": {
-      "file": "specs/tech.md · {{count}} Specs",
-      "noFile": "keine specs/tech.md · {{count}} Specs"
-    },
-    "section": {
-      "missing": "In specs/tech.md fehlt der Abschnitt {{key}}.",
-      "hint": "Führen Sie /spec-doc aus, um ihn zu entwerfen."
-    },
-    "empty": {
-      "title": "Noch keine tech.md",
-      "body": "Überblick und Architektur stammen aus specs/tech.md. Entwerfen Sie die Datei aus Claude Code:"
-    },
-    "status": {
-      "heading": "Status",
-      "caption": "Status jeder Spec",
-      "summary": {
-        "specs": "{{count}} Specs",
-        "open": "{{count}} offen",
-        "phase": "{{count}} {{phase}}",
-        "complete": "{{count}} abgeschlossen"
-      },
-      "legend": "Abgeschlossene Specs stehen am Ende.",
-      "columns": {
-        "spec": "Spec",
-        "title": "Titel",
-        "type": "Typ",
-        "stage": "Stage",
-        "claims": "Claims",
-        "tasks": "Tasks",
-        "fog": "Fog"
-      },
-      "claims": "{{closed}} von {{total}} Claims geschlossen",
-      "tasks": "{{landed}}/{{total}} Tasks",
-      "noTasks": "keine Tasks",
-      "fog": "{{count}} Fog",
-      "fogHint": "Fog zählt die Zeilen mit offenen Fragen (- fog:) in dieser Spec.",
-      "complete": "Abgeschlossen · {{count}}"
-    },
-    "specs": {
-      "goal": "Ziel",
-      "approach": "Ansatz",
-      "noPlan": "Noch keine plan.md",
-      "open": "Spec öffnen"
-    },
-    "links": {
-      "goal": "Ziel von {{id}}",
-      "plan": "Plan von {{id}}",
-      "status": "Status von {{id}}"
-    },
-    "open": {
-      "risks": "Risiken",
-      "noRisks": "Risiken stammen aus specs/tech.md.",
-      "questions": "Offene Fragen · {{lines}} Fog-Zeilen · {{specs}} offene Specs",
-      "none": "Keine offenen Fragen in offenen Specs."
-    },
-    "palette": {
-      "page": "Tech",
-      "tab": "Tech · {{tab}}"
-    }
-  },
   "library": {
     "title": "Library",
     "heading": "Library · {{ws}}",
@@ -2134,23 +2064,50 @@
       "all": "Alle",
       "spec": "Spec",
       "allSpecs": "Alle Specs",
-      "stale": "Nur veraltete"
+      "state": "Zustand"
+    },
+    "states": {
+      "all": "Alle",
+      "stale": "Veraltet",
+      "missing": "Fehlt",
+      "open": "Offen"
     },
     "types": {
+      "spec": "Spec",
       "plan": "Plan",
+      "tasks": "Tasks",
       "design": "Design",
-      "decisions": "Entscheidungen",
+      "context": "Entscheidungen",
+      "artifact": "Artefakt",
+      "evidence": "Beleg",
+      "prototype": "Prototyp",
       "constitution": "Constitution",
-      "evidence": "Nachweise",
-      "notes": "Notizen"
+      "tech": "Tech",
+      "tldr": "TL;DR",
+      "idea": "Idee"
     },
     "wsWide": "{{ws}} · workspaceweit",
-    "count": "{{ws}} · {{shown}} von {{total}} Dokumenten · {{stale}} veraltet",
+    "count": "{{ws}} · {{shown}} von {{total}} Dokumenten · {{stale}} veraltet · {{missing}} fehlen",
     "outdated": "veraltet",
-    "xrefTitle": "Teilt Verweise mit {{count}} anderen Dokumenten",
+    "control": {
+      "label": "Dokumentkontrolle",
+      "missing": {
+        "word": "fehlt",
+        "one": "{{count}} fehlendes Dokument zeigen",
+        "other": "{{count}} fehlende Dokumente zeigen",
+        "none": "Keine fehlenden Dokumente"
+      },
+      "stale": {
+        "word": "veraltet",
+        "one": "{{count}} veraltetes Dokument zeigen",
+        "other": "{{count}} veraltete Dokumente zeigen",
+        "none": "Keine veralteten Dokumente"
+      }
+    },
+    "missing": "fehlt",
     "none": {
-      "heading": "Noch keine kuratierten Dokumente in {{ws}}",
-      "body": "Die Library eines Workspace sammelt Plan, Design, Entscheidungen, Evidence und Notizen seiner Specs. Sie erscheinen, sobald eine Spec ihren ersten Plan bekommt."
+      "heading": "Noch keine Dokumente in {{ws}}",
+      "body": "Die Library sammelt Specs, Pläne, Designs, Evidence und Prototypen, sobald der erste Spec-Ordner existiert."
     },
     "empty": {
       "heading": "Kein Dokument passt",
@@ -2163,19 +2120,61 @@
       "updated": "geändert {{date}}",
       "open": "In Spec {{spec}} öffnen",
       "staleHeading": "Möglicherweise veraltet",
-      "image": "Vorschau von {{file}}",
       "pick": "Wählen Sie ein Dokument",
-      "pickBody": "Jeder Plan, jedes Design, jede Entscheidung, jeder Nachweis und jede Notiz aller Specs an einem Ort."
+      "pickBody": "Jede Spec, jeder Plan, jedes Design, jede Evidence und jeder Prototyp aller Specs an einem Ort.",
+      "loading": "Das Dokument wird geladen",
+      "error": "Das Dokument konnte nicht gelesen werden.",
+      "missingHeading": "{{file}} fehlt noch",
+      "missingBody": "Die Stage der Spec verlangt dieses Dokument; das Kommando darunter legt es an.",
+      "missingBodyPlain": "Die Stage der Spec verlangt dieses Dokument."
     },
-    "refs": {
-      "heading": "Querverweise",
-      "none": "Keine Verweise.",
-      "search": "Alle Dokumente nach {{ref}} durchsuchen",
-      "type": "Typ",
-      "document": "Dokument",
-      "spec": "Spec",
-      "shared": "Gemeinsame Verweise",
-      "sharedShort": "Gemeinsam:"
+    "head": {
+      "docs": "{{count}} Dokumente",
+      "fog": "{{count}} offen",
+      "fogLabel": "Die {{count}} offenen Punkte von {{spec}} zeigen",
+      "claims": "Claims",
+      "claimsText": "{{closed}} von {{total}} Claims geschlossen",
+      "tasks": "Tasks",
+      "approach": "Ansatz"
+    },
+    "fog": {
+      "count": "{{lines}} offene Punkte in {{specs}} Specs",
+      "meta": "spec.md · Not yet specified",
+      "noneHeading": "Nichts offen",
+      "noneBody": "Keine laufende Spec trägt eine fog-Zeile."
+    },
+    "tech": {
+      "notCreated": "{{path}} · noch nicht angelegt",
+      "emptyHeading": "Noch keine Tech-Dokumentation",
+      "emptyBody": "Überblick, Stack, Architektur und Risiken des Repositories stehen in einer Datei, specs/tech.md, die /spec-doc anlegt.",
+      "missing": "{{section}}: Abschnitt fehlt in tech.md",
+      "missingLabel": "In tech.md fehlende Abschnitte",
+      "sections": {
+        "overview": "Überblick",
+        "stack": "Stack",
+        "architecture": "Architektur",
+        "risks": "Risiken"
+      }
+    },
+    "evidence": {
+      "toggle": "Evidence",
+      "label": "{{count}} Evidence-Dateien von {{spec}}",
+      "more": "{{count}} weitere zeigen"
+    },
+    "meta": {
+      "image": "Bild · {{path}}",
+      "prototype": "{{count}} Seiten · {{pages}}",
+      "noDate": "—"
+    },
+    "loading": "Die Library wird geladen",
+    "error": "Die Library konnte nicht gelesen werden.",
+    "date": "{{date}} {{time}}",
+    "prototype": {
+      "pages": "Seiten",
+      "open": "{{file}}, öffnet in neuem Tab",
+      "preview": "Vorschau · {{file}}",
+      "previewAlt": "Screenshot des Prototyps {{title}}",
+      "foot": "Öffnet schreibgeschützt in neuem Tab · nur lokale Dateien"
     }
   },
   "orientation": {

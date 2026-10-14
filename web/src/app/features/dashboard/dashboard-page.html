@@ -14,9 +14,9 @@
   @if (view(); as view) {
     <app-kpi-band [model]="view" [ws]="ws()" [changed]="refresh.changedKpis()" />
     <app-brief [brief]="view.brief" />
-    <!-- One context-rail: at wide it hands Next up and the warnings to the shell's rail (or the inspector while a spec
-         is previewed), below wide it renders Next up here. -->
-    <app-context-rail [model]="view" inline="next-up" [replace]="railInspector()" />
+    <!-- One context-rail: at wide it hands Next up and the warnings to the shell's rail (the docked detail sidebar
+         stands in for them while something is selected, spec 026), below wide it renders Next up here. -->
+    <app-context-rail [model]="view" inline="next-up" />
   }
   <app-spec-table
     [ws]="ws()"
@@ -46,40 +46,3 @@
   }
 }
 
-<ng-template #inspectorRail>
-  @if (preview(); as row) {
-    <app-spec-inspector
-      form="rail"
-      [ws]="ws()"
-      [row]="row"
-      [warnings]="previewWarnings()"
-      [prev]="neighbours().prev"
-      [next]="neighbours().next"
-      (back)="closePreview()"
-    />
-  }
-</ng-template>
-
-@if (!railHolds()) {
-  <!-- Prototype `[data-ui=sheet]`: a full-height side sheet from the inline end at every width below wide (480 px,
-       the full width under 640). -->
-  <ui-sheet
-    data-inspector-sheet
-    tier="medium"
-    [open]="sheetOpen()"
-    (openChange)="sheetChange($event)"
-    [label]="'specs.inspector.label' | transloco"
-  >
-    @if (preview(); as row) {
-      <app-spec-inspector
-        form="sheet"
-        [ws]="ws()"
-        [row]="row"
-        [warnings]="previewWarnings()"
-        [prev]="neighbours().prev"
-        [next]="neighbours().next"
-        (back)="closePreview()"
-      />
-    }
-  </ui-sheet>
-}

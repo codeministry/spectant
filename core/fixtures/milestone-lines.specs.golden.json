@@ -1,0 +1,48 @@
+{
+  "master": true,
+  "constitution": true,
+  "specs": [
+    {
+      "id": "001",
+      "slug": "001-signal-intake",
+      "folder": "specs/001-signal-intake",
+      "archived": false,
+      "kinds": [
+        "spec"
+      ],
+      "resolves": {
+        "id": "specs/001-signal-intake",
+        "folder": "specs/001-signal-intake",
+        "slug": "specs/001-signal-intake"
+      }
+    },
+    {
+      "id": "002",
+      "slug": "002-alert-routing",
+      "folder": "specs/002-alert-routing",
+      "archived": false,
+      "kinds": [
+        "spec"
+      ],
+      "resolves": {
+        "id": "specs/002-alert-routing",
+        "folder": "specs/002-alert-routing",
+        "slug": "specs/002-alert-routing"
+      }
+    },
+    {
+      "id": "003",
+      "slug": "003-escalation-chains",
+      "folder": "specs/003-escalation-chains",
+      "archived": false,
+      "kinds": [
+        "spec"
+      ],
+      "resolves": {
+        "id": "specs/003-escalation-chains",
+        "folder": "specs/003-escalation-chains",
+        "slug": "specs/003-escalation-chains"
+      }
+    }
+  ]
+}

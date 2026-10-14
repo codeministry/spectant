@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
@@ -50,7 +50,6 @@ const NAMED = planning([
   milestone('Harbor 1.0', [{ id: '002', slug: '002-web-console', title: 'Web console', archived: false, main: true, held: 4, stage: null, stageSource: null, priority: 'P3', hash: null, assignee: null }]),
 ]);
 /** A block entry no spec names is a 0/0 row: the page stays absent (ISC-104). */
-const UNNAMED_ONLY = planning([milestone('Someday', [])]);
 
 type FakeApi = Pick<ApiClient, 'workspaces' | 'dashboard' | 'planning' | 'spec'>;
 
@@ -81,40 +80,20 @@ async function open(url: string): Promise<HTMLElement> {
 }
 
 describe('planning routes', () => {
-  it('resolves /w/:ws/features to the Features page and names it in the shell state', async () => {
+  // Spec 026 (T30, ISC-167.1): the old Features and Milestones pages are redirects to the tree lens; an anchor naming
+  // a feature or a milestone becomes `?sel=`, any other anchor is dropped.
+  it.each([
+    ['/w/harbor/features', '/w/harbor/planning/tree'],
+    ['/w/harbor/milestones', '/w/harbor/planning/tree'],
+    ['/w/harbor/features#F2', '/w/harbor/planning/tree?sel=feature:F2'],
+    ['/w/harbor/milestones#m-harbor-1-0', '/w/harbor/planning/tree?sel=milestone:harbor-1-0'],
+    ['/w/harbor/features#m-harbor-1-0', '/w/harbor/planning/tree'],
+    ['/w/harbor/milestones#F2', '/w/harbor/planning/tree'],
+    ['/w/nope/features', '/w/nope/planning/tree'],
+  ])('redirects %s to %s', async (from, to) => {
     setUp(ok(NAMED));
-    const root = await open('/w/harbor/features');
-    // "Features" is a `ui-term` (T32, ISC-107): its closed hint popover sits in the H1's DOM, so read the words on screen.
-    const h1 = root.querySelector('[data-page="features"] h1#features')?.cloneNode(true) as HTMLElement | undefined;
-    h1?.querySelectorAll('[role="tooltip"]').forEach((hint) => {
-      hint.remove();
-    });
-    expect(h1?.textContent.replace(/\s+/g, ' ').trim()).toBe('Features');
-    expect(root.querySelector('[data-page="features"] h1')?.getAttribute('tabindex')).toBe('-1');
-    expect(root.querySelector('app-not-found')).toBeNull();
-    expect(TestBed.inject(ShellState).route().wsPage).toBe('features');
-  });
-
-  it('resolves /w/:ws/milestones to the Milestones page while a spec carries a milestone', async () => {
-    setUp(ok(NAMED));
-    const root = await open('/w/harbor/milestones');
-    // spec 024: prototype value (principal: Prototyp gilt immer) — h1 "Milestones", the muted "· <ws>" beside it.
-    expect(root.querySelector('[data-page="milestones"] h1#milestones')?.textContent).toBe('Milestones');
-    expect(root.querySelector('[data-page="milestones"] .ws-suffix')?.textContent).toBe('· harbor');
-    expect(root.querySelector('app-not-found')).toBeNull();
-    expect(TestBed.inject(ShellState).route().wsPage).toBe('milestones');
-  });
-
-  it('renders not-found on /w/:ws/milestones while no spec names a milestone', async () => {
-    setUp(ok(UNNAMED_ONLY));
-    const root = await open('/w/harbor/milestones');
-    expect(root.querySelector('[data-page="milestones"] app-not-found')).not.toBeNull();
-    expect(root.querySelector('h1#milestones')).toBeNull();
-  });
-
-  it('renders not-found on both pages for an unknown workspace', async () => {
-    setUp({ kind: 'not-found', served: true });
-    const root = await open('/w/nope/features');
-    expect(root.querySelector('[data-page="features"] app-not-found')).not.toBeNull();
+    await open(from);
+    expect(TestBed.inject(Router).url).toBe(to);
+    expect(TestBed.inject(ShellState).route().wsPage).toBe('planning');
   });
 });

@@ -23,4 +23,5 @@ export const EXPECTED_WARNINGS: Record<string, string[]> = {
   "empty-master": [],
   "spectant-001": [],
   leadgen: ["ISA.md: master-progress-mismatch"],
+  "milestone-lines": [],
 };

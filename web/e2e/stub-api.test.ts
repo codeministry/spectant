@@ -6,12 +6,16 @@
 // (which has no `allowImportingTsExtensions`) never type-checks the server tree; their shapes are declared here.
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { Database } from 'bun:sqlite';
-import { readFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type {
   ClaimViewModel,
-  EvidenceListing,
+  DocsPage,
+  LibraryCatalog,
+  LibraryDocType,
   LiveFrame,
   MainCopy,
   SpecPageModel,
@@ -24,9 +28,13 @@ import {
   ACTORS_ALLOW,
   ACTORS_PATH,
   ACTORS_STATUSES,
-  DOC_NAMES,
   GOLDEN_FAMILY,
   JSON_ANSWER,
+  type LibrarySearchResult,
+  PROTOTYPE_ALLOW,
+  PROTOTYPE_CSP,
+  prototypeFolderOf,
+  prototypeRoute,
   REVIEWED_HASHES_HEADER,
   type ReviewedHashes,
   SPEC_HASH_HEADER,
@@ -43,9 +51,14 @@ import {
 } from '../../server/src/spec-routes.contract';
 import {
   BUMP_RUN_PATH,
+  EMPTY_CATALOG,
+  LIBRARY_HEADER,
   LOCKS_HEADER,
   LOCK_STATES,
   RESET_PATH,
+  STUB_LIBRARY,
+  stubEvidencePath,
+  stubOfflinePrototypeHtml,
   type LockState,
   SESSION_HEADER,
   STATE_HEADER,
@@ -308,57 +321,8 @@ describe('stub API: GET /api/workspaces/:slug/planning', () => {
   });
 });
 
-describe('stub API: GET /api/workspaces/:slug/tech (spec 023, T10)', () => {
-  // `WORKSPACE_GOLDEN_FAMILY.tech` is a whole-file family like planning: the body is the golden file itself.
-  const techText = (tree: string): string => goldenText(`${tree}.${WORKSPACE_GOLDEN_FAMILY.tech}`);
-
-  test.each(['harbor', 'lantern'])('%s: the body is the whole tech golden in the server serialization, JSON_ANSWER headers', async (name) => {
-    const res = await ask(workspaceRoutes.tech(name));
-    const body = await res.text();
-    expect(res.status).toBe(200);
-    expect(body).toBe(JSON.stringify(JSON.parse(techText(name))));
-    expect(res.headers.get('Content-Type')).toBe('application/json; charset=utf-8');
-    expect(res.headers.get('Cache-Control')).toBe('no-cache');
-    expect(res.headers.get('ETag')).toBe(`"${new Bun.CryptoHasher('sha256').update(body).digest('base64url')}"`);
-  });
-
-  test('harbor carries pages; lantern, without specs/tech.md, answers pages null', async () => {
-    const harbor = (await (await ask(workspaceRoutes.tech('harbor'))).json()) as { pages: Record<string, unknown> | null };
-    expect(harbor.pages).not.toBeNull();
-    expect(Object.keys(harbor.pages ?? {})).toContain('overview');
-    const lantern = (await (await ask(workspaceRoutes.tech('lantern'))).json()) as { pages: unknown };
-    expect(lantern.pages).toBeNull();
-  });
-
-  test('HEAD answers the headers without the body; a matching If-None-Match is a 304', async () => {
-    const get = await ask(workspaceRoutes.tech('harbor'));
-    const etag = get.headers.get('ETag') ?? '';
-    const head = await ask(workspaceRoutes.tech('harbor'), { method: 'HEAD' });
-    expect([head.status, head.headers.get('ETag'), await head.text()]).toEqual([200, etag, '']);
-    const revalidated = await ask(workspaceRoutes.tech('harbor'), { headers: { 'If-None-Match': etag } });
-    expect([revalidated.status, await revalidated.text()]).toEqual([304, '']);
-    expect((await ask(workspaceRoutes.tech('harbor'), { headers: { 'If-None-Match': '"stale"' } })).status).toBe(200);
-  });
-
-  test('404 unknown slug in every state, 405 with allowForWorkspace, 409 the unreadable summary, 403 cross-site', async () => {
-    for (const state of STUB_STATES) {
-      const res = await ask(workspaceRoutes.tech('nope'), { state });
-      expect([res.status, await res.json()]).toEqual([404, { error: 'not-found' }]);
-    }
-    expect((await ask(workspaceRoutes.tech('harbor'), { state: 'empty' })).status).toBe(404);
-    const post = await ask(workspaceRoutes.tech('harbor'), { method: 'POST', body: '{}' });
-    expect([post.status, post.headers.get('Allow'), await post.json()]).toEqual([405, allowForWorkspace('tech'), { error: 'method-not-allowed' }]);
-    const unreadable = await ask(workspaceRoutes.tech('lantern'), { state: 'unreadable' });
-    const dashboard = await ask('/api/workspaces/lantern/dashboard', { state: 'unreadable' });
-    expect([unreadable.status, await unreadable.text()]).toEqual([409, await dashboard.text()]);
-    expect((await ask(workspaceRoutes.tech('harbor'), { state: 'unreadable' })).status).toBe(200);
-    const crossSite = await ask(workspaceRoutes.tech('harbor'), { headers: { Origin: 'https://evil.example' } });
-    expect([crossSite.status, await crossSite.json()]).toEqual([403, { error: 'forbidden' }]);
-  });
-});
-
-describe('stub API: GET /api/workspaces/:slug/tech/asset?path= (spec 023, T10)', () => {
-  const asset = (ws: string, path: string): string => workspaceRoutes.techAsset(ws, path);
+describe('stub API: GET /api/workspaces/:slug/library/asset?path= (spec 017; formerly …/tech/asset, spec 023 T10)', () => {
+  const asset = (ws: string, path: string): string => workspaceRoutes.libraryAsset(ws, path);
   const bytesOf = (tree: string, path: string): Uint8Array<ArrayBuffer> => new Uint8Array(readFileSync(join(FIXTURES, tree, 'specs', path)));
 
   test('the image tech.md names: its bytes from the fixture tree with evidenceFileHeaders and a strong ETag; HEAD, 304', async () => {
@@ -396,12 +360,289 @@ describe('stub API: GET /api/workspaces/:slug/tech/asset?path= (spec 023, T10)',
     expect((await ask(asset('nope', 'tech/overview.png'))).status).toBe(404);
     expect((await ask(asset('harbor', 'tech/overview.png'), { state: 'empty' })).status).toBe(404);
     const put = await ask(asset('harbor', 'tech/overview.png'), { method: 'PUT', body: '{}' });
-    expect([put.status, put.headers.get('Allow')]).toEqual([405, allowForWorkspace('techAsset')]);
+    expect([put.status, put.headers.get('Allow')]).toEqual([405, allowForWorkspace('libraryAsset')]);
     const unreadable = await ask(asset('lantern', 'tech/overview.png'), { state: 'unreadable' });
     const dashboard = await ask('/api/workspaces/lantern/dashboard', { state: 'unreadable' });
     expect([unreadable.status, await unreadable.text()]).toEqual([409, await dashboard.text()]);
     const crossSite = await ask(asset('harbor', 'tech/overview.png'), { headers: { Origin: 'https://evil.example' } });
     expect([crossSite.status, await crossSite.json()]).toEqual([403, { error: 'forbidden' }]);
+  });
+});
+
+describe('stub API: the library (spec 017, T3)', () => {
+  const TYPES: readonly LibraryDocType[] = ['spec', 'plan', 'tasks', 'design', 'context', 'artifact', 'evidence', 'prototype', 'constitution', 'tech', 'tldr', 'idea'];
+  const catalogOf = async (ws: string, init?: Parameters<typeof request>[1]): Promise<LibraryCatalog> =>
+    (await (await ask(workspaceRoutes.library(ws), init)).json()) as LibraryCatalog;
+  const proto = (file: string): string => prototypeRoute('harbor', '004-retention-policies', 'prototype/board', file);
+  const BOARD = join(FIXTURES, 'library', 'specs', '002-tide-board', '.design', 'prototype', 'board');
+
+  test('harbor: every document type, one stale and one missing entry, the counts match the docs', async () => {
+    const res = await ask(workspaceRoutes.library('harbor'));
+    expect([res.status, res.headers.get('Content-Type'), res.headers.get('Cache-Control')]).toEqual([200, JSON_ANSWER.contentType, JSON_ANSWER.cacheControl]);
+    const catalog = (await res.json()) as LibraryCatalog;
+    expect(new Set(catalog.docs.map((doc) => doc.type))).toEqual(new Set(TYPES));
+    expect(catalog.docs.filter((doc) => doc.state === 'stale').map((doc) => doc.path)).toEqual([STUB_LIBRARY.stale]);
+    const missing = catalog.docs.filter((doc) => doc.state === 'missing');
+    expect(missing.map((doc) => [doc.path, doc.type, doc.modified])).toEqual([[STUB_LIBRARY.missing.path, STUB_LIBRARY.missing.type, null]]);
+    // The stub's missing entry is exactly the one core's readCatalog reports for the fixture tree (ISC-155.2: only
+    // plan.md and tasks.md are ever missing).
+    // Loaded by a computed path, as the stub loads core, so `tsc -p web/e2e` never walks core's module graph.
+    const { readCatalog } = createRequire(import.meta.url)(join(import.meta.dir, '..', '..', 'core', 'src', 'library.ts')) as {
+      readCatalog: (root: string) => Promise<LibraryCatalog>;
+    };
+    const core = await readCatalog(join(FIXTURES, 'harbor'));
+    expect(core.docs.filter((doc) => doc.state === 'missing').map((doc) => [doc.path, doc.type])).toEqual([[STUB_LIBRARY.missing.path, STUB_LIBRARY.missing.type]]);
+    const at = catalog.docs.findIndex((doc) => doc.path === STUB_LIBRARY.missing.path);
+    expect(catalog.docs[at - 1]?.path).toBe(STUB_LIBRARY.missing.after);
+    expect([catalog.missing, catalog.stale]).toEqual([1, 1]);
+    expect(catalog.docs.filter((doc) => doc.state !== 'missing').every((doc) => typeof doc.modified === 'string')).toBe(true);
+    expect(new Set(catalog.docs.map((doc) => doc.path)).size).toBe(catalog.docs.length);
+  });
+
+  test('harbor: more than 50 evidence documents in one spec, and a prototype with two pages and a preview', async () => {
+    const catalog = await catalogOf('harbor');
+    const evidence = catalog.docs.filter((doc) => doc.type === 'evidence' && doc.spec === STUB_LIBRARY.evidence.spec);
+    expect(evidence.length).toBe(STUB_LIBRARY.evidence.count + 1);
+    expect(evidence.length).toBeGreaterThan(50);
+    expect(evidence.map((doc) => doc.path)).toContain(stubEvidencePath(STUB_LIBRARY.evidence.count));
+    const prototypes = catalog.docs.filter((doc) => doc.type === 'prototype');
+    expect(prototypes.map((doc) => [doc.path, doc.spec, doc.media, doc.pages, doc.preview])).toEqual([
+      [STUB_LIBRARY.prototype.path, '004-retention-policies', 'prototype', ['detail.html', 'index.html'], STUB_LIBRARY.prototype.preview],
+    ]);
+    expect(prototypes.map((doc) => prototypeFolderOf(doc))).toEqual(['prototype/board']);
+    expect(catalog.docs.map((doc) => doc.path)).toContain(STUB_LIBRARY.prototype.preview);
+  });
+
+  test('group heads: one per active spec in number order, from the goldens; fog lines are the tech golden\'s', async () => {
+    for (const ws of ['harbor', 'lantern']) {
+      const catalog = await catalogOf(ws);
+      const specs = Object.entries(family(ws, 'spec'))
+        .filter(([key]) => !key.startsWith('specs/archive/'))
+        .map(([, value]) => value as SpecPageModel);
+      expect(catalog.groups.map((g) => g.spec)).toEqual(specs.map((s) => s.head.slug).sort());
+      for (const group of catalog.groups) {
+        const spec = specs.find((s) => s.head.slug === group.spec);
+        expect(group).toMatchObject({
+          type: spec?.head.type,
+          stage: spec?.head.stage,
+          claimsClosed: spec?.keyNumbers.claims.closed,
+          claimsTotal: spec?.keyNumbers.claims.total,
+          tasksDone: spec?.keyNumbers.tasks.landed,
+          tasksTotal: spec?.keyNumbers.tasks.total,
+        });
+      }
+      const tech = family(ws, 'tech') as { specs: Array<{ slug: string; fog: string[] }> };
+      expect(catalog.fog).toEqual(tech.specs.flatMap((s) => s.fog.map((text) => ({ spec: s.slug, text }))));
+      expect(catalog.groups.map((g) => g.fog)).toEqual(catalog.groups.map((g) => tech.specs.find((s) => s.slug === g.spec)?.fog.length ?? 0));
+    }
+    const harbor = await catalogOf('harbor');
+    expect(harbor.fog.length).toBeGreaterThan(0);
+    const web = harbor.groups.find((g) => g.spec === '002-web-console');
+    expect(web?.goal).toStartWith('A teammate opens the console');
+    expect(web?.approach).toStartWith('Serve a static Angular build');
+  });
+
+  test('deterministic: two stubs answer the same bytes and tags; HEAD and 304', async () => {
+    const other = stubApi();
+    for (const ws of ['harbor', 'lantern']) {
+      const a = await ask(workspaceRoutes.library(ws));
+      const b = await call(other, request(workspaceRoutes.library(ws)));
+      expect([b.status, b.headers.get('ETag'), await b.text()]).toEqual([a.status, a.headers.get('ETag'), await a.text()]);
+    }
+    const etag = (await ask(workspaceRoutes.library('harbor'))).headers.get('ETag') ?? '';
+    const head = await ask(workspaceRoutes.library('harbor'), { method: 'HEAD' });
+    expect([head.status, head.headers.get('ETag'), await head.text()]).toEqual([200, etag, '']);
+    expect((await ask(workspaceRoutes.library('harbor'), { headers: { 'If-None-Match': etag } })).status).toBe(304);
+  });
+
+  test('X-Spectant-Stub-Library: empty is a workspace without documents; an unknown value is a 400', async () => {
+    expect(await catalogOf('harbor', { headers: { [LIBRARY_HEADER]: 'empty' } })).toEqual(EMPTY_CATALOG);
+    const search = await ask(workspaceRoutes.librarySearch('harbor', 'console'), { headers: { [LIBRARY_HEADER]: 'empty' } });
+    expect(await search.json()).toEqual({ query: 'console', hits: [] });
+    expect((await ask(workspaceRoutes.libraryDoc('harbor', '002-web-console/plan.md'), { headers: { [LIBRARY_HEADER]: 'empty' } })).status).toBe(404);
+    expect((await ask(proto('index.html'), { headers: { [LIBRARY_HEADER]: 'empty' } })).status).toBe(404);
+    const unknown = await ask(workspaceRoutes.library('harbor'), { headers: { [LIBRARY_HEADER]: 'nope' } });
+    expect([unknown.status, ((await unknown.json()) as { error: string }).error]).toEqual([400, 'unknown-stub-library']);
+  });
+
+  test('the workspace guards: 404 unknown or in the empty state, 409 unreadable, 405, 403 cross-site', async () => {
+    for (const path of [workspaceRoutes.library('nope'), workspaceRoutes.libraryDoc('nope', 'tech.md'), workspaceRoutes.librarySearch('nope', 'x')]) {
+      expect((await ask(path)).status).toBe(404);
+    }
+    expect((await ask(workspaceRoutes.library('harbor'), { state: 'empty' })).status).toBe(404);
+    const unreadable = await ask(workspaceRoutes.library('lantern'), { state: 'unreadable' });
+    const dashboard = await ask('/api/workspaces/lantern/dashboard', { state: 'unreadable' });
+    expect([unreadable.status, await unreadable.text()]).toEqual([409, await dashboard.text()]);
+    const post = await ask(workspaceRoutes.librarySearch('harbor', 'x'), { method: 'POST', body: '{}' });
+    expect([post.status, post.headers.get('Allow')]).toEqual([405, allowForWorkspace('librarySearch')]);
+    const crossSite = await ask(workspaceRoutes.library('harbor'), { headers: { Origin: 'https://evil.example' } });
+    expect([crossSite.status, await crossSite.json()]).toEqual([403, { error: 'forbidden' }]);
+  });
+
+  test('libraryDoc: a Markdown document of the catalog as a Docs page; 404 for anything the catalog does not list as one', async () => {
+    const plan = await ask(workspaceRoutes.libraryDoc('harbor', '002-web-console/plan.md'));
+    expect(plan.status).toBe(200);
+    expect(((await plan.json()) as DocsPage).html).toContain('Serve a static Angular build');
+    const run = (await (await ask(workspaceRoutes.libraryDoc('harbor', stubEvidencePath(7)))).json()) as DocsPage;
+    expect(run.html).toContain('Probe run 07');
+    const tech = await ask(workspaceRoutes.libraryDoc('harbor', 'tech.md'));
+    expect(tech.status).toBe(200);
+    for (const path of [STUB_LIBRARY.missing.path, STUB_LIBRARY.prototype.path, STUB_LIBRARY.prototype.preview, 'workflow.md', '../README.md', '%E0%A4%A', '']) {
+      const res = await ask(workspaceRoutes.libraryDoc('harbor', path));
+      expect({ path, status: res.status, body: (await res.json()) as unknown }).toEqual({ path, status: 404, body: { error: 'not-found' } });
+    }
+  });
+
+  test('libraryDoc: the reader document carries a TOC, a mermaid figure, a relative .evidence/ image and catalog cross references (T35)', async () => {
+    const { reader } = STUB_LIBRARY;
+    const catalog = await catalogOf('harbor');
+    const entry = catalog.docs.find((doc) => doc.path === reader.path);
+    // The catalog entry stays core's: the same title as the file's first heading, an artifact, Markdown.
+    expect([entry?.type, entry?.media, entry?.state, entry?.title]).toEqual(['artifact', 'markdown', 'ok', 'T18 — e2e report']);
+    const page = (await (await ask(workspaceRoutes.libraryDoc('harbor', reader.path))).json()) as DocsPage;
+    expect(page.html).toContain('T18 — e2e report');
+    expect(page.toc.map((entry) => [entry.level, entry.text])).toEqual([
+      [2, 'Reading path'],
+      [2, 'Captured band'],
+      [2, 'Related records'],
+    ]);
+    expect(page.figures.map((figure) => figure.kind)).toEqual(['mermaid', 'image']);
+    expect(page.html).toContain('<img src="../.evidence/kpi-band-390.png"');
+    expect(page.html).toContain('href="T13-routes.md"');
+    expect(page.html).toContain('href="../plan.md"');
+    // Every cross reference names a catalog document, and the image is a fixture file the asset route serves.
+    for (const xref of reader.xrefs) expect(catalog.docs.find((doc) => doc.path === xref)?.media).toBe('markdown');
+    const image = await ask(workspaceRoutes.libraryAsset('harbor', reader.image));
+    expect([image.status, image.headers.get('Content-Type')]).toEqual([200, 'image/png']);
+    expect(new Uint8Array(await image.arrayBuffer())).toEqual(new Uint8Array(readFileSync(join(FIXTURES, 'harbor', 'specs', reader.image))));
+    // The two words the e2e search group relies on stay out of the appendix.
+    expect(reader.appendix.toLowerCase()).not.toMatch(/quota|manifest/u);
+  });
+
+  test('librarySearch: the trimmed query and its hits in catalog order with a plain-text snippet; blank is no hit', async () => {
+    for (const q of ['', '   ']) {
+      expect(await (await ask(workspaceRoutes.librarySearch('harbor', q))).json()).toEqual({ query: '', hits: [] });
+    }
+    expect(await (await ask('/api/workspaces/harbor/library/search')).json()).toEqual({ query: '', hits: [] });
+    const result = (await (await ask(workspaceRoutes.librarySearch('harbor', '  RETENTION  '))).json()) as LibrarySearchResult;
+    expect(result.query).toBe('RETENTION');
+    expect(result.hits.length).toBeGreaterThan(0);
+    const order = (await catalogOf('harbor')).docs.map((doc) => doc.path);
+    const positions = result.hits.map((hit) => order.indexOf(hit.path));
+    expect(positions.every((p) => p >= 0)).toBe(true);
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+    for (const hit of result.hits) {
+      expect(hit.snippet.toLowerCase()).toContain('retention');
+      expect(hit.snippet).not.toMatch(/<[a-z]/);
+    }
+    const runs = (await (await ask(workspaceRoutes.librarySearch('harbor', 'probe run 42'))).json()) as LibrarySearchResult;
+    expect(runs.hits.map((hit) => hit.path)).toEqual([stubEvidencePath(42)]);
+    expect(((await (await ask(workspaceRoutes.librarySearch('harbor', 'zzz-nothing'))).json()) as LibrarySearchResult).hits).toEqual([]);
+  });
+
+  test('libraryAsset: the prototype preview as image bytes, with the tech asset\'s headers', async () => {
+    const res = await ask(workspaceRoutes.libraryAsset('harbor', STUB_LIBRARY.prototype.preview));
+    expect([res.status, res.headers.get('Content-Type')]).toEqual([200, 'image/png']);
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(new Uint8Array(readFileSync(join(FIXTURES, 'harbor', 'specs', STUB_LIBRARY.prototype.preview))));
+    expect((await ask(workspaceRoutes.libraryAsset('harbor', 'tech.md'))).status).toBe(403);
+  });
+
+  test('prototype: every page and its local files with PROTOTYPE_CSP, inline; 304; HEAD', async () => {
+    const catalog = await catalogOf('harbor');
+    const doc = catalog.docs.find((d) => d.type === 'prototype');
+    for (const page of doc?.pages ?? []) {
+      const res = await ask(proto(page));
+      expect([res.status, res.headers.get('Content-Type'), res.headers.get('Content-Security-Policy'), res.headers.get('Content-Disposition')]).toEqual([
+        200,
+        'text/html; charset=utf-8',
+        PROTOTYPE_CSP,
+        'inline',
+      ]);
+      expect(await res.text()).toBe(readFileSync(join(BOARD, page), 'utf8'));
+    }
+    const files: ReadonlyArray<readonly [string, string]> = [
+      ['styles.css', 'text/css; charset=utf-8'],
+      ['app.js', 'text/javascript; charset=utf-8'],
+      ['img/badge.png', 'image/png'],
+    ];
+    for (const [file, type] of files) {
+      const res = await ask(proto(file));
+      expect({ file, status: res.status, type: res.headers.get('Content-Type') }).toEqual({ file, status: 200, type });
+    }
+    const etag = (await ask(proto('index.html'))).headers.get('ETag') ?? '';
+    const revalidated = await ask(proto('index.html'), { headers: { 'If-None-Match': etag } });
+    expect([revalidated.status, revalidated.headers.get('Content-Security-Policy')]).toEqual([304, PROTOTYPE_CSP]);
+    const head = await ask(proto('index.html'), { method: 'HEAD' });
+    expect([head.status, await head.text()]).toEqual([200, '']);
+  });
+
+  test('prototype: refusals and misses carry the CSP too: 403, 404, 405, 409', async () => {
+    const cases: Array<[string, Parameters<typeof request>[1], number]> = [
+      ['/proto/harbor/004-retention-policies/prototype%2Fboard/..%2F..%2Fspec.md', {}, 403],
+      ['/proto/harbor/004-retention-policies/prototype%2Fboard/%252e%252e/x', {}, 403],
+      [proto('index.html'), { headers: { Origin: 'https://evil.example' } }, 403],
+      [proto('nothing.html'), {}, 404],
+      [prototypeRoute('harbor', '004-retention-policies', 'prototype', 'index.html'), {}, 404],
+      [prototypeRoute('harbor', '002-web-console', 'prototype/board', 'index.html'), {}, 404],
+      [prototypeRoute('nope', '004-retention-policies', 'prototype/board', 'index.html'), {}, 404],
+      ['/proto/harbor/004-retention-policies/design/index.html', {}, 404],
+      ['/proto/harbor', {}, 404],
+      [proto('index.html'), { state: 'empty' }, 404],
+      [proto('index.html'), { method: 'POST', body: '{}' }, 405],
+      [prototypeRoute('lantern', '001-reading-list', 'prototype', 'index.html'), { state: 'unreadable' }, 409],
+    ];
+    for (const [path, init, status] of cases) {
+      const res = await ask(path, init);
+      expect({ path, status: res.status, csp: res.headers.get('Content-Security-Policy') }).toEqual({ path, status, csp: PROTOTYPE_CSP });
+      if (status === 405) expect(res.headers.get('Allow')).toBe(PROTOTYPE_ALLOW);
+    }
+  });
+
+  test('prototype: the stub-only offline page (T40) names its external resources, carries the CSP and is no catalog page', async () => {
+    const { offline } = STUB_LIBRARY.prototype;
+    const res = await ask(proto(offline.file));
+    expect([res.status, res.headers.get('Content-Type'), res.headers.get('Content-Security-Policy')]).toEqual([200, 'text/html; charset=utf-8', PROTOTYPE_CSP]);
+    const html = await res.text();
+    expect(html).toBe(stubOfflinePrototypeHtml());
+    for (const url of Object.values(offline.external)) {
+      expect(html).toContain(url);
+      expect(new URL(url).hostname).toEndWith('.example');
+    }
+    const catalog = await catalogOf('harbor');
+    expect(catalog.docs.find((d) => d.type === 'prototype')?.pages).not.toContain(offline.file);
+    expect((await ask(prototypeRoute('harbor', '004-retention-policies', 'prototype', offline.file))).status).toBe(404);
+  });
+
+  test('prototype fonts: Origin null gets a font with ACAO *, a foreign Origin 403, Origin null 403 for anything else', async () => {
+    // A copy of the fixtures with one font in the board, so the committed tree stays as it is.
+    const dir = mkdtempSync(join(tmpdir(), 'spectant-stub-fonts-'));
+    try {
+      cpSync(FIXTURES, dir, { recursive: true });
+      const fonts = join(dir, 'library', 'specs', '002-tide-board', '.design', 'prototype', 'board', 'fonts');
+      mkdirSync(fonts, { recursive: true });
+      writeFileSync(join(fonts, 'tide.woff2'), new Uint8Array([0x77, 0x4f, 0x46, 0x32]));
+      const withFont = stubApi({ fixturesDir: dir });
+      const send = (file: string, origin: string): Promise<Response> => call(withFont, request(proto(file), { headers: { Origin: origin } }));
+
+      const font = await send('fonts/tide.woff2', 'null');
+      expect([font.status, font.headers.get('Content-Type'), font.headers.get('Access-Control-Allow-Origin'), font.headers.get('Vary')]).toEqual([200, 'font/woff2', '*', 'Origin']);
+      expect([font.headers.get('Content-Security-Policy'), font.headers.get('X-Content-Type-Options')]).toEqual([PROTOTYPE_CSP, 'nosniff']);
+
+      const answers: ReadonlyArray<readonly [string, string]> = [
+        ['fonts/tide.woff2', 'https://evil.example'],
+        ['index.html', 'null'],
+        ['styles.css', 'null'],
+        ['app.js', 'null'],
+        ['fonts/missing.woff2', 'null'],
+      ];
+      for (const [file, origin] of answers) {
+        const res = await send(file, origin);
+        expect({ file, origin, status: res.status, acao: res.headers.get('Access-Control-Allow-Origin') }).toEqual({ file, origin, status: 403, acao: null });
+        expect([res.headers.get('Content-Security-Policy'), res.headers.get('X-Content-Type-Options')]).toEqual([PROTOTYPE_CSP, 'nosniff']);
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
@@ -501,7 +742,6 @@ const CORE = join(import.meta.dir, '..', '..', 'core', 'src');
 const HEX64 = /^[0-9a-f]{64}$/;
 
 type EvidenceModule = {
-  listEvidence: (dir: string) => Promise<EvidenceListing>;
   mediaTypeOf: (name: string) => string;
 };
 const family = (tree: string, name: string): Json => golden(`${tree}.${name}`);
@@ -529,7 +769,7 @@ describe('stub API: every spec route answers its golden (harbor 002)', () => {
 
   test('the JSON read routes: 200, body deep-equal to the per-spec golden value, the JSON_ANSWER headers', async () => {
     for (const entry of SPEC_ROUTE_TABLE) {
-      if (entry.method !== 'GET' || ['evidence', 'evidenceFile', 'docs'].includes(entry.route)) continue;
+      if (entry.method !== 'GET' || entry.route === 'evidenceFile') continue;
       const build = specRoutes[entry.route] as (ws: string, id: string) => string;
       const res = await ask(build(WS, '002'));
       const body = await res.text();
@@ -540,42 +780,6 @@ describe('stub API: every spec route answers its golden (harbor 002)', () => {
       expect(res.headers.get('ETag')).toBe(`"${new Bun.CryptoHasher('sha256').update(body).digest('base64url')}"`);
       covered.add(entry.route);
     }
-  });
-
-  test('docs: each Docs tab from the docs golden, constitution top level, a missing file is 404 DocMissing', async () => {
-    const docs = family(WS, 'docs') as { constitution: unknown; specs: Record<string, Record<string, unknown>> };
-    for (const name of DOC_NAMES) {
-      const res = await ask(specRoutes.docs(WS, '002', name));
-      const value = name === 'constitution' ? docs.constitution : docs.specs[KEY]?.[name];
-      if (value === null) {
-        expect(res.status).toBe(404);
-        // harbor 002 is a feature: its missing design.md belongs to the type.
-        expect(await res.json()).toEqual({ error: 'not-found', doc: name, availability: { applies: true, command: '/spec-design' } });
-      } else {
-        expect(res.status).toBe(200);
-        expect(await res.json()).toEqual(value);
-      }
-    }
-    // A spike has no plan in its workflow: the reason says so.
-    const spike = await ask(specRoutes.docs(WS, '005', 'plan'));
-    expect(spike.status).toBe(404);
-    expect(await spike.json()).toEqual({ error: 'not-found', doc: 'plan', availability: { applies: false, command: '/spec-plan' } });
-    covered.add('docs');
-  });
-
-  test('evidence: the listing core builds from the real artifacts/ and .evidence/ of harbor 002', async () => {
-    const core = (await import(join(CORE, 'evidence.ts'))) as EvidenceModule;
-    const res = await ask(specRoutes.evidence(WS, '002'));
-    expect(res.status).toBe(200);
-    const listing = (await res.json()) as EvidenceListing;
-    expect(listing).toEqual(await core.listEvidence(SPEC_DIR));
-    expect(listing.results.map((f) => f.path)).toEqual([
-      'artifacts/T12-dashboard-model.md',
-      'artifacts/T13-routes.md',
-      'artifacts/T18-e2e-report.md',
-    ]);
-    expect(listing.raw.map((f) => f.path)).toEqual(['.evidence/bun-test-r3.log', '.evidence/dashboard.har', '.evidence/kpi-band-390.png']);
-    covered.add('evidence');
   });
 
   test('evidence/file: the bytes with evidenceFileHeaders, 403 for what confinement refuses, 404 for no file', async () => {
@@ -589,7 +793,7 @@ describe('stub API: every spec route answers its golden (harbor 002)', () => {
     }
     const refused = ['spec.md', '../003-config-loader/spec.md', '%2e%2e%2fspec.md', '%252e%252e%252fspec.md', '/etc/hosts', ''];
     for (const raw of refused) {
-      const res = await ask(`${specRoutes.evidence(WS, '002')}/file?path=${raw}`);
+      const res = await ask(`${specRoutes.evidenceFile(WS, '002', '').replace(/\?.*$/, '')}?path=${raw}`);
       expect({ raw, status: res.status }).toEqual({ raw, status: 403 });
       expect(await res.json()).toEqual({ error: 'forbidden' });
     }
@@ -940,10 +1144,9 @@ describe('stub API: spec routes are deterministic', () => {
   test('two stubs answer the same bytes, tags and hash headers for every read route and lock state', async () => {
     const other = stubApi();
     const paths = [
-      ...SPEC_ROUTE_TABLE.filter((e) => e.method === 'GET' && !['evidenceFile', 'docs'].includes(e.route)).map((e) =>
+      ...SPEC_ROUTE_TABLE.filter((e) => e.method === 'GET' && e.route !== 'evidenceFile').map((e) =>
         (specRoutes[e.route] as (ws: string, id: string) => string)(WS, '002'),
       ),
-      ...DOC_NAMES.map((name) => specRoutes.docs(WS, '002', name)),
       specRoutes.evidenceFile(WS, '002', 'artifacts/T13-routes.md'),
       specRoutes.live('lantern', '001'),
       '/api/lifeos',
@@ -1073,14 +1276,25 @@ describe('stub API matches the real server handlers byte for byte', () => {
   test.each([...STUB_STATES])('every GET route of WORKSPACE_ROUTE_TABLE, state %s', async (state) => {
     const handler = real?.[state];
     if (!handler) throw new Error('real handlers not loaded');
-    // The routes with a golden family (`planning`, `tech`) are compared here, whole file to whole body. The story route,
+    // The route with a golden family (`planning`) is compared here, whole file to whole body. The story route,
     // the board query and the allocation (T119) have no family; their parity runs in "stub API board seam matches the real
-    // handlers". The tech asset serves the fixture tree's files, not a golden; its answers are pinned in its own block.
-    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning', 'idea', 'boardQuery', 'allocate', 'tech', 'techAsset']);
+    // handlers". The tech page's routes went with spec 017 T51.
+    // The library routes (spec 017) have no golden and no server handler yet (`LIBRARY_AWAITING_HANDLER` in api.ts);
+    // their answers are pinned in "stub API: the library".
+    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual([
+      'planning',
+      'idea',
+      'boardQuery',
+      'allocate',
+      'library',
+      'libraryDoc',
+      'librarySearch',
+      'libraryAsset',
+    ]);
     const golden = WORKSPACE_ROUTE_TABLE.filter((entry) => entry.route in WORKSPACE_GOLDEN_FAMILY);
-    expect(golden.map((entry) => entry.route)).toEqual(['planning', 'tech']);
+    expect(golden.map((entry) => entry.route)).toEqual(['planning']);
     for (const entry of golden) {
-      const build = entry.route === 'tech' ? workspaceRoutes.tech : workspaceRoutes.planning;
+      const build = workspaceRoutes.planning;
       const cases: Array<[string, RequestInit]> = [
         [build('harbor'), {}],
         [build('lantern'), {}],
@@ -1315,7 +1529,7 @@ const RESET = '/api/__stub/reset';
 describe('stub API: the Stage-3 board seam (T119)', () => {
   test('the planning tree is the extended golden: workflow, stages, stageCounts, ideas, per holder stage, source, priority, hash, assignee', async () => {
     const tree = (await (await ask(workspaceRoutes.planning(WS))).json()) as Record<string, unknown>;
-    expect(Object.keys(tree)).toEqual(['workflow', 'stages', 'stageCounts', 'features', 'milestones', 'ideas', 'recount', 'diagnostics']);
+    expect(Object.keys(tree)).toEqual(['workflow', 'stages', 'stageCounts', 'features', 'milestones', 'unassignedFeatures', 'ideas', 'recount', 'diagnostics', 'relations']);
     const first = (tree as unknown as BoardTree).features.flatMap((f) => f.holders)[0] ?? {};
     for (const key of ['stage', 'stageSource', 'priority', 'hash', 'assignee']) expect(Object.keys(first)).toContain(key);
   });
@@ -1506,9 +1720,7 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
       timeline: reads(specRoutes.timeline),
       claims: reads(specRoutes.claims),
       tasks: reads(specRoutes.tasks),
-      evidence: reads(specRoutes.evidence),
       evidenceFile: reads((ws, id) => specRoutes.evidenceFile(ws, id, 'artifacts/T12-dashboard-model.md')),
-      docs: reads((ws, id) => specRoutes.docs(ws, id, 'plan')),
       frames: reads(specRoutes.frames),
       live: reads(specRoutes.live),
       gateReviewed: writes((ws) => specRoutes.gateReviewed(ws, ws === 'lantern' ? '001' : '006'), { hashes: reviewed }),
@@ -1535,16 +1747,30 @@ describe('stub API: the Stage-3 board seam (T119)', () => {
         ...writes((ws) => workspaceRoutes.allocate(ws, 'console-audit-log'), { hash: ideaHash }),
         [workspaceRoutes.allocate(WS, 'registry-webhooks'), { method: 'POST', body: JSON.stringify({ hash: storyHash('registry-webhooks') }) }],
       ],
-      tech: reads((ws) => workspaceRoutes.tech(ws)),
-      techAsset: [
-        ...reads((ws) => workspaceRoutes.techAsset(ws, 'tech/overview.png')),
-        [workspaceRoutes.techAsset(WS, '../constitution.md'), {}],
-        [workspaceRoutes.techAsset(WS, 'tech/nothing.png'), {}],
-        [workspaceRoutes.techAsset(WS, 'tech/overview.png'), { method: 'HEAD' }],
+      library: reads((ws) => workspaceRoutes.library(ws)),
+      libraryDoc: [
+        ...reads((ws) => workspaceRoutes.libraryDoc(ws, ws === 'lantern' ? '001-reading-list/plan.md' : '002-web-console/plan.md')),
+        [workspaceRoutes.libraryDoc(WS, '002-web-console/design.md'), {}],
+      ],
+      librarySearch: reads((ws) => workspaceRoutes.librarySearch(ws, 'console')),
+      libraryAsset: [
+        ...reads((ws) => workspaceRoutes.libraryAsset(ws, 'tech/overview.png')),
+        [workspaceRoutes.libraryAsset(WS, '../constitution.md'), {}],
+        [workspaceRoutes.libraryAsset(WS, 'tech/nothing.png'), {}],
+        [workspaceRoutes.libraryAsset(WS, 'tech/overview.png'), { method: 'HEAD' }],
       ],
     };
     // The table's routes stay pinned; every one of them is served now.
-    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual(['planning', 'idea', 'boardQuery', 'allocate', 'tech', 'techAsset']);
+    expect(WORKSPACE_ROUTE_TABLE.map((entry) => entry.route)).toEqual([
+      'planning',
+      'idea',
+      'boardQuery',
+      'allocate',
+      'library',
+      'libraryDoc',
+      'librarySearch',
+      'libraryAsset',
+    ]);
     for (const entry of WORKSPACE_ROUTE_TABLE) {
       expect({ route: entry.route, ...(await statusesOf(workspace[entry.route] ?? [])) }).toEqual({
         route: entry.route,

@@ -204,7 +204,7 @@ describe('SpecHead breadcrumb (T39, ISC-105; T36, ISC-149)', () => {
     const spec = crumb(root, 'spec');
     expect(spec?.querySelector('ui-icon[name="archive"]')).not.toBeNull();
     expect(spec?.getAttribute('aria-label')).toBe(`Spec 001, ${en.planning.breadcrumb.archived}`);
-    expect(chip(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/features#F1');
+    expect(chip(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/planning/tree?sel=feature:F1');
     expect(root.querySelector('button[data-head-more]')).toBeNull();
   });
 
@@ -231,12 +231,12 @@ describe('SpecHead chip row (T36, ISC-149)', () => {
     expect(chip(root, 'priority')?.hasAttribute('data-mark')).toBe(true);
 
     const ms = chip(root, 'milestone');
-    expect(ms?.getAttribute('href')).toBe('/w/harbor/milestones#m-v0-3');
+    expect(ms?.getAttribute('href')).toBe('/w/harbor/planning/tree?sel=milestone:v0-3');
     expect(text(ms)).toBe('v0.3');
     expect(ms?.querySelector('ui-chip ui-icon')).not.toBeNull();
     expect(ms?.querySelector('ui-chip')?.getAttribute('data-tone')).toBe('neutral');
     const feat = chip(root, 'feature');
-    expect(feat?.getAttribute('href')).toBe('/w/harbor/features#F7');
+    expect(feat?.getAttribute('href')).toBe('/w/harbor/planning/tree?sel=feature:F7');
     expect(text(feat)).toBe('F7');
     expect(feat?.getAttribute('title')).toBe('Planning');
     expect(feat?.getAttribute('aria-description')).toBe(en.terms.feature);
@@ -250,16 +250,16 @@ describe('SpecHead chip row (T36, ISC-149)', () => {
     expect(more?.getAttribute('aria-label')).toBe(en.planning.breadcrumb.more.replace('{{count}}', '2'));
     const panelId = more?.getAttribute('aria-controls') ?? '';
     const links = [...root.querySelectorAll<HTMLAnchorElement>(`[id="${panelId}"] a`)];
-    expect(links.map((a) => a.getAttribute('href'))).toEqual(['/w/harbor/features#F0', '/w/harbor/features#F2']);
+    expect(links.map((a) => a.getAttribute('href'))).toEqual(['/w/harbor/planning/tree?sel=feature:F0', '/w/harbor/planning/tree?sel=feature:F2']);
     expect(links.map(text)).toEqual(['F0 Cross-cutting', 'F2 Web console']);
   });
 
   it('takes the open claim’s own block as the feature chip', async () => {
     setUp();
     const root = await open('/w/harbor/s/002/claims#claim-ISC-1');
-    expect(chip(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/features#F0');
+    expect(chip(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/planning/tree?sel=feature:F0');
     const others = root.querySelectorAll<HTMLAnchorElement>('[data-head-chips] ui-popover a');
-    expect([...others].map((a) => a.getAttribute('href'))).toEqual(['/w/harbor/features#F2', '/w/harbor/features#F7']);
+    expect([...others].map((a) => a.getAttribute('href'))).toEqual(['/w/harbor/planning/tree?sel=feature:F2', '/w/harbor/planning/tree?sel=feature:F7']);
   });
 
   it('shows an unknown milestone as a warning chip with triangle-alert, not a link', async () => {
@@ -294,8 +294,8 @@ describe('SpecHead chip row (T36, ISC-149)', () => {
     it(`renders the milestone and feature chips for the ${form} form in the URL`, async () => {
       setUp();
       const root = await open(`/w/harbor/s/${ref}/status`);
-      expect(chip(root, 'milestone')?.getAttribute('href')).toBe('/w/harbor/milestones#m-v0-3');
-      expect(chip(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/features#F7');
+      expect(chip(root, 'milestone')?.getAttribute('href')).toBe('/w/harbor/planning/tree?sel=milestone:v0-3');
+      expect(chip(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/planning/tree?sel=feature:F7');
       expect(text(root.querySelector('button[data-head-more]'))).toBe('+2');
       expect(text(crumb(root, 'spec'))).toBe('Spec 002');
     });
@@ -311,7 +311,7 @@ describe('SpecHead chip row (T36, ISC-149)', () => {
       const spec = crumb(root, 'spec');
       expect(spec?.querySelector('ui-icon[name="archive"]')).not.toBeNull();
       expect(spec?.getAttribute('aria-label')).toBe(`Spec 001, ${en.planning.breadcrumb.archived}`);
-      expect(chip(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/features#F1');
+      expect(chip(root, 'feature')?.getAttribute('href')).toBe('/w/harbor/planning/tree?sel=feature:F1');
     });
   }
 });

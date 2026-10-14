@@ -611,6 +611,12 @@ const WALK: Readonly<Record<string, readonly Walked[]>> = {
     ['specs/022-chat-turn-status-and-bulk-delete', 'done', null, 'phase: complete'],
     ['specs/archive/013-tech-debt', 'done', null, 'phase: complete'],
   ],
+  // Spec 026: the feature specs carry no plan.md and no gates; the completed 001 is done by its phase.
+  'milestone-lines': [
+    ['specs/001-signal-intake', 'done', null, 'phase: complete'],
+    ['specs/002-alert-routing', 'plan', '/spec-plan 002', 'a feature spec needs plan.md and it is missing'],
+    ['specs/003-escalation-chains', 'plan', '/spec-plan 003', 'a feature spec needs plan.md and it is missing'],
+  ],
   'spectant-001': [['specs/001-app-skeleton', 'review', '/spec-review 001', 'the reviewed mark is missing']],
 };
 
@@ -660,7 +666,8 @@ describe('every fixture spec derives the stage table row it names (ISC-79)', () 
   }
 
   test('the walk compared every listed spec', () => {
-    expect(compared).toBe(15);
+    // 15, plus the three specs of milestone-lines (spec 026).
+    expect(compared).toBe(18);
   });
 });
 

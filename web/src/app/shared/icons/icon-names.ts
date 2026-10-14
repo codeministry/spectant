@@ -56,6 +56,9 @@ export const ICON_NAMES = [
   'flag',
   'circle-dashed',
   'clock-alert',
+  // Spec 026: the planning page and its lenses (Tree, Matrix, Graph).
+  'list-tree',
+  'share-2',
   // Spec 008: type glyph, priority, reason, board and actor primitives (chevron-down and square-kanban are above).
   'puzzle',
   'bug',
@@ -128,4 +131,13 @@ export const ICON_NAMES = [
   // Spec 027: the timeline's worktree markers, merged into main and worktree removed (ISC-175.1).
   'git-merge',
   'folder-x',
+  // Spec 026: the detail sidebar's type chips (feature `boxes`, claim `circle-dot`) and its "Open spec" link.
+  'boxes',
+  'circle-dot',
+  'arrow-up-right',
+  // Spec 017: the library's type tags (design.md § Viewport-übergreifend): design and prototype.
+  'palette',
+  'app-window',
+  // Spec 017: the library's missing documents (design.md § Viewport-übergreifend: control count, chip, reader).
+  'file-x',
 ] as const;

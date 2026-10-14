@@ -47,6 +47,7 @@ A repository root holds the master `ISA.md` (untracked in a public repository) a
 `specs/archive/NNN-slug/`. A spec folder name is three digits, a hyphen and a slug (`^\d{3}-.+$`); other names are
 ignored, and symbolic links are not followed. A folder without `spec.md` is not a spec: it gets a diagnostic, no row.
 Where `specs/` is tracked in git, a spec with its own worktree is read from that worktree's copy instead (§ Worktrees).
+Which of these files, and of a spec folder's `.design/`, the Library lists is "The library catalog" below.
 
 A ref names exactly one folder or nothing (`resolve.ts`): `002`, `002-web-console` or `web-console`, active and
 archived folders alike; no match or more than one match is `not_found`, never another spec.
@@ -112,7 +113,7 @@ a warning (nested YAML is not part of the format); a repeated key warns and the 
 | `principal_stated_goal_signal` | number | — |
 | `context_sufficient`, `interview_invoked` | `true` or `false` | — |
 | `archived_reason`, `archived` | text, `YYYY-MM-DD` | the archive listing |
-| `milestone` | text | matched by name against the master's `## Milestones` entries (`master`, below); a name no entry carries warns `spec-milestone-unknown` and the spec still parses; without the key the spec belongs to no milestone |
+| `milestone` | text | matched by name against the master's `## Milestones` entries (`master`, below); a name no entry carries warns `spec-milestone-unknown` and the spec still parses; a name other than the `Milestone:` line of the spec's main feature (the first word of `isa_feature`) warns `milestone-mismatch` on the spec (`master`, below); without the key the spec belongs to no milestone |
 | `priority` | `P1`, `P2`, `P3` or `P4` | the urgency, shown on the dashboard row, the spec head and the breadcrumb; a missing key reads as `P3` without a diagnostic, any other value is a `frontmatter-priority` warning and the file still parses; a story's frontmatter takes the same key (Ideas, below); read from spec 008, T39 on (`SpecFrontmatter.priority`, `SpecHead.priority`), on the dashboard row from T67 (`DashboardSpecRow.priority`, the head's value) |
 | `stage` | a stage of the spec type's workflow (`specs/workflow.md`, below, or the default) | the explicit stage: when present it wins over the derived stage and must equal the last `to` of `events.jsonl`; a value outside the type's workflow, or one the last event contradicts, is a `stage-mismatch` diagnostic and the derived stage applies; without the key the stage derives from the files as before and is marked derived (`stageSource`, ISC-36); spec 008, T40 reads the key as text (`SpecFrontmatter.stage`, unvalidated) and T47 applies it (`explicitStageOf` in `stage.ts`): a value that is a stage of the type's row and equals the last event's `to` replaces the stage, and the dashboard row and the spec head carry `stageSource: explicit`; the next command and its reason stay the stage table's, since they say what the files still need; `blocked` and `close-pending`, which no row lists, never apply explicitly; T48 adds the diagnostic (`stageMismatchOf` in `stage.ts`): a value outside the type's row, or one the last event's `to` contradicts (a file without any event included, since nothing enters the value), is exactly one `warning` `stage-mismatch` on `spec.md`, at the key's line, `subject` the value as written |
 
@@ -142,7 +143,8 @@ skipped. The claim section is the first of `## Features`, `## Claims`, `## Crite
 inside a fenced block are neither claims nor headings.
 
 - A feature block opens with `### F<n>[.<m>] · <name>` (`·`, `:`, `—`, `–` or `-`, or no separator) and may carry one
-  `Why:` line before its first claim. Another heading of level three or less ends the block; level four does not.
+  `Why:` line before its first claim; in the master, one `Milestone: <name>` line directly under `Why:` assigns the
+  feature to a milestone (`master`, below). Another heading of level three or less ends the block; level four does not.
 - A claim line is `- [ ] <ID>: <text>`, checked as `[x]` or `[X]`, indented for a nested leaf. The ID is
   `ISC-<n>[.<m>…]`, a domain form (`H-AVAIL`) or a short form (`C4`, `EQ-12`); the separator after it may be `:`,
   `—`, `–`, `-` or nothing. Trailing marks `⟨?: …⟩` / `⟨resolved: …⟩` are lifted off first, then one trailing
@@ -651,7 +653,8 @@ No modification time is listed: it moves with every checkout. A symlink is liste
 resolve inside `artifacts/` or `.evidence/` is listed as refused (size 0, a warning), never followed, and a symlinked
 folder is never descended. A group folder that is itself a symlink is not listed. Serving goes through
 `resolveEvidencePath` and nothing outside the two folders and `.design/` of the spec's own folder is ever served
-(ISC-83, ISC-113); `.design/` is served for the Design tab's images and never listed. A symlink may not cross between
+(ISC-83, ISC-113); `.design/` is served for the Design tab's images and never listed on the Evidence tab (the
+library catalog lists it, see "The library catalog" below). A symlink may not cross between
 `.design/` and the other two.
 
 From `core/fixtures/harbor/specs/002-web-console/spec.md`, two verification lines naming a result and a raw file:
@@ -746,10 +749,12 @@ From `core/fixtures/leadgen/ISA.md`, a tombstone with an edge:
   without a warning, and the section ends at the next heading of any level (`#` to `######`) or a `---` rule;
 - a repeated name or slug is a `master-milestone-duplicate` warning and the later entry is skipped; a name the master
   lists on a skipped line warns only on the master, and a spec naming it belongs to no milestone;
-- there is no `done` mark: completeness is always derived from the claims of the specs naming the milestone, active
-  and archived alike. A milestone is `complete` when every such claim is closed, `late` when its target date has passed
-  with a claim still open (the target day itself is not yet late), and `upcoming` otherwise; a milestone with no counted
-  claim (an entry no spec names) is never `complete`, only `late` or `upcoming` by its date. An archived spec's claims
+- there is no `done` mark: completeness is always derived from the claims the milestone counts — those of the features
+  whose `Milestone:` line names it where the master carries such lines (see "Milestone lines" below), otherwise those of
+  the specs naming it, active and archived alike — so its number and its state always agree. A milestone is `complete`
+  when every such claim is closed, `late` when its target date has passed with a claim still open (the target day
+  itself is not yet late), and `upcoming` otherwise; a milestone with no counted claim (an entry no spec, or no
+  feature's line, names) is never `complete`, only `late` or `upcoming` by its date. An archived spec's claims
   count exactly like an active one's, so archiving alone never completes or reopens a milestone. Milestones are shown in
   target-date order, whatever their order in the block.
 
@@ -765,10 +770,48 @@ From `core/fixtures/harbor/ISA.md`:
 - Harbor 1.0 · 2026-05-14 · First release a teammate can install.
 ```
 
+**Milestone lines** (optional, spec 026; `claims.ts` reads the line into `FeatureBlock.milestone`, `planning.ts` places
+the feature). A master feature block may carry one line `Milestone: <name>` directly under its `Why:` line:
+
+- the name is taken as written, trimmed, and matched against the `## Milestones` entries by name, the same way a spec's
+  `milestone:` key matches; the feature then sits under that milestone in the planning tree, Milestone › Feature ›
+  Spec › Claim;
+- a feature without the line sits in the "no milestone" group, which is shown last, after every milestone;
+- a line naming no entry of the block is one `feature-milestone-unknown` warning, the name as its subject; the feature
+  then sits in the "no milestone" group and parsing continues;
+- a milestone's progress is the sum, closed over total, of the features whose line names it; a master with no
+  `Milestone:` line anywhere keeps the count above, over the specs whose `milestone:` names it, so an existing master
+  parses and counts as before;
+- a spec whose `milestone:` differs from the line of its main feature (the first word of `isa_feature`) is one
+  `milestone-mismatch` warning, reported on the spec; nothing is reassigned, the feature's line decides where the
+  feature sits.
+
+A master feature block without the line, which falls into the "no milestone" group, and one with it.
+
+From `core/fixtures/milestone-lines/ISA.md`:
+
+```markdown
+### F0 · Cross-cutting
+Why: what would break trust in any release — a signal lost on the way or a contact detail in the repository.
+
+- [ ] ISC-1: Anti: a signal accepted by the intake is dropped before it is routed.
+- [ ] ISC-2: Anti: a tracked file contains a phone number or a personal address.
+
+### F1 · Signal intake
+Why: every monitoring tool can hand its signals to one endpoint.
+Milestone: Beacon 0.5
+
+- [x] ISC-3: The intake accepts a signal over HTTP and answers within 200 ms.
+- [x] ISC-4: A signal without a source is refused with a reason.
+- [x] ISC-5: The same signal sent twice within a minute is stored once. (after: ISC-3)
+```
+
 **Derived:** the master fraction (the hero number), the reference for every spec's drift, and its fog lines in the
 attention count. **Derived: the planning tree** (spec 003, `planning.ts`): the features from the master's blocks, each
 claim with the spec folder that holds it, active or archived; and the milestones from the `## Milestones` block
-together with the specs' `milestone:` keys, each with its progress, closed over total, across every feature it touches.
+together with the features' `Milestone:` lines and the specs' `milestone:` keys, each with its progress, closed over
+total: the sum of its features where the master carries `Milestone:` lines, otherwise across every feature its specs
+touch.
 
 ## `idea` — `../ideas/`, one `specs/ideas/<slug>.md` per story
 
@@ -1493,12 +1536,81 @@ From `core/fixtures/harbor/specs/tech.md`:
 | Console | Angular | port 4200 in development |
 ```
 
+## The library catalog
+
+`readCatalog` (`library.ts`, spec 017, ISC-155) lists every document of a workspace for the Library: metadata only,
+never the content, read on every call and never written. It parses no new format. It reads the file kinds above plus
+the spec folder's `.design/`, and a document's type says where it was found. Every path is relative to `specs/`; a
+workspace without `specs/` has an empty catalog.
+
+- **Workspace documents** (spec `workspace`), first: `specs/constitution.md`, `specs/tech.md`, `specs/tldr.md`, each
+  when present, then every Markdown file directly in `specs/ideas/` in name order, except its index `README.md`.
+  `specs/workflow.md`, `specs/tokens.jsonl` and the images under `specs/tech/` are not listed.
+- **Per active spec**, in number order: `spec.md`, `plan.md`, `tasks.md`, `design.md` and `context.md`, each when
+  present; then, each zone sorted by path, every image or Markdown file below `artifacts/` (type `artifact`),
+  `.evidence/` (type `evidence`) and `.design/` outside `.design/prototype/` (type `design`), recursively; then the
+  prototypes. Markdown is `.md`; an image is `png`, `jpg`, `jpeg`, `webp`, `gif`, `avif` or `svg` (the extensions of
+  the evidence listing, case-insensitive). Logs, JSON, HTML and every other file in a zone are no document; nor are
+  `rounds.jsonl`, `events.jsonl`, `.gates/` or a derived page such as `report.html`.
+- **Prototypes** live in `.design/prototype/`. A folder there that directly holds HTML pages (`.html`),
+  `.design/prototype/` itself included, is one document of type `prototype`: its path is the folder, its `pages` the
+  names of those pages in name order, and every file below it, pages, styles, scripts, Markdown and images alike,
+  belongs to it and is no entry of its own. A folder without HTML pages is no document and none of its own files is
+  listed; each of its subfolders is judged by the same rule.
+- **Preview** (ISC-159): each prototype carries `preview`, a screenshot path relative to `specs/`, or null. The
+  candidates are the image files directly in the spec's `.design/` whose name contains `prototype`, case-insensitive;
+  images in subfolders, prototype folders included, never count. A prototype in a subfolder `.design/prototype/<sub>`
+  (its deepest folder name) keeps only the candidates whose name also contains <sub>, when there are any. Then a
+  name starting with `desktop-` wins over `tablet-`, over `mobile-`, over any other name; within one viewport the
+  exact `<viewport>-prototype.<ext>` (`prototype.<ext>` without a viewport) wins over a longer name such as
+  `desktop-prototype-help.png`; then name order. The screenshot stays a `design` image of its own as well.
+- **Archived specs** never appear: nothing below `specs/archive/` is listed.
+- **Skipped:** dot files and dot folders inside the listed folders, and symbolic links there, which are neither listed
+  nor followed.
+- **Title:** for Markdown, the first `#` heading outside fenced code, after the frontmatter; else frontmatter `title:`
+  (`frontmatter.ts`); else the file name. An image is titled by its file name, a prototype by its folder name.
+- **Modified:** the file's mtime as ISO 8601; a prototype's is the newest mtime of the files below its folder.
+- **State:** a listed document is `ok` unless it is `stale` (ISC-155.1): a file it derives from changed later.
+  `plan.md`, `tasks.md` and `design.md` derive from their spec, `specs/tech.md` and `specs/tldr.md` from the newest
+  active spec of the workspace; no other document derives from anything. A spec's time is the newest `ts` among the
+  valid lines of its `events.jsonl` (read by `events.ts`), else its `spec.md` mtime; a document is stale when its
+  `modified` is strictly older than that time, so one as old as its source is fresh, and archived specs count for
+  nothing. The catalog's `stale` is the number of stale documents.
+- **Missing** (ISC-155.2): for each active spec that is not done, `plan.md` and `tasks.md` are listed as entries with
+  state `missing` when the stage table above would stop the spec at the stage `plan` or `tasks` for them: `plan.md`
+  when the type is feature, infra or project and the file does not exist; `tasks.md` when the type is refactor,
+  feature or project, the spec has three or more claim lines (dropped ones included) and the file does not exist; each
+  row is taken on its own, so a spec lacking both lists both. A spec is done when a `done` row matches
+  (`phase: complete`); it lists no missing entry, nor does a spec without a known type or without `spec.md`. A missing
+  entry has the path, type and spec of the file that should exist, the file name as its title, `modified: null` and
+  media `markdown`, and stands where the file would among the spec's own files. The catalog's `missing` is the number
+  of these entries.
+
+The fixture `core/fixtures/library/` holds every case; its spec 002 `.design/` folder lists as one `design` image and
+one prototype, while `src/`, a code folder without pages, lists nothing:
+
+```text
+002-tide-board/.design/prototype-board.png        design     image
+002-tide-board/.design/prototype/board            prototype  pages: detail.html, index.html
+                                                             preview: 002-tide-board/.design/prototype-board.png
+```
+
+From `core/fixtures/library/specs/002-tide-board/.design/prototype/src/README.md`:
+
+```markdown
+# Prototype source
+
+A code folder without HTML pages: neither it nor anything in it is listed.
+```
+
 ## Not part of the contract
 
 Derived pages (`review.html`, `report.html`, the old dashboard), `.i18n/`, `.vendor/` and `.design/` folders inside a
 spec, and any other file not named above are not parsed by `core/`. Changing them never changes a stage, a count or a
-warning. The one use of `.design/`, where `core/` only resolves paths and never reads a byte: in the Design tab, a standalone image of `design.md` under it renders without
-`src`, its path in `data-spec-asset`, and the web app loads it through the evidence file route (ISC-112).
+warning. `core/` uses `.design/` twice without parsing it: in the Design tab, where it only resolves paths and never
+reads a byte, a standalone image of `design.md` under it renders without `src`, its path in `data-spec-asset`, and the
+web app loads it through the evidence file route (ISC-112); and in the library catalog above, which lists its images,
+Markdown files and prototypes and reads a Markdown file only for its title.
 
 ## Open questions
 

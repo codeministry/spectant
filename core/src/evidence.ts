@@ -2,7 +2,9 @@
 // with its media type; and the path confinement every served evidence file goes through, which also admits the design
 // pass's `.design/` so the Design tab can show its screenshots (spec 004, ISC-112). `.design/` is served, never listed,
 // and each side keeps to itself: a link in `artifacts/` or `.evidence/` may not lead into `.design/`, nor the reverse.
-// `docsRenderOptions` gives the Docs routes their image options from the same confinement.
+// `docsRenderOptions` gives the Docs routes their image options from the same confinement. `resolvePrototypePath` is
+// the third root (spec 017, ISC-159.1): one folder at or below `.design/prototype/`, the same rules, no symlink on
+// the way to it; `prototypeMediaTypeOf` gives its pages their styles, scripts and fonts.
 //
 // Reads only, no Bun API, so the plugin can reuse it. The listing and the resolver use async node:fs/promises (readdir,
 // lstat, stat, realpath, readlink and one read of spec.md); `docsRenderOptions` answers existence synchronously
@@ -61,10 +63,37 @@ const MEDIA_TYPES: ReadonlyMap<string, string> = new Map([
   ['html', 'text/html'],
 ]);
 
+/**
+ * What a prototype page loads beyond `MEDIA_TYPES` (spec 017): its styles, scripts and fonts, which `nosniff` would
+ * refuse as `application/octet-stream`. Kept apart so the evidence route and the catalog keep their table: an
+ * evidence `.js` is never served as script.
+ */
+const PROTOTYPE_TYPES: ReadonlyMap<string, string> = new Map([
+  ['css', 'text/css'],
+  ['js', 'text/javascript'],
+  ['mjs', 'text/javascript'],
+  ['htm', 'text/html'],
+  ['woff', 'font/woff'],
+  ['woff2', 'font/woff2'],
+  ['ttf', 'font/ttf'],
+  ['otf', 'font/otf'],
+]);
+
+const extensionOf = (name: string): string | undefined => {
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : undefined;
+};
+
 /** The media type of a file name, from its extension (case-insensitive); the server's Content-Type for it. */
 export function mediaTypeOf(name: string): string {
-  const dot = name.lastIndexOf('.');
-  return (dot > 0 ? MEDIA_TYPES.get(name.slice(dot + 1).toLowerCase()) : undefined) ?? 'application/octet-stream';
+  const extension = extensionOf(name);
+  return (extension === undefined ? undefined : MEDIA_TYPES.get(extension)) ?? 'application/octet-stream';
+}
+
+/** The Content-Type of a file the prototype route serves: `mediaTypeOf`, plus styles, scripts and fonts (spec 017). */
+export function prototypeMediaTypeOf(name: string): string {
+  const extension = extensionOf(name);
+  return (extension === undefined ? undefined : PROTOTYPE_TYPES.get(extension)) ?? mediaTypeOf(name);
 }
 
 // ─── Confinement ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -152,6 +181,60 @@ export async function resolveEvidencePath(
     return refuse('not-found');
   }
   return { ok: true, absolute: real, path: segments.join('/') };
+}
+
+/** The prototype root below a spec's `.design/` (spec 017); every prototype folder is this or below it. */
+const PROTOTYPE_ROOT = 'prototype';
+
+/**
+ * A prototype folder relative to `.design/` as segments, or null: `prototype` or a canonical path below it, already
+ * decoded once by the route. Empty, `.` and `..` segments, a percent escape (a second layer), a control character and
+ * a backslash are refused, so the folder names exactly one directory and never leaves `.design/prototype/`.
+ */
+function prototypeFolder(folder: string): string[] | null {
+  if (typeof folder !== 'string' || folder.length > 4096) return null;
+  // eslint-disable-next-line no-control-regex -- control characters are exactly what is refused here
+  if (/[\u0000-\u001f\u007f\\]/.test(folder) || /%[0-9A-Fa-f]{2}/.test(folder)) return null;
+  const segments = folder.split('/');
+  if (segments[0] !== PROTOTYPE_ROOT) return null;
+  return segments.every((s) => s !== '' && s !== '.' && s !== '..') ? segments : null;
+}
+
+/**
+ * Resolve one file of a prototype (spec 017, ISC-159.1): `folder` relative to the spec's `.design/` (`prototype`, or
+ * `prototype/board`, decoded once by the route), `requested` the raw tail of the URL. The answer is a regular file
+ * inside `<specDir>/.design/<folder>/`, at any depth, or why nothing may be served. The folder is lexically checked
+ * (`prototypeFolder`, else `outside`), then walked from the spec's real path: a symlink among `.design/` and the
+ * folder's own segments is `symlink-escape`, so neither the folder nor anything above it can lead to another spec;
+ * a missing or non-directory segment is `not-found`. The tail then goes through `resolveEvidencePath` with the folder
+ * as its root and `tree` reach: the single decode, the lexical refusals and the symlink check against the folder's
+ * real path. `path` in the answer is relative to the folder.
+ */
+export async function resolvePrototypePath(
+  specDir: string,
+  folder: string,
+  requested: string,
+): Promise<EvidencePathResult> {
+  const refuse = (reason: EvidenceRefusal): EvidencePathResult => ({ ok: false, reason });
+  const segments = prototypeFolder(folder);
+  if (!segments) return refuse('outside');
+  let dir: string;
+  try {
+    dir = await realpath(specDir);
+  } catch {
+    return refuse('not-found');
+  }
+  for (const segment of [DESIGN_ASSETS, ...segments]) {
+    dir = join(dir, segment);
+    try {
+      const st = await lstat(dir);
+      if (st.isSymbolicLink()) return refuse('symlink-escape');
+      if (!st.isDirectory()) return refuse('not-found');
+    } catch {
+      return refuse('not-found');
+    }
+  }
+  return resolveEvidencePath(dir, requested, 'tree');
 }
 
 /**

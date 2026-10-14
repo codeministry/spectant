@@ -76,7 +76,7 @@
           <div class="line fog-line" [attr.data-fog-line]="spec.id">
             <ui-icon class="cloud" data-icon="cloud" name="cloud" [size]="16" />
             <ng-container [ngTemplateOutlet]="specLink" [ngTemplateOutletContext]="{ $implicit: spec }" />
-            <span class="text">{{ (spec.fog === 1 ? 'specs.inspector.fog.one' : 'specs.inspector.fog.other') | transloco: { count: spec.fog } }}</span>
+            <span class="text">{{ (spec.fog === 1 ? 'specs.fogCount.one' : 'specs.fogCount.other') | transloco: { count: spec.fog } }}</span>
           </div>
         }
       </li>
@@ -90,7 +90,7 @@
     data-warning-link
     [title]="spec.title"
     [routerLink]="[]"
-    [queryParams]="{ spec: spec.id }"
+    [queryParams]="{ sel: 'spec:' + spec.id }"
     queryParamsHandling="merge"
   >{{ spec.id }}</a>
 </ng-template>

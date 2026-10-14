@@ -1,0 +1,280 @@
+{
+  "kpis": {
+    "specs": 3,
+    "building": 0,
+    "scoping": 2,
+    "master": {
+      "closed": 3,
+      "total": 10
+    },
+    "claims": {
+      "closed": 0,
+      "total": 6
+    },
+    "tasks": {
+      "landed": 0,
+      "total": 0
+    },
+    "takeable": 0,
+    "warnings": 5,
+    "fog": 0,
+    "attention": 5,
+    "archived": 0
+  },
+  "stageCounts": {
+    "plan": 2,
+    "tasks": 0,
+    "review": 0,
+    "build": 0,
+    "blocked": 0,
+    "code-review": 0,
+    "close-pending": 0,
+    "close": 0,
+    "done": 1
+  },
+  "specs": [
+    {
+      "id": "002",
+      "slug": "002-alert-routing",
+      "title": "Route each signal to the person on call",
+      "type": "feature",
+      "priority": "P3",
+      "phase": "building",
+      "stage": "plan",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 0,
+        "total": 4
+      },
+      "tasks": null,
+      "nextCommand": "/spec-plan 002",
+      "nextReason": "a feature spec needs plan.md and it is missing",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "no reviewed mark yet",
+          "command": "/spec-review 002"
+        },
+        {
+          "kind": "diagrams",
+          "text": "diagram missing in spec.md",
+          "ref": "spec.md"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "missing",
+          "detail": "no reviewed mark"
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "warn",
+          "detail": "no mermaid diagram in spec.md, plan.md",
+          "files": [
+            "spec.md",
+            "plan.md"
+          ]
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-08T15:00:00Z",
+      "lastRound": null,
+      "goal": "",
+      "worktree": null,
+      "source": "main",
+      "main": null
+    },
+    {
+      "id": "003",
+      "slug": "003-escalation-chains",
+      "title": "Escalate unacknowledged signals along a chain",
+      "type": "feature",
+      "priority": "P3",
+      "phase": "scoping",
+      "stage": "plan",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 0,
+        "total": 2
+      },
+      "tasks": null,
+      "nextCommand": "/spec-plan 003",
+      "nextReason": "a feature spec needs plan.md and it is missing",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [
+        {
+          "kind": "review",
+          "text": "no reviewed mark yet",
+          "command": "/spec-review 003"
+        },
+        {
+          "kind": "diagrams",
+          "text": "diagram missing in spec.md",
+          "ref": "spec.md"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "missing",
+          "detail": "no reviewed mark"
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "ok",
+          "detail": "in step with the master"
+        },
+        "diagrams": {
+          "state": "warn",
+          "detail": "no mermaid diagram in spec.md, plan.md",
+          "files": [
+            "spec.md",
+            "plan.md"
+          ]
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-08T11:00:00Z",
+      "lastRound": null,
+      "goal": "",
+      "worktree": null,
+      "source": "main",
+      "main": null
+    },
+    {
+      "id": "001",
+      "slug": "001-signal-intake",
+      "title": "Accept monitoring signals at one endpoint",
+      "type": "feature",
+      "priority": "P3",
+      "phase": "complete",
+      "stage": "done",
+      "stageSource": "derived",
+      "progress": {
+        "closed": 3,
+        "total": 3
+      },
+      "tasks": null,
+      "nextCommand": null,
+      "nextReason": "phase: complete",
+      "takeable": [],
+      "taken": [],
+      "assignee": null,
+      "warnings": [
+        {
+          "kind": "drift",
+          "text": "drift to the master: closed_without_evidence",
+          "command": "/spec-sync 001"
+        }
+      ],
+      "gates": {
+        "reviewed": {
+          "state": "missing",
+          "detail": "no reviewed mark"
+        },
+        "codeReviewed": {
+          "state": "missing",
+          "detail": "no code-reviewed mark"
+        },
+        "drift": {
+          "state": "warn",
+          "detail": "drift: closed_without_evidence"
+        },
+        "diagrams": {
+          "state": "na",
+          "detail": "no diagram required"
+        }
+      },
+      "fog": 0,
+      "updated": "2026-03-05T15:00:00Z",
+      "lastRound": null,
+      "goal": "",
+      "worktree": null,
+      "source": "main",
+      "main": null
+    }
+  ],
+  "nextUp": [
+    "002",
+    "003"
+  ],
+  "warningGroups": [
+    {
+      "kind": "drift",
+      "items": [
+        {
+          "spec": "001",
+          "warning": {
+            "kind": "drift",
+            "text": "drift to the master: closed_without_evidence",
+            "command": "/spec-sync 001"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "review",
+      "items": [
+        {
+          "spec": "002",
+          "warning": {
+            "kind": "review",
+            "text": "no reviewed mark yet",
+            "command": "/spec-review 002"
+          }
+        },
+        {
+          "spec": "003",
+          "warning": {
+            "kind": "review",
+            "text": "no reviewed mark yet",
+            "command": "/spec-review 003"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "diagrams",
+      "items": [
+        {
+          "spec": "002",
+          "warning": {
+            "kind": "diagrams",
+            "text": "diagram missing in spec.md",
+            "ref": "spec.md"
+          }
+        },
+        {
+          "spec": "003",
+          "warning": {
+            "kind": "diagrams",
+            "text": "diagram missing in spec.md",
+            "ref": "spec.md"
+          }
+        }
+      ]
+    }
+  ],
+  "archive": [],
+  "brief": null,
+  "services": [],
+  "diagnostics": [],
+  "ideas": {
+    "count": 0,
+    "list": []
+  }
+}

@@ -163,10 +163,84 @@
     }
   ],
   "milestones": [],
+  "unassignedFeatures": [
+    "F0",
+    "F1"
+  ],
   "ideas": [],
   "recount": {
     "closed": 0,
     "total": 3
   },
-  "diagnostics": []
+  "diagnostics": [],
+  "relations": {
+    "feature:F0": {
+      "ref": "feature:F0",
+      "type": "feature",
+      "id": "F0",
+      "title": "Cross-cutting",
+      "closed": 0,
+      "total": 1,
+      "parents": [],
+      "children": [
+        "claim:ISC-3"
+      ],
+      "blockers": []
+    },
+    "feature:F1": {
+      "ref": "feature:F1",
+      "type": "feature",
+      "id": "F1",
+      "title": "Weekly digest",
+      "closed": 0,
+      "total": 2,
+      "parents": [],
+      "children": [
+        "claim:ISC-1",
+        "claim:ISC-2"
+      ],
+      "blockers": []
+    },
+    "claim:ISC-3": {
+      "ref": "claim:ISC-3",
+      "type": "claim",
+      "id": "ISC-3",
+      "title": "building a digest makes an outbound network request.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-1": {
+      "ref": "claim:ISC-1",
+      "type": "claim",
+      "id": "ISC-1",
+      "title": "Every note file in the configured folder from the week before is read.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-2": {
+      "ref": "claim:ISC-2",
+      "type": "claim",
+      "id": "ISC-2",
+      "title": "The digest fits in 60 lines.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-1"
+      ]
+    }
+  }
 }

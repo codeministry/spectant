@@ -1,17 +1,21 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { UiIcon } from '../../shared/icons/icon';
 import { UiRovingItem, UiRovingList } from '../../shared/ui/roving-list.directive';
 import { areaById, type SpecArea } from '../shell/areas';
 import type { PageTab } from '../shell/page-tabs';
 import type { ShellState } from '../shell/shell-state.service';
 
-/** The current area when it has more than one tab (Notes has one, the dashboard none: no bar, design.md § Tab bar). */
+/**
+ * The current area when it has more than one tab, or one tab and `singleTabBar` (the Library, spec 017); Notes has one,
+ * the dashboard none: no bar (design.md § Tab bar).
+ */
 export function tabbedArea(state: ShellState): SpecArea | null {
   const id = state.area();
   if (id === null) return null;
   const area = areaById(id);
-  return area.tabs.length > 1 ? area : null;
+  return area.tabs.length > 1 || (area.singleTabBar === true && area.tabs.length === 1) ? area : null;
 }
 
 /**
@@ -25,7 +29,7 @@ export function tabbedArea(state: ShellState): SpecArea | null {
  */
 @Component({
   selector: 'app-tab-bar',
-  imports: [RouterLink, TranslocoPipe, UiRovingList, UiRovingItem],
+  imports: [RouterLink, TranslocoPipe, UiIcon, UiRovingList, UiRovingItem],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: block; min-inline-size: 0; }
@@ -51,11 +55,15 @@ export function tabbedArea(state: ShellState): SpecArea | null {
             <a
               uiRovingItem
               [routerLink]="tab.link"
+              [queryParamsHandling]="tab.keepQuery ? 'merge' : null"
               [attr.data-tab]="tab.id"
               [class.muted-tab]="tab.muted"
               [attr.data-muted]="tab.muted ? '' : null"
               [attr.aria-current]="tab.id === current() ? 'page' : null"
-              >{{ tab.labelKey | transloco }}
+              >@if (tab.icon; as icon) {
+                <ui-icon [name]="icon" [size]="16" />
+              }
+              {{ tab.labelKey | transloco }}
               @if (tab.count; as count) {
                 <small class="count" [attr.data-count]="tab.id">{{ count }}</small>
               }</a

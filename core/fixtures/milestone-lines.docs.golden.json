@@ -1,0 +1,65 @@
+{
+  "constitution": {
+    "frontmatter": {
+      "repo": "beacon",
+      "derived": "2026-03-02T08:00:00Z",
+      "standards_version": "1.0.0",
+      "design_track": "app",
+      "viewports": "[390, 820, 1440]",
+      "stack": "[bun, typescript]"
+    },
+    "html": "<h1 id=\"constitution-beacon\">Constitution — beacon</h1>\n<blockquote><p>Derived on 2026-03-02 from the sources listed below. The rules live in those sources; this file says which of them bind spec work, where to read them, and what proves them.</p></blockquote>\n<h2 id=\"binding-sources\">Binding sources</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Source</th><th>Kind</th><th>Governs</th></tr></thead><tbody><tr><td><code>ISA.md</code> § Goal</td><td>repo</td><td>every signal reaches one person</td></tr></tbody></table></div>\n<h2 id=\"non-negotiables\">Non-negotiables</h2>\n<div class=\"mdtable\"><table><thead><tr><th>Rule</th><th>Source</th><th>Verdict</th><th>Probe</th></tr></thead><tbody><tr><td>XC-01 bun, never npm</td><td>repo <code>ISA.md</code></td><td>binding</td><td><code>bun run check:static</code></td></tr></tbody></table></div>",
+    "toc": [
+      {
+        "level": 2,
+        "text": "Binding sources",
+        "anchor": "binding-sources"
+      },
+      {
+        "level": 2,
+        "text": "Non-negotiables",
+        "anchor": "non-negotiables"
+      }
+    ],
+    "figures": [],
+    "sections": [
+      {
+        "id": "constitution-beacon",
+        "heading": "Constitution — beacon",
+        "level": 1
+      },
+      {
+        "id": "binding-sources",
+        "heading": "Binding sources",
+        "level": 2
+      },
+      {
+        "id": "non-negotiables",
+        "heading": "Non-negotiables",
+        "level": 2
+      }
+    ],
+    "wordCount": 64,
+    "constitution": {
+      "lanes": [],
+      "tiers": []
+    }
+  },
+  "specs": {
+    "specs/001-signal-intake": {
+      "plan": null,
+      "design": null,
+      "decisions": null
+    },
+    "specs/002-alert-routing": {
+      "plan": null,
+      "design": null,
+      "decisions": null
+    },
+    "specs/003-escalation-chains": {
+      "plan": null,
+      "design": null,
+      "decisions": null
+    }
+  }
+}

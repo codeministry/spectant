@@ -137,7 +137,7 @@ import { CardContext } from './card-context';
         @if (specLink(); as base) {
           <div class="cd-links" data-detail-links>
             <a class="btn btn-sm" [routerLink]="[...base, 'claims']">{{ 'board.detail.openClaim' | transloco }}</a>
-            <a class="btn btn-sm" [routerLink]="[...base, 'evidence']">{{ 'board.detail.evidence' | transloco }}</a>
+            <a class="btn btn-sm" [routerLink]="[...base, 'library']" [queryParams]="{ type: 'evidence' }">{{ 'board.detail.evidence' | transloco }}</a>
             <a class="btn btn-sm" [routerLink]="[...base, 'timeline']">{{ 'board.detail.timeline' | transloco }}</a>
             <span class="meta push"><ui-kbd>←</ui-kbd><ui-kbd>→</ui-kbd> {{ 'board.detail.step' | transloco }}</span>
           </div>

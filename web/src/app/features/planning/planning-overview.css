@@ -1,0 +1,123 @@
+/* The planning overview (spec 026, T15): the old Milestones page's rail (prototype `context-rail`, `next-ms`). */
+:host {
+  display: grid;
+  gap: 24px;
+  min-inline-size: 0;
+}
+
+.block {
+  display: grid;
+  gap: 8px;
+}
+
+.eyebrow {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  color: var(--muted-ink);
+}
+
+.eyebrow.sub {
+  margin-block-start: 16px;
+}
+
+.ring-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.big {
+  font: 600 28px/32px var(--font-brand);
+  font-variant-numeric: tabular-nums;
+}
+
+.big small {
+  color: var(--muted-ink);
+  font-size: 15px;
+}
+
+.meta {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.mini-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 64px 40px;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 32px;
+  color: inherit;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.ms-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ms-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 32px;
+  color: inherit;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+:where(.mini-row:hover, .ms-row:hover) .t {
+  text-decoration: underline;
+}
+
+.mini-row .fid {
+  color: var(--disp-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.t {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.num {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+/* The decorative 6 px bar on the track at 45 % (prototype `meter thin`); the row's name carries the numbers. */
+.bar {
+  display: block;
+  block-size: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--track) 45%, transparent);
+}
+
+.bar > i {
+  display: block;
+  block-size: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+}
+
+@media (pointer: coarse) {
+  .mini-row,
+  .ms-row {
+    min-block-size: 44px;
+  }
+}
