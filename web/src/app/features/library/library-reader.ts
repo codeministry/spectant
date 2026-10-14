@@ -4,6 +4,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   ElementRef,
   inject,
   input,
@@ -17,6 +18,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { DocsPage, LibraryDoc, LibraryDocType } from '../../../../../core/src/files';
 import { ApiClient } from '../../core/api.service';
+import { RefreshService } from '../../core/refresh.service';
 import { specLink } from '../../layout/shell/areas';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { UiIcon } from '../../shared/icons/icon';
@@ -339,13 +341,22 @@ export class LibraryReader {
 
   /** The current Markdown document as core renders it (`GET …/library/doc?path=`); idle for images, prototypes, missing. */
   private readonly page = resource({
-    params: () => {
+    params: () => this.target(),
+    loader: ({ params }) => this.api.libraryDoc(params.ws, params.path),
+  });
+  /**
+   * The document the page reads, equal while workspace and path are: a refreshed catalog hands the reader a new `doc`
+   * object for the same file, which must not start a fresh load (that would drop the value and flash the loading state).
+   */
+  private readonly target = computed(
+    () => {
       const doc = this.doc();
       return doc !== null && doc.media === 'markdown' && doc.state !== 'missing' ? { ws: this.workspace(), path: doc.path } : undefined;
     },
-    loader: ({ params }) => this.api.libraryDoc(params.ws, params.path),
-  });
-  protected readonly loading = computed(() => this.page.isLoading());
+    { equal: (a, b) => a?.ws === b?.ws && a?.path === b?.path },
+  );
+  /** A first read of a document; a refresh's reload keeps the shown document in place, so it is no loading state. */
+  protected readonly loading = computed(() => this.page.status() === 'loading');
   protected readonly failed = computed(() => {
     if (this.page.status() === 'error') return true;
     const result = this.page.hasValue() ? this.page.value() : undefined;
@@ -400,6 +411,16 @@ export class LibraryReader {
   });
 
   constructor() {
+    // The live refresh re-reads the open document with the catalog (ETag, so an unchanged file costs a 304); the
+    // reload keeps the shown page, so the prose, its scroll position and a selection in it stay in place.
+    const refresher = inject(RefreshService);
+    let seen = refresher.refreshes();
+    effect(() => {
+      const count = refresher.refreshes();
+      if (count === seen) return;
+      seen = count;
+      untracked(() => this.page.reload());
+    });
     // A cross reference's href follows the address's filters, set on the drawn anchors, so the prose is not redrawn.
     afterRenderEffect({
       write: () => {

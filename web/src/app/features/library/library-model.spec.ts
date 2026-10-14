@@ -11,7 +11,6 @@ import {
   matches,
   NO_FILTER,
   parseFilter,
-  snippet,
   specFirst,
   specKey,
   specOptions,
@@ -232,19 +231,13 @@ describe('library model (spec 017, T26)', () => {
   });
 
   describe('text', () => {
-    it('highlights the first match and cuts the snippet around it', () => {
+    it('highlights the first match', () => {
       expect(highlight('Approach & architecture', 'ARCH')).toEqual([
         { text: 'Approach & ', hit: false },
         { text: 'arch', hit: true },
         { text: 'itecture', hit: false },
       ]);
       expect(highlight('Plan', '')).toEqual([{ text: 'Plan', hit: false }]);
-      expect(snippet('## A\n**b** c', '')).toEqual([{ text: 'A b c', hit: false }]);
-      const long = `${'x '.repeat(40)}needle ${'y '.repeat(40)}`;
-      const runs = snippet(long, 'needle');
-      expect(runs[0]).toEqual({ text: '…', hit: false });
-      expect(runs.find((run) => run.hit)?.text).toBe('needle');
-      expect(runs.at(-1)).toEqual({ text: '…', hit: false });
     });
   });
 });
@@ -289,6 +282,17 @@ describe('the spec area scope (T46, ISC-158)', () => {
   it('matches the spec by its whole number, never by a prefix', () => {
     expect(specScope(catalog, '1002').docs.map((entry) => entry.path)).toEqual(['1002-later/spec.md', 'constitution.md']);
     expect(specScope(catalog, '999').docs.map((entry) => entry.path)).toEqual(['constitution.md']);
+  });
+
+  it('resolves the route’s spec ref in the three forms the server accepts: number, folder and slug', () => {
+    const byNumber = specScope(catalog, '002');
+    for (const ref of ['002-web-console', 'web-console']) {
+      const scoped = specScope(catalog, ref);
+      expect(scoped.docs.map((entry) => entry.path)).toEqual(byNumber.docs.map((entry) => entry.path));
+      expect(scoped.fog).toEqual(byNumber.fog);
+      expect({ missing: scoped.missing, stale: scoped.stale }).toEqual({ missing: 1, stale: 1 });
+    }
+    expect(specScope(catalog, 'web').docs.map((entry) => entry.path)).toEqual(['constitution.md']);
   });
 
   it('puts the spec group first and the workspace-wide group after it', () => {

@@ -22,6 +22,7 @@ import type { LibraryCatalog, LibraryDoc, SpecGroupHead, SpecType } from '../../
 import { renderDocsMarkdown } from '../../../../../core/src/markdown-docs';
 import type { Stage } from '../../../../../core/src/stage';
 import { ApiClient } from '../../core/api.service';
+import { RefreshService } from '../../core/refresh.service';
 import { NotFound } from '../../layout/not-found/not-found';
 import { specLink } from '../../layout/shell/areas';
 import { LibraryTabCount } from '../../layout/shell/page-tabs';
@@ -507,6 +508,16 @@ export class LibraryPage {
       tabCount.value.set(spec === null || ws === null || catalog === null ? null : { ws, spec, count: catalog.docs.length });
     });
     inject(DestroyRef).onDestroy(() => tabCount.value.set(null));
+    // The live refresh (timer, "Refresh now", `r`) re-reads the catalog in place, as it did the tech page: a reload
+    // keeps the last value, and the catalog route answers 304 to the `If-None-Match` `ApiClient` sends.
+    const refresher = inject(RefreshService);
+    let seen = refresher.refreshes();
+    effect(() => {
+      const count = refresher.refreshes();
+      if (count === seen) return;
+      seen = count;
+      untracked(() => this.read.reload());
+    });
     // A former Docs tab's redirect names the spec's document by its kind (`?doc=plan|design|spec`, spec 017, T48,
     // ISC-158.1): only the catalog knows the spec's folder, so once it is here the document is picked by its path and
     // the address carries that path as fragment, `?doc=` dropped and `?section=` kept, replacing the history entry.

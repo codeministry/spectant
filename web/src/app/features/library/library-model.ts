@@ -5,6 +5,7 @@ import type {
   LibraryFogLine,
   SpecGroupHead,
 } from '../../../../../core/src/files';
+import { specRefMatches } from '../../../../../core/src/spec-ref';
 
 /**
  * The library list over core's `LibraryCatalog` (spec 017, T26, ISC-156, ISC-156.2; design.md § Viewport-übergreifend).
@@ -217,17 +218,19 @@ export function libraryGroups(catalog: LibraryCatalog, filter: LibraryFilter, hi
 
 /**
  * The catalog of one spec's Library area (spec 017, T46, ISC-158; design.md § Viewport-übergreifend): the documents of
- * the spec whose number is `spec` (`specKey` form), its missing entries and its evidence included, plus the workspace's
+ * the spec the route's ref `spec` names, its missing entries and its evidence included, plus the workspace's
  * constitution; no group head (the spec head above already carries stage, goal and figures); the fog lines of that
- * spec only; and the control counts of the spec's own documents, the constitution outside them.
+ * spec only; and the control counts of the spec's own documents, the constitution outside them. The ref is matched in
+ * the three forms the server's `resolveSpec` accepts (number `002`, folder `002-web-console`, slug `web-console`)
+ * through core's `specRefMatches`, so every address of the spec lists the same documents.
  */
 export function specScope(catalog: LibraryCatalog, spec: string): LibraryCatalog {
-  const own = catalog.docs.filter((doc) => doc.spec !== WORKSPACE_SPEC && specKey(doc.spec) === spec);
+  const own = catalog.docs.filter((doc) => doc.spec !== WORKSPACE_SPEC && specRefMatches(doc.spec, spec));
   const constitution = catalog.docs.filter((doc) => doc.spec === WORKSPACE_SPEC && doc.type === 'constitution');
   return {
     docs: [...own, ...constitution],
     groups: [],
-    fog: catalog.fog.filter((line) => specKey(line.spec) === spec),
+    fog: catalog.fog.filter((line) => specRefMatches(line.spec, spec)),
     missing: own.filter((doc) => doc.state === 'missing').length,
     stale: own.filter((doc) => doc.state === 'stale').length,
   };
@@ -268,11 +271,6 @@ export interface TextRun {
   readonly hit: boolean;
 }
 
-const SNIPPET = 90;
-
-/** The body as one line of plain text, Markdown marks stripped (the prototype's `plain`). */
-export const plainText = (body: string): string => body.replace(/[#*`]/gu, '').replace(/\s+/gu, ' ').trim();
-
 /** `text` split around the first match of `query` (case ignored); one plain run without a query or a match. */
 export function highlight(text: string, query: string): readonly TextRun[] {
   const q = query.trim().toLowerCase();
@@ -283,19 +281,4 @@ export function highlight(text: string, query: string): readonly TextRun[] {
     { text: text.slice(at, at + q.length), hit: true },
     { text: text.slice(at + q.length), hit: false },
   ].filter((run) => run.text !== '');
-}
-
-/**
- * A row's snippet: the first 90 characters of the plain body, or, with a query found in it, a window from 30
- * characters before the match to 50 after it, with ellipses where it was cut (the prototype's `snippet`).
- */
-export function snippet(body: string, query: string): readonly TextRun[] {
-  const plain = plainText(body);
-  const q = query.trim().toLowerCase();
-  const at = q === '' ? -1 : plain.toLowerCase().indexOf(q);
-  if (at < 0) return [{ text: plain.length > SNIPPET ? `${plain.slice(0, SNIPPET)}…` : plain, hit: false }];
-  const from = Math.max(0, at - 30);
-  const to = at + q.length + 50;
-  const runs = highlight(plain.slice(from, to), q);
-  return [...(from > 0 ? [{ text: '…', hit: false }] : []), ...runs, ...(to < plain.length ? [{ text: '…', hit: false }] : [])];
 }

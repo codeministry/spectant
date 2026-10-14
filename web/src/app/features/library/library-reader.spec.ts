@@ -10,6 +10,7 @@ import type { DocsPage, LibraryCatalog, LibraryDoc } from '../../../../../core/s
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult } from '../../core/api.service';
+import { RefreshService } from '../../core/refresh.service';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import { MERMAID_LOADER, type MermaidApi } from '../../shared/ui/doc-prose/mermaid';
@@ -193,6 +194,7 @@ describe('LibraryReader (T34, ISC-156.3)', () => {
         provideHttpClientTesting(),
         { provide: ApiClient, useValue: api },
         { provide: ShellData, useValue: { workspaceName: (slug: string) => slug } },
+        { provide: RefreshService, useValue: { refreshes: signal(0) } },
         { provide: MERMAID_LOADER, useValue: () => Promise.resolve(mermaid) },
       ],
     });
