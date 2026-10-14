@@ -4,8 +4,8 @@
  *
  *   bun run test:browser -- diagrams
  *
- * Three pages of the stub API, each with a flowchart drawn client-side: the Tech page's architecture tab (harbor
- * `specs/tech.md`), the Docs plan tab of harbor 002 (two subgraphs, so clusters), and the idea page of
+ * Three pages of the stub API, each with a flowchart drawn client-side: the Library reader on harbor `specs/tech.md`
+ * at its architecture section, the Library reader on harbor 002's `plan.md` (two subgraphs, so clusters), and the idea page of
  * `console-audit-log`, whose story has no diagram: its response gets the plan's figure appended here, in the browser
  * (`page.route`), so no fixture and no golden changes.
  *
@@ -49,8 +49,9 @@ const IDEA_FIGURE_HTML = FIGURE_HTML.replace('data-figure="1"', 'data-figure="99
 
 const IDEA = 'console-audit-log';
 const PAGES = [
-  { name: 'tech', url: '/w/harbor/tech/architecture', scope: 'app-tech-docs-tab' },
-  { name: 'docs', url: '/w/harbor/s/002/plan', scope: 'app-docs-tab[data-doc="plan"]' },
+  // Spec 017 (ISC-158): the former Tech page and Docs tab live in the Library's reader.
+  { name: 'library tech.md', url: '/w/harbor/library?section=architecture#tech.md', scope: '[data-library-reader] [data-library-prose]' },
+  { name: 'library plan.md', url: '/w/harbor/library#002-web-console/plan.md', scope: '[data-library-reader] [data-library-prose]' },
   { name: 'idea', url: `/w/harbor/ideas/${IDEA}`, scope: 'ui-doc-prose' },
 ] as const;
 
@@ -183,7 +184,7 @@ test.describe('diagrams', () => {
     test.describe(theme, () => {
       test.use({ colorScheme: theme });
 
-      test(`mermaid figures on tech, docs and idea carry the help figure anatomy (${theme})`, async ({ page }) => {
+      test(`mermaid figures on library reader and idea carry the help figure anatomy (${theme})`, async ({ page }) => {
         let clusters = 0;
         for (const target of PAGES) {
           if (target.name === 'idea') await ideaWithDiagram(page);

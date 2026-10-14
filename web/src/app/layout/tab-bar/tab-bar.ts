@@ -7,12 +7,15 @@ import { areaById, type SpecArea } from '../shell/areas';
 import type { PageTab } from '../shell/page-tabs';
 import type { ShellState } from '../shell/shell-state.service';
 
-/** The current area when it has more than one tab (Notes has one, the dashboard none: no bar, design.md § Tab bar). */
+/**
+ * The current area when it has more than one tab, or one tab and `singleTabBar` (the Library, spec 017); Notes has one,
+ * the dashboard none: no bar (design.md § Tab bar).
+ */
 export function tabbedArea(state: ShellState): SpecArea | null {
   const id = state.area();
   if (id === null) return null;
   const area = areaById(id);
-  return area.tabs.length > 1 ? area : null;
+  return area.tabs.length > 1 || (area.singleTabBar === true && area.tabs.length === 1) ? area : null;
 }
 
 /**

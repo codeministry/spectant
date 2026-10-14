@@ -16,7 +16,7 @@ import type { Page } from '@playwright/test';
 
 import { DEFAULT_WORKFLOW } from '../../core/src/stage';
 import { atWidth, expect, FIXED_NOW, test, theme, WIDTHS } from './fixtures';
-import { STATE_HEADER } from './stub-api';
+import { STATE_HEADER, STUB_LIBRARY } from './stub-api';
 
 const SESSION = 'X-Spectant-Stub-Session';
 const SCREENSHOT = { fullPage: true, maxDiffPixelRatio: 0 } as const;
@@ -38,13 +38,6 @@ const VIEWS: readonly View[] = [
   { name: 'board', path: '/w/harbor/s/002/board', host: 'app-board-tab' },
   { name: 'status', path: '/w/harbor/s/002/status', host: 'app-status-tab' },
   {
-    name: 'tech',
-    path: '/w/harbor/tech/status',
-    host: 'app-tech-page',
-    drawn: (page) =>
-      expect(page.locator('app-tech-status-tab :is(table tr[data-spec], ul[data-stacked] a.row[data-spec])').first()).toBeVisible(),
-  },
-  {
     name: 'help',
     path: '/help',
     host: 'app-help-page',
@@ -56,6 +49,22 @@ const VIEWS: readonly View[] = [
       await expect(page.locator('figure[data-workflow-figure="feature"] [data-diagram] g[data-stage] text').first()).not.toHaveText(
         /^stages\./,
       );
+    },
+  },
+  {
+    name: 'library',
+    // The stub's prototype picked and the list narrowed to its spec, so the group head stands above the fold of the
+    // list's own scroll: at 1440 the list (control counts, the spec's group head) sits beside the reader with the
+    // prototype card; below the wide tier the reader takes the list's place, and the image shows the card alone.
+    path: `/w/harbor/library?spec=${STUB_LIBRARY.prototype.path.slice(0, 3)}#${STUB_LIBRARY.prototype.path}`,
+    host: 'app-library-page',
+    drawn: async (page) => {
+      const preview = page.locator('[data-library-prototype] [data-library-prototype-preview] img');
+      await expect(preview).toBeVisible();
+      await expect.poll(() => preview.evaluate((img: HTMLImageElement) => (img.complete ? img.naturalWidth : 0))).toBeGreaterThan(0);
+      if ((page.viewportSize()?.width ?? 0) < WIDTHS.desktop) return;
+      await expect(page.locator('[data-library-controls] [data-library-control] [data-library-control-count]')).toHaveCount(2);
+      await expect(page.locator('[data-library-group-head] [data-library-head="claims"]').first()).toBeVisible();
     },
   },
 ];

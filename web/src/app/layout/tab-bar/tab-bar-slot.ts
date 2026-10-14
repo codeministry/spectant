@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { specLink, type TabId } from '../shell/areas';
-import { type PageTab, planningTabs, TechTabCounts, techTabs } from '../shell/page-tabs';
+import { LibraryTabCount, type PageTab, planningTabs } from '../shell/page-tabs';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { TabBar, tabbedArea } from './tab-bar';
@@ -14,11 +14,10 @@ interface BarModel {
 
 /**
  * The prototype `tab-bar` band (spec 024, ISC-149, design.md § Viewport-übergreifend): a page puts the slot directly
- * under its head (the spec page, the tech page) and the slot sticks at top 64 on every width, under the one header row
+ * under its head (the spec page) and the slot sticks at top 64 on every width, under the one header row
  * from 1120 px and under header row 1 below, once row 2 has scrolled away. It carries the page glass, the hairline
- * across and the bar, and renders only when the route has tabs: an existing spec with a multi-tab area (tabs from
- * `SPEC_AREAS`) or the tech page (tabs from `TECH_TABS`, spec 023, ISC-134.1) unless it is the not-found page
- * (`ShellData.techMissing`, the page's own condition). Empty, it takes no room. The band keeps to the column (the
+ * across and the bar, and renders only when the route has tabs: an existing spec with a tabbed area (tabs from
+ * `SPEC_AREAS`). Empty, it takes no room. The band keeps to the column (the
  * prototype bleeds it 4 px each side; here that would scroll the compact page sideways), so the eyebrow starts flush.
  */
 @Component({
@@ -50,16 +49,12 @@ interface BarModel {
 export class TabBarSlot {
   private readonly state = inject(ShellState);
   private readonly data = inject(ShellData);
-  private readonly techCounts = inject(TechTabCounts);
+  private readonly libraryCount = inject(LibraryTabCount);
 
   protected readonly bar = computed<BarModel | null>(() => {
     if (this.state.notFound()) return null;
     const ws = this.state.ws();
     if (ws === null) return null;
-    if (this.state.wsPage() === 'tech') {
-      if (this.data.techMissing()) return null;
-      return { tabs: techTabs(ws, this.techCounts.counts()), current: this.state.techTab(), labelKey: 'shell.pages.tech' };
-    }
     // Spec 026 (ISC-167): the planning page's lenses Tree, Matrix and Graph, unless it is the not-found page.
     if (this.state.wsPage() === 'planning') {
       if (this.data.workspaceMissing() || this.data.planningMissing()) return null;
@@ -74,29 +69,19 @@ export class TabBarSlot {
     const area = tabbedArea(this.state);
     if (id === null || area === null || this.data.specMissing()) return null;
     const counts = this.specCounts();
+    const library = this.libraryCount.countFor(ws, id);
     const tabs = area.tabs.map((tab): PageTab => {
-      const count = counts.get(tab);
-      const base: PageTab = { id: tab, labelKey: `shell.tabs.${tab}`, link: specLink(ws, id, tab) };
-      const entry: PageTab = this.emptyTabs().has(tab) ? { ...base, muted: true } : base;
+      const count = tab === 'library' ? (library ?? undefined) : counts.get(tab);
+      const entry: PageTab = { id: tab, labelKey: `shell.tabs.${tab}`, link: specLink(ws, id, tab) };
       return count === undefined ? entry : { ...entry, count };
     });
     return { tabs, current: this.state.tab(), labelKey: `shell.areas.${area.id}` };
   }
 
-  /** Doc tabs whose file the spec does not have (`areas.docs`): the prototype dims them as `muted-tab`. */
-  private readonly emptyTabs = computed(() => {
-    const empty = new Set<TabId>();
-    const spec = this.data.spec.value();
-    if (spec?.kind !== 'ok') return empty;
-    const { docs } = spec.body.areas;
-    if (!docs.plan) empty.add('plan');
-    if (!docs.design) empty.add('design');
-    if (!docs.constitution) empty.add('constitution');
-    if (docs.decisions === 0) empty.add('decisions');
-    return empty;
-  });
-
-  /** Counts from the spec model the shell already loaded (`areas.data`); Evidence has none there, so it shows none. */
+  /**
+   * Counts from the spec model the shell already loaded (`areas.data`); the Library's Documents count comes from the
+   * library page (`LibraryTabCount`, spec 017), which holds the catalog.
+   */
   private readonly specCounts = computed(() => {
     const counts = new Map<TabId, string>();
     const spec = this.data.spec.value();

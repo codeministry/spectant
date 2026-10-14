@@ -1314,6 +1314,100 @@ export interface TechModel {
   readonly specs: readonly TechSpec[];
 }
 
+// ─── Library catalog (library.ts) ────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What a catalog document is (spec 017, ISC-155). Per spec: its five Markdown files, every image or Markdown file
+ * under `artifacts/` (`artifact`), `.evidence/` (`evidence`) and `.design/` (`design`, as `design.md`), and each folder
+ * in `.design/prototype/` that holds HTML pages directly (`prototype`). Per workspace: `specs/constitution.md`,
+ * `specs/tech.md`, `specs/tldr.md` and each `specs/ideas/*.md` (`idea`).
+ */
+export type LibraryDocType =
+  | 'spec'
+  | 'plan'
+  | 'tasks'
+  | 'design'
+  | 'context'
+  | 'artifact'
+  | 'evidence'
+  | 'prototype'
+  | 'constitution'
+  | 'tech'
+  | 'tldr'
+  | 'idea';
+
+/**
+ * A document's state: `stale` when a file it derives from changed later (ISC-155.1), `missing` when its spec's type
+ * asks for it and the file does not exist (ISC-155.2); `ok` otherwise.
+ */
+export type LibraryState = 'ok' | 'stale' | 'missing';
+
+/** How the reader shows a document: as prose, as an image preview, or as the page list of a prototype. */
+export type LibraryMedia = 'markdown' | 'image' | 'prototype';
+
+/** One catalog entry: metadata only, never the content (the reader fetches that by `path`). */
+export interface LibraryDoc {
+  /**
+   * Path relative to `specs/`, POSIX separators: `017-workspace-library/plan.md`, `tech.md`. A `prototype` is its
+   * folder, without a trailing slash (`017-workspace-library/.design/prototype` for the root folder itself).
+   */
+  readonly path: string;
+  readonly type: LibraryDocType;
+  /** `NNN-slug`, the spec folder the document belongs to; `workspace` for a document outside every spec folder. */
+  readonly spec: string;
+  /** The H1, else frontmatter `title:`, else the file or folder name. */
+  readonly title: string;
+  /** ISO 8601 of the file's last change (a prototype: its newest file); null exactly when `state` is `missing`. */
+  readonly modified: string | null;
+  readonly state: LibraryState;
+  readonly media: LibraryMedia;
+  /** `prototype` only: the HTML pages directly in the folder, relative to it, in name order. */
+  readonly pages?: readonly string[];
+  /** `prototype` only: the screenshot in the spec's `.design/`, relative to `specs/`; null without one. */
+  readonly preview?: string | null;
+}
+
+/** The head of one spec's group in the library: the values of the former tech tabs Status and Specs (ISC-157). */
+export interface SpecGroupHead {
+  /** `NNN-slug`, the folder name, as `LibraryDoc.spec`. */
+  readonly spec: string;
+  /** Frontmatter `spec_type:`; null when absent or unknown. */
+  readonly type: SpecType | null;
+  readonly stage: StageName;
+  readonly claimsClosed: number;
+  readonly claimsTotal: number;
+  readonly tasksDone: number;
+  readonly tasksTotal: number;
+  /** The number of `- fog:` lines under `## Not yet specified`. */
+  readonly fog: number;
+  /** The `## Goal` section of spec.md as Markdown source; null when the section is absent or empty. */
+  readonly goal: string | null;
+  /** The first prose paragraph of plan.md's `## Approach` as Markdown source; null without plan.md or the section. */
+  readonly approach: string | null;
+}
+
+/**
+ * One `- fog:` line of a spec that is not complete, for the filter "open" (the former tech tab Open). Named
+ * `LibraryFogLine`, not plan.md's `FogLine`: `claims.ts` already exports a `FogLine` (the parsed line with its marks
+ * and line number), and the barrel `index.ts` re-exports both modules.
+ */
+export interface LibraryFogLine {
+  /** `NNN-slug`, the folder name. */
+  readonly spec: string;
+  readonly text: string;
+}
+
+/** What `readCatalog` returns for one workspace; specs under `specs/archive/` never appear. */
+export interface LibraryCatalog {
+  readonly docs: readonly LibraryDoc[];
+  /** One head per active spec, in number order. */
+  readonly groups: readonly SpecGroupHead[];
+  readonly fog: readonly LibraryFogLine[];
+  /** The count of `docs` whose state is `missing`, and of those whose state is `stale`: the two control numbers. */
+  readonly missing: number;
+  readonly stale: number;
+}
+
 /** The kind of an actor id: `u:` a person, `a:<kind>:<id>` an agent, `a:<kind>:<id>/<task>` its sub-agent. */
 export type ActorKind = 'person' | 'agent' | 'subagent' | 'legacy';
 

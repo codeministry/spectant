@@ -6,11 +6,10 @@ describe('DemoData', () => {
   it('hands out the fixtures synchronously as read-only signals (ISC-149.1)', () => {
     const demo = TestBed.inject(DemoData);
 
-    expect(demo.library().length).toBeGreaterThan(0);
     expect(demo.workspaces().length).toBeGreaterThan(0);
     expect(demo.assistantSuggestions().length).toBeGreaterThan(0);
-    expect(Object.isFrozen(demo.library())).toBe(true);
-    expect('set' in demo.library).toBe(false);
+    expect(Object.isFrozen(demo.workspaces())).toBe(true);
+    expect('set' in demo.workspaces).toBe(false);
   });
 
   it('answers a known suggestion from the fixture and anything else with the fallback', () => {

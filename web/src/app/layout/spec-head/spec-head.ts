@@ -39,7 +39,7 @@ import {
 } from './spec-head-model';
 
 /** The stage chip's tone and prototype icon (`CHIP_ICON`: scoping compass, tasked list, building hammer, …). */
-const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly icon: IconName | undefined }>> = {
+export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly icon: IconName | undefined }>> = {
   plan: { tone: 'secondary', icon: chipIcon('scoping') },
   tasks: { tone: 'secondary', icon: chipIcon('tasked') },
   review: { tone: 'secondary', icon: chipIcon('code-reviewed') },

@@ -506,8 +506,8 @@
         "dashboard": "overview · next step · gates",
         "status": "Status · Timeline",
         "live": "Board · Matrix",
-        "data": "Claims · Tasks · Evidence",
-        "docs": "Plan · Design · Decisions · Constitution",
+        "data": "Claims · Tasks",
+        "library": "Spec · Plan · Tasks · Design · Evidence · Prototype",
         "notes": "Notes"
       },
       "unbuilt": "Comes with this spec's later tasks",
@@ -529,7 +529,7 @@
       "status": "Status",
       "live": "Live",
       "data": "Data",
-      "docs": "Docs",
+      "library": "Library",
       "notes": "Notes"
     },
     "tabs": {
@@ -544,6 +544,7 @@
       "design": "Design",
       "decisions": "Decisions",
       "constitution": "Constitution",
+      "library": "Documents",
       "notes": "Notes"
     },
     "tabBar": "{{area}} tabs",
@@ -609,7 +610,6 @@
       "planning": "Planning",
       "features": "Features",
       "milestones": "Milestones",
-      "tech": "Tech",
       "library": "Library",
       "summary": {
         "specs": "{{active}} active · {{archived}} archived",
@@ -617,8 +617,8 @@
         "planning": "{{milestones}} milestones · {{features}} features",
         "features": "{{count}} features · {{closed}}/{{total}} closed",
         "milestones": "{{count}} milestones · next {{next}}",
-        "tech": "{{specs}} specs · {{fog}} open questions",
-        "library": "{{count}} documents · demo"
+        "library": "{{docs}} documents · {{stale}} outdated · {{missing}} missing",
+        "libraryLoading": "Every document, artifact and prototype"
       }
     },
     "assistant": {
@@ -772,58 +772,18 @@
   },
   "docs": {
     "decisions": {
-      "goal": "Goal",
-      "stillOpen": "Still open",
-      "locked": "locked {{date}}",
-      "goalSource": "context.md · Goal",
-      "signal": "signal",
-      "signalLabel": "Signal {{n}} of 4",
-      "shapes": "Shapes",
       "from": "From",
       "offered": "Offered",
       "chosen": "Chosen",
       "landedIn": "Landed in",
       "recommended": "recommended",
-      "waiting": "— waiting on you",
-      "noQuestions": "Idea only — shaped in conversation, no questions recorded.",
-      "full": "The whole {{file}}"
-    },
-    "constitution": {
-      "lanes": "Lanes",
-      "lane": "Lane",
-      "paths": "Paths",
-      "probe": "Lane probe",
-      "tier": "Gate tier · {{tier}}",
-      "lanesRegion": "Lanes table, scrolls sideways"
+      "waiting": "— waiting on you"
     },
     "contents": "On this page",
-    "updated": "updated {{date}}",
     "tableRegion": "Table {{index}}, scrolls sideways",
     "figureRegion": "Diagram {{index}}, scrolls sideways",
     "imageMissing": "Image not in this checkout",
-    "imageUnavailable": "Image could not be shown",
-    "diagramMissing": {
-      "title": "This plan has no diagram.",
-      "body": "A mermaid figure of the approach shows its shape at a glance."
-    },
-    "empty": {
-      "notApplicable": "A {{type}} has no {{file}}",
-      "noType": "A spec without a type has no {{file}}",
-      "notApplicableBody": "This spec type does not use the file, so there is nothing to show here.",
-      "missing": "No {{file}} yet",
-      "missingBody": "Create it with this command:",
-      "missingNoCommand": "It is written as the spec’s question rounds are recorded.",
-      "typesLink": "Which files each type has →"
-    },
-    "error": "This document could not be loaded.",
-    "loading": "Loading document",
-    "design": {
-      "ist": "Ist",
-      "soll": "Soll",
-      "width": "{{width}} px",
-      "open": "Open {{viewport}} · {{side}} screenshot",
-      "noText": "No target text yet."
-    }
+    "imageUnavailable": "Image could not be shown"
   },
   "tasks": {
     "filters": {
@@ -901,33 +861,6 @@
       "unticked": "{{id}} unticked in tasks.md, line {{line}}"
     }
   },
-  "evidence": {
-    "loading": "Loading evidence",
-    "ungrouped": "No claim",
-    "groups": {
-      "results": "Results",
-      "raw": "Raw evidence"
-    },
-    "claimLink": "Claim {{claim}}",
-    "count": "{{count}} files",
-    "open": "Open {{path}}",
-    "imageAlt": "Evidence image {{name}}",
-    "size": {
-      "b": "{{value}} B",
-      "kb": "{{value}} KB",
-      "mb": "{{value}} MB"
-    },
-    "empty": {
-      "heading": "No evidence recorded yet",
-      "body": "This spec has no files in artifacts/ or .evidence/.",
-      "link": "What counts as evidence →"
-    },
-    "error": {
-      "refused": "Refused: outside the evidence folders",
-      "failed": "Could not be loaded",
-      "listing": "The evidence could not be loaded."
-    }
-  },
   "specDashboard": {
     "loading": "Loading the spec dashboard",
     "error": {
@@ -995,7 +928,7 @@
         "tasks": "{{landed}}/{{total}} tasks landed",
         "noTasks": "No tasks.md yet"
       },
-      "docs": {
+      "library": {
         "present": "{{names}}",
         "none": "No plan, design or constitution yet",
         "decisions": "{{count}} decisions"
@@ -1015,7 +948,7 @@
       "status": "Status",
       "live": "Live",
       "data": "Data",
-      "docs": "Docs",
+      "library": "Library",
       "notes": "Notes"
     },
     "warnings": {
@@ -2088,79 +2021,6 @@
   "live": {
     "taskActors": "Working on {{ task }}"
   },
-  "tech": {
-    "title": "Tech",
-    "loading": "Loading the tech page",
-    "error": "Could not load the tech page.",
-    "contents": "Contents",
-    "tabs": {
-      "overview": "Overview",
-      "architecture": "Architecture",
-      "status": "Status",
-      "specs": "Specs",
-      "open": "Open"
-    },
-    "eyebrowCount": "{{count}} specs",
-    "subline": {
-      "file": "specs/tech.md · {{count}} specs",
-      "noFile": "no specs/tech.md · {{count}} specs"
-    },
-    "section": {
-      "missing": "specs/tech.md has no {{key}} section.",
-      "hint": "Run /spec-doc to draft it."
-    },
-    "empty": {
-      "title": "No tech.md yet",
-      "body": "Overview and Architecture come from specs/tech.md. Draft it from Claude Code:"
-    },
-    "status": {
-      "heading": "Status",
-      "caption": "Status of every spec",
-      "summary": {
-        "specs": "{{count}} specs",
-        "open": "{{count}} open",
-        "phase": "{{count}} {{phase}}",
-        "complete": "{{count}} complete"
-      },
-      "legend": "Complete specs are listed last.",
-      "columns": {
-        "spec": "Spec",
-        "title": "Title",
-        "type": "Type",
-        "stage": "Stage",
-        "claims": "Claims",
-        "tasks": "Tasks",
-        "fog": "Fog"
-      },
-      "claims": "{{closed}} of {{total}} claims closed",
-      "tasks": "{{landed}}/{{total}} tasks",
-      "noTasks": "no tasks",
-      "fog": "{{count}} fog",
-      "fogHint": "Fog counts the open-question lines (- fog:) in this spec.",
-      "complete": "Complete · {{count}}"
-    },
-    "specs": {
-      "goal": "Goal",
-      "approach": "Approach",
-      "noPlan": "No plan.md yet",
-      "open": "Open spec"
-    },
-    "links": {
-      "goal": "Goal of {{id}}",
-      "plan": "Plan of {{id}}",
-      "status": "Status of {{id}}"
-    },
-    "open": {
-      "risks": "Risks",
-      "noRisks": "Risks come from specs/tech.md.",
-      "questions": "Open questions · {{lines}} fog lines · {{specs}} open specs",
-      "none": "No open questions in any open spec."
-    },
-    "palette": {
-      "page": "Tech",
-      "tab": "Tech · {{tab}}"
-    }
-  },
   "library": {
     "title": "Library",
     "heading": "Library · {{ws}}",
@@ -2174,23 +2034,50 @@
       "all": "All",
       "spec": "Spec",
       "allSpecs": "All specs",
-      "stale": "Only outdated"
+      "state": "State"
+    },
+    "states": {
+      "all": "All",
+      "stale": "Outdated",
+      "missing": "Missing",
+      "open": "Open"
     },
     "types": {
+      "spec": "Spec",
       "plan": "Plan",
+      "tasks": "Tasks",
       "design": "Design",
-      "decisions": "Decisions",
-      "constitution": "Constitution",
+      "context": "Decisions",
+      "artifact": "Artifact",
       "evidence": "Evidence",
-      "notes": "Notes"
+      "prototype": "Prototype",
+      "constitution": "Constitution",
+      "tech": "Tech",
+      "tldr": "TL;DR",
+      "idea": "Idea"
     },
     "wsWide": "{{ws}} · workspace-wide",
-    "count": "{{ws}} · {{shown}} of {{total}} documents · {{stale}} outdated",
+    "count": "{{ws}} · {{shown}} of {{total}} documents · {{stale}} outdated · {{missing}} missing",
     "outdated": "outdated",
-    "xrefTitle": "Shares references with {{count}} other documents",
+    "control": {
+      "label": "Document control",
+      "missing": {
+        "word": "missing",
+        "one": "Show {{count}} missing document",
+        "other": "Show {{count}} missing documents",
+        "none": "No missing documents"
+      },
+      "stale": {
+        "word": "outdated",
+        "one": "Show {{count}} outdated document",
+        "other": "Show {{count}} outdated documents",
+        "none": "No outdated documents"
+      }
+    },
+    "missing": "missing",
     "none": {
-      "heading": "No curated documents in {{ws}} yet",
-      "body": "The library of a workspace collects plan, design, decisions, evidence and notes of its specs. They appear once a spec gets its first plan."
+      "heading": "No documents in {{ws}} yet",
+      "body": "The library collects specs, plans, designs, evidence and prototypes as soon as the first spec folder exists."
     },
     "empty": {
       "heading": "No document matches",
@@ -2203,19 +2090,61 @@
       "updated": "updated {{date}}",
       "open": "Open in spec {{spec}}",
       "staleHeading": "Possibly outdated",
-      "image": "Preview of {{file}}",
       "pick": "Pick a document",
-      "pickBody": "Every plan, design, decision, piece of evidence and note from all specs, in one place."
+      "pickBody": "Every spec, plan, design, piece of evidence and prototype from all specs, in one place.",
+      "loading": "Loading the document",
+      "error": "The document could not be read.",
+      "missingHeading": "{{file}} is missing",
+      "missingBody": "The spec’s stage asks for this document; the command below writes it.",
+      "missingBodyPlain": "The spec’s stage asks for this document."
     },
-    "refs": {
-      "heading": "Cross references",
-      "none": "No references.",
-      "search": "Search all documents for {{ref}}",
-      "type": "Type",
-      "document": "Document",
-      "spec": "Spec",
-      "shared": "Shared references",
-      "sharedShort": "Shared:"
+    "head": {
+      "docs": "{{count}} documents",
+      "fog": "{{count}} open",
+      "fogLabel": "Show the {{count}} open points of {{spec}}",
+      "claims": "Claims",
+      "claimsText": "{{closed}} of {{total}} claims closed",
+      "tasks": "Tasks",
+      "approach": "Approach"
+    },
+    "fog": {
+      "count": "{{lines}} open points in {{specs}} specs",
+      "meta": "spec.md · Not yet specified",
+      "noneHeading": "Nothing open",
+      "noneBody": "No spec still in progress carries a fog line."
+    },
+    "tech": {
+      "notCreated": "{{path}} · not created yet",
+      "emptyHeading": "No tech documentation yet",
+      "emptyBody": "Overview, stack, architecture and risks of the repository live in one file, specs/tech.md, which /spec-doc writes.",
+      "missing": "{{section}}: section missing in tech.md",
+      "missingLabel": "Sections missing in tech.md",
+      "sections": {
+        "overview": "Overview",
+        "stack": "Stack",
+        "architecture": "Architecture",
+        "risks": "Risks"
+      }
+    },
+    "evidence": {
+      "toggle": "Evidence",
+      "label": "{{count}} evidence files of {{spec}}",
+      "more": "Show {{count}} more"
+    },
+    "meta": {
+      "image": "Image · {{path}}",
+      "prototype": "{{count}} pages · {{pages}}",
+      "noDate": "—"
+    },
+    "loading": "Loading the library",
+    "error": "The library could not be read.",
+    "date": "{{date}}, {{time}}",
+    "prototype": {
+      "pages": "Pages",
+      "open": "{{file}}, opens in a new tab",
+      "preview": "Preview · {{file}}",
+      "previewAlt": "Screenshot of the prototype {{title}}",
+      "foot": "Opens read-only in a new tab · local files only"
     }
   },
   "orientation": {

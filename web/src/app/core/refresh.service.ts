@@ -60,7 +60,7 @@ export function diffDashboards(before: unknown, after: unknown): DashboardDiff {
  * visible, and once when it becomes visible again, it reloads the shell's `resource()`s through `ApiClient`'s ETag
  * cache: a 304 costs no body, and a reload keeps the resources' last value, so no view is torn down and the DOM nodes
  * holding a number keep their identity while the number changes. The palette's "Refresh now" and the `r` key call
- * `refresh()`. The tech model is among them; off the tech page its resource is idle, so the reload fetches nothing.
+ * `refresh()`.
  * After each refresh the diff is exposed for in-place marks (`changedKpis`, `changedRows`, `newSpecs`)
  * and put into one polite `announcement`, only when something changed.
  */
@@ -128,7 +128,6 @@ export class RefreshService {
     this.data.dashboard.reload();
     this.data.planning.reload();
     this.data.spec.reload();
-    this.data.tech.reload();
     this.lastRefreshState.set(Date.now());
   }
 

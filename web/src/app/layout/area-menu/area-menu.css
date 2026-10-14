@@ -88,7 +88,7 @@
   background: var(--color-primary);
 }
 
-.dot[data-dot="docs"] {
+.dot[data-dot="library"] {
   background: var(--color-secondary);
 }
 

@@ -1,5 +1,5 @@
 import { computed, inject, Injectable, resource } from '@angular/core';
-import type { Priority, TechModel } from '../../../../../core/src/files';
+import type { Priority } from '../../../../../core/src/files';
 import type { ActorMapping, BoardQuery } from '../../../../../server/src/spec-routes.contract';
 import { ApiClient, type PlanningBody, type PutResult, type WorkspaceListEntry } from '../../core/api.service';
 import { type LiveReading, LockSourceService } from '../../core/lock-source.service';
@@ -57,7 +57,7 @@ function rowsOf(body: unknown, key: 'specs' | 'archive'): SpecRowView[] {
 
 /**
  * What the shell loads (T35): the workspace list, the open workspace's dashboard and planning tree (T22, spec 003) and
- * the open spec, and on the tech page its `TechModel` (spec 023), each a `resource()` over `ApiClient`, so a route change
+ * the open spec, each a `resource()` over `ApiClient`, so a route change
  * reloads only what it names. The spec payload's `areas.live` feeds
  * `LockSourceService`; while the spec route is not served yet (a catch-all 404) the reading stays null, source `none`.
  */
@@ -89,19 +89,6 @@ export class ShellData {
   readonly boardQuery = resource({
     params: () => this.state.ws() ?? undefined,
     loader: ({ params }) => this.api.boardQuery(params),
-  });
-
-  /**
-   * The open workspace's tech model (spec 023): keyed by the workspace and active only on the tech page, so no other
-   * page fetches it; outside it the resource is idle and `RefreshService`'s reload is a no-op. A workspace change
-   * drops the old value while the new one loads.
-   */
-  readonly tech = resource({
-    params: () => {
-      const ws = this.state.ws();
-      return ws !== null && this.state.wsPage() === 'tech' ? ws : undefined;
-    },
-    loader: ({ params }) => this.api.tech(params),
   });
 
   readonly spec = resource({
@@ -142,19 +129,6 @@ export class ShellData {
     return result?.kind === 'not-found' && result.served;
   });
   readonly workspaceUnavailable = computed(() => this.dashboard.value()?.kind === 'unavailable');
-
-  /** The tech answer as served; undefined while loading, after a thrown loader and off the tech page. */
-  readonly techResult = computed(() => (this.tech.hasValue() ? this.tech.value() : undefined));
-  /** The tech model as served; null while loading and for every answer but `ok`. */
-  readonly techModel = computed<TechModel | null>(() => {
-    const result = this.techResult();
-    return result?.kind === 'ok' ? result.body : null;
-  });
-  /** The tech page is the not-found page: the workspace or the tech route answered the contract's 404. */
-  readonly techMissing = computed(() => {
-    const result = this.techResult();
-    return this.workspaceMissing() || (result?.kind === 'not-found' && result.served);
-  });
 
   /** The planning body as served; null while loading and for every answer but `ok`. */
   readonly planningModel = computed(() => {

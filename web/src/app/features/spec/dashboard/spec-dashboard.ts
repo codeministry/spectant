@@ -31,7 +31,7 @@ const TILE_AREAS: ReadonlyArray<{ readonly id: Exclude<AreaId, 'dashboard'>; rea
   { id: 'status', key: 's' },
   { id: 'live', key: 'l' },
   { id: 'data', key: 'd' },
-  { id: 'docs', key: 'o' },
+  { id: 'library', key: 'o' },
   { id: 'notes', key: 'n' },
 ];
 
@@ -78,12 +78,12 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
         ['specDashboard.tiles.data.claims', areas.data.claims],
         areas.data.tasks === null ? ['specDashboard.tiles.data.noTasks', {}] : ['specDashboard.tiles.data.tasks', areas.data.tasks],
       ];
-    case 'docs':
+    case 'library':
       return [
         DOC_KEYS.some((doc) => areas.docs[doc])
-          ? ['specDashboard.tiles.docs.present', { names: DOC_KEYS.filter((doc) => areas.docs[doc]).map((doc) => t(`specDashboard.docNames.${doc}`)).join(' · ') }]
-          : ['specDashboard.tiles.docs.none', {}],
-        ['specDashboard.tiles.docs.decisions', { count: areas.docs.decisions }],
+          ? ['specDashboard.tiles.library.present', { names: DOC_KEYS.filter((doc) => areas.docs[doc]).map((doc) => t(`specDashboard.docNames.${doc}`)).join(' · ') }]
+          : ['specDashboard.tiles.library.none', {}],
+        ['specDashboard.tiles.library.decisions', { count: areas.docs.decisions }],
       ];
     case 'notes':
       return [

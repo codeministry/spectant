@@ -1,0 +1,33 @@
+<ui-card [padding]="16" class="proto-card">
+  @if (preview(); as shot) {
+    <!-- design.md 017 § 2.6: `figure.ev-preview`, only when the spec's .design/ holds the prototype's screenshot. -->
+    <figure class="proto-preview" data-library-prototype-preview>
+      <img [src]="shot.src" [alt]="'library.prototype.previewAlt' | transloco: { title: doc().title }" (error)="previewFailed.set(true)" />
+      <figcaption class="type-meta proto-caption">{{ 'library.prototype.preview' | transloco: { file: shot.caption } }}</figcaption>
+    </figure>
+  }
+
+  <h3 class="type-eyebrow proto-eyebrow" id="proto-pages-heading">
+    <span>{{ 'library.prototype.pages' | transloco }}</span><span class="proto-count">{{ pages().length }}</span>
+  </h3>
+  <ul class="proto-pages" aria-labelledby="proto-pages-heading">
+    @for (page of pages(); track page.file) {
+      <li>
+        <a
+          class="proto-page"
+          [href]="page.href"
+          target="_blank"
+          rel="noopener"
+          [attr.data-library-prototype-page]="page.file"
+          [attr.aria-label]="'library.prototype.open' | transloco: { file: page.file }"
+        >
+          <ui-icon class="proto-page-icon" name="app-window" [size]="16" />
+          <span class="proto-file">{{ page.file }}</span>
+          <ui-icon class="proto-page-icon" name="external-link" [size]="16" />
+        </a>
+      </li>
+    }
+  </ul>
+
+  <p class="type-meta proto-foot"><ui-icon name="lock" [size]="12" />{{ 'library.prototype.foot' | transloco }}</p>
+</ui-card>

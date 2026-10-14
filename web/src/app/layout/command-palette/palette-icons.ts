@@ -7,7 +7,6 @@ const GROUP_ICONS: Readonly<Partial<Record<string, IconName>>> = {
   nextUp: 'terminal',
   workspaces: 'folder',
   services: 'server',
-  tech: 'layers',
   actions: 'layers',
 };
 
@@ -16,6 +15,7 @@ const ACTION_ICONS: Readonly<Partial<Record<string, IconName>>> = {
   'action/all-workspaces': 'layers',
   'action/copy-next': 'copy',
   'action/open-board': 'layers',
+  'action/open-library': 'book',
   'action/help': 'circle-help',
   'action/open-assistant': 'message-circle-more',
   'action/refresh': 'refresh-cw',

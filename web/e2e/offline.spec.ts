@@ -13,7 +13,13 @@
  * - the chrome: the area menu, the workspace and spec pickers, the shortcut sheet (`?`) and the palette trigger;
  * - every write: the gate confirm (on 003, the harbor spec whose gate is `ready`; 002's is already `done`), a task tick
  *   and untick, a note create, edit and delete, the notes import-notice dismissal, rail collapse and expand, and a
- *   theme change (see `changeTheme`).
+ *   theme change (see `changeTheme`);
+ * - the library (spec 017, T40, ISC-159.2): the list, the reader on a document with a mermaid figure and a relative
+ *   image (`STUB_LIBRARY.reader`), an image document, and a prototype opened in a new tab from its card; that tab then
+ *   loads the stub-only page `STUB_LIBRARY.prototype.offline`, which names an external stylesheet, an external script
+ *   and an `@font-face` source on `.example` hosts. The prototype route's CSP must stop the browser before it asks:
+ *   none of those URLs may appear among the context's requests, not even as one the route handler aborts, the face
+ *   ends in `error`, and the tab's console reports a CSP refusal for each URL.
  *
  * A `context.route('**')` handler lets loopback http(s) through and aborts everything else, recording it; a request
  * listener records every request of the context. The session then asserts: no request left loopback, no request
@@ -21,9 +27,10 @@
  * rendered inside `app-shell` with content and without the not-found page (except on the unknown path).
  */
 import type { BrowserContext, Page, Request } from '@playwright/test';
-import { TAB_IDS } from '../src/app/layout/shell/areas';
+import { prototypeRoute } from '../../server/src/spec-routes.contract.ts';
+import { LEGACY_TAB_IDS, TAB_IDS } from '../src/app/layout/shell/areas';
 import { atWidth, expect, test } from './fixtures';
-import { STUB_NOTES } from './stub-api';
+import { STUB_LIBRARY, STUB_NOTES } from './stub-api';
 
 const SESSION = 'X-Spectant-Stub-Session';
 const SPEC = '/w/harbor/s/002';
@@ -33,6 +40,8 @@ const OWN_ORIGIN_TYPES = new Set(['font', 'script', 'stylesheet']);
 const HARBOR_002_NOTE = STUB_NOTES.find((note) => note.workspace === 'harbor' && note.anchor?.spec === '002');
 if (!HARBOR_002_NOTE) throw new Error('STUB_NOTES holds no harbor 002 note');
 
+const isLegacy = (tab: string): boolean => (LEGACY_TAB_IDS as readonly string[]).includes(tab);
+
 /** Every page of the app, in visiting order; `tab` is the tab bar's current tab on a spec route. */
 const PAGES: ReadonlyArray<{ readonly path: string; readonly tab?: string }> = [
   { path: '/' },
@@ -41,7 +50,9 @@ const PAGES: ReadonlyArray<{ readonly path: string; readonly tab?: string }> = [
   { path: '/settings' },
   { path: '/settings/workspaces' },
   { path: SPEC },
-  ...TAB_IDS.map((tab) => ({ path: `${SPEC}/${tab}`, tab })),
+  // The former Docs and Evidence tabs (spec 017) still answer until T48 redirects them, but no tab bar names them:
+  // they are visited for the network check without a current tab.
+  ...TAB_IDS.map((tab) => ({ path: `${SPEC}/${tab}`, ...(isLegacy(tab) ? {} : { tab }) })),
   { path: `${SPEC}/notes/${HARBOR_002_NOTE.id}`, tab: 'notes' },
 ];
 
@@ -57,6 +68,17 @@ const PLANNING_REDIRECTS = [
   { path: '/w/harbor/features#F2', sel: 'feature:F2' },
   { path: '/w/harbor/milestones#m-harbor-0-9', sel: 'milestone:harbor-0-9' },
 ] as const;
+const LIBRARY = '/w/harbor/library';
+const READER = '[data-library-reader]';
+const PROTOTYPE = STUB_LIBRARY.prototype;
+/** The stub's prototype folder `004-retention-policies/.design/prototype/board` as the read route names it. */
+const PROTOTYPE_SPEC = PROTOTYPE.path.slice(0, PROTOTYPE.path.indexOf('/'));
+const PROTOTYPE_FOLDER = PROTOTYPE.path.slice(`${PROTOTYPE_SPEC}/.design/`.length);
+const OFFLINE_PAGE = prototypeRoute('harbor', PROTOTYPE_SPEC, PROTOTYPE_FOLDER, PROTOTYPE.offline.file);
+/** The offline page's external resources as `[resource type, url]`; the keys are Playwright's resource types. */
+const EXTERNAL: ReadonlyArray<readonly [string, string]> = Object.entries(PROTOTYPE.offline.external);
+/** Chromium's failure text for a request the page's CSP refused in the renderer: reported, never sent. */
+const CSP_REFUSED = 'csp';
 
 const isLoopback = (url: URL): boolean => (url.protocol === 'http:' || url.protocol === 'https:') && LOOPBACK.has(url.hostname);
 
@@ -64,7 +86,7 @@ interface Traffic {
   /** Requests the route handler aborted: not loopback http(s). */
   readonly blocked: string[];
   /** Every request the context issued, with its resource type. */
-  readonly seen: Array<{ readonly url: string; readonly type: string }>;
+  readonly seen: Array<{ readonly url: string; readonly type: string; readonly request: Request }>;
 }
 
 async function guard(context: BrowserContext): Promise<Traffic> {
@@ -83,7 +105,7 @@ async function guard(context: BrowserContext): Promise<Traffic> {
     }
     return ws.connectToServer();
   });
-  context.on('request', (req: Request) => traffic.seen.push({ url: req.url(), type: req.resourceType() }));
+  context.on('request', (req: Request) => traffic.seen.push({ url: req.url(), type: req.resourceType(), request: req }));
   return traffic;
 }
 
@@ -136,7 +158,7 @@ for (const theme of ['light', 'dark'] as const) {
     });
 
     test(`offline: every route, the chrome and every write stay on loopback in ${theme}`, async ({ page, context, baseURL }) => {
-      test.setTimeout(60_000);
+      test.setTimeout(90_000);
       const origin = new URL(baseURL ?? '').origin;
       const traffic = await guard(context);
 
@@ -224,6 +246,72 @@ for (const theme of ['light', 'dark'] as const) {
         await expect(page).toHaveURL(new RegExp(`${SPEC}/status$`, 'u'));
       });
 
+      await test.step('the library: list, reader, image and a prototype tab with an external font, stylesheet and script', async () => {
+        await page.goto(LIBRARY);
+        await expect(page.locator('[data-library-entry]').first()).toBeVisible();
+
+        // The reader: Docs prose with a drawn mermaid figure and a relative image through the library's file route.
+        await page.goto(`${LIBRARY}#${STUB_LIBRARY.reader.path}`);
+        await page.reload();
+        const prose = page.locator(`${READER} [data-library-prose]`);
+        await expect(prose.locator('figure.mermaid-figure[data-rendered] .mermaid-svg svg')).toBeVisible();
+        const figureImg = prose.locator('figure.image-figure img');
+        await figureImg.scrollIntoViewIfNeeded();
+        await expect.poll(() => figureImg.evaluate((el: HTMLImageElement) => (el.complete ? el.naturalWidth : 0))).toBeGreaterThan(0);
+
+        // An image document: its preview, decoded.
+        await page.goto(`${LIBRARY}#${PROTOTYPE.preview}`);
+        await page.reload();
+        const preview = page.locator(`${READER} [data-library-preview] img`);
+        await expect.poll(() => preview.evaluate((el: HTMLImageElement) => (el.complete ? el.naturalWidth : 0))).toBeGreaterThan(0);
+
+        // The prototype: its entry page in a new tab from the card, then the stub-only page with external resources.
+        await page.goto(`${LIBRARY}#${PROTOTYPE.path}`);
+        await page.reload();
+        const [tab] = await Promise.all([
+          context.waitForEvent('page'),
+          page.locator(`${READER} [data-library-prototype] [data-library-prototype-page="index.html"]`).click(),
+        ]);
+        await tab.waitForLoadState('load');
+        await expect(tab.locator('h1')).toHaveText(/\S/u);
+
+        const refusals: string[] = [];
+        tab.on('console', (msg) => {
+          if (msg.text().includes('Content Security Policy')) refusals.push(msg.text());
+        });
+        const answer = await tab.goto(OFFLINE_PAGE);
+        expect(answer?.status()).toBe(200);
+        expect(answer?.headers()['content-security-policy'] ?? '', 'the prototype answer carries a sandboxing CSP').toMatch(/(^|;)\s*sandbox\b/u);
+        await expect(tab.locator('h1')).toHaveText('Offline probe');
+
+        // Ask for the face explicitly, so the font's fetch is attempted before the traffic is read.
+        const family = PROTOTYPE.offline.family;
+        const status = await tab.evaluate(async (name) => {
+          await document.fonts.load(`16px "${name}"`).catch(() => []);
+          await document.fonts.ready;
+          return [...document.fonts].find((face) => face.family.replace(/^["']|["']$/gu, '') === name)?.status ?? 'absent';
+        }, family);
+        expect(status, `the @font-face "${family}" from an external host`).toBe('error');
+
+        // Not one external URL left the renderer: Chromium reports each as a request it refused for the CSP
+        // (`failure().errorText === 'csp'`, never sent), and the guard, which sees every request bound for the
+        // network, had nothing to abort. A weakened CSP lets them through to the guard, and this step fails.
+        expect(traffic.seen.some(({ url, type }) => type === 'document' && new URL(url).pathname === OFFLINE_PAGE), 'the offline page was loaded').toBe(true);
+        const external = (): string[] =>
+          traffic.seen.filter(({ url }) => !isLoopback(new URL(url))).map(({ url, type, request }) => `${type} ${url}: ${request.failure()?.errorText ?? 'not refused'}`);
+        await expect.poll(() => external().sort(), { message: 'external URLs, each refused by the CSP before it was sent' }).toEqual(
+          EXTERNAL.map(([type, url]) => `${type} ${url}: ${CSP_REFUSED}`).sort(),
+        );
+        expect(traffic.blocked, 'requests that reached the guard for a host outside the loopback').toEqual([]);
+
+        // Evidence: the tab's console names a CSP refusal for each external URL.
+        for (const [, url] of EXTERNAL) {
+          await expect.poll(() => refusals.some((text) => text.includes(url)), { message: `CSP refusal for ${url}` }).toBe(true);
+        }
+        test.info().annotations.push({ type: 'csp-refusals', description: `${String(refusals.length)} refusals in the prototype tab` });
+        await tab.close();
+      });
+
       await test.step('write: gate confirm', async () => {
         await page.goto('/w/harbor/s/003');
         await page.locator('app-spec-head [data-gate-action]').click();
@@ -293,8 +381,10 @@ for (const theme of ['light', 'dark'] as const) {
         await changeTheme(page, theme === 'light' ? 'dark' : 'light');
         await rendered(page, `${SPEC}/status`, 'status');      });
 
-      const schemes = traffic.seen.filter(({ url }) => !isLoopback(new URL(url))).map(({ url }) => url);
-      const foreign = traffic.seen.filter(({ url, type }) => OWN_ORIGIN_TYPES.has(type) && new URL(url).origin !== origin);
+      // A request the CSP refused in the renderer (the prototype tab's external resources) never left it.
+      const sent = traffic.seen.filter(({ request }) => request.failure()?.errorText !== CSP_REFUSED);
+      const schemes = sent.filter(({ url }) => !isLoopback(new URL(url))).map(({ url }) => url);
+      const foreign = sent.filter(({ url, type }) => OWN_ORIGIN_TYPES.has(type) && new URL(url).origin !== origin);
       const count = (type: string) => traffic.seen.filter((r) => r.type === type).length;
       test.info().annotations.push({
         type: 'traffic',

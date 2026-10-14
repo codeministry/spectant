@@ -9,13 +9,16 @@ import { SpecHead } from '../../layout/spec-head/spec-head';
 import { TabBarSlot } from '../../layout/tab-bar/tab-bar-slot';
 import { SpecRail } from './rail/spec-rail';
 
-/** The areas whose tabs share the spec rail; the dashboard and the live area register their own rail. */
-const RAIL_AREAS: ReadonlySet<AreaId> = new Set(['status', 'data', 'docs', 'notes']);
+/**
+ * The areas whose tabs share the spec rail; the dashboard and the live area register their own rail, and the Library
+ * has none (`no-rail`, spec 017: the shell draws no rail column there, `SpecArea.noRail`).
+ */
+const RAIL_AREAS: ReadonlySet<AreaId> = new Set(['status', 'data', 'notes']);
 
 /**
  * `/w/:ws/s/:id`: the spec head (`app-spec-head`, T78), the tab bar (sticky under the header on every width, spec 024), then the tab's view. An unknown spec
  * renders the not-found page (ISC-71). From 1120 px it registers the spec rail (`app-spec-rail`: Where it stands,
- * Waiting on you, the key line; spec 024) with `RailContent` for every tab of the Status, Data, Docs and Notes areas,
+ * Waiting on you, the key line; spec 024) with `RailContent` for every tab of the Status, Data and Notes areas,
  * so the rail is the same on each of them; below 1120 px each tab keeps its own inline blocks.
  */
 @Component({

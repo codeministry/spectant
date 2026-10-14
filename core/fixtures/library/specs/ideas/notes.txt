@@ -1,0 +1,1 @@
+Loose notes, not a story: only Markdown files under ideas/ are stories.

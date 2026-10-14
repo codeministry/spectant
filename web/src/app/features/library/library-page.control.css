@@ -1,0 +1,140 @@
+/* The Library's document control (spec 017, T30, ISC-156.1): the control counts, the state chips and the dimmed
+   missing entry, beside `library-page.css` so each sheet stays inside the component style budget. Not encapsulated,
+   as the page: every selector starts with `app-library-page`. */
+
+/* The card's first row (design.md 017 § Viewport-übergreifend, Mobile § 2; ISC-156.1): two control counts, missing
+   then outdated, `1fr 1fr` at compact; from 640 px the pair keeps a readable width instead of spanning the card. */
+app-library-page .lib-head {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-inline-size: 440px;
+}
+
+@container shell (width < 640px) {
+  app-library-page .lib-head {
+    max-inline-size: none;
+  }
+}
+
+app-library-page .lib-ctl {
+  --ctl-tone: var(--muted);
+
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  column-gap: 4px;
+  align-content: center;
+  min-block-size: 56px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--dur-hover) var(--ease);
+}
+
+app-library-page .lib-ctl[data-library-control='missing'] { --ctl-tone: var(--ques-text); }
+app-library-page .lib-ctl[data-library-control='stale'] { --ctl-tone: var(--hover-text); }
+
+app-library-page .lib-ctl-icon {
+  grid-row: 1 / span 2;
+  align-self: start;
+  margin-block-start: 6px;
+  color: var(--ctl-tone);
+}
+
+app-library-page .lib-ctl-value {
+  color: var(--ctl-tone);
+  font: 600 20px/28px var(--font-brand);
+  font-variant-numeric: tabular-nums;
+}
+
+app-library-page .lib-ctl-label {
+  grid-column: 2;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+app-library-page .lib-ctl:hover,
+app-library-page .lib-ctl[aria-pressed='true'] {
+  background: var(--color-base-300);
+}
+
+/* Pressed like a pressed filter pill: raised ground, track edge; the value keeps its tone ink. */
+app-library-page .lib-ctl[aria-pressed='true'] {
+  border-color: var(--track);
+}
+
+/* Zero: the number stays so nothing jumps; muted value, green check, no hover, no filter. */
+app-library-page .lib-ctl[aria-disabled='true'] {
+  cursor: default;
+}
+
+app-library-page .lib-ctl[aria-disabled='true']:not([aria-pressed='true']):hover {
+  background: var(--color-base-100);
+}
+
+app-library-page .lib-ctl[aria-disabled='true'] .lib-ctl-value {
+  color: var(--muted-ink);
+}
+
+app-library-page .lib-ctl[aria-disabled='true'] .lib-ctl-icon {
+  color: var(--done-text);
+}
+
+/* The state chips of slot 1 (design.md 017 § Viewport-übergreifend): outdated on the orange tint with
+   `triangle-alert` (prototype `.lib-stale`), missing on the violet scoping tint with `file-x`; word and icon tell them
+   apart without colour. Ink on its own tint is the `--*-ink` (ISC-65). */
+app-library-page .lib-stale,
+app-library-page .lib-missing {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  max-inline-size: 100%;
+  block-size: 18px;
+  padding-inline: 5px 6px;
+  border-radius: 4px;
+  background: var(--hover-t);
+  color: var(--hover-ink);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+app-library-page .lib-missing {
+  background: var(--ques-t);
+  color: var(--ques-ink);
+}
+
+/* A missing row is dimmed by colour and form, never by opacity (DS-APP-33): the title in muted ink, the type tag
+   transparent with a dashed edge in the track colour instead of its family colour; the chip stays fully opaque. */
+app-library-page .lib-row[data-state='missing'] .lib-title {
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+app-library-page .lib-row[data-state='missing'] .lib-type {
+  border: 1px dashed var(--line);
+  border-inline-start: 3px dashed var(--track);
+  background: transparent;
+  color: var(--muted-ink);
+}
+
+@media (forced-colors: active) {
+  app-library-page .lib-ctl[aria-pressed='true'] {
+    outline: 2px solid Highlight;
+  }
+
+  app-library-page .lib-stale,
+  app-library-page .lib-missing {
+    border: 1px solid CanvasText;
+  }
+}
+

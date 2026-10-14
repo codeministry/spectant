@@ -13,7 +13,7 @@ import {
   type TabId,
   type WorkspacePageId,
 } from './areas';
-import { isPlanningLensId, isTechTabId, type PlanningLensId, type TechTabId } from './page-tabs';
+import { isPlanningLensId, type PlanningLensId } from './page-tabs';
 import type { Tier } from './tier';
 
 /** What the current route says, read once per navigation from the whole snapshot chain. */
@@ -21,10 +21,8 @@ export interface ShellRoute {
   readonly ws: string | null;
   readonly specId: string | null;
   readonly area: AreaId | null;
-  /** The spec tab; null off a spec, the tech page included (its `status` is no spec tab). */
+  /** The spec tab; null off a spec. */
   readonly tab: TabId | null;
-  /** The tech page's tab on `/w/:ws/tech/<tab>` (`wsPage` `tech`, spec 023); null on every other route. */
-  readonly techTab: TechTabId | null;
   /** The planning page's lens on `/w/:ws/planning/<lens>` (`wsPage` `planning`, spec 026); null on every other route. */
   readonly lens: PlanningLensId | null;
   /** The workspace-scope page: route data `page`, else the spec list on `/w/:ws`, else null (spec routes, not-found). */
@@ -50,13 +48,11 @@ function readRoute(root: ActivatedRouteSnapshot): ShellRoute {
   const notFound = data.notFound === true;
   const wsPage = isWorkspacePageId(data.page) ? data.page : ws !== null && specId === null && !notFound ? 'specs' : null;
   const ideaSlug = wsPage === 'idea' ? (params['slug'] ?? null) : null;
-  const tech = wsPage === 'tech';
   const planning = wsPage === 'planning';
   // `board` is a spec tab and a lens: on the planning page it is the lens only.
-  const tab = !tech && !planning && isTabId(data.tab) ? data.tab : null;
+  const tab = !planning && isTabId(data.tab) ? data.tab : null;
   const lens = planning && isPlanningLensId(data.tab) ? data.tab : null;
-  const techTab = tech && isTechTabId(data.tab) ? data.tab : null;
-  return { ws, specId, area, tab, techTab, lens, wsPage, ideaSlug, notFound };
+  return { ws, specId, area, tab, lens, wsPage, ideaSlug, notFound };
 }
 
 /** An open `<dialog>` or popover owns Esc (the overlay primitives close it); the shell leaves the key alone then. */
@@ -112,11 +108,9 @@ export class ShellState {
   readonly ws = computed(() => this.route().ws);
   readonly specId = computed(() => this.route().specId);
   readonly area = computed(() => this.route().area);
-  /** The workspace page of the route (`specs`, `board`, `features`, `milestones`, `idea`, `tech`), null on spec and global routes. */
+  /** The workspace page of the route (`specs`, `board`, `features`, `milestones`, `idea`, `library`), null on spec and global routes. */
   readonly wsPage = computed(() => this.route().wsPage);
   readonly tab = computed(() => this.route().tab);
-  /** The open tab of the tech page (`overview` … `open`), null elsewhere. */
-  readonly techTab = computed(() => this.route().techTab);
   readonly notFound = computed(() => this.route().notFound);
 
   toggleZen(): void {

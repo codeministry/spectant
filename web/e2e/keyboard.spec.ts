@@ -30,9 +30,10 @@ test.describe('keyboard', () => {
     await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/claims$/);
     await expect(page.locator('main :is(h1, h2):focus')).toHaveCount(1);
 
+    // Spec 017 (T45, ISC-158): the former Docs key opens the Library area; Evidence has no key of its own any more.
     await page.keyboard.press('g');
-    await page.keyboard.press('e');
-    await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/evidence$/);
+    await page.keyboard.press('o');
+    await expect(page).toHaveURL(/\/w\/harbor\/s\/002\/library$/);
 
     await page.keyboard.press('g');
     await page.keyboard.press('h');
