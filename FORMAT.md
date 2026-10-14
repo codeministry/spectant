@@ -148,7 +148,8 @@ inside a fenced block are neither claims nor headings.
 - A claim line is `- [ ] <ID>: <text>`, checked as `[x]` or `[X]`, indented for a nested leaf. The ID is
   `ISC-<n>[.<m>…]`, a domain form (`H-AVAIL`) or a short form (`C4`, `EQ-12`); the separator after it may be `:`,
   `—`, `–`, `-` or nothing. Trailing marks `⟨?: …⟩` / `⟨resolved: …⟩` are lifted off first, then one trailing
-  `(after: A, B)` (comma or space separated, a final `.` allowed); code spans never count. A leading
+  `(after: A, B)` (comma or space separated, a final `.` allowed); code spans never count. A token of exactly three
+  digits in that group is a **spec edge** (`afterSpecs`, below), never a claim edge. A leading
   `[DROPPED …]` is a tombstone whose words are its note, and `[DROPPED` anywhere marks the claim dropped. After the
   tombstone, `Anti:` or `Antecedent:` sets the claim's kind. A checkbox without an ID warns and is invisible.
 - `## Not yet specified` holds `- fog: <text>` lines, trailing marks lifted.
@@ -260,6 +261,7 @@ dashboard and in the archive listing. `tasks.ts` (`parseTaskLines`) reads the fu
   outside the table is kept with a warning; `operator` is always valid, is the principal's own step and is never
   dispatched;
 - `(after: …)` names tasks, not claims (`T3–T5` ranges expand), may stand anywhere in the text and is removed from it;
+  a token of exactly three digits in it is a spec edge (`afterSpecs`, see **Spec edges** below), not a task edge;
 - the text runs to the last ` · ` outside code spans and may itself hold ` · `, inside or outside code spans;
 - `<paths>` follow that last ` · `, split on `, ` outside code spans and parentheses: a code span (or a bare token with
   a `/` or `.`) is one path; a parenthesised item such as `(probe only)` is a path note, not a path; a tail with
@@ -291,6 +293,31 @@ From `core/fixtures/harbor/specs/002-web-console/tasks.md`:
 - [x] T30 · ISC-77 · [P] · operator — set up the screen-reader profile on the test device · `tests/manual/screen-reader-setup.md`
 - [ ] T31 · ISC-77 · operator — screen-reader pass over the sync history (ISC-77) (after: T1, T30) · `tests/manual/screen-reader.md`
 ```
+
+**Spec edges** (spec 025). A token of exactly three digits in the `(after: …)` of a task in `tasks.md` or of a claim
+in `spec.md` names the whole spec with that number, active (`specs/NNN-slug/`) or archived (`specs/archive/NNN-slug/`).
+It may share one group with task or claim edges; the parser reads it apart from them into `afterSpecs` (on `Claim`,
+`ClaimView` and the task row), in written order, each number once, and `edges` keeps only the `T…` or `ISC-…` ids. A
+spec number is no malformed task edge and no unknown claim ID, so it raises neither warning. A group inside a code
+span is no edge, as for every edge. A number that no spec folder carries is still read as a spec edge; whether it names a spec is a question for
+resolution, not for the parser.
+
+From `core/fixtures/edges/specs/003-route-map/tasks.md`:
+
+```markdown
+- [ ] T2 · ISC-5 · web — reuse the stop search for map taps (after: T1, 002) · `src/app/stops/search.ts`
+```
+
+From `core/fixtures/edges/specs/003-route-map/spec.md`:
+
+```markdown
+- [ ] ISC-6: A stop on the map opens the search result for it. (after: ISC-5, 002)
+- [ ] ISC-7: Routes from the imported timetable carry their colour. (after: 001)
+```
+
+`T2` waits on `T1` and on spec `002`; `ISC-7` waits on the archived `001`. The build tooling that predates spec 025
+does not know spec edges. Until a dispatcher that reads `afterSpecs` builds the specs of a repository, its `tasks.md`
+files carry no spec edge.
 
 **Derived:** the task fraction, the lanes on the spec page, the takeable set of the next round (`takeable.ts`: claim
 takeable, which needs a fresh reviewed mark, task edges done, no file shared within the round, width 1 for bug, spike

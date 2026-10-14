@@ -8,6 +8,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": null,
         "verification": null,
@@ -23,6 +24,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": null,
         "verification": null,
@@ -40,6 +42,7 @@
         "edges": [
           "ISC-3"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": null,
         "verification": null,
@@ -73,6 +76,7 @@
         "state": "open",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": null,
         "verification": null,
@@ -90,6 +94,7 @@
         "edges": [
           "ISC-6"
         ],
+        "afterSpecs": [],
         "blockedBy": [
           "ISC-6"
         ],
@@ -107,6 +112,7 @@
         "state": "open",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": null,
         "verification": null,
@@ -122,6 +128,7 @@
         "state": "open",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": null,
         "verification": null,
@@ -155,6 +162,7 @@
         "state": "open",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": null,
         "verification": null,
@@ -172,6 +180,7 @@
         "edges": [
           "ISC-9"
         ],
+        "afterSpecs": [],
         "blockedBy": [
           "ISC-9"
         ],

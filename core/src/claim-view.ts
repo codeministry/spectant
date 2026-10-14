@@ -69,6 +69,7 @@ export function buildClaimViews(input: ClaimViewInput): ClaimViewModel {
       state: s,
       kind: c.kind,
       edges: c.after,
+      afterSpecs: c.afterSpecs,
       blockedBy: blockedBy.get(c.id) ?? [],
       probe: probes.get(c.id) ?? null,
       verification: verification.get(c.id) ?? null,

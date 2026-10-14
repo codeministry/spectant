@@ -21,7 +21,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T2",
@@ -45,7 +46,8 @@
         "pathNote": null,
         "edges": [
           "T1"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T3",
@@ -69,7 +71,8 @@
         "pathNote": null,
         "edges": [
           "T1"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T4",
@@ -91,7 +94,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T5",
@@ -113,7 +117,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T6",
@@ -137,7 +142,8 @@
         "pathNote": null,
         "edges": [
           "T5"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T7",
@@ -159,7 +165,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T8",
@@ -183,7 +190,8 @@
         "pathNote": null,
         "edges": [
           "T7"
-        ]
+        ],
+        "afterSpecs": []
       }
     ],
     "probeMapping": [

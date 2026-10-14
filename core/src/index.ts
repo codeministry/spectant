@@ -13,7 +13,10 @@
 // Spec 017's catalog types (`LibraryCatalog`, `LibraryDoc`, `SpecGroupHead`, `LibraryFogLine`, …) ride it through
 // files.ts; its reader `readCatalog` (library.ts) walks the workspace through node:fs, so it stays out like
 // evidence.ts and the server imports it from the module itself; only its types are re-exported here.
+// Spec 025's spec edges: `splitSpecEdges` rides the barrel with claims.ts, and spec-ref.ts (pure string helpers,
+// `SPEC_ID` and `specIdOf`) rides it whole, so a reader can match an edge's `NNN` to its active or archived folder.
 export * from './files.ts';
+export * from './spec-ref.ts';
 export type * from './diagnostics.ts';
 export * from './relations.ts';
 export * from './frontmatter.ts';

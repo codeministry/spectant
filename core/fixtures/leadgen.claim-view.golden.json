@@ -8,6 +8,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-327",
@@ -33,6 +34,7 @@
         "edges": [
           "ISC-327"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-328",
@@ -58,6 +60,7 @@
         "edges": [
           "ISC-327"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-329",
@@ -83,6 +86,7 @@
         "edges": [
           "ISC-329"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-330",
@@ -108,6 +112,7 @@
         "edges": [
           "ISC-329"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-331",
@@ -133,6 +138,7 @@
         "edges": [
           "ISC-329"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-332",
@@ -158,6 +164,7 @@
         "edges": [
           "ISC-327"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-333",
@@ -183,6 +190,7 @@
         "edges": [
           "ISC-329"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-334",
@@ -206,6 +214,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-335",
@@ -231,6 +240,7 @@
         "edges": [
           "ISC-331"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-336",
@@ -298,6 +308,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-473",
@@ -323,6 +334,7 @@
         "edges": [
           "ISC-473"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-474",
@@ -348,6 +360,7 @@
         "edges": [
           "ISC-474"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-475",
@@ -371,6 +384,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-476",
@@ -394,6 +408,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-477",
@@ -419,6 +434,7 @@
         "edges": [
           "ISC-477"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-478",
@@ -442,6 +458,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-479",
@@ -470,6 +487,7 @@
           "ISC-478",
           "ISC-479"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-480",
@@ -527,6 +545,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-337",
@@ -550,6 +569,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-338",
@@ -573,6 +593,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-339",
@@ -596,6 +617,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-340",
@@ -619,6 +641,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-341",
@@ -644,6 +667,7 @@
         "edges": [
           "ISC-348"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-342",
@@ -669,6 +693,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-343",
@@ -692,6 +717,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-344",
@@ -715,6 +741,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-345",
@@ -740,6 +767,7 @@
         "edges": [
           "ISC-348"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-346",
@@ -763,6 +791,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-347",
@@ -786,6 +815,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-348",
@@ -809,6 +839,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-349",
@@ -832,6 +863,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-350",
@@ -858,6 +890,7 @@
           "ISC-337",
           "ISC-346"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-351",
