@@ -51,7 +51,7 @@ export class LibraryTabCount {
 
 /**
  * The planning page's lenses in tab-bar order, Matrix first (spec 026, ISC-167; `/w/:ws/planning/<lens>`,
- * `/w/:ws/planning` still opens the tree). Tabs are route links that keep `?sel=` and `?m=` (`keepQuery`), labelled `planning.page.lenses.<id>`.
+ * `/w/:ws/planning` opens the matrix). Tabs are route links that keep `?sel=` and `?m=` (`keepQuery`), labelled `planning.page.lenses.<id>`.
  */
 export const PLANNING_LENSES = ['board', 'tree', 'graph'] as const;
 export type PlanningLensId = (typeof PLANNING_LENSES)[number];
@@ -61,7 +61,7 @@ export const isPlanningLensId = (value: unknown): value is PlanningLensId => (PL
 const LENS_ICONS: Record<PlanningLensId, IconName> = { tree: 'list-tree', board: 'layout-grid', graph: 'share-2' };
 
 /** `['/w', ws, 'planning', lens]` as a router link. */
-export const planningLink = (ws: string, lens: PlanningLensId = 'tree'): string[] => ['/w', ws, 'planning', lens];
+export const planningLink = (ws: string, lens: PlanningLensId = 'board'): string[] => ['/w', ws, 'planning', lens];
 
 /** The lens tabs of workspace `ws`, each with its icon, keeping the selection and milestone query on a switch. */
 export const planningTabs = (ws: string): PageTab[] =>

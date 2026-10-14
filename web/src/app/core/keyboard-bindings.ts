@@ -176,7 +176,7 @@ const workspaceShortcuts: Shortcut[] = [
   },
   // Spec 024 (T58, ISC-150.1): `g f` Features and `g m` Milestones; both free in the workspace context (`f` and `m`
   // alone are single keys, not `g` sequences). Spec 026 (ISC-167.1): they left the page registry for Planning and stay
-  // as aliases of the old routes, which redirect to the tree, so they open the tree directly.
+  // as aliases of Planning and open it like `g p` (the matrix).
   ...(['features', 'milestones'] as const).map(
     (page): Shortcut => ({
       id: `go-${page}`,

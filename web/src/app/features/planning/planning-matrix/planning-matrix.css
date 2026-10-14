@@ -278,7 +278,7 @@ button.single-head {
 
 .mx {
   display: grid;
-  min-inline-size: max-content;
+  min-inline-size: min-content;
 }
 
 .heads,

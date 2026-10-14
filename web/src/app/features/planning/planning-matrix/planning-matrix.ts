@@ -114,10 +114,13 @@ export class PlanningMatrix {
     }));
   });
 
-  /** The grid's tracks: the 200 px head column at wide, then 184 px (224 px at medium) per column, 44 px per stripe. */
+  /**
+   * The grid's tracks: the 200 px head column at wide, then per column at least 184 px (224 px at medium), growing to
+   * share the full width; 44 px per stripe. Narrower than the minimums, the grid scrolls in its own container.
+   */
   protected readonly tracks = computed(() => {
     const wide = this.layout() === 'grid';
-    const cols = this.columns().map((c) => (c.folded ? '44px' : wide ? '184px' : '224px'));
+    const cols = this.columns().map((c) => (c.folded ? '44px' : wide ? 'minmax(184px, 1fr)' : 'minmax(224px, 1fr)'));
     return [...(wide ? ['200px'] : []), ...cols].join(' ');
   });
 

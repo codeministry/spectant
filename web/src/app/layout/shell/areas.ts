@@ -134,7 +134,7 @@ export const WORKSPACE_PAGES: readonly WorkspacePage[] = [
   // 2026-10-11 review found it free, the round board's `b` being a tab inside a spec, not a `g` sequence.
   { id: 'board', icon: 'square-kanban', labelKey: 'shell.pages.board', summaryKey: 'shell.pages.summary.board', goKey: 'b' },
   // Spec 026 (ISC-167, ISC-167.1): Planning, one page with the lenses Matrix, Tree and Graph, replaces Features and
-  // Milestones in the menu; their routes redirect to the tree, and `g f` / `g m` open it.
+  // Milestones in the menu; their routes redirect to the tree, and `g f` / `g m` open the page (the matrix).
   { id: 'planning', icon: 'list-tree', labelKey: 'shell.pages.planning', summaryKey: 'shell.pages.summary.planning', goKey: 'p' },
   // Spec 017 (T41, ISC-157.1): the Library where Tech stood, after Planning; Tech's content is in it and its routes
   // redirect there. The summary counts the catalog's documents, outdated and missing ones (`AreaMenu`).
