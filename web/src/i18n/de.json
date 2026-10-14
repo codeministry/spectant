@@ -2117,6 +2117,7 @@
     "wsWide": "{{ws}} · workspaceweit",
     "count": "{{ws}} · {{shown}} von {{total}} Dokumenten · {{stale}} veraltet · {{missing}} fehlen",
     "outdated": "veraltet",
+    "archived": "archiviert",
     "control": {
       "label": "Dokumentkontrolle",
       "missing": {

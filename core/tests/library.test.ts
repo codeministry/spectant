@@ -1,6 +1,7 @@
 // The document catalog of a workspace (spec 017, ISC-155): per spec its five Markdown files, every image or Markdown
 // file under `artifacts/`, `.evidence/` and `.design/`, each folder in `.design/prototype/` that holds HTML pages as one
-// `prototype` document; per workspace `constitution.md`, `tech.md`, `tldr.md` and `ideas/*.md`; nothing archived.
+// `prototype` document; per workspace `constitution.md`, `tech.md`, `tldr.md` and `ideas/*.md`. An archived spec's documents
+// (spec 034, ISC-187) are listed below `archive/NNN-slug/` with `archived: true`, never `stale` or `missing`.
 // The fixture `core/fixtures/library/` is copied to a temp directory and every mtime is set from `TIMES`, so the
 // `modified` of each document is known and a checkout never changes a result. `readCatalog` only reads.
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
@@ -191,6 +192,18 @@ const EXPECTED: readonly Expected[] = [
   { path: `${S4}/spec.md`, type: 'spec', spec: S4, title: '004 — Fog horn timing', media: 'markdown' },
 ];
 
+/** The archived spec of the fixture (spec 034, ISC-187): its documents below `archive/`, by the same zone rules. */
+const A0 = '000-first-light';
+const ARCHIVED: ReadonlyArray<Pick<LibraryDoc, 'path' | 'type' | 'spec' | 'title' | 'media' | 'pages'>> = [
+  { path: `archive/${A0}/spec.md`, type: 'spec', spec: A0, title: '000 — First light', media: 'markdown' },
+  { path: `archive/${A0}/plan.md`, type: 'plan', spec: A0, title: 'Plan 000 — first-light', media: 'markdown' },
+  { path: `archive/${A0}/context.md`, type: 'context', spec: A0, title: 'Context log 000 — first-light', media: 'markdown' },
+  { path: `archive/${A0}/artifacts/old.png`, type: 'artifact', spec: A0, title: 'old.png', media: 'image' },
+  { path: `archive/${A0}/.evidence/old.md`, type: 'evidence', spec: A0, title: 'Old evidence', media: 'markdown' },
+  { path: `archive/${A0}/.design/first.png`, type: 'design', spec: A0, title: 'first.png', media: 'image' },
+  { path: `archive/${A0}/.design/prototype`, type: 'prototype', spec: A0, title: 'prototype', media: 'prototype', pages: ['index.html'] },
+];
+
 /** The comparable fields of a document; `pages` only where the document has them. */
 const shape = (d: Pick<LibraryDoc, 'path' | 'type' | 'spec' | 'title' | 'media' | 'pages'>) => ({
   path: d.path,
@@ -225,11 +238,11 @@ describe('catalog (ISC-155)', () => {
   test('catalog: every fixture document exactly once with type, spec, title and path, 0 foreign', () => {
     const paths = present.map((d) => d.path);
     expect(paths.filter((p, i) => paths.indexOf(p) !== i)).toEqual([]);
-    expect(present.map(shape).sort(byPath)).toEqual(EXPECTED.map(shape).sort(byPath));
+    expect(present.filter((d) => d.archived !== true).map(shape).sort(byPath)).toEqual(EXPECTED.map(shape).sort(byPath));
   });
 
   test('catalog: each document carries its modification time as ISO 8601, a prototype its newest file', () => {
-    const times = present.map((d) => ({ path: d.path, modified: d.modified }));
+    const times = present.filter((d) => d.archived !== true).map((d) => ({ path: d.path, modified: d.modified }));
     expect(times.filter((t) => t.modified === null || !ISO_8601.test(t.modified))).toEqual([]);
     const want = EXPECTED.map((e) => ({ path: e.path, ms: timeOf(e.newest ?? `specs/${e.path}`) })).sort(byPath);
     const got = times.map((t) => ({ path: t.path, ms: t.modified === null ? null : Date.parse(t.modified) })).sort(byPath);
@@ -243,7 +256,7 @@ describe('catalog (ISC-155)', () => {
   });
 
   test('catalog: a prototype folder is one document; its files and a folder without HTML are no entries', () => {
-    const prototypes = present.filter((d) => d.type === 'prototype');
+    const prototypes = present.filter((d) => d.type === 'prototype' && d.archived !== true);
     expect(prototypes.map((d) => [d.path, d.pages ?? null]).sort()).toEqual([
       [`${S1}/.design/prototype`, ['index.html']],
       [`${S2}/.design/prototype/board`, ['detail.html', 'index.html']],
@@ -255,11 +268,21 @@ describe('catalog (ISC-155)', () => {
     expect(catalog.docs.filter((d) => d.path.startsWith(`${S2}/.design/prototype/src`)).map((d) => d.path)).toEqual([]);
   });
 
-  test('catalog: specs under specs/archive/ do not count', () => {
-    expect(catalog.docs.filter((d) => d.path.startsWith('archive/') || d.spec === '000-first-light').map((d) => d.path)).toEqual(
-      [],
+  test('archived: every document of an archived spec exactly once below archive/NNN-slug/, flagged archived', () => {
+    const archived = catalog.docs.filter((d) => d.path.startsWith('archive/') || d.spec === A0);
+    expect(archived.map((d) => ({ ...shape(d), archived: d.archived ?? false })).sort(byPath)).toEqual(
+      ARCHIVED.map((e) => ({ ...shape(e), archived: true })).sort(byPath),
     );
-    expect(catalog.groups.filter((g) => g.spec === '000-first-light')).toEqual([]);
+    expect(archived.filter((d) => d.modified === null || !ISO_8601.test(d.modified)).map((d) => d.path)).toEqual([]);
+    // Active documents carry no flag; an archived spec has no group head.
+    expect(catalog.docs.filter((d) => !d.path.startsWith('archive/') && d.archived !== undefined).map((d) => d.path)).toEqual([]);
+    expect(catalog.groups.filter((g) => g.spec === A0)).toEqual([]);
+  });
+
+  test('archived: after the active specs, in number order', () => {
+    const firstArchived = catalog.docs.findIndex((d) => d.archived === true);
+    expect(firstArchived).toBeGreaterThan(0);
+    expect(catalog.docs.slice(firstArchived).filter((d) => d.archived !== true).map((d) => d.path)).toEqual([]);
   });
 
   test('catalog: reading changes no byte of the workspace', () => {
@@ -344,6 +367,18 @@ describe('stale (ISC-155.1)', () => {
     expect(await staleOf({ [`specs/${S4}/spec.md`]: '2026-03-14T10:00:00Z' })).toEqual([`${S1}/plan.md`, 'tech.md', 'tldr.md']);
     // 30 s after tech.md is within the tolerance.
     expect(await staleOf({ [`specs/${S4}/spec.md`]: '2026-03-14T09:00:30Z' })).toEqual([`${S1}/plan.md`, 'tldr.md']);
+  });
+
+  test('archived: never stale or missing, and outside the control counts', async () => {
+    // plan.md an hour older than the archived spec.md would be stale for an active spec.
+    const root = workspaceCopy({ [`specs/archive/${A0}/plan.md`]: '2026-03-01T00:00:00Z', [`specs/archive/${A0}/spec.md`]: '2026-03-01T01:00:00Z' });
+    roots.push(root);
+    const catalog = await readCatalog(root);
+    const archived = catalog.docs.filter((d) => d.archived === true);
+    expect(archived.length).toBe(ARCHIVED.length);
+    expect(archived.filter((d) => d.state !== 'ok').map((d) => `${d.path}: ${d.state}`)).toEqual([]);
+    expect(catalog.stale).toBe(catalog.docs.filter((d) => d.state === 'stale' && d.archived !== true).length);
+    expect(catalog.missing).toBe(catalog.docs.filter((d) => d.state === 'missing' && d.archived !== true).length);
   });
 
   test('stale: an archived spec is no spec of the workspace for tech.md and tldr.md', async () => {
@@ -652,7 +687,7 @@ describe('preview (ISC-159)', () => {
     const catalog = await readCatalog(root);
     expect(treeHash(root)).toEqual(before);
     const out: Record<string, string | null> = {};
-    for (const d of catalog.docs.filter((doc) => doc.type === 'prototype')) {
+    for (const d of catalog.docs.filter((doc) => doc.type === 'prototype' && doc.archived !== true)) {
       expect(d.preview).not.toBeUndefined();
       out[d.path] = d.preview ?? null;
     }
@@ -803,7 +838,14 @@ describe('lookup', () => {
     for (const path of paths) expect({ path, doc: await catalogDocAt(root, path) }).toEqual({ path, doc: listed.get(path) ?? null });
   });
 
-  test('lookup: unlisted paths are null — dot files, archive, links, other media, missing entries, malformed paths', async () => {
+  test('lookup: archived: catalogDocAt finds each archived document as the catalog lists it', async () => {
+    const root = trickyCopy();
+    const docs = (await readCatalog(root)).docs.filter((d) => d.archived === true);
+    expect(docs.length).toBe(ARCHIVED.length);
+    for (const doc of docs) expect({ path: doc.path, doc: await catalogDocAt(root, doc.path) }).toEqual({ path: doc.path, doc });
+  });
+
+  test('lookup: unlisted paths are null — dot files, archive non-documents, links, other media, missing entries, malformed paths', async () => {
     const root = trickyCopy();
     const unlisted = [
       `${S1}/artifacts/.hidden.md`,
@@ -826,8 +868,11 @@ describe('lookup', () => {
       `${S2}/.design/prototype/board/notes.md`,
       `${S2}/plan.md`,
       `${S2}/tasks.md`,
-      'archive/000-first-light/spec.md',
-      'archive/000-first-light/.design/prototype',
+      'archive',
+      `archive/${A0}`,
+      `archive/${A0}/events.jsonl`,
+      'archive/999-nowhere/spec.md',
+      `archive/${A0}/.design/prototype/index.html`,
       'tech/arch.png',
       'workflow.md',
       'tokens.jsonl',

@@ -297,6 +297,9 @@
           <span class="lib-stale" data-library-chip="stale"><ui-icon name="triangle-alert" [size]="12" />{{ 'library.outdated' | transloco }}</span>
         } @else if (row.doc.state === 'missing' && !row.placeholder) {
           <span class="lib-missing" data-library-chip="missing"><ui-icon name="file-x" [size]="12" />{{ 'library.missing' | transloco }}</span>
+        } @else if (row.doc.archived === true) {
+          <!-- An archived spec's document (spec 034, ISC-187.1): always ok, so the slot holds the archive chip instead. -->
+          <span class="lib-archived" data-library-chip="archived"><ui-icon name="archive" [size]="12" />{{ 'library.archived' | transloco }}</span>
         }
       </span>
       <!-- Slot 2: the cross references (T34). -->

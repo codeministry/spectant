@@ -145,7 +145,8 @@ describe("prototype route smoke", () => {
       [prototypeRoute(ws, "002-tide-board", "prototype/board", "missing.html"), 404],
       [prototypeRoute("no-such-workspace", "002-tide-board", "prototype/board", "index.html"), 404],
       [prototypeRoute(ws, "009-no-such-spec", "prototype/board", "index.html"), 404],
-      [prototypeRoute(ws, "000-first-light", "prototype", "index.html"), 404],
+      // An archived spec's prototype opens like an active one (spec 034, ISC-187.1).
+      [prototypeRoute(ws, "000-first-light", "prototype", "index.html"), 200],
       [`/proto/${ws}/002-tide-board/prototype%2Fboard/..%252F..%252Fspec.md`, 403],
       [`/proto/${ws}/002-tide-board/prototype%2Fboard/%2Fetc%2Fpasswd`, 403],
       [`/proto/${ws}/002-tide-board/artifacts/index.html`, 404],
@@ -483,7 +484,6 @@ describe("prototype route traversal", () => {
       [at("002-tide-board%2F..%2F001-lighthouse-map", "prototype", "other.txt"), 404],
       [at("001-lighthouse-map%2F.design", "prototype", "other.txt"), 404],
       [at("007-mirror", "prototype", "other.txt"), 404],
-      [at("000-first-light", "prototype", "index.html"), 404],
     ]);
   });
 

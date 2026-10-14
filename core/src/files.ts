@@ -1698,6 +1698,11 @@ export interface LibraryDoc {
   readonly pages?: readonly string[];
   /** `prototype` only: the screenshot in the spec's `.design/`, relative to `specs/`; null without one. */
   readonly preview?: string | null;
+  /**
+   * `true` for a document of an archived spec (spec 034, ISC-187): its `path` lies below `archive/NNN-slug/`, `spec`
+   * is that folder name, and it is always `ok`, never counted as missing or stale. Absent for every other document.
+   */
+  readonly archived?: true;
 }
 
 /** The head of one spec's group in the library: the values of the former tech tabs Status and Specs (ISC-157). */
@@ -1730,7 +1735,7 @@ export interface LibraryFogLine {
   readonly text: string;
 }
 
-/** What `readCatalog` returns for one workspace; specs under `specs/archive/` never appear. */
+/** What `readCatalog` returns for one workspace; an archived spec's documents carry `archived` and have no group head. */
 export interface LibraryCatalog {
   readonly docs: readonly LibraryDoc[];
   /** One head per active spec, in number order. */

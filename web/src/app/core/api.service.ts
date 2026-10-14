@@ -303,7 +303,7 @@ export class ApiClient {
    * The URL of one page of a `prototype` catalog document (`/proto/:ws/:spec/:folder/<page>`, outside `/api/`, opened
    * in a new tab), `page` one of `doc.pages`. Null for a document that is no prototype folder. A path, no origin.
    */
-  prototypeUrl(ws: string, doc: Pick<LibraryDoc, 'path' | 'spec' | 'type'>, page: string): string | null {
+  prototypeUrl(ws: string, doc: Pick<LibraryDoc, 'path' | 'spec' | 'type' | 'archived'>, page: string): string | null {
     const folder = doc.type === 'prototype' ? prototypeFolderOf(doc) : null;
     return folder === null ? null : prototypeRoute(ws, doc.spec, folder, page);
   }

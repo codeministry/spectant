@@ -2,7 +2,8 @@
 // plus the workspace documents, as metadata only. Per spec its five Markdown files, every image or Markdown file under
 // `artifacts/`, `.evidence/` and `.design/`, and each folder in `.design/prototype/` that holds HTML pages directly as
 // one `prototype` document; per workspace `specs/constitution.md`, `specs/tech.md`, `specs/tldr.md` and each story
-// `specs/ideas/*.md`. Specs under `specs/archive/` never appear.
+// `specs/ideas/*.md`. An archived spec `specs/archive/NNN-slug/` is listed by the same rules after the active ones (spec
+// 034, ISC-187): every path below `archive/NNN-slug/`, `spec` its folder name, `archived: true`, never `stale` or `missing`.
 //
 // Server-side module: it reads the file system through async node:fs/promises (readdir, lstat, readFile), like
 // `listEvidence`, so the barrel `index.ts` carries its types (in `files.ts`) but not `readCatalog`. Read-only: nothing
@@ -43,6 +44,9 @@ import { WORKTREE_COPY_KINDS } from './worktrees.ts';
 
 /** The folder every catalog path is relative to, from the repository root. */
 const SPECS_DIR = 'specs';
+
+/** The archive below `specs/`; an archived spec's documents have paths below `archive/NNN-slug/` (ISC-187). */
+const ARCHIVE_DIR = 'archive';
 
 /** The per-spec read sources of a catalog read (spec 027, ISC-181); without `copies` every file comes from `specs/`. */
 export interface CatalogOptions {
@@ -239,8 +243,8 @@ async function previewCandidates(specDir: string): Promise<string[]> {
  * name starting with `desktop-` wins over `tablet-`, over `mobile-`, over any other; within one viewport the exact
  * `<viewport>prototype.<ext>` (`prototype.<ext>` without one) wins; then name order.
  */
-function previewOf(candidates: readonly string[], rel: string, spec: string): string | null {
-  const sub = rel === `${spec}/${PROTOTYPE_ROOT}` ? null : rel.slice(rel.lastIndexOf('/') + 1).toLowerCase();
+function previewOf(candidates: readonly string[], rel: string, folder: string): string | null {
+  const sub = rel === `${folder}/${PROTOTYPE_ROOT}` ? null : rel.slice(rel.lastIndexOf('/') + 1).toLowerCase();
   const own = sub === null ? [] : candidates.filter((name) => name.toLowerCase().includes(sub));
   const pool = own.length > 0 ? own : candidates;
   const tierOf = (lower: string): number => {
@@ -258,7 +262,7 @@ function previewOf(candidates: readonly string[], rel: string, spec: string): st
     const [tb, eb] = rank(b);
     return ta - tb || ea - eb || byName(a, b);
   })[0];
-  return best === undefined ? null : `${spec}/${DESIGN_ASSETS}/${best}`;
+  return best === undefined ? null : `${folder}/${DESIGN_ASSETS}/${best}`;
 }
 
 /** The HTML pages directly among a folder's entries, in name order: a prototype folder has at least one. */
@@ -275,11 +279,12 @@ async function prototypeDoc(
   spec: string,
   candidates: readonly string[],
   pages: readonly string[],
+  folder: string = spec,
 ): Promise<LibraryDoc | null> {
   const modified = await newestBelow(dir);
   if (modified === null) return null;
   const title = rel.slice(rel.lastIndexOf('/') + 1);
-  const preview = previewOf(candidates, rel, spec);
+  const preview = previewOf(candidates, rel, folder);
   return { path: rel, type: 'prototype', spec, title, modified, state: 'ok', media: 'prototype', pages: [...pages], preview };
 }
 
@@ -288,35 +293,39 @@ async function prototypeDoc(
  * document and everything below it belongs to it; a folder without pages is no document and none of its files is
  * an entry, while each of its subfolders is judged by the same rule. `candidates` are the spec's preview candidates.
  */
-async function prototypesIn(dir: string, rel: string, spec: string, candidates: readonly string[]): Promise<LibraryDoc[]> {
+async function prototypesIn(dir: string, rel: string, spec: string, candidates: readonly string[], folder: string = spec): Promise<LibraryDoc[]> {
   const entries = await entriesOf(dir);
   const pages = pagesIn(entries);
   if (pages.length > 0) {
-    const doc = await prototypeDoc(dir, rel, spec, candidates, pages);
+    const doc = await prototypeDoc(dir, rel, spec, candidates, pages, folder);
     return doc === null ? [] : [doc];
   }
   const out: LibraryDoc[] = [];
   for (const entry of entries) {
-    if (entry.isDirectory()) out.push(...(await prototypesIn(join(dir, entry.name), `${rel}/${entry.name}`, spec, candidates)));
+    if (entry.isDirectory()) out.push(...(await prototypesIn(join(dir, entry.name), `${rel}/${entry.name}`, spec, candidates, folder)));
   }
   return out;
 }
 
-/** The documents of one active spec folder `specs/<spec>/`, in catalog order; its own files from their read source. */
-async function specDocs(root: string, spec: string, copies: CatalogOptions['copies']): Promise<LibraryDoc[]> {
-  const specDir = join(root, SPECS_DIR, spec);
+/**
+ * The documents of one spec folder in catalog order: an active spec `specs/<spec>/` with its own files from their read
+ * source, or with `folder` `archive/<spec>` an archived one (ISC-187), every path below that folder and always from it.
+ */
+async function specDocs(root: string, spec: string, copies: CatalogOptions['copies'], folder: string = spec): Promise<LibraryDoc[]> {
+  const specDir = join(root, SPECS_DIR, folder);
   const own = await Promise.all(
     SPEC_DOCS.map((kind) => {
       const file = FILE_KINDS[kind].path;
-      return fileDoc(root, `${spec}/${file}`, kind, spec, 'markdown', join(folderOf(root, spec, kind, copies), file));
+      const source = folder === spec ? folderOf(root, spec, kind, copies) : specDir;
+      return fileDoc(root, `${folder}/${file}`, kind, spec, 'markdown', join(source, file));
     }),
   );
 
   const zoned: LibraryDoc[] = [];
-  const prototypeRoot = `${spec}/${PROTOTYPE_ROOT}`;
-  for (const [folder, type] of SPEC_ZONES) {
+  const prototypeRoot = `${folder}/${PROTOTYPE_ROOT}`;
+  for (const [zone, type] of SPEC_ZONES) {
     // `.design/prototype/` is not part of the design zone: its folders are prototypes, or nothing.
-    const files = await filesBelow(join(specDir, folder), `${spec}/${folder}`, new Set([prototypeRoot]));
+    const files = await filesBelow(join(specDir, zone), `${folder}/${zone}`, new Set([prototypeRoot]));
     const docs = await Promise.all(
       files.map(async (path) => {
         const media = mediaOf(path.slice(path.lastIndexOf('/') + 1));
@@ -326,7 +335,7 @@ async function specDocs(root: string, spec: string, copies: CatalogOptions['copi
     zoned.push(...docs.filter((d): d is LibraryDoc => d !== null).sort(byPath));
   }
   const candidates = await previewCandidates(specDir);
-  const prototypes = (await prototypesIn(join(specDir, PROTOTYPE_ROOT), prototypeRoot, spec, candidates)).sort(byPath);
+  const prototypes = (await prototypesIn(join(specDir, PROTOTYPE_ROOT), prototypeRoot, spec, candidates, folder)).sort(byPath);
 
   return [...own.filter((d): d is LibraryDoc => d !== null), ...zoned, ...prototypes];
 }
@@ -547,7 +556,8 @@ function groupsOf(input: DashboardInput): { groups: SpecGroupHead[]; fog: Librar
 
 /**
  * The document catalog of the workspace at `root` (the repository root holding `specs/`): the workspace documents,
- * then each active spec in number order with its documents, plus one group head per active spec and the open fog
+ * then each active spec in number order with its documents, then each archived spec's (ISC-187, never judged), plus one
+ * group head per active spec and the open fog
  * lines. Metadata only, never a document's content (goal and approach are the heads' own short Markdown). A workspace
  * without `specs/` has an empty catalog. `input` is the dashboard model's input as the server read it for the same
  * workspace (`readWorkspaceInput`), so the heads' stages equal the dashboard's to the code-reviewed mark; without it
@@ -592,6 +602,20 @@ const activeSpecs = (root: string): string[] =>
     .filter((s) => !s.archived)
     .map((s) => s.slug);
 
+/** The archived spec folders below `specs/archive/` (ISC-187), in number order, as `listSpecs` finds them. */
+const archivedSpecs = (root: string): string[] =>
+  listSpecs(root)
+    .filter((s) => s.archived)
+    .map((s) => s.slug);
+
+/** One archived document: flagged, and never judged (ISC-187), so it stays `ok` and outside both control numbers. */
+const asArchived = (d: LibraryDoc): LibraryDoc => ({ ...d, archived: true });
+
+/** The documents of one archived spec `specs/archive/<spec>/`, by the zone rules of an active one. */
+async function archivedDocs(root: string, spec: string): Promise<LibraryDoc[]> {
+  return (await specDocs(root, spec, undefined, `${ARCHIVE_DIR}/${spec}`)).map(asArchived);
+}
+
 /**
  * The catalog's documents alone (`readCatalog(root).docs`): the workspace documents, then each active spec in number
  * order with its documents, each judged `ok`, `stale` or `missing`. No group head, no fog line and no dashboard
@@ -602,7 +626,10 @@ export async function readCatalogDocs(root: string, options: CatalogOptions = {}
   const { copies } = options;
   const slugs = activeSpecs(root);
   const perSpec = await Promise.all(slugs.map((s) => specDocs(root, s, copies)));
-  return judge(root, slugs, [...(await workspaceDocs(root)), ...perSpec.flat()], copies);
+  const judged = await judge(root, slugs, [...(await workspaceDocs(root)), ...perSpec.flat()], copies);
+  // Archived specs come last and are never judged: no `stale`, no `missing` (ISC-187).
+  const archived = await Promise.all(archivedSpecs(root).map((s) => archivedDocs(root, s)));
+  return [...judged, ...archived.flat()];
 }
 
 /** A path segment the catalog can list at all: no empty, `.` or `..` segment, no backslash or NUL. */
@@ -624,8 +651,8 @@ async function realDirs(base: string, names: readonly string[]): Promise<boolean
  * folder on the way a real directory without a leading dot, the target holding HTML pages directly and no folder above
  * it, from the prototype root down, holding any (it would own the target). Null otherwise.
  */
-async function prototypeAt(root: string, spec: string, subs: readonly string[]): Promise<LibraryDoc | null> {
-  const specDir = join(root, SPECS_DIR, spec);
+async function prototypeAt(root: string, spec: string, subs: readonly string[], folder: string = spec): Promise<LibraryDoc | null> {
+  const specDir = join(root, SPECS_DIR, folder);
   if (subs.some((s) => s.startsWith('.'))) return null;
   if (!(await realDirs(specDir, [DESIGN_ASSETS, 'prototype', ...subs]))) return null;
   let dir = join(specDir, PROTOTYPE_ROOT);
@@ -635,8 +662,8 @@ async function prototypeAt(root: string, spec: string, subs: readonly string[]):
   }
   const pages = pagesIn(await entriesOf(dir));
   if (pages.length === 0) return null;
-  const rel = [spec, PROTOTYPE_ROOT, ...subs].join('/');
-  return prototypeDoc(dir, rel, spec, await previewCandidates(specDir), pages);
+  const rel = [folder, PROTOTYPE_ROOT, ...subs].join('/');
+  return prototypeDoc(dir, rel, spec, await previewCandidates(specDir), pages, folder);
 }
 
 /** The listed, unjudged document at `path` (relative to `specs/`) by the zone rules, or null. */
@@ -655,37 +682,58 @@ async function docAt(root: string, path: string, copies: CatalogOptions['copies'
     if (rest.length !== 1 || name.startsWith('.') || name === IDEAS_INDEX || mediaOf(name) !== 'markdown') return null;
     return (await realDirs(specsDir, [IDEAS_DIR])) ? fileDoc(root, path, 'idea', WORKSPACE, 'markdown') : null;
   }
+  if (first === ARCHIVE_DIR) {
+    // An archived spec (ISC-187): `archive/<spec>/…` by the same rules, flagged, never judged.
+    const [spec = '', ...below] = rest;
+    if (below.length === 0 || !archivedSpecs(root).includes(spec)) return null;
+    const doc = await specDocAt(root, spec, below, `${ARCHIVE_DIR}/${spec}`, path, copies);
+    return doc === null ? null : asArchived(doc);
+  }
   if (!activeSpecs(root).includes(first)) return null;
-  const spec = first;
+  return specDocAt(root, first, rest, first, path, copies);
+}
 
+/** The document at `rest` below one spec folder `folder` (the spec itself, or `archive/<spec>`), or null. */
+async function specDocAt(
+  root: string,
+  spec: string,
+  rest: readonly string[],
+  folder: string,
+  path: string,
+  copies: CatalogOptions['copies'],
+): Promise<LibraryDoc | null> {
+  const specsDir = join(root, SPECS_DIR);
   if (rest.length === 1) {
     const kind = SPEC_DOCS.find((k) => FILE_KINDS[k].path === rest[0]);
-    return kind === undefined ? null : fileDoc(root, path, kind, spec, 'markdown', join(folderOf(root, spec, kind, copies), FILE_KINDS[kind].path));
+    if (kind === undefined) return null;
+    const source = folder === spec ? folderOf(root, spec, kind, copies) : join(specsDir, folder);
+    return fileDoc(root, path, kind, spec, 'markdown', join(source, FILE_KINDS[kind].path));
   }
-  const [folder = '', ...inside] = rest;
-  const zone = SPEC_ZONES.find(([name]) => name === folder);
+  const [zoneName = '', ...inside] = rest;
+  const zone = SPEC_ZONES.find(([name]) => name === zoneName);
   if (zone === undefined) return null;
   // `.design/prototype/` is not part of the design zone: its folders are prototypes, or nothing.
-  if (folder === DESIGN_ASSETS && inside[0] === 'prototype') return prototypeAt(root, spec, inside.slice(1));
+  if (zoneName === DESIGN_ASSETS && inside[0] === 'prototype') return prototypeAt(root, spec, inside.slice(1), folder);
   const name = inside.at(-1) ?? '';
   const media = mediaOf(name);
   if (media === null || inside.some((s) => s.startsWith('.'))) return null;
-  if (!(await realDirs(join(specsDir, spec), [folder, ...inside.slice(0, -1)]))) return null;
+  if (!(await realDirs(join(specsDir, folder), [zoneName, ...inside.slice(0, -1)]))) return null;
   return fileDoc(root, path, zone[1], spec, media);
 }
 
 /**
  * The one catalog document at `path` (relative to `specs/`, POSIX separators), equal to the entry `readCatalog` lists
- * for it, stale state included, or null when the catalog lists none there: a dot file, an archived spec, a symbolic
- * link, a file outside the zones or of another media type, a folder that is no prototype, a malformed path. A
- * `missing` entry names no file and is null here too. Decided by the zone rules on that path alone, reading only the
+ * for it, stale state included, or null when the catalog lists none there: a dot file, a symbolic link, a file outside
+ * the zones or of another media type, a folder that is no prototype, a malformed path. An archived spec's documents
+ * are found below `archive/NNN-slug/` (ISC-187), flagged and never judged. A `missing` entry names no file and is null
+ * here too. Decided by the zone rules on that path alone, reading only the
  * folders on its way and the `spec.md` mtimes its stale state needs, never walking the tree. `options.copies` as for
  * `readCatalog`: a spec's own files and its `spec.md` from its worktree copy.
  */
 export async function catalogDocAt(root: string, path: string, options: CatalogOptions = {}): Promise<LibraryDoc | null> {
   const { copies } = options;
   const doc = await docAt(root, path, copies);
-  if (doc === null) return null;
+  if (doc === null || doc.archived === true) return doc;
   const from = derivesFrom(doc);
   if (from === null) return doc;
   return judgeStale(doc, from === 'spec' ? await specMdTime(root, doc.spec, copies) : await newestSpecMdTime(root, activeSpecs(root), copies));

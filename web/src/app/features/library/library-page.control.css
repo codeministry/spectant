@@ -88,9 +88,11 @@ app-library-page .lib-ctl[aria-disabled='true'] .lib-ctl-icon {
 
 /* The state chips of slot 1 (design.md 017 § Across viewports): outdated on the orange tint with
    `triangle-alert` (prototype `.lib-stale`), missing on the violet scoping tint with `file-x`; word and icon tell them
-   apart without colour. Ink on its own tint is the `--*-ink` (ISC-65). */
+   apart without colour. Ink on its own tint is the `--*-ink` (ISC-65). An archived document (spec 034, ISC-187.1)
+   carries a neutral chip with `archive`: no tint, a line edge and the muted ink, since it is never a state to act on. */
 app-library-page .lib-stale,
-app-library-page .lib-missing {
+app-library-page .lib-missing,
+app-library-page .lib-archived {
   display: inline-flex;
   gap: 4px;
   align-items: center;
@@ -109,6 +111,12 @@ app-library-page .lib-missing {
 app-library-page .lib-missing {
   background: var(--ques-t);
   color: var(--ques-ink);
+}
+
+app-library-page .lib-archived {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted-ink);
 }
 
 /* A missing row is dimmed by colour and form, never by opacity (DS-APP-33): the title in muted ink, the type tag
@@ -133,7 +141,8 @@ app-library-page .lib-row[data-state='missing'] .lib-type {
   }
 
   app-library-page .lib-stale,
-  app-library-page .lib-missing {
+  app-library-page .lib-missing,
+  app-library-page .lib-archived {
     border: 1px solid CanvasText;
   }
 }

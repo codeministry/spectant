@@ -322,10 +322,12 @@ test.describe('control', () => {
         await expect(row.locator(`[data-library-chip="${key}"]`)).toHaveText(key === 'stale' ? EN.library.outdated : EN.library.missing);
       }
     }
-    // An ok row carries no chip at all.
+    // An ok row carries no state chip; an archived one (spec 034, ISC-187.1) carries the archive chip and nothing else.
     expect(listed.filter((doc) => doc.state === 'ok').length).toBeGreaterThan(0);
-    await expect(page.locator(`${ENTRY}[data-state="ok"] [data-library-chip]`)).toHaveCount(0);
-    await expect(page.locator(`${ENTRY} [data-library-chip]`)).toHaveCount(catalog.missing + catalog.stale);
+    const archived = listed.filter((doc) => doc.archived === true);
+    await expect(page.locator(`${ENTRY}[data-state="ok"] [data-library-chip]:not([data-library-chip="archived"])`)).toHaveCount(0);
+    await expect(page.locator(`${ENTRY} [data-library-chip="archived"]`)).toHaveCount(archived.length);
+    await expect(page.locator(`${ENTRY} [data-library-chip]`)).toHaveCount(catalog.missing + catalog.stale + archived.length);
   });
 
   for (const key of CONTROL_KEYS) {

@@ -1651,7 +1651,10 @@ workspace without `specs/` has an empty catalog.
   name starting with `desktop-` wins over `tablet-`, over `mobile-`, over any other name; within one viewport the
   exact `<viewport>-prototype.<ext>` (`prototype.<ext>` without a viewport) wins over a longer name such as
   `desktop-prototype-help.png`; then name order. The screenshot stays a `design` image of its own as well.
-- **Archived specs** never appear: nothing below `specs/archive/` is listed.
+- **Archived specs** (spec 034, ISC-187), after the active ones in number order: each `specs/archive/NNN-slug/` by the
+  same rules as an active spec, every path below `archive/NNN-slug/`, `spec` the folder name `NNN-slug` and
+  `archived: true` on each document. An archived document is always `ok`: it is never `stale` or `missing`, counts in
+  neither control number, and its spec has no group head.
 - **Skipped:** dot files and dot folders inside the listed folders, and symbolic links anywhere: a link at a fixed
   path (`spec.md`, `tech.md`, …), in a zone or in place of a listed folder is neither listed nor followed, and nothing
   is read through it.

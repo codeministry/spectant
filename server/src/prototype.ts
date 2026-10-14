@@ -18,8 +18,9 @@
  *   every other destination, a request without those headers, an HTML page always, misses, 405 and 409: the same 403
  *   without that header.
  * - 405 with `Allow: PROTOTYPE_ALLOW` for any method but `GET` and `HEAD`.
- * - 404 for a path the contract does not match, an unknown workspace, or a spec that is no active spec folder
- *   (`specs/NNN-slug/`, exactly as `LibraryDoc.spec` names it; archived specs are no part of the catalog).
+ * - 404 for a path the contract does not match, an unknown workspace, or a spec that is no spec folder
+ *   (`specs/NNN-slug/` or, for an archived spec, `specs/archive/NNN-slug/` (ISC-187.1), exactly as `LibraryDoc.spec`
+ *   names it; an active folder wins over an archived one of the same name).
  * - 409 with the workspace's summary when its folder cannot be read, as the library route answers.
  * - Confinement is core's `resolvePrototypePath`: the folder stays inside the spec's own `.design/prototype/`, the tail
  *   is decoded exactly once, and `..`, a second encoding layer, an absolute path, a backslash, a control character or
@@ -110,8 +111,9 @@ export function prototypeApi(options: PrototypeApiOptions): ApiHandler {
     if (unreadable !== null) return refuse(req, 409, unavailable(workspace, unreadable));
     let specDir: string | undefined;
     try {
-      // The folder name exactly, never a path: a decoded `..` or `/` names no listed folder.
-      specDir = listSpecs(workspace.path).find((ref) => !ref.archived && ref.slug === spec)?.dir;
+      // The folder name exactly, never a path: a decoded `..` or `/` names no listed folder. `listSpecs` lists the
+      // active folders first, so an active spec wins over an archived one of the same name.
+      specDir = listSpecs(workspace.path).find((ref) => ref.slug === spec)?.dir;
     } catch (error) {
       return refuse(req, 409, unavailable(workspace, unreadableCode(error)));
     }

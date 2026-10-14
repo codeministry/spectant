@@ -774,7 +774,8 @@ describe("ISC-160: the library, its reader, search, assets, prototypes and the o
         [workspaceRoutes.library(SHELF), 403, { headers: { Origin: "https://example.com" } }],
         [workspaceRoutes.libraryDoc(SHELF, missingDoc?.path ?? ""), 404],
         [workspaceRoutes.libraryDoc(SHELF, "../README.md"), 404],
-        [workspaceRoutes.libraryDoc(SHELF, "archive/000-first-light/spec.md"), 404],
+        // An archived spec's documents are read above with the catalog (spec 034, ISC-187.1); an unknown one is refused.
+        [workspaceRoutes.libraryDoc(SHELF, "archive/999-none/spec.md"), 404],
         [workspaceRoutes.libraryDoc(SHELF, "tech/arch.png"), 404],
         [workspaceRoutes.libraryDoc(SHELF, "001-lighthouse-map/spec.md"), 405, { method: "PUT", body: "{}" }],
         [workspaceRoutes.libraryDoc("nowhere", "001-lighthouse-map/spec.md"), 404],
@@ -793,7 +794,7 @@ describe("ISC-160: the library, its reader, search, assets, prototypes and the o
         [board("index.html"), 405, { method: "POST", body: "x" }],
         [board("index.html"), 403, { headers: { Origin: "null" } }],
         [board("index.html"), 403, { headers: { Origin: "https://example.com" } }],
-        [prototypeRoute(SHELF, "000-first-light", "prototype", "index.html"), 404],
+        [prototypeRoute(SHELF, "999-none", "prototype", "index.html"), 404],
         [prototypeRoute(SHELF, "009-nowhere", "prototype", "index.html"), 404],
         [prototypeRoute("nowhere", "002-tide-board", "prototype/board", "index.html"), 404],
         [`/proto/${SHELF}/002-tide-board/views/mobile.png`, 404],

@@ -402,6 +402,44 @@ const afterDebounce = async (): Promise<HTMLElement> => {
   return settle();
 };
 
+describe('LibraryPage archived documents (spec 034, ISC-187.1)', () => {
+  /** An active spec and an archived one: the archived documents lie below `archive/` and carry the flag. */
+  const ARCHIVED: LibraryCatalog = {
+    docs: [
+      doc('002-web-console/spec.md', 'spec', 'Web console'),
+      doc('archive/001-first-light/spec.md', 'spec', 'First light', { spec: '001-first-light', archived: true }),
+      doc('archive/001-first-light/.design/prototype', 'prototype', 'prototype', {
+        spec: '001-first-light',
+        archived: true,
+        media: 'prototype',
+        pages: ['index.html'],
+      }),
+    ],
+    groups: [],
+    fog: [],
+    missing: 0,
+    stale: 0,
+  };
+
+  it('archived: an archived document stands in its spec group with the chip, an active one carries none', async () => {
+    const root = await open('/w/harbor/library', ARCHIVED);
+    expect(Array.from(page(root).querySelectorAll('[data-library-group]')).map((g) => g.getAttribute('data-library-group'))).toEqual(['workspace', '001', '002']);
+    const chips = Array.from(page(root).querySelectorAll('[data-library-chip="archived"]')).map(
+      (chip) => chip.closest('[data-library-entry]')?.getAttribute('data-library-entry') ?? '',
+    );
+    expect(chips).toEqual(['archive/001-first-light/spec.md', 'archive/001-first-light/.design/prototype']);
+    const row = page(root).querySelector('[data-library-entry="archive/001-first-light/spec.md"]');
+    expect(text(row?.querySelector('[data-library-chip="archived"]'))).toBe('archived');
+    expect(row?.querySelector('[data-library-chip="archived"] ui-icon')?.getAttribute('data-icon')).toBe('archive');
+    expect(page(root).querySelector('[data-library-entry="002-web-console/spec.md"] [data-library-chip]')).toBeNull();
+  });
+
+  it('archived: the chip reads "archiviert" in German', async () => {
+    const root = await open('/w/harbor/library', ARCHIVED, 'medium', 'de');
+    expect(text(page(root).querySelector('[data-library-entry="archive/001-first-light/spec.md"] [data-library-chip="archived"]'))).toBe('archiviert');
+  });
+});
+
 describe('LibraryPage address, state select and search (T32, ISC-156.2)', () => {
   it('restores search text, type, spec, state and the document from the address on arrival', async () => {
     const root = await open('/w/harbor/library?q=approach&type=plan&spec=002&state=stale#002-web-console/plan.md', CONTROL, 'wide');

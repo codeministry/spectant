@@ -414,9 +414,12 @@ export function prototypeRoute(ws: string, spec: string, folder: string, file: s
   return `${PROTOTYPE_PREFIX}${enc(ws)}/${enc(spec)}/${enc(folder)}/${file.split('/').map(enc).join('/')}`;
 }
 
-/** The `:folder` of a `prototype` catalog document (`doc.path` minus `<spec>/.design/`); null for any other path. */
-export function prototypeFolderOf(doc: Pick<LibraryDoc, 'path' | 'spec'>): string | null {
-  const head = `${doc.spec}/.design/`;
+/**
+ * The `:folder` of a `prototype` catalog document (`doc.path` minus `<spec>/.design/`, or minus
+ * `archive/<spec>/.design/` for an archived one, ISC-187.1); null for any other path.
+ */
+export function prototypeFolderOf(doc: Pick<LibraryDoc, 'path' | 'spec' | 'archived'>): string | null {
+  const head = `${doc.archived === true ? 'archive/' : ''}${doc.spec}/.design/`;
   if (!doc.path.startsWith(head)) return null;
   const folder = doc.path.slice(head.length);
   return isPrototypeFolder(folder) ? folder : null;

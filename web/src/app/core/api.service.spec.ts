@@ -312,5 +312,8 @@ describe('ApiClient library routes (spec 017, T25, ISC-156)', () => {
     const nested = { path: '017-x/.design/prototype/board', spec: '017-x', type: 'prototype' as const };
     expect(api.prototypeUrl('a b', nested, 'pages/two page.html')).toBe('/proto/a%20b/017-x/prototype%2Fboard/pages/two%20page.html');
     expect(api.prototypeUrl('harbor', { path: '017-x/plan.md', spec: '017-x', type: 'plan' }, 'index.html')).toBeNull();
+    // archived (spec 034, ISC-187.1): the path lies below archive/, the route names the spec folder.
+    const archived = { path: 'archive/001-x/.design/prototype', spec: '001-x', type: 'prototype' as const, archived: true as const };
+    expect(api.prototypeUrl('harbor', archived, 'index.html')).toBe('/proto/harbor/001-x/prototype/index.html');
   });
 });

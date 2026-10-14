@@ -20,7 +20,8 @@ import * as loader from "../server/src/workspace-loader.ts";
 import { loadCatalog } from "../server/src/workspace-loader.ts";
 import type { ApiHandler } from "../server/src/http.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { type WorkspaceRouteResponses, allowForWorkspace, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
+import { prototypeApi } from "../server/src/prototype.ts";
+import { type WorkspaceRouteResponses, allowForWorkspace, prototypeFolderOf, prototypeRoute, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
 import { SPEC_FOLDER, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
 const LIBRARY = join(import.meta.dir, "..", "core", "fixtures", "library");
@@ -80,7 +81,7 @@ async function call(path: string, init: { method?: string; headers?: Record<stri
 }
 
 describe("GET /api/workspaces/:ws/library", () => {
-  test("catalog: 200, the body exactly readCatalog over the workspace, metadata only, the archive left out", async () => {
+  test("catalog: 200, the body exactly readCatalog over the workspace, metadata only, archived documents flagged", async () => {
     const res = await call(workspaceRoutes.library("shelf"));
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("application/json");
@@ -106,10 +107,13 @@ describe("GET /api/workspaces/:ws/library", () => {
       "001-lighthouse-map/.evidence/ISC-2/notes.md",
       "001-lighthouse-map/.evidence/summary.md",
     ]);
-    // Metadata only: no document's text, no absolute path, nothing from specs/archive/.
+    // Metadata only: no document's text, no absolute path. An archived spec's documents (ISC-187) lie below archive/
+    // and carry the flag; no other document does.
     expect(text).not.toContain(root);
-    expect(text).not.toContain("archive/");
-    expect(text).not.toContain("000-first-light");
+    const archived = catalog.docs.filter((d) => d.path.startsWith("archive/"));
+    expect(archived.length).toBeGreaterThan(0);
+    expect(archived.filter((d) => d.archived !== true || d.spec !== "000-first-light").map((d) => d.path)).toEqual([]);
+    expect(catalog.docs.filter((d) => !d.path.startsWith("archive/") && d.archived !== undefined).map((d) => d.path)).toEqual([]);
     // The group heads carry a spec's goal and first approach paragraph as their own short Markdown (ISC-157); the
     // document entries carry no text.
     const entries = JSON.stringify(catalog.docs);
@@ -224,7 +228,8 @@ describe("GET /api/workspaces/:ws/library/doc", () => {
       "001-lighthouse-map/.design/prototype", // a prototype
       "001-lighthouse-map/report.html", // not in the catalog
       "001-lighthouse-map/artifacts/data.json",
-      "archive/000-first-light/plan.md", // archived
+      "archive/999-none/plan.md", // no archived spec of that name
+      "archive/000-first-light/artifacts/old.png", // an archived image
       "../README.md",
       "001-lighthouse-map/../../README.md",
       "/etc/hosts",
@@ -493,6 +498,34 @@ describe("GET /api/workspaces/:ws/library/asset", () => {
   });
 });
 
+describe("archived documents open like active ones (ISC-187.1)", () => {
+  test("archived: the reader, the asset route and the prototype pages answer 200 for an archived spec's documents", async () => {
+    const docs = (await readCatalog(shelf)).docs.filter((d) => d.archived === true);
+    const plan = docs.find((d) => d.path === "archive/000-first-light/plan.md");
+    const image = docs.find((d) => d.path === "archive/000-first-light/artifacts/old.png");
+    const proto = docs.find((d) => d.type === "prototype");
+    if (plan === undefined || image === undefined || proto === undefined) throw new Error("fixture: archived plan, image and prototype");
+
+    const doc = await call(workspaceRoutes.libraryDoc("shelf", plan.path));
+    expect(doc.status).toBe(200);
+    expect(JSON.stringify(await doc.json())).toContain("first-light");
+
+    const asset = await call(workspaceRoutes.libraryAsset("shelf", image.path));
+    expect(asset.status).toBe(200);
+    expect(Buffer.from(await asset.arrayBuffer()).equals(readFileSync(join(shelf, "specs", image.path)))).toBe(true);
+
+    const folder = prototypeFolderOf(proto);
+    expect(folder).toBe("prototype");
+    const proxy = prototypeApi({ registry });
+    for (const page of proto.pages ?? []) {
+      const url = new URL(`http://127.0.0.1:7717${prototypeRoute("shelf", proto.spec, folder ?? "", page)}`);
+      const res = await proxy(new Request(url.href, { headers: HOST }), url);
+      expect({ page, status: res?.status }).toEqual({ page, status: 200 });
+      expect(Buffer.from(await (res as Response).arrayBuffer()).equals(readFileSync(join(shelf, "specs", proto.path, page)))).toBe(true);
+    }
+  });
+});
+
 describe("the catalog's group heads stand where the dashboard rows stand", () => {
   const git = (cwd: string, args: string[], env: Record<string, string> = {}): string => {
     const result = Bun.spawnSync(["git", ...args], { cwd, env: { ...process.env, ...env }, stdout: "pipe", stderr: "pipe" });
@@ -599,8 +632,9 @@ describe("the library reads a spec's own documents from its read source (spec 02
 // is the same handler over the full catalog reading (`loadCatalog`, the dashboard's input), and the digest below was
 // captured from the routes as they stood before the change (829023c).
 describe("the reader and the search look up only what they answer (ISC-156.5)", () => {
-  // Re-pinned for ISC-157.2: tech.md's answer adds core's `techSections`; every other answer is unchanged.
-  const BEFORE_DIGEST = "0df554b777e2f2233c0522596d188a872d84978adcffb794768fc3ef601db841";
+  // Re-pinned for ISC-157.2: tech.md's answer adds core's `techSections`; every other answer is unchanged. Re-pinned for
+  // ISC-187: the archived spec's documents are catalog entries now, so their reader answers and search hits join in.
+  const BEFORE_DIGEST = "53c4bfb8536b1b56e706acd29aad6c8aa24abb2a4cd7481c5f3706f14115d343";
   const BAD = "/api/workspaces/shelf/library/doc?path=%E0%A4%A";
   const QUERIES = ["lighthouse", "the", "plan", "Map ", "  TIDE  ", "zz-no-such-word", ""];
   const extraPaths = ["../README.md", "nope.md", "001-lighthouse-map/nope.md", "archive/005-old/spec.md", "001-lighthouse-map/report.html", "/etc/passwd"];
