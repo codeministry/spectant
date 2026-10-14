@@ -355,6 +355,63 @@ describe('spec edges: takeable (ISC-162.2)', () => {
     expect(entries(roundOf('007', BASE).held)).toContain('T2 ISC-13: waits on 042');
   });
 
+  test('takeable on the row: the dashboard row partition equals the claim view partition, 003 and 004, base and merged', () => {
+    const viewFiles = (num: string): SpecFiles => {
+      const files = reviewedTree().specs.find((f) => specIdOf(f.folder) === num);
+      if (!files) throw new Error(`no spec ${num}`);
+      return files;
+    };
+    const both = (rows: readonly MergeState[], num: string) => {
+      const row = buildDashboard({ ...reviewedTree(), mergeState: rows }).specs.find((r) => r.id === num);
+      if (!row) throw new Error(`no row ${num}`);
+      const view = buildClaimViews({ files: viewFiles(num), specEdges: edgesOf(num, rows) });
+      return { row: row.takeable, view: view.claims.filter((c) => c.state === 'takeable').map((c) => c.id), count: view.counts.takeable };
+    };
+    for (const rows of [BASE, MERGED_002]) {
+      for (const num of ['003', '004']) {
+        const { row, view, count } = both(rows, num);
+        expect({ num, row }).toEqual({ num, row: view });
+        expect(row.length).toBe(count);
+      }
+    }
+    // 004's ISC-9 waits on 002: blocked in the tab, so not takeable on the row; merged, it is takeable on both.
+    expect(both(BASE, '004').row).toEqual([]);
+    expect(both(MERGED_002, '004').row).toEqual(['ISC-9']);
+    expect(both(BASE, '003').row).toEqual(['ISC-5', 'ISC-7']);
+  });
+
+  test('takeable on the row: a partial hold whose only takeable claim waits on a spec stands on blocked with waits on', () => {
+    const text = (after: string) =>
+      [
+        '---',
+        'slug: 060-partial',
+        'spec_type: bug',
+        'phase: building',
+        'progress: 0/2',
+        '---',
+        '',
+        '# 060 — partial',
+        '',
+        '## Claims',
+        '',
+        `- [ ] ISC-1: The first holds.${after}`,
+        '- [ ] ISC-2: The second holds. (after: ISC-1)',
+        '',
+      ].join('\n');
+    const rowOf = (after: string) => {
+      const t = text(after);
+      const mark = { gate: 'reviewed', at: '2026-03-09T09:00:00Z', files: { 'spec.md': hashForGate('spec.md', t), 'plan.md': null, 'tasks.md': null } };
+      const files: SpecFiles = { folder: '060-partial', texts: { spec: t, gateReviewed: JSON.stringify(mark) } };
+      const row = buildDashboard({ master: null, constitution: null, tldr: null, specs: [files], archived: [] }).specs[0];
+      if (!row) throw new Error('no row 060');
+      const tab = buildClaimViews({ files, specEdges: resolveEdges({ specs: [files], archived: [] }, []).edges }).counts.takeable;
+      return { takeable: row.takeable, stage: row.stage, reason: row.nextReason, full: row.waits?.full ?? null, tab };
+    };
+    // ISC-2 is held by its claim edge, not by a spec edge: the hold is partial, yet nothing else is takeable.
+    expect(rowOf(' (after: 042)')).toEqual({ takeable: [], stage: 'blocked', reason: 'waits on 042', full: false, tab: 0 });
+    expect(rowOf('')).toEqual({ takeable: ['ISC-1'], stage: 'build', reason: 'ISC-1 is takeable', full: null, tab: 1 });
+  });
+
   test('without spec edges the set is as before', () => {
     const round = takeableSet({ specType: 'feature', claims: parseClaims(spec('004').texts.spec ?? '').claims, tasks: { tasks: tasksOf('004').tasks, probeMapping: [] }, reviewed: 'fresh' });
     expect(entries(round.dispatch)).toEqual(['T2 ISC-9: claim takeable, edges closed']);

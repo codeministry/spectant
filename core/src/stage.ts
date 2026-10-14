@@ -16,7 +16,8 @@
 //
 // Spec 025 (T14, ISC-162.3): a spec whose whole open work hangs on open spec edges (`SpecWait.full`, spec-edges.ts) is
 // not on `build` even with a takeable claim; it falls through to row 11, `blocked`, with the reason `waits on {specs}`.
-// A spec with takeable work beside the held keeps its stage.
+// A spec with takeable work beside the held keeps its stage. A claim an open spec edge holds is not takeable
+// (`StageInput.edgeHeld`, ISC-162.2): when only such claims would be takeable, the spec stands in row 11 the same way.
 import type { Diagnostic } from './diagnostics.ts';
 import type { CodeReviewMode, MarkState, SpecType, SpecWait, StageSource, Workflow, WorkflowRow, WorkflowStage } from './files.ts';
 import type { Progress } from './frontmatter.ts';
@@ -75,6 +76,13 @@ export interface StageInput {
    * When `full`, row 6 does not apply and row 11 names the blockers (ISC-162.3).
    */
   readonly waits?: SpecWait | null;
+  /**
+   * The specs (`NNN`, ascending) that open spec edges on would-be-takeable claims wait on; the caller has already
+   * taken those claims out of `takeable` and `partition.takeable` (ISC-162.2). When that leaves nothing takeable, the
+   * spec's open takeable work all waits on spec edges: row 11 reads `waits on {specs}` with these (ISC-162.3).
+   * Absent or empty, no claim was held so.
+   */
+  readonly edgeHeld?: readonly string[];
 }
 
 /** The type router: which files a spec type needs besides spec.md. An unknown type needs neither. */
@@ -111,7 +119,15 @@ function countsOf(input: StageInput): Counts {
 }
 
 /** The spec numbers holding every piece of the spec's open work (ISC-162.3); empty unless the wait is full. */
-const fullHoldOf = (input: StageInput): readonly string[] => (input.waits?.full === true ? input.waits.blockers : []);
+/**
+ * The specs a full hold waits on: every open piece of work hangs on an open spec edge (`SpecWait.full`), or the only
+ * claims that would be takeable are held by one (`edgeHeld`, nothing takeable left). Empty when there is no full hold.
+ */
+function fullHoldOf(input: StageInput): readonly string[] {
+  if (input.waits?.full === true) return input.waits.blockers;
+  const held = input.edgeHeld ?? [];
+  return held.length > 0 && countsOf(input).takeable === 0 ? held : [];
+}
 
 const needs = (input: StageInput, file: 'plan' | 'tasks'): boolean => (input.type ? TYPE_NEEDS[input.type][file] : false);
 

@@ -62,7 +62,7 @@ import type { ResolvedSpecEdges } from './spec-edges.ts';
 import { specIdOf } from './spec-ref.ts';
 import { codeReviewOf, isWorkflowStage, nextCommandWithReason, reasonOf, stageMismatchOf } from './stage.ts';
 import type { Stage, StageInput } from './stage.ts';
-import { driftReport, hasDrift, heldLocks, mainFeatureOf, masterProgressMismatch, partitionClaims } from './status.ts';
+import { driftReport, hasDrift, heldLocks, mainFeatureOf, masterProgressMismatch, partitionClaims, specEdgeHolds } from './status.ts';
 import type { DriftClass, DriftReport } from './status.ts';
 import { parseTaskLines } from './tasks.ts';
 import { parseTldr, tldrState } from './tldr.ts';
@@ -458,6 +458,8 @@ interface SpecContext {
   readonly openByFeature: ReadonlyMap<string, readonly string[]>;
   /** What each active spec waits on, by number (`resolveEdges`, spec 025): the stage reads its full hold (ISC-162.3). */
   readonly waits: ReadonlyMap<string, SpecWait>;
+  /** The resolved spec edges each active spec carries, by number: an open one on a claim holds it (ISC-162.2). */
+  readonly specEdges: ReadonlyMap<string, readonly SpecEdge[]>;
 }
 
 /**
@@ -524,6 +526,9 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], 
   // The review gate first: the partition takes the reviewed mark's state (ISC-99), so every count below follows it.
   const { reading: reviewedMark, check: reviewed } = reviewedGate(f.texts);
   const partition = partitionClaims(doc.claims, ctx.locks, reviewed.state);
+  // A claim an open spec edge holds is not takeable: it counts where the Claims tab shows it, blocked (ISC-162.2, ISC-72).
+  const edgeHeld = specEdgeHolds(partition.takeable, ctx.specEdges.get(id) ?? []);
+  const takeable = partition.takeable.filter((c) => !edgeHeld.has(c));
   const ids = new Set(doc.claims.map((c) => c.id));
   const taken = heldLocks(ctx.locks, ids).map((l): DashboardTakenClaim => ({ id: l.claim, session: l.session, since: l.since, source: l.source }));
   // The gate's own diagnostic is not a file warning: the row's stage and reason already name the mark (`review`).
@@ -554,10 +559,10 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], 
     claims: doc.counted,
     reviewed: reviewed.state,
     codeReviewed: codeReviewed.state,
-    takeable: partition.takeable,
+    takeable,
     partition: {
-      takeable: partition.takeable.length,
-      open: partition.open.length - partition.takeable.length,
+      takeable: takeable.length,
+      open: partition.open.length - takeable.length,
       closed: partition.closed.length - partition.dropped.length,
       dropped: partition.dropped.length,
     },
@@ -568,6 +573,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], 
     mainFeature,
     featureSiblingsOpen,
     waits: ctx.waits.get(id) ?? null,
+    edgeHeld: [...new Set([...edgeHeld.values()].flat())].sort(),
   };
   const next = nextCommandWithReason(stageInput);
   // A `stage:` that does not apply is one warning on spec.md, at the key's line (T48, ISC-120.1).
@@ -633,7 +639,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], 
     nextCommand: next.command,
     // The one phrase of the step, as every surface shows it (T58, T69, ISC-122.3); the spec head reads it from here.
     nextReason: reasonOf(next),
-    takeable: partition.takeable,
+    takeable,
     taken,
     assignee: assigneeOf({ claims: ids, locks: ctx.locks, events }),
     warnings,
@@ -656,6 +662,13 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], 
 
 /** A spec's wait as a row shows it (ISC-163): only while an open spec edge holds something, else null. */
 const waitsOf = (wait: SpecWait | undefined): SpecWait | null => (wait === undefined || wait.blockers.length === 0 ? null : wait);
+
+/** The resolved spec edges grouped by the spec that carries them. */
+function edgesBySpec(edges: readonly SpecEdge[]): Map<string, SpecEdge[]> {
+  const by = new Map<string, SpecEdge[]>();
+  for (const e of edges) by.set(e.fromSpec, [...(by.get(e.fromSpec) ?? []), e]);
+  return by;
+}
 
 // ── spec overlap and edge warnings (spec 025) ─────────────────────────────────────────────────────────
 
@@ -901,6 +914,7 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     workflow: input.workflow,
     openByFeature,
     waits: new Map(edges.waits.map((w) => [w.spec, w])),
+    specEdges: edgesBySpec(edges.edges),
   };
 
   // The rows first: who waits in an overlap reads their stage and progress (T15). The edge warnings go before the locks.

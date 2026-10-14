@@ -1194,7 +1194,10 @@ The placeholders of the Reason column:
 **All open work waits on an open spec edge** (spec 025, ISC-162.3) when the spec has open tasks and every one carries
 an open spec edge, on itself or on its claim, or, with no open task, when it has open claims and every one carries an
 open spec edge (`SpecWait.full`, `resolveEdges` in `spec-edges.ts`). Such a spec skips row 6 even with a takeable
-claim and stands in row 11 with `waits on {specs}`; a spec with takeable work beside the held stays where it is. An edge
+claim and stands in row 11 with `waits on {specs}`; a spec with takeable work beside the held stays where it is. A claim
+an open spec edge holds is never takeable: the dashboard row counts it where the Claims tab shows it, `blocked`, so the
+row's takeable claims are the tab's (ISC-72). When that leaves a spec no takeable claim, its takeable work all waits on
+spec edges and it stands in row 11 with `waits on {specs}`, naming the specs those claims wait on. An edge
 on a number no spec carries stays open and holds. The takeable set holds every task of such an edge with the same
 phrase, `waits on 002` (`takeable.ts`), ahead of every other hold reason. The dashboard resolves the edges against the
 merge state the server reads from git (`DashboardInput.mergeState`); without it, each target's frontmatter and the

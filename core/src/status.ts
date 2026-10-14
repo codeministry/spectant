@@ -11,7 +11,7 @@
 import { countProgress, formatProgress } from './claims.ts';
 import type { Claim, ClaimsDocument } from './claims.ts';
 import type { Diagnostic } from './diagnostics.ts';
-import type { ClaimLock, MarkState } from './files.ts';
+import type { ClaimLock, MarkState, SpecEdge } from './files.ts';
 import type { FrontmatterResult } from './frontmatter.ts';
 
 /**
@@ -152,6 +152,21 @@ export function partitionClaims(claims: readonly Claim[], locks: readonly ClaimL
     });
   }
   return { closed, takeable, blocked, taken, open, dropped, gated, reviewed, diagnostics };
+}
+
+/**
+ * The claims of `takeable` an open claim-level spec edge holds (spec 025, ISC-162.2), each to the specs it waits on,
+ * ascending and each once. Such a claim is not takeable: the dashboard row counts it where the Claims tab shows it,
+ * `blocked` with `waitsOn` (claim-view.ts), so the row and the tab partition the same claims (ISC-72).
+ */
+export function specEdgeHolds(takeable: readonly string[], edges: readonly SpecEdge[]): Map<string, string[]> {
+  const ids = new Set(takeable);
+  const held = new Map<string, string[]>();
+  for (const e of edges) {
+    if (e.fromKind !== 'claim' || e.state !== 'open' || !ids.has(e.fromId)) continue;
+    held.set(e.fromId, [...new Set([...(held.get(e.fromId) ?? []), e.toSpec])].sort());
+  }
+  return held;
 }
 
 /** Declared `progress:` against the recount of `doc`; null when they agree. A missing or unreadable key disagrees. */
