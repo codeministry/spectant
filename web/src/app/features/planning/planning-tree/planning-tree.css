@@ -98,11 +98,11 @@ h2 {
 
 .row {
   display: grid;
-  grid-template-columns: auto 24px minmax(0, 1fr) 64px 56px;
+  grid-template-columns: 64px 56px auto 24px minmax(0, 1fr);
   gap: 8px;
   align-items: center;
   min-block-size: 44px;
-  padding-inline: 8px 16px;
+  padding-inline: 16px;
   border-block-start: 1px solid var(--border);
   cursor: pointer;
 }
@@ -131,12 +131,13 @@ h2 {
 }
 
 .row[data-kind="claim"] {
-  grid-template-columns: auto 24px minmax(0, 1fr);
   min-block-size: 40px;
 }
 
+/* Progress leads the row, so the title takes the last column; a claim leaves the two progress cells empty. */
 .guides {
   display: flex;
+  grid-column-start: 3;
   align-self: stretch;
   margin-block: -1px;
 }
@@ -297,8 +298,12 @@ h2 {
 
 @container shell (inline-size < 640px) {
   .row {
-    grid-template-columns: auto 24px minmax(0, 1fr) 48px;
-    padding-inline-end: 8px;
+    grid-template-columns: 48px auto 24px minmax(0, 1fr);
+    padding-inline: 8px;
+  }
+
+  .guides {
+    grid-column-start: 2;
   }
 
   .row .bar {

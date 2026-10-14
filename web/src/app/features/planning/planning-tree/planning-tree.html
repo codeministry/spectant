@@ -49,6 +49,17 @@
       (click)="activate(row)"
       (keydown)="onKey($event)"
     >
+      @if (row.kind !== 'claim') {
+        <ui-meter
+          class="bar"
+          size="mini"
+          [value]="node.closed"
+          [max]="node.total"
+          [label]="'planning.milestones.meterLabel' | transloco: { name: node.ref === null ? ('planning.tree.noMilestone' | transloco) : node.id + ' ' + node.title }"
+          [valueText]="'planning.features.valueText' | transloco: { closed: node.closed, total: node.total }"
+        />
+        <span class="num" data-num>{{ node.closed }}/{{ node.total }}</span>
+      }
       <span class="guides" aria-hidden="true">
         @for (guide of row.guides; track guide) {
           <i></i>
@@ -99,17 +110,6 @@
           }
         }
       </span>
-      @if (row.kind !== 'claim') {
-        <ui-meter
-          class="bar"
-          size="mini"
-          [value]="node.closed"
-          [max]="node.total"
-          [label]="'planning.milestones.meterLabel' | transloco: { name: node.ref === null ? ('planning.tree.noMilestone' | transloco) : node.id + ' ' + node.title }"
-          [valueText]="'planning.features.valueText' | transloco: { closed: node.closed, total: node.total }"
-        />
-        <span class="num" data-num>{{ node.closed }}/{{ node.total }}</span>
-      }
     </div>
   }
 </div>
