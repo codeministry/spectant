@@ -92,12 +92,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/ideas/idea-page').then((m) => m.IdeaPage),
         data: ideaPage,
       },
-      // Spec 026 (ISC-167): the planning page, one route per lens like the tech page; `/w/:ws/planning` opens the tree.
+      // Spec 026 (ISC-167): the planning page, one route per lens like the tech page; `/w/:ws/planning` opens the matrix.
       // The lenses are componentless children of one lazy page, so a lens switch keeps the page (and its overview).
       {
         path: 'w/:ws/planning',
         children: [
-          { path: '', redirectTo: 'tree', pathMatch: 'full' },
+          { path: '', redirectTo: 'board', pathMatch: 'full' },
           {
             path: '',
             loadComponent: () => import('./features/planning/planning-lens-page').then((m) => m.PlanningPage),

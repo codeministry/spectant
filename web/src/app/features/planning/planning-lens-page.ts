@@ -46,7 +46,7 @@ export class PlanningPage {
 
   protected readonly ws = computed(() => this.state.ws() ?? '');
   protected readonly name = computed(() => this.data.workspaceName(this.ws()));
-  protected readonly lens = computed(() => this.state.route().lens ?? 'tree');
+  protected readonly lens = computed(() => this.state.route().lens ?? 'board');
 
   private readonly pageState = planningPageState(this.data);
   protected readonly missing = this.pageState.missing;

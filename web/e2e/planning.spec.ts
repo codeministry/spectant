@@ -51,16 +51,16 @@ async function openPlanning(page: Page, path = '/w/harbor/planning'): Promise<vo
 test.describe('planning: lenses', () => {
   test.use(atWidth(WIDTHS.desktop));
 
-  test('lenses: /planning lands on the tree; the three tabs route with aria-current and keep ?sel= and ?m=', async ({ page }) => {
+  test('lenses: /planning lands on the matrix; the three tabs route with aria-current and keep ?sel= and ?m=', async ({ page }) => {
     await openPlanning(page);
-    await expect(page).toHaveURL(/\/w\/harbor\/planning\/tree$/u);
+    await expect(page).toHaveURL(/\/w\/harbor\/planning\/board$/u);
     await expect(lensBar(page).locator('a[data-tab]')).toHaveCount(3);
-    await expect(lensTab(page, 'tree')).toHaveAttribute('aria-current', 'page');
+    await expect(lensTab(page, 'board')).toHaveAttribute('aria-current', 'page');
     for (const lens of LENSES) {
       await expect(lensTab(page, lens)).toContainText(catalogs.en.planning.page.lenses[lens]);
       await expect(lensTab(page, lens).locator('ui-icon')).toHaveCount(1);
     }
-    await expect(page.locator('[data-lens="tree"]')).toBeVisible();
+    await expect(page.locator('[data-lens="board"]')).toBeVisible();
 
     await page.goto('/w/harbor/planning/tree?sel=feature:F1&m=x');
     await lensTab(page, 'board').click();
@@ -131,7 +131,7 @@ test.describe('planning: lenses', () => {
     await expect(menu.locator('[data-page="features"]')).toHaveCount(0);
     await expect(menu.locator('[data-page="milestones"]')).toHaveCount(0);
     await menu.locator('[data-page="planning"]').click();
-    await expect(page).toHaveURL(/\/w\/harbor\/planning\/tree$/u);
+    await expect(page).toHaveURL(/\/w\/harbor\/planning\/board$/u);
     await expect(page.locator('header [data-control="page"]')).toContainText(catalogs.en.shell.pages['planning'] ?? '');
     await (await headerControl(page, 'page')).click();
     menu = page.getByRole('navigation', { name: 'Pages' });
@@ -143,16 +143,16 @@ test.describe('planning: lenses', () => {
     await expect(page.locator('header [data-control="page"]')).toBeVisible();
     await page.keyboard.press('g');
     await page.keyboard.press('p');
-    await expect(page).toHaveURL(/\/w\/harbor\/planning\/tree$/u);
+    await expect(page).toHaveURL(/\/w\/harbor\/planning\/board$/u);
     await expect(page.locator('[data-page="planning"] h1')).toBeVisible();
-    // T30 (ISC-167.1): `g f` and `g m` stay as aliases of the old routes, which land on the tree.
+    // T30 (ISC-167.1): `g f` and `g m` stay as aliases of Planning and land where `g p` does, on the matrix.
     for (const key of ['f', 'm']) {
       await page.goto('/w/harbor');
       await expect(page.locator('header [data-control="page"]')).toBeVisible();
       await page.keyboard.press('g');
       await page.keyboard.press(key);
-      await expect(page).toHaveURL(/\/w\/harbor\/planning\/tree$/u);
-      await expect(page.locator('[data-lens="tree"]')).toBeVisible();
+      await expect(page).toHaveURL(/\/w\/harbor\/planning\/board$/u);
+      await expect(page.locator('[data-lens="board"]')).toBeVisible();
     }
   });
 
@@ -167,7 +167,7 @@ test.describe('planning: lenses', () => {
     const option = palette.getByRole('option', { name: catalogs.en.palette.actions.planning });
     await expect(option).toHaveCount(1);
     await option.click();
-    await expect(page).toHaveURL(/\/w\/harbor\/planning\/tree$/u);
+    await expect(page).toHaveURL(/\/w\/harbor\/planning\/board$/u);
   });
 
   test('lenses: German renders every label, no raw key', async ({ page }, info) => {
