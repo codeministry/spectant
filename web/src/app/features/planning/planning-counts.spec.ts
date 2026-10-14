@@ -7,16 +7,16 @@ import { planningCounts } from './planning-counts';
 const harbor = HARBOR as unknown as PlanningModel;
 
 describe('planning lenses (spec 026, ISC-167)', () => {
-  it('registers Tree, Matrix and Graph in tab order, routed under /w/:ws/planning, keeping the query', () => {
-    expect(PLANNING_LENSES).toEqual(['tree', 'board', 'graph']);
+  it('registers Matrix, Tree and Graph in tab order, routed under /w/:ws/planning, keeping the query', () => {
+    expect(PLANNING_LENSES).toEqual(['board', 'tree', 'graph']);
     const tabs = planningTabs('harbor');
     expect(tabs.map((tab) => tab.link)).toEqual([
-      ['/w', 'harbor', 'planning', 'tree'],
       ['/w', 'harbor', 'planning', 'board'],
+      ['/w', 'harbor', 'planning', 'tree'],
       ['/w', 'harbor', 'planning', 'graph'],
     ]);
-    expect(tabs.map((tab) => tab.icon)).toEqual(['list-tree', 'layout-grid', 'share-2']);
-    expect(tabs.map((tab) => tab.labelKey)).toEqual(['planning.page.lenses.tree', 'planning.page.lenses.board', 'planning.page.lenses.graph']);
+    expect(tabs.map((tab) => tab.icon)).toEqual(['layout-grid', 'list-tree', 'share-2']);
+    expect(tabs.map((tab) => tab.labelKey)).toEqual(['planning.page.lenses.board', 'planning.page.lenses.tree', 'planning.page.lenses.graph']);
     expect(tabs.every((tab) => tab.keepQuery === true)).toBe(true);
     expect(isPlanningLensId('board')).toBe(true);
     expect(isPlanningLensId('matrix')).toBe(false);

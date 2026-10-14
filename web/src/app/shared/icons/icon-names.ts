@@ -56,7 +56,7 @@ export const ICON_NAMES = [
   'flag',
   'circle-dashed',
   'clock-alert',
-  // Spec 026: the planning page and its lenses (Tree, Matrix, Graph).
+  // Spec 026: the planning page and its lenses (Matrix, Tree, Graph).
   'list-tree',
   'share-2',
   // Spec 008: type glyph, priority, reason, board and actor primitives (chevron-down and square-kanban are above).

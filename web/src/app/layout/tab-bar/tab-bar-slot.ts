@@ -55,7 +55,7 @@ export class TabBarSlot {
     if (this.state.notFound()) return null;
     const ws = this.state.ws();
     if (ws === null) return null;
-    // Spec 026 (ISC-167): the planning page's lenses Tree, Matrix and Graph, unless it is the not-found page.
+    // Spec 026 (ISC-167): the planning page's lenses Matrix, Tree and Graph, unless it is the not-found page.
     if (this.state.wsPage() === 'planning') {
       if (this.data.workspaceMissing() || this.data.planningMissing()) return null;
       return { tabs: planningTabs(ws), current: this.state.route().lens, labelKey: 'shell.pages.planning' };
