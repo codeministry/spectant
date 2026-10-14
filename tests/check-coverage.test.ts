@@ -181,6 +181,16 @@ describe('check-coverage', () => {
     expect(code).toBe(1);
   });
 
+  test('spec 008 archived: the mapping is read from specs/archive/', () => {
+    const full = fullTree();
+    const archived = { ...without(full, COVERAGE), [`specs/archive/${COVERAGE.slice('specs/'.length)}`]: full[COVERAGE] ?? '' };
+    const { code, out } = run(tree(archived));
+    expect(out).not.toContain('coverage.md: absent');
+    expect(out).toContain('roadmap: 4 entries, 4 mapped');
+    expect(out).toContain('unmapped: 0');
+    expect(code).toBe(0);
+  });
+
   test('a usage error exits 2', () => {
     expect(run(tree({}), '--bogus').code).toBe(2);
   });

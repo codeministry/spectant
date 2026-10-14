@@ -23,8 +23,9 @@
  * collapsing whitespace and lower-casing. The entries of `view` and `doc` are file basenames, lower-cased; their
  * "line" in the output is the 1-based position in the sorted listing.
  *
- * Mapping: specs/008-spectant-complete/artifacts/coverage.md holds a markdown table with the header
- * `| Source | Entry | Target | Reason |` (other tables in the file are ignored). Per row:
+ * Mapping: specs/008-spectant-complete/artifacts/coverage.md (or specs/archive/008-spectant-complete/… once the spec is
+ * archived; the active folder wins) holds a markdown table with the header `| Source | Entry | Target | Reason |`
+ * (other tables in the file are ignored). Per row:
  *
  *   Source  one of roadmap, outline, notes, view, doc
  *   Entry   the heading text (normalised as above, so the full heading line may be pasted) or the file basename;
@@ -70,6 +71,8 @@ export type CoverageRow = { line: number; source: SourceName; entry: string };
 
 const PROTOTYPE = 'specs/001-app-skeleton/.design/prototype/spectant-ui';
 const COVERAGE = 'specs/008-spectant-complete/artifacts/coverage.md';
+// Once spec 008 is archived, its folder and the mapping move one level down.
+const ARCHIVED_COVERAGE = 'specs/archive/008-spectant-complete/artifacts/coverage.md';
 const IDEAS = 'specs/ideas';
 const INDEX_FILE = 'README.md';
 const FREE = 'Free';
@@ -232,7 +235,7 @@ function coverage(root: string): number {
     return 0;
   }
 
-  const mappingFile = join(root, COVERAGE);
+  const mappingFile = [COVERAGE, ARCHIVED_COVERAGE].map((p) => join(root, p)).find((p) => existsSync(p)) ?? join(root, COVERAGE);
   let rows: CoverageRow[] = [];
   let problems: string[] = [];
   if (existsSync(mappingFile)) {
