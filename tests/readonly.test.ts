@@ -500,6 +500,101 @@ describe("ISC-132: the board's reads, the database routes and a refused drop lea
   });
 });
 
+// The unified planning page (spec 026 T36, ISC-173) under the same guard, through the served app on its own copy,
+// `.git/` included: the planning route with its relation index (`relations`, the milestones' `featureIds`,
+// `unassignedFeatures`) read, revalidated and HEAD; every other read the three lenses, the redirects and the detail
+// sidebar make (the workspace list, the dashboard, the settings, the actor names, the board query and a story the
+// sidebar opens on the workspace board); and the SPA paths of the lenses with `?sel=`, the old Features and
+// Milestones addresses and the workspace board with a selected card. The redirect itself is client-side (the `#`
+// anchor never reaches the server), so on the server an old address is the SPA fallback and the redirect's reads are
+// the planning route's; the browser side of the same pages is `bun run e2e -- offline`. The copy stays byte-identical,
+// every mtime and `.git/index` kept.
+describe("ISC-173: the planning lenses, the redirects and the sidebar leave the repository byte-identical", () => {
+  test("readonly: planning with its relation index, the sidebar's reads and every planning page change no byte, .git/ included", async () => {
+    const copy = join(mkdtempSync(join(root, "planning-")), SLUG);
+    cpSync(repo, copy, { recursive: true });
+    const before = snapshot(copy);
+    const indexBefore = readFileSync(join(copy, ".git", "index"));
+    const indexMtimeBefore = lstatSync(join(copy, ".git", "index")).mtimeMs;
+
+    const env = { XDG_DATA_HOME: mkdtempSync(join(root, "xdg-planning-")) };
+    const lines: string[] = [];
+    const log = spyOn(console, "log").mockImplementation((...args: unknown[]) => void lines.push(args.join(" ")));
+    const stop = new AbortController();
+    try {
+      expect(await run(["add", copy], manifest(), { env })).toBe(0);
+      const done = run(["--port", "0", "--no-browser"], manifest(), { env, signal: stop.signal });
+      const deadline = Date.now() + 5_000;
+      let url = "";
+      while (url === "") {
+        url = /^spectant · (http:\/\/127\.0\.0\.1:\d+)$/.exec(lines.find((l) => l.startsWith("spectant · ")) ?? "")?.[1] ?? "";
+        if (Date.now() > deadline) throw new Error(`no URL line: ${lines.join(" | ")}`);
+        if (url === "") await Bun.sleep(5);
+      }
+
+      // The planning route with its index: every lens, the redirect target and the sidebar read it.
+      const planning = await fetch(`${url}${workspaceRoutes.planning(SLUG)}`);
+      expect(planning.status).toBe(200);
+      const etag = planning.headers.get("etag") ?? "";
+      expect(etag).not.toBe("");
+      const body = (await planning.json()) as {
+        relations?: Record<string, unknown>;
+        unassignedFeatures?: unknown[];
+        milestones: Array<{ featureIds?: unknown[] }>;
+      };
+      expect(Object.keys(body.relations ?? {}).length).toBeGreaterThan(0);
+      expect(body.relations).toHaveProperty(["feature:F2"]);
+      expect(body.unassignedFeatures).toContain("F2");
+      expect(body.milestones.length).toBeGreaterThan(0);
+      expect(body.milestones.every((m) => Array.isArray(m.featureIds))).toBe(true);
+      expect((await fetch(`${url}${workspaceRoutes.planning(SLUG)}`, { headers: { "If-None-Match": etag } })).status).toBe(304);
+      expect((await fetch(`${url}${workspaceRoutes.planning(SLUG)}`, { method: "HEAD" })).status).toBe(200);
+
+      // The shell's and the sidebar's other reads: the workspace list, the dashboard, the settings, the actor names,
+      // the board query (the workspace board's filter) and a story an idea card opens.
+      for (const path of [
+        "/api/workspaces",
+        `/api/workspaces/${SLUG}/dashboard`,
+        "/api/settings",
+        ACTORS_PATH,
+        workspaceRoutes.boardQuery(SLUG),
+        workspaceRoutes.idea(SLUG, "console-audit-log"),
+      ]) {
+        expect({ path, status: (await fetch(`${url}${path}`)).status }).toEqual({ path, status: 200 });
+      }
+
+      // The pages: the three lenses with an open sidebar, the old addresses the client redirects and the workspace
+      // board with a selected card, each the SPA's index through the fallback.
+      for (const page of [
+        `/w/${SLUG}/planning`,
+        `/w/${SLUG}/planning/tree?sel=feature:F2`,
+        `/w/${SLUG}/planning/board?sel=spec:003`,
+        `/w/${SLUG}/planning/graph?sel=milestone:harbor-0-9`,
+        `/w/${SLUG}/features`,
+        `/w/${SLUG}/milestones`,
+        `/w/${SLUG}/board?sel=spec:002`,
+      ]) {
+        const res = await fetch(`${url}${page}`);
+        expect({ page, status: res.status }).toEqual({ page, status: 200 });
+        expect(await res.text()).toContain("<title>spectant</title>");
+      }
+
+      stop.abort();
+      expect(await done).toBe(0);
+    } finally {
+      stop.abort();
+      log.mockRestore();
+    }
+
+    const after = snapshot(copy);
+    expect(changed(before, after, { mtime: true })).toEqual([]);
+    expect(after.checksum).toBe(before.checksum);
+    expect(underGit(after)).toEqual(underGit(before));
+    expect(readFileSync(join(copy, ".git", "index")).equals(indexBefore)).toBe(true);
+    expect(lstatSync(join(copy, ".git", "index")).mtimeMs).toBe(indexMtimeBefore);
+  });
+});
+
 // The tech page (spec 023 T8, ISC-134.3) under the same guard, through the served app on its own copy, `.git/`
 // included: harbor carries `specs/tech.md` and the image it names (`specs/tech/overview.png`), so the tech model, the
 // served image, a missing one and a refused `..` are read, revalidated and HEAD, and the copy stays byte-identical.
