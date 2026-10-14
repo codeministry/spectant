@@ -859,7 +859,9 @@ Milestone: Beacon 0.5
 
 **Derived:** the master fraction (the hero number), the reference for every spec's drift, and its fog lines in the
 attention count. **Derived: the planning tree** (spec 003, `planning.ts`): the features from the master's blocks, each
-claim with the spec folder that holds it, active or archived; and the milestones from the `## Milestones` block
+claim with the spec folder that holds it, active or archived, and each block's holders (a spec holding no live claim of
+any block, such as an allocated story, is a holder of the block the first word of its `isa_feature` names, as its main
+feature with nothing held, so it moves no count; spec 033); and the milestones from the `## Milestones` block
 together with the features' `Milestone:` lines and the specs' `milestone:` keys, each with its progress, closed over
 total: the sum of its features where the master carries `Milestone:` lines, otherwise across every feature its specs
 touch.
