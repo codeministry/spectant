@@ -84,6 +84,18 @@ function openSpecEdges(edges: readonly SpecEdge[]): Map<string, string[]> {
   return open;
 }
 
+/**
+ * The spec-edge hold of a task (ISC-162.2): `waits on NNN` from the open spec edges on the task and on its claim, null
+ * when none is open. The planner's first hold reason, and the live board's over a card carried from a round (ISC-163).
+ */
+export function specEdgeHold(edges: readonly SpecEdge[]): (task: string, claim: string) => string | null {
+  const open = openSpecEdges(edges);
+  return (task, claim) => {
+    const specs = [...(open.get(`task:${task}`) ?? []), ...(open.get(`claim:${claim}`) ?? [])];
+    return specs.length > 0 ? waitsOnReason(specs) : null;
+  };
+}
+
 interface Unit {
   readonly id: string;
   readonly claim: string;
@@ -120,6 +132,7 @@ export function takeableSet(input: TakeableInput): TakeableSet {
   const width = input.width ?? (input.specType !== null && SERIAL_TYPES.has(input.specType) ? 1 : 4);
   const partition = input.partition ?? partitionClaims(input.claims, input.locks ?? [], input.reviewed);
   const waiting = openSpecEdges(input.specEdges ?? []);
+  const edgeHold = specEdgeHold(input.specEdges ?? []);
   // A claim held by an open spec edge is not takeable, whatever the partition says (ISC-162.2).
   const takeable = new Set(partition.takeable.filter((id) => !waiting.has(`claim:${id}`)));
   const closed = new Set(partition.closed);
@@ -134,8 +147,8 @@ export function takeableSet(input: TakeableInput): TakeableSet {
   const filesThisRound = new Set<string>();
 
   const holdReason = (u: Unit): string | null => {
-    const waitsOn = [...(waiting.get(`task:${u.id}`) ?? []), ...(waiting.get(`claim:${u.claim}`) ?? [])];
-    if (waitsOn.length > 0) return waitsOnReason(waitsOn);
+    const waitsOn = edgeHold(u.id, u.claim);
+    if (waitsOn !== null) return waitsOn;
     if (u.lane === 'operator') return "operator lane — the principal's own action, never auto-dispatched";
     if (closed.has(u.claim)) return 'claim already closed — task should be [x]; strike or check it';
     const blockers = blocked.get(u.claim);

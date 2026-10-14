@@ -660,6 +660,27 @@ describe('spec edges: waits (ISC-163)', () => {
     expect(reasonsAt(MERGED_002).some((r) => r.includes('waits on'))).toBe(false);
   });
 
+  test('waits: a task carried from a round reads waits on 002 over the round reason; met, the round card is back', () => {
+    // The round left T2 held and T3 dispatched; an open spec edge on 002 holds their claim ISC-9 since.
+    const text = (id: string): string => task('004', id).text;
+    const card = (id: string, claim: string, state: string, reason: string) => ({ id, claim, lane: 'web', seam: false, parallel: false, text: text(id), paths: [], state, reason });
+    const line = {
+      v: 1,
+      round: 1,
+      ts: '2026-03-09T10:00:00Z',
+      mode: 'agent',
+      width: 1,
+      dispatched: ['T3'],
+      tasks: [card('T1', 'ISC-8', 'done', 'claim takeable, edges closed'), card('T2', 'ISC-9', 'held', 'width 1 reached'), card('T3', 'ISC-9', 'dispatched', 'claim takeable, edges closed')],
+    };
+    const base = reviewed('004');
+    const files = { ...base, texts: { ...base.texts, constitution: CONSTITUTION, rounds: `${JSON.stringify(line)}\n` } };
+    const cardsAt = (rows: readonly MergeState[]) =>
+      buildLiveFrame({ files, locks: NO_LOCKS, now: new Date('2026-03-10T09:00:00Z'), specEdges: edgesOf('004', rows) }).cards.map((c) => `${c.task} ${c.state} ${c.reason ?? '-'}`);
+    expect(cardsAt(BASE)).toEqual(['T1 done claim takeable, edges closed', 'T2 waiting waits on 002', 'T3 waiting waits on 002']);
+    expect(cardsAt(MERGED_002)).toEqual(['T1 done claim takeable, edges closed', 'T2 waiting width 1 reached', 'T3 dispatched claim takeable, edges closed']);
+  });
+
   test('waits: a claim held by an open spec edge is blocked, not takeable, and names its blockers; met, it is free', () => {
     const viewAt = (rows: readonly MergeState[]) => buildClaimViews({ files: reviewed('004'), specEdges: edgesOf('004', rows) });
     const held = viewAt(BASE).claims.find((c) => c.id === 'ISC-9');
