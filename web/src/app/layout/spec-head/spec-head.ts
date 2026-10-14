@@ -21,6 +21,7 @@ import { chipIcon } from '../../shared/ui/chip/chip-icons';
 import { UiCommandChip } from '../../shared/ui/command-chip/command-chip';
 import { UiPopover, UiPopoverTrigger } from '../../shared/ui/overlay/popover';
 import { UiPriority } from '../../shared/ui/priority/priority';
+import { UiWaitsChip } from '../../shared/ui/waits-chip/waits-chip';
 import type { Tone } from '../../shared/ui/tone';
 import { TYPE_GLYPHS } from '../../shared/ui/type-glyph/type-glyph';
 import { UiWorktreeChip } from '../../shared/ui/worktree-chip/worktree-chip';
@@ -82,7 +83,7 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
  */
 @Component({
   selector: 'app-spec-head',
-  imports: [GateButton, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiPriority, UiWorktreeChip],
+  imports: [GateButton, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiPriority, UiWaitsChip, UiWorktreeChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./spec-head.css', './spec-head.context.css', './spec-head.compact.css'],
   host: { class: 'spec-head', '[attr.data-tier]': 'tier()' },
@@ -139,6 +140,9 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
         }
         <ui-chip data-head-chip="stage" [tone]="stageLook().tone" [icon]="stageLook().icon">{{ 'stages.' + stage() | transloco }}</ui-chip>
         <ui-priority data-head-chip="priority" [mark]="true" [value]="priority()" />
+        @if (waits(); as wait) {
+          <ui-waits-chip data-head-chip="waits" [wait]="wait" [ws]="state.ws() ?? ''" [titles]="blockerTitles()" [meta]="true" />
+        }
         @if (milestoneChip(); as milestone) {
           @if (milestone.known) {
             <a class="chip-link" data-head-chip="milestone" [routerLink]="treeLink()" [queryParams]="{ sel: 'milestone:' + milestone.slug }">
@@ -309,6 +313,17 @@ export class SpecHead {
   protected readonly priority = computed<Priority | null>(
     () => this.body()?.head.priority ?? this.row()?.priority ?? this.holder()?.priority ?? null,
   );
+  /**
+   * Spec 025 (T22, ISC-163): what the spec waits on, from the spec payload; null when no open spec edge holds its work.
+   * A partial hold keeps the stage and shows the scope behind the chip; a full one already reads `blocked` from core.
+   */
+  protected readonly waits = computed(() => this.body()?.head.waits ?? null);
+  /** The blocker titles for the chip's accessible name, from the dashboard rows (active and archived). */
+  protected readonly blockerTitles = computed(() => {
+    const ids = this.waits()?.blockers ?? [];
+    const rows = [...this.data.specRows(), ...this.data.archiveRows()];
+    return Object.fromEntries(ids.flatMap((id) => rows.filter((row) => row.id === id).slice(0, 1).map((row) => [id, row.title] as const)));
+  });
   protected readonly command = computed(() => this.body()?.head.nextCommand ?? null);
   protected readonly notes = computed(() => this.body()?.areas.notes.count ?? null);
   protected readonly description = computed(() => this.body()?.ideaQuote ?? null);

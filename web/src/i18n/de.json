@@ -2204,5 +2204,13 @@
     "sourceWorktree": "Worktree-Kopie",
     "copyPath": "Pfad kopieren",
     "copied": "Pfad kopiert"
+  },
+  "waits": {
+    "on": "wartet auf",
+    "name": "Wartet auf Spec {{id}}, {{title}}",
+    "nameBare": "Wartet auf Spec {{id}}",
+    "unknown": "Wartet auf Spec {{id}}, keine solche Spec",
+    "more": "Wartet auch auf {{ids}}",
+    "partial": "{{held}} von {{open}} offenen Tasks"
   }
 }

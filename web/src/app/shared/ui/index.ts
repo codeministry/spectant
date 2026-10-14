@@ -48,6 +48,7 @@ export { UiStateChip } from './state-chip/state-chip';
 export { UiTerm } from './term/term';
 export { TYPE_GLYPHS, type TypeGlyphKind, UiTypeGlyph } from './type-glyph/type-glyph';
 export { TOAST_MS, ToastService, UiToast } from './toast/toast';
+export { UiWaitsChip, WAITS_VISIBLE } from './waits-chip/waits-chip';
 export { type Tone, toneColor, toneInk, toneMark, toneTint } from './tone';
 export { UiWorktreeChip } from './worktree-chip/worktree-chip';
 export { UiWsBadge, type WsBadgeSize } from './ws-badge/ws-badge';
