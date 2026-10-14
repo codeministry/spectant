@@ -71,8 +71,9 @@
  *
  * The reader and the search (spec 017 T17, T18, ISC-156.2, ISC-156.3), with the same guard order and statuses, read the
  * catalog's documents alone (`loadCatalogDocs`, no git call). A document is one the catalog lists as Markdown and not
- * `missing`; its file is reached only by its listed path, through core's `resolveEvidencePath` with `specs/` as the
- * root (`reach: 'tree'`), so a request never names a file and a symlink out of `specs/` is never read. A spec's own file
+ * `missing`; its file is reached only by its listed path, confined below the real `specs/` (`catalogFileBelow`), so a
+ * request never names a file and a symlink out of `specs/` is never read. The listed path is already decoded, so a
+ * name with a space, a `%`, an umlaut or a literal percent sequence opens and is searched (ISC-156.4). A spec's own file
  * read from its worktree copy (spec 027, ISC-181) is reached the same way below that copy's folder (`catalogSourceOf`).
  * - `libraryDoc`, `GET …/library/doc?path=` (the raw query value, decoded once): the document rendered as its Docs tab
  *   renders it, `renderDocsMarkdown` with `docsRenderOptions` (the constitution's and the Design tab's own options by
@@ -98,11 +99,12 @@
  */
 import type { Database } from "bun:sqlite";
 import { readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { realpath, stat } from "node:fs/promises";
+import { join, sep } from "node:path";
 import { parseActor } from "../../core/src/actor.ts";
 import { allocateAnswer } from "./allocate-route.ts";
 import { type DashboardKpis, buildDashboard } from "../../core/src/dashboard.ts";
-import { docsRenderOptions, resolveEvidencePath } from "../../core/src/evidence.ts";
+import { docsRenderOptions } from "../../core/src/evidence.ts";
 import { catalogSourceOf } from "../../core/src/library.ts";
 import { type DocName, type DocsPage, type LibraryDoc, repoFilePath, specFilePath } from "../../core/src/files.ts";
 import { readIdeas } from "../../core/src/ideas.ts";
@@ -184,8 +186,28 @@ const isReadableDoc = (doc: LibraryDoc): boolean => doc.media === "markdown" && 
 /** The Docs tab a catalog document renders as: the constitution's and the Design tab's own options, else a plain page. */
 const docNameOf = (type: LibraryDoc["type"]): DocName => (type === "constitution" ? "constitution" : type === "design" ? "design" : "plan");
 
-/** A catalog path (decoded, `/`-separated) as the raw query value core's resolver decodes once. */
-const rawPathOf = (path: string): string => path.split("/").map(encodeURIComponent).join("/");
+/**
+ * The real file of a catalog path below `dir`, or null (spec 017 T59, ISC-156.4). The path is the catalog's own
+ * spelling, read from the directory and matched exactly, so it is already decoded: a `%` in it is part of the name,
+ * never an escape, and nothing decodes it again. Core's `resolveEvidencePath` takes a raw request and refuses a percent
+ * sequence after its one decode, which turned away a listed `run%20retry.md` (code-review finding 7). Its other rules
+ * stand here: no control character or backslash, no empty, `.` or `..` segment, the real path below the real `dir`
+ * (a symlink out is null) and a regular file.
+ */
+const catalogFileBelow = async (dir: string, rel: string): Promise<string | null> => {
+  // eslint-disable-next-line no-control-regex -- control characters are exactly what is refused here
+  if (rel === "" || /[\u0000-\u001f\u007f\\]/.test(rel)) return null;
+  const segments = rel.split("/");
+  if (segments.some((s) => s === "" || s === "." || s === "..")) return null;
+  try {
+    const realDir = await realpath(dir);
+    const real = await realpath(join(realDir, ...segments));
+    if (!real.startsWith(realDir + sep)) return null;
+    return (await stat(real)).isFile() ? real : null;
+  } catch {
+    return null;
+  }
+};
 
 /** One document's search text with the file version it was taken from; a changed size or mtime renders it again. */
 type SearchText = { readonly mtimeMs: number; readonly size: number; readonly text: string };
@@ -374,8 +396,8 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
   };
 
   /**
-   * The catalog's readable Markdown document at the decoded `path`, and its real file through core's confinement
-   * (`resolveEvidencePath` with `specs/` as the root, `reach: 'tree'`): null for a path the catalog does not list as
+   * The catalog's readable Markdown document at the decoded `path`, and its real file confined below `specs/`
+   * (`catalogFileBelow`, the listed path never decoded again): null for a path the catalog does not list as
    * one, or whose real path leaves `specs/` (a symlink out). Only a listed path is ever resolved, so a request alone
    * never names a file. A spec's own file comes from its worktree copy when `copies` names one (core's
    * `catalogSourceOf`, spec 027, ISC-181), confined to that copy's folder the same way.
@@ -390,10 +412,10 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     if (doc === undefined) return null;
     const specs = join(root, "specs");
     const source = catalogSourceOf(root, doc, copies);
-    const hit = await resolveEvidencePath(source.dir, rawPathOf(source.rel), "tree");
+    const absolute = await catalogFileBelow(source.dir, source.rel);
     // The logical path (not the real one) feeds the render options, whose confinement is lexical under `root`; it stays
     // the main checkout's, where a copy's relative images resolve (`artifacts/` and `.design/` are never read from a copy).
-    return hit.ok ? { doc, absolute: hit.absolute, logical: join(specs, ...doc.path.split("/")) } : null;
+    return absolute === null ? null : { doc, absolute, logical: join(specs, ...doc.path.split("/")) };
   };
 
   /** A catalog document rendered as its Docs tab renders it: `renderDocsMarkdown` with `docsRenderOptions`. */

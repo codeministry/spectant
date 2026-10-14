@@ -347,6 +347,66 @@ describe("GET /api/workspaces/:ws/library/search", () => {
   });
 });
 
+// Code-review finding 7 (T59, ISC-156.4): a catalog document whose file name carries a space, a `%`, an umlaut or a
+// literal percent sequence is listed, so it opens in the reader and the search finds it; the client encodes the listed
+// path once, the route decodes it once and matches it against the catalog, and nothing decodes it a second time.
+describe("encoded file names in the reader and the search (ISC-156.4)", () => {
+  const EVIDENCE = "001-lighthouse-map/.evidence";
+  const named: Record<string, string> = {
+    "notes with space.md": "kelpwhistle",
+    "100%.md": "barnaclequill",
+    "Prüfung.md": "driftmarrow",
+    "run%20retry.md": "tidewrack",
+  };
+  let coded: string;
+
+  beforeAll(() => {
+    coded = join(root, "coded");
+    cpSync(LIBRARY, coded, { recursive: true });
+    for (const [name, word] of Object.entries(named)) {
+      writeFileSync(join(coded, "specs", EVIDENCE, name), `# Encoded ${word}\n\nThe ${word} line of ${name}.\n`);
+    }
+    writeFileSync(join(coded, "secret.md"), "# Secret\n\nwhalebone ledger\n");
+    registry.add(coded);
+  });
+
+  test("encoded: every such document is listed, opens with 200 and is the one search hit for its word", async () => {
+    const catalog = await readCatalog(coded);
+    for (const [name, word] of Object.entries(named)) {
+      const path = `${EVIDENCE}/${name}`;
+      expect({ name, listed: catalog.docs.some((d) => d.path === path) }).toEqual({ name, listed: true });
+      const res = await call(workspaceRoutes.libraryDoc("coded", path));
+      const page = (await res.json()) as WorkspaceRouteResponses["libraryDoc"];
+      expect({ name, status: res.status, has: page.html.includes(word) }).toEqual({ name, status: 200, has: true });
+      const hits = (await (await call(workspaceRoutes.librarySearch("coded", word))).json()) as WorkspaceRouteResponses["librarySearch"];
+      expect({ name, hits: hits.hits.map((h) => h.path) }).toEqual({ name, hits: [path] });
+    }
+  });
+
+  test("encoded: traversal and a genuinely double-encoded path stay refused (403 or 404), never a read", async () => {
+    const enc = encodeURIComponent;
+    const doc = `${workspaceRoutes.library("coded")}/doc?path=`;
+    const refused = [
+      // Traversal, encoded once and raw.
+      enc(`${EVIDENCE}/../../../secret.md`),
+      `${EVIDENCE}/../../../secret.md`,
+      enc("../secret.md"),
+      "..%2Fsecret.md",
+      "%2E%2E%2Fsecret.md",
+      // A second encoding layer over each listed name.
+      ...Object.keys(named).map((name) => enc(enc(`${EVIDENCE}/${name}`))),
+      // A literal-percent name with one layer too many, and a bare `%` that is no escape.
+      enc(enc(enc(`${EVIDENCE}/run%20retry.md`))),
+      `${EVIDENCE}/100%.md`,
+    ];
+    for (const query of refused) {
+      const res = await call(`${doc}${query}`);
+      const body = await res.text();
+      expect({ query, status: [403, 404].includes(res.status), leaked: body.includes("whalebone") }).toEqual({ query, status: true, leaked: false });
+    }
+  });
+});
+
 describe("GET /api/workspaces/:ws/library/asset", () => {
   test("asset: an image below specs/ by its path relative to specs/, images only, confined like techAsset", async () => {
     const res = await call(workspaceRoutes.libraryAsset("shelf", "tech/arch.png"));
