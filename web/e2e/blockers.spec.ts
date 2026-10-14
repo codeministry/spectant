@@ -102,6 +102,13 @@ test.describe('blockers waits: the spec edges hold their specs (waiting)', () =>
     await open(page, `/w/${WS}`);
     await expectChip(rowChip(page, full.spec), full.on, '009 row');
     await expectChip(rowChip(page, partial.spec), partial.on, '002 row');
+    // The stage track of 009, on stage blocked, keeps its progress at Build and marks it "Blocked" (principal
+    // 2026-10-14: "Leiste markiert Blocked"); the phase chip stays.
+    const track = page.locator(`app-spec-row:has(a.row-link[data-spec-row="${full.spec}"]) ui-stage-track`);
+    await expect(track.locator('.bar[data-state="blocked"]'), '009 row: one blocked segment').toHaveCount(1);
+    await expect(track.locator('[data-blocked]'), '009 row: the word').toHaveText('Blocked');
+    await expect(track.locator('[role="img"]'), '009 row: the name').toHaveAccessibleName('Stage 4 of 5: Build · Blocked');
+    await expect(page.locator(`app-spec-row:has(a.row-link[data-spec-row="${partial.spec}"]) [data-blocked]`), '002 row: not blocked').toHaveCount(0);
 
     await rowChip(page, partial.spec).locator(`a[data-blocker="${partial.on}"]`).click();
     await expect(page).toHaveURL((url) => url.pathname === specPath(partial.on) && !url.searchParams.has('sel'));

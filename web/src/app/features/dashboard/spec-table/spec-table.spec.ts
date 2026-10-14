@@ -118,6 +118,27 @@ describe('SpecTable (prototype port, T89)', () => {
     expect(rowB.querySelector('.agent-dot')).toBeNull();
   });
 
+  it('a row on stage blocked keeps its track at Build, marks the segment blocked and says "Blocked"; the phase chip stays (spec 025)', async () => {
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows({ specs: [wire('009', { phase: 'building', stage: 'blocked' })], archive: [] }));
+    fixture.componentRef.setInput('archive', []);
+    fixture.componentRef.setInput('query', DEFAULT_QUERY);
+    await fixture.whenStable();
+    const row = (fixture.nativeElement as HTMLElement).querySelector('[data-spec-row="009"]')?.closest('li') as HTMLElement;
+    const track = row.querySelector('.rtrack ui-stage-track');
+    expect([...(track?.querySelectorAll('.bar') ?? [])].map((bar) => bar.getAttribute('data-state'))).toEqual(['done', 'done', 'done', 'blocked', 'pending']);
+    expect(text(track?.querySelector('[data-blocked]'))).toBe('Blocked');
+    expect(track?.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Stage 4 of 5: Build · Blocked');
+    expect(text(row.querySelector('.rtrack ui-chip'))).toBe('building');
+  });
+
+  it('a row on any other stage has no blocked segment and no word (spec 025)', async () => {
+    const { host } = await render();
+    expect(host.querySelector('.rtrack [data-blocked]')).toBeNull();
+    expect(host.querySelector('.rtrack .bar[data-state="blocked"]')).toBeNull();
+  });
+
   it('marks the row the sidebar shows with data-selected="row" and links it to the spec page (spec 026, T27)', async () => {
     const { fixture, host } = await render();
     fixture.componentRef.setInput('preview', '002');

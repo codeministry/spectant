@@ -3,7 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoService } from '@jsverse/transloco';
 import type { WorkflowStage } from '../../../../../../core/src/files';
 
-export type StageState = 'done' | 'current' | 'held' | 'pending';
+export type StageState = 'done' | 'current' | 'held' | 'blocked' | 'pending';
 
 /** The two detours every type has and no workflow row lists: markers on the track, never segments. */
 export type StageDetour = 'blocked' | 'close-pending';
@@ -28,7 +28,9 @@ interface Segment {
  *   (`done` reads as every segment done); `detour` (`blocked`, `close-pending`) is never a segment but a held-grey
  *   marker on the current one, with its word. A stage the row does not hold marks nothing current.
  * - **Label mode** (spec 002): `labels` already translated and a zero-based `current`, where `labels().length` means
- *   every stage is done. The dashboard consumers still use it.
+ *   every stage is done. The dashboard consumers still use it. `blocked` (spec 025) keeps the progress and marks the
+ *   current segment as the board's Blocked column does, in the error colour, with the word "Blocked" after the mini
+ *   bars, so the state is not colour alone.
  *
  * Sizes: `mini` is 16 × 4 px bars named as one image; `labelled` an ordered list with `aria-current="step"`, 60 px per
  * segment so "Abschluss" fits; `compact` full-width unlabelled 4 px bars with only the current word under its segment,
@@ -50,6 +52,10 @@ interface Segment {
     [data-state='done'] > .bar, .bar[data-state='done'] { background: var(--color-accent); }
     [data-state='current'] > .bar, .bar[data-state='current'] { background: var(--color-primary); }
     [data-state='held'] > .bar, .bar[data-state='held'] { background: repeating-linear-gradient(90deg, var(--held) 0 6px, transparent 6px 8px); }
+    [data-state='blocked'] > .bar, .bar[data-state='blocked'] { background: var(--color-error); }
+    .mini { align-items: center; }
+    .mini-word { margin-inline-start: 4px; color: var(--fail-ink); font-size: 11px; font-weight: 600; line-height: 16px; white-space: nowrap; }
+    [data-state='blocked'] > .seg-label { color: var(--fail-ink); font-weight: 700; }
     ol { display: grid; grid-auto-columns: minmax(60px, 1fr); grid-auto-flow: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
     li { display: grid; gap: 4px; min-inline-size: 0; }
     .seg-label { overflow: hidden; color: var(--muted-ink); font-size: 11px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
@@ -68,7 +74,7 @@ interface Segment {
     .vh { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     @media (forced-colors: active) {
       .bar { border: 1px solid CanvasText; }
-      [data-state='done'] > .bar, .bar[data-state='done'], [data-state='current'] > .bar, .bar[data-state='current'] { background: CanvasText; }
+      [data-state='done'] > .bar, .bar[data-state='done'], [data-state='current'] > .bar, .bar[data-state='current'], [data-state='blocked'] > .bar, .bar[data-state='blocked'] { background: CanvasText; }
       [data-state='held'] > .bar, .bar[data-state='held'] { border-style: dashed; background: Canvas; }
     }
   `,
@@ -77,6 +83,9 @@ interface Segment {
       <span class="mini" role="img" [attr.aria-label]="name()">
         @for (seg of segments(); track seg.key) {
           <span class="bar" [attr.data-state]="seg.state"></span>
+        }
+        @if (blockedLabel(); as word) {
+          <span class="mini-word" data-blocked>{{ word }}</span>
         }
       </span>
     } @else {
@@ -122,6 +131,8 @@ export class UiStageTrack {
   readonly labels = input<readonly string[]>([]);
   /** Label mode: zero-based index of the current stage; `labels().length` means every stage is done. */
   readonly current = input(0);
+  /** Label mode: the spec stands on `blocked` (spec 025); the current segment turns blocked and the mini track says so. */
+  readonly blocked = input(false);
   readonly size = input<'mini' | 'labelled' | 'compact'>('mini');
   readonly ariaLabel = input<string>();
   /** Labelled only: a ▾ above the current segment and its label in the primary ink, so the stage is not colour alone. */
@@ -139,6 +150,9 @@ export class UiStageTrack {
   /** Row mode: the index of `stage` in the row, -1 when the row does not hold it. Label mode: `current`. */
   private readonly index = computed(() => (this.rowMode() ? this.rowStages().indexOf(this.stage() as WorkflowStage) : this.current()));
 
+  /** Label mode: the word after the mini bars while `blocked`; null otherwise and in row mode, which has `detour`. */
+  protected readonly blockedLabel = computed(() => (!this.rowMode() && this.blocked() ? this.word('blocked') : null));
+
   protected readonly detourLabel = computed(() => {
     const detour = this.rowMode() ? this.detour() : null;
     return detour ? this.word(detour) : null;
@@ -147,7 +161,11 @@ export class UiStageTrack {
   protected readonly segments = computed<readonly Segment[]>(() => {
     const index = this.index();
     if (!this.rowMode()) {
-      return this.labels().map((label, i) => ({ key: String(i), label, state: this.stateOf(i, index, false), current: i === index }));
+      const blocked = this.blocked();
+      return this.labels().map((label, i) => {
+        const state = this.stateOf(i, index, false);
+        return { key: String(i), label, state: blocked && state === 'current' ? 'blocked' : state, current: i === index };
+      });
     }
     const allDone = this.stage() === 'done';
     const held = this.detour() !== null;
@@ -165,7 +183,8 @@ export class UiStageTrack {
     if (!this.rowMode()) {
       const labels = this.labels();
       const index = Math.min(this.current(), labels.length - 1);
-      return `Stage ${index + 1} of ${labels.length}: ${labels[index] ?? ''}`;
+      const blocked = this.blockedLabel();
+      return `Stage ${index + 1} of ${labels.length}: ${labels[index] ?? ''}${blocked ? ` · ${blocked}` : ''}`;
     }
     const stage = this.stage();
     const index = this.index();

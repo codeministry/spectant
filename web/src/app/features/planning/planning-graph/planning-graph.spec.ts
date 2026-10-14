@@ -86,7 +86,7 @@ class FakeMermaid implements MermaidApi {
     const marker = `${id}_flowchart-v2-pointEnd`;
     const defs = `<defs><marker id="${marker}"><path d="M 0 0 L 10 5 L 0 10 z"></path></marker></defs>`;
     const paths = edges.map((e, i) => {
-      const head = e.arrow === '---' ? '' : ` marker-end="url(#${marker})"`;
+      const head = e.arrow === '---' ? '' : ` marker-end="url(#${marker})"`; // single-core: allow — a mermaid open link, not the frontmatter delimiter
       return `<path class="flowchart-link" data-edge="true" data-id="${e.id ?? `L_${e.from}_${e.to}_${String(i)}`}"${head}></path>`;
     });
     const drawn = nodes.map((n, i) => `<g class="node" id="${id}-flowchart-${n}-${String(i)}"><rect width="10" height="10"></rect></g>`);
