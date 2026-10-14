@@ -42,6 +42,18 @@ describe('UiStageTrack', () => {
     const { host } = await render({ labels: LABELS, current: 1, size: 'labelled' });
     expect(host.querySelector('li[aria-current="step"]')?.textContent.trim()).toBe('Tasks');
   });
+
+  it('blocked: keeps the progress, turns the current segment blocked, says "Blocked" after the mini bars and in the name (spec 025)', async () => {
+    const { host } = await render({ labels: LABELS, current: 3, blocked: true });
+    expect(states(host, '.bar')).toEqual(['done', 'done', 'done', 'blocked', 'pending']);
+    expect(host.querySelector('[data-blocked]')?.textContent.trim()).toBe('Blocked');
+    expect(host.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Stage 4 of 5: Build · Blocked');
+  });
+
+  it('not blocked: no word after the mini bars', async () => {
+    const { host } = await render({ labels: LABELS, current: 3 });
+    expect(host.querySelector('[data-blocked]')).toBeNull();
+  });
 });
 
 describe('UiStageTrack from a workflow row (T110, ISC-122.3)', () => {

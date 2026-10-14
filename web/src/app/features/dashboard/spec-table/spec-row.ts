@@ -73,10 +73,17 @@ export class SpecRow {
     return type !== null && Object.hasOwn(TYPE_GLYPHS, type) ? (type as TypeGlyphKind) : null;
   });
   protected readonly stageCurrent = computed(() => stageIndex(this.row().stage));
+  /**
+   * Stage `blocked` (spec 025, principal 2026-10-14): the track keeps the progress (blocked sits on Build) and marks the
+   * current segment as the board's Blocked column, with the word "Blocked"; the phase chip stays as it is.
+   */
+  protected readonly stageBlocked = computed(() => this.row().stage === 'blocked');
   protected readonly stageAria = computed(() => {
     const labels = this.stageLabels();
     const index = Math.min(this.stageCurrent(), labels.length - 1);
-    return this.transloco.translate('stages.position', { index: index + 1, total: labels.length, stage: labels[index] ?? '' });
+    const stage = labels[index] ?? '';
+    const word = this.stageBlocked() ? `${stage} · ${this.transloco.translate('stages.blocked')}` : stage;
+    return this.transloco.translate('stages.position', { index: index + 1, total: labels.length, stage: word });
   });
   protected readonly phaseTone = computed(() => PHASE_TONES[this.row().phase ?? ''] ?? 'neutral');
   protected readonly agentLabel = computed(() => {

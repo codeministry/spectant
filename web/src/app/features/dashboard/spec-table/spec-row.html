@@ -35,7 +35,7 @@
     </span>
   }
   <ui-priority class="rprio" [value]="row().priority" />
-  <ui-stage-track size="mini" [labels]="stageLabels()" [current]="stageCurrent()" [ariaLabel]="stageAria()" />
+  <ui-stage-track size="mini" [labels]="stageLabels()" [current]="stageCurrent()" [blocked]="stageBlocked()" [ariaLabel]="stageAria()" />
   @if (row().phase; as phase) {
     <ui-chip class="phase" [tone]="phaseTone()" [dot]="true">{{ 'phases.' + phase | transloco }}</ui-chip>
   }
