@@ -1678,6 +1678,7 @@
       "meta": "{{milestones}} Meilensteine · {{features}} Features · {{closed}}/{{total}} Claims geschlossen",
       "overview": "Übersicht",
       "overviewEmpty": "Noch keine Spec nennt einen Meilenstein.",
+      "showArchived": "Archivierte",
       "summary": {
         "board": "{{lanes}} Swimlanes · {{columns}} Feature-Spalten",
         "graph": "{{milestones}} Meilensteine → {{features}} Features → {{specs}} Specs"
@@ -1696,7 +1697,6 @@
     "graph": {
       "all": "Alle",
       "filters": "Filter",
-      "archived": "Archivierte",
       "specEdges": "Spec-Kanten",
       "rebundle": "Wieder bündeln",
       "bundleDone": "{{count}} Features erledigt",

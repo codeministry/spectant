@@ -10,6 +10,7 @@ import {
   Injector,
   input,
   linkedSignal,
+  model,
   signal,
 } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
@@ -20,7 +21,7 @@ import { UiIcon } from '../../../shared/icons/icon';
 import { UiIdChip } from '../../../shared/ui/id-chip/id-chip';
 import { UiMeter } from '../../../shared/ui/meter/meter';
 import { UiTerm } from '../../../shared/ui/term/term';
-import { planningCounts } from '../planning-counts';
+import { hasArchivedSpecs, planningCounts } from '../planning-counts';
 import { buildTree, pathTo, type TreeKind, type TreeNode } from './tree-nodes';
 
 /** The tree's levels in cascade order, each with its glossary term (ISC-107's `terms.*` hints). */
@@ -53,7 +54,8 @@ interface TreeRow {
  * selects (`DetailSelection.select`). The rows are flat treeitems with `aria-level`, a 16 px indent per level and a
  * 1 px guide line per ancestor; one row holds the roving tab stop, the arrow keys move along the visible rows, Right
  * and Left open, close or step to the child or parent, Enter and Space select. The level headings above keep their
- * glossary hints (ISC-167). The tree is the lens with a rail: it docks the detail sidebar there at wide for its
+ * glossary hints (ISC-167). Archived specs stay hidden until the archive toggle shows them; the page shares that
+ * toggle across its lenses (`archived`, two-way). The tree is the lens with a rail: it docks the detail sidebar there at wide for its
  * lifetime, so switching to the matrix or the graph undocks it.
  */
 @Component({
@@ -66,11 +68,14 @@ interface TreeRow {
 })
 export class PlanningTree {
   readonly model = input.required<PlanningModel>();
+  /** Archived specs shown (the archive toggle), off by default. */
+  readonly archived = model(false);
 
   private readonly selection = inject(DetailSelection);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
 
+  protected readonly hasArchived = computed(() => hasArchivedSpecs(this.model()));
   protected readonly hasMilestones = computed(() => this.model().milestones.length > 0);
   protected readonly levels = computed(() => (this.hasMilestones() ? LEVELS : LEVELS.filter((level) => level.id !== 'milestones')));
   protected readonly counts = computed(() => {
@@ -83,7 +88,7 @@ export class PlanningTree {
     };
   });
 
-  private readonly roots = computed(() => buildTree(this.model()));
+  private readonly roots = computed(() => buildTree(this.model(), this.archived()));
   /**
    * The rows the selection opens: the path to the selected object, kept when the selection closes, so the row Escape
    * returns focus to is still rendered (ISC-171).
@@ -180,6 +185,10 @@ export class PlanningTree {
     event?.stopPropagation();
     if (!row.expandable) return;
     this.setOpen(row.key, !row.open);
+  }
+
+  protected toggleArchived(): void {
+    this.archived.update((on) => !on);
   }
 
   protected toggleAll(): void {

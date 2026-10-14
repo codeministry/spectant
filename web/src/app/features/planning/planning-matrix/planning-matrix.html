@@ -4,7 +4,7 @@
   [attr.data-layout]="layout()"
   [attr.data-has-selection]="hasSelection() ? '' : null"
 >
-  @if (hasMilestones() || hasDone()) {
+  @if (hasMilestones() || hasDone() || hasArchived()) {
     <div class="tools">
       @if (hasMilestones()) {
         <div class="pills" role="group" [attr.aria-label]="'planning.matrix.pills' | transloco">
@@ -21,6 +21,12 @@
         <button type="button" class="done-toggle" data-show-done [attr.aria-pressed]="showDone()" (click)="toggleDone()">
           <ui-icon name="eye" [size]="14" />
           {{ 'planning.matrix.showDone' | transloco }}
+        </button>
+      }
+      @if (hasArchived()) {
+        <button type="button" class="done-toggle" data-show-archived [attr.aria-pressed]="archived()" (click)="toggleArchived()">
+          <ui-icon name="archive" [size]="14" />
+          {{ 'planning.page.showArchived' | transloco }}
         </button>
       }
     </div>

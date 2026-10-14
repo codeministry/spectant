@@ -1,4 +1,4 @@
-import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, DestroyRef, type ElementRef, inject, input, signal, untracked, viewChild, ViewEncapsulation } from '@angular/core';
+import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, DestroyRef, type ElementRef, inject, input, model, signal, untracked, viewChild, ViewEncapsulation } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -75,8 +75,11 @@ export class PlanningGraph {
   );
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
-  /** The filter chips (design.md § Across viewports): archived specs off, spec edges on; bundles opened by tap. */
-  protected readonly archived = signal(false);
+  /**
+   * The filter chips (design.md § Across viewports): archived specs off, spec edges on; bundles opened by tap. The
+   * archive chip is the page's toggle, shared across its lenses (two-way).
+   */
+  readonly archived = model(false);
   protected readonly edges = signal(true);
   protected readonly expand = signal<readonly string[]>([]);
   protected readonly status = signal<'drawing' | 'drawn' | 'failed'>('drawing');

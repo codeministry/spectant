@@ -9,10 +9,18 @@
       </section>
     }
   </div>
-  <button type="button" class="expand-all" data-expand-all [attr.aria-pressed]="allOpen()" (click)="toggleAll()">
-    <ui-icon [name]="allOpen() ? 'chevrons-up' : 'chevron-down'" [size]="16" />
-    <span>{{ (allOpen() ? 'planning.tree.collapseAll' : 'planning.tree.expandAll') | transloco }}</span>
-  </button>
+  <div class="t-tools">
+    @if (hasArchived()) {
+      <button type="button" class="expand-all archive-toggle" data-show-archived [attr.aria-pressed]="archived()" (click)="toggleArchived()">
+        <ui-icon name="archive" [size]="16" />
+        <span>{{ 'planning.page.showArchived' | transloco }}</span>
+      </button>
+    }
+    <button type="button" class="expand-all" data-expand-all [attr.aria-pressed]="allOpen()" (click)="toggleAll()">
+      <ui-icon [name]="allOpen() ? 'chevrons-up' : 'chevron-down'" [size]="16" />
+      <span>{{ (allOpen() ? 'planning.tree.collapseAll' : 'planning.tree.expandAll') | transloco }}</span>
+    </button>
+  </div>
 </div>
 
 @if (!hasMilestones()) {
