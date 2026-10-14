@@ -1,8 +1,10 @@
 import { CdkDragHandle } from '@angular/cdk/drag-drop';
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import type { WorkflowStage } from '../../../../../core/src/files';
+import type { RelationRef } from '../../../../../core/src/relations';
+import { DetailSelection, selectedLook } from '../../layout/detail-sidebar/selection';
 import { UiIcon } from '../../shared/icons/icon';
 import { UiActorChip } from '../../shared/ui/actor-chip/actor-chip';
 import { UiCard } from '../../shared/ui/card/card';
@@ -41,6 +43,9 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  *   slug; the glyph shows the story's `type:`, the lightbulb when it names none) and `ui-priority` at the end.
  * - Row 2: the title, clamped to two lines; it is the card's one link (to the spec page or the idea page), stretched
  *   over the whole card, named by `board.workspace.card.name` / `ideaName` and described by the waiting phrase.
+ *   Spec 026 (T26, ISC-171): a plain click, a tap or Enter on it selects the card (`?sel=spec:NNN` / `idea:<slug>`, the
+ *   detail sidebar) instead of navigating; Shift+Enter or a shift click opens the page, and a Ctrl/Cmd or middle click
+ *   keeps the browser's new-tab default. The link carries `data-ref`, the card `data-selected="card"` while selected.
  * - Row 3: the main feature chip `F<n>` (its name in the tooltip), the milestone (muted) and, pushed to the end,
  *   `ui-actor-chip` with the resolved name or the raw id; nothing when the card is unassigned.
  * - Row 4, waiting cards only: `ui-reason` compact, the row's phrase and its command chip (none for close-pending).
@@ -55,7 +60,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  */
 @Component({
   selector: 'app-board-card',
-  imports: [CdkDragHandle, RouterLink, TranslocoPipe, UiActorChip, UiCard, UiIcon, UiPriority, UiReason, UiTypeGlyph],
+  imports: [CdkDragHandle, TranslocoPipe, UiActorChip, UiCard, UiIcon, UiPriority, UiReason, UiTypeGlyph],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[attr.data-key]': 'card().key',
@@ -64,6 +69,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
     '(keydown.shift.arrowleft)': 'onStep($event, -1)',
     '(keydown.shift.arrowright)': 'onStep($event, 1)',
   },
+  styleUrls: ['../../layout/detail-sidebar/selection.css'],
   styles: `
     :host { display: block; min-inline-size: 0; }
     ui-card { min-block-size: 72px; }
@@ -110,7 +116,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
   `,
   template: `
     @let c = card();
-    <ui-card [padding]="12" side [dashed]="c.kind === 'idea'" [style.--edge]="edge()" [style.--reason-ink]="ink()">
+    <ui-card [attr.data-selected]="look()" [padding]="12" side [dashed]="c.kind === 'idea'" [style.--edge]="edge()" [style.--reason-ink]="ink()">
       <article>
         <div class="main">
           <div class="r1">
@@ -127,7 +133,9 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
           @let type = c.type === null ? ('common.noValue' | transloco) : ('types.' + c.type | transloco);
           <a
             class="title"
-            [routerLink]="link()"
+            [attr.href]="href()"
+            [attr.data-ref]="ref()"
+            (click)="open($event)"
             [attr.aria-label]="
               c.kind === 'idea'
                 ? ('board.workspace.card.ideaName' | transloco: { title: c.title, priority: c.priority })
@@ -176,6 +184,8 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
   `,
 })
 export class BoardCard {
+  private readonly router = inject(Router);
+  private readonly selection = inject(DetailSelection);
   readonly card = input.required<BoardCardModel>();
   /** The workspace slug the card's link opens in. */
   readonly ws = input.required<string>();
@@ -199,4 +209,22 @@ export class BoardCard {
     const c = this.card();
     return c.kind === 'idea' ? ['/w', this.ws(), 'ideas', c.slug] : ['/w', this.ws(), 's', c.id ?? c.slug];
   });
+  protected readonly href = computed(() => this.router.serializeUrl(this.router.createUrlTree(this.link())));
+  /** The object the card stands for in the sidebar (spec 026, T26): `spec:NNN`, or `idea:<slug>` for a story. */
+  readonly ref = computed<RelationRef>(() => {
+    const c = this.card();
+    return c.kind === 'idea' ? `idea:${c.slug}` : `spec:${c.id ?? c.slug}`;
+  });
+  protected readonly look = computed(() => selectedLook(this.selection, this.ref(), 'card'));
+
+  /**
+   * A click (Enter included) on the card surface: Ctrl/Cmd, Alt or a non-primary button keep the browser's default
+   * (a new tab); Shift opens the page in place; anything else selects the card.
+   */
+  protected open(event: MouseEvent): void {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey) return;
+    event.preventDefault();
+    if (event.shiftKey) void this.router.navigate(this.link());
+    else void this.selection.select(this.ref());
+  }
 }

@@ -83,7 +83,7 @@ describe('TabBarSlot off a spec', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   it('renders no bar on a workspace page or below a former tech address', async () => {
-    for (const url of ['/w/harbor/tech/nope', '/w/harbor/milestones', '/w/harbor', '/w/harbor/library']) {
+    for (const url of ['/w/harbor/tech/nope', '/w/harbor/board', '/w/harbor', '/w/harbor/library']) {
       setUp();
       await TestBed.inject(Router).navigateByUrl(url);
       TestBed.inject(ShellState).tier.set('wide');

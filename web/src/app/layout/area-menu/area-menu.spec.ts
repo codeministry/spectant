@@ -20,6 +20,8 @@ class Blank {}
 /** The shell's route shapes, reduced to the data `ShellState` reads (the real table loads every view). */
 const ROUTES: Routes = [
   { path: 'w/:ws', component: Blank },
+  { path: 'w/:ws/planning/tree', component: Blank, data: { page: 'planning', tab: 'tree' } },
+  { path: 'w/:ws/planning/graph', component: Blank, data: { page: 'planning', tab: 'graph' } },
   { path: 'w/:ws/features', component: Blank, data: { page: 'features' } },
   { path: 'w/:ws/milestones', component: Blank, data: { page: 'milestones' } },
   { path: 'w/:ws/library', component: Blank, data: { page: 'library' } },
@@ -172,39 +174,39 @@ describe('AreaMenu', () => {
       expect(root.querySelectorAll('a[href^="/w/nope"]')).toHaveLength(0);
     });
 
-    it('lists Specs and Features, and no Milestones entry, while no spec carries a milestone', async () => {
+    it('lists Specs, Board, Planning, Tech and Library, no Features or Milestones entry, without milestones (spec 026, ISC-167)', async () => {
       setUp(ok(planning([UNNAMED])));
       const root = await render('/w/harbor');
       const entries = pages(root);
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features', 'library']);
+      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'planning', 'library']);
       expect(entries.map((entry) => entry.tagName)).toEqual(['A', 'A', 'A', 'A']);
-      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/board', '/w/harbor/features', '/w/harbor/library']);
+      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/board', '/w/harbor/planning', '/w/harbor/library']);
       expect(attr(entries, 'aria-disabled')).toEqual([null, null, null, null]);
-      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Board', 'Features', 'Library']);
+      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Board', 'Planning', 'Library']);
       expect(root.querySelectorAll('nav [data-area]')).toHaveLength(0);
     });
 
-    it('adds the Milestones entry, fourth, as soon as a spec carries a milestone; Library stands fifth, where Tech stood (spec 017 T41)', async () => {
+    it('keeps the same four entries when a spec carries a milestone: no Milestones page any more (spec 026); Library stands fourth, where Tech stood (spec 017 T41)', async () => {
       setUp(ok(WITH_MILESTONES));
       const entries = pages(await render('/w/harbor'));
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features', 'milestones', 'library']);
-      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/board', '/w/harbor/features', '/w/harbor/milestones', '/w/harbor/library']);
-      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Board', 'Features', 'Milestones', 'Library']);
-      expect(entries[4]?.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('book');
+      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'planning', 'library']);
+      expect(attr(entries, 'href')).toEqual(['/w/harbor', '/w/harbor/board', '/w/harbor/planning', '/w/harbor/library']);
+      expect(entries.map((entry) => entry.querySelector('.entry-name')?.textContent.trim())).toEqual(['Specs', 'Board', 'Planning', 'Library']);
+      expect(entries[3]?.querySelector('ui-icon')?.getAttribute('data-icon')).toBe('book');
     });
 
     it("counts an archived spec's milestone", async () => {
       setUp(ok(planning([milestone('Harbor 0.9', '2026-08-01', 'complete', [holder('001', true)])])));
-      expect(attr(pages(await render('/w/harbor')), 'data-page')).toEqual(['specs', 'board', 'features', 'milestones', 'library']);
+      expect(attr(pages(await render('/w/harbor')), 'data-page')).toEqual(['specs', 'board', 'planning', 'library']);
     });
 
     it('marks the current page with aria-current and gives it focus on open', async () => {
       setUp(ok(WITH_MILESTONES));
       const cases: Array<[string, Array<string | null>]> = [
-        ['/w/harbor', ['page', null, null, null, null]],
-        ['/w/harbor/features', [null, null, 'page', null, null]],
-        ['/w/harbor/milestones', [null, null, null, 'page', null]],
-        ['/w/harbor/library', [null, null, null, null, 'page']],
+        ['/w/harbor', ['page', null, null, null]],
+        ['/w/harbor/planning/tree', [null, null, 'page', null]],
+        ['/w/harbor/planning/graph', [null, null, 'page', null]],
+        ['/w/harbor/library', [null, null, null, 'page']],
       ];
       for (const [url, current] of cases) {
         const entries = pages(await render(url));
@@ -229,8 +231,7 @@ describe('AreaMenu', () => {
       expect(entries.map(sub)).toEqual([
         '3 active · 1 archived',
         '0 stages · 0 cards · 0 wait on you',
-        '2 features · 5/9 closed',
-        '2 milestones · next Nov 30',
+        '2 milestones · 2 features',
         '52 documents · 3 outdated · 5 missing',
       ]);
     });
@@ -307,7 +308,7 @@ describe('AreaMenu', () => {
       expect(pages(await render('/w/harbor')).map(sub)[1]).toBeNull();
     });
 
-    it('names an undated next milestone by its name', async () => {
+    it('counts an undated milestone in the Planning line (spec 026)', async () => {
       setUp(
         ok(
           planning([
@@ -316,23 +317,23 @@ describe('AreaMenu', () => {
           ]),
         ),
       );
-      expect(pages(await render('/w/harbor')).map(sub)[3]).toBe('2 milestones · next Harbor 2.0');
+      expect(pages(await render('/w/harbor')).map(sub)[2]).toMatch(/^2 milestones · \d+ features$/u);
     });
 
-    it('leaves the Features summary out while the planning model is not loaded, rather than a broken template', async () => {
+    it('leaves the Planning summary out while the planning model is not loaded, rather than a broken template', async () => {
       setUp({ kind: 'not-found', served: false });
       const entries = pages(await render('/w/harbor'));
-      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'features', 'library']);
+      expect(attr(entries, 'data-page')).toEqual(['specs', 'board', 'planning', 'library']);
       expect(entries.map(sub)).toEqual(['3 active · 1 archived', null, null, 'Every document, artifact and prototype']);
       expect(entries.map((entry) => entry.textContent)).not.toContain('{{');
     });
 
     it('renders the same entries as 56 px sheet rows at compact', async () => {
       setUp(ok(WITH_MILESTONES));
-      const root = await render('/w/harbor/features', 'compact');
+      const root = await render('/w/harbor/planning/tree', 'compact');
       expect(root.querySelector('ui-sheet nav')?.getAttribute('data-tier')).toBe('compact');
-      expect(attr(pages(root), 'data-page')).toEqual(['specs', 'board', 'features', 'milestones', 'library']);
-      expect(attr(pages(root), 'aria-current')).toEqual([null, null, 'page', null, null]);
+      expect(attr(pages(root), 'data-page')).toEqual(['specs', 'board', 'planning', 'library']);
+      expect(attr(pages(root), 'aria-current')).toEqual([null, null, 'page', null]);
     });
   });
 

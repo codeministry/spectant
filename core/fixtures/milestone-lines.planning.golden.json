@@ -1,0 +1,686 @@
+{
+  "workflow": {
+    "rows": [
+      {
+        "type": "feature",
+        "stages": [
+          "plan",
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "project",
+        "stages": [
+          "plan",
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "infra",
+        "stages": [
+          "plan",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "refactor",
+        "stages": [
+          "tasks",
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "bug",
+        "stages": [
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "spike",
+        "stages": [
+          "review",
+          "build",
+          "code-review",
+          "close",
+          "done"
+        ],
+        "codeReview": "spec"
+      },
+      {
+        "type": "chore",
+        "stages": [
+          "review",
+          "build",
+          "done"
+        ],
+        "codeReview": "none"
+      }
+    ],
+    "source": "default",
+    "diagnostics": []
+  },
+  "stages": [
+    "idea",
+    "plan",
+    "tasks",
+    "review",
+    "build",
+    "blocked",
+    "close-pending",
+    "code-review",
+    "close",
+    "done"
+  ],
+  "stageCounts": {
+    "idea": 0,
+    "plan": 2,
+    "tasks": 0,
+    "review": 0,
+    "build": 0,
+    "blocked": 0,
+    "close-pending": 0,
+    "code-review": 0,
+    "close": 0,
+    "done": 1
+  },
+  "features": [
+    {
+      "id": "F0",
+      "name": "Cross-cutting",
+      "why": "what would break trust in any release — a signal lost on the way or a contact detail in the repository.",
+      "closed": 0,
+      "total": 2,
+      "claims": [
+        {
+          "id": "ISC-1",
+          "text": "a signal accepted by the intake is dropped before it is routed.",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-2",
+          "text": "a tracked file contains a phone number or a personal address.",
+          "closed": false,
+          "dropped": false,
+          "holder": null
+        }
+      ],
+      "holders": [
+        {
+          "id": "002",
+          "slug": "002-alert-routing",
+          "title": "Route each signal to the person on call",
+          "archived": false,
+          "stage": "plan",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "bcbddebe05d87141f9c7b2c60a1dc7274f3850fd35dce2bd9e5242f324f323cb",
+          "assignee": null,
+          "main": false,
+          "held": 1
+        }
+      ],
+      "unheld": [
+        "ISC-2"
+      ],
+      "ideas": []
+    },
+    {
+      "id": "F1",
+      "name": "Signal intake",
+      "why": "every monitoring tool can hand its signals to one endpoint.",
+      "closed": 3,
+      "total": 3,
+      "claims": [
+        {
+          "id": "ISC-3",
+          "text": "The intake accepts a signal over HTTP and answers within 200 ms.",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-4",
+          "text": "A signal without a source is refused with a reason.",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        },
+        {
+          "id": "ISC-5",
+          "text": "The same signal sent twice within a minute is stored once.",
+          "closed": true,
+          "dropped": false,
+          "holder": "001"
+        }
+      ],
+      "holders": [
+        {
+          "id": "001",
+          "slug": "001-signal-intake",
+          "title": "Accept monitoring signals at one endpoint",
+          "archived": false,
+          "stage": "done",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "7c496565c0c9a320f8161ae09e529ca84a0dd3c18ec53819e2e2d03947bf16ba",
+          "assignee": null,
+          "main": true,
+          "held": 3
+        }
+      ],
+      "unheld": [],
+      "ideas": []
+    },
+    {
+      "id": "F2",
+      "name": "Alert routing",
+      "why": "a signal reaches the person on call for its service, not a shared channel.",
+      "closed": 0,
+      "total": 3,
+      "claims": [
+        {
+          "id": "ISC-6",
+          "text": "A signal is routed to the person on call for its service.",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-7",
+          "text": "A service without a rota routes to the fallback contact.",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        },
+        {
+          "id": "ISC-8",
+          "text": "The routing decision is recorded with the signal.",
+          "closed": false,
+          "dropped": false,
+          "holder": "002"
+        }
+      ],
+      "holders": [
+        {
+          "id": "002",
+          "slug": "002-alert-routing",
+          "title": "Route each signal to the person on call",
+          "archived": false,
+          "stage": "plan",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "bcbddebe05d87141f9c7b2c60a1dc7274f3850fd35dce2bd9e5242f324f323cb",
+          "assignee": null,
+          "main": true,
+          "held": 3
+        }
+      ],
+      "unheld": [],
+      "ideas": []
+    },
+    {
+      "id": "F3",
+      "name": "Escalation chains",
+      "why": "a signal nobody acknowledges moves up the chain on its own.",
+      "closed": 0,
+      "total": 2,
+      "claims": [
+        {
+          "id": "ISC-9",
+          "text": "An unacknowledged signal escalates to the next level after its timeout.",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        },
+        {
+          "id": "ISC-10",
+          "text": "The last level of a chain repeats until someone acknowledges.",
+          "closed": false,
+          "dropped": false,
+          "holder": "003"
+        }
+      ],
+      "holders": [
+        {
+          "id": "003",
+          "slug": "003-escalation-chains",
+          "title": "Escalate unacknowledged signals along a chain",
+          "archived": false,
+          "stage": "plan",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "3992c09469b1934bf50a1e6a14f13e61ce82e15159adf19581648e3f2a2be65c",
+          "assignee": null,
+          "main": true,
+          "held": 2
+        }
+      ],
+      "unheld": [],
+      "ideas": []
+    }
+  ],
+  "milestones": [
+    {
+      "name": "Beacon 0.5",
+      "slug": "beacon-0-5",
+      "target": "2026-03-12",
+      "description": "Signals arrive at one endpoint.",
+      "closed": 3,
+      "total": 3,
+      "state": "complete",
+      "featureIds": [
+        "F1"
+      ],
+      "features": [
+        {
+          "id": "F1",
+          "name": "Signal intake",
+          "closed": 3,
+          "total": 3
+        }
+      ],
+      "specs": [
+        {
+          "id": "001",
+          "slug": "001-signal-intake",
+          "title": "Accept monitoring signals at one endpoint",
+          "archived": false,
+          "stage": "done",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "7c496565c0c9a320f8161ae09e529ca84a0dd3c18ec53819e2e2d03947bf16ba",
+          "assignee": null,
+          "main": false,
+          "held": 3
+        },
+        {
+          "id": "002",
+          "slug": "002-alert-routing",
+          "title": "Route each signal to the person on call",
+          "archived": false,
+          "stage": "plan",
+          "stageSource": "derived",
+          "priority": "P3",
+          "hash": "bcbddebe05d87141f9c7b2c60a1dc7274f3850fd35dce2bd9e5242f324f323cb",
+          "assignee": null,
+          "main": false,
+          "held": 4
+        }
+      ],
+      "ideas": []
+    },
+    {
+      "name": "Beacon 1.0",
+      "slug": "beacon-1-0",
+      "target": "2026-04-30",
+      "description": "Every signal reaches the person on call.",
+      "closed": 0,
+      "total": 3,
+      "state": "upcoming",
+      "featureIds": [
+        "F2"
+      ],
+      "features": [
+        {
+          "id": "F2",
+          "name": "Alert routing",
+          "closed": 0,
+          "total": 3
+        }
+      ],
+      "specs": [],
+      "ideas": []
+    }
+  ],
+  "unassignedFeatures": [
+    "F0",
+    "F3"
+  ],
+  "ideas": [],
+  "recount": {
+    "closed": 3,
+    "total": 10
+  },
+  "diagnostics": [
+    {
+      "file": "ISA.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "feature-milestone-unknown",
+        "message": "feature F3 names milestone \"Beacon 2.0\", which is not in the master's ## Milestones block",
+        "line": 45,
+        "subject": "Beacon 2.0"
+      }
+    },
+    {
+      "file": "specs/002-alert-routing/spec.md",
+      "diagnostic": {
+        "severity": "warning",
+        "code": "milestone-mismatch",
+        "message": "milestone \"Beacon 0.5\" differs from \"Beacon 1.0\", the milestone line of the spec's main feature F2",
+        "subject": "Beacon 0.5"
+      }
+    }
+  ],
+  "relations": {
+    "milestone:beacon-0-5": {
+      "ref": "milestone:beacon-0-5",
+      "type": "milestone",
+      "id": "beacon-0-5",
+      "title": "Beacon 0.5",
+      "closed": 3,
+      "total": 3,
+      "parents": [],
+      "children": [
+        "feature:F1"
+      ],
+      "blockers": []
+    },
+    "milestone:beacon-1-0": {
+      "ref": "milestone:beacon-1-0",
+      "type": "milestone",
+      "id": "beacon-1-0",
+      "title": "Beacon 1.0",
+      "closed": 0,
+      "total": 3,
+      "parents": [],
+      "children": [
+        "feature:F2"
+      ],
+      "blockers": []
+    },
+    "feature:F0": {
+      "ref": "feature:F0",
+      "type": "feature",
+      "id": "F0",
+      "title": "Cross-cutting",
+      "closed": 0,
+      "total": 2,
+      "parents": [],
+      "children": [
+        "spec:002",
+        "claim:ISC-1",
+        "claim:ISC-2"
+      ],
+      "blockers": []
+    },
+    "feature:F1": {
+      "ref": "feature:F1",
+      "type": "feature",
+      "id": "F1",
+      "title": "Signal intake",
+      "closed": 3,
+      "total": 3,
+      "parents": [
+        "milestone:beacon-0-5"
+      ],
+      "children": [
+        "spec:001",
+        "claim:ISC-3",
+        "claim:ISC-4",
+        "claim:ISC-5"
+      ],
+      "blockers": []
+    },
+    "feature:F2": {
+      "ref": "feature:F2",
+      "type": "feature",
+      "id": "F2",
+      "title": "Alert routing",
+      "closed": 0,
+      "total": 3,
+      "parents": [
+        "milestone:beacon-1-0"
+      ],
+      "children": [
+        "spec:002",
+        "claim:ISC-6",
+        "claim:ISC-7",
+        "claim:ISC-8"
+      ],
+      "blockers": []
+    },
+    "feature:F3": {
+      "ref": "feature:F3",
+      "type": "feature",
+      "id": "F3",
+      "title": "Escalation chains",
+      "closed": 0,
+      "total": 2,
+      "parents": [],
+      "children": [
+        "spec:003",
+        "claim:ISC-9",
+        "claim:ISC-10"
+      ],
+      "blockers": []
+    },
+    "spec:001": {
+      "ref": "spec:001",
+      "type": "spec",
+      "id": "001",
+      "title": "Accept monitoring signals at one endpoint",
+      "closed": 3,
+      "total": 3,
+      "parents": [
+        "feature:F1"
+      ],
+      "children": [
+        "claim:ISC-3",
+        "claim:ISC-4",
+        "claim:ISC-5"
+      ],
+      "blockers": [],
+      "stage": "done"
+    },
+    "spec:002": {
+      "ref": "spec:002",
+      "type": "spec",
+      "id": "002",
+      "title": "Route each signal to the person on call",
+      "closed": 0,
+      "total": 4,
+      "parents": [
+        "feature:F2",
+        "feature:F0"
+      ],
+      "children": [
+        "claim:ISC-1",
+        "claim:ISC-6",
+        "claim:ISC-7",
+        "claim:ISC-8"
+      ],
+      "blockers": [],
+      "stage": "plan"
+    },
+    "spec:003": {
+      "ref": "spec:003",
+      "type": "spec",
+      "id": "003",
+      "title": "Escalate unacknowledged signals along a chain",
+      "closed": 0,
+      "total": 2,
+      "parents": [
+        "feature:F3"
+      ],
+      "children": [
+        "claim:ISC-9",
+        "claim:ISC-10"
+      ],
+      "blockers": [],
+      "stage": "plan"
+    },
+    "claim:ISC-1": {
+      "ref": "claim:ISC-1",
+      "type": "claim",
+      "id": "ISC-1",
+      "title": "a signal accepted by the intake is dropped before it is routed.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-2": {
+      "ref": "claim:ISC-2",
+      "type": "claim",
+      "id": "ISC-2",
+      "title": "a tracked file contains a phone number or a personal address.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-3": {
+      "ref": "claim:ISC-3",
+      "type": "claim",
+      "id": "ISC-3",
+      "title": "The intake accepts a signal over HTTP and answers within 200 ms.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-4": {
+      "ref": "claim:ISC-4",
+      "type": "claim",
+      "id": "ISC-4",
+      "title": "A signal without a source is refused with a reason.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-5": {
+      "ref": "claim:ISC-5",
+      "type": "claim",
+      "id": "ISC-5",
+      "title": "The same signal sent twice within a minute is stored once.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-6": {
+      "ref": "claim:ISC-6",
+      "type": "claim",
+      "id": "ISC-6",
+      "title": "A signal is routed to the person on call for its service.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-7": {
+      "ref": "claim:ISC-7",
+      "type": "claim",
+      "id": "ISC-7",
+      "title": "A service without a rota routes to the fallback contact.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-6"
+      ]
+    },
+    "claim:ISC-8": {
+      "ref": "claim:ISC-8",
+      "type": "claim",
+      "id": "ISC-8",
+      "title": "The routing decision is recorded with the signal.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:002",
+        "feature:F2"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-9": {
+      "ref": "claim:ISC-9",
+      "type": "claim",
+      "id": "ISC-9",
+      "title": "An unacknowledged signal escalates to the next level after its timeout.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-10": {
+      "ref": "claim:ISC-10",
+      "type": "claim",
+      "id": "ISC-10",
+      "title": "The last level of a chain repeats until someone acknowledges.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:003",
+        "feature:F3"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-9"
+      ]
+    }
+  }
+}

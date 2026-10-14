@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
 import planningGolden from '../../../../../core/fixtures/harbor.planning.golden.json';
 import type { PlanningModel } from '../../../../../core/src/planning';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
+import { ShellData } from '../../layout/shell/shell-data.service';
+import { ShellState } from '../../layout/shell/shell-state.service';
 import { BoardCard } from './board-card';
 import { type BoardCard as BoardCardModel, type BoardRow, buildBoard } from './board-model';
 
@@ -32,7 +34,8 @@ async function render(key: string): Promise<HTMLElement> {
         preloadLangs: true,
       }),
     ],
-    providers: [provideRouter([])],
+    // The real DetailSelection over the address; the shell services it reads lazily are stubbed (spec 026, T26).
+    providers: [provideRouter([]), { provide: ShellData, useValue: { planningModel: () => null } }, { provide: ShellState, useValue: { tier: () => 'wide' } }],
   });
   const fixture = TestBed.createComponent(BoardCard);
   fixture.componentRef.setInput('card', cardOf(key));
@@ -121,5 +124,48 @@ describe('BoardCard (T122, ISC-129)', () => {
   it('a story\'s grip is named by its slug', async () => {
     const host = await render('registry-webhooks');
     expect(host.querySelector('[data-grip]')?.getAttribute('aria-label')).toBe('Move registry-webhooks');
+  });
+});
+
+describe('BoardCard selection (spec 026, T26, ISC-171)', () => {
+  const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+  const click = (el: Element | null, init: MouseEventInit = {}): MouseEvent => {
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...init });
+    el?.dispatchEvent(event);
+    return event;
+  };
+
+  it('names the object on the title link: data-ref spec:NNN, idea:<slug>', async () => {
+    const host = await render('008');
+    expect(host.querySelector('a.title')?.getAttribute('data-ref')).toBe('spec:008');
+    TestBed.resetTestingModule();
+    const idea = await render('registry-webhooks');
+    expect(idea.querySelector('a.title')?.getAttribute('data-ref')).toBe('idea:registry-webhooks');
+  });
+
+  it('a plain click (or Enter) on the card surface selects (?sel=) instead of opening the spec page', async () => {
+    const host = await render('008');
+    const event = click(host.querySelector('a.title'));
+    await settle();
+    expect(event.defaultPrevented).toBe(true);
+    expect(TestBed.inject(Router).url).toBe('/?sel=spec:008');
+  });
+
+  it('Shift+Enter (a shift click on the link) opens the spec page', async () => {
+    const host = await render('008');
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const event = click(host.querySelector('a.title'), { shiftKey: true });
+    await settle();
+    expect(event.defaultPrevented).toBe(true);
+    expect(navigate).toHaveBeenCalledWith(['/w', 'harbor', 's', '008']);
+    expect(TestBed.inject(Router).url).toBe('/');
+  });
+
+  it('marks the selected card with data-selected="card"', async () => {
+    const host = await render('008');
+    expect(host.querySelector('ui-card')?.getAttribute('data-selected')).toBeNull();
+    await TestBed.inject(Router).navigateByUrl('/?sel=spec:008');
+    TestBed.tick();
+    expect(host.querySelector('ui-card')?.getAttribute('data-selected')).toBe('card');
   });
 });

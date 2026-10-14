@@ -56,6 +56,9 @@ export const ICON_NAMES = [
   'flag',
   'circle-dashed',
   'clock-alert',
+  // Spec 026: the planning page and its lenses (Tree, Matrix, Graph).
+  'list-tree',
+  'share-2',
   // Spec 008: type glyph, priority, reason, board and actor primitives (chevron-down and square-kanban are above).
   'puzzle',
   'bug',
@@ -125,6 +128,10 @@ export const ICON_NAMES = [
   'rotate-ccw',
   // Spec 024: the unheld claim line of the Features page (prototype `claim-line`).
   'circle',
+  // Spec 026: the detail sidebar's type chips (feature `boxes`, claim `circle-dot`) and its "Open spec" link.
+  'boxes',
+  'circle-dot',
+  'arrow-up-right',
   // Spec 017: the library's type tags (design.md § Viewport-übergreifend): design and prototype.
   'palette',
   'app-window',

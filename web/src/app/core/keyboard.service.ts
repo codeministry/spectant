@@ -250,10 +250,11 @@ export class KeyboardService {
     return this.document.activeElement === heading;
   }
 
-  /** `c`: copy the selected spec's next command — the previewed one (`?spec=`), else the Specs panel's selection. */
+  /** `c`: copy the selected spec's next command — the one in the detail sidebar (`?sel=spec:`), else the Specs panel's selection. */
   private copyNext(): boolean {
     if (this.workspace() === null) return false;
-    const preview: unknown = this.router.parseUrl(this.router.url).queryParams['spec'];
+    const sel: unknown = this.router.parseUrl(this.router.url).queryParams['sel'];
+    const preview: unknown = typeof sel === 'string' && sel.startsWith('spec:') ? sel.slice('spec:'.length) : undefined;
     const id =
       typeof preview === 'string' && preview !== ''
         ? preview

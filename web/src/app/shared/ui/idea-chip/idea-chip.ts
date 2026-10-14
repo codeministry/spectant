@@ -25,7 +25,7 @@ import { UiIcon } from '../../icons/icon';
     }
   `,
   template: `
-    <a class="idea" [routerLink]="link()" [attr.title]="slug()">
+    <a class="idea" [routerLink]="link()" [attr.title]="slug()" [attr.data-ref]="ref()">
       <ui-icon name="lightbulb" [size]="12" />
       <span class="text" [class.mono]="!title()">{{ title() || slug() }}</span>
     </a>
@@ -37,6 +37,8 @@ export class UiIdeaChip {
   readonly slug = input.required<string>();
   /** `IdeaRef.title`; absent or empty shows the slug. */
   readonly title = input<string>();
+  /** The detail sidebar's `data-ref` on the link (spec 026, T28), for a view that selects the idea; none by default. */
+  readonly ref = input<string | null>(null);
 
   protected readonly link = computed(() => ['/w', this.ws(), 'ideas', this.slug()]);
 }

@@ -8,11 +8,13 @@
 // readers and planners (workflow.ts, ideas.ts, actor.ts, transition.ts, allocate.ts) take their texts from the caller and ride the barrel whole;
 // glossary.ts is literal data and rides it too. Spec 009's tokens.ts takes transcript and repository texts from the
 // caller and rides it whole. Spec 023's tech.ts takes tech.md and the spec texts from the caller and rides it whole.
+// Spec 026's relations.ts builds its index from the planning tree alone (type-only imports) and rides it whole.
 // Spec 017's catalog types (`LibraryCatalog`, `LibraryDoc`, `SpecGroupHead`, `LibraryFogLine`, …) ride it through
 // files.ts; its reader `readCatalog` (library.ts) walks the workspace through node:fs, so it stays out like
 // evidence.ts and the server imports it from the module itself; only its types are re-exported here.
 export * from './files.ts';
 export type * from './diagnostics.ts';
+export * from './relations.ts';
 export * from './frontmatter.ts';
 export * from './claims.ts';
 export * from './status.ts';

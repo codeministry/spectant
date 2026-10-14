@@ -13,6 +13,7 @@ import {
   type TabId,
   type WorkspacePageId,
 } from './areas';
+import { isPlanningLensId, type PlanningLensId } from './page-tabs';
 import type { Tier } from './tier';
 
 /** What the current route says, read once per navigation from the whole snapshot chain. */
@@ -22,6 +23,8 @@ export interface ShellRoute {
   readonly area: AreaId | null;
   /** The spec tab; null off a spec. */
   readonly tab: TabId | null;
+  /** The planning page's lens on `/w/:ws/planning/<lens>` (`wsPage` `planning`, spec 026); null on every other route. */
+  readonly lens: PlanningLensId | null;
   /** The workspace-scope page: route data `page`, else the spec list on `/w/:ws`, else null (spec routes, not-found). */
   readonly wsPage: WorkspacePageId | null;
   /** The story's slug on `/w/:ws/ideas/:slug` (`wsPage` `idea`, spec 008); null on every other route. */
@@ -45,8 +48,11 @@ function readRoute(root: ActivatedRouteSnapshot): ShellRoute {
   const notFound = data.notFound === true;
   const wsPage = isWorkspacePageId(data.page) ? data.page : ws !== null && specId === null && !notFound ? 'specs' : null;
   const ideaSlug = wsPage === 'idea' ? (params['slug'] ?? null) : null;
-  const tab = isTabId(data.tab) ? data.tab : null;
-  return { ws, specId, area, tab, wsPage, ideaSlug, notFound };
+  const planning = wsPage === 'planning';
+  // `board` is a spec tab and a lens: on the planning page it is the lens only.
+  const tab = !planning && isTabId(data.tab) ? data.tab : null;
+  const lens = planning && isPlanningLensId(data.tab) ? data.tab : null;
+  return { ws, specId, area, tab, lens, wsPage, ideaSlug, notFound };
 }
 
 /** An open `<dialog>` or popover owns Esc (the overlay primitives close it); the shell leaves the key alone then. */

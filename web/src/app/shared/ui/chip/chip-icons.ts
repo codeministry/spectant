@@ -38,3 +38,17 @@ export type ChipIconKey = keyof typeof CHIP_ICON;
 /** The icon of a chip key, `undefined` for a key the prototype shows without one (a mono chip, an ID). */
 export const chipIcon = (key: string): IconName | undefined =>
   Object.hasOwn(CHIP_ICON, key) ? CHIP_ICON[key as ChipIconKey] : undefined;
+
+/**
+ * The type icons of the planning objects (spec 026 design.md § Viewport-übergreifend, "Typ-Icons im gemeinsamen
+ * CHIP_ICON-Mapping"): one per `RelationType` of core's relation index, for the detail sidebar's type chip, the tree,
+ * the palette and the graph legend. Kept beside `CHIP_ICON`, not in it, because its `feature` key is the spec type's
+ * `sparkles`, while the planning object Feature is `boxes`.
+ */
+export const RELATION_ICON = {
+  milestone: 'flag',
+  feature: 'boxes',
+  spec: 'file-text',
+  claim: 'circle-dot',
+  idea: 'lightbulb',
+} as const satisfies Record<'milestone' | 'feature' | 'spec' | 'claim' | 'idea', IconName>;

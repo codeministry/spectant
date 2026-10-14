@@ -25,7 +25,7 @@ describe('planning', () => {
     const workflow = { rows: core.DEFAULT_WORKFLOW, source: 'default' as const, diagnostics: [] };
     const stages = core.boardStages(workflow);
     const stageCounts = Object.fromEntries(stages.map((s) => [s, 0]));
-    const empty: PlanningModel = { workflow, stages, stageCounts, features: [], milestones: [], ideas: [], recount: null, diagnostics: [] };
+    const empty: PlanningModel = { workflow, stages, stageCounts, features: [], milestones: [], unassignedFeatures: [], ideas: [], recount: null, diagnostics: [], relations: {} };
     expect(core.buildPlanning({ master: null, specs: [], archived: [] })).toEqual(empty);
 
     // T18: PlanningInput repeats DashboardInput's fields instead of picking them (planning.ts types against no
@@ -548,6 +548,8 @@ describe('planning: milestones', () => {
       closed: 0,
       total: 13,
       state: 'late',
+      // harbor's master carries no `Milestone:` line (spec 026): the explicit assignment is empty, the counts unchanged.
+      featureIds: [],
       features: [{ id: 'F3', name: 'Config loader rewrite', closed: 0, total: 13 }],
       specs: [
         {
@@ -574,6 +576,7 @@ describe('planning: milestones', () => {
       closed: 101,
       total: 106,
       state: 'upcoming',
+      featureIds: [],
       features: [
         { id: 'F1', name: 'Manifest sync', closed: 46, total: 46 },
         { id: 'F2', name: 'Web console', closed: 25, total: 30 },
@@ -663,7 +666,8 @@ describe('planning: milestones', () => {
   test.each(fixtureTrees())('milestones: %s equals the milestones of its planning golden', (tree) => {
     const golden = JSON.parse(readFileSync(goldenPath(tree, 'planning'), 'utf8')) as PlanningModel;
     expect(planningOf(tree).milestones).toEqual(golden.milestones);
-    expect(golden.milestones).toEqual(tree === 'harbor' ? HARBOR_MILESTONES : []);
+    // milestone-lines (spec 026) pins its own milestones in "planning: feature-milestone".
+    if (tree !== 'milestone-lines') expect(golden.milestones).toEqual(tree === 'harbor' ? HARBOR_MILESTONES : []);
   });
 
   test('milestones: lantern, with no block and no milestone key, has none', () => {
@@ -708,8 +712,8 @@ describe('planning: milestones', () => {
     const master = masterWith([{ id: 'F0', name: 'Only', claims: [1] }], [['Nobody', '2026-01-10', 'Passed, empty.'], ['Later', '2026-12-01']]);
     const model = core.buildPlanning({ master, specs: [], archived: [], now: '2026-03-20' });
     expect(model.milestones).toEqual([
-      { name: 'Nobody', slug: 'nobody', target: '2026-01-10', description: 'Passed, empty.', closed: 0, total: 0, state: 'late', features: [], specs: [], ideas: [] },
-      { name: 'Later', slug: 'later', target: '2026-12-01', description: null, closed: 0, total: 0, state: 'upcoming', features: [], specs: [], ideas: [] },
+      { name: 'Nobody', slug: 'nobody', target: '2026-01-10', description: 'Passed, empty.', closed: 0, total: 0, state: 'late', featureIds: [], features: [], specs: [], ideas: [] },
+      { name: 'Later', slug: 'later', target: '2026-12-01', description: null, closed: 0, total: 0, state: 'upcoming', featureIds: [], features: [], specs: [], ideas: [] },
     ]);
   });
 
@@ -972,6 +976,308 @@ describe('planning: empty block', () => {
     expect(model.features.find((f) => f.id === 'F7')).toMatchObject({ id: 'F7', why: 'Empty matters.', closed: 0, total: 0, claims: [], holders: [], unheld: [], ideas: [] });
     expect(model.diagnostics).toEqual([]);
     expect(model.recount).toEqual({ closed: 0, total: 1 });
+  });
+});
+
+// ISC-166 (spec 026, T2): a feature block names its milestone on a line `Milestone: <name>` directly under `Why:`, and
+// the tree hangs each feature under exactly the milestone its line names: `PlanningMilestone.featureIds`, in master
+// order. A feature without the line, or whose line names no entry of the `## Milestones` block (until T6 adds the
+// warning), sits in the trailing no-milestone group `PlanningModel.unassignedFeatures`. The assignment moves no number:
+// a milestone's specs and progress still come from the specs' `milestone:` (the sum over features is T7).
+describe('planning: feature-milestone', () => {
+  const trees = fixtureTrees();
+  const header = (body: readonly string[]): string => ['# M', '', '## Features', '', ...body, '', '## Milestones', '', '- Kite 1.0 · 2026-04-01 · First', ''].join('\n');
+
+  test('feature-milestone: the parser reads Milestone: directly under Why: into FeatureBlock.milestone, null without the line', () => {
+    const doc = core.parseClaims(
+      header([
+        '### F1 · Named',
+        'Why: one reason.',
+        'Milestone: Kite 1.0',
+        '',
+        '- [ ] ISC-1: a',
+        '',
+        '### F2 · Plain',
+        'Why: another reason.',
+        '',
+        '- [ ] ISC-2: b',
+        '',
+        '### F3 · Late line',
+        'Why: a third reason.',
+        '',
+        '- [ ] ISC-3: c',
+        'Milestone: Kite 1.0',
+        '',
+        '### F4 · No why',
+        'Milestone: Kite 1.0',
+        '- [ ] ISC-4: d',
+        '',
+        '### F5 · Padded',
+        'Why: a fifth reason.',
+        'Milestone:   Kite 1.0   ',
+        '- [ ] ISC-5: e',
+      ]),
+    );
+    expect(doc.features.map((f) => ({ id: f.id, why: f.why, milestone: f.milestone, claims: f.claims }))).toEqual([
+      { id: 'F1', why: 'one reason.', milestone: 'Kite 1.0', claims: ['ISC-1'] },
+      { id: 'F2', why: 'another reason.', milestone: null, claims: ['ISC-2'] },
+      // After a claim the line is prose, not the block's milestone.
+      { id: 'F3', why: 'a third reason.', milestone: null, claims: ['ISC-3'] },
+      // Without a Why: line there is nothing for the line to stand under.
+      { id: 'F4', why: null, milestone: null, claims: ['ISC-4'] },
+      { id: 'F5', why: 'a fifth reason.', milestone: 'Kite 1.0', claims: ['ISC-5'] },
+    ]);
+    // The line is not a claim and not a diagnostic.
+    expect(doc.claims.map((c) => c.id)).toEqual(['ISC-1', 'ISC-2', 'ISC-3', 'ISC-4', 'ISC-5']);
+    expect(doc.diagnostics).toEqual([]);
+  });
+
+  test('feature-milestone: milestone-lines hangs F1 under Beacon 0.5, F2 under Beacon 1.0, and F0 and F3 in the no-milestone group', () => {
+    const model = planningOf('milestone-lines');
+    expect(model.features.map((f) => f.id)).toEqual(['F0', 'F1', 'F2', 'F3']);
+    expect(model.milestones.map((m) => ({ name: m.name, featureIds: m.featureIds }))).toEqual([
+      { name: 'Beacon 0.5', featureIds: ['F1'] },
+      { name: 'Beacon 1.0', featureIds: ['F2'] },
+    ]);
+    // F0 has no line; F3 names Beacon 2.0, which the block does not list.
+    expect(model.unassignedFeatures).toEqual(['F0', 'F3']);
+    // No silent re-hang: 002 names Beacon 0.5 and stays a spec of it, though its main feature F2 names Beacon 1.0; the
+    // progress is the sum of the features the lines place (T7, "planning: milestone-progress").
+    const byName = new Map(model.milestones.map((m) => [m.name, m]));
+    expect(byName.get('Beacon 0.5')?.specs.map((s) => s.id)).toEqual(['001', '002']);
+    expect(byName.get('Beacon 0.5')).toMatchObject({ closed: 3, total: 3 });
+    expect(byName.get('Beacon 1.0')?.specs).toEqual([]);
+    expect(byName.get('Beacon 1.0')).toMatchObject({ closed: 0, total: 3 });
+  });
+
+  test('feature-milestone: a master without Milestone: lines puts every feature in the no-milestone group and keeps every milestone', () => {
+    // harbor: a ## Milestones block, no line; lantern: neither.
+    const harbor = planningOf('harbor');
+    expect(harbor.milestones.map((m) => m.featureIds)).toEqual([[], []]);
+    expect(harbor.unassignedFeatures).toEqual(harbor.features.map((f) => f.id));
+    const lantern = planningOf('lantern');
+    expect(lantern.milestones).toEqual([]);
+    expect(lantern.unassignedFeatures).toEqual(['F0', 'F1']);
+    expect(core.buildPlanning({ master: null, specs: [], archived: [] }).unassignedFeatures).toEqual([]);
+  });
+
+  test.each(trees)('feature-milestone: %s puts every feature in exactly one group and equals its planning golden', (tree) => {
+    const model = planningOf(tree);
+    // buildPlanning always sets both fields (optional only in the type): `undefined` here would fail the comparison.
+    expect(model.unassignedFeatures).toBeDefined();
+    expect(model.milestones.filter((m) => m.featureIds === undefined)).toEqual([]);
+    const placed = [...model.milestones.flatMap((m) => m.featureIds ?? []), ...(model.unassignedFeatures ?? [])];
+    expect([...placed].sort()).toEqual(model.features.map((f) => f.id).sort());
+    expect(new Set(placed).size).toBe(placed.length);
+    expectGolden(goldenPath(tree, 'planning'), goldenText(model), UPDATE_COMMAND);
+  });
+});
+
+// Spec 026, inline trees: a master with two or three feature blocks, each with an optional `Milestone:` line, a
+// `## Milestones` block, and spec folders that may carry `milestone:`. Kept apart from `masterOf`, which writes no line.
+const kiteMaster = (lines: Readonly<Record<string, string>>, entries: readonly string[] = ['- Kite 1.0 · 2026-03-01 · First', '- Kite 2.0 · 2026-06-01 · Second']): string =>
+  [
+    '# M',
+    '',
+    '## Features',
+    '',
+    '### F0 · Base',
+    'Why: base.',
+    ...(lines.F0 === undefined ? [] : [`Milestone: ${lines.F0}`]),
+    '',
+    '- [x] ISC-1: a',
+    '- [ ] ISC-2: b',
+    '',
+    '### F1 · Next',
+    'Why: next.',
+    ...(lines.F1 === undefined ? [] : [`Milestone: ${lines.F1}`]),
+    '',
+    '- [x] ISC-3: c',
+    '- [x] ISC-4: d',
+    '- [ ] ISC-5: [DROPPED gone] e',
+    '',
+    '### F2 · Later',
+    'Why: later.',
+    ...(lines.F2 === undefined ? [] : [`Milestone: ${lines.F2}`]),
+    '',
+    '- [ ] ISC-6: f',
+    '',
+    '## Milestones',
+    '',
+    ...entries,
+    '',
+  ].join('\n');
+const kiteSpec = (folder: string, feature: string, milestone: string | null, claims: readonly number[]): { folder: string; texts: { spec: string } } => ({
+  folder,
+  texts: {
+    spec: ['---', 'task: "A spec"', `isa_feature: ${feature}`, ...(milestone === null ? [] : [`milestone: ${milestone}`]), '---', '', '# Spec', '', '## Criteria', '', ...claims.map(claimLine), ''].join('\n'),
+  },
+});
+const KITE_NOW = '2026-04-01';
+const codesOf = (model: PlanningModel, code: string): Array<{ file: string; severity: string; subject: string | undefined }> =>
+  model.diagnostics.filter((d) => d.diagnostic.code === code).map((d) => ({ file: d.file, severity: d.diagnostic.severity, subject: d.diagnostic.subject }));
+
+// ISC-166.1: a `Milestone:` line naming no entry of the `## Milestones` block is exactly one warning on the master, the
+// name as subject; the feature sits in the no-milestone group and parsing continues. A name the master lists on a line
+// `parseMilestones` skipped is known, as for a spec: the master's own warning names the cause, no second one.
+describe('planning: feature-milestone-unknown', () => {
+  test('feature-milestone-unknown: milestone-lines F3 names Beacon 2.0, one warning on ISA.md, F3 in the no-milestone group', () => {
+    const model = planningOf('milestone-lines');
+    expect(codesOf(model, 'feature-milestone-unknown')).toEqual([{ file: 'ISA.md', severity: 'warning', subject: 'Beacon 2.0' }]);
+    expect(model.unassignedFeatures).toEqual(['F0', 'F3']);
+    // Parsing continues: every block, claim and milestone is still there.
+    expect(model.features.map((f) => [f.id, f.total])).toEqual([
+      ['F0', 2],
+      ['F1', 3],
+      ['F2', 3],
+      ['F3', 2],
+    ]);
+    expect(model.milestones.map((m) => m.name)).toEqual(['Beacon 0.5', 'Beacon 1.0']);
+    expect(model.diagnostics.filter((d) => d.diagnostic.severity === 'error')).toEqual([]);
+  });
+
+  test('feature-milestone-unknown: an inline line naming no entry warns once with the block heading line, the rest stays placed', () => {
+    const master = kiteMaster({ F0: 'Kite 1.0', F1: 'Kite 9' });
+    const model = core.buildPlanning({ master, specs: [], archived: [], now: KITE_NOW });
+    const found = model.diagnostics.filter((d) => d.diagnostic.code === 'feature-milestone-unknown');
+    expect(found).toHaveLength(1);
+    expect(found[0]?.diagnostic.line).toBe(master.split('\n').indexOf('### F1 · Next') + 1);
+    expect(found[0]?.diagnostic.subject).toBe('Kite 9');
+    expect(model.unassignedFeatures).toEqual(['F1', 'F2']);
+    expect(model.milestones.map((m) => [m.name, m.featureIds])).toEqual([
+      ['Kite 1.0', ['F0']],
+      ['Kite 2.0', []],
+    ]);
+  });
+
+  test('feature-milestone-unknown: a known name, no line, or a name on a skipped line yields none', () => {
+    const known = core.buildPlanning({ master: kiteMaster({ F0: 'Kite 1.0', F1: 'Kite 2.0' }), specs: [], archived: [], now: KITE_NOW });
+    expect(codesOf(known, 'feature-milestone-unknown')).toEqual([]);
+    const none = core.buildPlanning({ master: kiteMaster({}), specs: [], archived: [], now: KITE_NOW });
+    expect(codesOf(none, 'feature-milestone-unknown')).toEqual([]);
+    const skipped = core.buildPlanning({ master: kiteMaster({ F0: 'Kite 3.0' }, ['- Kite 1.0 · 2026-03-01 · First', '- Kite 3.0 · 2026-13-40']), specs: [], archived: [], now: KITE_NOW });
+    expect(codesOf(skipped, 'feature-milestone-unknown')).toEqual([]);
+    expect(codesOf(skipped, 'master-milestone-line')).toHaveLength(1);
+    expect(skipped.unassignedFeatures).toEqual(['F0', 'F1', 'F2']);
+  });
+});
+
+// ISC-166.2: a milestone's progress is the sum, closed over total, of the features whose `Milestone:` line names it, and
+// its per-feature parts are those features; a master without a single line counts as before, over the specs whose
+// `milestone:` names it (ISC-102). The state follows the same counts. A spec whose `milestone:` differs from the line of
+// its main feature (first word of `isa_feature`) is one `milestone-mismatch` warning on the spec.
+describe('planning: milestone-progress', () => {
+  const rows = (model: PlanningModel): Array<[string, number, number, string, string[]]> =>
+    model.milestones.map((m) => [m.name, m.closed, m.total, m.state, m.features.map((f) => `${f.id} ${f.closed}/${f.total}`)]);
+
+  test('milestone-progress: milestone-lines sums F1 under Beacon 0.5 and F2 under Beacon 1.0, and equals its planning golden', () => {
+    const model = planningOf('milestone-lines');
+    expect(rows(model)).toEqual([
+      ['Beacon 0.5', 3, 3, 'complete', ['F1 3/3']],
+      ['Beacon 1.0', 0, 3, 'upcoming', ['F2 0/3']],
+    ]);
+    // The specs naming a milestone stay listed under it: the line moves the count, not the spec list.
+    expect(model.milestones.map((m) => m.specs.map((s) => s.id))).toEqual([['001', '002'], []]);
+    expectGolden(goldenPath('milestone-lines', 'planning'), goldenText(model), UPDATE_COMMAND);
+  });
+
+  test('milestone-progress: milestone-lines 002 names Beacon 0.5 while its main feature F2 names Beacon 1.0, one milestone-mismatch on the spec', () => {
+    expect(codesOf(planningOf('milestone-lines'), 'milestone-mismatch')).toEqual([{ file: 'specs/002-alert-routing/spec.md', severity: 'warning', subject: 'Beacon 0.5' }]);
+  });
+
+  test('milestone-progress: without any line the spec count stands; one line anywhere switches the whole master to the feature sum', () => {
+    const specs = [kiteSpec('001-next', 'F1', 'Kite 1.0', [3, 4, 5])];
+    const legacy = core.buildPlanning({ master: kiteMaster({}), specs, archived: [], now: KITE_NOW });
+    expect(rows(legacy)).toEqual([
+      ['Kite 1.0', 2, 2, 'complete', ['F1 2/2']],
+      ['Kite 2.0', 0, 0, 'upcoming', []],
+    ]);
+    // F0 names Kite 1.0: its sum is 1/2 and the target has passed, so the state follows the new count to late. F1 has no
+    // line, so 001 under it mismatches nothing; Kite 2.0 no feature names counts 0/0, never complete.
+    const lined = core.buildPlanning({ master: kiteMaster({ F0: 'Kite 1.0' }), specs, archived: [], now: KITE_NOW });
+    expect(rows(lined)).toEqual([
+      ['Kite 1.0', 1, 2, 'late', ['F0 1/2']],
+      ['Kite 2.0', 0, 0, 'upcoming', []],
+    ]);
+    expect(lined.milestones[0]?.specs.map((s) => s.id)).toEqual(['001']);
+    expect(lined.diagnostics).toEqual([]);
+    // Dropped claims count in neither closed nor total of the feature sum; a feature with a line may hold no spec.
+    const all = core.buildPlanning({ master: kiteMaster({ F0: 'Kite 1.0', F1: 'Kite 1.0', F2: 'Kite 2.0' }), specs: [], archived: [], now: KITE_NOW });
+    expect(rows(all)).toEqual([
+      ['Kite 1.0', 3, 4, 'late', ['F0 1/2', 'F1 2/2']],
+      ['Kite 2.0', 0, 1, 'upcoming', ['F2 0/1']],
+    ]);
+    // A line naming no entry still switches the master to the feature sum; the unknown feature counts nowhere.
+    const unknown = core.buildPlanning({ master: kiteMaster({ F2: 'Kite 9' }), specs, archived: [], now: KITE_NOW });
+    expect(rows(unknown)).toEqual([
+      ['Kite 1.0', 0, 0, 'late', []],
+      ['Kite 2.0', 0, 0, 'upcoming', []],
+    ]);
+  });
+
+  test('milestone-progress: mismatch only for an active spec whose known milestone differs from the known line of its main feature', () => {
+    const master = kiteMaster({ F0: 'Kite 1.0', F1: 'Kite 2.0' });
+    const model = core.buildPlanning({
+      master,
+      specs: [
+        kiteSpec('001-off', 'F1 F0', 'Kite 1.0', [3]), // main F1 names Kite 2.0: mismatch
+        kiteSpec('002-on', 'F1', 'Kite 2.0', [4]), // agrees
+        kiteSpec('003-bare', 'F1', null, []), // no key: absence is never a warning
+        kiteSpec('004-lost', 'F1', 'Kite 9', []), // unknown name: its own warning, no second one
+        kiteSpec('005-free', 'F2', 'Kite 1.0', [6]), // main feature F2 carries no line
+        kiteSpec('006-none', 'F9', 'Kite 1.0', []), // main feature is no block
+      ],
+      archived: [kiteSpec('007-old', 'F1', 'Kite 1.0', [])], // archived: never a warning
+      now: KITE_NOW,
+    });
+    expect(codesOf(model, 'milestone-mismatch')).toEqual([{ file: 'specs/001-off/spec.md', severity: 'warning', subject: 'Kite 1.0' }]);
+    expect(codesOf(model, 'spec-milestone-unknown').map((d) => d.file)).toEqual(['specs/004-lost/spec.md']);
+    // Nothing is reassigned: 001 stays a spec of Kite 1.0, F1 stays under Kite 2.0.
+    expect(model.milestones.map((m) => [m.name, m.featureIds, m.specs.map((s) => s.id)])).toEqual([
+      ['Kite 1.0', ['F0'], ['001', '005', '006', '007']],
+      ['Kite 2.0', ['F1'], ['002']],
+    ]);
+  });
+});
+
+// ISC-166.3 (anti): a master without a single `Milestone:` line reads exactly as before spec 026. Every fixture tree but
+// milestone-lines carries no line; for each: no new diagnostic (none of spec 026's codes, the planning diagnostics equal
+// the golden's, the dashboard warnings equal the pin), every milestone counts over its specs (recomputed here from the
+// tree's claims and holders, independent of `planning.ts`), and the only spec 026 fields are the empty assignment.
+describe('planning: legacy', () => {
+  const NEW_CODES = new Set(['feature-milestone-unknown', 'milestone-mismatch']);
+  const legacy = fixtureTrees().filter((tree) => tree !== 'milestone-lines');
+
+  test('legacy: the five legacy fixtures are exactly those whose master carries no Milestone: line', () => {
+    expect(legacy).toEqual(['empty-master', 'harbor', 'lantern', 'leadgen', 'spectant-001']);
+    for (const tree of fixtureTrees()) {
+      const master = readTree(tree).master;
+      const lines = master === null ? 0 : core.parseClaims(master).features.filter((f) => f.milestone !== null).length;
+      expect({ tree, lined: lines > 0 }).toEqual({ tree, lined: tree === 'milestone-lines' });
+    }
+  });
+
+  test.each(legacy)('legacy: %s gains no diagnostic and changes no number, the assignment aside', (tree) => {
+    const model = planningOf(tree);
+    const golden = JSON.parse(readFileSync(goldenPath(tree, 'planning'), 'utf8')) as PlanningModel;
+    expect(model.diagnostics.filter((d) => NEW_CODES.has(d.diagnostic.code))).toEqual([]);
+    expect(model.diagnostics).toEqual(golden.diagnostics);
+    expect(diagnosticsOf(buildDashboard(readTree(tree)), 'warning')).toEqual(EXPECTED_WARNINGS[tree] ?? []);
+    // Every milestone counts over the specs naming it (ISC-102): per block, the live claims those specs win.
+    for (const milestone of model.milestones) {
+      const ids = new Set(milestone.specs.map((s) => s.id));
+      const parts = model.features.flatMap((f) => {
+        const held = f.claims.filter((c) => !c.dropped && c.holder !== null && ids.has(c.holder));
+        return held.length === 0 ? [] : [{ id: f.id, name: f.name, closed: held.filter((c) => c.closed).length, total: held.length }];
+      });
+      expect({ milestone: milestone.name, features: milestone.features }).toEqual({ milestone: milestone.name, features: parts });
+      expect([milestone.closed, milestone.total]).toEqual([parts.reduce((n, p) => n + p.closed, 0), parts.reduce((n, p) => n + p.total, 0)]);
+    }
+    // The assignment is the only spec 026 addition, and without a line it is empty: no milestone lists a feature, every
+    // feature is unassigned.
+    expect(model.milestones.map((m) => m.featureIds)).toEqual(model.milestones.map(() => []));
+    expect(model.unassignedFeatures).toEqual(model.features.map((f) => f.id));
+    expect(model).toEqual(golden);
   });
 });
 

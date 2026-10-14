@@ -1,0 +1,36 @@
+{
+  "pages": null,
+  "diagnostics": [],
+  "specs": [
+    {
+      "id": "001",
+      "slug": "001-signal-intake",
+      "title": "Accept monitoring signals at one endpoint",
+      "type": "feature",
+      "phase": "complete",
+      "goal": null,
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "002",
+      "slug": "002-alert-routing",
+      "title": "Route each signal to the person on call",
+      "type": "feature",
+      "phase": "building",
+      "goal": null,
+      "approach": null,
+      "fog": []
+    },
+    {
+      "id": "003",
+      "slug": "003-escalation-chains",
+      "title": "Escalate unacknowledged signals along a chain",
+      "type": "feature",
+      "phase": "scoping",
+      "goal": null,
+      "approach": null,
+      "fog": []
+    }
+  ]
+}

@@ -56,7 +56,7 @@ import type { NextUpForm } from './next-up-list';
       <ui-card class="next-card" data-next-card [padding]="16">
         <h3>
           <ui-id-chip>{{ row().id }}</ui-id-chip>
-          <a class="link" data-next-link [routerLink]="[]" [queryParams]="{ spec: row().id }" queryParamsHandling="merge"
+          <a class="link" data-next-link [routerLink]="[]" [queryParams]="{ sel: 'spec:' + row().id }" queryParamsHandling="merge"
             ><span
               #railTitle="uiClamp"
               class="title"
@@ -89,7 +89,7 @@ import type { NextUpForm } from './next-up-list';
     } @else {
       <div class="next-row" data-next-row>
         <ui-id-chip>{{ row().id }}</ui-id-chip>
-        <a class="link" data-next-link [routerLink]="[]" [queryParams]="{ spec: row().id }" queryParamsHandling="merge"
+        <a class="link" data-next-link [routerLink]="[]" [queryParams]="{ sel: 'spec:' + row().id }" queryParamsHandling="merge"
           ><span
             #rowTitle="uiClamp"
             class="title"

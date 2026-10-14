@@ -2,6 +2,7 @@ import { afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyR
 import { RouterOutlet } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { KeyboardService } from '../../core/keyboard.service';
+import { DetailSidebar } from '../detail-sidebar/detail-sidebar';
 import { RailToggle } from '../zen/rail-toggle';
 import { ZenFooter } from '../zen/zen-footer';
 import { areaById } from './areas';
@@ -19,7 +20,7 @@ import { tierFor } from './tier';
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, TranslocoPipe, ShellHeader, RailSlot, RailToggle, ZenFooter],
+  imports: [RouterOutlet, TranslocoPipe, DetailSidebar, ShellHeader, RailSlot, RailToggle, ZenFooter],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.html',
   styleUrl: './shell.css',
@@ -45,7 +46,9 @@ export class ShellComponent {
   /** No rail column at all (prototype `no-rail`): outside a workspace, on the full-width workspace pages, in a `noRail` area. */
   protected readonly noRail = computed(() => {
     const page = this.state.wsPage();
-    return this.state.ws() === null || page === 'board' || page === 'library' || this.specAreaNoRail();
+    // Spec 026: the planning page's matrix and graph take the full width too; only the tree lens has a rail.
+    const planningWide = page === 'planning' && this.state.route().lens !== 'tree';
+    return this.state.ws() === null || page === 'board' || page === 'library' || planningWide || this.specAreaNoRail();
   });
 
   /** The open spec area runs without the context column (`SpecArea.noRail`, the Library, spec 017 T46). */
@@ -61,6 +64,11 @@ export class ShellComponent {
   protected readonly showRail = computed(() => {
     if (this.state.notFound()) return false;
     if (this.state.specId() !== null) return !this.data.specMissing() && !this.specAreaNoRail();
+    // Spec 026: the planning page's tree lens at wide (the overview, or the docked sidebar on a selection); matrix and
+    // graph never draw one.
+    if (this.state.route().wsPage === 'planning') {
+      return this.state.route().lens === 'tree' && this.state.tier() === 'wide' && !this.data.workspaceMissing() && !this.data.planningMissing();
+    }
     // The spec list only: the Features and Milestones pages draw no rail (spec 003 design.md § Where the pages sit).
     return this.state.route().wsPage === 'specs' && this.state.tier() === 'wide' && !this.data.workspaceMissing() && !this.data.workspaceUnavailable();
   });

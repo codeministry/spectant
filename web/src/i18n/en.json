@@ -145,23 +145,9 @@
     "empty": "No specs yet",
     "noMatch": "No spec in {{phase}}",
     "clearFilter": "Clear filter",
-    "inspector": {
-      "label": "Spec details",
-      "claims": "Claims",
-      "percent": "{{percent}} %",
-      "nextCommand": "Next command",
-      "takeableClaims": "Takeable claims",
-      "warnings": "Warnings",
-      "fog": {
-        "one": "{{count}} open fog item",
-        "other": "{{count}} open fog items"
-      },
-      "previous": "Previous spec",
-      "next": "Next spec",
-      "stepHint": "previous / next spec",
-      "explore": "Explore spec {{id}}",
-      "openFog": "Open fog",
-      "open": "Open spec"
+    "fogCount": {
+      "one": "{{count}} open fog item",
+      "other": "{{count}} open fog items"
     },
     "agentWorking": "Agent {{session}} working",
     "ideas": {
@@ -248,6 +234,7 @@
       "shortcuts": "Show shortcuts",
       "openAssistant": "Open assistant",
       "help": "Help",
+      "planning": "Open planning",
       "openPort": "Open localhost:{{port}}",
       "library": "Open the library",
       "settingsWorkspaces": "Settings · Workspaces"
@@ -620,12 +607,14 @@
     "pages": {
       "specs": "Specs",
       "board": "Board",
+      "planning": "Planning",
       "features": "Features",
       "milestones": "Milestones",
       "library": "Library",
       "summary": {
         "specs": "{{active}} active · {{archived}} archived",
         "board": "{{stages}} stages · {{cards}} cards · {{waiting}} wait on you",
+        "planning": "{{milestones}} milestones · {{features}} features",
         "features": "{{count}} features · {{closed}}/{{total}} closed",
         "milestones": "{{count}} milestones · next {{next}}",
         "library": "{{docs}} documents · {{stale}} outdated · {{missing}} missing",
@@ -1618,6 +1607,57 @@
     }
   },
   "planning": {
+    "page": {
+      "lenses": {
+        "tree": "Tree",
+        "board": "Matrix",
+        "graph": "Graph"
+      },
+      "levels": {
+        "milestones": "Milestones",
+        "features": "Features",
+        "specs": "Specs",
+        "claims": "Claims"
+      },
+      "eyebrowCount": "{{count}} milestones",
+      "meta": "{{milestones}} milestones · {{features}} features · {{closed}}/{{total}} claims closed",
+      "overview": "Overview",
+      "overviewEmpty": "No spec names a milestone yet.",
+      "summary": {
+        "board": "{{lanes}} swimlanes · {{columns}} feature columns",
+        "graph": "{{milestones}} milestones → {{features}} features → {{specs}} specs"
+      }
+    },
+    "matrix": {
+      "pills": "Milestones",
+      "showDone": "Finished features",
+      "specs": "{{count}} specs",
+      "corner": "Milestone \\ Feature",
+      "otherChip": "+{{id}}",
+      "noCards": "No specs yet in {{lane}}",
+      "bare": "{{count}} features without a spec in {{lane}}",
+      "openColumn": "{{id}} {{name}}, finished, show the column"
+    },
+    "graph": {
+      "all": "All",
+      "filters": "Filters",
+      "archived": "Archived",
+      "specEdges": "Spec edges",
+      "rebundle": "Bundle again",
+      "bundleDone": "{{count}} features done",
+      "bundleNoSpec": "+{{count}} features without a spec",
+      "openBundle": "{{name}}, show the features",
+      "label": "Planning graph",
+      "drawing": "Drawing the graph…",
+      "failed": "The graph could not be drawn.",
+      "asTree": "Read as a tree",
+      "legend": {
+        "contains": "Contains",
+        "open": "Spec edge open",
+        "met": "Spec edge met",
+        "bundle": "Bundle, archived"
+      }
+    },
     "features": {
       "title": "Features in {{ws}}",
       "meta": "{{features}} features · {{closed}}/{{total}} claims closed · {{unheld}} unheld",
@@ -1712,7 +1752,36 @@
     },
     "ideas": {
       "label": "Ideas · {{count}}"
+    },
+    "tree": {
+      "label": "Planning tree: milestones, features, specs and claims",
+      "noMilestone": "No milestone",
+      "noMilestoneMeta": "Features without a Milestone: line",
+      "noMilestones": "The master names no milestones.",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all"
     }
+  },
+  "sidebar": {
+    "label": "Details",
+    "types": {
+      "milestone": "Milestone",
+      "feature": "Feature",
+      "spec": "Spec",
+      "claim": "Claim",
+      "idea": "Idea"
+    },
+    "parents": "Parents",
+    "children": "Children",
+    "blockers": "Blockers",
+    "more": "+{{count}} more",
+    "noBlockers": "No blockers",
+    "waiting": "open",
+    "claimsClosed": "claims closed",
+    "noClaims": "No claims yet",
+    "archived": "archived",
+    "openSpec": "Open spec",
+    "close": "Close details · Esc"
   },
   "help": {
     "title": "Help",
@@ -1903,7 +1972,8 @@
       "hash": "hash"
     },
     "loading": "Loading story",
-    "error": "This story could not be loaded."
+    "error": "This story could not be loaded.",
+    "showRelations": "Show relations"
   },
   "types": {
     "feature": "feature",

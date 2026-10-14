@@ -1,4 +1,5 @@
 import type { IconName } from '../../shared/icons/icons';
+import type { PlanningLensId } from './page-tabs';
 
 /**
  * The spec page's areas and their tabs (design.md, ISC-76): the one registry the area menu, the tab bar, the routes
@@ -81,8 +82,8 @@ function must(key: string): never {
 /** Route data the shell reads (`ShellState.route`): which area and tab a route shows, or that it is the not-found page. */
 export interface ShellRouteData {
   readonly area?: AreaId;
-  /** A spec tab under `/w/:ws/s/:id`. */
-  readonly tab?: TabId;
+  /** A spec tab under `/w/:ws/s/:id`, or a lens on `page: 'planning'` (`ShellState.route().lens`, spec 026). */
+  readonly tab?: TabId | PlanningLensId;
   /** The workspace-scope page a `w/:ws` route shows (`ShellState.route().wsPage`); absent means the spec list. */
   readonly page?: WorkspacePageId;
   readonly notFound?: boolean;
@@ -96,10 +97,10 @@ export interface ShellRouteData {
  * there (`app.routes.ts`). `library` (spec 024,
  * `/w/:ws/library`, on the real catalog since spec 017) stands where Tech stood, fifth after Milestones.
  */
-export type WorkspacePageId = 'specs' | 'board' | 'features' | 'milestones' | 'idea' | 'library';
+export type WorkspacePageId = 'specs' | 'board' | 'planning' | 'features' | 'milestones' | 'idea' | 'library';
 export type WorkspaceMenuPageId = Exclude<WorkspacePageId, 'idea'>;
 
-const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'features', 'milestones', 'idea', 'library'];
+const WORKSPACE_PAGE_IDS: readonly WorkspacePageId[] = ['specs', 'board', 'planning', 'features', 'milestones', 'idea', 'library'];
 
 export const isWorkspacePageId = (value: unknown): value is WorkspacePageId =>
   (WORKSPACE_PAGE_IDS as readonly unknown[]).includes(value);
@@ -132,10 +133,11 @@ export const WORKSPACE_PAGES: readonly WorkspacePage[] = [
   // summary line counts through the board's own model (T116). `g b` is bound (T117, SHORTCUTS `go-board`): the
   // 2026-10-11 review found it free, the round board's `b` being a tab inside a spec, not a `g` sequence.
   { id: 'board', icon: 'square-kanban', labelKey: 'shell.pages.board', summaryKey: 'shell.pages.summary.board', goKey: 'b' },
-  { id: 'features', icon: 'layers', labelKey: 'shell.pages.features', summaryKey: 'shell.pages.summary.features', goKey: 'f' },
-  { id: 'milestones', icon: 'flag', labelKey: 'shell.pages.milestones', summaryKey: 'shell.pages.summary.milestones', goKey: 'm' },
-  // Spec 017 (T41, ISC-157.1): the Library where Tech stood, fifth after Milestones; Tech's content is in it and its
-  // routes redirect there. The summary counts the catalog's documents, outdated and missing ones (`AreaMenu`).
+  // Spec 026 (ISC-167, ISC-167.1): Planning, one page with the lenses Tree, Matrix and Graph, replaces Features and
+  // Milestones in the menu; their routes redirect to the tree, and `g f` / `g m` open it.
+  { id: 'planning', icon: 'list-tree', labelKey: 'shell.pages.planning', summaryKey: 'shell.pages.summary.planning', goKey: 'p' },
+  // Spec 017 (T41, ISC-157.1): the Library where Tech stood, after Planning; Tech's content is in it and its routes
+  // redirect there. The summary counts the catalog's documents, outdated and missing ones (`AreaMenu`).
   { id: 'library', icon: 'book', labelKey: 'shell.pages.library', summaryKey: 'shell.pages.summary.library', goKey: 'o' },
 ];
 
@@ -144,3 +146,17 @@ export const workspacePageById = (id: WorkspaceMenuPageId): WorkspacePage => WOR
 
 /** `['/w', ws]` for Specs (the workspace root), else `['/w', ws, page]`, as a router link. */
 export const workspaceLink = (ws: string, page: WorkspaceMenuPageId): string[] => (page === 'specs' ? ['/w', ws] : ['/w', ws, page]);
+
+/** `['/w', ws, 'planning', 'tree']`, the planning page's tree lens as a router link (spec 026, ISC-167). */
+export const planningTreeLink = (ws: string): string[] => ['/w', ws, 'planning', 'tree'];
+
+/**
+ * The `?sel=` ref an old planning anchor names (spec 026, ISC-167.1): `F<n>` on `/features` is `feature:F<n>`,
+ * `m-<slug>` on `/milestones` is `milestone:<slug>`; any other anchor names nothing.
+ */
+export function anchorRef(page: 'features' | 'milestones', fragment: string | null): string | null {
+  if (fragment === null) return null;
+  if (page === 'features') return /^F\d+$/u.test(fragment) ? `feature:${fragment}` : null;
+  const slug = /^m-(.+)$/u.exec(fragment)?.[1];
+  return slug === undefined ? null : `milestone:${slug}`;
+}

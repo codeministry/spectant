@@ -24,6 +24,7 @@ snapshot changes only together with the parser change that explains it.
 | `harbor/` | the rich case. Master with 130 claims in F0–F7, 106 closed: the three-digit/three-digit fraction; F7 is a feature block with its `Why:` line and no claim. Nine specs across every type but `infra` and `project`: the chore 007 and the spike pair 008/009 among them. The stages done (the chore's among them), build, tasks, review, code-review and close-pending, and every dashboard warning class. A `## Milestones` block with two entries, named by four specs (the archived 001 among them). `priority:` on three specs (one value invalid), an explicit `stage:` with `events.jsonl` on 002 and 006, every actor in the `u:`/`a:` grammar, a `specs/workflow.md`, a `specs/tech.md` with its four sections, a mermaid fence and one image (spec 023), and two stories with their index in `specs/ideas/` (spec 008, below). |
 | `lantern/` | the small clean case. Master with 12 claims, spec 001 (feature, building) and 002 (bug, scoping), both reviewed. No archive, no TL;DR, no tech.md, no milestone: the none case. Its one warning is the legacy actor case (spec 008, T33): 002's `events.jsonl` records its two transitions with the actor `principal`, outside the actor grammar, so it reads as recorded and raises one `actor-legacy` for the file. |
 | `empty-master/` | a repository with `ISA.md` and `specs/constitution.md` but no spec folder: zero specs. |
+| `milestone-lines/` | the explicit feature-to-milestone assignment (spec 026, ISC-166). A master with four feature blocks and a `## Milestones` block of two entries, `Beacon 0.5` and `Beacon 1.0`. F1 carries `Milestone: Beacon 0.5` and F2 `Milestone: Beacon 1.0`, each directly under its `Why:` line; F0 has no line; F3 names `Beacon 2.0`, which the block does not list (the unknown case). Three feature specs: 001 (F1, `milestone: Beacon 0.5`, complete), 002 (F2 with claims of F0, `milestone: Beacon 0.5`, which differs from the `Beacon 1.0` its main feature names: the mismatch case) and 003 (F3, no key). The tree hangs F1 under Beacon 0.5 and F2 under Beacon 1.0; F0 and F3 form the trailing no-milestone group. |
 
 ### What each harbor spec carries
 
@@ -99,6 +100,9 @@ against `FORMAT.md`'s stage table and against the Expected column of both tables
 | `leadgen/` | `012-pwa-install` | feature · building | stage build, `/spec-implement 012`, "ISC-334 is takeable" |
 | `leadgen/` | `022-chat-turn-status-and-bulk-delete` | feature · complete | stage done, no command, "phase: complete" |
 | `leadgen/` | `archive/013-tech-debt` | refactor · complete | archived, stage done, no command, "phase: complete" |
+| `milestone-lines/` | `001-signal-intake` | feature · complete | stage done, no command, "phase: complete" |
+| `milestone-lines/` | `002-alert-routing` | feature · building | stage plan, `/spec-plan 002`, "a feature spec needs plan.md and it is missing" |
+| `milestone-lines/` | `003-escalation-chains` | feature · scoping | stage plan, `/spec-plan 003`, "a feature spec needs plan.md and it is missing" |
 | `spectant-001/` | `001-app-skeleton` | feature · scoping | stage review (the frozen copy carries no `.gates/`), `/spec-review 001`, "the reviewed mark is missing" |
 
 ## Frozen corpora

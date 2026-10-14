@@ -371,7 +371,7 @@ describe('ShellComponent', () => {
       }
     });
 
-    it('opens the page menu at workspace scope: Specs and Features while no milestone exists', async () => {
+    it('opens the page menu at workspace scope: Specs, Board, Planning, Tech and Library (spec 026)', async () => {
       const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
       proto['showPopover'] = vi.fn();
       proto['hidePopover'] = vi.fn(function (this: HTMLElement) {
@@ -387,7 +387,7 @@ describe('ShellComponent', () => {
         await harness.fixture.whenStable();
         expect(trigger.getAttribute('aria-expanded')).toBe('true');
         const entries = [...root.querySelectorAll('header nav[aria-label="Pages"] [data-page]')];
-        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'board', 'features', 'library']);
+        expect(entries.map((entry) => entry.getAttribute('data-page'))).toEqual(['specs', 'board', 'planning', 'library']);
         expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['page', null, null, null]);
       } finally {
         delete proto['showPopover'];

@@ -75,7 +75,7 @@ import {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './spec-table.html',
-  styleUrl: './spec-table.css',
+  styleUrls: ['./spec-table.css', '../../../layout/detail-sidebar/selection.css'],
   host: { 'data-panel': 'specs' },
 })
 export class SpecTable {
@@ -90,8 +90,10 @@ export class SpecTable {
   readonly query = input.required<ListQuery>();
   readonly queryChange = output<ListQuery>();
   /**
-   * The spec the preview shows (`?spec=<id>`, T69). A row's link activates in two steps: the first (Enter or a click)
-   * merges `?spec=<id>` into the URL, and on the previewed row it leads to the spec page `/w/:ws/s/:id`.
+   * The spec the detail sidebar shows (`?sel=spec:<id>`, spec 026 T27, ISC-171). A row's link activates in two steps:
+   * the first (Enter or a click) merges `?sel=spec:<id>` into the URL, and on the selected row it leads to the spec page
+   * `/w/:ws/s/:id`, as the sidebar's "Open spec" does. The selected row carries `data-selected="row"` (the sidebar's
+   * look); the roving tab stop keeps `data-selected=""` otherwise.
    */
   readonly preview = input<string | null>(null);
   /** Ids of the rows the last refresh changed (`RefreshService.changedRows`): each gets the 4 px cyan dot. */

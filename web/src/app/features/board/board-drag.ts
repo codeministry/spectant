@@ -21,6 +21,8 @@ export const BOARD_DRAG_DELAY = { touch: 350, mouse: 0 } as const;
 
 export const BOARD_DRAG_CONFIG: DragDropConfig = {
   dragStartDelay: BOARD_DRAG_DELAY,
+  // Spec 026 (T26, ISC-171): the card lifts only after 4 px of movement, so a click selects and a drag still moves.
+  dragStartThreshold: 4,
   sortingDisabled: true,
 };
 

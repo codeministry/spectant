@@ -8,6 +8,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { WorkflowStage } from '../../../../../core/src/files';
 import { isWorkflowStage, WAITING_STAGES } from '../../../../../core/src/stage';
 import { FIXED_GATES } from '../../../../../core/src/workflow';
+import { DetailSelection } from '../../layout/detail-sidebar/selection';
 import { NotFound } from '../../layout/not-found/not-found';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
@@ -176,7 +177,9 @@ interface BandRow {
   host: {
     'data-page': 'board',
     '[attr.data-tier]': 'tier()',
-    '[attr.data-dragging]': 'drag.dragging() ? "" : null' },
+    '[attr.data-dragging]': 'drag.dragging() ? "" : null',
+    '[attr.data-has-selection]': 'hasSelection() ? "" : null',
+  },
   templateUrl: './board-page.html',
   styleUrls: ['./board-page.css', './board-page.compact.css', './board-page.drag.css', './board-page.fill.css', './board-page.hidden.css', './board-page.parity.css'],
 })
@@ -189,6 +192,12 @@ export class BoardPage {
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  /**
+   * The detail sidebar (spec 026, T26, ISC-171): a card click selects it. The board never docks the sidebar; it floats
+   * at the right edge, and while it is open the scroller leaves room to scroll a card out from under it.
+   */
+  private readonly selection = inject(DetailSelection);
+  protected readonly hasSelection = computed(() => this.selection.selected() !== null);
   private readonly params = toSignal(this.route.queryParams, { initialValue: this.route.snapshot.queryParams });
   /** The board query as the URL holds it (ISC-129.1). */
   protected readonly query = computed(() => parseBoardQuery(this.params()));

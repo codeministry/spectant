@@ -41,7 +41,7 @@ describe('the former tech routes redirect to the Library (spec 017, T42, ISC-157
     it(`redirects ${from} to ${to}, the Library on the route`, async () => {
       const { url, route, component } = await at(from);
       expect(url).toBe(to);
-      expect(route).toEqual({ ws: 'harbor', specId: null, area: null, tab: null, wsPage: 'library', ideaSlug: null, notFound: false });
+      expect(route).toEqual({ ws: 'harbor', specId: null, area: null, tab: null, lens: null, wsPage: 'library', ideaSlug: null, notFound: false });
       expect(component).toBe(LibraryPage);
     });
   }

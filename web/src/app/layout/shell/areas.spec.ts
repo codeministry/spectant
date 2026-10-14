@@ -55,8 +55,8 @@ describe('SPEC_AREAS (spec 017, T45, ISC-158)', () => {
 });
 
 describe('WORKSPACE_PAGES', () => {
-  it('holds exactly Specs, Board, Features, Milestones and Library, in that order, no Tech (spec 008, ISC-129; spec 024, ISC-150.1; spec 017, ISC-157.1)', () => {
-    expect(WORKSPACE_PAGES.map((page) => page.id)).toEqual(['specs', 'board', 'features', 'milestones', 'library']);
+  it('holds exactly Specs, Board, Planning and Library, in that order, no Tech (spec 008, ISC-129; spec 024, ISC-150.1; spec 017, ISC-157.1; spec 026, ISC-167)', () => {
+    expect(WORKSPACE_PAGES.map((page) => page.id)).toEqual(['specs', 'board', 'planning', 'library']);
   });
 
   it('uses an icon from ICON_NAMES for every page', () => {
@@ -74,14 +74,16 @@ describe('WORKSPACE_PAGES', () => {
     }
   });
 
-  it('records the bound go keys b, f, m and o (Library, spec 017 T41), none for specs (g s is Status)', () => {
-    expect(WORKSPACE_PAGES.map((page) => page.goKey)).toEqual([null, 'b', 'f', 'm', 'o']);
+  it('records the bound go keys b, p (Planning, spec 026) and o (Library, spec 017 T41), none for specs (g s is Status)', () => {
+    expect(WORKSPACE_PAGES.map((page) => page.goKey)).toEqual([null, 'b', 'p', 'o']);
   });
 
   it('looks a page up by id, Library with the book icon where Tech stood', () => {
     expect(workspacePageById('board').icon).toBe('square-kanban');
-    expect(workspacePageById('features').icon).toBe('layers');
-    expect(workspacePageById('milestones').icon).toBe('flag');
+    // Spec 026 (ISC-167): Planning replaces Features and Milestones in the registry.
+    expect(workspacePageById('planning')).toMatchObject({ icon: 'list-tree', labelKey: 'shell.pages.planning', summaryKey: 'shell.pages.summary.planning' });
+    expect(() => workspacePageById('features')).toThrow();
+    expect(() => workspacePageById('milestones')).toThrow();
     expect(workspacePageById('library')).toMatchObject({ icon: 'book', labelKey: 'shell.pages.library', summaryKey: 'shell.pages.summary.library', goKey: 'o' });
   });
 

@@ -1,5 +1,5 @@
 /**
- * T38 · ISC-103.1: the Features and Milestones pages in a narrow container. `bun run e2e -- narrow-planning` is the
+ * T38 · ISC-103.1: the planning tree (spec 026 retired the Features and Milestones pages) in a narrow container. `bun run e2e -- narrow-planning` is the
  * claim's probe. At the 600 px cmux panel (and the 390 phone for good measure), on harbor (rows) and lantern (the
  * Features rows and the absent Milestones page):
  *
@@ -9,15 +9,15 @@
  *
  * The chip rows wrap (`flex-wrap`) rather than scroll, and the card grids use `minmax(0, 1fr)`; this file proves
  * both hold with the real fixture names and counts.
+ *
+ * The second block below is spec 026's ISC-171.2: all three planning lenses with the detail sidebar closed and open.
  */
 import type { Page } from '@playwright/test';
 import { atWidth, expect, pinClock, test, WIDTHS } from './fixtures';
 
 const PAGES = [
-  { name: 'harbor features', url: '/w/harbor/features', host: 'app-features-page', rows: true },
-  { name: 'harbor milestones', url: '/w/harbor/milestones', host: 'app-milestones-page', rows: true },
-  { name: 'lantern features', url: '/w/lantern/features', host: 'app-features-page', rows: true },
-  { name: 'lantern milestones (absent)', url: '/w/lantern/milestones', host: 'app-milestones-page', rows: false },
+  { name: 'harbor planning tree', url: '/w/harbor/planning/tree', host: 'app-planning-page' },
+  { name: 'lantern planning tree (no milestones)', url: '/w/lantern/planning/tree', host: 'app-planning-page' },
 ] as const;
 
 interface Layout {
@@ -62,8 +62,7 @@ for (const width of [WIDTHS.panel, WIDTHS.phone]) {
         await page.goto(target.url);
         const host = page.locator(target.host);
         await expect(host).toBeVisible();
-        if (target.rows) await expect(host.locator('ol.rows > li').first()).toBeVisible();
-        else await expect(host.locator('app-not-found')).toBeVisible();
+        await expect(host.locator('[role="treeitem"]').first()).toBeVisible();
 
         const result = await layout(page, target.host);
         expect(result.viewport).toBe(width);
@@ -71,6 +70,73 @@ for (const width of [WIDTHS.panel, WIDTHS.phone]) {
         expect(result.wide).toEqual([]);
         expect(result.scrollers).toEqual([]);
       });
+    }
+  });
+}
+
+/*
+ * T33 · ISC-171.2 (spec 026): the three lenses — tree, matrix (`/planning/board`) and diagram (`/planning/graph`) — at
+ * 600 and 390, with the detail sidebar closed and open (`?sel=`), on harbor and on lantern (no milestones). The page
+ * never scrolls sideways: `document.scrollingElement.scrollWidth === clientWidth`. The matrix may scroll inside its own
+ * container; only the page must not overflow. The open sidebar lies over the view: 600 and 390 are both below 640,
+ * the compact tier, where the decided overlay form is the modal bottom sheet (design.md § Viewport-übergreifend:
+ * "640 bis 1119 px nicht-modales Overlay … unter 640 px modales Bottom-Sheet"; "ISC-171.2 prüft 600 (fällt unter das
+ * Sheet) und 390"); its panel ends inside the viewport.
+ */
+const LENSES = [
+  { lens: 'tree', host: 'app-planning-tree' },
+  { lens: 'board', host: 'app-planning-matrix' },
+  { lens: 'graph', host: 'app-planning-graph' },
+] as const;
+const WORKSPACES = [
+  { ws: 'harbor', sel: 'spec:002' },
+  { ws: 'lantern', sel: 'spec:002' },
+] as const;
+const PRESENTATION: Readonly<Record<number, 'overlay' | 'sheet'>> = { [WIDTHS.panel]: 'sheet', [WIDTHS.phone]: 'sheet' };
+
+async function pageOverflow(page: Page): Promise<{ scroll: number; client: number }> {
+  return page.evaluate(() => {
+    const root = document.scrollingElement ?? document.documentElement;
+    return { scroll: root.scrollWidth, client: root.clientWidth };
+  });
+}
+
+for (const width of [WIDTHS.panel, WIDTHS.phone]) {
+  test.describe(`planning lenses at ${String(width)}`, () => {
+    test.use(atWidth(width));
+
+    for (const { ws, sel } of WORKSPACES) {
+      for (const { lens, host } of LENSES) {
+        for (const open of [false, true]) {
+          test(`${ws} ${lens} lens, sidebar ${open ? 'open' : 'closed'}: no horizontal page overflow`, async ({ page }) => {
+            await pinClock(page);
+            await page.goto(`/w/${ws}/planning/${lens}${open ? `?sel=${sel}` : ''}`);
+            await expect(page.locator(host)).toBeVisible();
+            const sidebar = page.locator('app-detail-sidebar[data-presentation]');
+            if (open) {
+              const presentation = PRESENTATION[width];
+              await expect(sidebar).toHaveAttribute('data-presentation', presentation ?? '');
+              await expect(sidebar.locator('[data-part="title"]')).toBeVisible();
+              const panel = sidebar.locator('.panel');
+              if (presentation === 'overlay') {
+                await expect(sidebar.locator('dialog')).toHaveCount(0);
+                expect(await panel.evaluate((el) => getComputedStyle(el).position)).toBe('fixed');
+              } else {
+                expect(await sidebar.locator('dialog').evaluate((d) => d.matches(':modal'))).toBe(true);
+              }
+              const box = await panel.boundingBox();
+              expect(box, 'the sidebar panel has a box').not.toBeNull();
+              expect(box?.x ?? -1).toBeGreaterThanOrEqual(0);
+              expect((box?.x ?? 0) + (box?.width ?? Infinity)).toBeLessThanOrEqual(width + 0.5);
+            } else {
+              await expect(sidebar).toHaveCount(0);
+            }
+
+            const result = await pageOverflow(page);
+            expect(result.scroll, 'document scrollWidth == clientWidth').toBe(result.client);
+          });
+        }
+      }
     }
   });
 }

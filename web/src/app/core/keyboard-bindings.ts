@@ -139,15 +139,34 @@ const workspaceShortcuts: Shortcut[] = [
     label: 'shortcuts.actions.goTo',
     target: 'shell.pages.board',
   },
-  // Spec 024 (T58, ISC-150.1): `g f` Features and `g m` Milestones, the second keys read from the page registry; both
-  // free in the workspace context (`f` and `m` alone are single keys, not `g` sequences). Spec 017 (T43, ISC-157.1):
-  // `g o` the Library, where Tech stood; inside a spec `g o` opens the Library area (T45; one binding per context).
-  ...(['features', 'milestones', 'library'] as const).map(
+  // Spec 026 (ISC-167): `g p` Planning, the second key read from the page registry.
+  {
+    id: 'go-planning',
+    keys: [GO_PREFIX, workspacePageById('planning').goKey ?? 'p'],
+    group: 'workspace',
+    action: { kind: 'go-page', page: 'planning' },
+    label: 'shortcuts.actions.goTo',
+    target: 'shell.pages.planning',
+  },
+  // Spec 017 (T43, ISC-157.1): `g o` the Library, where Tech stood, the second key read from the page registry; inside
+  // a spec `g o` opens the Library area (T45; one binding per context).
+  {
+    id: 'go-library',
+    keys: [GO_PREFIX, workspacePageById('library').goKey ?? 'o'],
+    group: 'workspace',
+    action: { kind: 'go-page', page: 'library' },
+    label: 'shortcuts.actions.goTo',
+    target: 'shell.pages.library',
+  },
+  // Spec 024 (T58, ISC-150.1): `g f` Features and `g m` Milestones; both free in the workspace context (`f` and `m`
+  // alone are single keys, not `g` sequences). Spec 026 (ISC-167.1): they left the page registry for Planning and stay
+  // as aliases of the old routes, which redirect to the tree, so they open the tree directly.
+  ...(['features', 'milestones'] as const).map(
     (page): Shortcut => ({
       id: `go-${page}`,
-      keys: [GO_PREFIX, workspacePageById(page).goKey ?? page.charAt(0)],
+      keys: [GO_PREFIX, page.charAt(0)],
       group: 'workspace',
-      action: { kind: 'go-page', page },
+      action: { kind: 'go-page', page: 'planning' },
       label: 'shortcuts.actions.goTo',
       target: `shell.pages.${page}`,
     }),

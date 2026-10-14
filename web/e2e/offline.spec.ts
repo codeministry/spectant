@@ -7,6 +7,9 @@
  *
  * - every route: `/`, `/w/harbor`, `/settings`, harbor 002's dashboard and each tab of `TAB_IDS` (status, timeline,
  *   board, matrix, claims, tasks, evidence, plan, design, decisions, constitution, notes, notes/:id), and an unknown path;
+ * - the planning page (spec 026, ISC-173): the tree, board and graph lenses each with `?sel=` (the detail sidebar open,
+ *   the graph drawn by mermaid), the redirects of `/w/harbor/features#F2` and `/w/harbor/milestones#m-…` to the tree
+ *   with the object selected, and the workspace board with a selected card;
  * - the chrome: the area menu, the workspace and spec pickers, the shortcut sheet (`?`) and the palette trigger;
  * - every write: the gate confirm (on 003, the harbor spec whose gate is `ready`; 002's is already `done`), a task tick
  *   and untick, a note create, edit and delete, the notes import-notice dismissal, rail collapse and expand, and a
@@ -53,6 +56,18 @@ const PAGES: ReadonlyArray<{ readonly path: string; readonly tab?: string }> = [
   { path: `${SPEC}/notes/${HARBOR_002_NOTE.id}`, tab: 'notes' },
 ];
 
+/** The planning lenses (spec 026), each opened with an object selected so the detail sidebar is open. */
+const PLANNING_LENSES = [
+  { lens: 'tree', sel: 'feature:F2' },
+  { lens: 'board', sel: 'spec:003' },
+  { lens: 'graph', sel: 'milestone:harbor-0-9' },
+] as const;
+
+/** The old Features and Milestones addresses and the object their anchor selects on the tree. */
+const PLANNING_REDIRECTS = [
+  { path: '/w/harbor/features#F2', sel: 'feature:F2' },
+  { path: '/w/harbor/milestones#m-harbor-0-9', sel: 'milestone:harbor-0-9' },
+] as const;
 const LIBRARY = '/w/harbor/library';
 const READER = '[data-library-reader]';
 const PROTOTYPE = STUB_LIBRARY.prototype;
@@ -108,6 +123,14 @@ async function rendered(page: Page, path: string, tab?: string): Promise<void> {
   }
 }
 
+/** The detail sidebar is open on `ref` (`<type>:<id>`): one host with a presentation, its id part showing the id. */
+async function expectSidebarOn(page: Page, ref: string): Promise<void> {
+  const sidebar = page.locator('app-detail-sidebar[data-presentation]');
+  await expect(sidebar, ref).toHaveCount(1);
+  await expect(sidebar.locator('[data-part="id"]'), ref).toBeVisible();
+  await expect(sidebar.locator('[data-part="id"]'), ref).toHaveText(ref.slice(ref.indexOf(':') + 1));
+}
+
 const answered = (page: Page, method: string, path: RegExp) =>
   page.waitForResponse((res) => res.request().method() === method && path.test(new URL(res.url()).pathname));
 
@@ -155,6 +178,38 @@ for (const theme of ['light', 'dark'] as const) {
         await page.goto(UNKNOWN);
         await expect(page.locator('app-shell')).toHaveCount(1);
         await expect(page.locator('[data-page="not-found"]')).toBeVisible();
+      });
+
+      await test.step('planning: the three lenses, the redirects and the open sidebar', async () => {
+        // Spec 026 (ISC-173): each lens with an object in `?sel=`, so the detail sidebar is open on it; the graph is
+        // drawn by mermaid from the lazy chunk on the app's origin.
+        for (const { lens, sel } of PLANNING_LENSES) {
+          const path = `/w/harbor/planning/${lens}?sel=${sel}`;
+          await test.step(path, async () => {
+            await page.goto(path);
+            await rendered(page, path);
+            await expect(page.locator(`[data-lens="${lens}"]`)).toBeVisible();
+            await expectSidebarOn(page, sel);
+          });
+        }
+        await expect(page.locator(`app-planning-graph g.node[data-ref="${PLANNING_LENSES[2].sel}"]`)).toBeVisible();
+
+        // The old addresses redirect client-side to the tree lens with the anchor's object selected.
+        for (const { path, sel } of PLANNING_REDIRECTS) {
+          await test.step(path, async () => {
+            await page.goto(path);
+            await expect(page).toHaveURL((url) => url.pathname === '/w/harbor/planning/tree' && url.searchParams.get('sel') === sel);
+            await rendered(page, path);
+            await expectSidebarOn(page, sel);
+          });
+        }
+
+        // The workspace board with a selected card: the sidebar floats on it.
+        await page.goto('/w/harbor/board');
+        await rendered(page, '/w/harbor/board');
+        await page.locator('a.title[data-ref="spec:002"]').click();
+        await expect.poll(() => new URL(page.url()).searchParams.get('sel')).toBe('spec:002');
+        await expectSidebarOn(page, 'spec:002');
       });
 
       await test.step('the chrome: area menu, pickers, shortcut sheet, palette trigger', async () => {

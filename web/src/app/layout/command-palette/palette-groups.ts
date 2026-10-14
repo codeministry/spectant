@@ -306,6 +306,14 @@ function actionsSource(): PaletteSource {
           link: workspaceLink(here, 'board'),
           keywords: ['board', 'kanban', 'stages', 'cards'],
         });
+        // Spec 026 (ISC-167): the planning page, which opens the tree lens.
+        actions.push({
+          id: 'action/open-planning',
+          label: t('palette.actions.planning'),
+          link: workspaceLink(here, 'planning'),
+          keywords: ['planning', 'features', 'milestones', 'tree', 'matrix', 'graph'],
+        });
+        // Spec 024 (T58, ISC-150.1): the Library, a menu page (a mock until spec 017).
         // Spec 024 (T58, ISC-150.1): the Library, a menu page; since spec 017 (T43, ISC-157.1) it also stands for the
         // former Tech group, whose words stay search keys so "tech" or "architecture" still finds where it went.
         actions.push({

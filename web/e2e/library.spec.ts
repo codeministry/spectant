@@ -1439,7 +1439,7 @@ test.describe('redirect', () => {
   const TECH_DOC = '[data-library-reader] [data-library-prose] .docs-prose';
   const FOGGY = techGolden(WS).specs.filter((spec) => spec.phase !== 'complete' && spec.fog.length > 0);
   const MARK = 'spectantE2eNoReload';
-  const PAGE_IDS = ['specs', 'board', 'features', 'milestones', 'library'] as const;
+  const PAGE_IDS = ['specs', 'board', 'planning', 'library'] as const;
   const pageName = (id: string): string => REDIRECT_EN.shell.pages[id] ?? id;
   const heading = (page: Page): Locator => page.locator('app-library-page h1#library');
 
@@ -1555,7 +1555,7 @@ test.describe('redirect', () => {
     }
   });
 
-  test('the PAGE select names Specs, Board, Features, Milestones and Library with its catalog counts, no Tech', async ({ page, request }) => {
+  test('the PAGE select names Specs, Board, Planning and Library with its catalog counts, no Tech', async ({ page, request }) => {
     const catalog = await catalogOf(request);
     await page.goto(OLD);
     await expect(page).toHaveURL((url) => url.pathname === PAGE);

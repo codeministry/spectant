@@ -663,13 +663,13 @@ const viaPage =
     await (await headerControl(page, 'page')).click();
     await follow(`nav[aria-label="Pages"] [data-page="${id}"]`)(page);
   };
-/** The spec table opens a row in two steps: the first click previews it (`?spec=`), the second opens the spec. */
+/** The spec table opens a row in two steps: the first click selects it for the sidebar (`?sel=spec:`), the second opens the spec. */
 const openSpecRow =
   (id: string) =>
   async (page: Page): Promise<void> => {
     const row = page.locator(`[data-panel="specs"] [data-spec-row="${id}"]`);
     await row.click();
-    await expect(page).toHaveURL((url) => url.searchParams.get('spec') === id);
+    await expect(page).toHaveURL((url) => url.searchParams.get('sel') === `spec:${id}`);
     await row.click();
   };
 const tab = (id: string): ((page: Page) => Promise<void>) => follow(`app-tab-bar a[data-tab="${id}"]`);
@@ -791,8 +791,8 @@ test.describe('routes', () => {
 const MENU_PAGES = [
   { id: 'specs', icon: 'file-text', name: 'Specs', lands: (path: string) => path === '/w/harbor' },
   { id: 'board', icon: 'square-kanban', name: 'Board', lands: (path: string) => path === '/w/harbor/board' },
-  { id: 'features', icon: 'layers', name: 'Features', lands: (path: string) => path === '/w/harbor/features' },
-  { id: 'milestones', icon: 'flag', name: 'Milestones', lands: (path: string) => path === '/w/harbor/milestones' },
+  // spec 026 (T15, ISC-167): one Planning entry replaces Features and Milestones and lands on the tree lens.
+  { id: 'planning', icon: 'list-tree', name: 'Planning', lands: (path: string) => path === '/w/harbor/planning/tree' },
   // spec 017 (T41, ISC-157.1): Tech went into the Library, which stands where Tech stood.
   { id: 'library', icon: 'book', name: 'Library', lands: (path: string) => path === '/w/harbor/library' },
 ] as const;
@@ -810,8 +810,8 @@ const SPEC_MENU_AREAS = [
 const PALETTE_PLACES = [
   { entry: 'harbor', query: 'harbor', lands: (path: string) => path === '/w/harbor' },
   { entry: 'action/open-board', query: 'board', lands: (path: string) => path === '/w/harbor/board' },
-  { entry: 'feature-F0', query: 'F0', lands: (path: string) => path === '/w/harbor/features' },
-  { entry: 'milestone-harbor-0-9', query: 'harbor-0-9', lands: (path: string) => path === '/w/harbor/milestones' },
+  { entry: 'feature-F0', query: 'F0', lands: (path: string) => path === '/w/harbor/planning/tree' },
+  { entry: 'milestone-harbor-0-9', query: 'harbor-0-9', lands: (path: string) => path === '/w/harbor/planning/tree' },
   { entry: 'action/open-library', query: 'library', lands: (path: string) => path === '/w/harbor/library' },
   { entry: 'action/settings-workspaces', query: 'settings', lands: (path: string) => path === '/settings/workspaces' },
 ] as const;
@@ -875,11 +875,11 @@ test.describe('navigation', () => {
         }
       });
 
-      test('a workspace without milestones lists no Milestones entry but keeps Library', async ({ page }) => {
+      test('a workspace without milestones lists Planning and keeps Library', async ({ page }) => {
         await page.goto('/w/lantern');
-        // spec 024: PAGE select (principal 2026-10-13)
+        // spec 024: PAGE select (principal 2026-10-13); spec 026: Planning in place of Features and Milestones
         const menu = await openPageMenu(page);
-        expect(await ids(menu.locator('[data-page]'), 'data-page')).toEqual(['specs', 'board', 'features', 'library']);
+        expect(await ids(menu.locator('[data-page]'), 'data-page')).toEqual(['specs', 'board', 'planning', 'library']);
       });
 
       test('the spec area menu lists the six spec areas, each navigating', async ({ page }) => {
@@ -961,8 +961,8 @@ test.describe('navigation', () => {
 
     for (const [key, path] of [
       ['b', '/w/harbor/board'],
-      ['f', '/w/harbor/features'],
-      ['m', '/w/harbor/milestones'],
+      ['f', '/w/harbor/planning/tree'],
+      ['m', '/w/harbor/planning/tree'],
     ] as const) {
       test(`g ${key} navigates to ${path} from the workspace`, async ({ page }) => {
         await page.goto('/w/harbor');

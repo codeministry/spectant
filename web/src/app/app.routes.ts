@@ -2,14 +2,21 @@ import { inject } from '@angular/core';
 import { type RedirectFunction, Router, type Routes } from '@angular/router';
 import { LEGACY_SPEC_REDIRECTS, SPEC_AREA_ROUTES } from './features/spec/spec-area.routes';
 import { SpecPage } from './features/spec/spec-page';
-import type { ShellRouteData } from './layout/shell/areas';
+import { anchorRef, planningTreeLink, type ShellRouteData } from './layout/shell/areas';
+import { PLANNING_LENSES, type PlanningLensId } from './layout/shell/page-tabs';
 import { ShellComponent } from './layout/shell/shell';
 
 const notFound: ShellRouteData = { notFound: true };
 // Spec 024: the designed not-found page is a lazy chunk, so it does not weigh on the initial bundle (1 MB budget).
 const notFoundPage = () => import('./layout/not-found/not-found').then((m) => m.NotFound);
-const featuresPage: ShellRouteData = { page: 'features' };
-const milestonesPage: ShellRouteData = { page: 'milestones' };
+const planningLens = (tab: PlanningLensId): ShellRouteData => ({ page: 'planning', tab });
+/** The redirect of an old planning page to the tree lens, its anchor as `?sel=` when it names an object. */
+const toTree =
+  (page: 'features' | 'milestones'): RedirectFunction =>
+  ({ params, fragment }) => {
+    const sel = anchorRef(page, fragment);
+    return inject(Router).createUrlTree(planningTreeLink(String(params['ws'])), sel === null ? {} : { queryParams: { sel } });
+  };
 const boardPage: ShellRouteData = { page: 'board' };
 const ideaPage: ShellRouteData = { page: 'idea' };
 const libraryPage: ShellRouteData = { page: 'library' };
@@ -85,18 +92,25 @@ export const routes: Routes = [
         loadComponent: () => import('./features/ideas/idea-page').then((m) => m.IdeaPage),
         data: ideaPage,
       },
-      // The workspace's planning pages (spec 003, ISC-103 / ISC-104): siblings of the spec list, reached through the
-      // area menu at workspace scope; lazy, so they ship as one chunk that only these two routes load.
+      // Spec 026 (ISC-167): the planning page, one route per lens like the tech page; `/w/:ws/planning` opens the tree.
+      // The lenses are componentless children of one lazy page, so a lens switch keeps the page (and its overview).
       {
-        path: 'w/:ws/features',
-        loadComponent: () => import('./features/planning/features-page').then((m) => m.FeaturesPage),
-        data: featuresPage,
+        path: 'w/:ws/planning',
+        children: [
+          { path: '', redirectTo: 'tree', pathMatch: 'full' },
+          {
+            path: '',
+            loadComponent: () => import('./features/planning/planning-lens-page').then((m) => m.PlanningPage),
+            children: PLANNING_LENSES.map((lens) => ({ path: lens, children: [], data: planningLens(lens) })),
+          },
+          { path: '**', loadComponent: notFoundPage, data: notFound },
+        ],
       },
-      {
-        path: 'w/:ws/milestones',
-        loadComponent: () => import('./features/planning/milestones-page').then((m) => m.MilestonesPage),
-        data: milestonesPage,
-      },
+      // Spec 026 (ISC-167.1): the old Features and Milestones pages (spec 003) are redirects to the tree lens; an anchor
+      // naming a feature (`#F8`) or a milestone (`#m-<slug>`) becomes `?sel=`, so the tree opens the path, focuses the
+      // row and the sidebar shows the object. A redirect replaces the old address, so Back skips it.
+      { path: 'w/:ws/features', pathMatch: 'full', redirectTo: toTree('features') },
+      { path: 'w/:ws/milestones', pathMatch: 'full', redirectTo: toTree('milestones') },
       // Spec 023's tech page went into the Library (spec 017, T42, ISC-157.1): `/w/:ws/tech` and each of its five tabs
       // redirect there with the matching selection (`TECH_REDIRECTS`); any other path below it is not-found with the
       // workspace still in the route. The old page itself is gone (T50).

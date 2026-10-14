@@ -22,6 +22,7 @@ import {
   workspaceLink,
   workspacePageById,
 } from '../shell/areas';
+import { planningCounts } from '../../features/planning/planning-counts';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 
@@ -108,7 +109,8 @@ export class AreaMenu {
   /** The open workspace page; a story page counts as the board it is reached from, a spec page as Specs. */
   protected readonly currentPage = computed(() => {
     const id = this.state.specId() === null ? this.state.route().wsPage : null;
-    return id === 'idea' ? 'board' : (id ?? 'specs');
+    // Spec 026: the Features and Milestones routes left the menu; until T30 redirects them they read as Planning.
+    return id === 'idea' ? 'board' : id === 'features' || id === 'milestones' ? 'planning' : (id ?? 'specs');
   });
 
   /** The page menu has been opened once: only then does it read the catalog for Library's line. */
@@ -134,6 +136,7 @@ export class AreaMenu {
         ? { active: this.data.specRows().length, archived: this.data.archiveRows().length }
         : null,
     board: this.boardSummary(),
+    planning: this.planningSummary(),
     features: this.featuresSummary(),
     milestones: this.milestonesSummary(),
     library: this.librarySummary(),
@@ -152,8 +155,10 @@ export class AreaMenu {
     return {
       specs: line('specs'),
       board: line('board'),
-      features: line('features'),
-      milestones: line('milestones'),
+      planning: line('planning'),
+      // Spec 026: Features and Milestones left the menu for Planning; their ids stay in the type for the old routes.
+      features: null,
+      milestones: null,
       library: line('library') ?? { key: LIBRARY_SUMMARY_LOADING, params: {} },
     };
   });
@@ -215,6 +220,14 @@ export class AreaMenu {
     const dashboard = this.data.dashboard.value();
     if (planning === null || dashboard?.kind !== 'ok') return null;
     return { ...boardSummaryOf(buildBoard({ planning, rows: boardRowsOf(dashboard.body) })) };
+  }
+
+  /** Planning (spec 026): the milestones some spec names and the features, as the page head counts them. */
+  private planningSummary(): SummaryParams {
+    const model = this.data.planningModel();
+    if (model === null) return null;
+    const counts = planningCounts(model);
+    return { milestones: counts.milestones, features: counts.features };
   }
 
   /** Features: the feature count and the master's recount of closed and total claims (ISC-100.2). */

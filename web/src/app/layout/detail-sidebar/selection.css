@@ -1,0 +1,19 @@
+/*
+ * The selection look of the planning views (spec 026 design.md § Viewport-übergreifend, contract rule 3 in
+ * `selection.ts`): a view adds this file to its `styleUrl`s and sets `data-selected` on the element of the selected
+ * object. The prototype's cyan is the app's `disp` family: `--color-primary` and `--disp-t`.
+ */
+[data-selected="row"] {
+  background: var(--disp-t);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+[data-selected="card"] {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+[data-selected="node"] {
+  stroke: var(--color-primary);
+  stroke-width: 2px;
+}

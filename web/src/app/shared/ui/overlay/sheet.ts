@@ -24,6 +24,7 @@ export type SheetTier = 'compact' | 'medium' | 'wide';
   styleUrl: './sheet.css',
   host: {
     '[attr.data-tier]': 'tier()',
+    '[attr.data-flush]': 'flush() ? "" : null',
     '(keydown.escape)': 'modal.escape($event)',
     '(pointerdown)': 'modal.pointerDown($event)',
     '(click)': 'modal.click($event)',
@@ -58,6 +59,8 @@ export class UiSheet {
   readonly heading = input<string>();
   /** Accessible name when there is no visible heading (translated). */
   readonly label = input<string>();
+  /** No padding around the content: a consumer that lays out its own head, body and foot (the detail sidebar). */
+  readonly flush = input(false);
 
   protected readonly headingId = nextId('ui-sheet-title');
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');

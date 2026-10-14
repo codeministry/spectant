@@ -1,0 +1,58 @@
+<div class="graph" data-graph [attr.data-has-selection]="hasSelection() ? '' : null">
+  <div class="graph-tools">
+    @if (pills().length > 1) {
+      <div class="graph-pills" role="group" [attr.aria-label]="'planning.matrix.pills' | transloco">
+        @for (p of pills(); track p.param) {
+          <button type="button" class="graph-pill" [attr.data-m]="p.param" [attr.aria-pressed]="active() === p.param" (click)="pick(p.param)">
+            <ui-icon [name]="p.icon" [size]="14" />
+            <span>{{ p.label }}</span>
+            <span class="graph-num">{{ p.count }}</span>
+          </button>
+        }
+      </div>
+    }
+    <div class="graph-pills graph-chips" role="group" [attr.aria-label]="'planning.graph.filters' | transloco">
+      <button type="button" class="graph-pill" data-filter="archived" [attr.aria-pressed]="archived()" (click)="toggleArchived()">
+        <ui-icon name="archive" [size]="14" />
+        {{ 'planning.graph.archived' | transloco }}
+      </button>
+      <button type="button" class="graph-pill" data-filter="edges" [attr.aria-pressed]="edges()" (click)="toggleEdges()">
+        <ui-icon name="share-2" [size]="14" />
+        {{ 'planning.graph.specEdges' | transloco }}
+      </button>
+      @if (expand().length > 0) {
+        <button type="button" class="graph-pill" data-rebundle (click)="rebundle()">{{ 'planning.graph.rebundle' | transloco }}</button>
+      }
+    </div>
+  </div>
+
+  <figure class="graph-figure" #figure>
+    <ui-diagram-toolbar [zoom]="zoom" (screenToggle)="toggleFullscreen()" />
+    <h2 class="graph-title" data-graph-title>{{ title() }}</h2>
+    <p class="graph-meta" data-lens-summary>{{ 'planning.page.summary.graph' | transloco: summary() }}</p>
+    @if (status() !== 'drawn') {
+      <p class="graph-meta" data-graph-status role="status">{{ (status() === 'failed' ? 'planning.graph.failed' : 'planning.graph.drawing') | transloco }}</p>
+    }
+    <div
+      #frame
+      class="graph-frame"
+      data-graph-frame
+      role="group"
+      tabindex="-1"
+      [attr.aria-label]="'planning.graph.label' | transloco"
+      (click)="activate($event)"
+      (keydown)="onKey($event)"
+    ></div>
+  </figure>
+
+  <div class="graph-legend" data-graph-legend>
+    <span><svg data-icon-exempt viewBox="0 0 32 8" aria-hidden="true"><line class="lg-contains" x1="0" y1="4" x2="32" y2="4" /></svg>{{ 'planning.graph.legend.contains' | transloco }}</span>
+    <span><svg data-icon-exempt viewBox="0 0 32 8" aria-hidden="true"><line class="lg-open" x1="0" y1="4" x2="32" y2="4" /></svg>{{ 'planning.graph.legend.open' | transloco }}</span>
+    <span><svg data-icon-exempt viewBox="0 0 32 8" aria-hidden="true"><line class="lg-met" x1="0" y1="4" x2="32" y2="4" /></svg>{{ 'planning.graph.legend.met' | transloco }}</span>
+    <span><svg data-icon-exempt viewBox="0 0 32 8" aria-hidden="true"><rect class="lg-bundle" x="1" y="1" width="30" height="6" rx="3" /></svg>{{ 'planning.graph.legend.bundle' | transloco }}</span>
+    <a class="graph-tree" data-as-tree [routerLink]="['/w', ws(), 'planning', 'tree']" queryParamsHandling="preserve">
+      <ui-icon name="list-tree" [size]="14" />
+      {{ 'planning.graph.asTree' | transloco }}
+    </a>
+  </div>
+</div>

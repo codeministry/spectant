@@ -494,10 +494,818 @@
     }
   ],
   "milestones": [],
+  "unassignedFeatures": [
+    "F0",
+    "F1"
+  ],
   "ideas": [],
   "recount": {
     "closed": 14,
     "total": 47
   },
-  "diagnostics": []
+  "diagnostics": [],
+  "relations": {
+    "feature:F0": {
+      "ref": "feature:F0",
+      "type": "feature",
+      "id": "F0",
+      "title": "Cross-cutting",
+      "closed": 3,
+      "total": 9,
+      "parents": [],
+      "children": [
+        "spec:001",
+        "claim:ISC-1",
+        "claim:ISC-2",
+        "claim:ISC-3",
+        "claim:ISC-4",
+        "claim:ISC-5",
+        "claim:ISC-6",
+        "claim:ISC-7",
+        "claim:ISC-5.1",
+        "claim:ISC-5.2"
+      ],
+      "blockers": []
+    },
+    "feature:F1": {
+      "ref": "feature:F1",
+      "type": "feature",
+      "id": "F1",
+      "title": "App skeleton and dashboard",
+      "closed": 11,
+      "total": 38,
+      "parents": [],
+      "children": [
+        "spec:001",
+        "claim:ISC-8",
+        "claim:ISC-8.1",
+        "claim:ISC-9",
+        "claim:ISC-10",
+        "claim:ISC-11",
+        "claim:ISC-12",
+        "claim:ISC-13",
+        "claim:ISC-14",
+        "claim:ISC-15",
+        "claim:ISC-16",
+        "claim:ISC-16.1",
+        "claim:ISC-16.2",
+        "claim:ISC-17",
+        "claim:ISC-17.1",
+        "claim:ISC-18",
+        "claim:ISC-18.2",
+        "claim:ISC-18.1",
+        "claim:ISC-18.3",
+        "claim:ISC-19",
+        "claim:ISC-19.1",
+        "claim:ISC-20",
+        "claim:ISC-21",
+        "claim:ISC-22",
+        "claim:ISC-60",
+        "claim:ISC-60.1",
+        "claim:ISC-60.2",
+        "claim:ISC-61",
+        "claim:ISC-61.1",
+        "claim:ISC-61.2",
+        "claim:ISC-62",
+        "claim:ISC-62.1",
+        "claim:ISC-63",
+        "claim:ISC-63.1",
+        "claim:ISC-64",
+        "claim:ISC-65",
+        "claim:ISC-66",
+        "claim:ISC-67",
+        "claim:ISC-67.1"
+      ],
+      "blockers": []
+    },
+    "spec:001": {
+      "ref": "spec:001",
+      "type": "spec",
+      "id": "001",
+      "title": "Install spectant with one line and see two workspaces on the dashboard",
+      "closed": 14,
+      "total": 47,
+      "parents": [
+        "feature:F1",
+        "feature:F0"
+      ],
+      "children": [
+        "claim:ISC-1",
+        "claim:ISC-2",
+        "claim:ISC-3",
+        "claim:ISC-4",
+        "claim:ISC-5",
+        "claim:ISC-6",
+        "claim:ISC-7",
+        "claim:ISC-5.1",
+        "claim:ISC-5.2",
+        "claim:ISC-8",
+        "claim:ISC-8.1",
+        "claim:ISC-9",
+        "claim:ISC-10",
+        "claim:ISC-11",
+        "claim:ISC-12",
+        "claim:ISC-13",
+        "claim:ISC-14",
+        "claim:ISC-15",
+        "claim:ISC-16",
+        "claim:ISC-16.1",
+        "claim:ISC-16.2",
+        "claim:ISC-17",
+        "claim:ISC-17.1",
+        "claim:ISC-18",
+        "claim:ISC-18.2",
+        "claim:ISC-18.1",
+        "claim:ISC-18.3",
+        "claim:ISC-19",
+        "claim:ISC-19.1",
+        "claim:ISC-20",
+        "claim:ISC-21",
+        "claim:ISC-22",
+        "claim:ISC-60",
+        "claim:ISC-60.1",
+        "claim:ISC-60.2",
+        "claim:ISC-61",
+        "claim:ISC-61.1",
+        "claim:ISC-61.2",
+        "claim:ISC-62",
+        "claim:ISC-62.1",
+        "claim:ISC-63",
+        "claim:ISC-63.1",
+        "claim:ISC-64",
+        "claim:ISC-65",
+        "claim:ISC-66",
+        "claim:ISC-67",
+        "claim:ISC-67.1"
+      ],
+      "blockers": [],
+      "stage": "review"
+    },
+    "claim:ISC-1": {
+      "ref": "claim:ISC-1",
+      "type": "claim",
+      "id": "ISC-1",
+      "title": "the app's HTTP server listens on any address other than 127.0.0.1 or ::1.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-2": {
+      "ref": "claim:ISC-2",
+      "type": "claim",
+      "id": "ISC-2",
+      "title": "with no AI feature switched on, starting the app, adding a workspace, browsing every page and performing every write makes an outbound network request.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-3": {
+      "ref": "claim:ISC-3",
+      "type": "claim",
+      "id": "ISC-3",
+      "title": "a tracked file contains a customer name, an absolute home path or personal data (generic leak classes plus a private word list kept outside the repo).",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-4": {
+      "ref": "claim:ISC-4",
+      "type": "claim",
+      "id": "ISC-4",
+      "title": "The repository root holds the Apache-2.0 `LICENSE` and a `THIRD_PARTY_NOTICES.md` naming the bundled assets and the LifeOS (MIT) origin of the ISA format.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-5": {
+      "ref": "claim:ISC-5",
+      "type": "claim",
+      "id": "ISC-5",
+      "title": "the repository holds more than one implementation of frontmatter, claim or stage parsing; the app and the plugin both import `core/`.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-6": {
+      "ref": "claim:ISC-6",
+      "type": "claim",
+      "id": "ISC-6",
+      "title": "Every fixture under `core/fixtures/` parses without error to its golden JSON snapshot.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-7": {
+      "ref": "claim:ISC-7",
+      "type": "claim",
+      "id": "ISC-7",
+      "title": "Deleting the data directory loses only the workspace registry, notes and pins; after re-adding a workspace its specs view equals the view before deletion.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-5.1": {
+      "ref": "claim:ISC-5.1",
+      "type": "claim",
+      "id": "ISC-5.1",
+      "title": "A `CLAUDE.md` exists at the root plus in `core/`, `server/`, `web/`, each lane file naming its probe (root: only what applies everywhere).",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-5.2": {
+      "ref": "claim:ISC-5.2",
+      "type": "claim",
+      "id": "ISC-5.2",
+      "title": "`bun run check:static` runs ESLint with the Angular rules, Stylelint with `color-no-hex` and `tsc --noEmit`, all at zero warnings.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F0"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-8": {
+      "ref": "claim:ISC-8",
+      "type": "claim",
+      "id": "ISC-8",
+      "title": "`bun run build` produces four binaries: darwin-arm64, darwin-x64, linux-arm64, linux-x64.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-8.1": {
+      "ref": "claim:ISC-8.1",
+      "type": "claim",
+      "id": "ISC-8.1",
+      "title": "The compiled host binary, copied to an empty directory, passes the embedded-app smoke (`/` → HTML, hashed `main-*.js` → JavaScript, `/w/x` → `index.html`).",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-9": {
+      "ref": "claim:ISC-9",
+      "type": "claim",
+      "id": "ISC-9",
+      "title": "The host binary's `--version` prints the version in `package.json`.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-10": {
+      "ref": "claim:ISC-10",
+      "type": "claim",
+      "id": "ISC-10",
+      "title": "In a clean Ubuntu x64 container, the install script pointed at a local release directory puts `spectant` on PATH and `spectant --version` exits 0.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-11": {
+      "ref": "claim:ISC-11",
+      "type": "claim",
+      "id": "ISC-11",
+      "title": "For a fresh user on macOS arm64, the install one-liner puts `spectant` on PATH and `spectant --version` exits 0.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-12": {
+      "ref": "claim:ISC-12",
+      "type": "claim",
+      "id": "ISC-12",
+      "title": "The install script writes the binary to `INSTALL_DIR` when that variable is set.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-13": {
+      "ref": "claim:ISC-13",
+      "type": "claim",
+      "id": "ISC-13",
+      "title": "`spectant add <repo>`, `spectant list` and `spectant remove <repo>` round-trip a workspace through the registry.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-14": {
+      "ref": "claim:ISC-14",
+      "type": "claim",
+      "id": "ISC-14",
+      "title": "For copies of the principal's real spec trees, every spec's stage on the dashboard equals the stage the old skill derives, and the probe fails when no tree was compared.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-15": {
+      "ref": "claim:ISC-15",
+      "type": "claim",
+      "id": "ISC-15",
+      "title": "adding a workspace or opening any page changes a byte inside the registered repository, `.git/` included.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-16": {
+      "ref": "claim:ISC-16",
+      "type": "claim",
+      "id": "ISC-16",
+      "title": "One dashboard lists the specs of two registered workspaces side by side.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-16.1": {
+      "ref": "claim:ISC-16.1",
+      "type": "claim",
+      "id": "ISC-16.1",
+      "title": "The overview's committed visual baseline (light, three widths, states: two workspaces, empty, unreadable workspace) passes on Linux CI.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-16.2": {
+      "ref": "claim:ISC-16.2",
+      "type": "claim",
+      "id": "ISC-16.2",
+      "title": "The same baseline passes in the dark theme.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-17": {
+      "ref": "claim:ISC-17",
+      "type": "claim",
+      "id": "ISC-17",
+      "title": "The dashboard's committed visual baseline (Playwright `toHaveScreenshot`, light theme, 390/820/1440) passes on Linux CI with pinned Chromium.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-17.1": {
+      "ref": "claim:ISC-17.1",
+      "type": "claim",
+      "id": "ISC-17.1",
+      "title": "The same baseline passes in the dark theme.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-18": {
+      "ref": "claim:ISC-18",
+      "type": "claim",
+      "id": "ISC-18",
+      "title": "the daisyUI themes `spec-light` and `spec-dark` carry the old pages' light and dark colour values as their tokens, so the look is inherited rather than re-invented.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-18.2": {
+      "ref": "claim:ISC-18.2",
+      "type": "claim",
+      "id": "ISC-18.2",
+      "title": "every icon the app renders comes from the old pages' pinned Lucide set.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-18.1": {
+      "ref": "claim:ISC-18.1",
+      "type": "claim",
+      "id": "ISC-18.1",
+      "title": "In the default system mode the theme follows `prefers-color-scheme`, also when it changes while the page is open.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-18.3": {
+      "ref": "claim:ISC-18.3",
+      "type": "claim",
+      "id": "ISC-18.3",
+      "title": "A chosen light or dark mode, stored server-side, is still applied after a reload on a different port.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-19": {
+      "ref": "claim:ISC-19",
+      "type": "claim",
+      "id": "ISC-19",
+      "title": "The dashboard renders and navigates inside the cmux web view.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-19.1": {
+      "ref": "claim:ISC-19.1",
+      "type": "claim",
+      "id": "ISC-19.1",
+      "title": "Playwright's WebKit project renders `/` and `/w/:ws` with zero console errors.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-20": {
+      "ref": "claim:ISC-20",
+      "type": "claim",
+      "id": "ISC-20",
+      "title": "`spectant` without arguments listens on 7717 or the next free port, prints the URL, and opens the browser unless `--no-browser` is given.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-21": {
+      "ref": "claim:ISC-21",
+      "type": "claim",
+      "id": "ISC-21",
+      "title": "The data directory is `$XDG_DATA_HOME/spectant` when that variable is set and `~/.spectant/` otherwise.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-22": {
+      "ref": "claim:ISC-22",
+      "type": "claim",
+      "id": "ISC-22",
+      "title": "Every UI string key exists in both the English and the German catalogue.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-60": {
+      "ref": "claim:ISC-60",
+      "type": "claim",
+      "id": "ISC-60",
+      "title": "⌘K / Ctrl+K opens a command palette listing every workspace plus every spec.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-60.1": {
+      "ref": "claim:ISC-60.1",
+      "type": "claim",
+      "id": "ISC-60.1",
+      "title": "Typing in the palette narrows the list to matching entries.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-60"
+      ]
+    },
+    "claim:ISC-60.2": {
+      "ref": "claim:ISC-60.2",
+      "type": "claim",
+      "id": "ISC-60.2",
+      "title": "Enter in the palette navigates to the highlighted entry.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-60"
+      ]
+    },
+    "claim:ISC-61": {
+      "ref": "claim:ISC-61",
+      "type": "claim",
+      "id": "ISC-61",
+      "title": "In a spec list, ↓/↑ (also j/k) move the selection.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-61.1": {
+      "ref": "claim:ISC-61.1",
+      "type": "claim",
+      "id": "ISC-61.1",
+      "title": "Enter opens the selected spec.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-61"
+      ]
+    },
+    "claim:ISC-61.2": {
+      "ref": "claim:ISC-61.2",
+      "type": "claim",
+      "id": "ISC-61.2",
+      "title": "`?` opens the shortcut sheet.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-62": {
+      "ref": "claim:ISC-62",
+      "type": "claim",
+      "id": "ISC-62",
+      "title": "After the auto-refresh timer fires with a changed number on disk, the DOM node holding that number shows the new value with no navigation event.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-62.1": {
+      "ref": "claim:ISC-62.1",
+      "type": "claim",
+      "id": "ISC-62.1",
+      "title": "The same refresh produces a cumulative layout shift of 0.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": [
+        "claim:ISC-62"
+      ]
+    },
+    "claim:ISC-63": {
+      "ref": "claim:ISC-63",
+      "type": "claim",
+      "id": "ISC-63",
+      "title": "At a 600 px wide container (the cmux side panel) the dashboard has no horizontal overflow: `scrollWidth` equals `clientWidth`.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-63.1": {
+      "ref": "claim:ISC-63.1",
+      "type": "claim",
+      "id": "ISC-63.1",
+      "title": "At the same width a workspace column in the overview has no horizontal overflow.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-64": {
+      "ref": "claim:ISC-64",
+      "type": "claim",
+      "id": "ISC-64",
+      "title": "Every interactive element shows the brand focus ring under keyboard focus, in both themes.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-65": {
+      "ref": "claim:ISC-65",
+      "type": "claim",
+      "id": "ISC-65",
+      "title": "Text reaches 4.5:1 and marks (ring track, bars, legend dots) 3:1 against their surface, in both themes.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-66": {
+      "ref": "claim:ISC-66",
+      "type": "claim",
+      "id": "ISC-66",
+      "title": "under `prefers-reduced-motion: reduce` any animation or transition longer than 0 ms runs.",
+      "closed": 0,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-67": {
+      "ref": "claim:ISC-67",
+      "type": "claim",
+      "id": "ISC-67",
+      "title": "the app ships Inter Variable plus JetBrains Mono as local assets.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    },
+    "claim:ISC-67.1": {
+      "ref": "claim:ISC-67.1",
+      "type": "claim",
+      "id": "ISC-67.1",
+      "title": "a stylesheet declares a font URL outside the app's own origin.",
+      "closed": 1,
+      "total": 1,
+      "parents": [
+        "spec:001",
+        "feature:F1"
+      ],
+      "children": [],
+      "blockers": []
+    }
+  }
 }
