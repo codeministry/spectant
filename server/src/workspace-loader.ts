@@ -31,14 +31,16 @@ import { buildDashboard, devServiceLabels, toLocalService } from "../../core/src
 import type { DashboardInput, DashboardModel, ProbedService } from "../../core/src/dashboard.ts";
 import { actorIdOf } from "../../core/src/actor-id.ts";
 import { FILE_KINDS, repoFilePath } from "../../core/src/files.ts";
-import type { FileDiagnostic, IdeaFiles, LibraryCatalog, SpecFiles, SpecRead, TextFileKind, Workflow, Worktree } from "../../core/src/files.ts";
+import type { FileDiagnostic, IdeaFiles, LibraryCatalog, MergeState, SpecFiles, SpecRead, TextFileKind, Workflow, Worktree } from "../../core/src/files.ts";
+import { parseFrontmatter } from "../../core/src/frontmatter.ts";
+import { specIdOf } from "../../core/src/spec-ref.ts";
 import { type TreeEntry, type TreeEntryMode, treeIdOf } from "../../core/src/gates.ts";
 import { readCatalog } from "../../core/src/library.ts";
 import { readLockSources } from "../../core/src/locks.ts";
 import { type SpecRef, listSpecs } from "../../core/src/resolve.ts";
 import { parseWorkflow } from "../../core/src/workflow.ts";
 import { WORKTREE_COPY_KINDS, type WorktreeAssignment, assignWorktrees, specSourceOf } from "../../core/src/worktrees.ts";
-import { aheadOfMain, dirty, trackedSpecPaths, userEmail, worktreeList } from "./git.ts";
+import { type SpecBranch, aheadOfMain, dirty, mergedSpecBranches, trackedSpecPaths, userEmail, worktreeList } from "./git.ts";
 
 /** Why a workspace cannot be read. Stable codes: the web app maps them to its own words. */
 export type UnreadableCode = "missing" | "not-a-directory" | "permission-denied" | "unreadable";
@@ -61,6 +63,11 @@ export type WorkspaceReading =
       viewer: string | null;
       diagnostics: readonly FileDiagnostic[];
       copies: Readonly<Record<string, string>>;
+      /**
+       * One merge state per spec number, active and archived (spec 025, ISC-162.1; `mergeStateOf`): what `core/`'s
+       * `resolveEdges` takes beside the input. It rides beside the input, as `ideas` does, until the model uses it.
+       */
+      mergeState: readonly MergeState[];
     }
   | { readable: false; error: UnreadableCode };
 
@@ -146,6 +153,31 @@ export async function viewerActorOf(root: string): Promise<string | null> {
   return email === null ? null : actorIdOf(email);
 }
 
+/**
+ * One `MergeState` per spec number of the workspace (spec 025, T10, ISC-162.1), active folders first, then archived
+ * ones, the first folder of a number winning as in `core/`'s `resolveEdges`. `branches` are `git.ts`'s
+ * `mergedSpecBranches`: the spec's branch is the one with its number, the merged one when several carry it (the first
+ * by name otherwise), and `merged` holds when any does; without one, `branch` is null and `merged` false. `complete`
+ * is `phase: complete` in the frontmatter (core's `parseFrontmatter`), `archived` the folder's place. A failed git read
+ * hands in no branch, so every row reads as branchless and `core/` decides by `complete` and `archived`.
+ */
+export function mergeStateOf(specs: readonly SpecFiles[], archived: readonly SpecFiles[], branches: readonly SpecBranch[]): MergeState[] {
+  const rows: MergeState[] = [];
+  const seen = new Set<string>();
+  const add = (files: SpecFiles, inArchive: boolean): void => {
+    const spec = specIdOf(files.folder);
+    if (spec === null || seen.has(spec)) return;
+    seen.add(spec);
+    const own = branches.filter((b) => b.spec === spec);
+    const branch = own.find((b) => b.merged) ?? own[0];
+    const complete = files.texts.spec !== undefined && parseFrontmatter(files.texts.spec).data.phase === "complete";
+    rows.push({ spec, branch: branch?.branch ?? null, merged: branch?.merged ?? false, complete, archived: inArchive });
+  };
+  for (const files of specs) add(files, false);
+  for (const files of archived) add(files, true);
+  return rows;
+}
+
 function specFiles(dir: string, folder: string): SpecFiles {
   const texts: Partial<Record<TextFileKind, string>> = {};
   for (const kind of FOLDER_KINDS) {
@@ -228,6 +260,7 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
       viewer: await viewerActorOf(root),
       diagnostics: workflow.diagnostics.map((diagnostic) => ({ file: WORKFLOW_FILE, diagnostic })),
       copies,
+      mergeState: mergeStateOf(specs, archived, (await mergedSpecBranches(root)).branches),
       input: {
         master: readIfExists(join(root, "ISA.md")),
         constitution: readIfExists(join(root, "specs", "constitution.md")),

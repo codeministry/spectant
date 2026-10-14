@@ -59,7 +59,8 @@ import {
 import { specRoutesApi } from "../server/src/spec-routes.ts";
 import { tokensCommand } from "../server/src/tokens-cli.ts";
 import { WRITE_PATHS, WRITE_TABLE, writePathsOf } from "../server/src/writes.contract.ts";
-import { BUILDER_WORKTREE, SPEC_FOLDER, SPEC_ID, SPEC_WORKTREE, UNCOMMITTED, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
+import { readWorkspaceInput } from "../server/src/workspace-loader.ts";
+import { BUILDER_WORKTREE, SPEC_BRANCH, SPEC_FOLDER, SPEC_ID, SPEC_WORKTREE, UNCOMMITTED, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
 const FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "harbor");
 /** The harbor transcripts: a main session with a sub-agent, beside the folders of an agent and a spec worktree. */
@@ -1090,6 +1091,10 @@ describe("ISC-182 worktree reads: the dashboard, the board and the spec page of 
         const model = (await (await fetch(`${url}/api/workspaces/${SLUG}/dashboard`)).json()) as DashboardModel;
         const row = model.specs.find((r) => r.id === SPEC_ID);
         expect([row?.worktree?.ahead, row?.worktree?.dirty, row?.source]).toEqual([planted.expected.ahead, planted.expected.dirty, trackedSpecs ? "worktree" : "main"]);
+        // The merge-state read the dashboard runs (spec 025, ISC-162.1: `for-each-ref` and `merge-base --is-ancestor`)
+        // ran here too: the spec branch is found and `main` does not hold it.
+        const reading = await readWorkspaceInput(repo);
+        expect(reading.readable ? reading.mergeState.find((r) => r.spec === SPEC_ID) : null).toMatchObject({ branch: SPEC_BRANCH, merged: false, archived: false });
       } finally {
         await stop();
         spy.mockRestore();
