@@ -21,6 +21,22 @@ export const PALETTE_CHORD = 'Mod+k';
 export const DASHBOARD_GO_KEY = 'h';
 
 /**
+ * Keys a common layout types only with Option (macOS) or AltGr (Windows, Linux): `[` and `]` are ⌥5 and ⌥6 on a German
+ * Mac keyboard and AltGr+8 and AltGr+9 on a German PC keyboard.
+ */
+const ALT_TYPED_KEYS: ReadonlySet<string> = new Set(['[', ']']);
+
+/**
+ * Whether the event's modifiers only typed its key, so a single-key binding may still take it: Option alone typing a
+ * key of `ALT_TYPED_KEYS`, or AltGr (which Windows reports as Ctrl+Alt) typing one. ⌘ never counts.
+ */
+export function altTyped(event: KeyboardEvent): boolean {
+  if (!ALT_TYPED_KEYS.has(event.key) || event.metaKey) return false;
+  if (event.getModifierState('AltGraph')) return true;
+  return event.altKey && !event.ctrlKey;
+}
+
+/**
  * Second keys for the tabs an area key does not already reach (`g s` `g l` `g d` `g o` `g n` open each area on its
  * first tab: status, board, claims, library, notes). None clashes with an area key or with another tab. The former
  * Docs and Evidence tabs lost theirs with spec 017 (T45, ISC-158): their documents are in the Library area, `g o`.

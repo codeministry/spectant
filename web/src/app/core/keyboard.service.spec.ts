@@ -233,6 +233,22 @@ describe('KeyboardService', () => {
       expect(navigate).toHaveBeenLastCalledWith(specLink('harbor', '001', 'claims'));
     });
 
+    it('] and [ typed with Option or AltGr, as on a German keyboard, still step', () => {
+      const { press, navigate } = setup({ tab: 'claims' });
+      press(']', { altKey: true });
+      expect(navigate).toHaveBeenLastCalledWith(specLink('harbor', '003', 'claims'));
+      press('[', { ctrlKey: true, altKey: true, modifierAltGraph: true });
+      expect(navigate).toHaveBeenLastCalledWith(specLink('harbor', '001', 'claims'));
+    });
+
+    it('[ with ⌘, or with Ctrl+Alt but no AltGr, is not a step', () => {
+      const { press, navigate } = setup({ tab: 'claims' });
+      press('[', { metaKey: true });
+      press('[', { metaKey: true, altKey: true });
+      press('[', { ctrlKey: true, altKey: true });
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
     it('[ at the first spec is not handled', () => {
       const { press, navigate } = setup({ specId: '001' });
       expect(press('[').defaultPrevented).toBe(false);

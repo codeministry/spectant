@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, linke
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { altTyped } from '../../core/keyboard-bindings';
 import { RefreshService } from '../../core/refresh.service';
 import { SettingsService } from '../../core/settings.service';
 import { DetailSelection } from '../../layout/detail-sidebar/selection';
@@ -150,7 +151,7 @@ export class DashboardPage {
    */
   protected onKeydown(event: KeyboardEvent): void {
     if (this.preview() === null || event.defaultPrevented || event.isComposing) return;
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if ((event.ctrlKey || event.metaKey || event.altKey) && !altTyped(event)) return;
     const target = event.target instanceof Element ? event.target : null;
     if (target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
     if (target?.closest('dialog, [popover]')) return;

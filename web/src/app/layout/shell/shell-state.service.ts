@@ -2,6 +2,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { type ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
 import { filter, tap } from 'rxjs';
+import { altTyped } from '../../core/keyboard-bindings';
 import { SettingsService } from '../../core/settings.service';
 import {
   type AreaId,
@@ -128,7 +129,7 @@ export class ShellState {
    * shortcuts only). Returns whether the key was handled.
    */
   handleKey(event: KeyboardEvent, order: readonly string[]): boolean {
-    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return false;
+    if (event.defaultPrevented || ((event.ctrlKey || event.metaKey || event.altKey) && !altTyped(event))) return false;
     if (event.target instanceof Element && event.target.closest(TYPING)) return false;
     const ws = this.ws();
     const id = this.specId();

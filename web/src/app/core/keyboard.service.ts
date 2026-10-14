@@ -8,6 +8,7 @@ import { PaletteIndex } from '../layout/command-palette/palette-index';
 import { writeClipboard } from '../shared/ui/command-chip/command-chip';
 import { ToastService } from '../shared/ui/toast/toast';
 import {
+  altTyped,
   type DashboardSection,
   G_WINDOW_MS,
   GO_PREFIX,
@@ -124,8 +125,10 @@ export class KeyboardService {
   /** Handles one document `keydown`; returns whether a binding took it (and then prevents its default). */
   handle(event: KeyboardEvent): boolean {
     if (event.defaultPrevented || event.isComposing) return false;
-    if (event.ctrlKey || event.metaKey) return event.altKey || event.shiftKey ? false : this.onChord(event);
-    if (event.altKey) return false;
+    if (!altTyped(event)) {
+      if (event.ctrlKey || event.metaKey) return event.altKey || event.shiftKey ? false : this.onChord(event);
+      if (event.altKey) return false;
+    }
     if (event.target instanceof Element && event.target.closest(TYPING)) {
       this.goAt = null;
       return false;
