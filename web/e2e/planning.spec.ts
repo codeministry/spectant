@@ -77,20 +77,31 @@ test.describe('planning: lenses', () => {
     await expect(page.locator('[data-lens="graph"]')).toBeVisible();
   });
 
-  test('lenses: the tree has the rail with the overview at wide; matrix and graph take the full width with a collapsible overview', async ({
-    page,
-  }) => {
+  test('lenses: the tree has the rail with the overview at wide; matrix and graph take the full width without an overview', async ({ page }) => {
     await openPlanning(page, '/w/harbor/planning/tree');
     await expect(page.locator('aside.shell-rail [data-planning-overview]')).toBeVisible();
     await expect(page.locator('main [data-overview-block]')).toHaveCount(0);
 
-    await lensTab(page, 'board').click();
-    await expect(page.locator('aside.shell-rail')).toHaveCount(0);
+    for (const lens of ['board', 'graph'] as const) {
+      await lensTab(page, lens).click();
+      await expect(page.locator(`[data-lens="${lens}"]`)).toBeVisible();
+      await expect(page.locator('aside.shell-rail')).toHaveCount(0);
+      await expect(page.locator('[data-planning-overview]')).toHaveCount(0);
+    }
+  });
+
+  test('lenses: below wide the tree carries the overview as a collapsible block, closed by default', async ({ page }) => {
+    await page.setViewportSize(atWidth(WIDTHS.tablet).viewport);
+    await openPlanning(page, '/w/harbor/planning/tree');
     const block = page.locator('main details[data-overview-block]');
     await expect(block).toHaveCount(1);
     await expect(block).not.toHaveAttribute('open', '');
     await block.locator('summary').click();
     await expect(block.locator('[data-planning-overview]')).toBeVisible();
+
+    await lensTab(page, 'board').click();
+    await expect(page.locator('[data-lens="board"]')).toBeVisible();
+    await expect(page.locator('[data-planning-overview]')).toHaveCount(0);
   });
 
   test('lenses: the counts of the lens bodies equal the golden', async ({ page }) => {
