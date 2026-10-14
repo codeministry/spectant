@@ -1,5 +1,6 @@
 import { computed, inject, Injectable, resource } from '@angular/core';
 import type { Priority } from '../../../../../core/src/files';
+import { specRefMatches } from '../../../../../core/src/spec-ref';
 import type { ActorMapping, BoardQuery } from '../../../../../server/src/spec-routes.contract';
 import { ApiClient, type PlanningBody, type PutResult, type WorkspaceListEntry } from '../../core/api.service';
 import { type LiveReading, LockSourceService } from '../../core/lock-source.service';
@@ -215,10 +216,15 @@ export class ShellData {
     inject(LockSourceService).connect(this.live);
   }
 
-  /** Whether the open workspace's dashboard lists `id`, active or archived; null until it answers `ok`. */
+  /**
+   * Whether the open workspace's dashboard lists the spec `id` names, active or archived; null until it answers `ok`.
+   * `id` is any ref the server's `resolveSpec` accepts: the number, the folder or the bare slug (core's `specRefMatches`
+   * on the row's folder; a hand-built row without one matches by number).
+   */
   specExists(id: string): boolean | null {
     if (this.dashboard.value()?.kind !== 'ok') return null;
-    return this.specRows().some((row) => row.id === id) || this.archiveRows().some((row) => row.id === id);
+    const names = (row: SpecRowView): boolean => row.id === id || (row.slug !== undefined && specRefMatches(row.slug, id));
+    return this.specRows().some(names) || this.archiveRows().some(names);
   }
 
   workspaceName(slug: string): string {

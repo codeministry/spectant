@@ -25,7 +25,9 @@ interface TechSections {
   readonly risks: string;
 }
 
-type TechKey = keyof TechSections;
+/** One of tech.md's four section keys. */
+export type TechSectionKey = keyof TechSections;
+type TechKey = TechSectionKey;
 
 /** The heading of plan.md's approach section; the library's group heads read it too (spec 017). */
 export const APPROACH_HEADINGS: readonly string[] = ['Approach'];
@@ -105,6 +107,30 @@ function techSections(body: string, diagnostics: FileDiagnostic[]): TechSections
     return '';
   };
   return { overview: text('overview'), stack: text('stack'), architecture: text('architecture'), risks: text('risks') };
+}
+
+/** tech.md's four section keys in contract order, the order `/spec-doc` writes them and the library shows them. */
+export const TECH_SECTION_KEYS: readonly TechKey[] = ['overview', 'stack', 'architecture', 'risks'];
+
+/** One section of tech.md as its marker names it: the key and the text of the first `##` heading inside it, or null. */
+export interface TechSectionHead {
+  readonly key: TechKey;
+  readonly heading: string | null;
+}
+
+/**
+ * The four sections of a tech.md text in contract order (spec 017), each with the first level-two heading inside its
+ * `<!-- section: key -->` marker as the renderer's contents list names it, so a reader selecting sections by heading
+ * reads core's marker split instead of guessing from h2 names or positions. Frontmatter and markers go through the
+ * same readers as `readTech`; a key without a marker reads null, as `readTech` reads its section empty.
+ */
+export function techSectionHeads(tech: string): readonly TechSectionHead[] {
+  const found = sectionsByMarker(parseFrontmatter(tech).body);
+  return TECH_SECTION_KEYS.map((key): TechSectionHead => {
+    const text = Object.hasOwn(found, key) ? (found[key] ?? '') : '';
+    const head = text === '' ? undefined : renderDocsMarkdown(text).toc.find((entry) => entry.level === 2);
+    return { key, heading: head?.text ?? null };
+  });
 }
 
 /** A section's markdown as a document, or null when there is no prose to render. */

@@ -2,11 +2,13 @@
 // and stack joined), and per spec its title, its goal, the first paragraph of its approach and its open fog. Inline
 // texts, and the fixture trees for the title the dashboard row shows.
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { buildDashboard } from '../src/dashboard.ts';
 import type { SpecFiles } from '../src/files.ts';
-import { readTech } from '../src/tech.ts';
-import { readTree } from './helpers/read-tree.ts';
+import { readTech, type TechSectionHead, techSectionHeads } from '../src/tech.ts';
+import { FIXTURES, readTree } from './helpers/read-tree.ts';
 
 const TECH = `---
 title: Harbor
@@ -191,5 +193,64 @@ describe('specs', () => {
     }
     const harbor002 = readTech({ specs: readTree('harbor').specs }).specs.find((s) => s.id === '002');
     expect(harbor002?.title).toBe('Show every sync run and its failures in a small web console');
+  });
+});
+
+// The section heads of tech.md (spec 017, code review #4): the four sections in contract order, each with the first
+// `##` heading inside its `<!-- section: key -->` marker, so the web selects sections by core's marker reading instead
+// of re-deriving them from h2 names or positions.
+describe('techSectionHeads', () => {
+  const fixtureText = (name: string): string => readFileSync(join(FIXTURES, name, 'specs', 'tech.md'), 'utf-8');
+
+  test('heads: the harbor and library fixtures name each section by its own h2, in contract order', () => {
+    const want: readonly TechSectionHead[] = [
+      { key: 'overview', heading: 'Overview' },
+      { key: 'stack', heading: 'Stack' },
+      { key: 'architecture', heading: 'Architecture' },
+      { key: 'risks', heading: 'Risks' },
+    ];
+    expect(techSectionHeads(fixtureText('library'))).toEqual(want);
+    expect(techSectionHeads(fixtureText('harbor'))).toEqual(want);
+  });
+
+  test('heads: the marker decides the key, not the heading text; file order does not matter', () => {
+    const body = [
+      '---',
+      'title: Beacon',
+      '---',
+      '# Beacon',
+      '<!-- section: risks -->',
+      '## What can break',
+      'Disk.',
+      '<!-- section: architecture -->',
+      'Prose before the heading.',
+      '```',
+      '## not a heading',
+      '```',
+      '## System design',
+      '### Parts',
+      '<!-- section: overview -->',
+      '## Risks',
+      'An overview headed like another section.',
+      '<!-- section: stack -->',
+      'No heading at all.',
+    ].join('\n');
+    expect(techSectionHeads(body)).toEqual([
+      { key: 'overview', heading: 'Risks' },
+      { key: 'stack', heading: null },
+      { key: 'architecture', heading: 'System design' },
+      { key: 'risks', heading: 'What can break' },
+    ]);
+  });
+
+  test('heads: a key without a marker reads null, as readTech reads its section empty; no marker at all is four nulls', () => {
+    const partial = '<!-- section: overview -->\n## Overview\nText.\n<!-- section: risks -->\n## Risks\nMore.';
+    expect(techSectionHeads(partial).map((s) => [s.key, s.heading])).toEqual([
+      ['overview', 'Overview'],
+      ['stack', null],
+      ['architecture', null],
+      ['risks', 'Risks'],
+    ]);
+    expect(techSectionHeads('## Overview\n## Stack\n').map((s) => s.heading)).toEqual([null, null, null, null]);
   });
 });

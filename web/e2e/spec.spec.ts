@@ -378,6 +378,26 @@ test.describe('spec area library', () => {
       });
     }
 
+    // Code review 017, #5: the route's spec ref resolves as the server's `resolveSpec` does, so the folder and the bare
+    // slug list the same documents and counts as the number.
+    test('library: 002 under its folder and its slug lists the same documents as under its number', async ({ page, request }) => {
+      const { own, expected } = await specLibraryDocs(request, '002');
+      const folder = own[0]?.spec ?? '';
+      expect(folder).toMatch(/^002-./u);
+      const listed = expected.filter((doc) => doc.type !== 'evidence').map((doc) => doc.path).sort();
+      for (const ref of ['002', folder, folder.replace(/^\d+-/u, '')]) {
+        await page.goto(`/w/harbor/s/${ref}/library`);
+        const library = page.locator('app-library-page');
+        await expect(library, ref).toHaveAttribute('data-scope', 'spec');
+        await expect(page.locator(LIBRARY_ENTRY), ref).toHaveCount(listed.length);
+        expect((await page.locator(LIBRARY_ENTRY).evaluateAll((els) => els.map((el) => el.getAttribute('data-library-entry') ?? ''))).sort(), ref).toEqual(listed);
+        for (const key of ['missing', 'stale'] as const) {
+          const count = own.filter((doc) => doc.state === key).length;
+          await expect(library.locator(`[data-library-control="${key}"] [data-library-control-count]`), `${ref} ${key}`).toHaveText(String(count));
+        }
+      }
+    });
+
     test('library: a spec document offers "Open in spec" in the workspace Library, not in the spec area', async ({ page, request }) => {
       const { own } = await specLibraryDocs(request, '002');
       const doc = own.find((d) => d.type === 'spec');

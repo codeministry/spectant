@@ -686,7 +686,7 @@ the `review` warning, and one gate entry per mark on the timeline (with files, h
 
 ## `artifacts` — `artifacts/`
 
-Versioned task results, shown as "Results" on the Evidence tab. Listed, never parsed (`evidence.ts`, T24), recursively,
+Versioned task results, read in the Library (see "The library catalog" below). Listed, never parsed (`evidence.ts`, T24), recursively,
 dotfiles skipped, sorted by path. Each file carries its path relative to the spec folder, its name, its size in bytes,
 its media type from the extension (`md`, `json`, `har`, `png`, `jpg`, `webp`, `gif`, `avif`, `svg`, `log`, `txt`,
 `html`; anything else is `application/octet-stream`), the task id when the name starts with `T<n>` followed by `-`, `_`, `.` or nothing, and
@@ -702,7 +702,7 @@ No modification time is listed: it moves with every checkout. A symlink is liste
 resolve inside `artifacts/` or `.evidence/` is listed as refused (size 0, a warning), never followed, and a symlinked
 folder is never descended. A group folder that is itself a symlink is not listed. Serving goes through
 `resolveEvidencePath` and nothing outside the two folders and `.design/` of the spec's own folder is ever served
-(ISC-83, ISC-113); `.design/` is served for the Design tab's images and never listed on the Evidence tab (the
+(ISC-83, ISC-113); `.design/` is served for the images the Library reader shows and is no part of this listing (the
 library catalog lists it, see "The library catalog" below). A symlink may not cross between
 `.design/` and the other two.
 
@@ -723,8 +723,8 @@ Recorded 2026-03-06, round 2.
 
 ## `evidence` — `.evidence/`
 
-Raw probe output (HAR files, screenshots, logs), shown as "Raw evidence" on the Evidence tab with thumbnails for
-images. Listed exactly like `artifacts/`, with the same claim rules. A Test Strategy row may point at it as its tool
+Raw probe output (HAR files, screenshots, logs); the Library reads its images and Markdown files (see "The library
+catalog" below). Listed exactly like `artifacts/`, with the same claim rules. A Test Strategy row may point at it as its tool
 (`transcript in \`.evidence/\``). Harbor 002 holds `bun-test-r3.log` (claim ISC-72: its verification line names the
 bare file name), `dashboard.har` (named by no line: ungrouped) and `kpi-band-390.png` (ISC-61), a 4 × 2 PNG the
 generator builds byte by byte.
@@ -1585,6 +1585,10 @@ repeated key appends its parts in file order, and text before the first marker b
 - **Pages:** three documents rendered by `markdown-docs.ts` (headings, tables, mermaid and image figures, TOC):
   `overview` is the overview and stack sections joined, overview first, a blank line between; `architecture` and
   `risks` are one section each. Each page prefixes its anchors with `tech-<page>-`.
+- **Section heads** (`techSectionHeads`, spec 017): the four keys in contract order, each with the text of the first
+  `##` heading inside its marker's section as the renderer's contents list names it, or null when the section has
+  none or the marker is missing. The marker decides the key, never the heading's wording or position, so the Library
+  reader selects sections by these heads instead of reading them again.
 - **Images** are relative to `specs/` and only inside it: an absolute path, a backslash or a `..` that climbs above
   `specs/`, as written or decoded once, is a figure with `missing: true` and no `<img>`; inside `specs/`, the caller
   answers whether the file exists (`TechInput.assetExists`).
@@ -1614,7 +1618,9 @@ From `core/fixtures/harbor/specs/tech.md`:
 ## The library catalog
 
 `readCatalog` (`library.ts`, spec 017, ISC-155) lists every document of a workspace for the Library: metadata only,
-never the content, read on every call and never written. It parses no new format. It reads the file kinds above plus
+never the content, read on every call and never written. `readCatalogDocs` returns the same documents without the
+group heads, fog lines and dashboard reading; `catalogDocAt` decides one path by the same rules, equal to the
+catalog's entry (stale state included) or null, without walking the tree. It parses no new format. It reads the file kinds above plus
 the spec folder's `.design/`, and a document's type says where it was found. Every path is relative to `specs/`; a
 workspace without `specs/` has an empty catalog.
 
@@ -1640,17 +1646,19 @@ workspace without `specs/` has an empty catalog.
   exact `<viewport>-prototype.<ext>` (`prototype.<ext>` without a viewport) wins over a longer name such as
   `desktop-prototype-help.png`; then name order. The screenshot stays a `design` image of its own as well.
 - **Archived specs** never appear: nothing below `specs/archive/` is listed.
-- **Skipped:** dot files and dot folders inside the listed folders, and symbolic links there, which are neither listed
-  nor followed.
+- **Skipped:** dot files and dot folders inside the listed folders, and symbolic links anywhere: a link at a fixed
+  path (`spec.md`, `tech.md`, …), in a zone or in place of a listed folder is neither listed nor followed, and nothing
+  is read through it.
 - **Title:** for Markdown, the first `#` heading outside fenced code, after the frontmatter; else frontmatter `title:`
   (`frontmatter.ts`); else the file name. An image is titled by its file name, a prototype by its folder name.
 - **Modified:** the file's mtime as ISO 8601; a prototype's is the newest mtime of the files below its folder.
-- **State:** a listed document is `ok` unless it is `stale` (ISC-155.1): a file it derives from changed later.
-  `plan.md`, `tasks.md` and `design.md` derive from their spec, `specs/tech.md` and `specs/tldr.md` from the newest
-  active spec of the workspace; no other document derives from anything. A spec's time is the newest `ts` among the
-  valid lines of its `events.jsonl` (read by `events.ts`), else its `spec.md` mtime; a document is stale when its
-  `modified` is strictly older than that time, so one as old as its source is fresh, and archived specs count for
-  nothing. The catalog's `stale` is the number of stale documents.
+- **State:** a listed document is `ok` unless it is `stale` (ISC-155.1): the file it derives from was modified more
+  than `STALE_TOLERANCE_MS` (60 seconds) after it. `plan.md`, `tasks.md` and `design.md` derive from the `spec.md` of
+  their spec, `specs/tech.md` and `specs/tldr.md` from the newest `spec.md` mtime among the workspace's active specs;
+  no other document derives from anything, and archived specs count for nothing. `events.jsonl` plays no part: a
+  stage event (review, build, code review) is no edit of the spec. The tolerance keeps a `git checkout`, which
+  rewrites every mtime within moments, from colouring fresh documents. The catalog's `stale` is the number of stale
+  documents.
 - **Missing** (ISC-155.2): for each active spec that is not done, `plan.md` and `tasks.md` are listed as entries with
   state `missing` when the stage table above would stop the spec at the stage `plan` or `tasks` for them: `plan.md`
   when the type is feature, infra or project and the file does not exist; `tasks.md` when the type is refactor,
@@ -1682,7 +1690,7 @@ A code folder without HTML pages: neither it nor anything in it is listed.
 
 Derived pages (`review.html`, `report.html`, the old dashboard), `.i18n/`, `.vendor/` and `.design/` folders inside a
 spec, and any other file not named above are not parsed by `core/`. Changing them never changes a stage, a count or a
-warning. `core/` uses `.design/` twice without parsing it: in the Design tab, where it only resolves paths and never
+warning. `core/` uses `.design/` twice without parsing it: in `design.md` as the Library reader renders it, where it only resolves paths and never
 reads a byte, a standalone image of `design.md` under it renders without `src`, its path in `data-spec-asset`, and the
 web app loads it through the evidence file route (ISC-112); and in the library catalog above, which lists its images,
 Markdown files and prototypes and reads a Markdown file only for its title.

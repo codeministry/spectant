@@ -78,6 +78,21 @@ describe('RefreshService', () => {
     expect(reloads.spec).toHaveBeenCalledTimes(1);
   });
 
+  it('counts each refresh for the page resources outside the shell (the library), never a settled dashboard read', () => {
+    const service = TestBed.inject(RefreshService);
+    TestBed.tick();
+    expect(service.refreshes()).toBe(0);
+    dashboardStatus.set('reloading');
+    TestBed.tick();
+    dashboardStatus.set('resolved');
+    TestBed.tick();
+    expect(service.refreshes()).toBe(0);
+    vi.advanceTimersByTime(10_000);
+    expect(service.refreshes()).toBe(1);
+    service.refresh();
+    expect(service.refreshes()).toBe(2);
+  });
+
   it('skips the timer while the page is hidden and refreshes when it becomes visible again', () => {
     TestBed.inject(RefreshService);
     TestBed.tick();

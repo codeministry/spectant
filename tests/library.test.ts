@@ -4,15 +4,20 @@
 //
 // Fixture: a temp copy of `core/fixtures/library` (every zone, a prototype, an archived spec), a workspace without
 // `specs/` (the empty state) and a registered folder that is removed (409). Nothing in a workspace is ever written.
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { docsRenderOptions } from "../core/src/evidence.ts";
 import { hashForGate } from "../core/src/gates.ts";
+import * as dash from "../core/src/dashboard.ts";
+import * as lib from "../core/src/library.ts";
 import { readCatalog } from "../core/src/library.ts";
 import { renderDocsMarkdown } from "../core/src/markdown-docs.ts";
+import { techSectionHeads } from "../core/src/tech.ts";
 import { dashboardApi } from "../server/src/api.ts";
+import * as loader from "../server/src/workspace-loader.ts";
+import { loadCatalog } from "../server/src/workspace-loader.ts";
 import type { ApiHandler } from "../server/src/http.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import { type WorkspaceRouteResponses, allowForWorkspace, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
@@ -199,7 +204,10 @@ describe("GET /api/workspaces/:ws/library/doc", () => {
       expect({ path: doc.path, status: res.status }).toEqual({ path: doc.path, status: 200 });
       expect(res.headers.get("etag")).toMatch(/^"[A-Za-z0-9_-]+"$/);
       const file = docFile(doc.path);
-      const page = renderDocsMarkdown(readFileSync(file, "utf8"), docsRenderOptions(shelf, file, nameOf(doc.type)));
+      const source = readFileSync(file, "utf8");
+      const rendered = renderDocsMarkdown(source, docsRenderOptions(shelf, file, nameOf(doc.type)));
+      // tech.md alone adds core's section heads (ISC-157.2); every other document is its plain Docs page.
+      const page = doc.type === "tech" ? { ...rendered, techSections: techSectionHeads(source) } : rendered;
       expect({ path: doc.path, body: await res.text() }).toEqual({ path: doc.path, body: JSON.stringify(page) });
     }
     // The tech page's sections and image come through as on the former tech page: a TOC and a figure.
@@ -248,6 +256,65 @@ describe("GET /api/workspaces/:ws/library/doc", () => {
     expect((await call(workspaceRoutes.libraryDoc("shelf", path), { headers: { "If-None-Match": etag } })).status).toBe(304);
     const head = await call(workspaceRoutes.libraryDoc("shelf", path), { method: "HEAD" });
     expect({ status: head.status, etag: head.headers.get("etag"), body: await head.text() }).toEqual({ status: 200, etag, body: "" });
+  });
+});
+
+// ISC-157.2 (T62): tech.md's sections come from core's marker reading (`techSectionHeads`) through the reader's route,
+// so the web never re-derives them from h2 names; a heading that differs from its key still names its section.
+describe("GET /api/workspaces/:ws/library/doc sections: tech.md's sections from core", () => {
+  const DIFFERING = [
+    "---",
+    "title: Beacon",
+    "---",
+    "# Beacon",
+    "",
+    "<!-- section: overview -->",
+    "## In short",
+    "",
+    "Beacon draws lighthouses.",
+    "",
+    "<!-- section: stack -->",
+    "## Stack",
+    "",
+    "TypeScript.",
+    "",
+    "<!-- section: architecture -->",
+    "## How it is built",
+    "",
+    "A tile loader and a renderer.",
+    "",
+    "<!-- section: risks -->",
+    "## Risks",
+    "",
+    "Tiles outgrow the disk.",
+    "",
+  ].join("\n");
+
+  beforeAll(() => {
+    const beacon = join(root, "beacon");
+    cpSync(LIBRARY, beacon, { recursive: true });
+    writeFileSync(join(beacon, "specs", "tech.md"), DIFFERING);
+    registry.add(beacon);
+  });
+
+  test("sections: tech.md with a heading that differs from its key answers techSections equal to core's techSectionHeads", async () => {
+    const res = await call(workspaceRoutes.libraryDoc("beacon", "tech.md"));
+    expect(res.status).toBe(200);
+    const page = (await res.json()) as WorkspaceRouteResponses["libraryDoc"];
+    expect(page.techSections).toEqual(techSectionHeads(DIFFERING));
+    expect(page.techSections?.find((s) => s.key === "architecture")?.heading).toBe("How it is built");
+    // Every head names an h2 of the rendered page, so the web finds its section's anchor in the page's own toc.
+    for (const head of page.techSections ?? []) expect(page.toc.some((t) => t.level === 2 && t.text === head.heading)).toBe(true);
+  });
+
+  test("sections: a non-tech document carries none", async () => {
+    const catalog = await readCatalog(shelf);
+    const others = catalog.docs.filter((d) => d.media === "markdown" && d.state !== "missing" && d.type !== "tech");
+    expect(others.length).toBeGreaterThan(0);
+    for (const doc of others) {
+      const page = (await (await call(workspaceRoutes.libraryDoc("shelf", doc.path))).json()) as WorkspaceRouteResponses["libraryDoc"];
+      expect({ path: doc.path, has: "techSections" in page }).toEqual({ path: doc.path, has: false });
+    }
   });
 });
 
@@ -344,6 +411,66 @@ describe("GET /api/workspaces/:ws/library/search", () => {
     expect({ status: doc.status, body: await doc.json() }).toEqual({ status: 404, body: { error: "not-found" } });
     const res = await call(workspaceRoutes.librarySearch("linked", "whalebone"));
     expect(await res.json()).toEqual({ query: "whalebone", hits: [] });
+  });
+});
+
+// Code-review finding 7 (T59, ISC-156.4): a catalog document whose file name carries a space, a `%`, an umlaut or a
+// literal percent sequence is listed, so it opens in the reader and the search finds it; the client encodes the listed
+// path once, the route decodes it once and matches it against the catalog, and nothing decodes it a second time.
+describe("encoded file names in the reader and the search (ISC-156.4)", () => {
+  const EVIDENCE = "001-lighthouse-map/.evidence";
+  const named: Record<string, string> = {
+    "notes with space.md": "kelpwhistle",
+    "100%.md": "barnaclequill",
+    "Prüfung.md": "driftmarrow",
+    "run%20retry.md": "tidewrack",
+  };
+  let coded: string;
+
+  beforeAll(() => {
+    coded = join(root, "coded");
+    cpSync(LIBRARY, coded, { recursive: true });
+    for (const [name, word] of Object.entries(named)) {
+      writeFileSync(join(coded, "specs", EVIDENCE, name), `# Encoded ${word}\n\nThe ${word} line of ${name}.\n`);
+    }
+    writeFileSync(join(coded, "secret.md"), "# Secret\n\nwhalebone ledger\n");
+    registry.add(coded);
+  });
+
+  test("encoded: every such document is listed, opens with 200 and is the one search hit for its word", async () => {
+    const catalog = await readCatalog(coded);
+    for (const [name, word] of Object.entries(named)) {
+      const path = `${EVIDENCE}/${name}`;
+      expect({ name, listed: catalog.docs.some((d) => d.path === path) }).toEqual({ name, listed: true });
+      const res = await call(workspaceRoutes.libraryDoc("coded", path));
+      const page = (await res.json()) as WorkspaceRouteResponses["libraryDoc"];
+      expect({ name, status: res.status, has: page.html.includes(word) }).toEqual({ name, status: 200, has: true });
+      const hits = (await (await call(workspaceRoutes.librarySearch("coded", word))).json()) as WorkspaceRouteResponses["librarySearch"];
+      expect({ name, hits: hits.hits.map((h) => h.path) }).toEqual({ name, hits: [path] });
+    }
+  });
+
+  test("encoded: traversal and a genuinely double-encoded path stay refused (403 or 404), never a read", async () => {
+    const enc = encodeURIComponent;
+    const doc = `${workspaceRoutes.library("coded")}/doc?path=`;
+    const refused = [
+      // Traversal, encoded once and raw.
+      enc(`${EVIDENCE}/../../../secret.md`),
+      `${EVIDENCE}/../../../secret.md`,
+      enc("../secret.md"),
+      "..%2Fsecret.md",
+      "%2E%2E%2Fsecret.md",
+      // A second encoding layer over each listed name.
+      ...Object.keys(named).map((name) => enc(enc(`${EVIDENCE}/${name}`))),
+      // A literal-percent name with one layer too many, and a bare `%` that is no escape.
+      enc(enc(enc(`${EVIDENCE}/run%20retry.md`))),
+      `${EVIDENCE}/100%.md`,
+    ];
+    for (const query of refused) {
+      const res = await call(`${doc}${query}`);
+      const body = await res.text();
+      expect({ query, status: [403, 404].includes(res.status), leaked: body.includes("whalebone") }).toEqual({ query, status: true, leaked: false });
+    }
   });
 });
 
@@ -464,4 +591,107 @@ describe("the library reads a spec's own documents from its read source (spec 02
       }
     }, 60_000);
   }
+});
+
+// Code-review findings 8 and 9 (T60, T61, ISC-156.5): the reader reads only the asked document (core's `catalogDocAt`)
+// and the search only the catalog's documents (core's `readCatalogDocs`), never the dashboard model, and the search
+// resolves each document once, so it grows linearly with the documents. The answers stay byte-identical: the reference
+// is the same handler over the full catalog reading (`loadCatalog`, the dashboard's input), and the digest below was
+// captured from the routes as they stood before the change (829023c).
+describe("the reader and the search look up only what they answer (ISC-156.5)", () => {
+  // Re-pinned for ISC-157.2: tech.md's answer adds core's `techSections`; every other answer is unchanged.
+  const BEFORE_DIGEST = "0df554b777e2f2233c0522596d188a872d84978adcffb794768fc3ef601db841";
+  const BAD = "/api/workspaces/shelf/library/doc?path=%E0%A4%A";
+  const QUERIES = ["lighthouse", "the", "plan", "Map ", "  TIDE  ", "zz-no-such-word", ""];
+  const extraPaths = ["../README.md", "nope.md", "001-lighthouse-map/nope.md", "archive/005-old/spec.md", "001-lighthouse-map/report.html", "/etc/passwd"];
+
+  const answersOf = async (handler: ApiHandler): Promise<string[]> => {
+    const paths = [...(await readCatalog(shelf)).docs.map((d) => d.path), ...extraPaths];
+    const urls = [
+      ...paths.map((p) => workspaceRoutes.libraryDoc("shelf", p)),
+      BAD,
+      workspaceRoutes.libraryDoc("gone", "tech.md"),
+      workspaceRoutes.libraryDoc("gone", "%E0%A4%A"),
+      workspaceRoutes.libraryDoc("nobody", "tech.md"),
+      ...QUERIES.map((q) => workspaceRoutes.librarySearch("shelf", q)),
+      workspaceRoutes.librarySearch("bare", "lighthouse"),
+      workspaceRoutes.librarySearch("gone", "lighthouse"),
+    ];
+    const out: string[] = [];
+    for (const path of urls) {
+      const url = new URL(`http://127.0.0.1:7717${path}`);
+      const res = await handler(new Request(url.href, { headers: HOST }), url);
+      if (res === null) throw new Error(`declined ${path}`);
+      out.push(`${path} ${res.status} ${res.headers.get("etag") ?? ""} ${await res.text()}`);
+    }
+    return out;
+  };
+
+  test("lookup: reader and search answers are byte-identical to the full catalog reading and to the routes before the change", async () => {
+    const reference = dashboardApi({ registry, services: () => Promise.resolve([]), loadCatalog });
+    const answers = await answersOf(api);
+    expect(answers).toEqual(await answersOf(reference));
+    expect(new Bun.CryptoHasher("sha256").update(answers.join("\n")).digest("hex")).toBe(BEFORE_DIGEST);
+  });
+
+  test("lookup: the reader and the search build no dashboard model and read no workspace input", async () => {
+    const docs = (await readCatalog(shelf)).docs;
+    const dashboard = spyOn(dash, "buildDashboard");
+    const reading = spyOn(loader, "readWorkspaceInput");
+    try {
+      for (const doc of docs) await call(workspaceRoutes.libraryDoc("shelf", doc.path));
+      await call(workspaceRoutes.libraryDoc("shelf", "001-lighthouse-map/plan.md"));
+      await call(workspaceRoutes.librarySearch("shelf", "lighthouse"));
+      await call(workspaceRoutes.librarySearch("shelf", "the"));
+      expect({ buildDashboard: dashboard.mock.calls.length, readWorkspaceInput: reading.mock.calls.length }).toEqual({ buildDashboard: 0, readWorkspaceInput: 0 });
+      // The catalog route keeps its reading over the dashboard's input (the heads' stages).
+      await call(workspaceRoutes.library("shelf"));
+      expect(reading.mock.calls.length).toBe(1);
+    } finally {
+      dashboard.mockRestore();
+      reading.mockRestore();
+    }
+  });
+
+  test("lookup: a search over 2000 evidence files resolves each document once, linear and in catalog order", async () => {
+    const many = join(root, "many");
+    cpSync(LIBRARY, many, { recursive: true });
+    const evidence = join(many, "specs", "001-lighthouse-map", ".evidence");
+    mkdirSync(evidence, { recursive: true });
+    for (let i = 0; i < 2000; i++) writeFileSync(join(evidence, `run-${String(i).padStart(4, "0")}.md`), `# Run ${i}\n\nThe gullfeather trace of run ${i}.\n`);
+    registry.add(many);
+    const readable = (await readCatalog(many)).docs.filter((d) => d.media === "markdown" && d.state !== "missing");
+    const expected = readable.filter((d) => d.path.includes("/.evidence/run-")).map((d) => d.path);
+    expect(expected.length).toBe(2000);
+
+    const sources = spyOn(lib, "catalogSourceOf");
+    const find = Array.prototype.find;
+    let visits = 0;
+    // Counts every element any `find` visits during the search: a scan of the catalog per document is quadratic.
+    Array.prototype.find = function (this: unknown[], predicate: (value: unknown, index: number, array: unknown[]) => unknown, thisArg?: unknown): unknown {
+      const counted = (value: unknown, index: number, array: unknown[]): unknown => {
+        visits++;
+        return predicate.call(thisArg, value, index, array);
+      };
+      return find.call(this, counted) as unknown;
+    } as typeof Array.prototype.find;
+    try {
+      for (const round of ["cold", "warm"]) {
+        visits = 0;
+        sources.mockClear();
+        const started = performance.now();
+        const res = await call(workspaceRoutes.librarySearch("many", "gullfeather"));
+        const elapsed = performance.now() - started;
+        const body = (await res.json()) as WorkspaceRouteResponses["librarySearch"];
+        expect({ round, status: res.status, hits: body.hits.map((h) => h.path) }).toEqual({ round, status: 200, hits: expected });
+        // One path lookup per document: one source lookup each, and no scan of the catalog per document.
+        expect(sources.mock.calls.length).toBeLessThanOrEqual(readable.length);
+        expect(visits).toBeLessThan(4 * readable.length);
+        expect(elapsed).toBeLessThan(10_000);
+      }
+    } finally {
+      Array.prototype.find = find;
+      sources.mockRestore();
+    }
+  }, 60_000);
 });

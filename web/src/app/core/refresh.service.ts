@@ -76,6 +76,7 @@ export class RefreshService {
   private readonly newSpecsState = signal(0);
   private readonly announcementState = signal<string | null>(null);
   private readonly lastRefreshState = signal(Date.now());
+  private readonly refreshesState = signal(0);
 
   /** KPI paths (`claims.closed`) the last refresh changed: the value tint. */
   readonly changedKpis = this.changedKpisState.asReadonly();
@@ -90,6 +91,12 @@ export class RefreshService {
    * `refresh()`. The header's "Updated 12 s ago" (spec 024 T40) reads it.
    */
   readonly lastRefresh = this.lastRefreshState.asReadonly();
+  /**
+   * How many refreshes ran (timer, visibility, "Refresh now", `r`), never a settled dashboard read. A page resource
+   * outside `ShellData` (the library's catalog and its open document, spec 017) reloads when it changes, so it rides
+   * the same refresh as the shell's resources.
+   */
+  readonly refreshes = this.refreshesState.asReadonly();
 
   /** The dashboard body the refresh in flight started from; `undefined` while none is in flight. */
   private before: unknown;
@@ -128,6 +135,7 @@ export class RefreshService {
     this.data.dashboard.reload();
     this.data.planning.reload();
     this.data.spec.reload();
+    this.refreshesState.update((count) => count + 1);
     this.lastRefreshState.set(Date.now());
   }
 

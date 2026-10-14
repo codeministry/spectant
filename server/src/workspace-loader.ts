@@ -8,7 +8,8 @@
  * of every spec folder under `specs/` and `specs/archive/` (folders as `listSpecs` finds them). It
  * parses nothing: every parse is `core/`'s (ISC-5, `bun run check:single-core`). `loadDashboard` adds the local
  * services and calls `buildDashboard`; `loadCatalog` loads the library's document catalog beside it (core's
- * `readCatalog` over the same input, spec 017; `loadCatalogDocs` without it). The lock sources are `core/`'s `readLockSources` (T51): the repository's
+ * `readCatalog` over the same input, spec 017; `loadCatalogDocs` and `loadCatalogDoc` read the documents alone, core's
+ * `readCatalogDocs` and `catalogDocAt`, ISC-156.5). The lock sources are `core/`'s `readLockSources` (T51): the repository's
  * `.spectant/activity.jsonl`, plus the LifeOS frontier locks only when a LifeOS state directory is passed (ISC-37).
  *
  * Read-only (ISC-15): `node:fs` reads, no write, no temp file, no lock. The worktree tree id for the code-reviewed mark
@@ -34,11 +35,11 @@ import { buildDashboard, devServiceLabels, toLocalService } from "../../core/src
 import type { DashboardInput, DashboardModel, ProbedService } from "../../core/src/dashboard.ts";
 import { actorIdOf } from "../../core/src/actor-id.ts";
 import { FILE_KINDS, repoFilePath } from "../../core/src/files.ts";
-import type { FileDiagnostic, IdeaFiles, LibraryCatalog, MergeState, SpecFiles, SpecRead, TextFileKind, TimelineWorktreeInput, Workflow, Worktree } from "../../core/src/files.ts";
+import type { FileDiagnostic, IdeaFiles, LibraryCatalog, LibraryDoc, MergeState, SpecFiles, SpecRead, TextFileKind, TimelineWorktreeInput, Workflow, Worktree } from "../../core/src/files.ts";
 import { parseFrontmatter } from "../../core/src/frontmatter.ts";
 import { specIdOf } from "../../core/src/spec-ref.ts";
 import { type TreeEntry, type TreeEntryMode, treeIdOf } from "../../core/src/gates.ts";
-import { readCatalog } from "../../core/src/library.ts";
+import { catalogDocAt, readCatalog, readCatalogDocs } from "../../core/src/library.ts";
 import { readLockSources } from "../../core/src/locks.ts";
 import { type SpecRef, listSpecs } from "../../core/src/resolve.ts";
 import { parseWorkflow } from "../../core/src/workflow.ts";
@@ -492,21 +493,43 @@ export async function loadCatalog(root: string, lifeosStateDir: string | null = 
 }
 
 /**
- * The catalog's documents without the dashboard's reading: core's `readCatalog` over the files alone, for the routes
- * that need the document list and never a stage (`libraryDoc`, `librarySearch`). The documents and their states do not
- * depend on the dashboard input; skipping it keeps a search keystroke free of the worktree hash and the chip's git
- * facts. Only the worktree copies are read (`readCopies`), so a spec's own documents come from the same read source as
- * in `loadCatalog` (spec 027, ISC-181).
+ * What the library's reader and search read with the worktree copies: a value of `read`, or why the workspace cannot
+ * be read. The copies are the read sources `loadCatalog` lists the documents from (spec 027, ISC-181).
  */
-export async function loadCatalogDocs(root: string): Promise<CatalogLoad> {
+export type CopiesLoad<T> = ({ readable: true; copies: Readonly<Record<string, string>> } & T) | { readable: false; error: UnreadableCode };
+
+/**
+ * `read` over the worktree copies of the workspace at `root`, without the dashboard's reading (ISC-156.5): no stage
+ * input, workflow, lock source, worktree hash or chip git fact, and never `buildDashboard`. A workspace that cannot be
+ * read is its stable code, checked first, as in `loadCatalog`.
+ */
+async function withCopies<T>(root: string, read: (copies: Readonly<Record<string, string>>) => Promise<T>): Promise<CopiesLoad<T>> {
   const unreadable = workspaceUnreadable(root);
   if (unreadable !== null) return { readable: false, error: unreadable };
   try {
     const copies = await readCopies(root);
-    return { readable: true, catalog: await readCatalog(root, undefined, { copies }), copies };
+    return { readable: true, copies, ...(await read(copies)) };
   } catch (error) {
     return { readable: false, error: codeOf(error) };
   }
+}
+
+/**
+ * The catalog's documents alone, for the search (`librarySearch`): core's `readCatalogDocs`, equal to the catalog's
+ * `docs`, without its group heads and the dashboard model they need. Only the worktree copies are read (`readCopies`),
+ * so a spec's own documents come from the same read source as in `loadCatalog`.
+ */
+export function loadCatalogDocs(root: string): Promise<CopiesLoad<{ docs: readonly LibraryDoc[] }>> {
+  return withCopies(root, async (copies) => ({ docs: await readCatalogDocs(root, { copies }) }));
+}
+
+/**
+ * The one catalog document at `path` (relative to `specs/`), for the reader (`libraryDoc`): core's `catalogDocAt`,
+ * equal to the catalog's entry, null where the catalog lists none and for a null `path` (a query that does not decode).
+ * Only the folders on the path's way are read, never the tree.
+ */
+export function loadCatalogDoc(root: string, path: string | null): Promise<CopiesLoad<{ doc: LibraryDoc | null }>> {
+  return withCopies(root, async (copies) => ({ doc: path === null ? null : await catalogDocAt(root, path, { copies }) }));
 }
 
 // ── the worktree tree id ──────────────────────────────────────────────────────────────────────────────

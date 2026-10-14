@@ -336,7 +336,7 @@ export const WORKSPACE_ROUTE_TABLE: readonly WorkspaceRouteEntry[] = [
   { route: 'boardQuery', method: 'GET', write: 'PUT', pattern: `${SPEC_API_ROOT}/:ws/board-query`, statuses: BOARD_QUERY_STATUSES, request: 'BoardQuery', response: 'BoardQuery' },
   { route: 'allocate', method: 'POST', pattern: `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, statuses: REFUSABLE_WRITE, request: 'AllocateRequest', response: 'IdeaAllocated' },
   { route: 'library', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library`, statuses: READ, response: 'LibraryCatalog' },
-  { route: 'libraryDoc', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library/doc`, statuses: READ, response: 'DocsPage' },
+  { route: 'libraryDoc', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library/doc`, statuses: READ, response: 'LibraryDocPage' },
   { route: 'librarySearch', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library/search`, statuses: READ, response: 'LibrarySearchResult' },
   { route: 'libraryAsset', method: 'GET', pattern: `${SPEC_API_ROOT}/:ws/library/asset`, statuses: READ, response: 'file bytes' },
 ];
@@ -508,11 +508,27 @@ export interface WorkspaceRouteResponses {
    * One Markdown document of the catalog (`media: 'markdown'`, `state` not `missing`), rendered by `markdown-docs.ts`
    * as the former Docs tabs rendered it. A path the catalog does not list as such a document is 404, never a read of the path.
    */
-  libraryDoc: DocsPage;
+  libraryDoc: LibraryDocPage;
   librarySearch: LibrarySearchResult;
   /** The image's bytes with `evidenceFileHeaders(mediaTypeOf(name))`, as the evidence file route sends them; `specs/` the root, images only. */
   libraryAsset: Blob;
 }
+
+/**
+ * 200 of `GET …/library/doc?path=`: the document's `DocsPage`, and for `tech.md` (the catalog's `type: 'tech'`) alone
+ * `techSections`, core's `techSectionHeads` over the same text: each of the four keys in contract order with the first
+ * `##` heading inside its `<!-- section: key -->` marker, or null without one (spec 017, ISC-157.2). The rendered page
+ * no longer carries the markers, so the reader selects its sections by these heads (each names a level-2 entry of the
+ * page's `toc`) and never re-derives them from heading names. Absent on every other document.
+ *
+ * `LibraryTechSection` is core's `TechSectionHead` written out, because the web's stricter compile cannot walk
+ * `core/src/tech.ts`'s imports; `tests/spec-routes.contract.test.ts` pins the two equal, so it is core's type all the same.
+ */
+export interface LibraryTechSection {
+  readonly key: 'overview' | 'stack' | 'architecture' | 'risks';
+  readonly heading: string | null;
+}
+export type LibraryDocPage = DocsPage & { readonly techSections?: readonly LibraryTechSection[] };
 
 /**
  * One search hit: the catalog document it names (`LibraryDoc.path`, so the web finds the entry in the catalog it holds)

@@ -29,6 +29,7 @@ import type {
 import { REVIEWED_FILES, hashForGate } from "../core/src/gates.ts";
 import type { DashboardIdea, DashboardIdeas, DashboardModel } from "../core/src/dashboard.ts";
 import type { PlanningModel } from "../core/src/planning.ts";
+import type { TechSectionHead, TechSectionKey } from "../core/src/tech.ts";
 import type { EventLine, IdeaRef, LibraryCatalog, LibraryDoc, TransitionPlan, WorkflowStage } from "../core/src/files.ts";
 import { WORKSPACES_PATH, type WorkspaceSummary, dashboardApi } from "../server/src/api.ts";
 import type { ActorRow } from "../server/src/db.ts";
@@ -48,6 +49,8 @@ import {
   type IdeaAllocated,
   type IdeaPage,
   type InvalidBody,
+  type LibraryDocPage,
+  type LibraryTechSection,
   type LibrarySearchHit,
   type LibrarySearchResult,
   type Locked,
@@ -272,10 +275,15 @@ const allocateErrors: Equal<
 > = true;
 const allocateIsCore: Equal<WorkspaceRouteResponses["allocate"], IdeaAllocated> = true;
 // The library (spec 017, T2): the catalog and the document are core's types as they are; the asset answers bytes like
-// the evidence file; a search hit names a catalog document by its path; every route has the read errors.
+// the evidence file; a search hit names a catalog document by its path; every route has the read errors. The document
+// adds tech.md's section heads, core's `TechSectionHead` as it is, optional (ISC-157.2).
 const libraryIsCore: Equal<
   [WorkspaceRouteResponses["library"], WorkspaceRouteResponses["libraryDoc"], WorkspaceRouteResponses["libraryAsset"]],
-  [LibraryCatalog, DocsPage, Blob]
+  [LibraryCatalog, LibraryDocPage, Blob]
+> = true;
+const libraryDocIsDocsPlusCore: Equal<
+  [LibraryDocPage, LibraryTechSection, LibraryTechSection["key"]],
+  [DocsPage & { readonly techSections?: readonly TechSectionHead[] }, TechSectionHead, TechSectionKey]
 > = true;
 const searchIsTheContracts: Equal<
   [WorkspaceRouteResponses["librarySearch"], LibrarySearchResult["hits"][number], LibrarySearchHit["path"]],
@@ -300,8 +308,8 @@ const WORKSPACE_ARGS: Record<WorkspaceRouteName, (ws: string) => string> = {
 
 describe("workspace routes (spec 003, 008): planning and the story page beside the spec routes", () => {
   test("compile-time pins: PlanningModel and IdeaPage's parts are core's, every route has a 200 type and an error union", () => {
-    expect([planningIsCore, ideaIsCore, ideaPartsAreCore, workspaceResponsesCoverRoutes, workspaceErrors, boardQueryErrors, boardQueryBodies, workspaceFamilies, allocateErrors, allocateIsCore, libraryIsCore, searchIsTheContracts, libraryErrors]).toEqual([
-      true, true, true, true, true, true, true, true, true, true, true, true, true,
+    expect([planningIsCore, ideaIsCore, ideaPartsAreCore, workspaceResponsesCoverRoutes, workspaceErrors, boardQueryErrors, boardQueryBodies, workspaceFamilies, allocateErrors, allocateIsCore, libraryIsCore, libraryDocIsDocsPlusCore, searchIsTheContracts, libraryErrors]).toEqual([
+      true, true, true, true, true, true, true, true, true, true, true, true, true, true,
     ]);
   });
 
@@ -409,7 +417,7 @@ describe("workspace routes (spec 003, 008): planning and the story page beside t
       ["boardQuery", "GET", `${SPEC_API_ROOT}/:ws/board-query`, "PUT", "BoardQuery", "BoardQuery"],
       ["allocate", "POST", `${SPEC_API_ROOT}/:ws/ideas/:slug/allocate`, null, "AllocateRequest", "IdeaAllocated"],
       ["library", "GET", `${SPEC_API_ROOT}/:ws/library`, null, null, "LibraryCatalog"],
-      ["libraryDoc", "GET", `${SPEC_API_ROOT}/:ws/library/doc`, null, null, "DocsPage"],
+      ["libraryDoc", "GET", `${SPEC_API_ROOT}/:ws/library/doc`, null, null, "LibraryDocPage"],
       ["librarySearch", "GET", `${SPEC_API_ROOT}/:ws/library/search`, null, null, "LibrarySearchResult"],
       ["libraryAsset", "GET", `${SPEC_API_ROOT}/:ws/library/asset`, null, null, "file bytes"],
     ]);

@@ -10,6 +10,7 @@ import type { DocsPage, LibraryCatalog, LibraryDoc } from '../../../../../core/s
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult } from '../../core/api.service';
+import { RefreshService } from '../../core/refresh.service';
 import { ShellState } from '../../layout/shell/shell-state.service';
 import type { Tier } from '../../layout/shell/tier';
 import { addressParams, controlViews, missingCommand, SEARCH_DEBOUNCE_MS, shortDateParts, typeIcon } from './library-page';
@@ -57,13 +58,21 @@ let harness: RouterTestingHarness;
 let searched: string[] = [];
 /** The server's full-text hits the fake answers for any search text (path → snippet); reset per test. */
 let serverHits: Record<string, string> = {};
+/** How often the page read the catalog and a document; reset per test. */
+let libraryReads = 0;
+let docReads = 0;
 
 beforeEach(() => {
   searched = [];
   serverHits = {};
+  libraryReads = 0;
+  docReads = 0;
 });
 
-async function open(url: string, catalog: LibraryCatalog = CATALOG, tier: Tier = 'medium', lang: 'en' | 'de' = 'en'): Promise<HTMLElement> {
+/** A catalog, or a function the fake asks on every read (a catalog that changes between reads). */
+type CatalogSource = LibraryCatalog | (() => LibraryCatalog);
+
+async function open(url: string, catalog: CatalogSource = CATALOG, tier: Tier = 'medium', lang: 'en' | 'de' = 'en'): Promise<HTMLElement> {
   const api: FakeApi = {
     workspaces: () => Promise.resolve(ok([{ slug: 'harbor', name: 'harbor', pathTail: 'harbor', readable: true, counts: null }])),
     dashboard: () => Promise.resolve(ok(dashboard)),
@@ -71,8 +80,14 @@ async function open(url: string, catalog: LibraryCatalog = CATALOG, tier: Tier =
     spec: () => Promise.resolve({ kind: 'not-found', served: false }),
     actors: () => Promise.resolve(ok([])),
     boardQuery: () => Promise.resolve(ok({ query: '' })),
-    library: () => Promise.resolve(ok(catalog)),
-    libraryDoc: () => Promise.resolve(ok(PAGE)),
+    library: () => {
+      libraryReads += 1;
+      return Promise.resolve(ok(typeof catalog === 'function' ? catalog() : catalog));
+    },
+    libraryDoc: () => {
+      docReads += 1;
+      return Promise.resolve(ok(PAGE));
+    },
     librarySearch: (_ws, q) => {
       searched.push(q);
       return Promise.resolve(ok({ query: q.trim(), hits: Object.entries(serverHits).map(([path, snippet]) => ({ path, snippet })) }));
@@ -698,5 +713,55 @@ describe('LibraryPage in the spec area (T46, ISC-158)', () => {
     const root = await open('/w/harbor/s/002/library?state=open', SCOPED);
     const groups = Array.from(page(root).querySelectorAll('[data-library-fog-group]')).map((group) => group.getAttribute('data-library-fog-group'));
     expect(groups).toEqual(['002']);
+  });
+});
+
+// Code review 017, #5: the spec area Library resolves the route's spec ref the way the server's `resolveSpec` does
+// (core's `specRefMatches`): number, folder and bare slug list the same documents, and the `?doc=` swap follows.
+describe('LibraryPage in the spec area, by every spec ref form', () => {
+  it('lists the same documents for the number, the folder and the slug', async () => {
+    const byNumber = entries(await open('/w/harbor/s/002/library', SCOPED));
+    expect(byNumber).toEqual(['002-web-console/spec.md', '002-web-console/plan.md', '002-web-console/tasks.md', 'constitution.md']);
+    for (const ref of ['002-web-console', 'web-console']) {
+      TestBed.resetTestingModule();
+      const root = await open(`/w/harbor/s/${ref}/library`, SCOPED);
+      expect(entries(root)).toEqual(byNumber);
+      expect(control(root, 'missing').querySelector('[data-library-control-count]')?.textContent).toBe('1');
+    }
+  });
+
+  it('swaps `?doc=plan` for the plan’s path under the slug form', async () => {
+    await open('/w/harbor/s/web-console/library?doc=plan', SCOPED);
+    await settle();
+    const path = TestBed.inject(Location).path(true);
+    expect(path).not.toContain('doc=');
+    expect(path).toContain('#002-web-console/plan.md');
+  });
+});
+
+// Code review 017, #2: the library rides the live refresh (timer, "Refresh now", `r`) like the tech page it replaced:
+// the catalog is re-read (ETag, so a 304 costs no body) and the open document with it, each keeping its last value
+// while it reloads, so the list and the reader stay in place and only what changed changes.
+describe('LibraryPage on the live refresh', () => {
+  it('re-reads the catalog and the open document on a refresh, counts updating in place', async () => {
+    let current = CONTROL;
+    const root = await open('/w/harbor/library#002-web-console/plan.md', () => current, 'wide');
+    await settle();
+    expect(libraryReads).toBe(1);
+    expect(docReads).toBe(1);
+    const reader = page(root).querySelector('[data-library-reader]');
+    expect(text(reader?.querySelector('[data-library-prose]'))).toBe('Rendered');
+    current = { ...CONTROL, docs: [...CONTROL.docs, doc('004-audit/spec.md', 'spec', 'Audit', { state: 'stale' })], stale: 3 };
+    TestBed.inject(RefreshService).refresh();
+    harness.fixture.detectChanges();
+    // While both reload, the reader keeps its document: no loading state, no flicker.
+    expect(page(root).querySelector('[data-library-reader]')).toBe(reader);
+    expect(text(reader?.querySelector('[data-library-prose]'))).toBe('Rendered');
+    await settle();
+    expect(libraryReads).toBe(2);
+    expect(docReads).toBe(2);
+    expect(entries(root)).toContain('004-audit/spec.md');
+    expect(control(root, 'stale').querySelector('[data-library-control-count]')?.textContent).toBe('3');
+    expect(page(root).querySelector('[data-library-reader]')).toBe(reader);
   });
 });

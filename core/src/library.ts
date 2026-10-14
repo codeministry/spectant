@@ -4,29 +4,31 @@
 // one `prototype` document; per workspace `specs/constitution.md`, `specs/tech.md`, `specs/tldr.md` and each story
 // `specs/ideas/*.md`. Specs under `specs/archive/` never appear.
 //
-// Server-side module: it reads the file system through async node:fs/promises (readdir, stat, readFile), like
+// Server-side module: it reads the file system through async node:fs/promises (readdir, lstat, readFile), like
 // `listEvidence`, so the barrel `index.ts` carries its types (in `files.ts`) but not `readCatalog`. Read-only: nothing
-// is opened for writing, symlinks are not followed, dot files are skipped as in the evidence listing.
+// is opened for writing, symlinks are not followed (every file and folder is checked with lstat, so a link at a fixed
+// path, in a zone or in place of a listed folder is no document and nothing is read through it), dot files are skipped
+// as in the evidence listing.
 //
 // Titles: the H1, else frontmatter `title:` (through `frontmatter.ts`, no second parser), else the file name; a
 // prototype is named after its folder. `modified` is the file's mtime as ISO 8601, a prototype's its newest file. A
 // prototype's `preview` (ISC-159) is a screenshot directly in its spec's `.design/` whose name contains `prototype`.
-// Every present document is listed `ok`; `stale` (ISC-155.1) and `missing` (ISC-155.2) are judged over the finished
-// list in `judge`, the one place the later tasks extend. The group heads and open fog lines (ISC-157) come from the
-// dashboard model and the tech page's sources in `groupsOf`.
+// Every present document is listed `ok`; `stale` (ISC-155.1, a source `spec.md` modified more than
+// `STALE_TOLERANCE_MS` after the document) and `missing` (ISC-155.2) are judged over the finished list in `judge`.
+// `readCatalogDocs` is that list alone; `catalogDocAt` decides one path by the same rules without walking the tree. The
+// group heads and open fog lines (ISC-157) come from the dashboard model and the tech page's sources in `groupsOf`.
 //
 // Worktree copies (spec 027, ISC-181): the caller may name, per active spec, the folder its files are read from
 // (`CatalogOptions.copies`, the server's `WorkspaceReading.copies`). The kinds of `WORKTREE_COPY_KINDS` then come from
-// that folder (the five own Markdown files, `events.jsonl` for the spec time, `spec.md` for the missing rule, the texts
-// of the stage input); `artifacts/`, `.evidence/`, `.design/` and the workspace documents stay on the main checkout,
-// and every catalog path stays `NNN-slug/<file>` below `specs/`. `catalogSourceOf` resolves a listed path the same way.
+// that folder (the five own Markdown files, `spec.md` for the stale and missing rules, the texts of the stage input);
+// `artifacts/`, `.evidence/`, `.design/` and the workspace documents stay on the main checkout, and every catalog path
+// stays `NNN-slug/<file>` below `specs/`. `catalogSourceOf` resolves a listed path the same way.
 import type { Dirent } from 'node:fs';
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { lstat, readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { parseClaims } from './claims.ts';
 import { buildDashboard, type DashboardInput } from './dashboard.ts';
-import { parseEvents } from './events.ts';
 import { mediaTypeOf } from './evidence.ts';
 import type { FileKind, LibraryCatalog, LibraryDoc, LibraryDocType, LibraryFogLine, LibraryMedia, SpecFiles, SpecGroupHead, TextFileKind } from './files.ts';
 import { DESIGN_ASSETS, FILE_KINDS, repoFilePath } from './files.ts';
@@ -93,8 +95,22 @@ function mediaOf(name: string): Exclude<LibraryMedia, 'prototype'> | null {
 
 const isPage = (name: string): boolean => mediaTypeOf(name) === 'text/html';
 
-/** The entries of a directory, dot files dropped; an unreadable or absent directory has none. */
+/** Whether `path` is a real directory, never a symbolic link to one. */
+async function isRealDir(path: string): Promise<boolean> {
+  try {
+    return (await lstat(path)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The entries of a real directory, dot files dropped; an unreadable or absent directory, or a symbolic link to one,
+ * has none. The entries' own types come from the listing, so a linked file or folder is neither `isFile` nor
+ * `isDirectory`.
+ */
 async function entriesOf(dir: string): Promise<Dirent[]> {
+  if (!(await isRealDir(dir))) return [];
   try {
     return (await readdir(dir, { withFileTypes: true })).filter((e) => !e.name.startsWith('.'));
   } catch {
@@ -102,11 +118,27 @@ async function entriesOf(dir: string): Promise<Dirent[]> {
   }
 }
 
-/** The mtime of a regular file as ISO 8601, or null when it is absent or not a regular file. */
-async function mtimeOf(path: string): Promise<string | null> {
+/** The mtime of a regular file in ms, or null when it is absent, a symbolic link or not a regular file. */
+async function mtimeMsOf(path: string): Promise<number | null> {
   try {
-    const st = await stat(path);
-    return st.isFile() ? st.mtime.toISOString() : null;
+    const st = await lstat(path);
+    return st.isFile() ? st.mtimeMs : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The mtime of a regular file as ISO 8601, or null as `mtimeMsOf`. */
+async function mtimeOf(path: string): Promise<string | null> {
+  const ms = await mtimeMsOf(path);
+  return ms === null ? null : new Date(ms).toISOString();
+}
+
+/** The text of a regular file, or null when it is absent, a symbolic link or no regular file: nothing is read through a link. */
+async function regularText(path: string): Promise<string | null> {
+  if ((await mtimeMsOf(path)) === null) return null;
+  try {
+    return await readFile(path, 'utf-8');
   } catch {
     return null;
   }
@@ -153,11 +185,9 @@ async function fileDoc(
   const name = path.slice(path.lastIndexOf('/') + 1);
   let title = name;
   if (media === 'markdown') {
-    try {
-      title = titleOf(await readFile(absolute, 'utf-8'), name);
-    } catch {
-      return null;
-    }
+    const text = await regularText(absolute);
+    if (text === null) return null;
+    title = titleOf(text, name);
   }
   return { path, type, spec, title, modified, state: 'ok', media };
 }
@@ -178,12 +208,9 @@ async function filesBelow(dir: string, rel: string, skip: ReadonlySet<string> = 
 async function newestBelow(dir: string): Promise<string | null> {
   let newest: number | null = null;
   for (const path of await filesBelow(dir, '')) {
-    try {
-      const ms = (await stat(join(dir, path))).mtimeMs;
-      if (newest === null || ms > newest) newest = ms;
-    } catch {
-      // Vanished between the listing and the read: it is no part of the prototype.
-    }
+    // Null when it vanished between the listing and the read: it is no part of the prototype.
+    const ms = await mtimeMsOf(join(dir, path));
+    if (ms !== null && (newest === null || ms > newest)) newest = ms;
   }
   return newest === null ? null : new Date(newest).toISOString();
 }
@@ -234,6 +261,28 @@ function previewOf(candidates: readonly string[], rel: string, spec: string): st
   return best === undefined ? null : `${spec}/${DESIGN_ASSETS}/${best}`;
 }
 
+/** The HTML pages directly among a folder's entries, in name order: a prototype folder has at least one. */
+const pagesIn = (entries: readonly Dirent[]): string[] =>
+  entries
+    .filter((e) => e.isFile() && isPage(e.name))
+    .map((e) => e.name)
+    .sort(byName);
+
+/** One prototype folder `dir` (relative path `rel`) with its `pages` as a document; null when no file is left in it. */
+async function prototypeDoc(
+  dir: string,
+  rel: string,
+  spec: string,
+  candidates: readonly string[],
+  pages: readonly string[],
+): Promise<LibraryDoc | null> {
+  const modified = await newestBelow(dir);
+  if (modified === null) return null;
+  const title = rel.slice(rel.lastIndexOf('/') + 1);
+  const preview = previewOf(candidates, rel, spec);
+  return { path: rel, type: 'prototype', spec, title, modified, state: 'ok', media: 'prototype', pages: [...pages], preview };
+}
+
 /**
  * The prototypes in or below `dir` (relative path `rel` from `specs/`): a folder holding HTML pages directly is one
  * document and everything below it belongs to it; a folder without pages is no document and none of its files is
@@ -241,13 +290,10 @@ function previewOf(candidates: readonly string[], rel: string, spec: string): st
  */
 async function prototypesIn(dir: string, rel: string, spec: string, candidates: readonly string[]): Promise<LibraryDoc[]> {
   const entries = await entriesOf(dir);
-  const pages = entries.filter((e) => e.isFile() && isPage(e.name)).map((e) => e.name).sort(byName);
+  const pages = pagesIn(entries);
   if (pages.length > 0) {
-    const modified = await newestBelow(dir);
-    if (modified === null) return [];
-    const title = rel.slice(rel.lastIndexOf('/') + 1);
-    const preview = previewOf(candidates, rel, spec);
-    return [{ path: rel, type: 'prototype', spec, title, modified, state: 'ok', media: 'prototype', pages, preview }];
+    const doc = await prototypeDoc(dir, rel, spec, candidates, pages);
+    return doc === null ? [] : [doc];
   }
   const out: LibraryDoc[] = [];
   for (const entry of entries) {
@@ -303,20 +349,32 @@ const FROM_SPEC: ReadonlySet<string> = new Set((['plan', 'tasks', 'design'] as c
 const FROM_NEWEST_SPEC: ReadonlySet<LibraryDocType> = new Set<LibraryDocType>(['tech', 'tldr']);
 
 /**
- * The time of one spec in ms (ISC-155.1): its newest valid `events.jsonl` line (read through `events.ts`), else the
- * mtime of its `spec.md` from the listed documents; null when it has neither.
+ * How much later than a derived document its source may have been modified before the document reads `stale`
+ * (ISC-155.1): a `git checkout` rewrites every mtime within moments, in no particular order, and must not colour fresh
+ * documents.
  */
-async function specTime(root: string, spec: string, docs: readonly LibraryDoc[], copies: CatalogOptions['copies']): Promise<number | null> {
-  let text = '';
-  try {
-    text = await readFile(join(folderOf(root, spec, 'events', copies), FILE_KINDS.events.path), 'utf-8');
-  } catch {
-    // No events.jsonl: the spec.md mtime stands in.
-  }
-  const stamps = parseEvents(text).events.map((e) => Date.parse(e.ts));
-  if (stamps.length > 0) return Math.max(...stamps);
-  const own = docs.find((d) => d.spec === spec && d.path === `${spec}/${FILE_KINDS.spec.path}`);
-  return own?.modified == null ? null : Date.parse(own.modified);
+export const STALE_TOLERANCE_MS = 60_000;
+
+/** The mtime in ms of one active spec's `spec.md` (a regular file, never a link) from its read source, or null without one. */
+const specMdTime = (root: string, spec: string, copies: CatalogOptions['copies']): Promise<number | null> =>
+  mtimeMsOf(join(folderOf(root, spec, 'spec', copies), FILE_KINDS.spec.path));
+
+/** The newest `spec.md` mtime of the given active specs, or null when none has one. */
+async function newestSpecMdTime(root: string, specs: readonly string[], copies: CatalogOptions['copies']): Promise<number | null> {
+  const known = (await Promise.all(specs.map((s) => specMdTime(root, s, copies)))).filter((t): t is number => t !== null);
+  return known.length > 0 ? Math.max(...known) : null;
+}
+
+/** Which source a document derives from (ISC-155.1): its spec's `spec.md`, the newest `spec.md`, or nothing. */
+function derivesFrom(d: LibraryDoc): 'spec' | 'newest' | null {
+  if (d.spec === WORKSPACE) return FROM_NEWEST_SPEC.has(d.type) ? 'newest' : null;
+  return FROM_SPEC.has(d.path.slice(d.spec.length + 1)) ? 'spec' : null;
+}
+
+/** `d` judged against its source's mtime: `stale` when the source was modified more than the tolerance after it. */
+function judgeStale(d: LibraryDoc, source: number | null): LibraryDoc {
+  const stale = d.state === 'ok' && d.modified !== null && source !== null && source - Date.parse(d.modified) > STALE_TOLERANCE_MS;
+  return stale ? { ...d, state: 'stale' } : d;
 }
 
 /** The documents a spec's type can ask for (ISC-155.2), in the order of the spec's own files. */
@@ -333,12 +391,8 @@ const rowMatches = (stage: Stage, input: StageInput): boolean => SPEC_RULES.some
  * partition counts them; the review and code-review marks decide no row asked here.
  */
 async function missingOf(root: string, spec: string, docs: readonly LibraryDoc[], copies: CatalogOptions['copies']): Promise<LibraryDoc[]> {
-  let text: string;
-  try {
-    text = await readFile(join(folderOf(root, spec, 'spec', copies), FILE_KINDS.spec.path), 'utf-8');
-  } catch {
-    return [];
-  }
+  const text = await regularText(join(folderOf(root, spec, 'spec', copies), FILE_KINDS.spec.path));
+  if (text === null) return [];
   const fm = parseFrontmatter(text);
   const total = parseClaims(text).claims.length;
   const has = (kind: 'plan' | 'tasks'): boolean => docs.some((d) => d.spec === spec && d.path === `${spec}/${FILE_KINDS[kind].path}`);
@@ -387,11 +441,12 @@ function placeMissing(docs: readonly LibraryDoc[], missing: readonly LibraryDoc[
 }
 
 /**
- * The state judgement over the finished list. `stale` (ISC-155.1): `plan.md`, `tasks.md` and `design.md` older than
- * the time of their spec, `tech.md` and `tldr.md` older than the newest time of any active spec; a document as old as
- * its source is fresh. `missing` (ISC-155.2): the entries `missingOf` adds for each active spec, placed by
- * `placeMissing`. Both read only what `readCatalog` already listed plus each spec's `events.jsonl` and `spec.md`, from
- * the spec's read source (`copies`).
+ * The state judgement over the finished list. `stale` (ISC-155.1): `plan.md`, `tasks.md` and `design.md` whose spec's
+ * `spec.md` was modified more than `STALE_TOLERANCE_MS` after them, `tech.md` and `tldr.md` likewise against the newest
+ * `spec.md` of the active specs; `events.jsonl` plays no part, since a stage event is no edit of the spec. `missing`
+ * (ISC-155.2): the entries `missingOf` adds for each active spec, placed by `placeMissing`. Both read only the mtimes
+ * and texts of the specs' `spec.md` files, from each spec's read source (`copies`), beside what `readCatalogDocs`
+ * already listed.
  */
 async function judge(
   root: string,
@@ -399,18 +454,12 @@ async function judge(
   docs: readonly LibraryDoc[],
   copies: CatalogOptions['copies'],
 ): Promise<readonly LibraryDoc[]> {
-  const times = new Map<string, number | null>(await Promise.all(specs.map(async (s) => [s, await specTime(root, s, docs, copies)] as const)));
+  const times = new Map<string, number | null>(await Promise.all(specs.map(async (s) => [s, await specMdTime(root, s, copies)] as const)));
   const known = [...times.values()].filter((t): t is number => t !== null);
   const newest = known.length > 0 ? Math.max(...known) : null;
-
-  const sourceOf = (d: LibraryDoc): number | null => {
-    if (d.spec === WORKSPACE) return FROM_NEWEST_SPEC.has(d.type) ? newest : null;
-    return FROM_SPEC.has(d.path.slice(d.spec.length + 1)) ? (times.get(d.spec) ?? null) : null;
-  };
   const judged = docs.map((d): LibraryDoc => {
-    const source = sourceOf(d);
-    const stale = d.state === 'ok' && d.modified !== null && source !== null && Date.parse(d.modified) < source;
-    return stale ? { ...d, state: 'stale' } : d;
+    const from = derivesFrom(d);
+    return judgeStale(d, from === 'newest' ? newest : from === 'spec' ? (times.get(d.spec) ?? null) : null);
   });
   const missing = await Promise.all(specs.map((s) => missingOf(root, s, docs, copies)));
   return placeMissing(judged, missing.flat());
@@ -507,12 +556,8 @@ function groupsOf(input: DashboardInput): { groups: SpecGroupHead[]; fog: Librar
  * Reads only.
  */
 export async function readCatalog(root: string, input?: DashboardInput, options: CatalogOptions = {}): Promise<LibraryCatalog> {
-  const { copies } = options;
-  const specs = listSpecs(root).filter((s) => !s.archived);
-  const slugs = specs.map((s) => s.slug);
-  const perSpec = await Promise.all(slugs.map((s) => specDocs(root, s, copies)));
-  const docs = await judge(root, slugs, [...(await workspaceDocs(root)), ...perSpec.flat()], copies);
-  const { groups, fog } = groupsOf(input ?? (await stageInputOf(root, slugs, copies)));
+  const docs = await readCatalogDocs(root, options);
+  const { groups, fog } = groupsOf(input ?? (await stageInputOf(root, activeSpecs(root), options.copies)));
   return {
     docs,
     groups,
@@ -539,4 +584,109 @@ export function catalogSourceOf(
   if (own === undefined) return { dir: join(root, SPECS_DIR), rel: doc.path };
   const dir = folderOf(root, doc.spec, own, copies);
   return dir === join(root, SPECS_DIR, doc.spec) ? { dir: join(root, SPECS_DIR), rel: doc.path } : { dir, rel: FILE_KINDS[own].path };
+}
+
+/** The active spec folders of the workspace at `root`, as `listSpecs` finds them (real directories, never archived). */
+const activeSpecs = (root: string): string[] =>
+  listSpecs(root)
+    .filter((s) => !s.archived)
+    .map((s) => s.slug);
+
+/**
+ * The catalog's documents alone (`readCatalog(root).docs`): the workspace documents, then each active spec in number
+ * order with its documents, each judged `ok`, `stale` or `missing`. No group head, no fog line and no dashboard
+ * reading (stage input, workflow, lock sources): only the listed files, their mtimes and the specs' `spec.md` texts.
+ * `options.copies` as for `readCatalog`.
+ */
+export async function readCatalogDocs(root: string, options: CatalogOptions = {}): Promise<readonly LibraryDoc[]> {
+  const { copies } = options;
+  const slugs = activeSpecs(root);
+  const perSpec = await Promise.all(slugs.map((s) => specDocs(root, s, copies)));
+  return judge(root, slugs, [...(await workspaceDocs(root)), ...perSpec.flat()], copies);
+}
+
+/** A path segment the catalog can list at all: no empty, `.` or `..` segment, no backslash or NUL. */
+const plainSegment = (s: string): boolean => s !== '' && s !== '.' && s !== '..' && !s.includes('\\') && !s.includes('\0');
+
+/** Whether every folder from `base` down through `names` is a real directory, never a link. */
+async function realDirs(base: string, names: readonly string[]): Promise<boolean> {
+  let dir = base;
+  if (!(await isRealDir(dir))) return false;
+  for (const name of names) {
+    dir = join(dir, name);
+    if (!(await isRealDir(dir))) return false;
+  }
+  return true;
+}
+
+/**
+ * The prototype at `subs` below `<spec>/.design/prototype/` (the root itself for none), by `prototypesIn`'s rule: every
+ * folder on the way a real directory without a leading dot, the target holding HTML pages directly and no folder above
+ * it, from the prototype root down, holding any (it would own the target). Null otherwise.
+ */
+async function prototypeAt(root: string, spec: string, subs: readonly string[]): Promise<LibraryDoc | null> {
+  const specDir = join(root, SPECS_DIR, spec);
+  if (subs.some((s) => s.startsWith('.'))) return null;
+  if (!(await realDirs(specDir, [DESIGN_ASSETS, 'prototype', ...subs]))) return null;
+  let dir = join(specDir, PROTOTYPE_ROOT);
+  for (const sub of subs) {
+    if (pagesIn(await entriesOf(dir)).length > 0) return null;
+    dir = join(dir, sub);
+  }
+  const pages = pagesIn(await entriesOf(dir));
+  if (pages.length === 0) return null;
+  const rel = [spec, PROTOTYPE_ROOT, ...subs].join('/');
+  return prototypeDoc(dir, rel, spec, await previewCandidates(specDir), pages);
+}
+
+/** The listed, unjudged document at `path` (relative to `specs/`) by the zone rules, or null. */
+async function docAt(root: string, path: string, copies: CatalogOptions['copies']): Promise<LibraryDoc | null> {
+  const segments = path.split('/');
+  if (!segments.every(plainSegment)) return null;
+  const [first = '', ...rest] = segments;
+  const specsDir = join(root, SPECS_DIR);
+
+  if (rest.length === 0) {
+    const fixed = WORKSPACE_DOCS.find(([p]) => p === first);
+    return fixed === undefined ? null : fileDoc(root, path, fixed[1], WORKSPACE, 'markdown');
+  }
+  if (first === IDEAS_DIR) {
+    const name = rest[0] ?? '';
+    if (rest.length !== 1 || name.startsWith('.') || name === IDEAS_INDEX || mediaOf(name) !== 'markdown') return null;
+    return (await realDirs(specsDir, [IDEAS_DIR])) ? fileDoc(root, path, 'idea', WORKSPACE, 'markdown') : null;
+  }
+  if (!activeSpecs(root).includes(first)) return null;
+  const spec = first;
+
+  if (rest.length === 1) {
+    const kind = SPEC_DOCS.find((k) => FILE_KINDS[k].path === rest[0]);
+    return kind === undefined ? null : fileDoc(root, path, kind, spec, 'markdown', join(folderOf(root, spec, kind, copies), FILE_KINDS[kind].path));
+  }
+  const [folder = '', ...inside] = rest;
+  const zone = SPEC_ZONES.find(([name]) => name === folder);
+  if (zone === undefined) return null;
+  // `.design/prototype/` is not part of the design zone: its folders are prototypes, or nothing.
+  if (folder === DESIGN_ASSETS && inside[0] === 'prototype') return prototypeAt(root, spec, inside.slice(1));
+  const name = inside.at(-1) ?? '';
+  const media = mediaOf(name);
+  if (media === null || inside.some((s) => s.startsWith('.'))) return null;
+  if (!(await realDirs(join(specsDir, spec), [folder, ...inside.slice(0, -1)]))) return null;
+  return fileDoc(root, path, zone[1], spec, media);
+}
+
+/**
+ * The one catalog document at `path` (relative to `specs/`, POSIX separators), equal to the entry `readCatalog` lists
+ * for it, stale state included, or null when the catalog lists none there: a dot file, an archived spec, a symbolic
+ * link, a file outside the zones or of another media type, a folder that is no prototype, a malformed path. A
+ * `missing` entry names no file and is null here too. Decided by the zone rules on that path alone, reading only the
+ * folders on its way and the `spec.md` mtimes its stale state needs, never walking the tree. `options.copies` as for
+ * `readCatalog`: a spec's own files and its `spec.md` from its worktree copy.
+ */
+export async function catalogDocAt(root: string, path: string, options: CatalogOptions = {}): Promise<LibraryDoc | null> {
+  const { copies } = options;
+  const doc = await docAt(root, path, copies);
+  if (doc === null) return null;
+  const from = derivesFrom(doc);
+  if (from === null) return doc;
+  return judgeStale(doc, from === 'spec' ? await specMdTime(root, doc.spec, copies) : await newestSpecMdTime(root, activeSpecs(root), copies));
 }

@@ -1212,6 +1212,24 @@ test.describe('tech', () => {
   const FOGGY = HARBOR.specs.filter((spec) => spec.phase !== 'complete' && spec.fog.length > 0);
   const TECH_DOC = '[data-library-reader] [data-library-prose] .docs-prose';
   const section = (key: TechSectionKey): string => `${TECH_DOC} > section[data-library-tech-section="${key}"]`;
+  // ISC-157.2: the stub's `tech-heading` library serves harbor's tech.md with its architecture section under this heading.
+  const DIFFERING = 'How Harbor is built';
+
+  test('tech.md sections from core: a heading that differs from its key still opens its section (ISC-157.2)', async ({ page }) => {
+    await page.setExtraHTTPHeaders({ 'X-Spectant-Stub-Library': 'tech-heading' });
+    await page.goto(`${PAGE}?section=architecture#tech.md`);
+    await expect(page.locator(`${TECH_DOC} > section[data-library-tech-section]`)).toHaveCount(4);
+    await expect(page.locator(`${section('architecture')} > h2#architecture`)).toHaveText(DIFFERING);
+    await expect(page.locator(`${section('architecture')} > h2#architecture`)).toBeInViewport();
+  });
+
+  test('tech redirect: /w/:ws/tech/architecture lands on the architecture section under a differing heading (ISC-157.2)', async ({ page }) => {
+    await page.setExtraHTTPHeaders({ 'X-Spectant-Stub-Library': 'tech-heading' });
+    await page.goto(`/w/${WS}/tech/architecture`);
+    await expect(page).toHaveURL(/section=architecture/u);
+    await expect(page.locator(`${section('architecture')} > h2#architecture`)).toHaveText(DIFFERING);
+    await expect(page.locator(`${section('architecture')} > h2#architecture`)).toBeInViewport();
+  });
 
   test('tech.md: overview, stack, architecture and risks in contract order, each the golden content of the former Overview, Architecture and Open tabs', async ({ page, request }) => {
     const pages = HARBOR.pages;
@@ -1624,5 +1642,53 @@ test.describe('redirect', () => {
     await page.keyboard.press('o');
     await expect(page).toHaveURL((url) => url.pathname === PAGE && url.search === '' && url.hash === '');
     await expect(heading(page)).toBeVisible();
+  });
+});
+
+/**
+ * Code review 017, #2: the library rides the live refresh like the tech page it replaced. `r` (the same refresh as the
+ * timer and "Refresh now") re-reads the catalog with the ETag of the last answer (`If-None-Match`) and the open
+ * document with it; a changed catalog (here one more stale document, answered by the intercepted route) updates the
+ * counts in place, without a page reload. `bun run e2e -- library -g refresh`.
+ */
+test.describe('refresh', () => {
+  test.use(atWidth(WIDTHS.desktop));
+
+  test('r re-reads the catalog and the open document, and the counts change in place without a reload', async ({ page, request }) => {
+    const catalog = await catalogOf(request);
+    const flip = catalog.docs.find((doc) => doc.type !== 'evidence' && doc.state === 'ok' && doc.media === 'markdown');
+    expect(flip, 'an ok Markdown document to turn stale').toBeDefined();
+    const changed: LibraryCatalog = {
+      ...catalog,
+      docs: catalog.docs.map((doc) => (doc.path === flip?.path ? { ...doc, state: 'stale' } : doc)),
+      stale: catalog.stale + 1,
+    };
+
+    const first = page.waitForResponse((r) => new URL(r.url()).pathname === ROUTE && r.request().method() === 'GET');
+    await page.goto(PAGE);
+    const etag = (await first).headers()['etag'];
+    expect(etag, 'the catalog route answers with an ETag').toBeTruthy();
+    await expect(control(page, 'stale').locator('[data-library-control-count]')).toHaveText(String(catalog.stale));
+    await expect(page.locator('[data-library-reader] [data-library-prose]')).toBeVisible();
+    await page.evaluate(() => Object.assign(window, { libraryKept: true }));
+
+    const revalidations: Array<string | null> = [];
+    await page.route(
+      (url) => url.pathname === ROUTE,
+      async (route) => {
+        revalidations.push(route.request().headers()['if-none-match'] ?? null);
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(changed) });
+      },
+    );
+    const docRead = page.waitForRequest((r) => new URL(r.url()).pathname === `${ROUTE}/doc`);
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press('r');
+
+    await expect(control(page, 'stale').locator('[data-library-control-count]')).toHaveText(String(changed.stale));
+    await expect(page.locator(`[data-library-entry="${flip?.path ?? ''}"] [data-library-chip="stale"]`)).toHaveCount(1);
+    await docRead;
+    expect(revalidations[0]).toBe(etag);
+    expect(await page.evaluate(() => (window as unknown as { libraryKept?: boolean }).libraryKept)).toBe(true);
+    await expect(page.locator('[data-library-reader] [data-library-prose]')).toBeVisible();
   });
 });

@@ -5,13 +5,24 @@
 // `modified` of each document is known and a checkout never changes a result. `readCatalog` only reads.
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 
 import { buildDashboard, type DashboardInput } from '../src/dashboard.ts';
 import type { LibraryCatalog, LibraryDoc, SpecType } from '../src/files.ts';
-import { catalogSourceOf, readCatalog } from '../src/library.ts';
+import { catalogDocAt, catalogSourceOf, readCatalog, readCatalogDocs, STALE_TOLERANCE_MS } from '../src/library.ts';
 import { readLockSources } from '../src/locks.ts';
 import { renderDocsMarkdown } from '../src/markdown-docs.ts';
 import { stageOf, type StageInput } from '../src/stage.ts';
@@ -26,7 +37,7 @@ const FIXTURE = join(FIXTURES, 'library');
  * directory gets `DIRECTORY_TIME`, older than any file, so a prototype's time cannot come from its folder.
  */
 const TIMES: Readonly<Record<string, string>> = {
-  // 001: plan.md older than the spec's last events.jsonl line (2026-03-12T09:00Z), tasks.md and design.md newer.
+  // 001: plan.md older than its spec.md, tasks.md and design.md newer.
   'specs/001-lighthouse-map/spec.md': '2026-03-12T08:00:00Z',
   'specs/001-lighthouse-map/plan.md': '2026-03-05T10:00:00Z',
   'specs/001-lighthouse-map/tasks.md': '2026-03-13T10:00:00Z',
@@ -256,9 +267,11 @@ describe('catalog (ISC-155)', () => {
   });
 });
 
-// ISC-155.1: a document is `stale` when a file it derives from changed later. plan.md, tasks.md and design.md derive
-// from the spec.md of their spec, tech.md and tldr.md from the newest spec of the workspace. A spec's time is its newest
-// events.jsonl line, its spec.md mtime only without one. Each case reads its own copy with the times it needs.
+// ISC-155.1: a document is `stale` when the file it derives from was modified more than `STALE_TOLERANCE_MS` (60 s)
+// after it. plan.md, tasks.md and design.md derive from the spec.md of their spec, tech.md and tldr.md from the newest
+// spec.md of the workspace's active specs. events.jsonl plays no part: a stage event is no edit of the spec. The
+// tolerance keeps a `git checkout`, which rewrites every mtime within moments, from colouring fresh documents. Each case
+// reads its own copy with the times it needs.
 describe('stale (ISC-155.1)', () => {
   const roots: string[] = [];
 
@@ -282,29 +295,55 @@ describe('stale (ISC-155.1)', () => {
     for (const root of roots) rmSync(root, { recursive: true, force: true });
   });
 
-  test('stale: plan.md older than its spec and tldr.md older than the newest spec; every fresh document ok', async () => {
-    // 001's time is its last events.jsonl line 2026-03-12T09:00Z: plan.md (03-05) is stale, tasks.md and design.md
-    // (03-13) are not, nor are the images in its `.design/` folder, which derive from nothing. The newest spec is 001,
-    // so tldr.md (03-08) is stale and tech.md (03-14) is not. 002 has no plan, tasks or design; 003 and 004 neither.
+  test('stale: the tolerance is 60 seconds', () => {
+    expect(STALE_TOLERANCE_MS).toBe(60_000);
+  });
+
+  test('stale: plan.md older than its spec.md and tldr.md older than the newest spec.md; every fresh document ok', async () => {
+    // 001's spec.md is from 03-12T08:00: plan.md (03-05) is stale, tasks.md and design.md (03-13) are not, nor are the
+    // images in its `.design/` folder, which derive from nothing. The newest spec.md is 001's, so tldr.md (03-08) is
+    // stale and tech.md (03-14) is not. 002 has no plan, tasks or design; 003 and 004 neither.
     expect(await staleOf()).toEqual([`${S1}/plan.md`, 'tldr.md']);
   });
 
-  test('stale: a spec.md changed after its last events.jsonl line makes neither its documents nor tech.md stale', async () => {
-    // spec.md's mtime is newer than tasks.md, design.md and tech.md; the events.jsonl line decides, not the mtime.
-    expect(await staleOf({ [`specs/${S1}/spec.md`]: '2026-03-14T12:00:00Z' })).toEqual([`${S1}/plan.md`, 'tldr.md']);
+  test('stale: plan.md older than spec.md by more than 60 s is stale, by 60 s or less it is not', async () => {
+    expect(await staleOf({ [`specs/${S1}/plan.md`]: '2026-03-12T07:58:59Z' })).toEqual([`${S1}/plan.md`, 'tldr.md']);
+    expect(await staleOf({ [`specs/${S1}/plan.md`]: '2026-03-12T07:59:00Z' })).toEqual(['tldr.md']);
+    expect(await staleOf({ [`specs/${S1}/plan.md`]: '2026-03-12T07:59:30Z' })).toEqual(['tldr.md']);
   });
 
-  test('stale: a plan.md newer than spec.md but older than the last events.jsonl line is stale', async () => {
-    const overrides = { [`specs/${S1}/spec.md`]: '2026-03-02T00:00:00Z', [`specs/${S1}/plan.md`]: '2026-03-11T00:00:00Z' };
-    expect(await staleOf(overrides)).toEqual([`${S1}/plan.md`, 'tldr.md']);
+  test('stale: a stage event after plan.md does not make it stale', async () => {
+    // plan.md (03-12T08:30) is newer than spec.md (03-12T08:00) and older than 001's events.jsonl line (03-12T09:00).
+    const root = workspaceCopy({ [`specs/${S1}/plan.md`]: '2026-03-12T08:30:00Z' });
+    roots.push(root);
+    const events = join(root, 'specs', S1, 'events.jsonl');
+    const later = '{"ts":"2026-03-20T10:00:00Z","type":"stage","from":"plan","to":"build","actor":"agent"}\n';
+    writeFileSync(events, readFileSync(events, 'utf-8') + later);
+    const catalog = await readCatalog(root);
+    expect(catalog.docs.filter((d) => d.state === 'stale').map((d) => d.path)).toEqual(['tldr.md']);
   });
 
-  test('stale: without events.jsonl the spec.md mtime is the spec time', async () => {
-    // 001 without events.jsonl: its time is spec.md's mtime (03-12T08:00), so a plan.md from 03-12T08:30 is fresh.
-    const plan = { [`specs/${S1}/plan.md`]: '2026-03-12T08:30:00Z' };
-    expect(await staleOf(plan, [`specs/${S1}/events.jsonl`])).toEqual(['tldr.md']);
-    // 004 has no events.jsonl: its spec.md from 03-14T10:00 is the newest spec, newer than tech.md (03-14T09:00).
+  test('stale: spec.md edited after plan.md with no events.jsonl makes plan.md stale', async () => {
+    const overrides = { [`specs/${S1}/plan.md`]: '2026-03-12T07:00:00Z' };
+    expect(await staleOf(overrides, [`specs/${S1}/events.jsonl`])).toEqual([`${S1}/plan.md`, 'tldr.md']);
+  });
+
+  test('stale: a spec.md edit after the last events.jsonl line makes its documents and tech.md stale', async () => {
+    // spec.md (03-14T12:00) is newer than tasks.md, design.md (03-13) and tech.md (03-14T09:00); the mtime decides.
+    expect(await staleOf({ [`specs/${S1}/spec.md`]: '2026-03-14T12:00:00Z' })).toEqual([
+      `${S1}/design.md`,
+      `${S1}/plan.md`,
+      `${S1}/tasks.md`,
+      'tech.md',
+      'tldr.md',
+    ]);
+  });
+
+  test('stale: tech.md against the newest spec.md of any active spec', async () => {
+    // 004's spec.md from 03-14T10:00 is the newest, an hour after tech.md (03-14T09:00).
     expect(await staleOf({ [`specs/${S4}/spec.md`]: '2026-03-14T10:00:00Z' })).toEqual([`${S1}/plan.md`, 'tech.md', 'tldr.md']);
+    // 30 s after tech.md is within the tolerance.
+    expect(await staleOf({ [`specs/${S4}/spec.md`]: '2026-03-14T09:00:30Z' })).toEqual([`${S1}/plan.md`, 'tldr.md']);
   });
 
   test('stale: an archived spec is no spec of the workspace for tech.md and tldr.md', async () => {
@@ -312,9 +351,16 @@ describe('stale (ISC-155.1)', () => {
   });
 
   test('stale: a document level with its source is fresh', async () => {
-    // Equal times are not "changed later": plan.md at the spec's last events.jsonl line, tldr.md at the newest spec.
-    const level = { [`specs/${S1}/plan.md`]: '2026-03-12T09:00:00Z', 'specs/tldr.md': '2026-03-12T09:00:00Z' };
+    const level = { [`specs/${S1}/plan.md`]: '2026-03-12T08:00:00Z', 'specs/tldr.md': '2026-03-12T08:00:00Z' };
     expect(await staleOf(level)).toEqual([]);
+  });
+
+  test('stale: a checkout that rewrites every mtime within seconds colours nothing', async () => {
+    // Every file gets a time within 30 s of 03-20, in name order: spec.md files may land after their plans.
+    const start = Date.parse('2026-03-20T00:00:00Z');
+    const step = Math.floor(30_000 / FILES.length);
+    const checkout = Object.fromEntries(FILES.map((path, i) => [path, new Date(start + i * step).toISOString()]));
+    expect(await staleOf(checkout)).toEqual([]);
   });
 });
 
@@ -671,6 +717,143 @@ describe('preview (ISC-159)', () => {
   });
 });
 
+// Symlinks are not followed (code review #6): a symbolic link at a fixed document path (spec.md, tech.md, …) or inside
+// a zone is no document, wherever it points, and nothing is read through it.
+describe('symlinks', () => {
+  const dirs: string[] = [];
+  afterAll(() => {
+    for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('symlinks: a linked tech.md or context.md is not in the catalog and lends it no title', async () => {
+    const root = workspaceCopy();
+    const outside = mkdtempSync(join(tmpdir(), 'spectant-outside-'));
+    dirs.push(root, outside);
+    writeFileSync(join(outside, 'secret.md'), '# Outside secret\n');
+    rmSync(join(root, 'specs', 'tech.md'));
+    symlinkSync(join(outside, 'secret.md'), join(root, 'specs', 'tech.md'));
+    rmSync(join(root, 'specs', S1, 'context.md'));
+    symlinkSync(join(outside, 'secret.md'), join(root, 'specs', S1, 'context.md'));
+    const catalog = await readCatalog(root);
+    expect(catalog.docs.filter((d) => d.path === 'tech.md' || d.path === `${S1}/context.md`)).toEqual([]);
+    expect(catalog.docs.filter((d) => d.title === 'Outside secret').map((d) => d.path)).toEqual([]);
+    expect(await catalogDocAt(root, 'tech.md')).toBeNull();
+    expect(await catalogDocAt(root, `${S1}/context.md`)).toBeNull();
+  });
+});
+
+// The documents alone (code review #8): `readCatalogDocs` lists exactly `readCatalog`'s documents without the
+// dashboard reading, and `catalogDocAt` decides one path by the same zone rules without walking the tree.
+describe('lookup', () => {
+  const dirs: string[] = [];
+  afterAll(() => {
+    for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** A copy with extra entries no rule lists: dot files, a backlog index, links to files and folders outside. */
+  function trickyCopy(overrides: Readonly<Record<string, string>> = {}): string {
+    const root = workspaceCopy(overrides);
+    const outside = mkdtempSync(join(tmpdir(), 'spectant-outside-'));
+    dirs.push(root, outside);
+    writeFileSync(join(outside, 'secret.md'), '# Outside secret\n');
+    mkdirSync(join(outside, 'folder'));
+    writeFileSync(join(outside, 'folder', 'inner.md'), '# Inner secret\n');
+    const specs = join(root, 'specs');
+    writeFileSync(join(specs, 'ideas', 'README.md'), '# Backlog\n');
+    writeFileSync(join(specs, S1, 'artifacts', '.hidden.md'), '# Hidden\n');
+    writeFileSync(join(specs, S1, '.design', '.secret.png'), 'png');
+    mkdirSync(join(specs, S1, '.evidence', '.cache'));
+    writeFileSync(join(specs, S1, '.evidence', '.cache', 'x.md'), '# Cached\n');
+    symlinkSync(join(outside, 'secret.md'), join(specs, S1, 'artifacts', 'link.md'));
+    symlinkSync(join(outside, 'folder'), join(specs, S1, 'artifacts', 'linked'));
+    symlinkSync(join(outside, 'secret.md'), join(specs, 'ideas', 'linked.md'));
+    return root;
+  }
+
+  /** Every entry below `specs/` (files, folders and links, never followed), as paths relative to `specs/`. */
+  function entriesBelow(dir: string, rel = ''): string[] {
+    const out: string[] = [];
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const path = rel === '' ? e.name : `${rel}/${e.name}`;
+      out.push(path);
+      if (e.isDirectory()) out.push(...entriesBelow(join(dir, e.name), path));
+    }
+    return out;
+  }
+
+  test('lookup: readCatalogDocs lists exactly the documents of readCatalog', async () => {
+    for (const root of [trickyCopy(), trickyCopy({ [`specs/${S1}/spec.md`]: '2026-03-14T12:00:00Z' })]) {
+      expect(await readCatalogDocs(root)).toEqual((await readCatalog(root)).docs);
+    }
+  });
+
+  test('lookup: catalogDocAt returns each listed document equal to the catalog entry, stale state included', async () => {
+    for (const root of [trickyCopy(), trickyCopy({ [`specs/${S1}/spec.md`]: '2026-03-14T12:00:00Z' })]) {
+      const docs = (await readCatalog(root)).docs.filter((d) => d.state !== 'missing');
+      expect(docs.some((d) => d.state === 'stale')).toBe(true);
+      for (const doc of docs) expect({ path: doc.path, doc: await catalogDocAt(root, doc.path) }).toEqual({ path: doc.path, doc });
+    }
+  });
+
+  test('lookup: every entry below specs/ is a document exactly when the catalog lists it', async () => {
+    const root = trickyCopy();
+    const listed = new Map((await readCatalog(root)).docs.filter((d) => d.state !== 'missing').map((d) => [d.path, d]));
+    const paths = entriesBelow(join(root, 'specs'));
+    expect(paths.length).toBeGreaterThan(listed.size);
+    for (const path of paths) expect({ path, doc: await catalogDocAt(root, path) }).toEqual({ path, doc: listed.get(path) ?? null });
+  });
+
+  test('lookup: unlisted paths are null — dot files, archive, links, other media, missing entries, malformed paths', async () => {
+    const root = trickyCopy();
+    const unlisted = [
+      `${S1}/artifacts/.hidden.md`,
+      `${S1}/.design/.secret.png`,
+      `${S1}/.evidence/.cache/x.md`,
+      `${S1}/.gates/reviewed.json`,
+      `${S1}/events.jsonl`,
+      `${S1}/report.html`,
+      `${S1}/.evidence/ISC-1/run.log`,
+      `${S1}/artifacts/data.json`,
+      `${S1}/artifacts/link.md`,
+      `${S1}/artifacts/linked`,
+      `${S1}/artifacts/linked/inner.md`,
+      `${S1}/.design/prototype/index.html`,
+      `${S1}/.design/prototype/assets`,
+      `${S1}/.design/prototype/assets/logo.png`,
+      `${S2}/.design/prototype`,
+      `${S2}/.design/prototype/src`,
+      `${S2}/.design/prototype/src/README.md`,
+      `${S2}/.design/prototype/board/notes.md`,
+      `${S2}/plan.md`,
+      `${S2}/tasks.md`,
+      'archive/000-first-light/spec.md',
+      'archive/000-first-light/.design/prototype',
+      'tech/arch.png',
+      'workflow.md',
+      'tokens.jsonl',
+      'ideas/README.md',
+      'ideas/notes.txt',
+      'ideas/linked.md',
+      'ideas',
+      S1,
+      `${S1}/.design`,
+      '',
+      '/tech.md',
+      '../README.md',
+      `${S1}/../tech.md`,
+      './tech.md',
+      'tech.md/',
+      `${S1}/.design/prototype/`,
+      `${S1}//spec.md`,
+      `${S1}\\spec.md`,
+      '999-nowhere/spec.md',
+    ];
+    const missing = (await readCatalog(root)).docs.filter((d) => d.state === 'missing').map((d) => d.path);
+    expect(missing).toEqual([`${S2}/plan.md`, `${S2}/tasks.md`]);
+    for (const path of unlisted) expect({ path, doc: await catalogDocAt(root, path) }).toEqual({ path, doc: null });
+  });
+});
+
 describe('worktree copy (spec 027, ISC-181)', () => {
   const dirs: string[] = [];
 
@@ -686,8 +869,8 @@ describe('worktree copy (spec 027, ISC-181)', () => {
 
   /**
    * The fixture beside a copy of 001 and of 002 in a sibling folder, named in `copies` as the server's reading names a
-   * worktree copy. 001's copy: one more event line (2026-03-20), a retitled plan.md newer than it, a tasks.md with one
-   * more ticked task older than it, no `artifacts/`. 002's copy: spec.md at `phase: complete`, so it lacks nothing.
+   * worktree copy. 001's copy: spec.md edited on 2026-03-20, a retitled plan.md newer than it, a tasks.md with one more
+   * ticked task older than it, no `artifacts/`. 002's copy: spec.md at `phase: complete`, so it lacks nothing.
    */
   const planted = (): { root: string; copies: Record<string, string> } => {
     const root = workspaceCopy();
@@ -704,13 +887,10 @@ describe('worktree copy (spec 027, ISC-181)', () => {
     const c1 = copies[S1] as string;
     writeFileSync(join(c1, 'plan.md'), main(S1, 'plan.md').replace('# Plan 001 — lighthouse-map', '# Plan 001 — lighthouse-map (copy)'));
     writeFileSync(join(c1, 'tasks.md'), main(S1, 'tasks.md').replace('- [ ] T3', '- [x] T3'));
-    writeFileSync(
-      join(c1, 'events.jsonl'),
-      `${main(S1, 'events.jsonl')}{"ts":"2026-03-20T09:00:00Z","from":"build","to":"code-review","command":"/spec-implement 001","actor":"u:3f9c0a7d"}\n`,
-    );
     rmSync(join(c1, 'artifacts'), { recursive: true });
     touch(join(c1, 'plan.md'), '2026-03-21T09:00:00Z');
     touch(join(c1, 'tasks.md'), '2026-03-19T09:00:00Z');
+    touch(join(c1, 'spec.md'), '2026-03-20T09:00:00Z');
     const c2 = copies[S2] as string;
     writeFileSync(join(c2, 'spec.md'), main(S2, 'spec.md').replace('phase: scoping', 'phase: complete'));
     touch(join(c2, 'spec.md'), '2026-03-09T10:00:00Z');
@@ -729,7 +909,7 @@ describe('worktree copy (spec 027, ISC-181)', () => {
     // specDocs: title and time of the copy's plan.md and tasks.md; the catalog path stays the spec's own.
     expect(docOf(catalog, `${S1}/plan.md`)).toMatchObject({ title: 'Plan 001 — lighthouse-map (copy)', modified: '2026-03-21T09:00:00.000Z', state: 'ok' });
     expect(docOf(main, `${S1}/plan.md`)).toMatchObject({ title: 'Plan 001 — lighthouse-map', state: 'stale' });
-    // specTime: the copy's last event line (2026-03-20) makes its tasks.md, design.md and the workspace's tech.md stale.
+    // specMdTime: the copy's spec.md (2026-03-20) makes its tasks.md, design.md and the workspace's tech.md stale.
     expect(docOf(catalog, `${S1}/tasks.md`)).toMatchObject({ modified: '2026-03-19T09:00:00.000Z', state: 'stale' });
     expect(docOf(main, `${S1}/tasks.md`)?.state).toBe('ok');
     expect(docOf(catalog, `${S1}/design.md`)?.state).toBe('stale');

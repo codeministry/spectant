@@ -4,6 +4,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   ElementRef,
   inject,
   input,
@@ -16,7 +17,9 @@ import { LocationStrategy } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { DocsPage, LibraryDoc, LibraryDocType } from '../../../../../core/src/files';
+import type { LibraryDocPage } from '../../../../../server/src/spec-routes.contract';
 import { ApiClient } from '../../core/api.service';
+import { RefreshService } from '../../core/refresh.service';
 import { specLink } from '../../layout/shell/areas';
 import { ShellData } from '../../layout/shell/shell-data.service';
 import { UiIcon } from '../../shared/icons/icon';
@@ -146,17 +149,6 @@ export function rewriteProse(html: string, links: ProseLinks, doc: Document = do
 export const TECH_SECTIONS = ['overview', 'stack', 'architecture', 'risks'] as const;
 export type TechSection = (typeof TECH_SECTIONS)[number];
 
-/**
- * The heading words that name a section once the served page no longer carries its `<!-- section: key -->` marker
- * (core's renderer drops HTML comments): English and German, lower case, diacritics and punctuation removed.
- */
-const TECH_NAMES: Readonly<Record<TechSection, readonly string[]>> = {
-  overview: ['overview', 'uberblick', 'ueberblick', 'ubersicht', 'uebersicht'],
-  stack: ['stack', 'tech stack', 'technology stack', 'technologie stack', 'technologiestack'],
-  architecture: ['architecture', 'architektur'],
-  risks: ['risks', 'risk', 'risiken', 'risiko'],
-};
-
 const plainWords = (text: string): string =>
   text
     .normalize('NFD')
@@ -164,12 +156,6 @@ const plainWords = (text: string): string =>
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim();
-
-/** The section an h2 opens: its id is the key, or its text starts with one of the key's names; null for any other. */
-function sectionOf(heading: Element): TechSection | null {
-  const text = plainWords(heading.textContent);
-  return TECH_SECTIONS.find((key) => heading.id === key || TECH_NAMES[key].some((name) => text === name || text.startsWith(`${name} `))) ?? null;
-}
 
 export const isTechSection = (value: unknown): value is TechSection => (TECH_SECTIONS as readonly unknown[]).includes(value);
 
@@ -201,26 +187,30 @@ interface TechChunk {
 
 /**
  * The served tech.md page (one `DocsPage` of the whole file, the markers gone) as its four sections (ISC-157): the
- * prose is cut at each h2; an h2 named after a section (`sectionOf`) opens it, any other h2 stays in the section before
- * it. When no h2 names a section, the first four h2 are the four sections in contract order, as `/spec-doc` writes them.
- * Each section becomes `<section data-library-tech-section="key">` with its h2's id set to the key (the stable anchor),
+ * sections are core's (`techSections`, `techSectionHeads` over the file's `<!-- section: key -->` markers, ISC-157.2).
+ * Each key's heading names a level-2 entry of the page's own toc, and that h2 (by its id) opens the section; any other
+ * h2 stays in the section before it. Nothing is named from a heading's words, so a differing heading still opens its
+ * section, and a page without core's heads has no section. Each section becomes `<section data-library-tech-section="key">` with its h2's id set to the key (the stable anchor),
  * in the order overview, stack, architecture, risks whatever the file's; prose before the first h2 stays in front,
  * without the h1 (the reader's head shows the title). The contents list holds exactly the present sections. Parsed in
  * an inert `template` and rebuilt from core's own nodes, so the output is as trusted as core's input.
  */
-export function techReading(page: DocsPage, doc: Document = document): TechReading {
+export function techReading(page: LibraryDocPage, doc: Document = document): TechReading {
+  // Core's heads to the h2 ids of this page: each heading claims the first unclaimed level-2 toc entry of its text.
+  const keyOfId = new Map<string, TechSection>();
+  for (const head of page.techSections ?? []) {
+    const entry = page.toc.find((t) => t.level === 2 && t.text === head.heading && !keyOfId.has(t.anchor));
+    if (head.heading !== null && entry !== undefined) keyOfId.set(entry.anchor, head.key);
+  }
   const template = doc.createElement('template');
   template.innerHTML = page.html;
   const lead: Node[] = [];
   const chunks: TechChunk[] = [];
   for (const node of [...template.content.childNodes]) {
     const tag = node instanceof Element ? node.tagName : '';
-    if (tag === 'H2' && node instanceof Element) chunks.push({ heading: node, key: sectionOf(node), nodes: [node] });
+    if (tag === 'H2' && node instanceof Element) chunks.push({ heading: node, key: keyOfId.get(node.id) ?? null, nodes: [node] });
     else if (chunks.length > 0) chunks.at(-1)?.nodes.push(node);
     else if (tag !== 'H1') lead.push(node);
-  }
-  if (chunks.every((chunk) => chunk.key === null)) {
-    for (const [at, chunk] of chunks.entries()) chunk.key = TECH_SECTIONS[at] ?? null;
   }
   const sections = new Map<TechSection, TechChunk>();
   let last: Node[] = lead;
@@ -339,13 +329,22 @@ export class LibraryReader {
 
   /** The current Markdown document as core renders it (`GET …/library/doc?path=`); idle for images, prototypes, missing. */
   private readonly page = resource({
-    params: () => {
+    params: () => this.target(),
+    loader: ({ params }) => this.api.libraryDoc(params.ws, params.path),
+  });
+  /**
+   * The document the page reads, equal while workspace and path are: a refreshed catalog hands the reader a new `doc`
+   * object for the same file, which must not start a fresh load (that would drop the value and flash the loading state).
+   */
+  private readonly target = computed(
+    () => {
       const doc = this.doc();
       return doc !== null && doc.media === 'markdown' && doc.state !== 'missing' ? { ws: this.workspace(), path: doc.path } : undefined;
     },
-    loader: ({ params }) => this.api.libraryDoc(params.ws, params.path),
-  });
-  protected readonly loading = computed(() => this.page.isLoading());
+    { equal: (a, b) => a?.ws === b?.ws && a?.path === b?.path },
+  );
+  /** A first read of a document; a refresh's reload keeps the shown document in place, so it is no loading state. */
+  protected readonly loading = computed(() => this.page.status() === 'loading');
   protected readonly failed = computed(() => {
     if (this.page.status() === 'error') return true;
     const result = this.page.hasValue() ? this.page.value() : undefined;
@@ -400,6 +399,16 @@ export class LibraryReader {
   });
 
   constructor() {
+    // The live refresh re-reads the open document with the catalog (ETag, so an unchanged file costs a 304); the
+    // reload keeps the shown page, so the prose, its scroll position and a selection in it stay in place.
+    const refresher = inject(RefreshService);
+    let seen = refresher.refreshes();
+    effect(() => {
+      const count = refresher.refreshes();
+      if (count === seen) return;
+      seen = count;
+      untracked(() => this.page.reload());
+    });
     // A cross reference's href follows the address's filters, set on the drawn anchors, so the prose is not redrawn.
     afterRenderEffect({
       write: () => {
