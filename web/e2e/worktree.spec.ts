@@ -108,7 +108,8 @@ test.describe('chip', () => {
         if (width === WIDTHS.desktop) expect(without.map((c) => c.alone), 'at 1440 both pills stand on their own line').toEqual([true, true]);
         // Principal 2026-10-13: the chip stays compact on cards at every width. Where the pill stood on a line of its
         // own (both cards at 1440) the chip joins that line and the card keeps its height; where feature, milestone and
-        // pill already share the line (390, 820) the group wraps — that case is an open design question, not asserted.
+        // pill already share the line (390, 820) the group wraps and the card grows by one line — accepted by the
+        // principal (spec 027 § Decisions), so only the first case is asserted.
         without.forEach((before, i) => {
           if (before.alone) expect(withChip[i]?.height, `card ${String(i)}: the compact chip joins the pill's line, no card grows`).toBe(before.height);
         });
