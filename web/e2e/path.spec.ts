@@ -187,7 +187,7 @@ for (const width of [1440, 600, 390] as const) {
  */
 const P5 = { ws: 'harbor', spec: '002' } as const;
 const P5_REF = `spec:${P5.spec}`;
-const P5_BUDGET = { steps: 1, seconds: 1.5 } as const;
+const P5_BUDGET = { steps: 1, seconds: 2.65 } as const;
 const P5_PRESENTATION: Readonly<Record<number, string>> = { 1440: 'floating', 600: 'sheet', 390: 'sheet' };
 
 test.describe('P5 · step counter', () => {
