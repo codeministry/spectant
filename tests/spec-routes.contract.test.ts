@@ -716,6 +716,8 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
     const claim = keysOf<ClaimView>({
       id: "req", text: "req", feature: "req", state: "req", kind: "req", edges: "req", blockedBy: "req", probe: "req",
       verification: "req", lock: "req", dropped: "req", noteCount: "req", line: "req",
+      // spec 025: the spec edges of the claim's `(after: …)` (ISC-162)
+      afterSpecs: "opt",
     });
     expect([
       ...shapeProblems("claims", value, keysOf<ClaimViewModel>({ claims: "req", features: "req", fog: "req", counts: "req" })),
@@ -739,6 +741,8 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
     const row = keysOf<TaskRow>({
       id: "req", claim: "req", flags: "req", lane: "req", state: "req", edges: "req", paths: "req", text: "req",
       line: "req", status: "req", round: "req", builder: "req", reason: "req", note: "req", pathNote: "req",
+      // spec 025: the spec edges of the task's `(after: …)` (ISC-162)
+      afterSpecs: "opt",
     });
     expect([
       ...shapeProblems("tasks", value, keysOf<TasksTab>({ tasks: "req", probeMapping: "req", counts: "req", diagnostics: "req" })),

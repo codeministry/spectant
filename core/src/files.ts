@@ -447,7 +447,9 @@ export interface SpecGates {
  * `locks`: a lock source could not be read cleanly (spec 002 T115); see LockDiagnostic. `worktree-branch-mismatch`: the
  * path and the branch of the spec's worktree name two different specs, and the path won (spec 027, ISC-174.1).
  * `activity-event-unknown`: `.spectant/activity.jsonl` holds an event that is neither `claim`, `release` nor a
- * `RunEvent`; the file is read on (ISC-179).
+ * `RunEvent`; the file is read on (ISC-179). `spec-overlap`: two open specs change the same file by their plan or task
+ * paths and no spec edge joins them; see `SpecOverlap` (spec 025, ISC-164). `spec-edge`: a spec edge names a number
+ * no spec carries, or spec edges form a cycle (spec 025, ISC-162.4).
  */
 export type WarningKind =
   | 'review'
@@ -457,7 +459,9 @@ export type WarningKind =
   | 'drift'
   | 'locks'
   | 'worktree-branch-mismatch'
-  | 'activity-event-unknown';
+  | 'activity-event-unknown'
+  | 'spec-overlap'
+  | 'spec-edge';
 
 export interface SpecWarning {
   readonly kind: WarningKind;
@@ -466,6 +470,71 @@ export interface SpecWarning {
   readonly command?: string;
   /** A claim ID or file the warning names. */
   readonly ref?: string;
+  /** The pair behind a `spec-overlap` warning; absent on every other kind (spec 025, ISC-164). */
+  readonly overlap?: SpecOverlap;
+}
+
+// ─── Spec edges (spec-edges.ts, spec 025) ────────────────────────────────────────────────────────────────────────
+
+/**
+ * One spec edge: a three-digit number in the `(after: …)` of a task in `tasks.md` or of a claim in `spec.md`, read as
+ * the whole spec with that number, active or archived (ISC-162). It sits beside the task and claim edges of the same
+ * group. `state` is `met` once the target spec counts as merged (see `MergeState`), else `open`; an edge in a cycle
+ * stays `open` (ISC-162.4).
+ */
+export interface SpecEdge {
+  /** The spec that carries the edge, `NNN`. */
+  readonly fromSpec: string;
+  /** Whether a task line or a claim line carries it. */
+  readonly fromKind: 'task' | 'claim';
+  /** The carrying task id (`T7`) or claim ID (`ISC-162`). */
+  readonly fromId: string;
+  /** The spec the edge waits on, `NNN`. */
+  readonly toSpec: string;
+  readonly state: 'open' | 'met';
+}
+
+/**
+ * The merge state of one spec, read by the server and handed to `core/` as input; `core/` runs no git (ISC-162.1). A
+ * spec edge on this spec is met when `merged`; without a branch, when `complete` or `archived`.
+ */
+export interface MergeState {
+  /** `NNN`. */
+  readonly spec: string;
+  /** The spec's branch (`feature/`, `fix/`, `spike/` or `infra/` plus `NNN-slug`); null when no such branch exists. */
+  readonly branch: string | null;
+  /** The branch is an ancestor of `main`; false without a branch. */
+  readonly merged: boolean;
+  /** The spec's frontmatter carries `phase: complete`. */
+  readonly complete: boolean;
+  /** The spec lives under `specs/archive/`. */
+  readonly archived: boolean;
+}
+
+/** What one spec waits on: the targets of its open spec edges and how much of its open work they hold (ISC-162.2/.3). */
+export interface SpecWait {
+  /** `NNN`. */
+  readonly spec: string;
+  /** Target specs of the open spec edges, `NNN`, ascending, each once. */
+  readonly blockers: readonly string[];
+  /** Open tasks held by an open spec edge, on the task or on its claim. */
+  readonly heldTasks: number;
+  /** Open tasks of the spec in all. */
+  readonly openTasks: number;
+  /** Every open piece of work hangs on an open spec edge: the stage reads `blocked` (ISC-162.3). */
+  readonly full: boolean;
+}
+
+/** The pair behind a `spec-overlap` warning (ISC-164). */
+export interface SpecOverlap {
+  /** The two specs, `NNN`, ascending. */
+  readonly specs: readonly [string, string];
+  /** Paths both change by plan or task path column, minus `shared_files:`, in path order. */
+  readonly paths: readonly string[];
+  /** The spec that waits by the rule stage, then claim progress, then the higher number. */
+  readonly waiting: string;
+  /** The edge the waiting spec could carry, `(after: NNN)`. */
+  readonly edge: string;
 }
 
 export interface WaitingItem {
@@ -1068,6 +1137,11 @@ export interface ClaimView {
   /** Claim IDs from `(after: …)`. */
   readonly edges: readonly string[];
   /**
+   * Spec numbers (`NNN`) from the same `(after: …)`, apart from the claim IDs in `edges` (spec 025, ISC-162). Absent
+   * until the claim parser reads them; read as empty then.
+   */
+  readonly afterSpecs?: readonly string[];
+  /**
    * The edges still unresolved (open, or an ID the file does not hold), in edge order; non-empty exactly when the
    * state is `blocked`. Empty for a closed or dropped claim.
    */
@@ -1155,6 +1229,11 @@ export interface TaskView {
   readonly state: TaskState;
   /** Task ids from `(after: …)`. */
   readonly edges: readonly string[];
+  /**
+   * Spec numbers (`NNN`) from the same `(after: …)`, apart from the task ids in `edges` (spec 025, ISC-162). Absent
+   * until the task parser reads them; read as empty then.
+   */
+  readonly afterSpecs?: readonly string[];
   readonly paths: readonly string[];
   readonly text: string;
   /** 1-based line in tasks.md, for the checkbox write. */

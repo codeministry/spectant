@@ -42,9 +42,10 @@ export function folders(dir: string): SpecFiles[] {
  * with a `specs/` folder, in name order, minus the trees that are not dashboard trees. A directory without `specs/`
  * holds input of another kind, such as the `git worktree list --porcelain` listings in `worktrees/` (spec 027).
  * `library/` is the document catalog's workspace (spec 017, `core/tests/library.test.ts`), with no master and no
- * golden snapshot.
+ * golden snapshot. `edges/` is the spec-edge workspace (spec 025, `core/tests/spec-edges.test.ts`), likewise without a
+ * master and a golden snapshot.
  */
-const NOT_DASHBOARD_TREES: ReadonlySet<string> = new Set(['library']);
+const NOT_DASHBOARD_TREES: ReadonlySet<string> = new Set(['library', 'edges']);
 
 export function fixtureTrees(): string[] {
   return readdirSync(FIXTURES, { withFileTypes: true })
