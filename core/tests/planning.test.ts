@@ -1291,10 +1291,11 @@ describe('planning: backlog', () => {
   const ROOT = join(import.meta.dir, '..', '..');
   const present = existsSync(join(ROOT, 'specs', 'ideas')) && existsSync(join(ROOT, 'ISA.md'));
 
-  test.skipIf(!present)('backlog: the own tree holds F10 to F22 and three milestones, every story names both, zero unknown-*', () => {
+  test.skipIf(!present)('backlog: the own tree holds the backlog blocks and three milestones, every story names both, zero unknown-*', () => {
     const model = planningModel(ROOT);
     const blocks = new Set(model.features.map((f) => f.id));
-    const wanted = Array.from({ length: 13 }, (_, i) => `F${i + 10}`);
+    // The blocks F10 to F22 were folded into these survivors when the master's features were regrouped (2026-10-14).
+    const wanted = ['F3', 'F4', 'F8', 'F15', 'F16', 'F17', 'F19', 'F21', 'F22'];
     expect(wanted.filter((id) => !blocks.has(id))).toEqual([]);
     expect(model.milestones).toHaveLength(3);
     const milestones = new Set(model.milestones.map((m) => m.name));
