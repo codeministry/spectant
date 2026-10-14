@@ -1,4 +1,4 @@
-import type { PlanningModel } from '../../../../../core/src/planning';
+import { type PlanningModel, buildPlanning } from '../../../../../core/src/planning';
 import { allowedTransition, reasonOf, storyStep } from '../../../../../core/src/stage';
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
 import planningGolden from '../../../../../core/fixtures/harbor.planning.golden.json';
@@ -222,6 +222,34 @@ describe('buildBoard (T120, ISC-129)', () => {
       const c = card(model, 'registry-webhooks');
       expect(c && dropTargetsOf(c, PLANNING.workflow, PLANNING.stages)).toEqual(['plan']);
     });
+  });
+});
+
+// Spec 033 (ISC-186, ISC-186.1): a spec that holds no claim yet, such as an allocated story, carries the feature its
+// isa_feature names on its card and stands in that feature's swimlane, never in the one without a feature.
+describe('claimless specs (spec 033)', () => {
+  const master = ['# Master', '', '## Features', '', '### F1 · Loader', 'Why: Loader matters.', '', '- [ ] ISC-1: One.', '', '### F2 · Board', 'Why: Board matters.', ''].join('\n');
+  const spec = (feature: string, claims: string): string => ['---', 'task: "A spec"', `isa_feature: ${feature}`, '---', '', '# Spec', '', claims].join('\n');
+  const planning = buildPlanning({
+    master,
+    specs: [
+      { folder: '001-loader', texts: { spec: spec('F1', '- [ ] ISC-1: One.') } },
+      { folder: '002-board', texts: { spec: spec('F2', '') } },
+    ],
+    archived: [],
+    specStates: [
+      { slug: '001-loader', stage: 'plan', stageSource: 'explicit' },
+      { slug: '002-board', stage: 'plan', stageSource: 'explicit' },
+    ],
+  });
+
+  it('claimless: the card carries its isa_feature and stands in that swimlane, not in the one without a feature', () => {
+    const model = buildBoard({ planning, rows: [], query: { ...EMPTY_BOARD_QUERY, group: 'feature' } });
+    expect(card(model, '002')).toMatchObject({ feature: 'F2', featureName: 'Board' });
+    expect(column(model, 'plan')?.bands.map((b) => [b.key, b.count])).toEqual([
+      ['F1', 1],
+      ['F2', 1],
+    ]);
   });
 });
 

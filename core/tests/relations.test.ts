@@ -157,6 +157,7 @@ describe('relations: inline', () => {
     specs: [
       { folder: '001-a', texts: { spec: spec('F0', [1, 2, 3, 4]) } },
       { folder: '002-empty', texts: { spec: spec('F0', []) } },
+      { folder: '003-stray', texts: { spec: spec('F9', []) } },
     ],
     archived: [],
   });
@@ -172,10 +173,13 @@ describe('relations: inline', () => {
     expect(entry(index, 'feature:F0')).toMatchObject({ closed: 1, total: 4 });
   });
 
-  test('cascade: an unheld claim hangs under its feature alone, a folder without claims stands on its own', () => {
+  // Spec 033 (ISC-186): a folder without claims hangs under the block its isa_feature names; naming no block of the
+  // master, it stands on its own.
+  test('cascade: an unheld claim hangs under its feature alone, a folder without claims under its isa_feature or on its own', () => {
     expect(entry(index, 'claim:ISC-5')?.parents).toEqual(['feature:F0']);
-    expect(entry(index, 'spec:002')).toMatchObject({ parents: [], children: [], closed: 0, total: 0 });
-    expect(entry(index, 'feature:F0')?.children).toEqual(['spec:001', 'claim:ISC-1', 'claim:ISC-2', 'claim:ISC-3', 'claim:ISC-4', 'claim:ISC-5']);
+    expect(entry(index, 'spec:002')).toMatchObject({ parents: ['feature:F0'], children: [], closed: 0, total: 0 });
+    expect(entry(index, 'spec:003')).toMatchObject({ parents: [], children: [], closed: 0, total: 0 });
+    expect(entry(index, 'feature:F0')?.children).toEqual(['spec:001', 'spec:002', 'claim:ISC-1', 'claim:ISC-2', 'claim:ISC-3', 'claim:ISC-4', 'claim:ISC-5']);
   });
 
   test('the builder is exported and pure: the same tree builds the same index', () => {
@@ -185,7 +189,8 @@ describe('relations: inline', () => {
     expect(core.buildRelations(tree)).toEqual(rebuilt);
     expect(entry(rebuilt, 'feature:F0')?.ref).toBe('feature:F0');
     // Without the folder list and the edges, the index holds the specs the tree names and no blocker.
-    expect(entry(rebuilt, 'spec:002')).toBeUndefined();
+    expect(entry(rebuilt, 'spec:002')?.parents).toEqual(['feature:F0']);
+    expect(entry(rebuilt, 'spec:003')).toBeUndefined();
     expect(entry(rebuilt, 'claim:ISC-3')?.blockers).toEqual([]);
   });
 });

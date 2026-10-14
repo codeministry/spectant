@@ -12,13 +12,14 @@ import { actorIdOf } from "../core/src/actor-id.ts";
 import { validateEventLine } from "../core/src/events.ts";
 import type { SpecPageModel } from "../core/src/files.ts";
 import { readGateMark } from "../core/src/gates.ts";
+import { buildPlanning } from "../core/src/planning.ts";
 import type { EmbeddedManifest } from "../server/src/assets.contract.ts";
 import { run } from "../server/src/cli.ts";
 import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import { specRoutes } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
-import { loadDashboard } from "../server/src/workspace-loader.ts";
+import { loadDashboard, readWorkspaceInput } from "../server/src/workspace-loader.ts";
 import { WRITE_PATHS } from "../server/src/writes.contract.ts";
 import { type PlantedWorktreeRepo, SPEC_FOLDER, SPEC_ID, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
@@ -143,6 +144,31 @@ describe("ISC-122.2 the feature-level code-review mark: spectant gate code-revie
     // The dashboard, built by core over the copy as it now is: the mark is fresh and both specs stand in close.
     expect(await stagesOf(repo)).toEqual({ [F6[0] ?? ""]: "close/fresh", [F6[1] ?? ""]: "close/fresh" });
     expect(out.join("\n")).toContain("wrote the mark (scope F6");
+  });
+
+  // Spec 033 (ISC-186.1): a spec of F6 that holds no claim yet, an allocated story, stands under F6 in the planning tree
+  // but is no target of the mark: the command marks 008 and 009 as before and leaves the story's folder byte-identical.
+  test("feature F6 with a claimless spec of F6: --yes marks 008 and 009 only, the claimless folder stays byte-identical", async () => {
+    const repo = harbor({ closed: true, git: true });
+    const story = join(repo, "specs", "010-referrers-story");
+    mkdirSync(story);
+    const spec = ["---", 'task: "Story allocated under F6"', "slug: 010-referrers-story", "spec_type: spike", "isa_feature: F6", "stage: review", "---", "", "# 010 — referrers story", ""];
+    writeFileSync(join(story, "spec.md"), spec.join("\n"));
+    writeFileSync(join(story, "events.jsonl"), `${JSON.stringify({ ts: "2026-03-10T09:00:00Z", from: null, to: "review", command: "/spec new referrers-story", actor: "u:3f9c0a7d" })}\n`);
+    gitIn(repo, "add", "-A");
+    gitIn(repo, "-c", "user.name=t", "commit", "--quiet", "-m", "story");
+    const reading = await readWorkspaceInput(repo, null);
+    if (!reading.readable) throw new Error(`unreadable: ${reading.error}`);
+    const f6 = buildPlanning({ ...reading.input, ideas: reading.ideas, workflow: reading.workflow }).features.find((f) => f.id === "F6");
+    expect(f6?.holders.find((h) => h.slug === "010-referrers-story")).toMatchObject({ main: true, held: 0 });
+    const before = snapshot(repo);
+
+    expect(await run(["gate", "code-reviewed", "F6", "--root", repo, "--yes"], MANIFEST)).toBe(0);
+    expect(err).toEqual([]);
+    const allowed = F6.flatMap((f) => WRITE_PATHS.codeReviewFeature.writes.map((p) => p.replace("specs/NNN-slug/", `specs/${f}/`))).sort();
+    const touched = changed(before, snapshot(repo));
+    expect(touched).toEqual(allowed);
+    expect(touched.filter((path) => path.startsWith("specs/010-referrers-story/"))).toEqual([]);
   });
 
   test("feature F6 with 009 open: refuses with exit 1, names 009 and ISC-131, and writes nothing", async () => {

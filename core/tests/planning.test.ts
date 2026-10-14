@@ -12,6 +12,7 @@ import type { PlanningInput, PlanningModel } from '../src/planning.ts';
 import { DEFAULT_WORKFLOW, boardStages, parseWorkflow } from '../src/workflow.ts';
 import { expectGolden, goldenPath, goldenText } from './helpers/golden.ts';
 import { buildDashboard } from '../src/dashboard.ts';
+import { featureCodeReviewTargets } from '../src/gates.ts';
 import { specIdOf } from '../src/spec-ref.ts';
 import type { DashboardInput, DashboardSpecRow } from '../src/dashboard.ts';
 import { diagnosticsOf, EXPECTED_WARNINGS } from './helpers/expected-warnings.ts';
@@ -154,10 +155,86 @@ describe('planning: main feature', () => {
     expect(active.features[0]?.claims.map((c) => [c.id, c.holder])).toEqual([['ISC-1', '009'], ['ISC-2', '001']]);
     expect(holdersOf(active, 'F0').map((h) => [h.id, h.archived, h.held])).toEqual([['009', false, 1], ['001', true, 1]]);
 
-    // Two active folders list ISC-1: the lower id wins and the loser's held does not count it.
+    // Two active folders list ISC-1: the lower id wins and the loser's held does not count it. Left with no live claim,
+    // the loser stands under its isa_feature with held 0 (spec 033, ISC-186).
     const twin = core.buildPlanning({ master: one, specs: [folderOf('005-later', 'F0', [1]), folderOf('003-earlier', 'F0', [1, 2])], archived: [] });
     expect(twin.features[0]?.claims.map((c) => [c.id, c.holder])).toEqual([['ISC-1', '003'], ['ISC-2', '003']]);
-    expect(holdersOf(twin, 'F0').map((h) => [h.id, h.held])).toEqual([['003', 2]]);
+    expect(holdersOf(twin, 'F0').map((h) => [h.id, h.held])).toEqual([['003', 2], ['005', 0]]);
+  });
+});
+
+// Spec 033 (ISC-186, ISC-186.1): a spec that holds no live claim, such as a story just allocated, stands under the block
+// the first word of its `isa_feature` names, as its main feature with nothing held; no count moves.
+describe('planning: claimless', () => {
+  const master = [
+    '# Master',
+    '',
+    '## Features',
+    '',
+    '### F1 · Loader',
+    'Why: Loader matters.',
+    'Milestone: Beta',
+    '',
+    claimLine(1),
+    claimLine(2),
+    '',
+    '### F2 · Board',
+    'Why: Board matters.',
+    'Milestone: Beta',
+    '',
+    claimLine(3),
+    '',
+    '### F3 · Later',
+    'Why: Later matters.',
+    '',
+    '## Milestones',
+    '',
+    '- Beta · 2026-12-31 · The first cut.',
+    '',
+  ].join('\n');
+  const story = (folder: string, feature: string | null): { folder: string; texts: { spec: string } } => ({
+    folder,
+    texts: { spec: ['---', 'task: "A story"', ...(feature === null ? [] : [`isa_feature: ${feature}`]), '---', '', '# Spec', ''].join('\n') },
+  });
+  const held = folderOf('001-loader', 'F1', [1, 2]);
+  const loose = [story('004-loose', null), story('005-stray', 'F9')];
+  const without = core.buildPlanning({ master, specs: [held, ...loose], archived: [] });
+  const model = core.buildPlanning({ master, specs: [held, story('002-board', 'F2'), story('003-later', 'F3'), ...loose], archived: [] });
+
+  test('claimless: a spec without a live claim is the main holder of the block its isa_feature names, holding 0', () => {
+    expect(holdersOf(model, 'F2').map((h) => [h.id, h.main, h.held])).toEqual([['002', true, 0]]);
+    expect(holdersOf(model, 'F3').map((h) => [h.id, h.main, h.held])).toEqual([['003', true, 0]]);
+    expect(holdersOf(model, 'F1').map((h) => [h.id, h.main, h.held])).toEqual([['001', true, 2]]);
+    expect(model.relations?.['spec:002']?.parents).toEqual(['feature:F2']);
+    expect(model.relations?.['spec:003']?.parents).toEqual(['feature:F3']);
+  });
+
+  test('claimless: no closed or total of a feature or a milestone moves', () => {
+    const counts = (m: PlanningModel): unknown => ({
+      features: m.features.map((f) => [f.id, f.closed, f.total, f.unheld]),
+      milestones: m.milestones.map((ms) => [ms.slug, ms.closed, ms.total, ms.features]),
+      recount: m.recount,
+    });
+    expect(counts(model)).toEqual(counts(without));
+  });
+
+  test('claimless: the matrix places the spec in its feature column, a spec without a known block stays unplaced', () => {
+    const matrix = core.planningMatrix(model);
+    expect(matrix.unplaced).toEqual(['spec:004', 'spec:005']);
+    const cellOf = (spec: string): [string | null, string] | undefined => {
+      for (const lane of matrix.lanes) {
+        for (const [i, cell] of lane.cells.entries()) if (cell.some((card) => card.ref === spec)) return [lane.ref, matrix.columns[i]?.ref ?? ''];
+      }
+      return undefined;
+    };
+    expect(cellOf('spec:002')).toEqual(['milestone:beta', 'feature:F2']);
+    expect(cellOf('spec:003')).toEqual([null, 'feature:F3']);
+    expect(core.planningMatrix(without).unplaced).toEqual(['spec:004', 'spec:005']);
+  });
+
+  test('claimless: anti, the feature-level code-review mark never targets a spec that holds no live claim', () => {
+    expect(featureCodeReviewTargets(model, 'F2')).toEqual([]);
+    expect(featureCodeReviewTargets(model, 'F3')).toEqual([]);
   });
 });
 

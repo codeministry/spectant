@@ -109,7 +109,8 @@ const refOf = (type: RelationType, id: string): RelationRef => `${type}:${id}`;
  *
  * - milestone › feature: the blocks of `PlanningMilestone.features`, i.e. those whose `Milestone:` line names it where
  *   the master carries lines, otherwise the blocks its specs hold claims of (so a feature may sit under two milestones);
- * - feature › spec: the block's holders (`held` > 0); a spec's parents list its main feature first, then master order;
+ * - feature › spec: the block's holders (`held` > 0, or a spec holding no live claim under the block its `isa_feature`
+ *   names, spec 033); a spec's parents list its main feature first, then master order;
  * - spec › claim: the claims whose `holder` it is, dropped ones included; a claim's parents are its spec, then its block;
  * - feature › claim: every claim of the block, master order, after the specs;
  * - feature › idea and milestone › idea: the block a story's `feature:` names and the valid milestone its `milestone:`
@@ -200,8 +201,8 @@ export function buildRelations(input: RelationsInput): RelationIndex {
 
 /**
  * One card of the matrix: one spec, as its index entry counts it. Its column is its main feature, the first feature of
- * the entry's `parents` (the `isa_feature`'s first word where the spec holds claims of it, else the first held feature
- * in master order); the spec's other features ride along as chips (ISC-169.1).
+ * the entry's `parents` (the `isa_feature`'s first word where the spec holds claims of it or holds none at all, else the
+ * first held feature in master order); the spec's other features ride along as chips (ISC-169.1).
  */
 export interface LensCard {
   /** `spec:<NNN>`, the sidebar's `?sel=`. */
@@ -266,7 +267,10 @@ export interface LensLane {
 export interface MatrixLens {
   readonly lanes: readonly LensLane[];
   readonly columns: readonly LensColumn[];
-  /** Specs of the index that hold no claim of any feature, so no column can carry them (spec order); usually empty. */
+  /**
+   * Specs of the index without a feature parent, so no column can carry them (spec order): a spec that holds no claim
+   * and whose `isa_feature` names no block of the master (spec 033); usually empty.
+   */
   readonly unplaced: readonly RelationRef[];
 }
 

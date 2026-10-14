@@ -148,7 +148,9 @@ export interface PlanningFeature {
   readonly claims: readonly PlanningClaim[];
   /**
    * Specs holding at least one live claim of the block (`held` > 0): active ones by id, archived ones last (by id). A
-   * spec holding claims of several blocks appears under each; `main` marks the block its `isa_feature` names.
+   * spec holding claims of several blocks appears under each; `main` marks the block its `isa_feature` names. A spec
+   * holding no live claim of any block, such as an allocated story, is listed under the block its `isa_feature` names
+   * with `main` and `held` 0 (spec 033, ISC-186); it moves no count.
    */
   readonly holders: readonly PlanningHolder[];
   /** Ids of the block's claims no spec holds, dropped claims excluded, in master order. */
@@ -402,8 +404,11 @@ function resolveBlock(block: FeatureBlock, claimById: ReadonlyMap<string, Claim>
   };
 }
 
-/** One feature block with each claim resolved to its holding folder, the block's holders and its progress. */
-function planningFeature({ block, claims: resolved }: ResolvedBlock, folders: readonly Folder[], ideas: readonly IdeaRef[]): PlanningFeature {
+/**
+ * One feature block with each claim resolved to its holding folder, the block's holders and its progress. A folder in
+ * `claimless` (no live claim in any block) holds the block its `isa_feature` names with `held` 0 (spec 033, ISC-186).
+ */
+function planningFeature({ block, claims: resolved }: ResolvedBlock, folders: readonly Folder[], claimless: ReadonlySet<Folder>, ideas: readonly IdeaRef[]): PlanningFeature {
   const live = resolved.filter((c) => !c.dropped);
   return {
     id: block.id,
@@ -414,7 +419,8 @@ function planningFeature({ block, claims: resolved }: ResolvedBlock, folders: re
     claims: resolved.map(({ id, text, closed, dropped, folder }): PlanningClaim => ({ id, text, closed, dropped, holder: folder?.holder.id ?? null })),
     holders: folders.flatMap((f): PlanningHolder[] => {
       const held = live.filter((c) => c.folder === f).length;
-      return held === 0 ? [] : [{ ...f.holder, main: f.feature === block.id, held }];
+      if (held > 0) return [{ ...f.holder, main: f.feature === block.id, held }];
+      return claimless.has(f) && f.feature === block.id ? [{ ...f.holder, main: true, held: 0 }] : [];
     }),
     unheld: live.filter((c) => c.folder === undefined).map((c) => c.id),
     ideas: ideas.filter((idea) => idea.feature === block.id),
@@ -609,7 +615,9 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
           },
         ],
   );
-  const features = blocks.map((block) => planningFeature(block, folders, ideas));
+  const holding = new Set(blocks.flatMap(({ claims }) => claims.flatMap((c) => (c.dropped || c.folder === undefined ? [] : [c.folder]))));
+  const claimless = new Set(folders.filter((f) => !holding.has(f)));
+  const features = blocks.map((block) => planningFeature(block, folders, claimless, ideas));
   const milestones = byTarget.map((entry) => planningMilestone(entry, blocks, folders, ideas, now, byLines));
   const after = Object.fromEntries([...claimById].flatMap(([id, claim]) => (claim.after.length === 0 ? [] : [[id, claim.after]])));
   return {
