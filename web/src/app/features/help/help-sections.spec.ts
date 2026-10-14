@@ -75,7 +75,7 @@ describe('HelpPage sections (T162, ISC-133.1)', () => {
     setUp();
     const { root } = await open();
     expect(text(root.querySelector('.head h1'))).toBe('Help');
-    // spec 024: prototype value (principal: Prototyp gilt immer) — the page head shows "· v<version>" beside the h1.
+    // spec 024: prototype value (principal: the prototype wins) — the page head shows "· v<version>" beside the h1.
     expect(text(root.querySelector('.head [data-help-version]'))).toMatch(/^· v\d+\.\d+\.\d+/);
 
     const sections = [...root.querySelectorAll<HTMLElement>(':scope > section[aria-labelledby]')];
@@ -92,7 +92,7 @@ describe('HelpPage sections (T162, ISC-133.1)', () => {
     expect(text(root.querySelector('#about p'))).toContain('The files are the only source of truth');
 
     const nav = root.querySelector('app-help-nav');
-    // spec 024: prototype value (principal: Prototyp gilt immer) — the page head sits above the anchor pills.
+    // spec 024: prototype value (principal: the prototype wins) — the page head sits above the anchor pills.
     expect(nav?.compareDocumentPosition(root.querySelector('.head') as Element)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
     expect([...root.querySelectorAll('a[data-help-chip]')].map((a) => a.getAttribute('data-help-chip'))).toEqual(HELP_SECTIONS.map((s) => s.id));
   });
@@ -166,7 +166,7 @@ describe('HelpPage sections (T162, ISC-133.1)', () => {
       const key = HELP_COMMANDS[i]?.key ?? '';
       expect(text(row.querySelector('.purpose'))).toBe(en.help.commands.list[key]);
     }
-    // spec 024: prototype value (principal: Prototyp gilt immer) — the prototype table adds Needs, Writes and Then.
+    // spec 024: prototype value (principal: the prototype wins) — the prototype table adds Needs, Writes and Then.
     expect([...root.querySelectorAll('#commands thead th')].map(text)).toEqual(['Command', 'What it does', 'Needs', 'Writes', 'Then']);
   });
 
@@ -185,7 +185,7 @@ describe('HelpPage sections (T162, ISC-133.1)', () => {
     const transloco = TestBed.inject(TranslocoService);
     const rows = [...root.querySelectorAll('#keys [data-binding]')];
     expect(rows.map((row) => row.getAttribute('data-binding'))).toEqual(SHORTCUTS.map((s) => s.id));
-    // spec 024: prototype value (principal: Prototyp gilt immer) — `.keys-grid` rows, the action left in `.action`.
+    // spec 024: prototype value (principal: the prototype wins) — `.keys-grid` rows, the action left in `.action`.
     expect(rows.map((row) => text(row.querySelector('.action')))).toEqual(
       SHORTCUTS.map((s) => transloco.translate(s.label, { target: s.target === undefined ? '' : String(transloco.translate(s.target)) })),
     );

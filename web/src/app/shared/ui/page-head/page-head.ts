@@ -11,7 +11,7 @@ export interface PageHeadBack {
 }
 
 /**
- * The page head of every page without a spec breadcrumb (ISC-140, design 019 § Viewport-übergreifend "Ein Seitenkopf"):
+ * The page head of every page without a spec breadcrumb (ISC-140, design 019 § Across viewports "one page head"):
  * one eyebrow row, 4 px, then the page's h1. One form at every tier, no tier variant.
  *
  * Inputs, the contract every page uses:

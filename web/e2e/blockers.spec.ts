@@ -102,8 +102,8 @@ test.describe('blockers waits: the spec edges hold their specs (waiting)', () =>
     await open(page, `/w/${WS}`);
     await expectChip(rowChip(page, full.spec), full.on, '009 row');
     await expectChip(rowChip(page, partial.spec), partial.on, '002 row');
-    // The stage track of 009, on stage blocked, keeps its progress at Build and marks it "Blocked" (principal
-    // 2026-10-14: "Leiste markiert Blocked"); the phase chip stays.
+    // The stage track of 009, on stage blocked, keeps its progress at Build and marks it "Blocked" (spec 025,
+    // principal 2026-10-14); the phase chip stays.
     const track = page.locator(`app-spec-row:has(a.row-link[data-spec-row="${full.spec}"]) ui-stage-track`);
     await expect(track.locator('.bar[data-state="blocked"]'), '009 row: one blocked segment').toHaveCount(1);
     await expect(track.locator('[data-blocked]'), '009 row: the word').toHaveText('Blocked');

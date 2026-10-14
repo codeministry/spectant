@@ -16,7 +16,7 @@ import { ShellState } from './shell-state.service';
 
 /**
  * The shell header (ISC-73, spec 024 T34, T76): one `<header>`, one 64 px row on every width (principal 2026-10-13,
- * design.md § Viewport-übergreifend), every element in it 40 px tall (44 px at `pointer: coarse`).
+ * design.md § Across viewports), every element in it 40 px tall (44 px at `pointer: coarse`).
  *
  * From 1120 px (the wide tier) the prototype header unchanged: the brand rail (logo, wordmark, Workspace · Page · Spec ·
  * Area rail-selects with their labels; spec 024 T80), the palette (a field, or the 40 px icon on spec pages below 1560 px), then status

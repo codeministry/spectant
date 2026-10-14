@@ -42,7 +42,7 @@ export const mostOpenFeatures = (milestone: PlanningMilestone | null): PlanningM
     .map(({ feature }) => feature);
 
 /**
- * The planning page's overview (spec 026, T15; design.md § Viewport-übergreifend, "Vom Parent ergänzt"): what the old
+ * The planning page's overview (spec 026, T15; design.md § Across viewports, "added by the parent"): what the old
  * Milestones page showed beside its rows, the next milestone with its ring and day count, the milestone list and the
  * next milestone's features with the most open claims. The page puts it into the rail at wide on the tree lens while
  * nothing is selected, else into its collapsible "Overview" block. Every row selects its object (`?sel=`) on the tree.

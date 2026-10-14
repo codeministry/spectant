@@ -30,7 +30,7 @@ const splitBranch = (branch: string): BranchParts => {
 };
 
 /**
- * The worktree chip (spec 027, ISC-175, design.md § Viewport-übergreifend 1, 2, 6): where a spec's worktree stands,
+ * The worktree chip (spec 027, ISC-175, design.md § Across viewports 1, 2, 6): where a spec's worktree stands,
  * on a `ui-chip` in tone `neutral` — `warning` for the whole chip when the row carries a `worktree-branch-mismatch`
  * warning (`mismatch`).
  *

@@ -34,7 +34,7 @@ export interface LibraryTabCountValue {
 
 /**
  * Where the library page in spec scope puts the count of its one tab, Documents (spec 017, T45, ISC-158, design.md §
- * Viewport-übergreifend: the eyebrow LIBRARY and one tab with its count). The spec model carries no document count and
+ * Across viewports: the eyebrow LIBRARY and one tab with its count). The spec model carries no document count and
  * the catalog is the page's own read, so the figure travels through this signal; the bar shows
  * it only for the spec it names, so a figure of the spec left behind never shows on the next one. Null until set.
  */

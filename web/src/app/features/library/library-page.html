@@ -48,7 +48,7 @@
   <div class="lib-grid">
     @if (wide() || !current()) {
       <div class="lib-list" data-library-list>
-        <!-- The card's first row (design.md 017 § Viewport-übergreifend; ISC-156.1): missing, then outdated. -->
+        <!-- The card's first row (design.md 017 § Across viewports; ISC-156.1): missing, then outdated. -->
         <div class="lib-head" role="group" data-library-controls [attr.aria-label]="'library.control.label' | transloco">
           @for (control of controls(); track control.key) {
             <button
@@ -100,7 +100,7 @@
               </select>
             </label>
           }
-          <!-- The state select (design.md 017 § Viewport-übergreifend): the spec select's anatomy, the same ?state= as the control counts. -->
+          <!-- The state select (design.md 017 § Across viewports): the spec select's anatomy, the same ?state= as the control counts. -->
           <label class="lib-select">
             <span class="type-eyebrow">{{ 'library.filters.state' | transloco }}</span>
             <select data-library-state-select [value]="stateFilter()" (change)="setState($any($event.target).value)">
@@ -159,7 +159,7 @@
           @for (view of groups(); track view.group.spec) {
             <section class="lib-group" [attr.data-library-group]="view.group.key" [attr.aria-label]="groupLabel(view.group.spec)">
               @if (view.head; as head) {
-                <!-- The compact spec group head (ISC-157; design.md 017 § 5, § Viewport-übergreifend). -->
+                <!-- The compact spec group head (ISC-157; design.md 017 § 5, § Across viewports). -->
                 <div class="lib-ghead" data-library-group-head [attr.data-spec]="head.head.spec">
                   <p class="lib-ghead-name">
                     <a class="lib-ghead-link" [routerLink]="specPage(head.key)">

@@ -1,5 +1,5 @@
-// Glow guard for design.md § Surfaces (spec 002), as amended by the master decision of 2026-09-29 ("Oberkante ja,
-// Glow ja (wie im Prototyp)"): surfaces stay flat, with one exception, the prototype's corner glow (`.card.glow`,
+// Glow guard for design.md § Surfaces (spec 002), as amended by the master decision of 2026-09-29 ("top edge yes,
+// glow yes, as in the prototype"): surfaces stay flat, with one exception, the prototype's corner glow (`.card.glow`,
 // `styles.css:118-123`) on the card primitive's glow variant. This guard reads every stylesheet and every component
 // (inline `styles` and templates) under `web/src` and fails on:
 //

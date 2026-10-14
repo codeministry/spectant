@@ -1,4 +1,4 @@
-/* One column at every tier; the shell adds the 352 px rail at wide (design.md § Viewport-übergreifend, grid rules). */
+/* One column at every tier; the shell adds the 352 px rail at wide (design.md § Across viewports, grid rules). */
 :host {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

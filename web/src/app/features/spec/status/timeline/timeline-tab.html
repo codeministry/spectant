@@ -69,7 +69,7 @@
                 >
                   <span class="time">
                     @if (row.time === null && row.entry.kind === 'worktree') {
-                      <!-- Spec 027 (design.md § Viewport-übergreifend 5): "—" below wide, "no date" in words at wide. -->
+                      <!-- Spec 027 (design.md § Across viewports 5): "—" below wide, "no date" in words at wide. -->
                       <span class="no-date-dash" data-no-date-dash aria-hidden="true">—</span>
                       <span class="no-date" data-no-date>{{ 'timeline.worktree.noDate' | transloco }}</span>
                     } @else if (row.time === null) {

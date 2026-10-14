@@ -178,7 +178,7 @@
   background: transparent;
 }
 
-/* Spec 027 (design.md § Viewport-übergreifend 5): a worktree entry's marker is the derived dashed ring in the neutral
+/* Spec 027 (design.md § Across viewports 5): a worktree entry's marker is the derived dashed ring in the neutral
    tone, grown to 20 px so its 12 px glyph fits: git-merge when merged into main, folder-x when the worktree is gone. */
 .entry[data-kind='worktree'] .marker {
   display: grid;

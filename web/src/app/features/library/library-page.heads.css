@@ -1,5 +1,5 @@
 /* The library's spec group heads, fog lines and tech placeholder (spec 017, T36, ISC-157; design.md 017 § 5, § 6,
-   § 8, § Viewport-übergreifend). Split from `library-page.css` for the per-file style budget; every selector starts with
+   § 8, § Across viewports). Split from `library-page.css` for the per-file style budget; every selector starts with
    `app-library-page`, as there. */
 
 /* The compact head: no card, no surface, a hairline above every group but the first. */

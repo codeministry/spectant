@@ -229,7 +229,7 @@ ui-doc-prose .docs-prose .figure-missing {
 }
 
 /*
- * The diagram toolbar (ISC-154.1, design.md § Mermaid-Werkzeugleiste): top right in the figure, 8 px in, on the glass
+ * The diagram toolbar (ISC-154.1, design.md § Mermaid toolbar): top right in the figure, 8 px in, on the glass
  * surface. A fine pointer sees it on hover or focus-within (`--dur-hover`); a coarse pointer and reduced motion always.
  */
 ui-doc-prose .docs-prose figure.mermaid-figure { position: relative; }

@@ -1,5 +1,5 @@
 /*
- * The Board tab in the prototype's anatomy (spec 024, T45; design.md § Viewport-übergreifend "Kanban bleibt"):
+ * The Board tab in the prototype's anatomy (spec 024, T45; design.md § Across viewports "Kanban stays"):
  * `board-sticky` controls (toolbar `btool`, legend pills `lchip`, search `bsearch`, scrubber), lanes as `lane-col`
  * on `--lane` with radius 12. From 640 the lanes run as 300 px columns in a horizontal scroller (`lanes-board`); below
  * 640 one lane at a time with the lane switch (`lane-col.lane-on`). A lane never scrolls on its own (ISC-93).

@@ -209,7 +209,7 @@ export class BoardTab {
   });
 
   protected readonly legend = computed(() => stateCounts(this.allCards()).map((s) => ({ ...s, pressed: !this.hiddenStates().has(s.state) })));
-  /** spec 027: the live frame's round in flight; history frames reconstruct none (design.md, Live-Board). */
+  /** spec 027: the live frame's round in flight; history frames reconstruct none (design.md, live board). */
   private readonly round = computed(() => {
     const f = this.frame();
     return f !== null && 'inRound' in f ? (f.inRound ?? null) : null;
@@ -249,7 +249,7 @@ export class BoardTab {
 
   /** Your steps at wide (T88): the operator lane's cards of the frame, board order. */
   protected readonly operatorCards = computed(() => this.allCards().filter((c) => c.lane === OPERATOR_LANE));
-  /** spec 024 (design.md § Live · Operator-Lane): the operator lane drawn at wide as the checklist lane of the grid (Lanes) or the
+  /** spec 024 (design.md § Live · Operator lane): the operator lane drawn at wide as the checklist lane of the grid (Lanes) or the
    * row across all columns (Flow), after the board's filters; null when none is shown. */
   protected readonly stepCards = computed<readonly FrameCard[] | null>(() => {
     const lane = this.operatorLane();
@@ -269,7 +269,7 @@ export class BoardTab {
     ];
   });
 
-  /** Compact (design.md § Viewport-übergreifend, correction 2): one lane at a time, picked with the lane switch. */
+  /** Compact (design.md § Across viewports, correction 2): one lane at a time, picked with the lane switch. */
   private readonly pickedLane = signal<string | null>(null);
   protected readonly currentLane = computed(() => {
     const lanes = this.gridLanes();

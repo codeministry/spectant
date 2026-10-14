@@ -270,7 +270,7 @@ export class NotesArea {
     return { value, label: label?.text ?? value };
   });
   protected readonly anchorChip = computed(() => anchorLabel(this.draft().anchor, this.spec()));
-  /** The anchor picker (prototype `anchor-pop`): a popover from 640 px, the bottom sheet below (design.md § Viewport-übergreifend). */
+  /** The anchor picker (prototype `anchor-pop`): a popover from 640 px, the bottom sheet below (design.md § Across viewports). */
   protected readonly pickerOpen = signal(false);
   protected readonly popOpen = signal(false);
   private readonly anchorPop = viewChild<UiPopover>('anchorPop');

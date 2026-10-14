@@ -8,7 +8,7 @@ import type {
 import { specRefMatches } from '../../../../../core/src/spec-ref';
 
 /**
- * The library list over core's `LibraryCatalog` (spec 017, T26, ISC-156, ISC-156.2; design.md § Viewport-übergreifend).
+ * The library list over core's `LibraryCatalog` (spec 017, T26, ISC-156, ISC-156.2; design.md § Across viewports).
  * Pure functions, no Angular: the page holds the catalog, the filter (from the address) and the server's search hits,
  * and asks this module what to show. Nothing here re-reads a document; titles, states and heads are core's.
  *
@@ -217,7 +217,7 @@ export function libraryGroups(catalog: LibraryCatalog, filter: LibraryFilter, hi
 }
 
 /**
- * The catalog of one spec's Library area (spec 017, T46, ISC-158; design.md § Viewport-übergreifend): the documents of
+ * The catalog of one spec's Library area (spec 017, T46, ISC-158; design.md § Across viewports): the documents of
  * the spec the route's ref `spec` names, its missing entries and its evidence included, plus the workspace's
  * constitution; no group head (the spec head above already carries stage, goal and figures); the fog lines of that
  * spec only; and the control counts of the spec's own documents, the constitution outside them. The ref is matched in

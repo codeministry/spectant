@@ -16,7 +16,7 @@ import { UiWorktreeChip } from '../../shared/ui/worktree-chip/worktree-chip';
 import type { BoardCard as BoardCardModel } from './board-model';
 
 /**
- * The inline-start edge per stage, in the prototype's role colours (spec 024, design § Workspace-Board): teal for an
+ * The inline-start edge per stage, in the prototype's role colours (spec 024, design § Workspace board): teal for an
  * idea, the track grey for plan and tasks, violet for a wait on you (review, code-review, close), cyan in motion
  * (build), red for blocked, the held grey for close-pending, lime done. The edge never carries the meaning alone: the
  * reason line says it in words.
@@ -55,7 +55,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  * - Row 3: the main feature chip `F<n>` (its name in the tooltip), the milestone (muted) and, pushed to the end,
  *   `ui-actor-chip` with the resolved name or the raw id; nothing when the card is unassigned. A spec with a worktree
  *   shows the compact `ui-worktree-chip` (`git-branch` · `↑n` · `±`, the branch in its accessible name) right before
- *   the assignee pill (spec 027, ISC-175, design.md § Viewport-übergreifend 6): not interactive, the card is the tap
+ *   the assignee pill (spec 027, ISC-175, design.md § Across viewports 6): not interactive, the card is the tap
  *   target; the warning tone on the row's `worktree-branch-mismatch`. The chip stays compact at every card width
  *   (the host declares no `board-card` container), so the card never grows by a line. No worktree, no chip.
  * - Row 4, waiting cards only: `ui-reason` compact, the row's phrase and its command chip (none for close-pending).
@@ -93,7 +93,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
     .r3 { flex-wrap: wrap; }
     /*
      * The assignee line: the worktree chip, then the pill pushed to the end, on one line that never wraps (spec 027,
-     * design.md § Viewport-übergreifend 6: no new line); on a narrow card the pill gives way and truncates.
+     * design.md § Across viewports 6: no new line); on a narrow card the pill gives way and truncates.
      */
     .who { display: flex; flex: 1 1 auto; gap: 8px; align-items: center; min-inline-size: 0; }
     .who ui-actor-chip { min-inline-size: 0; max-inline-size: 14ch; margin-inline-start: auto; }

@@ -19,8 +19,8 @@ export function tabbedArea(state: ShellState): SpecArea | null {
 }
 
 /**
- * The tab bar (ISC-76, ISC-134.1) in the prototype's `tab-bar` anatomy (spec 024, ISC-149, design.md § Viewport-
- * übergreifend): the area eyebrow on the left (11/700, .08em, uppercase, a hairline after it), then the tabs as route
+ * The tab bar (ISC-76, ISC-134.1) in the prototype's `tab-bar` anatomy (spec 024, ISC-149, design.md § Across
+ * viewports): the area eyebrow on the left (11/700, .08em, uppercase, a hairline after it), then the tabs as route
  * links, 44 px high with 12 px padding, 500 in the muted ink, the current one in the text colour on a 2 px cyan
  * underline and `aria-current="page"`, one tab stop with roving focus. A count rides inside its tab as the prototype's
  * `small` badge (mono 11 on the raised ground); a tab with `sep` opens a new group behind a `tab-sep`. The strip

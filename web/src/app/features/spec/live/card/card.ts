@@ -63,7 +63,7 @@ export class RunChip {
  *   strike note under the text instead of the note flag, in both densities (ISC-91, `live/recut.ts`);
  * - compact, two rows: glyph, id and state chip; the text clamped to two lines. Claim chip, builder, flags and session
  *   move into the detail;
- * - step, one 36 px row (design.md § Live · Operator-Lane): glyph, id, the text cut to one line and the state chip, the
+ * - step, one 36 px row (design.md § Live · Operator lane): glyph, id, the text cut to one line and the state chip, the
  *   operator lane's checklist card.
  *
  * The id is the button that opens the card detail (`card-detail.ts`), owned by the card: the frames for its state
@@ -78,7 +78,7 @@ export class RunChip {
     article { display: grid; gap: 4px; min-inline-size: 0; padding: 10px 12px 10px 14px; border: 1px solid var(--line); border-inline-start: 4px solid var(--edge); border-radius: var(--radius-field); background: var(--color-base-100); }
     article:hover { background: var(--color-base-300); }
     :host([data-density='compact']) article { gap: 2px; padding: 6px 10px 6px 12px; }
-    /* spec 024: the operator lane's checklist card, one 36 px row (design.md § Live · Operator-Lane (Principal 2026-10-13)). */
+    /* spec 024: the operator lane's checklist card, one 36 px row (design.md § Live · Operator lane (Principal 2026-10-13)). */
     :host([data-density='step']) article { display: flex; gap: 6px; align-items: center; min-block-size: 36px; padding: 4px 10px 4px 12px; }
     :host([data-density='step']) .r1 { display: contents; }
     :host([data-density='step']) .text { display: block; flex: 1; order: 1; min-inline-size: 0; white-space: nowrap; text-overflow: ellipsis; }
@@ -123,7 +123,7 @@ export class RunChip {
     .flag[data-flag='stale'] { color: var(--fail-ink); font-weight: 600; }
     .strike-note { margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
     /* spec 027: a card of the round wears its run chip where the state chip stood, top right; below 320 px of card
-       width on a line of its own under the text, left (design.md § Viewport-übergreifend, Live-Board). */
+       width on a line of its own under the text, left (design.md § Across viewports, live board). */
     :host([data-run]) { container: live-card / inline-size; }
     :host([data-run]) article { grid-template-columns: minmax(0, 1fr) auto; }
     :host([data-run]) .r1 { grid-area: 1 / 1; }

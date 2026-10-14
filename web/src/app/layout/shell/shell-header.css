@@ -1,5 +1,5 @@
 /*
- * The shell header's grid (spec 024 T34, T76; design.md § Viewport-übergreifend; prototype `[data-ui="header"]`). The
+ * The shell header's grid (spec 024 T34, T76; design.md § Across viewports; prototype `[data-ui="header"]`). The
  * host is sticky and the `header` size container the parts query; the header's own tiers follow the `shell` container.
  *
  * One 64 px row on every width (principal 2026-10-13), every element 40 px tall (44 px at `pointer: coarse`).

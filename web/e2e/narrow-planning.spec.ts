@@ -79,7 +79,7 @@ for (const width of [WIDTHS.panel, WIDTHS.phone]) {
  * 600 and 390, with the detail sidebar closed and open (`?sel=`), on harbor and on lantern (no milestones). The page
  * never scrolls sideways: `document.scrollingElement.scrollWidth === clientWidth`. The matrix may scroll inside its own
  * container; only the page must not overflow. The open sidebar lies over the view: 600 and 390 are both below 640,
- * the compact tier, where the decided overlay form is the modal bottom sheet (design.md § Viewport-übergreifend:
+ * the compact tier, where the decided overlay form is the modal bottom sheet (design.md § Across viewports:
  * "640 bis 1119 px nicht-modales Overlay … unter 640 px modales Bottom-Sheet"; "ISC-171.2 prüft 600 (fällt unter das
  * Sheet) und 390"); its panel ends inside the viewport.
  */

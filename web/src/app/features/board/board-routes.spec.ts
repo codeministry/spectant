@@ -110,7 +110,7 @@ describe('spec 008 routes (T115, ISC-129)', () => {
   it('resolves /help globally inside the shell, with no workspace in the route', async () => {
     const root = await open('/help');
     expect(root.querySelector('app-shell [data-page="help"]')).not.toBeNull();
-    // spec 024: prototype value (principal: Prototyp gilt immer): the help head is the page head, no longer a card.
+    // spec 024: prototype value (principal: the prototype wins): the help head is the page head, no longer a card.
     expect(text(root.querySelector('[data-page="help"] h1#help'))).toBe('Help');
     expect(root.querySelector('app-not-found')).toBeNull();
     expect(TestBed.inject(ShellState).route()).toMatchObject({ ws: null, wsPage: null, notFound: false });

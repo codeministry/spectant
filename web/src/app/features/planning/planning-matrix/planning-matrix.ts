@@ -53,7 +53,7 @@ interface ViewLane {
  * main feature's column, the spec's other features as `+F8` chips. Every lane, column, card and number is core's
  * `planningMatrix` of the planning model; the view adds layout only.
  *
- * Tiers (design.md § Viewport-übergreifend): below 640 one swimlane at a time, picked by the milestone pills (`?m=`,
+ * Tiers (design.md § Across viewports): below 640 one swimlane at a time, picked by the milestone pills (`?m=`,
  * shared with the graph, default the next due milestone); from 640 every lane stacked under a full band row; from 1120 a
  * sticky left head column. The grid scrolls in its own container (`overflow-x: auto`), never the page. Finished
  * features fold to 44 px stripes until opened (a stripe opens its column, "Finished features" opens all). A card selects

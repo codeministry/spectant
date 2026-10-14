@@ -1,5 +1,5 @@
 /*
- * The tree lens (spec 026, ISC-168; design.md § Baum and § Viewport-übergreifend): one card holding a flat WAI-ARIA tree.
+ * The tree lens (spec 026, ISC-168; design.md § Tree and § Across viewports): one card holding a flat WAI-ARIA tree.
  * Each level indents 16 px and draws a 1 px guide line in `--border` per ancestor, so the cascade reads without colour.
  * The row grid: guides, chevron (24 px, 44 px hit area), content, a 64 px meter, the fraction in its own 56 px column.
  */
@@ -262,7 +262,7 @@ h2 {
   color: var(--disp-ink);
 }
 
-/* Archived is never opacity (design.md § Viewport-übergreifend): a dashed chip, the text stays in the text colour. */
+/* Archived is never opacity (design.md § Across viewports): a dashed chip, the text stays in the text colour. */
 .chip.archived {
   border-style: dashed;
 }

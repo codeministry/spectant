@@ -364,7 +364,7 @@ describe('SpecHead priority (T134, ISC-118; T36, ISC-149)', () => {
   });
 });
 
-// T34, T35 · ISC-175, ISC-181 (spec 027 design.md § Viewport-übergreifend 1, Quellen-Hinweis): the provenance line —
+// T34, T35 · ISC-175, ISC-181 (spec 027 design.md § Across viewports 1, source hint): the provenance line —
 // the worktree chip, the source note and the "No agent source" text, in that order; nothing of it without a worktree.
 describe('SpecHead provenance line (T34, T35, ISC-175, ISC-181)', () => {
   type Body = { head: Record<string, unknown>; warnings: unknown[]; keyNumbers: { claims: { closed: number; total: number } } };
@@ -458,7 +458,7 @@ describe('SpecHead provenance line (T34, T35, ISC-175, ISC-181)', () => {
   });
 });
 
-// Spec 025, T22 · ISC-163 (design.md § Spec-Kopf): the waits chip in the chip row right after the priority mark; a
+// Spec 025, T22 · ISC-163 (design.md § Spec head): the waits chip in the chip row right after the priority mark; a
 // partial hold keeps the stage and shows the scope behind the chip, a full one stands on `blocked` with the chip alone.
 describe('SpecHead waits chip (T22, ISC-163)', () => {
   type Body = { head: Record<string, unknown> };

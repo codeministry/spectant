@@ -26,7 +26,7 @@ export interface PrototypePage {
 
 /**
  * The prototype card in the library's reader (spec 017, T38, ISC-159; design.md 017 Mobile § 9, Tablet § 2.6, Desktop
- * § 2c, § Viewport-übergreifend): inside a `ui-card`, the preview (only when core names a screenshot in the spec's
+ * § 2c, § Across viewports): inside a `ui-card`, the preview (only when core names a screenshot in the spec's
  * `.design/`, through the library's file route, the figure gone without a placeholder when it does not load), the
  * eyebrow "Pages" with the count, and one row per HTML page: `app-window`, the file name in mono, `external-link`.
  * Each row is an `<a target="_blank" rel="noopener">` on the server's prototype read route (`ApiClient.prototypeUrl`),

@@ -19,7 +19,7 @@ import { DEMO_FOLDERS, DEMO_WORKSPACES, type DemoWorkspaceRow } from './fixtures
  *
  * **The mock convention.** Every mocked block marks its root with `data-demo` (`DEMO_BLOCK_ATTR`) and puts
  * `<ui-chip variant="demo" />` at the end of its own head row: the section head or eyebrow of a block, behind the h1 of
- * a whole mocked page, in the `as-head` of the assistant (design.md § Viewport-übergreifend). The chip is never only a
+ * a whole mocked page, in the `as-head` of the assistant (design.md § Across viewports). The chip is never only a
  * tooltip; `[data-demo]` without a `[data-demo-chip]` inside is a defect.
  */
 export const DEMO_BLOCK_ATTR = 'data-demo';

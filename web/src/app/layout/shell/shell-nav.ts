@@ -42,7 +42,7 @@ export const navigatesNatively = (event: MouseEvent): boolean =>
  * carries their meaning. Outside a workspace (`/`, `/help`, `/settings`) the spec and area pills are not rendered
  * rather than showing `0`, and the workspace pill reads "All · n"; the page pill is absent there too.
  *
- * Collapse order (design.md § Viewport-übergreifend): below 1120 px the visible labels go (ISC-140.2 refined: the label
+ * Collapse order (design.md § Across viewports): below 1120 px the visible labels go (ISC-140.2 refined: the label
  * stays in the accessible name), then the wordmark (`ShellBrand`, below 640 px); the spec shows its id and short name,
  * the name ellipsizing; numbers and ids never shorten.
  */

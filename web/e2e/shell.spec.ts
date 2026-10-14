@@ -339,7 +339,7 @@ test.describe('zen', () => {
       // The bar slides in from 8 px below (prototype `zen-statusbar`); measure it once its entry has finished.
       await footer.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
       const box = await footer.boundingBox();
-      // spec 024: prototype value (principal: Prototyp gilt immer) — the prototype `zen-statusbar` is 36 px.
+      // spec 024: prototype value (principal: the prototype wins) — the prototype `zen-statusbar` is 36 px.
       expect(box?.height).toBe(36);
       expect(Math.round((box?.y ?? 0) + (box?.height ?? 0))).toBe(900);
       // The main column takes the full width once the rail is gone (1440 - 2 × 32).

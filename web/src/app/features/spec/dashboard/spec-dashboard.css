@@ -1,5 +1,5 @@
 /*
- * The spec dashboard (design.md § Spec dashboard, spec 024 § Viewport-übergreifend; the prototype's `.spec-kpis`,
+ * The spec dashboard (design.md § Spec dashboard, spec 024 § Across viewports; the prototype's `.spec-kpis`,
  * `.dash-2`, `.sblock`). One column of blocks in prototype order on every tier: key numbers, the idea, next step beside
  * lanes (from 900), the TL;DR, the area tiles and, below 1120, the Spec context. Partials: `spec-dashboard-tiles.css`
  * (lanes, tiles), `spec-context.css` (Waiting on you, Warnings, Gates). Colours are tokens only.

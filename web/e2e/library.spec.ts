@@ -57,7 +57,7 @@ import { type LibrarySearchResult, PROTOTYPE_PREFIX, prototypeFolderOf, prototyp
 import { atWidth, expect, headerControl, menusReady, test, WIDTHS } from './fixtures';
 import { LIBRARY_HEADER, STUB_LIBRARY } from './stub-api';
 
-/** The two control counts of the card's first row, in their order (design.md 017 § Viewport-übergreifend). */
+/** The two control counts of the card's first row, in their order (design.md 017 § Across viewports). */
 const CONTROL_KEYS = ['missing', 'stale'] as const;
 type ControlKey = (typeof CONTROL_KEYS)[number];
 

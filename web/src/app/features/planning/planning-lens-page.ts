@@ -17,7 +17,7 @@ import { planningPageState } from './planning-page';
 import { PlanningTree } from './planning-tree/planning-tree';
 
 /**
- * The planning page `/w/:ws/planning/<lens>` (spec 026, T15, ISC-167; design.md § Viewport-übergreifend): one
+ * The planning page `/w/:ws/planning/<lens>` (spec 026, T15, ISC-167; design.md § Across viewports): one
  * workspace page in place of Features and Milestones, with the lenses Tree, Matrix and Graph in the prototype
  * `tab-bar` (sticky under the header, route links with `aria-current="page"`, a switch keeps `?sel=` and `?m=`).
  * `/w/:ws/planning` redirects to the tree. One instance stays across lens switches: the lens routes are componentless

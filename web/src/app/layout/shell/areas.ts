@@ -37,12 +37,12 @@ export interface SpecArea {
    */
   readonly goKey: string | null;
   /**
-   * The tab bar shows although the area has one tab (spec 017, design.md § Viewport-übergreifend): the Library's
+   * The tab bar shows although the area has one tab (spec 017, design.md § Across viewports): the Library's
    * eyebrow and its one tab Documents with its count. Without it a one-tab area (Notes) has no bar.
    */
   readonly singleTabBar?: true;
   /**
-   * The area runs without the context column (prototype `no-rail`, spec 017 design.md § Viewport-übergreifend), so
+   * The area runs without the context column (prototype `no-rail`, spec 017 design.md § Across viewports), so
    * the Library's list and reader have the width of the workspace Library.
    */
   readonly noRail?: true;

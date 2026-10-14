@@ -257,7 +257,7 @@ app-library-page .lib-type ui-icon {
   flex-shrink: 0;
 }
 
-/* Type families (design.md 017 § Viewport-übergreifend): spec, plan, tasks cyan; design, prototype green; evidence
+/* Type families (design.md 017 § Across viewports): spec, plan, tasks cyan; design, prototype green; evidence
    (and artifacts) lime; constitution, tech, TL;DR and context muted (the default); idea yellow. The label always
    stands beside the colour. */
 app-library-page .lib-type:is([data-type='spec'], [data-type='plan'], [data-type='tasks']) { --tc: var(--color-primary); }

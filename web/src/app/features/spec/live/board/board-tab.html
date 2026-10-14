@@ -160,7 +160,7 @@
           </p>
         }
         @if (stepCards(); as steps) {
-          <!-- spec 024 (design.md § Live · Operator-Lane): at wide the operator steps are their own lane in the grid. -->
+          <!-- spec 024 (design.md § Live · Operator lane): at wide the operator steps are their own lane in the grid. -->
           <app-your-steps [cards]="steps" />
         }
         @for (lane of hiddenLaneNames(); track lane) {

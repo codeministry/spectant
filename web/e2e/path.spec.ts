@@ -179,7 +179,7 @@ for (const width of [1440, 600, 390] as const) {
  *
  * One click (a tap at 390) on the card's title selects it: the address gains `?sel=spec:<id>` and stays on the board,
  * and the detail sidebar opens floating (1440) or, below 640 (600 and 390), as the modal bottom sheet, the overlay form
- * of the compact tier (design.md § Viewport-übergreifend). The goal holds only when each of the three
+ * of the compact tier (design.md § Across viewports). The goal holds only when each of the three
  * relation sections — its heading and its first entry — is wholly on screen without a scroll inside the panel, so a
  * scroll the person would need cannot hide: it would have to go through the counter.
  *

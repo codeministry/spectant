@@ -75,7 +75,7 @@ import { LibraryReader, shortDateParts, typeIcon } from './library-reader';
 
 export { fileName, missingCommand, shortDateParts, typeIcon } from './library-reader';
 
-/** The two control counts of the card's first row (design.md 017 § Viewport-übergreifend; ISC-156.1), in this order. */
+/** The two control counts of the card's first row (design.md 017 § Across viewports; ISC-156.1), in this order. */
 export type ControlKey = 'missing' | 'stale';
 
 /** One control count as drawn: its `?state=` value, the number, the icon, whether it filters now. */
@@ -101,7 +101,7 @@ export function controlViews(catalog: Pick<LibraryCatalog, 'missing' | 'stale'>,
 }
 
 /**
- * The row an absent `specs/tech.md` stands as (design.md 017 § 8, § Viewport-übergreifend): in the workspace-wide group,
+ * The row an absent `specs/tech.md` stands as (design.md 017 § 8, § Across viewports): in the workspace-wide group,
  * dimmed, without the "missing" flag and outside every count (ISC-155.2 names spec documents only); its reader is the
  * empty state with `/spec-doc`. Core never marks a tech document missing, so `tech` with `missing` names this row alone.
  */

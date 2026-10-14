@@ -207,7 +207,7 @@ test.describe('diagrams', () => {
 });
 
 /**
- * ISC-154.1: every mermaid figure `ui-doc-prose` draws carries the diagram toolbar of design.md § Mermaid-Werkzeugleiste
+ * ISC-154.1: every mermaid figure `ui-doc-prose` draws carries the diagram toolbar of design.md § Mermaid toolbar
  * (spec 024, T81), on the same three pages, at 390 / 820 / 1440 and in both themes.
  *
  *   bun run test:browser -- diagrams -g controls

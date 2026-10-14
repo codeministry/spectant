@@ -429,7 +429,7 @@ describe('ShellComponent', () => {
         expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual([null, null, null, 'page', null, null]);
         expect(entries.map((entry) => entry.getAttribute('aria-disabled'))).toEqual([null, null, null, null, null, null]);
         expect(entries.map((entry) => entry.querySelector('.dot')?.getAttribute('data-dot'))).toEqual([...AREA_IDS]);
-        // spec 024: prototype value (principal: Prototyp gilt immer) — pop-area's sublines name each area's tabs.
+        // spec 024: prototype value (principal: the prototype wins) — pop-area's sublines name each area's tabs.
         expect(texts(nav?.querySelectorAll('[data-area] .sub') as NodeListOf<Element>)).toEqual([
           'overview · next step · gates',
           'Status · Timeline',
@@ -604,11 +604,11 @@ describe('ShellComponent', () => {
       const list = root.querySelector('nav[data-picker="workspace"]');
       expect(list?.getAttribute('aria-label')).toBe('Workspaces');
       const entries = [...(list?.querySelectorAll<HTMLAnchorElement>('.picker-entry') ?? [])];
-      // spec 024: prototype value (principal: Prototyp gilt immer) — pop-ws: the workspaces, then "Show all n workspaces".
+      // spec 024: prototype value (principal: the prototype wins) — pop-ws: the workspaces, then "Show all n workspaces".
       expect(entries.map((entry) => entry.getAttribute('href'))).toEqual(['/w/harbor', '/w/lantern', '/']);
       expect(list?.querySelector('.menu-head')?.textContent.trim()).toBe('All workspaces (2)');
       expect(texts(list?.querySelectorAll('.entry-name') as NodeListOf<Element>)).toEqual(['harbor', 'lantern', 'Show all 2 workspaces']);
-      // spec 024: prototype value (principal: Prototyp gilt immer) — the bare count, as pop-ws shows it.
+      // spec 024: prototype value (principal: the prototype wins) — the bare count, as pop-ws shows it.
       expect(texts(list?.querySelectorAll('.entry-meta') as NodeListOf<Element>)).toEqual(['3', 'Cannot be read']);
       expect(entries.map((entry) => entry.getAttribute('aria-current'))).toEqual(['true', null, null]);
       expect(document.activeElement).toBe(entries[0]);
@@ -647,7 +647,7 @@ describe('ShellComponent', () => {
       const list = root.querySelector('nav[data-picker="spec"]');
       expect(list?.getAttribute('aria-label')).toBe('Specs');
       expect(list?.querySelector('.picker-all')?.getAttribute('href')).toBe('/w/harbor#specs');
-      // spec 024: prototype value (principal: Prototyp gilt immer) — pop-specs ends with "Spec overview" (g s).
+      // spec 024: prototype value (principal: the prototype wins) — pop-specs ends with "Spec overview" (g s).
       expect(list?.querySelector('.picker-all')?.textContent).toContain('Spec overview');
       const rows = [...(list?.querySelectorAll<HTMLAnchorElement>('[data-spec]') ?? [])];
       expect(rows.map((row) => row.getAttribute('data-spec'))).toEqual(['004', '002', '003']);
@@ -699,7 +699,7 @@ describe('ShellComponent', () => {
       const keys = [...root.querySelectorAll('header nav[aria-label="Areas"] [data-area]')].map(
         (entry) => entry.querySelector('ui-kbd')?.textContent.trim() ?? null,
       );
-      // spec 024: prototype value (principal: Prototyp gilt immer) — pop-area names g h for the dashboard.
+      // spec 024: prototype value (principal: the prototype wins) — pop-area names g h for the dashboard.
       expect(keys).toEqual(['g h', 'g s', 'g l', 'g d', 'g o', 'g n']);
       expect(root.querySelector('header nav[aria-label="Areas"] ui-kbd')?.getAttribute('aria-hidden')).toBe('true');
     });

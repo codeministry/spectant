@@ -2,7 +2,7 @@
    missing entry, beside `library-page.css` so each sheet stays inside the component style budget. Not encapsulated,
    as the page: every selector starts with `app-library-page`. */
 
-/* The card's first row (design.md 017 § Viewport-übergreifend, Mobile § 2; ISC-156.1): two control counts, missing
+/* The card's first row (design.md 017 § Across viewports, Mobile § 2; ISC-156.1): two control counts, missing
    then outdated, `1fr 1fr` at compact; from 640 px the pair keeps a readable width instead of spanning the card. */
 app-library-page .lib-head {
   display: grid;
@@ -86,7 +86,7 @@ app-library-page .lib-ctl[aria-disabled='true'] .lib-ctl-icon {
   color: var(--done-text);
 }
 
-/* The state chips of slot 1 (design.md 017 § Viewport-übergreifend): outdated on the orange tint with
+/* The state chips of slot 1 (design.md 017 § Across viewports): outdated on the orange tint with
    `triangle-alert` (prototype `.lib-stale`), missing on the violet scoping tint with `file-x`; word and icon tell them
    apart without colour. Ink on its own tint is the `--*-ink` (ISC-65). */
 app-library-page .lib-stale,

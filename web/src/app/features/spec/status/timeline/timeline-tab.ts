@@ -30,7 +30,7 @@ import { toneMark } from '../../../../shared/ui/tone';
 
 /**
  * The sources in chip order (design.md § Status, tablet; prototype `tabTimeline`): the files' five, then the server's
- * joins; `worktree` last, after Agent (spec 027 design.md § Viewport-übergreifend 5), its pill shown only while the
+ * joins; `worktree` last, after Agent (spec 027 design.md § Across viewports 5), its pill shown only while the
  * strand holds a worktree entry or the filter names it.
  */
 export const TIMELINE_KINDS: readonly TimelineKind[] = ['stage', 'decision', 'round', 'gate', 'commit', 'note', 'agent', 'worktree'];

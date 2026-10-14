@@ -1,5 +1,5 @@
 /*
- * The spec head's context line (spec 024 design.md § Viewport-übergreifend, Breadcrumb; prototype `.sh-context`,
+ * The spec head's context line (spec 024 design.md § Across viewports, Breadcrumb; prototype `.sh-context`,
  * `.context-path`, `.sh-labels`): the breadcrumb `← [badge] workspace / Spec NNN · Area` left in 12 px muted with cyan
  * links, the current level muted 500; the chip row (type, stage, pmark, milestone, feature) right. Separators are
  * generated content only: `/` scope, `·` spec to area, `›` down into a claim or task.

@@ -59,7 +59,7 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
 
 /**
  * T36 · ISC-149: the spec head above the tab bar on every spec area, the prototype's `spec-head-unified`
- * (`pages.js` `specHeader()`; spec 024 design.md § Spec-Kopf per viewport and § Viewport-übergreifend, Breadcrumb).
+ * (`pages.js` `specHeader()`; spec 024 design.md § Spec head per viewport and § Across viewports, Breadcrumb).
  *
  * - The context line: the breadcrumb `← [badge] workspace / Spec NNN · Area › ISC-51` on every tier (the workspace
  *   first, spec 019 ISC-140.1; the claim or task the open Claims or Tasks tab names by fragment as the last level). Each
@@ -73,7 +73,7 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
  *   button when the stage allows, and the notes pill (`sticky-note` (the prototype's `note`) + "n notes", violet tint).
  * - The agent banner (3 px orange edge, agent dot, `lock` "writes paused") while a lock source reports a lock (ISC-90);
  *   without one the "No agent source" note joins the meta lines when the server read no source (ISC-86).
- * - The provenance line (spec 027 design.md § Viewport-übergreifend 1, ISC-175, ISC-181): for a spec with a worktree,
+ * - The provenance line (spec 027 design.md § Across viewports 1, ISC-175, ISC-181): for a spec with a worktree,
  *   the full `ui-worktree-chip` (warning tone on a `worktree-branch-mismatch` warning, details as a sheet at compact),
  *   then, only when the spec is read from its worktree copy, the source note "Read from the worktree · main: ‹stage› ·
  *   n/m" (main's stage as an outline chip; "main equal" when stage and progress match), then the "No agent source"

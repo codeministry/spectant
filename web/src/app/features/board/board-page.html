@@ -40,7 +40,7 @@
       <app-allocate-dialog [ws]="ws()" (closed)="focusGrip($event)" />
 
       @if (b.shown === 0) {
-        <!-- Filtered empty (spec 024, design § Workspace-Board): the small empty state with "Clear filters". -->
+        <!-- Filtered empty (spec 024, design § Workspace board): the small empty state with "Clear filters". -->
         <ui-card class="no-match" data-no-match [padding]="0">
           <ui-empty-state icon="filter" [heading]="'board.workspace.filter.noMatch' | transloco" [body]="'board.workspace.filter.noMatchBody' | transloco">
             <button type="button" class="btn btn-sm" data-clear (click)="clearFilters()">
@@ -411,7 +411,7 @@
           </div>
           <span class="fade start" aria-hidden="true" [class.on]="fadeStart()"></span>
           <span class="fade end" aria-hidden="true" [class.on]="fadeEnd()"></span>
-          <!-- The position fades' arrows (spec 024, design § Workspace-Board Tablet): one column back or on, shown while the scroller has more on that side. -->
+          <!-- The position fades' arrows (spec 024, design § Workspace board Tablet): one column back or on, shown while the scroller has more on that side. -->
           @if (fadeStart()) {
             <button ui-icon-button icon="chevron-down" class="lstep prev" data-lane-step="prev" [label]="'board.workspace.indexPrev' | transloco" (click)="stepColumn(-1)"></button>
           }

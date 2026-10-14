@@ -75,7 +75,7 @@ export class PlanningGraph {
   );
   private readonly lang = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
-  /** The filter chips (design.md § Viewport-übergreifend): archived specs off, spec edges on; bundles opened by tap. */
+  /** The filter chips (design.md § Across viewports): archived specs off, spec edges on; bundles opened by tap. */
   protected readonly archived = signal(false);
   protected readonly edges = signal(true);
   protected readonly expand = signal<readonly string[]>([]);

@@ -128,7 +128,7 @@ describe('BoardCard (T122, ISC-129)', () => {
   });
 });
 
-// T36 · ISC-175 (spec 027, design.md § Viewport-übergreifend 6, Mobile G, Desktop 7): a spec with a worktree shows the
+// T36 · ISC-175 (spec 027, design.md § Across viewports 6, Mobile G, Desktop 7): a spec with a worktree shows the
 // compact, non-interactive worktree chip in the assignee row, before the assignee pill; the row's
 // `worktree-branch-mismatch` warning turns it to the warning tone; a spec without a worktree and a story show none.
 describe('BoardCard worktree chip (T36, ISC-175)', () => {
@@ -231,7 +231,7 @@ describe('BoardCard selection (spec 026, T26, ISC-171)', () => {
   });
 });
 
-// Spec 025, T23 · ISC-163 (design.md § Workspace-Board-Karte): a held spec's card carries "waits on NNN" in its own line
+// Spec 025, T23 · ISC-163 (design.md § Workspace board card): a held spec's card carries "waits on NNN" in its own line
 // right under the title, above the feature row; each chip links to its blocker spec on its own, outside the title link;
 // the partial scope stays in the accessible name; a card nothing holds shows no line.
 describe('BoardCard waits line (T23, ISC-163)', () => {

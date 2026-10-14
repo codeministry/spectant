@@ -13,7 +13,7 @@ interface BarModel {
 }
 
 /**
- * The prototype `tab-bar` band (spec 024, ISC-149, design.md § Viewport-übergreifend): a page puts the slot directly
+ * The prototype `tab-bar` band (spec 024, ISC-149, design.md § Across viewports): a page puts the slot directly
  * under its head (the spec page) and the slot sticks at top 64 on every width, under the one header row
  * from 1120 px and under header row 1 below, once row 2 has scrolled away. It carries the page glass, the hairline
  * across and the bar, and renders only when the route has tabs: an existing spec with a tabbed area (tabs from

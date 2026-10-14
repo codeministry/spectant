@@ -35,7 +35,7 @@ import { specKey, WORKSPACE_SPEC } from './library-model';
 import { PrototypeCard } from './prototype-card';
 
 /**
- * Each catalog type's tag icon (design.md 017 § Viewport-übergreifend, Mobile § 3): the Markdown kinds a page, tasks
+ * Each catalog type's tag icon (design.md 017 § Across viewports, Mobile § 3): the Markdown kinds a page, tasks
  * the checklist, design the palette, a prototype the app window, the constitution the scale, tech the open book, an
  * idea the bulb. An image document draws `image` whatever its type (`typeIcon`).
  */
@@ -57,7 +57,7 @@ const TYPE_ICON: Readonly<Record<LibraryDocType, IconName>> = {
 export const typeIcon = (doc: Pick<LibraryDoc, 'type' | 'media'>): IconName => (doc.media === 'image' ? 'image' : TYPE_ICON[doc.type]);
 
 /**
- * A row's short date (design.md 017 § Viewport-übergreifend): day, month and time, the year only outside the current
+ * A row's short date (design.md 017 § Across viewports): day, month and time, the year only outside the current
  * one, in UTC as every other date of the app's fixtures. The two parts are joined by the catalogue's `library.date`,
  * so English reads "Oct 12, 14:02" and German "12.10. 14:02".
  */
@@ -239,7 +239,7 @@ export function techReading(page: LibraryDocPage, doc: Document = document): Tec
 export type ReaderContext = 'workspace' | 'spec';
 
 /**
- * The library's reader (spec 017, T34, ISC-156.3; design.md 017 § 7 Reader, § 2 Reader, § Viewport-übergreifend): the
+ * The library's reader (spec 017, T34, ISC-156.3; design.md 017 § 7 Reader, § 2 Reader, § Across viewports): the
  * head (type tag, spec chip, path, "updated …", the title and "Open in spec NNN"), the stale notice, and the body by the
  * document's media:
  * - Markdown through `ui-doc-prose` (`ApiClient.libraryDoc`): Docs prose with "On this page" (a sticky column at wide,

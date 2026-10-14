@@ -321,7 +321,7 @@ interface EyebrowPage {
 
 const EYEBROW_PAGES: readonly EyebrowPage[] = [
   { name: 'workspaces', path: '/', segments: null },
-  { name: 'dashboard', path: `/w/${WORKSPACE}`, segments: [{ ws: true }, { key: 'shell.pages.specs' }, { count: true }] /* spec 024: prototype value (principal: Prototyp gilt immer) */, h1: /^\s*Specs\s*·\s*\S+\s*$/u /* spec 024: prototype value (principal: Prototyp gilt immer) */ },
+  { name: 'dashboard', path: `/w/${WORKSPACE}`, segments: [{ ws: true }, { key: 'shell.pages.specs' }, { count: true }] /* spec 024: prototype value (principal: the prototype wins) */, h1: /^\s*Specs\s*·\s*\S+\s*$/u /* spec 024: prototype value (principal: the prototype wins) */ },
   // spec 024: the prototype eyebrows of board, features and milestones end in their count; the idea's ends in its slug.
   { name: 'board', path: `/w/${WORKSPACE}/board`, segments: [{ ws: true }, { key: 'shell.pages.board' }, { count: true }] },
   {
@@ -330,7 +330,7 @@ const EYEBROW_PAGES: readonly EyebrowPage[] = [
     segments: [{ ws: true }, { key: 'shell.pages.board' }, { key: 'ideas.title' }, { literal: IDEA }],
     compactBetween: '[data-idea-chips]',
   },
-  // spec 024: prototype value (principal: Prototyp gilt immer) — the help eyebrow reads SPECTANT · GUIDE.
+  // spec 024: prototype value (principal: the prototype wins) — the help eyebrow reads SPECTANT · GUIDE.
   { name: 'help', path: '/help', segments: [{ key: 'shell.eyebrow.app' }, { key: 'help.eyebrow' }] },
   { name: 'settings', path: '/settings', segments: [{ key: 'shell.eyebrow.app' }, { key: 'settings.title' }] },
 ];

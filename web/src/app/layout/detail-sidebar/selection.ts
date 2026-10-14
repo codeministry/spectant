@@ -50,7 +50,7 @@ export type Presentation = 'docked' | 'floating' | 'overlay' | 'sheet';
 /** The entry of `ref`, or undefined when the index does not hold it (the index type itself claims every key). */
 export const relationAt = (index: RelationIndex, ref: RelationRef): Relation | undefined => index[ref];
 
-/** The presentation per container tier (design.md § Viewport-übergreifend): docked only at wide on a docking page. */
+/** The presentation per container tier (design.md § Across viewports): docked only at wide on a docking page. */
 export function presentationFor(tier: Tier, docks: boolean): Presentation {
   if (tier === 'compact') return 'sheet';
   if (tier === 'medium') return 'overlay';

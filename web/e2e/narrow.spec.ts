@@ -212,7 +212,7 @@ test.describe('narrow column', () => {
             await expect(page.locator('html')).toHaveAttribute('data-theme', `spec-${theme}`);
             await expect(page.locator('html')).toHaveAttribute('lang', language);
             await expect(page.locator(OVERVIEW.column)).toHaveCount(count);
-            // spec 024: prototype value (principal: Prototyp gilt immer) — the prototype's own empty-state markup.
+            // spec 024: prototype value (principal: the prototype wins) — the prototype's own empty-state markup.
             if (count === 0) await expect(page.locator(`${OVERVIEW.host} [data-overview-empty]`)).toBeVisible();
 
             for (const column of await columns(page)) {

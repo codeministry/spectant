@@ -1,5 +1,5 @@
 /*
- * The spec head, the prototype's `spec-head-unified` (spec 024 design.md § Spec-Kopf; `styles.css` `.spec-head-unified`,
+ * The spec head, the prototype's `spec-head-unified` (spec 024 design.md § Spec head; `styles.css` `.spec-head-unified`,
  * `.pill`, `[data-ui="agent-banner"]`, `.agent-dot`). This file holds the title row, description, meta, actions and
  * the agent banner; the context line (breadcrumb and chip row) is `spec-head.context.css`, the compact tier and the
  * one-column row under 800 px `spec-head.compact.css`.
@@ -159,7 +159,7 @@ h1 {
 }
 
 /*
- * The provenance line (spec 027 design.md § Viewport-übergreifend 1, ISC-175, ISC-181): the worktree chip, then the
+ * The provenance line (spec 027 design.md § Across viewports 1, ISC-175, ISC-181): the worktree chip, then the
  * source note and the "No agent source" text. The text wraps as a whole onto the next line when chip and text are wider
  * than the left column (about 1060 px at wide), never inside the chip (the primitive truncates the branch); at the
  * compact tier the chip always stands alone, the text 4 px below it. Only rendered for a spec with a worktree.

@@ -1,5 +1,5 @@
 // The one exception list for ISC-65 as refined by ISC-146.1 (spec 024): the colour pairs that stay below the WCAG 2.x
-// line because the prototype's value wins over a contrast correction ("Prototyp gilt immer"). Each entry is a token
+// line because the prototype's value wins over a contrast correction ("the prototype wins"). Each entry is a token
 // pair measured on its surface in one theme; `specs/constitution.md` § Adaptations (DS-APP-32/33) names the same
 // pairs with the same ratios.
 //

@@ -6,7 +6,7 @@ import { type Tone, toneInk, toneMark, toneTint } from '../tone';
 
 export type ChipVariant = 'status' | 'small' | 'plain' | 'mono' | 'take' | 'pill' | 'count' | 'demo';
 
-/** The demo chip's yellow (design.md § Viewport-übergreifend): prototype `--yellow-t` / `--yellow-text`, the app's `--conc-*`. */
+/** The demo chip's yellow (design.md § Across viewports): prototype `--yellow-t` / `--yellow-text`, the app's `--conc-*`. */
 const DEMO_COLORS = { color: 'var(--conc)', tint: 'var(--conc-t)', ink: 'var(--conc-text)' } as const;
 
 /**
@@ -22,7 +22,7 @@ const DEMO_COLORS = { color: 'var(--conc)', tint: 'var(--conc-t)', ink: 'var(--c
  * - `take`: mono 500 12/1, no upper case (the "take ISC-334" chip, lime with `hand`);
  * - `pill`: 28 px, radius 999, 0 10 px, 12/600 ("2 notes" with `file-text`);
  * - `count`: the 22 px round counter (`.count-badge`), at least 22 wide, 0 6 px, 12/400;
- * - `demo` (ISC-149.1, design.md § Viewport-übergreifend): the mark of a mocked block, the `plain` box on the yellow
+ * - `demo` (ISC-149.1, design.md § Across viewports): the mark of a mocked block, the `plain` box on the yellow
  *   tint (`--conc-t` / `--conc-text`, the prototype's `--yellow-t` / `--yellow-text`) with `flask-conical`, the
  *   lower-case word `demo.chip` and the accessible description `demo.description` as visually hidden text; it ignores
  *   `tone`, `icon` and projected content, and its host carries `data-demo-chip`, the one selector for every width.

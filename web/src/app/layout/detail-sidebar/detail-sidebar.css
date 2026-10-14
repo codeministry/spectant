@@ -1,5 +1,5 @@
 /*
- * app-detail-sidebar (spec 026 design.md § Viewport-übergreifend, prototype `.detail`): one panel, three shells.
+ * app-detail-sidebar (spec 026 design.md § Across viewports, prototype `.detail`): one panel, three shells.
  * Docked it fills the rail slot; floating (wide, a page without a rail) and overlay (medium) it is a non-modal panel
  * at the right edge, 352 px (`--rail`), no scrim; at compact the content sits in `ui-sheet`'s modal bottom sheet.
  */

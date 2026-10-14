@@ -1,6 +1,6 @@
 import { computed, signal } from '@angular/core';
 
-/** The zoom steps of a drawn diagram in percent (design.md § Mermaid-Werkzeugleiste, ISC-154.1). */
+/** The zoom steps of a drawn diagram in percent (design.md § Mermaid toolbar, ISC-154.1). */
 export const ZOOM_STEPS = [50, 75, 100, 125, 150, 200, 300] as const;
 const HOME = ZOOM_STEPS.indexOf(100);
 

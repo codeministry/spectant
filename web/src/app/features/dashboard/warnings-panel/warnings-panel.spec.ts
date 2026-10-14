@@ -73,7 +73,7 @@ describe('WarningsPanel', () => {
     for (const spec of foggy) {
       const line = root.querySelector(`[data-fog-line="${spec.id}"]`) as HTMLElement;
       expect(line.closest(`[data-warning-spec="${spec.id}"]`)).not.toBeNull();
-      // spec 024: prototype value (principal: Prototyp gilt immer)
+      // spec 024: prototype value (principal: the prototype wins)
       expect(line.querySelector('ui-icon[data-icon="cloud"]')).not.toBeNull();
       expect(line.querySelector('a[data-warning-link]')?.getAttribute('href')).toBe(`/?sel=spec:${spec.id}`);
       expect(line.textContent).toContain(spec.fog === 1 ? '1 open fog item' : `${spec.fog} open fog items`);

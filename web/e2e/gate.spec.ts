@@ -47,7 +47,7 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
       const gate = page.locator(GATE);
       await expect(gate).toHaveAttribute('data-state', 'done');
       // The time is `Intl` in the UI language; its date part carries the year of `gates.reviewed.at`.
-      // spec 024: prototype value (principal: Prototyp gilt immer) — the time and the session stand in the `.gate-hint` under the button.
+      // spec 024: prototype value (principal: the prototype wins) — the time and the session stand in the `.gate-hint` under the button.
       await expect(gate).toContainText(/Re-mark/u);
       await expect(page.locator(`${HEAD} [data-gate-hint]`)).toContainText(/Reviewed .*2026/u);
     });
@@ -60,7 +60,7 @@ for (const width of [WIDTHS.phone, WIDTHS.desktop]) {
         const gate = page.locator(GATE);
         await expect(gate).toHaveAttribute('data-state', 'paused');
         await expect(gate).toBeDisabled();
-        // spec 024: prototype value (principal: Prototyp gilt immer) — the time and the session stand in the `.gate-hint` under the button.
+        // spec 024: prototype value (principal: the prototype wins) — the time and the session stand in the `.gate-hint` under the button.
         const hint = page.locator(`${HEAD} [data-gate-hint]`);
         await expect(hint).toContainText(/a:claude:(?:sess-2|stub-002-isc-\d+)/u);
         const banner = page.locator(`${HEAD} [data-agent-banner]`);
@@ -178,7 +178,7 @@ test.describe('spec head per tier', () => {
       const box = await head.boundingBox();
       const crumbs = await head.locator('[data-breadcrumb]').boundingBox();
       const crumbRow = (crumbs?.height ?? 0) + 8;
-      // spec 024: prototype value (principal: Prototyp gilt immer; ISC-105 "Prototyp, ISC-105 anpassen") — the prototype's
+      // spec 024: prototype value (principal: the prototype wins; ISC-105 adjusted to the prototype) — the prototype's
       // `.gate-btn` carries its 11 px `.gate-hint` line under the button (2 px gap, at most one 16 px line), measured like
       // the crumb row on top of the 240 px budget.
       const hint = await head.locator('[data-gate-hint]').boundingBox();

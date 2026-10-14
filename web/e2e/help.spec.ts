@@ -139,7 +139,7 @@ test.describe('glossary', () => {
     await expect(page.locator('header [data-control="palette"]')).toBeVisible();
     await page.keyboard.press('?');
     const link = page.locator('app-shortcut-sheet dialog [data-sheet-help]');
-    // spec 024: prototype value (principal: Prototyp gilt immer) — the sheet ends on "Full guide →".
+    // spec 024: prototype value (principal: the prototype wins) — the sheet ends on "Full guide →".
     await expect(link).toHaveText(en.settings.keyboard.guide);
     await link.click();
     await expect(page).toHaveURL(/\/help$/);

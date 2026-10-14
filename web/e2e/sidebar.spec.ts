@@ -4,7 +4,7 @@
  * in the dashboard's specs list and on the ideas opens `app-detail-sidebar` with the type, id, title, progress and the
  * parents, children and blockers the relation index holds, every entry a link that re-selects. The selection lives in
  * `?sel=`, a reload shows the same sidebar, and Escape closes it and returns focus to the chosen object's `[data-ref]`.
- * Presentations per container tier (design.md § Viewport-übergreifend): docked on the tree and the dashboard at 1440,
+ * Presentations per container tier (design.md § Across viewports): docked on the tree and the dashboard at 1440,
  * floating on the matrix, graph, board and idea page at 1440, a non-modal overlay at 820, a modal sheet at 390.
  *
  * Against the stub API: every expected value comes from harbor's planning golden

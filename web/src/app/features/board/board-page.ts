@@ -263,7 +263,7 @@ export class BoardPage {
   });
 
   /**
-   * The page eyebrow (spec 024, ISC-151; design § Workspace-Board): `<WS> · BOARD · n CARDS`, the count once the board
+   * The page eyebrow (spec 024, ISC-151; design § Workspace board): `<WS> · BOARD · n CARDS`, the count once the board
    * is built.
    */
   protected readonly eyebrow = computed<readonly string[]>(() => {
@@ -275,7 +275,7 @@ export class BoardPage {
   });
 
   /**
-   * Medium only (spec 024, design § Viewport-übergreifend "Kanban bleibt"): the lane index over the scroll-snap
+   * Medium only (spec 024, design § Across viewports "Kanban stays"): the lane index over the scroll-snap
    * scroller, the compact switch's segmented as a position marker. Its value is the first column in view (measured with
    * the overflow line); picking a segment scrolls that column to the scroller's start.
    */
@@ -558,7 +558,7 @@ export class BoardPage {
     return card.kind === 'idea' ? ['/w', this.ws(), 'ideas', card.slug] : ['/w', this.ws(), 's', card.id ?? card.slug];
   }
 
-  /** A swimlane's done cards, the mini meter's value (spec 024, design § Workspace-Board Desktop "Mini-Balken"). */
+  /** A swimlane's done cards, the mini meter's value (spec 024, design § Workspace board Desktop "mini bar"). */
   protected bandDone(band: BandHead): number | null {
     if (!('cells' in band)) return null;
     const cells = (band as BandRow).cells;
