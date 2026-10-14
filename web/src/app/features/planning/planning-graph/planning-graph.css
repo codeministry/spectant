@@ -193,14 +193,16 @@ app-planning-graph .lg-contains {
   stroke-width: 1;
 }
 
+/* The legend's spec-edge samples draw exactly as the arrows in GRAPH_CSS (spec 025, ISC-170.1): open violet dashed,
+   met muted solid. */
 app-planning-graph .lg-open {
-  stroke: var(--color-warning);
+  stroke: var(--color-secondary);
   stroke-width: 2;
   stroke-dasharray: 6 4;
 }
 
 app-planning-graph .lg-met {
-  stroke: var(--color-accent);
+  stroke: var(--muted);
   stroke-width: 1.5;
 }
 
