@@ -3,8 +3,8 @@
 //
 // Read-only by construction: only `rev-parse`, `log`, `config --get` (the identity, `userEmail`) and `for-each-ref`
 // (the branch names, `takenSpecNumbers`) and `worktree list --porcelain` (the worktrees, `worktreeList`) and
-// `rev-list --count` (a branch's distance to `main`, `aheadOfMain`) and `merge-base --is-ancestor` (whether `main` holds
-// a spec branch, `mergedSpecBranches`) run, all of which never touch the index, never take
+// `rev-list --count` (a branch's distance to `main`, `aheadOfMain`) and `rev-list --first-parent` plus
+// `merge-base --is-ancestor` (whether a merge brought a spec branch into `main`, `mergedSpecBranches`) run, all of which never touch the index, never take
 // a lock and never write an object, plus `ls-files` (the tracked paths of a spec folder, `trackedSpecPaths`), which
 // reads the index and never writes it, plus `status --porcelain` (a worktree's uncommitted changes, `dirty`), which reads
 // the index and would write a refreshed one back under an optional lock: `GIT_OPTIONAL_LOCKS=0` turns that write off,
@@ -592,13 +592,17 @@ function specBranchOf(refname: string): { branch: string; spec: string } | null 
 }
 
 /**
- * The local spec branches of `root`'s repository and whether `main` holds each (ISC-162.1): every ref
+ * The local spec branches of `root`'s repository and whether a merge brought each into `main` (ISC-162.1): every ref
  * `refs/heads/<feature|fix|spike|infra>/NNN-slug` (the folder segment in core's `SPEC_FOLDER` shape), read with
- * `for-each-ref --format=%(objectname) %(refname) refs/heads/`, and for each tip that is not `main`'s own,
- * `merge-base --is-ancestor <tip> <main>` on the two object ids (exit 0 merged, 1 not). Only local branches count:
- * remote-tracking refs are as old as the last fetch, and no fetch runs. The base is the local `main` by name, as
- * `aheadOfMain` reads it; a repository without one answers every branch unmerged. Both commands read refs and objects
- * only: no index, no lock (`GIT_OPTIONAL_LOCKS=0` besides), no object written, no network.
+ * `for-each-ref --format=%(objectname) %(refname) refs/heads/`. A branch is merged when its tip is an ancestor of
+ * `main` and does not lie on `main`'s first-parent line. `rev-list --first-parent <main> --` reads that line once; a
+ * tip on it (a branch fresh from `main`, at an older `main` commit, or fast-forwarded into it) is not merged without a
+ * further read, and for every other tip `merge-base --is-ancestor <tip> <main>` on the two object ids decides (exit 0
+ * merged, 1 not). A fast-forwarded branch therefore reads as unmerged while it exists; once deleted, `core/` falls back
+ * to `phase: complete`. Only local branches count: remote-tracking refs are as old as the last fetch, and no fetch
+ * runs. The base is the local `main` by name, as `aheadOfMain` reads it; a repository without one answers every branch
+ * unmerged. All three commands read refs and objects only: no index, no lock (`GIT_OPTIONAL_LOCKS=0` besides), no
+ * object written, no network.
  *
  * Cached per root on `main`'s tip and the spec branches' names and tips: a branch commit, a merge into `main`, a new
  * or a deleted spec branch each change the key. Never throws: no repository root, no git, a failure or the deadline
@@ -636,10 +640,20 @@ export async function mergedSpecBranches(root: string, options: MergedBranchesOp
     const cached = cache.lookup(root, key);
     if (cached !== undefined) return cached;
 
+    // `main`'s first-parent line, read once per key and only when there is a spec branch to judge.
+    const firstParent = new Set<string>();
+    if (main !== null && tips.length > 0) {
+      const line = await runner(["-C", root, "rev-list", "--first-parent", main, "--"], env, signal);
+      if (line === null) return nothing("git not found on PATH");
+      if (line.code !== 0 || aborted()) return nothing(`git rev-list exited ${line.code}: ${firstLine(line.stderr)}`);
+      for (const sha of line.stdout.split("\n")) if (SHA.test(sha)) firstParent.add(sha);
+    }
+
     const branches: SpecBranch[] = [];
     for (const tip of tips) {
-      if (main === null || tip.sha === main) {
-        branches.push({ spec: tip.spec, branch: tip.branch, merged: main !== null });
+      // No main, or a tip on its first-parent line (main's own tip included): no merge brought the branch in.
+      if (main === null || firstParent.has(tip.sha)) {
+        branches.push({ spec: tip.spec, branch: tip.branch, merged: false });
         continue;
       }
       const run = await runner(["-C", root, "merge-base", "--is-ancestor", tip.sha, main], env, signal);

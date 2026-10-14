@@ -2,13 +2,20 @@
 // one consumer spec whose claims each wait on one of them. The server reads the merge state (`git.ts`
 // `mergedSpecBranches`, `workspace-loader.ts` `mergeStateOf`), `core/`'s `resolveEdges` decides open or met:
 //
-// | blocker | branch                          | frontmatter       | edge |
-// |---------|---------------------------------|-------------------|------|
-// | 002     | `feature/002-…`, not in `main`  | `phase: complete` | open (the branch decides) |
-// | 003     | `infra/003-…`, merged into main | `phase: building` | met  |
-// | 004     | deleted                         | `phase: complete` | met  |
-// | 005     | deleted                         | `phase: building` | open |
-// | 001     | none, under `specs/archive/`    | `phase: building` | met  |
+// | blocker | branch                                                 | frontmatter       | edge |
+// |---------|--------------------------------------------------------|-------------------|------|
+// | 002     | `feature/002-…`, not in `main`                         | `phase: complete` | open (the branch decides) |
+// | 003     | `infra/003-…`, in `main` through a merge commit        | `phase: building` | met  |
+// | 004     | deleted                                                | `phase: complete` | met  |
+// | 005     | deleted                                                | `phase: building` | open |
+// | 006     | `feature/006-…`, fresh at `main`'s tip                 | `phase: building` | open |
+// | 007     | `fix/007-…`, at an older `main` commit, no merge       | `phase: complete` | open (the branch decides) |
+// | 008     | `spike/008-…`, fast-forwarded into `main`, still there | `phase: complete` | open; met once deleted |
+// | 001     | none, under `specs/archive/`                           | `phase: building` | met  |
+//
+// Merged means: the tip is an ancestor of `main` and not on `main`'s first-parent line. A branch whose tip sits on
+// that line (fresh from `main`, or fast-forwarded into it) is not merged; the fast-forward case is the documented
+// limitation: its edge is met only once the branch is deleted and the spec carries `phase: complete`.
 //
 // The reads never write: `.git/` is hashed, every file's bytes and mtime, before and after them.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -89,6 +96,7 @@ function gitSnapshot(repo: string): Map<string, string> {
 let root: string;
 let repo: string;
 let unmerged002: string;
+let fastForward008: string;
 const savedEnv: Record<string, string | undefined> = {};
 
 beforeAll(() => {
@@ -108,6 +116,9 @@ beforeAll(() => {
   writeSpec(specs, "003-merged", "building");
   writeSpec(specs, "004-deleted-complete", "complete");
   writeSpec(specs, "005-deleted-open", "building");
+  writeSpec(specs, "006-fresh", "building");
+  writeSpec(specs, "007-old-base", "complete");
+  writeSpec(specs, "008-fast-forward", "complete");
   writeSpec(join(specs, "archive"), "001-archived", "building");
   writeSpec(specs, "010-consumer", "building", [
     "- [ ] ISC-1: Waits on the unmerged branch. (after: 002)",
@@ -115,6 +126,9 @@ beforeAll(() => {
     "- [ ] ISC-3: Waits on the deleted branch of a complete spec. (after: 004)",
     "- [ ] ISC-4: Waits on the deleted branch of an open spec. (after: 005)",
     "- [ ] ISC-5: Waits on the archived spec. (after: 001)",
+    "- [ ] ISC-6: Waits on a branch fresh from main. (after: 006)",
+    "- [ ] ISC-7: Waits on a branch at an older main commit. (after: 007)",
+    "- [ ] ISC-8: Waits on a fast-forwarded branch. (after: 008)",
   ]);
   git(repo, "init", "-q", "-b", "main");
   git(repo, "add", "-A");
@@ -126,10 +140,22 @@ beforeAll(() => {
   git(repo, "update-ref", "refs/heads/feature/002-unmerged", unmerged002);
   git(repo, "update-ref", "refs/heads/wip/003-merged", unmerged002);
   git(repo, "update-ref", "refs/heads/feature/not-a-spec", unmerged002);
-  // 003: a commit merged into main with a merge commit; main (checked out) moves, the index and worktree stay as they are.
+  // 003: a commit merged into main by a real merge commit (two parents, main first, as `git merge --no-ff` writes it);
+  // main (checked out) moves, the index and worktree stay as they are.
   const work003 = commitOn(repo, base, "work on 003");
   git(repo, "update-ref", "refs/heads/infra/003-merged", work003);
-  git(repo, "update-ref", "refs/heads/main", commitOn(repo, base, "Merge branch 'infra/003-merged'", work003));
+  const merge003 = commitOn(repo, base, "Merge branch 'infra/003-merged'", work003);
+  git(repo, "update-ref", "refs/heads/main", merge003);
+  // 008: a commit main took by fast-forward; the branch still points at it, on main's first-parent line.
+  fastForward008 = commitOn(repo, merge003, "work on 008");
+  git(repo, "update-ref", "refs/heads/spike/008-fast-forward", fastForward008);
+  // main moves on past it, so neither 008 nor 007 sits at main's tip.
+  const tip = commitOn(repo, fastForward008, "later work on main");
+  git(repo, "update-ref", "refs/heads/main", tip);
+  // 006: a branch freshly created at main's tip, without a commit of its own.
+  git(repo, "update-ref", "refs/heads/feature/006-fresh", tip);
+  // 007: a branch created from an older main commit, without a commit of its own.
+  git(repo, "update-ref", "refs/heads/fix/007-old-base", base);
   // 004 and 005: a branch that existed and is gone.
   git(repo, "branch", "fix/004-deleted-complete", unmerged002);
   git(repo, "branch", "spike/005-deleted-open", unmerged002);
@@ -143,6 +169,18 @@ afterAll(() => {
   }
   rmSync(root, { recursive: true, force: true });
 });
+
+/** The consumer's edges with the fixture at rest, in claim order. */
+const EDGES_AT_REST = [
+  "ISC-1 → 002 open",
+  "ISC-2 → 003 met",
+  "ISC-3 → 004 met",
+  "ISC-4 → 005 open",
+  "ISC-5 → 001 met",
+  "ISC-6 → 006 open",
+  "ISC-7 → 007 open",
+  "ISC-8 → 008 open",
+] as const;
 
 /** The consumer's edges as `claim → target state`, resolved from a fresh workspace read. */
 async function consumerEdges(): Promise<string[]> {
@@ -168,8 +206,30 @@ describe("ISC-162.1 merged: a spec edge is met by a merged branch, else by phase
     expect(result.source).toBe("git");
     expect(result.branches).toEqual([
       { spec: "002", branch: "feature/002-unmerged", merged: false },
+      { spec: "006", branch: "feature/006-fresh", merged: false },
+      { spec: "007", branch: "fix/007-old-base", merged: false },
       { spec: "003", branch: "infra/003-merged", merged: true },
+      { spec: "008", branch: "spike/008-fast-forward", merged: false },
     ]);
+  });
+
+  test("merged: a branch fresh at main's tip, or at an older main commit, has no merge of its own and is not merged", async () => {
+    const result = await mergedSpecBranches(repo, { cache: new MergeCache() });
+    expect(result.branches.filter((b) => b.spec === "006" || b.spec === "007").map((b) => b.merged)).toEqual([false, false]);
+    const edges = await consumerEdges();
+    expect(edges.filter((e) => e.startsWith("ISC-6 ") || e.startsWith("ISC-7 "))).toEqual(["ISC-6 → 006 open", "ISC-7 → 007 open"]);
+  });
+
+  test("merged: a fast-forwarded branch that still exists is not merged; deleted, its phase: complete meets the edge", async () => {
+    expect((await consumerEdges()).find((e) => e.startsWith("ISC-8 "))).toBe("ISC-8 → 008 open");
+    git(repo, "update-ref", "-d", "refs/heads/spike/008-fast-forward");
+    try {
+      const result = await mergedSpecBranches(repo, { cache: new MergeCache() });
+      expect(result.branches.some((b) => b.spec === "008")).toBe(false);
+      expect((await consumerEdges()).find((e) => e.startsWith("ISC-8 "))).toBe("ISC-8 → 008 met");
+    } finally {
+      git(repo, "update-ref", "refs/heads/spike/008-fast-forward", fastForward008);
+    }
   });
 
   test("merged: one MergeState per spec, active and archived, with branch, merged, complete and archived", async () => {
@@ -181,19 +241,23 @@ describe("ISC-162.1 merged: a spec edge is met by a merged branch, else by phase
       { spec: "003", branch: "infra/003-merged", merged: true, complete: false, archived: false },
       { spec: "004", branch: null, merged: false, complete: true, archived: false },
       { spec: "005", branch: null, merged: false, complete: false, archived: false },
+      { spec: "006", branch: "feature/006-fresh", merged: false, complete: false, archived: false },
+      { spec: "007", branch: "fix/007-old-base", merged: false, complete: true, archived: false },
+      { spec: "008", branch: "spike/008-fast-forward", merged: false, complete: true, archived: false },
       { spec: "010", branch: null, merged: false, complete: false, archived: false },
     ]);
   });
 
-  test("merged: not merged open, merged met, deleted with complete met, deleted without open, archived met", async () => {
-    expect(await consumerEdges()).toEqual(["ISC-1 → 002 open", "ISC-2 → 003 met", "ISC-3 → 004 met", "ISC-4 → 005 open", "ISC-5 → 001 met"]);
+  test("merged: not merged open, merged met, deleted with complete met, deleted without open, archived met, no own merge open", async () => {
+    expect(await consumerEdges()).toEqual([...EDGES_AT_REST]);
   });
 
   test("merged: the cache skips merge-base while main and the spec branches stand still, and a merge into main is seen", async () => {
     const cache = new MergeCache();
     const first = recording();
     await mergedSpecBranches(repo, { cache, runner: first.runner });
-    expect(first.calls).toEqual(["for-each-ref", "merge-base", "merge-base"]); // 002 and 003, neither at main's tip
+    // One first-parent read of main; merge-base only for 002 and 003, the tips off that line (006, 007, 008 are on it).
+    expect(first.calls).toEqual(["for-each-ref", "rev-list", "merge-base", "merge-base"]);
     const again = recording();
     const cached = await mergedSpecBranches(repo, { cache, runner: again.runner });
     expect(again.calls).toEqual(["for-each-ref"]);
@@ -207,7 +271,7 @@ describe("ISC-162.1 merged: a spec edge is met by a merged branch, else by phase
       const after = await mergedSpecBranches(repo, { cache, runner: moved.runner });
       expect(moved.calls.filter((c) => c === "merge-base").length).toBeGreaterThan(0);
       expect(after.branches.find((b) => b.spec === "002")?.merged).toBe(true);
-      expect(await consumerEdges()).toEqual(["ISC-1 → 002 met", "ISC-2 → 003 met", "ISC-3 → 004 met", "ISC-4 → 005 open", "ISC-5 → 001 met"]);
+      expect(await consumerEdges()).toEqual(EDGES_AT_REST.map((e) => (e === "ISC-1 → 002 open" ? "ISC-1 → 002 met" : e)));
     } finally {
       git(repo, "update-ref", "refs/heads/main", main);
     }
