@@ -65,6 +65,13 @@ app-library-page .lib-loading {
   padding: 16px;
 }
 
+/* `ui-card` clips with `overflow: hidden`, which makes the card the scroll container of the sticky list column: the
+   column then sat its 72 px offset below the card's top edge before anything scrolled. `clip` cuts the same rounded
+   edge without being a scroll container, so the column sticks to the page scroll. */
+app-library-page .lib-card {
+  overflow: clip;
+}
+
 app-library-page .lib-grid {
   display: grid;
   min-block-size: 640px;

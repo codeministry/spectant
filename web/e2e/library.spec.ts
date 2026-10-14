@@ -176,6 +176,20 @@ const toggleOf = (page: Page, key: string): Locator => subgroup(page, key).locat
 test.describe('list', () => {
   test.use(atWidth(WIDTHS.desktop));
 
+  test('the list column starts at the card edge and sticks to the page scroll, not to the card', async ({ page }) => {
+    await page.goto(PAGE);
+    await expect(page.locator('[data-library-controls]')).toBeVisible();
+    const top = (selector: string): Promise<number> => page.locator(selector).evaluate((el) => el.getBoundingClientRect().top);
+    // Unscrolled, the column stands at the top of the card's grid: no sticky offset inside the card.
+    expect(Math.abs((await top('[data-library-list]')) - (await top('.lib-grid')))).toBeLessThanOrEqual(1);
+    // Scrolled past the card's top, the column holds its sticky offset below the viewport's top edge.
+    const grid = await top('.lib-grid');
+    await page.mouse.move(720, 600);
+    await page.mouse.wheel(0, grid + 400);
+    await expect.poll(() => top('.lib-grid')).toBeLessThan(0);
+    expect(Math.round(await top('[data-library-list]'))).toBe(72);
+  });
+
   test('every catalog document from the read route, evidence collapsed and loaded in blocks, no demo element', async ({ page, request }) => {
     const catalog = await catalogOf(request);
     const evidence = evidenceGroups(catalog);
