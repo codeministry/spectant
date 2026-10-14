@@ -164,6 +164,12 @@ export interface DashboardSpecRow {
    * `SpecRead.main` with the workspace's tree; null unless `source` is `worktree` and the main copy has a spec.md.
    */
   readonly main: MainCopy | null;
+  /**
+   * What the spec waits on (spec 025, ISC-163): its row of `resolveEdges(…).waits` while at least one open spec edge
+   * holds open work, the web's `waits on NNN` on the row, the board card and the spec head; null when nothing waits,
+   * so the display goes once the edge is met. Additive: null on every row of a workspace without spec edges.
+   */
+  readonly waits: SpecWait | null;
 }
 
 /** Warnings of one kind across specs, for the warnings panel. */
@@ -644,8 +650,12 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], 
     worktree,
     source,
     main,
+    waits: waitsOf(ctx.waits.get(id)),
   };
 }
+
+/** A spec's wait as a row shows it (ISC-163): only while an open spec edge holds something, else null. */
+const waitsOf = (wait: SpecWait | undefined): SpecWait | null => (wait === undefined || wait.blockers.length === 0 ? null : wait);
 
 // ── spec overlap and edge warnings (spec 025) ─────────────────────────────────────────────────────────
 

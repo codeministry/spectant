@@ -144,6 +144,7 @@
           "priority": "P3",
           "hash": "bcbddebe05d87141f9c7b2c60a1dc7274f3850fd35dce2bd9e5242f324f323cb",
           "assignee": null,
+          "waits": null,
           "main": false,
           "held": 1
         }
@@ -193,6 +194,7 @@
           "priority": "P3",
           "hash": "7c496565c0c9a320f8161ae09e529ca84a0dd3c18ec53819e2e2d03947bf16ba",
           "assignee": null,
+          "waits": null,
           "main": true,
           "held": 3
         }
@@ -240,6 +242,7 @@
           "priority": "P3",
           "hash": "bcbddebe05d87141f9c7b2c60a1dc7274f3850fd35dce2bd9e5242f324f323cb",
           "assignee": null,
+          "waits": null,
           "main": true,
           "held": 3
         }
@@ -280,6 +283,7 @@
           "priority": "P3",
           "hash": "3992c09469b1934bf50a1e6a14f13e61ce82e15159adf19581648e3f2a2be65c",
           "assignee": null,
+          "waits": null,
           "main": true,
           "held": 2
         }
@@ -319,6 +323,7 @@
           "priority": "P3",
           "hash": "7c496565c0c9a320f8161ae09e529ca84a0dd3c18ec53819e2e2d03947bf16ba",
           "assignee": null,
+          "waits": null,
           "main": false,
           "held": 3
         },
@@ -332,6 +337,7 @@
           "priority": "P3",
           "hash": "bcbddebe05d87141f9c7b2c60a1dc7274f3850fd35dce2bd9e5242f324f323cb",
           "assignee": null,
+          "waits": null,
           "main": false,
           "held": 4
         }

@@ -690,6 +690,8 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
         priority: "opt", stageSource: "opt", assignee: "opt",
         // spec 027: the spec's worktree, its read source and the main copy's stage and progress (ISC-175, ISC-181)
         worktree: "opt", source: "opt", main: "opt",
+        // spec 025: what the spec waits on, the row's `waits` (ISC-163)
+        waits: "opt",
       })),
       ...shapeProblems("spec.keyNumbers", value.keyNumbers, keysOf<KeyNumbers>({
         claims: "req", tasks: "req", rounds: "req", gates: "req", waiting: "req",
@@ -718,6 +720,8 @@ describe("each 200 body type accepts its golden family's value (harbor 002)", ()
       verification: "req", lock: "req", dropped: "req", noteCount: "req", line: "req",
       // spec 025: the spec edges of the claim's `(after: …)` (ISC-162)
       afterSpecs: "opt",
+      // spec 025: the specs an open spec edge on the claim waits on (ISC-163)
+      waitsOn: "opt",
     });
     expect([
       ...shapeProblems("claims", value, keysOf<ClaimViewModel>({ claims: "req", features: "req", fog: "req", counts: "req" })),

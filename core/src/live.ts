@@ -37,7 +37,7 @@
 import { parseActor } from './actor.ts';
 import type { Claim } from './claims.ts';
 import { countProgress, parseClaims } from './claims.ts';
-import type { ActorRef, AgentLockSource, CardState, ClaimLock, FrameCard, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, LiveRound, LockReading, RunCounts, RunState, TaskRow, TaskRun } from './files.ts';
+import type { ActorRef, AgentLockSource, CardState, ClaimLock, FrameCard, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, LiveRound, LockReading, RunCounts, RunState, SpecEdge, TaskRow, TaskRun } from './files.ts';
 import { buildFrames, worstState } from './frames.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { reviewedGate } from './gates.ts';
@@ -74,7 +74,7 @@ export function buildLiveFrame(input: LiveFrameInput): LiveFrame {
   const locks = heldLocks(reading.locks, ours);
   const held = new Map(locks.map((l) => [l.claim, l]));
 
-  const overlaid = rows.length === 0 ? [...base] : overlayTasks(base, rows, claims, locks, spec, reviewedGate(files.texts).check.state);
+  const overlaid = rows.length === 0 ? [...base] : overlayTasks(base, rows, claims, locks, spec, reviewedGate(files.texts).check.state, input.specEdges ?? []);
   /** Layer 3: a held lock puts a card in flight. */
   const lockLayer = (card: FrameCard): LiveCard => {
     const lock = held.get(card.claim);
@@ -144,11 +144,11 @@ function roundOf(cards: readonly LiveCard[], lastRound: number | null): LiveRoun
 }
 
 /** Layer 2: tasks.md's lines over the carried cards. */
-function overlayTasks(base: readonly FrameCard[], rows: readonly TaskRow[], claims: readonly Claim[], locks: readonly ClaimLock[], spec: string | undefined, reviewed: MarkState): FrameCard[] {
+function overlayTasks(base: readonly FrameCard[], rows: readonly TaskRow[], claims: readonly Claim[], locks: readonly ClaimLock[], spec: string | undefined, reviewed: MarkState, specEdges: readonly SpecEdge[]): FrameCard[] {
   const carried = new Map(base.map((c) => [c.task, c]));
   const sameText = boardTexts(base);
   const checked = new Set(claims.filter((c) => c.checked).map((c) => c.id));
-  const reasons = spec === undefined ? new Map<string, string>() : takeableReasons(spec, claims, rows, locks, reviewed);
+  const reasons = spec === undefined ? new Map<string, string>() : takeableReasons(spec, claims, rows, locks, reviewed, specEdges);
   const landedState = (row: TaskRow): CardState => (row.lane === OPERATOR ? 'operatorDone' : checked.has(row.claim) ? 'closed' : 'done');
 
   return rows.flatMap((row): FrameCard[] => {
@@ -177,14 +177,18 @@ function boardTexts(cards: readonly FrameCard[]): Map<string, string> {
   return new Map(parseTaskLines({ tasks: lines }).tasks.map((t) => [t.id, t.text]));
 }
 
-/** takeable.ts's dispatch or hold reason per open task, as the next round would plan it now. */
-function takeableReasons(spec: string, claims: readonly Claim[], rows: readonly TaskRow[], locks: readonly ClaimLock[], reviewed: MarkState): Map<string, string> {
+/**
+ * takeable.ts's dispatch or hold reason per open task, as the next round would plan it now; an open spec edge of
+ * `specEdges` holds its task, or every task of its claim, with `waits on NNN` (spec 025, ISC-163).
+ */
+function takeableReasons(spec: string, claims: readonly Claim[], rows: readonly TaskRow[], locks: readonly ClaimLock[], reviewed: MarkState, specEdges: readonly SpecEdge[]): Map<string, string> {
   const plan = takeableSet({
     reviewed,
     specType: parseFrontmatter(spec).data.specType,
     claims,
     tasks: { tasks: rows, probeMapping: [] },
     locks,
+    specEdges,
   });
   return new Map([...plan.dispatch, ...plan.held].map((e) => [e.task, e.reason]));
 }

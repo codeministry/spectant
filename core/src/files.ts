@@ -349,6 +349,11 @@ export interface SpecHead {
   readonly worktree?: Worktree | null;
   /** Where the spec's files were read, the row's `source` (ISC-181): `main` unless its tracked copy in the worktree. */
   readonly source?: SpecSource;
+  /**
+   * What the spec waits on, the row's `waits` (spec 025, ISC-163): null when no open spec edge holds its open work.
+   * `spec.ts` always sets it; the type keeps it optional, as the fields above.
+   */
+  readonly waits?: SpecWait | null;
   /** The main checkout's stage and progress when `source` is `worktree`, the row's `main`; null otherwise. */
   readonly main?: MainCopy | null;
 }
@@ -517,6 +522,11 @@ export interface SpecWait {
   readonly spec: string;
   /** Target specs of the open spec edges, `NNN`, ascending, each once. */
   readonly blockers: readonly string[];
+  /**
+   * The blockers no spec carries, active or archived (`042`): they hold like any open edge but have no spec page to
+   * link to (ISC-163). Ascending; absent when every blocker names a known spec.
+   */
+  readonly unknownBlockers?: readonly string[];
   /** Open tasks held by an open spec edge, on the task or on its claim. */
   readonly heldTasks: number;
   /** Open tasks of the spec in all. */
@@ -591,6 +601,8 @@ export interface SpecPageInput {
   readonly commits?: readonly CommitRecord[];
   /** `specs/workflow.md` as read, as the dashboard gets it (row 7, the explicit stage); absent, the default table. */
   readonly workflow?: Workflow;
+  /** The merge state as the dashboard gets it (`DashboardInput.mergeState`, spec 025), for the row's `waits`. */
+  readonly mergeState?: readonly MergeState[];
 }
 
 // ─── Worktrees (worktrees.ts) ────────────────────────────────────────────────────────────────────────────────────
@@ -1107,6 +1119,12 @@ export interface LiveFrameInput {
   readonly now: Date;
   /** A lock held longer than this without a release is stale; defaults to `LIVE_STALE_MS` (45 minutes). */
   readonly staleAfterMs?: number;
+  /**
+   * This spec's spec edges as `resolveEdges` (spec-edges.ts) resolved them over the whole workspace, which the live
+   * frame cannot read itself (spec 025, ISC-163): an open one holds a fresh waiting card with `waits on NNN`. Absent
+   * or empty, nothing waits on another spec.
+   */
+  readonly specEdges?: readonly SpecEdge[];
 }
 
 // ─── Claims and tasks (claim-view.ts, tasks.ts) ──────────────────────────────────────────────────────────────────
@@ -1142,10 +1160,16 @@ export interface ClaimView {
    */
   readonly afterSpecs?: readonly string[];
   /**
-   * The edges still unresolved (open, or an ID the file does not hold), in edge order; non-empty exactly when the
-   * state is `blocked`. Empty for a closed or dropped claim.
+   * The edges still unresolved (open, or an ID the file does not hold), in edge order; non-empty when the state is
+   * `blocked` by a claim edge. Empty for a closed or dropped claim, and for a claim only a spec edge holds (`waitsOn`).
    */
   readonly blockedBy: readonly string[];
+  /**
+   * The specs (`NNN`, ascending) an open spec edge on this claim waits on (spec 025, ISC-163), from
+   * `ClaimViewInput.specEdges`: such a claim is `blocked`, never `takeable` or `open`, and the web shows
+   * `waits on NNN`. Absent unless an open spec edge holds the claim; a taken, closed or dropped claim never carries it.
+   */
+  readonly waitsOn?: readonly string[];
   readonly probe: ProbeRow | null;
   /** The claim's line under `## Verification`, when it has one. */
   readonly verification: string | null;
@@ -1216,6 +1240,11 @@ export interface ClaimViewInput {
   readonly locks?: LockReading;
   /** Notes per claim ID, from the server's notes table. */
   readonly noteCounts?: Readonly<Record<string, number>>;
+  /**
+   * This spec's spec edges as `resolveEdges` resolved them over the workspace (spec 025, ISC-163): an open one on a
+   * claim holds it `blocked` with `waitsOn`. Absent or empty, nothing waits on another spec.
+   */
+  readonly specEdges?: readonly SpecEdge[];
 }
 
 export type TaskState = 'open' | 'done' | 'struck';

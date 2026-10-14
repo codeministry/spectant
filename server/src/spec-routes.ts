@@ -12,11 +12,11 @@
  * |-------|--------|
  * | spec | `buildSpecPage` over the dashboard's own reading (`readWorkspaceInput`), so page and row agree (ISC-72); headers `X-Spectant-Reviewed-Hashes` and `X-Spectant-Spec-Hash` (raw sha256 of spec.md) |
  * | timeline | `buildTimeline({files, commits})`, commits from `git.ts` `commitsFor`; ETag over body and `HEAD` |
- * | claims | `buildClaimViews({files, locks})` |
+ * | claims | `buildClaimViews({files, locks, specEdges})`, the spec edges resolved over the workspace reading (spec 025) |
  * | tasks | `parseTaskLines` or `null` without tasks.md; header `X-Spectant-Tasks-Hash` (sha256 hex of the raw bytes) |
  * | evidenceFile | `evidenceFileResponse` (`evidence.ts`): 403 outside `artifacts/`, `.evidence/` and `.design/`, 404 no file |
  * | frames | `buildFrames(files)` |
- * | live | `buildLiveFrame({files + constitution, locks, now})` |
+ * | live | `buildLiveFrame({files + constitution, locks, now, specEdges})`, edges as for claims |
  *
  * The evidence listing (`…/evidence`) and the Docs tabs (`…/docs/:name`) went with spec 017 T53: the library reads and
  * renders every document (`api.ts`), and a request to either is the unmatched API path's 404.
@@ -35,7 +35,8 @@
 import { basename, join, relative, sep } from "node:path";
 import { buildClaimViews } from "../../core/src/claim-view.ts";
 import { specFilePath } from "../../core/src/files.ts";
-import type { LockReading, SpecFiles } from "../../core/src/files.ts";
+import type { LockReading, SpecEdge, SpecFiles } from "../../core/src/files.ts";
+import { resolveEdges } from "../../core/src/spec-edges.ts";
 import { buildFrames } from "../../core/src/frames.ts";
 import { buildLiveFrame } from "../../core/src/live.ts";
 import { readLockSources } from "../../core/src/locks.ts";
@@ -149,6 +150,18 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
    */
   const commitsOf = (root: string, ref: SpecRef): Promise<CommitsResult> => commitsFor(root, folderOf(root, ref), { cache });
 
+  /**
+   * This spec's spec edges, resolved over the workspace (spec 025, ISC-163): the claims and live routes read one spec's
+   * files, but whether an edge is met needs every folder and the merge state, so one `readWorkspaceInput` per request
+   * (its git reads cached as for the dashboard). An unreadable workspace reads as no edges.
+   */
+  async function specEdgesOf(root: string, ref: SpecRef): Promise<readonly SpecEdge[]> {
+    const reading = await readWorkspaceInput(root, stateDir);
+    if (!reading.readable) return [];
+    const { specs, archived, constitution } = reading.input;
+    return resolveEdges({ specs, archived, constitution }, reading.mergeState).edges.filter((e) => e.fromSpec === ref.id);
+  }
+
   async function specPage(req: Request, root: string, ref: SpecRef): Promise<Response> {
     const reading = await readWorkspaceInput(root, stateDir);
     if (!reading.readable) throw new WorkspaceUnreadable(reading.error);
@@ -172,6 +185,8 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
       commits: (await commitsOf(root, ref)).commits,
       ...(input.locks ? { locks: input.locks } : {}),
       workflow: reading.workflow,
+      // The merge state beside the reading (spec 025): the head's stage and `waits` are the row's (ISC-163).
+      mergeState: reading.mergeState,
     });
     // The same hashes the gate write and the transition recompute (`writes.ts`), so a render and its write can only
     // differ by the files: the normalised gate hashes, and spec.md's raw bytes for the stage move (T83). Both over the
@@ -214,7 +229,7 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         return json(req, 200, timeline, head === null ? {} : { ETag: timelineEtag(timeline, head) });
       }
       case "claims":
-        return json(req, 200, buildClaimViews({ files, locks: await locksOf(root, clock()) }));
+        return json(req, 200, buildClaimViews({ files, locks: await locksOf(root, clock()), specEdges: await specEdgesOf(root, ref) }));
       case "tasks": {
         // One read of the raw bytes: the hash covers exactly the text that was parsed.
         const bytes = readBytesIfExists(specFilePath(dir, "tasks"));
@@ -233,7 +248,7 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
         return json(req, 200, buildFrames(files));
       case "live": {
         const now = clock();
-        return json(req, 200, buildLiveFrame({ files: withConstitution(files, constitution()), locks: await locksOf(root, now), now }));
+        return json(req, 200, buildLiveFrame({ files: withConstitution(files, constitution()), locks: await locksOf(root, now), now, specEdges: await specEdgesOf(root, ref) }));
       }
       case "gateReviewed": {
         const parsed = parseWriteBody("gateReviewed", await req.text());

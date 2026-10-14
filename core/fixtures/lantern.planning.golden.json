@@ -229,6 +229,7 @@
           "priority": "P3",
           "hash": "d63418423d6b414d01eb4b676ed9700e5ee07d19f9be42d6068ab45837d61752",
           "assignee": null,
+          "waits": null,
           "main": true,
           "held": 8
         },
@@ -247,6 +248,7 @@
             "id": "principal",
             "legacy": true
           },
+          "waits": null,
           "main": true,
           "held": 2
         }

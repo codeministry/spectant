@@ -24,7 +24,7 @@ import { parseClaims } from './claims.ts';
 import type { Claim, FeatureBlock } from './claims.ts';
 import { parseEvents } from './events.ts';
 import { specFilePath } from './files.ts';
-import type { ActorRef, ClaimLock, FileDiagnostic, IdeaFiles, IdeaRef, LockReading, Priority, SpecFiles, StageSource, Workflow, WorkflowStage } from './files.ts';
+import type { ActorRef, ClaimLock, FileDiagnostic, IdeaFiles, IdeaRef, LockReading, Priority, SpecFiles, SpecWait, StageSource, Workflow, WorkflowStage } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { readIdeas } from './ideas.ts';
 import { milestoneSlug, parseMilestones } from './milestones.ts';
@@ -108,6 +108,13 @@ export interface PlanningHolder {
    * row's value over the same input. Null for an archived spec, which is never given a stage either.
    */
   readonly assignee: ActorRef | null;
+  /**
+   * What the spec waits on, the dashboard row's `waits` passed in `PlanningInput.specStates` (spec 025, ISC-163): the
+   * board card's `waits on NNN`. Null for an archived spec, for a spec the caller passed no wait for, and once the
+   * edge is met. `buildPlanning` always sets it; the type leaves it optional only so the web lane's hand-built holder
+   * stubs stay valid, as with `PlanningModel.relations`.
+   */
+  readonly waits?: SpecWait | null;
 }
 
 /**
@@ -121,6 +128,8 @@ export interface PlanningSpecState {
   readonly stageSource: StageSource;
   /** Raw sha256 hex of spec.md; absent when the caller hashes nothing. */
   readonly hash?: string;
+  /** The row's `waits` (spec 025, ISC-163); absent or null, the card waits on nothing. */
+  readonly waits?: SpecWait | null;
 }
 
 /** One feature block of the master (an epic, in tracker words) with its progress across every spec that holds it. */
@@ -334,6 +343,7 @@ function readFolders(
         priority: data.priority,
         hash: state?.hash ?? null,
         assignee: isArchived ? null : assigneeOf({ claims: ids, locks, events }),
+        waits: state?.waits ?? null,
       };
       return [
         {

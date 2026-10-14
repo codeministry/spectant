@@ -173,7 +173,10 @@ export function resolveEdges(model: SpecEdgesModel, mergeState: readonly MergeSt
     }
     const openTasks = spec.openTasks.length;
     const full = openTasks > 0 ? heldTasks === openTasks : spec.openClaims.length > 0 && heldClaims.size === spec.openClaims.length;
-    waits.push({ spec: spec.num, blockers: [...blockers].sort(), heldTasks, openTasks, full });
+    const sorted = [...blockers].sort();
+    // A number no spec carries holds as well, but has no page to link to (ISC-163): named apart, only when present.
+    const unknown = sorted.filter((n) => !states.has(n));
+    waits.push({ spec: spec.num, blockers: sorted, ...(unknown.length > 0 ? { unknownBlockers: unknown } : {}), heldTasks, openTasks, full });
   }
   return { edges, waits, diagnostics: edgeDiagnostics(model, specs, cycles) };
 }

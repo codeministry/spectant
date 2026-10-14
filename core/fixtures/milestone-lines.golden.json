@@ -92,7 +92,8 @@
       "goal": "",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     },
     {
       "id": "003",
@@ -153,7 +154,8 @@
       "goal": "",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     },
     {
       "id": "001",
@@ -205,7 +207,8 @@
       "goal": "",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     }
   ],
   "nextUp": [

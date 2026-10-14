@@ -15,6 +15,9 @@ import { buildClaimViews } from '../src/claim-view.ts';
 import type { ClaimView, MergeState, SpecEdge, SpecFiles, SpecWait, TaskRow } from '../src/files.ts';
 import { parseClaims } from '../src/claims.ts';
 import { affectedPaths, buildDashboard, sharedFilesOf, specOverlaps } from '../src/dashboard.ts';
+import { buildLiveFrame } from '../src/live.ts';
+import { buildPlanning } from '../src/planning.ts';
+import { buildSpecPage } from '../src/spec.ts';
 import type { DashboardInput, OverlapSpec } from '../src/dashboard.ts';
 import { hashForGate } from '../src/gates.ts';
 import { edgeMet, resolveEdges } from '../src/spec-edges.ts';
@@ -284,7 +287,7 @@ describe('spec edges: diagnostics (ISC-162.4)', () => {
   test('parsing runs on: the unknown edge stays open and the edges beside it still resolve', () => {
     const { edges, waits } = resolveEdges(TREE, BASE);
     expect(edgesFrom(edges, '007')).toEqual(['task T2 → 042 open']);
-    expect(waitOf(waits, '007')).toEqual({ spec: '007', blockers: ['042'], heldTasks: 1, openTasks: 2, full: false });
+    expect(waitOf(waits, '007')).toEqual({ spec: '007', blockers: ['042'], unknownBlockers: ['042'], heldTasks: 1, openTasks: 2, full: false });
     expect(edgesFrom(edges, '003')).toContain('task T3 → 001 met');
   });
 
@@ -534,5 +537,80 @@ describe('spec edges: overlap (ISC-164)', () => {
       '007 tasks.md: The spec edge (after: 042) on T2 names no spec, active or archived; it stays open.',
     ]);
     expect(model.warningGroups.find((g) => g.kind === 'spec-edge')?.items.map((i) => i.spec).sort()).toEqual(['005', '007']);
+  });
+});
+
+// ISC-163 (T17): the model data the web renders as „waits on NNN": the dashboard row, the board card (planning holder),
+// the spec head, the live board's held task and the Claims tab's held claim. Once the edge is met, nothing waits.
+describe('spec edges: waits (ISC-163)', () => {
+  const NO_LOCKS = { source: 'none', sources: [], locks: [] } as const;
+  const rowsOf = (rows: readonly MergeState[]) => buildDashboard({ ...reviewedTree(), mergeState: rows }).specs;
+  const rowWaits = (rows: readonly MergeState[], num: string): SpecWait | null => {
+    const row = rowsOf(rows).find((r) => r.id === num);
+    if (!row) throw new Error(`no row ${num}`);
+    return row.waits;
+  };
+  const reviewed = (num: string): SpecFiles => {
+    const files = reviewedTree().specs.find((f) => specIdOf(f.folder) === num);
+    if (!files) throw new Error(`no spec ${num}`);
+    return files;
+  };
+
+  test('waits: the dashboard row carries the wait while an edge is open, null once it is met or never was', () => {
+    expect(rowWaits(BASE, '004')).toEqual({ spec: '004', blockers: ['002'], heldTasks: 2, openTasks: 2, full: true });
+    expect(rowWaits(BASE, '003')).toEqual({ spec: '003', blockers: ['002'], heldTasks: 2, openTasks: 4, full: false });
+    expect(rowWaits(BASE, '002')).toBeNull();
+    expect(rowWaits(MERGED_002, '004')).toBeNull();
+    expect(rowWaits(MERGED_002, '003')).toBeNull();
+  });
+
+  test('waits: a number no spec carries is a blocker without a target, marked unknown so it renders without a link', () => {
+    expect(rowWaits(BASE, '007')).toEqual({ spec: '007', blockers: ['042'], unknownBlockers: ['042'], heldTasks: 1, openTasks: 2, full: false });
+    expect(rowWaits(BASE, '004')?.unknownBlockers).toBeUndefined();
+  });
+
+  test('waits: the board card (planning holder) carries the row wait; met, it is null', () => {
+    const master = ['# Master', '', '## Features', '', '### F1 · Fares', 'Why: fares matter.', '', '- [ ] ISC-8: a.', '- [ ] ISC-9: b.', ''].join('\n');
+    const holderAt = (rows: readonly MergeState[]) => {
+      const specStates = rowsOf(rows).map((r) => ({ slug: r.slug, stage: r.stage, stageSource: r.stageSource, waits: r.waits }));
+      const model = buildPlanning({ master, specs: TREE.specs, archived: TREE.archived, specStates });
+      const holder = model.features[0]?.holders.find((h) => h.id === '004');
+      if (!holder) throw new Error('004 holds no claim of F1');
+      return holder;
+    };
+    expect(holderAt(BASE).waits).toEqual({ spec: '004', blockers: ['002'], heldTasks: 2, openTasks: 2, full: true });
+    expect(holderAt(MERGED_002).waits).toBeNull();
+  });
+
+  test('waits: the spec head carries the row wait from the merge state beside the page input', () => {
+    const files = reviewed('004');
+    const others = [...reviewedTree().specs.filter((f) => specIdOf(f.folder) !== '004'), ...TREE.archived];
+    const headAt = (rows: readonly MergeState[]) => buildSpecPage({ files, others, mergeState: rows }).head;
+    expect(headAt(BASE).waits).toEqual({ spec: '004', blockers: ['002'], heldTasks: 2, openTasks: 2, full: true });
+    expect(headAt(BASE).stage).toBe('blocked');
+    expect(headAt(MERGED_002).waits).toBeNull();
+  });
+
+  test('waits: a held task on the live board reads waits on 002; met, the reason is gone', () => {
+    const files = { ...reviewed('004'), texts: { ...reviewed('004').texts, constitution: CONSTITUTION } };
+    const open = new Set(tasksOf('004').tasks.filter((t) => t.state === 'open').map((t) => t.id));
+    const reasonsAt = (rows: readonly MergeState[]) =>
+      buildLiveFrame({ files, locks: NO_LOCKS, now: new Date('2026-03-10T09:00:00Z'), specEdges: edgesOf('004', rows) })
+        .cards.filter((c) => open.has(c.task))
+        .map((c) => `${c.task} ${c.reason ?? '-'}`);
+    expect(open.size).toBeGreaterThan(0);
+    expect(reasonsAt(BASE)).toEqual([...open].map((id) => `${id} waits on 002`));
+    expect(reasonsAt(MERGED_002).some((r) => r.includes('waits on'))).toBe(false);
+  });
+
+  test('waits: a claim held by an open spec edge is blocked, not takeable, and names its blockers; met, it is free', () => {
+    const viewAt = (rows: readonly MergeState[]) => buildClaimViews({ files: reviewed('004'), specEdges: edgesOf('004', rows) });
+    const held = viewAt(BASE).claims.find((c) => c.id === 'ISC-9');
+    expect(held?.state).toBe('blocked');
+    expect(held?.waitsOn).toEqual(['002']);
+    expect(viewAt(BASE).counts.takeable).toBe(0);
+    const free = viewAt(MERGED_002).claims.find((c) => c.id === 'ISC-9');
+    expect(free?.state).toBe('takeable');
+    expect(free?.waitsOn).toBeUndefined();
   });
 });

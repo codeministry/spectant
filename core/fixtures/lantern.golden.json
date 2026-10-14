@@ -89,7 +89,8 @@
       "goal": "A reader saves a link in one step, finds it again by title or tag, and reads it offline.",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     },
     {
       "id": "002",
@@ -147,7 +148,8 @@
       "goal": "Saving a known link or a known tag again changes nothing in the list.",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     }
   ],
   "nextUp": [

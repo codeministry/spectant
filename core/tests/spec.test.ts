@@ -69,6 +69,8 @@ describe('harbor 002: the richest spec (round 3, all three kinds waiting on you)
       worktree: null,
       source: 'main',
       main: null,
+      // spec 025, T17: harbor has no spec edges, so nothing waits (ISC-163)
+      waits: null,
     });
   });
 

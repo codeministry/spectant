@@ -300,7 +300,8 @@ function specStatesOf(root: string, reading: Extract<WorkspaceReading, { readabl
   return buildDashboard(reading.input).specs.map((row): PlanningSpecState => {
     const dir = dirs.get(row.slug);
     const bytes = dir === undefined ? null : readBytesIfExists(specFilePath(dir, "spec"));
-    return { slug: row.slug, stage: row.stage, stageSource: row.stageSource, ...(bytes === null ? {} : { hash: rawSha256(bytes) }) };
+    // `waits`: the row's, so the board card shows the same `waits on NNN` as the row (spec 025, ISC-163).
+    return { slug: row.slug, stage: row.stage, stageSource: row.stageSource, waits: row.waits, ...(bytes === null ? {} : { hash: rawSha256(bytes) }) };
   });
 }
 
