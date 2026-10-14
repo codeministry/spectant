@@ -19,7 +19,7 @@
   <app-tab-bar-slot />
 
   @if (model(); as model) {
-    @if (!overviewInRail()) {
+    @if (lens() === 'tree' && !overviewInRail()) {
       <details class="overview-block" data-overview-block>
         <summary>{{ 'planning.page.overview' | transloco }}</summary>
         <app-planning-overview [ws]="ws()" [model]="model" />

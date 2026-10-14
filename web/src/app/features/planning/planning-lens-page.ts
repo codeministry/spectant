@@ -25,8 +25,9 @@ import { PlanningTree } from './planning-tree/planning-tree';
  *
  * The overview (the old Milestones page's next milestone, milestone list and most open claims) sits in the rail at wide
  * on the tree while nothing is selected (the page registers it with `RailContent`; the docked sidebar replaces it on a
- * selection), else in the collapsible "Overview" block above the lens, closed by default. Matrix and graph never have
- * a rail: they take the full width. The planning helpers the old pages share stay in `planning-page.ts`.
+ * selection), else in the collapsible "Overview" block above the tree, closed by default. Matrix and graph have
+ * neither rail nor overview: they take the full width. The planning helpers the old pages share stay in
+ * `planning-page.ts`.
  */
 @Component({
   selector: 'app-planning-page',
@@ -53,7 +54,7 @@ export class PlanningPage {
     return model === null ? null : planningCounts(model);
   });
 
-  /** The overview stands in the rail: the tree lens at wide with the rail open; everywhere else it is the block. */
+  /** The overview stands in the rail: the tree lens at wide with the rail open; on the tree elsewhere it is the block. */
   protected readonly overviewInRail = computed(() => this.lens() === 'tree' && this.state.tier() === 'wide' && !this.state.railStrip());
 
   private readonly overview = viewChild<TemplateRef<unknown>>('overview');

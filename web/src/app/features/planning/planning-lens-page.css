@@ -27,7 +27,7 @@
   color: var(--muted-ink);
 }
 
-/* Below 1120 and on matrix and graph: the overview as a block like 024's "On this page", closed by default. */
+/* The tree below 1120 or with the rail as a strip: the overview as a block like 024's "On this page", closed by default. */
 .overview-block {
   margin-block-end: 16px;
   border: 1px solid var(--line);
