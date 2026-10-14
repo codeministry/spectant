@@ -391,7 +391,7 @@ describe('relations: graph', () => {
     const live = core.planningGraph(model, { archived: false });
     expect(live.nodes.some((n) => n.ref === 'spec:001')).toBe(false);
     expect(live.nodes.find((n) => n.id === 'b_done_harbor_1_0')?.members).toEqual(['feature:F1']);
-    // The spec-edge kind exists for spec 025 and is never drawn yet.
+    // Harbor's planning carries no spec edges (spec 025), so no spec-edge arrow; core/tests/spec-edges.test.ts -t graph draws them.
     expect(core.planningGraph(model).edges.filter((e) => e.kind === 'spec-edge')).toEqual([]);
   });
 });

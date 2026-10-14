@@ -123,7 +123,9 @@ Every other key is kept as written (`rest`) and read by nobody.
 replaces the `stage:` line of `spec.md`, leaves the rest of the file byte-identical, and appends exactly one line to
 `events.jsonl`, so the key and the last event agree. `planTransition` in `core/src/transition.ts` plans the move in
 memory and writes nothing (spec 008, T71 for ISC-121, T72 for ISC-31); `server/src/writes.ts` writes the plan. `from` is
-the spec's stage as above, explicit or derived. The move must be one the type's row lists (§ workflow, Derived), or,
+the spec's stage as above, explicit or derived, with the spec edges the dashboard row reads (spec 025: a claim an open
+spec edge holds is not takeable, and a spec whose open work all waits on open spec edges stands on `blocked`), so a
+move starts from the stage the row shows. The move must be one the type's row lists (§ workflow, Derived), or,
 under `code_review: feature`, the entry into `close-pending` in place of `code-review`; then the fixed gates apply: a
 stage past `review` in the row, and either detour, needs a fresh reviewed mark; `done`, `close` and `close-pending`
 need no open claim; `close-pending` needs an open sibling of the spec's main feature, and `code-review` under
@@ -148,7 +150,8 @@ inside a fenced block are neither claims nor headings.
 - A claim line is `- [ ] <ID>: <text>`, checked as `[x]` or `[X]`, indented for a nested leaf. The ID is
   `ISC-<n>[.<m>…]`, a domain form (`H-AVAIL`) or a short form (`C4`, `EQ-12`); the separator after it may be `:`,
   `—`, `–`, `-` or nothing. Trailing marks `⟨?: …⟩` / `⟨resolved: …⟩` are lifted off first, then one trailing
-  `(after: A, B)` (comma or space separated, a final `.` allowed); code spans never count. A leading
+  `(after: A, B)` (comma or space separated, a final `.` allowed); code spans never count. A token of exactly three
+  digits in that group is a **spec edge** (`afterSpecs`, below), never a claim edge. A leading
   `[DROPPED …]` is a tombstone whose words are its note, and `[DROPPED` anywhere marks the claim dropped. After the
   tombstone, `Anti:` or `Antecedent:` sets the claim's kind. A checkbox without an ID warns and is invisible.
 - `## Not yet specified` holds `- fog: <text>` lines, trailing marks lifted.
@@ -260,6 +263,7 @@ dashboard and in the archive listing. `tasks.ts` (`parseTaskLines`) reads the fu
   outside the table is kept with a warning; `operator` is always valid, is the principal's own step and is never
   dispatched;
 - `(after: …)` names tasks, not claims (`T3–T5` ranges expand), may stand anywhere in the text and is removed from it;
+  a token of exactly three digits in it is a spec edge (`afterSpecs`, see **Spec edges** below), not a task edge;
 - the text runs to the last ` · ` outside code spans and may itself hold ` · `, inside or outside code spans;
 - `<paths>` follow that last ` · `, split on `, ` outside code spans and parentheses: a code span (or a bare token with
   a `/` or `.`) is one path; a parenthesised item such as `(probe only)` is a path note, not a path; a tail with
@@ -274,7 +278,8 @@ dashboard and in the archive listing. `tasks.ts` (`parseTaskLines`) reads the fu
 
 The Tasks tab's state per task is the newest `rounds.jsonl` result card of the same task (same id and text): open,
 dispatched, held, question, concerns, fail, done or closed; without one the checkbox decides, and a checked box
-outranks a round that left the task unfinished.
+outranks a round that left the task unfinished. An open spec edge on an open task, or on its claim, makes that task
+`held` with the reason `waits on NNN` over an open, dispatched or held state; fail, question and concerns keep theirs.
 
 The frontmatter is not read; the reviewed hash ignores checkbox states and `~~`.
 
@@ -291,6 +296,33 @@ From `core/fixtures/harbor/specs/002-web-console/tasks.md`:
 - [x] T30 · ISC-77 · [P] · operator — set up the screen-reader profile on the test device · `tests/manual/screen-reader-setup.md`
 - [ ] T31 · ISC-77 · operator — screen-reader pass over the sync history (ISC-77) (after: T1, T30) · `tests/manual/screen-reader.md`
 ```
+
+**Spec edges** (spec 025). A token of exactly three digits in the `(after: …)` of a task in `tasks.md` or of a claim
+in `spec.md` names the whole spec with that number, active (`specs/NNN-slug/`) or archived (`specs/archive/NNN-slug/`).
+It may share one group with task or claim edges; the parser reads it apart from them into `afterSpecs` (on `Claim`,
+`ClaimView` and the task row), in written order, each number once, and `edges` keeps only the `T…` or `ISC-…` ids. A
+spec number is no malformed task edge and no unknown claim ID, so it raises neither warning. A group inside a code
+span is no edge, as for every edge. A number that no spec folder carries is still read as a spec edge; whether it names a spec is a question for
+resolution, not for the parser.
+
+From `core/fixtures/edges/specs/003-route-map/tasks.md`:
+
+```markdown
+- [ ] T2 · ISC-5 · web — reuse the stop search for map taps (after: T1, 002) · `src/app/stops/search.ts`
+```
+
+From `core/fixtures/edges/specs/003-route-map/spec.md`:
+
+```markdown
+- [ ] ISC-6: A stop on the map opens the search result for it. (after: ISC-5, 002)
+- [ ] ISC-7: Routes from the imported timetable carry their colour. (after: 001)
+```
+
+`T2` waits on `T1` and on spec `002`; `ISC-7` waits on the archived `001`. An edge on a number no spec carries and a
+cycle over spec edges are each one `spec-edge` warning on the dashboard row of the spec that carries the edge (ISC-162.4);
+the overlap of two specs without an edge is the `spec-overlap` warning (see `constitution`). The build tooling that predates spec 025
+does not know spec edges. Until a dispatcher that reads `afterSpecs` builds the specs of a repository, its `tasks.md`
+files carry no spec edge.
 
 **Derived:** the task fraction, the lanes on the spec page, the takeable set of the next round (`takeable.ts`: claim
 takeable, which needs a fresh reviewed mark, task edges done, no file shared within the round, width 1 for bug, spike
@@ -355,6 +387,23 @@ frontmatter parses like a spec's; `dev_services: <port>=<label>, …` names the 
 A service whose process runs in a worktree carries `worktree: true`, and one in the spec worktree `.worktrees/NNN-slug`
 also `spec`, that spec's number `NNN` (spec 027, ISC-177).
 The `## Lanes` table maps path prefixes to lanes for the task grammar (spec 002, T23). The Docs tab renders the rest.
+
+`shared_files: [<path or glob>, …]` names the files every spec may change without the specs waiting on each other,
+such as a message catalogue or the lockfile (spec 025, ISC-164). The dashboard compares the paths of every open spec
+(not `phase: complete`, not archived): the code spans in the first column of the plan's `## Affected Files and
+Modules` table and the task path column of `tasks.md`. Two open specs that change the same file, with no spec edge
+between them in either direction, get exactly one `spec-overlap` warning, on the spec that waits: the one at the
+earlier stage, then the one with the lower claim progress, then the higher number; it offers the edge
+`(after: NNN)` on the other. Paths match after normalising (forward slashes, no leading `./`): equal paths, a folder
+written with a trailing `/` covers every path under it, and a path with `*` or `?` is a glob (`*` and `?` within one
+folder, `**` across folders). A common path that an entry of `shared_files:` covers, by the same rules, does not
+count. Without the key every path counts.
+
+From `core/fixtures/edges/specs/constitution.md`:
+
+```markdown
+shared_files: [src/i18n/*.json, bun.lock]
+```
 
 From `core/fixtures/harbor/specs/constitution.md`:
 
@@ -1119,12 +1168,12 @@ spec page's own facts, after it.
 | 3 | `plan` | the type needs `plan.md` and it is missing | `/spec-plan NNN` | `a {type} spec needs plan.md and it is missing` |
 | 4 | `tasks` | the type needs `tasks.md`, the spec has three or more claims, and `tasks.md` is missing | `/spec-tasks NNN` | `{claims} and no tasks.md` |
 | 5 | `review` | the reviewed mark is not fresh | `/spec-review NNN` | `the reviewed mark is {state}` |
-| 6 | `build` | at least one claim is takeable | `/spec-implement NNN` | `{ids} {is} takeable` |
+| 6 | `build` | at least one claim is takeable and not all open work waits on an open spec edge | `/spec-implement NNN` | `{ids} {is} takeable` |
 | 7 | `done` | the type is `chore` and every claim is closed | — | `every claim of the chore is closed` |
 | 8 | `close-pending` | every claim is closed, the type's workflow has `code_review: feature`, and at least one other spec of the spec's main feature is still open | — | `every claim is closed and {feature} waits on {siblings}` |
 | 9 | `code-review` | every claim is closed and the code-reviewed mark is not fresh | `/spec-code-review NNN` | `every claim is closed and the code-reviewed mark is {state}` |
 | 10 | `close` | every claim is closed and the code-reviewed mark is fresh | `/spec-complete NNN` | `every claim is closed and code-reviewed` |
-| 11 | `blocked` | anything else: open claims none of which is takeable, or no claims yet | `/spec-status NNN` | `{open}, none takeable` or `no claims yet` |
+| 11 | `blocked` | anything else: all open work waits on an open spec edge, open claims none of which is takeable, or no claims yet | `/spec-status NNN` | `{open}, none takeable` or `no claims yet` or `waits on {specs}` |
 
 The Next command column writes `NNN` for the spec's number. A story has no number yet, so row 1 writes `<slug>`, the
 story's file name without `.md`; the command allocates the number (§ `idea`, Allocation).
@@ -1142,6 +1191,20 @@ The placeholders of the Reason column:
   `missing_in_spec`), e.g. `F2` (row 8).
 - `{siblings}`: the other open specs of that feature by number: one (`spec 005`), two joined by "and" (`specs 005 and
   006`), or the first two and the rest as a count (`specs 005, 006 and 2 more`) (row 8).
+- `{specs}`: the spec numbers the open spec edges wait on, ascending, joined by a comma, e.g. `002` or `002, 042`
+  (row 11).
+
+**All open work waits on an open spec edge** (spec 025, ISC-162.3) when the spec has open tasks and every one carries
+an open spec edge, on itself or on its claim, or, with no open task, when it has open claims and every one carries an
+open spec edge (`SpecWait.full`, `resolveEdges` in `spec-edges.ts`). Such a spec skips row 6 even with a takeable
+claim and stands in row 11 with `waits on {specs}`; a spec with takeable work beside the held stays where it is. A claim
+an open spec edge holds is never takeable: the dashboard row counts it where the Claims tab shows it, `blocked`, so the
+row's takeable claims are the tab's (ISC-72). When that leaves a spec no takeable claim, its takeable work all waits on
+spec edges and it stands in row 11 with `waits on {specs}`, naming the specs those claims wait on. An edge
+on a number no spec carries stays open and holds. The takeable set holds every task of such an edge with the same
+phrase, `waits on 002` (`takeable.ts`), ahead of every other hold reason. The dashboard resolves the edges against the
+merge state the server reads from git (`DashboardInput.mergeState`); without it, each target's frontmatter and the
+archive decide.
 
 In row 8 a sibling is **open** while it is active (not archived, not `phase: complete`) and holds at least one open
 claim; a sibling whose claims are all closed waits in row 8 itself and does not hold the others back, so the last

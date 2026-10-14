@@ -21,7 +21,7 @@
 // keeps the line ending of its neighbourhood, every other byte (a BOM, CRLF endings) stays. The result is read back
 // through `parseFrontmatter`: unless it reads `stage: <to>` and the body is unchanged, the move is refused.
 import { parseEvents, validateEventLine } from './events.ts';
-import type { CodeReviewMode, EventLine, MarkState, SpecFiles, SpecType, TransitionPlan, Workflow, WorkflowStage } from './files.ts';
+import type { CodeReviewMode, EventLine, MarkState, SpecFiles, SpecType, SpecWait, TransitionPlan, Workflow, WorkflowStage } from './files.ts';
 import { parseFrontmatter, type FrontmatterResult } from './frontmatter.ts';
 import { specIdOf } from './spec-ref.ts';
 import { mainFeatureOf } from './status.ts';
@@ -51,9 +51,14 @@ export interface TransitionInput {
   readonly reviewed: MarkState;
   /** The code-reviewed mark's state, for deriving `from`; absent, `missing`. */
   readonly codeReviewed?: MarkState;
+  /** The claim counts as the dashboard row counts them: a claim an open spec edge holds is open, not takeable (ISC-162.2). */
   readonly partition: ClaimCounts;
   /** Open sibling specs of the spec's main feature, for `code_review: feature` (`close-pending`). */
   readonly featureSiblingsOpen: readonly string[];
+  /** The spec's row of `resolveEdges(…).waits` (spec 025), for the full hold on `blocked` (ISC-162.3); absent, nothing. */
+  readonly waits?: SpecWait | null;
+  /** The specs the open spec edges on otherwise takeable claims wait on (`StageInput.edgeHeld`); absent, none. */
+  readonly edgeHeld?: readonly string[];
 }
 
 /** FORMAT.md's stage table, row 7 (`close-pending`); `STAGE_RULES` gains the row with spec 008, T49. */
@@ -143,6 +148,9 @@ function stageInputOf(input: TransitionInput, fm: FrontmatterResult, number: str
     codeReview: codeReviewOf(fm.data.specType, input.workflow),
     mainFeature: mainFeatureOf(fm.data.isaFeature),
     featureSiblingsOpen: input.featureSiblingsOpen,
+    // The spec edges as the row reads them (spec 025): a full hold stands on `blocked` with `waits on {specs}`.
+    waits: input.waits ?? null,
+    edgeHeld: input.edgeHeld ?? [],
   };
 }
 

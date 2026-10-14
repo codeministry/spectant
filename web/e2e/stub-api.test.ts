@@ -19,6 +19,8 @@ import type {
   LiveFrame,
   MainCopy,
   SpecPageModel,
+  SpecOverlap,
+  SpecWait,
   SpecWarning,
   TasksTab,
   TimelineEntry,
@@ -51,11 +53,14 @@ import {
 } from '../../server/src/spec-routes.contract';
 import {
   BUMP_RUN_PATH,
+  EDGES_HEADER,
+  EDGE_STATES,
   EMPTY_CATALOG,
   LIBRARY_HEADER,
   LOCKS_HEADER,
   LOCK_STATES,
   RESET_PATH,
+  STUB_EDGES,
   STUB_LIBRARY,
   stubEvidencePath,
   stubOfflinePrototypeHtml,
@@ -73,6 +78,7 @@ import {
   WRITE_OUTCOMES,
   recountTasks,
   stubApi,
+  stubMergeState,
 } from './stub-api';
 
 const FIXTURES = join(import.meta.dir, '..', '..', 'core', 'fixtures');
@@ -2098,5 +2104,145 @@ describe('stub API: the worktree overlay via X-Spectant-Stub-Worktrees (spec 027
       expect((await page(id)).areas.status.timelineEntries).toBe(goldenPage(folder).areas.status.timelineEntries + 1);
     }
     expect(await timeline('002')).toEqual(goldenTimeline('002-web-console'));
+  });
+});
+
+describe('stub API: spec edges via X-Spectant-Stub-Edges (spec 025, T20, ISC-163)', () => {
+  type Headers = Record<string, string>;
+  type Row = { id: string; slug: string; stage: string; nextReason: string; waits: SpecWait | null; takeable: string[]; warnings: SpecWarning[] };
+  type Dashboard = { kpis: Json; specs: Row[] };
+  type Holder = { slug: string; stage?: string; waits?: SpecWait | null };
+  const as = (edges: string): Headers => ({ [EDGES_HEADER]: edges });
+  const read = async <T>(path: string, headers: Headers): Promise<T> => (await (await ask(path, { headers })).json()) as T;
+  const dashboard = (headers: Headers): Promise<Dashboard> => read<Dashboard>(`/api/workspaces/${WS}/dashboard`, headers);
+  const page = (id: string, headers: Headers): Promise<SpecPageModel> => read<SpecPageModel>(specRoutes.spec(WS, id), headers);
+  const claims = (id: string, headers: Headers): Promise<ClaimViewModel> => read<ClaimViewModel>(specRoutes.claims(WS, id), headers);
+  const live = (id: string, headers: Headers): Promise<LiveFrame> => read<LiveFrame>(specRoutes.live(WS, id), headers);
+  const tasks = (id: string, headers: Headers): Promise<TasksTab> => read<TasksTab>(specRoutes.tasks(WS, id), headers);
+  const holders = async (headers: Headers): Promise<Holder[]> => {
+    const model = await read<{ features: Json[] }>(`/api/workspaces/${WS}/planning`, headers);
+    // Every spec holder of the tree, wherever the planning model nests it (features, milestones).
+    const out: Holder[] = [];
+    const walk = (value: unknown): void => {
+      if (Array.isArray(value)) value.forEach(walk);
+      else if (typeof value === 'object' && value !== null) {
+        const v = value as Json;
+        if (typeof v['slug'] === 'string' && 'waits' in v) out.push(v as unknown as Holder);
+        Object.values(v).forEach(walk);
+      }
+    };
+    walk(model);
+    return out;
+  };
+  const rowOf = (model: Dashboard, id: string): Row => {
+    const found = model.specs.find((r) => r.id === id);
+    if (!found) throw new Error(`no row ${id}`);
+    return found;
+  };
+  const goldenModel = (): Dashboard => golden('harbor') as unknown as Dashboard;
+  const { full, partial, unknown } = STUB_EDGES;
+  const FULL: SpecWait = { spec: full.spec, blockers: [full.on], heldTasks: 0, openTasks: 0, full: true };
+  const PARTIAL: SpecWait = { spec: partial.spec, blockers: [partial.on], heldTasks: partial.tasks.length, openTasks: 5, full: false };
+  const UNKNOWN_EDGE: SpecWarning = {
+    kind: 'spec-edge',
+    text: `The spec edge (after: ${unknown.on}) on ${unknown.task} names no spec, active or archived; it stays open.`,
+    ref: 'tasks.md',
+  };
+  const OVERLAP: SpecOverlap = { specs: ['002', '004'], paths: ['web/src/app/retention/'], waiting: '002', edge: '(after: 004)' };
+  const UNTOUCHED = ['003', '004', '005', '006', '007', '008'];
+
+  test('off is the default: absent or "off" serves the goldens; an unknown value or edges beside worktrees is a loud 400', async () => {
+    for (const headers of [{}, as('off')] as Headers[]) {
+      expect(await dashboard(headers)).toEqual(goldenModel());
+      expect(await live('002', headers)).toEqual(goldenFor('live') as LiveFrame);
+      expect(await claims('002', headers)).toEqual(goldenFor('claims') as ClaimViewModel);
+    }
+    const bad = await ask(`/api/workspaces/${WS}/dashboard`, { headers: as('maybe') });
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toEqual({ error: 'unknown-stub-edges', edges: 'maybe', states: [...EDGE_STATES] });
+    const both = await ask(`/api/workspaces/${WS}/dashboard`, { headers: { ...as('waiting'), [WORKTREES_HEADER]: 'on' } });
+    expect(both.status).toBe(400);
+    expect(await both.json()).toEqual({ error: 'stub-edges-with-worktrees', edges: 'waiting', worktrees: 'on' });
+  });
+
+  test('the merge state: each blocker on its branch, unmerged under waiting and merged under met', () => {
+    expect(stubMergeState('waiting').map((m) => [m.spec, m.branch, m.merged])).toEqual([
+      ['002', 'feature/002-web-console', false],
+      ['006', 'feature/006-partial-push', false],
+    ]);
+    expect(stubMergeState('met').every((m) => m.merged)).toBe(true);
+  });
+
+  test('waiting, full hold: 009 waits on 002 on its row, board holder and head, stage blocked, its claim held', async () => {
+    const headers = as('waiting');
+    const row = rowOf(await dashboard(headers), full.spec);
+    expect(row.waits).toEqual(FULL);
+    expect([row.stage, row.nextReason, row.takeable]).toEqual(['blocked', `waits on ${full.on}`, []]);
+    expect((await holders(headers)).filter((h) => h.slug === full.folder).map((h) => h.waits)).toContainEqual(FULL);
+    const head = (await page(full.spec, headers)).head;
+    expect([head.stage, head.waits]).toEqual(['blocked', FULL]);
+    const held = (await claims(full.spec, headers)).claims.find((c) => c.id === 'ISC-131');
+    expect([held?.state, held?.waitsOn]).toEqual(['blocked', [full.on]]);
+  });
+
+  test('waiting, partial hold: 002 waits on 006 with four of five open tasks, the web tasks held, the stage kept', async () => {
+    const headers = as('waiting');
+    const row = rowOf(await dashboard(headers), partial.spec);
+    expect(row.waits).toEqual(PARTIAL);
+    expect(row.stage).toBe(rowOf(goldenModel(), partial.spec).stage);
+    expect((await holders(headers)).filter((h) => h.slug === partial.folder).map((h) => h.waits)).toContainEqual(PARTIAL);
+    expect((await page(partial.spec, headers)).head.waits).toEqual(PARTIAL);
+    const held = (await tasks(partial.spec, headers)).tasks.filter((t) => t.afterSpecs?.includes(partial.on) === true).map((t) => t.id);
+    expect(held).toEqual([...partial.tasks]);
+    // The tasks answer carries the same hold (core tasks.ts, ISC-162.2): no open one of them is left open or
+    // dispatched, each held one reads `waits on 006`; a failed or questioned one keeps its round's word.
+    const open = (await tasks(partial.spec, headers)).tasks.filter((t) => held.includes(t.id) && t.state === 'open');
+    expect(open.filter((t) => t.status === 'open' || t.status === 'dispatched')).toEqual([]);
+    const heldRows = open.filter((t) => t.status === 'held');
+    expect(heldRows.length).toBeGreaterThan(0);
+    expect(heldRows.map((t) => t.reason)).toEqual(heldRows.map(() => `waits on ${partial.on}`));
+    // An open spec-edge hold wins over a carried waiting or dispatched card's round reason (core live.ts); a running,
+    // landed or failed card keeps its own state and reason.
+    const cards = (await live(partial.spec, headers)).cards.filter((c) => held.includes(c.task));
+    expect(cards.map((c) => c.task)).toEqual(held);
+    const holdable = cards.filter((c) => c.state === 'waiting' || c.state === 'operatorOpen');
+    expect(holdable.length).toBeGreaterThan(0);
+    expect(holdable.map((c) => c.reason)).toEqual(holdable.map(() => `waits on ${partial.on}`));
+  });
+
+  test('waiting: the unknown 042 is a spec-edge warning on 002, the 002/004 overlap keeps its direction and edge', async () => {
+    const warnings = rowOf(await dashboard(as('waiting')), partial.spec).warnings;
+    expect(warnings).toContainEqual(UNKNOWN_EDGE);
+    expect(warnings.find((w) => w.kind === 'spec-overlap')?.overlap).toEqual(OVERLAP);
+    expect((await tasks(unknown.spec, as('waiting'))).tasks.find((t) => t.id === unknown.task)?.afterSpecs).toEqual([unknown.on]);
+  });
+
+  test('met: every wait is null, 009 back on build with ISC-131 takeable, no held claim; the diagnostic stays', async () => {
+    const headers = as('met');
+    const model = await dashboard(headers);
+    expect(model.specs.map((r) => r.waits)).toEqual(model.specs.map(() => null));
+    expect((await holders(headers)).map((h) => h.waits ?? null)).toEqual((await holders(headers)).map(() => null));
+    const base = goldenModel();
+    expect(rowOf(model, full.spec)).toEqual(rowOf(base, full.spec));
+    expect(rowOf(model, partial.spec)).toEqual({ ...rowOf(base, partial.spec), warnings: [UNKNOWN_EDGE, ...rowOf(base, partial.spec).warnings] });
+    for (const id of [full.spec, partial.spec]) {
+      expect((await page(id, headers)).head.waits).toBeNull();
+      expect((await claims(id, headers)).claims.filter((c) => c.waitsOn !== undefined)).toEqual([]);
+      expect((await live(id, headers)).cards.filter((c) => c.reason?.startsWith('waits on') === true)).toEqual([]);
+    }
+  });
+
+  test('both variants: every spec the edges leave alone is answered as its golden, by core from the fixture tree', async () => {
+    const base = goldenModel();
+    for (const edges of ['waiting', 'met']) {
+      const model = await dashboard(as(edges));
+      for (const id of UNTOUCHED) {
+        expect(rowOf(model, id)).toEqual(rowOf(base, id));
+        const folder = `specs/${rowOf(base, id).slug}`;
+        expect(await page(id, as(edges))).toEqual(familyValue(WS, 'spec', folder) as SpecPageModel);
+        expect(await claims(id, as(edges))).toEqual(familyValue(WS, 'claim-view', folder) as ClaimViewModel);
+        expect(await live(id, as(edges))).toEqual(familyValue(WS, 'live', folder) as LiveFrame);
+      }
+    }
   });
 });

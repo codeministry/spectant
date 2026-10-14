@@ -457,3 +457,72 @@ describe('SpecHead provenance line (T34, T35, ISC-175, ISC-181)', () => {
     expect((trigger as Node).compareDocumentPosition(command as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
+
+// Spec 025, T22 · ISC-163 (design.md § Spec-Kopf): the waits chip in the chip row right after the priority mark; a
+// partial hold keeps the stage and shows the scope behind the chip, a full one stands on `blocked` with the chip alone.
+describe('SpecHead waits chip (T22, ISC-163)', () => {
+  type Body = { head: Record<string, unknown> };
+  const GOLDEN = specGolden as unknown as Record<string, Body>;
+  const with002 = (head: Record<string, unknown>) => {
+    const golden = GOLDEN['specs/002-web-console'];
+    return ok({ ...golden, head: { ...golden.head, ...head } });
+  };
+  const DASHBOARD = { ...HARBOR, specs: [...HARBOR.specs, { id: '006', title: 'Search index', type: 'feature', stage: 'review' }] };
+  const waits = (root: HTMLElement): HTMLElement | null => chip(root, 'waits');
+
+  it('shows "waits on 006" after the priority with the scope as separate meta, the stage kept (partial)', async () => {
+    const partial = { spec: '002', blockers: ['006'], heldTasks: 4, openTasks: 7, full: false };
+    setUp(unserved, () => with002({ stage: 'build', waits: partial }), DASHBOARD);
+    const root = await open('/w/harbor/s/002/status');
+    expect(chipNames(root).slice(0, 4)).toEqual(['type', 'stage', 'priority', 'waits']);
+    expect(text(chip(root, 'stage'))).toBe(en.stages.build);
+    const link = waits(root)?.querySelector<HTMLElement>('a[data-waits]') ?? null;
+    expect(text(link)).toBe('waits on 006');
+    expect(link?.getAttribute('href')).toBe('/w/harbor/s/006');
+    expect(link?.getAttribute('aria-label')).toBe('Waits on spec 006, Search index');
+    expect(text(waits(root)?.querySelector('[data-waits-meta]') ?? null)).toBe('· 4 of 7 open tasks');
+  });
+
+  it('stands on blocked with the chip and no meta (full)', async () => {
+    const full = { spec: '002', blockers: ['006'], heldTasks: 7, openTasks: 7, full: true };
+    setUp(unserved, () => with002({ stage: 'blocked', waits: full }), DASHBOARD);
+    const root = await open('/w/harbor/s/002/status');
+    expect(text(chip(root, 'stage'))).toBe(en.stages.blocked);
+    expect(text(waits(root)?.querySelector('[data-waits]') ?? null)).toBe('waits on 006');
+    expect(waits(root)?.querySelector('[data-waits-meta]')).toBeNull();
+  });
+
+  it('shows the overlap line in the heads of both specs, each with its own edge (T29, ISC-164.1)', async () => {
+    const PATHS = ['web/src/app/retention/a.ts', 'web/src/app/retention/b.ts', 'web/src/app/retention/c.ts', 'web/src/app/retention/d.ts'];
+    const overlap = { specs: ['002', '004'], paths: PATHS, waiting: '002', edge: '(after: 004)' };
+    const rows = [
+      { id: '002', title: 'Web console', type: 'feature', stage: 'build', warnings: [{ kind: 'spec-overlap', text: 'shares 4 files with 004, no edge', overlap }] },
+      { id: '004', title: 'Retention', type: 'feature', stage: 'plan', warnings: [] },
+    ];
+    const lineOf = (root: HTMLElement) => root.querySelector<HTMLElement>('[data-head-overlaps] [data-overlap-line]');
+    for (const [id, other, edge] of [
+      ['002', '004', '(after: 004)'],
+      ['004', '002', '(after: 002)'],
+    ] as const) {
+      TestBed.resetTestingModule();
+      setUp(unserved, () => unserved, { ...HARBOR, specs: rows });
+      const root = await open(`/w/harbor/s/${id}/status`);
+      const line = lineOf(root);
+      expect(line?.id).toBe(`overlap-${other}`);
+      expect(text(line?.querySelector('[data-overlap-text]') ?? null)).toBe(`Shares 4 files with ${other}, no edge`);
+      expect(line?.querySelector('a[data-overlap-other]')?.getAttribute('href')).toBe(`/w/harbor/s/${other}`);
+      expect([...(line?.querySelectorAll('[data-overlap-path]') ?? [])].map((p) => text(p))).toEqual(PATHS.slice(0, 3));
+      expect(text(line?.querySelector('[data-overlap-edge] code') ?? null)).toBe(edge);
+      line?.querySelector<HTMLButtonElement>('[data-overlap-more]')?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(line?.querySelectorAll('[data-overlap-path]')).toHaveLength(4);
+    }
+  });
+
+  it('shows nothing once the edge is met (waits null)', async () => {
+    setUp(unserved, () => with002({ waits: null }), DASHBOARD);
+    const root = await open('/w/harbor/s/002/status');
+    expect(root.querySelector('ui-waits-chip')).toBeNull();
+    expect(chipNames(root)).not.toContain('waits');
+  });
+});

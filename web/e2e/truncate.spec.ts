@@ -42,7 +42,7 @@ test.describe('truncate table', () => {
 
   test('table: a long description is cut after one line at a whole word, and more… / less toggle it in place', async ({ page }) => {
     await openHarbor(page);
-    const cut = page.locator('.row-link .d[data-clamp="cut"]');
+    const cut = page.locator('[data-panel="specs"] app-spec-row .d[data-clamp="cut"]');
     await expect(cut.first()).toBeVisible();
     const id = (await cut.first().getAttribute('id'))?.replace(/^desc-/u, '') ?? '';
     // Pinned by id: the `data-clamp="cut"` locator would move on to the next cut row once this one opens.
@@ -71,7 +71,7 @@ test.describe('truncate table', () => {
 
   test('table: every cut description has its button, and a description that fits has none', async ({ page }) => {
     await openHarbor(page);
-    const descriptions = page.locator('.row-link .d');
+    const descriptions = page.locator('[data-panel="specs"] app-spec-row .d');
     await expect(descriptions.first()).toHaveAttribute('data-clamp', /cut|whole/u);
     for (const d of await descriptions.all()) {
       const id = (await d.getAttribute('id'))?.replace(/^desc-/u, '') ?? '';

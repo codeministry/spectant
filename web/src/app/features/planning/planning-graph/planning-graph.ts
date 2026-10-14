@@ -14,12 +14,17 @@ import { DiagramZoom, panWithMouse, zoomDiagram } from '../../../shared/ui/doc-p
 import { capAtNaturalWidth, MERMAID_LOADER, type MermaidApi, mermaidConfig, themeVariables } from '../../../shared/ui/doc-prose/mermaid';
 import { planningCounts } from '../planning-counts';
 import { laneParam, M_PARAM } from '../planning-matrix/planning-matrix';
-import { GRAPH_CSS, type GraphLabels, graphSource, nodeLines } from './graph-source';
+import { GRAPH_CSS, type GraphLabels, graphSource, nodeLines, specEdgeIds } from './graph-source';
 
 /** `?m=all`: every lane drawn, one subgraph each (the `Alle` pill). */
 const ALL = 'all';
 /** Mermaid 11's DOM id of a flowchart node: `<render id>-flowchart-<node id>-<counter>`. */
 const NODE_DOM_ID = /flowchart-([A-Za-z0-9_]+)-\d+$/u;
+/** The id inside a path's `marker-end="url(#…)"`. */
+const MARKER_URL = /^url\(#([^)]+)\)$/u;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+/** A spec node's number from its lens id (`s_009` → `009`). */
+const idOf = (node: string): string => node.slice('s_'.length);
 
 type Choice = typeof ALL | RelationRef | null;
 
@@ -122,13 +127,16 @@ export class PlanningGraph {
 
   protected readonly lens = computed<GraphLens>(() => {
     const lens = planningGraph(this.model(), { milestone: this.choice(), archived: this.archived(), expand: this.expand() });
-    return this.edges() ? lens : { ...lens, edges: lens.edges.filter((e) => e.kind !== 'spec-edge') };
+    // The `Spec-Kanten` chip off: no spec-edge arrow, and no ghost node, which stands only as the end of one.
+    return this.edges() ? lens : { nodes: lens.nodes.filter((n) => n.ghost !== true), edges: lens.edges.filter((e) => e.kind !== 'spec-edge') };
   });
 
   private readonly labels = computed<GraphLabels>(() => {
     this.lang();
     const t = (key: string, params?: Record<string, unknown>): string => this.transloco.translate(key, params);
+    const lanes = this.lanes();
     return {
+      lane: (lane) => (lane === null ? t('planning.tree.noMilestone') : (lanes.find((n) => n.lane === lane)?.title ?? '')),
       noMilestone: t('planning.tree.noMilestone'),
       archived: t('planning.features.archived'),
       stage: (stage) => t(`stages.${stage}`),
@@ -234,6 +242,7 @@ export class PlanningGraph {
     if (drawn) capAtNaturalWidth(drawn);
     this.nodes = new Map(lens.nodes.map((n) => [n.id, n]));
     for (const element of frame.querySelectorAll<SVGGElement>('g.node')) this.wire(element, labels);
+    this.wireSpecEdges(frame, lens);
     panWithMouse(frame);
     this.status.set('drawn');
     this.drawn.update((n) => n + 1);
@@ -254,6 +263,46 @@ export class PlanningGraph {
     element.setAttribute('tabindex', '0');
     element.setAttribute('role', 'button');
     element.setAttribute('aria-label', node.kind === 'bundle' ? this.transloco.translate('planning.graph.openBundle', { name }) : name);
+  }
+
+  /**
+   * Gives each drawn spec-edge arrow (spec 025, ISC-170.1) its state and its name: `data-spec-edge="open|met"` (styled
+   * by `GRAPH_CSS`), an arrowhead of its own colour (a copy of mermaid's end marker per state, `data-spec-edge-marker`),
+   * and an accessible name read out as `009 waits on 002, Spec edge open` (`planning.graph.edgeName`), as `aria-label` and SVG `<title>`.
+   */
+  private wireSpecEdges(frame: HTMLElement, lens: GraphLens): void {
+    const svg = frame.querySelector<SVGSVGElement>(':scope > svg');
+    if (!svg) return;
+    const markers = new Map<string, string>();
+    for (const [id, edge] of specEdgeIds(lens)) {
+      const path = svg.querySelector<SVGPathElement>(`path[data-id="${id}"]`);
+      if (!path) continue;
+      const state = edge.state ?? 'open';
+      path.setAttribute('data-spec-edge', state);
+      const legend: string = this.transloco.translate(`planning.graph.legend.${state}`);
+      const name: string = this.transloco.translate('planning.graph.edgeName', {
+        from: idOf(edge.from),
+        to: idOf(edge.to),
+        state: legend,
+      });
+      path.setAttribute('aria-label', name);
+      path.setAttribute('role', 'img');
+      const title = svg.ownerDocument.createElementNS(SVG_NS, 'title');
+      title.textContent = name;
+      path.replaceChildren(title);
+      const end = MARKER_URL.exec(path.getAttribute('marker-end') ?? '')?.[1];
+      const marker = end === undefined ? null : svg.querySelector<SVGMarkerElement>(`marker[id="${end}"]`);
+      if (end === undefined || !marker) continue;
+      const key = `${end}-${state}`;
+      if (!markers.has(key)) {
+        const copy = marker.cloneNode(true) as SVGMarkerElement;
+        copy.id = `${end}-spec-edge-${state}`;
+        copy.setAttribute('data-spec-edge-marker', state);
+        marker.after(copy);
+        markers.set(key, copy.id);
+      }
+      path.setAttribute('marker-end', `url(#${markers.get(key) ?? end})`);
+    }
   }
 
   private readParam(): string | null {

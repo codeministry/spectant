@@ -69,6 +69,8 @@ describe('harbor 002: the richest spec (round 3, all three kinds waiting on you)
       worktree: null,
       source: 'main',
       main: null,
+      // spec 025, T17: harbor has no spec edges, so nothing waits (ISC-163)
+      waits: null,
     });
   });
 
@@ -121,7 +123,8 @@ describe('harbor 002: the richest spec (round 3, all three kinds waiting on you)
   });
 
   test('waiting on you: the open operator task, the open manual claim, the newest round question', () => {
-    expect(p.warnings).toEqual([]);
+    // The one warning is 002's overlap with 004 on web/src/app/retention/ (spec 025, ISC-164).
+    expect(p.warnings.map((w) => w.kind)).toEqual(['spec-overlap']);
     expect(p.waitingOnYou).toEqual([
       { kind: 'operator', ref: 'T31', title: 'screen-reader pass over the sync history (ISC-77)', checked: false },
       { kind: 'manual', ref: 'ISC-77', title: 'Every interactive element in the error banner is reachable by keyboard and shows a focus ring.' },
@@ -132,7 +135,7 @@ describe('harbor 002: the richest spec (round 3, all three kinds waiting on you)
   test('area tiles', () => {
     expect(Object.keys(p.areas)).toEqual([...SPEC_AREAS]);
     expect(p.areas).toEqual({
-      status: { timelineEntries: 9, warnings: 0 },
+      status: { timelineEntries: 9, warnings: 1 },
       live: { lockSource: 'none', agentsWorking: 0, lock: null },
       data: { claims: { closed: 25, total: 30 }, tasks: { landed: 27, total: 32 } },
       docs: { plan: true, design: false, constitution: true, decisions: 1 },

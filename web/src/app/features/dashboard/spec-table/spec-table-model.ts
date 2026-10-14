@@ -1,4 +1,4 @@
-import type { Priority } from '../../../../../../core/src/files';
+import type { Priority, SpecWait } from '../../../../../../core/src/files';
 import type { Tone } from '../../../shared/ui/tone';
 
 /**
@@ -32,6 +32,8 @@ export interface SpecTableRow {
   readonly description: string | null;
   /** The session holding a lock on one of the spec's claims (the first in claim order); null without locks. */
   readonly agent: string | null;
+  /** What the spec waits on, the row's `waits` (spec 025, T24, ISC-163); null when no open spec edge holds its work. */
+  readonly waits: SpecWait | null;
 }
 
 /** One archived spec, as the archive fold lists it. */
@@ -89,6 +91,10 @@ const listOf = (body: unknown, key: string): Loose[] => {
   return Array.isArray(list) ? list.filter(isLoose) : [];
 };
 
+/** The row's `waits` as core sends it (`SpecWait`), passed through; null unless it names at least one blocker. */
+const waitsOf = (value: unknown): SpecWait | null =>
+  isLoose(value) && Array.isArray(value['blockers']) && value['blockers'].length > 0 ? (value as unknown as SpecWait) : null;
+
 export function readSpecRows(body: unknown): SpecTableRow[] {
   return listOf(body, 'specs').flatMap((row): SpecTableRow[] => {
     const id = text(row['id']);
@@ -114,6 +120,7 @@ export function readSpecRows(body: unknown): SpecTableRow[] {
         fog: count(row['fog']),
         description: goal === '' ? null : goal,
         agent: holder === undefined ? null : text(holder['session']),
+        waits: waitsOf(row['waits']),
       },
     ];
   });

@@ -8,6 +8,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-3",
@@ -33,6 +34,7 @@
         "edges": [
           "ISC-3"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-4",
@@ -58,6 +60,7 @@
         "edges": [
           "ISC-3"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-5",
@@ -81,6 +84,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-6",
@@ -104,6 +108,7 @@
         "state": "takeable",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-7",
@@ -129,6 +134,7 @@
         "edges": [
           "ISC-7"
         ],
+        "afterSpecs": [],
         "blockedBy": [
           "ISC-7"
         ],
@@ -154,6 +160,7 @@
         "state": "takeable",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-9",
@@ -179,6 +186,7 @@
         "edges": [
           "ISC-9"
         ],
+        "afterSpecs": [],
         "blockedBy": [
           "ISC-9"
         ],
@@ -238,6 +246,7 @@
         "state": "takeable",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-11",
@@ -261,6 +270,7 @@
         "state": "takeable",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-12",

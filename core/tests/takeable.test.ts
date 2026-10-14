@@ -63,6 +63,7 @@ function claim(id: string, extra: Partial<Claim> = {}): Claim {
     text: id,
     raw: id,
     after: [],
+    afterSpecs: [],
     marks: [],
     dropped: false,
     droppedNote: null,

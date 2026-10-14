@@ -37,6 +37,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DashboardModel } from "../core/src/dashboard.ts";
+import type { TasksTab } from "../core/src/files.ts";
 import { hashForGate } from "../core/src/gates.ts";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
 import { dashboardApi } from "../server/src/api.ts";
@@ -59,7 +60,8 @@ import {
 import { specRoutesApi } from "../server/src/spec-routes.ts";
 import { tokensCommand } from "../server/src/tokens-cli.ts";
 import { WRITE_PATHS, WRITE_TABLE, writePathsOf } from "../server/src/writes.contract.ts";
-import { BUILDER_WORKTREE, SPEC_FOLDER, SPEC_ID, SPEC_WORKTREE, UNCOMMITTED, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
+import { readWorkspaceInput } from "../server/src/workspace-loader.ts";
+import { BUILDER_WORKTREE, SPEC_BRANCH, SPEC_FOLDER, SPEC_ID, SPEC_WORKTREE, UNCOMMITTED, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
 const FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "harbor");
 /** The harbor transcripts: a main session with a sub-agent, beside the folders of an agent and a spec worktree. */
@@ -1090,6 +1092,10 @@ describe("ISC-182 worktree reads: the dashboard, the board and the spec page of 
         const model = (await (await fetch(`${url}/api/workspaces/${SLUG}/dashboard`)).json()) as DashboardModel;
         const row = model.specs.find((r) => r.id === SPEC_ID);
         expect([row?.worktree?.ahead, row?.worktree?.dirty, row?.source]).toEqual([planted.expected.ahead, planted.expected.dirty, trackedSpecs ? "worktree" : "main"]);
+        // The merge-state read the dashboard runs (spec 025, ISC-162.1: `for-each-ref` and `merge-base --is-ancestor`)
+        // ran here too: the spec branch is found and `main` does not hold it.
+        const reading = await readWorkspaceInput(repo);
+        expect(reading.readable ? reading.mergeState.find((r) => r.spec === SPEC_ID) : null).toMatchObject({ branch: SPEC_BRANCH, merged: false, archived: false });
       } finally {
         await stop();
         spy.mockRestore();
@@ -1103,4 +1109,115 @@ describe("ISC-182 worktree reads: the dashboard, the board and the spec page of 
       expect([...hosts]).toEqual(["127.0.0.1"]);
     }, 60_000);
   }
+});
+
+// The spec edges (spec 025 T18, ISC-165) under the same guard, through the served app, `.git/` included (`-t blockers`).
+// The workspace is a real repository built from `core/fixtures/edges` with a branch for each path `mergedSpecBranches`
+// takes: `feature/002-stop-search` one commit ahead and unmerged (its tip off `main`'s first-parent line, so
+// `merge-base --is-ancestor` runs and answers 1), `infra/005-night-service` brought in by a merge commit (off the line,
+// answers 0) and `fix/006-holiday-calendar` fresh at `main`'s tip (on the line, no further read). Then the planted
+// state of the blocks above: a staged file, a modified tracked file, a tracked file with stale stat data, an untracked
+// and two ignored files. The model must carry the edges (003 and 004 wait on the unmerged 002, 002 and 007 overlap), so
+// the reads cannot pass without resolving them; afterwards every byte and mtime is the same and every request loopback.
+const EDGES_FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "edges");
+
+/** `core/fixtures/edges` as a repository with an unmerged, a merged and a fresh spec branch, and the planted state. */
+function buildEdgesRepository(dir: string): void {
+  cpSync(EDGES_FIXTURE, dir, { recursive: true });
+  // A master with one feature block naming 004's held claim, so the planning route has a holder whose card waits.
+  const master = ["---", 'task: "Ride the quay network"', "slug: 20260302-quay", "phase: climbing", "---", "", "# Quay", "", "## Features", "", "### F1 · Fares", "Why: a rider sees the fare before boarding.", "", "- [ ] ISC-9: Picking two found stops shows the fare between them.", ""];
+  writeFileSync(join(dir, "ISA.md"), master.join("\n"));
+  git(dir, "init", "-q", "-b", "main");
+  writeFileSync(join(dir, ".gitignore"), "*.log\nbuild/\n");
+  mkdirSync(join(dir, "src"));
+  writeFileSync(join(dir, "src", "routes.ts"), "export const routes = [];\n");
+  git(dir, "add", "-A");
+  git(dir, "commit", "-q", "-m", "edges fixture");
+
+  git(dir, "switch", "-q", "-c", "infra/005-night-service");
+  writeFileSync(join(dir, "src", "night.ts"), "export const night = true;\n");
+  git(dir, "add", "src/night.ts");
+  git(dir, "commit", "-q", "-m", "night service");
+  git(dir, "switch", "-q", "main");
+  git(dir, "merge", "-q", "--no-ff", "-m", "merge night service", "infra/005-night-service");
+
+  git(dir, "switch", "-q", "-c", "feature/002-stop-search");
+  writeFileSync(join(dir, "src", "search.ts"), "export const search = () => [];\n");
+  git(dir, "add", "src/search.ts");
+  git(dir, "commit", "-q", "-m", "stop search");
+  git(dir, "switch", "-q", "main");
+  git(dir, "branch", "fix/006-holiday-calendar");
+
+  writeFileSync(join(dir, "staged.md"), "# staged, not committed\n");
+  git(dir, "add", "staged.md");
+  appendFileSync(join(dir, "src", "routes.ts"), "// modified after the commit\n");
+  const future = new Date("2030-01-01T00:00:00Z");
+  utimesSync(join(dir, "README.md"), future, future);
+  mkdirSync(join(dir, "notes"));
+  writeFileSync(join(dir, "notes", "untracked.md"), "# untracked\n");
+  writeFileSync(join(dir, "debug.log"), "ignored by *.log\n");
+  mkdirSync(join(dir, "build"));
+  writeFileSync(join(dir, "build", "out.txt"), "ignored by build/\n");
+}
+
+describe("ISC-165 blockers: the spec edges, the merge reads and the overlap warning leave the repository byte-identical", () => {
+  test("readonly: dashboard, planning, spec pages, claims and live of held and overlapping specs change no byte or mtime, .git/ included; every request is loopback", async () => {
+    // Named for the slug the shared reads use; only the parent folder is this block's own.
+    const repo = join(realpathSync(mkdtempSync(join(root, "blockers-"))), SLUG);
+    buildEdgesRepository(repo);
+    const before = snapshot(repo);
+    const indexBefore = readFileSync(join(repo, ".git", "index"));
+    const indexMtimeBefore = lstatSync(join(repo, ".git", "index")).mtimeMs;
+
+    const hosts = new Set<string>();
+    const realFetch = globalThis.fetch;
+    const spy = spyOn(globalThis, "fetch").mockImplementation(((input: string | URL | Request, init?: RequestInit) => {
+      hosts.add(new URL(input instanceof Request ? input.url : String(input)).hostname);
+      return realFetch(input, init);
+    }) as typeof fetch);
+
+    const { url, stop } = await serve(repo, "blockers");
+    try {
+      // 002 overlaps 007, 003 holds in part on 002, 004 in full: every route that resolves edges, each revalidated.
+      await readEverything(url, ["002", "003", "004", "007"]);
+
+      // The git reads ran, every path of them: 002 unmerged, 005 merged by its merge commit, 006 fresh at main's tip.
+      const reading = await readWorkspaceInput(repo);
+      const merge = reading.readable ? reading.mergeState : [];
+      expect(["002", "005", "006"].map((spec) => merge.find((m) => m.spec === spec))).toEqual([
+        { spec: "002", branch: "feature/002-stop-search", merged: false, complete: false, archived: false },
+        { spec: "005", branch: "infra/005-night-service", merged: true, complete: false, archived: false },
+        { spec: "006", branch: "fix/006-holiday-calendar", merged: false, complete: false, archived: false },
+      ]);
+
+      // The model carries the edges and the overlap, so none of the reads above could pass vacuously.
+      const model = (await (await fetch(`${url}/api/workspaces/${SLUG}/dashboard`)).json()) as DashboardModel;
+      const row = (id: string) => model.specs.find((s) => s.id === id);
+      expect(row("004")?.waits).toMatchObject({ blockers: ["002"], full: true });
+      expect(row("003")?.waits).toMatchObject({ blockers: ["002"], full: false });
+      const overlap = model.specs.flatMap((s) => s.warnings).find((w) => w.kind === "spec-overlap");
+      expect(overlap?.overlap?.specs).toEqual(["002", "007"]);
+      const waitsOn002 = /"waits":\{[^}]*"blockers":\["002"\]/;
+      expect(await (await fetch(`${url}${workspaceRoutes.planning(SLUG)}`)).text()).toMatch(waitsOn002);
+      expect(await (await fetch(`${url}${specRoutes.spec(SLUG, "004")}`)).text()).toMatch(waitsOn002);
+      expect(await (await fetch(`${url}${specRoutes.claims(SLUG, "004")}`)).text()).toContain('"waitsOn":["002"]');
+      expect(await (await fetch(`${url}${specRoutes.live(SLUG, "003")}`)).text()).toContain("waits on 002");
+      // The tasks route (ISC-162.2): 003's T2 by its own edge, T4 and 004's open tasks by their claim's, all held.
+      const held = async (id: string) =>
+        ((await (await fetch(`${url}${specRoutes.tasks(SLUG, id)}`)).json()) as TasksTab).tasks.filter((t) => t.status === "held").map((t) => `${t.id}: ${String(t.reason)}`);
+      expect(await held("003")).toEqual(["T2: waits on 002", "T4: waits on 002"]);
+      expect(await held("004")).toEqual(["T2: waits on 002", "T3: waits on 002"]);
+    } finally {
+      await stop();
+      spy.mockRestore();
+    }
+
+    const after = snapshot(repo);
+    expect(changed(before, after, { mtime: true })).toEqual([]);
+    expect(after.checksum).toBe(before.checksum);
+    expect(underGit(after)).toEqual(underGit(before));
+    expect(readFileSync(join(repo, ".git", "index")).equals(indexBefore)).toBe(true);
+    expect(lstatSync(join(repo, ".git", "index")).mtimeMs).toBe(indexMtimeBefore);
+    expect([...hosts]).toEqual(["127.0.0.1"]);
+  }, 60_000);
 });

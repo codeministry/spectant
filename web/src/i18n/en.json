@@ -178,7 +178,33 @@
     },
     "openFog": "Open fog · {{count}}",
     "empty": "No warnings",
-    "icon": "Warning"
+    "icon": "Warning",
+    "overlap": {
+      "lead": {
+        "one": "shares 1 file with",
+        "other": "shares {{count}} files with"
+      },
+      "headLead": {
+        "one": "Shares 1 file with",
+        "other": "Shares {{count}} files with"
+      },
+      "noEdge": "no edge",
+      "more": "+{{count}} more",
+      "paths": "Shared files",
+      "target": "in {{id}}",
+      "copyTitle": "Copy the edge for this spec’s tasks.md",
+      "moreOverlaps": {
+        "one": "+1 more overlap",
+        "other": "+{{count}} more overlaps"
+      },
+      "toHead": "Show in the head",
+      "region": "Overlaps with other specs"
+    },
+    "edge": {
+      "unknown": "edge to {{id}} · no such spec",
+      "cycle": "edge cycle {{path}}",
+      "where": "{{file}} · {{id}}"
+    }
   },
   "identity": {
     "open": "Open {{workspace}}",
@@ -1292,7 +1318,8 @@
       "quiet": "nothing in flight",
       "next": "next",
       "inRound": "{{count}} in the round",
-      "runCount": "{{count}} {{state}}"
+      "runCount": "{{count}} {{state}}",
+      "waitsName": "{{lane}}, waits on {{ids}}"
     },
     "section": {
       "needsYou": "Needs you",
@@ -1684,7 +1711,8 @@
         "open": "Spec edge open",
         "met": "Spec edge met",
         "bundle": "Bundle, archived"
-      }
+      },
+      "edgeName": "{{from}} waits on {{to}}, {{state}}"
     },
     "features": {
       "title": "Features in {{ws}}",
@@ -2204,5 +2232,15 @@
     "sourceWorktree": "Worktree copy",
     "copyPath": "Copy path",
     "copied": "Path copied"
+  },
+  "waits": {
+    "on": "waits on",
+    "name": "Waits on spec {{id}}, {{title}}",
+    "nameBare": "Waits on spec {{id}}",
+    "unknown": "Waits on spec {{id}}, no such spec",
+    "more": "Also waits on {{ids}}",
+    "partial": "{{held}} of {{open}} open tasks",
+    "spec": "Spec {{id}} · {{title}}",
+    "specBare": "Spec {{id}}"
   }
 }

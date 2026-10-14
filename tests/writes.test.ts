@@ -23,7 +23,8 @@ import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import { REVIEWED_HASHES_HEADER, type ReviewedHashes, SPEC_HASH_HEADER, TASKS_HASH_HEADER, parseReviewedHashes, specRoutes } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
-import { readSpecFiles } from "../server/src/workspace-loader.ts";
+import { readSpecFiles, readWorkspaceInput } from "../server/src/workspace-loader.ts";
+import { buildDashboard } from "../core/src/dashboard.ts";
 import { actorIdOf } from "../core/src/actor-id.ts";
 import type { WorkflowStage } from "../core/src/files.ts";
 import { parseFrontmatter } from "../core/src/frontmatter.ts";
@@ -792,5 +793,83 @@ describe("ISC-181 worktree-copy: the reviewed mark, the tick and the stage move 
     expect(changedLines.length).toBe(1);
     expect(lines(after)[changedLines[0] ?? -1]).toContain("[x] T27");
     expect(lstatSync(link).isSymbolicLink()).toBe(true);
+  });
+});
+
+// ISC-162.2 and ISC-162.3 on the stage move (spec 025): the transition derives `from` with the same spec edges the
+// dashboard row reads (`resolveEdges` over the workspace and its merge state), so a fully held spec moves from
+// `blocked`, a partially held one keeps its stage, and once the blocker is met the hold is gone. On a copy of the edges
+// fixture (no git: a target's merge state is read from its frontmatter), 003 and 004 under a fresh reviewed mark.
+describe("ISC-162.3 transition edge-aware: the move's from is the row's stage under open spec edges", () => {
+  const EDGES = join(import.meta.dir, "..", "core", "fixtures", "edges");
+  const NOW = new Date("2026-03-20T10:00:00Z");
+  const STOP_SEARCH = "specs/002-stop-search";
+  const ROUTE_MAP = "specs/003-route-map";
+  const FARE_TABLE = "specs/004-fare-table";
+
+  function plantEdges(): string {
+    const repo = mkdtempSync(join(root, "edges-"));
+    cpSync(EDGES, repo, { recursive: true });
+    for (const folder of [ROUTE_MAP, FARE_TABLE]) {
+      const dir = join(repo, folder);
+      const slug = folder.split("/").pop() ?? "";
+      mkdirSync(join(dir, ".gates"), { recursive: true });
+      writeFileSync(join(dir, ".gates", "reviewed.json"), reviewedMarkText("2026-03-19T10:00:00.000Z", gateHashes(readSpecFiles({ dir, slug }).texts)));
+    }
+    return repo;
+  }
+
+  const move = (repo: string, folder: string, to: WorkflowStage) => {
+    const dir = join(repo, folder);
+    return writeTransition({
+      root: repo,
+      ref: { dir, slug: folder.split("/").pop() ?? "" },
+      stateDir: null,
+      now: NOW,
+      body: { to, hash: sha256(readFileSync(join(dir, "spec.md"))) },
+    });
+  };
+
+  /** The dashboard row's stage of `id` over the same workspace reading the transition takes. */
+  async function rowStage(repo: string, id: string): Promise<string | undefined> {
+    const reading = await readWorkspaceInput(repo, null);
+    if (!reading.readable) throw new Error(reading.error);
+    return buildDashboard(reading.input).specs.find((r) => r.id === id)?.stage;
+  }
+
+  test("edge-held fully: 004 stands on blocked as its row does, so → blocked is refused and → build moves from blocked", async () => {
+    const repo = plantEdges();
+    expect(await rowStage(repo, "004")).toBe("blocked");
+    const before = tree(repo);
+    const same = await move(repo, FARE_TABLE, "blocked");
+    expect(same.status).toBe(422);
+    if (same.status !== 422) return;
+    expect(same.body.reason).toBe("the spec already stands in blocked");
+    expect(changed(before, tree(repo))).toEqual([]);
+    const res = await move(repo, FARE_TABLE, "build");
+    expect(res.status).toBe(200);
+    if (res.status !== 200) return;
+    expect(res.body.from).toBe("blocked");
+    expect(res.body.event.from).toBe("blocked");
+  });
+
+  test("edge-held partially: 003 keeps build as its row does, so → blocked moves from build", async () => {
+    const repo = plantEdges();
+    expect(await rowStage(repo, "003")).toBe("build");
+    const res = await move(repo, ROUTE_MAP, "blocked");
+    expect(res.status).toBe(200);
+    if (res.status !== 200) return;
+    expect(res.body.from).toBe("build");
+  });
+
+  test("edge met: with 002 complete the hold on 004 is gone, its row and its move stand on build", async () => {
+    const repo = plantEdges();
+    const spec = join(repo, STOP_SEARCH, "spec.md");
+    writeFileSync(spec, readFileSync(spec, "utf8").replace(/^phase: .*$/m, "phase: complete")); // single-core: allow — test setup sets one frontmatter line in a temp copy, no parsing
+    expect(await rowStage(repo, "004")).toBe("build");
+    const res = await move(repo, FARE_TABLE, "blocked");
+    expect(res.status).toBe(200);
+    if (res.status !== 200) return;
+    expect(res.body.from).toBe("build");
   });
 });

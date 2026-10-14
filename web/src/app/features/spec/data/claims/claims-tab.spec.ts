@@ -293,3 +293,23 @@ describe('ClaimsTab (ISC-81)', () => {
     });
   });
 });
+
+describe('ClaimsTab spec waits (spec 025, T26, ISC-163)', () => {
+  it('puts the "waits on NNN" chip with its clock in the edge row of a held claim; a met edge shows none', async () => {
+    const model: ClaimViewModel = {
+      ...SYNTHETIC,
+      claims: [
+        claim({ id: 'ISC-131', state: 'blocked', feature: 'F1', edges: [], blockedBy: [], afterSpecs: ['002'], waitsOn: ['002'], verification: null }),
+        claim({ id: 'ISC-132', state: 'takeable', feature: 'F1', edges: [], blockedBy: [], afterSpecs: ['006'], verification: null }),
+      ],
+    };
+    setUp(model);
+    const { root } = await open('/w/harbor/s/009/claims');
+    const chip = card(root, 'ISC-131')?.querySelector<HTMLElement>('.edges ui-waits-chip[data-claim-waits]');
+    expect(chip?.textContent).toContain('waits on');
+    expect(chip?.querySelector('[data-blocker="002"]')).not.toBeNull();
+    expect(chip?.querySelector('ui-icon')).not.toBeNull();
+    expect(card(root, 'ISC-131')?.querySelector('[data-chip="blocked"]')).not.toBeNull();
+    expect(card(root, 'ISC-132')?.querySelector('ui-waits-chip')).toBeNull();
+  });
+});

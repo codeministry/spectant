@@ -4,7 +4,10 @@
 //   2. tasks.md       the current task lines decide which cards exist and in which order (tasks.md order):
 //                     - a task on the last board with the same id and text keeps its card; a box checked since then
 //                       flips a card that had not landed to `done`, or `closed` once spec.md checks its claim
-//                       (`operatorDone` in the operator lane), keeping builder, tries and note;
+//                       (`operatorDone` in the operator lane), keeping builder, tries and note; while an open spec
+//                       edge holds the task or its claim, a carried `waiting`, `dispatched` or `operatorOpen` card
+//                       reads `waits on NNN` instead of the round's reason (`dispatched` as `waiting`, ISC-163);
+//                       once the edge is met the round's card stands again;
 //                     - a task not on the last board (new, or renumbered / reworded: no state is carried, ISC-91)
 //                       gets a fresh card: landed when its box is checked, else `waiting` (`operatorOpen` in the
 //                       operator lane) with the reason takeable.ts gives it, when spec.md is there to compute one
@@ -37,14 +40,14 @@
 import { parseActor } from './actor.ts';
 import type { Claim } from './claims.ts';
 import { countProgress, parseClaims } from './claims.ts';
-import type { ActorRef, AgentLockSource, CardState, ClaimLock, FrameCard, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, LiveRound, LockReading, RunCounts, RunState, TaskRow, TaskRun } from './files.ts';
+import type { ActorRef, AgentLockSource, CardState, ClaimLock, FrameCard, LiveAgent, LiveCard, LiveFrame, LiveFrameInput, LiveRound, LockReading, RunCounts, RunState, SpecEdge, TaskRow, TaskRun } from './files.ts';
 import { buildFrames, worstState } from './frames.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { reviewedGate } from './gates.ts';
 import type { MarkState } from './gates.ts';
 import { runStates } from './locks.ts';
 import { heldLocks } from './status.ts';
-import { takeableSet } from './takeable.ts';
+import { specEdgeHold, takeableSet } from './takeable.ts';
 import { parseTaskLines } from './tasks.ts';
 
 /** A lock held this long without a release is shown stale: the session may have died (design § Live). */
@@ -74,7 +77,7 @@ export function buildLiveFrame(input: LiveFrameInput): LiveFrame {
   const locks = heldLocks(reading.locks, ours);
   const held = new Map(locks.map((l) => [l.claim, l]));
 
-  const overlaid = rows.length === 0 ? [...base] : overlayTasks(base, rows, claims, locks, spec, reviewedGate(files.texts).check.state);
+  const overlaid = rows.length === 0 ? [...base] : overlayTasks(base, rows, claims, locks, spec, reviewedGate(files.texts).check.state, input.specEdges ?? []);
   /** Layer 3: a held lock puts a card in flight. */
   const lockLayer = (card: FrameCard): LiveCard => {
     const lock = held.get(card.claim);
@@ -143,13 +146,21 @@ function roundOf(cards: readonly LiveCard[], lastRound: number | null): LiveRoun
   };
 }
 
+/**
+ * The carried card states an open spec edge rewrites to `waits on NNN` (ISC-163): work the round left not started.
+ * A problem (fail, question, concerns) keeps the round's word, a landed card stays landed, and a card in flight is
+ * layer 3's (its lock), never this layer's.
+ */
+const EDGE_HOLDABLE: ReadonlySet<CardState> = new Set<CardState>(['waiting', 'dispatched', 'operatorOpen']);
+
 /** Layer 2: tasks.md's lines over the carried cards. */
-function overlayTasks(base: readonly FrameCard[], rows: readonly TaskRow[], claims: readonly Claim[], locks: readonly ClaimLock[], spec: string | undefined, reviewed: MarkState): FrameCard[] {
+function overlayTasks(base: readonly FrameCard[], rows: readonly TaskRow[], claims: readonly Claim[], locks: readonly ClaimLock[], spec: string | undefined, reviewed: MarkState, specEdges: readonly SpecEdge[]): FrameCard[] {
   const carried = new Map(base.map((c) => [c.task, c]));
   const sameText = boardTexts(base);
   const checked = new Set(claims.filter((c) => c.checked).map((c) => c.id));
-  const reasons = spec === undefined ? new Map<string, string>() : takeableReasons(spec, claims, rows, locks, reviewed);
+  const reasons = spec === undefined ? new Map<string, string>() : takeableReasons(spec, claims, rows, locks, reviewed, specEdges);
   const landedState = (row: TaskRow): CardState => (row.lane === OPERATOR ? 'operatorDone' : checked.has(row.claim) ? 'closed' : 'done');
+  const edgeHold = specEdgeHold(specEdges);
 
   return rows.flatMap((row): FrameCard[] => {
     const before = carried.get(row.id);
@@ -158,7 +169,11 @@ function overlayTasks(base: readonly FrameCard[], rows: readonly TaskRow[], clai
       return [ordered({ ...identity(row, before.text), state: 'absent', tries: before.tries, ...(row.note === null ? {} : { note: row.note }) })];
     }
     if (before !== undefined && sameText.get(row.id) === row.text) {
-      if (row.state !== 'done' || LANDED.has(before.state)) return [before];
+      if (row.state !== 'done' || LANDED.has(before.state)) {
+        // An open spec edge holds a carried card the round left waiting or dispatched (ISC-163); met, the card is back.
+        const waits = EDGE_HOLDABLE.has(before.state) ? edgeHold(row.id, row.claim) : null;
+        return [waits === null ? before : ordered({ ...before, state: before.state === 'dispatched' ? 'waiting' : before.state, reason: waits })];
+      }
       // Landed: the hold or dispatch reason of the round no longer applies.
       return [ordered({ ...before, state: landedState(row) }, 'reason')];
     }
@@ -177,14 +192,18 @@ function boardTexts(cards: readonly FrameCard[]): Map<string, string> {
   return new Map(parseTaskLines({ tasks: lines }).tasks.map((t) => [t.id, t.text]));
 }
 
-/** takeable.ts's dispatch or hold reason per open task, as the next round would plan it now. */
-function takeableReasons(spec: string, claims: readonly Claim[], rows: readonly TaskRow[], locks: readonly ClaimLock[], reviewed: MarkState): Map<string, string> {
+/**
+ * takeable.ts's dispatch or hold reason per open task, as the next round would plan it now; an open spec edge of
+ * `specEdges` holds its task, or every task of its claim, with `waits on NNN` (spec 025, ISC-163).
+ */
+function takeableReasons(spec: string, claims: readonly Claim[], rows: readonly TaskRow[], locks: readonly ClaimLock[], reviewed: MarkState, specEdges: readonly SpecEdge[]): Map<string, string> {
   const plan = takeableSet({
     reviewed,
     specType: parseFrontmatter(spec).data.specType,
     claims,
     tasks: { tasks: rows, probeMapping: [] },
     locks,
+    specEdges,
   });
   return new Map([...plan.dispatch, ...plan.held].map((e) => [e.task, e.reason]));
 }

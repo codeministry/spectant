@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import type { SpecEdge } from '../../../../../../core/src/files';
 import type { PlanningModel } from '../../../../../../core/src/planning';
 import { type GraphLens, planningGraph, type RelationRef } from '../../../../../../core/src/relations';
 import emptyMaster from '../../../../../../core/fixtures/empty-master.planning.golden.json';
@@ -14,7 +15,7 @@ import en from '../../../../i18n/en.json';
 import { DetailSelection } from '../../../layout/detail-sidebar/selection';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { MERMAID_LOADER, type MermaidApi } from '../../../shared/ui/doc-prose/mermaid';
-import { graphSource, type GraphLabels } from './graph-source';
+import { GRAPH_CSS, graphSource, type GraphLabels } from './graph-source';
 import { PlanningGraph } from './planning-graph';
 
 // T23 · ISC-170: the graph lens draws Milestone → Feature → Spec with the pinned mermaid, offline. The counted state is
@@ -44,24 +45,36 @@ const LABELS: GraphLabels = {
   archived: 'Archived',
   stage: (stage) => stage,
   bundle: (kind, count) => `${String(count)} ${kind}`,
+  lane: (lane) => lane ?? 'No milestone',
 };
 
 const NODE_LINE = /^\s*([A-Za-z0-9_]+)(?:\(\[|\[|\()"/u;
-const LINK_LINE = /^\s*([A-Za-z0-9_]+) (?:---|-\.->|-->) ([A-Za-z0-9_]+)\s*$/u; // single-core: allow — a mermaid link arrow, not the frontmatter delimiter
+const LINK_LINE = /^\s*([A-Za-z0-9_]+) (?:(se\d+)@)?(---|-\.->|-->) ([A-Za-z0-9_]+)\s*$/u; // single-core: allow — a mermaid link arrow, not the frontmatter delimiter
 
-/** The node ids the mermaid text defines, in order, and its links as `from>to`. */
-function parse(source: string): { nodes: string[]; links: string[] } {
+interface Link {
+  readonly from: string;
+  readonly to: string;
+  readonly id: string | undefined;
+  readonly arrow: string;
+}
+
+/** The node ids the mermaid text defines, in order, and its links as `from>to` (with each link's edge id and arrow). */
+function parse(source: string): { nodes: string[]; links: string[]; edges: Link[] } {
   const nodes: string[] = [];
-  const links: string[] = [];
+  const edges: Link[] = [];
   for (const line of source.split('\n')) {
     const node = NODE_LINE.exec(line);
     if (node) nodes.push(node[1]);
     const link = LINK_LINE.exec(line);
-    if (link) links.push(`${link[1]}>${link[2]}`);
+    if (link) edges.push({ from: link[1], id: link[2], arrow: link[3], to: link[4] });
   }
-  return { nodes, links };
+  return { nodes, links: edges.map((e) => `${e.from}>${e.to}`), edges };
 }
 
+/**
+ * Draws one `g.node` per defined node with the DOM id mermaid 11 gives it, and one `path.flowchart-link` per link with
+ * mermaid's `data-id` (the source's edge id when it names one) and its shared end marker, as mermaid 11.17 writes them.
+ */
 class FakeMermaid implements MermaidApi {
   readonly sources: string[] = [];
   initialize(): void {
@@ -69,10 +82,24 @@ class FakeMermaid implements MermaidApi {
   }
   render(id: string, source: string): Promise<{ svg: string }> {
     this.sources.push(source);
-    const nodes = parse(source).nodes.map((n, i) => `<g class="node" id="${id}-flowchart-${n}-${String(i)}"><rect width="10" height="10"></rect></g>`);
-    return Promise.resolve({ svg: `<svg data-icon-exempt id="${id}" viewBox="0 0 100 100">${nodes.join('')}</svg>` });
+    const { nodes, edges } = parse(source);
+    const marker = `${id}_flowchart-v2-pointEnd`;
+    const defs = `<defs><marker id="${marker}"><path d="M 0 0 L 10 5 L 0 10 z"></path></marker></defs>`;
+    const paths = edges.map((e, i) => {
+      const head = e.arrow === '---' ? '' : ` marker-end="url(#${marker})"`;
+      return `<path class="flowchart-link" data-edge="true" data-id="${e.id ?? `L_${e.from}_${e.to}_${String(i)}`}"${head}></path>`;
+    });
+    const drawn = nodes.map((n, i) => `<g class="node" id="${id}-flowchart-${n}-${String(i)}"><rect width="10" height="10"></rect></g>`);
+    return Promise.resolve({ svg: `<svg data-icon-exempt id="${id}" viewBox="0 0 100 100">${defs}${paths.join('')}${drawn.join('')}</svg>` });
   }
 }
+
+/** Harbor with two spec edges as the stub's `X-Spectant-Stub-Edges` serves them: 009 waits on 002 (open), 002 on 006 (met). */
+const edged = (): PlanningModel => {
+  const edge = (from: string, to: string, state: 'open' | 'met'): SpecEdge => ({ fromSpec: from, fromKind: 'claim', fromId: 'ISC-1', toSpec: to, state });
+  return { ...(harbor as unknown as PlanningModel), specEdges: [edge('009', '002', 'open'), edge('002', '006', 'met')] };
+};
+const arrows = (el: HTMLElement): SVGPathElement[] => [...el.querySelectorAll<SVGPathElement>('[data-graph-frame] path[data-spec-edge]')];
 
 class FakeSelection {
   readonly current = signal<RelationRef | null>(null);
@@ -227,5 +254,74 @@ describe('planning-graph', () => {
     expect(tree?.getAttribute('href')).toContain('/w/harbor/planning/tree');
     expect(tree?.getAttribute('href')).toContain('sel=spec');
     expect(r.el.querySelector('[data-graph] ui-diagram-toolbar')).not.toBeNull();
+  });
+
+  // T33 · ISC-170.1 (spec 025): spec edges are arrows between spec nodes, an open one drawn otherwise than a met one;
+  // without spec edges the graph has no such arrow. The drawing itself is mermaid's (T34 checks it in a browser); here
+  // the source names each arrow and its line, and the view marks each drawn path with its state and name.
+  describe('spec edges (ISC-170.1)', () => {
+    it('edges: each spec edge is one arrow, open dotted and violet-dashed, met solid and muted, each with its own arrowhead and a name', async () => {
+      const model = edged();
+      const lens = planningGraph(model, { archived: false });
+      const want = lens.edges.filter((e) => e.kind === 'spec-edge');
+      expect(want.map((e) => `${e.from}>${e.to}:${e.state ?? ''}`)).toEqual(['s_009>s_002:open', 's_002>s_006:met']);
+      const source = parse(graphSource(lens, LABELS)).edges.filter((e) => e.id !== undefined);
+      expect(source.map((e) => `${e.from}>${e.to} ${e.arrow}`)).toEqual(['s_009>s_002 -.->', 's_002>s_006 -->']);
+
+      const r = await render(model, '/w/harbor/planning/graph?m=all');
+      const drawnArrows = arrows(r.el);
+      expect(drawnArrows.map((p) => p.getAttribute('data-spec-edge'))).toEqual(['open', 'met']);
+      const [open, met] = drawnArrows;
+      expect(open.getAttribute('aria-label')).toBe(`009 waits on 002, ${en.planning.graph.legend.open}`);
+      expect(met.getAttribute('aria-label')).toBe(`002 waits on 006, ${en.planning.graph.legend.met}`);
+      expect(open.querySelector('title')?.textContent).toBe(open.getAttribute('aria-label'));
+      const head = (p: SVGPathElement): Element | null => r.el.querySelector(`marker[id="${/#([^)]+)/u.exec(p.getAttribute('marker-end') ?? '')?.[1] ?? ''}"]`);
+      expect(head(open)?.getAttribute('data-spec-edge-marker')).toBe('open');
+      expect(head(met)?.getAttribute('data-spec-edge-marker')).toBe('met');
+      // Containment keeps mermaid's plain line: never marked as a spec edge.
+      expect(r.el.querySelectorAll('[data-graph-frame] path.flowchart-link').length).toBe(lens.edges.length);
+      expect(GRAPH_CSS).toContain('.flowchart-link[data-spec-edge="open"] { stroke: var(--color-secondary); stroke-width: 2px; stroke-dasharray: 6 4; }');
+      expect(GRAPH_CSS).toContain('.flowchart-link[data-spec-edge="met"] { stroke: var(--muted); stroke-width: 1.5px; stroke-dasharray: none; }');
+    });
+
+    it('edges: the "Spec edges" chip hides every arrow and every ghost node, and shows them again', async () => {
+      const r = await render(edged(), '/w/harbor/planning/graph?m=harbor-1-0');
+      expect(arrows(r.el).length).toBe(1);
+      expect(drawn(r.el).some((n) => n.getAttribute('data-node') === 's_006')).toBe(true);
+      const chip = r.el.querySelector<HTMLButtonElement>('[data-filter="edges"]');
+      chip?.click();
+      await r.settle();
+      expect(chip?.getAttribute('aria-pressed')).toBe('false');
+      expect(arrows(r.el)).toEqual([]);
+      expect(r.mermaid.sources.at(-1)).not.toMatch(/se\d+@/u);
+      expect(drawn(r.el).some((n) => n.getAttribute('data-node') === 's_006')).toBe(false);
+      chip?.click();
+      await r.settle();
+      expect(arrows(r.el).length).toBe(1);
+    });
+
+    it('edges: a workspace without spec edges draws no spec-edge arrow', async () => {
+      for (const model of Object.values(FIXTURES)) {
+        expect(parse(graphSource(planningGraph(model), LABELS)).edges.filter((e) => e.id !== undefined)).toEqual([]);
+      }
+      const r = await render(harbor as unknown as PlanningModel, '/w/harbor/planning/graph?m=all');
+      expect(drawn(r.el).length).toBeGreaterThan(0);
+      expect(arrows(r.el)).toEqual([]);
+      expect(r.el.querySelector('[data-graph-frame] marker[data-spec-edge-marker]')).toBeNull();
+    });
+
+    it('edges: a blocker outside the drawn lane is a dimmed ghost node "006 ↗ <lane>", selectable like any spec', async () => {
+      const r = await render(edged(), '/w/harbor/planning/graph?m=harbor-1-0');
+      const source = r.mermaid.sources.at(-1) ?? '';
+      expect(source).toContain(`s_006("006 ↗ ${en.planning.tree.noMilestone}`);
+      expect(source).toContain('class s_006 n-ghost');
+      expect(GRAPH_CSS).toContain('.node:is(.n-archived, .n-bundle, .n-ghost) .nodeLabel { color: var(--muted); }');
+      const ghost = drawn(r.el).find((n) => n.getAttribute('data-node') === 's_006');
+      expect(ghost?.getAttribute('role')).toBe('button');
+      expect(ghost?.getAttribute('aria-label')).toContain('006 ↗');
+      ghost?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await r.settle();
+      expect(r.selection.picks).toEqual(['spec:006']);
+    });
   });
 });

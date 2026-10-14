@@ -9,7 +9,8 @@
 // - The head, up to the first ` — ` outside code spans, is ` · `-separated: the claim ID (the forms claims.ts takes),
 //   the flags `[P]` and `[seam]` in either order, then the lane token. The lane is checked against the constitution's
 //   `## Lanes` table when one is given; a token outside it is kept with a diagnostic, and `operator` is always valid.
-// - `(after: …)` may stand anywhere in the text; it is removed from the display text. Ranges `T3–T5` expand.
+// - `(after: …)` may stand anywhere in the text; it is removed from the display text. Ranges `T3–T5` expand. A token
+//   of exactly three digits is a spec edge (spec 025): it lands in `afterSpecs`, not in `edges`.
 // - The paths follow the last ` · ` outside code spans, split on `, ` outside code spans and parentheses: a code span
 //   (or a bare token with a `/` or `.`) is a path, a parenthesised item such as `(probe only)` is the path note. A tail
 //   with anything else is not a path column, and the text keeps everything.
@@ -17,11 +18,16 @@
 // - `## Probe Mapping`: the table `Task | Claim | Probe`, first cell one or more task ids or ranges.
 // - The Tasks tab's status comes from the newest rounds.jsonl result card of the same task (frames.ts, same id and
 //   text), else from the box. A checked box outranks an unfinished round state.
+// - An open spec edge (`input.specEdges`, spec 025, ISC-162.2) on an open task, or on its claim, holds the task: its
+//   status reads `held` with the reason `waits on NNN`, over a round's open, dispatched or held state. A problem the
+//   round reported (fail, question, concerns) keeps its word.
 //
 // Pure: text in, model out. No file system, no Bun API; never throws.
+import { splitSpecEdges } from './claims.ts';
 import type { Diagnostic } from './diagnostics.ts';
 import type { CardState, FrameCard, ProbeMappingRow, TaskCount, TaskParseInput, TaskRow, TaskStatus, TasksTab } from './files.ts';
 import { buildFrames } from './frames.ts';
+import { specEdgeHold } from './takeable.ts';
 
 const OPERATOR = 'operator';
 
@@ -39,6 +45,8 @@ const LANE_TOKEN = /^[\w-]+$/;
 
 const STATUS_ORDER: readonly TaskStatus[] = ['open', 'dispatched', 'held', 'question', 'concerns', 'fail', 'done', 'closed', 'struck'];
 const LANDED: ReadonlySet<TaskStatus> = new Set(['done', 'closed']);
+/** The statuses an open spec edge turns `held` with `waits on NNN` (ISC-162.2): work the round has not started. */
+const EDGE_HOLDABLE: ReadonlySet<TaskStatus> = new Set(['open', 'dispatched', 'held']);
 
 /** The frame card states as the Tasks tab reads them; an operator step still open is `open`. */
 const CARD_STATUS: Readonly<Record<CardState, TaskStatus | null>> = {
@@ -341,15 +349,20 @@ export function parseTaskLines(input: TaskParseInput): TasksTab {
   });
 
   // Edges resolve against the whole list, so a task may name one further down.
+  // A three-digit token is a spec edge (spec 025, ISC-162): it goes to `afterSpecs`, never into the task-edge checks.
+  // An open resolved spec edge on the task or its claim holds an open task `held`, `waits on NNN` (ISC-162.2).
+  const edgeHold = specEdgeHold(input.specEdges ?? []);
   const tasks: TaskRow[] = drafts.map(({ edgeTokens, ...draft }) => {
-    const { ids, bad } = taskIds(edgeTokens);
+    const { edges: taskTokens, specs: afterSpecs } = splitSpecEdges(edgeTokens);
+    const { ids, bad } = taskIds(taskTokens);
     const at = (code: string, message: string): void => {
       diagnostics.push({ severity: 'warning', code, message: `${draft.id}: ${message}`, line: draft.line });
     };
     if (bad.length > 0) at('task-edge-not-task', `(after: …) names ${bad.join(', ')}, which are no task ids; edges name tasks, not claims.`);
     const unknown = ids.filter((e) => !seen.has(e));
     if (unknown.length > 0) at('task-edge-unknown', `(after: …) names ${unknown.join(', ')}, which no task line carries.`);
-    return { ...draft, edges: ids };
+    const waits = draft.state === 'open' && EDGE_HOLDABLE.has(draft.status) ? edgeHold(draft.id, draft.claim) : null;
+    return { ...draft, ...(waits === null ? {} : { status: 'held' as const, reason: waits }), edges: ids, afterSpecs };
   });
 
   const probeMapping = parseMapping(lines, tasks, diagnostics);

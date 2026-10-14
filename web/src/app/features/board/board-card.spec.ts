@@ -230,3 +230,45 @@ describe('BoardCard selection (spec 026, T26, ISC-171)', () => {
     expect(host.querySelector('ui-card')?.getAttribute('data-selected')).toBe('card');
   });
 });
+
+// Spec 025, T23 · ISC-163 (design.md § Workspace-Board-Karte): a held spec's card carries "waits on NNN" in its own line
+// right under the title, above the feature row; each chip links to its blocker spec on its own, outside the title link;
+// the partial scope stays in the accessible name; a card nothing holds shows no line.
+describe('BoardCard waits line (T23, ISC-163)', () => {
+  const held = buildBoard({
+    planning: planningGolden as unknown as PlanningModel,
+    rows: (dashboard.specs as unknown as readonly BoardRow[]).map((row) =>
+      row.id === '008' ? { ...row, waits: { spec: '008', blockers: ['002'], heldTasks: 2, openTasks: 3, full: false } } : row,
+    ),
+  });
+  const heldCard = (id: string): BoardCardModel => held.cards.find((c) => c.id === id) as BoardCardModel;
+
+  it('builds the wait and the blocker title into the card, and nothing for a card no edge holds', () => {
+    const card = heldCard('008');
+    expect(card.waits?.blockers).toEqual(['002']);
+    expect(card.waitTitles).toEqual({ '002': heldCard('002').title });
+    expect(heldCard('002').waits).toBeNull();
+    expect(heldCard('002').waitTitles).toEqual({});
+  });
+
+  it('shows the chip in its own line under the title, linked to 002, outside the title link, before the feature row', async () => {
+    const host = await render('008', heldCard('008'));
+    const line = host.querySelector<HTMLElement>('ui-waits-chip[data-card-waits]');
+    expect(line).not.toBeNull();
+    const title = host.querySelector<HTMLAnchorElement>('a.title');
+    expect(title?.nextElementSibling).toBe(line);
+    expect(line?.nextElementSibling?.classList.contains('r3')).toBe(true);
+    const chip = line?.querySelector<HTMLAnchorElement>('a[data-waits]');
+    expect(text(chip)).toBe('waits on 002');
+    expect(chip?.getAttribute('href')).toBe('/w/harbor/s/002');
+    expect(chip?.closest('a.title')).toBeNull();
+    expect(chip?.getAttribute('aria-label')).toBe(`Waits on spec 002, ${heldCard('002').title}, 2 of 3 open tasks`);
+    expect(line?.querySelector('[data-waits-meta]')).toBeNull();
+    expect(title?.getAttribute('aria-describedby')?.split(' ')).toContain(line?.id);
+  });
+
+  it('shows no waits line on a card nothing holds', async () => {
+    const host = await render('002', heldCard('002'));
+    expect(host.querySelector('ui-waits-chip')).toBeNull();
+  });
+});

@@ -10,6 +10,9 @@
  * - the worktree views (spec 027, ISC-182, T42): with the stub's worktree overlay on, harbor 002's spec page (head
  *   chip and source note, the Tasks tab's run chips), the workspace board's card chips, 002's live board with its
  *   in-round group, and 007's timeline with the derived merged entry;
+ * - the spec edges (spec 025, ISC-165, T31): with the stub's edges variant `waiting` on (README § The spec edges), the
+ *   workspace board with 009 in Blocked, the dashboard with the waits chips and the overlap and spec-edge warnings, the
+ *   spec heads of 009 (waits chip) and 002 (waits chip and overlap line), and the planning graph's spec-edge arrows;
  * - the planning page (spec 026, ISC-173): the tree, board and graph lenses each with `?sel=` (the detail sidebar open,
  *   the graph drawn by mermaid), the redirects of `/w/harbor/features#F2` and `/w/harbor/milestones#m-…` to the tree
  *   with the object selected, and the workspace board with a selected card;
@@ -33,7 +36,7 @@ import type { BrowserContext, Page, Request } from '@playwright/test';
 import { prototypeRoute } from '../../server/src/spec-routes.contract.ts';
 import { LEGACY_TAB_IDS, TAB_IDS } from '../src/app/layout/shell/areas';
 import { atWidth, expect, test } from './fixtures';
-import { STUB_LIBRARY, STUB_NOTES, WORKTREES_HEADER } from './stub-api';
+import { EDGES_HEADER, STUB_EDGES, STUB_LIBRARY, STUB_NOTES, WORKTREES_HEADER } from './stub-api';
 
 const SESSION = 'X-Spectant-Stub-Session';
 const SPEC = '/w/harbor/s/002';
@@ -206,6 +209,40 @@ for (const theme of ['light', 'dark'] as const) {
         await page.goto('/w/harbor/s/007/timeline');
         await rendered(page, '/w/harbor/s/007/timeline', 'timeline');
         await expect(page.locator('app-timeline-tab [data-entry][data-kind="worktree"] [data-worktree-title]')).toHaveText('Merged into main');
+
+        await page.setExtraHTTPHeaders({});
+      });
+
+      await test.step('the spec edges: board, dashboard, spec heads and the graph arrows (ISC-165)', async () => {
+        // The stub's edges variant (spec 025, T20) on these pages only; the session header stays on the context.
+        await page.setExtraHTTPHeaders({ [EDGES_HEADER]: 'waiting' });
+        const { full, partial } = STUB_EDGES;
+        const waits = (scope: string, blocker: string) => page.locator(`${scope} a[data-waits][data-blocker="${blocker}"]`);
+
+        await page.goto('/w/harbor/board');
+        await rendered(page, '/w/harbor/board');
+        await expect(waits(`[data-col="blocked"] app-board-card[data-key="spec:${full.folder}"] ui-waits-chip`, full.on)).toHaveCount(1);
+
+        await page.goto('/w/harbor');
+        await rendered(page, '/w/harbor');
+        for (const { spec, on } of [full, partial]) {
+          await expect(waits(`app-spec-row:has(a.row-link[data-spec-row="${spec}"]) ui-waits-chip`, on), `${spec} row`).toHaveCount(1);
+        }
+        for (const kind of ['spec-overlap', 'spec-edge']) {
+          await expect(page.locator(`[data-warning-spec="${partial.spec}"] [data-warning-kind="${kind}"]`), kind).toHaveCount(1);
+        }
+
+        for (const { spec, on } of [full, partial]) {
+          await page.goto(`/w/harbor/s/${spec}`);
+          await rendered(page, `/w/harbor/s/${spec}`);
+          await expect(waits('ui-waits-chip[data-head-chip="waits"]', on)).toBeVisible();
+        }
+        await expect(page.locator('[data-head-overlaps] [data-overlap-line]').first()).toBeVisible();
+
+        // Every lane, so both ends of each edge are drawn; mermaid comes from the lazy chunk on the app's origin.
+        await page.goto('/w/harbor/planning/graph?m=all');
+        await rendered(page, '/w/harbor/planning/graph?m=all');
+        await expect(page.locator('[data-graph-frame] path[data-spec-edge="open"]').first()).toBeAttached();
 
         await page.setExtraHTTPHeaders({});
       });

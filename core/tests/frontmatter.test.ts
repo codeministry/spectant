@@ -29,8 +29,9 @@ describe('fixtures', () => {
 
   // 20 from the dashboard trees, plus the five spec heads of the catalog fixture `library/` (spec 017, T4).
   test('the corpus holds the spec and master files the parsers are measured on', () => {
-    // 20, plus milestone-lines' master and its three specs (spec 026), plus the five files spec 017 added.
-    expect(files.filter((f) => f.endsWith('/spec.md') || f.endsWith('/ISA.md')).length).toBe(29);
+    // 20, plus milestone-lines' master and its three specs (spec 026), plus the five files spec 017 added, plus the
+    // seven specs of the edges tree (spec 025).
+    expect(files.filter((f) => f.endsWith('/spec.md') || f.endsWith('/ISA.md')).length).toBe(36);
   });
 
   test.each(files)('%s parses without an error diagnostic', (rel) => {

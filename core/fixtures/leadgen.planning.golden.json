@@ -200,6 +200,7 @@
           "priority": "P3",
           "hash": "691eec9cf6d1d2f8529e4699d8f5547daa364da3fcf7bc2b2e1fd4946bb099b0",
           "assignee": null,
+          "waits": null,
           "main": true,
           "held": 10
         }
@@ -331,6 +332,7 @@
           "priority": "P3",
           "hash": null,
           "assignee": null,
+          "waits": null,
           "main": true,
           "held": 14
         }
@@ -413,6 +415,7 @@
           "priority": "P3",
           "hash": "e7b72ff0eba67d797869352596ccae4461fdd300dd02459b3def41648091c403",
           "assignee": null,
+          "waits": null,
           "main": true,
           "held": 8
         }

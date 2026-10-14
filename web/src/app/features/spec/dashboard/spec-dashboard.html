@@ -209,11 +209,16 @@
           <h2 id="spec-context-warnings">{{ 'specDashboard.warnings.heading' | transloco }}</h2>
           <ui-chip data-count-badge variant="count" tone="secondary">{{ m.areas.status.warnings }}</ui-chip>
         </div>
-        @if (m.warnings.length === 0) {
-          <p class="muted">{{ 'specDashboard.warnings.none' | transloco }}</p>
+        @if (overlaps().length > 0) {
+          <app-overlap-lines data-context-overlaps [lines]="overlaps()" [ws]="ws()" [form]="wide() ? 'short' : 'full'" [anchors]="false" />
+        }
+        @if (contextWarnings().length === 0) {
+          @if (overlaps().length === 0) {
+            <p class="muted">{{ 'specDashboard.warnings.none' | transloco }}</p>
+          }
         } @else {
           <ul class="rows">
-            @for (warning of m.warnings; track $index) {
+            @for (warning of contextWarnings(); track $index) {
               <li class="warn-line" data-context-warning [attr.data-warning]="warning.kind">
                 <ui-icon class="warning-icon" name="triangle-alert" [size]="16" />
                 <span class="row-text">{{ warning.text }}</span>

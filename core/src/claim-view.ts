@@ -6,6 +6,8 @@
 // blocked while an edge is unresolved, taken while a lock holds it, else takeable once the spec's reviewed mark is
 // fresh. `open` is the claim the review gate holds (ISC-99: no fresh reviewed mark, so not takeable yet) and any
 // unresolved claim no rule classifies; `counts.open` is the aggregate of the four open states (the spec page's "open").
+// An open spec edge on the claim (`input.specEdges`, spec 025, ISC-163) turns a takeable or open claim `blocked` with
+// `waitsOn`, the specs it waits on: such a claim is never shown takeable. A taken claim stays taken.
 //
 // Pure: spec.md's text and the lock reading in, model out. No file system, no Bun API, no clock; elapsed time since a
 // lock is the web's to compute from `since`.
@@ -46,6 +48,15 @@ export function buildClaimViews(input: ClaimViewInput): ClaimViewModel {
   for (const id of partition.closed) state.set(id, 'closed');
   for (const id of partition.dropped) state.set(id, 'dropped');
   const blockedBy = new Map(partition.blocked.map((b) => [b.id, b.openBlockers]));
+  // An open spec edge holds the claim (ISC-163): takeable or open turns blocked; taken, closed and dropped stay.
+  const waitsOn = new Map<string, string[]>();
+  for (const e of input.specEdges ?? []) {
+    if (e.fromKind !== 'claim' || e.state !== 'open') continue;
+    const s = state.get(e.fromId) ?? 'open';
+    if (s !== 'takeable' && s !== 'open' && s !== 'blocked') continue;
+    waitsOn.set(e.fromId, [...new Set([...(waitsOn.get(e.fromId) ?? []), e.toSpec])].sort());
+    state.set(e.fromId, 'blocked');
+  }
   // Later locks win, as in partitionClaims; only a taken claim shows its lock.
   const lockOf = new Map(locks.map((l) => [l.claim, l]));
 
@@ -69,7 +80,9 @@ export function buildClaimViews(input: ClaimViewInput): ClaimViewModel {
       state: s,
       kind: c.kind,
       edges: c.after,
+      afterSpecs: c.afterSpecs,
       blockedBy: blockedBy.get(c.id) ?? [],
+      ...(waitsOn.has(c.id) ? { waitsOn: waitsOn.get(c.id) } : {}),
       probe: probes.get(c.id) ?? null,
       verification: verification.get(c.id) ?? null,
       lock: lock ? { source: lock.source, session: lock.session, since: lock.since } : null,

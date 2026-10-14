@@ -24,7 +24,7 @@ import { parseClaims } from './claims.ts';
 import type { Claim, FeatureBlock } from './claims.ts';
 import { parseEvents } from './events.ts';
 import { specFilePath } from './files.ts';
-import type { ActorRef, ClaimLock, FileDiagnostic, IdeaFiles, IdeaRef, LockReading, Priority, SpecFiles, StageSource, Workflow, WorkflowStage } from './files.ts';
+import type { ActorRef, ClaimLock, FileDiagnostic, IdeaFiles, IdeaRef, LockReading, Priority, SpecEdge, SpecFiles, SpecWait, StageSource, Workflow, WorkflowStage } from './files.ts';
 import { parseFrontmatter } from './frontmatter.ts';
 import { readIdeas } from './ideas.ts';
 import { milestoneSlug, parseMilestones } from './milestones.ts';
@@ -108,6 +108,13 @@ export interface PlanningHolder {
    * row's value over the same input. Null for an archived spec, which is never given a stage either.
    */
   readonly assignee: ActorRef | null;
+  /**
+   * What the spec waits on, the dashboard row's `waits` passed in `PlanningInput.specStates` (spec 025, ISC-163): the
+   * board card's `waits on NNN`. Null for an archived spec, for a spec the caller passed no wait for, and once the
+   * edge is met. `buildPlanning` always sets it; the type leaves it optional only so the web lane's hand-built holder
+   * stubs stay valid, as with `PlanningModel.relations`.
+   */
+  readonly waits?: SpecWait | null;
 }
 
 /**
@@ -121,6 +128,8 @@ export interface PlanningSpecState {
   readonly stageSource: StageSource;
   /** Raw sha256 hex of spec.md; absent when the caller hashes nothing. */
   readonly hash?: string;
+  /** The row's `waits` (spec 025, ISC-163); absent or null, the card waits on nothing. */
+  readonly waits?: SpecWait | null;
 }
 
 /** One feature block of the master (an epic, in tracker words) with its progress across every spec that holds it. */
@@ -249,6 +258,12 @@ export interface PlanningModel {
    * lane's hand-built planning stubs stay valid until the detail sidebar reads it, as with `featureIds`.
    */
   readonly relations?: RelationIndex;
+  /**
+   * The spec edges of the active specs (spec 025, ISC-170.1), `PlanningInput.specEdges` as the caller resolved them
+   * (`resolveEdges`, open or met), for the Diagram lens's `spec-edge` arrows (`planningGraph`). Absent when the caller
+   * passed none or an empty list, so a workspace without spec edges serves the body it served before.
+   */
+  readonly specEdges?: readonly SpecEdge[];
 }
 
 /**
@@ -285,6 +300,13 @@ export interface PlanningInput {
    * holder's `assignee` (T65); absent, the assignee comes from the events alone.
    */
   readonly locks?: LockReading;
+  /**
+   * The workspace's spec edges as `resolveEdges(…).edges` resolved them against the server's merge state (spec 025,
+   * ISC-170.1); `resolveEdges` needs the merge state, which only the caller reads from git, so the tree takes its
+   * result rather than resolving. Carried unchanged as `PlanningModel.specEdges`; absent, the diagram draws no
+   * `spec-edge` arrow.
+   */
+  readonly specEdges?: readonly SpecEdge[];
 }
 
 /** The file every master diagnostic names, as the dashboard names it. */
@@ -334,6 +356,7 @@ function readFolders(
         priority: data.priority,
         hash: state?.hash ?? null,
         assignee: isArchived ? null : assigneeOf({ claims: ids, locks, events }),
+        waits: state?.waits ?? null,
       };
       return [
         {
@@ -514,7 +537,7 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
   const specs = folders.map((f) => f.holder);
   if (input.master === null) {
     const relations = buildRelations({ features: [], milestones: [], ideas, specs });
-    return { ...board, features: [], milestones: [], unassignedFeatures: [], ideas, recount: null, diagnostics: stories.diagnostics, relations };
+    return { ...board, features: [], milestones: [], unassignedFeatures: [], ideas, recount: null, diagnostics: stories.diagnostics, relations, ...specEdgesOf(input) };
   }
   const master = parseClaims(input.master);
   const claimById = new Map<string, Claim>();
@@ -606,5 +629,11 @@ export function buildPlanning(input: PlanningInput): PlanningModel {
       ...unknownIdeaNames(ideas, new Set(master.features.map((f) => f.id)), entries),
     ],
     relations: buildRelations({ features, milestones, ideas, specs, after }),
+    ...specEdgesOf(input),
   };
+}
+
+/** `PlanningModel.specEdges`: the caller's resolved spec edges, absent when there are none (spec 025, ISC-170.1). */
+function specEdgesOf(input: PlanningInput): { specEdges?: readonly SpecEdge[] } {
+  return input.specEdges === undefined || input.specEdges.length === 0 ? {} : { specEdges: input.specEdges };
 }

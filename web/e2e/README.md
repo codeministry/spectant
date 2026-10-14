@@ -83,6 +83,7 @@ workers never race. An unknown value is always a loud 400, never a silent defaul
 | `X-Spectant-Stub-Library` | `catalog`, `empty` (every readable workspace answers `EMPTY_CATALOG`, a workspace without one document) | `catalog` |
 | `X-Spectant-Stub-Session` | any id; scopes the settings and the writes | one shared session |
 | `X-Spectant-Stub-Worktrees` | `off`, `on` (the worktree overlay, below) | `off`, the goldens as they are |
+| `X-Spectant-Stub-Edges` | `off`, `waiting`, `met` (the spec edges, below; with `Worktrees: on` a 400) | `off`, the goldens as they are |
 
 Lock fixtures, applied to `…/live` (the `LiveFrame`), the spec page's `areas.live` and `keyNumbers.rounds.agentsWorking`
 (under every fixture but `activity`), and `/api/lifeos`. Every in-flight card names its `agent` and `subagent` as
@@ -162,6 +163,28 @@ no change. Each fact has the shape core emits for it, typed by core's own types.
 tick; T28 (`applied-open`) stays and its ETag holds. A bump applies under `off` too, where a task without a run starts
 at `dispatched`. Reason: the e2e suites `worktree -g chip|tasks`, the timeline and offline need these facts
 deterministically, and the fixture trees have no git to read them from.
+
+## The spec edges (spec 025)
+
+`X-Spectant-Stub-Edges: waiting | met` serves harbor rebuilt by core from its fixture tree (`STUB_EDGES`, T20): the
+edges are added to the texts in memory, never to the fixture files, and the dashboard, planning, spec page, claims,
+tasks and live frame come from core's own builders (`buildDashboard` with a `MergeState`, `buildPlanning` with each
+row's `waits`, `buildSpecPage`, `buildClaimViews` and `buildLiveFrame` with the spec's resolved edges). A reviewed
+mark that matched a file before the edit is re-marked over it, so a fresh review stays fresh. Under `off` (or no
+header) every answer stays the golden. Lantern and every spec below without an edge answer as their goldens. Import
+`EDGES_HEADER`, `EDGE_STATES`, `STUB_EDGES` and `stubMergeState` from `./stub-api`.
+
+| Harbor spec | Edge | `waiting` (002 and 006 on unmerged branches) | `met` (both merged) |
+|-------------|------|----------------------------------------------|---------------------|
+| 009 | ISC-131 `(after: ISC-130, 002)` | full hold: `waits` `{blockers: [002], full: true}` on row, board holder and head; stage `blocked`, reason `waits on 002`; ISC-131 `blocked`, `waitsOn: ['002']` | `waits: null`; back on `build`, ISC-131 takeable, as the golden |
+| 002 | T27, T28, T29, T32 `(after: …, 006)` | partial hold: `{blockers: [006], heldTasks: 4, openTasks: 5, full: false}`, stage `build` kept; the web lane waits whole, the operator's T31 does not | `waits: null` |
+| 002 | ticked T1 `(after: 042)` | one `spec-edge` warning on 002's row (no spec 042), no hold | the same warning |
+| 002 / 004 | none | the `spec-overlap` of the golden stays: `web/src/app/retention/`, `waiting: '002'`, `edge: '(after: 004)'` | the same |
+
+The live cards of 002's held tasks come from its `rounds.jsonl` and, at this commit, keep the round's reason instead of
+`waits on 006`. That changes with core's `live.ts` fix, and the pin in `stub-api.test.ts` changes with it. Reason: the
+e2e suites `blockers -g waits|overlap` need a waiting spec and its disappearance deterministically, and every other
+suite must keep the goldens.
 
 ## Browsers and the container
 

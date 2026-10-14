@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
 import type { PlanningModel } from '../../core/src/planning';
 import { atWidth, expect, headerControl, test, WIDTHS } from './fixtures';
-import { RESET_PATH, SESSION_HEADER } from './stub-api';
+import { EDGES_HEADER, type EdgeState, RESET_PATH, SESSION_HEADER, STUB_EDGES } from './stub-api';
 
 // Read, not imported: Playwright's ESM loader wants an import attribute the web tsconfig does not take.
 const read = (path: string): unknown => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
@@ -274,4 +274,107 @@ test.describe('planning: redirect', () => {
       await expectSelectedOnTree(page, ref, name);
     });
   }
+});
+
+/**
+ * T34 · ISC-170.1 (`bun run e2e -- planning -g edges`): on the graph lens every spec edge `(after: NNN)` is one arrow
+ * between spec nodes, marked `data-spec-edge="open|met"` and named `<from> waits on <to>, <state>`; an open arrow draws
+ * dashed, a met one solid, so the two read apart. The `Spec edges` chip hides them; a blocker drawn in no lane of the
+ * picked milestone stands as a ghost node. Against the stub's edge variants (`X-Spectant-Stub-Edges`, `STUB_EDGES`):
+ * `waiting` holds 009 on 002 and 002 on 006 with both blockers unmerged, `met` the same edges merged; without the
+ * header harbor's golden has no spec edge and the graph no such arrow.
+ */
+const EDGE_PAIRS = [
+  [STUB_EDGES.full.spec, STUB_EDGES.full.on],
+  [STUB_EDGES.partial.spec, STUB_EDGES.partial.on],
+] as const;
+const graphFrame = (page: Page): Locator => page.locator('[data-lens="graph"] [data-graph-frame]');
+const arrows = (page: Page): Locator => graphFrame(page).locator('path[data-spec-edge]');
+
+/** The graph lens at `m`, drawn: the status line gone and the spec nodes in the frame. */
+async function openGraph(page: Page, m: string): Promise<void> {
+  await page.goto(`/w/harbor/planning/graph?m=${m}`);
+  await expect(page.locator('[data-lens="graph"]')).toBeVisible();
+  await expect(page.locator('[data-graph-status]')).toHaveCount(0);
+  await expect(graphFrame(page).locator('g.node[data-ref^="spec:"]').first()).toBeVisible();
+}
+
+/** The computed `stroke-dasharray` of every spec-edge arrow, in document order. */
+const dashes = (page: Page): Promise<string[]> => arrows(page).evaluateAll((paths) => paths.map((p) => getComputedStyle(p).strokeDasharray));
+
+test.describe('planning: spec edges', () => {
+  test.use(atWidth(WIDTHS.desktop));
+
+  let session = '';
+  const useEdges = (edges: EdgeState): void => {
+    test.beforeEach(async ({ page }, info) => {
+      session = `planning-edges-${edges}-${info.testId}`;
+      await page.context().setExtraHTTPHeaders({ ...(edges === 'off' ? {} : { [EDGES_HEADER]: edges }), [SESSION_HEADER]: session });
+    });
+    test.afterEach(async ({ request }) => {
+      await request.post(RESET_PATH, { headers: { [SESSION_HEADER]: session } });
+    });
+  };
+
+  test.describe('waiting', () => {
+    useEdges('waiting');
+
+    test('edges: each open spec edge is one dashed arrow named after its pair; the chip hides them all', async ({ page }) => {
+      await openGraph(page, 'all');
+      await expect(arrows(page)).toHaveCount(EDGE_PAIRS.length);
+      await expect(graphFrame(page).locator('path[data-spec-edge="open"]')).toHaveCount(EDGE_PAIRS.length);
+      for (const [from, to] of EDGE_PAIRS) {
+        await expect(graphFrame(page).locator(`path[data-spec-edge="open"][aria-label="${from} waits on ${to}, Spec edge open"]`)).toHaveCount(1);
+      }
+      for (const dash of await dashes(page)) expect(dash, 'an open arrow is dashed').not.toBe('none');
+
+      const chip = page.locator('[data-filter="edges"]');
+      await expect(chip).toHaveAttribute('aria-pressed', 'true');
+      await chip.click();
+      await expect(chip).toHaveAttribute('aria-pressed', 'false');
+      await expect(graphFrame(page).locator('g.node[data-ref^="spec:"]').first()).toBeVisible();
+      await expect(arrows(page)).toHaveCount(0);
+      await chip.click();
+      await expect(arrows(page)).toHaveCount(EDGE_PAIRS.length);
+    });
+  });
+
+  test.describe('met', () => {
+    useEdges('met');
+
+    test('edges: each met spec edge is one solid arrow, drawn apart from an open one', async ({ page }) => {
+      await openGraph(page, 'all');
+      await expect(arrows(page)).toHaveCount(EDGE_PAIRS.length);
+      await expect(graphFrame(page).locator('path[data-spec-edge="met"]')).toHaveCount(EDGE_PAIRS.length);
+      for (const [from, to] of EDGE_PAIRS) {
+        await expect(graphFrame(page).locator(`path[data-spec-edge="met"][aria-label="${from} waits on ${to}, Spec edge met"]`)).toHaveCount(1);
+      }
+      const met = await dashes(page);
+      for (const dash of met) expect(dash, 'a met arrow is solid').toBe('none');
+
+      // The same arrows served with the blockers unmerged draw open: their dash pattern is none of the met ones.
+      await page.context().setExtraHTTPHeaders({ [EDGES_HEADER]: 'waiting', [SESSION_HEADER]: session });
+      await openGraph(page, 'all');
+      await expect(graphFrame(page).locator('path[data-spec-edge="open"]')).toHaveCount(EDGE_PAIRS.length);
+      for (const dash of await dashes(page)) expect(met, 'open and met draw apart').not.toContain(dash);
+    });
+
+    test('edges: a blocker outside the picked milestone stands as a ghost node at the end of its arrow', async ({ page }) => {
+      await openGraph(page, 'harbor-1-0');
+      const ghost = graphFrame(page).locator('g.node.n-ghost');
+      await expect(ghost).toHaveCount(1);
+      await expect(ghost).toContainText(`${STUB_EDGES.partial.on} ↗ No milestone`);
+      await expect(graphFrame(page).locator('path[data-spec-edge="met"]').first()).toBeAttached();
+    });
+  });
+
+  test.describe('golden', () => {
+    useEdges('off');
+
+    test('edges: a workspace without spec edges draws no spec-edge arrow', async ({ page }) => {
+      await openGraph(page, 'all');
+      await expect(graphFrame(page).locator('path.flowchart-link').first()).toBeAttached();
+      await expect(arrows(page)).toHaveCount(0);
+    });
+  });
 });

@@ -105,8 +105,13 @@
           </p>
         }
 
-        @if (claim.edges.length > 0) {
+        @let held = heldClaims().get(claim.id);
+        @if (claim.edges.length > 0 || held) {
           <ul class="edges">
+            @if (held) {
+              <!-- spec 025 (T26, ISC-163): the open spec edge holding the claim, as its own chip in the edge row. -->
+              <li><ui-waits-chip data-claim-waits [wait]="held.wait" [ws]="shell.ws() ?? ''" [titles]="held.titles" /></li>
+            }
             @for (edge of claim.edges; track edge) {
               <li>
                 <a

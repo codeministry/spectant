@@ -93,7 +93,8 @@
       "goal": "The app can be installed on a desktop, a tablet or a phone and opens in its own window with the lead-ring icon and the app's own colours; a service worker keeps the app shell available without a network, a toast offers to reload when a deploy has landed, and data still comes from the API only.",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     },
     {
       "id": "022",
@@ -149,7 +150,8 @@
       "goal": "Hovering or focusing the ring beside an answer plays its turn and opens a popover with that turn's state, the reason when it ended incomplete, its steps, duration and model, the same live and after a reload; the empty chat's ring does the same with the chat's own status (model, today's calls against the ceiling, the tool-round bound); the conversation list deletes the selected or all shown conversations with one confirmation and one request; and an offer opened from a chat citation has its marked shortlist row scrolled into the list pane.",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     }
   ],
   "nextUp": [

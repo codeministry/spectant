@@ -1,5 +1,5 @@
 import type { Stage } from '../../../../../../core/src/stage';
-import type { GraphLens, LensNode } from '../../../../../../core/src/relations';
+import type { GraphLens, LensEdge, LensNode, RelationRef } from '../../../../../../core/src/relations';
 import { CARD_EDGE } from '../../board/board-card';
 import { DIAGRAM_CSS } from '../../../shared/ui/doc-prose/mermaid';
 
@@ -9,6 +9,8 @@ export interface GraphLabels {
   readonly archived: string;
   readonly stage: (stage: Stage) => string;
   readonly bundle: (kind: 'done' | 'no-spec', count: number) => string;
+  /** The name of the lane a ghost node stands in (`024 ↗ Pro`): its milestone's title, or the no-milestone word. */
+  readonly lane: (lane: RelationRef | null) => string;
 }
 
 /**
@@ -37,6 +39,7 @@ export function nodeLines(node: LensNode, labels: GraphLabels): readonly [string
     case 'feature':
       return [`${idOf(node.ref)} ${cut(node.title ?? '', 24)}`, pair(node)];
     case 'spec':
+      if (node.ghost === true) return [`${idOf(node.ref)} ↗ ${labels.lane(node.lane)}`, cut(node.title ?? '', 24)];
       return [`${idOf(node.ref)} · ${node.archived === true ? labels.archived : node.stage ? labels.stage(node.stage) : ''}`, cut(node.title ?? '', 24)];
     case 'bundle':
       return [labels.bundle(node.bundle ?? 'done', node.members?.length ?? 0), pair(node)];
@@ -56,15 +59,25 @@ export function nodeClasses(node: LensNode): string[] {
   const classes = [`n-${node.kind}`];
   if (node.kind === 'milestone' && node.ref === null) classes.push('n-none');
   if (node.kind === 'spec') classes.push(node.archived === true ? 'n-archived' : `st-${node.stage ?? 'none'}`);
+  if (node.ghost === true) classes.push('n-ghost');
   if (node.kind === 'bundle') classes.push(`b-${node.bundle ?? 'done'}`);
   return classes;
 }
 
 /**
+ * The spec-edge arrows of a lens by the mermaid edge id the source gives them (`se0`, `se1`, … in edge order): mermaid
+ * writes that id as the drawn path's `data-id`, so the view finds each arrow again to give it its state and its name.
+ */
+export function specEdgeIds(lens: GraphLens): ReadonlyMap<string, LensEdge> {
+  return new Map(lens.edges.filter((e) => e.kind === 'spec-edge').map((e, i) => [`se${String(i)}`, e]));
+}
+
+/**
  * The mermaid source of one graph lens (spec 026, ISC-170): `flowchart LR` over the lens's nodes in drawing order and
  * its edges, one `subgraph` per milestone when more than one lane is drawn (`Alle`), each node with its kind's shape and
- * classes. Containment is a line without head (`---`), a spec edge (spec 025) an arrow. Exactly one definition line per
- * node and one link line per edge: the count of ISC-170 can be read off this text.
+ * classes. Containment is a line without head (`---`); a spec edge (spec 025, ISC-170.1) is an arrow with its own edge
+ * id (`specEdgeIds`), dotted while open (`-.->`), solid once met (`-->`). Exactly one definition line per node and one
+ * link line per edge: the count of ISC-170 can be read off this text.
  */
 export function graphSource(lens: GraphLens, labels: GraphLabels): string {
   const lines = ['flowchart LR'];
@@ -85,7 +98,11 @@ export function graphSource(lens: GraphLens, labels: GraphLabels): string {
     lines.push(`  ${node.id}${l}"${text}"${r}`);
   }
   if (open) lines.push('  end');
-  for (const edge of lens.edges) lines.push(`  ${edge.from} ${edge.kind === 'contains' ? '---' : '-.->'} ${edge.to}`);
+  const ids = new Map([...specEdgeIds(lens)].map(([id, edge]) => [edge, id]));
+  for (const edge of lens.edges) {
+    const id = ids.get(edge);
+    lines.push(id === undefined ? `  ${edge.from} --- ${edge.to}` : `  ${edge.from} ${id}@${edge.state === 'met' ? '-->' : '-.->'} ${edge.to}`);
+  }
   for (const node of lens.nodes) for (const name of nodeClasses(node)) lines.push(`  class ${node.id} ${name}`);
   return lines.join('\n');
 }
@@ -104,13 +121,19 @@ export const GRAPH_CSS = [
   `.node.n-milestone ${STROKE} { fill: var(--disp-t); stroke: var(--color-primary); }`,
   `.node.n-feature ${STROKE} { fill: var(--lane); }`,
   ...Object.entries(CARD_EDGE).map(([stage, edge]) => `.node.st-${stage} ${STROKE} { stroke: ${edge}; stroke-width: 1.5px; }`),
-  `.node:is(.n-archived, .n-bundle, .n-none) ${STROKE} { stroke: var(--track); stroke-dasharray: 5 4; }`,
-  `.node.n-bundle ${STROKE} { fill: transparent; }`,
+  `.node:is(.n-archived, .n-bundle, .n-none, .n-ghost) ${STROKE} { stroke: var(--track); stroke-dasharray: 5 4; }`,
+  `.node:is(.n-bundle, .n-ghost) ${STROKE} { fill: transparent; }`,
   `.node.b-done ${STROKE} { stroke: var(--color-accent); }`,
-  '.node:is(.n-archived, .n-bundle) .nodeLabel { color: var(--muted); }',
+  '.node:is(.n-archived, .n-bundle, .n-ghost) .nodeLabel { color: var(--muted); }',
   '.node[role="button"] { cursor: pointer; }',
   `.node:is([data-selected="node"], :focus-visible) ${STROKE} { stroke: var(--color-primary); stroke-width: 2px; }`,
   '.node:focus-visible { outline: none; }',
   '.cluster rect { fill: var(--lane); stroke: var(--line); rx: 12px; }',
   '.flowchart-link { stroke: var(--track); stroke-width: 1px; }',
+  // Spec edges (spec 025, ISC-170.1), marked by the view (`data-spec-edge`): open in the waits chip's violet, dashed;
+  // met muted and solid. Each points at its own copy of mermaid's arrowhead in the same colour (`data-spec-edge-marker`).
+  '.flowchart-link[data-spec-edge="open"] { stroke: var(--color-secondary); stroke-width: 2px; stroke-dasharray: 6 4; }',
+  '.flowchart-link[data-spec-edge="met"] { stroke: var(--muted); stroke-width: 1.5px; stroke-dasharray: none; }',
+  'marker[data-spec-edge-marker="open"] path { fill: var(--color-secondary); stroke: var(--color-secondary); stroke-dasharray: none; }',
+  'marker[data-spec-edge-marker="met"] path { fill: var(--muted); stroke: var(--muted); stroke-dasharray: none; }',
 ].join(' ');

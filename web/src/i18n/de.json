@@ -178,7 +178,33 @@
     },
     "openFog": "Offener Fog · {{count}}",
     "empty": "Keine Warnungen",
-    "icon": "Warnung"
+    "icon": "Warnung",
+    "overlap": {
+      "lead": {
+        "one": "teilt 1 Datei mit",
+        "other": "teilt {{count}} Dateien mit"
+      },
+      "headLead": {
+        "one": "Teilt 1 Datei mit",
+        "other": "Teilt {{count}} Dateien mit"
+      },
+      "noEdge": "keine Kante",
+      "more": "+{{count}} weitere",
+      "paths": "Gemeinsame Dateien",
+      "target": "in {{id}}",
+      "copyTitle": "Kante für die tasks.md dieser Spec kopieren",
+      "moreOverlaps": {
+        "one": "+1 weitere Überschneidung",
+        "other": "+{{count}} weitere Überschneidungen"
+      },
+      "toHead": "Im Kopf zeigen",
+      "region": "Überschneidungen mit anderen Specs"
+    },
+    "edge": {
+      "unknown": "Kante auf {{id}} · keine solche Spec",
+      "cycle": "Kantenzyklus {{path}}",
+      "where": "{{file}} · {{id}}"
+    }
   },
   "identity": {
     "open": "{{workspace}} öffnen",
@@ -1292,7 +1318,8 @@
       "quiet": "nichts in Arbeit",
       "next": "als Nächstes",
       "inRound": "{{count}} in der Runde",
-      "runCount": "{{count}} {{state}}"
+      "runCount": "{{count}} {{state}}",
+      "waitsName": "{{lane}}, wartet auf {{ids}}"
     },
     "section": {
       "needsYou": "Wartet auf Sie",
@@ -1684,7 +1711,8 @@
         "open": "Spec-Kante offen",
         "met": "Spec-Kante erfüllt",
         "bundle": "Bündel, archiviert"
-      }
+      },
+      "edgeName": "{{from}} wartet auf {{to}}, {{state}}"
     },
     "features": {
       "title": "Features in {{ws}}",
@@ -2204,5 +2232,15 @@
     "sourceWorktree": "Worktree-Kopie",
     "copyPath": "Pfad kopieren",
     "copied": "Pfad kopiert"
+  },
+  "waits": {
+    "on": "wartet auf",
+    "name": "Wartet auf Spec {{id}}, {{title}}",
+    "nameBare": "Wartet auf Spec {{id}}",
+    "unknown": "Wartet auf Spec {{id}}, keine solche Spec",
+    "more": "Wartet auch auf {{ids}}",
+    "partial": "{{held}} von {{open}} offenen Tasks",
+    "spec": "Spec {{id}} · {{title}}",
+    "specBare": "Spec {{id}}"
   }
 }

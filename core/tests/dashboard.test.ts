@@ -65,7 +65,8 @@ describe('harbor: the README Expected column', () => {
   });
 
   test('warnings per spec, in the old order drift, review, diagrams, closed, fog', () => {
-    expect(kinds(row(m, '002'))).toEqual([]);
+    // 002 (build) and 004 (code-review) both change web/src/app/retention/ and no spec edge joins them: 002 waits (ISC-164).
+    expect(kinds(row(m, '002'))).toEqual(['spec-overlap']);
     expect(kinds(row(m, '003'))).toEqual(['review']);
     expect(row(m, '003').warnings[0]?.text).toContain('no reviewed mark');
     expect(kinds(row(m, '004'))).toEqual(['diagrams', 'closed']);
@@ -104,7 +105,7 @@ describe('harbor: the README Expected column', () => {
     expect(kpis.specs).toBe(8);
     expect(kpis.building).toBe(4); // 002 and 009 build, 004 code-review, 008 close-pending
     expect(kpis.scoping).toBe(3); // 003 tasks, 005 and 006 review; 007 is done
-    expect(kpis.warnings).toBe(7); // the done chore and the close-pending 008 carry none (T49, T50)
+    expect(kpis.warnings).toBe(8); // the done chore and the close-pending 008 carry none (T49, T50); 002 its overlap with 004
     expect(kpis.attention).toBe(kpis.warnings + kpis.fog);
     expect(kpis.takeable).toBe(m.specs.reduce((n, r) => n + r.takeable.length, 0));
     expect(kpis.claims).toEqual(
@@ -115,7 +116,7 @@ describe('harbor: the README Expected column', () => {
 
   test('warnings grouped by kind, each item naming its spec', () => {
     const groups = Object.fromEntries(m.warningGroups.map((g) => [g.kind, g.items.map((i) => i.spec)]));
-    expect(groups).toEqual({ drift: ['006'], review: ['005', '006', '003'], diagrams: ['004'], closed: ['004'], fog: ['005'] });
+    expect(groups).toEqual({ drift: ['006'], review: ['005', '006', '003'], diagrams: ['004'], closed: ['004'], fog: ['005'], 'spec-overlap': ['002'] });
   });
 
   test('gates: 004 reviewed fresh and code-reviewed stale, 006 reviewed stale, 003 reviewed missing', () => {
@@ -288,8 +289,8 @@ describe('taken and lock warnings (spec 002 T115, ISC-90)', () => {
     const m = await withLocks(readLockSources({ repoRoot: HARBOR, now: NOW }));
     expect(row(m, '002').taken).toEqual([{ id: 'ISC-74', session: 'a:claude:sess-2', since: '2026-03-08T14:06:00Z', source: 'activity' }]);
     // The one lock diagnostic, harbor's unknown `ponder` run event on ISC-75 (spec 027, ISC-179), lands on 002's row.
-    expect(row(m, '002').warnings.map((w) => [w.kind, w.ref])).toEqual([['locks', 'ISC-75']]);
-    expect(row(m, '002').warnings[0]?.text).toContain('"ponder"');
+    expect(row(m, '002').warnings.map((w) => [w.kind, w.ref])).toEqual([['spec-overlap', undefined], ['locks', 'ISC-75']]);
+    expect(row(m, '002').warnings[1]?.text).toContain('"ponder"');
     for (const r of m.specs.filter((s) => s.id !== '002')) expect(r.taken).toEqual([]);
   });
 

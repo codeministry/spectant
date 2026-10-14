@@ -8,6 +8,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-51",
@@ -31,6 +32,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-52",
@@ -54,6 +56,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-53",
@@ -77,6 +80,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-54",
@@ -100,6 +104,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-55",
@@ -123,6 +128,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-56",
@@ -146,6 +152,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-57",
@@ -169,6 +176,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-58",
@@ -192,6 +200,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-59",
@@ -215,6 +224,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-60",
@@ -240,6 +250,7 @@
         "edges": [
           "ISC-60"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-60.1",
@@ -265,6 +276,7 @@
         "edges": [
           "ISC-60"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-60.2",
@@ -288,6 +300,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-61",
@@ -311,6 +324,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-62",
@@ -334,6 +348,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-63",
@@ -357,6 +372,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-64",
@@ -380,6 +396,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-65",
@@ -405,6 +422,7 @@
         "edges": [
           "ISC-65"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-66",
@@ -428,6 +446,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-67",
@@ -451,6 +470,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-68",
@@ -474,6 +494,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-69",
@@ -497,6 +518,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-70",
@@ -520,6 +542,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-71",
@@ -543,6 +566,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-72",
@@ -566,6 +590,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-73",
@@ -589,6 +614,7 @@
         "state": "takeable",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-74",
@@ -612,6 +638,7 @@
         "state": "takeable",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-75",
@@ -635,6 +662,7 @@
         "state": "takeable",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-76",
@@ -658,6 +686,7 @@
         "state": "takeable",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-77",
@@ -683,6 +712,7 @@
         "edges": [
           "ISC-77"
         ],
+        "afterSpecs": [],
         "blockedBy": [
           "ISC-77"
         ],
@@ -764,6 +794,7 @@
         "state": "open",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-81",
@@ -789,6 +820,7 @@
         "edges": [
           "ISC-81"
         ],
+        "afterSpecs": [],
         "blockedBy": [
           "ISC-81"
         ],
@@ -814,6 +846,7 @@
         "state": "open",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-83",
@@ -839,6 +872,7 @@
         "edges": [
           "ISC-83"
         ],
+        "afterSpecs": [],
         "blockedBy": [
           "ISC-83"
         ],
@@ -864,6 +898,7 @@
         "state": "open",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-85",
@@ -889,6 +924,7 @@
         "edges": [
           "ISC-85"
         ],
+        "afterSpecs": [],
         "blockedBy": [
           "ISC-85"
         ],
@@ -914,6 +950,7 @@
         "state": "open",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-87",
@@ -939,6 +976,7 @@
         "edges": [
           "ISC-87"
         ],
+        "afterSpecs": [],
         "blockedBy": [
           "ISC-87"
         ],
@@ -964,6 +1002,7 @@
         "state": "open",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-89",
@@ -989,6 +1028,7 @@
         "edges": [
           "ISC-89"
         ],
+        "afterSpecs": [],
         "blockedBy": [
           "ISC-89"
         ],
@@ -1014,6 +1054,7 @@
         "state": "open",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-91",
@@ -1039,6 +1080,7 @@
         "edges": [
           "ISC-91"
         ],
+        "afterSpecs": [],
         "blockedBy": [
           "ISC-91"
         ],
@@ -1064,6 +1106,7 @@
         "state": "open",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-93",
@@ -1105,6 +1148,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-95",
@@ -1128,6 +1172,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-96",
@@ -1151,6 +1196,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-97",
@@ -1174,6 +1220,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-98",
@@ -1197,6 +1244,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-99",
@@ -1220,6 +1268,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-100",
@@ -1243,6 +1292,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-101",
@@ -1266,6 +1316,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-102",
@@ -1289,6 +1340,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-103",
@@ -1312,6 +1364,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-104",
@@ -1335,6 +1388,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-105",
@@ -1358,6 +1412,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-106",
@@ -1381,6 +1436,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-107",
@@ -1404,6 +1460,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-108",
@@ -1427,6 +1484,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-109",
@@ -1450,6 +1508,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-110",
@@ -1473,6 +1532,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-111",
@@ -1496,6 +1556,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-112",
@@ -1519,6 +1580,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-113",
@@ -1542,6 +1604,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-114",
@@ -1567,6 +1630,7 @@
         "edges": [
           "ISC-95"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-115",
@@ -1592,6 +1656,7 @@
         "edges": [
           "ISC-96"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-116",
@@ -1617,6 +1682,7 @@
         "edges": [
           "ISC-97"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-117",
@@ -1642,6 +1708,7 @@
         "edges": [
           "ISC-98"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-118",
@@ -1667,6 +1734,7 @@
         "edges": [
           "ISC-99"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-119",
@@ -1692,6 +1760,7 @@
         "edges": [
           "ISC-100"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-120",
@@ -1717,6 +1786,7 @@
         "edges": [
           "ISC-101"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-121",
@@ -1742,6 +1812,7 @@
         "edges": [
           "ISC-102"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-122",
@@ -1767,6 +1838,7 @@
         "edges": [
           "ISC-103"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-123",
@@ -1792,6 +1864,7 @@
         "edges": [
           "ISC-104"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-124",
@@ -1871,6 +1944,7 @@
         "state": "open",
         "kind": "antecedent",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-94",
@@ -1927,6 +2001,7 @@
         "state": "open",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-1",
@@ -1950,6 +2025,7 @@
         "state": "open",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-2",
@@ -1973,6 +2049,7 @@
         "state": "open",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-3",
@@ -1996,6 +2073,7 @@
         "state": "open",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-125",
@@ -2037,6 +2115,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-126",
@@ -2060,6 +2139,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-127",
@@ -2101,6 +2181,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-128",
@@ -2124,6 +2205,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-129",
@@ -2165,6 +2247,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-130",
@@ -2190,6 +2273,7 @@
         "edges": [
           "ISC-130"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-131",
@@ -2231,6 +2315,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-5",
@@ -2256,6 +2341,7 @@
         "edges": [
           "ISC-5"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-6",
@@ -2279,6 +2365,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-7",
@@ -2302,6 +2389,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-8",
@@ -2325,6 +2413,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-9",
@@ -2348,6 +2437,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-10",
@@ -2373,6 +2463,7 @@
         "edges": [
           "ISC-10"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-11",
@@ -2396,6 +2487,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-12",
@@ -2419,6 +2511,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-13",
@@ -2442,6 +2535,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-14",
@@ -2465,6 +2559,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-15",
@@ -2490,6 +2585,7 @@
         "edges": [
           "ISC-15"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-16",
@@ -2513,6 +2609,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-17",
@@ -2536,6 +2633,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-18",
@@ -2559,6 +2657,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-19",
@@ -2582,6 +2681,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-20",
@@ -2607,6 +2707,7 @@
         "edges": [
           "ISC-20"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-21",
@@ -2630,6 +2731,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-22",
@@ -2653,6 +2755,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-23",
@@ -2676,6 +2779,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-24",
@@ -2699,6 +2803,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-25",
@@ -2724,6 +2829,7 @@
         "edges": [
           "ISC-25"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-26",
@@ -2747,6 +2853,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-27",
@@ -2770,6 +2877,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-28",
@@ -2793,6 +2901,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-29",
@@ -2816,6 +2925,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-30",
@@ -2841,6 +2951,7 @@
         "edges": [
           "ISC-30"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-31",
@@ -2864,6 +2975,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-32",
@@ -2887,6 +2999,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-33",
@@ -2910,6 +3023,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-34",
@@ -2933,6 +3047,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-35",
@@ -2958,6 +3073,7 @@
         "edges": [
           "ISC-35"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-36",
@@ -2981,6 +3097,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-37",
@@ -3004,6 +3121,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-38",
@@ -3027,6 +3145,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-39",
@@ -3050,6 +3169,7 @@
         "state": "closed",
         "kind": "anti",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-40",
@@ -3075,6 +3195,7 @@
         "edges": [
           "ISC-40"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-41",
@@ -3098,6 +3219,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-42",
@@ -3121,6 +3243,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-43",
@@ -3144,6 +3267,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-44",
@@ -3167,6 +3291,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-45",
@@ -3192,6 +3317,7 @@
         "edges": [
           "ISC-45"
         ],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-46",
@@ -3215,6 +3341,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-47",
@@ -3238,6 +3365,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-48",
@@ -3261,6 +3389,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-49",
@@ -3284,6 +3413,7 @@
         "state": "closed",
         "kind": "normal",
         "edges": [],
+        "afterSpecs": [],
         "blockedBy": [],
         "probe": {
           "isc": "ISC-50",

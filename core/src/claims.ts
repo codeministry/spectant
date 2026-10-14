@@ -6,11 +6,13 @@
 // columns, Verification IDs, the progress recount). Three deliberate differences, each a superset of the old reading:
 // a checked box may be `[X]`; lines inside a fenced code block are neither claims nor headings; trailing marks
 // `⟨?: …⟩` / `⟨resolved: …⟩` are lifted off a claim before its edge is read, so an edge followed by a mark still counts.
+// Since spec 025 a three-digit token in the edge group is a spec edge (`afterSpecs`), never a claim edge (`after`).
 //
 // Pure: text in, model out. No file system, no Bun API. Malformed input yields diagnostics, never a throw.
 import type { Diagnostic } from './diagnostics.ts';
 import type { ClaimKind, ProbeRow } from './files.ts';
 import type { Progress } from './frontmatter.ts';
+import { SPEC_ID } from './spec-ref.ts';
 
 export interface Claim {
   /** `ISC-60.1`, also the other ID forms the old parser took (`H-AVAIL`, `C4`). */
@@ -21,8 +23,10 @@ export interface Claim {
   readonly text: string;
   /** Everything after the ID and its separator, exactly as written. */
   readonly raw: string;
-  /** Claim IDs from the trailing `(after: …)`. */
+  /** Claim IDs from the trailing `(after: …)`, spec numbers excluded. */
   readonly after: readonly string[];
+  /** Spec numbers (`NNN`, exactly three digits) from the same `(after: …)`: edges on whole specs (spec 025, ISC-162). */
+  readonly afterSpecs: readonly string[];
   /** Trailing marks as written, e.g. `⟨?: which flag⟩`, in line order. */
   readonly marks: readonly string[];
   /** A `[DROPPED …]` tombstone anywhere in the text: resolved, but not achieved. */
@@ -146,6 +150,21 @@ function section(lines: readonly Line[], name: string): [number, number] | null 
   return [start + 1, end < 0 ? lines.length : end];
 }
 
+/**
+ * The tokens of one `(after: …)` group split into ordinary edges (`ISC-…` in spec.md, `T…` in tasks.md) and spec
+ * edges: a token of exactly three digits names the whole spec with that number, active or archived (spec 025,
+ * ISC-162). Both keep their written order; a spec number named twice is kept once. Shared by claims.ts and tasks.ts.
+ */
+export function splitSpecEdges(tokens: readonly string[]): { edges: string[]; specs: string[] } {
+  const edges: string[] = [];
+  const specs: string[] = [];
+  for (const token of tokens) {
+    if (!SPEC_ID.test(token)) edges.push(token);
+    else if (!specs.includes(token)) specs.push(token);
+  }
+  return { edges, specs };
+}
+
 /** Lift trailing marks and (optionally) a trailing `(after: …)` off `raw`; code spans never count. */
 function liftTrailing(raw: string, withEdges: boolean): { head: string; after: string[]; marks: string[] } {
   const masked = raw.replace(CODE_SPAN, (span) => '\u0000'.repeat(span.length));
@@ -175,7 +194,8 @@ function liftTrailing(raw: string, withEdges: boolean): { head: string; after: s
 
 function parseClaim(match: RegExpExecArray, feature: string | null, line: number): Claim {
   const raw = (match[4] ?? '').trim();
-  const { head, after, marks } = liftTrailing(raw, true);
+  const { head, after: tokens, marks } = liftTrailing(raw, true);
+  const { edges: after, specs: afterSpecs } = splitSpecEdges(tokens);
   let text = head;
   let droppedNote: string | null = null;
   const tomb = LEADING_TOMBSTONE.exec(text);
@@ -193,6 +213,7 @@ function parseClaim(match: RegExpExecArray, feature: string | null, line: number
     text: text.trim(),
     raw,
     after,
+    afterSpecs,
     marks,
     dropped: /\[DROPPED/i.test(raw),
     droppedNote,

@@ -201,6 +201,8 @@ function rowOf(input: SpecPageInput): DashboardSpecRow {
     ...(input.read ? { perSpec: { [input.files.folder]: input.read } } : {}),
     ...(input.locks ? { locks: input.locks } : {}),
     ...(input.workflow ? { workflow: input.workflow } : {}),
+    // The merge state the dashboard reads too (spec 025): the head's stage and `waits` are the row's (ISC-163).
+    ...(input.mergeState ? { mergeState: input.mergeState } : {}),
   }).specs.find((r) => r.slug === input.files.folder);
   if (row === undefined) throw new Error(`buildSpecPage: ${input.files.folder} has no spec.md, so it is not a spec`);
   return row;
@@ -273,6 +275,8 @@ export function buildSpecPage(input: SpecPageInput): SpecPageModel {
     worktree: row.worktree,
     source: row.source,
     main: row.main,
+    // The row's wait (spec 025, ISC-163): the head's `waits on NNN`, null once the edge is met.
+    waits: row.waits,
   };
 
   // The stage phrase first and unchanged: the row's `nextReason` is `reasonOf(step)` (T69, ISC-122.3); the page's own facts follow.

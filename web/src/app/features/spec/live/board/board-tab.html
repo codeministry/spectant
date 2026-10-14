@@ -280,6 +280,10 @@
         @if (waitingCount(lane) > 0) {
           <span class="lane-waiting" data-lane-waiting>{{ 'board.lane.waiting' | transloco: { count: waitingCount(lane) } }}</span>
         }
+        @if (laneWaits().get(lane.name); as held) {
+          <!-- spec 025 (T25): the whole open lane waits on a spec; it stays visible, never a lane stub. -->
+          <ui-waits-chip data-lane-waits [wait]="held.wait" [ws]="wsSlug()" [titles]="held.titles" />
+        }
       </span>
       <button
         type="button"
@@ -350,8 +354,29 @@
                 [open]="isOpen(lane.name + ':waiting:' + (group.reason ?? ''), true)"
                 (openChange)="setOpen(lane.name + ':waiting:' + (group.reason ?? ''), $event)"
               >
-                <span uiDisclosureSummary class="reason">{{ group.reason ?? ('board.section.noReason' | transloco) }}</span>
+                @let specs = specWaitOf(group.reason);
+                @if (specs) {
+                  <span uiDisclosureSummary class="reason" data-wait-group>{{ 'waits.on' | transloco }} <span class="mono">{{ specs.join(', ') }}</span></span>
+                } @else {
+                  <span uiDisclosureSummary class="reason">{{ group.reason ?? ('board.section.noReason' | transloco) }}</span>
+                }
                 <div class="group-cards">
+                  @if (specs) {
+                    <!-- spec 025 (T25): the blocker's spec line opens the group, the link the summary must not hold. -->
+                    <p class="lane-quiet" data-wait-spec>
+                      @for (id of specs; track id; let last = $last) {
+                        @let title = specTitle(id);
+                        @if (title !== null) {
+                          <a class="link" [routerLink]="['/w', wsSlug(), 's', id]" [attr.data-blocker]="id">{{ 'waits.spec' | transloco: { id, title } }}</a>
+                        } @else {
+                          <span [attr.data-blocker]="id">{{ 'waits.specBare' | transloco: { id } }}</span>
+                        }
+                        @if (!last) {
+                          <span aria-hidden="true">, </span>
+                        }
+                      }
+                    </p>
+                  }
                   @for (c of group.cards; track c.task) {
                     <app-board-card [card]="c" [density]="density()" />
                   }

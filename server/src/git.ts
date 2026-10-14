@@ -3,7 +3,8 @@
 //
 // Read-only by construction: only `rev-parse`, `log`, `config --get` (the identity, `userEmail`) and `for-each-ref`
 // (the branch names, `takenSpecNumbers`) and `worktree list --porcelain` (the worktrees, `worktreeList`) and
-// `rev-list --count` (a branch's distance to `main`, `aheadOfMain`) run, all of which never touch the index, never take
+// `rev-list --count` (a branch's distance to `main`, `aheadOfMain`) and `rev-list --first-parent` plus
+// `merge-base --is-ancestor` (whether a merge brought a spec branch into `main`, `mergedSpecBranches`) run, all of which never touch the index, never take
 // a lock and never write an object, plus `ls-files` (the tracked paths of a spec folder, `trackedSpecPaths`), which
 // reads the index and never writes it, plus `status --porcelain` (a worktree's uncommitted changes, `dirty`), which reads
 // the index and would write a refreshed one back under an optional lock: `GIT_OPTIONAL_LOCKS=0` turns that write off,
@@ -17,6 +18,7 @@
 import { lstatSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { specNumbersOf } from "../../core/src/allocate.ts";
+import { SPEC_FOLDER } from "../../core/src/spec-ref.ts";
 import type { CommitRecord } from "../../core/src/files.ts";
 
 /** A commit record, plus the touched paths inside the folder when `files` was asked for. */
@@ -514,4 +516,155 @@ async function read(root: string, rel: string, plan: ReadPlan, signal: AbortSign
   const commits = parseLog(logRun.stdout, plan.withFiles);
   plan.cache?.store(key, { head, limit: plan.limit, files: plan.withFiles, commits });
   return { commits, head, source: "git" };
+}
+
+// ── the merge state (spec 025, T9, ISC-162.1) ────────────────────────────────────────────────────────────────────
+
+/** The branch kinds a spec's branch carries before its `NNN-slug` folder name (ISC-162.1). */
+export const SPEC_BRANCH_PREFIXES: readonly string[] = ["feature", "fix", "spike", "infra"];
+
+/** One local spec branch and whether `main` holds it. */
+export interface SpecBranch {
+  /** The spec number, `NNN`, from the branch's folder segment. */
+  readonly spec: string;
+  /** The branch name without `refs/heads/`, e.g. `feature/012-tide-tables`. */
+  readonly branch: string;
+  /** The branch's tip is an ancestor of `main`'s (or is `main`'s tip); false when the repository has no `main`. */
+  readonly merged: boolean;
+}
+
+export interface SpecBranches {
+  /** Every local spec branch, by branch name; empty when `source` is `none`. */
+  readonly branches: readonly SpecBranch[];
+  /** `git` when the reads answered (even with no spec branch), `none` when there was nothing to read or a read failed. */
+  readonly source: "git" | "none";
+  /** Why the source is `none`, or that the repository has no `main`; for the server log, never shown as data. */
+  readonly diagnostic?: string;
+}
+
+/**
+ * The last answer per repository root, valid while `main`'s tip and every spec branch's name and tip are unchanged:
+ * the key is that ref state, so the dashboard poll runs one `for-each-ref` and no `merge-base` while nothing moved.
+ * Bounded, the oldest root leaves first.
+ */
+export class MergeCache {
+  readonly #entries = new Map<string, { readonly key: string; readonly result: SpecBranches }>();
+
+  constructor(readonly max = 64) {}
+
+  get size(): number {
+    return this.#entries.size;
+  }
+
+  /** @internal */
+  lookup(root: string, key: string): SpecBranches | undefined {
+    const entry = this.#entries.get(root);
+    return entry?.key === key ? entry.result : undefined;
+  }
+
+  /** @internal */
+  store(root: string, key: string, result: SpecBranches): void {
+    this.#entries.delete(root);
+    this.#entries.set(root, { key, result });
+    while (this.#entries.size > this.max) {
+      const oldest = this.#entries.keys().next();
+      if (oldest.done === true) break;
+      this.#entries.delete(oldest.value);
+    }
+  }
+}
+
+/** The process's cache, which the dashboard reads go through unless a caller passes its own. */
+const MERGE_CACHE = new MergeCache();
+
+export interface MergedBranchesOptions extends UserEmailOptions {
+  readonly cache?: MergeCache;
+}
+
+const MAIN_REF = "refs/heads/main";
+
+/** `refs/heads/<prefix>/NNN-slug` → the branch name and its number; null for any other ref. */
+function specBranchOf(refname: string): { branch: string; spec: string } | null {
+  const [refs, heads, prefix = "", folder = "", ...rest] = refname.split("/");
+  if (refs !== "refs" || heads !== "heads" || rest.length > 0 || !SPEC_BRANCH_PREFIXES.includes(prefix)) return null;
+  const spec = SPEC_FOLDER.exec(folder)?.[1];
+  return spec === undefined ? null : { branch: `${prefix}/${folder}`, spec };
+}
+
+/**
+ * The local spec branches of `root`'s repository and whether a merge brought each into `main` (ISC-162.1): every ref
+ * `refs/heads/<feature|fix|spike|infra>/NNN-slug` (the folder segment in core's `SPEC_FOLDER` shape), read with
+ * `for-each-ref --format=%(objectname) %(refname) refs/heads/`. A branch is merged when its tip is an ancestor of
+ * `main` and does not lie on `main`'s first-parent line. `rev-list --first-parent <main> --` reads that line once; a
+ * tip on it (a branch fresh from `main`, at an older `main` commit, or fast-forwarded into it) is not merged without a
+ * further read, and for every other tip `merge-base --is-ancestor <tip> <main>` on the two object ids decides (exit 0
+ * merged, 1 not). A fast-forwarded branch therefore reads as unmerged while it exists; once deleted, `core/` falls back
+ * to `phase: complete`. Only local branches count: remote-tracking refs are as old as the last fetch, and no fetch
+ * runs. The base is the local `main` by name, as `aheadOfMain` reads it; a repository without one answers every branch
+ * unmerged. All three commands read refs and objects only: no index, no lock (`GIT_OPTIONAL_LOCKS=0` besides), no
+ * object written, no network.
+ *
+ * Cached per root on `main`'s tip and the spec branches' names and tips: a branch commit, a merge into `main`, a new
+ * or a deleted spec branch each change the key. Never throws: no repository root, no git, a failure or the deadline
+ * answer `source: 'none'` with no branch (never cached), which the loader reads as "no branch", so `core/` falls back
+ * to `phase: complete` and the archive.
+ */
+export async function mergedSpecBranches(root: string, options: MergedBranchesOptions = {}): Promise<SpecBranches> {
+  const runner = options.runner ?? defaultGitRunner;
+  const cache = options.cache ?? MERGE_CACHE;
+  const nothing = (diagnostic: string): SpecBranches => ({ branches: [], source: "none", diagnostic });
+  try {
+    lstatSync(join(root, ".git"));
+  } catch {
+    return nothing("not a git repository root");
+  }
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  return readWithin(timeoutMs, nothing(`git timed out after ${timeoutMs} ms`), async (signal) => {
+    const env = gitEnv(root);
+    const refs = await runner(["-C", root, "for-each-ref", "--format=%(objectname) %(refname)", "refs/heads/"], env, signal);
+    if (refs === null) return nothing("git not found on PATH");
+    // Read through a call each time: the flag turns true while a run is awaited, which a narrowed property would hide.
+    const aborted = (): boolean => signal.aborted;
+    if (refs.code !== 0 || aborted()) return nothing(`git for-each-ref exited ${refs.code}: ${firstLine(refs.stderr)}`);
+    let main: string | null = null;
+    const tips: Array<{ branch: string; spec: string; sha: string }> = [];
+    for (const line of refs.stdout.split("\n")) {
+      const [sha = "", refname = ""] = line.trim().split(" ");
+      if (!SHA.test(sha)) continue;
+      if (refname === MAIN_REF) main = sha;
+      const shape = specBranchOf(refname);
+      if (shape !== null) tips.push({ ...shape, sha });
+    }
+    tips.sort((a, b) => (a.branch < b.branch ? -1 : a.branch > b.branch ? 1 : 0));
+    const key = [main ?? "-", ...tips.map((t) => `${t.sha} ${t.branch}`)].join("\n");
+    const cached = cache.lookup(root, key);
+    if (cached !== undefined) return cached;
+
+    // `main`'s first-parent line, read once per key and only when there is a spec branch to judge.
+    const firstParent = new Set<string>();
+    if (main !== null && tips.length > 0) {
+      const line = await runner(["-C", root, "rev-list", "--first-parent", main, "--"], env, signal);
+      if (line === null) return nothing("git not found on PATH");
+      if (line.code !== 0 || aborted()) return nothing(`git rev-list exited ${line.code}: ${firstLine(line.stderr)}`);
+      for (const sha of line.stdout.split("\n")) if (SHA.test(sha)) firstParent.add(sha);
+    }
+
+    const branches: SpecBranch[] = [];
+    for (const tip of tips) {
+      // No main, or a tip on its first-parent line (main's own tip included): no merge brought the branch in.
+      if (main === null || firstParent.has(tip.sha)) {
+        branches.push({ spec: tip.spec, branch: tip.branch, merged: false });
+        continue;
+      }
+      const run = await runner(["-C", root, "merge-base", "--is-ancestor", tip.sha, main], env, signal);
+      if (run === null) return nothing("git not found on PATH");
+      // Only 0 and 1 are answers; a killed run exits otherwise, and a partial answer is never cached.
+      if (aborted() || (run.code !== 0 && run.code !== 1)) return nothing(`git merge-base exited ${run.code}: ${firstLine(run.stderr)}`);
+      branches.push({ spec: tip.spec, branch: tip.branch, merged: run.code === 0 });
+    }
+    const result: SpecBranches = main === null ? { branches, source: "git", diagnostic: "no main branch" } : { branches, source: "git" };
+    if (aborted()) return nothing("aborted"); // the deadline has answered; a late result is never cached
+    cache.store(root, key, result);
+    return result;
+  });
 }

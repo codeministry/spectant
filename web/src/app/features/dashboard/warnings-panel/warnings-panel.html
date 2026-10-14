@@ -60,7 +60,28 @@
             <ui-icon class="warn-icon" data-icon="triangle-alert" name="triangle-alert" [size]="16" [label]="'warnings.icon' | transloco" />
             <ng-container [ngTemplateOutlet]="specLink" [ngTemplateOutletContext]="{ $implicit: spec }" />
             <div class="line-body">
-              <p class="text" data-warning-text>{{ warning.text }}</p>
+              @if (overlapOf(warning); as overlap) {
+                <ng-container [ngTemplateOutlet]="overlapBody" [ngTemplateOutletContext]="{ $implicit: overlap, spec: spec.id }" />
+              } @else if (edgeDiagnostic(warning); as diag) {
+                <p class="text" data-warning-text data-edge-text>
+                  @if (diag.kind === 'unknown') {
+                    {{ 'warnings.edge.unknown' | transloco: { id: diag.id } }}
+                  } @else {
+                    {{ 'warnings.edge.cycle' | transloco: { path: diag.path } }}
+                  }
+                </p>
+                @if (warning.ref; as file) {
+                  <p class="meta" data-edge-where>
+                    @if (diag.kind === 'unknown') {
+                      {{ 'warnings.edge.where' | transloco: { file, id: diag.from } }}
+                    } @else {
+                      {{ file }}
+                    }
+                  </p>
+                }
+              } @else {
+                <p class="text" data-warning-text>{{ warning.text }}</p>
+              }
               @if (warning.command; as command) {
                 <ui-command-chip
                   [command]="command"
@@ -82,6 +103,46 @@
       </li>
     }
   </ul>
+</ng-template>
+
+<!--
+  Spec 025 (ISC-164.1): a spec-overlap line, on the waiting spec only. The other spec as a link, at most three shared
+  paths as their shortest unique suffix (full path in the title, all of them behind "+n more"), then the edge the
+  waiting spec could carry, with copy.
+-->
+<ng-template #overlapBody let-overlap let-spec="spec">
+  @let other = overlap.specs[0] === spec ? overlap.specs[1] : overlap.specs[0];
+  @let count = overlap.paths.length;
+  @let shown = suffixes(overlap.paths);
+  <p class="text" data-warning-text data-overlap-text>{{ (count === 1 ? 'warnings.overlap.lead.one' : 'warnings.overlap.lead.other') | transloco: { count } }} <a class="spec" data-overlap-other [title]="titleOf(other)" [routerLink]="[]" [queryParams]="{ sel: 'spec:' + other }" queryParamsHandling="merge">{{ other }}</a>, {{ 'warnings.overlap.noEdge' | transloco }}</p>
+  <p class="paths" data-overlap-paths>
+    @for (path of overlap.paths.slice(0, 3); track $index) {
+      @if ($index > 0) {
+        <span class="sep" aria-hidden="true">·</span>
+      }
+      <span class="path" data-overlap-path [title]="path" [attr.data-full]="path">{{ shown[$index] }}</span>
+    }
+    @if (count > 3) {
+      <button type="button" class="more-paths" data-overlap-more [uiPopoverTrigger]="allPaths">{{ 'warnings.overlap.more' | transloco: { count: count - 3 } }}</button>
+      <ui-popover #allPaths [label]="'warnings.overlap.paths' | transloco">
+        <ul class="all-paths" data-overlap-all>
+          @for (path of overlap.paths; track $index) {
+            <li>{{ path }}</li>
+          }
+        </ul>
+      </ui-popover>
+    }
+  </p>
+  <div class="edge" data-overlap-edge-row>
+    <ui-command-chip
+      data-overlap-edge
+      [command]="overlap.edge"
+      [copyLabel]="'warnings.overlap.copyTitle' | transloco"
+      [copiedLabel]="'common.copied' | transloco: { command: overlap.edge }"
+      [manualHint]="'common.copyFallback' | transloco"
+    />
+    <span class="meta" data-overlap-target>{{ 'warnings.overlap.target' | transloco: { id: overlap.waiting } }}</span>
+  </div>
 </ng-template>
 
 <ng-template #specLink let-spec>

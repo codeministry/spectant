@@ -21,7 +21,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T2",
@@ -43,7 +44,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T3",
@@ -65,7 +67,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T4",
@@ -87,7 +90,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T5",
@@ -109,7 +113,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T6",
@@ -131,7 +136,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T7",
@@ -153,7 +159,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T8",
@@ -175,7 +182,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T9",
@@ -197,7 +205,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T10",
@@ -219,7 +228,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T11",
@@ -244,7 +254,8 @@
         "edges": [
           "T9",
           "T10"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T12",
@@ -268,7 +279,8 @@
         "pathNote": null,
         "edges": [
           "T11"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T13",
@@ -292,7 +304,8 @@
         "pathNote": null,
         "edges": [
           "T11"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T14",
@@ -316,7 +329,8 @@
         "pathNote": null,
         "edges": [
           "T11"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T15",
@@ -340,7 +354,8 @@
         "pathNote": null,
         "edges": [
           "T11"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T16",
@@ -364,7 +379,8 @@
         "pathNote": null,
         "edges": [
           "T11"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T17",
@@ -386,7 +402,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T18",
@@ -408,7 +425,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T19",
@@ -430,7 +448,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T20",
@@ -452,7 +471,8 @@
         "reason": "[P], claim takeable, edges closed",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T21",
@@ -474,7 +494,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T22",
@@ -496,7 +517,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T23",
@@ -518,7 +540,8 @@
         "reason": "[P], claim takeable, edges closed",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T24",
@@ -540,7 +563,8 @@
         "reason": "[P], claim takeable, edges closed",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T25",
@@ -562,7 +586,8 @@
         "reason": "[P], claim takeable, edges closed",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T26",
@@ -584,7 +609,8 @@
         "reason": "width 4 reached",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T27",
@@ -606,7 +632,8 @@
         "reason": "width 4 reached",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T28",
@@ -633,7 +660,8 @@
           "T25",
           "T26",
           "T27"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T29",
@@ -657,7 +685,8 @@
         "pathNote": null,
         "edges": [
           "T28"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T30",
@@ -681,7 +710,8 @@
         "pathNote": null,
         "edges": [
           "T28"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T31",
@@ -705,7 +735,8 @@
         "pathNote": null,
         "edges": [
           "T28"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T35",
@@ -727,7 +758,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T32",
@@ -749,7 +781,8 @@
         "reason": "width 4 reached",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T33",
@@ -773,7 +806,8 @@
         "pathNote": null,
         "edges": [
           "T32"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T34",
@@ -797,7 +831,8 @@
         "pathNote": null,
         "edges": [
           "T33"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T36",
@@ -821,7 +856,8 @@
         "pathNote": null,
         "edges": [
           "T33"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T37",
@@ -845,7 +881,8 @@
         "pathNote": null,
         "edges": [
           "T33"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T38",
@@ -869,7 +906,8 @@
         "pathNote": null,
         "edges": [
           "T33"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T39",
@@ -896,7 +934,8 @@
           "T36",
           "T37",
           "T38"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T40",
@@ -920,7 +959,8 @@
         "pathNote": null,
         "edges": [
           "T39"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T41",
@@ -944,7 +984,8 @@
         "pathNote": null,
         "edges": [
           "T39"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T45",
@@ -966,7 +1007,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T46",
@@ -988,7 +1030,8 @@
         "reason": null,
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T42",
@@ -1010,7 +1053,8 @@
         "reason": "width 4 reached",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T43",
@@ -1032,7 +1076,8 @@
         "reason": "width 4 reached",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T44",
@@ -1056,7 +1101,8 @@
         "pathNote": null,
         "edges": [
           "T42"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T47",
@@ -1080,7 +1126,8 @@
         "pathNote": null,
         "edges": [
           "T39"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T48",
@@ -1102,7 +1149,8 @@
         "reason": "width 4 reached",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T49",
@@ -1124,7 +1172,8 @@
         "reason": "width 4 reached",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T50",
@@ -1146,7 +1195,8 @@
         "reason": "width 4 reached",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T51",
@@ -1170,7 +1220,8 @@
         "pathNote": null,
         "edges": [
           "T39"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T52",
@@ -1194,7 +1245,8 @@
         "pathNote": null,
         "edges": [
           "T39"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T53",
@@ -1218,7 +1270,8 @@
         "pathNote": null,
         "edges": [
           "T11"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T54",
@@ -1240,7 +1293,8 @@
         "reason": "width 4 reached",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T55",
@@ -1262,7 +1316,8 @@
         "reason": "width 4 reached",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T56",
@@ -1284,7 +1339,8 @@
         "reason": "claim already closed — task should be [x]; strike or check it",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T57",
@@ -1309,7 +1365,8 @@
         "edges": [
           "T28",
           "T39"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T58",
@@ -1331,7 +1388,8 @@
         "reason": "width 4 reached",
         "note": null,
         "pathNote": null,
-        "edges": []
+        "edges": [],
+        "afterSpecs": []
       },
       {
         "id": "T59",
@@ -1360,7 +1418,8 @@
           "T27",
           "T39",
           "T58"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T60",
@@ -1384,7 +1443,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T61",
@@ -1408,7 +1468,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T62",
@@ -1432,7 +1493,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T63",
@@ -1456,7 +1518,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T64",
@@ -1480,7 +1543,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T65",
@@ -1504,7 +1568,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T66",
@@ -1528,7 +1593,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T67",
@@ -1552,7 +1618,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T68",
@@ -1576,7 +1643,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T69",
@@ -1600,7 +1668,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T70",
@@ -1624,7 +1693,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T71",
@@ -1648,7 +1718,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T72",
@@ -1672,7 +1743,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T73",
@@ -1696,7 +1768,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T74",
@@ -1720,7 +1793,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T75",
@@ -1744,7 +1818,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T76",
@@ -1768,7 +1843,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T77",
@@ -1792,7 +1868,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T78",
@@ -1816,7 +1893,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T79",
@@ -1840,7 +1918,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T80",
@@ -1864,7 +1943,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T81",
@@ -1888,7 +1968,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T82",
@@ -1912,7 +1993,8 @@
         "pathNote": null,
         "edges": [
           "T59"
-        ]
+        ],
+        "afterSpecs": []
       },
       {
         "id": "T83",
@@ -1937,7 +2019,8 @@
         "edges": [
           "T11",
           "T78"
-        ]
+        ],
+        "afterSpecs": []
       }
     ],
     "probeMapping": [

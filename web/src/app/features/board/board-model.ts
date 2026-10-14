@@ -1,4 +1,4 @@
-import type { ActorRef, Priority, SpecType, StageSource, Workflow, WorkflowStage, Worktree } from '../../../../../core/src/files';
+import type { ActorRef, Priority, SpecType, SpecWait, StageSource, Workflow, WorkflowStage, Worktree } from '../../../../../core/src/files';
 import type { MilestoneState, PlanningHolder, PlanningModel } from '../../../../../core/src/planning';
 import { allowedTransition, isWorkflowStage, reasonOf, storyStep, WAITING_STAGES, WORKFLOW_TYPES, workflowStagesOf } from '../../../../../core/src/stage';
 import type { Stage } from '../../../../../core/src/stage';
@@ -141,6 +141,8 @@ export interface BoardRow {
   readonly worktree?: Worktree | null;
   /** The row's warnings; only `worktree-branch-mismatch` is read here, for the chip's warning tone (ISC-174.1). */
   readonly warnings?: ReadonlyArray<{ readonly kind: string }>;
+  /** What the spec waits on (spec 025, ISC-163); null or absent when no open spec edge holds its open work. */
+  readonly waits?: SpecWait | null;
 }
 
 /** The row's worktree warning, which turns the card's worktree chip to the warning tone (spec 027, ISC-174.1). */
@@ -211,6 +213,13 @@ export interface BoardCard {
   readonly worktree: Worktree | null;
   /** The row carries a `worktree-branch-mismatch` warning: the chip takes the warning tone (ISC-174.1). */
   readonly worktreeMismatch: boolean;
+  /**
+   * What the spec waits on (spec 025, T23, ISC-163): the holder's `waits`, else the row's; null for an idea and when no
+   * open spec edge holds the spec's open work. The card shows `waits on NNN` in its own line under the title.
+   */
+  readonly waits: SpecWait | null;
+  /** The titles of the blocker specs the board knows, by `NNN`, for the chip's accessible name. */
+  readonly waitTitles: Readonly<Record<string, string>>;
 }
 
 /** A column's stub at medium and wide: empty (with the cards the filters hide), or its card and waiting counts. */
@@ -342,6 +351,16 @@ function passes(card: BoardCard, query: BoardQueryState): boolean {
   return LIST_KEYS.every((key) => query[key].length === 0 || (query[key] as readonly string[]).includes(cardFilterValue(card, key)));
 }
 
+/** A card's wait and the titles of those blockers the board knows (spec 025, T23); a non-waiting card carries null. */
+function waitsOf(waits: SpecWait | null, titleOf: ReadonlyMap<string, string>): Pick<BoardCard, 'waits' | 'waitTitles'> {
+  const live = waits !== null && waits.blockers.length > 0 ? waits : null;
+  const titles = (live?.blockers ?? []).flatMap((id) => {
+    const title = titleOf.get(id);
+    return title === undefined ? [] : [[id, title] as const];
+  });
+  return { waits: live, waitTitles: Object.fromEntries(titles) };
+}
+
 /** The board of one workspace. */
 export function buildBoard(input: BoardInput): BoardModel {
   const { planning } = input;
@@ -366,6 +385,8 @@ export function buildBoard(input: BoardInput): BoardModel {
   }
   const milestoneOf = new Map<string, string>();
   for (const milestone of planning.milestones) for (const spec of milestone.specs) if (!milestoneOf.has(spec.slug)) milestoneOf.set(spec.slug, milestone.name);
+  // The blocker titles a waiting card names (spec 025, T23): every spec the board knows, holder or row, by `NNN`.
+  const titleOf = new Map<string, string>([...input.rows.map((r) => [r.id, r.title] as const), ...[...holders.values()].map(({ holder }) => [holder.id, holder.title] as const)]);
 
   const onBoard = new Set(stages);
   const specCards: BoardCard[] = [];
@@ -400,6 +421,7 @@ export function buildBoard(input: BoardInput): BoardModel {
       targets: dropTargetsOf(base, planning.workflow, stages),
       worktree: row?.worktree ?? null,
       worktreeMismatch: row?.warnings?.some((w) => w.kind === WORKTREE_MISMATCH) ?? false,
+      ...waitsOf(entry?.holder.waits ?? row?.waits ?? null, titleOf),
     });
   }
   const ideaCards: BoardCard[] = onBoard.has('idea')
@@ -428,6 +450,8 @@ export function buildBoard(input: BoardInput): BoardModel {
           targets: dropTargetsOf(base, planning.workflow, stages),
           worktree: null,
           worktreeMismatch: false,
+          waits: null,
+          waitTitles: {},
         };
       })
     : [];

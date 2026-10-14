@@ -16,9 +16,9 @@
       "total": 62
     },
     "takeable": 5,
-    "warnings": 7,
+    "warnings": 8,
     "fog": 4,
-    "attention": 11,
+    "attention": 12,
     "archived": 1
   },
   "stageCounts": {
@@ -100,7 +100,8 @@
       "goal": "A team writes its retention policy once, sees its effect before anything goes, and no manifest that a tag still references is ever deleted.",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     },
     {
       "id": "005",
@@ -156,7 +157,8 @@
       "goal": "A recorded decision names the config format for version 2 and the one trade-off that decided it.",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     },
     {
       "id": "006",
@@ -222,7 +224,8 @@
       "goal": "A push interrupted at any point leaves the target registry exactly as it was before the push started.",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     },
     {
       "id": "002",
@@ -256,7 +259,23 @@
         "id": "u:3f9c0a7d",
         "legacy": false
       },
-      "warnings": [],
+      "warnings": [
+        {
+          "kind": "spec-overlap",
+          "text": "shares 1 file with 004, no edge",
+          "overlap": {
+            "specs": [
+              "002",
+              "004"
+            ],
+            "paths": [
+              "web/src/app/retention/"
+            ],
+            "waiting": "002",
+            "edge": "(after: 004)"
+          }
+        }
+      ],
       "gates": {
         "reviewed": {
           "state": "fresh",
@@ -287,7 +306,8 @@
       "goal": "A teammate opens the console, finds any mirrored repository in two steps, and sees each sync run with its failures, on a phone-sized screen and with the keyboard alone.",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     },
     {
       "id": "009",
@@ -344,7 +364,8 @@
       "goal": "A recorded table names each target registry's chunk limit, and Harbor never picks a chunk larger than it.",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     },
     {
       "id": "003",
@@ -399,7 +420,8 @@
       "goal": "The CLI, the API and the console read their configuration through one loader, and the effective config for every case in the snapshot corpus is unchanged.",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     },
     {
       "id": "008",
@@ -454,7 +476,8 @@
       "goal": "A recorded table says which target registry answers the referrers endpoint, and a decision names the fallback for the ones that do not.",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     },
     {
       "id": "007",
@@ -504,7 +527,8 @@
       "goal": "The push token is replaced with one command, and the next scheduled run uses the new token without a restart.",
       "worktree": null,
       "source": "main",
-      "main": null
+      "main": null,
+      "waits": null
     }
   ],
   "nextUp": [
@@ -588,6 +612,29 @@
           "warning": {
             "kind": "fog",
             "text": "2 open fog lines"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "spec-overlap",
+      "items": [
+        {
+          "spec": "002",
+          "warning": {
+            "kind": "spec-overlap",
+            "text": "shares 1 file with 004, no edge",
+            "overlap": {
+              "specs": [
+                "002",
+                "004"
+              ],
+              "paths": [
+                "web/src/app/retention/"
+              ],
+              "waiting": "002",
+              "edge": "(after: 004)"
+            }
           }
         }
       ]

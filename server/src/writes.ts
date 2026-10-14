@@ -28,7 +28,7 @@ import { closeSync, fsyncSync, lstatSync, mkdirSync, openSync, unlinkSync, write
 import { join } from "node:path";
 import { allocationOf, nextSpecNumber, specNumbersOf } from "../../core/src/allocate.ts";
 import { parseClaims } from "../../core/src/claims.ts";
-import { type ClaimLock, type LockReading, type LockSource, type SpecFiles, type Workflow, type WorkflowStage, repoFilePath } from "../../core/src/files.ts";
+import { type ClaimLock, type LockReading, type LockSource, type MergeState, type SpecFiles, type Workflow, type WorkflowStage, repoFilePath } from "../../core/src/files.ts";
 import { parseFrontmatter } from "../../core/src/frontmatter.ts";
 import { gateState, hashForGate, readGateMark, reviewedGate } from "../../core/src/gates.ts";
 import { buildLiveFrame } from "../../core/src/live.ts";
@@ -36,7 +36,8 @@ import { readLockSources } from "../../core/src/locks.ts";
 import { readIdeas } from "../../core/src/ideas.ts";
 import { type SpecRef, listSpecs } from "../../core/src/resolve.ts";
 import { specIdOf } from "../../core/src/spec-ref.ts";
-import { mainFeatureOf, partitionClaims } from "../../core/src/status.ts";
+import { type ResolvedSpecEdges, resolveEdges } from "../../core/src/spec-edges.ts";
+import { mainFeatureOf, partitionClaims, specEdgeHolds } from "../../core/src/status.ts";
 import { type TransitionInput, planTransition } from "../../core/src/transition.ts";
 import { takenSpecNumbers } from "./git.ts";
 import type { AllocateRequest, NotFound, ReviewedHashes, TransitionRequest } from "./spec-routes.contract.ts";
@@ -175,8 +176,20 @@ interface WorkspaceContext {
   readonly viewer: string | null;
   readonly constitution: string | null;
   readonly worktreeTree: string | null;
-  /** The active spec folders, for the open siblings of the spec's main feature. */
+  /** The active spec folders, for the open siblings of the spec's main feature and the spec edges. */
   readonly specs: readonly SpecFiles[];
+  /** The archived spec folders and the merge state, which `resolveEdges` reads as the dashboard does (spec 025). */
+  readonly archived: readonly SpecFiles[];
+  readonly mergeState: readonly MergeState[];
+}
+
+/**
+ * The spec edges over the workspace as the dashboard resolves them (`resolveEdges` with the server's merge state), the
+ * spec's own folder taken as just read, so its edges are those of the bytes the plan works on.
+ */
+function workspaceEdgesOf(files: SpecFiles, ctx: WorkspaceContext): ResolvedSpecEdges {
+  const specs = ctx.specs.map((f) => (f.folder === files.folder ? files : f));
+  return resolveEdges({ specs, archived: ctx.archived, constitution: ctx.constitution }, ctx.mergeState);
 }
 
 /**
@@ -203,7 +216,9 @@ function featureSiblingsOpenOf(feature: string | null, self: string, specs: read
 /**
  * `planTransition`'s input for one spec folder as just read, built the way `dashboard.ts` builds its stage input: the
  * reviewed mark's state (`reviewedGate`), the claim partition under the write's lock reading (`partitionClaims`,
- * counted as the dashboard counts it), the code-reviewed mark against the worktree tree, the open siblings.
+ * counted as the dashboard counts it), the code-reviewed mark against the worktree tree, the open siblings, and the
+ * spec edges as the row reads them: a claim an open edge holds is not takeable (ISC-162.2), and a spec whose open work
+ * all waits on open edges stands on `blocked` (ISC-162.3), so the move's `from` is the row's stage.
  */
 function transitionInput(files: SpecFiles, ctx: WorkspaceContext, locks: LockReading, to: WorkflowStage, now: Date): TransitionInput {
   const spec = files.texts.spec ?? "";
@@ -211,6 +226,13 @@ function transitionInput(files: SpecFiles, ctx: WorkspaceContext, locks: LockRea
   const partition = partitionClaims(parseClaims(spec).claims, locks.locks, reviewed);
   const codeMark = files.texts.gateCodeReviewed === undefined ? null : readGateMark("code-reviewed", files.texts.gateCodeReviewed).mark;
   const id = specIdOf(files.folder) ?? files.folder;
+  const edges = workspaceEdgesOf(files, ctx);
+  // dashboard.ts `specRow`: a held claim counts as open, not takeable; the specs it waits on feed the full hold.
+  const edgeHeld = specEdgeHolds(
+    partition.takeable,
+    edges.edges.filter((e) => e.fromSpec === id),
+  );
+  const takeable = partition.takeable.filter((c) => !edgeHeld.has(c));
   return {
     files,
     workflow: ctx.workflow,
@@ -220,12 +242,14 @@ function transitionInput(files: SpecFiles, ctx: WorkspaceContext, locks: LockRea
     reviewed,
     codeReviewed: gateState("code-reviewed", codeMark, { worktreeTree: ctx.worktreeTree }).state,
     partition: {
-      takeable: partition.takeable.length,
-      open: partition.open.length - partition.takeable.length,
+      takeable: takeable.length,
+      open: partition.open.length - takeable.length,
       closed: partition.closed.length - partition.dropped.length,
       dropped: partition.dropped.length,
     },
     featureSiblingsOpen: featureSiblingsOpenOf(mainFeatureOf(parseFrontmatter(spec).data.isaFeature), id, ctx.specs),
+    waits: edges.waits.find((w) => w.spec === id) ?? null,
+    edgeHeld: [...new Set([...edgeHeld.values()].flat())].sort(),
   };
 }
 
@@ -247,6 +271,8 @@ export async function writeTransition(input: TransitionWriteInput): Promise<Writ
     // The tree the spec's code-reviewed mark compares with, as the row reads it: its own worktree's, else main's (ISC-176).
     worktreeTree: ownTree === undefined ? (reading.input.worktreeTree ?? null) : ownTree,
     specs: reading.input.specs,
+    archived: reading.input.archived,
+    mergeState: reading.mergeState,
   };
   return runWrite<"transition">({
     root: input.root,

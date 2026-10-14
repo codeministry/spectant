@@ -125,6 +125,63 @@
   line-clamp: 2;
 }
 
+/* Spec 025 (ISC-164.1): the overlap's paths, mono 12 muted, and its edge chip; the "+n more" toggle in .term look. */
+.paths {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  align-items: baseline;
+  min-inline-size: 0;
+  margin: 0;
+  color: var(--muted-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.path {
+  overflow: hidden;
+  max-inline-size: 28ch;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.more-paths {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted-ink);
+  font: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.all-paths {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  list-style: none;
+}
+
+.edge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.meta {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+
 /* Fog line: the prototype's `.w-line.fog`, a plain line whose `cloud` icon is violet. */
 .fog-line .cloud {
   color: var(--color-secondary);

@@ -1,5 +1,10 @@
 import type { CardState, Frame, FrameCard, LiveCard, TaskRun } from '../../../../../../../core/src/files';
 import {
+  blockerTitles,
+  heldWait,
+  laneSpecWait,
+  laneView,
+  specWaitOf,
   boardSection,
   buildLanes,
   frameEvents,
@@ -240,5 +245,35 @@ describe('run chips (spec 027)', () => {
       { task: 'T1', state: 'building' },
       { task: 'T3', state: 'dispatched' },
     ]);
+  });
+});
+
+describe('spec waits on the live board (spec 025, T25, ISC-163)', () => {
+  const held = (task: string, reason: string, lane = 'web') => card(task, 'waiting', { lane, reason });
+
+  it('reads the blockers from core\'s "waits on NNN" reason and nothing else', () => {
+    expect(specWaitOf('waits on 006')).toEqual(['006']);
+    expect(specWaitOf('waits on 002, 042')).toEqual(['002', '042']);
+    expect(specWaitOf('after T26')).toBeNull();
+    expect(specWaitOf(null)).toBeNull();
+  });
+
+  it('groups held cards in one wgroup per reason; a lane whose open work all waits on a spec carries the chip', () => {
+    const lane = laneView('web', [held('T27', 'waits on 006'), held('T28', 'waits on 006'), card('T1', 'done', { lane: 'web' })]);
+    expect(lane.waiting.map((g) => [g.reason, g.cards.length])).toEqual([['waits on 006', 2]]);
+    expect(laneSpecWait(lane)).toEqual(['006']);
+  });
+
+  it('gives a partly waiting lane no lane-head chip', () => {
+    expect(laneSpecWait(laneView('web', [held('T27', 'waits on 006'), card('T30', 'waiting', { lane: 'web', reason: 'after T27' })]))).toBeNull();
+    expect(laneSpecWait(laneView('web', [held('T27', 'waits on 006'), card('T31', 'running', { lane: 'web' })]))).toBeNull();
+    expect(laneSpecWait(laneView('web', [card('T1', 'done', { lane: 'web' })]))).toBeNull();
+  });
+
+  it('links a known blocker by its title and leaves an unknown one unlinked; a met edge leaves nothing', () => {
+    const known = [{ id: '006', title: 'Registry webhooks' }];
+    expect(heldWait('002', ['006', '042'], known)).toEqual({ spec: '002', blockers: ['006', '042'], unknownBlockers: ['042'], heldTasks: 0, openTasks: 0, full: true });
+    expect(blockerTitles(['006', '042'], known)).toEqual({ '006': 'Registry webhooks' });
+    expect(laneSpecWait(laneView('web', [card('T27', 'waiting', { lane: 'web', reason: '' })]))).toBeNull();
   });
 });

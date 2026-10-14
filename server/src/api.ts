@@ -30,6 +30,8 @@
  * Spec 026 (T11, ISC-171): the same answer carries each milestone's feature assignment (`featureIds`, the no-milestone
  * group `unassignedFeatures`) and the relation index `relations` that `buildPlanning` derives (`core/src/relations.ts`);
  * the detail sidebar reads both from here, so there is no relations route and nothing new is read or written.
+ * Spec 025 (T32, ISC-170.1): it also carries the spec edges `resolveEdges` resolves against the reading's merge state
+ * (`specEdges`, absent without any), from which the Diagram lens draws its `spec-edge` arrows.
  *
  * The story route (spec 008 T88, ISC-124.2): `GET /api/workspaces/:ws/ideas/:slug` → `IdeaPage`, matched by the same
  * `matchWorkspacePath` with the same guard order. It reads the story folder alone (`readIdeaFiles`), never the whole
@@ -107,6 +109,7 @@ import { readIdeas } from "../../core/src/ideas.ts";
 import { renderDocsMarkdown } from "../../core/src/markdown-docs.ts";
 import { type PlanningSpecState, buildPlanning } from "../../core/src/planning.ts";
 import { listSpecs } from "../../core/src/resolve.ts";
+import { resolveEdges } from "../../core/src/spec-edges.ts";
 import { getBoardQuery, listActors, replaceActors, setBoardQuery } from "./db.ts";
 import { evidenceFileResponse } from "./evidence.ts";
 import type { ApiHandler } from "./http.ts";
@@ -300,7 +303,8 @@ function specStatesOf(root: string, reading: Extract<WorkspaceReading, { readabl
   return buildDashboard(reading.input).specs.map((row): PlanningSpecState => {
     const dir = dirs.get(row.slug);
     const bytes = dir === undefined ? null : readBytesIfExists(specFilePath(dir, "spec"));
-    return { slug: row.slug, stage: row.stage, stageSource: row.stageSource, ...(bytes === null ? {} : { hash: rawSha256(bytes) }) };
+    // `waits`: the row's, so the board card shows the same `waits on NNN` as the row (spec 025, ISC-163).
+    return { slug: row.slug, stage: row.stage, stageSource: row.stageSource, waits: row.waits, ...(bytes === null ? {} : { hash: rawSha256(bytes) }) };
   });
 }
 
@@ -344,7 +348,7 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
     if (!workspace) return json(req, 404, { error: "not-found" });
     const reading = await read(workspace.path);
     if (!reading.readable) return json(req, 409, summary(workspace, reading));
-    const { master, specs, archived } = reading.input;
+    const { master, specs, archived, constitution } = reading.input;
     const model: WorkspaceRouteResponses["planning"] = buildPlanning({
       master,
       specs,
@@ -353,6 +357,8 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       now: today(),
       workflow: reading.workflow,
       specStates: specStatesOf(workspace.path, reading),
+      // The Diagram lens's arrows (spec 025, ISC-170.1): the edges as the dashboard resolves them.
+      specEdges: resolveEdges({ specs, archived, constitution }, reading.mergeState).edges,
     });
     return json(req, 200, model);
   };
