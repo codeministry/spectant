@@ -17,6 +17,8 @@
  *   view      specs/001-app-skeleton/.design/prototype/spectant-ui/*.html          (the directory's files, not deeper)
  *   doc       specs/001-app-skeleton/.design/prototype/spectant-ui/docs/0[123]-*.md (docs 01 to 03)
  *
+ * view and doc fall back to specs/archive/001-app-skeleton/… once spec 001 is archived; the active folder wins.
+ *
  * The entries of a markdown source are its headings: every line of up to three spaces, one to six `#` and a space,
  * outside fenced code blocks and outside a leading frontmatter block. A heading is normalised by dropping the `#`s
  * (leading and closing), a checkbox marker `- [ ]` / `- [x]`, everything from the first ` · ` on (the annotation),
@@ -70,6 +72,8 @@ export type Entry = { line: number; entry: string };
 export type CoverageRow = { line: number; source: SourceName; entry: string };
 
 const PROTOTYPE = 'specs/001-app-skeleton/.design/prototype/spectant-ui';
+// Once spec 001 is archived, the prototype moves one level down with its folder.
+const ARCHIVED_PROTOTYPE = 'specs/archive/001-app-skeleton/.design/prototype/spectant-ui';
 const COVERAGE = 'specs/008-spectant-complete/artifacts/coverage.md';
 // Once spec 008 is archived, its folder and the mapping move one level down.
 const ARCHIVED_COVERAGE = 'specs/archive/008-spectant-complete/artifacts/coverage.md';
@@ -217,7 +221,7 @@ function readSources(root: string): Map<SourceName, Entry[] | null> {
     const file = join(root, path);
     sources.set(name, existsSync(file) ? headingsOf(readFileSync(file, 'utf8')) : null);
   }
-  const proto = join(root, PROTOTYPE);
+  const proto = [PROTOTYPE, ARCHIVED_PROTOTYPE].map((p) => join(root, p)).find((p) => isDir(p)) ?? join(root, PROTOTYPE);
   sources.set('view', isDir(proto) ? listFiles(proto, (n) => n.endsWith('.html')) : null);
   const docs = join(proto, 'docs');
   sources.set('doc', isDir(docs) ? listFiles(docs, (n) => DOC.test(n)) : null);

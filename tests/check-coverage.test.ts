@@ -191,6 +191,16 @@ describe('check-coverage', () => {
     expect(code).toBe(0);
   });
 
+  test('spec 001 archived: views and docs are read from specs/archive/', () => {
+    const archived = Object.fromEntries(
+      Object.entries(fullTree()).map(([p, t]) => [p.startsWith(PROTO) ? `specs/archive/${p.slice('specs/'.length)}` : p, t]),
+    );
+    const { code, out } = run(tree(archived));
+    expect(out).toContain('view: 2 entries, 2 mapped');
+    expect(out).toContain('doc: 2 entries, 2 mapped');
+    expect(code).toBe(0);
+  });
+
   test('a usage error exits 2', () => {
     expect(run(tree({}), '--bogus').code).toBe(2);
   });

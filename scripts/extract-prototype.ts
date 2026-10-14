@@ -6,7 +6,7 @@
  *        bun scripts/extract-prototype.ts --check [--root DIR] [--prototype DIR] [--out FILE]
  *
  * The prototype is private, untracked design material at `specs/001-app-skeleton/.design/prototype/spectant-ui/`
- * below the root (default: the repository this script lives in; `--prototype` names another directory, resolved
+ * (or `specs/archive/001-app-skeleton/…` once spec 001 is archived; the active folder wins) below the root (default: the repository this script lives in; `--prototype` names another directory, resolved
  * against the working directory). Without it — no `styles.css` there — the script prints `sources absent` and exits
  * 0, like `scripts/check-coverage.ts`. It never copies text of the prototype into the fixture: only custom-property
  * values, icon keys, Lucide names, scores and computed style measurements, and no path outside the repository.
@@ -49,6 +49,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { basename, dirname, join, normalize, resolve, sep } from 'node:path';
 
 const PROTOTYPE = 'specs/001-app-skeleton/.design/prototype/spectant-ui';
+// Once spec 001 is archived, the prototype moves one level down with its folder.
+const ARCHIVED_PROTOTYPE = 'specs/archive/001-app-skeleton/.design/prototype/spectant-ui';
 const OUT = 'web/tests/fixtures/prototype-reference.json';
 const LUCIDE = 'web/node_modules/lucide-static';
 const PLAYWRIGHT = 'web/node_modules/@playwright/test/index.mjs';
@@ -477,7 +479,8 @@ export async function main(argv: string[]): Promise<number> {
       else out = resolve(value);
     } else return usageError(`unknown argument ${arg ?? ''}`);
   }
-  const protoDir = proto ?? join(root, PROTOTYPE);
+  const protoDir =
+    proto ?? [PROTOTYPE, ARCHIVED_PROTOTYPE].map((p) => join(root, p)).find((p) => isFile(join(p, 'styles.css'))) ?? join(root, PROTOTYPE);
   if (!isFile(join(protoDir, 'styles.css'))) {
     console.log('sources absent');
     return 0;

@@ -108,7 +108,10 @@ describe('spectant-001, the frozen fixture', () => {
 });
 
 describe("spectant's live spec 001: struck bullets", () => {
-  const path = join(REPO, 'specs', '001-app-skeleton', 'tasks.md');
+  // Once spec 001 is archived, its folder sits one level down; the active folder wins.
+  const path =
+    [join(REPO, 'specs', '001-app-skeleton', 'tasks.md'), join(REPO, 'specs', 'archive', '001-app-skeleton', 'tasks.md')].find((p) => existsSync(p)) ??
+    join(REPO, 'specs', '001-app-skeleton', 'tasks.md');
   const constitutionPath = join(REPO, 'specs', 'constitution.md');
   // `specs/` is untracked planning material (since 2026-10-11): present on the developer's machine, absent in CI.
   const live = existsSync(path) && existsSync(constitutionPath);
