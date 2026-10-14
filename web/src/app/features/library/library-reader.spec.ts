@@ -101,6 +101,15 @@ describe('resolveRelative / rewriteProse (T34, ISC-156.3)', () => {
     expect(host.querySelector('a[href="https://example.org/x"]')).not.toBeNull();
     expect(host.querySelector('figure.mermaid-figure[data-figure="2"] pre.mermaid')?.textContent).toBe(SOURCE);
   });
+
+  it('drops the first h1, the title the reader\'s head shows; a later h1 stays', () => {
+    const links: ProseLinks = { dir: '', catalog: new Set(), asset: (path) => path, xref: (path) => path };
+    const host = document.createElement('div');
+    host.innerHTML = rewriteProse('<h1 id="context">Context</h1><p>Lead.</p><h2 id="goal">Goal</h2><h1 id="again">Again</h1>', links);
+    expect([...host.querySelectorAll('h1')].map((h) => h.textContent)).toEqual(['Again']);
+    expect(host.querySelector('p')?.textContent).toBe('Lead.');
+    expect(rewriteProse('<p>No title.</p>', links)).toBe('<p>No title.</p>');
+  });
 });
 
 @Component({

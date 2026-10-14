@@ -126,12 +126,14 @@ export interface ProseLinks {
  * Core's rendered HTML with the reader's links (ISC-156.3): a relative image (`img[src]` as written) loads from the
  * app's file route below `specs/` (`artifacts/`, `.evidence/`, `.design/` alike), and a relative link to another
  * catalog document points at that document's reader anchor and carries `data-library-xref` with its path. Links to a
- * file outside the catalog and every absolute link stay as written. Parsed in an inert `template` (nothing loads, no
- * script runs) and only attributes this function builds are set, so the output is as trusted as core's input.
+ * file outside the catalog and every absolute link stay as written. The document's first h1 is dropped: it is the
+ * title core reads (`LibraryDoc.title`), which the reader's head already shows. Parsed in an inert `template` (nothing
+ * loads, no script runs) and only attributes this function builds are set, so the output is as trusted as core's input.
  */
 export function rewriteProse(html: string, links: ProseLinks, doc: Document = document): string {
   const template = doc.createElement('template');
   template.innerHTML = html;
+  [...template.content.children].find((el) => el.tagName === 'H1')?.remove();
   for (const img of template.content.querySelectorAll<HTMLImageElement>('img[src]')) {
     const path = resolveRelative(links.dir, img.getAttribute('src') ?? '');
     if (path !== null) img.setAttribute('src', links.asset(path));

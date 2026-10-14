@@ -803,7 +803,9 @@ test.describe('reader', () => {
       await page.goto(`${PAGE}#${doc.path}`);
       await expect(page.locator(READER_TITLE)).toHaveText(squash(doc.title));
       await expect(page.locator(PROSE)).toBeVisible();
-      await expect(page.locator(`${PROSE} .docs-prose h1`)).toHaveText(squash(doc.title));
+      // The title stands once, in the reader's head: the prose drops the h1 it was read from.
+      await expect(page.locator(`${PROSE} .docs-prose p`).first()).toBeVisible();
+      await expect(page.locator(`${PROSE} .docs-prose h1`)).toHaveCount(0);
 
       // "On this page": one entry per heading of the served page, each pointing at its heading.
       const toc = page.locator(`${PROSE} nav.docs-toc .docs-toc-list a`);
@@ -895,7 +897,8 @@ test.describe('reader', () => {
       await expect(page.locator(READER_TITLE)).toHaveText(squash(target.title));
       await expect.poll(() => address(page)).toEqual(addressOf({}, target.path));
       await expect(page.locator(`[data-library-entry="${target.path}"]`)).toHaveAttribute('aria-current', 'true');
-      await expect(page.locator(`${PROSE} .docs-prose h1`)).toHaveText(squash(target.title));
+      await expect(page.locator(`${PROSE} .docs-prose p`).first()).toBeVisible();
+      await expect(page.locator(`${PROSE} .docs-prose h1`)).toHaveCount(0);
 
       // "Open in spec NNN" on a spec's document leads to that spec's page.
       const open = page.locator(`${READER} [data-library-open]`);
