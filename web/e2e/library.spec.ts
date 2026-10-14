@@ -1212,6 +1212,24 @@ test.describe('tech', () => {
   const FOGGY = HARBOR.specs.filter((spec) => spec.phase !== 'complete' && spec.fog.length > 0);
   const TECH_DOC = '[data-library-reader] [data-library-prose] .docs-prose';
   const section = (key: TechSectionKey): string => `${TECH_DOC} > section[data-library-tech-section="${key}"]`;
+  // ISC-157.2: the stub's `tech-heading` library serves harbor's tech.md with its architecture section under this heading.
+  const DIFFERING = 'How Harbor is built';
+
+  test('tech.md sections from core: a heading that differs from its key still opens its section (ISC-157.2)', async ({ page }) => {
+    await page.setExtraHTTPHeaders({ 'X-Spectant-Stub-Library': 'tech-heading' });
+    await page.goto(`${PAGE}?section=architecture#tech.md`);
+    await expect(page.locator(`${TECH_DOC} > section[data-library-tech-section]`)).toHaveCount(4);
+    await expect(page.locator(`${section('architecture')} > h2#architecture`)).toHaveText(DIFFERING);
+    await expect(page.locator(`${section('architecture')} > h2#architecture`)).toBeInViewport();
+  });
+
+  test('tech redirect: /w/:ws/tech/architecture lands on the architecture section under a differing heading (ISC-157.2)', async ({ page }) => {
+    await page.setExtraHTTPHeaders({ 'X-Spectant-Stub-Library': 'tech-heading' });
+    await page.goto(`/w/${WS}/tech/architecture`);
+    await expect(page).toHaveURL(/section=architecture/u);
+    await expect(page.locator(`${section('architecture')} > h2#architecture`)).toHaveText(DIFFERING);
+    await expect(page.locator(`${section('architecture')} > h2#architecture`)).toBeInViewport();
+  });
 
   test('tech.md: overview, stack, architecture and risks in contract order, each the golden content of the former Overview, Architecture and Open tabs', async ({ page, request }) => {
     const pages = HARBOR.pages;

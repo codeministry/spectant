@@ -7,6 +7,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import dashboard from '../../../../../core/fixtures/harbor.golden.json';
 import type { DocsPage, LibraryCatalog, LibraryDoc } from '../../../../../core/src/files';
+import type { LibraryDocPage } from '../../../../../server/src/spec-routes.contract';
 import { CATALOGUES, LANGS } from '../../../i18n/catalogues';
 import { routes } from '../../app.routes';
 import { ApiClient, type ApiResult } from '../../core/api.service';
@@ -125,41 +126,80 @@ class ReaderHost {
 }
 
 // T36 · ISC-157: tech.md in the reader as its four sections, in contract order, each under its stable anchor.
-describe('techReading (T36, ISC-157)', () => {
-  const page = (html: string): DocsPage => ({ html, toc: [], frontmatter: null, figures: [], sections: [], wordCount: 1 });
+// T63 · ISC-157.2: the sections are core's (`techSections` of the document route, `techSectionHeads`); the reader
+// never names a section from a heading's words, so a heading that differs from its key still opens its section.
+describe('techReading (T36, ISC-157, ISC-157.2)', () => {
+  type Head = { key: 'overview' | 'stack' | 'architecture' | 'risks'; heading: string | null };
+  /** A served page whose toc lists every h2 as core's renderer does (text and id), plus core's section heads. */
+  const page = (h2s: ReadonlyArray<readonly [string, string]>, html: string, techSections?: readonly Head[]): LibraryDocPage => ({
+    html,
+    toc: h2s.map(([anchor, text]) => ({ level: 2, text, anchor })),
+    frontmatter: null,
+    figures: [],
+    sections: [],
+    wordCount: 1,
+    ...(techSections === undefined ? {} : { techSections }),
+  });
   const keys = (html: string): string[] => {
     const template = document.createElement('template');
     template.innerHTML = html;
     return [...template.content.querySelectorAll('[data-library-tech-section]')].map((el) => `${el.getAttribute('data-library-tech-section') ?? ''}:${el.querySelector('h2')?.id ?? ''}`);
   };
 
-  it('orders the named sections overview, stack, architecture, risks, drops the h1 and lists them as contents', () => {
+  it('sections: cuts at the h2 core names for each key, in contract order, a differing heading included; drops the h1', () => {
     const reading = techReading(
       page(
-        '<h1 id="harbor">Harbor</h1><p>Lead.</p><h2 id="risks">Risks</h2><ul><li>R</li></ul><h2 id="architektur">Architektur</h2><h3 id="flow">Flow</h3><p>A</p>' +
-          '<h2 id="uberblick">Überblick</h2><p>O</p><h2 id="tech-stack">Tech stack</h2><table></table><h2 id="glossary">Glossary</h2><p>G</p>',
+        [['what-can-break', 'What can break'], ['how-it-is-built', 'How it is built'], ['in-short', 'In short'], ['stack', 'Stack'], ['glossary', 'Glossary']],
+        '<h1 id="harbor">Harbor</h1><p>Lead.</p><h2 id="what-can-break">What can break</h2><ul><li>R</li></ul><h2 id="how-it-is-built">How it is built</h2><h3 id="flow">Flow</h3><p>A</p>' +
+          '<h2 id="in-short">In short</h2><p>O</p><h2 id="stack">Stack</h2><table></table><h2 id="glossary">Glossary</h2><p>G</p>',
+        [
+          { key: 'overview', heading: 'In short' },
+          { key: 'stack', heading: 'Stack' },
+          { key: 'architecture', heading: 'How it is built' },
+          { key: 'risks', heading: 'What can break' },
+        ],
       ),
     );
     expect(keys(reading.page.html)).toEqual(['overview:overview', 'stack:stack', 'architecture:architecture', 'risks:risks']);
     expect(reading.page.html.startsWith('<p>Lead.</p>')).toBe(true);
     expect(reading.page.html).not.toContain('<h1');
-    // An h2 that names no section stays in the section before it.
+    // An h2 core names for no key stays in the section before it.
     expect(reading.page.html).toMatch(/data-library-tech-section="stack">.*Glossary.*<\/section>/u);
+    expect(reading.page.html).toMatch(/data-library-tech-section="architecture"><h2 id="architecture">How it is built<\/h2><h3 id="flow">/u);
     expect(reading.page.toc).toEqual([
-      { level: 2, text: 'Überblick', anchor: 'overview' },
-      { level: 2, text: 'Tech stack', anchor: 'stack' },
-      { level: 2, text: 'Architektur', anchor: 'architecture' },
-      { level: 2, text: 'Risks', anchor: 'risks' },
+      { level: 2, text: 'In short', anchor: 'overview' },
+      { level: 2, text: 'Stack', anchor: 'stack' },
+      { level: 2, text: 'How it is built', anchor: 'architecture' },
+      { level: 2, text: 'What can break', anchor: 'risks' },
     ]);
     expect(reading.missing).toEqual([]);
   });
 
-  it('names the sections the file has none for, and takes the first four h2 in order when none is named', () => {
-    const partial = techReading(page('<h2 id="overview">Overview</h2><p>O</p><h2 id="risks">Risks</h2><p>R</p>'));
-    expect(partial.present).toEqual(['overview', 'risks']);
-    expect(partial.missing).toEqual(['stack', 'architecture']);
-    const unnamed = techReading(page('<h2 id="a">Was</h2><p>1</p><h2 id="b">Womit</h2><p>2</p><h2 id="c">Wie</h2><p>3</p><h2 id="d">Gefahren</h2><p>4</p>'));
-    expect(keys(unnamed.page.html)).toEqual(['overview:overview', 'stack:stack', 'architecture:architecture', 'risks:risks']);
+  it('sections: the key is core\'s, never the heading\'s words: an overview headed "Risks" stays the overview', () => {
+    const reading = techReading(
+      page(
+        [['risks', 'Risks'], ['architektur', 'Architektur']],
+        '<h2 id="risks">Risks</h2><p>O</p><h2 id="architektur">Architektur</h2><p>A</p>',
+        [
+          { key: 'overview', heading: 'Risks' },
+          { key: 'stack', heading: null },
+          { key: 'architecture', heading: null },
+          { key: 'risks', heading: null },
+        ],
+      ),
+    );
+    expect(keys(reading.page.html)).toEqual(['overview:overview']);
+    // "Architektur" is no section of core's, so it stays in the overview; nothing guesses it into architecture.
+    expect(reading.page.html).toMatch(/data-library-tech-section="overview">.*Architektur.*<\/section>/u);
+    expect(reading.present).toEqual(['overview']);
+    expect(reading.missing).toEqual(['stack', 'architecture', 'risks']);
+  });
+
+  it('sections: without core\'s heads no h2 is a section, not even the first four in order', () => {
+    const unnamed = techReading(page([['overview', 'Overview'], ['stack', 'Stack']], '<h2 id="overview">Overview</h2><p>1</p><h2 id="stack">Stack</h2><p>2</p>'));
+    expect(keys(unnamed.page.html)).toEqual([]);
+    expect(unnamed.present).toEqual([]);
+    expect(unnamed.missing).toEqual(['overview', 'stack', 'architecture', 'risks']);
   });
 });
 
@@ -384,9 +424,11 @@ describe('LibraryPage with the reader below 1120 px (T34)', () => {
 describe('LibraryPage on a former tech address (T42, ISC-157.1)', () => {
   const TECH = doc('tech.md', 'tech', 'Tech');
   const CATALOG: LibraryCatalog = { docs: [TECH, ...DOCS], groups: [], fog: [], missing: 0, stale: 0 };
-  const TECH_PAGE: DocsPage = {
+  // The route's answer for tech.md: core's section heads beside the toc the renderer lists (ISC-157.2).
+  const TECH_PAGE: LibraryDocPage = {
     html: ['Overview', 'Stack', 'Architecture', 'Risks'].map((name) => `<h2 id="${name.toLowerCase()}">${name}</h2><p>${name} text</p>`).join('\n'),
-    toc: [],
+    toc: ['Overview', 'Stack', 'Architecture', 'Risks'].map((name) => ({ level: 2, text: name, anchor: name.toLowerCase() })),
+    techSections: (['overview', 'stack', 'architecture', 'risks'] as const).map((key) => ({ key, heading: key.charAt(0).toUpperCase() + key.slice(1) })),
     frontmatter: null,
     figures: [],
     sections: [],

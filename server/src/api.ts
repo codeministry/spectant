@@ -80,7 +80,9 @@
  * - `libraryDoc`, `GET …/library/doc?path=` (the raw query value, decoded once): the document rendered as its Docs tab
  *   renders it, `renderDocsMarkdown` with `docsRenderOptions` (the constitution's and the Design tab's own options by
  *   type, else a plain page), so relative images confined to the workspace and `.design/` assets resolve as on a Docs
- *   tab. 404 for any path the catalog does not list as such a document, never a read of the path.
+ *   tab. 404 for any path the catalog does not list as such a document, never a read of the path. `tech.md` adds
+ *   `techSections`, core's `techSectionHeads` over the same text, so the reader cuts its sections by core's markers
+ *   (ISC-157.2).
  * - `librarySearch`, `GET …/library/search?q=`: the trimmed query, case-insensitive, over each document's rendered page
  *   as plain text, else its title; hits in catalog order, the snippet 40 characters before the first match and 60
  *   after with an ellipsis where cut, or the title for a title-only match. A blank `q` is `{query: '', hits: []}`,
@@ -111,6 +113,7 @@ import { type DashboardKpis, buildDashboard } from "../../core/src/dashboard.ts"
 import { docsRenderOptions } from "../../core/src/evidence.ts";
 import { catalogSourceOf } from "../../core/src/library.ts";
 import { type DocName, type DocsPage, type LibraryDoc, repoFilePath, specFilePath } from "../../core/src/files.ts";
+import { techSectionHeads } from "../../core/src/tech.ts";
 import { readIdeas } from "../../core/src/ideas.ts";
 import { renderDocsMarkdown } from "../../core/src/markdown-docs.ts";
 import { type PlanningSpecState, buildPlanning } from "../../core/src/planning.ts";
@@ -487,7 +490,9 @@ export function dashboardApi(options: DashboardApiOptions): ApiHandler {
       if (code === "ENOENT") return json(req, 404, { error: "not-found" }); // gone since the catalog was read
       return json(req, 409, summary(workspace, { readable: false, error: unreadableCode(error) }));
     }
-    const body: WorkspaceRouteResponses["libraryDoc"] = renderCatalogDoc(workspace.path, file, source);
+    const page = renderCatalogDoc(workspace.path, file, source);
+    // tech.md carries core's section heads, since the rendered page drops its markers (ISC-157.2); no other document does.
+    const body: WorkspaceRouteResponses["libraryDoc"] = file.doc.type === "tech" ? { ...page, techSections: techSectionHeads(source) } : page;
     return json(req, 200, body);
   };
 

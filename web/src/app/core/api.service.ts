@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { ClaimLock, DocsPage, LibraryCatalog, LibraryDoc } from '../../../../core/src/files';
+import type { ClaimLock, LibraryCatalog, LibraryDoc } from '../../../../core/src/files';
 import {
   ACTORS_PATH,
   type ActorMapping,
@@ -33,6 +33,7 @@ import {
   type Unavailable,
   workspaceRoutes,
   type WorkspaceRouteResponses,
+  type LibraryDocPage,
 } from '../../../../server/src/spec-routes.contract';
 import { type WriteAnswer, writeAnswerOf, type WriteOperation } from '../../../../server/src/writes.contract';
 import type { WorkflowStage } from '../../../../core/src/files';
@@ -277,7 +278,7 @@ export class ApiClient {
    * One Markdown document of the catalog, rendered as a Docs page (`DocsPage`), by its `LibraryDoc.path`. A path the
    * catalog does not list as a present Markdown document is the contract's 404: `not-found`, served.
    */
-  libraryDoc(ws: string, path: string): Promise<ApiResult<DocsPage>> {
+  libraryDoc(ws: string, path: string): Promise<ApiResult<LibraryDocPage>> {
     return this.get(workspaceRoutes.libraryDoc(ws, path));
   }
 

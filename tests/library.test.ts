@@ -14,6 +14,7 @@ import * as dash from "../core/src/dashboard.ts";
 import * as lib from "../core/src/library.ts";
 import { readCatalog } from "../core/src/library.ts";
 import { renderDocsMarkdown } from "../core/src/markdown-docs.ts";
+import { techSectionHeads } from "../core/src/tech.ts";
 import { dashboardApi } from "../server/src/api.ts";
 import * as loader from "../server/src/workspace-loader.ts";
 import { loadCatalog } from "../server/src/workspace-loader.ts";
@@ -203,7 +204,10 @@ describe("GET /api/workspaces/:ws/library/doc", () => {
       expect({ path: doc.path, status: res.status }).toEqual({ path: doc.path, status: 200 });
       expect(res.headers.get("etag")).toMatch(/^"[A-Za-z0-9_-]+"$/);
       const file = docFile(doc.path);
-      const page = renderDocsMarkdown(readFileSync(file, "utf8"), docsRenderOptions(shelf, file, nameOf(doc.type)));
+      const source = readFileSync(file, "utf8");
+      const rendered = renderDocsMarkdown(source, docsRenderOptions(shelf, file, nameOf(doc.type)));
+      // tech.md alone adds core's section heads (ISC-157.2); every other document is its plain Docs page.
+      const page = doc.type === "tech" ? { ...rendered, techSections: techSectionHeads(source) } : rendered;
       expect({ path: doc.path, body: await res.text() }).toEqual({ path: doc.path, body: JSON.stringify(page) });
     }
     // The tech page's sections and image come through as on the former tech page: a TOC and a figure.
@@ -252,6 +256,65 @@ describe("GET /api/workspaces/:ws/library/doc", () => {
     expect((await call(workspaceRoutes.libraryDoc("shelf", path), { headers: { "If-None-Match": etag } })).status).toBe(304);
     const head = await call(workspaceRoutes.libraryDoc("shelf", path), { method: "HEAD" });
     expect({ status: head.status, etag: head.headers.get("etag"), body: await head.text() }).toEqual({ status: 200, etag, body: "" });
+  });
+});
+
+// ISC-157.2 (T62): tech.md's sections come from core's marker reading (`techSectionHeads`) through the reader's route,
+// so the web never re-derives them from h2 names; a heading that differs from its key still names its section.
+describe("GET /api/workspaces/:ws/library/doc sections: tech.md's sections from core", () => {
+  const DIFFERING = [
+    "---",
+    "title: Beacon",
+    "---",
+    "# Beacon",
+    "",
+    "<!-- section: overview -->",
+    "## In short",
+    "",
+    "Beacon draws lighthouses.",
+    "",
+    "<!-- section: stack -->",
+    "## Stack",
+    "",
+    "TypeScript.",
+    "",
+    "<!-- section: architecture -->",
+    "## How it is built",
+    "",
+    "A tile loader and a renderer.",
+    "",
+    "<!-- section: risks -->",
+    "## Risks",
+    "",
+    "Tiles outgrow the disk.",
+    "",
+  ].join("\n");
+
+  beforeAll(() => {
+    const beacon = join(root, "beacon");
+    cpSync(LIBRARY, beacon, { recursive: true });
+    writeFileSync(join(beacon, "specs", "tech.md"), DIFFERING);
+    registry.add(beacon);
+  });
+
+  test("sections: tech.md with a heading that differs from its key answers techSections equal to core's techSectionHeads", async () => {
+    const res = await call(workspaceRoutes.libraryDoc("beacon", "tech.md"));
+    expect(res.status).toBe(200);
+    const page = (await res.json()) as WorkspaceRouteResponses["libraryDoc"];
+    expect(page.techSections).toEqual(techSectionHeads(DIFFERING));
+    expect(page.techSections?.find((s) => s.key === "architecture")?.heading).toBe("How it is built");
+    // Every head names an h2 of the rendered page, so the web finds its section's anchor in the page's own toc.
+    for (const head of page.techSections ?? []) expect(page.toc.some((t) => t.level === 2 && t.text === head.heading)).toBe(true);
+  });
+
+  test("sections: a non-tech document carries none", async () => {
+    const catalog = await readCatalog(shelf);
+    const others = catalog.docs.filter((d) => d.media === "markdown" && d.state !== "missing" && d.type !== "tech");
+    expect(others.length).toBeGreaterThan(0);
+    for (const doc of others) {
+      const page = (await (await call(workspaceRoutes.libraryDoc("shelf", doc.path))).json()) as WorkspaceRouteResponses["libraryDoc"];
+      expect({ path: doc.path, has: "techSections" in page }).toEqual({ path: doc.path, has: false });
+    }
   });
 });
 
@@ -536,7 +599,8 @@ describe("the library reads a spec's own documents from its read source (spec 02
 // is the same handler over the full catalog reading (`loadCatalog`, the dashboard's input), and the digest below was
 // captured from the routes as they stood before the change (829023c).
 describe("the reader and the search look up only what they answer (ISC-156.5)", () => {
-  const BEFORE_DIGEST = "5fa855c8f9b7fca191117f911599750a9952dbd0258beb1941bdd34e55958c4d";
+  // Re-pinned for ISC-157.2: tech.md's answer adds core's `techSections`; every other answer is unchanged.
+  const BEFORE_DIGEST = "0df554b777e2f2233c0522596d188a872d84978adcffb794768fc3ef601db841";
   const BAD = "/api/workspaces/shelf/library/doc?path=%E0%A4%A";
   const QUERIES = ["lighthouse", "the", "plan", "Map ", "  TIDE  ", "zz-no-such-word", ""];
   const extraPaths = ["../README.md", "nope.md", "001-lighthouse-map/nope.md", "archive/005-old/spec.md", "001-lighthouse-map/report.html", "/etc/passwd"];

@@ -186,6 +186,7 @@ import {
   type TaskCheckResponse,
   type WorkspaceRouteMatch,
   type WorkspaceRouteName,
+  type LibraryDocPage,
 } from '../../server/src/spec-routes.contract';
 import {
   type Note,
@@ -257,9 +258,21 @@ export const WORKTREES_HEADER = 'X-Spectant-Stub-Worktrees';
  * no workspace, so every library route there is a 404 as on the server; a readable workspace without one document is
  * this header's `empty` (the page's empty state, `/spec-bootstrap`).
  */
-export const LIBRARY_STATES = ['catalog', 'empty'] as const;
+export const LIBRARY_STATES = ['catalog', 'empty', 'tech-heading'] as const;
 export type StubLibraryState = (typeof LIBRARY_STATES)[number];
 export const LIBRARY_HEADER = 'X-Spectant-Stub-Library';
+
+/**
+ * `tech-heading` (ISC-157.2): harbor's catalog as `catalog`, its tech.md served with the architecture section under this
+ * heading instead of `## Architecture`, so the reader must take the section from core's `techSections`, not the words.
+ */
+export const STUB_TECH_HEADING = 'How Harbor is built';
+const TECH_ARCHITECTURE_HEAD = '<!-- section: architecture -->\n## Architecture\n';
+
+function techHeadingText(text: string): string {
+  if (!text.includes(TECH_ARCHITECTURE_HEAD)) throw new Error('stub-api: tech.md has no architecture section to rename');
+  return text.replace(TECH_ARCHITECTURE_HEAD, `<!-- section: architecture -->\n## ${STUB_TECH_HEADING}\n`);
+}
 
 /** The catalog of a workspace without one document: what `readCatalog` returns for a tree with no spec folder. */
 export const EMPTY_CATALOG: LibraryCatalog = { docs: [], groups: [], fog: [], missing: 0, stale: 0 };
@@ -561,6 +574,7 @@ type Core = {
   boardStages: (workflow: Workflow) => PlanningModel['stages'];
   readCatalog: (root: string) => Promise<LibraryCatalog>;
   renderDocsMarkdown: (markdown: string, options?: unknown) => DocsPage;
+  techSectionHeads: (tech: string) => NonNullable<LibraryDocPage['techSections']>;
   docsRenderOptions: (root: string, docPath: string, name: DocName) => unknown;
   levelTwoSection: (text: string, headings: readonly string[]) => string | null;
   firstParagraph: (section: string) => string | null;
@@ -577,12 +591,14 @@ function loadCore(): Core {
   const workflow = load(join(src, 'workflow.ts')) as Pick<Core, 'parseWorkflow' | 'boardStages'>;
   const library = load(join(src, 'library.ts')) as Pick<Core, 'readCatalog'>;
   const archive = load(join(src, 'archive.ts')) as Pick<Core, 'levelTwoSection' | 'firstParagraph' | 'GOAL_HEADINGS'>;
+  const tech = load(join(src, 'tech.ts')) as Pick<Core, 'techSectionHeads'>;
   return {
     resolveEvidencePath: evidence.resolveEvidencePath,
     mediaTypeOf: evidence.mediaTypeOf,
     prototypeMediaTypeOf: evidence.prototypeMediaTypeOf,
     docsRenderOptions: evidence.docsRenderOptions,
     renderDocsMarkdown: docs.renderDocsMarkdown,
+    techSectionHeads: tech.techSectionHeads,
     worstState: frames.worstState,
     parseWorkflow: workflow.parseWorkflow,
     boardStages: workflow.boardStages,
@@ -1593,7 +1609,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   };
 
   /** One Markdown document of the catalog rendered as a Docs page; null for a path the catalog does not list as one. */
-  const libraryPage = (stub: StubCatalog, tree: TreeGoldens, raw: string): DocsPage | null => {
+  const libraryPage = (stub: StubCatalog, tree: TreeGoldens, raw: string, library: StubLibraryState): LibraryDocPage | null => {
     let path: string;
     try {
       path = decodeURIComponent(raw);
@@ -1601,16 +1617,20 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       return null;
     }
     const doc = stub.catalog.docs.find((d) => d.path === path && isReadable(d));
-    return doc === undefined ? null : renderDoc(stub, tree, doc);
+    return doc === undefined ? null : renderDoc(stub, tree, doc, library);
   };
   const isReadable = (doc: LibraryDoc): boolean => doc.media === 'markdown' && doc.state !== 'missing';
-  const renderDoc = (stub: StubCatalog, tree: TreeGoldens, doc: LibraryDoc): DocsPage => {
-    const cached = stub.pages.get(doc.path);
+  // As the server: tech.md adds core's `techSectionHeads` over the same text (ISC-157.2), no other document does.
+  const renderDoc = (stub: StubCatalog, tree: TreeGoldens, doc: LibraryDoc, library: StubLibraryState = 'catalog'): LibraryDocPage => {
+    const differing = library === 'tech-heading' && doc.type === 'tech';
+    const cached = differing ? undefined : stub.pages.get(doc.path);
     if (cached) return cached;
     const absolute = join(tree.root, 'specs', ...doc.path.split('/'));
-    const text = stub.texts.get(doc.path) ?? readFileSync(absolute, 'utf8');
-    const page = core.renderDocsMarkdown(text, core.docsRenderOptions(tree.root, absolute, docNameOf(doc.type)));
-    stub.pages.set(doc.path, page);
+    const own = stub.texts.get(doc.path) ?? readFileSync(absolute, 'utf8');
+    const text = differing ? techHeadingText(own) : own;
+    const rendered = core.renderDocsMarkdown(text, core.docsRenderOptions(tree.root, absolute, docNameOf(doc.type)));
+    const page: LibraryDocPage = doc.type === 'tech' ? { ...rendered, techSections: core.techSectionHeads(text) } : rendered;
+    if (!differing) stub.pages.set(doc.path, page);
     return page;
   };
 
@@ -1657,7 +1677,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
       case 'library':
         return workspaceJson(req, 200, stub.catalog);
       case 'libraryDoc': {
-        const page = libraryPage(stub, tree, evidencePathQuery(url.search));
+        const page = libraryPage(stub, tree, evidencePathQuery(url.search), library);
         return page === null ? workspaceJson(req, 404, { error: 'not-found' }) : workspaceJson(req, 200, page);
       }
       case 'librarySearch':
