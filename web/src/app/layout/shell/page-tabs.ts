@@ -50,10 +50,10 @@ export class LibraryTabCount {
 }
 
 /**
- * The planning page's lenses in tab-bar order (spec 026, ISC-167; `/w/:ws/planning/<lens>`, `/w/:ws/planning` opens the
- * tree). Tabs are route links that keep `?sel=` and `?m=` (`keepQuery`), labelled `planning.page.lenses.<id>`.
+ * The planning page's lenses in tab-bar order, Matrix first (spec 026, ISC-167; `/w/:ws/planning/<lens>`,
+ * `/w/:ws/planning` still opens the tree). Tabs are route links that keep `?sel=` and `?m=` (`keepQuery`), labelled `planning.page.lenses.<id>`.
  */
-export const PLANNING_LENSES = ['tree', 'board', 'graph'] as const;
+export const PLANNING_LENSES = ['board', 'tree', 'graph'] as const;
 export type PlanningLensId = (typeof PLANNING_LENSES)[number];
 
 export const isPlanningLensId = (value: unknown): value is PlanningLensId => (PLANNING_LENSES as readonly unknown[]).includes(value);
