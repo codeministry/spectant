@@ -45,21 +45,26 @@
   min-inline-size: 0;
 }
 
-/* Title one line, description two, each cut at a whole word by `uiClamp` (ISC-111); the list renders "more…" / "less"
-   outside the row link, and it opens both. */
-.t,
+/* The title line (spec 025, T24): the list's projected row link, the title cut at a whole word by `uiClamp` (its type
+   lives in spec-table.css, which owns the link), then the waits chip, lifted above the link stretched over the row. */
+.tline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.rwaits {
+  position: relative;
+  z-index: 1;
+  flex: none;
+}
+
+/* The description, one line cut at a whole word by `uiClamp` (ISC-111); the list renders "more…" / "less" outside the
+   row link, and it opens title and description. */
 .d {
   overflow: hidden;
   overflow-wrap: anywhere;
-}
-
-.t {
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 24px;
-}
-
-.d {
   color: var(--muted-ink);
   font-size: 13px;
   line-height: 20px;
@@ -153,11 +158,6 @@
 
 :host([data-density='dense']) .rid {
   align-self: center;
-}
-
-:host([data-density='dense']) .t {
-  font-size: 14px;
-  line-height: 20px;
 }
 
 /* Dense keeps the overview column to one line: no description line, no phase chip. */

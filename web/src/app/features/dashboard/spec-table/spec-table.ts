@@ -20,6 +20,7 @@ import { SettingsService } from '../../../core/settings.service';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiCard } from '../../../shared/ui/card/card';
+import { UiClamp } from '../../../shared/ui/clamp/clamp';
 import { type FilterOption, UiFilterChips } from '../../../shared/ui/filter-chips/filter-chips';
 import { UiPopover, UiPopoverTrigger } from '../../../shared/ui/overlay/popover';
 import { UiReason } from '../../../shared/ui/reason/reason';
@@ -63,6 +64,7 @@ import {
     RouterLink,
     TranslocoPipe,
     UiCard,
+    UiClamp,
     UiFilterChips,
     UiIcon,
     UiPopover,
@@ -87,6 +89,10 @@ export class SpecTable {
   readonly ws = input.required<string>();
   readonly rows = input.required<readonly SpecTableRow[]>();
   readonly archive = input<readonly ArchiveRow[]>([]);
+  /** The title of every spec the list knows, active or archived, by `NNN`: a waits chip names its blocker by it (T24). */
+  protected readonly titles = computed<Readonly<Record<string, string>>>(() =>
+    Object.fromEntries([...this.archive(), ...this.rows()].map((spec) => [spec.id, spec.title])),
+  );
   readonly query = input.required<ListQuery>();
   readonly queryChange = output<ListQuery>();
   /**

@@ -101,19 +101,21 @@ describe('SpecTable (prototype port, T89)', () => {
     const { host } = await render();
     const [first, second] = [...host.querySelectorAll<HTMLAnchorElement>('[data-spec-row]')];
     // T69, spec 026 T27: a row's first activation selects it for the detail sidebar (`?sel=spec:<id>`); only the
-    // selected row links to the spec page. The row names its object for the sidebar's focus return.
+    // selected row links to the spec page. The row names its object for the sidebar's focus return. Spec 025 (T24):
+    // the link is the row's title, stretched over the row; the cells around it belong to the row's `li`.
+    const [rowA, rowB] = [first, second].map((link) => link.closest('li') as HTMLElement);
     expect(first.getAttribute('href')).toMatch(/[?&]sel=spec:002$/);
     expect(first.getAttribute('data-ref')).toBe('spec:002');
-    expect(text(first.querySelector('.rid'))).toBe('002');
-    expect(text(first.querySelector('.rtitle .t'))).toBe('Spec 002');
-    expect(text(first.querySelector('.rtitle .d'))).toBe('Serves the dashboard.');
-    expect(first.querySelector('.rtrack .agent-dot')?.getAttribute('aria-label')).toContain('spec-002-ISC-1');
-    expect(first.querySelector('.rtrack ui-stage-track')).not.toBeNull();
-    expect(text(first.querySelector('.rtrack ui-chip'))).toBe('building');
-    expect(first.querySelector('.rmeter ui-meter')).not.toBeNull();
-    expect(text(first.querySelector('.rmeter .frac'))).toBe('25/30');
-    expect(second.querySelector('.rtitle .d')).toBeNull();
-    expect(second.querySelector('.agent-dot')).toBeNull();
+    expect(text(rowA.querySelector('.rid'))).toBe('002');
+    expect(text(first)).toBe('Spec 002');
+    expect(text(rowA.querySelector('.rtitle .d'))).toBe('Serves the dashboard.');
+    expect(rowA.querySelector('.rtrack .agent-dot')?.getAttribute('aria-label')).toContain('spec-002-ISC-1');
+    expect(rowA.querySelector('.rtrack ui-stage-track')).not.toBeNull();
+    expect(text(rowA.querySelector('.rtrack ui-chip'))).toBe('building');
+    expect(rowA.querySelector('.rmeter ui-meter')).not.toBeNull();
+    expect(text(rowA.querySelector('.rmeter .frac'))).toBe('25/30');
+    expect(rowB.querySelector('.rtitle .d')).toBeNull();
+    expect(rowB.querySelector('.agent-dot')).toBeNull();
   });
 
   it('marks the row the sidebar shows with data-selected="row" and links it to the spec page (spec 026, T27)', async () => {
@@ -211,7 +213,7 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
     return fixture.nativeElement as HTMLElement;
   }
   const rowOf = (host: HTMLElement, id: string): HTMLElement => {
-    const found = host.querySelector<HTMLElement>(`[data-spec-row="${id}"]`);
+    const found = host.querySelector<HTMLElement>(`[data-spec-row="${id}"]`)?.closest('li');
     if (!found) throw new Error(`no row ${id}`);
     return found;
   };
@@ -248,9 +250,71 @@ describe('SpecTable rows on the harbor golden (T136, T137)', () => {
       expect(reason?.hasAttribute('data-compact')).toBe(true);
       expect(reason?.querySelector('.visually-hidden')?.textContent).toBe(spec.nextReason);
       expect(reason?.closest('a')).toBeNull();
-      expect(reason?.parentElement).toBe(rowOf(host, spec.id).parentElement);
+      expect(reason?.parentElement).toBe(rowOf(host, spec.id).closest('li'));
       expect(reason?.querySelector('ui-command-chip')).toBeNull();
     }
     expect(waiting).toBeGreaterThan(0);
+  });
+});
+
+// Spec 025, T24 · ISC-163 (design.md § Spec-Liste): the row is no single link; its title is the row link, and a waiting
+// spec's "waits on NNN" chip stands behind the title as its own link to the blocker, never inside the row link and
+// without the partial meta; the hooks of the row link stay (data-spec-row, data-ref, roving tab stop).
+describe('SpecTable waits chip (T24, ISC-163)', () => {
+  const WAITS = { spec: '003', blockers: ['002'], heldTasks: 2, openTasks: 3, full: false };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [
+        TranslocoTestingModule.forRoot({
+          langs: CATALOGUES,
+          translocoConfig: { availableLangs: [...LANGS], defaultLang: 'en' },
+          preloadLangs: true,
+        }),
+      ],
+      providers: [provideRouter([])],
+    });
+  });
+
+  async function renderWaits(): Promise<HTMLElement> {
+    const fixture = TestBed.createComponent(SpecTable);
+    fixture.componentRef.setInput('ws', 'harbor');
+    fixture.componentRef.setInput('rows', readSpecRows({ specs: [wire('002'), wire('003', { waits: WAITS })] }));
+    fixture.componentRef.setInput('query', DEFAULT_QUERY);
+    await fixture.whenStable();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('reads the row waits through, null when nothing holds', () => {
+    const [free, held] = readSpecRows({ specs: [wire('002', { waits: null }), wire('003', { waits: WAITS })] });
+    expect(free.waits).toBeNull();
+    expect(held.waits?.blockers).toEqual(['002']);
+  });
+
+  it('puts the chip behind the title as its own link, outside the row link, with no meta', async () => {
+    const host = await renderWaits();
+    const link = host.querySelector<HTMLAnchorElement>('a.row-link[data-spec-row="003"]');
+    expect(link?.getAttribute('data-ref')).toBe('spec:003');
+    expect(link?.querySelector('a, ui-waits-chip')).toBeNull();
+    const chip = host.querySelector<HTMLAnchorElement>('ui-waits-chip[data-row-waits] a[data-waits]');
+    expect(chip?.closest('a.row-link')).toBeNull();
+    expect(chip?.closest('li')).toBe(link?.closest('li'));
+    expect(link?.parentElement).toBe(chip?.closest('ui-waits-chip')?.parentElement);
+    expect(text(chip)).toBe('waits on 002');
+    expect(chip?.getAttribute('href')).toBe('/w/harbor/s/002');
+    expect(chip?.getAttribute('aria-label')).toBe('Waits on spec 002, Spec 002, 2 of 3 open tasks');
+    expect(host.querySelector('[data-waits-meta]')).toBeNull();
+    // Keyboard order: the row link, then its chip.
+    const order = [...host.querySelectorAll('a')].filter((a) => a === link || a === chip);
+    expect(order).toEqual([link, chip]);
+  });
+
+  it('names the row link by its number and title and shows no chip on a row nothing holds', async () => {
+    const host = await renderWaits();
+    const link = host.querySelector<HTMLAnchorElement>('a.row-link[data-spec-row="002"]');
+    const named = (link?.getAttribute('aria-labelledby') ?? '').split(' ').map((id) => text(host.querySelector(`[id="${id}"]`)));
+    expect(named.join(' ')).toBe('002 Spec 002');
+    expect(link?.closest('li')?.querySelector('ui-waits-chip')).toBeNull();
+    expect(host.querySelectorAll('a.row-link a')).toHaveLength(0);
   });
 });

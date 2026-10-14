@@ -66,28 +66,39 @@
     <ol class="rows" uiRovingList [singleKeys]="singleKeys()">
       @for (row of visible(); track row.id) {
         <li>
-          <a
-            uiRovingItem
-            class="row-link"
-            [routerLink]="row.id === preview() ? ['/w', ws(), 's', row.id] : []"
-            [queryParams]="row.id === preview() ? null : { sel: 'spec:' + row.id }"
-            [queryParamsHandling]="row.id === preview() ? '' : 'merge'"
-            [replaceUrl]="row.id !== preview()"
-            [attr.data-spec-row]="row.id"
-            [attr.data-ref]="'spec:' + row.id"
-            [attr.data-selected]="row.id === preview() ? 'row' : row.id === selectedId() ? '' : null"
-            [attr.aria-expanded]="row.id === preview()"
-            [attr.data-changed]="dots().has(row.id) ? '' : null"
-            (pointerenter)="clearDot(row.id)"
-            (focusin)="clearDot(row.id)"
+          <!-- Spec 025 (T24, ISC-163): the row is no single link any more. Its title is the row link, stretched over the
+               whole row (`::after`), so the "waits on NNN" chip behind the title can be its own link to the blocker. -->
+          <app-spec-row
+            [row]="row"
+            [ws]="ws()"
+            [titles]="titles()"
+            [stageLabels]="stageLabels()"
+            [descriptionExpanded]="moreOpen().has(row.id)"
+            (descriptionOverflow)="setOverflow(row.id, $event)"
           >
-            <app-spec-row
-              [row]="row"
-              [stageLabels]="stageLabels()"
-              [descriptionExpanded]="moreOpen().has(row.id)"
-              (descriptionOverflow)="setOverflow(row.id, $event)"
-            />
-          </a>
+            <a
+              uiRovingItem
+              class="row-link"
+              [id]="'rl-' + row.id"
+              [routerLink]="row.id === preview() ? ['/w', ws(), 's', row.id] : []"
+              [queryParams]="row.id === preview() ? null : { sel: 'spec:' + row.id }"
+              [queryParamsHandling]="row.id === preview() ? '' : 'merge'"
+              [replaceUrl]="row.id !== preview()"
+              [attr.data-spec-row]="row.id"
+              [attr.data-ref]="'spec:' + row.id"
+              [attr.data-selected]="row.id === preview() ? 'row' : row.id === selectedId() ? '' : null"
+              [attr.aria-expanded]="row.id === preview()"
+              [attr.aria-labelledby]="'rid-' + row.id + ' rl-' + row.id"
+              [attr.aria-describedby]="row.description ? 'desc-' + row.id : null"
+              [attr.data-changed]="dots().has(row.id) ? '' : null"
+              [title]="row.title"
+              [uiClamp]="row.title"
+              [uiClampLines]="1"
+              [uiClampExpanded]="moreOpen().has(row.id)"
+              (pointerenter)="clearDot(row.id)"
+              (focusin)="clearDot(row.id)"
+            ></a>
+          </app-spec-row>
           <!-- Outside the row link: a control inside a link is a nested interactive element (ISC-111). -->
           @if (overflowing().has(row.id)) {
             <button

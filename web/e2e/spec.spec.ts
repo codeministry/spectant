@@ -172,7 +172,7 @@ const PRIORITY_CASES = [
 ] as const;
 
 /** Where the chip sits: the dashboard row (T136), the spec head's chips and the breadcrumb (T134). */
-const ROW_PRIORITY = (id: string): string => `[data-spec-row="${id}"] ui-priority`;
+const ROW_PRIORITY = (id: string): string => `li:has([data-spec-row="${id}"]) ui-priority`;
 const HEAD_PRIORITY = 'app-spec-head ui-priority[data-head-chip="priority"]';
 const CRUMB_PRIORITY = 'app-spec-head ui-priority[data-crumb-priority]';
 

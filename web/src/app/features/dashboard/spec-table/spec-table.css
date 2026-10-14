@@ -75,26 +75,64 @@
 }
 
 .rows > li {
-  border-block-end: 1px solid var(--line);
-}
-
-.row-link {
-  display: block;
   position: relative;
-  color: var(--color-base-content);
-  text-decoration: none;
-  outline-offset: -2px;
+  border-block-end: 1px solid var(--line);
   transition: background-color var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
+/*
+ * The row link (spec 025, T24): the clamped title, 15/24 500, stretched over the whole row by `::after`, so the row
+ * stays one target while the waits chip behind the title (lifted above it) is a link of its own. The row look (hover,
+ * current, selected) moves to the `li`; the focus ring draws on the stretched area, inset as before.
+ */
+.row-link {
+  display: block;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: var(--color-base-content);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 24px;
+  text-decoration: none;
+}
+
+.row-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.row-link:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.row-link:focus-visible::after {
+  outline: 2px solid var(--disp);
+  outline-offset: -2px;
+}
+
 @media (hover: hover) {
-  .row-link:hover {
+  .rows > li:has(.row-link:hover) {
     background: color-mix(in oklab, var(--color-base-300) 55%, transparent);
   }
 }
 
+/* The sidebar's selected row (selection.css `[data-selected='row']`) paints the whole row, not the title link. */
+.row-link[data-selected='row'] {
+  background: none;
+  box-shadow: none;
+}
+
+.rows > li:has(.row-link[data-selected='row']) {
+  background: var(--disp-t);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
 /* The current row while the list holds focus: the cyan tint with the 3 px inset edge; its ID takes the tint's ink. */
-.rows:focus-within .row-link[data-selected] {
+.rows:focus-within > li:has(.row-link[data-selected]) {
   --row-id-ink: var(--disp-ink);
 
   background: var(--color-base-300);
@@ -173,8 +211,9 @@
 }
 
 @media (forced-colors: active) {
-  .rows:focus-within .row-link[data-selected] {
+  .rows:focus-within .row-link[data-selected]::after {
     outline: 2px solid Highlight;
+    outline-offset: -2px;
   }
 
   .phase-strip i {
@@ -243,6 +282,8 @@
    column (16 px padding + 48 px id + 16 px gap), styled like the Brief's toggle. */
 .row-more {
   display: block;
+  position: relative;
+  z-index: 1;
   min-block-size: 24px;
   margin: -8px 16px 8px 80px;
   padding: 2px 0;

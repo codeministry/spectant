@@ -1,4 +1,4 @@
-<span class="rid">
+<span class="rid" [id]="'rid-' + row().id">
   <span class="rglyph">
     @if (glyphType(); as type) {
       <ui-type-glyph [type]="type" />
@@ -7,7 +7,13 @@
   <span class="rnum">{{ row().id }}</span>
 </span>
 <span class="rtitle">
-  <span class="t" [title]="row().title" [uiClamp]="row().title" [uiClampLines]="1" [uiClampExpanded]="descriptionExpanded()"></span>
+  <!-- The title line: the list's row link (the clamped title, stretched over the row), then the waits chip (T24). -->
+  <span class="tline">
+    <ng-content />
+    @if (row().waits; as wait) {
+      <ui-waits-chip class="rwaits" data-row-waits [wait]="wait" [ws]="ws()" [titles]="titles()" />
+    }
+  </span>
   @if (row().description; as description) {
     <span
       class="d"

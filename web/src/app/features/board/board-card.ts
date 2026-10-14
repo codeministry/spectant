@@ -11,6 +11,7 @@ import { UiCard } from '../../shared/ui/card/card';
 import { UiPriority } from '../../shared/ui/priority/priority';
 import { UiReason } from '../../shared/ui/reason/reason';
 import { type TypeGlyphKind, UiTypeGlyph } from '../../shared/ui/type-glyph/type-glyph';
+import { UiWaitsChip } from '../../shared/ui/waits-chip/waits-chip';
 import { UiWorktreeChip } from '../../shared/ui/worktree-chip/worktree-chip';
 import type { BoardCard as BoardCardModel } from './board-model';
 
@@ -47,6 +48,10 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  *   Spec 026 (T26, ISC-171): a plain click, a tap or Enter on it selects the card (`?sel=spec:NNN` / `idea:<slug>`, the
  *   detail sidebar) instead of navigating; Shift+Enter or a shift click opens the page, and a Ctrl/Cmd or middle click
  *   keeps the browser's new-tab default. The link carries `data-ref`, the card `data-selected="card"` while selected.
+ * - Spec 025 (T23, ISC-163), a spec an open spec edge holds only: `ui-waits-chip` in its own line right under the title,
+ *   above row 3, at every width (the compact one-column board included). Each chip links to its blocker spec, lies over
+ *   the stretched title link and so is its own target; the partial scope lives in its accessible name, never visible
+ *   on the card. A full hold already stands in Blocked (core sets the stage); the chip names the reason there.
  * - Row 3: the main feature chip `F<n>` (its name in the tooltip), the milestone (muted) and, pushed to the end,
  *   `ui-actor-chip` with the resolved name or the raw id; nothing when the card is unassigned. A spec with a worktree
  *   shows the compact `ui-worktree-chip` (`git-branch` · `↑n` · `±`, the branch in its accessible name) right before
@@ -65,7 +70,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  */
 @Component({
   selector: 'app-board-card',
-  imports: [CdkDragHandle, TranslocoPipe, UiActorChip, UiCard, UiIcon, UiPriority, UiReason, UiTypeGlyph, UiWorktreeChip],
+  imports: [CdkDragHandle, TranslocoPipe, UiActorChip, UiCard, UiIcon, UiPriority, UiReason, UiTypeGlyph, UiWaitsChip, UiWorktreeChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[attr.data-key]': 'card().key',
@@ -107,6 +112,8 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
     .feat { background: var(--disp-t); color: var(--disp-ink); font-family: var(--font-mono); }
     .ms { border: 1px solid var(--line); color: var(--muted-ink); }
     ui-reason { position: relative; z-index: 1; }
+    /* Spec 025 (T23): the waits line lies over the stretched title link, so each chip is its own target. */
+    .hold { position: relative; z-index: 1; justify-self: start; }
     .grip { position: relative; z-index: 1; display: grid; place-items: center; align-self: center; inline-size: 44px; block-size: 44px; padding: 0; border: 0; border-radius: var(--radius-field); background: none; color: var(--muted-ink); cursor: grab; }
     .grip:active { cursor: grabbing; }
     /* The prototype's wb-grip (spec 024): shown on hover and focus where a fine pointer can hover; always on touch. */
@@ -154,9 +161,13 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
                 ? ('board.workspace.card.ideaName' | transloco: { title: c.title, priority: c.priority })
                 : ('board.workspace.card.name' | transloco: { id: c.id, type, title: c.title, priority: c.priority, stage })
             "
-            [attr.aria-describedby]="waits() ? describedBy() : null"
+            [attr.aria-describedby]="describedByList()"
             >{{ c.title }}</a
           >
+
+          @if (c.waits; as wait) {
+            <ui-waits-chip class="hold" data-card-waits [id]="holdId()" [wait]="wait" [ws]="ws()" [titles]="c.waitTitles" />
+          }
 
           @if (c.feature || c.milestone || c.assignee || c.worktree) {
             <div class="r3">
@@ -225,6 +236,12 @@ export class BoardCard {
   /** The phrase of a waiting card; null on every other card, which shows no reason line. */
   protected readonly waits = computed(() => (this.card().waiting ? this.card().reason : null));
   protected readonly describedBy = computed(() => `bc-${this.card().key}-waits`);
+  /** The `waits on NNN` line's id (spec 025, T23): the title link's description names the blockers after the reason. */
+  protected readonly holdId = computed(() => `bc-${this.card().key}-hold`);
+  protected readonly describedByList = computed(() => {
+    const ids = [this.waits() ? this.describedBy() : null, this.card().waits ? this.holdId() : null].filter((id) => id !== null);
+    return ids.length === 0 ? null : ids.join(' ');
+  });
   protected readonly link = computed(() => {
     const c = this.card();
     return c.kind === 'idea' ? ['/w', this.ws(), 'ideas', c.slug] : ['/w', this.ws(), 's', c.id ?? c.slug];
