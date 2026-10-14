@@ -8,10 +8,15 @@
  * Per request, in this order (the e2e stub's `prototypeFileRoute` answers the same way):
  *
  * - 403 `{error: "forbidden"}` for a non-loopback `Host` or a cross-site `Origin`, the guard of every route. The one
- *   exception is `Origin: null`, the opaque origin of the sandboxed page itself: it is answered for a font alone
- *   (`font/*` by `prototypeMediaTypeOf`), 200 or 304 with `Access-Control-Allow-Origin: *`, because a browser fetches
- *   `@font-face` sources in CORS mode. Every other answer to `Origin: null` (HTML, styles, scripts, images, misses,
- *   405, 409) is the same 403 without that header, so the sandboxed page reads nothing else by CORS.
+ *   exception is `Origin: null`, the opaque origin of the sandboxed page itself, which a browser sends for what it
+ *   fetches in CORS mode (`<script type="module">`, every `import`, `@font-face` sources; T58, ISC-159.3): it is
+ *   answered for any file but HTML (`text/html` by `prototypeMediaTypeOf`), and only for a request the browser makes
+ *   to run or render the file, `Sec-Fetch-Mode: cors` with `Sec-Fetch-Dest` `script`, `style` or `font`; then 200 or
+ *   304 with `Access-Control-Allow-Origin: *`. Not the `Referer`: Chromium sends none for the opaque document's own
+ *   requests (its entry module, a font of an inline style), only for a nested `import`. A page cannot set the
+ *   `Sec-Fetch-*` headers, so a `fetch()` (`Sec-Fetch-Dest: empty`) that would hand bytes to a script is refused, as is
+ *   every other destination, a request without those headers, an HTML page always, misses, 405 and 409: the same 403
+ *   without that header.
  * - 405 with `Allow: PROTOTYPE_ALLOW` for any method but `GET` and `HEAD`.
  * - 404 for a path the contract does not match, an unknown workspace, or a spec that is no active spec folder
  *   (`specs/NNN-slug/`, exactly as `LibraryDoc.spec` names it; archived specs are no part of the catalog).
@@ -21,8 +26,8 @@
  *   a symlink out is refused. `outside` and `symlink-escape` are 403, `not-found` and `not-a-file` 404.
  * - 200 with the file's bytes streamed from its real path: `evidenceFileHeaders` for `prototypeMediaTypeOf(name)`
  *   (styles, scripts and fonts beside the evidence types, so `nosniff` does not refuse them), always `inline`, and a
- *   weak ETag `W/"<size>-<mtime ms>"` from one `stat`, 304 on a match. `HEAD` gets the headers alone. A font answer
- *   carries `Vary: Origin` either way, since its CORS header depends on the request's `Origin`.
+ *   weak ETag `W/"<size>-<mtime ms>"` from one `stat`, 304 on a match. `HEAD` gets the headers alone. Every non-HTML
+ *   answer carries `Vary: Origin, Sec-Fetch-Mode, Sec-Fetch-Dest` either way, since its CORS header depends on them.
  *
  * Every answer, errors included, carries `PROTOTYPE_CSP` (`sandbox` without `allow-same-origin`: the page runs on an
  * opaque origin and cannot call the app's API; `connect-src 'none'`) and `X-Content-Type-Options: nosniff`. No answer
@@ -68,8 +73,22 @@ const forbidden = (req: Request): Response => refuse(req, 403, { error: "forbidd
 /** The `Origin` a sandboxed page without `allow-same-origin` sends: its origin is opaque. */
 const OPAQUE_ORIGIN = "null";
 
-/** The media types `Origin: null` may load: a page's `@font-face` sources, fetched in CORS mode. */
-const isFontType = (mediaType: string): boolean => mediaType.startsWith("font/");
+/** HTML is never answered to `Origin: null`: a page is navigated to, never fetched by the sandboxed page in CORS mode. */
+const isHtmlType = (mediaType: string): boolean => mediaType.startsWith("text/html");
+
+/** What a non-HTML answer's CORS header depends on. */
+const OPAQUE_VARY = "Origin, Sec-Fetch-Mode, Sec-Fetch-Dest";
+
+/** The `Sec-Fetch-Dest` values of what a page runs or renders in CORS mode: module scripts, imports, styles, fonts. */
+const OPAQUE_DESTINATIONS: ReadonlySet<string> = new Set(["script", "style", "font"]);
+
+/**
+ * Whether the browser itself fetches the file to run or render it (`Sec-Fetch-Mode: cors`, `Sec-Fetch-Dest` script,
+ * style or font). Fetch metadata is set by the browser alone, so a page's `fetch()` always says `empty`.
+ */
+function renderFetch(req: Request): boolean {
+  return req.headers.get("Sec-Fetch-Mode") === "cors" && OPAQUE_DESTINATIONS.has(req.headers.get("Sec-Fetch-Dest") ?? "");
+}
 
 /** The workspace's 409 body, as the library route sends it: the summary with the stable code, never the path. */
 function unavailable(workspace: { slug: string; name: string; path: string }, error: string): unknown {
@@ -80,7 +99,7 @@ function unavailable(workspace: { slug: string; name: string; path: string }, er
 export function prototypeApi(options: PrototypeApiOptions): ApiHandler {
   const { registry } = options;
 
-  /** `opaque`: the request came from `Origin: null`, which is answered for a font file alone. */
+  /** `opaque`: the request came from `Origin: null` as a script, style or font fetch; HTML is refused to it. */
   const answer = async (req: Request, pathname: string, opaque: boolean): Promise<Response> => {
     const match = matchPrototypePath(pathname);
     if (match === null) return notFound(req);
@@ -106,8 +125,8 @@ export function prototypeApi(options: PrototypeApiOptions): ApiHandler {
     }
     // The media type of the name asked for; a confined symlink serves its target's bytes.
     const mediaType = prototypeMediaTypeOf(basename(hit.path));
-    const font = isFontType(mediaType);
-    if (opaque && !font) return forbidden(req);
+    const html = isHtmlType(mediaType);
+    if (opaque && html) return forbidden(req);
     let size: number;
     let etag: string;
     try {
@@ -124,7 +143,7 @@ export function prototypeApi(options: PrototypeApiOptions): ApiHandler {
       "Content-Disposition": "inline",
       ...ALWAYS,
       ETag: etag,
-      ...(font ? { Vary: "Origin" } : {}),
+      ...(html ? {} : { Vary: OPAQUE_VARY }),
       ...(opaque ? { "Access-Control-Allow-Origin": "*" } : {}),
     };
     if (matchesIfNoneMatch(req.headers.get("If-None-Match"), etag)) return new Response(null, { status: 304, headers });
@@ -143,7 +162,9 @@ export function prototypeApi(options: PrototypeApiOptions): ApiHandler {
       return opaque ? forbidden(req) : refuse(req, 405, { error: "method-not-allowed" }, { Allow: PROTOTYPE_ALLOW });
     }
     if (!opaque) return answer(req, pathname, false);
-    // `Origin: null` learns nothing but a font's bytes: every miss, 409 and refusal is the same 403.
+    // `Origin: null` for anything but a script, style or font fetch is refused before the file system is asked.
+    if (!renderFetch(req)) return forbidden(req);
+    // `Origin: null` learns nothing but a non-HTML file's bytes: every miss, 409 and refusal is the same 403.
     return answer(req, pathname, true).then((res) => (res.status === 200 || res.status === 304 ? res : forbidden(req)));
   };
 }

@@ -756,9 +756,14 @@ describe("ISC-160: the library, its reader, search, assets, prototypes and the o
         for (const page of doc.pages ?? []) await read(prototypeRoute(SHELF, doc.spec, folder ?? "", page));
       }
       const board = (file: string): string => prototypeRoute(SHELF, "002-tide-board", "prototype/board", file);
-      for (const file of ["styles.css", "app.js", "img/badge.png", "notes.md", "fonts/manrope-variable.woff2"]) await read(board(file));
-      const font = await read(board("fonts/manrope-variable.woff2"), { Origin: "null" });
-      expect(font.headers.get("Access-Control-Allow-Origin")).toBe("*");
+      for (const file of ["styles.css", "app.js", "main.js", "tide.mjs", "img/badge.png", "notes.md", "fonts/manrope-variable.woff2"]) await read(board(file));
+      // The sandboxed page's own CORS fetches (T58): a font, a stylesheet, a module script and its `.mjs` import, by
+      // `Origin: null` with `Sec-Fetch-Mode: cors` and their `Sec-Fetch-Dest`.
+      const opaqueFetches: Array<[string, string]> = [["fonts/manrope-variable.woff2", "font"], ["styles.css", "style"], ["main.js", "script"], ["tide.mjs", "script"]];
+      for (const [file, dest] of opaqueFetches) {
+        const opaque = await read(board(file), { Origin: "null", "Sec-Fetch-Mode": "cors", "Sec-Fetch-Dest": dest });
+        expect(opaque.headers.get("Access-Control-Allow-Origin")).toBe("*");
+      }
 
       // Refused: unknown workspace, missing or unlisted document, traversal, other media, other methods, foreign origins.
       const missingDoc = catalog.docs.find((d) => d.state === "missing");

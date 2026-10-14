@@ -1,7 +1,8 @@
 // The prototype route (spec 017 T20, ISC-159): `GET|HEAD /proto/:ws/:spec/:folder/*` served by `prototypeApi` through
 // the loopback server, outside `/api/`, so a page and the files it links by relative URL load from one folder.
-// This file holds the route's smoke test (`-t smoke`), the opaque-origin font rule (`-t fonts`), the confinement
-// probes (`-t traversal`, T21, ISC-159.1) and the CSP probes (`-t csp`, T23, ISC-159.2).
+// This file holds the route's smoke test (`-t smoke`), the opaque-origin font rule (`-t fonts`), the opaque-origin
+// module rule (`-t module`, T58, ISC-159.3, one check in headless Chromium), the confinement probes (`-t traversal`, T21, ISC-159.1) and the CSP
+// probes (`-t csp`, T23, ISC-159.2).
 //
 // Fixture: a temp copy of `core/fixtures/library` registered as a workspace (002's `prototype/board` with two pages,
 // a stylesheet, a script and an image; 001's prototype directly in `.design/prototype/`), plus one font the `fonts`
@@ -13,6 +14,7 @@ import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } fr
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
 import { type RunningServer, serve } from "../server/src/http.ts";
 import { prototypeApi } from "../server/src/prototype.ts";
@@ -162,10 +164,12 @@ describe("prototype route smoke", () => {
 });
 
 describe("prototype route fonts", () => {
-  // The sandboxed page runs on an opaque origin, so its `@font-face` fetch (CORS mode) sends `Origin: null`.
+  // The sandboxed page runs on an opaque origin, so its `@font-face` fetch (CORS mode) sends `Origin: null` with
+  // `Sec-Fetch-Mode: cors` and `Sec-Fetch-Dest: font` (T58: fonts follow the module rule, without them it is 403).
   const FONT = new Uint8Array([0x77, 0x4f, 0x46, 0x32, 0, 1, 0, 0]);
   const board = (file: string): string => prototypeRoute(ws, "002-tide-board", "prototype/board", file);
   const font = (): string => board("fonts/tide.woff2");
+  const asFont = { Origin: "null", "Sec-Fetch-Mode": "cors", "Sec-Fetch-Dest": "font" };
 
   beforeAll(() => {
     const dir = join(root, "shelf", "specs", "002-tide-board", ".design", "prototype", "board", "fonts");
@@ -174,21 +178,21 @@ describe("prototype route fonts", () => {
   });
 
   test("fonts: Origin null gets a font with Access-Control-Allow-Origin *, Vary, the CSP and nosniff; 304 too", async () => {
-    const res = await get(font(), { headers: { Origin: "null" } });
+    const res = await get(font(), { headers: asFont });
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toBe("font/woff2");
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
-    expect(res.headers.get("Vary")).toBe("Origin");
+    expect(res.headers.get("Vary")).toBe("Origin, Sec-Fetch-Mode, Sec-Fetch-Dest");
     expect(res.headers.get("Content-Security-Policy")).toBe(PROTOTYPE_CSP);
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(FONT);
     const etag = res.headers.get("ETag") ?? "";
-    const again = await get(font(), { headers: { Origin: "null", "If-None-Match": etag } });
+    const again = await get(font(), { headers: { ...asFont, "If-None-Match": etag } });
     expect([again.status, again.headers.get("Access-Control-Allow-Origin")]).toEqual([304, "*"]);
 
     // Without an Origin (the app itself) the font loads as before, without the CORS header.
     const plain = await get(font());
-    expect([plain.status, plain.headers.get("Access-Control-Allow-Origin"), plain.headers.get("Vary")]).toEqual([200, null, "Origin"]);
+    expect([plain.status, plain.headers.get("Access-Control-Allow-Origin"), plain.headers.get("Vary")]).toEqual([200, null, "Origin, Sec-Fetch-Mode, Sec-Fetch-Dest"]);
     await plain.arrayBuffer();
   });
 
@@ -202,12 +206,13 @@ describe("prototype route fonts", () => {
     }
   });
 
-  test("fonts: Origin null is 403 without the CORS header for HTML, styles, scripts, images, misses and other methods", async () => {
+  test("fonts: Origin null without Sec-Fetch cors and a script, style or font destination is 403 without the CORS header for HTML, styles, scripts, images, fonts, misses and other methods", async () => {
     const cases: Array<[string, RequestInit]> = [
       [board("index.html"), {}],
       [board("styles.css"), {}],
       [board("app.js"), {}],
       [board("img/badge.png"), {}],
+      [font(), {}],
       [board("fonts/missing.woff2"), {}],
       [prototypeRoute("no-such-workspace", "002-tide-board", "prototype/board", "fonts/tide.woff2"), {}],
       [`/proto/${ws}/002-tide-board/prototype%2Fboard/..%252F..%252Fspec.md`, {}],
@@ -221,6 +226,132 @@ describe("prototype route fonts", () => {
       await res.arrayBuffer();
     }
   });
+});
+
+describe("prototype route module", () => {
+  // The sandboxed page runs on an opaque origin, so `<script type="module">`, every `import` and every `@font-face`
+  // source are fetched in CORS mode with `Origin: null`; Chromium sends no Referer for the document's own requests,
+  // but always the fetch metadata `Sec-Fetch-Mode: cors` and `Sec-Fetch-Dest` (T58, ISC-159.3). The committed
+  // fixture's `board/index.html` loads `main.js` as a module, which imports `./tide.mjs`.
+  const board = (file: string): string => prototypeRoute(ws, "002-tide-board", "prototype/board", file);
+  const opaque = (dest: string | null, mode: string | null = "cors", extra: Record<string, string> = {}): RequestInit => ({
+    headers: {
+      Origin: "null",
+      ...(mode === null ? {} : { "Sec-Fetch-Mode": mode }),
+      ...(dest === null ? {} : { "Sec-Fetch-Dest": dest }),
+      ...extra,
+    },
+  });
+
+  test("module: the page names a module script that imports an .mjs file", async () => {
+    const page = await (await get(board("index.html"))).text();
+    expect(page).toContain('<script type="module" src="main.js"></script>');
+    const main = await (await get(board("main.js"))).text();
+    expect(main).toContain('from "./tide.mjs"');
+  });
+
+  test("module: a module script, its .mjs import, a stylesheet and a font load for Origin null as script, style and font fetches", async () => {
+    const cases: Array<[string, string, string, string]> = [
+      ["module script", board("main.js"), "script", "text/javascript; charset=utf-8"],
+      [".mjs import", board("tide.mjs"), "script", "text/javascript; charset=utf-8"],
+      ["stylesheet", board("styles.css"), "style", "text/css; charset=utf-8"],
+      ["font", board("fonts/manrope-variable.woff2"), "font", "font/woff2"],
+    ];
+    for (const [name, path, dest, type] of cases) {
+      const res = await get(path, opaque(dest));
+      const seen = {
+        name,
+        status: res.status,
+        type: res.headers.get("Content-Type"),
+        acao: res.headers.get("Access-Control-Allow-Origin"),
+        vary: res.headers.get("Vary"),
+        csp: res.headers.get("Content-Security-Policy"),
+        nosniff: res.headers.get("X-Content-Type-Options"),
+      };
+      const vary = "Origin, Sec-Fetch-Mode, Sec-Fetch-Dest";
+      expect(seen).toEqual({ name, status: 200, type, acao: "*", vary, csp: PROTOTYPE_CSP, nosniff: "nosniff" });
+      const etag = res.headers.get("ETag") ?? "";
+      await res.arrayBuffer();
+      const again = await get(path, opaque(dest, "cors", { "If-None-Match": etag }));
+      expect({ name, status: again.status, acao: again.headers.get("Access-Control-Allow-Origin") }).toEqual({ name, status: 304, acao: "*" });
+    }
+  });
+
+  test("module: a fetch(), any other destination or mode and missing fetch metadata stay 403 for Origin null", async () => {
+    const metadata: Array<[string | null, string | null]> = [
+      ["empty", "cors"],
+      ["document", "cors"],
+      ["iframe", "cors"],
+      ["image", "cors"],
+      ["image", "no-cors"],
+      ["script", "no-cors"],
+      ["script", "navigate"],
+      ["script", "same-origin"],
+      ["font", null],
+      [null, "cors"],
+      [null, null],
+      ["Script", "cors"],
+      ["script", "CORS"],
+    ];
+    const files = [board("main.js"), board("tide.mjs"), board("app.js"), board("styles.css"), board("img/badge.png"), board("fonts/manrope-variable.woff2")];
+    for (const [dest, mode] of metadata) {
+      for (const path of files) {
+        const res = await get(path, opaque(dest, mode));
+        await res.arrayBuffer();
+        const seen = { dest, mode, path, status: res.status, acao: res.headers.get("Access-Control-Allow-Origin") };
+        expect(seen).toEqual({ dest, mode, path, status: 403, acao: null });
+      }
+    }
+  });
+
+  test("module: an HTML page is 403 for Origin null even as a script, style or font fetch, misses and other methods too", async () => {
+    const cases: Array<[string, RequestInit]> = [
+      [board("index.html"), opaque("script")],
+      [board("index.html"), opaque("style")],
+      [board("detail.html"), opaque("font")],
+      [board("index.html"), opaque("document", "navigate")],
+      [board("missing.mjs"), opaque("script")],
+      [prototypeRoute("no-such-workspace", "002-tide-board", "prototype/board", "main.js"), opaque("script")],
+      [`/proto/${ws}/002-tide-board/prototype%2Fboard/..%252F..%252Fspec.md`, opaque("script")],
+      [board("main.js"), { ...opaque("script"), method: "POST" }],
+    ];
+    for (const [path, init] of cases) {
+      const res = await get(path, init);
+      await res.arrayBuffer();
+      const seen = { path, status: res.status, acao: res.headers.get("Access-Control-Allow-Origin"), csp: res.headers.get("Content-Security-Policy") };
+      expect(seen).toEqual({ path, status: 403, acao: null, csp: PROTOTYPE_CSP });
+    }
+  });
+
+  test("module: in headless Chromium the fixture page runs its module script and .mjs import, no answer is 403", async () => {
+    // The repository's pinned Playwright (web's `@playwright/test`), loaded as `scripts/extract-prototype.ts` loads it.
+    type Page = {
+      on(event: "response", listener: (res: { url(): string; status(): number }) => void): void;
+      goto(url: string): Promise<unknown>;
+      waitForFunction(fn: string, arg?: unknown, options?: { timeout: number }): Promise<unknown>;
+      evaluate<T>(fn: string): Promise<T>;
+    };
+    type Browser = { newPage(): Promise<Page>; close(): Promise<void> };
+    const entry = pathToFileURL(join(import.meta.dir, "..", "web", "node_modules", "@playwright", "test", "index.mjs")).href;
+    const pw = (await import(entry)) as { chromium: { launch(o: { headless: boolean }): Promise<Browser> } };
+    const browser = await pw.chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage();
+      const answers: Array<{ path: string; status: number }> = [];
+      page.on("response", (res) => answers.push({ path: new URL(res.url()).pathname, status: res.status() }));
+      await page.goto(new URL(board("index.html"), server.url).href);
+      // `main.js` writes what it imported from `tide.mjs`; the stylesheet's font loads through `@font-face`.
+      await page.waitForFunction("document.documentElement.dataset.tide === 'high'", undefined, { timeout: 10_000 });
+      await page.waitForFunction("document.fonts.status === 'loaded'", undefined, { timeout: 10_000 });
+      const fonts = await page.evaluate<string[]>("[...document.fonts].map((f) => f.family + ':' + f.status)");
+      expect(fonts).toContain("Tide Sans:loaded");
+      const files = answers.filter((a) => a.path.startsWith("/proto/")).map((a) => a.path.split("/").pop() ?? "");
+      expect(files.sort()).toEqual(["app.js", "index.html", "main.js", "manrope-variable.woff2", "styles.css", "tide.mjs"]);
+      expect(answers.filter((a) => a.status === 403)).toEqual([]);
+    } finally {
+      await browser.close();
+    }
+  }, 30_000);
 });
 
 describe("prototype route traversal", () => {
@@ -437,13 +568,15 @@ describe("prototype route csp", () => {
   test("csp: every status the route answers (200, 304, 403, 404, 405, 409) carries exactly the CSP and nosniff", async () => {
     const font = board("fonts/manrope-variable.woff2");
     const etag = (await get(board("styles.css"), { method: "HEAD" })).headers.get("ETag") ?? "";
-    const fontTag = (await get(font, { method: "HEAD", headers: { Origin: "null" } })).headers.get("ETag") ?? "";
+    const asFont = { Origin: "null", "Sec-Fetch-Mode": "cors", "Sec-Fetch-Dest": "font" };
+    const fontTag = (await get(font, { method: "HEAD", headers: asFont })).headers.get("ETag") ?? "";
     const cases: Array<[string, string, RequestInit, number]> = [
       ["page", board("index.html"), {}, 200],
       ["HEAD", board("index.html"), { method: "HEAD" }, 200],
       ["304", board("styles.css"), { headers: { "If-None-Match": etag } }, 304],
-      ["font for Origin null", font, { headers: { Origin: "null" } }, 200],
-      ["font 304 for Origin null", font, { headers: { Origin: "null", "If-None-Match": fontTag } }, 304],
+      ["font for Origin null", font, { headers: asFont }, 200],
+      ["font 304 for Origin null", font, { headers: { ...asFont, "If-None-Match": fontTag } }, 304],
+      ["font for Origin null without Sec-Fetch", font, { headers: { Origin: "null" } }, 403],
       ["foreign Origin", board("index.html"), { headers: { Origin: "https://example.com" } }, 403],
       ["Origin null on HTML", board("index.html"), { headers: { Origin: "null" } }, 403],
       ["Origin null on POST", board("index.html"), { method: "POST", headers: { Origin: "null" } }, 403],
