@@ -421,9 +421,28 @@ describe('LibraryPage archived documents (spec 034, ISC-187.1)', () => {
     stale: 0,
   };
 
-  it('archived: an archived document stands in its spec group with the chip, an active one carries none', async () => {
+  const groupsOf = (root: HTMLElement): Array<string | null> =>
+    Array.from(page(root).querySelectorAll('[data-library-group]')).map((g) => g.getAttribute('data-library-group'));
+  const pill = (root: HTMLElement): HTMLButtonElement | null => page(root).querySelector<HTMLButtonElement>('[data-library-archived]');
+
+  it('archived: hidden by default; the pill "Archived" with its count is off and the spec select lacks the archived spec', async () => {
     const root = await open('/w/harbor/library', ARCHIVED);
-    expect(Array.from(page(root).querySelectorAll('[data-library-group]')).map((g) => g.getAttribute('data-library-group'))).toEqual(['workspace', '001', '002']);
+    expect(groupsOf(root)).toEqual(['workspace', '002']);
+    expect(page(root).querySelector('[data-library-chip="archived"]')).toBeNull();
+    expect(pill(root)?.getAttribute('aria-pressed')).toBe('false');
+    expect(text(pill(root)?.querySelector('[data-library-archived-count]'))).toBe('2');
+    expect(pill(root)?.getAttribute('aria-label')).toBe('Documents of archived specs (2)');
+    expect(Array.from(select(root, 'data-library-spec').options).map((o) => o.value)).toEqual(['all', '002']);
+    expect(text(page(root).querySelector('[data-library-count]'))).toContain('1 of 1 documents');
+  });
+
+  it('archived: the pill lists them in their spec group with the chip and writes ?archived=1; a second click hides them', async () => {
+    const root = await open('/w/harbor/library', ARCHIVED);
+    pill(root)?.click();
+    await settle();
+    expect(address().params.get('archived')).toBe('1');
+    expect(pill(root)?.getAttribute('aria-pressed')).toBe('true');
+    expect(groupsOf(root)).toEqual(['workspace', '001', '002']);
     const chips = Array.from(page(root).querySelectorAll('[data-library-chip="archived"]')).map(
       (chip) => chip.closest('[data-library-entry]')?.getAttribute('data-library-entry') ?? '',
     );
@@ -432,11 +451,40 @@ describe('LibraryPage archived documents (spec 034, ISC-187.1)', () => {
     expect(text(row?.querySelector('[data-library-chip="archived"]'))).toBe('archived');
     expect(row?.querySelector('[data-library-chip="archived"] ui-icon')?.getAttribute('data-icon')).toBe('archive');
     expect(page(root).querySelector('[data-library-entry="002-web-console/spec.md"] [data-library-chip]')).toBeNull();
+    expect(text(page(root).querySelector('[data-library-count]'))).toContain('3 of 3 documents');
+
+    pill(root)?.click();
+    await settle();
+    expect(address().params.has('archived')).toBe(false);
+    expect(groupsOf(root)).toEqual(['workspace', '002']);
   });
 
-  it('archived: the chip reads "archiviert" in German', async () => {
-    const root = await open('/w/harbor/library', ARCHIVED, 'medium', 'de');
+  it('archived: combines with type, spec and search; hiding them lifts a spec select that named an archived spec', async () => {
+    const root = await open('/w/harbor/library?archived=1&type=spec', ARCHIVED);
+    expect(entries(root)).toEqual(['archive/001-first-light/spec.md', '002-web-console/spec.md']);
+    await harness.navigateByUrl('/w/harbor/library?archived=1&spec=001&q=first');
+    await settle();
+    expect(entries(root)).toEqual(['archive/001-first-light/spec.md', 'archive/001-first-light/.design/prototype']);
+    pill(root)?.click();
+    await settle();
+    expect(address().params.has('archived')).toBe(false);
+    expect(address().params.has('spec')).toBe(false);
+    expect(address().params.get('q')).toBe('first');
+  });
+
+  it('archived: no pill without archived documents, and none in spec scope, where an archived spec lists its own', async () => {
+    expect(pill(await open('/w/harbor/library'))).toBeNull();
+    TestBed.resetTestingModule();
+    const root = await open('/w/harbor/s/001/library', ARCHIVED);
+    expect(pill(root)).toBeNull();
+    expect(entries(root)).toContain('archive/001-first-light/spec.md');
+  });
+
+  it('archived: the chip and the pill read German', async () => {
+    const root = await open('/w/harbor/library?archived=1', ARCHIVED, 'medium', 'de');
     expect(text(page(root).querySelector('[data-library-entry="archive/001-first-light/spec.md"] [data-library-chip="archived"]'))).toBe('archiviert');
+    expect(text(pill(root))).toContain('Archiviert');
+    expect(pill(root)?.getAttribute('aria-label')).toBe('Dokumente archivierter Specs (2)');
   });
 });
 
@@ -568,8 +616,8 @@ describe('LibraryPage address, state select and search (T32, ISC-156.2)', () => 
   });
 
   it('writes a default as null, so the router removes its param', () => {
-    expect(addressParams({ query: '', type: 'all', spec: 'all', state: 'all' })).toEqual({ q: null, type: null, spec: null, state: null });
-    expect(addressParams({ query: 'x', type: 'plan', spec: '017', state: 'open' })).toEqual({ q: 'x', type: 'plan', spec: '017', state: 'open' });
+    expect(addressParams({ query: '', type: 'all', spec: 'all', state: 'all', archived: false })).toEqual({ q: null, type: null, spec: null, state: null, archived: null });
+    expect(addressParams({ query: 'x', type: 'plan', spec: '017', state: 'open', archived: true })).toEqual({ q: 'x', type: 'plan', spec: '017', state: 'open', archived: '1' });
   });
 });
 

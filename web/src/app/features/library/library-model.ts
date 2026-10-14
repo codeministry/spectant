@@ -52,16 +52,18 @@ export const STATE_FILTERS: readonly LibraryStateFilter[] = ['all', 'stale', 'mi
 
 /**
  * The list's filters as the address carries them: `q` the raw search text, `type` a pill type or `all`, `spec` `all`,
- * `workspace` or a spec's number (`017`, the `?spec=` form of design.md), `state` one of `STATE_FILTERS`.
+ * `workspace` or a spec's number (`017`, the `?spec=` form of design.md), `state` one of `STATE_FILTERS`, `archived`
+ * whether the archived specs' documents are listed too (`?archived=1`; off by default).
  */
 export interface LibraryFilter {
   readonly query: string;
   readonly type: LibraryDocType | 'all';
   readonly spec: string;
   readonly state: LibraryStateFilter;
+  readonly archived: boolean;
 }
 
-export const NO_FILTER: LibraryFilter = { query: '', type: 'all', spec: 'all', state: 'all' };
+export const NO_FILTER: LibraryFilter = { query: '', type: 'all', spec: 'all', state: 'all', archived: false };
 
 /** The server's search answer as the list needs it: matched path → plain snippet. */
 export type SearchHits = ReadonlyMap<string, string>;
@@ -120,8 +122,9 @@ const isPillType = (value: string): value is LibraryDocType => (PILL_TYPES as re
 const isState = (value: string): value is LibraryStateFilter => (STATE_FILTERS as readonly string[]).includes(value);
 
 /**
- * The filter a query string names (`?q=`, `?type=`, `?spec=`, `?state=`); an unknown type or state falls back to
- * `all`, so a hand-edited address never empties the list by a typo. `spec` is taken as it is (`specKey` form).
+ * The filter a query string names (`?q=`, `?type=`, `?spec=`, `?state=`, `?archived=`); an unknown type or state falls
+ * back to `all`, so a hand-edited address never empties the list by a typo. `spec` is taken as it is (`specKey` form);
+ * `archived` is on for `1` only.
  */
 export function parseFilter(param: (name: string) => string | null): LibraryFilter {
   const type = param('type') ?? 'all';
@@ -132,16 +135,18 @@ export function parseFilter(param: (name: string) => string | null): LibraryFilt
     type: isPillType(type) ? type : 'all',
     spec: spec === '' ? 'all' : spec,
     state: isState(state) ? state : 'all',
+    archived: param('archived') === '1',
   };
 }
 
-/** The query params of a filter, defaults left out (`?q=`, `?type=`, `?spec=`, `?state=`). */
+/** The query params of a filter, defaults left out (`?q=`, `?type=`, `?spec=`, `?state=`, `?archived=`). */
 export function filterParams(filter: LibraryFilter): Record<string, string> {
   const params: Record<string, string> = {};
   if (filter.query !== '') params['q'] = filter.query;
   if (filter.type !== 'all') params['type'] = filter.type;
   if (filter.spec !== 'all') params['spec'] = filter.spec;
   if (filter.state !== 'all') params['state'] = filter.state;
+  if (filter.archived) params['archived'] = '1';
   return params;
 }
 
@@ -161,12 +166,18 @@ export function specOptions(docs: readonly LibraryDoc[]): readonly SpecOption[] 
   return [...(specs.includes(WORKSPACE_SPEC) ? [WORKSPACE_SPEC] : []), ...folders].map((spec) => ({ value: specKey(spec), spec }));
 }
 
+/** The documents the list draws from under `archived`: every one with it, else the active ones only. */
+export const listable = (docs: readonly LibraryDoc[], archived: boolean): readonly LibraryDoc[] =>
+  archived ? docs : docs.filter((doc) => doc.archived !== true);
+
 /**
- * Whether a document passes the filter. A query matches the title or path ignoring case, or a server search hit (the
- * full text); `state` `stale` / `missing` keeps that state only; `open` keeps no document (the fog lines stand instead).
+ * Whether a document passes the filter. An archived spec's document only with `archived`; a query matches the title or
+ * path ignoring case, or a server search hit (the full text); `state` `stale` / `missing` keeps that state only;
+ * `open` keeps no document (the fog lines stand instead).
  */
 export function matches(doc: LibraryDoc, filter: LibraryFilter, hits: SearchHits | null = null): boolean {
   if (filter.state === 'open') return false;
+  if (!filter.archived && doc.archived === true) return false;
   if (filter.state !== 'all' && doc.state !== filter.state) return false;
   if (filter.type !== 'all' && doc.type !== filter.type) return false;
   if (filter.spec !== 'all' && specKey(doc.spec) !== filter.spec) return false;

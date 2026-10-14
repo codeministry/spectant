@@ -148,10 +148,17 @@ async function rows(page: Page): Promise<Row[]> {
   );
 }
 
-async function catalogOf(request: APIRequestContext): Promise<LibraryCatalog> {
+/** The catalog as the read route serves it, the archived specs' documents included. */
+async function servedCatalogOf(request: APIRequestContext): Promise<LibraryCatalog> {
   const answer = await request.get(ROUTE);
   expect(answer.status()).toBe(200);
   return (await answer.json()) as LibraryCatalog;
+}
+
+/** The catalog as the list shows it by default: without the archived specs' documents (no `?archived=1`). */
+async function catalogOf(request: APIRequestContext): Promise<LibraryCatalog> {
+  const catalog = await servedCatalogOf(request);
+  return { ...catalog, docs: catalog.docs.filter((doc) => doc.archived !== true) };
 }
 
 /** The evidence documents of each spec, by group key, in catalog order. */
@@ -305,6 +312,37 @@ function controlName(key: ControlKey, count: number): string {
   const names = EN.library.control[key];
   return template(count === 0 ? names.none : count === 1 ? names.one : names.other, { count });
 }
+
+test.describe('archived', () => {
+  test.use(atWidth(WIDTHS.desktop));
+
+  test('the pill "Archived" lists the archived specs\' documents on ?archived=1, combined with the type, and hides them again', async ({ page, request }) => {
+    const served = await servedCatalogOf(request);
+    const archived = served.docs.filter((doc) => doc.archived === true && doc.type !== 'evidence');
+    expect(archived.length, 'harbor holds an archived spec with documents').toBeGreaterThan(0);
+    const toggle = page.locator('[data-library-archived]');
+
+    await page.goto(PAGE);
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await expect(toggle.locator('[data-library-archived-count]')).toHaveText(String(served.docs.filter((doc) => doc.archived === true).length));
+    await expect(page.locator(`${ENTRY} [data-library-chip="archived"]`)).toHaveCount(0);
+
+    await toggle.click();
+    await expect(page).toHaveURL((url) => url.searchParams.get('archived') === '1');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator(`${ENTRY} [data-library-chip="archived"]`)).toHaveCount(archived.length);
+
+    const type = archived[0]?.type ?? 'spec';
+    await pill(page, type).click();
+    await expect(page).toHaveURL((url) => url.searchParams.get('type') === type && url.searchParams.get('archived') === '1');
+    const typed = served.docs.filter((doc) => doc.type === type);
+    expect((await shownPaths(page)).sort()).toEqual(pathsOf(typed));
+
+    await toggle.click();
+    await expect(page).toHaveURL((url) => !url.searchParams.has('archived') && url.searchParams.get('type') === type);
+    expect(await shownPaths(page)).toEqual(pathsOf(typed.filter((doc) => doc.archived !== true)));
+  });
+});
 
 test.describe('control', () => {
   test.use(atWidth(WIDTHS.desktop));
@@ -1590,7 +1628,8 @@ test.describe('redirect', () => {
   });
 
   test('the PAGE select names Specs, Board, Planning and Library with its catalog counts, no Tech', async ({ page, request }) => {
-    const catalog = await catalogOf(request);
+    // The menu counts the whole catalog, the archived specs' documents included; the list's filter does not reach it.
+    const catalog = await servedCatalogOf(request);
     await page.goto(OLD);
     await expect(page).toHaveURL((url) => url.pathname === PAGE);
     await expect(heading(page)).toBeVisible();

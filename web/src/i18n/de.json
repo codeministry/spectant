@@ -2092,7 +2092,9 @@
       "all": "Alle",
       "spec": "Spec",
       "allSpecs": "Alle Specs",
-      "state": "Zustand"
+      "state": "Zustand",
+      "archived": "Archiviert",
+      "archivedLabel": "Dokumente archivierter Specs ({{count}})"
     },
     "states": {
       "all": "Alle",

@@ -191,12 +191,31 @@ describe('library model (spec 017, T26)', () => {
     it('reads and writes the address, unknown values falling back to all', () => {
       const params = new URLSearchParams('q=etag&type=plan&spec=017&state=stale');
       const filter = parseFilter((name) => params.get(name));
-      expect(filter).toEqual({ query: 'etag', type: 'plan', spec: '017', state: 'stale' });
+      expect(filter).toEqual({ query: 'etag', type: 'plan', spec: '017', state: 'stale', archived: false });
       expect(filterParams(filter)).toEqual({ q: 'etag', type: 'plan', spec: '017', state: 'stale' });
       const odd = new URLSearchParams('type=notes&state=old&spec=');
       expect(parseFilter((name) => odd.get(name))).toEqual(NO_FILTER);
       expect(parseFilter((name) => new URLSearchParams('type=context').get(name)).type).toBe('all');
       expect(filterParams(NO_FILTER)).toEqual({});
+    });
+
+    it('reads ?archived=1 as on, anything else as off, and writes it only when on', () => {
+      const on = parseFilter((name) => new URLSearchParams('archived=1&type=spec').get(name));
+      expect(on).toEqual({ ...NO_FILTER, type: 'spec', archived: true });
+      expect(filterParams(on)).toEqual({ type: 'spec', archived: '1' });
+      expect(parseFilter((name) => new URLSearchParams('archived=yes').get(name)).archived).toBe(false);
+    });
+
+    it('leaves the archived specs\' documents out unless archived is on, and combines it with every other filter', () => {
+      const docs = [doc('002-a/spec.md'), doc('002-a/plan.md', { type: 'plan' }), doc('archive/001-old/spec.md', { spec: '001-old', archived: true }), doc('archive/001-old/plan.md', { spec: '001-old', type: 'plan', archived: true })];
+      const paths = (filter: typeof NO_FILTER): string[] => docs.filter((entry) => matches(entry, filter)).map((entry) => entry.path);
+      expect(paths(NO_FILTER)).toEqual(['002-a/spec.md', '002-a/plan.md']);
+      expect(paths({ ...NO_FILTER, archived: true })).toEqual(docs.map((entry) => entry.path));
+      expect(paths({ ...NO_FILTER, archived: true, type: 'plan' })).toEqual(['002-a/plan.md', 'archive/001-old/plan.md']);
+      expect(paths({ ...NO_FILTER, archived: true, spec: '001' })).toEqual(['archive/001-old/spec.md', 'archive/001-old/plan.md']);
+      expect(paths({ ...NO_FILTER, spec: '001' })).toEqual([]);
+      expect(paths({ ...NO_FILTER, archived: true, query: 'old/plan' })).toEqual(['archive/001-old/plan.md']);
+      expect(paths({ ...NO_FILTER, archived: true, state: 'stale' })).toEqual([]);
     });
 
     it('offers workspace-wide first, then every spec ascending, once each', () => {
