@@ -16,9 +16,9 @@
       "total": 62
     },
     "takeable": 5,
-    "warnings": 7,
+    "warnings": 8,
     "fog": 4,
-    "attention": 11,
+    "attention": 12,
     "archived": 1
   },
   "stageCounts": {
@@ -256,7 +256,23 @@
         "id": "u:3f9c0a7d",
         "legacy": false
       },
-      "warnings": [],
+      "warnings": [
+        {
+          "kind": "spec-overlap",
+          "text": "shares 1 file with 004, no edge",
+          "overlap": {
+            "specs": [
+              "002",
+              "004"
+            ],
+            "paths": [
+              "web/src/app/retention/"
+            ],
+            "waiting": "002",
+            "edge": "(after: 004)"
+          }
+        }
+      ],
       "gates": {
         "reviewed": {
           "state": "fresh",
@@ -588,6 +604,29 @@
           "warning": {
             "kind": "fog",
             "text": "2 open fog lines"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "spec-overlap",
+      "items": [
+        {
+          "spec": "002",
+          "warning": {
+            "kind": "spec-overlap",
+            "text": "shares 1 file with 004, no edge",
+            "overlap": {
+              "specs": [
+                "002",
+                "004"
+              ],
+              "paths": [
+                "web/src/app/retention/"
+              ],
+              "waiting": "002",
+              "edge": "(after: 004)"
+            }
           }
         }
       ]

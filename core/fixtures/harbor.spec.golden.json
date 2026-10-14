@@ -105,7 +105,23 @@
         "detail": "mermaid diagram present"
       }
     },
-    "warnings": [],
+    "warnings": [
+      {
+        "kind": "spec-overlap",
+        "text": "shares 1 file with 004, no edge",
+        "overlap": {
+          "specs": [
+            "002",
+            "004"
+          ],
+          "paths": [
+            "web/src/app/retention/"
+          ],
+          "waiting": "002",
+          "edge": "(after: 004)"
+        }
+      }
+    ],
     "waitingOnYou": [
       {
         "kind": "operator",
@@ -127,7 +143,7 @@
     "areas": {
       "status": {
         "timelineEntries": 9,
-        "warnings": 0
+        "warnings": 1
       },
       "live": {
         "lockSource": "none",

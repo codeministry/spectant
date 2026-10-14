@@ -315,7 +315,9 @@ From `core/fixtures/edges/specs/003-route-map/spec.md`:
 - [ ] ISC-7: Routes from the imported timetable carry their colour. (after: 001)
 ```
 
-`T2` waits on `T1` and on spec `002`; `ISC-7` waits on the archived `001`. The build tooling that predates spec 025
+`T2` waits on `T1` and on spec `002`; `ISC-7` waits on the archived `001`. An edge on a number no spec carries and a
+cycle over spec edges are each one `spec-edge` warning on the dashboard row of the spec that carries the edge (ISC-162.4);
+the overlap of two specs without an edge is the `spec-overlap` warning (see `constitution`). The build tooling that predates spec 025
 does not know spec edges. Until a dispatcher that reads `afterSpecs` builds the specs of a repository, its `tasks.md`
 files carry no spec edge.
 
@@ -382,6 +384,23 @@ frontmatter parses like a spec's; `dev_services: <port>=<label>, …` names the 
 A service whose process runs in a worktree carries `worktree: true`, and one in the spec worktree `.worktrees/NNN-slug`
 also `spec`, that spec's number `NNN` (spec 027, ISC-177).
 The `## Lanes` table maps path prefixes to lanes for the task grammar (spec 002, T23). The Docs tab renders the rest.
+
+`shared_files: [<path or glob>, …]` names the files every spec may change without the specs waiting on each other,
+such as a message catalogue or the lockfile (spec 025, ISC-164). The dashboard compares the paths of every open spec
+(not `phase: complete`, not archived): the code spans in the first column of the plan's `## Affected Files and
+Modules` table and the task path column of `tasks.md`. Two open specs that change the same file, with no spec edge
+between them in either direction, get exactly one `spec-overlap` warning, on the spec that waits: the one at the
+earlier stage, then the one with the lower claim progress, then the higher number; it offers the edge
+`(after: NNN)` on the other. Paths match after normalising (forward slashes, no leading `./`): equal paths, a folder
+written with a trailing `/` covers every path under it, and a path with `*` or `?` is a glob (`*` and `?` within one
+folder, `**` across folders). A common path that an entry of `shared_files:` covers, by the same rules, does not
+count. Without the key every path counts.
+
+From `core/fixtures/edges/specs/constitution.md`:
+
+```markdown
+shared_files: [src/i18n/*.json, bun.lock]
+```
 
 From `core/fixtures/harbor/specs/constitution.md`:
 

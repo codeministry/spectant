@@ -7,7 +7,9 @@
 // The chain per spec, as the old SpecDashboard `collect()` ran it: frontmatter and claims → partitionClaims → the two
 // gate marks → stage and next command → driftReport against the master → diagramVerdict → warnings. Then the TL;DR
 // state, the archive listing, the KPIs and the rows in action order. Malformed input becomes a FileDiagnostic, never
-// a throw.
+// a throw. Spec 025 adds the spec edges' warnings across rows: the edge diagnostics as `spec-edge` and, read from the
+// plans' `## Affected Files and Modules` and the tasks' path columns, a `spec-overlap` per pair of open specs that
+// change the same file without an edge between them (ISC-164).
 //
 // The web app imports this file's types only (`import type`, and the barrel re-exports types only), so the runtime
 // imports below (gates hashing through `node:crypto`, for one) never reach the browser bundle.
@@ -38,6 +40,8 @@ import type {
   SpecGates,
   SpecRead,
   SpecSource,
+  SpecEdge,
+  SpecOverlap,
   SpecType,
   SpecWait,
   SpecWarning,
@@ -52,12 +56,15 @@ import type { Progress } from './frontmatter.ts';
 import { gateState, readGateMark, reviewedGate } from './gates.ts';
 import { readIdeas } from './ideas.ts';
 import type { GateCheck, GateMarkReading, GateName, ReviewedFile } from './gates.ts';
+import { TABLE_SEP, tableCells } from './markdown.ts';
 import { resolveEdges } from './spec-edges.ts';
+import type { ResolvedSpecEdges } from './spec-edges.ts';
 import { specIdOf } from './spec-ref.ts';
 import { codeReviewOf, isWorkflowStage, nextCommandWithReason, reasonOf, stageMismatchOf } from './stage.ts';
 import type { Stage, StageInput } from './stage.ts';
 import { driftReport, hasDrift, heldLocks, mainFeatureOf, masterProgressMismatch, partitionClaims } from './status.ts';
 import type { DriftClass, DriftReport } from './status.ts';
+import { parseTaskLines } from './tasks.ts';
 import { parseTldr, tldrState } from './tldr.ts';
 import type { WorktreeAssignment } from './worktrees.ts';
 
@@ -293,10 +300,14 @@ export const ACTION_ORDER: readonly Stage[] = ['close', 'code-review', 'review',
 const BUILDING: ReadonlySet<Stage> = new Set<Stage>(['build', 'blocked', 'code-review', 'close-pending']);
 
 /**
- * Warning kinds in the order the old dashboard listed them on a row; the worktree mismatch (spec 027, ISC-174.1), a
- * git fact rather than a file's, is its own group, last.
+ * Warning kinds in the order the old dashboard listed them on a row, the two of the spec edges (spec 025, ISC-164,
+ * ISC-162.4) after the other file warnings and before the lock readings; the worktree mismatch (spec 027, ISC-174.1),
+ * a git fact rather than a file's, is its own group, last. A row lists its warnings in the same order.
  */
-const WARNING_ORDER: readonly WarningKind[] = ['drift', 'review', 'diagrams', 'closed', 'fog', 'locks', 'worktree-branch-mismatch'];
+const WARNING_ORDER: readonly WarningKind[] = ['drift', 'review', 'diagrams', 'closed', 'fog', 'spec-overlap', 'spec-edge', 'locks', 'worktree-branch-mismatch'];
+
+/** Kinds a row lists after the spec edges' warnings: the lock readings and the worktree mismatch. */
+const AFTER_EDGE_WARNINGS: ReadonlySet<WarningKind> = new Set<WarningKind>(['locks', 'worktree-branch-mismatch']);
 
 const NEXT_UP = 3;
 
@@ -636,6 +647,186 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], 
   };
 }
 
+// ── spec overlap and edge warnings (spec 025) ─────────────────────────────────────────────────────────
+
+/** One open spec as the overlap reads it (ISC-164): its row's stage and claim progress, and the paths it changes. */
+export interface OverlapSpec {
+  /** `NNN`. */
+  readonly num: string;
+  readonly stage: Stage;
+  readonly progress: Progress;
+  /** The paths of its plan's `## Affected Files and Modules` table and of its tasks' path column, as written. */
+  readonly paths: readonly string[];
+}
+
+const AFFECTED_HEADING = /^##\s+Affected Files and Modules\s*$/i;
+/** A bare cell or path token that reads as a path: no blank, no backtick, a slash or a dot in it. */
+const PATH_LIKE = /^[^\s`]*[/.][^\s`]*$/;
+
+/**
+ * The paths of a plan's `## Affected Files and Modules` table (ISC-164): from the first cell of every body row, each
+ * code span in it, or the whole cell when it holds none and reads as a path. The header row (`Path`, `Pfad`) reads as
+ * none. Lines inside a code fence are skipped.
+ */
+export function affectedPaths(plan: string): string[] {
+  const out: string[] = [];
+  let inside = false;
+  let fenced = false;
+  for (const line of plan.split(/\r?\n/)) {
+    if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
+    if (fenced) continue;
+    if (/^##\s/.test(line)) {
+      inside = AFFECTED_HEADING.test(line.trim());
+      continue;
+    }
+    if (!inside || !line.trim().startsWith('|') || TABLE_SEP.test(line)) continue;
+    const cell = tableCells(line)[0] ?? '';
+    const spans = [...cell.matchAll(/`([^`]+)`/g)].map((m) => (m[1] ?? '').trim()).filter((p) => p !== '');
+    if (spans.length > 0) out.push(...spans);
+    else if (PATH_LIKE.test(cell)) out.push(cell);
+  }
+  return out;
+}
+
+/** A path for comparing: slashes forward, no leading `./`, no doubled slash. */
+const normalisePath = (path: string): string => path.trim().replace(/\\/g, '/').replace(/^(\.\/)+/, '').replace(/\/{2,}/g, '/');
+
+/**
+ * The constitution's `shared_files:` (ISC-164): files every spec may touch, such as a message catalogue or the
+ * lockfile, as `[a, b]` or `a, b`; each entry may be a glob. Absent key: none, so every path counts.
+ */
+export function sharedFilesOf(constitution: string | null): string[] {
+  if (constitution === null) return [];
+  const raw = parseFrontmatter(constitution).values.shared_files;
+  if (raw === undefined) return [];
+  return raw
+    .trim()
+    .replace(/^\[/, '')
+    .replace(/\]$/, '')
+    .split(',')
+    .map((entry) => normalisePath(entry.trim().replace(/^["'`]|["'`]$/g, '')))
+    .filter((entry) => entry !== '');
+}
+
+/** A glob as a whole-path pattern: `**` crosses folders, `*` and `?` stay inside one. */
+function globPattern(glob: string): RegExp {
+  let source = '';
+  for (let i = 0; i < glob.length; i += 1) {
+    const c = glob[i] as string;
+    if (c === '*' && glob[i + 1] === '*') {
+      source += '.*';
+      i += 1;
+    } else if (c === '*') source += '[^/]*';
+    else if (c === '?') source += '[^/]';
+    else source += c.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  }
+  return new RegExp(`^${source}$`, 'u');
+}
+
+/**
+ * Whether `pattern` covers `path` (both normalised): the same path; a folder (ending in `/`) covers every path under
+ * it; a path with `*` or `?` is a glob over whole paths. Two globs cover each other only when written the same.
+ */
+function covers(pattern: string, path: string): boolean {
+  if (pattern === path) return true;
+  if (pattern.endsWith('/')) return path.startsWith(pattern);
+  return /[*?]/.test(pattern) && globPattern(pattern).test(path);
+}
+
+/** The paths two specs both change: each match once, as its more specific side, in path order. */
+function commonPaths(a: readonly string[], b: readonly string[]): string[] {
+  const out = new Set<string>();
+  for (const pa of a) {
+    for (const pb of b) {
+      if (pa === pb) out.add(pa);
+      else if (covers(pa, pb)) out.add(pb);
+      else if (covers(pb, pa)) out.add(pa);
+    }
+  }
+  return [...out].sort();
+}
+
+/** How far a stage stands along the workflow, for who waits; `blocked` stands with `build`, `close-pending` with `close`. */
+const STAGE_RANK: Readonly<Record<Stage, number>> = {
+  plan: 0,
+  tasks: 1,
+  review: 2,
+  build: 3,
+  blocked: 3,
+  'code-review': 4,
+  close: 5,
+  'close-pending': 5,
+  done: 6,
+};
+
+const ratio = (p: Progress): number => (p.total === 0 ? 0 : p.closed / p.total);
+
+/** Who of a pair waits (plan.md § Approach): the earlier stage, then the lower claim progress, then the higher number. */
+function waitingOf(a: OverlapSpec, b: OverlapSpec): OverlapSpec {
+  const byStage = STAGE_RANK[a.stage] - STAGE_RANK[b.stage];
+  if (byStage !== 0) return byStage < 0 ? a : b;
+  const byProgress = ratio(a.progress) - ratio(b.progress);
+  if (byProgress !== 0) return byProgress < 0 ? a : b;
+  return a.num > b.num ? a : b;
+}
+
+/**
+ * Every overlap between the given open specs (ISC-164): one per pair that both change a path, minus what
+ * `sharedFiles` covers, and that no spec edge joins in either direction, met or open. Pairs in number order.
+ */
+export function specOverlaps(
+  specs: readonly OverlapSpec[],
+  edges: ReadonlyArray<Pick<SpecEdge, 'fromSpec' | 'toSpec'>>,
+  sharedFiles: readonly string[],
+): SpecOverlap[] {
+  const joined = new Set(edges.flatMap((e) => [`${e.fromSpec}>${e.toSpec}`, `${e.toSpec}>${e.fromSpec}`]));
+  const shared = sharedFiles.map(normalisePath);
+  const sorted = [...specs].sort((a, b) => (a.num < b.num ? -1 : a.num > b.num ? 1 : 0));
+  const pathsOf = new Map(sorted.map((s) => [s.num, [...new Set(s.paths.map(normalisePath).filter((p) => p !== ''))]]));
+  const out: SpecOverlap[] = [];
+  sorted.forEach((a, i) => {
+    for (const b of sorted.slice(i + 1)) {
+      if (a.num === b.num || joined.has(`${a.num}>${b.num}`)) continue;
+      const paths = commonPaths(pathsOf.get(a.num) ?? [], pathsOf.get(b.num) ?? []).filter((p) => !shared.some((s) => covers(s, p)));
+      if (paths.length === 0) continue;
+      const waiting = waitingOf(a, b);
+      const other = waiting === a ? b : a;
+      out.push({ specs: [a.num, b.num], paths, waiting: waiting.num, edge: `(after: ${other.num})` });
+    }
+  });
+  return out;
+}
+
+/** The base name of a repository-relative file, as a warning's `ref`. */
+const baseName = (file: string): string => file.slice(file.lastIndexOf('/') + 1);
+
+/**
+ * The warnings of the spec edges per row id (spec 025): a `spec-edge` per edge diagnostic on the row of the folder
+ * the edge sits in (ISC-162.4), and a `spec-overlap` per overlapping pair of open rows on the row that waits
+ * (ISC-164). A row is open unless its stage is `done`; an archived spec has no row and so counts for none.
+ */
+function edgeWarnings(rows: readonly DashboardSpecRow[], active: readonly SpecFiles[], edges: ResolvedSpecEdges, constitution: string | null): Map<string, SpecWarning[]> {
+  const out = new Map<string, SpecWarning[]>();
+  const add = (id: string, warning: SpecWarning): void => void out.set(id, [...(out.get(id) ?? []), warning]);
+  const idOf = new Map(rows.map((r) => [r.slug, r.id]));
+  for (const { file, diagnostic } of edges.diagnostics) {
+    const id = idOf.get(file.split('/')[1] ?? '');
+    if (id !== undefined) add(id, { kind: 'spec-edge', text: diagnostic.message, ref: baseName(file) });
+  }
+  const filesOf = new Map(active.map((f) => [f.folder, f]));
+  const open = rows.flatMap((r): OverlapSpec[] => {
+    const texts = filesOf.get(r.slug)?.texts;
+    if (r.stage === 'done' || texts === undefined) return [];
+    const tasks = texts.tasks === undefined ? [] : parseTaskLines(constitution === null ? { tasks: texts.tasks } : { tasks: texts.tasks, constitution }).tasks;
+    return [{ num: r.id, stage: r.stage, progress: r.progress, paths: [...affectedPaths(texts.plan ?? ''), ...tasks.flatMap((t) => t.paths)] }];
+  });
+  for (const overlap of specOverlaps(open, edges.edges, sharedFilesOf(constitution))) {
+    const other = overlap.specs[0] === overlap.waiting ? overlap.specs[1] : overlap.specs[0];
+    add(overlap.waiting, { kind: 'spec-overlap', text: `shares ${plural(overlap.paths.length, 'file')} with ${other}, no edge`, overlap });
+  }
+  return out;
+}
+
 // ── the workspace ─────────────────────────────────────────────────────────────────────────────────────
 
 const byFolder = (a: SpecFiles, b: SpecFiles): number => (a.folder < b.folder ? -1 : a.folder > b.folder ? 1 : 0);
@@ -686,6 +877,7 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     if (feature !== null && holdsFeatureOpen(fm.phase, doc)) openByFeature.set(feature, [...(openByFeature.get(feature) ?? []), specIdOf(f.folder) ?? f.folder]);
   }
   const activeIds = new Set(active.flatMap((f) => [...(idsByFolder.get(f.folder) ?? [])]));
+  const edges = resolveEdges({ specs: active, archived, constitution: input.constitution }, input.mergeState ?? []);
   const ctx: SpecContext = {
     master,
     idsByFolder,
@@ -698,11 +890,19 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     worktreeDiagnostics: input.worktrees?.diagnostics ?? [],
     workflow: input.workflow,
     openByFeature,
-    // The edges' own warnings join the dashboard with the overlap (T15); here only the waits feed the stage.
-    waits: new Map(resolveEdges({ specs: active, archived, constitution: input.constitution }, input.mergeState ?? []).waits.map((w) => [w.spec, w])),
+    waits: new Map(edges.waits.map((w) => [w.spec, w])),
   };
 
-  const rows = active.flatMap((f) => specRow(f, ctx, diagnostics) ?? []).sort(byAction);
+  // The rows first: who waits in an overlap reads their stage and progress (T15). The edge warnings go before the locks.
+  const built = active.flatMap((f) => specRow(f, ctx, diagnostics) ?? []).sort(byAction);
+  const extra = edgeWarnings(built, active, edges, input.constitution);
+  const rows = built.map((r) => {
+    const more = extra.get(r.id);
+    if (more === undefined) return r;
+    const at = r.warnings.findIndex((w) => AFTER_EDGE_WARNINGS.has(w.kind));
+    const cut = at === -1 ? r.warnings.length : at;
+    return { ...r, warnings: [...r.warnings.slice(0, cut), ...more, ...r.warnings.slice(cut)] };
+  });
   for (const f of archived) {
     if (f.texts.spec === undefined) {
       note(fileOf('specs/archive', f.folder, 'spec'), [{ severity: 'error', code: 'spec-missing', message: 'The archived folder has no spec.md and is not listed.' }]);

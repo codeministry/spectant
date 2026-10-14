@@ -5,15 +5,17 @@
 // the active 002 and the archived 001, 004 waits on 002 through a claim, 005 and 006 form a cycle, 007 names the
 // unknown 042. `-t parse` (ISC-162) pins what the parsers read, `-t resolve` (ISC-162.1) when an edge is met against a
 // merge state built by hand (the server reads it from git later), `-t diagnostics` (ISC-162.4) the unknown number and
-// the cycle; holding, the stage and the overlap come with their own blocks.
+// the cycle; holding, the stage and the overlap come with their own blocks. `-t overlap` (ISC-164): 002 and 007 share
+// `src/app/stops/index.ts` with no edge, 002 and 003 share `search.ts` joined by 003's edges, the archived 001 counts
+// for nothing, and 004 and 005 share only `src/i18n/en.json`, which the constitution's `shared_files:` names.
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 
 import { buildClaimViews } from '../src/claim-view.ts';
 import type { ClaimView, MergeState, SpecEdge, SpecFiles, SpecWait, TaskRow } from '../src/files.ts';
 import { parseClaims } from '../src/claims.ts';
-import { buildDashboard } from '../src/dashboard.ts';
-import type { DashboardInput } from '../src/dashboard.ts';
+import { affectedPaths, buildDashboard, sharedFilesOf, specOverlaps } from '../src/dashboard.ts';
+import type { DashboardInput, OverlapSpec } from '../src/dashboard.ts';
 import { hashForGate } from '../src/gates.ts';
 import { edgeMet, resolveEdges } from '../src/spec-edges.ts';
 import { specIdOf } from '../src/spec-ref.ts';
@@ -434,5 +436,103 @@ describe('spec edges: stage (ISC-162.3)', () => {
     expect(rowsAt(MERGED_002)).toContain('004-fare-table build: ISC-9 is takeable');
     // Without rows, 002 is read from its frontmatter (`phase: building`, no branch): the edge stays open.
     expect(rowsAt()).toContain('004-fare-table blocked: waits on 002');
+  });
+});
+
+/** The `spec-overlap` warnings of a dashboard: the row that carries each and its pair. */
+function overlapsOf(input: DashboardInput): Array<{ at: string; specs: readonly string[]; paths: readonly string[]; waiting: string; edge: string }> {
+  return buildDashboard(input).specs.flatMap((r) =>
+    r.warnings.flatMap((w) => (w.kind === 'spec-overlap' && w.overlap !== undefined ? [{ at: r.id, ...w.overlap }] : [])),
+  );
+}
+
+/** The tree with the spec.md and tasks.md of spec `num` changed by `edit`. */
+function editSpec(input: DashboardInput, num: string, edit: (text: string) => string): DashboardInput {
+  const specs = input.specs.map((files): SpecFiles => {
+    if (specIdOf(files.folder) !== num) return files;
+    const t = files.texts;
+    return { folder: files.folder, texts: { ...t, ...(t.spec === undefined ? {} : { spec: edit(t.spec) }), ...(t.tasks === undefined ? {} : { tasks: edit(t.tasks) }) } };
+  });
+  return { ...input, specs };
+}
+
+const overlapSpec = (num: string, paths: readonly string[], stage: OverlapSpec['stage'] = 'build', closed = 0, total = 2): OverlapSpec => ({
+  num,
+  stage,
+  progress: { closed, total },
+  paths,
+});
+
+describe('spec edges: overlap (ISC-164)', () => {
+  test('two open specs share a file and no edge joins them: exactly one spec-overlap, on the spec that waits', () => {
+    // 002 and 007 both stand on build; 007 has closed 0 of 2 claims, 002 one of 2, so 007 waits on 002.
+    expect(overlapsOf({ ...reviewedTree(), mergeState: BASE })).toEqual([
+      { at: '007', specs: ['002', '007'], paths: ['src/app/stops/index.ts'], waiting: '007', edge: '(after: 002)' },
+    ]);
+    const model = buildDashboard({ ...reviewedTree(), mergeState: BASE });
+    const row = model.specs.find((r) => r.id === '007');
+    expect(row?.warnings.find((w) => w.kind === 'spec-overlap')?.text).toBe('shares 1 file with 002, no edge');
+    expect(model.warningGroups.find((g) => g.kind === 'spec-overlap')?.items.map((i) => i.spec)).toEqual(['007']);
+  });
+
+  test('an edge in one direction joins the pair: 002 and 003 share search.ts and give none, without the edge one', () => {
+    expect(overlapsOf(TREE).some((o) => o.specs.includes('003'))).toBe(false);
+    const unjoined = editSpec(TREE, '003', (text) => text.replace(/, 002\)/g, ')'));
+    expect(overlapsOf(unjoined).filter((o) => o.specs.includes('003'))).toEqual([
+      { at: '003', specs: ['002', '003'], paths: ['src/app/stops/search.ts'], waiting: '003', edge: '(after: 002)' },
+    ]);
+  });
+
+  test('a closed spec counts for none: the archived 001 never, and 002 once complete leaves 007 without a warning', () => {
+    expect(overlapsOf(TREE).some((o) => o.specs.includes('001'))).toBe(false);
+    expect(overlapsOf(editSpec(TREE, '002', (text) => text.replace('phase: building', 'phase: complete')))).toEqual([]);
+  });
+
+  test('only a shared_files: path in common gives none; without the key every path counts', () => {
+    expect(overlapsOf(TREE).map((o) => o.specs.join('+'))).toEqual(['002+007']);
+    const bare = { ...TREE, constitution: CONSTITUTION.replace(/^shared_files:.*\n/m, '') };
+    expect(overlapsOf(bare).map((o) => `${o.specs.join('+')} ${o.paths.join(', ')}`).sort()).toEqual([
+      '002+005 src/i18n/en.json',
+      '002+007 src/app/stops/index.ts',
+      '004+005 src/i18n/en.json',
+    ]);
+    expect(sharedFilesOf(CONSTITUTION)).toEqual(['src/i18n/*.json', 'bun.lock']);
+    expect(sharedFilesOf('---\nrepo: x\n---\n')).toEqual([]);
+  });
+
+  test('paths: the plan table and the task path column, a folder covers what lies under it, a * is a glob', () => {
+    expect(affectedPaths(spec('002').texts.plan ?? '')).toEqual(['src/app/stops/search.ts', 'src/app/stops/index.ts', 'src/i18n/en.json']);
+    const pairs = specOverlaps(
+      [
+        overlapSpec('010', ['src/app/', 'web/tasks-tab.*', './lib/one.ts']),
+        overlapSpec('011', ['src/app/a/b.ts', 'web/tasks-tab.html', 'lib/one.ts', 'web/x/tasks-tab.ts']),
+        overlapSpec('012', ['src/i18n/de.json', 'docs/**/*.md']),
+        overlapSpec('013', ['src/i18n/de.json', 'docs/a/b/c.md', 'bun.lock']),
+      ],
+      [],
+      ['src/i18n/*.json', 'bun.lock'],
+    );
+    expect(pairs.map((o) => `${o.specs.join('+')} ${o.paths.join(', ')}`)).toEqual(['010+011 lib/one.ts, src/app/a/b.ts, web/tasks-tab.html', '012+013 docs/a/b/c.md']);
+  });
+
+  test('who waits: the earlier stage, then the lower claim progress, then the higher number; an edge either way joins', () => {
+    const one = (a: OverlapSpec, b: OverlapSpec) => specOverlaps([a, b], [], [])[0];
+    expect(one(overlapSpec('020', ['f.ts'], 'build'), overlapSpec('021', ['f.ts'], 'plan'))).toMatchObject({ waiting: '021', edge: '(after: 020)' });
+    expect(one(overlapSpec('020', ['f.ts'], 'tasks'), overlapSpec('021', ['f.ts'], 'code-review'))).toMatchObject({ waiting: '020', edge: '(after: 021)' });
+    expect(one(overlapSpec('020', ['f.ts'], 'build', 0, 4), overlapSpec('021', ['f.ts'], 'blocked', 3, 4))).toMatchObject({ waiting: '020' });
+    expect(one(overlapSpec('020', ['f.ts'], 'build', 1, 2), overlapSpec('021', ['f.ts'], 'build', 2, 4))).toMatchObject({ waiting: '021', edge: '(after: 020)' });
+    const pair = [overlapSpec('020', ['f.ts']), overlapSpec('021', ['f.ts'])];
+    expect(specOverlaps(pair, [{ fromSpec: '020', toSpec: '021' }], [])).toEqual([]);
+    expect(specOverlaps(pair, [{ fromSpec: '021', toSpec: '020' }], [])).toEqual([]);
+  });
+
+  test('the edge diagnostics join the dashboard as spec-edge warnings, on the spec that carries the edge', () => {
+    const model = buildDashboard({ ...reviewedTree(), mergeState: BASE });
+    const edgeWarnings = model.specs.flatMap((r) => r.warnings.filter((w) => w.kind === 'spec-edge').map((w) => `${r.id} ${w.ref ?? ''}: ${w.text}`));
+    expect(edgeWarnings.sort()).toEqual([
+      '005 spec.md: Spec edges form the cycle 005 → 006 → 005; every edge in it stays open.',
+      '007 tasks.md: The spec edge (after: 042) on T2 names no spec, active or archived; it stays open.',
+    ]);
+    expect(model.warningGroups.find((g) => g.kind === 'spec-edge')?.items.map((i) => i.spec).sort()).toEqual(['005', '007']);
   });
 });
