@@ -109,12 +109,27 @@
               }
             </select>
           </label>
+          <!-- The archived specs' documents, hidden by default (`?archived=1` lists them); none in spec scope. -->
+          @if (!specScoped() && archivedCount() > 0) {
+            <button
+              type="button"
+              class="lib-pill"
+              data-library-archived
+              [attr.aria-pressed]="archived()"
+              [attr.aria-label]="'library.filters.archivedLabel' | transloco: { count: archivedCount() }"
+              (click)="toggleArchived()"
+            >
+              <ui-icon name="archive" [size]="14" />
+              <span>{{ 'library.filters.archived' | transloco }}</span>
+              <span class="lib-pill-count" data-library-archived-count>{{ archivedCount() }}</span>
+            </button>
+          }
         </div>
         <p class="lib-count" aria-live="polite" data-library-count>
           @if (stateFilter() === 'open') {
             {{ 'library.fog.count' | transloco: { lines: fogLines(), specs: fog().length } }}
           } @else {
-            {{ 'library.count' | transloco: { ws: wsName(), shown: shownCount(), total: docs().length, stale: catalog()?.stale ?? 0, missing: catalog()?.missing ?? 0 } }}
+            {{ 'library.count' | transloco: { ws: wsName(), shown: shownCount(), total: listedCount(), stale: catalog()?.stale ?? 0, missing: catalog()?.missing ?? 0 } }}
           }
         </p>
 

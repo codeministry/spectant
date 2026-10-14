@@ -55,6 +55,7 @@ import {
   type LibraryFilter,
   type LibraryGroup,
   libraryGroups,
+  listable,
   type LibraryStateFilter,
   NO_FILTER,
   parseFilter,
@@ -182,15 +183,23 @@ function pause(ms: number, signal: AbortSignal): Promise<void> {
 }
 
 /**
- * The query params that write `filter` into the address, the ones the list owns (`q`, `type`, `spec`, `state`); a
- * default is `null`, which removes the param. Every other param is left as it is (`queryParamsHandling: merge`).
+ * The query params that write `filter` into the address, the ones the list owns (`q`, `type`, `spec`, `state`,
+ * `archived`); a default is `null`, which removes the param. Every other param is left as it is
+ * (`queryParamsHandling: merge`).
  */
-export function addressParams(filter: LibraryFilter): Readonly<Record<'q' | 'type' | 'spec' | 'state', string | null>> {
+export function addressParams(filter: LibraryFilter): Readonly<Record<'q' | 'type' | 'spec' | 'state' | 'archived', string | null>> {
   const params = filterParams(filter);
-  return { q: params['q'] ?? null, type: params['type'] ?? null, spec: params['spec'] ?? null, state: params['state'] ?? null };
+  return {
+    q: params['q'] ?? null,
+    type: params['type'] ?? null,
+    spec: params['spec'] ?? null,
+    state: params['state'] ?? null,
+    archived: params['archived'] ?? null,
+  };
 }
 
-const sameFilter = (a: LibraryFilter, b: LibraryFilter): boolean => a.query === b.query && a.type === b.type && a.spec === b.spec && a.state === b.state;
+const sameFilter = (a: LibraryFilter, b: LibraryFilter): boolean =>
+  a.query === b.query && a.type === b.type && a.spec === b.spec && a.state === b.state && a.archived === b.archived;
 
 /** The filter a route's query params name. */
 const filterOf = (params: ParamMap): LibraryFilter => parseFilter((name) => params.get(name));
@@ -245,8 +254,9 @@ interface GroupView {
  * replaces it whenever it changes from outside. The search matches titles and paths at once and, 200 ms after the
  * last keystroke, the full text through `ApiClient.librarySearch`; a row found by the server shows its snippet. The
  * state select (All · Outdated · Missing · Open) sits beside the spec select and writes the same `?state=` as the
- * control counts. The chosen document is shown by `app-library-reader` (T34, ISC-156.3), which reports a followed
- * cross reference back as a selection.
+ * control counts. The archived specs' documents are left out until the pill "Archived" beside the selects turns
+ * `?archived=1` on; the spec select and the count follow it. The chosen document is shown by `app-library-reader`
+ * (T34, ISC-156.3), which reports a followed cross reference back as a selection.
  *
  * The card's first row (`lib-head`, T30, ISC-156.1) holds the control counts "missing" (violet, `file-x`) and
  * "outdated" (orange, `triangle-alert`) from the catalog; a click sets `?state=missing|stale`, a second lifts it, and
@@ -261,7 +271,8 @@ interface GroupView {
  *
  * The same component is the spec area Library at `/w/:ws/s/:id/library` (spec 017, T46, ISC-158): the route's spec id
  * narrows the catalog to that spec's documents, its missing entries and evidence included, plus the constitution
- * (`specScope`), the spec's group first and without its head (the spec head carries it), no spec select, the control
+ * (`specScope`), the spec's group first and without its head (the spec head carries it), no spec select and no
+ * "Archived" pill (an archived spec's own documents always show), the control
  * counts of the spec alone, no "Open in spec" in the reader (`context` `spec`), no page head of its own; the shell
  * draws no rail there (`SpecArea.noRail`) and the tab bar's Documents count is this list's (`LibraryTabCount`).
  *
@@ -354,16 +365,20 @@ export class LibraryPage {
   });
 
   protected readonly docs = computed<readonly LibraryDoc[]>(() => this.catalog()?.docs ?? []);
-  protected readonly specs = computed(() => specOptions(this.docs()));
+  /** How many of the catalog's documents belong to archived specs; the "Archived" pill shows only above zero. */
+  protected readonly archivedCount = computed(() => this.docs().filter((doc) => doc.archived === true).length);
 
   /** The route's query params and fragment as signals (the router is the one source of the list's state). */
   private readonly params = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
   private readonly fragment = toSignal(this.route.fragment, { initialValue: this.route.snapshot.fragment });
-  /** The filter the address names (`?q=`, `?type=`, `?spec=`, `?state=`); in spec scope there is no spec select and no `?spec=`. */
+  /**
+   * The filter the address names (`?q=`, `?type=`, `?spec=`, `?state=`, `?archived=`); in spec scope there is no spec
+   * select and no `?spec=`, and the archived documents always show (an archived spec's library is nothing but them).
+   */
   private readonly addressFilter = computed(
     () => {
       const filter = filterOf(this.params());
-      return this.specScoped() ? { ...filter, spec: 'all' } : filter;
+      return this.specScoped() ? { ...filter, spec: 'all', archived: true } : filter;
     },
     { equal: sameFilter },
   );
@@ -377,6 +392,11 @@ export class LibraryPage {
   protected readonly spec = computed(() => this.filter().spec);
   protected readonly stateFilter = computed(() => this.filter().state);
   protected readonly stateOptions = STATE_FILTERS;
+  protected readonly archived = computed(() => this.filter().archived);
+  /** The documents the list draws from: the archived specs' only while `?archived=1`. Spec select and count follow it. */
+  private readonly listed = computed(() => listable(this.docs(), this.archived()));
+  protected readonly listedCount = computed(() => this.listed().length);
+  protected readonly specs = computed(() => specOptions(this.listed()));
 
   /** The card's first row: the catalog's missing and stale counts, pressed while `?state=` names them (ISC-156.1). */
   protected readonly controls = computed<readonly ControlView[]>(() => {
@@ -580,6 +600,17 @@ export class LibraryPage {
     this.update({ state: control.pressed ? 'all' : control.key });
   }
 
+  /**
+   * The pill "Archived": lists the archived specs' documents too (`?archived=1`), combined with every other filter; a
+   * second click hides them again and lifts a spec select that named an archived spec, which would list nothing.
+   */
+  protected toggleArchived(): void {
+    const archived = !this.archived();
+    const spec = this.spec();
+    const hidden = !archived && this.docs().some((doc) => doc.archived === true && specKey(doc.spec) === spec);
+    this.update(hidden ? { archived, spec: 'all' } : { archived });
+  }
+
   protected clear(): void {
     this.filter.set(NO_FILTER);
     this.write();
@@ -693,7 +724,9 @@ export class LibraryPage {
    * `?doc=` (a former Docs tab's redirect, T48) is always dropped: the fragment names the document from here on.
    */
   private write(docChanged = false): void {
-    const params = { ...addressParams(this.filter()), doc: null };
+    // In spec scope `archived` is on by the scope, not by a person: it stays out of the address.
+    const filter = this.specScoped() ? { ...this.filter(), archived: false } : this.filter();
+    const params = { ...addressParams(filter), doc: null };
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: docChanged ? { ...params, section: null } : params,

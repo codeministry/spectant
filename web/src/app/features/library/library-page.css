@@ -87,7 +87,7 @@ app-library-page .lib-list {
 
 @container shell (width >= 1120px) {
   app-library-page .lib-grid {
-    grid-template-columns: 380px minmax(0, 1fr);
+    grid-template-columns: 420px minmax(0, 1fr);
   }
 
   app-library-page .lib-list {
@@ -135,18 +135,22 @@ app-library-page .lib-search input {
 app-library-page .lib-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 16px;
   align-items: end;
 }
 
 app-library-page .lib-select {
   display: grid;
   flex: 1;
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   min-inline-size: 160px;
 }
 
+/* A select is as wide as its longest option (a long spec slug); held to its cell so the gap between the two stays. */
 app-library-page .lib-select select {
+  inline-size: 100%;
+  min-inline-size: 0;
   block-size: 34px;
   padding-inline: 8px;
   border: 1px solid var(--line);
@@ -155,6 +159,40 @@ app-library-page .lib-select select {
   color: var(--color-base-content);
   font: inherit;
   font-size: 13px;
+}
+
+/* The pill "Archived" (the planning graph's filter chip): on the selects' baseline, pressed while `?archived=1`. */
+app-library-page .lib-pill {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  block-size: 34px;
+  padding-inline: 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--color-base-100);
+  color: var(--muted-ink);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+app-library-page .lib-pill[aria-pressed='true'] {
+  background: var(--color-base-300);
+  color: var(--color-base-content);
+  box-shadow: inset 0 -2px 0 var(--color-primary);
+}
+
+app-library-page .lib-pill-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The reader's prose fills the reader's width: no 72ch measure here (the "On this page" column keeps its 180 px). */
+app-library-page ui-doc-prose .docs-prose > :is(p, ul, ol, blockquote, h1, h2, h3, h4) {
+  max-inline-size: none;
 }
 
 app-library-page .lib-count {
@@ -328,6 +366,7 @@ app-library-page .lib-more {
 
 @media (pointer: coarse) {
   app-library-page .lib-evidence-toggle,
+  app-library-page .lib-pill,
   app-library-page .lib-select select {
     min-block-size: 44px;
   }

@@ -2092,7 +2092,9 @@
       "all": "All",
       "spec": "Spec",
       "allSpecs": "All specs",
-      "state": "State"
+      "state": "State",
+      "archived": "Archived",
+      "archivedLabel": "Documents of archived specs ({{count}})"
     },
     "states": {
       "all": "All",
