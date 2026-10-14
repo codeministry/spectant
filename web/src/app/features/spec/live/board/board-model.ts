@@ -1,4 +1,4 @@
-import type { CardState, Frame, FrameCard, LiveFrame } from '../../../../../../../core/src/files';
+import type { CardState, Frame, FrameCard, LiveCard, LiveFrame, RunCounts, RunState, TaskRun } from '../../../../../../../core/src/files';
 import { CARD_STATES, glyphSpec } from '../../../../shared/ui/glyph/states';
 import type { ScrubberFrame } from '../../../../shared/ui/scrubber/scrubber';
 
@@ -51,8 +51,61 @@ export interface WaitingGroup<C extends FrameCard = FrameCard> {
   readonly cards: readonly C[];
 }
 
+/**
+ * The run states (spec 027, ISC-179.1) in run order: the toolbar's counters and a lane's round line read them so.
+ * `applied` is a ticked task's run, which never shows a chip (its landed card state wins).
+ */
+export const RUN_ORDER: readonly RunState[] = ['dispatched', 'building', 'patched', 'applied', 'applied-open'];
+/** The group "In round n" sorts furthest along first, as core's `LiveRound.cards`. */
+const ROUND_RANK: readonly RunState[] = ['applied-open', 'patched', 'building', 'dispatched'];
+
+/**
+ * The run a card shows a chip for: its task's last run event while tasks.md has not ticked it, so exactly the cards
+ * of the live frame's `inRound`; null for a ticked task (`applied`), a card without a run and every history frame.
+ */
+export function runOf(card: FrameCard | LiveCard): TaskRun | null {
+  const run = 'run' in card ? card.run : undefined;
+  return run !== undefined && run !== null && run.state !== 'applied' ? run : null;
+}
+
+export interface RunCount {
+  readonly state: RunState;
+  readonly count: number;
+}
+
+/** Core's counts in run order, the zeros left out (the toolbar's counters, a lane's round line). */
+export function runCounts(counts: RunCounts | undefined): RunCount[] {
+  return RUN_ORDER.map((state) => ({ state, count: counts?.[state] ?? 0 })).filter((c) => c.count > 0);
+}
+
+/** Every card's chip-worthy run state by task; the input of `runChanges`. */
+export function runStates(cards: ReadonlyArray<FrameCard | LiveCard>): Map<string, RunState> {
+  const states = new Map<string, RunState>();
+  for (const card of cards) {
+    const run = runOf(card);
+    if (run !== null) states.set(card.task, run.state);
+  }
+  return states;
+}
+
+/**
+ * What one refresh moved, for the single polite announcement of that tick: each task whose run chip is new or shows
+ * another state than before, in the order of `after`. Nothing before the first read (`before` null).
+ */
+export function runChanges(
+  before: ReadonlyMap<string, RunState> | null,
+  after: ReadonlyMap<string, RunState>,
+): Array<{ readonly task: string; readonly state: RunState }> {
+  if (before === null) return [];
+  return [...after].filter(([task, state]) => before.get(task) !== state).map(([task, state]) => ({ task, state }));
+}
+
 export interface LaneView<C extends FrameCard = FrameCard> {
   readonly name: string;
+  /** The lane's cards of the round in flight (spec 027), furthest along first; empty unless the lanes are built with it. */
+  readonly inRound: readonly C[];
+  /** Their run counts in run order, the zeros left out. */
+  readonly runCounts: readonly RunCount[];
   readonly needsYou: readonly C[];
   readonly inFlight: readonly C[];
   readonly waiting: ReadonlyArray<WaitingGroup<C>>;
@@ -75,15 +128,20 @@ export function laneOrder(constitution: readonly string[], cards: ReadonlyArray<
   return order;
 }
 
-/** One lane: its cards by section, the waiting ones grouped by reason in first-seen order; board order within each. */
-export function laneView<C extends FrameCard>(name: string, cards: readonly C[]): LaneView<C> {
+/**
+ * One lane: its cards by section, the waiting ones grouped by reason in first-seen order; board order within each.
+ * With `round`, a card with a run chip (`runOf`) sits in the group "In round n" instead of its card state's section.
+ */
+export function laneView<C extends FrameCard>(name: string, cards: readonly C[], round = false): LaneView<C> {
+  const inRound: C[] = [];
   const needsYou: C[] = [];
   const inFlight: C[] = [];
   const landed: C[] = [];
   const groups = new Map<string | null, C[]>();
   for (const c of cards) {
     const section = boardSection(c.state);
-    if (section === 'needsYou') needsYou.push(c);
+    if (round && runOf(c) !== null) inRound.push(c);
+    else if (section === 'needsYou') needsYou.push(c);
     else if (section === 'inFlight') inFlight.push(c);
     else if (section === 'landed') landed.push(c);
     else {
@@ -96,14 +154,34 @@ export function laneView<C extends FrameCard>(name: string, cards: readonly C[])
   const waiting = [...groups].map(([reason, grouped]) => ({ reason, cards: grouped }));
   // A card without a reason goes last, after every named reason.
   waiting.sort((a, b) => Number(a.reason === null) - Number(b.reason === null));
-  return { name, needsYou, inFlight, waiting, landed, total: cards.length, landedCount: cards.filter((c) => isLanded(c.state)).length };
+  const rank = (c: C): number => ROUND_RANK.indexOf(runOf(c)?.state ?? 'dispatched');
+  inRound.sort((a, b) => rank(a) - rank(b));
+  const counts: Partial<Record<RunState, number>> = {};
+  for (const c of inRound) {
+    const state = runOf(c)?.state;
+    if (state !== undefined) counts[state] = (counts[state] ?? 0) + 1;
+  }
+  return {
+    name,
+    inRound,
+    runCounts: runCounts(counts),
+    needsYou,
+    inFlight,
+    waiting,
+    landed,
+    total: cards.length,
+    landedCount: cards.filter((c) => isLanded(c.state)).length,
+  };
 }
 
-/** The lanes in `order`, each with the cards whose lane it is; a card in no listed lane is not dropped (it gets its own). */
-export function buildLanes<C extends FrameCard>(order: readonly string[], cards: readonly C[]): Array<LaneView<C>> {
+/**
+ * The lanes in `order`, each with the cards whose lane it is; a card in no listed lane is not dropped (it gets its own).
+ * `round`: the Lanes view's group "In round n" (spec 027); Flow keeps every card in its card state's column.
+ */
+export function buildLanes<C extends FrameCard>(order: readonly string[], cards: readonly C[], round = false): Array<LaneView<C>> {
   const names = [...order];
   for (const c of cards) if (!names.includes(c.lane)) names.splice(names.includes(OPERATOR_LANE) ? names.length - 1 : names.length, 0, c.lane);
-  return names.map((name) => laneView(name, cards.filter((c) => c.lane === name))).filter((lane) => lane.total > 0);
+  return names.map((name) => laneView(name, cards.filter((c) => c.lane === name), round)).filter((lane) => lane.total > 0);
 }
 
 export interface StateCount {

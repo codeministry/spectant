@@ -1,5 +1,6 @@
 <section class="board" aria-labelledby="board-heading" [attr.data-view]="view()">
   <h2 id="board-heading" class="visually-hidden" tabindex="-1">{{ 'shell.tabs.board' | transloco }}</h2>
+  <ui-live-region data-run-announcer />
 
   @if (frame(); as f) {
     <!-- The prototype's `board-sticky`: toolbar `btool` (view switch, legend pills, Filter, search with Kbd f, density),
@@ -140,7 +141,7 @@
     </div>
 
     @if (view() === 'flow') {
-      <app-flow-view [lanes]="lanes()" [frame]="index()" [density]="density()" [tier]="tier()" [steps]="stepCards()" />
+      <app-flow-view [lanes]="flowLanes()" [frame]="index()" [density]="density()" [tier]="tier()" [steps]="stepCards()" />
     } @else {
       @if (compact() && gridLanes().length > 1) {
         <div class="lane-switch">
@@ -246,6 +247,14 @@
 </ng-template>
 
 <ng-template #legendChips>
+  <!-- spec 027: the run states above 0 in run order, before the card states; counters, not filters. -->
+  @for (item of runCounters(); track item.state) {
+    <span class="lchip run-count" [attr.data-run-count]="item.state">
+      <i aria-hidden="true" [style.background]="runColor(item.state)"></i>
+      {{ 'states.run.' + item.state | transloco }}
+      <span class="count mono">{{ item.count }}</span>
+    </span>
+  }
   @for (item of legend(); track item.state) {
     <button type="button" class="lchip" [attr.data-legend-state]="item.state" [attr.aria-pressed]="item.pressed" (click)="toggleState(item.state)">
       <i aria-hidden="true" [style.background]="stateColor(item.state)"></i>
@@ -295,6 +304,19 @@
     </div>
     @if (!laneCollapsed(lane.name)) {
       <div class="lane-body">
+        @if (lane.inRound.length > 0) {
+          <!-- spec 027: the lane line during a round, counts above 0 only, then the round's group above every section. -->
+          <p class="lane-quiet lane-round" data-lane-round>{{ 'board.lane.inRound' | transloco: { count: lane.inRound.length } }}@for (rc of lane.runCounts; track rc.state) {<span> · {{ 'board.lane.runCount' | transloco: { count: rc.count, state: ('states.run.' + rc.state | transloco) } }}</span>}@if (nextCommand(); as next) {<span class="lane-next"> · {{ 'board.lane.next' | transloco }} <span class="mono">{{ next }}</span></span>}</p>
+          <div class="section sec-round" data-section="inRound">
+            <h4>{{ 'live.inRound' | transloco: { round: roundNumber() ?? '' } }} <span class="count mono">{{ lane.inRound.length }}</span></h4>
+            @for (c of lane.inRound; track c.task) {
+              <app-board-card [card]="c" [density]="density()" />
+              @if (hasTaskActors(c)) {
+                <app-task-actors class="in-flight-actors" [card]="c" />
+              }
+            }
+          </div>
+        }
         @if (lane.needsYou.length > 0) {
           <div class="section sec-needs" data-section="needsYou">
             <h4>{{ 'board.section.needsYou' | transloco }} <span class="count mono">{{ lane.needsYou.length }}</span></h4>
@@ -313,7 +335,7 @@
               }
             }
           </div>
-        } @else if (lane.needsYou.length === 0 && lane.total > 0 && !filtered()) {
+        } @else if (lane.needsYou.length === 0 && lane.inRound.length === 0 && lane.total > 0 && !filtered()) {
           <p class="lane-quiet" data-lane-quiet>{{ 'board.lane.quiet' | transloco }}@if (frame()?.kind !== 'dispatch' && nextCommand(); as next) {<span class="lane-next"> · {{ 'board.lane.next' | transloco }} <span class="mono">{{ next }}</span></span>}</p>
         }
         @if (lane.waiting.length > 0) {

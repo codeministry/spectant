@@ -46,8 +46,8 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  *   `ui-actor-chip` with the resolved name or the raw id; nothing when the card is unassigned. A spec with a worktree
  *   shows the compact `ui-worktree-chip` (`git-branch` · `↑n` · `±`, the branch in its accessible name) right before
  *   the assignee pill (spec 027, ISC-175, design.md § Viewport-übergreifend 6): not interactive, the card is the tap
- *   target; the warning tone on the row's `worktree-branch-mismatch`. The host is the `board-card` container, so the
- *   chip's own query shows the full form with the branch text on a card at least 280 px wide. No worktree, no chip.
+ *   target; the warning tone on the row's `worktree-branch-mismatch`. The chip stays compact at every card width
+ *   (the host declares no `board-card` container), so the card never grows by a line. No worktree, no chip.
  * - Row 4, waiting cards only: `ui-reason` compact, the row's phrase and its command chip (none for close-pending).
  * - The `grip-vertical` zone at the trailing edge is the `cdkDragHandle` (T125): the board page puts `cdkDrag` on this
  *   element and only the grip lifts the card, so the title stays a link. The grip is a button named "Move 008"
@@ -70,8 +70,9 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
     '(keydown.shift.arrowright)': 'onStep($event, 1)',
   },
   styles: `
-    /* The card is the worktree chip's container (spec 027): the chip's query shows the full form from 280 px. */
-    :host { display: block; min-inline-size: 0; container: board-card / inline-size; }
+    /* The card declares no board-card container on purpose (spec 027, principal 2026-10-13): the worktree chip stays
+       compact at every width, so a card with a worktree never grows by a line. The full form lives in the spec head. */
+    :host { display: block; min-inline-size: 0; }
     ui-card { min-block-size: 72px; }
     article { display: grid; grid-template-columns: minmax(0, 1fr) 44px; margin-inline-end: -12px; }
     .main { display: grid; gap: 8px; min-inline-size: 0; }

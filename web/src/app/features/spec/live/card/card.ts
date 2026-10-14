@@ -1,15 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, resource, signal } from '@angular/core';
+import { booleanAttribute, ChangeDetectionStrategy, Component, computed, inject, input, resource, signal } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import type { FrameCard, LiveCard } from '../../../../../../../core/src/files';
+import type { FrameCard, LiveCard, RunState } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiChip } from '../../../../shared/ui/chip/chip';
 import { UiIcon } from '../../../../shared/icons/icon';
 import { UiGlyph } from '../../../../shared/ui/glyph/glyph';
-import { glyphSpec, stateKey } from '../../../../shared/ui/glyph/states';
+import { glyphSpec, runGlyphState, stateKey } from '../../../../shared/ui/glyph/states';
 import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
 import { toneMark } from '../../../../shared/ui/tone';
 import { agentOfCard } from '../live-frame';
+import { runOf } from '../board/board-model';
 import { absentNote } from '../recut';
 import { AgentChip } from '../this-frame/agent-chip';
 import { CardContext } from './card-context';
@@ -17,6 +18,39 @@ import { CardDetail } from './card-detail';
 import { cardHistory, type HistoryFrame } from './card-history';
 
 export type CardDensity = 'comfortable' | 'compact' | 'step';
+
+/**
+ * A task's run chip (spec 027, ISC-179.1, design.md decision 3), on the live board's card and in the Tasks tab: the run
+ * state's glyph from `CARD_GLYPHS` (`runGlyphState`) and its word from `states.run.*` as visible text, never a
+ * tooltip, tinted by the glyph's one tone. `small` is the board card's one-line form, the word alone, since the card
+ * already leads with the same glyph. A change cross-fades the tint through the motion tokens (none under reduced
+ * motion); nothing pulses.
+ */
+@Component({
+  selector: 'app-run-chip',
+  imports: [TranslocoPipe, UiChip, UiGlyph],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[attr.data-run]': 'run()' },
+  styles: `
+    :host { display: inline-flex; min-inline-size: 0; max-inline-size: 100%; }
+    ui-chip { transition: background-color var(--motion-duration-highlight) var(--motion-ease-standard), color var(--motion-duration-highlight) var(--motion-ease-standard); }
+  `,
+  template: `
+    <ui-chip [tone]="tone()" [variant]="small() ? 'small' : 'status'">
+      @if (!small()) {
+        <ui-glyph [state]="glyph()" family="card" [size]="14" />
+      }
+      <span>{{ 'states.run.' + run() | transloco }}</span>
+    </ui-chip>
+  `,
+})
+export class RunChip {
+  readonly run = input.required<RunState>();
+  readonly small = input(false, { transform: booleanAttribute });
+
+  protected readonly glyph = computed(() => runGlyphState(this.run()));
+  protected readonly tone = computed(() => glyphSpec(this.glyph(), 'card').tone);
+}
 
 /**
  * One board card (design.md § Live, card anatomy; ISC-88), the same in the Lanes and the Flow view: an `<article>`
@@ -37,7 +71,7 @@ export type CardDensity = 'comfortable' | 'compact' | 'step';
  */
 @Component({
   selector: 'app-board-card',
-  imports: [AgentChip, CardDetail, TranslocoPipe, UiChip, UiGlyph, UiIcon, UiStateChip],
+  imports: [AgentChip, CardDetail, RunChip, TranslocoPipe, UiChip, UiGlyph, UiIcon, UiStateChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: block; min-inline-size: 0; }
@@ -88,12 +122,23 @@ export type CardDensity = 'comfortable' | 'compact' | 'step';
     @media (prefers-reduced-motion: reduce) { article[data-changed] { animation: none; } }
     .flag[data-flag='stale'] { color: var(--fail-ink); font-weight: 600; }
     .strike-note { margin: 0; color: var(--muted-ink); font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
+    /* spec 027: a card of the round wears its run chip where the state chip stood, top right; below 320 px of card
+       width on a line of its own under the text, left (design.md § Viewport-übergreifend, Live-Board). */
+    :host([data-run]) { container: live-card / inline-size; }
+    :host([data-run]) article { grid-template-columns: minmax(0, 1fr) auto; }
+    :host([data-run]) .r1 { grid-area: 1 / 1; }
+    :host([data-run]) .run-state { grid-area: 1 / 2; align-self: center; }
+    :host([data-run]) .text, :host([data-run]) .strike-note, :host([data-run]) .r3 { grid-column: 1 / -1; }
+    @container live-card (width < 320px) {
+      :host([data-run]) .run-state { grid-area: auto / 1 / auto / -1; justify-self: start; }
+    }
     @media (forced-colors: active) {
       article { border-inline-start-color: CanvasText; }
     }
   `,
   host: {
     '[attr.data-density]': 'density()',
+    '[attr.data-run]': 'run()?.state ?? null',
   },
   template: `
     @let c = card();
@@ -108,7 +153,7 @@ export type CardDensity = 'comfortable' | 'compact' | 'step';
       [attr.data-changed]="changed() ? '' : null"
     >
       <div class="r1">
-        <ui-glyph [state]="c.state" family="card" [size]="20" />
+        <ui-glyph [state]="glyph()" family="card" [size]="20" />
         <button type="button" class="id" aria-haspopup="dialog" [attr.aria-label]="'board.card.open' | transloco: { task: c.task }" (click)="openDetail()">{{ c.task }}</button>
         @if (density() === 'comfortable') {
           <ui-chip class="claim">{{ c.claim }}</ui-chip>
@@ -116,13 +161,18 @@ export type CardDensity = 'comfortable' | 'compact' | 'step';
         @if (c.parallel) {<span class="pmark" data-flag="parallel" [attr.title]="'board.card.parallel' | transloco">P</span>}
         @if (c.seam) {<span class="seam" data-flag="seam">{{ 'board.card.seam' | transloco }}</span>}
         <span class="lane-chip" data-lane-chip><i aria-hidden="true"></i>{{ c.lane }}</span>
-        <ui-state-chip small class="state" [state]="c.state" family="card" />
+        @if (run() === null) {
+          <ui-state-chip small class="state" [state]="c.state" family="card" />
+        }
       </div>
       <p class="text">{{ c.text }}</p>
       @if (strikeNote(); as note) {
         <p class="strike-note" data-strike-note>{{ note }}</p>
       } @else if (strikeNote() === '') {
         <p class="strike-note" data-strike-note>{{ 'board.card.struck' | transloco }}</p>
+      }
+      @if (run(); as run) {
+        <app-run-chip small class="run-state" [run]="run.state" />
       }
       @if (density() === 'comfortable') {
         <div class="r3">@if (c.builder) {<span class="tag builder" data-builder><ui-icon name="wrench" [size]="12" />{{ c.builder }}</span>}@if (c.reader) {<span class="tag reader" data-reader><ui-icon name="eye" [size]="12" />{{ c.reader }}@if (c.verdict) {<i class="vdot" [attr.data-verdict]="c.verdict" [attr.title]="c.verdict"></i>}</span>}@if (c.tries > 1) {<span class="try" data-flag="tries">{{ 'board.card.tries' | transloco: { tries: c.tries } }}</span>}@if (c.note && strikeNote() === null) {<span class="flag" data-flag="note">{{ 'board.card.note' | transloco }}</span>}@if (stale()) {<span class="flag" data-flag="stale">{{ 'board.card.stale' | transloco }}</span>}@if (agent(); as agent) {<app-agent-chip [attr.data-agent-of]="c.task" [session]="agent.session" [since]="agent.since" [stale]="agent.stale" />}</div>
@@ -153,8 +203,17 @@ export class BoardCard {
     this.context?.selected.set(this.card().task);
     this.detailOpen.set(true);
   }
-  protected readonly spec = computed(() => glyphSpec(this.card().state, 'card'));
-  protected readonly stateWord = computed(() => stateKey(this.card().state, 'card'));
+  /** The card's run while it is in the round (spec 027): its chip replaces the state chip, its glyph leads the card. */
+  protected readonly run = computed(() => runOf(this.card()));
+  protected readonly glyph = computed(() => {
+    const run = this.run();
+    return run === null ? this.card().state : runGlyphState(run.state);
+  });
+  protected readonly spec = computed(() => glyphSpec(this.glyph(), 'card'));
+  protected readonly stateWord = computed(() => {
+    const run = this.run();
+    return run === null ? stateKey(this.card().state, 'card') : `states.run.${run.state}`;
+  });
   protected readonly edge = computed(() => toneMark(this.spec().tone));
   /** An absent card's strike note, shown on its face in both densities (ISC-91); null for any other card. */
   protected readonly strikeNote = computed(() => absentNote(this.card()));

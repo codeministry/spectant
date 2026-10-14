@@ -445,7 +445,17 @@
       "closed": "closed",
       "absent": "absent",
       "operatorOpen": "your step",
-      "operatorDone": "step done"
+      "operatorDone": "step done",
+      "patched": "patch ready",
+      "applied": "applied",
+      "applied-open": "applied, open"
+    },
+    "run": {
+      "dispatched": "dispatched",
+      "building": "building",
+      "patched": "patch ready",
+      "applied": "applied",
+      "applied-open": "applied, open"
     },
     "claim": {
       "open": "open",
@@ -1349,7 +1359,9 @@
       "switch": "Lane",
       "showAll": "show all {{count}}",
       "quiet": "nothing in flight",
-      "next": "next"
+      "next": "next",
+      "inRound": "{{count}} in the round",
+      "runCount": "{{count}} {{state}}"
     },
     "section": {
       "needsYou": "Needs you",
@@ -1586,7 +1598,8 @@
       "before": "A record, not an authority —",
       "after": "is. Rounds from",
       "live": "· live from"
-    }
+    },
+    "runCounters": "Run states"
   },
   "matrix": {
     "claim": "Claim",
@@ -2022,7 +2035,9 @@
     "glyph": "waits"
   },
   "live": {
-    "taskActors": "Working on {{ task }}"
+    "taskActors": "Working on {{ task }}",
+    "inRound": "In round {{round}}",
+    "runChanged": "{{task}}: {{state}}"
   },
   "tech": {
     "title": "Tech",

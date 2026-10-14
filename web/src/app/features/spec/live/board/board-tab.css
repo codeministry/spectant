@@ -618,3 +618,8 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* spec 027: the toolbar's run counters count, they do not filter. */
+.lchip.run-count {
+  cursor: default;
+}

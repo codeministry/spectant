@@ -22,4 +22,12 @@ export class UiLiveRegion {
   announce(text: string): void {
     this.message.update((previous) => (previous === text ? `${text}${NBSP}` : text));
   }
+
+  /**
+   * One announcement for everything a refresh tick changed (spec 027: "T3: patch ready; T5: building"), never one per
+   * part; nothing when the tick changed nothing.
+   */
+  announceAll(parts: readonly string[], separator = '; '): void {
+    if (parts.length > 0) this.announce(parts.join(separator));
+  }
 }

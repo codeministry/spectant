@@ -3,10 +3,13 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
   linkedSignal,
   resource,
+  untracked,
+  viewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -14,6 +17,7 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { SpecRouteResponses } from '../../../../../../../server/src/spec-routes.contract';
 import { ApiClient } from '../../../../core/api.service';
 import { LockSourceService } from '../../../../core/lock-source.service';
+import { RefreshService } from '../../../../core/refresh.service';
 import { ShellData } from '../../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../../shared/icons/icon';
@@ -24,9 +28,12 @@ import { type CheckEvent, type CheckState, checkBlock, IDLE, landedDelta, nextCh
 import { UiEmptyState } from '../../../../shared/ui/empty-state/empty-state';
 import { type FilterOption, UiFilterChips } from '../../../../shared/ui/filter-chips/filter-chips';
 import { UiRovingItem, UiRovingList } from '../../../../shared/ui/roving-list.directive';
-import type { FrameCard } from '../../../../../../../core/src/files';
+import type { FrameCard, RunState, TaskRun } from '../../../../../../../core/src/files';
 import { taskActorsOf } from '../../live/live-frame';
 import { TaskActors } from '../../live/task-actors/task-actors';
+import { RunChip } from '../../live/card/card';
+import { runChanges, runOf, runStates } from '../../live/board/board-model';
+import { UiLiveRegion } from '../../../../shared/ui/live-region/live-region';
 
 /** core's `TasksTab` as the tasks route serves it (`null` there means the spec has no tasks.md). */
 export type TasksBody = NonNullable<SpecRouteResponses['tasks']>;
@@ -73,6 +80,15 @@ export function pathTail(path: string): string {
   return path.endsWith('/') ? `${tail}/` : tail;
 }
 
+/**
+ * The builder's short form under the run chip (spec 027): the last segment of the run event's worktree
+ * (`.claude/worktrees/agent-a1b2` → `agent-a1b2`), else of its session; read from the event, never from git.
+ */
+export function runShort(run: Pick<TaskRun, 'session' | 'worktree'>): string {
+  const last = (text: string, sep: RegExp): string => text.split(sep).filter((part) => part !== '').pop() ?? '';
+  return last(run.worktree, /\//) || last(run.session, /[:/]/) || run.session;
+}
+
 /** A probe cell as written, one enclosing pair of backticks dropped for the mono cell. */
 const probeText = (probe: string): string => (/^`[^`]*`$/.test(probe) ? probe.slice(1, -1) : probe);
 
@@ -90,7 +106,7 @@ const probeText = (probe: string): string => (/^`[^`]*`$/.test(probe) ? probe.sl
  */
 @Component({
   selector: 'app-tasks-tab',
-  imports: [RouterLink, TaskActors, TranslocoPipe, UiChip, UiEmptyState, UiFilterChips, UiIcon, UiRovingItem, UiRovingList],
+  imports: [RouterLink, RunChip, TaskActors, TranslocoPipe, UiChip, UiEmptyState, UiFilterChips, UiIcon, UiLiveRegion, UiRovingItem, UiRovingList],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-page': 'tasks' },
   templateUrl: './tasks-tab.html',
@@ -132,6 +148,22 @@ export class TasksTab {
     if (result?.kind !== 'ok') return new Map();
     return new Map(result.body.cards.filter((card) => taskActorsOf(card) !== null).map((card) => [card.task, card]));
   });
+  /**
+   * The run chip per task (spec 027, ISC-179.1): the live frame's run while tasks.md has not ticked the task, joined
+   * by task id; the tick (`applied`) hands the row back to its state chip. The live frame is read again every refresh.
+   */
+  protected readonly runs = computed<ReadonlyMap<string, TaskRun>>(() => {
+    const result = this.live.hasValue() ? this.live.value() : undefined;
+    if (result?.kind !== 'ok') return new Map();
+    return new Map(
+      result.body.cards.flatMap((card) => {
+        const run = runOf(card);
+        return run === null ? [] : [[card.task, run] as const];
+      }),
+    );
+  });
+  private readonly announcer = viewChild(UiLiveRegion);
+  private readonly refresher = inject(RefreshService);
 
   /** The body once the route answered `ok`: null for a spec without tasks.md, undefined before or on failure. */
   protected readonly body = computed<TasksBody | null | undefined>(() => {
@@ -225,6 +257,25 @@ export class TasksTab {
   private scrolledTo: string | null = null;
 
   constructor() {
+    // The live frame again on every refresh (ETag: a 304 costs no body), so a run chip moves within one tick (ISC-62).
+    let firstRefresh = true;
+    effect(() => {
+      this.refresher.lastRefresh();
+      if (firstRefresh) firstRefresh = false;
+      else untracked(() => this.live.reload());
+    });
+    // One polite announcement per refresh that moved a run chip ("T3: patch ready; T5: building"), never per chip.
+    let seenRuns: ReadonlyMap<string, RunState> | null = null;
+    effect(() => {
+      const result = this.live.hasValue() ? this.live.value() : undefined;
+      if (result?.kind !== 'ok') return;
+      const after = runStates(result.body.cards);
+      const changes = runChanges(seenRuns, after);
+      seenRuns = after;
+      if (changes.length === 0) return;
+      untracked(() => this.announcer()?.announceAll(changes.map((c) => this.runChanged(c.task, c.state))));
+    });
+
     // Scroll to and focus the deep-linked row once it is rendered; a later fragment scrolls again.
     afterRenderEffect(() => {
       const target = this.target();
@@ -241,6 +292,17 @@ export class TasksTab {
   }
 
   protected readonly tail = pathTail;
+  protected readonly short = runShort;
+
+  /** One part of a tick's announcement: "T32: building". */
+  private runChanged(task: string, state: RunState): string {
+    const word: string = this.transloco.translate(`states.run.${state}`);
+    return this.transloco.translate('live.runChanged', { task, state: word });
+  }
+
+  protected runOfRow(id: string): TaskRun | null {
+    return this.runs().get(id) ?? null;
+  }
   protected sub(row: TaskRowView): { readonly key: string; readonly text?: string } | null {
     if (row.state === 'struck') return row.note === null ? null : { key: 'tasks.sub.struck', text: row.note };
     if (REASONED.has(row.status) && row.reason !== null) return { key: `tasks.sub.${row.status}`, text: row.reason };

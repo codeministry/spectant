@@ -445,7 +445,17 @@
       "closed": "geschlossen",
       "absent": "fehlt",
       "operatorOpen": "Ihr Schritt",
-      "operatorDone": "Schritt erledigt"
+      "operatorDone": "Schritt erledigt",
+      "patched": "Patch fertig",
+      "applied": "angewendet",
+      "applied-open": "angewendet, offen"
+    },
+    "run": {
+      "dispatched": "dispatcht",
+      "building": "baut",
+      "patched": "Patch fertig",
+      "applied": "angewendet",
+      "applied-open": "angewendet, offen"
     },
     "claim": {
       "open": "offen",
@@ -1349,7 +1359,9 @@
       "switch": "Lane",
       "showAll": "alle {{count}} zeigen",
       "quiet": "nichts in Arbeit",
-      "next": "als Nächstes"
+      "next": "als Nächstes",
+      "inRound": "{{count}} in der Runde",
+      "runCount": "{{count}} {{state}}"
     },
     "section": {
       "needsYou": "Wartet auf Sie",
@@ -1586,7 +1598,8 @@
       "before": "Eine Aufzeichnung, keine Autorität —",
       "after": "ist es. Runden aus",
       "live": "· live aus"
-    }
+    },
+    "runCounters": "Laufzustände"
   },
   "matrix": {
     "claim": "Claim",
@@ -2022,7 +2035,9 @@
     "glyph": "wartet"
   },
   "live": {
-    "taskActors": "Arbeitet an {{ task }}"
+    "taskActors": "Arbeitet an {{ task }}",
+    "inRound": "In der Runde {{round}}",
+    "runChanged": "{{task}}: {{state}}"
   },
   "tech": {
     "title": "Tech",
