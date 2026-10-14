@@ -13,8 +13,12 @@
 // stage, a frontmatter `stage:` that wins over the derived one when the last event agrees with it (T47, ISC-120), and
 // is one `stage-mismatch` diagnostic when it does not apply (T48). Row 8, `close-pending`, is the detour of
 // `code_review: feature` (T49): a spec whose claims are all closed waits there while a sibling of its main feature is open.
+//
+// Spec 025 (T14, ISC-162.3): a spec whose whole open work hangs on open spec edges (`SpecWait.full`, spec-edges.ts) is
+// not on `build` even with a takeable claim; it falls through to row 11, `blocked`, with the reason `waits on {specs}`.
+// A spec with takeable work beside the held keeps its stage.
 import type { Diagnostic } from './diagnostics.ts';
-import type { CodeReviewMode, MarkState, SpecType, StageSource, Workflow, WorkflowRow, WorkflowStage } from './files.ts';
+import type { CodeReviewMode, MarkState, SpecType, SpecWait, StageSource, Workflow, WorkflowRow, WorkflowStage } from './files.ts';
 import type { Progress } from './frontmatter.ts';
 
 export type Stage = 'plan' | 'tasks' | 'review' | 'build' | 'blocked' | 'code-review' | 'close-pending' | 'close' | 'done';
@@ -66,6 +70,11 @@ export interface StageInput {
    * and holding at least one open claim, in id order. Empty without a main feature. Row 7's `{siblings}`.
    */
   readonly featureSiblingsOpen: readonly string[];
+  /**
+   * What the spec waits on, its row of `resolveEdges(…).waits` (spec-edges.ts, spec 025); absent or null, nothing.
+   * When `full`, row 6 does not apply and row 11 names the blockers (ISC-162.3).
+   */
+  readonly waits?: SpecWait | null;
 }
 
 /** The type router: which files a spec type needs besides spec.md. An unknown type needs neither. */
@@ -100,6 +109,9 @@ function countsOf(input: StageInput): Counts {
   const { closed, total } = input.claims;
   return { total, takeable: input.takeable.length, open: total - closed, allClosed: total > 0 && closed === total };
 }
+
+/** The spec numbers holding every piece of the spec's open work (ISC-162.3); empty unless the wait is full. */
+const fullHoldOf = (input: StageInput): readonly string[] => (input.waits?.full === true ? input.waits.blockers : []);
 
 const needs = (input: StageInput, file: 'plan' | 'tasks'): boolean => (input.type ? TYPE_NEEDS[input.type][file] : false);
 
@@ -230,8 +242,8 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
     stage: 'build',
-    condition: 'at least one claim is takeable',
-    when: (input) => countsOf(input).takeable > 0,
+    condition: 'at least one claim is takeable and not all open work waits on an open spec edge',
+    when: (input) => countsOf(input).takeable > 0 && fullHoldOf(input).length === 0,
     next: '/spec-implement',
     reasons: ['{ids} {is} takeable'],
     explain: (input) => {
@@ -280,11 +292,13 @@ export const SPEC_RULES: readonly SpecStageRule[] = [
   {
     subject: 'spec',
     stage: 'blocked',
-    condition: 'anything else: open claims none of which is takeable, or no claims yet',
+    condition: 'anything else: all open work waits on an open spec edge, open claims none of which is takeable, or no claims yet',
     when: () => true,
     next: '/spec-status',
-    reasons: ['{open}, none takeable', 'no claims yet'],
-    explain: (input) => {
+    reasons: ['{open}, none takeable', 'no claims yet', 'waits on {specs}'],
+    explain: (input): ReasonFill => {
+      const held = fullHoldOf(input);
+      if (held.length > 0) return { form: 2, values: { specs: held.join(', ') } };
       const { open } = countsOf(input);
       return open > 0 ? { form: 0, values: { open: plural(open, 'open claim') } } : { form: 1 };
     },

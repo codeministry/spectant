@@ -11,8 +11,17 @@ import { join } from 'node:path';
 
 import { buildClaimViews } from '../src/claim-view.ts';
 import type { ClaimView, MergeState, SpecEdge, SpecFiles, SpecWait, TaskRow } from '../src/files.ts';
+import { parseClaims } from '../src/claims.ts';
+import { buildDashboard } from '../src/dashboard.ts';
+import type { DashboardInput } from '../src/dashboard.ts';
+import { hashForGate } from '../src/gates.ts';
 import { edgeMet, resolveEdges } from '../src/spec-edges.ts';
 import { specIdOf } from '../src/spec-ref.ts';
+import { nextCommandWithReason, reasonOf, stageOf } from '../src/stage.ts';
+import type { StageInput } from '../src/stage.ts';
+import { partitionClaims } from '../src/status.ts';
+import { takeableSet } from '../src/takeable.ts';
+import type { TakeableEntry, TakeableSet } from '../src/takeable.ts';
 import { parseTaskLines } from '../src/tasks.ts';
 import { FIXTURES, readTreeAt } from './helpers/read-tree.ts';
 
@@ -284,5 +293,146 @@ describe('spec edges: diagnostics (ISC-162.4)', () => {
     const ring = resolveEdges({ specs: [edgeSpec('020-a', '021'), edgeSpec('021-b', '022'), edgeSpec('022-c', '020')], archived: [] }, [state('021', { complete: true })]);
     expect(ring.diagnostics.map((d) => [d.file, d.diagnostic.code, d.diagnostic.subject])).toEqual([['specs/020-a/spec.md', 'spec-edge-cycle', '020 → 021 → 022 → 020']]);
     expect(ring.edges.map((e) => e.state)).toEqual(['open', 'open', 'open']);
+  });
+});
+
+// ─── takeable (ISC-162.2) ────────────────────────────────────────────────────────────────────────────────────────
+
+/** The spec edges of one spec resolved against `rows`, as `takeableSet` takes them. */
+function edgesOf(num: string, rows: readonly MergeState[]): SpecEdge[] {
+  return resolveEdges(TREE, rows).edges.filter((e) => e.fromSpec === num);
+}
+
+/** The next round of `num` with a fresh reviewed mark, its spec edges resolved against `rows`; no tasks.md if asked. */
+function roundOf(num: string, rows: readonly MergeState[], withTasks = true): TakeableSet {
+  return takeableSet({
+    specType: 'feature',
+    claims: parseClaims(spec(num).texts.spec ?? '').claims,
+    tasks: withTasks ? { tasks: tasksOf(num).tasks, probeMapping: [] } : null,
+    reviewed: 'fresh',
+    specEdges: edgesOf(num, rows),
+  });
+}
+
+const entries = (list: readonly TakeableEntry[]): string[] => list.map((e) => `${e.task} ${e.claim}: ${e.reason}`);
+
+describe('spec edges: takeable (ISC-162.2)', () => {
+  test('a task with an open spec edge is held as waits on 002; T1 beside it is dispatched', () => {
+    const round = roundOf('003', BASE);
+    expect(entries(round.dispatch)).toEqual(['T1 ISC-5: claim takeable, edges closed']);
+    // T2 by its own edge, T4 by the edge on its claim ISC-6, ahead of ISC-6's claim edge; T3's edge on 001 is met.
+    expect(entries(round.held)).toEqual(['T2 ISC-5: waits on 002', 'T3 ISC-7: not [P] — runs alone, next round', 'T4 ISC-6: waits on 002']);
+  });
+
+  test('an open spec edge on a claim holds the claim and every task of it; nothing is left to dispatch', () => {
+    const round = roundOf('004', BASE);
+    expect(round.claims).toEqual([]);
+    expect(round.dispatch).toEqual([]);
+    expect(entries(round.held)).toEqual(['T2 ISC-9: waits on 002', 'T3 ISC-9: waits on 002']);
+    expect(round.exhausted).toBe(true);
+  });
+
+  test('without tasks.md the claim unit is held the same', () => {
+    expect(entries(roundOf('004', BASE, false).held)).toEqual(['C1 ISC-9: waits on 002']);
+  });
+
+  test('once the edge is met the work is takeable, unless something else holds it', () => {
+    const fare = roundOf('004', MERGED_002);
+    expect(fare.claims).toEqual(['ISC-9']);
+    expect(entries(fare.dispatch)).toEqual(['T2 ISC-9: claim takeable, edges closed']);
+    expect(entries(fare.held)).toEqual(['T3 ISC-9: after T2 still open']);
+    const map = entries(roundOf('003', MERGED_002).held);
+    expect(map).toContain('T2 ISC-5: after T1 still open');
+    expect(map).toContain('T4 ISC-6: claim blocked by ISC-5');
+  });
+
+  test('an edge on a number no spec carries holds too: waits on 042', () => {
+    expect(entries(roundOf('007', BASE).held)).toContain('T2 ISC-13: waits on 042');
+  });
+
+  test('without spec edges the set is as before', () => {
+    const round = takeableSet({ specType: 'feature', claims: parseClaims(spec('004').texts.spec ?? '').claims, tasks: { tasks: tasksOf('004').tasks, probeMapping: [] }, reviewed: 'fresh' });
+    expect(entries(round.dispatch)).toEqual(['T2 ISC-9: claim takeable, edges closed']);
+  });
+});
+
+// ─── stage (ISC-162.3) ───────────────────────────────────────────────────────────────────────────────────────────
+
+/** The stage input of a spec as the dashboard builds it, reviewed fresh, with its wait (none when `waits` is null). */
+function stageInputOf(num: string, text: string, waits: SpecWait | null): StageInput {
+  const doc = parseClaims(text);
+  const p = partitionClaims(doc.claims, [], 'fresh');
+  return {
+    number: num,
+    type: 'feature',
+    phase: 'building',
+    hasPlan: true,
+    hasTasks: true,
+    claims: doc.counted,
+    reviewed: 'fresh',
+    codeReviewed: 'missing',
+    takeable: p.takeable,
+    partition: { takeable: p.takeable.length, open: p.open.length - p.takeable.length, closed: p.closed.length - p.dropped.length, dropped: p.dropped.length },
+    explicitStage: null,
+    lastEventTo: null,
+    codeReview: 'spec',
+    mainFeature: null,
+    featureSiblingsOpen: [],
+    ...(waits === null ? {} : { waits }),
+  };
+}
+
+function stepFor(input: StageInput): { stage: string; command: string | null; reason: string } {
+  const next = nextCommandWithReason(input);
+  return { stage: stageOf(input), command: next.command, reason: reasonOf(next) };
+}
+
+/** The step of a spec of the tree, its wait resolved against `rows`; null passes no wait. */
+const stepOf = (num: string, rows: readonly MergeState[] | null) =>
+  stepFor(stageInputOf(num, spec(num).texts.spec ?? '', rows === null ? null : waitOf(resolveEdges(TREE, rows).waits, num)));
+
+/** The edges tree with a fresh reviewed mark on every active spec, so the dashboard's stage reaches the edge rule. */
+function reviewedTree(): DashboardInput {
+  const hash = (f: 'spec.md' | 'plan.md' | 'tasks.md', text: string | undefined) => (text === undefined ? null : hashForGate(f, text));
+  const specs = TREE.specs.map((files): SpecFiles => {
+    const t = files.texts;
+    const mark = { gate: 'reviewed', at: '2026-03-09T09:00:00Z', files: { 'spec.md': hash('spec.md', t.spec), 'plan.md': hash('plan.md', t.plan), 'tasks.md': hash('tasks.md', t.tasks) } };
+    return { folder: files.folder, texts: { ...t, gateReviewed: JSON.stringify(mark) } };
+  });
+  return { ...TREE, specs };
+}
+
+describe('spec edges: stage (ISC-162.3)', () => {
+  test('full hold: every open piece of work waits on 002, so the stage is blocked with that reason', () => {
+    expect(stepOf('004', BASE)).toEqual({ stage: 'blocked', command: '/spec-status 004', reason: 'waits on 002' });
+  });
+
+  test('partial hold: 003 has takeable work beside the held, so it stays on build', () => {
+    expect(stepOf('003', BASE)).toEqual({ stage: 'build', command: '/spec-implement 003', reason: 'ISC-5 and ISC-7 are takeable' });
+    expect(stepOf('007', BASE).stage).toBe('build');
+  });
+
+  test('the edge met, or no wait passed: the stage is the one before', () => {
+    expect(stepOf('004', MERGED_002)).toEqual({ stage: 'build', command: '/spec-implement 004', reason: 'ISC-9 is takeable' });
+    expect(stepOf('004', null)).toEqual({ stage: 'build', command: '/spec-implement 004', reason: 'ISC-9 is takeable' });
+  });
+
+  test('an unknown number holds like any open edge, and several blockers are named in order', () => {
+    const lone = edgeSpec('050-lone', '042');
+    const one = waitOf(resolveEdges({ specs: [lone], archived: [] }, []).waits, '050');
+    expect(stepFor(stageInputOf('050', lone.texts.spec ?? '', one)).reason).toBe('waits on 042');
+    const two = edgeSpec('051-two', '043, 042');
+    const both = waitOf(resolveEdges({ specs: [two], archived: [] }, []).waits, '051');
+    expect(stepFor(stageInputOf('051', two.texts.spec ?? '', both))).toEqual({ stage: 'blocked', command: '/spec-status 051', reason: 'waits on 042, 043' });
+  });
+
+  test('the dashboard reads the merge state beside its input: 004 blocked, 003 on build; merged, 004 on build', () => {
+    const rowsAt = (rows?: readonly MergeState[]) =>
+      buildDashboard(rows === undefined ? reviewedTree() : { ...reviewedTree(), mergeState: rows }).specs.map((r) => `${r.slug} ${r.stage}: ${r.nextReason}`);
+    expect(rowsAt(BASE)).toContain('004-fare-table blocked: waits on 002');
+    expect(rowsAt(BASE)).toContain('003-route-map build: ISC-5 and ISC-7 are takeable');
+    expect(rowsAt(MERGED_002)).toContain('004-fare-table build: ISC-9 is takeable');
+    // Without rows, 002 is read from its frontmatter (`phase: building`, no branch): the edge stays open.
+    expect(rowsAt()).toContain('004-fare-table blocked: waits on 002');
   });
 });

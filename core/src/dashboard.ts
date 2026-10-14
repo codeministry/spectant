@@ -32,12 +32,14 @@ import type {
   LockDiagnostic,
   LockReading,
   MainCopy,
+  MergeState,
   Priority,
   SpecFiles,
   SpecGates,
   SpecRead,
   SpecSource,
   SpecType,
+  SpecWait,
   SpecWarning,
   StageSource,
   WarningKind,
@@ -50,6 +52,7 @@ import type { Progress } from './frontmatter.ts';
 import { gateState, readGateMark, reviewedGate } from './gates.ts';
 import { readIdeas } from './ideas.ts';
 import type { GateCheck, GateMarkReading, GateName, ReviewedFile } from './gates.ts';
+import { resolveEdges } from './spec-edges.ts';
 import { specIdOf } from './spec-ref.ts';
 import { codeReviewOf, isWorkflowStage, nextCommandWithReason, reasonOf, stageMismatchOf } from './stage.ts';
 import type { Stage, StageInput } from './stage.ts';
@@ -269,6 +272,12 @@ export interface DashboardInput {
   readonly workflow?: Workflow;
   /** The story folder `specs/ideas/` as `readIdeas` takes it (file name to text); absent or empty without stories. */
   readonly ideas?: IdeaFiles;
+  /**
+   * The merge state of the spec numbers as the server read it from git (spec 025, ISC-162.1), which `resolveEdges`
+   * meets the spec edges against; absent, each target's frontmatter and the archive decide. A spec whose whole open
+   * work waits on open spec edges stands on `blocked` (ISC-162.3).
+   */
+  readonly mergeState?: readonly MergeState[];
 }
 
 /** The stage table's order, for the stage counts. */
@@ -430,6 +439,8 @@ interface SpecContext {
   readonly workflow: Workflow | undefined;
   /** Main feature → the ids of its open active specs (row 7's siblings), in folder order. */
   readonly openByFeature: ReadonlyMap<string, readonly string[]>;
+  /** What each active spec waits on, by number (`resolveEdges`, spec 025): the stage reads its full hold (ISC-162.3). */
+  readonly waits: ReadonlyMap<string, SpecWait>;
 }
 
 /**
@@ -539,6 +550,7 @@ function specRow(f: SpecFiles, ctx: SpecContext, diagnostics: FileDiagnostic[], 
     codeReview: codeReviewOf(type, ctx.workflow),
     mainFeature,
     featureSiblingsOpen,
+    waits: ctx.waits.get(id) ?? null,
   };
   const next = nextCommandWithReason(stageInput);
   // A `stage:` that does not apply is one warning on spec.md, at the key's line (T48, ISC-120.1).
@@ -686,6 +698,8 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
     worktreeDiagnostics: input.worktrees?.diagnostics ?? [],
     workflow: input.workflow,
     openByFeature,
+    // The edges' own warnings join the dashboard with the overlap (T15); here only the waits feed the stage.
+    waits: new Map(resolveEdges({ specs: active, archived, constitution: input.constitution }, input.mergeState ?? []).waits.map((w) => [w.spec, w])),
   };
 
   const rows = active.flatMap((f) => specRow(f, ctx, diagnostics) ?? []).sort(byAction);

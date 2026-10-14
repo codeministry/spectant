@@ -8,9 +8,14 @@
 // round is not owned by a seam or a task without [P]. The checks run in the old order, so a task held for two reasons
 // shows the one the old planner showed.
 //
+// Spec edges (spec 025, ISC-162.2) come first: a task with an open spec edge of its own, or of its claim, is held as
+// `waits on NNN` (several numbers ascending, joined by a comma) before every older reason, and a claim with an open
+// spec edge is not takeable. An edge on a number no spec carries stays open (spec-edges.ts) and holds the same way. No
+// round can meet a spec edge, so such a hold counts toward `exhausted`. Without `specEdges` the set is as before.
+//
 // Pure: parsed claims and tasks in, the plan out. No file system, no Bun API.
 import type { Claim } from './claims.ts';
-import type { ClaimLock, SpecType, TasksModel } from './files.ts';
+import type { ClaimLock, SpecEdge, SpecType, TasksModel } from './files.ts';
 import type { MarkState } from './gates.ts';
 import { partitionClaims } from './status.ts';
 import type { ClaimPartition } from './status.ts';
@@ -33,6 +38,11 @@ export interface TakeableInput {
    * `partitionClaims` derives it from `claims`, `locks` and `reviewed`.
    */
   readonly partition?: ClaimPartition;
+  /**
+   * This spec's spec edges as `resolveEdges` (spec-edges.ts) resolved them, filtered to this spec's `fromSpec`; only the
+   * `open` ones hold (ISC-162.2). Absent or empty, nothing waits on another spec.
+   */
+  readonly specEdges?: readonly SpecEdge[];
 }
 
 export interface TakeableEntry {
@@ -58,7 +68,21 @@ export interface TakeableSet {
 const SERIAL_TYPES: ReadonlySet<SpecType> = new Set(['bug', 'spike', 'infra']);
 
 /** Hold reasons that no round can clear: the principal, the spec text or another session has to act first. */
-const UNCHANGEABLE = /closed|locked|blocked|unknown|operator lane|not reviewed/;
+const UNCHANGEABLE = /closed|locked|blocked|unknown|operator lane|not reviewed|waits on/;
+
+/** The hold reason of a spec edge (ISC-162.2): `waits on 002`, or `waits on 002, 042` for several, ascending. */
+export const waitsOnReason = (specs: readonly string[]): string => `waits on ${[...new Set(specs)].sort().join(', ')}`;
+
+/** The open spec edges by carrier, `task:T2` or `claim:ISC-9`, each to the spec numbers it waits on. */
+function openSpecEdges(edges: readonly SpecEdge[]): Map<string, string[]> {
+  const open = new Map<string, string[]>();
+  for (const e of edges) {
+    if (e.state !== 'open') continue;
+    const key = `${e.fromKind}:${e.fromId}`;
+    open.set(key, [...(open.get(key) ?? []), e.toSpec]);
+  }
+  return open;
+}
 
 interface Unit {
   readonly id: string;
@@ -95,7 +119,9 @@ function unitsOf(input: TakeableInput): Unit[] {
 export function takeableSet(input: TakeableInput): TakeableSet {
   const width = input.width ?? (input.specType !== null && SERIAL_TYPES.has(input.specType) ? 1 : 4);
   const partition = input.partition ?? partitionClaims(input.claims, input.locks ?? [], input.reviewed);
-  const takeable = new Set(partition.takeable);
+  const waiting = openSpecEdges(input.specEdges ?? []);
+  // A claim held by an open spec edge is not takeable, whatever the partition says (ISC-162.2).
+  const takeable = new Set(partition.takeable.filter((id) => !waiting.has(`claim:${id}`)));
   const closed = new Set(partition.closed);
   const blocked = new Map(partition.blocked.map((b) => [b.id, b.openBlockers]));
   const taken = new Map(partition.taken.map((t) => [t.id, t.session]));
@@ -108,6 +134,8 @@ export function takeableSet(input: TakeableInput): TakeableSet {
   const filesThisRound = new Set<string>();
 
   const holdReason = (u: Unit): string | null => {
+    const waitsOn = [...(waiting.get(`task:${u.id}`) ?? []), ...(waiting.get(`claim:${u.claim}`) ?? [])];
+    if (waitsOn.length > 0) return waitsOnReason(waitsOn);
     if (u.lane === 'operator') return "operator lane — the principal's own action, never auto-dispatched";
     if (closed.has(u.claim)) return 'claim already closed — task should be [x]; strike or check it';
     const blockers = blocked.get(u.claim);

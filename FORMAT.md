@@ -1146,12 +1146,12 @@ spec page's own facts, after it.
 | 3 | `plan` | the type needs `plan.md` and it is missing | `/spec-plan NNN` | `a {type} spec needs plan.md and it is missing` |
 | 4 | `tasks` | the type needs `tasks.md`, the spec has three or more claims, and `tasks.md` is missing | `/spec-tasks NNN` | `{claims} and no tasks.md` |
 | 5 | `review` | the reviewed mark is not fresh | `/spec-review NNN` | `the reviewed mark is {state}` |
-| 6 | `build` | at least one claim is takeable | `/spec-implement NNN` | `{ids} {is} takeable` |
+| 6 | `build` | at least one claim is takeable and not all open work waits on an open spec edge | `/spec-implement NNN` | `{ids} {is} takeable` |
 | 7 | `done` | the type is `chore` and every claim is closed | — | `every claim of the chore is closed` |
 | 8 | `close-pending` | every claim is closed, the type's workflow has `code_review: feature`, and at least one other spec of the spec's main feature is still open | — | `every claim is closed and {feature} waits on {siblings}` |
 | 9 | `code-review` | every claim is closed and the code-reviewed mark is not fresh | `/spec-code-review NNN` | `every claim is closed and the code-reviewed mark is {state}` |
 | 10 | `close` | every claim is closed and the code-reviewed mark is fresh | `/spec-complete NNN` | `every claim is closed and code-reviewed` |
-| 11 | `blocked` | anything else: open claims none of which is takeable, or no claims yet | `/spec-status NNN` | `{open}, none takeable` or `no claims yet` |
+| 11 | `blocked` | anything else: all open work waits on an open spec edge, open claims none of which is takeable, or no claims yet | `/spec-status NNN` | `{open}, none takeable` or `no claims yet` or `waits on {specs}` |
 
 The Next command column writes `NNN` for the spec's number. A story has no number yet, so row 1 writes `<slug>`, the
 story's file name without `.md`; the command allocates the number (§ `idea`, Allocation).
@@ -1169,6 +1169,17 @@ The placeholders of the Reason column:
   `missing_in_spec`), e.g. `F2` (row 8).
 - `{siblings}`: the other open specs of that feature by number: one (`spec 005`), two joined by "and" (`specs 005 and
   006`), or the first two and the rest as a count (`specs 005, 006 and 2 more`) (row 8).
+- `{specs}`: the spec numbers the open spec edges wait on, ascending, joined by a comma, e.g. `002` or `002, 042`
+  (row 11).
+
+**All open work waits on an open spec edge** (spec 025, ISC-162.3) when the spec has open tasks and every one carries
+an open spec edge, on itself or on its claim, or, with no open task, when it has open claims and every one carries an
+open spec edge (`SpecWait.full`, `resolveEdges` in `spec-edges.ts`). Such a spec skips row 6 even with a takeable
+claim and stands in row 11 with `waits on {specs}`; a spec with takeable work beside the held stays where it is. An edge
+on a number no spec carries stays open and holds. The takeable set holds every task of such an edge with the same
+phrase, `waits on 002` (`takeable.ts`), ahead of every other hold reason. The dashboard resolves the edges against the
+merge state the server reads from git (`DashboardInput.mergeState`); without it, each target's frontmatter and the
+archive decide.
 
 In row 8 a sibling is **open** while it is active (not archived, not `phase: complete`) and holds at least one open
 claim; a sibling whose claims are all closed waits in row 8 itself and does not hold the others back, so the last

@@ -65,7 +65,7 @@ export type WorkspaceReading =
       copies: Readonly<Record<string, string>>;
       /**
        * One merge state per spec number, active and archived (spec 025, ISC-162.1; `mergeStateOf`): what `core/`'s
-       * `resolveEdges` takes beside the input. It rides beside the input, as `ideas` does, until the model uses it.
+       * `resolveEdges` takes. The same rows ride in `input.mergeState`, where the dashboard's stage reads them (T14).
        */
       mergeState: readonly MergeState[];
     }
@@ -253,6 +253,7 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
     // The main checkout's tree only where a marked spec compares with it: one without a tree of its own (ISC-176).
     const reviewed = specs.some((f) => f.texts.gateCodeReviewed !== undefined && perSpec[f.folder]?.tree === undefined);
     const workflow = parseWorkflow(readIfExists(repoFilePath(root, "workflow")));
+    const mergeState = mergeStateOf(specs, archived, (await mergedSpecBranches(root)).branches);
     return {
       readable: true,
       workflow,
@@ -260,7 +261,7 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
       viewer: await viewerActorOf(root),
       diagnostics: workflow.diagnostics.map((diagnostic) => ({ file: WORKFLOW_FILE, diagnostic })),
       copies,
-      mergeState: mergeStateOf(specs, archived, (await mergedSpecBranches(root)).branches),
+      mergeState,
       input: {
         master: readIfExists(join(root, "ISA.md")),
         constitution: readIfExists(join(root, "specs", "constitution.md")),
@@ -272,6 +273,7 @@ export async function readWorkspaceInput(root: string, lifeosStateDir: string | 
         ...(Object.keys(perSpec).length === 0 ? {} : { perSpec }),
         locks: await readLockSources({ repoRoot: root, lifeosStateDir }),
         workflow,
+        mergeState,
       },
     };
   } catch (error) {
