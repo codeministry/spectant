@@ -29,6 +29,7 @@ import {
   readFileSync,
   readdirSync,
   readlinkSync,
+  realpathSync,
   rmSync,
   utimesSync,
   writeFileSync,
@@ -57,7 +58,8 @@ import {
 } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
 import { tokensCommand } from "../server/src/tokens-cli.ts";
-import { WRITE_PATHS } from "../server/src/writes.contract.ts";
+import { WRITE_PATHS, WRITE_TABLE, writePathsOf } from "../server/src/writes.contract.ts";
+import { BUILDER_WORKTREE, SPEC_FOLDER, SPEC_ID, SPEC_WORKTREE, UNCOMMITTED, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
 const FIXTURE = join(import.meta.dir, "..", "core", "fixtures", "harbor");
 /** The harbor transcripts: a main session with a sub-agent, beside the folders of an agent and a spec worktree. */
@@ -917,4 +919,188 @@ describe("ISC-137.1 with the token measurement: a dry run changes nothing, `toke
       error.mockRestore();
     }
   });
+});
+
+// ── spec 027: a repository with a spec worktree and a builder worktree (`tests/fixtures/worktree-repo.ts`) ───────────
+//
+// Both linked worktrees live inside the main checkout (`.worktrees/002-web-console`, `.claude/worktrees/agent-a1b2`)
+// and their admin folders under its `.git/worktrees/`, so `snapshot` of the main checkout already hashes every byte of
+// all three working trees and of the one `.git/`; `expectWorktreesHashed` proves the walk reaches them. Two groups,
+// selected apart by name: `-t worktree-copy` runs the writes in the copy (T23, ISC-181) alone, `-t worktree` the reads
+// (T29, ISC-182) together with them.
+
+/** The snapshot reaches both linked worktrees, the spec worktree's uncommitted file and both admin folders. */
+function expectWorktreesHashed(s: Snapshot): void {
+  const reached = [`${SPEC_WORKTREE}/.git`, `${SPEC_WORKTREE}/${UNCOMMITTED}`, `${BUILDER_WORKTREE}/.git`, `.git/worktrees/${SPEC_FOLDER}/HEAD`, ".git/worktrees/agent-a1b2/HEAD"];
+  expect(reached.filter((path) => !s.entries.has(path))).toEqual([]);
+}
+
+/** Paths of git's own: the main `.git/` and each linked worktree's `.git` file. */
+const gitPaths = (paths: readonly string[]): string[] => paths.filter((p) => p === ".git" || p.startsWith(".git/") || p.endsWith("/.git"));
+
+/** The served app (`spectant serve`) with `repo` registered: its loopback URL, and `stop`, which waits for the exit. */
+async function serve(repo: string, tag: string): Promise<{ url: string; stop: () => Promise<void> }> {
+  const env = { XDG_DATA_HOME: mkdtempSync(join(root, `xdg-${tag}-`)) };
+  const lines: string[] = [];
+  const log = spyOn(console, "log").mockImplementation((...args: unknown[]) => void lines.push(args.join(" ")));
+  const abort = new AbortController();
+  try {
+    expect(await run(["add", repo], manifest(), { env })).toBe(0);
+    const done = run(["--port", "0", "--no-browser"], manifest(), { env, signal: abort.signal });
+    const deadline = Date.now() + 5_000;
+    let url = "";
+    while (url === "") {
+      url = /^spectant · (http:\/\/127\.0\.0\.1:\d+)$/.exec(lines.find((l) => l.startsWith("spectant · ")) ?? "")?.[1] ?? "";
+      if (Date.now() > deadline) throw new Error(`no URL line: ${lines.join(" | ")}`);
+      if (url === "") await Bun.sleep(5);
+    }
+    return {
+      url,
+      stop: async () => {
+        abort.abort();
+        const code = await done;
+        log.mockRestore();
+        expect(code).toBe(0);
+      },
+    };
+  } catch (error) {
+    abort.abort();
+    log.mockRestore();
+    throw error;
+  }
+}
+
+/**
+ * Every read the dashboard, the board and the spec page of each id make, each revalidated with its ETag: the workspace
+ * list, the dashboard, the planning tree behind the board, and per spec the head and every tab (timeline, claims,
+ * tasks, evidence, frames, the live board); every read answers 200.
+ */
+async function readEverything(url: string, ids: readonly string[]): Promise<void> {
+  const reads: Array<[string, readonly number[]]> = [
+    ["/api/workspaces", [200]],
+    [`/api/workspaces/${SLUG}/dashboard`, [200]],
+    [workspaceRoutes.planning(SLUG), [200]],
+  ];
+  for (const id of ids) {
+    // The docs tabs and the evidence list moved into the library (spec 017); a spec's own read routes are these.
+    for (const route of [specRoutes.spec, specRoutes.timeline, specRoutes.claims, specRoutes.tasks, specRoutes.frames, specRoutes.live]) {
+      reads.push([route(SLUG, id), [200]]);
+    }
+  }
+  for (const [path, statuses] of reads) {
+    const first = await fetch(`${url}${path}`);
+    expect({ path, ok: statuses.includes(first.status) }).toEqual({ path, ok: true });
+    // The revalidation is a second read, as the polling client makes it; a body that carries the clock (the live frame,
+    // a lock's age) answers it with 200 instead of 304, so either counts here: this guard is about bytes, not ETags.
+    const etag = first.headers.get("etag");
+    const again = await fetch(`${url}${path}`, etag === null ? {} : { headers: { "If-None-Match": etag } });
+    expect({ path, ok: [...statuses, 304].includes(again.status) }).toEqual({ path, ok: true });
+  }
+}
+
+describe("ISC-181 worktree-copy writes: with specs/ tracked, the three writes on 002 touch only its worktree copy", () => {
+  test("readonly: reads and refused writes change no byte; the accepted tick, mark and move only the copy's WRITE_PATHS, never main or .git/", async () => {
+    const planted = await plantWorktreeRepo({ parent: realpathSync(root), trackedSpecs: true });
+    const repo = planted.root;
+    const mainFolder = join(repo, "specs", SPEC_FOLDER);
+    const copyFolder = `${SPEC_WORKTREE}/specs/${SPEC_FOLDER}`;
+    /** `WRITE_PATHS[op]` resolved against the spec's read source, here the worktree copy. */
+    const inCopy = (op: "taskCheck" | "gateReviewed" | "transition"): string[] => {
+      expect({ op, root: WRITE_TABLE[op].root }).toEqual({ op, root: "source" });
+      return writePathsOf(op, SPEC_FOLDER).writes.map((path) => `${SPEC_WORKTREE}/${path}`).sort();
+    };
+    const before = snapshot(repo);
+    expectWorktreesHashed(before);
+
+    const { url, stop } = await serve(repo, "copy");
+    try {
+      await readEverything(url, [SPEC_ID, "004"]);
+      const model = (await (await fetch(`${url}/api/workspaces/${SLUG}/dashboard`)).json()) as DashboardModel;
+      expect(model.specs.find((row) => row.id === SPEC_ID)?.source).toBe("worktree");
+      const tasksHash = async (): Promise<string> => (await fetch(`${url}${specRoutes.tasks(SLUG, SPEC_ID)}`)).headers.get(TASKS_HASH_HEADER) ?? "";
+      const head = async (): Promise<Headers> => (await fetch(`${url}${specRoutes.spec(SLUG, SPEC_ID)}`)).headers;
+      const post = (path: string, body: unknown): Promise<Response> => fetch(`${url}${path}`, { method: "POST", body: JSON.stringify(body) });
+
+      // Refused: 423 while harbor's activity log holds ISC-74 of 002 (the copy's hashes), 409 for main's hashes.
+      const refused: Array<[string, unknown, number]> = [
+        [specRoutes.taskCheck(SLUG, SPEC_ID, "T27"), { checked: false, hash: await tasksHash() }, 423],
+        [specRoutes.gateReviewed(SLUG, SPEC_ID), { hashes: parseReviewedHashes((await head()).get(REVIEWED_HASHES_HEADER)) }, 423],
+        [specRoutes.transition(SLUG, SPEC_ID), { to: "blocked", hash: (await head()).get(SPEC_HASH_HEADER) }, 423],
+        [specRoutes.taskCheck(SLUG, SPEC_ID, "T27"), { checked: false, hash: sha256(readFileSync(join(mainFolder, "tasks.md"))) }, 409],
+        [specRoutes.transition(SLUG, SPEC_ID), { to: "blocked", hash: sha256(readFileSync(join(mainFolder, "spec.md"))) }, 409],
+      ];
+      for (const [path, body, status] of refused) expect({ path, status: (await post(path, body)).status }).toEqual({ path, status });
+      const afterRefused = snapshot(repo);
+      expect(changed(before, afterRefused, { mtime: true })).toEqual([]);
+      expect(afterRefused.checksum).toBe(before.checksum);
+
+      // The test's own two changes: ISC-74 released in the ignored activity log, and the round in the worktree set
+      // back from code-review (whose one move needs every claim closed) to build, which may move to blocked.
+      appendFileSync(join(repo, ".spectant", "activity.jsonl"), '{"ts":"2026-03-08T16:00:00Z","event":"release","claim":"ISC-74","session":"a:claude:sess-2"}\n');
+      const copySpec = join(repo, copyFolder, "spec.md");
+      writeFileSync(copySpec, readFileSync(copySpec, "utf8").replace(/^stage: code-review$/m, "stage: build"));
+      const released = snapshot(repo);
+      expect(changed(before, released)).toEqual([".spectant/activity.jsonl", `${copyFolder}/spec.md`]);
+
+      // Accepted, one at a time: each changes exactly its WRITE_PATHS in the copy.
+      expect((await post(specRoutes.taskCheck(SLUG, SPEC_ID, "T27"), { checked: false, hash: await tasksHash() })).status).toBe(200);
+      const afterTick = snapshot(repo);
+      expect(changed(released, afterTick)).toEqual(inCopy("taskCheck"));
+      expect((await post(specRoutes.gateReviewed(SLUG, SPEC_ID), { hashes: parseReviewedHashes((await head()).get(REVIEWED_HASHES_HEADER)) })).status).toBe(200);
+      const afterMark = snapshot(repo);
+      expect(changed(afterTick, afterMark)).toEqual(inCopy("gateReviewed"));
+      expect((await post(specRoutes.transition(SLUG, SPEC_ID), { to: "blocked", hash: (await head()).get(SPEC_HASH_HEADER) })).status).toBe(200);
+      const afterMove = snapshot(repo);
+      expect(changed(afterMark, afterMove)).toEqual(inCopy("transition"));
+
+      // Together: only the copy's files; nothing in the main checkout, the builder worktree or any of git's files.
+      const union = [...new Set([...inCopy("taskCheck"), ...inCopy("gateReviewed"), ...inCopy("transition")])].sort();
+      expect(changed(released, afterMove)).toEqual(union);
+      expect(gitPaths(changed(before, afterMove, { mtime: true }))).toEqual([]);
+      expect(underGit(afterMove)).toEqual(underGit(before));
+    } finally {
+      await stop();
+    }
+  }, 60_000);
+});
+
+describe("ISC-182 worktree reads: the dashboard, the board and the spec page of a repository with worktrees change no byte", () => {
+  for (const trackedSpecs of [false, true]) {
+    test(`readonly: specs/ ${trackedSpecs ? "tracked" : "untracked"}: main, the spec and the builder worktree keep every byte and mtime, .git/ included; every request is loopback`, async () => {
+      const planted = await plantWorktreeRepo({ parent: realpathSync(root), trackedSpecs });
+      const repo = planted.root;
+      const before = snapshot(repo);
+      expectWorktreesHashed(before);
+      const indexes = [".git/index", `.git/worktrees/${SPEC_FOLDER}/index`];
+      const indexesBefore = indexes.map((path) => readFileSync(join(repo, path)));
+
+      // Every fetch of this process, the test's and any the server might make, names its host here (ISC-2 in-process;
+      // the network-level proof is `tests/offline-server.ts` and the web e2e `offline`).
+      const hosts = new Set<string>();
+      const realFetch = globalThis.fetch;
+      const spy = spyOn(globalThis, "fetch").mockImplementation(((input: string | URL | Request, init?: RequestInit) => {
+        hosts.add(new URL(input instanceof Request ? input.url : String(input)).hostname);
+        return realFetch(input, init);
+      }) as typeof fetch);
+
+      const { url, stop } = await serve(repo, `reads-${String(trackedSpecs)}`);
+      try {
+        await readEverything(url, [SPEC_ID, "004"]);
+        // The git reads ran: the row's chip carries git's two facts, and the copy is the source exactly when tracked.
+        const model = (await (await fetch(`${url}/api/workspaces/${SLUG}/dashboard`)).json()) as DashboardModel;
+        const row = model.specs.find((r) => r.id === SPEC_ID);
+        expect([row?.worktree?.ahead, row?.worktree?.dirty, row?.source]).toEqual([planted.expected.ahead, planted.expected.dirty, trackedSpecs ? "worktree" : "main"]);
+      } finally {
+        await stop();
+        spy.mockRestore();
+      }
+
+      const after = snapshot(repo);
+      expect(changed(before, after, { mtime: true })).toEqual([]);
+      expect(after.checksum).toBe(before.checksum);
+      expect(underGit(after)).toEqual(underGit(before));
+      expect(indexes.filter((path, i) => !readFileSync(join(repo, path)).equals(indexesBefore[i] ?? Buffer.alloc(0)))).toEqual([]);
+      expect([...hosts]).toEqual(["127.0.0.1"]);
+    }, 60_000);
+  }
 });

@@ -1,0 +1,12 @@
+worktree /srv/repo
+HEAD 5d41c0a9e3b2f7d86a1c4e9b0f3a2d7c6e5b8a14
+branch refs/heads/main
+
+worktree /srv/repo/.worktrees/015-ledger
+HEAD 4c7f0a3e6d9b2c5f8a1e4d7b0c3f6a9e2d5b8c18
+branch refs/heads/feature/016-audit
+
+worktree /srv/repo/.worktrees/notes
+HEAD 0d3a6f9c2e5b8d1a4f7c0e3b6d9a2f5c8e1b4d29
+branch refs/heads/docs/notes
+

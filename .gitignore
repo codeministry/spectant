@@ -55,6 +55,8 @@ specs/notes/outline.md
 
 # planning is private: specs/ (constitution, ideas, every spec) stays on this machine and out of the public tree (principal, 2026-10-11)
 /specs/
+# a spec worktree links `specs` to the main checkout's folder (symlink); a directory pattern never matches a link
+/specs
 specs/*/.i18n/
 specs/*/review.html
 specs/*/*.version.js

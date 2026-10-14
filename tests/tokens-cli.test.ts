@@ -13,6 +13,9 @@
 //   random baits into every free-text field of a transcript copy.
 // - `offline` (ISC-137.3, T23): with every network entry point of the process stubbed to record and fail, the command
 //   makes zero calls, with and without `--yes`, and the app's data directory stays empty.
+// - `worktrees` (ISC-178, T28): the project folder of a spec worktree inside the repository, `<folder>--worktrees-NNN-slug`,
+//   is read like the older sibling `<folder>-NNN` (main sessions and their sub-agents), both patterns stay, and no
+//   look-alike, a nested agent worktree above all, is taken for one; the measured file is the golden.
 import * as sqlite from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, setSystemTime, spyOn, test } from "bun:test";
 import * as dns from "node:dns";
@@ -26,7 +29,7 @@ import * as tls from "node:tls";
 import { EVENT_STAGES } from "../core/src/events.ts";
 import { BASELINE_COMMAND_KEYS, TOKEN_COUNTERS, TOKEN_ROW_KEYS, TOKEN_ROW_KINDS, type TokenRowKind } from "../core/src/tokens.ts";
 import * as paths from "../server/src/paths.ts";
-import { TOKENS_PATH, encodeProjectPath, tokensCommand } from "../server/src/tokens-cli.ts";
+import { TOKENS_PATH, discoverTranscripts, encodeProjectPath, tokensCommand } from "../server/src/tokens-cli.ts";
 
 const HARBOR_SPECS = join(import.meta.dir, "..", "core", "fixtures", "harbor", "specs");
 const TRANSCRIPTS = join(import.meta.dir, "..", "core", "tests", "fixtures", "transcripts");
@@ -76,8 +79,8 @@ function harborRoot(): string {
 
 /**
  * A copy of the transcript fixture under a temp `projects/` folder, the main folder `harbor` beside its worktree
- * and spec-worktree siblings (`harbor--claude-worktrees-agent-…`, `harbor-012`); answers the main folder, the one
- * `--transcripts` names, and the run finds both siblings next to it. `reverse` creates every folder and file in the
+ * and spec-worktree siblings (`harbor--claude-worktrees-agent-…`, `harbor--worktrees-012-harbor`, `harbor-012`);
+ * answers the main folder, the one `--transcripts` names, and the run finds every sibling next to it. `reverse` creates every folder and file in the
  * opposite order, so whatever order the file system keeps entries in, the two copies start out differently.
  */
 function transcriptCopy(reverse = false): string {
@@ -239,6 +242,91 @@ describe("deterministic", () => {
     expect(a.toString("utf8")).toBe(fs.readFileSync(GOLDEN, "utf8"));
     // No wall-clock content: neither faked year appears anywhere in the file.
     for (const year of ["1999", "2041"]) expect(a.toString("utf8")).not.toContain(year);
+  });
+});
+
+describe("worktrees", () => {
+  /** The fixture's spec worktree inside the repository, `.worktrees/012-harbor`: its project folder and its one session. */
+  const IN_REPO = "harbor--worktrees-012-harbor";
+  const IN_REPO_SESSION = "7d2e4f60-1a3b-4c5d-8e9f-0a1b2c3d4e5f";
+
+  const seen = (folder: string): Array<{ role: string; label: string }> => discoverTranscripts(folder).files.map(({ role, label }) => ({ role, label }));
+
+  test("`<folder>--worktrees-NNN-slug` is read: its session as main, labelled relative to the folder, no diagnostic", () => {
+    const { files, diagnostics } = discoverTranscripts(transcriptCopy());
+    expect(diagnostics).toEqual([]);
+    expect(files.filter((f) => f.label.startsWith(`../${IN_REPO}/`)).map(({ role, session, label }) => ({ role, session, label }))).toEqual([
+      { role: "main", session: IN_REPO_SESSION, label: `../${IN_REPO}/${IN_REPO_SESSION}.jsonl` },
+    ]);
+  });
+
+  test("read like `<folder>-NNN`: a sub-agent below its session is role subagent with its meta file's toolUseId", () => {
+    const transcripts = transcriptCopy();
+    const subagents = join(dirname(transcripts), IN_REPO, IN_REPO_SESSION, "subagents");
+    put(join(subagents, "agent-b1c2d3.jsonl"), `${usageLine("2026-03-09T08:00:09.000Z", "req_in_repo_sub", 3)}\n`);
+    put(join(subagents, "agent-b1c2d3.meta.json"), JSON.stringify({ toolUseId: "toolu_01InRepoT1" }));
+    const files = discoverTranscripts(transcripts).files.filter((f) => f.label.startsWith(`../${IN_REPO}/`));
+    expect(files.map(({ role, session, label, toolUseId }) => ({ role, session, label, toolUseId: toolUseId ?? null }))).toEqual([
+      { role: "subagent", session: IN_REPO_SESSION, label: `../${IN_REPO}/${IN_REPO_SESSION}/subagents/agent-b1c2d3.jsonl`, toolUseId: "toolu_01InRepoT1" },
+      { role: "main", session: IN_REPO_SESSION, label: `../${IN_REPO}/${IN_REPO_SESSION}.jsonl`, toolUseId: null },
+    ]);
+  });
+
+  test("both patterns stay: the older sibling `<folder>-NNN` is still read, every folder in byte order", () => {
+    expect(seen(transcriptCopy())).toEqual([
+      { role: "subagent", label: "5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70/subagents/agent-a5d4c3b2a1f0e9d87.jsonl" },
+      { role: "main", label: "5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70.jsonl" },
+      { role: "worktree", label: "../harbor--claude-worktrees-agent-a0f1e2d3c4b5a6978/9c8b7a65-4321-4fed-8cba-0987654321ab.jsonl" },
+      { role: "main", label: `../${IN_REPO}/${IN_REPO_SESSION}.jsonl` },
+      { role: "subagent", label: "../harbor-012/3a7c9e21-6b4d-4f80-8e12-5d6c7b8a9f01/subagents/agent-a7e6d5c4b3a2f1e09.jsonl" },
+      { role: "main", label: "../harbor-012/3a7c9e21-6b4d-4f80-8e12-5d6c7b8a9f01.jsonl" },
+    ]);
+  });
+
+  /**
+   * Sibling folders that resemble a spec worktree's and are none: a nested agent worktree, a bad number, a bad slug.
+   * None differs from `IN_REPO` by letter case alone, which a case-insensitive file system would fold into it.
+   */
+  const LOOK_ALIKES = [
+    `${IN_REPO}--claude-worktrees-agent-x`,
+    "harbor-012--claude-worktrees-agent-x",
+    "harbor--worktrees-12-harbor",
+    "harbor--worktrees-0123-harbor",
+    "harbor--worktrees-abc-harbor",
+    "harbor--worktrees-012",
+    "harbor--worktrees-012-",
+    "harbor--worktrees-012-harbor-",
+    "harbor--worktrees-012--harbor",
+    "harborx--worktrees-012-harbor",
+  ] as const;
+
+  test("no look-alike is taken for a spec worktree, and an agent worktree `<folder>--claude-worktrees-agent-x` stays one", () => {
+    const transcripts = transcriptCopy();
+    const before = seen(transcripts);
+    const projects = dirname(transcripts);
+    const session = fs.readFileSync(join(projects, IN_REPO, `${IN_REPO_SESSION}.jsonl`));
+    for (const name of [...LOOK_ALIKES, "harbor--claude-worktrees-agent-x"]) put(join(projects, name, "s.jsonl"), session);
+    const known = new Set(before.map((file) => file.label));
+    expect(seen(transcripts).filter((file) => !known.has(file.label))).toEqual([{ role: "worktree", label: "../harbor--claude-worktrees-agent-x/s.jsonl" }]);
+  });
+
+  test("no double count: copies of the in-repo session in every look-alike leave the measured file equal to the golden", async () => {
+    const root = harborRoot();
+    const transcripts = transcriptCopy();
+    const projects = dirname(transcripts);
+    const session = fs.readFileSync(join(projects, IN_REPO, `${IN_REPO_SESSION}.jsonl`));
+    for (const name of LOOK_ALIKES) put(join(projects, name, `${IN_REPO_SESSION}.jsonl`), session);
+    expect(await measure(root, transcripts, true)).toBe(0);
+    expect(tokensText(root)).toBe(fs.readFileSync(GOLDEN, "utf8"));
+  });
+
+  test("the fixture with the in-repo spec worktree measures to exactly the golden, its invocation included", async () => {
+    const root = harborRoot();
+    expect(await measure(root, transcriptCopy(), true)).toBe(0);
+    const text = tokensText(root);
+    expect(text).toBe(fs.readFileSync(GOLDEN, "utf8"));
+    const invocation = text.split("\n").find((line) => line.includes(`"id":"a:claude:${IN_REPO_SESSION}#1"`));
+    expect(JSON.parse(invocation ?? "{}")).toMatchObject({ kind: "invocation", command: "/spec-plan", spec: "003-config-loader", requests: 2 });
   });
 });
 
@@ -468,7 +556,7 @@ describe("leak", () => {
       const root = harborRoot();
       expect(await measure(root, transcripts, true)).toBe(0);
       const text = tokensText(root);
-      expect(kindsOf(text).filter((kind) => kind === "invocation")).toHaveLength(7);
+      expect(kindsOf(text).filter((kind) => kind === "invocation")).toHaveLength(8);
       expect({ seed, leaked: baitsIn(text, [...planted, "zq", "bait.example"]) }).toEqual({ seed, leaked: [] });
       expect({ seed, findings: shapeFindings(text) }).toEqual({ seed, findings: [] });
     }

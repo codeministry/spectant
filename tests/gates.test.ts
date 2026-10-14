@@ -3,18 +3,24 @@
 // `code_review: feature`; 008 is closed, 009 holds ISC-131 open. With ISC-131 closed (master and spec.md) the command
 // marks both folders (`scope: F6`, one `code-review → close` event each) and both then derive `close`; with it open it
 // refuses and writes nothing; without `--yes` it only prints. `bun test tests/gates.test.ts -t feature` runs them all.
-import { afterAll, afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { cpSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { actorIdOf } from "../core/src/actor-id.ts";
 import { validateEventLine } from "../core/src/events.ts";
+import type { SpecPageModel } from "../core/src/files.ts";
 import { readGateMark } from "../core/src/gates.ts";
 import type { EmbeddedManifest } from "../server/src/assets.contract.ts";
 import { run } from "../server/src/cli.ts";
+import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
+import { type Registry, openRegistry } from "../server/src/registry.ts";
+import { specRoutes } from "../server/src/spec-routes.contract.ts";
+import { specRoutesApi } from "../server/src/spec-routes.ts";
 import { loadDashboard } from "../server/src/workspace-loader.ts";
 import { WRITE_PATHS } from "../server/src/writes.contract.ts";
+import { type PlantedWorktreeRepo, SPEC_FOLDER, SPEC_ID, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
 const HARBOR = join(import.meta.dir, "..", "core", "fixtures", "harbor");
 const F6 = ["008-referrers-support", "009-chunked-upload-limits"];
@@ -171,5 +177,91 @@ describe("ISC-122.2 the feature-level code-review mark: spectant gate code-revie
     expect(await run(["gate", "code-reviewed", "6", "--root", plain], MANIFEST)).toBe(2);
     expect(await run(["gate", "reviewed", "F6"], MANIFEST)).toBe(2);
     expect(await run(["list", "--root", plain], MANIFEST)).toBe(2);
+  });
+});
+
+// The code-review mark of a spec with a worktree of its own (spec 027, T20, ISC-176), on the fixture repository of
+// `tests/fixtures/worktree-repo.ts`: spec 002 has the worktree `.worktrees/002-web-console`, two commits ahead of `main`
+// with one uncommitted file; spec 004 has none. Each spec gets a mark whose tree is what `/spec-code-review` records
+// where it ran, `git add -A && git write-tree` (here through a throwaway index outside the repository): 002's in its
+// worktree, 004's in the main checkout. 002 reads fresh while its worktree stands, stale after a change there, and fresh
+// again after that change is undone, whatever the main checkout does; 004 computes against the main checkout as before.
+// `specs/` is untracked and linked into the worktree (the fixture's default), so both marks live in the main
+// checkout's folders and the read source stays `main`. `bun test tests/gates.test.ts -t worktree` runs the group.
+describe("ISC-176 worktree: the code-review mark of a spec with a worktree compares with the worktree's tree", () => {
+  const WITHOUT = "004-retention-policies";
+  let planted: PlantedWorktreeRepo;
+  let registry: Registry;
+
+  beforeAll(async () => {
+    planted = await plantWorktreeRepo({ parent: root });
+    registry = openRegistry(mkdtempSync(join(root, "data-")));
+    registry.add(planted.root);
+  });
+  afterAll(() => registry.close());
+
+  /** What `git add -A && git write-tree` prints in `dir`, through a throwaway index outside the repository. */
+  function reviewedTree(dir: string): string {
+    const index = join(planted.base, `review-index-${Math.random().toString(36).slice(2)}`);
+    const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !["GIT_DIR", "GIT_WORK_TREE"].includes(key)));
+    const git = (...args: string[]): string => {
+      const result = Bun.spawnSync(["git", "-C", dir, ...args], { env: { ...env, GIT_INDEX_FILE: index }, stdout: "pipe", stderr: "pipe" });
+      if (result.exitCode !== 0) throw new Error(`git ${args.join(" ")} failed: ${result.stderr.toString()}`);
+      return result.stdout.toString().trim();
+    };
+    git("read-tree", "HEAD");
+    git("add", "-A");
+    return git("write-tree");
+  }
+
+  /** A code-reviewed mark over `tree` in the main checkout's folder of the spec (the worktree links `specs/` to it). */
+  function mark(folder: string, tree: string): void {
+    const dir = join(planted.root, "specs", folder, ".gates");
+    mkdirSync(dir, { recursive: true });
+    const text = `${JSON.stringify({ gate: "code-reviewed", at: "2026-03-05T10:00:00Z", tree, code: 0, security: 0 }, null, 2)}\n`;
+    expect(readGateMark("code-reviewed", text).diagnostics).toEqual([]);
+    writeFileSync(join(dir, "code-reviewed.json"), text);
+  }
+
+  /** The code-reviewed state of 002 and 004 on the dashboard rows and on each spec page: the two never disagree. */
+  async function states(): Promise<Record<string, string>> {
+    const load = await loadDashboard(planted.root, null);
+    if (!load.readable) throw new Error(`unreadable: ${load.error}`);
+    const rows = Object.fromEntries(load.model.specs.map((row) => [row.slug, row.gates.codeReviewed.state]));
+    const handler = specRoutesApi({ registry, lifeos: LIFEOS_ABSENT });
+    const answer: Record<string, string> = {};
+    for (const [id, folder] of [[SPEC_ID, SPEC_FOLDER], ["004", WITHOUT]] as const) {
+      const url = new URL(`http://127.0.0.1:7717${specRoutes.spec("harbor", id)}`);
+      const res = await handler(new Request(url.href, { headers: { Host: "127.0.0.1:7717" } }), url);
+      if (res === null) throw new Error(`the spec routes declined ${id}`);
+      const page = (await res.json()) as SpecPageModel;
+      expect(rows[folder]).toBe(page.gates.codeReviewed.state);
+      answer[folder] = page.gates.codeReviewed.state;
+    }
+    return answer;
+  }
+
+  test("worktree: marked in the worktree → fresh; a change in the worktree → stale; a change only in the main checkout → fresh", async () => {
+    const worktreeFile = join(planted.worktrees.spec, "src", "console.ts");
+    const mainFile = join(planted.root, "src", "console.ts");
+    const worktreeText = readFileSync(worktreeFile, "utf8");
+    const mainText = readFileSync(mainFile, "utf8");
+    mark(SPEC_FOLDER, reviewedTree(planted.worktrees.spec));
+    mark(WITHOUT, reviewedTree(planted.root));
+    // The worktree is two commits ahead with an uncommitted file: its tree is not the main checkout's.
+    expect(reviewedTree(planted.worktrees.spec)).not.toBe(reviewedTree(planted.root));
+
+    expect(await states()).toEqual({ [SPEC_FOLDER]: "fresh", [WITHOUT]: "fresh" });
+
+    writeFileSync(worktreeFile, `${worktreeText}// reviewed? not this line.\n`);
+    expect(await states()).toEqual({ [SPEC_FOLDER]: "stale", [WITHOUT]: "fresh" });
+
+    writeFileSync(worktreeFile, worktreeText);
+    writeFileSync(mainFile, `${mainText}// a change on main only.\n`);
+    // 002 holds: its worktree is as reviewed. 004 has no worktree and computes against the main checkout, as before.
+    expect(await states()).toEqual({ [SPEC_FOLDER]: "fresh", [WITHOUT]: "stale" });
+
+    writeFileSync(mainFile, mainText);
+    expect(await states()).toEqual({ [SPEC_FOLDER]: "fresh", [WITHOUT]: "fresh" });
   });
 });

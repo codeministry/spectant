@@ -61,7 +61,8 @@ test.describe('states', () => {
 
     const pairs = new Set<string>();
     for (const state of statesOf(LIVE.cards) as CardState[]) {
-      const card = page.locator(`${CARDS}[data-state="${state}"]`).first();
+      // spec 027: a card of the round wears its run glyph and chip (worktree.spec -g tasks); take one showing its state.
+      const card = page.locator(`${CARDS}[data-state="${state}"]`).filter({ has: page.locator(`.r1 > ui-glyph svg[data-state="${state}"]`) }).first();
       await expect(card.locator(`.r1 > ui-glyph svg[data-state="${state}"]`)).toHaveCount(1);
       await expect(card.locator(`ui-state-chip[data-state="${state}"]`)).toHaveText(EN.states.card[state]);
       const glyph = card.locator('.r1 > ui-glyph');
@@ -121,7 +122,8 @@ for (const width of [390, 1440] as const) {
     test(`waiting: cards grouped by reason, every card of the frame rendered at ${String(width)}`, async ({ page }) => {
       await page.goto(BOARD);
       await expect(page.locator(CARDS)).toHaveCount(LIVE.cards.length);
-      const waiting = LIVE.cards.filter((c) => c.state === 'waiting');
+      // spec 027: a waiting card with a run stands in the round's group, not under its reason (worktree.spec -g tasks).
+      const waiting = LIVE.cards.filter((c) => c.state === 'waiting' && (c.run === undefined || c.run === null || c.run.state === 'applied'));
       expect(waiting.length).toBeGreaterThan(0);
       for (const card of waiting) {
         const group = page.locator(`[data-lane="${card.lane}"] [data-reason-group][data-reason="${card.reason ?? ''}"]`);
@@ -145,7 +147,8 @@ test.describe('locks', () => {
       ['T27', 'a:claude:sess-2'],
       ['T28', 'a:claude:stub-002-isc-75'],
     ] as const) {
-      const card = page.locator(`[data-section="inFlight"] article[data-card="${task}"]`);
+      // spec 027: the golden's T28 carries a run (applied-open, ISC-179), so it stands in the round's group.
+      const card = page.locator(`[data-section="${task === 'T28' ? 'inRound' : 'inFlight'}"] article[data-card="${task}"]`);
       await expect(card).toHaveAttribute('data-state', 'running');
       await expect(card.locator('[data-session]')).toContainText(session);
     }
@@ -472,7 +475,8 @@ test.describe('agents', () => {
     expect(running.some((c) => c.stale === true)).toBe(true);
 
     for (const card of running) {
-      const chip = page.locator(`[data-section="inFlight"] app-agent-chip[data-agent-of="${card.task}"]`);
+      // spec 027: a running card with a run (the golden's T28) stands in the round's group, its agent chip with it.
+      const chip = page.locator(`:is([data-section="inFlight"], [data-section="inRound"]) app-agent-chip[data-agent-of="${card.task}"]`);
       await expect(chip.locator('[data-agent-session]')).toHaveText(card.lock?.session ?? '');
       await expect(chip.locator('time[data-agent-elapsed]')).toHaveText(ago(card.since ?? ''));
       await expect(chip.locator('[data-agent-stale]')).toHaveCount(card.stale === true ? 1 : 0);
@@ -1676,7 +1680,7 @@ test.describe('allocate', () => {
   });
 });
 
-// Marcello 2026-10-13: the column heads are the board's one header and stay on screen while the cards scroll, in the
+// principal 2026-10-13: the column heads are the board's one header and stay on screen while the cards scroll, in the
 // swimlane views too, one head high; any column folds and opens by hand, the choice in the URL (`?fold=`, `?open=`).
 test.describe('column heads', () => {
   useStubSession('board-heads');

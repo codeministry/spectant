@@ -18,14 +18,30 @@
 // The server joins two sources the files do not hold (spec 024, the prototype's `.mk.note` and `.mk.agent`): the
 // app's notes of the spec (`note`, at the note's creation) and the lock sessions holding one of its claims (`agent`,
 // at the lock's `since`, `running` while held). They sort after every file source of the same instant.
+//
+// The third join is the git state of the spec's worktree (spec 027, T14, ISC-175.1, `input.worktree`): a branch
+// merged into `main` is one `worktree` entry `merged` at the merge commit's date; a worktree gone while its branch is
+// not merged is one entry `removed`, undated (`ts: ''`, `undated: true`) as git gives no date. Both are `derived: true`
+// and `actor: null` like a derived stage transition (ISC-36): no event records them, and none is written. The undated
+// rule places `removed` at the instant of the entry before it, which for a removal is the newest of the timeline (it
+// follows everything recorded while the worktree lived); it sorts after every entry of that instant, never first, so
+// the web's day groups keep it beside that entry. Merged wins over removed; an open branch yields nothing.
 import { blocksOf, parseQuestion, QUESTION_HEADER } from './context-log.ts';
 import { deriveStages, GOAL_HEADER, ROUND_HEADER, stageInstants } from './derived-stages.ts';
 import { parseEvents } from './events.ts';
-import type { CommitRecord, DecisionQuestion, SpecFiles, TimelineEntry, TimelineInput, TimelineKind } from './files.ts';
+import type {
+  CommitRecord,
+  DecisionQuestion,
+  SpecFiles,
+  TimelineEntry,
+  TimelineInput,
+  TimelineKind,
+  TimelineWorktreeInput,
+} from './files.ts';
 
 type RecordedKind = Exclude<TimelineKind, 'stage'>;
 
-const SOURCE_RANK: Readonly<Record<TimelineKind, number>> = { stage: -1, decision: 0, round: 1, gate: 2, commit: 3, note: 4, agent: 5 };
+const SOURCE_RANK: Readonly<Record<TimelineKind, number>> = { stage: -1, decision: 0, round: 1, gate: 2, commit: 3, note: 4, agent: 5, worktree: 6 };
 
 /** A note of the app's notes store anchored to the spec (or one of its claims or tasks), as the server passes it. */
 export interface TimelineNote {
@@ -88,6 +104,8 @@ export function buildTimeline(input: TimelineActivityInput): TimelineEntry[] {
     // Oldest first from deriveStages; the negative position lists the later transition first within an instant.
     ...stages.map((entry, i) => ({ entry, at: instants[i] ?? Number.NaN, seq: -i })),
   ];
+  const worktree = worktreeEntry(input.worktree);
+  if (worktree) placed.push({ entry: worktree, at: worktreeInstant(worktree, placed), seq: 0 });
   const ordered = placed.sort(
     (a, b) => compareInstant(a.at, b.at, a.entry.ts, b.entry.ts) || SOURCE_RANK[a.entry.kind] - SOURCE_RANK[b.entry.kind] || a.seq - b.seq,
   );
@@ -118,7 +136,7 @@ function recordedEntry(draft: Draft): TimelineEntry {
 
 /** The entry with its id, keys in one fixed order for every kind (the golden snapshots compare bytes). */
 function withId(entry: TimelineEntry, id: string): TimelineEntry {
-  const { ts, kind, derived, title, body, ref, actor, goalLock, from, to, command, undated, question, running } = entry;
+  const { ts, kind, derived, title, body, ref, actor, goalLock, from, to, command, undated, question, running, worktree } = entry;
   return {
     ts,
     kind,
@@ -134,6 +152,7 @@ function withId(entry: TimelineEntry, id: string): TimelineEntry {
     ...(undated ? { undated: true } : {}),
     ...(question === undefined ? {} : { question }),
     ...(running ? { running: true } : {}),
+    ...(worktree === undefined ? {} : { worktree }),
   };
 }
 
@@ -339,4 +358,48 @@ function notesOf(notes: readonly TimelineNote[]): Draft[] {
 /** One running agent entry per held lock: the claim it works on, the session as the actor. */
 function sessionsOf(sessions: readonly TimelineSession[]): Draft[] {
   return sessions.map((s) => ({ kind: 'agent', ts: s.since, title: s.claim, ref: s.claim, actor: s.session, running: true }));
+}
+
+// ─── the server's join: the spec's worktree (spec 027, T14, ISC-175.1) ───────────────────────────────────────────
+
+/**
+ * The derived `worktree` entry, no body (the web shows no disclosure for it): `merged` at the merge commit's date with
+ * its short sha, `removed` undated; null for no input or an open branch. Merged wins when both are given: the merge is
+ * the fact, the worktree's removal its cleanup. The title is neutral English; the web words it from `worktree.state`.
+ */
+function worktreeEntry(input: TimelineWorktreeInput | null | undefined): TimelineEntry | null {
+  if (!input) return null;
+  const branch = input.branch ?? null;
+  const path = input.path ?? null;
+  if (input.merged) {
+    const commit = input.merged.commit ? input.merged.commit.slice(0, 7) : null;
+    return {
+      ts: input.merged.at,
+      kind: 'worktree',
+      derived: true,
+      title: branch ? `Merged into main · ${branch}` : 'Merged into main',
+      ref: 'merged',
+      actor: null,
+      worktree: { state: 'merged', branch, path, commit },
+    };
+  }
+  if (!input.removed) return null;
+  return {
+    ts: '',
+    kind: 'worktree',
+    derived: true,
+    title: path ? `Worktree removed · ${path}` : 'Worktree removed',
+    ref: 'removed',
+    actor: null,
+    undated: true,
+    worktree: { state: 'removed', branch, path, commit: null },
+  };
+}
+
+/** `merged`: its own instant. `removed`: the newest instant placed so far, NaN when none (the undated rule). */
+function worktreeInstant(entry: TimelineEntry, placed: readonly Placed[]): number {
+  if (entry.undated !== true) return Date.parse(entry.ts);
+  let newest = Number.NaN;
+  for (const p of placed) if (Number.isFinite(p.at) && (Number.isNaN(newest) || p.at > newest)) newest = p.at;
+  return newest;
 }

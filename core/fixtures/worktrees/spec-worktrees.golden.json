@@ -1,0 +1,70 @@
+{
+  "builders": 0,
+  "diagnostics": [],
+  "worktrees": [
+    {
+      "ahead": null,
+      "branch": "feature/012-harbor",
+      "dirty": null,
+      "kind": "spec",
+      "path": ".worktrees/012-harbor",
+      "spec": "012"
+    },
+    {
+      "ahead": null,
+      "branch": "export-rework",
+      "dirty": null,
+      "kind": "spec",
+      "path": ".worktrees/014-export",
+      "spec": "014"
+    },
+    {
+      "ahead": null,
+      "branch": "feature/099-retired",
+      "dirty": null,
+      "kind": "spec",
+      "path": ".worktrees/099-retired",
+      "spec": null
+    },
+    {
+      "ahead": null,
+      "branch": "infra/016-audit",
+      "dirty": null,
+      "kind": "spec",
+      "path": ".worktrees/infra-ci",
+      "spec": "016"
+    },
+    {
+      "ahead": null,
+      "branch": null,
+      "dirty": null,
+      "kind": "spec",
+      "path": ".worktrees/scratch",
+      "spec": null
+    },
+    {
+      "ahead": null,
+      "branch": "fix/013-relay",
+      "dirty": null,
+      "kind": "spec",
+      "path": "../repo-013",
+      "spec": "013"
+    },
+    {
+      "ahead": null,
+      "branch": "chore/017-tidy",
+      "dirty": null,
+      "kind": "spec",
+      "path": "../repo-017",
+      "spec": null
+    },
+    {
+      "ahead": null,
+      "branch": "spike/018-probe",
+      "dirty": null,
+      "kind": "spec",
+      "path": "../repo-018",
+      "spec": "018"
+    }
+  ]
+}

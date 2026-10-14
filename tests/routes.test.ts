@@ -61,12 +61,23 @@ const golden = (tree: string, family: string): Record<string, unknown> =>
 /** The lock ISC-74 carries from harbor's activity log. */
 const ISC_74_LOCK = { source: "activity", claim: "ISC-74", session: "a:claude:sess-2", actor: { raw: "a:claude:sess-2", kind: "agent", id: "a:claude:sess-2", legacy: false }, since: "2026-03-08T14:06:00Z" } as const;
 
-/** harbor 002's spec page golden with the activity lock applied (see the header). */
+/**
+ * harbor's activity log carries one unknown event (`ponder`, line 12; spec 027, ISC-179), surfaced as one `locks`
+ * warning on spec 002 (the line's claim is ISC-75); the golden is built without lock sources.
+ */
+const PONDER_WARNING = {
+  kind: "locks",
+  ref: "ISC-75",
+  text: '.spectant/activity.jsonl line 12: The event "ponder" is none of claim, release, dispatch, build, patch or apply; this and any later line with an unknown event is skipped, and the file is read on.',
+} as const;
+
+/** harbor 002's spec page golden with the activity lock and the unknown-event warning applied (see the header). */
 function expectedSpecPage(): SpecPageModel {
   const page = golden("harbor", "spec")[KEY] as SpecPageModel;
   const reason = "ISC-75, ISC-76 and 1 more are takeable";
   return {
     ...page,
+    warnings: [...page.warnings, PONDER_WARNING],
     // The open lock on ISC-74 makes its session the assignee over the last event's actor (spec 008, T65).
     head: { ...page.head, nextReason: reason, assignee: ISC_74_LOCK.actor },
     keyNumbers: {
@@ -75,7 +86,11 @@ function expectedSpecPage(): SpecPageModel {
       rounds: { ...page.keyNumbers.rounds, agentsWorking: 1 },
     },
     next: { ...page.next, reasons: [reason, ...page.next.reasons.slice(1)] },
-    areas: { ...page.areas, live: { ...page.areas.live, lockSource: "activity", agentsWorking: 1, lock: ISC_74_LOCK } },
+    areas: {
+      ...page.areas,
+      status: { ...page.areas.status, warnings: page.areas.status.warnings + 1 },
+      live: { ...page.areas.live, lockSource: "activity", agentsWorking: 1, lock: ISC_74_LOCK },
+    },
   };
 }
 

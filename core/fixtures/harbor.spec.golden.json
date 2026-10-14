@@ -21,7 +21,10 @@
         "kind": "person",
         "id": "u:3f9c0a7d",
         "legacy": false
-      }
+      },
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     "keyNumbers": {
       "claims": {
@@ -178,7 +181,10 @@
       "uncommittedFiles": null,
       "priority": "P3",
       "stageSource": "derived",
-      "assignee": null
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     "keyNumbers": {
       "claims": {
@@ -295,7 +301,10 @@
       "uncommittedFiles": null,
       "priority": "P3",
       "stageSource": "derived",
-      "assignee": null
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     "keyNumbers": {
       "claims": {
@@ -448,7 +457,10 @@
       "uncommittedFiles": null,
       "priority": "P3",
       "stageSource": "derived",
-      "assignee": null
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     "keyNumbers": {
       "claims": {
@@ -578,7 +590,10 @@
         "kind": "person",
         "id": "u:3f9c0a7d",
         "legacy": false
-      }
+      },
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     "keyNumbers": {
       "claims": {
@@ -701,7 +716,10 @@
       "uncommittedFiles": null,
       "priority": "P3",
       "stageSource": "derived",
-      "assignee": null
+      "assignee": null,
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     "keyNumbers": {
       "claims": {
@@ -818,7 +836,10 @@
         "kind": "person",
         "id": "u:3f9c0a7d",
         "legacy": false
-      }
+      },
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     "keyNumbers": {
       "claims": {
@@ -935,7 +956,10 @@
         "kind": "person",
         "id": "u:3f9c0a7d",
         "legacy": false
-      }
+      },
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     "keyNumbers": {
       "claims": {
@@ -1053,7 +1077,10 @@
         "kind": "person",
         "id": "u:3f9c0a7d",
         "legacy": false
-      }
+      },
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     "keyNumbers": {
       "claims": {

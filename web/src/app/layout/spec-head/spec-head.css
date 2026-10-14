@@ -139,7 +139,8 @@ h1 {
 }
 
 .meta,
-.no-source {
+.no-source,
+.source-line {
   display: flex;
   flex-wrap: wrap;
   gap: 0 8px;
@@ -150,9 +151,63 @@ h1 {
   line-height: 16px;
 }
 
-.meta span + span::before {
+.meta span + span::before,
+.source-line > span + span::before,
+.source-note .seg::before {
   margin-inline-end: 8px;
   content: '·';
+}
+
+/*
+ * The provenance line (spec 027 design.md § Viewport-übergreifend 1, ISC-175, ISC-181): the worktree chip, then the
+ * source note and the "No agent source" text. The text wraps as a whole onto the next line when chip and text are wider
+ * than the left column (about 1060 px at wide), never inside the chip (the primitive truncates the branch); at the
+ * compact tier the chip always stands alone, the text 4 px below it. Only rendered for a spec with a worktree.
+ */
+.provenance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.provenance > ui-worktree-chip {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.source-line {
+  flex: 1 1 auto;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+@container shell (width < 640px) {
+  .source-line {
+    flex-basis: 100%;
+  }
+}
+
+.source-note {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  align-items: center;
+}
+
+.source-note .read {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* Main's stage: an outline chip, so it never reads as the filled stage chip of the copy in the chip row. */
+.source-note .main-stage {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  background: transparent;
+  vertical-align: middle;
 }
 
 /* The agent banner: card, 3 px orange edge, agent dot, mono session, `lock` "writes paused" on the right (ISC-90). */

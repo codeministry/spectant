@@ -38,15 +38,17 @@ export function folders(dir: string): SpecFiles[] {
 }
 
 /**
- * Fixture trees that are not dashboard trees: `library/` is the document catalog's workspace (spec 017,
- * `core/tests/library.test.ts`), with no master and no golden snapshot.
+ * The name of every dashboard fixture tree: each directory directly under `core/fixtures/` that is a repository root
+ * with a `specs/` folder, in name order, minus the trees that are not dashboard trees. A directory without `specs/`
+ * holds input of another kind, such as the `git worktree list --porcelain` listings in `worktrees/` (spec 027).
+ * `library/` is the document catalog's workspace (spec 017, `core/tests/library.test.ts`), with no master and no
+ * golden snapshot.
  */
 const NOT_DASHBOARD_TREES: ReadonlySet<string> = new Set(['library']);
 
-/** The name of every dashboard fixture tree: each directory directly under `core/fixtures/`, in name order. */
 export function fixtureTrees(): string[] {
   return readdirSync(FIXTURES, { withFileTypes: true })
-    .filter((e) => e.isDirectory() && !NOT_DASHBOARD_TREES.has(e.name))
+    .filter((e) => e.isDirectory() && existsSync(join(FIXTURES, e.name, 'specs')) && !NOT_DASHBOARD_TREES.has(e.name))
     .map((e) => e.name)
     .sort();
 }

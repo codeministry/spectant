@@ -363,3 +363,97 @@ describe('SpecHead priority (T134, ISC-118; T36, ISC-149)', () => {
     expect(headPriority(none)?.hasAttribute('data-unmarked')).toBe(true);
   });
 });
+
+// T34, T35 · ISC-175, ISC-181 (spec 027 design.md § Viewport-übergreifend 1, Quellen-Hinweis): the provenance line —
+// the worktree chip, the source note and the "No agent source" text, in that order; nothing of it without a worktree.
+describe('SpecHead provenance line (T34, T35, ISC-175, ISC-181)', () => {
+  type Body = { head: Record<string, unknown>; warnings: unknown[]; keyNumbers: { claims: { closed: number; total: number } } };
+  const GOLDEN = specGolden as unknown as Record<string, Body>;
+  const WORKTREE = { path: '.worktrees/002-web-console', branch: 'feature/002-web-console', spec: '002', ahead: 2, dirty: true, kind: 'spec' };
+  const MAIN = { stage: 'build', progress: { closed: 23, total: 30 } };
+  const MISMATCH = { kind: 'worktree-branch-mismatch', text: 'branch names another spec', ref: WORKTREE.path };
+  const with002 = (head: Record<string, unknown>, warnings: unknown[] = []) => {
+    const golden = GOLDEN['specs/002-web-console'];
+    return ok({ ...golden, head: { ...golden.head, ...head }, warnings: [...golden.warnings, ...warnings] });
+  };
+  const chip = (root: HTMLElement): HTMLElement | null => root.querySelector<HTMLElement>('ui-worktree-chip[data-head-worktree]');
+  const note = (root: HTMLElement): HTMLElement | null => root.querySelector<HTMLElement>('[data-source-note]');
+
+  it('shows the full chip with branch, ↑2 and ± for a spec with a worktree', async () => {
+    setUp(unserved, () => with002({ worktree: WORKTREE }));
+    const root = await open('/w/harbor/s/002/status');
+    const found = chip(root);
+    expect(found?.getAttribute('data-form')).toBe('full');
+    expect(found?.hasAttribute('data-mismatch')).toBe(false);
+    expect(text(found)).toContain('feature/002-web-console');
+    expect(text(found)).toContain('↑2');
+    expect(text(found)).toContain('±');
+    // Read from main: the chip, no source note; the "No agent source" text keeps its place behind the chip.
+    expect(note(root)).toBeNull();
+    const line = root.querySelector<HTMLElement>('[data-provenance]');
+    expect(line?.firstElementChild).toBe(found);
+    expect(text(line?.querySelector('[data-no-source-line]') ?? null)).toBe(en.specHead.noSource);
+  });
+
+  it('shows no chip, no note and the unchanged "No agent source" line without a worktree', async () => {
+    setUp(unserved, () => ok(GOLDEN['specs/004-retention-policies']));
+    const root = await open('/w/harbor/s/004/status');
+    expect(root.querySelector('ui-worktree-chip')).toBeNull();
+    expect(note(root)).toBeNull();
+    expect(root.querySelector('[data-provenance]')).toBeNull();
+    const line = root.querySelector<HTMLElement>('[data-no-source-line]');
+    expect(line?.tagName).toBe('P');
+    expect(line?.className).toBe('no-source');
+    expect(line?.parentElement?.classList.contains('sh-main')).toBe(true);
+    expect(text(line)).toBe(en.specHead.noSource);
+  });
+
+  it("puts the source note between chip and agent text, main's stage as an outline chip and n/m", async () => {
+    setUp(unserved, () => with002({ worktree: WORKTREE, source: 'worktree', stage: 'plan', main: MAIN }));
+    const root = await open('/w/harbor/s/002/status');
+    const found = note(root);
+    // Segments: the separators are drawn between them, so the text is read per segment.
+    expect([...(found?.children ?? [])].map(text)).toEqual([en.specHead.source.read, `${en.specHead.source.main} ${en.stages.build}`, '23/30']);
+    const stage = found?.querySelector<HTMLElement>('ui-chip[data-main-stage]') ?? null;
+    expect(text(stage)).toBe(en.stages.build);
+    expect(stage?.getAttribute('data-tone')).toBe('neutral');
+    expect(text(found?.querySelector('[data-main-progress]') ?? null)).toBe('23/30');
+    // The copy's own stage chip in the chip row stays the filled one.
+    expect(text(root.querySelector('[data-head-chip="stage"]'))).toBe(en.stages.plan);
+    const parts = [...(root.querySelector('[data-provenance]')?.querySelectorAll('[data-head-worktree], [data-source-note], [data-no-source-line]') ?? [])];
+    expect(parts.map((el) => el.getAttribute('data-head-worktree') !== null ? 'chip' : el.hasAttribute('data-source-note') ? 'note' : 'agent')).toEqual(['chip', 'note', 'agent']);
+  });
+
+  it('reads "main equal" when main matches the copy in stage and progress', async () => {
+    const { closed, total } = GOLDEN['specs/002-web-console'].keyNumbers.claims;
+    setUp(unserved, () => with002({ worktree: WORKTREE, source: 'worktree', stage: 'build', main: { stage: 'build', progress: { closed, total } } }));
+    const root = await open('/w/harbor/s/002/status');
+    expect([...(note(root)?.children ?? [])].map(text)).toEqual([en.specHead.source.read, en.specHead.source.equal]);
+    expect(note(root)?.querySelector('[data-main-stage]')).toBeNull();
+  });
+
+  it('turns the chip to the warning tone on a worktree-branch-mismatch warning', async () => {
+    setUp(unserved, () => with002({ worktree: WORKTREE }, [MISMATCH]));
+    const root = await open('/w/harbor/s/002/status');
+    expect(chip(root)?.hasAttribute('data-mismatch')).toBe(true);
+  });
+
+  it("passes the shell's tier: a bottom sheet at compact, a popover at medium and wide", async () => {
+    for (const [tier, overlay] of [['compact', 'ui-sheet'], ['medium', 'ui-popover'], ['wide', 'ui-popover']] as const) {
+      TestBed.resetTestingModule();
+      setUp(unserved, () => with002({ worktree: WORKTREE }));
+      const root = await open('/w/harbor/s/002/status', tier);
+      expect(chip(root)?.querySelector(overlay) ?? null).not.toBeNull();
+    }
+  });
+
+  it('comes after the breadcrumb and before the command chip in tab order', async () => {
+    setUp(unserved, () => with002({ worktree: WORKTREE }));
+    const root = await open('/w/harbor/s/002/status');
+    const trigger = chip(root)?.querySelector('button') ?? null;
+    const command = root.querySelector('[data-head-command]');
+    expect(trigger).not.toBeNull();
+    expect(nav(root).compareDocumentPosition(trigger as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect((trigger as Node).compareDocumentPosition(command as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});

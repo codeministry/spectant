@@ -23,6 +23,7 @@ import { UiPopover, UiPopoverTrigger } from '../../shared/ui/overlay/popover';
 import { UiPriority } from '../../shared/ui/priority/priority';
 import type { Tone } from '../../shared/ui/tone';
 import { TYPE_GLYPHS } from '../../shared/ui/type-glyph/type-glyph';
+import { UiWorktreeChip } from '../../shared/ui/worktree-chip/worktree-chip';
 import { areaById, areaPath, planningTreeLink, specLink, workspaceLink } from '../shell/areas';
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
@@ -35,7 +36,9 @@ import {
   type MilestonePlace,
   milestonePlace,
   openItem,
+  provenance,
   relativeTime,
+  worktreeChipTier,
 } from './spec-head-model';
 
 /** The stage chip's tone and prototype icon (`CHIP_ICON`: scoping compass, tasked list, building hammer, …). */
@@ -67,13 +70,19 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
  *   button when the stage allows, and the notes pill (`sticky-note` (the prototype's `note`) + "n notes", violet tint).
  * - The agent banner (3 px orange edge, agent dot, `lock` "writes paused") while a lock source reports a lock (ISC-90);
  *   without one the "No agent source" note joins the meta lines when the server read no source (ISC-86).
+ * - The provenance line (spec 027 design.md § Viewport-übergreifend 1, ISC-175, ISC-181): for a spec with a worktree,
+ *   the full `ui-worktree-chip` (warning tone on a `worktree-branch-mismatch` warning, details as a sheet at compact),
+ *   then, only when the spec is read from its worktree copy, the source note "Read from the worktree · main: ‹stage› ·
+ *   n/m" (main's stage as an outline chip; "main equal" when stage and progress match), then the "No agent source"
+ *   text. It wraps after the chip when wider than the left column, always at compact. Without a worktree the "No agent
+ *   source" line renders exactly as before.
  *
  * Values come from the spec payload, the dashboard row until it answers. The host carries `spec-head`, the class the
  * zen footer hides.
  */
 @Component({
   selector: 'app-spec-head',
-  imports: [GateButton, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiPriority],
+  imports: [GateButton, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiPriority, UiWorktreeChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./spec-head.css', './spec-head.context.css', './spec-head.compact.css'],
   host: { class: 'spec-head', '[attr.data-tier]': 'tier()' },
@@ -198,7 +207,32 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
             }
           </p>
         }
-        @if (!lock() && lockSource() === 'none') {
+        @if (provenance(); as prov) {
+          <div class="provenance" data-provenance>
+            <ui-worktree-chip data-head-worktree [worktree]="prov.worktree" [mismatch]="prov.mismatch" [source]="prov.source" [tier]="chipTier()" />
+            @if (prov.note || noSource()) {
+              <p class="source-line">
+                @if (prov.note; as note) {
+                  <span class="source-note" data-source-note>
+                    <span class="read"><ui-icon name="folder-git-2" [size]="12" />{{ 'specHead.source.read' | transloco }}</span>
+                    @if (note.kind === 'behind') {
+                      <span class="seg"
+                        >{{ 'specHead.source.main' | transloco }}
+                        <ui-chip class="main-stage" data-main-stage variant="small">{{ 'stages.' + note.stage | transloco }}</ui-chip></span
+                      >
+                      <span class="seg mono" data-main-progress>{{ note.closed }}/{{ note.total }}</span>
+                    } @else {
+                      <span class="seg">{{ (note.kind === 'equal' ? 'specHead.source.equal' : 'specHead.source.absent') | transloco }}</span>
+                    }
+                  </span>
+                }
+                @if (noSource()) {
+                  <span data-no-source-line>{{ 'specHead.noSource' | transloco }}</span>
+                }
+              </p>
+            }
+          </div>
+        } @else if (noSource()) {
           <p class="no-source" data-no-source-line>{{ 'specHead.noSource' | transloco }}</p>
         }
       </div>
@@ -281,6 +315,17 @@ export class SpecHead {
   protected readonly lock = computed(() => this.body()?.areas.live.lock ?? null);
   protected readonly lockSource = computed(() => this.body()?.areas.live.lockSource ?? null);
   protected readonly showGate = computed(() => this.body() !== null && gateInHead(this.stage()));
+  /** No lock and no source read: writes check the file hash only (ISC-86). */
+  protected readonly noSource = computed(() => !this.lock() && this.lockSource() === 'none');
+
+  /** The provenance line's chip and source note (spec 027, ISC-175, ISC-181), from the spec payload only; null: none. */
+  protected readonly provenance = computed(() => {
+    const body = this.body();
+    if (body === null) return null;
+    const { stage, worktree, source, main } = body.head;
+    return provenance({ stage, worktree, source, main, progress: body.keyNumbers.claims, warnings: body.warnings });
+  });
+  protected readonly chipTier = computed(() => worktreeChipTier(this.tier()));
 
   protected readonly workspaceName = computed(() => {
     const ws = this.state.ws();

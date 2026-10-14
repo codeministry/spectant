@@ -196,6 +196,9 @@ function rowOf(input: SpecPageInput): DashboardSpecRow {
     specs: [input.files, ...others.filter((f) => !isArchived(f))],
     archived: others.filter(isArchived),
     worktreeTree: input.worktreeTree ?? null,
+    // The worktrees and this spec's own reading (spec 027, T12): the head shows the row's chip, source and main copy.
+    ...(input.worktrees ? { worktrees: input.worktrees } : {}),
+    ...(input.read ? { perSpec: { [input.files.folder]: input.read } } : {}),
     ...(input.locks ? { locks: input.locks } : {}),
     ...(input.workflow ? { workflow: input.workflow } : {}),
   }).specs.find((r) => r.slug === input.files.folder);
@@ -266,6 +269,10 @@ export function buildSpecPage(input: SpecPageInput): SpecPageModel {
     stageSource: row.stageSource,
     // The row's assignee (T65, ISC-131): the same locks and events, so the head and the row name the same actor.
     assignee: row.assignee,
+    // The row's worktree chip, read source and main copy (spec 027, T12): the head and the board card never disagree.
+    worktree: row.worktree,
+    source: row.source,
+    main: row.main,
   };
 
   // The stage phrase first and unchanged: the row's `nextReason` is `reasonOf(step)` (T69, ISC-122.3); the page's own facts follow.

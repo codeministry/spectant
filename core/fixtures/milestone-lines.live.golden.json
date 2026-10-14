@@ -22,7 +22,13 @@
     "locks": [],
     "agents": [],
     "needsYou": [],
-    "staleAfterMs": 2700000
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
   },
   "specs/002-alert-routing": {
     "index": 0,
@@ -47,7 +53,13 @@
     "locks": [],
     "agents": [],
     "needsYou": [],
-    "staleAfterMs": 2700000
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
   },
   "specs/003-escalation-chains": {
     "index": 0,
@@ -72,6 +84,12 @@
     "locks": [],
     "agents": [],
     "needsYou": [],
-    "staleAfterMs": 2700000
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
   }
 }

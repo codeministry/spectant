@@ -31,7 +31,8 @@ const FRAMES: readonly Frame[] = [...HISTORY, LIVE];
 const EN = JSON.parse(readFileSync(fileURLToPath(new URL('../src/i18n/en.json', import.meta.url)), 'utf8')) as {
   states: { card: Record<CardState, string> };
 };
-const ELEVEN: readonly CardState[] = Object.keys(EN.states.card) as CardState[];
+// spec 027: the card catalogue also names the three run-only glyph words (patched, applied, applied-open); the board's eleven are the rest.
+const ELEVEN: readonly CardState[] = (Object.keys(EN.states.card) as CardState[]).filter((state) => !['patched', 'applied', 'applied-open'].includes(state));
 
 const MATRIX = '/w/harbor/s/002/matrix';
 const BOARD = '/w/harbor/s/002/board';

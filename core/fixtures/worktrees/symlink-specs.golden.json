@@ -1,0 +1,30 @@
+{
+  "builders": 1,
+  "diagnostics": [],
+  "worktrees": [
+    {
+      "ahead": null,
+      "branch": "feature/012-harbor",
+      "dirty": null,
+      "kind": "spec",
+      "path": ".worktrees/012-harbor",
+      "spec": "012"
+    },
+    {
+      "ahead": null,
+      "branch": "feature/016-audit",
+      "dirty": null,
+      "kind": "spec",
+      "path": ".worktrees/016-audit",
+      "spec": "016"
+    },
+    {
+      "ahead": null,
+      "branch": "worktree-agent-6d9a2c5f8b1e4d7a0",
+      "dirty": null,
+      "kind": "builder",
+      "path": ".claude/worktrees/agent-6d9a2c5f8b1e4d7a0",
+      "spec": null
+    }
+  ]
+}

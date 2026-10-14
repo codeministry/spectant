@@ -65,6 +65,10 @@ describe('harbor 002: the richest spec (round 3, all three kinds waiting on you)
       stageSource: 'explicit',
       // spec 008, T65: no lock reading here, so the actor of events.jsonl's last line
       assignee: { raw: 'u:3f9c0a7d', kind: 'person', id: 'u:3f9c0a7d', legacy: false },
+      // spec 027, T12: no worktree reading here, so no chip, the main checkout's files and no main copy beside them
+      worktree: null,
+      source: 'main',
+      main: null,
     });
   });
 

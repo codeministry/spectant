@@ -72,8 +72,9 @@ test.describe('states', () => {
       for (const compact of [false, true]) {
         await page.goto(urlOf(frame, compact));
         await expect(page.locator(CARDS)).toHaveCount(frame.cards.length);
+        // spec 027: a card of the round wears its run glyph and chip (worktree.spec -g tasks); the eleven are the others'.
         const cards = await page.locator(CARDS).evaluateAll((els) =>
-          els.map((el) => {
+          els.filter((el) => !el.parentElement?.hasAttribute('data-run')).map((el) => {
             const glyph = el.querySelector(':scope > .r1 > ui-glyph');
             const style = getComputedStyle(el);
             return {
@@ -88,7 +89,11 @@ test.describe('states', () => {
           }),
         );
         const where = urlOf(frame, compact);
-        expect(cards.map((c) => c.state).sort(), where).toEqual(frame.cards.map((c) => c.state).sort());
+        const shown = frame.cards.filter((c) => {
+          const run = (c as { run?: { state: string } | null }).run;
+          return run === undefined || run === null || run.state === 'applied';
+        });
+        expect(cards.map((c) => c.state).sort(), where).toEqual(shown.map((c) => c.state).sort());
         seen.push(...cards);
       }
     }

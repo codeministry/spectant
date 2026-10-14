@@ -13,7 +13,7 @@
 // harbor's activity log leaves ISC-74 of spec 002 claimed (task T27). A test that wants an accepted write on 002
 // removes the log; spec 004 (claims ISC-95 and up) is never held by it.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -21,7 +21,7 @@ import { validateEventLine } from "../core/src/events.ts";
 import { readGateMark, reviewedGate } from "../core/src/gates.ts";
 import { LIFEOS_ABSENT } from "../server/src/lifeos.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
-import { REVIEWED_HASHES_HEADER, type ReviewedHashes, TASKS_HASH_HEADER, parseReviewedHashes, specRoutes } from "../server/src/spec-routes.contract.ts";
+import { REVIEWED_HASHES_HEADER, type ReviewedHashes, SPEC_HASH_HEADER, TASKS_HASH_HEADER, parseReviewedHashes, specRoutes } from "../server/src/spec-routes.contract.ts";
 import { specRoutesApi } from "../server/src/spec-routes.ts";
 import { readSpecFiles } from "../server/src/workspace-loader.ts";
 import { actorIdOf } from "../core/src/actor-id.ts";
@@ -41,6 +41,7 @@ import {
   writeAnswerOf,
 } from "../server/src/writes.contract.ts";
 import type { ApiHandler } from "../server/src/http.ts";
+import { SPEC_FOLDER, SPEC_WORKTREE, plantWorktreeRepo } from "./fixtures/worktree-repo.ts";
 
 const HARBOR = join(import.meta.dir, "..", "core", "fixtures", "harbor");
 const HOST = { Host: "127.0.0.1:7717" };
@@ -653,5 +654,143 @@ describe("ISC-130.2 allocate: a story becomes specs/NNN-slug/ with three files, 
     expect(res.status).toBe(200);
     const events = readFileSync(join(repo, FOLDER, "events.jsonl"), "utf8");
     expect(JSON.parse(events.trimEnd())).toMatchObject({ actor: actorIdOf(VIEWER_EMAIL) });
+  });
+});
+
+// Spec 027 (T22, ISC-181): with `specs/` tracked and a worktree of its own, spec 002 is read from the worktree copy
+// (T21), so every hash the client renders is the copy's; the reviewed mark, the tick and the stage move then read,
+// compare against and write that same copy, and the main checkout stays byte-identical. The fixture's `.spectant/` (an
+// ignored folder there) is removed, so no claim holds 002. The allocation is not here: it always targets the main
+// checkout (`allocate-route.ts`).
+describe("ISC-181 worktree-copy: the reviewed mark, the tick and the stage move follow the spec's read source", () => {
+  const WEB_ID = "002";
+  type Planted = { root: string; api: ApiHandler; main: string; copy: string; git: (cwd: string, ...args: string[]) => Promise<{ code: number }> };
+
+  /** The worktree fixture registered as `harbor`, without an activity log; `main` and `copy` are 002's two folders. */
+  async function plantCopy(trackedSpecs: boolean): Promise<Planted> {
+    const planted = await plantWorktreeRepo({ parent: root, trackedSpecs });
+    rmSync(join(planted.root, ".spectant"), { recursive: true, force: true });
+    const registry = openRegistry(mkdtempSync(join(root, "data-")));
+    registries.push(registry);
+    registry.add(planted.root);
+    return {
+      root: planted.root,
+      api: specRoutesApi({ registry, lifeos: LIFEOS_ABSENT }),
+      main: join(planted.root, "specs", SPEC_FOLDER),
+      copy: join(planted.root, SPEC_WORKTREE, "specs", SPEC_FOLDER),
+      git: planted.git,
+    };
+  }
+
+  /** The indices of the lines that differ between two texts of the same line count. */
+  const differingLines = (a: string, b: string): number[] => {
+    const left = lines(a);
+    const right = lines(b);
+    expect(right.length).toBe(left.length);
+    return left.flatMap((line, i) => (line === right[i] ? [] : [i]));
+  };
+
+  const renderedSpecHash = async (api: ApiHandler): Promise<string> => (await call(api, specRoutes.spec("harbor", WEB_ID))).headers.get(SPEC_HASH_HEADER) ?? "";
+
+  test("worktree-copy checkbox: the copy's hash ticks one line of the copy's tasks.md; main's folder is byte-identical", async () => {
+    const { api, main, copy } = await plantCopy(true);
+    const mainBefore = tree(main);
+    const text = readFileSync(join(copy, "tasks.md"), "utf8");
+    const hash = await renderedTasksHash(api, WEB_ID);
+    expect(hash).toBe(sha256(text));
+    expect(hash).not.toBe(sha256(readFileSync(join(main, "tasks.md"))));
+
+    const res = await post(api, specRoutes.taskCheck("harbor", WEB_ID, "T27"), { checked: false, hash });
+    expect(res.status).toBe(200);
+    const after = readFileSync(join(copy, "tasks.md"), "utf8");
+    const changedLines = differingLines(text, after);
+    expect(changedLines.length).toBe(1);
+    expect(lines(after)[changedLines[0] ?? -1]).toContain("[ ] T27");
+    expect(((await res.json()) as { hash: string }).hash).toBe(sha256(after));
+    expect(changed(mainBefore, tree(main))).toEqual([]);
+  });
+
+  test("worktree-copy reviewed: the mark lands under the copy's .gates/, its event in the copy's events.jsonl; main untouched", async () => {
+    const { api, main, copy } = await plantCopy(true);
+    const mainBefore = tree(main);
+    const copyBefore = tree(copy);
+    const events = readFileSync(join(copy, "events.jsonl"), "utf8");
+    const hashes = await renderedHashes(api, WEB_ID);
+    expect(hashes).toEqual(gateHashes(readSpecFiles({ dir: copy, slug: SPEC_FOLDER }).texts));
+
+    const res = await post(api, specRoutes.gateReviewed("harbor", WEB_ID), { hashes });
+    expect(res.status).toBe(200);
+    expect(changed(copyBefore, tree(copy))).toEqual([".gates/reviewed.json", "events.jsonl"]);
+    expect(reviewedGate(readSpecFiles({ dir: copy, slug: SPEC_FOLDER }).texts).check.state).toBe("fresh");
+    const appended = readFileSync(join(copy, "events.jsonl"), "utf8");
+    expect(appended.startsWith(events)).toBe(true);
+    expect(lines(appended.slice(events.length).trimEnd()).length).toBe(1);
+    expect(changed(mainBefore, tree(main))).toEqual([]);
+  });
+
+  test("worktree-copy transition: stage: moves in the copy's spec.md, the event in the copy's events.jsonl; main untouched", async () => {
+    const { api, main, copy } = await plantCopy(true);
+    // The copy stands in code-review, whose one move (to done) needs every claim closed; the round in the worktree is
+    // set back to build, which may move to blocked. A move past review needs a fresh reviewed mark of the copy's files.
+    const specPath = join(copy, "spec.md");
+    const atCodeReview = readFileSync(specPath, "utf8");
+    expect(atCodeReview).toMatch(/^stage: code-review$/m);
+    writeFileSync(specPath, atCodeReview.replace(/^stage: code-review$/m, "stage: build"));
+    expect((await post(api, specRoutes.gateReviewed("harbor", WEB_ID), { hashes: await renderedHashes(api, WEB_ID) })).status).toBe(200);
+    const mainBefore = tree(main);
+    const copyBefore = tree(copy);
+    const hash = await renderedSpecHash(api);
+    expect(hash).toBe(sha256(readFileSync(join(copy, "spec.md"))));
+
+    const res = await post(api, specRoutes.transition("harbor", WEB_ID), { to: "blocked", hash });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { from: string; to: string; hash: string };
+    expect([body.from, body.to]).toEqual(["build", "blocked"]);
+    const spec = readFileSync(specPath, "utf8");
+    expect(body.hash).toBe(sha256(spec));
+    expect(parseFrontmatter(spec).data.stage).toBe("blocked");
+    expect(changed(copyBefore, tree(copy))).toEqual(["events.jsonl", "spec.md"]);
+    expect(changed(mainBefore, tree(main))).toEqual([]);
+  });
+
+  test("worktree-copy cas: main's hashes against the copy are 409 with files, and nothing anywhere changes", async () => {
+    const { root: repo, api, main, copy } = await plantCopy(true);
+    const before = tree(repo);
+    const tick = await post(api, specRoutes.taskCheck("harbor", WEB_ID, "T27"), { checked: false, hash: sha256(readFileSync(join(main, "tasks.md"))) });
+    expect([tick.status, await tick.json()]).toEqual([409, { error: "hash-mismatch", files: ["tasks.md"], expected: { tasks: sha256(readFileSync(join(copy, "tasks.md"))) } }]);
+    const move = await post(api, specRoutes.transition("harbor", WEB_ID), { to: "blocked", hash: sha256(readFileSync(join(main, "spec.md"))) });
+    expect([move.status, await move.json()]).toEqual([409, { error: "hash-mismatch", files: ["spec.md"], expected: { spec: sha256(readFileSync(join(copy, "spec.md"))) } }]);
+    expect(changed(before, tree(repo))).toEqual([]);
+  });
+
+  test("worktree-copy source switch: rendered from the copy, the worktree removed before the write, is 409 with files", async () => {
+    const { root: repo, api, main, git } = await plantCopy(true);
+    const tasksHash = await renderedTasksHash(api, WEB_ID);
+    const specHash = await renderedSpecHash(api);
+    expect((await git(repo, "worktree", "remove", "--force", SPEC_WORKTREE)).code).toBe(0);
+    const mainBefore = tree(main);
+    // The source is the main checkout now: the CAS compares the copy's hashes with main's files and refuses.
+    const tick = await post(api, specRoutes.taskCheck("harbor", WEB_ID, "T27"), { checked: false, hash: tasksHash });
+    expect([tick.status, await tick.json()]).toEqual([409, { error: "hash-mismatch", files: ["tasks.md"], expected: { tasks: sha256(readFileSync(join(main, "tasks.md"))) } }]);
+    const move = await post(api, specRoutes.transition("harbor", WEB_ID), { to: "blocked", hash: specHash });
+    expect([move.status, await move.json()]).toEqual([409, { error: "hash-mismatch", files: ["spec.md"], expected: { spec: sha256(readFileSync(join(main, "spec.md"))) } }]);
+    expect(changed(mainBefore, tree(main))).toEqual([]);
+  });
+
+  test("worktree-copy untracked: with specs/ linked into the worktree, the tick lands once, in the main checkout", async () => {
+    const { root: repo, api, main } = await plantCopy(false);
+    const link = join(repo, SPEC_WORKTREE, "specs");
+    expect(lstatSync(link).isSymbolicLink()).toBe(true);
+    const text = readFileSync(join(main, "tasks.md"), "utf8");
+    const hash = await renderedTasksHash(api, WEB_ID);
+    expect(hash).toBe(sha256(text));
+
+    const res = await post(api, specRoutes.taskCheck("harbor", WEB_ID, "T27"), { checked: true, hash });
+    expect(res.status).toBe(200);
+    const after = readFileSync(join(main, "tasks.md"), "utf8");
+    const changedLines = differingLines(text, after);
+    expect(changedLines.length).toBe(1);
+    expect(lines(after)[changedLines[0] ?? -1]).toContain("[x] T27");
+    expect(lstatSync(link).isSymbolicLink()).toBe(true);
   });
 });

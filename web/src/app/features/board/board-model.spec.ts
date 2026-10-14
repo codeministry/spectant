@@ -225,7 +225,7 @@ describe('buildBoard (T120, ISC-129)', () => {
   });
 });
 
-describe('folded columns (Marcello 2026-10-13)', () => {
+describe('folded columns (principal 2026-10-13)', () => {
   it('folds a column without a shown card, opens it on ?open=, folds a column with cards on ?fold=', () => {
     const base = board();
     const empty = base.columns.find((c) => c.cards.length === 0);

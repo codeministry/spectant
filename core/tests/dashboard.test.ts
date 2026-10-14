@@ -12,10 +12,13 @@ import { join } from 'node:path';
 
 import { buildDashboard, devServiceLabels, toLocalService } from '../src/dashboard.ts';
 import type { DashboardInput, DashboardModel, DashboardSpecRow } from '../src/dashboard.ts';
-import type { LockReading } from '../src/files.ts';
+import type { LockReading, SpecFiles, SpecRead, Worktree } from '../src/files.ts';
 import { readLockSources } from '../src/locks.ts';
 import { buildSpecPage } from '../src/spec.ts';
 import { STAGE_RULES, WAITING_STAGES, fillsTemplate } from '../src/stage.ts';
+import { assignWorktrees } from '../src/worktrees.ts';
+import type { WorktreeAssignment } from '../src/worktrees.ts';
+import { DASHBOARD_FAMILY, goldenPath, goldenText } from './helpers/golden.ts';
 import { FIXTURES, fixtureTrees, readTree } from './helpers/read-tree.ts';
 
 const model = (name: string): DashboardModel => buildDashboard(readTree(name));
@@ -219,6 +222,20 @@ describe('services', () => {
     });
     expect(m.services.map((s) => s.port)).toEqual([4200, 8080]);
   });
+
+  test('a service in a spec worktree carries the spec number into the model, absent stays absent (spec 027, T15, ISC-177)', () => {
+    const labels = devServiceLabels(readTree('harbor').constitution ?? '');
+    const inSpec = toLocalService({ port: 4300, kind: 'node', label: 'node', worktree: true, spec: '027' }, labels);
+    expect(inSpec).toEqual({ port: 4300, url: 'http://localhost:4300', process: 'node', label: null, worktree: true, spec: '027' });
+    const inBuilder = toLocalService({ port: 4301, kind: 'bun', label: 'bun', worktree: true }, labels);
+    expect('spec' in inBuilder).toBe(false);
+
+    const m = buildDashboard({ ...readTree('lantern'), services: [inBuilder, inSpec] });
+    expect(m.services.map((s) => s.spec)).toEqual(['027', undefined]);
+    expect(m.services.map((s) => 'spec' in s)).toEqual([true, false]);
+    // No service names a spec in the fixtures, so the harbor golden stays byte-identical.
+    expect(goldenText(buildDashboard(readTree('harbor')))).toBe(readFileSync(goldenPath('harbor', DASHBOARD_FAMILY), 'utf8'));
+  });
 });
 
 describe('multi-workspace', () => {
@@ -270,7 +287,9 @@ describe('taken and lock warnings (spec 002 T115, ISC-90)', () => {
   test("harbor 002's row lists the ISC-74 activity lock with its session and since", async () => {
     const m = await withLocks(readLockSources({ repoRoot: HARBOR, now: NOW }));
     expect(row(m, '002').taken).toEqual([{ id: 'ISC-74', session: 'a:claude:sess-2', since: '2026-03-08T14:06:00Z', source: 'activity' }]);
-    expect(kinds(row(m, '002'))).toEqual([]);
+    // The one lock diagnostic, harbor's unknown `ponder` run event on ISC-75 (spec 027, ISC-179), lands on 002's row.
+    expect(row(m, '002').warnings.map((w) => [w.kind, w.ref])).toEqual([['locks', 'ISC-75']]);
+    expect(row(m, '002').warnings[0]?.text).toContain('"ponder"');
     for (const r of m.specs.filter((s) => s.id !== '002')) expect(r.taken).toEqual([]);
   });
 
@@ -399,5 +418,126 @@ describe('ideas: the dashboard lists the stories (T70)', () => {
     const without = buildDashboard(withoutIdeas);
     const withIdeas = model('harbor');
     expect({ ...withIdeas, ideas: without.ideas }).toEqual(without);
+  });
+});
+
+// ─── The worktree of each spec (spec 027, T12, ISC-175, ISC-176, ISC-181) ──────────────────────────────────────────
+
+describe('worktree: each row and spec head carry the spec worktree, the read source and the main copy', () => {
+  const harbor = readTree('harbor');
+  const F004 = '004-retention-policies';
+  /** The tree id 004's code-reviewed mark recorded: the tree of its worktree, which the main checkout no longer has. */
+  const MARK_TREE = '0f0b75edd68fe6549744de66e4500c4f95b538bf';
+  const MAIN_TREE = 'a'.repeat(40);
+  const porcelain = [
+    'worktree /srv/harbor',
+    'HEAD 3f9a1c0d5e7b2a4c6e8f0a1b3c5d7e9f2a4b6c8d',
+    'branch refs/heads/main',
+    '',
+    `worktree /srv/harbor/.worktrees/${F004}`,
+    'HEAD 8b2e4d6f0a1c3e5a7c9e1b3d5f7a9c1e3b5d7f9a',
+    `branch refs/heads/feature/${F004}`,
+    '',
+    'worktree /srv/harbor/.worktrees/006-partial-push',
+    'HEAD 5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f',
+    'branch refs/heads/feature/002-web-console',
+    '',
+    'worktree /srv/harbor/.claude/worktrees/agent-a1b2c3d4',
+    'HEAD 7a9c1e3b5d7f9a8b2e4d6f0a1c3e5a7c9e1b3d5f',
+    'branch refs/heads/worktree-agent-a1b2c3d4',
+    '',
+  ].join('\n');
+  const assigned = assignWorktrees(
+    porcelain,
+    harbor.specs.map((f) => f.folder),
+  );
+  // What the server reads with git in each spec worktree (ISC-175): 004 two commits ahead and dirty, 006 level and clean.
+  const git = new Map([
+    ['004', { ahead: 2, dirty: true }],
+    ['006', { ahead: 0, dirty: false }],
+  ]);
+  const worktrees: WorktreeAssignment = {
+    ...assigned,
+    worktrees: assigned.worktrees.map((w): Worktree => ({ ...w, ...(w.spec === null ? {} : git.get(w.spec)) })),
+  };
+  const files004 = harbor.specs.find((f) => f.folder === F004);
+  if (files004 === undefined) throw new Error(`harbor has no ${F004}`);
+  // The main checkout's copy of 004 lags its worktree by one closed claim.
+  const main004: SpecFiles = { folder: F004, texts: { ...files004.texts, spec: (files004.texts.spec ?? '').replace('- [x] ISC-', '- [ ] ISC-') } };
+  const input: DashboardInput = {
+    ...harbor,
+    worktreeTree: MAIN_TREE,
+    worktrees,
+    perSpec: { [F004]: { tree: MARK_TREE, source: 'worktree', main: main004 } },
+  };
+  const m = buildDashboard(input);
+  /** 004's stage and progress as the dashboard shows them when the main checkout's copy is the one read. */
+  const mainRow = row(buildDashboard({ ...harbor, worktreeTree: MAIN_TREE, specs: harbor.specs.map((f) => (f.folder === F004 ? main004 : f)) }), '004');
+
+  test('004: the chip data (branch, two ahead, dirty), source worktree and the main copy stage and progress', () => {
+    const r = row(m, '004');
+    expect(r.worktree).toEqual({ path: `.worktrees/${F004}`, branch: `feature/${F004}`, spec: '004', ahead: 2, dirty: true, kind: 'spec' });
+    expect(r.source).toBe('worktree');
+    expect(r.main).toEqual({ stage: mainRow.stage, progress: mainRow.progress });
+    expect(r.main?.progress).not.toEqual(r.progress);
+    expect(kinds(r)).not.toContain('worktree-branch-mismatch');
+  });
+
+  test("004: the code-reviewed mark compares with its own worktree's tree, not the workspace's", () => {
+    expect(row(m, '004').gates.codeReviewed.state).toBe('fresh');
+    const withoutOwnTree = buildDashboard({ ...input, perSpec: { [F004]: { source: 'worktree', main: main004 } } });
+    expect(row(withoutOwnTree, '004').gates.codeReviewed.state).toBe('stale');
+    // The old single field still decides for every spec without a tree of its own.
+    expect(row(buildDashboard({ ...harbor, worktreeTree: MARK_TREE }), '004').gates.codeReviewed.state).toBe('fresh');
+  });
+
+  test('006: path against branch, the path wins; the chip data and one worktree-branch-mismatch warning on its row', () => {
+    const r = row(m, '006');
+    expect(r.worktree).toEqual({ path: '.worktrees/006-partial-push', branch: 'feature/002-web-console', spec: '006', ahead: 0, dirty: false, kind: 'spec' });
+    expect(r.source).toBe('main');
+    expect(r.main).toBeNull();
+    const [diagnostic, ...more] = assigned.diagnostics;
+    expect(more).toEqual([]);
+    expect(diagnostic?.subject).toBe('006');
+    const mismatch = r.warnings.filter((w) => w.kind === 'worktree-branch-mismatch');
+    expect(mismatch).toEqual([{ kind: 'worktree-branch-mismatch', text: diagnostic?.message ?? '', ref: '.worktrees/006-partial-push' }]);
+    expect(m.warningGroups.find((g) => g.kind === 'worktree-branch-mismatch')?.items.map((i) => i.spec)).toEqual(['006']);
+    expect(m.kpis.warnings).toBe(buildDashboard({ ...input, worktrees: { ...worktrees, diagnostics: [] } }).kpis.warnings + 1);
+  });
+
+  test('a spec without a worktree, and every spec of an input without worktrees: no chip, source main, no main copy', () => {
+    for (const r of [row(m, '002'), ...model('harbor').specs]) {
+      expect(r.worktree).toBeNull();
+      expect(r.source).toBe('main');
+      expect(r.main).toBeNull();
+      expect(kinds(r)).not.toContain('worktree-branch-mismatch');
+    }
+    expect(model('harbor').warningGroups.map((g) => g.kind)).not.toContain('worktree-branch-mismatch');
+  });
+
+  /** The spec page of `folder` with the same worktrees, the main checkout's tree and the spec's own reading. */
+  const page = (folder: string, read?: SpecRead) => {
+    const files = harbor.specs.find((f) => f.folder === folder);
+    if (files === undefined) throw new Error(`harbor has no ${folder}`);
+    return buildSpecPage({
+      files,
+      others: [...harbor.specs, ...harbor.archived].filter((f) => f !== files),
+      worktreeTree: MAIN_TREE,
+      worktrees,
+      ...(read === undefined ? {} : { read }),
+      ...(harbor.workflow ? { workflow: harbor.workflow } : {}),
+    });
+  };
+
+  test('the spec head carries the same worktree, source and main copy as the row', () => {
+    const head = page(F004, { tree: MARK_TREE, source: 'worktree', main: main004 }).head;
+    expect(head.worktree).toEqual(row(m, '004').worktree);
+    expect(head.source).toBe('worktree');
+    expect(head.main).toEqual(row(m, '004').main);
+    expect(page(F004, { tree: MARK_TREE }).gates.codeReviewed.state).toBe('fresh');
+    expect(page(F004).gates.codeReviewed.state).toBe('stale');
+    const head002 = page('002-web-console').head;
+    expect([head002.worktree, head002.source, head002.main]).toEqual([null, 'main', null]);
+    expect(page('006-partial-push').warnings.map((w) => w.kind)).toContain('worktree-branch-mismatch');
   });
 });

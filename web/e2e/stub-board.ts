@@ -1,5 +1,5 @@
 /**
- * The Stage-3 board seam of the stub `/api` (spec 008, T119, ISC-129): the pieces `stub-api.ts` serves the board, the
+ * The Stage-3 board seam of the stub `/api` (spec 008, T119, ISC-129), and the worktree overlay of spec 027 (T33, at the end): the pieces `stub-api.ts` serves the board, the
  * story page and the two board writes with. Nothing here parses the spec format: the planning tree is the golden
  * (`core/fixtures/<golden>.planning.golden.json`), a story page is core's `renderDocsMarkdown` over the fixture's own
  * story file (as `server/src/api.ts` renders it), the moves a workflow row lists are core's `rowTransitions`, and the
@@ -12,7 +12,30 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
-import type { ClaimLock, DocName, DocsPage, IdeaRef, SpecType, Workflow, WorkflowRow, WorkflowStage } from '../../core/src/files';
+import type {
+  ClaimLock,
+  DocName,
+  DocsPage,
+  IdeaRef,
+  LiveCard,
+  LiveFrame,
+  LiveRound,
+  MainCopy,
+  RunCounts,
+  RunState,
+  SpecPageModel,
+  SpecSource,
+  SpecType,
+  SpecWarning,
+  TaskRun,
+  TimelineEntry,
+  TimelineWorktreeInput,
+  WarningKind,
+  Workflow,
+  WorkflowRow,
+  WorkflowStage,
+  Worktree,
+} from '../../core/src/files';
 import type { PlanningHolder, PlanningModel } from '../../core/src/planning';
 
 /** A stage a spec can stand in: every `WorkflowStage` but `idea`, which only a story holds. */
@@ -168,4 +191,201 @@ export function refusalOf(core: BoardCore, row: WorkflowRow, type: SpecType | nu
 export function commandFor(core: BoardCore, stage: WorkflowStage, number: string): string | null {
   const next = core.SPEC_RULES.find((r) => r.stage === stage && r.next !== null)?.next;
   return next === undefined || next === null ? null : `${next} ${number}`;
+}
+
+// ---- the worktree overlay (spec 027, T33: ISC-175, ISC-175.1, ISC-179, ISC-181) -----------------------------------
+//
+// What the worktree live view shows on top of a golden, for the e2e suites that send `X-Spectant-Stub-Worktrees: on`
+// (`worktree -g chip|tasks`, the timeline, offline). The fixture trees have no git, so the goldens hold no worktree,
+// no run but harbor 002's two and no `worktree` timeline entry; the stub lays these facts over the harbor goldens when
+// it is built, in memory only. Each fact has the shape core emits for it, typed by core's own types, so a drifted shape
+// fails the typecheck. Under `off` (the default) nothing here applies, and every other suite and the parity half see
+// the goldens unchanged.
+
+/** The fixture tree the overlay belongs to. */
+export const OVERLAY_GOLDEN = 'harbor';
+
+/**
+ * Per spec number, the worktree its dashboard row and spec head carry, as `assignWorktrees` assigns it: 002 dirty and
+ * two commits ahead of `main`, 009 clean with nothing ahead, 003 on another spec's branch (the path wins, `STUB_MISMATCH`).
+ * Every other spec: null, and no chip.
+ */
+export const STUB_WORKTREES: Readonly<Record<string, Worktree>> = {
+  '002': { path: '.worktrees/002-web-console', branch: 'feature/002-web-console', spec: '002', ahead: 2, dirty: true, kind: 'spec' },
+  '003': { path: '.worktrees/003-config-loader', branch: 'feature/005-config-format-choice', spec: '003', ahead: 1, dirty: false, kind: 'spec' },
+  '009': { path: '.worktrees/009-chunked-upload-limits', branch: 'feature/009-chunked-upload-limits', spec: '009', ahead: 0, dirty: false, kind: 'spec' },
+};
+
+/** The one `worktree-branch-mismatch` (ISC-174.1): the worktree of spec 003 is on the branch of spec 005. */
+export const STUB_MISMATCH = { spec: '003', branchSpec: '005' } as const;
+
+/** The row warning core's dashboard makes of the mismatch: `assignWorktrees`' sentence (`worktrees.ts`), the path as `ref`. */
+export function mismatchWarning(worktree: Worktree, branchSpec: string): SpecWarning {
+  return {
+    kind: 'worktree-branch-mismatch',
+    text:
+      `Worktree ${worktree.path} is on branch ${worktree.branch ?? ''}, which names spec ${branchSpec}; ` +
+      `its path names spec ${worktree.spec ?? ''}, and the path wins.`,
+    ref: worktree.path,
+  };
+}
+
+/** Per spec number, the main checkout's copy beside a spec read from its worktree copy (`source: 'worktree'`, ISC-181). */
+export const STUB_MAIN_COPIES: Readonly<Record<string, MainCopy>> = {
+  '002': { stage: 'build', progress: { closed: 23, total: 30 } },
+};
+
+/**
+ * Per spec number, the runs laid on its live frame (ISC-179.1). Harbor 002's golden has T26 `applied` and T28
+ * `applied-open`; these add the three states it lacks, so every state is on screen: T27 `patched` (its session still
+ * holds the claim), T29 `building` (its builder asked a question), T32 `dispatched`.
+ */
+export const STUB_RUNS: Readonly<Record<string, readonly TaskRun[]>> = {
+  '002': [
+    { task: 'T27', state: 'patched', session: 'a:claude:sess-2/T27', worktree: 'wt-7', ts: '2026-03-08T14:50:00Z' },
+    { task: 'T29', state: 'building', session: 'a:claude:sess-2/T29', worktree: 'wt-10', ts: '2026-03-08T14:40:00Z' },
+    { task: 'T32', state: 'dispatched', session: 'a:claude:sess-2/T32', worktree: 'wt-12', ts: '2026-03-08T14:55:00Z' },
+  ],
+};
+
+/**
+ * Per spec number, the git state of its worktree as the timeline's join reads it (ISC-175.1): 007's branch merged into
+ * `main` between two of its dated entries, 006's worktree removed while its branch is not merged.
+ */
+export const STUB_TIMELINE_WORKTREES: Readonly<Record<string, TimelineWorktreeInput>> = {
+  '007': {
+    merged: { at: '2026-03-09T08:45:00Z', commit: '4f1c2ab9e07d' },
+    removed: false,
+    branch: 'feature/007-rotate-mirror-token',
+    path: '.worktrees/007-rotate-mirror-token',
+  },
+  '006': { merged: null, removed: true, branch: 'feature/006-partial-push', path: '.worktrees/006-partial-push' },
+};
+
+/** The worktree facts of one spec number: its worktree, where it is read, the main copy and the mismatch warning. */
+export function worktreeFacts(id: string): { worktree: Worktree | null; source: SpecSource; main: MainCopy | null; warning: SpecWarning | null } {
+  const worktree = STUB_WORKTREES[id] ?? null;
+  const main = STUB_MAIN_COPIES[id] ?? null;
+  const warning = worktree !== null && id === STUB_MISMATCH.spec ? mismatchWarning(worktree, STUB_MISMATCH.branchSpec) : null;
+  return { worktree, source: main === null ? 'main' : 'worktree', main, warning };
+}
+
+type OverlayRow = Readonly<Record<string, unknown>> & { readonly id: string; readonly warnings: readonly SpecWarning[] };
+type OverlayGroup = { readonly kind: WarningKind; readonly items: ReadonlyArray<{ readonly spec: string; readonly warning: SpecWarning }> };
+/** The part of core's `DashboardModel` the overlay touches (`dashboard.ts` does not type-check under this tsconfig). */
+type OverlayModel = {
+  readonly kpis: Readonly<Record<string, unknown>> & { readonly warnings: number; readonly attention: number };
+  readonly specs: readonly OverlayRow[];
+  readonly warningGroups: readonly OverlayGroup[];
+};
+
+/**
+ * A dashboard model with the worktree facts on its rows (`worktree`, `source`, `main`, the mismatch warning last), the
+ * mismatch group last in the warnings panel (`WARNING_ORDER` ends with it) and the counts (`warnings`, `attention`)
+ * raised by it. The model passed in is never touched.
+ */
+export function overlaidDashboard(model: unknown): unknown {
+  const base = model as OverlayModel;
+  const items: Array<{ spec: string; warning: SpecWarning }> = [];
+  const specs = base.specs.map((row): OverlayRow => {
+    const facts = worktreeFacts(row.id);
+    if (facts.warning !== null) items.push({ spec: row.id, warning: facts.warning });
+    const warnings = facts.warning === null ? row.warnings : [...row.warnings, facts.warning];
+    return { ...row, warnings, worktree: facts.worktree, source: facts.source, main: facts.main };
+  });
+  if (items.length === 0) return { ...base, specs };
+  const kpis = { ...base.kpis, warnings: base.kpis.warnings + items.length, attention: base.kpis.attention + items.length };
+  return { ...base, kpis, specs, warningGroups: [...base.warningGroups, { kind: 'worktree-branch-mismatch', items }] };
+}
+
+/** A spec page with its row's worktree facts in the head, the mismatch warning last, and the status counts raised. */
+export function overlaidPage(page: SpecPageModel, id: string, addedEntries: number): SpecPageModel {
+  const facts = worktreeFacts(id);
+  const warnings = facts.warning === null ? page.warnings : [...page.warnings, facts.warning];
+  const status = page.areas.status;
+  return {
+    ...page,
+    head: { ...page.head, worktree: facts.worktree, source: facts.source, main: facts.main },
+    warnings,
+    areas: {
+      ...page.areas,
+      status: { ...status, timelineEntries: status.timelineEntries + addedEntries, warnings: status.warnings + (facts.warning === null ? 0 : 1) },
+    },
+  };
+}
+
+/** Core's `worktreeEntry` (`timeline.ts`) with the id `withId` gives it, keys in core's order; null for an open branch. */
+export function worktreeEntry(input: TimelineWorktreeInput): TimelineEntry | null {
+  const branch = input.branch ?? null;
+  const path = input.path ?? null;
+  if (input.merged) {
+    const commit = input.merged.commit ? input.merged.commit.slice(0, 7) : null;
+    const title = branch ? `Merged into main · ${branch}` : 'Merged into main';
+    return { ts: input.merged.at, kind: 'worktree', derived: true, title, ref: 'merged', id: 'worktree-merged', actor: null, worktree: { state: 'merged', branch, path, commit } };
+  }
+  if (!input.removed) return null;
+  const title = path ? `Worktree removed · ${path}` : 'Worktree removed';
+  const worktree = { state: 'removed', branch, path, commit: null } as const;
+  return { ts: '', kind: 'worktree', derived: true, title, ref: 'removed', id: 'worktree-removed', actor: null, undated: true, worktree };
+}
+
+/**
+ * The timeline (newest first) with the worktree entry where core's sort puts it: `merged` at its own instant, after
+ * every other kind of that instant; `removed` at the newest instant of the timeline, after every entry of it.
+ */
+export function withWorktreeEntry(timeline: readonly TimelineEntry[], input: TimelineWorktreeInput): TimelineEntry[] {
+  const entry = worktreeEntry(input);
+  if (entry === null) return [...timeline];
+  const dated = timeline.filter((e) => e.ts !== '').map((e) => Date.parse(e.ts));
+  const at = entry.undated === true ? Math.max(...dated) : Date.parse(entry.ts);
+  const index = Number.isFinite(at) ? timeline.findIndex((e) => e.ts !== '' && Date.parse(e.ts) < at) : -1;
+  return index === -1 ? [...timeline, entry] : [...timeline.slice(0, index), entry, ...timeline.slice(index)];
+}
+
+/** Core's round states (`live.ts` `ROUND_STATES`), in run order. */
+const ROUND_STATES: readonly RunState[] = ['dispatched', 'building', 'patched', 'applied-open'];
+
+/** Core's `roundOf` (`live.ts`): the cards with a run whose task tasks.md has not ticked, furthest along first. */
+export function roundOf(cards: readonly LiveCard[], ticked: ReadonlySet<string>, round: number): LiveRound {
+  const inRound = cards.filter((c) => c.run && !ticked.has(c.task));
+  const counts = (of: readonly LiveCard[]): RunCounts =>
+    Object.fromEntries(ROUND_STATES.map((s) => [s, of.filter((c) => c.run?.state === s).length] as const).filter(([, n]) => n > 0));
+  const lanes = [...new Set(inRound.map((c) => c.lane))];
+  return {
+    round: inRound.length === 0 ? null : round,
+    cards: [...ROUND_STATES].reverse().flatMap((s) => inRound.filter((c) => c.run?.state === s)),
+    lanes: Object.fromEntries(lanes.map((lane) => [lane, counts(inRound.filter((c) => c.lane === lane))])),
+    total: counts(inRound),
+  };
+}
+
+/**
+ * A live frame with `runs` laid on its cards by task (`run` stays the card's last key, as core writes it; an `absent`
+ * card takes none), on the needs-you copies of those cards, and the round group redone. The frame passed in is never
+ * touched; with no run to lay it is returned as it is.
+ */
+export function withRuns(live: LiveFrame, runs: ReadonlyMap<string, TaskRun>, ticked: ReadonlySet<string>): LiveFrame {
+  if (runs.size === 0) return live;
+  const lay = (card: LiveCard): LiveCard => {
+    const run = runs.get(card.task);
+    return run === undefined || card.state === 'absent' ? card : { ...card, run };
+  };
+  const cards = live.cards.map(lay);
+  return { ...live, cards, needsYou: live.needsYou.map(lay), inRound: roundOf(cards, ticked, live.inRound?.round ?? (live.round ?? 0) + 1) };
+}
+
+/** The run chain `POST /api/__stub/bump-run` walks: one run event per call (`dispatch`, `build`, `patch`, `apply`). */
+const RUN_CHAIN: readonly RunState[] = ['dispatched', 'building', 'patched', 'applied-open'];
+
+/**
+ * A task's run `steps` run events on: none → dispatched → building → patched → applied-open, `applied` when tasks.md
+ * has ticked the task; the last state stays. The same run object when nothing moves, so the frame's ETag holds.
+ */
+export function advancedRun(run: TaskRun | null, task: string, steps: number, ticked: boolean, ts: string): TaskRun | null {
+  const last = RUN_CHAIN.length - 1;
+  const from = run === null ? -1 : run.state === 'applied' ? last : RUN_CHAIN.indexOf(run.state);
+  const to = Math.min(from + steps, last);
+  if (to <= from) return run;
+  const state: RunState = to === last && ticked ? 'applied' : (RUN_CHAIN[to] ?? 'dispatched');
+  return { task, state, session: run?.session ?? `a:claude:sess-2/${task}`, worktree: run?.worktree ?? `wt-${task.slice(1)}`, ts };
 }

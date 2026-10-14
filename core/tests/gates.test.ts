@@ -24,7 +24,11 @@ import {
   type ReviewedMark,
   type TreeEntry,
 } from '../src/gates.ts';
+import { buildDashboard } from '../src/dashboard.ts';
+import type { GateView, SpecFiles, SpecRead } from '../src/files.ts';
+import { buildSpecPage } from '../src/spec.ts';
 import { planningModel, planningOf } from './helpers/planning-model.ts';
+import { readTree } from './helpers/read-tree.ts';
 
 const FIXTURES = join(import.meta.dir, '..', 'fixtures');
 const GATES_SOURCE = join(import.meta.dir, '..', 'src', 'gates.ts');
@@ -475,5 +479,108 @@ describe('gates.ts writes nothing', () => {
       ['type', 'PlanningModel', './planning.ts'],
     ]);
     expect(source.match(/^import\b/gm)?.length).toBe(4);
+  });
+});
+
+// ── the tree of the spec's own worktree (spec 027, ISC-176) ───────────────────────────────────────────
+
+/**
+ * A spec with a worktree of its own is reviewed and changed there, so its code-reviewed mark compares with that
+ * worktree's tree, not the main checkout's. `gateState` compares what the caller hands it; the dashboard row and the
+ * spec page choose it: `SpecRead.tree` when the server computed one for the spec, else the workspace's `worktreeTree`,
+ * the main checkout's. The claim's `current` is the model's `fresh`. The tree ids are real ones, computed in memory by
+ * `treeIdOf` from four states of one small repository, and the mark is the text `codeReviewedMarkText` writes.
+ */
+describe('worktree: the code-reviewed mark compares with the tree of the spec’s own worktree (spec 027, ISC-176)', () => {
+  const encoder = new TextEncoder();
+  const file = (path: string, text: string): TreeEntry => ({ path, mode: '100644', bytes: encoder.encode(text) });
+  const readme = file('README.md', '# app\n');
+  /** A: the spec's worktree when the code review ran; the mark records its tree. */
+  const A = treeIdOf([readme, file('src/app.ts', 'export const answer = 42;\n')]);
+  /** B: the same worktree after one more edit. */
+  const B = treeIdOf([readme, file('src/app.ts', 'export const answer = 43;\n')]);
+  /** The main checkout, which lacks the worktree's work, before and after a change of its own. */
+  const MAIN = treeIdOf([readme]);
+  const MAIN_MOVED = treeIdOf([readme, file('docs/notes.md', 'moved on main\n')]);
+
+  const F004 = '004-retention-policies';
+  const markText = codeReviewedMarkText({ at: '2026-10-13T12:00:00Z', tree: A, branch: `feature/${F004}`, code: 0, security: 0 });
+  const mark = mustCodeReviewed(markText);
+
+  test('the four states have four tree ids, and the mark holds A', () => {
+    expect(new Set([A, B, MAIN, MAIN_MOVED]).size).toBe(4);
+    expect(mark.tree).toBe(A);
+  });
+
+  test('gateState: mark A against tree A is fresh, against tree B stale, against no tree stale with the reason', () => {
+    expect(gateState('code-reviewed', mark, { worktreeTree: A })).toEqual({ gate: 'code-reviewed', state: 'fresh', at: mark.at, changed: [] });
+    expect(gateState('code-reviewed', mark, { worktreeTree: B })).toEqual({ gate: 'code-reviewed', state: 'stale', at: mark.at, changed: [] });
+    expect(gateState('code-reviewed', mark, { worktreeTree: null })).toEqual({
+      gate: 'code-reviewed',
+      state: 'stale',
+      at: mark.at,
+      changed: [],
+      detail: 'worktree tree id unavailable',
+    });
+  });
+
+  // Harbor with 004's mark replaced by the one above; every other folder as the fixture has it.
+  const harbor = readTree('harbor');
+  const specs = harbor.specs.map((f): SpecFiles => (f.folder === F004 ? { folder: f.folder, texts: { ...f.texts, gateCodeReviewed: markText } } : f));
+  const files004 = specs.find((f) => f.folder === F004);
+  if (files004 === undefined) throw new Error(`harbor has no ${F004}`);
+
+  /** 004's code-reviewed gate on the dashboard row, the main checkout's tree and 004's own reading given. */
+  const onRow = (main: string | null, read?: SpecRead): GateView => {
+    const model = buildDashboard({ ...harbor, specs, worktreeTree: main, ...(read === undefined ? {} : { perSpec: { [F004]: read } }) });
+    const row = model.specs.find((r) => r.slug === F004);
+    if (row === undefined) throw new Error(`no row for ${F004}`);
+    return row.gates.codeReviewed;
+  };
+  /** The same gate on 004's spec page. */
+  const onPage = (main: string | null, read?: SpecRead): GateView =>
+    buildSpecPage({
+      files: files004,
+      others: [...specs, ...harbor.archived].filter((f) => f !== files004),
+      worktreeTree: main,
+      ...(read === undefined ? {} : { read }),
+      ...(harbor.workflow ? { workflow: harbor.workflow } : {}),
+    }).gates.codeReviewed;
+
+  describe.each([
+    ['dashboard row', onRow],
+    ['spec page', onPage],
+  ] as const)('worktree, %s', (_surface, gate) => {
+    test('current → stale → current: marked in the worktree, changed in the worktree, changed only in the main checkout', () => {
+      expect(gate(MAIN, { tree: A }).state).toBe('fresh');
+      expect(gate(MAIN, { tree: B }).state).toBe('stale');
+      expect(gate(MAIN_MOVED, { tree: A }).state).toBe('fresh');
+    });
+
+    test('the worktree tree wins over the main checkout’s, in both directions', () => {
+      // Main differs from the mark, the worktree matches: fresh. Main matches the mark, the worktree moved on: stale.
+      expect(gate(B, { tree: A }).state).toBe('fresh');
+      expect(gate(A, { tree: B }).state).toBe('stale');
+    });
+
+    test('a worktree tree that could not be computed reads stale with the reason, never the main checkout’s tree', () => {
+      expect(gate(A, { tree: null })).toMatchObject({ state: 'stale', detail: 'worktree tree id unavailable' });
+    });
+
+    test('a spec without a tree of its own compares with the main checkout’s tree, as before spec 027', () => {
+      expect(gate(A).state).toBe('fresh');
+      expect(gate(MAIN).state).toBe('stale');
+      expect(gate(A, { source: 'main' }).state).toBe('fresh');
+      expect(gate(MAIN, { source: 'main' }).state).toBe('stale');
+      expect(gate(null)).toMatchObject({ state: 'stale', detail: 'worktree tree id unavailable' });
+    });
+  });
+
+  test('004’s own tree changes no other row’s code-reviewed gate', () => {
+    const gates = (perSpec?: Record<string, SpecRead>) =>
+      buildDashboard({ ...harbor, specs, worktreeTree: MAIN, ...(perSpec ? { perSpec } : {}) })
+        .specs.filter((r) => r.slug !== F004)
+        .map((r) => [r.slug, r.gates.codeReviewed]);
+    expect(gates({ [F004]: { tree: A } })).toEqual(gates());
   });
 });

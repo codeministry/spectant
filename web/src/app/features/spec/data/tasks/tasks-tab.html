@@ -1,3 +1,4 @@
+<ui-live-region data-run-announcer />
 @if (body(); as body) {
   <section class="tasks" aria-labelledby="tasks-heading">
     <div class="head">
@@ -93,6 +94,15 @@
             }
           </span>
           <span class="id">{{ row.id }}</span>
+          <span class="title">
+            @if (row.state === 'struck') {
+              <s class="text">{{ row.text }}</s>
+            } @else {
+              <span class="text" [attr.title]="row.text">{{ row.text }}</span>
+            }
+          </span>
+          <span class="state"><span class="status" [attr.data-tone]="row.status">@if (chipIcon(row.status); as ic) {<ui-icon [name]="ic" [size]="12" />}{{ 'tasks.status.' + row.status | transloco }}</span></span>
+          <span class="meta">
           <span class="claim">
             <a data-claim [routerLink]="[...specLink(), 'claims']" [fragment]="'claim-' + row.claim"><ui-chip variant="take" icon="hand">{{ row.claim }}</ui-chip></a>
           </span>
@@ -102,13 +112,6 @@
             }
             @if (row.flags.seam) {
               <span class="flag" data-flag="seam" [attr.title]="'tasks.flags.seamLabel' | transloco">{{ 'tasks.flags.seam' | transloco }}</span>
-            }
-          </span>
-          <span class="title">
-            @if (row.state === 'struck') {
-              <s class="text">{{ row.text }}</s>
-            } @else {
-              <span class="text" [attr.title]="row.text">{{ row.text }}</span>
             }
           </span>
           <span class="lane"><ui-chip variant="plain" icon="git-branch" data-lane>{{ row.lane }}</ui-chip></span>
@@ -122,11 +125,17 @@
               <span class="path-note">{{ row.pathNote }}</span>
             }
           </span>
-          <span class="state"><span class="status" [attr.data-tone]="row.status">@if (chipIcon(row.status); as ic) {<ui-icon [name]="ic" [size]="12" />}{{ 'tasks.status.' + row.status | transloco }}</span></span>
           <span class="builder">
-            @if (row.builder) {
+            @if (runOfRow(row.id); as run) {
+              <!-- spec 027: the run chip over the session's short form; below wide it leads the meta line. -->
+              <span class="run" data-run-cell>
+                <app-run-chip [run]="run.state" />
+                <span class="run-session" data-run-session [attr.title]="run.session">{{ short(run) }}</span>
+              </span>
+            } @else if (row.builder) {
               <span data-builder>{{ row.builder }}</span>
             }
+          </span>
           </span>
           @if (row.edges.length > 0 || sub(row) !== null || checkLine(row) !== null || liveCards().has(row.id)) {
             <span class="extra">

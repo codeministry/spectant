@@ -3,7 +3,8 @@
 //
 // The test does the reading, as `spectant tokens` (server/src/tokens-cli.ts) does it for a real repository: the main
 // sessions `<session>.jsonl`, the sub-agents `<session>/subagents/agent-<id>.jsonl` with the `toolUseId` of their
-// `.meta.json`, the sessions of the sibling agent-worktree folders, and per spec folder its `events.jsonl` and
+// `.meta.json`, the sessions of the sibling agent-worktree folders, the spec-worktree folders `<project>-NNN` and
+// `<project>--worktrees-NNN-slug` read like the project folder (ISC-178), and per spec folder its `events.jsonl` and
 // `rounds.jsonl` texts plus the stage the dashboard model derives for it. `core/src/tokens.ts` reads no file.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -37,6 +38,12 @@ const PROJECT = 'harbor';
 const WORKTREE_INFIX = '--claude-worktrees-agent-';
 /** What follows the project name in a spec worktree's project folder: `-` and exactly three digits. */
 const SPEC_WORKTREE = /^-\d{3}$/;
+/**
+ * What follows the project name in the project folder of a spec worktree inside the repository (`.worktrees/NNN-slug`
+ * encodes to `--worktrees-NNN-slug`): three digits and a kebab-case slug without `--`, so a nested agent worktree
+ * (`…--claude-worktrees-agent-<id>`) is not one (ISC-178).
+ */
+const IN_REPO_SPEC_WORKTREE = /^--worktrees-\d{3}-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const GOLDEN = join(import.meta.dir, 'fixtures', 'tokens.golden.jsonl');
 
 const byteOrder = (a: string, b: string): number => Buffer.compare(Buffer.from(a), Buffer.from(b));
@@ -76,12 +83,14 @@ function sessionsOf(folder: string, prefix: string): TranscriptFile[] {
 
 /**
  * Every transcript of the project folder, of its agent-worktree siblings and of its spec-worktree siblings
- * (`<project>-NNN`, read like the project folder itself), as the CLI's discovery lists them.
+ * (`<project>-NNN` and `<project>--worktrees-NNN-slug`, both read like the project folder itself), as the CLI's
+ * discovery lists them.
  */
 function transcriptsOf(root: string, project: string): TranscriptFile[] {
   const files = sessionsOf(join(root, project), '');
   for (const sibling of sortedNames(root)) {
-    if (sibling.startsWith(project) && SPEC_WORKTREE.test(sibling.slice(project.length))) {
+    const rest = sibling.slice(project.length);
+    if (sibling.startsWith(project) && (SPEC_WORKTREE.test(rest) || IN_REPO_SPEC_WORKTREE.test(rest))) {
       files.push(...sessionsOf(join(root, sibling), `../${sibling}/`));
       continue;
     }
@@ -112,12 +121,24 @@ function harborSpecs(): TokenSpecInput[] {
 const fixtureInput = (): TokenInput => ({ transcripts: transcriptsOf(TRANSCRIPTS, PROJECT), specs: harborSpecs() });
 
 describe('rows', () => {
-  test('the fixture is read as five transcripts: root sub-agent and session, agent worktree, spec worktree sub-agent and session', () => {
+  test('the fixture is read as six transcripts: root sub-agent and session, agent worktree, in-repo spec worktree session, sibling spec worktree sub-agent and session', () => {
     const files = transcriptsOf(TRANSCRIPTS, PROJECT);
-    expect(files.map((f) => f.role)).toEqual(['subagent', 'main', 'worktree', 'subagent', 'main']);
-    expect(files.map((f) => f.toolUseId ?? null)).toEqual(['toolu_01HarborI1', null, null, 'toolu_01HarborT1', null]);
-    expect(files[3]?.session).toBe('3a7c9e21-6b4d-4f80-8e12-5d6c7b8a9f01');
-    expect(files[4]?.session).toBe(files[3]?.session);
+    expect(files.map((f) => f.role)).toEqual(['subagent', 'main', 'worktree', 'main', 'subagent', 'main']);
+    expect(files.map((f) => f.toolUseId ?? null)).toEqual(['toolu_01HarborI1', null, null, null, 'toolu_01HarborT1', null]);
+    expect(files[3]?.label).toBe('../harbor--worktrees-012-harbor/7d2e4f60-1a3b-4c5d-8e9f-0a1b2c3d4e5f.jsonl');
+    expect(files[4]?.session).toBe('3a7c9e21-6b4d-4f80-8e12-5d6c7b8a9f01');
+    expect(files[5]?.session).toBe(files[4]?.session);
+  });
+
+  // ISC-178: the spec worktree `.worktrees/012-harbor` inside the repository keeps its sessions in the project folder
+  // `harbor--worktrees-012-harbor`; it is read like the older sibling `harbor-012`, and both patterns stay.
+  test('both spec-worktree folder patterns are read: `<project>--worktrees-NNN-slug` and `<project>-NNN`', () => {
+    const labels = transcriptsOf(TRANSCRIPTS, PROJECT).map((f) => f.label);
+    expect(labels.filter((label) => label.startsWith('../harbor--worktrees-012-harbor/'))).toEqual(['../harbor--worktrees-012-harbor/7d2e4f60-1a3b-4c5d-8e9f-0a1b2c3d4e5f.jsonl']);
+    expect(labels.filter((label) => label.startsWith('../harbor-012/'))).toHaveLength(2);
+    const ids = tokenRows(fixtureInput()).rows.flatMap((row) => (row.kind === 'invocation' ? [row.id] : []));
+    expect(ids).toContain('a:claude:7d2e4f60-1a3b-4c5d-8e9f-0a1b2c3d4e5f#1');
+    expect(ids).toContain('a:claude:3a7c9e21-6b4d-4f80-8e12-5d6c7b8a9f01#1');
   });
 
   test('a measuring run over the fixture transcript yields exactly the golden lines', () => {

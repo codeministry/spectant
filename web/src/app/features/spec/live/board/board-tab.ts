@@ -3,7 +3,7 @@ import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, Destro
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import type { CardState, Frame, FrameCard, LiveFrame } from '../../../../../../../core/src/files';
+import type { CardState, Frame, FrameCard, LiveFrame, RunState } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
 import { RefreshService } from '../../../../core/refresh.service';
 import { type RailBadge, RailContent } from '../../../../layout/shell/rail-content';
@@ -11,8 +11,9 @@ import { ShellData } from '../../../../layout/shell/shell-data.service';
 import { ShellState } from '../../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../../shared/icons/icon';
 import { UiKbd } from '../../../../shared/ui/kbd/kbd';
+import { UiLiveRegion } from '../../../../shared/ui/live-region/live-region';
 import { relativeParts } from '../../../../shared/ui/relative-time/relative-time';
-import { glyphSpec, stateKey } from '../../../../shared/ui/glyph/states';
+import { glyphSpec, runGlyphState, stateKey } from '../../../../shared/ui/glyph/states';
 import { type MeterSegment, UiMeter } from '../../../../shared/ui/meter/meter';
 import { UiDisclosure } from '../../../../shared/ui/overlay/disclosure';
 import { UiSheet } from '../../../../shared/ui/overlay/sheet';
@@ -43,6 +44,9 @@ import {
   parseList,
   recutMarkers,
   resolveFrameIndex,
+  runChanges,
+  runCounts,
+  runStates,
   scrubberStops,
   stateCounts,
 } from './board-model';
@@ -84,6 +88,7 @@ const PLAY_STEP_MS = 1200;
     TranslocoPipe,
     YourSteps,
     UiKbd,
+    UiLiveRegion,
     UiDisclosure,
     UiIcon,
     UiMeter,
@@ -167,12 +172,23 @@ export class BoardTab {
     return this.allCards().filter((c) => !states.has(c.state) && !lanes.has(c.lane) && matchesQuery(c, q));
   });
   protected readonly filtered = computed(() => this.shownCards().length !== this.allCards().length);
-  protected readonly lanes = computed(() => buildLanes(this.order(), this.shownCards()));
+  /** The Lanes view groups the round in flight (spec 027) as "In round n"; Flow keeps each card in its state's column. */
+  protected readonly lanes = computed(() => buildLanes(this.order(), this.shownCards(), true));
+  protected readonly flowLanes = computed(() => buildLanes(this.order(), this.shownCards()));
   /** The lanes in the grid: at wide the operator lane is "Your steps", its own checklist lane (`stepCards`). */
   protected readonly gridLanes = computed(() => (this.wide() ? this.lanes().filter((l) => l.name !== OPERATOR_LANE) : this.lanes()));
   protected readonly operatorLane = computed(() => (this.wide() ? (this.lanes().find((l) => l.name === OPERATOR_LANE) ?? null) : null));
 
   protected readonly legend = computed(() => stateCounts(this.allCards()).map((s) => ({ ...s, pressed: !this.hiddenStates().has(s.state) })));
+  /** spec 027: the live frame's round in flight; history frames reconstruct none (design.md, Live-Board). */
+  private readonly round = computed(() => {
+    const f = this.frame();
+    return f !== null && 'inRound' in f ? (f.inRound ?? null) : null;
+  });
+  protected readonly roundNumber = computed(() => this.round()?.round ?? null);
+  /** The toolbar's counters: core's round counts above 0, in run order, before the card states. */
+  protected readonly runCounters = computed(() => runCounts(this.round()?.total));
+  private readonly announcer = viewChild(UiLiveRegion);
   protected readonly stops = computed(() => scrubberStops(this.frames(), this.compact()));
   protected readonly markers = computed(() => {
     this.lang();
@@ -262,6 +278,18 @@ export class BoardTab {
       this.refresher.lastRefresh();
       if (firstRefresh) firstRefresh = false;
       else untracked(() => this.liveResult.reload());
+    });
+
+    // spec 027 (ISC-179.1): one polite announcement per refresh that moved a run chip ("T3: patch ready; T5:
+    // building"), never one per chip, none on the first read.
+    let seenRuns: ReadonlyMap<string, RunState> | null = null;
+    effect(() => {
+      const live = this.liveResult.value();
+      if (live?.kind !== 'ok') return;
+      const after = runStates(live.body.cards);
+      const changes = runChanges(seenRuns, after);
+      seenRuns = after;
+      if (changes.length > 0) untracked(() => this.announcer()?.announceAll(changes.map((c) => this.runChanged(c.task, c.state))));
     });
 
     // Playback: one frame per step until the live frame, then stop. The timer is the I/O boundary here.
@@ -448,6 +476,16 @@ export class BoardTab {
 
   protected stateColor(state: CardState): string {
     return toneMark(glyphSpec(state, 'card').tone);
+  }
+
+  protected runColor(state: RunState): string {
+    return toneMark(glyphSpec(runGlyphState(state), 'card').tone);
+  }
+
+  /** One part of a tick's announcement: "T32: building". */
+  private runChanged(task: string, state: RunState): string {
+    const word: string = this.transloco.translate(`states.run.${state}`);
+    return this.transloco.translate('live.runChanged', { task, state: word });
   }
 
   private setQuery(patch: Record<string, string | null>, replaceUrl = false): void {

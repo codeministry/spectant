@@ -1,6 +1,29 @@
 import { TestBed } from '@angular/core/testing';
+import type { RunState } from '../../../../../../core/src/files';
 import { UiGlyph } from './glyph';
-import { CARD_STATES, CLAIM_STATES, type GlyphFamily, type GlyphState } from './states';
+import {
+  CARD_GLYPHS,
+  CARD_STATES,
+  CLAIM_GLYPHS,
+  CLAIM_STATES,
+  type CardGlyphState,
+  type GlyphFamily,
+  type GlyphSpec,
+  type GlyphState,
+  runGlyphState,
+} from './states';
+
+// The run states of spec 027 (design.md, decision 3): a `Record` over core's `RunState`, so a new run state fails the
+// type check here before it can reach a chip without a glyph.
+const RUN_GLYPHS: Readonly<Record<RunState, readonly [CardGlyphState, GlyphSpec]>> = {
+  dispatched: ['dispatched', { shape: 'ring-dot', tone: 'primary' }],
+  building: ['running', { shape: 'half', tone: 'primary' }],
+  patched: ['patched', { shape: 'disc', tone: 'primary' }],
+  applied: ['applied', { shape: 'ring-check', tone: 'primary' }],
+  'applied-open': ['applied-open', { shape: 'ring-check', tone: 'warning' }],
+};
+
+const pairsOf = (specs: readonly GlyphSpec[]) => specs.map((g) => `${g.shape}/${g.tone}`);
 
 const ALL: ReadonlyArray<readonly [GlyphState, GlyphFamily]> = [
   ...CARD_STATES.map((state) => [state, 'card'] as const),
@@ -63,5 +86,40 @@ describe('UiGlyph', () => {
   it('draws absent as a dashed cell', async () => {
     const { svg } = await render('absent');
     expect(svg.querySelector('[stroke-dasharray]')).not.toBeNull();
+  });
+
+  it('renders patched, applied and applied-open in the card family with the shape and tone of the run table', async () => {
+    for (const state of ['patched', 'applied', 'applied-open'] as const) {
+      const { host, svg } = await render(state);
+      const want = Object.values(RUN_GLYPHS).find(([word]) => word === state)?.[1];
+      expect(svg.getAttribute('data-state')).toBe(state);
+      expect(host.getAttribute('data-family')).toBe('card');
+      expect(host.getAttribute('data-shape')).toBe(want?.shape);
+      expect(host.getAttribute('data-tone')).toBe(want?.tone);
+      expect(svg.children.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('repeats no (shape, tone) pair within the card family, nor across the whole vocabulary', () => {
+    const card = pairsOf(Object.values(CARD_GLYPHS));
+    const all = [...card, ...pairsOf(Object.values(CLAIM_GLYPHS))];
+
+    expect(card).toHaveLength(14);
+    expect(new Set(card).size).toBe(card.length);
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it('maps every run state onto a card glyph, building onto running and the rest onto themselves', async () => {
+    for (const [run, [word, spec]] of Object.entries(RUN_GLYPHS) as Array<[RunState, (typeof RUN_GLYPHS)[RunState]]>) {
+      expect(runGlyphState(run)).toBe(word);
+      expect(CARD_GLYPHS[runGlyphState(run)]).toEqual(spec);
+      const { host } = await render(runGlyphState(run));
+      expect(host.getAttribute('data-family')).toBe('card');
+    }
+  });
+
+  it('keeps the eleven round-board states apart from the run-only states', () => {
+    expect(CARD_STATES).toHaveLength(11);
+    for (const state of ['patched', 'applied', 'applied-open']) expect(CARD_STATES).not.toContain(state);
   });
 });

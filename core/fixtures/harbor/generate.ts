@@ -18,7 +18,8 @@
  *   001  feature     complete, archived under specs/archive/, reviewed and code-reviewed marks, events.jsonl with
  *                    its whole chain from the creation to done in the stage table's vocabulary (T16); Harbor 1.0
  *   002  feature     building, reviewed mark current, rounds.jsonl with three rounds and a re-cut holding every card
- *                    state, .spectant/activity.jsonl with one open claim, operator tasks open and ticked,
+ *                    state, .spectant/activity.jsonl with one open claim, the four run events for one ticked and
+ *                    one open task and one unknown event (spec 027, ISC-179), operator tasks open and ticked,
  *                    artifacts/ with three task results and .evidence/ with a PNG, a HAR and a log (T24), four of
  *                    the six named by a verification line, the HAR by none; Harbor 1.0
  *   003  refactor    scoping, no reviewed mark, plan.md and spec.md without a mermaid fence, no tasks.md; Harbor 0.9,
@@ -979,13 +980,31 @@ const SESSION_002 = "a:claude:sess-2";
 /**
  * `.spectant/activity.jsonl` at the repository root: T27 of round 3 still out, T25 claimed and released, and a
  * sub-agent of the same session that claimed and released T4's claim in round 1.
+ *
+ * The run events (spec 027, ISC-179), each with `task`, `session` and `worktree`, written by the round's parent for
+ * its sub-agent on the task, after the claim lines so the file stays in time order: T26 (ticked in tasks.md) runs
+ * dispatch → build → patch → apply before round 3 closes it, so it ends `applied`; T28 (not ticked) runs the same
+ * four after round 3, so it ends `applied-open` until the write-order ticks it. Between T28's build and patch sits
+ * one event no reader knows (`ponder`): exactly one `activity-event-unknown` warning for the file, and the lines
+ * after it are still read.
  */
+const run = (ts: string, event: string, claim: string, task: string, worktree: string) =>
+    ({ts, event, claim, task, session: `${SESSION_002}/${task}`, worktree});
 const ACTIVITY_002 = [
     {ts: "2026-03-06T09:12:00Z", event: "claim", claim: "ISC-53", task: "T4", session: `${SESSION_002}/T4`, worktree: "wt-1"},
     {ts: "2026-03-06T09:58:00Z", event: "release", claim: "ISC-53", task: "T4", session: `${SESSION_002}/T4`},
     {ts: "2026-03-08T14:05:00Z", event: "claim", claim: "ISC-72", task: "T25", session: SESSION_002, worktree: "wt-6"},
     {ts: "2026-03-08T14:06:00Z", event: "claim", claim: "ISC-74", task: "T27", session: SESSION_002, worktree: "wt-7"},
     {ts: "2026-03-08T15:52:00Z", event: "release", claim: "ISC-72", session: SESSION_002},
+    run("2026-03-08T15:54:00Z", "dispatch", "ISC-73", "T26", "wt-8"),
+    run("2026-03-08T15:55:00Z", "build", "ISC-73", "T26", "wt-8"),
+    run("2026-03-08T16:10:00Z", "patch", "ISC-73", "T26", "wt-8"),
+    run("2026-03-08T16:12:00Z", "apply", "ISC-73", "T26", "wt-8"),
+    run("2026-03-08T16:32:00Z", "dispatch", "ISC-75", "T28", "wt-9"),
+    run("2026-03-08T16:33:00Z", "build", "ISC-75", "T28", "wt-9"),
+    run("2026-03-08T16:35:00Z", "ponder", "ISC-75", "T28", "wt-9"),
+    run("2026-03-08T16:40:00Z", "patch", "ISC-75", "T28", "wt-9"),
+    run("2026-03-08T16:42:00Z", "apply", "ISC-75", "T28", "wt-9"),
 ].map((line) => JSON.stringify(line)).join("\n") + "\n";
 
 // ── spec 002 and 006: events.jsonl and the explicit `stage:` (spec 008, T27) ────────────────────────────
@@ -1458,7 +1477,8 @@ function generate() {
 // ── tokens ─────────────────────────────────────────────────────────────────────────────────────────────
 // `specs/tokens.jsonl` (spec 009, T18): the measurement `spectant tokens` writes, computed through core's own
 // `tokenRows` and `serializeTokens` from the hand-written transcript fixture under core/tests/fixtures/transcripts/
-// (the project folder `harbor` and its agent-worktree sibling) over the spec folders generated above. The reading
+// (the project folder `harbor`, its agent-worktree sibling and its spec-worktree siblings) over the spec folders
+// generated above. The reading
 // mirrors core/tests/tokens.test.ts, whose `roundtrip` group holds this file to the golden tokens.golden.jsonl byte
 // for byte. FORMAT.md § `tokens` quotes it verbatim.
 
@@ -1467,6 +1487,8 @@ const TRANSCRIPT_PROJECT = "harbor";
 const WORKTREE_INFIX = "--claude-worktrees-agent-";
 /** What follows the project name in a spec worktree's project folder: `-` and exactly three digits. */
 const SPEC_WORKTREE = /^-\d{3}$/;
+/** The same for a spec worktree inside the repository, `.worktrees/NNN-slug`: `--worktrees-`, three digits, a kebab slug (ISC-178). */
+const IN_REPO_SPEC_WORKTREE = /^--worktrees-\d{3}-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const byteOrder = (a: string, b: string): number => Buffer.compare(Buffer.from(a), Buffer.from(b));
 const sortedNames = (dir: string): string[] => readdirSync(dir).sort(byteOrder);
@@ -1500,12 +1522,13 @@ function fixtureSessions(folder: string, prefix: string): TranscriptFile[] {
 
 /**
  * The main sessions and their sub-agents, the agent-worktree sessions and the spec-worktree folders
- * (`harbor-NNN`, read like the main folder), in the order the CLI's discovery lists them.
+ * (`harbor-NNN` and `harbor--worktrees-NNN-slug`, read like the main folder), in the order the CLI's discovery lists them.
  */
 function fixtureTranscripts(): TranscriptFile[] {
     const files = fixtureSessions(join(TRANSCRIPTS, TRANSCRIPT_PROJECT), "");
     for (const sibling of sortedNames(TRANSCRIPTS)) {
-        if (sibling.startsWith(TRANSCRIPT_PROJECT) && SPEC_WORKTREE.test(sibling.slice(TRANSCRIPT_PROJECT.length))) {
+        const rest = sibling.slice(TRANSCRIPT_PROJECT.length);
+        if (sibling.startsWith(TRANSCRIPT_PROJECT) && (SPEC_WORKTREE.test(rest) || IN_REPO_SPEC_WORKTREE.test(rest))) {
             files.push(...fixtureSessions(join(TRANSCRIPTS, sibling), `../${sibling}/`));
             continue;
         }

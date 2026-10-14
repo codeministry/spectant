@@ -1,0 +1,30 @@
+{
+  "builders": 0,
+  "diagnostics": [
+    {
+      "code": "worktree-branch-mismatch",
+      "line": 5,
+      "message": "Worktree .worktrees/015-ledger is on branch feature/016-audit, which names spec 016; its path names spec 015, and the path wins.",
+      "severity": "warning",
+      "subject": "015"
+    }
+  ],
+  "worktrees": [
+    {
+      "ahead": null,
+      "branch": "feature/016-audit",
+      "dirty": null,
+      "kind": "spec",
+      "path": ".worktrees/015-ledger",
+      "spec": "015"
+    },
+    {
+      "ahead": null,
+      "branch": "docs/notes",
+      "dirty": null,
+      "kind": "spec",
+      "path": ".worktrees/notes",
+      "spec": null
+    }
+  ]
+}

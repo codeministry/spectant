@@ -258,7 +258,13 @@
         "subagent": null
       }
     ],
-    "staleAfterMs": 2700000
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
   },
   "specs/022-chat-turn-status-and-bulk-delete": {
     "index": 10,
@@ -710,7 +716,13 @@
     "locks": [],
     "agents": [],
     "needsYou": [],
-    "staleAfterMs": 2700000
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
   },
   "specs/archive/013-tech-debt": {
     "index": 8,
@@ -956,6 +968,12 @@
     "locks": [],
     "agents": [],
     "needsYou": [],
-    "staleAfterMs": 2700000
+    "staleAfterMs": 2700000,
+    "inRound": {
+      "round": null,
+      "cards": [],
+      "lanes": {},
+      "total": {}
+    }
   }
 }

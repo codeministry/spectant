@@ -1,0 +1,151 @@
+/*
+ * ui-worktree-chip (spec 027, ISC-175): the chip on `ui-chip`, its button and its details list. Colours are tones and
+ * theme tokens only; `--worktree-dirty-ink` is `toneInk('warning')`, bound by the component. No transition anywhere:
+ * the chip comes and goes with the refresh tick, so reduced motion has nothing to switch off.
+ */
+:host {
+  display: inline-flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  vertical-align: middle;
+}
+
+.trigger,
+.static {
+  display: inline-flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.trigger {
+  position: relative;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* The 44 px hit area (WCAG 2.5.8) around the 20 px chip: grows only where the chip is smaller than 44 px. */
+.trigger::before {
+  position: absolute;
+  inset: min(0px, (100% - 44px) / 2);
+  content: "";
+}
+
+ui-chip.face {
+  block-size: 20px;
+  max-inline-size: 100%;
+  line-height: 20px;
+}
+
+.branch {
+  display: inline-flex;
+  min-inline-size: 0;
+  max-inline-size: 32ch;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* Prefix and number stay; only the slug after them truncates, at its end. */
+.prefix,
+.num,
+.sep,
+.ahead,
+.dirty {
+  flex-shrink: 0;
+}
+
+.tail {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:host(:not([data-mismatch])) .num,
+:host(:not([data-mismatch])) .tail {
+  color: var(--color-base-content);
+}
+
+.ahead {
+  font-variant-numeric: tabular-nums;
+}
+
+.dirty {
+  color: var(--worktree-dirty-ink);
+  font-weight: 700;
+}
+
+/* The board card's form: the branch only in the accessible name until the card is 280 px wide. */
+:host([data-form="compact"]) .branch,
+:host([data-form="compact"]) .sep {
+  display: none;
+}
+
+@container board-card (width >= 280px) {
+  :host([data-form="compact"]) .branch {
+    display: inline-flex;
+  }
+
+  :host([data-form="compact"]) .sep {
+    display: inline;
+  }
+}
+
+.vh {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 16px;
+  align-items: center;
+  margin: 0;
+  padding: 8px;
+  font-size: 13px;
+}
+
+.details > div {
+  display: contents;
+}
+
+.details dt {
+  color: var(--muted-ink);
+}
+
+.details dd {
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.details .path {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (forced-colors: active) {
+  .num,
+  .tail,
+  .dirty {
+    color: CanvasText;
+  }
+}

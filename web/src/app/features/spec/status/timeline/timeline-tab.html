@@ -1,5 +1,5 @@
 <div class="filters" role="group" [attr.aria-label]="'timeline.filterLabel' | transloco">
-  @for (kind of kinds; track kind) {
+  @for (kind of shownKinds(); track kind) {
     <button
       ui-button
       variant="ghost"
@@ -68,7 +68,11 @@
                   (keydown)="onEntryKey($event, row)"
                 >
                   <span class="time">
-                    @if (row.time === null) {
+                    @if (row.time === null && row.entry.kind === 'worktree') {
+                      <!-- Spec 027 (design.md § Viewport-übergreifend 5): "—" below wide, "no date" in words at wide. -->
+                      <span class="no-date-dash" data-no-date-dash aria-hidden="true">—</span>
+                      <span class="no-date" data-no-date>{{ 'timeline.worktree.noDate' | transloco }}</span>
+                    } @else if (row.time === null) {
                       {{ 'timeline.dateUnknown' | transloco }}
                     } @else {
                       <time [attr.datetime]="row.entry.ts">{{ row.time }}</time>
@@ -80,7 +84,11 @@
                     [attr.data-derived]="row.entry.derived ? '' : null"
                     [attr.data-running]="row.entry.running ? '' : null"
                     [style.--marker]="markerColor(row.entry.kind)"
-                  ></span>
+                  >
+                    @if (worktreeGlyph(row.entry); as glyph) {
+                      <ui-icon [name]="glyph" [size]="12" />
+                    }
+                  </span>
                   <a
                     class="entry-anchor"
                     data-entry-anchor
@@ -92,9 +100,27 @@
                   >
                   <div class="main">
                     <ng-template #head>
-                      <span class="title">{{ row.entry.title }}</span>
+                      @if (row.entry.worktree; as worktree) {
+                        <!-- Spec 027 (ISC-175.1): worded from the git facts, the branch or path in mono, the end cut. -->
+                        <span class="title">
+                          <span data-worktree-title>{{ 'timeline.worktree.' + worktree.state | transloco }}</span>
+                          @if (worktreeRef(row.entry); as ref) {
+                            · <span class="mono ref" data-worktree-ref [attr.title]="ref">{{ ref }}</span>
+                          }
+                        </span>
+                      } @else {
+                        <span class="title">{{ row.entry.title }}</span>
+                      }
                       <span class="meta">
                         {{ 'timeline.kinds.' + row.entry.kind | transloco }}
+                        @if (row.entry.worktree; as worktree) {
+                          @if (worktree.commit; as commit) {
+                            · {{ 'timeline.worktree.fromGitCommit' | transloco }}
+                            <span class="mono" data-worktree-commit>{{ commit }}</span>
+                          } @else {
+                            · {{ 'timeline.worktree.fromGit' | transloco }}
+                          }
+                        }
                         @if (row.entry.command) {
                           · <span class="mono">{{ row.entry.command }}</span>
                         }
@@ -106,7 +132,9 @@
                         }
                         @if (row.entry.derived) {
                           <ui-chip variant="plain" data-derived-chip
-                            ><ui-term [hint]="'timeline.derivedHint' | transloco" guide="derived" [guideLabel]="'timeline.guide' | transloco">{{
+                            ><ui-term
+                              [hint]="(row.entry.worktree ? 'timeline.worktree.derivedHint' : 'timeline.derivedHint') | transloco"
+                              guide="derived" [guideLabel]="'timeline.guide' | transloco">{{
                               'timeline.derived' | transloco
                             }}</ui-term></ui-chip
                           >

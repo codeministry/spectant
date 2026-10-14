@@ -16,6 +16,12 @@
  *
  * Spec 008 adds the stage move (`writeTransition`, T82) and the allocation of a story (`writeAllocate`, T86), which
  * creates `specs/NNN-slug/` (its one directory), writes three files there and removes the story file.
+ *
+ * Spec 027 (T22, ISC-181): the three writes on an existing spec (reviewed mark, tick, stage move) take the folder of
+ * the spec's read source as `ref.dir`, the worktree copy's when `readSpecSource` reads the spec from it, so the file
+ * they hash is the file the client's hash came from and the file they write; the main checkout then stays untouched.
+ * The lock sources stay at the repository `root`. A source that switched between render and write needs no rule of its
+ * own: the other copy's bytes fail the compare, the plain 409 with `files`. The allocation always targets `root`.
  */
 import { createHash } from "node:crypto";
 import { closeSync, fsyncSync, lstatSync, mkdirSync, openSync, unlinkSync, writeSync } from "node:fs";
@@ -156,6 +162,7 @@ export async function runWrite<R extends WriteOperation>(input: WriteInput<R>): 
 
 export interface TransitionWriteInput {
   readonly root: string;
+  /** `dir` is the folder of the spec's read source: the worktree copy's when the spec is read from it (T22). */
   readonly ref: Pick<SpecRef, "dir" | "slug">;
   readonly stateDir: string | null;
   readonly now: Date;
@@ -232,11 +239,13 @@ export async function writeTransition(input: TransitionWriteInput): Promise<Writ
   const { ref, now, body } = input;
   const reading = await readWorkspaceInput(input.root, input.stateDir);
   if (!reading.readable) throw Object.assign(new Error(reading.error), { code: errnoOf(reading.error) });
+  const ownTree = reading.input.perSpec?.[ref.slug]?.tree;
   const ctx: WorkspaceContext = {
     workflow: reading.workflow,
     viewer: reading.viewer,
     constitution: reading.input.constitution,
-    worktreeTree: reading.input.worktreeTree ?? null,
+    // The tree the spec's code-reviewed mark compares with, as the row reads it: its own worktree's, else main's (ISC-176).
+    worktreeTree: ownTree === undefined ? (reading.input.worktreeTree ?? null) : ownTree,
     specs: reading.input.specs,
   };
   return runWrite<"transition">({

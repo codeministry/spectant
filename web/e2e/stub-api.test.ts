@@ -17,8 +17,12 @@ import type {
   LibraryCatalog,
   LibraryDocType,
   LiveFrame,
+  MainCopy,
   SpecPageModel,
+  SpecWarning,
   TasksTab,
+  TimelineEntry,
+  Worktree,
 } from '../../core/src/files';
 import {
   ACTORS_ALLOW,
@@ -46,10 +50,12 @@ import {
   workspaceRoutes,
 } from '../../server/src/spec-routes.contract';
 import {
+  BUMP_RUN_PATH,
   EMPTY_CATALOG,
   LIBRARY_HEADER,
   LOCKS_HEADER,
   LOCK_STATES,
+  RESET_PATH,
   STUB_LIBRARY,
   stubEvidencePath,
   stubOfflinePrototypeHtml,
@@ -62,6 +68,8 @@ import {
   type StubState,
   WRITE_HEADER,
   WORKSPACE_GOLDEN_FAMILY,
+  WORKTREES_HEADER,
+  WORKTREE_STATES,
   WRITE_OUTCOMES,
   recountTasks,
   stubApi,
@@ -1904,5 +1912,191 @@ describe('stub API board seam matches the real handlers (T119)', () => {
     if (!specs) throw new Error('real handlers not loaded');
     const served = await call(specs, request(specRoutes.spec(WS, '006')));
     expect((await ask(specRoutes.spec(WS, '006'))).headers.get(SPEC_HASH_HEADER)).toBe(served.headers.get(SPEC_HASH_HEADER));
+  });
+});
+
+// ---- the worktree overlay (spec 027, T33: ISC-175, ISC-175.1, ISC-179, ISC-181) -----------------------------------
+
+describe('stub API: the worktree overlay via X-Spectant-Stub-Worktrees (spec 027, T33)', () => {
+  type Headers = Record<string, string>;
+  type Row = { id: string; worktree: Worktree | null; source: string; main: unknown; warnings: unknown[] };
+  type Dashboard = { kpis: Json & { warnings: number; attention: number }; specs: Row[]; warningGroups: unknown[] };
+  const FOLDERS: Readonly<Record<string, string>> = {
+    '004': '004-retention-policies',
+    '005': '005-config-format-choice',
+    '006': '006-partial-push',
+    '007': '007-rotate-mirror-token',
+    '008': '008-referrers-support',
+  };
+  const on: Headers = { [WORKTREES_HEADER]: 'on' };
+  const read = async <T>(path: string, headers: Headers = on): Promise<T> => (await (await ask(path, { headers })).json()) as T;
+  const dashboard = (headers: Headers = on, ws = WS): Promise<Dashboard> => read<Dashboard>(`/api/workspaces/${ws}/dashboard`, headers);
+  const page = (id: string, headers: Headers = on): Promise<SpecPageModel> => read<SpecPageModel>(specRoutes.spec(WS, id), headers);
+  const live = (headers: Headers = on, id = '002'): Promise<LiveFrame> => read<LiveFrame>(specRoutes.live(WS, id), headers);
+  const timeline = (id: string): Promise<TimelineEntry[]> => read<TimelineEntry[]>(specRoutes.timeline(WS, id));
+  const goldenModel = (name = 'harbor'): Dashboard => golden(name) as unknown as Dashboard;
+  const rowOf = (model: Dashboard, id: string): Row => {
+    const found = model.specs.find((r) => r.id === id);
+    if (!found) throw new Error(`no row ${id}`);
+    return found;
+  };
+  const goldenPage = (folder: string): SpecPageModel => familyValue('harbor', 'spec', `specs/${folder}`) as SpecPageModel;
+  const goldenTimeline = (folder: string): TimelineEntry[] => familyValue('harbor', 'timeline', `specs/${folder}`) as TimelineEntry[];
+  const withoutRun = (card: object): object => Object.fromEntries(Object.entries(card).filter(([key]) => key !== 'run'));
+  const MISMATCH: SpecWarning = {
+    kind: 'worktree-branch-mismatch',
+    text:
+      'Worktree .worktrees/003-config-loader is on branch feature/005-config-format-choice, which names spec 005; ' +
+      'its path names spec 003, and the path wins.',
+    ref: '.worktrees/003-config-loader',
+  };
+
+  test('off is the default: absent or "off" serves every golden as it is; an unknown value is a loud 400', async () => {
+    for (const headers of [{}, { [WORKTREES_HEADER]: 'off' }] as Headers[]) {
+      expect(await dashboard(headers)).toEqual(goldenModel());
+      expect(await live(headers)).toEqual(goldenFor('live') as LiveFrame);
+      expect(await read<TimelineEntry[]>(specRoutes.timeline(WS, '007'), headers)).toEqual(goldenTimeline('007-rotate-mirror-token'));
+    }
+    const bad = await ask(`/api/workspaces/${WS}/dashboard`, { headers: { [WORKTREES_HEADER]: 'maybe' } });
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toEqual({ error: 'unknown-stub-worktrees', worktrees: 'maybe', states: [...WORKTREE_STATES] });
+  });
+
+  test('(1) harbor 002: the dirty worktree two commits ahead, alike on its dashboard row and its spec head', async () => {
+    const worktree: Worktree = { path: '.worktrees/002-web-console', branch: 'feature/002-web-console', spec: '002', ahead: 2, dirty: true, kind: 'spec' };
+    expect(rowOf(await dashboard(), '002').worktree).toEqual(worktree);
+    expect((await page('002')).head.worktree).toEqual(worktree);
+  });
+
+  test('(2) harbor 009: a clean worktree with nothing ahead', async () => {
+    const worktree: Worktree = { path: '.worktrees/009-chunked-upload-limits', branch: 'feature/009-chunked-upload-limits', spec: '009', ahead: 0, dirty: false, kind: 'spec' };
+    expect(rowOf(await dashboard(), '009').worktree).toEqual(worktree);
+    expect((await page('009')).head.worktree).toEqual(worktree);
+  });
+
+  test('(3) harbor 003: the path wins over a branch naming 005, one mismatch warning on row, panel, page and counts', async () => {
+    const model = await dashboard();
+    const base = goldenModel();
+    const row = rowOf(model, '003');
+    expect(row.worktree).toEqual({ path: '.worktrees/003-config-loader', branch: 'feature/005-config-format-choice', spec: '003', ahead: 1, dirty: false, kind: 'spec' } satisfies Worktree);
+    expect(row.warnings).toEqual([...rowOf(base, '003').warnings, MISMATCH]);
+    expect(model.warningGroups).toEqual([...base.warningGroups, { kind: 'worktree-branch-mismatch', items: [{ spec: '003', warning: MISMATCH }] }]);
+    expect(model.kpis).toEqual({ ...base.kpis, warnings: base.kpis.warnings + 1, attention: base.kpis.attention + 1 });
+    const list = await read<Array<{ slug: string; counts: unknown }>>('/api/workspaces');
+    expect(list.find((w) => w.slug === WS)?.counts).toEqual(model.kpis);
+    const spec = await page('003');
+    expect(spec.head.worktree).toEqual(row.worktree);
+    expect(spec.warnings).toEqual([...goldenPage('003-config-loader').warnings, MISMATCH]);
+    expect(spec.areas.status.warnings).toBe(goldenPage('003-config-loader').areas.status.warnings + 1);
+  });
+
+  test('(4) every other spec, the archived one and lantern included, carries no worktree and reads from main', async () => {
+    const model = await dashboard();
+    for (const [id, folder] of Object.entries(FOLDERS)) {
+      expect(rowOf(model, id)).toEqual(rowOf(goldenModel(), id));
+      expect([rowOf(model, id).worktree, rowOf(model, id).source, rowOf(model, id).main]).toEqual([null, 'main', null]);
+      expect((await page(id)).head).toEqual(goldenPage(folder).head);
+    }
+    expect((await page('001')).head).toEqual(goldenPage('archive/001-manifest-sync').head);
+    expect(await dashboard(on, 'lantern')).toEqual(goldenModel('lantern'));
+  });
+
+  test('(5) harbor 002 is read from its worktree copy: source worktree, the main copy two claims behind', async () => {
+    const main: MainCopy = { stage: 'build', progress: { closed: 23, total: 30 } };
+    const model = await dashboard();
+    const head = (await page('002')).head;
+    expect([rowOf(model, '002').source, rowOf(model, '002').main]).toEqual(['worktree', main]);
+    expect([head.source, head.main]).toEqual(['worktree', main]);
+    for (const id of ['003', '009']) expect([rowOf(model, id).source, rowOf(model, id).main]).toEqual(['main', null]);
+  });
+
+  test('(6) harbor 002 live: every run state on a card, the round furthest along first, the golden file untouched', async () => {
+    const before = goldenText('harbor.live');
+    const base = goldenFor('live') as LiveFrame;
+    const frame = await live();
+    const runs = Object.fromEntries(frame.cards.filter((c) => c.run).map((c) => [c.task, c.run?.state]));
+    expect(runs).toEqual({ T26: 'applied', T27: 'patched', T28: 'applied-open', T29: 'building', T32: 'dispatched' });
+    for (const task of ['T26', 'T28']) expect(frame.cards.find((c) => c.task === task)?.run).toEqual(base.cards.find((c) => c.task === task)?.run);
+    expect(frame.cards.map(withoutRun)).toEqual(base.cards.map(withoutRun));
+    expect(frame.inRound?.round).toBe(base.inRound?.round ?? -1);
+    expect(frame.inRound?.cards.map((c) => `${c.task}:${c.run?.state ?? 'none'}`)).toEqual(['T28:applied-open', 'T27:patched', 'T29:building', 'T32:dispatched']);
+    const counts = { dispatched: 1, building: 1, patched: 1, 'applied-open': 1 };
+    expect([frame.inRound?.total, frame.inRound?.lanes]).toEqual([counts, { web: counts }]);
+    expect(frame.needsYou.find((c) => c.task === 'T29')?.run?.state).toBe('building');
+    expect((await live({ ...on, [LOCKS_HEADER]: 'none' })).inRound?.cards.length).toBe(4);
+    expect(await live(on, '003')).toEqual(familyValue('harbor', 'live', 'specs/003-config-loader') as LiveFrame);
+    expect(goldenText('harbor.live')).toBe(before);
+  });
+
+  test('(7) POST bump-run moves one task one run event on, for that session only; applied-open stays; reset drops it', async () => {
+    const session = 'stub-bump-run';
+    const mine: Headers = { ...on, [SESSION_HEADER]: session };
+    const bump = (task: string, query = `ws=${WS}&spec=002&task=${task}`): Promise<Response> =>
+      ask(`${BUMP_RUN_PATH}?${query}`, { method: 'POST', session });
+    const stateOf = (frame: LiveFrame, task: string): string | undefined => frame.cards.find((c) => c.task === task)?.run?.state;
+    const etag = async (headers: Headers): Promise<string | null> => (await ask(specRoutes.live(WS, '002'), { headers })).headers.get('ETag');
+    expect((await ask(RESET_PATH, { method: 'POST', session })).status).toBe(204);
+    const first = await etag(mine);
+    expect((await bump('T32')).status).toBe(204);
+    expect(await etag(mine)).not.toBe(first);
+    const moved = await live(mine);
+    expect(moved.cards.find((c) => c.task === 'T32')?.run).toEqual({
+      task: 'T32',
+      state: 'building',
+      session: 'a:claude:sess-2/T32',
+      worktree: 'wt-12',
+      ts: '2026-03-08T15:01:00Z',
+    });
+    expect(moved.inRound?.total).toEqual({ building: 2, patched: 1, 'applied-open': 1 });
+    expect(stateOf(await live(), 'T32')).toBe('dispatched');
+    expect(stateOf(await live({ [SESSION_HEADER]: session }), 'T32')).toBe('dispatched');
+    const settled = await etag(mine);
+    expect((await bump('T28')).status).toBe(204);
+    expect(await etag(mine)).toBe(settled);
+    await bump('T32');
+    await bump('T32');
+    await bump('T32');
+    expect(stateOf(await live(mine), 'T32')).toBe('applied-open');
+    expect((await ask(RESET_PATH, { method: 'POST', session })).status).toBe(204);
+    expect(stateOf(await live(mine), 'T32')).toBe('dispatched');
+    const refused = [`ws=nowhere&spec=002&task=T32`, `ws=${WS}&spec=999&task=T32`, `ws=${WS}&spec=002&task=T99`, `ws=${WS}&spec=002&task=T34`, `ws=${WS}&spec=002`];
+    for (const query of refused) expect((await bump('', query)).status).toBe(404);
+    const wrong = await ask(`${BUMP_RUN_PATH}?ws=${WS}&spec=002&task=T32`, { session });
+    expect([wrong.status, wrong.headers.get('Allow')]).toEqual([405, 'POST']);
+  });
+
+  test('(8) timeline: 007 merged between two dated entries, 006 removed undated after its newest instant', async () => {
+    const merged = await timeline('007');
+    expect(merged.filter((e) => e.kind !== 'worktree')).toEqual(goldenTimeline('007-rotate-mirror-token'));
+    const entry = merged[3];
+    expect(entry).toEqual({
+      ts: '2026-03-09T08:45:00Z',
+      kind: 'worktree',
+      derived: true,
+      title: 'Merged into main · feature/007-rotate-mirror-token',
+      ref: 'merged',
+      id: 'worktree-merged',
+      actor: null,
+      worktree: { state: 'merged', branch: 'feature/007-rotate-mirror-token', path: '.worktrees/007-rotate-mirror-token', commit: '4f1c2ab' },
+    });
+    expect(Object.keys(entry ?? {})).toEqual(['ts', 'kind', 'derived', 'title', 'ref', 'id', 'actor', 'worktree']);
+    expect([merged[2]?.ts, merged[4]?.ts]).toEqual(['2026-03-09T09:00:00Z', '2026-03-09T08:30:00Z']);
+    const removed = await timeline('006');
+    expect(removed.filter((e) => e.kind !== 'worktree')).toEqual(goldenTimeline('006-partial-push'));
+    expect(removed[2]).toEqual({
+      ts: '',
+      kind: 'worktree',
+      derived: true,
+      title: 'Worktree removed · .worktrees/006-partial-push',
+      ref: 'removed',
+      id: 'worktree-removed',
+      actor: null,
+      undated: true,
+      worktree: { state: 'removed', branch: 'feature/006-partial-push', path: '.worktrees/006-partial-push', commit: null },
+    });
+    for (const [id, folder] of [['007', '007-rotate-mirror-token'], ['006', '006-partial-push']] as const) {
+      expect((await page(id)).areas.status.timelineEntries).toBe(goldenPage(folder).areas.status.timelineEntries + 1);
+    }
+    expect(await timeline('002')).toEqual(goldenTimeline('002-web-console'));
   });
 });

@@ -1,6 +1,18 @@
-import type { ClaimLock, GateView } from '../../../../../core/src/files';
+import type { ClaimLock, GateView, Worktree } from '../../../../../core/src/files';
 import type { PlanningFeature, PlanningHolder, PlanningModel } from '../../../../../core/src/planning';
-import { featurePlace, gateAction, gateInHead, pathSegments, relativeTime, relativeUnit, shortHash, slugName } from './spec-head-model';
+import {
+  featurePlace,
+  gateAction,
+  gateInHead,
+  pathSegments,
+  provenance,
+  type ProvenanceInput,
+  relativeTime,
+  relativeUnit,
+  shortHash,
+  slugName,
+  worktreeChipTier,
+} from './spec-head-model';
 
 const gate = (state: GateView['state']): GateView => ({ state, detail: '' });
 const LOCK: ClaimLock = { source: 'frontier', claim: 'ISC-74', session: 'spec-002-ISC-74', actor: { raw: 'spec-002-ISC-74', kind: 'legacy', id: 'spec-002-ISC-74', legacy: true }, since: '2026-03-08T16:00:00Z' };
@@ -114,5 +126,63 @@ describe('featurePlace (ISC-105)', () => {
 
   it('is the main feature without an open claim', () => {
     expect(ids(featurePlace(MODEL, '002', null))).toEqual(['F7', ['F0']]);
+  });
+});
+
+// T34, T35 · ISC-175, ISC-181: the provenance line's facts — the worktree chip, its mismatch tone and the source note.
+describe('provenance (spec 027, ISC-175, ISC-181)', () => {
+  const WT: Worktree = { path: '.worktrees/002-web-console', branch: 'feature/002-web-console', spec: '002', ahead: 2, dirty: true, kind: 'spec' };
+  const input = (over: Partial<ProvenanceInput> = {}): ProvenanceInput => ({
+    stage: 'plan',
+    worktree: WT,
+    source: 'main',
+    main: null,
+    progress: { closed: 3, total: 15 },
+    warnings: [],
+    ...over,
+  });
+
+  it('is null without a head or without a worktree: no chip, no note', () => {
+    expect(provenance(null)).toBeNull();
+    expect(provenance(input({ worktree: null }))).toBeNull();
+    expect(provenance(input({ worktree: undefined }))).toBeNull();
+    expect(provenance(input({ worktree: null, source: 'worktree', main: { stage: 'build', progress: { closed: 1, total: 2 } } }))).toBeNull();
+  });
+
+  it('carries the worktree with no note while the spec is read from main', () => {
+    expect(provenance(input())).toEqual({ worktree: WT, source: 'main', mismatch: false, note: null });
+    expect(provenance(input({ source: undefined }))?.source).toBe('main');
+  });
+
+  it("names main's stage and progress when the spec is read from the worktree and main differs", () => {
+    const main = { stage: 'build', progress: { closed: 23, total: 30 } } as const;
+    expect(provenance(input({ source: 'worktree', main }))?.note).toEqual({ kind: 'behind', stage: 'build', closed: 23, total: 30 });
+    // Same stage, other progress: still main's numbers.
+    expect(provenance(input({ source: 'worktree', stage: 'build', main }))?.note).toEqual({ kind: 'behind', stage: 'build', closed: 23, total: 30 });
+    // Same progress, other stage: still main's numbers.
+    const sameCount = { stage: 'tasks', progress: { closed: 3, total: 15 } } as const;
+    expect(provenance(input({ source: 'worktree', main: sameCount }))?.note).toEqual({ kind: 'behind', stage: 'tasks', closed: 3, total: 15 });
+  });
+
+  it('reads "main equal" when main matches the copy in stage and progress', () => {
+    const main = { stage: 'plan', progress: { closed: 3, total: 15 } } as const;
+    expect(provenance(input({ source: 'worktree', main }))?.note).toEqual({ kind: 'equal' });
+  });
+
+  it('says main has no copy when the spec is read from the worktree and main has no spec.md', () => {
+    expect(provenance(input({ source: 'worktree', main: null }))?.note).toEqual({ kind: 'absent' });
+  });
+
+  it('turns the chip to the mismatch tone only on a worktree-branch-mismatch warning', () => {
+    expect(provenance(input({ warnings: [{ kind: 'drift' }] }))?.mismatch).toBe(false);
+    expect(provenance(input({ warnings: [{ kind: 'drift' }, { kind: 'worktree-branch-mismatch' }] }))?.mismatch).toBe(true);
+  });
+});
+
+describe('worktreeChipTier', () => {
+  it('opens the details as a sheet at compact and as a popover at medium and wide', () => {
+    expect(worktreeChipTier('compact')).toBe('compact');
+    expect(worktreeChipTier('medium')).toBe('medium');
+    expect(worktreeChipTier('wide')).toBe('medium');
   });
 });

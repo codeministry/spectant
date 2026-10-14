@@ -15,4 +15,16 @@ describe('UiLiveRegion', () => {
     expect(host.textContent.trim()).toBe('2 specs changed');
     expect(host.textContent).not.toBe(first);
   });
+
+  it('bundles the parts of one tick into one announcement and stays silent without any', async () => {
+    const fixture = TestBed.createComponent(UiLiveRegion);
+    const host = fixture.nativeElement as HTMLElement;
+    fixture.componentInstance.announceAll([]);
+    await fixture.whenStable();
+    expect(host.textContent.trim()).toBe('');
+
+    fixture.componentInstance.announceAll(['T3: patch ready', 'T5: building']);
+    await fixture.whenStable();
+    expect(host.textContent.trim()).toBe('T3: patch ready; T5: building');
+  });
 });

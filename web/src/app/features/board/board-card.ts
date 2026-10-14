@@ -11,6 +11,7 @@ import { UiCard } from '../../shared/ui/card/card';
 import { UiPriority } from '../../shared/ui/priority/priority';
 import { UiReason } from '../../shared/ui/reason/reason';
 import { type TypeGlyphKind, UiTypeGlyph } from '../../shared/ui/type-glyph/type-glyph';
+import { UiWorktreeChip } from '../../shared/ui/worktree-chip/worktree-chip';
 import type { BoardCard as BoardCardModel } from './board-model';
 
 /**
@@ -47,7 +48,11 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  *   detail sidebar) instead of navigating; Shift+Enter or a shift click opens the page, and a Ctrl/Cmd or middle click
  *   keeps the browser's new-tab default. The link carries `data-ref`, the card `data-selected="card"` while selected.
  * - Row 3: the main feature chip `F<n>` (its name in the tooltip), the milestone (muted) and, pushed to the end,
- *   `ui-actor-chip` with the resolved name or the raw id; nothing when the card is unassigned.
+ *   `ui-actor-chip` with the resolved name or the raw id; nothing when the card is unassigned. A spec with a worktree
+ *   shows the compact `ui-worktree-chip` (`git-branch` · `↑n` · `±`, the branch in its accessible name) right before
+ *   the assignee pill (spec 027, ISC-175, design.md § Viewport-übergreifend 6): not interactive, the card is the tap
+ *   target; the warning tone on the row's `worktree-branch-mismatch`. The chip stays compact at every card width
+ *   (the host declares no `board-card` container), so the card never grows by a line. No worktree, no chip.
  * - Row 4, waiting cards only: `ui-reason` compact, the row's phrase and its command chip (none for close-pending).
  * - The `grip-vertical` zone at the trailing edge is the `cdkDragHandle` (T125): the board page puts `cdkDrag` on this
  *   element and only the grip lifts the card, so the title stays a link. The grip is a button named "Move 008"
@@ -60,7 +65,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
  */
 @Component({
   selector: 'app-board-card',
-  imports: [CdkDragHandle, TranslocoPipe, UiActorChip, UiCard, UiIcon, UiPriority, UiReason, UiTypeGlyph],
+  imports: [CdkDragHandle, TranslocoPipe, UiActorChip, UiCard, UiIcon, UiPriority, UiReason, UiTypeGlyph, UiWorktreeChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[attr.data-key]': 'card().key',
@@ -71,6 +76,8 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
   },
   styleUrls: ['../../layout/detail-sidebar/selection.css'],
   styles: `
+    /* The card declares no board-card container on purpose (spec 027, principal 2026-10-13): the worktree chip stays
+       compact at every width, so a card with a worktree never grows by a line. The full form lives in the spec head. */
     :host { display: block; min-inline-size: 0; }
     ui-card { min-block-size: 72px; }
     article { display: grid; grid-template-columns: minmax(0, 1fr) 44px; margin-inline-end: -12px; }
@@ -79,7 +86,13 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
     .r1 { color: var(--muted-ink); }
     .r1 ui-priority { margin-inline-start: auto; }
     .r3 { flex-wrap: wrap; }
-    .r3 ui-actor-chip { max-inline-size: 14ch; margin-inline-start: auto; }
+    /*
+     * The assignee line: the worktree chip, then the pill pushed to the end, on one line that never wraps (spec 027,
+     * design.md § Viewport-übergreifend 6: no new line); on a narrow card the pill gives way and truncates.
+     */
+    .who { display: flex; flex: 1 1 auto; gap: 8px; align-items: center; min-inline-size: 0; }
+    .who ui-actor-chip { min-inline-size: 0; max-inline-size: 14ch; margin-inline-start: auto; }
+    .who ui-worktree-chip { flex: none; }
     .num { color: var(--disp-ink); font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 600; line-height: 20px; }
     .idea { display: inline-flex; gap: 6px; align-items: center; min-inline-size: 0; block-size: 22px; padding-inline: 7px; border: 1px dashed var(--track); border-radius: var(--radius-selector); color: var(--muted-ink); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; line-height: 16px; white-space: nowrap; }
     .idea ui-icon { flex: none; color: var(--conc-ink); }
@@ -145,7 +158,7 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
             >{{ c.title }}</a
           >
 
-          @if (c.feature || c.milestone || c.assignee) {
+          @if (c.feature || c.milestone || c.assignee || c.worktree) {
             <div class="r3">
               @if (c.feature; as feature) {
                 <span class="chip feat" [title]="'board.workspace.card.feature' | transloco: { id: feature, name: c.featureName ?? feature }"
@@ -155,8 +168,15 @@ const reasonInk = (card: BoardCardModel): string => (card.waitsOnYou ? 'var(--qu
               @if (c.milestone; as milestone) {
                 <span class="chip ms"><ui-icon name="flag" [size]="12" /><span>{{ milestone }}</span></span>
               }
-              @if (c.assignee; as assignee) {
-                <ui-actor-chip [actor]="assignee" [name]="c.assigneeName" />
+              @if (c.worktree || c.assignee) {
+                <span class="who">
+                  @if (c.worktree; as worktree) {
+                    <ui-worktree-chip [worktree]="worktree" [compact]="true" [interactive]="false" [mismatch]="c.worktreeMismatch" />
+                  }
+                  @if (c.assignee; as assignee) {
+                    <ui-actor-chip [actor]="assignee" [name]="c.assigneeName" />
+                  }
+                </span>
               }
             </div>
           }

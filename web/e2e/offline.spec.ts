@@ -7,6 +7,9 @@
  *
  * - every route: `/`, `/w/harbor`, `/settings`, harbor 002's dashboard and each tab of `TAB_IDS` (status, timeline,
  *   board, matrix, claims, tasks, evidence, plan, design, decisions, constitution, notes, notes/:id), and an unknown path;
+ * - the worktree views (spec 027, ISC-182, T42): with the stub's worktree overlay on, harbor 002's spec page (head
+ *   chip and source note, the Tasks tab's run chips), the workspace board's card chips, 002's live board with its
+ *   in-round group, and 007's timeline with the derived merged entry;
  * - the planning page (spec 026, ISC-173): the tree, board and graph lenses each with `?sel=` (the detail sidebar open,
  *   the graph drawn by mermaid), the redirects of `/w/harbor/features#F2` and `/w/harbor/milestones#m-…` to the tree
  *   with the object selected, and the workspace board with a selected card;
@@ -30,7 +33,7 @@ import type { BrowserContext, Page, Request } from '@playwright/test';
 import { prototypeRoute } from '../../server/src/spec-routes.contract.ts';
 import { LEGACY_TAB_IDS, TAB_IDS } from '../src/app/layout/shell/areas';
 import { atWidth, expect, test } from './fixtures';
-import { STUB_LIBRARY, STUB_NOTES } from './stub-api';
+import { STUB_LIBRARY, STUB_NOTES, WORKTREES_HEADER } from './stub-api';
 
 const SESSION = 'X-Spectant-Stub-Session';
 const SPEC = '/w/harbor/s/002';
@@ -178,6 +181,33 @@ for (const theme of ['light', 'dark'] as const) {
         await page.goto(UNKNOWN);
         await expect(page.locator('app-shell')).toHaveCount(1);
         await expect(page.locator('[data-page="not-found"]')).toBeVisible();
+      });
+
+      await test.step('the worktree views: spec page, workspace board, live board and timeline (ISC-182)', async () => {
+        // The stub's worktree overlay (spec 027, T33) on this page only; the session header stays on the context.
+        await page.setExtraHTTPHeaders({ [WORKTREES_HEADER]: 'on' });
+
+        await page.goto(SPEC);
+        await rendered(page, SPEC);
+        await expect(page.locator('ui-worktree-chip[data-head-worktree]')).toBeVisible();
+        await expect(page.locator('[data-source-note]')).toBeVisible();
+
+        await page.goto(`${SPEC}/tasks`);
+        await rendered(page, `${SPEC}/tasks`, 'tasks');
+        await expect(page.locator('app-tasks-tab app-run-chip')).toHaveCount(4);
+
+        await page.goto('/w/harbor/board');
+        await expect(page.locator('app-board-page app-board-card ui-worktree-chip').first()).toBeVisible();
+
+        await page.goto(`${SPEC}/board`);
+        await rendered(page, `${SPEC}/board`, 'board');
+        await expect(page.locator('[data-lanes] [data-section="inRound"] article[data-card]')).toHaveCount(4);
+
+        await page.goto('/w/harbor/s/007/timeline');
+        await rendered(page, '/w/harbor/s/007/timeline', 'timeline');
+        await expect(page.locator('app-timeline-tab [data-entry][data-kind="worktree"] [data-worktree-title]')).toHaveText('Merged into main');
+
+        await page.setExtraHTTPHeaders({});
       });
 
       await test.step('planning: the three lenses, the redirects and the open sidebar', async () => {

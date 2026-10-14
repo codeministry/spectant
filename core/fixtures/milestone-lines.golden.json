@@ -89,7 +89,10 @@
       "fog": 0,
       "updated": "2026-03-08T15:00:00Z",
       "lastRound": null,
-      "goal": ""
+      "goal": "",
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     {
       "id": "003",
@@ -147,7 +150,10 @@
       "fog": 0,
       "updated": "2026-03-08T11:00:00Z",
       "lastRound": null,
-      "goal": ""
+      "goal": "",
+      "worktree": null,
+      "source": "main",
+      "main": null
     },
     {
       "id": "001",
@@ -196,7 +202,10 @@
       "fog": 0,
       "updated": "2026-03-05T15:00:00Z",
       "lastRound": null,
-      "goal": ""
+      "goal": "",
+      "worktree": null,
+      "source": "main",
+      "main": null
     }
   ],
   "nextUp": [

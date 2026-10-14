@@ -47,7 +47,7 @@ const LABELS: GraphLabels = {
 };
 
 const NODE_LINE = /^\s*([A-Za-z0-9_]+)(?:\(\[|\[|\()"/u;
-const LINK_LINE = /^\s*([A-Za-z0-9_]+) (?:---|-\.->|-->) ([A-Za-z0-9_]+)\s*$/u;
+const LINK_LINE = /^\s*([A-Za-z0-9_]+) (?:---|-\.->|-->) ([A-Za-z0-9_]+)\s*$/u; // single-core: allow — a mermaid link arrow, not the frontmatter delimiter
 
 /** The node ids the mermaid text defines, in order, and its links as `from>to`. */
 function parse(source: string): { nodes: string[]; links: string[] } {

@@ -3,9 +3,65 @@
  * gate state: the helpers only pick which of the button's four states the model's facts put it in, whether the stage
  * offers the gate at all, and how a path, a slug and a time read.
  */
-import type { ClaimLock, GateView } from '../../../../../core/src/files';
+import type { ClaimLock, GateView, MainCopy, SpecSource, Worktree } from '../../../../../core/src/files';
+import type { Progress } from '../../../../../core/src/frontmatter';
 import type { PlanningFeature, PlanningHolder, PlanningModel } from '../../../../../core/src/planning';
 import { specIdOf, specRefMatches, specSlugOf } from '../../../../../core/src/spec-ref';
+import type { Stage } from '../../../../../core/src/stage';
+import type { SheetTier } from '../../shared/ui/overlay/sheet';
+import type { Tier } from '../shell/tier';
+
+// ─── Provenance line (spec 027, T34, T35, ISC-175, ISC-181) ───────────────────────────────────────────────────────
+
+/** What the head knows of where the spec comes from: the head's three fields, the copy's stage and claims, the warnings. */
+export interface ProvenanceInput {
+  /** The copy's stage, the filled chip in the chip row. */
+  readonly stage: string;
+  readonly worktree?: Worktree | null | undefined;
+  readonly source?: SpecSource | undefined;
+  readonly main?: MainCopy | null | undefined;
+  /** The copy's live claims, closed over total (the KPI card's count); null when unknown. */
+  readonly progress: Progress | null;
+  readonly warnings: ReadonlyArray<{ readonly kind: string }>;
+}
+
+/**
+ * The source note (ISC-181), only when the spec is read from its worktree copy: main's stage and progress beside the
+ * copy's (`behind`), "main equal" when both match (`equal`), or `absent` when main has no spec.md of it yet.
+ */
+export type SourceNote =
+  | { readonly kind: 'behind'; readonly stage: Stage; readonly closed: number; readonly total: number }
+  | { readonly kind: 'equal' }
+  | { readonly kind: 'absent' };
+
+/** The provenance line's facts: the chip's worktree and tone, the source it reads from, and the note behind it. */
+export interface Provenance {
+  readonly worktree: Worktree;
+  readonly source: SpecSource;
+  /** The row carries a `worktree-branch-mismatch` warning (ISC-174.1): the chip takes the warning tone. */
+  readonly mismatch: boolean;
+  readonly note: SourceNote | null;
+}
+
+const sameProgress = (a: Progress, b: Progress | null): boolean => b !== null && a.closed === b.closed && a.total === b.total;
+
+/** No worktree, no chip and no note: null, and the head keeps today's line (design.md § Mobile A, "pixelgleich"). */
+export function provenance(input: ProvenanceInput | null): Provenance | null {
+  const worktree = input?.worktree ?? null;
+  if (input === null || worktree === null) return null;
+  const source = input.source ?? 'main';
+  const mismatch = input.warnings.some((w) => w.kind === 'worktree-branch-mismatch');
+  return { worktree, source, mismatch, note: source === 'worktree' ? sourceNote(input.main ?? null, input) : null };
+}
+
+function sourceNote(main: MainCopy | null, copy: ProvenanceInput): SourceNote {
+  if (main === null) return { kind: 'absent' };
+  if (main.stage === copy.stage && sameProgress(main.progress, copy.progress)) return { kind: 'equal' };
+  return { kind: 'behind', stage: main.stage, closed: main.progress.closed, total: main.progress.total };
+}
+
+/** The chip's details open as a bottom sheet at the compact tier and as a popover at medium and wide. */
+export const worktreeChipTier = (tier: Tier): SheetTier => (tier === 'compact' ? 'compact' : 'medium');
 
 /** The gate button's four states (design.md § Status, ISC-85). */
 export type GateAction = 'ready' | 'stale' | 'done' | 'paused';

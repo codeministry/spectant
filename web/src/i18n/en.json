@@ -432,7 +432,17 @@
       "closed": "closed",
       "absent": "absent",
       "operatorOpen": "your step",
-      "operatorDone": "step done"
+      "operatorDone": "step done",
+      "patched": "patch ready",
+      "applied": "applied",
+      "applied-open": "applied, open"
+    },
+    "run": {
+      "dispatched": "dispatched",
+      "building": "building",
+      "patched": "patch ready",
+      "applied": "applied",
+      "applied-open": "applied, open"
     },
     "claim": {
       "open": "open",
@@ -662,7 +672,16 @@
       "gate": "Gate",
       "commit": "Commit",
       "note": "Note",
-      "agent": "Agent"
+      "agent": "Agent",
+      "worktree": "Worktree"
+    },
+    "worktree": {
+      "merged": "Merged into main",
+      "removed": "Worktree removed",
+      "fromGit": "derived from git",
+      "fromGitCommit": "derived from git, commit",
+      "noDate": "no date",
+      "derivedHint": "Read from git: no recorded event names this merge or removal."
     },
     "derived": "derived",
     "derivedHint": "Inferred from the files: no recorded event names this stage.",
@@ -1139,7 +1158,13 @@
       "on": "on {{claim}} · {{time}}",
       "paused": "writes paused"
     },
-    "noSource": "No agent source · writes check the file hash only"
+    "noSource": "No agent source · writes check the file hash only",
+    "source": {
+      "read": "Read from the worktree",
+      "main": "main:",
+      "equal": "main equal",
+      "absent": "not on main yet"
+    }
   },
   "refresh": {
     "newSpecs": "{{count}} new",
@@ -1265,7 +1290,9 @@
       "switch": "Lane",
       "showAll": "show all {{count}}",
       "quiet": "nothing in flight",
-      "next": "next"
+      "next": "next",
+      "inRound": "{{count}} in the round",
+      "runCount": "{{count}} {{state}}"
     },
     "section": {
       "needsYou": "Needs you",
@@ -1502,7 +1529,8 @@
       "before": "A record, not an authority —",
       "after": "is. Rounds from",
       "live": "· live from"
-    }
+    },
+    "runCounters": "Run states"
   },
   "matrix": {
     "claim": "Claim",
@@ -2019,7 +2047,9 @@
     "glyph": "waits"
   },
   "live": {
-    "taskActors": "Working on {{ task }}"
+    "taskActors": "Working on {{ task }}",
+    "inRound": "In round {{round}}",
+    "runChanged": "{{task}}: {{state}}"
   },
   "library": {
     "title": "Library",
@@ -2152,5 +2182,27 @@
     "copyCommand": "Copy {{command}}",
     "edgeAfter": "{{claim}} comes after {{target}}",
     "edgeBlockedBy": "{{claim}} is blocked by {{target}}"
+  },
+  "worktreeChip": {
+    "name": "Worktree {{path}}, branch {{branch}}",
+    "nameDetached": "Worktree {{path}}, detached HEAD",
+    "ahead": {
+      "one": "{{count}} commit ahead of main",
+      "other": "{{count}} commits ahead of main"
+    },
+    "dirty": "uncommitted changes",
+    "mismatch": "branch does not match the worktree",
+    "details": "Worktree",
+    "path": "Path",
+    "branch": "Branch",
+    "detached": "detached HEAD",
+    "commits": "Commits",
+    "changes": "Working tree",
+    "changesDirty": "Uncommitted changes",
+    "changesClean": "Clean",
+    "source": "Source",
+    "sourceWorktree": "Worktree copy",
+    "copyPath": "Copy path",
+    "copied": "Path copied"
   }
 }

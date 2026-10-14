@@ -12,8 +12,19 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { CommitCache, commitsFor, defaultGitRunner, type GitRunner, takenSpecNumbers, userEmail } from "../server/src/git.ts";
+import { basename, dirname, join } from "node:path";
+import { assignWorktrees } from "../core/src/worktrees.ts";
+import {
+  aheadOfMain,
+  CommitCache,
+  commitsFor,
+  defaultGitRunner,
+  dirty,
+  type GitRunner,
+  takenSpecNumbers,
+  userEmail,
+  worktreeList,
+} from "../server/src/git.ts";
 
 const FOLDER = "specs/010-x";
 
@@ -454,6 +465,232 @@ describe("takenSpecNumbers reads the spec numbers branch names and history have 
     const beforeRepo = checksum(repo);
     await takenSpecNumbers(repo);
     expect(checksum(repo)).toBe(beforeRepo);
+  });
+});
+
+/**
+ * A repository with one commit on main and two linked worktrees inside it: `.worktrees/027-x` on the new branch
+ * `feature/027-x` and `.worktrees/detached` on a detached HEAD. Uncommitted state in the linked worktree too, so a
+ * reader that refreshed an index or took a lock there would show in the hash. Shared by T16's and T17's groups.
+ */
+function worktreeRepo(): string {
+  const dir = mkdtempSync(join(root, "worktrees-"));
+  git(dir, "2026-01-01T00:00:00Z", "init", "-q", "-b", "main");
+  commit(dir, "2026-01-01T12:00:00Z", "spec 027", { "specs/027-x/spec.md": "# x\n" });
+  git(dir, "2026-01-02T00:00:00Z", "worktree", "add", "-q", "-b", "feature/027-x", ".worktrees/027-x");
+  git(dir, "2026-01-02T00:00:00Z", "worktree", "add", "-q", "--detach", ".worktrees/detached");
+  writeFileSync(join(dir, ".worktrees/027-x/specs/027-x/plan.md"), "# uncommitted\n");
+  const future = new Date("2030-01-01T00:00:00Z");
+  utimesSync(join(dir, ".worktrees/027-x/specs/027-x/spec.md"), future, future);
+  return dir;
+}
+
+describe("worktreeList reads the raw `git worktree list --porcelain` text (spec 027, T16, ISC-174, ISC-175)", () => {
+  const records = (text: string): string[] => text.split("\n").filter((line) => line.startsWith("worktree "));
+
+  test("the main checkout and both linked worktrees, three records in git's own order and bytes", async () => {
+    const dir = worktreeRepo();
+    const text = await worktreeList(dir);
+    // Exactly what git prints for the same listing (the helper trims, so compare without the closing blank line).
+    expect(text.trimEnd()).toBe(git(dir, "2026-01-03T00:00:00Z", "worktree", "list", "--porcelain"));
+    const paths = records(text).map((line) => line.slice("worktree ".length));
+    expect(paths).toHaveLength(3);
+    expect(paths[0]?.endsWith(`/${basename(dir)}`)).toBe(true);
+    expect(paths.slice(1).map((p) => p.slice(p.indexOf("/.worktrees/") + 1)).sort()).toEqual([".worktrees/027-x", ".worktrees/detached"]);
+    expect(text).toContain("branch refs/heads/main\n");
+    expect(text).toContain("branch refs/heads/feature/027-x\n");
+    expect(text).toContain("\ndetached\n");
+  });
+
+  test("core's assignWorktrees takes the text as it is: the branch worktree is spec 027, the detached one no spec", async () => {
+    const dir = worktreeRepo();
+    const { worktrees, builders, diagnostics } = assignWorktrees(await worktreeList(dir), ["027-x"]);
+    expect(builders).toBe(0);
+    expect(diagnostics).toEqual([]);
+    expect([...worktrees].sort((a, b) => a.path.localeCompare(b.path))).toEqual([
+      { path: ".worktrees/027-x", branch: "feature/027-x", spec: "027", ahead: null, dirty: null, kind: "spec" },
+      { path: ".worktrees/detached", branch: null, spec: null, ahead: null, dirty: null, kind: "spec" },
+    ]);
+  });
+
+  test("runs only `worktree list --porcelain`, rooted at the repository, under the read-only environment, no fetch", async () => {
+    const dir = worktreeRepo();
+    const seen: Array<{ args: string[]; env: Record<string, string> }> = [];
+    const runner: GitRunner = (args, env, signal) => {
+      seen.push({ args: [...args], env });
+      return defaultGitRunner(args, env, signal);
+    };
+    expect(records(await worktreeList(dir, { runner }))).toHaveLength(3);
+    expect(seen.map((s) => s.args)).toEqual([["-C", dir, "worktree", "list", "--porcelain"]]);
+    expect(seen[0]?.env).toMatchObject({ GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0", GIT_CEILING_DIRECTORIES: dirname(dir) });
+  });
+
+  test("a directory that is no repository root → empty, git never spawned", async () => {
+    const { runner, calls } = countingRunner();
+    expect(await worktreeList(mkdtempSync(join(root, "worktrees-plain-")), { runner })).toBe("");
+    expect(await worktreeList(join(repo, "specs"), { runner })).toBe("");
+    expect(calls).toEqual([]);
+  });
+
+  test("no git on PATH, a failing git, a throwing runner or the deadline → empty, never a throw", async () => {
+    const dir = worktreeRepo();
+    const savedPath = process.env.PATH;
+    process.env.PATH = mkdtempSync(join(root, "no-git-"));
+    try {
+      expect(await worktreeList(dir)).toBe("");
+    } finally {
+      if (savedPath === undefined) Reflect.deleteProperty(process.env, "PATH");
+      else process.env.PATH = savedPath;
+    }
+    expect(await worktreeList(dir, { runner: () => Promise.resolve(null) })).toBe("");
+    expect(await worktreeList(dir, { runner: () => Promise.resolve({ code: 128, stdout: "worktree /x\n", stderr: "fatal: broken\n" }) })).toBe("");
+    expect(await worktreeList(dir, { runner: () => Promise.reject(new Error("spawn failed")) })).toBe("");
+    const slow: GitRunner = () => new Promise(() => undefined);
+    expect(await worktreeList(dir, { runner: slow, timeoutMs: 20 })).toBe("");
+  });
+
+  test("reading the listing leaves the repository and its worktrees, .git/ included, byte- and mtime-identical (ISC-182)", async () => {
+    const dir = worktreeRepo();
+    const before = checksum(dir);
+    await worktreeList(dir);
+    await worktreeList(dir, { timeoutMs: 1 });
+    await worktreeList(join(dir, ".worktrees/027-x"));
+    expect(checksum(dir)).toBe(before);
+  });
+});
+
+describe("aheadOfMain and dirty read a worktree's distance to main and its uncommitted changes (spec 027, T17, ISC-175)", () => {
+  /**
+   * T16's repository plus two commits on `feature/027-x` in its worktree (`plan.md` stays untracked, the uncommitted
+   * file) and a third worktree `.worktrees/028-clean` on `feature/028-clean` at main with nothing uncommitted. The
+   * commits refresh the index, so a tracked file in each branch worktree gets a later mtime afterwards: `git status`
+   * must compare its bytes, and a status that wrote the refreshed index back would show in the hash.
+   */
+  function chipRepo(): { dir: string; spec: string; clean: string; detached: string } {
+    const dir = worktreeRepo();
+    const spec = join(dir, ".worktrees/027-x");
+    const clean = join(dir, ".worktrees/028-clean");
+    commit(spec, "2026-01-03T12:00:00Z", "tasks 027", { "specs/027-x/tasks.md": "# tasks\n" });
+    commit(spec, "2026-01-04T12:00:00Z", "core 027", { "core/x.ts": "export const x = 1;\n" });
+    git(dir, "2026-01-05T00:00:00Z", "worktree", "add", "-q", "-b", "feature/028-clean", ".worktrees/028-clean");
+    const later = new Date("2031-01-01T00:00:00Z");
+    for (const tree of [spec, clean]) utimesSync(join(tree, "specs/027-x/spec.md"), later, later);
+    return { dir, spec, clean, detached: join(dir, ".worktrees/detached") };
+  }
+
+  /** A runner that forwards to git and records every argument list with its environment. */
+  function recordingRunner(): { runner: GitRunner; seen: Array<{ args: string[]; env: Record<string, string> }> } {
+    const seen: Array<{ args: string[]; env: Record<string, string> }> = [];
+    const runner: GitRunner = (args, env, signal) => {
+      seen.push({ args: [...args], env });
+      return defaultGitRunner(args, env, signal);
+    };
+    return { runner, seen };
+  }
+
+  test("two commits ahead and dirty for the spec worktree; 0 and clean for a branch at main; a detached one clean", async () => {
+    const { spec, clean, detached } = chipRepo();
+    expect(await aheadOfMain(spec, "feature/027-x")).toBe(2);
+    expect(await dirty(spec)).toBe(true);
+    expect(await aheadOfMain(clean, "feature/028-clean")).toBe(0);
+    expect(await dirty(clean)).toBe(false);
+    expect(await dirty(detached)).toBe(false);
+  });
+
+  test("a modified tracked file alone reads as dirty too", async () => {
+    const { clean } = chipRepo();
+    writeFileSync(join(clean, "specs/027-x/spec.md"), "# x, edited\n");
+    expect(await dirty(clean)).toBe(true);
+  });
+
+  test("a detached worktree or a name git would not take → ahead null, git never spawned", async () => {
+    const { spec, detached } = chipRepo();
+    const { runner, calls } = countingRunner();
+    expect(await aheadOfMain(detached, null, { runner })).toBeNull();
+    for (const name of ["", "-x", "--all", "main..x", "x@{1}", "x^", "x~1", "x:y", "a b", "x\ny"]) {
+      expect(await aheadOfMain(spec, name, { runner })).toBeNull();
+    }
+    expect(calls).toEqual([]);
+  });
+
+  test("a removed worktree path or a relative path → null, git never spawned; a pruned gitdir → null from git", async () => {
+    const { dir, spec, clean } = chipRepo();
+    rmSync(spec, { recursive: true, force: true });
+    const { runner, calls } = countingRunner();
+    expect(await aheadOfMain(spec, "feature/027-x", { runner })).toBeNull();
+    expect(await dirty(spec, { runner })).toBeNull();
+    expect(await aheadOfMain(".worktrees/028-clean", "feature/028-clean", { runner })).toBeNull();
+    expect(await dirty(".worktrees/028-clean", { runner })).toBeNull();
+    expect(calls).toEqual([]);
+    // The worktree's own `.git` file still points at its gitdir, which is gone: git refuses, the answer is null.
+    rmSync(join(dir, ".git/worktrees/028-clean"), { recursive: true, force: true });
+    expect(await aheadOfMain(clean, "feature/028-clean")).toBeNull();
+    expect(await dirty(clean)).toBeNull();
+  });
+
+  test("no local `main` or an unknown branch → ahead null, never a throw", async () => {
+    const trunk = mkdtempSync(join(root, "trunk-"));
+    git(trunk, "2026-01-01T00:00:00Z", "init", "-q", "-b", "trunk");
+    commit(trunk, "2026-01-01T12:00:00Z", "first", { "README.md": "# trunk\n" });
+    git(trunk, "2026-01-02T00:00:00Z", "worktree", "add", "-q", "-b", "feature/027-x", ".worktrees/027-x");
+    const tree = join(trunk, ".worktrees/027-x");
+    expect(await aheadOfMain(tree, "feature/027-x")).toBeNull();
+    expect(await dirty(tree)).toBe(false);
+    const { spec } = chipRepo();
+    expect(await aheadOfMain(spec, "feature/999-gone")).toBeNull();
+  });
+
+  test("no git on PATH, a failing git, a throwing runner, an output that is no count or a 1 ms deadline → null, never a throw", async () => {
+    const { spec } = chipRepo();
+    const savedPath = process.env.PATH;
+    process.env.PATH = mkdtempSync(join(root, "no-git-"));
+    try {
+      expect(await aheadOfMain(spec, "feature/027-x")).toBeNull();
+      expect(await dirty(spec)).toBeNull();
+    } finally {
+      if (savedPath === undefined) Reflect.deleteProperty(process.env, "PATH");
+      else process.env.PATH = savedPath;
+    }
+    const missing: GitRunner = () => Promise.resolve(null);
+    const failing: GitRunner = () => Promise.resolve({ code: 128, stdout: "?? partial\n", stderr: "fatal: broken\n" });
+    const throwing: GitRunner = () => Promise.reject(new Error("spawn failed"));
+    const deaf: GitRunner = () => new Promise(() => undefined);
+    for (const options of [{ runner: missing }, { runner: failing }, { runner: throwing }, { runner: deaf, timeoutMs: 1 }]) {
+      expect(await aheadOfMain(spec, "feature/027-x", options)).toBeNull();
+      expect(await dirty(spec, options)).toBeNull();
+    }
+    for (const stdout of ["two\n", "", "-1\n", "2 3\n"]) {
+      expect(await aheadOfMain(spec, "feature/027-x", { runner: () => Promise.resolve({ code: 0, stdout, stderr: "" }) })).toBeNull();
+    }
+  });
+
+  test("runs only `rev-list --count main..<branch>` and `status --porcelain` in the worktree, under the read-only environment, no fetch", async () => {
+    const { spec } = chipRepo();
+    const { runner, seen } = recordingRunner();
+    expect(await aheadOfMain(spec, "feature/027-x", { runner })).toBe(2);
+    expect(await dirty(spec, { runner })).toBe(true);
+    expect(seen.map((s) => s.args)).toEqual([
+      ["-C", spec, "rev-list", "--count", "main..feature/027-x", "--"],
+      ["-C", spec, "-c", "core.fsmonitor=false", "status", "--porcelain", "--untracked-files=normal"],
+    ]);
+    for (const s of seen) {
+      expect(s.args).not.toContain("fetch");
+      expect(s.args).not.toContain("--untracked-files=all");
+      expect(s.env).toMatchObject({ GIT_OPTIONAL_LOCKS: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0", GIT_CEILING_DIRECTORIES: dirname(spec) });
+    }
+  });
+
+  test("reading distance and changes leaves the repository and its worktrees, .git/ and .worktrees/ included, byte- and mtime-identical (ISC-182)", async () => {
+    const { dir, spec, clean, detached } = chipRepo();
+    const before = checksum(dir);
+    expect(await aheadOfMain(spec, "feature/027-x")).toBe(2);
+    expect(await dirty(spec)).toBe(true);
+    expect(await aheadOfMain(clean, "feature/028-clean")).toBe(0);
+    expect(await dirty(clean)).toBe(false);
+    expect(await dirty(detached)).toBe(false);
+    await aheadOfMain(spec, "feature/027-x", { timeoutMs: 1 });
+    await dirty(clean, { timeoutMs: 1 });
+    expect(checksum(dir)).toBe(before);
   });
 });
 

@@ -1,0 +1,23 @@
+worktree /srv/repo
+HEAD 5d41c0a9e3b2f7d86a1c4e9b0f3a2d7c6e5b8a14
+branch refs/heads/main
+
+worktree /srv/repo/.claude/worktrees/agent-a1c4e7f0b3d6a9c2e
+HEAD 8e2f1a7c3b9d0e6f4a5c2b1d8e7f6a3c9b0d2e41
+branch refs/heads/worktree-agent-a1c4e7f0b3d6a9c2e
+locked claude agent agent-a1c4e7f0b3d6a9c2e (pid 4242 start Mon Mar 16 10:00:00 2026)
+
+worktree /srv/repo/.claude/worktrees/agent-b2d5f8a1c4e7b0d3f
+HEAD 8e2f1a7c3b9d0e6f4a5c2b1d8e7f6a3c9b0d2e41
+detached
+locked claude agent agent-b2d5f8a1c4e7b0d3f (pid 4242 start Mon Mar 16 10:00:00 2026)
+
+worktree /srv/repo/.claude/worktrees/agent-c3e6a9b2d5f8c1e4a
+HEAD 8e2f1a7c3b9d0e6f4a5c2b1d8e7f6a3c9b0d2e41
+branch refs/heads/worktree-agent-c3e6a9b2d5f8c1e4a
+prunable gitdir file points to non-existent location
+
+worktree /srv/repo/.worktrees/012-harbor
+HEAD 8e2f1a7c3b9d0e6f4a5c2b1d8e7f6a3c9b0d2e41
+branch refs/heads/feature/012-harbor
+

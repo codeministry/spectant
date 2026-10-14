@@ -1,4 +1,4 @@
-import type { ActorRef, Priority, SpecType, StageSource, Workflow, WorkflowStage } from '../../../../../core/src/files';
+import type { ActorRef, Priority, SpecType, StageSource, Workflow, WorkflowStage, Worktree } from '../../../../../core/src/files';
 import type { MilestoneState, PlanningHolder, PlanningModel } from '../../../../../core/src/planning';
 import { allowedTransition, isWorkflowStage, reasonOf, storyStep, WAITING_STAGES, WORKFLOW_TYPES, workflowStagesOf } from '../../../../../core/src/stage';
 import type { Stage } from '../../../../../core/src/stage';
@@ -137,7 +137,14 @@ export interface BoardRow {
   /** The one phrase of the row (`reasonOf` in core). */
   readonly nextReason: string;
   readonly assignee: ActorRef | null;
+  /** The spec's worktree with its chip's facts (spec 027, ISC-175); null or absent without one, and then no chip. */
+  readonly worktree?: Worktree | null;
+  /** The row's warnings; only `worktree-branch-mismatch` is read here, for the chip's warning tone (ISC-174.1). */
+  readonly warnings?: ReadonlyArray<{ readonly kind: string }>;
 }
+
+/** The row's worktree warning, which turns the card's worktree chip to the warning tone (spec 027, ISC-174.1). */
+const WORKTREE_MISMATCH = 'worktree-branch-mismatch';
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> => typeof value === 'object' && value !== null;
 
@@ -200,6 +207,10 @@ export interface BoardCard {
   readonly path: string | null;
   /** The columns a drop may target (`dropTargetsOf`). */
   readonly targets: readonly WorkflowStage[];
+  /** The row's worktree, shown as the compact chip in the assignee row (spec 027, ISC-175); null for an idea. */
+  readonly worktree: Worktree | null;
+  /** The row carries a `worktree-branch-mismatch` warning: the chip takes the warning tone (ISC-174.1). */
+  readonly worktreeMismatch: boolean;
 }
 
 /** A column's stub at medium and wide: empty (with the cards the filters hide), or its card and waiting counts. */
@@ -387,6 +398,8 @@ export function buildBoard(input: BoardInput): BoardModel {
       hash: entry?.holder.hash ?? null,
       path: null,
       targets: dropTargetsOf(base, planning.workflow, stages),
+      worktree: row?.worktree ?? null,
+      worktreeMismatch: row?.warnings?.some((w) => w.kind === WORKTREE_MISMATCH) ?? false,
     });
   }
   const ideaCards: BoardCard[] = onBoard.has('idea')
@@ -413,6 +426,8 @@ export function buildBoard(input: BoardInput): BoardModel {
           hash: null,
           path: idea.path,
           targets: dropTargetsOf(base, planning.workflow, stages),
+          worktree: null,
+          worktreeMismatch: false,
         };
       })
     : [];

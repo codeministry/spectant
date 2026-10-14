@@ -15,7 +15,9 @@
 // per kind below, and scripts/check-format-doc.ts (T3) compares the two.
 
 import type { Diagnostic } from './diagnostics.ts';
+import type { Progress } from './frontmatter.ts';
 import type { Stage } from './stage.ts';
+import type { WorktreeAssignment } from './worktrees.ts';
 
 // ─── File kinds ──────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -340,6 +342,15 @@ export interface SpecHead {
    * `assignee.ts`), null when unassigned. `spec.ts` always sets it; the type keeps it optional, as `priority`.
    */
   readonly assignee?: ActorRef | null;
+  /**
+   * The spec's worktree, the dashboard row's `worktree` (spec 027, T12, ISC-175): the chip's branch, `ahead` and
+   * `dirty`; null without one, and then no chip. `spec.ts` always sets it, as the two below; the type keeps them optional.
+   */
+  readonly worktree?: Worktree | null;
+  /** Where the spec's files were read, the row's `source` (ISC-181): `main` unless its tracked copy in the worktree. */
+  readonly source?: SpecSource;
+  /** The main checkout's stage and progress when `source` is `worktree`, the row's `main`; null otherwise. */
+  readonly main?: MainCopy | null;
 }
 
 /** Where the idea quote came from: the first sentence of `## Goal`, or frontmatter `task:`. */
@@ -432,8 +443,21 @@ export interface SpecGates {
   readonly diagrams: GateView;
 }
 
-/** `locks`: a lock source could not be read cleanly (spec 002 T115); see LockDiagnostic. */
-export type WarningKind = 'review' | 'diagrams' | 'closed' | 'fog' | 'drift' | 'locks';
+/**
+ * `locks`: a lock source could not be read cleanly (spec 002 T115); see LockDiagnostic. `worktree-branch-mismatch`: the
+ * path and the branch of the spec's worktree name two different specs, and the path won (spec 027, ISC-174.1).
+ * `activity-event-unknown`: `.spectant/activity.jsonl` holds an event that is neither `claim`, `release` nor a
+ * `RunEvent`; the file is read on (ISC-179).
+ */
+export type WarningKind =
+  | 'review'
+  | 'diagrams'
+  | 'closed'
+  | 'fog'
+  | 'drift'
+  | 'locks'
+  | 'worktree-branch-mismatch'
+  | 'activity-event-unknown';
 
 export interface SpecWarning {
   readonly kind: WarningKind;
@@ -485,30 +509,113 @@ export interface SpecPageInput {
   readonly others?: readonly SpecFiles[];
   /** `specs/tldr.md`; absent or null when the workspace has none. */
   readonly tldr?: string | null;
-  /** The worktree tree id for the code-reviewed mark, as the dashboard gets it; absent or null when not computed. */
+  /**
+   * The main checkout's tree id for the code-reviewed mark, as the dashboard gets it; absent or null when not computed.
+   * `read.tree`, the tree of the spec's own worktree, takes its place when given (spec 027, ISC-176).
+   */
   readonly worktreeTree?: string | null;
+  /** The workspace's worktrees as `assignWorktrees` assigned them, `ahead` and `dirty` read; absent means none (spec 027). */
+  readonly worktrees?: WorktreeAssignment;
+  /** How the server read this spec: its worktree's tree id, its read source and the main copy (spec 027); absent, none. */
+  readonly read?: SpecRead;
   /** Commits touching the spec folder, for the Status tile's timeline count; absent means none were read. */
   readonly commits?: readonly CommitRecord[];
   /** `specs/workflow.md` as read, as the dashboard gets it (row 7, the explicit stage); absent, the default table. */
   readonly workflow?: Workflow;
 }
 
+// ─── Worktrees (worktrees.ts) ────────────────────────────────────────────────────────────────────────────────────
+
+/** `builder`: a worktree under `.claude/worktrees/`, counted and never read; `spec`: every other worktree. */
+export type WorktreeKind = 'spec' | 'builder';
+
+/**
+ * One worktree of a workspace as `git worktree list --porcelain` lists it (spec 027, ISC-174). It belongs to the spec
+ * its path `.worktrees/NNN-slug` names, else to the one its branch `feature/`, `fix/`, `spike/` or `infra/` plus
+ * `NNN-slug` names; when the two name different specs the path wins (ISC-174.1). The server reads `ahead` and `dirty`
+ * in a spec worktree only, read-only, without a fetch and with `GIT_OPTIONAL_LOCKS=0` (ISC-175).
+ */
+export interface Worktree {
+  /** Relative to the workspace root, `/`-separated, e.g. `.worktrees/027-worktree-live-view`; never absolute. */
+  readonly path: string;
+  /** The checked-out branch without `refs/heads/`, e.g. `feature/027-worktree-live-view`; null on a detached HEAD. */
+  readonly branch: string | null;
+  /** The `NNN` of the spec the worktree belongs to; null when neither its path nor its branch names one. */
+  readonly spec: string | null;
+  /**
+   * Commits on `branch` that `main` lacks (`git rev-list --count main..<branch>`); null when not read: a builder, a
+   * detached HEAD.
+   */
+  readonly ahead: number | null;
+  /** True when `git status --porcelain` in the worktree prints anything; null when not read: a builder. */
+  readonly dirty: boolean | null;
+  readonly kind: WorktreeKind;
+}
+
+/**
+ * Where the app reads a spec's files (spec 027, ISC-181): `worktree`, the copy in the spec's worktree, only when
+ * `specs/NNN-slug/` is tracked and the spec has a worktree; `main`, the main checkout, otherwise, an untracked or
+ * symlinked `specs/` included (ISC-181.1).
+ */
+export type SpecSource = 'main' | 'worktree';
+
+/**
+ * How the server read one spec, beside its files (spec 027, T12): the facts only git has, handed to the dashboard per
+ * spec folder (`DashboardInput.perSpec`) and to the spec page (`SpecPageInput.read`). Every field is optional; an
+ * absent one keeps what a spec without a worktree has.
+ */
+export interface SpecRead {
+  /**
+   * The tree id for the code-reviewed mark, computed in the spec's worktree when it has one (ISC-176); null when it
+   * could not be computed. Absent: the workspace's own `worktreeTree`, the main checkout's, as before spec 027.
+   */
+  readonly tree?: string | null;
+  /** Where the spec's files were read (`specSourceOf`, ISC-181); absent means `main`. */
+  readonly source?: SpecSource;
+  /**
+   * The main checkout's copy of the spec folder when `source` is `worktree`: its stage and claim progress go beside the
+   * worktree copy's as `main` (the head's source note, design 027 § B). Ignored when `source` is `main`.
+   */
+  readonly main?: SpecFiles;
+}
+
+/**
+ * The main checkout's stage and claim progress of a spec whose files are read from its worktree's copy (spec 027,
+ * ISC-181): "read from the worktree · main: ‹stage› · n/m". Computed by `core/` from `SpecRead.main` with the main
+ * checkout's tree, never by the server.
+ */
+export interface MainCopy {
+  readonly stage: Stage;
+  /** Live claims, closed over total, as the row's `progress`. */
+  readonly progress: Progress;
+}
+
 // ─── Timeline (timeline.ts, derived-stages.ts, events.ts) ────────────────────────────────────────────────────────
 
-/** `note` and `agent` are the server's joins (the app's notes, the held lock sessions); every other kind is from the files. */
-export type TimelineKind = 'decision' | 'round' | 'gate' | 'commit' | 'stage' | 'note' | 'agent';
+/**
+ * `note`, `agent` and `worktree` are the server's joins (the app's notes, the held lock sessions, the git state of the
+ * spec's worktree: its branch merged into `main` or the worktree removed, spec 027, ISC-175.1); every other kind is
+ * from the files.
+ */
+export type TimelineKind = 'decision' | 'round' | 'gate' | 'commit' | 'stage' | 'note' | 'agent' | 'worktree';
 
 export interface TimelineEntry {
-  /** ISO 8601 as the source wrote it (a date alone is allowed); empty on an undated derived stage transition. */
+  /**
+   * ISO 8601 as the source wrote it (a date alone is allowed); empty on an undated derived stage transition and on a
+   * removed worktree.
+   */
   readonly ts: string;
   readonly kind: TimelineKind;
-  /** True for a stage transition inferred from the files; false for anything recorded. */
+  /**
+   * True for a stage transition inferred from the files and for a `worktree` entry, which no event records (ISC-175.1);
+   * false for anything recorded.
+   */
   readonly derived: boolean;
   readonly title: string;
   readonly body?: string;
   /**
    * What the entry points at: a round number (`3`), a question id (`R1.Q2`, `goal` for the goal lock), a gate name
-   * (`reviewed`, `code-reviewed`), a commit sha or a claim ID.
+   * (`reviewed`, `code-reviewed`), a commit sha, a claim ID, or the worktree entry's form (`merged`, `removed`).
    */
   readonly ref?: string;
   /**
@@ -531,13 +638,44 @@ export interface TimelineEntry {
   readonly command?: string;
   /**
    * Derived stage entries whose date the files do not give: `ts` is empty and the entry sorts right after the dated
-   * transition before it (derived-stages.ts).
+   * transition before it (derived-stages.ts). Also the `removed` worktree entry, which git does not date: it takes
+   * the newest instant of the timeline and sorts after every entry of it (timeline.ts, ISC-175.1).
    */
   readonly undated?: boolean;
   /** Decision entries from a `### Qn · …` block: its From / Offered / Chosen / Landed in (`context-log.ts`). */
   readonly question?: DecisionQuestion;
   /** Agent entries: true while the session's lock is held. */
   readonly running?: boolean;
+  /** Worktree entries (ISC-175.1): which form, and the git facts the web words and renders. */
+  readonly worktree?: TimelineWorktree;
+}
+
+/**
+ * The git facts of a `worktree` timeline entry (spec 027, ISC-175.1): `merged`, the spec's branch is an ancestor of
+ * `main`; `removed`, its worktree is gone while the branch is not merged. Each fact is null when the server gave none.
+ */
+export interface TimelineWorktree {
+  readonly state: 'merged' | 'removed';
+  /** The spec's branch without `refs/heads/`, e.g. `feature/027-worktree-live-view`. */
+  readonly branch: string | null;
+  /** The worktree's path relative to the workspace root, e.g. `.worktrees/027-worktree-live-view`. */
+  readonly path: string | null;
+  /** The merge commit's short sha (its first seven characters); null on `removed`. */
+  readonly commit: string | null;
+}
+
+/**
+ * The git state of the spec's worktree as the server reads it, the timeline's `worktree` input (spec 027, T14,
+ * ISC-175.1). Minimal and local to the timeline: spec 025's merge state of a branch (`mergedSpecBranches`, ISC-162.1)
+ * maps onto `merged`; this type does not depend on it. Neither merged nor removed (an open branch) yields no entry.
+ */
+export interface TimelineWorktreeInput {
+  /** The branch is an ancestor of `main`: `at` the merge commit's date (ISO 8601), `commit` its sha; null otherwise. */
+  readonly merged: { readonly at: string; readonly commit?: string } | null;
+  /** True when the spec's worktree is gone while its branch is not merged; `merged` wins when both are given. */
+  readonly removed: boolean;
+  readonly branch?: string | null;
+  readonly path?: string | null;
 }
 
 export interface TimelineInput {
@@ -548,6 +686,11 @@ export interface TimelineInput {
    * the stage entries and nothing is derived; absent or empty, the stage transitions are derived from the files.
    */
   readonly events?: readonly EventLine[];
+  /**
+   * The git state of the spec's worktree (ISC-175.1): merged or removed, one derived `worktree` entry; absent, null
+   * or open, none, and the timeline is unchanged. The entry is derived only: no event is written for it.
+   */
+  readonly worktree?: TimelineWorktreeInput | null;
 }
 
 /**
@@ -630,6 +773,20 @@ export interface LockReading {
    * Never a throw. Optional so a hand-built reading (tests, other models) may omit it; `readLockSources` always sets it.
    */
   readonly diagnostics?: readonly LockDiagnostic[];
+  /**
+   * The run events of `.spectant/activity.jsonl` (spec 027, ISC-179), every well-formed one in file order: its event,
+   * task, session, worktree and ts as written, and the claim when the line names one. A run event holds no claim;
+   * `runStates` (locks.ts) folds them into each task's last state. Optional like `diagnostics`; `readLockSources`
+   * always sets it, `[]` when the log is absent or holds none.
+   */
+  readonly runs?: ReadonlyArray<{
+    readonly event: RunEvent;
+    readonly task: string;
+    readonly session: string;
+    readonly worktree: string;
+    readonly ts: string;
+    readonly claim?: string;
+  }>;
 }
 
 /**
@@ -647,6 +804,32 @@ export interface LockReadInput {
   readonly lifeosStateDir?: string | null;
   /** The clock for frontier staleness; defaults to the current time. */
   readonly now?: Date;
+}
+
+/**
+ * The four run events of `.spectant/activity.jsonl` beside `claim` and `release` (spec 027, ISC-179), each with `task`,
+ * `session` and `worktree`: `dispatch` when the round's plan sends the task out, `build` when its builder starts in its
+ * worktree, `patch` when its patch is pulled, `apply` when the patch landed on the spec's branch.
+ */
+export type RunEvent = 'dispatch' | 'build' | 'patch' | 'apply';
+
+/**
+ * A task's state in an implement round, from its last run event: dispatched → building → patched → applied.
+ * `applied-open` is an `apply` whose task tasks.md has not ticked yet; the write-order's tick ends it (ISC-179.1).
+ */
+export type RunState = 'dispatched' | 'building' | 'patched' | 'applied' | 'applied-open';
+
+/** One task's run as its last run event in `.spectant/activity.jsonl` leaves it (spec 027, ISC-179). */
+export interface TaskRun {
+  /** Task id, `T12`. */
+  readonly task: string;
+  readonly state: RunState;
+  /** The last run event's session, as written. */
+  readonly session: string;
+  /** The last run event's worktree, as written. */
+  readonly worktree: string;
+  /** ISO 8601: the last run event's `ts`. */
+  readonly ts: string;
 }
 
 export interface FrameCard {
@@ -783,6 +966,11 @@ export interface LiveCard extends FrameCard {
   readonly agent: ActorRef | null;
   /** The sub-agent working the task, `a:<kind>:<id>/<task>` naming this card's own task; null when none does (T66). */
   readonly subagent: ActorRef | null;
+  /**
+   * The task's run in the implement round (spec 027, ISC-179.1); null or absent when no run event of this spec names the
+   * task. `buildLiveFrame` leaves it absent then, and on an `absent` card. Set on the live frame's cards only.
+   */
+  readonly run?: TaskRun | null;
 }
 
 /** One session holding locks on this spec's claims: an entry of the "This frame" rail. */
@@ -810,6 +998,33 @@ export interface LiveFrame extends Frame {
   readonly needsYou: readonly LiveCard[];
   /** The threshold `stale` was computed with. */
   readonly staleAfterMs: number;
+  /**
+   * The implement round as its run events show it (spec 027, ISC-179.1). Optional so a hand-built frame may omit it;
+   * `buildLiveFrame` always sets it. Historical frames never carry run states.
+   */
+  readonly inRound?: LiveRound;
+}
+
+/**
+ * How many cards are in each run state (spec 027, ISC-179.1): only states above 0, in run order (dispatched, building,
+ * patched, applied-open). `applied` never counts: a ticked task has left the round.
+ */
+export type RunCounts = Partial<Readonly<Record<RunState, number>>>;
+
+/**
+ * The live frame's group "in round n" (spec 027, ISC-179.1): the cards whose run chip shows, which are the cards with a
+ * run whose task tasks.md has not ticked. A ticked card keeps its `run` (state `applied`), but its landed card state
+ * wins, so it is in none of these fields.
+ */
+export interface LiveRound {
+  /** n: the round the write-order has not recorded yet, the live frame's `round` + 1 (1 without one); null when empty. */
+  readonly round: number | null;
+  /** The cards of the round, furthest along first (applied-open, patched, building, dispatched), board order within. */
+  readonly cards: readonly LiveCard[];
+  /** Per lane with a card in the round, in board order of first appearance: its counts, for the lane head. */
+  readonly lanes: Readonly<Record<string, RunCounts>>;
+  /** The board's counts, for the toolbar. */
+  readonly total: RunCounts;
 }
 
 export interface LiveFrameInput {

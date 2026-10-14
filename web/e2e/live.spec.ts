@@ -24,9 +24,9 @@ const TASKS = '/w/harbor/s/002/tasks';
 const AGENT = 'a:claude:sess-2';
 const FRONTIER_AGENT = syntheticSession('002', 'ISC-75');
 
-/** The two places a task's workers show: under its card in flight on the board, and in its row on the tasks tab. */
+/** The two places a task's workers show: under its card in flight or in the round (spec 027) on the board, and in its row on the tasks tab. */
 const SURFACES = [
-  { name: 'board', url: BOARD, actors: (page: Page, task: string): Locator => page.locator(`[data-section="inFlight"] app-task-actors[data-task-actors="${task}"]`) },
+  { name: 'board', url: BOARD, actors: (page: Page, task: string): Locator => page.locator(`:is([data-section="inFlight"], [data-section="inRound"]) app-task-actors[data-task-actors="${task}"]`) },
   { name: 'tasks tab', url: TASKS, actors: (page: Page, task: string): Locator => page.locator(`#task-${task} app-task-actors[data-task-actors="${task}"]`) },
 ] as const;
 

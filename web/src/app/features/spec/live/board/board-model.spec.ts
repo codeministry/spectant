@@ -1,4 +1,4 @@
-import type { CardState, Frame, FrameCard } from '../../../../../../../core/src/files';
+import type { CardState, Frame, FrameCard, LiveCard, TaskRun } from '../../../../../../../core/src/files';
 import {
   boardSection,
   buildLanes,
@@ -9,6 +9,10 @@ import {
   parseList,
   recutMarkers,
   resolveFrameIndex,
+  runChanges,
+  runCounts,
+  runOf,
+  runStates,
   scrubberStops,
   stateCounts,
 } from './board-model';
@@ -178,5 +182,63 @@ describe('matchesQuery and parseList', () => {
   it('splits a comma list param, dropping empties', () => {
     expect(parseList(null)).toEqual([]);
     expect(parseList('web,,api')).toEqual(['web', 'api']);
+  });
+});
+
+describe('run chips (spec 027)', () => {
+  const run = (task: string, state: TaskRun['state']): TaskRun => ({ task, state, session: 'a:claude:sess-9', worktree: '.claude/worktrees/agent-a1b2', ts: '2026-03-08T10:00:00Z' });
+  const live = (task: string, state: CardState, runState: TaskRun['state'] | null): LiveCard =>
+    ({ ...card(task, state), run: runState === null ? null : run(task, runState) }) as LiveCard;
+
+  it('shows a run chip only while tasks.md has not ticked the task, never on a history card', () => {
+    expect(runOf(card('T1', 'waiting'))).toBeNull();
+    expect(runOf(live('T1', 'done', 'applied'))).toBeNull();
+    expect(runOf(live('T2', 'waiting', null))).toBeNull();
+    expect(runOf(live('T3', 'waiting', 'applied-open'))?.state).toBe('applied-open');
+  });
+
+  it('groups the round furthest along first, out of the card-state sections, with its counts in run order; Flow does not', () => {
+    const cards = [
+      live('T1', 'waiting', 'dispatched'),
+      live('T2', 'running', 'building'),
+      live('T3', 'waiting', 'applied-open'),
+      live('T4', 'done', 'applied'),
+      live('T5', 'waiting', null),
+      live('T6', 'waiting', 'patched'),
+    ];
+    const [lane] = buildLanes(['web'], cards, true);
+    expect(lane.inRound.map((c) => c.task)).toEqual(['T3', 'T6', 'T2', 'T1']);
+    expect(lane.runCounts).toEqual([
+      { state: 'dispatched', count: 1 },
+      { state: 'building', count: 1 },
+      { state: 'patched', count: 1 },
+      { state: 'applied-open', count: 1 },
+    ]);
+    expect(lane.inFlight).toEqual([]);
+    expect(lane.landed.map((c) => c.task)).toEqual(['T4']);
+    expect(lane.waiting.flatMap((g) => g.cards.map((c) => c.task))).toEqual(['T5']);
+    expect(lane.total).toBe(6);
+
+    const [flow] = buildLanes(['web'], cards);
+    expect(flow.inRound).toEqual([]);
+    expect(flow.inFlight.map((c) => c.task)).toEqual(['T2']);
+  });
+
+  it("counts core's round in run order and leaves out the zeros", () => {
+    expect(runCounts({ 'applied-open': 1, dispatched: 2, building: 0 })).toEqual([
+      { state: 'dispatched', count: 2 },
+      { state: 'applied-open', count: 1 },
+    ]);
+    expect(runCounts(undefined)).toEqual([]);
+  });
+
+  it('names the runs a refresh moved, and nothing on the first read', () => {
+    const before = runStates([live('T1', 'waiting', 'dispatched'), live('T2', 'waiting', 'patched')]);
+    const after = runStates([live('T1', 'running', 'building'), live('T2', 'waiting', 'patched'), live('T3', 'waiting', 'dispatched'), live('T4', 'done', 'applied')]);
+    expect(runChanges(null, after)).toEqual([]);
+    expect(runChanges(before, after)).toEqual([
+      { task: 'T1', state: 'building' },
+      { task: 'T3', state: 'dispatched' },
+    ]);
   });
 });

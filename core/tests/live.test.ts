@@ -340,6 +340,84 @@ describe('who works a task (spec 008, T66, ISC-131.1)', () => {
   });
 });
 
+describe('run states on the live frame (spec 027, ISC-179.1)', () => {
+  const files = harbor002();
+  const now = at(30);
+  type Run = NonNullable<LockReading['runs']>[number];
+  /** A run line of a sub-agent on `task`; `claim` left out when null. */
+  const line = (event: Run['event'], task: string, claim: string | null, minute = 0): Run => ({
+    event,
+    task,
+    session: `a:claude:sess-9/${task}`,
+    worktree: `wt-${task}`,
+    ts: new Date(Date.parse('2026-03-08T16:00:00Z') + minute * MIN).toISOString(),
+    ...(claim === null ? {} : { claim }),
+  });
+  const reading = (runs: readonly Run[]): LockReading => ({ ...NONE, runs });
+  const frameOf = (locks: LockReading, folder = files) => buildLiveFrame({ files: folder, locks, now });
+
+  test("harbor's log: T28 applied without its tick reads applied-open in round 4, T26 ticked keeps its landed card state", () => {
+    const frame = frameOf(HARBOR_LOCKS);
+    expect(card(frame, 'T28').state).toBe('waiting');
+    expect(card(frame, 'T28').run).toEqual({ task: 'T28', state: 'applied-open', session: 'a:claude:sess-2/T28', worktree: 'wt-9', ts: '2026-03-08T16:42:00Z' });
+    // After the tick the card state wins: T26 stays closed, its run reads `applied` and it is not in the round.
+    expect(card(frame, 'T26').state).toBe('closed');
+    expect(card(frame, 'T26').run).toEqual({ task: 'T26', state: 'applied', session: 'a:claude:sess-2/T26', worktree: 'wt-8', ts: '2026-03-08T16:12:00Z' });
+    expect(frame.inRound).toEqual({ round: 4, cards: [card(frame, 'T28')], lanes: { web: { 'applied-open': 1 } }, total: { 'applied-open': 1 } });
+    // Every other card carries no run at all, and no historical frame does (run states only in the live frame).
+    expect(frame.cards.filter((c) => 'run' in c).map((c) => c.task)).toEqual(['T26', 'T28']);
+    expect(buildFrames(files).flatMap((f) => f.cards).some((c) => 'run' in c)).toBe(false);
+  });
+
+  test('the round group runs applied-open → patched → building → dispatched, board order within; counts per lane and in total, only states above 0', () => {
+    const frame = frameOf(reading([line('dispatch', 'T29', 'ISC-76'), line('dispatch', 'T31', 'ISC-77'), line('dispatch', 'T27', 'ISC-74'), line('build', 'T27', 'ISC-74', 1), line('patch', 'T32', 'ISC-78', 2), line('apply', 'T28', 'ISC-75', 3)]));
+    expect(frame.inRound?.cards.map((c) => `${c.task}:${c.run?.state ?? 'none'}`)).toEqual(['T28:applied-open', 'T32:patched', 'T27:building', 'T29:dispatched', 'T31:dispatched']);
+    expect(frame.inRound?.round).toBe(4);
+    expect(frame.inRound?.lanes).toEqual({ web: { dispatched: 1, building: 1, patched: 1, 'applied-open': 1 }, operator: { dispatched: 1 } });
+    expect(Object.keys(frame.inRound?.lanes ?? {})).toEqual(['web', 'operator']);
+    expect(frame.inRound?.total).toEqual({ dispatched: 2, building: 1, patched: 1, 'applied-open': 1 });
+    expect(Object.keys(frame.inRound?.total ?? {})).toEqual(['dispatched', 'building', 'patched', 'applied-open']);
+    // The card states stay what the other layers made them; the run is additive.
+    expect(frame.cards.map((c) => `${c.task}:${c.state}`)).toEqual(frameOf(NONE).cards.map((c) => `${c.task}:${c.state}`));
+    expect(card(frame, 'T29').state).toBe('question');
+  });
+
+  test('one more line moves its card within the same build: a bump of the log is visible on the next tick', () => {
+    const before = [line('dispatch', 'T29', 'ISC-76')];
+    expect(card(frameOf(reading(before)), 'T29').run?.state).toBe('dispatched');
+    const after = frameOf(reading([...before, line('build', 'T29', 'ISC-76', 1)]));
+    expect(card(after, 'T29').run?.state).toBe('building');
+    expect(after.inRound?.total).toEqual({ building: 1 });
+  });
+
+  test("the write-order's tick ends applied-open: the card lands, its run reads applied and leaves the round", () => {
+    const ticked = edited(files, 'tasks', (t) => t.replace('- [ ] T28 ·', '- [x] T28 ·'));
+    const frame = frameOf(HARBOR_LOCKS, ticked);
+    expect(card(frame, 'T28').state).toBe('done');
+    expect(card(frame, 'T28').run?.state).toBe('applied');
+    expect(frame.inRound).toEqual({ round: null, cards: [], lanes: {}, total: {} });
+  });
+
+  test("a foreign spec's run never leaks in: harbor 004's T26 and T28 carry none, a T28 line naming another claim is not ours", () => {
+    const tree = readTreeAt(HARBOR);
+    const t004 = tree.specs.find((s) => s.folder === '004-retention-policies');
+    if (!t004) throw new Error('harbor 004 missing');
+    const frame004 = frameOf(HARBOR_LOCKS, { folder: t004.folder, texts: { ...t004.texts, ...(tree.constitution === null ? {} : { constitution: tree.constitution }) } });
+    expect(frame004.cards.some((c) => 'run' in c)).toBe(false);
+    expect(frame004.inRound).toEqual({ round: null, cards: [], lanes: {}, total: {} });
+    const foreign = frameOf(reading([line('apply', 'T28', 'ISC-122'), line('dispatch', 'T4', 'ISC-999'), line('dispatch', 'T99', null)]));
+    expect(foreign.cards.some((c) => 'run' in c)).toBe(false);
+    // A line without a claim is matched by its task id alone.
+    expect(card(frameOf(reading([line('dispatch', 'T29', null)])), 'T29').run?.state).toBe('dispatched');
+  });
+
+  test('a reading without run lines leaves every card as before and the round empty', () => {
+    const frame = frameOf(NONE);
+    expect(frame.cards.some((c) => 'run' in c)).toBe(false);
+    expect(frame.inRound).toEqual({ round: null, cards: [], lanes: {}, total: {} });
+  });
+});
+
 describe('purity', () => {
   test('the same input twice gives deep-equal frames and leaves the input untouched', async () => {
     const files = harbor002();

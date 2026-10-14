@@ -46,6 +46,7 @@ A repository root holds the master `ISA.md` (untracked in a public repository) a
 `specs/constitution.md`, optionally `specs/tldr.md` and `specs/tech.md`, one folder per spec `specs/NNN-slug/`, and closed specs under
 `specs/archive/NNN-slug/`. A spec folder name is three digits, a hyphen and a slug (`^\d{3}-.+$`); other names are
 ignored, and symbolic links are not followed. A folder without `spec.md` is not a spec: it gets a diagnostic, no row.
+Where `specs/` is tracked in git, a spec with its own worktree is read from that worktree's copy instead (§ Worktrees).
 Which of these files, and of a spec folder's `.design/`, the Library lists is "The library catalog" below.
 
 A ref names exactly one folder or nothing (`resolve.ts`): `002`, `002-web-console` or `web-console`, active and
@@ -351,6 +352,8 @@ updated: 2026-09-28T12:40:00Z
 The repository constitution shared by every spec: binding rules, gates, lanes, conformance baseline. The dashboard
 reads `specs/constitution.md` at a fixed place (the frontmatter key `constitution:` is not used to find it). Its
 frontmatter parses like a spec's; `dev_services: <port>=<label>, …` names the local services on the live indicator.
+A service whose process runs in a worktree carries `worktree: true`, and one in the spec worktree `.worktrees/NNN-slug`
+also `spec`, that spec's number `NNN` (spec 027, ISC-177).
 The `## Lanes` table maps path prefixes to lanes for the task grammar (spec 002, T23). The Docs tab renders the rest.
 
 From `core/fixtures/harbor/specs/constitution.md`:
@@ -524,6 +527,24 @@ nothing is derived; without them `buildTimeline` reads the spec's own events.jso
 with the file shows its recorded transitions and a folder without it derives. The table above maps these names to
 ISC-24's `specified → planned → tasked → reviewed` wording.
 
+**Derived: the worktree entry** (`timeline.ts`, spec 027, T14, ISC-175.1). The timeline kind `worktree` comes from
+no file: the server passes the git state of the spec's worktree as `worktree: {merged: {at, commit} | null, removed,
+branch, path}` beside the commits, and `buildTimeline` turns it into at most one entry, `derived: true` and
+`actor: null` like a derived stage transition, without a body. Its two forms:
+
+- **merged** — the spec's branch is an ancestor of `main`: `ref: "merged"`, `ts` the merge commit's date, sorted by
+  that instant like any dated entry (after every other source at the same instant), title `Merged into main · <branch>`;
+- **removed** — the spec's worktree is gone while its branch is not merged: `ref: "removed"`, `ts: ""` and
+  `undated: true`, since git gives no date; by the undated rule it takes the instant of the entry before it, which for
+  a removal is the newest of the timeline, and sorts after every entry of that instant, title
+  `Worktree removed · <path>`.
+
+Each carries `worktree: {state, branch, path, commit}` (`commit` the merge commit's first seven characters, null on
+`removed`) for the web to word and render. Merged wins when both are given; an open branch (`merged: null`,
+`removed: false`), `null` or no input yields no entry and the timeline is byte-identical to one built without it.
+Nothing is written for either form: `events.jsonl` gets no line, since the merge is the principal's act in git, not a
+command of the skill.
+
 ## `gateReviewed` — `.gates/reviewed.json`
 
 The reviewed mark: `{gate: "reviewed", at, files: {"spec.md", "plan.md", "tasks.md"}}`, each file a sha256 hex of its
@@ -557,8 +578,9 @@ The code-reviewed mark: `{gate: "code-reviewed", at, tree, head?, branch?, note?
 either top-level `code` and `security` counts or nested `findings: {code, security}`. `tree` must be a git object id
 (40 or 64 hex) or the mark is unreadable. It is **fresh** only when `tree` equals the tree id of the current working
 tree, computed in memory as `git add -A && git write-tree` would print it without writing anything (SHA-1 object
-format only); an uncomputable tree reads as stale. `root` is informational and a public fixture never carries a
-machine path there.
+format only); an uncomputable tree reads as stale. For a spec with a worktree of its own (§ Worktrees) that working
+tree is the worktree's, not the main checkout's, so a change only in the main checkout leaves the mark fresh
+(ISC-176). `root` is informational and a public fixture never carries a machine path there.
 
 From `core/fixtures/harbor/specs/004-retention-policies/.gates/code-reviewed.json`:
 
@@ -1043,15 +1065,16 @@ of its kind or holds a value of the wrong shape is left out with a diagnostic na
 name is dropped with a diagnostic and the line kept. Reading never throws.
 
 The whole file of the harbor fixture: one measuring run without earlier baseline lines over the transcript fixture (a
-main session with one sub-agent, an agent-worktree session, and a spec-worktree session with one sub-agent); every
-kind appears, in the line order above. It is
+main session with one sub-agent, an agent-worktree session, a spec-worktree session `../<root>-NNN` with one sub-agent,
+and a spec-worktree session `.worktrees/NNN-slug` inside the repository); every kind appears, in the line order above.
+It is
 written by `core/fixtures/harbor/generate.ts` through `tokenRows` and `serializeTokens`, and
 `core/tests/tokens.test.ts` (group `roundtrip`) holds it to the golden and reads it back into the same bytes.
 
 From `core/fixtures/harbor/specs/tokens.jsonl`:
 
 ```jsonl
-{"v":1,"kind":"baseline","measured_through":"2026-03-08T17:01:00.700Z","claude_code":["2.1.38","2.1.40","2.1.42"],"commands":{"/spec-idea":{"count":1,"input":9,"output":850,"cache_read":43200,"cache_write":5200,"mean":{"input":9,"output":850,"cache_read":43200,"cache_write":5200}},"/spec-implement":{"count":3,"input":47,"output":4130,"cache_read":125000,"cache_write":32400,"mean":{"input":16,"output":1377,"cache_read":41667,"cache_write":10800}},"/spec-plan":{"count":1,"input":18,"output":1380,"cache_read":59400,"cache_write":3000,"mean":{"input":18,"output":1380,"cache_read":59400,"cache_write":3000}},"/spec-review":{"count":1,"input":6,"output":510,"cache_read":10500,"cache_write":3200,"mean":{"input":6,"output":510,"cache_read":10500,"cache_write":3200}},"/spec-tasks":{"count":1,"input":17,"output":3075,"cache_read":83800,"cache_write":13800,"mean":{"input":17,"output":3075,"cache_read":83800,"cache_write":13800}}}}
+{"v":1,"kind":"baseline","measured_through":"2026-03-09T08:00:15.000Z","claude_code":["2.1.38","2.1.40","2.1.42"],"commands":{"/spec-idea":{"count":1,"input":9,"output":850,"cache_read":43200,"cache_write":5200,"mean":{"input":9,"output":850,"cache_read":43200,"cache_write":5200}},"/spec-implement":{"count":3,"input":47,"output":4130,"cache_read":125000,"cache_write":32400,"mean":{"input":16,"output":1377,"cache_read":41667,"cache_write":10800}},"/spec-plan":{"count":2,"input":28,"output":2130,"cache_read":85800,"cache_write":5900,"mean":{"input":14,"output":1065,"cache_read":42900,"cache_write":2950}},"/spec-review":{"count":1,"input":6,"output":510,"cache_read":10500,"cache_write":3200,"mean":{"input":6,"output":510,"cache_read":10500,"cache_write":3200}},"/spec-tasks":{"count":1,"input":17,"output":3075,"cache_read":83800,"cache_write":13800,"mean":{"input":17,"output":3075,"cache_read":83800,"cache_write":13800}}}}
 {"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#1","command":"/spec-review","spec":"002-web-console","ts":"2026-03-04T08:30:00.020Z","requests":1,"subagents":0,"input":6,"output":510,"cache_read":10500,"cache_write":3200}
 {"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#2","command":"/spec-plan","spec":"003-config-loader","ts":"2026-03-06T08:10:00.250Z","requests":3,"subagents":0,"input":18,"output":1380,"cache_read":59400,"cache_write":3000}
 {"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#3","command":"/spec-implement","spec":"002-web-console","ts":"2026-03-06T08:40:00.600Z","requests":4,"subagents":1,"input":20,"output":2290,"cache_read":54100,"cache_write":12200}
@@ -1059,11 +1082,12 @@ From `core/fixtures/harbor/specs/tokens.jsonl`:
 {"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#4","command":"/spec-implement","spec":"002-web-console","ts":"2026-03-07T10:30:00.900Z","requests":2,"subagents":0,"input":12,"output":760,"cache_read":54900,"cache_write":3300}
 {"v":1,"kind":"invocation","id":"a:claude:5e1f0c2a-7b3d-4e8f-9a10-2b3c4d5e6f70#5","command":"/spec-idea","spec":null,"ts":"2026-03-07T12:05:00.000Z","requests":2,"subagents":0,"input":9,"output":850,"cache_read":43200,"cache_write":5200}
 {"v":1,"kind":"invocation","id":"a:claude:9c8b7a65-4321-4fed-8cba-0987654321ab#1","command":"/spec-implement","spec":"002-web-console","ts":"2026-03-08T17:00:00.300Z","requests":2,"subagents":0,"input":15,"output":1080,"cache_read":16000,"cache_write":16900}
+{"v":1,"kind":"invocation","id":"a:claude:7d2e4f60-1a3b-4c5d-8e9f-0a1b2c3d4e5f#1","command":"/spec-plan","spec":"003-config-loader","ts":"2026-03-09T08:00:00.500Z","requests":2,"subagents":0,"input":10,"output":750,"cache_read":26400,"cache_write":2900}
 {"v":1,"kind":"spec","spec":"002-web-console","requests":9,"input":53,"output":4640,"cache_read":135500,"cache_write":35600}
-{"v":1,"kind":"spec","spec":"003-config-loader","requests":9,"input":35,"output":4455,"cache_read":143200,"cache_write":16800}
+{"v":1,"kind":"spec","spec":"003-config-loader","requests":11,"input":45,"output":5205,"cache_read":169600,"cache_write":19700}
 {"v":1,"kind":"stage","spec":"002-web-console","stage":"review","requests":1,"input":6,"output":510,"cache_read":10500,"cache_write":3200}
 {"v":1,"kind":"stage","spec":"002-web-console","stage":"build","requests":8,"input":47,"output":4130,"cache_read":125000,"cache_write":32400}
-{"v":1,"kind":"stage","spec":"003-config-loader","stage":"tasks","requests":9,"input":35,"output":4455,"cache_read":143200,"cache_write":16800}
+{"v":1,"kind":"stage","spec":"003-config-loader","stage":"tasks","requests":11,"input":45,"output":5205,"cache_read":169600,"cache_write":19700}
 {"v":1,"kind":"round","spec":"002-web-console","round":1,"requests":4,"input":20,"output":2290,"cache_read":54100,"cache_write":12200}
 {"v":1,"kind":"round","spec":"002-web-console","round":2,"requests":2,"input":12,"output":760,"cache_read":54900,"cache_write":3300}
 {"v":1,"kind":"unassigned","requests":2,"input":14,"output":220,"cache_read":18000,"cache_write":1800}
@@ -1185,6 +1209,145 @@ applicable".
 | `missing_in_spec` | a claim of the master's `isa_feature` block is held by no spec folder, active or archived (dropped ones excepted) |
 | `anchors_missing_at_complete` | at `phase: complete` with a `principal_stated_goal`: Test Strategy rows with an empty or missing `anchors_to` |
 
+## Worktrees
+
+Read from git, never written by the app (spec 027, `worktrees.ts`). `core/src/worktrees.ts` assigns the worktrees,
+raises the mismatch warning and decides the read source; the server reads git (`worktree list`, `rev-list --count`,
+`status --porcelain`, `ls-files`), computes the code-review tree id in the spec's worktree, reads a spec from its
+worktree copy when `core/` names that copy as the source, and points the app's three writes on an existing spec
+(reviewed mark, task checkbox, stage move) at the same copy, so the main checkout stays byte-identical; the allocation
+of a story always writes the main checkout. The rules below are the contract.
+
+The server reads one listing per registered repository, `git worktree list --porcelain`, and hands its text to
+`core/`, which decides which worktree belongs to which spec and never runs git itself. Every git call is a read: no
+fetch, nothing written, `GIT_OPTIONAL_LOCKS=0`. The listing holds one block per worktree, blocks separated by a blank
+line: `worktree <absolute path>`, `HEAD <sha>`, then `branch refs/heads/<name>` or `detached`, plus lines such as
+`locked` or `prunable` that change nothing here. The first block is the main checkout, the repository root itself: it
+is no spec's worktree. Every other block becomes one `Worktree` (`core/src/files.ts`): `path` relative to the repository
+root and `/`-separated, `branch` without `refs/heads/` (null when detached), `spec` (the `NNN` it belongs to, or
+null) and `kind` (`builder` or `spec`).
+
+- **Builder worktrees.** A worktree under `.claude/worktrees/`, where the Agent tool puts one per sub-agent task, is a
+  `builder`. It is counted and never read: no file, no `rev-list`, no `status`, and its `spec`, `ahead` and `dirty` are
+  null whatever its branch. What a builder does is known only from its lines in `.spectant/activity.jsonl` (§ Activity
+  and lock lines). Every other worktree is of kind `spec`, whether or not it names one.
+- **By path.** A worktree at `.worktrees/NNN-slug` of the repository, the folder name a spec folder would carry, belongs
+  to spec `NNN`.
+- **By branch.** Otherwise a branch `feature/`, `fix/`, `spike/` or `infra/` followed by `NNN-slug` names spec `NNN`.
+  The path rule needs the worktree inside the repository, so a worktree elsewhere, such as the older sibling layout
+  `../<root>-NNN`, is assigned by its branch alone.
+- **Path against branch.** When path and branch name two different specs, the path wins and the spec of the path
+  carries exactly one `worktree-branch-mismatch` warning (ISC-174.1): the folder is the newer convention, and the branch
+  may be the base branch of another spec.
+- **No number.** A worktree whose path and branch name no spec belongs to none and raises nothing.
+
+For a `spec` worktree that belongs to a spec the server then reads, in that worktree alone, `ahead`, the commits on its
+branch that `main` lacks (`git rev-list --count main..<branch>`, null when detached), and `dirty`, whether
+`git status --porcelain` prints anything (ISC-175).
+
+An example: a repository at `/srv/repo` with its main checkout, four spec-kind worktrees and one builder lists
+these blocks:
+
+```text
+worktree /srv/repo
+HEAD 3f9a1c0d5e7b2a4c6e8f0a1b3c5d7e9f2a4b6c8d
+branch refs/heads/main
+
+worktree /srv/repo/.worktrees/012-harbor
+HEAD 8b2e4d6f0a1c3e5a7c9e1b3d5f7a9c1e3b5d7f9a
+branch refs/heads/feature/012-harbor
+
+worktree /srv/repo/.worktrees/hotfix
+HEAD 1c3e5a7c9e1b3d5f7a9c1e3b5d7f9a8b2e4d6f0a
+branch refs/heads/fix/013-anchor-chain
+
+worktree /srv/repo/.worktrees/015-beacon
+HEAD 5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f
+branch refs/heads/feature/014-lantern
+
+worktree /srv/repo/.worktrees/scratch
+HEAD 7a9c1e3b5d7f9a8b2e4d6f0a1c3e5a7c9e1b3d5f
+branch refs/heads/feature/cleanup
+
+worktree /srv/repo/.claude/worktrees/agent-a1b2c3d4
+HEAD 8b2e4d6f0a1c3e5a7c9e1b3d5f7a9c1e3b5d7f9a
+branch refs/heads/worktree-agent-a1b2c3d4
+locked claude agent agent-a1b2c3d4
+```
+
+They are assigned as follows; the main checkout `/srv/repo` is not among the worktrees.
+
+| `path` | `branch` | `kind` | `spec` | Why |
+|--------|----------|--------|--------|-----|
+| `.worktrees/012-harbor` | `feature/012-harbor` | `spec` | `012` | path and branch agree |
+| `.worktrees/hotfix` | `fix/013-anchor-chain` | `spec` | `013` | by branch; the path names no spec |
+| `.worktrees/015-beacon` | `feature/014-lantern` | `spec` | `015` | the path wins; 015 carries one `worktree-branch-mismatch` |
+| `.worktrees/scratch` | `feature/cleanup` | `spec` | null | no number in path or branch; no warning |
+| `.claude/worktrees/agent-a1b2c3d4` | `worktree-agent-a1b2c3d4` | `builder` | null | counted, never read |
+
+**The read source** (`SpecSource`, ISC-181). A spec's files come from one place, `main` or `worktree`. The source is
+`worktree` only when the spec has a worktree of kind `spec` assigned to it (a builder never counts) and its folder
+`specs/NNN-slug/` is tracked in git. The server asks git with `git ls-files -z -- specs/NNN-slug` in the main checkout
+and hands the listed paths, split on NUL, to `specSourceOf` (`core/src/worktrees.ts`), which counts the folder as
+tracked when one of them lies under `specs/NNN-slug/`. Then the kinds in `WORKTREE_COPY_KINDS`, `spec.md`, `plan.md`,
+`tasks.md`, `context.md`, `design.md`, `events.jsonl`, `rounds.jsonl` and `.gates/`, are read from the worktree's copy,
+`<worktree>/specs/NNN-slug/`, and the spec header names that source with the main checkout's stage and progress beside
+it. The three in-place writes to an existing spec, the reviewed mark, a task checkbox and a stage transition, go to
+that same copy under the same hash check against the file of that copy; the main checkout stays byte-identical. A
+write whose source changed since the client rendered it, because a worktree appeared or vanished, is a 409.
+Allocating an idea creates a spec that has no worktree yet, so it always writes in the main checkout.
+
+Everywhere else the source stays `main`, as before spec 027: the spec has no worktree, its folder is untracked, or
+`specs/` or the folder is a symbolic link, which git lists, if at all, as the link itself (`specs`, `specs/NNN-slug`),
+never as a path under the folder. Spectant's own repository is that case:
+its `specs/` is untracked and linked into every spec worktree, so the worktree's copy is the main checkout's file and
+the source does not change (ISC-181.1). The repository kinds (`constitution`, `master`, `idea`, `workflow`, `tokens`)
+are read from the main checkout in every case.
+
+**In the dashboard model** (`core/src/dashboard.ts`, ISC-175, ISC-176, ISC-181). The server hands `buildDashboard`
+the assignment above as `worktrees`, with `ahead` and `dirty` read, and per spec folder a `SpecRead`
+(`core/src/files.ts`) in `perSpec`: `tree`, the tree id computed in the spec's worktree for the code-reviewed mark;
+`source`, as `specSourceOf` decided it; and `main`, the main checkout's copy of the folder when the source is
+`worktree`. The spec page takes the same assignment as `worktrees` and the spec's own `SpecRead` as `read`. Every row
+of the dashboard and the head of the spec page carry three fields from them, and the two never disagree:
+
+- `worktree`: the first worktree of kind `spec` assigned to the spec, in git's order, with its `path`, `branch`,
+  `ahead` and `dirty`, the data of the worktree chip; null when the spec has none, and then there is no chip.
+- `source`: `main` or `worktree`; `main` when `perSpec` names none.
+- `main`: the `stage` and claim `progress` of the main checkout's copy, which `core/` builds from `SpecRead.main` with
+  the main checkout's tree, for the source note beside the worktree copy's; null unless `source` is `worktree`.
+
+A spec without an entry in `perSpec`, or with an entry without `tree`, compares its code-reviewed mark with the
+workspace's `worktreeTree`, the main checkout's, as before spec 027. Each `worktree-branch-mismatch` diagnostic
+becomes one warning of that kind on the row its `subject` names, whatever the spec's phase, with `ref` the worktree's
+path, and the warnings panel lists it as a group of its own after `locks`. With the listing above, `012` read from its
+worktree's copy, two commits ahead and with uncommitted changes, and `015` on the branch of another spec carry:
+
+```json
+{
+  "id": "012",
+  "worktree": { "path": ".worktrees/012-harbor", "branch": "feature/012-harbor", "spec": "012", "ahead": 2, "dirty": true, "kind": "spec" },
+  "source": "worktree",
+  "main": { "stage": "plan", "progress": { "closed": 3, "total": 15 } }
+}
+{
+  "id": "015",
+  "worktree": { "path": ".worktrees/015-beacon", "branch": "feature/014-lantern", "spec": "015", "ahead": 0, "dirty": false, "kind": "spec" },
+  "source": "main",
+  "main": null,
+  "warnings": [
+    {
+      "kind": "worktree-branch-mismatch",
+      "text": "Worktree .worktrees/015-beacon is on branch feature/014-lantern, which names spec 014; its path names spec 015, and the path wins.",
+      "ref": ".worktrees/015-beacon"
+    }
+  ]
+}
+```
+
+A spec without a worktree carries `"worktree": null`, `"source": "main"` and `"main": null`, every spec of every
+fixture snapshot among them.
+
 ## Activity and lock lines
 
 Read when present, never written by the app (spec 002, T20, `locks.ts`). Two sources can hold a claim:
@@ -1192,7 +1355,8 @@ Read when present, never written by the app (spec 002, T20, `locks.ts`). Two sou
 - **LifeOS frontier locks**, lock files under the LifeOS state directory, read only when LifeOS is present; without
   LifeOS no LifeOS path is read (ISC-37).
 - **`.spectant/activity.jsonl`** at the repository root, written by the plugin's hooks: one JSON object per line,
-  `{ts, event: "claim" | "release", claim, session, task?, worktree?}`. A claim without a later release is open.
+  `{ts, event: "claim" | "release", claim, session, task?, worktree?}`. A claim without a later release is open. The
+  same file carries the four run events of an implement round (spec 027, ISC-179, below), which hold no claim.
 
 In both sources `session` is the actor that holds the claim, in the actor grammar (`events`, above): `a:<kind>:<id>`
 for an agent session, `a:<kind>:<id>/<task>` for a sub-agent on a task (`a:claude:sess-7/T12`, with `task: "T12"`), a
@@ -1215,13 +1379,49 @@ From `core/fixtures/harbor/.spectant/activity.jsonl`:
 {"ts":"2026-03-08T14:06:00Z","event":"claim","claim":"ISC-74","task":"T27","session":"a:claude:sess-2","worktree":"wt-7"}
 ```
 
+**Run events** (spec 027, ISC-179, `locks.ts` `runStates`). A sub-agent working a task in its own worktree writes
+nothing the main checkout shows until its patch lands, so the round reports each step of a task as a line of its own:
+`{ts, event: "dispatch" | "build" | "patch" | "apply", task, session, worktree, claim?}`. `dispatch` is written when
+the round's plan sends the task out, `build` when its builder starts in its worktree, `patch` when its patch is pulled,
+`apply` when the patch landed on the spec's branch. `task`, `session` (in the actor grammar above, legacy-checked like
+any other session) and `worktree` are required, as is `ts`; a run event that lacks one is a malformed line and is
+skipped. `claim` is optional and only names the claim; a run event never holds or releases it.
+
+Per task the last run event in file order decides its state: `dispatch` → `dispatched`, `build` → `building`, `patch`
+→ `patched`, `apply` → `applied` once `tasks.md` checks the task, else `applied-open` (the patch landed, the tick has
+not). A task dispatched again after an `apply` reads `dispatched` again. Each `TaskRun` carries that last event's
+`session`, `worktree` and `ts`. The log is repository-wide and keyed by task id, so whoever shows one spec passes only
+that spec's run lines.
+
+An event that is none of `claim`, `release` and the four run events is one `activity-event-unknown` warning per file,
+at the first such line, with the event quoted in its text and the line's claim when it names one; that line and every
+later line with an unknown event are skipped, and the lines after them are read as usual. A line with no event at all
+is a malformed line. In harbor 002, T26 ran all four steps and `tasks.md` checks it, so it reads `applied`; T28 ran
+them too, with one unknown `ponder` line between `build` and `patch`, and is not checked, so it reads `applied-open`.
+That `ponder` line is harbor's one lock diagnostic.
+
+From `core/fixtures/harbor/.spectant/activity.jsonl`:
+
+```json
+{"ts":"2026-03-08T15:54:00Z","event":"dispatch","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
+{"ts":"2026-03-08T15:55:00Z","event":"build","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
+{"ts":"2026-03-08T16:10:00Z","event":"patch","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
+{"ts":"2026-03-08T16:12:00Z","event":"apply","claim":"ISC-73","task":"T26","session":"a:claude:sess-2/T26","worktree":"wt-8"}
+{"ts":"2026-03-08T16:32:00Z","event":"dispatch","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+{"ts":"2026-03-08T16:33:00Z","event":"build","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+{"ts":"2026-03-08T16:35:00Z","event":"ponder","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+{"ts":"2026-03-08T16:40:00Z","event":"patch","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+{"ts":"2026-03-08T16:42:00Z","event":"apply","claim":"ISC-75","task":"T28","session":"a:claude:sess-2/T28","worktree":"wt-9"}
+```
+
 A frontier lock is one file per held claim, `<state>/isa-locks/<hash>/<claim-id>.lock`, where `<state>` is the LifeOS
 state directory the caller passes and `<hash>` is the first 16 hex digits of sha1 over the real path of the
 repository's `ISA.md`; only that one directory is read. The file is a JSON object with `session` and `ts` required and
 `isa` (the ISA path the session used) optional; a lock whose `isa` resolves to another file, whose content is not that
 object, or whose `ts` is more than two hours old (LifeOS's stale TTL) is not counted and becomes a diagnostic, as do an
-activity line that is not a claim or release object, a release of a claim nobody holds and a release by a session that
-does not hold it. A claim held in both sources is listed once per source, activity first; the frontier entry wins.
+activity line that is not a JSON object with an event, a claim or release line without its claim, session or ts, a run
+event without its task, session, worktree or ts, an unknown event (once per file, above), a release of a claim nobody
+holds and a release by a session that does not hold it. A claim held in both sources is listed once per source, activity first; the frontier entry wins.
 
 ```json
 {"session":"spec-002-ISC-75","ts":"2026-03-08T15:30:00.000Z","isa":"/srv/repo/ISA.md"}
@@ -1244,6 +1444,20 @@ lock a person (`u:`) or a legacy session holds, since neither is an agent; a sub
 leaves `subagent` `null`. In harbor 002, T27 is worked by `a:claude:sess-2` with no sub-agent. The frame names the reading's source (`frontier`,
 `activity`, `none`), lists the sessions holding locks here, and carries the Needs you cards (question, concerns, open
 operator steps). The clock is the caller's: the frame's `ts` is the time it was built.
+
+Last, the run events (spec 027, ISC-179.1): every card but an `absent` one whose task a run event of this spec names
+carries `run`, the task's `TaskRun` (`{task, state, session, worktree, ts}`, above); a card without one has no `run`
+field. The log is repository-wide and keyed by task id, so a run line counts for a spec only when its task is one of
+the spec's tasks and, when the line names a claim, that claim is the task's own; a line without a claim is matched by
+its task id alone. The run is additive, the card's `state` stays what the layers above made it. The frame's `inRound`
+is the group "in round n": `cards` holds the cards with a run whose task `tasks.md` has not checked, furthest along
+first (`applied-open`, `patched`, `building`, `dispatched`), board order within each; `lanes` counts them per lane, in
+board order, and `total` for the whole board, both only for states above 0 and in run order; `round` is the round the
+write-order has not recorded yet, the frame's `round` + 1 (1 without `rounds.jsonl`), and `null` when no card is in it.
+Once `tasks.md` checks a task its run reads `applied`, its landed card state wins and it leaves the group. Only the
+live frame carries runs; the frames of `rounds.jsonl` never do. In harbor 002, T28 is `waiting` with run
+`applied-open` and is the one card of round 4; T26 is `closed` with run `applied`; harbor 004's own T26 and T28 carry
+no run, since the log's lines name 002's claims.
 
 **Derived: the dashboard row's locks** (spec 002, T115, `dashboard.ts`), from the same reading and the same
 per-claim selection as the live frame, so the row and the board name the same session. `taken` lists every claim of the
