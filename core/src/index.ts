@@ -15,8 +15,11 @@
 // evidence.ts and the server imports it from the module itself; only its types are re-exported here.
 // Spec 025's spec edges: `splitSpecEdges` rides the barrel with claims.ts, and spec-ref.ts (pure string helpers,
 // `SPEC_ID` and `specIdOf`) rides it whole, so a reader can match an edge's `NNN` to its active or archived folder.
+// spec-edges.ts (`resolveEdges`, `edgeMet`) takes the folder texts and the server's merge state from the caller, runs
+// no git and reads no file, and rides it whole.
 export * from './files.ts';
 export * from './spec-ref.ts';
+export * from './spec-edges.ts';
 export type * from './diagnostics.ts';
 export * from './relations.ts';
 export * from './frontmatter.ts';
