@@ -492,6 +492,33 @@ describe('SpecHead waits chip (T22, ISC-163)', () => {
     expect(waits(root)?.querySelector('[data-waits-meta]')).toBeNull();
   });
 
+  it('shows the overlap line in the heads of both specs, each with its own edge (T29, ISC-164.1)', async () => {
+    const PATHS = ['web/src/app/retention/a.ts', 'web/src/app/retention/b.ts', 'web/src/app/retention/c.ts', 'web/src/app/retention/d.ts'];
+    const overlap = { specs: ['002', '004'], paths: PATHS, waiting: '002', edge: '(after: 004)' };
+    const rows = [
+      { id: '002', title: 'Web console', type: 'feature', stage: 'build', warnings: [{ kind: 'spec-overlap', text: 'shares 4 files with 004, no edge', overlap }] },
+      { id: '004', title: 'Retention', type: 'feature', stage: 'plan', warnings: [] },
+    ];
+    const lineOf = (root: HTMLElement) => root.querySelector<HTMLElement>('[data-head-overlaps] [data-overlap-line]');
+    for (const [id, other, edge] of [
+      ['002', '004', '(after: 004)'],
+      ['004', '002', '(after: 002)'],
+    ] as const) {
+      TestBed.resetTestingModule();
+      setUp(unserved, () => unserved, { ...HARBOR, specs: rows });
+      const root = await open(`/w/harbor/s/${id}/status`);
+      const line = lineOf(root);
+      expect(line?.id).toBe(`overlap-${other}`);
+      expect(text(line?.querySelector('[data-overlap-text]') ?? null)).toBe(`Shares 4 files with ${other}, no edge`);
+      expect(line?.querySelector('a[data-overlap-other]')?.getAttribute('href')).toBe(`/w/harbor/s/${other}`);
+      expect([...(line?.querySelectorAll('[data-overlap-path]') ?? [])].map((p) => text(p))).toEqual(PATHS.slice(0, 3));
+      expect(text(line?.querySelector('[data-overlap-edge] code') ?? null)).toBe(edge);
+      line?.querySelector<HTMLButtonElement>('[data-overlap-more]')?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(line?.querySelectorAll('[data-overlap-path]')).toHaveLength(4);
+    }
+  });
+
   it('shows nothing once the edge is met (waits null)', async () => {
     setUp(unserved, () => with002({ waits: null }), DASHBOARD);
     const root = await open('/w/harbor/s/002/status');

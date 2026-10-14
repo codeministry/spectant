@@ -29,6 +29,8 @@ import { areaById, areaPath, planningTreeLink, specLink, workspaceLink } from '.
 import { ShellData } from '../shell/shell-data.service';
 import { ShellState } from '../shell/shell-state.service';
 import { GateButton } from './gate-button';
+import { OverlapLines } from './overlap-lines';
+import { overlapLines, overlapsIn } from '../../features/dashboard/warnings-panel/overlap';
 import {
   type FeaturePlace,
   featurePlace,
@@ -83,7 +85,7 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
  */
 @Component({
   selector: 'app-spec-head',
-  imports: [GateButton, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiPriority, UiWaitsChip, UiWorktreeChip],
+  imports: [GateButton, OverlapLines, RouterLink, TranslocoPipe, UiChip, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiPriority, UiWaitsChip, UiWorktreeChip],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./spec-head.css', './spec-head.context.css', './spec-head.compact.css'],
   host: { class: 'spec-head', '[attr.data-tier]': 'tier()' },
@@ -239,6 +241,9 @@ export const STAGE_LOOK: Readonly<Record<Stage, { readonly tone: Tone; readonly 
         } @else if (noSource()) {
           <p class="no-source" data-no-source-line>{{ 'specHead.noSource' | transloco }}</p>
         }
+        @if (overlaps().length > 0) {
+          <app-overlap-lines class="overlaps" data-head-overlaps [lines]="overlaps()" [ws]="state.ws() ?? ''" />
+        }
       </div>
       <div class="actions" data-head-actions>
         @if (command(); as command) {
@@ -323,6 +328,14 @@ export class SpecHead {
     const ids = this.waits()?.blockers ?? [];
     const rows = [...this.data.specRows(), ...this.data.archiveRows()];
     return Object.fromEntries(ids.flatMap((id) => rows.filter((row) => row.id === id).slice(0, 1).map((row) => [id, row.title] as const)));
+  });
+  /**
+   * Spec 025 (T29, ISC-164.1): this spec's overlaps with other open specs, each with the edge this spec could carry.
+   * core puts the warning on the waiting spec's dashboard row only, so both specs of a pair read it from there.
+   */
+  protected readonly overlaps = computed(() => {
+    const dashboard = this.data.dashboard.value();
+    return overlapLines(overlapsIn(dashboard?.kind === 'ok' ? dashboard.body : null), this.id());
   });
   protected readonly command = computed(() => this.body()?.head.nextCommand ?? null);
   protected readonly notes = computed(() => this.body()?.areas.notes.count ?? null);

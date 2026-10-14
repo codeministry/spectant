@@ -59,7 +59,7 @@ describe('WarningsPanel', () => {
         expect(link.getAttribute('href')).toBe(`/?sel=spec:${spec.id}`);
         expect(link.textContent.trim()).toBe(spec.id);
         expect(line.querySelector('[data-warning-text]')?.textContent.trim()).toBe(w.text);
-        expect(line.querySelector('ui-command-chip code')?.textContent ?? null).toBe(w.command ?? null);
+        expect(line.querySelector('ui-command-chip code')?.textContent ?? null).toBe(w.command ?? w.overlap?.edge ?? null);
       });
     }
   });
@@ -121,5 +121,62 @@ describe('WarningsPanel', () => {
     const root = await render(LANTERN, 'callout');
     expect(root.querySelector('details')).toBeNull();
     expect(root.textContent.trim()).toBe('');
+  });
+});
+
+describe('WarningsPanel spec edges (T28, ISC-164.1, ISC-162.4)', () => {
+  type Row = DashboardModel['specs'][number];
+  const text = (el: Element | null): string => (el?.textContent ?? '').replace(/\s+/gu, ' ').trim();
+  const PATHS = ['web/src/app/layout/shell/areas.ts', 'web/src/app/layout/shell/index.ts', 'web/src/app/board/index.ts', 'core/src/a.ts', 'core/src/b.ts'];
+  const row = (id: string, warnings: Row['warnings']): Row => ({ ...HARBOR.specs[0], id, title: `Spec ${id}`, warnings, fog: 0 });
+  const model = (specs: Row[]): DashboardModel => ({ ...HARBOR, specs, kpis: { ...HARBOR.kpis, warnings: specs.length } });
+
+  it('puts the golden overlap on the waiting spec 002: the other spec as a link, the suffix, the edge with copy', async () => {
+    const root = await render(HARBOR);
+    const line = root.querySelector('[data-warning-spec="002"] [data-warning-kind="spec-overlap"]') as HTMLElement;
+    expect(root.querySelectorAll('[data-warning-kind="spec-overlap"]')).toHaveLength(1);
+    expect(text(line.querySelector('[data-overlap-text]'))).toBe('shares 1 file with 004, no edge');
+    expect(line.querySelector('a[data-overlap-other]')?.getAttribute('href')).toBe('/?sel=spec:004');
+    const path = line.querySelector('[data-overlap-path]') as HTMLElement;
+    expect(text(path)).toBe('retention/');
+    expect(path.title).toBe('web/src/app/retention/');
+    expect(line.querySelector('[data-overlap-more]')).toBeNull();
+    expect(text(line.querySelector('[data-overlap-edge] code'))).toBe('(after: 004)');
+    expect(text(line.querySelector('[data-overlap-target]'))).toBe('in 002');
+  });
+
+  it('shows three paths as unique suffixes, then "+n more" opening every full path', async () => {
+    const overlap = { specs: ['017', '024'] as [string, string], paths: PATHS, waiting: '017', edge: '(after: 024)' };
+    const root = await render(model([row('017', [{ kind: 'spec-overlap', text: 'shares 5 files with 024, no edge', overlap }])]));
+    const line = root.querySelector('[data-warning-kind="spec-overlap"]') as HTMLElement;
+    expect([...line.querySelectorAll('[data-overlap-path]')].map(text)).toEqual(['areas.ts', 'shell/index.ts', 'board/index.ts']);
+    expect(text(line.querySelector('[data-overlap-more]'))).toBe('+2 more');
+    expect([...line.querySelectorAll('[data-overlap-all] li')].map(text)).toEqual(PATHS);
+  });
+
+  it('copies exactly the edge of the waiting spec and confirms it on the button', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const fixture = TestBed.createComponent(WarningsPanel);
+    fixture.componentRef.setInput('specs', HARBOR.specs);
+    fixture.componentRef.setInput('kpis', HARBOR.kpis);
+    await fixture.whenStable();
+    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('[data-overlap-edge] button') as HTMLButtonElement;
+    expect(button.getAttribute('aria-label')).toBe('Copy (after: 004)');
+    button.click();
+    await fixture.whenStable();
+    expect(writeText).toHaveBeenCalledWith('(after: 004)');
+    expect(button.hasAttribute('data-copied')).toBe(true);
+    Reflect.deleteProperty(navigator, 'clipboard');
+  });
+
+  it('draws a spec-edge diagnostic as its own line with its place, no chip', async () => {
+    const unknown = { kind: 'spec-edge' as const, text: 'The spec edge (after: 042) on T1 names no spec, active or archived; it stays open.', ref: 'tasks.md' };
+    const cycle = { kind: 'spec-edge' as const, text: 'Spec edges form the cycle 017 → 024 → 017; every edge in it stays open.', ref: 'spec.md' };
+    const root = await render(model([row('002', [unknown, cycle])]));
+    const lines = [...root.querySelectorAll('[data-warning-kind="spec-edge"]')];
+    expect(lines.map((l) => text(l.querySelector('[data-edge-text]')))).toEqual(['edge to 042 · no such spec', 'edge cycle 017 → 024 → 017']);
+    expect(lines.map((l) => text(l.querySelector('[data-edge-where]')))).toEqual(['tasks.md · T1', 'spec.md']);
+    expect(lines.every((l) => l.querySelector('ui-command-chip') === null)).toBe(true);
   });
 });

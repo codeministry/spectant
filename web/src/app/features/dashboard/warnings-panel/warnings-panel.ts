@@ -6,7 +6,9 @@ import type { DashboardView, DashboardRowView as DashboardSpecRow } from '../con
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiCard } from '../../../shared/ui/card/card';
 import { UiCommandChip } from '../../../shared/ui/command-chip/command-chip';
+import { UiPopover, UiPopoverTrigger } from '../../../shared/ui/overlay/popover';
 import { UiSectionHeader } from '../../../shared/ui/section-header/section-header';
+import { edgeDiagnostic, overlapOf, pathSuffixes } from './overlap';
 
 /**
  * `rail`: a card in the context rail (wide); `section`: the page section `#warnings` (medium); `callout`: a collapsed
@@ -27,7 +29,7 @@ export const WARNINGS_HEADING = 'warnings';
  */
 @Component({
   selector: 'app-warnings-panel',
-  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiCard, UiCommandChip, UiIcon, UiSectionHeader],
+  imports: [NgTemplateOutlet, RouterLink, TranslocoPipe, UiCard, UiCommandChip, UiIcon, UiPopover, UiPopoverTrigger, UiSectionHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './warnings-panel.html',
   styleUrl: './warnings-panel.css',
@@ -45,6 +47,16 @@ export class WarningsPanel {
   /** Specs carrying at least one warning, for "in n specs". */
   protected readonly warned = computed(() => this.specs().filter((row) => row.warnings.length > 0).length);
   protected readonly count = computed(() => this.kpis().warnings);
+
+  // Spec 025 (ISC-164.1, ISC-162.4): the spec-overlap and spec-edge lines.
+  protected readonly overlapOf = overlapOf;
+  protected readonly edgeDiagnostic = edgeDiagnostic;
+  protected readonly suffixes = pathSuffixes;
+  private readonly titles = computed(() => new Map(this.specs().map((row) => [row.id, row.title] as const)));
+  /** The other spec's title for the link's tooltip; the id when the row is not active. */
+  protected titleOf(id: string): string {
+    return this.titles().get(id) ?? id;
+  }
 
   /**
    * The text lines of a group: its warnings, less the open-fog warning when the spec has a fog line, so open fog is

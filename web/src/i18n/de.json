@@ -178,7 +178,33 @@
     },
     "openFog": "Offener Fog · {{count}}",
     "empty": "Keine Warnungen",
-    "icon": "Warnung"
+    "icon": "Warnung",
+    "overlap": {
+      "lead": {
+        "one": "teilt 1 Datei mit",
+        "other": "teilt {{count}} Dateien mit"
+      },
+      "headLead": {
+        "one": "Teilt 1 Datei mit",
+        "other": "Teilt {{count}} Dateien mit"
+      },
+      "noEdge": "keine Kante",
+      "more": "+{{count}} weitere",
+      "paths": "Gemeinsame Dateien",
+      "target": "in {{id}}",
+      "copyTitle": "Kante für die tasks.md dieser Spec kopieren",
+      "moreOverlaps": {
+        "one": "+1 weitere Überschneidung",
+        "other": "+{{count}} weitere Überschneidungen"
+      },
+      "toHead": "Im Kopf zeigen",
+      "region": "Überschneidungen mit anderen Specs"
+    },
+    "edge": {
+      "unknown": "Kante auf {{id}} · keine solche Spec",
+      "cycle": "Kantenzyklus {{path}}",
+      "where": "{{file}} · {{id}}"
+    }
   },
   "identity": {
     "open": "{{workspace}} öffnen",

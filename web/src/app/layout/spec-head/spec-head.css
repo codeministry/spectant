@@ -172,6 +172,11 @@ h1 {
   min-inline-size: 0;
 }
 
+/* Spec 025 (T29, ISC-164.1): the overlap lines after the meta and provenance lines, 8 px above. */
+.overlaps {
+  margin-block-start: 8px;
+}
+
 .provenance > ui-worktree-chip {
   min-inline-size: 0;
   max-inline-size: 100%;

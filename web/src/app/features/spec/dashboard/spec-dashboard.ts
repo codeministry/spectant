@@ -7,6 +7,8 @@ import type { GateState, SpecPageModel, WaitingItem } from '../../../../../../co
 import { type AreaId, areaById, areaPath, specLink } from '../../../layout/shell/areas';
 import { RailContent } from '../../../layout/shell/rail-content';
 import { ShellData } from '../../../layout/shell/shell-data.service';
+import { OverlapLines } from '../../../layout/spec-head/overlap-lines';
+import { overlapLines, overlapsIn } from '../../dashboard/warnings-panel/overlap';
 import { ShellState } from '../../../layout/shell/shell-state.service';
 import { UiIcon } from '../../../shared/icons/icon';
 import { UiTerm } from '../../../shared/ui/term/term';
@@ -111,6 +113,7 @@ function tileLines(model: SpecPageModel, id: AreaTile['id'], t: (key: string) =>
     UiTerm,
     Brief,
     NgTemplateOutlet,
+    OverlapLines,
     RouterLink,
     TranslocoPipe,
     UiChip,
@@ -142,6 +145,19 @@ export class SpecDashboard {
   /** From 1120 px the Spec context lives in the shell's rail; below it closes the main column. */
   protected readonly wide = computed(() => this.state.tier() === 'wide');
   private readonly contextTpl = viewChild<TemplateRef<unknown>>('context');
+
+  /**
+   * Spec 025 (T29, ISC-164.1): the overlaps of this spec, both sides of each pair (core puts the warning on the
+   * waiting spec's dashboard row only). Beside the head from 1120 px they show as a short form with an anchor on the
+   * head's line; below, the full line repeats here. The spec model's own overlap warning is left to this block.
+   */
+  protected readonly overlaps = computed(() => {
+    const dashboard = this.data.dashboard.value();
+    const id = this.model()?.head.id ?? this.state.specId() ?? '';
+    return overlapLines(overlapsIn(dashboard?.kind === 'ok' ? dashboard.body : null), id);
+  });
+  protected readonly ws = computed(() => this.state.ws() ?? '');
+  protected readonly contextWarnings = computed(() => (this.model()?.warnings ?? []).filter((warning) => warning.kind !== 'spec-overlap'));
 
   readonly model = computed<SpecPageModel | null>(() => {
     const result = this.data.spec.value();
