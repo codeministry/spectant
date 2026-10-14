@@ -44,7 +44,6 @@ app-brief .brief-command {
 }
 
 app-brief .brief-prose {
-  max-inline-size: 72ch;
   padding: 0 16px 8px;
   font-size: 15px;
   line-height: 24px;
