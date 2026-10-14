@@ -88,6 +88,10 @@
  *   branch mismatch, its warning on the row, the panel, the page and the counts), 002 read from its worktree copy with
  *   the main copy beside it, runs in every state on harbor 002's live frame and its round group, and a `worktree`
  *   timeline entry on 007 (merged) and 006 (removed).
+ * - `X-Spectant-Stub-Edges: off | waiting | met` serves harbor rebuilt by core with the spec edges of `STUB_EDGES`
+ *   (spec 025, T20; absent: `off`, the goldens as they are): 009 waits on 002 whole, 002's web tasks on 006, 002's
+ *   ticked T1 names the unknown 042; under `met` the blockers are merged and every wait is gone. A 400 beside
+ *   `X-Spectant-Stub-Worktrees: on`.
  * - `POST /api/__stub/bump-run?ws=<slug>&spec=<id>&task=<tid>` moves that task's run one run event on for that session
  *   (T33): none → dispatched → building → patched → applied-open (`applied` once tasks.md ticked it); the last stays.
  *   The live frame's body and ETag change as an activity log line would change them. 204; 404 for an unknown
@@ -120,8 +124,12 @@ import type {
   LiveCard,
   LiveFrame,
   LockSource,
+  MergeState,
+  SpecEdge,
+  SpecFiles,
   SpecGroupHead,
   SpecPageModel,
+  SpecWait,
   TaskRow,
   TaskRun,
   TaskStatus,
@@ -929,6 +937,196 @@ function overlaidTree(tree: TreeGoldens): TreeGoldens {
   };
 }
 
+// ---- spec edges (spec 025, T20) ---------------------------------------------------------------------------------
+
+/**
+ * The spec-edge variants (spec 025, T20, ISC-163): `off` serves the goldens as they are; `waiting` and `met` serve harbor
+ * rebuilt by core from its fixture tree with the edges of `STUB_EDGES` added to the texts in memory, against a merge
+ * state in which the blockers are unmerged (`waiting`) or merged (`met`).
+ */
+export const EDGE_STATES = ['off', 'waiting', 'met'] as const;
+export type EdgeState = (typeof EDGE_STATES)[number];
+export const EDGES_HEADER = 'X-Spectant-Stub-Edges';
+
+/**
+ * The spec edges the variants add to harbor (`OVERLAY_GOLDEN`), in memory only; the fixture files stay as they are.
+ * `full`: the open claim of 009, ISC-131, carries `(after: 002)`, so all its open work waits: the stage falls from `build`
+ * to `blocked` with `waits on 002`, the claim is held (`blocked`, `waitsOn`).
+ * `partial`: every open web task of 002 carries `(after: 006)`, four of its five open tasks (the operator's T31 is not
+ * held), so the web lane waits whole. `unknown`: 002's ticked T1 names 042, which no spec carries: a `spec-edge`
+ * diagnostic on 002's row in both variants, no hold. 002 and 004 keep their overlap (no edge joins them), so its
+ * `spec-overlap` warning stays with its direction.
+ */
+export const STUB_EDGES = {
+  golden: OVERLAY_GOLDEN,
+  full: { spec: '009', folder: '009-chunked-upload-limits', on: '002' },
+  partial: { spec: '002', folder: '002-web-console', lane: 'web', tasks: ['T27', 'T28', 'T29', 'T32'], on: '006' },
+  unknown: { spec: '002', folder: '002-web-console', task: 'T1', on: '042' },
+} as const;
+
+/** The blockers' merge state per variant: a branch of each, unmerged or merged (`MergeState`, ISC-162.1). */
+export function stubMergeState(state: Exclude<EdgeState, 'off'>): MergeState[] {
+  const branches: Readonly<Record<string, string>> = { '002': 'feature/002-web-console', '006': 'feature/006-partial-push' };
+  return Object.entries(branches).map(([spec, branch]) => ({ spec, branch, merged: state === 'met', complete: false, archived: false }));
+}
+
+/** The input core's builders read, as `core/tests/helpers/read-tree.ts` `readTreeAt` returns it (`DashboardInput`). */
+type TreeInput = {
+  master: string | null;
+  constitution: string | null;
+  tldr: string | null;
+  specs: SpecFiles[];
+  archived: SpecFiles[];
+  workflow?: Workflow;
+  [key: string]: unknown;
+};
+
+/** Core's builders for the edge variants, loaded by a computed path like `loadCore` (the golden builders' own inputs). */
+type EdgeCore = {
+  readTreeAt: (root: string) => TreeInput;
+  ideaFilesAt: (root: string) => Record<string, string>;
+  PLANNING_NOW: string;
+  buildDashboard: (input: unknown) => { kpis: unknown; specs: Array<{ slug: string; stage: string; stageSource: string; waits: SpecWait | null }> };
+  buildPlanning: (input: unknown) => PlanningModel;
+  buildSpecPage: (input: unknown) => SpecPageModel;
+  buildClaimViews: (input: unknown) => ClaimViewModel;
+  buildLiveFrame: (input: unknown) => LiveFrame;
+  parseTaskLines: (input: unknown) => TasksTab;
+  resolveEdges: (model: unknown, mergeState: readonly MergeState[]) => { edges: readonly SpecEdge[] };
+  readLockSources: (input: { repoRoot: string }) => Promise<unknown>;
+  hashForGate: (file: string, text: string) => string;
+};
+
+function loadEdgeCore(): EdgeCore {
+  const load = createRequire(import.meta.url);
+  const core = join(import.meta.dir, '..', '..', 'core');
+  const at = (...path: string[]): Partial<EdgeCore> => load(join(core, ...path)) as Partial<EdgeCore>;
+  const modules = [
+    at('tests', 'helpers', 'read-tree.ts'),
+    at('tests', 'helpers', 'planning-model.ts'),
+    ...['dashboard', 'planning', 'spec', 'claim-view', 'live', 'tasks', 'spec-edges', 'locks', 'gates'].map((name) => at('src', `${name}.ts`)),
+  ];
+  const [tree, planning, dashboard, plan, spec, claimView, live, tasks, edges, locks, gates] = modules;
+  const loaded: Partial<EdgeCore> = {
+    readTreeAt: tree?.readTreeAt,
+    ideaFilesAt: tree?.ideaFilesAt,
+    PLANNING_NOW: planning?.PLANNING_NOW,
+    buildDashboard: dashboard?.buildDashboard,
+    buildPlanning: plan?.buildPlanning,
+    buildSpecPage: spec?.buildSpecPage,
+    buildClaimViews: claimView?.buildClaimViews,
+    buildLiveFrame: live?.buildLiveFrame,
+    parseTaskLines: tasks?.parseTaskLines,
+    resolveEdges: edges?.resolveEdges,
+    readLockSources: locks?.readLockSources,
+    hashForGate: gates?.hashForGate,
+  };
+  const missing = Object.entries(loaded).filter(([, value]) => (value as unknown) === undefined).map(([key]) => key);
+  if (missing.length > 0) throw new Error(`stub-api: core exports no ${missing.join(', ')}`);
+  return loaded as EdgeCore;
+}
+
+/** A task or claim line with `(after: on)` added: into its `(after: …)` group, else before the path column or at the end. */
+function withSpecEdge(line: string, on: string): string {
+  const group = /\(after: ([^)]*)\)/.exec(line);
+  if (group) return line.replace(group[0], `(after: ${group[1] ?? ''}, ${on})`);
+  const path = line.lastIndexOf(' · `');
+  return path === -1 ? `${line} (after: ${on})` : `${line.slice(0, path)} (after: ${on})${line.slice(path)}`;
+}
+
+/** `text` with `edit` applied to every line `pick` selects; loud when it selects none (the fixture moved). */
+function editLines(text: string | undefined, pick: (line: string) => boolean, edit: (line: string) => string, what: string): string {
+  let hits = 0;
+  const out = (text ?? '')
+    .split('\n')
+    .map((line) => (pick(line) ? ((hits += 1), edit(line)) : line))
+    .join('\n');
+  if (hits === 0) throw new Error(`stub-api: no line for ${what} in the ${STUB_EDGES.golden} fixture`);
+  return out;
+}
+
+/**
+ * One folder's texts with the `STUB_EDGES` edges added. A reviewed mark that matched a file before the edit is
+ * re-marked over the edited file (core's `hashForGate`), so adding an edge leaves a fresh review fresh, as a re-review
+ * would; a stale one stays stale.
+ */
+function edgedFiles(core: EdgeCore, files: SpecFiles): SpecFiles {
+  const texts: { -readonly [K in keyof SpecFiles['texts']]: SpecFiles['texts'][K] } = { ...files.texts };
+  const { full, partial, unknown } = STUB_EDGES;
+  if (files.folder === full.folder) {
+    texts.spec = editLines(texts.spec, (l) => /^- \[ \] ISC-[\d.]+:/.test(l), (l) => withSpecEdge(l, full.on), `${full.spec}'s open claims`);
+  }
+  if (files.folder === partial.folder) {
+    const held = new Set<string>(partial.tasks);
+    const taskOf = (l: string): string | undefined => /^- \[[ x]\] (T\d+) · /.exec(l)?.[1];
+    let tasks = editLines(texts.tasks, (l) => held.has(taskOf(l) ?? ''), (l) => withSpecEdge(l, partial.on), `${partial.spec}'s web tasks`);
+    tasks = editLines(tasks, (l) => taskOf(l) === unknown.task, (l) => withSpecEdge(l, unknown.on), `${unknown.spec} ${unknown.task}`);
+    texts.tasks = tasks;
+  }
+  const mark = files.texts.gateReviewed;
+  if (mark !== undefined) {
+    const parsed = JSON.parse(mark) as { files?: Record<string, string> };
+    const marked = { ...parsed.files };
+    for (const [kind, name] of [['spec', 'spec.md'], ['tasks', 'tasks.md']] as const) {
+      const before = files.texts[kind];
+      const after = texts[kind];
+      if (before === undefined || after === undefined || before === after) continue;
+      if (marked[name] === core.hashForGate(name, before)) marked[name] = core.hashForGate(name, after);
+    }
+    texts.gateReviewed = `${JSON.stringify({ ...parsed, files: marked }, null, 2)}\n`;
+  }
+  return { folder: files.folder, texts };
+}
+
+/** One edge variant of harbor: the dashboard, the planning tree and the spec families, each built by core. */
+type EdgeVariant = { dashboard: { model: unknown; kpis: unknown }; planning: PlanningModel; tree: TreeGoldens };
+
+/** The golden builders' clock for the live frames (`core/tests/golden.test.ts` `LIVE_NOW`), `STUB_NOW`. */
+const LIVE_NOW = new Date(STUB_NOW);
+
+/**
+ * Harbor under one edge variant, built as its goldens are (`core/tests/golden.test.ts`, `helpers/planning-model.ts`,
+ * `fixtures.test.ts`) from the edged texts plus the merge state: `buildDashboard`, `buildPlanning` with each row's
+ * stage and `waits`, and per spec `buildSpecPage`, `buildClaimViews` and `buildLiveFrame` with that spec's resolved
+ * edges, `parseTaskLines`; the lock fixtures over them as for the goldens. Timeline, frames and docs stay the golden's.
+ */
+async function edgeVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state: Exclude<EdgeState, 'off'>): Promise<EdgeVariant> {
+  const read = edge.readTreeAt(base.root);
+  const input: TreeInput = { ...read, specs: read.specs.map((f) => edgedFiles(edge, f)), archived: read.archived };
+  const mergeState = stubMergeState(state);
+  const model = edge.buildDashboard({ ...input, mergeState });
+  const specTexts = new Map(input.specs.map((f) => [f.folder, f.texts.spec]));
+  const specStates = model.specs.map((row) => {
+    const spec = specTexts.get(row.slug);
+    const hash = spec === undefined ? {} : { hash: new Bun.CryptoHasher('sha256').update(spec).digest('hex') };
+    return { slug: row.slug, stage: row.stage, stageSource: row.stageSource, waits: row.waits, ...hash };
+  });
+  const { master, specs, archived, workflow, constitution, tldr } = input;
+  const planning = edge.buildPlanning({ master, specs, archived, ideas: edge.ideaFilesAt(base.root), now: edge.PLANNING_NOW, ...(workflow ? { workflow } : {}), specStates });
+  const edges = edge.resolveEdges({ specs, archived, constitution }, mergeState).edges;
+  const locks = await edge.readLockSources({ repoRoot: base.root });
+  const all = new Map([...specs, ...archived].map((f): [string, SpecFiles] => [f.folder, f]));
+  const activityClaims = claimLines(base.root);
+  const tree: TreeGoldens = {
+    ...base,
+    specs: base.specs.map((golden): SpecGoldens => {
+      const files = all.get(golden.folder);
+      if (files === undefined) throw new Error(`stub-api: ${base.golden} has no folder ${golden.folder}`);
+      const specEdges = edges.filter((e) => e.fromSpec === golden.folder.slice(0, 3));
+      const own = { ...files.texts, ...(master === null ? {} : { master }), ...(constitution === null ? {} : { constitution }) };
+      const others = [...all.values()].filter((f) => f !== files);
+      const page = edge.buildSpecPage({ files: { folder: files.folder, texts: own }, others, tldr, ...(workflow ? { workflow } : {}), mergeState });
+      const claims = edge.buildClaimViews({ files, specEdges });
+      const { tasks: tasksText, rounds } = files.texts;
+      const tasks = tasksText === undefined ? null : edge.parseTaskLines({ tasks: tasksText, ...(constitution === null ? {} : { constitution }), ...(rounds === undefined ? {} : { rounds }) });
+      const liveFiles = { folder: files.folder, texts: { ...files.texts, ...(constitution === null ? {} : { constitution }) } };
+      const live = edge.buildLiveFrame({ files: liveFiles, locks, now: LIVE_NOW, specEdges });
+      return { ...golden, spec: page, claims, tasks, locked: lockFixtures(core, page, live, claims, activityClaims) };
+    }),
+  };
+  return { dashboard: { model, kpis: model.kpis }, planning, tree };
+}
+
 const SPEC_FOLDER = /^(\d{3})-(.+)$/;
 const SPEC_ID = /^\d{3}$/;
 
@@ -1141,6 +1339,39 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   );
   const treesOn = new Map([...trees].map(([slug, tree]): [string, TreeGoldens] => [slug, overlays(slug) ? overlaidTree(tree) : tree]));
   const worktreesOn = (req: Request): boolean => req.headers.get(WORKTREES_HEADER) === 'on';
+  // The spec-edge variants (spec 025, T20): harbor rebuilt by core with `STUB_EDGES`, both variants built together on
+  // the first request that asks for one (core's lock reader is async) and then held; every other workspace stays its
+  // golden. A failed build fails that request loudly and every later one that asks for a variant.
+  const edgeCore = loadEdgeCore();
+  type EdgeView = {
+    dashboards: Map<string, { model: unknown; kpis: unknown }>;
+    trees: Map<string, TreeGoldens>;
+    plannings: Map<string, PlanningModel>;
+    views: Map<StubState, StateView>;
+  };
+  const edgeViews = new Map<Exclude<EdgeState, 'off'>, EdgeView>();
+  let edgesBuilt: Promise<void> | null = null;
+  const buildEdges = (): Promise<void> =>
+    (edgesBuilt ??= Promise.all(
+      (['waiting', 'met'] as const).map(async (state): Promise<void> => {
+        const out: EdgeView = { dashboards: new Map(dashboards), trees: new Map(trees), plannings: new Map(plannings), views: new Map() };
+        for (const w of workspaces) {
+          const tree = trees.get(w.slug);
+          if (w.golden !== STUB_EDGES.golden || tree === undefined) continue;
+          const variant = await edgeVariant(core, edgeCore, tree, state);
+          out.dashboards.set(w.slug, variant.dashboard);
+          out.trees.set(w.slug, variant.tree);
+          out.plannings.set(w.slug, variant.planning);
+        }
+        for (const s of STUB_STATES) out.views.set(s, view(s, false, out));
+        edgeViews.set(state, out);
+      }),
+    ).then(() => undefined));
+  /** The edge variant a request asks for (`X-Spectant-Stub-Edges`), null for `off`; the handler built it before. */
+  const edgeViewOf = (req: Request): EdgeView | null => {
+    const state = req.headers.get(EDGES_HEADER);
+    return state === 'waiting' || state === 'met' ? (edgeViews.get(state) ?? null) : null;
+  };
   /** Each workspace's catalog, built on first read (core's `readCatalog` is async) and then held: one per stub. */
   const catalogs = new Map<string, Promise<StubCatalog>>();
   const catalogOf = (slug: string, tree: TreeGoldens): Promise<StubCatalog> => {
@@ -1156,14 +1387,14 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     workspaces.map((w): [string, ReadonlyMap<string, StoryFile>] => [w.slug, readStories(board, join(dir, w.golden), readPlanning(dir, w.golden))]),
   );
 
-  const view = (state: StubState, on = false): StateView => {
+  const view = (state: StubState, on = false, src?: { dashboards: ReadonlyMap<string, { kpis: unknown }>; trees: ReadonlyMap<string, TreeGoldens> }): StateView => {
     const listed = state === 'empty' ? [] : workspaces;
     const list: Summary[] = [];
     const byslug: StateView['workspaces'] = new Map();
     for (const w of listed) {
       const base = { slug: w.slug, name: w.name, pathTail: w.pathTail ?? w.golden };
-      const dashboard = (on ? dashboardsOn : dashboards).get(w.slug);
-      const tree = (on ? treesOn : trees).get(w.slug);
+      const dashboard = (src?.dashboards ?? (on ? dashboardsOn : dashboards)).get(w.slug);
+      const tree = (src?.trees ?? (on ? treesOn : trees)).get(w.slug);
       if (!dashboard || !tree) continue;
       if (state === 'unreadable' && w.slug === unreadableSlug) {
         const summary: Summary = { ...base, readable: false, error: 'missing', counts: null };
@@ -1178,7 +1409,11 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
   };
   const views = new Map(STUB_STATES.map((s) => [s, view(s)]));
   const viewsOn = new Map(STUB_STATES.map((s) => [s, view(s, true)]));
-  const viewOf = (req: Request, state: StubState): StateView => (worktreesOn(req) ? viewsOn : views).get(state) ?? view(state, worktreesOn(req));
+  const viewOf = (req: Request, state: StubState): StateView => {
+    const edged = edgeViewOf(req);
+    if (edged) return edged.views.get(state) ?? view(state, false, edged);
+    return (worktreesOn(req) ? viewsOn : views).get(state) ?? view(state, worktreesOn(req));
+  };
 
   const sessions = new Map<string, Settings>();
   const writes = new Map<string, SessionWrites>();
@@ -1266,7 +1501,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
    * when one was sent (the counts stay the tree's: the specs' stages are not re-derived).
    */
   const planningOf = (req: Request, slug: string): PlanningModel | undefined => {
-    const model = boards.get(sessionOf(req))?.planning.get(slug) ?? plannings.get(slug);
+    const model = boards.get(sessionOf(req))?.planning.get(slug) ?? (edgeViewOf(req)?.plannings ?? plannings).get(slug);
     const workflow = workflows.get(sessionOf(req))?.get(slug);
     return model && workflow ? { ...model, workflow, stages: core.boardStages(workflow) } : model;
   };
@@ -1304,7 +1539,8 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     const found = current.workspaces.get(slug);
     if (!found) return workspaceJson(req, 404, { error: 'not-found' });
     if ('unreadable' in found) return workspaceJson(req, 409, found.unreadable);
-    return workspaceJson(req, 200, bumpDashboard((worktreesOn(req) ? dashboardsOn : dashboards).get(slug)?.model, bumpsOf(req, slug)));
+    const source = edgeViewOf(req)?.dashboards ?? (worktreesOn(req) ? dashboardsOn : dashboards);
+    return workspaceJson(req, 200, bumpDashboard(source.get(slug)?.model, bumpsOf(req, slug)));
   };
 
   /**
@@ -1921,7 +2157,7 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     return workspaceJson(req, 200, { present: locks === 'frontier' });
   };
 
-  return (req, url) => {
+  const handle = (req: Request, url: URL): Response | Promise<Response> => {
     const { pathname } = url;
     if (pathname === RESET_PATH) {
       if (req.method !== 'POST') return settingsError(405, { error: 'method-not-allowed' }, { Allow: 'POST' });
@@ -1951,6 +2187,11 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     if (!isOneOf(WORKTREE_STATES, worktrees)) {
       return settingsError(400, { error: 'unknown-stub-worktrees', worktrees, states: [...WORKTREE_STATES] });
     }
+    const edges = req.headers.get(EDGES_HEADER) ?? 'off';
+    if (!isOneOf(EDGE_STATES, edges)) {
+      return settingsError(400, { error: 'unknown-stub-edges', edges, states: [...EDGE_STATES] });
+    }
+    if (edges !== 'off' && worktrees === 'on') return settingsError(400, { error: 'stub-edges-with-worktrees', edges, worktrees });
     if (pathname === LIFEOS_PATH) return lifeosRoute(req, locks);
 
     if (noteAllowFor(pathname) !== null) {
@@ -1983,6 +2224,11 @@ export function stubApi(options: StubApiOptions = {}): ApiHandler {
     }
     if (family?.route === 'allocate') return allocateRoute(req, requested, locks, write, family);
     return specRoute(req, url, requested, locks, write);
+  };
+  return (req, url) => {
+    const edges = req.headers.get(EDGES_HEADER);
+    const wanted = edges === 'waiting' || edges === 'met';
+    return wanted && !edgeViews.has(edges) ? buildEdges().then(() => handle(req, url)) : handle(req, url);
   };
 }
 
