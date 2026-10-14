@@ -268,7 +268,7 @@ export class PlanningGraph {
   /**
    * Gives each drawn spec-edge arrow (spec 025, ISC-170.1) its state and its name: `data-spec-edge="open|met"` (styled
    * by `GRAPH_CSS`), an arrowhead of its own colour (a copy of mermaid's end marker per state, `data-spec-edge-marker`),
-   * and an accessible name read out as `009 · Waits on spec 002 · Spec edge open`, as `aria-label` and SVG `<title>`.
+   * and an accessible name read out as `009 waits on 002, Spec edge open` (`planning.graph.edgeName`), as `aria-label` and SVG `<title>`.
    */
   private wireSpecEdges(frame: HTMLElement, lens: GraphLens): void {
     const svg = frame.querySelector<SVGSVGElement>(':scope > svg');
@@ -279,7 +279,12 @@ export class PlanningGraph {
       if (!path) continue;
       const state = edge.state ?? 'open';
       path.setAttribute('data-spec-edge', state);
-      const name = [idOf(edge.from), this.transloco.translate('waits.nameBare', { id: idOf(edge.to) }), this.transloco.translate(`planning.graph.legend.${state}`)].join(' · ');
+      const legend: string = this.transloco.translate(`planning.graph.legend.${state}`);
+      const name: string = this.transloco.translate('planning.graph.edgeName', {
+        from: idOf(edge.from),
+        to: idOf(edge.to),
+        state: legend,
+      });
       path.setAttribute('aria-label', name);
       path.setAttribute('role', 'img');
       const title = svg.ownerDocument.createElementNS(SVG_NS, 'title');

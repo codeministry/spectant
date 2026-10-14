@@ -1292,7 +1292,8 @@
       "quiet": "nothing in flight",
       "next": "next",
       "inRound": "{{count}} in the round",
-      "runCount": "{{count}} {{state}}"
+      "runCount": "{{count}} {{state}}",
+      "waitsName": "{{lane}}, waits on {{ids}}"
     },
     "section": {
       "needsYou": "Needs you",
@@ -1684,7 +1685,8 @@
         "open": "Spec edge open",
         "met": "Spec edge met",
         "bundle": "Bundle, archived"
-      }
+      },
+      "edgeName": "{{from}} waits on {{to}}, {{state}}"
     },
     "features": {
       "title": "Features in {{ws}}",
@@ -2211,6 +2213,8 @@
     "nameBare": "Waits on spec {{id}}",
     "unknown": "Waits on spec {{id}}, no such spec",
     "more": "Also waits on {{ids}}",
-    "partial": "{{held}} of {{open}} open tasks"
+    "partial": "{{held}} of {{open}} open tasks",
+    "spec": "Spec {{id}} · {{title}}",
+    "specBare": "Spec {{id}}"
   }
 }

@@ -74,7 +74,7 @@
                   class="checkbox checkbox-sm"
                   data-task-check
                   [checked]="isChecked(row)"
-                  [disabled]="blocked(row)"
+                  [disabled]="blocked(row) || specWait(row) !== null"
                   [attr.aria-label]="'tasks.checkbox' | transloco: { id: row.id }"
                   [attr.aria-describedby]="checkLine(row) ? 'task-' + row.id + '-check tasks-helper' : 'tasks-helper'"
                   (change)="tick(row, box.checked)"
@@ -137,8 +137,20 @@
             }
           </span>
           </span>
-          @if (row.edges.length > 0 || sub(row) !== null || checkLine(row) !== null || liveCards().has(row.id)) {
+          @if (row.edges.length > 0 || sub(row) !== null || specWait(row) !== null || checkLine(row) !== null || liveCards().has(row.id)) {
             <span class="extra">
+              @if (specWait(row); as specs) {
+                <!-- spec 025 (T26): the held task's reason, `clock` (never `lock`, a session's), the blocker as a link. -->
+                <span class="sub waits" data-task-waits>
+                  <ui-icon name="clock" [size]="13" /><span>{{ 'waits.on' | transloco }}&nbsp;@for (id of specs; track id; let last = $last) {
+                    @if (specLinkOf(id); as link) {
+                      <a class="mono link" [routerLink]="link" [attr.data-blocker]="id" [attr.aria-label]="'waits.nameBare' | transloco: { id }">{{ id }}</a>
+                    } @else {
+                      <span class="mono" [attr.data-blocker]="id">{{ id }}</span>
+                    }{{ last ? '' : ', ' }}
+                  }</span>
+                </span>
+              }
               @if (liveCards().get(row.id); as card) {
                 <app-task-actors [card]="card" />
               }

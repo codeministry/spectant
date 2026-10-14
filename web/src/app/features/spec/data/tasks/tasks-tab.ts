@@ -32,7 +32,7 @@ import type { FrameCard, RunState, TaskRun } from '../../../../../../../core/src
 import { taskActorsOf } from '../../live/live-frame';
 import { TaskActors } from '../../live/task-actors/task-actors';
 import { RunChip } from '../../live/card/card';
-import { runChanges, runOf, runStates } from '../../live/board/board-model';
+import { runChanges, runOf, runStates, specWaitOf } from '../../live/board/board-model';
 import { UiLiveRegion } from '../../../../shared/ui/live-region/live-region';
 
 /** core's `TasksTab` as the tasks route serves it (`null` there means the spec has no tasks.md). */
@@ -303,8 +303,31 @@ export class TasksTab {
   protected runOfRow(id: string): TaskRun | null {
     return this.runs().get(id) ?? null;
   }
+  /**
+   * Spec 025 (T26, ISC-163): the specs an open task waits on, from core's hold reason `waits on NNN` (the task's own
+   * spec edges or its claim's); null once the edge is met, so the line, the clock and the disabled box go with it.
+   */
+  protected specWait(row: TaskRowView): readonly string[] | null {
+    if (row.state !== 'open') return null;
+    const reason = specWaitOf(row.reason);
+    if (reason !== null) return reason;
+    const open = this.openBlockers();
+    const held = (row.afterSpecs ?? []).filter((id) => open.has(id));
+    return held.length > 0 ? held : null;
+  }
+  /** The spec's open spec edges (its `waits` blockers): a task's own `afterSpecs` edge holds it while it is open. */
+  private readonly openBlockers = computed(() => {
+    const spec = this.data.spec.value();
+    return new Set(spec?.kind === 'ok' ? (spec.body.head.waits?.blockers ?? []) : []);
+  });
+  /** The blocker numbers a known spec carries link to it; an unknown one (`042`) stays plain text. */
+  protected specLinkOf(id: string): readonly string[] | null {
+    return [...this.data.specRows(), ...this.data.archiveRows()].some((row) => row.id === id) ? ['/w', this.state.ws() ?? '', 's', id] : null;
+  }
+
   protected sub(row: TaskRowView): { readonly key: string; readonly text?: string } | null {
     if (row.state === 'struck') return row.note === null ? null : { key: 'tasks.sub.struck', text: row.note };
+    if (this.specWait(row) !== null) return null;
     if (REASONED.has(row.status) && row.reason !== null) return { key: `tasks.sub.${row.status}`, text: row.reason };
     if (row.lane === 'operator' && row.state === 'open') return { key: 'tasks.sub.operator' };
     return null;

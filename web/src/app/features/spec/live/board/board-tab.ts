@@ -1,7 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { afterRenderEffect, ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, resource, signal, type TemplateRef, untracked, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import type { CardState, Frame, FrameCard, LiveFrame, RunState } from '../../../../../../../core/src/files';
 import { ApiClient } from '../../../../core/api.service';
@@ -20,6 +20,7 @@ import { UiSheet } from '../../../../shared/ui/overlay/sheet';
 import { UiScrubber } from '../../../../shared/ui/scrubber/scrubber';
 import { type SegmentedOption, UiSegmented } from '../../../../shared/ui/segmented/segmented';
 import { toneMark } from '../../../../shared/ui/tone';
+import { UiWaitsChip } from '../../../../shared/ui/waits-chip/waits-chip';
 import { prefersReducedMotion } from '../../../../core/motion';
 import { CardContext } from '../card/card-context';
 import { CardDetail } from '../card/card-detail';
@@ -49,6 +50,11 @@ import {
   runStates,
   scrubberStops,
   stateCounts,
+  blockerTitles,
+  heldWait,
+  type KnownSpec,
+  laneSpecWait,
+  specWaitOf,
 } from './board-model';
 
 type AnyFrame = Frame | LiveFrame;
@@ -80,6 +86,8 @@ const PLAY_STEP_MS = 1200;
     BoardCard,
     CardDetail,
     FlowView,
+    RouterLink,
+    UiWaitsChip,
     FrameBar,
     NeedsYou,
     NgTemplateOutlet,
@@ -179,6 +187,27 @@ export class BoardTab {
   protected readonly gridLanes = computed(() => (this.wide() ? this.lanes().filter((l) => l.name !== OPERATOR_LANE) : this.lanes()));
   protected readonly operatorLane = computed(() => (this.wide() ? (this.lanes().find((l) => l.name === OPERATOR_LANE) ?? null) : null));
 
+  /**
+   * Spec 025 (T25, ISC-163): held cards group under core's `waits on NNN`, shown as "waits on" / "wartet auf" with the
+   * numbers in mono and, first in the open group, a link to each blocker spec (never in the summary: no nested control).
+   */
+  protected readonly specWaitOf = specWaitOf;
+  /** Every spec the shell knows, active and archived: the blocker titles and links, unknown numbers drawn unlinked. */
+  private readonly knownSpecs = computed<readonly KnownSpec[]>(() => [...this.data.specRows(), ...this.data.archiveRows()]);
+  protected readonly wsSlug = computed(() => this.state.ws() ?? '');
+  protected specTitle(id: string): string | null {
+    return this.knownSpecs().find((row) => row.id === id)?.title ?? null;
+  }
+  /** A lane whose whole open work waits on spec edges carries the `waits on NNN` chip in its head; never a lane stub. */
+  protected readonly laneWaits = computed(() => {
+    const spec = this.state.specId() ?? '';
+    const known = this.knownSpecs();
+    return new Map(this.lanes().flatMap((lane) => {
+      const blockers = laneSpecWait(lane);
+      return blockers === null ? [] : [[lane.name, { wait: heldWait(spec, blockers, known), titles: blockerTitles(blockers, known) }] as const];
+    }));
+  });
+
   protected readonly legend = computed(() => stateCounts(this.allCards()).map((s) => ({ ...s, pressed: !this.hiddenStates().has(s.state) })));
   /** spec 027: the live frame's round in flight; history frames reconstruct none (design.md, Live-Board). */
   private readonly round = computed(() => {
@@ -248,7 +277,17 @@ export class BoardTab {
     if (picked !== null && lanes.some((l) => l.name === picked)) return picked;
     return (lanes.find((l) => l.needsYou.length > 0) ?? lanes.find((l) => l.inFlight.length > 0) ?? lanes.at(0))?.name ?? null;
   });
-  protected readonly laneOptions = computed<readonly SegmentedOption[]>(() => this.gridLanes().map((l) => ({ key: l.name, label: l.name })));
+  /** A waiting lane's segment leads with `clock` and is named "web, waits on 006" (spec 025, T25). */
+  protected readonly laneOptions = computed<readonly SegmentedOption[]>(() => {
+    const waits = this.laneWaits();
+    const lang = this.lang();
+    return this.gridLanes().map((l) => {
+      const held = waits.get(l.name);
+      if (held === undefined) return { key: l.name, label: l.name };
+      const ariaLabel: string = this.transloco.translate('board.lane.waitsName', { lane: l.name, ids: held.wait.blockers.join(', ') }, lang);
+      return { key: l.name, label: l.name, icon: 'clock', ariaLabel };
+    });
+  });
   /** Lanes hidden with the lane filter: a stub "core · hidden · show" in their place (prototype `.lane-stub`). */
   protected readonly hiddenLaneNames = computed(() => this.order().filter((lane) => this.hiddenLanes().has(lane)));
   /** Landed sections the viewer opened past the first five cards. */

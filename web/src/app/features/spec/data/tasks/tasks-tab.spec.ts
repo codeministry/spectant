@@ -218,3 +218,35 @@ describe('TasksTab', () => {
     expect(root.querySelector('ui-empty-state')?.textContent).toContain('No tasks.md for a feature');
   });
 });
+
+describe('TasksTab spec waits (spec 025, T26, ISC-163)', () => {
+  /** The golden with T27 held on 002, T28 on an unknown 042 and T29 on a met edge to 006 (no hold reason). */
+  function waiting(): TasksBody {
+    const open = GOLDEN.tasks.filter((t) => t.state === 'open').slice(0, 3).map((t) => t.id);
+    const tasks = GOLDEN.tasks.map((t) => {
+      if (t.id === open[0]) return { ...t, status: 'held' as const, reason: 'waits on 002', afterSpecs: ['002'] };
+      if (t.id === open[1]) return { ...t, status: 'held' as const, reason: 'waits on 042', afterSpecs: ['042'] };
+      if (t.id === open[2]) return { ...t, reason: null, afterSpecs: ['006'] };
+      return t;
+    });
+    return { ...GOLDEN, tasks };
+  }
+
+  it('gives a held row the clock, "waits on NNN" with the blocker linked and a disabled box; a met edge none', async () => {
+    const body = waiting();
+    const [first, second, third] = body.tasks.filter((t) => t.afterSpecs !== undefined && t.afterSpecs.length > 0).map((t) => t.id);
+    setUp(body);
+    const { root } = await open();
+    const row = (id: string) => root.querySelector<HTMLElement>(`#task-${id}`);
+    const line = row(first)?.querySelector<HTMLElement>('[data-task-waits]');
+    expect(line?.textContent).toContain('waits on');
+    expect(line?.querySelector('ui-icon')).not.toBeNull();
+    expect(row(first)?.querySelector('.box-lock')).toBeNull();
+    expect(line?.querySelector('a[data-blocker="002"]')?.getAttribute('href')).toBe('/w/harbor/s/002');
+    expect(row(first)?.querySelector<HTMLInputElement>('[data-task-check]')?.disabled).toBe(true);
+    expect(row(first)?.querySelector('[data-sub]')).toBeNull();
+    expect(row(second)?.querySelector('[data-task-waits] a')).toBeNull();
+    expect(row(second)?.querySelector('[data-task-waits] [data-blocker="042"]')).not.toBeNull();
+    expect(row(third)?.querySelector('[data-task-waits]')).toBeNull();
+  });
+});

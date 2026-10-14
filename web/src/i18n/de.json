@@ -1292,7 +1292,8 @@
       "quiet": "nichts in Arbeit",
       "next": "als Nächstes",
       "inRound": "{{count}} in der Runde",
-      "runCount": "{{count}} {{state}}"
+      "runCount": "{{count}} {{state}}",
+      "waitsName": "{{lane}}, wartet auf {{ids}}"
     },
     "section": {
       "needsYou": "Wartet auf Sie",
@@ -1684,7 +1685,8 @@
         "open": "Spec-Kante offen",
         "met": "Spec-Kante erfüllt",
         "bundle": "Bündel, archiviert"
-      }
+      },
+      "edgeName": "{{from}} wartet auf {{to}}, {{state}}"
     },
     "features": {
       "title": "Features in {{ws}}",
@@ -2211,6 +2213,8 @@
     "nameBare": "Wartet auf Spec {{id}}",
     "unknown": "Wartet auf Spec {{id}}, keine solche Spec",
     "more": "Wartet auch auf {{ids}}",
-    "partial": "{{held}} von {{open}} offenen Tasks"
+    "partial": "{{held}} von {{open}} offenen Tasks",
+    "spec": "Spec {{id}} · {{title}}",
+    "specBare": "Spec {{id}}"
   }
 }

@@ -26,6 +26,9 @@ import { type RelativeFormat, UiRelativeTime } from '../../../../shared/ui/relat
 import { UiRovingItem, UiRovingList } from '../../../../shared/ui/roving-list.directive';
 import { UiSectionHeader } from '../../../../shared/ui/section-header/section-header';
 import { type Tone, toneMark } from '../../../../shared/ui/tone';
+import { UiWaitsChip } from '../../../../shared/ui/waits-chip/waits-chip';
+import { ShellData } from '../../../../layout/shell/shell-data.service';
+import { blockerTitles, heldWait } from '../../live/board/board-model';
 
 /** The state filter: `open` is the aggregate of open, takeable, taken and blocked, as `counts.open` is (core). */
 const STATE_KEYS = ['all', 'open', 'takeable', 'taken', 'blocked', 'closed', 'dropped'] as const;
@@ -97,6 +100,7 @@ const FOLD_KEEP = 3;
     UiRovingItem,
     UiRovingList,
     UiSectionHeader,
+    UiWaitsChip,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { 'data-view': 'claims' },
@@ -106,7 +110,8 @@ const FOLD_KEEP = 3;
 export class ClaimsTab {
   protected readonly chipIcon = chipIcon;
   private readonly api = inject(ApiClient);
-  private readonly shell = inject(ShellState);
+  protected readonly shell = inject(ShellState);
+  private readonly data = inject(ShellData);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly transloco = inject(TranslocoService);
@@ -159,6 +164,20 @@ export class ClaimsTab {
   });
 
   /** `/w/:ws/s/:id`, the base of every link the cards make. */
+  /**
+   * Spec 025 (T26, ISC-163): the claims an open spec edge holds (`blocked` with core's `waitsOn`), each with the wait
+   * its `waits on NNN` chip shows and the blocker titles; a met edge carries no `waitsOn`, so the chip goes with it.
+   */
+  protected readonly heldClaims = computed(() => {
+    const known = [...this.data.specRows(), ...this.data.archiveRows()];
+    const spec = this.shell.specId() ?? '';
+    return new Map(
+      (this.model()?.claims ?? []).flatMap((claim) => {
+        const blockers = claim.waitsOn ?? [];
+        return blockers.length === 0 ? [] : [[claim.id, { wait: heldWait(spec, blockers, known), titles: blockerTitles(blockers, known) }] as const];
+      }),
+    );
+  });
   protected readonly base = computed(() => `/w/${this.shell.ws() ?? ''}/s/${this.shell.specId() ?? ''}`);
   protected readonly claimsPath = computed(() => `${this.base()}/claims`);
 

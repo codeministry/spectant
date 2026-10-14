@@ -28,7 +28,10 @@ export interface SegmentedOption {
   readonly icon?: IconName;
   /** Strip mode: the tabular number under the label (cards in the column). */
   readonly count?: number;
-  /** Strip mode: the segment's full accessible name, translated by the host ("Review, 2 cards, 1 waits on you"). */
+  /**
+   * The segment's full accessible name, translated by the host: strip mode "Review, 2 cards, 1 waits on you", radio
+   * mode the board's waiting lane "web, waits on 006" (spec 025).
+   */
   readonly ariaLabel?: string;
 }
 
@@ -174,6 +177,7 @@ const reducedMotion = () =>
             role="radio"
             class="seg"
             [attr.aria-checked]="option.key === value()"
+            [attr.aria-label]="option.ariaLabel ?? null"
             [tabIndex]="i === activeIndex() ? 0 : -1"
             (click)="value.set(option.key)"
             (keydown)="onKey($event)"

@@ -272,8 +272,8 @@ describe('planning-graph', () => {
       const drawnArrows = arrows(r.el);
       expect(drawnArrows.map((p) => p.getAttribute('data-spec-edge'))).toEqual(['open', 'met']);
       const [open, met] = drawnArrows;
-      expect(open.getAttribute('aria-label')).toBe(`009 · Waits on spec 002 · ${en.planning.graph.legend.open}`);
-      expect(met.getAttribute('aria-label')).toBe(`002 · Waits on spec 006 · ${en.planning.graph.legend.met}`);
+      expect(open.getAttribute('aria-label')).toBe(`009 waits on 002, ${en.planning.graph.legend.open}`);
+      expect(met.getAttribute('aria-label')).toBe(`002 waits on 006, ${en.planning.graph.legend.met}`);
       expect(open.querySelector('title')?.textContent).toBe(open.getAttribute('aria-label'));
       const head = (p: SVGPathElement): Element | null => r.el.querySelector(`marker[id="${/#([^)]+)/u.exec(p.getAttribute('marker-end') ?? '')?.[1] ?? ''}"]`);
       expect(head(open)?.getAttribute('data-spec-edge-marker')).toBe('open');

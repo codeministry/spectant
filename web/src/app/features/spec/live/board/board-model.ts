@@ -1,4 +1,4 @@
-import type { CardState, Frame, FrameCard, LiveCard, LiveFrame, RunCounts, RunState, TaskRun } from '../../../../../../../core/src/files';
+import type { CardState, Frame, FrameCard, LiveCard, LiveFrame, RunCounts, RunState, SpecWait, TaskRun } from '../../../../../../../core/src/files';
 import { CARD_STATES, glyphSpec } from '../../../../shared/ui/glyph/states';
 import type { ScrubberFrame } from '../../../../shared/ui/scrubber/scrubber';
 
@@ -242,4 +242,51 @@ export function matchesQuery(card: Pick<FrameCard, 'task' | 'claim' | 'text'>, q
 /** A comma list query param (`?hide=done,closed`) → its entries, empties dropped. */
 export function parseList(param: string | null): string[] {
   return param === null ? [] : param.split(',').filter((entry) => entry !== '');
+}
+
+/**
+ * Spec 025 (T25, ISC-163): the specs a hold reason waits on. Core writes a spec-edge hold as `waits on 002` or
+ * `waits on 002, 042` (`waitsOnReason`, takeable.ts) on the held card and on the task row; any other reason is null.
+ */
+const SPEC_WAIT_REASON = /^waits on (\d{3}(?:, \d{3})*)$/;
+export function specWaitOf(reason: string | null | undefined): readonly string[] | null {
+  const match = SPEC_WAIT_REASON.exec(reason ?? '');
+  return match === null ? null : match[1].split(', ');
+}
+
+/**
+ * The specs a whole lane waits on (spec 025, T25): every open card of the lane is held by a spec edge, so nothing
+ * needs the principal, nothing is in flight or in the round, and every waiting group is a `waits on NNN` group. The
+ * blockers of all its groups, ascending; null when an open card waits on something else, or nothing waits.
+ */
+export function laneSpecWait(lane: LaneView): readonly string[] | null {
+  if (lane.needsYou.length > 0 || lane.inFlight.length > 0 || lane.inRound.length > 0 || lane.waiting.length === 0) return null;
+  const blockers = new Set<string>();
+  for (const group of lane.waiting) {
+    const specs = specWaitOf(group.reason);
+    if (specs === null) return null;
+    for (const id of specs) blockers.add(id);
+  }
+  return [...blockers].sort();
+}
+
+/** A spec row as the shell knows it, active or archived: enough to name and link a blocker. */
+export interface KnownSpec {
+  readonly id: string;
+  readonly title: string;
+}
+
+/**
+ * The `SpecWait` a held claim or a waiting lane shows through `ui-waits-chip` (spec 025, T25/T26): its blockers, those
+ * no known spec carries as `unknownBlockers` (drawn unlinked), and `full` so the chip names no partial scope.
+ */
+export function heldWait(spec: string, blockers: readonly string[], known: readonly KnownSpec[]): SpecWait {
+  const ids = new Set(known.map((row) => row.id));
+  const unknown = blockers.filter((id) => !ids.has(id));
+  return { spec, blockers, ...(unknown.length > 0 ? { unknownBlockers: unknown } : {}), heldTasks: 0, openTasks: 0, full: true };
+}
+
+/** The blocker titles by number, for the chip's accessible name and the group's spec line; unknown numbers left out. */
+export function blockerTitles(blockers: readonly string[], known: readonly KnownSpec[]): Readonly<Record<string, string>> {
+  return Object.fromEntries(blockers.flatMap((id) => known.filter((row) => row.id === id).slice(0, 1).map((row) => [id, row.title] as const)));
 }
