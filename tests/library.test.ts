@@ -4,15 +4,19 @@
 //
 // Fixture: a temp copy of `core/fixtures/library` (every zone, a prototype, an archived spec), a workspace without
 // `specs/` (the empty state) and a registered folder that is removed (409). Nothing in a workspace is ever written.
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { docsRenderOptions } from "../core/src/evidence.ts";
 import { hashForGate } from "../core/src/gates.ts";
+import * as dash from "../core/src/dashboard.ts";
+import * as lib from "../core/src/library.ts";
 import { readCatalog } from "../core/src/library.ts";
 import { renderDocsMarkdown } from "../core/src/markdown-docs.ts";
 import { dashboardApi } from "../server/src/api.ts";
+import * as loader from "../server/src/workspace-loader.ts";
+import { loadCatalog } from "../server/src/workspace-loader.ts";
 import type { ApiHandler } from "../server/src/http.ts";
 import { type Registry, openRegistry } from "../server/src/registry.ts";
 import { type WorkspaceRouteResponses, allowForWorkspace, workspaceRoutes } from "../server/src/spec-routes.contract.ts";
@@ -524,4 +528,106 @@ describe("the library reads a spec's own documents from its read source (spec 02
       }
     }, 60_000);
   }
+});
+
+// Code-review findings 8 and 9 (T60, T61, ISC-156.5): the reader reads only the asked document (core's `catalogDocAt`)
+// and the search only the catalog's documents (core's `readCatalogDocs`), never the dashboard model, and the search
+// resolves each document once, so it grows linearly with the documents. The answers stay byte-identical: the reference
+// is the same handler over the full catalog reading (`loadCatalog`, the dashboard's input), and the digest below was
+// captured from the routes as they stood before the change (829023c).
+describe("the reader and the search look up only what they answer (ISC-156.5)", () => {
+  const BEFORE_DIGEST = "5fa855c8f9b7fca191117f911599750a9952dbd0258beb1941bdd34e55958c4d";
+  const BAD = "/api/workspaces/shelf/library/doc?path=%E0%A4%A";
+  const QUERIES = ["lighthouse", "the", "plan", "Map ", "  TIDE  ", "zz-no-such-word", ""];
+  const extraPaths = ["../README.md", "nope.md", "001-lighthouse-map/nope.md", "archive/005-old/spec.md", "001-lighthouse-map/report.html", "/etc/passwd"];
+
+  const answersOf = async (handler: ApiHandler): Promise<string[]> => {
+    const paths = [...(await readCatalog(shelf)).docs.map((d) => d.path), ...extraPaths];
+    const urls = [
+      ...paths.map((p) => workspaceRoutes.libraryDoc("shelf", p)),
+      BAD,
+      workspaceRoutes.libraryDoc("gone", "tech.md"),
+      workspaceRoutes.libraryDoc("gone", "%E0%A4%A"),
+      workspaceRoutes.libraryDoc("nobody", "tech.md"),
+      ...QUERIES.map((q) => workspaceRoutes.librarySearch("shelf", q)),
+      workspaceRoutes.librarySearch("bare", "lighthouse"),
+      workspaceRoutes.librarySearch("gone", "lighthouse"),
+    ];
+    const out: string[] = [];
+    for (const path of urls) {
+      const url = new URL(`http://127.0.0.1:7717${path}`);
+      const res = await handler(new Request(url.href, { headers: HOST }), url);
+      if (res === null) throw new Error(`declined ${path}`);
+      out.push(`${path} ${res.status} ${res.headers.get("etag") ?? ""} ${await res.text()}`);
+    }
+    return out;
+  };
+
+  test("lookup: reader and search answers are byte-identical to the full catalog reading and to the routes before the change", async () => {
+    const reference = dashboardApi({ registry, services: () => Promise.resolve([]), loadCatalog });
+    const answers = await answersOf(api);
+    expect(answers).toEqual(await answersOf(reference));
+    expect(new Bun.CryptoHasher("sha256").update(answers.join("\n")).digest("hex")).toBe(BEFORE_DIGEST);
+  });
+
+  test("lookup: the reader and the search build no dashboard model and read no workspace input", async () => {
+    const docs = (await readCatalog(shelf)).docs;
+    const dashboard = spyOn(dash, "buildDashboard");
+    const reading = spyOn(loader, "readWorkspaceInput");
+    try {
+      for (const doc of docs) await call(workspaceRoutes.libraryDoc("shelf", doc.path));
+      await call(workspaceRoutes.libraryDoc("shelf", "001-lighthouse-map/plan.md"));
+      await call(workspaceRoutes.librarySearch("shelf", "lighthouse"));
+      await call(workspaceRoutes.librarySearch("shelf", "the"));
+      expect({ buildDashboard: dashboard.mock.calls.length, readWorkspaceInput: reading.mock.calls.length }).toEqual({ buildDashboard: 0, readWorkspaceInput: 0 });
+      // The catalog route keeps its reading over the dashboard's input (the heads' stages).
+      await call(workspaceRoutes.library("shelf"));
+      expect(reading.mock.calls.length).toBe(1);
+    } finally {
+      dashboard.mockRestore();
+      reading.mockRestore();
+    }
+  });
+
+  test("lookup: a search over 2000 evidence files resolves each document once, linear and in catalog order", async () => {
+    const many = join(root, "many");
+    cpSync(LIBRARY, many, { recursive: true });
+    const evidence = join(many, "specs", "001-lighthouse-map", ".evidence");
+    mkdirSync(evidence, { recursive: true });
+    for (let i = 0; i < 2000; i++) writeFileSync(join(evidence, `run-${String(i).padStart(4, "0")}.md`), `# Run ${i}\n\nThe gullfeather trace of run ${i}.\n`);
+    registry.add(many);
+    const readable = (await readCatalog(many)).docs.filter((d) => d.media === "markdown" && d.state !== "missing");
+    const expected = readable.filter((d) => d.path.includes("/.evidence/run-")).map((d) => d.path);
+    expect(expected.length).toBe(2000);
+
+    const sources = spyOn(lib, "catalogSourceOf");
+    const find = Array.prototype.find;
+    let visits = 0;
+    // Counts every element any `find` visits during the search: a scan of the catalog per document is quadratic.
+    Array.prototype.find = function (this: unknown[], predicate: (value: unknown, index: number, array: unknown[]) => unknown, thisArg?: unknown): unknown {
+      const counted = (value: unknown, index: number, array: unknown[]): unknown => {
+        visits++;
+        return predicate.call(thisArg, value, index, array);
+      };
+      return find.call(this, counted) as unknown;
+    } as typeof Array.prototype.find;
+    try {
+      for (const round of ["cold", "warm"]) {
+        visits = 0;
+        sources.mockClear();
+        const started = performance.now();
+        const res = await call(workspaceRoutes.librarySearch("many", "gullfeather"));
+        const elapsed = performance.now() - started;
+        const body = (await res.json()) as WorkspaceRouteResponses["librarySearch"];
+        expect({ round, status: res.status, hits: body.hits.map((h) => h.path) }).toEqual({ round, status: 200, hits: expected });
+        // One path lookup per document: one source lookup each, and no scan of the catalog per document.
+        expect(sources.mock.calls.length).toBeLessThanOrEqual(readable.length);
+        expect(visits).toBeLessThan(4 * readable.length);
+        expect(elapsed).toBeLessThan(10_000);
+      }
+    } finally {
+      Array.prototype.find = find;
+      sources.mockRestore();
+    }
+  }, 60_000);
 });
