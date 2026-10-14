@@ -133,11 +133,11 @@ export class DetailSelection {
     const ref = this.selected();
     if (ref === null) return;
     await this.router.navigate([], { queryParams: { [SEL_PARAM]: null }, queryParamsHandling: 'merge', replaceUrl: true });
-    const focus = (): void => this.doc.querySelector<HTMLElement>(refSelector(ref))?.focus();
-    focus();
-    // The sheet (compact) is a modal dialog: until the closing render removes it the page is inert, and on its destroy
-    // it hands focus back to its opener (the body after a reload). Focus the object again once that render is done.
-    afterNextRender(focus, { injector: this.injector });
+    // Focus the object only once the closing render is done, never when the navigation resolves: until that render the
+    // view still shows the selection, so a key on the object would act on its selected state (the dashboard row's link
+    // still leads to the spec page, ISC-61.1). And the sheet (compact) is a modal dialog: until that render removes it
+    // the page is inert, and on its destroy it hands focus back to its opener (the body after a reload).
+    afterNextRender(() => this.doc.querySelector<HTMLElement>(refSelector(ref))?.focus(), { injector: this.injector });
   }
 
   private readParam(): string | null {
