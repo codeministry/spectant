@@ -11,7 +11,7 @@ import { join, relative, sep } from 'node:path';
 
 import { buildDashboard, type DashboardInput } from '../src/dashboard.ts';
 import type { LibraryCatalog, LibraryDoc, SpecType } from '../src/files.ts';
-import { readCatalog } from '../src/library.ts';
+import { catalogSourceOf, readCatalog } from '../src/library.ts';
 import { readLockSources } from '../src/locks.ts';
 import { renderDocsMarkdown } from '../src/markdown-docs.ts';
 import { stageOf, type StageInput } from '../src/stage.ts';
@@ -668,5 +668,103 @@ describe('preview (ISC-159)', () => {
       [`${S2}/.design/prototype/detail`]: `${S2}/.design/desktop-prototype.png`,
       [`${S2}/.design/prototype/list`]: `${S2}/.design/desktop-prototype-list.png`,
     });
+  });
+});
+
+describe('worktree copy (spec 027, ISC-181)', () => {
+  const dirs: string[] = [];
+
+  afterAll(() => {
+    for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** Sets a file's time (ISO 8601). */
+  const touch = (path: string, iso: string): void => {
+    const at = new Date(Date.parse(iso));
+    utimesSync(path, at, at);
+  };
+
+  /**
+   * The fixture beside a copy of 001 and of 002 in a sibling folder, named in `copies` as the server's reading names a
+   * worktree copy. 001's copy: one more event line (2026-03-20), a retitled plan.md newer than it, a tasks.md with one
+   * more ticked task older than it, no `artifacts/`. 002's copy: spec.md at `phase: complete`, so it lacks nothing.
+   */
+  const planted = (): { root: string; copies: Record<string, string> } => {
+    const root = workspaceCopy();
+    const sibling = mkdtempSync(join(tmpdir(), 'spectant-library-copy-'));
+    dirs.push(root, sibling);
+    const copies: Record<string, string> = {};
+    for (const spec of [S1, S2]) {
+      const copy = join(sibling, spec);
+      cpSync(join(root, 'specs', spec), copy, { recursive: true });
+      for (const path of filesBelow(copy)) touch(join(copy, path), new Date(timeOf(`specs/${spec}/${path}`)).toISOString());
+      copies[spec] = copy;
+    }
+    const main = (spec: string, name: string): string => readFileSync(join(root, 'specs', spec, name), 'utf-8');
+    const c1 = copies[S1] as string;
+    writeFileSync(join(c1, 'plan.md'), main(S1, 'plan.md').replace('# Plan 001 — lighthouse-map', '# Plan 001 — lighthouse-map (copy)'));
+    writeFileSync(join(c1, 'tasks.md'), main(S1, 'tasks.md').replace('- [ ] T3', '- [x] T3'));
+    writeFileSync(
+      join(c1, 'events.jsonl'),
+      `${main(S1, 'events.jsonl')}{"ts":"2026-03-20T09:00:00Z","from":"build","to":"code-review","command":"/spec-implement 001","actor":"u:3f9c0a7d"}\n`,
+    );
+    rmSync(join(c1, 'artifacts'), { recursive: true });
+    touch(join(c1, 'plan.md'), '2026-03-21T09:00:00Z');
+    touch(join(c1, 'tasks.md'), '2026-03-19T09:00:00Z');
+    const c2 = copies[S2] as string;
+    writeFileSync(join(c2, 'spec.md'), main(S2, 'spec.md').replace('phase: scoping', 'phase: complete'));
+    touch(join(c2, 'spec.md'), '2026-03-09T10:00:00Z');
+    return { root, copies };
+  };
+
+  const docOf = (catalog: LibraryCatalog, path: string): LibraryDoc | undefined => catalog.docs.find((d) => d.path === path);
+
+  test('worktree copy: a spec named in copies lists its own files, stale, missing and heads from the copy', async () => {
+    const { root, copies } = planted();
+    const before = [treeHash(root), ...Object.values(copies).map((c) => treeHash(c))];
+    const main = await readCatalog(root);
+    const catalog = await readCatalog(root, undefined, { copies });
+    expect([treeHash(root), ...Object.values(copies).map((c) => treeHash(c))]).toEqual(before);
+
+    // specDocs: title and time of the copy's plan.md and tasks.md; the catalog path stays the spec's own.
+    expect(docOf(catalog, `${S1}/plan.md`)).toMatchObject({ title: 'Plan 001 — lighthouse-map (copy)', modified: '2026-03-21T09:00:00.000Z', state: 'ok' });
+    expect(docOf(main, `${S1}/plan.md`)).toMatchObject({ title: 'Plan 001 — lighthouse-map', state: 'stale' });
+    // specTime: the copy's last event line (2026-03-20) makes its tasks.md, design.md and the workspace's tech.md stale.
+    expect(docOf(catalog, `${S1}/tasks.md`)).toMatchObject({ modified: '2026-03-19T09:00:00.000Z', state: 'stale' });
+    expect(docOf(main, `${S1}/tasks.md`)?.state).toBe('ok');
+    expect(docOf(catalog, `${S1}/design.md`)?.state).toBe('stale');
+    expect(docOf(catalog, 'tech.md')?.state).toBe('stale');
+    expect(docOf(main, 'tech.md')?.state).toBe('ok');
+    // missingOf: the copy's spec.md is complete, so 002 lacks nothing; main's still lacks plan.md and tasks.md.
+    expect(catalog.docs.filter((d) => d.spec === S2 && d.state === 'missing')).toEqual([]);
+    expect(main.docs.filter((d) => d.spec === S2 && d.state === 'missing').map((d) => d.path)).toEqual([`${S2}/plan.md`, `${S2}/tasks.md`]);
+    // specFilesOf: the head counts the copy's one more ticked task.
+    const done = (c: LibraryCatalog): number | undefined => c.groups.find((g) => g.spec === S1)?.tasksDone;
+    expect(done(main)).toBe(2);
+    expect(done(catalog)).toBe(3);
+    // `artifacts/` stays on the main checkout although the copy has none.
+    const zone = (c: LibraryCatalog): LibraryDoc[] => c.docs.filter((d) => d.path.startsWith(`${S1}/artifacts/`));
+    expect(zone(catalog)).toEqual(zone(main));
+    expect(zone(catalog).length).toBeGreaterThan(0);
+  });
+
+  test('worktree copy: without copies, or with copies naming no active spec, the catalog is unchanged', async () => {
+    const { root, copies } = planted();
+    const main = await readCatalog(root);
+    expect(await readCatalog(root, undefined, {})).toEqual(main);
+    expect(await readCatalog(root, undefined, { copies: { '009-gone': copies[S1] as string } })).toEqual(main);
+  });
+
+  test('worktree copy: catalogSourceOf reads a spec own file from the copy, everything else from specs/', () => {
+    const root = join(tmpdir(), 'w');
+    const copy = join(root, '.worktrees', 'one', 'specs', S1);
+    const copies = { [S1]: copy };
+    const specs = join(root, 'specs');
+    expect(catalogSourceOf(root, { path: `${S1}/plan.md`, spec: S1 }, copies)).toEqual({ dir: copy, rel: 'plan.md' });
+    expect(catalogSourceOf(root, { path: `${S1}/spec.md`, spec: S1 }, copies)).toEqual({ dir: copy, rel: 'spec.md' });
+    expect(catalogSourceOf(root, { path: `${S1}/artifacts/coverage.md`, spec: S1 }, copies)).toEqual({ dir: specs, rel: `${S1}/artifacts/coverage.md` });
+    expect(catalogSourceOf(root, { path: `${S2}/plan.md`, spec: S2 }, copies)).toEqual({ dir: specs, rel: `${S2}/plan.md` });
+    expect(catalogSourceOf(root, { path: 'tech.md', spec: 'workspace' }, copies)).toEqual({ dir: specs, rel: 'tech.md' });
+    expect(catalogSourceOf(root, { path: `${S1}/plan.md`, spec: S1 })).toEqual({ dir: specs, rel: `${S1}/plan.md` });
   });
 });

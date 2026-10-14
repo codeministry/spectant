@@ -1295,7 +1295,10 @@ tracked when one of them lies under `specs/NNN-slug/`. Then the kinds in `WORKTR
 it. The three in-place writes to an existing spec, the reviewed mark, a task checkbox and a stage transition, go to
 that same copy under the same hash check against the file of that copy; the main checkout stays byte-identical. A
 write whose source changed since the client rendered it, because a worktree appeared or vanished, is a 409.
-Allocating an idea creates a spec that has no worktree yet, so it always writes in the main checkout.
+Allocating an idea creates a spec that has no worktree yet, so it always writes in the main checkout. The library's
+documents of the spec follow the same source (`readCatalog` with `copies`, `catalogSourceOf` in `core/src/library.ts`):
+its five Markdown files, their stale and missing judgements and its group head come from the copy, while its
+`artifacts/`, `.evidence/` and `.design/` files stay on the main checkout.
 
 Everywhere else the source stays `main`, as before spec 027: the spec has no worktree, its folder is untracked, or
 `specs/` or the folder is a symbolic link, which git lists, if at all, as the link itself (`specs`, `specs/NNN-slug`),

@@ -973,7 +973,7 @@ async function serve(repo: string, tag: string): Promise<{ url: string; stop: ()
 /**
  * Every read the dashboard, the board and the spec page of each id make, each revalidated with its ETag: the workspace
  * list, the dashboard, the planning tree behind the board, and per spec the head and every tab (timeline, claims,
- * tasks, evidence, frames, the live board); every read answers 200.
+ * tasks, frames, the live board); every read answers 200.
  */
 async function readEverything(url: string, ids: readonly string[]): Promise<void> {
   const reads: Array<[string, readonly number[]]> = [
