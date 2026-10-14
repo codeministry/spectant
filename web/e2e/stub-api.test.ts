@@ -2194,6 +2194,13 @@ describe('stub API: spec edges via X-Spectant-Stub-Edges (spec 025, T20, ISC-163
     expect((await page(partial.spec, headers)).head.waits).toEqual(PARTIAL);
     const held = (await tasks(partial.spec, headers)).tasks.filter((t) => t.afterSpecs?.includes(partial.on) === true).map((t) => t.id);
     expect(held).toEqual([...partial.tasks]);
+    // The tasks answer carries the same hold (core tasks.ts, ISC-162.2): no open one of them is left open or
+    // dispatched, each held one reads `waits on 006`; a failed or questioned one keeps its round's word.
+    const open = (await tasks(partial.spec, headers)).tasks.filter((t) => held.includes(t.id) && t.state === 'open');
+    expect(open.filter((t) => t.status === 'open' || t.status === 'dispatched')).toEqual([]);
+    const heldRows = open.filter((t) => t.status === 'held');
+    expect(heldRows.length).toBeGreaterThan(0);
+    expect(heldRows.map((t) => t.reason)).toEqual(heldRows.map(() => `waits on ${partial.on}`));
     // An open spec-edge hold wins over a carried waiting or dispatched card's round reason (core live.ts); a running,
     // landed or failed card keeps its own state and reason.
     const cards = (await live(partial.spec, headers)).cards.filter((c) => held.includes(c.task));

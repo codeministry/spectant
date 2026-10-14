@@ -137,6 +137,20 @@ describe('BoardCard', () => {
     expect(host.querySelector('ui-dialog')?.hasAttribute('data-fullscreen')).toBe(false);
   });
 
+  it('spec 025: a waiting card held by a spec edge reads its reason through the catalogue, the blockers marked; other reasons as written', async () => {
+    const { fixture, article, host } = await render({ ...base, state: 'waiting', reason: 'waits on 006, 042' });
+    (article.querySelector('.id') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    const waits = host.querySelector('[data-card-detail] [data-detail-waits]');
+    expect(waits?.textContent.replace(/\s+/g, ' ').trim()).toBe('waits on 006, 042');
+    expect([...(waits?.querySelectorAll('[data-blocker]') ?? [])].map((el) => el.getAttribute('data-blocker'))).toEqual(['006', '042']);
+    const other = await render({ ...base, state: 'waiting', reason: 'after T1 still open' });
+    (other.article.querySelector('.id') as HTMLButtonElement).click();
+    await other.fixture.whenStable();
+    expect(other.host.querySelector('[data-detail-waits]')).toBeNull();
+    expect(other.host.querySelector('[data-card-detail] .cd-dl')?.textContent).toContain('after T1 still open');
+  });
+
   it('the detail is full screen at the compact tier', async () => {
     tier.set('compact');
     const { fixture, article, host } = await render(base);

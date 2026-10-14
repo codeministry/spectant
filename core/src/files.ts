@@ -1336,6 +1336,11 @@ export interface TaskParseInput {
   readonly constitution?: string;
   /** rounds.jsonl, for the round state of each task; absent means the checkboxes decide. */
   readonly rounds?: string;
+  /**
+   * This spec's spec edges as `resolveEdges` resolved them over the workspace (spec 025, ISC-162.2): an open one on an
+   * open task, or on its claim, holds the task `held` with the reason `waits on NNN`. Absent or empty, nothing waits.
+   */
+  readonly specEdges?: readonly SpecEdge[];
 }
 
 // ─── Evidence (evidence.ts) ──────────────────────────────────────────────────────────────────────────────────────

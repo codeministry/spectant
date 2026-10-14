@@ -278,7 +278,8 @@ dashboard and in the archive listing. `tasks.ts` (`parseTaskLines`) reads the fu
 
 The Tasks tab's state per task is the newest `rounds.jsonl` result card of the same task (same id and text): open,
 dispatched, held, question, concerns, fail, done or closed; without one the checkbox decides, and a checked box
-outranks a round that left the task unfinished.
+outranks a round that left the task unfinished. An open spec edge on an open task, or on its claim, makes that task
+`held` with the reason `waits on NNN` over an open, dispatched or held state; fail, question and concerns keep theirs.
 
 The frontmatter is not read; the reviewed hash ignores checkbox states and `~~`.
 

@@ -37,6 +37,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DashboardModel } from "../core/src/dashboard.ts";
+import type { TasksTab } from "../core/src/files.ts";
 import { hashForGate } from "../core/src/gates.ts";
 import { type EmbeddedManifest, embeddedAssetFor } from "../server/src/assets.contract.ts";
 import { dashboardApi } from "../server/src/api.ts";
@@ -1201,6 +1202,11 @@ describe("ISC-165 blockers: the spec edges, the merge reads and the overlap warn
       expect(await (await fetch(`${url}${specRoutes.spec(SLUG, "004")}`)).text()).toMatch(waitsOn002);
       expect(await (await fetch(`${url}${specRoutes.claims(SLUG, "004")}`)).text()).toContain('"waitsOn":["002"]');
       expect(await (await fetch(`${url}${specRoutes.live(SLUG, "003")}`)).text()).toContain("waits on 002");
+      // The tasks route (ISC-162.2): 003's T2 by its own edge, T4 and 004's open tasks by their claim's, all held.
+      const held = async (id: string) =>
+        ((await (await fetch(`${url}${specRoutes.tasks(SLUG, id)}`)).json()) as TasksTab).tasks.filter((t) => t.status === "held").map((t) => `${t.id}: ${String(t.reason)}`);
+      expect(await held("003")).toEqual(["T2: waits on 002", "T4: waits on 002"]);
+      expect(await held("004")).toEqual(["T2: waits on 002", "T3: waits on 002"]);
     } finally {
       await stop();
       spy.mockRestore();

@@ -352,6 +352,17 @@ describe('spec edges: takeable (ISC-162.2)', () => {
     expect(map).toContain('T4 ISC-6: claim blocked by ISC-5');
   });
 
+  test('the tasks tab: a task held by its own edge or by its claim edge reads held, waits on 002; met, the box decides', () => {
+    const rows = (num: string, merge: readonly MergeState[]) =>
+      parseTaskLines({ tasks: spec(num).texts.tasks ?? '', constitution: CONSTITUTION, specEdges: edgesOf(num, merge) }).tasks.map((t) => `${t.id} ${t.status}: ${String(t.reason)}`);
+    // 003: T2 by its own edge, T4 by the edge on its claim ISC-6; T3's edge on the archived 001 is met.
+    expect(rows('003', BASE)).toEqual(['T1 open: null', 'T2 held: waits on 002', 'T3 open: null', 'T4 held: waits on 002']);
+    // 004: only the claim ISC-9 carries the edge, and it holds both of its open tasks; the landed T1 stays done.
+    expect(rows('004', BASE)).toEqual(['T1 done: null', 'T2 held: waits on 002', 'T3 held: waits on 002']);
+    expect(rows('004', MERGED_002)).toEqual(['T1 done: null', 'T2 open: null', 'T3 open: null']);
+    expect(rows('007', BASE)).toContain('T2 held: waits on 042');
+  });
+
   test('an edge on a number no spec carries holds too: waits on 042', () => {
     expect(entries(roundOf('007', BASE).held)).toContain('T2 ISC-13: waits on 042');
   });

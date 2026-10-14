@@ -239,6 +239,8 @@ export function specRoutesApi(options: SpecRoutesOptions): ApiHandler {
           tasks: bytes.toString("utf8"),
           ...(text === null ? {} : { constitution: text }),
           ...(files.texts.rounds === undefined ? {} : { rounds: files.texts.rounds }),
+          // The spec edges as the claims and live routes read them: a held task carries `waits on NNN` (ISC-162.2).
+          specEdges: await specEdgesOf(root, ref),
         });
         return json(req, 200, tab, { [TASKS_HASH_HEADER]: new Bun.CryptoHasher("sha256").update(bytes).digest("hex") });
       }

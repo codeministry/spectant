@@ -1118,7 +1118,7 @@ async function edgeVariant(core: Core, edge: EdgeCore, base: TreeGoldens, state:
       const page = edge.buildSpecPage({ files: { folder: files.folder, texts: own }, others, tldr, ...(workflow ? { workflow } : {}), mergeState });
       const claims = edge.buildClaimViews({ files, specEdges });
       const { tasks: tasksText, rounds } = files.texts;
-      const tasks = tasksText === undefined ? null : edge.parseTaskLines({ tasks: tasksText, ...(constitution === null ? {} : { constitution }), ...(rounds === undefined ? {} : { rounds }) });
+      const tasks = tasksText === undefined ? null : edge.parseTaskLines({ tasks: tasksText, ...(constitution === null ? {} : { constitution }), ...(rounds === undefined ? {} : { rounds }), specEdges });
       const liveFiles = { folder: files.folder, texts: { ...files.texts, ...(constitution === null ? {} : { constitution }) } };
       const live = edge.buildLiveFrame({ files: liveFiles, locks, now: LIVE_NOW, specEdges });
       return { ...golden, spec: page, claims, tasks, locked: lockFixtures(core, page, live, claims, activityClaims) };

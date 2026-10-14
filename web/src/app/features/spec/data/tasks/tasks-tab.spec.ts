@@ -249,4 +249,14 @@ describe('TasksTab spec waits (spec 025, T26, ISC-163)', () => {
     expect(row(second)?.querySelector('[data-task-waits] [data-blocker="042"]')).not.toBeNull();
     expect(row(third)?.querySelector('[data-task-waits]')).toBeNull();
   });
+
+  it('ISC-162.2: a task held only by its claim edge (no afterSpecs of its own) shows the wait from core reason', async () => {
+    const id = GOLDEN.tasks.find((t) => t.state === 'open')?.id;
+    setUp({ ...GOLDEN, tasks: GOLDEN.tasks.map((t) => (t.id === id ? { ...t, status: 'held' as const, reason: 'waits on 002', afterSpecs: [] } : t)) });
+    const { root } = await open();
+    const row = root.querySelector<HTMLElement>(`#task-${String(id)}`);
+    expect(row?.querySelector('[data-task-waits] a[data-blocker="002"]')?.getAttribute('href')).toBe('/w/harbor/s/002');
+    expect(row?.querySelector<HTMLInputElement>('[data-task-check]')?.disabled).toBe(true);
+    expect(row?.querySelector('[data-sub]')).toBeNull();
+  });
 });

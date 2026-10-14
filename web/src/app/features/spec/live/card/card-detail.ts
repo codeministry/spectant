@@ -10,6 +10,7 @@ import { stateKey } from '../../../../shared/ui/glyph/states';
 import { UiKbd } from '../../../../shared/ui/kbd/kbd';
 import { UiDialog } from '../../../../shared/ui/overlay/dialog';
 import { UiStateChip } from '../../../../shared/ui/state-chip/state-chip';
+import { specWaitOf } from '../board/board-model';
 import { agentOfCard } from '../live-frame';
 import { AgentChip } from '../this-frame/agent-chip';
 import type { CardHistoryEntry } from './card-history';
@@ -91,7 +92,12 @@ import { CardContext } from './card-context';
         <dl class="cd-dl">
           @if (c.reason) {
             <dt>{{ 'board.detail.reason' | transloco }}</dt>
-            <dd>{{ c.reason }}</dd>
+            <!-- spec 025: core's "waits on NNN" through the catalogue, as the board's group reads it (Flow flattens those). -->
+            @if (specWaitOf(c.reason); as specs) {
+              <dd data-detail-waits>{{ 'waits.on' | transloco }} @for (id of specs; track id; let last = $last) {<span class="mono" [attr.data-blocker]="id">{{ id }}</span>{{ last ? '' : ', ' }}}</dd>
+            } @else {
+              <dd>{{ c.reason }}</dd>
+            }
           }
           @if (c.builder) {
             <dt>{{ 'board.detail.builder' | transloco }}</dt>
@@ -153,6 +159,8 @@ export class CardDetail {
 
   readonly card = input.required<FrameCard | LiveCard>();
   readonly history = input<readonly CardHistoryEntry[] | null>(null);
+  /** The specs a `waits on NNN` reason names (spec 025, ISC-163), null for any other reason. */
+  protected readonly specWaitOf = specWaitOf;
   readonly open = model(false);
 
   protected readonly compact = computed(() => this.shell.tier() === 'compact');
