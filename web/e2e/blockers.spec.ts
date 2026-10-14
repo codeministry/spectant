@@ -191,3 +191,99 @@ test.describe('blockers waits: the edges are met', () => {
     for (const task of partial.tasks) await expect(page.locator(`li[data-task-row]#task-${task}`)).toHaveCount(1);
   });
 });
+
+/**
+ * The spec overlap of harbor's golden (spec 025, ISC-164.1): `bun run e2e -- blockers -g overlap`.
+ *
+ * 002 and 004 share `web/src/app/retention/` with no edge between them; core puts the `spec-overlap` warning on 002,
+ * the waiting spec, with the edge `(after: 004)` (`web/e2e/README.md` § The spec edges). No edges variant is needed.
+ *
+ * - "overlap", workspace dashboard: one overlap line in the Warnings list, on 002, naming 004, with the shared path
+ *   (its suffix shown, the full path kept) and a chip whose copy puts `(after: 004)` on the clipboard.
+ * - "overlap", spec heads: 002's head holds the line `#overlap-004` (waiting) and copies `(after: 004)`; 004's head
+ *   holds `#overlap-002` (not waiting) and copies the reverse `(after: 002)`.
+ * - "overlap", spec context at 1440: the short form beside the head links to `#overlap-004`, and the jump lands there.
+ * - "overlap", count: the warning shows on three surfaces (list, both heads), at least the two the claim asks for.
+ */
+const OVERLAP = { waiting: '002', other: '004', path: 'web/src/app/retention/', shown: 'retention/' } as const;
+const edgeOn = (other: string): string => `(after: ${other})`;
+
+/** The visible overlap lines of the workspace dashboard's Warnings list (the rail at 1440, the section below). */
+const listOverlaps = (page: Page): Locator =>
+  page.locator('app-warnings-panel [data-warning-kind="spec-overlap"]').filter({ visible: true });
+const headOverlaps = (page: Page): Locator =>
+  page.locator('app-overlap-lines[data-head-overlaps] li[data-overlap-line]').filter({ visible: true });
+
+/** Clicks the copy button of `chip` over a cleared clipboard and returns what the clipboard then holds. */
+async function copied(page: Page, chip: Locator): Promise<string> {
+  await page.evaluate(() => navigator.clipboard.writeText(''));
+  const button = chip.locator('button.copy');
+  await button.click();
+  await expect(button, 'the chip confirms the copy').toHaveAttribute('data-copied', '');
+  return page.evaluate(() => navigator.clipboard.readText());
+}
+
+test.describe('blockers overlap: the spec-overlap warning of 002 and 004', () => {
+  test.use({ ...atWidth(WIDTHS.desktop), permissions: ['clipboard-read', 'clipboard-write'] });
+
+  test('overlap: the Warnings list holds the line on 002 with the path, its chip copies (after: 004)', async ({ page }) => {
+    await open(page, `/w/${WS}`);
+    const line = listOverlaps(page);
+    await expect(line, 'one overlap line in the list').toHaveCount(1);
+    const onWaiting = page.locator(`app-warnings-panel [data-warning-spec="${OVERLAP.waiting}"] [data-warning-kind="spec-overlap"]`);
+    await expect(onWaiting.filter({ visible: true }), 'the line stands in 002\'s group').toHaveCount(1);
+    await expect(line.locator('[data-overlap-other]'), 'the other spec').toHaveText(OVERLAP.other);
+    const path = line.locator('[data-overlap-path]');
+    await expect(path, 'one shared path').toHaveCount(1);
+    await expect(path).toHaveText(OVERLAP.shown);
+    await expect(path).toHaveAttribute('data-full', OVERLAP.path);
+    const chip = line.locator('ui-command-chip[data-overlap-edge]');
+    await expect(chip.locator('code'), 'the edge 002 could carry').toHaveText(edgeOn(OVERLAP.other));
+    expect(await copied(page, chip), 'the clipboard holds the edge').toBe(edgeOn(OVERLAP.other));
+  });
+
+  for (const [spec, other, waiting] of [
+    [OVERLAP.waiting, OVERLAP.other, true],
+    [OVERLAP.other, OVERLAP.waiting, false],
+  ] as const) {
+    test(`overlap: ${spec}'s head holds the line with ${other}, its chip copies (after: ${other})`, async ({ page }) => {
+      await open(page, specPath(spec));
+      const line = headOverlaps(page);
+      await expect(line, `one overlap line in ${spec}'s head`).toHaveCount(1);
+      await expect(line).toHaveAttribute('id', `overlap-${other}`);
+      await expect(line).toHaveAttribute('data-overlap-with', other);
+      if (waiting) await expect(line, '002 is the waiting side').toHaveAttribute('data-overlap-waiting', '');
+      else await expect(line, '004 is not the waiting side').not.toHaveAttribute('data-overlap-waiting');
+      await expect(line.locator('[data-overlap-other]')).toHaveText(other);
+      await expect(line.locator('[data-overlap-other]')).toHaveAttribute('href', specPath(other));
+      await expect(line.locator('[data-overlap-path]')).toHaveAttribute('title', OVERLAP.path);
+      const chip = line.locator('ui-command-chip[data-overlap-edge]');
+      await expect(chip).toBeVisible();
+      await expect(chip.locator('code')).toHaveText(edgeOn(other));
+      expect(await copied(page, chip), `the clipboard holds ${spec}'s edge`).toBe(edgeOn(other));
+    });
+  }
+
+  test("overlap: 002's context at 1440 shows the short form, its anchor jumps to the head line", async ({ page }) => {
+    await open(page, specPath(OVERLAP.waiting));
+    const short = page.locator(`[data-context-overlaps] li[data-overlap-short][data-overlap-with="${OVERLAP.other}"]`);
+    await expect(short).toHaveCount(1);
+    await expect(page.locator('[data-context-overlaps] [data-overlap-line]'), 'no full line repeats beside the head').toHaveCount(0);
+    await short.locator('a[data-overlap-anchor]').click();
+    await expect(page).toHaveURL((url) => url.pathname === specPath(OVERLAP.waiting) && url.hash === `#overlap-${OVERLAP.other}`);
+    await expect(page.locator(`#overlap-${OVERLAP.other}`), 'the head line is in view').toBeInViewport();
+  });
+
+  test('overlap: the warning shows on at least two surfaces, the list and both heads', async ({ page }) => {
+    let shown = 0;
+    await open(page, `/w/${WS}`);
+    await expect(listOverlaps(page)).toHaveCount(1);
+    shown += await listOverlaps(page).count();
+    for (const spec of [OVERLAP.waiting, OVERLAP.other]) {
+      await open(page, specPath(spec));
+      await expect(headOverlaps(page)).toHaveCount(1);
+      shown += await headOverlaps(page).count();
+    }
+    expect(shown, 'the list plus both heads').toBe(3);
+  });
+});
