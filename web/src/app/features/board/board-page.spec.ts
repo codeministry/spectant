@@ -139,6 +139,19 @@ describe('BoardPage (T121, ISC-129)', () => {
     expect(col(page, stage)?.hasAttribute('data-stub')).toBe(false);
   });
 
+  it('unfolds the last folded column and closes the last opened one, dropping ?fold= and ?open= from the URL', async () => {
+    const page = await open('/w/harbor/board?fold=review&open=plan');
+    expect(col(page, 'review')?.hasAttribute('data-stub')).toBe(true);
+    col(page, 'review')?.querySelector<HTMLButtonElement>('[data-fold-toggle]')?.click();
+    await settle();
+    expect(url()).not.toContain('fold=');
+    expect(col(page, 'review')?.hasAttribute('data-stub')).toBe(false);
+    col(page, 'plan')?.querySelector<HTMLButtonElement>('.head [data-fold-toggle]')?.click();
+    await settle();
+    expect(url()).not.toContain('open=');
+    expect(col(page, 'plan')?.hasAttribute('data-stub')).toBe(true);
+  });
+
   it('puts the gate dfn on review and done only, with the catalogue gate text, and the hourglass on waiting stages', async () => {
     const page = await open('/w/harbor/board');
     const gated = [...page.querySelectorAll<HTMLElement>('.scroller [data-col]')].filter((c) => c.querySelector('ui-term dfn'));
