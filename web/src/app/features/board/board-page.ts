@@ -48,7 +48,7 @@ import { type MovedCard, MoveToMenu, stepTarget } from './move-to-menu';
 import { RefusalNotice } from './refusal-notice';
 
 /** Every key the board query owns: a navigation clears the ones the next query leaves out and keeps any other param. */
-const QUERY_KEYS = ['feature', 'milestone', 'type', 'assignee', 'group', 'col'] as const;
+const QUERY_KEYS = ['feature', 'milestone', 'type', 'assignee', 'group', 'col', 'q', 'open', 'fold'] as const;
 
 /**
  * The router `queryParams` that turn the URL's board query into `query`: its non-default keys, and null (removed) for
