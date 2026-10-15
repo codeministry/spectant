@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { provideTransloco, type Translation, type TranslocoLoader, TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 import type { Workflow, WorkflowRow } from '../../../../../core/src/files';
@@ -107,7 +107,9 @@ const glossaryRows = (root: HTMLElement) => [...root.querySelectorAll('table[dat
 const cells = (row: Element) => [...row.querySelectorAll('th, td')].map(text);
 const source = (root: HTMLElement) => text(root.querySelector('[data-workflow-source]'));
 const figure = (root: HTMLElement, type: string) => root.querySelector<HTMLElement>(`figure[data-workflow-figure="${type}"]`);
-const nodesOf = (root: HTMLElement, type: string) => [...(figure(root, type)?.querySelectorAll('[data-diagram] g[data-stage]') ?? [])];
+/** The stage nodes a figure draws; the optional steps, which are no stage, have their own helper. */
+const nodesOf = (root: HTMLElement, type: string) => [...(figure(root, type)?.querySelectorAll('[data-diagram] g[data-stage]:not([data-optional])') ?? [])];
+const optionalOf = (root: HTMLElement, type: string) => [...(figure(root, type)?.querySelectorAll('[data-diagram] g[data-stage][data-optional]') ?? [])];
 /** The stages a figure draws, in drawing order: the main line, then the detours. */
 const drawnStages = (root: HTMLElement, type: string) => nodesOf(root, type).map((g) => g.getAttribute('data-stage') ?? '');
 const nodeLabels = (root: HTMLElement, type: string) => nodesOf(root, type).map(text);
@@ -172,26 +174,56 @@ describe('HelpPage workflows (ISC-116, ISC-123)', () => {
     expect(root.querySelector<HTMLSelectElement>('select[data-workflow-workspace]')?.value).toBe('');
     expect(source(root)).toBe('Default table: no workspace is open.');
     expect(planningCalls).toEqual([]);
-    expect(drawnStages(root, 'feature')).toEqual(['plan', 'tasks', 'review', 'build', 'code-review', 'close', 'done', 'blocked', 'close-pending']);
+    // Close-pending only under `code_review: feature`: the default per-spec review never reaches it.
+    expect(drawnStages(root, 'feature')).toEqual(['plan', 'tasks', 'review', 'build', 'code-review', 'close', 'done', 'blocked']);
+    expect(optionalOf(root, 'feature').map(text)).toEqual(['Design (optional)']);
   });
 
-  it('draws one inline svg figure per spec type with a caption, rendered without a render run', async () => {
+  it('draws the optional steps of the picked type: none for a spike, design and a voluntary review for a chore', async () => {
+    setUp();
+    expect(optionalOf((await open(null, '/help?type=spike')).root, 'spike')).toHaveLength(0);
+    TestBed.resetTestingModule();
+    setUp();
+    const { root } = await open(null, '/help?type=chore');
+    // Chore runs without a code review: it shows as the voluntary step between build and done.
+    expect(optionalOf(root, 'chore').map((g) => g.getAttribute('data-stage'))).toEqual(['design', 'code-review']);
+    expect([...(figure(root, 'chore')?.querySelectorAll('.as-text [data-optional-move]') ?? [])].map(text)).toEqual([
+      'optional: Design → Review (/spec-design, UI specs only; moves no stage)',
+      'optional: Build → Code review → Done (/spec-code-review; moves no stage)',
+    ]);
+  });
+
+  it('draws the figure of one spec type, feature by default, picked by the type select through ?type=', async () => {
+    setUp();
+    const { harness, root } = await open('harbor');
+    const select = root.querySelector<HTMLSelectElement>('select[data-workflow-type]') as HTMLSelectElement;
+    expect([...select.options].map((o) => o.value)).toEqual(['feature', 'project', 'infra', 'refactor', 'bug', 'spike', 'chore']);
+    expect(select.value).toBe('feature');
+    // Beside the workspace select, in the head.
+    expect(select.closest('.selects')?.querySelector('select[data-workflow-workspace]')).not.toBeNull();
+    expect([...root.querySelectorAll('figure[data-workflow-figure]')].map((f) => f.getAttribute('data-workflow-figure'))).toEqual(['feature']);
+    select.value = 'bug';
+    select.dispatchEvent(new Event('change'));
+    await settle(harness);
+    expect(TestBed.inject(Router).url).toBe('/help?type=bug');
+    expect([...root.querySelectorAll('figure[data-workflow-figure]')].map((f) => f.getAttribute('data-workflow-figure'))).toEqual(['bug']);
+    expect(text(figure(root, 'bug')?.querySelector('[data-workflow-origin]'))).toBe('default');
+  });
+
+  it('draws the figure inline as svg with a caption, rendered without a render run', async () => {
     setUp();
     const { root } = await open('harbor');
-    const types = [...root.querySelectorAll('figure[data-workflow-figure]')].map((f) => f.getAttribute('data-workflow-figure'));
-    expect(types).toEqual(['feature', 'project', 'infra', 'refactor', 'bug', 'spike', 'chore']);
     expect(text(figure(root, 'feature')?.querySelector('figcaption'))).toContain('Workflow of the type feature');
     // Harbor's deviating feature row: review before tasks on the main line.
     expect(drawnStages(root, 'feature').slice(0, 7)).toEqual(['plan', 'review', 'tasks', 'build', 'code-review', 'close', 'done']);
     expect(text(figure(root, 'feature')?.querySelector('[data-workflow-origin]'))).toBe('custom');
-    expect(text(figure(root, 'bug')?.querySelector('[data-workflow-origin]'))).toBe('default');
-    expect(root.querySelectorAll('figure[data-workflow-figure] [data-diagram][data-rendered] svg[role="img"]')).toHaveLength(7);
+    expect(root.querySelectorAll('figure[data-workflow-figure] [data-diagram][data-rendered] svg[role="img"]')).toHaveLength(1);
     // The legend once, in the section above the figures (T162), never inside a figure.
     expect(root.querySelectorAll('[data-workflow-legend]')).toHaveLength(1);
     expect(figure(root, 'feature')?.querySelector('[data-workflow-legend]')).toBeNull();
     expect(ariaLabel(root, 'feature')).toBe(
       'Workflow diagram of the type feature, its stages in order: Plan, Review, Tasks, Build, Code review, Close, Done. ' +
-        'Detours: Blocked, Close-pending. Fixed gates: Build (gate · reviewed mark), Done (gate · every claim closed).',
+        'Detours: Blocked. Optional steps: Design (optional). Fixed gates: Build (gate · reviewed mark), Done (gate · every claim closed).',
     );
   });
 
@@ -203,7 +235,8 @@ describe('HelpPage workflows (ISC-116, ISC-123)', () => {
     await settle(harness);
     expect(drawnStages(root, 'feature')).toEqual(before);
     const tops = [...(figure(root, 'feature')?.querySelectorAll('g[data-stage]:not([data-detour]) rect.box') ?? [])].map((r) => r.getAttribute('y'));
-    expect(tops).toHaveLength(7);
+    // Seven stages and the design pass that leads them, all on one line.
+    expect(tops).toHaveLength(8);
     expect(new Set(tops).size).toBe(1);
   });
 });
@@ -240,7 +273,7 @@ describe('HelpPage workflow labels (T161, ISC-133.1)', () => {
     setUp(true);
     TestBed.inject(ShellState);
     const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/help');
+    await harness.navigateByUrl('/help?type=chore');
     release();
     await settle(harness);
     const root = harness.routeNativeElement as HTMLElement;

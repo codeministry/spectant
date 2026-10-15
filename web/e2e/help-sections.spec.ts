@@ -11,12 +11,12 @@ import { readFileSync } from 'node:fs';
 
 import type { Page } from '@playwright/test';
 
-import { DEFAULT_WORKFLOW, STAGE_RULES } from '../../core/src/stage';
+import { STAGE_RULES } from '../../core/src/stage';
 import { atWidth, expect, test } from './fixtures';
 
 interface Catalogue {
   readonly stages: Readonly<Record<string, string>>;
-  readonly help: { readonly nav: Readonly<Record<string, string>> };
+  readonly help: { readonly nav: Readonly<Record<string, string>>; readonly lifecycle: { readonly steps: Readonly<Record<string, string>> } };
 }
 const en = JSON.parse(readFileSync(new URL('../src/i18n/en.json', import.meta.url), 'utf8')) as Catalogue;
 
@@ -29,8 +29,37 @@ const SECTIONS = [
   ['start', 'gettingStarted'],
   ['keys', 'keyboard'],
 ] as const;
-const CHAIN = ['idea', ...(DEFAULT_WORKFLOW.find((row) => row.type === 'feature')?.stages ?? [])];
-const COMMANDS = [...new Set(STAGE_RULES.map((rule) => rule.next).filter((next): next is string => next !== null))];
+/** Every step of the lifecycle in order; the optional ones (design, code review, archive) carry "(optional)". */
+const CHAIN: ReadonlyArray<readonly [string, boolean]> = [
+  ['idea', false],
+  ['design', true],
+  ['plan', false],
+  ['tasks', false],
+  ['review', false],
+  ['build', false],
+  ['code-review', true],
+  ['close', false],
+  ['done', false],
+  ['archive', true],
+];
+const chainText = ([step, optional]: readonly [string, boolean]): string =>
+  `${en.stages[step] ?? en.help.lifecycle.steps[step] ?? ''}${optional ? ' (optional)' : ''}`;
+/** The lifecycle's commands: `/spec-idea`, every node's, then the stage table's `/spec-status`. */
+const COMMANDS = [
+  '/spec-idea',
+  '/spec new',
+  '/spec-design',
+  '/spec-plan',
+  '/spec-tasks',
+  '/spec-review',
+  '/spec-implement',
+  '/spec-code-review',
+  '/spec-complete',
+  '/spec-archive',
+  '/spec-status',
+];
+// Every command the stage table names stands in the list.
+for (const rule of STAGE_RULES) if (rule.next !== null && !COMMANDS.includes(rule.next)) throw new Error(`${rule.next} missing`);
 
 const help = (page: Page) => page.locator('[data-page="help"]');
 const rowsOf = (page: Page, scope: string) =>
@@ -64,12 +93,13 @@ for (const width of [1440, 390]) {
 
     test('shows the stage chain, the Commands table and the type chips', async ({ page }) => {
       await page.goto('/help');
-      await expect(page.locator('#moves [data-stage-chain] .pill')).toHaveText(CHAIN.map((stage) => en.stages[stage] ?? ''));
+      await expect(page.locator('#moves [data-stage-chain] .pill')).toHaveText(CHAIN.map(chainText));
       await expect(page.locator('#moves [data-stage-chain] ui-icon')).toHaveCount(CHAIN.length - 1);
       await expect(page.locator('#commands [data-commands] tbody tr')).toHaveCount(COMMANDS.length);
       await expect(page.locator('#commands [data-commands] tbody ui-command-chip code')).toHaveText(COMMANDS);
 
       await page.locator('#moves [data-type-chip="chore"]').click();
+      await expect(page.locator('select[data-workflow-type]')).toHaveValue('chore');
       await expect(page.locator('figure[data-workflow-figure="chore"]')).toBeFocused();
       await expect(page.locator('figure[data-workflow-figure="chore"]')).toBeInViewport();
     });
@@ -87,7 +117,7 @@ for (const width of [1440, 390]) {
 
     test('never scrolls the page sideways', async ({ page }) => {
       await page.goto('/help?ws=harbor');
-      await expect(page.locator('figure[data-workflow-figure]')).toHaveCount(7);
+      await expect(page.locator('figure[data-workflow-figure]')).toHaveCount(1);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow).toBe(0);
     });

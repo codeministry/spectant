@@ -155,10 +155,10 @@ test.describe('workflow', () => {
   const figures = (page: Page) => page.locator('figure[data-workflow-figure]');
   const feature = (page: Page) => page.locator('figure[data-workflow-figure="feature"]');
   const source = (page: Page) => page.locator('[data-workflow-source]');
-  /** The stages on the feature figure's main line, in drawing order (the detours below it left out). */
+  /** The stages on the feature figure's main line, in drawing order (the detours below it and the optional steps left out). */
   const stagesOf = (page: Page): Promise<string[]> =>
     feature(page)
-      .locator('[data-diagram] g[data-stage]:not([data-detour])')
+      .locator('[data-diagram] g[data-stage]:not([data-detour]):not([data-optional])')
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-stage') ?? ''));
 
   /** Opens the feature figure's "Transitions as text" and expects its list to start with `chain`. */
@@ -169,14 +169,19 @@ test.describe('workflow', () => {
     for (const [i, move] of chain.entries()) await expect(moves.nth(i)).toContainText(move);
   }
 
-  test('draws one captioned figure per spec type, and harbor runs review before tasks', async ({ page }) => {
+  test('draws one captioned figure, the type picked by the type select, and harbor runs review before tasks', async ({ page }) => {
     expect(TYPES).toHaveLength(7);
     await page.goto('/help?ws=harbor');
-    await expect(figures(page)).toHaveCount(7);
-    expect(await figures(page).evaluateAll((els) => els.map((el) => el.getAttribute('data-workflow-figure')))).toEqual(TYPES);
-    for (const type of TYPES) {
-      await expect(page.locator(`figure[data-workflow-figure="${type}"] .figure-name`)).toHaveText(en.help.workflow.figure.replace('{{type}}', type));
+    await expect(figures(page)).toHaveCount(1);
+    const type = page.locator('select[data-workflow-type]');
+    await expect(type).toHaveValue('feature');
+    for (const each of TYPES) {
+      await type.selectOption(each);
+      await expect(page).toHaveURL(new RegExp(`[?&]type=${each}(&|$)`, 'u'));
+      await expect(figures(page)).toHaveCount(1);
+      await expect(page.locator(`figure[data-workflow-figure="${each}"] .figure-name`)).toHaveText(en.help.workflow.figure.replace('{{type}}', each));
     }
+    await type.selectOption('feature');
     await expect(source(page)).toHaveText(en.help.workflow.source.custom);
 
     const harbor = featureOf(rowsOf('harbor'));
@@ -184,17 +189,17 @@ test.describe('workflow', () => {
     await expectChain(page, chainOf(harbor));
     await expect(feature(page).locator('[data-workflow-origin]')).toHaveText(en.help.workflow.custom);
 
-    // Every figure holds its inline svg at once, the harbor row drawn in table order with the catalogue words.
-    await expect(page.locator('figure[data-workflow-figure] [data-diagram][data-rendered] svg[role="img"]')).toHaveCount(7);
+    // The figure holds its inline svg at once, the harbor row drawn in table order with the catalogue words.
+    await expect(page.locator('figure[data-workflow-figure] [data-diagram][data-rendered] svg[role="img"]')).toHaveCount(1);
     await expect.poll(() => stagesOf(page)).toEqual(harbor.stages);
-    await expect(feature(page).locator('[data-diagram] g[data-stage]:not([data-detour]) text')).toHaveText(harbor.stages.map((stage) => en.stages[stage]));
+    await expect(feature(page).locator('[data-diagram] g[data-stage]:not([data-detour]):not([data-optional]) text')).toHaveText(harbor.stages.map((stage) => en.stages[stage]));
     await expect(feature(page).locator('[data-diagram] g[data-gate-note]')).toHaveText([en.help.workflow.gateReviewed, en.help.workflow.gateClosed]);
     await expect(page.locator('[data-workflow-legend]')).toHaveCount(1);
   });
 
   test('lantern, without a workflow file, runs the default order', async ({ page }) => {
     await page.goto('/help?ws=lantern');
-    await expect(figures(page)).toHaveCount(7);
+    await expect(figures(page)).toHaveCount(1);
     await expect(source(page)).toHaveText(en.help.workflow.source.default);
     const lantern = featureOf(rowsOf('lantern'));
     expect(lantern.stages.indexOf('tasks')).toBeLessThan(lantern.stages.indexOf('review'));
@@ -219,7 +224,7 @@ test.describe('workflow', () => {
     await expect(page).toHaveURL(/\/help\?ws=$/);
     await expect(source(page)).toHaveText(en.help.workflow.defaultCaption);
     await expect(page.locator('#help-workflows')).toHaveText(en.help.workflow.headingDefault);
-    await expect(figures(page)).toHaveCount(7);
+    await expect(figures(page)).toHaveCount(1);
     await expectChain(page, chainOf(featureOf(rowsOf('lantern'))));
 
     await select.selectOption('harbor');

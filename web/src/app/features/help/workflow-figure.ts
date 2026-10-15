@@ -8,7 +8,7 @@ import { FIGURE, SHIELD_CHECK, type WorkflowLayout } from './workflow-diagram';
  * token-themed inline SVG, left to right, synchronously (no render run, so `data-rendered` holds from the first
  * paint). Stage nodes are 32 px rounded rectangles with a left edge in the stage's role colour; each fixed gate is a
  * double-framed node with a shield-check annotation above it; build ⇄ blocked and the close-pending branch are arcs
- * under the line. The SVG is `role="img"` with the caller's translated `label`; its words come in through the model.
+ * under the line; an optional step (the design pass, a voluntary code review) is dotted, and so are its arrows. The SVG is `role="img"` with the caller's translated `label`; its words come in through the model.
  * The canvas scrolls sideways inside itself when the figure is wider than the panel; the page never does.
  */
 @Component({
@@ -24,6 +24,7 @@ import { FIGURE, SHIELD_CHECK, type WorkflowLayout } from './workflow-diagram';
         <li><i class="swatch" data-role="waits"></i>{{ 'help.workflow.legend.waits' | transloco }}</li>
         <li><i class="swatch" data-role="done"></i>{{ 'help.workflow.legend.done' | transloco }}</li>
         <li><i class="swatch" data-role="detour"></i>{{ 'help.workflow.legend.detour' | transloco }}</li>
+        <li><i class="swatch" data-role="optional"></i>{{ 'help.workflow.legend.optional' | transloco }}</li>
         <li><ui-icon name="shield-check" [size]="14" />{{ 'help.workflow.legend.gate' | transloco }}</li>
       </ul>
     }
@@ -50,6 +51,7 @@ import { FIGURE, SHIELD_CHECK, type WorkflowLayout } from './workflow-diagram';
             [attr.data-stage]="node.stage"
             [attr.data-role]="node.role"
             [attr.data-detour]="node.detour ? '' : null"
+            [attr.data-optional]="node.optional ? '' : null"
             [attr.data-gate]="node.gate"
             [style.--edge]="node.edge"
           >

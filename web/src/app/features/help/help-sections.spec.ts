@@ -14,7 +14,7 @@ import { ShellState } from '../../layout/shell/shell-state.service';
 import { MERMAID_LOADER, type MermaidApi } from '../../shared/ui/doc-prose/mermaid';
 import { CARD_EDGE } from '../board/board-card';
 import { HelpPage } from './help-page';
-import { HELP_COMMANDS, HELP_SECTIONS, LEGEND, STAGE_CHAIN } from './help-sections';
+import { HELP_COMMAND_ROWS, HELP_COMMANDS, HELP_SECTIONS, LEGEND, LIFECYCLE, STAGE_CHAIN } from './help-sections';
 
 @Component({ selector: 'app-stub', template: '' })
 class Stub {}
@@ -104,29 +104,64 @@ describe('HelpPage sections (T162, ISC-133.1)', () => {
     expect(chip?.getAttribute('href')).toBe('/help?ws=harbor#commands');
   });
 
-  it('shows the stage chain in the default order: idea, then the feature row, a chevron between each two', async () => {
+  it('shows every step of the lifecycle in order, the optional ones dashed and named so, a chevron between each two', async () => {
     setUp();
     const { root } = await open();
     const stages = [...root.querySelectorAll('#moves ol[data-stage-chain] > li')];
-    expect(stages.map((li) => li.getAttribute('data-stage'))).toEqual(['idea', 'plan', 'tasks', 'review', 'build', 'code-review', 'close', 'done']);
-    expect(STAGE_CHAIN).toEqual(['idea', ...(DEFAULT_WORKFLOW.find((row) => row.type === 'feature')?.stages ?? [])]);
-    expect(stages.map((li) => text(li.querySelector('.pill')))).toEqual(['Idea', 'Plan', 'Tasks', 'Review', 'Build', 'Code review', 'Close', 'Done']);
-    expect(root.querySelectorAll('#moves ol[data-stage-chain] ui-icon.chevron')).toHaveLength(7);
+    expect(stages.map((li) => li.getAttribute('data-stage'))).toEqual(['idea', 'design', 'plan', 'tasks', 'review', 'build', 'code-review', 'close', 'done', 'archive']);
+    expect(STAGE_CHAIN).toEqual(LIFECYCLE.flatMap((band) => band.nodes));
+    // Every stage of the default feature row stands in the chain, in its order.
+    const feature = DEFAULT_WORKFLOW.find((row) => row.type === 'feature')?.stages ?? [];
+    expect(STAGE_CHAIN.map((n) => n.stage).filter((s) => (feature as readonly string[]).includes(s))).toEqual([...feature]);
+    expect(stages.map((li) => text(li.querySelector('.pill')))).toEqual([
+      'Idea',
+      'Design (optional)',
+      'Plan',
+      'Tasks',
+      'Review',
+      'Build',
+      'Code review (optional)',
+      'Close',
+      'Done',
+      'Archive (optional)',
+    ]);
+    expect(stages.filter((li) => li.hasAttribute('data-optional')).map((li) => li.getAttribute('data-stage'))).toEqual(['design', 'code-review', 'archive']);
+    expect(root.querySelectorAll('#moves ol[data-stage-chain] ui-icon.chevron')).toHaveLength(9);
     expect(stages.at(-1)?.querySelector('ui-icon')).toBeNull();
-    expect(root.querySelector('#moves ol[data-stage-chain]')?.getAttribute('aria-label')).toBe('The stages of a feature, in the default order');
+    expect(root.querySelector('#moves ol[data-stage-chain]')?.getAttribute('aria-label')).toBe('The steps of a feature in order; dashed ones are optional');
   });
 
-  it('has one type chip per spec type, glyph and name, each scrolling to and focusing its figure', async () => {
+  it('draws the lifecycle in two bands of five, the optional steps dotted with the pill that says when they apply', async () => {
+    setUp();
+    const { root } = await open();
+    const bands = [...root.querySelectorAll('[data-lifecycle] .wf-band')];
+    expect(bands.map((b) => b.querySelectorAll('.wf-node').length)).toEqual([5, 5]);
+    const optional = [...root.querySelectorAll('[data-lifecycle] .wf-node[data-optional]')];
+    expect(optional.map((n) => n.getAttribute('data-lifecycle-stage'))).toEqual(['design', 'code-review', 'archive']);
+    expect(optional.map((n) => text(n.querySelector('code')))).toEqual(['/spec-design', '/spec-code-review', '/spec-archive']);
+    expect(text(optional[1]?.querySelector('[data-optional-pill]'))).toBe('optional · as specs/workflow.md says');
+    // The code review is no gate of its own any more: whether it is required is the workflow's call.
+    expect(optional[1]?.querySelector('.wf-gate')).toBeNull();
+    expect(text(root.querySelector('[data-lifecycle-stage="idea"] .wf-file'))).toBe('spec.md, context.md');
+    expect([...root.querySelectorAll('[data-lifecycle] [data-loop]')].map((l) => l.getAttribute('data-loop'))).toEqual(['blocked', 'reviewed', 'pending', 'stale']);
+  });
+
+  it('has one type chip per spec type, glyph and name, each picking its type, then scrolling to and focusing its figure', async () => {
     setUp();
     const scroll = vi.fn();
     Element.prototype.scrollIntoView = scroll;
-    const { root } = await open();
+    const { harness, root } = await open();
     const chips = [...root.querySelectorAll<HTMLButtonElement>('#moves [data-type-chips] button[data-type-chip]')];
     expect(chips.map((c) => c.getAttribute('data-type-chip'))).toEqual([...WORKFLOW_TYPES]);
     expect(chips.map(text)).toEqual(['feature', 'project', 'infra', 'refactor', 'bug', 'spike', 'chore']);
     for (const chip of chips) expect(chip.querySelector('ui-type-glyph')).not.toBeNull();
 
     chips.find((c) => c.getAttribute('data-type-chip') === 'bug')?.click();
+    for (let i = 0; i < 4; i++) {
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+    }
+    expect(root.querySelector<HTMLSelectElement>('select[data-workflow-type]')?.value).toBe('bug');
     const figure = root.querySelector('figure[data-workflow-figure="bug"]');
     expect(scroll).toHaveBeenCalledTimes(1);
     expect(scroll.mock.contexts[0]).toBe(figure);
@@ -138,7 +173,7 @@ describe('HelpPage sections (T162, ISC-133.1)', () => {
     setUp();
     const { root } = await open();
     const legend = root.querySelector('#workflows ul[data-workflow-legend]');
-    expect([...(legend?.querySelectorAll('li') ?? [])].map(text)).toEqual(['moving', 'waits on you', 'done', 'detour', 'fixed gate']);
+    expect([...(legend?.querySelectorAll('li') ?? [])].map(text)).toEqual(['moving', 'waits on you', 'done', 'detour', 'optional step', 'fixed gate']);
     const source = root.querySelector('[data-workflow-source]') as Element;
     const figures = root.querySelector('#workflows .figures') as Element;
     expect(source.compareDocumentPosition(legend as Element)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
@@ -148,17 +183,37 @@ describe('HelpPage sections (T162, ISC-133.1)', () => {
     const swatch = legend?.querySelector<HTMLElement>('[data-legend="moving"] .swatch');
     expect(swatch?.style.getPropertyValue('--legend-edge')).toBe(CARD_EDGE.build);
     expect(legend?.querySelector('[data-legend="gate"] ui-icon')).not.toBeNull();
-    // The workflow block itself stays as built: the select, the source line, seven figures.
+    // The workflow block itself: the two selects, the source line, the one figure of the picked type.
     expect(root.querySelector('#workflows select[data-workflow-workspace]')).not.toBeNull();
-    expect(root.querySelectorAll('#workflows figure[data-workflow-figure]')).toHaveLength(7);
+    expect(root.querySelector('#workflows select[data-workflow-type]')).not.toBeNull();
+    expect(root.querySelectorAll('#workflows figure[data-workflow-figure]')).toHaveLength(1);
   });
 
-  it('lists every command of the stage table once, in table order, as a command chip with its line', async () => {
+  it('lists every command of the lifecycle once, in its order, the stage table’s included, as a command chip with its line', async () => {
     setUp();
     const { root } = await open();
-    const expected = [...new Set(STAGE_RULES.map((rule) => rule.next).filter((next): next is string => next !== null))];
+    const expected = [
+      '/spec-idea',
+      '/spec new',
+      '/spec-design',
+      '/spec-plan',
+      '/spec-tasks',
+      '/spec-review',
+      '/spec-implement',
+      '/spec-code-review',
+      '/spec-complete',
+      '/spec-archive',
+      '/spec-status',
+    ];
     expect(HELP_COMMANDS.map((c) => c.command)).toEqual(expected);
-    expect(expected).toEqual(['/spec new', '/spec-plan', '/spec-tasks', '/spec-review', '/spec-implement', '/spec-code-review', '/spec-complete', '/spec-status']);
+    for (const rule of STAGE_RULES) if (rule.next !== null) expect(expected).toContain(rule.next);
+    // An optional step is skipped as a neighbour: the required path reads straight through.
+    const row = (command: string) => HELP_COMMAND_ROWS.find((r) => r.command === command);
+    expect(row('/spec-idea')).toMatchObject({ needs: null, writes: 'specs/ideas/<slug>.md', then: '/spec new' });
+    expect(row('/spec new')).toMatchObject({ needs: 'specs/ideas/<slug>.md', writes: 'spec.md, context.md', then: '/spec-plan' });
+    expect(row('/spec-design')).toMatchObject({ needs: 'spec.md, context.md', writes: 'design.md', then: '/spec-plan' });
+    expect(row('/spec-implement')).toMatchObject({ then: '/spec-complete' });
+    expect(row('/spec-archive')).toMatchObject({ needs: 'spec.md phase', then: null });
     const rows = [...root.querySelectorAll('#commands table[data-commands] tbody tr')];
     expect(rows.map((row) => row.getAttribute('data-command'))).toEqual(expected);
     expect(rows.map((row) => text(row.querySelector('ui-command-chip code')))).toEqual(expected);
