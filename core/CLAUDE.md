@@ -15,23 +15,6 @@ Lane `core`: paths `core/` and `FORMAT.md`. Load `FORMAT.md` and this file befor
 - `scripts/check-single-core.ts` (`bun run check:single-core`) fails on a frontmatter, claim or stage parser
   anywhere outside `core/`. Reason: the one-parser rule is enforced, not remembered.
 
-## Module map (planned, `core/src/`)
-
-| Module | Holds |
-|--------|-------|
-| `frontmatter.ts` | frontmatter keys and values |
-| `claims.ts` | claim lines, stable IDs, `(after: …)` edges, Test Strategy rows |
-| `status.ts` | claim partition and drift classes |
-| `stage.ts` | stage per spec and the next command |
-| `gates.ts` | review and code-review marks; worktree hash computed in memory |
-| `takeable.ts` | the takeable task set |
-| `diagrams.ts` | the diagram verdict |
-| `tldr.ts` | TL;DR staleness |
-| `markdown.ts` | the markdown renderer: Brief mode and, for the docs tabs, document mode with figures and TOC |
-| `markdown-docs.ts` | the document layer on `markdown.ts`: frontmatter, sections, mermaid and image figures, `docsFor(type)` |
-| `archive.ts` | the archive listing |
-| `dashboard.ts` | assembles the dashboard model: the seam to `server/` and `web/` |
-
 One module per ported source of the old Spec skill. Reason: a port that maps one to one can be diffed against its
 origin when parity breaks.
 
