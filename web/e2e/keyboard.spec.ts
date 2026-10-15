@@ -305,7 +305,6 @@ test.describe('keyboard help on the workspace dashboard', () => {
     'phase-all',
     'phase-building',
     'phase-scoping',
-    'go-all',
     'go-specs',
     'go-next-up',
     'go-warnings',

@@ -141,7 +141,6 @@ const tabShortcuts: Shortcut[] = SPEC_AREAS.flatMap((area) =>
  * (the roving list's), the only multi-key entry that is not a `g` sequence.
  */
 const workspaceShortcuts: Shortcut[] = [
-  { id: 'go-all', keys: [GO_PREFIX, 'a'], group: 'workspace', action: { kind: 'go-all' }, label: 'shortcuts.actions.goAll' },
   { id: 'go-specs', keys: [GO_PREFIX, 's'], group: 'workspace', action: { kind: 'go-section', section: 'specs' }, label: 'shortcuts.actions.goSpecs' },
   { id: 'go-next-up', keys: [GO_PREFIX, 'n'], group: 'workspace', action: { kind: 'go-section', section: 'next-up' }, label: 'shortcuts.actions.goNextUp' },
   { id: 'go-warnings', keys: [GO_PREFIX, 'w'], group: 'workspace', action: { kind: 'go-section', section: 'warnings' }, label: 'shortcuts.actions.goWarnings' },
@@ -220,6 +219,8 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: 'view', keys: ['v'], group: 'board', action: { kind: 'toggle-view' }, label: 'shortcuts.actions.view' },
   { id: 'prev-frame', keys: ['ArrowLeft'], group: 'board', action: { kind: 'step-frame', delta: -1 }, label: 'shortcuts.actions.prevFrame' },
   { id: 'next-frame', keys: ['ArrowRight'], group: 'board', action: { kind: 'step-frame', delta: 1 }, label: 'shortcuts.actions.nextFrame' },
+  // `g a` leaves for all workspaces from every page: a workspace, a spec, help and settings (`a` is free in each).
+  { id: 'go-all', keys: [GO_PREFIX, 'a'], group: 'general', action: { kind: 'go-all' }, label: 'shortcuts.actions.goAll' },
   { id: 'zen', keys: ['z'], group: 'general', action: { kind: 'toggle-zen' }, label: 'shortcuts.actions.zen' },
   { id: 'search', keys: ['f'], group: 'general', action: { kind: 'focus-search' }, label: 'shortcuts.actions.search' },
   { id: 'palette', keys: [PALETTE_CHORD], group: 'general', action: { kind: 'open-palette' }, label: 'shortcuts.actions.palette' },
