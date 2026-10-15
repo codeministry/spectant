@@ -4,19 +4,8 @@
   [attr.data-layout]="layout()"
   [attr.data-has-selection]="hasSelection() ? '' : null"
 >
-  @if (hasMilestones() || hasDone() || hasArchived()) {
+  @if (hasDone() || hasArchived()) {
     <div class="tools">
-      @if (hasMilestones()) {
-        <div class="pills" role="group" [attr.aria-label]="'planning.matrix.pills' | transloco">
-          @for (l of lanes(); track l.key) {
-            <button type="button" class="pill" [attr.data-m]="l.param" [attr.aria-pressed]="active()?.key === l.key" (click)="pick(l)">
-              <ui-icon [name]="l.lane.ref === null ? 'circle-dashed' : 'flag'" [size]="14" />
-              <span class="pill-name">{{ l.lane.ref === null ? ('planning.tree.noMilestone' | transloco) : l.lane.name }}</span>
-              <span class="pill-count" data-pill-count>{{ l.lane.specCount }}</span>
-            </button>
-          }
-        </div>
-      }
       @if (hasDone()) {
         <button type="button" class="done-toggle" data-show-done [attr.aria-pressed]="showDone()" (click)="toggleDone()">
           <ui-icon name="eye" [size]="14" />
@@ -106,7 +95,7 @@
   </ng-template>
 
   @if (layout() === 'single') {
-    @for (l of visible(); track l.key) {
+    @for (l of lanes(); track l.key) {
       <section class="single" [attr.data-lane]="l.key" [attr.aria-label]="l.lane.ref === null ? ('planning.tree.noMilestone' | transloco) : l.lane.name">
         @if (l.lane.ref; as ref) {
           <button type="button" class="lane-head single-head" data-lane-head [attr.data-ref]="ref" [attr.data-selected]="l.look" (click)="select(ref)">

@@ -11,7 +11,7 @@
   min-inline-size: 0;
 }
 
-/* Tools: the milestone pills (scrolling inside their row, growing), then the "Finished features" and "Archived" switches at the end. */
+/* Tools: the "Finished features" and "Archived" switches, at the end of the row. */
 .tools {
   display: flex;
   flex-wrap: wrap;
@@ -21,17 +21,6 @@
   min-inline-size: 0;
 }
 
-.pills {
-  display: flex;
-  flex: 1 1 0;
-  gap: 8px;
-  min-inline-size: 0;
-  padding-block-end: 2px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.pill,
 .done-toggle {
   display: inline-flex;
   flex: none;
@@ -48,17 +37,10 @@
   cursor: pointer;
 }
 
-.pill[aria-pressed='true'],
 .done-toggle[aria-pressed='true'] {
   background: var(--color-base-300);
   color: var(--color-base-content);
   box-shadow: inset 0 -2px 0 var(--color-primary);
-}
-
-.pill-count {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
 }
 
 .mono,
